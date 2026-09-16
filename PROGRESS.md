@@ -87,6 +87,26 @@ Ultimo aggiornamento: **17 settembre 2026**
 (PostgreSQL locale nel container di sviluppo, non mock) — vedi
 `README.md` § Test per come rilanciarli.
 
+### Fase 3 — Setup interattivo — COMPLETA
+- [x] `cogs/utility/setup.py` — `/setup`: pannello con menu a
+  tendina multi-selezione (`discord.ui.Select` + `discord.ui.View`),
+  opzioni costruite da `registry.all_modules()` con `default=True`
+  per i moduli già attivi su quel server. Bottoni "Salva
+  configurazione"/"Annulla", timeout 180s con disattivazione
+  automatica dei componenti. **Sblocca l'uso reale di tutto ciò che
+  è già stato scritto**: prima di questo cog, Moderation esisteva
+  ma nessun server poteva accenderla
+- [x] Limite dei 25 elementi per Select gestito con fallimento
+  controllato (messaggio chiaro + log), non un crash — TODO
+  paginazione quando i moduli registrati supereranno 25
+- [x] Test di persistenza REALE (non solo smoke): simula il click su
+  "Salva" con un'Interaction finta e verifica contro PostgreSQL che
+  un modulo prima attivo e non riselezionato risulti disattivato
+  dopo il salvataggio — il caso che, se sbagliato, avrebbe lasciato
+  moduli accesi per dimenticanza
+
+**Suite di test completa: 67/67 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -135,26 +155,21 @@ Nell'ordine di sviluppo concordato:
    AutoMod native di Discord via API, invece di duplicare i filtri
    lato bot
 2. **Logging semplificato** — join/leave/ban/kick/ruoli
-3. **Setup interattivo** (`/setup`) — pannello reale con Select Menu +
-   bottoni, oggi `on_guild_join` crea solo la riga di config vuota
-   (nessun modulo risulta ancora attivabile dai server reali finché
-   questo non esiste — anche Moderation, pur scritta, resta invisibile
-   finché un server non ha `modules.moderation_actions = true`)
-4. **Ticket system**
-5. **Vocali temporanei** — modalità automatica + manuale, sempre
+3. **Ticket system**
+4. **Vocali temporanei** — modalità automatica + manuale, sempre
    entrambe visibili (vedi decisione in `PROGRESS.md` § Decisioni)
-6. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
-7. **Spam Trap** — la specifica è già completa e dettagliata (vedi
+5. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+6. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
-8. Richiesta di **verifica Discord** a ~90 server, con il set
-   "pulito" (moduli 1-7)
-9. **Music** (5 istanze + Lavalink)
-10. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-11. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-12. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-13. **NSFW** (iYokai NSFW, applicazione separata)
-14. **iYokai Desktop** (presence via RPC locale)
-15. **iYokai Panel** (web, verify avanzato, OAuth2)
+7. Richiesta di **verifica Discord** a ~90 server, con il set
+   "pulito" (moduli 1-6)
+8. **Music** (5 istanze + Lavalink)
+9. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
+10. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
+11. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+12. **NSFW** (iYokai NSFW, applicazione separata)
+13. **iYokai Desktop** (presence via RPC locale)
+14. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -260,11 +275,12 @@ rispettare: ~6 regole keyword per server, una per spam, una per
 mention-spam, ~1000 voci per lista, ~10 pattern regex — le regole
 vanno consolidate, non create una per categoria.
 
-Subito dopo, punto 3 (**Setup interattivo**) diventa urgente: oggi
-Moderation è scritta e testata ma **invisibile a qualunque server
-reale**, perché `/setup` non esiste ancora e nessun server ha
-`modules.moderation_actions = true` nel proprio `guild_config`. Senza
-`/setup`, ogni nuovo modulo continuerà ad accumularsi "pronto ma
-spento" — vale la pena anticiparlo rispetto all'ordine originale se le
-prossime sessioni iniziano a sentirne la mancanza per testare quanto
-già scritto.
+Con `/setup` ora completo, **Moderation è finalmente attivabile su un
+server reale**: `/setup` → seleziona i moduli `moderation_actions`,
+`moderation_channel_control`, `moderation_report` (gratuiti) → Salva.
+I moduli candidati premium (`moderation_case_system`,
+`moderation_clear`) restano selezionabili e funzionanti perché nessuna
+flag premium è ancora accesa da nessuna parte — esattamente il
+comportamento previsto. Questo è il primo punto della roadmap in cui
+ha senso, se lo vuoi, provare concretamente il bot su un server di
+test invece di continuare solo a leggere codice e commit.
