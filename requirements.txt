@@ -1,0 +1,17 @@
+# Discord
+discord.py>=2.4.0
+
+# Database
+asyncpg>=0.29.0
+
+# Variabili d'ambiente
+python-dotenv>=1.0.0
+
+# Monitoraggio memoria (Memory Guard)
+psutil>=5.9.0
+
+# Music (client Lavalink)
+wavelink>=3.4.0
+
+# Log strutturati
+structlog>=24.1.0
