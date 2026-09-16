@@ -64,12 +64,16 @@ async def clean_db(db_pool):
     """
     from core.database import db as db_singleton
     from core.scheduler import run_migrations as scheduler_migrations
+    from core.repositories.moderation_repo import (
+        run_migrations as moderation_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
     # direttamente.
     await db_singleton_run_migrations_with_pool(db_pool)
     await scheduler_migrations(db_pool)
+    await moderation_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.

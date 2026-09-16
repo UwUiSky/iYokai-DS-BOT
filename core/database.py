@@ -134,6 +134,11 @@ class Database:
         from core.scheduler import run_migrations as scheduler_migrations
         await scheduler_migrations(self.pool)
 
+        from core.repositories.moderation_repo import (
+            run_migrations as moderation_migrations,
+        )
+        await moderation_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
