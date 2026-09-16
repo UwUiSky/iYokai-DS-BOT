@@ -157,6 +157,11 @@ class Database:
         )
         await ticket_migrations(self.pool)
 
+        from core.repositories.voice_temp_repo import (
+            run_migrations as voice_temp_migrations,
+        )
+        await voice_temp_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
