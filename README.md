@@ -105,6 +105,31 @@ all'avvio** con un messaggio che dice esattamente quale variabile manca
 
 ---
 
+## 🧪 Test
+
+I test coprono la logica pura (permessi, calcoli) e il database reale
+(query eseguite davvero contro un PostgreSQL locale, non un mock).
+**Non** coprono la connessione a Discord — quella si verifica sul
+server di test, non nei test automatici.
+
+```bash
+pip install -r requirements-dev.txt
+
+# Serve un PostgreSQL locale raggiungibile. Il modo più rapido:
+# un database vuoto chiamato "iyokai_test" su un'istanza Postgres
+# qualsiasi, poi:
+export DATABASE_URL="postgresql://<utente>:<password>@127.0.0.1:5432/iyokai_test"
+
+pytest tests/ -v
+```
+
+`tests/conftest.py` imposta automaticamente tutte le altre variabili
+richieste da `core/config.py` con valori fittizi (i token Discord non
+servono per questi test): solo `DATABASE_URL` deve puntare a un
+database vero.
+
+---
+
 ## 🔒 Sicurezza sul server di produzione
 
 - Il processo gira come utente Linux **dedicato, non root**

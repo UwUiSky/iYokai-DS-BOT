@@ -1,0 +1,8 @@
+# Dipendenze SOLO per sviluppo e test — non servono sul server di
+# produzione. Installazione: pip install -r requirements-dev.txt
+# (che include già requirements.txt tramite la riga sotto).
+
+-r requirements.txt
+
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
