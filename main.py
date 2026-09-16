@@ -48,7 +48,11 @@ def setup_logging() -> None:
 logger = logging.getLogger("iyokai.main")
 
 
-class IYokaiBot(commands.AutoShardedBot):
+# Il nome della classe usa la "i" minuscola di proposito (branding
+# "iYokai", stesso stile di "iPhone"): è una deviazione intenzionale
+# dalla convenzione PEP8 (le classi normalmente iniziano maiuscole),
+# non un refuso — non "correggerla" in futuro.
+class iYokaiBot(commands.AutoShardedBot):
     """
     AutoShardedBot invece di Bot: anche se oggi (pochi server) non
     servono più shard di uno, usare fin da subito la classe
@@ -132,7 +136,7 @@ async def main() -> None:
     await db.run_migrations()
     logger.info("Database connesso e migrazioni applicate.")
 
-    bot = IYokaiBot()
+    bot = iYokaiBot()
 
     try:
         await bot.start(config.YOKAI_BOT_TOKEN)
