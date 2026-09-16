@@ -1,4 +1,4 @@
-# PROGRESS — Stato del progetto Yokai Bot
+# PROGRESS — Stato del progetto iYokai
 
 > Questo file esiste per un motivo preciso: se una sessione di lavoro
 > finisce (token esauriti, chiusura chat, cambio giornata), la sessione
@@ -74,10 +74,10 @@ Nell'ordine di sviluppo concordato:
 11. **Music** (5 istanze + Lavalink)
 12. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
 13. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-14. **Backup** (Yokai Creator + snapshot + mirror in tempo reale)
-15. **NSFW** (Yokai NSFW, applicazione separata)
-16. **Yokai Desktop** (presence via RPC locale)
-17. **Yokai Panel** (web, verify avanzato, OAuth2)
+14. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+15. **NSFW** (iYokai NSFW, applicazione separata)
+16. **iYokai Desktop** (presence via RPC locale)
+17. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -92,9 +92,9 @@ stato scartato per un limite tecnico specifico.
   bot ha un solo processo condiviso da tutti i server. Il modo
   corretto per attivare/disattivare un modulo per server è un check a
   runtime a inizio comando (vedi `cogs/utility/ping.py`).
-- **`POST /guilds` funziona solo per bot sotto i 10 server.** Yokai
-  Bot (il bot principale) non creerà mai server. La creazione dei
-  server di backup è delegata a **Yokai Creator**, un'applicazione
+- **`POST /guilds` funziona solo per bot sotto i 10 server.** iYokai
+  Main (il bot principale) non creerà mai server. La creazione dei
+  server di backup è delegata a **iYokai Creator**, un'applicazione
   separata che crea, trasferisce subito la ownership al cliente, e
   esce — non resta mai owner. Timeout di 24h: se l'owner non entra
   nel server di backup entro 24h, la funzione si spegne per quel
@@ -126,10 +126,10 @@ stato scartato per un limite tecnico specifico.
   alla stessa posizione gerarchica), permessi reali dati come
   overwrite per-utente sulla categoria della propria gilda — così
   restano isolati tra loro pur condividendo il ruolo Discord.
-- **Niente modulo selfbot.** Sostituito da **Yokai Desktop**, app
+- **Niente modulo selfbot.** Sostituito da **iYokai Desktop**, app
   locale che usa il socket RPC del client Discord — nessun user
   token, nessun rischio ban per l'utente finale.
-- **NSFW su applicazione separata** (`Yokai NSFW`), filtro a due
+- **NSFW su applicazione separata** (`iYokai NSFW`), filtro a due
   strati sempre attivi: allowlist decisa dal server + blocklist
   hardcoded non modificabile, applicati sia alla ricerca manuale sia
   all'auto-post.
@@ -164,12 +164,12 @@ stato scartato per un limite tecnico specifico.
 
 | # | Nome | Repository | Note |
 |---|---|---|---|
-| 1 | Yokai Bot | **questa repo** | Core, deve passare la verifica a 100 server |
-| 2 | Yokai Creator | da creare | Sempre sotto i 10 server |
-| 3-7 | Yokai Music #1-5 | da creare | Una connessione vocale ciascuno |
-| 8 | Yokai NSFW | da creare | Isolata per non appesantire la review del core |
-| — | Yokai Desktop | da creare | App locale, RPC, no user token |
-| — | Yokai Panel | da creare | Web, verify avanzato + OAuth2 |
+| 1 | iYokai Main | **questa repo** | Core, deve passare la verifica a 100 server |
+| 2 | iYokai Creator | da creare | Sempre sotto i 10 server |
+| 3-7 | iYokai Music #1-5 | da creare | Una connessione vocale ciascuno |
+| 8 | iYokai NSFW | da creare | Isolata per non appesantire la review del core |
+| — | iYokai Desktop | da creare | App locale, RPC, no user token |
+| — | iYokai Panel | da creare | Web, verify avanzato + OAuth2 |
 
 ---
 

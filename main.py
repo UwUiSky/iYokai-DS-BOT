@@ -1,7 +1,7 @@
 """
 main.py
 ========
-Punto di avvio di Yokai Bot (l'applicazione principale — non i bot
+Punto di avvio di iYokai Main (l'applicazione principale — non i bot
 music, non il Creator, non l'NSFW: quelli hanno ciascuno il proprio
 entry point separato, in coerenza con la scelta di applicazioni
 Discord distinte).
@@ -45,10 +45,10 @@ def setup_logging() -> None:
     )
 
 
-logger = logging.getLogger("yokai.main")
+logger = logging.getLogger("iyokai.main")
 
 
-class YokaiBot(commands.AutoShardedBot):
+class IYokaiBot(commands.AutoShardedBot):
     """
     AutoShardedBot invece di Bot: anche se oggi (pochi server) non
     servono più shard di uno, usare fin da subito la classe
@@ -102,7 +102,7 @@ class YokaiBot(commands.AutoShardedBot):
 
     async def on_ready(self) -> None:
         logger.info(
-            "Yokai Bot online come %s (ID: %s) — %d server, %d shard",
+            "iYokai Main online come %s (ID: %s) — %d server, %d shard",
             self.user,
             self.user.id if self.user else "?",
             len(self.guilds),
@@ -123,7 +123,7 @@ class YokaiBot(commands.AutoShardedBot):
 
 async def main() -> None:
     setup_logging()
-    logger.info("Avvio Yokai Bot in modalità: %s", config.ENVIRONMENT)
+    logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
 
     # Il database va connesso PRIMA del bot, perché setup_hook()
     # (chiamato durante bot.start()) già presuppone che db.pool
@@ -132,7 +132,7 @@ async def main() -> None:
     await db.run_migrations()
     logger.info("Database connesso e migrazioni applicate.")
 
-    bot = YokaiBot()
+    bot = IYokaiBot()
 
     try:
         await bot.start(config.YOKAI_BOT_TOKEN)

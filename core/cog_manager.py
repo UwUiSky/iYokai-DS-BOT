@@ -19,7 +19,7 @@ import logging
 
 from discord.ext import commands
 
-logger = logging.getLogger("yokai.cog_manager")
+logger = logging.getLogger("iyokai.cog_manager")
 
 
 def discover_cog_modules(package_name: str = "cogs") -> list[str]:

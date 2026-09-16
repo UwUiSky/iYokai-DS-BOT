@@ -1,6 +1,6 @@
 <div align="center">
 
-# 👹 Yokai Bot
+# 👹 iYokai
 
 **Bot Discord multi-tenant in Python — moderazione, sicurezza, economia, gilde e molto altro**
 
@@ -27,12 +27,12 @@ Discord separate, ciascuna con il proprio token e il proprio scopo:
 
 | Applicazione | Ruolo |
 |---|---|
-| **Yokai Bot** | Il core: moderazione, automod, security, ticket, vocali temporanei, livelli, gilde, log, utility *(questa repo)* |
-| **Yokai Creator** | Crea e cede i server di backup, resta sempre sotto i 10 server |
-| **Yokai Music** ×5 | Cinque istanze, una connessione vocale ciascuna |
-| **Yokai NSFW** | Modulo R34/NSFW isolato dal core |
-| **Yokai Desktop** | Presence personalizzata via RPC locale, nessun user token |
-| **Yokai Panel** | Web panel per verify avanzato e OAuth2 |
+| **iYokai Main** | Il core: moderazione, automod, security, ticket, vocali temporanei, livelli, gilde, log, utility *(questa repo)* |
+| **iYokai Creator** | Crea e cede i server di backup, resta sempre sotto i 10 server |
+| **iYokai Music** ×5 | Cinque istanze, una connessione vocale ciascuna |
+| **iYokai NSFW** | Modulo R34/NSFW isolato dal core |
+| **iYokai Desktop** | Presence personalizzata via RPC locale, nessun user token |
+| **iYokai Panel** | Web panel per verify avanzato e OAuth2 |
 
 > Per il ragionamento completo dietro queste scelte (limiti reali
 > dell'API Discord, cosa è fattibile e cosa no, GDPR, ecc.) vedi lo
@@ -43,7 +43,7 @@ Discord separate, ciascuna con il proprio token e il proprio scopo:
 ## 📁 Struttura di questa repository
 
 ```
-yokai-bot/
+iYokai-DS-BOT/
 ├── main.py                    # Entry point — AutoShardedBot
 ├── core/
 │   ├── config.py               # Legge e valida .env — TUTTA la config passa da qui

@@ -64,7 +64,7 @@ class PingCog(commands.Cog):
 
     @app_commands.command(
         name="ping",
-        description="Controlla se Yokai Bot è online e la sua latenza.",
+        description="Controlla se iYokai Main è online e la sua latenza.",
     )
     async def ping(self, interaction: discord.Interaction) -> None:
         # Passo 1: il modulo è attivo su questo server?
