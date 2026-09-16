@@ -30,6 +30,7 @@ from discord.ext import commands
 from core.config import config
 from core.database import db
 from core.cog_manager import load_all_cogs
+from core.scheduler import scheduler
 
 
 def setup_logging() -> None:
@@ -91,6 +92,15 @@ class iYokaiBot(commands.AutoShardedBot):
         slash command.
         """
         await load_all_cogs(self)
+
+        # Avvia il loop dello scheduler (tempban, unmute automatico,
+        # ecc.) SOLO dopo che i cog hanno avuto modo di registrare i
+        # propri handler nel loro setup(). Se lo start() avvenisse
+        # prima, il primo giro del loop (che parte comunque solo
+        # dopo wait_until_ready) troverebbe comunque gli handler già
+        # registrati — l'ordine qui è per chiarezza, non per un bug
+        # reale da evitare.
+        scheduler.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync

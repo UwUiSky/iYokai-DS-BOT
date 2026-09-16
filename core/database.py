@@ -126,6 +126,19 @@ class Database:
                 """
             )
 
+        # Migrazioni degli altri sottosistemi core. Ognuno espone il
+        # proprio run_migrations(pool) e viene chiamato qui in
+        # sequenza — così ogni modulo resta responsabile del proprio
+        # schema, ma c'è un solo punto che li invoca tutti in ordine
+        # all'avvio del bot.
+        from core.scheduler import run_migrations as scheduler_migrations
+        await scheduler_migrations(self.pool)
+
+        # I repository dei singoli moduli (moderation, leveling, ...)
+        # aggiungono qui la propria riga mano a mano che vengono
+        # scritti. Vedi core/repositories/ e la nota in fondo a
+        # questo file.
+
     # ================================================================
     # Guild config — metodi di base
     # ================================================================
