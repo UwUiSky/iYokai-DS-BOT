@@ -1,6 +1,6 @@
 <div align="center">
 
-# 👹 iYokai
+# 😻 iYokai
 
 **Bot Discord multi-tenant in Python — moderazione, sicurezza, economia, gilde e molto altro**
 
