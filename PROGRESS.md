@@ -107,6 +107,28 @@ Ultimo aggiornamento: **17 settembre 2026**
 
 **Suite di test completa: 67/67 passano.**
 
+### Fase 4 — AutoMod ibrido — COMPLETA
+- [x] `core/automod_sync.py` — logica PURA di sincronizzazione,
+  merge a TRE VIE (vedi bug documentato sotto): `compute_sync_plan()`
+  decide create/update/delete/skip senza mai toccare Discord
+  direttamente. **15 test**
+- [x] `core/repositories/automod_repo.py` — configurazione per-server
+  (parole vietate, blocco inviti) + `automod_last_synced` (cosa
+  iYokai ha scritto l'ultima volta, per rule name). **14 test contro
+  PostgreSQL reale**
+- [x] `cogs/automod/automod.py` — `/automod badword-add|remove|list`,
+  `/automod invites`, `/automod sync`. Ogni comando di modifica
+  richiama subito la sincronizzazione (nessun comando "sync"
+  separato da ricordarsi — esperienza plug-and-play). Regole gestite
+  sempre con prefisso `iYokai — ` nel nome, mai tocca regole con
+  nomi diversi (create a mano dall'admin). Modulo sempre gratuito
+- [x] Verificati con `inspect.signature` i nomi reali dell'API
+  AutoMod di discord.py 2.7 (`AutoModRuleTriggerType`,
+  `AutoModTrigger`, `guild.fetch_automod_rules()`, ecc.) prima di
+  scrivere il codice, non assunti da documentazione ricordata a memoria
+
+**Suite di test completa: 97/97 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -147,29 +169,65 @@ rileggere questa nota.
 
 ---
 
+## 🐛 Secondo bug reale — merge AutoMod a due vie non permetteva la rimozione
+
+Durante la scrittura di `cogs/automod/automod.py`: la prima versione
+di `core/automod_sync.py` faceva un merge "esistenti ∪ nuove" — corretto
+per non cancellare mai parole aggiunte a mano dall'admin, ma con una
+conseguenza non voluta: **`/automod badword-remove` non aveva alcun
+effetto reale sulla regola Discord**, perché una parola rimossa dalla
+configurazione salvata restava comunque nell'unione con "esistenti"
+(che la includeva ancora, dal sync precedente).
+
+**Soluzione**: merge a TRE vie. Si traccia (`automod_last_synced`,
+per nome regola) cosa iYokai stesso ha scritto nell'ultimo sync
+riuscito. Al sync successivo:
+
+```
+finale = (esistenti − ciò che avevamo scritto noi l'ultima volta)
+         ∪ (ciò che vogliamo ORA)
+```
+
+La prima parte isola ciò che è presumibilmente dell'admin (resta per
+sempre); la seconda riflette la configurazione attuale (una parola
+rimossa da lì sparisce davvero, a meno che l'admin non l'abbia anche
+aggiunta di suo). Se non risulta mai stato tracciato nulla per una
+regola (bot appena aggiornato), tutto il contenuto esistente viene
+trattato come "dell'admin" — la scelta prudente di default.
+
+Aggiunto anche un quarto tipo di azione, `DELETE`: se dopo il merge
+non resta più nulla da tenere (né admin né iYokai), la regola va
+eliminata, non aggiornata a vuoto — Discord rifiuta una regola
+keyword senza contenuto.
+
+**Perché resta scritto qui**: qualunque futuro modulo che sincronizzi
+uno stato "posseduto in parte da noi, in parte dall'utente" (non solo
+AutoMod) rischia lo stesso problema con un merge a due vie. Il pattern
+corretto è sempre: traccia cosa hai scritto tu l'ultima volta, sottrai
+quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
+
+---
+
 ## 🚧 Non ancora iniziato
 
 Nell'ordine di sviluppo concordato:
 
-1. **AutoMod ibrido** — lettura/creazione/aggiornamento delle regole
-   AutoMod native di Discord via API, invece di duplicare i filtri
-   lato bot
-2. **Logging semplificato** — join/leave/ban/kick/ruoli
-3. **Ticket system**
-4. **Vocali temporanei** — modalità automatica + manuale, sempre
+1. **Logging semplificato** — join/leave/ban/kick/ruoli
+2. **Ticket system**
+3. **Vocali temporanei** — modalità automatica + manuale, sempre
    entrambe visibili (vedi decisione in `PROGRESS.md` § Decisioni)
-5. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
-6. **Spam Trap** — la specifica è già completa e dettagliata (vedi
+4. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+5. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
-7. Richiesta di **verifica Discord** a ~90 server, con il set
-   "pulito" (moduli 1-6)
-8. **Music** (5 istanze + Lavalink)
-9. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-10. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-11. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-12. **NSFW** (iYokai NSFW, applicazione separata)
-13. **iYokai Desktop** (presence via RPC locale)
-14. **iYokai Panel** (web, verify avanzato, OAuth2)
+6. Richiesta di **verifica Discord** a ~90 server, con il set
+   "pulito" (moduli 1-5)
+7. **Music** (5 istanze + Lavalink)
+8. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
+9. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
+10. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+11. **NSFW** (iYokai NSFW, applicazione separata)
+12. **iYokai Desktop** (presence via RPC locale)
+13. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -267,20 +325,17 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**AutoMod ibrido** (punto 1 di "Non ancora iniziato"): il bot legge le
-regole AutoMod native esistenti su un server, crea quelle mancanti dal
-proprio preset, aggiorna quelle presenti unendo le proprie voci senza
-sovrascrivere quanto configurato dall'owner. Limiti Discord da
-rispettare: ~6 regole keyword per server, una per spam, una per
-mention-spam, ~1000 voci per lista, ~10 pattern regex — le regole
-vanno consolidate, non create una per categoria.
+**Logging semplificato** (punto 1 di "Non ancora iniziato"): join,
+leave, ban, kick, modifiche ruoli — eventi che non richiedono il
+Message Content Intent (a differenza del log dei messaggi
+cancellati/modificati, che è previsto più avanti nella Security
+Suite completa, punto 9). Un buon punto di partenza concreto: un
+canale per server configurabile con `/logs-setup` (stesso pattern
+già usato in `cogs/moderation/report.py` con `guild_config.settings`),
+poi listener su `on_member_join`, `on_member_remove`,
+`on_member_ban`, `on_member_update` (per i cambi di ruolo).
 
-Con `/setup` ora completo, **Moderation è finalmente attivabile su un
-server reale**: `/setup` → seleziona i moduli `moderation_actions`,
-`moderation_channel_control`, `moderation_report` (gratuiti) → Salva.
-I moduli candidati premium (`moderation_case_system`,
-`moderation_clear`) restano selezionabili e funzionanti perché nessuna
-flag premium è ancora accesa da nessuna parte — esattamente il
-comportamento previsto. Questo è il primo punto della roadmap in cui
-ha senso, se lo vuoi, provare concretamente il bot su un server di
-test invece di continuare solo a leggere codice e commit.
+Con AutoMod e Moderation entrambi attivabili da `/setup`, il bot ha
+ora una base di sicurezza reale testabile su un server vero: verify
+di base assente (non ancora scritto), ma moderazione manuale +
+filtri automatici + gestione canali sono tutti operativi.
