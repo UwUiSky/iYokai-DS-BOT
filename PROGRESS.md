@@ -129,6 +129,30 @@ Ultimo aggiornamento: **17 settembre 2026**
 
 **Suite di test completa: 97/97 passano.**
 
+### Fase 5 — Logging semplificato — COMPLETA
+- [x] `cogs/logging/basic_logs.py` — `/logs-setup`, `/logs-status`,
+  listener su join/leave/ban/unban/creazione-eliminazione ruoli/
+  cambio ruoli sui membri. Canale configurabile per server via
+  `guild_config.settings` (stesso pattern di `report.py`). Modulo
+  sempre gratuito
+- [x] **Punto tecnico verificato empiricamente prima di scrivere il
+  codice**: discord.py NON registra un listener di un Cog per la
+  sola convenzione del nome `on_xxx` — serve il decorator esplicito
+  `@commands.Cog.listener()` su ognuno. Verificato con un test
+  minimale isolato prima di scrivere l'intero file, non assunto
+- [x] `diff_roles()` — logica pura per il confronto prima/dopo dei
+  ruoli di un membro. **6 test**
+- [x] Smoke test che verifica ESPLICITAMENTE la presenza di ogni
+  listener in `bot.extra_events` — è il test che avrebbe intercettato
+  un `@commands.Cog.listener()` dimenticato per errore
+- [x] `_get_log_channel()` — tre condizioni devono essere tutte vere
+  (modulo attivo, canale configurato, canale ancora esistente ed è
+  un TextChannel) perché un log parta. **4 test contro PostgreSQL
+  reale**, incluso il caso "canale cancellato dopo la configurazione"
+  e "canale del tipo sbagliato"
+
+**Suite di test completa: 108/108 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -212,22 +236,21 @@ quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
 
 Nell'ordine di sviluppo concordato:
 
-1. **Logging semplificato** — join/leave/ban/kick/ruoli
-2. **Ticket system**
-3. **Vocali temporanei** — modalità automatica + manuale, sempre
+1. **Ticket system**
+2. **Vocali temporanei** — modalità automatica + manuale, sempre
    entrambe visibili (vedi decisione in `PROGRESS.md` § Decisioni)
-4. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
-5. **Spam Trap** — la specifica è già completa e dettagliata (vedi
+3. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+4. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
-6. Richiesta di **verifica Discord** a ~90 server, con il set
-   "pulito" (moduli 1-5)
-7. **Music** (5 istanze + Lavalink)
-8. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-9. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-10. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-11. **NSFW** (iYokai NSFW, applicazione separata)
-12. **iYokai Desktop** (presence via RPC locale)
-13. **iYokai Panel** (web, verify avanzato, OAuth2)
+5. Richiesta di **verifica Discord** a ~90 server, con il set
+   "pulito" (moduli 1-4)
+6. **Music** (5 istanze + Lavalink)
+7. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
+8. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
+9. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+10. **NSFW** (iYokai NSFW, applicazione separata)
+11. **iYokai Desktop** (presence via RPC locale)
+12. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -242,6 +265,15 @@ stato scartato per un limite tecnico specifico.
   bot ha un solo processo condiviso da tutti i server. Il modo
   corretto per attivare/disattivare un modulo per server è un check a
   runtime a inizio comando (vedi `cogs/utility/ping.py`).
+- **Ogni listener di un Cog richiede il decorator esplicito
+  `@commands.Cog.listener()`.** Un metodo chiamato `on_member_join`
+  senza quel decorator NON viene registrato da discord.py — resta un
+  metodo Python normale che Discord non chiamerà mai, senza alcun
+  errore o avviso. Verificato empiricamente prima di scrivere
+  `cogs/logging/basic_logs.py` (vedi quel file e il suo smoke test,
+  che controlla esplicitamente `bot.extra_events`). Ogni futuro cog
+  con listener di eventi deve includere questo controllo nel proprio
+  smoke test, non solo "il cog si carica".
 - **`POST /guilds` funziona solo per bot sotto i 10 server.** iYokai
   Main (il bot principale) non creerà mai server. La creazione dei
   server di backup è delegata a **iYokai Creator**, un'applicazione
@@ -325,17 +357,17 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Logging semplificato** (punto 1 di "Non ancora iniziato"): join,
-leave, ban, kick, modifiche ruoli — eventi che non richiedono il
-Message Content Intent (a differenza del log dei messaggi
-cancellati/modificati, che è previsto più avanti nella Security
-Suite completa, punto 9). Un buon punto di partenza concreto: un
-canale per server configurabile con `/logs-setup` (stesso pattern
-già usato in `cogs/moderation/report.py` con `guild_config.settings`),
-poi listener su `on_member_join`, `on_member_remove`,
-`on_member_ban`, `on_member_update` (per i cambi di ruolo).
+**Ticket system** (punto 1 di "Non ancora iniziato"): pannello con
+bottone "Apri Ticket", creazione di un canale privato per l'utente
+più lo staff, comandi di gestione (claim, add/remove utente, rename,
+priorità, close). Il pattern per il canale/categoria dedicati può
+riusare `guild_config.settings` per la categoria Discord dove
+creare i ticket (stesso approccio già rodato in `report.py` e
+`basic_logs.py` per i canali configurabili).
 
-Con AutoMod e Moderation entrambi attivabili da `/setup`, il bot ha
-ora una base di sicurezza reale testabile su un server vero: verify
-di base assente (non ancora scritto), ma moderazione manuale +
-filtri automatici + gestione canali sono tutti operativi.
+Nota per la sessione che lo scrive: se il ticket system prevede
+listener su eventi Discord (es. chiusura automatica dopo inattività,
+gestita da `core/scheduler.py` piuttosto che da un evento), verificare
+comunque con lo stesso smoke test pattern di `basic_logs.py` — ogni
+listener deve comparire in `bot.extra_events`, non basta il nome del
+metodo.
