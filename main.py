@@ -31,6 +31,7 @@ from core.config import config
 from core.database import db
 from core.cog_manager import load_all_cogs
 from core.scheduler import scheduler
+from core.premium import handle_app_command_error
 
 
 def setup_logging() -> None:
@@ -83,6 +84,14 @@ class iYokaiBot(commands.AutoShardedBot):
             command_prefix=commands.when_mentioned,  # niente prefisso testuale
             intents=intents,
         )
+
+        # Error handler globale per i comandi slash: gestisce in
+        # particolare gli errori sollevati da @requires_module
+        # (core/premium.py), rispondendo con un messaggio coerente
+        # invece di lasciare che l'eccezione sparisca in silenzio.
+        # Registrato qui nel costruttore, non in setup_hook, perché
+        # non dipende dal caricamento dei cog.
+        self.tree.error(handle_app_command_error)
 
     async def setup_hook(self) -> None:
         """

@@ -30,9 +30,9 @@ a predisporre l'interruttore, che oggi resta spento ovunque.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import wraps
 from typing import Callable
 
 import discord
@@ -40,6 +40,8 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.config import config
+
+logger = logging.getLogger("iyokai.premium")
 
 
 class UnlockMethod(str, Enum):
@@ -164,6 +166,30 @@ async def guild_has_premium_access(guild_id: int, module_name: str) -> bool:
     return is_whitelisted
 
 
+class PremiumCheckFailure(app_commands.CheckFailure):
+    """Classe base per gli errori sollevati da requires_module()."""
+
+
+class ModuleNotUnlockedError(PremiumCheckFailure):
+    """
+    Sollevata quando un modulo è premium globalmente e questo server
+    non ha diritto ad usarlo. Porta con sé i dati per costruire il
+    messaggio di risposta (vedi handle_app_command_error più sotto).
+    """
+
+    def __init__(self, module_name: str, display_name: str) -> None:
+        self.module_name = module_name
+        self.display_name = display_name
+        super().__init__(
+            f"Modulo premium '{module_name}' non sbloccato per questo server."
+        )
+
+
+class PremiumCheckOutsideGuildError(PremiumCheckFailure):
+    """Sollevata quando un comando gated da requires_module viene
+    usato fuori da un server (es. in DM)."""
+
+
 def requires_module(module_name: str):
     """
     Decorator da mettere su OGNI comando che appartiene a un modulo
@@ -174,52 +200,106 @@ def requires_module(module_name: str):
         async def spamtrap_setup(self, interaction: discord.Interaction):
             ...
 
-    Cosa fa, in ordine:
+    IMPORTANTE — perché è implementato con app_commands.check() e non
+    con un wrapper che sostituisce la funzione
+    -------------------------------------------------------------------
+    Una prima versione di questo decorator avvolgeva `func` in un
+    `wrapper` definito con `functools.wraps`. Sembra innocuo, ma ha
+    un difetto che si manifesta solo in certi casi e in modo
+    silenzioso fino al momento del caricamento del cog: `wraps` copia
+    nome, docstring, annotazioni — ma NON PUÒ copiare `__globals__`,
+    che è una proprietà del modulo in cui la funzione è stata
+    *definita*, non qualcosa che un decorator possa sovrascrivere.
+    Se un comando usa `app_commands.Range[int, 1, UNA_COSTANTE_LOCALE]`
+    definita nel file del cog, discord.py deve risolvere quel nome
+    leggendo `callback.__globals__` — e con il vecchio wrapper, quei
+    globals erano quelli di QUESTO file (core/premium.py), non quelli
+    del cog: `UNA_COSTANTE_LOCALE` non veniva trovata e il caricamento
+    del cog falliva con un NameError. È successo per davvero con
+    MAX_CLEAR_AMOUNT in cogs/moderation/clear.py durante lo sviluppo
+    (vedi il commit che ha introdotto questa versione del file).
+
+    `app_commands.check()` risolve il problema alla radice: aggiunge
+    un predicato alla lista dei controlli del comando SENZA MAI
+    creare una nuova funzione al posto di quella originale. Il
+    callback che discord.py ispeziona resta sempre quello vero, con
+    i suoi __globals__ originali.
+
+    Cosa fa il predicato, in ordine:
     1. Se il modulo non è (oggi) marcato come premium globalmente,
        lascia passare chiunque — è il caso normale, di default.
     2. Se il modulo È premium, controlla se QUESTO server ha
        diritto ad usarlo (whitelist, o in futuro gli altri metodi).
-    3. Se non ce l'ha, risponde con un messaggio chiaro invece di
-       eseguire il comando, e lo fa in modo "ephemeral" (visibile
-       solo a chi ha lanciato il comando).
-
-    Il comando stesso non contiene NESSUNA di queste logiche: le
-    ignora completamente. Così il giorno in cui accendi la flag
-    premium di un modulo, ogni comando di quel modulo la rispetta
-    automaticamente, senza toccare il codice del comando.
+    3. Se non ce l'ha, solleva ModuleNotUnlockedError — non risponde
+       direttamente: la risposta all'utente la costruisce
+       handle_app_command_error() più sotto, registrato una volta
+       sola come error handler globale dell'albero comandi (vedi
+       main.py). Così ogni comando gated da requires_module ottiene
+       lo stesso messaggio coerente, senza duplicare la logica di
+       risposta in ogni predicato.
     """
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(self, interaction: discord.Interaction, *args, **kwargs):
-            if not registry.is_module_premium(module_name):
-                # Modulo attualmente gratuito per tutti: via libera.
-                return await func(self, interaction, *args, **kwargs)
 
-            if interaction.guild is None:
-                # Comando premium usato fuori da un server (DM):
-                # non ha senso, blocchiamo.
-                await interaction.response.send_message(
-                    "Questo comando è disponibile solo dentro un server.",
-                    ephemeral=True,
-                )
-                return
+    async def predicate(interaction: discord.Interaction) -> bool:
+        if not registry.is_module_premium(module_name):
+            return True
 
-            has_access = await guild_has_premium_access(
-                interaction.guild.id, module_name
-            )
-            if not has_access:
-                module = registry.get(module_name)
-                display = module.display_name if module else module_name
-                await interaction.response.send_message(
-                    f"**{display}** è una funzione Premium non ancora "
-                    f"sbloccata su questo server.\n"
-                    f"Contatta lo staff del server o consulta il "
-                    f"pannello di gestione per maggiori informazioni.",
-                    ephemeral=True,
-                )
-                return
+        if interaction.guild is None:
+            raise PremiumCheckOutsideGuildError()
 
-            return await func(self, interaction, *args, **kwargs)
+        has_access = await guild_has_premium_access(
+            interaction.guild.id, module_name
+        )
+        if not has_access:
+            module = registry.get(module_name)
+            display = module.display_name if module else module_name
+            raise ModuleNotUnlockedError(module_name, display)
 
-        return wrapper
-    return decorator
+        return True
+
+    return app_commands.check(predicate)
+
+
+async def handle_app_command_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+) -> None:
+    """
+    Error handler globale dell'albero comandi, registrato in
+    main.py con `bot.tree.error(handle_app_command_error)`. Gestisce
+    esplicitamente gli errori sollevati da requires_module(); tutto
+    il resto viene loggato e risposto con un messaggio generico,
+    invece di lasciare che l'eccezione sparisca in silenzio o stampi
+    solo su stderr (comportamento di default di discord.py se non si
+    registra un error handler).
+    """
+    if isinstance(error, ModuleNotUnlockedError):
+        message = (
+            f"**{error.display_name}** è una funzione Premium non ancora "
+            f"sbloccata su questo server.\n"
+            f"Contatta lo staff del server o consulta il pannello di "
+            f"gestione per maggiori informazioni."
+        )
+    elif isinstance(error, PremiumCheckOutsideGuildError):
+        message = "Questo comando è disponibile solo dentro un server."
+    else:
+        logger.error(
+            "Errore non gestito in un comando slash: %s", error, exc_info=error
+        )
+        message = "Si è verificato un errore imprevisto eseguendo il comando."
+
+    # L'interazione potrebbe essere già stata "risposta" (es. un
+    # comando che ha fatto defer() prima di sollevare l'errore):
+    # in quel caso va usato followup, non response, altrimenti
+    # Discord rifiuta una seconda risposta diretta.
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+    except discord.HTTPException:
+        # L'interazione può essere scaduta nel frattempo (>3s senza
+        # risposta): non c'è più nulla da fare, ma non deve
+        # sollevare un'altra eccezione non gestita per questo.
+        logger.warning(
+            "Impossibile rispondere all'interazione dopo un errore "
+            "(probabilmente scaduta)."
+        )
