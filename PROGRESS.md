@@ -9,7 +9,7 @@
 > questo file, nella stessa sessione. Non lasciarlo mai indietro
 > rispetto al codice.
 
-Ultimo aggiornamento: **16 settembre 2026**
+Ultimo aggiornamento: **17 settembre 2026**
 
 ---
 
@@ -20,21 +20,37 @@ Ultimo aggiornamento: **16 settembre 2026**
 - [x] `.gitignore` — esclude `.env`, cache Python, venv, log, dati locali
 - [x] `.env.example` — template completo di tutte le variabili previste
   (token delle 8 applicazioni, DB, Lavalink, OAuth2/web panel)
-- [x] `requirements.txt` — dipendenze base (discord.py, asyncpg,
-  python-dotenv, psutil, wavelink, structlog)
+- [x] `requirements.txt` + `requirements-dev.txt` (pytest/pytest-asyncio
+  separati, non servono in produzione)
 - [x] `core/config.py` — loader di configurazione che **valida
   all'avvio**: se manca una variabile obbligatoria, il processo si
   ferma con un errore chiaro invece di crashare più avanti
-- [x] `core/database.py` — pool `asyncpg`, metodo `run_migrations()`
-  con le tabelle base (`guild_config`, `premium_whitelist`,
-  `premium_module_flags`), metodi CRUD minimi
+- [x] `core/database.py` — pool `asyncpg`, `run_migrations()`,
+  tabelle base (`guild_config` con colonne `modules` e `settings`
+  JSONB, `premium_whitelist`, `premium_module_flags`),
+  `is_module_active_for_guild`/`set_module_active_for_guild`,
+  `get_guild_setting`/`set_guild_setting`
 - [x] `core/premium.py` — sistema premium completo: `PremiumRegistry`,
-  `PremiumModule`, decorator `@requires_module(...)`. **Tutto parte
-  spento** (`is_premium_active = False` ovunque), come richiesto
+  `PremiumModule`, decorator `@requires_module(...)` (vedi nota
+  tecnica importante più sotto — RISCRITTO durante lo sviluppo di
+  Moderation per un bug reale). **Tutto parte spento**
+  (`is_premium_active = False` ovunque), come richiesto
 - [x] `core/cog_manager.py` — scoperta automatica dei cog tramite
   `pkgutil.walk_packages`, nessuna registrazione manuale necessaria
-- [x] `main.py` — entry point, `AutoShardedBot` (predisposto per lo
-  sharding fin da subito), `setup_hook`, `on_guild_join`,
+- [x] `core/permissions.py` — gerarchia di moderazione come logica
+  PURA (solo int/bool, niente `discord.Member`): testabile senza
+  bisogno di una connessione Discord. **9 test**, tutti verdi
+- [x] `core/scheduler.py` — scheduler generico backed da database per
+  azioni differite (tempban, futuro: unmute, boost temporanei...).
+  Sopravvive a un riavvio del bot, a differenza di un timer in
+  memoria. **5 test contro PostgreSQL reale**
+- [x] `core/repositories/moderation_repo.py` — case system con
+  numerazione atomica per-server (contatore con UPSERT in
+  transazione), note dello staff. **15 test**, incluso un test di
+  concorrenza reale (20 creazioni in parallelo, nessuna collisione)
+- [x] `main.py` — entry point, `AutoShardedBot`, `setup_hook`,
+  `on_guild_join`, scheduler collegato al ciclo di vita, error
+  handler globale dell'albero comandi registrato,
   `message_content` intent disattivato di default
 - [x] `cogs/utility/ping.py` — cog modello/riferimento, commentato per
   intero: mostra il pattern di controllo "modulo attivo per questo
@@ -44,7 +60,70 @@ Ultimo aggiornamento: **16 settembre 2026**
   `/owner premium-list`, `/owner premium-toggle`,
   `/owner whitelist-add`, `/owner whitelist-remove`
 - [x] README aggiornato con struttura, setup, architettura a
-  applicazioni multiple
+  applicazioni multiple, sezione test
+
+### Fase 2 — Moderation (`cogs/moderation/`) — COMPLETA
+- [x] `_shared.py` — helper condivisi (file privato, il cog manager
+  lo salta): `ensure_module_enabled`, `check_can_moderate`, `try_dm`,
+  `parse_duration`/`format_duration`. **21 test** sul parser di durate
+- [x] `actions.py` — `/warn`, `/kick`, `/ban`, `/tempban` (con
+  auto-unban via scheduler), `/unban`, `/timeout`, `/untimeout`.
+  Modulo SEMPRE gratuito, come da schema. Smoke test: il cog si
+  carica davvero in un `Bot`, si registra nel sistema premium,
+  l'handler dello scheduler si aggancia
+- [x] `case_system.py` — `/modcase history|view`, `/modnote add|list`.
+  Modulo candidato premium. Smoke test verifica ESPLICITAMENTE che
+  i parametri (`member`, `case_number`) restino leggibili da
+  discord.py attraverso `@requires_module`
+- [x] `channel_control.py` — `/lock`, `/unlock`, `/slowmode`. Sempre
+  gratuito
+- [x] `report.py` — `/report`, `/report-setup` (usa
+  `guild_config.settings` per il canale configurato). Sempre gratuito
+- [x] `clear.py` — `/clear` con filtri (utente, solo bot, solo
+  allegati). Candidato premium. **È il file che ha fatto emergere il
+  bug di `@requires_module` — vedi sotto**
+
+**Suite di test completa: 63/63 passano**, eseguiti per davvero
+(PostgreSQL locale nel container di sviluppo, non mock) — vedi
+`README.md` § Test per come rilanciarli.
+
+---
+
+## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
+
+`core/premium.py`, decorator `@requires_module`: la prima versione
+avvolgeva la funzione del comando in un `wrapper` con
+`functools.wraps`. Funzionava per `case_system.py` ma **falliva in
+modo silenzioso** al caricamento di `clear.py`, con:
+
+```
+NameError: name 'MAX_CLEAR_AMOUNT' is not defined
+```
+
+Causa: `functools.wraps` copia nome, docstring, annotazioni — ma
+**non può copiare `__globals__`**, che appartiene al modulo dove la
+funzione è stata *definita*. Il wrapper viveva in `core/premium.py`,
+quindi quando discord.py doveva risolvere
+`app_commands.Range[int, 1, MAX_CLEAR_AMOUNT]`, cercava
+`MAX_CLEAR_AMOUNT` nei globals di `core/premium.py`, non di
+`clear.py`, e non lo trovava. `case_system.py` era passato per caso:
+usava solo tipi (`discord.Member`, `int`, `str`) già visibili perché
+`core/premium.py` importa `discord`.
+
+**Soluzione**: `@requires_module` ora usa `app_commands.check()`
+(il meccanismo nativo di discord.py per i controlli sui comandi),
+che aggiunge un predicato SENZA MAI sostituire la funzione originale
+— il callback che discord.py ispeziona resta sempre quello vero, con
+i suoi `__globals__` corretti. Il predicato solleva
+`ModuleNotUnlockedError`/`PremiumCheckOutsideGuildError`, gestite da
+un error handler globale (`handle_app_command_error`, registrato in
+`main.py` con `self.tree.error(...)`).
+
+**Perché resta scritto qui**: qualunque futuro comando premium che
+usi una costante locale in un'annotazione (`Range`, o altro) andrebbe
+incontro allo stesso problema se `@requires_module` tornasse a un
+wrapper con `functools.wraps`. Non "semplificarlo" in futuro senza
+rileggere questa nota.
 
 ---
 
@@ -52,32 +131,30 @@ Ultimo aggiornamento: **16 settembre 2026**
 
 Nell'ordine di sviluppo concordato:
 
-1. **Repository layer per dominio** (`core/repositories/`) — vedi nota
-   in fondo a `core/database.py`: ogni modulo avrà il proprio
-   repository invece di ammassare tutto in `Database`
-2. **Moderation** (`cogs/moderation/`) — warn, kick, ban, case system,
-   note, report, lock/unlock, slowmode, clear
-3. **AutoMod ibrido** — lettura/creazione/aggiornamento delle regole
+1. **AutoMod ibrido** — lettura/creazione/aggiornamento delle regole
    AutoMod native di Discord via API, invece di duplicare i filtri
    lato bot
-4. **Logging semplificato** — join/leave/ban/kick/ruoli
-5. **Setup interattivo** (`/setup`) — pannello reale con Select Menu +
+2. **Logging semplificato** — join/leave/ban/kick/ruoli
+3. **Setup interattivo** (`/setup`) — pannello reale con Select Menu +
    bottoni, oggi `on_guild_join` crea solo la riga di config vuota
-6. **Ticket system**
-7. **Vocali temporanei** — modalità automatica + manuale, sempre
+   (nessun modulo risulta ancora attivabile dai server reali finché
+   questo non esiste — anche Moderation, pur scritta, resta invisibile
+   finché un server non ha `modules.moderation_actions = true`)
+4. **Ticket system**
+5. **Vocali temporanei** — modalità automatica + manuale, sempre
    entrambe visibili (vedi decisione in `PROGRESS.md` § Decisioni)
-8. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
-9. **Spam Trap** — la specifica è già completa e dettagliata (vedi
+6. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+7. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
-10. Richiesta di **verifica Discord** a ~90 server, con il set
-    "pulito" (moduli 1-9)
-11. **Music** (5 istanze + Lavalink)
-12. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-13. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-14. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-15. **NSFW** (iYokai NSFW, applicazione separata)
-16. **iYokai Desktop** (presence via RPC locale)
-17. **iYokai Panel** (web, verify avanzato, OAuth2)
+8. Richiesta di **verifica Discord** a ~90 server, con il set
+   "pulito" (moduli 1-7)
+9. **Music** (5 istanze + Lavalink)
+10. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
+11. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
+12. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+13. **NSFW** (iYokai NSFW, applicazione separata)
+14. **iYokai Desktop** (presence via RPC locale)
+15. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -175,10 +252,19 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Repository layer per dominio** (punto 1 di "Non ancora iniziato"),
-propedeutico a tutto il resto: senza quello, ogni cog futuro rischia di
-scrivere query SQL sparse invece di passare da un punto unico.
+**AutoMod ibrido** (punto 1 di "Non ancora iniziato"): il bot legge le
+regole AutoMod native esistenti su un server, crea quelle mancanti dal
+proprio preset, aggiorna quelle presenti unendo le proprie voci senza
+sovrascrivere quanto configurato dall'owner. Limiti Discord da
+rispettare: ~6 regole keyword per server, una per spam, una per
+mention-spam, ~1000 voci per lista, ~10 pattern regex — le regole
+vanno consolidate, non create una per categoria.
 
-Subito dopo: **Moderation**, perché è il primo modulo "vero" e il
-banco di prova del pattern intero (premium registry + check runtime +
-repository).
+Subito dopo, punto 3 (**Setup interattivo**) diventa urgente: oggi
+Moderation è scritta e testata ma **invisibile a qualunque server
+reale**, perché `/setup` non esiste ancora e nessun server ha
+`modules.moderation_actions = true` nel proprio `guild_config`. Senza
+`/setup`, ogni nuovo modulo continuerà ad accumularsi "pronto ma
+spento" — vale la pena anticiparlo rispetto all'ordine originale se le
+prossime sessioni iniziano a sentirne la mancanza per testare quanto
+già scritto.
