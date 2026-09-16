@@ -97,12 +97,20 @@ class Database:
                 CREATE TABLE IF NOT EXISTS guild_config (
                     guild_id        BIGINT PRIMARY KEY,
                     modules         JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    settings        JSONB NOT NULL DEFAULT '{}'::jsonb,
                     prefix          TEXT,
                     language        TEXT NOT NULL DEFAULT 'it',
                     setup_completed BOOLEAN NOT NULL DEFAULT FALSE,
                     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
                 );
+
+                -- Se la tabella esisteva già da una versione precedente
+                -- (senza la colonna settings), la aggiunge senza
+                -- toccare i dati esistenti. IF NOT EXISTS la rende
+                -- sicura da rieseguire ad ogni avvio.
+                ALTER TABLE guild_config
+                    ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
 
                 -- Whitelist Premium: server ID aggiunti a mano
                 -- dall'owner del bot. Vedi core/premium.py.
@@ -183,6 +191,66 @@ class Database:
         if row is None or row["is_active"] is None:
             return False
         return row["is_active"]
+
+    async def set_module_active_for_guild(
+        self, guild_id: int, module_name: str, active: bool
+    ) -> None:
+        """
+        Attiva/disattiva un modulo per un server specifico. Crea la
+        riga di config se non esiste ancora (server nuovo che non ha
+        ancora ricevuto on_guild_join, capita nei test).
+        """
+        await self.ensure_guild_exists(guild_id)
+        await self.pool.execute(
+            """
+            UPDATE guild_config
+            SET modules = jsonb_set(modules, ARRAY[$2], to_jsonb($3::boolean)),
+                updated_at = now()
+            WHERE guild_id = $1
+            """,
+            guild_id,
+            module_name,
+            active,
+        )
+
+    # ================================================================
+    # Guild settings — configurazione libera per-modulo (JSONB)
+    # ================================================================
+    # A differenza di "modules" (solo True/False per ogni modulo),
+    # "settings" tiene valori arbitrari: l'ID di un canale, un testo,
+    # un numero. Ogni modulo usa una chiave propria (es.
+    # "report_channel_id", "mute_role_id") per non calpestare le
+    # impostazioni degli altri moduli.
+    async def get_guild_setting(
+        self, guild_id: int, key: str, default=None
+    ):
+        row = await self.pool.fetchrow(
+            "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
+            guild_id,
+            key,
+        )
+        if row is None or row["value"] is None:
+            return default
+        # asyncpg restituisce il JSONB già come stringa JSON; lo
+        # decodifichiamo per dare al chiamante il tipo Python atteso
+        # (int, str, bool...) invece di una stringa JSON grezza.
+        import json
+        return json.loads(row["value"])
+
+    async def set_guild_setting(self, guild_id: int, key: str, value) -> None:
+        import json
+        await self.ensure_guild_exists(guild_id)
+        await self.pool.execute(
+            """
+            UPDATE guild_config
+            SET settings = jsonb_set(settings, ARRAY[$2], $3::jsonb),
+                updated_at = now()
+            WHERE guild_id = $1
+            """,
+            guild_id,
+            key,
+            json.dumps(value),
+        )
 
     # ================================================================
     # Premium whitelist
