@@ -153,6 +153,32 @@ Ultimo aggiornamento: **17 settembre 2026**
 
 **Suite di test completa: 108/108 passano.**
 
+### Fase 6 — Ticket system — COMPLETA
+- [x] `core/repositories/ticket_repo.py` — numerazione atomica
+  per-server (stesso pattern del case system di Moderation), stato
+  aperto/chiuso, claim, priorità. **17 test contro PostgreSQL
+  reale**, incluso un test di concorrenza (15 creazioni in
+  parallelo, nessuna collisione)
+- [x] `cogs/tickets/tickets.py` — `/ticket-setup`, `/ticket-panel`,
+  gruppo `/ticket` (claim, add, remove, rename, priority, close).
+  Modulo sempre gratuito
+- [x] `TicketPanelView` — **view persistente** (`timeout=None` +
+  `custom_id` esplicito), registrata ad ogni avvio con
+  `bot.add_view()`: senza questo, i bottoni dei pannelli già
+  pubblicati smetterebbero di rispondere dopo ogni riavvio del bot.
+  Verificato prima di scrivere il codice che `bot.add_view()`
+  solleva `ValueError` su una view non persistente — non assunto
+  dalla documentazione
+- [x] Guardrail: un utente non può avere più di un ticket aperto
+  contemporaneamente sullo stesso server
+- [x] Permessi: l'utente che apre il ticket e un ruolo di supporto
+  opzionale vedono il canale; iYokai non gestisce i permessi di
+  categoria (quelli restano una scelta manuale dell'admin in Discord)
+- [x] Smoke test che verifica esplicitamente `view.is_persistent()
+  is True`, non solo che il cog si carichi senza eccezioni
+
+**Suite di test completa: 127/127 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -236,21 +262,20 @@ quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
 
 Nell'ordine di sviluppo concordato:
 
-1. **Ticket system**
-2. **Vocali temporanei** — modalità automatica + manuale, sempre
+1. **Vocali temporanei** — modalità automatica + manuale, sempre
    entrambe visibili (vedi decisione in `PROGRESS.md` § Decisioni)
-3. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
-4. **Spam Trap** — la specifica è già completa e dettagliata (vedi
+2. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+3. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
-5. Richiesta di **verifica Discord** a ~90 server, con il set
-   "pulito" (moduli 1-4)
-6. **Music** (5 istanze + Lavalink)
-7. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-8. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-9. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-10. **NSFW** (iYokai NSFW, applicazione separata)
-11. **iYokai Desktop** (presence via RPC locale)
-12. **iYokai Panel** (web, verify avanzato, OAuth2)
+4. Richiesta di **verifica Discord** a ~90 server, con il set
+   "pulito" (moduli 1-3)
+5. **Music** (5 istanze + Lavalink)
+6. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
+7. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
+8. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+9. **NSFW** (iYokai NSFW, applicazione separata)
+10. **iYokai Desktop** (presence via RPC locale)
+11. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -274,6 +299,17 @@ stato scartato per un limite tecnico specifico.
   che controlla esplicitamente `bot.extra_events`). Ogni futuro cog
   con listener di eventi deve includere questo controllo nel proprio
   smoke test, non solo "il cog si carica".
+- **Un pannello con bottoni che deve restare cliccabile a lungo
+  termine richiede una View persistente**, non una normale
+  `discord.ui.View` con timeout. Serve `timeout=None` + `custom_id`
+  esplicito su ogni componente, e `bot.add_view(...)` va richiamato
+  ad OGNI avvio del bot (non solo alla prima pubblicazione del
+  pannello), altrimenti i bottoni dei pannelli già esistenti nei
+  server smettono di rispondere dopo ogni riavvio. `bot.add_view()`
+  solleva `ValueError` se la view non è persistente — verificato
+  prima di scrivere `cogs/tickets/tickets.py`. Ogni futuro pannello
+  con bottoni "a vita lunga" (non un menu temporaneo come `/setup`)
+  deve seguire lo stesso pattern.
 - **`POST /guilds` funziona solo per bot sotto i 10 server.** iYokai
   Main (il bot principale) non creerà mai server. La creazione dei
   server di backup è delegata a **iYokai Creator**, un'applicazione
@@ -357,17 +393,20 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Ticket system** (punto 1 di "Non ancora iniziato"): pannello con
-bottone "Apri Ticket", creazione di un canale privato per l'utente
-più lo staff, comandi di gestione (claim, add/remove utente, rename,
-priorità, close). Il pattern per il canale/categoria dedicati può
-riusare `guild_config.settings` per la categoria Discord dove
-creare i ticket (stesso approccio già rodato in `report.py` e
-`basic_logs.py` per i canali configurabili).
+**Vocali temporanei** (punto 1 di "Non ancora iniziato"): modalità
+automatica (canale generatore -> crea e sposta) + modalità manuale
+(pannello con bottone, nessuno spostamento forzato), entrambe SEMPRE
+visibili a tutti indipendentemente dalla piattaforma (decisione già
+presa, vedi § Decisioni prese più sopra — i problemi di disconnessione
+su spostamento forzato riguardano sia PlayStation sia mobile).
 
-Nota per la sessione che lo scrive: se il ticket system prevede
-listener su eventi Discord (es. chiusura automatica dopo inattività,
-gestita da `core/scheduler.py` piuttosto che da un evento), verificare
-comunque con lo stesso smoke test pattern di `basic_logs.py` — ogni
-listener deve comparire in `bot.extra_events`, non basta il nome del
-metodo.
+Il bottone "Crea canale vocale" della modalità manuale è un altro
+caso di pannello a vita lunga: **richiede una view persistente**,
+esattamente come `TicketPanelView` in `cogs/tickets/tickets.py` — non
+riscoprire il problema da capo, riusare lo stesso pattern
+(`timeout=None`, `custom_id` esplicito, `bot.add_view()` in `setup()`).
+
+La modalità automatica invece userà un listener `on_voice_state_update`
+per rilevare l'ingresso nel canale generatore — ricordarsi il
+controllo `bot.extra_events` nello smoke test, come per
+`cogs/logging/basic_logs.py`.
