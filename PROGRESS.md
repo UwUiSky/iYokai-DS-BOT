@@ -328,23 +328,87 @@ quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
 
 ---
 
+## ⚠️ Nota — riconciliazione con lo schema ultra-esteso (17 settembre 2026)
+
+La lista sotto era stata compressa dalla propria roadmap invece che
+mantenuta allineata allo schema ultra-esteso di progetto (quello con
+le sezioni numerate 1-17). Nella compressione due categoria intere
+sono sparite SENZA essere segnalate come rimandate — non erano una
+scelta, erano una dimenticanza:
+
+- **Verify + Fingerprint + Anti-Alt** (sezione 4 dello schema) — il
+  sistema di verifica dei NUOVI MEMBRI che entrano in un server
+  (captcha/bottone, controllo età account, fingerprint anti-alt).
+  Da NON confondere con "la verifica Discord a ~90 server" più sotto
+  in questa lista, che è tutt'altra cosa: quella è la REVIEW
+  dell'applicazione da parte di Discord stessa, un processo separato.
+  I due nomi si assomigliavano ed è probabilmente per questo che uno
+  ha coperto l'altro nella mia testa.
+- **Utility & Server Management** (sezione 14 dello schema) — reaction
+  roles, welcome/goodbye, autoresponder, richiesta comandi custom,
+  snipe/editsnipe, ghost ping detection, sticky messages, suggestion
+  system, poll, reminder. Un'intera categoria, mai scritta e mai
+  nemmeno elencata come pendente.
+
+La lista qui sotto è ricostruita punto per punto contro lo schema
+originale, con riferimento esplicito al numero di sezione. Le fasi
+già segnate "COMPLETA" più sopra in questo file restano tali per
+quello che coprono, ma ora hanno anche annotato esplicitamente cosa
+NON coprono ancora, sezione per sezione.
+
+---
+
 ## 🚧 Non ancora iniziato
 
-Nell'ordine di sviluppo concordato:
+Riferimenti tra parentesi = numero di sezione nello schema ultra-esteso.
 
-1. **Sistema Gilde/Clan** — si appoggia sopra Livelli/Economy appena
-   completato (vedi nota nella sezione Fatto qui sopra)
-2. **Spam Trap** — la specifica è già completa e dettagliata (vedi
-   § Decisioni prese, punto Spam Trap), va solo implementata
-3. Richiesta di **verifica Discord** a ~90 server, con il set
-   "pulito" (moduli 1-2)
-4. **Music** (5 istanze + Lavalink)
-5. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-6. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-7. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-8. **NSFW** (iYokai NSFW, applicazione separata)
-9. **iYokai Desktop** (presence via RPC locale)
-10. **iYokai Panel** (web, verify avanzato, OAuth2)
+**Categorie mai iniziate:**
+1. **Verify + Fingerprint + Anti-Alt** (schema §4) — verify base
+   (button/captcha/età account), verify avanzato (richiede Web Panel,
+   IP/ISP/fingerprint — vedi § Decisioni per i limiti GDPR già
+   discussi), sistema anti-alt con matching fingerprint
+2. **Utility & Server Management** (schema §14) — reaction/button/
+   select roles, welcome/goodbye/boost messages, autoresponder,
+   custom command request (già progettato nella conversazione
+   originale: modal → invio nel canale #suggestions del server
+   principale), snipe/editsnipe/reactionsnipe, ghost ping detection,
+   sticky messages, suggestion system, poll, reminder/scheduled
+   messages
+3. **Sistema Gilde/Clan** (schema §15.5) — si appoggia sopra
+   Livelli/Economy già completato; vedi le quattro note tecniche già
+   lasciate in fondo a questo file prima di questa riconciliazione
+4. **Spam Trap** (schema §7.3) — specifica già completa e dettagliata
+   (vedi § Decisioni prese)
+5. **Security Suite** oltre lo Spam Trap (schema §7.1-7.2, 7.4-7.5) —
+   Anti-Raid avanzato, Anti-Nuke, Permission Auditor, Security Score
+6. **Music** (schema §9, 5 istanze + Lavalink)
+7. **Alert social** (schema §10, Twitch EventSub, YouTube PubSubHubbub)
+8. **Backup** (schema §11, iYokai Creator + snapshot + mirror)
+9. **NSFW** (schema §16.2, iYokai NSFW, applicazione separata)
+10. **Owner/Global Admin completo** (schema §17) — oggi c'è solo la
+    gestione premium; mancano eval/exec, blacklist globale, forced
+    cog load/unload, annuncio globale, statistiche globali del bot
+11. **iYokai Desktop** (presence via RPC locale)
+12. **iYokai Panel** (web, verify avanzato, OAuth2)
+13. Richiesta di **review dell'applicazione presso Discord** (il
+    processo di verifica per superare i 100 server — NON il modulo
+    Verify del punto 1, nome diverso apposta da qui in avanti per
+    evitare la stessa confusione)
+
+**Sotto-parti mancanti in fasi già segnate "COMPLETA" più sopra:**
+- **Moderation** (schema §5): manca softban, manca mute via ruolo
+  (oggi c'è solo timeout nativo, che copre la maggior parte dei casi
+  d'uso ma non è la stessa cosa)
+- **AutoMod** (schema §6): manca anti-caps, anti-zalgo,
+  anti-mass-mention, anti-attachment-spam, filtri per canale/ruolo
+  lato bot (oggi solo badword+invite via AutoMod nativo di Discord)
+- **Logging** (schema §8): mancano canali, inviti, webhook,
+  emoji/sticker/soundboard, aggiornamenti server. Message
+  delete/edit restano correttamente rimandati (serve il Message
+  Content Intent, richiesto solo quando un modulo lo giustifica
+  davvero — vedi § Decisioni)
+- **Ticket System** (schema §13): manca il transcript automatico e
+  le statistiche
 
 ---
 
@@ -462,9 +526,15 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Sistema Gilde/Clan** (punto 1 di "Non ancora iniziato"), sopra il
-sistema di economia appena completato. Punti della specifica (vedi lo
-schema di progetto) su cui prestare attenzione particolare:
+**Aperto — decisione da prendere insieme all'utente**, non presa
+unilateralmente qui: la riconciliazione appena fatta ha aggiunto due
+categorie intere (Verify, Utility & Server Management) che prima non
+comparivano nemmeno come pendenti. Cambiano le priorità rispetto a
+quanto assunto in precedenza.
+
+Le note tecniche già pronte per il Sistema Gilde/Clan (che restava il
+prossimo passo prima di questa riconciliazione) restano valide e
+sono conservate qui sotto per quando toccherà a lui:
 
 - **Ruoli Capo Clan / Admin Clan pari tra gilde diverse**: Discord
   non permette due ruoli alla stessa posizione gerarchica esatta —
