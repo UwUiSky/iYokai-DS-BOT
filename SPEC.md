@@ -96,32 +96,46 @@ file, non da un riassunto.**
   riparte sempre da `is_premium_active=False`; TODO già annotato nel
   codice ma mai chiuso)
 
-## §4 VERIFY + FINGERPRINT + ANTI-ALT — quasi interamente mancante (1 foglia condivisa da Spam Trap)
+## §4 VERIFY + FINGERPRINT + ANTI-ALT — Verify Base completo, il resto dipende dal Web Panel
 
-- `[ ]` 4.1 Verify Base
-  - `[ ]` Button verify
-  - `[ ]` Reaction verify
-  - `[ ]` Captcha
-  - `[ ]` Controllo età account
-  - `[ ]` Controllo mutual servers
+- `[x]` 4.1 Verify Base
+  - `[x]` Button verify — `VerifyPanelView`, persistente (stesso
+    pattern di ticket/vocali temporanei)
+  - `[x]` Reaction verify — `on_raw_reaction_add`. **Non supporta il
+    captcha**: una reazione non è un'Interaction, non può aprire un
+    Modal — combinazione rifiutata esplicitamente a `/verify setup`
+    con un messaggio chiaro, non implementata a metà
+  - `[x]` Captcha — testuale (domanda di somma generata al click,
+    diversa ogni volta), solo in modalità button per il motivo sopra.
+    Nessuna immagine: evita Pillow come nuova dipendenza solo per
+    questo
+  - `[x]` Controllo età account
+  - `[x]` Controllo mutual servers — confermato il limite già noto:
+    il bot vede solo quanti server IN CUI SI TROVA LUI contengono
+    anche l'utente, non tutti i server dell'utente in assoluto
   - `[x]` Invite tracker (cache inviti + diff al join) — costruito
     come infrastruttura condivisa in `core/invite_tracker.py`
     (durante lo sviluppo di Spam Trap §7.3, che ne aveva bisogno per
-    primo). Non ridurre a "§4 fatto": qui è tracciata solo QUESTA
-    foglia, le altre di §4.1-4.6 restano `[ ]`
-- `[ ]` 4.2 Verify Avanzato (richiede Web Panel)
+    primo)
+- `[ ]` 4.2 Verify Avanzato (richiede Web Panel) — non tentato,
+  dipendenza non costruita
   - `[ ]` Raccolta IP / ISP / localizzazione
   - `[ ]` Browser fingerprint / device fingerprint
   - `[ ]` OAuth2 scope `identify`
   - `[ ]` Salvataggio fingerprint (hash, mai IP in chiaro)
-- `[ ]` 4.3 Sistema Anti-Alt
+- `[ ]` 4.3 Sistema Anti-Alt — dipende da §4.2, non costruito
   - `[ ]` Database fingerprint
   - `[ ]` Match → segnalazione allo staff (NON ban automatico
     cross-server; vedi § Decisioni)
   - `[ ]` Rilevamento pattern sospetti
-- `[ ]` 4.4 Whitelist utenti
-- `[ ]` 4.5 Blacklist utenti
-- `[ ]` 4.6 Log completo di ogni tentativo di verify
+- `[x]` 4.4 Whitelist utenti — bypassa tutti i controlli, verificato
+  che vinca anche in combinazione con la blacklist (vedi 4.5)
+- `[x]` 4.5 Blacklist utenti — **vince sempre**, anche su un utente
+  erroneamente anche whitelistato: verificato esplicitamente con un
+  test dedicato, non assunto
+- `[x]` 4.6 Log completo di ogni tentativo di verify — tabella
+  `verify_attempts` + embed nel canale log configurato, per ogni
+  esito (successo o fallimento)
 
 ## §5 MODERATION
 
@@ -490,7 +504,7 @@ rilancia lo stesso conteggio.
 | §1 Core | 11 | 4 | 4 |
 | §2 Setup | 1 | 0 | 6 |
 | §3 Premium | 4 | 0 | 6 |
-| §4 Verify | 1 | 0 | 19 |
+| §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 8 | 0 | 4 |
 | §6 AutoMod | 2 | 0 | 12 |
 | §7 Security | 11 | 2 | 19 |
@@ -505,12 +519,12 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **62** | **7** | **198** |
+| **Totale** | **71** | **7** | **188** |
 
-Su 267 voci totali: **62 fatte, 7 parziali, 198 mancanti** — circa il
-26% dello schema (fatto+parziale). La base esistente (core parziale,
-moderazione, automod parziale, logging parziale, ticket, vocali
-temporanei, livelli/economia, memory guard, spam trap quasi completo)
-è solida e testata (287/287 test), ma resta ancora una minoranza
-dello schema completo.
+Su 266 voci totali: **71 fatte, 7 parziali, 188 mancanti** — circa il
+29% dello schema (fatto+parziale). La base esistente (core parziale,
+verify base completo, moderazione, automod parziale, logging
+parziale, ticket, vocali temporanei, livelli/economia, memory guard,
+spam trap quasi completo) è solida e testata (323/323 test), ma resta
+ancora una minoranza dello schema completo.
 

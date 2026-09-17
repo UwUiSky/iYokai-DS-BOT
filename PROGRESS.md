@@ -330,6 +330,34 @@ fingerprint" resta `[ ]`: dipende da §4 Anti-Alt, non costruito.
 
 **Suite di test completa: 287/287 passano.**
 
+### Fase 11 — Verify Base (SPEC.md §4.1, 4.4, 4.5, 4.6) — completo, §4.2/4.3 restano bloccati sul Web Panel
+- [x] `core/verify_logic.py` — età account, mutual servers, priorità
+  di decisione **blacklist > whitelist > controlli** (la blacklist
+  vince sempre, anche su un utente erroneamente anche whitelistato —
+  verificato esplicitamente, non assunto). **15 test**
+- [x] `core/repositories/verify_repo.py` — config, whitelist,
+  blacklist (tabelle indipendenti a livello dati: è la logica, non
+  il DB, a decidere chi vince), log di ogni tentativo. **18 test
+  contro PostgreSQL reale**
+- [x] `cogs/security/verify.py` — `/verify setup|panel|whitelist-add|
+  whitelist-remove|blacklist-add|blacklist-remove`. Due modalità:
+  **button** (persistente, supporta captcha testuale — nessuna
+  immagine, evita Pillow) e **reaction** (`on_raw_reaction_add`, MAI
+  captcha: una reazione non è un'Interaction, non può aprire un
+  Modal — combinazione rifiutata esplicitamente a `/verify setup`,
+  non implementata a metà)
+- [x] **Bug di API deprecata trovato e corretto, in DUE file**:
+  `TextInput(label=...)` produce un `DeprecationWarning` reale con
+  discord.py 2.7.1 — il pattern corrente è `discord.ui.Label` che
+  avvolge il `TextInput`. Scoperto dal warning summary di pytest
+  scrivendo `CaptchaModal`, corretto lì **e** in `StaffReplyModal`
+  (`cogs/security/spam_trap.py`, scritto in una sessione precedente
+  con lo stesso pattern deprecato). Verificato con un giro di test
+  dedicato a cercare l'ASSENZA dell'avviso, non solo che i test
+  passassero
+
+**Suite di test completa: 323/323 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -447,10 +475,15 @@ Ogni sessione parte da `SPEC.md`. Le fasi marcate "COMPLETA" qui
 sotto restano valide **solo per le voci che SPEC.md segna `[x]`** —
 diverse di esse hanno foglie ancora mancanti, elencate lì.
 
-Stato reale a colpo d'occhio: **~46 voci fatte su ~265**, cioè circa
-il 17-20% dello schema. La base (core, moderazione, automod, logging
-base, ticket, vocali temporanei, livelli/economia) è solida e
-testata, ma non è "quasi tutto tranne le Gilde".
+Stato reale aggiornato: la tabella conteggiata meccanicamente vive
+**solo** in fondo a `SPEC.md`, non qui — per non dover tenere lo
+stesso numero sincronizzato in due file ad ogni fase completata (è
+esattamente il tipo di duplicazione che aveva causato il problema
+originale). La base (core, verify base, moderazione, automod,
+logging, ticket, vocali temporanei, livelli/economia, memory guard,
+spam trap) è solida e testata, ma resta una minoranza dello schema
+completo — la percentuale esatta è in `SPEC.md`, sempre aggiornata
+lì e lì soltanto.
 
 ---
 
@@ -499,6 +532,18 @@ stato scartato per un limite tecnico specifico.
   prima di scrivere `cogs/tickets/tickets.py`. Ogni futuro pannello
   con bottoni "a vita lunga" (non un menu temporaneo come `/setup`)
   deve seguire lo stesso pattern.
+- **`discord.ui.TextInput(label=...)` è un'API deprecata in
+  discord.py 2.7.1** — produce un `DeprecationWarning` reale a runtime
+  (verificato, non solo scritto nella changelog). Il pattern corretto
+  è `discord.ui.Label(text=..., component=TextInput(...))`, che
+  avvolge il `TextInput` invece di dargli un'etichetta diretta. Il
+  riferimento al `TextInput` per leggerne `.value` in `on_submit`
+  resta valido tenendolo come attributo proprio (istanza o dentro il
+  `Label.component`), a seconda di come viene costruito. Trovato
+  scrivendo `CaptchaModal` (`cogs/security/verify.py`) e corretto
+  ANCHE in `StaffReplyModal` (`cogs/security/spam_trap.py`, scritto
+  prima con lo stesso pattern vecchio) — ogni futuro `Modal` con
+  `TextInput` deve usare `Label`, non `label=`.
 - **`POST /guilds` funziona solo per bot sotto i 10 server.** iYokai
   Main (il bot principale) non creerà mai server. La creazione dei
   server di backup è delegata a **iYokai Creator**, un'applicazione
@@ -583,25 +628,10 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Spam Trap (SPEC.md §7.3) completato — quasi al 100%.** Resta un
-candidato ovvio come continuazione diretta, dato che condivide
-infrastruttura appena costruita:
+**Verify Base (SPEC.md §4.1, 4.4-4.6) completato.** §4.2/§4.3 restano
+bloccati sul Web Panel (SPEC.md §C), non ancora iniziato.
 
-**§4 Verify + Fingerprint + Anti-Alt** — l'invite tracker
-(`core/invite_tracker.py`) è già pronto e riusabile per il Verify
-Base (mutual servers/invite tracker). Inoltre completerebbe il "ban
-globale via fingerprint" rimasto `[ ]` in Spam Trap §7.3, collegando
-i due moduli.
-
-In alternativa, qualunque altra voce di `SPEC.md` resta ugualmente
-legittima — la decisione è dell'utente, non un default.
-
-**Promemoria operativo per la prossima sessione, dopo l'errore di
-questa**: PRIMA di riportare qualunque lavoro come "pushato",
-verificare esplicitamente che `git rev-parse HEAD` locale coincida
-con lo SHA restituito da una chiamata API GitHub diretta
-(`GET /repos/.../commits/main`), non fidarsi del solo output di
-`git push`. In questa sessione 5 commit erano rimasti locali per un
-intero turno di conversazione perché il remote URL non aveva il
-token e il fetch falliva silenziosamente — scoperto solo perché
-l'utente ha chiesto esplicitamente di verificare.
+Nessuna priorità imposta di default — la decisione resta
+dell'utente, come da regola operativa fissata dopo l'audit. Qualunque
+voce di `SPEC.md` è legittima. Ricordarsi SEMPRE, prima di scrivere
+codice: leggere `SPEC.md`, non un riassunto (nemmeno questo file).
