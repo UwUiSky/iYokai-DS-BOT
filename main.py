@@ -38,6 +38,7 @@ from core.memory_guard import memory_guard
 from core.premium import handle_app_command_error
 from core.error_handler_logic import should_alert_owner
 from core.json_log_formatter import JSONFormatter
+from core.welcome_logic import choose_welcome_target
 
 
 def setup_logging() -> None:
@@ -216,13 +217,108 @@ class iYokaiBot(commands.AutoShardedBot):
     async def on_guild_join(self, guild: discord.Guild) -> None:
         """
         Assicura che ogni nuovo server abbia una riga di
-        configurazione, PRIMA che qualsiasi comando venga usato lì.
-        Il vero pannello di setup interattivo arriverà in un cog
-        dedicato (cogs/utility/setup.py) — qui c'è solo la garanzia
-        che il record esista.
+        configurazione, PRIMA che qualsiasi comando venga usato lì,
+        e prova a mandare un messaggio di benvenuto con la catena di
+        fallback decisa in core/welcome_logic.py: canale di sistema
+        → primo canale scrivibile → DM al proprietario.
         """
         await db.ensure_guild_exists(guild.id)
         logger.info("Nuovo server: %s (ID: %s)", guild.name, guild.id)
+        await self._send_welcome_message(guild)
+
+    async def _send_welcome_message(self, guild: discord.Guild) -> None:
+        embed = discord.Embed(
+            title="👋 Thanks for adding iYokai!",
+            description=(
+                "Run `/setup` to choose which modules you want active on "
+                "this server. Everything starts disabled until you turn it on."
+            ),
+            color=discord.Color.blurple(),
+        )
+
+        can_send_system = (
+            guild.system_channel is not None
+            and guild.system_channel.permissions_for(guild.me).send_messages
+        )
+
+        # Cerchiamo comunque il primo canale scrivibile anche se il
+        # system_channel va bene, così choose_welcome_target riceve
+        # entrambe le informazioni indipendentemente da quale delle
+        # due verrà usata — la decisione resta nella funzione pura,
+        # non sparsa qui con degli if impliciti.
+        #
+        # ESCLUDIAMO ESPLICITAMENTE guild.system_channel da questa
+        # ricerca: se non lo facessimo, e l'invio sul system_channel
+        # fallisse più sotto, il fallback "primo canale scrivibile"
+        # potrebbe ritrovare ESATTAMENTE LO STESSO CANALE (il
+        # system_channel è quasi sempre incluso in guild.text_channels)
+        # e ritentarlo inutilmente invece di passare a uno
+        # genuinamente diverso — bug reale, trovato scrivendo il test
+        # di questo stesso file (non ipotizzato a tavolino).
+        first_writable = next(
+            (
+                channel
+                for channel in guild.text_channels
+                if channel != guild.system_channel
+                and channel.permissions_for(guild.me).send_messages
+            ),
+            None,
+        )
+
+        target = choose_welcome_target(
+            can_send_in_system_channel=can_send_system,
+            has_any_writable_channel=first_writable is not None,
+        )
+
+        if target == "system_channel":
+            try:
+                await guild.system_channel.send(embed=embed)
+                return
+            except discord.HTTPException:
+                logger.warning(
+                    "Invio del benvenuto fallito sul system_channel del "
+                    "server %s nonostante i permessi risultassero ok — "
+                    "provo il canale scrivibile.",
+                    guild.id,
+                )
+                # Non torniamo subito: proviamo comunque il prossimo
+                # anello della catena invece di arrenderci qui.
+                target = "first_writable_channel" if first_writable else "dm_owner"
+
+        if target == "first_writable_channel" and first_writable is not None:
+            try:
+                await first_writable.send(embed=embed)
+                return
+            except discord.HTTPException:
+                logger.warning(
+                    "Invio del benvenuto fallito anche sul primo canale "
+                    "scrivibile del server %s — provo il DM al proprietario.",
+                    guild.id,
+                )
+
+        # Ultima risorsa: DM al proprietario. guild.owner può essere
+        # None se non ancora in cache — in quel caso lo recuperiamo
+        # esplicitamente prima di arrenderci.
+        owner = guild.owner
+        if owner is None:
+            try:
+                owner = await guild.fetch_member(guild.owner_id)
+            except discord.HTTPException:
+                owner = None
+
+        if owner is not None:
+            try:
+                await owner.send(embed=embed)
+                return
+            except discord.HTTPException:
+                pass
+
+        logger.warning(
+            "Impossibile inviare il messaggio di benvenuto nel server %s "
+            "con nessuno dei tre metodi (system_channel, canale "
+            "scrivibile, DM proprietario).",
+            guild.id,
+        )
 
 
 async def main() -> None:
