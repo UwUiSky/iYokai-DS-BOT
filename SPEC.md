@@ -96,7 +96,7 @@ file, non da un riassunto.**
   riparte sempre da `is_premium_active=False`; TODO già annotato nel
   codice ma mai chiuso)
 
-## §4 VERIFY + FINGERPRINT + ANTI-ALT — **INTERA SEZIONE MANCANTE**
+## §4 VERIFY + FINGERPRINT + ANTI-ALT — quasi interamente mancante (1 foglia condivisa da Spam Trap)
 
 - `[ ]` 4.1 Verify Base
   - `[ ]` Button verify
@@ -104,7 +104,11 @@ file, non da un riassunto.**
   - `[ ]` Captcha
   - `[ ]` Controllo età account
   - `[ ]` Controllo mutual servers
-  - `[ ]` Invite tracker (cache inviti + diff al join)
+  - `[x]` Invite tracker (cache inviti + diff al join) — costruito
+    come infrastruttura condivisa in `core/invite_tracker.py`
+    (durante lo sviluppo di Spam Trap §7.3, che ne aveva bisogno per
+    primo). Non ridurre a "§4 fatto": qui è tracciata solo QUESTA
+    foglia, le altre di §4.1-4.6 restano `[ ]`
 - `[ ]` 4.2 Verify Avanzato (richiede Web Panel)
   - `[ ]` Raccolta IP / ISP / localizzazione
   - `[ ]` Browser fingerprint / device fingerprint
@@ -159,7 +163,7 @@ file, non da un riassunto.**
 - `[ ]` 6.13 Azioni multiple configurabili (delete + warn + mute + ban)
 - `[ ]` 6.14 Log delle azioni automod
 
-## §7 SECURITY SUITE — **INTERA SEZIONE MANCANTE**
+## §7 SECURITY SUITE — Spam Trap (§7.3) quasi completo, il resto mancante
 
 - `[ ]` 7.1 Anti-Raid
   - `[ ]` Join rate limit (finestra scorrevole)
@@ -177,31 +181,46 @@ file, non da un riassunto.**
   - `[ ]` Rilevamento mass ban / mass kick
   - `[ ]` Recovery automatico (ricreazione canali/ruoli)
   - `[ ]` Whitelist utenti/bot fidati
-- `[ ]` 7.3 **Spam Trap** — specifica dettagliatissima già scritta, zero codice
-  - `[ ]` `/setup` con menù a tendina per canale trappola e canale log
-  - `[ ]` Creazione automatica `#spam-trap` (visibile a everyone, no
+- `[~]` 7.3 **Spam Trap** — quasi completo, vedi le foglie sotto per
+  l'unica parte ridotta di scope
+  - `[x]` `/setup` con selezione canale trappola e canale log — via
+    parametri `discord.TextChannel` opzionali (rendono nativamente
+    come selettore canale di Discord, non un menù a tendina
+    testuale, ma stessa funzione)
+  - `[x]` Creazione automatica `#spam-trap` (visibile a everyone, no
     inviti, no webhook) se non selezionato
-  - `[ ]` Creazione automatica `#spam-log` (solo administrator) se non
-    selezionato
-  - `[ ]` Embed di presidio in `#spam-trap`, rosso, in inglese, con
+  - `[x]` Creazione automatica `#spam-log` (solo administrator) se
+    non selezionato
+  - `[x]` Embed di presidio in `#spam-trap`, rosso, in inglese, con
     header grande "DO NOT WRITE IN THIS CHANNEL"
-  - `[ ]` Embed informativo in `#spam-log`, colore tenue, in inglese
-  - `[ ]` Sequenza fissa: cattura contenuto → **DM PRIMA del ban** →
+  - `[x]` Embed informativo in `#spam-log`, colore tenue, in inglese
+  - `[x]` Sequenza fissa: cattura contenuto → **DM PRIMA del ban** →
     ban con `delete_message_seconds` → purge supplementare → cleanup →
     log
-  - `[ ]` Cancellazione messaggi 30 giorni (richiede indicizzazione
-    `message_id` in DB; nativo copre max 7 giorni)
-  - `[ ]` Log con: tag, user ID, data creazione account, data join,
+  - `[x]` Cancellazione messaggi 30 giorni (indicizzazione
+    `message_id` in DB; nativo copre max 7 giorni, la purge
+    supplementare copre 7-30)
+  - `[x]` Log con: tag, user ID, data creazione account, data join,
     data ban, codice invito usato, **creatore dell'invito**, contenuto
     che ha fatto scattare la trappola, numero messaggi cancellati per canale
-  - `[ ]` Cleanup webhook creati dall'utente (via audit log)
-  - `[ ]` Cleanup inviti creati dall'utente
-  - `[ ]` Ban appeal: DM → thread privato in `#spam-log`, con bottoni
-    staff (Sbanna / Rifiuta / Rispondi), rate limit 1 appello/24h
-  - `[ ]` **Transcript HTML** con timestamp, nome+nickname, avatar
-    visibile, immagini come thumbnail rigenerate server-side (mai
-    riospitare il file originale), escaping rigoroso anti-XSS
-  - `[ ]` Opzione ban globale via fingerprint
+  - `[x]` Cleanup webhook creati dall'utente (via audit log)
+  - `[x]` Cleanup inviti creati dall'utente (via audit log)
+  - `[x]` Ban appeal: DM → thread privato in `#spam-log`, con bottoni
+    staff (Unban/Reject/Reply), rate limit 1 appello/24h. Bottoni su
+    una `View` NON persistente (timeout 7 giorni) — scelta dichiarata,
+    non equivalente ai pannelli persistenti di ticket/vocali: un
+    appeal è per natura più breve, non vale la complessità di bottoni
+    persistenti per-caso dinamici
+  - `[~]` **Transcript HTML** — timestamp, nome+nickname, contenuto
+    con escaping rigoroso anti-XSS: fatto e testato esplicitamente.
+    **Non fatto**: avatar visibile e immagini come thumbnail
+    rigenerate server-side — richiederebbe Pillow come nuova
+    dipendenza e una decisione su come distribuirla, non ancora presa
+    (dichiarato nel codice, non spacciato per completo)
+  - `[ ]` Opzione ban globale via fingerprint — dipende da §4
+    Anti-Alt (fingerprint cross-server), non costruito. Il ban resta
+    per-server, correttamente, dato che non esiste ancora nulla da
+    cui recuperare un fingerprint
 - `[ ]` 7.4 Permission Auditor + alert permessi pericolosi
 - `[ ]` 7.5 Security Score / health check configurazione server
 
@@ -471,10 +490,10 @@ rilancia lo stesso conteggio.
 | §1 Core | 11 | 4 | 4 |
 | §2 Setup | 1 | 0 | 6 |
 | §3 Premium | 4 | 0 | 6 |
-| §4 Verify | 0 | 0 | 19 |
+| §4 Verify | 1 | 0 | 19 |
 | §5 Moderation | 8 | 0 | 4 |
 | §6 AutoMod | 2 | 0 | 12 |
-| §7 Security | 0 | 0 | 32 |
+| §7 Security | 11 | 2 | 19 |
 | §8 Logging | 4 | 1 | 12 |
 | §9 Music | 0 | 0 | 12 |
 | §10 Alerts | 0 | 0 | 8 |
@@ -486,11 +505,12 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **50** | **5** | **211** |
+| **Totale** | **62** | **7** | **198** |
 
-Su 266 voci totali: **50 fatte, 5 parziali, 211 mancanti** — circa il
-19% dello schema. La base esistente (core parziale, moderazione,
-automod parziale, logging parziale, ticket, vocali temporanei,
-livelli/economia, memory guard) è solida e testata (228/228 test),
-ma resta una minoranza dello schema completo.
+Su 267 voci totali: **62 fatte, 7 parziali, 198 mancanti** — circa il
+26% dello schema (fatto+parziale). La base esistente (core parziale,
+moderazione, automod parziale, logging parziale, ticket, vocali
+temporanei, livelli/economia, memory guard, spam trap quasi completo)
+è solida e testata (287/287 test), ma resta ancora una minoranza
+dello schema completo.
 

@@ -282,6 +282,54 @@ e requisito ore vocali scalabile ×4). Non incluso in questa fase.
 
 **Suite di test completa: 228/228 passano.**
 
+### Fase 10 — Spam Trap (SPEC.md §7.3) — quasi completo
+- [x] `core/spam_trap_logic.py` — cooldown appeal (24h), partizione
+  messaggi bulk/individuale al confine dei 14 giorni, finestra di
+  purge 7-30 giorni, diff inviti. **16 test**, con i confini esatti
+  a 7/14/30 giorni coperti esplicitamente
+- [x] `core/invite_tracker.py` + `cogs/security/invite_sync.py` —
+  infrastruttura RIUSABILE (utile anche al futuro Verify, SPEC.md
+  §4.1): cache inviti in memoria, diff al join. Separazione
+  deliberata core/cog per lo stesso motivo di scheduler/memory_guard.
+  **13 test**
+- [x] `core/repositories/spam_trap_repo.py` — config, indice
+  messaggi (solo id/canale/timestamp, **mai contenuto** — nessun
+  bisogno del Message Content Intent), appeal, incidenti (con
+  transcript HTML persistito), tracciamento invito al join.
+  **26 test contro PostgreSQL reale**, incluso un test di
+  concorrenza sulla numerazione dei case (riusa moderation_repo)
+- [x] `core/spam_trap_transcript.py` — generatore HTML, testabile
+  senza Discord. **11 test**, 5 dei quali dedicati esplicitamente
+  all'escaping anti-XSS (nickname/contenuto/titolo/allegato con
+  markup HTML dentro)
+- [x] `cogs/security/spam_trap.py` — `/spamtrap-setup`, sequenza
+  fissa completa (cattura → transcript → DM prima del ban → ban →
+  case → purge 7-30gg → cleanup webhook/inviti via audit log →
+  log), ban appeal con thread privato e tre bottoni. **3 test smoke**,
+  inclusa la verifica esplicita che `AppealActionsView` e
+  `StaffReplyModal` (pattern mai usati prima nel progetto) si
+  istanzino senza eccezioni
+
+**Decisione architetturale importante, non ovvia**: il contenuto dei
+messaggi (necessario per il log e il transcript) **non richiede il
+Message Content Intent**. Quel privilegio riguarda solo il gateway
+(eventi in tempo reale); un fetch REST esplicito
+(`channel.fetch_message`) restituisce il contenuto pieno a
+prescindere, governato dal normale permesso `READ_MESSAGE_HISTORY`.
+Per questo l'indice messaggi salva solo id/canale/timestamp, e il
+contenuto viene recuperato via fetch solo quando serve davvero (al
+momento del ban). **Assunzione sul comportamento reale dell'API,
+segnalata esplicitamente per la verifica sul server di test** — non
+data per scontata in silenzio.
+
+**Scope ridotto, dichiarato non nascosto**: il transcript non
+rigenera le immagini degli allegati come thumbnail incorporate
+(richiederebbe Pillow come nuova dipendenza, decisione non ancora
+presa) — elenca gli allegati per nome. Il "ban globale via
+fingerprint" resta `[ ]`: dipende da §4 Anti-Alt, non costruito.
+
+**Suite di test completa: 287/287 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -413,6 +461,20 @@ Discord reali. Se in una sessione futura sembra di poter "semplificare"
 uno di questi punti, **rileggere prima il motivo** — quasi sempre è già
 stato scartato per un limite tecnico specifico.
 
+- **Ogni push va verificato con una chiamata API GitHub diretta,
+  non con il solo output di `git push`.** In una sessione, il remote
+  URL era rimasto senza token (rimosso a fine sessione precedente per
+  sicurezza, mai re-impostato prima del `git fetch` successivo): il
+  fetch falliva silenziosamente con un errore facile da non notare
+  in mezzo all'output, la comparazione `git log HEAD..origin/main`
+  restava su un `origin/main` STANTIO, e 5 commit reali sono rimasti
+  solo locali per un intero turno di conversazione — riportati
+  erroneamente come "pushati". Scoperto solo perché l'utente ha
+  chiesto esplicitamente una verifica. Procedura corretta, da
+  ripetere ad ogni push: `git rev-parse --short=12 HEAD` in locale,
+  poi `GET https://api.github.com/repos/.../commits/main` con il
+  token, e confrontare i due SHA esplicitamente prima di dire
+  "pushato" all'utente.
 - **Niente caricamento/scaricamento di cog per singolo server.** Un
   bot ha un solo processo condiviso da tutti i server. Il modo
   corretto per attivare/disattivare un modulo per server è un check a
@@ -521,20 +583,25 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Memory Guard (SPEC.md §1.3) completato** — sbloccato su richiesta
-esplicita dell'utente dopo l'audit contro lo schema originale. Resta
-da decidere il prossimo tra i candidati proposti in quell'audit:
+**Spam Trap (SPEC.md §7.3) completato — quasi al 100%.** Resta un
+candidato ovvio come continuazione diretta, dato che condivide
+infrastruttura appena costruita:
 
-1. **§4 Verify + Fingerprint + Anti-Alt** — tocca la sicurezza di
-   ogni server appena il bot viene invitato, protegge tutti gli altri
-   moduli
-2. **§7.3 Spam Trap** — specifica già completa e dettagliatissima
-   (vedi § Decisioni prese), zero design da fare, solo implementazione
+**§4 Verify + Fingerprint + Anti-Alt** — l'invite tracker
+(`core/invite_tracker.py`) è già pronto e riusabile per il Verify
+Base (mutual servers/invite tracker). Inoltre completerebbe il "ban
+globale via fingerprint" rimasto `[ ]` in Spam Trap §7.3, collegando
+i due moduli.
 
-Qualunque altra voce di `SPEC.md` è ugualmente legittima da scegliere
-— la lista completa con lo stato di ogni foglia è lì, non qui.
+In alternativa, qualunque altra voce di `SPEC.md` resta ugualmente
+legittima — la decisione è dell'utente, non un default.
 
-**Regola operativa fissata dall'utente**: le voci di `SPEC.md` non si
-cancellano mai. Si aggiorna solo il loro stato (`[ ]` → `[~]` → `[x]`)
-mano a mano che vengono completate, con la giustificazione del
-completamento — non un'eliminazione silenziosa della riga.
+**Promemoria operativo per la prossima sessione, dopo l'errore di
+questa**: PRIMA di riportare qualunque lavoro come "pushato",
+verificare esplicitamente che `git rev-parse HEAD` locale coincida
+con lo SHA restituito da una chiamata API GitHub diretta
+(`GET /repos/.../commits/main`), non fidarsi del solo output di
+`git push`. In questa sessione 5 commit erano rimasti locali per un
+intero turno di conversazione perché il remote URL non aveva il
+token e il fetch falliva silenziosamente — scoperto solo perché
+l'utente ha chiesto esplicitamente di verificare.
