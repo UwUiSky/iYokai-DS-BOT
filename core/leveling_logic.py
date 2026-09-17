@@ -168,3 +168,45 @@ def did_level_up(xp_before: int, xp_after: int) -> tuple[bool, int]:
     level_before = level_for_xp(xp_before)
     level_after = level_for_xp(xp_after)
     return (level_after > level_before), level_after
+
+
+# ======================================================================
+# Economy — daily / work
+# ======================================================================
+
+DAILY_COOLDOWN_SECONDS = 24 * 3600
+DAILY_REWARD_COINS = 200
+
+WORK_COOLDOWN_SECONDS = 3600
+WORK_REWARD_MIN = 20
+WORK_REWARD_MAX = 80
+
+
+def can_claim_daily(last_daily_at: datetime | None, now: datetime | None = None) -> bool:
+    if last_daily_at is None:
+        return True
+    current = now or datetime.now(timezone.utc)
+    return (current - last_daily_at).total_seconds() >= DAILY_COOLDOWN_SECONDS
+
+
+def can_claim_work(last_work_at: datetime | None, now: datetime | None = None) -> bool:
+    if last_work_at is None:
+        return True
+    current = now or datetime.now(timezone.utc)
+    return (current - last_work_at).total_seconds() >= WORK_COOLDOWN_SECONDS
+
+
+def seconds_until_next_claim(
+    last_claim_at: datetime | None, cooldown_seconds: int, now: datetime | None = None
+) -> int:
+    """
+    Quanti secondi mancano al prossimo claim possibile (0 se già
+    disponibile). Usato per mostrare all'utente un messaggio tipo
+    'riprova tra 3h 12m' invece di un generico 'non ancora'.
+    """
+    if last_claim_at is None:
+        return 0
+    current = now or datetime.now(timezone.utc)
+    elapsed = (current - last_claim_at).total_seconds()
+    remaining = cooldown_seconds - elapsed
+    return max(0, int(remaining))

@@ -10,12 +10,15 @@ from datetime import datetime, timedelta, timezone
 from core.leveling_logic import (
     DAILY_CAP_MINUTES,
     MAX_CONSECUTIVE_MINUTES_SAME_CHANNEL,
+    can_claim_daily,
+    can_claim_work,
     can_earn_text_xp,
     compute_voice_minute,
     did_level_up,
     is_eligible_for_voice_xp,
     level_for_xp,
     period_key,
+    seconds_until_next_claim,
     xp_for_level,
 )
 
@@ -219,3 +222,47 @@ class TestDidLevelUp:
         salito, nuovo_livello = did_level_up(xp_before=0, xp_after=xp_for_level(10))
         assert salito is True
         assert nuovo_livello == 10
+
+
+class TestDailyWorkCooldown:
+    def test_mai_reclamato_puo_reclamare_daily(self):
+        assert can_claim_daily(last_daily_at=None) is True
+
+    def test_reclamato_da_poco_non_puo_reclamare_daily(self):
+        ora = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ultimo = ora - timedelta(hours=1)
+        assert can_claim_daily(last_daily_at=ultimo, now=ora) is False
+
+    def test_reclamato_da_24_ore_puo_reclamare_daily(self):
+        ora = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ultimo = ora - timedelta(hours=24)
+        assert can_claim_daily(last_daily_at=ultimo, now=ora) is True
+
+    def test_mai_reclamato_puo_reclamare_work(self):
+        assert can_claim_work(last_work_at=None) is True
+
+    def test_reclamato_da_poco_non_puo_reclamare_work(self):
+        ora = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ultimo = ora - timedelta(minutes=30)
+        assert can_claim_work(last_work_at=ultimo, now=ora) is False
+
+    def test_reclamato_da_unora_puo_reclamare_work(self):
+        ora = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ultimo = ora - timedelta(hours=1)
+        assert can_claim_work(last_work_at=ultimo, now=ora) is True
+
+
+class TestSecondsUntilNextClaim:
+    def test_mai_reclamato_zero_secondi_di_attesa(self):
+        assert seconds_until_next_claim(None, cooldown_seconds=3600) == 0
+
+    def test_cooldown_gia_scaduto_zero_secondi_di_attesa(self):
+        ora = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ultimo = ora - timedelta(hours=2)
+        assert seconds_until_next_claim(ultimo, cooldown_seconds=3600, now=ora) == 0
+
+    def test_a_meta_del_cooldown_restano_meta_dei_secondi(self):
+        ora = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ultimo = ora - timedelta(seconds=1800)
+        rimanenti = seconds_until_next_claim(ultimo, cooldown_seconds=3600, now=ora)
+        assert rimanenti == 1800
