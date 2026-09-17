@@ -249,6 +249,39 @@ e requisito ore vocali scalabile ×4). Non incluso in questa fase.
 
 **Suite di test completa: 209/209 passano.**
 
+### Fase 9 — Memory Guard (SPEC.md §1.3) — parziale, sbloccata su richiesta esplicita
+- [x] `core/memory_guard_logic.py` — logica pura: soglia di
+  attivazione, cooldown tra un alert DM e il successivo (30 minuti,
+  per non spammare l'owner ad ogni tick se la RAM resta alta),
+  idoneità alla disconnessione di un VoiceClient inattivo. **11 test**
+- [x] `core/memory_guard.py` — servizio reale (stesso pattern
+  architetturale di `core/scheduler.py`): legge la RSS vera del
+  processo con `psutil`, forza `gc.collect()` su soglia, invia DM
+  all'owner (con cooldown), disconnette i VoiceClient rimasti in
+  canali senza membri umani. **7 test**, incluso uno che legge la
+  RAM VERA del processo di test in corso (nessun mock)
+- [x] `MEMORY_ALERT_THRESHOLD_MB` aggiunto a `core/config.py` (default
+  512, sovrascrivibile via `.env`). **Bug di dataclass trovato e
+  corretto durante lo sviluppo**: un campo con default
+  (`field(default=...)`) era stato inserito PRIMA di campi
+  obbligatori nella dataclass `Config` — Python rifiuta questo
+  ordine. L'errore emerge solo importando davvero la classe, non
+  compilandola: verificato con un test di import reale, non solo
+  `py_compile`
+- [x] `/owner memory-status` — mostra il consumo RAM corrente.
+  Aggiunto a `cogs/utility/owner_premium.py` (non un file proprio):
+  `app_commands.Group` non ammette due gruppi di primo livello con
+  lo stesso nome `owner` registrati da cog diversi
+- [x] Colmato un vuoto di test preesistente: **non esisteva nessuno
+  smoke test per `owner_premium.py`**, aggiunto mentre si toccava il file
+- [x] Collegato a `main.py`, avviato insieme allo scheduler
+
+**Ancora mancante in questa fase**: "Limitazione dimensione cache"
+(SPEC.md §1.3) resta legata a §1.5 Cache Layer, non ancora scritta —
+`SPEC.md` aggiornato di conseguenza (`[~]` parziale, non `[x]`).
+
+**Suite di test completa: 228/228 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -488,22 +521,20 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Da decidere con l'utente.** Con il quadro reale ora visibile in
-`SPEC.md` (~215 voci mancanti), l'ordine delle priorità è una scelta
-sua, non un default da assumere.
+**Memory Guard (SPEC.md §1.3) completato** — sbloccato su richiesta
+esplicita dell'utente dopo l'audit contro lo schema originale. Resta
+da decidere il prossimo tra i candidati proposti in quell'audit:
 
-Tre candidati con motivazioni diverse, se serve un punto di partenza
-per la discussione:
+1. **§4 Verify + Fingerprint + Anti-Alt** — tocca la sicurezza di
+   ogni server appena il bot viene invitato, protegge tutti gli altri
+   moduli
+2. **§7.3 Spam Trap** — specifica già completa e dettagliatissima
+   (vedi § Decisioni prese), zero design da fare, solo implementazione
 
-1. **§1.3 Memory Guard** — è il più piccolo dei tre e il più urgente
-   in senso infrastrutturale: il progetto gira su Oracle Free Tier e
-   oggi non c'è nessuna protezione né visibilità sul consumo di RAM.
-   Era un requisito esplicito dall'inizio
-2. **§4 Verify** — tocca la sicurezza di ogni server appena il bot
-   viene invitato, ed è il modulo che protegge tutti gli altri
-3. **§7.3 Spam Trap** — ha già la specifica più dettagliata di tutto
-   il progetto (pronta all'implementazione, zero design da fare) ed
-   era una delle richieste più sentite nella conversazione originale
+Qualunque altra voce di `SPEC.md` è ugualmente legittima da scegliere
+— la lista completa con lo stato di ogni foglia è lì, non qui.
 
-Le note tecniche già preparate per il Sistema Gilde (§15.14) restano
-valide e sono conservate in `SPEC.md` insieme alla sua specifica.
+**Regola operativa fissata dall'utente**: le voci di `SPEC.md` non si
+cancellano mai. Si aggiorna solo il loro stato (`[ ]` → `[~]` → `[x]`)
+mano a mano che vengono completate, con la giustificazione del
+completamento — non un'eliminazione silenziosa della riga.

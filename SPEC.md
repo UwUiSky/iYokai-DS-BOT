@@ -40,14 +40,16 @@ file, non da un riassunto.**
 - `[x]` 1.2 Controllo stato attivazione modulo per server
 - `[ ]` 1.2 Evento `modules_updated` — il setup scrive sul DB ma non
   emette nessun evento; nessun consumatore lo ascolta
-- `[ ]` **1.3 Memory Guard — INTERA SOTTOSEZIONE MANCANTE**
-  - `[ ]` Monitoraggio RAM ogni 60 secondi (psutil)
-  - `[ ]` Garbage collection forzata su soglia
-  - `[ ]` Limitazione dimensione cache
-  - `[ ]` Distruzione VoiceClient inutilizzati
-  - `[ ]` Alert DM al proprietario al superamento soglia
-  - **Nota**: era un requisito esplicito e centrale (Oracle Free Tier,
-    RAM limitata). Zero righe scritte.
+- `[~]` **1.3 Memory Guard**
+  - `[x]` Monitoraggio RAM ogni 60 secondi (psutil) — `core/memory_guard.py`, letto per davvero con `psutil.Process().memory_info().rss`, verificato con un test che legge la RAM vera del processo di test (nessun mock)
+  - `[x]` Garbage collection forzata su soglia
+  - `[ ]` Limitazione dimensione cache — resta legata a §1.5 Cache
+    Layer, non ancora scritta
+  - `[x]` Distruzione VoiceClient inutilizzati (canale rimasto senza
+    membri umani)
+  - `[x]` Alert DM al proprietario al superamento soglia (con
+    cooldown di 30 minuti tra un alert e l'altro, per non spammare
+    l'owner ad ogni tick se la RAM resta alta)
 - `[x]` 1.4 Database Layer — pool asyncpg, localhost, query asincrone
 - `[ ]` 1.5 Cache Layer (LRU con dimensione massima)
 - `[~]` 1.6 Error Handler Globale — esiste per gli slash command
@@ -460,30 +462,35 @@ file, non da un riassunto.**
 
 # Conteggio sintetico
 
+Ricalcolato meccanicamente (script che conta i marcatori `[x]`/`[~]`/
+`[ ]` per sezione), non a occhio — così resta verificabile da chiunque
+rilancia lo stesso conteggio.
+
 | Sezione | Fatto | Parziale | Mancante |
 |---|---|---|---|
-| §1 Core | 5 | 3 | 8 |
+| §1 Core | 11 | 4 | 4 |
 | §2 Setup | 1 | 0 | 6 |
 | §3 Premium | 4 | 0 | 6 |
-| §4 Verify | 0 | 0 | 16 |
+| §4 Verify | 0 | 0 | 19 |
 | §5 Moderation | 8 | 0 | 4 |
 | §6 AutoMod | 2 | 0 | 12 |
-| §7 Security | 0 | 0 | ~35 |
-| §8 Logging | 4 | 1 | 13 |
+| §7 Security | 0 | 0 | 32 |
+| §8 Logging | 4 | 1 | 12 |
 | §9 Music | 0 | 0 | 12 |
 | §10 Alerts | 0 | 0 | 8 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
-| §13 Ticket | 8 | 0 | 5 |
+| §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 0 | 0 | 18 |
-| §15 Levels/Gilde | 7 | 0 | 20 |
+| §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
-| B/C/D/E | 0 | 0 | ~15 |
+| B/C/D/E | 0 | 0 | 14 |
+| **Totale** | **50** | **5** | **211** |
 
-**Totale approssimativo: ~46 voci fatte, ~4 parziali, ~215 mancanti.**
+Su 266 voci totali: **50 fatte, 5 parziali, 211 mancanti** — circa il
+19% dello schema. La base esistente (core parziale, moderazione,
+automod parziale, logging parziale, ticket, vocali temporanei,
+livelli/economia, memory guard) è solida e testata (228/228 test),
+ma resta una minoranza dello schema completo.
 
-Il lavoro svolto finora copre una base solida (core, moderazione,
-automod, logging base, ticket, vocali temporanei, livelli/economia)
-ma è circa **il 17-20% dello schema**, non "quasi tutto tranne le
-Gilde" come la roadmap riassunta faceva sembrare.
