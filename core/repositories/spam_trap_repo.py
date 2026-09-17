@@ -98,6 +98,24 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (guild_id, case_number)
         );
+
+        -- L'invito usato per entrare va catturato AL MOMENTO DEL
+        -- JOIN (via core/invite_tracker.py) perché al momento di un
+        -- eventuale ban, molto più tardi, non è più possibile
+        -- risalirci: la cache degli inviti nel frattempo è cambiata.
+        -- Una riga per join (non un semplice upsert per utente):
+        -- se un utente esce e rientra, ogni join ha il suo invito.
+        CREATE TABLE IF NOT EXISTS spam_trap_join_invites (
+            id                 SERIAL PRIMARY KEY,
+            guild_id           BIGINT NOT NULL,
+            user_id            BIGINT NOT NULL,
+            invite_code        TEXT,
+            invite_creator_id  BIGINT,
+            joined_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_spam_trap_join_invites_lookup
+            ON spam_trap_join_invites (guild_id, user_id, joined_at DESC);
         """
     )
 
@@ -223,6 +241,49 @@ class SpamTrapRepository:
             return int(result.split()[-1])
         except (ValueError, IndexError):
             return 0
+
+    # ================================================================
+    # Invito usato al join (catturato subito, letto molto più tardi)
+    # ================================================================
+    async def record_join_invite(
+        self,
+        guild_id: int,
+        user_id: int,
+        invite_code: str | None,
+        invite_creator_id: int | None,
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO spam_trap_join_invites (guild_id, user_id, invite_code, invite_creator_id)
+            VALUES ($1, $2, $3, $4)
+            """,
+            guild_id,
+            user_id,
+            invite_code,
+            invite_creator_id,
+        )
+
+    async def get_latest_join_invite(
+        self, guild_id: int, user_id: int
+    ) -> tuple[str | None, int | None] | None:
+        """
+        L'ultimo invito registrato per questo utente in questo
+        server (se è entrato più volte, quello del join più recente
+        — coerente con "l'invito con cui è entrato l'ultima volta",
+        che è il join rilevante per un ban che avviene ora).
+        """
+        row = await self._pool.fetchrow(
+            """
+            SELECT invite_code, invite_creator_id FROM spam_trap_join_invites
+            WHERE guild_id = $1 AND user_id = $2
+            ORDER BY joined_at DESC LIMIT 1
+            """,
+            guild_id,
+            user_id,
+        )
+        if row is None:
+            return None
+        return row["invite_code"], row["invite_creator_id"]
 
     # ================================================================
     # Appeal

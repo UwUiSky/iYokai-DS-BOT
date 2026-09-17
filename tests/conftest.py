@@ -114,6 +114,7 @@ async def clean_db(db_pool):
         "spam_trap_message_index",
         "spam_trap_appeals",
         "spam_trap_incidents",
+        "spam_trap_join_invites",
         "guild_config",
         "premium_whitelist",
         "premium_module_flags",

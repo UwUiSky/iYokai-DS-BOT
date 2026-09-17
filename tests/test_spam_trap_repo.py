@@ -206,3 +206,38 @@ async def test_create_incident_senza_invito(repo):
     incidente = await repo.get_incident_by_case(100, 1)
     assert incidente.invite_code is None
     assert incidente.invite_creator_id is None
+
+
+# ====================================================================
+# Invito al join
+# ====================================================================
+@pytest.mark.asyncio
+async def test_get_latest_join_invite_senza_join_restituisce_none(repo):
+    assert await repo.get_latest_join_invite(100, 1) is None
+
+
+@pytest.mark.asyncio
+async def test_record_e_get_latest_join_invite(repo):
+    await repo.record_join_invite(100, 1, invite_code="abc123", invite_creator_id=42)
+    risultato = await repo.get_latest_join_invite(100, 1)
+    assert risultato == ("abc123", 42)
+
+
+@pytest.mark.asyncio
+async def test_record_join_invite_senza_invito_determinato(repo):
+    # Corrisponde a diff_invite_uses() che ha restituito None (join
+    # da vanity URL o caso ambiguo).
+    await repo.record_join_invite(100, 1, invite_code=None, invite_creator_id=None)
+    risultato = await repo.get_latest_join_invite(100, 1)
+    assert risultato == (None, None)
+
+
+@pytest.mark.asyncio
+async def test_get_latest_join_invite_restituisce_il_piu_recente(repo):
+    # L'utente è entrato, uscito, e rientrato con un invito diverso:
+    # deve valere l'ULTIMO join, non il primo.
+    await repo.record_join_invite(100, 1, invite_code="vecchio", invite_creator_id=1)
+    await repo.record_join_invite(100, 1, invite_code="nuovo", invite_creator_id=2)
+
+    risultato = await repo.get_latest_join_invite(100, 1)
+    assert risultato == ("nuovo", 2)
