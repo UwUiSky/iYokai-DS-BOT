@@ -113,6 +113,16 @@ class Config:
     LAVALINK_PORT: int
     LAVALINK_PASSWORD: str
 
+    # --- Memory Guard --------------------------------------------------
+    # Soglia oltre la quale il Memory Guard forza una garbage
+    # collection e, se il consumo resta alto, avvisa il proprietario
+    # in DM (con cooldown — vedi core/memory_guard_logic.py). Ha un
+    # default (opzionale), quindi va DOPO tutti i campi obbligatori
+    # della dataclass — un default seguito da un campo senza default
+    # fa fallire la definizione della classe stessa (regola di
+    # dataclass, non specifica di questo progetto).
+    MEMORY_ALERT_THRESHOLD_MB: int = field(default=512)
+
     # --- Web panel (opzionali finché quel modulo non è attivo) -----------
     OAUTH2_CLIENT_ID: str = field(default="")
     OAUTH2_CLIENT_SECRET: str = field(default="")
@@ -157,6 +167,7 @@ def _load_config() -> Config:
         LAVALINK_HOST=_optional("LAVALINK_HOST", "127.0.0.1"),
         LAVALINK_PORT=_optional_int("LAVALINK_PORT", 2333),
         LAVALINK_PASSWORD=_optional("LAVALINK_PASSWORD", ""),
+        MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),
         OAUTH2_REDIRECT_URI=_optional("OAUTH2_REDIRECT_URI"),

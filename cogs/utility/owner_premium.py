@@ -185,6 +185,33 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
+    @owner_group.command(
+        name="memory-status",
+        description="[OWNER] Mostra il consumo di RAM attuale del processo.",
+    )
+    async def memory_status(self, interaction: discord.Interaction) -> None:
+        # Vive in questo file (nominalmente "premium") e non in un
+        # proprio file dedicato per un motivo tecnico, non di
+        # comodità: app_commands.Group con lo stesso nome "owner"
+        # registrato da due cog diversi verrebbe rifiutato da
+        # discord.py come comando duplicato. Finché il progetto ha un
+        # solo gruppo /owner, i comandi owner-only condividono questo
+        # file — da riorganizzare se/quando il gruppo crescerà troppo.
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        from core.memory_guard import memory_guard
+        from core.memory_guard_logic import format_memory_status
+
+        rss = memory_guard.read_rss_bytes()
+        await interaction.response.send_message(
+            format_memory_status(rss, config.MEMORY_ALERT_THRESHOLD_MB),
+            ephemeral=True,
+        )
+
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(OwnerPremiumCog(bot))

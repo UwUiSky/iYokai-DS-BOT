@@ -31,6 +31,7 @@ from core.config import config
 from core.database import db
 from core.cog_manager import load_all_cogs
 from core.scheduler import scheduler
+from core.memory_guard import memory_guard
 from core.premium import handle_app_command_error
 
 
@@ -110,6 +111,11 @@ class iYokaiBot(commands.AutoShardedBot):
         # registrati — l'ordine qui è per chiarezza, non per un bug
         # reale da evitare.
         scheduler.start(self)
+
+        # Memory Guard: monitoraggio RAM, GC forzato, alert DM,
+        # pulizia VoiceClient inattivi. Stesso pattern dello
+        # scheduler — un servizio bot-wide, non legato a un cog.
+        memory_guard.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync
