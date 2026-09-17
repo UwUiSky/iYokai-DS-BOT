@@ -7,6 +7,7 @@ solo per la parte nuova.
 """
 
 import discord
+import logging
 import pytest
 
 from main import iYokaiBot
@@ -20,6 +21,39 @@ def test_iyokaibot_si_istanzia_senza_eccezioni():
     assert bot.tree.on_error is not None
     # Il dizionario di cooldown per on_error parte vuoto.
     assert bot._last_error_alert_at == {}
+
+
+def test_setup_logging_scrive_davvero_un_file_json_valido():
+    # Integrazione reale, non solo unit test del formatter isolato
+    # (già in tests/test_json_log_formatter.py): chiama la funzione
+    # vera di main.py, logga qualcosa con un logger qualsiasi, e
+    # legge il file JSON scritto su disco.
+    import json
+    from pathlib import Path
+    from main import setup_logging
+
+    setup_logging()
+
+    logger_di_prova = logging.getLogger("test.setup_logging.integrazione")
+    marcatore = "marcatore-unico-9f3a21"
+    logger_di_prova.info("riga di prova con marcatore %s", marcatore)
+
+    # Forza lo scaricamento su disco di tutti gli handler del file
+    # (RotatingFileHandler bufferizza a livello di sistema operativo,
+    # non serve altro, ma flush esplicito non fa mai male in un test).
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+
+    log_path = Path(__file__).parent.parent / "logs" / "iyokai.log"
+    assert log_path.exists()
+
+    contenuto = log_path.read_text(encoding="utf-8")
+    righe_con_marcatore = [r for r in contenuto.splitlines() if marcatore in r]
+    assert len(righe_con_marcatore) >= 1
+
+    parsed = json.loads(righe_con_marcatore[-1])
+    assert parsed["message"] == f"riga di prova con marcatore {marcatore}"
+    assert parsed["logger"] == "test.setup_logging.integrazione"
 
 
 class _FakeUser:

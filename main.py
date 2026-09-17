@@ -24,6 +24,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -35,19 +37,43 @@ from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.premium import handle_app_command_error
 from core.error_handler_logic import should_alert_owner
+from core.json_log_formatter import JSONFormatter
 
 
 def setup_logging() -> None:
     """
-    Log strutturato su stdout. Su Oracle, se il bot gira sotto
-    systemd, questi finiscono automaticamente in `journalctl`.
+    Due destinazioni contemporanee per ogni riga di log, non una in
+    sostituzione dell'altra:
+    - stdout, formato testuale leggibile — quello che `journalctl`
+      cattura se il bot gira sotto systemd, comodo per un controllo
+      rapido dal terminale
+    - `logs/iyokai.log`, formato JSON strutturato con rotazione
+      (`core/json_log_formatter.py`) — interrogabile da strumenti
+      (grep su un campo specifico, un futuro dashboard), con la
+      dimensione tenuta sotto controllo dalla rotazione invece di
+      crescere all'infinito
     """
     level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
     )
+
+    log_dir = Path(__file__).parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    file_handler = RotatingFileHandler(
+        log_dir / "iyokai.log",
+        maxBytes=10 * 1024 * 1024,  # 10 MB per file
+        backupCount=5,               # fino a 5 file precedenti conservati
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(JSONFormatter())
+
+    logging.basicConfig(level=level, handlers=[console_handler, file_handler], force=True)
 
 
 logger = logging.getLogger("iyokai.main")
