@@ -209,6 +209,46 @@ Ultimo aggiornamento: **17 settembre 2026**
 
 **Suite di test completa: 150/150 passano.**
 
+### Fase 8 — Livelli / Economy / Classifiche — COMPLETA (Gilde ancora da fare)
+- [x] `core/leveling_logic.py` — logica pura: XP testuale (cooldown
+  anti-spam), XP vocale (idoneità anti-farm + conteggio con
+  azzeramento a 2 ore e cap giornaliero, regole già decise), formula
+  di livello, cooldown daily/work. **39 test**
+- [x] **Design del reset mensile: nessun reset.** Ogni guadagno è
+  registrato per periodo (`period_key()`, es. "2026-09") invece che
+  in un contatore azzerato da un job schedulato — un nuovo mese è
+  semplicemente un nuovo periodo senza righe, niente cron che può
+  fallire silenziosamente e bloccare la classifica
+- [x] `core/repositories/leveling_repo.py` — `leveling_totals`
+  (stato vivo, XP/coin cumulativi, livello, cooldown) +
+  `leveling_activity` (una riga per periodo, base della classifica
+  mensile). Transazioni con `FOR UPDATE` per XP testuale/vocale,
+  trasferimento coin atomico con controllo saldo (mai negativo).
+  **19 test contro PostgreSQL reale**
+- [x] **Bug reale trovato dal database vero, non da un mock**:
+  `VALUES ($1, $2, -$3)` in `transfer_coins()` falliva con
+  `AmbiguousFunctionError` — Postgres non riesce a dedurre il tipo
+  della negazione di un parametro non tipizzato in quel contesto.
+  Risolto passando il valore già negativo da Python
+- [x] `cogs/leveling/leveling.py` — XP testuale via `on_message`
+  (verificato: NON richiede il Message Content Intent, quel
+  privilegio riguarda solo se il contenuto è popolato, non se
+  l'evento scatta), XP vocale via task periodico ogni 60s (non un
+  listener sull'evento — l'XP va accumulato minuto per minuto per
+  tutta la permanenza, non solo a ingresso/uscita), `/rank`,
+  `/balance`, `/daily`, `/work`, `/pay`, `/leaderboard`
+  (xp/coin × mensile/all-time)
+- [x] Un errore nel calcolo per un singolo server non interrompe il
+  giro per gli altri (try/except per-guild dentro il loop periodico)
+
+**Ancora da fare in questa fase**: il Sistema Gilde/Clan, che si
+appoggia sopra questo sistema di economia — vedi lo schema di
+progetto per la specifica completa (ruoli Capo Clan/Admin Clan pari
+tra gilde diverse, tesoreria, acquisto canali con costo raddoppiato
+e requisito ore vocali scalabile ×4). Non incluso in questa fase.
+
+**Suite di test completa: 209/209 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -292,7 +332,8 @@ quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
 
 Nell'ordine di sviluppo concordato:
 
-1. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+1. **Sistema Gilde/Clan** — si appoggia sopra Livelli/Economy appena
+   completato (vedi nota nella sezione Fatto qui sopra)
 2. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
 3. Richiesta di **verifica Discord** a ~90 server, con il set
@@ -421,23 +462,30 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Livelli / Economy / Classifiche** (punto 1 di "Non ancora
-iniziato"), propedeutico al Sistema Gilde che va sopra. Nell'ordine
-naturale di costruzione:
+**Sistema Gilde/Clan** (punto 1 di "Non ancora iniziato"), sopra il
+sistema di economia appena completato. Punti della specifica (vedi lo
+schema di progetto) su cui prestare attenzione particolare:
 
-1. XP testuale e vocale (con l'anti-farm già deciso: niente XP se
-   `self_deaf`, niente XP se soli nel canale, azzeramento dopo 2 ore
-   consecutive nello stesso canale, cap giornaliero — vedi § Decisioni)
-2. Economy di base (daily, work, shop, pay, leaderboard)
-3. Classifiche mensili (con reset) e totali, top 3 membri
-4. Solo dopo che questo è stabile: il Sistema Gilde sopra, con la
-   numerazione/tesoreria che riuserà lo stesso pattern di contatore
-   atomico già usato tre volte (moderation_repo, ticket_repo — vedi
-   quei file per il modello: UPSERT in transazione, mai
-   SELECT-poi-UPDATE)
-
-Per l'XP vocale serve un listener `on_voice_state_update` — questo
-cog condivide l'evento con `cogs/voice_temp/voice_temp.py`, che è
-normale (discord.py invia lo stesso evento a tutti i cog che lo
-ascoltano): ricordarsi comunque il controllo `bot.extra_events` nello
-smoke test, come per gli altri moduli con listener.
+- **Ruoli Capo Clan / Admin Clan pari tra gilde diverse**: Discord
+  non permette due ruoli alla stessa posizione gerarchica esatta —
+  un solo ruolo "Capo Clan" condiviso da tutti i capiclan (e uno
+  "Admin Clan"), con i permessi REALI dati come overwrite per-utente
+  sulla categoria della propria gilda, non tramite posizione del
+  ruolo. Deciso e documentato in § Decisioni prese
+- **Tesoreria di gilda + acquisto canali**: stesso pattern di
+  contatore/transazione atomica già usato quattro volte nel progetto
+  (moderation_repo, ticket_repo, e ora leveling_repo per i coin) —
+  riusarlo, non reinventarlo
+- **Costo canali raddoppiato + requisito ore vocali ×4 dal 4°
+  canale**: l'XP vocale già tracciato da `leveling_repo` (via
+  `voice_consecutive_minutes`/`voice_minutes_today`) NON è la stessa
+  cosa delle "ore vocali IN GILDA" richieste per l'acquisto canali —
+  serve un conteggio separato per canali-di-gilda specificamente,
+  probabilmente in una nuova tabella dedicata alle gilde, non
+  riadattando leveling_totals
+- **Guadagno ×2 nei canali di gilda**: il moltiplicatore si applica
+  quando l'attività (testuale o vocale) avviene DENTRO la categoria
+  della gilda — serve sapere quali canali appartengono a quale gilda,
+  quindi una tabella `guild_clans` (o simile) con la categoria
+  associata, controllata sia da `on_message` sia dal task periodico
+  vocale già esistenti in `cogs/leveling/leveling.py`
