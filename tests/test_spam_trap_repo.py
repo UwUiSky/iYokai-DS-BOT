@@ -176,6 +176,7 @@ async def test_create_e_get_incident(repo):
         invite_code="abc123",
         invite_creator_id=42,
         deleted_count_by_channel={"general": 5, "memes": 3},
+        transcript_html="<html>...</html>",
     )
     assert isinstance(incident_id, int)
 
@@ -185,6 +186,7 @@ async def test_create_e_get_incident(repo):
     assert incidente.invite_code == "abc123"
     assert incidente.invite_creator_id == 42
     assert incidente.deleted_count_by_channel == {"general": 5, "memes": 3}
+    assert incidente.transcript_html == "<html>...</html>"
 
 
 @pytest.mark.asyncio
@@ -206,6 +208,24 @@ async def test_create_incident_senza_invito(repo):
     incidente = await repo.get_incident_by_case(100, 1)
     assert incidente.invite_code is None
     assert incidente.invite_creator_id is None
+
+
+@pytest.mark.asyncio
+async def test_create_incident_transcript_html_e_opzionale(repo):
+    # transcript_html non passato esplicitamente: deve restare NULL,
+    # non far fallire l'inserimento (il ban avviene subito, il
+    # transcript può essere generato e collegato in un secondo
+    # momento se qualcosa va storto nella generazione).
+    await repo.create_incident(
+        guild_id=100,
+        case_number=1,
+        trapped_content="x",
+        invite_code=None,
+        invite_creator_id=None,
+        deleted_count_by_channel={},
+    )
+    incidente = await repo.get_incident_by_case(100, 1)
+    assert incidente.transcript_html is None
 
 
 # ====================================================================

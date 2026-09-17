@@ -46,6 +46,7 @@ class SpamTrapIncident:
     invite_code: str | None
     invite_creator_id: int | None
     deleted_count_by_channel: dict[str, int]
+    transcript_html: str | None
     created_at: datetime
 
 
@@ -95,9 +96,16 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             invite_code              TEXT,
             invite_creator_id        BIGINT,
             deleted_count_by_channel JSONB NOT NULL DEFAULT '{}'::jsonb,
+            transcript_html          TEXT,
             created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (guild_id, case_number)
         );
+
+        -- Se la tabella esisteva già da prima di questa colonna
+        -- (stesso pattern già usato per guild_config.settings):
+        -- aggiunta sicura da rieseguire ad ogni avvio.
+        ALTER TABLE spam_trap_incidents
+            ADD COLUMN IF NOT EXISTS transcript_html TEXT;
 
         -- L'invito usato per entrare va catturato AL MOMENTO DEL
         -- JOIN (via core/invite_tracker.py) perché al momento di un
@@ -318,13 +326,14 @@ class SpamTrapRepository:
         invite_code: str | None,
         invite_creator_id: int | None,
         deleted_count_by_channel: dict[str, int],
+        transcript_html: str | None = None,
     ) -> int:
         row = await self._pool.fetchrow(
             """
             INSERT INTO spam_trap_incidents
                 (guild_id, case_number, trapped_content, invite_code,
-                 invite_creator_id, deleted_count_by_channel)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+                 invite_creator_id, deleted_count_by_channel, transcript_html)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
             RETURNING id
             """,
             guild_id,
@@ -333,6 +342,7 @@ class SpamTrapRepository:
             invite_code,
             invite_creator_id,
             json.dumps(deleted_count_by_channel),
+            transcript_html,
         )
         return row["id"]
 
@@ -342,7 +352,7 @@ class SpamTrapRepository:
         row = await self._pool.fetchrow(
             """
             SELECT id, guild_id, case_number, trapped_content, invite_code,
-                   invite_creator_id, deleted_count_by_channel, created_at
+                   invite_creator_id, deleted_count_by_channel, transcript_html, created_at
             FROM spam_trap_incidents WHERE guild_id = $1 AND case_number = $2
             """,
             guild_id,
@@ -358,6 +368,7 @@ class SpamTrapRepository:
             invite_code=row["invite_code"],
             invite_creator_id=row["invite_creator_id"],
             deleted_count_by_channel=json.loads(row["deleted_count_by_channel"]),
+            transcript_html=row["transcript_html"],
             created_at=row["created_at"],
         )
 
