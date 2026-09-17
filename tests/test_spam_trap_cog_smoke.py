@@ -71,4 +71,5 @@ def test_staff_reply_modal_si_istanzia_correttamente():
     assert modal.title == "Reply to user"
     assert modal.user_id == 42
     assert len(modal.children) == 1
-    assert isinstance(modal.children[0], discord.ui.TextInput)
+    assert isinstance(modal.children[0], discord.ui.Label)
+    assert isinstance(modal.children[0].component, discord.ui.TextInput)

@@ -180,10 +180,16 @@ class AppealActionsView(discord.ui.View):
 
 
 class StaffReplyModal(discord.ui.Modal, title="Reply to user"):
-    message_text: discord.ui.TextInput = discord.ui.TextInput(
-        label="Your message",
-        style=discord.TextStyle.paragraph,
-        max_length=1500,
+    # discord.ui.Label che avvolge il TextInput è il pattern corretto
+    # e non deprecato (TextInput.label= è deprecato a favore di
+    # questo — verificato con discord.py 2.7.1 prima di scrivere
+    # questo file: TextInput.label produce un DeprecationWarning
+    # reale, non solo teorico). Il valore digitato si legge da
+    # message_label.component.value in on_submit, non da un
+    # attributo TextInput separato.
+    message_label = discord.ui.Label(
+        text="Your message",
+        component=discord.ui.TextInput(style=discord.TextStyle.paragraph, max_length=1500),
     )
 
     def __init__(self, user_id: int) -> None:
@@ -193,7 +199,7 @@ class StaffReplyModal(discord.ui.Modal, title="Reply to user"):
     async def on_submit(self, interaction: discord.Interaction) -> None:
         try:
             user = await interaction.client.fetch_user(self.user_id)
-            await user.send(f"**Staff reply:** {self.message_text.value}")
+            await user.send(f"**Staff reply:** {self.message_label.component.value}")
             await interaction.response.send_message("Message sent.", ephemeral=True)
         except discord.HTTPException:
             await interaction.response.send_message(
