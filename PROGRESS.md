@@ -179,6 +179,36 @@ Ultimo aggiornamento: **17 settembre 2026**
 
 **Suite di test completa: 127/127 passano.**
 
+### Fase 7 — Vocali temporanei — COMPLETA
+- [x] `core/voice_temp_logic.py` — logica pura delle decisioni
+  (ingresso nel generatore, canale vuoto da eliminare, chi può
+  gestire un canale). **11 test**
+- [x] `core/repositories/voice_temp_repo.py` — configurazione per
+  server (canale generatore, categoria), canali tracciati con
+  proprietario, trasferimento proprietà. **10 test contro
+  PostgreSQL reale**
+- [x] `cogs/voice_temp/voice_temp.py` — `/voicetemp-setup`,
+  `/voicetemp-panel`, gruppo `/voice` (rename, limit, lock, unlock,
+  kick, transfer). Modalità automatica (listener
+  `on_voice_state_update` sul canale generatore) e modalità manuale
+  (bottone persistente), **entrambe sempre visibili**, come da
+  decisione già presa
+- [x] `CreateVoiceView` — persistente, stesso pattern di
+  `TicketPanelView`, verificato con `view.is_persistent()`
+- [x] Eliminazione automatica quando il canale resta vuoto: il
+  cleanup gira anche se il modulo viene disattivato nel frattempo,
+  per non lasciare canali orfani
+- [x] **Bug reale trovato e corretto rileggendo il proprio codice
+  prima di testare**: il controllo iniziale dei comandi `/voice`
+  verificava se `interaction.channel` (da dove il comando viene
+  digitato, tipicamente testuale) fosse un `VoiceChannel` — controllo
+  senza senso, dato che ciò che conta è il canale a cui l'UTENTE è
+  connesso (`interaction.user.voice.channel`), non da dove lancia lo
+  slash command. Corretto prima di scrivere i test, non dopo un
+  fallimento
+
+**Suite di test completa: 150/150 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -262,20 +292,18 @@ quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
 
 Nell'ordine di sviluppo concordato:
 
-1. **Vocali temporanei** — modalità automatica + manuale, sempre
-   entrambe visibili (vedi decisione in `PROGRESS.md` § Decisioni)
-2. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
-3. **Spam Trap** — la specifica è già completa e dettagliata (vedi
+1. **Livelli / Economy / Classifiche**, poi **Gilde** sopra
+2. **Spam Trap** — la specifica è già completa e dettagliata (vedi
    § Decisioni prese, punto Spam Trap), va solo implementata
-4. Richiesta di **verifica Discord** a ~90 server, con il set
-   "pulito" (moduli 1-3)
-5. **Music** (5 istanze + Lavalink)
-6. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
-7. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
-8. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
-9. **NSFW** (iYokai NSFW, applicazione separata)
-10. **iYokai Desktop** (presence via RPC locale)
-11. **iYokai Panel** (web, verify avanzato, OAuth2)
+3. Richiesta di **verifica Discord** a ~90 server, con il set
+   "pulito" (moduli 1-2)
+4. **Music** (5 istanze + Lavalink)
+5. **Alert social** (Twitch EventSub, YouTube PubSubHubbub)
+6. **Security Suite completa** (Anti-Raid avanzato, Anti-Nuke)
+7. **Backup** (iYokai Creator + snapshot + mirror in tempo reale)
+8. **NSFW** (iYokai NSFW, applicazione separata)
+9. **iYokai Desktop** (presence via RPC locale)
+10. **iYokai Panel** (web, verify avanzato, OAuth2)
 
 ---
 
@@ -393,20 +421,23 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Vocali temporanei** (punto 1 di "Non ancora iniziato"): modalità
-automatica (canale generatore -> crea e sposta) + modalità manuale
-(pannello con bottone, nessuno spostamento forzato), entrambe SEMPRE
-visibili a tutti indipendentemente dalla piattaforma (decisione già
-presa, vedi § Decisioni prese più sopra — i problemi di disconnessione
-su spostamento forzato riguardano sia PlayStation sia mobile).
+**Livelli / Economy / Classifiche** (punto 1 di "Non ancora
+iniziato"), propedeutico al Sistema Gilde che va sopra. Nell'ordine
+naturale di costruzione:
 
-Il bottone "Crea canale vocale" della modalità manuale è un altro
-caso di pannello a vita lunga: **richiede una view persistente**,
-esattamente come `TicketPanelView` in `cogs/tickets/tickets.py` — non
-riscoprire il problema da capo, riusare lo stesso pattern
-(`timeout=None`, `custom_id` esplicito, `bot.add_view()` in `setup()`).
+1. XP testuale e vocale (con l'anti-farm già deciso: niente XP se
+   `self_deaf`, niente XP se soli nel canale, azzeramento dopo 2 ore
+   consecutive nello stesso canale, cap giornaliero — vedi § Decisioni)
+2. Economy di base (daily, work, shop, pay, leaderboard)
+3. Classifiche mensili (con reset) e totali, top 3 membri
+4. Solo dopo che questo è stabile: il Sistema Gilde sopra, con la
+   numerazione/tesoreria che riuserà lo stesso pattern di contatore
+   atomico già usato tre volte (moderation_repo, ticket_repo — vedi
+   quei file per il modello: UPSERT in transazione, mai
+   SELECT-poi-UPDATE)
 
-La modalità automatica invece userà un listener `on_voice_state_update`
-per rilevare l'ingresso nel canale generatore — ricordarsi il
-controllo `bot.extra_events` nello smoke test, come per
-`cogs/logging/basic_logs.py`.
+Per l'XP vocale serve un listener `on_voice_state_update` — questo
+cog condivide l'evento con `cogs/voice_temp/voice_temp.py`, che è
+normale (discord.py invia lo stesso evento a tutti i cog che lo
+ascoltano): ricordarsi comunque il controllo `bot.extra_events` nello
+smoke test, come per gli altri moduli con listener.
