@@ -79,6 +79,9 @@ async def clean_db(db_pool):
     from core.repositories.leveling_repo import (
         run_migrations as leveling_migrations,
     )
+    from core.repositories.spam_trap_repo import (
+        run_migrations as spam_trap_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -90,6 +93,7 @@ async def clean_db(db_pool):
     await ticket_migrations(db_pool)
     await voice_temp_migrations(db_pool)
     await leveling_migrations(db_pool)
+    await spam_trap_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -106,6 +110,10 @@ async def clean_db(db_pool):
         "voice_temp_channels",
         "leveling_totals",
         "leveling_activity",
+        "spam_trap_config",
+        "spam_trap_message_index",
+        "spam_trap_appeals",
+        "spam_trap_incidents",
         "guild_config",
         "premium_whitelist",
         "premium_module_flags",

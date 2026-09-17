@@ -167,6 +167,11 @@ class Database:
         )
         await leveling_migrations(self.pool)
 
+        from core.repositories.spam_trap_repo import (
+            run_migrations as spam_trap_migrations,
+        )
+        await spam_trap_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
