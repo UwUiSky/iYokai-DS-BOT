@@ -328,87 +328,48 @@ quello dall'attuale per isolare l'altrui, poi unisci con il nuovo tuo.
 
 ---
 
-## ⚠️ Nota — riconciliazione con lo schema ultra-esteso (17 settembre 2026)
+## 🚧 Cosa manca → vedi SPEC.md
 
-La lista sotto era stata compressa dalla propria roadmap invece che
-mantenuta allineata allo schema ultra-esteso di progetto (quello con
-le sezioni numerate 1-17). Nella compressione due categoria intere
-sono sparite SENZA essere segnalate come rimandate — non erano una
-scelta, erano una dimenticanza:
+**La lista di cosa resta da fare NON vive più in questo file.**
 
-- **Verify + Fingerprint + Anti-Alt** (sezione 4 dello schema) — il
-  sistema di verifica dei NUOVI MEMBRI che entrano in un server
-  (captcha/bottone, controllo età account, fingerprint anti-alt).
-  Da NON confondere con "la verifica Discord a ~90 server" più sotto
-  in questa lista, che è tutt'altra cosa: quella è la REVIEW
-  dell'applicazione da parte di Discord stessa, un processo separato.
-  I due nomi si assomigliavano ed è probabilmente per questo che uno
-  ha coperto l'altro nella mia testa.
-- **Utility & Server Management** (sezione 14 dello schema) — reaction
-  roles, welcome/goodbye, autoresponder, richiesta comandi custom,
-  snipe/editsnipe, ghost ping detection, sticky messages, suggestion
-  system, poll, reminder. Un'intera categoria, mai scritta e mai
-  nemmeno elencata come pendente.
+È in **[`SPEC.md`](SPEC.md)**, che contiene lo schema originale
+trascritto foglia per foglia con lo stato reale verificato contro il
+codice, non contro un riassunto.
 
-La lista qui sotto è ricostruita punto per punto contro lo schema
-originale, con riferimento esplicito al numero di sezione. Le fasi
-già segnate "COMPLETA" più sopra in questo file restano tali per
-quello che coprono, ma ora hanno anche annotato esplicitamente cosa
-NON coprono ancora, sezione per sezione.
+### Perché è stato spostato
 
----
+Questo file conteneva una roadmap che io (Claude) avevo *derivato*
+dallo schema originale, riassumendolo. Quella compressione ha fatto
+sparire senza segnalarle:
 
-## 🚧 Non ancora iniziato
+- **§4 Verify + Fingerprint + Anti-Alt** — intera sezione
+- **§7 Security Suite** (Anti-Raid, Anti-Nuke, Spam Trap, Permission
+  Auditor, Security Score) — intera sezione
+- **§14 Utility & Server Management** (reaction roles, welcome,
+  autoresponder, custom command request, snipe, sticky, suggestion,
+  poll, reminder…) — intera sezione
+- **§16 Fun & Immagini** — intera sezione
+- **§1.3 Memory Guard** — requisito centrale del progetto (Oracle
+  Free Tier), mai scritto
+- **B. iYokai Application** (user-installable) — mai tracciata
+- e decine di foglie dentro sezioni che avevo segnato "COMPLETA"
 
-Riferimenti tra parentesi = numero di sezione nello schema ultra-esteso.
+Peggio: quando l'utente me l'ha fatto notare, per tre volte di fila
+ho "verificato" ricostruendo a memoria invece di rileggere lo schema,
+trovando ogni volta un insieme diverso di buchi. La causa non era la
+singola dimenticanza, era **aver usato un riassunto come fonte di
+verità**.
 
-**Categorie mai iniziate:**
-1. **Verify + Fingerprint + Anti-Alt** (schema §4) — verify base
-   (button/captcha/età account), verify avanzato (richiede Web Panel,
-   IP/ISP/fingerprint — vedi § Decisioni per i limiti GDPR già
-   discussi), sistema anti-alt con matching fingerprint
-2. **Utility & Server Management** (schema §14) — reaction/button/
-   select roles, welcome/goodbye/boost messages, autoresponder,
-   custom command request (già progettato nella conversazione
-   originale: modal → invio nel canale #suggestions del server
-   principale), snipe/editsnipe/reactionsnipe, ghost ping detection,
-   sticky messages, suggestion system, poll, reminder/scheduled
-   messages
-3. **Sistema Gilde/Clan** (schema §15.5) — si appoggia sopra
-   Livelli/Economy già completato; vedi le quattro note tecniche già
-   lasciate in fondo a questo file prima di questa riconciliazione
-4. **Spam Trap** (schema §7.3) — specifica già completa e dettagliata
-   (vedi § Decisioni prese)
-5. **Security Suite** oltre lo Spam Trap (schema §7.1-7.2, 7.4-7.5) —
-   Anti-Raid avanzato, Anti-Nuke, Permission Auditor, Security Score
-6. **Music** (schema §9, 5 istanze + Lavalink)
-7. **Alert social** (schema §10, Twitch EventSub, YouTube PubSubHubbub)
-8. **Backup** (schema §11, iYokai Creator + snapshot + mirror)
-9. **NSFW** (schema §16.2, iYokai NSFW, applicazione separata)
-10. **Owner/Global Admin completo** (schema §17) — oggi c'è solo la
-    gestione premium; mancano eval/exec, blacklist globale, forced
-    cog load/unload, annuncio globale, statistiche globali del bot
-11. **iYokai Desktop** (presence via RPC locale)
-12. **iYokai Panel** (web, verify avanzato, OAuth2)
-13. Richiesta di **review dell'applicazione presso Discord** (il
-    processo di verifica per superare i 100 server — NON il modulo
-    Verify del punto 1, nome diverso apposta da qui in avanti per
-    evitare la stessa confusione)
+### Regola da qui in avanti
 
-**Sotto-parti mancanti in fasi già segnate "COMPLETA" più sopra:**
-- **Moderation** (schema §5): manca softban, manca mute via ruolo
-  (oggi c'è solo timeout nativo, che copre la maggior parte dei casi
-  d'uso ma non è la stessa cosa)
-- **AutoMod** (schema §6): manca anti-caps, anti-zalgo,
-  anti-mass-mention, anti-attachment-spam, filtri per canale/ruolo
-  lato bot (oggi solo badword+invite via AutoMod nativo di Discord)
-- **Logging** (schema §8): mancano canali, inviti, webhook,
-  emoji/sticker/soundboard, aggiornamenti server. Message
-  delete/edit restano correttamente rimandati (serve il Message
-  Content Intent, richiesto solo quando un modulo lo giustifica
-  davvero — vedi § Decisioni)
-- **Ticket System** (schema §13): manca il transcript automatico e
-  le statistiche
+Ogni sessione parte da `SPEC.md`. Le fasi marcate "COMPLETA" qui
+sotto restano valide **solo per le voci che SPEC.md segna `[x]`** —
+diverse di esse hanno foglie ancora mancanti, elencate lì.
+
+Stato reale a colpo d'occhio: **~46 voci fatte su ~265**, cioè circa
+il 17-20% dello schema. La base (core, moderazione, automod, logging
+base, ticket, vocali temporanei, livelli/economia) è solida e
+testata, ma non è "quasi tutto tranne le Gilde".
 
 ---
 
@@ -511,51 +472,38 @@ stato scartato per un limite tecnico specifico.
 
 ---
 
-## 🗂️ Le 8 applicazioni Discord del progetto
+## 🗂️ Le applicazioni Discord del progetto
 
-| # | Nome | Repository | Note |
-|---|---|---|---|
-| 1 | iYokai Main | **questa repo** | Core, deve passare la verifica a 100 server |
-| 2 | iYokai Creator | da creare | Sempre sotto i 10 server |
-| 3-7 | iYokai Music #1-5 | da creare | Una connessione vocale ciascuno |
-| 8 | iYokai NSFW | da creare | Isolata per non appesantire la review del core |
-| — | iYokai Desktop | da creare | App locale, RPC, no user token |
-| — | iYokai Panel | da creare | Web, verify avanzato + OAuth2 |
+| Nome | Stato | Note |
+|---|---|---|
+| iYokai Main | **in sviluppo (questa repo)** | Core. Deve passare la review Discord per superare i 100 server |
+| iYokai Creator | da creare | Backup: crea server, cede ownership, esce. Sempre sotto i 10 server |
+| iYokai Music #1-5 | da creare | Una connessione vocale ciascuna |
+| iYokai NSFW | da creare | Isolata per non appesantire la review del core |
+| **iYokai Application** | **da creare** | User-installable (`USER_INSTALL`): comandi in qualsiasi server/DM. **Era stata omessa da questa tabella** |
+| iYokai Desktop | da creare | App locale, presence via RPC IPC, nessun user token |
+| iYokai Panel | da creare | Web: verify avanzato, OAuth2, dashboard owner |
 
 ---
 
 ## 🔜 Prossimo passo concreto
 
-**Aperto — decisione da prendere insieme all'utente**, non presa
-unilateralmente qui: la riconciliazione appena fatta ha aggiunto due
-categorie intere (Verify, Utility & Server Management) che prima non
-comparivano nemmeno come pendenti. Cambiano le priorità rispetto a
-quanto assunto in precedenza.
+**Da decidere con l'utente.** Con il quadro reale ora visibile in
+`SPEC.md` (~215 voci mancanti), l'ordine delle priorità è una scelta
+sua, non un default da assumere.
 
-Le note tecniche già pronte per il Sistema Gilde/Clan (che restava il
-prossimo passo prima di questa riconciliazione) restano valide e
-sono conservate qui sotto per quando toccherà a lui:
+Tre candidati con motivazioni diverse, se serve un punto di partenza
+per la discussione:
 
-- **Ruoli Capo Clan / Admin Clan pari tra gilde diverse**: Discord
-  non permette due ruoli alla stessa posizione gerarchica esatta —
-  un solo ruolo "Capo Clan" condiviso da tutti i capiclan (e uno
-  "Admin Clan"), con i permessi REALI dati come overwrite per-utente
-  sulla categoria della propria gilda, non tramite posizione del
-  ruolo. Deciso e documentato in § Decisioni prese
-- **Tesoreria di gilda + acquisto canali**: stesso pattern di
-  contatore/transazione atomica già usato quattro volte nel progetto
-  (moderation_repo, ticket_repo, e ora leveling_repo per i coin) —
-  riusarlo, non reinventarlo
-- **Costo canali raddoppiato + requisito ore vocali ×4 dal 4°
-  canale**: l'XP vocale già tracciato da `leveling_repo` (via
-  `voice_consecutive_minutes`/`voice_minutes_today`) NON è la stessa
-  cosa delle "ore vocali IN GILDA" richieste per l'acquisto canali —
-  serve un conteggio separato per canali-di-gilda specificamente,
-  probabilmente in una nuova tabella dedicata alle gilde, non
-  riadattando leveling_totals
-- **Guadagno ×2 nei canali di gilda**: il moltiplicatore si applica
-  quando l'attività (testuale o vocale) avviene DENTRO la categoria
-  della gilda — serve sapere quali canali appartengono a quale gilda,
-  quindi una tabella `guild_clans` (o simile) con la categoria
-  associata, controllata sia da `on_message` sia dal task periodico
-  vocale già esistenti in `cogs/leveling/leveling.py`
+1. **§1.3 Memory Guard** — è il più piccolo dei tre e il più urgente
+   in senso infrastrutturale: il progetto gira su Oracle Free Tier e
+   oggi non c'è nessuna protezione né visibilità sul consumo di RAM.
+   Era un requisito esplicito dall'inizio
+2. **§4 Verify** — tocca la sicurezza di ogni server appena il bot
+   viene invitato, ed è il modulo che protegge tutti gli altri
+3. **§7.3 Spam Trap** — ha già la specifica più dettagliata di tutto
+   il progetto (pronta all'implementazione, zero design da fare) ed
+   era una delle richieste più sentite nella conversazione originale
+
+Le note tecniche già preparate per il Sistema Gilde (§15.14) restano
+valide e sono conservate in `SPEC.md` insieme alla sua specifica.

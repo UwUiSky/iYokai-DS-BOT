@@ -13,8 +13,12 @@
 ## 📌 Stato del progetto
 
 > Lo stato dettagliato, aggiornato ad ogni sessione di lavoro, vive in
-> **[`PROGRESS.md`](PROGRESS.md)** — leggilo per sapere esattamente a che
-> punto siamo arrivati e cosa manca.
+> **[`SPEC.md`](SPEC.md)** — la specifica completa, foglia per foglia,
+> con lo stato reale di ogni singola voce. **È la fonte di verità del
+> progetto**: ogni sessione di lavoro parte da qui.
+>
+> **[`PROGRESS.md`](PROGRESS.md)** — cronologia di cosa è stato fatto,
+> decisioni tecniche vincolanti e bug noti da non reintrodurre.
 
 **Fase attuale:** `0 — Fondamenta` (core system, database, premium framework)
 
@@ -61,7 +65,8 @@ iYokai-DS-BOT/
 │       └── owner_premium.py              # /owner premium-list, premium-toggle, whitelist
 ├── .env.example                          # Template — SI committa
 ├── .env                                   # Valori veri — NON si committa MAI
-├── PROGRESS.md                             # Stato del progetto, aggiornato ad ogni sessione
+├── SPEC.md                                  # FONTE DI VERITÀ: specifica completa + stato di ogni voce
+├── PROGRESS.md                             # Cronologia, decisioni tecniche, bug noti
 └── requirements.txt
 ```
 
