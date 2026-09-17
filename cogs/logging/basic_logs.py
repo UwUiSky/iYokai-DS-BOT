@@ -2,7 +2,7 @@
 cogs/logging/basic_logs.py
 =============================
 Logging semplificato: join, leave, ban, unban, creazione/eliminazione
-ruoli, cambi di ruolo sui membri. Modulo SEMPRE GRATUITO
+ruoli, cambi di ruolo e nickname sui membri. Modulo SEMPRE GRATUITO
 (MODULE_LOGGING), come da schema — il log "completo" (messaggi
 cancellati/modificati, che richiede il Message Content Intent) è
 previsto più avanti, nella Security Suite completa.
@@ -38,6 +38,17 @@ def diff_roles(
     added = after_role_ids - before_role_ids
     removed = before_role_ids - after_role_ids
     return added, removed
+
+
+def nickname_changed(before_nick: str | None, after_nick: str | None) -> bool:
+    """
+    True se il nickname è cambiato. Logica pura a sé (non solo un
+    `!=` inline nel listener) per lo stesso motivo di diff_roles:
+    resta testabile senza un evento Discord reale, e il caso limite
+    "nickname rimosso" (torna None, cioè il nome utente base) è
+    comunque un cambiamento — non va confuso con "nessun cambiamento".
+    """
+    return before_nick != after_nick
 
 
 async def _get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
@@ -203,40 +214,58 @@ class BasicLogsCog(commands.Cog):
     async def on_member_update(
         self, before: discord.Member, after: discord.Member
     ) -> None:
-        # Ci interessano solo i cambi di ruolo, per ora: nickname e
-        # altri cambi minori restano fuori dal log "semplificato".
-        before_ids = {role.id for role in before.roles}
-        after_ids = {role.id for role in after.roles}
-        if before_ids == after_ids:
-            return
+        before_role_ids = {role.id for role in before.roles}
+        after_role_ids = {role.id for role in after.roles}
+        added_ids, removed_ids = diff_roles(before_role_ids, after_role_ids)
+        roles_changed = bool(added_ids or removed_ids)
+        nick_changed = nickname_changed(before.nick, after.nick)
 
-        added_ids, removed_ids = diff_roles(before_ids, after_ids)
-        if not added_ids and not removed_ids:
+        if not roles_changed and not nick_changed:
             return
 
         channel = await _get_log_channel(after.guild)
         if channel is None:
             return
 
-        embed = discord.Embed(
-            title="🎭 Ruoli aggiornati",
-            color=discord.Color.blurple(),
-            timestamp=discord.utils.utcnow(),
-        )
-        embed.add_field(name="Utente", value=f"{after.mention} ({after.id})", inline=False)
-        if added_ids:
-            embed.add_field(
-                name="Aggiunti",
-                value=", ".join(f"<@&{rid}>" for rid in added_ids),
-                inline=False,
+        if roles_changed:
+            embed = discord.Embed(
+                title="🎭 Ruoli aggiornati",
+                color=discord.Color.blurple(),
+                timestamp=discord.utils.utcnow(),
             )
-        if removed_ids:
             embed.add_field(
-                name="Rimossi",
-                value=", ".join(f"<@&{rid}>" for rid in removed_ids),
-                inline=False,
+                name="Utente", value=f"{after.mention} ({after.id})", inline=False
             )
-        await channel.send(embed=embed)
+            if added_ids:
+                embed.add_field(
+                    name="Aggiunti",
+                    value=", ".join(f"<@&{rid}>" for rid in added_ids),
+                    inline=False,
+                )
+            if removed_ids:
+                embed.add_field(
+                    name="Rimossi",
+                    value=", ".join(f"<@&{rid}>" for rid in removed_ids),
+                    inline=False,
+                )
+            await channel.send(embed=embed)
+
+        if nick_changed:
+            embed = discord.Embed(
+                title="📝 Nickname aggiornato",
+                color=discord.Color.blurple(),
+                timestamp=discord.utils.utcnow(),
+            )
+            embed.add_field(
+                name="Utente", value=f"{after.mention} ({after.id})", inline=False
+            )
+            embed.add_field(
+                name="Prima", value=before.nick or "*(nessuno)*", inline=True
+            )
+            embed.add_field(
+                name="Dopo", value=after.nick or "*(nessuno)*", inline=True
+            )
+            await channel.send(embed=embed)
 
     # ================================================================
     # Ruoli del server (creazione/eliminazione, non assegnazione)
