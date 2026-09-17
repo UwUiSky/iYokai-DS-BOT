@@ -39,18 +39,31 @@ import logging
 
 import discord
 
+from core.bounded_cache import BoundedCache
 from core.spam_trap_logic import diff_invite_uses
 
 logger = logging.getLogger("iyokai.invite_tracker")
 
+# Limite di server tracciati contemporaneamente. Oltre questo numero,
+# il server usato meno di recente viene scartato (politica LRU —
+# vedi core/bounded_cache.py): un server lasciato dal bot, o
+# semplicemente rimasto a lungo senza join, libera spazio da solo,
+# senza bisogno di un evento on_guild_remove esplicito che lo
+# rimuova. 5000 è ampiamente sopra le necessità attuali e lascia
+# margine fino a quando il progetto non si avvicina davvero
+# all'obiettivo dei 10.000 server dichiarato nel piano originale.
+DEFAULT_MAX_TRACKED_GUILDS = 5000
+
 
 class InviteTracker:
-    def __init__(self) -> None:
+    def __init__(self, max_tracked_guilds: int = DEFAULT_MAX_TRACKED_GUILDS) -> None:
         # {guild_id: {invite_code: uses}}
-        self._cache: dict[int, dict[str, int]] = {}
+        self._cache: BoundedCache[int, dict[str, int]] = BoundedCache(max_tracked_guilds)
         # {guild_id: {invite_code: inviter_id}} — per risalire a chi
         # ha creato l'invito usato, richiesto dal log dello Spam Trap.
-        self._inviters: dict[int, dict[str, int | None]] = {}
+        self._inviters: BoundedCache[int, dict[str, int | None]] = BoundedCache(
+            max_tracked_guilds
+        )
 
     async def refresh_guild(self, guild: discord.Guild) -> None:
         """
@@ -69,8 +82,8 @@ class InviteTracker:
                 "su questo server.",
                 guild.id,
             )
-            self._cache[guild.id] = {}
-            self._inviters[guild.id] = {}
+            self._cache.set(guild.id, {})
+            self._inviters.set(guild.id, {})
             return
         except discord.HTTPException:
             logger.warning(
@@ -78,11 +91,14 @@ class InviteTracker:
             )
             return
 
-        self._cache[guild.id] = {invite.code: invite.uses or 0 for invite in invites}
-        self._inviters[guild.id] = {
-            invite.code: (invite.inviter.id if invite.inviter else None)
-            for invite in invites
-        }
+        self._cache.set(guild.id, {invite.code: invite.uses or 0 for invite in invites})
+        self._inviters.set(
+            guild.id,
+            {
+                invite.code: (invite.inviter.id if invite.inviter else None)
+                for invite in invites
+            },
+        )
 
     async def find_used_invite(
         self, guild: discord.Guild
@@ -95,7 +111,7 @@ class InviteTracker:
         prossimo join, e restituisce (codice_invito, id_creatore) o
         None se non determinabile.
         """
-        prima = dict(self._cache.get(guild.id, {}))
+        prima = dict(self._cache.get(guild.id, {}) or {})
 
         try:
             invites_attuali = await guild.invites()
@@ -110,8 +126,8 @@ class InviteTracker:
 
         # Aggiorna la cache per il prossimo join, a prescindere dal
         # risultato di questo.
-        self._cache[guild.id] = dopo
-        self._inviters[guild.id] = inviters_dopo
+        self._cache.set(guild.id, dopo)
+        self._inviters.set(guild.id, inviters_dopo)
 
         codice = diff_invite_uses(prima, dopo)
         if codice is None:

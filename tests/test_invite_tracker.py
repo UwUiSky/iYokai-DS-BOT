@@ -40,8 +40,8 @@ async def test_refresh_guild_popola_la_cache():
 
     await tracker.refresh_guild(guild)
 
-    assert tracker._cache[100] == {"abc123": 5}
-    assert tracker._inviters[100] == {"abc123": 42}
+    assert tracker._cache.get(100) == {"abc123": 5}
+    assert tracker._inviters.get(100) == {"abc123": 42}
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,7 @@ async def test_refresh_guild_con_invito_senza_inviter():
 
     await tracker.refresh_guild(guild)
 
-    assert tracker._inviters[100]["xyz"] is None
+    assert tracker._inviters.get(100)["xyz"] is None
 
 
 @pytest.mark.asyncio
@@ -102,5 +102,5 @@ async def test_server_diversi_non_si_influenzano():
     await tracker.refresh_guild(_FakeGuild(100, [_FakeInvite("a", 1, 1)]))
     await tracker.refresh_guild(_FakeGuild(200, [_FakeInvite("b", 1, 2)]))
 
-    assert tracker._cache[100] == {"a": 1}
-    assert tracker._cache[200] == {"b": 1}
+    assert tracker._cache.get(100) == {"a": 1}
+    assert tracker._cache.get(200) == {"b": 1}
