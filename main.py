@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -33,6 +34,7 @@ from core.cog_manager import load_all_cogs
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.premium import handle_app_command_error
+from core.error_handler_logic import should_alert_owner
 
 
 def setup_logging() -> None:
@@ -94,6 +96,15 @@ class iYokaiBot(commands.AutoShardedBot):
         # non dipende dal caricamento dei cog.
         self.tree.error(handle_app_command_error)
 
+        # Cooldown per gli alert DM di on_error, UNO per ogni
+        # event_method distinto (es. "on_message", "on_member_join")
+        # — così un errore ripetuto in un evento non silenzia gli
+        # alert per un errore diverso in un altro. Dizionario semplice,
+        # non BoundedCache: il numero di event_method possibili è
+        # fisso e piccolo (poche decine al massimo), non cresce con
+        # server/utenti.
+        self._last_error_alert_at: dict[str, datetime] = {}
+
     async def setup_hook(self) -> None:
         """
         Chiamato automaticamente da discord.py una volta sola,
@@ -137,6 +148,44 @@ class iYokaiBot(commands.AutoShardedBot):
             len(self.guilds),
             self.shard_count or 1,
         )
+
+    async def on_error(self, event_method: str, /, *args, **kwargs) -> None:
+        """
+        Handler globale per le eccezioni non catturate nei LISTENER
+        di eventi (on_message, on_member_join, ecc. — diverso
+        dall'error handler dei comandi slash, già gestito da
+        handle_app_command_error). discord.py 2.x logga già di
+        default tramite il proprio logger interno (non solo su
+        stderr come nelle versioni precedenti) — il processo NON
+        crasha già oggi. Quello che mancava: passare dal logger di
+        QUESTO progetto (stesso formato/gestione delle altre righe di
+        log) e avvisare l'owner in DM, con un cooldown per non
+        spammarlo se lo stesso evento fallisce ripetutamente in poco
+        tempo (es. durante un raid, on_message potrebbe fallire
+        decine di volte al minuto).
+
+        logger.exception() va chiamato da QUI (non passando l'errore
+        come parametro) perché discord.py chiama on_error dall'interno
+        del blocco except che ha catturato l'eccezione originale:
+        sys.exc_info() resta valido attraverso la chiamata, esattamente
+        come fa l'implementazione di default della libreria stessa.
+        """
+        logger.exception("Errore non gestito nell'evento '%s'", event_method)
+
+        now = datetime.now(timezone.utc)
+        last_alert = self._last_error_alert_at.get(event_method)
+        if not should_alert_owner(last_alert, now):
+            return
+
+        self._last_error_alert_at[event_method] = now
+        try:
+            owner = await self.fetch_user(config.OWNER_ID)
+            await owner.send(
+                f"⚠️ Unhandled error in event `{event_method}`. "
+                f"Check the server logs for the full traceback."
+            )
+        except discord.HTTPException:
+            logger.warning("Impossibile avvisare l'owner in DM dell'errore non gestito.")
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
         """
