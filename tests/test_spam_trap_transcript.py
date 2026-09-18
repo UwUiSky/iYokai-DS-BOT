@@ -94,3 +94,42 @@ class TestContenutoStrutturale:
         assert html_output.strip().startswith("<!DOCTYPE html>")
         assert "<html" in html_output
         assert "</html>" in html_output
+
+
+class TestThumbnailImmagini:
+    def test_data_uri_inserita_come_src_immagine(self):
+        entry = _entry(
+            attachment_thumbnail_data_uris=["data:image/webp;base64,AAAA"]
+        )
+        html_output = build_transcript_html([entry], title="Test", generated_at=entry.timestamp)
+        assert 'src="data:image/webp;base64,AAAA"' in html_output
+        assert "<img" in html_output
+
+    def test_piu_thumbnail_nello_stesso_messaggio(self):
+        entry = _entry(
+            attachment_thumbnail_data_uris=[
+                "data:image/webp;base64,AAAA",
+                "data:image/webp;base64,BBBB",
+            ]
+        )
+        html_output = build_transcript_html([entry], title="Test", generated_at=entry.timestamp)
+        assert html_output.count("<img") == 2
+
+    def test_nessuna_thumbnail_nessun_tag_img(self):
+        entry = _entry(attachment_thumbnail_data_uris=[])
+        html_output = build_transcript_html([entry], title="Test", generated_at=entry.timestamp)
+        assert "<img" not in html_output
+
+    def test_compatibilita_allentro_precedente_senza_il_nuovo_campo(self):
+        # Un TranscriptEntry costruito come nella versione precedente
+        # (senza passare attachment_thumbnail_data_uris) deve
+        # continuare a funzionare grazie al default_factory — nessuna
+        # rottura per chi lo istanzia nel modo "vecchio".
+        entry = TranscriptEntry(
+            timestamp=datetime.now(timezone.utc),
+            author_display_name="Mario",
+            author_tag="mario#0001",
+            content="test",
+        )
+        html_output = build_transcript_html([entry], title="Test", generated_at=entry.timestamp)
+        assert "<img" not in html_output

@@ -34,6 +34,7 @@ soggetto al cooldown di 24h). Scelta dichiarata, non un errore.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from collections import defaultdict
@@ -44,6 +45,12 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.database import db
+from core.image_thumbnail import generate_thumbnail
+from core.image_thumbnail_logic import (
+    bytes_to_data_uri,
+    is_image_attachment,
+    is_within_size_limit,
+)
 from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry
 from core.repositories.moderation_repo import moderation_repo
@@ -433,6 +440,38 @@ class SpamTrapCog(commands.Cog):
         except (discord.Forbidden, discord.HTTPException):
             return False
 
+    async def _build_thumbnails(self, attachments: list[discord.Attachment]) -> list[str]:
+        """
+        Scarica e rigenera come thumbnail ogni allegato immagine,
+        restituendo le data URI pronte per il transcript. Pillow è
+        sincrono/CPU-bound: l'elaborazione vera gira in un thread
+        separato (asyncio.to_thread) per non bloccare l'event loop
+        del bot mentre elabora un'immagine — bloccarlo anche solo per
+        una frazione di secondo può causare timeout dell'heartbeat
+        verso Discord su un bot con molti server attivi insieme.
+        """
+        data_uris: list[str] = []
+        for attachment in attachments:
+            if not is_image_attachment(attachment.filename, attachment.content_type):
+                continue
+            if not is_within_size_limit(attachment.size):
+                logger.info(
+                    "Allegato immagine troppo grande (%d byte) per la "
+                    "thumbnail, saltato: %s",
+                    attachment.size,
+                    attachment.filename,
+                )
+                continue
+            try:
+                image_bytes = await attachment.read()
+            except discord.HTTPException:
+                continue
+
+            thumbnail_bytes = await asyncio.to_thread(generate_thumbnail, image_bytes)
+            if thumbnail_bytes is not None:
+                data_uris.append(bytes_to_data_uri(thumbnail_bytes))
+        return data_uris
+
     async def _gather_transcript_entries(
         self, guild: discord.Guild, user: discord.abc.User
     ) -> list[TranscriptEntry]:
@@ -445,6 +484,7 @@ class SpamTrapCog(commands.Cog):
                 continue
             try:
                 fetched = await channel.fetch_message(record.message_id)
+                thumbnails = await self._build_thumbnails(fetched.attachments)
                 entries.append(
                     TranscriptEntry(
                         timestamp=record.created_at,
@@ -452,6 +492,7 @@ class SpamTrapCog(commands.Cog):
                         author_tag=str(fetched.author),
                         content=fetched.content or "",
                         attachment_filenames=[a.filename for a in fetched.attachments],
+                        attachment_thumbnail_data_uris=thumbnails,
                         is_deleted_source=False,
                     )
                 )
