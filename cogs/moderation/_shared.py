@@ -17,6 +17,7 @@ from __future__ import annotations
 import discord
 
 from core.database import db
+from core.moderation_validation_logic import is_valid_reason
 from core.permissions import ModerationActor, can_moderate
 
 # Nomi dei tre moduli premium-differenziabili di moderazione, come
@@ -29,6 +30,48 @@ MODULE_CASE_SYSTEM = "moderation_case_system"
 MODULE_CLEAR = "moderation_clear"
 MODULE_CHANNEL_CONTROL = "moderation_channel_control"
 MODULE_REPORT = "moderation_report"
+
+# Chiave in guild_config.settings per il canale mod-log dedicato
+# (SPEC.md §5.10) — stesso meccanismo generico già usato da
+# cogs/moderation/report.py per il proprio canale, non una nuova
+# colonna dedicata.
+SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
+
+
+async def validate_reason(interaction: discord.Interaction, reason: str) -> bool:
+    """
+    Controlla che il motivo fornito sia valido (SPEC.md §5.9, "reason
+    obbligatorio"). Se non lo è, risponde all'utente e restituisce
+    False — stesso pattern di ensure_module_enabled: il chiamante fa
+    `if not await validate_reason(...): return`.
+    """
+    if not is_valid_reason(reason):
+        await interaction.response.send_message(
+            "Il motivo deve avere almeno 3 caratteri significativi.",
+            ephemeral=True,
+        )
+        return False
+    return True
+
+
+async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
+    """
+    Pubblica una copia dell'embed di un caso nel canale mod-log
+    dedicato, se configurato (SPEC.md §5.10). Non fa nulla (non
+    solleva, non blocca il comando) se il canale non è configurato o
+    non è più raggiungibile — il log dedicato è un'aggiunta, non deve
+    mai far fallire l'azione di moderazione vera.
+    """
+    channel_id = await db.get_guild_setting(guild.id, SETTING_MOD_LOG_CHANNEL)
+    if channel_id is None:
+        return
+    channel = guild.get_channel(channel_id)
+    if not isinstance(channel, discord.TextChannel):
+        return
+    try:
+        await channel.send(embed=embed)
+    except discord.HTTPException:
+        pass
 
 
 async def ensure_module_enabled(
