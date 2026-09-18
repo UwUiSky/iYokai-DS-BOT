@@ -40,28 +40,39 @@ file, non da un riassunto.**
 - `[x]` 1.2 Controllo stato attivazione modulo per server
 - `[ ]` 1.2 Evento `modules_updated` — il setup scrive sul DB ma non
   emette nessun evento; nessun consumatore lo ascolta
-- `[~]` **1.3 Memory Guard**
+- `[x]` **1.3 Memory Guard**
   - `[x]` Monitoraggio RAM ogni 60 secondi (psutil) — `core/memory_guard.py`, letto per davvero con `psutil.Process().memory_info().rss`, verificato con un test che legge la RAM vera del processo di test (nessun mock)
   - `[x]` Garbage collection forzata su soglia
-  - `[ ]` Limitazione dimensione cache — resta legata a §1.5 Cache
-    Layer, non ancora scritta
+  - `[x]` Limitazione dimensione cache — `core/bounded_cache.py`
+    (LRU vera, §1.5), collegata come consumatore reale a
+    `core/invite_tracker.py`, che prima cresceva senza limiti con il
+    numero di server
   - `[x]` Distruzione VoiceClient inutilizzati (canale rimasto senza
     membri umani)
   - `[x]` Alert DM al proprietario al superamento soglia (con
     cooldown di 30 minuti tra un alert e l'altro, per non spammare
     l'owner ad ogni tick se la RAM resta alta)
 - `[x]` 1.4 Database Layer — pool asyncpg, localhost, query asincrone
-- `[ ]` 1.5 Cache Layer (LRU con dimensione massima)
-- `[~]` 1.6 Error Handler Globale — esiste per gli slash command
-  (`handle_app_command_error`); manca un handler per eccezioni non
-  catturate a livello di processo/evento
-- `[~]` 1.7 Logger Strutturato — c'è `logging.basicConfig` base; lo
-  schema chiedeva log strutturato JSON con rotazione
-- `[~]` 1.8 Auto-Setup Engine
+- `[x]` 1.5 Cache Layer (LRU con dimensione massima) —
+  `core/bounded_cache.py`, politica LRU vera verificata esplicitamente
+  (un GET conta come uso recente quanto un SET)
+- `[x]` 1.6 Error Handler Globale — `on_error` in `main.py` ora copre
+  anche le eccezioni non catturate nei listener di eventi (non solo
+  gli slash command), con alert DM all'owner e cooldown per
+  event_method
+- `[x]` 1.7 Logger Strutturato — JSON con rotazione
+  (`core/json_log_formatter.py` + `RotatingFileHandler`, 10MB×5),
+  nessuna nuova dipendenza. Convive con l'output testuale su stdout,
+  non lo sostituisce
+- `[x]` 1.8 Auto-Setup Engine
   - `[x]` Trigger `on_guild_join` + creazione record DB
-  - `[ ]` **Invio del pannello di setup all'ingresso** con fallback a
-    catena (system_channel → primo canale scrivibile → DM owner).
-    Oggi il bot entra in un server e non dice NULLA a nessuno
+  - `[x]` **Invio del messaggio di benvenuto all'ingresso** con
+    fallback a catena (system_channel → primo canale scrivibile → DM
+    owner). Bug reale trovato scrivendo il test: se l'invio sul
+    system_channel falliva, la ricerca del canale alternativo poteva
+    ritrovare lo stesso identico canale (quasi sempre incluso anche
+    in `guild.text_channels`) e ritentarlo invece di passarne uno
+    diverso — corretto escludendolo esplicitamente dalla ricerca
 - `[x]` 1.9 Sharding (AutoShardedBot)
 
 ## §2 SETUP & DASHBOARD
@@ -243,7 +254,8 @@ file, non da un riassunto.**
 - `[x]` 8.1 Member join
 - `[x]` 8.2 Member leave
 - `[x]` 8.3 Member ban / unban
-- `[~]` 8.4 Member update — solo **ruoli**; manca il **nickname**
+- `[x]` 8.4 Member update — ruoli e nickname, nello stesso evento
+  senza uscire in anticipo se solo uno dei due cambia
 - `[x]` 8.5 Role create / delete
 - `[ ]` 8.6 Role **update** (nome, colore, permessi)
 - `[ ]` 8.7 Channel create / delete / update
@@ -501,14 +513,14 @@ rilancia lo stesso conteggio.
 
 | Sezione | Fatto | Parziale | Mancante |
 |---|---|---|---|
-| §1 Core | 11 | 4 | 4 |
+| §1 Core | 18 | 0 | 1 |
 | §2 Setup | 1 | 0 | 6 |
 | §3 Premium | 4 | 0 | 6 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 8 | 0 | 4 |
 | §6 AutoMod | 2 | 0 | 12 |
 | §7 Security | 11 | 2 | 19 |
-| §8 Logging | 4 | 1 | 12 |
+| §8 Logging | 5 | 0 | 12 |
 | §9 Music | 0 | 0 | 12 |
 | §10 Alerts | 0 | 0 | 8 |
 | §11 Backup | 0 | 0 | 13 |
@@ -519,12 +531,12 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **71** | **7** | **188** |
+| **Totale** | **79** | **2** | **185** |
 
-Su 266 voci totali: **71 fatte, 7 parziali, 188 mancanti** — circa il
-29% dello schema (fatto+parziale). La base esistente (core parziale,
-verify base completo, moderazione, automod parziale, logging
-parziale, ticket, vocali temporanei, livelli/economia, memory guard,
-spam trap quasi completo) è solida e testata (323/323 test), ma resta
-ancora una minoranza dello schema completo.
+Su 266 voci totali: **79 fatte, 2 parziali, 185 mancanti** — circa il
+30% dello schema (fatto+parziale). Restano parziali solo due voci,
+entrambe nello Spam Trap ed entrambe in attesa della stessa decisione
+(Pillow come nuova dipendenza per rigenerare le immagini nel
+transcript): il "ban globale via fingerprint" resta invece `[ ]`
+puro, dato che dipende da §4 Anti-Alt non ancora costruito.
 

@@ -358,6 +358,46 @@ fingerprint" resta `[ ]`: dipende da §4 Anti-Alt, non costruito.
 
 **Suite di test completa: 323/323 passano.**
 
+### Fase 12 — Chiusura delle voci "parziali" di SPEC.md — 6 su 7
+- [x] `core/bounded_cache.py` (SPEC.md §1.5) — cache LRU vera
+  (verificata la differenza da un FIFO: un GET conta come uso
+  recente quanto un SET), collegata come consumatore reale a
+  `core/invite_tracker.py`, che prima cresceva senza limiti con il
+  numero di server. Chiude anche l'ultima foglia mancante di §1.3
+  Memory Guard. **19 test**
+- [x] `core/error_handler_logic.py` + `main.py` `on_error` (SPEC.md
+  §1.6) — le eccezioni non catturate nei LISTENER di eventi (non
+  solo negli slash command) ora passano dal logger del progetto e
+  avvisano l'owner in DM, con cooldown per event_method. **Colmato
+  un vuoto di test preesistente: `main.py` non aveva MAI avuto un
+  solo test**, non solo per questa parte. **9 test**
+- [x] `core/json_log_formatter.py` (SPEC.md §1.7) — JSON con
+  rotazione (`RotatingFileHandler`, 10MB×5), nessuna nuova
+  dipendenza. **Un test di integrazione reale** (chiama
+  `setup_logging()` per davvero, legge il file scritto su disco) ha
+  trovato un `NameError` vero — un `import logging` mancante nel
+  file di test stesso. **10 test**
+- [x] `core/welcome_logic.py` + `main.py` `_send_welcome_message`
+  (SPEC.md §1.8) — messaggio di benvenuto con fallback a catena
+  (system_channel → primo canale scrivibile → DM owner). **Bug
+  reale trovato scrivendo il test**: se l'invio sul system_channel
+  falliva, la ricerca del canale alternativo poteva ritrovare lo
+  stesso identico canale (quasi sempre incluso anche in
+  `guild.text_channels`) e ritentarlo invece di passare a uno
+  davvero diverso — corretto escludendolo esplicitamente dalla
+  ricerca. **10 test**
+- [x] `nickname_changed()` in `cogs/logging/basic_logs.py` (SPEC.md
+  §8.4) — `on_member_update` ora gestisce ruoli E nickname nello
+  stesso evento, senza uscire in anticipo se solo uno dei due cambia.
+  **5 test**
+- [ ] **Immagini nel transcript dello Spam Trap — lasciata aperta
+  deliberatamente**, non decisa unilateralmente: richiede Pillow come
+  nuova dipendenza, con peso reale sul deploy (compilazione, RAM) su
+  una VM Oracle Free Tier. Chiesto esplicitamente all'utente invece
+  di aggiungerla in autonomia
+
+**Suite di test completa: 377/377 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -628,10 +668,12 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Verify Base (SPEC.md §4.1, 4.4-4.6) completato.** §4.2/§4.3 restano
-bloccati sul Web Panel (SPEC.md §C), non ancora iniziato.
+**6 delle 7 voci "parziali" di SPEC.md chiuse.** Resta aperta solo
+la rigenerazione delle immagini nel transcript dello Spam Trap — in
+attesa di una decisione esplicita dell'utente su Pillow come nuova
+dipendenza (compilazione, RAM extra su una VM Oracle Free Tier).
 
-Nessuna priorità imposta di default — la decisione resta
-dell'utente, come da regola operativa fissata dopo l'audit. Qualunque
+Nessuna priorità imposta di default per il prossimo modulo — la
+decisione resta dell'utente, come da regola operativa. Qualunque
 voce di `SPEC.md` è legittima. Ricordarsi SEMPRE, prima di scrivere
 codice: leggere `SPEC.md`, non un riassunto (nemmeno questo file).
