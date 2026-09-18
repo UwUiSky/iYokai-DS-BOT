@@ -24,8 +24,11 @@ singola query, e torna disponibile subito dopo.
 
 from __future__ import annotations
 
+import json
+
 import asyncpg
 
+from core.bounded_cache import BoundedCache
 from core.config import config
 
 
@@ -37,6 +40,17 @@ class Database:
 
     def __init__(self) -> None:
         self._pool: asyncpg.Pool | None = None
+        # Cache della colonna "modules" per server (BACKLOG.md §1,
+        # priorità accettata dopo l'analisi delle proposte esterne):
+        # ogni cog che condivide on_message/on_raw_reaction_add
+        # (leveling, spam_trap, verify, role_menus, greetings — e in
+        # crescita) chiamava is_module_active_for_guild() con una
+        # query separata ad ogni singolo evento. Un dizionario intero
+        # per chiave (non una entry per singolo modulo) così più cog
+        # che controllano moduli diversi per LO STESSO server
+        # condividono la stessa riga già in cache, invece di avere
+        # una entry ciascuno.
+        self._modules_cache: BoundedCache[int, dict] = BoundedCache(max_size=10_000)
 
     async def connect(self) -> None:
         """
@@ -217,20 +231,28 @@ class Database:
         """
         Controlla se un server ha attivato un certo modulo dal
         pannello di setup. Usato dal check runtime dei cog per
-        decidere se rispondere o ignorare un comando.
+        decidere se rispondere o ignorare un comando o un evento
+        (on_message, on_raw_reaction_add, ecc.).
+
+        Passa dalla cache dei moduli per server (invalidata
+        esplicitamente da set_module_active_for_guild, non a
+        scadenza temporale — non c'è modo che diventi stantia senza
+        che qualcuno l'abbia già aggiornata).
         """
-        row = await self.pool.fetchrow(
-            """
-            SELECT (modules -> $2)::boolean AS is_active
-            FROM guild_config
-            WHERE guild_id = $1
-            """,
-            guild_id,
-            module_name,
-        )
-        if row is None or row["is_active"] is None:
-            return False
-        return row["is_active"]
+        modules = self._modules_cache.get(guild_id)
+        if modules is None:
+            row = await self.pool.fetchrow(
+                "SELECT modules FROM guild_config WHERE guild_id = $1",
+                guild_id,
+            )
+            # asyncpg non ha un codec JSONB registrato in questo
+            # progetto (vedi get_guild_setting più sotto, stesso
+            # pattern): il campo torna come stringa JSON grezza, va
+            # deserializzato esplicitamente.
+            modules = json.loads(row["modules"]) if row is not None else {}
+            self._modules_cache.set(guild_id, modules)
+
+        return bool(modules.get(module_name, False))
 
     async def set_module_active_for_guild(
         self, guild_id: int, module_name: str, active: bool
@@ -252,6 +274,11 @@ class Database:
             module_name,
             active,
         )
+        # Invalida (non aggiorna in-place): alla prossima lettura la
+        # cache si ripopola dal DB da zero, così non c'è mai il
+        # rischio che una scrittura parziale lasci la cache
+        # disallineata da quello che è realmente su disco.
+        self._modules_cache.delete(guild_id)
 
     # ================================================================
     # Guild settings — configurazione libera per-modulo (JSONB)

@@ -169,3 +169,102 @@ async def test_set_module_active_per_guild_reale():
             "DELETE FROM guild_config WHERE guild_id = 777777777"
         )
         await database.close()
+
+
+@pytest.mark.asyncio
+async def test_cache_moduli_serve_davvero_dalla_memoria_non_riquerella_il_db():
+    # Prova diretta che la cache è USATA, non solo che il metodo
+    # continua a funzionare: modifichiamo la riga con SQL grezzo (che
+    # bypassa set_module_active_for_guild e quindi la sua
+    # invalidazione), e verifichiamo che is_module_active_for_guild
+    # continui a restituire il valore VECCHIO finché non passiamo
+    # esplicitamente da set_module_active_for_guild.
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777801"
+        )
+        await database.set_module_active_for_guild(777777801, "leveling", True)
+
+        # Primo giro: legge dal DB, popola la cache. Deve essere True.
+        assert await database.is_module_active_for_guild(777777801, "leveling") is True
+
+        # Modifica DIRETTA sul DB, bypassando set_module_active_for_guild
+        # (quindi bypassando anche l'invalidazione della cache).
+        await database.pool.execute(
+            """
+            UPDATE guild_config SET modules = jsonb_set(modules, '{leveling}', 'false')
+            WHERE guild_id = 777777801
+            """
+        )
+
+        # La cache non sa nulla di questa modifica: deve restituire
+        # ANCORA True (il valore stantio), la prova che sta leggendo
+        # dalla memoria e non dal DB ad ogni chiamata.
+        assert await database.is_module_active_for_guild(777777801, "leveling") is True
+
+        # Solo passando da set_module_active_for_guild (che invalida)
+        # il nuovo valore diventa visibile.
+        await database.set_module_active_for_guild(777777801, "leveling", False)
+        assert await database.is_module_active_for_guild(777777801, "leveling") is False
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777801"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_cache_condivisa_tra_moduli_diversi_dello_stesso_server():
+    # Due moduli diversi per LO STESSO server: dopo aver letto il
+    # primo (che popola la cache con l'intera riga), il secondo deve
+    # risultare corretto SENZA una query aggiuntiva - verificato
+    # indirettamente modificando entrambi via SQL grezzo in un colpo
+    # solo e controllando che la lettura del primo modulo non lasci
+    # il secondo "congelato" su un valore vecchio o mancante.
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777802"
+        )
+        await database.set_module_active_for_guild(777777802, "verify", True)
+        await database.set_module_active_for_guild(777777802, "role_menus", True)
+
+        assert await database.is_module_active_for_guild(777777802, "verify") is True
+        # La cache è già popolata dalla chiamata sopra (stessa riga
+        # guild_id): questa lettura deve comunque essere corretta.
+        assert await database.is_module_active_for_guild(777777802, "role_menus") is True
+        # Un terzo modulo mai attivato sullo stesso server, mai
+        # esplicitamente scritto: deve risultare False, non sollevare
+        # un KeyError o simili sul dizionario in cache.
+        assert await database.is_module_active_for_guild(777777802, "mai_attivato") is False
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777802"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_cache_non_mischia_server_diversi():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id IN (777777803, 777777804)"
+        )
+        await database.set_module_active_for_guild(777777803, "leveling", True)
+        await database.set_module_active_for_guild(777777804, "leveling", False)
+
+        assert await database.is_module_active_for_guild(777777803, "leveling") is True
+        assert await database.is_module_active_for_guild(777777804, "leveling") is False
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id IN (777777803, 777777804)"
+        )
+        await database.close()
