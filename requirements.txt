@@ -9,6 +9,7 @@ python-dotenv>=1.0.0
 
 # Monitoraggio memoria (Memory Guard)
 psutil>=5.9.0
+Pillow>=10.0.0
 
 # Music (client Lavalink)
 wavelink>=3.4.0
