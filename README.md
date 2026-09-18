@@ -19,6 +19,10 @@
 >
 > **[`PROGRESS.md`](PROGRESS.md)** — cronologia di cosa è stato fatto,
 > decisioni tecniche vincolanti e bug noti da non reintrodurre.
+>
+> **[`BACKLOG.md`](BACKLOG.md)** — proposte esterne (altre AI, idee
+> future) valutate una per una con un verdetto esplicito. Niente
+> entra in `SPEC.md` senza passare prima da qui.
 
 **Fase attuale:** `0 — Fondamenta` (core system, database, premium framework)
 
@@ -66,6 +70,7 @@ iYokai-DS-BOT/
 ├── .env.example                          # Template — SI committa
 ├── .env                                   # Valori veri — NON si committa MAI
 ├── SPEC.md                                  # FONTE DI VERITÀ: specifica completa + stato di ogni voce
+├── BACKLOG.md                               # Proposte esterne valutate, verdetto esplicito per ciascuna
 ├── PROGRESS.md                             # Cronologia, decisioni tecniche, bug noti
 └── requirements.txt
 ```

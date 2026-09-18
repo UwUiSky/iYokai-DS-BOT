@@ -608,6 +608,16 @@ Discord reali. Se in una sessione futura sembra di poter "semplificare"
 uno di questi punti, **rileggere prima il motivo** — quasi sempre è già
 stato scartato per un limite tecnico specifico.
 
+- **Qualunque proposta esterna (altre AI, idee future) passa prima
+  da `BACKLOG.md`, mai direttamente in `SPEC.md`.** Nato dopo che
+  l'utente ha esposto `SPEC.md` a Gemini, ChatGPT e Grok in
+  sequenza: le tre proposte insieme portavano lo scope da 266 a oltre
+  400 voci. Chiedere a un LLM "cosa miglioreresti" produce quasi
+  sempre aggiunte, mai "va bene così" — è il tipo di domanda che lo
+  garantisce. `BACKLOG.md` classifica ogni proposta (ACCETTATA /
+  RESPINTA + motivo / RIMANDATA + condizione) prima che tocchi lo
+  scope reale. Una singola proposta interessante non è mai un motivo
+  sufficiente per saltare questo passaggio.
 - **Ogni push va verificato con una chiamata API GitHub diretta,
   non con il solo output di `git push`.** In una sessione, il remote
   URL era rimasto senza token (rimosso a fine sessione precedente per
