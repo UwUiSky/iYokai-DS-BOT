@@ -359,7 +359,7 @@ file, non da un riassunto.**
 - `[ ]` 13.12 Statistiche ticket (tempo di risposta, per operatore)
 - `[ ]` 13.13 Configurazione ruoli di supporto multipli (oggi uno solo)
 
-## §14 UTILITY & SERVER MANAGEMENT — Role Menus (§14.1-14.3) fatti, il resto mancante
+## §14 UTILITY & SERVER MANAGEMENT — Role Menus + Greetings fatti, il resto mancante
 
 - `[x]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
 - `[x]` 14.2 Button Roles — View dinamica persistente per-messaggio
@@ -368,9 +368,11 @@ file, non da un riassunto.**
 - `[x]` 14.3 Select Menu Roles — multi-selezione con sincronizzazione
   che non tocca mai ruoli del membro estranei al menu (verificato
   esplicitamente con un test dedicato)
-- `[ ]` 14.4 Welcome messages
-- `[ ]` 14.5 Goodbye messages
-- `[ ]` 14.6 Boost messages
+- `[x]` 14.4 Welcome messages — canale + DM opzionale, segnaposto
+  `{user}`/`{username}`/`{server}`/`{membercount}`
+- `[x]` 14.5 Goodbye messages
+- `[x]` 14.6 Boost messages — rilevato su `premium_since` che passa
+  da `None` a valorizzato, non il caso opposto
 - `[ ]` 14.7 Autoresponder (con wildcards e condizioni)
 - `[ ]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
   dettaglio): modal con nome comando + descrizione + esempio → embed
@@ -531,14 +533,14 @@ rilancia lo stesso conteggio.
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 3 | 0 | 15 |
+| §14 Utility | 6 | 0 | 12 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **84** | **0** | **182** |
+| **Totale** | **87** | **0** | **179** |
 
-Su 266 voci totali: **84 fatte, 0 parziali, 182 mancanti** — circa il
-32% dello schema. Zero voci `[~]` in tutto il progetto, ancora vero
-dopo l'aggiunta dei Role Menu.
+Su 266 voci totali: **87 fatte, 0 parziali, 179 mancanti** — circa il
+33% dello schema. Zero voci `[~]`, invariato dopo Welcome/Goodbye/
+Boost.
 

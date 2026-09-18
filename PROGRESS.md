@@ -472,6 +472,51 @@ del caricamento dei cog).
 
 **Suite di test completa: 459/459 passano.**
 
+### Fase 15 — Greetings: Welcome/Goodbye/Boost (SPEC.md §14.4-14.6)
+- [x] `core/greetings_logic.py` — rendering template con segnaposto
+  `{user}`/`{username}`/`{server}`/`{membercount}`. **7 test**
+- [x] `core/repositories/greetings_repo.py` — una tabella per tutti
+  e tre i tipi (stesso pannello concettuale). **8 test contro
+  PostgreSQL reale**
+- [x] `cogs/utility/greetings.py` — `on_member_join` (canale + DM
+  opzionale), `on_member_remove`, `on_member_update` filtrato al
+  solo **inizio** boost (`premium_since` None → valorizzato).
+  **Corretto prima di salvare, non dopo**: mancava il controllo
+  `is_module_active_for_guild` nei tre listener — ogni altro modulo
+  del progetto lo fa, l'ho notato rileggendo il file prima del test
+
+**Suite di test completa: 475/475 passano.**
+
+---
+
+## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
+
+L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo
+proposte che portavano lo scope da 266 a oltre 400 voci. Lette le tre
+trascrizioni per intero (non solo la sintesi di Grok), classificate
+in `BACKLOG.md` per 13 cluster tematici con verdetto esplicito.
+
+Punti salienti trovati durante l'analisi, non presi per buoni dalle
+tre AI:
+- **Contraddizione interna in `SPEC_v2`**: vieta il Message Content
+  Intent "finché non necessario" ma le proprie proposte AI Digest/
+  Smart Ping lo richiedono comunque — e comportano l'invio dei
+  messaggi utente a Groq/Google, un problema GDPR mai menzionato
+- **Regressione**: il Passport/Trust Score proposto reintroduce la
+  reputazione cross-server da sanzioni che `SPEC.md` §4.3 aveva già
+  scartato esplicitamente — **RESPINTA**, non rimandata
+- **Compromesso Forum-per-logging corretto**: membri è l'unica
+  dimensione ad alta cardinalità (un raid crea centinaia di thread
+  proprio quando servono di meno)
+- **Event Bus a 4 livelli RESPINTO**: discord.py fornisce già un
+  event bus nativo, il problema concreto (query duplicate ad ogni
+  messaggio) risolto da una cache a costo molto minore — quella
+  cache è ora la priorità #1 del backlog accettato
+
+Regola aggiunta permanentemente in Decisioni prese: qualunque
+proposta esterna passa da `BACKLOG.md` prima, mai direttamente in
+`SPEC.md`.
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -764,25 +809,24 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Role Menus (SPEC.md §14.1-14.3) completato.** Zero voci parziali
-in `SPEC.md`, invariato dopo questa fase — ogni voce iniziata è
-stata portata a termine.
+**Welcome/Goodbye/Boost (SPEC.md §14.4-14.6) completato.** Zero voci
+parziali, invariato.
 
-Nessuna priorità imposta di default per il prossimo modulo — la
-decisione resta dell'utente, come da regola operativa. Qualunque
-voce di `SPEC.md` è legittima. Ricordarsi SEMPRE, prima di scrivere
-codice: leggere `SPEC.md`, non un riassunto (nemmeno questo file).
+**`BACKLOG.md` scritto e valutato.** La mia priorità #1 lì dentro,
+`ACCETTATA-PRESTO`: cache della configurazione moduli per server
+(`BoundedCache` già costruita, §1.5), perché risolve un problema di
+performance già presente ora — ogni cog che condivide `on_message`/
+`on_raw_reaction_add` (leveling, spam_trap, verify, role_menus,
+greetings — 5 moduli e in crescita) fa una query DB separata per
+controllare se il proprio modulo è attivo, ad ogni singolo evento.
 
-In sospeso: l'utente ha esposto lo schema di `SPEC.md` a Gemini,
-ChatGPT e Grok, che hanno suggerito alcune modifiche — da valutare
-punto per punto (validità del suggerimento, non per autorità del
-modello che l'ha proposto) quando l'utente li trascrive. Distinguere
-tra cambi architetturali/schema DB (da fare presto, il costo cresce
-con ogni modulo costruito sopra) e feature/aggiustamenti minori (che
-possono aspettare).
+Le altre priorità del backlog accettato, in ordine (vedi `BACKLOG.md`
+§ Riepilogo numerico): softban + mute via ruolo + reason obbligatorio
++ mod-log channel (chiudono gap già noti in `SPEC.md` §5), poi Config
+Diff & Rollback / Permission Heatmap / Escalation Ladder (estendono
+moduli già previsti), poi logging multi-indice su DB.
 
-Nota per la prossima sessione se si introduce un'altra libreria
-nativa (come Pillow in questa fase): verificarne la disponibilità
-reale nell'ambiente di sviluppo PRIMA di scrivere codice che la usa
-(`pip install` + un test minimo, come fatto qui con WebP), non
-assumerla disponibile.
+Nessuna priorità imposta in modo vincolante — la decisione resta
+dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
+`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
+passa da `BACKLOG.md` prima di toccare `SPEC.md`.
