@@ -398,6 +398,44 @@ fingerprint" resta `[ ]`: dipende da §4 Anti-Alt, non costruito.
 
 **Suite di test completa: 377/377 passano.**
 
+### Fase 13 — Pillow + rigenerazione immagini nel transcript — chiude SPEC.md §7.3 al 100%
+- [x] Pillow aggiunta come dipendenza (prima nuova dipendenza del
+  progetto), su richiesta esplicita dell'utente dopo che il peso sul
+  deploy era stato segnalato e discusso
+- [x] `core/image_thumbnail_logic.py` — decisioni pure (è
+  un'immagine? è dentro il limite di 8MB? costruzione della data
+  URI). **16 test**
+- [x] `core/image_thumbnail.py` — elaborazione vera con Pillow:
+  apre, ridimensiona (max 400px, proporzioni conservate), ri-codifica
+  in WebP. L'immagine rigenerata non è mai il file originale
+  ricaricato — decodificata e ricreata pixel per pixel, il che
+  elimina i metadati EXIF (posizione GPS, dispositivo) senza doverli
+  ripulire esplicitamente. **9 test con immagini VERE generate da
+  Pillow stesso al volo**, incluso un bug nel mio stesso helper di
+  test (colore RGBA passato a un'immagine in modalità palette,
+  invalido — Pillow l'ha sollevato correttamente)
+- [x] Thumbnail degli allegati collegate al transcript reale
+  (`cogs/security/spam_trap.py`, `_build_thumbnails`) —
+  `asyncio.to_thread` per non bloccare l'event loop del bot durante
+  l'elaborazione (Pillow è sincrono/CPU-bound)
+- [x] Avatar dell'utente bannato nel transcript
+  (`_build_author_avatar`) — scaricato **una sola volta per report**,
+  non per ogni messaggio, dato che il transcript riguarda sempre un
+  solo utente
+- [x] Le thumbnail sono incorporate come **data URI dentro l'HTML
+  stesso**, non riospitate da nessuna parte — coerente con "mai
+  riospitare il file originale"
+- [x] **17 test end-to-end** con oggetti Discord finti ma byte
+  immagine veri (`test_spam_trap_thumbnails.py`), che verificano
+  l'intera pipeline insieme (filtro → limite → download → thread →
+  Pillow → data URI), non solo i pezzi isolati
+
+**Con questa fase, `SPEC.md` non ha più NESSUNA voce `[~]`** —
+verificato meccanicamente con lo stesso script di conteggio usato per
+la tabella finale, non solo dichiarato.
+
+**Suite di test completa: 419/419 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -668,12 +706,17 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**6 delle 7 voci "parziali" di SPEC.md chiuse.** Resta aperta solo
-la rigenerazione delle immagini nel transcript dello Spam Trap — in
-attesa di una decisione esplicita dell'utente su Pillow come nuova
-dipendenza (compilazione, RAM extra su una VM Oracle Free Tier).
+**Zero voci parziali in SPEC.md.** Spam Trap (§7.3) è ora l'unico
+modulo di sicurezza completo al 100%, oltre a Verify Base (§4.1) e
+Voice Temp/Ticket/Moderation/Leveling già chiusi in precedenza.
 
 Nessuna priorità imposta di default per il prossimo modulo — la
 decisione resta dell'utente, come da regola operativa. Qualunque
 voce di `SPEC.md` è legittima. Ricordarsi SEMPRE, prima di scrivere
 codice: leggere `SPEC.md`, non un riassunto (nemmeno questo file).
+
+Nota per la prossima sessione se si introduce un'altra libreria
+nativa (come Pillow in questa fase): verificarne la disponibilità
+reale nell'ambiente di sviluppo PRIMA di scrivere codice che la usa
+(`pip install` + un test minimo, come fatto qui con WebP), non
+assumerla disponibile.

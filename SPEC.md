@@ -188,7 +188,7 @@ file, non da un riassunto.**
 - `[ ]` 6.13 Azioni multiple configurabili (delete + warn + mute + ban)
 - `[ ]` 6.14 Log delle azioni automod
 
-## §7 SECURITY SUITE — Spam Trap (§7.3) quasi completo, il resto mancante
+## §7 SECURITY SUITE — Spam Trap (§7.3) completo, il resto mancante
 
 - `[ ]` 7.1 Anti-Raid
   - `[ ]` Join rate limit (finestra scorrevole)
@@ -206,8 +206,8 @@ file, non da un riassunto.**
   - `[ ]` Rilevamento mass ban / mass kick
   - `[ ]` Recovery automatico (ricreazione canali/ruoli)
   - `[ ]` Whitelist utenti/bot fidati
-- `[~]` 7.3 **Spam Trap** — quasi completo, vedi le foglie sotto per
-  l'unica parte ridotta di scope
+- `[x]` 7.3 **Spam Trap** — completo (solo il ban globale via
+  fingerprint resta escluso, per la dipendenza esplicita da §4 sotto)
   - `[x]` `/setup` con selezione canale trappola e canale log — via
     parametri `discord.TextChannel` opzionali (rendono nativamente
     come selettore canale di Discord, non un menù a tendina
@@ -236,12 +236,13 @@ file, non da un riassunto.**
     non equivalente ai pannelli persistenti di ticket/vocali: un
     appeal è per natura più breve, non vale la complessità di bottoni
     persistenti per-caso dinamici
-  - `[~]` **Transcript HTML** — timestamp, nome+nickname, contenuto
-    con escaping rigoroso anti-XSS: fatto e testato esplicitamente.
-    **Non fatto**: avatar visibile e immagini come thumbnail
-    rigenerate server-side — richiederebbe Pillow come nuova
-    dipendenza e una decisione su come distribuirla, non ancora presa
-    (dichiarato nel codice, non spacciato per completo)
+  - `[x]` **Transcript HTML** — timestamp, nome+nickname, contenuto
+    con escaping rigoroso anti-XSS, allegati immagine rigenerati come
+    thumbnail WebP (Pillow, `core/image_thumbnail.py`), avatar
+    dell'utente mostrato una volta per report nell'intestazione. Le
+    thumbnail sono incorporate come data URI dentro l'HTML stesso —
+    non riospitate da nessuna parte, coerente con "mai riospitare il
+    file originale"
   - `[ ]` Opzione ban globale via fingerprint — dipende da §4
     Anti-Alt (fingerprint cross-server), non costruito. Il ban resta
     per-server, correttamente, dato che non esiste ancora nulla da
@@ -519,7 +520,7 @@ rilancia lo stesso conteggio.
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 8 | 0 | 4 |
 | §6 AutoMod | 2 | 0 | 12 |
-| §7 Security | 11 | 2 | 19 |
+| §7 Security | 13 | 0 | 19 |
 | §8 Logging | 5 | 0 | 12 |
 | §9 Music | 0 | 0 | 12 |
 | §10 Alerts | 0 | 0 | 8 |
@@ -531,12 +532,11 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **79** | **2** | **185** |
+| **Totale** | **81** | **0** | **185** |
 
-Su 266 voci totali: **79 fatte, 2 parziali, 185 mancanti** — circa il
-30% dello schema (fatto+parziale). Restano parziali solo due voci,
-entrambe nello Spam Trap ed entrambe in attesa della stessa decisione
-(Pillow come nuova dipendenza per rigenerare le immagini nel
-transcript): il "ban globale via fingerprint" resta invece `[ ]`
-puro, dato che dipende da §4 Anti-Alt non ancora costruito.
+Su 266 voci totali: **81 fatte, 0 parziali, 185 mancanti** — circa il
+30% dello schema. **Zero voci `[~]` in tutto il progetto**, verificato
+meccanicamente, non solo dichiarato: ogni voce iniziata è stata
+portata a termine, o è rimasta esplicitamente `[ ]` con la ragione
+della dipendenza scritta accanto.
 
