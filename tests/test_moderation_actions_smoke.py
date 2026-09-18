@@ -30,6 +30,7 @@ nell'intera sessione di test.
 """
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
@@ -58,3 +59,21 @@ async def test_actions_cog_si_carica_e_si_registra_correttamente():
     # qualcuno lo rimuove per errore, questo test lo segnala subito
     # invece di scoprirlo mesi dopo con un tempban che non scade mai.
     assert SCHEDULED_TEMPBAN_EXPIRE in scheduler._handlers
+
+    # "Reason obbligatorio" (SPEC.md §5.9): verificato esplicitamente
+    # sui comandi che lo richiedono, non solo a occhio sul codice —
+    # se in futuro qualcuno reintroduce reason: str | None = None per
+    # errore, questo test lo blocca subito. /untimeout non ha reason
+    # (è una revoca, non un'azione punitiva) e resta fuori apposta.
+    comandi_con_reason_obbligatorio = {
+        "warn", "kick", "ban", "tempban", "unban", "timeout"
+    }
+    for command in bot.tree.get_commands():
+        if not isinstance(command, app_commands.Command):
+            continue
+        if command.name not in comandi_con_reason_obbligatorio:
+            continue
+        reason_param = next(p for p in command.parameters if p.name == "reason")
+        assert reason_param.required is True, (
+            f"/{command.name}: reason deve essere obbligatorio"
+        )

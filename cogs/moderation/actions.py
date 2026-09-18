@@ -37,6 +37,8 @@ from cogs.moderation._shared import (
     try_dm,
     parse_duration,
     format_duration,
+    validate_reason,
+    post_to_mod_log,
 )
 from core.premium import PremiumModule, registry
 
@@ -87,9 +89,11 @@ class ModerationActionsCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str | None = None,
+        reason: str,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        if not await validate_reason(interaction, reason):
             return
         if not await check_can_moderate(interaction, member):
             return
@@ -107,6 +111,7 @@ class ModerationActionsCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
         await try_dm(member, embed)
+        await post_to_mod_log(interaction.guild, embed)
 
     # ================================================================
     # /kick
@@ -117,9 +122,11 @@ class ModerationActionsCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str | None = None,
+        reason: str,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        if not await validate_reason(interaction, reason):
             return
         if not await check_can_moderate(interaction, member):
             return
@@ -142,7 +149,7 @@ class ModerationActionsCog(commands.Cog):
         dm_ok = await try_dm(member, embed)
 
         try:
-            await member.kick(reason=reason or "Nessun motivo fornito")
+            await member.kick(reason=reason)
         except discord.Forbidden:
             await interaction.response.send_message(
                 "Non ho i permessi per espellere questo utente.", ephemeral=True
@@ -152,6 +159,7 @@ class ModerationActionsCog(commands.Cog):
         if not dm_ok:
             embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
         await interaction.response.send_message(embed=embed)
+        await post_to_mod_log(interaction.guild, embed)
 
     # ================================================================
     # /ban
@@ -166,10 +174,12 @@ class ModerationActionsCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str | None = None,
+        reason: str,
         delete_message_days: app_commands.Range[int, 0, 7] = 0,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        if not await validate_reason(interaction, reason):
             return
         if not await check_can_moderate(interaction, member):
             return
@@ -188,7 +198,7 @@ class ModerationActionsCog(commands.Cog):
 
         try:
             await member.ban(
-                reason=reason or "Nessun motivo fornito",
+                reason=reason,
                 delete_message_seconds=delete_message_days * 86400,
             )
         except discord.Forbidden:
@@ -200,6 +210,7 @@ class ModerationActionsCog(commands.Cog):
         if not dm_ok:
             embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
         await interaction.response.send_message(embed=embed)
+        await post_to_mod_log(interaction.guild, embed)
 
     # ================================================================
     # /tempban
@@ -217,9 +228,11 @@ class ModerationActionsCog(commands.Cog):
         interaction: discord.Interaction,
         member: discord.Member,
         duration: str,
-        reason: str | None = None,
+        reason: str,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        if not await validate_reason(interaction, reason):
             return
         if not await check_can_moderate(interaction, member):
             return
@@ -251,7 +264,7 @@ class ModerationActionsCog(commands.Cog):
         dm_ok = await try_dm(member, embed)
 
         try:
-            await member.ban(reason=reason or "Nessun motivo fornito")
+            await member.ban(reason=reason)
         except discord.Forbidden:
             await interaction.response.send_message(
                 "Non ho i permessi per bannare questo utente.", ephemeral=True
@@ -272,6 +285,7 @@ class ModerationActionsCog(commands.Cog):
         if not dm_ok:
             embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
         await interaction.response.send_message(embed=embed)
+        await post_to_mod_log(interaction.guild, embed)
 
     async def handle_tempban_expire(
         self, guild_id: int, user_id: int, payload: dict
@@ -322,11 +336,13 @@ class ModerationActionsCog(commands.Cog):
     # /unban
     # ================================================================
     @app_commands.command(name="unban", description="Rimuove il ban da un utente.")
-    @app_commands.describe(user_id="ID Discord dell'utente da sbannare")
+    @app_commands.describe(user_id="ID Discord dell'utente da sbannare", reason="Motivo dello sblocco")
     async def unban(
-        self, interaction: discord.Interaction, user_id: str, reason: str | None = None
+        self, interaction: discord.Interaction, user_id: str, reason: str
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        if not await validate_reason(interaction, reason):
             return
 
         try:
@@ -336,9 +352,7 @@ class ModerationActionsCog(commands.Cog):
             return
 
         try:
-            await interaction.guild.unban(
-                discord.Object(id=uid), reason=reason or "Nessun motivo fornito"
-            )
+            await interaction.guild.unban(discord.Object(id=uid), reason=reason)
         except discord.NotFound:
             await interaction.response.send_message(
                 "Questo utente non risulta bannato.", ephemeral=True
@@ -365,6 +379,11 @@ class ModerationActionsCog(commands.Cog):
                 break
 
         await interaction.response.send_message(f"Utente `{uid}` sbannato.")
+        log_embed = discord.Embed(title="🔓 Unban", color=discord.Color.green())
+        log_embed.add_field(name="Utente", value=f"`{uid}`", inline=False)
+        log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        log_embed.add_field(name="Motivo", value=reason, inline=False)
+        await post_to_mod_log(interaction.guild, log_embed)
 
     # ================================================================
     # /timeout e /untimeout
@@ -382,9 +401,11 @@ class ModerationActionsCog(commands.Cog):
         interaction: discord.Interaction,
         member: discord.Member,
         duration: str,
-        reason: str | None = None,
+        reason: str,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        if not await validate_reason(interaction, reason):
             return
         if not await check_can_moderate(interaction, member):
             return
@@ -408,7 +429,7 @@ class ModerationActionsCog(commands.Cog):
             import datetime as _dt
             await member.timeout(
                 _dt.timedelta(seconds=duration_seconds),
-                reason=reason or "Nessun motivo fornito",
+                reason=reason,
             )
         except discord.Forbidden:
             await interaction.response.send_message(
@@ -436,6 +457,7 @@ class ModerationActionsCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
         await try_dm(member, embed)
+        await post_to_mod_log(interaction.guild, embed)
 
     @app_commands.command(
         name="untimeout", description="Rimuove il timeout da un membro."
