@@ -34,13 +34,14 @@ volute diverse sessioni per correggere la prima volta.
 |---|---|
 | `ACCETTATA` | Entra in `SPEC.md` come voce nuova, con priorità normale |
 | `ACCETTATA-PRESTO` | Entra in `SPEC.md`, ma va anticipata: risolve un problema già presente ora o blocca altro |
+| `FATTA` | Era `ACCETTATA`/`ACCETTATA-PRESTO`, ora costruita e pushata |
 | `RIMANDATA` | Buona idea, momento sbagliato — condizione esplicita per riaprirla |
 | `RESPINTA` | Non entra, con motivo tecnico/di prodotto specifico |
 | `RIDIMENSIONATA` | L'idea è valida ma la versione proposta è sovradimensionata — entra una versione più piccola |
 
 ---
 
-## 1. Performance e cache — `ACCETTATA-PRESTO`
+## 1. Performance e cache — `FATTA` (era `ACCETTATA-PRESTO`)
 
 **Fonte**: osservazione mia propria, non delle tre AI, emersa
 guardando il codice reale durante l'analisi.
@@ -172,7 +173,7 @@ costruire preventivamente senza un problema misurato.
 
 ---
 
-## 5. Moderazione — coincidenza con gap già noti
+## 5. Moderazione — coincidenza con gap già noti — `FATTA` (era `ACCETTATA`)
 
 **Fonte**: Gemini §5.9-5.11, §8.4 (seconda versione dettagliata) —
 **queste coincidono con voci che avevamo già in `SPEC.md` come `[ ]`

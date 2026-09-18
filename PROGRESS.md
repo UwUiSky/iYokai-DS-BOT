@@ -487,6 +487,42 @@ del caricamento dei cog).
 
 **Suite di test completa: 475/475 passano.**
 
+### Fase 16 — Moderazione completa al 100% (BACKLOG.md §5, priorità #2)
+- [x] Cache configurazione moduli per server (BACKLOG.md §1,
+  priorità #1) — `core/database.py`, `BoundedCache` invece di una
+  query separata ad ogni messaggio/reazione per i 5 moduli che
+  condividono `on_message`/`on_raw_reaction_add`. **4 nuovi test**,
+  incluso uno che dimostra la cache *davvero* usata (SQL grezzo che
+  bypassa l'invalidazione, verifica che il valore stantio resti in
+  memoria)
+- [x] `core/moderation_validation_logic.py` — `is_valid_reason()`
+  (minimo 3 caratteri). **7 test**
+- [x] `cogs/moderation/_shared.py` — `validate_reason()` e
+  `post_to_mod_log()` (canale dedicato, riusa `get_guild_setting`/
+  `set_guild_setting` già esistenti). **5 test**, incluso un bug
+  reale nel mio stesso test (isinstance su un duck-type qualsiasi
+  non basta — corretto ereditando da `discord.TextChannel` senza
+  chiamare il costruttore, `isinstance` passa per gerarchia vera)
+- [x] `reason: str` (obbligatorio) su warn/kick/ban/tempban/unban/
+  timeout + i due nuovi comandi, con validazione e mod-log dopo ogni
+  azione. `/untimeout` e `/lock` restano con reason opzionale per
+  scelta dichiarata (non nella lista esplicita dello schema)
+- [x] `cogs/moderation/softban_mute.py` (nuovo file) — `/softban`
+  (ban+unban immediato), `/mute-role`+`/unmute-role` (ruolo "Muted"
+  auto-creato con overwrite su ogni canale esistente al momento
+  della creazione — limite dichiarato: canali creati dopo non
+  ereditano l'overwrite), `/mod-log-setup`
+- [x] **Verifica esplicita, non solo assunta**: aggiunto un controllo
+  in entrambi gli smoke test che legge `reason_param.required` per
+  davvero sui comandi interessati — se in futuro qualcuno
+  reintroduce `reason: str | None = None` per errore, il test lo
+  blocca subito, non serve accorgersene mesi dopo
+
+**§5 Moderation è ora completa al 100% (12/12)** — la seconda
+sezione a chiudersi del tutto, dopo §7.3 Spam Trap.
+
+**Suite di test completa: 492/492 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -809,22 +845,15 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Welcome/Goodbye/Boost (SPEC.md §14.4-14.6) completato.** Zero voci
-parziali, invariato.
+**Le prime due priorità del backlog accettato sono FATTE**: cache
+configurazione moduli (§1) e Moderazione completa al 100% (§5).
+Restano, in ordine dal riepilogo di `BACKLOG.md`:
 
-**`BACKLOG.md` scritto e valutato.** La mia priorità #1 lì dentro,
-`ACCETTATA-PRESTO`: cache della configurazione moduli per server
-(`BoundedCache` già costruita, §1.5), perché risolve un problema di
-performance già presente ora — ogni cog che condivide `on_message`/
-`on_raw_reaction_add` (leveling, spam_trap, verify, role_menus,
-greetings — 5 moduli e in crescita) fa una query DB separata per
-controllare se il proprio modulo è attivo, ad ogni singolo evento.
-
-Le altre priorità del backlog accettato, in ordine (vedi `BACKLOG.md`
-§ Riepilogo numerico): softban + mute via ruolo + reason obbligatorio
-+ mod-log channel (chiudono gap già noti in `SPEC.md` §5), poi Config
-Diff & Rollback / Permission Heatmap / Escalation Ladder (estendono
-moduli già previsti), poi logging multi-indice su DB.
+3. Config Diff & Rollback, Permission Heatmap, Escalation Ladder
+   (BACKLOG.md §11) — estendono moduli già previsti (§2.7, §7.4, §6)
+4. Logging multi-indice su DB, senza il Forum per membri/messaggi
+   (BACKLOG.md §3)
+5. Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4)
 
 Nessuna priorità imposta in modo vincolante — la decisione resta
 dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere

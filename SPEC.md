@@ -151,9 +151,10 @@ file, non da un riassunto.**
 ## §5 MODERATION
 
 - `[x]` 5.1 Warn, Kick, Ban, Tempban, Timeout, Unban, Untimeout
-- `[ ]` 5.1 **Softban** (ban+unban per cancellare i messaggi)
-- `[ ]` 5.1 **Mute via ruolo** (oggi solo timeout nativo; lo schema
-  chiedeva entrambi)
+- `[x]` 5.1 **Softban** (ban+unban immediato per cancellare i messaggi)
+- `[x]` 5.1 **Mute via ruolo** — ruolo "Muted" auto-creato con
+  overwrite su ogni canale esistente al momento della creazione
+  (canali creati dopo non ereditano l'overwrite, limite noto)
 - `[x]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
 - `[x]` 5.3 Note utente
@@ -162,14 +163,15 @@ file, non da un riassunto.**
 - `[x]` 5.6 Slowmode
 - `[x]` 5.7 Clear avanzato con filtri
 - `[x]` 5.8 DM all'utente moderato
-- `[ ]` 5.9 **"Reason obbligatorio"** — richiesto esplicitamente dallo
-  schema. Io l'ho reso OPZIONALE in tutti i comandi
-  (`reason: str | None = None`). Contraddizione mia, non un'omissione
-  neutra: va deciso se rendere il campo obbligatorio o documentare la
-  deviazione
-- `[ ]` 5.10 Moderation logs su canale dedicato (i casi vanno nel DB e
-  l'esito nel canale del comando, ma non esiste un canale mod-log
-  configurabile separato dal log generale)
+- `[x]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
+  `str | None`) su warn/kick/ban/tempban/unban/timeout/softban/
+  mute-role/unmute-role, con validazione minimo 3 caratteri.
+  `/untimeout` (revoca, non azione punitiva) e `/lock` (stato del
+  canale, non azione su un utente) restano con reason opzionale per
+  scelta dichiarata, non nella lista esplicita dello schema
+- `[x]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
+  ogni azione pubblica una copia del case embed lì, oltre alla
+  risposta nel canale del comando
 
 ## §6 AUTOMOD
 
@@ -524,7 +526,7 @@ rilancia lo stesso conteggio.
 | §2 Setup | 1 | 0 | 6 |
 | §3 Premium | 4 | 0 | 6 |
 | §4 Verify | 10 | 0 | 9 |
-| §5 Moderation | 8 | 0 | 4 |
+| §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 2 | 0 | 12 |
 | §7 Security | 13 | 0 | 19 |
 | §8 Logging | 5 | 0 | 12 |
@@ -538,9 +540,9 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **87** | **0** | **179** |
+| **Totale** | **91** | **0** | **175** |
 
-Su 266 voci totali: **87 fatte, 0 parziali, 179 mancanti** — circa il
-33% dello schema. Zero voci `[~]`, invariato dopo Welcome/Goodbye/
-Boost.
+Su 266 voci totali: **91 fatte, 0 parziali, 175 mancanti** — circa il
+34% dello schema. §5 Moderation è la seconda sezione completa al
+100% (dopo §7.3 Spam Trap all'interno di Security).
 
