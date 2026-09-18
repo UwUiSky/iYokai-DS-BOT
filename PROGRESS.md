@@ -436,6 +436,42 @@ la tabella finale, non solo dichiarato.
 
 **Suite di test completa: 419/419 passano.**
 
+### Fase 14 — Role Menus (SPEC.md §14.1-14.3) — chiude le prime tre foglie di §14
+- [x] `core/role_menu_logic.py` — toggle, sincronizzazione select
+  (non tocca mai ruoli fuori dal menu, verificato esplicitamente),
+  limiti opzioni per modalità. **13 test**
+- [x] `core/repositories/role_menu_repo.py` — menu + opzioni, FK
+  `ON DELETE CASCADE`. **18 test contro PostgreSQL reale**
+- [x] `cogs/utility/role_menus.py` — `/rolemenu create|add-option|
+  remove-option|delete`, tre modalità (reaction/button/select).
+  **Pattern nuovo per il progetto**: View dinamiche **persistenti
+  per-messaggio** (`bot.add_view(view, message_id=...)`), diverso dal
+  pattern "un bottone fisso" già usato per ticket/verify/vocali —
+  qui il numero di bottoni/opzioni varia da menu a menu, quindi ogni
+  menu esistente viene ricostruito e registrato singolarmente ad
+  ogni avvio del bot
+- [x] Validazione emoji **non tentata lato client** — verificato con
+  `inspect` che `PartialEmoji.from_str()` non solleva mai (accetta
+  anche una stringa qualunque come fosse un'emoji valida): è l'API
+  reale di Discord, quando l'emoji viene davvero usata, a dire se
+  non è valida
+- [x] **9 test smoke**, inclusa la costruzione delle View dinamiche
+  verificata esplicitamente (numero di elementi corrisponde,
+  `custom_id` codifica menu+ruolo, `max_selectable` limitato al
+  numero di opzioni realmente presenti anche se il valore salvato in
+  DB è più alto)
+
+**Problema di test emerso e risolto, non di produzione**: questo è
+il primo cog il cui `setup()` interroga il database al caricamento
+(per ricostruire le View esistenti) — nessun test del progetto aveva
+mai connesso il singleton `core.database.db` (tutti usano pool
+isolati per-test). Risolto connettendo davvero il singleton in un
+`try/finally` per questo specifico test, replicando esattamente
+l'ordine reale di produzione (`db.connect()` avviene sempre prima
+del caricamento dei cog).
+
+**Suite di test completa: 459/459 passano.**
+
 ---
 
 ## 🐛 Bug reale trovato e risolto durante Moderation — da conoscere
@@ -706,14 +742,22 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Zero voci parziali in SPEC.md.** Spam Trap (§7.3) è ora l'unico
-modulo di sicurezza completo al 100%, oltre a Verify Base (§4.1) e
-Voice Temp/Ticket/Moderation/Leveling già chiusi in precedenza.
+**Role Menus (SPEC.md §14.1-14.3) completato.** Zero voci parziali
+in `SPEC.md`, invariato dopo questa fase — ogni voce iniziata è
+stata portata a termine.
 
 Nessuna priorità imposta di default per il prossimo modulo — la
 decisione resta dell'utente, come da regola operativa. Qualunque
 voce di `SPEC.md` è legittima. Ricordarsi SEMPRE, prima di scrivere
 codice: leggere `SPEC.md`, non un riassunto (nemmeno questo file).
+
+In sospeso: l'utente ha esposto lo schema di `SPEC.md` a Gemini,
+ChatGPT e Grok, che hanno suggerito alcune modifiche — da valutare
+punto per punto (validità del suggerimento, non per autorità del
+modello che l'ha proposto) quando l'utente li trascrive. Distinguere
+tra cambi architetturali/schema DB (da fare presto, il costo cresce
+con ogni modulo costruito sopra) e feature/aggiustamenti minori (che
+possono aspettare).
 
 Nota per la prossima sessione se si introduce un'altra libreria
 nativa (come Pillow in questa fase): verificarne la disponibilità

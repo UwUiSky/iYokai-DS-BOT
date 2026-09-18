@@ -359,11 +359,15 @@ file, non da un riassunto.**
 - `[ ]` 13.12 Statistiche ticket (tempo di risposta, per operatore)
 - `[ ]` 13.13 Configurazione ruoli di supporto multipli (oggi uno solo)
 
-## §14 UTILITY & SERVER MANAGEMENT — **INTERA SEZIONE MANCANTE**
+## §14 UTILITY & SERVER MANAGEMENT — Role Menus (§14.1-14.3) fatti, il resto mancante
 
-- `[ ]` 14.1 Reaction Roles
-- `[ ]` 14.2 Button Roles
-- `[ ]` 14.3 Select Menu Roles
+- `[x]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
+- `[x]` 14.2 Button Roles — View dinamica persistente per-messaggio
+  (`bot.add_view(view, message_id=...)`, pattern nuovo rispetto ai
+  pannelli "bottone fisso" già in uso altrove)
+- `[x]` 14.3 Select Menu Roles — multi-selezione con sincronizzazione
+  che non tocca mai ruoli del membro estranei al menu (verificato
+  esplicitamente con un test dedicato)
 - `[ ]` 14.4 Welcome messages
 - `[ ]` 14.5 Goodbye messages
 - `[ ]` 14.6 Boost messages
@@ -527,16 +531,14 @@ rilancia lo stesso conteggio.
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 0 | 0 | 18 |
+| §14 Utility | 3 | 0 | 15 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **81** | **0** | **185** |
+| **Totale** | **84** | **0** | **182** |
 
-Su 266 voci totali: **81 fatte, 0 parziali, 185 mancanti** — circa il
-30% dello schema. **Zero voci `[~]` in tutto il progetto**, verificato
-meccanicamente, non solo dichiarato: ogni voce iniziata è stata
-portata a termine, o è rimasta esplicitamente `[ ]` con la ragione
-della dipendenza scritta accanto.
+Su 266 voci totali: **84 fatte, 0 parziali, 182 mancanti** — circa il
+32% dello schema. Zero voci `[~]` in tutto il progetto, ancora vero
+dopo l'aggiunta dei Role Menu.
 
