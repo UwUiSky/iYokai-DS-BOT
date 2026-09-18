@@ -364,10 +364,12 @@ class SpamTrapCog(commands.Cog):
 
         # 2. Transcript — PRIMA di qualunque cancellazione.
         transcript_entries = await self._gather_transcript_entries(guild, user)
+        avatar_data_uri = await self._build_author_avatar(user)
         transcript_html = build_transcript_html(
             transcript_entries,
             title=f"Spam Trap — {user} — {guild.name}",
             generated_at=now,
+            author_avatar_data_uri=avatar_data_uri,
         )
 
         # 3. DM PRIMA del ban.
@@ -439,6 +441,25 @@ class SpamTrapCog(commands.Cog):
             return True
         except (discord.Forbidden, discord.HTTPException):
             return False
+
+    async def _build_author_avatar(self, user: discord.abc.User) -> str | None:
+        """
+        Scarica l'avatar dell'utente bannato UNA SOLA VOLTA per
+        l'intero report (non per ogni messaggio — vedi la nota in
+        core/spam_trap_transcript.py sul perché ha senso farlo così).
+        Restituisce None se il download o l'elaborazione falliscono:
+        il transcript deve generarsi comunque, senza avatar, non
+        fallire per questo dettaglio accessorio.
+        """
+        try:
+            avatar_bytes = await user.display_avatar.read()
+        except discord.HTTPException:
+            return None
+
+        thumbnail_bytes = await asyncio.to_thread(generate_thumbnail, avatar_bytes)
+        if thumbnail_bytes is None:
+            return None
+        return bytes_to_data_uri(thumbnail_bytes)
 
     async def _build_thumbnails(self, attachments: list[discord.Attachment]) -> list[str]:
         """

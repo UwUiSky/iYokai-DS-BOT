@@ -46,12 +46,22 @@ def build_transcript_html(
     entries: list[TranscriptEntry],
     title: str,
     generated_at: datetime,
+    author_avatar_data_uri: str | None = None,
 ) -> str:
     """
     Costruisce un documento HTML autosufficiente (CSS incluso inline,
     nessuna risorsa esterna) con la cronologia dei messaggi. Le voci
     vengono mostrate nell'ordine in cui sono passate — il chiamante
     decide l'ordinamento (cronologico, di norma).
+
+    author_avatar_data_uri: l'avatar dell'utente bannato, mostrato
+    UNA SOLA VOLTA nell'intestazione del report — non ripetuto per
+    ogni singolo messaggio. Ha senso perché ogni transcript riguarda
+    sempre e solo un utente (get_all_user_messages è filtrata per
+    user_id), quindi l'avatar è lo stesso per l'intero documento:
+    scaricarlo e incorporarlo una volta sola invece che per-messaggio
+    evita di ripetere inutilmente gli stessi byte molte volte nello
+    stesso file.
     """
     righe_html = []
     for entry in entries:
@@ -90,6 +100,10 @@ def build_transcript_html(
 
     corpo = "\n".join(righe_html) if righe_html else '<p class="empty">Nessun messaggio indicizzato.</p>'
 
+    avatar_html = ""
+    if author_avatar_data_uri:
+        avatar_html = f'<img class="author-avatar" src="{_escape(author_avatar_data_uri)}">'
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,7 +111,9 @@ def build_transcript_html(
 <title>{_escape(title)}</title>
 <style>
   body {{ font-family: -apple-system, sans-serif; background: #313338; color: #dbdee1; padding: 20px; }}
-  .header {{ border-bottom: 1px solid #3f4147; padding-bottom: 10px; margin-bottom: 20px; }}
+  .header {{ border-bottom: 1px solid #3f4147; padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }}
+  .header-text {{ flex: 1; }}
+  .author-avatar {{ width: 48px; height: 48px; border-radius: 50%; display: block; }}
   .header h1 {{ margin: 0; font-size: 20px; }}
   .header .generated {{ color: #949ba4; font-size: 12px; }}
   .message {{ padding: 8px 0; border-bottom: 1px solid #2b2d31; }}
@@ -115,8 +131,11 @@ def build_transcript_html(
 </head>
 <body>
   <div class="header">
-    <h1>{_escape(title)}</h1>
-    <div class="generated">Generated at {generated_at.strftime('%Y-%m-%d %H:%M:%S UTC')} — {len(entries)} message(s)</div>
+    {avatar_html}
+    <div class="header-text">
+      <h1>{_escape(title)}</h1>
+      <div class="generated">Generated at {generated_at.strftime('%Y-%m-%d %H:%M:%S UTC')} — {len(entries)} message(s)</div>
+    </div>
   </div>
   {corpo}
 </body>

@@ -133,3 +133,34 @@ class TestThumbnailImmagini:
         )
         html_output = build_transcript_html([entry], title="Test", generated_at=entry.timestamp)
         assert "<img" not in html_output
+
+
+class TestAvatarReport:
+    def test_avatar_presente_produce_img_nellintestazione(self):
+        html_output = build_transcript_html(
+            [_entry()],
+            title="Test",
+            generated_at=datetime.now(timezone.utc),
+            author_avatar_data_uri="data:image/webp;base64,CCCC",
+        )
+        assert 'class="author-avatar"' in html_output
+        assert 'src="data:image/webp;base64,CCCC"' in html_output
+
+    def test_avatar_assente_nessun_img_nellintestazione(self):
+        html_output = build_transcript_html(
+            [_entry()], title="Test", generated_at=datetime.now(timezone.utc)
+        )
+        assert 'class="author-avatar"' not in html_output
+
+    def test_avatar_e_mostrato_una_sola_volta_non_per_messaggio(self):
+        # Tre messaggi, un solo avatar nell'intestazione — non uno
+        # per riga: coerente col fatto che il transcript riguarda
+        # sempre un solo utente.
+        entries = [_entry(content=f"messaggio {i}") for i in range(3)]
+        html_output = build_transcript_html(
+            entries,
+            title="Test",
+            generated_at=datetime.now(timezone.utc),
+            author_avatar_data_uri="data:image/webp;base64,DDDD",
+        )
+        assert html_output.count('class="author-avatar"') == 1

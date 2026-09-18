@@ -123,3 +123,53 @@ async def test_build_thumbnails_mix_di_immagini_e_non_immagini(cog):
     # Solo l'immagine produce una thumbnail, il PDF viene ignorato
     # silenziosamente — non un errore, solo "non applicabile".
     assert len(risultato) == 1
+
+
+class _FakeAvatarAsset:
+    def __init__(self, content: bytes, fail: bool = False) -> None:
+        self._content = content
+        self._fail = fail
+
+    async def read(self) -> bytes:
+        if self._fail:
+            raise discord.HTTPException(response=_FakeHTTPResponse(), message="errore avatar")
+        return self._content
+
+
+class _FakeHTTPResponse:
+    status = 500
+    reason = "Internal Server Error"
+
+
+class _FakeUserWithAvatar:
+    def __init__(self, avatar_content: bytes, fail: bool = False) -> None:
+        self.display_avatar = _FakeAvatarAsset(avatar_content, fail=fail)
+
+
+@pytest.mark.asyncio
+async def test_build_author_avatar_con_avatar_vero_produce_data_uri(cog):
+    contenuto = _real_image_bytes()
+    utente = _FakeUserWithAvatar(contenuto)
+
+    risultato = await cog._build_author_avatar(utente)
+
+    assert risultato is not None
+    assert risultato.startswith("data:image/webp;base64,")
+
+
+@pytest.mark.asyncio
+async def test_build_author_avatar_download_fallito_restituisce_none(cog):
+    utente = _FakeUserWithAvatar(b"", fail=True)
+
+    risultato = await cog._build_author_avatar(utente)
+
+    assert risultato is None
+
+
+@pytest.mark.asyncio
+async def test_build_author_avatar_contenuto_corrotto_restituisce_none(cog):
+    utente = _FakeUserWithAvatar(b"non e' un'immagine")
+
+    risultato = await cog._build_author_avatar(utente)
+
+    assert risultato is None
