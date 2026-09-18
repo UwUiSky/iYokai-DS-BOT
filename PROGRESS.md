@@ -622,6 +622,18 @@ stato scartato per un limite tecnico specifico.
   poi `GET https://api.github.com/repos/.../commits/main` con il
   token, e confrontare i due SHA esplicitamente prima di dire
   "pushato" all'utente.
+  **Aggiornamento**: `python3 -c "... json.load(sys.stdin) ..."` su
+  quella risposta può fallire con `JSONDecodeError` se il messaggio
+  di commit contiene caratteri che il parser JSON tratta come
+  "control character" (successo con messaggi di commit multi-riga
+  contenenti determinati caratteri) — un fallimento di PARSING, non
+  un vero disallineamento, ma che SEMBRA un disallineamento se non
+  investigato (l'eccezione fa sembrare la verifica fallita). Estrarre
+  lo sha con `grep -o '"sha": "[a-f0-9]*"'` sulla risposta grezza
+  invece di affidarsi a un parsing JSON completo — più robusto e
+  sufficiente per questo scopo (serve solo lo sha, non l'intero
+  oggetto). Se il confronto sha sembra fallire, riprovare con questo
+  metodo prima di assumere un vero disallineamento.
 - **Niente caricamento/scaricamento di cog per singolo server.** Un
   bot ha un solo processo condiviso da tutti i server. Il modo
   corretto per attivare/disattivare un modulo per server è un check a
