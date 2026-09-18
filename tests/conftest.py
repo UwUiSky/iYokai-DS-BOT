@@ -88,6 +88,9 @@ async def clean_db(db_pool):
     from core.repositories.role_menu_repo import (
         run_migrations as role_menu_migrations,
     )
+    from core.repositories.greetings_repo import (
+        run_migrations as greetings_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -102,6 +105,7 @@ async def clean_db(db_pool):
     await spam_trap_migrations(db_pool)
     await verify_migrations(db_pool)
     await role_menu_migrations(db_pool)
+    await greetings_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -129,6 +133,7 @@ async def clean_db(db_pool):
         "verify_blacklist",
         "role_menus",
         "role_menu_options",
+        "greetings_config",
         "guild_config",
         "premium_whitelist",
         "premium_module_flags",
