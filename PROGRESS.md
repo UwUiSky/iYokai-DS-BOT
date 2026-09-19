@@ -617,6 +617,41 @@ soglie scalate).
 
 **Suite di test completa: 567/567 passano.**
 
+### Fase 20 — Metodologia di simulazione di carico + fix trovato con essa
+L'utente ha chiesto, giustamente, di non dare per buone stime a
+tavolino sul consumo di RAM/CPU per il piano Oracle Free reale (2
+OCPU Ampere, 12GB RAM — **verificato lo stesso giorno sulla
+documentazione Oracle**: allowance dimezzata da 4 OCPU/24GB in
+silenzio il 15 giugno 2026, termine di adeguamento 18 agosto 2026 già
+passato). Creato `scripts/load_simulation.py` (istruzioni d'uso nel
+suo stesso docstring): istanzia i cog REALI (`LevelingCog`,
+`SpamTrapCog`) e li fa girare contro PostgreSQL vero con centinaia di
+migliaia di eventi `on_message` simulati, misurando con `psutil` (non
+a stima) RSS, tempo CPU, throughput. Eseguibile dentro un cgroup v1
+reale (memory.limit_in_bytes) per un tetto di RAM verificabile, non
+finto.
+
+**Limite dichiarato esplicitamente**: il sandbox di sviluppo ha 1 CPU
+e ~3.9GB RAM — MENO del piano Oracle reale su entrambi i fronti. I
+numeri assoluti misurati qui sono ordine di grandezza/andamento
+(cresce senza fine? si stabilizza?), non una previsione esatta per la
+macchina Ampere reale.
+
+**Trovato con la prima simulazione (100 server x 1000 messaggi,
+200.000 chiamate)**: `spam_trap_repo.get_config()` girava SENZA cache
+su ogni messaggio quando lo Spam Trap è attivo — stesso identico
+problema già risolto per `is_module_active_for_guild`, rimasto
+scoperto qui. Corretto con lo stesso pattern (`BoundedCache`,
+invalidazione esplicita). **Confronto prima/dopo con GLI STESSI
+parametri**: tempo CPU -22% (81.02s → 63.30s), tempo reale -14%
+(149.26s → 128.01s), throughput +17% (670 → 781 msg/s). RSS invariata
+in entrambi i giri (nessuna fuga di memoria, né prima né dopo).
+
+Nessun altro problema emerso da questa simulazione: pool DB mai sotto
+pressione, RSS piatta su 100.000 messaggi.
+
+**Suite di test completa: 569/569 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
