@@ -191,6 +191,12 @@ file, non da un riassunto.**
 - `[ ]` 6.12 Filtri personalizzati per ruolo
 - `[ ]` 6.13 Azioni multiple configurabili (delete + warn + mute + ban)
 - `[ ]` 6.14 Log delle azioni automod
+- `[x]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
+  di severità crescente **nel tempo** in base a quante volte un
+  utente ha già triggerato l'AutoMod nativo, con reset dopo un
+  periodo configurabile di buona condotta. Concettualmente diversa
+  da 6.13 (che è più azioni insieme su UN trigger, non su trigger
+  ripetuti nel tempo) — voce nuova, non una ridefinizione di 6.13
 
 ## §7 SECURITY SUITE — Spam Trap (§7.3) completo, il resto mancante
 
@@ -532,7 +538,7 @@ rilancia lo stesso conteggio.
 | §3 Premium | 4 | 0 | 6 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
-| §6 AutoMod | 2 | 0 | 12 |
+| §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 5 | 0 | 12 |
 | §9 Music | 0 | 0 | 12 |
@@ -545,8 +551,9 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **93** | **0** | **173** |
+| **Totale** | **94** | **0** | **173** |
 
-Su 266 voci totali: **93 fatte, 0 parziali, 173 mancanti** — circa il
-35% dello schema.
+Su 267 voci totali (una in più: SPEC.md §6.15 aggiunta per
+l'Escalation Ladder, che non aveva un corrispettivo esistente):
+**94 fatte, 0 parziali, 173 mancanti** — circa il 35% dello schema.
 

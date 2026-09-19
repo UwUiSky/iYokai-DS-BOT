@@ -554,6 +554,33 @@ sezione a chiudersi del tutto, dopo §7.3 Spam Trap.
 
 **Suite di test completa: 518/518 passano.**
 
+### Fase 18 — Smart AutoMod Escalation Ladder (BACKLOG.md §11, chiude la priorità #3)
+- [x] `core/escalation_ladder_logic.py` — `get_ladder_action()`
+  gestisce esplicitamente il caso più importante: oltre l'ultimo
+  gradino definito, un utente recidivo resta sul gradino **più
+  severo**, non esce dal sistema senza conseguenze. **13 test**
+- [x] `core/repositories/escalation_repo.py` — `DEFAULT_LADDER` (warn
+  → timeout 10min → timeout 1h) usata finché l'admin non configura
+  la propria. **14 test contro PostgreSQL reale**
+- [x] `cogs/automod/escalation.py` — ascolta `on_automod_action`
+  (l'evento nativo di Discord quando una regola AutoMod scatta) e
+  applica una severità crescente nel tempo, cosa che l'AutoMod nativo
+  non sa fare da solo. Doppio gate: `MODULE_AUTOMOD` attivo E
+  escalation esplicitamente abilitata. Riusa `MODULE_AUTOMOD` invece
+  di registrare un secondo modulo premium — stesso interruttore, non
+  uno in più da gestire per l'admin. Ogni azione crea anche un case
+  nel sistema di moderazione esistente. **1 test smoke**
+- [x] `SPEC.md` §6.15 aggiunta come voce **nuova** (non una
+  ridefinizione di §6.13, concettualmente diversa: azioni combinate
+  su un trigger vs scala nel tempo su trigger ripetuti)
+
+**BACKLOG.md §11 completata al 100%** (3 voci su 4 — Staff Workload
+Intelligence resta `RIMANDATA` per il rischio di incentivi perversi
+già discusso). **Priorità #1, #2 e #3 del backlog accettato sono ora
+tutte FATTE.**
+
+**Suite di test completa: 546/546 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -876,17 +903,16 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Priorità #1, #2 e metà della #3 del backlog accettato sono FATTE**:
-cache moduli, Moderazione al 100%, Permission Heatmap + Config Diff
-& Rollback. Restano:
+**Priorità #1, #2 e #3 del backlog accettato sono TUTTE FATTE.**
+Restano solo due priorità dal riepilogo di `BACKLOG.md`:
 
-- Smart AutoMod Escalation Ladder (BACKLOG.md §11, l'ultimo quarto
-  rimasto di questa priorità) — estende §6 AutoMod
-- Logging multi-indice su DB, senza il Forum per membri/messaggi
-  (BACKLOG.md §3)
-- Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4)
+4. Logging multi-indice su DB, senza il Forum per membri/messaggi
+   (BACKLOG.md §3)
+5. Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4)
 
-Nessuna priorità imposta in modo vincolante — la decisione resta
-dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
-`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
-passa da `BACKLOG.md` prima di toccare `SPEC.md`.
+Oltre a queste, qualunque voce di `SPEC.md` resta legittima — la
+decisione non è vincolata al backlog. Nessuna priorità imposta in
+modo vincolante — la decisione resta dell'utente. Ricordarsi SEMPRE,
+prima di scrivere codice: leggere `SPEC.md`, non un riassunto. E
+qualunque proposta esterna futura passa da `BACKLOG.md` prima di
+toccare `SPEC.md`.

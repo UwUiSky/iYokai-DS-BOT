@@ -362,7 +362,7 @@ chiamata a un'API esterna con dati di un utente.
 
 ---
 
-## 11. Strumenti admin lock-in — `PARZIALMENTE FATTA` (2 su 4)
+## 11. Strumenti admin lock-in — `FATTA` (3 su 4, l'ultima è rimandata per scelta)
 
 **Fonte**: risposta libera di Grok (Staff Workload Intelligence,
 Config Diff & Rollback, Permission Risk Heatmap, Smart Escalation
@@ -374,9 +374,10 @@ Ladder), ChatGPT punto 25 (Permission Resolver).
 - **Permission Risk Heatmap** — `FATTA`. Estende naturalmente
   §7.4 Permission Auditor già previsto.
 - **Smart AutoMod Escalation Ladder** (scala configurabile di azioni
-  per infrazione, con reset dopo buona condotta) — `ACCETTATA`, non
-  ancora fatta. Estende §6 AutoMod, coerente con l'architettura
-  ibrida (nativo + bot-side) già decisa per quel modulo.
+  per infrazione, con reset dopo buona condotta) — `FATTA`. Estende
+  §6 AutoMod (nuova voce §6.15, nessun corrispettivo esistente da
+  riusare), coerente con l'architettura ibrida (nativo + bot-side)
+  già decisa per quel modulo.
 - **Staff Workload Intelligence** (misura carico ticket/sanzioni per
   moderatore, suggerisce rotazioni, eventuali bonus automatici dallo
   staff fund) — `RIMANDATA`. Utile ma con un rischio non discusso:
