@@ -246,6 +246,11 @@ class Database:
         )
         await escalation_migrations(self.pool)
 
+        from core.repositories.event_log_repo import (
+            run_migrations as event_log_migrations,
+        )
+        await event_log_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
