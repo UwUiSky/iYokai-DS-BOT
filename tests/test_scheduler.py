@@ -181,3 +181,105 @@ async def test_handler_che_fallisce_non_marca_come_eseguita(clean_db, monkeypatc
         "SELECT executed FROM scheduled_actions WHERE id = $1", action_id
     )
     assert row["executed"] is False
+
+
+def _collega_pool_di_test(monkeypatch, clean_db) -> None:
+    import core.database as database_module
+
+    class _FakeDbWithPool:
+        pool = clean_db
+
+    monkeypatch.setattr(database_module, "db", _FakeDbWithPool())
+
+
+@pytest.mark.asyncio
+async def test_list_pending_for_user_filtra_per_utente_e_tipo(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    futuro = datetime.now(timezone.utc) + timedelta(days=1)
+
+    await scheduler.schedule(guild_id=1, user_id=100, action_type="reminder", execute_at=futuro)
+    await scheduler.schedule(guild_id=1, user_id=200, action_type="reminder", execute_at=futuro)
+    await scheduler.schedule(guild_id=1, user_id=100, action_type="altro_tipo", execute_at=futuro)
+
+    risultato = await scheduler.list_pending_for_user(100, "reminder")
+
+    assert len(risultato) == 1
+    assert risultato[0]["guild_id"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_pending_for_user_esclude_azioni_gia_eseguite(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    passato = datetime.now(timezone.utc) - timedelta(seconds=5)
+
+    scheduler.register_handler("reminder", lambda g, u, p: None)
+    action_id = await scheduler.schedule(
+        guild_id=1, user_id=100, action_type="reminder", execute_at=passato
+    )
+    await clean_db.execute(
+        "UPDATE scheduled_actions SET executed = TRUE WHERE id = $1", action_id
+    )
+
+    risultato = await scheduler.list_pending_for_user(100, "reminder")
+    assert risultato == []
+
+
+@pytest.mark.asyncio
+async def test_list_pending_for_user_ordina_per_data_di_esecuzione(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    ora = datetime.now(timezone.utc)
+
+    id_lontano = await scheduler.schedule(
+        guild_id=1, user_id=100, action_type="reminder", execute_at=ora + timedelta(days=5)
+    )
+    id_vicino = await scheduler.schedule(
+        guild_id=1, user_id=100, action_type="reminder", execute_at=ora + timedelta(hours=1)
+    )
+
+    risultato = await scheduler.list_pending_for_user(100, "reminder")
+
+    assert [r["id"] for r in risultato] == [id_vicino, id_lontano]
+
+
+@pytest.mark.asyncio
+async def test_list_pending_for_user_include_il_payload_deserializzato(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    futuro = datetime.now(timezone.utc) + timedelta(days=1)
+
+    await scheduler.schedule(
+        guild_id=1, user_id=100, action_type="reminder", execute_at=futuro,
+        payload={"message": "Comprare il latte"},
+    )
+
+    risultato = await scheduler.list_pending_for_user(100, "reminder")
+    assert risultato[0]["payload"] == {"message": "Comprare il latte"}
+
+
+@pytest.mark.asyncio
+async def test_get_pending_action_restituisce_i_dati_corretti(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    futuro = datetime.now(timezone.utc) + timedelta(days=1)
+
+    action_id = await scheduler.schedule(
+        guild_id=1, user_id=100, action_type="reminder", execute_at=futuro,
+        payload={"message": "Test"},
+    )
+
+    azione = await scheduler.get_pending_action(action_id)
+
+    assert azione["user_id"] == 100
+    assert azione["guild_id"] == 1
+    assert azione["executed"] is False
+    assert azione["payload"] == {"message": "Test"}
+
+
+@pytest.mark.asyncio
+async def test_get_pending_action_inesistente_restituisce_none(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    assert await scheduler.get_pending_action(999999) is None

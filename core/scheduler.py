@@ -114,6 +114,65 @@ class Scheduler:
             action_id,
         )
 
+    async def list_pending_for_user(
+        self, user_id: int, action_type: str, limit: int = 25
+    ) -> list[dict]:
+        """
+        Elenca le azioni pianificate non ancora eseguite per un
+        utente e un tipo specifico — es. /reminders list. A
+        differenza di _run_due_actions() (che gira nel loop periodico
+        e prende QUALUNQUE azione scaduta, per eseguirla), questa è
+        una lettura su richiesta per mostrare all'utente cosa ha
+        ancora in sospeso, scaduto o no.
+        """
+        from core.database import db
+
+        rows = await db.pool.fetch(
+            """
+            SELECT id, guild_id, execute_at, payload FROM scheduled_actions
+            WHERE user_id = $1 AND action_type = $2 AND executed = FALSE
+            ORDER BY execute_at
+            LIMIT $3
+            """,
+            user_id,
+            action_type,
+            limit,
+        )
+        return [
+            {
+                "id": row["id"],
+                "guild_id": row["guild_id"],
+                "execute_at": row["execute_at"],
+                "payload": json.loads(row["payload"]) if row["payload"] else {},
+            }
+            for row in rows
+        ]
+
+    async def get_pending_action(self, action_id: int) -> dict | None:
+        """
+        Legge una singola azione pianificata per id — usata da
+        /reminders cancel per verificare che l'azione esista, che
+        appartenga davvero a chi sta cercando di cancellarla, e che
+        non sia già stata eseguita, PRIMA di cancellarla.
+        """
+        from core.database import db
+
+        row = await db.pool.fetchrow(
+            "SELECT id, guild_id, user_id, action_type, payload, executed "
+            "FROM scheduled_actions WHERE id = $1",
+            action_id,
+        )
+        if row is None:
+            return None
+        return {
+            "id": row["id"],
+            "guild_id": row["guild_id"],
+            "user_id": row["user_id"],
+            "action_type": row["action_type"],
+            "payload": json.loads(row["payload"]) if row["payload"] else {},
+            "executed": row["executed"],
+        }
+
     async def _run_due_actions(self) -> None:
         """
         Interrogazione periodica: trova le azioni scadute e non
