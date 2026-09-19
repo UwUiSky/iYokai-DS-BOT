@@ -135,6 +135,7 @@ async def clean_db(db_pool):
         "role_menu_options",
         "greetings_config",
         "guild_config",
+        "guild_config_history",
         "premium_whitelist",
         "premium_module_flags",
     ]

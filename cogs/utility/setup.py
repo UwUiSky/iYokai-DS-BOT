@@ -97,6 +97,16 @@ class SetupView(discord.ui.View):
         self.selected_values: set[str] = {
             m.name for m, is_enabled in modules_with_state if is_enabled
         }
+        # Copia CONGELATA dello stato iniziale — self.selected_values
+        # viene mutata dal callback della Select man mano che l'utente
+        # cambia la selezione, quindi al momento di "Salva" non
+        # rifletterebbe più lo stato di partenza. Serve per scrivere
+        # nel DB (e quindi nello storico di Config Diff & Rollback,
+        # BACKLOG.md §11) solo i moduli il cui stato è DAVVERO
+        # cambiato — senza questo, ogni salvataggio registrerebbe una
+        # voce di storico "cambiata" per OGNI modulo, anche per quelli
+        # rimasti identici, riempiendo lo storico di rumore.
+        self._initial_selected_values: frozenset[str] = frozenset(self.selected_values)
         self.message: discord.Message | discord.InteractionMessage | None = None
         self.add_item(ModuleSelect(modules_with_state))
 
@@ -105,8 +115,13 @@ class SetupView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
         for module_name in self.all_module_names:
+            era_attivo = module_name in self._initial_selected_values
             active = module_name in self.selected_values
-            await db.set_module_active_for_guild(self.guild_id, module_name, active)
+            if active == era_attivo:
+                continue  # nessun cambiamento reale: non scrivere né loggare nulla
+            await db.set_module_active_for_guild(
+                self.guild_id, module_name, active, changed_by=interaction.user.id
+            )
 
         self.stop()
         await interaction.response.edit_message(

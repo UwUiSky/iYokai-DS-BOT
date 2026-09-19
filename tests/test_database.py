@@ -268,3 +268,281 @@ async def test_cache_non_mischia_server_diversi():
             "DELETE FROM guild_config WHERE guild_id IN (777777803, 777777804)"
         )
         await database.close()
+
+
+# ====================================================================
+# Config Diff & Rollback (BACKLOG.md §11)
+# ====================================================================
+@pytest.mark.asyncio
+async def test_set_module_active_registra_una_voce_di_storico():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777900"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777900"
+        )
+
+        await database.set_module_active_for_guild(
+            777777900, "leveling", True, changed_by=42
+        )
+
+        storico = await database.get_config_history(777777900)
+        assert len(storico) == 1
+        voce = storico[0]
+        assert voce.change_type == "module"
+        assert voce.key_name == "leveling"
+        assert voce.old_value is None  # non era mai stato impostato prima
+        assert voce.new_value is True
+        assert voce.changed_by == 42
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777900"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777900"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_storico_cattura_il_valore_precedente_corretto():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777901"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777901"
+        )
+
+        await database.set_module_active_for_guild(777777901, "verify", True)
+        await database.set_module_active_for_guild(777777901, "verify", False)
+
+        storico = await database.get_config_history(777777901)
+        # Ordinato dal più recente: la seconda scrittura (True->False)
+        # deve avere old_value=True, non None.
+        assert storico[0].old_value is True
+        assert storico[0].new_value is False
+        assert storico[1].old_value is None
+        assert storico[1].new_value is True
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777901"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777901"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_set_guild_setting_registra_storico():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777902"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777902"
+        )
+
+        await database.set_guild_setting(
+            777777902, "report_channel_id", 555, changed_by=99
+        )
+
+        storico = await database.get_config_history(777777902)
+        assert len(storico) == 1
+        assert storico[0].change_type == "setting"
+        assert storico[0].key_name == "report_channel_id"
+        assert storico[0].new_value == 555
+        assert storico[0].changed_by == 99
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777902"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777902"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_get_config_history_rispetta_il_limite():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777903"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777903"
+        )
+
+        for i in range(5):
+            await database.set_module_active_for_guild(
+                777777903, f"modulo{i}", True
+            )
+
+        storico = await database.get_config_history(777777903, limit=2)
+        assert len(storico) == 2
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777903"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777903"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_rollback_config_change_ripristina_il_modulo():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777904"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777904"
+        )
+
+        await database.set_module_active_for_guild(777777904, "leveling", True)
+        await database.set_module_active_for_guild(777777904, "leveling", False)
+        # Ora leveling è False. Vogliamo tornare a True (il valore
+        # PRIMA della seconda scrittura) usando la voce di storico
+        # relativa a quella seconda scrittura.
+        storico = await database.get_config_history(777777904)
+        voce_da_annullare = storico[0]  # la più recente: True->False
+
+        riuscito = await database.rollback_config_change(
+            voce_da_annullare.id, rolled_back_by=7
+        )
+
+        assert riuscito is True
+        assert await database.is_module_active_for_guild(777777904, "leveling") is True
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777904"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777904"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_rollback_config_change_registra_se_stesso_come_nuova_voce():
+    # Un rollback non deve sparire silenziosamente: deve comparire
+    # come una NUOVA voce nello storico, con changed_by = chi ha
+    # fatto il rollback.
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777905"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777905"
+        )
+
+        await database.set_module_active_for_guild(777777905, "leveling", True)
+        storico_prima = await database.get_config_history(777777905)
+        await database.rollback_config_change(storico_prima[0].id, rolled_back_by=7)
+
+        storico_dopo = await database.get_config_history(777777905)
+        assert len(storico_dopo) == 2  # la scrittura originale + il rollback
+        assert storico_dopo[0].changed_by == 7  # la voce più recente è il rollback
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777905"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777905"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_rollback_config_change_setting():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777906"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777906"
+        )
+
+        await database.set_guild_setting(777777906, "report_channel_id", 111)
+        await database.set_guild_setting(777777906, "report_channel_id", 222)
+
+        storico = await database.get_config_history(777777906)
+        voce_da_annullare = storico[0]  # 111 -> 222
+
+        await database.rollback_config_change(voce_da_annullare.id, rolled_back_by=None)
+
+        valore_attuale = await database.get_guild_setting(777777906, "report_channel_id")
+        assert valore_attuale == 111
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 777777906"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 777777906"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_rollback_config_change_voce_inesistente_restituisce_false():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        riuscito = await database.rollback_config_change(999999999, rolled_back_by=1)
+        assert riuscito is False
+    finally:
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_config_history_non_mischia_server_diversi():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id IN (777777907, 777777908)"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id IN (777777907, 777777908)"
+        )
+
+        await database.set_module_active_for_guild(777777907, "leveling", True)
+        await database.set_module_active_for_guild(777777908, "verify", True)
+
+        storico_907 = await database.get_config_history(777777907)
+        assert len(storico_907) == 1
+        assert storico_907[0].key_name == "leveling"
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id IN (777777907, 777777908)"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id IN (777777907, 777777908)"
+        )
+        await database.close()

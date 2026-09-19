@@ -47,9 +47,14 @@ class _FakeResponse:
         pass
 
 
+class _FakeUser:
+    id = 999
+
+
 class _FakeInteraction:
     def __init__(self) -> None:
         self.response = _FakeResponse()
+        self.user = _FakeUser()
 
 
 def _find_button(view: SetupView, label: str) -> discord.ui.Button:
@@ -130,6 +135,69 @@ async def test_salvataggio_persiste_esattamente_la_selezione():
     finally:
         await database.pool.execute(
             "DELETE FROM guild_config WHERE guild_id = 555555555"
+        )
+        await database.close()
+
+
+async def test_salvataggio_non_registra_storico_per_moduli_invariati():
+    # Verifica del fix: prima di questa correzione, /setup scriveva
+    # (e quindi loggava nello storico Config Diff & Rollback) OGNI
+    # modulo ad ogni salvataggio, anche quelli il cui stato non era
+    # cambiato — riempiendo lo storico di voci "cambiate" false.
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 555555556
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = $1", guild_id
+        )
+
+        modulo_a = PremiumModule(
+            name="test_invariato_a", display_name="A", description="A"
+        )
+        modulo_b = PremiumModule(
+            name="test_cambiato_b", display_name="B", description="B"
+        )
+
+        await database.ensure_guild_exists(guild_id)
+        await database.set_module_active_for_guild(guild_id, "test_invariato_a", True)
+        await database.set_module_active_for_guild(guild_id, "test_cambiato_b", False)
+        # Puliamo lo storico DOPO la configurazione iniziale, per
+        # isolare solo quello che genera il salvataggio della view.
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = $1", guild_id
+        )
+
+        import cogs.utility.setup as setup_module
+        original_db = setup_module.db
+        setup_module.db = database
+
+        try:
+            modules_with_state = [(modulo_a, True), (modulo_b, False)]
+            view = SetupView(guild_id, modules_with_state)
+
+            # L'utente lascia A com'era (attivo) e attiva B: solo B
+            # deve produrre una voce di storico.
+            view.selected_values = {"test_invariato_a", "test_cambiato_b"}
+
+            save_button = _find_button(view, "Salva configurazione")
+            await save_button.callback(_FakeInteraction())
+
+            storico = await database.get_config_history(guild_id)
+            assert len(storico) == 1
+            assert storico[0].key_name == "test_cambiato_b"
+        finally:
+            setup_module.db = original_db
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 555555556"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = 555555556"
         )
         await database.close()
 
