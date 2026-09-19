@@ -87,8 +87,10 @@ file, non da un riassunto.**
   `guild_config` è morta e va rimossa o documentata come deprecata**
 - `[ ]` 2.5 Esporta configurazione
 - `[ ]` 2.6 Importa configurazione
-- `[ ]` 2.7 Log delle modifiche di setup (audit trail: chi ha
-  attivato/disattivato cosa e quando)
+- `[x]` 2.7 Log delle modifiche di setup (audit trail: chi ha
+  attivato/disattivato cosa e quando) — esteso oltre la richiesta
+  originale con il **rollback**: `/config history` + `/config
+  rollback <id>` con conferma a due passaggi (BACKLOG.md §11)
 
 ## §3 PREMIUM SYSTEM
 
@@ -249,7 +251,10 @@ file, non da un riassunto.**
     Anti-Alt (fingerprint cross-server), non costruito. Il ban resta
     per-server, correttamente, dato che non esiste ancora nulla da
     cui recuperare un fingerprint
-- `[ ]` 7.4 Permission Auditor + alert permessi pericolosi
+- `[x]` 7.4 Permission Auditor + alert permessi pericolosi —
+  `/permission-heatmap` (ruoli con permessi critici + quanti membri
+  li possiedono) + DM diretto all'owner quando un membro riceve un
+  ruolo con permesso critico
 - `[ ]` 7.5 Security Score / health check configurazione server
 
 ## §8 LOGGING
@@ -523,12 +528,12 @@ rilancia lo stesso conteggio.
 | Sezione | Fatto | Parziale | Mancante |
 |---|---|---|---|
 | §1 Core | 18 | 0 | 1 |
-| §2 Setup | 1 | 0 | 6 |
+| §2 Setup | 2 | 0 | 5 |
 | §3 Premium | 4 | 0 | 6 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 2 | 0 | 12 |
-| §7 Security | 13 | 0 | 19 |
+| §7 Security | 14 | 0 | 18 |
 | §8 Logging | 5 | 0 | 12 |
 | §9 Music | 0 | 0 | 12 |
 | §10 Alerts | 0 | 0 | 8 |
@@ -540,9 +545,8 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **91** | **0** | **175** |
+| **Totale** | **93** | **0** | **173** |
 
-Su 266 voci totali: **91 fatte, 0 parziali, 175 mancanti** — circa il
-34% dello schema. §5 Moderation è la seconda sezione completa al
-100% (dopo §7.3 Spam Trap all'interno di Security).
+Su 266 voci totali: **93 fatte, 0 parziali, 173 mancanti** — circa il
+35% dello schema.
 

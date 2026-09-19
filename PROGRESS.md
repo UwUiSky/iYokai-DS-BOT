@@ -523,6 +523,37 @@ sezione a chiudersi del tutto, dopo §7.3 Spam Trap.
 
 **Suite di test completa: 492/492 passano.**
 
+### Fase 17 — Permission Heatmap + Config Diff & Rollback (BACKLOG.md §11, 2 su 4)
+- [x] `core/permission_risk_logic.py` — `CRITICAL_PERMISSIONS`
+  (sottoinsieme deliberatamente ristretto), `newly_gained_critical_
+  permissions()` guarda solo i ruoli **appena aggiunti** — un ruolo
+  critico rimosso non è mai un alert. **13 test**
+- [x] `cogs/security/permission_heatmap.py` — `/permission-heatmap`
+  + DM diretto all'owner su nuova assegnazione critica (nessun setup
+  richiesto, stesso principio di Memory Guard). Modulo candidato
+  premium. **1 test smoke**
+- [x] `core/database.py` — nuova tabella `guild_config_history`,
+  registrata da `set_module_active_for_guild`/`set_guild_setting`
+  (parametro opzionale `changed_by`, compatibile con i 5 chiamanti
+  esistenti). `rollback_config_change()` — il rollback stesso si
+  registra come nuova voce di storico, non sparisce dalla cronologia.
+  **16 test contro PostgreSQL reale**
+- [x] `cogs/utility/config_history.py` — `/config history` + `/config
+  rollback` con conferma a due passaggi (View non persistente).
+  **2 test smoke**
+- [x] **Bug reale trovato e corretto in `cogs/utility/setup.py`, non
+  ipotizzato a tavolino**: `/setup` scriveva (e avrebbe loggato)
+  OGNI modulo ad ogni salvataggio, anche quelli invariati — avrebbe
+  riempito lo storico di voci "cambiate" false fin dal primo
+  utilizzo. Corretto con una copia congelata dello stato iniziale
+  prima che la selezione venga mutata. **Verificato con un test
+  dedicato**
+
+**Resta da fare in BACKLOG.md §11**: Smart AutoMod Escalation Ladder
+(estende §6 AutoMod).
+
+**Suite di test completa: 518/518 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -845,15 +876,15 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Le prime due priorità del backlog accettato sono FATTE**: cache
-configurazione moduli (§1) e Moderazione completa al 100% (§5).
-Restano, in ordine dal riepilogo di `BACKLOG.md`:
+**Priorità #1, #2 e metà della #3 del backlog accettato sono FATTE**:
+cache moduli, Moderazione al 100%, Permission Heatmap + Config Diff
+& Rollback. Restano:
 
-3. Config Diff & Rollback, Permission Heatmap, Escalation Ladder
-   (BACKLOG.md §11) — estendono moduli già previsti (§2.7, §7.4, §6)
-4. Logging multi-indice su DB, senza il Forum per membri/messaggi
-   (BACKLOG.md §3)
-5. Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4)
+- Smart AutoMod Escalation Ladder (BACKLOG.md §11, l'ultimo quarto
+  rimasto di questa priorità) — estende §6 AutoMod
+- Logging multi-indice su DB, senza il Forum per membri/messaggi
+  (BACKLOG.md §3)
+- Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4)
 
 Nessuna priorità imposta in modo vincolante — la decisione resta
 dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
