@@ -652,6 +652,44 @@ pressione, RSS piatta su 100.000 messaggi.
 
 **Suite di test completa: 569/569 passano.**
 
+### Fase 21 — Memory Guard a quattro livelli (BACKLOG.md §4, ULTIMA priorità del backlog)
+- [x] `core/memory_guard_logic.py` — `MemoryTier` (NORMAL/WARNING/
+  CRITICAL/EMERGENCY), derivati dalla soglia esistente
+  `MEMORY_ALERT_THRESHOLD_MB` con due rapporti fissi (WARNING=70%,
+  EMERGENCY=130%) — nessun nuovo schema di configurazione, CRITICAL
+  conserva esattamente il significato che l'admin già le dava.
+  Risposta graduata: WARNING forza GC senza avvisare, CRITICAL si
+  comporta come la vecchia soglia singola, EMERGENCY avvisa SEMPRE
+  bypassando il cooldown. **24 test**
+- [x] **Bug reale trovato dal mio stesso test**, non nella funzione
+  di produzione: un confine ESATTO in virgola mobile (512×0.7) è
+  fragile da testare per via dell'arrotondamento nel giro
+  byte→MB→byte. Corretto usando valori appena sopra il confine
+  invece che esattamente su di esso
+- [x] 3 test esistenti aggiornati perché **passavano ma per il
+  motivo sbagliato** dopo il cambio (un valore così alto da ricadere
+  sempre in EMERGENCY, che bypassa il cooldown comunque — non
+  testavano più davvero il confine a cui erano intitolati)
+- [x] `core/memory_guard.py` — `tick()` usa `should_force_gc()` (da
+  WARNING in su) e `should_send_alert()` tier-aware. Pool DB e
+  conteggio task letti in modo tollerante e inclusi nell'alert
+  (versione ridotta come da BACKLOG.md §4 — solo le metriche già
+  misurabili senza nuove dipendenze). **9 test**, inclusi due nuovi
+  che verificano i comportamenti nuovi per davvero (WARNING senza
+  alert, EMERGENCY che bypassa il cooldown)
+
+**BACKLOG.md aggiornato**: tutte e 5 le priorità concrete del
+backlog accettato sono ora `FATTA`. Restano solo le voci
+`RIMANDATA`/`RESPINTA`/`NON DECISO`, ciascuna con la propria
+condizione di riapertura già scritta — nessuna richiede azione ora.
+
+**SPEC.md §1.3**: la sotto-voce "Garbage collection forzata su
+soglia" aggiornata per descrivere i quattro livelli (nessun
+marcatore cambiato, era già `[x]` — solo la descrizione è più
+precisa, tabella dei conteggi invariata).
+
+**Suite di test completa: 584/584 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -974,19 +1012,26 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Priorità #1, #2, #3 e #4 del backlog accettato sono TUTTE FATTE.**
-Resta solo l'ultima:
+**Il backlog accettato da BACKLOG.md è interamente esaurito.** Tutte
+e 5 le priorità concrete (cache moduli, moderazione completa,
+Permission Heatmap + Config Diff & Rollback + Escalation Ladder,
+logging multi-indice, Memory Guard a soglie scalate) sono `FATTA`,
+più un miglioramento trovato per strada (cache spam_trap config,
+scoperta con la simulazione di carico reale — vedi Fase 20).
 
-5. Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4) —
-   NORMAL/WARNING/CRITICAL/EMERGENCY con risposta graduata, invece
-   della soglia singola attuale. Solo RSS (già fatto), pool DB
-   usato/libero, e task count — non le ~10 metriche complete
-   proposte da ChatGPT, per scelta già motivata in BACKLOG.md.
+Nessuna priorità imposta da qui in avanti. La prossima mossa è
+interamente a scelta dell'utente: qualunque voce `[ ]` di `SPEC.md`
+resta legittima (stato attuale: 95 fatte, 0 parziali, 173 mancanti
+su 268 — circa il 35%). Le voci `RIMANDATA`/`RESPINTA` di
+`BACKLOG.md` restano ferme alle condizioni già scritte lì, nessuna
+richiede azione ora.
 
-Con questa, il backlog accettato dall'analisi di Gemini/ChatGPT/Grok
-sarebbe interamente esaurito. Oltre a questa, qualunque voce di
-`SPEC.md` resta legittima — la decisione non è vincolata al backlog.
-Nessuna priorità imposta in modo vincolante — la decisione resta
-dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
-`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
-passa da `BACKLOG.md` prima di toccare `SPEC.md`.
+Ricordarsi SEMPRE, prima di scrivere codice: leggere `SPEC.md`, non
+un riassunto. E qualunque proposta esterna futura passa da
+`BACKLOG.md` prima di toccare `SPEC.md`.
+
+Metodologia acquisita in questa sessione, da riusare quando serve:
+`scripts/load_simulation.py` per misurare per davvero (psutil, cog
+reali, PostgreSQL reale, opzionalmente dentro un cgroup con un tetto
+di RAM vero) invece di stimare a tavolino — vedi il suo stesso
+docstring per le istruzioni d'uso.

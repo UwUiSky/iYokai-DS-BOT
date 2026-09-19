@@ -147,7 +147,7 @@ dare per buoni i numeri a memoria.
 
 ---
 
-## 4. Memory Guard più sofisticato — `RIDIMENSIONATA`
+## 4. Memory Guard più sofisticato — `FATTA` (era `RIDIMENSIONATA`)
 
 **Fonte**: ChatGPT punti 18-19.
 
@@ -450,18 +450,25 @@ le mie:
 
 | Verdetto | Conteggio approssimativo di cluster |
 |---|---|
-| `ACCETTATA` / `ACCETTATA-PRESTO` | 11 cluster |
-| `RIDIMENSIONATA` | 3 cluster |
+| `FATTA` | 5 cluster |
+| `RIDIMENSIONATA` | 1 cluster (§3, solo la parte Forum) |
 | `RIMANDATA` | 7 cluster |
 | `RESPINTA` | 8 cluster |
 | Non deciso / richiede dati reali | 3 cluster |
 
-Le voci `ACCETTATA`/`ACCETTATA-PRESTO` che richiedono lavoro concreto
-a breve termine, in ordine di priorità mia (da discutere, non
-imposta):
+**Le 5 priorità concrete del backlog accettato sono tutte FATTE**:
 
-1. Cache configurazione moduli (§1) — risolve un problema già presente
-2. Softban + mute via ruolo + reason obbligatorio + mod-log channel (§5) — chiude gap già noti in `SPEC.md`
-3. Config Diff & Rollback, Permission Heatmap, Escalation Ladder (§11) — estendono moduli già previsti
-4. Logging multi-indice su DB, senza il Forum per membri/messaggi (§3)
-5. Memory Guard a soglie scalate, versione ridotta (§4)
+1. ~~Cache configurazione moduli (§1)~~ — fatta
+2. ~~Softban + mute via ruolo + reason obbligatorio + mod-log channel (§5)~~ — fatta
+3. ~~Config Diff & Rollback, Permission Heatmap, Escalation Ladder (§11)~~ — fatta (3/4, Staff Workload Intelligence resta rimandata)
+4. ~~Logging multi-indice su DB, senza il Forum per membri/messaggi (§3)~~ — fatta (parte DB; parte Forum canali/case resta esplicitamente non costruita)
+5. ~~Memory Guard a soglie scalate, versione ridotta (§4)~~ — fatta
+
+**In più, trovato durante una simulazione di carico reale (non nel
+backlog originale)**: cache su `spam_trap_repo.get_config()`, stesso
+identico problema già risolto per la config moduli, rimasto scoperto
+lì. Vedi `PROGRESS.md`, Fase 20.
+
+Restano solo le voci `RIMANDATA`/`RESPINTA`/`NON DECISO` di questo
+file, ciascuna con la propria condizione di riapertura già scritta
+sopra — nessuna richiede azione ora.

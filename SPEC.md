@@ -42,7 +42,10 @@ file, non da un riassunto.**
   emette nessun evento; nessun consumatore lo ascolta
 - `[x]` **1.3 Memory Guard**
   - `[x]` Monitoraggio RAM ogni 60 secondi (psutil) — `core/memory_guard.py`, letto per davvero con `psutil.Process().memory_info().rss`, verificato con un test che legge la RAM vera del processo di test (nessun mock)
-  - `[x]` Garbage collection forzata su soglia
+  - `[x]` Garbage collection forzata su soglia — evoluta a **quattro
+    livelli** (NORMAL/WARNING/CRITICAL/EMERGENCY, BACKLOG.md §4):
+    GC da WARNING in su, DM solo da CRITICAL (col cooldown di 30 min
+    di prima), EMERGENCY bypassa sempre il cooldown
   - `[x]` Limitazione dimensione cache — `core/bounded_cache.py`
     (LRU vera, §1.5), collegata come consumatore reale a
     `core/invite_tracker.py`, che prima cresceva senza limiti con il
