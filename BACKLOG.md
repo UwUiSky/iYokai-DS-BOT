@@ -98,7 +98,7 @@ processo) tornerebbe ad avere senso. Rivalutare solo a quel punto.
 
 ---
 
-## 3. Logging strutturato — `ACCETTATA` (DB) + `RIDIMENSIONATA` (Forum)
+## 3. Logging strutturato — `FATTA` (DB) + `RIDIMENSIONATA, NON COSTRUITA` (Forum)
 
 **Fonte**: ChatGPT punti 1-14 (il cuore della sua trascrizione), Grok
 §8 EDIT.

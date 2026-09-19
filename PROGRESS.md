@@ -581,6 +581,42 @@ tutte FATTE.**
 
 **Suite di test completa: 546/546 passano.**
 
+### Fase 19 — Log eventi unificato multi-indice (BACKLOG.md §3, chiude la priorità #4)
+- [x] `core/event_log_retention_logic.py` — `retention_days_for()`
+  (30gg Free, 180gg Premium). **3 test**
+- [x] `core/repositories/event_log_repo.py` — tabella `event_log`,
+  un evento salvato UNA VOLTA con indici su membro/canale/ruolo/
+  tempo/case. `export_events()` per l'export GDPR-style,
+  `prune_old_events_for_guild()` per la retention per-server.
+  **14 test contro PostgreSQL reale**
+- [x] `cogs/logging/basic_logs.py` — tutti e 7 i listener esistenti
+  scrivono ora anche nel log unificato, **indipendentemente dal
+  canale live configurato** (verificato con un test dedicato: un
+  evento arriva nel DB anche senza nessun canale impostato). **Bug
+  evitato prima del commit**: `added_ids`/`removed_ids` sono `set`,
+  `json.dumps()` solleva `TypeError` su un set — verificato con una
+  chiamata reale prima di scrivere il fix, non assunto
+- [x] `cogs/logging/logs_query.py` — `/logs user|channel|export`
+  (JSON completo via `discord.File`/`io.BytesIO`, nessun file
+  temporaneo su disco)
+- [x] `core/event_log_retention.py` — servizio bot-wide (stesso
+  pattern di Memory Guard), retention **differenziata per server**
+  in base allo stato Free/Premium, agganciato in `main.py`.
+  Verificato con un test di integrazione reale (whitelist premium
+  vera, non un mock): due server con lo stesso evento vecchio,
+  soglie diverse, solo uno dei due lo perde
+
+**Deliberatamente non costruito, come da analisi**: la proiezione su
+Forum Discord per canali/case (bassa cardinalità) — resta
+un'estensione futura separata, la decisione di scartarla per
+membri/messaggi (alta cardinalità) resta invariata.
+
+**BACKLOG.md §3 (parte DB) completata. Priorità #1-#4 del backlog
+accettato sono ora tutte FATTE.** Resta solo #5 (Memory Guard a
+soglie scalate).
+
+**Suite di test completa: 567/567 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -903,16 +939,19 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Priorità #1, #2 e #3 del backlog accettato sono TUTTE FATTE.**
-Restano solo due priorità dal riepilogo di `BACKLOG.md`:
+**Priorità #1, #2, #3 e #4 del backlog accettato sono TUTTE FATTE.**
+Resta solo l'ultima:
 
-4. Logging multi-indice su DB, senza il Forum per membri/messaggi
-   (BACKLOG.md §3)
-5. Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4)
+5. Memory Guard a soglie scalate, versione ridotta (BACKLOG.md §4) —
+   NORMAL/WARNING/CRITICAL/EMERGENCY con risposta graduata, invece
+   della soglia singola attuale. Solo RSS (già fatto), pool DB
+   usato/libero, e task count — non le ~10 metriche complete
+   proposte da ChatGPT, per scelta già motivata in BACKLOG.md.
 
-Oltre a queste, qualunque voce di `SPEC.md` resta legittima — la
-decisione non è vincolata al backlog. Nessuna priorità imposta in
-modo vincolante — la decisione resta dell'utente. Ricordarsi SEMPRE,
-prima di scrivere codice: leggere `SPEC.md`, non un riassunto. E
-qualunque proposta esterna futura passa da `BACKLOG.md` prima di
-toccare `SPEC.md`.
+Con questa, il backlog accettato dall'analisi di Gemini/ChatGPT/Grok
+sarebbe interamente esaurito. Oltre a questa, qualunque voce di
+`SPEC.md` resta legittima — la decisione non è vincolata al backlog.
+Nessuna priorità imposta in modo vincolante — la decisione resta
+dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
+`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
+passa da `BACKLOG.md` prima di toccare `SPEC.md`.

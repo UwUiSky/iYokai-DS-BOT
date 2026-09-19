@@ -284,6 +284,16 @@ file, non da un riassunto.**
 - `[ ]` 8.16 Message delete / bulk delete / edit — **rimandato
   deliberatamente**: richiede il Message Content Intent, da chiedere
   solo quando un modulo lo giustifica (vedi § Decisioni)
+- `[x]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
+  evento (8.1-8.5, 8.15 quando esisterà) salvato UNA VOLTA nel DB,
+  consultabile da più angolazioni (membro, canale, ruolo, tempo).
+  `/logs user`, `/logs channel`, `/logs export` (JSON completo).
+  Retention differenziata: 30gg Free, 180gg Premium, pulizia
+  giornaliera automatica. **Proiezione su Forum Discord per
+  canali/case NON costruita** — decisione esplicita nell'analisi
+  (BACKLOG.md §3): "membri" è l'unica dimensione ad alta cardinalità
+  che avrebbe fatto esplodere i thread durante un raid, "canali" e
+  "case" restano un'estensione futura separata
 - `[ ]` 8.17 Distinzione log semplificato `[Free]` vs completo `[Premium]`
   — oggi il modulo è uno solo, senza i due livelli previsti
 
@@ -540,7 +550,7 @@ rilancia lo stesso conteggio.
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
-| §8 Logging | 5 | 0 | 12 |
+| §8 Logging | 6 | 0 | 12 |
 | §9 Music | 0 | 0 | 12 |
 | §10 Alerts | 0 | 0 | 8 |
 | §11 Backup | 0 | 0 | 13 |
@@ -551,9 +561,10 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **94** | **0** | **173** |
+| **Totale** | **95** | **0** | **173** |
 
-Su 267 voci totali (una in più: SPEC.md §6.15 aggiunta per
-l'Escalation Ladder, che non aveva un corrispettivo esistente):
-**94 fatte, 0 parziali, 173 mancanti** — circa il 35% dello schema.
+Su 268 voci totali (due in più rispetto all'ultimo conteggio: §6.15
+e §8.17, entrambe aggiunte come voci nuove senza corrispettivo
+esistente da riusare): **95 fatte, 0 parziali, 173 mancanti** — circa
+il 35% dello schema.
 
