@@ -43,6 +43,48 @@ async def test_set_config_sovrascrive(repo):
     assert config.log_channel_id == 444
 
 
+@pytest.mark.asyncio
+async def test_get_config_cache_serve_davvero_dalla_memoria(repo, clean_db):
+    # Prova diretta che la cache è USATA (non solo che il metodo
+    # continua a funzionare, che test_set_config_sovrascrive già
+    # copre): modifichiamo la riga con SQL grezzo che bypassa
+    # set_config (quindi bypassa anche l'invalidazione), e
+    # verifichiamo che get_config continui a restituire il valore
+    # VECCHIO finché non passiamo esplicitamente da set_config.
+    await repo.set_config(100, 111, 222)
+
+    # Primo giro: legge dal DB, popola la cache.
+    config = await repo.get_config(100)
+    assert config.trap_channel_id == 111
+
+    # Modifica DIRETTA sul DB, bypassando set_config.
+    await clean_db.execute(
+        "UPDATE spam_trap_config SET trap_channel_id = 999 WHERE guild_id = $1", 100
+    )
+
+    # La cache non sa nulla di questa modifica: deve restituire
+    # ANCORA 111 (il valore stantio), prova che legge dalla memoria.
+    config_stantio = await repo.get_config(100)
+    assert config_stantio.trap_channel_id == 111
+
+    # Solo passando da set_config (che invalida) il nuovo valore
+    # diventa visibile.
+    await repo.set_config(100, 999, 222)
+    config_aggiornato = await repo.get_config(100)
+    assert config_aggiornato.trap_channel_id == 999
+
+
+@pytest.mark.asyncio
+async def test_get_config_cache_non_mischia_server(repo):
+    await repo.set_config(100, 111, 222)
+    await repo.set_config(200, 333, 444)
+
+    config_100 = await repo.get_config(100)
+    config_200 = await repo.get_config(200)
+    assert config_100.trap_channel_id == 111
+    assert config_200.trap_channel_id == 333
+
+
 # ====================================================================
 # Indice messaggi
 # ====================================================================

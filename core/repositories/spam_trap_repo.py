@@ -22,6 +22,8 @@ from datetime import datetime
 
 import asyncpg
 
+from core.bounded_cache import BoundedCache
+
 
 @dataclass(frozen=True)
 class SpamTrapConfig:
@@ -131,6 +133,16 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 class SpamTrapRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
+        # Cache della configurazione per server (trovato durante una
+        # simulazione di carico reale il 19/09/2026: get_config()
+        # girava senza cache su OGNI messaggio quando lo Spam Trap è
+        # attivo, per leggere due valori che cambiano solo quando un
+        # admin lancia /setup — stesso identico problema già risolto
+        # per is_module_active_for_guild in core/database.py, qui era
+        # rimasto scoperto). Invalidazione esplicita su set_config,
+        # mai a scadenza temporale — stesso principio della cache
+        # moduli.
+        self._config_cache: BoundedCache[int, SpamTrapConfig] = BoundedCache(max_size=10_000)
 
     @property
     def _pool(self) -> asyncpg.Pool:
@@ -140,13 +152,21 @@ class SpamTrapRepository:
     # Configurazione
     # ================================================================
     async def get_config(self, guild_id: int) -> SpamTrapConfig:
+        config = self._config_cache.get(guild_id)
+        if config is not None:
+            return config
+
         row = await self._pool.fetchrow(
             "SELECT trap_channel_id, log_channel_id FROM spam_trap_config WHERE guild_id = $1",
             guild_id,
         )
         if row is None:
-            return SpamTrapConfig(guild_id, None, None)
-        return SpamTrapConfig(guild_id, row["trap_channel_id"], row["log_channel_id"])
+            config = SpamTrapConfig(guild_id, None, None)
+        else:
+            config = SpamTrapConfig(guild_id, row["trap_channel_id"], row["log_channel_id"])
+
+        self._config_cache.set(guild_id, config)
+        return config
 
     async def set_config(
         self, guild_id: int, trap_channel_id: int, log_channel_id: int
@@ -163,6 +183,11 @@ class SpamTrapRepository:
             trap_channel_id,
             log_channel_id,
         )
+        # Invalida (non aggiorna in-place): stesso motivo già scritto
+        # per la cache moduli — alla prossima lettura si ripopola dal
+        # DB da zero, mai a rischio di disallineamento dopo una
+        # scrittura parziale.
+        self._config_cache.delete(guild_id)
 
     # ================================================================
     # Indice messaggi (per la purge supplementare)
