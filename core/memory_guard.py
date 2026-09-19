@@ -14,6 +14,7 @@ bot-wide, non legato alla configurazione di un singolo server.
 
 from __future__ import annotations
 
+import asyncio
 import gc
 import logging
 from datetime import datetime, timezone
@@ -25,6 +26,7 @@ from core.config import config
 from core.memory_guard_logic import (
     format_memory_alert,
     should_disconnect_voice_client,
+    should_force_gc,
     should_send_alert,
 )
 
@@ -48,10 +50,25 @@ class MemoryGuard:
         import psutil
         return psutil.Process().memory_info().rss
 
-    async def _send_alert(self, bot: commands.Bot, rss_bytes: int) -> None:
+    async def _send_alert(
+        self,
+        bot: commands.Bot,
+        rss_bytes: int,
+        pool_size: int | None = None,
+        pool_idle: int | None = None,
+        task_count: int | None = None,
+    ) -> None:
         try:
             owner = await bot.fetch_user(config.OWNER_ID)
-            await owner.send(format_memory_alert(rss_bytes, config.MEMORY_ALERT_THRESHOLD_MB))
+            await owner.send(
+                format_memory_alert(
+                    rss_bytes,
+                    config.MEMORY_ALERT_THRESHOLD_MB,
+                    pool_size=pool_size,
+                    pool_idle=pool_idle,
+                    task_count=task_count,
+                )
+            )
             self._last_alert_at = datetime.now(timezone.utc)
         except discord.HTTPException:
             logger.warning(
@@ -92,18 +109,35 @@ class MemoryGuard:
         """Un giro completo: leggi, eventualmente pulisci, eventualmente avvisa."""
         rss_before = self.read_rss_bytes()
 
-        # Forziamo il GC ad ogni giro se sopra soglia, non solo prima
-        # di avvisare: anche se il cooldown blocca il DM, vogliamo
-        # comunque provare a liberare memoria.
-        from core.memory_guard_logic import is_over_threshold
-        if is_over_threshold(rss_before, config.MEMORY_ALERT_THRESHOLD_MB):
+        # Forziamo il GC da WARNING in su (non solo a CRITICAL come
+        # nella versione a soglia singola): intervenire prima che il
+        # problema sia già serio, un GC è comunque economico.
+        if should_force_gc(rss_before, config.MEMORY_ALERT_THRESHOLD_MB):
             gc.collect()
 
         rss_after = self.read_rss_bytes()
+
+        # Pool DB e conteggio task: informazioni aggiuntive per
+        # l'alert (BACKLOG.md §4 — versione ridotta del Memory Guard
+        # a soglie scalate, limitata alle metriche già misurabili
+        # senza nuove dipendenze). Presi in modo tollerante: se il
+        # DB non è ancora connesso (bot appena avviato) o qualcosa
+        # va storto, l'alert parte comunque senza quei dettagli
+        # invece di far fallire l'intero tick.
+        pool_size = pool_idle = None
+        try:
+            from core.database import db
+            pool = db.pool
+            pool_size = pool.get_size()
+            pool_idle = pool.get_idle_size()
+        except Exception:
+            pass
+        task_count = len(asyncio.all_tasks())
+
         if should_send_alert(
             rss_after, config.MEMORY_ALERT_THRESHOLD_MB, self._last_alert_at
         ):
-            await self._send_alert(bot, rss_after)
+            await self._send_alert(bot, rss_after, pool_size, pool_idle, task_count)
 
         await self._cleanup_idle_voice_clients(bot)
 

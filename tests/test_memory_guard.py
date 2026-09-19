@@ -8,6 +8,7 @@ utenti e voice client, sullo stesso stile già consolidato nel
 progetto (vedi tests/test_premium_error_handler.py).
 """
 
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
@@ -160,3 +161,50 @@ async def test_tick_non_forza_gc_quando_sotto_soglia():
             fake_gc_collect.assert_not_called()
 
     assert owner.sent_messages == []
+
+
+@pytest.mark.asyncio
+async def test_tick_livello_warning_forza_gc_ma_non_manda_alert():
+    # Il comportamento nuovo dei quattro livelli: a WARNING (70-100%
+    # della soglia) il GC scatta comunque (prima solo a CRITICAL),
+    # ma NESSUN DM parte — non è ancora un'emergenza.
+    guard = MemoryGuard()
+    owner = _FakeUser()
+    bot = _FakeBotForTick(owner, voice_clients=[])
+
+    rss_reale_mb = guard.read_rss_bytes() / (1024 * 1024)
+    # La soglia configurata è scelta apposta perché l'RSS reale del
+    # processo di test ricada all'80% di quella soglia (WARNING).
+    soglia_per_warning = int(rss_reale_mb / 0.8)
+
+    with patch("core.memory_guard.config") as fake_config:
+        fake_config.MEMORY_ALERT_THRESHOLD_MB = soglia_per_warning
+        fake_config.OWNER_ID = 1
+
+        with patch("core.memory_guard.gc.collect") as fake_gc_collect:
+            await guard.tick(bot)
+            fake_gc_collect.assert_called_once()
+
+    assert owner.sent_messages == []
+
+
+@pytest.mark.asyncio
+async def test_tick_livello_emergency_manda_alert_anche_con_cooldown_attivo():
+    # Il secondo comportamento nuovo: a EMERGENCY (oltre il 130%
+    # della soglia) il DM parte SEMPRE, anche se un alert è appena
+    # stato mandato — a differenza di CRITICAL, che rispetta il
+    # cooldown di 30 minuti.
+    guard = MemoryGuard()
+    guard._last_alert_at = datetime.now(timezone.utc)
+    owner = _FakeUser()
+    bot = _FakeBotForTick(owner, voice_clients=[])
+
+    with patch("core.memory_guard.config") as fake_config:
+        # Soglia di 1MB: qualunque RSS reale del processo di test è
+        # ben oltre il 130% di 1MB, quindi sicuramente in EMERGENCY.
+        fake_config.MEMORY_ALERT_THRESHOLD_MB = 1
+        fake_config.OWNER_ID = 1
+
+        await guard.tick(bot)
+
+    assert len(owner.sent_messages) == 1
