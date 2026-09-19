@@ -133,6 +133,60 @@ async def test_prune_old_events(repo):
 
 
 @pytest.mark.asyncio
+async def test_prune_old_events_for_guild_rispetta_soglie_diverse_per_server(repo):
+    # Il caso che conta per la retention differenziata Free/Premium:
+    # due server, stessa età dell'evento, soglie diverse — solo uno
+    # dei due deve perdere l'evento.
+    vecchio = datetime.now(timezone.utc) - timedelta(days=60)
+    await repo._pool.execute(
+        "INSERT INTO event_log (guild_id, event_type, target_user_id, created_at) "
+        "VALUES ($1, $2, $3, $4)",
+        100, "evento", 1, vecchio,
+    )
+    await repo._pool.execute(
+        "INSERT INTO event_log (guild_id, event_type, target_user_id, created_at) "
+        "VALUES ($1, $2, $3, $4)",
+        200, "evento", 1, vecchio,
+    )
+
+    # Server 100: soglia Free (30gg) -> l'evento di 60gg fa va eliminato.
+    eliminati_100 = await repo.prune_old_events_for_guild(
+        100, older_than=datetime.now(timezone.utc) - timedelta(days=30)
+    )
+    # Server 200: soglia Premium (180gg) -> l'evento di 60gg fa resta.
+    eliminati_200 = await repo.prune_old_events_for_guild(
+        200, older_than=datetime.now(timezone.utc) - timedelta(days=180)
+    )
+
+    assert eliminati_100 == 1
+    assert eliminati_200 == 0
+    assert len(await repo.get_recent_events(100)) == 0
+    assert len(await repo.get_recent_events(200)) == 1
+
+
+@pytest.mark.asyncio
+async def test_prune_old_events_for_guild_non_tocca_altri_server(repo):
+    vecchio = datetime.now(timezone.utc) - timedelta(days=200)
+    await repo._pool.execute(
+        "INSERT INTO event_log (guild_id, event_type, target_user_id, created_at) "
+        "VALUES ($1, $2, $3, $4)",
+        100, "evento", 1, vecchio,
+    )
+    await repo._pool.execute(
+        "INSERT INTO event_log (guild_id, event_type, target_user_id, created_at) "
+        "VALUES ($1, $2, $3, $4)",
+        200, "evento", 1, vecchio,
+    )
+
+    await repo.prune_old_events_for_guild(
+        100, older_than=datetime.now(timezone.utc) - timedelta(days=30)
+    )
+
+    # Il server 200 non è mai stato toccato dalla chiamata sopra.
+    assert len(await repo.get_recent_events(200)) == 1
+
+
+@pytest.mark.asyncio
 async def test_log_event_con_case_number_e_role_id(repo):
     await repo.log_event(
         100, "moderation_case", target_user_id=1, actor_id=2, case_number=5, role_id=None

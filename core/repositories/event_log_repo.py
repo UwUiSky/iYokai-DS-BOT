@@ -199,8 +199,27 @@ class EventLogRepository:
         return [self._row_to_entry(r) for r in rows]
 
     async def prune_old_events(self, older_than: datetime) -> int:
+        """
+        Elimina globalmente, SENZA distinzione di server — usata solo
+        nei test o in una pulizia manuale una tantum. La retention
+        periodica reale (core/event_log_retention.py) usa
+        prune_old_events_for_guild(), perché la soglia cambia da
+        server a server (Free 30gg, Premium 180gg) — non si può
+        applicare la stessa soglia a tutti con questa funzione.
+        """
         result = await self._pool.execute(
             "DELETE FROM event_log WHERE created_at < $1", older_than
+        )
+        try:
+            return int(result.split()[-1])
+        except (ValueError, IndexError):
+            return 0
+
+    async def prune_old_events_for_guild(self, guild_id: int, older_than: datetime) -> int:
+        result = await self._pool.execute(
+            "DELETE FROM event_log WHERE guild_id = $1 AND created_at < $2",
+            guild_id,
+            older_than,
         )
         try:
             return int(result.split()[-1])

@@ -35,6 +35,7 @@ from core.database import db
 from core.cog_manager import load_all_cogs
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
+from core.event_log_retention import event_log_retention
 from core.premium import handle_app_command_error
 from core.error_handler_logic import should_alert_owner
 from core.json_log_formatter import JSONFormatter
@@ -154,6 +155,11 @@ class iYokaiBot(commands.AutoShardedBot):
         # pulizia VoiceClient inattivi. Stesso pattern dello
         # scheduler — un servizio bot-wide, non legato a un cog.
         memory_guard.start(self)
+
+        # Retention del log eventi unificato (BACKLOG.md §3): pulizia
+        # una volta al giorno, soglia diversa per server in base allo
+        # stato Free/Premium. Stesso pattern di Memory Guard.
+        event_log_retention.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync
