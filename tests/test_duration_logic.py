@@ -1,14 +1,16 @@
 """
-tests/test_duration_parser.py
+tests/test_duration_logic.py
 ================================
-Test di parse_duration() (cogs/moderation/_shared.py). Logica pura,
+Test di parse_duration() (core/duration_logic.py). Logica pura,
 nessuna dipendenza da Discord o dal database — si testa in isolamento
-come core/permissions.py.
+come core/permissions.py. Spostato qui da cogs/moderation/_shared.py
+quando è arrivato un secondo consumatore reale (cogs/utility/
+reminders.py) — vedi core/duration_logic.py per il motivo.
 """
 
 import pytest
 
-from cogs.moderation._shared import parse_duration
+from core.duration_logic import parse_duration
 
 
 class TestParseDuration:
