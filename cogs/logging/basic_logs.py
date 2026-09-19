@@ -7,6 +7,15 @@ ruoli, cambi di ruolo e nickname sui membri. Modulo SEMPRE GRATUITO
 cancellati/modificati, che richiede il Message Content Intent) è
 previsto più avanti, nella Security Suite completa.
 
+Ogni evento, oltre a mandare l'embed live nel canale configurato
+(come sempre), viene ora anche salvato nel log eventi unificato
+(core/repositories/event_log_repo.py, BACKLOG.md §3) — un embed su
+Discord sparisce se il canale viene cancellato o il log scrolla via;
+la riga nel DB resta, consultabile da /logs user e /logs channel
+(cogs/logging/logs_query.py), esportabile, e soggetta a retention
+configurabile. Le due cose convivono, non si sostituiscono: l'embed
+per la visibilità in tempo reale, il DB per la storia.
+
 Punto tecnico verificato prima di scrivere questo file: discord.py
 NON registra un listener di un Cog per la sola convenzione del nome
 `on_xxx` — serve il decorator esplicito `@commands.Cog.listener()`
@@ -22,6 +31,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.database import db
+from core.repositories.event_log_repo import event_log_repo
 
 MODULE_LOGGING = "logging_basic"
 SETTING_LOG_CHANNEL = "log_channel_id"
@@ -134,6 +144,13 @@ class BasicLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_LOGGING):
+            return
+
+        await event_log_repo.log_event(
+            member.guild.id, "member_join", target_user_id=member.id
+        )
+
         channel = await _get_log_channel(member.guild)
         if channel is None:
             return
@@ -164,6 +181,13 @@ class BasicLogsCog(commands.Cog):
         moderatore nel case system di Moderation: questo evento resta
         un log generico di presenza, non sostituisce quello.
         """
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_LOGGING):
+            return
+
+        await event_log_repo.log_event(
+            member.guild.id, "member_remove", target_user_id=member.id
+        )
+
         channel = await _get_log_channel(member.guild)
         if channel is None:
             return
@@ -184,6 +208,11 @@ class BasicLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
+        if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING):
+            return
+
+        await event_log_repo.log_event(guild.id, "member_ban", target_user_id=user.id)
+
         channel = await _get_log_channel(guild)
         if channel is None:
             return
@@ -198,6 +227,11 @@ class BasicLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User) -> None:
+        if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING):
+            return
+
+        await event_log_repo.log_event(guild.id, "member_unban", target_user_id=user.id)
+
         channel = await _get_log_channel(guild)
         if channel is None:
             return
@@ -222,6 +256,26 @@ class BasicLogsCog(commands.Cog):
 
         if not roles_changed and not nick_changed:
             return
+
+        if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING):
+            return
+
+        if roles_changed:
+            await event_log_repo.log_event(
+                after.guild.id,
+                "role_update",
+                target_user_id=after.id,
+                # set non è serializzabile in JSON: list() esplicito,
+                # non lasciato implicito a json.dumps che solleverebbe.
+                details={"added": list(added_ids), "removed": list(removed_ids)},
+            )
+        if nick_changed:
+            await event_log_repo.log_event(
+                after.guild.id,
+                "nickname_update",
+                target_user_id=after.id,
+                details={"before": before.nick, "after": after.nick},
+            )
 
         channel = await _get_log_channel(after.guild)
         if channel is None:
@@ -272,6 +326,13 @@ class BasicLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_guild_role_create(self, role: discord.Role) -> None:
+        if not await db.is_module_active_for_guild(role.guild.id, MODULE_LOGGING):
+            return
+
+        await event_log_repo.log_event(
+            role.guild.id, "role_create", role_id=role.id, details={"name": role.name}
+        )
+
         channel = await _get_log_channel(role.guild)
         if channel is None:
             return
@@ -286,6 +347,18 @@ class BasicLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:
+        if not await db.is_module_active_for_guild(role.guild.id, MODULE_LOGGING):
+            return
+
+        # role_id resta salvato anche se il ruolo non esiste più: non
+        # c'è una foreign key reale verso i ruoli Discord, è solo un
+        # riferimento per l'indice — interrogare "tutto ciò che è
+        # successo al ruolo X" deve includere anche la sua stessa
+        # eliminazione, non fermarsi appena il ruolo sparisce.
+        await event_log_repo.log_event(
+            role.guild.id, "role_delete", role_id=role.id, details={"name": role.name}
+        )
+
         channel = await _get_log_channel(role.guild)
         if channel is None:
             return
