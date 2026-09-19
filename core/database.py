@@ -241,6 +241,11 @@ class Database:
         )
         await greetings_migrations(self.pool)
 
+        from core.repositories.escalation_repo import (
+            run_migrations as escalation_migrations,
+        )
+        await escalation_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
