@@ -251,6 +251,11 @@ class Database:
         )
         await event_log_migrations(self.pool)
 
+        from core.repositories.sticky_message_repo import (
+            run_migrations as sticky_message_migrations,
+        )
+        await sticky_message_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a

@@ -97,6 +97,9 @@ async def clean_db(db_pool):
     from core.repositories.event_log_repo import (
         run_migrations as event_log_migrations,
     )
+    from core.repositories.sticky_message_repo import (
+        run_migrations as sticky_message_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -114,6 +117,7 @@ async def clean_db(db_pool):
     await greetings_migrations(db_pool)
     await escalation_migrations(db_pool)
     await event_log_migrations(db_pool)
+    await sticky_message_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -146,6 +150,7 @@ async def clean_db(db_pool):
         "automod_escalation_config",
         "automod_escalation_steps",
         "event_log",
+        "sticky_messages",
         "guild_config",
         "guild_config_history",
         "premium_whitelist",
