@@ -288,6 +288,11 @@ class Database:
         )
         await blacklist_migrations(self.pool)
 
+        from core.repositories.eval_shell_log_repo import (
+            run_migrations as eval_shell_log_migrations,
+        )
+        await eval_shell_log_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
