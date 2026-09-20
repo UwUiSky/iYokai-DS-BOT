@@ -148,6 +148,40 @@ class Scheduler:
             for row in rows
         ]
 
+    async def list_pending_for_guild(
+        self, guild_id: int, action_type: str, limit: int = 25
+    ) -> list[dict]:
+        """
+        Come list_pending_for_user(), ma filtrata per SERVER invece
+        che per utente — per funzionalità admin dove non conta chi
+        ha pianificato l'azione, conta a quale server appartiene
+        (es. /schedule-message list, dove qualunque admin deve poter
+        vedere tutti i messaggi programmati del proprio server, non
+        solo quelli creati da sé stesso).
+        """
+        from core.database import db
+
+        rows = await db.pool.fetch(
+            """
+            SELECT id, user_id, execute_at, payload FROM scheduled_actions
+            WHERE guild_id = $1 AND action_type = $2 AND executed = FALSE
+            ORDER BY execute_at
+            LIMIT $3
+            """,
+            guild_id,
+            action_type,
+            limit,
+        )
+        return [
+            {
+                "id": row["id"],
+                "user_id": row["user_id"],
+                "execute_at": row["execute_at"],
+                "payload": json.loads(row["payload"]) if row["payload"] else {},
+            }
+            for row in rows
+        ]
+
     async def get_pending_action(self, action_id: int) -> dict | None:
         """
         Legge una singola azione pianificata per id — usata da

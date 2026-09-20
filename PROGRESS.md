@@ -782,6 +782,17 @@ l'aggiornamento di questa fase.
 
 **Suite di test completa: 648/648 passano.**
 
+### Fase 24 — Poll (SPEC.md §14.15), sessione con budget token ridotto
+`cogs/utility/poll.py`. Nessuna logica propria estratta: come
+indicato dallo schema stesso, usa `discord.Poll` nativo — voto,
+conteggio, chiusura automatica e visualizzazione dei risultati sono
+TUTTI gestiti da Discord. `/poll` con fino a 5 opzioni, durata
+configurabile (1-768 ore), scelta multipla opzionale. 1 test smoke.
+
+**Traguardo tondo: 100 voci fatte** su 268 — circa il 37%.
+
+**Suite di test completa: 649/649 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok

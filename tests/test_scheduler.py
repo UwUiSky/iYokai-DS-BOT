@@ -283,3 +283,36 @@ async def test_get_pending_action_inesistente_restituisce_none(clean_db, monkeyp
     _collega_pool_di_test(monkeypatch, clean_db)
     scheduler = Scheduler()
     assert await scheduler.get_pending_action(999999) is None
+
+
+@pytest.mark.asyncio
+async def test_list_pending_for_guild_filtra_per_server_e_tipo(clean_db, monkeypatch):
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    futuro = datetime.now(timezone.utc) + timedelta(days=1)
+
+    await scheduler.schedule(guild_id=100, user_id=1, action_type="scheduled_message", execute_at=futuro)
+    await scheduler.schedule(guild_id=200, user_id=1, action_type="scheduled_message", execute_at=futuro)
+    await scheduler.schedule(guild_id=100, user_id=1, action_type="altro_tipo", execute_at=futuro)
+
+    risultato = await scheduler.list_pending_for_guild(100, "scheduled_message")
+
+    assert len(risultato) == 1
+
+
+@pytest.mark.asyncio
+async def test_list_pending_for_guild_mostra_azioni_di_utenti_diversi(clean_db, monkeypatch):
+    # Diversamente da list_pending_for_user: qui conta il SERVER, non
+    # chi ha creato l'azione - un admin deve vedere tutti i messaggi
+    # programmati del proprio server, non solo i propri.
+    _collega_pool_di_test(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    futuro = datetime.now(timezone.utc) + timedelta(days=1)
+
+    await scheduler.schedule(guild_id=100, user_id=1, action_type="scheduled_message", execute_at=futuro)
+    await scheduler.schedule(guild_id=100, user_id=2, action_type="scheduled_message", execute_at=futuro)
+
+    risultato = await scheduler.list_pending_for_guild(100, "scheduled_message")
+
+    assert len(risultato) == 2
+    assert {r["user_id"] for r in risultato} == {1, 2}
