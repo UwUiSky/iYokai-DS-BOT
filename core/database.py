@@ -185,6 +185,23 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_guild_config_history_guild
                     ON guild_config_history (guild_id, created_at DESC);
+
+                -- Log persistente dei cambi premium (SPEC.md §17.10,
+                -- pannello interattivo) — append-only, distinta da
+                -- premium_module_flags (che tiene solo lo stato PIÙ
+                -- RECENTE): qui ogni singolo cambiamento resta nello
+                -- storico, anche dopo che un cambio successivo lo ha
+                -- superato.
+                CREATE TABLE IF NOT EXISTS premium_toggle_history (
+                    id           SERIAL PRIMARY KEY,
+                    module_name  TEXT NOT NULL,
+                    new_value    BOOLEAN NOT NULL,
+                    changed_by   BIGINT NOT NULL,
+                    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_premium_toggle_history_module
+                    ON premium_toggle_history (module_name, created_at DESC);
                 """
             )
 

@@ -44,6 +44,7 @@ async def test_owner_premium_cog_si_carica_correttamente():
         "leave-guild",
         "announce",
         "stats",
+        "premium-panel",
         "cog-load",
         "cog-unload",
         "cog-reload",

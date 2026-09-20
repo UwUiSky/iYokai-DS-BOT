@@ -19,11 +19,98 @@ from discord.ext import commands
 
 from core.config import config
 from core.database import db
-from core.premium import registry
+from core.premium import PremiumModule, registry
 
 
 def _is_owner(interaction: discord.Interaction) -> bool:
     return interaction.user.id == config.OWNER_ID
+
+
+def _build_premium_panel_embed(modules: list[PremiumModule]) -> discord.Embed:
+    embed = discord.Embed(
+        title="⚙️ Pannello moduli Premium",
+        description="Scegli un modulo dal menu qui sotto per cambiarne lo stato.",
+        color=discord.Color.blurple(),
+    )
+    for modulo in modules:
+        stato = "🟢 PREMIUM ATTIVO" if modulo.is_premium_active else "⚪ gratuito"
+        embed.add_field(name=modulo.display_name, value=f"`{modulo.name}` — {stato}", inline=False)
+    return embed
+
+
+class _PremiumConfirmView(discord.ui.View):
+    """
+    Secondo step della conferma (SPEC.md §17.10: "conferma a due
+    step"). Il primo step è la selezione del modulo nel menu
+    (_PremiumPanelView); questo è il vero e proprio "sei sicuro?"
+    prima di applicare un cambio che vale per TUTTI i server insieme
+    — lo stesso motivo per cui /owner premium-toggle esiste già come
+    comando esplicito e non come side-effect di qualcos'altro.
+    """
+
+    def __init__(self, cog: "OwnerPremiumCog", module: PremiumModule, nuovo_stato: bool) -> None:
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.module = module
+        self.nuovo_stato = nuovo_stato
+
+    @discord.ui.button(label="Conferma", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self.cog._apply_premium_toggle(self.module.name, self.nuovo_stato, interaction.user.id)
+
+        stato_testo = "PREMIUM" if self.nuovo_stato else "GRATUITO"
+        embed = discord.Embed(
+            title="✅ Modulo aggiornato",
+            description=f"`{self.module.name}` è ora **{stato_testo}**.",
+            color=discord.Color.green(),
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        embed = discord.Embed(
+            title="Annullato",
+            description="Nessuna modifica applicata.",
+            color=discord.Color.greyple(),
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+class _PremiumPanelSelect(discord.ui.Select):
+    def __init__(self, cog: "OwnerPremiumCog", modules: list[PremiumModule]) -> None:
+        self.cog = cog
+        self._modules_by_name = {m.name: m for m in modules}
+        options = [
+            discord.SelectOption(
+                label=modulo.display_name,
+                value=modulo.name,
+                description="Premium attivo" if modulo.is_premium_active else "Gratuito",
+            )
+            for modulo in modules
+        ]
+        super().__init__(placeholder="Scegli un modulo da cambiare...", options=options)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        modulo = self._modules_by_name[self.values[0]]
+        nuovo_stato = not modulo.is_premium_active
+        stato_testo = "PREMIUM" if nuovo_stato else "GRATUITO"
+
+        embed = discord.Embed(
+            title="Conferma richiesta",
+            description=(
+                f"Vuoi impostare **{modulo.display_name}** (`{modulo.name}`) "
+                f"su **{stato_testo}** per tutti i server?"
+            ),
+            color=discord.Color.orange(),
+        )
+        view = _PremiumConfirmView(self.cog, modulo, nuovo_stato)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+
+class _PremiumPanelView(discord.ui.View):
+    def __init__(self, cog: "OwnerPremiumCog", modules: list[PremiumModule]) -> None:
+        super().__init__(timeout=120)
+        self.add_item(_PremiumPanelSelect(cog, modules))
 
 
 class OwnerPremiumCog(commands.Cog):
@@ -59,6 +146,46 @@ class OwnerPremiumCog(commands.Cog):
 
         testo = "\n".join(lines) if lines else "Nessun modulo registrato."
         await interaction.response.send_message(testo, ephemeral=True)
+
+    async def _apply_premium_toggle(
+        self, module_name: str, active: bool, changed_by: int
+    ) -> None:
+        """
+        Applica un cambio premium con tutte e tre le conseguenze che
+        deve avere: stato in memoria (registry, letto da requires_
+        module su ogni comando gated), stato persistente più recente
+        (premium_module_flags, riletto all'avvio), e log persistente
+        dell'intero storico (premium_toggle_history, SPEC.md §17.10
+        — distinta da premium_module_flags apposta: quella tiene
+        solo l'ULTIMO stato, questa ogni cambiamento mai fatto).
+        Condivisa da /owner premium-toggle e dal pannello interattivo
+        — un solo punto che applica il cambio, mai due copie della
+        stessa logica che potrebbero divergere.
+        """
+        registry.set_module_premium(module_name, active)
+
+        await db.pool.execute(
+            """
+            INSERT INTO premium_module_flags (module_name, is_active, updated_by)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (module_name) DO UPDATE
+                SET is_active = EXCLUDED.is_active,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = now()
+            """,
+            module_name,
+            active,
+            changed_by,
+        )
+        await db.pool.execute(
+            """
+            INSERT INTO premium_toggle_history (module_name, new_value, changed_by)
+            VALUES ($1, $2, $3)
+            """,
+            module_name,
+            active,
+            changed_by,
+        )
 
     @owner_group.command(
         name="premium-toggle",
@@ -97,25 +224,7 @@ class OwnerPremiumCog(commands.Cog):
             )
             return
 
-        registry.set_module_premium(module_name, active)
-
-        # Persistenza su database, così lo stato sopravvive a un
-        # riavvio del bot (il registry in memoria viene ricostruito
-        # dai cog, ma la flag premium va riletta da qui all'avvio —
-        # TODO: caricare questo stato in main.py dopo load_all_cogs).
-        await db.pool.execute(
-            """
-            INSERT INTO premium_module_flags (module_name, is_active, updated_by)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (module_name) DO UPDATE
-                SET is_active = EXCLUDED.is_active,
-                    updated_by = EXCLUDED.updated_by,
-                    updated_at = now()
-            """,
-            module_name,
-            active,
-            interaction.user.id,
-        )
+        await self._apply_premium_toggle(module_name, active, interaction.user.id)
 
         stato = "PREMIUM" if active else "GRATUITO"
         await interaction.response.send_message(
@@ -210,6 +319,29 @@ class OwnerPremiumCog(commands.Cog):
         await interaction.response.send_message(
             format_memory_status(rss, config.MEMORY_ALERT_THRESHOLD_MB),
             ephemeral=True,
+        )
+
+    @owner_group.command(
+        name="premium-panel",
+        description="[OWNER] Pannello interattivo per attivare/disattivare i moduli premium.",
+    )
+    async def premium_panel(self, interaction: discord.Interaction) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        moduli_premium_capable = [m for m in registry.all_modules() if m.premium_capable]
+        if not moduli_premium_capable:
+            await interaction.response.send_message(
+                "Nessun modulo può diventare premium al momento.", ephemeral=True
+            )
+            return
+
+        view = _PremiumPanelView(self, moduli_premium_capable)
+        await interaction.response.send_message(
+            embed=_build_premium_panel_embed(moduli_premium_capable), view=view, ephemeral=True
         )
 
     # ================================================================

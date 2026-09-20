@@ -360,3 +360,152 @@ async def test_stats_mostra_numeri_reali(monkeypatch):
     # finestra di 60s.
     assert int(valori_per_campo["Comandi (ultimo minuto)"]) >= 0
     assert int(valori_per_campo["Errori (ultimo minuto)"]) >= 0
+
+
+class _FakeResponseForPanel:
+    def __init__(self) -> None:
+        self.sent_messages: list[str] = []
+        self.sent_embeds: list = []
+        self.edited_embeds: list = []
+        self.edited_views: list = []
+
+    async def send_message(self, content: str = None, embed=None, view=None, ephemeral: bool = False) -> None:
+        if content is not None:
+            self.sent_messages.append(content)
+        if embed is not None:
+            self.sent_embeds.append(embed)
+
+    async def edit_message(self, embed=None, view=None) -> None:
+        self.edited_embeds.append(embed)
+        self.edited_views.append(view)
+
+
+class _FakeInteractionForPanel:
+    def __init__(self, user_id: int) -> None:
+        self.user = _FakeUser(user_id)
+        self.response = _FakeResponseForPanel()
+
+
+@pytest.mark.asyncio
+async def test_premium_panel_rifiuta_non_owner():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID + 1)
+
+    await cog.premium_panel.callback(cog, interaction)
+
+    assert "riservato al proprietario" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_premium_panel_ciclo_completo_selezione_e_conferma(monkeypatch):
+    import cogs.utility.owner_premium as owner_premium_module
+    from core.premium import PremiumModule, PremiumRegistry
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM premium_module_flags WHERE module_name = 'modulo_test_panel'"
+        )
+        await database.pool.execute(
+            "DELETE FROM premium_toggle_history WHERE module_name = 'modulo_test_panel'"
+        )
+
+        registry_isolato = PremiumRegistry()
+        registry_isolato.register(
+            PremiumModule(
+                name="modulo_test_panel",
+                display_name="Modulo Test Panel",
+                description="Per il test del pannello",
+                premium_capable=True,
+            )
+        )
+        monkeypatch.setattr(owner_premium_module, "registry", registry_isolato)
+        monkeypatch.setattr(owner_premium_module, "db", database)
+
+        cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+
+        # Step 0: apre il pannello.
+        interaction_apertura = _FakeInteractionForPanel(user_id=_OWNER_ID)
+        await cog.premium_panel.callback(cog, interaction_apertura)
+        assert len(interaction_apertura.response.sent_embeds) == 1
+
+        # Step 1: seleziona il modulo dal menu (nessun modulo è
+        # ancora premium -> il toggle proposto sarà True). Il fake
+        # non salva la view passata a send_message, quindi ne
+        # costruiamo una equivalente direttamente per invocarne il
+        # Select.
+        from cogs.utility.owner_premium import _PremiumPanelView
+
+        panel_view = _PremiumPanelView(cog, [registry_isolato.get("modulo_test_panel")])
+        select = panel_view.children[0]
+        select._values = ["modulo_test_panel"]
+
+        interaction_selezione = _FakeInteractionForPanel(user_id=_OWNER_ID)
+        await select.callback(interaction_selezione)
+
+        assert len(interaction_selezione.response.edited_embeds) == 1
+        assert "Conferma richiesta" in interaction_selezione.response.edited_embeds[0].title
+        confirm_view = interaction_selezione.response.edited_views[0]
+
+        # Step 2: conferma.
+        interaction_conferma = _FakeInteractionForPanel(user_id=_OWNER_ID)
+        conferma_button = confirm_view.children[0]  # "Conferma"
+        await conferma_button.callback(interaction_conferma)
+
+        assert registry_isolato.get("modulo_test_panel").is_premium_active is True
+        assert "aggiornato" in interaction_conferma.response.edited_embeds[0].title.lower()
+
+        riga_storico = await database.pool.fetchrow(
+            "SELECT * FROM premium_toggle_history WHERE module_name = 'modulo_test_panel'"
+        )
+        assert riga_storico is not None
+        assert riga_storico["new_value"] is True
+        assert riga_storico["changed_by"] == _OWNER_ID
+    finally:
+        await database.pool.execute(
+            "DELETE FROM premium_module_flags WHERE module_name = 'modulo_test_panel'"
+        )
+        await database.pool.execute(
+            "DELETE FROM premium_toggle_history WHERE module_name = 'modulo_test_panel'"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_premium_panel_annulla_non_applica_nulla(monkeypatch):
+    import cogs.utility.owner_premium as owner_premium_module
+    from core.premium import PremiumModule, PremiumRegistry
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+
+        registry_isolato = PremiumRegistry()
+        registry_isolato.register(
+            PremiumModule(
+                name="modulo_test_annulla",
+                display_name="Modulo Test Annulla",
+                description="Per il test di annullamento",
+                premium_capable=True,
+            )
+        )
+        monkeypatch.setattr(owner_premium_module, "registry", registry_isolato)
+        monkeypatch.setattr(owner_premium_module, "db", database)
+
+        cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+        from cogs.utility.owner_premium import _PremiumConfirmView
+
+        confirm_view = _PremiumConfirmView(
+            cog, registry_isolato.get("modulo_test_annulla"), nuovo_stato=True
+        )
+        interaction_annulla = _FakeInteractionForPanel(user_id=_OWNER_ID)
+        annulla_button = confirm_view.children[1]  # "Annulla"
+        await annulla_button.callback(interaction_annulla)
+
+        assert registry_isolato.get("modulo_test_annulla").is_premium_active is False
+        assert "Annullato" in interaction_annulla.response.edited_embeds[0].title
+    finally:
+        await database.close()

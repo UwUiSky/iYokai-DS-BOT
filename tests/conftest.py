@@ -171,6 +171,7 @@ async def clean_db(db_pool):
         "guild_config_history",
         "premium_whitelist",
         "premium_module_flags",
+        "premium_toggle_history",
     ]
     async with db_pool.acquire() as conn:
         for table in tables:
