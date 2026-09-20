@@ -497,7 +497,13 @@ file, non da un riassunto.**
 - `[x]` 17.5 Blacklist globale server — uscita automatica su
   `on_guild_join` se già in blacklist, uscita immediata se aggiunto
   mentre il bot è già dentro
-- `[ ]` 17.6 Forced cog load / unload / reload
+- `[x]` 17.6 Forced cog load / unload / reload — `/owner cog-load|
+  cog-unload|cog-reload`. Due bug sistemici trovati e corretti
+  facendolo: i nomi dei metodi Python collidevano con hook di ciclo
+  di vita riservati di `discord.py` (`cog_load`/`cog_unload`,
+  rompeva ogni cog del bot), e sia `registry.register()` che
+  `scheduler.register_handler()` sollevavano su un reload legittimo
+  (ogni cog con un modulo premium/handler scheduler era rotto)
 - `[ ]` 17.7 Annuncio globale a tutti i server
 - `[ ]` 17.8 Statistiche globali (guild count, shard health, RAM,
   latenza, comandi/minuto, errori)
@@ -578,10 +584,10 @@ rilancia lo stesso conteggio.
 | §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
-| §17 Owner | 5 | 0 | 5 |
+| §17 Owner | 6 | 0 | 4 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **105** | **0** | **163** |
+| **Totale** | **106** | **0** | **162** |
 
-Su 268 voci totali: **105 fatte, 0 parziali, 163 mancanti** — circa
-il 39% dello schema. §17 Owner è ora a metà strada (5/10).
+Su 268 voci totali: **106 fatte, 0 parziali, 162 mancanti** — circa
+il 40% dello schema. Traguardo tondo.
 

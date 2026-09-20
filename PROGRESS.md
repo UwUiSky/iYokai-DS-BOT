@@ -850,6 +850,41 @@ Pannello premium interattivo.
 
 **Suite di test completa: 688/688 passano.**
 
+### Fase 27 — Forced cog load/unload/reload (SPEC.md §17.6), due bug sistemici corretti
+`cogs/utility/owner_premium.py`: `/owner cog-load|cog-unload|
+cog-reload`. Due bug sistemici trovati mentre lo costruivo, entrambi
+corretti PRIMA di committare, non scoperti dopo.
+
+**Bug #1 (rompeva ogni cog del bot)**: i nomi dei metodi Python erano
+`cog_load`/`cog_unload` — hook di ciclo di vita **riservati** dalla
+classe base `discord.ext.commands.Cog`, chiamati automaticamente
+all'iniezione/rimozione. Il mio comando li sovrascriveva
+silenziosamente. Rinominati in `owner_cog_load`/`owner_cog_unload`/
+`owner_cog_reload` (i nomi degli slash command restano invariati).
+
+**Bug #2 (sistemico, trovato con un test reale su un cog vero, non
+ipotizzato)**: `bot.reload_extension()` richiama sempre `setup()` una
+seconda volta — QUALUNQUE cog che chiama `registry.register()` o
+`scheduler.register_handler()` nel proprio `setup()` (praticamente
+tutti quelli con un modulo premium o un handler scheduler) falliva
+SEMPRE al reload, perché entrambe le funzioni sollevavano un errore
+alla seconda registrazione dello stesso nome, senza distinguere un
+reload legittimo da un vero conflitto.
+
+- `core/premium.py`: `PremiumRegistry.register()` ora confronta la
+  dichiarazione (display_name/description/premium_capable) — stessa
+  dichiarazione = reload legittimo, non sovrascrive l'entry
+  (preserva `is_premium_active`, un reload non deve resettare lo
+  stato premium a `False`); dichiarazione diversa = conflitto vero,
+  solleva ancora. **7 nuovi test** (file nuovo, mancava un test
+  dedicato per questa classe)
+- `core/scheduler.py`: `register_handler()` confronta `__qualname__`
+  dell'handler — stesso metodo (nuova istanza dopo un reload) =
+  sostituisce il riferimento vecchio, metodo di classe diversa =
+  vero conflitto. **4 nuovi test**
+
+**Suite di test completa: 703/703 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1172,25 +1207,29 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§17 Owner è a metà (5/10).** L'utente ha chiesto esplicitamente di
-finire l'intera sezione. Restano, in ordine di complessità crescente:
+**§17 Owner è a 6/10, traguardo tondo del progetto: 40%.** L'utente
+ha chiesto esplicitamente di finire l'intera sezione. Restano, in
+ordine di complessità crescente (già deciso in una fase precedente,
+confermato):
 
-- 17.6 Forced cog load/unload/reload — wrapper su bot.load_extension/
-  unload_extension/reload_extension, relativamente semplice
-- 17.7 Annuncio globale a tutti i server — itera bot.guilds, manda un
-  embed nel canale mod-log/log configurato di ciascuno (o un fallback
-  se non configurato)
+- 17.7 Annuncio globale a tutti i server — itera bot.guilds, manda
+  un embed nel canale mod-log/log configurato di ciascuno
 - 17.8 Statistiche globali — guild count, shard health, RAM (riusa
   memory_guard), latenza, comandi/minuto, errori
 - 17.10 Pannello premium interattivo con conferma a due step e log
-  persistente — estende i comandi premium-list/premium-toggle già
-  esistenti con una View invece di comandi separati, più un log delle
-  modifiche (probabilmente riusando guild_config_history o una
-  tabella dedicata)
+  persistente — estende premium-list/premium-toggle con una View,
+  più un log delle modifiche
 - 17.3 Eval/Exec/Shell (con secondo fattore di conferma) — l'unica
-  genuinamente delicata: esecuzione di codice arbitrario, riservata
-  all'owner verificato, con log di ogni invocazione. Lasciata per
-  ultima di proposito.
+  genuinamente delicata, lasciata per ultima di proposito
+
+**Promemoria acquisito in questa fase, da tenere presente per
+QUALUNQUE comando `/owner` futuro che tocchi cicli di vita di cog o
+registrazioni**: verificare che il nome del metodo Python non
+collida con un hook riservato di `discord.py` (`cog_load`,
+`cog_unload`, ecc. — `hasattr(commands.Cog, nome)` per controllare
+prima di scrivere), e che qualunque `register()`/`register_handler()`
+chiamato da un `setup()` sia idempotente su un reload legittimo,
+non solo sulla prima chiamata.
 
 Nessuna priorità imposta in modo vincolante oltre questa — la
 decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere
