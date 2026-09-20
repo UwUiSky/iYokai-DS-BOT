@@ -885,6 +885,22 @@ reload legittimo da un vero conflitto.
 
 **Suite di test completa: 703/703 passano.**
 
+### Fase 28 — Annuncio globale (SPEC.md §17.7)
+`main.py`: estratto `_send_embed_with_fallback(guild, embed,
+contesto)` da `_send_welcome_message` (che ora è un sottile wrapper)
+— stessa catena system_channel → primo canale scrivibile → DM
+proprietario, incluso il fix già presente per l'esclusione del
+system_channel dalla ricerca del canale scrivibile. Ora restituisce
+`bool`, non serviva prima. `cogs/utility/owner_premium.py`: `/owner
+announce` itera `bot.guilds` e riusa il metodo generico, riportando
+quanti server ha raggiunto. 4 nuovi test (2 sul valore di ritorno di
+`_send_embed_with_fallback`, mai testato prima; 2 su `/owner
+announce`, incluso il conteggio reale). 13/13 test esistenti
+confermano che il refactor non ha cambiato il comportamento del
+messaggio di benvenuto.
+
+**Suite di test completa: 707/707 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1207,13 +1223,10 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§17 Owner è a 6/10, traguardo tondo del progetto: 40%.** L'utente
-ha chiesto esplicitamente di finire l'intera sezione. Restano, in
-ordine di complessità crescente (già deciso in una fase precedente,
-confermato):
+**§17 Owner è a 7/10.** L'utente ha chiesto esplicitamente di finire
+l'intera sezione. Restano, in ordine di complessità crescente (già
+deciso, confermato ancora):
 
-- 17.7 Annuncio globale a tutti i server — itera bot.guilds, manda
-  un embed nel canale mod-log/log configurato di ciascuno
 - 17.8 Statistiche globali — guild count, shard health, RAM (riusa
   memory_guard), latenza, comandi/minuto, errori
 - 17.10 Pannello premium interattivo con conferma a due step e log
@@ -1222,14 +1235,10 @@ confermato):
 - 17.3 Eval/Exec/Shell (con secondo fattore di conferma) — l'unica
   genuinamente delicata, lasciata per ultima di proposito
 
-**Promemoria acquisito in questa fase, da tenere presente per
-QUALUNQUE comando `/owner` futuro che tocchi cicli di vita di cog o
-registrazioni**: verificare che il nome del metodo Python non
-collida con un hook riservato di `discord.py` (`cog_load`,
-`cog_unload`, ecc. — `hasattr(commands.Cog, nome)` per controllare
-prima di scrivere), e che qualunque `register()`/`register_handler()`
-chiamato da un `setup()` sia idempotente su un reload legittimo,
-non solo sulla prima chiamata.
+Promemoria per qualunque comando /owner futuro che tocchi cicli di
+vita di cog o registrazioni: verificare collisioni con hook riservati
+di discord.py (hasattr(commands.Cog, nome)) e idempotenza delle
+funzioni di registrazione chiamate da setup() su un reload.
 
 Nessuna priorità imposta in modo vincolante oltre questa — la
 decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere

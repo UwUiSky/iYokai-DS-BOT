@@ -504,7 +504,10 @@ file, non da un riassunto.**
   rompeva ogni cog del bot), e sia `registry.register()` che
   `scheduler.register_handler()` sollevavano su un reload legittimo
   (ogni cog con un modulo premium/handler scheduler era rotto)
-- `[ ]` 17.7 Annuncio globale a tutti i server
+- `[x]` 17.7 Annuncio globale a tutti i server — `/owner announce`,
+  riusa la stessa catena di fallback del messaggio di benvenuto
+  (system_channel → primo canale scrivibile → DM proprietario),
+  estratta in un metodo generico su `iYokaiBot`
 - `[ ]` 17.8 Statistiche globali (guild count, shard health, RAM,
   latenza, comandi/minuto, errori)
 - `[x]` 17.9 Leave guild forzato
@@ -584,10 +587,10 @@ rilancia lo stesso conteggio.
 | §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
-| §17 Owner | 6 | 0 | 4 |
+| §17 Owner | 7 | 0 | 3 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **106** | **0** | **162** |
+| **Totale** | **107** | **0** | **161** |
 
-Su 268 voci totali: **106 fatte, 0 parziali, 162 mancanti** — circa
-il 40% dello schema. Traguardo tondo.
+Su 268 voci totali: **107 fatte, 0 parziali, 161 mancanti** — circa
+il 40% dello schema. §17 Owner è a 7/10.
 
