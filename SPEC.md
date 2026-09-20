@@ -413,7 +413,9 @@ file, non da un riassunto.**
 - `[ ]` 14.13 Sticky messages
 - `[ ]` 14.14 Suggestion system (per i server clienti, distinto da 14.8)
 - `[ ]` 14.15 Poll (usare il Poll nativo di Discord)
-- `[ ]` 14.16 Reminder
+- `[x]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
+  scheduler generico esistente (nessuna tabella nuova). Consegna via
+  DM, fallback nel canale se i DM sono chiusi
 - `[ ]` 14.17 Scheduled messages
 - `[ ]` 14.18 Server stats (+ grafici)
 
@@ -559,15 +561,13 @@ rilancia lo stesso conteggio.
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 6 | 0 | 12 |
+| §14 Utility | 7 | 0 | 11 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **95** | **0** | **173** |
+| **Totale** | **96** | **0** | **172** |
 
-Su 268 voci totali (due in più rispetto all'ultimo conteggio: §6.15
-e §8.17, entrambe aggiunte come voci nuove senza corrispettivo
-esistente da riusare): **95 fatte, 0 parziali, 173 mancanti** — circa
-il 35% dello schema.
+Su 268 voci totali: **96 fatte, 0 parziali, 172 mancanti** — circa il
+36% dello schema.
 

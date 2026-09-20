@@ -690,6 +690,40 @@ precisa, tabella dei conteggi invariata).
 
 **Suite di test completa: 584/584 passano.**
 
+### Fase 22 — Reminder personali (SPEC.md §14.16), primo lavoro dopo l'esaurimento del backlog
+- [x] `core/duration_logic.py` — refactor: `parse_duration`/
+  `format_duration` estratte da `cogs/moderation/_shared.py` (dove
+  vivevano solo per tempban/timeout) al primo secondo consumatore
+  reale. `_shared.py` ora **riesporta** dalla nuova sede (stessa
+  funzione, non una copia) — nessun chiamante esistente ha dovuto
+  cambiare. Test rinominato con `git mv` (storia preservata) da
+  `test_duration_parser.py` a `test_duration_logic.py`
+- [x] `core/scheduler.py` — `list_pending_for_user()` e
+  `get_pending_action()`, prerequisito per i reminder. Il docstring
+  dello scheduler aveva già "in futuro anche promemoria" come caso
+  d'uso previsto. **6 nuovi test contro PostgreSQL reale**
+- [x] `cogs/utility/reminders.py` — `/reminder set|list|cancel`,
+  **nessuna tabella nuova** (riusa `scheduled_actions` così com'è).
+  Consegna: DM prima, fallback nel canale se i DM sono chiusi,
+  loggato senza sollevare se anche il fallback fallisce
+- [x] **Disciplina test già scritta per `actions.py` riapplicata
+  correttamente**: `registry.register()`/`scheduler.register_handler()`
+  sollevano su doppia registrazione — un solo test per file di
+  smoke, non separato in più funzioni
+- [x] `tests/test_reminders_handler.py` — **5 test del comportamento
+  REALE di consegna** (non solo che il cog carica): DM riuscito non
+  tenta il fallback, DM fallito usa il fallback, entrambi falliti
+  non solleva, nessun `channel_id` non solleva, utente non trovato
+  tenta comunque il fallback
+
+**Snipe/Editsnipe/Reactionsnipe e Autoresponder scartati per questo
+giro** (non costruiti, non solo rimandati in silenzio): richiedono
+il Message Content Intent per leggere/conservare il testo dei
+messaggi altrui — stessa cautela già scritta per §8.16, non
+richiesto finché un modulo non lo giustifica esplicitamente.
+
+**Suite di test completa: 596/596 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1012,26 +1046,24 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Il backlog accettato da BACKLOG.md è interamente esaurito.** Tutte
-e 5 le priorità concrete (cache moduli, moderazione completa,
-Permission Heatmap + Config Diff & Rollback + Escalation Ladder,
-logging multi-indice, Memory Guard a soglie scalate) sono `FATTA`,
-più un miglioramento trovato per strada (cache spam_trap config,
-scoperta con la simulazione di carico reale — vedi Fase 20).
+**Reminder (§14.16) completato**, primo lavoro dopo l'esaurimento
+del backlog — nessuna priorità imposta, scelto liberamente da
+`SPEC.md` §14 tra le voci senza dipendenza dal Message Content
+Intent.
 
-Nessuna priorità imposta da qui in avanti. La prossima mossa è
-interamente a scelta dell'utente: qualunque voce `[ ]` di `SPEC.md`
-resta legittima (stato attuale: 95 fatte, 0 parziali, 173 mancanti
-su 268 — circa il 35%). Le voci `RIMANDATA`/`RESPINTA` di
-`BACKLOG.md` restano ferme alle condizioni già scritte lì, nessuna
-richiede azione ora.
+Buoni candidati successivi in §14 con la stessa proprietà (nessun
+Message Content Intent richiesto), non imposti: Sticky messages
+(14.13), Server stats (14.18), Suggestion system (14.14). Restano
+deliberatamente da NON toccare finché il Message Content Intent non
+è esplicitamente giustificato: Autoresponder (14.7), Snipe/
+Editsnipe/Reactionsnipe (14.9-14.11).
 
-Ricordarsi SEMPRE, prima di scrivere codice: leggere `SPEC.md`, non
-un riassunto. E qualunque proposta esterna futura passa da
-`BACKLOG.md` prima di toccare `SPEC.md`.
+Nessuna priorità imposta in modo vincolante — la decisione resta
+dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
+`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
+passa da `BACKLOG.md` prima di toccare `SPEC.md`.
 
-Metodologia acquisita in questa sessione, da riusare quando serve:
-`scripts/load_simulation.py` per misurare per davvero (psutil, cog
-reali, PostgreSQL reale, opzionalmente dentro un cgroup con un tetto
-di RAM vero) invece di stimare a tavolino — vedi il suo stesso
-docstring per le istruzioni d'uso.
+Metodologia acquisita: `scripts/load_simulation.py` per misurare per
+davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro
+un cgroup con un tetto di RAM vero) invece di stimare a tavolino —
+vedi il suo stesso docstring per le istruzioni d'uso.
