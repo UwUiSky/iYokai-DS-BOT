@@ -953,6 +953,43 @@ ultimo di proposito fin dall'inizio di questa sezione.
 
 **Suite di test completa: 722/722 passano.**
 
+### Fase 31 — Eval/Exec/Shell (SPEC.md §17.3) — CHIUDE L'INTERA SEZIONE §17 OWNER
+Ultima voce di §17, lasciata per ultima di proposito fin dall'inizio
+della sezione perché genuinamente delicata: esecuzione di codice
+arbitrario, riservata all'owner verificato del bot.
+
+`core/eval_shell_logic.py`: `truncate_output()` — un output troncato
+a metà senza avviso sembra un risultato completo quando non lo è.
+**5 test.**
+
+`core/repositories/eval_shell_log_repo.py`: `eval_shell_log`,
+append-only come `premium_toggle_history` — chi ha eseguito codice
+arbitrario, cosa, quando, resta tracciabile per sempre. **4 test**
+contro PostgreSQL reale.
+
+`cogs/utility/owner_premium.py`: `/owner eval` (pattern standard di
+"eval cog", codice avvolto in una funzione async — supporta `await`
+—, stdout catturato, eccezioni mostrate come traceback) e `/owner
+shell` (via `asyncio.create_subprocess_shell`, timeout esplicito di
+30s — un comando appeso non deve bloccare l'event loop per sempre).
+**Secondo fattore di conferma esplicito**, come richiesto dallo
+schema: `_EvalConfirmView`/`_ShellConfirmView` mostrano il
+codice/comando per intero prima dell'esecuzione, bottoni
+Esegui/Annulla — stesso principio del pannello premium (§17.10).
+Shell non è una nuova capacità concessa dal bot: equivale all'accesso
+terminale che l'owner ha già sulla propria macchina.
+
+**12 nuovi test, tutti su comportamento REALE**: esecuzione vera di
+codice Python (espressioni, `await`, `print`, eccezioni con
+traceback), esecuzione vera di comandi shell (successo, exit code
+diverso da zero), due cicli completi conferma→esegui→logga e
+annulla→niente-eseguito-niente-loggato verificati contro PostgreSQL
+reale.
+
+**§17 Owner è COMPLETO: 10/10.**
+
+**Suite di test completa: 740/740 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1275,30 +1312,29 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§17 Owner è a 8/10.** L'utente ha chiesto esplicitamente di finire
-l'intera sezione. Restano solo due voci:
+**§17 Owner è COMPLETO (10/10).** §14 Utility è a 13/18 (resta solo
+ciò che richiede il Message Content Intent, deliberatamente non
+toccato). Nessuna sezione parzialmente iniziata è rimasta a metà.
 
-- 17.10 Pannello premium interattivo con conferma a due step e log
-  persistente — estende premium-list/premium-toggle con una View,
-  più un log delle modifiche (probabilmente riusando lo schema già
-  visto in guild_config_history, o una tabella dedicata)
-- 17.3 Eval/Exec/Shell (con secondo fattore di conferma) — l'unica
-  genuinamente delicata, lasciata per ultima di proposito: esecuzione
-  di codice arbitrario, riservata all'owner verificato, con log di
-  ogni invocazione
+Sezioni ancora completamente a zero, buoni candidati per un prossimo
+giro, in ordine di dimensione: §16 Fun & Immagini (15 voci), §11
+Backup (13 voci), §9 Music (12 voci), §10 Alerts & Social (8 voci).
+§15 Levels/Gilde/Classifiche è parzialmente fatta (6/25) con molto
+ancora da costruire nella stessa area già aperta.
 
-Promemoria per qualunque comando /owner futuro che tocchi cicli di
-vita di cog o registrazioni: verificare collisioni con hook riservati
-di discord.py (hasattr(commands.Cog, nome)) e idempotenza delle
-funzioni di registrazione chiamate da setup() su un reload. E per
-qualunque contatore/struttura dati che accumula nel tempo: verificare
-che la pulizia non presuma un ordine di inserimento che potrebbe non
-valere in ogni caso d'uso.
+Nessuna priorità imposta in modo vincolante — la decisione resta
+dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
+`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
+passa da `BACKLOG.md` prima di toccare `SPEC.md`.
 
-Nessuna priorità imposta in modo vincolante oltre questa — la
-decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere
-codice: leggere `SPEC.md`, non un riassunto. E qualunque proposta
-esterna futura passa da `BACKLOG.md` prima di toccare `SPEC.md`.
+Promemoria acquisiti in questa sessione, validi per qualunque lavoro
+futuro:
+- Verificare collisioni con hook riservati di discord.py
+  (`hasattr(commands.Cog, nome)`) prima di nominare un metodo di cog
+- Verificare idempotenza di qualunque `register()`/simile chiamato da
+  `setup()`, per non rompere `/owner cog-reload`
+- Per contatori/strutture che accumulano nel tempo, non presumere un
+  ordine di inserimento che potrebbe non valere in ogni caso d'uso
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro

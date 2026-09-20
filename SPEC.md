@@ -491,7 +491,10 @@ file, non da un riassunto.**
 
 - `[x]` 17.1 Gestione Premium List (add / remove)
 - `[x]` 17.2 Toggle flag premium per modulo
-- `[ ]` 17.3 Eval / Exec / Shell (con secondo fattore di conferma)
+- `[x]` 17.3 Eval / Exec / Shell (con secondo fattore di conferma) —
+  `/owner eval`/`/owner shell`, il codice/comando va mostrato per
+  intero prima dell'esecuzione (bottoni Esegui/Annulla), ogni
+  invocazione loggata in modo persistente
 - `[x]` 17.4 Blacklist globale utenti — cache come per i moduli,
   blocca ogni interazione tramite `BlacklistAwareCommandTree`
 - `[x]` 17.5 Blacklist globale server — uscita automatica su
@@ -589,10 +592,10 @@ rilancia lo stesso conteggio.
 | §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
-| §17 Owner | 9 | 0 | 1 |
+| §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **109** | **0** | **159** |
+| **Totale** | **110** | **0** | **158** |
 
-Su 268 voci totali: **109 fatte, 0 parziali, 159 mancanti** — circa
-il 41% dello schema. §17 Owner è a 9/10: resta solo Eval/Exec/Shell.
+Su 268 voci totali: **110 fatte, 0 parziali, 158 mancanti** — circa
+il 41% dello schema. **§17 Owner è COMPLETO (10/10).**
 
