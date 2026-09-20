@@ -35,4 +35,11 @@ async def test_owner_premium_cog_si_carica_correttamente():
         "whitelist-add",
         "whitelist-remove",
         "memory-status",
+        "blacklist-user-add",
+        "blacklist-user-remove",
+        "blacklist-user-list",
+        "blacklist-guild-add",
+        "blacklist-guild-remove",
+        "blacklist-guild-list",
+        "leave-guild",
     } <= sottocomandi

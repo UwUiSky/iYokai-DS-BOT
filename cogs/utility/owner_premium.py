@@ -212,6 +212,213 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
+    # ================================================================
+    # Blacklist globale (SPEC.md §17.4 utenti, §17.5 server)
+    # ================================================================
+    @owner_group.command(
+        name="blacklist-user-add",
+        description="[OWNER] Blocca globalmente un utente dall'uso del bot.",
+    )
+    @app_commands.describe(user_id="ID Discord dell'utente", reason="Motivo (facoltativo)")
+    async def blacklist_user_add(
+        self, interaction: discord.Interaction, user_id: str, reason: str | None = None
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            uid = int(user_id)
+        except ValueError:
+            await interaction.response.send_message("ID utente non valido.", ephemeral=True)
+            return
+
+        from core.repositories.blacklist_repo import blacklist_repo
+
+        await blacklist_repo.add_user(uid, reason, added_by=interaction.user.id)
+        await interaction.response.send_message(
+            f"Utente `{uid}` bloccato globalmente.", ephemeral=True
+        )
+
+    @owner_group.command(
+        name="blacklist-user-remove",
+        description="[OWNER] Rimuove un utente dalla blacklist globale.",
+    )
+    @app_commands.describe(user_id="ID Discord dell'utente")
+    async def blacklist_user_remove(
+        self, interaction: discord.Interaction, user_id: str
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            uid = int(user_id)
+        except ValueError:
+            await interaction.response.send_message("ID utente non valido.", ephemeral=True)
+            return
+
+        from core.repositories.blacklist_repo import blacklist_repo
+
+        rimosso = await blacklist_repo.remove_user(uid)
+        if rimosso:
+            await interaction.response.send_message(
+                f"Utente `{uid}` rimosso dalla blacklist.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                f"Utente `{uid}` non era in blacklist.", ephemeral=True
+            )
+
+    @owner_group.command(
+        name="blacklist-user-list", description="[OWNER] Mostra gli utenti bloccati globalmente."
+    )
+    async def blacklist_user_list(self, interaction: discord.Interaction) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        from core.repositories.blacklist_repo import blacklist_repo
+
+        utenti = await blacklist_repo.list_users()
+        if not utenti:
+            await interaction.response.send_message("Nessun utente in blacklist.", ephemeral=True)
+            return
+
+        righe = [f"`{u['user_id']}` — {u['reason'] or 'nessun motivo'}" for u in utenti]
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @owner_group.command(
+        name="blacklist-guild-add",
+        description="[OWNER] Blocca globalmente un server (il bot ne uscirà se già presente).",
+    )
+    @app_commands.describe(guild_id="ID del server", reason="Motivo (facoltativo)")
+    async def blacklist_guild_add(
+        self, interaction: discord.Interaction, guild_id: str, reason: str | None = None
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            gid = int(guild_id)
+        except ValueError:
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+
+        from core.repositories.blacklist_repo import blacklist_repo
+
+        await blacklist_repo.add_guild(gid, reason, added_by=interaction.user.id)
+
+        # Se il bot è già in quel server, ne esce subito — non ha
+        # senso bloccare un server e restarci dentro fino al prossimo
+        # riavvio o al prossimo controllo casuale.
+        guild_gia_presente = self.bot.get_guild(gid)
+        if guild_gia_presente is not None:
+            await guild_gia_presente.leave()
+            await interaction.response.send_message(
+                f"Server `{gid}` bloccato globalmente — il bot ne è appena uscito.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"Server `{gid}` bloccato globalmente.", ephemeral=True
+            )
+
+    @owner_group.command(
+        name="blacklist-guild-remove",
+        description="[OWNER] Rimuove un server dalla blacklist globale.",
+    )
+    @app_commands.describe(guild_id="ID del server")
+    async def blacklist_guild_remove(
+        self, interaction: discord.Interaction, guild_id: str
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            gid = int(guild_id)
+        except ValueError:
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+
+        from core.repositories.blacklist_repo import blacklist_repo
+
+        rimosso = await blacklist_repo.remove_guild(gid)
+        if rimosso:
+            await interaction.response.send_message(
+                f"Server `{gid}` rimosso dalla blacklist.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                f"Server `{gid}` non era in blacklist.", ephemeral=True
+            )
+
+    @owner_group.command(
+        name="blacklist-guild-list", description="[OWNER] Mostra i server bloccati globalmente."
+    )
+    async def blacklist_guild_list(self, interaction: discord.Interaction) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        from core.repositories.blacklist_repo import blacklist_repo
+
+        server = await blacklist_repo.list_guilds()
+        if not server:
+            await interaction.response.send_message("Nessun server in blacklist.", ephemeral=True)
+            return
+
+        righe = [f"`{g['guild_id']}` — {g['reason'] or 'nessun motivo'}" for g in server]
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    # ================================================================
+    # Leave guild forzato (SPEC.md §17.9)
+    # ================================================================
+    @owner_group.command(
+        name="leave-guild",
+        description="[OWNER] Forza il bot a lasciare un server specifico (senza bloccarlo).",
+    )
+    @app_commands.describe(guild_id="ID del server da cui uscire")
+    async def leave_guild(self, interaction: discord.Interaction, guild_id: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            gid = int(guild_id)
+        except ValueError:
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+
+        guild = self.bot.get_guild(gid)
+        if guild is None:
+            await interaction.response.send_message(
+                f"Il bot non risulta presente nel server `{gid}`.", ephemeral=True
+            )
+            return
+
+        nome_server = guild.name
+        await guild.leave()
+        await interaction.response.send_message(
+            f"Il bot è uscito da **{nome_server}** (`{gid}`).", ephemeral=True
+        )
+
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(OwnerPremiumCog(bot))
