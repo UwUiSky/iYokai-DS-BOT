@@ -508,8 +508,9 @@ file, non da un riassunto.**
   riusa la stessa catena di fallback del messaggio di benvenuto
   (system_channel → primo canale scrivibile → DM proprietario),
   estratta in un metodo generico su `iYokaiBot`
-- `[ ]` 17.8 Statistiche globali (guild count, shard health, RAM,
-  latenza, comandi/minuto, errori)
+- `[x]` 17.8 Statistiche globali (guild count, shard health, RAM,
+  latenza, comandi/minuto, errori) — `/owner stats`, contatori a
+  finestra scorrevole di 60s (`core/bot_stats.py`)
 - `[x]` 17.9 Leave guild forzato
 - `[ ]` 17.10 Pannello premium interattivo con conferma a due step e
   log persistente di ogni modifica (oggi comandi separati, nessun
@@ -587,10 +588,10 @@ rilancia lo stesso conteggio.
 | §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
-| §17 Owner | 7 | 0 | 3 |
+| §17 Owner | 8 | 0 | 2 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **107** | **0** | **161** |
+| **Totale** | **108** | **0** | **160** |
 
-Su 268 voci totali: **107 fatte, 0 parziali, 161 mancanti** — circa
-il 40% dello schema. §17 Owner è a 7/10.
+Su 268 voci totali: **108 fatte, 0 parziali, 160 mancanti** — circa
+il 40% dello schema. §17 Owner è a 8/10.
 

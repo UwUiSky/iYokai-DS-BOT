@@ -901,6 +901,28 @@ messaggio di benvenuto.
 
 **Suite di test completa: 707/707 passano.**
 
+### Fase 29 — Statistiche globali (SPEC.md §17.8)
+`core/bot_stats.py`: `RollingCounter`, finestra scorrevole di 60s
+per comandi/errori — non un contatore cumulativo dall'avvio (dice
+"quanto è attivo il bot ADESSO"). **Bug reale trovato scrivendo il
+test**: `count_in_window()` potava solo dalla testa della coda,
+presumendo inserimenti in ordine cronologico — un test con
+inserimenti fuori ordine ha rivelato che si fermava al primo
+timestamp ancora valido, lasciando scaduti più indietro non rimossi.
+Corretto filtrando l'intera coda. **7 test**.
+
+`core/blacklist_tree.py` conta ogni interazione che supera la
+blacklist (nessun hook `on_completion` disponibile in questa
+versione di discord.py); `core/premium.py` conta ogni errore in
+`handle_app_command_error`. **6 nuovi test**, incluso la prova che
+un'interazione bloccata NON incrementa il contatore.
+
+`cogs/utility/owner_premium.py`: `/owner stats` — server, membri
+stimati, RAM (riusa memory_guard), latenza, latenza per shard,
+comandi/errori nell'ultimo minuto. **2 nuovi test**.
+
+**Suite di test completa: 719/719 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1223,22 +1245,25 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§17 Owner è a 7/10.** L'utente ha chiesto esplicitamente di finire
-l'intera sezione. Restano, in ordine di complessità crescente (già
-deciso, confermato ancora):
+**§17 Owner è a 8/10.** L'utente ha chiesto esplicitamente di finire
+l'intera sezione. Restano solo due voci:
 
-- 17.8 Statistiche globali — guild count, shard health, RAM (riusa
-  memory_guard), latenza, comandi/minuto, errori
 - 17.10 Pannello premium interattivo con conferma a due step e log
   persistente — estende premium-list/premium-toggle con una View,
-  più un log delle modifiche
+  più un log delle modifiche (probabilmente riusando lo schema già
+  visto in guild_config_history, o una tabella dedicata)
 - 17.3 Eval/Exec/Shell (con secondo fattore di conferma) — l'unica
-  genuinamente delicata, lasciata per ultima di proposito
+  genuinamente delicata, lasciata per ultima di proposito: esecuzione
+  di codice arbitrario, riservata all'owner verificato, con log di
+  ogni invocazione
 
 Promemoria per qualunque comando /owner futuro che tocchi cicli di
 vita di cog o registrazioni: verificare collisioni con hook riservati
 di discord.py (hasattr(commands.Cog, nome)) e idempotenza delle
-funzioni di registrazione chiamate da setup() su un reload.
+funzioni di registrazione chiamate da setup() su un reload. E per
+qualunque contatore/struttura dati che accumula nel tempo: verificare
+che la pulizia non presuma un ordine di inserimento che potrebbe non
+valere in ogni caso d'uso.
 
 Nessuna priorità imposta in modo vincolante oltre questa — la
 decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere
