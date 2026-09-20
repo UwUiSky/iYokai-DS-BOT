@@ -724,6 +724,64 @@ richiesto finché un modulo non lo giustifica esplicitamente.
 
 **Suite di test completa: 596/596 passano.**
 
+### Fase 23 — Sticky Messages, Server Stats, Suggestion System (SPEC.md §14.13/14.18/14.14)
+Tre feature richieste insieme dall'utente, costruite una alla volta
+con la stessa disciplina.
+
+**Sticky Messages (§14.13)**
+- [x] `core/sticky_message_logic.py` — debounce minimo (5s) contro
+  cancella+reinvia ad ogni singolo messaggio in un canale attivo.
+  **5 test**
+- [x] `core/repositories/sticky_message_repo.py` — una riga per
+  canale, `set_sticky()` azzera lo stato di repost quando il testo
+  cambia. **7 test**
+- [x] `cogs/utility/sticky_messages.py` — `/sticky set|remove`.
+  **BUG DI TEST trovato e corretto**: `sticky_messages.py` fa `from
+  core.database import db`, il nome è legato al modulo AL MOMENTO
+  DELL'IMPORT — monkeypatchare `core.database.db` non lo tocca, va
+  patchato l'attributo dentro il modulo consumatore stesso (stesso
+  schema già risolto per `basic_logs.py`, riapplicato correttamente
+  qui dopo un primo tentativo sbagliato notato subito dall'errore).
+  **5 test di integrazione reali** (ripubblica e cancella il
+  vecchio, rispetta il debounce, ignora modulo disattivato, ignora
+  messaggi del bot)
+
+**Server Stats (§14.18)**
+- [x] `core/server_stats_logic.py` — variazione giornaliera da
+  eventi join/leave, senza tentare di ricostruire la popolazione
+  storica assoluta (richiederebbe un dato che non abbiamo). **11 test**
+- [x] `core/repositories/event_log_repo.py` — `get_events_by_type_since()`,
+  nuovo metodo senza limite di conteggio. **3 nuovi test**
+- [x] `core/server_stats_image.py` — grafico a barre disegnato a
+  mano con Pillow, **deliberatamente non matplotlib** (avrebbe
+  trascinato numpy come nuova dipendenza pesante). **7 test con
+  immagini vere**
+- [x] `cogs/utility/server_stats.py` — `/serverstats [days]`. **Bug
+  evitato, verificato prima di scrivere**: `discord.Embed.Empty` non
+  esiste più in discord.py 2.7 (verificato con `hasattr`, non
+  assunto) — usato `None`. Aggiunto `is_module_active_for_guild`
+  dimenticato nella prima stesura, notato rileggendo prima di
+  testare. **1 test smoke**
+
+**Suggestion System (§14.14, distinto da §14.8 che va al server dello
+sviluppatore)**
+- [x] `core/suggestion_logic.py` — `can_decide()`, solo una
+  suggestion "pending" può essere decisa. **3 test**
+- [x] `core/repositories/suggestion_repo.py` — `list_pending()` per
+  ricostruire le View persistenti all'avvio, stesso principio dei
+  Role Menu. **8 test**
+- [x] `cogs/utility/suggestions.py` — `/suggestion-setup`, `/suggest`,
+  bottoni persistenti approva/rifiuta + reazioni native 👍👎.
+  **Pulizia fatta prima di salvare**: un ciclo morto e un footer che
+  non diceva nulla di utile, corretti entrambi prima del commit,
+  non dopo. **1 test smoke**
+
+**§14.13 era stata dimenticata in SPEC.md in una sessione precedente**
+(costruita e pushata, ma mai marcata) — notato e corretto durante
+l'aggiornamento di questa fase.
+
+**Suite di test completa: 648/648 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1046,17 +1104,18 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Reminder (§14.16) completato**, primo lavoro dopo l'esaurimento
-del backlog — nessuna priorità imposta, scelto liberamente da
-`SPEC.md` §14 tra le voci senza dipendenza dal Message Content
-Intent.
+**Le tre feature richieste insieme sono tutte fatte** (Sticky
+Messages, Server Stats, Suggestion System). §14 Utility è ora a
+10/18 — più della metà.
 
-Buoni candidati successivi in §14 con la stessa proprietà (nessun
-Message Content Intent richiesto), non imposti: Sticky messages
-(14.13), Server stats (14.18), Suggestion system (14.14). Restano
-deliberatamente da NON toccare finché il Message Content Intent non
-è esplicitamente giustificato: Autoresponder (14.7), Snipe/
-Editsnipe/Reactionsnipe (14.9-14.11).
+Restano in §14 senza dipendenza dal Message Content Intent: Poll
+(14.15, probabilmente triviale — usare il Poll nativo di Discord,
+come indicato dallo schema stesso), Scheduled messages (14.17).
+Restano deliberatamente da NON toccare finché il Message Content
+Intent non è esplicitamente giustificato: Autoresponder (14.7),
+Snipe/Editsnipe/Reactionsnipe (14.9-14.11). Il Custom Commands
+request system (14.8, verso il server dello sviluppatore, DIVERSO
+dal Suggestion System appena fatto) resta un candidato a sé.
 
 Nessuna priorità imposta in modo vincolante — la decisione resta
 dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere

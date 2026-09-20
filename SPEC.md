@@ -413,7 +413,9 @@ file, non da un riassunto.**
 - `[x]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
   (5s) per non cancellare+reinviare ad ogni singolo messaggio in un
   canale attivo
-- `[ ]` 14.14 Suggestion system (per i server clienti, distinto da 14.8)
+- `[x]` 14.14 Suggestion system (per i server clienti, distinto da
+  14.8) — `/suggestion-setup`, `/suggest`, bottoni persistenti
+  approva/rifiuta + reazioni native 👍👎 per il voto
 - `[ ]` 14.15 Poll (usare il Poll nativo di Discord)
 - `[x]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
   scheduler generico esistente (nessuna tabella nuova). Consegna via
@@ -565,13 +567,13 @@ rilancia lo stesso conteggio.
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 9 | 0 | 9 |
+| §14 Utility | 10 | 0 | 8 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **98** | **0** | **170** |
+| **Totale** | **99** | **0** | **169** |
 
-Su 268 voci totali: **98 fatte, 0 parziali, 170 mancanti** — circa il
+Su 268 voci totali: **99 fatte, 0 parziali, 169 mancanti** — circa il
 37% dello schema.
 
