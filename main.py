@@ -36,6 +36,8 @@ from core.cog_manager import load_all_cogs
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
+from core.blacklist_tree import BlacklistAwareCommandTree
+from core.repositories.blacklist_repo import blacklist_repo
 from core.premium import handle_app_command_error
 from core.error_handler_logic import should_alert_owner
 from core.json_log_formatter import JSONFormatter
@@ -114,6 +116,13 @@ class iYokaiBot(commands.AutoShardedBot):
         super().__init__(
             command_prefix=commands.when_mentioned,  # niente prefisso testuale
             intents=intents,
+            # CommandTree personalizzata (SPEC.md §17.4/17.5): blocca
+            # globalmente le interazioni di utenti/server in
+            # blacklist prima che qualunque comando venga eseguito —
+            # vedi core/blacklist_tree.py per il perché va passata
+            # qui e non assegnata dopo (CommandTree.__init__ solleva
+            # se il client ha già un tree associato).
+            tree_cls=BlacklistAwareCommandTree,
         )
 
         # Error handler globale per i comandi slash: gestisce in
@@ -227,7 +236,21 @@ class iYokaiBot(commands.AutoShardedBot):
         e prova a mandare un messaggio di benvenuto con la catena di
         fallback decisa in core/welcome_logic.py: canale di sistema
         → primo canale scrivibile → DM al proprietario.
+
+        Un server in blacklist (SPEC.md §17.5) viene lasciato SUBITO,
+        prima di ensure_guild_exists e del messaggio di benvenuto —
+        non ha senso configurare o dare il benvenuto a un server che
+        il bot deve comunque abbandonare.
         """
+        if await blacklist_repo.is_guild_blacklisted(guild.id):
+            logger.info(
+                "Server %s (ID: %s) è in blacklist — esco immediatamente.",
+                guild.name,
+                guild.id,
+            )
+            await guild.leave()
+            return
+
         await db.ensure_guild_exists(guild.id)
         logger.info("Nuovo server: %s (ID: %s)", guild.name, guild.id)
         await self._send_welcome_message(guild)

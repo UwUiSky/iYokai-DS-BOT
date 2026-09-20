@@ -273,3 +273,104 @@ async def test_welcome_fallimento_completo_non_solleva_eccezioni():
     )
 
     await bot._send_welcome_message(guild)  # non deve sollevare eccezioni
+
+
+class _FakeGuildForBlacklistCheck(_FakeGuildForWelcome):
+    """Estende la fake guild già usata per il welcome message (ha già
+    tutti gli attributi che _send_welcome_message si aspetta), solo
+    con .leave() e un ID parametrizzabile in più."""
+
+    def __init__(self, guild_id: int) -> None:
+        super().__init__(system_channel=None, text_channels=[], owner=None, owner_fetch_result=None)
+        self.id = guild_id
+        self.left = False
+
+    async def leave(self) -> None:
+        self.left = True
+
+
+def _collega_singleton_per_test(monkeypatch, database):
+    import main as main_module
+    from core.repositories.blacklist_repo import BlacklistRepository
+
+    monkeypatch.setattr(main_module, "db", database)
+    monkeypatch.setattr(
+        main_module, "blacklist_repo", BlacklistRepository(pool_provider=lambda: database.pool)
+    )
+
+
+@pytest.mark.asyncio
+async def test_on_guild_join_esce_subito_se_il_server_e_in_blacklist(monkeypatch):
+    from core.database import Database
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 600000001
+        await database.pool.execute(
+            "DELETE FROM guild_blacklist WHERE guild_id = $1", guild_id
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        await database.pool.execute(
+            "INSERT INTO guild_blacklist (guild_id, added_by) VALUES ($1, $2)",
+            guild_id,
+            1,
+        )
+
+        _collega_singleton_per_test(monkeypatch, database)
+
+        bot = iYokaiBot()
+        guild = _FakeGuildForBlacklistCheck(guild_id)
+
+        await bot.on_guild_join(guild)
+
+        assert guild.left is True
+        # ensure_guild_exists NON deve essere stato chiamato: non ha
+        # senso configurare un server che il bot sta per abbandonare.
+        riga = await database.pool.fetchrow(
+            "SELECT 1 FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        assert riga is None
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_blacklist WHERE guild_id = 600000001"
+        )
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 600000001"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_on_guild_join_server_non_bloccato_procede_normalmente(monkeypatch):
+    from core.database import Database
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 600000002
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = $1", guild_id
+        )
+
+        _collega_singleton_per_test(monkeypatch, database)
+
+        bot = iYokaiBot()
+        guild = _FakeGuildForBlacklistCheck(guild_id)
+
+        await bot.on_guild_join(guild)
+
+        assert guild.left is False
+        riga = await database.pool.fetchrow(
+            "SELECT 1 FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        assert riga is not None
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 600000002"
+        )
+        await database.close()
