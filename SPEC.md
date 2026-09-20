@@ -512,9 +512,10 @@ file, non da un riassunto.**
   latenza, comandi/minuto, errori) — `/owner stats`, contatori a
   finestra scorrevole di 60s (`core/bot_stats.py`)
 - `[x]` 17.9 Leave guild forzato
-- `[ ]` 17.10 Pannello premium interattivo con conferma a due step e
-  log persistente di ogni modifica (oggi comandi separati, nessun
-  pannello, nessun log delle modifiche)
+- `[x]` 17.10 Pannello premium interattivo con conferma a due step e
+  log persistente di ogni modifica — `/owner premium-panel`, Select
+  + conferma, `premium_toggle_history` (append-only, distinta dallo
+  stato più recente)
 
 ---
 
@@ -588,10 +589,10 @@ rilancia lo stesso conteggio.
 | §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
-| §17 Owner | 8 | 0 | 2 |
+| §17 Owner | 9 | 0 | 1 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **108** | **0** | **160** |
+| **Totale** | **109** | **0** | **159** |
 
-Su 268 voci totali: **108 fatte, 0 parziali, 160 mancanti** — circa
-il 40% dello schema. §17 Owner è a 8/10.
+Su 268 voci totali: **109 fatte, 0 parziali, 159 mancanti** — circa
+il 41% dello schema. §17 Owner è a 9/10: resta solo Eval/Exec/Shell.
 

@@ -923,6 +923,36 @@ comandi/errori nell'ultimo minuto. **2 nuovi test**.
 
 **Suite di test completa: 719/719 passano.**
 
+### Fase 30 — Pannello premium interattivo (SPEC.md §17.10)
+`core/database.py`: nuova tabella `premium_toggle_history`
+(append-only, distinta da `premium_module_flags` che tiene solo
+l'ULTIMO stato) — il log persistente richiesto dallo schema, ogni
+cambio resta nello storico anche dopo un cambio successivo.
+
+`cogs/utility/owner_premium.py`: estratto `_apply_premium_toggle()`
+condiviso da `/owner premium-toggle` (comando esistente,
+refactorizzato per usarlo) e dal nuovo pannello — un solo punto che
+applica un cambio premium (registry + `premium_module_flags` +
+`premium_toggle_history`), mai due copie della stessa logica.
+
+`/owner premium-panel`: Select con tutti i moduli premium-capable →
+selezionandone uno, conferma a due step (embed "Conferma richiesta"
+con bottoni Conferma/Annulla) prima di applicare — esattamente
+"conferma a due step" come richiesto dallo schema, perché un cambio
+premium vale per TUTTI i server insieme.
+
+3 nuovi test, incluso un **ciclo COMPLETO** selezione→conferma
+verificato contro PostgreSQL reale, non solo che i pezzi si carichino:
+il Select invocato con `_values` impostato manualmente (`values` è
+una proprietà di sola lettura, verificato l'attributo interno corretto
+prima di scrivere il test), la conferma applica il cambio e scrive
+nello storico, il bottone Annulla non applica nulla.
+
+**§17 Owner è ora a 9/10 — resta solo Eval/Exec/Shell**, lasciato per
+ultimo di proposito fin dall'inizio di questa sezione.
+
+**Suite di test completa: 722/722 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
