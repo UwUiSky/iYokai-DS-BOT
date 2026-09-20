@@ -808,6 +808,48 @@ configurabile (1-768 ore), scelta multipla opzionale. 1 test smoke.
 
 **Suite di test completa: 656/656 passano.**
 
+### Fase 26 — Custom Commands request (SPEC.md §14.8) + inizio §17 Owner
+**Custom Commands request system (§14.8)**: modal a 3 campi, sempre
+verso il server principale dello sviluppatore (distinto dal
+Suggestion System di §14.14, che va al server cliente), bottoni
+persistenti approva/rifiuta, notifica DM di ritorno. Riusa `core/
+suggestion_logic.py` per lo stato — stessa macchina pending/approved/
+rejected, applicata a un tipo diverso di richiesta.
+
+**Verifica tecnica importante prima di iniziare §17**: testato
+empiricamente se un `app_commands.Group` potesse essere condiviso tra
+file diversi (per non far crescere `owner_premium.py` all'infinito).
+**Confermato che NON si può**: `self` si lega alla classe che
+POSSIEDE il `Group`, non a quella dove il metodo è scritto — tutti i
+comandi `/owner` restano quindi in un solo file, come già deciso in
+precedenza nel codice stesso.
+
+**Blacklist globale (§17.4/17.5) + Leave guild forzato (§17.9)**:
+- `core/repositories/blacklist_repo.py` — cache su entrambi i
+  controlli (stesso principio della config moduli: girano su OGNI
+  interazione del bot). **13 test**
+- `core/blacklist_tree.py` — `BlacklistAwareCommandTree`, sottoclasse
+  di `CommandTree` che intercetta OGNI interazione prima del dispatch
+  al comando specifico. **Bug reale trovato scrivendo il primo test**:
+  non si può costruire una seconda `CommandTree` su un bot che ne ha
+  già una (discord.py solleva `ClientException`) — va passata come
+  `tree_cls=` al costruttore di `commands.Bot()`. **4 test**
+- `main.py` — `on_guild_join` esce SUBITO da un server in blacklist,
+  prima di configurarlo. **2 test**
+- `cogs/utility/owner_premium.py` — `blacklist-user/guild
+  add|remove|list`, `leave-guild` (esce immediatamente se il server
+  bloccato è già presente, non aspetta il prossimo controllo).
+  **Bug di test trovato**: `core.config.Config` è un dataclass
+  FROZEN, non monkeypatchabile — corretto usando il vero `OWNER_ID`
+  già impostato dall'ambiente di test. **5 test del comportamento
+  reale**, non solo smoke
+
+**Resta di §17**: 17.3 Eval/Exec/Shell, 17.6 Forced cog load/unload/
+reload, 17.7 Annuncio globale, 17.8 Statistiche globali, 17.10
+Pannello premium interattivo.
+
+**Suite di test completa: 688/688 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1130,23 +1172,30 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§14 Utility è ora a 12/18.** Restano senza dipendenza dal Message
-Content Intent: Custom Commands request system (14.8, verso il
-server dello sviluppatore — diverso dal Suggestion System già fatto,
-che va al server cliente). Tutto il resto rimasto in §14
-(Autoresponder, Snipe/Editsnipe/Reactionsnipe) richiede il Message
-Content Intent, deliberatamente non toccato finché non esplicitamente
-giustificato.
+**§17 Owner è a metà (5/10).** L'utente ha chiesto esplicitamente di
+finire l'intera sezione. Restano, in ordine di complessità crescente:
 
-Altre sezioni a zero o quasi, buoni candidati per un prossimo giro:
-§9 Music (intera sezione), §10 Alerts & Social (intera sezione), §11
-Backup (intera sezione), §16 Fun & Immagini (intera sezione), §17
-Owner (2/10).
+- 17.6 Forced cog load/unload/reload — wrapper su bot.load_extension/
+  unload_extension/reload_extension, relativamente semplice
+- 17.7 Annuncio globale a tutti i server — itera bot.guilds, manda un
+  embed nel canale mod-log/log configurato di ciascuno (o un fallback
+  se non configurato)
+- 17.8 Statistiche globali — guild count, shard health, RAM (riusa
+  memory_guard), latenza, comandi/minuto, errori
+- 17.10 Pannello premium interattivo con conferma a due step e log
+  persistente — estende i comandi premium-list/premium-toggle già
+  esistenti con una View invece di comandi separati, più un log delle
+  modifiche (probabilmente riusando guild_config_history o una
+  tabella dedicata)
+- 17.3 Eval/Exec/Shell (con secondo fattore di conferma) — l'unica
+  genuinamente delicata: esecuzione di codice arbitrario, riservata
+  all'owner verificato, con log di ogni invocazione. Lasciata per
+  ultima di proposito.
 
-Nessuna priorità imposta in modo vincolante — la decisione resta
-dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
-`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
-passa da `BACKLOG.md` prima di toccare `SPEC.md`.
+Nessuna priorità imposta in modo vincolante oltre questa — la
+decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere
+codice: leggere `SPEC.md`, non un riassunto. E qualunque proposta
+esterna futura passa da `BACKLOG.md` prima di toccare `SPEC.md`.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro

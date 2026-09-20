@@ -400,7 +400,7 @@ file, non da un riassunto.**
 - `[x]` 14.6 Boost messages — rilevato su `premium_since` che passa
   da `None` a valorizzato, non il caso opposto
 - `[ ]` 14.7 Autoresponder (con wildcards e condizioni)
-- `[ ]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
+- `[x]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
   dettaglio): modal con nome comando + descrizione + esempio → embed
   automatico nel canale `#suggestions` del server principale con nome
   server, ID server, nome utente, **ID utente** (perché il nome può
@@ -492,13 +492,16 @@ file, non da un riassunto.**
 - `[x]` 17.1 Gestione Premium List (add / remove)
 - `[x]` 17.2 Toggle flag premium per modulo
 - `[ ]` 17.3 Eval / Exec / Shell (con secondo fattore di conferma)
-- `[ ]` 17.4 Blacklist globale utenti
-- `[ ]` 17.5 Blacklist globale server
+- `[x]` 17.4 Blacklist globale utenti — cache come per i moduli,
+  blocca ogni interazione tramite `BlacklistAwareCommandTree`
+- `[x]` 17.5 Blacklist globale server — uscita automatica su
+  `on_guild_join` se già in blacklist, uscita immediata se aggiunto
+  mentre il bot è già dentro
 - `[ ]` 17.6 Forced cog load / unload / reload
 - `[ ]` 17.7 Annuncio globale a tutti i server
 - `[ ]` 17.8 Statistiche globali (guild count, shard health, RAM,
   latenza, comandi/minuto, errori)
-- `[ ]` 17.9 Leave guild forzato
+- `[x]` 17.9 Leave guild forzato
 - `[ ]` 17.10 Pannello premium interattivo con conferma a due step e
   log persistente di ogni modifica (oggi comandi separati, nessun
   pannello, nessun log delle modifiche)
@@ -572,13 +575,13 @@ rilancia lo stesso conteggio.
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 12 | 0 | 6 |
+| §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
-| §17 Owner | 2 | 0 | 8 |
+| §17 Owner | 5 | 0 | 5 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **101** | **0** | **167** |
+| **Totale** | **105** | **0** | **163** |
 
-Su 268 voci totali: **101 fatte, 0 parziali, 167 mancanti** — circa
-il 38% dello schema.
+Su 268 voci totali: **105 fatte, 0 parziali, 163 mancanti** — circa
+il 39% dello schema. §17 Owner è ora a metà strada (5/10).
 
