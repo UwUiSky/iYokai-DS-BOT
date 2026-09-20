@@ -106,6 +106,9 @@ async def clean_db(db_pool):
     from core.repositories.custom_command_request_repo import (
         run_migrations as custom_command_request_migrations,
     )
+    from core.repositories.blacklist_repo import (
+        run_migrations as blacklist_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -126,6 +129,7 @@ async def clean_db(db_pool):
     await sticky_message_migrations(db_pool)
     await suggestion_migrations(db_pool)
     await custom_command_request_migrations(db_pool)
+    await blacklist_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -161,6 +165,8 @@ async def clean_db(db_pool):
         "sticky_messages",
         "suggestions",
         "custom_command_requests",
+        "user_blacklist",
+        "guild_blacklist",
         "guild_config",
         "guild_config_history",
         "premium_whitelist",
