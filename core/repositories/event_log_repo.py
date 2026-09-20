@@ -175,6 +175,28 @@ class EventLogRepository:
         )
         return [self._row_to_entry(r) for r in rows]
 
+    async def get_events_by_type_since(
+        self, guild_id: int, event_type: str, since: datetime
+    ) -> list[EventLogEntry]:
+        """
+        Tutti gli eventi di un tipo specifico da una data in poi,
+        senza limite di conteggio — pensata per Server Stats
+        (SPEC.md §14.18), che deve vedere OGNI join/leave nella
+        finestra richiesta per calcolare la crescita giornaliera, non
+        solo gli ultimi N in assoluto come get_recent_events().
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM event_log
+            WHERE guild_id = $1 AND event_type = $2 AND created_at >= $3
+            ORDER BY created_at
+            """,
+            guild_id,
+            event_type,
+            since,
+        )
+        return [self._row_to_entry(r) for r in rows]
+
     async def export_events(
         self, guild_id: int, since: datetime | None = None
     ) -> list[EventLogEntry]:

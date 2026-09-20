@@ -194,3 +194,43 @@ async def test_log_event_con_case_number_e_role_id(repo):
     eventi = await repo.get_recent_events(100)
     assert eventi[0].case_number == 5
     assert eventi[0].actor_id == 2
+
+
+@pytest.mark.asyncio
+async def test_get_events_by_type_since_filtra_per_tipo(repo):
+    await repo.log_event(100, "member_join", target_user_id=1)
+    await repo.log_event(100, "member_remove", target_user_id=1)
+    await repo.log_event(100, "member_join", target_user_id=2)
+
+    eventi = await repo.get_events_by_type_since(
+        100, "member_join", since=datetime.now(timezone.utc) - timedelta(days=1)
+    )
+    assert len(eventi) == 2
+    assert all(e.event_type == "member_join" for e in eventi)
+
+
+@pytest.mark.asyncio
+async def test_get_events_by_type_since_esclude_eventi_precedenti_alla_data(repo):
+    vecchio = datetime.now(timezone.utc) - timedelta(days=10)
+    await repo._pool.execute(
+        "INSERT INTO event_log (guild_id, event_type, target_user_id, created_at) "
+        "VALUES ($1, $2, $3, $4)",
+        100, "member_join", 1, vecchio,
+    )
+    await repo.log_event(100, "member_join", target_user_id=2)
+
+    eventi = await repo.get_events_by_type_since(
+        100, "member_join", since=datetime.now(timezone.utc) - timedelta(days=1)
+    )
+    assert len(eventi) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_events_by_type_since_nessun_limite_di_conteggio(repo):
+    for i in range(30):
+        await repo.log_event(100, "member_join", target_user_id=i)
+
+    eventi = await repo.get_events_by_type_since(
+        100, "member_join", since=datetime.now(timezone.utc) - timedelta(days=1)
+    )
+    assert len(eventi) == 30
