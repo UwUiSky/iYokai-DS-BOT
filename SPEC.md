@@ -422,7 +422,10 @@ file, non da un riassunto.**
 - `[x]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
   scheduler generico esistente (nessuna tabella nuova). Consegna via
   DM, fallback nel canale se i DM sono chiusi
-- `[ ]` 14.17 Scheduled messages
+- `[x]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
+  riusa lo stesso scheduler dei Reminder (nessuna tabella nuova).
+  Diversamente dal Reminder (personale, via DM), pubblica in un
+  CANALE del server
 - `[x]` 14.18 Server stats (+ grafici) — `/serverstats`: numeri del
   server + grafico a barre della crescita giornaliera (disegnato con
   Pillow, non matplotlib — nessuna nuova dipendenza pesante)
@@ -569,13 +572,13 @@ rilancia lo stesso conteggio.
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 11 | 0 | 7 |
+| §14 Utility | 12 | 0 | 6 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
 | §16 Fun/NSFW | 0 | 0 | 15 |
 | §17 Owner | 2 | 0 | 8 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **100** | **0** | **168** |
+| **Totale** | **101** | **0** | **167** |
 
-Su 268 voci totali: **100 fatte, 0 parziali, 168 mancanti** — circa
-il 37% dello schema.
+Su 268 voci totali: **101 fatte, 0 parziali, 167 mancanti** — circa
+il 38% dello schema.
 

@@ -793,6 +793,21 @@ configurabile (1-768 ore), scelta multipla opzionale. 1 test smoke.
 
 **Suite di test completa: 649/649 passano.**
 
+### Fase 25 — Scheduled Messages (SPEC.md §14.17)
+- [x] `core/scheduler.py` — `list_pending_for_guild()`, simmetrico a
+  `list_pending_for_user()` ma filtrato per server invece che per
+  utente (un admin deve vedere tutti i messaggi programmati del
+  proprio server, non solo i propri). **2 nuovi test**
+- [x] `cogs/utility/scheduled_messages.py` — `/schedule-message
+  set|list|cancel`, riusa lo stesso scheduler dei Reminder (nessuna
+  tabella nuova). A differenza del Reminder (personale, via DM),
+  pubblica in un canale del server — strumento admin, non personale.
+  **1 test smoke + 4 test del comportamento reale dell'handler**
+  (canale corretto, canale/server non raggiungibile non solleva,
+  invio fallito non solleva)
+
+**Suite di test completa: 656/656 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1115,18 +1130,18 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Le tre feature richieste insieme sono tutte fatte** (Sticky
-Messages, Server Stats, Suggestion System). §14 Utility è ora a
-10/18 — più della metà.
+**§14 Utility è ora a 12/18.** Restano senza dipendenza dal Message
+Content Intent: Custom Commands request system (14.8, verso il
+server dello sviluppatore — diverso dal Suggestion System già fatto,
+che va al server cliente). Tutto il resto rimasto in §14
+(Autoresponder, Snipe/Editsnipe/Reactionsnipe) richiede il Message
+Content Intent, deliberatamente non toccato finché non esplicitamente
+giustificato.
 
-Restano in §14 senza dipendenza dal Message Content Intent: Poll
-(14.15, probabilmente triviale — usare il Poll nativo di Discord,
-come indicato dallo schema stesso), Scheduled messages (14.17).
-Restano deliberatamente da NON toccare finché il Message Content
-Intent non è esplicitamente giustificato: Autoresponder (14.7),
-Snipe/Editsnipe/Reactionsnipe (14.9-14.11). Il Custom Commands
-request system (14.8, verso il server dello sviluppatore, DIVERSO
-dal Suggestion System appena fatto) resta un candidato a sé.
+Altre sezioni a zero o quasi, buoni candidati per un prossimo giro:
+§9 Music (intera sezione), §10 Alerts & Social (intera sezione), §11
+Backup (intera sezione), §16 Fun & Immagini (intera sezione), §17
+Owner (2/10).
 
 Nessuna priorità imposta in modo vincolante — la decisione resta
 dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
