@@ -420,5 +420,96 @@ class OwnerPremiumCog(commands.Cog):
         )
 
 
+    # ================================================================
+    # Forced cog load/unload/reload (SPEC.md §17.6)
+    # ================================================================
+    @owner_group.command(
+        name="cog-load", description="[OWNER] Carica un'estensione (es. cogs.moderation.actions)."
+    )
+    @app_commands.describe(extension="Percorso completo del modulo, es. cogs.moderation.actions")
+    async def owner_cog_load(self, interaction: discord.Interaction, extension: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            await self.bot.load_extension(extension)
+        except commands.ExtensionError as exc:
+            await interaction.response.send_message(
+                f"Impossibile caricare `{extension}`: {exc}", ephemeral=True
+            )
+            return
+        except Exception as exc:
+            # bot.load_extension() può sollevare eccezioni Python
+            # NON derivate da commands.ExtensionError — verificato
+            # con una prova diretta: un percorso di modulo con un
+            # pacchetto intermedio inesistente (es. typo dell'owner)
+            # fa arrivare un ModuleNotFoundError grezzo da
+            # importlib.util.find_spec(), che ExtensionError da solo
+            # non intercetta. Un typo dell'owner deve restare un
+            # messaggio d'errore, non un crash del comando.
+            await interaction.response.send_message(
+                f"Impossibile caricare `{extension}`: {type(exc).__name__}: {exc}",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.send_message(f"Caricato `{extension}`.", ephemeral=True)
+
+    @owner_group.command(name="cog-unload", description="[OWNER] Scarica un'estensione.")
+    @app_commands.describe(extension="Percorso completo del modulo")
+    async def owner_cog_unload(self, interaction: discord.Interaction, extension: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            await self.bot.unload_extension(extension)
+        except commands.ExtensionError as exc:
+            await interaction.response.send_message(
+                f"Impossibile scaricare `{extension}`: {exc}", ephemeral=True
+            )
+            return
+        except Exception as exc:
+            await interaction.response.send_message(
+                f"Impossibile scaricare `{extension}`: {type(exc).__name__}: {exc}",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.send_message(f"Scaricato `{extension}`.", ephemeral=True)
+
+    @owner_group.command(
+        name="cog-reload", description="[OWNER] Ricarica un'estensione già caricata."
+    )
+    @app_commands.describe(extension="Percorso completo del modulo")
+    async def owner_cog_reload(self, interaction: discord.Interaction, extension: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            await self.bot.reload_extension(extension)
+        except commands.ExtensionError as exc:
+            await interaction.response.send_message(
+                f"Impossibile ricaricare `{extension}`: {exc}", ephemeral=True
+            )
+            return
+        except Exception as exc:
+            await interaction.response.send_message(
+                f"Impossibile ricaricare `{extension}`: {type(exc).__name__}: {exc}",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.send_message(f"Ricaricato `{extension}`.", ephemeral=True)
+
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(OwnerPremiumCog(bot))

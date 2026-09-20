@@ -88,16 +88,40 @@ class PremiumRegistry:
     def register(self, module: PremiumModule) -> None:
         """
         Chiamato dai cog al momento del caricamento per dichiararsi.
-        Se un nome è già registrato, è un errore di programmazione
-        (due cog con lo stesso identificatore) e va risolto subito,
-        non ignorato in silenzio — per questo solleva un'eccezione.
+
+        Se un nome è già registrato con una dichiarazione DIVERSA
+        (display_name, description o premium_capable diversi), è un
+        errore di programmazione vero (due cog diversi con lo stesso
+        identificatore) e va risolto subito — solleva un'eccezione.
+
+        Se invece è già registrato con la STESSA dichiarazione, non
+        solleva: è il caso di /owner cog-reload, che richiama
+        setup() (e quindi register()) sullo stesso cog una seconda
+        volta — trovato con un test reale, non ipotizzato: prima di
+        questa correzione, ricaricare QUALUNQUE cog con un modulo
+        premium falliva sempre con ValueError, perché register() non
+        distingueva "stesso modulo ridichiarato" da "due moduli
+        diversi in conflitto". Non sovrascrivere l'entry esistente è
+        la parte importante: preserva is_premium_active così com'è,
+        un reload non deve resettare lo stato premium a False.
         """
-        if module.name in self._modules:
+        esistente = self._modules.get(module.name)
+        if esistente is None:
+            self._modules[module.name] = module
+            return
+
+        stessa_dichiarazione = (
+            esistente.display_name == module.display_name
+            and esistente.description == module.description
+            and esistente.premium_capable == module.premium_capable
+        )
+        if not stessa_dichiarazione:
             raise ValueError(
-                f"Modulo premium '{module.name}' già registrato. "
-                f"I nomi devono essere univoci."
+                f"Modulo premium '{module.name}' già registrato con una "
+                f"dichiarazione diversa. I nomi devono essere univoci."
             )
-        self._modules[module.name] = module
+        # Stesso nome, stessa dichiarazione: reload legittimo, non
+        # tocchiamo l'entry esistente (preserva is_premium_active).
 
     def get(self, name: str) -> PremiumModule | None:
         return self._modules.get(name)

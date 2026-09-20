@@ -316,3 +316,70 @@ async def test_list_pending_for_guild_mostra_azioni_di_utenti_diversi(clean_db, 
 
     assert len(risultato) == 2
     assert {r["user_id"] for r in risultato} == {1, 2}
+
+
+class TestRegisterHandler:
+    """
+    Stessa correzione già fatta in PremiumRegistry.register()
+    (tests/test_premium_registry.py): trovato con un test reale su
+    un cog vero che bot.reload_extension() rompeva QUALSIASI cog
+    con un handler scheduler, perché register_handler() sollevava un
+    errore alla seconda registrazione dello stesso action_type — cosa
+    che succede sempre a un reload, dato che setup() lo richiama di
+    nuovo con un NUOVO bound method (nuova istanza del cog).
+    """
+
+    def test_primo_register_funziona(self):
+        scheduler = Scheduler()
+
+        async def handler(guild_id, user_id, payload):
+            pass
+
+        scheduler.register_handler("test_action", handler)
+        assert "test_action" in scheduler._handlers
+
+    def test_re_register_stesso_metodo_non_solleva(self):
+        class Cog:
+            async def handle_azione(self, guild_id, user_id, payload):
+                pass
+
+        scheduler = Scheduler()
+        prima_istanza = Cog()
+        seconda_istanza = Cog()  # come dopo un reload: nuova istanza, stesso metodo
+
+        scheduler.register_handler("test_action", prima_istanza.handle_azione)
+        scheduler.register_handler("test_action", seconda_istanza.handle_azione)  # non deve sollevare
+
+        # L'handler attivo ora è quello della SECONDA istanza, non
+        # più agganciato a quella vecchia (che il reload ha distrutto).
+        assert scheduler._handlers["test_action"].__self__ is seconda_istanza
+
+    def test_re_register_metodo_di_classe_diversa_solleva(self):
+        class CogA:
+            async def handle_azione(self, guild_id, user_id, payload):
+                pass
+
+        class CogB:
+            async def handle_azione(self, guild_id, user_id, payload):
+                pass
+
+        scheduler = Scheduler()
+        scheduler.register_handler("test_action", CogA().handle_azione)
+
+        with pytest.raises(ValueError):
+            scheduler.register_handler("test_action", CogB().handle_azione)
+
+    def test_action_type_diversi_non_si_scontrano(self):
+        scheduler = Scheduler()
+
+        async def handler_a(guild_id, user_id, payload):
+            pass
+
+        async def handler_b(guild_id, user_id, payload):
+            pass
+
+        scheduler.register_handler("azione_a", handler_a)
+        scheduler.register_handler("azione_b", handler_b)
+
+        assert "azione_a" in scheduler._handlers
+        assert "azione_b" in scheduler._handlers

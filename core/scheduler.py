@@ -60,13 +60,26 @@ class Scheduler:
     def register_handler(self, action_type: str, handler: ActionHandler) -> None:
         """
         Registra la funzione da chiamare quando un'azione di questo
-        tipo scade. Un solo handler per action_type: se un cog
-        prova a registrarne due con lo stesso nome, è un errore di
-        programmazione e va segnalato subito, non ignorato.
+        tipo scade.
+
+        Se un altro action_type è già registrato con un handler di
+        una classe/metodo DIVERSO, è un errore di programmazione vero
+        e va segnalato subito. Se invece lo stesso action_type viene
+        ri-registrato con un handler dello STESSO metodo (stesso
+        __qualname__, es. "ReminderCog.handle_reminder_fire") è un
+        reload legittimo — /owner cog-reload richiama setup() (e
+        quindi register_handler()) sullo stesso cog una seconda
+        volta, con un NUOVO oggetto bound method che punta alla
+        nuova istanza del cog (quella vecchia, distrutta dal reload,
+        non deve restare agganciata). Stesso identico problema già
+        trovato e corretto in core/premium.py — non ipotizzato,
+        verificato con un test reale su un cog vero.
         """
-        if action_type in self._handlers:
+        esistente = self._handlers.get(action_type)
+        if esistente is not None and esistente.__qualname__ != handler.__qualname__:
             raise ValueError(
-                f"Handler già registrato per action_type='{action_type}'"
+                f"Handler già registrato per action_type='{action_type}' "
+                f"da un metodo diverso ({esistente.__qualname__})."
             )
         self._handlers[action_type] = handler
 

@@ -11,6 +11,7 @@ codice sotto un @group.command senza passare per il dispatch completo
 di discord.py).
 """
 
+import discord
 import pytest
 
 from cogs.utility.owner_premium import OwnerPremiumCog
@@ -146,3 +147,67 @@ async def test_leave_guild_server_non_presente_non_solleva(monkeypatch):
     await cog.leave_guild.callback(cog, interaction, guild_id="999999")
 
     assert "non risulta presente" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_cog_load_rifiuta_non_owner():
+    cog = OwnerPremiumCog(_FakeBot())
+    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
+
+    await cog.owner_cog_load.callback(cog, interaction, extension="cogs.utility.poll")
+
+    assert "riservato al proprietario" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_cog_load_unload_reload_ciclo_reale():
+    # Un cog VERO e piccolo del progetto (poll, autonomo, nessuna
+    # dipendenza da DB al caricamento) - carica, ricarica, scarica
+    # per davvero, non un mock del bot.
+    from discord.ext import commands as dpy_commands
+
+    bot = dpy_commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    cog = OwnerPremiumCog(bot)
+    interaction = _FakeInteraction(user_id=_OWNER_ID)
+
+    await cog.owner_cog_load.callback(cog, interaction, extension="cogs.utility.poll")
+    assert bot.get_cog("PollCog") is not None
+    assert "Caricato" in interaction.response.sent_messages[-1]
+
+    interaction2 = _FakeInteraction(user_id=_OWNER_ID)
+    await cog.owner_cog_reload.callback(cog, interaction2, extension="cogs.utility.poll")
+    assert bot.get_cog("PollCog") is not None
+    assert "Ricaricato" in interaction2.response.sent_messages[-1]
+
+    interaction3 = _FakeInteraction(user_id=_OWNER_ID)
+    await cog.owner_cog_unload.callback(cog, interaction3, extension="cogs.utility.poll")
+    assert bot.get_cog("PollCog") is None
+    assert "Scaricato" in interaction3.response.sent_messages[-1]
+
+
+@pytest.mark.asyncio
+async def test_cog_load_modulo_inesistente_non_solleva():
+    from discord.ext import commands as dpy_commands
+
+    bot = dpy_commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    cog = OwnerPremiumCog(bot)
+    interaction = _FakeInteraction(user_id=_OWNER_ID)
+
+    # Non deve sollevare — un nome di modulo sbagliato è un errore
+    # dell'admin, non un crash del bot.
+    await cog.owner_cog_load.callback(cog, interaction, extension="cogs.questo.non.esiste")
+
+    assert "Impossibile caricare" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_cog_unload_modulo_non_caricato_non_solleva():
+    from discord.ext import commands as dpy_commands
+
+    bot = dpy_commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    cog = OwnerPremiumCog(bot)
+    interaction = _FakeInteraction(user_id=_OWNER_ID)
+
+    await cog.owner_cog_unload.callback(cog, interaction, extension="cogs.utility.poll")
+
+    assert "Impossibile scaricare" in interaction.response.sent_messages[0]
