@@ -261,6 +261,11 @@ class Database:
         )
         await suggestion_migrations(self.pool)
 
+        from core.repositories.custom_command_request_repo import (
+            run_migrations as custom_command_request_migrations,
+        )
+        await custom_command_request_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
