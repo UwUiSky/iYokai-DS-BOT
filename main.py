@@ -264,7 +264,23 @@ class iYokaiBot(commands.AutoShardedBot):
             ),
             color=discord.Color.blurple(),
         )
+        await self._send_embed_with_fallback(guild, embed, contesto="messaggio di benvenuto")
 
+    async def _send_embed_with_fallback(
+        self, guild: discord.Guild, embed: discord.Embed, contesto: str = "messaggio"
+    ) -> bool:
+        """
+        Catena di fallback GENERICA (estratta da _send_welcome_message
+        quando è servita una seconda volta, per /owner announce —
+        SPEC.md §17.7): system_channel → primo canale scrivibile → DM
+        al proprietario. `contesto` è solo per i log, non cambia il
+        comportamento — permette di distinguere nei log "benvenuto
+        fallito" da "annuncio fallito" senza duplicare la logica.
+
+        Restituisce True se l'invio è riuscito con QUALCHE metodo,
+        False se tutti e tre hanno fallito — /owner announce lo usa
+        per contare quanti server ha effettivamente raggiunto.
+        """
         can_send_system = (
             guild.system_channel is not None
             and guild.system_channel.permissions_for(guild.me).send_messages
@@ -302,12 +318,13 @@ class iYokaiBot(commands.AutoShardedBot):
         if target == "system_channel":
             try:
                 await guild.system_channel.send(embed=embed)
-                return
+                return True
             except discord.HTTPException:
                 logger.warning(
-                    "Invio del benvenuto fallito sul system_channel del "
+                    "Invio del %s fallito sul system_channel del "
                     "server %s nonostante i permessi risultassero ok — "
                     "provo il canale scrivibile.",
+                    contesto,
                     guild.id,
                 )
                 # Non torniamo subito: proviamo comunque il prossimo
@@ -317,11 +334,12 @@ class iYokaiBot(commands.AutoShardedBot):
         if target == "first_writable_channel" and first_writable is not None:
             try:
                 await first_writable.send(embed=embed)
-                return
+                return True
             except discord.HTTPException:
                 logger.warning(
-                    "Invio del benvenuto fallito anche sul primo canale "
+                    "Invio del %s fallito anche sul primo canale "
                     "scrivibile del server %s — provo il DM al proprietario.",
+                    contesto,
                     guild.id,
                 )
 
@@ -338,16 +356,18 @@ class iYokaiBot(commands.AutoShardedBot):
         if owner is not None:
             try:
                 await owner.send(embed=embed)
-                return
+                return True
             except discord.HTTPException:
                 pass
 
         logger.warning(
-            "Impossibile inviare il messaggio di benvenuto nel server %s "
+            "Impossibile inviare il %s nel server %s "
             "con nessuno dei tre metodi (system_channel, canale "
             "scrivibile, DM proprietario).",
+            contesto,
             guild.id,
         )
+        return False
 
 
 async def main() -> None:

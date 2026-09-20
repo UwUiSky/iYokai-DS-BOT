@@ -24,9 +24,25 @@ _OWNER_ID = config.OWNER_ID  # valore reale già impostato dall'ambiente di test
 class _FakeResponse:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
+        self.deferred = False
 
     async def send_message(self, content: str, ephemeral: bool = False) -> None:
         self.sent_messages.append(content)
+
+    async def defer(self, ephemeral: bool = False) -> None:
+        self.deferred = True
+
+
+class _FakeFollowup:
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def send(self, content: str, ephemeral: bool = False) -> None:
+        # Stesso elenco di sent_messages della response: ai fini dei
+        # test non importa se il messaggio è arrivato come risposta
+        # diretta o come followup dopo un defer, conta solo cosa è
+        # stato detto all'utente.
+        self._response.sent_messages.append(content)
 
 
 class _FakeUser:
@@ -38,6 +54,7 @@ class _FakeInteraction:
     def __init__(self, user_id: int) -> None:
         self.user = _FakeUser(user_id)
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup(self.response)
 
 
 class _FakeGuildToLeave:
@@ -211,3 +228,78 @@ async def test_cog_unload_modulo_non_caricato_non_solleva():
     await cog.owner_cog_unload.callback(cog, interaction, extension="cogs.utility.poll")
 
     assert "Impossibile scaricare" in interaction.response.sent_messages[0]
+
+
+class _FakePermissionsPerAnnounce:
+    def __init__(self, send_messages: bool) -> None:
+        self.send_messages = send_messages
+
+
+class _FakeChannelPerAnnounce:
+    def __init__(self, can_send: bool) -> None:
+        self._can_send = can_send
+        self.sent_embeds: list = []
+
+    def permissions_for(self, member):
+        return _FakePermissionsPerAnnounce(send_messages=self._can_send)
+
+    async def send(self, embed=None) -> None:
+        self.sent_embeds.append(embed)
+
+
+class _FakeGuildForAnnounce:
+    def __init__(self, guild_id: int, can_send: bool) -> None:
+        self.id = guild_id
+        self.name = f"Server {guild_id}"
+        self.me = object()
+        self.owner = None
+        self.owner_id = 999
+        canale = _FakeChannelPerAnnounce(can_send)
+        canale._can_send = can_send
+        self.system_channel = canale if can_send else None
+        self.text_channels = [canale] if can_send else []
+        self._canale = canale
+
+    async def fetch_member(self, member_id: int):
+        raise __import__("discord").HTTPException(
+            response=_FakeHTTPResponse(), message="non trovato"
+        )
+
+
+class _FakeBotForAnnounce:
+    def __init__(self, guilds: list) -> None:
+        self.guilds = guilds
+
+    async def _send_embed_with_fallback(self, guild, embed, contesto="messaggio"):
+        # Riusa la logica reale: prova a scrivere sul canale finto,
+        # restituisce True/False come farebbe iYokaiBot davvero.
+        if guild.system_channel is not None:
+            await guild.system_channel.send(embed=embed)
+            return True
+        return False
+
+
+@pytest.mark.asyncio
+async def test_announce_rifiuta_non_owner():
+    cog = OwnerPremiumCog(_FakeBotForAnnounce(guilds=[]))
+    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
+
+    await cog.announce.callback(cog, interaction, message="Ciao a tutti")
+
+    assert "riservato al proprietario" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_announce_conta_correttamente_raggiunti_e_falliti():
+    guild_raggiungibile = _FakeGuildForAnnounce(100, can_send=True)
+    guild_non_raggiungibile = _FakeGuildForAnnounce(200, can_send=False)
+    bot = _FakeBotForAnnounce(guilds=[guild_raggiungibile, guild_non_raggiungibile])
+    cog = OwnerPremiumCog(bot)
+    interaction = _FakeInteraction(user_id=_OWNER_ID)
+
+    await cog.announce.callback(cog, interaction, message="Nuovo aggiornamento!")
+
+    testo_risposta = interaction.response.sent_messages[-1]
+    assert "1 server" in testo_risposta
+    assert "1 non raggiunti" in testo_risposta
+    assert len(guild_raggiungibile._canale.sent_embeds) == 1

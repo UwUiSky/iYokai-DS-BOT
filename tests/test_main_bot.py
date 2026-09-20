@@ -275,6 +275,33 @@ async def test_welcome_fallimento_completo_non_solleva_eccezioni():
     await bot._send_welcome_message(guild)  # non deve sollevare eccezioni
 
 
+@pytest.mark.asyncio
+async def test_send_embed_with_fallback_restituisce_true_su_successo():
+    # Il valore di ritorno non era mai stato testato direttamente:
+    # _send_welcome_message (che chiamava questa stessa logica prima
+    # dell'estrazione) non lo usava. /owner announce (SPEC.md §17.7)
+    # ne ha bisogno per contare quanti server ha davvero raggiunto.
+    bot = iYokaiBot()
+    system = _FakeChannel("generale", can_send=True)
+    guild = _FakeGuildForWelcome(system_channel=system, text_channels=[system])
+
+    risultato = await bot._send_embed_with_fallback(guild, discord.Embed(title="Test"))
+
+    assert risultato is True
+
+
+@pytest.mark.asyncio
+async def test_send_embed_with_fallback_restituisce_false_su_fallimento_completo():
+    bot = iYokaiBot()
+    guild = _FakeGuildForWelcome(
+        system_channel=None, text_channels=[], owner=None, owner_fetch_result=None
+    )
+
+    risultato = await bot._send_embed_with_fallback(guild, discord.Embed(title="Test"))
+
+    assert risultato is False
+
+
 class _FakeGuildForBlacklistCheck(_FakeGuildForWelcome):
     """Estende la fake guild già usata per il welcome message (ha già
     tutti gli attributi che _send_welcome_message si aspetta), solo

@@ -420,6 +420,45 @@ class OwnerPremiumCog(commands.Cog):
         )
 
 
+    @owner_group.command(
+        name="announce", description="[OWNER] Manda un annuncio a tutti i server."
+    )
+    @app_commands.describe(message="Il testo dell'annuncio")
+    async def announce(self, interaction: discord.Interaction, message: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        embed = discord.Embed(
+            title="📢 Annuncio da iYokai",
+            description=message,
+            color=discord.Color.gold(),
+        )
+
+        raggiunti = 0
+        falliti = 0
+        for guild in self.bot.guilds:
+            # Riusa la stessa catena di fallback del messaggio di
+            # benvenuto (system_channel → primo canale scrivibile →
+            # DM al proprietario) — SPEC.md §17.7, appena estratta in
+            # un metodo generico su iYokaiBot proprio per questo.
+            riuscito = await self.bot._send_embed_with_fallback(
+                guild, embed, contesto="annuncio globale"
+            )
+            if riuscito:
+                raggiunti += 1
+            else:
+                falliti += 1
+
+        await interaction.followup.send(
+            f"Annuncio inviato a {raggiunti} server ({falliti} non raggiunti).",
+            ephemeral=True,
+        )
+
     # ================================================================
     # Forced cog load/unload/reload (SPEC.md §17.6)
     # ================================================================
