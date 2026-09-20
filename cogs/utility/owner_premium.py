@@ -13,17 +13,27 @@ altra logica.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import io
+import traceback
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from core.config import config
 from core.database import db
+from core.eval_shell_logic import truncate_output
 from core.premium import PremiumModule, registry
+from core.repositories.eval_shell_log_repo import eval_shell_log_repo
 
 
 def _is_owner(interaction: discord.Interaction) -> bool:
     return interaction.user.id == config.OWNER_ID
+
+
+SHELL_TIMEOUT_SECONDS = 30
 
 
 def _build_premium_panel_embed(modules: list[PremiumModule]) -> discord.Embed:
@@ -111,6 +121,74 @@ class _PremiumPanelView(discord.ui.View):
     def __init__(self, cog: "OwnerPremiumCog", modules: list[PremiumModule]) -> None:
         super().__init__(timeout=120)
         self.add_item(_PremiumPanelSelect(cog, modules))
+
+
+class _EvalConfirmView(discord.ui.View):
+    """
+    Secondo fattore di conferma richiesto esplicitamente dallo schema
+    per Eval/Exec/Shell (SPEC.md §17.3, l'unica voce genuinamente
+    delicata dell'intera sezione Owner, lasciata per ultima di
+    proposito). Il codice va mostrato per intero PRIMA di eseguirlo —
+    un /owner eval scritto male, o un typo, non deve poter girare
+    senza che l'owner lo riveda un'ultima volta.
+    """
+
+    def __init__(self, cog: "OwnerPremiumCog", code: str) -> None:
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.code = code
+
+    @discord.ui.button(label="Esegui", style=discord.ButtonStyle.danger)
+    async def esegui(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        output, success = await self.cog._run_eval(self.code, interaction)
+        output = truncate_output(output)
+        await eval_shell_log_repo.log(interaction.user.id, "eval", self.code, success)
+
+        embed = discord.Embed(
+            title="✅ Eseguito" if success else "❌ Errore durante l'esecuzione",
+            description=f"```py\n{output}\n```",
+            color=discord.Color.green() if success else discord.Color.red(),
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        embed = discord.Embed(
+            title="Annullato", description="Nessun codice eseguito.", color=discord.Color.greyple()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+class _ShellConfirmView(discord.ui.View):
+    """Stesso principio di _EvalConfirmView, per i comandi shell —
+    ancora più delicati di un eval Python, dato che agiscono
+    direttamente sul sistema operativo della macchina che ospita il
+    bot, non solo sul suo processo."""
+
+    def __init__(self, cog: "OwnerPremiumCog", command: str) -> None:
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.command = command
+
+    @discord.ui.button(label="Esegui", style=discord.ButtonStyle.danger)
+    async def esegui(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        output, success = await self.cog._run_shell(self.command)
+        output = truncate_output(output)
+        await eval_shell_log_repo.log(interaction.user.id, "shell", self.command, success)
+
+        embed = discord.Embed(
+            title="✅ Eseguito" if success else "❌ Comando terminato con errore",
+            description=f"```\n{output}\n```",
+            color=discord.Color.green() if success else discord.Color.red(),
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        embed = discord.Embed(
+            title="Annullato", description="Nessun comando eseguito.", color=discord.Color.greyple()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
 
 
 class OwnerPremiumCog(commands.Cog):
@@ -293,6 +371,100 @@ class OwnerPremiumCog(commands.Cog):
             f"Server `{gid}` rimosso dalla whitelist premium.",
             ephemeral=True,
         )
+
+    async def _run_eval(self, code: str, interaction: discord.Interaction) -> tuple[str, bool]:
+        """
+        Esegue codice Python arbitrario nel contesto del bot —
+        pattern standard di un "eval cog" (jishaku e simili). Il
+        codice viene indentato e avvolto in una funzione async, così
+        supporta anche 'await' al suo interno, non solo espressioni
+        semplici.
+        """
+        ambiente = {
+            "bot": self.bot,
+            "interaction": interaction,
+            "discord": discord,
+            "db": db,
+        }
+
+        corpo = "\n".join(f"    {riga}" for riga in code.splitlines()) or "    pass"
+        wrapper = f"async def __eval_wrapper():\n{corpo}"
+
+        stdout_catturato = io.StringIO()
+        try:
+            exec(wrapper, ambiente)
+            funzione = ambiente["__eval_wrapper"]
+            with contextlib.redirect_stdout(stdout_catturato):
+                risultato = await funzione()
+
+            output = stdout_catturato.getvalue()
+            if risultato is not None:
+                output += f"\n{risultato!r}"
+            return output or "(nessun output)", True
+        except Exception:
+            return stdout_catturato.getvalue() + traceback.format_exc(), False
+
+    async def _run_shell(self, command: str) -> tuple[str, bool]:
+        """
+        Esegue un comando di shell reale sulla macchina che ospita
+        il bot — equivalente a un accesso terminale, non una nuova
+        capacità: l'owner verificato ha già accesso diretto a questa
+        stessa macchina (l'ha messa su lui). Timeout esplicito: un
+        comando che resta appeso (es. in attesa di input) non deve
+        bloccare l'event loop del bot per sempre.
+        """
+        try:
+            processo = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            stdout_bytes, _ = await asyncio.wait_for(
+                processo.communicate(), timeout=SHELL_TIMEOUT_SECONDS
+            )
+            output = stdout_bytes.decode(errors="replace")
+            successo = processo.returncode == 0
+            return output or "(nessun output)", successo
+        except asyncio.TimeoutError:
+            return f"Timeout ({SHELL_TIMEOUT_SECONDS}s) superato.", False
+        except Exception as exc:
+            return f"{type(exc).__name__}: {exc}", False
+
+    @owner_group.command(name="eval", description="[OWNER] Esegue codice Python (con conferma).")
+    @app_commands.describe(code="Il codice Python da eseguire")
+    async def eval_code(self, interaction: discord.Interaction, code: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title="⚠️ Conferma esecuzione",
+            description=f"```py\n{code}\n```",
+            color=discord.Color.orange(),
+        )
+        view = _EvalConfirmView(self, code)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @owner_group.command(
+        name="shell", description="[OWNER] Esegue un comando shell (con conferma)."
+    )
+    @app_commands.describe(command="Il comando shell da eseguire")
+    async def shell_command(self, interaction: discord.Interaction, command: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title="⚠️ Conferma esecuzione shell",
+            description=f"```\n{command}\n```",
+            color=discord.Color.orange(),
+        )
+        view = _ShellConfirmView(self, command)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @owner_group.command(
         name="memory-status",

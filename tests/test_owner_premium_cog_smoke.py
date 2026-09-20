@@ -45,6 +45,8 @@ async def test_owner_premium_cog_si_carica_correttamente():
         "announce",
         "stats",
         "premium-panel",
+        "eval",
+        "shell",
         "cog-load",
         "cog-unload",
         "cog-reload",

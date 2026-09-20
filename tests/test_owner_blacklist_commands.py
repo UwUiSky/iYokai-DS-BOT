@@ -509,3 +509,157 @@ async def test_premium_panel_annulla_non_applica_nulla(monkeypatch):
         assert "Annullato" in interaction_annulla.response.edited_embeds[0].title
     finally:
         await database.close()
+
+
+@pytest.mark.asyncio
+async def test_eval_rifiuta_non_owner():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID + 1)
+
+    await cog.eval_code.callback(cog, interaction, code="1+1")
+
+    assert "riservato al proprietario" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_run_eval_espressione_semplice():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID)
+
+    output, successo = await cog._run_eval("return 1 + 1", interaction)
+
+    assert successo is True
+    assert "2" in output
+
+
+@pytest.mark.asyncio
+async def test_run_eval_con_await():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID)
+
+    output, successo = await cog._run_eval(
+        "import asyncio\nawait asyncio.sleep(0)\nreturn 'fatto'", interaction
+    )
+
+    assert successo is True
+    assert "fatto" in output
+
+
+@pytest.mark.asyncio
+async def test_run_eval_con_print_cattura_stdout():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID)
+
+    output, successo = await cog._run_eval("print('ciao dal test')", interaction)
+
+    assert successo is True
+    assert "ciao dal test" in output
+
+
+@pytest.mark.asyncio
+async def test_run_eval_codice_che_solleva_restituisce_traceback():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID)
+
+    output, successo = await cog._run_eval("raise ValueError('errore di prova')", interaction)
+
+    assert successo is False
+    assert "ValueError" in output
+    assert "errore di prova" in output
+
+
+@pytest.mark.asyncio
+async def test_run_shell_comando_semplice():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+
+    output, successo = await cog._run_shell("echo ciao")
+
+    assert successo is True
+    assert "ciao" in output
+
+
+@pytest.mark.asyncio
+async def test_run_shell_comando_con_exit_code_diverso_da_zero():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+
+    output, successo = await cog._run_shell("exit 1")
+
+    assert successo is False
+
+
+@pytest.mark.asyncio
+async def test_eval_ciclo_completo_conferma_esegue_e_logga(monkeypatch):
+    import cogs.utility.owner_premium as owner_premium_module
+    from core.repositories.eval_shell_log_repo import EvalShellLogRepository
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM eval_shell_log WHERE code_or_command = 'return 40 + 2'"
+        )
+        monkeypatch.setattr(
+            owner_premium_module,
+            "eval_shell_log_repo",
+            EvalShellLogRepository(pool_provider=lambda: database.pool),
+        )
+
+        cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+        from cogs.utility.owner_premium import _EvalConfirmView
+
+        view = _EvalConfirmView(cog, "return 40 + 2")
+        interaction = _FakeInteractionForPanel(user_id=_OWNER_ID)
+        esegui_button = view.children[0]
+
+        await esegui_button.callback(interaction)
+
+        assert "42" in interaction.response.edited_embeds[0].description
+
+        riga = await database.pool.fetchrow(
+            "SELECT * FROM eval_shell_log WHERE code_or_command = 'return 40 + 2'"
+        )
+        assert riga is not None
+        assert riga["success"] is True
+        assert riga["executor_id"] == _OWNER_ID
+    finally:
+        await database.pool.execute(
+            "DELETE FROM eval_shell_log WHERE code_or_command = 'return 40 + 2'"
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_eval_annulla_non_esegue_ne_logga(monkeypatch):
+    import cogs.utility.owner_premium as owner_premium_module
+    from core.repositories.eval_shell_log_repo import EvalShellLogRepository
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM eval_shell_log WHERE code_or_command = 'return 99'"
+        )
+        monkeypatch.setattr(
+            owner_premium_module,
+            "eval_shell_log_repo",
+            EvalShellLogRepository(pool_provider=lambda: database.pool),
+        )
+
+        cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+        from cogs.utility.owner_premium import _EvalConfirmView
+
+        view = _EvalConfirmView(cog, "return 99")
+        interaction = _FakeInteractionForPanel(user_id=_OWNER_ID)
+        annulla_button = view.children[1]
+
+        await annulla_button.callback(interaction)
+
+        assert "Annullato" in interaction.response.edited_embeds[0].title
+        riga = await database.pool.fetchrow(
+            "SELECT * FROM eval_shell_log WHERE code_or_command = 'return 99'"
+        )
+        assert riga is None
+    finally:
+        await database.close()
