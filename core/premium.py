@@ -40,6 +40,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.config import config
+from core.bot_stats import error_counter
 
 logger = logging.getLogger("iyokai.premium")
 
@@ -295,6 +296,8 @@ async def handle_app_command_error(
     solo su stderr (comportamento di default di discord.py se non si
     registra un error handler).
     """
+    error_counter.record()  # SPEC.md §17.8, usato da /owner stats
+
     if isinstance(error, ModuleNotUnlockedError):
         message = (
             f"**{error.display_name}** è una funzione Premium non ancora "

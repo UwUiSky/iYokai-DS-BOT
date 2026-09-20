@@ -94,3 +94,17 @@ async def test_usa_followup_se_la_risposta_e_gia_stata_data():
     # vero, "interaction already acknowledged"), deve usare followup.
     assert interaction.response.sent_messages == []
     assert len(interaction.followup.sent_messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_ogni_errore_incrementa_il_contatore_globale(monkeypatch):
+    import core.premium as premium_module
+    from core.bot_stats import RollingCounter
+
+    contatore_di_test = RollingCounter()
+    monkeypatch.setattr(premium_module, "error_counter", contatore_di_test)
+
+    interaction = _FakeInteraction()
+    await handle_app_command_error(interaction, ModuleNotUnlockedError("spam_trap", "Spam Trap"))
+
+    assert contatore_di_test.count_in_window() == 1

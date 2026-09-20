@@ -459,6 +459,52 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
+    @owner_group.command(
+        name="stats", description="[OWNER] Statistiche globali del bot."
+    )
+    async def stats(self, interaction: discord.Interaction) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        from core.memory_guard import memory_guard
+        from core.memory_guard_logic import bytes_to_mb
+        from core.bot_stats import command_counter, error_counter
+
+        rss_mb = bytes_to_mb(memory_guard.read_rss_bytes())
+        latenza_ms = round(self.bot.latency * 1000)
+
+        embed = discord.Embed(title="📊 Statistiche globali", color=discord.Color.blurple())
+        embed.add_field(name="Server", value=str(len(self.bot.guilds)), inline=True)
+        embed.add_field(
+            name="Membri totali (stimati)",
+            value=str(sum(g.member_count or 0 for g in self.bot.guilds)),
+            inline=True,
+        )
+        embed.add_field(name="RAM", value=f"{rss_mb:.0f} MB", inline=True)
+        embed.add_field(name="Latenza", value=f"{latenza_ms} ms", inline=True)
+
+        # Shard health: latenza per singolo shard (AutoShardedBot).
+        # bot.latencies è una lista di (shard_id, latenza) — se il
+        # bot non è ancora sharded del tutto (avvio in corso) può
+        # essere vuota, gestito senza sollevare.
+        if self.bot.latencies:
+            righe_shard = [
+                f"Shard {shard_id}: {round(lat * 1000)} ms" for shard_id, lat in self.bot.latencies
+            ]
+            embed.add_field(name="Shard", value="\n".join(righe_shard), inline=False)
+
+        embed.add_field(
+            name="Comandi (ultimo minuto)", value=str(command_counter.count_in_window()), inline=True
+        )
+        embed.add_field(
+            name="Errori (ultimo minuto)", value=str(error_counter.count_in_window()), inline=True
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     # ================================================================
     # Forced cog load/unload/reload (SPEC.md §17.6)
     # ================================================================

@@ -105,3 +105,39 @@ async def test_interazione_in_dm_senza_guild_non_solleva(monkeypatch, clean_db):
 
     interaction = _FakeInteraction(user_id=1, guild_id=None)
     assert await bot.tree.interaction_check(interaction) is True
+
+
+@pytest.mark.asyncio
+async def test_interazione_passata_incrementa_il_contatore_comandi(monkeypatch, clean_db):
+    import core.bot_stats as bot_stats_module
+
+    _collega(monkeypatch, clean_db)
+    monkeypatch.setattr(blacklist_tree_module, "command_counter", bot_stats_module.RollingCounter())
+
+    bot = commands.Bot(
+        command_prefix="!", intents=discord.Intents.default(), tree_cls=BlacklistAwareCommandTree
+    )
+
+    interaction = _FakeInteraction(user_id=1, guild_id=100)
+    await bot.tree.interaction_check(interaction)
+
+    assert blacklist_tree_module.command_counter.count_in_window() == 1
+
+
+@pytest.mark.asyncio
+async def test_interazione_bloccata_non_incrementa_il_contatore(monkeypatch, clean_db):
+    import core.bot_stats as bot_stats_module
+
+    _collega(monkeypatch, clean_db)
+    monkeypatch.setattr(blacklist_tree_module, "command_counter", bot_stats_module.RollingCounter())
+    repo = blacklist_tree_module.blacklist_repo
+    await repo.add_user(1, reason="test", added_by=99)
+
+    bot = commands.Bot(
+        command_prefix="!", intents=discord.Intents.default(), tree_cls=BlacklistAwareCommandTree
+    )
+
+    interaction = _FakeInteraction(user_id=1, guild_id=100)
+    await bot.tree.interaction_check(interaction)
+
+    assert blacklist_tree_module.command_counter.count_in_window() == 0

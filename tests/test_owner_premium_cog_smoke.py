@@ -43,6 +43,7 @@ async def test_owner_premium_cog_si_carica_correttamente():
         "blacklist-guild-list",
         "leave-guild",
         "announce",
+        "stats",
         "cog-load",
         "cog-unload",
         "cog-reload",

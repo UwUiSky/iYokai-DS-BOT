@@ -21,6 +21,7 @@ import logging
 
 import discord
 
+from core.bot_stats import command_counter
 from core.repositories.blacklist_repo import blacklist_repo
 
 logger = logging.getLogger("iyokai.blacklist_tree")
@@ -47,4 +48,11 @@ class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
             # livello di difesa se per qualche motivo è ancora dentro).
             return False
 
+        # Contato qui, non con un hook "on_completion" dedicato: 
+        # questa versione di discord.py non ne espone uno su
+        # CommandTree. Conta i comandi CHE ARRIVANO al dispatch
+        # (superano la blacklist), non necessariamente quelli che
+        # completano senza errori — proxy ragionevole per "quanto è
+        # attivo il bot", usato da /owner stats (SPEC.md §17.8).
+        command_counter.record()
         return True

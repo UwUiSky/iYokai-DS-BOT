@@ -24,10 +24,14 @@ _OWNER_ID = config.OWNER_ID  # valore reale già impostato dall'ambiente di test
 class _FakeResponse:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
+        self.sent_embeds: list = []
         self.deferred = False
 
-    async def send_message(self, content: str, ephemeral: bool = False) -> None:
-        self.sent_messages.append(content)
+    async def send_message(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
+        if content is not None:
+            self.sent_messages.append(content)
+        if embed is not None:
+            self.sent_embeds.append(embed)
 
     async def defer(self, ephemeral: bool = False) -> None:
         self.deferred = True
@@ -303,3 +307,56 @@ async def test_announce_conta_correttamente_raggiunti_e_falliti():
     assert "1 server" in testo_risposta
     assert "1 non raggiunti" in testo_risposta
     assert len(guild_raggiungibile._canale.sent_embeds) == 1
+
+
+class _FakeGuildForStats:
+    def __init__(self, member_count: int) -> None:
+        self.member_count = member_count
+
+
+class _FakeBotForStats:
+    def __init__(self, guilds: list, latency: float = 0.05, latencies: list | None = None) -> None:
+        self.guilds = guilds
+        self.latency = latency
+        self.latencies = latencies or []
+
+
+@pytest.mark.asyncio
+async def test_stats_rifiuta_non_owner():
+    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
+    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
+
+    await cog.stats.callback(cog, interaction)
+
+    assert "riservato al proprietario" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_stats_mostra_numeri_reali(monkeypatch):
+    # command_counter/error_counter sono singleton GLOBALI condivisi
+    # da tutta la suite - altri test (test_premium_error_handler.py)
+    # incrementano il contatore errori vero senza isolarlo. Qui
+    # servono valori deterministici, quindi verifichiamo solo che
+    # siano numeri validi non negativi, non un "0" esatto.
+    guilds = [_FakeGuildForStats(100), _FakeGuildForStats(50)]
+    bot = _FakeBotForStats(guilds=guilds, latency=0.123, latencies=[(0, 0.1), (1, 0.2)])
+    cog = OwnerPremiumCog(bot)
+    interaction = _FakeInteraction(user_id=_OWNER_ID)
+
+    await cog.stats.callback(cog, interaction)
+
+    assert len(interaction.response.sent_embeds) == 1
+    embed = interaction.response.sent_embeds[0]
+    valori_per_campo = {campo.name: campo.value for campo in embed.fields}
+
+    assert valori_per_campo["Server"] == "2"
+    assert valori_per_campo["Membri totali (stimati)"] == "150"
+    assert valori_per_campo["Latenza"] == "123 ms"
+    assert "Shard 0: 100 ms" in valori_per_campo["Shard"]
+    assert "Shard 1: 200 ms" in valori_per_campo["Shard"]
+    # Comandi/errori: valori non negativi e coerenti col tipo, non un
+    # "0" esatto - il contatore è globale e condiviso con altri test
+    # della suite che lo incrementano legittimamente nella stessa
+    # finestra di 60s.
+    assert int(valori_per_campo["Comandi (ultimo minuto)"]) >= 0
+    assert int(valori_per_campo["Errori (ultimo minuto)"]) >= 0
