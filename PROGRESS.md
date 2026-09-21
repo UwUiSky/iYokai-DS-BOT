@@ -1307,6 +1307,69 @@ scelta, non tecnico. Tabella ricalcolata con lo script meccanico:
 
 **Suite di test completa: 873/873 passano.**
 
+### Fase 38 — Twitch live/offline con credenziali fittizie (SPEC.md §10.1/10.2), chiude Twitch/TikTok/X
+
+L'utente ha chiesto esplicitamente di costruire Twitch ORA con
+credenziali segnaposto, sue vere più avanti dopo la registrazione su
+dev.twitch.tv — e ha confermato TikTok/Instagram/X come vincoli
+tecnici accettati (nessuna API gratuita di lettura), non pigrizia.
+
+- `core/config.py`: `TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET`
+  opzionali (default vuoto — il watcher resta inattivo se non
+  compilati, non blocca l'avvio del bot)
+- `core/twitch_api_logic.py`: `parse_get_streams_response()` —
+  l'API "Get Streams" di Twitch restituisce SOLO chi è live in
+  questo momento, non un "offline" esplicito; il chiamante passa la
+  lista completa dei login richiesti e ogni assente viene marcato
+  offline qui. `parse_app_access_token_response()` per l'OAuth
+  Client Credentials. **9 test**
+- `core/repositories/twitch_subscription_repo.py`: una riga per
+  streamer, `last_known_live` invece di `last_seen_entry_id` (Twitch
+  non è sequenziale come un feed RSS). **6 test** contro PostgreSQL
+  reale
+- `core/twitch_watcher.py`: stesso pattern di `feed_watcher.py`.
+  Gestisce da solo il token OAuth (lo richiede alla prima chiamata,
+  lo rinnova prima che scada con un margine di sicurezza). Una
+  chiamata batch per TUTTI i login sottoscritti (fino a 100 per
+  richiesta secondo i limiti Twitch), non una per sottoscrizione.
+  Tick ogni 90s (più frequente del feed watcher: "live ora" vale di
+  più notificato in fretta). URL di base passabili al costruttore,
+  per puntare i test a un server locale finto invece che a Twitch
+  vero. **5 test con un server aiohttp VERO in locale** che imita la
+  forma dell'API (OAuth + Get Streams), credenziali fittizie come
+  richiesto — incluso un test che verifica il RIUSO del token tra
+  due tick (non richiesto due volte)
+- `cogs/utility/feed_alerts.py`: `/alerts add-twitch`.
+
+**BUG REALE trovato e corretto prima che arrivasse in produzione**:
+gli ID di `feed_subscriptions` e `twitch_subscriptions` sono due
+sequenze SEPARATE nel database — potevano collidere (`#1` di uno e
+`#1` dell'altro), rendendo `/alerts remove` ambiguo su quale
+sottoscrizione toccare. Corretto con prefissi nell'ID visibile
+(`RSS-3`, `TW-2`), `remove` ora instrada verso il repository giusto
+in base al prefisso. **7 test** aggiornati/aggiunti nel cog.
+
+**SPEC.md**: §10.1/10.2 marcate fatte. §10.5 TikTok passato da
+mancante a **scartato** (confermato dall'utente come vincolo
+accettato). §10.13 X/Twitter — **voce nuova**, non nello schema
+originale, aggiunta su richiesta esplicita e subito marcata
+scartata (lettura a pagamento nel tier utile). Tabella ricalcolata
+con lo script meccanico: 121 fatte, 5 parziali, 138 mancanti su 264
+— circa il 46%.
+
+**Domanda dell'utente su token veri**: ha chiesto se sarebbe più
+comodo dargli accesso diretto a token Discord/Twitch/Lavalink reali
+per test in tempo reale. Risposta data: no — limite tecnico concreto
+di questo ambiente, l'accesso di rete del sandbox è ristretto a un
+elenco fisso di domini (PyPI, npm, GitHub) che NON include Discord/
+Twitch/Lavalink, quindi non potrei comunque connettermi anche con
+credenziali vere. Il workflow utile resta: lui distribuisce con
+token veri, testa dal vivo sul suo server, riporta log/errori
+specifici — quello è il riscontro che il sandbox non può dare da
+solo.
+
+**Suite di test completa: 896/896 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1629,27 +1692,35 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Music multi-istanza (SPEC.md §9) ha un'architettura reale e
-funzionante** — main + 5 worker instradati, verificabile dal vivo
-solo con credenziali vere (impossibile in questo sandbox: servono 6
-token Discord veri e una connessione Lavalink reale). Due punti
-aperti, da chiarire con l'utente prima di costruirli:
-1. Auto-leave su canale vuoto (§9.9) — l'evento esiste già in
-   wavelink di default, manca solo il listener che agisce
-2. "Singolo decoder condiviso" per /nonstop-main (§9.11) — costruito
-   per un server alla volta, dubbio se l'utente intendeva trasmettere
-   la stessa playlist a più server insieme
+**Twitch/TikTok/Instagram/X sono tutti chiusi** (Twitch fatto e
+testato con credenziali fittizie, gli altri tre confermati come
+vincoli tecnici accettati dall'utente, non lavoro rimandato).
 
-**Due grandi pezzi ancora da discutere con l'utente prima di
-costruire**, entrambi con vincoli tecnici reali:
-1. **Alert & Social multi-piattaforma**: Twitch pronto non appena
-   arrivano le credenziali dell'utente (Client ID/Secret da
-   dev.twitch.tv). TikTok (nessuna API ufficiale, solo scraping
-   fragile), Instagram (già scartato ✗, nessuna API per account di
-   terzi), X/Twitter (lettura a pagamento nel tier utile) — chiedere
-   esplicitamente prima di costruire qualcosa di fragile o a
-   pagamento senza consenso
-2. Nient'altro di grande bloccato al momento
+**Il pezzo più grande ancora aperto: la radio condivisa
+`/nonstop-main` (SPEC.md §9.11)**, chiarita dall'utente in dettaglio
+ma NON ancora costruita — riprogettazione vera, non un fix:
+- Sorgenti: le pubblicazioni dell'utente sulle piattaforme dove ha
+  già pubblicato canzoni ("repo pubbliche") + una cartella sul
+  server per gli inediti di cui detiene i diritti, interlacciate
+  nell'ordine dell'album
+- **Radio condivisa, non indipendente per server**: un solo stato di
+  riproduzione (traccia attuale + posizione), letto da OGNI server
+  che ha /nonstop-main attivo — un server che si aggancia entra
+  ESATTAMENTE nello stesso punto di uno già in ascolto, non riparte
+  da capo. Serve un meccanismo di stato condiviso (tabella con
+  traccia attuale + timestamp di inizio), e ogni player calcola
+  quanto seekare (`player.play(track, start=elapsed_ms)`, già
+  verificato che wavelink lo supporta) quando si unisce
+- Motivazione dell'utente: non vuole gonfiare troppo gli ascolti
+  Spotify/altrove, ma "vedi te, fai quello che ritieni opportuno" —
+  gli piacerebbe comunque avere qualche ascolto in più, quindi
+  decisione lasciata parzialmente a discrezione nostra
+- Design NON ancora scelto nei dettagli: come recuperare "tutte le
+  pubblicazioni dell'utente" da una piattaforma (serve sapere quali
+  canali/profili, o una lista curata manualmente?), come funziona
+  concretamente l'upload nella cartella server (SCP? un comando bot
+  con allegato?) — da chiarire prima di scrivere codice, o da
+  progettare con un default ragionevole e documentarlo chiaramente
 
 **§11 Backup System resta l'unica sezione ancora completamente a
 zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
@@ -1659,15 +1730,18 @@ zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
    `scripts/generate_command_list.py` e pushare `COMMAND_LIST.md`
    nello stesso giro.
 2. Marcare `SPEC.md` SUBITO dopo il commit del codice, nello stesso
-   giro. Usare il marcatore parziale (`~`) quando è vero — l'utente
-   ha dovuto correggere che non veniva mai usato nonostante esistesse
-   da sempre nella legenda. Un rifiuto esplicito dell'utente (non un
-   limite tecnico) va marcato SCARTATO (✗), non lasciato vuoto — si
-   esclude dal conteggio totale, come Instagram, Howgay, filtri audio/
-   DJ role/voteskip. Ricalcolare SEMPRE con lo script meccanico, mai a
-   mente, e MAI scrivere il pattern letterale di un marcatore dentro
-   un testo di prosa esplicativa (falso positivo nel conteggio —
-   successo tre volte in questa sessione).
+   giro. Usare il marcatore parziale (`~`) quando è vero. Un rifiuto
+   esplicito dell'utente (non un limite tecnico) va marcato SCARTATO
+   (✗), non lasciato vuoto — si esclude dal conteggio totale.
+   Ricalcolare SEMPRE con lo script meccanico, mai a mente, e MAI
+   scrivere il pattern letterale di un marcatore dentro un testo di
+   prosa esplicativa (falso positivo nel conteggio).
+3. Quando due tabelle diverse (es. feed_subscriptions e twitch_
+   subscriptions) usano ID SERIAL indipendenti ma vengono mostrate/
+   gestite insieme all'utente, usare prefissi distinti nell'ID
+   visibile — altrimenti un comando di rimozione diventa ambiguo su
+   quale riga toccare (bug reale trovato e corretto in questa
+   sessione).
 
 Promemoria tecnici aggiuntivi:
 - Verificare collisioni con hook riservati di discord.py prima di
@@ -1680,7 +1754,15 @@ Promemoria tecnici aggiuntivi:
 - Prima di aggiungere un listener duplicato su più bot/cog per lo
   stesso evento, verificare nel sorgente della libreria se esiste
   già un meccanismo interno che lo gestisce indipendentemente dal
-  client Discord (come `player._auto_play_event()` in wavelink)
+  client Discord
+
+**Limite d'ambiente da ricordare**: la rete del sandbox di sviluppo è
+ristretta a un elenco fisso di domini (PyPI, npm, GitHub) — non
+raggiunge Discord/Twitch/Lavalink nemmeno con credenziali vere. Ogni
+test di integrazione con questi servizi resta simulato (server
+locali finti che imitano la forma reale delle API); la verifica dal
+vivo tocca all'utente, che riporta log/errori specifici quando li
+trova.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
