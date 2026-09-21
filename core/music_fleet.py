@@ -75,3 +75,25 @@ class MusicFleet:
         """Chiamata quando una sessione finisce (es. /disconnect) —
         libera il worker per il prossimo server che ne ha bisogno."""
         await music_session_repo.release_guild(guild_id)
+
+
+async def handle_inactive_player(player, fleet: MusicFleet) -> None:
+    """
+    Gestore condiviso di "wavelink_inactive_player" (SPEC.md §9.9,
+    auto-leave su canale vuoto — il timeout stesso, 300s di default,
+    è già gestito internamente da wavelink/Lavalink tramite Node.
+    inactive_player_timeout; qui serve solo REAGIRE all'evento:
+    disconnettersi e liberare il worker nella flotta). Registrato
+    identicamente su TUTTI e 6 i bot (main + 5 worker) in main.py —
+    lo stesso player finito inattivo potrebbe appartenere a
+    qualunque dei 6 client, dato che ognuno ha la propria
+    connessione voce indipendente.
+
+    release_guild() su un server che non aveva un worker assegnato
+    (es. la radio del bot principale, mai registrata nella flotta)
+    non fa nulla — DELETE su una riga inesistente, innocuo.
+    """
+    guild = player.guild
+    await player.disconnect()
+    if guild is not None:
+        await fleet.release_guild(guild.id)

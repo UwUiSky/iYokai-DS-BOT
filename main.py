@@ -40,7 +40,7 @@ from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
-from core.music_fleet import MusicFleet
+from core.music_fleet import MusicFleet, handle_inactive_player
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
@@ -410,7 +410,20 @@ async def main() -> None:
     # DISTINTE (5 token separati, 5 bot visti come entità diverse
     # dagli utenti) — solo il processo che le ospita è condiviso.
     worker_bots = [MusicWorkerBot(worker_index=i) for i in range(1, 6)]
-    bot.music_fleet = MusicFleet(worker_bots)
+    fleet = MusicFleet(worker_bots)
+    bot.music_fleet = fleet
+
+    # Auto-leave su canale vuoto (SPEC.md §9.9): lo stesso gestore su
+    # TUTTI e 6 i bot (main + 5 worker) — un player inattivo può
+    # appartenere a qualunque dei 6 client, ognuno con la propria
+    # connessione voce indipendente. I worker non caricano cog (core/
+    # music_worker_bot.py), quindi il listener va agganciato qui
+    # direttamente, non tramite un Cog.listener().
+    async def _on_wavelink_inactive_player(player) -> None:
+        await handle_inactive_player(player, fleet)
+
+    for client in (bot, *worker_bots):
+        client.add_listener(_on_wavelink_inactive_player, "on_wavelink_inactive_player")
 
     try:
         await asyncio.gather(
