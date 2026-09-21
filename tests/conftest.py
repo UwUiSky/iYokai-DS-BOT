@@ -112,6 +112,9 @@ async def clean_db(db_pool):
     from core.repositories.eval_shell_log_repo import (
         run_migrations as eval_shell_log_migrations,
     )
+    from core.repositories.feed_subscription_repo import (
+        run_migrations as feed_subscription_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -134,6 +137,7 @@ async def clean_db(db_pool):
     await custom_command_request_migrations(db_pool)
     await blacklist_migrations(db_pool)
     await eval_shell_log_migrations(db_pool)
+    await feed_subscription_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -172,6 +176,7 @@ async def clean_db(db_pool):
         "user_blacklist",
         "guild_blacklist",
         "eval_shell_log",
+        "feed_subscriptions",
         "guild_config",
         "guild_config_history",
         "premium_whitelist",
