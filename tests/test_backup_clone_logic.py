@@ -48,6 +48,10 @@ class _FakeRole(discord.Role):
     def is_default(self) -> bool:
         return self._is_default
 
+    async def edit(self, **kwargs) -> None:
+        self.chiamate_edit = getattr(self, "chiamate_edit", [])
+        self.chiamate_edit.append(kwargs)
+
 
 class _FakeTargetGuild:
     def __init__(self) -> None:
@@ -78,6 +82,11 @@ class _FakeTargetGuild:
 
 class _FakeSourceGuild:
     def __init__(self, roles: list[_FakeRole]) -> None:
+        everyone = next((r for r in roles if r.is_default()), None)
+        if everyone is None:
+            everyone = _FakeRole(0, "@everyone", 0, is_default=True)
+            roles = [everyone, *roles]
+        self.default_role = everyone
         self.roles = roles
 
 
@@ -95,8 +104,41 @@ async def test_clone_roles_ignora_everyone_e_managed():
     assert len(target.chiamate_create_role) == 1
     assert target.chiamate_create_role[0]["name"] == "Moderatore"
     assert 3 in mappa
-    assert 1 not in mappa
+    # @everyone NON viene creato (mai in target.chiamate_create_role)
+    # ma la sua mappatura c'è comunque nel dizionario restituito -
+    # il valore è l'ID del default_role già esistente, non un ID
+    # appena creato.
+    assert mappa[1] == target.default_role.id
     assert 2 not in mappa
+
+
+@pytest.mark.asyncio
+async def test_clone_roles_applica_i_permessi_di_everyone_senza_crearlo():
+    everyone_originale = _FakeRole(
+        1, "@everyone", 0, is_default=True, permissions=discord.Permissions(send_messages=False)
+    )
+    source = _FakeSourceGuild([everyone_originale])
+    target = _FakeTargetGuild()
+
+    mappa = await clone_roles(source, target)
+
+    # Non deve MAI provare a CREARE un secondo @everyone.
+    assert all(c["name"] != "@everyone" for c in target.chiamate_create_role)
+
+    # Ma i permessi vanno applicati al default_role già esistente
+    # nel server di destinazione - non lasciati al default di
+    # Discord, che potrebbe differire da come li aveva configurati
+    # l'amministratore del server originale.
+    assert target.default_role.chiamate_edit == [
+        {
+            "permissions": discord.Permissions(send_messages=False),
+            "reason": "Clonazione backup iYokai — permessi di @everyone",
+        }
+    ]
+
+    # E la mappa deve comunque includere la mappatura di @everyone,
+    # per il passo successivo (overwrite dei canali).
+    assert mappa[1] == target.default_role.id
 
 
 @pytest.mark.asyncio

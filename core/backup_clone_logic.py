@@ -21,24 +21,38 @@ import discord
 
 async def clone_roles(source_guild: discord.Guild, target_guild: discord.Guild) -> dict[int, int]:
     """
-    Clona i ruoli del server sorgente nel server di destinazione —
-    tranne @everyone (esiste già di default in ogni server, la sua
-    mappatura va gestita a parte da chi chiama, tramite
-    default_role) e i ruoli "managed" (creati da un'integrazione o
-    da un bot, es. il ruolo automatico di un bot musicale — Discord
+    Clona i ruoli del server sorgente nel server di destinazione.
+
+    @everyone non viene CREATO (esiste già di default in ogni
+    server, Discord non permette di crearne un secondo) — ma i suoi
+    PERMESSI vengono comunque applicati esplicitamente al server di
+    destinazione: l'amministratore del server originale potrebbe
+    averli personalizzati rispetto al default di Discord (es. tolto
+    "Invia messaggi" di default a tutti), e quella scelta va
+    preservata nel backup, non persa silenziosamente.
+
+    I ruoli "managed" (creati da un'integrazione o da un bot, es. il
+    ruolo automatico di un bot musicale) vengono saltati — Discord
     non permette di crearli manualmente, si ricreano da soli quando
-    l'integrazione/il bot viene reinvitato).
+    l'integrazione/il bot viene reinvitato.
 
-    Restituisce la mappa ID_ruolo_originale -> ID_ruolo_clonato,
-    necessaria per rimappare gli overwrite di permessi sui canali
-    (clone_categories_and_channels).
+    Restituisce la mappa ID_ruolo_originale -> ID_ruolo_clonato
+    (include anche @everyone, mappato al default_role già esistente
+    nel server di destinazione), necessaria per rimappare gli
+    overwrite di permessi sui canali (clone_categories_and_channels).
 
-    I ruoli vengono creati dal più basso al più alto in posizione:
-    ogni nuovo ruolo creato finisce sopra i precedenti per
-    comportamento di default di Discord, quindi partire dal più
+    I ruoli normali vengono creati dal più basso al più alto in
+    posizione: ogni nuovo ruolo creato finisce sopra i precedenti
+    per comportamento di default di Discord, quindi partire dal più
     basso mantiene l'ordine finale corretto.
     """
     mappa_id: dict[int, int] = {}
+
+    await target_guild.default_role.edit(
+        permissions=source_guild.default_role.permissions,
+        reason="Clonazione backup iYokai — permessi di @everyone",
+    )
+    mappa_id[source_guild.default_role.id] = target_guild.default_role.id
 
     ruoli_da_clonare = sorted(
         (ruolo for ruolo in source_guild.roles if not ruolo.is_default() and not ruolo.managed),
@@ -94,3 +108,75 @@ def remap_permission_overwrites(
             nuovi_overwrites[nuovo_ruolo] = overwrite
 
     return nuovi_overwrites
+
+
+async def clone_categories_and_channels(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    role_id_map: dict[int, int],
+) -> dict[int, int]:
+    """
+    Clona categorie e canali (testuali e vocali) del server sorgente
+    nel server di destinazione, preservando l'ordine e gli overwrite
+    di permessi per ruolo (rimappati tramite remap_permission_
+    overwrites — serve la mappa già prodotta da clone_roles).
+
+    Le CATEGORIE vanno create per prime: un canale dentro una
+    categoria ha bisogno dell'oggetto categoria già esistente sul
+    lato destinazione per essere assegnato correttamente.
+
+    Restituisce la mappa ID_canale_originale -> ID_canale_clonato
+    (categorie incluse) — utile a chi chiama per ulteriori passaggi
+    (es. §11.9 mirror messaggi, che deve sapere in quale canale
+    clonato inoltrare ogni messaggio del canale originale).
+    """
+    mappa_id: dict[int, int] = {}
+    mappa_categorie: dict[int, discord.CategoryChannel] = {}
+
+    categorie_ordinate = sorted(source_guild.categories, key=lambda c: c.position)
+    for categoria in categorie_ordinate:
+        overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild)
+        nuova_categoria = await target_guild.create_category(
+            name=categoria.name,
+            overwrites=overwrites,
+            reason="Clonazione backup iYokai",
+        )
+        mappa_id[categoria.id] = nuova_categoria.id
+        mappa_categorie[categoria.id] = nuova_categoria
+
+    canali_ordinati = sorted(source_guild.channels, key=lambda c: c.position)
+    for canale in canali_ordinati:
+        if isinstance(canale, discord.CategoryChannel):
+            continue  # già clonate sopra
+
+        categoria_destinazione = None
+        if canale.category is not None:
+            categoria_destinazione = mappa_categorie.get(canale.category.id)
+
+        overwrites = remap_permission_overwrites(canale.overwrites, role_id_map, target_guild)
+
+        if isinstance(canale, discord.VoiceChannel):
+            nuovo_canale = await target_guild.create_voice_channel(
+                name=canale.name,
+                category=categoria_destinazione,
+                overwrites=overwrites,
+                bitrate=canale.bitrate,
+                user_limit=canale.user_limit,
+                reason="Clonazione backup iYokai",
+            )
+        elif isinstance(canale, discord.TextChannel):
+            nuovo_canale = await target_guild.create_text_channel(
+                name=canale.name,
+                category=categoria_destinazione,
+                overwrites=overwrites,
+                topic=canale.topic or "",
+                nsfw=canale.nsfw,
+                slowmode_delay=canale.slowmode_delay,
+                reason="Clonazione backup iYokai",
+            )
+        else:
+            continue  # tipi di canale non gestiti (forum, stage, ecc.) — fuori scope qui
+
+        mappa_id[canale.id] = nuovo_canale.id
+
+    return mappa_id
