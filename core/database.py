@@ -303,6 +303,11 @@ class Database:
         )
         await music_session_migrations(self.pool)
 
+        from core.repositories.twitch_subscription_repo import (
+            run_migrations as twitch_subscription_migrations,
+        )
+        await twitch_subscription_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a

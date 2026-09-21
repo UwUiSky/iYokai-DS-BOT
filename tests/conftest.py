@@ -118,6 +118,9 @@ async def clean_db(db_pool):
     from core.repositories.music_session_repo import (
         run_migrations as music_session_migrations,
     )
+    from core.repositories.twitch_subscription_repo import (
+        run_migrations as twitch_subscription_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -142,6 +145,7 @@ async def clean_db(db_pool):
     await eval_shell_log_migrations(db_pool)
     await feed_subscription_migrations(db_pool)
     await music_session_migrations(db_pool)
+    await twitch_subscription_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -182,6 +186,7 @@ async def clean_db(db_pool):
         "eval_shell_log",
         "feed_subscriptions",
         "music_sessions",
+        "twitch_subscriptions",
         "guild_config",
         "guild_config_history",
         "premium_whitelist",

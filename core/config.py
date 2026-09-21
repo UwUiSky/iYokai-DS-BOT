@@ -121,6 +121,13 @@ class Config:
     # per chi preferisce comunque self-hostare un singolo nodo).
     LAVALINK_NODES: str = field(default="")
 
+    # Twitch (SPEC.md §10.1/10.2) — opzionali: vuoti finché l'utente
+    # non registra un'app su dev.twitch.tv. Il watcher (core/twitch_
+    # watcher.py) resta semplicemente inattivo finché non sono
+    # compilati, non fa fallire l'avvio del bot.
+    TWITCH_CLIENT_ID: str = field(default="")
+    TWITCH_CLIENT_SECRET: str = field(default="")
+
     # --- Memory Guard --------------------------------------------------
     # Soglia oltre la quale il Memory Guard forza una garbage
     # collection e, se il consumo resta alto, avvisa il proprietario
@@ -176,6 +183,8 @@ def _load_config() -> Config:
         LAVALINK_PORT=_optional_int("LAVALINK_PORT", 2333),
         LAVALINK_PASSWORD=_optional("LAVALINK_PASSWORD", ""),
         LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
+        TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
+        TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),
