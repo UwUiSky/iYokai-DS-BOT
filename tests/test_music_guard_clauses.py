@@ -152,6 +152,55 @@ class _FakePlayer:
         self.volume = value
 
 
+class _FakeWorkerGuild:
+    """Il 'guild' visto dal bot WORKER per lo stesso server — un
+    oggetto diverso dal guild visto dal bot principale (ogni client
+    Discord ha la propria cache), come nell'architettura reale."""
+
+    def __init__(self, voice_client=None) -> None:
+        self.voice_client = voice_client
+
+
+class _FakeWorkerBot:
+    def __init__(self, worker_guild: _FakeWorkerGuild) -> None:
+        self._worker_guild = worker_guild
+
+    def get_guild(self, guild_id: int):
+        return self._worker_guild
+
+
+class _FakeFleet:
+    """Finta MusicFleet — restituisce sempre lo stesso worker/guild
+    finto, senza toccare il database (i test di routing VERI, con
+    PostgreSQL, sono in tests/test_music_fleet.py)."""
+
+    def __init__(self, worker_bot: _FakeWorkerBot) -> None:
+        self._worker_bot = worker_bot
+        self.release_guild_chiamato_per: list[int] = []
+
+    async def get_worker_for_guild(self, guild_id: int):
+        return 1, self._worker_bot
+
+    async def get_or_assign_worker_for_guild(self, guild_id: int):
+        return 1, self._worker_bot
+
+    async def release_guild(self, guild_id: int) -> None:
+        self.release_guild_chiamato_per.append(guild_id)
+
+
+class _FakeBotConFleet:
+    def __init__(self, music_fleet: _FakeFleet) -> None:
+        self.music_fleet = music_fleet
+
+
+def _cog_con_player_finto(player_finto: _FakePlayer) -> MusicCog:
+    worker_guild = _FakeWorkerGuild(voice_client=player_finto)
+    worker_bot = _FakeWorkerBot(worker_guild)
+    fleet = _FakeFleet(worker_bot)
+    bot = _FakeBotConFleet(fleet)
+    return MusicCog(bot=bot)
+
+
 @pytest.mark.asyncio
 async def test_volume_up_non_supera_200(monkeypatch):
     database = Database()
@@ -165,11 +214,9 @@ async def test_volume_up_non_supera_200(monkeypatch):
         monkeypatch.setattr(music_module, "db", database)
 
         player_finto = _FakePlayer(volume=195)
-        interaction = _FakeInteraction(
-            guild_id, user=_FakeRealMember(voice=object()), voice_client=player_finto
-        )
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
 
-        cog = MusicCog(bot=None)
+        cog = _cog_con_player_finto(player_finto)
         await cog.volume_up.callback(cog, interaction, amount=10)
 
         # 195 + 10 = 205, ma il tetto reale è 200 (la scala di
@@ -194,11 +241,9 @@ async def test_volume_down_non_scende_sotto_zero(monkeypatch):
         monkeypatch.setattr(music_module, "db", database)
 
         player_finto = _FakePlayer(volume=5)
-        interaction = _FakeInteraction(
-            guild_id, user=_FakeRealMember(voice=object()), voice_client=player_finto
-        )
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
 
-        cog = MusicCog(bot=None)
+        cog = _cog_con_player_finto(player_finto)
         await cog.volume_down.callback(cog, interaction, amount=10)
 
         assert player_finto.set_volume_chiamato_con == 0
@@ -221,11 +266,9 @@ async def test_volume_up_dentro_al_range_funziona_normalmente(monkeypatch):
         monkeypatch.setattr(music_module, "db", database)
 
         player_finto = _FakePlayer(volume=100)
-        interaction = _FakeInteraction(
-            guild_id, user=_FakeRealMember(voice=object()), voice_client=player_finto
-        )
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
 
-        cog = MusicCog(bot=None)
+        cog = _cog_con_player_finto(player_finto)
         await cog.volume_up.callback(cog, interaction, amount=10)
 
         assert player_finto.set_volume_chiamato_con == 110

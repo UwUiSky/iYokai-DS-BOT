@@ -1,10 +1,12 @@
 """
 main.py
 ========
-Punto di avvio di iYokai Main (l'applicazione principale — non i bot
-music, non il Creator, non l'NSFW: quelli hanno ciascuno il proprio
-entry point separato, in coerenza con la scelta di applicazioni
-Discord distinte).
+Punto di avvio di iYokai Main — include anche le 5 istanze Music
+worker (SPEC.md §9.1), avviate come task concorrenti nello STESSO
+processo (non 6 processi separati — vedi la nota nel corpo di
+main() per il perché). Restano fuori da qui il Creator e l'NSFW,
+applicazioni Discord del tutto scollegate dal resto, con il proprio
+entry point separato.
 
 Ordine di avvio, e perché è in questo ordine:
   1. Logging — così anche gli errori dei passi successivi si vedono
@@ -37,6 +39,8 @@ from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
+from core.music_fleet import MusicFleet
+from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
 from core.premium import handle_app_command_error
@@ -389,8 +393,28 @@ async def main() -> None:
 
     bot = iYokaiBot()
 
+    # Le 5 istanze Music worker (SPEC.md §9.1) girano nello STESSO
+    # processo del bot principale, come task asyncio concorrenti —
+    # non 6 processi separati. Decisione presa per due motivi: (1)
+    # il bot principale deve poter instradare /play verso il worker
+    # giusto con una semplice chiamata Python (self.bot.music_fleet),
+    # non con una comunicazione tra processi che aggiungerebbe
+    # latenza; (2) 6 processi separati moltiplicherebbero 6 volte
+    # l'overhead di interprete Python su una VM già misurata con
+    # cura (scripts/load_simulation.py). Restano applicazioni Discord
+    # DISTINTE (5 token separati, 5 bot visti come entità diverse
+    # dagli utenti) — solo il processo che le ospita è condiviso.
+    worker_bots = [MusicWorkerBot(worker_index=i) for i in range(1, 6)]
+    bot.music_fleet = MusicFleet(worker_bots)
+
     try:
-        await bot.start(config.YOKAI_BOT_TOKEN)
+        await asyncio.gather(
+            bot.start(config.YOKAI_BOT_TOKEN),
+            *[
+                worker.start(token)
+                for worker, token in zip(worker_bots, config.MUSIC_TOKENS)
+            ],
+        )
     finally:
         # Se bot.start() termina (crash o spegnimento pulito),
         # chiudiamo comunque il pool in modo ordinato.

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 11:14 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 16:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 130 comandi in 10 categorie.**
+**Totale: 134 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -67,7 +67,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 11:
 
 ## Music
 
-- **`/disconnect`** — Disconnette il bot dal canale vocale.
+- **`/disconnect`** — Disconnette il music bot dal canale vocale.
+- **`/nonstop off`** — Disattiva il loop continuo.
+- **`/nonstop on`** — Attiva il loop continuo sulla coda attuale.
+- **`/nonstop-main start`** — [Admin] Avvia lo streaming 24/7.
+- **`/nonstop-main stop`** — [Admin] Ferma lo streaming 24/7.
 - **`/pause`** — Mette in pausa la riproduzione.
 - **`/play`** — Riproduce una canzone o playlist.
 - **`/queue`** — Mostra la coda di riproduzione.
