@@ -39,6 +39,7 @@ from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
+from core.twitch_watcher import twitch_watcher
 from core.music_fleet import MusicFleet
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
@@ -179,6 +180,10 @@ class iYokaiBot(commands.AutoShardedBot):
         # minuti dei feed RSS/Atom sottoscritti (YouTube, Reddit,
         # RSS qualsiasi) — stesso pattern di Memory Guard/Retention.
         feed_watcher.start(self)
+
+        # Twitch live/offline (SPEC.md §10.1/10.2): resta inattivo
+        # finché TWITCH_CLIENT_ID/SECRET non sono configurati.
+        twitch_watcher.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync
