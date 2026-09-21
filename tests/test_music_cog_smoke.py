@@ -30,3 +30,12 @@ async def test_music_cog_si_carica_anche_se_lavalink_non_e_raggiungibile():
 
     nomi_comandi = {c.name for c in bot.tree.get_commands()}
     assert {"play", "skip", "stop", "pause", "resume", "queue", "volume", "disconnect"} <= nomi_comandi
+
+    volume_group = None
+    for command in bot.tree.get_commands():
+        if isinstance(command, discord.app_commands.Group) and command.name == "volume":
+            volume_group = command
+            break
+    assert volume_group is not None
+    sottocomandi_volume = {c.name for c in volume_group.commands}
+    assert {"set", "up", "down"} <= sottocomandi_volume

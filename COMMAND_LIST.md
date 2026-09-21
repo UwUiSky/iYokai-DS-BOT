@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 10:55 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 11:14 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 128 comandi in 10 categorie.**
+**Totale: 130 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -74,7 +74,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 10:
 - **`/resume`** — Riprende la riproduzione in pausa.
 - **`/skip`** — Salta la traccia in riproduzione.
 - **`/stop`** — Ferma la riproduzione e svuota la coda.
-- **`/volume`** — Imposta il volume (0-150).
+- **`/volume down`** — Diminuisce il volume.
+- **`/volume set`** — Imposta il volume a un valore specifico (0-200).
+- **`/volume up`** — Aumenta il volume.
 
 ## Sicurezza
 

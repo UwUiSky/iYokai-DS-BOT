@@ -302,29 +302,30 @@ file, non da un riassunto.**
 
 ## §9 MUSIC — base funzionante, architettura multi-istanza non fatta
 
-**Nota di stato onesta, non gonfiare le spunte sotto**: costruito un
-player base e funzionante (`cogs/music/player.py`, via wavelink +
-Lavalink) — play/skip/stop/pause/resume/queue/volume/disconnect,
-avanzamento automatico della coda. NON costruita l'architettura
-multi-istanza (§9.1/9.2/9.3, che uderebbe i 5 MUSIC_TOKENS già
-dichiarati in config.py per permettere più sessioni musicali
-simultanee nello stesso server) — nessuna voce sotto è quindi
-segnata come fatta, anche se qualcosa di reale e funzionante esiste
-già: nessuna soddisfa per intero quello che chiede, e questo
-progetto non usa spunte parziali.
+**Nota di stato**: costruito un player base e funzionante (`cogs/
+music/player.py`, via wavelink + Lavalink) — play/skip/stop/pause/
+resume/queue/volume/disconnect, avanzamento automatico della coda.
+NON costruita l'architettura multi-istanza (§9.1/9.2/9.3 — vedi nota
+più precisa sotto sul perché serve davvero, non solo "5 bot per
+capacità": il bot principale deve trasmettere 24/7 dalla playlist
+personale dell'utente, le 5 istanze separate sono i music bot che i
+membri richiamano con i comandi normali, per permettere sessioni
+musicali simultanee in canali diversi). Le voci sotto usano il
+marcatore parziale dove è stato costruito qualcosa di reale ma non
+tutto quanto richiesto, invece del marcatore "tutto fatto".
 
 - `[ ]` 9.1 Multi-VoiceClient manager (5 applicazioni separate)
 - `[ ]` 9.2 Assegnazione istanza libera per canale (tabella
   `music_sessions`, logica "se bot1 occupato → bot2")
 - `[ ]` 9.3 Coda indipendente per canale vocale
-- `[ ]` 9.4 Comandi: play, search, skip, forceskip, stop, pause,
+- `[~]` 9.4 Comandi: play, search, skip, forceskip, stop, pause,
   resume, queue, remove, clear, shuffle, move, nowplaying (con barra
   di progresso), loop track, loop queue, volume, seek, lyrics —
   **fatti**: play, skip, stop, pause, resume, queue, volume,
   disconnect. **Mancano**: search (distinto da play), forceskip,
   remove, clear, shuffle, move, nowplaying con barra di progresso,
   loop track/queue, seek, lyrics
-- `[ ]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
+- `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — YouTube funziona via la ricerca di
   default di Lavalink; Spotify richiederebbe un plugin (LavaSrc) sul
   nodo Lavalink usato, non verificabile se presente su un nodo
@@ -356,7 +357,7 @@ progetto non usa spunte parziali.
   di terzi. Scartato, vedi audit di fattibilità
 - `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
-- `[x]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
+- `[~]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
   add`, qualsiasi URL RSS/Atom); la parte "webhook" (ricezione push
   da terzi) non è stata costruita, stesso motivo tecnico sotto
 - `[x]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
@@ -627,8 +628,8 @@ rilancia lo stesso conteggio.
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
-| §9 Music | 0 | 0 | 12 |
-| §10 Alerts | 4 | 0 | 4 |
+| §9 Music | 0 | 2 | 10 |
+| §10 Alerts | 3 | 1 | 4 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
@@ -637,9 +638,14 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **116** | **0** | **152** |
+| **Totale** | **115** | **3** | **150** |
 
-Su 268 voci totali: **116 fatte, 0 parziali, 152 mancanti** — circa
-il 43% dello schema. §10 Alerts a metà (4/8, Twitch in attesa di
-credenziali). §16 Fun a 2/15 (Ship, Rate).
+Su 268 voci totali: **115 fatte, 3 parziali, 150 mancanti** — circa
+il 43% dello schema (contando i parziali a metà peso). Correzione
+del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
+legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
+come completamente fatti quando in realtà erano solo iniziati.
+Audit a campione sul resto del documento (§5, §6, §12, §13, §15) non
+ha trovato altri casi: i comandi/funzionalità elencati nelle voci
+controllate esistono davvero nel codice.
 

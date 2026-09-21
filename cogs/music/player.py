@@ -216,10 +216,14 @@ class MusicCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="volume", description="Imposta il volume (0-150).")
-    @app_commands.describe(level="Livello del volume, da 0 a 150")
-    async def volume(
-        self, interaction: discord.Interaction, level: app_commands.Range[int, 0, 150]
+    volume_group = app_commands.Group(
+        name="volume", description="Controlla il volume della riproduzione (0-200, come Discord)."
+    )
+
+    @volume_group.command(name="set", description="Imposta il volume a un valore specifico (0-200).")
+    @app_commands.describe(level="Livello del volume, da 0 a 200")
+    async def volume_set(
+        self, interaction: discord.Interaction, level: app_commands.Range[int, 0, 200]
     ) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -233,6 +237,49 @@ class MusicCog(commands.Cog):
 
         await player.set_volume(level)
         await interaction.response.send_message(f"🔊 Volume impostato a {level}.")
+
+    @volume_group.command(name="up", description="Aumenta il volume.")
+    @app_commands.describe(amount="Quanto aumentare (default 10)")
+    async def volume_up(
+        self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 200] = 10
+    ) -> None:
+        if not await self._controlli_base(interaction):
+            return
+
+        player: wavelink.Player | None = interaction.guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return
+
+        # min(200, ...) qui invece di lasciare fare tutto a set_volume():
+        # wavelink accetta fino a 1000 e si limiterebbe a troncare in
+        # silenzio, ma il messaggio di risposta deve mostrare il
+        # valore REALMENTE applicato (max 200, la scala di Discord),
+        # non un numero che poi non corrisponde a quello impostato.
+        nuovo_volume = min(200, player.volume + amount)
+        await player.set_volume(nuovo_volume)
+        await interaction.response.send_message(f"🔊 Volume aumentato a {nuovo_volume}.")
+
+    @volume_group.command(name="down", description="Diminuisce il volume.")
+    @app_commands.describe(amount="Quanto diminuire (default 10)")
+    async def volume_down(
+        self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 200] = 10
+    ) -> None:
+        if not await self._controlli_base(interaction):
+            return
+
+        player: wavelink.Player | None = interaction.guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return
+
+        nuovo_volume = max(0, player.volume - amount)
+        await player.set_volume(nuovo_volume)
+        await interaction.response.send_message(f"🔉 Volume diminuito a {nuovo_volume}.")
 
     @app_commands.command(name="disconnect", description="Disconnette il bot dal canale vocale.")
     async def disconnect(self, interaction: discord.Interaction) -> None:
