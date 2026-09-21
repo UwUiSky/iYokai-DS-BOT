@@ -9,7 +9,7 @@ domini), quindi costruite seguendo lo standard pubblicato, non
 inventate a caso.
 """
 
-from core.feed_parsing_logic import find_new_entries, parse_feed
+from core.feed_parsing_logic import find_new_entries, parse_feed, render_alert_message
 
 RSS_DI_ESEMPIO = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -111,3 +111,19 @@ class TestFindNewEntries:
         voci = parse_feed(RSS_DI_ESEMPIO)
         nuove = find_new_entries(voci, last_seen_entry_id="id-che-non-esiste-piu")
         assert len(nuove) == 2
+
+
+class TestRenderAlertMessage:
+    def test_sostituisce_tutti_i_placeholder(self):
+        risultato = render_alert_message(
+            "{label}: {title} -> {link}", label="Canale X", title="Video Y", link="https://esempio.com"
+        )
+        assert risultato == "Canale X: Video Y -> https://esempio.com"
+
+    def test_template_senza_placeholder_resta_invariato(self):
+        assert render_alert_message("Testo fisso", "L", "T", "https://x.com") == "Testo fisso"
+
+    def test_placeholder_sconosciuto_non_solleva_e_lascia_il_template_originale(self):
+        template = "{label}: {titolo_sbagliato}"
+        risultato = render_alert_message(template, "L", "T", "https://x.com")
+        assert risultato == template

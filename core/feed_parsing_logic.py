@@ -133,3 +133,18 @@ def find_new_entries(
             break
         nuove.append(entry)
     return nuove
+
+
+def render_alert_message(template: str, label: str, title: str, link: str) -> str:
+    """
+    Sostituisce {label}/{title}/{link} nel template personalizzabile
+    (SPEC.md §10.9). Un placeholder sconosciuto nel template (typo
+    dell'utente, es. {titolo} invece di {title}) non deve far fallire
+    l'invio dell'alert — meglio un messaggio col template originale
+    lasciato così com'è (il typo resta visibile, l'utente lo nota e
+    lo corregge) che nessun messaggio.
+    """
+    try:
+        return template.format(label=label, title=title, link=link)
+    except (KeyError, IndexError):
+        return template
