@@ -1092,6 +1092,68 @@ funzionante). Corretto per entrambe insieme in questo aggiornamento.
 
 **Suite di test completa: 813/813 passano.**
 
+### Fase 35 — Music (SPEC.md §9), player base funzionante
+Decisione presa CON l'utente prima di scrivere codice (risposta a
+una sua domanda diretta): `wavelink` (già in requirements.txt) resta
+la scelta giusta nel 2026, nessuna alternativa architetturale
+migliore. Novità: nodi Lavalink PUBBLICI gratuiti mantenuti dalla
+community (es. lista di `lavalink.darrennathanael.com`) — usati con
+fallback tra più nodi invece di self-hostare un processo Java sulla
+stessa VM del bot (peserebbe centinaia di MB extra su una macchina
+già misurata con cura in `scripts/load_simulation.py`).
+
+`wavelink` non era installato nel sandbox nonostante fosse già in
+requirements.txt — installato (3.5.2) per scrivere codice contro
+l'API vera, non a memoria, verificando firme reali di `Node`,
+`Pool.connect()`, `Player`, `Playable.search()`, `Queue`,
+`TrackEndEventPayload` prima di scrivere una riga di cog.
+
+- `core/music_logic.py`: `format_duration()`, `build_queue_display()`,
+  `parse_lavalink_nodes()` (un nodo scritto male nel .env viene
+  ignorato, non fa sparire gli altri). **18 test**
+- `core/config.py`: `LAVALINK_NODES` opzionale multi-nodo, con
+  precedenza sui tre campi singoli esistenti (comportamento
+  originale a singolo nodo invariato se non impostato)
+- `cogs/music/player.py`: `/play|skip|stop|pause|resume|queue|
+  volume|disconnect`, avanzamento automatico della coda su
+  `on_wavelink_track_end`
+
+**BUG SERIO trovato con un test diretto, non ipotizzato**:
+`wavelink.Pool.connect()` NON fallisce rapidamente se un nodo è
+irraggiungibile — ritenta all'infinito al proprio interno e la
+`await` non ritorna mai, né solleva. Un `try/except` attorno a un
+`await` diretto in `setup()` sarebbe stato inutile e avrebbe
+bloccato l'INTERO avvio del bot (`load_all_cogs` aspetta ogni
+`setup()` in sequenza) se Lavalink fosse anche solo temporaneamente
+irraggiungibile. Corretto lanciando la connessione come task in
+background (`asyncio.create_task`) — `setup()` ritorna subito.
+
+**Bug di test trovato**: `discord.Member.voice` è una property di
+sola lettura che legge da `self.guild._voice_state_for(...)` —
+assegnare `self.voice` direttamente in un fake fallisce ("property
+has no setter"). Corretto sovrascrivendo la property nella
+sottoclasse finta.
+
+**Limite dichiarato esplicitamente nel codice**: non è possibile
+testare in questo ambiente una connessione vera a Lavalink né al
+gateway voce di Discord. Testato quello che è verificabile senza
+(controlli di guardia, logica pura). **5 test** (1 smoke + 4 sui
+controlli di guardia reali, contro PostgreSQL vero).
+
+**Stato onesto in SPEC.md**: nessuna voce di §9 marcata come fatta —
+lo schema originale descrive un'architettura multi-istanza (5
+MUSIC_TOKENS, tabella `music_sessions`) molto più ampia di un player
+singolo, e questo progetto non usa spunte parziali. **Bug di
+conteggio trovato nella stessa scrittura**: la nota di stato
+conteneva letteralmente la stringa `[x]` in un punto di prosa, contata
+per errore dallo script meccanico (+1 fatto). Notato verificando il
+totale invece di fidarmi, corretto.
+
+`.env.example` documenta `LAVALINK_NODES` con link all'elenco nodi
+pubblici e l'avviso di controllare che siano ancora attivi.
+
+**Suite di test completa: 836/836 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1414,46 +1476,50 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Prossimo lavoro in corso: Music (SPEC.md §9), su richiesta esplicita
-dell'utente subito dopo Alert & Social.** Decisione presa con
-l'utente: `wavelink` (già in requirements.txt) resta la scelta
-giusta nel 2026 — nessuna alternativa architetturale migliore è
-emersa. Novità utile trovata con una ricerca: esistono NODI LAVALINK
-PUBBLICI GRATUITI mantenuti dalla community (es. lista di
-`lavalink.darrennathanael.com`) — evitano di ospitare un processo
-Java separato sulla VM (che peserebbe extra su 2 OCPU/12GB), a costo
-di nessuna garanzia di uptime. Raccomandazione da confermare con
-l'utente prima di scrivere codice: connettersi a più nodi pubblici
-con fallback, non self-hostare Lavalink sulla stessa VM del bot.
+**Music (SPEC.md §9) ha un player base funzionante** (play/skip/
+stop/pause/resume/queue/volume/disconnect), da verificare dal vivo
+una volta distribuito (impossibile in questo sandbox: nessuna
+connessione Lavalink/voce Discord reale raggiungibile). Prima di
+usarlo in produzione, l'utente deve scegliere e configurare almeno
+un nodo Lavalink (pubblico, in `LAVALINK_NODES` — vedi `.env.example`
+per il formato e il link all'elenco) o il proprio self-hostato.
+
+Resta molto della sezione originale non fatto, se l'utente vorrà
+tornarci: search/forceskip/remove/clear/shuffle/move/nowplaying con
+barra/loop/seek/lyrics (§9.4), Spotify (richiede verificare se il
+nodo scelto ha il plugin LavaSrc, §9.5), filtri audio (§9.6), DJ role
+(§9.7), voteskip (§9.8), auto-leave (§9.9), 24/7 (§9.10), e l'intera
+architettura multi-istanza (§9.1/9.2/9.3 — 5 MUSIC_TOKENS già
+dichiarati in config.py, mai usati finora).
 
 **§10 Alert & Social resta aperto per Twitch (10.1/10.2)**: serve un
 Client ID/Secret Twitch, gratuito da registrare su dev.twitch.tv ma
-richiede l'azione dell'utente (non qualcosa che si può decidere da
-soli). Da fare via polling (Twitch Helix "Get Streams"), stesso
-principio già usato per YouTube/Reddit, quando le credenziali
-arriveranno.
+richiede l'azione dell'utente.
 
-⚠️ **REGOLA PERMANENTE**: dopo ogni commit che aggiunge, rimuove o
-rinomina un comando slash, rilanciare `scripts/generate_command_
-list.py` e committare/pushare il `COMMAND_LIST.md` rigenerato nello
-stesso giro di lavoro.
+**§11 Backup System resta l'unica sezione ancora completamente a
+zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
 
-⚠️ **SECONDA REGOLA aggiunta in questa sessione, dopo aver trovato
-DUE feature committate ma mai marcate in SPEC.md** (Ship/Rate e
-questa stessa fase Alert & Social): quando si marca una voce `[x]`
-in SPEC.md, farlo SUBITO dopo il commit del codice, nello stesso
-giro — non rimandarlo "alla prossima fase di documentazione". Se
-capita di accorgersene tardi, ricalcolare SEMPRE con lo script
-meccanico (non a mente) prima di aggiornare la tabella riassuntiva.
+⚠️ **REGOLE PERMANENTI** (entrambe da questa sessione in avanti):
+1. Dopo ogni commit che aggiunge/rimuove/rinomina un comando slash,
+   rilanciare `scripts/generate_command_list.py` e committare/pushare
+   il `COMMAND_LIST.md` rigenerato nello stesso giro di lavoro.
+2. Marcare `SPEC.md` `[x]` SUBITO dopo il commit del codice, nello
+   stesso giro — non rimandarlo. Quando si ricalcola la tabella
+   riassuntiva, farlo SEMPRE con lo script meccanico (mai a mente),
+   e controllare che nessuna prosa nelle note contenga per sbaglio il
+   pattern letterale `[x]` (falsa positiva nel conteggio — successo
+   due volte in questa sessione, sia con `[x]` che scrivendo "116"
+   a mente invece di ricalcolare).
 
-§9 Music e §11 Backup restano le uniche sezioni ancora
-completamente a zero. §15 Levels/Gilde/Classifiche parzialmente
-fatta (6/25).
-
-Nessuna priorità imposta in modo vincolante oltre quanto sopra — la
-decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere
-codice: leggere `SPEC.md`, non un riassunto. E qualunque proposta
-esterna futura passa da `BACKLOG.md` prima di toccare `SPEC.md`.
+Promemoria tecnici aggiuntivi acquisiti in questa sessione:
+- Verificare collisioni con hook riservati di discord.py
+  (`hasattr(commands.Cog, nome)`) prima di nominare un metodo di cog
+- Verificare idempotenza di qualunque `register()`/simile chiamato da
+  `setup()`, per non rompere `/owner cog-reload`
+- Prima di usare `await` su una libreria esterna dentro `setup()`,
+  verificare con un test diretto se può bloccare indefinitamente
+  invece di fallire rapidamente (wavelink.Pool.connect() lo fa) — se
+  sì, lanciarla come task in background, mai in attesa diretta
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro
