@@ -1222,6 +1222,91 @@ pagamento senza il suo consenso esplicito.
 
 **Suite di test completa: 839/839 passano.**
 
+### Fase 37 — Music multi-istanza, cablaggio completo (SPEC.md §9.1/9.2/9.3/9.10/9.11/9.12)
+L'utente ha chiarito l'architettura richiesta, correggendo
+un'assunzione sbagliata fatta in precedenza: NON "5 bot per
+capacità" — il bot principale trasmette 24/7 SOLO dalla playlist
+personale dell'utente (non entra mai in vocale per /play), le 5
+istanze separate sono i music bot "normali" richiamati dagli utenti
+con i comandi standard, instradati automaticamente verso quella
+libera per prima. Un solo punto di ingresso comandi (il bot
+principale), esecuzione distribuita su 5 processi Discord separati.
+
+**Ricerca Lavalink** fatta come richiesto: 5 nodi pubblici gratuiti
+attualmente documentati (HeavenCloud × 4 regioni con supporto
+Spotify/Apple Music/Deezer, più Serenetia) inclusi ORA di default nel
+codice (`DEFAULT_PUBLIC_LAVALINK_NODES` in `core/music_logic.py`) —
+Music funziona senza configurazione. Ordine esatto richiesto: pubblici
+in cascata per primi, nodo locale/self-hostato dell'utente sempre per
+ultimo. 2 nuovi test, incluso un bug trovato: `wavelink.Node()`
+richiede un event loop attivo anche solo per essere costruito.
+
+**Fondazione dell'instradamento**: `core/music_fleet_logic.py`
+(logica pura, `find_free_worker()`) + `core/repositories/music_
+session_repo.py` (tabella `music_sessions` PERSISTENTE, esattamente
+quella prevista dallo schema originale §9.2) + `core/music_fleet.py`
+(`MusicFleet`, coordina i 6 bot — `get_worker_for_guild()` sola
+lettura per i comandi che agiscono su una sessione esistente,
+`get_or_assign_worker_for_guild()` usato SOLO da /play).
+
+**DECISIONE ARCHITETTURALE**, in contrasto con un commento
+precedente in main.py ("i bot music hanno il proprio entry point
+separato"): 6 client Discord concorrenti nello STESSO processo
+(`asyncio.gather()` in `main()`), non 6 processi separati — l'utente
+ha chiarito che il routing deve essere istantaneo (chiamata Python
+diretta), non tramite comunicazione tra processi. Coerente con
+l'attenzione alle risorse di questo progetto fin dall'inizio (6
+processi avrebbero moltiplicato per 6 l'overhead di interprete).
+
+**Scoperta importante verificata nel sorgente di wavelink prima di
+scrivere codice**: `player._auto_play_event()` viene chiamato
+DIRETTAMENTE da `wavelink/websocket.py` come metodo Python sul
+player, non tramite il sistema di listener di discord.py — basta
+`player.autoplay = AutoPlayMode.partial` alla creazione, funziona
+correttamente per ogni player su ognuno dei 6 bot senza bisogno di
+un listener `on_wavelink_track_end` duplicato 6 volte (come avrei
+dovuto fare altrimenti, e come era nella versione precedente a
+singola istanza).
+
+**`cogs/music/player.py` riscritto per intero**: tutti i comandi
+tranne `/nonstop-main` instradano tramite `_get_worker_guild()`. Il
+volume ha ora scala Discord 0-200 (era 0-150, sbagliato) con `/volume
+up`/`/volume down` oltre a `set` — richiesta esplicita dell'utente,
+sono i comandi usati davvero. **Nessun filtro audio** — confermato
+esplicitamente non voluto ("non voglio appesantire il bot per
+niente"). `/nonstop on|off` (loop continuo sul worker attivo),
+`/nonstop-main start|stop` (radio 24/7 del bot principale — nome
+scelto perché "24/7" letterale non è un nome valido per uno slash
+command Discord: niente cifre iniziali, niente barre).
+
+**19 nuovi test**: `MusicFleet` contro PostgreSQL reale (routing
+vero), instradamento del cog con bot/flotta finti (nessuna sessione
+fallisce pulito, tutti i worker occupati avvisa, worker non invitato
+avvisa, disconnect rilascia davvero il worker), smoke test del
+worker bot. Due bug di test trovati scrivendo questi stessi test:
+`_FakeResponse` mancava `defer()`/`followup` (nuovi nel flusso di
+`/play`), `followup` va su `interaction` non su `interaction.
+response` (errore mio, corretto subito).
+
+**SPEC.md**: §9.1/9.2/9.3/9.12 marcate fatte. §9.4/9.5/9.10/9.11
+parziali con dettaglio esplicito. §9.6/9.7/9.8 (filtri, DJ role,
+voteskip) marcate SCARTATE (non mancanti) — rifiutate esplicitamente
+dall'utente, stesso trattamento di Instagram e Howgay: un limite di
+scelta, non tecnico. Tabella ricalcolata con lo script meccanico:
+119 fatte, 5 parziali, 141 mancanti su 265 (268 meno le 3 scartate)
+— circa il 45%.
+
+**Resta aperto per il futuro**:
+- Auto-leave su canale vuoto (§9.9): l'evento `wavelink_inactive_
+  player` esiste già di default in wavelink, manca solo un listener
+  che disconnette e rilascia il worker nella flotta quando scatta
+- "Singolo decoder condiviso" per `/nonstop-main` (§9.11): costruito
+  per un server alla volta (il bot principale entra in un solo
+  canale vocale) — dubbio da chiarire con l'utente se intendeva
+  trasmettere la STESSA playlist a PIÙ server contemporaneamente
+
+**Suite di test completa: 873/873 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1544,40 +1629,27 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Due grandi pezzi di lavoro chiariti dall'utente, non ancora
-costruiti, da affrontare nella prossima sessione:**
+**Music multi-istanza (SPEC.md §9) ha un'architettura reale e
+funzionante** — main + 5 worker instradati, verificabile dal vivo
+solo con credenziali vere (impossibile in questo sandbox: servono 6
+token Discord veri e una connessione Lavalink reale). Due punti
+aperti, da chiarire con l'utente prima di costruirli:
+1. Auto-leave su canale vuoto (§9.9) — l'evento esiste già in
+   wavelink di default, manca solo il listener che agisce
+2. "Singolo decoder condiviso" per /nonstop-main (§9.11) — costruito
+   per un server alla volta, dubbio se l'utente intendeva trasmettere
+   la stessa playlist a più server insieme
 
-**1. Music multi-istanza** — ora che la portata reale è chiara:
-   - Modalità radio 24/7 sul bot principale, streaming dalla
-     playlist personale dell'utente (serve capire come l'utente
-     vuole fornire quei file/URL — playlist YouTube? file caricati?)
-   - 5 processi bot separati (MUSIC_TOKENS già in config.py) che
-     eseguono lo STESSO set di comandi già costruito
-     (play/skip/stop/pause/resume/queue/volume/disconnect), più un
-     meccanismo di assegnazione (tabella `music_sessions`: quale
-     istanza è libera per un dato canale/server)
-   - Nessun filtro audio — confermato esplicitamente non voluto
-
-**2. Alert & Social multi-piattaforma** — da DISCUTERE con l'utente
-   prima di costruire, dato che tre piattaforme hanno vincoli tecnici
-   reali:
-   - Twitch: pronto a fare non appena arrivano le credenziali
-     dell'utente (Client ID/Secret da dev.twitch.tv)
-   - TikTok: nessuna API ufficiale per monitorare creator di terzi,
-     solo scraping fragile — chiedere all'utente se vuole procedere
-     comunque sapendo il rischio, o lasciarlo scartato come Instagram
-   - Instagram: già scartato ✗ nello schema originale, vincolo reale
-     di Meta (nessuna API per account di terzi) — verificare con
-     l'utente se accetta questo limite o vuole comunque un tentativo
-     fragile
-   - X/Twitter: l'API di lettura è a pagamento nel tier utile — capire
-     se l'utente ha/vuole un abbonamento a pagamento prima di
-     costruire qualcosa che richiede un costo ricorrente
-   - Generico "notizie da un sito qualsiasi": la parte RSS è già
-     fatta (`/alerts add` con qualunque URL RSS/Atom); un sito SENZA
-     RSS richiederebbe un meccanismo diverso (fetch HTML + diff), da
-     valutare se serve davvero o se l'RSS generico già copre il
-     bisogno reale
+**Due grandi pezzi ancora da discutere con l'utente prima di
+costruire**, entrambi con vincoli tecnici reali:
+1. **Alert & Social multi-piattaforma**: Twitch pronto non appena
+   arrivano le credenziali dell'utente (Client ID/Secret da
+   dev.twitch.tv). TikTok (nessuna API ufficiale, solo scraping
+   fragile), Instagram (già scartato ✗, nessuna API per account di
+   terzi), X/Twitter (lettura a pagamento nel tier utile) — chiedere
+   esplicitamente prima di costruire qualcosa di fragile o a
+   pagamento senza consenso
+2. Nient'altro di grande bloccato al momento
 
 **§11 Backup System resta l'unica sezione ancora completamente a
 zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
@@ -1587,12 +1659,15 @@ zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
    `scripts/generate_command_list.py` e pushare `COMMAND_LIST.md`
    nello stesso giro.
 2. Marcare `SPEC.md` SUBITO dopo il commit del codice, nello stesso
-   giro. Usare il marcatore parziale (`~`) quando è vero, non solo
-   `[x]`/vuoto — errore già commesso più volte in questa sessione
-   prima della correzione dell'utente. Ricalcolare SEMPRE con lo
-   script meccanico, mai a mente, e MAI scrivere il pattern letterale
-   di un marcatore dentro un testo di prosa esplicativa (falso
-   positivo nel conteggio — successo due volte in questa sessione).
+   giro. Usare il marcatore parziale (`~`) quando è vero — l'utente
+   ha dovuto correggere che non veniva mai usato nonostante esistesse
+   da sempre nella legenda. Un rifiuto esplicito dell'utente (non un
+   limite tecnico) va marcato SCARTATO (✗), non lasciato vuoto — si
+   esclude dal conteggio totale, come Instagram, Howgay, filtri audio/
+   DJ role/voteskip. Ricalcolare SEMPRE con lo script meccanico, mai a
+   mente, e MAI scrivere il pattern letterale di un marcatore dentro
+   un testo di prosa esplicativa (falso positivo nel conteggio —
+   successo tre volte in questa sessione).
 
 Promemoria tecnici aggiuntivi:
 - Verificare collisioni con hook riservati di discord.py prima di
@@ -1602,6 +1677,10 @@ Promemoria tecnici aggiuntivi:
 - Prima di usare `await` su una libreria esterna dentro `setup()`,
   verificare con un test diretto se può bloccare indefinitamente
   invece di fallire rapidamente
+- Prima di aggiungere un listener duplicato su più bot/cog per lo
+  stesso evento, verificare nel sorgente della libreria se esiste
+  già un meccanismo interno che lo gestisce indipendentemente dal
+  client Discord (come `player._auto_play_event()` in wavelink)
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
