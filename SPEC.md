@@ -360,19 +360,21 @@ up/down oltre a impostare un valore), disconnect, nonstop.
 
 ## §10 ALERTS & SOCIAL — parzialmente fatta
 
-- `[ ]` 10.1 Twitch live (EventSub webhook) — **bloccato in attesa di
-  credenziali**: serve un Client ID/Secret Twitch (gratuito da
-  registrare su dev.twitch.tv, richiede l'account dell'utente).
-  Da fare via polling (Twitch Helix "Get Streams"), non webhook —
-  vedi nota tecnica sotto
-- `[ ]` 10.2 Twitch offline — stesso blocco di 10.1
+- `[x]` 10.1 Twitch live — via polling Twitch Helix "Get Streams"
+  (non EventSub webhook, vedi nota tecnica sotto). Testato con
+  credenziali fittizie su richiesta esplicita dell'utente (server
+  locale finto che imita l'API reale); funzionerà con le sue
+  credenziali vere una volta registrate su dev.twitch.tv
+- `[x]` 10.2 Twitch offline — stesso meccanismo di 10.1
 - `[x]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
   (`youtube.com/feeds/videos.xml?channel_id=...`), nessuna chiave API
 - `[ ]` 10.4 YouTube live — non affidabile via RSS (non indica lo
   stato live), richiederebbe la YouTube Data API con quota a
   consumo. Rimandato
-- `[ ]` 10.5 TikTok nuovi video (nessuna API ufficiale — scraping
-  fragile) — resta non fatto, stesso motivo già scritto nello schema
+- `[✗]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
+  gratuita per leggere le pubblicazioni di terzi, solo scraping
+  fragile. Confermato dall'utente come vincolo accettato, non un
+  limite di sforzo
 - `[✗]` 10.6 Instagram — nessuna API permette di monitorare account
   di terzi. Scartato, vedi audit di fattibilità
 - `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
@@ -381,17 +383,27 @@ up/down oltre a impostare un valore), disconnect, nonstop.
   add`, qualsiasi URL RSS/Atom); la parte "webhook" (ricezione push
   da terzi) non è stata costruita, stesso motivo tecnico sotto
 - `[x]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
-  `{label}` `{title}` `{link}` nel template
+  `{label}` `{title}` `{link}` nel template (RSS), `{label}` `{title}`
+  `{login}` (Twitch)
+- `[✗]` 10.13 X/Twitter — **voce nuova**, non nello schema originale,
+  aggiunta su richiesta esplicita dell'utente. Scartata: la lettura
+  via API richiede un abbonamento a pagamento nel tier utile (il
+  tier gratuito non permette di leggere i post di terzi in modo
+  utilizzabile per il monitoraggio). Nessuna alternativa gratuita
+  affidabile nota (i bridge non ufficiali tipo Nitter sono instabili
+  e spesso bloccati da X). Confermato dall'utente come vincolo
+  accettato
 
-**Nota tecnica, vale per l'intera sezione**: lo schema originale
-chiedeva EventSub (Twitch) e PubSubHubbub (YouTube), entrambi webhook
-PUSH — richiedono un endpoint HTTPS pubblico raggiungibile da
-Twitch/Google, che questo bot non ha (nessun server web, solo un
-client Gateway Discord). Aggiungerlo significherebbe dominio,
-certificato TLS, apertura di una porta sulla VM — un cambio di
-infrastruttura, non solo di codice. Sostituito con **polling**
-periodico (ogni 5 minuti, `core/feed_watcher.py`), che raggiunge lo
-stesso risultato per l'utente finale senza cambiare il deployment.
+**Nota tecnica, vale per Twitch/YouTube/Reddit/RSS**: lo schema
+originale chiedeva EventSub (Twitch) e PubSubHubbub (YouTube),
+entrambi webhook PUSH — richiedono un endpoint HTTPS pubblico
+raggiungibile da Twitch/Google, che questo bot non ha (nessun server
+web, solo un client Gateway Discord). Aggiungerlo significherebbe
+dominio, certificato TLS, apertura di una porta sulla VM — un cambio
+di infrastruttura, non solo di codice. Sostituito con **polling**
+periodico (`core/feed_watcher.py` ogni 5 minuti, `core/twitch_
+watcher.py` ogni 90s), che raggiunge lo stesso risultato per
+l'utente finale senza cambiare il deployment.
 
 ## §11 BACKUP SYSTEM — **INTERA SEZIONE MANCANTE**
 
@@ -649,7 +661,7 @@ rilancia lo stesso conteggio.
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 4 | 4 | 1 |
-| §10 Alerts | 3 | 1 | 4 |
+| §10 Alerts | 5 | 1 | 1 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
@@ -658,13 +670,17 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **119** | **5** | **141** |
+| **Totale** | **121** | **5** | **138** |
 
-Su 265 voci totali (268 meno 3 appena marcate scartate — §9.6/9.7/
-9.8, filtri audio/DJ role/voteskip, rifiutate su richiesta esplicita
-dell'utente, non un limite tecnico, come Instagram e Howgay prima):
-**119 fatte, 5 parziali, 141 mancanti** — circa il 45% dello schema
-(contando i parziali a metà peso). §9 Music ora ha un'architettura
+Su 264 voci totali (265 meno 1 appena marcata scartata — §10.5
+TikTok, confermato dall'utente come vincolo tecnico accettato, non
+un limite di sforzo; +1 voce nuova aggiunta e subito scartata,
+§10.13 X/Twitter, su richiesta esplicita dell'utente — lettura a
+pagamento nel tier utile): **121 fatte, 5 parziali, 138 mancanti** —
+circa il 46% dello schema (contando i parziali a metà peso). §10
+Alerts ora a 5 fatte su 7 conteggiate (Twitch, YouTube, Reddit fatti
+via polling — testato con credenziali fittizie per Twitch come
+richiesto esplicitamente). §9 Music ha un'architettura
 multi-istanza reale (4 voci fatte: manager multi-bot, assegnazione
 worker libero, code indipendenti, backend Lavalink) più 4 parziali
 (comandi ridotti deliberatamente, sorgenti, loop 24/7 sul worker,
