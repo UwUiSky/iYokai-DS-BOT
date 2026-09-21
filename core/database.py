@@ -298,6 +298,11 @@ class Database:
         )
         await feed_subscription_migrations(self.pool)
 
+        from core.repositories.music_session_repo import (
+            run_migrations as music_session_migrations,
+        )
+        await music_session_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
