@@ -36,6 +36,7 @@ from core.cog_manager import load_all_cogs
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
+from core.feed_watcher import feed_watcher
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
 from core.premium import handle_app_command_error
@@ -169,6 +170,11 @@ class iYokaiBot(commands.AutoShardedBot):
         # una volta al giorno, soglia diversa per server in base allo
         # stato Free/Premium. Stesso pattern di Memory Guard.
         event_log_retention.start(self)
+
+        # Feed watcher (SPEC.md §10.3/10.7/10.8): polling ogni 5
+        # minuti dei feed RSS/Atom sottoscritti (YouTube, Reddit,
+        # RSS qualsiasi) — stesso pattern di Memory Guard/Retention.
+        feed_watcher.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync
