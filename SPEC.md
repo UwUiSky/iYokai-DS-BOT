@@ -335,7 +335,10 @@ up/down oltre a impostare un valore), disconnect, nonstop.
   SoundCloud, URL, file locali — YouTube funziona via la ricerca di
   default di Lavalink; Spotify richiederebbe un plugin (LavaSrc) sul
   nodo Lavalink usato, non verificabile se presente su un nodo
-  pubblico di terzi senza controllarlo direttamente
+  pubblico di terzi senza controllarlo direttamente; **file locali
+  ORA fatti** per la radio condivisa (`/nonstop-main add-local`),
+  instradati specificamente verso il nodo Lavalink locale — i nodi
+  pubblici non hanno accesso al filesystem della macchina
 - `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
   scartato su richiesta esplicita dell'utente, non un limite tecnico
 - `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6
@@ -349,12 +352,19 @@ up/down oltre a impostare un valore), disconnect, nonstop.
   on|off` (loop continuo sulla coda del worker attivo) fatto; il cap
   a 5 istanze concorrenti esiste implicitamente (TOTAL_WORKERS), ma
   non è un limite configurabile a parte
-- `[~]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
-  condiviso) — `/nonstop-main start|stop` fatto per UN server alla
-  volta (il bot principale entra in un solo canale vocale); "singolo
-  decoder condiviso" per trasmettere la STESSA playlist a PIÙ server
-  contemporaneamente non è stato costruito — da chiarire con
-  l'utente se serve davvero
+- `[x]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
+  condiviso) — `/nonstop-main add-track|add-local|remove-track|
+  list-tracks|start|stop`. "Condiviso" ottenuto con un orologio
+  logico (`core/main_radio_logic.py`): non un unico decode audio
+  fisicamente multicast a più canali (impossibile con l'architettura
+  Lavalink — ogni bot ha la propria connessione voce), ma ogni
+  server che entra calcola dove dovrebbe essere la riproduzione ORA
+  (stessa traccia, stessa posizione, in base al tempo reale
+  trascorso) e joina seekando esattamente lì — stesso risultato
+  percepito dall'ascoltatore: tutti sentono la stessa cosa nello
+  stesso punto. Verificato con un test end-to-end: un secondo server
+  che entra 90 secondi dopo riceve la posizione corretta, non
+  riparte da zero
 - `[x]` 9.12 Backend Lavalink — l'intero cog si basa su Lavalink via
   wavelink, nodi pubblici in cascata + nodo locale (vedi PROGRESS.md)
 
@@ -660,7 +670,7 @@ rilancia lo stesso conteggio.
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
-| §9 Music | 4 | 4 | 1 |
+| §9 Music | 5 | 3 | 1 |
 | §10 Alerts | 5 | 1 | 1 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
@@ -670,21 +680,18 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **121** | **5** | **138** |
+| **Totale** | **122** | **4** | **138** |
 
-Su 264 voci totali (265 meno 1 appena marcata scartata — §10.5
-TikTok, confermato dall'utente come vincolo tecnico accettato, non
-un limite di sforzo; +1 voce nuova aggiunta e subito scartata,
-§10.13 X/Twitter, su richiesta esplicita dell'utente — lettura a
-pagamento nel tier utile): **121 fatte, 5 parziali, 138 mancanti** —
-circa il 46% dello schema (contando i parziali a metà peso). §10
-Alerts ora a 5 fatte su 7 conteggiate (Twitch, YouTube, Reddit fatti
-via polling — testato con credenziali fittizie per Twitch come
-richiesto esplicitamente). §9 Music ha un'architettura
-multi-istanza reale (4 voci fatte: manager multi-bot, assegnazione
-worker libero, code indipendenti, backend Lavalink) più 4 parziali
-(comandi ridotti deliberatamente, sorgenti, loop 24/7 sul worker,
-streaming 24/7 del bot principale). Correzione
+Su 264 voci totali: **122 fatte, 4 parziali, 138 mancanti** — circa
+il 46% dello schema (contando i parziali a metà peso). §10 Alerts a
+5 fatte su 7 conteggiate (Twitch, YouTube, Reddit fatti via polling
+— testato con credenziali fittizie per Twitch come richiesto
+esplicitamente). §9 Music ha un'architettura multi-istanza reale
+PIÙ la radio condivisa (5 voci fatte: manager multi-bot, assegnazione
+worker libero, code indipendenti, radio 24/7 con orologio condiviso,
+backend Lavalink) più 3 parziali
+(comandi ridotti deliberatamente, sorgenti, loop 24/7 sul worker).
+Correzione
 del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
 come completamente fatti quando in realtà erano solo iniziati.
