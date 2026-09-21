@@ -300,43 +300,63 @@ file, non da un riassunto.**
 - `[ ]` 8.17 Distinzione log semplificato `[Free]` vs completo `[Premium]`
   — oggi il modulo è uno solo, senza i due livelli previsti
 
-## §9 MUSIC — base funzionante, architettura multi-istanza non fatta
+## §9 MUSIC — architettura multi-istanza fatta, comandi ridotti (deliberatamente)
 
-**Nota di stato**: costruito un player base e funzionante (`cogs/
-music/player.py`, via wavelink + Lavalink) — play/skip/stop/pause/
-resume/queue/volume/disconnect, avanzamento automatico della coda.
-NON costruita l'architettura multi-istanza (§9.1/9.2/9.3 — vedi nota
-più precisa sotto sul perché serve davvero, non solo "5 bot per
-capacità": il bot principale deve trasmettere 24/7 dalla playlist
-personale dell'utente, le 5 istanze separate sono i music bot che i
-membri richiamano con i comandi normali, per permettere sessioni
-musicali simultanee in canali diversi). Le voci sotto usano il
-marcatore parziale dove è stato costruito qualcosa di reale ma non
-tutto quanto richiesto, invece del marcatore "tutto fatto".
+**Nota di stato**: costruita l'architettura multi-istanza (bot
+principale + 5 worker nello stesso processo, instradamento
+automatico) e un set di comandi RIDOTTO rispetto allo schema
+originale — deliberatamente, su richiesta esplicita dell'utente:
+"non voglio filtri audio, non voglio appesantire il bot per niente,
+tanto la gente ormai raramente li usa" — niente search/forceskip/
+remove/clear/shuffle/move/nowplaying-con-barra/loop-track/seek/
+lyrics/filtri/DJ-role/voteskip, solo i comandi che la gente usa
+davvero: play, skip, stop, pause, resume, queue, volume (con
+up/down oltre a impostare un valore), disconnect, nonstop.
 
-- `[ ]` 9.1 Multi-VoiceClient manager (5 applicazioni separate)
-- `[ ]` 9.2 Assegnazione istanza libera per canale (tabella
-  `music_sessions`, logica "se bot1 occupato → bot2")
-- `[ ]` 9.3 Coda indipendente per canale vocale
+- `[x]` 9.1 Multi-VoiceClient manager (5 applicazioni separate) —
+  `core/music_worker_bot.py`, 5 istanze nello stesso processo
+  (non 5 processi separati — vedi PROGRESS.md per il perché)
+- `[x]` 9.2 Assegnazione istanza libera per canale (tabella
+  `music_sessions`, logica "se bot1 occupato → bot2") —
+  `core/music_fleet.py` + `core/repositories/music_session_repo.py`
+- `[x]` 9.3 Coda indipendente per canale vocale — ogni `wavelink.
+  Player` (uno per worker/server) ha la propria coda, indipendente
+  dalle altre per costruzione
 - `[~]` 9.4 Comandi: play, search, skip, forceskip, stop, pause,
   resume, queue, remove, clear, shuffle, move, nowplaying (con barra
   di progresso), loop track, loop queue, volume, seek, lyrics —
-  **fatti**: play, skip, stop, pause, resume, queue, volume,
-  disconnect. **Mancano**: search (distinto da play), forceskip,
-  remove, clear, shuffle, move, nowplaying con barra di progresso,
-  loop track/queue, seek, lyrics
+  **fatti**: play, skip, stop, pause, resume, queue, volume (set/up/
+  down), disconnect. **Deliberatamente NON fatti** (richiesta
+  esplicita, comandi usati raramente): search distinto da play,
+  forceskip, remove, clear, shuffle, move, nowplaying con barra,
+  loop track/queue singolo (il loop coda intera esiste via
+  /nonstop), seek, lyrics
 - `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — YouTube funziona via la ricerca di
   default di Lavalink; Spotify richiederebbe un plugin (LavaSrc) sul
   nodo Lavalink usato, non verificabile se presente su un nodo
   pubblico di terzi senza controllarlo direttamente
-- `[ ]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D)
-- `[ ]` 9.7 DJ role
-- `[ ]` 9.8 Voteskip
-- `[ ]` 9.9 Auto-leave a canale vuoto
-- `[ ]` 9.10 Modalità 24/7 con cap istanze concorrenti
-- `[ ]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder condiviso)
-- `[ ]` 9.12 Backend Lavalink
+- `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
+  scartato su richiesta esplicita dell'utente, non un limite tecnico
+- `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6
+- `[✗]` 9.8 Voteskip — scartato, stesso motivo di 9.6
+- `[ ]` 9.9 Auto-leave a canale vuoto — wavelink ha già un
+  meccanismo di rilevamento canale inattivo che dispatcha un evento
+  (`wavelink_inactive_player`) di default, ma nessun listener lo
+  gestisce ancora per disconnettere e rilasciare il worker nella
+  flotta — da collegare
+- `[~]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
+  on|off` (loop continuo sulla coda del worker attivo) fatto; il cap
+  a 5 istanze concorrenti esiste implicitamente (TOTAL_WORKERS), ma
+  non è un limite configurabile a parte
+- `[~]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
+  condiviso) — `/nonstop-main start|stop` fatto per UN server alla
+  volta (il bot principale entra in un solo canale vocale); "singolo
+  decoder condiviso" per trasmettere la STESSA playlist a PIÙ server
+  contemporaneamente non è stato costruito — da chiarire con
+  l'utente se serve davvero
+- `[x]` 9.12 Backend Lavalink — l'intero cog si basa su Lavalink via
+  wavelink, nodi pubblici in cascata + nodo locale (vedi PROGRESS.md)
 
 ## §10 ALERTS & SOCIAL — parzialmente fatta
 
@@ -628,7 +648,7 @@ rilancia lo stesso conteggio.
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
-| §9 Music | 0 | 2 | 10 |
+| §9 Music | 4 | 4 | 1 |
 | §10 Alerts | 3 | 1 | 4 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
@@ -638,10 +658,17 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **115** | **3** | **150** |
+| **Totale** | **119** | **5** | **141** |
 
-Su 268 voci totali: **115 fatte, 3 parziali, 150 mancanti** — circa
-il 43% dello schema (contando i parziali a metà peso). Correzione
+Su 265 voci totali (268 meno 3 appena marcate scartate — §9.6/9.7/
+9.8, filtri audio/DJ role/voteskip, rifiutate su richiesta esplicita
+dell'utente, non un limite tecnico, come Instagram e Howgay prima):
+**119 fatte, 5 parziali, 141 mancanti** — circa il 45% dello schema
+(contando i parziali a metà peso). §9 Music ora ha un'architettura
+multi-istanza reale (4 voci fatte: manager multi-bot, assegnazione
+worker libero, code indipendenti, backend Lavalink) più 4 parziali
+(comandi ridotti deliberatamente, sorgenti, loop 24/7 sul worker,
+streaming 24/7 del bot principale). Correzione
 del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
 come completamente fatti quando in realtà erano solo iniziati.
