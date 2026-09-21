@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-20 23:19 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 03:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 114 comandi in 8 categorie.**
+**Totale: 115 comandi in 8 categorie.**
 
 ## AutoMod
 
@@ -124,6 +124,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-20 23:
 - **`/schedule-message cancel`** — [Admin] Annulla un messaggio programmato.
 - **`/schedule-message list`** — [Admin] Mostra i messaggi programmati di questo server.
 - **`/schedule-message set`** — [Admin] Programma un messaggio.
+- **`/search`** — Cerca un comando per descrizione.
 - **`/serverstats`** — Mostra le statistiche del server, con grafico di crescita.
 - **`/setup`** — [Admin] Attiva o disattiva i moduli del bot su questo server.
 - **`/sticky remove`** — [Admin] Rimuove lo sticky message di un canale.

@@ -29,21 +29,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-
-def _walk_commands(command_list, prefix: str = ""):
-    """
-    Cammina ricorsivamente l'albero comandi: un app_commands.Group
-    (es. /owner, /reminder, /sticky) contiene sottocomandi che
-    bot.tree.get_commands() da solo non espande.
-    """
-    risultati = []
-    for cmd in command_list:
-        nome_completo = f"{prefix}{cmd.name}" if not prefix else f"{prefix} {cmd.name}"
-        if isinstance(cmd, app_commands.Group):
-            risultati.extend(_walk_commands(cmd.commands, prefix=nome_completo))
-        else:
-            risultati.append((nome_completo, cmd.description or "(nessuna descrizione)"))
-    return risultati
+from core.command_tree_utils import walk_commands
 
 
 async def main() -> None:
@@ -83,7 +69,7 @@ async def main() -> None:
         # per i gruppi), non al modulo che lo ha CARICATO per ultimo.
         for cmd in comandi_top_level:
             if isinstance(cmd, app_commands.Group):
-                sotto = _walk_commands(cmd.commands, prefix=cmd.name)
+                sotto = walk_commands(cmd.commands, prefix=cmd.name)
                 riferimento = cmd.commands[0] if cmd.commands else None
             else:
                 sotto = [(cmd.name, cmd.description or "(nessuna descrizione)")]
