@@ -112,6 +112,14 @@ class Config:
     LAVALINK_HOST: str
     LAVALINK_PORT: int
     LAVALINK_PASSWORD: str
+    # Nodi pubblici multipli in fallback (SPEC.md §9), invece di
+    # self-hostare Lavalink sulla stessa VM del bot (peserebbe
+    # centinaia di MB extra — vedi PROGRESS.md, decisione presa con
+    # l'utente). Formato: "uri1|password1,uri2|password2,...", vuoto
+    # di default — se vuoto, il cog Music usa i tre campi sopra
+    # (LAVALINK_HOST/PORT/PASSWORD, comportamento originale invariato
+    # per chi preferisce comunque self-hostare un singolo nodo).
+    LAVALINK_NODES: str = field(default="")
 
     # --- Memory Guard --------------------------------------------------
     # Soglia oltre la quale il Memory Guard forza una garbage
@@ -167,6 +175,7 @@ def _load_config() -> Config:
         LAVALINK_HOST=_optional("LAVALINK_HOST", "127.0.0.1"),
         LAVALINK_PORT=_optional_int("LAVALINK_PORT", 2333),
         LAVALINK_PASSWORD=_optional("LAVALINK_PASSWORD", ""),
+        LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),
