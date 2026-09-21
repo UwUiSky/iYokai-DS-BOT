@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 03:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 03:09 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 115 comandi in 8 categorie.**
+**Totale: 117 comandi in 9 categorie.**
 
 ## AutoMod
 
@@ -18,6 +18,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 03:
 - **`/escalation set-reset-days`** — [Admin] Giorni di buona condotta per azzerare il conteggio.
 - **`/escalation set-step`** — [Admin] Configura l'azione per un livello della scala.
 - **`/escalation status`** — Mostra la scala di escalation configurata.
+
+## Fun
+
+- **`/rate`** — Valuta qualcosa da 0 a 10.
+- **`/ship`** — Calcola la compatibilità tra due utenti.
 
 ## Leveling
 
