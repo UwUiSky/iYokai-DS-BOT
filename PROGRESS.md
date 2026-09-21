@@ -990,6 +990,56 @@ reale.
 
 **Suite di test completa: 740/740 passano.**
 
+### Fase 32 — COMMAND_LIST.md + /search (richiesta diretta dell'utente, fuori dallo schema originale)
+L'utente ha chiesto un documento con tutti i comandi esistenti,
+indicizzato per categoria, e un comando `/search <descrizione>` che
+ci rimandi al comando giusto o, se non trova nulla, proponga di
+aprire una richiesta verso lo sviluppatore (riusando il modal già
+esistente di Custom Commands request, non uno nuovo).
+
+**`COMMAND_LIST.md` non è scritto a mano**: `scripts/generate_command_
+list.py` carica ogni cog reale e interroga `bot.tree` DOPO il
+caricamento — il documento non può disallinearsi dal codice perché
+non lo copia, lo LEGGE dal bot vero. **Bug trovato e corretto**: lo
+script inizialmente creava una `Database()` separata invece di usare
+il singleton globale `db` — 3 cog (custom_command_requests,
+role_menus, suggestions) interrogano il DB nel proprio `setup()` per
+ricostruire le View persistenti e fallivano il caricamento.
+
+`core/command_search_logic.py`: punteggio per sovrapposizione di
+parole (nessuna infrastruttura NLP/embedding nel progetto). **Due
+correzioni trovate scrivendo test con query realistiche**: forme
+verbali italiane diverse della stessa radice ("bannare" vs "banna")
+non condividevano token esatti — aggiunto un confronto per prefisso
+condiviso; parole di riempimento italiane ("voglio", "qualcuno")
+diluivano il punteggio dividendo per un totale gonfiato da rumore —
+aggiunto un filtro di stopword.
+
+`core/command_tree_utils.py`: `walk_commands()` estratta in un
+modulo condiviso tra lo script di generazione e il nuovo cog
+`/search` — un solo posto che sa espandere i `Group` annidati.
+
+`cogs/utility/command_search.py`: `/search` interroga `bot.tree` DAL
+VIVO (non il markdown, che potrebbe non essere ancora rigenerato).
+Nessun risultato → bottoni Sì/No; Sì apre `CustomCommandRequestModal`
+GIÀ ESISTENTE (nessun modal nuovo), No annulla.
+
+**26 nuovi test totali** tra i quattro file, tutti su comportamento
+reale — incluso il collegamento vero al modal esistente (non solo
+che viene istanziato, ma che il flusso completo dal bottone al modal
+funziona quando il cog delle richieste è caricato, e non solleva
+quando non lo è).
+
+**REGOLA OPERATIVA PERMANENTE, da qui in avanti**: dopo ogni commit
+che aggiunge, rimuove o rinomina un comando slash, rilanciare
+`scripts/generate_command_list.py` (vedi il suo stesso docstring per
+le variabili d'ambiente necessarie) e committare/pushare il
+`COMMAND_LIST.md` aggiornato nello stesso giro — mai lasciarlo
+disallineato dal codice reale. L'utente lo userà anche come base per
+un futuro sito.
+
+**Suite di test completa: 762/762 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1312,29 +1362,38 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§17 Owner è COMPLETO (10/10).** §14 Utility è a 13/18 (resta solo
-ciò che richiede il Message Content Intent, deliberatamente non
-toccato). Nessuna sezione parzialmente iniziata è rimasta a metà.
+**⚠️ REGOLA PERMANENTE aggiunta in questa sessione, da non dimenticare
+mai da qui in avanti**: dopo ogni commit che aggiunge, rimuove o
+rinomina un comando slash, rilanciare `scripts/generate_command_
+list.py` e committare/pushare il `COMMAND_LIST.md` rigenerato nello
+stesso giro di lavoro — richiesta esplicita dell'utente, che lo userà
+anche come base per un futuro sito. Non aspettare la fine della
+sessione per farlo.
+
+§17 Owner è COMPLETO (10/10). §14 Utility è a 13/18 (resta solo ciò
+che richiede il Message Content Intent). Nessuna sezione parzialmente
+iniziata è rimasta a metà.
 
 Sezioni ancora completamente a zero, buoni candidati per un prossimo
 giro, in ordine di dimensione: §16 Fun & Immagini (15 voci), §11
 Backup (13 voci), §9 Music (12 voci), §10 Alerts & Social (8 voci).
-§15 Levels/Gilde/Classifiche è parzialmente fatta (6/25) con molto
-ancora da costruire nella stessa area già aperta.
+§15 Levels/Gilde/Classifiche è parzialmente fatta (6/25).
 
 Nessuna priorità imposta in modo vincolante — la decisione resta
 dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
 `SPEC.md`, non un riassunto. E qualunque proposta esterna futura
 passa da `BACKLOG.md` prima di toccare `SPEC.md`.
 
-Promemoria acquisiti in questa sessione, validi per qualunque lavoro
-futuro:
+Promemoria tecnici acquisiti, validi per lavoro futuro:
 - Verificare collisioni con hook riservati di discord.py
   (`hasattr(commands.Cog, nome)`) prima di nominare un metodo di cog
 - Verificare idempotenza di qualunque `register()`/simile chiamato da
   `setup()`, per non rompere `/owner cog-reload`
 - Per contatori/strutture che accumulano nel tempo, non presumere un
   ordine di inserimento che potrebbe non valere in ogni caso d'uso
+- Per punteggi di ricerca testuale in italiano, considerare stemming
+  leggero (prefisso condiviso) e stopword — le forme verbali
+  coniugate non condividono token esatti con l'infinito/imperativo
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro
