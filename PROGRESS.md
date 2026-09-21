@@ -1370,6 +1370,75 @@ solo.
 
 **Suite di test completa: 896/896 passano.**
 
+### Fase 39 — Radio condivisa /nonstop-main, chiude SPEC.md §9.11
+
+L'utente ha chiarito in dettaglio cosa intendeva con "singolo
+decoder condiviso": una radio VERAMENTE condivisa tra server — non
+riproduzioni indipendenti per server, un solo stato di riproduzione
+che ogni server legge. Sorgenti: le sue pubblicazioni su piattaforme
+più una cartella locale per gli inediti (di cui detiene i diritti),
+interlacciate nell'ordine dell'album. Una volta avviata resta attiva
+finché non fermata, e un server che si aggancia entra esattamente
+nel punto in cui sono già gli altri, non riparte da capo.
+
+Prima di progettare: verificato con una ricerca che Lavalink supporta
+file locali nativamente (`local:` come sorgente), MA solo se è il
+nodo Lavalink stesso ad avere accesso al filesystem — i nodi
+pubblici non possono mai leggere una cartella sulla VM dell'utente.
+Questo ha determinato il design: i file locali vanno instradati
+SPECIFICAMENTE verso il nodo locale/self-hostato.
+
+- `core/main_radio_logic.py`: `compute_current_position()` — l'idea
+  centrale è un "orologio" che avanza col tempo reale trascorso,
+  indipendentemente da quanti server sono collegati in un dato
+  momento, come una vera stazione radio che trasmette anche se
+  nessuno ascolta. Attraversa in avanti le tracce (con loop sulla
+  playlist) finché il tempo trascorso dal riferimento non è
+  "consumato" dalla durata delle tracce percorse — un server che si
+  aggancia dopo ore calcola subito la traccia e la posizione giuste,
+  anche attraversando più tracce. Casi limite gestiti: orologio nel
+  futuro, durata zero (limite di sicurezza sul numero di giri).
+  **12 test**, incluso il caso di attraversamento multiplo con loop
+- `core/repositories/main_radio_repo.py`: `main_radio_tracks`
+  (playlist ordinata, curata dall'utente) + `main_radio_state` (riga
+  SINGOLA — la radio è una sola, condivisa). **7 test** contro
+  PostgreSQL reale
+- `cogs/music/player.py` riscritto: `/nonstop-main add-track|
+  add-local|remove-track|list-tracks|start|stop`. `start()` legge lo
+  stato condiviso (o lo crea, se primo avvio in assoluto), calcola
+  dove dovrebbe essere la riproduzione ORA, risolve quella traccia e
+  joina seekando esattamente lì (`player.play(track, start=
+  elapsed_ms)` — verificato che wavelink lo supporta prima di
+  progettare tutto questo). Costruisce la coda col resto della
+  playlist in rotazione con loop. `add-local` instrada
+  specificamente verso `LOCAL_NODE_IDENTIFIER` (identificatore fisso
+  assegnato al nodo locale in `_build_lavalink_nodes`). `stop()` NON
+  tocca lo stato condiviso — la radio continua a "trasmettere"
+  concettualmente anche se un server esce, come una vera radio non
+  si ferma solo perché un ascoltatore la spegne
+- `core/config.py`: `MAIN_RADIO_LOCAL_FOLDER` opzionale
+
+**8 nuovi test** sul comportamento reale, contro PostgreSQL vero,
+con player finti (connessione Lavalink/voce vera impossibile in
+questo ambiente). Il più importante: un SECONDO server che si
+aggancia 90 secondi dopo l'inizio riceve la posizione calcolata
+correttamente (~90000ms dentro la prima traccia), non riparte da
+zero — verifica end-to-end del comportamento centrale richiesto.
+
+**Bug di test trovato**: `discord.Member.id` è una property di sola
+lettura (stesso problema già visto con `.voice`) — risolto
+sovrascrivendola nella sottoclasse finta invece di assegnarla
+direttamente.
+
+**SPEC.md**: §9.11 marcata fatta, con spiegazione di come "condiviso"
+è stato ottenuto (orologio logico, non un decode fisicamente
+multicast — impossibile con l'architettura Lavalink, ma stesso
+risultato percepito dall'ascoltatore). §9.5 aggiornata: file locali
+ora genuinamente fatti. Tabella ricalcolata: 122 fatte, 4 parziali,
+138 mancanti su 264 — circa il 46%.
+
+**Suite di test completa: 923/923 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1692,35 +1761,23 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Twitch/TikTok/Instagram/X sono tutti chiusi** (Twitch fatto e
-testato con credenziali fittizie, gli altri tre confermati come
-vincoli tecnici accettati dall'utente, non lavoro rimandato).
+**La radio condivisa /nonstop-main è completa e testata** (nei
+limiti di quello che questo sandbox può verificare — nessuna
+connessione Lavalink/voce reale possibile, vedi limite d'ambiente
+sotto). Da verificare dal vivo una volta che l'utente:
+1. Avvia un nodo Lavalink locale (necessario per gli inediti,
+   `MAIN_RADIO_LOCAL_FOLDER` + `LAVALINK_HOST/PORT/PASSWORD`)
+2. Popola la playlist con `/nonstop-main add-track` (pubblicazioni)
+   e `/nonstop-main add-local` (inediti, interlacciati come vuole)
+3. Testa `/nonstop-main start` su più server per verificare che
+   davvero si sincronizzino sullo stesso punto
 
-**Il pezzo più grande ancora aperto: la radio condivisa
-`/nonstop-main` (SPEC.md §9.11)**, chiarita dall'utente in dettaglio
-ma NON ancora costruita — riprogettazione vera, non un fix:
-- Sorgenti: le pubblicazioni dell'utente sulle piattaforme dove ha
-  già pubblicato canzoni ("repo pubbliche") + una cartella sul
-  server per gli inediti di cui detiene i diritti, interlacciate
-  nell'ordine dell'album
-- **Radio condivisa, non indipendente per server**: un solo stato di
-  riproduzione (traccia attuale + posizione), letto da OGNI server
-  che ha /nonstop-main attivo — un server che si aggancia entra
-  ESATTAMENTE nello stesso punto di uno già in ascolto, non riparte
-  da capo. Serve un meccanismo di stato condiviso (tabella con
-  traccia attuale + timestamp di inizio), e ogni player calcola
-  quanto seekare (`player.play(track, start=elapsed_ms)`, già
-  verificato che wavelink lo supporta) quando si unisce
-- Motivazione dell'utente: non vuole gonfiare troppo gli ascolti
-  Spotify/altrove, ma "vedi te, fai quello che ritieni opportuno" —
-  gli piacerebbe comunque avere qualche ascolto in più, quindi
-  decisione lasciata parzialmente a discrezione nostra
-- Design NON ancora scelto nei dettagli: come recuperare "tutte le
-  pubblicazioni dell'utente" da una piattaforma (serve sapere quali
-  canali/profili, o una lista curata manualmente?), come funziona
-  concretamente l'upload nella cartella server (SCP? un comando bot
-  con allegato?) — da chiarire prima di scrivere codice, o da
-  progettare con un default ragionevole e documentarlo chiaramente
+**§9 Music è ora la sezione più completa del progetto dopo §17
+Owner** — resta solo l'auto-leave su canale vuoto (§9.9, l'evento
+esiste già in wavelink, manca il listener che agisce) come pezzo
+piccolo non chiuso, più le voci deliberatamente scartate (filtri,
+DJ role, voteskip) o parziali per scelta (comandi ridotti, sorgenti
+limitate dal nodo pubblico usato).
 
 **§11 Backup System resta l'unica sezione ancora completamente a
 zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
@@ -1731,17 +1788,21 @@ zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
    nello stesso giro.
 2. Marcare `SPEC.md` SUBITO dopo il commit del codice, nello stesso
    giro. Usare il marcatore parziale (`~`) quando è vero. Un rifiuto
-   esplicito dell'utente (non un limite tecnico) va marcato SCARTATO
-   (✗), non lasciato vuoto — si esclude dal conteggio totale.
+   esplicito dell'utente va marcato SCARTATO (✗), non lasciato vuoto.
    Ricalcolare SEMPRE con lo script meccanico, mai a mente, e MAI
    scrivere il pattern letterale di un marcatore dentro un testo di
-   prosa esplicativa (falso positivo nel conteggio).
-3. Quando due tabelle diverse (es. feed_subscriptions e twitch_
-   subscriptions) usano ID SERIAL indipendenti ma vengono mostrate/
-   gestite insieme all'utente, usare prefissi distinti nell'ID
-   visibile — altrimenti un comando di rimozione diventa ambiguo su
-   quale riga toccare (bug reale trovato e corretto in questa
-   sessione).
+   prosa esplicativa. Quando una voce passa da parziale a fatta,
+   controllare che il testo esplicativo altrove nel documento non
+   la elenchi ancora tra le parziali (successo in questa sessione:
+   "streaming 24/7 del bot principale" rimasto per errore nell'elenco
+   delle parziali dopo che 9.11 era già passata a fatta).
+3. Quando due tabelle diverse usano ID SERIAL indipendenti ma
+   vengono mostrate/gestite insieme all'utente, usare prefissi
+   distinti nell'ID visibile.
+4. Prima di progettare una feature che tocca file locali o risorse
+   di sistema specifiche di UNA macchina, verificare con una ricerca
+   se l'infrastruttura usata (qui: nodi Lavalink pubblici condivisi)
+   ha effettivamente accesso a quella risorsa — non presumerlo.
 
 Promemoria tecnici aggiuntivi:
 - Verificare collisioni con hook riservati di discord.py prima di
@@ -1755,14 +1816,18 @@ Promemoria tecnici aggiuntivi:
   stesso evento, verificare nel sorgente della libreria se esiste
   già un meccanismo interno che lo gestisce indipendentemente dal
   client Discord
+- Su una property di sola lettura di una classe discord.py (es.
+  `Member.voice`, `Member.id`), un fake che eredita dalla classe vera
+  deve SOVRASCRIVERE la property con una propria, non assegnare
+  l'attributo direttamente nel costruttore (fallisce: "property has
+  no setter") — successo due volte in questa sessione
 
 **Limite d'ambiente da ricordare**: la rete del sandbox di sviluppo è
 ristretta a un elenco fisso di domini (PyPI, npm, GitHub) — non
 raggiunge Discord/Twitch/Lavalink nemmeno con credenziali vere. Ogni
 test di integrazione con questi servizi resta simulato (server
-locali finti che imitano la forma reale delle API); la verifica dal
-vivo tocca all'utente, che riporta log/errori specifici quando li
-trova.
+locali finti che imitano la forma reale delle API, o oggetti finti
+per player/voce); la verifica dal vivo tocca all'utente.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
