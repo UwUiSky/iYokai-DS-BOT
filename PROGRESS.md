@@ -1040,6 +1040,58 @@ un futuro sito.
 
 **Suite di test completa: 762/762 passano.**
 
+### Fase 33 — Ship e Rate (SPEC.md §16.5/16.7), primo pezzo di §16 Fun & Immagini
+`core/fun_logic.py`: deterministico via hash SHA-256, non random ad
+ogni chiamata — stessa coppia di utenti o stesso testo devono dare
+sempre lo stesso risultato. `compute_ship_percentage()` simmetrico
+(ordina gli ID prima dell'hash). Nuova cartella `cogs/fun/`, prima
+voce mai fatta della sezione. **Deliberatamente esclusi**: NSFW/
+Rule34 (app separata secondo lo schema), "Howgay" (troppo vicino a
+un attributo protetto per un giochino casuale). 21 nuovi test totali
+(15 logica pura + 6 comportamento reale, incluso un test di
+simmetria vera del comando, non solo della funzione isolata).
+
+**Suite di test completa: 783/783 passano.**
+
+### Fase 34 — Alert & Social (SPEC.md §10), quattro voci su otto
+**Decisione tecnica per l'intera sezione**: lo schema chiedeva
+EventSub (Twitch) e PubSubHubbub (YouTube), entrambi webhook PUSH —
+richiedono un endpoint HTTPS pubblico che questo bot non ha (nessun
+server web, verificato prima di scrivere codice). Sostituito con
+POLLING (stesso principio di Memory Guard/Event Log Retention) su
+feed RSS/Atom NATIVI di YouTube e Reddit — zero chiavi API.
+
+- `core/feed_parsing_logic.py`: `parse_feed()` analizza RSS 2.0 e
+  Atom, `find_new_entries()` (primo controllo mai fatto → sempre
+  lista vuota, altrimenti pubblicherebbe l'intero storico in un
+  colpo solo), `render_alert_message()` per template personalizzabili
+  (§10.9). **14 test**, fixture XML fedeli allo standard pubblicato
+  (non recuperabili dal vivo — rete del sandbox limitata)
+- `core/repositories/feed_subscription_repo.py`: una riga per feed
+  sottoscritto, `remove_subscription()` scoperto per server. **7 test**
+- `core/feed_watcher.py`: servizio di polling ogni 5 minuti, stesso
+  pattern architetturale di `event_log_retention.py`. **4 test con
+  un server aiohttp VERO in locale**, non un mock della sessione HTTP
+- `cogs/utility/feed_alerts.py`: `/alerts add|remove|list`. **5 test**
+  sul comportamento reale, incluso il ciclo completo add→list→remove
+  contro PostgreSQL vero
+
+**Chiuso**: §10.3 (YouTube), §10.7 (Reddit), §10.8 (RSS generico),
+§10.9 (template). **Aperto in attesa di credenziali dell'utente**:
+§10.1/§10.2 (Twitch — serve un Client ID/Secret gratuito da
+dev.twitch.tv). **Resta non fatto per lo stesso motivo già nello
+schema**: §10.5 TikTok (nessuna API ufficiale). §10.4 YouTube live
+rimandato (RSS non indica lo stato live in modo affidabile).
+
+**Bug di documentazione trovato e corretto in questa stessa
+sessione**: sia §16.5/§16.7 (Ship/Rate, Fase 33) sia il codice di
+questa fase erano stati costruiti e pushati ma MAI marcati in
+`SPEC.md` — notato solo ricalcolando i totali con lo script
+meccanico (mostrava x=0 per una sezione che sapevo avere codice
+funzionante). Corretto per entrambe insieme in questo aggiornamento.
+
+**Suite di test completa: 813/813 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1362,38 +1414,46 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**⚠️ REGOLA PERMANENTE aggiunta in questa sessione, da non dimenticare
-mai da qui in avanti**: dopo ogni commit che aggiunge, rimuove o
+**Prossimo lavoro in corso: Music (SPEC.md §9), su richiesta esplicita
+dell'utente subito dopo Alert & Social.** Decisione presa con
+l'utente: `wavelink` (già in requirements.txt) resta la scelta
+giusta nel 2026 — nessuna alternativa architetturale migliore è
+emersa. Novità utile trovata con una ricerca: esistono NODI LAVALINK
+PUBBLICI GRATUITI mantenuti dalla community (es. lista di
+`lavalink.darrennathanael.com`) — evitano di ospitare un processo
+Java separato sulla VM (che peserebbe extra su 2 OCPU/12GB), a costo
+di nessuna garanzia di uptime. Raccomandazione da confermare con
+l'utente prima di scrivere codice: connettersi a più nodi pubblici
+con fallback, non self-hostare Lavalink sulla stessa VM del bot.
+
+**§10 Alert & Social resta aperto per Twitch (10.1/10.2)**: serve un
+Client ID/Secret Twitch, gratuito da registrare su dev.twitch.tv ma
+richiede l'azione dell'utente (non qualcosa che si può decidere da
+soli). Da fare via polling (Twitch Helix "Get Streams"), stesso
+principio già usato per YouTube/Reddit, quando le credenziali
+arriveranno.
+
+⚠️ **REGOLA PERMANENTE**: dopo ogni commit che aggiunge, rimuove o
 rinomina un comando slash, rilanciare `scripts/generate_command_
 list.py` e committare/pushare il `COMMAND_LIST.md` rigenerato nello
-stesso giro di lavoro — richiesta esplicita dell'utente, che lo userà
-anche come base per un futuro sito. Non aspettare la fine della
-sessione per farlo.
+stesso giro di lavoro.
 
-§17 Owner è COMPLETO (10/10). §14 Utility è a 13/18 (resta solo ciò
-che richiede il Message Content Intent). Nessuna sezione parzialmente
-iniziata è rimasta a metà.
+⚠️ **SECONDA REGOLA aggiunta in questa sessione, dopo aver trovato
+DUE feature committate ma mai marcate in SPEC.md** (Ship/Rate e
+questa stessa fase Alert & Social): quando si marca una voce `[x]`
+in SPEC.md, farlo SUBITO dopo il commit del codice, nello stesso
+giro — non rimandarlo "alla prossima fase di documentazione". Se
+capita di accorgersene tardi, ricalcolare SEMPRE con lo script
+meccanico (non a mente) prima di aggiornare la tabella riassuntiva.
 
-Sezioni ancora completamente a zero, buoni candidati per un prossimo
-giro, in ordine di dimensione: §16 Fun & Immagini (15 voci), §11
-Backup (13 voci), §9 Music (12 voci), §10 Alerts & Social (8 voci).
-§15 Levels/Gilde/Classifiche è parzialmente fatta (6/25).
+§9 Music e §11 Backup restano le uniche sezioni ancora
+completamente a zero. §15 Levels/Gilde/Classifiche parzialmente
+fatta (6/25).
 
-Nessuna priorità imposta in modo vincolante — la decisione resta
-dell'utente. Ricordarsi SEMPRE, prima di scrivere codice: leggere
-`SPEC.md`, non un riassunto. E qualunque proposta esterna futura
-passa da `BACKLOG.md` prima di toccare `SPEC.md`.
-
-Promemoria tecnici acquisiti, validi per lavoro futuro:
-- Verificare collisioni con hook riservati di discord.py
-  (`hasattr(commands.Cog, nome)`) prima di nominare un metodo di cog
-- Verificare idempotenza di qualunque `register()`/simile chiamato da
-  `setup()`, per non rompere `/owner cog-reload`
-- Per contatori/strutture che accumulano nel tempo, non presumere un
-  ordine di inserimento che potrebbe non valere in ogni caso d'uso
-- Per punteggi di ricerca testuale in italiano, considerare stemming
-  leggero (prefisso condiviso) e stopword — le forme verbali
-  coniugate non condividono token esatti con l'infinito/imperativo
+Nessuna priorità imposta in modo vincolante oltre quanto sopra — la
+decisione resta dell'utente. Ricordarsi SEMPRE, prima di scrivere
+codice: leggere `SPEC.md`, non un riassunto. E qualunque proposta
+esterna futura passa da `BACKLOG.md` prima di toccare `SPEC.md`.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro

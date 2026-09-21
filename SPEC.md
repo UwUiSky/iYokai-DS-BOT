@@ -319,18 +319,40 @@ file, non da un riassunto.**
 - `[ ]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder condiviso)
 - `[ ]` 9.12 Backend Lavalink
 
-## §10 ALERTS & SOCIAL — **INTERA SEZIONE MANCANTE**
+## §10 ALERTS & SOCIAL — parzialmente fatta
 
-- `[ ]` 10.1 Twitch live (EventSub webhook)
-- `[ ]` 10.2 Twitch offline
-- `[ ]` 10.3 YouTube nuovo video (PubSubHubbub)
-- `[ ]` 10.4 YouTube live
-- `[ ]` 10.5 TikTok nuovi video (nessuna API ufficiale — scraping fragile)
+- `[ ]` 10.1 Twitch live (EventSub webhook) — **bloccato in attesa di
+  credenziali**: serve un Client ID/Secret Twitch (gratuito da
+  registrare su dev.twitch.tv, richiede l'account dell'utente).
+  Da fare via polling (Twitch Helix "Get Streams"), non webhook —
+  vedi nota tecnica sotto
+- `[ ]` 10.2 Twitch offline — stesso blocco di 10.1
+- `[x]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
+  (`youtube.com/feeds/videos.xml?channel_id=...`), nessuna chiave API
+- `[ ]` 10.4 YouTube live — non affidabile via RSS (non indica lo
+  stato live), richiederebbe la YouTube Data API con quota a
+  consumo. Rimandato
+- `[ ]` 10.5 TikTok nuovi video (nessuna API ufficiale — scraping
+  fragile) — resta non fatto, stesso motivo già scritto nello schema
 - `[✗]` 10.6 Instagram — nessuna API permette di monitorare account
   di terzi. Scartato, vedi audit di fattibilità
-- `[ ]` 10.7 Reddit
-- `[ ]` 10.8 Custom RSS / webhook
-- `[ ]` 10.9 Messaggi personalizzabili per ogni alert
+- `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
+  (`reddit.com/r/nome/new/.rss`), nessuna chiave API
+- `[x]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
+  add`, qualsiasi URL RSS/Atom); la parte "webhook" (ricezione push
+  da terzi) non è stata costruita, stesso motivo tecnico sotto
+- `[x]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
+  `{label}` `{title}` `{link}` nel template
+
+**Nota tecnica, vale per l'intera sezione**: lo schema originale
+chiedeva EventSub (Twitch) e PubSubHubbub (YouTube), entrambi webhook
+PUSH — richiedono un endpoint HTTPS pubblico raggiungibile da
+Twitch/Google, che questo bot non ha (nessun server web, solo un
+client Gateway Discord). Aggiungerlo significherebbe dominio,
+certificato TLS, apertura di una porta sulla VM — un cambio di
+infrastruttura, non solo di codice. Sostituito con **polling**
+periodico (ogni 5 minuti, `core/feed_watcher.py`), che raggiunge lo
+stesso risultato per l'utente finale senza cambiare il deployment.
 
 ## §11 BACKUP SYSTEM — **INTERA SEZIONE MANCANTE**
 
@@ -466,15 +488,18 @@ file, non da un riassunto.**
   - `[ ]` Comandi: crea, invita, espelli, promuovi, tesoreria,
     deposita, compra-canale, boost, info, classifica, sciogli
 
-## §16 FUN & IMMAGINI — **INTERA SEZIONE MANCANTE**
+## §16 FUN & IMMAGINI — parzialmente fatta
 
 - `[ ]` 16.1 Mini-giochi
 - `[ ]` 16.2 Image manipulation
 - `[ ]` 16.3 Comandi meme
 - `[ ]` 16.4 Comandi animal
-- `[ ]` 16.5 Ship
-- `[ ]` 16.6 Howgay
-- `[ ]` 16.7 Rate
+- `[x]` 16.5 Ship — percentuale deterministica via hash, non casuale
+  ad ogni chiamata
+- `[ ]` 16.6 Howgay — deliberatamente non fatto: troppo vicino a un
+  attributo protetto (l'orientamento sessuale) per un giochino
+  casuale, anche se comune in altri bot Discord
+- `[x]` 16.7 Rate — punteggio 0-10 deterministico via hash
 - `[ ]` 16.8 Altri comandi di intrattenimento classici
 - `[ ]` 16.9 Ricerca immagini SFW
 - `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
@@ -585,17 +610,18 @@ rilancia lo stesso conteggio.
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 0 | 0 | 12 |
-| §10 Alerts | 0 | 0 | 8 |
+| §10 Alerts | 4 | 0 | 4 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
 | §15 Levels/Gilde | 6 | 0 | 19 |
-| §16 Fun/NSFW | 0 | 0 | 15 |
+| §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **110** | **0** | **158** |
+| **Totale** | **116** | **0** | **152** |
 
-Su 268 voci totali: **110 fatte, 0 parziali, 158 mancanti** — circa
-il 41% dello schema. **§17 Owner è COMPLETO (10/10).**
+Su 268 voci totali: **116 fatte, 0 parziali, 152 mancanti** — circa
+il 43% dello schema. §10 Alerts a metà (4/8, Twitch in attesa di
+credenziali). §16 Fun a 2/15 (Ship, Rate).
 
