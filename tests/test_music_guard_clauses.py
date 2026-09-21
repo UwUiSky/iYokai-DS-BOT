@@ -232,3 +232,18 @@ async def test_volume_up_dentro_al_range_funziona_normalmente(monkeypatch):
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000015")
         await database.close()
+
+
+@pytest.mark.asyncio
+async def test_build_lavalink_nodes_pubblici_per_primi_locale_per_ultimo():
+    from cogs.music.player import _build_lavalink_nodes
+
+    nodi = _build_lavalink_nodes()
+
+    # 5 nodi pubblici di default + 1 nodo locale (LAVALINK_HOST/
+    # PORT/PASSWORD) sempre in coda, come richiesto: pubblici
+    # tentati per primi, il nodo locale/self-hostato SOLO come
+    # ultima risorsa se tutti i pubblici falliscono.
+    assert len(nodi) == 6
+    assert "heavencloud" in nodi[0].uri
+    assert "127.0.0.1" in nodi[-1].uri or "localhost" in nodi[-1].uri

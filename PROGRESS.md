@@ -1154,6 +1154,74 @@ pubblici e l'avviso di controllare che siano ancora attivi.
 
 **Suite di test completa: 836/836 passano.**
 
+### Fase 36 — Audit SPEC.md + correzioni richieste dall'utente
+L'utente ha notato correttamente che il marcatore parziale (`~`,
+definito nella legenda fin dall'inizio) non era MAI stato usato in
+tutto il documento, e ha chiesto un audit per trovare altre voci
+marcate come completamente fatte quando non lo erano.
+
+**Trovato e corretto**: §9.4, §9.5 (Music: comandi e sorgenti) e
+§10.8 (Custom RSS/webhook) erano marcate `[x]`/lasciate vuote con
+nota prosa quando in realtà erano parziali — usato il marcatore `~`
+per la prima volta, con il dettaglio esplicito di cosa manca in
+ciascuna.
+
+**Audit a campione** su §5 (7 azioni di moderazione), §6 (merge a
+tre vie delle badwords — confermato genuinamente a tre vie, non due:
+esistente in Discord, ultimo sync di iYokai, nuovo desiderato), §12
+(6 azioni di gestione canale vocale), §13 (6 sottocomandi ticket), §15
+(XP testuale+vocale, 4 comandi economy) — tutti confermati reali nel
+codice, nessun altro caso trovato nel campione controllato.
+
+**Bug di conteggio trovato DUE VOLTE nella stessa sessione, stesso
+schema esatto**: la nota di correzione stessa conteneva il pattern
+letterale del marcatore "tutto fatto" scritto in prosa esplicativa —
+lo script meccanico di conteggio non distingue una spunta vera da
+una menzione testuale dello stesso pattern. Notato entrambe le volte
+verificando che il totale tornasse a 268 invece di fidarmi a mente.
+
+Tabella ricalcolata: **115 fatte, 3 parziali (mai contate prima), 150
+mancanti su 268** — circa il 43%, la colonna Parziale esisteva dalla
+prima versione della tabella ma era sempre rimasta a zero.
+
+### Fase 36 (continua) — Fix volume Music, chiarimenti sulla portata reale
+**Volume**: corretto da 0-150 (numero inventato da me) a 0-200 (la
+scala reale di Discord). Aggiunti comandi rapidi `/volume up`/`/volume
+down` oltre a `/volume set <valore>` — l'utente ha specificato che
+sono i comandi musicali più usati davvero dalla gente, insieme a
+play/skip/stop. **Confermato esplicitamente: NESSUN filtro audio**
+(bassboost, nightcore, ecc.) — il bot non deve appesantirsi per una
+funzionalità usata raramente.
+
+**Chiarimento importante sull'architettura multi-istanza (§9.1/9.2/
+9.3), da tenere presente per quando ci si torna**: non è "5 bot per
+capacità" come avevo assunto — sono due cose DISTINTE:
+1. Il **bot principale** (`YOKAI_BOT_TOKEN`) deve trasmettere **24/7
+   in streaming dalla playlist PERSONALE dell'utente** (canzoni
+   proprie, create da lui) — una specie di modalità radio sempre
+   accesa, indipendente dai comandi normali
+2. Le **5 istanze separate** (`MUSIC_TOKENS`, già dichiarati in
+   config.py, mai usati) sono i music bot "normali" che i membri dei
+   server richiamano con i comandi standard (play/skip/ecc.) — 5
+   processi separati per permettere sessioni musicali simultanee in
+   canali diversi, dato che un singolo bot può stare in un solo
+   canale vocale per server alla volta
+
+**Chiarimento sulla portata reale di Alert & Social**: la richiesta
+originale dell'utente copriva Twitch, YouTube, TikTok, Instagram,
+Reddit, X/Twitter, PIÙ la possibilità di feed generici per notizie
+da un sito qualsiasi — non solo YouTube/Reddit/RSS generico come
+avevo interpretato. TikTok (già segnalato come "scraping fragile,
+nessuna API ufficiale" nello schema) e Instagram (già scartato ✗,
+nessuna API per account di terzi) restano vincoli tecnici REALI, non
+pigrizia — X/Twitter ha un'API a pagamento per la lettura (il tier
+gratuito non permette di leggere i post di terzi in modo utilizzabile
+per il monitoraggio) — da discutere con l'utente come procedere per
+queste tre piattaforme prima di costruire qualcosa di fragile o a
+pagamento senza il suo consenso esplicito.
+
+**Suite di test completa: 839/839 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1476,52 +1544,64 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Music (SPEC.md §9) ha un player base funzionante** (play/skip/
-stop/pause/resume/queue/volume/disconnect), da verificare dal vivo
-una volta distribuito (impossibile in questo sandbox: nessuna
-connessione Lavalink/voce Discord reale raggiungibile). Prima di
-usarlo in produzione, l'utente deve scegliere e configurare almeno
-un nodo Lavalink (pubblico, in `LAVALINK_NODES` — vedi `.env.example`
-per il formato e il link all'elenco) o il proprio self-hostato.
+**Due grandi pezzi di lavoro chiariti dall'utente, non ancora
+costruiti, da affrontare nella prossima sessione:**
 
-Resta molto della sezione originale non fatto, se l'utente vorrà
-tornarci: search/forceskip/remove/clear/shuffle/move/nowplaying con
-barra/loop/seek/lyrics (§9.4), Spotify (richiede verificare se il
-nodo scelto ha il plugin LavaSrc, §9.5), filtri audio (§9.6), DJ role
-(§9.7), voteskip (§9.8), auto-leave (§9.9), 24/7 (§9.10), e l'intera
-architettura multi-istanza (§9.1/9.2/9.3 — 5 MUSIC_TOKENS già
-dichiarati in config.py, mai usati finora).
+**1. Music multi-istanza** — ora che la portata reale è chiara:
+   - Modalità radio 24/7 sul bot principale, streaming dalla
+     playlist personale dell'utente (serve capire come l'utente
+     vuole fornire quei file/URL — playlist YouTube? file caricati?)
+   - 5 processi bot separati (MUSIC_TOKENS già in config.py) che
+     eseguono lo STESSO set di comandi già costruito
+     (play/skip/stop/pause/resume/queue/volume/disconnect), più un
+     meccanismo di assegnazione (tabella `music_sessions`: quale
+     istanza è libera per un dato canale/server)
+   - Nessun filtro audio — confermato esplicitamente non voluto
 
-**§10 Alert & Social resta aperto per Twitch (10.1/10.2)**: serve un
-Client ID/Secret Twitch, gratuito da registrare su dev.twitch.tv ma
-richiede l'azione dell'utente.
+**2. Alert & Social multi-piattaforma** — da DISCUTERE con l'utente
+   prima di costruire, dato che tre piattaforme hanno vincoli tecnici
+   reali:
+   - Twitch: pronto a fare non appena arrivano le credenziali
+     dell'utente (Client ID/Secret da dev.twitch.tv)
+   - TikTok: nessuna API ufficiale per monitorare creator di terzi,
+     solo scraping fragile — chiedere all'utente se vuole procedere
+     comunque sapendo il rischio, o lasciarlo scartato come Instagram
+   - Instagram: già scartato ✗ nello schema originale, vincolo reale
+     di Meta (nessuna API per account di terzi) — verificare con
+     l'utente se accetta questo limite o vuole comunque un tentativo
+     fragile
+   - X/Twitter: l'API di lettura è a pagamento nel tier utile — capire
+     se l'utente ha/vuole un abbonamento a pagamento prima di
+     costruire qualcosa che richiede un costo ricorrente
+   - Generico "notizie da un sito qualsiasi": la parte RSS è già
+     fatta (`/alerts add` con qualunque URL RSS/Atom); un sito SENZA
+     RSS richiederebbe un meccanismo diverso (fetch HTML + diff), da
+     valutare se serve davvero o se l'RSS generico già copre il
+     bisogno reale
 
 **§11 Backup System resta l'unica sezione ancora completamente a
 zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
 
-⚠️ **REGOLE PERMANENTI** (entrambe da questa sessione in avanti):
-1. Dopo ogni commit che aggiunge/rimuove/rinomina un comando slash,
-   rilanciare `scripts/generate_command_list.py` e committare/pushare
-   il `COMMAND_LIST.md` rigenerato nello stesso giro di lavoro.
-2. Marcare `SPEC.md` `[x]` SUBITO dopo il commit del codice, nello
-   stesso giro — non rimandarlo. Quando si ricalcola la tabella
-   riassuntiva, farlo SEMPRE con lo script meccanico (mai a mente),
-   e controllare che nessuna prosa nelle note contenga per sbaglio il
-   pattern letterale `[x]` (falsa positiva nel conteggio — successo
-   due volte in questa sessione, sia con `[x]` che scrivendo "116"
-   a mente invece di ricalcolare).
+⚠️ **REGOLE PERMANENTI**:
+1. Dopo ogni commit che tocca i comandi slash, rilanciare
+   `scripts/generate_command_list.py` e pushare `COMMAND_LIST.md`
+   nello stesso giro.
+2. Marcare `SPEC.md` SUBITO dopo il commit del codice, nello stesso
+   giro. Usare il marcatore parziale (`~`) quando è vero, non solo
+   `[x]`/vuoto — errore già commesso più volte in questa sessione
+   prima della correzione dell'utente. Ricalcolare SEMPRE con lo
+   script meccanico, mai a mente, e MAI scrivere il pattern letterale
+   di un marcatore dentro un testo di prosa esplicativa (falso
+   positivo nel conteggio — successo due volte in questa sessione).
 
-Promemoria tecnici aggiuntivi acquisiti in questa sessione:
-- Verificare collisioni con hook riservati di discord.py
-  (`hasattr(commands.Cog, nome)`) prima di nominare un metodo di cog
-- Verificare idempotenza di qualunque `register()`/simile chiamato da
-  `setup()`, per non rompere `/owner cog-reload`
+Promemoria tecnici aggiuntivi:
+- Verificare collisioni con hook riservati di discord.py prima di
+  nominare un metodo di cog
+- Verificare idempotenza di qualunque `register()`/simile chiamato
+  da `setup()`, per non rompere `/owner cog-reload`
 - Prima di usare `await` su una libreria esterna dentro `setup()`,
   verificare con un test diretto se può bloccare indefinitamente
-  invece di fallire rapidamente (wavelink.Pool.connect() lo fa) — se
-  sì, lanciarla come task in background, mai in attesa diretta
+  invece di fallire rapidamente
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
-davvero (psutil, cog reali, PostgreSQL reale, opzionalmente dentro
-un cgroup con un tetto di RAM vero) invece di stimare a tavolino —
-vedi il suo stesso docstring per le istruzioni d'uso.
+davvero invece di stimare a tavolino — vedi il suo stesso docstring.

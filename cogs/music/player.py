@@ -26,7 +26,13 @@ from discord.ext import commands
 
 from core.config import config
 from core.database import db
-from core.music_logic import build_queue_display, format_duration, parse_lavalink_nodes
+from core.music_logic import (
+    DEFAULT_PUBLIC_LAVALINK_NODES,
+    LavalinkNodeConfig,
+    build_queue_display,
+    format_duration,
+    parse_lavalink_nodes,
+)
 from core.premium import PremiumModule, registry
 
 logger = logging.getLogger("iyokai.music")
@@ -37,20 +43,25 @@ DEFAULT_VOLUME = 100
 
 def _build_lavalink_nodes() -> list[wavelink.Node]:
     """
-    LAVALINK_NODES (multi-nodo, se configurato) ha la precedenza sui
-    tre campi singoli LAVALINK_HOST/PORT/PASSWORD (comportamento
-    originale, per chi preferisce comunque self-hostare un solo
-    nodo) — non li combina, uno o l'altro.
+    Ordine deciso con l'utente: nodi PUBBLICI gratuiti in cascata per
+    primi (DEFAULT_PUBLIC_LAVALINK_NODES — verificati con una ricerca,
+    vedi core/music_logic.py per la provenienza e l'avviso di
+    riverificarli periodicamente), eventuali nodi extra configurati
+    in LAVALINK_NODES, e il nodo locale/self-hostato dell'utente
+    (LAVALINK_HOST/PORT/PASSWORD) SEMPRE per ultimo — provato solo se
+    tutti i nodi pubblici sopra falliscono o non rispondono, così non
+    si carica inutilmente la macchina che ospita anche il bot stesso
+    quando un nodo pubblico basta.
     """
-    configurazioni = parse_lavalink_nodes(config.LAVALINK_NODES)
-    if configurazioni:
-        return [
-            wavelink.Node(uri=nodo.uri, password=nodo.password)
-            for nodo in configurazioni
-        ]
+    nodi_config: list[LavalinkNodeConfig] = list(
+        parse_lavalink_nodes(DEFAULT_PUBLIC_LAVALINK_NODES)
+    )
+    nodi_config.extend(parse_lavalink_nodes(config.LAVALINK_NODES))
 
-    uri_singolo = f"http://{config.LAVALINK_HOST}:{config.LAVALINK_PORT}"
-    return [wavelink.Node(uri=uri_singolo, password=config.LAVALINK_PASSWORD)]
+    uri_locale = f"http://{config.LAVALINK_HOST}:{config.LAVALINK_PORT}"
+    nodi_config.append(LavalinkNodeConfig(uri=uri_locale, password=config.LAVALINK_PASSWORD))
+
+    return [wavelink.Node(uri=nodo.uri, password=nodo.password) for nodo in nodi_config]
 
 
 class MusicCog(commands.Cog):

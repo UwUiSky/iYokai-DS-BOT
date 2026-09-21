@@ -50,6 +50,16 @@ class TestParseLavalinkNodes:
         risultato = parse_lavalink_nodes("http://a.com:2333|")
         assert risultato == [LavalinkNodeConfig(uri="http://a.com:2333", password="")]
 
+    def test_default_public_nodes_si_analizza_correttamente(self):
+        # Il caso reale: la password di Serenetia è essa stessa un
+        # URL (con "://" dentro) - verifica che il separatore "|"
+        # non venga confuso con quello.
+        from core.music_logic import DEFAULT_PUBLIC_LAVALINK_NODES
+
+        risultato = parse_lavalink_nodes(DEFAULT_PUBLIC_LAVALINK_NODES)
+        assert len(risultato) == 5
+        assert all(nodo.uri.startswith(("http://", "https://")) for nodo in risultato)
+
 
 class TestFormatDuration:
     def test_meno_di_un_minuto(self):

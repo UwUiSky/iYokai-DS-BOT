@@ -25,6 +25,26 @@ class LavalinkNodeConfig:
     password: str
 
 
+# Nodi pubblici gratuiti verificati con una ricerca (settembre 2026) —
+# usati come cascata di DEFAULT quando LAVALINK_NODES non è impostato
+# esplicitamente, così Music funziona senza che l'utente debba
+# configurare nulla al primo avvio. HeavenCloud per primi (4 nodi
+# regionali, dichiara supporto Spotify/Apple Music/Deezer via plugin
+# LavaSRC — utile dato che l'utente vuole più sorgenti oltre YouTube),
+# poi Serenetia come ulteriore fallback. Elenchi come questo cambiano
+# nel tempo (nodi che spariscono, ne nascono di nuovi) — da
+# riverificare periodicamente, non è un elenco statico per sempre:
+# fonte aggiornata con controllo di qualità settimanale su
+# https://lavalink.darrennathanael.com/.
+DEFAULT_PUBLIC_LAVALINK_NODES = (
+    "https://lavalink.heavencloud.in:443|heavencloud,"
+    "https://us.lavalink.heavencloud.in:443|heavencloud,"
+    "https://sg.lavalink.heavencloud.in:443|heavencloud,"
+    "https://eu.lavalink.heavencloud.in:443|heavencloud,"
+    "http://lavalink.serenetia.com:80|https://dsc.gg/ajidevserver"
+)
+
+
 def parse_lavalink_nodes(raw: str) -> list[LavalinkNodeConfig]:
     """
     Formato: "uri1|password1,uri2|password2,...". Un pezzo vuoto o
