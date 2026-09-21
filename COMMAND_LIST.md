@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 16:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 21:35 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 135 comandi in 10 categorie.**
+**Totale: 139 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -70,8 +70,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 16:
 - **`/disconnect`** — Disconnette il music bot dal canale vocale.
 - **`/nonstop off`** — Disattiva il loop continuo.
 - **`/nonstop on`** — Attiva il loop continuo sulla coda attuale.
-- **`/nonstop-main start`** — [Admin] Avvia lo streaming 24/7.
-- **`/nonstop-main stop`** — [Admin] Ferma lo streaming 24/7.
+- **`/nonstop-main add-local`** — [Admin] Aggiunge un file dalla cartella inediti alla playlist della radio.
+- **`/nonstop-main add-track`** — [Admin] Aggiunge una traccia alla playlist della radio.
+- **`/nonstop-main list-tracks`** — [Admin] Mostra la playlist della radio.
+- **`/nonstop-main remove-track`** — [Admin] Rimuove una traccia dalla playlist della radio.
+- **`/nonstop-main start`** — [Admin] Entra nella radio condivisa, nel punto in cui si trova ora.
+- **`/nonstop-main stop`** — [Admin] Esce dalla radio su questo server.
 - **`/pause`** — Mette in pausa la riproduzione.
 - **`/play`** — Riproduce una canzone o playlist.
 - **`/queue`** — Mostra la coda di riproduzione.

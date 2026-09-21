@@ -128,6 +128,14 @@ class Config:
     TWITCH_CLIENT_ID: str = field(default="")
     TWITCH_CLIENT_SECRET: str = field(default="")
 
+    # Radio condivisa del bot principale (SPEC.md §9.11) — cartella
+    # locale per gli inediti dell'utente, letta SOLO dal nodo
+    # Lavalink locale/self-hostato (i nodi pubblici non hanno accesso
+    # al filesystem di questa macchina — verificato prima di
+    # progettare questa feature). Vuota di default: gli inediti
+    # restano semplicemente non disponibili finché non è impostata.
+    MAIN_RADIO_LOCAL_FOLDER: str = field(default="")
+
     # --- Memory Guard --------------------------------------------------
     # Soglia oltre la quale il Memory Guard forza una garbage
     # collection e, se il consumo resta alto, avvisa il proprietario
@@ -185,6 +193,7 @@ def _load_config() -> Config:
         LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
         TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
+        MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),

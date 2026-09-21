@@ -51,4 +51,6 @@ async def test_music_cog_si_carica_anche_se_lavalink_non_e_raggiungibile():
     assert nonstop_group is not None
     assert {"on", "off"} <= {c.name for c in nonstop_group.commands}
     assert nonstop_main_group is not None
-    assert {"start", "stop"} <= {c.name for c in nonstop_main_group.commands}
+    assert {"add-track", "add-local", "remove-track", "list-tracks", "start", "stop"} <= {
+        c.name for c in nonstop_main_group.commands
+    }

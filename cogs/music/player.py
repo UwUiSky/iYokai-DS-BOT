@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 import discord
 import wavelink
@@ -50,6 +51,7 @@ from discord.ext import commands
 
 from core.config import config
 from core.database import db
+from core.main_radio_logic import RadioTrackInfo, compute_current_position
 from core.music_fleet import MusicFleet
 from core.music_logic import (
     DEFAULT_PUBLIC_LAVALINK_NODES,
@@ -59,10 +61,18 @@ from core.music_logic import (
     parse_lavalink_nodes,
 )
 from core.premium import PremiumModule, registry
+from core.repositories.main_radio_repo import main_radio_repo
 
 logger = logging.getLogger("iyokai.music")
 
 MODULE_MUSIC = "music"
+
+
+LOCAL_NODE_IDENTIFIER = "iyokai-local-node"  # identificatore fisso
+# per poter ritrovare SPECIFICAMENTE il nodo locale/self-hostato
+# (l'unico che può avere accesso al filesystem di questa macchina —
+# vedi _resolve_local_track più sotto), non uno qualunque scelto a
+# caso da wavelink.Pool tra tutti i nodi configurati.
 
 
 def _build_lavalink_nodes() -> list[wavelink.Node]:
@@ -83,9 +93,16 @@ def _build_lavalink_nodes() -> list[wavelink.Node]:
     nodi_config.extend(parse_lavalink_nodes(config.LAVALINK_NODES))
 
     uri_locale = f"http://{config.LAVALINK_HOST}:{config.LAVALINK_PORT}"
-    nodi_config.append(LavalinkNodeConfig(uri=uri_locale, password=config.LAVALINK_PASSWORD))
 
-    return [wavelink.Node(uri=nodo.uri, password=nodo.password) for nodo in nodi_config]
+    nodi = [wavelink.Node(uri=nodo.uri, password=nodo.password) for nodo in nodi_config]
+    nodi.append(
+        wavelink.Node(
+            identifier=LOCAL_NODE_IDENTIFIER,
+            uri=uri_locale,
+            password=config.LAVALINK_PASSWORD,
+        )
+    )
+    return nodi
 
 
 class MusicCog(commands.Cog):
@@ -458,19 +475,156 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message("Loop continuo disattivato.")
 
     # ================================================================
-    # /nonstop-main — radio 24/7 SOLO sul bot principale, playlist
-    # personale (SPEC.md §9.11). Non instradato: il bot principale
-    # entra in vocale lui stesso, comando distinto da tutto il resto.
+    # /nonstop-main — radio condivisa SOLO sul bot principale,
+    # playlist personale (SPEC.md §9.11). Non instradata: il bot
+    # principale entra in vocale lui stesso, comando distinto da
+    # tutto il resto. "Condivisa" significa che ogni server dove è
+    # attiva sente la STESSA cosa nello STESSO punto — vedi core/
+    # main_radio_logic.py per l'idea dell'orologio condiviso che
+    # rende possibile questo senza coordinare i player tra loro in
+    # tempo reale.
     # ================================================================
     nonstop_main_group = app_commands.Group(
         name="nonstop-main",
-        description="[Admin] Streaming 24/7 del bot principale dalla playlist personale.",
+        description="[Admin] Radio 24/7 condivisa del bot principale, playlist personale.",
     )
 
-    @nonstop_main_group.command(name="start", description="[Admin] Avvia lo streaming 24/7.")
-    @app_commands.describe(playlist="URL o ricerca della playlist da riprodurre in loop")
+    async def _resolve_radio_track(self, identifier: str) -> wavelink.Playable | None:
+        """
+        Gli identificatori "local:..." vanno risolti SOLO tramite il
+        nodo locale/self-hostato (LOCAL_NODE_IDENTIFIER) — nessun
+        nodo pubblico ha accesso al filesystem di questa macchina,
+        verificato prima di progettare questa feature. Tutto il
+        resto (URL/ricerche su piattaforme pubbliche) può passare
+        per qualunque nodo disponibile, wavelink sceglie da solo.
+        """
+        if identifier.startswith("local:"):
+            nodo_locale = wavelink.Pool.get_node(LOCAL_NODE_IDENTIFIER)
+            risultati = await wavelink.Playable.search(identifier, node=nodo_locale)
+        else:
+            risultati = await wavelink.Playable.search(identifier)
+
+        if not risultati:
+            return None
+        if isinstance(risultati, wavelink.Playlist):
+            return risultati[0] if len(risultati) > 0 else None
+        return risultati[0]
+
+    @nonstop_main_group.command(
+        name="add-track", description="[Admin] Aggiunge una traccia alla playlist della radio."
+    )
+    @app_commands.describe(
+        query="URL o ricerca (YouTube, Spotify, SoundCloud...)",
+        label="Nome descrittivo per /nonstop-main list-tracks (facoltativo)",
+    )
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def nonstop_main_start(self, interaction: discord.Interaction, playlist: str) -> None:
+    async def nonstop_main_add_track(
+        self, interaction: discord.Interaction, query: str, label: str | None = None
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        traccia = await self._resolve_radio_track(query)
+        if traccia is None:
+            await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
+            return
+
+        track_id = await main_radio_repo.add_track(
+            identifier=query,
+            duration_ms=traccia.length,
+            label=label or traccia.title,
+            added_by=interaction.user.id,
+        )
+        await interaction.followup.send(
+            f"✅ Aggiunta **{label or traccia.title}** alla playlist della radio (ID `{track_id}`)."
+        )
+
+    @nonstop_main_group.command(
+        name="add-local",
+        description="[Admin] Aggiunge un file dalla cartella inediti alla playlist della radio.",
+    )
+    @app_commands.describe(
+        filename="Nome del file nella cartella inediti (MAIN_RADIO_LOCAL_FOLDER)",
+        label="Nome descrittivo per /nonstop-main list-tracks (facoltativo)",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def nonstop_main_add_local(
+        self, interaction: discord.Interaction, filename: str, label: str | None = None
+    ) -> None:
+        if not config.MAIN_RADIO_LOCAL_FOLDER:
+            await interaction.response.send_message(
+                "MAIN_RADIO_LOCAL_FOLDER non è configurata — nessuna cartella inediti "
+                "impostata su questa istanza.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        percorso_completo = f"{config.MAIN_RADIO_LOCAL_FOLDER.rstrip('/')}/{filename}"
+        identificatore = f"local:{percorso_completo}"
+
+        traccia = await self._resolve_radio_track(identificatore)
+        if traccia is None:
+            await interaction.followup.send(
+                f"Impossibile trovare o leggere `{filename}` nella cartella inediti — "
+                f"verifica che il nodo Lavalink locale sia attivo e che il file esista lì."
+            )
+            return
+
+        track_id = await main_radio_repo.add_track(
+            identifier=identificatore,
+            duration_ms=traccia.length,
+            label=label or filename,
+            added_by=interaction.user.id,
+        )
+        await interaction.followup.send(
+            f"✅ Aggiunto **{label or filename}** alla playlist della radio (ID `{track_id}`)."
+        )
+
+    @nonstop_main_group.command(
+        name="remove-track", description="[Admin] Rimuove una traccia dalla playlist della radio."
+    )
+    @app_commands.describe(track_id="ID della traccia (vedi /nonstop-main list-tracks)")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def nonstop_main_remove_track(
+        self, interaction: discord.Interaction, track_id: int
+    ) -> None:
+        rimossa = await main_radio_repo.remove_track(track_id)
+        if rimossa:
+            await interaction.response.send_message("Traccia rimossa.", ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                "Nessuna traccia trovata con questo ID.", ephemeral=True
+            )
+
+    @nonstop_main_group.command(
+        name="list-tracks", description="[Admin] Mostra la playlist della radio."
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def nonstop_main_list_tracks(self, interaction: discord.Interaction) -> None:
+        tracce = await main_radio_repo.list_tracks()
+        if not tracce:
+            await interaction.response.send_message(
+                "La playlist della radio è vuota. Usa /nonstop-main add-track o add-local.",
+                ephemeral=True,
+            )
+            return
+
+        righe = [
+            f"`{t.id}` **{t.label}** ({format_duration(t.duration_ms)})" for t in tracce
+        ]
+        embed = discord.Embed(
+            title="📻 Playlist della radio",
+            description="\n".join(righe),
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @nonstop_main_group.command(
+        name="start", description="[Admin] Entra nella radio condivisa, nel punto in cui si trova ora."
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def nonstop_main_start(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -485,35 +639,77 @@ class MusicCog(commands.Cog):
 
         if guild.voice_client is not None:
             await interaction.response.send_message(
-                "Lo streaming 24/7 è già attivo. Usa /nonstop-main stop per fermarlo prima.",
+                "La radio è già attiva su questo server. Usa /nonstop-main stop per fermarla prima.",
+                ephemeral=True,
+            )
+            return
+
+        tracce_db = await main_radio_repo.list_tracks()
+        if not tracce_db:
+            await interaction.response.send_message(
+                "La playlist della radio è vuota. Usa /nonstop-main add-track o add-local prima.",
                 ephemeral=True,
             )
             return
 
         await interaction.response.defer()
 
+        adesso = datetime.now(timezone.utc)
+        stato = await main_radio_repo.get_state()
+        if stato is None:
+            # Nessuno ha mai avviato la radio - QUESTO server diventa
+            # il riferimento dell'orologio condiviso, da zero.
+            await main_radio_repo.set_state(track_index=0, track_started_at=adesso, is_active=True)
+            indice_riferimento, inizio_riferimento = 0, adesso
+        else:
+            if not stato.is_active:
+                await main_radio_repo.set_state(
+                    track_index=stato.track_index, track_started_at=stato.track_started_at, is_active=True
+                )
+            indice_riferimento, inizio_riferimento = stato.track_index, stato.track_started_at
+
+        tracce_info = [
+            RadioTrackInfo(identifier=t.identifier, duration_ms=t.duration_ms) for t in tracce_db
+        ]
+        posizione = compute_current_position(tracce_info, indice_riferimento, inizio_riferimento, adesso)
+        if posizione is None:
+            await interaction.followup.send(
+                "Stato della radio incoerente (playlist cambiata nel frattempo?). Riprova."
+            )
+            return
+
+        traccia_corrente_db = tracce_db[posizione.track_index]
+        traccia_corrente = await self._resolve_radio_track(traccia_corrente_db.identifier)
+        if traccia_corrente is None:
+            await interaction.followup.send(
+                f"Impossibile risolvere la traccia attuale della radio "
+                f"(**{traccia_corrente_db.label}**) — verifica che sia ancora disponibile."
+            )
+            return
+
         player: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
         player.autoplay = wavelink.AutoPlayMode.partial
 
-        risultati = await wavelink.Playable.search(playlist)
-        if not risultati:
-            await player.disconnect()
-            await interaction.followup.send("Nessun risultato trovato per questa playlist.")
-            return
-
-        if isinstance(risultati, wavelink.Playlist):
-            await player.queue.put_wait(risultati)
-        else:
-            await player.queue.put_wait(risultati[0])
-
+        # Il resto della playlist DOPO la traccia attuale, in ordine,
+        # con loop — così una volta finita la traccia corrente il
+        # player prosegue da solo lungo la stessa playlist condivisa.
+        indici_successivi = [
+            (posizione.track_index + i) % len(tracce_db) for i in range(1, len(tracce_db))
+        ]
+        for indice in indici_successivi:
+            traccia_futura = await self._resolve_radio_track(tracce_db[indice].identifier)
+            if traccia_futura is not None:
+                await player.queue.put_wait(traccia_futura)
         player.queue.mode = wavelink.QueueMode.loop_all
 
-        prima = await player.queue.get_wait()
-        await player.play(prima)
+        await player.play(traccia_corrente, start=posizione.elapsed_ms_in_track)
 
-        await interaction.followup.send("🔴 Streaming 24/7 avviato dalla playlist personale.")
+        await interaction.followup.send(
+            f"🔴 Radio avviata: **{traccia_corrente_db.label}**, "
+            f"a {format_duration(posizione.elapsed_ms_in_track)}."
+        )
 
-    @nonstop_main_group.command(name="stop", description="[Admin] Ferma lo streaming 24/7.")
+    @nonstop_main_group.command(name="stop", description="[Admin] Esce dalla radio su questo server.")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def nonstop_main_stop(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -526,13 +722,18 @@ class MusicCog(commands.Cog):
         player: wavelink.Player | None = guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Lo streaming 24/7 non è attivo su questo server.", ephemeral=True
+                "La radio non è attiva su questo server.", ephemeral=True
             )
             return
 
+        # NON tocchiamo lo stato condiviso qui: la radio "continua a
+        # trasmettere" concettualmente (l'orologio condiviso avanza
+        # comunque col tempo reale) anche se questo server smette di
+        # ascoltare — esattamente come una vera stazione radio non si
+        # ferma solo perché un ascoltatore spegne la radiolina.
         player.queue.clear()
         await player.disconnect()
-        await interaction.response.send_message("⏹️ Streaming 24/7 fermato.")
+        await interaction.response.send_message("👋 Uscito dalla radio.")
 
 
 async def setup(bot: commands.Bot) -> None:
