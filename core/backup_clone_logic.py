@@ -16,6 +16,8 @@ peggiorerebbe le cose, non le velocizzerebbe.
 
 from __future__ import annotations
 
+import io
+
 import discord
 
 
@@ -180,3 +182,76 @@ async def clone_categories_and_channels(
         mappa_id[canale.id] = nuovo_canale.id
 
     return mappa_id
+
+
+async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) -> None:
+    """
+    Clona le emoji personalizzate (SPEC.md §11.5). Scarica ogni
+    immagine dal server originale (emoji.read(), via CDN Discord) e
+    la ricrea nel server di destinazione — Discord non permette di
+    "copiare" un'emoji per riferimento, serve ricaricare i byte
+    dell'immagine da zero.
+    """
+    for emoji in source_guild.emojis:
+        immagine = await emoji.read()
+        await target_guild.create_custom_emoji(
+            name=emoji.name, image=immagine, reason="Clonazione backup iYokai"
+        )
+
+
+async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guild) -> None:
+    """Clona gli sticker personalizzati (SPEC.md §11.6), stesso
+    principio delle emoji: scarica l'immagine, la ricarica come
+    nuovo sticker."""
+    for sticker in source_guild.stickers:
+        immagine = await sticker.read()
+        file_sticker = discord.File(io.BytesIO(immagine), filename=f"{sticker.name}.png")
+        await target_guild.create_sticker(
+            name=sticker.name,
+            description=sticker.description,
+            emoji=sticker.emoji,
+            file=file_sticker,
+            reason="Clonazione backup iYokai",
+        )
+
+
+async def clone_soundboard(source_guild: discord.Guild, target_guild: discord.Guild) -> None:
+    """Clona i suoni della soundboard (SPEC.md §11.7), stesso
+    principio delle emoji/sticker: scarica l'audio, lo ricarica come
+    nuovo suono."""
+    for suono in source_guild.soundboard_sounds:
+        audio = await suono.read()
+        await target_guild.create_soundboard_sound(
+            name=suono.name,
+            sound=audio,
+            volume=suono.volume,
+            emoji=suono.emoji,
+            reason="Clonazione backup iYokai",
+        )
+
+
+async def clone_webhooks(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    channel_id_map: dict[int, int],
+) -> None:
+    """
+    Clona i webhook (SPEC.md §11.8) — solo nome e canale di
+    destinazione (rimappato tramite channel_id_map, già prodotta da
+    clone_categories_and_channels): l'URL del webhook stesso è
+    univoco per ogni webhook creato, non può essere "copiato",
+    quindi qualunque integrazione esterna che punta al vecchio URL
+    andrà comunque riconfigurata a mano con il nuovo — non
+    automatizzabile da qui.
+    """
+    webhook_sorgente = await source_guild.webhooks()
+    for webhook in webhook_sorgente:
+        nuovo_channel_id = channel_id_map.get(webhook.channel_id)
+        if nuovo_channel_id is None:
+            continue  # il canale originale non è stato clonato (tipo non gestito)
+
+        nuovo_canale = target_guild.get_channel(nuovo_channel_id)
+        if nuovo_canale is None:
+            continue
+
+        await nuovo_canale.create_webhook(name=webhook.name, reason="Clonazione backup iYokai")
