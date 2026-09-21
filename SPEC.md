@@ -300,7 +300,18 @@ file, non da un riassunto.**
 - `[ ]` 8.17 Distinzione log semplificato `[Free]` vs completo `[Premium]`
   — oggi il modulo è uno solo, senza i due livelli previsti
 
-## §9 MUSIC — **INTERA SEZIONE MANCANTE**
+## §9 MUSIC — base funzionante, architettura multi-istanza non fatta
+
+**Nota di stato onesta, non gonfiare le spunte sotto**: costruito un
+player base e funzionante (`cogs/music/player.py`, via wavelink +
+Lavalink) — play/skip/stop/pause/resume/queue/volume/disconnect,
+avanzamento automatico della coda. NON costruita l'architettura
+multi-istanza (§9.1/9.2/9.3, che uderebbe i 5 MUSIC_TOKENS già
+dichiarati in config.py per permettere più sessioni musicali
+simultanee nello stesso server) — nessuna voce sotto è quindi
+segnata come fatta, anche se qualcosa di reale e funzionante esiste
+già: nessuna soddisfa per intero quello che chiede, e questo
+progetto non usa spunte parziali.
 
 - `[ ]` 9.1 Multi-VoiceClient manager (5 applicazioni separate)
 - `[ ]` 9.2 Assegnazione istanza libera per canale (tabella
@@ -308,9 +319,16 @@ file, non da un riassunto.**
 - `[ ]` 9.3 Coda indipendente per canale vocale
 - `[ ]` 9.4 Comandi: play, search, skip, forceskip, stop, pause,
   resume, queue, remove, clear, shuffle, move, nowplaying (con barra
-  di progresso), loop track, loop queue, volume, seek, lyrics
+  di progresso), loop track, loop queue, volume, seek, lyrics —
+  **fatti**: play, skip, stop, pause, resume, queue, volume,
+  disconnect. **Mancano**: search (distinto da play), forceskip,
+  remove, clear, shuffle, move, nowplaying con barra di progresso,
+  loop track/queue, seek, lyrics
 - `[ ]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
-  SoundCloud, URL, file locali
+  SoundCloud, URL, file locali — YouTube funziona via la ricerca di
+  default di Lavalink; Spotify richiederebbe un plugin (LavaSrc) sul
+  nodo Lavalink usato, non verificabile se presente su un nodo
+  pubblico di terzi senza controllarlo direttamente
 - `[ ]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D)
 - `[ ]` 9.7 DJ role
 - `[ ]` 9.8 Voteskip
