@@ -343,11 +343,11 @@ up/down oltre a impostare un valore), disconnect, nonstop.
   scartato su richiesta esplicita dell'utente, non un limite tecnico
 - `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6
 - `[✗]` 9.8 Voteskip — scartato, stesso motivo di 9.6
-- `[ ]` 9.9 Auto-leave a canale vuoto — wavelink ha già un
-  meccanismo di rilevamento canale inattivo che dispatcha un evento
-  (`wavelink_inactive_player`) di default, ma nessun listener lo
-  gestisce ancora per disconnettere e rilasciare il worker nella
-  flotta — da collegare
+- `[x]` 9.9 Auto-leave a canale vuoto — `core/music_fleet.
+  handle_inactive_player()`, agganciato identicamente su tutti e 6 i
+  bot (main + 5 worker). Il timeout (300s di default) è gestito
+  internamente da wavelink/Lavalink; qui solo la reazione:
+  disconnette e libera il worker nella flotta
 - `[~]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
   on|off` (loop continuo sulla coda del worker attivo) fatto; il cap
   a 5 istanze concorrenti esiste implicitamente (TOTAL_WORKERS), ma
@@ -670,7 +670,7 @@ rilancia lo stesso conteggio.
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
-| §9 Music | 5 | 3 | 1 |
+| §9 Music | 6 | 3 | 0 |
 | §10 Alerts | 5 | 1 | 1 |
 | §11 Backup | 0 | 0 | 13 |
 | §12 Voice temp | 5 | 0 | 3 |
@@ -680,19 +680,16 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **122** | **4** | **138** |
+| **Totale** | **123** | **4** | **137** |
 
-Su 264 voci totali: **122 fatte, 4 parziali, 138 mancanti** — circa
-il 46% dello schema (contando i parziali a metà peso). §10 Alerts a
-5 fatte su 7 conteggiate (Twitch, YouTube, Reddit fatti via polling
-— testato con credenziali fittizie per Twitch come richiesto
-esplicitamente). §9 Music ha un'architettura multi-istanza reale
-PIÙ la radio condivisa (5 voci fatte: manager multi-bot, assegnazione
-worker libero, code indipendenti, radio 24/7 con orologio condiviso,
-backend Lavalink) più 3 parziali
-(comandi ridotti deliberatamente, sorgenti, loop 24/7 sul worker).
-Correzione
-del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
+Su 264 voci totali: **123 fatte, 4 parziali, 137 mancanti** — circa
+il 47% dello schema (contando i parziali a metà peso). **§9 Music
+non ha più voci mancanti** — solo 3 parziali per scelta deliberata
+(comandi ridotti, sorgenti limitate dal nodo pubblico usato, cap
+istanze non configurabile a parte) e 3 scartate su richiesta
+esplicita (filtri audio, DJ role, voteskip).
+
+Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
 come completamente fatti quando in realtà erano solo iniziati.
 Audit a campione sul resto del documento (§5, §6, §12, §13, §15) non
