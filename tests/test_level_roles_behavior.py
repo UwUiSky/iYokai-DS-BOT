@@ -115,3 +115,69 @@ async def test_add_fuori_da_un_server_rifiuta(cog_e_database):
     await cog.level_roles_add.callback(cog, interaction, level=5, role=_FakeRole(1))
 
     assert "solo dentro un server" in interaction.response.sent_messages[0]
+
+
+# ----------------------------------------------------------------------
+# /monthly-winners (SPEC.md §15.11) — stesso cog, stessa fixture
+# ----------------------------------------------------------------------
+class _FakeTextChannel:
+    def __init__(self, channel_id: int) -> None:
+        self.id = channel_id
+        self.mention = f"<#{channel_id}>"
+
+
+@pytest.fixture
+async def cog_e_winners_repo(monkeypatch):
+    import cogs.leveling.leveling as leveling_module
+    from core.repositories.monthly_winners_repo import MonthlyWinnersRepository
+
+    database = Database()
+    await database.connect()
+    await database.run_migrations()
+
+    repo = MonthlyWinnersRepository(pool_provider=lambda: database.pool)
+    monkeypatch.setattr(leveling_module, "monthly_winners_repo", repo)
+
+    cog = LevelingCog(bot=None)
+    cog.cog_unload()
+
+    yield cog, repo
+    await database.pool.execute("DELETE FROM monthly_winners_config")
+    await database.close()
+
+
+@pytest.mark.asyncio
+async def test_monthly_winners_set_segna_il_mese_precedente_come_coperto(cog_e_winners_repo):
+    from core.monthly_winners_logic import previous_period_key
+
+    cog, repo = cog_e_winners_repo
+    interaction = _FakeInteraction(guild_id=100)
+
+    await cog.monthly_winners_set.callback(cog, interaction, channel=_FakeTextChannel(500))
+
+    config = await repo.get_config(100)
+    assert config.channel_id == 500
+    assert config.last_announced_period == previous_period_key()
+    assert "prossimo cambio mese" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_monthly_winners_disable(cog_e_winners_repo):
+    cog, repo = cog_e_winners_repo
+    await repo.set_channel(100, channel_id=500, already_covered_period="2026-08")
+
+    interaction = _FakeInteraction(guild_id=100)
+    await cog.monthly_winners_disable.callback(cog, interaction)
+
+    assert "disattivato" in interaction.response.sent_messages[0]
+    assert await repo.get_config(100) is None
+
+
+@pytest.mark.asyncio
+async def test_monthly_winners_disable_senza_configurazione_avvisa(cog_e_winners_repo):
+    cog, repo = cog_e_winners_repo
+    interaction = _FakeInteraction(guild_id=100)
+
+    await cog.monthly_winners_disable.callback(cog, interaction)
+
+    assert "non era attivo" in interaction.response.sent_messages[0]

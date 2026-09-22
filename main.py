@@ -40,6 +40,7 @@ from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
+from core.monthly_winners_announcer import monthly_winners_announcer
 from core.music_fleet import MusicFleet, handle_inactive_player
 from core.backup_orchestrator import finalize_backup_job
 from core.repositories.backup_repo import backup_repo
@@ -195,6 +196,10 @@ class iYokaiBot(commands.AutoShardedBot):
         # Twitch live/offline (SPEC.md §10.1/10.2): resta inattivo
         # finché TWITCH_CLIENT_ID/SECRET non sono configurati.
         twitch_watcher.start(self)
+
+        # Annuncio automatico dei vincitori a fine mese (SPEC.md
+        # §15.11): tick orario, idempotente tramite database.
+        monthly_winners_announcer.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync

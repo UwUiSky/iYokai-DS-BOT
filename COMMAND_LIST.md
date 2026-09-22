@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 12:17 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 17:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 144 comandi in 10 categorie.**
+**Totale: 146 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -32,6 +32,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 12:
 - **`/level-roles add`** — [Admin] Assegna un ruolo a chi raggiunge un livello.
 - **`/level-roles list`** — [Admin] Mostra i ruoli-premio configurati su questo server.
 - **`/level-roles remove`** — [Admin] Rimuove un ruolo-premio configurato.
+- **`/monthly-winners disable`** — [Admin] Disattiva l'annuncio dei vincitori del mese.
+- **`/monthly-winners set`** — [Admin] Imposta il canale dove annunciare i vincitori del mese.
 - **`/pay`** — Trasferisci coin a un altro utente.
 - **`/rank`** — Mostra il tuo livello e i tuoi coin.
 - **`/work`** — Lavora per guadagnare qualche coin.

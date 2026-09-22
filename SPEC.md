@@ -559,7 +559,11 @@ necessario.
 - `[x]` 15.8 Classifica totale all-time
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
 - `[ ]` 15.10 **Classifica Gilde** (mensile + totale)
-- `[ ]` 15.11 **Annuncio automatico dei vincitori a fine mese**
+- `[x]` 15.11 Annuncio automatico dei vincitori a fine mese —
+  `/monthly-winners set|disable`, podio XP e coin del mese appena
+  concluso, tick orario idempotente (uno solo per mese anche con
+  riavvii); la prima configurazione non annuncia retroattivamente il
+  mese già passato
 - `[x]` 15.12 Notifica di level-up per XP vocale — mandata nel canale
   vocale stesso (i canali vocali moderni hanno la propria chat
   integrata), l'unico posto sensato per un task periodico su più
@@ -714,19 +718,19 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 8 | 0 | 17 |
+| §15 Levels/Gilde | 9 | 0 | 16 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **133** | **5** | **126** |
+| **Totale** | **134** | **5** | **125** |
 
-Su 264 voci totali: **133 fatte, 5 parziali, 126 mancanti** — circa
-il 50% dello schema (contando i parziali a metà peso). §11 Backup
+Su 264 voci totali: **134 fatte, 5 parziali, 125 mancanti** — circa
+il 51% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
-Levels a 8/25: notifica di level-up vocale e ruoli-premio per
-livello ora fatti, resta la sottosezione Gilde/Clan (§15.14, ancora
+Levels a 9/25: notifica di level-up vocale, ruoli-premio per
+livello e annuncio vincitori mensile ora fatti, resta la sottosezione Gilde/Clan (§15.14, ancora
 interamente da fare, dimensione paragonabile a Backup System).
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella

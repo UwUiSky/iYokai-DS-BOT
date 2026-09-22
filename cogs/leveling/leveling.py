@@ -33,7 +33,8 @@ from discord.ext import commands, tasks
 from core.database import db
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
-from core.monthly_winners_logic import MEDALS
+from core.monthly_winners_logic import MEDALS, previous_period_key
+from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -454,6 +455,54 @@ class LevelingCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+
+    # ================================================================
+    # Annuncio vincitori mensile (SPEC.md §15.11)
+    # ================================================================
+    monthly_winners_group = app_commands.Group(
+        name="monthly-winners",
+        description="[Admin] Annuncio automatico dei vincitori a fine mese.",
+    )
+
+    @monthly_winners_group.command(
+        name="set", description="[Admin] Imposta il canale dove annunciare i vincitori del mese."
+    )
+    @app_commands.describe(channel="Canale dell'annuncio")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def monthly_winners_set(
+        self, interaction: discord.Interaction, channel: discord.TextChannel
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        await monthly_winners_repo.set_channel(
+            guild.id, channel.id, already_covered_period=previous_period_key()
+        )
+        await interaction.response.send_message(
+            f"✅ I vincitori del mese verranno annunciati in {channel.mention} "
+            f"all'inizio di ogni mese (il primo annuncio al prossimo cambio mese).",
+            ephemeral=True,
+        )
+
+    @monthly_winners_group.command(
+        name="disable", description="[Admin] Disattiva l'annuncio dei vincitori del mese."
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+
+        if await monthly_winners_repo.disable(guild.id):
+            await interaction.response.send_message("Annuncio mensile disattivato.", ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                "L'annuncio mensile non era attivo su questo server.", ephemeral=True
+            )
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(

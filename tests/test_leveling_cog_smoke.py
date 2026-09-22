@@ -44,6 +44,12 @@ async def test_leveling_cog_si_carica_correttamente():
     assert level_roles_group is not None
     assert {"add", "remove", "list"} <= {c.name for c in level_roles_group.commands}
 
+    monthly_group = next(
+        c for c in bot.tree.get_commands()
+        if isinstance(c, app_commands.Group) and c.name == "monthly-winners"
+    )
+    assert {"set", "disable"} <= {c.name for c in monthly_group.commands}
+
     # Il task periodico deve essere avviato (non sollevare eccezioni
     # all'avvio del cog) — before_loop attende bot.wait_until_ready(),
     # quindi non gira davvero qui, ma deve risultare "in esecuzione"
