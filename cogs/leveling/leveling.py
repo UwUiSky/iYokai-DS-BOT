@@ -382,6 +382,78 @@ class LevelingCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
+    # ================================================================
+    # Ruoli-premio (SPEC.md §15.13)
+    # ================================================================
+    level_roles_group = app_commands.Group(
+        name="level-roles", description="[Admin] Gestisce i ruoli assegnati automaticamente per livello."
+    )
+
+    @level_roles_group.command(
+        name="add", description="[Admin] Assegna un ruolo a chi raggiunge un livello."
+    )
+    @app_commands.describe(
+        level="Livello richiesto", role="Ruolo da assegnare al raggiungimento"
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def level_roles_add(
+        self, interaction: discord.Interaction, level: app_commands.Range[int, 1, 1000], role: discord.Role
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        await level_reward_repo.add_reward(guild.id, level_threshold=level, role_id=role.id)
+        await interaction.response.send_message(
+            f"✅ Chi raggiunge il livello **{level}** riceverà il ruolo {role.mention}.",
+            ephemeral=True,
+        )
+
+    @level_roles_group.command(
+        name="remove", description="[Admin] Rimuove un ruolo-premio configurato."
+    )
+    @app_commands.describe(reward_id="ID della ricompensa (vedi /level-roles list)")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+
+        rimossa = await level_reward_repo.remove_reward(reward_id, guild.id)
+        if rimossa:
+            await interaction.response.send_message("Ruolo-premio rimosso.", ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                "Nessun ruolo-premio trovato con questo ID in questo server.", ephemeral=True
+            )
+
+    @level_roles_group.command(
+        name="list", description="[Admin] Mostra i ruoli-premio configurati su questo server."
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def level_roles_list(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+
+        ricompense = await level_reward_repo.list_rewards(guild.id)
+        if not ricompense:
+            await interaction.response.send_message(
+                "Nessun ruolo-premio configurato su questo server.", ephemeral=True
+            )
+            return
+
+        righe = [f"`{r.id}` livello **{r.level_threshold}** → <@&{r.role_id}>" for r in ricompense]
+        embed = discord.Embed(
+            title="🏅 Ruoli-premio configurati",
+            description="\n".join(righe),
+            color=discord.Color.gold(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(
