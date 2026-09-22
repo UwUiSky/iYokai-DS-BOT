@@ -1587,6 +1587,51 @@ di scrivere codice:
 
 **Suite di test completa: 980/980 passano.**
 
+### Fase 42 — Promemoria di scadenza + controllo capacità Creator (richiesta esplicita dell'utente)
+
+L'utente ha chiesto se automatizzare l'auto-join dei bot con un
+account secondario/selfbot fosse possibile — risposto di no
+(contro i Termini di Servizio di Discord, rischio di ban per un
+guadagno piccolo: il click serve una volta sola per backup, non è
+un attrito ricorrente). Ha accettato e chiesto invece un sistema di
+promemoria: countdown prima che un job in attesa del click venga
+annullato, avviso quando tutti gli slot di Creator (max 10 server)
+sono occupati.
+
+`core/backup_reminder_logic.py`: `should_send_timeout_reminder()`
+(un solo promemoria per job, quando restano meno di 2 ore alla
+scadenza — non uno ad ogni tick, altrimenti spammerebbe ogni 60
+secondi per ore), `format_time_remaining()` (countdown leggibile,
+"1h 45m"), `format_slot_wait_message()` — **non** una stima precisa
+di quando si libererà uno slot (impossibile saperlo con certezza,
+dipende da quando altri amministratori cliccano i loro link), ma un
+limite massimo ONESTO: ogni slot si libera entro 24h al più tardi
+(i job scadono da soli). **10 test**.
+
+`core/repositories/backup_repo.py`: colonna `reminder_sent_at`
+aggiunta con `ALTER TABLE ADD COLUMN IF NOT EXISTS` — **primo caso
+in questo progetto di estendere una tabella già esistente** invece
+di crearne una nuova, verificato che funzioni anche sulla tabella
+già popolata dalle fasi precedenti. `get_running_jobs()`,
+`mark_reminder_sent()`. Un solo promemoria per job in totale (slot
+pieno O scadenza vicina, quale arriva prima) invece di due contatori
+separati. **Bug di sintassi trovato**: un commento SQL scritto con
+`#` invece di `--` (sintassi Python, non SQL). **11 test**.
+
+`core/backup_queue_worker.py` riscritto: `_controlla_promemoria_
+scadenza()` ad ogni tick controlla i job RUNNING e manda il DM con
+countdown quando serve. `tick()` ora controlla `len(creator_client.
+guilds)` PRIMA di provare a creare un nuovo server — se Creator è
+già al limite, non tenta la creazione, aspetta che uno slot si
+liberi, avvisa l'amministratore in attesa una sola volta.
+`_manda_dm()` estratta come metodo condiviso da tutti e tre i tipi
+di notifica. **4 nuovi test**, incluso il countdown verificato per
+davvero retrodatando `created_at` (stesso trucco già usato per
+`expire_stale_jobs`), e la verifica che l'avviso di slot pieni non
+si ripeta ad ogni tick.
+
+**Suite di test completa: 997/997 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1909,27 +1954,17 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Backup System (§11): l'intera orchestrazione automatizzabile è
-completa e testata** (nei limiti di quello che questo sandbox può
-verificare — nessuna creazione di server Discord reale possibile).
-Da verificare dal vivo una volta distribuito: `/define-main` →
-`/define-backup` → il worker crea/clona → DM con l'URL → click
-dell'admin → `on_guild_join` finalizza il trasferimento.
+**Backup System (§11): l'orchestrazione automatizzabile è completa,
+ora con promemoria e controllo di capacità.** Da verificare dal vivo
+una volta distribuito (impossibile in questo sandbox).
 
 **Restano solo le 3 voci di §11 che richiedono decisioni con
 l'utente prima di scrivere codice** (mirror messaggi, backup/restore
-utenti via OAuth2, auto-propagazione — quest'ultima piccola una
-volta chiarito il resto). Non presumere, chiedere quando si torna
-su questa sezione.
+utenti via OAuth2, auto-propagazione).
 
 **§15 Levels/Gilde/Classifiche resta l'unica sezione grande ancora
 solo parzialmente fatta (6/25)** — buon candidato per il prossimo
-giro se si preferisce restare su territorio meno delicato. Altrimenti
-tutte le altre sezioni grandi sono chiuse o quasi (§9 Music, §11
-Backup, §17 Owner completi o quasi).
-
-**Traguardo raggiunto in questa fase: 50% dello schema completo**
-(131/264, contando i parziali a metà peso).
+giro se si preferisce restare su territorio meno delicato.
 
 ⚠️ **REGOLE PERMANENTI**:
 1. Dopo ogni commit che tocca i comandi slash, rilanciare
@@ -1952,12 +1987,19 @@ Backup, §17 Owner completi o quasi).
    (multi-istanza, storage di credenziali altrui, orchestrazione tra
    più bot/server), fare le domande giuste all'utente PRIMA di
    scrivere codice — non presumere il design.
-6. Prima di assumere che un'azione (autoinvito di un bot, join
-   automatico di un utente, ecc.) sia automatizzabile via API,
+6. Prima di assumere che un'azione sia automatizzabile via API,
    verificare con una ricerca i limiti REALI della piattaforma
    Discord — non tutto quello che sembra logico lato codice è
-   davvero permesso lato Discord (trovato con l'autoinvito bot in
-   questa fase: nessuna API lo permette, serve sempre un click umano).
+   davvero permesso lato Discord.
+7. Per estendere una tabella già esistente (non crearne una nuova),
+   usare `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` — idempotente,
+   sicuro da rilanciare, funziona anche su una tabella già popolata.
+   Primo caso in questo progetto trovato nella Fase 42.
+8. Quando una richiesta implica automazione che assomiglia a
+   selfbotting/account secondari automatizzati, verificare i Termini
+   di Servizio della piattaforma prima di costruire — spiegarne il
+   motivo con franchezza, proporre l'alternativa legittima (qui: i
+   promemoria invece dell'auto-join).
 
 Promemoria tecnici aggiuntivi:
 - Verificare collisioni con hook riservati di discord.py prima di
@@ -1975,12 +2017,20 @@ Promemoria tecnici aggiuntivi:
   una propria, non assegnare l'attributo direttamente
 - Prima di passare `bytes` grezzi a `discord.File`, avvolgerli
   sempre in `io.BytesIO`
+- In SQL dentro una stringa Python, i commenti usano `--`, non `#`
+  (sintassi Python) — trovato nella Fase 42
 
 **Limite d'ambiente da ricordare**: la rete del sandbox di sviluppo è
 ristretta a un elenco fisso di domini (PyPI, npm, GitHub) — non
 raggiunge Discord/Twitch/Lavalink nemmeno con credenziali vere. Ogni
 test di integrazione con questi servizi resta simulato; la verifica
 dal vivo tocca all'utente.
+
+**Nota per una futura sessione**: PROGRESS.md ha superato le 2000
+righe — potrebbe valere la pena consolidare le fasi più vecchie
+(riassumere in poche righe le fasi 1-20 o simili) quando si ha
+tempo, per restare più navigabile. Non urgente, solo da tenere
+presente.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
