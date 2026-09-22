@@ -131,13 +131,26 @@ class LevelingCog(commands.Cog):
                     is_afk_channel=is_afk,
                     other_members_not_self_muted=others_not_muted,
                 )
-                await leveling_repo.add_voice_minute(
+                grant = await leveling_repo.add_voice_minute(
                     guild.id, member.id, channel.id, is_eligible=eligible
                 )
-                # Le notifiche di level-up vocale non vengono inviate
-                # da qui: un task periodico su più server non ha un
-                # canale testuale ovvio a cui scrivere. L'utente vede
-                # il proprio livello con /rank.
+                if grant is not None and grant.leveled_up:
+                    # Notifica mandata nel canale VOCALE stesso, non
+                    # in un canale testuale a parte: i canali vocali
+                    # moderni hanno la propria chat integrata
+                    # (discord.VoiceChannel eredita da Messageable),
+                    # ed è l'unico posto sensato per un task
+                    # periodico che gira su più server insieme — a
+                    # differenza dei messaggi testuali, non c'è un
+                    # "canale in cui è appena successo qualcosa" da
+                    # riusare.
+                    try:
+                        await channel.send(
+                            f"🎉 {member.mention} è salito al livello "
+                            f"**{grant.new_level}**!"
+                        )
+                    except discord.HTTPException:
+                        pass
 
     # ================================================================
     # Comandi
