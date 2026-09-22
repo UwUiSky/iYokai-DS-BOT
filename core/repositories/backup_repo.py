@@ -46,6 +46,7 @@ class BackupJob:
     backup_guild_id: int | None
     status: str
     error_message: str | None
+    reminder_sent_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -68,6 +69,12 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+
+        -- ADD COLUMN IF NOT EXISTS (idempotente, sicuro da rilanciare
+        -- a ogni avvio): backup_jobs esisteva già prima che i
+        -- promemoria fossero aggiunti, serve poterla estendere anche
+        -- su un database già popolato, non solo alla prima creazione.
+        ALTER TABLE backup_jobs ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
 
         CREATE INDEX IF NOT EXISTS idx_backup_jobs_status_created
             ON backup_jobs (status, created_at);
@@ -97,6 +104,7 @@ class BackupRepository:
             backup_guild_id=row["backup_guild_id"],
             status=row["status"],
             error_message=row["error_message"],
+            reminder_sent_at=row["reminder_sent_at"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -189,6 +197,21 @@ class BackupRepository:
             STATUS_PENDING,
         )
         return self._row_to_job(row) if row is not None else None
+
+    async def get_running_jobs(self) -> list[BackupJob]:
+        """Tutti i job attualmente 'running' — usata per controllare
+        quali si stanno avvicinando al timeout e meritano un
+        promemoria (un job può restare 'running' anche per ore,
+        in attesa che qualcuno clicchi il link di invito)."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM backup_jobs WHERE status = $1", STATUS_RUNNING
+        )
+        return [self._row_to_job(r) for r in rows]
+
+    async def mark_reminder_sent(self, job_id: int) -> None:
+        await self._pool.execute(
+            "UPDATE backup_jobs SET reminder_sent_at = now() WHERE id = $1", job_id
+        )
 
     async def mark_running(self, job_id: int) -> None:
         await self._pool.execute(

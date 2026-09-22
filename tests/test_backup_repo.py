@@ -207,3 +207,33 @@ async def test_get_job_by_backup_guild_id(repo):
 @pytest.mark.asyncio
 async def test_get_job_by_backup_guild_id_sconosciuto_restituisce_none(repo):
     assert await repo.get_job_by_backup_guild_id(999999) is None
+
+
+@pytest.mark.asyncio
+async def test_get_running_jobs_restituisce_solo_i_running(repo):
+    job_pending = await repo.enqueue_job(100)
+    job_running = await repo.enqueue_job(200)
+    await repo.mark_running(job_running)
+
+    running = await repo.get_running_jobs()
+
+    assert [j.id for j in running] == [job_running]
+
+
+@pytest.mark.asyncio
+async def test_get_running_jobs_lista_vuota_se_nessuno_in_corso(repo):
+    await repo.enqueue_job(100)  # resta pending
+    assert await repo.get_running_jobs() == []
+
+
+@pytest.mark.asyncio
+async def test_mark_reminder_sent_imposta_il_timestamp(repo):
+    job_id = await repo.enqueue_job(100)
+
+    job_prima = await repo.get_job(job_id)
+    assert job_prima.reminder_sent_at is None
+
+    await repo.mark_reminder_sent(job_id)
+
+    job_dopo = await repo.get_job(job_id)
+    assert job_dopo.reminder_sent_at is not None
