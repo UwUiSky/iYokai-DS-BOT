@@ -197,6 +197,22 @@ class BackupRepository:
             STATUS_RUNNING,
         )
 
+    async def set_backup_guild_id(self, job_id: int, backup_guild_id: int) -> None:
+        """
+        Impostato SUBITO dopo che Creator ha creato il nuovo server
+        — prima ancora che il job sia completato — così il listener
+        che reagisce a Main che entra in un server nuovo può già
+        trovare il job giusto tramite get_job_by_backup_guild_id(),
+        senza dover aspettare mark_completed() (che arriva solo alla
+        fine, dopo che Main si è unito e la proprietà è stata
+        trasferita).
+        """
+        await self._pool.execute(
+            "UPDATE backup_jobs SET backup_guild_id = $2, updated_at = now() WHERE id = $1",
+            job_id,
+            backup_guild_id,
+        )
+
     async def mark_completed(self, job_id: int, backup_guild_id: int) -> None:
         await self._pool.execute(
             """
@@ -223,6 +239,16 @@ class BackupRepository:
 
     async def get_job(self, job_id: int) -> BackupJob | None:
         row = await self._pool.fetchrow("SELECT * FROM backup_jobs WHERE id = $1", job_id)
+        return self._row_to_job(row) if row is not None else None
+
+    async def get_job_by_backup_guild_id(self, backup_guild_id: int) -> BackupJob | None:
+        """Usata dal listener che reagisce a Main che entra in un
+        server nuovo — per sapere se QUEL server è il backup atteso
+        da un job in corso, o un server qualsiasi in cui Main è
+        stato invitato per altri motivi."""
+        row = await self._pool.fetchrow(
+            "SELECT * FROM backup_jobs WHERE backup_guild_id = $1", backup_guild_id
+        )
         return self._row_to_job(row) if row is not None else None
 
 

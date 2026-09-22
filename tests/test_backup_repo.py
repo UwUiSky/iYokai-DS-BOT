@@ -181,3 +181,29 @@ async def test_expire_stale_jobs_non_tocca_job_gia_completati(repo, clean_db):
 @pytest.mark.asyncio
 async def test_get_job_inesistente_restituisce_none(repo):
     assert await repo.get_job(99999) is None
+
+
+@pytest.mark.asyncio
+async def test_set_backup_guild_id_prima_del_completamento(repo):
+    job_id = await repo.enqueue_job(100)
+    await repo.mark_running(job_id)
+
+    await repo.set_backup_guild_id(job_id, backup_guild_id=777)
+
+    job = await repo.get_job(job_id)
+    assert job.backup_guild_id == 777
+    assert job.status == STATUS_RUNNING  # non ancora completato
+
+
+@pytest.mark.asyncio
+async def test_get_job_by_backup_guild_id(repo):
+    job_id = await repo.enqueue_job(100)
+    await repo.set_backup_guild_id(job_id, backup_guild_id=777)
+
+    job = await repo.get_job_by_backup_guild_id(777)
+    assert job.id == job_id
+
+
+@pytest.mark.asyncio
+async def test_get_job_by_backup_guild_id_sconosciuto_restituisce_none(repo):
+    assert await repo.get_job_by_backup_guild_id(999999) is None
