@@ -555,7 +555,9 @@ necessario.
 - `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
 - `[ ]` 15.5 **Giveaway** (con requisiti di ruolo/livello)
-- `[ ]` 15.6 Drop messages
+- `[x]` 15.6 Drop messages — piccola probabilità (0.5%) per
+  messaggio idoneo, pulsante "primo che clicca vince", coin
+  accreditati atomicamente
 - `[x]` 15.7 Classifica mensile (via `period_key`, senza reset schedulato)
 - `[x]` 15.8 Classifica totale all-time
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
@@ -719,14 +721,14 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 10 | 0 | 15 |
+| §15 Levels/Gilde | 11 | 0 | 14 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **135** | **5** | **124** |
+| **Totale** | **136** | **5** | **123** |
 
-Su 264 voci totali: **135 fatte, 5 parziali, 124 mancanti** — circa
-il 51% dello schema (contando i parziali a metà peso). §11 Backup
+Su 264 voci totali: **136 fatte, 5 parziali, 123 mancanti** — circa
+il 52% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15

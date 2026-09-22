@@ -25,6 +25,7 @@ cui l'utente entra o esce.
 from __future__ import annotations
 
 import logging
+import random
 
 import discord
 from discord import app_commands
@@ -36,6 +37,7 @@ from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.repositories.shop_repo import shop_repo
+from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -106,6 +108,38 @@ class LevelingCog(commands.Cog):
                 "Impossibile assegnare i ruoli-premio a %s nel server %s.", member.id, guild.id
             )
 
+    class DropClaimView(discord.ui.View):
+        """
+        "Primo che clicca vince" — self.claimed_by è lo stato
+        condiviso in memoria per QUESTO drop specifico (un'istanza
+        per drop, non persistita: se il bot si riavvia mentre un
+        drop è ancora aperto, va semplicemente perso, accettabile
+        per una piccola sorpresa occasionale).
+        """
+
+        def __init__(self, guild_id: int, amount: int) -> None:
+            super().__init__(timeout=120)
+            self.guild_id = guild_id
+            self.amount = amount
+            self.claimed_by: int | None = None
+
+        @discord.ui.button(label="Raccogli", emoji="💰", style=discord.ButtonStyle.success)
+        async def raccogli(
+            self, interaction: discord.Interaction, button: discord.ui.Button
+        ) -> None:
+            if self.claimed_by is not None:
+                await interaction.response.send_message(
+                    "Questo drop è già stato raccolto.", ephemeral=True
+                )
+                return
+
+            self.claimed_by = interaction.user.id
+            await leveling_repo.add_coins(self.guild_id, interaction.user.id, self.amount)
+
+            button.disabled = True
+            button.label = f"Raccolto da {interaction.user.display_name}"
+            await interaction.response.edit_message(view=self)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None:
@@ -123,6 +157,17 @@ class LevelingCog(commands.Cog):
             except discord.HTTPException:
                 pass
             await self._grant_level_rewards(message.author, message.guild, risultato.new_level)
+
+        if should_trigger_drop(random.random()):
+            importo = random.randint(DEFAULT_MIN_COINS, DEFAULT_MAX_COINS)
+            view = self.DropClaimView(message.guild.id, importo)
+            try:
+                await message.channel.send(
+                    f"💰 È apparso un drop di **{importo}** coin! Clicca per raccoglierlo.",
+                    view=view,
+                )
+            except discord.HTTPException:
+                pass
 
     # ================================================================
     # XP vocale — task periodico
