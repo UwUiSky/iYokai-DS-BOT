@@ -35,6 +35,7 @@ from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
 from core.repositories.monthly_winners_repo import monthly_winners_repo
+from core.repositories.shop_repo import shop_repo
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -502,6 +503,141 @@ class LevelingCog(commands.Cog):
         else:
             await interaction.response.send_message(
                 "L'annuncio mensile non era attivo su questo server.", ephemeral=True
+            )
+
+    # ================================================================
+    # Shop (SPEC.md §15.4)
+    # ================================================================
+    shop_group = app_commands.Group(
+        name="shop", description="Negozio: spendi i tuoi coin su oggetti o ruoli."
+    )
+
+    @shop_group.command(name="list", description="Mostra gli oggetti disponibili nello shop.")
+    async def shop_list(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        oggetti = await shop_repo.list_items(guild.id)
+        if not oggetti:
+            await interaction.response.send_message(
+                "Lo shop di questo server è vuoto.", ephemeral=True
+            )
+            return
+
+        righe = []
+        for oggetto in oggetti:
+            riga = f"`{oggetto.id}` **{oggetto.name}** — {oggetto.price} coin"
+            if oggetto.role_id is not None:
+                riga += f" (ruolo <@&{oggetto.role_id}>)"
+            if oggetto.description:
+                riga += f"\n> {oggetto.description}"
+            righe.append(riga)
+
+        embed = discord.Embed(
+            title="🛒 Shop", description="\n".join(righe), color=discord.Color.green()
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @shop_group.command(name="buy", description="Acquista un oggetto dello shop.")
+    @app_commands.describe(item_id="ID dell'oggetto (vedi /shop list)")
+    async def shop_buy(self, interaction: discord.Interaction, item_id: int) -> None:
+        guild = interaction.guild
+        if guild is None or not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        oggetto = await shop_repo.get_item(item_id, guild.id)
+        if oggetto is None:
+            await interaction.response.send_message(
+                "Nessun oggetto trovato con questo ID.", ephemeral=True
+            )
+            return
+
+        if oggetto.role_id is not None and await shop_repo.has_purchased(
+            guild.id, interaction.user.id, oggetto.id
+        ):
+            await interaction.response.send_message(
+                "Hai già acquistato questo oggetto.", ephemeral=True
+            )
+            return
+
+        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, oggetto.price)
+        if not riuscito:
+            await interaction.response.send_message(
+                f"Non hai abbastanza coin — servono **{oggetto.price}**.", ephemeral=True
+            )
+            return
+
+        await shop_repo.record_purchase(guild.id, interaction.user.id, oggetto.id)
+
+        if oggetto.role_id is not None:
+            try:
+                await interaction.user.add_roles(
+                    discord.Object(id=oggetto.role_id), reason=f"Acquisto shop: {oggetto.name}"
+                )
+            except discord.HTTPException:
+                logger.warning(
+                    "Impossibile assegnare il ruolo shop %s a %s.",
+                    oggetto.role_id,
+                    interaction.user.id,
+                )
+
+        await interaction.response.send_message(
+            f"✅ Hai acquistato **{oggetto.name}** per {oggetto.price} coin!"
+        )
+
+    @shop_group.command(name="add-item", description="[Admin] Aggiunge un oggetto allo shop.")
+    @app_commands.describe(
+        name="Nome dell'oggetto",
+        price="Prezzo in coin",
+        role="Ruolo da assegnare all'acquisto (facoltativo)",
+        description="Descrizione (facoltativa)",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def shop_add_item(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        price: app_commands.Range[int, 1, 1000000],
+        role: discord.Role | None = None,
+        description: str | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        item_id = await shop_repo.add_item(
+            guild.id, name=name, price=price,
+            role_id=role.id if role else None, description=description,
+        )
+        await interaction.response.send_message(
+            f"✅ Aggiunto **{name}** allo shop (ID `{item_id}`).", ephemeral=True
+        )
+
+    @shop_group.command(
+        name="remove-item", description="[Admin] Rimuove un oggetto dallo shop."
+    )
+    @app_commands.describe(item_id="ID dell'oggetto (vedi /shop list)")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def shop_remove_item(self, interaction: discord.Interaction, item_id: int) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+
+        if await shop_repo.remove_item(item_id, guild.id):
+            await interaction.response.send_message("Oggetto rimosso dallo shop.", ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                "Nessun oggetto trovato con questo ID in questo server.", ephemeral=True
             )
 
 async def setup(bot: commands.Bot) -> None:

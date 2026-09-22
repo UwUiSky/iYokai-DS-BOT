@@ -552,7 +552,8 @@ necessario.
 - `[x]` 15.2 Anti-farm XP vocale (self_deaf, soli nel canale, AFK, 2h
   stesso canale, cap giornaliero)
 - `[x]` 15.3 Economy: daily, work, pay, balance
-- `[ ]` 15.4 **Shop** — nessun posto dove spendere i coin
+- `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
+  con prezzo e un ruolo opzionale da concedere all'acquisto
 - `[ ]` 15.5 **Giveaway** (con requisiti di ruolo/livello)
 - `[ ]` 15.6 Drop messages
 - `[x]` 15.7 Classifica mensile (via `period_key`, senza reset schedulato)
@@ -718,13 +719,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 9 | 0 | 16 |
+| §15 Levels/Gilde | 10 | 0 | 15 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **134** | **5** | **125** |
+| **Totale** | **135** | **5** | **124** |
 
-Su 264 voci totali: **134 fatte, 5 parziali, 125 mancanti** — circa
+Su 264 voci totali: **135 fatte, 5 parziali, 124 mancanti** — circa
 il 51% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con

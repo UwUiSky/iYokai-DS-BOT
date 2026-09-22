@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 17:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 22:05 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 146 comandi in 10 categorie.**
+**Totale: 150 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -36,6 +36,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 17:
 - **`/monthly-winners set`** — [Admin] Imposta il canale dove annunciare i vincitori del mese.
 - **`/pay`** — Trasferisci coin a un altro utente.
 - **`/rank`** — Mostra il tuo livello e i tuoi coin.
+- **`/shop add-item`** — [Admin] Aggiunge un oggetto allo shop.
+- **`/shop buy`** — Acquista un oggetto dello shop.
+- **`/shop list`** — Mostra gli oggetti disponibili nello shop.
+- **`/shop remove-item`** — [Admin] Rimuove un oggetto dallo shop.
 - **`/work`** — Lavora per guadagnare qualche coin.
 
 ## Logging
