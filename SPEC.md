@@ -415,22 +415,32 @@ periodico (`core/feed_watcher.py` ogni 5 minuti, `core/twitch_
 watcher.py` ogni 90s), che raggiunge lo stesso risultato per
 l'utente finale senza cambiare il deployment.
 
-## §11 BACKUP SYSTEM — parzialmente fatta (clonazione, non orchestrazione)
+## §11 BACKUP SYSTEM — orchestrazione automatizzabile completa
 
-**Nota di stato**: costruita la clonazione vera e propria (§11.3-
-11.8, `core/backup_clone_logic.py`) — funzioni riusabili che, dato
-un server sorgente e uno di destinazione già esistenti, replicano
-ruoli/permessi, categorie/canali, emoji, sticker, soundboard,
-webhook. NON ancora costruita l'orchestrazione attorno (§11.1/11.2:
-chi crea il server di destinazione e quando), né le parti più
-delicate che richiedono decisioni architetturali prima di scrivere
-codice (§11.9 mirror messaggi con identità utente, §11.10/11.11
-backup e restore utenti via OAuth2 — storage di token OAuth altrui è
-un tema di sicurezza reale, da discutere, non da presumere).
+**Nota di stato**: costruite sia la clonazione (§11.3-11.8) sia
+l'intera orchestrazione automatizzabile attorno (§11.1, §11.2,
+§11.12) — tutto quello che NON richiede una decisione architetturale
+delicata è ora fatto. Restano deliberatamente rimandati §11.9
+(mirror messaggi con identità utente) e §11.10/§11.11 (backup e
+restore utenti via OAuth2 — storage di token OAuth altrui è un tema
+di sicurezza reale, da discutere con l'utente, non da presumere).
 
-- `[ ]` 11.1 iYokai Creator: crea server → cede ownership → invita
-  iYokai Main → esce (sempre sotto i 10 server)
-- `[ ]` 11.2 Coda serializzata persistente con timeout 24h
+**Limite reale della piattaforma Discord**, verificato con una
+ricerca prima di progettare, non aggirabile dal codice: **un bot non
+può autoinvitarsi in un server**. "Cede ownership → invita iYokai
+Main" nella pratica significa: Creator crea e clona, genera un URL
+di invito OAuth per Main, un umano deve cliccarlo — il codice fa
+tutto il resto in automatico attorno a quel singolo passaggio
+necessario.
+
+- `[x]` 11.1 iYokai Creator: crea server → cede ownership → invita
+  iYokai Main → esce (sempre sotto i 10 server) — `core/backup_
+  orchestrator.py` (`start_backup_job()` + `finalize_backup_job()`,
+  divise attorno al passaggio umano necessario sopra), `core/backup_
+  creator_bot.py`
+- `[x]` 11.2 Coda serializzata persistente con timeout 24h —
+  `core/repositories/backup_repo.py` (tabella `backup_jobs`) +
+  `core/backup_queue_worker.py` (un job alla volta, tick ogni 60s)
 - `[x]` 11.3 Clonazione ruoli + permessi — `clone_roles()`, salta
   @everyone (esiste già) ma ne applica comunque i permessi al
   default_role di destinazione, salta i ruoli "managed"
@@ -448,7 +458,9 @@ un tema di sicurezza reale, da discutere, non da presumere).
 - `[ ]` 11.10 User backup: snapshot periodico (settimanale) dei
   verificati non bannati/kickati
 - `[ ]` 11.11 Restore massivo utenti via OAuth2 `guilds.join`
-- `[ ]` 11.12 Comandi `/define-main`, `/define-backup`, `/restore-users`
+- `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
+  `/restore-users` — i primi due fatti; `/restore-users` non
+  costruito, dipende da §11.11 (OAuth2), rimandato con essa
 - `[ ]` 11.13 Auto-propagazione: backup diventa main → crea nuovo backup
 
 ## §12 TEMPORARY VOICE CHANNELS
@@ -689,7 +701,7 @@ rilancia lo stesso conteggio.
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 6 | 3 | 0 |
 | §10 Alerts | 5 | 1 | 1 |
-| §11 Backup | 6 | 0 | 7 |
+| §11 Backup | 8 | 1 | 4 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
@@ -697,16 +709,15 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **129** | **4** | **131** |
+| **Totale** | **131** | **5** | **128** |
 
-Su 264 voci totali: **129 fatte, 4 parziali, 131 mancanti** — circa
-il 49% dello schema (contando i parziali a metà peso). **§11 Backup
-System non è più a zero**: la clonazione vera e propria (ruoli,
-canali, emoji, sticker, soundboard, webhook) è fatta e testata;
-restano l'orchestrazione (chi crea il server di destinazione, la
-coda persistente) e le parti architetturalmente più delicate (mirror
-messaggi con identità utente, backup/restore utenti via OAuth2 —
-tema di sicurezza reale, da discutere prima di costruire).
+Su 264 voci totali: **131 fatte, 5 parziali, 128 mancanti** — circa
+il 50% dello schema (contando i parziali a metà peso). **§11 Backup
+System ha ora l'intera orchestrazione automatizzabile completa**
+(creazione server, coda persistente, clonazione, comandi
+define-main/define-backup) — restano solo le parti che richiedono
+decisioni architetturali con l'utente prima di scrivere codice
+(mirror messaggi, backup/restore utenti via OAuth2).
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
