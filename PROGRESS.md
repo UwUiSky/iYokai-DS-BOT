@@ -1690,6 +1690,23 @@ commit del codice. **51% dello schema (134/264).**
 
 **Suite di test completa: 1042/1042 passano.**
 
+### Fase 45 — Shop, "un posto dove spendere i coin" (SPEC.md §15.4)
+
+`LevelingRepository.spend_coins()` — stesso pattern atomico (FOR
+UPDATE dentro una transazione) di `transfer_coins()` già esistente,
+mai un saldo negativo. `core/repositories/shop_repo.py`: oggetti con
+prezzo e un ruolo OPZIONALE da concedere — senza ruolo l'oggetto
+resta decorativo, un "pozzo" legittimo per i coin. `has_purchased()`
+evita di far ricomprare un ruolo già posseduto. `/shop list|buy|
+add-item|remove-item`.
+
+**21 nuovi test**, incluso il comportamento reale contro Postgres:
+saldo insufficiente non sottrae nulla, un secondo acquisto dello
+stesso ruolo viene rifiutato senza toccare il saldo. SPEC.md e
+COMMAND_LIST.md aggiornati nello stesso commit. **51% (135/264).**
+
+**Suite di test completa: 1063/1063 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -2015,9 +2032,6 @@ stato scartato per un limite tecnico specifico.
 **§15 Levels/Economy/Gilde/Classifiche a 9/25** — notifica level-up
 vocale, ruoli-premio e annuncio vincitori mensile fatti. Prossimi pezzi ben delimitati, senza
 bisogno di discussione preventiva:
-- **15.4** Shop — "nessun posto dove spendere i coin": items
-  configurabili (nome, prezzo, ruolo opzionale da concedere), /shop
-  buy
 - **15.6** Drop messages — comparsa casuale di coin da reclamare nei
   messaggi, primo che clicca/reagisce vince
 - **15.5** Giveaway (con requisiti di ruolo/livello) — creazione,
