@@ -560,8 +560,13 @@ necessario.
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
 - `[ ]` 15.10 **Classifica Gilde** (mensile + totale)
 - `[ ]` 15.11 **Annuncio automatico dei vincitori a fine mese**
-- `[ ]` 15.12 Notifica di level-up per XP vocale (oggi solo testuale)
-- `[ ]` 15.13 Ruoli-premio per livello raggiunto
+- `[x]` 15.12 Notifica di level-up per XP vocale — mandata nel canale
+  vocale stesso (i canali vocali moderni hanno la propria chat
+  integrata), l'unico posto sensato per un task periodico su più
+  server
+- `[x]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
+  add|remove|list`, cumulativo (ogni ruolo fino al nuovo livello,
+  non solo il più alto), agganciato sia a XP testuale sia vocale
 - `[ ]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
   - `[ ]` Creazione gilda + categoria privata dedicata
   - `[ ]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
@@ -709,19 +714,20 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 6 | 0 | 19 |
+| §15 Levels/Gilde | 8 | 0 | 17 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **131** | **5** | **128** |
+| **Totale** | **133** | **5** | **126** |
 
-Su 264 voci totali: **131 fatte, 5 parziali, 128 mancanti** — circa
-il 50% dello schema (contando i parziali a metà peso). **§11 Backup
-System ha ora l'intera orchestrazione automatizzabile completa**
-(creazione server, coda persistente, clonazione, comandi
-define-main/define-backup) — restano solo le parti che richiedono
-decisioni architetturali con l'utente prima di scrivere codice
-(mirror messaggi, backup/restore utenti via OAuth2).
+Su 264 voci totali: **133 fatte, 5 parziali, 126 mancanti** — circa
+il 50% dello schema (contando i parziali a metà peso). §11 Backup
+System ha l'intera orchestrazione automatizzabile completa —
+restano solo le parti che richiedono decisioni architetturali con
+l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
+Levels a 8/25: notifica di level-up vocale e ruoli-premio per
+livello ora fatti, resta la sottosezione Gilde/Clan (§15.14, ancora
+interamente da fare, dimensione paragonabile a Backup System).
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
