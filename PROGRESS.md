@@ -1667,6 +1667,29 @@ cura quando ci si arriva.
 
 **Suite di test completa: 1013/1013 passano.**
 
+### Fase 44 — Annuncio automatico dei vincitori a fine mese (SPEC.md §15.11)
+
+`core/monthly_winners_logic.py` (logica pura: mese precedente con
+passaggio d'anno, idempotenza, podio con testo esplicito se nessuno
+ha partecipato) + `core/repositories/monthly_winners_repo.py` (canale
+per server + `last_announced_period`) + `core/monthly_winners_
+announcer.py` (tick orario avviato in main.py) + `/monthly-winners
+set|disable`. `MEDALS` estratta come costante condivisa, ora usata
+anche da `/leaderboard` al posto della sua lista inline.
+
+Scelte deliberate: alla prima configurazione il mese appena passato
+viene segnato come già coperto (nessun annuncio retroattivo a
+sorpresa); canale sparito → periodo segnato comunque (niente
+tentativi ogni ora per un mese); errore di invio transitorio →
+periodo NON segnato (riprova al tick successivo).
+
+**29 nuovi test**, incluso il podio verificato contro righe
+`leveling_activity` vere nel database (l'attività del mese sbagliato
+resta esclusa). SPEC.md e COMMAND_LIST.md aggiornati nello stesso
+commit del codice. **51% dello schema (134/264).**
+
+**Suite di test completa: 1042/1042 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1989,12 +2012,9 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**§15 Levels/Economy/Gilde/Classifiche a 8/25** — notifica level-up
-vocale e ruoli-premio fatti. Prossimi pezzi ben delimitati, senza
+**§15 Levels/Economy/Gilde/Classifiche a 9/25** — notifica level-up
+vocale, ruoli-premio e annuncio vincitori mensile fatti. Prossimi pezzi ben delimitati, senza
 bisogno di discussione preventiva:
-- **15.11** Annuncio automatico dei vincitori a fine mese — usa
-  `leaderboard_logic`/`period_key` già esistenti, serve solo un task
-  schedulato mensile + un canale configurabile dove annunciare
 - **15.4** Shop — "nessun posto dove spendere i coin": items
   configurabili (nome, prezzo, ruolo opzionale da concedere), /shop
   buy
