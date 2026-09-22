@@ -1439,6 +1439,72 @@ ora genuinamente fatti. Tabella ricalcolata: 122 fatte, 4 parziali,
 
 **Suite di test completa: 923/923 passano.**
 
+### Fase 40 — Auto-leave chiude Music, inizio Backup System (SPEC.md §9.9, §11.3-11.8)
+
+**Music §9.9**: `core/music_fleet.handle_inactive_player()` reagisce
+all'evento `wavelink_inactive_player` (il timeout, 300s di default,
+era già gestito internamente da wavelink) — disconnette e libera il
+worker nella flotta. Agganciato IDENTICAMENTE su tutti e 6 i bot
+(main + 5 worker) in `main.py`, dato che i worker non caricano cog e
+il listener va registrato direttamente con `add_listener()`. 2 test.
+**§9 Music non ha più nessuna voce davvero mancante.**
+
+**Backup System, prima volta toccato**: cominciato dalla clonazione
+vera e propria (§11.3-11.8, `core/backup_clone_logic.py`), la base
+riusabile indipendentemente da come funzionerà l'orchestrazione
+completa. Verificate tutte le firme reali dell'API discord.py prima
+di scrivere codice (create_role, create_category, create_text_
+channel, create_voice_channel, create_custom_emoji, create_sticker,
+create_webhook, create_soundboard_sound).
+
+`clone_roles()`: salta @everyone (Discord non permette di crearne un
+secondo) e i ruoli "managed". **Correzione dell'utente**: @everyone
+non va solo saltato — i suoi PERMESSI vanno comunque applicati al
+default_role del server di destinazione, perché l'amministratore
+originale potrebbe averli personalizzati rispetto al default di
+Discord. Corretto: `target_guild.default_role.edit(permissions=...)`
+esplicito, con la mappatura inclusa nel dizionario restituito.
+
+`clone_categories_and_channels()`: categorie create prima dei
+canali (un canale ha bisogno dell'oggetto categoria già esistente
+lato destinazione), overwrite di permessi rimappati tramite la
+mappa ruoli — solo quelli per RUOLO, quelli per singolo utente
+vengono saltati (nessun membro esiste ancora in un server appena
+clonato).
+
+`clone_emoji()`/`clone_stickers()`/`clone_soundboard()`: scaricano
+il contenuto dal server originale (`.read()`, via CDN Discord) e lo
+ricaricano nel server di destinazione. **Bug reale trovato con un
+test diretto PRIMA di scrivere il codice dei test**: `discord.File`
+non accetta bytes grezzi nonostante il type hint lo suggerisca —
+tratta bytes come un PERCORSO FILE (`open(fp, 'rb')`), non come
+contenuto, sollevando `FileNotFoundError`. Corretto avvolgendo
+sempre in `io.BytesIO` prima di passarlo a `discord.File`.
+
+`clone_webhooks()`: solo nome e canale rimappato — l'URL di un
+webhook è univoco per ogni webhook creato, non copiabile.
+
+**Bug di test trovato scrivendo i test dei ruoli**: `remap_
+permission_overwrites()` usa `isinstance(..., discord.Role)` — un
+fake che non eredita davvero da `discord.Role` non lo supererebbe
+mai. Verificato con uno spike quali attributi sono property di sola
+lettura (`permissions`/`colour` sì, leggono da `_permissions`/
+`_colour` interni; `id`/`name`/`position`/`hoist`/`mentionable`/
+`managed` no, assegnabili direttamente) prima di scrivere il fake
+completo. Stesso lavoro ripetuto per `category`/`overwrites` sui
+canali (property in `discord.abc.GuildChannel`, sovrascritte nei
+fake).
+
+**29 nuovi test totali** tra i 4 file di test creati, tutti passati
+al primo colpo dopo la verifica delle firme reali (segno che la
+disciplina di verificare prima di scrivere ha ripagato).
+
+**SPEC.md**: §11.3-11.8 marcate fatte. §11 non è più a zero.
+Tabella ricalcolata: 129 fatte, 4 parziali, 131 mancanti su 264 —
+circa il 49%.
+
+**Suite di test completa: 946/946 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1761,26 +1827,42 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**La radio condivisa /nonstop-main è completa e testata** (nei
-limiti di quello che questo sandbox può verificare — nessuna
-connessione Lavalink/voce reale possibile, vedi limite d'ambiente
-sotto). Da verificare dal vivo una volta che l'utente:
-1. Avvia un nodo Lavalink locale (necessario per gli inediti,
-   `MAIN_RADIO_LOCAL_FOLDER` + `LAVALINK_HOST/PORT/PASSWORD`)
-2. Popola la playlist con `/nonstop-main add-track` (pubblicazioni)
-   e `/nonstop-main add-local` (inediti, interlacciati come vuole)
-3. Testa `/nonstop-main start` su più server per verificare che
-   davvero si sincronizzino sullo stesso punto
+**Backup System (§11): fatta la clonazione (6/13), restano 7 voci
+che richiedono decisioni architetturali con l'utente prima di
+scrivere codice** — stesso principio già seguito per Music
+multi-istanza e Alert multi-piattaforma: non presumere, chiedere.
 
-**§9 Music è ora la sezione più completa del progetto dopo §17
-Owner** — resta solo l'auto-leave su canale vuoto (§9.9, l'evento
-esiste già in wavelink, manca il listener che agisce) come pezzo
-piccolo non chiuso, più le voci deliberatamente scartate (filtri,
-DJ role, voteskip) o parziali per scelta (comandi ridotti, sorgenti
-limitate dal nodo pubblico usato).
+Domande aperte da fare all'utente al prossimo giro su questa
+sezione:
+1. **§11.1 iYokai Creator**: il bot Creator (YOKAI_CREATOR_TOKEN, già
+   dichiarato in config.py, mai usato finora) deve creare un server
+   nuovo, cedere l'ownership, invitare Main, uscire — a chi va
+   ceduta l'ownership? All'utente stesso (proprietario del server
+   originale) o resta un dettaglio tecnico interno?
+2. **§11.2 Coda persistente**: cosa entra in coda esattamente (un
+   intero job di backup? Singoli passi?), e cosa succede quando
+   scatta il timeout di 24h — il job si scarta, si segnala
+   all'utente, si ritenta?
+3. **§11.9 Mirror messaggi con identità utente**: questo significa
+   creare un webhook per canale e inviare ogni messaggio ORIGINALE
+   con username/avatar della persona che l'ha scritto (impersonare
+   l'autore) — tecnicamente fattibile via webhook, ma vale la pena
+   confermare che è davvero quello che si intende, dato l'impatto
+   (ogni messaggio del server sorgente viene rilanciato in tempo
+   reale su un secondo server)
+4. **§11.10/11.11 Backup e restore utenti via OAuth2 `guilds.join`**:
+   la parte più delicata dal punto di vista della sicurezza — serve
+   che ogni utente conceda esplicitamente lo scope `guilds.join`
+   (tipicamente durante la verifica), e il bot deve MEMORIZZARE il
+   loro refresh token OAuth per poterli riaggiungere in automatico
+   più avanti. Storage di credenziali OAuth altrui è un tema serio:
+   dove/come vengono conservati questi token, per quanto tempo,
+   quali garanzie dare agli utenti — da decidere insieme, non da
+   presumere unilateralmente
 
-**§11 Backup System resta l'unica sezione ancora completamente a
-zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
+**§15 Levels/Gilde/Classifiche resta l'unica sezione grande ancora
+solo parzialmente fatta (6/25), buon candidato se si preferisce
+restare su territorio meno delicato nel frattempo.**
 
 ⚠️ **REGOLE PERMANENTI**:
 1. Dopo ogni commit che tocca i comandi slash, rilanciare
@@ -1791,18 +1873,19 @@ zero.** §15 Levels/Gilde/Classifiche parzialmente fatta (6/25).
    esplicito dell'utente va marcato SCARTATO (✗), non lasciato vuoto.
    Ricalcolare SEMPRE con lo script meccanico, mai a mente, e MAI
    scrivere il pattern letterale di un marcatore dentro un testo di
-   prosa esplicativa. Quando una voce passa da parziale a fatta,
-   controllare che il testo esplicativo altrove nel documento non
-   la elenchi ancora tra le parziali (successo in questa sessione:
-   "streaming 24/7 del bot principale" rimasto per errore nell'elenco
-   delle parziali dopo che 9.11 era già passata a fatta).
+   prosa esplicativa.
 3. Quando due tabelle diverse usano ID SERIAL indipendenti ma
    vengono mostrate/gestite insieme all'utente, usare prefissi
    distinti nell'ID visibile.
 4. Prima di progettare una feature che tocca file locali o risorse
    di sistema specifiche di UNA macchina, verificare con una ricerca
-   se l'infrastruttura usata (qui: nodi Lavalink pubblici condivisi)
-   ha effettivamente accesso a quella risorsa — non presumerlo.
+   se l'infrastruttura usata ha effettivamente accesso a quella
+   risorsa — non presumerlo.
+5. Prima di una feature con implicazioni architetturali importanti
+   (multi-istanza, storage di credenziali altrui, orchestrazione tra
+   più bot/server), fare le domande giuste all'utente PRIMA di
+   scrivere codice — non presumere il design e scoprire dopo che va
+   rifatto.
 
 Promemoria tecnici aggiuntivi:
 - Verificare collisioni con hook riservati di discord.py prima di
@@ -1814,20 +1897,19 @@ Promemoria tecnici aggiuntivi:
   invece di fallire rapidamente
 - Prima di aggiungere un listener duplicato su più bot/cog per lo
   stesso evento, verificare nel sorgente della libreria se esiste
-  già un meccanismo interno che lo gestisce indipendentemente dal
-  client Discord
-- Su una property di sola lettura di una classe discord.py (es.
-  `Member.voice`, `Member.id`), un fake che eredita dalla classe vera
-  deve SOVRASCRIVERE la property con una propria, non assegnare
-  l'attributo direttamente nel costruttore (fallisce: "property has
-  no setter") — successo due volte in questa sessione
+  già un meccanismo interno che lo gestisce indipendentemente
+- Su una property di sola lettura di una classe discord.py, un fake
+  che eredita dalla classe vera deve SOVRASCRIVERE la property con
+  una propria, non assegnare l'attributo direttamente
+- Prima di passare `bytes` grezzi a `discord.File`, avvolgerli
+  sempre in `io.BytesIO` — bytes grezzi vengono trattati come un
+  percorso file, non come contenuto
 
 **Limite d'ambiente da ricordare**: la rete del sandbox di sviluppo è
 ristretta a un elenco fisso di domini (PyPI, npm, GitHub) — non
 raggiunge Discord/Twitch/Lavalink nemmeno con credenziali vere. Ogni
-test di integrazione con questi servizi resta simulato (server
-locali finti che imitano la forma reale delle API, o oggetti finti
-per player/voce); la verifica dal vivo tocca all'utente.
+test di integrazione con questi servizi resta simulato; la verifica
+dal vivo tocca all'utente.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
