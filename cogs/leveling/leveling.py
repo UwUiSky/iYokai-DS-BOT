@@ -33,6 +33,7 @@ from discord.ext import commands, tasks
 from core.database import db
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
+from core.monthly_winners_logic import MEDALS
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -368,10 +369,9 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        medaglie = ["🥇", "🥈", "🥉"]
         righe = []
         for posizione, voce in enumerate(voci, start=1):
-            prefisso = medaglie[posizione - 1] if posizione <= 3 else f"{posizione}."
+            prefisso = MEDALS[posizione - 1] if posizione <= len(MEDALS) else f"{posizione}."
             unita = "XP" if metric.value == "xp" else "coin"
             righe.append(f"{prefisso} <@{voce.user_id}> — **{voce.amount}** {unita}")
 
