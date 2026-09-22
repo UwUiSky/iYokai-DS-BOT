@@ -316,6 +316,11 @@ class Database:
         from core.repositories.backup_repo import run_migrations as backup_migrations
         await backup_migrations(self.pool)
 
+        from core.repositories.level_reward_repo import (
+            run_migrations as level_reward_migrations,
+        )
+        await level_reward_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
