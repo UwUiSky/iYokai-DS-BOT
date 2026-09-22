@@ -41,6 +41,9 @@ from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.monthly_winners_announcer import monthly_winners_announcer
+from core.giveaway_worker import giveaway_worker
+from core.repositories.giveaway_repo import giveaway_repo
+from cogs.leveling.leveling import LevelingCog
 from core.music_fleet import MusicFleet, handle_inactive_player
 from core.backup_orchestrator import finalize_backup_job
 from core.repositories.backup_repo import backup_repo
@@ -200,6 +203,17 @@ class iYokaiBot(commands.AutoShardedBot):
         # Annuncio automatico dei vincitori a fine mese (SPEC.md
         # §15.11): tick orario, idempotente tramite database.
         monthly_winners_announcer.start(self)
+
+        # Giveaway (SPEC.md §15.5): ri-registra le view persistenti
+        # per ogni giveaway ancora attivo - altrimenti i pulsanti
+        # "Partecipa" dei messaggi già inviati smetterebbero di
+        # rispondere dopo un riavvio del bot.
+        for giveaway in await giveaway_repo.get_active_giveaways():
+            if giveaway.message_id is not None:
+                self.add_view(
+                    LevelingCog.GiveawayEnterView(giveaway.id), message_id=giveaway.message_id
+                )
+        giveaway_worker.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync

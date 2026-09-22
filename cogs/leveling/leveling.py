@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import random
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -38,6 +39,8 @@ from core.monthly_winners_logic import MEDALS, previous_period_key
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.repositories.shop_repo import shop_repo
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
+from core.giveaway_logic import is_eligible, pick_winners
+from core.repositories.giveaway_repo import giveaway_repo
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -684,6 +687,114 @@ class LevelingCog(commands.Cog):
             await interaction.response.send_message(
                 "Nessun oggetto trovato con questo ID in questo server.", ephemeral=True
             )
+
+    # ================================================================
+    # Giveaway (SPEC.md §15.5, con requisiti di ruolo/livello)
+    # ================================================================
+    class GiveawayEnterView(discord.ui.View):
+        """
+        PERSISTENTE (timeout=None, custom_id fisso che incorpora
+        l'ID del giveaway) — un giveaway dura ore o giorni, deve
+        continuare a funzionare anche dopo un riavvio del bot.
+        main.py la ri-registra per ogni giveaway ancora attivo ad
+        ogni avvio (bot.add_view), altrimenti i pulsanti dei
+        messaggi già inviati smetterebbero di rispondere.
+        """
+
+        def __init__(self, giveaway_id: int) -> None:
+            super().__init__(timeout=None)
+            self._entra.custom_id = f"giveaway_enter:{giveaway_id}"
+            self.giveaway_id = giveaway_id
+
+        @discord.ui.button(label="Partecipa", emoji="🎉", style=discord.ButtonStyle.primary)
+        async def _entra(
+            self, interaction: discord.Interaction, button: discord.ui.Button
+        ) -> None:
+            giveaway = await giveaway_repo.get_giveaway(self.giveaway_id)
+            if giveaway is None or giveaway.ended:
+                await interaction.response.send_message(
+                    "Questo giveaway non è più attivo.", ephemeral=True
+                )
+                return
+
+            totali = await leveling_repo.get_totals(giveaway.guild_id, interaction.user.id)
+            ruoli_utente = {r.id for r in interaction.user.roles}
+            if not is_eligible(
+                totali.level, ruoli_utente, giveaway.min_level, giveaway.required_role_id
+            ):
+                requisiti = []
+                if giveaway.min_level > 0:
+                    requisiti.append(f"livello {giveaway.min_level}")
+                if giveaway.required_role_id is not None:
+                    requisiti.append(f"il ruolo <@&{giveaway.required_role_id}>")
+                await interaction.response.send_message(
+                    f"Non soddisfi i requisiti per partecipare (richiesto: {', '.join(requisiti)}).",
+                    ephemeral=True,
+                )
+                return
+
+            nuova = await giveaway_repo.add_entry(self.giveaway_id, interaction.user.id)
+            if nuova:
+                await interaction.response.send_message(
+                    "✅ Partecipazione registrata, in bocca al lupo!", ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    "Avevi già partecipato a questo giveaway.", ephemeral=True
+                )
+
+    @app_commands.command(name="giveaway", description="[Admin] Avvia un giveaway.")
+    @app_commands.describe(
+        prize="Cosa si vince",
+        duration_minutes="Durata in minuti",
+        winners="Numero di vincitori (default 1)",
+        min_level="Livello minimo richiesto (facoltativo)",
+        required_role="Ruolo richiesto per partecipare (facoltativo)",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def giveaway(
+        self,
+        interaction: discord.Interaction,
+        prize: str,
+        duration_minutes: app_commands.Range[int, 1, 43200],
+        winners: app_commands.Range[int, 1, 50] = 1,
+        min_level: app_commands.Range[int, 0, 1000] = 0,
+        required_role: discord.Role | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None or interaction.channel is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        scadenza = datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
+
+        giveaway_id = await giveaway_repo.create_giveaway(
+            guild.id, interaction.channel.id, prize, winners, min_level,
+            required_role.id if required_role else None, scadenza, interaction.user.id,
+        )
+
+        requisiti = []
+        if min_level > 0:
+            requisiti.append(f"livello **{min_level}**")
+        if required_role is not None:
+            requisiti.append(f"ruolo {required_role.mention}")
+        riga_requisiti = f"\nRequisiti: {', '.join(requisiti)}" if requisiti else ""
+
+        embed = discord.Embed(
+            title=f"🎉 Giveaway: {prize}",
+            description=(
+                f"Vincitori: **{winners}**\n"
+                f"Termina: <t:{int(scadenza.timestamp())}:R>{riga_requisiti}"
+            ),
+            color=discord.Color.blurple(),
+        )
+
+        view = self.GiveawayEnterView(giveaway_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        messaggio = await interaction.original_response()
+        await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(

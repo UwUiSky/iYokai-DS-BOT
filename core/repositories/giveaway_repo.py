@@ -125,6 +125,13 @@ class GiveawayRepository:
         )
         return [self._row_to_giveaway(r) for r in rows]
 
+    async def get_active_giveaways(self) -> list[Giveaway]:
+        """Tutti i giveaway non ancora conclusi, indipendentemente
+        dalla scadenza — usata all'avvio del bot per ri-registrare
+        le view persistenti dei pulsanti "Partecipa" ancora validi."""
+        rows = await self._pool.fetch("SELECT * FROM giveaways WHERE ended = false")
+        return [self._row_to_giveaway(r) for r in rows]
+
     async def mark_ended(self, giveaway_id: int) -> None:
         await self._pool.execute("UPDATE giveaways SET ended = true WHERE id = $1", giveaway_id)
 

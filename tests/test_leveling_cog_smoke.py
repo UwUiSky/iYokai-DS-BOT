@@ -55,6 +55,7 @@ async def test_leveling_cog_si_carica_correttamente():
         if isinstance(c, app_commands.Group) and c.name == "shop"
     )
     assert {"list", "buy", "add-item", "remove-item"} <= {c.name for c in shop_group.commands}
+    assert "giveaway" in comandi
 
     # Il task periodico deve essere avviato (non sollevare eccezioni
     # all'avvio del cog) — before_loop attende bot.wait_until_ready(),

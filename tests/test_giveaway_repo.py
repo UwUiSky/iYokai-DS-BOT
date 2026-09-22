@@ -105,3 +105,23 @@ async def test_create_salva_i_requisiti(repo):
     assert giveaway.winners_count == 3
     assert giveaway.min_level == 10
     assert giveaway.required_role_id == 555
+
+
+@pytest.mark.asyncio
+async def test_get_active_giveaways_esclude_i_conclusi(repo):
+    attivo = await _crea(repo, ends_at=ORA + timedelta(hours=1))
+    concluso = await _crea(repo, ends_at=ORA - timedelta(hours=1))
+    await repo.mark_ended(concluso)
+
+    attivi = await repo.get_active_giveaways()
+
+    assert [g.id for g in attivi] == [attivo]
+
+
+@pytest.mark.asyncio
+async def test_get_active_giveaways_include_anche_i_gia_scaduti_non_ancora_elaborati(repo):
+    giveaway_id = await _crea(repo, ends_at=ORA - timedelta(hours=1))
+
+    attivi = await repo.get_active_giveaways()
+
+    assert [g.id for g in attivi] == [giveaway_id]

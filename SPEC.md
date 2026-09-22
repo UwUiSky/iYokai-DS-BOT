@@ -554,7 +554,10 @@ necessario.
 - `[x]` 15.3 Economy: daily, work, pay, balance
 - `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
-- `[ ]` 15.5 **Giveaway** (con requisiti di ruolo/livello)
+- `[x]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
+  pulsante persistente "Partecipa" (sopravvive a un riavvio del bot,
+  registrato di nuovo per ogni giveaway ancora attivo), requisiti di
+  livello E ruolo verificati insieme al momento dell'iscrizione
 - `[x]` 15.6 Drop messages — piccola probabilità (0.5%) per
   messaggio idoneo, pulsante "primo che clicca vince", coin
   accreditati atomicamente
@@ -721,13 +724,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 11 | 0 | 14 |
+| §15 Levels/Gilde | 12 | 0 | 13 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **136** | **5** | **123** |
+| **Totale** | **137** | **5** | **122** |
 
-Su 264 voci totali: **136 fatte, 5 parziali, 123 mancanti** — circa
+Su 264 voci totali: **137 fatte, 5 parziali, 122 mancanti** — circa
 il 52% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
