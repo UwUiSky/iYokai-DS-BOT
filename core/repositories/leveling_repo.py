@@ -380,6 +380,44 @@ class LevelingRepository:
                 )
                 return True
 
+    async def spend_coins(self, guild_id: int, user_id: int, amount: int) -> bool:
+        """
+        Sottrae coin solo se il saldo basta — stesso pattern atomico
+        di transfer_coins (FOR UPDATE dentro una transazione), usata
+        dallo shop (SPEC.md §15.4) e da qualunque futuro consumo di
+        coin. Restituisce False (senza scrivere nulla) se il saldo
+        non basta.
+        """
+        if amount <= 0:
+            raise ValueError("L'importo da spendere deve essere positivo.")
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                saldo = await conn.fetchval(
+                    """
+                    SELECT coins_total FROM leveling_totals
+                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
+                    """,
+                    guild_id,
+                    user_id,
+                ) or 0
+
+                if saldo < amount:
+                    return False
+
+                await conn.execute(
+                    """
+                    INSERT INTO leveling_totals (guild_id, user_id, coins_total)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (guild_id, user_id) DO UPDATE
+                        SET coins_total = leveling_totals.coins_total + $3
+                    """,
+                    guild_id,
+                    user_id,
+                    -amount,
+                )
+                return True
+
     async def set_last_daily(self, guild_id: int, user_id: int, when: datetime) -> None:
         await self._pool.execute(
             """

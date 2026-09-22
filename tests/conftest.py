@@ -131,6 +131,7 @@ async def clean_db(db_pool):
     from core.repositories.monthly_winners_repo import (
         run_migrations as monthly_winners_migrations,
     )
+    from core.repositories.shop_repo import run_migrations as shop_migrations
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -160,6 +161,7 @@ async def clean_db(db_pool):
     await backup_migrations(db_pool)
     await level_reward_migrations(db_pool)
     await monthly_winners_migrations(db_pool)
+    await shop_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -206,6 +208,8 @@ async def clean_db(db_pool):
         "backup_pairs",
         "level_reward_roles",
         "monthly_winners_config",
+        "shop_items",
+        "shop_purchases",
         "backup_jobs",
         "guild_config",
         "guild_config_history",
