@@ -1632,6 +1632,41 @@ si ripeta ad ogni tick.
 
 **Suite di test completa: 997/997 passano.**
 
+### Fase 43 — §15.12/15.13, primo pezzo di Levels/Gilde (1000 test raggiunti)
+
+**§15.12 Notifica level-up vocale**: il repository calcolava già
+tutto (`VoiceMinuteGrant.leveled_up`/`new_level` esistevano già),
+mancava solo usarlo nel cog — il commento esistente spiegava perché
+era stato lasciato così ("un task periodico su più server non ha un
+canale testuale ovvio a cui scrivere"). Verificato prima di
+scrivere codice: `discord.VoiceChannel` eredita da `Messageable` (i
+canali vocali moderni hanno la propria chat integrata) — la
+notifica va quindi nel canale vocale stesso. **3 test**, incluso un
+bug di test trovato: il costruttore del cog avvia subito il task
+periodico, serve una fixture ASINCRONA (non sincrona) per avere un
+event loop attivo. **Traguardo: 1000/1000 test raggiunto.**
+
+**§15.13 Ruoli-premio per livello**: `core/repositories/level_
+reward_repo.py`, CUMULATIVO (ogni ruolo fino al nuovo livello, non
+solo il più alto — coerente con l'aspettativa comune, i badge più
+vecchi restano). Collegato sia a XP testuale che vocale tramite un
+metodo condiviso `_grant_level_rewards()`. Comandi `/level-roles
+add|remove|list`. **21 test totali** tra repository, collegamento
+nel cog, e comandi.
+
+**SPEC.md**: §15.12/15.13 marcate fatte. Tabella ricalcolata: 133
+fatte, 5 parziali, 126 mancanti su 264 — circa il 50%.
+
+**Prossimo in §15**: 15.11 (annuncio automatico vincitori, usa
+infrastruttura già esistente), 15.4 (shop), 15.6 (drop messages),
+15.5 (giveaway) — tutti buildable senza discussione preventiva.
+**15.14 Sistema Gilde/Clan** resta la sottosezione enorme con la
+sua economia interna (tesoreria, acquisto canali, boost),
+dimensione paragonabile a Backup System — da trattare con la stessa
+cura quando ci si arriva.
+
+**Suite di test completa: 1013/1013 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
@@ -1954,17 +1989,33 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
-**Backup System (§11): l'orchestrazione automatizzabile è completa,
-ora con promemoria e controllo di capacità.** Da verificare dal vivo
-una volta distribuito (impossibile in questo sandbox).
+**§15 Levels/Economy/Gilde/Classifiche a 8/25** — notifica level-up
+vocale e ruoli-premio fatti. Prossimi pezzi ben delimitati, senza
+bisogno di discussione preventiva:
+- **15.11** Annuncio automatico dei vincitori a fine mese — usa
+  `leaderboard_logic`/`period_key` già esistenti, serve solo un task
+  schedulato mensile + un canale configurabile dove annunciare
+- **15.4** Shop — "nessun posto dove spendere i coin": items
+  configurabili (nome, prezzo, ruolo opzionale da concedere), /shop
+  buy
+- **15.6** Drop messages — comparsa casuale di coin da reclamare nei
+  messaggi, primo che clicca/reagisce vince
+- **15.5** Giveaway (con requisiti di ruolo/livello) — creazione,
+  partecipazione, estrazione vincitore
 
-**Restano solo le 3 voci di §11 che richiedono decisioni con
-l'utente prima di scrivere codice** (mirror messaggi, backup/restore
-utenti via OAuth2, auto-propagazione).
+**15.14 Sistema Gilde/Clan resta la sottosezione più grande ancora
+da fare** — economia interna completa (tesoreria, acquisto canali
+con costo raddoppiato progressivo, ore vocali accumulate come
+requisito, boost XP/coin individuali e di gilda, ruoli Capo/Admin
+Clan pari tra gilde diverse tramite overwrite per-utente). Dimensione
+paragonabile a Backup System — da affrontare con la stessa cura,
+probabilmente con qualche domanda di chiarimento quando ci si arriva
+(es. il costo/requisito esatto va confermato prima di codificarlo,
+anche se lo schema è già abbastanza dettagliato su questo).
 
-**§15 Levels/Gilde/Classifiche resta l'unica sezione grande ancora
-solo parzialmente fatta (6/25)** — buon candidato per il prossimo
-giro se si preferisce restare su territorio meno delicato.
+**Backup System (§11) resta con solo le 3 voci delicate aperte**
+(mirror messaggi, OAuth2, auto-propagazione), da discutere con
+l'utente prima di scrivere codice.
 
 ⚠️ **REGOLE PERMANENTI**:
 1. Dopo ogni commit che tocca i comandi slash, rilanciare
@@ -1982,24 +2033,17 @@ giro se si preferisce restare su territorio meno delicato.
 4. Prima di progettare una feature che tocca file locali o risorse
    di sistema specifiche di UNA macchina, verificare con una ricerca
    se l'infrastruttura usata ha effettivamente accesso a quella
-   risorsa — non presumerlo.
-5. Prima di una feature con implicazioni architetturali importanti
-   (multi-istanza, storage di credenziali altrui, orchestrazione tra
-   più bot/server), fare le domande giuste all'utente PRIMA di
-   scrivere codice — non presumere il design.
+   risorsa.
+5. Prima di una feature con implicazioni architetturali importanti,
+   fare le domande giuste all'utente PRIMA di scrivere codice.
 6. Prima di assumere che un'azione sia automatizzabile via API,
    verificare con una ricerca i limiti REALI della piattaforma
-   Discord — non tutto quello che sembra logico lato codice è
-   davvero permesso lato Discord.
-7. Per estendere una tabella già esistente (non crearne una nuova),
-   usare `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` — idempotente,
-   sicuro da rilanciare, funziona anche su una tabella già popolata.
-   Primo caso in questo progetto trovato nella Fase 42.
+   Discord.
+7. Per estendere una tabella già esistente, usare `ALTER TABLE ...
+   ADD COLUMN IF NOT EXISTS` — idempotente, sicuro da rilanciare.
 8. Quando una richiesta implica automazione che assomiglia a
    selfbotting/account secondari automatizzati, verificare i Termini
-   di Servizio della piattaforma prima di costruire — spiegarne il
-   motivo con franchezza, proporre l'alternativa legittima (qui: i
-   promemoria invece dell'auto-join).
+   di Servizio della piattaforma prima di costruire.
 
 Promemoria tecnici aggiuntivi:
 - Verificare collisioni con hook riservati di discord.py prima di
@@ -2008,17 +2052,19 @@ Promemoria tecnici aggiuntivi:
   da `setup()`, per non rompere `/owner cog-reload`
 - Prima di usare `await` su una libreria esterna dentro `setup()`,
   verificare con un test diretto se può bloccare indefinitamente
-  invece di fallire rapidamente
 - Prima di aggiungere un listener duplicato su più bot/cog per lo
   stesso evento, verificare nel sorgente della libreria se esiste
   già un meccanismo interno che lo gestisce indipendentemente
 - Su una property di sola lettura di una classe discord.py, un fake
-  che eredita dalla classe vera deve SOVRASCRIVERE la property con
-  una propria, non assegnare l'attributo direttamente
+  che eredita dalla classe vera deve SOVRASCRIVERE la property
 - Prima di passare `bytes` grezzi a `discord.File`, avvolgerli
   sempre in `io.BytesIO`
 - In SQL dentro una stringa Python, i commenti usano `--`, non `#`
-  (sintassi Python) — trovato nella Fase 42
+- Se un cog avvia un task periodico nel proprio `__init__` (non in
+  `setup()`), una fixture di test che lo istanzia deve essere
+  ASINCRONA (non sincrona) per avere un event loop attivo, e va
+  fermata subito con `cog_unload()`/`.cancel()` — trovato nella
+  Fase 43
 
 **Limite d'ambiente da ricordare**: la rete del sandbox di sviluppo è
 ristretta a un elenco fisso di domini (PyPI, npm, GitHub) — non
@@ -2028,9 +2074,7 @@ dal vivo tocca all'utente.
 
 **Nota per una futura sessione**: PROGRESS.md ha superato le 2000
 righe — potrebbe valere la pena consolidare le fasi più vecchie
-(riassumere in poche righe le fasi 1-20 o simili) quando si ha
-tempo, per restare più navigabile. Non urgente, solo da tenere
-presente.
+quando si ha tempo, per restare più navigabile. Non urgente.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
