@@ -326,6 +326,77 @@ def _collega_singleton_per_test(monkeypatch, database):
     )
 
 
+class _FakeCreatorSideGuildPerTest:
+    def __init__(self) -> None:
+        self.chiamate_edit: list[dict] = []
+        self.leave_chiamato = False
+
+    async def edit(self, **kwargs) -> None:
+        self.chiamate_edit.append(kwargs)
+
+    async def leave(self) -> None:
+        self.leave_chiamato = True
+
+
+class _FakeCreatorClientPerTest:
+    def __init__(self, guild_lato_creator) -> None:
+        self._guild_lato_creator = guild_lato_creator
+
+    def get_guild(self, guild_id: int):
+        return self._guild_lato_creator
+
+
+@pytest.mark.asyncio
+async def test_on_guild_join_server_atteso_da_backup_job_viene_finalizzato_non_come_nuovo(
+    monkeypatch,
+):
+    from core.database import Database
+    from core.repositories.backup_repo import BackupRepository
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 600000003
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
+        await database.pool.execute("DELETE FROM backup_jobs")
+
+        _collega_singleton_per_test(monkeypatch, database)
+        import main as main_module
+
+        repo_di_test = BackupRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(main_module, "backup_repo", repo_di_test)
+
+        job_id = await repo_di_test.enqueue_job(main_guild_id=1)
+        await repo_di_test.mark_running(job_id)
+        await repo_di_test.set_backup_guild_id(job_id, backup_guild_id=guild_id)
+
+        bot = iYokaiBot()
+        guild_lato_creator = _FakeCreatorSideGuildPerTest()
+        bot.backup_creator_client = _FakeCreatorClientPerTest(guild_lato_creator)
+
+        guild = _FakeGuildForBlacklistCheck(guild_id)
+
+        await bot.on_guild_join(guild)
+
+        # Il trattamento da "nuovo server" NON deve essere avvenuto:
+        # nessuna riga di configurazione creata.
+        riga = await database.pool.fetchrow(
+            "SELECT 1 FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        assert riga is None
+
+        # Ma la finalizzazione vera E' avvenuta: Creator ha trasferito
+        # la proprietà ed è uscito.
+        assert guild_lato_creator.leave_chiamato is True
+        job = await repo_di_test.get_job(job_id)
+        assert job.status == "completed"
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 600000003")
+        await database.pool.execute("DELETE FROM backup_jobs")
+        await database.close()
+
+
 @pytest.mark.asyncio
 async def test_on_guild_join_esce_subito_se_il_server_e_in_blacklist(monkeypatch):
     from core.database import Database

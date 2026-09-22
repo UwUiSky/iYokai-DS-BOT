@@ -41,6 +41,8 @@ from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.music_fleet import MusicFleet, handle_inactive_player
+from core.backup_orchestrator import finalize_backup_job
+from core.repositories.backup_repo import backup_repo
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
@@ -147,6 +149,13 @@ class iYokaiBot(commands.AutoShardedBot):
         # fisso e piccolo (poche decine al massimo), non cresce con
         # server/utenti.
         self._last_error_alert_at: dict[str, datetime] = {}
+
+        # Riferimento al client Creator (SPEC.md §11.1) — impostato
+        # da main() dopo la costruzione, resta None se il Backup
+        # System non è in uso. on_guild_join lo consulta per capire
+        # se un server appena raggiunto è il backup atteso di un job
+        # in corso.
+        self.backup_creator_client: discord.Client | None = None
 
     async def setup_hook(self) -> None:
         """
@@ -256,7 +265,25 @@ class iYokaiBot(commands.AutoShardedBot):
         prima di ensure_guild_exists e del messaggio di benvenuto —
         non ha senso configurare o dare il benvenuto a un server che
         il bot deve comunque abbandonare.
+
+        Un server che risulta essere il backup ATTESO da un job di
+        Backup System in corso (SPEC.md §11.1) viene gestito da
+        finalize_backup_job() — trasferimento di proprietà da Creator
+        a questo bot, Creator che esce — e NON riceve il trattamento
+        normale (nessuna riga di configurazione, nessun benvenuto):
+        non è un server "nuovo" per un utente qualsiasi, è un
+        artefatto interno dell'orchestrazione di backup.
         """
+        if self.backup_creator_client is not None:
+            era_atteso = await finalize_backup_job(guild, self.backup_creator_client, backup_repo)
+            if era_atteso:
+                logger.info(
+                    "Server %s (ID: %s) era il backup atteso di un job — finalizzato.",
+                    guild.name,
+                    guild.id,
+                )
+                return
+
         if await blacklist_repo.is_guild_blacklisted(guild.id):
             logger.info(
                 "Server %s (ID: %s) è in blacklist — esco immediatamente.",
