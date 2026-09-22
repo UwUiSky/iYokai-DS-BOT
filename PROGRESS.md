@@ -1707,6 +1707,28 @@ COMMAND_LIST.md aggiornati nello stesso commit. **51% (135/264).**
 
 **Suite di test completa: 1063/1063 passano.**
 
+### Fase 46 — Drop di coin nei messaggi (SPEC.md §15.6)
+
+`core/drop_logic.py`: `should_trigger_drop()` puramente
+deterministica (il chiamante estrae `random.random()` e lo passa già
+pronto). Agganciato in `on_message` del cog leveling: 0.5% di
+probabilità per messaggio idoneo, un `DropClaimView` con pulsante
+"primo che clicca vince" — stato in memoria, non persistito.
+
+**Bug di test trovato scrivendo i test**: il decoratore
+`@discord.ui.button()` sostituisce l'attributo sull'ISTANZA della
+view con l'oggetto `Button` vero (non più la funzione originale) —
+il callback si invoca tramite `view.children[0].callback(interazione)`,
+non chiamando il metodo decorato direttamente. Verificato con uno
+spike prima di scrivere i test completi. Un secondo bug di test:
+`on_message` controlla `db.is_module_active_for_guild` sul singleton
+globale `db`, mai sostituito nella prima versione della fixture.
+
+8 nuovi test totali. SPEC.md aggiornata nello stesso commit. **52%
+dello schema (136/264).**
+
+**Suite di test completa: 1071/1071 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
