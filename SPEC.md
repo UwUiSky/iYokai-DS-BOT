@@ -440,7 +440,11 @@ necessario.
   creator_bot.py`
 - `[x]` 11.2 Coda serializzata persistente con timeout 24h —
   `core/repositories/backup_repo.py` (tabella `backup_jobs`) +
-  `core/backup_queue_worker.py` (un job alla volta, tick ogni 60s)
+  `core/backup_queue_worker.py` (un job alla volta, tick ogni 60s).
+  Migliorato su richiesta esplicita dell'utente con un promemoria di
+  scadenza (countdown, un solo DM per job) e il controllo di
+  capacità di Creator (max 10 server): se è già al limite, il worker
+  aspetta e avvisa una sola volta invece di tentare comunque
 - `[x]` 11.3 Clonazione ruoli + permessi — `clone_roles()`, salta
   @everyone (esiste già) ma ne applica comunque i permessi al
   default_role di destinazione, salta i ruoli "managed"
