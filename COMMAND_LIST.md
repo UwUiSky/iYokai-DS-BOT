@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 21:35 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-22 02:53 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 139 comandi in 10 categorie.**
+**Totale: 141 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -117,6 +117,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-21 21:
 - **`/config history`** — [Admin] Mostra le ultime modifiche alla configurazione.
 - **`/config rollback`** — [Admin] Ripristina il valore precedente di una modifica.
 - **`/custom-command-requests-setup`** — [Owner] Imposta il canale delle richieste (solo nel server principale).
+- **`/define-backup`** — [Admin] Accoda la creazione di un backup per questo server.
+- **`/define-main`** — [Admin] Registra questo server come 'main' per il Backup System.
 - **`/greetings boost-setup`** — [Admin] Configura il messaggio di boost.
 - **`/greetings goodbye-setup`** — [Admin] Configura il messaggio di addio.
 - **`/greetings preview`** — Mostra un'anteprima di come apparirebbe un messaggio.

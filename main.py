@@ -43,6 +43,8 @@ from core.twitch_watcher import twitch_watcher
 from core.music_fleet import MusicFleet, handle_inactive_player
 from core.backup_orchestrator import finalize_backup_job
 from core.repositories.backup_repo import backup_repo
+from core.backup_creator_bot import BackupCreatorBot
+from core.backup_queue_worker import backup_queue_worker
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
@@ -452,9 +454,27 @@ async def main() -> None:
     for client in (bot, *worker_bots):
         client.add_listener(_on_wavelink_inactive_player, "on_wavelink_inactive_player")
 
+    # iYokai Creator (SPEC.md §11.1): applicazione Discord separata,
+    # resta SEMPRE sotto il limite di 10 server (crea senza mai
+    # restare — core/backup_orchestrator.py la fa uscire subito dopo
+    # ogni backup completato). bot.backup_creator_client resta None
+    # finché setup_hook() non è passato per bot (impostato qui
+    # PRIMA di start(), non dopo — on_guild_join potrebbe scattare
+    # subito dopo la connessione).
+    creator = BackupCreatorBot()
+    bot.backup_creator_client = creator
+
+    # Permessi richiesti a iYokai Main quando entra in un backup
+    # appena creato — Administrator, dato che un server di backup
+    # esiste apposta per essere gestito completamente dal bot (non è
+    # un server comunità normale con i suoi equilibri di permessi).
+    backup_main_permissions = discord.Permissions(administrator=True)
+    backup_queue_worker.start(creator, bot, backup_main_permissions)
+
     try:
         await asyncio.gather(
             bot.start(config.YOKAI_BOT_TOKEN),
+            creator.start(config.YOKAI_CREATOR_TOKEN),
             *[
                 worker.start(token)
                 for worker, token in zip(worker_bots, config.MUSIC_TOKENS)
