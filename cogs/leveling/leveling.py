@@ -32,6 +32,7 @@ from discord.ext import commands, tasks
 
 from core.database import db
 from core.repositories.leveling_repo import leveling_repo
+from core.repositories.level_reward_repo import level_reward_repo
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -72,6 +73,36 @@ class LevelingCog(commands.Cog):
     # ================================================================
     # XP testuale
     # ================================================================
+    async def _grant_level_rewards(
+        self, member: discord.Member, guild: discord.Guild, new_level: int
+    ) -> None:
+        """
+        Condiviso tra XP testuale e vocale (SPEC.md §15.13) — un
+        solo punto che assegna i ruoli-premio, non due copie della
+        stessa logica. Salta i ruoli che il membro ha già (un
+        re-invio ripetuto non deve fallire né generare richieste
+        Discord inutili).
+        """
+        ricompense = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
+        if not ricompense:
+            return
+
+        id_ruoli_posseduti = {ruolo.id for ruolo in member.roles}
+        da_assegnare = [
+            discord.Object(id=r.role_id) for r in ricompense if r.role_id not in id_ruoli_posseduti
+        ]
+        if not da_assegnare:
+            return
+
+        try:
+            await member.add_roles(
+                *da_assegnare, reason=f"Ruolo-premio per aver raggiunto il livello {new_level}"
+            )
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile assegnare i ruoli-premio a %s nel server %s.", member.id, guild.id
+            )
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None:
@@ -88,6 +119,7 @@ class LevelingCog(commands.Cog):
                 )
             except discord.HTTPException:
                 pass
+            await self._grant_level_rewards(message.author, message.guild, risultato.new_level)
 
     # ================================================================
     # XP vocale — task periodico
@@ -151,6 +183,7 @@ class LevelingCog(commands.Cog):
                         )
                     except discord.HTTPException:
                         pass
+                    await self._grant_level_rewards(member, guild, grant.new_level)
 
     # ================================================================
     # Comandi
