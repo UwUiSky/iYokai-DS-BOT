@@ -1729,6 +1729,39 @@ dello schema (136/264).**
 
 **Suite di test completa: 1071/1071 passano.**
 
+### Fase 47 — Giveaway con requisiti (SPEC.md §15.5), ultimo pezzo prima delle Gilde
+
+`core/giveaway_logic.py`: `pick_winners()` con `random.Random`
+iniettato (deterministico e testabile), `is_eligible()` richiede
+ENTRAMBI i requisiti insieme quando configurati (livello E ruolo).
+`core/repositories/giveaway_repo.py`: partecipazioni PERSISTITE (un
+giveaway dura ore o giorni, deve sopravvivere a un riavvio) —
+diverso dai drop effimeri. `core/giveaway_worker.py`: stesso pattern
+di feed_watcher/monthly_winners, tick ogni 30s.
+
+`GiveawayEnterView` in leveling.py: PERSISTENTE (`timeout=None`,
+custom_id fisso con l'ID del giveaway incorporato) — verificato con
+uno spike PRIMA di scrivere il codice reale che impostare custom_id
+dinamicamente in `__init__` funziona davvero (il decoratore
+`@discord.ui.button()` sostituisce l'attributo sull'istanza con
+l'oggetto Button vero). main.py ri-registra la view per ogni
+giveaway ancora attivo ad ogni avvio (`get_active_giveaways()`,
+scelto al posto di riusare `get_due_giveaways` con un
+`datetime.max` come stavo per fare — più chiaro).
+
+**Bug di test reale trovato eseguendo l'intera suite** (non nei
+singoli file, che passavano isolati): le fixture di due file
+puliscono solo alla FINE, non all'inizio — una riga residua lasciata
+dall'ultimo test di un altro file (che usa `clean_db`, il quale
+svuota solo all'inizio di OGNI SUO test, non alla fine dell'intero
+file) restava visibile e falsava un conteggio. Corretto pulendo
+anche all'inizio.
+
+**24 nuovi test.** SPEC.md e COMMAND_LIST.md aggiornati nello stesso
+commit. **52% dello schema (137/264).**
+
+**Suite di test completa: 1101/1101 passano.**
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
