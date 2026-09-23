@@ -302,3 +302,46 @@ async def test_get_donation_leaderboard_esclude_movimenti_di_sistema(repo):
     await repo.apply_treasury_delta(clan_id, amount=1000, reason="tick")  # non una donazione
 
     assert await repo.get_donation_leaderboard(clan_id) == []
+
+
+# ----------------------------------------------------------------------
+# XP di gilda e classifica clan
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_add_xp(repo):
+    clan_id = await _crea_clan(repo)
+
+    await repo.add_xp(clan_id, amount=1000)
+    await repo.add_xp(clan_id, amount=500)
+
+    assert (await repo.get_clan(clan_id)).total_xp == 1500
+
+
+@pytest.mark.asyncio
+async def test_add_xp_importo_non_positivo_solleva(repo):
+    clan_id = await _crea_clan(repo)
+    with pytest.raises(ValueError):
+        await repo.add_xp(clan_id, amount=0)
+
+
+@pytest.mark.asyncio
+async def test_get_clan_leaderboard_ordinata_per_xp(repo):
+    basso = await _crea_clan(repo, guild_id=100, tag="LOW")
+    alto = await _crea_clan(repo, guild_id=100, tag="HIGH")
+    await repo.add_xp(basso, amount=100)
+    await repo.add_xp(alto, amount=9000)
+
+    classifica = await repo.get_clan_leaderboard(100)
+
+    assert [c.id for c in classifica] == [alto, basso]
+
+
+@pytest.mark.asyncio
+async def test_get_clan_leaderboard_solo_del_server_giusto(repo):
+    await _crea_clan(repo, guild_id=100, tag="AAA")
+    altro = await _crea_clan(repo, guild_id=200, tag="BBB")
+    await repo.add_xp(altro, amount=9000)
+
+    classifica = await repo.get_clan_leaderboard(100)
+
+    assert altro not in [c.id for c in classifica]

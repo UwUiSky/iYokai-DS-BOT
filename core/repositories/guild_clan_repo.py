@@ -52,6 +52,7 @@ class Clan:
     co_owner_id: int | None
     category_id: int | None
     treasury_balance: int
+    total_xp: int
     officialized: bool
     officialize_deadline: datetime
     max_members: int
@@ -97,6 +98,11 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             UNIQUE (guild_id, tag)
         );
 
+        -- ADD COLUMN IF NOT EXISTS (idempotente): clans esisteva già
+        -- prima che l'XP di gilda fosse aggiunta, serve poterla
+        -- estendere anche su un database già popolato.
+        ALTER TABLE clans ADD COLUMN IF NOT EXISTS total_xp BIGINT NOT NULL DEFAULT 0;
+
         CREATE TABLE IF NOT EXISTS clan_members (
             clan_id     INTEGER NOT NULL,
             user_id     BIGINT NOT NULL,
@@ -140,6 +146,7 @@ class GuildClanRepository:
             co_owner_id=row["co_owner_id"],
             category_id=row["category_id"],
             treasury_balance=row["treasury_balance"],
+            total_xp=row["total_xp"],
             officialized=row["officialized"],
             officialize_deadline=row["officialize_deadline"],
             max_members=row["max_members"],
@@ -431,6 +438,26 @@ class GuildClanRepository:
                     """,
                     clan_id, amount, reason,
                 )
+
+    async def add_xp(self, clan_id: int, amount: int) -> None:
+        """XP di gilda accumulata (per la classifica clan richiesta
+        nei pannelli) - SEPARATA dai coin di tesoreria, un clan
+        guadagna entrambi ad ogni tick vocale ma sono due assi
+        diversi (l'XP non si spende mai, i coin sì)."""
+        if amount <= 0:
+            raise ValueError("L'importo XP da aggiungere deve essere positivo.")
+        await self._pool.execute(
+            "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1", clan_id, amount
+        )
+
+    async def get_clan_leaderboard(self, guild_id: int, limit: int = 10) -> list[Clan]:
+        """Classifica clan del server per XP totale — per la
+        'classifica clan' richiesta esplicitamente nei pannelli."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM clans WHERE guild_id = $1 ORDER BY total_xp DESC LIMIT $2",
+            guild_id, limit,
+        )
+        return [self._row_to_clan(r) for r in rows]
 
     async def transfer_between_treasuries(
         self, from_clan_id: int, to_clan_id: int, amount: int
