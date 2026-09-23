@@ -23,7 +23,7 @@ from datetime import datetime
 
 import asyncpg
 
-from core.guild_clan_logic import CREATION_DEFICIT
+from core.guild_clan_logic import CREATION_DEFICIT, apply_monthly_treasury_decay
 
 ROLE_OWNER = "owner"
 ROLE_CO_OWNER = "co_owner"
@@ -53,6 +53,7 @@ class Clan:
     category_id: int | None
     treasury_balance: int
     total_xp: int
+    last_decay_period: str | None
     officialized: bool
     officialize_deadline: datetime
     max_members: int
@@ -102,6 +103,7 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         -- prima che l'XP di gilda fosse aggiunta, serve poterla
         -- estendere anche su un database già popolato.
         ALTER TABLE clans ADD COLUMN IF NOT EXISTS total_xp BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE clans ADD COLUMN IF NOT EXISTS last_decay_period TEXT;
 
         CREATE TABLE IF NOT EXISTS clan_members (
             clan_id     INTEGER NOT NULL,
@@ -147,6 +149,7 @@ class GuildClanRepository:
             category_id=row["category_id"],
             treasury_balance=row["treasury_balance"],
             total_xp=row["total_xp"],
+            last_decay_period=row["last_decay_period"],
             officialized=row["officialized"],
             officialize_deadline=row["officialize_deadline"],
             max_members=row["max_members"],
@@ -438,6 +441,47 @@ class GuildClanRepository:
                     """,
                     clan_id, amount, reason,
                 )
+
+    async def list_officialized_clans(self) -> list[Clan]:
+        """Tutti i clan ufficializzati, indipendentemente dal
+        server — usata dal worker di decadimento mensile della
+        tesoreria (che gira una volta sola per l'intero bot, non
+        server per server)."""
+        rows = await self._pool.fetch("SELECT * FROM clans WHERE officialized = true")
+        return [self._row_to_clan(r) for r in rows]
+
+    async def apply_monthly_decay(self, clan_id: int, period: str) -> int:
+        """
+        Applica il decadimento mensile del 10% (core.guild_clan_
+        logic.apply_monthly_treasury_decay) e marca il periodo come
+        coperto, atomicamente (FOR UPDATE) — la percentuale è
+        calcolata QUI, sul saldo letto sotto lock, non passata dal
+        chiamante: altrimenti tra la lettura fatta dal chiamante e
+        questa scrittura il saldo potrebbe essere cambiato da una
+        spesa o una donazione nel frattempo. Restituisce il nuovo
+        saldo.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                saldo_attuale = await conn.fetchval(
+                    "SELECT treasury_balance FROM clans WHERE id = $1 FOR UPDATE", clan_id
+                )
+                nuovo_saldo = apply_monthly_treasury_decay(saldo_attuale)
+                delta = nuovo_saldo - saldo_attuale
+
+                await conn.execute(
+                    "UPDATE clans SET treasury_balance = $2, last_decay_period = $3 WHERE id = $1",
+                    clan_id, nuovo_saldo, period,
+                )
+                if delta != 0:
+                    await conn.execute(
+                        """
+                        INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason)
+                        VALUES ($1, NULL, $2, $3)
+                        """,
+                        clan_id, delta, "monthly_decay",
+                    )
+                return nuovo_saldo
 
     async def add_xp(self, clan_id: int, amount: int) -> None:
         """XP di gilda accumulata (per la classifica clan richiesta

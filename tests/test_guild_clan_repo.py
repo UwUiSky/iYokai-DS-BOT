@@ -345,3 +345,37 @@ async def test_get_clan_leaderboard_solo_del_server_giusto(repo):
     classifica = await repo.get_clan_leaderboard(100)
 
     assert altro not in [c.id for c in classifica]
+
+
+# ----------------------------------------------------------------------
+# Decadimento mensile tesoreria
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_list_officialized_clans_solo_ufficializzati(repo):
+    ufficializzato = await _crea_clan(repo, tag="OK")
+    await repo.set_officialized(ufficializzato)
+    await _crea_clan(repo, tag="NO")  # non ufficializzato
+
+    clan = await repo.list_officialized_clans()
+
+    assert [c.id for c in clan] == [ufficializzato]
+
+
+@pytest.mark.asyncio
+async def test_apply_monthly_decay_applica_il_dieci_percento(repo):
+    clan_id = await _crea_clan(repo)
+    await repo.donate(clan_id, user_id=1, amount=115_000)  # saldo: 100.000
+
+    nuovo_saldo = await repo.apply_monthly_decay(clan_id, period="2026-09")
+
+    assert nuovo_saldo == 90_000
+    assert (await repo.get_clan(clan_id)).last_decay_period == "2026-09"
+
+
+@pytest.mark.asyncio
+async def test_apply_monthly_decay_su_saldo_negativo_non_lo_tocca(repo):
+    clan_id = await _crea_clan(repo)  # saldo: -15.000, ancora in deficit
+
+    nuovo_saldo = await repo.apply_monthly_decay(clan_id, period="2026-09")
+
+    assert nuovo_saldo == -15_000
