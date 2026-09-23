@@ -150,6 +150,17 @@ class ClanVoiceActivityRepository:
             clan_id, user_id,
         )
 
+    async def get_tracked_as_in_voice(self) -> list[tuple[int, int]]:
+        """(clan_id, user_id) di OGNI riga che risulta ancora "in
+        vocale" (current_channel_id non nullo) secondo l'ultimo tick
+        registrato — usata dal worker per capire chi è uscito dal
+        vocale dall'ultimo giro (non più tra i membri live trovati
+        in nessun canale) e va quindi ripulito con clear_activity()."""
+        rows = await self._pool.fetch(
+            "SELECT clan_id, user_id FROM clan_voice_activity WHERE current_channel_id IS NOT NULL"
+        )
+        return [(r["clan_id"], r["user_id"]) for r in rows]
+
 
 def _get_pool():
     from core.database import db

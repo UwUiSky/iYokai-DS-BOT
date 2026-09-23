@@ -42,6 +42,7 @@ from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.monthly_winners_announcer import monthly_winners_announcer
 from core.giveaway_worker import giveaway_worker
+from core.guild_clan_voice_worker import guild_clan_voice_worker
 from core.repositories.giveaway_repo import giveaway_repo
 from cogs.leveling.leveling import LevelingCog
 from core.music_fleet import MusicFleet, handle_inactive_player
@@ -214,6 +215,7 @@ class iYokaiBot(commands.AutoShardedBot):
                     LevelingCog.GiveawayEnterView(giveaway.id), message_id=giveaway.message_id
                 )
         giveaway_worker.start(self)
+        guild_clan_voice_worker.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync

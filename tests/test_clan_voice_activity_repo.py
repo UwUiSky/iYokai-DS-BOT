@@ -126,3 +126,21 @@ async def test_clan_diversi_non_si_influenzano(repo):
     attivita_clan2 = await repo.get_activity(2, 1)
     assert attivita_clan1.ticks_today == 1
     assert attivita_clan2.ticks_today == 1
+
+
+@pytest.mark.asyncio
+async def test_get_tracked_as_in_voice(repo):
+    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+    await repo.apply_tick(2, 5, channel_id=600, today=OGGI)
+
+    tracciati = await repo.get_tracked_as_in_voice()
+
+    assert set(tracciati) == {(1, 1), (2, 5)}
+
+
+@pytest.mark.asyncio
+async def test_get_tracked_as_in_voice_esclude_chi_e_stato_ripulito(repo):
+    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+    await repo.clear_activity(1, 1)
+
+    assert await repo.get_tracked_as_in_voice() == []
