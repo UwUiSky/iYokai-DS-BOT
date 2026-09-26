@@ -39,6 +39,14 @@ MONTHLY_TREASURY_DECAY_RATE = 0.10  # 10% sulla tesoreria inutilizzata
 CREATION_DEFICIT = 15_000
 CREATION_GRACE_HOURS = 24
 
+# Tetti sui ruoli di comando di un clan (oltre al singolo Capo Clan,
+# che è unico per definizione essendo `clans.owner_id`) — confermati
+# in conversazione prima di scrivere i comandi invita/espelli/
+# promuovi: un clan non deve poter avere più ufficiali che membri
+# comuni.
+MAX_ADMINS_PER_CLAN = 3
+MAX_MODS_PER_CLAN = 5
+
 CHANNEL_UNLOCK_COSTS = (25_000, 50_000, 200_000, 800_000)
 
 # Blocchi Unicode delle emoji più comuni — un tag di gilda non può

@@ -2010,6 +2010,101 @@ boost. **55% dello schema (142/271).**
 
 ---
 
+### Fase 52 — Ruoli Discord Capo Clan/Admin Clan + comandi
+invita/espelli/promuovi (SPEC.md §15.14, chiude il pezzo dei ruoli
+segnalato come prerequisito nella Fase 51)
+
+Continuazione diretta della Fase 51: lì avevo segnalato che inviti/
+espulsioni/promozioni erano bloccati sulla mancanza di un sistema di
+ruoli Discord Capo Clan/Admin Clan — questa Fase lo costruisce e ci
+appoggia sopra i tre comandi.
+
+**`core/guild_clan_role_service.py` (nuovo)**: il pezzo centrale.
+Due ruoli Discord CONDIVISI a livello di server — un solo ruolo
+"Capo Clan" e un solo ruolo "Admin Clan" per TUTTA la gilda Discord,
+riusati da ogni clan — perché Discord non permette a due ruoli di
+stare alla stessa posizione nella hierarchy, quindi non si può creare
+un ruolo "Capo Clan" per-clan. L'isolamento fra clan diversi (nessun
+capo/admin di un clan può toccare un altro clan) non passa quindi dal
+ruolo condiviso, che di per sé non dà nessun permesso su nessun
+canale, ma dagli OVERWRITE PER-UTENTE sulla categoria del proprio
+clan — lo stesso meccanismo che `clan_crea` già usava per il
+fondatore, qui generalizzato:
+- `grant_member_access`/`grant_officer_access`/`revoke_access`:
+  impostano o rimuovono l'overwrite di un membro sulla categoria del
+  SUO clan (base per un membro comune, estesa con `manage_channels`/
+  `move_members` — mai `manage_permissions`/`manage_roles`, per non
+  permettere a un Admin Clan di alterare gli overwrite altrui o
+  auto-promuoversi — per Capo/Admin).
+- `get_or_create_shared_role`/`sync_shared_role`: crea il ruolo
+  condiviso alla prima necessità (per-guild, mai per-clan) e lo
+  aggiunge/rimuove dal membro.
+- `sync_member_clan_role(guild, categoria, membro, ruolo)` e
+  `clear_member_clan_presence(guild, categoria, membro)`: i due punti
+  d'ingresso usati da tutti i comandi — il primo applica ruolo
+  condiviso + overwrite coerenti con "owner"/"admin"/altro, il
+  secondo rimuove tutto (espulsione, scioglimento). Ogni funzione è
+  "best effort" verso Discord (`discord.Forbidden`/`HTTPException`
+  solo loggate): il database resta la fonte di verità su
+  appartenenza/ruolo, questa sincronizzazione è un livello aggiuntivo
+  che non deve mai bloccare un comando già confermato lato dati.
+
+**`guild_clan_logic.py`**: aggiunti `MAX_ADMINS_PER_CLAN=3` e
+`MAX_MODS_PER_CLAN=5` — tetti sui ruoli di comando confermati prima
+di scrivere i comandi (il Capo Clan resta unico per definizione,
+essendo `clans.owner_id`).
+
+**Comandi nuovi in `cogs/leveling/leveling.py`** (gruppo `/clan`):
+- **`/clan invita <membro>`**: Capo o Admin Clan, rifiuta chi è già
+  in un'altra gilda del server o se si è raggiunto `max_members`,
+  `add_member` con ruolo `member` + `sync_member_clan_role` (accesso
+  base alla categoria — senza questo overwrite l'invitato non
+  vedrebbe affatto i canali, la categoria nega la vista a
+  `@everyone` fin dalla creazione).
+- **`/clan espelli <membro>`**: Capo o Admin Clan; il Capo Clan non
+  può essere espulso (serve `/clan sciogli`); un Admin Clan non può
+  espellere un altro Admin Clan (serve il Capo) — `remove_member` +
+  `clear_member_clan_presence`.
+- **`/clan promuovi <membro> <ruolo:admin|mod|member>`**: SOLO il
+  Capo Clan, non può cambiare il proprio ruolo, rispetta i tetti
+  `MAX_ADMINS_PER_CLAN`/`MAX_MODS_PER_CLAN` prima di promuovere —
+  `set_member_role` + `sync_member_clan_role` (che si occupa sia di
+  promuovere che di declassare, incluso rimuovere il ruolo Discord e
+  gli overwrite estesi quando si torna a `member`).
+
+**`/clan crea`** ora applica anche il ruolo condiviso "Capo Clan" al
+fondatore (`sync_member_clan_role(..., ROLE_OWNER)`), oltre
+all'overwrite di categoria che già impostava. **`/clan sciogli`**
+rimuove ruolo/overwrite del Capo Clan (`clear_member_clan_presence`)
+prima di cancellare canali/categoria/record — per gli altri
+eventuali Admin Clan non necessariamente in cache la pulizia del
+ruolo condiviso resta un gap accettato (annotato nel codice), la
+loro categoria comunque sparisce con lo scioglimento.
+
+**17 nuovi test**: `test_guild_clan_role_service.py` (nuovo, 16 test,
+oggetti Discord finti senza database — ruoli/categoria/membro finti
+con `set_permissions`/`add_roles`/`remove_roles`), più 14 nuovi test
+in `test_guild_clan_cog_behavior.py` per invita/espelli/promuovi
+(inclusi tetti massimi, isolamento admin-vs-admin, chi-può-fare-cosa).
+I fake `_FakeMember`/`_FakeGuild`/`_FakeCategory` esistenti sono stati
+estesi con `roles`/`add_roles`/`remove_roles`/`create_role`/
+`set_permissions` — bug di test reale: `discord.Member.roles` è una
+`@property` senza setter, il primo tentativo di `self.roles = []` nel
+fake falliva con `AttributeError` per lo stesso motivo delle sessioni
+precedenti (sottoclassi vere di `discord.Member` per superare
+`isinstance()`, non mock generici) — risolto con un attributo privato
+`_ruoli_finti` esposto via property, come già fatto per `id`.
+
+SPEC.md: §15.14 comandi di gestione membri (invita/espelli/promuovi)
+e ruoli Capo/Admin Clan passano da `[ ]` a `[x]`; restano `[ ]`
+l'acquisto canali extra e i boost XP/coin individuali/di gilda.
+**56% dello schema (145/272).** COMMAND_LIST.md rigenerato (162
+comandi).
+
+**Suite di test completa: 1331/1331 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

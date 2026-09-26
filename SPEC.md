@@ -581,10 +581,11 @@ necessario.
   (motore economico di backend calibrato e testato — 30 XP + 2 coin
   a tick/minuto in vocale di gilda, decadimento lineare dopo 3h filate
   nello stesso canale, tetto 720 tick/giorno, deficit di creazione
-  15.000 coin/24h, costi canale 25k/50k/200k/800k — e ORA anche il
-  primo pezzo di comandi Discord: `/clan crea|info|membri|classifica|
-  sciogli|tesoreria dona`, più il worker di eliminazione automatica
-  per chi non colma il deficit in tempo)
+  15.000 coin/24h, costi canale 25k/50k/200k/800k — comandi Discord
+  `/clan crea|info|membri|classifica|sciogli|tesoreria dona|invita|
+  espelli|promuovi`, il worker di eliminazione automatica per chi non
+  colma il deficit in tempo, e ORA anche i ruoli Discord Capo Clan/
+  Admin Clan con i comandi di gestione membri)
   - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
     valida il tag, crea la categoria Discord (view negata a
     `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
@@ -595,14 +596,30 @@ necessario.
     tempo — `core/guild_clan_expiry_worker.py` (nuovo, tick orario):
     elimina canali + categoria Discord (se esistono ancora) e poi il
     record, per i clan non ufficializzati la cui finestra è scaduta
-  - `[ ]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
-    (ruolo unico condiviso + overwrite per-utente sulla propria
-    categoria; Discord non permette due ruoli alla stessa posizione).
-    Il campo ruolo esiste già su `clan_members` (`set_member_role`),
-    ma senza ruoli/overwrite Discord reali — oggi solo il Capo Clan è
-    verificato (`clan.owner_id`), nessun comando invita/espelli/promuovi
-  - `[ ]` Isolamento totale: nessun capo/admin può agire su altre gilde
-    — da applicare nei comandi di gestione membri (non ancora scritti)
+  - `[x]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
+    (`core/guild_clan_role_service.py`, nuovo): un ruolo Discord
+    condiviso "Capo Clan" e uno "Admin Clan" per TUTTO il server,
+    riusati da ogni clan (Discord non permette due ruoli alla stessa
+    posizione) — l'isolamento reale passa dagli OVERWRITE PER-UTENTE
+    sulla categoria del proprio clan (`sync_member_clan_role`/
+    `clear_member_clan_presence`), mai dal ruolo condiviso in sé, che
+    non dà nessun permesso su nessun canale. Applicato a `/clan crea`
+    (Capo Clan al fondatore), `/clan invita` (accesso base),
+    `/clan promuovi` (Admin Clan + overwrite estesi o declassamento),
+    `/clan espelli` e `/clan sciogli` (rimozione completa)
+  - `[x]` Isolamento totale: nessun capo/admin può agire su altre
+    gilde — ogni comando di gestione membri recupera SEMPRE la gilda
+    del chiamante via `get_member_clan_in_guild` e opera solo sulla
+    categoria/membri di quella gilda; un Admin Clan non può espellere
+    un altro Admin Clan (serve il Capo), solo il Capo Clan può
+    promuovere/retrocedere
+  - `[x]` Comandi di gestione membri: `/clan invita` (Capo/Admin,
+    rispetta il tetto `max_members`, rifiuta chi è già in un'altra
+    gilda del server), `/clan espelli` (Capo/Admin, il Capo Clan non
+    può essere espulso, un Admin non può espellere un altro Admin),
+    `/clan promuovi` (solo Capo Clan, ruolo admin/mod/member, rispetta
+    i tetti `MAX_ADMINS_PER_CLAN`/`MAX_MODS_PER_CLAN` in
+    `guild_clan_logic.py`)
   - `[~]` Guadagno ×2 XP e coin nei canali della propria gilda —
     `guild_clan_voice_worker.py` applica il tick per la presenza
     vocale, agganciato a `clan_voice_activity_repo`; **manca** il
@@ -629,7 +646,7 @@ necessario.
   - `[ ]` Boost individuale XP / Coin acquistabile
   - `[ ]` Boost di gilda XP / Coin acquistabile
   - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|tesoreria
-    dona` fatti — **mancano ancora** invita, espelli, promuovi,
+    dona|invita|espelli|promuovi` fatti — **mancano ancora**
     compra-canale, boost
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
@@ -795,31 +812,32 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 17 | 8 | 7 |
+| §15 Levels/Gilde | 20 | 8 | 5 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **142** | **13** | **116** |
+| **Totale** | **145** | **13** | **114** |
 
-Su 271 voci totali: **142 fatte, 13 parziali, 116 mancanti** — circa
-il 55% dello schema (contando i parziali a metà peso). §11 Backup
+Su 272 voci totali: **145 fatte, 13 parziali, 114 mancanti** — circa
+il 56% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
-Levels: il Sistema Gilde/Clan (§15.14) ha ora sia il motore
-economico (repository/worker: tesoreria, XP di gilda, tracciamento
-vocale, decadimento mensile) SIA un primo pezzo di comandi Discord —
-`/clan crea|info|membri|classifica|sciogli|tesoreria dona` — con
-creazione reale di categoria e un worker che elimina automaticamente
-chi non colma il deficit di creazione in tempo. Mancano ancora
-inviti/espulsioni/promozioni (richiedono i ruoli Discord Capo/Admin
-Clan, non ancora fatti), l'acquisto canali e i boost. §15.15 (non
-nello schema originale, emersa in conversazione) è COMPLETO:
-decadimento settimanale personale, cassa di server alimentata da
-entrambi i decadimenti, e sblocco premium a doppio cancello (tempo
-dal join + costo dalla cassa) — comandi `/cassa saldo` e `/cassa
-sblocca-premium`. Resta solo un comando dedicato per spendere la
-cassa su premi evento.
+Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico
+(repository/worker: tesoreria, XP di gilda, tracciamento vocale,
+decadimento mensile), i comandi Discord `/clan crea|info|membri|
+classifica|sciogli|tesoreria dona`, il worker di eliminazione
+automatica per chi non colma il deficit in tempo, E ORA anche i
+ruoli Discord condivisi Capo Clan/Admin Clan (overwrite per-utente
+sulla categoria del proprio clan per l'isolamento reale, il ruolo
+condiviso è solo un'etichetta) con i comandi `/clan invita|espelli|
+promuovi`. Mancano ancora l'acquisto canali e i boost individuali/di
+gilda. §15.15 (non nello schema originale, emersa in conversazione)
+è COMPLETO: decadimento settimanale personale, cassa di server
+alimentata da entrambi i decadimenti, e sblocco premium a doppio
+cancello (tempo dal join + costo dalla cassa) — comandi `/cassa
+saldo` e `/cassa sblocca-premium`. Resta solo un comando dedicato per
+spendere la cassa su premi evento.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

@@ -27,6 +27,7 @@ from __future__ import annotations
 import logging
 import random
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 import discord
 from discord import app_commands
@@ -47,10 +48,22 @@ from core.repositories.guild_chest_repo import guild_chest_repo
 from core.guild_clan_logic import (
     CREATION_DEFICIT,
     CREATION_GRACE_HOURS,
+    MAX_ADMINS_PER_CLAN,
+    MAX_MODS_PER_CLAN,
     is_creation_deficit_covered,
     validate_guild_tag,
 )
-from core.repositories.guild_clan_repo import guild_clan_repo
+from core.repositories.guild_clan_repo import (
+    ROLE_ADMIN,
+    ROLE_MEMBER,
+    ROLE_MOD,
+    ROLE_OWNER,
+    guild_clan_repo,
+)
+from core.guild_clan_role_service import (
+    clear_member_clan_presence,
+    sync_member_clan_role,
+)
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -860,6 +873,7 @@ class LevelingCog(commands.Cog):
             officialize_deadline=scadenza,
         )
         await guild_clan_repo.set_category_id(clan_id, categoria.id)
+        await sync_member_clan_role(guild, categoria, interaction.user, ROLE_OWNER)
 
         await interaction.response.send_message(
             f"✅ Gilda **{name}** (`{tag}`) creata! Per ufficializzarla servono "
@@ -984,21 +998,197 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        categoria = None
         if clan.category_id is not None:
             categoria = guild.get_channel(clan.category_id)
-            if categoria is not None:
-                for canale in list(categoria.channels):
-                    try:
-                        await canale.delete(reason=f"Gilda '{clan.tag}' sciolta")
-                    except discord.HTTPException:
-                        logger.warning("Impossibile eliminare il canale %s della gilda %s.", canale.id, clan.id)
+
+        # Il Capo Clan è sempre chi chiama questo comando (controllo
+        # sopra): il suo ruolo/overwrite si puliscono con l'oggetto
+        # Member già in mano. Per gli altri ufficiali (Admin Clan) non
+        # necessariamente in cache, la pulizia dei loro overwrite è
+        # comunque implicita nella cancellazione della categoria; solo
+        # il ruolo condiviso può restarci — accettabile per un clan
+        # sciolto, verrà rimosso automaticamente alla prossima
+        # promozione/espulsione altrove.
+        await clear_member_clan_presence(guild, categoria, interaction.user)
+
+        if categoria is not None:
+            for canale in list(categoria.channels):
                 try:
-                    await categoria.delete(reason=f"Gilda '{clan.tag}' sciolta")
+                    await canale.delete(reason=f"Gilda '{clan.tag}' sciolta")
                 except discord.HTTPException:
-                    logger.warning("Impossibile eliminare la categoria della gilda %s.", clan.id)
+                    logger.warning("Impossibile eliminare il canale %s della gilda %s.", canale.id, clan.id)
+            try:
+                await categoria.delete(reason=f"Gilda '{clan.tag}' sciolta")
+            except discord.HTTPException:
+                logger.warning("Impossibile eliminare la categoria della gilda %s.", clan.id)
 
         await guild_clan_repo.delete_clan(clan.id)
         await interaction.response.send_message(f"La gilda **{clan.name}** è stata sciolta.")
+
+    @clan_group.command(name="invita", description="[Capo/Admin Clan] Invita un membro nella tua gilda.")
+    @app_commands.describe(membro="Il membro da invitare nella tua gilda")
+    async def clan_invita(self, interaction: discord.Interaction, membro: discord.Member) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        chi_invita = await guild_clan_repo.get_member(clan.id, interaction.user.id)
+        if chi_invita is None or chi_invita.role not in (ROLE_OWNER, ROLE_ADMIN):
+            await interaction.response.send_message(
+                "Solo il Capo Clan o un Admin Clan possono invitare nuovi membri.", ephemeral=True
+            )
+            return
+
+        if await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id) is not None:
+            await interaction.response.send_message(
+                f"{membro.mention} fa già parte di una gilda in questo server.", ephemeral=True
+            )
+            return
+
+        if await guild_clan_repo.count_members(clan.id) >= clan.max_members:
+            await interaction.response.send_message(
+                f"La gilda ha già raggiunto il limite di **{clan.max_members}** membri.", ephemeral=True
+            )
+            return
+
+        await guild_clan_repo.add_member(clan.id, membro.id, role=ROLE_MEMBER)
+
+        categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
+        await sync_member_clan_role(guild, categoria, membro, ROLE_MEMBER)
+
+        await interaction.response.send_message(
+            f"✅ {membro.mention} è stato invitato in **{clan.name}**."
+        )
+
+    @clan_group.command(name="espelli", description="[Capo/Admin Clan] Espelli un membro dalla tua gilda.")
+    @app_commands.describe(membro="Il membro da espellere dalla tua gilda")
+    async def clan_espelli(self, interaction: discord.Interaction, membro: discord.Member) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        chi_espelle = await guild_clan_repo.get_member(clan.id, interaction.user.id)
+        if chi_espelle is None or chi_espelle.role not in (ROLE_OWNER, ROLE_ADMIN):
+            await interaction.response.send_message(
+                "Solo il Capo Clan o un Admin Clan possono espellere membri.", ephemeral=True
+            )
+            return
+
+        target = await guild_clan_repo.get_member(clan.id, membro.id)
+        if target is None:
+            await interaction.response.send_message(
+                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+            )
+            return
+
+        if membro.id == clan.owner_id:
+            await interaction.response.send_message(
+                "Il Capo Clan non può essere espulso — usa `/clan sciogli` per sciogliere la gilda.",
+                ephemeral=True,
+            )
+            return
+
+        if chi_espelle.role == ROLE_ADMIN and target.role == ROLE_ADMIN:
+            await interaction.response.send_message(
+                "Un Admin Clan non può espellere un altro Admin Clan — serve il Capo Clan.",
+                ephemeral=True,
+            )
+            return
+
+        await guild_clan_repo.remove_member(clan.id, membro.id)
+
+        categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
+        await clear_member_clan_presence(guild, categoria, membro)
+
+        await interaction.response.send_message(
+            f"✅ {membro.mention} è stato espulso da **{clan.name}**."
+        )
+
+    @clan_group.command(name="promuovi", description="[Capo Clan] Cambia il ruolo di un membro della tua gilda.")
+    @app_commands.describe(membro="Il membro a cui cambiare ruolo", ruolo="Il nuovo ruolo da assegnare")
+    async def clan_promuovi(
+        self,
+        interaction: discord.Interaction,
+        membro: discord.Member,
+        ruolo: Literal["admin", "mod", "member"],
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        if clan.owner_id != interaction.user.id:
+            await interaction.response.send_message(
+                "Solo il Capo Clan può cambiare il ruolo dei membri.", ephemeral=True
+            )
+            return
+
+        if membro.id == clan.owner_id:
+            await interaction.response.send_message(
+                "Il Capo Clan non può cambiare il proprio ruolo.", ephemeral=True
+            )
+            return
+
+        target = await guild_clan_repo.get_member(clan.id, membro.id)
+        if target is None:
+            await interaction.response.send_message(
+                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+            )
+            return
+
+        if ruolo == ROLE_ADMIN and target.role != ROLE_ADMIN:
+            if await guild_clan_repo.count_members_with_role(clan.id, ROLE_ADMIN) >= MAX_ADMINS_PER_CLAN:
+                await interaction.response.send_message(
+                    f"La gilda ha già raggiunto il limite di **{MAX_ADMINS_PER_CLAN}** Admin Clan.",
+                    ephemeral=True,
+                )
+                return
+        elif ruolo == ROLE_MOD and target.role != ROLE_MOD:
+            if await guild_clan_repo.count_members_with_role(clan.id, ROLE_MOD) >= MAX_MODS_PER_CLAN:
+                await interaction.response.send_message(
+                    f"La gilda ha già raggiunto il limite di **{MAX_MODS_PER_CLAN}** Mod Clan.",
+                    ephemeral=True,
+                )
+                return
+
+        await guild_clan_repo.set_member_role(clan.id, membro.id, ruolo)
+
+        categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
+        await sync_member_clan_role(guild, categoria, membro, ruolo)
+
+        await interaction.response.send_message(
+            f"✅ {membro.mention} è ora **{ruolo}** in **{clan.name}**."
+        )
 
     clan_tesoreria_group = app_commands.Group(
         name="tesoreria", description="Tesoreria della tua gilda.", parent=clan_group
