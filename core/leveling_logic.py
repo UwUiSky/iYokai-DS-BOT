@@ -33,6 +33,20 @@ def period_key(when: datetime | None = None) -> str:
     return f"{moment.year:04d}-{moment.month:02d}"
 
 
+def week_key(when: datetime | None = None) -> str:
+    """
+    Chiave della settimana ISO corrente, es. "2026-W39". Usata per il
+    decadimento settimanale del 10% sui coin personali (SPEC.md
+    §15.14 economia — decadimento distinto da quello mensile della
+    tesoreria di clan, core/guild_clan_logic.py). Sempre in UTC, come
+    period_key(), per evitare ambiguità tra fusi orari diversi di
+    membri dello stesso server: la settimana ISO inizia il lunedì.
+    """
+    moment = when or datetime.now(timezone.utc)
+    iso_year, iso_week, _ = moment.isocalendar()
+    return f"{iso_year:04d}-W{iso_week:02d}"
+
+
 # ======================================================================
 # XP testuale — cooldown anti-spam
 # ======================================================================
@@ -180,6 +194,34 @@ DAILY_REWARD_COINS = 200
 WORK_COOLDOWN_SECONDS = 3600
 WORK_REWARD_MIN = 20
 WORK_REWARD_MAX = 80
+
+
+# ======================================================================
+# Economy — decadimento settimanale coin personali
+# ======================================================================
+
+WEEKLY_PERSONAL_DECAY_RATE = 0.10
+MINIMUM_BALANCE_AFTER_DECAY = 1
+
+
+def apply_weekly_personal_decay(balance: int) -> int:
+    """
+    Decadimento settimanale del 10% sui coin PERSONALI di chiunque
+    nel server (confermato esplicitamente dall'utente: chiunque, non
+    solo chi è in un clan — la tesoreria di clan ha invece un
+    decadimento MENSILE separato, core/guild_clan_logic.py). Non
+    scende mai sotto 1 (mai zero, mai negativo), sempre un intero
+    (mai un decimale — 10% di 105 diventa 10 o 11, non 10.5).
+
+    Chi ha già un saldo <= 1 non perde nulla: non c'è "10% di 1" che
+    abbia senso restituire come intero senza svuotare comunque il
+    saldo a zero, quindi il floor si applica prima ancora di
+    calcolare la sottrazione.
+    """
+    if balance <= MINIMUM_BALANCE_AFTER_DECAY:
+        return balance
+    decaduto = balance - round(balance * WEEKLY_PERSONAL_DECAY_RATE)
+    return max(decaduto, MINIMUM_BALANCE_AFTER_DECAY)
 
 
 def can_claim_daily(last_daily_at: datetime | None, now: datetime | None = None) -> bool:

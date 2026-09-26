@@ -10,6 +10,9 @@ from datetime import datetime, timedelta, timezone
 from core.leveling_logic import (
     DAILY_CAP_MINUTES,
     MAX_CONSECUTIVE_MINUTES_SAME_CHANNEL,
+    MINIMUM_BALANCE_AFTER_DECAY,
+    WEEKLY_PERSONAL_DECAY_RATE,
+    apply_weekly_personal_decay,
     can_claim_daily,
     can_claim_work,
     can_earn_text_xp,
@@ -19,6 +22,7 @@ from core.leveling_logic import (
     level_for_xp,
     period_key,
     seconds_until_next_claim,
+    week_key,
     xp_for_level,
 )
 
@@ -266,3 +270,66 @@ class TestSecondsUntilNextClaim:
         ultimo = ora - timedelta(seconds=1800)
         rimanenti = seconds_until_next_claim(ultimo, cooldown_seconds=3600, now=ora)
         assert rimanenti == 1800
+
+
+class TestWeekKey:
+    def test_formato_chiave_settimana_iso(self):
+        # 2026-01-01 è un giovedì della settimana ISO 2026-W01
+        momento = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        assert week_key(momento) == "2026-W01"
+
+    def test_settimane_diverse_danno_chiavi_diverse(self):
+        settimana_1 = datetime(2026, 1, 5, 0, 0, 0, tzinfo=timezone.utc)
+        settimana_2 = datetime(2026, 1, 12, 0, 0, 0, tzinfo=timezone.utc)
+        assert week_key(settimana_1) != week_key(settimana_2)
+
+    def test_stessa_settimana_iso_stessa_chiave_anche_a_cavallo_di_mese(self):
+        # 2025-12-29 (lunedì) e 2026-01-02 (venerdì) sono nella stessa
+        # settimana ISO, anche se in mesi/anni civili diversi.
+        lunedi = datetime(2025, 12, 29, 0, 0, 0, tzinfo=timezone.utc)
+        venerdi = datetime(2026, 1, 2, 23, 0, 0, tzinfo=timezone.utc)
+        assert week_key(lunedi) == week_key(venerdi)
+
+    def test_senza_argomento_usa_now_utc(self):
+        # Non deve lanciare eccezioni e deve restituire un formato valido.
+        chiave = week_key()
+        assert len(chiave) == 8
+        assert chiave[5] == "W"
+
+
+class TestApplyWeeklyPersonalDecay:
+    def test_decadimento_normale_arrotonda_a_intero(self):
+        # 10% di 100 = 10 esatto, nessun arrotondamento necessario
+        assert apply_weekly_personal_decay(100) == 90
+
+    def test_decadimento_arrotonda_per_difetto_su_percentuale_pari(self):
+        # 10% di 105 = 10.5 -> round() python arrotonda a 10 (banker's
+        # rounding su .5), risultato intero comunque, non 10.5
+        risultato = apply_weekly_personal_decay(105)
+        assert risultato == round(105 - round(105 * WEEKLY_PERSONAL_DECAY_RATE))
+        assert isinstance(risultato, int)
+        assert risultato in (94, 95)
+
+    def test_decadimento_mai_negativo_e_mai_sotto_il_minimo(self):
+        assert apply_weekly_personal_decay(1) == 1
+        assert apply_weekly_personal_decay(0) == 0
+
+    def test_saldo_piccolo_non_scende_sotto_il_minimo(self):
+        for saldo in range(0, 15):
+            risultato = apply_weekly_personal_decay(saldo)
+            assert risultato >= min(saldo, MINIMUM_BALANCE_AFTER_DECAY)
+            assert risultato <= saldo
+
+    def test_risultato_e_sempre_intero(self):
+        for saldo in (2, 3, 7, 11, 13, 17, 23, 999, 1000, 123456):
+            risultato = apply_weekly_personal_decay(saldo)
+            assert isinstance(risultato, int)
+            assert risultato == int(risultato)
+
+    def test_decadimento_non_supera_mai_il_saldo_originale(self):
+        for saldo in (1, 2, 10, 100, 1000, 1_000_000):
+            assert apply_weekly_personal_decay(saldo) <= saldo
+
+    def test_decadimento_su_saldo_grande(self):
+        # 10% di 1_000_000 = 100_000 esatto
+        assert apply_weekly_personal_decay(1_000_000) == 900_000

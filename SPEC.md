@@ -577,25 +577,75 @@ necessario.
 - `[x]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
   add|remove|list`, cumulativo (ogni ruolo fino al nuovo livello,
   non solo il più alto), agganciato sia a XP testuale sia vocale
-- `[ ]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
-  - `[ ]` Creazione gilda + categoria privata dedicata
+- `[~]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
+  (motore economico di backend calibrato e testato — 30 XP + 2 coin
+  a tick/minuto in vocale di gilda, decadimento lineare dopo 3h filate
+  nello stesso canale, tetto 720 tick/giorno, deficit di creazione
+  15.000 coin/24h, costi canale 25k/50k/200k/800k — ma **nessun
+  comando Discord esiste ancora**: nessuna creazione reale di
+  gilda/categoria/ruoli, nessuna enforcement, tutto ancora solo a
+  livello di repository/worker)
+  - `[~]` Creazione gilda + categoria privata dedicata — `create_clan`
+    in `guild_clan_repo.py` con deficit di creazione e finestra di
+    grazia; **manca** la creazione reale della categoria Discord
   - `[ ]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
     (ruolo unico condiviso + overwrite per-utente sulla propria
-    categoria; Discord non permette due ruoli alla stessa posizione)
+    categoria; Discord non permette due ruoli alla stessa posizione).
+    Il campo ruolo esiste già su `clan_members` (`set_member_role`),
+    ma senza ruoli/overwrite Discord reali
   - `[ ]` Isolamento totale: nessun capo/admin può agire su altre gilde
-  - `[ ]` Guadagno ×2 XP e coin nei canali della propria gilda
-  - `[ ]` Tesoreria: deposito da tutti, prelievo solo capo/admin, log movimenti
-  - `[ ]` Acquisto canali: testuale / vocale / forum
-  - `[ ]` Costo coin raddoppiato per ogni canale dello stesso tipo
-    (10.000 → 20.000 → 40.000 → …)
-  - `[ ]` Requisito **ore vocali accumulate in gilda**: 10 → 20 → 40,
-    poi ×4 per ogni canale successivo (160 → 640 → 2.560 …).
-    **Conteggio SEPARATO** da quello di `leveling_totals`: sono "ore
-    in canali di gilda", non ore vocali generiche
+    — da applicare nei comandi (non ancora scritti)
+  - `[~]` Guadagno ×2 XP e coin nei canali della propria gilda —
+    `guild_clan_voice_worker.py` applica il tick per la presenza
+    vocale, agganciato a `clan_voice_activity_repo`; **manca** il
+    lato testuale (nessun hook sui messaggi nei canali di gilda)
+  - `[~]` Tesoreria: deposito da tutti, prelievo solo capo/admin, log
+    movimenti — `donate`/`spend_from_treasury`/`apply_treasury_delta`/
+    `transfer_between_treasuries` e `clan_treasury_ledger` esistono
+    nel repository; **manca** ogni comando Discord che li invochi
+  - `[~]` Decadimento mensile 10% sulla tesoreria NON spesa —
+    `guild_clan_treasury_decay_worker.py`, idempotente per periodo
+    (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`;
+    **manca** ancora la destinazione delle coin decadute (cassa di
+    server, vedi 15.15)
+  - `[~]` Acquisto canali: testuale / vocale / forum — costo e
+    progressione già in `guild_clan_logic.py`/`increment_channels_unlocked`;
+    **manca** il comando di acquisto e la creazione reale del canale
+  - `[~]` Costo coin raddoppiato/quadruplo per canale successivo
+    (25.000 → 50.000 → 200.000 → 800.000) — costanti già definite,
+    solo il comando che le applica manca
+  - `[ ]` Requisito **ore vocali accumulate in gilda** come sblocco
+    canale (separato dal semplice guadagno XP/coin — serve un
+    conteggio ore dedicato, non ancora agganciato a nessuna soglia
+    di acquisto)
   - `[ ]` Boost individuale XP / Coin acquistabile
   - `[ ]` Boost di gilda XP / Coin acquistabile
   - `[ ]` Comandi: crea, invita, espelli, promuovi, tesoreria,
-    deposita, compra-canale, boost, info, classifica, sciogli
+    deposita, compra-canale, boost, info, classifica, sciogli —
+    **zero comandi slash scritti finora**, tutto il lavoro fatto è
+    stato sul motore dati sottostante
+- `[ ]` **15.15 Decadimento economico + cassa di server** (scope
+  emerso in conversazione con l'utente dopo la stesura iniziale
+  dello schema, non presente nell'elenco originale)
+  - `[~]` Decadimento settimanale 10% sui coin PERSONALI di
+    QUALUNQUE membro del server (in un clan o no) — logica pura
+    pronta e testata (`apply_weekly_personal_decay`,
+    `week_key` in `core/leveling_logic.py`): mai negativo, mai sotto
+    1, sempre intero (10% di 105 → 10 o 11, mai 10,5); **manca**
+    ancora la colonna di idempotenza settimanale e il worker che lo
+    applica a tutti i membri
+  - `[ ]` Cassa di server: nuova tabella/repository per una
+    tesoreria a livello di GUILD (distinta da quella di ogni clan),
+    alimentata sia dal decadimento settimanale personale sia dal
+    decadimento mensile della tesoreria di clan
+  - `[ ]` Uso della cassa: premi per eventi organizzati nel server
+    e/o acquisto di mesi di bot premium
+  - `[ ]` Sblocco premium a doppio cancello: **tempo** dal join del
+    bot nel server (1° mese dopo 6 mesi, 2° dopo 1 anno, 3° dopo 2
+    anni) **E** costo in coin dalla cassa, variabile per fascia di
+    membri del server, arrotondato in eccesso a multipli di 25.000
+    — numeri esatti ancora da confermare con l'utente prima di
+    codificarli
 
 ## §16 FUN & IMMAGINI — parzialmente fatta
 
@@ -724,20 +774,27 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 12 | 0 | 13 |
+| §15 Levels/Gilde | 12 | 8 | 11 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **137** | **5** | **122** |
+| **Totale** | **137** | **13** | **120** |
 
-Su 264 voci totali: **137 fatte, 5 parziali, 122 mancanti** — circa
-il 52% dello schema (contando i parziali a metà peso). §11 Backup
+Su 270 voci totali: **137 fatte, 13 parziali, 120 mancanti** — circa
+il 53% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
-Levels a 9/25: notifica di level-up vocale, ruoli-premio per
-livello e annuncio vincitori mensile ora fatti, resta la sottosezione Gilde/Clan (§15.14, ancora
-interamente da fare, dimensione paragonabile a Backup System).
+Levels: il motore economico del Sistema Gilde/Clan (§15.14) è ora
+tutto costruito e testato a livello di repository/worker (tesoreria,
+XP di gilda, tracciamento vocale, decadimento mensile), ma **zero
+comandi Discord** esistono ancora per usarlo — da qui gli 8
+marcatori parziali. Aggiunta anche §15.15 (non nello schema
+originale, emersa in conversazione): decadimento settimanale sui
+coin personali di chiunque + cassa di server alimentata dai due
+decadimenti, verso l'uso per eventi e per un premium a sblocco
+temporale — solo la logica pura del decadimento personale è pronta,
+il resto (cassa, worker, premium) è ancora da costruire.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

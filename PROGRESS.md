@@ -1764,6 +1764,66 @@ commit. **52% dello schema (137/264).**
 
 ---
 
+### Fase 48 — Motore economico Gilde/Clan (SPEC.md §15.14, backend
+completo) + prima pietra del decadimento personale (§15.15, nuovo)
+
+**Nota di processo**: le 4 commit precedenti a questa Fase
+(`fd1951f` repository clan/membri/tesoreria, `131e89c` repository
+attività vocale, `0008877` XP di gilda e classifica, `c97dd52`
+worker vocale) erano state fatte e pushate ma SPEC.md/PROGRESS.md
+non erano stati aggiornati di conseguenza — debito di
+documentazione, sanato qui in un colpo insieme al lavoro nuovo.
+
+**Cosa esiste ora per §15.14** (tutto testato, nessun comando
+Discord ancora): `core/guild_clan_logic.py` (tick 30 XP + 2 coin/min,
+decadimento lineare dopo 3h filate nello stesso vocale, tetto
+720 tick/giorno, deficit di creazione 15.000 coin/24h, costi canale
+25k/50k/200k/800k, validazione tag CJK-aware senza emoji);
+`core/repositories/guild_clan_repo.py` (clan, membri, tesoreria con
+ledger, XP/classifica, decadimento mensile 10% — resa ATOMICA
+calcolando il decadimento dentro il metodo stesso sotto `FOR UPDATE`
+invece di accettare un saldo pre-calcolato dal chiamante, per non
+perdere una donazione/spesa concorrente); `clan_voice_activity_repo.py`
++ `guild_clan_voice_worker.py` (tick al minuto per membri in vocale
+di gilda, salta bot e clan non ufficializzati); `guild_clan_treasury_decay_worker.py`
+(decadimento mensile, idempotente via `clans.last_decay_period`).
+Calibrazione XP/coin verificata con un test che SIMULA l'intero tick
+loop (720 tick/giorno × 30 giorni) invece di fidarsi del calcolo a
+mente — confermato dentro il target 500-750k XP/mese, <50k coin/mese
+per un utente massimamente attivo.
+
+**Nuovo scope emerso in conversazione (§15.15, non nello schema
+originale)**: l'utente ha specificato un SECONDO decadimento,
+distinto da quello mensile di tesoreria — 10% **settimanale** sui
+coin PERSONALI di QUALUNQUE membro del server, in un clan o no. Le
+coin decadute (da entrambi i decadimenti) confluiscono in una nuova
+CASSA di server, usabile per premi eventi e/o per comprare mesi di
+bot premium. Premium sbloccato a doppio cancello: tempo dal join del
+bot nel server (6 mesi / 1 anno / 2 anni) E costo in coin dalla
+cassa, variabile per fascia membri, arrotondato in eccesso a
+multipli di 25.000 (numeri esatti ancora da confermare).
+
+Fatto in questa Fase solo il primo pezzo, la logica pura:
+`week_key()` (chiave settimana ISO, stesso pattern UTC di
+`period_key()`) e `apply_weekly_personal_decay()` in
+`core/leveling_logic.py` — mai negativo, mai sotto 1, sempre intero
+(10% di 105 → 10 o 11, mai 10,5), floor applicato PRIMA di calcolare
+la sottrazione per chi ha già un saldo ≤ 1. **Ancora da fare**:
+colonna di idempotenza settimanale, worker che applica il
+decadimento a tutti i membri del server (non solo quelli in un
+clan), tabella/repository della cassa di server, e la logica di
+sblocco premium una volta confermati i numeri esatti con l'utente.
+
+**11 nuovi test** (`TestWeekKey`, `TestApplyWeeklyPersonalDecay` in
+`tests/test_leveling_logic.py`). SPEC.md aggiornato (§15.14 passa da
+"tutto da fare" a parziale — motore fatto, comandi mancanti; nuovo
+§15.15 aggiunto). Nessun comando slash toccato in questa Fase,
+COMMAND_LIST.md non rigenerato.
+
+**Suite di test completa: 1201/1201 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo
@@ -2092,15 +2152,21 @@ bisogno di discussione preventiva:
 - **15.5** Giveaway (con requisiti di ruolo/livello) — creazione,
   partecipazione, estrazione vincitore
 
-**15.14 Sistema Gilde/Clan resta la sottosezione più grande ancora
-da fare** — economia interna completa (tesoreria, acquisto canali
-con costo raddoppiato progressivo, ore vocali accumulate come
-requisito, boost XP/coin individuali e di gilda, ruoli Capo/Admin
-Clan pari tra gilde diverse tramite overwrite per-utente). Dimensione
-paragonabile a Backup System — da affrontare con la stessa cura,
-probabilmente con qualche domanda di chiarimento quando ci si arriva
-(es. il costo/requisito esatto va confermato prima di codificarlo,
-anche se lo schema è già abbastanza dettagliato su questo).
+**15.14 Sistema Gilde/Clan — aggiornamento Fase 48: il motore
+economico di backend è ora completo e testato** (tesoreria con
+ledger, XP/classifica di gilda, tracciamento vocale con
+anti-farm/decadimento/tetto giornaliero, decadimento mensile 10%
+sulla tesoreria non spesa, costi/progressione di acquisto canale).
+**Resta tutto il lato Discord**: creazione reale di categoria/canali,
+ruoli Capo/Admin Clan pari tra gilde diverse (overwrite per-utente),
+isolamento applicato nei comandi, boost XP/coin, requisito ore
+vocali dedicato per lo sblocco canale, e ogni comando slash (zero
+scritti finora). Nuovo §15.15 aperto nello stesso giro: decadimento
+settimanale sui coin personali di chiunque + cassa di server + un
+premium a doppio sblocco (tempo dal join del bot + costo variabile
+dalla cassa) — solo la logica pura del decadimento personale è
+pronta, il resto ancora da costruire e in parte da confermare con
+l'utente (numeri esatti del premium).
 
 **Backup System (§11) resta con solo le 3 voci delicate aperte**
 (mirror messaggi, OAuth2, auto-propagazione), da discutere con
