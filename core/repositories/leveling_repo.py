@@ -24,6 +24,7 @@ from datetime import date, datetime, timezone
 import asyncpg
 
 from core.leveling_logic import (
+    apply_weekly_personal_decay,
     can_earn_text_xp,
     compute_voice_minute,
     did_level_up,
@@ -82,8 +83,15 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             voice_consecutive_minutes INTEGER NOT NULL DEFAULT 0,
             voice_minutes_today       INTEGER NOT NULL DEFAULT 0,
             voice_activity_date       DATE,
+            last_weekly_decay_period  TEXT,
             PRIMARY KEY (guild_id, user_id)
         );
+
+        -- Aggiunta dopo la creazione iniziale della tabella (decadimento
+        -- settimanale dei coin personali, SPEC.md §15.15) — idempotente,
+        -- sicura da rilanciare su un database già esistente.
+        ALTER TABLE leveling_totals
+            ADD COLUMN IF NOT EXISTS last_weekly_decay_period TEXT;
 
         CREATE TABLE IF NOT EXISTS leveling_activity (
             guild_id   BIGINT NOT NULL,
@@ -417,6 +425,68 @@ class LevelingRepository:
                     -amount,
                 )
                 return True
+
+    async def list_users_needing_weekly_decay(
+        self, period: str
+    ) -> list[tuple[int, int]]:
+        """
+        (guild_id, user_id) di chi ha un saldo personale > soglia
+        minima e non ha ancora subito il decadimento settimanale per
+        questo period (SPEC.md §15.15) — QUALUNQUE membro con coin,
+        in un clan o no (richiesta esplicita dell'utente, distinto
+        dal decadimento mensile della tesoreria di clan). Chi ha già
+        un saldo al minimo non viene nemmeno restituito: decadere un
+        saldo di 1 non cambia nulla, non serve marcarlo come
+        "coperto" per questa settimana.
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT guild_id, user_id FROM leveling_totals
+            WHERE coins_total > 1
+              AND (last_weekly_decay_period IS DISTINCT FROM $1)
+            """,
+            period,
+        )
+        return [(r["guild_id"], r["user_id"]) for r in rows]
+
+    async def apply_weekly_decay(
+        self, guild_id: int, user_id: int, period: str
+    ) -> tuple[int, int]:
+        """
+        Applica il decadimento settimanale del 10% sul saldo
+        personale (core.leveling_logic.apply_weekly_personal_decay) e
+        marca il period come coperto, atomicamente (FOR UPDATE) — la
+        percentuale è calcolata QUI, sul saldo letto sotto lock, non
+        passata dal chiamante: altrimenti tra la lettura del
+        chiamante e questa scrittura il saldo potrebbe essere
+        cambiato da una spesa o un guadagno nel frattempo. Restituisce
+        (saldo_prima, saldo_dopo).
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                saldo_attuale = await conn.fetchval(
+                    """
+                    SELECT coins_total FROM leveling_totals
+                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
+                    """,
+                    guild_id,
+                    user_id,
+                ) or 0
+
+                nuovo_saldo = apply_weekly_personal_decay(saldo_attuale)
+
+                await conn.execute(
+                    """
+                    UPDATE leveling_totals
+                    SET coins_total = $3, last_weekly_decay_period = $4
+                    WHERE guild_id = $1 AND user_id = $2
+                    """,
+                    guild_id,
+                    user_id,
+                    nuovo_saldo,
+                    period,
+                )
+                return saldo_attuale, nuovo_saldo
 
     async def set_last_daily(self, guild_id: int, user_id: int, when: datetime) -> None:
         await self._pool.execute(

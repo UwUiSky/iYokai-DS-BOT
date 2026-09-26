@@ -1824,6 +1824,62 @@ COMMAND_LIST.md non rigenerato.
 
 ---
 
+### Fase 49 — Worker del decadimento settimanale + cassa di server
+(SPEC.md §15.15, chiude i due decadimenti)
+
+Completato quanto lasciato aperto nella Fase 48. Tre pezzi nuovi:
+
+**Persistenza del decadimento personale**: `leveling_totals` prende
+una colonna `last_weekly_decay_period` (via `ALTER TABLE ... ADD
+COLUMN IF NOT EXISTS`, idempotente su un database già esistente).
+`LevelingRepository.apply_weekly_decay(guild_id, user_id, period)` —
+stesso pattern di `GuildClanRepository.apply_monthly_decay`: il 10%
+è calcolato DENTRO il metodo sul saldo letto sotto `FOR UPDATE`, non
+passato dal chiamante, per non perdere una spesa/un guadagno
+concorrente. `list_users_needing_weekly_decay(period)` seleziona
+`(guild_id, user_id)` con `coins_total > 1` e periodo non ancora
+coperto — chi ha già un saldo al minimo non viene nemmeno
+restituito, decadere un 1 non cambia nulla.
+
+**Cassa di server** (`core/repositories/guild_chest_repo.py`, nuovo):
+tabelle `guild_chest` (saldo per guild) e `guild_chest_ledger`
+(storico movimenti, stesso pattern di `clan_treasury_ledger`). Solo
+`deposit()` per ora — nessun prelievo, la cassa appartiene al
+server non a un singolo membro, la spesa (eventi/premium) arriverà
+con i comandi Discord corrispondenti.
+
+**Due worker collegati alla stessa cassa**: `core/weekly_personal_
+decay_worker.py` (nuovo, tick orario, itera `leveling_totals`
+direttamente — non serve toccare l'API Discord per i membri, il
+saldo esiste già nella tabella indipendentemente da chi è online o
+in un clan) deposita il delta nella cassa del server con motivo
+`weekly_personal_decay`. `guild_clan_treasury_decay_worker.py`
+aggiornato per fare lo stesso con motivo `monthly_clan_decay`,
+usando `clan.guild_id` per sapere in quale cassa versare (un clan
+ha un ID globale ma appartiene sempre a UN server). Migration di
+`guild_chest_repo` agganciata sia in `core/database.py` che in
+`tests/conftest.py`.
+
+**23 nuovi test**: `TestApplyWeeklyDecay`/liste in
+`test_leveling_repo.py`, `test_guild_chest_repo.py` (nuovo),
+`test_weekly_personal_decay_worker.py` (nuovo, stesso pattern di
+`test_guild_clan_voice_worker.py` — `Database()` dedicato +
+monkeypatch dei singoli repository nel modulo del worker), più due
+test aggiunti a `test_guild_clan_treasury_decay_worker.py` per la
+nuova destinazione in cassa (il fixture esistente doveva comunque
+essere aggiornato per monkeypatchare anche `guild_chest_repo`,
+altrimenti avrebbe chiamato il pool non connesso del singleton
+globale).
+
+SPEC.md aggiornato: §15.15 passa da "solo logica pura" a completo
+per decadimento + cassa (resta solo l'USO della cassa — comandi
+eventi/premio e il premium a doppio cancello, in attesa dei numeri
+esatti). **54% dello schema (139/270, parziali a metà peso).**
+
+**Suite di test completa: 1224/1224 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

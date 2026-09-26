@@ -228,3 +228,84 @@ async def test_leaderboard_period_filtra_sul_periodo_corrente(repo, clean_db):
     user_ids = {entry.user_id for entry in classifica}
     assert 999 not in user_ids
     assert 1 in user_ids
+
+
+# ======================================================================
+# Decadimento settimanale coin personali (SPEC.md §15.15)
+# ======================================================================
+
+PERIODO = "2026-W39"
+
+
+@pytest.mark.asyncio
+async def test_list_users_needing_weekly_decay_include_chi_ha_saldo_e_non_decaduto(repo):
+    await repo.add_coins(100, 1, 500)
+
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+
+    assert (100, 1) in da_decadere
+
+
+@pytest.mark.asyncio
+async def test_list_users_needing_weekly_decay_esclude_saldo_al_minimo(repo):
+    await repo.add_coins(100, 1, 1)  # saldo 1: decadimento è no-op
+
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+
+    assert (100, 1) not in da_decadere
+
+
+@pytest.mark.asyncio
+async def test_list_users_needing_weekly_decay_esclude_chi_ha_gia_il_periodo_coperto(
+    repo, clean_db
+):
+    await repo.add_coins(100, 1, 500)
+    await repo.apply_weekly_decay(100, 1, PERIODO)
+
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+
+    assert (100, 1) not in da_decadere
+
+
+@pytest.mark.asyncio
+async def test_list_users_needing_weekly_decay_non_mischia_server_diversi(repo):
+    await repo.add_coins(100, 1, 500)
+    await repo.add_coins(200, 1, 500)
+
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+
+    assert (100, 1) in da_decadere
+    assert (200, 1) in da_decadere
+
+
+@pytest.mark.asyncio
+async def test_apply_weekly_decay_riduce_il_saldo_del_10_percento(repo):
+    await repo.add_coins(100, 1, 500)
+
+    prima, dopo = await repo.apply_weekly_decay(100, 1, PERIODO)
+
+    assert prima == 500
+    assert dopo == 450
+    assert (await repo.get_totals(100, 1)).coins_total == 450
+
+
+@pytest.mark.asyncio
+async def test_apply_weekly_decay_marca_il_periodo_coperto(repo, clean_db):
+    await repo.add_coins(100, 1, 500)
+    await repo.apply_weekly_decay(100, 1, PERIODO)
+
+    row = await clean_db.fetchrow(
+        "SELECT last_weekly_decay_period FROM leveling_totals WHERE guild_id = 100 AND user_id = 1"
+    )
+    assert row["last_weekly_decay_period"] == PERIODO
+
+
+@pytest.mark.asyncio
+async def test_apply_weekly_decay_su_utente_senza_riga_non_solleva_errore(repo):
+    # Utente mai visto (nessuna riga in leveling_totals): saldo 0,
+    # il decadimento non deve creare una riga né sollevare eccezioni
+    # (non c'è nulla su cui fare UPDATE — la lista da decadere non lo
+    # includerebbe comunque, ma il metodo resta sicuro se chiamato).
+    prima, dopo = await repo.apply_weekly_decay(100, 999, PERIODO)
+    assert prima == 0
+    assert dopo == 0

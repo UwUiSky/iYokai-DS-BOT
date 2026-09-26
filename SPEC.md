@@ -627,19 +627,26 @@ necessario.
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
-  - `[~]` Decadimento settimanale 10% sui coin PERSONALI di
+  - `[x]` Decadimento settimanale 10% sui coin PERSONALI di
     QUALUNQUE membro del server (in un clan o no) — logica pura
-    pronta e testata (`apply_weekly_personal_decay`,
-    `week_key` in `core/leveling_logic.py`): mai negativo, mai sotto
-    1, sempre intero (10% di 105 → 10 o 11, mai 10,5); **manca**
-    ancora la colonna di idempotenza settimanale e il worker che lo
-    applica a tutti i membri
-  - `[ ]` Cassa di server: nuova tabella/repository per una
-    tesoreria a livello di GUILD (distinta da quella di ogni clan),
-    alimentata sia dal decadimento settimanale personale sia dal
-    decadimento mensile della tesoreria di clan
+    (`apply_weekly_personal_decay`, `week_key` in
+    `core/leveling_logic.py`: mai negativo, mai sotto 1, sempre
+    intero — 10% di 105 → 10 o 11, mai 10,5), persistenza atomica
+    (`LevelingRepository.apply_weekly_decay`, colonna
+    `last_weekly_decay_period` per riga) e worker (
+    `core/weekly_personal_decay_worker.py`, stesso pattern tick
+    orario/idempotente per periodo del worker di tesoreria di clan)
+    tutti fatti e testati
+  - `[x]` Cassa di server: `core/repositories/guild_chest_repo.py`
+    (tabelle `guild_chest` + `guild_chest_ledger`), alimentata da
+    ENTRAMBI i decadimenti — quello settimanale personale
+    (`weekly_personal_decay_worker`) e quello mensile della
+    tesoreria di clan (`guild_clan_treasury_decay_worker`, aggiornato
+    per depositare il delta nella cassa del server del clan). Manca
+    ancora ogni comando Discord che ne mostri il saldo o il ledger
   - `[ ]` Uso della cassa: premi per eventi organizzati nel server
-    e/o acquisto di mesi di bot premium
+    e/o acquisto di mesi di bot premium — nessun comando di spesa
+    esiste ancora (solo `deposit`, mai un prelievo)
   - `[ ]` Sblocco premium a doppio cancello: **tempo** dal join del
     bot nel server (1° mese dopo 6 mesi, 2° dopo 1 anno, 3° dopo 2
     anni) **E** costo in coin dalla cassa, variabile per fascia di
@@ -774,27 +781,27 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 12 | 8 | 11 |
+| §15 Levels/Gilde | 14 | 7 | 10 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **137** | **13** | **120** |
+| **Totale** | **139** | **12** | **119** |
 
-Su 270 voci totali: **137 fatte, 13 parziali, 120 mancanti** — circa
-il 53% dello schema (contando i parziali a metà peso). §11 Backup
+Su 270 voci totali: **139 fatte, 12 parziali, 119 mancanti** — circa
+il 54% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
 Levels: il motore economico del Sistema Gilde/Clan (§15.14) è ora
 tutto costruito e testato a livello di repository/worker (tesoreria,
 XP di gilda, tracciamento vocale, decadimento mensile), ma **zero
-comandi Discord** esistono ancora per usarlo — da qui gli 8
-marcatori parziali. Aggiunta anche §15.15 (non nello schema
+comandi Discord** esistono ancora per usarlo — da qui la maggior
+parte dei marcatori parziali rimasti. §15.15 (non nello schema
 originale, emersa in conversazione): decadimento settimanale sui
-coin personali di chiunque + cassa di server alimentata dai due
-decadimenti, verso l'uso per eventi e per un premium a sblocco
-temporale — solo la logica pura del decadimento personale è pronta,
-il resto (cassa, worker, premium) è ancora da costruire.
+coin personali di chiunque e cassa di server alimentata da entrambi
+i decadimenti sono ora completi e testati — resta solo l'USO della
+cassa (comandi eventi/premio e lo sblocco premium a doppio cancello,
+quest'ultimo in attesa di numeri esatti confermati dall'utente).
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

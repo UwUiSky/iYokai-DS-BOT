@@ -342,6 +342,11 @@ class Database:
         )
         await clan_voice_activity_migrations(self.pool)
 
+        from core.repositories.guild_chest_repo import (
+            run_migrations as guild_chest_migrations,
+        )
+        await guild_chest_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
