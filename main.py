@@ -44,6 +44,7 @@ from core.monthly_winners_announcer import monthly_winners_announcer
 from core.giveaway_worker import giveaway_worker
 from core.guild_clan_voice_worker import guild_clan_voice_worker
 from core.guild_clan_treasury_decay_worker import guild_clan_treasury_decay_worker
+from core.guild_clan_expiry_worker import guild_clan_expiry_worker
 from core.weekly_personal_decay_worker import weekly_personal_decay_worker
 from core.repositories.giveaway_repo import giveaway_repo
 from cogs.leveling.leveling import LevelingCog
@@ -219,6 +220,7 @@ class iYokaiBot(commands.AutoShardedBot):
         giveaway_worker.start(self)
         guild_clan_voice_worker.start(self)
         guild_clan_treasury_decay_worker.start(self)
+        guild_clan_expiry_worker.start(self)
         weekly_personal_decay_worker.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,

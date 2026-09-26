@@ -1947,6 +1947,69 @@ economico sottostante sia completo.
 
 ---
 
+### Fase 51 — Primi comandi Discord del Sistema Gilde/Clan (SPEC.md
+§15.14): crea, info, membri, classifica, sciogli, tesoreria/dona
+
+Fino a questa Fase il Sistema Gilde/Clan esisteva solo a livello di
+repository/worker — zero comandi Discord. Primo pezzo di comandi in
+`cogs/leveling/leveling.py` (stesso posto e stile di `shop_group`/
+`chest_group`), gruppo `/clan`:
+
+- **`/clan crea <tag> <name>`**: valida il tag (`validate_guild_tag`),
+  rifiuta se l'utente è già in una gilda in questo server o se il
+  tag è già preso, poi crea la CATEGORIA DISCORD PRIMA di scrivere
+  il record nel database (stesso ordine del sistema ticket — se la
+  categoria fallisce non resta un clan senza spazio reale): view
+  negata a `@everyone`, concessa al fondatore e al bot. Se la
+  categoria va a buon fine, `create_clan` con deficit -15.000 e
+  finestra di 24h.
+- **`/clan info [tag]`**, **`/clan membri [tag]`**, **`/clan
+  classifica`**: consultazione, nessuna scrittura.
+- **`/clan sciogli`**: solo il Capo Clan (`clan.owner_id`), elimina
+  prima i canali della categoria poi la categoria stessa (best-effort,
+  `discord.HTTPException` loggata ma non bloccante), poi il record.
+- **`/clan tesoreria dona <importo>`**: scala il saldo PERSONALE
+  (`leveling_repo.spend_coins`, fallisce senza scrivere nulla se non
+  basta) e accredita la tesoreria del clan (`guild_clan_repo.donate`).
+  Se il deficit di creazione risulta coperto dopo la donazione
+  (`is_creation_deficit_covered`), ufficializza il clan nello stesso
+  comando — nessun worker separato serve per questo, la donazione è
+  già il momento giusto per controllare.
+
+**Nuovo worker**: `core/guild_clan_expiry_worker.py` — tick orario,
+elimina automaticamente i clan non ufficializzati la cui finestra di
+24h (`officialize_deadline`) è scaduta: prima i canali/categoria
+Discord (se esistono ancora), poi il record. Mancava dalla lista dei
+pending task di sessioni precedenti — chiuso qui insieme ai comandi
+perché senza di esso un clan abbandonato a metà creazione (mai
+ufficializzato) sarebbe rimasto per sempre con una categoria vuota.
+
+**Bug di test reale, non ipotizzato**: i fake `discord.Member` usati
+nei test (sottoclassi vere di `discord.Member`, non mock generici,
+per superare `isinstance()` nel codice del comando) rompevano
+`guild.create_category(overwrites={...})` — quel dizionario usa gli
+oggetti come chiavi, e `discord.Member.__hash__`/`__str__` accedono
+a `self._user`, un attributo interno che una sottoclasse "finta" non
+ha mai popolato. Risolto sovrascrivendo `__hash__`/`__eq__`/`__str__`
+sul fake stesso — non è un problema del codice di produzione, sono
+oggetti reali Discord che avrebbero quegli attributi popolati
+normalmente.
+
+**36 nuovi test**: `test_guild_clan_cog_behavior.py` (nuovo, 15 test,
+categoria/canali Discord finti con `create_category`/`get_channel`/
+`delete`), `test_guild_clan_expiry_worker.py` (nuovo, 5 test, stesso
+pattern fake-bot/fake-guild di `test_guild_clan_voice_worker.py`).
+COMMAND_LIST.md rigenerato (159 comandi).
+
+SPEC.md: §15.14 passa da "zero comandi" a parziale con un primo
+pezzo di comandi reali; resta inviti/espulsioni/promozioni (serve
+prima il sistema di ruoli Discord Capo/Admin Clan), acquisto canali,
+boost. **55% dello schema (142/271).**
+
+**Suite di test completa: 1301/1301 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

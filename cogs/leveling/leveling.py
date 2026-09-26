@@ -44,6 +44,13 @@ from core.repositories.giveaway_repo import giveaway_repo
 from core.premium_pricing_logic import TIER_MONTHS_REQUIRED
 from core.premium_purchase_service import PurchaseOutcome, purchase_premium_tier
 from core.repositories.guild_chest_repo import guild_chest_repo
+from core.guild_clan_logic import (
+    CREATION_DEFICIT,
+    CREATION_GRACE_HOURS,
+    is_creation_deficit_covered,
+    validate_guild_tag,
+)
+from core.repositories.guild_clan_repo import guild_clan_repo
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -776,6 +783,261 @@ class LevelingCog(commands.Cog):
                 f"✅ {tier}° mese di premium sbloccato per **{risultato.cost}** coin dalla "
                 f"cassa! Premium attivo fino al {risultato.new_premium_until:%Y-%m-%d}."
             )
+
+    # ================================================================
+    # Sistema Gilde/Clan (SPEC.md §15.14) — primo pezzo di comandi:
+    # crea, info, membri, classifica, tesoreria/dona, sciogli. Il
+    # motore economico (tick vocale, decadimento, XP) è già completo
+    # a livello di repository/worker da prima — qui arrivano i primi
+    # comandi Discord per usarlo davvero. Inviti/espulsioni/
+    # promozioni, acquisto canali e boost restano il pezzo successivo.
+    # ================================================================
+
+    clan_group = app_commands.Group(
+        name="clan", description="Sistema Gilde/Clan: crea, gestisci, dona alla tesoreria."
+    )
+
+    @clan_group.command(name="crea", description="Crea una nuova gilda/clan.")
+    @app_commands.describe(
+        tag=f"Tag della gilda (1-5 caratteri, niente emoji né spazi)",
+        name="Nome completo della gilda",
+    )
+    async def clan_crea(self, interaction: discord.Interaction, tag: str, name: str) -> None:
+        guild = interaction.guild
+        if guild is None or not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        valido, motivo = validate_guild_tag(tag)
+        if not valido:
+            await interaction.response.send_message(motivo, ephemeral=True)
+            return
+
+        if await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id):
+            await interaction.response.send_message(
+                "Fai già parte di una gilda in questo server — lasciala prima di crearne una nuova.",
+                ephemeral=True,
+            )
+            return
+
+        if await guild_clan_repo.is_tag_taken(guild.id, tag):
+            await interaction.response.send_message(
+                f"Il tag `{tag}` è già usato da un'altra gilda in questo server.",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            categoria = await guild.create_category(
+                name=f"[{tag}] {name}"[:100],
+                overwrites={
+                    guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    interaction.user: discord.PermissionOverwrite(
+                        view_channel=True, send_messages=True, manage_channels=True
+                    ),
+                    guild.me: discord.PermissionOverwrite(
+                        view_channel=True, send_messages=True, manage_channels=True
+                    ),
+                },
+                reason=f"Creazione gilda '{tag}' da {interaction.user}",
+            )
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "Non ho i permessi per creare una categoria in questo server.", ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Creazione della categoria fallita — riprova più tardi.", ephemeral=True
+            )
+            return
+
+        scadenza = datetime.now(timezone.utc) + timedelta(hours=CREATION_GRACE_HOURS)
+        clan_id = await guild_clan_repo.create_clan(
+            guild.id, tag=tag, name=name, owner_id=interaction.user.id,
+            officialize_deadline=scadenza,
+        )
+        await guild_clan_repo.set_category_id(clan_id, categoria.id)
+
+        await interaction.response.send_message(
+            f"✅ Gilda **{name}** (`{tag}`) creata! Per ufficializzarla servono "
+            f"**{CREATION_DEFICIT}** coin in tesoreria entro **{CREATION_GRACE_HOURS} ore** "
+            f"(`/clan tesoreria dona`) — altrimenti verrà eliminata automaticamente."
+        )
+
+    @clan_group.command(name="info", description="Mostra le informazioni di una gilda.")
+    @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
+    async def clan_info(self, interaction: discord.Interaction, tag: str | None = None) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        if tag is not None:
+            clan = await guild_clan_repo.get_clan_by_tag(guild.id, tag)
+        else:
+            clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+
+        if clan is None:
+            await interaction.response.send_message(
+                "Nessuna gilda trovata." if tag else "Non fai parte di nessuna gilda in questo server.",
+                ephemeral=True,
+            )
+            return
+
+        n_membri = await guild_clan_repo.count_members(clan.id)
+        stato = "✅ Ufficializzata" if clan.officialized else (
+            f"⏳ In attesa (scade <t:{int(clan.officialize_deadline.timestamp())}:R>)"
+        )
+
+        embed = discord.Embed(
+            title=f"🛡️ [{clan.tag}] {clan.name}", color=discord.Color.blurple()
+        )
+        embed.add_field(name="Stato", value=stato, inline=False)
+        embed.add_field(name="Capo Clan", value=f"<@{clan.owner_id}>", inline=True)
+        if clan.co_owner_id is not None:
+            embed.add_field(name="Co-Owner", value=f"<@{clan.co_owner_id}>", inline=True)
+        embed.add_field(name="Membri", value=f"{n_membri}/{clan.max_members}", inline=True)
+        embed.add_field(name="Tesoreria", value=f"{clan.treasury_balance} coin", inline=True)
+        embed.add_field(name="XP totale", value=str(clan.total_xp), inline=True)
+        embed.add_field(name="Canali sbloccati", value=str(clan.channels_unlocked), inline=True)
+        await interaction.response.send_message(embed=embed)
+
+    @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
+    @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
+    async def clan_membri(self, interaction: discord.Interaction, tag: str | None = None) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        if tag is not None:
+            clan = await guild_clan_repo.get_clan_by_tag(guild.id, tag)
+        else:
+            clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+
+        if clan is None:
+            await interaction.response.send_message(
+                "Nessuna gilda trovata." if tag else "Non fai parte di nessuna gilda in questo server.",
+                ephemeral=True,
+            )
+            return
+
+        membri = await guild_clan_repo.list_members(clan.id)
+        righe = [f"<@{m.user_id}> — {m.role}" for m in membri]
+        embed = discord.Embed(
+            title=f"Membri di [{clan.tag}] {clan.name}",
+            description="\n".join(righe) if righe else "Nessun membro.",
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @clan_group.command(name="classifica", description="Classifica delle gilde per XP totale.")
+    async def clan_classifica(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        classifica = await guild_clan_repo.get_clan_leaderboard(guild.id)
+        if not classifica:
+            await interaction.response.send_message(
+                "Nessuna gilda in questo server ancora.", ephemeral=True
+            )
+            return
+
+        righe = [
+            f"**{i+1}.** [{c.tag}] {c.name} — {c.total_xp} XP"
+            for i, c in enumerate(classifica)
+        ]
+        embed = discord.Embed(
+            title="🏆 Classifica Gilde", description="\n".join(righe), color=discord.Color.gold()
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @clan_group.command(name="sciogli", description="[Capo Clan] Sciogli la tua gilda.")
+    async def clan_sciogli(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+        if clan.owner_id != interaction.user.id:
+            await interaction.response.send_message(
+                "Solo il Capo Clan può sciogliere la gilda.", ephemeral=True
+            )
+            return
+
+        if clan.category_id is not None:
+            categoria = guild.get_channel(clan.category_id)
+            if categoria is not None:
+                for canale in list(categoria.channels):
+                    try:
+                        await canale.delete(reason=f"Gilda '{clan.tag}' sciolta")
+                    except discord.HTTPException:
+                        logger.warning("Impossibile eliminare il canale %s della gilda %s.", canale.id, clan.id)
+                try:
+                    await categoria.delete(reason=f"Gilda '{clan.tag}' sciolta")
+                except discord.HTTPException:
+                    logger.warning("Impossibile eliminare la categoria della gilda %s.", clan.id)
+
+        await guild_clan_repo.delete_clan(clan.id)
+        await interaction.response.send_message(f"La gilda **{clan.name}** è stata sciolta.")
+
+    clan_tesoreria_group = app_commands.Group(
+        name="tesoreria", description="Tesoreria della tua gilda.", parent=clan_group
+    )
+
+    @clan_tesoreria_group.command(name="dona", description="Dona coin personali alla tesoreria della tua gilda.")
+    @app_commands.describe(importo="Quante coin donare (dal tuo saldo personale)")
+    async def clan_tesoreria_dona(
+        self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000_000]
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, importo)
+        if not riuscito:
+            await interaction.response.send_message(
+                f"Non hai abbastanza coin personali — servono **{importo}**.", ephemeral=True
+            )
+            return
+
+        nuovo_saldo = await guild_clan_repo.donate(clan.id, interaction.user.id, importo)
+
+        messaggio = f"✅ Hai donato **{importo}** coin alla tesoreria di **{clan.name}** (saldo: {nuovo_saldo})."
+        if not clan.officialized and is_creation_deficit_covered(nuovo_saldo):
+            await guild_clan_repo.set_officialized(clan.id)
+            messaggio += "\n🎉 Il deficit di creazione è coperto: la gilda è ora **ufficializzata**!"
+
+        await interaction.response.send_message(messaggio)
 
     # ================================================================
     # Giveaway (SPEC.md §15.5, con requisiti di ruolo/livello)

@@ -581,33 +581,41 @@ necessario.
   (motore economico di backend calibrato e testato — 30 XP + 2 coin
   a tick/minuto in vocale di gilda, decadimento lineare dopo 3h filate
   nello stesso canale, tetto 720 tick/giorno, deficit di creazione
-  15.000 coin/24h, costi canale 25k/50k/200k/800k — ma **nessun
-  comando Discord esiste ancora**: nessuna creazione reale di
-  gilda/categoria/ruoli, nessuna enforcement, tutto ancora solo a
-  livello di repository/worker)
-  - `[~]` Creazione gilda + categoria privata dedicata — `create_clan`
-    in `guild_clan_repo.py` con deficit di creazione e finestra di
-    grazia; **manca** la creazione reale della categoria Discord
+  15.000 coin/24h, costi canale 25k/50k/200k/800k — e ORA anche il
+  primo pezzo di comandi Discord: `/clan crea|info|membri|classifica|
+  sciogli|tesoreria dona`, più il worker di eliminazione automatica
+  per chi non colma il deficit in tempo)
+  - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
+    valida il tag, crea la categoria Discord (view negata a
+    `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
+    record (se la categoria fallisce non resta un clan senza spazio
+    reale), poi `create_clan` con deficit di creazione e finestra di
+    grazia di 24h
+  - `[x]` Eliminazione automatica se il deficit non è colmato in
+    tempo — `core/guild_clan_expiry_worker.py` (nuovo, tick orario):
+    elimina canali + categoria Discord (se esistono ancora) e poi il
+    record, per i clan non ufficializzati la cui finestra è scaduta
   - `[ ]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
     (ruolo unico condiviso + overwrite per-utente sulla propria
     categoria; Discord non permette due ruoli alla stessa posizione).
     Il campo ruolo esiste già su `clan_members` (`set_member_role`),
-    ma senza ruoli/overwrite Discord reali
+    ma senza ruoli/overwrite Discord reali — oggi solo il Capo Clan è
+    verificato (`clan.owner_id`), nessun comando invita/espelli/promuovi
   - `[ ]` Isolamento totale: nessun capo/admin può agire su altre gilde
-    — da applicare nei comandi (non ancora scritti)
+    — da applicare nei comandi di gestione membri (non ancora scritti)
   - `[~]` Guadagno ×2 XP e coin nei canali della propria gilda —
     `guild_clan_voice_worker.py` applica il tick per la presenza
     vocale, agganciato a `clan_voice_activity_repo`; **manca** il
     lato testuale (nessun hook sui messaggi nei canali di gilda)
   - `[~]` Tesoreria: deposito da tutti, prelievo solo capo/admin, log
-    movimenti — `donate`/`spend_from_treasury`/`apply_treasury_delta`/
-    `transfer_between_treasuries` e `clan_treasury_ledger` esistono
-    nel repository; **manca** ogni comando Discord che li invochi
+    movimenti — `/clan tesoreria dona` scala il saldo personale e
+    accredita la tesoreria (ufficializzando il clan in automatico se
+    il deficit viene colmato); consultabile via `/clan info`.
+    **Manca** ancora un comando di PRELIEVO per capo/admin
   - `[~]` Decadimento mensile 10% sulla tesoreria NON spesa —
     `guild_clan_treasury_decay_worker.py`, idempotente per periodo
-    (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`;
-    **manca** ancora la destinazione delle coin decadute (cassa di
-    server, vedi 15.15)
+    (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`,
+    ORA deposita il delta nella cassa di server (SPEC.md §15.15)
   - `[~]` Acquisto canali: testuale / vocale / forum — costo e
     progressione già in `guild_clan_logic.py`/`increment_channels_unlocked`;
     **manca** il comando di acquisto e la creazione reale del canale
@@ -620,10 +628,9 @@ necessario.
     di acquisto)
   - `[ ]` Boost individuale XP / Coin acquistabile
   - `[ ]` Boost di gilda XP / Coin acquistabile
-  - `[ ]` Comandi: crea, invita, espelli, promuovi, tesoreria,
-    deposita, compra-canale, boost, info, classifica, sciogli —
-    **zero comandi slash scritti finora**, tutto il lavoro fatto è
-    stato sul motore dati sottostante
+  - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|tesoreria
+    dona` fatti — **mancano ancora** invita, espelli, promuovi,
+    compra-canale, boost
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
@@ -788,30 +795,31 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 15 | 8 | 8 |
+| §15 Levels/Gilde | 17 | 8 | 7 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **140** | **13** | **117** |
+| **Totale** | **142** | **13** | **116** |
 
-Su 270 voci totali: **140 fatte, 13 parziali, 117 mancanti** — circa
-il 54% dello schema (contando i parziali a metà peso). §11 Backup
+Su 271 voci totali: **142 fatte, 13 parziali, 116 mancanti** — circa
+il 55% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
-Levels: il motore economico del Sistema Gilde/Clan (§15.14) è ora
-tutto costruito e testato a livello di repository/worker (tesoreria,
-XP di gilda, tracciamento vocale, decadimento mensile), ma **zero
-comandi Discord di gestione clan** esistono ancora (creazione,
-inviti, acquisto canali, ecc.) — da qui la maggior parte dei
-marcatori parziali rimasti. §15.15 (non nello schema originale,
-emersa in conversazione) è ORA COMPLETO: decadimento settimanale
-personale, cassa di server alimentata da entrambi i decadimenti, e
-sblocco premium a doppio cancello (tempo dal join + costo dalla
-cassa, numeri confermati dall'utente) — comandi `/cassa saldo` e
-`/cassa sblocca-premium`. Resta solo un comando dedicato per spendere
-la cassa su premi evento (oggi si può solo depositare/sbloccare
-premium, non ancora premiare i membri).
+Levels: il Sistema Gilde/Clan (§15.14) ha ora sia il motore
+economico (repository/worker: tesoreria, XP di gilda, tracciamento
+vocale, decadimento mensile) SIA un primo pezzo di comandi Discord —
+`/clan crea|info|membri|classifica|sciogli|tesoreria dona` — con
+creazione reale di categoria e un worker che elimina automaticamente
+chi non colma il deficit di creazione in tempo. Mancano ancora
+inviti/espulsioni/promozioni (richiedono i ruoli Discord Capo/Admin
+Clan, non ancora fatti), l'acquisto canali e i boost. §15.15 (non
+nello schema originale, emersa in conversazione) è COMPLETO:
+decadimento settimanale personale, cassa di server alimentata da
+entrambi i decadimenti, e sblocco premium a doppio cancello (tempo
+dal join + costo dalla cassa) — comandi `/cassa saldo` e `/cassa
+sblocca-premium`. Resta solo un comando dedicato per spendere la
+cassa su premi evento.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
