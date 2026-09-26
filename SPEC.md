@@ -642,17 +642,24 @@ necessario.
     ENTRAMBI i decadimenti — quello settimanale personale
     (`weekly_personal_decay_worker`) e quello mensile della
     tesoreria di clan (`guild_clan_treasury_decay_worker`, aggiornato
-    per depositare il delta nella cassa del server del clan). Manca
-    ancora ogni comando Discord che ne mostri il saldo o il ledger
-  - `[ ]` Uso della cassa: premi per eventi organizzati nel server
-    e/o acquisto di mesi di bot premium — nessun comando di spesa
-    esiste ancora (solo `deposit`, mai un prelievo)
-  - `[ ]` Sblocco premium a doppio cancello: **tempo** dal join del
+    per depositare il delta nella cassa del server del clan). Saldo
+    e ultimi movimenti consultabili con `/cassa saldo`
+  - `[~]` Uso della cassa: premi per eventi organizzati nel server
+    e/o acquisto di mesi di bot premium — lo sblocco premium è
+    fatto (`/cassa sblocca-premium`); **manca** ancora un comando di
+    spesa dedicato ai premi evento (oggi la cassa ha solo
+    `deposit`/`spend`, nessun comando Discord per un prelievo-premio)
+  - `[x]` Sblocco premium a doppio cancello: **tempo** dal join del
     bot nel server (1° mese dopo 6 mesi, 2° dopo 1 anno, 3° dopo 2
-    anni) **E** costo in coin dalla cassa, variabile per fascia di
-    membri del server, arrotondato in eccesso a multipli di 25.000
-    — numeri esatti ancora da confermare con l'utente prima di
-    codificarli
+    anni, confermato da `core.premium_pricing_logic.TIER_MONTHS_
+    REQUIRED`) **E** costo in coin dalla cassa (500.000/5.000.000/
+    50.000.000 sotto i 1.000 membri, ×10 per fascia successiva —
+    numeri confermati dall'utente), arrotondato in eccesso a
+    multipli di 25.000. `core.premium_purchase_service.
+    purchase_premium_tier` orchestra i controlli (tempo, tier già
+    comprato, saldo) prima di toccare la cassa; `guild_has_premium_
+    access` in `core/premium.py` ora controlla anche questo stato
+    oltre alla whitelist manuale — comando: `/cassa sblocca-premium`
 
 ## §16 FUN & IMMAGINI — parzialmente fatta
 
@@ -781,13 +788,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 14 | 7 | 10 |
+| §15 Levels/Gilde | 15 | 8 | 8 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **139** | **12** | **119** |
+| **Totale** | **140** | **13** | **117** |
 
-Su 270 voci totali: **139 fatte, 12 parziali, 119 mancanti** — circa
+Su 270 voci totali: **140 fatte, 13 parziali, 117 mancanti** — circa
 il 54% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
@@ -795,13 +802,16 @@ l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
 Levels: il motore economico del Sistema Gilde/Clan (§15.14) è ora
 tutto costruito e testato a livello di repository/worker (tesoreria,
 XP di gilda, tracciamento vocale, decadimento mensile), ma **zero
-comandi Discord** esistono ancora per usarlo — da qui la maggior
-parte dei marcatori parziali rimasti. §15.15 (non nello schema
-originale, emersa in conversazione): decadimento settimanale sui
-coin personali di chiunque e cassa di server alimentata da entrambi
-i decadimenti sono ora completi e testati — resta solo l'USO della
-cassa (comandi eventi/premio e lo sblocco premium a doppio cancello,
-quest'ultimo in attesa di numeri esatti confermati dall'utente).
+comandi Discord di gestione clan** esistono ancora (creazione,
+inviti, acquisto canali, ecc.) — da qui la maggior parte dei
+marcatori parziali rimasti. §15.15 (non nello schema originale,
+emersa in conversazione) è ORA COMPLETO: decadimento settimanale
+personale, cassa di server alimentata da entrambi i decadimenti, e
+sblocco premium a doppio cancello (tempo dal join + costo dalla
+cassa, numeri confermati dall'utente) — comandi `/cassa saldo` e
+`/cassa sblocca-premium`. Resta solo un comando dedicato per spendere
+la cassa su premi evento (oggi si può solo depositare/sbloccare
+premium, non ancora premiare i membri).
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

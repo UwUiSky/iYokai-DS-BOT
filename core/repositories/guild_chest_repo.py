@@ -28,6 +28,7 @@ import asyncpg
 
 REASON_WEEKLY_PERSONAL_DECAY = "weekly_personal_decay"
 REASON_MONTHLY_CLAN_DECAY = "monthly_clan_decay"
+REASON_PREMIUM_PURCHASE = "premium_purchase"
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,47 @@ class GuildChestRepository:
                     reason,
                 )
                 return row["balance"]
+
+    async def spend(self, guild_id: int, amount: int, reason: str) -> bool:
+        """
+        Sottrae coin dalla cassa solo se il saldo basta —
+        atomicamente (FOR UPDATE dentro una transazione), stesso
+        pattern di LevelingRepository.spend_coins. Usata per lo
+        sblocco premium (SPEC.md §15.15) e da qualunque futuro
+        acquisto (premi evento). Restituisce False (senza scrivere
+        nulla) se il saldo non basta — mai un saldo negativo.
+        """
+        if amount <= 0:
+            raise ValueError("L'importo da spendere dalla cassa deve essere positivo.")
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                saldo = await conn.fetchval(
+                    "SELECT balance FROM guild_chest WHERE guild_id = $1 FOR UPDATE",
+                    guild_id,
+                ) or 0
+
+                if saldo < amount:
+                    return False
+
+                await conn.execute(
+                    """
+                    UPDATE guild_chest SET balance = balance - $2, updated_at = now()
+                    WHERE guild_id = $1
+                    """,
+                    guild_id,
+                    amount,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO guild_chest_ledger (guild_id, amount, reason)
+                    VALUES ($1, $2, $3)
+                    """,
+                    guild_id,
+                    -amount,
+                    reason,
+                )
+                return True
 
     async def list_ledger(
         self, guild_id: int, limit: int = 20

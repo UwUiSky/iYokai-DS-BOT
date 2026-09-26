@@ -41,6 +41,9 @@ from core.repositories.shop_repo import shop_repo
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.giveaway_logic import is_eligible, pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
+from core.premium_pricing_logic import TIER_MONTHS_REQUIRED
+from core.premium_purchase_service import PurchaseOutcome, purchase_premium_tier
+from core.repositories.guild_chest_repo import guild_chest_repo
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
@@ -686,6 +689,92 @@ class LevelingCog(commands.Cog):
         else:
             await interaction.response.send_message(
                 "Nessun oggetto trovato con questo ID in questo server.", ephemeral=True
+            )
+
+    # ================================================================
+    # Cassa di server (SPEC.md §15.15) — alimentata dal decadimento
+    # settimanale sui coin personali e da quello mensile della
+    # tesoreria di clan, usabile per premi evento e per lo sblocco
+    # del bot premium (doppio cancello: tempo dal join del bot +
+    # costo in coin, variabile per fascia membri).
+    # ================================================================
+
+    chest_group = app_commands.Group(
+        name="cassa", description="Cassa del server: saldo, ledger e sblocco premium."
+    )
+
+    @chest_group.command(name="saldo", description="Mostra il saldo della cassa del server.")
+    async def chest_saldo(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        saldo = await guild_chest_repo.get_balance(guild.id)
+        movimenti = await guild_chest_repo.list_ledger(guild.id, limit=5)
+
+        embed = discord.Embed(
+            title="🏛️ Cassa del server",
+            description=f"Saldo attuale: **{saldo}** coin",
+            color=discord.Color.gold(),
+        )
+        if movimenti:
+            righe = []
+            for m in movimenti:
+                segno = "+" if m.amount > 0 else ""
+                righe.append(f"`{m.created_at:%Y-%m-%d}` {segno}{m.amount} — {m.reason}")
+            embed.add_field(name="Ultimi movimenti", value="\n".join(righe), inline=False)
+        await interaction.response.send_message(embed=embed)
+
+    @chest_group.command(
+        name="sblocca-premium",
+        description="[Admin] Sblocca un mese di bot premium spendendo dalla cassa.",
+    )
+    @app_commands.describe(
+        tier="Quale mese sbloccare: 1° (dopo 6 mesi), 2° (dopo 1 anno) o 3° (dopo 2 anni)"
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def chest_sblocca_premium(
+        self, interaction: discord.Interaction, tier: app_commands.Range[int, 1, 3]
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        risultato = await purchase_premium_tier(
+            guild.id, tier=tier, member_count=guild.member_count or 0
+        )
+
+        if risultato.outcome == PurchaseOutcome.GUILD_NOT_CONFIGURED:
+            await interaction.response.send_message(
+                "Configurazione del server non trovata — riprova più tardi.", ephemeral=True
+            )
+        elif risultato.outcome == PurchaseOutcome.ALREADY_PURCHASED:
+            await interaction.response.send_message(
+                f"Il {tier}° mese di premium è già stato acquistato da questo server.",
+                ephemeral=True,
+            )
+        elif risultato.outcome == PurchaseOutcome.TIME_NOT_UNLOCKED:
+            mesi_richiesti = TIER_MONTHS_REQUIRED[tier]
+            await interaction.response.send_message(
+                f"Il {tier}° mese di premium si sblocca solo dopo {mesi_richiesti} mesi "
+                "dall'ingresso del bot in questo server — non è ancora passato abbastanza tempo.",
+                ephemeral=True,
+            )
+        elif risultato.outcome == PurchaseOutcome.INSUFFICIENT_FUNDS:
+            await interaction.response.send_message(
+                f"La cassa non basta — servono **{risultato.cost}** coin per il {tier}° mese.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"✅ {tier}° mese di premium sbloccato per **{risultato.cost}** coin dalla "
+                f"cassa! Premium attivo fino al {risultato.new_premium_until:%Y-%m-%d}."
             )
 
     # ================================================================

@@ -347,6 +347,11 @@ class Database:
         )
         await guild_chest_migrations(self.pool)
 
+        from core.repositories.guild_premium_repo import (
+            run_migrations as guild_premium_migrations,
+        )
+        await guild_premium_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
@@ -369,6 +374,20 @@ class Database:
             ON CONFLICT (guild_id) DO NOTHING
             """,
             guild_id,
+        )
+
+    async def get_guild_joined_at(self, guild_id: int) -> datetime | None:
+        """
+        Approssimazione della data di join del bot nel server: il
+        momento in cui la riga di `guild_config` è stata creata per
+        la prima volta (`ensure_guild_exists`, chiamato da
+        `on_guild_join`, non la sovrascrive più su conflitto — vedi
+        quel metodo). Usata dal doppio cancello temporale del
+        premium via cassa (SPEC.md §15.15). None se il server non ha
+        ancora una riga di configurazione.
+        """
+        return await self.pool.fetchval(
+            "SELECT created_at FROM guild_config WHERE guild_id = $1", guild_id
         )
 
     async def is_module_active_for_guild(

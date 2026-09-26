@@ -174,21 +174,29 @@ async def guild_has_premium_access(guild_id: int, module_name: str) -> bool:
     Verifica se UN SERVER SPECIFICO ha diritto ad usare un modulo
     che è (globalmente) premium.
 
-    Questa funzione oggi controlla SOLO la whitelist manuale, perché
-    è l'unico meccanismo di sblocco che ha senso implementare da
-    subito (i altri — pagamento, coin, boost — richiedono
-    integrazioni che arriveranno più avanti, vedi UnlockMethod).
+    Due meccanismi di sblocco attivi oggi:
+    - whitelist manuale (owner del bot, permanente)
+    - premium acquistato dal server stesso via cassa (SPEC.md
+      §15.15, core.premium_purchase_service/guild_premium_repo) —
+      sblocca TUTTI i moduli premium per la durata acquistata
+      (`premium_until`), non un modulo specifico: comprare "un mese
+      di bot premium" è tutto o niente, non un acquisto per modulo
 
     TODO quando si implementeranno gli altri metodi di sblocco:
-    - COIN_PAYMENT: query alla tabella economy per il saldo del server
     - NITRO_BOOST: controllo su member.premium_since nel server
       principale, per l'owner/admin del server richiedente
     - YEARLY_PAYMENT: query alla tabella subscriptions
     """
     from core.database import db  # import locale per evitare cicli
+    from core.repositories.guild_premium_repo import guild_premium_repo
 
-    is_whitelisted = await db.is_guild_whitelisted(guild_id)
-    return is_whitelisted
+    if await db.is_guild_whitelisted(guild_id):
+        return True
+
+    from datetime import datetime, timezone
+
+    stato = await guild_premium_repo.get_status(guild_id)
+    return stato.is_active(datetime.now(timezone.utc))
 
 
 class PremiumCheckFailure(app_commands.CheckFailure):

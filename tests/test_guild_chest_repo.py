@@ -72,6 +72,50 @@ async def test_deposit_registra_un_movimento_nel_ledger(repo):
 
 
 @pytest.mark.asyncio
+async def test_spend_con_saldo_sufficiente(repo):
+    await repo.deposit(100, 5_000, REASON_WEEKLY_PERSONAL_DECAY)
+
+    riuscito = await repo.spend(100, 3_000, "premium_purchase")
+
+    assert riuscito is True
+    assert await repo.get_balance(100) == 2_000
+
+
+@pytest.mark.asyncio
+async def test_spend_con_saldo_insufficiente_fallisce(repo):
+    await repo.deposit(100, 1_000, REASON_WEEKLY_PERSONAL_DECAY)
+
+    riuscito = await repo.spend(100, 5_000, "premium_purchase")
+
+    assert riuscito is False
+    assert await repo.get_balance(100) == 1_000  # invariato
+
+
+@pytest.mark.asyncio
+async def test_spend_su_cassa_mai_vista_fallisce(repo):
+    riuscito = await repo.spend(999, 100, "premium_purchase")
+    assert riuscito is False
+
+
+@pytest.mark.asyncio
+async def test_spend_registra_un_movimento_negativo_nel_ledger(repo):
+    await repo.deposit(100, 5_000, REASON_WEEKLY_PERSONAL_DECAY)
+    await repo.spend(100, 3_000, "premium_purchase")
+
+    movimenti = await repo.list_ledger(100)
+    spesa = next(m for m in movimenti if m.reason == "premium_purchase")
+    assert spesa.amount == -3_000
+
+
+@pytest.mark.asyncio
+async def test_spend_importo_non_positivo_solleva_errore(repo):
+    with pytest.raises(ValueError):
+        await repo.spend(100, 0, "premium_purchase")
+    with pytest.raises(ValueError):
+        await repo.spend(100, -1, "premium_purchase")
+
+
+@pytest.mark.asyncio
 async def test_list_ledger_rispetta_il_limite(repo):
     for _ in range(5):
         await repo.deposit(100, 100, REASON_WEEKLY_PERSONAL_DECAY)

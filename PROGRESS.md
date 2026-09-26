@@ -1880,6 +1880,73 @@ esatti). **54% dello schema (139/270, parziali a metà peso).**
 
 ---
 
+### Fase 50 — Sblocco premium via cassa (SPEC.md §15.15, chiude la
+sottosezione) + primo comando Discord (`/cassa`)
+
+Numeri confermati dall'utente prima di scrivere il codice: server
+sotto i 1.000 membri — 1° mese di premium (sbloccabile dopo 6 mesi
+dal join del bot) 500.000 coin, 2° (dopo 1 anno) 5.000.000, 3° (dopo
+2 anni) 50.000.000; ogni fascia successiva di membri (sotto i
+10.000, sotto i 100.000, ...) moltiplica per 10 la fascia
+precedente; ogni costo arrotondato in eccesso a multipli di 25.000.
+
+**Logica pura** (`core/premium_pricing_logic.py`, nuovo):
+`months_elapsed()` (mesi civili pieni, mai negativo), `member_count_
+bracket()` (generalizza il ×10 per fascia oltre le tre confermate),
+`round_up_to_step()`, `premium_tier_cost()`, `is_tier_time_unlocked()`.
+
+**Persistenza** (due repository nuovi): `guild_chest_repo.spend()`
+aggiunto (stesso pattern atomico di `LevelingRepository.spend_coins`
+— mai un saldo negativo). `guild_premium_repo.py` (nuovo): quali
+tier sono già stati comprati (`guild_premium_purchases`, un tier si
+compra una volta sola) e la scadenza `premium_until`
+(`guild_premium_status`) — ogni acquisto AGGIUNGE un mese a partire
+dal massimo tra ora e la scadenza attuale, quindi mesi comprati in
+momenti diversi si accumulano invece di accavallarsi.
+`core.database.Database.get_guild_joined_at()` (nuovo) usa
+`guild_config.created_at` come approssimazione della data di join
+del bot (quella riga non viene più sovrascritta da `ensure_guild_
+exists` dopo la prima volta).
+
+**Orchestrazione** (`core/premium_purchase_service.py`, nuovo):
+`purchase_premium_tier()` è l'UNICO punto che combina tempo, tier
+già comprato e saldo, in quest'ordine, PRIMA di toccare la cassa —
+se un controllo fallisce la cassa non viene mai scalata (verificato
+esplicitamente nei test). `core/premium.py`, `guild_has_premium_
+access()` ora controlla anche questo stato oltre alla whitelist
+manuale dell'owner: comprare "un mese di bot premium" sblocca TUTTI
+i moduli premium per la durata acquistata, non un modulo alla volta.
+
+**Primo comando Discord per il Sistema Gilde/Clan/Economy** (finora
+tutto era solo repository/worker): `/cassa saldo` (chiunque, mostra
+saldo + ultimi 5 movimenti) e `/cassa sblocca-premium` ([Admin],
+`manage_guild`) in `cogs/leveling/leveling.py` — stesso posto dello
+`shop_group` esistente, stesso stile. COMMAND_LIST.md rigenerato
+(153 comandi).
+
+**32 nuovi test**: `test_premium_pricing_logic.py` (nuovo, 30 test
+sulla logica pura), `test_guild_premium_repo.py` (nuovo),
+`test_premium_purchase_service.py` (nuovo, verifica esplicitamente
+che la cassa non venga toccata quando un controllo fallisce),
+aggiunte a `test_guild_chest_repo.py` per `spend()`,
+`test_guild_chest_cog_behavior.py` (nuovo, comandi Discord).
+
+SPEC.md: §15.15 ORA COMPLETO (decadimento + cassa + sblocco
+premium). Resta solo un comando dedicato a spendere la cassa su
+premi evento (oggi si può depositare/sbloccare premium, non ancora
+premiare i membri) — non urgente, la cassa esiste già e può
+accumulare nel frattempo. **54% dello schema (140/270).**
+
+Prossimo pezzo, per dimensione il più grande rimasto: i comandi
+Discord del Sistema Gilde/Clan stesso (§15.14 — crea, invita,
+espelli, promuovi, tesoreria, compra-canale, boost, info,
+classifica, sciogli), oggi a zero comandi nonostante il motore
+economico sottostante sia completo.
+
+**Suite di test completa: 1281/1281 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

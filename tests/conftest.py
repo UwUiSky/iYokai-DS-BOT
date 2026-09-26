@@ -142,6 +142,9 @@ async def clean_db(db_pool):
     from core.repositories.guild_chest_repo import (
         run_migrations as guild_chest_migrations,
     )
+    from core.repositories.guild_premium_repo import (
+        run_migrations as guild_premium_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -176,6 +179,7 @@ async def clean_db(db_pool):
     await guild_clan_migrations(db_pool)
     await clan_voice_activity_migrations(db_pool)
     await guild_chest_migrations(db_pool)
+    await guild_premium_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -232,6 +236,8 @@ async def clean_db(db_pool):
         "clan_voice_activity",
         "guild_chest",
         "guild_chest_ledger",
+        "guild_premium_purchases",
+        "guild_premium_status",
         "backup_jobs",
         "guild_config",
         "guild_config_history",
