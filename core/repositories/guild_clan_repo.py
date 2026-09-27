@@ -498,7 +498,7 @@ class GuildClanRepository:
         rows = await self._pool.fetch("SELECT * FROM clans WHERE officialized = true")
         return [self._row_to_clan(r) for r in rows]
 
-    async def apply_monthly_decay(self, clan_id: int, period: str) -> int:
+    async def apply_monthly_decay(self, clan_id: int, period: str) -> tuple[int, int]:
         """
         Applica il decadimento mensile del 10% (core.guild_clan_
         logic.apply_monthly_treasury_decay) e marca il periodo come
@@ -506,8 +506,14 @@ class GuildClanRepository:
         calcolata QUI, sul saldo letto sotto lock, non passata dal
         chiamante: altrimenti tra la lettura fatta dal chiamante e
         questa scrittura il saldo potrebbe essere cambiato da una
-        spesa o una donazione nel frattempo. Restituisce il nuovo
-        saldo.
+        spesa o una donazione nel frattempo. Restituisce
+        (saldo_prima, saldo_dopo) — stesso pattern di
+        LevelingRepository.apply_weekly_decay: il chiamante (il
+        worker) DEVE calcolare il delta da QUESTA coppia, non da un
+        valore letto prima del lock, altrimenti una donazione
+        avvenuta nel frattempo produrrebbe un delta sbagliato verso
+        la cassa di server (bug reale trovato e corretto: il worker
+        usava il saldo "stale" della lista non bloccata).
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
@@ -529,7 +535,7 @@ class GuildClanRepository:
                         """,
                         clan_id, delta, "monthly_decay",
                     )
-                return nuovo_saldo
+                return saldo_attuale, nuovo_saldo
 
     async def add_xp(self, clan_id: int, amount: int) -> None:
         """XP di gilda accumulata (per la classifica clan richiesta

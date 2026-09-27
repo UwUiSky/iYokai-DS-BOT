@@ -732,10 +732,20 @@ necessario.
     dall'utente quando il repository fu scritto): senza questo
     comando le coin di una seconda gilda su un altro server
     resterebbero bloccate per sempre lì
-  - `[~]` Decadimento mensile 10% sulla tesoreria NON spesa —
+  - `[x]` Decadimento mensile 10% sulla tesoreria NON spesa —
     `guild_clan_treasury_decay_worker.py`, idempotente per periodo
     (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`,
-    ORA deposita il delta nella cassa di server (SPEC.md §15.15)
+    deposita il delta nella cassa di server (SPEC.md §15.15). **Bug di
+    race condition trovato e corretto in questa sessione**:
+    `apply_monthly_decay` restituiva solo il nuovo saldo, costringendo
+    il worker a calcolare il delta verso la cassa usando il saldo
+    "stale" letto da `list_officialized_clans()` (NON sotto lock) —
+    se una donazione arrivava tra quella lettura e il lock, il delta
+    depositato in cassa era sbagliato. Corretto seguendo lo stesso
+    pattern già usato da `LevelingRepository.apply_weekly_decay`:
+    `apply_monthly_decay` ora restituisce `(saldo_prima, saldo_dopo)`,
+    entrambi letti sotto lo stesso `FOR UPDATE`, e il worker calcola
+    il delta da questa coppia
   - `[x]` Acquisto canali: testuale / vocale / forum — `/clan
     compra-canale <tipo> [nome]`, Capo/Admin Clan, crea il canale
     Discord VERO dentro la categoria del clan PRIMA di scalare la
@@ -942,13 +952,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 32 | 2 | 0 |
+| §15 Levels/Gilde | 33 | 1 | 0 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **163** | **5** | **105** |
+| **Totale** | **164** | **4** | **105** |
 
-Su 273 voci totali: **163 fatte, 5 parziali, 105 mancanti** — circa
+Su 273 voci totali: **164 fatte, 4 parziali, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§11 Backup
 System è ora COMPLETO al 100%** (13/13): orchestrazione
 automatizzabile, mirror in tempo reale, auto-propagazione e restore
@@ -982,9 +992,16 @@ precedente, chiarito esplicitamente dall'utente in questa sessione —
 la tesoreria di clan resta a SENSO UNICO per design (membro -> gilda
 sempre, gilda -> membro MAI), e il bisogno reale di "premio evento"
 è già servito da un percorso diverso e corretto: la cassa DI SERVER
-(§15.15), non la tesoreria di un singolo clan. Unica voce
-genuinamente ancora aperta in tutto §15: la variante MENSILE di
-15.10 Classifica Gilde (oggi solo il totale cumulativo). §15.15
+(§15.15), non la tesoreria di un singolo clan. Il decadimento
+mensile 10% sulla tesoreria (l'altra voce `[~]` di §15.14) è ORA
+COMPLETO: bug di race condition trovato e corretto — il delta
+depositato nella cassa di server era calcolato sul saldo "stale"
+letto da `list_officialized_clans()` (non sotto lock) invece che
+sulla coppia `(saldo_prima, saldo_dopo)` letta sotto lo stesso `FOR
+UPDATE` di `apply_monthly_decay`, stesso pattern già corretto di
+`LevelingRepository.apply_weekly_decay`. Unica voce genuinamente
+ancora aperta in tutto §15: la variante MENSILE di 15.10 Classifica
+Gilde (oggi solo il totale cumulativo). §15.15
 (non nello schema
 originale, emersa in conversazione) è ORA COMPLETO: decadimento
 settimanale personale, cassa di server alimentata da entrambi i

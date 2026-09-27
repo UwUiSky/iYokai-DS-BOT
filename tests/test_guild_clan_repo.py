@@ -418,9 +418,10 @@ async def test_apply_monthly_decay_applica_il_dieci_percento(repo):
     clan_id = await _crea_clan(repo)
     await repo.donate(clan_id, user_id=1, amount=115_000)  # saldo: 100.000
 
-    nuovo_saldo = await repo.apply_monthly_decay(clan_id, period="2026-09")
+    saldo_prima, saldo_dopo = await repo.apply_monthly_decay(clan_id, period="2026-09")
 
-    assert nuovo_saldo == 90_000
+    assert saldo_prima == 100_000
+    assert saldo_dopo == 90_000
     assert (await repo.get_clan(clan_id)).last_decay_period == "2026-09"
 
 
@@ -428,9 +429,41 @@ async def test_apply_monthly_decay_applica_il_dieci_percento(repo):
 async def test_apply_monthly_decay_su_saldo_negativo_non_lo_tocca(repo):
     clan_id = await _crea_clan(repo)  # saldo: -15.000, ancora in deficit
 
-    nuovo_saldo = await repo.apply_monthly_decay(clan_id, period="2026-09")
+    saldo_prima, saldo_dopo = await repo.apply_monthly_decay(clan_id, period="2026-09")
 
-    assert nuovo_saldo == -15_000
+    assert saldo_prima == -15_000
+    assert saldo_dopo == -15_000
+
+
+@pytest.mark.asyncio
+async def test_apply_monthly_decay_delta_corretto_con_saldo_cambiato_dopo_la_lista(repo):
+    """
+    Regressione per il bug del delta calcolato sul saldo "stale": se tra
+    la lettura non bloccata (list_officialized_clans, usata dal worker
+    per decidere quali clan processare) e la scrittura sotto lock
+    (apply_monthly_decay) il saldo del clan cambia — ad esempio per una
+    donazione arrivata nel frattempo — apply_monthly_decay deve
+    restituire (saldo_prima, saldo_dopo) calcolati SUL SALDO REALE letto
+    sotto FOR UPDATE, non su quello (ormai vecchio) letto dalla lista.
+    """
+    clan_id = await _crea_clan(repo)
+    await repo.set_officialized(clan_id)
+    await repo.donate(clan_id, user_id=1, amount=115_000)  # saldo: 100.000
+
+    clan_da_lista_prima_della_donazione = (
+        await repo.list_officialized_clans()
+    )  # snapshot preso PRIMA di una seconda donazione simulata sotto
+
+    # Simula una donazione arrivata dopo lo snapshot ma prima del lock.
+    await repo.donate(clan_id, user_id=2, amount=50_000)  # saldo: 150.000
+
+    saldo_prima, saldo_dopo = await repo.apply_monthly_decay(clan_id, period="2026-09")
+
+    # Il delta deve basarsi sul saldo REALE (150.000), non su quello
+    # ottenuto dalla lista presa prima della seconda donazione.
+    assert saldo_prima == 150_000
+    assert saldo_dopo == 135_000
+    assert [c.treasury_balance for c in clan_da_lista_prima_della_donazione] == [100_000]
 
 
 # ----------------------------------------------------------------------

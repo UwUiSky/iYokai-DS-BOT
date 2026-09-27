@@ -2792,6 +2792,69 @@ e 5 i comandi fatti). **§11 Backup System è ora COMPLETO al 100%
 
 ---
 
+### Fase 62 — Chiude §15.14: bug di race condition nel decadimento
+mensile della tesoreria clan
+
+L'utente ha chiesto di finire il decadimento mensile della tesoreria
+(§15.14, ultima voce `[~]` insieme alla classifica mensile di gilda
+§15.10). Analizzando `guild_clan_treasury_decay_worker.py` per capire
+perché fosse ancora marcato parziale, trovato un bug reale non
+segnalato prima: `GuildClanRepository.apply_monthly_decay` restituiva
+solo il NUOVO saldo (`int`), e il worker calcolava il delta da
+versare nella cassa di server come `clan.treasury_balance -
+nuovo_saldo` — ma `clan.treasury_balance` proveniva da `list_
+officialized_clans()`, una lettura NON sotto lock, fatta PRIMA del
+`FOR UPDATE` dentro `apply_monthly_decay`. Se tra quella lista e il
+lock il saldo reale cambiava (es. una donazione arrivata nel
+frattempo), il delta calcolato era sbagliato — poteva risultare
+negativo o comunque diverso dal decadimento realmente applicato,
+silenziosamente (nessuna eccezione, solo un deposito sbagliato o
+saltato nella cassa).
+
+Il pattern corretto esisteva già altrove nel codebase, identico nella
+forma: `LevelingRepository.apply_weekly_decay` (decadimento
+settimanale personale, §15.15) restituisce già `tuple[int, int]`
+(`saldo_prima, saldo_dopo`), letti entrambi sotto lo stesso `FOR
+UPDATE`, e `weekly_personal_decay_worker.py` calcola il delta da
+QUELLA coppia, mai da un valore letto prima del lock. Applicata la
+stessa correzione a `apply_monthly_decay` (ora restituisce
+`(saldo_prima, saldo_dopo)`) e al worker corrispondente.
+
+**Errore mio durante l'editing, autocorretto**: il primo `Edit` sul
+repository ha lasciato per sbaglio un `return nuovo_saldo` morto
+subito dopo il nuovo `return saldo_attuale, nuovo_saldo` (l'`old_str`
+combaciava con il testo giusto prima della riga `return` originale,
+ma quella riga restava sotto, ora irraggiungibile). Trovato
+immediatamente con `git diff` (abitudine ormai fissa dopo la lezione
+sui marcatori letterali in prosa) e rimosso con un secondo `Edit`
+prima di eseguire qualunque test.
+
+**3 nuovi test**: `test_apply_monthly_decay_applica_il_dieci_percento`
+e `test_apply_monthly_decay_su_saldo_negativo_non_lo_tocca` aggiornati
+per spacchettare la tupla; nuovo
+`test_apply_monthly_decay_delta_corretto_con_saldo_cambiato_dopo_la_
+lista` (simula una donazione arrivata dopo lo snapshot della lista ma
+prima del lock, verifica che il delta usi il saldo REALE) in
+`tests/test_guild_clan_repo.py`; nuovo `test_delta_in_cassa_usa_il_
+saldo_reale_non_quello_stale_della_lista` in `tests/test_guild_clan_
+treasury_decay_worker.py` — monkeypatch di `list_officialized_clans`
+per restituire un `Clan` con `treasury_balance` volutamente "vecchio"
+(1) mentre il saldo reale su database è 100.000, verifica che la
+cassa di server riceva comunque il 10% del saldo REALE (10.000), non
+un valore derivato dal saldo stale della lista.
+
+SPEC.md: §15.14 "Decadimento mensile 10%" passa a `[x]`. §15 ora
+33 fatte / 1 parziale (resta solo la variante mensile di §15.10
+Classifica Gilde). Ricalcolo meccanico: totale schema **164/4/105 su
+273, ≈61%**.
+
+**2 nuovi test di regressione** (uno per file, come sopra), più i 2
+test esistenti aggiornati per spacchettare la tupla.
+
+**Suite di test completa: 1530/1530 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

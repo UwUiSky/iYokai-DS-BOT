@@ -45,15 +45,17 @@ class GuildClanTreasuryDecayWorker:
             if clan.last_decay_period == periodo_corrente:
                 continue  # già applicato questo mese
 
-            nuovo_saldo = await guild_clan_repo.apply_monthly_decay(clan.id, periodo_corrente)
-            delta = clan.treasury_balance - nuovo_saldo
+            saldo_prima, saldo_dopo = await guild_clan_repo.apply_monthly_decay(
+                clan.id, periodo_corrente
+            )
+            delta = saldo_prima - saldo_dopo
             if delta > 0:
                 await guild_chest_repo.deposit(
                     clan.guild_id, delta, REASON_MONTHLY_CLAN_DECAY
                 )
             logger.info(
                 "Decadimento mensile applicato al clan %s: %s -> %s.",
-                clan.id, clan.treasury_balance, nuovo_saldo,
+                clan.id, saldo_prima, saldo_dopo,
             )
 
     def start(self, bot: commands.Bot) -> None:
