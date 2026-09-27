@@ -820,36 +820,54 @@ necessario.
 - `[x]` 12.1 Modalità automatica (generatore → crea + sposta)
 - `[x]` 12.2 Modalità manuale (pannello + bottone persistente)
 - `[x]` 12.3 Entrambe sempre visibili a tutti
-- `[ ]` 12.4 **Notifica personale alla creazione del canale** —
-  richiesta esplicitamente ("il classico messaggino di sistema che ti
-  dice che il tuo canale è stato generato e si chiama XYZ"). La
-  modalità manuale risponde ephemeral; **la modalità automatica sposta
-  l'utente in totale silenzio**
-- `[ ]` 12.5 Selezione piattaforma all'ingresso (PC / Console / Mobile)
-  — nella decisione finale non filtra più la visibilità, ma restava
-  come ruolo informativo
+- `[x]` 12.4 Notifica personale alla creazione del canale — un
+  embed nella chat testuale del canale vocale stesso (un
+  `VoiceChannel` è Messageable), inviato sia dalla modalità
+  automatica (che prima spostava in totale silenzio) sia da quella
+  manuale
+- `[x]` 12.5 Selezione piattaforma all'ingresso (PC / Console /
+  Mobile) — bottoni SOLO informativi (nessun filtro di visibilità,
+  come da decisione finale già registrata) mostrati insieme alla
+  notifica 12.4 se il server ha configurato almeno un ruolo
+  piattaforma (`/voicetemp-platform-setup`)
 - `[x]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer
 - `[x]` 12.7 Eliminazione automatica a canale vuoto
-- `[ ]` 12.8 Cap configurabile canali per categoria (limite Discord: 50)
+- `[x]` 12.8 Cap configurabile canali per categoria (`/voicetemp-cap`),
+  sempre troncato al limite hard di Discord di 50
 
 ## §13 TICKET SYSTEM
 
 - `[x]` 13.1 Pannello apertura con bottone persistente
-- `[ ]` 13.2 **Select menu categorie** — lo schema prevedeva la scelta
-  tra più categorie di ticket; implementato solo un bottone unico
+- `[x]` 13.2 Select menu categorie (`/ticket-category add|remove|list`)
+  — se il server ne ha configurato almeno una, il pannello mostra il
+  select menu invece del bottone unico; retrocompatibile (nessuna
+  categoria configurata -> bottone unico storico)
 - `[x]` 13.3 Creazione canale privato
 - `[x]` 13.4 Claim
 - `[x]` 13.5 Add / Remove utente
 - `[x]` 13.6 Rename
 - `[x]` 13.7 Priorità
 - `[x]` 13.8 Close
-- `[ ]` 13.9 Force close (distinto da close normale)
-- `[ ]` 13.10 **Transcript automatico** alla chiusura
-- `[ ]` 13.11 Invio transcript nel canale log + DM all'utente
-- `[ ]` 13.12 Statistiche ticket (tempo di risposta, per operatore)
-- `[ ]` 13.13 Configurazione ruoli di supporto multipli (oggi uno solo)
+- `[x]` 13.9 Force close (`/ticket forceclose`, riservato allo staff
+  — Manage Server o un ruolo di supporto configurato — elimina il
+  canale subito, senza i 10s di preavviso di close normale)
+- `[x]` 13.10 Transcript automatico alla chiusura — letto via
+  `channel.history()` PRIMA della cancellazione. **Non richiede il
+  Message Content Intent**: quell'intent riguarda solo gli eventi
+  GATEWAY in tempo reale, non la history REST (governata dal normale
+  permesso Read Message History) — stessa verifica già fatta per lo
+  Spam Trap in `core/spam_trap_logic.py`
+- `[x]` 13.11 Invio transcript nel canale log configurato (riusa
+  `SETTING_LOG_CHANNEL` di §8) + DM all'utente che ha aperto il
+  ticket (silenzioso se i DM sono chiusi)
+- `[x]` 13.12 Statistiche ticket (`/ticket-stats [operatore]`) — prese
+  in carico, chiuse, tempo medio di prima risposta (per operatore o
+  per l'intero server)
+- `[x]` 13.13 Configurazione ruoli di supporto multipli
+  (`/ticket-support-role add|remove|list`) — combinati con il ruolo
+  legacy singolo per retrocompatibilità, nessuna migrazione richiesta
 
-## §14 UTILITY & SERVER MANAGEMENT — Role Menus + Greetings fatti, il resto mancante
+## §14 UTILITY & SERVER MANAGEMENT
 
 - `[x]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
 - `[x]` 14.2 Button Roles — View dinamica persistente per-messaggio
@@ -863,17 +881,40 @@ necessario.
 - `[x]` 14.5 Goodbye messages
 - `[x]` 14.6 Boost messages — rilevato su `premium_since` che passa
   da `None` a valorizzato, non il caso opposto
-- `[ ]` 14.7 Autoresponder (con wildcards e condizioni)
+- `[ ]` 14.7 Autoresponder (con wildcards e condizioni) — **rimandato
+  deliberatamente, stesso motivo di §8.16**: decidere se una parola
+  chiave presente nel testo di un messaggio deve far scattare una
+  risposta richiede di LEGGERE il contenuto del messaggio in tempo
+  reale (`on_message`), che è esattamente il campo azzerato dal
+  Message Content Intent quando non attivo — non c'è modo di
+  aggirarlo con un poller o una cache come fatto per §8.13/§13.10,
+  perché qui il contenuto serve SUBITO, al momento dell'evento, non
+  recuperabile in un secondo momento via REST (il messaggio non è
+  ancora stato cancellato, ma il gateway lo consegna già vuoto)
 - `[x]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
   dettaglio): modal con nome comando + descrizione + esempio → embed
   automatico nel canale `#suggestions` del server principale con nome
   server, ID server, nome utente, **ID utente** (perché il nome può
   cambiare), descrizione, timestamp → bottoni staff approva/rifiuta →
   notifica di ritorno al richiedente
-- `[ ]` 14.9 Snipe
-- `[ ]` 14.10 Editsnipe
-- `[ ]` 14.11 Reactionsnipe
-- `[ ]` 14.12 Ghost ping detection
+- `[ ]` 14.9 Snipe — **rimandato deliberatamente, stesso motivo di
+  §8.16**: mostrare il testo del messaggio cancellato richiede il
+  contenuto, azzerato sia in `on_message` (dove andrebbe cache-ato
+  in anticipo) sia in `on_message_delete` senza il Message Content
+  Intent — verificato punto per punto (non liquidato in blocco come
+  errore fatto su §8.13/§8.8, vedi PROGRESS.md Fase 70b), a
+  differenza di 14.11/14.12 sotto, che infatti SONO stati costruiti
+- `[ ]` 14.10 Editsnipe — stesso motivo di 14.9 (before/after content)
+- `[x]` 14.11 Reactionsnipe — `/reactionsnipe`, NON richiede il
+  Message Content Intent: `on_raw_reaction_remove` restituisce
+  emoji/autore/messaggio senza bisogno del contenuto del messaggio.
+  Stato in memoria (non persistito, come tutti i bot "snipe")
+- `[x]` 14.12 Ghost ping detection — traccia in memoria i messaggi
+  con menzioni (`Message.mentions`, popolato da un campo gateway a
+  parte dal contenuto — non azzerato dall'intent, verificato
+  leggendo `Message._handle_mentions` nella libreria installata) e
+  segnala nel canale log se vengono cancellati, senza mai leggere il
+  testo del messaggio
 - `[x]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
   (5s) per non cancellare+reinviare ad ogni singolo messaggio in un
   canale attivo
@@ -1251,14 +1292,14 @@ rilancia lo stesso conteggio.
 | §9 Music | 8 | 1 | 0 |
 | §10 Alerts | 6 | 0 | 1 |
 | §11 Backup | 13 | 0 | 0 |
-| §12 Voice temp | 5 | 0 | 3 |
-| §13 Ticket | 7 | 0 | 6 |
-| §14 Utility | 13 | 0 | 5 |
+| §12 Voice temp | 8 | 0 | 0 |
+| §13 Ticket | 13 | 0 | 0 |
+| §14 Utility | 15 | 0 | 3 |
 | §15 Levels/Gilde | 34 | 0 | 0 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **214** | **2** | **60** |
+| **Totale** | **225** | **2** | **49** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1330,4 +1371,41 @@ come completamente fatti quando in realtà erano solo iniziati.
 Audit a campione sul resto del documento (§5, §6, §12, §13, §15) non
 ha trovato altri casi: i comandi/funzionalità elencati nelle voci
 controllate esistono davvero nel codice.
+
+**§12 Temporary Voice Channels è ORA COMPLETO al 100%** (8/8):
+notifica personale alla creazione del canale (automatica E manuale,
+prima solo quest'ultima rispondeva), selezione piattaforma PC/
+Console/Mobile puramente informativa (`/voicetemp-platform-setup`),
+cap configurabile per categoria (`/voicetemp-cap`, sempre troncato al
+limite hard di Discord di 50).
+
+**§13 Ticket System è ORA COMPLETO al 100%** (13/13): select menu
+categorie (`/ticket-category`), force close riservato allo staff
+(`/ticket forceclose`), transcript automatico alla chiusura inviato
+nel canale log + in DM all'utente (`/ticket close`/`forceclose`, via
+`channel.history()` PRIMA di cancellare il canale — **non richiede
+il Message Content Intent**, verificato: quell'intent riguarda solo
+gli eventi gateway in tempo reale, non la history REST governata dal
+normale permesso Read Message History, stessa assunzione già
+verificata per lo Spam Trap), statistiche (`/ticket-stats`, tempo
+medio di prima risposta per operatore o per server), ruoli di
+supporto multipli (`/ticket-support-role`, combinati col ruolo
+legacy singolo per retrocompatibilità).
+
+**§14 Utility: chiusi 14.11 Reactionsnipe e 14.12 Ghost ping
+detection**, entrambi VERIFICATI punto per punto contro il Message
+Content Intent invece di essere liquidati in blocco come "famiglia
+snipe bloccata" (l'errore già fatto e corretto su §8.13/§8.8, vedi
+Fase 70b): nessuno dei due ha bisogno del contenuto del messaggio
+(`on_raw_reaction_remove` non lo richiede affatto; `Message.mentions`
+arriva da un campo gateway separato dal contenuto, non azzerato
+dall'intent). 14.9 Snipe, 14.10 Editsnipe e 14.7 Autoresponder restano
+`[ ]` — genuinamente bloccati, stesso motivo di §8.16: servono il
+contenuto del messaggio nel momento stesso dell'evento gateway
+(`on_message`/`on_message_delete`/`on_message_edit`), che è
+esattamente il campo azzerato senza il Message Content Intent, e a
+differenza del transcript ticket non c'è modo di recuperarlo dopo
+via REST (per Snipe/Editsnipe il messaggio non esiste più; per
+l'Autoresponder la decisione va presa SUBITO, non in un secondo
+momento).
 

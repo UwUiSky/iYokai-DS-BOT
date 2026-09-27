@@ -3696,6 +3696,120 @@ di fila).
 
 ---
 
+### Fase 71 — §12 Temporary Voice Channels, §13 Ticket System, §14
+Utility: chiuse le voci indicate esplicitamente dall'utente ("Direi
+12 e 13 e 14")
+
+**§12 Temporary Voice Channels (5/8 → 8/8, COMPLETO)**: 12.4
+notifica personale alla creazione — un embed nella chat testuale del
+canale vocale stesso (`VoiceChannel` è Messageable), inviato per
+ENTRAMBE le modalità (prima solo quella manuale rispondeva, quella
+automatica spostava in totale silenzio); 12.5 selezione piattaforma
+PC/Console/Mobile — bottoni SOLO informativi (`PlatformRoleView`,
+nessun filtro di visibilità, coerente con la decisione già registrata
+sulle due modalità sempre visibili a tutti), mostrati insieme alla
+notifica 12.4 se il server ha configurato almeno un ruolo piattaforma
+(`/voicetemp-platform-setup`); 12.8 cap configurabile per categoria
+(`/voicetemp-cap`), sempre troncato al limite hard di Discord di 50
+canali (`core.voice_temp_logic.effective_category_cap`/
+`is_category_full`, controllato PRIMA di chiamare l'API invece di
+scoprirlo dall'`HTTPException`).
+
+**§13 Ticket System (7/13 → 13/13, COMPLETO)**: 13.2 select menu
+categorie (`/ticket-category add|remove|list`, nuova tabella
+`ticket_categories`) — se il server ne ha configurato almeno una il
+pannello mostra `TicketCategorySelectView` invece del bottone unico,
+retrocompatibile con chi non ne ha configurata nessuna; 13.9 force
+close (`/ticket forceclose`, riservato a chi ha Manage Server o un
+ruolo di supporto configurato — `_is_ticket_staff` — elimina il
+canale SUBITO invece dei 10s di preavviso di close normale); 13.10 +
+13.11 transcript automatico alla chiusura, inviato nel canale log
+configurato (riusa `SETTING_LOG_CHANNEL` di §8, nessuna nuova
+configurazione) + in DM all'utente che ha aperto il ticket
+(silenzioso se i DM sono chiusi) — letto via `channel.history()`
+PRIMA di cancellare il canale; 13.12 statistiche (`/ticket-stats
+[operatore]`, colonne `first_response_at`/`force_closed` aggiunte a
+`tickets`) — prese in carico, chiuse, tempo medio di prima risposta,
+per operatore o per l'intero server; 13.13 ruoli di supporto multipli
+(`/ticket-support-role add|remove|list`, nuovo guild setting
+`ticket_support_role_ids`) combinati col vecchio ruolo singolo
+(`core.ticket_logic.merge_support_role_ids`) per retrocompatibilità
+— nessuna migrazione dei dati esistenti necessaria.
+
+**Punto verificato PRIMA di scrivere 13.10/13.11, non assunto per
+analogia con 8.16**: un transcript ticket richiede di leggere il
+contenuto di messaggi passati via `channel.history()` (REST) — e
+quella chiamata NON è soggetta al Message Content Intent, che è un
+privilegio del solo GATEWAY (eventi in tempo reale). Verificato
+leggendo il docstring di `discord.Intents.message_content` sulla
+libreria installata: elenca esplicitamente `on_message`/
+`on_message_edit`/`on_message_delete`/`on_raw_message_edit` come gli
+eventi coinvolti — `channel.history()`/`fetch_message()` non ci sono,
+sono governati dal normale permesso Read Message History. Stessa
+identica assunzione già verificata e documentata (indipendentemente,
+in una sessione precedente) in `core/spam_trap_logic.py` per il
+transcript dello Spam Trap: qui non è una scoperta nuova, è un
+riuso consapevole di un fatto già stabilito sulla stessa libreria.
+
+**§14 Utility: 14.11 Reactionsnipe e 14.12 Ghost ping detection
+chiusi (13/18 → 15/18), 14.7/14.9/14.10 restano `[ ]` genuinamente
+bloccati** — nuovo cog `cogs/utility/snipe.py`. Qui la lezione della
+Fase 70b è stata applicata SUBITO, non ri-scoperta dopo un rifiuto
+dell'utente: **la "famiglia snipe" (14.9/14.10/14.11) e
+l'Autoresponder (14.7) sono stati verificati UNO PER UNO contro il
+Message Content Intent, non liquidati in blocco.** Risultato:
+- 14.9 Snipe e 14.10 Editsnipe mostrano il TESTO del messaggio
+  cancellato/modificato — quel testo è vuoto sia in `on_message`
+  (dove andrebbe cache-ato in anticipo) sia in `on_message_delete`/
+  `on_message_edit` senza l'intent. Restano `[ ]`, stesso motivo di
+  §8.16 — non c'è modo di aggirarlo con un poller o un fetch
+  posticipato come fatto per 8.13/13.10, perché qui il messaggio non
+  esiste più al momento in cui servirebbe rileggerlo.
+- 14.11 Reactionsnipe NON ha bisogno del contenuto: `on_raw_reaction_
+  remove` restituisce emoji/autore/ID messaggio, e basta per "chi ha
+  rimosso quale reazione da dove" — costruito.
+- 14.12 Ghost ping detection NON ha bisogno del contenuto: la lista
+  dei membri menzionati (`Message.mentions`) arriva da un campo
+  gateway A PARTE dal contenuto — verificato leggendo
+  `Message._handle_mentions` nella libreria installata: legge da un
+  campo `mentions` del payload, non da un parsing del testo. Basta
+  tracciare "questo messaggio menzionava qualcuno" (id autore + id
+  menzionati + timestamp, ZERO contenuto) e controllare alla
+  cancellazione (`on_raw_message_delete`) se l'ID era tracciato —
+  costruito.
+- 14.7 Autoresponder resta `[ ]`, motivo diverso e più stringente:
+  decidere SE una parola chiave scatta la risposta richiede di
+  leggere il testo SUBITO, al momento dell'evento — non recuperabile
+  dopo, a differenza del transcript ticket (il messaggio non è ancora
+  stato cancellato, ma il gateway lo consegna già vuoto).
+
+Stato di Reactionsnipe/Ghost ping tenuto SOLO in memoria
+(`BoundedCache`, SPEC.md §1.5), non persistito — perdere l'ultimo
+evento a un riavvio del bot è il comportamento normale di qualunque
+bot "snipe", non un debito di questa sessione.
+
+**41 nuovi test**: `test_voice_temp_logic.py` (+7:
+`effective_category_cap`/`is_category_full`), `test_voice_temp_repo.py`
+(+4: cap e ruoli piattaforma), `test_voice_temp_creation_flow.py`
+(nuovo, 7: cap rispettato, notifica inviata con/senza view,
+`PlatformRoleView` costruisce solo i bottoni configurati);
+`test_ticket_repo.py` (+21: categorie, force close, prima risposta,
+statistiche operatore/server); `test_ticket_logic.py` (nuovo, 15);
+`test_tickets_support_roles_and_staff.py` (nuovo, 6: merge ruoli
+legacy+lista, `_is_ticket_staff`); `test_tickets_first_response.py`
+(nuovo, 5, contro PostgreSQL reale); `test_snipe_logic.py` (nuovo, 4);
+`test_snipe_cog_smoke.py` (nuovo, 1); `test_snipe_cog_behavior.py`
+(nuovo, 6).
+
+SPEC.md: §12 5/0/3 → **8/0/0** (COMPLETO); §13 7/0/6 → **13/0/0**
+(COMPLETO); §14 13/0/5 → **15/0/3**. Ricalcolo meccanico di TUTTA la
+tabella dei totali: **225/2/49**.
+
+**Suite di test completa: 1903/1903 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

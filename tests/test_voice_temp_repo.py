@@ -83,3 +83,39 @@ async def test_unregister_channel(repo):
 @pytest.mark.asyncio
 async def test_unregister_canale_inesistente_non_fallisce(repo):
     await repo.unregister_channel(999999)  # non deve sollevare eccezioni
+
+
+@pytest.mark.asyncio
+async def test_config_di_default_non_ha_cap_ne_ruoli_piattaforma(repo):
+    config = await repo.get_config(100)
+    assert config.category_cap is None
+    assert config.role_pc_id is None
+    assert config.role_console_id is None
+    assert config.role_mobile_id is None
+
+
+@pytest.mark.asyncio
+async def test_set_category_cap(repo):
+    await repo.set_config(100, generator_channel_id=42, category_id=99)
+    await repo.set_category_cap(100, 10)
+    config = await repo.get_config(100)
+    assert config.category_cap == 10
+
+
+@pytest.mark.asyncio
+async def test_set_category_cap_a_none_lo_rimuove(repo):
+    await repo.set_config(100, generator_channel_id=42, category_id=99)
+    await repo.set_category_cap(100, 10)
+    await repo.set_category_cap(100, None)
+    config = await repo.get_config(100)
+    assert config.category_cap is None
+
+
+@pytest.mark.asyncio
+async def test_set_platform_roles(repo):
+    await repo.set_config(100, generator_channel_id=42, category_id=99)
+    await repo.set_platform_roles(100, role_pc_id=1, role_console_id=2, role_mobile_id=3)
+    config = await repo.get_config(100)
+    assert config.role_pc_id == 1
+    assert config.role_console_id == 2
+    assert config.role_mobile_id == 3

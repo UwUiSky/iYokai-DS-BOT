@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 17:55 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 18:31 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 218 comandi in 10 categorie.**
+**Totale: 229 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -172,11 +172,19 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 17:
 - **`/ticket add`** — Aggiungi un utente a questo ticket.
 - **`/ticket claim`** — Prendi in carico questo ticket.
 - **`/ticket close`** — Chiudi questo ticket.
+- **`/ticket forceclose`** — [Staff] Chiudi immediatamente questo ticket, senza attesa.
 - **`/ticket priority`** — Imposta la priorità di questo ticket.
 - **`/ticket remove`** — Rimuovi un utente da questo ticket.
 - **`/ticket rename`** — Rinomina questo ticket.
+- **`/ticket-category add`** — [Admin] Aggiungi (o aggiorna) una categoria di ticket.
+- **`/ticket-category list`** — [Admin] Elenca le categorie di ticket configurate.
+- **`/ticket-category remove`** — [Admin] Rimuovi una categoria di ticket.
 - **`/ticket-panel`** — [Admin] Pubblica il pannello per l'apertura dei ticket in questo canale.
 - **`/ticket-setup`** — [Admin] Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
+- **`/ticket-stats`** — [Admin] Statistiche del sistema di ticket.
+- **`/ticket-support-role add`** — [Admin] Aggiungi un ruolo di supporto.
+- **`/ticket-support-role list`** — [Admin] Elenca i ruoli di supporto configurati.
+- **`/ticket-support-role remove`** — [Admin] Rimuovi un ruolo di supporto.
 
 ## Utility
 
@@ -221,6 +229,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 17:
 - **`/ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/poll`** — Crea un sondaggio (fino a 5 opzioni).
 - **`/promuovi-backup`** — [Admin] Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
+- **`/reactionsnipe`** — Mostra l'ultima reazione rimossa in questo canale.
 - **`/reminder cancel`** — Annulla un promemoria.
 - **`/reminder list`** — Mostra i tuoi promemoria in sospeso.
 - **`/reminder set`** — Imposta un promemoria.
@@ -249,5 +258,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 17:
 - **`/voice rename`** — Rinomina il tuo canale vocale.
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.
+- **`/voicetemp-cap`** — [Admin] Imposta il numero massimo di vocali temporanei per categoria.
 - **`/voicetemp-panel`** — [Admin] Pubblica il pannello per la creazione manuale di un vocale.
+- **`/voicetemp-platform-setup`** — [Admin] Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
 - **`/voicetemp-setup`** — [Admin] Configura il canale generatore e la categoria dei vocali temporanei.

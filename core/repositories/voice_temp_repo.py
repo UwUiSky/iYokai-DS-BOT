@@ -21,6 +21,10 @@ class VoiceTempConfig:
     guild_id: int
     generator_channel_id: int | None
     category_id: int | None
+    category_cap: int | None = None
+    role_pc_id: int | None = None
+    role_console_id: int | None = None
+    role_mobile_id: int | None = None
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -38,6 +42,15 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             owner_id   BIGINT NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+
+        -- ADD COLUMN IF NOT EXISTS (idempotente): voice_temp_config
+        -- esisteva già senza queste colonne — SPEC.md §12.5 (ruoli
+        -- piattaforma, solo informativi) e §12.8 (cap configurabile
+        -- per categoria, sempre <= limite hard Discord di 50).
+        ALTER TABLE voice_temp_config ADD COLUMN IF NOT EXISTS category_cap INTEGER;
+        ALTER TABLE voice_temp_config ADD COLUMN IF NOT EXISTS role_pc_id BIGINT;
+        ALTER TABLE voice_temp_config ADD COLUMN IF NOT EXISTS role_console_id BIGINT;
+        ALTER TABLE voice_temp_config ADD COLUMN IF NOT EXISTS role_mobile_id BIGINT;
         """
     )
 
@@ -52,7 +65,11 @@ class VoiceTempRepository:
 
     async def get_config(self, guild_id: int) -> VoiceTempConfig:
         row = await self._pool.fetchrow(
-            "SELECT generator_channel_id, category_id FROM voice_temp_config WHERE guild_id = $1",
+            """
+            SELECT generator_channel_id, category_id, category_cap,
+                   role_pc_id, role_console_id, role_mobile_id
+            FROM voice_temp_config WHERE guild_id = $1
+            """,
             guild_id,
         )
         if row is None:
@@ -61,6 +78,10 @@ class VoiceTempRepository:
             guild_id=guild_id,
             generator_channel_id=row["generator_channel_id"],
             category_id=row["category_id"],
+            category_cap=row["category_cap"],
+            role_pc_id=row["role_pc_id"],
+            role_console_id=row["role_console_id"],
+            role_mobile_id=row["role_mobile_id"],
         )
 
     async def set_config(
@@ -77,6 +98,39 @@ class VoiceTempRepository:
             guild_id,
             generator_channel_id,
             category_id,
+        )
+
+    async def set_category_cap(self, guild_id: int, cap: int | None) -> None:
+        """
+        SPEC.md §12.8. Richiede che la riga esista già (creata da
+        set_config) — un cap senza generatore/categoria configurati
+        non avrebbe senso, quindi non facciamo qui un UPSERT che
+        creerebbe una riga "orfana".
+        """
+        await self._pool.execute(
+            "UPDATE voice_temp_config SET category_cap = $2 WHERE guild_id = $1",
+            guild_id,
+            cap,
+        )
+
+    async def set_platform_roles(
+        self,
+        guild_id: int,
+        role_pc_id: int | None,
+        role_console_id: int | None,
+        role_mobile_id: int | None,
+    ) -> None:
+        """SPEC.md §12.5 — ruoli piattaforma, solo informativi."""
+        await self._pool.execute(
+            """
+            UPDATE voice_temp_config
+            SET role_pc_id = $2, role_console_id = $3, role_mobile_id = $4
+            WHERE guild_id = $1
+            """,
+            guild_id,
+            role_pc_id,
+            role_console_id,
+            role_mobile_id,
         )
 
     async def register_channel(self, channel_id: int, guild_id: int, owner_id: int) -> None:

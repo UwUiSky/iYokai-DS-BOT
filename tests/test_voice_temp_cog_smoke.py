@@ -32,7 +32,12 @@ async def test_voice_temp_cog_si_carica_correttamente():
     assert module.premium_capable is False
 
     comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"voicetemp-setup", "voicetemp-panel"} <= comandi
+    assert {
+        "voicetemp-setup",
+        "voicetemp-panel",
+        "voicetemp-cap",
+        "voicetemp-platform-setup",
+    } <= comandi
 
     voice_group = None
     for command in bot.tree.get_commands():

@@ -54,3 +54,32 @@ def can_manage_voice_channel(
     lo possiede.
     """
     return actor_id == owner_id or actor_has_manage_channels
+
+
+# Limite hard-coded di Discord: una categoria non può contenere più
+# di 50 canali, punto — nessuna configurazione lato server può
+# superarlo, quindi va sempre applicato anche se l'admin non ha
+# impostato (o ha impostato più alto di) un cap personalizzato.
+DISCORD_MAX_CHANNELS_PER_CATEGORY = 50
+
+
+def effective_category_cap(configured_cap: int | None) -> int:
+    """
+    SPEC.md §12.8: il cap configurabile per server non può mai
+    superare il limite hard di Discord (50 canali per categoria).
+    Nessun cap configurato -> si usa direttamente il limite Discord.
+    """
+    if configured_cap is None:
+        return DISCORD_MAX_CHANNELS_PER_CATEGORY
+    return min(configured_cap, DISCORD_MAX_CHANNELS_PER_CATEGORY)
+
+
+def is_category_full(current_channel_count: int, configured_cap: int | None) -> bool:
+    """
+    True se la categoria ha già raggiunto il cap effettivo (il minore
+    tra il cap configurato dal server e il limite hard di Discord) —
+    usato per rifiutare la creazione di un nuovo vocale temporaneo
+    PRIMA di tentare la chiamata a Discord, invece di scoprirlo solo
+    dall'HTTPException che l'API restituirebbe comunque.
+    """
+    return current_channel_count >= effective_category_cap(configured_cap)

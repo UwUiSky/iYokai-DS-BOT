@@ -7,6 +7,8 @@ da Discord.
 
 from core.voice_temp_logic import (
     can_manage_voice_channel,
+    effective_category_cap,
+    is_category_full,
     is_generator_join,
     should_delete_after_leave,
 )
@@ -67,3 +69,31 @@ class TestCanManageVoiceChannel:
         assert can_manage_voice_channel(
             actor_id=2, owner_id=1, actor_has_manage_channels=False
         ) is False
+
+
+class TestEffectiveCategoryCap:
+    def test_nessun_cap_configurato_usa_il_limite_discord(self):
+        assert effective_category_cap(None) == 50
+
+    def test_cap_configurato_sotto_il_limite_discord(self):
+        assert effective_category_cap(10) == 10
+
+    def test_cap_configurato_sopra_il_limite_discord_viene_troncato(self):
+        # Un admin non può mai superare il limite hard di Discord,
+        # anche se lo imposta più alto per errore.
+        assert effective_category_cap(999) == 50
+
+
+class TestIsCategoryFull:
+    def test_categoria_sotto_il_cap_non_e_piena(self):
+        assert is_category_full(current_channel_count=5, configured_cap=10) is False
+
+    def test_categoria_al_cap_e_piena(self):
+        assert is_category_full(current_channel_count=10, configured_cap=10) is True
+
+    def test_categoria_sopra_il_cap_e_piena(self):
+        assert is_category_full(current_channel_count=11, configured_cap=10) is True
+
+    def test_nessun_cap_configurato_usa_il_limite_discord_di_50(self):
+        assert is_category_full(current_channel_count=49, configured_cap=None) is False
+        assert is_category_full(current_channel_count=50, configured_cap=None) is True

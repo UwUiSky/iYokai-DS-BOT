@@ -15,6 +15,18 @@ lunga": stessa esigenza di persistenza già affrontata in
 cogs/tickets/tickets.py — vedi TicketPanelView per il precedente,
 qui si applica lo stesso pattern (timeout=None, custom_id esplicito,
 bot.add_view() in setup()).
+
+SPEC.md §12.4 + §12.5: alla creazione del canale (automatica o
+manuale) viene inviato un messaggio nella chat testuale del canale
+vocale stesso (un VoiceChannel è Messageable) con la notifica "il tuo
+canale è pronto" e, SE il server ha configurato almeno un ruolo
+piattaforma, dei bottoni PC/Console/Mobile — vedi PlatformRoleView.
+Restano SOLO informativi (nessun filtro di visibilità), per la stessa
+ragione già registrata sopra sulle due modalità sempre visibili.
+
+SPEC.md §12.8: il cap per categoria (/voicetemp-cap) è sempre
+troncato al limite hard di Discord di 50 canali per categoria — vedi
+core/voice_temp_logic.py:effective_category_cap/is_category_full.
 """
 
 from __future__ import annotations
@@ -29,6 +41,7 @@ from core.database import db
 from core.repositories.voice_temp_repo import voice_temp_repo
 from core.voice_temp_logic import (
     can_manage_voice_channel,
+    is_category_full,
     is_generator_join,
     should_delete_after_leave,
 )
@@ -40,17 +53,110 @@ MODULE_VOICE_TEMP = "voice_temp"
 
 CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
 
+# SPEC.md §12.5: selezione piattaforma, SOLO informativa (nessun
+# filtro di visibilità — decisione già presa in fase di progettazione,
+# vedi il docstring del modulo). custom_id fissi perché la view va
+# comunque ricreata ad ogni canale (non è persistente: il canale
+# stesso è temporaneo, non ha senso sopravviva a un riavvio del bot).
+PLATFORM_CHOICES = (
+    ("pc", "PC", "🖥️"),
+    ("console", "Console", "🎮"),
+    ("mobile", "Mobile", "📱"),
+)
+
+
+class PlatformRoleView(discord.ui.View):
+    """
+    Bottoni PC/Console/Mobile mostrati insieme alla notifica di
+    creazione del canale (SPEC.md §12.4 + §12.5 insieme: la notifica
+    esiste comunque, i bottoni compaiono solo se il server ha
+    configurato almeno un ruolo piattaforma). Selezionare una
+    piattaforma assegna QUEL ruolo e rimuove gli altri due — è un
+    indicatore mutuamente esclusivo ("sto giocando da..."), non un
+    filtro su cosa il membro può vedere o fare.
+    """
+
+    def __init__(self, config) -> None:
+        super().__init__(timeout=300)
+        self._roles_by_key = {
+            "pc": config.role_pc_id,
+            "console": config.role_console_id,
+            "mobile": config.role_mobile_id,
+        }
+        for key, label, emoji in PLATFORM_CHOICES:
+            if self._roles_by_key.get(key) is None:
+                continue
+            self.add_item(self._make_button(key, label, emoji))
+
+    def _make_button(self, key: str, label: str, emoji: str) -> discord.ui.Button:
+        button = discord.ui.Button(
+            label=label, emoji=emoji, style=discord.ButtonStyle.secondary,
+            custom_id=f"iyokai_voice_temp_platform_{key}",
+        )
+
+        async def callback(interaction: discord.Interaction) -> None:
+            if not isinstance(interaction.user, discord.Member):
+                return
+            guild = interaction.guild
+            if guild is None:
+                return
+
+            ruolo_scelto = guild.get_role(self._roles_by_key[key])
+            if ruolo_scelto is None:
+                await interaction.response.send_message(
+                    "Il ruolo configurato per questa piattaforma non esiste più.",
+                    ephemeral=True,
+                )
+                return
+
+            altri_ruoli_id = {
+                rid for rid in self._roles_by_key.values() if rid is not None and rid != ruolo_scelto.id
+            }
+            da_rimuovere = [
+                r for r in interaction.user.roles if r.id in altri_ruoli_id
+            ]
+            try:
+                if da_rimuovere:
+                    await interaction.user.remove_roles(*da_rimuovere, reason="Cambio piattaforma vocale temporaneo")
+                if ruolo_scelto not in interaction.user.roles:
+                    await interaction.user.add_roles(ruolo_scelto, reason="Selezione piattaforma vocale temporaneo")
+            except (discord.Forbidden, discord.HTTPException):
+                await interaction.response.send_message(
+                    "Non ho i permessi per assegnare il ruolo piattaforma.",
+                    ephemeral=True,
+                )
+                return
+
+            await interaction.response.send_message(
+                f"Piattaforma impostata: {ruolo_scelto.mention}.", ephemeral=True
+            )
+
+        button.callback = callback
+        return button
+
 
 async def _create_temp_channel(
-    guild: discord.Guild, owner: discord.Member, category: discord.CategoryChannel
+    guild: discord.Guild,
+    owner: discord.Member,
+    category: discord.CategoryChannel,
+    config,
 ) -> discord.VoiceChannel | None:
     """
     Crea il canale vocale temporaneo, lo registra nel repository, e
-    lo restituisce. None se la creazione fallisce (permessi mancanti
-    o categoria al limite di 50 canali) — il chiamante decide come
-    comunicarlo, dato che i due punti di ingresso (evento vocale
-    automatico, bottone manuale) rispondono in modo diverso.
+    lo restituisce. None se la creazione fallisce (permessi mancanti,
+    categoria al cap configurato, o limite hard Discord di 50 canali)
+    — il chiamante decide come comunicarlo, dato che i due punti di
+    ingresso (evento vocale automatico, bottone manuale) rispondono
+    in modo diverso.
     """
+    if is_category_full(len(category.channels), config.category_cap):
+        logger.info(
+            "Categoria %s piena (cap effettivo raggiunto), vocale temporaneo per %s non creato",
+            category.id,
+            owner.id,
+        )
+        return None
+
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(),  # eredita, nessuna restrizione
         owner: discord.PermissionOverwrite(
@@ -72,6 +178,25 @@ async def _create_temp_channel(
         return None
 
     await voice_temp_repo.register_channel(channel.id, guild.id, owner.id)
+
+    # SPEC.md §12.4: notifica personale alla creazione del canale —
+    # richiesta esplicitamente perché la modalità automatica sposta
+    # l'utente in totale silenzio. Un canale vocale è Messageable
+    # (ha una sua chat testuale), quindi il messaggio va dritto lì.
+    embed = discord.Embed(
+        title="🔊 Canale vocale creato",
+        description=f"{owner.mention}, il tuo canale **{channel.name}** è pronto.",
+        color=discord.Color.blurple(),
+    )
+    view = PlatformRoleView(config)
+    try:
+        if view.children:
+            await channel.send(embed=embed, view=view)
+        else:
+            await channel.send(embed=embed)
+    except (discord.Forbidden, discord.HTTPException):
+        logger.warning("Impossibile inviare la notifica di creazione nel canale %s", channel.id)
+
     return channel
 
 
@@ -120,7 +245,7 @@ class CreateVoiceView(discord.ui.View):
             return
 
         await interaction.response.defer(ephemeral=True)
-        channel = await _create_temp_channel(guild, interaction.user, category)
+        channel = await _create_temp_channel(guild, interaction.user, category, config)
         if channel is None:
             await interaction.followup.send(
                 "Non sono riuscito a creare il canale (permessi mancanti "
@@ -189,6 +314,82 @@ class VoiceTempCog(commands.Cog):
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, view=CreateVoiceView())
+
+    @app_commands.command(
+        name="voicetemp-cap",
+        description="[Admin] Imposta il numero massimo di vocali temporanei per categoria.",
+    )
+    @app_commands.describe(
+        cap="Numero massimo di canali nella categoria (max 50, limite Discord). Vuoto per rimuovere il limite."
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def voicetemp_cap(
+        self,
+        interaction: discord.Interaction,
+        cap: app_commands.Range[int, 1, 50] | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        config = await voice_temp_repo.get_config(interaction.guild.id)
+        if config.category_id is None:
+            await interaction.response.send_message(
+                "Configura prima generatore e categoria con /voicetemp-setup.",
+                ephemeral=True,
+            )
+            return
+
+        await voice_temp_repo.set_category_cap(interaction.guild.id, cap)
+        testo = f"massimo **{cap}** canali" if cap is not None else "nessun limite (oltre a quello di Discord, 50)"
+        await interaction.response.send_message(
+            f"Cap per categoria impostato: {testo}.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="voicetemp-platform-setup",
+        description="[Admin] Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.",
+    )
+    @app_commands.describe(
+        pc="Ruolo per chi gioca da PC (facoltativo)",
+        console="Ruolo per chi gioca da Console (facoltativo)",
+        mobile="Ruolo per chi gioca da Mobile (facoltativo)",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def voicetemp_platform_setup(
+        self,
+        interaction: discord.Interaction,
+        pc: discord.Role | None = None,
+        console: discord.Role | None = None,
+        mobile: discord.Role | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        config = await voice_temp_repo.get_config(interaction.guild.id)
+        if config.category_id is None:
+            await interaction.response.send_message(
+                "Configura prima generatore e categoria con /voicetemp-setup.",
+                ephemeral=True,
+            )
+            return
+
+        await voice_temp_repo.set_platform_roles(
+            interaction.guild.id,
+            role_pc_id=pc.id if pc else None,
+            role_console_id=console.id if console else None,
+            role_mobile_id=mobile.id if mobile else None,
+        )
+        await interaction.response.send_message(
+            "Ruoli piattaforma aggiornati. Sono puramente informativi: non "
+            "filtrano la visibilità del canale.",
+            ephemeral=True,
+        )
 
     # ================================================================
     # Gestione del proprio canale
@@ -315,7 +516,7 @@ class VoiceTempCog(commands.Cog):
             if is_generator_join(after_channel_id, config.generator_channel_id):
                 category = guild.get_channel(config.category_id) if config.category_id else None
                 if isinstance(category, discord.CategoryChannel):
-                    channel = await _create_temp_channel(guild, member, category)
+                    channel = await _create_temp_channel(guild, member, category, config)
                     if channel is not None:
                         try:
                             await member.move_to(channel, reason="Vocale temporaneo automatico")

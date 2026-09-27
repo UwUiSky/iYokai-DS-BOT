@@ -30,17 +30,27 @@ async def test_tickets_cog_si_carica_correttamente():
     assert module.premium_capable is False
 
     comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"ticket-setup", "ticket-panel"} <= comandi
+    assert {
+        "ticket-setup",
+        "ticket-panel",
+        "ticket-category",
+        "ticket-support-role",
+        "ticket-stats",
+    } <= comandi
 
-    ticket_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "ticket":
-            ticket_group = command
-            break
-    assert ticket_group is not None
+    gruppi = {c.name: c for c in bot.tree.get_commands() if isinstance(c, app_commands.Group)}
 
+    ticket_group = gruppi["ticket"]
     sottocomandi = {c.name for c in ticket_group.commands}
-    assert {"claim", "add", "remove", "rename", "priority", "close"} <= sottocomandi
+    assert {"claim", "add", "remove", "rename", "priority", "close", "forceclose"} <= sottocomandi
+
+    categoria_group = gruppi["ticket-category"]
+    assert {c.name for c in categoria_group.commands} == {"add", "remove", "list"}
+
+    supporto_group = gruppi["ticket-support-role"]
+    assert {c.name for c in supporto_group.commands} == {"add", "remove", "list"}
+
+    assert "on_message" in bot.extra_events
 
 
 def test_ticket_panel_view_e_davvero_persistente():

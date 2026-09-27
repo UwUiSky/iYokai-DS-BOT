@@ -231,6 +231,7 @@ async def clean_db(db_pool):
         "global_ban_log",
         "tickets",
         "ticket_counters",
+        "ticket_categories",
         "voice_temp_config",
         "voice_temp_channels",
         "leveling_totals",

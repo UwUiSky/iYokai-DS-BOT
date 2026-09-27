@@ -20,7 +20,7 @@ def repo(clean_db):
 async def test_migrations_sono_idempotenti(clean_db):
     await run_migrations(clean_db)
     await run_migrations(clean_db)
-    for tabella in ("ticket_counters", "tickets"):
+    for tabella in ("ticket_counters", "tickets", "ticket_categories"):
         exists = await clean_db.fetchval(
             "SELECT to_regclass($1) IS NOT NULL", f"public.{tabella}"
         )
@@ -160,3 +160,165 @@ async def test_set_priority_su_ticket_chiuso_restituisce_false(repo):
     await repo.close_ticket(5001, closed_by=42)
     aggiornato = await repo.set_priority(5001, "urgent")
     assert aggiornato is False
+
+
+# ================================================================
+# §13.2: categorie ticket
+# ================================================================
+@pytest.mark.asyncio
+async def test_nessuna_categoria_di_default(repo):
+    assert await repo.list_categories(100) == []
+
+
+@pytest.mark.asyncio
+async def test_add_e_list_categories(repo):
+    await repo.add_category(100, "Supporto tecnico", category_id=10, emoji="🛠️")
+    await repo.add_category(100, "Fatturazione", category_id=11)
+
+    categorie = await repo.list_categories(100)
+    assert {c.label for c in categorie} == {"Supporto tecnico", "Fatturazione"}
+
+
+@pytest.mark.asyncio
+async def test_add_category_sulla_stessa_label_la_aggiorna(repo):
+    await repo.add_category(100, "Supporto", category_id=10)
+    await repo.add_category(100, "Supporto", category_id=20)
+
+    categorie = await repo.list_categories(100)
+    assert len(categorie) == 1
+    assert categorie[0].category_id == 20
+
+
+@pytest.mark.asyncio
+async def test_remove_category(repo):
+    await repo.add_category(100, "Supporto", category_id=10)
+    rimossa = await repo.remove_category(100, "Supporto")
+    assert rimossa is True
+    assert await repo.list_categories(100) == []
+
+
+@pytest.mark.asyncio
+async def test_remove_category_inesistente_restituisce_false(repo):
+    assert await repo.remove_category(100, "Non esiste") is False
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_con_category_label(repo):
+    await repo.create_ticket(100, 1, 5001, category_label="Supporto tecnico")
+    ticket = await repo.get_ticket_by_channel(5001)
+    assert ticket.category_label == "Supporto tecnico"
+
+
+# ================================================================
+# §13.9: force close
+# ================================================================
+@pytest.mark.asyncio
+async def test_close_ticket_normale_non_e_force_closed(repo):
+    await repo.create_ticket(100, 1, 5001)
+    await repo.close_ticket(5001, closed_by=42)
+    ticket = await repo.get_ticket_by_channel(5001)
+    assert ticket.force_closed is False
+
+
+@pytest.mark.asyncio
+async def test_force_close_registra_il_flag(repo):
+    await repo.create_ticket(100, 1, 5001)
+    await repo.close_ticket(5001, closed_by=42, force=True)
+    ticket = await repo.get_ticket_by_channel(5001)
+    assert ticket.force_closed is True
+
+
+# ================================================================
+# §13.12: tempo di prima risposta + statistiche
+# ================================================================
+@pytest.mark.asyncio
+async def test_nessuna_prima_risposta_di_default(repo):
+    await repo.create_ticket(100, 1, 5001)
+    ticket = await repo.get_ticket_by_channel(5001)
+    assert ticket.first_response_at is None
+
+
+@pytest.mark.asyncio
+async def test_record_first_response(repo):
+    import datetime as dt
+
+    await repo.create_ticket(100, 1, 5001)
+    quando = dt.datetime.now(dt.timezone.utc)
+    registrata = await repo.record_first_response(5001, quando)
+    assert registrata is True
+
+    ticket = await repo.get_ticket_by_channel(5001)
+    assert ticket.first_response_at is not None
+
+
+@pytest.mark.asyncio
+async def test_record_first_response_non_sovrascrive_la_prima(repo):
+    import datetime as dt
+
+    await repo.create_ticket(100, 1, 5001)
+    prima = dt.datetime.now(dt.timezone.utc)
+    await repo.record_first_response(5001, prima)
+
+    seconda_registrazione = await repo.record_first_response(
+        5001, prima + dt.timedelta(minutes=5)
+    )
+    assert seconda_registrazione is False
+
+    ticket = await repo.get_ticket_by_channel(5001)
+    assert ticket.first_response_at == prima
+
+
+@pytest.mark.asyncio
+async def test_get_operator_stats_senza_ticket(repo):
+    stats = await repo.get_operator_stats(100, 42)
+    assert stats.claimed_count == 0
+    assert stats.closed_count == 0
+    assert stats.avg_response_seconds is None
+
+
+@pytest.mark.asyncio
+async def test_get_operator_stats_conta_claim_e_close(repo):
+    await repo.create_ticket(100, 1, 5001)
+    await repo.create_ticket(100, 2, 5002)
+    await repo.claim_ticket(5001, staff_id=42)
+    await repo.claim_ticket(5002, staff_id=42)
+    await repo.close_ticket(5001, closed_by=42)
+
+    stats = await repo.get_operator_stats(100, 42)
+    assert stats.claimed_count == 2
+    assert stats.closed_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_operator_stats_tempo_di_risposta_medio(repo):
+    import datetime as dt
+
+    await repo.create_ticket(100, 1, 5001)
+    await repo.claim_ticket(5001, staff_id=42)
+    ticket = await repo.get_ticket_by_channel(5001)
+    await repo.record_first_response(5001, ticket.created_at + dt.timedelta(seconds=60))
+
+    stats = await repo.get_operator_stats(100, 42)
+    assert stats.avg_response_seconds is not None
+    assert 55 <= stats.avg_response_seconds <= 65
+
+
+@pytest.mark.asyncio
+async def test_get_guild_stats_senza_ticket(repo):
+    stats = await repo.get_guild_stats(100)
+    assert stats.total_count == 0
+    assert stats.open_count == 0
+    assert stats.closed_count == 0
+    assert stats.avg_response_seconds is None
+
+
+@pytest.mark.asyncio
+async def test_get_guild_stats_conta_aperti_e_chiusi(repo):
+    await repo.create_ticket(100, 1, 5001)
+    await repo.create_ticket(100, 2, 5002)
+    await repo.close_ticket(5002, closed_by=42)
+
+    stats = await repo.get_guild_stats(100)
+    assert stats.total_count == 2
+    assert stats.open_count == 1
+    assert stats.closed_count == 1
