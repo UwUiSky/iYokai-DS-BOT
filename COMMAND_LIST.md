@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:22 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 245 comandi in 10 categorie.**
+**Totale: 250 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -39,10 +39,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:
 ## Fun
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
+- **`/fun blur`** — Applica una sfocatura a un'immagine.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
+- **`/fun grayscale`** — Trasforma un'immagine in scala di grigi.
+- **`/fun invert`** — Inverte i colori di un'immagine.
 - **`/fun joke`** — Racconta una barzelletta a caso.
+- **`/fun meme`** — Genera un meme con testo sopra/sotto.
+- **`/fun pixelate`** — Pixela un'immagine.
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rps`** — Carta, forbici, sasso contro il bot.
 - **`/rate`** — Valuta qualcosa da 0 a 10.

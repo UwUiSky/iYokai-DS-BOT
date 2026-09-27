@@ -1206,8 +1206,25 @@ necessario.
   `random` globale usato direttamente, per restare testabile con un
   seed). **Sotto-comandi di un gruppo `/fun`, non comandi top-level
   separati** — vedi la nota tecnica sotto 16.8
-- `[ ]` 16.2 Image manipulation
-- `[ ]` 16.3 Comandi meme
+- `[x]` 16.2 Image manipulation — `/fun grayscale`, `/fun invert`,
+  `/fun blur [raggio]`, `/fun pixelate [dimensione-blocco]`, tutti
+  con priorità allegato > utente menzionato > avatar dell'autore
+  (`core/image_manipulation.py`, funzioni pure Pillow che restituiscono
+  `bytes | None`, mai un'eccezione — `None` se l'input non è
+  un'immagine apribile, stesso pattern di `core/image_thumbnail.py`).
+  Validazione su tipo MIME e dimensione massima (15 MB) dell'allegato
+  prima di elaborare. Il calcolo Pillow (CPU-bound) gira in
+  `asyncio.to_thread(...)` nel cog, mai nel modulo `core/` puro.
+  Sotto-comandi del gruppo `/fun` esistente — vedi nota tecnica sotto
+  16.8, nessun nuovo slot top-level consumato
+- `[x]` 16.3 Comandi meme — `/fun meme [top-text] [bottom-text]`,
+  stile classico Impact (testo bianco, contorno nero) su qualunque
+  immagine (allegato > utente menzionato > avatar autore), testo
+  automaticamente a capo se troppo lungo (`core/meme_logic.py`,
+  `ImageFont.load_default(size=...)` di Pillow, nessun file `.ttf`
+  incorporato nel repository). Richiede almeno uno tra top/bottom
+  text, altrimenti messaggio d'errore effimero. Stesso gruppo `/fun`,
+  nessun nuovo slot top-level
 - `[ ]` 16.4 Comandi animal
 - `[x]` 16.5 Ship — percentuale deterministica via hash, non casuale
   ad ogni chiamata
@@ -1351,10 +1368,10 @@ rilancia lo stesso conteggio.
 | §13 Ticket | 13 | 0 | 0 |
 | §14 Utility | 15 | 0 | 3 |
 | §15 Levels/Gilde | 34 | 0 | 0 |
-| §16 Fun/NSFW | 4 | 0 | 11 |
+| §16 Fun/NSFW | 6 | 0 | 9 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **234** | **3** | **39** |
+| **Totale** | **236** | **3** | **37** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1535,4 +1552,37 @@ curate a mano). Entrambi i cog condividono il modulo "fun" già
 registrato da `cogs/fun/ship_rate.py` (Ship/Rate, §16.5/§16.7) —
 stesso raggruppamento logico per l'utente finale, non un modulo
 separato per ogni singolo comando.
+
+**§16 Fun & Immagini, secondo lotto: chiusi 16.2 Image manipulation
+e 16.3 Comandi meme** (4/0/11 → 6/0/9), tutto basato su Pillow, senza
+alcuna dipendenza esterna o chiave API (a differenza del terzo lotto
+previsto, 16.4/16.9, che avrà bisogno di un servizio esterno per le
+immagini di animali/ricerca SFW). Cinque nuovi sotto-comandi —
+`/fun grayscale`, `/fun invert`, `/fun blur [raggio]`, `/fun pixelate
+[dimensione-blocco]`, `/fun meme [top-text] [bottom-text]` — tutti
+aggiunti come sotto-comandi del gruppo `/fun` già esistente in
+`cogs/fun/entertainment.py` (nessun nuovo slot top-level: il conteggio
+resta a 97/100, verificato dalla guardia di regressione in
+`tests/test_cog_manager_load_all.py`). Logica pura in due nuovi
+moduli, entrambi con lo stesso pattern già seguito da
+`core/image_thumbnail.py` (`Image.open(io.BytesIO(...))` in un
+try/except che restituisce `None`, mai un'eccezione, se l'input non è
+un'immagine apribile): `core/image_manipulation.py` (grayscale,
+invert, blur con raggio limitato 1-50, pixelate con dimensione
+blocco limitata 2-100) e `core/meme_logic.py` (testo bianco con
+contorno nero in stile Impact, `ImageFont.load_default(size=...)` di
+Pillow — nessun file `.ttf` incorporato nel repository, stesso
+principio di `core/server_stats_image.py`). Tutti i cinque comandi
+condividono la stessa priorità di sorgente immagine, pensata per non
+richiedere sempre un allegato esplicito: allegato > utente menzionato
+> avatar dell'autore del comando (helper `_resolve_image_bytes` nel
+cog), con validazione di tipo MIME e dimensione massima (15 MB)
+sull'allegato prima di elaborarlo. Il calcolo Pillow (CPU-bound) gira
+sempre in `asyncio.to_thread(...)` nel cog, mai nel modulo `core/`
+puro, per non bloccare il loop asyncio del bot. `/fun meme` richiede
+almeno uno tra top-text e bottom-text, altrimenti risponde con un
+messaggio d'errore effimero invece di generare un meme vuoto.
+Terzo e ultimo lotto di questo settore (16.4 Comandi animal + 16.9
+Ricerca immagini SFW, basati su API esterne) e §16.10 NSFW/Rule34
+restano da fare in commit separati.
 

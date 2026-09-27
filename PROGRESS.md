@@ -4058,6 +4058,66 @@ tabella dei totali: **234/3/39**.
 **Suite di test completa: 1989/1989 passano** (verificato due volte
 di fila).
 
+### Fase 76 — §16 Fun & Immagini, secondo lotto: Image manipulation e
+comandi meme (punto 5 della direttiva "Vai prosegui fai tutto a
+parte ovviamente bcde")
+
+**§16.2 Image manipulation e §16.3 Comandi meme chiusi** (4/0/11 →
+6/0/9): cinque nuovi sotto-comandi del gruppo `/fun` già esistente
+(`cogs/fun/entertainment.py`, lo stesso creato nella Fase 75) —
+`/fun grayscale`, `/fun invert`, `/fun blur [raggio]`, `/fun pixelate
+[dimensione-blocco]`, `/fun meme [top-text] [bottom-text]`. Nessun
+nuovo slot top-level consumato: il totale resta a 97/100, verificato
+dalla guardia di regressione aggiunta nella Fase 75
+(`tests/test_cog_manager_load_all.py`), che infatti avvisa ancora
+(senza fallire) di essere vicini al limite — atteso, non un
+regresso.
+
+Logica pura in due nuovi moduli `core/`, entrambi con lo stesso
+pattern try/except-restituisce-None già usato da
+`core/image_thumbnail.py` (mai un'eccezione se l'input non è
+un'immagine apribile): `core/image_manipulation.py` (`apply_
+grayscale`, `apply_invert`, `apply_blur` con raggio limitato 1-50,
+`apply_pixelate` con dimensione blocco limitata 2-100 — tutti i
+parametri fuori range vengono limitati, non causano un errore) e
+`core/meme_logic.py` (`render_meme`, testo bianco con contorno nero
+in stile Impact, `ImageFont.load_default(size=...)` di Pillow —
+verificato disponibile nella versione installata, 10.1+ — invece di
+incorporare un file `.ttf` nel repository, stesso principio già
+seguito da `core/server_stats_image.py`).
+
+Tutti e cinque i comandi condividono lo stesso helper `_resolve_
+image_bytes` nel cog, con la stessa priorità pensata per non
+richiedere sempre un allegato esplicito: allegato > utente
+menzionato > avatar dell'autore del comando. Validazione del tipo
+MIME e della dimensione massima (15 MB) sull'allegato PRIMA di
+elaborarlo, con messaggio d'errore effimero se non è un'immagine o
+è troppo grande. Il calcolo Pillow (CPU-bound) gira sempre in
+`asyncio.to_thread(...)` nel cog, mai nel modulo `core/` puro, per
+non bloccare il loop asyncio del bot durante l'elaborazione.
+`/fun meme` richiede almeno uno tra top-text e bottom-text, altrimenti
+risponde con un messaggio d'errore invece di generare un'immagine
+senza scritte.
+
+**30 nuovi test**: `test_image_manipulation.py` (nuovo, 11, immagini
+vere generate in memoria con Pillow, non file su disco);
+`test_meme_logic.py` (nuovo, 7); `test_entertainment_image_commands.py`
+(nuovo, 12, priorità allegato/utente/avatar verificata rendendo
+l'avatar dell'autore deliberatamente non valido nei test che devono
+usare un'altra fonte, così un eventuale uso sbagliato della fonte si
+scopre da solo tramite `apply_grayscale`/`render_meme` che
+restituirebbero `None`).
+
+SPEC.md: §16 4/0/11 → **6/0/9**. Ricalcolo meccanico di TUTTA la
+tabella dei totali: **236/3/37**.
+
+Terzo e ultimo lotto di questo settore (16.4 Comandi animal + 16.9
+Ricerca immagini SFW, basati su API esterne) e il Task #24 (§16.10
+NSFW/Rule34) restano da fare in commit separati.
+
+**Suite di test completa: 2019/2019 passano** (verificato due volte
+di fila).
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
