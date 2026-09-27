@@ -92,8 +92,8 @@ async def test_membro_di_clan_ufficializzato_matura_xp_e_coin(repos):
     await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
 
     clan = await clan_repo.get_clan(clan_id)
-    assert clan.total_xp == 30
-    assert clan.treasury_balance == -15_000 + 2
+    assert clan.total_xp == 10
+    assert clan.treasury_balance == -15_000 + 4
     assert clan.total_voice_ticks == 1
 
 
@@ -136,8 +136,8 @@ async def test_boost_individuale_raddoppia_la_ricompensa_del_membro(repos):
     await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
 
     clan = await clan_repo.get_clan(clan_id)
-    assert clan.total_xp == 60  # 30 * 2
-    assert clan.treasury_balance == -15_000 + 4  # 2 * 2
+    assert clan.total_xp == 20  # 10 * 2
+    assert clan.treasury_balance == -15_000 + 8  # 4 * 2
 
 
 @pytest.mark.asyncio
@@ -153,8 +153,8 @@ async def test_boost_di_gilda_raddoppia_per_tutti_i_membri(repos):
     await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
 
     clan = await clan_repo.get_clan(clan_id)
-    assert clan.total_xp == 30 * 2 * 2  # due membri, ×2 ciascuno
-    assert clan.treasury_balance == -15_000 + (2 * 2 * 2)
+    assert clan.total_xp == 10 * 2 * 2  # due membri, ×2 ciascuno
+    assert clan.treasury_balance == -15_000 + (4 * 2 * 2)
 
 
 @pytest.mark.asyncio
@@ -170,7 +170,7 @@ async def test_boost_individuale_e_di_gilda_si_moltiplicano(repos):
     await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
 
     clan = await clan_repo.get_clan(clan_id)
-    assert clan.total_xp == 30 * 4  # ×2 individuale * ×2 di gilda
+    assert clan.total_xp == 10 * 4  # ×2 individuale * ×2 di gilda
 
 
 @pytest.mark.asyncio
@@ -185,7 +185,7 @@ async def test_boost_scaduto_non_si_applica(repos):
     await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
 
     clan = await clan_repo.get_clan(clan_id)
-    assert clan.total_xp == 30  # scaduto, nessun raddoppio
+    assert clan.total_xp == 10  # scaduto, nessun raddoppio
 
 
 @pytest.mark.asyncio

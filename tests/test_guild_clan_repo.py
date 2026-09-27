@@ -431,3 +431,37 @@ async def test_apply_monthly_decay_su_saldo_negativo_non_lo_tocca(repo):
     nuovo_saldo = await repo.apply_monthly_decay(clan_id, period="2026-09")
 
     assert nuovo_saldo == -15_000
+
+
+# ----------------------------------------------------------------------
+# Lato TESTUALE del guadagno ×2 di gilda (SPEC.md §15.14)
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_apply_text_tick_assegna_xp_di_gilda(repo):
+    clan_id = await _crea_clan(repo, owner_id=1)
+
+    assegnato = await repo.apply_text_tick(clan_id, user_id=1)
+
+    assert assegnato is True
+    assert (await repo.get_clan(clan_id)).total_xp == 30  # TEXT_TICK_XP
+
+
+@pytest.mark.asyncio
+async def test_apply_text_tick_rispetta_il_cooldown(repo):
+    clan_id = await _crea_clan(repo, owner_id=1)
+
+    await repo.apply_text_tick(clan_id, user_id=1)
+    assegnato_di_nuovo = await repo.apply_text_tick(clan_id, user_id=1)
+
+    assert assegnato_di_nuovo is False
+    assert (await repo.get_clan(clan_id)).total_xp == 30  # solo il primo
+
+
+@pytest.mark.asyncio
+async def test_apply_text_tick_utente_non_membro_non_assegna(repo):
+    clan_id = await _crea_clan(repo, owner_id=1)
+
+    assegnato = await repo.apply_text_tick(clan_id, user_id=999)
+
+    assert assegnato is False
+    assert (await repo.get_clan(clan_id)).total_xp == 0

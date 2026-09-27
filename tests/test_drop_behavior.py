@@ -79,6 +79,15 @@ async def cog_e_database(monkeypatch):
     monkeypatch.setattr(leveling_module, "leveling_repo", repo)
     monkeypatch.setattr(leveling_module, "db", database)
 
+    # on_message controlla anche il lato TESTUALE del guadagno di
+    # gilda (SPEC.md §15.14) - serve un GuildClanRepository agganciato
+    # allo stesso pool locale di questo test, altrimenti risolverebbe
+    # il singleton globale (mai connesso qui) e solleverebbe.
+    from core.repositories.guild_clan_repo import GuildClanRepository
+
+    clan_repo = GuildClanRepository(pool_provider=lambda: database.pool)
+    monkeypatch.setattr(leveling_module, "guild_clan_repo", clan_repo)
+
     class _RewardRepoFinto:
         async def get_rewards_up_to_level(self, guild_id, level):
             return []

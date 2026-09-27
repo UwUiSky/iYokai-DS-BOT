@@ -2342,6 +2342,95 @@ di toccare codice.
 
 ---
 
+### Fase 57 — Chiusura della discrepanza ×2 XP/coin di gilda: vocale
+corretto, lato testuale scritto da zero (SPEC.md §15.14)
+
+**Cosa non tornava**: SPEC.md dichiarava esplicitamente "Guadagno ×2
+XP e coin nei canali della propria gilda" ma le costanti vocali
+implementate (`TICK_XP=30`, `TICK_COINS=2` in `core/guild_clan_
+logic.py`) non erano il doppio del vocale normale (`VOICE_XP_PER_
+MINUTE=5`, `VOICE_COINS_PER_MINUTE=2` in `core/leveling_logic.py`) —
+erano ×6 sull'XP e ×1 (nessun moltiplicatore) sulle coin. Verificato
+che entrambi i tick durano 60 secondi (`TICK_SECONDS` nel worker
+vocale di gilda, cooldown testo normale), quindi i valori sono
+confrontabili 1:1 al minuto — non un problema di unità diverse.
+PROGRESS.md (Fase 48) confermava che quei numeri erano stati
+calibrati indipendentemente contro un target mensile assoluto
+(500-750k XP/mese, <50k coin/mese), non derivati da un ×2.
+
+**Recupero della discussione originale**: l'utente ha detto che i
+valori erano già stati confermati "abbondantemente" in questa stessa
+conversazione. Verifica fatta cercando programmaticamente nella
+trascrizione JSONL della sessione ogni occorrenza di "moltiplicat",
+"×2", "TICK_XP" ecc.: la sessione aveva già superato un `compact_
+boundary` che aveva scartato oltre 1 milione di token di storia
+precedente — i valori originali non erano più recuperabili da
+nessun file accessibile. Segnalato onestamente all'utente invece di
+indovinare o insistere sulla ricerca; l'utente ha poi trascritto a
+mano lo scambio (che risultava però relativo a §15.15 — cassa/
+decadimento/premium, già implementato correttamente — non al ×2 di
+§15.14), quindi chiesti di nuovo con `AskUserQuestion` i due numeri
+specifici mancanti: confermato ×2 letterale sia per il vocale (10
+XP/4 coin al minuto) sia per il testo (30 XP a messaggio, stesso
+cooldown 60s, nessuna coin), nessun boost sul testo (già scoped al
+solo vocale, Fase 54).
+
+**Vocale corretto**: `TICK_XP` 30→10, `TICK_COINS` 2→4 in `core/
+guild_clan_logic.py` — ora esattamente ×2 di `VOICE_XP_PER_MINUTE`/
+`VOICE_COINS_PER_MINUTE`. Il test che verificava il vecchio target
+mensile assoluto è stato sostituito con un test che verifica
+direttamente il rapporto ×2 rispetto alle costanti del vocale
+normale (non più un numero calibrato a parte). Aggiornati i valori
+attesi hardcoded in `test_clan_voice_activity_repo.py` e
+`test_guild_clan_voice_worker.py` (inclusi i test dei boost, che
+moltiplicano il NUOVO tasso base).
+
+**Testo scritto da zero** (non esisteva alcun hook): nuova colonna
+`last_text_xp_at` su `clan_members` (stesso pattern cooldown di
+`LevelingRepository.add_text_xp`, riusa `core.leveling_logic.
+can_earn_text_xp` per il controllo — stesso cooldown 60s, niente
+duplicato). Nuovo `GuildClanRepository.apply_text_tick(clan_id,
+user_id)`: atomico con `FOR UPDATE` sulla riga membro, assegna
+`TEXT_TICK_XP` (30, nuova costante in `core/guild_clan_logic.py`) se
+il cooldown lo consente, nessuna coin, nessun boost. Agganciato in
+`cogs/leveling/leveling.py` dentro `on_message`, PRIMA della
+chiamata già esistente a `leveling_repo.add_text_xp` (le due sono
+indipendenti: un membro di gilda guadagna sia l'XP personale che
+l'XP di gilda dallo stesso messaggio).
+
+**Bug trovato in un test preesistente durante la verifica**: la
+suite completa segnalava 2 fallimenti in `test_drop_behavior.py`
+(mai toccato in questa sessione) — la sua fixture usa un `Database()`
+locale isolato ma non patchava `guild_clan_repo`, quindi il nuovo
+hook in `on_message` risolveva il singleton globale (mai connesso in
+quel test) e solleva. Corretto patchando anche `guild_clan_repo` con
+un repository agganciato allo stesso pool locale del test — nessuna
+altra suite preesistente chiamava `on_message` senza già avere quel
+patch.
+
+**11 nuovi test**: 3 in `test_guild_clan_logic.py` (rapporto ×2
+verificato direttamente, sostituendo il vecchio test sul target
+mensile), 3 in `test_guild_clan_repo.py` (`apply_text_tick`: assegna,
+rispetta il cooldown, ignora chi non è membro), 4 in un nuovo
+`test_guild_clan_text_xp_behavior.py` (messaggio di un membro di
+clan accredita l'XP di gilda, secondo messaggio entro il cooldown non
+raddoppia, chi non è in nessun clan viene ignorato, clan non
+ufficializzato non accredita nulla) — più l'aggiornamento dei valori
+hardcoded (non nuovi test) in `test_clan_voice_activity_repo.py` e
+`test_guild_clan_voice_worker.py`.
+
+SPEC.md: la voce `[~]` "Guadagno ×2 XP e coin" sotto §15.14 passa a
+`[x]` (vocale corretto + testuale ora scritto) — resta aperta solo
+la voce del prelievo dalla tesoreria verso un membro. Ricalcolo
+meccanico: §15 Levels/Gilde passa da 28/4/2 a **29/3/2**
+(fatte/parziali/mancanti). **58% dello schema (154/273 pesato).**
+COMMAND_LIST.md rigenerato (nessun comando nuovo — solo il timestamp,
+la feature non aggiunge comandi Discord).
+
+**Suite di test completa: 1402/1402 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

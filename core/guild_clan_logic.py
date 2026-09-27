@@ -7,10 +7,12 @@ con l'utente in conversazione prima di scrivere questo file:
 
 - Tick al MINUTO (non ai 2 minuti — la finestra 23:59->00:01 è solo
   manutenzione/reset giornaliero, non un tick vero).
-- Tasso base: 30 XP + 2 coin di gilda per membro attivo per tick,
-  calibrato per far arrivare un utente molto attivo (12h/giorno,
-  ogni giorno, senza restare mai troppo a lungo nello stesso
-  vocale) a circa 500-750k XP/mese e sotto i 50k coin/mese.
+- Tasso base: ×2 letterale rispetto al vocale normale (5 XP + 2 coin
+  al minuto, `core/leveling_logic.py`) — quindi 10 XP + 4 coin di
+  gilda per membro attivo per tick (corretto in una sessione
+  successiva: la prima calibrazione usava 30 XP/2 coin, un target
+  assoluto mensile invece del ×2 dichiarato in SPEC.md §15.14 —
+  discrepanza trovata e chiusa su richiesta esplicita dell'utente).
 - Decadimento: lineare fino a zero dopo 3 ore filate (180 tick) nello
   stesso canale vocale, azzerato al cambio canale.
 - Tetto giornaliero: 12h = 720 tick/giorno (00:01-23:59 dello stesso
@@ -24,12 +26,20 @@ con l'utente in conversazione prima di scrivere questo file:
   cifra tonda dalla scala 12h/24h/96h/384h persona-ora discussa).
 - Tesoreria a SENSO UNICO: membro -> gilda sempre permesso,
   gilda -> membro MAI (nessun prelievo individuale dalla tesoreria).
+- Lato TESTUALE (chiuso nella stessa sessione del punto sopra): ×2
+  letterale rispetto al testo normale (15 XP a messaggio, cooldown
+  60s, nessuna coin — `core/leveling_logic.py`), quindi 30 XP di
+  gilda a messaggio, stesso cooldown, ancora nessuna coin. NESSUN
+  boost applicato qui (individuale e di gilda restano scoped al solo
+  tick vocale, confermato in Fase 54).
 """
 
 from __future__ import annotations
 
-TICK_XP = 30
-TICK_COINS = 2
+TICK_XP = 10
+TICK_COINS = 4
+
+TEXT_TICK_XP = 30
 
 DECAY_TICKS = 180  # 3 ore filate nello stesso vocale -> guadagno zero
 DAILY_TICK_CAP = 720  # 12 ore/giorno

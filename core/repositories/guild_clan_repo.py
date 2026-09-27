@@ -19,7 +19,7 @@ dal server per identificarli entrambi in modo non ambiguo.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 import asyncpg
 
@@ -71,6 +71,7 @@ class ClanMember:
     role: str
     joined_at: datetime
     boost_expires_at: datetime | None
+    last_text_xp_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,7 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         );
 
         ALTER TABLE clan_members ADD COLUMN IF NOT EXISTS boost_expires_at TIMESTAMPTZ;
+        ALTER TABLE clan_members ADD COLUMN IF NOT EXISTS last_text_xp_at TIMESTAMPTZ;
 
         CREATE INDEX IF NOT EXISTS idx_clan_members_user ON clan_members (user_id);
 
@@ -174,6 +176,7 @@ class GuildClanRepository:
             role=row["role"],
             joined_at=row["joined_at"],
             boost_expires_at=row["boost_expires_at"],
+            last_text_xp_at=row["last_text_xp_at"],
         )
 
     def _row_to_ledger_entry(self, row) -> TreasuryLedgerEntry:
@@ -538,6 +541,51 @@ class GuildClanRepository:
         await self._pool.execute(
             "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1", clan_id, amount
         )
+
+    async def apply_text_tick(self, clan_id: int, user_id: int) -> bool:
+        """
+        Lato TESTUALE del guadagno ×2 di gilda (SPEC.md §15.14) —
+        controparte di `clan_voice_activity_repo.apply_tick` ma per i
+        messaggi: stesso cooldown del testo normale (`core.leveling_
+        logic.can_earn_text_xp`, 60s) e stesso importo ×2 letterale
+        (`core.guild_clan_logic.TEXT_TICK_XP`, il doppio di `core.
+        leveling_logic.TEXT_XP_AMOUNT`). NIENTE coin da testo (come
+        nel normale) e NESSUN boost applicato — il boost individuale
+        di gilda è scoped ESPLICITAMENTE al solo tick vocale
+        (confermato dall'utente in Fase 54), il boost di gilda idem.
+        Tutto dentro una transazione con FOR UPDATE sulla riga membro,
+        stesso pattern anti-race di `LevelingRepository.add_text_xp`.
+        Restituisce True se l'XP è stata assegnata (cooldown scaduto),
+        False se il messaggio è arrivato troppo presto.
+        """
+        from core.guild_clan_logic import TEXT_TICK_XP
+        from core.leveling_logic import can_earn_text_xp
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    SELECT last_text_xp_at FROM clan_members
+                    WHERE clan_id = $1 AND user_id = $2 FOR UPDATE
+                    """,
+                    clan_id, user_id,
+                )
+                if row is None:
+                    return False
+
+                now = datetime.now(timezone.utc)
+                if not can_earn_text_xp(row["last_text_xp_at"], now):
+                    return False
+
+                await conn.execute(
+                    "UPDATE clan_members SET last_text_xp_at = $3 WHERE clan_id = $1 AND user_id = $2",
+                    clan_id, user_id, now,
+                )
+                await conn.execute(
+                    "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1",
+                    clan_id, TEXT_TICK_XP,
+                )
+                return True
 
     async def get_clan_leaderboard(self, guild_id: int, limit: int = 10) -> list[Clan]:
         """Classifica clan del server per XP totale — per la

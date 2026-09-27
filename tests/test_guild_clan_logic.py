@@ -9,6 +9,8 @@ import pytest
 from core.guild_clan_logic import (
     CHANNEL_UNLOCK_COSTS,
     CREATION_DEFICIT,
+    TICK_COINS,
+    TICK_XP,
     VOICE_HOURS_REQUIRED,
     apply_monthly_treasury_decay,
     compute_tick_decay_factor,
@@ -19,6 +21,7 @@ from core.guild_clan_logic import (
     validate_guild_tag,
     voice_ticks_to_hours,
 )
+from core.leveling_logic import VOICE_COINS_PER_MINUTE, VOICE_XP_PER_MINUTE
 
 
 class TestValidateGuildTag:
@@ -84,8 +87,8 @@ class TestComputeTickDecayFactor:
 class TestComputeTickReward:
     def test_tasso_pieno_senza_decadimento_ne_tetto(self):
         xp, coin = compute_tick_reward(ticks_in_same_channel=0, ticks_today=0)
-        assert xp == 30
-        assert coin == 2
+        assert xp == 10
+        assert coin == 4
 
     def test_tetto_giornaliero_raggiunto_zero(self):
         xp, coin = compute_tick_reward(ticks_in_same_channel=0, ticks_today=720)
@@ -93,26 +96,23 @@ class TestComputeTickReward:
 
     def test_decadimento_a_meta_dimezza_il_guadagno(self):
         xp, coin = compute_tick_reward(ticks_in_same_channel=90, ticks_today=0)
-        assert xp == 15  # 30 * 0.5
-        assert coin == 1  # 2 * 0.5
+        assert xp == 5  # 10 * 0.5
+        assert coin == 2  # 4 * 0.5
 
-    def test_utente_molto_attivo_un_mese_intero_rientra_nel_range_concordato(self):
+    def test_tasso_di_gilda_e_esattamente_il_doppio_del_vocale_normale(self):
         """
-        Verifica diretta del numero concordato con l'utente: un
-        utente che fa 12h/giorno tutti i giorni per un mese, SENZA
-        mai subire decadimento (cambia vocale abbastanza spesso),
-        deve arrivare a circa 500-750k XP e restare sotto i 50k coin.
+        Verifica diretta della regola confermata dall'utente: il
+        guadagno XP/coin nei canali vocali di gilda deve essere
+        ESATTAMENTE ×2 rispetto al vocale normale (`core.leveling_
+        logic.VOICE_XP_PER_MINUTE`/`VOICE_COINS_PER_MINUTE`), non un
+        target assoluto calibrato a parte — entrambi i tick durano
+        60 secondi, quindi i valori sono confrontabili 1:1 al minuto.
+        Corregge una discrepanza reale trovata in una sessione
+        precedente (era stato implementato un tasso 6× sull'XP e 1×
+        sulle coin, con SPEC.md che dichiarava ×2).
         """
-        xp_totale = coin_totale = 0
-        for _ in range(720):  # 720 tick/giorno x 30 giorni, nessun decadimento
-            xp, coin = compute_tick_reward(ticks_in_same_channel=0, ticks_today=0)
-            xp_totale += xp
-            coin_totale += coin
-        xp_mensile = xp_totale * 30
-        coin_mensile = coin_totale * 30
-
-        assert 500_000 <= xp_mensile <= 750_000
-        assert coin_mensile < 50_000
+        assert TICK_XP == 2 * VOICE_XP_PER_MINUTE
+        assert TICK_COINS == 2 * VOICE_COINS_PER_MINUTE
 
 
 class TestApplyMonthlyTreasuryDecay:

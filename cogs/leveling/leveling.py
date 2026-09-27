@@ -191,6 +191,17 @@ class LevelingCog(commands.Cog):
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_LEVELING):
             return
 
+        clan = await guild_clan_repo.get_member_clan_in_guild(message.guild.id, message.author.id)
+        if clan is not None and clan.officialized:
+            # Lato TESTUALE del guadagno ×2 di gilda (SPEC.md
+            # §15.14) — indipendente dall'XP personale sopra: stesso
+            # cooldown del testo normale, nessuna coin, nessun boost
+            # (scoped al solo vocale, Fase 54). Un fallimento qui non
+            # deve mai impedire l'XP personale, quindi va PRIMA
+            # dell'add_text_xp solo per ordine di lettura, non di
+            # dipendenza — le due chiamate sono indipendenti.
+            await guild_clan_repo.apply_text_tick(clan.id, message.author.id)
+
         risultato = await leveling_repo.add_text_xp(message.guild.id, message.author.id)
         if risultato.granted and risultato.leveled_up:
             try:

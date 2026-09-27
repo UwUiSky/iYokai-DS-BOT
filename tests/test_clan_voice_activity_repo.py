@@ -23,8 +23,8 @@ def repo(clean_db):
 async def test_primo_tick_in_assoluto_tasso_pieno(repo):
     xp, coin = await repo.apply_tick(clan_id=1, user_id=1, channel_id=500, today=OGGI)
 
-    assert xp == 30
-    assert coin == 2
+    assert xp == 10
+    assert coin == 4
 
 
 @pytest.mark.asyncio
@@ -47,8 +47,8 @@ async def test_decadimento_dopo_novanta_tick_nello_stesso_canale(repo):
     # questo tick - fattore di decadimento 0.5 (90/180).
     xp, coin = await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
 
-    assert xp == 15  # 30 * 0.5
-    assert coin == 1  # 2 * 0.5
+    assert xp == 5  # 10 * 0.5
+    assert coin == 2  # 4 * 0.5
 
 
 @pytest.mark.asyncio
@@ -60,8 +60,8 @@ async def test_cambio_canale_azzera_il_decadimento(repo):
     # anche se ticks_today continua ad accumularsi.
     xp, coin = await repo.apply_tick(1, 1, channel_id=999, today=OGGI)
 
-    assert xp == 30
-    assert coin == 2
+    assert xp == 10
+    assert coin == 4
 
     attivita = await repo.get_activity(1, 1)
     assert attivita.ticks_in_current_channel == 1  # riparte da 1 (questo tick)
@@ -90,8 +90,8 @@ async def test_giorno_diverso_azzera_il_tetto_giornaliero(repo):
     # Oggi è un giorno diverso: ticks_today deve ripartire da zero,
     # tasso pieno indipendentemente da quanto accumulato ieri.
     xp_oggi, coin_oggi = await repo.apply_tick(1, 1, channel_id=999, today=OGGI)
-    assert xp_oggi == 30
-    assert coin_oggi == 2
+    assert xp_oggi == 10
+    assert coin_oggi == 4
 
 
 @pytest.mark.asyncio

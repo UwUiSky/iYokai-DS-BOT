@@ -626,10 +626,21 @@ necessario.
     `/clan promuovi` (solo Capo Clan, ruolo admin/mod/member, rispetta
     i tetti `MAX_ADMINS_PER_CLAN`/`MAX_MODS_PER_CLAN` in
     `guild_clan_logic.py`)
-  - `[~]` Guadagno ×2 XP e coin nei canali della propria gilda —
-    `guild_clan_voice_worker.py` applica il tick per la presenza
-    vocale, agganciato a `clan_voice_activity_repo`; **manca** il
-    lato testuale (nessun hook sui messaggi nei canali di gilda)
+  - `[x]` Guadagno ×2 XP e coin — vocale: `guild_clan_voice_worker.py`
+    applica il tick per la presenza vocale (agganciato a
+    `clan_voice_activity_repo`), ×2 LETTERALE rispetto al vocale
+    normale (`TICK_XP=10`/`TICK_COINS=4` in `core/guild_clan_logic.py`
+    contro `VOICE_XP_PER_MINUTE=5`/`VOICE_COINS_PER_MINUTE=2` in
+    `core/leveling_logic.py` — corregge una discrepanza reale trovata
+    in una sessione precedente: la prima versione usava 30 XP/2 coin,
+    un target mensile assoluto (500-750k XP/mese) invece del ×2
+    dichiarato qui, mai un rapporto ×6 XP/×1 coin come si era finito
+    per implementare). Testuale: `GuildClanRepository.apply_text_tick`
+    agganciato a `on_message` in `cogs/leveling/leveling.py`, ×2
+    letterale sull'XP (30 contro i 15 del testo normale), stesso
+    cooldown 60s, NESSUNA coin (come nel testo normale) e NESSUN
+    boost applicato (individuale/di gilda restano scoped al solo tick
+    vocale, confermato in Fase 54)
   - `[~]` Tesoreria: deposito da tutti, prelievo solo capo/admin, log
     movimenti — `/clan tesoreria dona` scala il saldo personale e
     accredita la tesoreria (ufficializzando il clan in automatico se
@@ -690,9 +701,8 @@ necessario.
   - `[x]` Comandi: `/clan crea|info|membri|classifica|sciogli|
     tesoreria dona|tesoreria trasferisci|invita|espelli|promuovi|
     compra-canale|boost individuale|boost gilda` — tutti i comandi
-    previsti per §15.14 sono scritti; restano solo il lato testuale
-    del guadagno ×2 e il
-    prelievo dalla tesoreria (voci separate sopra)
+    previsti per §15.14 sono scritti; resta solo il prelievo dalla
+    tesoreria verso un membro (voce separata sopra)
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
@@ -864,13 +874,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 28 | 4 | 2 |
+| §15 Levels/Gilde | 29 | 3 | 2 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **153** | **9** | **111** |
+| **Totale** | **154** | **8** | **111** |
 
-Su 273 voci totali: **153 fatte, 9 parziali, 111 mancanti** — circa
+Su 273 voci totali: **154 fatte, 8 parziali, 111 mancanti** — circa
 il 58% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
@@ -889,11 +899,16 @@ documentazione trovato durante un controllo dell'utente e chiuso in
 questa sessione: `transfer_between_treasuries` esisteva già dal
 secondo pezzo del repository (l'ID globale dei clan, non per server,
 era stato scelto proprio per questo) ma non era mai stato collegato
-a nessun comando Discord né tracciato in questo schema. Restano solo
-il lato TESTUALE del guadagno ×2 (oggi solo vocale) e un comando di
+a nessun comando Discord né tracciato in questo schema. ORA anche il
+lato TESTUALE del guadagno ×2 è fatto (`GuildClanRepository.
+apply_text_tick`, agganciato a `on_message`) — e nello stesso
+controllo si è corretta una discrepanza reale trovata nel lato
+vocale: la prima calibrazione usava 30 XP/2 coin al tick (un target
+mensile assoluto), non il ×2 letterale dichiarato qui; ora è 10 XP/4
+coin, ×2 esatto del vocale normale. Resta solo un comando di
 PRELIEVO dalla tesoreria verso un membro per Capo/Admin (es. premio
-evento — diverso dal trasferimento tra gilde, ora fatto) — le uniche
-due voci ancora aperte in §15.14. §15.15 (non nello schema
+evento — diverso dal trasferimento tra gilde, ora fatto) — l'unica
+voce ancora aperta in §15.14. §15.15 (non nello schema
 originale, emersa in conversazione) è ORA COMPLETO: decadimento
 settimanale personale, cassa di server alimentata da entrambi i
 decadimenti, sblocco premium a doppio cancello (tempo dal join +
