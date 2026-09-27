@@ -5,6 +5,8 @@ Test della logica pura del Logging Avanzato (SPEC.md §8.6-§8.15,
 core/logging_advanced_logic.py) — nessun database, nessun discord.py.
 """
 
+from datetime import datetime, timedelta, timezone
+
 from core.logging_advanced_logic import (
     CHANNEL_TRACKED_KEYS,
     GUILD_TRACKED_KEYS,
@@ -13,6 +15,8 @@ from core.logging_advanced_logic import (
     diff_attributes,
     diff_id_sets,
     diff_named_items,
+    new_entries_since,
+    next_watermark,
 )
 
 
@@ -120,3 +124,59 @@ class TestClassifyVoiceStateChange:
             {"channel_id": 1, "mute": False, "deaf": False}, {"channel_id": 2, "mute": True, "deaf": False}
         )
         assert eventi == ["voice_move", "voice_mute"]
+
+
+def _t(secondi_fa: int) -> datetime:
+    return datetime.now(timezone.utc) - timedelta(seconds=secondi_fa)
+
+
+class TestNewEntriesSince:
+    def test_since_none_restituisce_sempre_vuoto_anche_con_voci_presenti(self):
+        # Prima attivazione del modulo: non si riversa lo storico.
+        voci = [{"created_at": _t(5)}, {"created_at": _t(1)}]
+        assert new_entries_since(voci, None) == []
+
+    def test_filtra_solo_le_voci_piu_recenti_del_watermark(self):
+        watermark = _t(10)
+        vecchia = {"created_at": _t(20)}
+        nuova = {"created_at": _t(2)}
+        risultato = new_entries_since([vecchia, nuova], watermark)
+        assert risultato == [nuova]
+
+    def test_ordina_dalla_piu_vecchia_alla_piu_nuova(self):
+        watermark = _t(100)
+        a = {"created_at": _t(5), "id": "a"}
+        b = {"created_at": _t(50), "id": "b"}
+        c = {"created_at": _t(20), "id": "c"}
+        risultato = new_entries_since([a, b, c], watermark)
+        assert [r["id"] for r in risultato] == ["b", "c", "a"]
+
+    def test_nessuna_voce_nuova_restituisce_vuoto(self):
+        watermark = _t(1)
+        vecchia = {"created_at": _t(50)}
+        assert new_entries_since([vecchia], watermark) == []
+
+
+class TestNextWatermark:
+    def test_nessuna_voce_mantiene_il_watermark_attuale(self):
+        attuale = _t(10)
+        assert next_watermark([], attuale) == attuale
+
+    def test_nessuna_voce_e_nessun_watermark_resta_none(self):
+        assert next_watermark([], None) is None
+
+    def test_prima_attivazione_stabilisce_la_base_dalla_voce_piu_recente(self):
+        piu_recente = _t(1)
+        voci = [{"created_at": _t(5)}, {"created_at": piu_recente}]
+        assert next_watermark(voci, None) == piu_recente
+
+    def test_avanza_solo_se_la_voce_e_piu_recente_del_watermark_attuale(self):
+        attuale = _t(10)
+        voci = [{"created_at": _t(50)}]  # più vecchia del watermark
+        assert next_watermark(voci, attuale) == attuale
+
+    def test_avanza_al_massimo_tra_le_voci_lette(self):
+        attuale = _t(100)
+        piu_recente = _t(1)
+        voci = [{"created_at": _t(30)}, {"created_at": piu_recente}]
+        assert next_watermark(voci, attuale) == piu_recente

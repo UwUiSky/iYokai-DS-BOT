@@ -32,6 +32,7 @@ async def test_advanced_logs_cog_si_carica_e_tutti_i_listener_sono_registrati():
         "on_guild_channel_update",
         "on_invite_create",
         "on_invite_delete",
+        "on_member_join",
         "on_voice_state_update",
         "on_webhooks_update",
         "on_guild_emojis_update",

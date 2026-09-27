@@ -1,7 +1,7 @@
 """
 tests/test_advanced_logs_channel_resolution.py
 ====================================================
-Test di _advanced_log_channel() (cogs/logging/advanced_logs.py) —
+Test di advanced_log_channel() (cogs/logging/advanced_logs.py) —
 stesso schema di tests/test_logging_channel_resolution.py, con
 MODULE_LOGGING_ADVANCED al posto di MODULE_LOGGING (i due livelli
 usano lo stesso canale configurato, ma moduli diversi decidono se ci
@@ -47,7 +47,7 @@ async def test_nessun_modulo_attivo_restituisce_none():
         advanced_logs.db = database
         try:
             fake_guild = _FakeGuild(guild_id, {})
-            risultato = await advanced_logs._advanced_log_channel(fake_guild)
+            risultato = await advanced_logs.advanced_log_channel(fake_guild)
             assert risultato is None
         finally:
             advanced_logs.db = original_db
@@ -70,7 +70,7 @@ async def test_modulo_attivo_ma_nessun_canale_configurato_restituisce_none():
         advanced_logs.db = database
         try:
             fake_guild = _FakeGuild(guild_id, {})
-            risultato = await advanced_logs._advanced_log_channel(fake_guild)
+            risultato = await advanced_logs.advanced_log_channel(fake_guild)
             assert risultato is None
         finally:
             advanced_logs.db = original_db
@@ -96,7 +96,7 @@ async def test_modulo_di_base_attivo_ma_avanzato_no_restituisce_none():
         advanced_logs.db = database
         try:
             fake_guild = _FakeGuild(guild_id, {999: _FakeTextChannel(999)})
-            risultato = await advanced_logs._advanced_log_channel(fake_guild)
+            risultato = await advanced_logs.advanced_log_channel(fake_guild)
             assert risultato is None
         finally:
             advanced_logs.db = original_db
@@ -120,7 +120,7 @@ async def test_canale_di_tipo_sbagliato_restituisce_none():
         advanced_logs.db = database
         try:
             fake_guild = _FakeGuild(guild_id, {999: _FakeChannel(999)})
-            risultato = await advanced_logs._advanced_log_channel(fake_guild)
+            risultato = await advanced_logs.advanced_log_channel(fake_guild)
             assert risultato is None
         finally:
             advanced_logs.db = original_db

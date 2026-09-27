@@ -16,6 +16,8 @@ cambiato".
 
 from __future__ import annotations
 
+from datetime import datetime
+
 
 def diff_attributes(before: dict, after: dict, tracked_keys: tuple[str, ...]) -> dict:
     """
@@ -72,6 +74,43 @@ def diff_named_items(
         if before[i] != after[i]
     ]
     return {"created": created, "deleted": deleted, "renamed": renamed}
+
+
+def new_entries_since(entries: list[dict], since: datetime | None) -> list[dict]:
+    """
+    Filtra le voci di audit log (dict con almeno la chiave
+    `created_at`) a quelle strettamente più recenti di `since`,
+    ordinate dalla più vecchia alla più nuova (un log si legge in
+    ordine cronologico, non al contrario).
+
+    `since=None` significa "prima volta che questo server viene
+    controllato": restituisce SEMPRE lista vuota, deliberatamente —
+    altrimenti la prima attivazione del modulo riverserebbe nel
+    canale di log tutto lo storico esistente del server invece di
+    limitarsi a segnalare quello che succede da qui in avanti.
+    `next_watermark()` stabilisce comunque una base di partenza da
+    quel primo controllo, anche se questa funzione non restituisce
+    nulla in quel turno.
+    """
+    if since is None:
+        return []
+    nuove = [e for e in entries if e["created_at"] > since]
+    nuove.sort(key=lambda e: e["created_at"])
+    return nuove
+
+
+def next_watermark(entries: list[dict], current: datetime | None) -> datetime | None:
+    """
+    Il nuovo "watermark" (timestamp dell'ultima voce vista) da
+    salvare dopo un giro di polling — il più recente tra quello
+    attuale e le voci appena lette, mai indietro nel tempo.
+    """
+    if not entries:
+        return current
+    piu_recente = max(e["created_at"] for e in entries)
+    if current is None or piu_recente > current:
+        return piu_recente
+    return current
 
 
 def classify_voice_state_change(before: dict, after: dict) -> list[str]:

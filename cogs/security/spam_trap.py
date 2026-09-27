@@ -337,7 +337,12 @@ class SpamTrapCog(commands.Cog):
     async def on_member_join(self, member: discord.Member) -> None:
         if not await db.is_module_active_for_guild(member.guild.id, MODULE_SPAM_TRAP):
             return
-        risultato = await invite_tracker.find_used_invite(member.guild)
+        # resolve_join_invite(), non find_used_invite() direttamente:
+        # da quando anche il Logging Avanzato (SPEC.md §8.8) risolve
+        # l'invito usato per lo stesso on_member_join, chiamare la
+        # versione mutante da due punti indipendenti causerebbe una
+        # "corsa" — vedi la nota architetturale in core/invite_tracker.py.
+        risultato = await invite_tracker.resolve_join_invite(member.guild, member.id)
         code, creator_id = risultato if risultato else (None, None)
         await spam_trap_repo.record_join_invite(member.guild.id, member.id, code, creator_id)
 

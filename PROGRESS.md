@@ -3604,6 +3604,98 @@ di fila).
 
 ---
 
+### Fase 70b — Correzione: sia 8.13 Soundboard sia 8.8 Invite "use"
+erano davvero costruibili — l'utente ha avuto ragione su entrambi,
+non fermarsi al primo "non si può"
+
+Subito dopo la Fase 70, l'utente ha rimesso in discussione ENTRAMBI i
+punti lasciati `[ ]`/`[~]` con motivazioni specifiche, non un "riprova
+comunque":
+
+**8.13 Soundboard** — "mi pare discord stesso lo stampa nei suoi
+log": verificato leggendo l'enum reale della libreria installata
+(`python3 -c "import discord; ..."`, non a memoria) —
+`discord.AuditLogAction.soundboard_sound_create/update/delete`
+ESISTONO. L'errore della Fase 70 è stato confondere "nessun evento
+GATEWAY dedicato" (vero, resta vero) con "non recuperabile" (falso —
+l'audit log lo registra comunque, va solo interrogato a intervalli
+invece che atteso via listener). Costruito
+`core/soundboard_log_service.py`: stesso pattern architetturale di
+`core/event_log_retention.py` (`tasks.loop` periodico, avviato da
+main.py, non un Cog con listener — l'audit log non manda eventi, va
+letto). Poll ogni 5 minuti, watermark persistito per server
+(riusa il guild setting generico, nessuna nuova tabella) per non
+ri-loggare le stesse voci né riversare tutto lo storico esistente
+alla primissima attivazione del modulo (logica pura in
+`core/logging_advanced_logic.py`: `new_entries_since`/
+`next_watermark`, testata a sé).
+
+**8.8 Invite "use"** — l'utente ha correttamente individuato che il
+mio ragionamento precedente confondeva un problema INTERNO
+all'infrastruttura (il diff mutante di `find_used_invite()`) con un
+problema del CONCETTO "chiedi chi ha invitato l'utente X" — cosa che
+di per sé non ha nulla di impossibile, come faceva notare lui. La
+soluzione reale non era arrendersi, ma disaccoppiare "chi lo chiede"
+da "come viene calcolato una volta sola": nuovo metodo
+`invite_tracker.resolve_join_invite(guild, member_id)`
+(`core/invite_tracker.py`) — lock + cache per COPPIA (server,
+membro), non per server. La prima chiamata per un dato join fa il
+lavoro reale (fetch + diff); ogni altra chiamata per la STESSA coppia
+— anche concorrente, dato che `discord.py` non garantisce un ordine
+tra i listener di Cog diversi sullo stesso evento — riceve la stessa
+risposta già calcolata, senza un secondo diff. Spam Trap
+(`cogs/security/spam_trap.py`) migrato a usare questo metodo al posto
+della chiamata diretta a `find_used_invite()`; il Logging Avanzato
+(`cogs/logging/advanced_logs.py`) ora ha il proprio `on_member_join`
+che fa lo stesso, in sicurezza.
+
+**Lezione**: la Fase 70 aveva scritto una spiegazione tecnicamente
+plausibile ("bug di condivisione di stato") ma si era fermata al
+primo ostacolo trovato invece di chiedersi se esistesse un modo di
+disaccoppiare il problema. Un limite reale di libreria (nessun
+evento gateway) non implica automaticamente che il DATO sia
+irrecuperabile (l'audit log lo aveva comunque) né che un problema di
+CONCORRENZA tra chiamanti implichi che la funzionalità richiesta sia
+irrealizzabile (bastava un lock+cache per la giusta granularità).
+
+**11 nuovi test**: 4 in `tests/test_soundboard_log_service.py`
+(modulo non attivo ignorato, prima attivazione non riversa lo
+storico ma stabilisce il watermark, un secondo tick rileva una voce
+nuova, permessi insufficienti su un'azione non blocca le altre); 4
+nuovi in `tests/test_invite_tracker.py` (risoluzione singola,
+due chiamate sequenziali per lo stesso join danno la stessa risposta,
+chiamate CONCORRENTI — `asyncio.gather` — per lo stesso join non si
+pestano i piedi, membri diversi sullo stesso server sono
+indipendenti, un `None` risolto resta comunque in cache); 3 nuovi test
+di logica pura per `new_entries_since`/`next_watermark`
+(già contati nel totale della Fase 70, qui solo le aggiunte di questa
+correzione sopra quel numero).
+
+**Bug di test scoperto e corretto durante la scrittura di
+`tests/test_soundboard_log_service.py`, non nel codice applicativo**:
+`is_module_active_for_guild` ha una cache PER ISTANZA (BoundedCache).
+Il fixture del test crea una `Database()` locale ma il codice
+applicativo (`core/soundboard_log_service.py`) legge dal SINGLETON
+reale (`core.database.db`) — due istanze diverse, due cache diverse.
+`set_module_active_for_guild()` chiamato sull'istanza locale del test
+invalida solo la SUA cache, non quella del singleton: un test
+precedente sullo stesso GUILD_ID lasciava lì un valore stantio letto
+in un giro precedente. Fix: invalidare esplicitamente
+`real_db_singleton._modules_cache.delete(GUILD_ID)` nel fixture,
+oltre a spostare `._pool`. Variante nuova dello stesso principio già
+noto (Fase 67/68: un singleton condiviso serve un'istanza fresca per
+test, o qui, la sua cache va invalidata esplicitamente).
+
+SPEC.md §8: 8.8 passa da `[~]` a `[x]`, 8.13 da `[ ]` a `[x]` — §8
+ora completo tranne 8.16 (Message delete/edit, rimandato per scelta
+esplicita). §8 passa da 15/1/2 a **17/0/1**. Totale ricalcolato
+meccanicamente: **214/2/60**.
+
+**Suite di test completa: 1832/1832 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

@@ -447,7 +447,7 @@ file, non da un riassunto.**
   della creazione del case) con un campo aggiuntivo nell'embed di log
   quando la propagazione avviene.
 
-## §8 LOGGING — completo tranne Soundboard (limite di libreria) e Message delete/edit (rimandato, Message Content Intent)
+## §8 LOGGING — completo tranne Message delete/edit (rimandato, Message Content Intent)
 
 - `[x]` 8.1 Member join
 - `[x]` 8.2 Member leave
@@ -463,15 +463,21 @@ file, non da un riassunto.**
   overwrite di permesso canale-per-canale resta escluso per scelta
   di scope (complessità non richiesta per un log, non un limite
   tecnico)
-- `[~]` 8.8 Invite create / delete / use — create/delete costruiti
-  (eventi gateway dedicati). **"use" deliberatamente escluso**:
-  `core/invite_tracker.py` muta la propria cache a ogni chiamata di
-  `find_used_invite()`; Spam Trap e Verify la chiamano già ciascuno
-  per proprio conto sullo stesso evento di join. Una terza chiamata
-  indipendente da qui introdurrebbe un bug di condivisione di stato
-  (una delle chiamate concorrenti riceverebbe `None` in modo
-  imprevedibile), non una funzionalità in più — non costruita per
-  questo motivo, non per pigrizia
+- `[x]` 8.8 Invite create / delete / use — "use" risolto con un nuovo
+  metodo, `invite_tracker.resolve_join_invite(guild, member_id)`
+  (`core/invite_tracker.py`), non con `find_used_invite()`
+  direttamente: quest'ultimo muta la propria cache ad ogni chiamata
+  (aggiorna l'istantanea per il prossimo confronto), quindi due
+  moduli indipendenti (Spam Trap e il Logging Avanzato) che lo
+  chiamassero ciascuno per proprio conto sullo stesso evento di join
+  darebbero `None` a chi arriva secondo. `resolve_join_invite()`
+  risolve la corsa con un lock + cache per coppia (server, membro):
+  la prima chiamata per un dato join fa il lavoro reale, ogni altra
+  chiamata per lo stesso join — da qualunque modulo, in qualunque
+  ordine (`discord.py` non garantisce un ordine tra i listener di
+  Cog diversi sullo stesso evento) — riceve la stessa risposta senza
+  un secondo fetch/diff. Spam Trap aggiornato per usare lo stesso
+  metodo
 - `[x]` 8.9 **Voice state**: join / leave / move / mute / deafen —
   "mute"/"deafen" semplificato allo stato EFFETTIVO (server-mute/
   deafen oppure self-mute/self-deafen), non le quattro variabili
@@ -482,11 +488,18 @@ file, non da un riassunto.**
   stesso principio già usato per l'autore in Anti-Nuke (§7.2)
 - `[x]` 8.11 Emoji create / delete / update
 - `[x]` 8.12 Sticker create / delete / update
-- `[ ]` 8.13 Soundboard create / delete / update — **non
-  costruibile con l'attuale discord.py 2.7**: limite già trovato e
-  documentato durante l'Anti-Nuke (§7.2, PROGRESS.md Fase 68), nessun
-  evento gateway dedicato esposto dalla libreria. Stesso limite,
-  non re-investigato da zero
+- `[x]` 8.13 Soundboard create / delete / update — **non via evento
+  gateway** (quella parte del limite trovato nell'Anti-Nuke, §7.2,
+  resta vera: nessun `on_soundboard_sound_...` esiste nella
+  libreria), ma via POLLING PERIODICO dell'audit log
+  (`discord.AuditLogAction.soundboard_sound_create/update/delete`
+  esistono ed è lì che Discord registra l'evento — verificato
+  leggendo l'enum reale della libreria installata, non assunto).
+  `core/soundboard_log_service.py`, stesso pattern architetturale di
+  `core/event_log_retention.py` (un `tasks.loop`, non un listener),
+  ogni 5 minuti, con un "watermark" persistito per server per non
+  ri-loggare le stesse voci né riversare lo storico alla prima
+  attivazione
 - `[x]` 8.14 Thread events — create/delete/update (nome, archiviato,
   bloccato)
 - `[x]` 8.15 Server update (impostazioni guild) — nome, icona,
@@ -1234,7 +1247,7 @@ rilancia lo stesso conteggio.
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 15 | 0 | 0 |
 | §7 Security | 33 | 0 | 1 |
-| §8 Logging | 15 | 1 | 2 |
+| §8 Logging | 17 | 0 | 1 |
 | §9 Music | 8 | 1 | 0 |
 | §10 Alerts | 6 | 0 | 1 |
 | §11 Backup | 13 | 0 | 0 |
@@ -1245,7 +1258,7 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **212** | **3** | **61** |
+| **Totale** | **214** | **2** | **60** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/

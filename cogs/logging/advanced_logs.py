@@ -11,28 +11,38 @@ eventi arrivano lì SOLO se il server ha sbloccato/attivato anche
 `MODULE_LOGGING_ADVANCED`.
 
 Copre: 8.6 Role update, 8.7 Channel create/delete/update, 8.8 Invite
-create/delete (vedi nota sotto sul perché "use" resta escluso qui),
-8.9 Voice state, 8.10 Webhook, 8.11 Emoji, 8.12 Sticker, 8.14 Thread,
-8.15 Server update. Ogni evento viene anche salvato nel log eventi
-unificato (core/repositories/event_log_repo.py), stesso principio di
-basic_logs.py.
+create/delete/use, 8.9 Voice state, 8.10 Webhook, 8.11 Emoji, 8.12
+Sticker, 8.14 Thread, 8.15 Server update. Ogni evento viene anche
+salvato nel log eventi unificato (core/repositories/event_log_repo.py),
+stesso principio di basic_logs.py.
 
-**8.8 "use" deliberatamente escluso qui**: `core/invite_tracker.py`
-(`find_used_invite`) MUTA la propria cache a ogni chiamata (aggiorna
-l'istantanea per il prossimo confronto). Spam Trap e Verify la
-chiamano già ciascuno per proprio conto in `on_member_join` quando
-il proprio modulo è attivo — una TERZA chiamata indipendente da qui,
-sullo STESSO evento di join, "consumerebbe" il diff prima o dopo le
-altre due, restituendo `None` a una delle chiamate concorrenti in
-modo imprevedibile. Duplicare la chiamata qui introdurrebbe un bug
-di condivisione di stato, non una funzionalità in più — "create" e
-"delete" restano coperti (eventi gateway dedicati, nessuno stato
-condiviso), "use" no.
+**8.8 "use"**: usa `invite_tracker.resolve_join_invite()`, non
+`find_used_invite()` direttamente — quest'ultimo MUTA la propria
+cache ad ogni chiamata (aggiorna l'istantanea per il prossimo
+confronto), quindi chiamarlo da qui E da Spam Trap sullo STESSO
+evento di join avrebbe fatto sì che la seconda chiamata vedesse il
+diff già "consumato" dalla prima, restituendo `None` in modo
+imprevedibile. `resolve_join_invite()` (vedi la nota architetturale
+in core/invite_tracker.py) risolve questo con un lock + cache per
+coppia (server, membro): la prima chiamata per un dato join fa il
+lavoro reale, ogni altra chiamata per lo stesso join — da qualunque
+modulo, in qualunque ordine — riceve la stessa risposta.
 
-**8.13 Soundboard esplicitamente NON incluso**: limite già trovato e
-documentato durante l'Anti-Nuke (SPEC.md §7.2, PROGRESS.md Fase 68)
-— discord.py 2.7 non espone un evento gateway dedicato per il
-soundboard. Stessa conclusione, non re-investigata da zero.
+**8.13 Soundboard — coperto, ma non da un listener di questo file**:
+la prima analisi (Fase 70) concludeva erroneamente che fosse
+bloccato — vero solo per gli eventi GATEWAY (`on_webhooks_update` e
+simili non esistono per il soundboard). L'AUDIT LOG del server SI
+registra `soundboard_sound_create/update/delete`
+(`discord.AuditLogAction`, verificato leggendo l'enum reale
+installata), quindi è recuperabile — solo non via un evento push,
+via polling periodico. Costruito come servizio a parte,
+`core/soundboard_log_service.py` (stesso pattern di
+`core/event_log_retention.py`: un `tasks.loop`, non un listener),
+perché un Cog di questo file reagisce a eventi che Discord manda da
+solo — l'audit log va invece INTERROGATO a intervalli. Le funzioni
+`advanced_log_channel`/`send_event_embed`/`EVENT_TITLES` di questo
+file sono condivise (non più `_private`) apposta per essere riusate
+da quel servizio, invece di duplicarle.
 
 **8.16 Message delete/edit resta fuori per scelta esplicita** (serve
 il Message Content Intent, vedi § Decisioni in SPEC.md) — non
@@ -48,6 +58,7 @@ from discord.ext import commands
 
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 from core.database import db
+from core.invite_tracker import invite_tracker
 from core.logging_advanced_logic import (
     CHANNEL_TRACKED_KEYS,
     GUILD_TRACKED_KEYS,
@@ -74,13 +85,14 @@ _WEBHOOK_ACTIONS = {
     discord.AuditLogAction.webhook_delete: "webhook_delete",
 }
 
-_EVENT_TITLES = {
+EVENT_TITLES = {
     "role_edit": ("🎨 Ruolo modificato", discord.Color.blurple()),
     "channel_create": ("➕ Canale creato", discord.Color.green()),
     "channel_delete": ("➖ Canale eliminato", discord.Color.red()),
     "channel_update": ("✏️ Canale modificato", discord.Color.blurple()),
     "invite_create": ("🔗 Invito creato", discord.Color.green()),
     "invite_delete": ("🔗 Invito eliminato", discord.Color.red()),
+    "invite_use": ("🔗 Invito usato", discord.Color.blurple()),
     "webhook_create": ("🪝 Webhook creato", discord.Color.green()),
     "webhook_update": ("🪝 Webhook modificato", discord.Color.blurple()),
     "webhook_delete": ("🪝 Webhook eliminato", discord.Color.red()),
@@ -101,7 +113,17 @@ _EVENT_TITLES = {
     "voice_unmute": ("🔊 Smutato (server)", discord.Color.green()),
     "voice_deafen": ("🔇 Assordato (server)", discord.Color.orange()),
     "voice_undeafen": ("🔊 Non più assordato (server)", discord.Color.green()),
+    "soundboard_sound_create": ("🔔 Suono soundboard creato", discord.Color.green()),
+    "soundboard_sound_update": ("🔔 Suono soundboard modificato", discord.Color.blurple()),
+    "soundboard_sound_delete": ("🔔 Suono soundboard eliminato", discord.Color.red()),
 }
+
+# Guild setting generico (stesso meccanismo di SETTING_LOG_CHANNEL)
+# dove core/soundboard_log_service.py salva il "watermark" — il
+# timestamp dell'ultima voce di audit log soundboard già processata,
+# per non ri-loggare la stessa voce al prossimo giro di polling né,
+# alla primissima attivazione, riversare tutto lo storico esistente.
+SETTING_SOUNDBOARD_WATERMARK = "logging_soundboard_watermark"
 
 
 def _role_snapshot(role: discord.Role) -> dict:
@@ -152,7 +174,7 @@ def _voice_state_snapshot(state: discord.VoiceState) -> dict:
     }
 
 
-async def _advanced_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
+async def advanced_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
     enabled = await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED)
     if not enabled:
         return None
@@ -165,13 +187,13 @@ async def _advanced_log_channel(guild: discord.Guild) -> discord.TextChannel | N
     return channel
 
 
-async def _send_event_embed(
+async def send_event_embed(
     guild: discord.Guild, event_type: str, description: str
 ) -> None:
-    channel = await _advanced_log_channel(guild)
+    channel = await advanced_log_channel(guild)
     if channel is None:
         return
-    title, color = _EVENT_TITLES.get(event_type, (event_type, discord.Color.default()))
+    title, color = EVENT_TITLES.get(event_type, (event_type, discord.Color.default()))
     embed = discord.Embed(
         title=title, description=description, color=color, timestamp=discord.utils.utcnow()
     )
@@ -225,7 +247,7 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             after.guild.id, "role_edit", role_id=after.id, details=changes
         )
-        await _send_event_embed(
+        await send_event_embed(
             after.guild, "role_edit", f"{after.mention}\n" + ", ".join(changes.keys())
         )
 
@@ -239,7 +261,7 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             channel.guild.id, "channel_create", channel_id=channel.id, details={"name": channel.name}
         )
-        await _send_event_embed(channel.guild, "channel_create", f"`#{channel.name}` ({channel.id})")
+        await send_event_embed(channel.guild, "channel_create", f"`#{channel.name}` ({channel.id})")
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
@@ -248,7 +270,7 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             channel.guild.id, "channel_delete", channel_id=channel.id, details={"name": channel.name}
         )
-        await _send_event_embed(channel.guild, "channel_delete", f"`#{channel.name}` ({channel.id})")
+        await send_event_embed(channel.guild, "channel_delete", f"`#{channel.name}` ({channel.id})")
 
     @commands.Cog.listener()
     async def on_guild_channel_update(
@@ -262,14 +284,35 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             after.guild.id, "channel_update", channel_id=after.id, details=changes
         )
-        await _send_event_embed(
+        await send_event_embed(
             after.guild, "channel_update", f"<#{after.id}>\n" + ", ".join(changes.keys())
         )
 
     # ================================================================
-    # 8.8 Inviti (create/delete — "use" deliberatamente escluso, vedi
-    # nota in cima al file)
+    # 8.8 Inviti (create/delete/use — "use" via resolve_join_invite,
+    # vedi nota in cima al file)
     # ================================================================
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_LOGGING_ADVANCED):
+            return
+        risultato = await invite_tracker.resolve_join_invite(member.guild, member.id)
+        if risultato is None:
+            return
+        codice, creator_id = risultato
+        await event_log_repo.log_event(
+            member.guild.id,
+            "invite_use",
+            actor_id=creator_id,
+            target_user_id=member.id,
+            details={"code": codice},
+        )
+        descrizione = f"{member.mention} tramite `{codice}`"
+        if creator_id is not None:
+            descrizione += f" (creato da <@{creator_id}>)"
+        await send_event_embed(member.guild, "invite_use", descrizione)
+
+
     @commands.Cog.listener()
     async def on_invite_create(self, invite: discord.Invite) -> None:
         guild = invite.guild
@@ -282,7 +325,7 @@ class AdvancedLogsCog(commands.Cog):
             channel_id=invite.channel.id if invite.channel else None,
             details={"code": invite.code},
         )
-        await _send_event_embed(guild, "invite_create", f"`{invite.code}`")
+        await send_event_embed(guild, "invite_create", f"`{invite.code}`")
 
     @commands.Cog.listener()
     async def on_invite_delete(self, invite: discord.Invite) -> None:
@@ -295,7 +338,7 @@ class AdvancedLogsCog(commands.Cog):
             channel_id=invite.channel.id if invite.channel else None,
             details={"code": invite.code},
         )
-        await _send_event_embed(guild, "invite_delete", f"`{invite.code}`")
+        await send_event_embed(guild, "invite_delete", f"`{invite.code}`")
 
     # ================================================================
     # 8.9 Voice state
@@ -315,7 +358,7 @@ class AdvancedLogsCog(commands.Cog):
                 target_user_id=member.id,
                 channel_id=canale_rilevante.id if canale_rilevante is not None else None,
             )
-            await _send_event_embed(member.guild, event_type, f"{member.mention}")
+            await send_event_embed(member.guild, event_type, f"{member.mention}")
 
     # ================================================================
     # 8.10 Webhook
@@ -332,7 +375,7 @@ class AdvancedLogsCog(commands.Cog):
             channel.guild.id, event_type, actor_id=actor_id, channel_id=channel.id
         )
         descrizione = f"<#{channel.id}>" + (f" — <@{actor_id}>" if actor_id else "")
-        await _send_event_embed(channel.guild, event_type, descrizione)
+        await send_event_embed(channel.guild, event_type, descrizione)
 
     # ================================================================
     # 8.11 Emoji
@@ -346,13 +389,13 @@ class AdvancedLogsCog(commands.Cog):
         diff = diff_named_items({e.id: e.name for e in before}, {e.id: e.name for e in after})
         for item in diff["created"]:
             await event_log_repo.log_event(guild.id, "emoji_create", details=item)
-            await _send_event_embed(guild, "emoji_create", f"`{item['name']}`")
+            await send_event_embed(guild, "emoji_create", f"`{item['name']}`")
         for item in diff["deleted"]:
             await event_log_repo.log_event(guild.id, "emoji_delete", details=item)
-            await _send_event_embed(guild, "emoji_delete", f"`{item['name']}`")
+            await send_event_embed(guild, "emoji_delete", f"`{item['name']}`")
         for item in diff["renamed"]:
             await event_log_repo.log_event(guild.id, "emoji_update", details=item)
-            await _send_event_embed(guild, "emoji_update", f"`{item['before']}` → `{item['after']}`")
+            await send_event_embed(guild, "emoji_update", f"`{item['before']}` → `{item['after']}`")
 
     # ================================================================
     # 8.12 Sticker
@@ -366,13 +409,13 @@ class AdvancedLogsCog(commands.Cog):
         diff = diff_named_items({s.id: s.name for s in before}, {s.id: s.name for s in after})
         for item in diff["created"]:
             await event_log_repo.log_event(guild.id, "sticker_create", details=item)
-            await _send_event_embed(guild, "sticker_create", f"`{item['name']}`")
+            await send_event_embed(guild, "sticker_create", f"`{item['name']}`")
         for item in diff["deleted"]:
             await event_log_repo.log_event(guild.id, "sticker_delete", details=item)
-            await _send_event_embed(guild, "sticker_delete", f"`{item['name']}`")
+            await send_event_embed(guild, "sticker_delete", f"`{item['name']}`")
         for item in diff["renamed"]:
             await event_log_repo.log_event(guild.id, "sticker_update", details=item)
-            await _send_event_embed(guild, "sticker_update", f"`{item['before']}` → `{item['after']}`")
+            await send_event_embed(guild, "sticker_update", f"`{item['before']}` → `{item['after']}`")
 
     # ================================================================
     # 8.14 Thread
@@ -384,7 +427,7 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             thread.guild.id, "thread_create", channel_id=thread.id, details={"name": thread.name}
         )
-        await _send_event_embed(thread.guild, "thread_create", f"`{thread.name}`")
+        await send_event_embed(thread.guild, "thread_create", f"`{thread.name}`")
 
     @commands.Cog.listener()
     async def on_thread_delete(self, thread: discord.Thread) -> None:
@@ -393,7 +436,7 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             thread.guild.id, "thread_delete", channel_id=thread.id, details={"name": thread.name}
         )
-        await _send_event_embed(thread.guild, "thread_delete", f"`{thread.name}`")
+        await send_event_embed(thread.guild, "thread_delete", f"`{thread.name}`")
 
     @commands.Cog.listener()
     async def on_thread_update(self, before: discord.Thread, after: discord.Thread) -> None:
@@ -405,7 +448,7 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             after.guild.id, "thread_update", channel_id=after.id, details=changes
         )
-        await _send_event_embed(after.guild, "thread_update", f"`{after.name}`\n" + ", ".join(changes.keys()))
+        await send_event_embed(after.guild, "thread_update", f"`{after.name}`\n" + ", ".join(changes.keys()))
 
     # ================================================================
     # 8.15 Server (impostazioni guild)
@@ -418,7 +461,7 @@ class AdvancedLogsCog(commands.Cog):
         if not changes:
             return
         await event_log_repo.log_event(after.id, "guild_update", details=changes)
-        await _send_event_embed(after, "guild_update", ", ".join(changes.keys()))
+        await send_event_embed(after, "guild_update", ", ".join(changes.keys()))
 
 
 async def setup(bot: commands.Bot) -> None:

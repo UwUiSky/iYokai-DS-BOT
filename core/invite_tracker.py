@@ -22,6 +22,22 @@ core/memory_guard.py (servizio in core/, avviato esplicitamente da
 main.py; qui invece serve un Cog perché servono listener di eventi,
 non un tasks.loop periodico).
 
+**`resolve_join_invite()` — perché esiste accanto a `find_used_invite()`**
+(bug evitato durante lo sviluppo di SPEC.md §8.8, PROGRESS.md Fase
+70): `find_used_invite()` FA un fetch + diff + aggiorna la propria
+istantanea ad ogni chiamata — chiamarlo due volte per lo STESSO join
+(es. da Spam Trap E da un modulo di logging, entrambi nel proprio
+`on_member_join`) farebbe sì che la seconda chiamata veda già
+aggiornata l'istantanea dalla prima, calcoli un diff vuoto e
+restituisca `None`. `resolve_join_invite(guild, member_id)` risolve
+questo: memorizza il risultato per la coppia (server, membro) e, se
+chiamato più volte per la stessa coppia — anche in concorrenza, dato
+che `discord.py` non garantisce un ordine tra i listener di Cog
+diversi sullo stesso evento — fa il lavoro reale una sola volta (un
+`asyncio.Lock` per coppia) e restituisce la STESSA risposta a tutti.
+Ogni nuovo modulo che deve sapere "con quale invito è entrato questo
+membro" chiama questo metodo, mai `find_used_invite()` direttamente.
+
 Limiti onesti (già noti, non scoperti a sorpresa):
 - Non funziona con i join tramite vanity URL (non è un invito con
   un codice tracciabile nello stesso modo)
@@ -35,6 +51,7 @@ notato nello schema di progetto originale (~90%).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -64,6 +81,21 @@ class InviteTracker:
         self._inviters: BoundedCache[int, dict[str, int | None]] = BoundedCache(
             max_tracked_guilds
         )
+        # Risultato già risolto per una coppia (guild_id, member_id) —
+        # vedi resolve_join_invite(). Dimensione più ampia dei server
+        # tracciati: qui la chiave è per SINGOLO JOIN, non per server,
+        # ma il dato è irrilevante dopo pochi secondi (letto una
+        # manciata di volte subito dopo il join) — l'eviction LRU
+        # basta, non serve una scadenza esplicita.
+        self._join_results: BoundedCache[tuple[int, int], tuple[str, int | None] | None] = (
+            BoundedCache(max_tracked_guilds * 4)
+        )
+        # Un lock per coppia (guild_id, member_id) mentre la
+        # risoluzione è in corso, per far sì che chiamate concorrenti
+        # per lo STESSO join aspettino il risultato invece di
+        # innescare ciascuna il proprio diff (che si pesterebbero i
+        # piedi, vedi nota in cima al file).
+        self._join_locks: dict[tuple[int, int], asyncio.Lock] = {}
 
     async def refresh_guild(self, guild: discord.Guild) -> None:
         """
@@ -133,6 +165,40 @@ class InviteTracker:
         if codice is None:
             return None
         return codice, inviters_dopo.get(codice)
+
+    async def resolve_join_invite(
+        self, guild: discord.Guild, member_id: int
+    ) -> tuple[str, int | None] | None:
+        """
+        Punto d'ingresso SICURO per "con quale invito è entrato
+        questo membro?", pensato per essere chiamato da PIÙ moduli
+        indipendenti sullo stesso join (Spam Trap, il Logging
+        Avanzato, in futuro Verify) senza che si pestino i piedi —
+        vedi la nota architetturale in cima al file per il bug che
+        risolve rispetto a chiamare `find_used_invite()` direttamente
+        da più posti.
+
+        La prima chiamata per una coppia (guild_id, member_id) fa il
+        lavoro reale; ogni chiamata successiva per la STESSA coppia
+        (anche se in corso contemporaneamente, grazie al lock)
+        restituisce lo stesso risultato già calcolato, senza un
+        secondo fetch/diff.
+        """
+        key = (guild.id, member_id)
+        if key in self._join_results:
+            return self._join_results.get(key)
+
+        lock = self._join_locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            # Un altro chiamante potrebbe aver già risolto questa
+            # stessa coppia mentre aspettavamo il lock.
+            if key in self._join_results:
+                return self._join_results.get(key)
+
+            risultato = await self.find_used_invite(guild)
+            self._join_results.set(key, risultato)
+            self._join_locks.pop(key, None)
+            return risultato
 
 
 # Istanza unica, condivisa da tutto il progetto — coerente con

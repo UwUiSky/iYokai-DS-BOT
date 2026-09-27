@@ -39,6 +39,7 @@ from core.premium import reload_premium_flags_from_database
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
+from core.soundboard_log_service import soundboard_log_service
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.monthly_winners_announcer import monthly_winners_announcer
@@ -211,6 +212,12 @@ class iYokaiBot(commands.AutoShardedBot):
         # una volta al giorno, soglia diversa per server in base allo
         # stato Free/Premium. Stesso pattern di Memory Guard.
         event_log_retention.start(self)
+
+        # Log soundboard (SPEC.md §8.13): nessun evento gateway
+        # dedicato esiste per questo nella libreria — polling
+        # periodico dell'audit log, non un listener. Stesso pattern
+        # di Memory Guard/Retention.
+        soundboard_log_service.start(self)
 
         # Feed watcher (SPEC.md §10.3/10.7/10.8): polling ogni 5
         # minuti dei feed RSS/Atom sottoscritti (YouTube, Reddit,
