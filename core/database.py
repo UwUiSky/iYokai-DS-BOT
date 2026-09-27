@@ -298,6 +298,11 @@ class Database:
         )
         await feed_subscription_migrations(self.pool)
 
+        from core.repositories.custom_webhook_repo import (
+            run_migrations as custom_webhook_migrations,
+        )
+        await custom_webhook_migrations(self.pool)
+
         from core.repositories.music_session_repo import (
             run_migrations as music_session_migrations,
         )

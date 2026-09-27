@@ -115,6 +115,9 @@ async def clean_db(db_pool):
     from core.repositories.feed_subscription_repo import (
         run_migrations as feed_subscription_migrations,
     )
+    from core.repositories.custom_webhook_repo import (
+        run_migrations as custom_webhook_migrations,
+    )
     from core.repositories.music_session_repo import (
         run_migrations as music_session_migrations,
     )
@@ -177,6 +180,7 @@ async def clean_db(db_pool):
     await blacklist_migrations(db_pool)
     await eval_shell_log_migrations(db_pool)
     await feed_subscription_migrations(db_pool)
+    await custom_webhook_migrations(db_pool)
     await music_session_migrations(db_pool)
     await twitch_subscription_migrations(db_pool)
     await main_radio_migrations(db_pool)
@@ -231,6 +235,7 @@ async def clean_db(db_pool):
         "guild_blacklist",
         "eval_shell_log",
         "feed_subscriptions",
+        "custom_webhooks",
         "music_sessions",
         "twitch_subscriptions",
         "main_radio_tracks",

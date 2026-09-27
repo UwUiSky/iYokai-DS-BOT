@@ -59,6 +59,9 @@ from core.repositories.verify_repo import verify_repo
 from core.restore_orchestrator import restore_orchestrator
 from core.restore_web_server import build_app as restore_web_build_app
 from core.restore_web_server import start_server as restore_web_start_server
+from core.custom_webhook_server import build_app as custom_webhook_build_app
+from core.custom_webhook_server import start_server as custom_webhook_start_server
+from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
@@ -531,6 +534,23 @@ async def main() -> None:
             "OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI non configurati: server callback restore utenti disattivato."
         )
 
+    # Server web che riceve i webhook custom in ricezione (SPEC.md
+    # §10.8) — a differenza del server restore sopra, questo parte
+    # SEMPRE: non richiede credenziali esterne, solo il nostro DB
+    # (già connesso a questo punto dell'avvio).
+    custom_webhook_app = custom_webhook_build_app(
+        webhook_repo=custom_webhook_repo,
+        get_channel=bot.get_channel,
+    )
+    custom_webhook_runner = await custom_webhook_start_server(
+        custom_webhook_app, config.ALERTS_WEBHOOK_HOST, config.ALERTS_WEBHOOK_PORT
+    )
+    if not config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
+        logger.info(
+            "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /alerts webhook-create "
+            "mostrerà solo il token, non un URL completo, finché non viene impostata."
+        )
+
     try:
         await asyncio.gather(
             bot.start(config.YOKAI_BOT_TOKEN),
@@ -545,6 +565,7 @@ async def main() -> None:
         # chiudiamo comunque il pool in modo ordinato.
         if restore_web_runner is not None:
             await restore_web_runner.cleanup()
+        await custom_webhook_runner.cleanup()
         await db.close()
         logger.info("Database disconnesso. Arresto completato.")
 

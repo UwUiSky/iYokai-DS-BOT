@@ -450,9 +450,21 @@ sessione perché non richiesto esplicitamente.
   di terzi. Scartato, vedi audit di fattibilità
 - `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
-- `[~]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
-  add`, qualsiasi URL RSS/Atom); la parte "webhook" (ricezione push
-  da terzi) non è stata costruita, stesso motivo tecnico sotto
+- `[x]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
+  add`, qualsiasi URL RSS/Atom). La parte "webhook" è fatta come
+  endpoint proprio (non EventSub/PubSubHubbub, vedi Nota tecnica
+  sotto): `/alerts webhook-create` crea un URL segreto
+  (`/webhook/<token>`, token opaco da 32 byte, mostrato una sola
+  volta e non più recuperabile — stesso modello dei webhook in
+  ricezione di Discord/Slack/GitHub); un server HTTP dedicato
+  (`core/custom_webhook_server.py`, aiohttp, sempre attivo, porta
+  configurabile via `ALERTS_WEBHOOK_HOST/PORT/PUBLIC_BASE_URL`)
+  riceve richieste POST con un corpo JSON (`title`/`message` o
+  `content`/`text`, `url` o `link`, troncati rispettivamente a
+  256/1500/500 caratteri) e pubblica nel canale scelto usando lo
+  stesso sistema di template di 10.9. `/alerts list` mostra il
+  webhook (`WH-<id>`) senza mai il token; `/alerts remove WH-<id>`
+  lo elimina
 - `[x]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
   `{label}` `{title}` `{link}` nel template (RSS), `{label}` `{title}`
   `{login}` (Twitch)
@@ -475,6 +487,19 @@ di infrastruttura, non solo di codice. Sostituito con **polling**
 periodico (`core/feed_watcher.py` ogni 5 minuti, `core/twitch_
 watcher.py` ogni 90s), che raggiunge lo stesso risultato per
 l'utente finale senza cambiare il deployment.
+
+**Nota tecnica separata, riguarda solo 10.8 "webhook custom"**: qui
+non serve integrarsi con un protocollo esterno specifico
+(EventSub/PubSubHubbub sono legati a Twitch/Google, non generici) —
+serve solo un endpoint HTTP generico *nostro*, dove chiunque (n8n,
+Zapier, IFTTT, un piccolo script) può inviare un POST. Per questo il
+vincolo di infrastruttura sopra non si applica allo stesso modo:
+serve comunque una porta aperta sulla VM (già presente e riusata
+dal server OAuth2 di §11.11, porta diversa per evitare collisioni),
+ma non un dominio/TLS/certificazione con un servizio terzo — chi usa
+il webhook porta il proprio URL pubblico se vuole esporlo dietro un
+reverse proxy (`ALERTS_WEBHOOK_PUBLIC_BASE_URL`), altrimenti il
+token va usato con l'IP diretto della VM.
 
 ## §11 BACKUP SYSTEM — orchestrazione automatizzabile completa
 
@@ -986,7 +1011,7 @@ rilancia lo stesso conteggio.
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 8 | 1 | 0 |
-| §10 Alerts | 5 | 1 | 1 |
+| §10 Alerts | 6 | 0 | 1 |
 | §11 Backup | 13 | 0 | 0 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
@@ -995,10 +1020,15 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **165** | **3** | **105** |
+| **Totale** | **166** | **2** | **105** |
 
-Su 273 voci totali: **165 fatte, 3 parziali, 105 mancanti** — circa
-il 61% dello schema (contando i parziali a metà peso). **§11 Backup
+Su 273 voci totali: **166 fatte, 2 parziali, 105 mancanti** — circa
+il 61% dello schema (contando i parziali a metà peso). **§10 Alerts
+& Social: la parte "webhook" di §10.8 è ora fatta** (endpoint
+proprio in ricezione, `/alerts webhook-create`, token segreto
+mostrato una sola volta) — §10 resta parziale solo per §10.4
+(YouTube live, rimandato per limiti di API, non un debito di questa
+sessione). **§11 Backup
 System è ora COMPLETO al 100%** (13/13): orchestrazione
 automatizzabile, mirror in tempo reale, auto-propagazione e restore
 utenti via OAuth2 con la progettazione di sicurezza concordata

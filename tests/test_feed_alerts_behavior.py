@@ -83,6 +83,7 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
         await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
 
         import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.custom_webhook_repo import CustomWebhookRepository
         from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
         from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 
@@ -93,6 +94,11 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
             feed_alerts_module,
             "twitch_subscription_repo",
             TwitchSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "custom_webhook_repo",
+            CustomWebhookRepository(pool_provider=lambda: database.pool),
         )
 
         cog = FeedAlertsCog(bot=None)
@@ -183,6 +189,7 @@ async def test_add_twitch_e_list_mostra_entrambi_i_tipi_con_prefissi(monkeypatch
         await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
 
         import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.custom_webhook_repo import CustomWebhookRepository
         from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
         from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 
@@ -191,6 +198,11 @@ async def test_add_twitch_e_list_mostra_entrambi_i_tipi_con_prefissi(monkeypatch
         twitch_repo = TwitchSubscriptionRepository(pool_provider=lambda: database.pool)
         monkeypatch.setattr(feed_alerts_module, "feed_subscription_repo", feed_repo)
         monkeypatch.setattr(feed_alerts_module, "twitch_subscription_repo", twitch_repo)
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "custom_webhook_repo",
+            CustomWebhookRepository(pool_provider=lambda: database.pool),
+        )
 
         cog = FeedAlertsCog(bot=None)
         canale = _FakeChannel(500)
@@ -251,3 +263,178 @@ async def test_remove_con_prefisso_sconosciuto_avvisa():
     await cog.remove.callback(cog, interaction, subscription_id="XYZ-5")
 
     assert "Prefisso non riconosciuto" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_webhook_create_senza_url_pubblica_configurata_mostra_solo_il_token(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000008
+        await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.custom_webhook_repo import CustomWebhookRepository
+
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        repo_di_test = CustomWebhookRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(feed_alerts_module, "custom_webhook_repo", repo_di_test)
+
+        class _ConfigSenzaUrl:
+            ALERTS_WEBHOOK_PUBLIC_BASE_URL = ""
+
+        monkeypatch.setattr(feed_alerts_module, "config", _ConfigSenzaUrl())
+
+        cog = FeedAlertsCog(bot=None)
+        canale = _FakeChannel(500)
+        interaction = _FakeInteraction(guild_id)
+
+        await cog.webhook_create.callback(
+            cog, interaction, channel=canale, label="Monitor", message_template=None
+        )
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "Webhook creato" in messaggio
+        assert "Token:" in messaggio
+        assert "Nessun dominio configurato" in messaggio
+
+        creati = await repo_di_test.list_webhooks(guild_id)
+        assert len(creati) == 1
+        assert creati[0].label == "Monitor"
+        assert creati[0].token in messaggio
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000008")
+        await database.pool.execute("DELETE FROM custom_webhooks WHERE guild_id = 900000008")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_webhook_create_con_url_pubblica_configurata_mostra_il_link_completo(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000009
+        await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.custom_webhook_repo import CustomWebhookRepository
+
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        repo_di_test = CustomWebhookRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(feed_alerts_module, "custom_webhook_repo", repo_di_test)
+
+        class _ConfigConUrl:
+            ALERTS_WEBHOOK_PUBLIC_BASE_URL = "https://webhooks.esempio.tld"
+
+        monkeypatch.setattr(feed_alerts_module, "config", _ConfigConUrl())
+
+        cog = FeedAlertsCog(bot=None)
+        canale = _FakeChannel(500)
+        interaction = _FakeInteraction(guild_id)
+
+        await cog.webhook_create.callback(
+            cog, interaction, channel=canale, label="Monitor", message_template=None
+        )
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "https://webhooks.esempio.tld/webhook/" in messaggio
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000009")
+        await database.pool.execute("DELETE FROM custom_webhooks WHERE guild_id = 900000009")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000010
+        await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.custom_webhook_repo import CustomWebhookRepository
+        from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+        from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
+
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        repo_di_test = CustomWebhookRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(feed_alerts_module, "custom_webhook_repo", repo_di_test)
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "feed_subscription_repo",
+            FeedSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "twitch_subscription_repo",
+            TwitchSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+
+        cog = FeedAlertsCog(bot=None)
+        canale = _FakeChannel(500)
+
+        await cog.webhook_create.callback(
+            cog, _FakeInteraction(guild_id), channel=canale, label="Monitor", message_template=None
+        )
+
+        interaction_list = _FakeInteraction(guild_id)
+        await cog.list_alerts.callback(cog, interaction_list)
+        descrizione = interaction_list.response.sent_embeds[0].description
+        assert "WH-" in descrizione
+        assert "Monitor" in descrizione
+        # Il token NON deve mai comparire in /alerts list — solo alla
+        # creazione, una volta.
+        creato = (await repo_di_test.list_webhooks(guild_id))[0]
+        assert creato.token not in descrizione
+
+        interaction_remove = _FakeInteraction(guild_id)
+        await cog.remove.callback(cog, interaction_remove, subscription_id=f"WH-{creato.id}")
+        assert "rimossa" in interaction_remove.response.sent_messages[0].lower()
+        assert await repo_di_test.list_webhooks(guild_id) == []
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000010")
+        await database.pool.execute("DELETE FROM custom_webhooks WHERE guild_id = 900000010")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_webhook_create_fuori_da_un_server_rifiuta():
+    cog = FeedAlertsCog(bot=None)
+    interaction = _FakeInteraction(guild_id=None)
+    canale = _FakeChannel(500)
+
+    await cog.webhook_create.callback(
+        cog, interaction, channel=canale, label="Test", message_template=None
+    )
+
+    assert "solo dentro un server" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_webhook_create_modulo_disattivato_rifiuta(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000011
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+
+        cog = FeedAlertsCog(bot=None)
+        interaction = _FakeInteraction(guild_id)
+        canale = _FakeChannel(500)
+
+        await cog.webhook_create.callback(
+            cog, interaction, channel=canale, label="Test", message_template=None
+        )
+
+        assert "non è attivo" in interaction.response.sent_messages[0]
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000011")
+        await database.close()

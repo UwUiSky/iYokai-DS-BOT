@@ -2967,6 +2967,115 @@ inquinamento di sys.modules appena trovato e corretto).
 
 ---
 
+### Fase 64 — Chiude §10.8: webhook custom in ricezione ("Vedi di
+fare sto webhook? Tanto li devi fare per quanto li ignori..")
+
+Richiesta esplicita dell'utente, riferita a un elemento dello schema
+lasciato a metà (`[~]`): la parte RSS di §10.8 era già fatta
+(`/alerts add`), ma la parte "webhook" (ricezione di push da servizi
+terzi, non polling nostro) non esisteva. A differenza di Twitch
+EventSub/YouTube PubSubHubbub (webhook push legati a un protocollo
+specifico di quella piattaforma, scartati per il vincolo di
+infrastruttura già documentato nella Nota tecnica di §10), qui non
+serve integrarsi con nessun protocollo esterno: serve solo un
+endpoint HTTP generico *nostro*, dove qualunque servizio terzo
+(n8n, Zapier, IFTTT, un piccolo script proprio) può pubblicare un
+messaggio in un canale Discord con una richiesta POST.
+
+**Architettura**: riusato lo stesso pattern già stabilito per il
+server di callback OAuth2 (`core/restore_web_server.py`, §11.11) —
+`build_app(**dipendenze)` che ritorna una `aiohttp.web.Application`
+con dependency injection (repository e callback passati come
+parametri, mai importati come singleton globali dentro le closure
+degli handler, per poterli sostituire nei test), e `start_server()`
+che ritorna un `AppRunner` di cui `main.py` fa `.cleanup()` allo
+shutdown. A differenza del server OAuth2 (che parte solo se le
+variabili OAuth sono configurate), questo server parte SEMPRE,
+incondizionatamente — non richiede configurazione per esistere,
+solo per essere raggiungibile dall'esterno.
+
+**Modello di sicurezza — "URL segreto come autenticazione"**: stesso
+schema usato da Discord/Slack/GitHub per i loro webhook in
+ricezione: un token opaco da 32 byte (`secrets.token_urlsafe(32)`,
+non indovinabile per forza bruta) incorporato nel path dell'URL
+(`/webhook/<token>`) È l'unica autenticazione — nessun sistema di
+account/API-key separato. Il token viene mostrato all'admin UNA SOLA
+VOLTA, al momento della creazione (`/alerts webhook-create`), e non
+viene mai più ri-mostrato — né da `/alerts list` (che mostra solo
+`WH-<id>`, label e canale, MAI il token, con un commento esplicito
+nel codice a ricordarlo) né da nessun altro comando. Se il token si
+perde, l'unica via è creare un nuovo webhook e rimuovere il vecchio
+con `/alerts remove WH-<id>` — decisione di sicurezza deliberata, non
+una svista.
+
+**Nuovi file**:
+- `core/custom_webhook_logic.py` — logica pura: generazione token,
+  costruzione URL, estrazione campi dal payload JSON (con alias:
+  `message`/`content`/`text` per il corpo, `url`/`link` per il
+  link), troncamento a 256/1500/500 caratteri (titolo/messaggio/
+  url), rendering del messaggio finale via template con placeholder
+  `{label}` `{title}` `{message}` `{url}` (righe che restano vuote
+  dopo la sostituzione vengono rimosse)
+- `core/repositories/custom_webhook_repo.py` — tabella
+  `custom_webhooks` (token `UNIQUE`, con retry fino a 5 tentativi in
+  caso di collisione, statisticamente irrilevante con 32 byte
+  casuali ma comunque gestita), CRUD scoped per `guild_id`
+- `core/custom_webhook_server.py` — l'endpoint aiohttp vero e
+  proprio: `POST /webhook/<token>` → 404 se il token non esiste, 400
+  se il corpo non è JSON valido, 502 se il canale Discord configurato
+  non è più raggiungibile (con `logger.warning`, per capire da log
+  quando un webhook è "morto" perché il canale è stato cancellato),
+  200 se pubblicato
+
+**Modifiche**: `core/config.py` (nuovi campi
+`ALERTS_WEBHOOK_HOST/PORT/PUBLIC_BASE_URL`, porta di default 8421,
+deliberatamente diversa da `RESTORE_WEB_PORT=8420` per permettere ai
+due server aiohttp di girare insieme sulla stessa macchina senza
+collisione); `cogs/utility/feed_alerts.py` (nuovo comando `/alerts
+webhook-create`, `/alerts remove` estende il prefisso a `WH-<id>`,
+`/alerts list` mostra anche i webhook); `core/database.py` e
+`tests/conftest.py` (migrazione della nuova tabella agganciata nei
+due punti previsti dal pattern del progetto); `main.py` (avvio
+incondizionato del nuovo server, con un log informativo se
+`ALERTS_WEBHOOK_PUBLIC_BASE_URL` non è configurata — il comando
+funziona comunque, mostra solo il token nudo invece dell'URL
+completo); `.env.example` (nuova sezione documentata).
+
+**41 nuovi test**: 21 in `tests/test_custom_webhook_logic.py`, 10 in
+`tests/test_custom_webhook_repo.py` (contro Postgres reale via
+`clean_db`), 5 in `tests/test_custom_webhook_server.py` (richieste
+HTTP vere via `aiohttp.test_utils.TestClient`/`TestServer`, senza
+socket reale), 6 nuovi in `tests/test_feed_alerts_behavior.py` (più
+il retrofit di 2 test preesistenti che non avevano ancora il mock
+del nuovo `custom_webhook_repo`, rotti dall'estensione di
+`list_alerts`), 1 assert estesa in
+`tests/test_feed_alerts_cog_smoke.py`.
+
+**Bug di test evitato**: `core.config.Config` è un
+`@dataclass(frozen=True)` — `monkeypatch.setattr(config_istanza,
+"CAMPO", valore)` alza `FrozenInstanceError`. Seguito il pattern già
+stabilito nel progetto (visto in `tests/test_twitch_watcher.py`): si
+sostituisce l'intero riferimento al modulo `config` con una classe
+finta minimale che espone solo il campo serve
+(`monkeypatch.setattr(modulo, "config", classe_finta())`), non il
+singolo campo.
+
+SPEC.md: §10.8 passa a `[x]` (era `[~]`), testo riscritto per
+descrivere cosa è stato costruito e la distinzione tecnica rispetto
+a EventSub/PubSubHubbub (nuova nota tecnica separata, non confusa
+con quella su Twitch/YouTube/Reddit polling). Ricalcolo meccanico:
+totale schema **166/2/105 su 273, ≈61%**.
+
+**Verificato con la regressione anti-collisione comandi**
+(`tests/test_cog_manager_load_all.py`, introdotta nella Fase 63):
+`webhook-create` non collide con nessun altro comando esistente, e
+tutti i cog continuano a caricarsi insieme senza errori.
+
+**Suite di test completa: 1598/1598 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

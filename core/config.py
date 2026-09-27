@@ -167,6 +167,22 @@ class Config:
     RESTORE_WEB_HOST: str = field(default="0.0.0.0")
     RESTORE_WEB_PORT: int = field(default=8420)
 
+    # --- Webhook custom in ricezione (SPEC.md §10.8) --------------------
+    # Host/porta su cui core/custom_webhook_server.py ascolta i webhook
+    # PUSH di servizi terzi — a differenza del server restore sopra,
+    # questo parte SEMPRE (non richiede credenziali esterne, solo il
+    # nostro DB): la porta di default è diversa da RESTORE_WEB_PORT
+    # apposta, così i due server possono girare insieme senza scontrarsi.
+    ALERTS_WEBHOOK_HOST: str = field(default="0.0.0.0")
+    ALERTS_WEBHOOK_PORT: int = field(default=8421)
+    # URL pubblico base (dominio/reverse proxy dell'utente, es.
+    # "https://webhooks.miobot.tld") usato per costruire il link da dare
+    # a servizi terzi — core.custom_webhook_logic.build_webhook_url.
+    # Vuota finché l'utente non configura un dominio/reverse proxy
+    # davanti a questa porta: il comando di creazione webhook lo dice
+    # esplicitamente invece di mostrare un URL http://0.0.0.0 inutile.
+    ALERTS_WEBHOOK_PUBLIC_BASE_URL: str = field(default="")
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() == "production"
@@ -217,6 +233,9 @@ def _load_config() -> Config:
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
         RESTORE_WEB_HOST=_optional("RESTORE_WEB_HOST", "0.0.0.0"),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
+        ALERTS_WEBHOOK_HOST=_optional("ALERTS_WEBHOOK_HOST", "0.0.0.0"),
+        ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
+        ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
     )
 
 

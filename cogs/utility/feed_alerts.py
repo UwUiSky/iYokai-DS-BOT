@@ -13,7 +13,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.config import config
+from core.custom_webhook_logic import build_webhook_url
 from core.database import db
+from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
 from core.premium import PremiumModule, registry
@@ -79,9 +82,78 @@ class FeedAlertsCog(commands.Cog):
             ephemeral=True,
         )
 
-    @alerts_group.command(name="remove", description="[Admin] Rimuove una sottoscrizione feed o Twitch.")
+    @alerts_group.command(
+        name="webhook-create",
+        description="[Admin] Crea un webhook custom: servizi terzi possono pubblicare in un canale.",
+    )
     @app_commands.describe(
-        subscription_id="ID della sottoscrizione con prefisso, es. RSS-3 o TW-2 (vedi /alerts list)"
+        channel="Canale dove pubblicare i messaggi ricevuti",
+        label="Nome descrittivo, usato nel messaggio",
+        message_template=(
+            "Template personalizzato (facoltativo). Placeholder: {label} {title} {message} {url}"
+        ),
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def webhook_create(
+        self,
+        interaction: discord.Interaction,
+        channel: discord.TextChannel,
+        label: str,
+        message_template: str | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
+            await interaction.response.send_message(
+                "Questo modulo non è attivo su questo server. "
+                "Un amministratore può attivarlo con /setup.",
+                ephemeral=True,
+            )
+            return
+
+        webhook = await custom_webhook_repo.create_webhook(
+            guild_id=guild.id,
+            channel_id=channel.id,
+            label=label,
+            created_by=interaction.user.id,
+            message_template=message_template,
+        )
+
+        if config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
+            url = build_webhook_url(config.ALERTS_WEBHOOK_PUBLIC_BASE_URL, webhook.token)
+            corpo_url = (
+                f"URL: `{url}`\n\n"
+                f"Manda una richiesta POST con un corpo JSON a questo URL "
+                f"(es. `{{\"message\": \"testo\"}}`, campi opzionali: `title`, `url`) "
+                f"e pubblicherò il messaggio in {channel.mention}."
+            )
+        else:
+            corpo_url = (
+                f"Token: `{webhook.token}`\n\n"
+                f"⚠️ Nessun dominio configurato su questa istanza "
+                f"(ALERTS_WEBHOOK_PUBLIC_BASE_URL) — chiedi all'amministratore del bot di "
+                f"configurarne uno. Il percorso da esporre dietro quel dominio è "
+                f"`/webhook/{webhook.token}`."
+            )
+
+        await interaction.response.send_message(
+            f"✅ Webhook creato (ID `WH-{webhook.id}`) per **{label}**.\n\n{corpo_url}\n\n"
+            f"⚠️ Questo URL/token è SEGRETO: chiunque lo conosca può pubblicare in "
+            f"{channel.mention}. Non lo mostrerò di nuovo — se lo perdi, crealo di nuovo "
+            f"e rimuovi quello vecchio con /alerts remove.",
+            ephemeral=True,
+        )
+
+    @alerts_group.command(
+        name="remove", description="[Admin] Rimuove una sottoscrizione feed, Twitch o un webhook."
+    )
+    @app_commands.describe(
+        subscription_id="ID con prefisso, es. RSS-3, TW-2 o WH-1 (vedi /alerts list)"
     )
     @app_commands.checks.has_permissions(manage_guild=True)
     async def remove(self, interaction: discord.Interaction, subscription_id: str) -> None:
@@ -92,7 +164,8 @@ class FeedAlertsCog(commands.Cog):
         prefisso, _, numero_testo = subscription_id.upper().partition("-")
         if not numero_testo.isdigit():
             await interaction.response.send_message(
-                "Formato ID non valido. Usa il formato mostrato da /alerts list, es. RSS-3 o TW-2.",
+                "Formato ID non valido. Usa il formato mostrato da /alerts list, "
+                "es. RSS-3, TW-2 o WH-1.",
                 ephemeral=True,
             )
             return
@@ -102,9 +175,12 @@ class FeedAlertsCog(commands.Cog):
             rimossa = await feed_subscription_repo.remove_subscription(numero, guild.id)
         elif prefisso == "TW":
             rimossa = await twitch_subscription_repo.remove_subscription(numero, guild.id)
+        elif prefisso == "WH":
+            rimossa = await custom_webhook_repo.remove_webhook(numero, guild.id)
         else:
             await interaction.response.send_message(
-                "Prefisso non riconosciuto. Usa RSS-<numero> o TW-<numero> (vedi /alerts list).",
+                "Prefisso non riconosciuto. Usa RSS-<numero>, TW-<numero> o WH-<numero> "
+                "(vedi /alerts list).",
                 ephemeral=True,
             )
             return
@@ -171,8 +247,9 @@ class FeedAlertsCog(commands.Cog):
 
         feed_subs = await feed_subscription_repo.list_subscriptions(guild.id)
         twitch_subs = await twitch_subscription_repo.list_subscriptions(guild.id)
+        webhooks = await custom_webhook_repo.list_webhooks(guild.id)
 
-        if not feed_subs and not twitch_subs:
+        if not feed_subs and not twitch_subs and not webhooks:
             await interaction.response.send_message(
                 "Nessuna sottoscrizione attiva su questo server.", ephemeral=True
             )
@@ -185,6 +262,13 @@ class FeedAlertsCog(commands.Cog):
         righe += [
             f"`TW-{s.id}` **{s.label}** (Twitch: {s.twitch_login}) → <#{s.channel_id}>"
             for s in twitch_subs
+        ]
+        righe += [
+            # MAI il token qui: è il segreto che autentica chi può
+            # pubblicare in quel canale, mostrato una sola volta alla
+            # creazione (vedi webhook_create).
+            f"`WH-{w.id}` **{w.label}** (webhook) → <#{w.channel_id}>"
+            for w in webhooks
         ]
         embed = discord.Embed(
             title="🔔 Sottoscrizioni attive",
