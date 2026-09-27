@@ -1,0 +1,274 @@
+"""
+tests/test_restore_cog_behavior.py
+======================================
+Test del comportamento REALE di RestoreCog (SPEC.md §11.11/§11.12) —
+contro PostgreSQL vero per i repository, con fake minimi per gli
+oggetti discord.py e l'orchestrator OAuth (nessuna vera rete).
+"""
+
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from cogs.utility.restore import RestoreCog
+from core.database import Database
+from core.oauth_crypto import generate_key
+from core.repositories.backup_user_snapshot_repo import BackupUserSnapshotRepository
+from core.repositories.restore_oauth_repo import RestoreOAuthRepository
+from core.repositories.verify_repo import VerifyRepository
+
+CHIAVE_TEST = generate_key()
+
+
+class _FakeResponse:
+    def __init__(self) -> None:
+        self.sent_messages: list[tuple[str, bool]] = []
+        self.deferred = False
+
+    async def send_message(self, content: str, ephemeral: bool = False) -> None:
+        self.sent_messages.append((content, ephemeral))
+
+    async def defer(self, ephemeral: bool = False) -> None:
+        self.deferred = True
+
+
+class _FakeFollowup:
+    def __init__(self) -> None:
+        self.sent_messages: list[tuple[str, bool]] = []
+
+    async def send(self, content: str, ephemeral: bool = False) -> None:
+        self.sent_messages.append((content, ephemeral))
+
+
+class _FakeGuild:
+    def __init__(self, guild_id: int, name: str = "Server") -> None:
+        self.id = guild_id
+        self.name = name
+
+
+class _FakeInteraction:
+    def __init__(self, guild_id: int | None) -> None:
+        self.guild = _FakeGuild(guild_id) if guild_id is not None else None
+        self.response = _FakeResponse()
+        self.followup = _FakeFollowup()
+        self.channel = _FakeChannel()
+
+
+class _FakeHTTPResponse:
+    status = 403
+    reason = "Forbidden"
+
+
+class _FakeInvite:
+    url = "https://discord.gg/finto"
+
+
+class _FakeChannel:
+    async def create_invite(self, **kwargs):
+        return _FakeInvite()
+
+
+class _FakeUser:
+    def __init__(self, user_id: int, disponibile: bool = True) -> None:
+        self.id = user_id
+        self._disponibile = disponibile
+        self.messaggi_ricevuti: list[str] = []
+
+    async def send(self, content: str) -> None:
+        if not self._disponibile:
+            import discord
+
+            raise discord.Forbidden(response=_FakeHTTPResponse(), message="DM chiuse")
+        self.messaggi_ricevuti.append(content)
+
+
+class _FakeBot:
+    def __init__(self, utenti: dict[int, _FakeUser]) -> None:
+        self._utenti = utenti
+
+    async def fetch_user(self, user_id: int):
+        if user_id not in self._utenti:
+            import discord
+
+            raise discord.NotFound(response=_FakeHTTPResponse(), message="non trovato")
+        return self._utenti[user_id]
+
+
+@pytest.fixture
+async def database():
+    db_instance = Database()
+    await db_instance.connect()
+    await db_instance.run_migrations()
+    yield db_instance
+    await db_instance.pool.execute("DELETE FROM backup_user_snapshots")
+    await db_instance.pool.execute("DELETE FROM restore_oauth_tokens")
+    await db_instance.pool.execute("DELETE FROM guild_config")
+    await db_instance.pool.execute("DELETE FROM guild_config_history")
+    await db_instance.pool.execute("DELETE FROM verify_config")
+    await db_instance.close()
+
+
+def _patch_repos(monkeypatch, database):
+    import cogs.utility.restore as restore_module
+
+    snapshot_repo = BackupUserSnapshotRepository(pool_provider=lambda: database.pool)
+    oauth_repo = RestoreOAuthRepository(
+        pool_provider=lambda: database.pool, encryption_key_provider=lambda: CHIAVE_TEST
+    )
+    verify_repo_test = VerifyRepository(pool_provider=lambda: database.pool)
+    monkeypatch.setattr(restore_module, "backup_user_snapshot_repo", snapshot_repo)
+    monkeypatch.setattr(restore_module, "restore_oauth_repo", oauth_repo)
+    monkeypatch.setattr(restore_module, "verify_repo", verify_repo_test)
+    return snapshot_repo, oauth_repo, verify_repo_test
+
+
+@pytest.mark.asyncio
+async def test_configura_restore_salva_la_modalita(database, monkeypatch):
+    import cogs.utility.restore as restore_module
+    from core.database import db as db_singleton
+
+    monkeypatch.setattr(restore_module, "db", database)
+    cog = RestoreCog(bot=None)
+    interaction = _FakeInteraction(guild_id=100)
+
+    class _Scelta:
+        value = "classic_invite"
+        name = "Solo invito classico (nessun token salvato)"
+
+    await cog.configura_restore.callback(cog, interaction, _Scelta(), auto_invito_nuovi_membri=True)
+
+    assert "classic invite" not in interaction.response.sent_messages[0][0]  # sanity: usa il "name", non il value
+    modalita = await database.get_guild_setting(100, "backup_restore_mode")
+    assert modalita == "classic_invite"
+    auto_invito = await database.get_guild_setting(100, "backup_auto_invite_on_join")
+    assert auto_invito is True
+
+
+@pytest.mark.asyncio
+async def test_restore_users_senza_snapshot_avvisa(database, monkeypatch):
+    _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    cog = RestoreCog(bot=None)
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "999999")
+
+    assert "Nessuno snapshot" in interaction.response.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_con_token_attivo_fa_auto_join(database, monkeypatch):
+    snapshot_repo, oauth_repo, _verify = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await oauth_repo.save_token(100, 1, "access-vero", "refresh", datetime.now(timezone.utc) + timedelta(days=7))
+
+    chiamate_join = []
+
+    class _FakeOrchestrator:
+        async def join_user_via_oauth(self, **kwargs):
+            chiamate_join.append(kwargs)
+            return True
+
+        async def assign_role(self, **kwargs):
+            return True
+
+    monkeypatch.setattr(restore_module, "restore_orchestrator", _FakeOrchestrator())
+
+    cog = RestoreCog(bot=_FakeBot({}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert len(chiamate_join) == 1
+    assert chiamate_join[0]["user_id"] == 1
+    assert chiamate_join[0]["guild_id"] == 200
+    assert "Aggiunti automaticamente (token già autorizzato): 1" in interaction.followup.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_senza_token_manda_dm_di_autorizzazione(database, monkeypatch):
+    snapshot_repo, _oauth, _verify = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+
+    utente_finto = _FakeUser(1)
+    cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert len(utente_finto.messaggi_ricevuti) == 1
+    assert "DM di autorizzazione inviati: 1" in interaction.followup.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_dm_bloccato_viene_contato(database, monkeypatch):
+    snapshot_repo, _oauth, _verify = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+
+    utente_finto = _FakeUser(1, disponibile=False)
+    cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert "DM non consegnati (privacy/bloccati): 1" in interaction.followup.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_modalita_classica_usa_invito_e_non_token(database, monkeypatch):
+    snapshot_repo, _oauth, _verify = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await database.set_guild_setting(200, "backup_restore_mode", "classic_invite")
+
+    utente_finto = _FakeUser(1)
+    cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert len(utente_finto.messaggi_ricevuti) == 1
+    assert "discord.gg/finto" in utente_finto.messaggi_ricevuti[0]
+    assert "Inviti classici inviati: 1" in interaction.followup.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_bannato_viene_saltato(database, monkeypatch):
+    snapshot_repo, oauth_repo, _verify = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await oauth_repo.save_token(100, 1, "a", "r", datetime.now(timezone.utc) + timedelta(days=7))
+    await oauth_repo.mark_banned(100, 1)
+
+    cog = RestoreCog(bot=_FakeBot({1: _FakeUser(1)}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert "Saltati (in blacklist da un ban): 1" in interaction.followup.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_fuori_da_un_server_rifiuta():
+    cog = RestoreCog(bot=None)
+    interaction = _FakeInteraction(guild_id=None)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert "solo dentro un server" in interaction.response.sent_messages[0][0]

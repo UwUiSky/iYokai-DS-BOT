@@ -16,3 +16,6 @@ wavelink>=3.4.0
 
 # Log strutturati
 structlog>=24.1.0
+
+# Cifratura AES-256-GCM dei token OAuth altrui (restore utenti, SPEC.md §11.11)
+cryptography>=42.0.0

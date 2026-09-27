@@ -2664,6 +2664,134 @@ lo schema non è cambiato di dimensione, solo di stato.
 
 ---
 
+### Fase 61 — Backup System: chiude §11 al 100% con il restore
+utenti via OAuth2 (§11.10/§11.11/§11.12)
+
+Completa il "Facciamole tutte" iniziato in Fase 60. Prima di
+scrivere codice per lo storage dei token OAuth altrui, tre domande
+esplicite (`AskUserQuestion`) su consenso/cifratura/retention — vedi
+Fase 60 per il dettaglio delle risposte. Un solo punto corretto
+rispetto a quanto chiesto: l'utente ha suggerito "algoritmi custom
+se possibile per evitare il reversing" — spiegato perché è
+un'idea da NON seguire (crittografia fatta in casa, senza revisione
+pubblica, è quasi sempre più debole di uno standard, non più
+sicura: la protezione vera sta nella chiave segreta, non
+nell'oscurità dell'algoritmo) e proceduto con AES-256-GCM standard,
+comunicandolo esplicitamente prima di scrivere il codice.
+
+**§11.10 Snapshot settimanale utenti**: `core.backup_snapshot_logic.
+is_eligible_for_snapshot` (pura) — un bot non è mai incluso; se il
+server ha Verify Base configurato serve il ruolo verificato, altri-
+menti (nessun Verify configurato) chiunque non sia un bot conta,
+piuttosto che escludere silenziosamente un intero server. Chi è
+bannato/kickato non compare per costruzione: la funzione riceve solo
+`guild.members` ATTUALI. Nuovo repo `core.repositories.backup_user_
+snapshot_repo` (tabella `backup_user_snapshots`, sostituita
+INTERAMENTE ad ogni scatto — stesso pattern DELETE+INSERT in
+transazione già usato per i webhook mirror in Fase 60). Nuovo
+`core.backup_snapshot_worker` (`tasks.loop` settimanale, un tick per
+ogni main_guild_id con backup GIÀ attivo — nuovo `backup_repo.
+get_all_main_guild_ids_with_backup()`).
+
+**§11.11 Restore massivo via OAuth2**: nuovo `core.oauth_crypto`
+(AES-256-GCM via `cryptography`, nonce casuale a 12 byte per ogni
+cifratura — mai riusato con la stessa chiave, requisito di
+sicurezza di GCM — anteposto al ciphertext e tutto in base64 in
+un'unica colonna TEXT). Nuovo repo `core.repositories.restore_oauth_
+repo` (`restore_oauth_tokens`, MAI in chiaro: cifra prima di
+scrivere, decifra dopo aver letto, mai un valore intermedio in
+chiaro nel repo stesso) con la retention concordata: `mark_left_
+voluntarily` (imposta `left_at`, poi `purge_expired_voluntary_
+leaves(90)` lo cancella se non riusato entro 90gg), `mark_kicked`/
+`mark_banned` (preservano SENZA scadenza, cambiano solo `status`).
+Nuovo `core.restore_oauth_logic` (pura: `build_authorize_url` con
+scope `identify guilds.join`, `encode_state`/`decode_state` — lo
+"state" OAuth2 standard, qui semplicemente
+`source:target:user_id`, con `target_guild_id=0` che significa
+"solo consenso, nessun join da fare ora", usato dalla modalità A).
+Nuovo `core.restore_orchestrator.RestoreOrchestrator` — le uniche
+due vere chiamate di rete: `exchange_code_for_token` (scambio
+code→token) e `join_user_via_oauth` (il vero meccanismo
+`guilds.join`: **il BOT** chiama `PUT /guilds/{id}/members/{id}`
+con il proprio bot token e l'`access_token` OAuth2 dell'utente nel
+corpo — non esiste un wrapper discord.py per questo endpoint, fatta
+una chiamata REST diretta con aiohttp) più `assign_role`. Testato
+con un server aiohttp VERO in locale che imita la FORMA delle due
+API di Discord (stesso principio già usato per il Twitch Watcher —
+mai un mock della sessione HTTP). Nuovo
+`core.restore_web_server` (aiohttp, un solo endpoint `/oauth/
+callback`, `build_app()` con ogni dipendenza iniettata per i test).
+Nuovo `core.restore_batch_logic.plan_restore_action` (pura: bannato
+→ sempre saltato anche in modalità classica; modalità classica →
+sempre invito; token attivo/kickato non scaduto → riusato per
+l'auto-join; altrimenti richiede un nuovo consenso). Nuovo `core.
+restore_retention_logic.was_recently_kicked` (pura: Discord non dice
+direttamente se un `on_member_remove` è un kick o un'uscita
+spontanea — si controlla l'audit log per una voce "kick" recente
+sullo stesso utente).
+
+**Tre modalità per server** (`/configura-restore`, esattamente come
+discusso): OAuth al momento della verifica (server NUOVI — il
+consenso si raccoglie da subito, prima che serva); OAuth solo al
+bisogno (DEFAULT, server ESISTENTI grandi — es. 50k utenti: non ha
+senso rifare la verifica a tutti, si raccoglie il consenso solo se e
+quando serve un restore, riusando i token già raccolti da restore
+precedenti); solo invito classico (nessun token salvato affatto).
+Nuovo comando `/restore-users <server_di_origine>` (in `cogs.
+utility.restore.RestoreCog`) — legge lo snapshot §11.10 del server
+indicato, per ognuno decide con `plan_restore_action` e agisce:
+auto-join silenzioso se già autorizzato, DM con link di
+autorizzazione se serve un nuovo consenso, DM con invito classico in
+modalità C, salto silenzioso se in blacklist da un ban. Un DM
+bloccato (privacy chiusa) viene contato, non fa fallire il resto del
+restore. Riepilogo finale all'admin con tutti i contatori.
+
+**Retention via listener** (stesso cog): `on_member_ban` marca
+`banned_blacklisted`; `on_member_remove` controlla l'audit log
+(azione kick, ultimi 10s, stesso utente) e marca `kicked_flagged` o
+altrimenti `left_voluntarily`; `on_member_join` avvisa il canale di
+log di moderazione (`mod_log_channel_id`, la STESSA chiave già usata
+da `cogs/moderation/_shared.py` — riusata deliberatamente invece di
+inventare un secondo canale da configurare) se chi rientra ha un
+token flaggato come kickato.
+
+**Config**: nuove `OAUTH_ENCRYPTION_KEY` (32 byte base64, AES-256),
+`RESTORE_WEB_HOST`/`RESTORE_WEB_PORT` in `core/config.py` e
+`.env.example`; `OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI` (già esistenti
+da prima, mai usati finora — stesso pattern di predisposizione
+silenziosa già visto con `LAVALINK_HOST` in Fase 59) ora
+effettivamente riusati. Nuova dipendenza `cryptography` aggiunta a
+`requirements.txt` (era già presente come dipendenza transitiva di
+`PyNaCl`/discord.py, ora è una dipendenza diretta dichiarata). Server
+web e worker settimanale avviati da `main.py` — il server web parte
+solo se le tre variabili OAuth2 sono configurate, altrimenti resta
+disattivato senza bloccare l'avvio del bot.
+
+**Migrazioni**: `backup_user_snapshot_repo` e `restore_oauth_repo`
+registrate in `core/database.py` E in `tests/conftest.py` (elenco
+duplicato manualmente, pattern già noto), tabelle aggiunte al
+TRUNCATE di `clean_db`.
+
+**80 nuovi test**: `test_oauth_crypto.py` (9), `test_backup_snapshot_
+logic.py` (5), `test_backup_user_snapshot_repo.py` (7),
+`test_restore_oauth_repo.py` (10), `test_backup_repo.py` (+2:
+`get_all_main_guild_ids_with_backup`), `test_backup_snapshot_worker.
+py` (4), `test_restore_oauth_logic.py` (4), `test_restore_
+orchestrator.py` (7, con un server aiohttp finto reale),
+`test_restore_web_server.py` (7), `test_restore_batch_logic.py` (6),
+`test_restore_retention_logic.py` (4), `test_restore_cog_behavior.py`
+(8), `test_restore_cog_smoke.py` (1), `test_restore_retention_
+listeners.py` (6).
+
+SPEC.md: 11.10 e 11.11 passano a `[x]`; 11.12 completo (`[x]`, tutti
+e 5 i comandi fatti). **§11 Backup System è ora COMPLETO al 100%
+(13/13)**. Ricalcolo meccanico: totale schema **163/5/105 su 273,
+≈61%**.
+
+**Suite di test completa: 1528/1528 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

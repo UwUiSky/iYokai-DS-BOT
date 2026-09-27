@@ -128,6 +128,12 @@ async def clean_db(db_pool):
     from core.repositories.backup_mirror_repo import (
         run_migrations as backup_mirror_migrations,
     )
+    from core.repositories.backup_user_snapshot_repo import (
+        run_migrations as backup_user_snapshot_migrations,
+    )
+    from core.repositories.restore_oauth_repo import (
+        run_migrations as restore_oauth_migrations,
+    )
     from core.repositories.level_reward_repo import (
         run_migrations as level_reward_migrations,
     )
@@ -176,6 +182,8 @@ async def clean_db(db_pool):
     await main_radio_migrations(db_pool)
     await backup_migrations(db_pool)
     await backup_mirror_migrations(db_pool)
+    await backup_user_snapshot_migrations(db_pool)
+    await restore_oauth_migrations(db_pool)
     await level_reward_migrations(db_pool)
     await monthly_winners_migrations(db_pool)
     await shop_migrations(db_pool)
@@ -244,6 +252,8 @@ async def clean_db(db_pool):
         "guild_premium_status",
         "backup_jobs",
         "backup_mirror_webhooks",
+        "backup_user_snapshots",
+        "restore_oauth_tokens",
         "guild_config",
         "guild_config_history",
         "premium_whitelist",

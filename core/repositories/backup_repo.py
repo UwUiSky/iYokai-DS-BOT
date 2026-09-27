@@ -308,6 +308,19 @@ class BackupRepository:
         row = await self._pool.fetchrow("SELECT * FROM backup_jobs WHERE id = $1", job_id)
         return self._row_to_job(row) if row is not None else None
 
+    async def get_all_main_guild_ids_with_backup(self) -> list[int]:
+        """
+        Tutti i main_guild_id che hanno GIÀ un backup attivo
+        (backup_guild_id NOT NULL) — usata dallo snapshot settimanale
+        utenti (SPEC.md §11.10): non ha senso fotografare gli utenti
+        di un server che non ha ancora nemmeno un backup dove
+        eventualmente restaurarli.
+        """
+        rows = await self._pool.fetch(
+            "SELECT main_guild_id FROM backup_pairs WHERE backup_guild_id IS NOT NULL"
+        )
+        return [r["main_guild_id"] for r in rows]
+
     async def get_job_by_backup_guild_id(self, backup_guild_id: int) -> BackupJob | None:
         """Usata dal listener che reagisce a Main che entra in un
         server nuovo — per sapere se QUEL server è il backup atteso

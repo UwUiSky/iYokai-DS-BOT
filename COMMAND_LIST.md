@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 11:45 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 12:14 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 169 comandi in 10 categorie.**
+**Totale: 171 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -143,6 +143,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 11:
 - **`/alerts remove`** — [Admin] Rimuove una sottoscrizione feed o Twitch.
 - **`/config history`** — [Admin] Mostra le ultime modifiche alla configurazione.
 - **`/config rollback`** — [Admin] Ripristina il valore precedente di una modifica.
+- **`/configura-restore`** — [Admin] Scegli come questo server gestisce il restore utenti via OAuth2.
 - **`/custom-command-requests-setup`** — [Owner] Imposta il canale delle richieste (solo nel server principale).
 - **`/define-backup`** — [Admin] Accoda la creazione di un backup per questo server.
 - **`/define-main`** — [Admin] Registra questo server come 'main' per il Backup System.
@@ -177,6 +178,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 11:
 - **`/reminder list`** — Mostra i tuoi promemoria in sospeso.
 - **`/reminder set`** — Imposta un promemoria.
 - **`/request-custom-command`** — Proponi un nuovo comando per il bot.
+- **`/restore-users`** — [Admin] Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
 - **`/rolemenu add-option`** — [Admin] Aggiungi un'opzione a un role menu.
 - **`/rolemenu create`** — [Admin] Crea un nuovo role menu.
 - **`/rolemenu delete`** — [Admin] Elimina un role menu.

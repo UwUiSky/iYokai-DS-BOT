@@ -53,6 +53,12 @@ from core.backup_orchestrator import finalize_backup_job
 from core.repositories.backup_repo import backup_repo
 from core.backup_creator_bot import BackupCreatorBot
 from core.backup_queue_worker import backup_queue_worker
+from core.backup_snapshot_worker import backup_snapshot_worker
+from core.repositories.restore_oauth_repo import restore_oauth_repo
+from core.repositories.verify_repo import verify_repo
+from core.restore_orchestrator import restore_orchestrator
+from core.restore_web_server import build_app as restore_web_build_app
+from core.restore_web_server import start_server as restore_web_start_server
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
@@ -498,6 +504,33 @@ async def main() -> None:
     backup_main_permissions = discord.Permissions(administrator=True)
     backup_queue_worker.start(creator, bot, backup_main_permissions)
 
+    # Snapshot settimanale utenti (SPEC.md §11.10).
+    backup_snapshot_worker.start(bot)
+
+    # Server web che riceve la callback OAuth2 del restore utenti
+    # (SPEC.md §11.11) — attivo solo se l'utente ha configurato le
+    # credenziali OAuth2; altrimenti resta disattivato senza bloccare
+    # l'avvio (il modulo restore resta semplicemente inutilizzabile
+    # finché non viene configurato).
+    restore_web_runner = None
+    if config.OAUTH2_CLIENT_ID and config.OAUTH2_CLIENT_SECRET and config.OAUTH2_REDIRECT_URI:
+        restore_app = restore_web_build_app(
+            orchestrator=restore_orchestrator,
+            oauth_repo=restore_oauth_repo,
+            verify_repo_=verify_repo,
+            client_id=config.OAUTH2_CLIENT_ID,
+            client_secret=config.OAUTH2_CLIENT_SECRET,
+            redirect_uri=config.OAUTH2_REDIRECT_URI,
+            bot_token=config.YOKAI_BOT_TOKEN,
+        )
+        restore_web_runner = await restore_web_start_server(
+            restore_app, config.RESTORE_WEB_HOST, config.RESTORE_WEB_PORT
+        )
+    else:
+        logger.info(
+            "OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI non configurati: server callback restore utenti disattivato."
+        )
+
     try:
         await asyncio.gather(
             bot.start(config.YOKAI_BOT_TOKEN),
@@ -510,6 +543,8 @@ async def main() -> None:
     finally:
         # Se bot.start() termina (crash o spegnimento pulito),
         # chiudiamo comunque il pool in modo ordinato.
+        if restore_web_runner is not None:
+            await restore_web_runner.cleanup()
         await db.close()
         logger.info("Database disconnesso. Arresto completato.")
 

@@ -321,6 +321,16 @@ class Database:
         )
         await backup_mirror_migrations(self.pool)
 
+        from core.repositories.backup_user_snapshot_repo import (
+            run_migrations as backup_user_snapshot_migrations,
+        )
+        await backup_user_snapshot_migrations(self.pool)
+
+        from core.repositories.restore_oauth_repo import (
+            run_migrations as restore_oauth_migrations,
+        )
+        await restore_oauth_migrations(self.pool)
+
         from core.repositories.level_reward_repo import (
             run_migrations as level_reward_migrations,
         )

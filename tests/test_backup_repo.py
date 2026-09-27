@@ -98,6 +98,21 @@ async def test_promote_backup_to_main_il_server_promosso_diventa_main_senza_back
 
 
 @pytest.mark.asyncio
+async def test_get_all_main_guild_ids_with_backup(repo):
+    await repo.define_main(100)
+    await repo.define_backup(100, 200)
+    await repo.define_main(300)  # senza backup ancora
+
+    ids = await repo.get_all_main_guild_ids_with_backup()
+    assert ids == [100]
+
+
+@pytest.mark.asyncio
+async def test_get_all_main_guild_ids_with_backup_vuoto_se_nessuno(repo):
+    assert await repo.get_all_main_guild_ids_with_backup() == []
+
+
+@pytest.mark.asyncio
 async def test_promote_backup_to_main_su_server_gia_main_azzera_il_suo_backup(repo):
     # Il server 200 era già main di un terzo server (es. un caso raro
     # ma possibile) — la promozione deve comunque azzerare il SUO

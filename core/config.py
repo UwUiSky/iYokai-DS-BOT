@@ -152,6 +152,21 @@ class Config:
     OAUTH2_REDIRECT_URI: str = field(default="")
     WEB_PANEL_SECRET_KEY: str = field(default="")
 
+    # --- Restore utenti via OAuth2 (SPEC.md §11.11) ---------------------
+    # Chiave di cifratura (AES-256-GCM) dei token OAuth altrui salvati
+    # per il restore massivo — MAI in chiaro nel DB (core/oauth_crypto.
+    # py). Va generata una volta con Fernet.generate_key() o 32 byte
+    # casuali in base64 e non deve MAI cambiare senza prima decifrare
+    # e ricifrare tutti i token esistenti (altrimenti diventano
+    # illeggibili per sempre). Vuota finché il modulo non è configurato
+    # — in quel caso il restore via OAuth resta disattivato (nessun
+    # crash, il chiamante lo controlla esplicitamente).
+    OAUTH_ENCRYPTION_KEY: str = field(default="")
+    # Host/porta su cui core/restore_web_server.py ascolta le callback
+    # OAuth2 di Discord dopo che un utente autorizza il restore.
+    RESTORE_WEB_HOST: str = field(default="0.0.0.0")
+    RESTORE_WEB_PORT: int = field(default=8420)
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() == "production"
@@ -199,6 +214,9 @@ def _load_config() -> Config:
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),
         OAUTH2_REDIRECT_URI=_optional("OAUTH2_REDIRECT_URI"),
         WEB_PANEL_SECRET_KEY=_optional("WEB_PANEL_SECRET_KEY"),
+        OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
+        RESTORE_WEB_HOST=_optional("RESTORE_WEB_HOST", "0.0.0.0"),
+        RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
     )
 
 

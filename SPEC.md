@@ -439,12 +439,11 @@ l'utente finale senza cambiare il deployment.
 
 ## §11 BACKUP SYSTEM — orchestrazione automatizzabile completa
 
-**Nota di stato**: costruite la clonazione (§11.3-11.8), l'intera
-orchestrazione automatizzabile attorno (§11.1, §11.2, §11.12), il
-mirror in tempo reale (§11.9) e l'auto-propagazione (§11.13).
-Restano §11.10/§11.11 (backup e restore utenti via OAuth2), la cui
-progettazione di sicurezza (storage token, retention, consenso) è
-stata discussa esplicitamente con l'utente e ora in costruzione.
+**Nota di stato**: §11 BACKUP SYSTEM è ora COMPLETO al 100% — tutte
+le 13 voci fatte. Le ultime tre (§11.10/§11.11/resto di §11.12,
+backup e restore utenti via OAuth2) sono state costruite dopo aver
+discusso esplicitamente con l'utente il loro design di sicurezza
+(storage token cifrato, modalità di consenso, retention).
 
 **Limite reale della piattaforma Discord**, verificato con una
 ricerca prima di progettare, non aggirabile dal codice: **un bot non
@@ -489,12 +488,36 @@ necessario.
   mirror.py` (listener `on_message`). Scarto in burst confermato: chi
   supera 5 msg/5s su un canale viene semplicemente perso, non
   accodato
-- `[ ]` 11.10 User backup: snapshot periodico (settimanale) dei
-  verificati non bannati/kickati
-- `[ ]` 11.11 Restore massivo utenti via OAuth2 `guilds.join`
-- `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
-  `/promuovi-backup`, `/restore-users` — i primi tre fatti;
-  `/restore-users` non ancora costruito, dipende da §11.11 (OAuth2)
+- `[x]` 11.10 User backup: snapshot periodico (settimanale) dei
+  verificati non bannati/kickati — `core/backup_snapshot_logic.py`
+  (pura: bot esclusi sempre, ruolo verificato richiesto solo se
+  Verify Base è configurato), `core/repositories/backup_user_
+  snapshot_repo.py` (tabella `backup_user_snapshots`, sostituita
+  interamente ad ogni scatto), `core/backup_snapshot_worker.py`
+  (`tasks.loop` settimanale, un tick per ogni main con backup già
+  attivo — `backup_repo.get_all_main_guild_ids_with_backup()`)
+- `[x]` 11.11 Restore massivo utenti via OAuth2 `guilds.join` —
+  token cifrati AES-256-GCM a riposo (`core/oauth_crypto.py`, MAI un
+  algoritmo custom: la sicurezza sta nella chiave segreta, non
+  nell'oscurità dell'algoritmo), `core/repositories/restore_oauth_
+  repo.py` (retention concordata con l'utente: uscita spontanea →
+  cancellato dopo 90gg, kick → preservato e flaggato, ban →
+  preservato e in blacklist — mai riusabile), `core/restore_
+  orchestrator.py` (le due chiamate REST reali: scambio code→token,
+  "Add Guild Member" cioè il vero `guilds.join`, assegnazione ruolo
+  verificato), `core/restore_web_server.py` (server aiohttp minimo,
+  un solo endpoint `/oauth/callback`), `core/restore_batch_logic.py`
+  (decide auto-join/richiedi-consenso/invito-classico/salta-
+  blacklist), `core/restore_retention_logic.py` +
+  listener `on_member_ban/remove/join` in `cogs/utility/restore.py`
+  per distinguere kick da uscita spontanea via audit log. Tre
+  modalità per server (`/configura-restore`, come concordato con
+  l'utente): OAuth al momento della verifica (server nuovi), OAuth
+  solo al bisogno (default, server esistenti — riusa i token già
+  raccolti), o solo invito classico senza alcun token
+- `[x]` 11.12 Comandi `/define-main`, `/define-backup`,
+  `/promuovi-backup`, `/restore-users`, `/configura-restore` — tutti
+  fatti
 - `[x]` 11.13 Auto-propagazione: `/promuovi-backup` (lanciato nel
   server backup) promuove quel server a main e accoda IMMEDIATAMENTE
   un nuovo job di backup per lui — `BackupRepository.promote_backup_
@@ -915,7 +938,7 @@ rilancia lo stesso conteggio.
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 7 | 2 | 0 |
 | §10 Alerts | 5 | 1 | 1 |
-| §11 Backup | 10 | 1 | 2 |
+| §11 Backup | 13 | 0 | 0 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
@@ -923,15 +946,15 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **160** | **6** | **107** |
+| **Totale** | **163** | **5** | **105** |
 
-Su 273 voci totali: **160 fatte, 6 parziali, 107 mancanti** — circa
-il 60% dello schema (contando i parziali a metà peso). §11 Backup
-System ha l'intera orchestrazione automatizzabile completa, il
-mirror in tempo reale (§11.9) e l'auto-propagazione (§11.13) —
-restano solo backup/restore utenti via OAuth2 (§11.10/§11.11/parte
-di §11.12), in costruzione con la progettazione di sicurezza già
-concordata con l'utente. §15
+Su 273 voci totali: **163 fatte, 5 parziali, 105 mancanti** — circa
+il 61% dello schema (contando i parziali a metà peso). **§11 Backup
+System è ora COMPLETO al 100%** (13/13): orchestrazione
+automatizzabile, mirror in tempo reale, auto-propagazione e restore
+utenti via OAuth2 con la progettazione di sicurezza concordata
+esplicitamente con l'utente (cifratura AES-256-GCM, tre modalità di
+consenso, retention differenziata per uscita/kick/ban). §15
 Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico,
 tutti i comandi Discord previsti (`/clan crea|info|membri|classifica|
 sciogli|tesoreria dona|tesoreria trasferisci|invita|espelli|
