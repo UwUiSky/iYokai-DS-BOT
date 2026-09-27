@@ -97,6 +97,43 @@ async def test_tutti_i_cog_si_caricano_insieme_senza_collisioni_di_nome():
         nomi = [c.name for c in bot.tree.get_commands()]
         duplicati = {nome for nome in nomi if nomi.count(nome) > 1}
         assert duplicati == set(), f"Nomi di comando duplicati nell'albero: {duplicati}"
+
+        # Guardia di regressione trovata per davvero in questa
+        # sessione (SPEC.md §16.1/§16.8): Discord impone un limite
+        # GLOBALE di 100 comandi slash TOP-LEVEL (un gruppo conta
+        # come 1, indipendentemente da quanti sotto-comandi contiene
+        # — i sotto-comandi NON contano a parte). Sfondarlo fa
+        # fallire in silenzio la registrazione di QUALUNQUE cog
+        # caricato dopo quello che lo sfonda, con lo stesso identico
+        # effetto (e la stessa identica assenza di errore visibile)
+        # di un nome duplicato — solo che qui `falliti` sopra lo
+        # avrebbe già intercettato con un errore poco leggibile
+        # ("CommandLimitReached"). Questo controllo separato dà un
+        # messaggio chiaro PRIMA di arrivare a quel punto, e soprattutto
+        # avvisa in anticipo quando ci si avvicina al limite (margine
+        # di sicurezza a 95), non solo quando lo si supera davvero.
+        numero_top_level = len(nomi)
+        assert numero_top_level <= 100, (
+            f"Il bot ha {numero_top_level} comandi slash TOP-LEVEL: "
+            "il limite GLOBALE di Discord è 100. Qualunque cog "
+            "caricato DOPO quello che lo supera fallisce la "
+            "registrazione in silenzio (load_all_cogs la cattura e "
+            "logga, non la fa risalire). Consolida i nuovi comandi "
+            "sotto un app_commands.Group esistente invece di "
+            "aggiungerne uno top-level nuovo."
+        )
+        if numero_top_level > 90:
+            import warnings
+
+            warnings.warn(
+                f"Il bot ha {numero_top_level} comandi slash TOP-LEVEL, "
+                "vicino al limite GLOBALE di Discord (100). Il prossimo "
+                "comando nuovo va aggiunto come sotto-comando di un "
+                "app_commands.Group esistente, non come nuovo comando "
+                "top-level — vedi il docstring di cogs/fun/entertainment.py "
+                "per il precedente reale di questa sessione.",
+                stacklevel=1,
+            )
     finally:
         if not già_connesso:
             await db.close()

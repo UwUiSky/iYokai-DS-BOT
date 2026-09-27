@@ -3997,6 +3997,69 @@ di fila).
 
 ---
 
+### Fase 75 — §16 Fun & Immagini, primo lotto: Mini-giochi e
+intrattenimento classico (punto 5 della direttiva "Vai prosegui fai
+tutto a parte ovviamente bcde")
+
+**§16.1 Mini-giochi e §16.8 Altri comandi di intrattenimento
+classici chiusi** (2/0/13 → 4/0/11): `/fun coinflip`, `/fun dice
+[facce]`, `/fun rps`, `/fun 8ball <domanda>` (`core/minigames_logic.py`
+— genuinamente casuali ad ogni chiamata, a differenza di Ship/Rate
+che sono deterministici via hash) e `/fun joke`, `/fun quote`,
+`/fun fact` (`core/classic_entertainment_logic.py` — liste curate a
+mano, nessuna dipendenza esterna).
+
+**Scoperta reale IMPORTANTE fatta scrivendo questo lotto, non
+ipotizzata**: il bot era già a 96 comandi slash TOP-LEVEL su un
+limite GLOBALE di Discord di 100 — verificato con una prova vera
+(caricare tutti i cog insieme in un solo `bot.tree`, come fa
+`tests/test_cog_manager_load_all.py`, e contare
+`bot.tree.get_commands()`), non solo letto sulla documentazione. Il
+primo tentativo di questo lotto usava 7 comandi top-level separati
+(`/coinflip`, `/dice`, `/rps`, `/8ball`, `/joke`, `/quote`, `/fact`)
+in due cog distinti — avrebbe sfondato il limite a 103, con
+l'EFFETTO IDENTICO di un nome di comando duplicato già documentato
+in `tests/test_cog_manager_load_all.py` (il cog caricato DOPO quello
+che sfonda il limite fallisce la registrazione in silenzio,
+`load_all_cogs` cattura e logga l'eccezione senza farla risalire) —
+solo con una causa diversa. Rifatto come un SOLO cog
+(`cogs/fun/entertainment.py`) con TUTTI i sette comandi come
+sotto-comandi di un unico gruppo `/fun` (un gruppo consuma un solo
+slot top-level indipendentemente da quanti sotto-comandi contiene,
+stesso principio già usato altrove per `/config`, `/ticket-category`
+ecc., qui applicato per la prima volta come misura di risparmio slot
+deliberata). Ship e Rate (§16.5/§16.7) restano comandi top-level a
+sé — già in produzione, cambiarli ora sarebbe una rottura per chi li
+usa già senza un guadagno che serva adesso. **Qualunque comando
+futuro di §16 (16.2/16.3/16.4/16.9, nei prossimi lotti) andrà sotto
+questo stesso gruppo `/fun` o un gruppo analogo, non come nuovo
+comando top-level** — vincolo permanente da questa sessione in
+avanti, non solo per questo lotto.
+
+Aggiunta una guardia di regressione permanente in
+`tests/test_cog_manager_load_all.py`: la suite fallisce esplicitamente
+se il totale dei comandi top-level supera 100 (con un messaggio che
+spiega il perché e la soluzione, invece di lasciare che sia
+discord.py a farlo con un `CommandLimitReached` poco leggibile), e
+avvisa (senza fallire) se supera 90 — così un futuro superamento del
+limite viene scoperto QUI, non in produzione dopo un deploy.
+
+**21 nuovi test**: `test_minigames_logic.py` (nuovo, 12, `random.
+Random` seedato invece di un mock, per risultati prevedibili senza
+patchare il modulo `random` standard); `test_classic_entertainment_
+logic.py` (nuovo, 4); `test_entertainment_cog_smoke.py` (nuovo, 1);
+`test_entertainment_cog_behavior.py` (nuovo, 11); guardia aggiunta a
+`test_cog_manager_load_all.py` (nessun nuovo test a parte, la stessa
+funzione esistente ora controlla anche il totale).
+
+SPEC.md: §16 2/0/13 → **4/0/11**. Ricalcolo meccanico di TUTTA la
+tabella dei totali: **234/3/39**.
+
+**Suite di test completa: 1989/1989 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

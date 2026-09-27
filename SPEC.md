@@ -1197,7 +1197,15 @@ necessario.
 
 ## §16 FUN & IMMAGINI — parzialmente fatta
 
-- `[ ]` 16.1 Mini-giochi
+- `[x]` 16.1 Mini-giochi — `/fun coinflip`, `/fun dice [facce]`,
+  `/fun rps` (carta/forbici/sasso contro il bot), `/fun 8ball
+  <domanda>`. A differenza di Ship/Rate (deterministici via hash,
+  §16.5/§16.7), qui il risultato è genuinamente casuale ad ogni
+  chiamata — è il punto di un mini-gioco (`core/minigames_logic.py`,
+  ogni funzione riceve un `random.Random` dal chiamante, mai
+  `random` globale usato direttamente, per restare testabile con un
+  seed). **Sotto-comandi di un gruppo `/fun`, non comandi top-level
+  separati** — vedi la nota tecnica sotto 16.8
 - `[ ]` 16.2 Image manipulation
 - `[ ]` 16.3 Comandi meme
 - `[ ]` 16.4 Comandi animal
@@ -1207,7 +1215,27 @@ necessario.
   attributo protetto (l'orientamento sessuale) per un giochino
   casuale, anche se comune in altri bot Discord
 - `[x]` 16.7 Rate — punteggio 0-10 deterministico via hash
-- `[ ]` 16.8 Altri comandi di intrattenimento classici
+- `[x]` 16.8 Altri comandi di intrattenimento classici — `/fun joke`,
+  `/fun quote`, `/fun fact`, contenuto testuale curato a mano
+  (`core/classic_entertainment_logic.py`), nessuna dipendenza esterna
+  o chiave API richiesta (a differenza di §16.4/§16.9, che hanno
+  bisogno di immagini vere da un servizio esterno). **Nota tecnica
+  importante, vale anche per 16.1**: il bot era già a 96 comandi
+  slash TOP-LEVEL su un limite GLOBALE di Discord di 100 (verificato
+  con una prova reale, non solo letto sulla documentazione — caricare
+  tutti i cog insieme e contare `bot.tree.get_commands()`). 7 nuovi
+  comandi separati avrebbero sfondato il limite, con lo stesso
+  identico effetto silenzioso di un nome duplicato: il cog caricato
+  DOPO quello che sfonda il limite fallisce la registrazione senza
+  errore visibile (`load_all_cogs` lo cattura e lo logga, non lo fa
+  risalire). Per questo tutti i comandi di 16.1/16.8 vivono sotto UN
+  SOLO gruppo (`cogs/fun/entertainment.py`, `/fun ...`), che consuma
+  un solo slot top-level indipendentemente da quanti sotto-comandi
+  contiene. Aggiunta una guardia di regressione in
+  `tests/test_cog_manager_load_all.py` che fa fallire la suite se il
+  totale supera 100 e avvisa se supera 90 — qualunque comando FUTURO
+  di §16 (16.2/16.3/16.4/16.9) andrà sotto questo stesso gruppo o un
+  gruppo analogo, non come nuovo comando top-level
 - `[ ]` 16.9 Ricerca immagini SFW
 - `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
   - `[ ]` Solo canali con flag NSFW, verificato a runtime a ogni post
@@ -1323,10 +1351,10 @@ rilancia lo stesso conteggio.
 | §13 Ticket | 13 | 0 | 0 |
 | §14 Utility | 15 | 0 | 3 |
 | §15 Levels/Gilde | 34 | 0 | 0 |
-| §16 Fun/NSFW | 2 | 0 | 13 |
+| §16 Fun/NSFW | 4 | 0 | 11 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **232** | **3** | **41** |
+| **Totale** | **234** | **3** | **39** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1492,4 +1520,19 @@ sottoscrizioni (stesso schema di twitch_subscription_repo.py);
 Instagram e 10.13 X/Twitter restano `[✗]` scartati, decisioni già
 prese e confermate dall'utente in sessioni precedenti — non
 rivisitate qui.
+
+**§16 Fun & Immagini: chiusi 16.1 Mini-giochi e 16.8 Altri comandi
+di intrattenimento classici** (2/0/13 → 4/0/11), primo dei tre lotti
+in cui è stato diviso questo settore (16.2/16.3 Pillow-based e
+16.4/16.9 basati su API esterne seguiranno in commit separati — la
+sezione è troppo ampia per un solo giro, ma resta un unico punto
+della direttiva "fai tutto a parte bcde"). Entrambe le voci sono
+testuali/casuali, senza bisogno di rete o chiavi API: `/coinflip`,
+`/dice`, `/rps`, `/8ball` (`cogs/fun/minigames.py`, `core/minigames_
+logic.py`) e `/joke`, `/quote`, `/fact` (`cogs/fun/classic_
+entertainment.py`, `core/classic_entertainment_logic.py`, liste
+curate a mano). Entrambi i cog condividono il modulo "fun" già
+registrato da `cogs/fun/ship_rate.py` (Ship/Rate, §16.5/§16.7) —
+stesso raggruppamento logico per l'utente finale, non un modulo
+separato per ogni singolo comando.
 
