@@ -3516,6 +3516,94 @@ di fila).
 
 ---
 
+### Fase 70 — §8 Logging: chiude quasi tutto il gap (punto 8 della
+direttiva numerata), con la distinzione Free/Premium richiesta
+esplicitamente
+
+Chiusi in questo giro: 8.6 Role update, 8.7 Channel create/delete/
+update, 8.9 Voice state, 8.10 Webhook, 8.11 Emoji, 8.12 Sticker, 8.14
+Thread events, 8.15 Server update, e 8.18 (nuova numerazione: era un
+8.17 duplicato) Distinzione Free/Premium. Restano `[ ]`: 8.13
+Soundboard (limite di libreria, non di scope) e 8.16 Message delete/
+edit (rimandato deliberatamente, Message Content Intent). 8.8 Invite
+segnato `[~]` parziale: create/delete fatti, "use" deliberatamente
+escluso (vedi sotto).
+
+**Decisione di design presa senza fermarsi a chiedere** (come da
+stile di questa sessione): la distinzione Free/Premium richiesta
+dall'utente non è un flag dentro il modulo di logging esistente, ma
+un SECONDO modulo separato — `cogs/logging/advanced_logs.py`
+(`MODULE_LOGGING_ADVANCED`, candidato Premium) accanto al
+`cogs/logging/basic_logs.py` esistente (`MODULE_LOGGING`, sempre
+gratuito, 8.1-8.5). Entrambi scrivono nello STESSO canale già
+configurato con `/logs-setup` — niente secondo comando di setup,
+è l'attivazione del secondo modulo a decidere se gli eventi avanzati
+iniziano ad arrivarci. Nessuna nuova tabella: entrambi riusano
+`core/repositories/event_log_repo.py` già esistente.
+
+**Logica pura** in `core/logging_advanced_logic.py` (nessuna
+dipendenza discord.py/DB, stesso principio di ogni altro modulo del
+progetto): `diff_attributes()` generico (ruoli/canali/server/thread,
+un'unica funzione invece di quattro quasi identiche, parametrizzata
+sugli attributi da tracciare), `diff_named_items()` per emoji/
+sticker (distingue correttamente un RENAME, stesso id con nome
+diverso, da una coppia elimina+crea — l'evento gateway stesso non fa
+questa distinzione, consegna solo le due liste complete),
+`classify_voice_state_change()` (una lista, non un singolo evento:
+un `on_voice_state_update` può contenere più cambiamenti insieme,
+es. cambio canale E mute nello stesso evento).
+
+**Bug evitato, non solo risolto — nota architetturale importante**:
+la tentazione naturale per 8.8 "Invite use" sarebbe stata chiamare
+`invite_tracker.find_used_invite()` anche da qui, in `on_member_
+join`. Non fatto: quella funzione MUTA la propria cache a ogni
+chiamata (aggiorna l'istantanea di confronto per la prossima). Spam
+Trap e Verify la chiamano già ciascuno per proprio conto sullo
+STESSO evento di join, quando il proprio modulo è attivo. Una terza
+chiamata indipendente da qui "consumerebbe" il diff prima o dopo le
+altre due, restituendo `None` a una delle chiamate concorrenti in
+modo imprevedibile — non una funzionalità in più, un bug di
+condivisione di stato silenzioso. "Use" resta quindi fuori per
+questo motivo preciso, non per pigrizia: create/delete (eventi
+gateway dedicati, nessuno stato condiviso) sono coperti.
+
+**Autore risolto via audit log dove il gateway non lo dà**: per i
+webhook, `on_webhooks_update(channel)` avvisa solo che "qualcosa" è
+cambiato — nessuna distinzione create/update/delete, nessun autore.
+Risolto in `_resolve_webhook_change()` interrogando le tre azioni
+possibili nell'audit log e tenendo la più recente entro una finestra
+di tolleranza — stesso principio già usato per l'autore in Anti-Nuke
+(§7.2, Fase 68), non una nuova invenzione.
+
+**Limite riusato, non re-investigato**: 8.13 Soundboard resta `[ ]`
+per lo stesso motivo già trovato e documentato durante l'Anti-Nuke
+(Fase 68) — discord.py 2.7 non espone un evento gateway dedicato per
+il soundboard. Stessa conclusione, verificata una volta, non ridiscussa.
+
+**28 nuovi test**: 18 in `tests/test_logging_advanced_logic.py`
+(logica pura — diff attributi, diff insiemi id, diff elementi con
+nome, classificazione voice state); 4 in
+`tests/test_advanced_logs_channel_resolution.py` (stesso schema di
+`test_logging_channel_resolution.py`, incluso il caso "modulo Free
+attivo ma non l'Avanzato" — verificato esplicitamente che il primo
+non basta per il secondo); 5 in
+`tests/test_advanced_logs_webhook_resolution.py` (risoluzione audit
+log, voce troppo vecchia ignorata, più azioni recenti vince la più
+recente, permessi insufficienti su un'azione non blocca le altre); 1
+smoke test in `tests/test_advanced_logs_cog_smoke.py` (schema di
+`test_logging_cog_smoke.py`: verifica REALE che ogni listener sia
+registrato in `bot.extra_events`, non solo che il cog carichi).
+
+SPEC.md §8: passa da 6 fatto/0 parziale/12 mancante a **15 fatto/1
+parziale/2 mancante**. Ricalcolo meccanico di TUTTA la tabella dei
+totali (stesso script della Fase 69, non solo la riga toccata):
+**212/3/61**.
+
+**Suite di test completa: 1814/1814 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

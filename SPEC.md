@@ -447,7 +447,7 @@ file, non da un riassunto.**
   della creazione del case) con un campo aggiuntivo nell'embed di log
   quando la propagazione avviene.
 
-## §8 LOGGING
+## §8 LOGGING — completo tranne Soundboard (limite di libreria) e Message delete/edit (rimandato, Message Content Intent)
 
 - `[x]` 8.1 Member join
 - `[x]` 8.2 Member leave
@@ -455,21 +455,48 @@ file, non da un riassunto.**
 - `[x]` 8.4 Member update — ruoli e nickname, nello stesso evento
   senza uscire in anticipo se solo uno dei due cambia
 - `[x]` 8.5 Role create / delete
-- `[ ]` 8.6 Role **update** (nome, colore, permessi)
-- `[ ]` 8.7 Channel create / delete / update
-- `[ ]` 8.8 Invite create / delete / use
-- `[ ]` 8.9 **Voice state**: join / leave / move / mute / deafen
-- `[ ]` 8.10 Webhook create / update / delete
-- `[ ]` 8.11 Emoji create / delete / update
-- `[ ]` 8.12 Sticker create / delete / update
-- `[ ]` 8.13 Soundboard create / delete / update
-- `[ ]` 8.14 Thread events
-- `[ ]` 8.15 Server update (impostazioni guild)
+- `[x]` 8.6 Role **update** (nome, colore, permessi, hoist,
+  mentionable) — `cogs/logging/advanced_logs.py`, livello Premium
+  (vedi 8.18 sotto)
+- `[x]` 8.7 Channel create / delete / update — update copre nome,
+  categoria, topic, nsfw, slowmode, posizione; il diff degli
+  overwrite di permesso canale-per-canale resta escluso per scelta
+  di scope (complessità non richiesta per un log, non un limite
+  tecnico)
+- `[~]` 8.8 Invite create / delete / use — create/delete costruiti
+  (eventi gateway dedicati). **"use" deliberatamente escluso**:
+  `core/invite_tracker.py` muta la propria cache a ogni chiamata di
+  `find_used_invite()`; Spam Trap e Verify la chiamano già ciascuno
+  per proprio conto sullo stesso evento di join. Una terza chiamata
+  indipendente da qui introdurrebbe un bug di condivisione di stato
+  (una delle chiamate concorrenti riceverebbe `None` in modo
+  imprevedibile), non una funzionalità in più — non costruita per
+  questo motivo, non per pigrizia
+- `[x]` 8.9 **Voice state**: join / leave / move / mute / deafen —
+  "mute"/"deafen" semplificato allo stato EFFETTIVO (server-mute/
+  deafen oppure self-mute/self-deafen), non le quattro variabili
+  distinte di discord.py, scelta dichiarata per un log leggibile
+- `[x]` 8.10 Webhook create / update / delete — l'evento gateway
+  nativo (`on_webhooks_update`) non distingue le tre azioni né dice
+  l'autore: risolto via audit log entro una finestra di tolleranza,
+  stesso principio già usato per l'autore in Anti-Nuke (§7.2)
+- `[x]` 8.11 Emoji create / delete / update
+- `[x]` 8.12 Sticker create / delete / update
+- `[ ]` 8.13 Soundboard create / delete / update — **non
+  costruibile con l'attuale discord.py 2.7**: limite già trovato e
+  documentato durante l'Anti-Nuke (§7.2, PROGRESS.md Fase 68), nessun
+  evento gateway dedicato esposto dalla libreria. Stesso limite,
+  non re-investigato da zero
+- `[x]` 8.14 Thread events — create/delete/update (nome, archiviato,
+  bloccato)
+- `[x]` 8.15 Server update (impostazioni guild) — nome, icona,
+  livello di verifica, canale AFK, canale di sistema, filtro
+  contenuti espliciti
 - `[ ]` 8.16 Message delete / bulk delete / edit — **rimandato
   deliberatamente**: richiede il Message Content Intent, da chiedere
   solo quando un modulo lo giustifica (vedi § Decisioni)
 - `[x]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
-  evento (8.1-8.5, 8.15 quando esisterà) salvato UNA VOLTA nel DB,
+  evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
   `/logs user`, `/logs channel`, `/logs export` (JSON completo).
   Retention differenziata: 30gg Free, 180gg Premium, pulizia
@@ -478,8 +505,14 @@ file, non da un riassunto.**
   (BACKLOG.md §3): "membri" è l'unica dimensione ad alta cardinalità
   che avrebbe fatto esplodere i thread durante un raid, "canali" e
   "case" restano un'estensione futura separata
-- `[ ]` 8.17 Distinzione log semplificato `[Free]` vs completo `[Premium]`
-  — oggi il modulo è uno solo, senza i due livelli previsti
+- `[x]` 8.18 Distinzione log semplificato `[Free]` vs completo
+  `[Premium]` — due moduli distinti: `cogs/logging/basic_logs.py`
+  (`MODULE_LOGGING`, 8.1-8.5, SEMPRE GRATUITO) e
+  `cogs/logging/advanced_logs.py` (`MODULE_LOGGING_ADVANCED`,
+  8.6-8.15, CANDIDATO PREMIUM). Stesso canale di log configurato una
+  volta con `/logs-setup` — è l'attivazione del secondo modulo a
+  decidere se gli eventi avanzati iniziano ad arrivarci, non un
+  secondo comando di setup
 
 ## §9 MUSIC — architettura multi-istanza fatta, comandi ridotti (deliberatamente)
 
@@ -1201,7 +1234,7 @@ rilancia lo stesso conteggio.
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 15 | 0 | 0 |
 | §7 Security | 33 | 0 | 1 |
-| §8 Logging | 6 | 0 | 12 |
+| §8 Logging | 15 | 1 | 2 |
 | §9 Music | 8 | 1 | 0 |
 | §10 Alerts | 6 | 0 | 1 |
 | §11 Backup | 13 | 0 | 0 |
@@ -1212,7 +1245,7 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **203** | **2** | **71** |
+| **Totale** | **212** | **3** | **61** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
