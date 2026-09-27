@@ -44,7 +44,11 @@ from core.giveaway_logic import is_eligible, pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
 from core.premium_pricing_logic import TIER_MONTHS_REQUIRED
 from core.premium_purchase_service import PurchaseOutcome, purchase_premium_tier
-from core.repositories.guild_chest_repo import guild_chest_repo
+from core.repositories.guild_chest_repo import (
+    REASON_EVENT_LOBBY_PRIZE,
+    REASON_EVENT_WINNER_PRIZE,
+    guild_chest_repo,
+)
 from core.guild_clan_logic import (
     CREATION_DEFICIT,
     CREATION_GRACE_HOURS,
@@ -809,6 +813,87 @@ class LevelingCog(commands.Cog):
                 f"✅ {tier}° mese di premium sbloccato per **{risultato.cost}** coin dalla "
                 f"cassa! Premium attivo fino al {risultato.new_premium_until:%Y-%m-%d}."
             )
+
+    @app_commands.command(
+        name="assegna-lobby",
+        description="[Admin] Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.",
+    )
+    @app_commands.describe(importo="Quante coin assegnare a CIASCUNO dei presenti in vocale")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def assegna_lobby(
+        self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000]
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        presenti = {
+            membro.id: membro
+            for canale in guild.voice_channels
+            for membro in canale.members
+            if not membro.bot
+        }
+        if not presenti:
+            await interaction.response.send_message(
+                "Nessuno è in vocale in questo momento — nessuna coin assegnata.", ephemeral=True
+            )
+            return
+
+        costo_totale = importo * len(presenti)
+        riuscito = await guild_chest_repo.spend(guild.id, costo_totale, reason=REASON_EVENT_LOBBY_PRIZE)
+        if not riuscito:
+            saldo = await guild_chest_repo.get_balance(guild.id)
+            await interaction.response.send_message(
+                f"La cassa non basta — servono **{costo_totale}** coin per **{len(presenti)}** "
+                f"persone in vocale (ne avete **{saldo}**).",
+                ephemeral=True,
+            )
+            return
+
+        for membro_id in presenti:
+            await leveling_repo.add_coins(guild.id, membro_id, importo)
+
+        await interaction.response.send_message(
+            f"✅ Assegnate **{importo}** coin a **{len(presenti)}** persone in vocale "
+            f"(**{costo_totale}** coin totali dalla cassa)."
+        )
+
+    @app_commands.command(
+        name="assegna-winner",
+        description="[Admin] Premio vincitore: assegna coin a un membro, dalla cassa del server.",
+    )
+    @app_commands.describe(membro="Il membro da premiare", importo="Quante coin assegnare")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def assegna_winner(
+        self,
+        interaction: discord.Interaction,
+        membro: discord.Member,
+        importo: app_commands.Range[int, 1, 1_000_000],
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        riuscito = await guild_chest_repo.spend(guild.id, importo, reason=REASON_EVENT_WINNER_PRIZE)
+        if not riuscito:
+            saldo = await guild_chest_repo.get_balance(guild.id)
+            await interaction.response.send_message(
+                f"La cassa non basta — servono **{importo}** coin (ne avete **{saldo}**).",
+                ephemeral=True,
+            )
+            return
+
+        await leveling_repo.add_coins(guild.id, membro.id, importo)
+
+        await interaction.response.send_message(
+            f"🏆 {membro.mention} ha vinto **{importo}** coin dalla cassa del server!"
+        )
 
     # ================================================================
     # Sistema Gilde/Clan (SPEC.md §15.14) — primo pezzo di comandi:

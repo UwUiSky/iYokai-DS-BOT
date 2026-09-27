@@ -713,11 +713,18 @@ necessario.
     tesoreria di clan (`guild_clan_treasury_decay_worker`, aggiornato
     per depositare il delta nella cassa del server del clan). Saldo
     e ultimi movimenti consultabili con `/cassa saldo`
-  - `[~]` Uso della cassa: premi per eventi organizzati nel server
+  - `[x]` Uso della cassa: premi per eventi organizzati nel server
     e/o acquisto di mesi di bot premium — lo sblocco premium è
-    fatto (`/cassa sblocca-premium`); **manca** ancora un comando di
-    spesa dedicato ai premi evento (oggi la cassa ha solo
-    `deposit`/`spend`, nessun comando Discord per un prelievo-premio)
+    fatto (`/cassa sblocca-premium`); i premi evento sono fatti con
+    due comandi distinti: `/assegna-lobby <importo>` (premio
+    partecipazione — accredita `importo` coin a CIASCUN membro
+    presente in un canale vocale nell'istante in cui il comando
+    viene eseguito, bot esclusi; se nessuno è in vocale o la cassa
+    non basta per l'intero gruppo non viene assegnato nulla) e
+    `/assegna-winner <membro> <importo>` (premio vincitore —
+    accredita `importo` coin a un singolo membro scelto), entrambi
+    riservati a chi ha `manage_guild` e a spesa dalla cassa di
+    server (non dalla tesoreria di un clan)
   - `[x]` Sblocco premium a doppio cancello: **tempo** dal join del
     bot nel server (1° mese dopo 6 mesi, 2° dopo 1 anno, 3° dopo 2
     anni, confermato da `core.premium_pricing_logic.TIER_MONTHS_
@@ -857,13 +864,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 27 | 5 | 2 |
+| §15 Levels/Gilde | 28 | 4 | 2 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **152** | **10** | **111** |
+| **Totale** | **153** | **9** | **111** |
 
-Su 273 voci totali: **152 fatte, 10 parziali, 111 mancanti** — circa
+Su 273 voci totali: **153 fatte, 9 parziali, 111 mancanti** — circa
 il 58% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
@@ -887,12 +894,15 @@ il lato TESTUALE del guadagno ×2 (oggi solo vocale) e un comando di
 PRELIEVO dalla tesoreria verso un membro per Capo/Admin (es. premio
 evento — diverso dal trasferimento tra gilde, ora fatto) — le uniche
 due voci ancora aperte in §15.14. §15.15 (non nello schema
-originale, emersa in conversazione) è COMPLETO: decadimento
+originale, emersa in conversazione) è ORA COMPLETO: decadimento
 settimanale personale, cassa di server alimentata da entrambi i
-decadimenti, e sblocco premium a doppio cancello (tempo dal join +
+decadimenti, sblocco premium a doppio cancello (tempo dal join +
 costo dalla cassa) — comandi `/cassa saldo` e `/cassa
-sblocca-premium`. Resta solo un comando dedicato per spendere la
-cassa su premi evento.
+sblocca-premium` — e ORA anche i due comandi di spesa dedicati ai
+premi evento: `/assegna-lobby <importo>` (premio partecipazione, a
+tutti i presenti in vocale nell'istante dell'esecuzione) e
+`/assegna-winner <membro> <importo>` (premio vincitore, a un membro
+scelto), entrambi a spesa dalla cassa di server.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

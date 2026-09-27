@@ -2295,6 +2295,53 @@ COMMAND_LIST.md rigenerato (166 comandi).
 
 ---
 
+### Fase 56 — Premi evento dalla cassa di server: `/assegna-lobby` e
+`/assegna-winner` (SPEC.md §15.15, chiude l'ultima voce parziale
+della sezione)
+
+L'utente ha chiesto due comandi distinti per premiare i membri dalla
+cassa di server (distinta dalla tesoreria di clan): un premio
+partecipazione a tutti i presenti in vocale nel momento
+dell'esecuzione, e un premio vincitore a un membro scelto.
+
+**Nuovo**: due costanti di motivo nel ledger
+(`REASON_EVENT_LOBBY_PRIZE`, `REASON_EVENT_WINNER_PRIZE` in
+`core/repositories/guild_chest_repo.py` — nessun'altra modifica
+necessaria al repository, `spend`/`get_balance` già atomici e
+riusabili). **`/assegna-lobby <importo>`** \[Admin, `manage_guild`\]:
+raccoglie tutti i membri (bot esclusi) presenti in QUALUNQUE canale
+vocale del server nell'istante dell'esecuzione, calcola il costo
+totale (`importo × presenti`), tenta la spesa dalla cassa in un colpo
+solo — se la cassa non basta per l'INTERO gruppo non assegna nulla a
+nessuno (niente assegnazioni parziali) — poi accredita `importo` a
+ciascun presente via `leveling_repo.add_coins`. Se nessuno è in
+vocale, avvisa senza toccare la cassa. **`/assegna-winner <membro>
+<importo>`** \[Admin\]: stesso pattern spesa-poi-accredito per un
+singolo membro.
+
+**8 nuovi test** in `test_guild_chest_cog_behavior.py`: premio a
+tutti i presenti, bot ignorati, nessuno in vocale, cassa
+insufficiente (nessuna assegnazione parziale), vincitore premiato,
+vincitore con cassa insufficiente, entrambi i comandi fuori da un
+server.
+
+SPEC.md: la voce `[~]` "Uso della cassa" sotto §15.15 passa a `[x]` —
+la sezione §15.15 è ORA COMPLETA. Ricalcolo meccanico: §15
+Levels/Gilde passa da 27/5/2 a **28/4/2** (fatte/parziali/mancanti).
+**58% dello schema (153/273 pesato).** COMMAND_LIST.md rigenerato
+(168 comandi).
+
+**Suite di test completa: 1395/1395 passano.**
+
+Nota: resta aperta la richiesta dell'utente di ricontrollare i
+moltiplicatori XP/coin di vocale/testo normali contro quelli di
+gilda — trattata separatamente (vedi sotto), perché ha rivelato una
+discrepanza reale tra quanto dichiarato in SPEC.md ("×2") e le
+costanti effettivamente implementate, da chiarire con l'utente prima
+di toccare codice.
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:49 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 166 comandi in 10 categorie.**
+**Totale: 168 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -26,6 +26,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:
 
 ## Leveling
 
+- **`/assegna-lobby`** — [Admin] Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
+- **`/assegna-winner`** — [Admin] Premio vincitore: assegna coin a un membro, dalla cassa del server.
 - **`/balance`** — Mostra i tuoi coin.
 - **`/cassa saldo`** — Mostra il saldo della cassa del server.
 - **`/cassa sblocca-premium`** — [Admin] Sblocca un mese di bot premium spendendo dalla cassa.

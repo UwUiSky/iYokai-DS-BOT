@@ -29,6 +29,8 @@ import asyncpg
 REASON_WEEKLY_PERSONAL_DECAY = "weekly_personal_decay"
 REASON_MONTHLY_CLAN_DECAY = "monthly_clan_decay"
 REASON_PREMIUM_PURCHASE = "premium_purchase"
+REASON_EVENT_LOBBY_PRIZE = "event_lobby_prize"
+REASON_EVENT_WINNER_PRIZE = "event_winner_prize"
 
 
 @dataclass(frozen=True)
