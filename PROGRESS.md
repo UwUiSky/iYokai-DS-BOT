@@ -3810,6 +3810,75 @@ di fila).
 
 ---
 
+### Fase 72 — §2 Setup & Dashboard: chiude reset/wizard/export/import,
+lingua per server infrastrutturale (punto 2 della direttiva "Vai
+prosegui fai tutto a parte ovviamente bcde")
+
+**§2 Setup & Dashboard (2/0/5 → 6/1/0)**: 2.1 Reset configurazione
+(`/config reset`, conferma a due passaggi con lo stesso schema
+Cancella/Confirm già usato per `/config rollback` — `ResetConfirmView`
+gemella di `RollbackConfirmView`) disattiva tutti i moduli e azzera
+tutte le settings del server, con UNA SOLA voce di storico
+(`change_type="reset"`) per non riempire `guild_config_history` di
+una riga per ogni chiave — annullabile con `/config rollback` come
+qualunque altra voce; 2.2 Wizard di configurazione guidata
+(`/setup-wizard`) — esperienza deliberatamente diversa da `/setup`
+esistente (tutti i moduli in un select menu unico): un modulo curato
+alla volta tra i sei più usati per iniziare (Moderazione, AutoMod,
+Logging, Greetings, Vocali temporanei, Ticket), con bottoni Attiva/
+Disattiva + Avanti/Indietro (`SetupWizardView`, `core/
+setup_wizard_logic.py` per la logica pura di navigazione — clamp,
+`next_step`/`previous_step`/`is_last_step` — verificata con test
+senza Discord); 2.5 Esporta configurazione (`/config export`) —
+allegato `.json` con moduli/settings/lingua correnti; 2.6 Importa
+configurazione (`/config import file:`) — sovrascrive IN BLOCCO (non
+un merge), con validazione del formato PRIMA di applicare qualunque
+cosa (verifica che il file abbia davvero le chiavi `modules`/
+`settings`/`language`, altrimenti rifiuta senza toccare il database),
+UNA SOLA voce di storico (`change_type="import"`) come il reset.
+
+**2.3 Lingua per server marcata `[~]`, deliberatamente NON `[x]`**:
+il comando (`/config language show|set`, valori supportati `it`/
+`en`) e la colonna `language` di `guild_config` sono ora davvero
+collegati (nuovi metodi `get_guild_language`/`set_guild_language` su
+`Database`, con storico), e un piccolo registro di traduzioni nuovo
+(`core/i18n.py`, funzione `t(key, language)`) copre un insieme
+limitato di 4 stringhe generiche condivise fra i cog (modulo non
+attivo, comando solo su server, solo admin, operazione annullata).
+Questo è infrastruttura reale e funzionante, non un segnaposto — ma
+NON è un sistema i18n applicato a tutto il bot: la stragrande
+maggioranza dei messaggi utente resta scritta in italiano fisso nei
+singoli cog, e tradurli tutti è un lavoro enormemente più grande di
+questa singola voce di SPEC.md. Dichiarato onestamente parziale
+invece di gonfiare il conteggio.
+
+**Nuovi metodi su `Database`**: `get_full_config`,
+`import_full_config`, `reset_guild_config`, `get_guild_language`,
+`set_guild_language` — tutti passano da `ensure_guild_exists` e
+registrano lo storico tramite `_record_config_change` già esistente,
+nessun percorso di scrittura nuovo e parallelo.
+
+**41 nuovi test**: `test_database.py` (+7: `get_full_config`,
+import/reset in blocco con una sola voce di storico, invalidazione
+della cache moduli, lingua di default e scrittura); `test_i18n.py`
+(nuovo, 4); `test_config_history_cog_smoke.py` (+1: `ResetConfirmView`,
+più le assert aggiornate per i nuovi comandi/gruppi); `test_setup_
+wizard_logic.py` (nuovo, 10: logica pura di navigazione);
+`test_setup_wizard.py` (nuovo, 5: navigazione della view simulando i
+click sui bottoni, più un test di persistenza reale contro
+PostgreSQL — solo i moduli effettivamente cambiati vengono
+scritti); `test_setup_cog.py` (assert aggiornata per includere
+`/setup-wizard` tra i comandi registrati, nessuna regressione).
+
+SPEC.md: §2 2/0/5 → **6/1/0**. Ricalcolo meccanico di TUTTA la
+tabella dei totali (script rifatto da zero, il precedente era stato
+cancellato dopo l'uso nella Fase 71): **229/3/44**.
+
+**Suite di test completa: 1930/1930 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

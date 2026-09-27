@@ -87,15 +87,29 @@ file, non da un riassunto.**
 ## §2 SETUP & DASHBOARD
 
 - `[x]` 2.1 Pannello interattivo — select menu moduli, conferma, annulla
-- `[ ]` 2.1 Bottone "Reset configurazione"
-- `[ ]` 2.2 Wizard di configurazione guidata passo-passo
-- `[ ]` 2.3 Lingua per server — colonna `language` esiste nel DB, nessun
-  comando, nessun sistema i18n
+- `[x]` 2.1 Bottone "Reset configurazione" — `/config reset`, conferma
+  a due passaggi (stesso schema di `/config rollback`), disattiva
+  tutti i moduli e azzera tutte le settings, annullabile con
+  `/config rollback` come qualunque altra voce di storico
+- `[x]` 2.2 Wizard di configurazione guidata passo-passo —
+  `/setup-wizard`, un modulo curato alla volta (Moderazione, AutoMod,
+  Logging, Greetings, Vocali temporanei, Ticket) con Attiva/Disattiva
+  + Avanti/Indietro, a differenza di `/setup` (tutti i moduli in un
+  solo select menu)
+- `[~]` 2.3 Lingua per server — comando (`/config language show|set`)
+  e colonna `language` ora collegati, con un piccolo registro di
+  traduzioni (`core/i18n.py`) per un insieme limitato di stringhe
+  generiche condivise. **Non un sistema i18n applicato a tutto il
+  bot**: la stragrande maggioranza dei messaggi resta in italiano nei
+  singoli cog — tradurre l'intero bot è un lavoro enormemente più
+  grande di questa singola voce, onestamente non dichiarato completo
 - `[✗]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
   non richiedere il Message Content Intent. **La colonna `prefix` in
   `guild_config` è morta e va rimossa o documentata come deprecata**
-- `[ ]` 2.5 Esporta configurazione
-- `[ ]` 2.6 Importa configurazione
+- `[x]` 2.5 Esporta configurazione — `/config export`, file `.json`
+  con moduli/settings/lingua
+- `[x]` 2.6 Importa configurazione — `/config import`, sovrascrive IN
+  BLOCCO (non un merge), validazione del formato prima di applicare
 - `[x]` 2.7 Log delle modifiche di setup (audit trail: chi ha
   attivato/disattivato cosa e quando) — esteso oltre la richiesta
   originale con il **rollback**: `/config history` + `/config
@@ -1282,7 +1296,7 @@ rilancia lo stesso conteggio.
 | Sezione | Fatto | Parziale | Mancante |
 |---|---|---|---|
 | §1 Core | 19 | 0 | 0 |
-| §2 Setup | 2 | 0 | 5 |
+| §2 Setup | 6 | 1 | 0 |
 | §3 Premium | 8 | 1 | 2 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
@@ -1299,7 +1313,7 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **225** | **2** | **49** |
+| **Totale** | **229** | **3** | **44** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1408,4 +1422,25 @@ differenza del transcript ticket non c'è modo di recuperarlo dopo
 via REST (per Snipe/Editsnipe il messaggio non esiste più; per
 l'Autoresponder la decisione va presa SUBITO, non in un secondo
 momento).
+
+**§2 Setup & Dashboard: chiusi 2.1 Reset configurazione, 2.2 Wizard
+guidato, 2.5 Esporta configurazione, 2.6 Importa configurazione**
+(`/config reset`, `/setup-wizard`, `/config export`, `/config
+import`). Reset e import sovrascrivono la configurazione IN BLOCCO
+(mai un merge) con una singola voce di storico ciascuno, annullabile
+con `/config rollback` come qualunque altra voce. Il wizard
+(`/setup-wizard`) è un'esperienza deliberatamente diversa da
+`/setup`: un modulo curato alla volta (Moderazione, AutoMod, Logging,
+Greetings, Vocali temporanei, Ticket) con Attiva/Disattiva + Avanti/
+Indietro, invece del select menu con tutti i moduli insieme.
+**2.3 Lingua per server è marcata `[~]`, non `[x]`**: il comando
+(`/config language show|set`) e la colonna `language` sono ora
+davvero collegati, con un piccolo registro di traduzioni
+(`core/i18n.py`) per un insieme limitato di stringhe generiche
+condivise — ma NON è un sistema i18n applicato a tutto il bot, che
+resta in italiano nella stragrande maggioranza dei suoi messaggi;
+tradurre l'intero bot è un lavoro enormemente più grande di questa
+singola voce e non è stato tentato. 2.4 Prefisso personalizzato resta
+`[✗]` scartato (slash-command-only, decisione già presa in una
+sessione precedente).
 

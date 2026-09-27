@@ -645,6 +645,124 @@ class Database:
         return True
 
     # ================================================================
+    # Export / Import / Reset configurazione (SPEC.md §2.1/§2.5/§2.6)
+    # ================================================================
+    async def get_full_config(self, guild_id: int) -> dict:
+        """
+        SPEC.md §2.5 (Esporta configurazione): l'intero stato
+        configurabile di un server in un dict serializzabile in JSON
+        — moduli attivi, settings libere, lingua. Usato sia
+        dall'export vero e proprio sia da reset/import per registrare
+        il valore "prima" nello storico.
+        """
+        row = await self.pool.fetchrow(
+            "SELECT modules, settings, language FROM guild_config WHERE guild_id = $1",
+            guild_id,
+        )
+        if row is None:
+            return {"modules": {}, "settings": {}, "language": "it"}
+        return {
+            "modules": json.loads(row["modules"]),
+            "settings": json.loads(row["settings"]),
+            "language": row["language"],
+        }
+
+    async def import_full_config(
+        self,
+        guild_id: int,
+        modules: dict,
+        settings: dict,
+        language: str,
+        changed_by: int | None = None,
+    ) -> None:
+        """
+        SPEC.md §2.6 (Importa configurazione): sovrascrive modules/
+        settings/language IN BLOCCO (non un merge) — importare un file
+        esportato da un altro server deve riprodurne esattamente lo
+        stato, non mescolarlo con quello attuale. Un'unica voce di
+        storico (change_type="import") invece di una per ogni chiave,
+        altrimenti un import con 40 moduli riempirebbe lo storico di
+        40 righe per un singolo comando.
+        """
+        await self.ensure_guild_exists(guild_id)
+        old = await self.get_full_config(guild_id)
+
+        await self.pool.execute(
+            """
+            UPDATE guild_config
+            SET modules = $2::jsonb, settings = $3::jsonb, language = $4, updated_at = now()
+            WHERE guild_id = $1
+            """,
+            guild_id,
+            json.dumps(modules),
+            json.dumps(settings),
+            language,
+        )
+        self._modules_cache.delete(guild_id)
+
+        await self._record_config_change(
+            guild_id,
+            changed_by,
+            "import",
+            "guild_config",
+            old,
+            {"modules": modules, "settings": settings, "language": language},
+        )
+
+    async def reset_guild_config(self, guild_id: int, changed_by: int | None = None) -> None:
+        """
+        SPEC.md §2.1 (bottone "Reset configurazione"): torna allo
+        stato di un server appena creato — nessun modulo attivo,
+        nessuna setting, lingua italiana di default. Registrato come
+        un'unica voce di storico (change_type="reset"), ripristinabile
+        con /config rollback come qualunque altra voce.
+        """
+        await self.ensure_guild_exists(guild_id)
+        old = await self.get_full_config(guild_id)
+
+        await self.pool.execute(
+            """
+            UPDATE guild_config
+            SET modules = '{}'::jsonb, settings = '{}'::jsonb, language = 'it', updated_at = now()
+            WHERE guild_id = $1
+            """,
+            guild_id,
+        )
+        self._modules_cache.delete(guild_id)
+
+        await self._record_config_change(
+            guild_id,
+            changed_by,
+            "reset",
+            "guild_config",
+            old,
+            {"modules": {}, "settings": {}, "language": "it"},
+        )
+
+    # ================================================================
+    # Lingua per server (SPEC.md §2.3)
+    # ================================================================
+    async def get_guild_language(self, guild_id: int) -> str:
+        row = await self.pool.fetchrow(
+            "SELECT language FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        return row["language"] if row is not None else "it"
+
+    async def set_guild_language(
+        self, guild_id: int, language: str, changed_by: int | None = None
+    ) -> None:
+        await self.ensure_guild_exists(guild_id)
+        old = await self.get_guild_language(guild_id)
+        await self.pool.execute(
+            "UPDATE guild_config SET language = $2, updated_at = now() WHERE guild_id = $1",
+            guild_id,
+            language,
+        )
+        await self._record_config_change(
+            guild_id, changed_by, "setting", "language", old, language
+        )
+
+    # ================================================================
     # Premium whitelist
     # ================================================================
     async def is_guild_whitelisted(self, guild_id: int) -> bool:

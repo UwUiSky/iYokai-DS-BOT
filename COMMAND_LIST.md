@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 18:31 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:09 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 229 comandi in 10 categorie.**
+**Totale: 235 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -193,7 +193,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 18:
 - **`/alerts list`** — [Admin] Mostra i feed seguiti da questo server.
 - **`/alerts remove`** — [Admin] Rimuove una sottoscrizione feed, Twitch o un webhook.
 - **`/alerts webhook-create`** — [Admin] Crea un webhook custom: servizi terzi possono pubblicare in un canale.
+- **`/config export`** — [Admin] Esporta la configurazione di questo server in un file.
 - **`/config history`** — [Admin] Mostra le ultime modifiche alla configurazione.
+- **`/config import`** — [Admin] Importa una configurazione da un file esportato con /config export.
+- **`/config language set`** — [Admin] Imposta la lingua di questo server.
+- **`/config language show`** — Mostra la lingua impostata per questo server.
+- **`/config reset`** — [Admin] Azzera la configurazione di questo server.
 - **`/config rollback`** — [Admin] Ripristina il valore precedente di una modifica.
 - **`/configura-restore`** — [Admin] Scegli come questo server gestisce il restore utenti via OAuth2.
 - **`/custom-command-requests-setup`** — [Owner] Imposta il canale delle richieste (solo nel server principale).
@@ -245,6 +250,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 18:
 - **`/search`** — Cerca un comando per descrizione.
 - **`/serverstats`** — Mostra le statistiche del server, con grafico di crescita.
 - **`/setup`** — [Admin] Attiva o disattiva i moduli del bot su questo server.
+- **`/setup-wizard`** — [Admin] Configura passo-passo i moduli principali del bot.
 - **`/sticky remove`** — [Admin] Rimuove lo sticky message di un canale.
 - **`/sticky set`** — [Admin] Imposta lo sticky message di un canale.
 - **`/suggest`** — Proponi un'idea per questo server.

@@ -9,6 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.utility.config_history import (
+    ResetConfirmView,
     RollbackConfirmView,
     setup as config_history_setup,
 )
@@ -28,7 +29,13 @@ async def test_config_history_cog_si_carica_correttamente():
     assert config_group is not None
 
     sottocomandi = {c.name for c in config_group.commands}
-    assert {"history", "rollback"} <= sottocomandi
+    assert {"history", "rollback", "reset", "export", "import", "language"} <= sottocomandi
+
+    language_group = next(
+        c for c in config_group.commands
+        if isinstance(c, app_commands.Group) and c.name == "language"
+    )
+    assert {c.name for c in language_group.commands} == {"show", "set"}
 
 
 def test_rollback_confirm_view_si_istanzia_correttamente():
@@ -41,3 +48,15 @@ def test_rollback_confirm_view_si_istanzia_correttamente():
     bottoni = [c for c in view.children if isinstance(c, discord.ui.Button)]
     etichette = {b.label for b in bottoni}
     assert {"Conferma rollback", "Annulla"} <= etichette
+
+
+def test_reset_confirm_view_si_istanzia_correttamente():
+    view = ResetConfirmView(guild_id=100, requested_by_id=200)
+
+    assert view.guild_id == 100
+    assert view.requested_by_id == 200
+    assert view.timeout == 60
+
+    bottoni = [c for c in view.children if isinstance(c, discord.ui.Button)]
+    etichette = {b.label for b in bottoni}
+    assert {"Conferma reset", "Annulla"} <= etichette

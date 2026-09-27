@@ -37,6 +37,7 @@ from discord.ext import commands
 
 from core.database import db
 from core.premium import registry, PremiumModule
+from core.setup_wizard_logic import is_last_step, next_step, previous_step
 
 logger = logging.getLogger("iyokai.setup")
 
@@ -174,6 +175,118 @@ class SetupView(discord.ui.View):
                 pass  # il messaggio potrebbe essere già stato cancellato
 
 
+def _wizard_module_names() -> list[str]:
+    """
+    SPEC.md §2.2: elenco curato di moduli "per iniziare" (non tutti
+    quelli registrati — quello è /setup) mostrati uno alla volta dal
+    wizard. Import LOCALI, non a livello di modulo — stesso motivo
+    già documentato in core/soundboard_log_service.py: evitare
+    qualunque rischio di import circolare tra cog diversi, e restare
+    caricabile in isolamento nei test.
+    """
+    from cogs.moderation._shared import MODULE_ACTIONS
+    from cogs.automod.automod import MODULE_AUTOMOD
+    from cogs.logging.basic_logs import MODULE_LOGGING
+    from cogs.utility.greetings import MODULE_GREETINGS
+    from cogs.voice_temp.voice_temp import MODULE_VOICE_TEMP
+    from cogs.tickets.tickets import MODULE_TICKETS
+
+    return [
+        MODULE_ACTIONS,
+        MODULE_AUTOMOD,
+        MODULE_LOGGING,
+        MODULE_GREETINGS,
+        MODULE_VOICE_TEMP,
+        MODULE_TICKETS,
+    ]
+
+
+class SetupWizardView(discord.ui.View):
+    """
+    SPEC.md §2.2: a differenza di /setup (tutti i moduli in un solo
+    select menu), il wizard mostra un modulo alla volta con Sì/No +
+    Avanti/Indietro — pensato per chi preferisce essere guidato passo
+    per passo invece di vedere l'intera lista in un colpo.
+    """
+
+    def __init__(self, guild_id: int, modules_with_state: list[tuple[PremiumModule, bool]]) -> None:
+        super().__init__(timeout=180)
+        self.guild_id = guild_id
+        self.modules_with_state = modules_with_state
+        self.selected: dict[str, bool] = {m.name: enabled for m, enabled in modules_with_state}
+        self.step = 0
+        self.message: discord.Message | discord.InteractionMessage | None = None
+        self._sync_buttons()
+
+    def _current_module(self) -> PremiumModule:
+        return self.modules_with_state[self.step][0]
+
+    def _render_embed(self) -> discord.Embed:
+        module = self._current_module()
+        attivo = self.selected[module.name]
+        embed = discord.Embed(
+            title=f"Passo {self.step + 1}/{len(self.modules_with_state)}: {module.display_name}",
+            description=module.description,
+            color=discord.Color.green() if attivo else discord.Color.red(),
+        )
+        embed.set_footer(text=f"Stato attuale: {'ATTIVO' if attivo else 'NON ATTIVO'}")
+        return embed
+
+    def _sync_buttons(self) -> None:
+        self.previous_button.disabled = self.step == 0
+        self.toggle_button.label = "Disattiva" if self.selected[self._current_module().name] else "Attiva"
+        self.next_button.label = (
+            "Salva" if is_last_step(self.step, len(self.modules_with_state)) else "Avanti"
+        )
+
+    @discord.ui.button(label="Indietro", style=discord.ButtonStyle.secondary, row=0)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.step = previous_step(self.step, len(self.modules_with_state))
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self._render_embed(), view=self)
+
+    @discord.ui.button(label="Attiva", style=discord.ButtonStyle.primary, row=0)
+    async def toggle_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        module = self._current_module()
+        self.selected[module.name] = not self.selected[module.name]
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self._render_embed(), view=self)
+
+    @discord.ui.button(label="Avanti", style=discord.ButtonStyle.success, row=0)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if is_last_step(self.step, len(self.modules_with_state)):
+            for module, was_enabled in self.modules_with_state:
+                now_enabled = self.selected[module.name]
+                if now_enabled != was_enabled:
+                    await db.set_module_active_for_guild(
+                        self.guild_id, module.name, now_enabled, changed_by=interaction.user.id
+                    )
+            for child in self.children:
+                child.disabled = True
+            self.stop()
+            await interaction.response.edit_message(
+                content="✅ Configurazione guidata completata.", embed=None, view=self
+            )
+            return
+
+        self.step = next_step(self.step, len(self.modules_with_state))
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self._render_embed(), view=self)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            child.disabled = True
+        if self.message is not None:
+            try:
+                await self.message.edit(
+                    content="⏱️ Wizard scaduto senza salvare. Rilancia /setup-wizard per riprovare.",
+                    embed=None,
+                    view=self,
+                )
+            except discord.HTTPException:
+                pass
+
+
 class SetupCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -242,6 +355,40 @@ class SetupCog(commands.Cog):
             view=view,
             ephemeral=True,
         )
+        view.message = await interaction.original_response()
+
+    @app_commands.command(
+        name="setup-wizard",
+        description="[Admin] Configura passo-passo i moduli principali del bot.",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def setup_wizard(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.",
+                ephemeral=True,
+            )
+            return
+
+        await db.ensure_guild_exists(interaction.guild.id)
+
+        modules_with_state: list[tuple[PremiumModule, bool]] = []
+        for module_name in _wizard_module_names():
+            module = registry.get(module_name)
+            if module is None:
+                continue  # non ancora registrato: non deve bloccare il resto del wizard
+            enabled = await db.is_module_active_for_guild(interaction.guild.id, module_name)
+            modules_with_state.append((module, enabled))
+
+        if not modules_with_state:
+            await interaction.response.send_message(
+                "Nessun modulo disponibile per il wizard al momento. Usa /setup.",
+                ephemeral=True,
+            )
+            return
+
+        view = SetupWizardView(interaction.guild.id, modules_with_state)
+        await interaction.response.send_message(embed=view._render_embed(), view=view, ephemeral=True)
         view.message = await interaction.original_response()
 
 

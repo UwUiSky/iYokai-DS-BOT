@@ -546,3 +546,163 @@ async def test_config_history_non_mischia_server_diversi():
             "DELETE FROM guild_config_history WHERE guild_id IN (777777907, 777777908)"
         )
         await database.close()
+
+
+# ================================================================
+# SPEC.md §2.1/§2.5/§2.6 — reset/export/import configurazione
+# ================================================================
+_CFG_GUILD_ID = 777777909
+
+
+@pytest.mark.asyncio
+async def test_get_full_config_di_default():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+
+        config = await database.get_full_config(_CFG_GUILD_ID)
+        assert config == {"modules": {}, "settings": {}, "language": "it"}
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_get_full_config_riflette_moduli_e_settings():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+
+        await database.set_module_active_for_guild(_CFG_GUILD_ID, "leveling", True)
+        await database.set_guild_setting(_CFG_GUILD_ID, "welcome_text", "Ciao!")
+
+        config = await database.get_full_config(_CFG_GUILD_ID)
+        assert config["modules"] == {"leveling": True}
+        assert config["settings"] == {"welcome_text": "Ciao!"}
+        assert config["language"] == "it"
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_import_full_config_sovrascrive_in_blocco():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+
+        await database.set_module_active_for_guild(_CFG_GUILD_ID, "leveling", True)
+        await database.set_guild_setting(_CFG_GUILD_ID, "old_setting", "vecchio")
+
+        await database.import_full_config(
+            _CFG_GUILD_ID,
+            modules={"tickets": True},
+            settings={"new_setting": "nuovo"},
+            language="en",
+            changed_by=1,
+        )
+
+        config = await database.get_full_config(_CFG_GUILD_ID)
+        # Sovrascrittura IN BLOCCO: "leveling"/"old_setting" non
+        # devono sopravvivere mescolati col nuovo import.
+        assert config == {
+            "modules": {"tickets": True},
+            "settings": {"new_setting": "nuovo"},
+            "language": "en",
+        }
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_import_full_config_registra_una_sola_voce_di_storico():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = $1", _CFG_GUILD_ID
+        )
+
+        await database.import_full_config(
+            _CFG_GUILD_ID,
+            modules={"a": True, "b": True, "c": True},
+            settings={"x": 1},
+            language="it",
+            changed_by=1,
+        )
+
+        storico = await database.get_config_history(_CFG_GUILD_ID)
+        assert len(storico) == 1
+        assert storico[0].change_type == "import"
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.pool.execute(
+            "DELETE FROM guild_config_history WHERE guild_id = $1", _CFG_GUILD_ID
+        )
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_reset_guild_config_torna_ai_valori_di_default():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+
+        await database.set_module_active_for_guild(_CFG_GUILD_ID, "leveling", True)
+        await database.set_guild_setting(_CFG_GUILD_ID, "welcome_text", "Ciao!")
+        await database.set_guild_language(_CFG_GUILD_ID, "en")
+
+        await database.reset_guild_config(_CFG_GUILD_ID, changed_by=1)
+
+        config = await database.get_full_config(_CFG_GUILD_ID)
+        assert config == {"modules": {}, "settings": {}, "language": "it"}
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_reset_guild_config_invalida_la_cache_moduli():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+
+        await database.set_module_active_for_guild(_CFG_GUILD_ID, "leveling", True)
+        assert await database.is_module_active_for_guild(_CFG_GUILD_ID, "leveling") is True
+
+        await database.reset_guild_config(_CFG_GUILD_ID, changed_by=1)
+
+        assert await database.is_module_active_for_guild(_CFG_GUILD_ID, "leveling") is False
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_guild_language_default_e_scrittura():
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+
+        assert await database.get_guild_language(_CFG_GUILD_ID) == "it"
+
+        await database.set_guild_language(_CFG_GUILD_ID, "en", changed_by=1)
+        assert await database.get_guild_language(_CFG_GUILD_ID) == "en"
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
+        await database.close()

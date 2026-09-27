@@ -31,7 +31,7 @@ async def test_setup_cog_si_carica_correttamente():
     assert bot.get_cog("SetupCog") is not None
 
     comandi = {c.name for c in bot.tree.get_commands()}
-    assert "setup" in comandi
+    assert {"setup", "setup-wizard"} <= comandi
 
 
 class _FakeResponse:
