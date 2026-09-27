@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 07:45 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:06 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 163 comandi in 10 categorie.**
+**Totale: 165 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -29,6 +29,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 07:
 - **`/balance`** — Mostra i tuoi coin.
 - **`/cassa saldo`** — Mostra il saldo della cassa del server.
 - **`/cassa sblocca-premium`** — [Admin] Sblocca un mese di bot premium spendendo dalla cassa.
+- **`/clan boost gilda`** — [Capo/Admin Clan] Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria.
+- **`/clan boost individuale`** — Acquista un boost personale ×2 per 24h sul tuo tick vocale di gilda.
 - **`/clan classifica`** — Classifica delle gilde per XP totale.
 - **`/clan compra-canale`** — [Capo/Admin Clan] Sblocca un nuovo canale extra per la tua gilda.
 - **`/clan crea`** — Crea una nuova gilda/clan.

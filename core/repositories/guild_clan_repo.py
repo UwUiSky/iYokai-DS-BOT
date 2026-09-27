@@ -37,6 +37,7 @@ REASON_MONTHLY_DECAY = "monthly_decay"
 REASON_CREATION_DEFICIT = "creation_deficit"
 REASON_TREASURY_TRANSFER_IN = "treasury_transfer_in"
 REASON_TREASURY_TRANSFER_OUT = "treasury_transfer_out"
+REASON_GUILD_BOOST = "guild_boost"
 
 DEFAULT_MAX_MEMBERS = 50
 MAX_MEMBERS_CEILING = 999
@@ -59,6 +60,7 @@ class Clan:
     max_members: int
     channels_unlocked: int
     total_voice_ticks: int
+    guild_boost_expires_at: datetime | None
     created_at: datetime
 
 
@@ -68,6 +70,7 @@ class ClanMember:
     user_id: int
     role: str
     joined_at: datetime
+    boost_expires_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -106,6 +109,7 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         ALTER TABLE clans ADD COLUMN IF NOT EXISTS total_xp BIGINT NOT NULL DEFAULT 0;
         ALTER TABLE clans ADD COLUMN IF NOT EXISTS last_decay_period TEXT;
         ALTER TABLE clans ADD COLUMN IF NOT EXISTS total_voice_ticks BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE clans ADD COLUMN IF NOT EXISTS guild_boost_expires_at TIMESTAMPTZ;
 
         CREATE TABLE IF NOT EXISTS clan_members (
             clan_id     INTEGER NOT NULL,
@@ -114,6 +118,8 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             joined_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
             PRIMARY KEY (clan_id, user_id)
         );
+
+        ALTER TABLE clan_members ADD COLUMN IF NOT EXISTS boost_expires_at TIMESTAMPTZ;
 
         CREATE INDEX IF NOT EXISTS idx_clan_members_user ON clan_members (user_id);
 
@@ -157,6 +163,7 @@ class GuildClanRepository:
             max_members=row["max_members"],
             channels_unlocked=row["channels_unlocked"],
             total_voice_ticks=row["total_voice_ticks"],
+            guild_boost_expires_at=row["guild_boost_expires_at"],
             created_at=row["created_at"],
         )
 
@@ -166,6 +173,7 @@ class GuildClanRepository:
             user_id=row["user_id"],
             role=row["role"],
             joined_at=row["joined_at"],
+            boost_expires_at=row["boost_expires_at"],
         )
 
     def _row_to_ledger_entry(self, row) -> TreasuryLedgerEntry:
@@ -304,6 +312,15 @@ class GuildClanRepository:
             clan_id, count,
         )
 
+    async def set_guild_boost_expiry(self, clan_id: int, expires_at: datetime) -> None:
+        """Nuova scadenza del boost DI GILDA (SPEC.md §15.14, ×2 su
+        XP/coin per TUTTI i membri finché attivo) — il chiamante
+        calcola la scadenza con `extend_boost_expiry` PRIMA di
+        chiamare questo metodo (che qui scrive solo, non decide)."""
+        await self._pool.execute(
+            "UPDATE clans SET guild_boost_expires_at = $2 WHERE id = $1", clan_id, expires_at
+        )
+
     # ----------------------------------------------------------------
     # Membri
     # ----------------------------------------------------------------
@@ -327,6 +344,16 @@ class GuildClanRepository:
         await self._pool.execute(
             "UPDATE clan_members SET role = $3 WHERE clan_id = $1 AND user_id = $2",
             clan_id, user_id, role,
+        )
+
+    async def set_member_boost_expiry(self, clan_id: int, user_id: int, expires_at: datetime) -> None:
+        """Nuova scadenza del boost INDIVIDUALE (SPEC.md §15.14, ×2
+        sul proprio tick vocale di gilda finché attivo) — il
+        chiamante calcola la scadenza con `extend_boost_expiry`
+        PRIMA di chiamare questo metodo (che qui scrive solo)."""
+        await self._pool.execute(
+            "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
+            clan_id, user_id, expires_at,
         )
 
     async def get_member(self, clan_id: int, user_id: int) -> ClanMember | None:

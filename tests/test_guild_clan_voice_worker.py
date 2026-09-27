@@ -125,6 +125,70 @@ async def test_ore_vocali_accumulate_anche_con_decadimento_a_zero(repos):
 
 
 @pytest.mark.asyncio
+async def test_boost_individuale_raddoppia_la_ricompensa_del_membro(repos):
+    clan_repo, activity_repo = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await clan_repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=ORA + timedelta(hours=1))
+
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.total_xp == 60  # 30 * 2
+    assert clan.treasury_balance == -15_000 + 4  # 2 * 2
+
+
+@pytest.mark.asyncio
+async def test_boost_di_gilda_raddoppia_per_tutti_i_membri(repos):
+    clan_repo, activity_repo = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await clan_repo.add_member(clan_id, user_id=2)
+    await clan_repo.set_guild_boost_expiry(clan_id, ORA + timedelta(hours=1))
+
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1), _FakeMember(2)])
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.total_xp == 30 * 2 * 2  # due membri, ×2 ciascuno
+    assert clan.treasury_balance == -15_000 + (2 * 2 * 2)
+
+
+@pytest.mark.asyncio
+async def test_boost_individuale_e_di_gilda_si_moltiplicano(repos):
+    clan_repo, activity_repo = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await clan_repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=ORA + timedelta(hours=1))
+    await clan_repo.set_guild_boost_expiry(clan_id, ORA + timedelta(hours=1))
+
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.total_xp == 30 * 4  # ×2 individuale * ×2 di gilda
+
+
+@pytest.mark.asyncio
+async def test_boost_scaduto_non_si_applica(repos):
+    clan_repo, activity_repo = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await clan_repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=ORA - timedelta(hours=1))
+
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.total_xp == 30  # scaduto, nessun raddoppio
+
+
+@pytest.mark.asyncio
 async def test_clan_non_ufficializzato_non_matura_nulla(repos):
     clan_repo, activity_repo = repos
     clan_id = await clan_repo.create_clan(

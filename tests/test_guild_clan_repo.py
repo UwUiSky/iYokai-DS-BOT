@@ -147,6 +147,26 @@ async def test_add_voice_ticks_valore_non_positivo_solleva(repo):
         await repo.add_voice_ticks(clan_id, count=0)
 
 
+@pytest.mark.asyncio
+async def test_set_guild_boost_expiry(repo):
+    clan_id = await _crea_clan(repo)
+    scadenza = ORA + timedelta(hours=24)
+
+    await repo.set_guild_boost_expiry(clan_id, scadenza)
+
+    assert (await repo.get_clan(clan_id)).guild_boost_expires_at == scadenza
+
+
+@pytest.mark.asyncio
+async def test_set_member_boost_expiry(repo):
+    clan_id = await _crea_clan(repo)
+    scadenza = ORA + timedelta(hours=24)
+
+    await repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=scadenza)
+
+    assert (await repo.get_member(clan_id, 1)).boost_expires_at == scadenza
+
+
 # ----------------------------------------------------------------------
 # Membri
 # ----------------------------------------------------------------------

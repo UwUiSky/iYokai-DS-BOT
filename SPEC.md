@@ -583,10 +583,11 @@ necessario.
   nello stesso canale, tetto 720 tick/giorno, deficit di creazione
   15.000 coin/24h, costi canale 25k/50k/200k/800k — comandi Discord
   `/clan crea|info|membri|classifica|sciogli|tesoreria dona|invita|
-  espelli|promuovi|compra-canale`, il worker di eliminazione
-  automatica per chi non colma il deficit in tempo, i ruoli Discord
-  Capo Clan/Admin Clan, e ORA anche l'acquisto di canali extra con
-  doppio requisito coin + ore vocali accumulate dalla gilda)
+  espelli|promuovi|compra-canale|boost individuale|boost gilda`, il
+  worker di eliminazione automatica per chi non colma il deficit in
+  tempo, i ruoli Discord Capo Clan/Admin Clan, l'acquisto di canali
+  extra con doppio requisito coin + ore vocali accumulate dalla
+  gilda, e ORA anche i boost XP/coin ×2/24h individuali e di gilda)
   - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
     valida il tag, crea la categoria Discord (view negata a
     `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
@@ -652,11 +653,23 @@ necessario.
     (`VOICE_HOURS_REQUIRED` — la stessa scala persona-ora da cui
     erano già stati derivati i costi in coin, ora resa un requisito
     verificato) verificate da `/clan compra-canale` insieme al costo
-  - `[ ]` Boost individuale XP / Coin acquistabile
-  - `[ ]` Boost di gilda XP / Coin acquistabile
-  - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|tesoreria
-    dona|invita|espelli|promuovi|compra-canale` fatti — **mancano
-    ancora** i comandi boost
+  - `[x]` Boost individuale XP / Coin acquistabile — `/clan boost
+    individuale`, QUALUNQUE membro (non solo Capo/Admin: paga dal
+    proprio saldo per il proprio guadagno), ×2 per 24h, **10.000**
+    coin personali, si applica SOLO al proprio tick vocale di gilda
+    (mai al leveling generale del server — numeri e scope confermati
+    dall'utente prima di scrivere la logica)
+  - `[x]` Boost di gilda XP / Coin acquistabile — `/clan boost gilda`,
+    Capo/Admin Clan, ×2 per 24h, **100.000** coin dalla tesoreria, si
+    applica al tick di TUTTI i membri; i due boost si moltiplicano
+    tra loro se entrambi attivi (×4 totale). Un acquisto mentre un
+    boost è già attivo ESTENDE la scadenza da lì (mai da subito,
+    stesso pattern già usato per l'estensione mensile del premium)
+  - `[x]` Comandi: `/clan crea|info|membri|classifica|sciogli|
+    tesoreria dona|invita|espelli|promuovi|compra-canale|boost
+    individuale|boost gilda` — tutti i comandi previsti per §15.14
+    sono scritti; restano solo il lato testuale del guadagno ×2 e il
+    prelievo dalla tesoreria (voci separate sopra)
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
@@ -821,36 +834,35 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 23 | 6 | 4 |
+| §15 Levels/Gilde | 26 | 5 | 2 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **148** | **11** | **113** |
+| **Totale** | **151** | **10** | **111** |
 
-Su 272 voci totali: **148 fatte, 11 parziali, 113 mancanti** — circa
-il 56% dello schema (contando i parziali a metà peso). §11 Backup
+Su 272 voci totali: **151 fatte, 10 parziali, 111 mancanti** — circa
+il 57% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
-Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico
-(repository/worker: tesoreria, XP di gilda, tracciamento vocale,
-decadimento mensile), i comandi Discord `/clan crea|info|membri|
-classifica|sciogli|tesoreria dona|invita|espelli|promuovi`, il
-worker di eliminazione automatica per chi non colma il deficit in
-tempo, i ruoli Discord condivisi Capo Clan/Admin Clan (overwrite
-per-utente sulla categoria del proprio clan per l'isolamento reale,
-il ruolo condiviso è solo un'etichetta), E ORA anche l'acquisto di
-canali extra (`/clan compra-canale`) con doppio requisito: costo in
-coin dalla tesoreria E ore vocali ACCUMULATE dalla gilda (persona-ora,
-non per singolo membro — stessa scala 12h/24h/96h/384h da cui erano
-già stati derivati i costi in coin, ora un requisito verificato
-davvero). Restano solo i boost XP/coin individuali/di gilda. §15.15
-(non nello schema originale, emersa in conversazione) è COMPLETO:
-decadimento settimanale personale, cassa di server alimentata da
-entrambi i decadimenti, e sblocco premium a doppio cancello (tempo
-dal join + costo dalla cassa) — comandi `/cassa saldo` e `/cassa
-sblocca-premium`. Resta solo un comando dedicato per spendere la
-cassa su premi evento.
+Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico,
+tutti i comandi Discord previsti (`/clan crea|info|membri|classifica|
+sciogli|tesoreria dona|invita|espelli|promuovi|compra-canale|boost
+individuale|boost gilda`), il worker di eliminazione automatica, i
+ruoli Discord condivisi Capo Clan/Admin Clan, l'acquisto di canali
+extra con doppio requisito (coin + ore vocali accumulate dalla
+gilda), e ORA anche i boost XP/coin ×2 per 24h — individuale
+(10.000 coin personali, chiunque, solo sul proprio tick di gilda) e
+di gilda (100.000 coin dalla tesoreria, Capo/Admin, per tutti i
+membri; i due si moltiplicano tra loro se entrambi attivi). Restano
+solo il lato TESTUALE del guadagno ×2 (oggi solo vocale) e un
+comando di PRELIEVO dalla tesoreria per Capo/Admin — le uniche due
+voci ancora aperte in §15.14. §15.15 (non nello schema originale,
+emersa in conversazione) è COMPLETO: decadimento settimanale
+personale, cassa di server alimentata da entrambi i decadimenti, e
+sblocco premium a doppio cancello (tempo dal join + costo dalla
+cassa) — comandi `/cassa saldo` e `/cassa sblocca-premium`. Resta
+solo un comando dedicato per spendere la cassa su premi evento.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

@@ -2173,6 +2173,74 @@ rigenerato (163 comandi).
 
 ---
 
+### Fase 54 — Boost XP/Coin individuali e di gilda (SPEC.md §15.14,
+ultimo pezzo dei comandi previsti per il Sistema Gilde/Clan)
+
+Ultimo pezzo segnalato nella Fase 53. A differenza delle Fasi
+precedenti (dove i numeri economici erano già stati confermati in
+sessioni passate o derivabili da costanti già scritte), qui non
+esisteva ancora nessun numero: moltiplicatore, durata, costo. Prima
+di scrivere qualunque logica ho chiesto esplicitamente all'utente
+(non inventato, come già fatto per il prezzo del premium in una Fase
+precedente) — confermati: moltiplicatore **×2** per **24h**, il
+boost individuale si applica SOLO al proprio tick vocale di gilda
+(mai al leveling generale del server, resta scoped al Sistema
+Gilde/Clan), costi **10.000** coin personali (individuale) e
+**100.000** coin dalla tesoreria (di gilda).
+
+**`core/guild_clan_boost_logic.py` (nuovo, logica pura)**:
+`is_boost_active(scadenza, now)`, `compute_boosted_reward(xp, coin,
+individual_active, guild_active)` (i due boost si MOLTIPLICANO tra
+loro se entrambi attivi — ×4 totale, non si escludono a vicenda:
+fonti e portata diverse), `extend_boost_expiry(scadenza_attuale,
+now)` (se un boost è già attivo, la nuova durata si estende da lì,
+non da `now` — altrimenti si comprerebbe tempo già pagato; stesso
+pattern già usato per l'estensione mensile del premium).
+
+**Persistenza**: nuova colonna `clan_members.boost_expires_at`
+(individuale, per membro) e `clans.guild_boost_expires_at` (di
+gilda, per clan), due nuovi metodi scrittura-soltanto
+(`set_member_boost_expiry`/`set_guild_boost_expiry` — la scadenza la
+calcola sempre il chiamante con `extend_boost_expiry`, questi
+metodi scrivono e basta).
+
+**`guild_clan_voice_worker.py`**: dopo aver calcolato la ricompensa
+base del tick (`compute_tick_reward`, già scontata di decadimento e
+tetto giornaliero) e SOLO quando è positiva (evita una query
+`get_member` in più ad ogni tick a vuoto), applica
+`compute_boosted_reward` prima di accreditare XP/coin — i boost
+moltiplicano la RICOMPENSA, mai le ore vocali accumulate (quelle
+restano un conteggio di presenza indipendente, invariato da questa
+Fase).
+
+**`/clan boost individuale`**: QUALUNQUE membro della gilda (non
+solo Capo/Admin — paga dal proprio saldo per il proprio guadagno),
+scala `leveling_repo.spend_coins`, poi `extend_boost_expiry` +
+`set_member_boost_expiry`. **`/clan boost gilda`**: Capo/Admin Clan,
+scala dalla tesoreria (`spend_from_treasury`, stesso `REASON_GUILD_
+BOOST` nuovo), poi `extend_boost_expiry` + `set_guild_boost_expiry`.
+`/clan info` mostra ora anche lo stato del boost di gilda quando
+attivo.
+
+**26 nuovi test**: 13 in `test_guild_clan_boost_logic.py` (logica
+pura), 2 in `test_guild_clan_repo.py` (i due setter), 4 in
+`test_guild_clan_voice_worker.py` (boost individuale, di gilda,
+entrambi che si moltiplicano, boost scaduto che non si applica), 7
+in `test_guild_clan_cog_behavior.py` per i due comandi (successo,
+chi può comprare cosa, saldo/tesoreria insufficiente, estensione di
+un boost già attivo).
+
+SPEC.md: §15.14 boost individuali/di gilda passano da `[ ]` a `[x]`
+— **tutti i comandi previsti per il Sistema Gilde/Clan sono
+scritti**; restano aperte solo due voci minori non bloccanti (lato
+testuale del guadagno ×2, oggi solo vocale; un comando di prelievo
+dalla tesoreria per Capo/Admin). **57% dello schema (151/272).**
+COMMAND_LIST.md rigenerato (165 comandi).
+
+**Suite di test completa: 1380/1380 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

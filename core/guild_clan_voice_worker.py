@@ -22,6 +22,7 @@ from datetime import date, datetime, timezone
 
 from discord.ext import commands, tasks
 
+from core.guild_clan_boost_logic import compute_boosted_reward, is_boost_active
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
 from core.repositories.guild_clan_repo import guild_clan_repo
 
@@ -65,6 +66,21 @@ class GuildClanVoiceWorker:
                     # giornaliero, quindi il conteggio va SEMPRE, non
                     # solo quando xp/coin > 0.
                     await guild_clan_repo.add_voice_ticks(clan.id, 1)
+
+                    if xp > 0 or coin > 0:
+                        # I boost (SPEC.md §15.14) moltiplicano solo
+                        # la ricompensa già calcolata — mai le ore
+                        # accumulate sopra, che restano un conteggio
+                        # di presenza indipendente dal guadagno.
+                        membro_clan = await guild_clan_repo.get_member(clan.id, membro.id)
+                        individuale_attivo = is_boost_active(
+                            membro_clan.boost_expires_at if membro_clan else None, adesso
+                        )
+                        gilda_attivo = is_boost_active(clan.guild_boost_expires_at, adesso)
+                        xp, coin = compute_boosted_reward(
+                            xp, coin, individual_active=individuale_attivo, guild_active=gilda_attivo
+                        )
+
                     if xp > 0:
                         await guild_clan_repo.add_xp(clan.id, xp)
                     if coin > 0:

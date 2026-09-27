@@ -58,6 +58,7 @@ from core.guild_clan_logic import (
 )
 from core.repositories.guild_clan_repo import (
     REASON_CHANNEL_UNLOCK,
+    REASON_GUILD_BOOST,
     ROLE_ADMIN,
     ROLE_MEMBER,
     ROLE_MOD,
@@ -67,6 +68,14 @@ from core.repositories.guild_clan_repo import (
 from core.guild_clan_role_service import (
     clear_member_clan_presence,
     sync_member_clan_role,
+)
+from core.guild_clan_boost_logic import (
+    BOOST_DURATION_HOURS,
+    BOOST_MULTIPLIER,
+    GUILD_BOOST_COST,
+    INDIVIDUAL_BOOST_COST,
+    extend_boost_expiry,
+    is_boost_active,
 )
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
@@ -933,6 +942,14 @@ class LevelingCog(commands.Cog):
                 f"**{ore_richieste}**h vocali (ne avete {ore_accumulate})"
             )
         embed.add_field(name="Canali sbloccati", value=valore_canali, inline=False)
+
+        if is_boost_active(clan.guild_boost_expires_at, datetime.now(timezone.utc)):
+            embed.add_field(
+                name="Boost di gilda",
+                value=f"✨ Attivo ×{BOOST_MULTIPLIER} fino a <t:{int(clan.guild_boost_expires_at.timestamp())}:R>",
+                inline=False,
+            )
+
         await interaction.response.send_message(embed=embed)
 
     @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
@@ -1356,6 +1373,96 @@ class LevelingCog(commands.Cog):
             messaggio += "\n🎉 Il deficit di creazione è coperto: la gilda è ora **ufficializzata**!"
 
         await interaction.response.send_message(messaggio)
+
+    clan_boost_group = app_commands.Group(
+        name="boost", description="Boost XP/coin del Sistema Gilde/Clan.", parent=clan_group
+    )
+
+    @clan_boost_group.command(
+        name="individuale",
+        description=f"Acquista un boost personale ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h sul tuo tick vocale di gilda.",
+    )
+    async def clan_boost_individuale(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, INDIVIDUAL_BOOST_COST)
+        if not riuscito:
+            await interaction.response.send_message(
+                f"Non hai abbastanza coin personali — servono **{INDIVIDUAL_BOOST_COST}**.",
+                ephemeral=True,
+            )
+            return
+
+        membro = await guild_clan_repo.get_member(clan.id, interaction.user.id)
+        adesso = datetime.now(timezone.utc)
+        nuova_scadenza = extend_boost_expiry(
+            membro.boost_expires_at if membro is not None else None, adesso
+        )
+        await guild_clan_repo.set_member_boost_expiry(clan.id, interaction.user.id, nuova_scadenza)
+
+        await interaction.response.send_message(
+            f"✅ Boost personale ×{BOOST_MULTIPLIER} attivo sul tuo tick vocale in **{clan.name}** "
+            f"fino a <t:{int(nuova_scadenza.timestamp())}:f>."
+        )
+
+    @clan_boost_group.command(
+        name="gilda",
+        description=f"[Capo/Admin Clan] Acquista un boost ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h per TUTTI i membri, dalla tesoreria.",
+    )
+    async def clan_boost_gilda(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
+        if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
+            await interaction.response.send_message(
+                "Solo il Capo Clan o un Admin Clan possono acquistare il boost di gilda.",
+                ephemeral=True,
+            )
+            return
+
+        riuscito = await guild_clan_repo.spend_from_treasury(
+            clan.id, GUILD_BOOST_COST, reason=REASON_GUILD_BOOST
+        )
+        if not riuscito:
+            await interaction.response.send_message(
+                f"La tesoreria della gilda non basta — servono **{GUILD_BOOST_COST}** coin "
+                f"(ne avete **{clan.treasury_balance}**).",
+                ephemeral=True,
+            )
+            return
+
+        adesso = datetime.now(timezone.utc)
+        nuova_scadenza = extend_boost_expiry(clan.guild_boost_expires_at, adesso)
+        await guild_clan_repo.set_guild_boost_expiry(clan.id, nuova_scadenza)
+
+        await interaction.response.send_message(
+            f"✅ Boost di gilda ×{BOOST_MULTIPLIER} attivo per TUTTI i membri di **{clan.name}** "
+            f"fino a <t:{int(nuova_scadenza.timestamp())}:f>."
+        )
 
     # ================================================================
     # Giveaway (SPEC.md §15.5, con requisiti di ruolo/livello)
