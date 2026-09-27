@@ -4118,6 +4118,67 @@ NSFW/Rule34) restano da fare in commit separati.
 **Suite di test completa: 2019/2019 passano** (verificato due volte
 di fila).
 
+### Fase 77 — §16 Fun & Immagini, terzo e ultimo lotto: Comandi
+animal e ricerca immagini SFW (punto 5 della direttiva "Vai prosegui
+fai tutto a parte ovviamente bcde") — §16 ORA COMPLETO
+
+**§16.4 Comandi animal e §16.9 Ricerca immagini SFW chiusi** (6/0/9
+→ 8/0/7): due nuovi sotto-comandi del gruppo `/fun` già esistente
+(`cogs/fun/entertainment.py`) — `/fun animal <specie>` (cane/gatto/
+volpe) e `/fun search-image <query>`. Nessun nuovo slot top-level
+consumato: il totale resta a 97/100 (guardia di regressione della
+Fase 75 ancora verde, avvisa senza fallire).
+
+`/fun animal` usa tre API pubbliche GRATUITE, nessuna chiave
+richiesta: dog.ceo (cane), thecatapi.com (gatto), randomfox.ca
+(volpe). Nuovo `core/animal_fetcher.py` (sessione aiohttp riusata,
+timeout esplicito, log + `None` mai un'eccezione se la richiesta
+fallisce) interpreta le risposte con `core/animal_api_logic.py`
+(logica pura). `/fun search-image` usa Pixabay, che invece richiede
+una chiave — nuova variabile opzionale `PIXABAY_API_KEY` in
+`core/config.py`, stesso principio di sblocco opzionale già usato
+per Twitch (Fase 43ca)/YouTube (Fase 74), con una differenza
+importante documentata nel commento del campo e in SPEC.md: qui
+senza la chiave il comando non può funzionare affatto (a differenza
+di sapere se un canale è live, che è un extra opzionale), quindi
+risponde con un messaggio che spiega come attivarla invece di
+restare silenziosamente inutilizzabile. `safesearch=true` impostato
+SEMPRE nella richiesta — è Pixabay stesso, lato server, a garantire
+risultati SFW. Nuovo `core/image_search_fetcher.py` (stesso schema
+del fetcher animali) interpreta le risposte con `core/image_search_
+logic.py`.
+
+Entrambi i fetcher sono usati come singleton di modulo (`animal_
+fetcher`, `image_search_fetcher`), sostituiti nei test con fake
+in-memory tramite `monkeypatch.setattr(modulo, ...)` — stesso schema
+già usato per `db` in tutti i cog di questo progetto — così i test
+di comportamento del cog non toccano la rete. I fetcher stessi sono
+invece testati con un server aiohttp VERO in locale
+(`aiohttp.test_utils.TestServer`, stesso principio di `tests/
+test_twitch_watcher.py`/`tests/test_youtube_watcher.py`), non un
+mock della sessione HTTP.
+
+**37 nuovi test**: `test_animal_api_logic.py` (nuovo, 11);
+`test_image_search_logic.py` (nuovo, 5); `test_animal_fetcher.py`
+(nuovo, 6, server aiohttp finto); `test_image_search_fetcher.py`
+(nuovo, 5, server aiohttp finto);
+`test_entertainment_animal_and_search_commands.py` (nuovo, 8,
+fetcher finti in-memory); `test_entertainment_cog_smoke.py`
+(assertion estesa con tutti i sotto-comandi del gruppo `/fun`, non
+solo il primo lotto).
+
+Aggiunta anche `YOUTUBE_API_KEY` a `.env.example`, mancante da quando
+introdotta nella Fase 74 (svista corretta ora, insieme alla nuova
+`PIXABAY_API_KEY`).
+
+SPEC.md: §16 6/0/9 → **8/0/7** — **settore ORA COMPLETO** per tutto
+ciò che non è scartato (16.6) o rimandato all'applicazione separata
+iYokai NSFW (16.10, Task #24). Ricalcolo meccanico di TUTTA la
+tabella dei totali: **238/3/35**.
+
+**Suite di test completa: 2054/2054 passano** (verificato due volte
+di fila).
+
 ---
 
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok

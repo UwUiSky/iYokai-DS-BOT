@@ -155,6 +155,16 @@ class Config:
     # opzionale, non abilitato di default.
     YOUTUBE_API_KEY: str = field(default="")
 
+    # Pixabay (SPEC.md §16.9, ricerca immagini SFW) — opzionale, vuota
+    # finché l'utente non crea una API key gratuita su pixabay.com/
+    # api/docs/. `/fun search-image` (cogs/fun/entertainment.py)
+    # risponde con un messaggio che spiega come attivarla finché è
+    # vuota, invece di fallire in modo criptico. Pixabay applica il
+    # proprio filtro SFW lato server (`safesearch=true`, impostato
+    # sempre da core/image_search_fetcher.py) — non è compito di
+    # questo bot rifiltrare i risultati.
+    PIXABAY_API_KEY: str = field(default="")
+
     # Radio condivisa del bot principale (SPEC.md §9.11) — cartella
     # locale per gli inediti dell'utente, letta SOLO dal nodo
     # Lavalink locale/self-hostato (i nodi pubblici non hanno accesso
@@ -262,6 +272,7 @@ def _load_config() -> Config:
         TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
         YOUTUBE_API_KEY=_optional("YOUTUBE_API_KEY", ""),
+        PIXABAY_API_KEY=_optional("PIXABAY_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),

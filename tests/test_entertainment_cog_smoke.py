@@ -33,4 +33,19 @@ async def test_entertainment_cog_si_carica_correttamente():
     assert fun_group is not None, "Il gruppo /fun non risulta registrato"
 
     sottocomandi = {c.name for c in fun_group.commands}
-    assert {"coinflip", "dice", "rps", "8ball", "joke", "quote", "fact"} <= sottocomandi
+    assert {
+        "coinflip",
+        "dice",
+        "rps",
+        "8ball",
+        "joke",
+        "quote",
+        "fact",
+        "grayscale",
+        "invert",
+        "blur",
+        "pixelate",
+        "meme",
+        "animal",
+        "search-image",
+    } <= sottocomandi

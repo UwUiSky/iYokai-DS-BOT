@@ -33,6 +33,20 @@ chi li usa già senza un guadagno di slot che serva adesso (restano
 solo 2 di headroom). Qualunque comando FUTURO di §16 (image
 manipulation, meme, animal, ricerca immagini) andrà sotto questo
 stesso gruppo o un gruppo analogo, non come nuovo comando top-level.
+
+Terzo lotto (§16.4 Comandi animal, §16.9 Ricerca immagini SFW):
+`/fun animal` usa tre API pubbliche gratuite senza chiave
+(dog.ceo, thecatapi.com, randomfox.ca — core/animal_fetcher.py);
+`/fun search-image` usa Pixabay, che invece richiede una chiave
+gratuita (PIXABAY_API_KEY in core/config.py, stesso principio di
+sblocco opzionale già usato per Twitch/YouTube) — a differenza delle
+altre integrazioni opzionali di questo bot, senza quella chiave il
+comando non può funzionare affatto, quindi risponde con un messaggio
+che spiega come attivarla invece di restare silenziosamente
+inutilizzabile. Entrambi i fetcher sono iniettabili nel costruttore
+del cog (default ai singleton di modulo) per essere sostituiti nei
+test con un server aiohttp finto, stesso schema già usato per
+core/twitch_watcher.py/core/youtube_watcher.py.
 """
 
 from __future__ import annotations
@@ -45,9 +59,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.animal_fetcher import animal_fetcher
 from core.classic_entertainment_logic import random_fact, random_joke, random_quote
+from core.config import config
 from core.database import db
 from core.image_manipulation import apply_blur, apply_grayscale, apply_invert, apply_pixelate
+from core.image_search_fetcher import image_search_fetcher
 from core.meme_logic import render_meme
 from core.minigames_logic import answer_8ball, flip_coin, play_rps, roll_dice
 from core.premium import PremiumModule, registry
@@ -359,6 +376,58 @@ class EntertainmentCog(commands.Cog):
         await interaction.response.send_message(
             file=discord.File(io.BytesIO(risultato), filename="meme.png")
         )
+
+    @fun_group.command(name="animal", description="Mostra un'immagine casuale di un animale.")
+    @app_commands.describe(specie="Che animale vuoi vedere?")
+    @app_commands.choices(
+        specie=[
+            app_commands.Choice(name="Cane", value="dog"),
+            app_commands.Choice(name="Gatto", value="cat"),
+            app_commands.Choice(name="Volpe", value="fox"),
+        ]
+    )
+    async def animal(self, interaction: discord.Interaction, specie: app_commands.Choice[str]) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+
+        url = await animal_fetcher.fetch_image_url(specie.value)
+        if url is None:
+            await interaction.response.send_message(
+                "Non sono riuscito a recuperare un'immagine in questo momento. Riprova più tardi.",
+                ephemeral=True,
+            )
+            return
+
+        embed = discord.Embed(title=f"{specie.name} casuale", color=discord.Color.orange())
+        embed.set_image(url=url)
+        await interaction.response.send_message(embed=embed)
+
+    @fun_group.command(name="search-image", description="Cerca un'immagine SFW su Pixabay.")
+    @app_commands.describe(query="Cosa vuoi cercare?")
+    async def search_image(self, interaction: discord.Interaction, query: str) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+
+        if not config.PIXABAY_API_KEY:
+            await interaction.response.send_message(
+                "La ricerca immagini non è configurata su questo bot: serve una chiave "
+                "gratuita di Pixabay (PIXABAY_API_KEY) — vedi .env.example.",
+                ephemeral=True,
+            )
+            return
+
+        url = await image_search_fetcher.fetch_image_url(
+            config.PIXABAY_API_KEY, query, self._rng
+        )
+        if url is None:
+            await interaction.response.send_message(
+                f"Nessun risultato per «{query}».", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(title=f"Risultato per «{query}»", color=discord.Color.blue())
+        embed.set_image(url=url)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

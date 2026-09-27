@@ -1225,7 +1225,15 @@ necessario.
   incorporato nel repository). Richiede almeno uno tra top/bottom
   text, altrimenti messaggio d'errore effimero. Stesso gruppo `/fun`,
   nessun nuovo slot top-level
-- `[ ]` 16.4 Comandi animal
+- `[x]` 16.4 Comandi animal — `/fun animal <specie>` (cane/gatto/
+  volpe), immagine casuale da tre API pubbliche GRATUITE, nessuna
+  chiave richiesta: dog.ceo, thecatapi.com, randomfox.ca
+  (`core/animal_fetcher.py` interpreta le risposte con `core/animal_
+  api_logic.py`, logica pura testata senza rete con un server
+  aiohttp finto — stesso principio già seguito per Twitch/YouTube).
+  Restituisce un messaggio d'errore effimero (non un'eccezione) se
+  la richiesta fallisce. Sotto-comando del gruppo `/fun` esistente,
+  nessun nuovo slot top-level
 - `[x]` 16.5 Ship — percentuale deterministica via hash, non casuale
   ad ogni chiamata
 - `[ ]` 16.6 Howgay — deliberatamente non fatto: troppo vicino a un
@@ -1253,7 +1261,15 @@ necessario.
   totale supera 100 e avvisa se supera 90 — qualunque comando FUTURO
   di §16 (16.2/16.3/16.4/16.9) andrà sotto questo stesso gruppo o un
   gruppo analogo, non come nuovo comando top-level
-- `[ ]` 16.9 Ricerca immagini SFW
+- `[x]` 16.9 Ricerca immagini SFW — `/fun search-image <query>`, via
+  Pixabay (`PIXABAY_API_KEY`, opzionale come Twitch/YouTube ma —
+  a differenza di quelle — il comando non può funzionare affatto
+  senza: risponde spiegando come attivare la chiave gratuita invece
+  di restare silenziosamente inutilizzabile). `safesearch=true`
+  impostato SEMPRE nella richiesta: è Pixabay stesso, lato server, a
+  garantire risultati SFW (`core/image_search_fetcher.py`/`core/
+  image_search_logic.py`, logica pura testata senza rete). Sotto-
+  comando del gruppo `/fun` esistente, nessun nuovo slot top-level
 - `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
   - `[ ]` Solo canali con flag NSFW, verificato a runtime a ogni post
   - `[ ]` Comando ricerca: `r34 <termine>` → immagine casuale
@@ -1368,10 +1384,10 @@ rilancia lo stesso conteggio.
 | §13 Ticket | 13 | 0 | 0 |
 | §14 Utility | 15 | 0 | 3 |
 | §15 Levels/Gilde | 34 | 0 | 0 |
-| §16 Fun/NSFW | 6 | 0 | 9 |
+| §16 Fun/NSFW | 8 | 0 | 7 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **236** | **3** | **37** |
+| **Totale** | **238** | **3** | **35** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1585,4 +1601,45 @@ messaggio d'errore effimero invece di generare un meme vuoto.
 Terzo e ultimo lotto di questo settore (16.4 Comandi animal + 16.9
 Ricerca immagini SFW, basati su API esterne) e §16.10 NSFW/Rule34
 restano da fare in commit separati.
+
+**§16 Fun & Immagini, terzo e ultimo lotto: chiusi 16.4 Comandi
+animal e 16.9 Ricerca immagini SFW** (6/0/9 → 8/0/7). Due nuovi
+sotto-comandi del gruppo `/fun` esistente — nessun nuovo slot
+top-level, il totale resta a 97/100. `/fun animal <specie>`
+(cane/gatto/volpe) usa tre API pubbliche GRATUITE senza chiave
+(dog.ceo, thecatapi.com, randomfox.ca — `core/animal_fetcher.py`,
+`core/animal_api_logic.py`), a differenza di `/fun search-image
+<query>` (§16.9) che usa Pixabay e QUINDI richiede una chiave
+gratuita (`PIXABAY_API_KEY` in `core/config.py`, stesso principio di
+sblocco opzionale già usato per Twitch/YouTube) — con una differenza
+importante rispetto a quelle due integrazioni: senza `PIXABAY_
+API_KEY` il comando NON PUÒ funzionare affatto (non è un extra
+opzionale come "sapere quando un canale va live"), quindi risponde
+con un messaggio che spiega come attivare la chiave gratuita invece
+di restare silenziosamente inutilizzabile. `safesearch=true` è
+impostato SEMPRE nella richiesta a Pixabay — è Pixabay stesso, lato
+server, a garantire risultati SFW, non questo codice a dover
+rifiltrare (`core/image_search_fetcher.py`, `core/image_search_
+logic.py`).
+
+Entrambi i fetcher (`core/animal_fetcher.py`, `core/image_search_
+fetcher.py`) seguono lo stesso schema di gestione errori già usato
+da `core/twitch_watcher.py`/`core/youtube_watcher.py`: sessione
+aiohttp riusata, timeout esplicito, log + `None` (mai un'eccezione)
+se la richiesta fallisce (rete, timeout, status non-200) o la
+risposta non ha la forma aspettata. Testati con un server aiohttp
+VERO in locale (`aiohttp.test_utils.TestServer`) che imita la forma
+delle risposte reali — non un mock della sessione HTTP — stesso
+principio già seguito da `tests/test_twitch_watcher.py`/`tests/
+test_youtube_watcher.py`.
+
+**Tutto il settore §16 Fun & Immagini SFW è ORA COMPLETO** per tutto
+ciò che non è stato esplicitamente scartato o rimandato a
+un'applicazione separata: 16.1/16.2/16.3/16.4/16.5/16.7/16.8/16.9
+fatti; 16.6 scartato deliberatamente (attributo protetto); 16.10
+NSFW/Rule34 resta l'ultima voce, rimandata all'applicazione separata
+iYokai NSFW (Task #24, non ancora iniziato).
+
+SPEC.md: §16 6/0/9 → **8/0/7**. Ricalcolo meccanico di TUTTA la
+tabella dei totali: **238/3/35**.
 
