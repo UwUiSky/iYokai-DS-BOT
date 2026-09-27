@@ -564,7 +564,12 @@ necessario.
 - `[x]` 15.7 Classifica mensile (via `period_key`, senza reset schedulato)
 - `[x]` 15.8 Classifica totale all-time
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
-- `[ ]` 15.10 **Classifica Gilde** (mensile + totale)
+- `[~]` 15.10 **Classifica Gilde** (mensile + totale) — `/clan
+  classifica` esiste già (ordina i clan del server per XP totale,
+  testato in `test_guild_clan_cog_behavior.py`): era segnata come
+  mancante per errore, debito di documentazione trovato e corretto
+  in questa sessione. **Manca** ancora la variante MENSILE (nessun
+  `period_key` per l'XP di clan, solo il totale cumulativo)
 - `[x]` 15.11 Annuncio automatico dei vincitori a fine mese —
   `/monthly-winners set|disable`, podio XP e coin del mese appena
   concluso, tick orario idempotente (uno solo per mese anche con
@@ -577,9 +582,10 @@ necessario.
 - `[x]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
   add|remove|list`, cumulativo (ogni ruolo fino al nuovo livello,
   non solo il più alto), agganciato sia a XP testuale sia vocale
-- `[~]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
-  (motore economico di backend calibrato e testato — 30 XP + 2 coin
-  a tick/minuto in vocale di gilda, decadimento lineare dopo 3h filate
+- `[x]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
+  (motore economico di backend calibrato e testato — 10 XP + 4 coin
+  a tick/minuto in vocale di gilda (×2 letterale del vocale normale),
+  decadimento lineare dopo 3h filate
   nello stesso canale, tetto 720 tick/giorno, deficit di creazione
   15.000 coin/24h, costi canale 25k/50k/200k/800k — comandi Discord
   `/clan crea|info|membri|classifica|sciogli|tesoreria dona|
@@ -641,14 +647,19 @@ necessario.
     cooldown 60s, NESSUNA coin (come nel testo normale) e NESSUN
     boost applicato (individuale/di gilda restano scoped al solo tick
     vocale, confermato in Fase 54)
-  - `[~]` Tesoreria: deposito da tutti, prelievo solo capo/admin, log
-    movimenti — `/clan tesoreria dona` scala il saldo personale e
-    accredita la tesoreria (ufficializzando il clan in automatico se
-    il deficit viene colmato); consultabile via `/clan info`.
-    **Manca** ancora un comando di PRELIEVO (spesa verso un membro,
-    es. premio evento) per capo/admin — diverso dal trasferimento
-    tra gilde qui sotto, che è tesoreria→tesoreria, mai verso un
-    portafoglio personale
+  - `[x]` Tesoreria: **a SENSO UNICO per design** — solo membro ->
+    gilda (`/clan tesoreria dona`, scala il saldo personale e
+    accredita la tesoreria, ufficializzando il clan in automatico se
+    il deficit viene colmato), MAI gilda -> membro (nessun prelievo
+    individuale, confermato esplicitamente dall'utente quando il
+    repository fu scritto — non è una voce mancante, è la regola).
+    Log movimenti consultabile via `/clan info`. Il bisogno di
+    "premio evento" che questa voce indicava erroneamente come
+    lacuna è già servito da un percorso diverso e corretto: la cassa
+    DI SERVER (§15.15, non la tesoreria di un singolo clan) via
+    `/assegna-lobby`/`/assegna-winner` — chiarito esplicitamente
+    dall'utente in questa sessione, correggendo un fraintendimento di
+    una sessione precedente
   - `[x]` Trasferimento tesoreria→tesoreria tra due gilde dello
     STESSO owner, **ANCHE cross-server** — `core.repositories.
     guild_clan_repo.transfer_between_treasuries` esisteva già da una
@@ -701,9 +712,9 @@ necessario.
   - `[x]` Comandi: `/clan crea|info|membri|classifica|sciogli|
     tesoreria dona|tesoreria trasferisci|invita|espelli|promuovi|
     compra-canale|boost individuale|boost gilda` — tutti i comandi
-    previsti per §15.14 sono scritti; resta solo il prelievo dalla
-    tesoreria verso un membro (voce separata sopra)
-- `[ ]` **15.15 Decadimento economico + cassa di server** (scope
+    previsti per §15.14 sono scritti, nessuna voce mancante (la
+    tesoreria resta a senso unico per design, vedi sopra)
+- `[x]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
   - `[x]` Decadimento settimanale 10% sui coin PERSONALI di
@@ -874,14 +885,14 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 29 | 3 | 2 |
+| §15 Levels/Gilde | 32 | 2 | 0 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **154** | **8** | **111** |
+| **Totale** | **157** | **7** | **109** |
 
-Su 273 voci totali: **154 fatte, 8 parziali, 111 mancanti** — circa
-il 58% dello schema (contando i parziali a metà peso). §11 Backup
+Su 273 voci totali: **157 fatte, 7 parziali, 109 mancanti** — circa
+il 59% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
@@ -905,10 +916,17 @@ apply_text_tick`, agganciato a `on_message`) — e nello stesso
 controllo si è corretta una discrepanza reale trovata nel lato
 vocale: la prima calibrazione usava 30 XP/2 coin al tick (un target
 mensile assoluto), non il ×2 letterale dichiarato qui; ora è 10 XP/4
-coin, ×2 esatto del vocale normale. Resta solo un comando di
-PRELIEVO dalla tesoreria verso un membro per Capo/Admin (es. premio
-evento — diverso dal trasferimento tra gilde, ora fatto) — l'unica
-voce ancora aperta in §15.14. §15.15 (non nello schema
+coin, ×2 esatto del vocale normale. **§15.14 è ORA COMPLETO**: la
+voce che sembrava ancora aperta (un comando di PRELIEVO dalla
+tesoreria verso un membro) era un fraintendimento di una sessione
+precedente, chiarito esplicitamente dall'utente in questa sessione —
+la tesoreria di clan resta a SENSO UNICO per design (membro -> gilda
+sempre, gilda -> membro MAI), e il bisogno reale di "premio evento"
+è già servito da un percorso diverso e corretto: la cassa DI SERVER
+(§15.15), non la tesoreria di un singolo clan. Unica voce
+genuinamente ancora aperta in tutto §15: la variante MENSILE di
+15.10 Classifica Gilde (oggi solo il totale cumulativo). §15.15
+(non nello schema
 originale, emersa in conversazione) è ORA COMPLETO: decadimento
 settimanale personale, cassa di server alimentata da entrambi i
 decadimenti, sblocco premium a doppio cancello (tempo dal join +

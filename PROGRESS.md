@@ -2431,6 +2431,58 @@ la feature non aggiunge comandi Discord).
 
 ---
 
+### Fase 58 — Audit richiesto dall'utente ("cosa resta da fare"):
+chiude §15 al 100% correggendo due debiti di documentazione, nessun
+codice toccato
+
+L'utente ha chiesto lo stato generale del progetto. Controllando
+§15.14/§15.15 a fondo (dato il lavoro appena fatto nelle Fasi 56-57)
+sono emersi due problemi, entrambi di sola documentazione:
+
+1. **15.10 "Classifica Gilde" segnata mancante per errore** —
+   `/clan classifica` esiste già (ordina i clan per XP totale del
+   server), testato in `test_guild_clan_cog_behavior.py`. Corretta a
+   parziale: manca solo la variante MENSILE (nessun `period_key` per
+   l'XP di clan, oggi solo il totale cumulativo mai resettato).
+2. **"Manca un comando di prelievo dalla tesoreria verso un membro"
+   era un fraintendimento**, non una lacuna — segnalato dall'utente:
+   la tesoreria di clan è a SENSO UNICO per design (membro -> gilda
+   sempre permesso, gilda -> membro MAI, confermato esplicitamente
+   quando il repository fu scritto, in una sessione precedente a
+   questa). Il bisogno reale di "premio evento" che questa voce
+   indicava è già servito da un percorso diverso e corretto: la
+   cassa DI SERVER (§15.15) via `/assegna-lobby`/`/assegna-winner`
+   (Fase 56), non la tesoreria di un singolo clan.
+
+Corretti anche due marcatori di livello superiore rimasti stale
+(§15.14 e §15.15 erano ancora `[~]`/`[ ]` nonostante tutti i
+sotto-punti fossero già `[x]`) e la cifra "30 XP + 2 coin a
+tick/minuto" nell'introduzione di §15.14, non aggiornata dopo la
+correzione della Fase 57 (ora 10 XP + 4 coin).
+
+**Promemoria per il futuro**: durante la prima stesura della
+correzione ho scritto io stesso, per errore, il pattern letterale di
+un marcatore (`` `[ ]` ``) dentro una frase di prosa — esattamente
+l'errore che la regola già in cima a questo file vieta esplicitamente
+(punto 2 delle "Decisioni prese"), perché il conteggio meccanico lo
+legge come una voce reale e sballa il totale (273→274). Trovato
+SOLO perché il totale delle voci (274 invece di 273, un numero fisso
+che non cambia mai) non corrispondeva più — controllo utile da
+ripetere ogni volta che il ricalcolo meccanico dà un totale diverso
+da quello della sessione precedente.
+
+SPEC.md: §15.14 e §15.15 passano entrambi a `[x]` a livello di
+sottosezione; 15.10 passa a `[~]`; **§15 Levels/Gilde ora 32/2/0
+(fatte/parziali/mancanti) — ZERO voci genuinamente mancanti**.
+Ricalcolo meccanico: **59% dello schema (157/273 pesato)**. Nessun
+comando Discord aggiunto o rimosso — COMMAND_LIST.md non rigenerato
+(nessuna variazione possibile).
+
+**Suite di test completa: 1402/1402 passano** (nessun codice
+toccato in questa fase, solo verifica di non regressione).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo
