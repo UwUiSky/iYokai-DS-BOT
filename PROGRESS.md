@@ -3879,6 +3879,63 @@ di fila).
 
 ---
 
+### Fase 73 — §3 Premium System: chiude gli ultimi due comandi di
+lettura (punto 3 della direttiva "Vai prosegui fai tutto a parte
+ovviamente bcde")
+
+**§3 Premium System (8/1/2 → 11/11, COMPLETO)**: mancavano solo due
+comandi di sola LETTURA — add/remove/toggle esistevano già da tempo,
+ma nessuno permetteva di VEDERE lo stato d'insieme senza interrogare
+il database a mano.
+
+- `/owner whitelist-list` — nuovo `Database.list_premium_whitelist()`
+  (`SELECT ... ORDER BY added_at ASC`), formattato riga per riga da
+  `core.premium_status_logic.format_whitelist_entry` (logica pura,
+  nessun DB nella funzione di formattazione).
+- `/owner premium-status-all` — itera su TUTTI i server in cui il
+  bot è presente (`interaction.client.guilds`) e per ciascuno mostra
+  OGNI meccanismo di sblocco davvero attivo, non solo un True/False
+  complessivo: whitelist, nitro boost sul server principale, premium
+  via cassa, numero di abbonamenti per modulo attivi. Nuova funzione
+  pubblica `core.premium.get_guild_premium_breakdown(guild_id, bot)`
+  — riusa gli stessi repository e le stesse condizioni già verificate
+  di `guild_has_premium_access`, ma restituisce il dettaglio completo
+  invece di fermarsi al primo sblocco trovato (quella funzione
+  esistente resta invariata, usata da `requires_module` per il
+  controllo runtime — qui serve un'informazione diversa, non un
+  duplicato). Con più server potenzialmente coinvolti, la risposta
+  passa da `defer()` + `followup.send()` invece di `response.
+  send_message()` diretto, e il testo finale passa da `truncate_
+  output` (già usato per eval/shell) per non superare il limite di
+  2000 caratteri di un messaggio Discord.
+
+**Punto tecnico**: `get_guild_premium_breakdown` fa un import LOCALE
+di `core.database.db` (stesso motivo già documentato altrove in
+questo file — evitare cicli di import), il che significa che legge
+dal SINGOLETTO globale vero, non da un riferimento sostituibile nel
+modulo del cog. I test che la esercitano (`/owner premium-status-
+all`) connettono quindi il singoletto per davvero
+(`await db.connect()`/`close()`), stesso schema già usato in
+`tests/test_role_menus_cog_smoke.py` — a differenza degli altri test
+di questo stesso cog, che si limitano a sostituire `cogs.utility.
+owner_premium.db` con un'istanza isolata.
+
+**8 nuovi test**: `test_premium_status_logic.py` (nuovo, 8: logica
+pura di formattazione); `test_database.py` (+1: `list_premium_
+whitelist` riflette add/remove); `test_owner_premium_whitelist_
+list_and_status_all.py` (nuovo, 5: rifiuto non-owner per entrambi i
+comandi, whitelist vuota, whitelist con voci reali, stato di più
+server con meccanismi diversi); `test_owner_premium_cog_smoke.py`
+(assert aggiornata con i due nuovi sottocomandi).
+
+SPEC.md: §3 8/1/2 → **10/1/0** (COMPLETO, 11/11). Ricalcolo
+meccanico di TUTTA la tabella dei totali: **231/3/42**.
+
+**Suite di test completa: 1944/1944 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

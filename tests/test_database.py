@@ -706,3 +706,41 @@ async def test_guild_language_default_e_scrittura():
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", _CFG_GUILD_ID)
         await database.close()
+
+
+@pytest.mark.asyncio
+async def test_list_premium_whitelist_riflette_add_e_remove():
+    # SPEC.md §3.2: esisteva add/remove ma non un modo per elencare.
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute(
+            "DELETE FROM premium_whitelist WHERE guild_id = ANY($1::bigint[])",
+            [888888801, 888888802],
+        )
+
+        assert await database.list_premium_whitelist() == [] or all(
+            r["guild_id"] not in (888888801, 888888802)
+            for r in await database.list_premium_whitelist()
+        )
+
+        await database.add_guild_to_whitelist(888888801, added_by=1, reason="test A")
+        await database.add_guild_to_whitelist(888888802, added_by=2, reason=None)
+
+        lista = await database.list_premium_whitelist()
+        by_id = {r["guild_id"]: r for r in lista}
+        assert by_id[888888801]["added_by"] == 1
+        assert by_id[888888801]["reason"] == "test A"
+        assert by_id[888888802]["reason"] is None
+
+        await database.remove_guild_from_whitelist(888888801)
+        lista = await database.list_premium_whitelist()
+        assert 888888801 not in {r["guild_id"] for r in lista}
+        assert 888888802 in {r["guild_id"] for r in lista}
+    finally:
+        await database.pool.execute(
+            "DELETE FROM premium_whitelist WHERE guild_id = ANY($1::bigint[])",
+            [888888801, 888888802],
+        )
+        await database.close()

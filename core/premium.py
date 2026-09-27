@@ -283,6 +283,35 @@ async def guild_has_premium_access(
     return await module_subscription_repo.is_active(guild_id, module_name)
 
 
+async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
+    """
+    SPEC.md §3.2 "Visualizza stato premium di tutti i server": a
+    differenza di guild_has_premium_access (un True/False per un
+    singolo modulo), qui servono TUTTI i meccanismi insieme, per
+    capire perché un server ha (o non ha) accesso — usato da
+    /owner premium-status-all insieme a core/premium_status_logic.py
+    per la formattazione.
+    """
+    from datetime import datetime, timezone
+
+    from core.database import db  # import locale per evitare cicli
+    from core.repositories.guild_premium_repo import guild_premium_repo
+    from core.repositories.module_subscription_repo import module_subscription_repo
+
+    whitelisted = await db.is_guild_whitelisted(guild_id)
+    boosts_main_guild = await _guild_owner_boosts_main_guild(guild_id, bot)
+    cassa_status = await guild_premium_repo.get_status(guild_id)
+    cassa_active = cassa_status.is_active(datetime.now(timezone.utc))
+    abbonamenti = await module_subscription_repo.list_for_guild(guild_id)
+
+    return {
+        "whitelisted": whitelisted,
+        "boosts_main_guild": boosts_main_guild,
+        "cassa_active": cassa_active,
+        "subscription_count": len(abbonamenti),
+    }
+
+
 class PremiumCheckFailure(app_commands.CheckFailure):
     """Classe base per gli errori sollevati da requires_module()."""
 

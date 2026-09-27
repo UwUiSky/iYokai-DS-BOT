@@ -794,6 +794,27 @@ class Database:
             guild_id,
         )
 
+    async def list_premium_whitelist(self) -> list[dict]:
+        """SPEC.md §3.2: esisteva add/remove ma non un modo per
+        ELENCARE la whitelist — l'unico modo per controllarla era
+        interrogare il database a mano."""
+        righe = await self.pool.fetch(
+            """
+            SELECT guild_id, added_by, reason, added_at
+            FROM premium_whitelist
+            ORDER BY added_at ASC
+            """
+        )
+        return [
+            {
+                "guild_id": r["guild_id"],
+                "added_by": r["added_by"],
+                "reason": r["reason"],
+                "added_at": r["added_at"],
+            }
+            for r in righe
+        ]
+
 
 # Istanza unica, condivisa da tutto il progetto.
 db = Database()

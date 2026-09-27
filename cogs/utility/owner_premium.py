@@ -25,7 +25,8 @@ from discord.ext import commands
 from core.config import config
 from core.database import db
 from core.eval_shell_logic import truncate_output
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, get_guild_premium_breakdown, registry
+from core.premium_status_logic import format_guild_status_line, format_whitelist_entry
 from core.repositories.eval_shell_log_repo import eval_shell_log_repo
 from core.repositories.module_subscription_repo import module_subscription_repo
 
@@ -380,6 +381,34 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
+    @owner_group.command(
+        name="whitelist-list",
+        description="[OWNER] Elenca i server nella whitelist premium.",
+    )
+    async def whitelist_list(self, interaction: discord.Interaction) -> None:
+        # SPEC.md §3.2: esistevano add/remove ma non un modo per
+        # ELENCARE la whitelist — l'unico modo per controllarla era
+        # interrogare il database a mano.
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        voci = await db.list_premium_whitelist()
+        if not voci:
+            await interaction.response.send_message(
+                "La whitelist premium è vuota.", ephemeral=True
+            )
+            return
+
+        righe = [
+            format_whitelist_entry(v["guild_id"], v["added_by"], v["reason"], v["added_at"])
+            for v in voci
+        ]
+        testo = truncate_output("\n".join(righe))
+        await interaction.response.send_message(testo, ephemeral=True)
+
     # ================================================================
     # Abbonamento mensile/annuale per modulo (SPEC.md §3.1 — pagamento
     # gestito FUORI dal bot, l'owner concede a mano dopo averlo
@@ -511,6 +540,43 @@ class OwnerPremiumCog(commands.Cog):
             for s in abbonamenti
         ]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @owner_group.command(
+        name="premium-status-all",
+        description="[OWNER] Mostra lo stato premium di TUTTI i server in cui è presente il bot.",
+    )
+    async def premium_status_all(self, interaction: discord.Interaction) -> None:
+        # SPEC.md §3.2: esisteva solo l'attiva/disattiva per un
+        # singolo modulo — nessuna vista d'insieme su tutti i server.
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        guilds = list(interaction.client.guilds)
+        righe = []
+        for guild in guilds:
+            dettaglio = await get_guild_premium_breakdown(guild.id, bot=interaction.client)
+            righe.append(
+                format_guild_status_line(
+                    guild.id,
+                    guild.name,
+                    whitelisted=dettaglio["whitelisted"],
+                    boosts_main_guild=dettaglio["boosts_main_guild"],
+                    cassa_active=dettaglio["cassa_active"],
+                    subscription_count=dettaglio["subscription_count"],
+                )
+            )
+
+        intestazione = (
+            f"**{len(guilds)} server totali** — override ALPHA "
+            f"{'ATTIVO (tutto sbloccato per tutti)' if config.PREMIUM_ALPHA_UNLOCK_ALL else 'non attivo'}:\n"
+        )
+        testo = truncate_output(intestazione + "\n".join(righe))
+        await interaction.followup.send(testo, ephemeral=True)
 
     async def _run_eval(self, code: str, interaction: discord.Interaction) -> tuple[str, bool]:
         """

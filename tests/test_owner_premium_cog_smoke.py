@@ -53,4 +53,6 @@ async def test_owner_premium_cog_si_carica_correttamente():
         "premium-grant",
         "premium-revoke",
         "premium-subscriptions",
+        "whitelist-list",
+        "premium-status-all",
     } <= sottocomandi

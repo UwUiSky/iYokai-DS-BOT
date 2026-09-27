@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:09 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:25 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 235 comandi in 10 categorie.**
+**Totale: 237 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -225,11 +225,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:
 - **`/owner premium-list`** — [OWNER] Mostra lo stato premium di tutti i moduli.
 - **`/owner premium-panel`** — [OWNER] Pannello interattivo per attivare/disattivare i moduli premium.
 - **`/owner premium-revoke`** — [OWNER] Revoca l'abbonamento di un modulo per un server.
+- **`/owner premium-status-all`** — [OWNER] Mostra lo stato premium di TUTTI i server in cui è presente il bot.
 - **`/owner premium-subscriptions`** — [OWNER] Mostra gli abbonamenti per modulo attivi su un server.
 - **`/owner premium-toggle`** — [OWNER] Accende o spegne la natura premium di un modulo.
 - **`/owner shell`** — [OWNER] Esegue un comando shell (con conferma).
 - **`/owner stats`** — [OWNER] Statistiche globali del bot.
 - **`/owner whitelist-add`** — [OWNER] Aggiunge un server alla whitelist premium.
+- **`/owner whitelist-list`** — [OWNER] Elenca i server nella whitelist premium.
 - **`/owner whitelist-remove`** — [OWNER] Rimuove un server dalla whitelist premium.
 - **`/ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/poll`** — Crea un sondaggio (fino a 5 opzioni).

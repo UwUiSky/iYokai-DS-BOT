@@ -119,10 +119,13 @@ file, non da un riassunto.**
 
 - `[x]` 3.1 Registry moduli + flag premium per modulo, tutto OFF di default
 - `[x]` 3.2 Whitelist manuale per Server ID (add / remove)
-- `[ ]` 3.2 Comando per **elencare** i server in whitelist (esistono
-  add/remove ma non list)
+- `[x]` 3.2 Comando per **elencare** i server in whitelist —
+  `/owner whitelist-list`
 - `[x]` 3.2 Attiva/disattiva natura premium di un singolo modulo
-- `[ ]` 3.2 Visualizza stato premium di **tutti** i server
+- `[x]` 3.2 Visualizza stato premium di **tutti** i server —
+  `/owner premium-status-all`, un meccanismo di sblocco (whitelist/
+  nitro boost/premium via cassa/abbonamenti per modulo) per riga, non
+  solo un True/False complessivo
 - `[x]` 3.3 Controllo runtime (`requires_module`)
 - `[x]` 3.1 Metodo sblocco: **Boost Nitro** sul server principale
   (`Member.premium_since`) — richiesto esplicitamente dall'utente
@@ -1297,7 +1300,7 @@ rilancia lo stesso conteggio.
 |---|---|---|---|
 | §1 Core | 19 | 0 | 0 |
 | §2 Setup | 6 | 1 | 0 |
-| §3 Premium | 8 | 1 | 2 |
+| §3 Premium | 10 | 1 | 0 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 15 | 0 | 0 |
@@ -1313,7 +1316,7 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **229** | **3** | **44** |
+| **Totale** | **231** | **3** | **42** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1443,4 +1446,22 @@ tradurre l'intero bot è un lavoro enormemente più grande di questa
 singola voce e non è stato tentato. 2.4 Prefisso personalizzato resta
 `[✗]` scartato (slash-command-only, decisione già presa in una
 sessione precedente).
+
+**§3 Premium System è ORA COMPLETO al 100%** (11/11): mancavano solo
+due comandi di sola LETTURA, mai scritti prima perché add/remove/
+toggle bastavano per il lavoro quotidiano ma non davano una vista
+d'insieme. `/owner whitelist-list` elenca i server whitelistati
+(id, chi li ha aggiunti, quando, motivo) — nessuna sorpresa nella
+query, solo un `ORDER BY added_at`. `/owner premium-status-all`
+itera su TUTTI i server in cui il bot è presente e mostra, per
+ciascuno, OGNI meccanismo di sblocco davvero attivo (whitelist/
+nitro boost sul server principale/premium via cassa/abbonamenti per
+modulo) invece di un singolo True/False — nuova funzione pubblica
+`core.premium.get_guild_premium_breakdown()`, che riusa la stessa
+logica già verificata di `guild_has_premium_access` (stessi
+repository, stesse condizioni) ma restituisce il dettaglio completo
+invece di fermarsi al primo sblocco trovato. Formattazione delle
+righe estratta in `core/premium_status_logic.py`, logica pura
+testabile senza database né bot vero — stesso principio già seguito
+per ticket/snipe.
 
