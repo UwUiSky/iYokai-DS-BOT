@@ -2855,6 +2855,118 @@ test esistenti aggiornati per spacchettare la tupla.
 
 ---
 
+### Fase 63 — Music: clear-queue, shuffle, loop track/queue, nowplaying
+con barra (§9.4), limite playlist e correzioni richieste dall'utente
+
+L'utente ha corretto la mia comprensione su YouTube/Spotify sui nodi
+Lavalink pubblici (Spotify funziona spesso già, è YouTube che è
+spesso rotto sui nodi pubblici — annotato in SPEC.md §9.5, NESSUNA
+modifica di codice fatta: non richiesta esplicitamente, solo la
+correzione della documentazione) e ha chiesto di completare SOLO
+clear (svuota coda), shuffle, i due loop (traccia/coda) e nowplaying
+con barra di avanzamento — tutto il resto già segnato come mancante
+in §9.4 (search distinta da play, forceskip, remove, move, seek,
+lyrics) va invece **rimosso permanentemente** dalla lista, non solo
+rimandato.
+
+Nuova `core.music_logic.build_progress_bar(elapsed_ms, total_ms,
+bar_length=20)` (pura, nessuna dipendenza da wavelink): un pallino
+🔘 lungo una linea di trattini ▬, `total_ms <= 0` (stream live)
+restituisce un indicatore fisso invece di dividere per zero,
+`elapsed_ms` sempre ristretto a `[0, total_ms]` prima di calcolare la
+posizione. Nuovi comandi in `cogs/music/player.py`: `/clear-queue`
+(NON `/clear` — vedi il bug sotto), `/shuffle` (con guardia: coda con
+meno di 2 tracce non fa nulla), `/loop track` e `/loop queue`
+(gruppo `loop`, stesso campo sottostante `player.queue.mode` già
+usato da `/nonstop` — attivare l'uno disattiva sempre l'altro, non
+si sommano, sono varianti mutuamente esclusive), `/nowplaying`
+(barra + tempo trascorso/totale + stato loop + conteggio tracce in
+coda rimanenti).
+
+**Due richieste aggiuntive dell'utente, arrivate a metà lavoro**:
+
+1. **Limite tracce per playlist**: un link a una playlist enorme
+   (Spotify e altre piattaforme ne permettono fino a migliaia) non
+   deve poter riempire la coda di un server all'infinito in un
+   colpo. Nuova `core.music_logic.MAX_PLAYLIST_TRACKS = 750` e
+   `truncate_playlist_tracks(tracks, limit=750)` (pura, slicing puro
+   — funziona su qualunque sequenza indicizzabile, incluso
+   `wavelink.Playlist`). `/play` ora taglia alle prime 750 e lo dice
+   esplicitamente nel messaggio di conferma se la playlist era più
+   lunga.
+2. **Shuffle genuinamente randomico**: preoccupazione esplicita
+   dell'utente — molti bot musicali "mescolano" seguendo pattern
+   nascosti, non un vero random. Verificato leggendo il sorgente di
+   wavelink: `Queue.shuffle()` chiama `random.shuffle` della
+   libreria standard (Fisher-Yates non polarizzato) — **nessuna
+   modifica di codice necessaria**, `/shuffle` delega direttamente a
+   quel metodo senza reimplementare nulla. Aggiunto un test di
+   regressione che spia `random.shuffle` per bloccare esplicitamente
+   questa garanzia (fallirebbe se una futura versione di wavelink
+   cambiasse l'algoritmo internamente).
+
+**Bug reale trovato e corretto in questa Fase, il più serio della
+sessione per potenziale impatto silenzioso**: il primo tentativo di
+`/clear-queue` era stato scritto come `/clear` — nome già usato dal
+`/clear` di moderation (cancellazione messaggi). Un nome di comando
+slash duplicato fa fallire la REGISTRAZIONE dell'intero cog che lo
+dichiara (discord.py, non un limite di questo progetto), e
+`core.cog_manager.load_all_cogs` cattura e LOGGA ogni eccezione di
+`setup()` per singolo cog senza farla risalire — di proposito, un
+cog rotto non deve bloccare l'avvio di tutto il resto — quindi
+l'intero modulo Music si sarebbe disattivato in silenzio in
+produzione, notato solo rilanciando `scripts/generate_command_list.
+py` sull'albero comandi reale (il conteggio è sceso da 171 a 153
+comandi, la categoria Music è sparita del tutto). **Mai scoperto dai
+test unitari esistenti**: ognuno istanzia il proprio cog da solo,
+senza mai unire il suo albero comandi a quello di TUTTI gli altri
+cog insieme come fa il bot vero. Rinominato in `/clear-queue`.
+
+**Chiusura del buco di test che ha permesso il bug**: nuovo
+`tests/test_cog_manager_load_all.py` — chiama il `setup()` di OGNI
+cog scoperto da `discover_cog_modules()` dentro lo stesso bot/albero
+comandi, esattamente come fa il bot vero, e verifica che nessuno
+fallisca né lasci nomi duplicati nell'albero. **Errore mio scrivendo
+QUESTO test, trovato e corretto prima di committare**: la prima
+versione usava `bot.load_extension(modulo_path)` per farlo — ma
+`discord.ext.commands.Bot._load_from_module_spec` RICREA ED ESEGUE
+DA CAPO il modulo con `importlib.util.module_from_spec` +
+`exec_module`, sovrascrivendo `sys.modules[modulo_path]` con un
+nuovo oggetto modulo OGNI VOLTA, anche se il modulo era già
+importato altrove nella sessione pytest. Usarlo qui sostituiva
+silenziosamente, per il resto dell'intera sessione di test, i moduli
+di TUTTI i cog (classi, singleton come `eval_shell_log_repo`) con
+copie fresche — rompendo `test_owner_blacklist_commands.py` (che
+importa `OwnerPremiumCog` a livello di modulo) in un modo visibile
+SOLO eseguendo i due file insieme, mai in isolamento — trovato
+proprio perché ho rilanciato la suite completa dopo aver scritto
+questo test, come da disciplina di sessione. Corretto usando
+`importlib.import_module(modulo_path)` (riusa la cache se già
+importato, non esegue nulla due volte) + `modulo.setup(bot)`
+direttamente: stesso effetto reale sull'albero comandi, zero
+effetti collaterali sugli altri test.
+
+SPEC.md: §9.4 passa a `[x]` (era `[~]`); search distinta da play,
+forceskip, remove, move, seek, lyrics rimossi PERMANENTEMENTE dalla
+lista delle cose da fare (non più `[ ]`/`[~]`, tolti dal testo).
+§9.5: annotata la correzione dell'utente su YouTube/Spotify, nessun
+cambio di stato. Ricalcolo meccanico: totale schema **165/3/105 su
+273, ≈61%**.
+
+**8 nuovi test**: `TestBuildProgressBar` (7) e `TestTruncatePlaylist
+Tracks` (5) in `tests/test_music_logic.py`; 12 nuovi test in
+`tests/test_music_guard_clauses.py` (clear-queue/shuffle/loop/
+nowplaying + il test-spia su random.shuffle); 3 nuovi in
+`tests/test_music_playlist_limit.py`; 1 nuovo in
+`tests/test_cog_manager_load_all.py`; 2 assert aggiornati/estesi in
+`tests/test_music_cog_smoke.py`.
+
+**Suite di test completa: 1557/1557 passano** (verificato due volte
+di fila per escludere flakiness legata all'ordine, dato il bug di
+inquinamento di sys.modules appena trovato e corretto).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

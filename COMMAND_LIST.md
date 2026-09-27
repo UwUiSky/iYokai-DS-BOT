@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 12:42 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 13:26 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 171 comandi in 10 categorie.**
+**Totale: 176 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -94,7 +94,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 12:
 
 ## Music
 
+- **`/clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/disconnect`** — Disconnette il music bot dal canale vocale.
+- **`/loop queue`** — Attiva/disattiva la ripetizione dell'intera coda.
+- **`/loop track`** — Attiva/disattiva la ripetizione della traccia corrente.
 - **`/nonstop off`** — Disattiva il loop continuo.
 - **`/nonstop on`** — Attiva il loop continuo sulla coda attuale.
 - **`/nonstop-main add-local`** — [Admin] Aggiunge un file dalla cartella inediti alla playlist della radio.
@@ -103,10 +106,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 12:
 - **`/nonstop-main remove-track`** — [Admin] Rimuove una traccia dalla playlist della radio.
 - **`/nonstop-main start`** — [Admin] Entra nella radio condivisa, nel punto in cui si trova ora.
 - **`/nonstop-main stop`** — [Admin] Esce dalla radio su questo server.
+- **`/nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/pause`** — Mette in pausa la riproduzione.
 - **`/play`** — Riproduce una canzone o playlist.
 - **`/queue`** — Mostra la coda di riproduzione.
 - **`/resume`** — Riprende la riproduzione in pausa.
+- **`/shuffle`** — Mescola l'ordine delle tracce in coda.
 - **`/skip`** — Salta la traccia in riproduzione.
 - **`/stop`** — Ferma la riproduzione e svuota la coda.
 - **`/volume down`** — Diminuisce il volume.

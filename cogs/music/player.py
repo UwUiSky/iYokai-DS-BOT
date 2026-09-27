@@ -56,11 +56,14 @@ from core.music_fleet import MusicFleet
 from core.music_fleet_logic import TOTAL_WORKERS
 from core.music_logic import (
     DEFAULT_PUBLIC_LAVALINK_NODES,
+    MAX_PLAYLIST_TRACKS,
     LavalinkNodeConfig,
+    build_progress_bar,
     build_queue_display,
     format_duration,
     is_spotify_query,
     parse_lavalink_nodes,
+    truncate_playlist_tracks,
 )
 from core.premium import PremiumModule, registry
 from core.repositories.main_radio_repo import main_radio_repo
@@ -320,10 +323,19 @@ class MusicCog(commands.Cog):
             return
 
         if isinstance(risultati, wavelink.Playlist):
-            await player.queue.put_wait(risultati)
-            await interaction.followup.send(
-                f"📃 Aggiunta la playlist **{risultati.name}** ({len(risultati)} tracce) alla coda."
-            )
+            tracce_totali = len(risultati)
+            tracce_da_aggiungere = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
+            await player.queue.put_wait(tracce_da_aggiungere)
+            if tracce_totali > MAX_PLAYLIST_TRACKS:
+                await interaction.followup.send(
+                    f"📃 Aggiunta la playlist **{risultati.name}** — "
+                    f"{MAX_PLAYLIST_TRACKS} tracce su {tracce_totali} totali "
+                    f"(limite massimo per singola playlist)."
+                )
+            else:
+                await interaction.followup.send(
+                    f"📃 Aggiunta la playlist **{risultati.name}** ({tracce_totali} tracce) alla coda."
+                )
         else:
             traccia = risultati[0]
             await player.queue.put_wait(traccia)
@@ -433,6 +445,167 @@ class MusicCog(commands.Cog):
         embed = discord.Embed(
             title="🎵 Coda di riproduzione",
             description=build_queue_display(titolo_attuale, titoli_in_coda),
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(
+        name="clear-queue", description="Svuota la coda, senza toccare la traccia in riproduzione."
+    )
+    async def clear_queue(self, interaction: discord.Interaction) -> None:
+        # NON "clear": nome già usato da /clear di moderation (cancella
+        # messaggi) — un doppione avrebbe fatto fallire la REGISTRAZIONE
+        # dell'intero MusicCog in silenzio (bug reale trovato qui:
+        # core/cog_manager.load_all_cogs cattura e LOGGA ogni eccezione
+        # di setup() per singolo cog, non la fa mai risalire — un
+        # comando musicale con nome duplicato avrebbe disattivato
+        # l'intero modulo Music senza che nessuno lo notasse finché
+        # qualcuno non avesse controllato i log).
+        if not await self._controlli_base(interaction):
+            return
+
+        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
+        player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return
+
+        if player.queue.is_empty:
+            await interaction.response.send_message("La coda è già vuota.", ephemeral=True)
+            return
+
+        tracce_rimosse = len(player.queue)
+        player.queue.clear()
+        await interaction.response.send_message(
+            f"🗑️ Coda svuotata ({tracce_rimosse} tracce rimosse). "
+            "La traccia in riproduzione non è stata toccata."
+        )
+
+    @app_commands.command(name="shuffle", description="Mescola l'ordine delle tracce in coda.")
+    async def shuffle(self, interaction: discord.Interaction) -> None:
+        if not await self._controlli_base(interaction):
+            return
+
+        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
+        player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return
+
+        if len(player.queue) < 2:
+            await interaction.response.send_message(
+                "Non c'è abbastanza in coda da mescolare.", ephemeral=True
+            )
+            return
+
+        player.queue.shuffle()
+        await interaction.response.send_message("🔀 Coda mescolata.")
+
+    loop_group = app_commands.Group(
+        name="loop", description="Ripete la traccia corrente o l'intera coda."
+    )
+
+    @loop_group.command(name="track", description="Attiva/disattiva la ripetizione della traccia corrente.")
+    async def loop_track(self, interaction: discord.Interaction) -> None:
+        if not await self._controlli_base(interaction):
+            return
+
+        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
+        player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return
+
+        # Stesso campo (player.queue.mode) usato anche da /loop queue
+        # e da /nonstop: attivare questo disattiva sempre l'altro, non
+        # si sommano — sono due modalità mutuamente esclusive della
+        # stessa coda, non due loop indipendenti.
+        if player.queue.mode == wavelink.QueueMode.loop:
+            player.queue.mode = wavelink.QueueMode.normal
+            await interaction.response.send_message("Loop traccia disattivato.")
+        else:
+            player.queue.mode = wavelink.QueueMode.loop
+            await interaction.response.send_message("🔂 Loop traccia attivato: la traccia corrente si ripete.")
+
+    @loop_group.command(name="queue", description="Attiva/disattiva la ripetizione dell'intera coda.")
+    async def loop_queue(self, interaction: discord.Interaction) -> None:
+        if not await self._controlli_base(interaction):
+            return
+
+        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
+        player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return
+
+        if player.queue.mode == wavelink.QueueMode.loop_all:
+            player.queue.mode = wavelink.QueueMode.normal
+            await interaction.response.send_message("Loop coda disattivato.")
+        else:
+            player.queue.mode = wavelink.QueueMode.loop_all
+            await interaction.response.send_message("🔁 Loop coda attivato: l'intera coda si ripete.")
+
+    @app_commands.command(
+        name="nowplaying", description="Mostra la traccia in riproduzione con una barra di avanzamento."
+    )
+    async def nowplaying(self, interaction: discord.Interaction) -> None:
+        if not await self._controlli_base(interaction):
+            return
+
+        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
+        player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        if player is None or player.current is None:
+            await interaction.response.send_message(
+                "Nessuna traccia in riproduzione.", ephemeral=True
+            )
+            return
+
+        traccia = player.current
+        barra = build_progress_bar(player.position, traccia.length)
+        righe = [
+            f"{barra}",
+            f"{format_duration(player.position)} / {format_duration(traccia.length)}",
+        ]
+        if player.queue.mode == wavelink.QueueMode.loop:
+            righe.append("🔂 Loop traccia attivo")
+        elif player.queue.mode == wavelink.QueueMode.loop_all:
+            righe.append("🔁 Loop coda attivo")
+
+        tracce_in_coda = len(player.queue)
+        if tracce_in_coda > 0:
+            righe.append(f"📃 {tracce_in_coda} altre tracce in coda")
+
+        embed = discord.Embed(
+            title=f"🎵 {traccia.title}",
+            description="\n".join(righe),
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed)

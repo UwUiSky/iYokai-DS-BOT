@@ -307,11 +307,40 @@ principale + 5 worker nello stesso processo, instradamento
 automatico) e un set di comandi RIDOTTO rispetto allo schema
 originale — deliberatamente, su richiesta esplicita dell'utente:
 "non voglio filtri audio, non voglio appesantire il bot per niente,
-tanto la gente ormai raramente li usa" — niente search/forceskip/
-remove/clear/shuffle/move/nowplaying-con-barra/loop-track/seek/
-lyrics/filtri/DJ-role/voteskip, solo i comandi che la gente usa
-davvero: play, skip, stop, pause, resume, queue, volume (con
-up/down oltre a impostare un valore), disconnect, nonstop.
+tanto la gente ormai raramente li usa". **Aggiornamento**: l'utente
+ha poi chiesto esplicitamente di completare comunque clear, shuffle,
+i due loop (traccia/coda) e nowplaying con barra di avanzamento —
+fatti in questa sessione. Restano invece **permanentemente
+descoperti** (non solo rimandati — richiesta esplicita, mai da
+rimettere in lista): search distinta da play, forceskip, remove,
+move, seek, lyrics. Filtri audio/DJ-role/voteskip restano scartati
+per lo stesso motivo di sempre (9.6/9.7/9.8). Comandi finiti oggi:
+play, skip, stop, pause, resume, queue, clear-queue, shuffle, loop
+track/queue, nowplaying (con barra), volume (con up/down oltre a
+impostare un valore), disconnect, nonstop. **Bug reale trovato e
+corretto qui**: il primo tentativo chiamava il nuovo comando
+`/clear` — nome già usato da `/clear` di moderation (cancellazione
+messaggi) — e un comando slash duplicato fa fallire la
+REGISTRAZIONE dell'intero cog, non solo di quel comando;
+`core/cog_manager.load_all_cogs` cattura e LOGGA ogni eccezione di
+`setup()` per singolo cog senza farla risalire, quindi l'intero
+modulo Music si sarebbe disattivato in silenzio, notato solo
+rilanciando `scripts/generate_command_list.py` sull'intero albero
+comandi reale (il conteggio è sceso da 171 a 153 comandi e la
+categoria Music è sparita del tutto) — mai scoperto dai test perché
+i test unitari istanziano `MusicCog` da solo, senza mai unire il suo
+albero comandi a quello di TUTTI gli altri cog insieme come fa il
+bot vero. Rinominato in `/clear-queue`.
+
+**Correzione di comprensione dell'utente su YouTube/Spotify (§9.5)**:
+i nodi Lavalink pubblici hanno comunque Spotify (plugin LavaSrc
+spesso già presente); è YouTube che su molti nodi pubblici non
+funziona più/è spesso rotto — il fallback pinnato sul nodo locale
+esisteva finora solo per query Spotify (`is_spotify_query`), non per
+YouTube: **nessuna modifica di codice fatta qui**, resta un punto da
+eventualmente rivalutare se emergono segnalazioni concrete di
+ricerche YouTube vuote sui nodi pubblici, non affrontato in questa
+sessione perché non richiesto esplicitamente.
 
 - `[x]` 9.1 Multi-VoiceClient manager (5 applicazioni separate) —
   `core/music_worker_bot.py`, 5 istanze nello stesso processo
@@ -322,15 +351,25 @@ up/down oltre a impostare un valore), disconnect, nonstop.
 - `[x]` 9.3 Coda indipendente per canale vocale — ogni `wavelink.
   Player` (uno per worker/server) ha la propria coda, indipendente
   dalle altre per costruzione
-- `[~]` 9.4 Comandi: play, search, skip, forceskip, stop, pause,
-  resume, queue, remove, clear, shuffle, move, nowplaying (con barra
-  di progresso), loop track, loop queue, volume, seek, lyrics —
-  **fatti**: play, skip, stop, pause, resume, queue, volume (set/up/
-  down), disconnect. **Deliberatamente NON fatti** (richiesta
-  esplicita, comandi usati raramente): search distinto da play,
-  forceskip, remove, clear, shuffle, move, nowplaying con barra,
-  loop track/queue singolo (il loop coda intera esiste via
-  /nonstop), seek, lyrics
+- `[x]` 9.4 Comandi: play, skip, stop, pause, resume, queue,
+  clear-queue, shuffle, loop track, loop queue, nowplaying (con
+  barra di progresso), volume, disconnect. **Limite playlist**:
+  `/play` su un
+  link a una playlist (es. Spotify) aggiunge al massimo
+  `MAX_PLAYLIST_TRACKS` = 750 tracce per singolo link (richiesto
+  esplicitamente dall'utente — una playlist enorme non deve poter
+  riempire la coda di un server all'infinito in un colpo), il resto
+  viene scartato con un avviso esplicito nel messaggio di conferma.
+  **Shuffle genuinamente randomico**: `/shuffle` delega direttamente
+  a `wavelink.Queue.shuffle()`, che usa `random.shuffle` della
+  libreria standard di Python (Fisher-Yates non polarizzato) — non
+  un "mix" con pattern nascosti come capita con alcuni bot musicali
+  (preoccupazione esplicita dell'utente), verificato leggendo il
+  sorgente di wavelink e bloccato con un test di regressione che
+  fallirebbe se una futura versione cambiasse questo comportamento.
+  **Permanentemente descoperti** (richiesta esplicita dell'utente,
+  NON da rimettere in lista in futuro): search distinta da play,
+  forceskip, remove, move, seek, lyrics
 - `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — YouTube funziona via la ricerca di
   default di Lavalink; Spotify richiede un plugin (LavaSrc) sul nodo
@@ -946,7 +985,7 @@ rilancia lo stesso conteggio.
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
-| §9 Music | 7 | 2 | 0 |
+| §9 Music | 8 | 1 | 0 |
 | §10 Alerts | 5 | 1 | 1 |
 | §11 Backup | 13 | 0 | 0 |
 | §12 Voice temp | 5 | 0 | 3 |
@@ -956,9 +995,9 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **164** | **4** | **105** |
+| **Totale** | **165** | **3** | **105** |
 
-Su 273 voci totali: **164 fatte, 4 parziali, 105 mancanti** — circa
+Su 273 voci totali: **165 fatte, 3 parziali, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§11 Backup
 System è ora COMPLETO al 100%** (13/13): orchestrazione
 automatizzabile, mirror in tempo reale, auto-propagazione e restore

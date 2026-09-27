@@ -29,7 +29,10 @@ async def test_music_cog_si_carica_anche_se_lavalink_non_e_raggiungibile():
     assert module.premium_capable is False
 
     nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"play", "skip", "stop", "pause", "resume", "queue", "volume", "disconnect"} <= nomi_comandi
+    assert {
+        "play", "skip", "stop", "pause", "resume", "queue", "volume", "disconnect",
+        "clear-queue", "shuffle", "loop", "nowplaying",
+    } <= nomi_comandi
 
     volume_group = None
     for command in bot.tree.get_commands():
@@ -54,3 +57,11 @@ async def test_music_cog_si_carica_anche_se_lavalink_non_e_raggiungibile():
     assert {"add-track", "add-local", "remove-track", "list-tracks", "start", "stop"} <= {
         c.name for c in nonstop_main_group.commands
     }
+
+    loop_group = None
+    for command in bot.tree.get_commands():
+        if isinstance(command, discord.app_commands.Group) and command.name == "loop":
+            loop_group = command
+            break
+    assert loop_group is not None
+    assert {"track", "queue"} <= {c.name for c in loop_group.commands}

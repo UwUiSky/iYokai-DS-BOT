@@ -115,6 +115,49 @@ def build_queue_display(
     return "\n".join(righe)
 
 
+MAX_PLAYLIST_TRACKS = 750  # SPEC.md §9.4 — richiesto esplicitamente
+# dall'utente: un link a UNA playlist enorme (Spotify e altre
+# piattaforme ne permettono di migliaia di brani) non deve poter
+# riempire la coda di un server all'infinito in un colpo solo. Non è
+# un limite tecnico di wavelink/Lavalink, è una scelta di prodotto.
+
+
+def truncate_playlist_tracks(tracks, limit: int = MAX_PLAYLIST_TRACKS):
+    """
+    Restituisce solo le prime `limit` tracce di una playlist (§9.4) —
+    non tocca l'ordine, taglia semplicemente in coda. `tracks` può
+    essere qualunque sequenza indicizzabile (una lista o un
+    wavelink.Playlist, che supporta lo slicing) — nessuna dipendenza
+    da wavelink qui, resta logica pura testabile con liste semplici.
+    """
+    return list(tracks[:limit])
+
+
+def build_progress_bar(elapsed_ms: int, total_ms: int, bar_length: int = 20) -> str:
+    """
+    Barra di avanzamento testuale per /nowplaying (SPEC.md §9.4) —
+    un pallino 🔘 posizionato lungo una linea di trattini ▬, in base
+    a quanto della traccia (o della playlist, il chiamante decide
+    cosa passare come total_ms) è già trascorso.
+
+    `total_ms <= 0` (stream live, Lavalink riporta length=0 quando
+    la durata non è nota) restituisce un indicatore fisso invece di
+    dividere per zero. `elapsed_ms` viene sempre ristretto a
+    [0, total_ms] prima di calcolare la posizione — un piccolo scarto
+    di sincronizzazione con Lavalink (o un valore appena oltre la
+    fine, un istante prima del cambio traccia) non deve mai far
+    sforare la barra a un indice fuori dagli slot disponibili.
+    """
+    if total_ms <= 0:
+        return "🔴 LIVE"
+
+    elapsed_ms = max(0, min(elapsed_ms, total_ms))
+    frazione = elapsed_ms / total_ms
+    posizione = min(bar_length - 1, int(frazione * bar_length))
+
+    return "▬" * posizione + "🔘" + "▬" * (bar_length - posizione - 1)
+
+
 def is_spotify_query(query: str) -> bool:
     """
     Vero se `query` punta a Spotify (URL open.spotify.com o URI

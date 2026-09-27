@@ -5,11 +5,14 @@ Test di core/music_logic.py — logica pura.
 """
 
 from core.music_logic import (
+    MAX_PLAYLIST_TRACKS,
     LavalinkNodeConfig,
+    build_progress_bar,
     build_queue_display,
     format_duration,
     is_spotify_query,
     parse_lavalink_nodes,
+    truncate_playlist_tracks,
 )
 
 
@@ -111,6 +114,73 @@ class TestBuildQueueDisplay:
         assert "Traccia 9" in risultato
         assert "Traccia 10" not in risultato
         assert "altre 5 tracce" in risultato
+
+
+class TestBuildProgressBar:
+    def test_inizio_traccia_pallino_al_primo_slot(self):
+        risultato = build_progress_bar(0, 100_000, bar_length=10)
+        assert risultato.startswith("🔘")
+        assert risultato.count("▬") == 9
+
+    def test_metà_traccia_pallino_a_metà(self):
+        risultato = build_progress_bar(50_000, 100_000, bar_length=10)
+        # 50% di 10 slot = indice 5 (0-based) → 5 trattini prima, 4 dopo
+        prima_del_pallino = risultato.split("🔘")[0]
+        assert prima_del_pallino.count("▬") == 5
+
+    def test_fine_traccia_pallino_all_ultimo_slot(self):
+        risultato = build_progress_bar(100_000, 100_000, bar_length=10)
+        prima_del_pallino = risultato.split("🔘")[0]
+        assert prima_del_pallino.count("▬") == 9
+
+    def test_durata_zero_o_negativa_restituisce_indicatore_live(self):
+        # Una traccia in streaming live (Lavalink riporta length=0
+        # per gli stream senza durata nota) non deve far crashare la
+        # barra con una divisione per zero.
+        assert build_progress_bar(5_000, 0, bar_length=10) == "🔴 LIVE"
+        assert build_progress_bar(5_000, -1, bar_length=10) == "🔴 LIVE"
+
+    def test_elapsed_oltre_la_durata_non_sfora_la_barra(self):
+        # Può succedere per un piccolo scarto di sincronizzazione con
+        # Lavalink appena prima del cambio traccia.
+        risultato = build_progress_bar(150_000, 100_000, bar_length=10)
+        prima_del_pallino = risultato.split("🔘")[0]
+        assert prima_del_pallino.count("▬") == 9
+
+    def test_elapsed_negativo_non_sfora_la_barra(self):
+        risultato = build_progress_bar(-5_000, 100_000, bar_length=10)
+        prima_del_pallino = risultato.split("🔘")[0]
+        assert prima_del_pallino.count("▬") == 0
+
+    def test_lunghezza_totale_della_barra_fissa(self):
+        risultato = build_progress_bar(30_000, 100_000, bar_length=20)
+        assert risultato.count("▬") + risultato.count("🔘") == 20
+
+
+class TestTruncatePlaylistTracks:
+    def test_sotto_il_limite_resta_invariata(self):
+        tracce = list(range(10))
+        assert truncate_playlist_tracks(tracce, limit=750) == tracce
+
+    def test_esattamente_al_limite_resta_invariata(self):
+        tracce = list(range(750))
+        risultato = truncate_playlist_tracks(tracce, limit=750)
+        assert len(risultato) == 750
+        assert risultato == tracce
+
+    def test_sopra_il_limite_viene_tagliata_alle_prime_n(self):
+        tracce = list(range(1000))
+        risultato = truncate_playlist_tracks(tracce, limit=750)
+        assert len(risultato) == 750
+        assert risultato == tracce[:750]
+
+    def test_limite_di_default_è_750(self):
+        tracce = list(range(2000))
+        assert len(truncate_playlist_tracks(tracce)) == 750
+        assert MAX_PLAYLIST_TRACKS == 750
+
+    def test_lista_vuota_resta_vuota(self):
+        assert truncate_playlist_tracks([], limit=750) == []
 
 
 class TestIsSpotifyQuery:

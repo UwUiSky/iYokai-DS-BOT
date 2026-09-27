@@ -9,6 +9,7 @@ modulo attivo.
 
 import discord
 import pytest
+import wavelink
 
 from cogs.music.player import MODULE_MUSIC, MusicCog
 from core.database import Database
@@ -17,9 +18,15 @@ from core.database import Database
 class _FakeResponse:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
+        self.sent_embeds: list[discord.Embed] = []
 
-    async def send_message(self, content: str, ephemeral: bool = False) -> None:
-        self.sent_messages.append(content)
+    async def send_message(
+        self, content: str | None = None, ephemeral: bool = False, embed: discord.Embed | None = None
+    ) -> None:
+        if content is not None:
+            self.sent_messages.append(content)
+        if embed is not None:
+            self.sent_embeds.append(embed)
 
 
 class _FakeGuild:
@@ -142,10 +149,57 @@ async def test_tutti_i_controlli_passano(monkeypatch):
         await database.close()
 
 
+class _FakeQueue:
+    """Finta wavelink.Queue — solo quello che i comandi nuovi (clear/
+    shuffle/loop) leggono o chiamano, senza dipendere dall'oggetto
+    vero (che richiede un player Lavalink reale per certe operazioni
+    interne)."""
+
+    def __init__(self, items=None, mode: wavelink.QueueMode | None = None) -> None:
+        self._items = list(items) if items else []
+        self.mode = mode if mode is not None else wavelink.QueueMode.normal
+        self.clear_chiamato = False
+        self.shuffle_chiamato = False
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __iter__(self):
+        return iter(self._items)
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self._items) == 0
+
+    def clear(self) -> None:
+        self.clear_chiamato = True
+        self._items = []
+
+    def shuffle(self) -> None:
+        self.shuffle_chiamato = True
+
+
+class _FakeTrack:
+    def __init__(self, title: str = "Canzone di prova", length: int = 200_000) -> None:
+        self.title = title
+        self.length = length
+
+
 class _FakePlayer:
-    def __init__(self, volume: int) -> None:
+    def __init__(
+        self,
+        volume: int = 100,
+        queue: "_FakeQueue | None" = None,
+        current=None,
+        position: int = 0,
+        playing: bool = False,
+    ) -> None:
         self.volume = volume
         self.set_volume_chiamato_con: int | None = None
+        self.queue = queue if queue is not None else _FakeQueue()
+        self.current = current
+        self.position = position
+        self.playing = playing
 
     async def set_volume(self, value: int) -> None:
         self.set_volume_chiamato_con = value
@@ -290,3 +344,305 @@ async def test_build_lavalink_nodes_pubblici_per_primi_locale_per_ultimo():
     assert len(nodi) == 6
     assert "heavencloud" in nodi[0].uri
     assert "127.0.0.1" in nodi[-1].uri or "localhost" in nodi[-1].uri
+
+
+@pytest.mark.asyncio
+async def test_clear_senza_sessione_attiva_rifiuta(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000016
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        class _FakeFleetVuota:
+            async def get_worker_for_guild(self, guild_id: int):
+                return None
+
+        cog = MusicCog(bot=_FakeBotConFleet(_FakeFleetVuota()))
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        await cog.clear_queue.callback(cog, interaction)
+
+        assert "nessuna sessione musicale attiva" in interaction.response.sent_messages[0]
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000016")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_clear_svuota_la_coda_senza_toccare_la_traccia_in_corso(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000017
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        coda = _FakeQueue(items=[_FakeTrack("A"), _FakeTrack("B"), _FakeTrack("C")])
+        player_finto = _FakePlayer(queue=coda, current=_FakeTrack("In riproduzione"), playing=True)
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.clear_queue.callback(cog, interaction)
+
+        assert coda.clear_chiamato is True
+        assert "3" in interaction.response.sent_messages[0]
+        assert player_finto.current is not None  # la traccia in corso non è toccata
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000017")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_clear_con_coda_già_vuota_lo_dice_senza_errore(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000018
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        player_finto = _FakePlayer(queue=_FakeQueue())
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.clear_queue.callback(cog, interaction)
+
+        assert "già vuota" in interaction.response.sent_messages[0]
+        assert player_finto.queue.clear_chiamato is False
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000018")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_shuffle_mescola_la_coda(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000019
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        coda = _FakeQueue(items=[_FakeTrack("A"), _FakeTrack("B")])
+        player_finto = _FakePlayer(queue=coda)
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.shuffle.callback(cog, interaction)
+
+        assert coda.shuffle_chiamato is True
+        assert "coda" in interaction.response.sent_messages[0].lower()
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000019")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_shuffle_con_coda_vuota_o_con_una_sola_traccia_non_serve(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000020
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        coda = _FakeQueue(items=[_FakeTrack("Unica")])
+        player_finto = _FakePlayer(queue=coda)
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.shuffle.callback(cog, interaction)
+
+        assert coda.shuffle_chiamato is False
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000020")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_loop_track_attiva_e_poi_disattiva(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000021
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        player_finto = _FakePlayer(queue=_FakeQueue())
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.loop_track.callback(cog, interaction)
+        assert player_finto.queue.mode == wavelink.QueueMode.loop
+        assert "attivato" in interaction.response.sent_messages[0].lower()
+
+        interaction2 = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+        await cog.loop_track.callback(cog, interaction2)
+        assert player_finto.queue.mode == wavelink.QueueMode.normal
+        assert "disattivato" in interaction2.response.sent_messages[0].lower()
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000021")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_loop_queue_attiva_e_poi_disattiva(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000022
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        player_finto = _FakePlayer(queue=_FakeQueue())
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.loop_queue.callback(cog, interaction)
+        assert player_finto.queue.mode == wavelink.QueueMode.loop_all
+        assert "attivato" in interaction.response.sent_messages[0].lower()
+
+        interaction2 = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+        await cog.loop_queue.callback(cog, interaction2)
+        assert player_finto.queue.mode == wavelink.QueueMode.normal
+        assert "disattivato" in interaction2.response.sent_messages[0].lower()
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000022")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_loop_track_e_loop_queue_sono_mutuamente_esclusivi(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000023
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        player_finto = _FakePlayer(queue=_FakeQueue())
+        cog = _cog_con_player_finto(player_finto)
+
+        await cog.loop_track.callback(cog, _FakeInteraction(guild_id, user=_FakeRealMember(voice=object())))
+        assert player_finto.queue.mode == wavelink.QueueMode.loop
+
+        # Attivare il loop coda mentre il loop traccia è attivo deve
+        # sostituirlo, non sommarsi (sono lo stesso campo sottostante).
+        await cog.loop_queue.callback(cog, _FakeInteraction(guild_id, user=_FakeRealMember(voice=object())))
+        assert player_finto.queue.mode == wavelink.QueueMode.loop_all
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000023")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_nowplaying_senza_traccia_in_riproduzione(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000024
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        player_finto = _FakePlayer(queue=_FakeQueue(), current=None, playing=False)
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.nowplaying.callback(cog, interaction)
+
+        assert "nessuna traccia" in interaction.response.sent_messages[0].lower()
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000024")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_nowplaying_mostra_barra_di_avanzamento(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 700000025
+        await database.set_module_active_for_guild(guild_id, MODULE_MUSIC, True)
+
+        import cogs.music.player as music_module
+        monkeypatch.setattr(music_module, "db", database)
+
+        traccia = _FakeTrack("La Mia Canzone", length=200_000)
+        coda = _FakeQueue(items=[_FakeTrack("Prossima")])
+        player_finto = _FakePlayer(queue=coda, current=traccia, position=100_000, playing=True)
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        cog = _cog_con_player_finto(player_finto)
+        await cog.nowplaying.callback(cog, interaction)
+
+        assert len(interaction.response.sent_embeds) == 1
+        embed = interaction.response.sent_embeds[0]
+        assert "La Mia Canzone" in embed.title or "La Mia Canzone" in (embed.description or "")
+        testo_completo = f"{embed.title or ''} {embed.description or ''}"
+        assert "🔘" in testo_completo
+        assert "1" in testo_completo  # 1 traccia in coda dopo quella attuale
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 700000025")
+        await database.close()
+
+
+def test_wavelink_queue_shuffle_usa_random_shuffle_vero(monkeypatch):
+    """
+    Garanzia esplicita richiesta dall'utente: /shuffle deve essere
+    SEMPRE genuinamente randomico (Fisher-Yates di random.shuffle),
+    non un "mix" con pattern nascosti come capita con alcuni bot.
+    /shuffle (cog.shuffle) delega direttamente a wavelink.Queue.
+    shuffle() senza reimplementare nulla — qui si verifica che
+    QUELLO, a sua volta, chiami davvero random.shuffle della
+    libreria standard di Python (Fisher-Yates non polarizzato con un
+    generatore decente), non un algoritmo proprietario o un ordine
+    parzialmente deterministico. Se una futura versione di wavelink
+    cambiasse questo internamente, questo test lo segnalerebbe.
+    """
+    import random as random_module
+
+    coda = wavelink.Queue()
+    coda._items = ["a", "b", "c", "d", "e"]
+
+    chiamate: list[list] = []
+    shuffle_originale = random_module.shuffle
+
+    def _shuffle_spia(sequenza):
+        chiamate.append(list(sequenza))
+        shuffle_originale(sequenza)
+
+    monkeypatch.setattr(random_module, "shuffle", _shuffle_spia)
+    coda.shuffle()
+
+    assert len(chiamate) == 1
+    assert sorted(coda._items) == ["a", "b", "c", "d", "e"]  # stessi elementi, solo mescolati
