@@ -2565,6 +2565,105 @@ COMMAND_LIST.md rigenerato (solo il timestamp).
 
 ---
 
+### Fase 60 — Backup System: auto-propagazione (§11.13) e mirror
+messaggi in tempo reale via webhook (§11.9)
+
+L'utente ha chiesto "Facciamole tutte" per le 4 voci rimaste in §11
+Backup (§11.9, §11.10, §11.11+§11.12, §11.13). Prima di scrivere
+codice per §11.10/§11.11 (storage token OAuth altrui — tema di
+sicurezza reale, mai affrontato) sono state fatte 3 domande esplicite
+all'utente (`AskUserQuestion`) su: modalità di consenso, cifratura a
+riposo, retention/revoca. Risposte ricevute (sintesi): consenso
+ibrido a 3 vie a scelta del server owner (raccolta al primo verify
+per server nuovi; raccolta on-demand al bisogno con verifica
+aggiornata per server esistenti grandi; nessun token, solo invito
+classico con auto-invito opzionale ai nuovi arrivati); cifratura
+forte a riposo; retention differenziata (uscita spontanea → cancella
+dopo 90gg, kick → preserva con flag/avviso admin al rejoin, ban →
+preserva + blacklist). Questa fase completa le due voci SENZA
+dipendenze OAuth (§11.9, §11.13); §11.10/§11.11/resto di §11.12
+proseguono in una fase successiva.
+
+**§11.13 Auto-propagazione**: nuovo comando `/promuovi-backup`
+(lanciato DENTRO al server che finora era il backup, non nel main —
+non serve altro ID, si risale al main tramite `BackupRepository.
+get_pair_by_backup_guild_id`). `BackupRepository.promote_backup_to_
+main(old_main_guild_id, new_main_guild_id)` (nuovo, transazione
+singola): il vecchio main perde il backup (`backup_guild_id = NULL`,
+riga non cancellata — potrebbe volerne un altro), il server promosso
+diventa main senza backup. Il comando poi chiama IMMEDIATAMENTE
+`enqueue_job` per il server appena promosso — questa è l'auto-
+propagazione richiesta: non resta mai "main senza backup" più del
+tempo tecnico di accodare un nuovo job.
+
+**§11.9 Mirror messaggi in tempo reale**: nuovo `core.backup_mirror_
+logic.MirrorRateLimiter` (pura, nessun I/O) — finestra scorrevole per
+canale, MAX 5 messaggi/5s, chi supera viene SCARTATO (non accodato:
+un mirror in ritardo non serve, e una coda rischierebbe di
+accumulare backlog proprio durante un flood/raid, il momento in cui
+il mirror serve di più). Nuovo `core.backup_clone_logic.create_
+mirror_webhooks()`: crea un webhook dedicato "iYokai Mirror" in OGNI
+canale testuale clonato durante la creazione del backup (diverso da
+`clone_webhooks()`, che copia webhook già esistenti nel server
+originale — questo ne crea di nuovi, di proprietà di iYokai),
+restituendo canale_ORIGINALE→URL_webhook. Nuova tabella/repo `core.
+repositories.backup_mirror_repo.BackupMirrorRepository` (`backup_
+mirror_webhooks`, PK sul canale main) — `save_mapping` sostituisce
+SEMPRE l'intera mappa per un main (stessa transazione: DELETE poi
+INSERT), perché un nuovo backup rende invalida la mappa del
+precedente. Nuovo `core.backup_mirror_dispatch.BackupMirrorDispatcher`:
+isola in un solo metodo (`_send`, sovrascrivibile) l'unica vera
+chiamata di rete, per restare testabile senza Discord — `handle_
+message()` scarta messaggi di bot/webhook (evita loop, incluso il
+proprio), messaggi in DM, canali senza mirror configurato, e quelli
+sopra il rate limit; altrimenti inoltra impersonando l'autore
+(username + avatar via `discord.Webhook.send`). Wired: `core.backup_
+orchestrator.start_backup_job` ora restituisce anche la mappa
+webhook (tupla di 3, non più 2 — aggiornati tutti i chiamanti/test);
+`core.backup_queue_worker` salva la mappa in `backup_mirror_repo`
+subito dopo aver impostato `backup_guild_id` sul job; nuovo `cogs.
+utility.backup_mirror.BackupMirrorCog` collega `on_message` al
+dispatcher (nessun comando, solo listener).
+
+**Migrazioni**: `run_migrations()` in `core/database.py` E in
+`tests/conftest.py` (elenco duplicato manualmente, come ogni altro
+repository — vedi la nota già presente su questo pattern) aggiornate
+con `backup_mirror_repo.run_migrations`; aggiunta `backup_mirror_
+webhooks` alla lista TRUNCATE di `clean_db`.
+
+**29 nuovi test**: `test_backup_repo.py` (+5: `get_pair_by_backup_
+guild_id`, `promote_backup_to_main` in 3 varianti), `test_backup_cog_
+behavior.py` (+3: `/promuovi-backup`), `test_backup_mirror_logic.py`
+(nuovo, 5: finestra scorrevole), `test_backup_mirror_repo.py` (nuovo,
+6), `test_backup_mirror_webhooks.py` (nuovo, 4: `create_mirror_
+webhooks`), `test_backup_mirror_dispatch.py` (nuovo, 5), `test_backup_
+mirror_cog_smoke.py` (nuovo, 1), più l'aggiornamento dei fake/tuple in
+`test_backup_orchestrator.py` e `test_backup_queue_worker.py`
+(`start_backup_job` ora restituisce 3 valori, non più 2).
+
+SPEC.md: 11.9 e 11.13 passano a `[x]`; 11.12 aggiornato (`/promuovi-
+backup` fatto, `/restore-users` ancora no). Ricalcolo meccanico
+(script corretto in questa fase — vedi nota sotto): §11 Backup passa
+da 8/1/4 a **10/1/2**. Totale schema: **160/6/107 su 273, ≈60%**.
+
+**Lezione di processo trovata mentre si ricalcolava il totale**: lo
+script di conteggio usato nelle fasi precedenti divideva il file solo
+sugli header `## §N`, quindi tutto il testo DOPO l'ultimo header
+(inclusa la sezione "Legenda stato" con `` `[x]`/`[~]`/`[ ]`/`[✗]` ``
+come esempi letterali, la spiegazione del "Conteggio sintetico"
+stesso, e le appendici B/C/D/E che usano header `# ` singolo, non
+`## §`) finiva incollato dentro l'ultima sezione (§17), gonfiandola e
+sporcando il totale con marcatori che sono prosa, non voci reali.
+Corretto lo script per dividere su QUALSIASI header `#`/`##` e per
+escludere esplicitamente "Legenda stato" e "Conteggio sintetico" dal
+conteggio — il totale di 273 voci reali (verificato: 160+6+107)
+torna a coincidere esattamente con quello già noto, confermando che
+lo schema non è cambiato di dimensione, solo di stato.
+
+**Suite di test completa: 1448/1448 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

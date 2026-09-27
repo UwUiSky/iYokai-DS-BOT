@@ -2,11 +2,10 @@
 cogs/utility/backup.py
 =========================
 Comandi di orchestrazione Backup System (SPEC.md §11.12) — /define-
-main e /define-backup, con i nomi esatti richiesti dallo schema
-(non raggruppati sotto un prefisso comune). /restore-users NON è
-qui: backup/restore utenti via OAuth2 (§11.10/§11.11) resta
-deliberatamente rimandato — storage di credenziali OAuth altrui è un
-tema di sicurezza da discutere con l'utente, non da presumere.
+main, /define-backup e /promuovi-backup, con i nomi esatti richiesti
+dallo schema (non raggruppati sotto un prefisso comune).
+/restore-users vive in cogs/utility/restore.py (§11.11/§11.12,
+OAuth2 guilds.join) — separato per tenere questo file leggibile.
 """
 
 from __future__ import annotations
@@ -65,6 +64,52 @@ class BackupCog(commands.Cog):
         await interaction.response.send_message(
             f"📦 Backup accodato (job `#{job_id}`). Il processo può richiedere qualche minuto — "
             f"riceverai un DM con il link da cliccare per completare l'operazione quando è pronto.",
+            ephemeral=True,
+        )
+
+    @app_commands.command(
+        name="promuovi-backup",
+        description="[Admin] Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def promuovi_backup(self, interaction: discord.Interaction) -> None:
+        """
+        SPEC.md §11.13 — auto-propagazione: quando un server backup
+        viene promosso a main, accoda IMMEDIATAMENTE la creazione di
+        un nuovo backup per lui, così non resta mai "main senza
+        backup" più del tempo strettamente necessario a rimetterlo
+        in coda.
+
+        Va lanciato DENTRO al server che finora era il backup — non
+        serve altro ID: lo troviamo risalendo da backup_guild_id a
+        chi era il suo main tramite get_pair_by_backup_guild_id.
+        """
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        coppia = await backup_repo.get_pair_by_backup_guild_id(guild.id)
+        if coppia is None:
+            await interaction.response.send_message(
+                "⚠️ Questo server non risulta registrato come backup di nessun main — "
+                "non c'è nulla da promuovere.",
+                ephemeral=True,
+            )
+            return
+
+        await backup_repo.promote_backup_to_main(
+            old_main_guild_id=coppia.main_guild_id, new_main_guild_id=guild.id
+        )
+        job_id = await backup_repo.enqueue_job(main_guild_id=guild.id)
+
+        await interaction.response.send_message(
+            "👑 Questo server è stato promosso a **main**. Il vecchio main "
+            f"(`{coppia.main_guild_id}`) non è più abbinato a questo backup. "
+            f"Un nuovo backup per QUESTO server è già stato accodato automaticamente "
+            f"(job `#{job_id}`) — riceverai un DM con il link quando è pronto.",
             ephemeral=True,
         )
 

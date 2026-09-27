@@ -58,6 +58,61 @@ async def test_get_pair_inesistente_restituisce_none(repo):
     assert await repo.get_pair(999) is None
 
 
+@pytest.mark.asyncio
+async def test_get_pair_by_backup_guild_id(repo):
+    await repo.define_main(100)
+    await repo.define_backup(100, 200)
+
+    coppia = await repo.get_pair_by_backup_guild_id(200)
+    assert coppia.main_guild_id == 100
+    assert coppia.backup_guild_id == 200
+
+
+@pytest.mark.asyncio
+async def test_get_pair_by_backup_guild_id_sconosciuto_restituisce_none(repo):
+    assert await repo.get_pair_by_backup_guild_id(999) is None
+
+
+@pytest.mark.asyncio
+async def test_promote_backup_to_main_il_vecchio_main_perde_il_backup(repo):
+    await repo.define_main(100)
+    await repo.define_backup(100, 200)
+
+    await repo.promote_backup_to_main(old_main_guild_id=100, new_main_guild_id=200)
+
+    vecchia_coppia = await repo.get_pair(100)
+    assert vecchia_coppia.backup_guild_id is None
+
+
+@pytest.mark.asyncio
+async def test_promote_backup_to_main_il_server_promosso_diventa_main_senza_backup(repo):
+    await repo.define_main(100)
+    await repo.define_backup(100, 200)
+
+    await repo.promote_backup_to_main(old_main_guild_id=100, new_main_guild_id=200)
+
+    nuova_coppia = await repo.get_pair(200)
+    assert nuova_coppia is not None
+    assert nuova_coppia.main_guild_id == 200
+    assert nuova_coppia.backup_guild_id is None
+
+
+@pytest.mark.asyncio
+async def test_promote_backup_to_main_su_server_gia_main_azzera_il_suo_backup(repo):
+    # Il server 200 era già main di un terzo server (es. un caso raro
+    # ma possibile) — la promozione deve comunque azzerare il SUO
+    # backup_guild_id, non lasciarlo con un vecchio abbinamento errato.
+    await repo.define_main(100)
+    await repo.define_backup(100, 200)
+    await repo.define_main(200)
+    await repo.define_backup(200, 300)
+
+    await repo.promote_backup_to_main(old_main_guild_id=100, new_main_guild_id=200)
+
+    nuova_coppia = await repo.get_pair(200)
+    assert nuova_coppia.backup_guild_id is None
+
+
 # ----------------------------------------------------------------------
 # Coda job
 # ----------------------------------------------------------------------

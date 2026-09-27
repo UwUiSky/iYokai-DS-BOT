@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 10:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 11:45 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 168 comandi in 10 categorie.**
+**Totale: 169 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -172,6 +172,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 10:
 - **`/owner whitelist-remove`** — [OWNER] Rimuove un server dalla whitelist premium.
 - **`/ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/poll`** — Crea un sondaggio (fino a 5 opzioni).
+- **`/promuovi-backup`** — [Admin] Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
 - **`/reminder cancel`** — Annulla un promemoria.
 - **`/reminder list`** — Mostra i tuoi promemoria in sospeso.
 - **`/reminder set`** — Imposta un promemoria.

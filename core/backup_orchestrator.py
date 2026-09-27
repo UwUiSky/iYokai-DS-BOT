@@ -33,6 +33,7 @@ from core.backup_clone_logic import (
     clone_soundboard,
     clone_stickers,
     clone_webhooks,
+    create_mirror_webhooks,
 )
 from core.repositories.backup_repo import STATUS_RUNNING, BackupRepository
 
@@ -42,13 +43,15 @@ async def start_backup_job(
     main_guild: discord.Guild,
     main_client_id: int,
     main_permissions: discord.Permissions,
-) -> tuple[discord.Guild, str]:
+) -> tuple[discord.Guild, str, dict[int, str]]:
     """
     Crea il nuovo server e clona tutto quello che è possibile
-    clonare in questa fase. Restituisce (nuovo_server, url_invito) —
-    il chiamante deve poi: salvare backup_guild_id sul job (tramite
-    BackupRepository.set_backup_guild_id) e consegnare l'URL a chi
-    deve autorizzare Main a entrare.
+    clonare in questa fase. Restituisce (nuovo_server, url_invito,
+    mappa_webhook_mirror) — il chiamante deve poi: salvare
+    backup_guild_id sul job (tramite BackupRepository.
+    set_backup_guild_id), salvare mappa_webhook_mirror (tramite
+    BackupMirrorRepository.save_mapping, SPEC.md §11.9) e consegnare
+    l'URL a chi deve autorizzare Main a entrare.
     """
     nuovo_server = await creator_client.create_guild(name=f"Backup di {main_guild.name}")
 
@@ -58,6 +61,7 @@ async def start_backup_job(
     await clone_stickers(main_guild, nuovo_server)
     await clone_soundboard(main_guild, nuovo_server)
     await clone_webhooks(main_guild, nuovo_server, mappa_canali)
+    mappa_webhook_mirror = await create_mirror_webhooks(nuovo_server, mappa_canali)
 
     url_invito = discord.utils.oauth_url(
         main_client_id,
@@ -67,7 +71,7 @@ async def start_backup_job(
         scopes=["bot"],
     )
 
-    return nuovo_server, url_invito
+    return nuovo_server, url_invito, mappa_webhook_mirror
 
 
 async def finalize_backup_job(

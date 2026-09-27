@@ -13,6 +13,7 @@ import pytest
 
 from core.backup_queue_worker import BackupQueueWorker
 from core.database import Database
+from core.repositories.backup_mirror_repo import BackupMirrorRepository
 from core.repositories.backup_repo import STATUS_FAILED, BackupRepository
 
 
@@ -66,16 +67,19 @@ async def database_e_repo():
     await database.connect()
     await database.run_migrations()
     repo = BackupRepository(pool_provider=lambda: database.pool)
-    yield database, repo
+    mirror_repo = BackupMirrorRepository(pool_provider=lambda: database.pool)
+    yield database, repo, mirror_repo
     await database.pool.execute("DELETE FROM backup_jobs")
+    await database.pool.execute("DELETE FROM backup_mirror_webhooks")
     await database.close()
 
 
 @pytest.mark.asyncio
 async def test_tick_senza_job_non_fa_nulla(database_e_repo, monkeypatch):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     owner = _FakeOwner()
     main_guild = _FakeMainGuild(100, owner)
@@ -89,12 +93,13 @@ async def test_tick_senza_job_non_fa_nulla(database_e_repo, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_tick_job_completato_con_successo_notifica_il_proprietario(database_e_repo, monkeypatch):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     async def _start_backup_job_finto(creator_client, main_guild, main_client_id, main_permissions):
-        return _FakeCreatedGuild(777), "https://discord.com/oauth2/authorize?client_id=999"
+        return _FakeCreatedGuild(777), "https://discord.com/oauth2/authorize?client_id=999", {}
 
     monkeypatch.setattr(worker_module, "start_backup_job", _start_backup_job_finto)
 
@@ -115,9 +120,10 @@ async def test_tick_job_completato_con_successo_notifica_il_proprietario(databas
 
 @pytest.mark.asyncio
 async def test_tick_main_non_nel_server_marca_il_job_fallito(database_e_repo, monkeypatch):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     owner = _FakeOwner()
     main_guild = _FakeMainGuild(100, owner)
@@ -136,9 +142,10 @@ async def test_tick_main_non_nel_server_marca_il_job_fallito(database_e_repo, mo
 async def test_tick_eccezione_durante_start_backup_job_marca_fallito_senza_sollevare(
     database_e_repo, monkeypatch
 ):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     async def _start_backup_job_che_fallisce(*args, **kwargs):
         raise RuntimeError("Discord non ha voluto creare il server")
@@ -161,15 +168,16 @@ async def test_tick_eccezione_durante_start_backup_job_marca_fallito_senza_solle
 
 @pytest.mark.asyncio
 async def test_tick_prende_solo_un_job_alla_volta(database_e_repo, monkeypatch):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     chiamate = []
 
     async def _start_backup_job_finto(creator_client, main_guild, main_client_id, main_permissions):
         chiamate.append(main_guild.id)
-        return _FakeCreatedGuild(777), "https://discord.com/oauth2/authorize?client_id=999"
+        return _FakeCreatedGuild(777), "https://discord.com/oauth2/authorize?client_id=999", {}
 
     monkeypatch.setattr(worker_module, "start_backup_job", _start_backup_job_finto)
 
@@ -190,15 +198,16 @@ async def test_tick_prende_solo_un_job_alla_volta(database_e_repo, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_tick_creator_al_massimo_non_crea_un_nuovo_server_ma_avvisa(database_e_repo, monkeypatch):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     chiamate = []
 
     async def _start_backup_job_finto(*args, **kwargs):
         chiamate.append(1)
-        return _FakeCreatedGuild(777), "https://esempio.com"
+        return _FakeCreatedGuild(777), "https://esempio.com", {}
 
     monkeypatch.setattr(worker_module, "start_backup_job", _start_backup_job_finto)
 
@@ -224,12 +233,13 @@ async def test_tick_creator_al_massimo_non_crea_un_nuovo_server_ma_avvisa(databa
 
 @pytest.mark.asyncio
 async def test_tick_creator_al_massimo_avvisa_una_sola_volta(database_e_repo, monkeypatch):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     async def _start_backup_job_finto(*args, **kwargs):
-        return _FakeCreatedGuild(777), "https://esempio.com"
+        return _FakeCreatedGuild(777), "https://esempio.com", {}
 
     monkeypatch.setattr(worker_module, "start_backup_job", _start_backup_job_finto)
 
@@ -253,9 +263,10 @@ async def test_tick_creator_al_massimo_avvisa_una_sola_volta(database_e_repo, mo
 async def test_controlla_promemoria_scadenza_manda_il_countdown(database_e_repo, monkeypatch):
     from datetime import datetime, timedelta, timezone
 
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     owner = _FakeOwner()
     main_guild = _FakeMainGuild(100, owner)
@@ -284,9 +295,10 @@ async def test_controlla_promemoria_scadenza_manda_il_countdown(database_e_repo,
 async def test_controlla_promemoria_scadenza_lontano_dalla_scadenza_non_manda_nulla(
     database_e_repo, monkeypatch
 ):
-    database, repo = database_e_repo
+    database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     monkeypatch.setattr(worker_module, "backup_repo", repo)
+    monkeypatch.setattr(worker_module, "backup_mirror_repo", mirror_repo)
 
     owner = _FakeOwner()
     main_guild = _FakeMainGuild(100, owner)

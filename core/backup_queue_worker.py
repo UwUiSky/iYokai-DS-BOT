@@ -29,6 +29,7 @@ from core.backup_reminder_logic import (
     format_time_remaining,
     should_send_timeout_reminder,
 )
+from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
 
 logger = logging.getLogger("iyokai.backup_queue_worker")
@@ -166,7 +167,7 @@ class BackupQueueWorker:
             return
 
         try:
-            nuovo_server, url_invito = await start_backup_job(
+            nuovo_server, url_invito, mappa_webhook_mirror = await start_backup_job(
                 creator_client, main_guild, main_bot.user.id, main_permissions
             )
         except Exception as exc:
@@ -175,6 +176,14 @@ class BackupQueueWorker:
             return
 
         await backup_repo.set_backup_guild_id(job.id, nuovo_server.id)
+        # Mirror in tempo reale (SPEC.md §11.9): sostituisce la mappa
+        # precedente per questo main (il vecchio backup, se esisteva,
+        # non è più valido) con quella appena creata.
+        await backup_mirror_repo.save_mapping(
+            main_guild_id=job.main_guild_id,
+            backup_guild_id=nuovo_server.id,
+            channel_webhook_map=mappa_webhook_mirror,
+        )
         await self._notifica_amministratore(main_guild, url_invito)
 
     def start(

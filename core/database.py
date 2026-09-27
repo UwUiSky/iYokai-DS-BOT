@@ -316,6 +316,11 @@ class Database:
         from core.repositories.backup_repo import run_migrations as backup_migrations
         await backup_migrations(self.pool)
 
+        from core.repositories.backup_mirror_repo import (
+            run_migrations as backup_mirror_migrations,
+        )
+        await backup_mirror_migrations(self.pool)
+
         from core.repositories.level_reward_repo import (
             run_migrations as level_reward_migrations,
         )

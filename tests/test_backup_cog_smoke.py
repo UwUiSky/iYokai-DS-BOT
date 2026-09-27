@@ -17,4 +17,4 @@ async def test_backup_cog_si_carica_correttamente():
     assert bot.get_cog("BackupCog") is not None
 
     nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"define-main", "define-backup"} <= nomi_comandi
+    assert {"define-main", "define-backup", "promuovi-backup"} <= nomi_comandi

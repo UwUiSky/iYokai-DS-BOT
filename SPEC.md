@@ -439,13 +439,12 @@ l'utente finale senza cambiare il deployment.
 
 ## §11 BACKUP SYSTEM — orchestrazione automatizzabile completa
 
-**Nota di stato**: costruite sia la clonazione (§11.3-11.8) sia
-l'intera orchestrazione automatizzabile attorno (§11.1, §11.2,
-§11.12) — tutto quello che NON richiede una decisione architetturale
-delicata è ora fatto. Restano deliberatamente rimandati §11.9
-(mirror messaggi con identità utente) e §11.10/§11.11 (backup e
-restore utenti via OAuth2 — storage di token OAuth altrui è un tema
-di sicurezza reale, da discutere con l'utente, non da presumere).
+**Nota di stato**: costruite la clonazione (§11.3-11.8), l'intera
+orchestrazione automatizzabile attorno (§11.1, §11.2, §11.12), il
+mirror in tempo reale (§11.9) e l'auto-propagazione (§11.13).
+Restano §11.10/§11.11 (backup e restore utenti via OAuth2), la cui
+progettazione di sicurezza (storage token, retention, consenso) è
+stata discussa esplicitamente con l'utente e ora in costruzione.
 
 **Limite reale della piattaforma Discord**, verificato con una
 ricerca prima di progettare, non aggirabile dal codice: **un bot non
@@ -479,15 +478,28 @@ necessario.
 - `[x]` 11.8 Clonazione webhook — `clone_webhooks()`, nome e canale
   rimappato (l'URL del webhook stesso non è copiabile, va
   riconfigurato a mano dove serve)
-- `[ ]` 11.9 Mirror messaggi in tempo reale via webhook con identità
-  utente (con politica di scarto sui burst, rate limit 5/5s per canale)
+- `[x]` 11.9 Mirror messaggi in tempo reale via webhook con identità
+  utente (con politica di scarto sui burst, rate limit 5/5s per
+  canale) — `core/backup_mirror_logic.py` (`MirrorRateLimiter`,
+  finestra scorrevole per canale), `core/backup_clone_logic.py`
+  (`create_mirror_webhooks()`, un webhook "iYokai Mirror" per ogni
+  canale testuale clonato), `core/repositories/backup_mirror_repo.py`
+  (mappa canale-main→URL-webhook), `core/backup_mirror_dispatch.py`
+  (`BackupMirrorDispatcher`, decide+inoltra), `cogs/utility/backup_
+  mirror.py` (listener `on_message`). Scarto in burst confermato: chi
+  supera 5 msg/5s su un canale viene semplicemente perso, non
+  accodato
 - `[ ]` 11.10 User backup: snapshot periodico (settimanale) dei
   verificati non bannati/kickati
 - `[ ]` 11.11 Restore massivo utenti via OAuth2 `guilds.join`
 - `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
-  `/restore-users` — i primi due fatti; `/restore-users` non
-  costruito, dipende da §11.11 (OAuth2), rimandato con essa
-- `[ ]` 11.13 Auto-propagazione: backup diventa main → crea nuovo backup
+  `/promuovi-backup`, `/restore-users` — i primi tre fatti;
+  `/restore-users` non ancora costruito, dipende da §11.11 (OAuth2)
+- `[x]` 11.13 Auto-propagazione: `/promuovi-backup` (lanciato nel
+  server backup) promuove quel server a main e accoda IMMEDIATAMENTE
+  un nuovo job di backup per lui — `BackupRepository.promote_backup_
+  to_main()` + `get_pair_by_backup_guild_id()`, comando in `cogs/
+  utility/backup.py`
 
 ## §12 TEMPORARY VOICE CHANNELS
 
@@ -903,7 +915,7 @@ rilancia lo stesso conteggio.
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 7 | 2 | 0 |
 | §10 Alerts | 5 | 1 | 1 |
-| §11 Backup | 8 | 1 | 4 |
+| §11 Backup | 10 | 1 | 2 |
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
@@ -911,13 +923,15 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **158** | **6** | **109** |
+| **Totale** | **160** | **6** | **107** |
 
-Su 273 voci totali: **158 fatte, 6 parziali, 109 mancanti** — circa
-il 59% dello schema (contando i parziali a metà peso). §11 Backup
-System ha l'intera orchestrazione automatizzabile completa —
-restano solo le parti che richiedono decisioni architetturali con
-l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
+Su 273 voci totali: **160 fatte, 6 parziali, 107 mancanti** — circa
+il 60% dello schema (contando i parziali a metà peso). §11 Backup
+System ha l'intera orchestrazione automatizzabile completa, il
+mirror in tempo reale (§11.9) e l'auto-propagazione (§11.13) —
+restano solo backup/restore utenti via OAuth2 (§11.10/§11.11/parte
+di §11.12), in costruzione con la progettazione di sicurezza già
+concordata con l'utente. §15
 Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico,
 tutti i comandi Discord previsti (`/clan crea|info|membri|classifica|
 sciogli|tesoreria dona|tesoreria trasferisci|invita|espelli|

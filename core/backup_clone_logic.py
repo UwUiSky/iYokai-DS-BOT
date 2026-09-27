@@ -255,3 +255,37 @@ async def clone_webhooks(
             continue
 
         await nuovo_canale.create_webhook(name=webhook.name, reason="Clonazione backup iYokai")
+
+
+async def create_mirror_webhooks(
+    target_guild: discord.Guild,
+    channel_id_map: dict[int, int],
+) -> dict[int, str]:
+    """
+    Crea, in OGNI canale testuale clonato, un webhook dedicato al
+    mirroring in tempo reale dei messaggi (SPEC.md §11.9) — diverso
+    da clone_webhooks() qui sopra: quello copia i webhook che
+    esistevano GIÀ nel server originale (integrazioni esterne),
+    questo ne crea di NUOVI, di proprietà di iYokai, per inoltrare i
+    messaggi man mano che arrivano.
+
+    Restituisce channel_id_ORIGINALE -> URL_webhook: la chiave è
+    l'ID del canale del server MAIN (non del backup), perché è così
+    che il listener on_message riceverà i messaggi da inoltrare — non
+    ha alcun bisogno di sapere l'ID del canale clonato.
+
+    Solo i canali testuali hanno un webhook (i canali vocali non
+    possono ricevere messaggi testuali "veri" da mirrorare).
+    """
+    mappa_webhook: dict[int, str] = {}
+    for canale_originale_id, nuovo_canale_id in channel_id_map.items():
+        nuovo_canale = target_guild.get_channel(nuovo_canale_id)
+        if not isinstance(nuovo_canale, discord.TextChannel):
+            continue
+
+        webhook = await nuovo_canale.create_webhook(
+            name="iYokai Mirror", reason="Mirroring messaggi in tempo reale (backup iYokai)"
+        )
+        mappa_webhook[canale_originale_id] = webhook.url
+
+    return mappa_webhook

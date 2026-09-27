@@ -116,3 +116,75 @@ async def test_define_main_fuori_da_un_server_rifiuta():
     await cog.define_main.callback(cog, interaction)
 
     assert "solo dentro un server" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_promuovi_backup_su_server_non_backup_avvisa(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        import cogs.utility.backup as backup_module
+        from core.repositories.backup_repo import BackupRepository
+
+        repo = BackupRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(backup_module, "backup_repo", repo)
+
+        cog = BackupCog(bot=None)
+        interaction = _FakeInteraction(guild_id=999)
+
+        await cog.promuovi_backup.callback(cog, interaction)
+
+        assert "non risulta registrato come backup" in interaction.response.sent_messages[0]
+    finally:
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_promuovi_backup_promuove_e_accoda_un_nuovo_backup(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        import cogs.utility.backup as backup_module
+        from core.repositories.backup_repo import BackupRepository
+
+        repo = BackupRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(backup_module, "backup_repo", repo)
+
+        await repo.define_main(100)
+        await repo.define_backup(100, 200)
+
+        cog = BackupCog(bot=None)
+        interaction = _FakeInteraction(guild_id=200)
+
+        await cog.promuovi_backup.callback(cog, interaction)
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "promosso a" in messaggio
+        assert "100" in messaggio
+
+        vecchia_coppia = await repo.get_pair(100)
+        assert vecchia_coppia.backup_guild_id is None
+
+        nuova_coppia = await repo.get_pair(200)
+        assert nuova_coppia is not None
+        assert nuova_coppia.backup_guild_id is None
+
+        job = await repo.get_next_pending_job()
+        assert job is not None
+        assert job.main_guild_id == 200
+    finally:
+        await database.pool.execute("DELETE FROM backup_pairs")
+        await database.pool.execute("DELETE FROM backup_jobs")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_promuovi_backup_fuori_da_un_server_rifiuta():
+    cog = BackupCog(bot=None)
+    interaction = _FakeInteraction(guild_id=None)
+
+    await cog.promuovi_backup.callback(cog, interaction)
+
+    assert "solo dentro un server" in interaction.response.sent_messages[0]

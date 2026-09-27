@@ -95,7 +95,7 @@ async def test_start_backup_job_crea_il_server_con_il_nome_giusto():
     creato = _FakeCreatedGuild(guild_id=555, name="Backup di Il Mio Server")
     creator = _FakeCreatorClient(creato)
 
-    nuovo_server, _url = await start_backup_job(
+    nuovo_server, _url, _mappa_webhook = await start_backup_job(
         creator, source, main_client_id=999, main_permissions=discord.Permissions.none()
     )
 
@@ -109,7 +109,7 @@ async def test_start_backup_job_restituisce_un_url_di_invito_valido():
     creato = _FakeCreatedGuild(guild_id=555, name="Backup di Test")
     creator = _FakeCreatorClient(creato)
 
-    _server, url = await start_backup_job(
+    _server, url, _mappa_webhook = await start_backup_job(
         creator, source, main_client_id=123456, main_permissions=discord.Permissions(administrator=True)
     )
 

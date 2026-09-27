@@ -145,6 +145,50 @@ class BackupRepository:
         )
         return self._row_to_pair(row) if row is not None else None
 
+    async def get_pair_by_backup_guild_id(self, backup_guild_id: int) -> BackupPair | None:
+        """Trova la coppia partendo dal server BACKUP (l'inverso di
+        get_pair, che parte dal main) — serve a /promuovi-backup per
+        capire "di quale main ero il backup" quando il comando viene
+        lanciato dentro al server backup stesso (SPEC.md §11.13)."""
+        row = await self._pool.fetchrow(
+            "SELECT * FROM backup_pairs WHERE backup_guild_id = $1", backup_guild_id
+        )
+        return self._row_to_pair(row) if row is not None else None
+
+    async def promote_backup_to_main(self, old_main_guild_id: int, new_main_guild_id: int) -> None:
+        """
+        Promuove un server backup a nuovo main (SPEC.md §11.13) —
+        usata quando il main originale è perso/inutilizzabile e il
+        backup deve prendere il suo posto:
+
+        1. Il vecchio main perde il suo backup (backup_guild_id = NULL)
+           — non lo cancelliamo dalla tabella: potrebbe ancora esistere
+           e volere un nuovo backup più avanti, ma di certo non è più
+           abbinato a QUESTO server (che ora è main altrove).
+        2. Il server appena promosso diventa main a sua volta, SENZA
+           backup (NULL) — l'auto-propagazione (enqueue di un nuovo
+           job) è responsabilità del chiamante, qui c'è solo lo stato.
+
+        Le due UPDATE sono nella stessa connessione/transazione per
+        evitare uno stato intermedio inconsistente se una fallisce.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE backup_pairs SET backup_guild_id = NULL, updated_at = now() "
+                    "WHERE main_guild_id = $1",
+                    old_main_guild_id,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO backup_pairs (main_guild_id, backup_guild_id)
+                    VALUES ($1, NULL)
+                    ON CONFLICT (main_guild_id) DO UPDATE
+                        SET backup_guild_id = NULL, updated_at = now()
+                    """,
+                    new_main_guild_id,
+                )
+
     # ----------------------------------------------------------------
     # Coda job (§11.2)
     # ----------------------------------------------------------------
