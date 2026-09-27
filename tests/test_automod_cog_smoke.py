@@ -32,9 +32,33 @@ async def test_automod_cog_si_carica_correttamente():
 
     nomi_comandi = {c.name for c in automod_group.commands}
     assert {"badword-add", "badword-remove", "badword-list", "invites", "sync"} <= nomi_comandi
+    # Filtri avanzati (SPEC.md §6.3-§6.14), aggiunti nello stesso cog/
+    # stesso gruppo /automod (vedi il docstring del modulo per il perché).
+    assert {
+        "anti-link-mode",
+        "anti-link-domain",
+        "anti-spam-messages",
+        "anti-spam-emoji",
+        "anti-spam-sticker",
+        "anti-caps",
+        "anti-zalgo",
+        "anti-mention",
+        "anti-attachment",
+        "exempt-channel-add",
+        "exempt-channel-remove",
+        "exempt-role-add",
+        "exempt-role-remove",
+        "actions-set",
+        "mute-duration",
+        "log-channel",
+        "status",
+    } <= nomi_comandi
 
     add_cmd = automod_group.get_command("badword-add")
     assert "word" in [p.name for p in add_cmd.parameters]
 
     invites_cmd = automod_group.get_command("invites")
     assert "enabled" in [p.name for p in invites_cmd.parameters]
+
+    anti_caps_cmd = automod_group.get_command("anti-caps")
+    assert {"enabled", "percent", "min_length"} <= {p.name for p in anti_caps_cmd.parameters}

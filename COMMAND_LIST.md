@@ -1,15 +1,32 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 15:34 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 182 comandi in 10 categorie.**
+**Totale: 199 comandi in 10 categorie.**
 
 ## AutoMod
 
+- **`/automod actions-set`** — Configura quali azioni eseguire quando un filtro avanzato scatta.
+- **`/automod anti-attachment`** — Configura l'anti-attachment-spam (troppi allegati in poco tempo).
+- **`/automod anti-caps`** — Configura l'anti-caps (troppo maiuscolo).
+- **`/automod anti-link-domain`** — Aggiunge o rimuove un dominio dalla whitelist/blacklist link.
+- **`/automod anti-link-mode`** — Imposta la modalità del filtro link.
+- **`/automod anti-mention`** — Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).
+- **`/automod anti-spam-emoji`** — Configura l'anti-spam emoji (troppe emoji in un messaggio).
+- **`/automod anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
+- **`/automod anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
+- **`/automod anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
 - **`/automod badword-add`** — Aggiunge una parola vietata.
 - **`/automod badword-list`** — Mostra le parole vietate configurate.
 - **`/automod badword-remove`** — Rimuove una parola vietata.
+- **`/automod exempt-channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
+- **`/automod exempt-channel-remove`** — Rimuove l'esenzione di un canale.
+- **`/automod exempt-role-add`** — Esenta un ruolo da tutti i filtri AutoMod avanzati.
+- **`/automod exempt-role-remove`** — Rimuove l'esenzione di un ruolo.
 - **`/automod invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
+- **`/automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
+- **`/automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
+- **`/automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
 - **`/automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
 - **`/escalation disable`** — [Admin] Disattiva l'escalation ladder.
 - **`/escalation enable`** — [Admin] Attiva l'escalation ladder.

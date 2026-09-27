@@ -230,18 +230,54 @@ file, non da un riassunto.**
 
 - `[x]` 6.1 Anti-badwords (via AutoMod nativo Discord, con merge a tre vie)
 - `[x]` 6.2 Anti-invite (via AutoMod nativo, regex)
-- `[ ]` 6.3 Anti-link generico (whitelist/blacklist domini)
-- `[ ]` 6.4 Anti-spam messaggi
-- `[ ]` 6.5 Anti-spam emoji
-- `[ ]` 6.6 Anti-spam sticker
-- `[ ]` 6.7 Anti-caps
-- `[ ]` 6.8 Anti-zalgo
-- `[ ]` 6.9 Anti-mass-mention
-- `[ ]` 6.10 Anti-attachment-spam
-- `[ ]` 6.11 Filtri personalizzati per canale
-- `[ ]` 6.12 Filtri personalizzati per ruolo
-- `[ ]` 6.13 Azioni multiple configurabili (delete + warn + mute + ban)
-- `[ ]` 6.14 Log delle azioni automod
+- `[x]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
+  bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
+  non supporta un elenco whitelist/blacklist di domini come trigger
+  nativo. Modalità `off`/`whitelist`/`blacklist` per server,
+  `/automod anti-link-mode` + `/automod anti-link-domain`
+- `[x]` 6.4 Anti-spam messaggi — soglia messaggi/finestra
+  configurabile, finestra mobile in memoria
+  (`core/automod_rate_tracker.py`, mai persistita: stato "caldo" di
+  pochi secondi, stesso principio di `core/invite_tracker.py`),
+  `/automod anti-spam-messages`
+- `[x]` 6.5 Anti-spam emoji — soglia per SINGOLO messaggio (non nel
+  tempo, a differenza di 6.4/6.6/6.10): conta emoji custom Discord +
+  un intervallo unicode ampio (nessuna libreria `emoji` aggiunta come
+  dipendenza — sotto-conteggio occasionale su emoji unicode rare
+  accettato), `/automod anti-spam-emoji`
+- `[x]` 6.6 Anti-spam sticker — soglia sticker/finestra, stesso motore
+  a finestra mobile di 6.4, `/automod anti-spam-sticker`
+- `[x]` 6.7 Anti-caps — percentuale di lettere maiuscole SUL TOTALE
+  DELLE LETTERE (non sul totale caratteri: punteggiatura/numeri non
+  contano né a favore né contro), soglia + lunghezza minima
+  configurabili, `/automod anti-caps`
+- `[x]` 6.8 Anti-zalgo — conteggio segni diacritici unicode
+  combinanti (categoria Mn/Me/Mc) oltre una soglia fissa (8, per
+  inferenza: il testo normale — accenti italiani compresi — non la
+  supera mai), `/automod anti-zalgo`
+- `[x]` 6.9 Anti-mass-mention — soglia di menzioni (utenti+ruoli) per
+  messaggio, `@everyone`/`@here` contano sempre come sopra soglia,
+  `/automod anti-mention`
+- `[x]` 6.10 Anti-attachment-spam — soglia allegati/finestra, stesso
+  motore a finestra mobile di 6.4/6.6, `/automod anti-attachment`
+- `[x]` 6.11 Filtri personalizzati per canale — **eccezione**
+  (bypassa TUTTI i filtri avanzati insieme, non uno specifico per
+  canale: altrimenti servirebbero N eccezioni per N filtri, complessità
+  non richiesta), `/automod exempt-channel-add|remove`
+- `[x]` 6.12 Filtri personalizzati per ruolo — stessa logica di 6.11,
+  per ruolo, `/automod exempt-role-add|remove`
+- `[x]` 6.13 Azioni multiple configurabili (delete + warn + mute +
+  ban) — per violazione, con "delete" sempre eseguito per primo se
+  presente; rete di sicurezza: mute/ban non si applicano mai
+  all'owner o a chi ha `manage_guild`/administrator (delete/warn
+  restano, poco invasivi) — scelta di sicurezza per inferenza, non
+  richiesta esplicitamente. `/automod actions-set` + `/automod
+  mute-duration` (durata del timeout, condivisa da ogni azione
+  "mute")
+- `[x]` 6.14 Log delle azioni automod — riga persistente per ogni
+  violazione (`automod_action_log`) + embed opzionale in un canale
+  dedicato, `/automod log-channel` + `/automod status` (riepilogo
+  configurazione)
 - `[x]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
   di severità crescente **nel tempo** in base a quante volte un
   utente ha già triggerato l'AutoMod nativo, con reset dopo un
@@ -1066,7 +1102,7 @@ rilancia lo stesso conteggio.
 | §3 Premium | 8 | 1 | 2 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
-| §6 AutoMod | 3 | 0 | 12 |
+| §6 AutoMod | 15 | 0 | 0 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 8 | 1 | 0 |

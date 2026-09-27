@@ -3263,6 +3263,98 @@ di fila).
 
 ---
 
+### Fase 67 — Chiude §6 AutoMod al 100%: anti-link, anti-spam
+(messaggi/emoji/sticker/allegati), anti-caps, anti-zalgo,
+anti-mass-mention, eccezioni canale/ruolo, azioni multiple, log
+(punto 6 della direttiva numerata: "direi comunque necessario")
+
+Undici voci `[ ]` chiuse in un solo giro (6.3-6.14): §6.1/§6.2 usano
+l'AutoMod nativo di Discord (regole vere, valutate da Discord prima
+che il bot veda il messaggio), ma Discord non ha un trigger nativo
+per soglie percentuali di maiuscole, unicode zalgo, o conteggi
+ripetuti nel tempo per tipo di contenuto — questi filtri esistono
+quindi SOLO lato bot, in `on_message`, nello stesso cog/stesso
+comando `/automod` dei filtri base (non un modulo separato: sono
+entrambi "AutoMod", solo con motore diverso).
+
+**Architettura a tre livelli**, pensata per essere testabile senza
+mock pesanti:
+1. `core/automod_advanced_logic.py` — logica PURA (nessun discord.py,
+   nessun I/O): `evaluate_message_violations(segnali, config)` valuta
+   tutti gli otto filtri e restituisce le violazioni scattate, in
+   ordine fisso. Testata con 27 test di puro input/output.
+2. `core/automod_rate_tracker.py` — finestra mobile IN MEMORIA (mai
+   persistita: stato "caldo" di pochi secondi, stesso principio di
+   `core/invite_tracker.py`) per i filtri "troppi X in poco tempo"
+   (messaggi/sticker/allegati). `BoundedCache` sottostante, coerente
+   con Memory Guard (§1.3).
+3. `cogs/automod/automod.py` (esteso, non un nuovo cog) — estrae i
+   segnali dal messaggio REALE, li passa alla logica pura, esegue le
+   azioni configurate ed emette il log.
+
+**Decisioni prese per inferenza** (nessun dettaglio più fine
+specificato dall'utente, che ha lasciato la direttiva volutamente
+aperta su "azioni multiple" e "filtri per canale/ruolo"):
+- Anti-spam **emoji** è una soglia per SINGOLO messaggio (non nel
+  tempo, a differenza di anti-spam messaggi/sticker/allegati): un
+  messaggio con troppe emoji insieme è già di per sé lo spam, non
+  serve ripetizione nel tempo.
+- Conteggio emoji: custom Discord (`<a?:nome:id>`, sempre precise) +
+  un intervallo unicode ampio, SENZA aggiungere la libreria `emoji`
+  come nuova dipendenza — un sotto-conteggio occasionale su emoji
+  unicode rare è accettato.
+- Anti-zalgo: soglia fissa di 8 segni diacritici unicode combinanti
+  (categoria Mn/Me/Mc) — testato che accenti italiani normali
+  ("perché", "città") non la raggiungano mai.
+- **6.11/6.12 come ECCEZIONE globale**, non filtro-per-filtro: un
+  canale/ruolo esente bypassa TUTTI i filtri avanzati insieme.
+  Altrimenti servirebbero N eccezioni per N filtri — complessità non
+  richiesta dall'utente.
+- **6.13 con rete di sicurezza**: mute/ban non si applicano MAI
+  all'owner del server o a chi ha `manage_guild`/`administrator`
+  (delete/warn restano invece, poco invasivi e reversibili) — un
+  falso positivo che bannasse per errore un admin dello staff sarebbe
+  un danno molto peggiore di un messaggio lasciato temporaneamente
+  visibile.
+- "delete" viene sempre eseguito PRIMA delle altre azioni configurate
+  (ordine fisso in `VALID_ACTIONS`), e se un messaggio triggera più
+  filtri insieme la cancellazione del primo interrompe la
+  valutazione delle azioni per i successivi (nulla resta da
+  cancellare due volte sullo stesso contenuto).
+
+**21 comandi sotto `/automod`** (16 nuovi + 5 esistenti):
+`anti-link-mode`, `anti-link-domain`, `anti-spam-messages`,
+`anti-spam-emoji`, `anti-spam-sticker`, `anti-caps`, `anti-zalgo`,
+`anti-mention`, `anti-attachment`, `exempt-channel-add|remove`,
+`exempt-role-add|remove`, `actions-set`, `mute-duration`,
+`log-channel`, `status`.
+
+**60 nuovi test**: 27 in `tests/test_automod_advanced_logic.py`
+(logica pura); 6 in `tests/test_automod_rate_tracker.py`; 6 in
+`tests/test_automod_advanced_repo.py` (persistenza JSONB, stesso
+pattern di `guild_config.settings`); 11 in
+`tests/test_automod_advanced_behavior.py` (comportamento reale di
+`on_message` — moduli disattivati, eccezioni, azioni multiple, rete
+di sicurezza admin, log); 10 in `tests/test_automod_config_commands.py`
+(comandi); estesi gli assert di `tests/test_automod_cog_smoke.py`.
+
+**Bug reale trovato scrivendo i test**: `_FakeGuild` di test aveva
+`owner_id` di default uguale all'id usato per l'autore fittizio nella
+maggior parte dei test — la rete di sicurezza "mai mute/ban
+sull'owner" scattava per errore anche sui test di membro normale.
+Non un bug del codice, ma un promemoria: quando un fake introduce un
+default condiviso tra due concetti diversi (qui "id utente" e "id
+owner"), un test che sembra passare per il motivo sbagliato è un
+rischio reale.
+
+SPEC.md: §6 passa da 3 fatto/0 parziale/12 mancante a **15 fatto/0
+parziale/0 mancante — §6 AutoMod è ora COMPLETO al 100%**.
+
+**Suite di test completa: 1717/1717 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo
