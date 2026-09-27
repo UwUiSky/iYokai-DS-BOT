@@ -30,4 +30,6 @@ async def test_feed_alerts_cog_si_carica_correttamente():
     assert alerts_group is not None
 
     sottocomandi = {c.name for c in alerts_group.commands}
-    assert {"add", "add-twitch", "remove", "list", "webhook-create"} <= sottocomandi
+    assert {
+        "add", "add-twitch", "add-youtube-live", "remove", "list", "webhook-create",
+    } <= sottocomandi

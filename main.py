@@ -42,6 +42,7 @@ from core.event_log_retention import event_log_retention
 from core.soundboard_log_service import soundboard_log_service
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
+from core.youtube_watcher import youtube_watcher
 from core.monthly_winners_announcer import monthly_winners_announcer
 from core.clan_leaderboard_announcer import clan_leaderboard_announcer
 from core.giveaway_worker import giveaway_worker
@@ -227,6 +228,10 @@ class iYokaiBot(commands.AutoShardedBot):
         # Twitch live/offline (SPEC.md §10.1/10.2): resta inattivo
         # finché TWITCH_CLIENT_ID/SECRET non sono configurati.
         twitch_watcher.start(self)
+
+        # YouTube live (SPEC.md §10.4): resta inattivo finché
+        # YOUTUBE_API_KEY non è configurata (quota a consumo).
+        youtube_watcher.start(self)
 
         # Annuncio automatico dei vincitori a fine mese (SPEC.md
         # §15.11): tick orario, idempotente tramite database.

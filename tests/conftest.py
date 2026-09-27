@@ -124,6 +124,9 @@ async def clean_db(db_pool):
     from core.repositories.twitch_subscription_repo import (
         run_migrations as twitch_subscription_migrations,
     )
+    from core.repositories.youtube_subscription_repo import (
+        run_migrations as youtube_subscription_migrations,
+    )
     from core.repositories.main_radio_repo import (
         run_migrations as main_radio_migrations,
     )
@@ -196,6 +199,7 @@ async def clean_db(db_pool):
     await custom_webhook_migrations(db_pool)
     await music_session_migrations(db_pool)
     await twitch_subscription_migrations(db_pool)
+    await youtube_subscription_migrations(db_pool)
     await main_radio_migrations(db_pool)
     await backup_migrations(db_pool)
     await backup_mirror_migrations(db_pool)
@@ -262,6 +266,7 @@ async def clean_db(db_pool):
         "custom_webhooks",
         "music_sessions",
         "twitch_subscriptions",
+        "youtube_subscriptions",
         "main_radio_tracks",
         "main_radio_state",
         "backup_pairs",

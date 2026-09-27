@@ -313,6 +313,11 @@ class Database:
         )
         await twitch_subscription_migrations(self.pool)
 
+        from core.repositories.youtube_subscription_repo import (
+            run_migrations as youtube_subscription_migrations,
+        )
+        await youtube_subscription_migrations(self.pool)
+
         from core.repositories.main_radio_repo import (
             run_migrations as main_radio_migrations,
         )

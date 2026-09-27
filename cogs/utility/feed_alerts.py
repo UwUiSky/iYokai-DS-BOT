@@ -19,6 +19,7 @@ from core.database import db
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
+from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.premium import PremiumModule, registry
 
 MODULE_FEED_ALERTS = "feed_alerts"
@@ -175,12 +176,14 @@ class FeedAlertsCog(commands.Cog):
             rimossa = await feed_subscription_repo.remove_subscription(numero, guild.id)
         elif prefisso == "TW":
             rimossa = await twitch_subscription_repo.remove_subscription(numero, guild.id)
+        elif prefisso == "YT":
+            rimossa = await youtube_subscription_repo.remove_subscription(numero, guild.id)
         elif prefisso == "WH":
             rimossa = await custom_webhook_repo.remove_webhook(numero, guild.id)
         else:
             await interaction.response.send_message(
-                "Prefisso non riconosciuto. Usa RSS-<numero>, TW-<numero> o WH-<numero> "
-                "(vedi /alerts list).",
+                "Prefisso non riconosciuto. Usa RSS-<numero>, TW-<numero>, YT-<numero> "
+                "o WH-<numero> (vedi /alerts list).",
                 ephemeral=True,
             )
             return
@@ -238,6 +241,62 @@ class FeedAlertsCog(commands.Cog):
             ephemeral=True,
         )
 
+    @alerts_group.command(
+        name="add-youtube-live",
+        description="[Admin] Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).",
+    )
+    @app_commands.describe(
+        youtube_channel_id="ID del canale YouTube (es. 'UCxxxxxxxxxxxxxxxxxxxxxx', non l'URL)",
+        channel="Canale dove pubblicare le notifiche",
+        label="Nome descrittivo, usato nel messaggio",
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def add_youtube_live(
+        self,
+        interaction: discord.Interaction,
+        youtube_channel_id: str,
+        channel: discord.TextChannel,
+        label: str,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
+            await interaction.response.send_message(
+                "Questo modulo non è attivo su questo server. "
+                "Un amministratore può attivarlo con /setup.",
+                ephemeral=True,
+            )
+            return
+
+        subscription_id = await youtube_subscription_repo.add_subscription(
+            guild_id=guild.id,
+            channel_id=channel.id,
+            youtube_channel_id=youtube_channel_id,
+            label=label,
+            created_by=interaction.user.id,
+        )
+
+        avviso_quota = (
+            ""
+            if config.YOUTUBE_API_KEY
+            else (
+                "\n\n⚠️ Nessuna YOUTUBE_API_KEY configurata sul bot (SPEC.md "
+                "§10.4, quota a consumo — non abilitata di default): la "
+                "sottoscrizione resta inattiva finché il proprietario del bot "
+                "non la imposta."
+            )
+        )
+        await interaction.response.send_message(
+            f"✅ Sottoscrizione YouTube creata (ID `{subscription_id}`): notificherò in "
+            f"{channel.mention} quando **{label}** va live.{avviso_quota}",
+            ephemeral=True,
+        )
+
     @alerts_group.command(name="list", description="[Admin] Mostra i feed seguiti da questo server.")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def list_alerts(self, interaction: discord.Interaction) -> None:
@@ -247,9 +306,10 @@ class FeedAlertsCog(commands.Cog):
 
         feed_subs = await feed_subscription_repo.list_subscriptions(guild.id)
         twitch_subs = await twitch_subscription_repo.list_subscriptions(guild.id)
+        youtube_subs = await youtube_subscription_repo.list_subscriptions(guild.id)
         webhooks = await custom_webhook_repo.list_webhooks(guild.id)
 
-        if not feed_subs and not twitch_subs and not webhooks:
+        if not feed_subs and not twitch_subs and not youtube_subs and not webhooks:
             await interaction.response.send_message(
                 "Nessuna sottoscrizione attiva su questo server.", ephemeral=True
             )
@@ -262,6 +322,10 @@ class FeedAlertsCog(commands.Cog):
         righe += [
             f"`TW-{s.id}` **{s.label}** (Twitch: {s.twitch_login}) → <#{s.channel_id}>"
             for s in twitch_subs
+        ]
+        righe += [
+            f"`YT-{s.id}` **{s.label}** (YouTube live: {s.youtube_channel_id}) → <#{s.channel_id}>"
+            for s in youtube_subs
         ]
         righe += [
             # MAI il token qui: è il segreto che autentica chi può

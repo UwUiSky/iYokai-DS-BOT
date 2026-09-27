@@ -3936,6 +3936,67 @@ di fila).
 
 ---
 
+### Fase 74 — §10.4 YouTube Live via YouTube Data API, env-gated come
+Twitch (punto 4 della direttiva "Vai prosegui fai tutto a parte
+ovviamente bcde")
+
+**§10.4 YouTube live chiuso (6/0/1 → 7/0/0, §10 ORA COMPLETO al
+100% per tutto il non scartato)**: era rimandato da una sessione
+precedente perché non affidabile via RSS (che non indica lo stato
+live) e perché richiede la YouTube Data API con quota a consumo.
+Applicato lo stesso principio già usato per Twitch (§10.1/§10.2):
+un metodo di sblocco OPZIONALE via variabile d'ambiente
+(`YOUTUBE_API_KEY`), watcher inattivo finché non è configurata,
+zero impatto sull'avvio del bot per chi non la usa — nessuna
+richiesta di modificare l'infrastruttura o di procurarsi credenziali
+per chi non vuole questa feature.
+
+- `core/youtube_api_logic.py` — logica pura di interpretazione della
+  risposta di `search.list` (`eventType=live`, `type=video`): nessun
+  item negli `items` significa non-live, un item presente ma senza
+  `videoId` è trattato come non-live invece di sollevare (risposta
+  malformata, un tick perso non deve mai far crashare il watcher).
+- `core/repositories/youtube_subscription_repo.py` — stesso schema
+  esatto di `twitch_subscription_repo.py` (una riga per canale
+  sottoscritto, stato "era live l'ultima volta controllato", non un
+  ID sequenziale come un feed RSS).
+- `core/youtube_watcher.py` — stesso pattern architetturale di
+  `core/twitch_watcher.py`, ma più semplice (API key semplice come
+  parametro di query, niente OAuth da rinnovare) e con un intervallo
+  DELIBERATAMENTE più lungo (300s contro i 90s di Twitch): questo
+  endpoint costa 100 unità di quota PER CANALE sottoscritto, su una
+  quota giornaliera gratuita di 10.000 — con un solo canale si
+  sfiora già il limite gratuito a 90s. Una chiamata per canale (a
+  differenza di Twitch, `search.list` non supporta un batch di più
+  canali in una richiesta).
+- `/alerts add-youtube-live` — nuovo comando nel cog Feed Alerts
+  esistente (`cogs/utility/feed_alerts.py`), stesso schema di
+  `/alerts add-twitch`. Integrato in `/alerts list`/`/alerts remove`
+  con il prefisso `YT-`, esattamente come `TW-` per Twitch. La
+  sottoscrizione si crea SEMPRE, anche senza `YOUTUBE_API_KEY`
+  configurata — resta semplicemente inattiva con un avviso chiaro
+  nella risposta, così l'utente non deve ricrearla quando l'owner
+  del bot imposta la chiave in seguito.
+
+**18 nuovi test**: `test_youtube_api_logic.py` (nuovo, 4);
+`test_youtube_subscription_repo.py` (nuovo, 6, mirror esatto di
+test_twitch_subscription_repo.py); `test_youtube_watcher.py` (nuovo,
+4, server aiohttp finto che imita `search.list`, stesso schema di
+test_twitch_watcher.py ma senza il livello OAuth); `test_feed_alerts_
+behavior.py` (+4: senza chiave avvisa ma crea comunque, con chiave
+non avvisa, ciclo add/list/remove con prefisso YT-, rifiuto fuori
+server — più i monkeypatch di `youtube_subscription_repo` aggiunti
+ai test esistenti di `list_alerts`, che ora interroga anche questo
+repository); `test_feed_alerts_cog_smoke.py` (assert aggiornata).
+
+SPEC.md: §10 6/0/1 → **7/0/0** (COMPLETO). Ricalcolo meccanico di
+TUTTA la tabella dei totali: **232/3/41**.
+
+**Suite di test completa: 1962/1962 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

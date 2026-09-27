@@ -144,6 +144,17 @@ class Config:
     TWITCH_CLIENT_ID: str = field(default="")
     TWITCH_CLIENT_SECRET: str = field(default="")
 
+    # YouTube Data API (SPEC.md §10.4) — opzionale, stesso principio
+    # di TWITCH_CLIENT_ID/SECRET sopra: vuota finché l'utente non crea
+    # una API key sulla Google Cloud Console. Il watcher (core/
+    # youtube_watcher.py) resta inattivo finché non è compilata, non
+    # fa fallire l'avvio del bot. A differenza del feed RSS già usato
+    # per "nuovo video" (§10.3, nessuna chiave richiesta), rilevare lo
+    # stato LIVE richiede l'endpoint search.list della Data API, che
+    # consuma quota — per questo è un metodo di sblocco separato e
+    # opzionale, non abilitato di default.
+    YOUTUBE_API_KEY: str = field(default="")
+
     # Radio condivisa del bot principale (SPEC.md §9.11) — cartella
     # locale per gli inediti dell'utente, letta SOLO dal nodo
     # Lavalink locale/self-hostato (i nodi pubblici non hanno accesso
@@ -250,6 +261,7 @@ def _load_config() -> Config:
         LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
         TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
+        YOUTUBE_API_KEY=_optional("YOUTUBE_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),

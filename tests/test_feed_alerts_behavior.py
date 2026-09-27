@@ -86,6 +86,7 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
         from core.repositories.custom_webhook_repo import CustomWebhookRepository
         from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
         from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
+        from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 
         monkeypatch.setattr(feed_alerts_module, "db", database)
         repo_di_test = FeedSubscriptionRepository(pool_provider=lambda: database.pool)
@@ -94,6 +95,11 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
             feed_alerts_module,
             "twitch_subscription_repo",
             TwitchSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "youtube_subscription_repo",
+            YoutubeSubscriptionRepository(pool_provider=lambda: database.pool),
         )
         monkeypatch.setattr(
             feed_alerts_module,
@@ -192,12 +198,18 @@ async def test_add_twitch_e_list_mostra_entrambi_i_tipi_con_prefissi(monkeypatch
         from core.repositories.custom_webhook_repo import CustomWebhookRepository
         from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
         from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
+        from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 
         monkeypatch.setattr(feed_alerts_module, "db", database)
         feed_repo = FeedSubscriptionRepository(pool_provider=lambda: database.pool)
         twitch_repo = TwitchSubscriptionRepository(pool_provider=lambda: database.pool)
         monkeypatch.setattr(feed_alerts_module, "feed_subscription_repo", feed_repo)
         monkeypatch.setattr(feed_alerts_module, "twitch_subscription_repo", twitch_repo)
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "youtube_subscription_repo",
+            YoutubeSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
         monkeypatch.setattr(
             feed_alerts_module,
             "custom_webhook_repo",
@@ -243,6 +255,156 @@ async def test_add_twitch_e_list_mostra_entrambi_i_tipi_con_prefissi(monkeypatch
         await database.pool.execute("DELETE FROM feed_subscriptions WHERE guild_id = 900000005")
         await database.pool.execute("DELETE FROM twitch_subscriptions WHERE guild_id = 900000005")
         await database.close()
+
+
+@pytest.mark.asyncio
+async def test_add_youtube_live_senza_chiave_avvisa_ma_crea_comunque(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000012
+        await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
+
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        youtube_repo = YoutubeSubscriptionRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(feed_alerts_module, "youtube_subscription_repo", youtube_repo)
+
+        class _ConfigSenzaChiave:
+            YOUTUBE_API_KEY = ""
+
+        monkeypatch.setattr(feed_alerts_module, "config", _ConfigSenzaChiave())
+
+        cog = FeedAlertsCog(bot=None)
+        canale = _FakeChannel(500)
+        interaction = _FakeInteraction(guild_id)
+
+        await cog.add_youtube_live.callback(
+            cog, interaction, youtube_channel_id="UCabc", channel=canale, label="Canale Test"
+        )
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "Sottoscrizione YouTube creata" in messaggio
+        assert "Nessuna YOUTUBE_API_KEY configurata" in messaggio
+        assert len(await youtube_repo.list_subscriptions(guild_id)) == 1
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000012")
+        await database.pool.execute("DELETE FROM youtube_subscriptions WHERE guild_id = 900000012")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_add_youtube_live_con_chiave_non_avvisa(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000013
+        await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
+
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        youtube_repo = YoutubeSubscriptionRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(feed_alerts_module, "youtube_subscription_repo", youtube_repo)
+
+        class _ConfigConChiave:
+            YOUTUBE_API_KEY = "chiave-finta"
+
+        monkeypatch.setattr(feed_alerts_module, "config", _ConfigConChiave())
+
+        cog = FeedAlertsCog(bot=None)
+        canale = _FakeChannel(500)
+        interaction = _FakeInteraction(guild_id)
+
+        await cog.add_youtube_live.callback(
+            cog, interaction, youtube_channel_id="UCabc", channel=canale, label="Canale Test"
+        )
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "Sottoscrizione YouTube creata" in messaggio
+        assert "YOUTUBE_API_KEY" not in messaggio
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000013")
+        await database.pool.execute("DELETE FROM youtube_subscriptions WHERE guild_id = 900000013")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_add_youtube_live_list_e_remove_ciclo_completo(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 900000014
+        await database.set_module_active_for_guild(guild_id, MODULE_FEED_ALERTS, True)
+
+        import cogs.utility.feed_alerts as feed_alerts_module
+        from core.repositories.custom_webhook_repo import CustomWebhookRepository
+        from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+        from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
+        from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
+
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        youtube_repo = YoutubeSubscriptionRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(feed_alerts_module, "youtube_subscription_repo", youtube_repo)
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "feed_subscription_repo",
+            FeedSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "twitch_subscription_repo",
+            TwitchSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "custom_webhook_repo",
+            CustomWebhookRepository(pool_provider=lambda: database.pool),
+        )
+
+        cog = FeedAlertsCog(bot=None)
+        canale = _FakeChannel(500)
+
+        await cog.add_youtube_live.callback(
+            cog, _FakeInteraction(guild_id), youtube_channel_id="UCabc",
+            channel=canale, label="Canale Live",
+        )
+
+        interaction_list = _FakeInteraction(guild_id)
+        await cog.list_alerts.callback(cog, interaction_list)
+        descrizione = interaction_list.response.sent_embeds[0].description
+        assert "YT-" in descrizione
+        assert "Canale Live" in descrizione
+
+        youtube_id = (await youtube_repo.list_subscriptions(guild_id))[0].id
+
+        interaction_remove = _FakeInteraction(guild_id)
+        await cog.remove.callback(cog, interaction_remove, subscription_id=f"YT-{youtube_id}")
+        assert "rimossa" in interaction_remove.response.sent_messages[0].lower()
+        assert await youtube_repo.list_subscriptions(guild_id) == []
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000014")
+        await database.pool.execute("DELETE FROM youtube_subscriptions WHERE guild_id = 900000014")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_add_youtube_live_fuori_da_un_server_rifiuta():
+    cog = FeedAlertsCog(bot=None)
+    interaction = _FakeInteraction(guild_id=None)
+    canale = _FakeChannel(500)
+
+    await cog.add_youtube_live.callback(
+        cog, interaction, youtube_channel_id="UCabc", channel=canale, label="Test"
+    )
+
+    assert "solo dentro un server" in interaction.response.sent_messages[0]
 
 
 @pytest.mark.asyncio
@@ -359,6 +521,7 @@ async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
         from core.repositories.custom_webhook_repo import CustomWebhookRepository
         from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
         from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
+        from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 
         monkeypatch.setattr(feed_alerts_module, "db", database)
         repo_di_test = CustomWebhookRepository(pool_provider=lambda: database.pool)
@@ -372,6 +535,11 @@ async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
             feed_alerts_module,
             "twitch_subscription_repo",
             TwitchSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        monkeypatch.setattr(
+            feed_alerts_module,
+            "youtube_subscription_repo",
+            YoutubeSubscriptionRepository(pool_provider=lambda: database.pool),
         )
 
         cog = FeedAlertsCog(bot=None)

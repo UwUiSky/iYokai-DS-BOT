@@ -683,9 +683,19 @@ sessione perché non richiesto esplicitamente.
 - `[x]` 10.2 Twitch offline — stesso meccanismo di 10.1
 - `[x]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
   (`youtube.com/feeds/videos.xml?channel_id=...`), nessuna chiave API
-- `[ ]` 10.4 YouTube live — non affidabile via RSS (non indica lo
-  stato live), richiederebbe la YouTube Data API con quota a
-  consumo. Rimandato
+- `[x]` 10.4 YouTube live — via la YouTube Data API v3 (`search.list`,
+  `eventType=live`), non via RSS (che non indica lo stato live). Come
+  Twitch (§10.1/§10.2), env-gated: `YOUTUBE_API_KEY` opzionale,
+  `core/youtube_watcher.py` resta inattivo finché non è configurata,
+  nessun fallimento all'avvio. Intervallo di controllo più lungo di
+  Twitch apposta (300s contro 90s): questo endpoint costa 100 unità
+  di quota PER CANALE sottoscritto su una quota giornaliera gratuita
+  di 10.000, la stessa ragione per cui questa voce era stata rimandata
+  — chi la abilita deve gestire la propria quota. `/alerts
+  add-youtube-live` crea la sottoscrizione (prefisso `YT-` in
+  `/alerts list`/`/alerts remove`) anche senza la chiave configurata
+  (resta semplicemente inattiva, un avviso lo dice chiaramente),
+  così non va ripetuta quando l'owner del bot la aggiunge in seguito
 - `[✗]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
   gratuita per leggere le pubblicazioni di terzi, solo scraping
   fragile. Confermato dall'utente come vincolo accettato, non un
@@ -1307,7 +1317,7 @@ rilancia lo stesso conteggio.
 | §7 Security | 33 | 0 | 1 |
 | §8 Logging | 17 | 0 | 1 |
 | §9 Music | 8 | 1 | 0 |
-| §10 Alerts | 6 | 0 | 1 |
+| §10 Alerts | 7 | 0 | 0 |
 | §11 Backup | 13 | 0 | 0 |
 | §12 Voice temp | 8 | 0 | 0 |
 | §13 Ticket | 13 | 0 | 0 |
@@ -1316,7 +1326,7 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **231** | **3** | **42** |
+| **Totale** | **232** | **3** | **41** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
@@ -1464,4 +1474,22 @@ invece di fermarsi al primo sblocco trovato. Formattazione delle
 righe estratta in `core/premium_status_logic.py`, logica pura
 testabile senza database né bot vero — stesso principio già seguito
 per ticket/snipe.
+
+**§10 Alerts & Social è ORA COMPLETO al 100%** per tutto ciò che non
+è stato esplicitamente scartato: 10.4 YouTube live era l'ultima voce
+rimandata (vedi la nota più sopra in questo stesso documento,
+risalente a una sessione precedente — "§10 resta parziale solo per
+§10.4"), ora chiusa con lo stesso principio già usato per Twitch
+(§10.1/§10.2): un metodo di sblocco opzionale via variabile
+d'ambiente (`YOUTUBE_API_KEY`), watcher (`core/youtube_watcher.py`)
+inattivo finché non è configurata, nessun impatto sull'avvio del bot
+per chi non la usa. `core/youtube_api_logic.py` interpreta la
+risposta di `search.list` (logica pura, testata senza rete);
+`core/repositories/youtube_subscription_repo.py` persiste le
+sottoscrizioni (stesso schema di twitch_subscription_repo.py);
+`/alerts add-youtube-live` le crea (prefisso `YT-`, integrato in
+`/alerts list`/`/alerts remove` esistenti). 10.5 TikTok, 10.6
+Instagram e 10.13 X/Twitter restano `[✗]` scartati, decisioni già
+prese e confermate dall'utente in sessioni precedenti — non
+rivisitate qui.
 

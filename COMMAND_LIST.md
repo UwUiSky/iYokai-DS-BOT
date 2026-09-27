@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:25 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:42 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 237 comandi in 10 categorie.**
+**Totale: 238 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -190,6 +190,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 19:
 
 - **`/alerts add`** — [Admin] Segui un feed RSS/Atom (YouTube, Reddit, o qualsiasi altro).
 - **`/alerts add-twitch`** — [Admin] Notifica quando uno streamer Twitch va live/offline.
+- **`/alerts add-youtube-live`** — [Admin] Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).
 - **`/alerts list`** — [Admin] Mostra i feed seguiti da questo server.
 - **`/alerts remove`** — [Admin] Rimuove una sottoscrizione feed, Twitch o un webhook.
 - **`/alerts webhook-create`** — [Admin] Crea un webhook custom: servizi terzi possono pubblicare in un canale.
