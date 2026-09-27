@@ -320,6 +320,22 @@ async def test_transfer_between_treasuries_verso_se_stesso_solleva(repo):
 
 
 @pytest.mark.asyncio
+async def test_list_clans_owned_by_attraversa_i_server(repo):
+    proprio_1 = await _crea_clan(repo, guild_id=100, tag="AAA", owner_id=1)
+    proprio_2 = await _crea_clan(repo, guild_id=200, tag="BBB", owner_id=1)  # server diverso
+    await _crea_clan(repo, guild_id=100, tag="CCC", owner_id=2)  # altro owner
+
+    clan_ids = {c.id for c in await repo.list_clans_owned_by(1)}
+
+    assert clan_ids == {proprio_1, proprio_2}
+
+
+@pytest.mark.asyncio
+async def test_list_clans_owned_by_nessuna_gilda_lista_vuota(repo):
+    assert await repo.list_clans_owned_by(999) == []
+
+
+@pytest.mark.asyncio
 async def test_get_donation_leaderboard(repo):
     clan_id = await _crea_clan(repo)
     await repo.donate(clan_id, user_id=1, amount=100)

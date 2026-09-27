@@ -959,3 +959,98 @@ async def test_boost_gilda_tesoreria_insufficiente_non_scala_nulla(cog_e_repos):
     clan = await clan_repo.get_clan(clan_id)
     assert clan.treasury_balance == 0
     assert clan.guild_boost_expires_at is None
+
+
+# ======================================================================
+# tesoreria trasferisci — trasferimento tra gilde dello STESSO owner,
+# ANCHE cross-server (SPEC.md §15.14)
+# ======================================================================
+
+@pytest.mark.asyncio
+async def test_trasferisci_tra_due_gilde_dello_stesso_owner_cross_server(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild_1 = _FakeGuild(100)
+    guild_2 = _FakeGuild(200)
+    clan_a, _ = await _crea_clan_con_categoria(clan_repo, guild_1, owner_id=1, tag="AAA")
+    clan_b, _ = await _crea_clan_con_categoria(clan_repo, guild_2, owner_id=1, tag="BBB")
+    await clan_repo.donate(clan_a, user_id=1, amount=50_000)  # saldo A: 35.000
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild_1, user=capo)
+
+    await cog.clan_tesoreria_trasferisci.callback(
+        cog, interaction, tag_destinazione="BBB", importo=20_000
+    )
+
+    assert "Trasferite" in interaction.response.sent_messages[0]
+    assert "altro server" in interaction.response.sent_messages[0]
+    assert (await clan_repo.get_clan(clan_a)).treasury_balance == 15_000
+    assert (await clan_repo.get_clan(clan_b)).treasury_balance == -15_000 + 20_000
+
+
+@pytest.mark.asyncio
+async def test_trasferisci_solo_il_capo_clan_puo_farlo(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild_1 = _FakeGuild(100)
+    guild_2 = _FakeGuild(200)
+    clan_a, _ = await _crea_clan_con_categoria(clan_repo, guild_1, owner_id=1, tag="AAA")
+    await clan_repo.add_member(clan_a, user_id=5, role="admin")
+    await _crea_clan_con_categoria(clan_repo, guild_2, owner_id=5, tag="BBB")
+    admin = _FakeMember(5)
+    interaction = _FakeInteraction(guild_1, user=admin)
+
+    await cog.clan_tesoreria_trasferisci.callback(
+        cog, interaction, tag_destinazione="BBB", importo=1_000
+    )
+
+    assert "Solo il Capo Clan" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_trasferisci_verso_gilda_di_un_altro_owner_non_trovata(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild_1 = _FakeGuild(100)
+    guild_2 = _FakeGuild(200)
+    clan_a, _ = await _crea_clan_con_categoria(clan_repo, guild_1, owner_id=1, tag="AAA")
+    await _crea_clan_con_categoria(clan_repo, guild_2, owner_id=2, tag="BBB")  # non è mio
+    await clan_repo.donate(clan_a, user_id=1, amount=50_000)
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild_1, user=capo)
+
+    await cog.clan_tesoreria_trasferisci.callback(
+        cog, interaction, tag_destinazione="BBB", importo=1_000
+    )
+
+    assert "Non sei Capo Clan di nessun'altra gilda" in interaction.response.sent_messages[0]
+    assert (await clan_repo.get_clan(clan_a)).treasury_balance == 35_000  # invariato
+
+
+@pytest.mark.asyncio
+async def test_trasferisci_saldo_insufficiente_non_scala_nulla(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild_1 = _FakeGuild(100)
+    guild_2 = _FakeGuild(200)
+    clan_a, _ = await _crea_clan_con_categoria(clan_repo, guild_1, owner_id=1, tag="AAA")
+    clan_b, _ = await _crea_clan_con_categoria(clan_repo, guild_2, owner_id=1, tag="BBB")
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild_1, user=capo)
+
+    await cog.clan_tesoreria_trasferisci.callback(
+        cog, interaction, tag_destinazione="BBB", importo=100_000
+    )
+
+    assert "non basta" in interaction.response.sent_messages[0]
+    assert (await clan_repo.get_clan(clan_a)).treasury_balance == -15_000
+    assert (await clan_repo.get_clan(clan_b)).treasury_balance == -15_000
+
+
+@pytest.mark.asyncio
+async def test_trasferisci_senza_gilda_avvisa(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    interaction = _FakeInteraction(guild, user=_FakeMember(1))
+
+    await cog.clan_tesoreria_trasferisci.callback(
+        cog, interaction, tag_destinazione="BBB", importo=100
+    )
+
+    assert "Non fai parte" in interaction.response.sent_messages[0]

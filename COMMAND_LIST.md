@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:06 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 165 comandi in 10 categorie.**
+**Totale: 166 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -41,6 +41,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 08:
 - **`/clan promuovi`** — [Capo Clan] Cambia il ruolo di un membro della tua gilda.
 - **`/clan sciogli`** — [Capo Clan] Sciogli la tua gilda.
 - **`/clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
+- **`/clan tesoreria trasferisci`** — [Capo Clan] Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
 - **`/daily`** — Riscuoti la ricompensa giornaliera.
 - **`/giveaway`** — [Admin] Avvia un giveaway.
 - **`/leaderboard`** — Mostra la classifica del server.

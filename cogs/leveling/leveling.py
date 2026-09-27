@@ -1374,6 +1374,82 @@ class LevelingCog(commands.Cog):
 
         await interaction.response.send_message(messaggio)
 
+    @clan_tesoreria_group.command(
+        name="trasferisci",
+        description="[Capo Clan] Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).",
+    )
+    @app_commands.describe(
+        tag_destinazione="Tag dell'altra gilda di cui sei Capo Clan (anche su un server diverso)",
+        importo="Quante coin trasferire dalla tesoreria di questa gilda",
+    )
+    async def clan_tesoreria_trasferisci(
+        self,
+        interaction: discord.Interaction,
+        tag_destinazione: str,
+        importo: app_commands.Range[int, 1, 1_000_000_000],
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        if clan.owner_id != interaction.user.id:
+            await interaction.response.send_message(
+                "Solo il Capo Clan può trasferire la tesoreria verso un'altra tua gilda.",
+                ephemeral=True,
+            )
+            return
+
+        # L'UNICA condizione per un trasferimento tra tesorerie è lo
+        # stesso owner — MAI lo stesso server: un Capo Clan può avere
+        # una seconda gilda su un altro server con lo stesso bot, e
+        # senza questo le coin di quella gilda resterebbero bloccate
+        # per sempre nel server in cui sono state guadagnate.
+        proprie_gilde = await guild_clan_repo.list_clans_owned_by(interaction.user.id)
+        candidate = [c for c in proprie_gilde if c.tag == tag_destinazione and c.id != clan.id]
+
+        if not candidate:
+            await interaction.response.send_message(
+                f"Non sei Capo Clan di nessun'altra gilda con tag `{tag_destinazione}` "
+                f"(su nessun server).",
+                ephemeral=True,
+            )
+            return
+        if len(candidate) > 1:
+            await interaction.response.send_message(
+                f"Hai più di una gilda con tag `{tag_destinazione}` (su server diversi) — "
+                f"rinomina il tag di una delle due per distinguerle prima di trasferire.",
+                ephemeral=True,
+            )
+            return
+
+        destinazione = candidate[0]
+        riuscito = await guild_clan_repo.transfer_between_treasuries(clan.id, destinazione.id, importo)
+        if not riuscito:
+            await interaction.response.send_message(
+                f"La tesoreria di **{clan.name}** non basta — servono **{importo}** coin "
+                f"(ne avete **{clan.treasury_balance}**).",
+                ephemeral=True,
+            )
+            return
+
+        nota_cross_server = (
+            " (su un altro server)" if destinazione.guild_id != guild.id else ""
+        )
+        await interaction.response.send_message(
+            f"✅ Trasferite **{importo}** coin dalla tesoreria di **{clan.name}** a "
+            f"**{destinazione.name}**{nota_cross_server}."
+        )
+
     clan_boost_group = app_commands.Group(
         name="boost", description="Boost XP/coin del Sistema Gilde/Clan.", parent=clan_group
     )

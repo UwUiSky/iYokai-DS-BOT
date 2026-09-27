@@ -548,6 +548,20 @@ class GuildClanRepository:
         )
         return [self._row_to_clan(r) for r in rows]
 
+    async def list_clans_owned_by(self, owner_id: int) -> list[Clan]:
+        """TUTTI i clan (su QUALUNQUE server) di cui `owner_id` è il
+        Capo Clan — NESSUNO scoping per guild_id, apposta: serve a
+        `transfer_between_treasuries` per trovare l'altra gilda dello
+        stesso owner anche quando è su un server diverso (i
+        trasferimenti di tesoreria tra clan dello STESSO owner sono
+        ammessi ANCHE cross-server, confermato esplicitamente
+        dall'utente — l'unica condizione è lo stesso owner, mai lo
+        stesso server)."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM clans WHERE owner_id = $1 ORDER BY created_at", owner_id
+        )
+        return [self._row_to_clan(r) for r in rows]
+
     async def transfer_between_treasuries(
         self, from_clan_id: int, to_clan_id: int, amount: int
     ) -> bool:

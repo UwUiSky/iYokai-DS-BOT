@@ -2241,6 +2241,60 @@ COMMAND_LIST.md rigenerato (165 comandi).
 
 ---
 
+### Fase 55 — Debito di documentazione trovato dall'utente: trasferimento
+tesoreria cross-server tra gilde dello stesso owner (SPEC.md §15.14)
+
+L'utente ha chiesto esplicitamente di controllare la CHAT (non
+GitHub, "che magari non avevi aggiornato la parte") per un discorso
+già fatto in una sessione precedente: un Capo Clan con una seconda
+gilda su un altro server con lo stesso bot deve poter spostare le
+coin della tesoreria cross-server, altrimenti restano bloccate per
+sempre nel server in cui sono state guadagnate.
+
+**Verifica**: `core.repositories.guild_clan_repo.transfer_between_
+treasuries` esisteva già — scritto nel secondo pezzo del repository
+(commit `fd1951f`, prima ancora che esistesse un solo comando
+Discord per il Sistema Gilde/Clan), con 3 test già passanti. Il
+docstring della classe `Clan` diceva esplicitamente da allora: "Un
+clan ha un ID GLOBALE (non per server): necessario perché i
+trasferimenti di tesoreria tra clan dello STESSO owner possono
+attraversare server diversi (confermato esplicitamente dall'utente)".
+**Ma**: `grep` su SPEC.md non trovava NESSUNA voce per questa
+funzionalità — non `[x]`, non `[~]`, non `[ ]`, semplicemente
+assente dallo schema — e nessun comando Discord l'aveva mai
+richiamata. Un debito di documentazione reale, non un pezzo nuovo da
+progettare: i numeri e la regola ("solo lo stesso owner, mai lo
+stesso server") erano già confermati, mancava solo collegare il
+repository a un comando e a SPEC.md.
+
+**Nuovo**: `GuildClanRepository.list_clans_owned_by(owner_id)` — TUTTI
+i clan (su QUALUNQUE server) di cui `owner_id` è il Capo Clan, senza
+scoping per guild_id (apposta). **`/clan tesoreria trasferisci
+<tag_destinazione> <importo>`**: solo il Capo Clan, cerca il tag tra
+le gilde restituite da `list_clans_owned_by` (escludendo la propria)
+— se zero corrispondenze, avvisa che non è Capo Clan di nessun'altra
+gilda con quel tag "su nessun server"; se più di una (stesso owner
+con lo stesso tag su server diversi, raro ma possibile visto che i
+tag sono univoci solo per server), chiede di rinominarne una prima di
+procedere. Il messaggio di successo segnala esplicitamente quando il
+trasferimento è avvenuto verso un altro server.
+
+**7 nuovi test**: 2 in `test_guild_clan_repo.py` (`list_clans_owned_by`
+attraversa i server, lista vuota), 5 in `test_guild_clan_cog_behavior.
+py` per il comando (successo cross-server con messaggio che lo
+segnala, permesso negato a un admin, gilda di un altro owner non
+trovata, saldo insufficiente, nessuna gilda).
+
+SPEC.md: nuova voce `[x]` sotto §15.14 per il trasferimento
+cross-server (che prima non esisteva nello schema — non un
+passaggio da `[ ]`/`[~]` a `[x]`, una voce mancante aggiunta e
+chiusa nella stessa sessione). **58% dello schema (152/273).**
+COMMAND_LIST.md rigenerato (166 comandi).
+
+**Suite di test completa: 1387/1387 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

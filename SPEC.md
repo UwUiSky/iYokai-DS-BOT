@@ -582,12 +582,16 @@ necessario.
   a tick/minuto in vocale di gilda, decadimento lineare dopo 3h filate
   nello stesso canale, tetto 720 tick/giorno, deficit di creazione
   15.000 coin/24h, costi canale 25k/50k/200k/800k — comandi Discord
-  `/clan crea|info|membri|classifica|sciogli|tesoreria dona|invita|
-  espelli|promuovi|compra-canale|boost individuale|boost gilda`, il
-  worker di eliminazione automatica per chi non colma il deficit in
-  tempo, i ruoli Discord Capo Clan/Admin Clan, l'acquisto di canali
-  extra con doppio requisito coin + ore vocali accumulate dalla
-  gilda, e ORA anche i boost XP/coin ×2/24h individuali e di gilda)
+  `/clan crea|info|membri|classifica|sciogli|tesoreria dona|
+  tesoreria trasferisci|invita|espelli|promuovi|compra-canale|boost
+  individuale|boost gilda`, il worker di eliminazione automatica per
+  chi non colma il deficit in tempo, i ruoli Discord Capo Clan/Admin
+  Clan, l'acquisto di canali extra con doppio requisito coin + ore
+  vocali accumulate dalla gilda, i boost XP/coin ×2/24h individuali e
+  di gilda, e ORA anche il trasferimento tesoreria→tesoreria tra due
+  gilde dello STESSO owner, ANCHE cross-server — un debito di
+  documentazione trovato e chiuso: il repository esisteva già da
+  prima, non era mai stato collegato a nessun comando)
   - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
     valida il tag, crea la categoria Discord (view negata a
     `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
@@ -630,7 +634,25 @@ necessario.
     movimenti — `/clan tesoreria dona` scala il saldo personale e
     accredita la tesoreria (ufficializzando il clan in automatico se
     il deficit viene colmato); consultabile via `/clan info`.
-    **Manca** ancora un comando di PRELIEVO per capo/admin
+    **Manca** ancora un comando di PRELIEVO (spesa verso un membro,
+    es. premio evento) per capo/admin — diverso dal trasferimento
+    tra gilde qui sotto, che è tesoreria→tesoreria, mai verso un
+    portafoglio personale
+  - `[x]` Trasferimento tesoreria→tesoreria tra due gilde dello
+    STESSO owner, **ANCHE cross-server** — `core.repositories.
+    guild_clan_repo.transfer_between_treasuries` esisteva già da una
+    sessione precedente (clan con ID GLOBALE non per server proprio
+    per questo) ma non era mai stato collegato a nessun comando
+    Discord né tracciato in questo schema: **debito di
+    documentazione trovato e chiuso in questa sessione**, non un
+    pezzo nuovo. `/clan tesoreria trasferisci <tag_destinazione>
+    <importo>`: solo il Capo Clan, cerca il tag tra TUTTE le gilde
+    (di QUALUNQUE server) di cui il chiamante è owner
+    (`list_clans_owned_by`, nuovo) — l'UNICA condizione è lo stesso
+    owner, mai lo stesso server (confermato esplicitamente
+    dall'utente quando il repository fu scritto): senza questo
+    comando le coin di una seconda gilda su un altro server
+    resterebbero bloccate per sempre lì
   - `[~]` Decadimento mensile 10% sulla tesoreria NON spesa —
     `guild_clan_treasury_decay_worker.py`, idempotente per periodo
     (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`,
@@ -666,9 +688,10 @@ necessario.
     boost è già attivo ESTENDE la scadenza da lì (mai da subito,
     stesso pattern già usato per l'estensione mensile del premium)
   - `[x]` Comandi: `/clan crea|info|membri|classifica|sciogli|
-    tesoreria dona|invita|espelli|promuovi|compra-canale|boost
-    individuale|boost gilda` — tutti i comandi previsti per §15.14
-    sono scritti; restano solo il lato testuale del guadagno ×2 e il
+    tesoreria dona|tesoreria trasferisci|invita|espelli|promuovi|
+    compra-canale|boost individuale|boost gilda` — tutti i comandi
+    previsti per §15.14 sono scritti; restano solo il lato testuale
+    del guadagno ×2 e il
     prelievo dalla tesoreria (voci separate sopra)
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
@@ -834,35 +857,42 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 26 | 5 | 2 |
+| §15 Levels/Gilde | 27 | 5 | 2 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **151** | **10** | **111** |
+| **Totale** | **152** | **10** | **111** |
 
-Su 272 voci totali: **151 fatte, 10 parziali, 111 mancanti** — circa
-il 57% dello schema (contando i parziali a metà peso). §11 Backup
+Su 273 voci totali: **152 fatte, 10 parziali, 111 mancanti** — circa
+il 58% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
 l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
 Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico,
 tutti i comandi Discord previsti (`/clan crea|info|membri|classifica|
-sciogli|tesoreria dona|invita|espelli|promuovi|compra-canale|boost
-individuale|boost gilda`), il worker di eliminazione automatica, i
-ruoli Discord condivisi Capo Clan/Admin Clan, l'acquisto di canali
-extra con doppio requisito (coin + ore vocali accumulate dalla
-gilda), e ORA anche i boost XP/coin ×2 per 24h — individuale
-(10.000 coin personali, chiunque, solo sul proprio tick di gilda) e
-di gilda (100.000 coin dalla tesoreria, Capo/Admin, per tutti i
-membri; i due si moltiplicano tra loro se entrambi attivi). Restano
-solo il lato TESTUALE del guadagno ×2 (oggi solo vocale) e un
-comando di PRELIEVO dalla tesoreria per Capo/Admin — le uniche due
-voci ancora aperte in §15.14. §15.15 (non nello schema originale,
-emersa in conversazione) è COMPLETO: decadimento settimanale
-personale, cassa di server alimentata da entrambi i decadimenti, e
-sblocco premium a doppio cancello (tempo dal join + costo dalla
-cassa) — comandi `/cassa saldo` e `/cassa sblocca-premium`. Resta
-solo un comando dedicato per spendere la cassa su premi evento.
+sciogli|tesoreria dona|tesoreria trasferisci|invita|espelli|
+promuovi|compra-canale|boost individuale|boost gilda`), il worker di
+eliminazione automatica, i ruoli Discord condivisi Capo Clan/Admin
+Clan, l'acquisto di canali extra con doppio requisito (coin + ore
+vocali accumulate dalla gilda), i boost XP/coin ×2 per 24h
+(individuale e di gilda, si moltiplicano tra loro), e ORA anche il
+trasferimento tesoreria→tesoreria tra due gilde dello STESSO owner
+ANCHE cross-server (`/clan tesoreria trasferisci`) — un debito di
+documentazione trovato durante un controllo dell'utente e chiuso in
+questa sessione: `transfer_between_treasuries` esisteva già dal
+secondo pezzo del repository (l'ID globale dei clan, non per server,
+era stato scelto proprio per questo) ma non era mai stato collegato
+a nessun comando Discord né tracciato in questo schema. Restano solo
+il lato TESTUALE del guadagno ×2 (oggi solo vocale) e un comando di
+PRELIEVO dalla tesoreria verso un membro per Capo/Admin (es. premio
+evento — diverso dal trasferimento tra gilde, ora fatto) — le uniche
+due voci ancora aperte in §15.14. §15.15 (non nello schema
+originale, emersa in conversazione) è COMPLETO: decadimento
+settimanale personale, cassa di server alimentata da entrambi i
+decadimenti, e sblocco premium a doppio cancello (tempo dal join +
+costo dalla cassa) — comandi `/cassa saldo` e `/cassa
+sblocca-premium`. Resta solo un comando dedicato per spendere la
+cassa su premi evento.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati
