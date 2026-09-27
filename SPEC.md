@@ -38,8 +38,14 @@ file, non da un riassunto.**
   dal check runtime. Vedi § Decisioni in PROGRESS.md
 - `[x]` 1.2 Cog Manager — load / unload / reload
 - `[x]` 1.2 Controllo stato attivazione modulo per server
-- `[ ]` 1.2 Evento `modules_updated` — il setup scrive sul DB ma non
-  emette nessun evento; nessun consumatore lo ascolta
+- `[x]` 1.2 Evento `modules_updated` — `SetupView.save()` ora emette
+  `interaction.client.dispatch("modules_updated", guild_id,
+  module_name, active, changed_by)` per ogni modulo il cui stato è
+  DAVVERO cambiato (stesso criterio già usato per lo storico Config
+  Diff & Rollback) — infrastruttura pronta, nessun consumatore
+  ancora (stesso schema di invite_tracker prima di Spam Trap): un
+  futuro listener si registra con `@commands.Cog.listener()` su
+  `on_modules_updated`
 - `[x]` **1.3 Memory Guard**
   - `[x]` Monitoraggio RAM ogni 60 secondi (psutil) — `core/memory_guard.py`, letto per davvero con `psutil.Process().memory_info().rss`, verificato con un test che legge la RAM vera del processo di test (nessun mock)
   - `[x]` Garbage collection forzata su soglia — evoluta a **quattro
@@ -104,13 +110,55 @@ file, non da un riassunto.**
 - `[x]` 3.2 Attiva/disattiva natura premium di un singolo modulo
 - `[ ]` 3.2 Visualizza stato premium di **tutti** i server
 - `[x]` 3.3 Controllo runtime (`requires_module`)
-- `[ ]` 3.1 Metodo sblocco: **Boost Nitro** sul server principale
-  (`Member.premium_since`) — deciso esplicitamente, nessun codice
-- `[ ]` 3.1 Metodo sblocco: 1.000.000 coin per modulo
-- `[ ]` 3.1 Metodo sblocco: pagamento annuale per modulo
-- `[ ]` 3.3 Ricarica delle flag premium dal DB all'avvio (il registry
-  riparte sempre da `is_premium_active=False`; TODO già annotato nel
-  codice ma mai chiuso)
+- `[x]` 3.1 Metodo sblocco: **Boost Nitro** sul server principale
+  (`Member.premium_since`) — richiesto esplicitamente dall'utente
+  ("per ora attivi solo... nitro boost..."). `core.premium.
+  _guild_owner_boosts_main_guild`: l'OWNER del server richiedente
+  deve avere un boost attivo su `config.MAIN_GUILD_ID` — sblocca
+  TUTTI i moduli premium per quel server (come whitelist), non uno
+  specifico. Assunzione presa per inferenza (nessun dettaglio più
+  fine specificato): controlla l'owner del server, non un admin
+  qualsiasi — da correggere se non è quello che si intendeva
+- `[~]` 3.1 Metodo sblocco: 1.000.000 coin per modulo — **rimandato**
+  su richiesta esplicita dell'utente ("per ora attivi solo... nitro
+  boost, pagamento mensile|annuale"), non scartato: resta un metodo
+  di sblocco previsto, solo non prioritario ora
+- `[x]` 3.1 Metodo sblocco: pagamento **mensile o annuale** per
+  modulo — l'utente ha aggiunto "mensile" a quanto originariamente
+  previsto ("annuale" da solo). Nessun gateway di pagamento reale
+  integrato (Discord non ne fornisce uno nativo utilizzabile da un
+  bot normale, e questo progetto non processa mai pagamenti — stesso
+  principio già in `core/premium_purchase_service.py` per il premium
+  via cassa): il pagamento avviene FUORI dal bot, l'OWNER concede
+  l'abbonamento a mano con `/owner premium-grant <server> <modulo>
+  <mensile|annuale>` dopo averlo incassato — `/owner premium-revoke`
+  e `/owner premium-subscriptions` completano il ciclo.
+  `core.repositories.module_subscription_repo`, una riga per
+  (server, modulo): a differenza di nitro boost/whitelist (sbloccano
+  TUTTO), questo resta scoped al singolo modulo per design, come
+  esplicitamente previsto dallo schema originale ("per modulo")
+- `[x]` **Override temporaneo di fase ALPHA** — **voce nuova**, non
+  nello schema originale, aggiunta su richiesta esplicita
+  dell'utente: "mi raccomando per ora (dato che è in alpha, tutte le
+  feature premium sono sbloccate per tutti)". `config.
+  PREMIUM_ALPHA_UNLOCK_ALL` (default **true**): quando attivo,
+  `guild_has_premium_access` sblocca SEMPRE tutto per tutti, a
+  prescindere da whitelist/boost/abbonamento — controllato PRIMA di
+  ogni altra condizione. Va impostato a `false` in `.env` quando
+  l'alpha finisce, per far valere davvero i metodi di sblocco sopra
+- `[x]` 3.3 Ricarica delle flag premium dal DB all'avvio — **debito
+  reale trovato in questa sessione**: `premium_module_flags` esiste
+  già (`_apply_premium_toggle` in `cogs/utility/owner_premium.py`
+  la scrive), ma nessun consumatore la rileggeva mai all'avvio, quindi
+  lo stato premium impostato con `/owner premium-toggle` si perdeva
+  ad ogni riavvio del bot anche restando persistito in tabella.
+  Corretto con `core.premium.reload_premium_flags_from_database()`,
+  chiamata da `main.py.setup_hook` **subito dopo** `load_all_cogs()`
+  (non durante `Database.run_migrations`: a quel punto i moduli non
+  sono ancora registrati e `registry.set_module_premium` solleverebbe
+  `ValueError` "non registrato"). Righe di moduli non (più) registrati
+  o diventati sempre-gratuiti vengono ignorate in silenzio, mai un
+  crash all'avvio
 
 ## §4 VERIFY + FINGERPRINT + ANTI-ALT — Verify Base completo, il resto dipende dal Web Panel
 
@@ -1013,9 +1061,9 @@ rilancia lo stesso conteggio.
 
 | Sezione | Fatto | Parziale | Mancante |
 |---|---|---|---|
-| §1 Core | 18 | 0 | 1 |
+| §1 Core | 19 | 0 | 0 |
 | §2 Setup | 2 | 0 | 5 |
-| §3 Premium | 4 | 0 | 6 |
+| §3 Premium | 8 | 1 | 2 |
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 3 | 0 | 12 |

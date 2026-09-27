@@ -40,7 +40,7 @@ class EventLogRetentionService:
         totale_eliminati = 0
 
         for guild in bot.guilds:
-            is_premium = await guild_has_premium_access(guild.id, MODULE_LOGGING)
+            is_premium = await guild_has_premium_access(guild.id, MODULE_LOGGING, bot=bot)
             giorni = retention_days_for(is_premium)
             soglia = now - timedelta(days=giorni)
 

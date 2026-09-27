@@ -3173,6 +3173,96 @@ di fila).
 
 ---
 
+### Fase 66 — Chiude §1.2 (evento `modules_updated`) e §3 Premium
+(nitro boost, abbonamento mensile/annuale, override ALPHA), in
+risposta a una direttiva numerata dell'utente su tredici settori
+
+L'utente ha chiesto un riepilogo delle voci incomplete nei settori
+già iniziati, poi ha risposto con una direttiva numerata (1-16, più
+"Bcde, li vediamo poi con calma") che assegna un verdetto a ciascun
+settore. Questa fase chiude i punti 1 e 3; il resto (2/4 stand-by,
+6/7/8/9/10/12/13/14/16 e B/C/D/E) resta in coda, tracciato a task
+separati.
+
+**§1.2 — evento `modules_updated`** ("da sistemare"): `SetupView.
+save()` ora chiama `interaction.client.dispatch("modules_updated",
+guild_id, module_name, active, changed_by)` per ogni modulo il cui
+stato è DAVVERO cambiato (mai per uno lasciato invariato — stesso
+criterio già in uso per lo storico Config Diff & Rollback).
+`interaction.client` invece di passare `bot` a `SetupView` per
+evitare di allargare la firma della view solo per questo.
+Infrastruttura pronta, nessun consumatore ancora — stesso schema di
+`invite_tracker` prima che Spam Trap ne avesse bisogno.
+
+**§3 Premium — quattro meccanismi di sblocco attivi**, in ordine di
+controllo in `core.premium.guild_has_premium_access`:
+
+1. **Override ALPHA** (`config.PREMIUM_ALPHA_UNLOCK_ALL`, default
+   **true**) — voce nuova, richiesta esplicitamente ("dato che è in
+   alpha, tutte le feature premium sono sbloccate per tutti"),
+   controllata PRIMA di ogni altra condizione. Da impostare a
+   `false` in `.env` quando l'alpha finisce.
+2. **Whitelist** manuale (già esistente, solo integrata nel nuovo
+   ordine di controllo).
+3. **Premium via cassa/tesoreria** (§15.15, già esistente).
+4. **Nitro Boost** sul server principale — `_guild_owner_boosts_
+   main_guild`: l'OWNER del server richiedente deve avere un boost
+   attivo su `config.MAIN_GUILD_ID` (`Member.premium_since`).
+   Decisione per inferenza: controlla l'owner, non un admin
+   qualsiasi (nessun dettaglio più fine specificato dall'utente).
+5. **Abbonamento mensile/annuale PER MODULO** —
+   `core.repositories.module_subscription_repo`, stesso pattern
+   "estendi da max(ora, scadenza attuale)" già usato da
+   `guild_premium_repo.record_purchase`. Nessun gateway di pagamento
+   reale (Discord non ne offre uno nativo per un bot normale, e il
+   progetto non processa mai pagamenti — stesso principio di
+   `core/premium_purchase_service.py`): il pagamento avviene FUORI
+   dal bot, l'OWNER concede l'abbonamento a mano con `/owner
+   premium-grant <server> <modulo> <mensile|annuale>` dopo averlo
+   incassato; `/owner premium-revoke` e `/owner
+   premium-subscriptions` completano il ciclo.
+
+Il metodo "1.000.000 coin per modulo" resta `[~]` (**rimandato**, non
+scartato): l'utente ha detto "per ora" attivi solo nitro boost e
+pagamento, non lo ha rifiutato in modo definitivo.
+
+**Debito reale trovato e corretto in questa fase**: §3.3 ("ricarica
+delle flag premium dal DB all'avvio") non era mai stato implementato
+nonostante `premium_module_flags` esistesse già — lo stato premium
+impostato con `/owner premium-toggle` si perdeva ad ogni riavvio.
+Aggiunta `core.premium.reload_premium_flags_from_database()`,
+chiamata da `main.py.setup_hook` **subito dopo** `load_all_cogs()`
+(non durante `Database.run_migrations`: a quel punto i moduli non
+sono ancora registrati nel registry e `set_module_premium`
+solleverebbe `ValueError`). Righe di moduli non più registrati o
+diventati sempre-gratuiti vengono ignorate in silenzio.
+
+**42 nuovi test**: `tests/test_setup_cog.py` (evento emesso solo per
+i cambiamenti reali); `tests/test_module_subscription_repo.py` (9,
+schema abbonamenti); `tests/test_premium_access.py` (9, integrazione
+dei quattro meccanismi); `tests/test_owner_premium_grant_commands.py`
+(8, comportamento reale di grant/revoke/subscriptions);
+`tests/test_premium_reload_from_database.py` (3, la ricarica
+all'avvio); più gli aggiustamenti a `tests/test_event_log_retention.py`
+(il nuovo default ALPHA=true rompeva un test che si aspettava un
+server non-premium — corretto con una config finta che lo disattiva)
+e a `tests/test_owner_premium_cog_smoke.py` (nuovi sottocomandi).
+
+SPEC.md: §1.2 passa a `[x]`; §3 passa da 4 fatto/0 parziale/6
+mancante a **8 fatto/1 parziale/2 mancante** (ricalcolo meccanico);
+§1 corretto da 18/0/1 a **19/0/0** (errore di conteggio precedente,
+non legato a questa fase, corretto qui perché notato).
+
+**Regola imparata**: la ricarica di uno stato in registry all'avvio
+va sempre verificata con un test che la esegue per davvero contro il
+DB — scrivere il commento "viene ricaricato all'avvio" nello schema
+SQL non equivale ad aver scritto il codice che lo fa.
+
+**Suite di test completa: 1657/1657 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

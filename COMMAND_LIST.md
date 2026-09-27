@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 14:14 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 15:34 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 179 comandi in 10 categorie.**
+**Totale: 182 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -172,8 +172,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 14:
 - **`/owner eval`** — [OWNER] Esegue codice Python (con conferma).
 - **`/owner leave-guild`** — [OWNER] Forza il bot a lasciare un server specifico (senza bloccarlo).
 - **`/owner memory-status`** — [OWNER] Mostra il consumo di RAM attuale del processo.
+- **`/owner premium-grant`** — [OWNER] Concede un abbonamento mensile/annuale a un modulo per un server.
 - **`/owner premium-list`** — [OWNER] Mostra lo stato premium di tutti i moduli.
 - **`/owner premium-panel`** — [OWNER] Pannello interattivo per attivare/disattivare i moduli premium.
+- **`/owner premium-revoke`** — [OWNER] Revoca l'abbonamento di un modulo per un server.
+- **`/owner premium-subscriptions`** — [OWNER] Mostra gli abbonamenti per modulo attivi su un server.
 - **`/owner premium-toggle`** — [OWNER] Accende o spegne la natura premium di un modulo.
 - **`/owner shell`** — [OWNER] Esegue un comando shell (con conferma).
 - **`/owner stats`** — [OWNER] Statistiche globali del bot.

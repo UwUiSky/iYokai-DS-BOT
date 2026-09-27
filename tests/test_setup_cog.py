@@ -51,10 +51,22 @@ class _FakeUser:
     id = 999
 
 
+class _FakeClient:
+    """Spia di interaction.client — registra ogni dispatch() ricevuto,
+    senza bisogno di un vero discord.ext.commands.Bot."""
+
+    def __init__(self) -> None:
+        self.dispatched: list[tuple] = []
+
+    def dispatch(self, event_name: str, *args) -> None:
+        self.dispatched.append((event_name, *args))
+
+
 class _FakeInteraction:
     def __init__(self) -> None:
         self.response = _FakeResponse()
         self.user = _FakeUser()
+        self.client = _FakeClient()
 
 
 def _find_button(view: SetupView, label: str) -> discord.ui.Button:
@@ -240,6 +252,61 @@ async def test_annulla_non_scrive_nulla_sul_database():
     finally:
         await database.pool.execute(
             "DELETE FROM guild_config WHERE guild_id = 444444444"
+        )
+        await database.close()
+
+
+async def test_salvataggio_emette_modules_updated_solo_per_i_cambiati():
+    """SPEC.md §1.2: il setup scriveva sul DB ma non emetteva nessun
+    evento — /setup save ora chiama interaction.client.dispatch(
+    "modules_updated", ...) per OGNI modulo il cui stato è
+    effettivamente cambiato, e per nessun altro (stesso identico
+    criterio già usato per lo storico Config Diff & Rollback)."""
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id = 555555557
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = $1", guild_id
+        )
+
+        modulo_a = PremiumModule(
+            name="test_evento_a", display_name="A", description="A"
+        )
+        modulo_b = PremiumModule(
+            name="test_evento_b", display_name="B", description="B"
+        )
+
+        await database.ensure_guild_exists(guild_id)
+        await database.set_module_active_for_guild(guild_id, "test_evento_a", True)
+        await database.set_module_active_for_guild(guild_id, "test_evento_b", False)
+
+        import cogs.utility.setup as setup_module
+        original_db = setup_module.db
+        setup_module.db = database
+
+        try:
+            modules_with_state = [(modulo_a, True), (modulo_b, False)]
+            view = SetupView(guild_id, modules_with_state)
+
+            # A resta invariato (attivo), B viene acceso: SOLO B deve
+            # produrre un evento.
+            view.selected_values = {"test_evento_a", "test_evento_b"}
+
+            save_button = _find_button(view, "Salva configurazione")
+            fake_interaction = _FakeInteraction()
+            await save_button.callback(fake_interaction)
+
+            eventi = fake_interaction.client.dispatched
+            assert eventi == [
+                ("modules_updated", guild_id, "test_evento_b", True, 999)
+            ]
+        finally:
+            setup_module.db = original_db
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 555555557"
         )
         await database.close()
 

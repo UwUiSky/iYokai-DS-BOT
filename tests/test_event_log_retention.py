@@ -29,9 +29,28 @@ class _FakeBot:
     def __init__(self, guild_ids: list[int]) -> None:
         self.guilds = [_FakeGuild(gid) for gid in guild_ids]
 
+    def get_guild(self, guild_id: int):
+        # core.premium._guild_owner_boosts_main_guild lo chiama per
+        # ogni server prima del controllo cassa/whitelist — None è
+        # sufficiente qui: nessun test in questo file esercita il
+        # nitro boost, solo whitelist/cassa.
+        return None
+
 
 @pytest.mark.asyncio
-async def test_tick_applica_soglie_diverse_free_e_premium():
+async def test_tick_applica_soglie_diverse_free_e_premium(monkeypatch):
+    # PREMIUM_ALPHA_UNLOCK_ALL (default True) sbloccherebbe ENTRAMBI i
+    # server, vanificando il punto di questo test — Config è
+    # @dataclass(frozen=True), quindi si sostituisce l'intero
+    # riferimento al modulo config con una classe finta minimale
+    # (stesso pattern già usato altrove nel progetto, es.
+    # tests/test_twitch_watcher.py), non il singolo campo.
+    class _ConfigAlphaDisattivata:
+        PREMIUM_ALPHA_UNLOCK_ALL = False
+        MAIN_GUILD_ID = 0
+
+    monkeypatch.setattr(premium_module, "config", _ConfigAlphaDisattivata())
+
     database = Database()
     await database.connect()
     try:

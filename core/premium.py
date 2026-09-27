@@ -169,26 +169,104 @@ class PremiumRegistry:
 registry = PremiumRegistry()
 
 
-async def guild_has_premium_access(guild_id: int, module_name: str) -> bool:
+async def reload_premium_flags_from_database() -> None:
+    """
+    SPEC.md §3.3 — ricarica lo stato premium di ogni modulo dalla
+    tabella `premium_module_flags` all'avvio del bot.
+
+    Perché serve: ogni `PremiumModule` nasce con
+    `is_premium_active=False` in `register()` (vedi sopra), quindi
+    senza questa ricarica lo stato premium impostato con
+    `/owner premium-toggle` andrebbe perso ad ogni riavvio, anche se
+    la riga corrispondente resta persistita in
+    `premium_module_flags` (scritta da `_apply_premium_toggle` in
+    `cogs/utility/owner_premium.py`).
+
+    Va chiamato DOPO che tutti i cog hanno avuto modo di registrarsi
+    (`load_all_cogs`), non durante `Database.run_migrations()`:
+    `set_module_premium` solleva `ValueError` se il modulo non è
+    ancora registrato — vedi `main.py.setup_hook`, subito dopo
+    `load_all_cogs(self)`.
+    """
+    from core.database import db
+
+    righe = await db.pool.fetch(
+        "SELECT module_name, is_active FROM premium_module_flags"
+    )
+    for riga in righe:
+        modulo = registry.get(riga["module_name"])
+        if modulo is None or not modulo.premium_capable:
+            # Riga storica di un modulo non (più) registrato in
+            # questo avvio, o marcato sempre-gratuito nel frattempo:
+            # ignorata in silenzio, mai un crash all'avvio per questo.
+            continue
+        registry.set_module_premium(riga["module_name"], riga["is_active"])
+
+
+async def _guild_owner_boosts_main_guild(guild_id: int, bot) -> bool:
+    """
+    NITRO_BOOST (SPEC.md §3.1): "sul server principale" — l'owner del
+    server richiedente deve avere un boost attivo (`Member.
+    premium_since`) sul server principale del bot (`config.
+    MAIN_GUILD_ID`, lo stesso già usato per il doppio cancello
+    temporale del premium via cassa). Sblocca TUTTI i moduli premium
+    per quel server (come whitelist), non uno specifico — a
+    differenza degli abbonamenti mensili/annuali per modulo (vedi
+    module_subscription_repo). Richiede `bot` per leggere i due
+    server e il membro: senza un bot connesso (es. un worker che non
+    lo passa) questo metodo semplicemente non si applica, non
+    solleva — le altre condizioni di sblocco restano valide comunque.
+    """
+    if bot is None:
+        return False
+
+    guild = bot.get_guild(guild_id)
+    if guild is None or guild.owner_id is None:
+        return False
+
+    main_guild = bot.get_guild(config.MAIN_GUILD_ID)
+    if main_guild is None:
+        return False
+
+    member = main_guild.get_member(guild.owner_id)
+    if member is None:
+        return False
+
+    return member.premium_since is not None
+
+
+async def guild_has_premium_access(
+    guild_id: int, module_name: str, bot=None
+) -> bool:
     """
     Verifica se UN SERVER SPECIFICO ha diritto ad usare un modulo
     che è (globalmente) premium.
 
-    Due meccanismi di sblocco attivi oggi:
-    - whitelist manuale (owner del bot, permanente)
+    Meccanismi di sblocco attivi oggi (SPEC.md §3.1):
+    - override ALPHA (`config.PREMIUM_ALPHA_UNLOCK_ALL`, temporaneo,
+      vedi il commento sul campo in core/config.py): se attivo,
+      sblocca SEMPRE tutto per tutti, controllato PRIMA di ogni
+      altra condizione
+    - whitelist manuale (owner del bot, permanente) — sblocca tutto
     - premium acquistato dal server stesso via cassa (SPEC.md
       §15.15, core.premium_purchase_service/guild_premium_repo) —
       sblocca TUTTI i moduli premium per la durata acquistata
-      (`premium_until`), non un modulo specifico: comprare "un mese
-      di bot premium" è tutto o niente, non un acquisto per modulo
-
-    TODO quando si implementeranno gli altri metodi di sblocco:
-    - NITRO_BOOST: controllo su member.premium_since nel server
-      principale, per l'owner/admin del server richiedente
-    - YEARLY_PAYMENT: query alla tabella subscriptions
+      (`premium_until`), non un modulo specifico
+    - NITRO_BOOST: l'owner del server richiedente ha un boost attivo
+      sul server principale del bot — sblocca tutto (vedi
+      `_guild_owner_boosts_main_guild`), richiede `bot`
+    - pagamento mensile/annuale PER MODULO (`module_subscription_
+      repo`) — sblocca SOLO il modulo `module_name` richiesto, non
+      gli altri: nessun gateway di pagamento reale, l'owner concede
+      l'abbonamento a mano con `/owner premium-grant` dopo averlo
+      incassato fuori dal bot (vedi il file del repository)
     """
+    if config.PREMIUM_ALPHA_UNLOCK_ALL:
+        return True
+
     from core.database import db  # import locale per evitare cicli
     from core.repositories.guild_premium_repo import guild_premium_repo
+    from core.repositories.module_subscription_repo import module_subscription_repo
 
     if await db.is_guild_whitelisted(guild_id):
         return True
@@ -196,7 +274,13 @@ async def guild_has_premium_access(guild_id: int, module_name: str) -> bool:
     from datetime import datetime, timezone
 
     stato = await guild_premium_repo.get_status(guild_id)
-    return stato.is_active(datetime.now(timezone.utc))
+    if stato.is_active(datetime.now(timezone.utc)):
+        return True
+
+    if await _guild_owner_boosts_main_guild(guild_id, bot):
+        return True
+
+    return await module_subscription_repo.is_active(guild_id, module_name)
 
 
 class PremiumCheckFailure(app_commands.CheckFailure):
@@ -280,7 +364,7 @@ def requires_module(module_name: str):
             raise PremiumCheckOutsideGuildError()
 
         has_access = await guild_has_premium_access(
-            interaction.guild.id, module_name
+            interaction.guild.id, module_name, bot=interaction.client
         )
         if not has_access:
             module = registry.get(module_name)

@@ -80,6 +80,22 @@ def _optional_int(name: str, default: int) -> int:
         sys.exit(1)
 
 
+def _optional_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    print(
+        f"[CONFIG] ERRORE: '{name}' deve essere true/false (o 1/0, yes/no, "
+        f"on/off), trovato: '{raw}'",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 @dataclass(frozen=True)
 class Config:
     """
@@ -183,6 +199,16 @@ class Config:
     # esplicitamente invece di mostrare un URL http://0.0.0.0 inutile.
     ALERTS_WEBHOOK_PUBLIC_BASE_URL: str = field(default="")
 
+    # --- Premium (SPEC.md §3) ---------------------------------------
+    # Override temporaneo di fase ALPHA: quando True, `core.premium.
+    # guild_has_premium_access` restituisce sempre True per QUALUNQUE
+    # server e modulo, a prescindere da whitelist/boost/abbonamento —
+    # richiesto esplicitamente dall'utente ("tutte le feature premium
+    # sbloccate per tutti" durante l'alpha). Default True apposta (la
+    # fase attuale del progetto): quando l'alpha finisce, va impostato
+    # a False in .env per far valere davvero i metodi di sblocco.
+    PREMIUM_ALPHA_UNLOCK_ALL: bool = field(default=True)
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() == "production"
@@ -236,6 +262,7 @@ def _load_config() -> Config:
         ALERTS_WEBHOOK_HOST=_optional("ALERTS_WEBHOOK_HOST", "0.0.0.0"),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
+        PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", True),
     )
 
 

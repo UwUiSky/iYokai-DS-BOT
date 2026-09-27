@@ -122,6 +122,19 @@ class SetupView(discord.ui.View):
             await db.set_module_active_for_guild(
                 self.guild_id, module_name, active, changed_by=interaction.user.id
             )
+            # SPEC.md §1.2: emesso SOLO per un cambiamento REALE (mai
+            # per un modulo lasciato invariato), stesso identico
+            # criterio usato sopra per lo storico Config Diff &
+            # Rollback — così i due si allineano sempre. Passa da
+            # interaction.client (il Bot vero a runtime) invece di
+            # tenere un riferimento al bot sulla view: nessun
+            # consumatore lo ascolta ancora (infrastruttura pronta,
+            # come invite_tracker prima di Spam Trap — vedi
+            # PROGRESS.md), un futuro listener si registra con
+            # @commands.Cog.listener() su "on_modules_updated".
+            interaction.client.dispatch(
+                "modules_updated", self.guild_id, module_name, active, interaction.user.id
+            )
 
         self.stop()
         await interaction.response.edit_message(

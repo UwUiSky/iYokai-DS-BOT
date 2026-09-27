@@ -351,6 +351,11 @@ class Database:
         )
         await clan_leaderboard_config_migrations(self.pool)
 
+        from core.repositories.module_subscription_repo import (
+            run_migrations as module_subscription_migrations,
+        )
+        await module_subscription_migrations(self.pool)
+
         from core.repositories.shop_repo import run_migrations as shop_migrations
         await shop_migrations(self.pool)
 

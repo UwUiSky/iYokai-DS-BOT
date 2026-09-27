@@ -146,6 +146,9 @@ async def clean_db(db_pool):
     from core.repositories.clan_leaderboard_config_repo import (
         run_migrations as clan_leaderboard_config_migrations,
     )
+    from core.repositories.module_subscription_repo import (
+        run_migrations as module_subscription_migrations,
+    )
     from core.repositories.shop_repo import run_migrations as shop_migrations
     from core.repositories.giveaway_repo import run_migrations as giveaway_migrations
     from core.repositories.guild_clan_repo import (
@@ -194,6 +197,7 @@ async def clean_db(db_pool):
     await level_reward_migrations(db_pool)
     await monthly_winners_migrations(db_pool)
     await clan_leaderboard_config_migrations(db_pool)
+    await module_subscription_migrations(db_pool)
     await shop_migrations(db_pool)
     await giveaway_migrations(db_pool)
     await guild_clan_migrations(db_pool)
@@ -248,6 +252,7 @@ async def clean_db(db_pool):
         "level_reward_roles",
         "monthly_winners_config",
         "clan_leaderboard_config",
+        "module_subscriptions",
         "shop_items",
         "shop_purchases",
         "giveaways",

@@ -35,6 +35,7 @@ from discord.ext import commands
 from core.config import config
 from core.database import db
 from core.cog_manager import load_all_cogs
+from core.premium import reload_premium_flags_from_database
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
@@ -185,6 +186,12 @@ class iYokaiBot(commands.AutoShardedBot):
         slash command.
         """
         await load_all_cogs(self)
+
+        # Ricarica lo stato premium per-modulo dal DB (SPEC.md §3.3):
+        # va fatto SOLO dopo load_all_cogs(), perché ogni modulo deve
+        # essere già registrato nel registry — vedi il docstring di
+        # reload_premium_flags_from_database().
+        await reload_premium_flags_from_database()
 
         # Avvia il loop dello scheduler (tempban, unmute automatico,
         # ecc.) SOLO dopo che i cog hanno avuto modo di registrare i

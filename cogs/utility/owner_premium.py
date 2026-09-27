@@ -27,6 +27,14 @@ from core.database import db
 from core.eval_shell_logic import truncate_output
 from core.premium import PremiumModule, registry
 from core.repositories.eval_shell_log_repo import eval_shell_log_repo
+from core.repositories.module_subscription_repo import module_subscription_repo
+
+# SPEC.md §3.1: "pagamento mensile|annuale per modulo" — durata in
+# giorni per ciascuna scelta. Nessun gateway di pagamento reale
+# integrato (vedi module_subscription_repo.py): il pagamento avviene
+# fuori dal bot, l'owner concede l'abbonamento a mano dopo averlo
+# incassato.
+SUBSCRIPTION_DURATION_DAYS = {"monthly": 30, "yearly": 365}
 
 
 def _is_owner(interaction: discord.Interaction) -> bool:
@@ -371,6 +379,138 @@ class OwnerPremiumCog(commands.Cog):
             f"Server `{gid}` rimosso dalla whitelist premium.",
             ephemeral=True,
         )
+
+    # ================================================================
+    # Abbonamento mensile/annuale per modulo (SPEC.md §3.1 — pagamento
+    # gestito FUORI dal bot, l'owner concede a mano dopo averlo
+    # incassato: vedi core/repositories/module_subscription_repo.py)
+    # ================================================================
+    @owner_group.command(
+        name="premium-grant",
+        description="[OWNER] Concede un abbonamento mensile/annuale a un modulo per un server.",
+    )
+    @app_commands.describe(
+        guild_id="ID del server",
+        module_name="Nome tecnico del modulo (vedi /owner premium-list)",
+        duration="Mensile (30 giorni) o annuale (365 giorni)",
+    )
+    @app_commands.choices(
+        duration=[
+            app_commands.Choice(name="Mensile (30 giorni)", value="monthly"),
+            app_commands.Choice(name="Annuale (365 giorni)", value="yearly"),
+        ]
+    )
+    async def premium_grant(
+        self,
+        interaction: discord.Interaction,
+        guild_id: str,
+        module_name: str,
+        duration: app_commands.Choice[str],
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            gid = int(guild_id)
+        except ValueError:
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+
+        module = registry.get(module_name)
+        if module is None:
+            await interaction.response.send_message(
+                f"Modulo `{module_name}` non trovato. "
+                f"Usa /owner premium-list per la lista esatta.",
+                ephemeral=True,
+            )
+            return
+        if not module.premium_capable:
+            await interaction.response.send_message(
+                f"`{module_name}` è marcato come sempre-gratuito "
+                f"e non può avere un abbonamento.",
+                ephemeral=True,
+            )
+            return
+
+        giorni = SUBSCRIPTION_DURATION_DAYS[duration.value]
+        scadenza = await module_subscription_repo.grant(
+            gid, module_name, duration_days=giorni, granted_by=interaction.user.id
+        )
+        await interaction.response.send_message(
+            f"✅ Abbonamento **{duration.name}** concesso per `{module_name}` "
+            f"al server `{gid}` — valido fino al `{scadenza.date().isoformat()}`.",
+            ephemeral=True,
+        )
+
+    @owner_group.command(
+        name="premium-revoke",
+        description="[OWNER] Revoca l'abbonamento di un modulo per un server.",
+    )
+    @app_commands.describe(
+        guild_id="ID del server",
+        module_name="Nome tecnico del modulo",
+    )
+    async def premium_revoke(
+        self, interaction: discord.Interaction, guild_id: str, module_name: str
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            gid = int(guild_id)
+        except ValueError:
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+
+        if await module_subscription_repo.revoke(gid, module_name):
+            await interaction.response.send_message(
+                f"Abbonamento `{module_name}` revocato per il server `{gid}`.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"Il server `{gid}` non aveva un abbonamento attivo per `{module_name}`.",
+                ephemeral=True,
+            )
+
+    @owner_group.command(
+        name="premium-subscriptions",
+        description="[OWNER] Mostra gli abbonamenti per modulo attivi su un server.",
+    )
+    @app_commands.describe(guild_id="ID del server")
+    async def premium_subscriptions(
+        self, interaction: discord.Interaction, guild_id: str
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
+        try:
+            gid = int(guild_id)
+        except ValueError:
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+
+        abbonamenti = await module_subscription_repo.list_for_guild(gid)
+        if not abbonamenti:
+            await interaction.response.send_message(
+                f"Nessun abbonamento per modulo attivo sul server `{gid}`.", ephemeral=True
+            )
+            return
+
+        righe = [
+            f"`{s.module_name}` — fino al `{s.expires_at.date().isoformat()}`"
+            for s in abbonamenti
+        ]
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     async def _run_eval(self, code: str, interaction: discord.Interaction) -> tuple[str, bool]:
         """
