@@ -136,6 +136,24 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_clan_treasury_ledger_clan
             ON clan_treasury_ledger (clan_id, created_at);
+
+        -- Classifica MENSILE di gilda (SPEC.md §15.10, variante
+        -- mancante rispetto a clans.total_xp che è cumulativo per
+        -- sempre) — stesso pattern di leveling_activity per la
+        -- classifica personale: un periodo è semplicemente una nuova
+        -- riga (period_key), NESSUN reset schedulato, il totale
+        -- cumulativo in clans.total_xp resta l'unica fonte "di
+        -- sempre" e non viene mai toccato da questa tabella.
+        CREATE TABLE IF NOT EXISTS clan_monthly_xp (
+            clan_id     INTEGER NOT NULL,
+            guild_id    BIGINT NOT NULL,
+            period_key  TEXT NOT NULL,
+            xp_gained   BIGINT NOT NULL DEFAULT 0,
+            PRIMARY KEY (clan_id, period_key)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_clan_monthly_xp_classifica
+            ON clan_monthly_xp (guild_id, period_key, xp_gained DESC);
         """
     )
 
@@ -541,12 +559,30 @@ class GuildClanRepository:
         """XP di gilda accumulata (per la classifica clan richiesta
         nei pannelli) - SEPARATA dai coin di tesoreria, un clan
         guadagna entrambi ad ogni tick vocale ma sono due assi
-        diversi (l'XP non si spende mai, i coin sì)."""
+        diversi (l'XP non si spende mai, i coin sì). Traccia ANCHE la
+        quota del mese corrente in clan_monthly_xp (SPEC.md §15.10,
+        variante mensile) — il totale cumulativo qui sopra non viene
+        mai azzerato, la classifica mensile vive tutta in quella
+        tabella separata, stesso pattern di leveling_activity."""
+        from core.leveling_logic import period_key
+
         if amount <= 0:
             raise ValueError("L'importo XP da aggiungere deve essere positivo.")
-        await self._pool.execute(
-            "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1", clan_id, amount
-        )
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                guild_id = await conn.fetchval(
+                    "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1 RETURNING guild_id",
+                    clan_id, amount,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO clan_monthly_xp (clan_id, guild_id, period_key, xp_gained)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (clan_id, period_key)
+                        DO UPDATE SET xp_gained = clan_monthly_xp.xp_gained + EXCLUDED.xp_gained
+                    """,
+                    clan_id, guild_id, period_key(), amount,
+                )
 
     async def apply_text_tick(self, clan_id: int, user_id: int) -> bool:
         """
@@ -566,6 +602,7 @@ class GuildClanRepository:
         """
         from core.guild_clan_logic import TEXT_TICK_XP
         from core.leveling_logic import can_earn_text_xp
+        from core.leveling_logic import period_key
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
@@ -587,20 +624,59 @@ class GuildClanRepository:
                     "UPDATE clan_members SET last_text_xp_at = $3 WHERE clan_id = $1 AND user_id = $2",
                     clan_id, user_id, now,
                 )
-                await conn.execute(
-                    "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1",
+                guild_id = await conn.fetchval(
+                    "UPDATE clans SET total_xp = total_xp + $2 WHERE id = $1 RETURNING guild_id",
                     clan_id, TEXT_TICK_XP,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO clan_monthly_xp (clan_id, guild_id, period_key, xp_gained)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (clan_id, period_key)
+                        DO UPDATE SET xp_gained = clan_monthly_xp.xp_gained + EXCLUDED.xp_gained
+                    """,
+                    clan_id, guild_id, period_key(), TEXT_TICK_XP,
                 )
                 return True
 
     async def get_clan_leaderboard(self, guild_id: int, limit: int = 10) -> list[Clan]:
-        """Classifica clan del server per XP totale — per la
-        'classifica clan' richiesta esplicitamente nei pannelli."""
+        """Classifica clan del server per XP totale ALL-TIME (mai
+        azzerata) — per la 'classifica clan' richiesta esplicitamente
+        nei pannelli. Per la variante MENSILE vedi
+        get_monthly_clan_leaderboard."""
         rows = await self._pool.fetch(
             "SELECT * FROM clans WHERE guild_id = $1 ORDER BY total_xp DESC LIMIT $2",
             guild_id, limit,
         )
         return [self._row_to_clan(r) for r in rows]
+
+    async def get_monthly_clan_leaderboard(
+        self, guild_id: int, period: str | None = None, limit: int = 10
+    ) -> list[tuple[Clan, int]]:
+        """
+        Classifica clan del server per XP guadagnata SOLO in un
+        periodo (default: il mese corrente, `core.leveling_logic.
+        period_key()`) — SPEC.md §15.10, variante mensile via
+        period_key, NESSUN reset schedulato (stesso pattern di
+        leveling_repo.top_xp_period per la classifica personale).
+        Restituisce (Clan, xp_guadagnata_nel_periodo) — un clan senza
+        nessuna riga in clan_monthly_xp per quel periodo (nessuna
+        attività) semplicemente non appare, non con 0.
+        """
+        from core.leveling_logic import period_key as _period_key
+
+        rows = await self._pool.fetch(
+            """
+            SELECT c.*, m.xp_gained AS xp_gained
+            FROM clan_monthly_xp m
+            JOIN clans c ON c.id = m.clan_id
+            WHERE m.guild_id = $1 AND m.period_key = $2 AND m.xp_gained > 0
+            ORDER BY m.xp_gained DESC
+            LIMIT $3
+            """,
+            guild_id, period or _period_key(), limit,
+        )
+        return [(self._row_to_clan(r), r["xp_gained"]) for r in rows]
 
     async def list_clans_owned_by(self, owner_id: int) -> list[Clan]:
         """TUTTI i clan (su QUALUNQUE server) di cui `owner_id` è il

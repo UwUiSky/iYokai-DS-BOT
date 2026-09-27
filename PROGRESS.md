@@ -3076,6 +3076,103 @@ di fila).
 
 ---
 
+### Fase 65 — Chiude §15.10: classifica MENSILE di gilda + annuncio
+automatico top 3 in "bacheca clan" ("Della sezione gilde ti ho già
+detto che c'è la classifica mensile, e che ogni mese, il bot
+pubblica in bacheca clan la top 3 come mai non la hai ancora
+fatta?")
+
+L'utente si riferiva a un elemento specifico dello schema (SPEC.md
+§15.10, l'unica voce `[~]` rimasta in tutto §15): `/clan classifica`
+esisteva già ma ordinava solo per `clans.total_xp`, il totale
+cumulativo MAI azzerato — mancava la variante MENSILE (via
+`period_key`, senza reset schedulato, stesso pattern già usato per
+15.7 personale) e l'annuncio automatico non era mai stato costruito
+per niente, nessuna voce numerata lo copriva ancora. Il contesto
+originale con i parametri "già concordati" citato dall'utente non è
+recuperabile in questa sessione (conversazione precedente non più
+disponibile) — costruito per inferenza dai pattern già stabiliti nel
+progetto, in particolare `core/monthly_winners_announcer.py` (§15.11,
+lo stesso identico bisogno ma per la classifica personale), non da
+zero.
+
+**Perché una tabella separata per la classifica mensile**:
+`clans.total_xp` è cumulativo per design (l'XP di gilda non si
+azzera mai, confermato più volte in sessioni precedenti) — una
+classifica "mensile" su quel campo non avrebbe senso reale (chi è
+avanti resta avanti per sempre). Aggiunta `clan_monthly_xp` (`clan_id,
+guild_id, period_key, xp_gained`, chiave primaria `(clan_id,
+period_key)`) — stesso schema concettuale di `leveling_activity` per
+la classifica personale: ogni tick che assegna XP di gilda
+(`add_xp`, tick vocale; `apply_text_tick`, tick testuale) scrive
+ADESSO in ENTRAMBI i posti, dentro la stessa transazione (`UPDATE
+clans ... RETURNING guild_id` seguito da un `INSERT ... ON CONFLICT
+DO UPDATE` sulla nuova tabella) — mai disallineati, mai un tick perso
+in un posto e registrato nell'altro. Il totale all-time
+(`get_clan_leaderboard`, invariato) e il mensile
+(`get_monthly_clan_leaderboard`, nuovo) restano due assi
+indipendenti, letti da due query diverse.
+
+**`/clan classifica` estesa con `period`** ("Questo mese"/"Di
+sempre", stesso schema esatto di `/leaderboard` personale — stessa
+scelta di UX per coerenza) — default invariato (totale all-time,
+comportamento storico per chi non specifica nulla, zero rottura di
+compatibilità per chi già lo usa).
+
+**Annuncio automatico "bacheca clan"**: nuova coppia repository/
+logica/servizio che rispecchia ESATTAMENTE
+`monthly_winners_repo.py`/`monthly_winners_logic.py`/
+`monthly_winners_announcer.py` (§15.11) — `core/repositories/
+clan_leaderboard_config_repo.py` (tabella `clan_leaderboard_config`,
+un canale per server + ultimo periodo annunciato, SEPARATA dalla
+configurazione personale: due bacheche indipendenti, un server può
+volerne una senza l'altra), `core/clan_leaderboard_logic.py` (riusa
+DIRETTAMENTE `previous_period_key`/`should_announce`/
+`format_period_label` da `core.monthly_winners_logic` — sono
+generiche, non specifiche alla classifica personale, quindi NON
+duplicate; solo `format_clan_podium`/`build_clan_announcement_text`
+sono nuovi, il podio testuale cambia da "membro" a "[tag] nome
+gilda"), `core/clan_leaderboard_announcer.py` (tick orario,
+idempotente via `last_announced_period`, stesso identico
+comportamento su canale sparito/errore di invio transitorio
+dell'originale). `/clan bacheca set|disable` (nuovo gruppo annidato
+sotto `clan_group`, stesso pattern di `tesoreria`/`boost` già
+esistenti) configura il canale — comando Admin
+(`manage_guild`), come `/monthly-winners set|disable`. Avviato
+incondizionatamente in `main.py` insieme agli altri worker/
+announcer del Sistema Gilde.
+
+**29 nuovi test**: 6 in `tests/test_guild_clan_repo.py` (classifica
+mensile ordinata, periodi diversi non si mescolano, indipendenza dal
+totale all-time, scoping per server, clan senza attività non appare,
+`apply_text_tick` traccia anche il mensile); 6 in
+`tests/test_clan_leaderboard_config_repo.py` (stesso schema di
+`test_monthly_winners_repo.py`); 5 in
+`tests/test_clan_leaderboard_logic.py`; 7 in
+`tests/test_clan_leaderboard_announcer.py` (contro Postgres reale,
+righe di `clan_monthly_xp` inserite direttamente per simulare un mese
+passato — stesso schema di `test_monthly_winners_announcer.py`); 2
+nuovi in `tests/test_guild_clan_cog_behavior.py` (`/clan classifica
+period=month`); 3 nuovi in `tests/test_level_roles_behavior.py`
+(`/clan bacheca set|disable`, stesso schema dei test di
+`/monthly-winners` nello stesso file); 1 assert estesa in
+`tests/test_leveling_cog_smoke.py`.
+
+SPEC.md: §15.10 passa a `[x]` (era `[~]`) — **§15 Levels/Gilde è ora
+COMPLETO al 100%** (34/34), nessuna voce parziale o mancante
+rimasta in tutta la sezione. Ricalcolo meccanico: totale schema
+**167/1/105 su 273, ≈61%**.
+
+**Verificato con la regressione anti-collisione comandi**
+(`tests/test_cog_manager_load_all.py`): `bacheca` non collide con
+nessun altro comando esistente, tutti i cog continuano a caricarsi
+insieme senza errori.
+
+**Suite di test completa: 1627/1627 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

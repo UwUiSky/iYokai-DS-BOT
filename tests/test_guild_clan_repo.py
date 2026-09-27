@@ -400,6 +400,78 @@ async def test_get_clan_leaderboard_solo_del_server_giusto(repo):
 
 
 # ----------------------------------------------------------------------
+# Classifica MENSILE di gilda (SPEC.md §15.10, variante mancante)
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_get_monthly_clan_leaderboard_ordinata_per_xp_del_periodo(repo):
+    basso = await _crea_clan(repo, guild_id=100, tag="LOW")
+    alto = await _crea_clan(repo, guild_id=100, tag="HIGH")
+    await repo.add_xp(basso, amount=100)
+    await repo.add_xp(alto, amount=9000)
+
+    classifica = await repo.get_monthly_clan_leaderboard(100, period="2026-09")
+
+    assert [(c.id, xp) for c, xp in classifica] == [(alto, 9000), (basso, 100)]
+
+
+@pytest.mark.asyncio
+async def test_get_monthly_clan_leaderboard_non_conta_periodi_diversi(repo):
+    clan_id = await _crea_clan(repo, guild_id=100, tag="ABC")
+    await repo.add_xp(clan_id, amount=9000)  # accreditata nel periodo corrente reale
+
+    classifica = await repo.get_monthly_clan_leaderboard(100, period="1999-01")
+
+    assert classifica == []
+
+
+@pytest.mark.asyncio
+async def test_get_monthly_clan_leaderboard_non_intacca_il_totale_alltime(repo):
+    """Il totale all-time (clans.total_xp, mai azzerato) e la
+    classifica mensile sono due assi indipendenti: aggiungere XP
+    aggiorna entrambi, ma leggerne uno non ha alcun effetto
+    sull'altro."""
+    clan_id = await _crea_clan(repo, guild_id=100, tag="ABC")
+    await repo.add_xp(clan_id, amount=100)
+    await repo.add_xp(clan_id, amount=200)
+
+    classifica_mensile = await repo.get_monthly_clan_leaderboard(100)
+    classifica_alltime = await repo.get_clan_leaderboard(100)
+
+    assert classifica_mensile[0][1] == 300
+    assert classifica_alltime[0].total_xp == 300
+
+
+@pytest.mark.asyncio
+async def test_get_monthly_clan_leaderboard_solo_del_server_giusto(repo):
+    await _crea_clan(repo, guild_id=100, tag="AAA")
+    altro = await _crea_clan(repo, guild_id=200, tag="BBB")
+    await repo.add_xp(altro, amount=9000)
+
+    classifica = await repo.get_monthly_clan_leaderboard(100)
+
+    assert classifica == []
+
+
+@pytest.mark.asyncio
+async def test_get_monthly_clan_leaderboard_clan_senza_attivita_non_appare(repo):
+    await _crea_clan(repo, guild_id=100, tag="ABC")  # nessuna XP mai assegnata
+
+    classifica = await repo.get_monthly_clan_leaderboard(100)
+
+    assert classifica == []
+
+
+@pytest.mark.asyncio
+async def test_apply_text_tick_traccia_anche_la_classifica_mensile(repo):
+    clan_id = await _crea_clan(repo, owner_id=1, guild_id=100)
+
+    await repo.apply_text_tick(clan_id, user_id=1)
+
+    classifica = await repo.get_monthly_clan_leaderboard(100)
+    assert classifica == [((await repo.get_clan(clan_id)), 30)]  # TEXT_TICK_XP
+
+
+# ----------------------------------------------------------------------
 # Decadimento mensile tesoreria
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio

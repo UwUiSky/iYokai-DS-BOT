@@ -143,6 +143,9 @@ async def clean_db(db_pool):
     from core.repositories.monthly_winners_repo import (
         run_migrations as monthly_winners_migrations,
     )
+    from core.repositories.clan_leaderboard_config_repo import (
+        run_migrations as clan_leaderboard_config_migrations,
+    )
     from core.repositories.shop_repo import run_migrations as shop_migrations
     from core.repositories.giveaway_repo import run_migrations as giveaway_migrations
     from core.repositories.guild_clan_repo import (
@@ -190,6 +193,7 @@ async def clean_db(db_pool):
     await restore_oauth_migrations(db_pool)
     await level_reward_migrations(db_pool)
     await monthly_winners_migrations(db_pool)
+    await clan_leaderboard_config_migrations(db_pool)
     await shop_migrations(db_pool)
     await giveaway_migrations(db_pool)
     await guild_clan_migrations(db_pool)
@@ -243,6 +247,7 @@ async def clean_db(db_pool):
         "backup_pairs",
         "level_reward_roles",
         "monthly_winners_config",
+        "clan_leaderboard_config",
         "shop_items",
         "shop_purchases",
         "giveaways",
@@ -250,6 +255,7 @@ async def clean_db(db_pool):
         "clans",
         "clan_members",
         "clan_treasury_ledger",
+        "clan_monthly_xp",
         "clan_voice_activity",
         "guild_chest",
         "guild_chest_ledger",

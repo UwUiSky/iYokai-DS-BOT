@@ -346,6 +346,11 @@ class Database:
         )
         await monthly_winners_migrations(self.pool)
 
+        from core.repositories.clan_leaderboard_config_repo import (
+            run_migrations as clan_leaderboard_config_migrations,
+        )
+        await clan_leaderboard_config_migrations(self.pool)
+
         from core.repositories.shop_repo import run_migrations as shop_migrations
         await shop_migrations(self.pool)
 

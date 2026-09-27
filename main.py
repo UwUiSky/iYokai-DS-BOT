@@ -41,6 +41,7 @@ from core.event_log_retention import event_log_retention
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.monthly_winners_announcer import monthly_winners_announcer
+from core.clan_leaderboard_announcer import clan_leaderboard_announcer
 from core.giveaway_worker import giveaway_worker
 from core.guild_clan_voice_worker import guild_clan_voice_worker
 from core.guild_clan_treasury_decay_worker import guild_clan_treasury_decay_worker
@@ -231,6 +232,11 @@ class iYokaiBot(commands.AutoShardedBot):
         guild_clan_treasury_decay_worker.start(self)
         guild_clan_expiry_worker.start(self)
         weekly_personal_decay_worker.start(self)
+
+        # Bacheca clan (SPEC.md §15.10): annuncio automatico della top
+        # 3 gilde a fine mese, tick orario, idempotente tramite
+        # database — stesso pattern di monthly_winners_announcer sopra.
+        clan_leaderboard_announcer.start(self)
 
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync

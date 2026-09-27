@@ -685,12 +685,23 @@ necessario.
 - `[x]` 15.7 Classifica mensile (via `period_key`, senza reset schedulato)
 - `[x]` 15.8 Classifica totale all-time
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
-- `[~]` 15.10 **Classifica Gilde** (mensile + totale) — `/clan
-  classifica` esiste già (ordina i clan del server per XP totale,
-  testato in `test_guild_clan_cog_behavior.py`): era segnata come
-  mancante per errore, debito di documentazione trovato e corretto
-  in questa sessione. **Manca** ancora la variante MENSILE (nessun
-  `period_key` per l'XP di clan, solo il totale cumulativo)
+- `[x]` 15.10 **Classifica Gilde** (mensile + totale) — `/clan
+  classifica` con scelta `period` ("Questo mese"/"Di sempre", stesso
+  schema di `/leaderboard` personale): la variante totale ordina per
+  `clans.total_xp` (cumulativo, mai azzerato); la variante MENSILE
+  (era la voce mancante) ordina per `clan_monthly_xp`, una tabella
+  per-periodo (`clan_id, period_key, xp_gained`) alimentata da
+  `add_xp`/`apply_text_tick` insieme al totale — stesso pattern
+  `period_key` senza reset schedulato di 15.7 per la classifica
+  personale, non duplicato: `core.leveling_logic.period_key()`
+  riusato direttamente. **ANNUNCIO AUTOMATICO in "bacheca clan"**
+  aggiunto su richiesta esplicita dell'utente ("ogni mese, il bot
+  pubblica in bacheca clan la top 3"): `/clan bacheca set|disable`
+  configura un canale per server, tick orario idempotente (uno
+  annuncio per mese anche con riavvii) — stesso schema di 15.11
+  sotto, tabella di configurazione separata
+  (`clan_leaderboard_config`, non condivisa con quella personale:
+  due bacheche indipendenti)
 - `[x]` 15.11 Annuncio automatico dei vincitori a fine mese —
   `/monthly-winners set|disable`, podio XP e coin del mese appena
   concluso, tick orario idempotente (uno solo per mese anche con
@@ -1016,14 +1027,18 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 33 | 1 | 0 |
+| §15 Levels/Gilde | 34 | 0 | 0 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **166** | **2** | **105** |
+| **Totale** | **167** | **1** | **105** |
 
-Su 273 voci totali: **166 fatte, 2 parziali, 105 mancanti** — circa
-il 61% dello schema (contando i parziali a metà peso). **§10 Alerts
+Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
+il 61% dello schema (contando i parziali a metà peso). **§15 Levels/
+Gilde è ora COMPLETO al 100%** (34/34): chiusa l'ultima voce parziale
+rimasta in tutto §15, la variante MENSILE di 15.10 Classifica Gilde,
+più l'annuncio automatico della top 3 in "bacheca clan" richiesto
+esplicitamente dall'utente. **§10 Alerts
 & Social: la parte "webhook" di §10.8 è ora fatta** (endpoint
 proprio in ricezione, `/alerts webhook-create`, token segreto
 mostrato una sola volta) — §10 resta parziale solo per §10.4

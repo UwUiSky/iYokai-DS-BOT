@@ -181,3 +181,66 @@ async def test_monthly_winners_disable_senza_configurazione_avvisa(cog_e_winners
     await cog.monthly_winners_disable.callback(cog, interaction)
 
     assert "non era attivo" in interaction.response.sent_messages[0]
+
+
+# ----------------------------------------------------------------------
+# /clan bacheca set|disable (SPEC.md §15.10, top 3 gilde mensile) —
+# stesso cog, stesso schema di /monthly-winners sopra
+# ----------------------------------------------------------------------
+@pytest.fixture
+async def cog_e_bacheca_repo(monkeypatch):
+    import cogs.leveling.leveling as leveling_module
+    from core.repositories.clan_leaderboard_config_repo import (
+        ClanLeaderboardConfigRepository,
+    )
+
+    database = Database()
+    await database.connect()
+    await database.run_migrations()
+
+    repo = ClanLeaderboardConfigRepository(pool_provider=lambda: database.pool)
+    monkeypatch.setattr(leveling_module, "clan_leaderboard_config_repo", repo)
+
+    cog = LevelingCog(bot=None)
+    cog.cog_unload()
+
+    yield cog, repo
+    await database.pool.execute("DELETE FROM clan_leaderboard_config")
+    await database.close()
+
+
+@pytest.mark.asyncio
+async def test_clan_bacheca_set_segna_il_mese_precedente_come_coperto(cog_e_bacheca_repo):
+    from core.clan_leaderboard_logic import previous_period_key
+
+    cog, repo = cog_e_bacheca_repo
+    interaction = _FakeInteraction(guild_id=100)
+
+    await cog.clan_bacheca_set.callback(cog, interaction, channel=_FakeTextChannel(500))
+
+    config = await repo.get_config(100)
+    assert config.channel_id == 500
+    assert config.last_announced_period == previous_period_key()
+    assert "prossimo cambio mese" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_clan_bacheca_disable(cog_e_bacheca_repo):
+    cog, repo = cog_e_bacheca_repo
+    await repo.set_channel(100, channel_id=500, already_covered_period="2026-08")
+
+    interaction = _FakeInteraction(guild_id=100)
+    await cog.clan_bacheca_disable.callback(cog, interaction)
+
+    assert "disattivato" in interaction.response.sent_messages[0]
+    assert await repo.get_config(100) is None
+
+
+@pytest.mark.asyncio
+async def test_clan_bacheca_disable_senza_configurazione_avvisa(cog_e_bacheca_repo):
+    cog, repo = cog_e_bacheca_repo
+    interaction = _FakeInteraction(guild_id=100)
+
+    await cog.clan_bacheca_disable.callback(cog, interaction)
+
+    assert "non era attivo" in interaction.response.sent_messages[0]

@@ -38,6 +38,8 @@ from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
 from core.repositories.monthly_winners_repo import monthly_winners_repo
+from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
+from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
 from core.repositories.shop_repo import shop_repo
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.giveaway_logic import is_eligible, pick_winners
@@ -1079,8 +1081,21 @@ class LevelingCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @clan_group.command(name="classifica", description="Classifica delle gilde per XP totale.")
-    async def clan_classifica(self, interaction: discord.Interaction) -> None:
+    @clan_group.command(
+        name="classifica", description="Classifica delle gilde per XP (mensile o totale)."
+    )
+    @app_commands.describe(period="Questo mese o di sempre")
+    @app_commands.choices(
+        period=[
+            app_commands.Choice(name="Questo mese", value="month"),
+            app_commands.Choice(name="Di sempre", value="alltime"),
+        ]
+    )
+    async def clan_classifica(
+        self,
+        interaction: discord.Interaction,
+        period: app_commands.Choice[str] | None = None,
+    ) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -1088,21 +1103,88 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        classifica = await guild_clan_repo.get_clan_leaderboard(guild.id)
-        if not classifica:
+        # Default: totale all-time (comportamento storico del
+        # comando, invariato per chi lo usa senza specificare nulla).
+        mensile = period is not None and period.value == "month"
+
+        if mensile:
+            voci = await guild_clan_repo.get_monthly_clan_leaderboard(guild.id)
+            if not voci:
+                await interaction.response.send_message(
+                    "Nessuna gilda ha guadagnato XP questo mese in questo server.",
+                    ephemeral=True,
+                )
+                return
+            righe = [
+                f"**{i+1}.** [{c.tag}] {c.name} — {xp} XP"
+                for i, (c, xp) in enumerate(voci)
+            ]
+            titolo = "🏆 Classifica Gilde — questo mese"
+        else:
+            classifica = await guild_clan_repo.get_clan_leaderboard(guild.id)
+            if not classifica:
+                await interaction.response.send_message(
+                    "Nessuna gilda in questo server ancora.", ephemeral=True
+                )
+                return
+            righe = [
+                f"**{i+1}.** [{c.tag}] {c.name} — {c.total_xp} XP"
+                for i, c in enumerate(classifica)
+            ]
+            titolo = "🏆 Classifica Gilde — di sempre"
+
+        embed = discord.Embed(
+            title=titolo, description="\n".join(righe), color=discord.Color.gold()
+        )
+        await interaction.response.send_message(embed=embed)
+
+    clan_bacheca_group = app_commands.Group(
+        name="bacheca",
+        description="[Admin] Annuncio automatico della top 3 gilde a fine mese.",
+        parent=clan_group,
+    )
+
+    @clan_bacheca_group.command(
+        name="set", description="[Admin] Imposta il canale dove annunciare la top 3 gilde del mese."
+    )
+    @app_commands.describe(channel="Canale dell'annuncio (la 'bacheca clan')")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def clan_bacheca_set(
+        self, interaction: discord.Interaction, channel: discord.TextChannel
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
             await interaction.response.send_message(
-                "Nessuna gilda in questo server ancora.", ephemeral=True
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
             )
             return
 
-        righe = [
-            f"**{i+1}.** [{c.tag}] {c.name} — {c.total_xp} XP"
-            for i, c in enumerate(classifica)
-        ]
-        embed = discord.Embed(
-            title="🏆 Classifica Gilde", description="\n".join(righe), color=discord.Color.gold()
+        await clan_leaderboard_config_repo.set_channel(
+            guild.id, channel.id, already_covered_period=clan_previous_period_key()
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(
+            f"✅ La top 3 gilde del mese verrà annunciata in {channel.mention} "
+            f"all'inizio di ogni mese (il primo annuncio al prossimo cambio mese).",
+            ephemeral=True,
+        )
+
+    @clan_bacheca_group.command(
+        name="disable", description="[Admin] Disattiva l'annuncio automatico della top 3 gilde."
+    )
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+
+        if await clan_leaderboard_config_repo.disable(guild.id):
+            await interaction.response.send_message(
+                "Annuncio della top 3 gilde disattivato.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "L'annuncio della top 3 gilde non era attivo su questo server.", ephemeral=True
+            )
 
     @clan_group.command(name="sciogli", description="[Capo Clan] Sciogli la tua gilda.")
     async def clan_sciogli(self, interaction: discord.Interaction) -> None:

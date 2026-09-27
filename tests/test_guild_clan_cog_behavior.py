@@ -347,6 +347,57 @@ async def test_classifica_ordina_per_xp(cog_e_repos):
 
 
 @pytest.mark.asyncio
+async def test_classifica_mensile_usa_solo_xp_del_mese_corrente(cog_e_repos):
+    """SPEC.md §15.10, variante mensile: /clan classifica period=month
+    deve mostrare la classifica basata su clan_monthly_xp, non su
+    clans.total_xp — qui coincidono perché add_xp aggiorna entrambi
+    nello stesso periodo, ma il titolo/embed deve riflettere 'questo
+    mese', non 'di sempre'."""
+    from discord import app_commands
+
+    cog, clan_repo, leveling_repo = cog_e_repos
+    id_basso = await clan_repo.create_clan(
+        100, tag="AAA", name="Bassa", owner_id=1,
+        officialize_deadline=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    id_alto = await clan_repo.create_clan(
+        100, tag="BBB", name="Alta", owner_id=2,
+        officialize_deadline=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    await clan_repo.add_xp(id_basso, 10)
+    await clan_repo.add_xp(id_alto, 500)
+    guild = _FakeGuild(100)
+    interaction = _FakeInteraction(guild)
+
+    await cog.clan_classifica.callback(
+        cog, interaction, period=app_commands.Choice(name="Questo mese", value="month")
+    )
+
+    embed = interaction.response.sent_embeds[0]
+    assert "questo mese" in embed.title
+    assert embed.description.index("Alta") < embed.description.index("Bassa")
+
+
+@pytest.mark.asyncio
+async def test_classifica_mensile_senza_attivita_avvisa(cog_e_repos):
+    from discord import app_commands
+
+    cog, clan_repo, leveling_repo = cog_e_repos
+    await clan_repo.create_clan(
+        100, tag="ABC", name="X", owner_id=1,
+        officialize_deadline=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    guild = _FakeGuild(100)
+    interaction = _FakeInteraction(guild)
+
+    await cog.clan_classifica.callback(
+        cog, interaction, period=app_commands.Choice(name="Questo mese", value="month")
+    )
+
+    assert "questo mese" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
 async def test_sciogli_rimuove_clan_e_categoria(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
     guild = _FakeGuild(100)
