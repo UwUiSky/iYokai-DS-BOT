@@ -131,6 +131,22 @@ async def test_increment_channels_unlocked(repo):
     assert (await repo.get_clan(clan_id)).channels_unlocked == 2
 
 
+@pytest.mark.asyncio
+async def test_add_voice_ticks_accumula(repo):
+    clan_id = await _crea_clan(repo)
+    await repo.add_voice_ticks(clan_id)
+    await repo.add_voice_ticks(clan_id, count=59)
+
+    assert (await repo.get_clan(clan_id)).total_voice_ticks == 60
+
+
+@pytest.mark.asyncio
+async def test_add_voice_ticks_valore_non_positivo_solleva(repo):
+    clan_id = await _crea_clan(repo)
+    with pytest.raises(ValueError):
+        await repo.add_voice_ticks(clan_id, count=0)
+
+
 # ----------------------------------------------------------------------
 # Membri
 # ----------------------------------------------------------------------

@@ -583,9 +583,10 @@ necessario.
   nello stesso canale, tetto 720 tick/giorno, deficit di creazione
   15.000 coin/24h, costi canale 25k/50k/200k/800k — comandi Discord
   `/clan crea|info|membri|classifica|sciogli|tesoreria dona|invita|
-  espelli|promuovi`, il worker di eliminazione automatica per chi non
-  colma il deficit in tempo, e ORA anche i ruoli Discord Capo Clan/
-  Admin Clan con i comandi di gestione membri)
+  espelli|promuovi|compra-canale`, il worker di eliminazione
+  automatica per chi non colma il deficit in tempo, i ruoli Discord
+  Capo Clan/Admin Clan, e ORA anche l'acquisto di canali extra con
+  doppio requisito coin + ore vocali accumulate dalla gilda)
   - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
     valida il tag, crea la categoria Discord (view negata a
     `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
@@ -633,21 +634,29 @@ necessario.
     `guild_clan_treasury_decay_worker.py`, idempotente per periodo
     (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`,
     ORA deposita il delta nella cassa di server (SPEC.md §15.15)
-  - `[~]` Acquisto canali: testuale / vocale / forum — costo e
-    progressione già in `guild_clan_logic.py`/`increment_channels_unlocked`;
-    **manca** il comando di acquisto e la creazione reale del canale
-  - `[~]` Costo coin raddoppiato/quadruplo per canale successivo
-    (25.000 → 50.000 → 200.000 → 800.000) — costanti già definite,
-    solo il comando che le applica manca
-  - `[ ]` Requisito **ore vocali accumulate in gilda** come sblocco
-    canale (separato dal semplice guadagno XP/coin — serve un
-    conteggio ore dedicato, non ancora agganciato a nessuna soglia
-    di acquisto)
+  - `[x]` Acquisto canali: testuale / vocale / forum — `/clan
+    compra-canale <tipo> [nome]`, Capo/Admin Clan, crea il canale
+    Discord VERO dentro la categoria del clan PRIMA di scalare la
+    tesoreria (stesso ordine di `/clan crea` con la categoria — se la
+    creazione fallisce non resta una spesa senza contropartita), poi
+    `increment_channels_unlocked`
+  - `[x]` Costo coin raddoppiato/quadruplo per canale successivo
+    (25.000 → 50.000 → 200.000 → 800.000) — applicato da `/clan
+    compra-canale` via `next_channel_unlock_cost`
+  - `[x]` Requisito **ore vocali accumulate in gilda** come sblocco
+    canale — separato dal guadagno XP/coin: nuova colonna
+    `clans.total_voice_ticks` (persona-tick, non per singolo membro),
+    incrementata ad OGNI tick vocale di gilda indipendentemente dal
+    decadimento/tetto giornaliero (la presenza conta comunque, a
+    differenza della ricompensa), soglie 12h/24h/96h/384h
+    (`VOICE_HOURS_REQUIRED` — la stessa scala persona-ora da cui
+    erano già stati derivati i costi in coin, ora resa un requisito
+    verificato) verificate da `/clan compra-canale` insieme al costo
   - `[ ]` Boost individuale XP / Coin acquistabile
   - `[ ]` Boost di gilda XP / Coin acquistabile
   - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|tesoreria
-    dona|invita|espelli|promuovi` fatti — **mancano ancora**
-    compra-canale, boost
+    dona|invita|espelli|promuovi|compra-canale` fatti — **mancano
+    ancora** i comandi boost
 - `[ ]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
@@ -812,13 +821,13 @@ rilancia lo stesso conteggio.
 | §12 Voice temp | 5 | 0 | 3 |
 | §13 Ticket | 7 | 0 | 6 |
 | §14 Utility | 13 | 0 | 5 |
-| §15 Levels/Gilde | 20 | 8 | 5 |
+| §15 Levels/Gilde | 23 | 6 | 4 |
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **145** | **13** | **114** |
+| **Totale** | **148** | **11** | **113** |
 
-Su 272 voci totali: **145 fatte, 13 parziali, 114 mancanti** — circa
+Su 272 voci totali: **148 fatte, 11 parziali, 113 mancanti** — circa
 il 56% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con
@@ -826,18 +835,22 @@ l'utente (mirror messaggi, backup/restore utenti via OAuth2). §15
 Levels: il Sistema Gilde/Clan (§15.14) ha ora il motore economico
 (repository/worker: tesoreria, XP di gilda, tracciamento vocale,
 decadimento mensile), i comandi Discord `/clan crea|info|membri|
-classifica|sciogli|tesoreria dona`, il worker di eliminazione
-automatica per chi non colma il deficit in tempo, E ORA anche i
-ruoli Discord condivisi Capo Clan/Admin Clan (overwrite per-utente
-sulla categoria del proprio clan per l'isolamento reale, il ruolo
-condiviso è solo un'etichetta) con i comandi `/clan invita|espelli|
-promuovi`. Mancano ancora l'acquisto canali e i boost individuali/di
-gilda. §15.15 (non nello schema originale, emersa in conversazione)
-è COMPLETO: decadimento settimanale personale, cassa di server
-alimentata da entrambi i decadimenti, e sblocco premium a doppio
-cancello (tempo dal join + costo dalla cassa) — comandi `/cassa
-saldo` e `/cassa sblocca-premium`. Resta solo un comando dedicato per
-spendere la cassa su premi evento.
+classifica|sciogli|tesoreria dona|invita|espelli|promuovi`, il
+worker di eliminazione automatica per chi non colma il deficit in
+tempo, i ruoli Discord condivisi Capo Clan/Admin Clan (overwrite
+per-utente sulla categoria del proprio clan per l'isolamento reale,
+il ruolo condiviso è solo un'etichetta), E ORA anche l'acquisto di
+canali extra (`/clan compra-canale`) con doppio requisito: costo in
+coin dalla tesoreria E ore vocali ACCUMULATE dalla gilda (persona-ora,
+non per singolo membro — stessa scala 12h/24h/96h/384h da cui erano
+già stati derivati i costi in coin, ora un requisito verificato
+davvero). Restano solo i boost XP/coin individuali/di gilda. §15.15
+(non nello schema originale, emersa in conversazione) è COMPLETO:
+decadimento settimanale personale, cassa di server alimentata da
+entrambi i decadimenti, e sblocco premium a doppio cancello (tempo
+dal join + costo dalla cassa) — comandi `/cassa saldo` e `/cassa
+sblocca-premium`. Resta solo un comando dedicato per spendere la
+cassa su premi evento.
 
 Correzione del 21/09: il marcatore parziale (`` `[~]` ``) era definito nella
 legenda ma non era mai stato usato — §9.4/9.5 e §10.8 erano marcati

@@ -58,6 +58,7 @@ class Clan:
     officialize_deadline: datetime
     max_members: int
     channels_unlocked: int
+    total_voice_ticks: int
     created_at: datetime
 
 
@@ -104,6 +105,7 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         -- estendere anche su un database già popolato.
         ALTER TABLE clans ADD COLUMN IF NOT EXISTS total_xp BIGINT NOT NULL DEFAULT 0;
         ALTER TABLE clans ADD COLUMN IF NOT EXISTS last_decay_period TEXT;
+        ALTER TABLE clans ADD COLUMN IF NOT EXISTS total_voice_ticks BIGINT NOT NULL DEFAULT 0;
 
         CREATE TABLE IF NOT EXISTS clan_members (
             clan_id     INTEGER NOT NULL,
@@ -154,6 +156,7 @@ class GuildClanRepository:
             officialize_deadline=row["officialize_deadline"],
             max_members=row["max_members"],
             channels_unlocked=row["channels_unlocked"],
+            total_voice_ticks=row["total_voice_ticks"],
             created_at=row["created_at"],
         )
 
@@ -284,6 +287,21 @@ class GuildClanRepository:
     async def increment_channels_unlocked(self, clan_id: int) -> None:
         await self._pool.execute(
             "UPDATE clans SET channels_unlocked = channels_unlocked + 1 WHERE id = $1", clan_id
+        )
+
+    async def add_voice_ticks(self, clan_id: int, count: int = 1) -> None:
+        """Accredita `count` tick vocali ACCUMULATI dalla gilda (uno
+        al minuto per membro attivo, indipendentemente dal
+        decadimento/tetto giornaliero che riducono solo il guadagno
+        XP/coin — la presenza in vocale conta comunque) — usata dal
+        requisito ore vocali per lo sblocco canali extra, MAI dalla
+        ricompensa XP/coin (quella resta `add_xp`/`apply_treasury_
+        delta`)."""
+        if count <= 0:
+            raise ValueError("count deve essere positivo.")
+        await self._pool.execute(
+            "UPDATE clans SET total_voice_ticks = total_voice_ticks + $2 WHERE id = $1",
+            clan_id, count,
         )
 
     # ----------------------------------------------------------------

@@ -94,6 +94,34 @@ async def test_membro_di_clan_ufficializzato_matura_xp_e_coin(repos):
     clan = await clan_repo.get_clan(clan_id)
     assert clan.total_xp == 30
     assert clan.treasury_balance == -15_000 + 2
+    assert clan.total_voice_ticks == 1
+
+
+@pytest.mark.asyncio
+async def test_ore_vocali_accumulate_anche_con_decadimento_a_zero(repos):
+    """Un membro fermo da 3+ ore nello stesso canale non guadagna più
+    XP/coin (decadimento a zero, SPEC.md §15.14) ma la sua presenza
+    conta comunque per il requisito di ore vocali accumulate — sono
+    due cose diverse per definizione."""
+    clan_repo, activity_repo = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await activity_repo._pool.execute(
+        """
+        INSERT INTO clan_voice_activity
+            (clan_id, user_id, current_channel_id, ticks_in_current_channel, ticks_today, activity_date)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        """,
+        clan_id, 1, 500, 999, 0, ORA.date(),
+    )
+
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.total_xp == 0  # decadimento esaurito, nessun guadagno
+    assert clan.total_voice_ticks == 1  # ma la presenza conta comunque
 
 
 @pytest.mark.asyncio
@@ -113,6 +141,7 @@ async def test_clan_non_ufficializzato_non_matura_nulla(repos):
     clan = await clan_repo.get_clan(clan_id)
     assert clan.total_xp == 0
     assert clan.treasury_balance == -15_000  # invariato
+    assert clan.total_voice_ticks == 0  # non ufficializzato: nessuna presenza contata
 
 
 @pytest.mark.asyncio

@@ -58,6 +58,13 @@ class GuildClanVoiceWorker:
                     xp, coin = await clan_voice_activity_repo.apply_tick(
                         clan.id, membro.id, canale.id, oggi
                     )
+                    # Le ore vocali ACCUMULATE dalla gilda (requisito
+                    # per lo sblocco canali extra, SPEC.md §15.14)
+                    # contano la presenza in sé — a differenza di
+                    # XP/coin non si azzerano per decadimento o tetto
+                    # giornaliero, quindi il conteggio va SEMPRE, non
+                    # solo quando xp/coin > 0.
+                    await guild_clan_repo.add_voice_ticks(clan.id, 1)
                     if xp > 0:
                         await guild_clan_repo.add_xp(clan.id, xp)
                     if coin > 0:

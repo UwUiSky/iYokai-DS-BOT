@@ -74,14 +74,20 @@ class _FakeRole:
 
 
 class _FakeGuild:
-    def __init__(self, guild_id: int, category_creation_forbidden: bool = False) -> None:
+    def __init__(
+        self, guild_id: int, category_creation_forbidden: bool = False,
+        channel_creation_forbidden: bool = False,
+    ) -> None:
         self.id = guild_id
         self.default_role = _FakeRole()
         self.me = _FakeMember(0)
         self._channels_by_id: dict[int, object] = {}
         self._next_category_id = 1000
+        self._next_channel_id = 2000
         self._category_creation_forbidden = category_creation_forbidden
+        self._channel_creation_forbidden = channel_creation_forbidden
         self.created_categories: list = []
+        self.created_channels: list = []
         self.roles: list = []
         self._next_role_id = 1
 
@@ -93,6 +99,28 @@ class _FakeGuild:
         self._channels_by_id[categoria.id] = categoria
         self.created_categories.append(categoria)
         return categoria
+
+    async def _crea_canale_generico(self, name: str, category=None, reason=None, tipo: str = "testuale"):
+        if self._channel_creation_forbidden:
+            raise discord.Forbidden(response=_FakeHTTPResponse(), message="niente permessi")
+        canale = _FakeChannel(self._next_channel_id)
+        canale.name = name
+        canale.tipo = tipo
+        self._next_channel_id += 1
+        self._channels_by_id[canale.id] = canale
+        self.created_channels.append(canale)
+        if category is not None:
+            category.channels.append(canale)
+        return canale
+
+    async def create_text_channel(self, name: str, category=None, reason=None):
+        return await self._crea_canale_generico(name, category=category, reason=reason, tipo="testuale")
+
+    async def create_voice_channel(self, name: str, category=None, reason=None):
+        return await self._crea_canale_generico(name, category=category, reason=reason, tipo="vocale")
+
+    async def create_forum(self, name: str, category=None, reason=None):
+        return await self._crea_canale_generico(name, category=category, reason=reason, tipo="forum")
 
     async def create_role(self, name: str, mentionable: bool = False, reason=None):
         ruolo = _FakeRole(name=name, role_id=self._next_role_id)
@@ -673,3 +701,131 @@ async def test_promuovi_il_capo_non_puo_cambiare_il_proprio_ruolo(cog_e_repos):
     await cog.clan_promuovi.callback(cog, interaction, membro=capo, ruolo="admin")
 
     assert "non può cambiare il proprio ruolo" in interaction.response.sent_messages[0]
+
+
+# ======================================================================
+# compra-canale — sblocco canali extra (costo in coin + ore vocali
+# accumulate dalla gilda, SPEC.md §15.14)
+# ======================================================================
+
+@pytest.mark.asyncio
+async def test_compra_canale_riuscito_crea_canale_e_scala_tesoreria(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.donate(clan_id, user_id=1, amount=40_000)  # -15.000 + 40.000 = 25.000
+    await clan_repo.add_voice_ticks(clan_id, count=12 * 60)
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild, user=capo)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
+
+    assert "sbloccato" in interaction.response.sent_messages[0]
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.channels_unlocked == 1
+    assert clan.treasury_balance == 0
+    assert len(guild.created_channels) == 1
+    assert guild.created_channels[0].tipo == "testuale"
+    assert guild.created_channels[0] in categoria.channels
+
+
+@pytest.mark.asyncio
+async def test_compra_canale_un_admin_puo_farlo(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.add_member(clan_id, user_id=5, role="admin")
+    await clan_repo.donate(clan_id, user_id=5, amount=40_000)
+    await clan_repo.add_voice_ticks(clan_id, count=12 * 60)
+    admin = _FakeMember(5)
+    interaction = _FakeInteraction(guild, user=admin)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="vocale", nome=None)
+
+    assert "sbloccato" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_compra_canale_un_membro_semplice_non_puo_farlo(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.add_member(clan_id, user_id=5, role="member")
+    await clan_repo.donate(clan_id, user_id=5, amount=40_000)
+    await clan_repo.add_voice_ticks(clan_id, count=12 * 60)
+    membro_semplice = _FakeMember(5)
+    interaction = _FakeInteraction(guild, user=membro_semplice)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
+
+    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert len(guild.created_channels) == 0
+
+
+@pytest.mark.asyncio
+async def test_compra_canale_tesoreria_insufficiente_non_crea_nulla(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.donate(clan_id, user_id=1, amount=15_000)  # solo il deficit, nessun extra
+    await clan_repo.add_voice_ticks(clan_id, count=12 * 60)
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild, user=capo)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
+
+    assert "non basta" in interaction.response.sent_messages[0]
+    assert len(guild.created_channels) == 0
+    assert (await clan_repo.get_clan(clan_id)).channels_unlocked == 0
+
+
+@pytest.mark.asyncio
+async def test_compra_canale_ore_vocali_insufficienti_non_crea_nulla(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.donate(clan_id, user_id=1, amount=40_000)
+    await clan_repo.add_voice_ticks(clan_id, count=5 * 60)  # solo 5h, ne servono 12
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild, user=capo)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
+
+    assert "ore vocali accumulate" in interaction.response.sent_messages[0]
+    assert len(guild.created_channels) == 0
+
+
+@pytest.mark.asyncio
+async def test_compra_canale_scala_esaurita_avvisa(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    for _ in range(4):
+        await clan_repo.increment_channels_unlocked(clan_id)
+    await clan_repo.donate(clan_id, user_id=1, amount=1_000_000)
+    await clan_repo.add_voice_ticks(clan_id, count=1000 * 60)
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild, user=capo)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
+
+    assert "già sbloccato tutti" in interaction.response.sent_messages[0]
+    assert len(guild.created_channels) == 0
+
+
+@pytest.mark.asyncio
+async def test_compra_canale_permessi_discord_mancanti_avvisa_e_non_scala(cog_e_repos):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(100, channel_creation_forbidden=True)
+    clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.donate(clan_id, user_id=1, amount=40_000)
+    await clan_repo.add_voice_ticks(clan_id, count=12 * 60)
+    capo = _FakeMember(1)
+    interaction = _FakeInteraction(guild, user=capo)
+
+    await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
+
+    assert "permessi" in interaction.response.sent_messages[0]
+    clan = await clan_repo.get_clan(clan_id)
+    assert clan.channels_unlocked == 0
+    assert clan.treasury_balance == 25_000  # nessuna spesa avvenuta

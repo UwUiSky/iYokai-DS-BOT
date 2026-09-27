@@ -9,12 +9,15 @@ import pytest
 from core.guild_clan_logic import (
     CHANNEL_UNLOCK_COSTS,
     CREATION_DEFICIT,
+    VOICE_HOURS_REQUIRED,
     apply_monthly_treasury_decay,
     compute_tick_decay_factor,
     compute_tick_reward,
     is_creation_deficit_covered,
     next_channel_unlock_cost,
+    next_channel_voice_hours_requirement,
     validate_guild_tag,
+    voice_ticks_to_hours,
 )
 
 
@@ -148,6 +151,48 @@ class TestNextChannelUnlockCost:
 
     def test_costanti_coerenti_con_la_funzione(self):
         assert len(CHANNEL_UNLOCK_COSTS) == 4
+
+
+class TestNextChannelVoiceHoursRequirement:
+    def test_primo_canale(self):
+        assert next_channel_voice_hours_requirement(0) == 12
+
+    def test_secondo_canale(self):
+        assert next_channel_voice_hours_requirement(1) == 24
+
+    def test_terzo_canale(self):
+        assert next_channel_voice_hours_requirement(2) == 96
+
+    def test_quarto_canale(self):
+        assert next_channel_voice_hours_requirement(3) == 384
+
+    def test_scala_esaurita_restituisce_none(self):
+        assert next_channel_voice_hours_requirement(4) is None
+
+    def test_negativo_solleva(self):
+        with pytest.raises(ValueError):
+            next_channel_voice_hours_requirement(-1)
+
+    def test_costanti_coerenti_con_la_funzione(self):
+        assert len(VOICE_HOURS_REQUIRED) == len(CHANNEL_UNLOCK_COSTS)
+
+
+class TestVoiceTicksToHours:
+    def test_zero_tick_zero_ore(self):
+        assert voice_ticks_to_hours(0) == 0
+
+    def test_esattamente_unora(self):
+        assert voice_ticks_to_hours(60) == 1
+
+    def test_arrotonda_per_difetto(self):
+        assert voice_ticks_to_hours(119) == 1
+
+    def test_diverse_ore(self):
+        assert voice_ticks_to_hours(720) == 12
+
+    def test_negativo_solleva(self):
+        with pytest.raises(ValueError):
+            voice_ticks_to_hours(-1)
 
 
 class TestIsCreationDeficitCovered:

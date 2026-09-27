@@ -2105,6 +2105,74 @@ comandi).
 
 ---
 
+### Fase 53 — Acquisto canali extra con doppio requisito coin + ore
+vocali accumulate (SPEC.md §15.14, chiude il penultimo pezzo prima
+dei boost)
+
+Ultimo pezzo segnalato nella Fase 52 prima dei boost: `/clan
+compra-canale`, più il requisito "ore vocali accumulate in gilda"
+che nello schema era esplicitamente annotato come "non ancora
+agganciato a nessuna soglia di acquisto".
+
+**Da dove vengono i numeri**: il docstring dei costi in
+`guild_clan_logic.py` diceva già da sessioni precedenti che i costi
+25k/50k/200k/800k erano stati derivati "arrotondando" da una scala
+"12h/24h/96h/384h persona-ora discussa" — quella scala non era mai
+diventata un requisito VERO, solo la base di calcolo storica dei
+prezzi. Questa Fase la rende un controllo reale: `VOICE_HOURS_
+REQUIRED = (12, 24, 96, 384)` in `guild_clan_logic.py`, stessa
+posizione della scala dei costi.
+
+**Nuovo contatore**: colonna `clans.total_voice_ticks` (persona-tick,
+non per singolo membro — la somma di tutti i tick di TUTTI i membri
+della gilda), nuovo metodo `GuildClanRepository.add_voice_ticks`.
+Incrementato in `guild_clan_voice_worker.py` ad OGNI tick di un
+membro ufficializzato, **indipendentemente** dal decadimento per
+permanenza o dal tetto giornaliero che azzerano solo la ricompensa
+XP/coin — la presenza vocale in sé conta comunque per questo
+requisito, sono due cose diverse per definizione (nuovo test
+dedicato che lo dimostra: un membro con decadimento già esaurito,
+zero XP guadagnato, continua ad accumulare ore). Due nuove funzioni
+pure: `next_channel_voice_hours_requirement` (stessa forma di
+`next_channel_unlock_cost`) e `voice_ticks_to_hours` (arrotondato per
+difetto, mai a favore dell'utente).
+
+**`/clan compra-canale <tipo:testuale|vocale|forum> [nome]`**:
+Capo/Admin Clan, verifica in ordine — permesso, scala canali non
+esaurita, ore vocali accumulate sufficienti, saldo tesoreria
+sufficiente (pre-check di lettura, evita di creare un canale Discord
+inutile quando si sa già che il saldo non basta) — POI crea il
+canale Discord VERO dentro la categoria del clan (stesso ordine di
+"risorsa Discord prima del record" già usato da `/clan crea` con la
+categoria: se la creazione fallisce non deve restare una spesa senza
+contropartita), e SOLO DOPO scala la tesoreria in modo atomico
+(`spend_from_treasury`, che ri-verifica la sufficienza — un edge case
+di saldo cambiato nel frattempo, es. dal decadimento mensile, viene
+gestito senza bloccare lo sblocco: il canale esiste già ed è
+comunque conteggiato, solo senza scalare un importo che non basta
+più, loggato come warning). `/clan info` mostra ora anche le ore
+vocali accumulate e il prossimo requisito (costo + ore) quando la
+scala non è esaurita.
+
+**22 nuovi test**: 6 in `test_guild_clan_logic.py` (le due nuove
+funzioni pure), 2 in `test_guild_clan_repo.py` (`add_voice_ticks`), 2
+in `test_guild_clan_voice_worker.py` (accumulo normale + accumulo
+anche con decadimento a zero), 7 in `test_guild_clan_cog_behavior.py`
+per `/clan compra-canale` (successo, permesso admin, permesso negato
+a un membro semplice, tesoreria insufficiente, ore insufficienti,
+scala esaurita, permessi Discord mancanti senza spesa). Fake
+`_FakeGuild` esteso con `create_text_channel`/`create_voice_channel`/
+`create_forum`.
+
+SPEC.md: §15.14 acquisto canali e requisito ore vocali passano da
+`[~]`/`[ ]` a `[x]`; resta `[ ]` solo il pezzo dei boost XP/coin
+individuali/di gilda. **56% dello schema (148/272).** COMMAND_LIST.md
+rigenerato (163 comandi).
+
+**Suite di test completa: 1353/1353 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

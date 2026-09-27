@@ -49,6 +49,13 @@ MAX_MODS_PER_CLAN = 5
 
 CHANNEL_UNLOCK_COSTS = (25_000, 50_000, 200_000, 800_000)
 
+# Requisito di ore vocali ACCUMULATE dalla gilda (persona-ore, non
+# per singolo membro) per ciascun canale extra — la stessa scala
+# 12h/24h/96h/384h da cui erano già stati derivati (arrotondando)
+# i costi in coin sopra, qui finalmente resa un requisito reale e
+# verificato, non solo la base di calcolo storica dei prezzi.
+VOICE_HOURS_REQUIRED = (12, 24, 96, 384)
+
 # Blocchi Unicode delle emoji più comuni — un tag di gilda non può
 # contenerle (richiesta esplicita: "non accetta emoji o immagini").
 # Le immagini non sono testo, quindi non serve gestirle qui: un
@@ -148,6 +155,30 @@ def next_channel_unlock_cost(channels_already_unlocked: int) -> int | None:
     if channels_already_unlocked >= len(CHANNEL_UNLOCK_COSTS):
         return None
     return CHANNEL_UNLOCK_COSTS[channels_already_unlocked]
+
+
+def next_channel_voice_hours_requirement(channels_already_unlocked: int) -> int | None:
+    """
+    Le ore vocali ACCUMULATE dalla gilda (somma di tutti i tick di
+    TUTTI i membri, non per singolo membro) richieste per il
+    PROSSIMO canale extra — stessa scala posizionale di
+    `next_channel_unlock_cost`, None quando la scala è esaurita.
+    """
+    if channels_already_unlocked < 0:
+        raise ValueError("channels_already_unlocked non può essere negativo.")
+    if channels_already_unlocked >= len(VOICE_HOURS_REQUIRED):
+        return None
+    return VOICE_HOURS_REQUIRED[channels_already_unlocked]
+
+
+def voice_ticks_to_hours(total_voice_ticks: int) -> int:
+    """Le ore vocali ACCUMULATE dalla gilda, dato il totale dei tick
+    (uno al minuto per membro attivo) — arrotondato per difetto: un
+    clan non deve poter sbloccare un canale con ore ancora incomplete
+    per un arrotondamento a suo favore."""
+    if total_voice_ticks < 0:
+        raise ValueError("total_voice_ticks non può essere negativo.")
+    return total_voice_ticks // 60
 
 
 def is_creation_deficit_covered(current_treasury_balance: int) -> bool:

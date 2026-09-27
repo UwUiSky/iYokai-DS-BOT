@@ -51,9 +51,13 @@ from core.guild_clan_logic import (
     MAX_ADMINS_PER_CLAN,
     MAX_MODS_PER_CLAN,
     is_creation_deficit_covered,
+    next_channel_unlock_cost,
+    next_channel_voice_hours_requirement,
     validate_guild_tag,
+    voice_ticks_to_hours,
 )
 from core.repositories.guild_clan_repo import (
+    REASON_CHANNEL_UNLOCK,
     ROLE_ADMIN,
     ROLE_MEMBER,
     ROLE_MOD,
@@ -918,7 +922,17 @@ class LevelingCog(commands.Cog):
         embed.add_field(name="Membri", value=f"{n_membri}/{clan.max_members}", inline=True)
         embed.add_field(name="Tesoreria", value=f"{clan.treasury_balance} coin", inline=True)
         embed.add_field(name="XP totale", value=str(clan.total_xp), inline=True)
-        embed.add_field(name="Canali sbloccati", value=str(clan.channels_unlocked), inline=True)
+        ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
+        ore_richieste = next_channel_voice_hours_requirement(clan.channels_unlocked)
+        prossimo_costo = next_channel_unlock_cost(clan.channels_unlocked)
+        if prossimo_costo is None:
+            valore_canali = f"{clan.channels_unlocked} (massimo raggiunto)"
+        else:
+            valore_canali = (
+                f"{clan.channels_unlocked} — prossimo: **{prossimo_costo}** coin + "
+                f"**{ore_richieste}**h vocali (ne avete {ore_accumulate})"
+            )
+        embed.add_field(name="Canali sbloccati", value=valore_canali, inline=False)
         await interaction.response.send_message(embed=embed)
 
     @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
@@ -1189,6 +1203,120 @@ class LevelingCog(commands.Cog):
         await interaction.response.send_message(
             f"✅ {membro.mention} è ora **{ruolo}** in **{clan.name}**."
         )
+
+    @clan_group.command(
+        name="compra-canale",
+        description="[Capo/Admin Clan] Sblocca un nuovo canale extra per la tua gilda.",
+    )
+    @app_commands.describe(
+        tipo="Tipo di canale da creare",
+        nome="Nome del canale (facoltativo: generato dal tag della gilda se non specificato)",
+    )
+    async def clan_compra_canale(
+        self,
+        interaction: discord.Interaction,
+        tipo: Literal["testuale", "vocale", "forum"],
+        nome: str | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.response.send_message(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+
+        chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
+        if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
+            await interaction.response.send_message(
+                "Solo il Capo Clan o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
+            )
+            return
+
+        costo = next_channel_unlock_cost(clan.channels_unlocked)
+        if costo is None:
+            await interaction.response.send_message(
+                "La tua gilda ha già sbloccato tutti i canali extra disponibili.", ephemeral=True
+            )
+            return
+
+        ore_richieste = next_channel_voice_hours_requirement(clan.channels_unlocked)
+        ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
+        if ore_accumulate < ore_richieste:
+            await interaction.response.send_message(
+                f"Servono **{ore_richieste}** ore vocali accumulate dalla gilda per il prossimo "
+                f"canale (ne avete accumulate **{ore_accumulate}**).",
+                ephemeral=True,
+            )
+            return
+
+        if clan.treasury_balance < costo:
+            await interaction.response.send_message(
+                f"La tesoreria della gilda non basta — servono **{costo}** coin "
+                f"(ne avete **{clan.treasury_balance}**).",
+                ephemeral=True,
+            )
+            return
+
+        categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
+        if categoria is None:
+            await interaction.response.send_message(
+                "La categoria della tua gilda non esiste più su Discord — contatta lo staff.",
+                ephemeral=True,
+            )
+            return
+
+        nome_canale = (nome or f"{clan.tag.lower()}-canale-{clan.channels_unlocked + 1}")[:100]
+        motivo = f"Canale extra sbloccato per la gilda '{clan.tag}'"
+        try:
+            # Creato PRIMA di scalare la tesoreria (stesso ordine di
+            # `/clan crea` con la categoria) — se la creazione fallisce
+            # non deve restare una spesa senza contropartita reale.
+            if tipo == "testuale":
+                await guild.create_text_channel(nome_canale, category=categoria, reason=motivo)
+            elif tipo == "vocale":
+                await guild.create_voice_channel(nome_canale, category=categoria, reason=motivo)
+            else:
+                await guild.create_forum(nome_canale, category=categoria, reason=motivo)
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "Non ho i permessi per creare un canale in questa categoria.", ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Creazione del canale fallita — riprova più tardi.", ephemeral=True
+            )
+            return
+
+        riuscito = await guild_clan_repo.spend_from_treasury(clan.id, costo, reason=REASON_CHANNEL_UNLOCK)
+        await guild_clan_repo.increment_channels_unlocked(clan.id)
+
+        if riuscito:
+            await interaction.response.send_message(
+                f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
+                f"dalla tesoreria."
+            )
+        else:
+            # Caso limite: il saldo è cambiato tra il controllo sopra
+            # e la spesa atomica (es. decadimento mensile nel
+            # frattempo) — il canale Discord esiste già ed è comunque
+            # conteggiato come sbloccato, ma non si è potuto scalare
+            # la tesoreria di un importo che ora non basta più.
+            logger.warning(
+                "Spesa tesoreria fallita dopo la creazione del canale per il clan %s (saldo cambiato).",
+                clan.id,
+            )
+            await interaction.response.send_message(
+                f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}**, ma la tesoreria non "
+                f"aveva più abbastanza saldo nell'istante della spesa — nessun importo scalato."
+            )
 
     clan_tesoreria_group = app_commands.Group(
         name="tesoreria", description="Tesoreria della tua gilda.", parent=clan_group
