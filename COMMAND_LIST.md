@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 199 comandi in 10 categorie.**
+**Totale: 215 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -139,7 +139,23 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:
 
 ## Sicurezza
 
+- **`/anti-nuke enable`** — Attiva o disattiva l'Anti-Nuke.
+- **`/anti-nuke limits`** — Configura la soglia di rilevamento per una categoria.
+- **`/anti-nuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
+- **`/anti-nuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
+- **`/anti-nuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
+- **`/anti-nuke trusted-add`** — Esenta un utente/bot fidato da tutti i controlli Anti-Nuke.
+- **`/anti-nuke trusted-remove`** — Rimuove un utente/bot dalla lista fidati Anti-Nuke.
+- **`/anti-raid account-age`** — Età minima dell'account per non essere considerato sospetto.
+- **`/anti-raid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
+- **`/anti-raid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
+- **`/anti-raid enable`** — Attiva o disattiva l'Anti-Raid.
+- **`/anti-raid join-rate`** — Configura il limite di join in un intervallo di tempo.
+- **`/anti-raid lockdown-action`** — Cosa fare quando un raid viene rilevato.
+- **`/anti-raid status`** — Mostra la configurazione attuale dell'Anti-Raid.
+- **`/anti-raid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
 - **`/permission-heatmap`** — [Admin] Mostra quali ruoli hanno permessi critici e chi li possiede.
+- **`/security-score`** — Calcola il punteggio di sicurezza del server con consigli.
 - **`/spamtrap-setup`** — [Admin] Configura i canali trappola e log dello Spam Trap.
 - **`/verify blacklist-add`** — [Admin] Aggiungi un utente alla blacklist.
 - **`/verify blacklist-remove`** — [Admin] Rimuovi un utente dalla blacklist.

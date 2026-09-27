@@ -3355,6 +3355,89 @@ di fila).
 
 ---
 
+### Fase 68 — Chiude §7 Security Suite al 99,9%: Anti-Raid,
+Anti-Nuke, Security Score (punto 7 della direttiva numerata: "direi
+comunque necessario") — resta fuori solo il ban globale via
+fingerprint, dipendenza esplicita e non ancora costruita da §4
+
+§7.3 Spam Trap era già completo. Chiuse in questo giro §7.1
+Anti-Raid, §7.2 Anti-Nuke e §7.5 Security Score — 31 voci `[x]`, una
+sola `[ ]` rimasta in tutta la sezione (il ban globale via
+fingerprint, dipendenza esplicita da §4 Anti-Alt, non costruito).
+
+**Anti-Raid** (`cogs/security/anti_raid.py`): join rate limit
+(finestra mobile GUILD-WIDE, non per singolo utente — chiave
+fittizia `user_id=0`, mai un vero snowflake Discord), età minima
+account, pattern username sospetto (regex per inferenza: lettere +
+4 o più cifre finali, tipico di un account generato in massa),
+assenza di avatar personalizzato. Risposta configurabile: ruolo di
+quarantena (creato al primo utilizzo, overwrite su ogni canale —
+stesso schema del ruolo Muted esistente ma un ruolo SEPARATO),
+innalzamento del `verification_level` del server, o entrambe. Alert
+via DM all'owner + canale opzionale.
+
+**Anti-Nuke** (`cogs/security/anti_nuke.py`): rilevamento di
+canali/ruoli/webhook/emoji/sticker cancellati o creati in massa, e
+mass ban/kick — cinque categorie, soglia/finestra configurabile per
+categoria, con l'autore risolto SEMPRE via audit log (l'evento
+gateway non lo include mai). Punizione configurabile (rimozione di
+tutti i ruoli, o ban) con una rete di sicurezza fissa: mai
+sull'owner del server. Whitelist di utenti/bot fidati che bypassano
+tutto. **Recovery best-effort** senza uno snapshot separato
+persistito: `on_guild_channel_delete`/`on_guild_role_delete`
+ricevono l'oggetto Discord com'era nell'ultima cache del client
+PRIMA della rimozione — nome/permessi/posizione sono quindi ancora
+leggibili al momento di ricrearlo, una volta rilevata la violazione.
+
+**Limite reale trovato e documentato, non aggirato**: "Protezione
+emoji/sticker/soundboard" (SPEC.md, testo originale) non ha un
+evento gateway dedicato per il SOUNDBOARD in discord.py 2.7 — coperti
+emoji e sticker, il soundboard resta escluso e la voce SPEC.md lo
+dice esplicitamente, invece di marcare `[x]` un sottoinsieme come se
+fosse tutto.
+
+**Security Score** (`cogs/security/security_score.py`,
+`/security-score`): health-check 0-100 con consigli azionabili — 2FA
+staff, livello di verifica, quota di membri amministratori,
+Anti-Raid/Anti-Nuke/AutoMod attivi. Pesi scelti per inferenza
+(nessuna formula "ufficiale" esiste per un punteggio di sicurezza di
+un server Discord). Modulo sempre gratuito: è un check di lettura,
+non una protezione attiva come le due sopra.
+
+**Architettura riusata da §6 AutoMod** (stesso pattern, non
+duplicato da zero): logica pura in `core/security_logic.py`
+(nessuna dipendenza discord.py/DB, come `automod_advanced_logic.py`),
+persistenza JSONB in `core/repositories/security_repo.py` (stesso
+schema di `automod_advanced_repo.py`), finestra mobile in memoria
+riusando LA STESSA CLASSE `AutomodRateTracker` sotto un nome diverso
+(`core/security_rate_tracker.py`) — la forma del problema (server +
+"attore" + categoria + finestra) è identica, non serviva una nuova
+implementazione.
+
+**Bug di isolamento nei test, trovato e corretto**: `security_rate_
+tracker` è un singleton di modulo — un test che segue un altro sulla
+stessa (server, attore, categoria) trovava il conteggio del test
+precedente già presente, facendo scattare una violazione un turno
+prima del previsto. Corretto sostituendo il singleton con
+un'istanza vuota in ogni fixture di test (`monkeypatch.setattr`),
+stesso principio già noto per `automod_repo`/`moderation_repo` ma
+applicato qui per la prima volta a un tracker in memoria.
+
+**64 nuovi test**: 27 in `tests/test_security_logic.py`; 2 in
+`tests/test_security_rate_tracker.py`; 6 in
+`tests/test_security_repo.py`; 5 in `tests/test_anti_raid_behavior.py`;
+9 in `tests/test_anti_nuke_behavior.py`; 3 smoke test (uno per cog);
+2 in `tests/test_security_score_behavior.py`.
+
+SPEC.md: §7 passa da 14 fatto/0 parziale/18 mancante a **31 fatto/0
+parziale/1 mancante** (il fingerprint, dipendenza esplicita non
+costruita).
+
+**Suite di test completa: 1771/1771 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

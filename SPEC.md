@@ -285,24 +285,67 @@ file, non da un riassunto.**
   da 6.13 (che è più azioni insieme su UN trigger, non su trigger
   ripetuti nel tempo) — voce nuova, non una ridefinizione di 6.13
 
-## §7 SECURITY SUITE — Spam Trap (§7.3) completo, il resto mancante
+## §7 SECURITY SUITE — completa tranne il ban globale via fingerprint (dipende da §4, non costruito)
 
-- `[ ]` 7.1 Anti-Raid
-  - `[ ]` Join rate limit (finestra scorrevole)
-  - `[ ]` Account age check all'ingresso
-  - `[ ]` Rilevamento pattern username
-  - `[ ]` Rilevamento pattern avatar
-  - `[ ]` Lockdown automatico
-  - `[ ]` Quarantine role
-  - `[ ]` Alert staff
-- `[ ]` 7.2 Anti-Nuke
-  - `[ ]` Protezione canali (create/delete di massa)
-  - `[ ]` Protezione ruoli
-  - `[ ]` Protezione webhook
-  - `[ ]` Protezione emoji / sticker / soundboard
-  - `[ ]` Rilevamento mass ban / mass kick
-  - `[ ]` Recovery automatico (ricreazione canali/ruoli)
-  - `[ ]` Whitelist utenti/bot fidati
+- `[x]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
+  PREMIUM (come Spam Trap). Logica di valutazione pura in
+  `core/security_logic.py` (`evaluate_join`), finestra mobile in
+  memoria per il join rate (`core/security_rate_tracker.py`, mai
+  persistita — stesso principio di `core/automod_rate_tracker.py`).
+  Comandi: `/anti-raid enable|join-rate|account-age|username-check|
+  avatar-check|lockdown-action|alert-channel|status`
+  - `[x]` Join rate limit (finestra scorrevole) — conteggio join
+    guild-wide (non per singolo utente: una `chiave fittizia
+    user_id=0`, mai un ID reale su Discord) nella finestra configurata
+  - `[x]` Account age check all'ingresso — età minima configurabile
+  - `[x]` Rilevamento pattern username — regex per inferenza
+    (lettere+4 o più cifre finali, tipico di un account generato in
+    massa da un raid-bot), disattivabile
+  - `[x]` Rilevamento pattern avatar — assenza di un avatar
+    personalizzato, disattivabile (nessun confronto tra avatar
+    diversi: solo "ha/non ha un avatar", per semplicità)
+  - `[x]` Lockdown automatico — tre modalità configurabili:
+    quarantena, innalzamento del `verification_level` del server, o
+    entrambe
+  - `[x]` Quarantine role — creato automaticamente al primo utilizzo
+    (overwrite su ogni canale, stesso schema del ruolo Muted di
+    `cogs/moderation/softban_mute.py`, ma un ruolo SEPARATO — un
+    sospetto raider appena entrato non è lo stesso caso di un membro
+    esistente sanzionato)
+  - `[x]` Alert staff — DM all'owner + canale di alert opzionale
+    (condiviso con Anti-Nuke)
+- `[x]` 7.2 Anti-Nuke — `cogs/security/anti_nuke.py`, modulo
+  CANDIDATO PREMIUM. L'autore di un evento non è mai nel payload
+  dell'evento gateway: risolto sempre via audit log
+  (`guild.audit_logs`, stesso approccio già usato per il cleanup
+  webhook/inviti di Spam Trap), con una finestra di tolleranza di 10s
+  tra evento e voce di audit log. Comandi: `/anti-nuke enable|limits|
+  trusted-add|trusted-remove|punish-action|recovery|status`
+  - `[x]` Protezione canali (create/delete di massa) — soglia/finestra
+    configurabile per categoria
+  - `[x]` Protezione ruoli — stessa logica, categoria separata
+  - `[x]` Protezione webhook — `on_webhooks_update`, stessa logica
+  - `[x]` Protezione emoji / sticker — `on_guild_emojis_update` +
+    `on_guild_stickers_update`. **Soundboard escluso**: limite reale
+    della libreria discord.py 2.7 in uso (nessun evento gateway
+    dedicato esposto), non una scelta di scope
+  - `[x]` Rilevamento mass ban / mass kick — `on_member_ban` diretto;
+    per il kick, `on_member_remove` verifica PRIMA nell'audit log se
+    si tratta davvero di un'espulsione (altrimenti ogni leave
+    volontario alimenterebbe per errore il contatore)
+  - `[x]` Recovery automatico (ricreazione canali/ruoli) — best-effort,
+    senza uno snapshot separato persistito: `on_guild_channel_delete`/
+    `on_guild_role_delete` ricevono l'oggetto Discord com'era
+    nell'ultima cache del client PRIMA della rimozione, quindi
+    nome/permessi/posizione sono ancora leggibili al momento della
+    ricreazione
+  - `[x]` Whitelist utenti/bot fidati — `trusted_ids`, esenta
+    completamente dai controlli (nessuna azione, nessun log)
+  - **Rete di sicurezza**: l'autore non viene MAI punito se è il
+    proprietario del server (stessa filosofia della rete di sicurezza
+    già in AutoMod §6.13, ma invertita: lì è la vittima potenziale ad
+    essere protetta, qui l'owner non può mai essere il "nuke" da
+    contrastare per errore)
 - `[x]` 7.3 **Spam Trap** — completo (solo il ban globale via
   fingerprint resta escluso, per la dipendenza esplicita da §4 sotto)
   - `[x]` `/setup` con selezione canale trappola e canale log — via
@@ -348,7 +391,15 @@ file, non da un riassunto.**
   `/permission-heatmap` (ruoli con permessi critici + quanti membri
   li possiedono) + DM diretto all'owner quando un membro riceve un
   ruolo con permesso critico
-- `[ ]` 7.5 Security Score / health check configurazione server
+- `[x]` 7.5 Security Score / health check configurazione server —
+  `cogs/security/security_score.py`, comando `/security-score`.
+  Modulo SEMPRE GRATUITO (è un check di lettura, non una protezione
+  attiva). Punteggio 0-100 (`core.security_logic.
+  compute_security_score`, logica pura testata a sé) con pesi scelti
+  per inferenza — nessuna formula "ufficiale" esiste per un security
+  score di un server Discord: 2FA staff, livello di verifica, quota
+  di membri amministratori, Anti-Raid/Anti-Nuke attivi, AutoMod
+  attivo — ognuno con un consiglio azionabile in caso di penalità
 
 ## §8 LOGGING
 
@@ -1103,7 +1154,7 @@ rilancia lo stesso conteggio.
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 15 | 0 | 0 |
-| §7 Security | 14 | 0 | 18 |
+| §7 Security | 31 | 0 | 1 |
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 8 | 1 | 0 |
 | §10 Alerts | 6 | 0 | 1 |
