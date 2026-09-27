@@ -53,11 +53,13 @@ from core.config import config
 from core.database import db
 from core.main_radio_logic import RadioTrackInfo, compute_current_position
 from core.music_fleet import MusicFleet
+from core.music_fleet_logic import TOTAL_WORKERS
 from core.music_logic import (
     DEFAULT_PUBLIC_LAVALINK_NODES,
     LavalinkNodeConfig,
     build_queue_display,
     format_duration,
+    is_spotify_query,
     parse_lavalink_nodes,
 )
 from core.premium import PremiumModule, registry
@@ -143,7 +145,11 @@ class MusicCog(commands.Cog):
         return True
 
     async def _get_worker_guild(
-        self, guild_id: int, *, auto_assign: bool
+        self,
+        guild_id: int,
+        *,
+        auto_assign: bool,
+        interaction: discord.Interaction | None = None,
     ) -> tuple[discord.Guild | None, str | None]:
         """
         Restituisce (guild_del_worker, None) in caso di successo, o
@@ -152,31 +158,131 @@ class MusicCog(commands.Cog):
         non ne ha già uno; auto_assign=False (tutti gli altri
         comandi) non assegna nulla — se non c'è una sessione già
         attiva, quei comandi devono fallire pulitamente, non avviarne
-        una nuova per sbaglio.
+        una nuova per sbaglio. `interaction` serve SOLO quando
+        auto_assign=True, per differenziare il messaggio di errore
+        (admin/non-admin) quando nessun worker è disponibile — vedi
+        `_messaggio_istanze_esaurite`.
         """
         fleet: MusicFleet = self.bot.music_fleet
 
         if auto_assign:
             assegnazione = await fleet.get_or_assign_worker_for_guild(guild_id)
-            errore_assenza = (
-                "Tutti i music bot sono al momento occupati su altri server. "
-                "Riprova tra poco."
-            )
+            if assegnazione is None:
+                errore_assenza = await self._messaggio_istanze_esaurite(
+                    fleet, guild_id, interaction
+                )
+                return None, errore_assenza
         else:
             assegnazione = await fleet.get_worker_for_guild(guild_id)
-            errore_assenza = "Non c'è nessuna sessione musicale attiva su questo server."
-
-        if assegnazione is None:
-            return None, errore_assenza
+            if assegnazione is None:
+                return None, "Non c'è nessuna sessione musicale attiva su questo server."
 
         _worker_index, worker_bot = assegnazione
         worker_guild = worker_bot.get_guild(guild_id)
         if worker_guild is None:
+            # Non dovrebbe più succedere (get_or_assign_worker_for_guild
+            # ora esclude i worker non presenti PRIMA di assegnarli),
+            # ma se capita comunque (es. il bot è stato rimosso dal
+            # server DOPO l'assegnazione) va rilasciato subito — senza
+            # questa release lo slot in music_sessions resterebbe
+            # occupato per sempre per questo server, un bug reale
+            # trovato mentre si costruiva questa gestione.
+            if auto_assign:
+                await fleet.release_guild(guild_id)
             return None, (
                 "Il music bot assegnato a questo server non risulta invitato qui. "
                 "Contatta lo staff del bot."
             )
         return worker_guild, None
+
+    async def _messaggio_istanze_esaurite(
+        self,
+        fleet: MusicFleet,
+        guild_id: int,
+        interaction: discord.Interaction | None,
+    ) -> str:
+        """
+        Messaggio quando NESSUN worker è assegnabile a questo server
+        (SPEC.md §9, cap istanze concorrenti) — due scenari distinti,
+        entrambi confermati esplicitamente dall'utente:
+
+        1. Questo server non ha ancora invitato tutte le 5 istanze —
+           la soluzione è invitarne altre (link generati al volo,
+           solo per chi ha permessi di admin — a un non-admin si dice
+           solo di chiedere all'admin, senza esporre i link).
+        2. Questo server ha già tutte e 5 le istanze ma sono tutte
+           occupate altrove in questo momento — non c'è nulla da
+           invitare qui, serve un'estensione del limite GLOBALE:
+           l'unica via è un ticket nel server ufficiale iYokai.
+        """
+        non_presenti = await fleet.get_missing_worker_indices(guild_id)
+        # getattr con default: alcuni percorsi (es. DM, o oggetti
+        # finti nei test) possono non avere permessi calcolabili —
+        # trattati semplicemente come non-admin, mai un errore.
+        permessi = getattr(interaction.user, "guild_permissions", None) if interaction else None
+        è_admin = bool(permessi and permessi.manage_guild)
+
+        if non_presenti:
+            if è_admin:
+                link = "\n".join(
+                    f"- Istanza {i}: {fleet.build_invite_url(i, guild_id)}"
+                    for i in sorted(non_presenti)
+                )
+                return (
+                    "Nessuna istanza musicale libera in questo server in questo "
+                    f"momento — questo server non ha ancora invitato tutte le "
+                    f"{TOTAL_WORKERS} istanze disponibili. Puoi invitarne altre:\n"
+                    f"{link}\n"
+                    "Se in futuro vi servissero più di 5 istanze contemporanee, "
+                    "apri un ticket nel server ufficiale iYokai per richiedere "
+                    "l'estensione del limite."
+                )
+            return (
+                "Nessuna istanza musicale libera in questo server in questo "
+                "momento. Chiedi a un admin di invitare le altre istanze del "
+                "bot musicale disponibili per questo server."
+            )
+
+        if è_admin:
+            return (
+                f"Tutte le {TOTAL_WORKERS} istanze musicali di questo server sono "
+                "al momento occupate su altri server. Se capita spesso, apri un "
+                "ticket nel server ufficiale iYokai per richiedere un'estensione "
+                "del limite di istanze."
+            )
+        return (
+            "Tutte le istanze musicali disponibili sono al momento occupate "
+            "altrove. Se capita spesso, chiedi a un admin di aprire un ticket "
+            "con lo staff del bot per richiedere più istanze."
+        )
+
+    async def _search_with_spotify_fallback(
+        self, query: str
+    ) -> wavelink.Search | None:
+        """
+        SPEC.md §9.5 — Spotify richiede il plugin LavaSrc, presente
+        (dichiarato) sui nodi pubblici di default ma non verificabile
+        senza controllarli direttamente: possono non risolvere o non
+        rispondere. Instradamento GIÀ predisposto per un nodo
+        personale con LavaSrc (LAVALINK_HOST/PORT/PASSWORD, lo stesso
+        "nodo locale" già usato per gli inediti della radio — SPEC.md
+        §9.11): se una query Spotify non produce risultati sui nodi
+        pubblici, si ritenta UNA volta pinnata specificamente su quel
+        nodo. Se il nodo personale non è configurato o è anch'esso
+        senza LavaSrc, il fallback semplicemente non trova nulla,
+        come oggi — nessun comportamento nuovo finché l'utente non
+        aggiunge le credenziali del proprio nodo in .env.
+        """
+        risultati = await wavelink.Playable.search(query)
+        if risultati or not is_spotify_query(query):
+            return risultati
+
+        try:
+            nodo_locale = wavelink.Pool.get_node(LOCAL_NODE_IDENTIFIER)
+        except wavelink.exceptions.InvalidNodeException:
+            return risultati
+
+        return await wavelink.Playable.search(query, node=nodo_locale)
 
     # ================================================================
     # Comandi (instradati verso un worker)
@@ -189,7 +295,9 @@ class MusicCog(commands.Cog):
 
         await interaction.response.defer()
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=True)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=True, interaction=interaction
+        )
         if errore:
             await interaction.followup.send(errore)
             return
@@ -206,7 +314,7 @@ class MusicCog(commands.Cog):
             player = await canale_worker.connect(cls=wavelink.Player)
             player.autoplay = wavelink.AutoPlayMode.partial
 
-        risultati = await wavelink.Playable.search(query)
+        risultati = await self._search_with_spotify_fallback(query)
         if not risultati:
             await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
             return

@@ -49,6 +49,17 @@ class _FakeRealMember(discord.Member):
         return self._voice_finta
 
 
+class _FakeAdminMember(_FakeRealMember):
+    """Stesso fake di sopra ma con permessi di admin (manage_guild) —
+    serve a testare il messaggio con i link d'invito/ticket, mostrato
+    SOLO a chi ha questo permesso (SPEC.md §9, cap istanze
+    concorrenti)."""
+
+    @property
+    def guild_permissions(self):
+        return discord.Permissions(manage_guild=True)
+
+
 class _FakeInteraction:
     def __init__(self, guild_id: int, user) -> None:
         self.guild = _FakeGuild(guild_id)
@@ -90,8 +101,15 @@ class _FakeFleetSenzaSessione:
 
 
 class _FakeFleetTuttiOccupati:
+    """Tutte le 5 istanze sono presenti nel server ma occupate
+    altrove — nessuna mancante da invitare, quindi il messaggio deve
+    guidare verso l'estensione del limite (ticket), non un invito."""
+
     async def get_or_assign_worker_for_guild(self, guild_id: int):
         return None
+
+    async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
+        return set()
 
 
 class _FakeFleetWorkerNonInvitato:
@@ -105,6 +123,21 @@ class _FakeFleetWorkerNonInvitato:
 
     async def get_or_assign_worker_for_guild(self, guild_id: int):
         return await self.get_worker_for_guild(guild_id)
+
+
+class _FakeFleetIstanzeMancanti:
+    """Nessun worker libero PERCHÉ questo server non ha ancora
+    invitato tutte le 5 istanze (2 mancanti) — scenario diverso dalla
+    saturazione globale sopra: qui la soluzione è invitarne altre."""
+
+    async def get_or_assign_worker_for_guild(self, guild_id: int):
+        return None
+
+    async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
+        return {4, 5}
+
+    def build_invite_url(self, worker_index: int, guild_id: int) -> str:
+        return f"https://invito.finto/{worker_index}/{guild_id}"
 
 
 class _FakeFleetConSessione:
@@ -168,7 +201,7 @@ async def test_play_con_tutti_i_worker_occupati_avvisa_l_utente(monkeypatch):
 
         await cog.play.callback(cog, interaction, query="una canzone qualsiasi")
 
-        assert "occupati" in interaction.response.sent_messages[0].lower()
+        assert "occupate" in interaction.response.sent_messages[0].lower()
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
         await database.close()
@@ -242,6 +275,64 @@ async def test_stop_con_sessione_esistente_ferma_e_svuota(monkeypatch):
 
         assert player_finto.stop_chiamato is True
         assert player_finto.queue.cleared is True
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_play_istanze_mancanti_non_admin_invita_a_chiedere_all_admin(monkeypatch):
+    guild_id = 700000025
+    database = await _prepara_modulo_attivo(guild_id, monkeypatch)
+    try:
+        bot = _FakeBot(_FakeFleetIstanzeMancanti())
+        cog = MusicCog(bot=bot)
+        interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
+
+        await cog.play.callback(cog, interaction, query="una canzone qualsiasi")
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "chiedi a un admin" in messaggio.lower()
+        assert "http" not in messaggio  # nessun link esposto a un non-admin
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_play_istanze_mancanti_admin_riceve_i_link_d_invito(monkeypatch):
+    guild_id = 700000026
+    database = await _prepara_modulo_attivo(guild_id, monkeypatch)
+    try:
+        bot = _FakeBot(_FakeFleetIstanzeMancanti())
+        cog = MusicCog(bot=bot)
+        interaction = _FakeInteraction(guild_id, user=_FakeAdminMember(voice=object()))
+
+        await cog.play.callback(cog, interaction, query="una canzone qualsiasi")
+
+        messaggio = interaction.response.sent_messages[0]
+        assert "https://invito.finto/4/" in messaggio
+        assert "https://invito.finto/5/" in messaggio
+        assert "ticket" in messaggio.lower()  # menzione dell'estensione futura
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_play_saturazione_globale_admin_invitato_ad_aprire_un_ticket(monkeypatch):
+    guild_id = 700000027
+    database = await _prepara_modulo_attivo(guild_id, monkeypatch)
+    try:
+        bot = _FakeBot(_FakeFleetTuttiOccupati())
+        cog = MusicCog(bot=bot)
+        interaction = _FakeInteraction(guild_id, user=_FakeAdminMember(voice=object()))
+
+        await cog.play.callback(cog, interaction, query="una canzone qualsiasi")
+
+        messaggio = interaction.response.sent_messages[0].lower()
+        assert "ticket" in messaggio
+        assert "http" not in messaggio  # niente da invitare, sono già tutte presenti
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
         await database.close()

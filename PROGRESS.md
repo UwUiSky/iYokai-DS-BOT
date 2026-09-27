@@ -2483,6 +2483,88 @@ toccato in questa fase, solo verifica di non regressione).
 
 ---
 
+### Fase 59 — Chiude §9 Music: fallback Spotify predisposto verso un
+nodo personale + gestione reale del cap istanze concorrenti (SPEC.md
+§9.5/§9.10)
+
+L'utente ha chiesto di finire Music, escludendo esplicitamente tutto
+ciò già scartato/rimandato per sua richiesta (filtri, DJ role,
+voteskip, comandi usati raramente — §9.4/9.6/9.7/9.8, invariati).
+Restavano solo due voci genuinamente aperte, entrambe chiarite con
+l'utente prima di scrivere codice (`AskUserQuestion`, due giri: la
+prima ha isolato il vero bisogno, la seconda ha chiuso solo il
+dettaglio del ticket).
+
+**Spotify (§9.5)**: Spotify richiede il plugin LavaSrc sul nodo
+Lavalink, non verificabile sui nodi pubblici di terzi senza
+controllarli — l'utente vuole un fallback verso un suo nodo personale
+con LavaSrc, da configurare più avanti, ma con il codice GIÀ
+predisposto oggi. Scoperto che questo nodo personale altro non è che
+`LAVALINK_HOST/PORT/PASSWORD` già esistente in config.py (il "nodo
+locale/self-hostato", oggi usato solo per i file locali della radio
+— `LOCAL_NODE_IDENTIFIER`) — nessuna nuova variabile d'ambiente
+necessaria. Nuovo: `core.music_logic.is_spotify_query` (pura,
+riconosce URL `open.spotify.com` e URI `spotify:`) e
+`MusicCog._search_with_spotify_fallback`: cerca prima sui nodi
+pubblici come sempre, e SOLO se una query Spotify torna vuota
+ritenta UNA volta pinnata sul nodo locale. Comportamento identico ad
+oggi finché l'utente non configura lì un nodo con LavaSrc davvero
+installato — nessuna regressione, puro miglioramento silenzioso.
+
+**Cap istanze concorrenti (§9.10)**: chiarito con l'utente cosa
+"configurabile a parte" significasse davvero — non un numero
+diverso da 5 impostabile a comando (il cap È il numero di token bot
+worker configurati, non ha senso renderlo un altro numero), ma la
+gestione di COSA succede quando `/play` non trova un worker
+assegnabile, distinguendo due scenari reali con messaggi diversi e
+un terzo pubblico (admin vs non-admin):
+1. **Il server non ha ancora invitato tutte le 5 istanze** — un
+   admin riceve i link d'invito delle istanze mancanti (generati al
+   volo con `discord.utils.oauth_url`, permessi minimi — solo
+   vocale, mai admin — SEMPRE per QUESTO server specifico via
+   `guild=`/`disable_guild_select=True`); un non-admin viene
+   invitato a chiedere all'admin, senza vedere alcun link.
+2. **Il server ha già tutte le 5 istanze ma sono tutte occupate
+   altrove in questo momento** — non c'è nulla da invitare qui,
+   serve un'estensione del limite GLOBALE: il messaggio (sia per
+   admin che no) indirizza ad aprire un ticket nel server ufficiale
+   iYokai (il modulo Ticket, §13, è già attivo lì — nessun link
+   fabbricato, quel server è già pubblicamente raggiungibile).
+
+**Bug reale trovato e corretto nel percorso**: `MusicFleet.
+get_or_assign_worker_for_guild` assegnava un worker SENZA controllare
+se fosse davvero invitato nel server richiedente — solo DOPO
+l'assegnazione (già scritta su `music_sessions`) `/play` scopriva che
+il worker non c'era, falliva con un messaggio generico, e lasciava lo
+slot occupato PER SEMPRE per quel server (nessun evento lo avrebbe
+mai liberato, dato che nessun player si connette mai). Corretto
+escludendo i worker non presenti PRIMA di assegnare (nuovo
+`MusicFleet.get_missing_worker_indices`), e aggiunta una release
+difensiva nel raro caso residuo (bot rimosso dal server DOPO
+l'assegnazione).
+
+**19 nuovi test**: 5 in `test_music_fleet.py` (esclusione worker non
+presenti, nessuno assegnabile se tutti assenti, `get_missing_worker_
+indices`, `build_invite_url`), 3 in `test_music_routing.py` (istanze
+mancanti non-admin/admin con link, saturazione globale admin con
+ticket), 5 in `test_music_logic.py` (`is_spotify_query`), 4 in un
+nuovo `test_music_spotify_fallback.py` (fallback attivato/non
+attivato, nodo locale assente) — più l'aggiornamento di un fake
+preesistente (`_FakeWorkerBot` in `test_music_fleet.py`) e di
+un'asserzione di testo cambiata deliberatamente in un test già
+esistente.
+
+SPEC.md: 9.5 resta `[~]` (il fallback è predisposto, ma Spotify non
+funziona finché l'utente non configura davvero un nodo con LavaSrc)
+con nota aggiornata; 9.10 passa a `[x]`. Ricalcolo meccanico: §9
+Music passa da 6/3/0 a **7/2/0** (fatte/parziali/mancanti). **59%
+dello schema (158/273 pesato).** Nessun comando Discord nuovo —
+COMMAND_LIST.md rigenerato (solo il timestamp).
+
+**Suite di test completa: 1419/1419 passano.**
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

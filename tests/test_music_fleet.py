@@ -12,9 +12,29 @@ from core.music_fleet import MusicFleet
 from core.repositories.music_session_repo import MusicSessionRepository
 
 
+class _FakeGuildRef:
+    def __init__(self, guild_id: int) -> None:
+        self.id = guild_id
+
+
+class _FakeUser:
+    def __init__(self, user_id: int) -> None:
+        self.id = user_id
+
+
 class _FakeWorkerBot:
-    def __init__(self, worker_index: int) -> None:
+    def __init__(self, worker_index: int, absent_from: set[int] | None = None) -> None:
         self.worker_index = worker_index
+        self.user = _FakeUser(1000 + worker_index)
+        # Guild da cui questo worker è "assente" (non invitato) —
+        # di default nessuna, cioè presente ovunque, comportamento
+        # identico a prima che il controllo di presenza esistesse.
+        self._absent_from = absent_from or set()
+
+    def get_guild(self, guild_id: int) -> _FakeGuildRef | None:
+        if guild_id in self._absent_from:
+            return None
+        return _FakeGuildRef(guild_id)
 
 
 @pytest.fixture
@@ -127,3 +147,73 @@ def test_get_worker_bot_indice_1_based():
 def test_costruttore_rifiuta_un_numero_sbagliato_di_worker():
     with pytest.raises(ValueError):
         MusicFleet([_FakeWorkerBot(1), _FakeWorkerBot(2)])  # solo 2, ne servono 5
+
+
+# ----------------------------------------------------------------------
+# Presenza del worker nel server (SPEC.md §9, cap istanze concorrenti)
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_worker_non_presente_nel_server_viene_escluso_dall_assegnazione(clean_db, monkeypatch):
+    import core.music_fleet as music_fleet_module
+
+    repo = MusicSessionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(music_fleet_module, "music_session_repo", repo)
+
+    # Il worker 1 (il primo che verrebbe scelto normalmente) non è
+    # invitato in questo server - deve saltare direttamente al 2.
+    worker_bots = [_FakeWorkerBot(1, absent_from={100}), *[_FakeWorkerBot(i) for i in range(2, 6)]]
+    fleet = MusicFleet(worker_bots)
+
+    indice, _ = await fleet.get_or_assign_worker_for_guild(guild_id=100)
+
+    assert indice == 2
+
+
+@pytest.mark.asyncio
+async def test_worker_assente_da_tutti_i_server_lascia_nessuno_libero(clean_db, monkeypatch):
+    import core.music_fleet as music_fleet_module
+
+    repo = MusicSessionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(music_fleet_module, "music_session_repo", repo)
+
+    worker_bots = [_FakeWorkerBot(i, absent_from={999}) for i in range(1, 6)]
+    fleet = MusicFleet(worker_bots)
+
+    risultato = await fleet.get_or_assign_worker_for_guild(guild_id=999)
+
+    assert risultato is None
+
+
+@pytest.mark.asyncio
+async def test_get_missing_worker_indices_nessuno_mancante(fleet_e_repo):
+    fleet, repo = fleet_e_repo
+
+    assert await fleet.get_missing_worker_indices(guild_id=100) == set()
+
+
+@pytest.mark.asyncio
+async def test_get_missing_worker_indices_alcuni_mancanti(clean_db, monkeypatch):
+    import core.music_fleet as music_fleet_module
+
+    repo = MusicSessionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(music_fleet_module, "music_session_repo", repo)
+
+    worker_bots = [
+        _FakeWorkerBot(1, absent_from={100}),
+        _FakeWorkerBot(2, absent_from={100}),
+        *[_FakeWorkerBot(i) for i in range(3, 6)],
+    ]
+    fleet = MusicFleet(worker_bots)
+
+    assert await fleet.get_missing_worker_indices(guild_id=100) == {1, 2}
+
+
+def test_build_invite_url_contiene_il_client_id_e_la_guild():
+    worker_bots = [_FakeWorkerBot(i) for i in range(1, 6)]
+    fleet = MusicFleet(worker_bots)
+
+    url = fleet.build_invite_url(worker_index=3, guild_id=555)
+
+    assert str(1003) in url  # user.id del worker 3 (1000 + 3)
+    assert "555" in url
+    assert url.startswith("https://discord.com/oauth2/authorize")

@@ -333,12 +333,22 @@ up/down oltre a impostare un valore), disconnect, nonstop.
   /nonstop), seek, lyrics
 - `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — YouTube funziona via la ricerca di
-  default di Lavalink; Spotify richiederebbe un plugin (LavaSrc) sul
-  nodo Lavalink usato, non verificabile se presente su un nodo
-  pubblico di terzi senza controllarlo direttamente; **file locali
-  ORA fatti** per la radio condivisa (`/nonstop-main add-local`),
-  instradati specificamente verso il nodo Lavalink locale — i nodi
-  pubblici non hanno accesso al filesystem della macchina
+  default di Lavalink; Spotify richiede un plugin (LavaSrc) sul nodo
+  Lavalink usato, non verificabile se presente su un nodo pubblico di
+  terzi senza controllarlo direttamente — **fallback ORA predisposto**
+  (`MusicCog._search_with_spotify_fallback`, `core.music_logic.
+  is_spotify_query`): se una query Spotify non produce risultati sui
+  nodi pubblici, si ritenta UNA volta pinnata specificamente sul nodo
+  locale/self-hostato (`LOCAL_NODE_IDENTIFIER`, lo stesso già usato
+  per i file locali qui sotto) — funziona non appena l'utente
+  configura lì un nodo con LavaSrc installato (`LAVALINK_HOST/PORT/
+  PASSWORD` in `.env`), nessun altro codice da scrivere quando lo
+  farà. Fino ad allora il comportamento resta identico a oggi (il
+  fallback semplicemente non trova nulla, come un nodo pubblico senza
+  Spotify farebbe comunque). **File locali ORA fatti** per la radio
+  condivisa (`/nonstop-main add-local`), instradati specificamente
+  verso il nodo Lavalink locale — i nodi pubblici non hanno accesso
+  al filesystem della macchina
 - `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
   scartato su richiesta esplicita dell'utente, non un limite tecnico
 - `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6
@@ -348,10 +358,22 @@ up/down oltre a impostare un valore), disconnect, nonstop.
   bot (main + 5 worker). Il timeout (300s di default) è gestito
   internamente da wavelink/Lavalink; qui solo la reazione:
   disconnette e libera il worker nella flotta
-- `[~]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
+- `[x]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
   on|off` (loop continuo sulla coda del worker attivo) fatto; il cap
-  a 5 istanze concorrenti esiste implicitamente (TOTAL_WORKERS), ma
-  non è un limite configurabile a parte
+  di 5 istanze (TOTAL_WORKERS) resta un vincolo dell'infrastruttura
+  (5 token bot worker configurati), non un numero arbitrario da poter
+  cambiare via comando — chiarito esplicitamente dall'utente. "Gestito"
+  ora significa: `/play` assegna solo un worker EFFETTIVAMENTE
+  invitato in quel server (mai uno assente, corretto un bug reale che
+  avrebbe altrimenti occupato per sempre uno slot inutilizzabile), e
+  quando nessuna istanza è disponibile il messaggio distingue i due
+  casi reali — questo server non ha ancora invitato tutte le 5
+  istanze (link d'invito generati al volo, mostrati solo a chi ha
+  `manage_guild`, un non-admin viene invitato a chiedere all'admin) o
+  tutte e 5 sono già presenti ma occupate altrove in questo momento
+  (serve un'estensione del limite GLOBALE, indirizzato ad aprire un
+  ticket nel server ufficiale iYokai — nessun link fabbricato, il
+  server è già raggiungibile pubblicamente)
 - `[x]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
   condiviso) — `/nonstop-main add-track|add-local|remove-track|
   list-tracks|start|stop`. "Condiviso" ottenuto con un orologio
@@ -879,7 +901,7 @@ rilancia lo stesso conteggio.
 | §6 AutoMod | 3 | 0 | 12 |
 | §7 Security | 14 | 0 | 18 |
 | §8 Logging | 6 | 0 | 12 |
-| §9 Music | 6 | 3 | 0 |
+| §9 Music | 7 | 2 | 0 |
 | §10 Alerts | 5 | 1 | 1 |
 | §11 Backup | 8 | 1 | 4 |
 | §12 Voice temp | 5 | 0 | 3 |
@@ -889,9 +911,9 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **157** | **7** | **109** |
+| **Totale** | **158** | **6** | **109** |
 
-Su 273 voci totali: **157 fatte, 7 parziali, 109 mancanti** — circa
+Su 273 voci totali: **158 fatte, 6 parziali, 109 mancanti** — circa
 il 59% dello schema (contando i parziali a metà peso). §11 Backup
 System ha l'intera orchestrazione automatizzabile completa —
 restano solo le parti che richiedono decisioni architetturali con

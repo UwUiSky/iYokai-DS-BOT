@@ -15,10 +15,16 @@ limitata.
 
 from __future__ import annotations
 
+import discord
 from discord.ext import commands
 
 from core.music_fleet_logic import TOTAL_WORKERS, find_free_worker
 from core.repositories.music_session_repo import music_session_repo
+
+# Permessi minimi richiesti a un'istanza worker per unirsi e parlare
+# in un canale vocale — usati per generare il link d'invito quando
+# manca a un server (SPEC.md §9, cap istanze concorrenti).
+WORKER_INVITE_PERMISSIONS = discord.Permissions(view_channel=True, connect=True, speak=True)
 
 
 class MusicFleet:
@@ -55,21 +61,57 @@ class MusicFleet:
         """
         La sessione già assegnata a questo server, se esiste — così
         un secondo /play nello stesso server non salta a un worker
-        diverso a caso. Altrimenti il primo worker libero, assegnato
-        e registrato subito. None se tutti e 5 sono occupati altrove
-        in questo momento.
+        diverso a caso. Altrimenti il primo worker libero E presente
+        in questo server (escludere chi non è invitato qui PRIMA di
+        assegnarlo — non dopo — evita di occupare per sempre uno slot
+        in `music_sessions` per un worker che non potrà mai connettersi
+        in questo server, un bug reale trovato mentre si costruiva la
+        gestione del limite istanze), assegnato e registrato subito.
+        None se non c'è nessun worker sia libero sia presente qui in
+        questo momento.
         """
         worker_index = await music_session_repo.get_worker_for_guild(guild_id)
         if worker_index is not None:
             return worker_index, self.get_worker_bot(worker_index)
 
+        non_presenti = await self.get_missing_worker_indices(guild_id)
         occupati = await music_session_repo.get_occupied_workers()
-        libero = find_free_worker(occupati)
+        libero = find_free_worker(occupati | non_presenti)
         if libero is None:
             return None
 
         await music_session_repo.assign_worker(guild_id, libero)
         return libero, self.get_worker_bot(libero)
+
+    async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
+        """
+        Gli indici (1-based) delle istanze worker NON invitate in
+        questo server — usato sia per escluderle dall'assegnazione
+        sopra sia per decidere il messaggio giusto quando nessun
+        worker è disponibile (SPEC.md §9, cap istanze concorrenti):
+        se qui manca almeno un'istanza delle 5, la soluzione è
+        invitarla; se sono già tutte presenti ma tutte occupate
+        altrove, la soluzione è un'estensione del limite globale.
+        """
+        return {
+            i
+            for i in range(1, TOTAL_WORKERS + 1)
+            if self.get_worker_bot(i).get_guild(guild_id) is None
+        }
+
+    def build_invite_url(self, worker_index: int, guild_id: int) -> str:
+        """Link d'invito per una singola istanza worker verso questo
+        server specifico (`guild=`/`disable_guild_select=True` lo
+        preseleziona e blocca la scelta), con i soli permessi vocali
+        minimi che le serve — mai i permessi di amministratore."""
+        worker_bot = self.get_worker_bot(worker_index)
+        return discord.utils.oauth_url(
+            worker_bot.user.id,
+            permissions=WORKER_INVITE_PERMISSIONS,
+            guild=discord.Object(id=guild_id),
+            disable_guild_select=True,
+            scopes=["bot"],
+        )
 
     async def release_guild(self, guild_id: int) -> None:
         """Chiamata quando una sessione finisce (es. /disconnect) —

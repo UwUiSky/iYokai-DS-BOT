@@ -8,6 +8,7 @@ from core.music_logic import (
     LavalinkNodeConfig,
     build_queue_display,
     format_duration,
+    is_spotify_query,
     parse_lavalink_nodes,
 )
 
@@ -110,3 +111,20 @@ class TestBuildQueueDisplay:
         assert "Traccia 9" in risultato
         assert "Traccia 10" not in risultato
         assert "altre 5 tracce" in risultato
+
+
+class TestIsSpotifyQuery:
+    def test_url_open_spotify(self):
+        assert is_spotify_query("https://open.spotify.com/track/abc123") is True
+
+    def test_uri_spotify(self):
+        assert is_spotify_query("spotify:track:abc123") is True
+
+    def test_maiuscole_e_spazi_non_contano(self):
+        assert is_spotify_query("  SPOTIFY:track:abc123  ") is True
+
+    def test_query_youtube_falso(self):
+        assert is_spotify_query("https://youtube.com/watch?v=abc") is False
+
+    def test_ricerca_testuale_semplice_falso(self):
+        assert is_spotify_query("una canzone qualsiasi") is False

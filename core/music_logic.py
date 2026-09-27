@@ -113,3 +113,18 @@ def build_queue_display(
         righe.append(f"...e altre {rimanenti} tracce.")
 
     return "\n".join(righe)
+
+
+def is_spotify_query(query: str) -> bool:
+    """
+    Vero se `query` punta a Spotify (URL open.spotify.com o URI
+    spotify:...) — usato per decidere quando tentare il fallback sul
+    nodo locale/self-hostato se i nodi pubblici non risolvono
+    (SPEC.md §9.5): Spotify richiede il plugin LavaSrc, non
+    verificabile sui nodi pubblici di terzi senza controllarli
+    direttamente, quindi solo le query Spotify hanno bisogno di
+    questo fallback speciale — YouTube/SoundCloud/URL funzionano già
+    su qualunque nodo pubblico.
+    """
+    query_pulita = query.strip().lower()
+    return query_pulita.startswith("spotify:") or "open.spotify.com" in query_pulita
