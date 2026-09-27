@@ -3438,6 +3438,84 @@ di fila).
 
 ---
 
+### Fase 69 — Ban globale (richiesta esplicita dell'utente: "E fai il
+ban globale per favore.."), come sostituto realizzabile del gap
+lasciato aperto da §7.3/§4
+
+L'utente ha chiesto esplicitamente il ban globale dopo che la Fase 68
+lo aveva segnalato come unico gap rimasto in §7. Prima di scrivere
+codice, decisione di design da fissare (nessuna domanda all'utente,
+per lo stile di lavoro di questa sessione — inferenza documentata):
+il "ban globale via fingerprint" descritto in SPEC.md §7.3/§4.3 non è
+realizzabile OGGI, e non solo per mancanza di tempo — è bloccato per
+un motivo strutturale. Il fingerprint/alt-detection lì descritto
+richiede una raccolta OAuth2 "identify" + IP fatta al momento del
+VERIFY, prima che l'account si comporti male (§4.2, non costruito);
+un account appena bannato dalla Spam Trap non collaborerebbe mai a un
+flusso OAuth2 dopo il fatto, quindi quella raccolta non potrebbe
+avvenire a ban avvenuto in nessun caso — resta bloccato su §4.2 anche
+in futuro, salvo costruire prima l'intero Verify Avanzato.
+
+Interpretazione presa (letterale, non quella che i due `[ ]`
+suggerivano): "ban globale" per l'utente comunicato via chat significa
+propagare un ban dello STESSO account Discord (stesso user ID) verso
+ogni altro server che condivide il bot — non un'euristica per
+riconoscere un ALT (account diverso). Questo è concretamente
+realizzabile oggi, con dati che il bot ha già (nessun IP, nessun
+consenso OAuth2 necessario): quando la Spam Trap bannisce un account
+in un server aderente alla rete, lo stesso account viene bannato
+anche negli altri server aderenti.
+
+**Costruito**: `cogs/security/global_ban.py` (`/global-ban
+enable|disable|status`, modulo candidato premium
+`MODULE_GLOBAL_BAN`), `core/global_ban_logic.py` (logica pura,
+`should_propagate_ban` — propaga solo se sorgente E target hanno
+aderito, mai verso se stessi), `core/repositories/global_ban_repo.py`
+(solo un log di propagazione, `global_ban_log` — **nessuna nuova
+tabella di configurazione**: l'opt-in riusa l'attivazione modulo già
+esistente `db.is_module_active_for_guild`/`set_module_active_for_
+guild` su `guild_config`, lo stesso interruttore usato da ogni altro
+modulo del bot — un secondo interruttore per dire la stessa cosa
+sarebbe stata complessità non richiesta).
+
+**Reciprocità esplicita**: un server che non ha attivato `/global-ban
+enable` non riceve mai un ban deciso altrove, né i suoi ban vengono
+propagati altrove — la rete è opt-in su entrambi i lati, mai imposta.
+
+**Integrazione in Spam Trap** (`cogs/security/spam_trap.py`): subito
+dopo il ban reale (punto 4 della sequenza fissa, prima della
+creazione del case), `propagate_ban(bot, guild, user.id, motivo)`
+best-effort — un `Forbidden`/`HTTPException` su UN server target
+(permessi insufficienti, o già bannato lì) non blocca la propagazione
+verso gli altri, viene solo loggato e saltato. `discord.Object(id=
+user_id)` per bannare anche se l'utente non è mai stato membro del
+server target (ban preventivo legittimo, non richiede che l'utente
+sia già lì). L'embed di log della Spam Trap mostra ora anche a quanti
+server è stato propagato, quando succede.
+
+**14 nuovi test**: 5 in `tests/test_global_ban_logic.py` (logica
+pura); 5 in `tests/test_global_ban_repo.py`; 1 smoke test in
+`tests/test_global_ban_cog_smoke.py`; 4 in
+`tests/test_global_ban_behavior.py` (propagazione selettiva,
+mancata adesione della sorgente, un errore su un server non blocca
+gli altri, log di propagazione persistito).
+
+SPEC.md §7: +2 voci `[x]` (una nuova sotto-voce in 7.3 + il nuovo
+7.6), la voce fingerprint resta `[ ]` con motivazione ampliata (non
+è più solo "non costruito", ma "bloccato per motivo strutturale, non
+di tempo"). §7 passa da 31/0/1 a **33/0/1**. Ricalcolo mecca­nico di
+TUTTA la tabella dei totali (non solo la riga toccata): trovata e
+corretta una riga "Totale" già disallineata dalla somma reale delle
+righe individuali PRIMA di questa modifica (167/1/105 non era la
+somma esatta delle righe della tabella già allora) — corretta a
+**203/2/71**, ricontrollando ogni riga con lo stesso script, non solo
+quella di §7.
+
+**Suite di test completa: 1786/1786 passano** (verificato due volte
+di fila).
+
+---
+
 ## BACKLOG.md — analisi delle proposte di Gemini/ChatGPT/Grok
 
 L'utente ha esposto `SPEC.md` a tre AI in sequenza, ricevendo

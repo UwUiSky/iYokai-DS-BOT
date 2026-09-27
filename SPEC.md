@@ -285,7 +285,7 @@ file, non da un riassunto.**
   da 6.13 (che è più azioni insieme su UN trigger, non su trigger
   ripetuti nel tempo) — voce nuova, non una ridefinizione di 6.13
 
-## §7 SECURITY SUITE — completa tranne il ban globale via fingerprint (dipende da §4, non costruito)
+## §7 SECURITY SUITE — completa tranne il ban globale via fingerprint/alt-detection (dipende da §4.2, non costruito; sostituito da 7.6 per lo stesso account)
 
 - `[x]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
   PREMIUM (come Spam Trap). Logica di valutazione pura in
@@ -383,10 +383,20 @@ file, non da un riassunto.**
     thumbnail sono incorporate come data URI dentro l'HTML stesso —
     non riospitate da nessuna parte, coerente con "mai riospitare il
     file originale"
-  - `[ ]` Opzione ban globale via fingerprint — dipende da §4
-    Anti-Alt (fingerprint cross-server), non costruito. Il ban resta
-    per-server, correttamente, dato che non esiste ancora nulla da
-    cui recuperare un fingerprint
+  - `[ ]` Opzione ban globale via fingerprint/alt-detection — dipende
+    da §4.2/§4.3 Anti-Alt (raccolta OAuth2 "identify" + IP al momento
+    del VERIFY, prima che l'account si comporti male), non costruito.
+    Resta bloccato per un motivo strutturale, non solo di tempo: un
+    account appena bannato dalla trappola non collaborerebbe mai a un
+    flusso OAuth2 dopo il fatto, quindi il fingerprint andrebbe
+    comunque raccolto prima, al verify — la stessa dipendenza di
+    sempre
+  - `[x]` **Ban globale via propagazione cross-server** — SPEC.md
+    §7.6 sotto: NON è il ban globale via fingerprint di cui sopra
+    (nessuna euristica su account diversi/alt), ma la propagazione
+    reale di un ban Spam Trap sullo STESSO account Discord verso ogni
+    altro server aderente. Costruito su richiesta esplicita
+    dell'utente, come sostituto concretamente realizzabile oggi
 - `[x]` 7.4 Permission Auditor + alert permessi pericolosi —
   `/permission-heatmap` (ruoli con permessi critici + quanti membri
   li possiedono) + DM diretto all'owner quando un membro riceve un
@@ -400,6 +410,42 @@ file, non da un riassunto.**
   score di un server Discord: 2FA staff, livello di verifica, quota
   di membri amministratori, Anti-Raid/Anti-Nuke attivi, AutoMod
   attivo — ognuno con un consiglio azionabile in caso di penalità
+- `[x]` 7.6 **Ban globale via propagazione cross-server** —
+  `cogs/security/global_ban.py` (`/global-ban enable|disable|status`),
+  richiesto esplicitamente dall'utente come soluzione al gap di 7.3
+  sopra. Modulo CANDIDATO PREMIUM.
+
+  **Perché non è "il" ban globale via fingerprint di §4.3**: quello
+  risolve un problema diverso — riconoscere che due ACCOUNT DIVERSI
+  sono la stessa persona (un alt), cosa che richiede una raccolta
+  IP/OAuth2 "identify" fatta al momento del VERIFY, prima che
+  l'account si comporti male (§4.2, non costruito). Un account appena
+  bannato dalla Spam Trap non collaborerebbe mai a un flusso OAuth2
+  dopo il fatto — quella raccolta non potrebbe mai avvenire a ban
+  avvenuto, quindi il vero fingerprint resta strutturalmente bloccato
+  su §4.2, non solo per mancanza di tempo.
+
+  **Cosa fa invece, concretamente realizzabile oggi**: propaga un ban
+  scattato dalla Spam Trap (§7.3) sullo STESSO account Discord (stesso
+  user ID, nessuna euristica di somiglianza) verso ogni altro server
+  che condivide il bot E ha aderito alla stessa rete — reciprocità
+  esplicita: un server che non ha attivato il modulo non riceve mai
+  un ban deciso altrove, né i suoi ban vengono propagati. L'opt-in
+  riusa l'attivazione modulo già esistente
+  (`db.is_module_active_for_guild`/`set_module_active_for_guild` su
+  `guild_config`) — nessuna nuova tabella di configurazione, solo un
+  log di propagazione (`core/repositories/global_ban_repo.py`,
+  `global_ban_log`) per `/global-ban status`. Logica pura di
+  decisione isolata in `core/global_ban_logic.py`
+  (`should_propagate_ban`), stesso pattern di ogni altro modulo di
+  questa sezione. Ban con `discord.Object(id=user_id)` (funziona anche
+  se l'utente non è mai stato membro del server target — un ban
+  preventivo legittimo). Best-effort per server: un `Forbidden`/
+  `HTTPException` su UN target (permessi insufficienti, già bannato
+  lì) non blocca la propagazione verso gli altri. Integrato nella
+  sequenza di ban della Spam Trap (subito dopo il ban reale, prima
+  della creazione del case) con un campo aggiuntivo nell'embed di log
+  quando la propagazione avviene.
 
 ## §8 LOGGING
 
@@ -1154,7 +1200,7 @@ rilancia lo stesso conteggio.
 | §4 Verify | 10 | 0 | 9 |
 | §5 Moderation | 12 | 0 | 0 |
 | §6 AutoMod | 15 | 0 | 0 |
-| §7 Security | 31 | 0 | 1 |
+| §7 Security | 33 | 0 | 1 |
 | §8 Logging | 6 | 0 | 12 |
 | §9 Music | 8 | 1 | 0 |
 | §10 Alerts | 6 | 0 | 1 |
@@ -1166,7 +1212,7 @@ rilancia lo stesso conteggio.
 | §16 Fun/NSFW | 2 | 0 | 13 |
 | §17 Owner | 10 | 0 | 0 |
 | B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **167** | **1** | **105** |
+| **Totale** | **203** | **2** | **71** |
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/

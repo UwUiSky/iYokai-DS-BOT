@@ -167,6 +167,9 @@ async def clean_db(db_pool):
         run_migrations as automod_advanced_migrations,
     )
     from core.repositories.security_repo import run_migrations as security_migrations
+    from core.repositories.global_ban_repo import (
+        run_migrations as global_ban_migrations,
+    )
 
     # Riusiamo lo stesso pool del test per le migration, invece di
     # farne aprire uno secondo al singleton: gli passiamo il pool
@@ -210,6 +213,7 @@ async def clean_db(db_pool):
     await guild_premium_migrations(db_pool)
     await automod_advanced_migrations(db_pool)
     await security_migrations(db_pool)
+    await global_ban_migrations(db_pool)
 
     # Pulizia: TRUNCATE è più veloce di DELETE e resetta i contatori
     # SERIAL, utile perché alcuni test controllano id progressivi.
@@ -224,6 +228,7 @@ async def clean_db(db_pool):
         "automod_action_log",
         "security_config",
         "security_action_log",
+        "global_ban_log",
         "tickets",
         "ticket_counters",
         "voice_temp_config",

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:58 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 215 comandi in 10 categorie.**
+**Totale: 218 comandi in 10 categorie.**
 
 ## AutoMod
 
@@ -154,6 +154,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 16:
 - **`/anti-raid lockdown-action`** — Cosa fare quando un raid viene rilevato.
 - **`/anti-raid status`** — Mostra la configurazione attuale dell'Anti-Raid.
 - **`/anti-raid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+- **`/global-ban disable`** — Abbandona la rete di ban globali.
+- **`/global-ban enable`** — Aderisci alla rete di ban globali (propaga e ricevi).
+- **`/global-ban status`** — Mostra lo stato e la storia recente del ban globale.
 - **`/permission-heatmap`** — [Admin] Mostra quali ruoli hanno permessi critici e chi li possiede.
 - **`/security-score`** — Calcola il punteggio di sicurezza del server con consigli.
 - **`/spamtrap-setup`** — [Admin] Configura i canali trappola e log dello Spam Trap.

@@ -44,6 +44,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.security.global_ban import propagate_ban
 from core.database import db
 from core.image_thumbnail import generate_thumbnail
 from core.image_thumbnail_logic import (
@@ -394,6 +395,13 @@ class SpamTrapCog(commands.Cog):
             logger.exception("Errore HTTP bannando %s (Spam Trap).", user.id)
             return
 
+        # 4.1 Ban globale (SPEC.md §7.3) — propagazione best-effort
+        #     verso ogni altro server aderente alla rete (vedi
+        #     cogs/security/global_ban.py). Non blocca la sequenza:
+        #     se il server non ha aderito, la funzione stessa
+        #     restituisce una lista vuota senza fare nulla.
+        propagated_guild_ids = await propagate_ban(self.bot, guild, user.id, "Spam trap triggered")
+
         # 5. Case (riusa il case system di Moderation).
         case_number = await moderation_repo.create_case(
             guild_id=guild.id,
@@ -428,6 +436,7 @@ class SpamTrapCog(commands.Cog):
         await self._send_ban_log(
             guild, user, case_number, trigger_content,
             invite_code, invite_creator_id, deleted_by_channel, dm_sent,
+            propagated_guild_ids,
         )
 
     async def _send_ban_dm(self, guild: discord.Guild, user: discord.abc.User) -> bool:
@@ -633,6 +642,7 @@ class SpamTrapCog(commands.Cog):
         invite_creator_id: int | None,
         deleted_by_channel: dict[str, int],
         dm_sent: bool,
+        propagated_guild_ids: list[int] | None = None,
     ) -> None:
         config = await spam_trap_repo.get_config(guild.id)
         if config.log_channel_id is None:
@@ -682,6 +692,13 @@ class SpamTrapCog(commands.Cog):
         embed.add_field(
             name="DM notification", value="Sent" if dm_sent else "Failed (DMs closed)", inline=True
         )
+
+        if propagated_guild_ids:
+            embed.add_field(
+                name="Global ban",
+                value=f"Propagated to {len(propagated_guild_ids)} other server(s) in the network.",
+                inline=True,
+            )
 
         await log_channel.send(embed=embed)
 

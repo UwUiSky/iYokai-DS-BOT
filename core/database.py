@@ -390,6 +390,9 @@ class Database:
         from core.repositories.security_repo import run_migrations as security_migrations
         await security_migrations(self.pool)
 
+        from core.repositories.global_ban_repo import run_migrations as global_ban_migrations
+        await global_ban_migrations(self.pool)
+
         # I repository dei singoli moduli (moderation, leveling, ...)
         # aggiungono qui la propria riga mano a mano che vengono
         # scritti. Vedi core/repositories/ e la nota in fondo a
