@@ -4879,3 +4879,26 @@ PIANO_FIX.md).
   conferma gli effetti di `0001_db2_indici.sql` (indici vecchi spariti,
   nuovi presenti). Suite: 2237/2237 verde, due volte. Commit 659d9fa
   (Refs #25).
+
+### Fase R1 — Bug che rompono funzioni
+- BUG-1/#2/#42: `/ticket close` andava in crash ad ogni chiusura —
+  `channel.delete(reason=…, delay=10)` non è mai stato un parametro
+  valido di `TextChannel.delete()` (firma reale: `(self, *,
+  reason=None)`). Il ticket risultava chiuso nel database ma il canale
+  restava lì per sempre. L'attesa dei 10 secondi è ora una coroutine
+  propria (`_elimina_dopo`), lanciata come task tramite
+  `_pianifica_eliminazione` e tenuta in `self._eliminazioni_pianificate`
+  (un `set` sul cog) così non viene raccolta dal garbage collector
+  prima di finire; `cog_unload` cancella i task ancora pendenti;
+  `NotFound`/`Forbidden` alla cancellazione (canale già sparito, o
+  permessi cambiati nel frattempo) vengono loggati senza far fallire
+  nulla. Nuovo `tests/test_ticket_close_deletion.py` (6 test): la
+  vecchia chiamata con `delay=10` su un `fake_text_channel()` autospec
+  riproduce lo stesso `TypeError` del bot vero; `_elimina_dopo` cancella
+  senza `delay`; non solleva se il canale è già sparito; il task viene
+  tracciato e poi rimosso da solo a fine esecuzione; `cog_unload`
+  cancella un task pendente; un test end-to-end su `/ticket close`
+  (contro `clean_db` con un ticket vero) conferma che il comando non va
+  più in crash e che la cancellazione pianificata arriva davvero a
+  chiamare `channel.delete()`. Suite: 2243/2243 verde, due volte.
+  Commit 6c724d3 (Refs #2, #42).

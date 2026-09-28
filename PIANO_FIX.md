@@ -386,13 +386,18 @@ Approccio a **basso rischio**: non si riscrivono le ~41 funzioni
 Ogni voce: test che esegue il comando e fallisce → fix → test verde.
 
 **Ticket e setup**
-- [ ] **BUG-1 (#2, #42)** `cogs/tickets/tickets.py` ~riga 647: rispondi,
-  poi `asyncio.create_task(self._elimina_dopo(channel, 10, motivo))`.
-  La coroutine fa `await asyncio.sleep(10)`, poi `channel.delete(reason=…)`,
-  e registra `NotFound`/`Forbidden` senza sollevare. Tieni un
-  riferimento al task (un `set` sul cog, rimosso con
-  `add_done_callback`) così non viene raccolto dal garbage collector, e
-  cancellalo in `cog_unload`. Test con `fake_text_channel()`.
+- [x] **BUG-1 (#2, #42)** `cogs/tickets/tickets.py`: rispondi, poi
+  `self._pianifica_eliminazione(channel, 10, motivo)`, che lancia
+  `self.bot.loop.create_task(self._elimina_dopo(...))`. La coroutine
+  fa `await asyncio.sleep(10)`, poi `channel.delete(reason=…)`, e
+  registra `NotFound`/`Forbidden` senza sollevare. Riferimento al task
+  tenuto in `self._eliminazioni_pianificate` (un `set` sul cog, rimosso
+  con `add_done_callback`) così non viene raccolto dal garbage
+  collector, e cancellato in `cog_unload`. Test in
+  `tests/test_ticket_close_deletion.py` con `fake_text_channel()`
+  (autospec — riproduce lo stesso `TypeError: unexpected keyword
+  argument 'delay'` del bot vero).
+  — commit 6c724d3 (Refs #2, #42)
 - [ ] **BUG-2 (#4, #38, #43, #49)** `/setup` per categoria (scelta
   dell'owner, #49):
   - campo obbligatorio `category: str` in `PremiumModule`, con valori

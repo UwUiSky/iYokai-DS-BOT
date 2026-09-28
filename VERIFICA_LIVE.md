@@ -279,3 +279,24 @@ chiudere.
   davvero usati dalle query orarie che dovevano velocizzare — solo la
   prova su un database con dati reali (via `EXPLAIN ANALYZE`) conferma
   che l'indice viene scelto dal query planner, non solo che esiste.
+- [ ] BUG-1/#2/#42 — commit 6c724d3 — passi:
+  1. Su un server Discord di prova, apri un ticket e usa `/ticket
+     close`: deve rispondere subito "Ticket chiuso. Questo canale
+     verrà eliminato tra 10 secondi." senza errori (prima: crash
+     immediato con TypeError, visibile nei log come interazione
+     fallita).
+  2. Aspetta i 10 secondi reali e controlla che il canale sparisca
+     davvero da Discord (prima restava lì per sempre, anche col
+     ticket già "closed" nel database).
+  3. Ripeti con `/ticket forceclose` (che non ha mai avuto questo bug,
+     nessun ritardo): verifica che il canale sparisca subito, senza
+     regressioni.
+  4. Riavvia il bot subito dopo un `/ticket close` (entro i 10
+     secondi, prima che scada il timer): verifica che il canale non
+     resti "fantasma" — o viene comunque eliminato dal task cancellato
+     durante lo spegnimento, oppure va ripulito manualmente; annota il
+     comportamento osservato davvero, non quello atteso in teoria.
+  Risultato atteso: `/ticket close` non va più in crash e il canale
+  viene davvero eliminato dopo 10 secondi — solo la prova su Discord
+  vero conferma che l'eliminazione arriva a buon fine (i test usano un
+  `fake_text_channel()`, non un canale Discord reale).
