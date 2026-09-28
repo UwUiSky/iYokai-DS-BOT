@@ -215,7 +215,7 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   passano il ruolo esplicitamente. — commit cb05eff (nessun punto del
   codice oggi pinga davvero un ruolo, quindi nessuna eccezione
   per-send è servita)
-- [ ] **SEC-8 (#9)** SSRF nei feed: modulo `core/safe_http.py` con
+- [x] **SEC-8 (#9)** SSRF nei feed: modulo `core/safe_http.py` con
   `safe_get(url, max_bytes=2_000_000)`:
   - solo `http`/`https`, porte 80 e 443;
   - risolve il nome e rifiuta IP privati, loopback, link-local,
@@ -226,7 +226,9 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   Usalo in `feed_watcher` e in ogni fetch di URL scelto da un utente.
   Test: `http://127.0.0.1:8420`, `http://169.254.169.254`, un redirect
   verso IP privato e una risposta troppo grande vengono rifiutati
-  (server di test locale con `aiohttp.test_utils`).
+  (server di test locale con `aiohttp.test_utils`). — commit a28f817
+  (`core/twitch_watcher.py`/`core/youtube_watcher.py` non toccati:
+  URL fissi in codice, mai scelti da un utente, nessun rischio SSRF)
 - [ ] **SEC-8b (#11)** Spam-trap: esenta chi ha `manage_messages`,
   `administrator`, i ruoli staff configurati o un ruolo sopra quello del
   bot, e non propagare al global-ban in quei casi. I bottoni di appello

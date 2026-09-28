@@ -4673,3 +4673,13 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   ruolo (verificato con grep), quindi nessuna eccezione per-send
   serve al momento. Suite: 2118/2118 verde, due volte. Commit
   cb05eff.
+- SEC-8: `core/safe_http.py` (nuovo) — `safe_get()` protegge da SSRF
+  ogni fetch di un URL scelto da un utente: solo http/https su
+  80/443, IP risolto controllato contro privati/loopback/link-local
+  (incluso 169.254.169.254)/multicast/riservati (IPv4 e IPv6),
+  redirect seguiti a mano (max 3) ricontrollando ogni destinazione,
+  lettura a blocchi con limite di byte. `core/feed_watcher.py` lo usa
+  al posto del fetch aiohttp diretto per l'URL di `/feed-alerts add`.
+  `core/twitch_watcher.py`/`core/youtube_watcher.py` non toccati: URL
+  fissi, non scelti da un utente. Suite: 2140/2140 verde, due volte.
+  Commit a28f817.
