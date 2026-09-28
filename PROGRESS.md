@@ -4783,3 +4783,15 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   segnala con un log WARNING (prima era INFO). Suite: 2215/2215 verde,
   due volte. Commit 0e9eb3b (nessuna issue GitHub collegata: SEC-14
   non è in tabella REVIEW.md §"Corrispondenza issue → codici").
+- SEC-15: `aiohttp>=3.13.3` dichiarato esplicitamente in
+  `requirements.txt` (prima arrivava solo di rimbalzo da discord.py,
+  con un limite di versione non scelto da noi) — sotto la 3.13.3 sono
+  note CVE-2025-53643 (request smuggling), CVE-2025-69224 (request
+  smuggling, parser Python puro) e CVE-2025-69226 (path traversal nei
+  file statici). Rimosso `structlog` (dichiarato ma mai importato da
+  nessun file). Generato `requirements.lock` con `pip-compile`
+  (versioni esatte di ogni dipendenza diretta e transitiva) e
+  aggiornato README.md perché l'installazione lo usi al posto di
+  `requirements.txt` direttamente. Suite: 2215/2215 verde, due volte.
+  Commit bf2a772 (nessuna issue GitHub collegata: SEC-15 non è in
+  tabella REVIEW.md §"Corrispondenza issue → codici").

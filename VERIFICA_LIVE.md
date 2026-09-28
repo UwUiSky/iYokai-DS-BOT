@@ -211,3 +211,15 @@ chiudere.
   destinazione oltre il limite — solo la prova su una macchina reale
   (con `netstat`/`curl` veri) conferma che i server ascoltano dove e
   quando devono.
+- [ ] SEC-15 — commit bf2a772 — passi:
+  1. Sulla macchina reale (non nel sandbox di sviluppo), in un
+     ambiente virtuale pulito: `pip install -r requirements.lock` e
+     verifica che finisca senza errori di conflitto tra pacchetti.
+  2. Avvia il bot (`python main.py`) e verifica che parta come prima
+     (nessuna regressione da `structlog` rimosso o da `aiohttp`
+     aggiornato — i due server web di SEC-14, il feed watcher e i
+     comandi che usano aiohttp sotto banco devono continuare a
+     funzionare).
+  Risultato atteso: l'installazione da `requirements.lock` è
+  riproducibile sulla macchina reale (non solo nel sandbox dove è
+  stato generato) e il bot si avvia e funziona come prima.

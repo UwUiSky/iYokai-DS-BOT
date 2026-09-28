@@ -294,11 +294,13 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
     (log WARNING).
   — commit 0e9eb3b (nessuna issue GitHub collegata: non in tabella
   REVIEW.md §"Corrispondenza issue → codici")
-- [ ] **SEC-15** Dipendenze: aggiungi `aiohttp` in `requirements.txt`
+- [x] **SEC-15** Dipendenze: aggiungi `aiohttp` in `requirements.txt`
   con un minimo senza vulnerabilità note (controlla la versione su
   PyPI e sugli advisory al momento del fix), togli `structlog`,
   genera un lockfile (`pip-compile` → `requirements.lock`) e usalo
   nell'installazione.
+  — commit bf2a772 (nessuna issue GitHub collegata: non in tabella
+  REVIEW.md §"Corrispondenza issue → codici")
 - [ ] **SEC-16** `field(repr=False)` su tutti i segreti in
   `core/config.py` e sulle dataclass dei token OAuth. Test: `repr(config)`
   non contiene nessun valore di token. La password Postgres nella storia
