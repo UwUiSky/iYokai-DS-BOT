@@ -28,6 +28,7 @@ from discord.ext import commands
 from core.config import config
 from core.database import db
 from core.oauth_crypto import OAuthEncryptionNotConfigured
+from core.repositories.backup_repo import backup_repo
 from core.repositories.backup_user_snapshot_repo import backup_user_snapshot_repo
 from core.repositories.restore_oauth_repo import restore_oauth_repo
 from core.repositories.verify_repo import verify_repo
@@ -126,6 +127,21 @@ class RestoreCog(commands.Cog):
         except ValueError:
             await interaction.response.send_message(
                 "L'ID del server di origine deve essere un numero.", ephemeral=True
+            )
+            return
+
+        # SEC-2: il restore è permesso SOLO dal server di origine
+        # verso il suo backup designato — senza questo controllo un
+        # admin potrebbe scrivere l'ID di un server qualunque e
+        # farsi ripristinare (o invitare a forza) gli utenti di
+        # qualcun altro nel proprio server.
+        coppia = await backup_repo.get_pair(source_guild_id)
+        if coppia is None or coppia.backup_guild_id != interaction.guild.id:
+            await interaction.response.send_message(
+                "⚠️ Questo server non è registrato come backup di quello indicato. "
+                "Il restore è permesso solo dal server di origine verso il suo "
+                "backup designato (vedi /define-main e /define-backup).",
+                ephemeral=True,
             )
             return
 

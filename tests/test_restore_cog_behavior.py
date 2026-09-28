@@ -13,6 +13,7 @@ import pytest
 from cogs.utility.restore import RestoreCog
 from core.database import Database
 from core.oauth_crypto import generate_key
+from core.repositories.backup_repo import BackupRepository
 from core.repositories.backup_user_snapshot_repo import BackupUserSnapshotRepository
 from core.repositories.restore_oauth_repo import RestoreOAuthRepository
 from core.repositories.verify_repo import VerifyRepository
@@ -105,6 +106,7 @@ async def database():
     await db_instance.pool.execute("DELETE FROM guild_config")
     await db_instance.pool.execute("DELETE FROM guild_config_history")
     await db_instance.pool.execute("DELETE FROM verify_config")
+    await db_instance.pool.execute("DELETE FROM backup_pairs")
     await db_instance.close()
 
 
@@ -116,10 +118,12 @@ def _patch_repos(monkeypatch, database):
         pool_provider=lambda: database.pool, encryption_key_provider=lambda: CHIAVE_TEST
     )
     verify_repo_test = VerifyRepository(pool_provider=lambda: database.pool)
+    backup_repo_test = BackupRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(restore_module, "backup_user_snapshot_repo", snapshot_repo)
     monkeypatch.setattr(restore_module, "restore_oauth_repo", oauth_repo)
     monkeypatch.setattr(restore_module, "verify_repo", verify_repo_test)
-    return snapshot_repo, oauth_repo, verify_repo_test
+    monkeypatch.setattr(restore_module, "backup_repo", backup_repo_test)
+    return snapshot_repo, oauth_repo, verify_repo_test, backup_repo_test
 
 
 @pytest.mark.asyncio
@@ -146,10 +150,13 @@ async def test_configura_restore_salva_la_modalita(database, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_restore_users_senza_snapshot_avvisa(database, monkeypatch):
-    _patch_repos(monkeypatch, database)
+    _snapshot, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    await backup_repo_test.define_main(999999)
+    await backup_repo_test.define_backup(999999, 200)
+
     cog = RestoreCog(bot=None)
     interaction = _FakeInteraction(guild_id=200)
 
@@ -159,11 +166,54 @@ async def test_restore_users_senza_snapshot_avvisa(database, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_restore_users_con_token_attivo_fa_auto_join(database, monkeypatch):
-    snapshot_repo, oauth_repo, _verify = _patch_repos(monkeypatch, database)
+async def test_restore_users_senza_coppia_backup_rifiuta(database, monkeypatch):
+    """
+    SEC-2: senza una coppia main=origine/backup=questo server, il
+    restore va rifiutato PRIMA di guardare lo snapshot — altrimenti
+    un admin potrebbe scrivere l'ID di un server qualunque e farsi
+    ripristinare gli utenti di qualcun altro nel proprio server.
+    """
+    snapshot_repo, _oauth, _verify, _backup = _patch_repos(monkeypatch, database)
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+
+    cog = RestoreCog(bot=None)
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert "non è registrato come backup" in interaction.response.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_con_coppia_verso_un_terzo_server_rifiuta(database, monkeypatch):
+    """Coppia esiste ma punta a un ALTRO server di backup: rifiutato lo stesso."""
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 777)  # backup designato è un altro server
+
+    cog = RestoreCog(bot=None)
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert "non è registrato come backup" in interaction.response.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_con_token_attivo_fa_auto_join(database, monkeypatch):
+    snapshot_repo, oauth_repo, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
 
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
     await oauth_repo.save_token(100, 1, "access-vero", "refresh", datetime.now(timezone.utc) + timedelta(days=7))
@@ -193,10 +243,12 @@ async def test_restore_users_con_token_attivo_fa_auto_join(database, monkeypatch
 
 @pytest.mark.asyncio
 async def test_restore_users_senza_token_manda_dm_di_autorizzazione(database, monkeypatch):
-    snapshot_repo, _oauth, _verify = _patch_repos(monkeypatch, database)
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
 
     utente_finto = _FakeUser(1)
@@ -211,10 +263,12 @@ async def test_restore_users_senza_token_manda_dm_di_autorizzazione(database, mo
 
 @pytest.mark.asyncio
 async def test_restore_users_dm_bloccato_viene_contato(database, monkeypatch):
-    snapshot_repo, _oauth, _verify = _patch_repos(monkeypatch, database)
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
 
     utente_finto = _FakeUser(1, disponibile=False)
@@ -228,10 +282,12 @@ async def test_restore_users_dm_bloccato_viene_contato(database, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_restore_users_modalita_classica_usa_invito_e_non_token(database, monkeypatch):
-    snapshot_repo, _oauth, _verify = _patch_repos(monkeypatch, database)
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
     await database.set_guild_setting(200, "backup_restore_mode", "classic_invite")
 
@@ -248,10 +304,12 @@ async def test_restore_users_modalita_classica_usa_invito_e_non_token(database, 
 
 @pytest.mark.asyncio
 async def test_restore_users_bannato_viene_saltato(database, monkeypatch):
-    snapshot_repo, oauth_repo, _verify = _patch_repos(monkeypatch, database)
+    snapshot_repo, oauth_repo, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
     await oauth_repo.save_token(100, 1, "a", "r", datetime.now(timezone.utc) + timedelta(days=7))
     await oauth_repo.mark_banned(100, 1)
