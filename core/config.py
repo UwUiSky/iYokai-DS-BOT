@@ -242,9 +242,14 @@ class Config:
     # guild_has_premium_access` restituisce sempre True per QUALUNQUE
     # server e modulo, a prescindere da whitelist/boost/abbonamento —
     # richiesto esplicitamente dall'utente ("tutte le feature premium
-    # sbloccate per tutti" durante l'alpha). Default True apposta (la
-    # fase attuale del progetto): quando l'alpha finisce, va impostato
-    # a False in .env per far valere davvero i metodi di sblocco.
+    # sbloccate per tutti" durante l'alpha). #41: default calcolato da
+    # ENVIRONMENT in _load_config() (non qui: un default statico non
+    # potrebbe dipendere da un'altra variabile, stesso motivo di
+    # ENABLE_EVAL/SEC-13) — False in produzione (l'alpha va accesa
+    # esplicitamente lì, non lasciata accesa per dimenticanza), True
+    # altrove (comodo in sviluppo/test). Sempre sovrascrivibile con
+    # PREMIUM_ALPHA_UNLOCK_ALL=true/false in .env; se resta true
+    # all'avvio, main.py logga un WARNING (non solo un INFO).
     PREMIUM_ALPHA_UNLOCK_ALL: bool = field(default=True)
 
     # --- Sicurezza (SEC-13, decisione owner D7) ----------------------
@@ -281,8 +286,9 @@ def _load_config() -> Config:
         _require(f"MUSIC_TOKEN_{i}") for i in range(1, 6)
     ]
 
-    # Letto PRIMA del resto: ENABLE_EVAL ne calcola il default
-    # (SEC-13/D7 — spento di default solo in produzione).
+    # Letto PRIMA del resto: ENABLE_EVAL (SEC-13/D7) e
+    # PREMIUM_ALPHA_UNLOCK_ALL (#41) ne calcolano il default — entrambi
+    # spenti di default solo in produzione, accesi altrove.
     environment = _optional("ENVIRONMENT", "development")
 
     return Config(
@@ -316,7 +322,9 @@ def _load_config() -> Config:
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
-        PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", True),
+        PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool(
+            "PREMIUM_ALPHA_UNLOCK_ALL", environment.lower() != "production"
+        ),
         ENABLE_EVAL=_optional_bool("ENABLE_EVAL", environment.lower() != "production"),
     )
 

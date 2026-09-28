@@ -490,6 +490,18 @@ async def main() -> None:
     setup_logging()
     logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
 
+    # #41: PREMIUM_ALPHA_UNLOCK_ALL sblocca TUTTE le feature premium per
+    # TUTTI i server — spento di default in produzione (vedi
+    # core/config.py), ma se l'owner lo forza comunque a true merita un
+    # WARNING visibile nei log, non solo un INFO che si perde nel resto.
+    if config.PREMIUM_ALPHA_UNLOCK_ALL:
+        logger.warning(
+            "PREMIUM_ALPHA_UNLOCK_ALL è attivo: tutte le feature premium sono "
+            "sbloccate per TUTTI i server, a prescindere da whitelist/boost/"
+            "abbonamento. Normale solo durante la fase alpha — imposta "
+            "PREMIUM_ALPHA_UNLOCK_ALL=false in .env quando finisce."
+        )
+
     # Il database va connesso PRIMA del bot, perché setup_hook()
     # (chiamato durante bot.start()) già presuppone che db.pool
     # esista.
