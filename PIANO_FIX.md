@@ -195,9 +195,9 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   livello di endpoint + identità non verificabile da /users/@me),
   tests/test_restore_orchestrator.py (fetch_current_user con token
   valido/invalido contro un server aiohttp finto).
-- [ ] **SEC-5 (#7)** `/nonstop-main` diventa owner-only subito (controllo
+- [x] **SEC-5 (#7)** `/nonstop-main` diventa owner-only subito (controllo
   `OWNER_ID` a runtime; lo spostamento sotto `/owner` avviene in R5).
-  Il nome file di `add-local` si valida come in BUG-10.
+  Il nome file di `add-local` si valida come in BUG-10. — commit bde6f00
 - [ ] **SEC-6 (#17)** Sostituisci `str.format` in
   `core/feed_parsing_logic.py` e `core/custom_webhook_logic.py` con una
   funzione `render_template(testo, valori: dict[str, str]) -> str` in

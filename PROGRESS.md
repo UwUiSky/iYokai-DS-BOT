@@ -4645,3 +4645,13 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   DM, autorizzazione su Discord, callback — richiede le credenziali
   OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI e OAUTH_ENCRYPTION_KEY vere,
   vedi VERIFICA_LIVE.md)
+- SEC-5: `/nonstop-main` (playlist della radio condivisa fra tutti i
+  server) è ora owner-only — controllo `OWNER_ID` a runtime sui 6
+  sottocomandi, invece di `has_permissions(manage_guild=True)` che
+  non ha senso su una risorsa condivisa tra tenant diversi. Il nome
+  file di `add-local` si valida con `pathlib` contro path traversal
+  (stesso schema di BUG-10). Suite: 2108/2108 verde, due volte.
+  Commit bde6f00.
+  (da verificare live: rifiuto owner-only visibile nell'UI di
+  Discord e radio davvero inaccessibile agli admin su un server
+  reale — vedi VERIFICA_LIVE.md)

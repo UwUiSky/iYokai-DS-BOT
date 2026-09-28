@@ -59,3 +59,19 @@ chiudere.
   scadenza reale a 10 minuti — nessuna delle due condizioni è
   verificabile con i soli test automatici (serve il tempo reale che
   passa e la vera autorizzazione OAuth2 di Discord).
+- [ ] SEC-5 (#7) — commit bde6f00 — passi:
+  1. Con un account admin (ma non owner del bot) su un server
+     qualsiasi, prova `/nonstop-main add-track`, `add-local`,
+     `remove-track`, `list-tracks`, `start`, `stop`: ognuno deve
+     rifiutare con "riservato al proprietario del bot" senza
+     eseguire nulla.
+  2. Con l'account owner, verifica che tutti e 6 i sottocomandi
+     funzionino normalmente (nessuna regressione).
+  3. Con l'account owner, prova `/nonstop-main add-local` con un nome
+     file tipo `../../.env` o `..\..\.env`: deve rifiutare con "Nome
+     file non valido" e non deve leggere/aggiungere nulla fuori dalla
+     cartella configurata.
+  Risultato atteso: la playlist condivisa resta modificabile solo dal
+  proprietario del bot, su qualunque server; il path traversal in
+  add-local è bloccato anche con un vero filesystem (non solo con
+  `pathlib` simulato nei test).
