@@ -114,6 +114,17 @@ def setup_logging() -> None:
 logger = logging.getLogger("iyokai.main")
 
 
+def _elenco_intent_attivi(client: discord.Client) -> str:
+    """
+    #36 (parte R0): elenco leggibile degli intent VERAMENTE attivi per
+    un client (non l'elenco fisso definito nel codice — se in futuro
+    un intent viene passato ma poi disattivato in un ramo condizionale,
+    questo mostra comunque lo stato reale). discord.Intents è
+    iterabile: produce coppie (nome, bool) per ogni flag.
+    """
+    return ", ".join(sorted(nome for nome, attivo in client.intents if attivo))
+
+
 # Il nome della classe usa la "i" minuscola di proposito (branding
 # "iYokai", stesso stile di "iPhone"): è una deviazione intenzionale
 # dalla convenzione PEP8 (le classi normalmente iniziano maiuscole),
@@ -547,6 +558,20 @@ async def main() -> None:
     # subito dopo la connessione).
     creator = BackupCreatorBot()
     bot.backup_creator_client = creator
+
+    # #36 (parte R0): un intent privileged (members, message_content)
+    # va abilitato anche nel Developer Portal di Discord, non solo nel
+    # codice — un log ben visibile all'avvio aiuta a notare subito un
+    # disallineamento tra i due, invece di scoprirlo da un errore di
+    # connessione criptico più tardi.
+    logger.info("Intent attivi — iYokai Main: %s", _elenco_intent_attivi(bot))
+    logger.info("Intent attivi — iYokai Creator: %s", _elenco_intent_attivi(creator))
+    for worker in worker_bots:
+        logger.info(
+            "Intent attivi — Music worker %s: %s",
+            worker.worker_index,
+            _elenco_intent_attivi(worker),
+        )
 
     # Permessi richiesti a iYokai Main quando entra in un backup
     # appena creato — Administrator, dato che un server di backup

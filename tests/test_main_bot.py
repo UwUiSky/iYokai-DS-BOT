@@ -10,7 +10,7 @@ import discord
 import logging
 import pytest
 
-from main import iYokaiBot
+from main import _elenco_intent_attivi, iYokaiBot
 
 
 def test_iyokaibot_si_istanzia_senza_eccezioni():
@@ -485,3 +485,31 @@ async def test_on_guild_join_server_non_bloccato_procede_normalmente(monkeypatch
             "DELETE FROM guild_config WHERE guild_id = 600000002"
         )
         await database.close()
+
+
+class TestElencoIntentAttivi:
+    """#36 (parte R0): il log di avvio deve mostrare gli intent
+    VERAMENTE attivi, non un elenco fisso scritto a mano — così un
+    disallineamento tra codice e Developer Portal si nota subito."""
+
+    def test_elenca_solo_gli_intent_veramente_attivi(self):
+        intents = discord.Intents.none()
+        intents.guilds = True
+        intents.members = True
+
+        client = discord.Client(intents=intents)
+
+        risultato = _elenco_intent_attivi(client)
+
+        assert "guilds" in risultato
+        assert "members" in risultato
+        assert "message_content" not in risultato
+        assert "presences" not in risultato
+
+    def test_bot_principale_mostra_members_ma_non_message_content(self):
+        bot = iYokaiBot()
+
+        risultato = _elenco_intent_attivi(bot)
+
+        assert "members" in risultato
+        assert "message_content" not in risultato
