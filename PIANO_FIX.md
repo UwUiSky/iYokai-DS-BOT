@@ -325,8 +325,9 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   all'avvio se è `True`. Aggiorna `.env.example` e il commento.
   — commit 576f155 (Refs #41, vedi REVIEW.md §"Corrispondenza issue →
   codici")
-- [ ] **#36 (parte R0)** Log INFO all'avvio con gli intent effettivi di
+- [x] **#36 (parte R0)** Log INFO all'avvio con gli intent effettivi di
   ogni bot.
+  — commit 3666a66 (Refs #36)
 
 ---
 

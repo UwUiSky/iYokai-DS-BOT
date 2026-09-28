@@ -4821,3 +4821,18 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   inosservato in mezzo agli INFO. Aggiornati `.env.example` e il suo
   commento. Suite: 2226/2226 verde, due volte. Commit 576f155 (Refs
   #41).
+- #36 (parte R0, ultima voce di R0): nuova `_elenco_intent_attivi()`
+  in `main.py` — elenca gli intent VERAMENTE attivi di un client
+  (iterando `discord.Intents`, non un elenco scritto a mano), loggata
+  a INFO per iYokai Main, iYokai Creator e ognuna delle 5 istanze
+  Music worker subito dopo la loro costruzione. Un disallineamento
+  tra quanto abilitato nel codice e quanto abilitato nel Developer
+  Portal di Discord si nota così subito nei log, invece che da un
+  errore di connessione criptico più tardi. `message_content` resta
+  disattivato di default, comportamento invariato e intenzionale (si
+  accenderà solo quando un modulo specifico lo richiederà davvero).
+  Suite: 2228/2228 verde, due volte. Commit 3666a66 (Refs #36).
+
+**R0 completata** (tutte le voci SEC-9…SEC-16, #41, #36 sono `[x]` in
+PIANO_FIX.md). Prossima fase del piano: DB — migrazioni versionate
+(DB-1, #25).
