@@ -4795,3 +4795,21 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   `requirements.txt` direttamente. Suite: 2215/2215 verde, due volte.
   Commit bf2a772 (nessuna issue GitHub collegata: SEC-15 non è in
   tabella REVIEW.md §"Corrispondenza issue → codici").
+- SEC-16: `field(repr=False)` su tutti i campi segreti di
+  `core.config.Config` (token Discord, `DATABASE_URL`, password/nodi
+  Lavalink, client secret Twitch/OAuth2, chiavi API YouTube/Pixabay,
+  `WEB_PANEL_SECRET_KEY`, `OAUTH_ENCRYPTION_KEY`) — un
+  `logger.info(config)` o un `print(config)` di debug lasciato per
+  sbaglio non stampa più questi valori in chiaro; restano leggibili
+  normalmente accedendo al campo per nome. Stesso trattamento su
+  `access_token`/`refresh_token` in `ExchangedToken`
+  (`core/restore_orchestrator.py`) e `RestoreOAuthToken`
+  (`core/repositories/restore_oauth_repo.py`), le due dataclass che li
+  tengono in chiaro in memoria dopo la decifratura. Suite: 2221/2221
+  verde, due volte. Commit 2df2265 (nessuna issue GitHub collegata:
+  SEC-16 non è in tabella REVIEW.md §"Corrispondenza issue → codici").
+  ⚠️ **Segnalazione per l'owner** (non un'azione automatica): nella
+  storia git di `.env.example` c'è una vecchia password Postgres di
+  esempio, poi sostituita da un segnaposto — se era una password
+  reale ancora in uso, va cambiata (dettagli in PIANO_FIX.md, voce
+  SEC-16).

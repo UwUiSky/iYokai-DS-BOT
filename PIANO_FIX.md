@@ -301,10 +301,25 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   nell'installazione.
   — commit bf2a772 (nessuna issue GitHub collegata: non in tabella
   REVIEW.md §"Corrispondenza issue → codici")
-- [ ] **SEC-16** `field(repr=False)` su tutti i segreti in
+- [x] **SEC-16** `field(repr=False)` su tutti i segreti in
   `core/config.py` e sulle dataclass dei token OAuth. Test: `repr(config)`
   non contiene nessun valore di token. La password Postgres nella storia
   di `.env.example` si segnala all'owner (non si riscrive la storia).
+  — commit 2df2265 (nessuna issue GitHub collegata: non in tabella
+  REVIEW.md §"Corrispondenza issue → codici").
+  ⚠️ **[B] segnalazione per l'owner, non un'azione fatta qui**: nella
+  storia git di `.env.example` ci sono 2 commit con una password
+  Postgres locale nel valore di esempio di `DATABASE_URL`, poi
+  sostituita con un segnaposto — vedi REVIEW.md SEC-16. Non riscritta
+  la storia (nessuna richiesta esplicita in tal senso). Se quella
+  password era una password REALE usata da qualche parte (non solo un
+  valore di comodo per lo sviluppo locale), l'owner deve cambiarla
+  ovunque sia ancora in uso. Le altre 3 voci minori di REVIEW.md
+  SEC-16 (cifratura token non legata a guild/utente, riga corrotta
+  che blocca l'intero elenco, token webhook in chiaro nel DB) restano
+  fuori da questa voce del piano — non erano nell'elenco puntato di
+  PIANO_FIX.md per SEC-16, da valutare se aggiungerle come voci nuove
+  in un secondo momento.
 - [ ] **#41** `PREMIUM_ALPHA_UNLOCK_ALL`: default `False` quando
   `ENVIRONMENT=production`, `True` solo in sviluppo; log WARNING
   all'avvio se è `True`. Aggiorna `.env.example` e il commento.
