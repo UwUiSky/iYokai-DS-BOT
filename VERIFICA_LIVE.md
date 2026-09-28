@@ -152,3 +152,29 @@ chiudere.
   è davvero bannato dalla trappola, ma un DM ripetuto o un ban non
   legato alla trappola non fanno più lavoro — solo la prova su
   Discord vero conferma i tempi reali del cooldown.
+- [ ] SEC-13 — commit 8a96320 — passi:
+  1. Con `.env` senza `ENABLE_EVAL` (vuoto) e `ENVIRONMENT=production`,
+     avvia il bot ed esegui `/owner eval 1+1` (o `/owner shell`,
+     `/owner cog-load`) da owner: deve rispondere subito con "Questo
+     comando è disattivato su questa istanza (ENABLE_EVAL=false)...",
+     effimero, senza eseguire nulla.
+  2. Con `.env` con `ENABLE_EVAL=true` (o `ENVIRONMENT` diverso da
+     production e `ENABLE_EVAL` vuoto), stesso comando: deve mostrare
+     la view di conferma come prima.
+  3. Conferma un `/owner eval` che richiede più di 3 secondi (es.
+     `import time; time.sleep(4)`): non deve comparire l'errore
+     "This interaction failed" — la risposta finale deve arrivare
+     comunque, modificando il messaggio di conferma.
+  4. Esegui `/owner shell` con un comando che non termina mai (es.
+     `sleep 999`) e aspetta il timeout: verifica con `ps`/`htop` sulla
+     macchina che il processo `sleep` non resti vivo dopo che il bot
+     ha risposto col messaggio di timeout.
+  5. Controlla nel database (tabella `eval_shell_log`) che per il
+     comando del punto 4 esista comunque una riga (con `success` a
+     `NULL` se non hai ancora aspettato `mark_result`, altrimenti
+     `false`) — prova che il tentativo è stato registrato subito,
+     prima dell'esecuzione.
+  Risultato atteso: `ENABLE_EVAL` blocca davvero i tre comandi quando
+  spento; la conferma non scade più su esecuzioni lunghe; un comando
+  shell appeso non lascia processi orfani — solo la prova su Discord
+  vero e sulla macchina reale conferma questi tre punti.

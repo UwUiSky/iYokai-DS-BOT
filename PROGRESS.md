@@ -4747,3 +4747,22 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   `core/security_rate_tracker.py`). Suite: 2190/2190 verde, due
   volte. Commit 647b680 (nessuna issue GitHub collegata; il commit
   cita erroneamente "Refs #20" di SEC-10, corretto in PIANO_FIX.md).
+- SEC-13 (decisione owner D7): nuovo `ENABLE_EVAL` in `core/config.py`
+  — spento di default quando `ENVIRONMENT=production`, acceso altrove,
+  sempre sovrascrivibile con la variabile d'ambiente omonima.
+  `/owner eval`, `/owner shell` e `/owner cog-load`
+  (`cogs/utility/owner_premium.py`) rispondono con un messaggio
+  effimero e si fermano subito se `ENABLE_EVAL` è spento. Sistemati
+  anche 3 bug minori di REVIEW.md §5: la riga di log ora si scrive
+  PRIMA di eseguire (`eval_shell_log_repo.log_started()` +
+  `mark_result()` al posto del vecchio `log()` dopo l'esecuzione, così
+  un hang non sparisce senza lasciare traccia — il vecchio `log()` è
+  stato rimosso, non solo deprecato); le view di conferma ora fanno
+  `defer()` prima di eseguire e rispondono con
+  `edit_original_response()` invece di `response.edit_message()`
+  (evita l'errore "interazione già scaduta" se l'esecuzione supera i 3
+  secondi); un timeout dello shell ora termina davvero il processo
+  (`processo.kill()` + `await processo.wait()`) invece di lasciarlo
+  girare in background dopo l'abbandono. Suite: 2205/2205 verde, due
+  volte. Commit 8a96320 (nessuna issue GitHub collegata: SEC-13 non è
+  in tabella REVIEW.md §"Corrispondenza issue → codici").

@@ -272,12 +272,18 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   (nessuna issue GitHub collegata: non in tabella REVIEW.md
   §"Corrispondenza issue → codici" — il commit cita erroneamente
   "Refs #20", che è in realtà l'issue di SEC-10; correzione qui)
-- [ ] **SEC-13** `[B]` decisione D7. Se l'owner sceglie "spenti di
-  default": variabile `ENABLE_EVAL` (default `False` se
-  `ENVIRONMENT=production`), e in quel caso `/owner eval`, `shell` e
-  `cog load` rispondono "disattivato". Qualunque sia la decisione, i
-  bug minori di §5 su eval/shell (log scritto prima dell'esecuzione,
-  `defer`, kill del processo al timeout) si sistemano.
+- [x] **SEC-13** `[B]` decisione D7 (già presa: "Sì, con
+  `ENABLE_EVAL`"): variabile `ENABLE_EVAL` (default `False` se
+  `ENVIRONMENT=production`, `True` altrove, sempre sovrascrivibile in
+  `.env`), e quando spenta `/owner eval`, `shell` e `cog-load`
+  rispondono "disattivato" senza eseguire nulla. Sistemati anche i
+  bug minori di §5 su eval/shell: log scritto PRIMA dell'esecuzione
+  (`log_started`/`mark_result`, non più `log()` dopo), `defer()`
+  prima di eseguire (l'output non si perde più oltre i 3 secondi),
+  processo shell ucciso (`kill()`+`wait()`) al timeout invece di
+  restare orfano. — commit 8a96320 (nessuna issue GitHub
+  collegata: non in tabella REVIEW.md §"Corrispondenza issue →
+  codici")
 - [ ] **SEC-14** Server web:
   - indirizzo da `WEB_BIND_HOST`, default `127.0.0.1` (davanti ci va un
     reverse proxy con HTTPS);
