@@ -4501,6 +4501,14 @@ stato scartato per un limite tecnico specifico.
 
 ## 🔜 Prossimo passo concreto
 
+**Dal 28/09 lo sviluppo di nuove funzioni è fermo.** Si lavora solo
+sulla correzione, seguendo `PIANO_FIX.md` (ordine e metodo), con le
+regole di `CLAUDE.md` e `CLAUDE_MANDATORY_TEST_RULES.md`. Fatto finora
+della fase R-T: test sull'albero comandi reale (pubblico e permessi di
+ogni comando) e sui metodi di repository senza chiamanti, entrambi a
+"cricchetto". Suite: 2058 test verdi. Il testo qui sotto è lo stato
+precedente, valido solo come storico.
+
 **§15 Levels/Economy/Gilde/Classifiche a 9/25** — notifica level-up
 vocale, ruoli-premio e annuncio vincitori mensile fatti. Prossimi pezzi ben delimitati, senza
 bisogno di discussione preventiva:

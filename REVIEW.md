@@ -895,6 +895,11 @@ indicate sopra.
 
 ## 17. Piano proposto, a fasi
 
+> **Superato da `PIANO_FIX.md`** (28/09), che è la versione operativa:
+> le migrazioni versionate passano prima di R1, SEC-1 si risolve dentro
+> R5, e BUG-17 (#33) è probabilmente un falso positivo da confermare
+> con un test. La tabella qui sotto resta come storico.
+
 Ogni fase si chiude come sempre: test prima, suite completa due
 volte, commit, push e verifica dello SHA, aggiornamento di
 SPEC/PROGRESS.
