@@ -233,11 +233,13 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   `administrator`, i ruoli staff configurati o un ruolo sopra quello del
   bot, e non propagare al global-ban in quei casi. I bottoni di appello
   controllano che chi clicca abbia `ban_members`. — commit e24059f
-- [ ] **SEC-9** Server web: `access_log` con un formato che non scrive
+- [x] **SEC-9** Server web: `access_log` con un formato che non scrive
   il percorso né la query (oppure un logger che li sostituisce con
   `/webhook/***` e `?code=***`). Aggiungi `logs/*.log.*` a
   `.gitignore`. Cancella dal disco i log locali che già contengono URL
-  interi (non sono in git: verifica con `git ls-files logs`).
+  interi (non sono in git: verifica con `git ls-files logs`). — commit
+  a31dbba (nessuna issue GitHub collegata: non in tabella REVIEW.md
+  §"Corrispondenza issue → codici")
 - [ ] **SEC-10 (#20)** Blacklist su bottoni, menu e modali:
   - crea `core/ui_base.py` con `class BaseView(discord.ui.View)` e
     `class BaseModal(discord.ui.Modal)`: `interaction_check` rifiuta gli

@@ -4694,3 +4694,12 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   `ban_members` (`AppealActionsView.interaction_check`, prima
   assente: chiunque vedesse il thread poteva sbannare). Suite:
   2148/2148 verde, due volte. Commit e24059f.
+- SEC-9: `core/redacted_access_log.py` (nuovo) — `RedactedAccessLogger`
+  sostituisce l'access_log_class di default di aiohttp sui due server
+  web (`core/custom_webhook_server.py`, `core/restore_web_server.py`):
+  logga IP/metodo/percorso redatto/stato/tempo, MAI la query string
+  (dove passano "code"/"state" del callback OAuth2) e con
+  "/webhook/<token>" sempre scritto come "/webhook/***". Aggiunto
+  `logs/*.log.*` a `.gitignore` (mancavano i log ruotati) e cancellato
+  il log locale esistente (non in git, ma con query string dei test).
+  Suite: 2154/2154 verde, due volte. Commit a31dbba.
