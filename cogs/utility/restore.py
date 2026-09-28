@@ -43,7 +43,7 @@ from core.restore_batch_logic import (
     MODE_VERIFY_OAUTH,
     plan_restore_action,
 )
-from core.restore_oauth_logic import build_authorize_url
+from core.restore_oauth_logic import RestoreStateSigningError, build_authorize_url
 from core.restore_orchestrator import restore_orchestrator
 from core.restore_retention_logic import was_recently_kicked
 
@@ -206,7 +206,7 @@ class RestoreCog(commands.Cog):
                         redirect_uri=config.OAUTH2_REDIRECT_URI,
                         source_guild_id=source_guild_id,
                         target_guild_id=interaction.guild.id,
-                        user_id=entry.user_id,
+                        signing_key_b64=config.OAUTH_ENCRYPTION_KEY,
                     )
                     utente = await self.bot.fetch_user(entry.user_id)
                     await utente.send(
@@ -214,6 +214,13 @@ class RestoreCog(commands.Cog):
                         f"dopo un backup. Clicca per rientrare automaticamente: {url}"
                     )
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                    contatori["dm_falliti"] += 1
+                except RestoreStateSigningError:
+                    logger.warning(
+                        "Impossibile firmare lo state OAuth2 per il restore (OAUTH_ENCRYPTION_KEY "
+                        "non configurata): DM di autorizzazione non inviato a %s.",
+                        entry.user_id,
+                    )
                     contatori["dm_falliti"] += 1
                 continue
 

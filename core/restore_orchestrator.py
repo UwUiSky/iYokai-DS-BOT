@@ -102,6 +102,41 @@ class RestoreOrchestrator:
             logger.warning("Risposta token OAuth2 di Discord in un formato inatteso.")
             return None
 
+    async def fetch_current_user(self, access_token: str) -> int | None:
+        """
+        SEC-3: chiama `GET /users/@me` con l'access_token appena
+        ottenuto dallo scambio del code — l'UNICA fonte affidabile
+        per sapere CHI ha davvero autorizzato (mai fidarsi di un
+        user_id scritto nello state, che è solo un URL: chiunque
+        potrebbe scriverne uno diverso dal proprio prima di
+        cliccare). None se Discord rifiuta il token o la rete non
+        risponde.
+        """
+        sessione = self._get_session()
+        url = f"{self._api_base_url}/users/@me"
+        try:
+            async with sessione.get(
+                url,
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
+            ) as risposta:
+                if risposta.status != 200:
+                    logger.warning(
+                        "GET /users/@me fallito dopo lo scambio del code (status %d).",
+                        risposta.status,
+                    )
+                    return None
+                payload = await risposta.json()
+        except (aiohttp.ClientError, TimeoutError) as exc:
+            logger.warning("Impossibile contattare /users/@me di Discord: %s", exc)
+            return None
+
+        try:
+            return int(payload["id"])
+        except (KeyError, TypeError, ValueError):
+            logger.warning("Risposta /users/@me di Discord in un formato inatteso.")
+            return None
+
     async def assign_role(self, bot_token: str, guild_id: int, user_id: int, role_id: int) -> bool:
         """
         Assegna un ruolo (tipicamente quello di verificato) all'utente

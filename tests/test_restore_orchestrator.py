@@ -58,10 +58,19 @@ async def server_discord_finto():
             return web.json_response({"error": "unknown role"}, status=404)
         return web.Response(status=204)
 
+    async def handler_users_me(request):
+        # SEC-3: chi ha davvero autorizzato si scopre SOLO qui, con
+        # l'access_token (Bearer) — mai da un ID scritto altrove.
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {stato['access_token_valido']}":
+            return web.json_response({"error": "401: Unauthorized"}, status=401)
+        return web.json_response({"id": "42", "username": "utente-vero"})
+
     app = web.Application()
     app.router.add_post("/oauth2/token", handler_token)
     app.router.add_put("/guilds/{guild_id}/members/{user_id}", handler_join)
     app.router.add_put("/guilds/{guild_id}/members/{user_id}/roles/{role_id}", handler_assign_role)
+    app.router.add_get("/users/@me", handler_users_me)
     server = TestServer(app)
     await server.start_server()
     yield server, stato
@@ -138,6 +147,28 @@ async def test_join_user_via_oauth_access_token_invalido_restituisce_false(serve
             bot_token="bot-token", guild_id=100, user_id=1, access_token="token-scaduto-o-falso"
         )
         assert riuscito is False
+    finally:
+        await orchestrator.close()
+
+
+@pytest.mark.asyncio
+async def test_fetch_current_user_con_access_token_valido(server_discord_finto):
+    server, stato = server_discord_finto
+    orchestrator = RestoreOrchestrator(api_base_url=str(server.make_url("")))
+    try:
+        user_id = await orchestrator.fetch_current_user(stato["access_token_valido"])
+        assert user_id == 42
+    finally:
+        await orchestrator.close()
+
+
+@pytest.mark.asyncio
+async def test_fetch_current_user_con_access_token_invalido_restituisce_none(server_discord_finto):
+    server, _stato = server_discord_finto
+    orchestrator = RestoreOrchestrator(api_base_url=str(server.make_url("")))
+    try:
+        user_id = await orchestrator.fetch_current_user("token-scaduto-o-falso")
+        assert user_id is None
     finally:
         await orchestrator.close()
 

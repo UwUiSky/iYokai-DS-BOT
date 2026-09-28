@@ -541,7 +541,12 @@ async def main() -> None:
     # l'avvio (il modulo restore resta semplicemente inutilizzabile
     # finché non viene configurato).
     restore_web_runner = None
-    if config.OAUTH2_CLIENT_ID and config.OAUTH2_CLIENT_SECRET and config.OAUTH2_REDIRECT_URI:
+    if (
+        config.OAUTH2_CLIENT_ID
+        and config.OAUTH2_CLIENT_SECRET
+        and config.OAUTH2_REDIRECT_URI
+        and config.OAUTH_ENCRYPTION_KEY
+    ):
         restore_app = restore_web_build_app(
             orchestrator=restore_orchestrator,
             oauth_repo=restore_oauth_repo,
@@ -550,13 +555,15 @@ async def main() -> None:
             client_secret=config.OAUTH2_CLIENT_SECRET,
             redirect_uri=config.OAUTH2_REDIRECT_URI,
             bot_token=config.YOKAI_BOT_TOKEN,
+            oauth_encryption_key=config.OAUTH_ENCRYPTION_KEY,
         )
         restore_web_runner = await restore_web_start_server(
             restore_app, config.RESTORE_WEB_HOST, config.RESTORE_WEB_PORT
         )
     else:
         logger.info(
-            "OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI non configurati: server callback restore utenti disattivato."
+            "OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI/OAUTH_ENCRYPTION_KEY non "
+            "tutti configurati: server callback restore utenti disattivato."
         )
 
     # Server web che riceve i webhook custom in ricezione (SPEC.md

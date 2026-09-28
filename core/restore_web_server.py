@@ -19,7 +19,7 @@ import logging
 
 from aiohttp import web
 
-from core.restore_oauth_logic import decode_state
+from core.restore_oauth_logic import decode_and_verify_state
 from core.restore_orchestrator import RestoreOrchestrator
 
 logger = logging.getLogger("iyokai.restore_web_server")
@@ -48,6 +48,7 @@ def build_app(
     client_secret: str,
     redirect_uri: str,
     bot_token: str,
+    oauth_encryption_key: str,
 ) -> web.Application:
     async def handler_callback(request: web.Request) -> web.Response:
         code = request.query.get("code")
@@ -59,10 +60,14 @@ def build_app(
                 status=400,
             )
 
-        stato = decode_state(raw_state)
+        # SEC-3: state firmato, con scadenza e nonce monouso — vedi
+        # core/restore_oauth_logic.py.
+        stato = decode_and_verify_state(raw_state, oauth_encryption_key)
         if stato is None:
             return web.Response(
-                text=PAGINA_ERRORE.format(messaggio="Link non valido."),
+                text=PAGINA_ERRORE.format(
+                    messaggio="Link non valido, scaduto o già usato — richiedine uno nuovo."
+                ),
                 content_type="text/html",
                 status=400,
             )
@@ -82,8 +87,21 @@ def build_app(
                 status=400,
             )
 
+        # SEC-3: l'identità si scopre SOLO ora, chiedendola a Discord
+        # con l'access_token appena ottenuto — mai da un ID scritto
+        # nello state (vedi il docstring di restore_oauth_logic.py).
+        user_id = await orchestrator.fetch_current_user(token.access_token)
+        if user_id is None:
+            return web.Response(
+                text=PAGINA_ERRORE.format(
+                    messaggio="Non sono riuscito a verificare la tua identità con Discord — riprova."
+                ),
+                content_type="text/html",
+                status=400,
+            )
+
         await oauth_repo.save_token(
-            stato.source_guild_id, stato.user_id, token.access_token, token.refresh_token, token.expires_at
+            stato.source_guild_id, user_id, token.access_token, token.refresh_token, token.expires_at
         )
 
         if stato.target_guild_id == CONSENT_ONLY_TARGET:
@@ -97,7 +115,7 @@ def build_app(
         aggiunto = await orchestrator.join_user_via_oauth(
             bot_token=bot_token,
             guild_id=stato.target_guild_id,
-            user_id=stato.user_id,
+            user_id=user_id,
             access_token=token.access_token,
         )
         if not aggiunto:
@@ -114,7 +132,7 @@ def build_app(
             await orchestrator.assign_role(
                 bot_token=bot_token,
                 guild_id=stato.target_guild_id,
-                user_id=stato.user_id,
+                user_id=user_id,
                 role_id=config_verifica.verified_role_id,
             )
 

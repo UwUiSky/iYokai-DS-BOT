@@ -247,6 +247,17 @@ async def test_restore_users_senza_token_manda_dm_di_autorizzazione(database, mo
     import cogs.utility.restore as restore_module
 
     monkeypatch.setattr(restore_module, "db", database)
+    # SEC-3: costruire il link di autorizzazione richiede una chiave
+    # di firma (derivata da OAUTH_ENCRYPTION_KEY, vedi
+    # core/restore_oauth_logic.py) — senza, restore_users conta
+    # comunque il DM come fallito invece di sollevare un'eccezione.
+    # Config è un dataclass frozen: si sostituisce il singolo campo
+    # con dataclasses.replace, poi si monkeypatcha tutto l'oggetto.
+    import dataclasses
+
+    monkeypatch.setattr(
+        restore_module, "config", dataclasses.replace(restore_module.config, OAUTH_ENCRYPTION_KEY=CHIAVE_TEST)
+    )
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
@@ -259,6 +270,29 @@ async def test_restore_users_senza_token_manda_dm_di_autorizzazione(database, mo
 
     assert len(utente_finto.messaggi_ricevuti) == 1
     assert "DM di autorizzazione inviati: 1" in interaction.followup.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_senza_chiave_di_firma_conta_come_dm_fallito(database, monkeypatch):
+    """SEC-3: senza OAUTH_ENCRYPTION_KEY non si può firmare lo state — non deve esplodere."""
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
+    import cogs.utility.restore as restore_module
+
+    monkeypatch.setattr(restore_module, "db", database)
+    # OAUTH_ENCRYPTION_KEY è "" di default nell'ambiente di test —
+    # nessun bisogno di forzarla, è già lo scenario da testare.
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+
+    utente_finto = _FakeUser(1)
+    cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    await cog.restore_users.callback(cog, interaction, "100")
+
+    assert len(utente_finto.messaggi_ricevuti) == 0
+    assert "DM non consegnati (privacy/bloccati): 1" in interaction.followup.sent_messages[0][0]
 
 
 @pytest.mark.asyncio
