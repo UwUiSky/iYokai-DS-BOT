@@ -9,7 +9,7 @@
 > questo file, nella stessa sessione. Non lasciarlo mai indietro
 > rispetto al codice.
 
-Ultimo aggiornamento: **17 settembre 2026**
+Ultimo aggiornamento: **28 settembre 2026**
 
 ---
 
@@ -4834,5 +4834,48 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   Suite: 2228/2228 verde, due volte. Commit 3666a66 (Refs #36).
 
 **R0 completata** (tutte le voci SEC-9…SEC-16, #41, #36 sono `[x]` in
-PIANO_FIX.md). Prossima fase del piano: DB — migrazioni versionate
-(DB-1, #25).
+PIANO_FIX.md).
+
+### Fase DB — Migrazioni versionate
+- DB-1/#25: nuovo pacchetto `core/migrations/` — un runner unico al
+  posto delle ~40 chiamate sparse a `run_migrations()` dei repository
+  più un elenco di tabelle da svuotare tenuto a mano nei test (il
+  problema che DB-1 doveva risolvere). `discover_migrations()` legge
+  file numerati (`0001_nome.sql` o `.py` con `async def up(conn)`) da
+  `core/migrations/`, li ordina per numero; `apply_numbered_migrations()`
+  prende un `pg_advisory_lock` sulla STESSA connessione (non sul pool,
+  altrimenti due runner concorrenti potrebbero prenderlo su connessioni
+  diverse), applica ogni migrazione non ancora registrata dentro una
+  transazione (`async with conn.transaction()`, quindi un errore a metà
+  migrazione non lascia schema parziale) e la registra in una nuova
+  tabella `schema_migrations`. `core/database.py`'s `run_migrations()`
+  ridotto da ~230 righe a una delega di 2 righe
+  (`core.migrations.run_all_migrations`); `tests/conftest.py`'s
+  `clean_db` non duplica più a mano le ~40 chiamate né l'elenco fisso
+  di tabelle (ora letto da `information_schema.tables`, esclusa
+  `schema_migrations` per non far riapplicare le migrazioni numerate
+  ad ogni test).
+  Prima migrazione numerata vera, `core/migrations/0001_db2_indici.sql`
+  (DB-2, REVIEW.md): rimossi `idx_event_log_guild_role` e
+  `idx_event_log_guild_case` (mai usati in nessuna `WHERE`, solo
+  `role_id`/`case_number` scritti in un `INSERT` — verificato con
+  `grep`); aggiunti due indici parziali mancanti su query orarie senza
+  copertura, trovate con un controllo mirato sui worker periodici:
+  `idx_clans_unofficialized_deadline` (`clans`, `WHERE officialized =
+  false`, usata da `core/guild_clan_expiry_worker.py`) e
+  `idx_leveling_totals_weekly_decay_due` (`leveling_totals`, `WHERE
+  coins_total > 1`, usata da `core/weekly_personal_decay_worker.py`,
+  che prima faceva una scansione completa della tabella ogni ora senza
+  nemmeno un filtro su `guild_id`). Nuovi test in
+  `tests/test_migrations.py` (9 test): ordine di applicazione per
+  numero, file che non seguono il formato ignorati, applicazione una
+  sola volta e registrazione in `schema_migrations`, una migrazione
+  già applicata non viene rieseguita (dimostrato con una `CREATE TABLE`
+  senza `IF NOT EXISTS` che fallirebbe se rieseguita), due runner
+  concorrenti (due pool `asyncpg` separati, `asyncio.gather`) non la
+  applicano due volte grazie al lock advisory, una migrazione che
+  fallisce a metà non lascia schema parziale (rollback della
+  transazione verificato), e un test contro il database reale che
+  conferma gli effetti di `0001_db2_indici.sql` (indici vecchi spariti,
+  nuovi presenti). Suite: 2237/2237 verde, due volte. Commit 659d9fa
+  (Refs #25).

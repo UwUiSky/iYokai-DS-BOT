@@ -337,30 +337,47 @@ Obiettivo: poter cambiare lo schema in modo sicuro prima di R1–R5.
 Approccio a **basso rischio**: non si riscrivono le ~41 funzioni
 `run_migrations` esistenti.
 
-- [ ] Nuovo `core/migrations.py`:
+- [x] Nuovo `core/migrations/__init__.py` (pacchetto, non un singolo
+  file: le migrazioni numerate `NNNN_*.sql`/`.py` vivono nella STESSA
+  cartella `core/migrations/`, "core/migrations.py" e "core/
+  migrations/" come richiesto letteralmente dal piano non possono
+  coesistere sullo stesso filesystem):
   - tabella `schema_migrations(version INT PRIMARY KEY, name TEXT,
     applied_at TIMESTAMPTZ)`;
   - le funzioni `run_migrations` esistenti restano la **base**
-    (sono idempotenti) e girano per prime, come oggi;
+    (sono idempotenti) e girano per prime, come oggi — spostate da
+    `core/database.py` a `core/migrations/__init__.py`
+    (`run_core_config_tables` + `run_all_repo_migrations`), un solo
+    punto invece di due copie;
   - dopo la base, le migrazioni numerate in `core/migrations/`
     (`0001_descrizione.sql` o `.py` con `async def up(conn)`),
     ciascuna in una transazione, sotto `pg_advisory_lock` (così due
     processi non migrano insieme), registrate in `schema_migrations`;
   - una migrazione applicata non si modifica mai: se serve, se ne
     aggiunge una nuova.
-- [ ] `tests/conftest.py` oggi copia a mano l'SQL di
-  `core/database.py` (`db_singleton_run_migrations_with_pool`, "tenuto
-  in sync manualmente"). Sostituisci quella copia con una chiamata allo
-  stesso runner usato in produzione. Mantieni l'elenco di `TRUNCATE`,
-  ma generalo leggendo le tabelle da `information_schema` (escludendo
-  `schema_migrations`), così non va aggiornato a mano.
-- [ ] Test: il runner applica una migrazione una volta sola, due runner
-  concorrenti non la applicano due volte, una migrazione che fallisce
-  non lascia metà schema.
-- [ ] Prima migrazione utile (DB-2): gli indici mancanti sulle query
-  che girano ogni minuto e la rimozione dei due indici inutili di
-  `event_log`. Prima di togliere un indice, verifica con `grep` che
-  nessuna query lo usi.
+- [x] `tests/conftest.py` copiava a mano l'SQL di `core/database.py`
+  (`db_singleton_run_migrations_with_pool`, "tenuto in sync
+  manualmente") — ora `clean_db` chiama `core.migrations.
+  run_all_migrations(db_pool)`, lo STESSO runner usato in produzione
+  da `core.database.Database.run_migrations()`. L'elenco `TRUNCATE`
+  fisso è sparito: ora legge le tabelle da `information_schema`
+  (escludendo `schema_migrations`, che non va svuotata tra un test e
+  l'altro — altrimenti le migrazioni numerate verrebbero riapplicate
+  ad ogni test).
+- [x] Test (`tests/test_migrations.py`): il runner applica una
+  migrazione una volta sola, due runner concorrenti (pool separati,
+  `asyncio.gather`) non la applicano due volte, una migrazione che
+  fallisce non lascia metà schema (transazione per migrazione).
+- [x] Prima migrazione utile (DB-2, `core/migrations/
+  0001_db2_indici.sql`): due nuovi indici parziali sulle query che
+  girano ogni ora (`clans.get_unofficialized_expired()`,
+  `leveling_repo.list_users_needing_weekly_decay()` — nessuna delle
+  due coperta da un indice esistente, verificato leggendo le query e
+  gli indici di `guild_clan_repo.py`/`leveling_repo.py`) e la
+  rimozione di `idx_event_log_guild_role`/`idx_event_log_guild_case`
+  (verificato con `grep` in `event_log_repo.py` che `role_id`/
+  `case_number` compaiono solo in un `INSERT`, mai in una `WHERE`).
+  — commit 659d9fa (Refs #25)
 
 ---
 

@@ -237,3 +237,45 @@ chiudere.
   sbloccate per tutti "per dimenticanza" — solo la prova su Discord
   vero con un server senza whitelist/boost conferma che il
   comportamento a comando corrisponde al valore di configurazione.
+- [ ] DB-1/#25 — commit 659d9fa — passi:
+  1. Su un database che rappresenta la produzione (dump reale o
+     un'istanza avviata almeno una volta con lo schema vecchio, PRIMA
+     di questo commit): avvia il bot con il codice di questo commit e
+     controlla i log all'avvio — deve applicare `schema_migrations`
+     (nuova tabella) e poi `core/migrations/0001_db2_indici.sql` senza
+     errori. Verifica con `psql`: `SELECT * FROM schema_migrations;`
+     deve contenere la riga `version = 1`.
+  2. Con `psql` sullo stesso database, verifica che gli indici vecchi
+     siano spariti e i nuovi presenti:
+     `SELECT indexname FROM pg_indexes WHERE tablename IN ('event_log',
+     'clans', 'leveling_totals');` — non deve comparire
+     `idx_event_log_guild_role` né `idx_event_log_guild_case`; devono
+     comparire `idx_clans_unofficialized_deadline` e
+     `idx_leveling_totals_weekly_decay_due`.
+  3. Riavvia il bot una seconda volta sullo stesso database (migrazione
+     già applicata): nei log NON deve comparire nessun errore "relation
+     already exists" o simile — la migrazione deve risultare già fatta
+     e essere saltata in silenzio.
+  4. Con `EXPLAIN ANALYZE` sulla query reale usata da
+     `core/guild_clan_expiry_worker.py` (`SELECT ... FROM clans WHERE
+     officialized = false AND officialize_deadline <= now()`) e da
+     `core/weekly_personal_decay_worker.py` (`SELECT ... FROM
+     leveling_totals WHERE coins_total > 1 AND
+     last_weekly_decay_period IS DISTINCT FROM $1`) sul database di
+     produzione (con dati veri, non vuoto): verifica che il piano usi i
+     due nuovi indici parziali (`Index Scan` su
+     `idx_clans_unofficialized_deadline`/
+     `idx_leveling_totals_weekly_decay_due`) invece di un `Seq Scan`
+     sull'intera tabella.
+  5. Se possibile, avvia il bot su due processi/macchine
+     contemporaneamente puntati allo stesso database (simulando un
+     doppio avvio accidentale): nei log di uno dei due deve comparire
+     un'attesa sul lock (o comunque nessun errore di doppia
+     applicazione), e `schema_migrations` deve avere una sola riga per
+     `version = 1` alla fine, non due tentativi falliti a metà.
+  Risultato atteso: la migrazione numerata si applica una volta sola
+  su un database vero, è sicura da rieseguire ad ogni riavvio, non
+  lascia schema a metà in caso di errore, e i due nuovi indici sono
+  davvero usati dalle query orarie che dovevano velocizzare — solo la
+  prova su un database con dati reali (via `EXPLAIN ANALYZE`) conferma
+  che l'indice viene scelto dal query planner, non solo che esiste.
