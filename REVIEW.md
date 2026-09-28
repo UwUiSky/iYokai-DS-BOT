@@ -1,6 +1,14 @@
 # REVIEW.md — Revisione completa del codice iYokai
 
-Revisione del 28/09/2026, fatta **prima** di qualsiasi riscrittura.
+Revisione del 28/09/2026, fatta **prima** di qualsiasi riscrittura, in
+**due passate**. La prima (§2–§11) copre area per area tutti i cog e
+tutto `core/`. La seconda (§12–§16) copre quello che la prima non
+aveva guardato:
+- corrispondenza SPEC.md ↔ codice;
+- server web, segreti e dipendenze;
+- qualità dei test, con coverage misurata;
+- ciclo di vita di interazioni, listener e dati;
+- GDPR.
 Nessun file di codice è stato modificato per scriverla. Ogni bug qui
 sotto è stato verificato leggendo il codice e i suoi chiamanti; i più
 gravi li ho ricontrollati una seconda volta a mano. Quelli che si
@@ -35,6 +43,26 @@ cosa fare.
 - **La lingua del server non cambia niente**: esiste il comando
   `/config language set`, ma nessun messaggio del bot la legge.
 
+**Aggiunte della seconda passata:**
+- **SPEC.md sovrastima.** Delle 238 voci `[x]`, circa **28 non sono
+  davvero fatte** e circa **25** sono rotte da bug di questo log.
+  Circa **55 voci funzionanti non si possono accendere** da nessun
+  comando: dipendono da `/setup`, che è rotto (BUG-2).
+- **Dati mai cancellati.** Quando il bot esce da un server i dati
+  restano per sempre, e non esiste un modo per cancellare i dati di
+  un utente che lo chiede. È un problema **GDPR** (sei in UE).
+- **Altri 8 problemi di sicurezza** (SEC-9…16), tra cui:
+  - i token dei webhook e i codici OAuth finiscono nei log;
+  - gli utenti in blacklist possono ancora usare tutti i bottoni;
+  - un'immagine "bomba" da 15 MB può far crollare tutti i bot.
+- **Test: 2054 test verdi ma coverage al 71%.** I comandi dove
+  stanno i bug sono testati al 20–45%, e nessun test li esegue
+  davvero. Per questo nessun test ha mai visto BUG-1, BUG-2, BUG-3,
+  BUG-6 e SEC-1.
+- **Schema del database senza versioni.** Ogni modifica a una tabella
+  esistente oltre "aggiungi colonna" va fatta a mano. Serve prima
+  delle fasi di refactor.
+
 ---
 
 ## 1. Limiti reali di Discord che cambiano il piano (verificati)
@@ -53,6 +81,8 @@ vanno adattate per questi motivi.
 | L6 | **I nomi dei comandi si traducono in base alla lingua del client Discord di chi li usa**, non in base a un'impostazione del server (localizzazioni native `name_localizations`) | Con i comandi globali, `/banna` contro `/ban` dipende dalla lingua dell'app Discord dell'utente, non dalla lingua scelta per il server. L'impostazione del server si può comunque applicare a **tutti i messaggi di risposta del bot**. Vedi §7 per le due opzioni. |
 | L7 | `message_content` è un **privileged intent**: va attivato nel Developer Portal e, sopra i 100 server, approvato da Discord con motivazione | Oggi è spento, e questo **rompe silenziosamente** diverse funzioni già scritte (vedi BUG-5). Lo attiviamo come hai chiesto, ma il toggle nel Portal devi farlo tu. |
 | L8 | Senza `message_content`, **anche i messaggi letti via REST arrivano vuoti** (politica Discord su tutte le API) | Due docstring del progetto affermano il contrario (ticket, spam-trap) e sono sbagliate. |
+| L9 | `default_permissions` funziona **solo sul comando/gruppo di primo livello**: sui sotto-comandi viene ignorato (scritto nel sorgente di discord.py) | La delega che fai in *Integrazioni* vale per **l'intero gruppo** (es. tutto `/mod`), non per il singolo sotto-comando. Se vuoi dare a un ruolo "helper" il timeout ma non il ban, servono due gruppi separati, oppure un controllo più fine lato bot. Vedi §6. |
+| L10 | La blacklist di un `CommandTree` blocca solo i comandi slash: **bottoni, menu e modali non passano da lì** | La blacklist va controllata anche sui componenti (vedi SEC-10). |
 
 Fonti: [Discussion #4831 — Update to application command permissions](https://github.com/discord/discord-api-docs/discussions/4831), [Discussion #4862 — Allow bots to manage their own permissions](https://github.com/discord/discord-api-docs/discussions/4862), [Application Commands docs](https://discord.com/developers/docs/interactions/application-commands); sorgente `discord/app_commands/commands.py` righe 1520, 1670, 1923.
 
@@ -350,16 +380,38 @@ Fonti: [Discussion #4831 — Update to application command permissions](https://
 - 0 su 97 sono `guild_only`.
 - Tutti vedono tutto, anche nei DM.
 
+**Modello di accesso** (deciso con te il 28/09): chi non ha
+ricevuto il permesso, in un modo o nell'altro, **non vede** i
+comandi.
+- **Visibilità.** Ogni gruppo ha un `default_permissions`: gli
+  amministratori lo vedono già. Il proprietario o un admin può
+  delegarlo a ruoli specifici in *Impostazioni server → Integrazioni
+  → iYokai*, senza dare il permesso Amministratore. Discord allora
+  lo **mostra e lo consente** solo a quei ruoli.
+- **Controllo a runtime coerente con la delega.** Il bot **non deve**
+  richiedere di nuovo "Amministratore" dentro il comando, altrimenti
+  bloccherebbe proprio i ruoli delegati. Discord ha già deciso chi
+  può usarlo. Il bot controlla solo quello che Discord non vede:
+  gerarchia dei ruoli, e che il bot stesso abbia il permesso
+  per l'azione.
+- **Granularità** (L9). La delega nativa vale per gruppo intero. Se
+  serve più fine (es. "helper" = timeout sì, ban no), le strade sono
+  due:
+  - gruppi separati, es. `/mod` per timeout/warn/clear e `/modban`
+    per ban/kick/softban;
+  - un sistema di ruoli del bot per sotto-comando, che però non può
+    cambiare la visibilità.
+
 **Proposta** (rispetta L2 e L3; i nomi sono indicativi, versione IT
 tra parentesi):
 
 | Gruppo | Chi lo vede (menu) | Controllo a runtime | Contenuto |
 |---|---|---|---|
 | `/owner` | **Solo nel tuo server privato**, solo admin | `OWNER_ID` | sotto-gruppi `premium`, `blacklist`, `cog`, `system` (eval, shell, memory, stats, announce, leave-guild) |
-| `/admin` | Gestisci server | Amministratore **o** ruolo bot-admin | `setup`, `wizard`, `config …`, `lingua`, `ruolo-admin add/remove/list`, `ruolo-mod add/remove/list`, `backup …`, `restore …`, `benvenuto …`, `economia …` (shop, level-roles, monthly-winners, giveaway, assegna-*) |
-| `/mod` | Moderare membri | permesso Discord specifico per comando **o** ruolo bot-mod | `ban`, `kick`, `warn`, `timeout`, `tempban`, `softban`, `mute`, `clear`, `lock`, `slowmode`, `caso …`, `nota …` |
-| `/security` | Gestisci server | Amministratore o bot-admin | sotto-gruppi `automod` (22, ci stanno), `escalation`, `antinuke`, `antiraid`, `globalban`, `verify`, `spamtrap` + `score`, `heatmap` |
-| `/log` | Gestisci server | Amministratore o bot-admin | `canale <tipo> <canale>`, `crea-canali`, `forum`, `stato`, `cerca utente/canale`, `esporta` |
+| `/admin` | Amministratore (+ ruoli delegati in Integrazioni) | gerarchia ruoli + permessi del bot | `setup`, `wizard`, `config …`, `lingua`, `backup …`, `restore …`, `benvenuto …`, `economia …` (shop, level-roles, monthly-winners, giveaway, assegna-*) |
+| `/mod` | Moderare membri (+ ruoli delegati) | gerarchia ruoli + permessi del bot | `ban`, `kick`, `warn`, `timeout`, `tempban`, `softban`, `mute`, `clear`, `lock`, `slowmode`, `caso …`, `nota …` |
+| `/security` | Amministratore (+ delegati) | gerarchia + permessi del bot | sotto-gruppi `automod` (22, ci stanno), `escalation`, `antinuke`, `antiraid`, `globalban`, `verify`, `spamtrap` + `score`, `heatmap` |
+| `/log` | Gestisci server (+ delegati) | — | `canale <tipo> <canale>`, `crea-canali`, `forum`, `stato`, `cerca utente/canale`, `esporta` |
 | `/ticket` | tutti | staff per i comandi staff | apri/chiudi/claim…; configurazione sotto `/admin ticket …` |
 | `/voice` | tutti | proprietario del canale | come ora; configurazione sotto `/admin voice …` |
 | `/music` | tutti | nello stesso canale del player | play, skip, stop… (`/nonstop-main` va sotto `/owner`) |
@@ -575,7 +627,273 @@ sessioni restano in PROGRESS.md.
 
 ---
 
-## 12. Piano proposto, a fasi
+## 12. Seconda passata — SPEC.md contro il codice reale
+
+Ho controllato una per una tutte le voci `[x]` e `[~]` di §1–§17
+(122 + 116). Circa **195 corrispondono al codice**, circa **28 non
+sono davvero fatte** e circa **25** sono rotte da bug già in questo
+log.
+
+**Problema trasversale (BUG-2):** circa **55 voci `[x]` funzionanti
+non si possono accendere** da nessun comando. Il wizard copre solo 6
+moduli, e l'unica alternativa è un `/config import` modificato a
+mano. Riguarda verify §4, gran parte di §5, anti-raid, anti-nuke,
+spam-trap, heatmap, security score (§7) e i log avanzati §8.6–8.15.
+
+**Voci segnate fatte che non lo sono** (verranno corrette in SPEC.md):
+
+| § | Cosa dice SPEC | Com'è davvero |
+|---|---|---|
+| 1.2 | L'evento `modules_updated` viene emesso a ogni cambio di modulo | Lo emette solo `/setup`, che è irraggiungibile. |
+| 3.3 / 8.18 | Controllo premium applicato a runtime | 6 moduli "premium" (log avanzati, spam-trap, anti-nuke, anti-raid, global-ban, heatmap) **non controllano mai il premium**. `/owner premium-toggle` su di loro non fa niente. |
+| 5.7 | `/clear` con filtro "solo allegati" | Senza `message_content` gli allegati arrivano vuoti, quindi il filtro non trova quasi niente. |
+| 5.10 | Ogni azione va nel mod-log | `/lock`, `/unlock`, `/slowmode` e `/clear` non creano né casi né log. |
+| 7.2 | Recovery anti-nuke con nome, permessi e posizione | Ricrea solo canali **testuali** (niente vocali, categorie, forum), senza posizione né topic. Ruoli senza posizione né membri. Le prime 3 cancellazioni non vengono mai recuperate. |
+| 7.3 | Log dello spam-trap con data di ingresso e di ban | Manca la data del ban. La data di ingresso è quasi sempre assente, perché viene letta dopo il ban. |
+| 9.2 / 9.3 | Un bot musicale per canale vocale, code indipendenti | È **uno per server**: un secondo canale nello stesso server condivide lo stesso bot e la stessa coda. |
+| 10.9 | Messaggi personalizzabili anche per Twitch e YouTube | Solo RSS e webhook accettano un template. |
+| 11.1 / 11.2 | Il Creator esce sempre; coda serializzata, un job alla volta | I job scaduti o falliti lasciano il server creato (BUG-4). La coda avvia più job insieme. |
+| 11.3 | Ruoli clonati nell'ordine giusto | Le posizioni non vengono mai impostate: probabilmente la gerarchia esce **invertita** (DA VERIFICARE LIVE). |
+| 11.5–11.7 | Clonazione di emoji, sticker e soundboard | Nessun controllo sui limiti di un server senza boost: il primo errore fa fallire tutto il backup. |
+| 11.10 / 11.11 / 11.13 | Snapshot, restore e promozione del backup | Senza dati per BUG-3. La modalità "OAuth alla verifica" non fa niente di diverso dalle altre. |
+| 13.8 / 13.10 | Chiusura del ticket, trascrizione | Chiusura rotta (BUG-1), trascrizione vuota (BUG-5). |
+| 15.14 | Clan: storico movimenti in `/clan info`; lo scioglimento rimuove i ruoli | Lo storico viene scritto ma non si legge da nessuna parte. I ruoli degli altri admin del clan restano. |
+| 17.4 | La blacklist blocca ogni interazione | Blocca solo i comandi slash (SEC-10). |
+
+**Testi SPEC imprecisi, correggibili senza cambiare il codice:**
+- 7.2 / 8.13: "soundboard senza evento gateway" è falso, discord.py
+  2.7.1 lo ha.
+- 2.1 / 2.5 / 2.6: reset ed export toccano solo `guild_config`, non
+  le tabelle dei singoli moduli.
+- 5.9: `/untimeout` non ha il parametro motivo.
+- 8.17: "cercabile per ruolo e tempo" non esiste.
+- 9.9 / 9.10: la disconnessione avviene dopo 300 secondi, non subito.
+- 13.2: più di 25 categorie di ticket rompono il menu.
+- 14.18: il grafico dipende dal modulo logging.
+- 16.8: 97 comandi, non 96.
+- 17.5: solo il bot principale esce da un server in blacklist, gli
+  altri 6 bot restano.
+
+---
+
+## 13. Seconda passata — sicurezza aggiuntiva
+
+- **SEC-9 🔴 Token dei webhook e codici OAuth nei log.**
+  - **Dove:** `core/restore_web_server.py:134`,
+    `core/custom_webhook_server.py:74`.
+  - **Il problema:** i due server web usano l'access log di default,
+    che scrive ogni URL per intero: `/webhook/<token>` e
+    `/oauth/callback?code=…`.
+  - **Esempio:** chi legge i log può scrivere in qualsiasi canale
+    webhook. Nel log locale ci sono già 342 righe così (per ora
+    generate dai test).
+  - I file di log ruotati (`.log.1`…`.5`) **non sono in
+    `.gitignore`**.
+- **SEC-10 🔴 La blacklist non blocca bottoni, menu e modali (L10).**
+  - **Effetto:** un utente bloccato può ancora aprire ticket,
+    verificarsi, usare i role menu, partecipare ai giveaway,
+    raccogliere drop e inviare richieste. Nemmeno i listener lo
+    ignorano (continua a guadagnare XP).
+- **SEC-11 🔴 Immagini "bomba".**
+  - **Il problema:** Pillow decomprime l'immagine prima di controllarne
+    la dimensione.
+  - **Esempio:** un PNG da 15 MB che si espande a circa 700 MB di RAM.
+    Ci arriva `/fun` oppure chiunque posti un'immagine nel canale
+    trappola. Poche in parallelo e crolla **tutto il processo**,
+    compresi tutti i bot.
+- **SEC-12 🔴 I DM al bot si possono usare per sovraccaricarlo.**
+  - **Il problema:** ogni DM, di chiunque, fa **una query per ogni
+    server** in cui c'è il bot, per cercare un appello dello
+    spam-trap (`spam_trap.py:713`).
+  - **Esempio:** con 2.000 server sono 2.000 query per ogni DM.
+    Inoltre riconosce come appello anche i ban normali, non solo
+    quelli dello spam-trap.
+- **SEC-13 🟠 `/owner eval`, `/owner shell` e `/owner cog load` danno
+  accesso completo alla macchina.**
+  - **Il problema:** vedono tutti i token dei bot, il database e la
+    chiave che decifra i token OAuth degli utenti.
+  - **Esempio:** se qualcuno compromette il tuo account Discord,
+    compromette anche il server.
+  - **Proposta:** interruttore `ENABLE_EVAL`, spento di default in
+    produzione, più 2FA obbligatoria sul tuo account.
+- **SEC-14 🟠 Server web sempre esposti.**
+  - Ascoltano su `0.0.0.0` in HTTP semplice.
+  - Quello dei webhook parte **anche se la funzione non è usata**.
+  - Nessun limite di frequenza per token.
+  - Quello del restore parte anche senza chiave di cifratura: l'utente
+    autorizza e poi riceve un errore.
+- **SEC-15 🟠 Dipendenze.**
+  - `aiohttp` (che fa girare due server pubblici) **non è dichiarato**
+    in `requirements.txt`: arriva di rimbalzo da discord.py, con un
+    limite di versione che consente versioni con vulnerabilità note.
+  - Tutte le dipendenze sono `>=` senza lockfile.
+  - `structlog` è dichiarato ma inutilizzato.
+  - Le versioni installate oggi sono tutte aggiornate.
+- **SEC-16 🟡 Segreti e dati sensibili.**
+  - Nella storia git (2 commit su `.env.example`) c'è una password
+    Postgres locale, poi sostituita: se era reale, va cambiata.
+  - `config` e i token OAuth hanno un `repr` che stampa i segreti:
+    oggi nessun log lo usa, ma basta un `logger.info(config)`.
+  - La cifratura dei token non lega il dato alla riga
+    (guild/utente).
+  - Una sola riga corrotta blocca tutto l'elenco.
+  - I token dei webhook sono salvati in chiaro.
+
+**Verificato pulito:**
+- nessuna SQL injection (389 query, tutte parametrizzate);
+- nessun token Discord nella storia git;
+- nessun segreto scritto nei log applicativi;
+- nessun `custom_id` falsificabile;
+- nessun autocomplete che mostri dati di altri server;
+- `/owner` non è raggiungibile da chi non è l'owner.
+
+---
+
+## 14. Seconda passata — dati e GDPR
+
+- **GDPR-1 🔴 Nessun dato viene mai cancellato quando il bot esce da un
+  server.**
+  - **Il problema:** non esiste un `on_guild_remove`, e nessuna
+    cancellazione è legata al server.
+  - **Cosa resta per sempre:** XP, monete, casi di moderazione e
+    note, trascrizioni HTML dello spam-trap, ticket, snapshot degli
+    utenti e token OAuth.
+  - **Proposta:** alla rimozione si segna la data di uscita; dopo un
+    periodo di grazia (es. 30 giorni) un job giornaliero cancella
+    tutto in una sola transazione. Se il bot rientra prima, non si
+    perde niente.
+- **GDPR-2 🔴 Nessun modo di cancellare i dati di un utente** (diritto
+  all'oblio, art. 17) né di esportarli (art. 15).
+  - **Proposta:** un servizio `forget_user(user_id)` che cancella o
+    anonimizza nelle circa 20 tabelle interessate, più un comando
+    owner per usarlo su richiesta.
+- **GDPR-3 🟠 Circa 15 tabelle crescono senza limite**, senza nessuna
+  pulizia:
+  - log delle azioni AutoMod e sicurezza, tentativi di verify;
+  - incidenti dello spam-trap con trascrizione HTML;
+  - storico della configurazione;
+  - movimenti della cassa;
+  - azioni programmate già eseguite, e altre.
+  - **Proposta:** un unico worker di retention con una durata per
+    tabella.
+- **DB-1 🟠 Schema senza versioni.**
+  - **Il problema:** circa 40 migrazioni girano a ogni avvio, senza
+    transazione e senza lock. Sanno solo "crea se non esiste" e
+    "aggiungi colonna se non esiste".
+  - **Effetto:** per cambiare un tipo di colonna, togliere `prefix`,
+    aggiungere foreign key o migrare i canali dei log serve SQL a
+    mano.
+  - **Proposta:** una tabella `schema_migrations` con migrazioni
+    numerate, ciascuna in transazione sotto lock. **Va fatto prima del
+    refactor**, perché R3–R5 cambiano lo schema.
+- **DB-2 🟡 Foreign key e indici.**
+  - C'è **una sola** foreign key in 74 tabelle, quindi sciogliere un
+    clan lascia righe orfane.
+  - Due indici su `event_log` non sono usati da nessuna query:
+    costano solo in scrittura sulla tabella più trafficata.
+  - Mancano alcuni indici su query che girano ogni minuto.
+
+---
+
+## 15. Seconda passata — interazioni, listener e loop
+
+- **LC-1 🔴 `/assegna-lobby` può addebitare due volte.**
+  - **Il problema:** prima scala tutte le monete dalla cassa, poi le
+    accredita una persona alla volta, senza transazione e senza
+    `defer`.
+  - **Esempio:** con 40 persone la risposta scade, l'admin riprova e
+    paga due volte. Un errore a metà lascia la cassa svuotata ma solo
+    metà delle persone pagate.
+- **LC-2 🟠 38 comandi in DM restano senza risposta** e mostrano "The
+  application did not respond". Si risolve con `guild_only` su tutti i
+  gruppi (§6).
+- **LC-3 🟠 Operazioni lente senza `defer`.** Se Discord è lento,
+  l'utente vede un errore anche quando l'azione è stata fatta, e
+  spesso la ripete:
+  - kick, ban, tempban e softban: DM + azione, e il mod-log si perde
+    se si superano i 3 secondi;
+  - `/suggest`;
+  - `clan invita`, `espelli`, `promuovi` e `compra-canale`;
+  - il salvataggio di `/setup`.
+- **LC-4 🟠 Errori nei bottoni e nei menu mai mostrati all'utente.**
+  Nessuna View ha `on_error`: l'utente vede "Interazione non riuscita"
+  e basta.
+- **LC-5 🟠 I bottoni di appello dello spam-trap smettono di funzionare
+  a ogni riavvio**, perché la View non è persistente. Lo staff non può
+  più agire sugli appelli aperti.
+- **LC-6 🟠 Listener.**
+  - I log base vanno in errore (e ti mandano un DM di allarme) a ogni
+    evento se il bot perde il permesso sul canale.
+  - Il tracciamento degli inviti sbaglia attribuzione con ingressi
+    simultanei, cioè proprio durante un raid.
+  - `on_ready` scarica gli inviti di **tutti** i server, anche dove
+    la funzione è spenta.
+  - Anti-raid e benvenuto contano anche i bot aggiunti dagli admin.
+  - I messaggi di sistema (boost, pin, ingressi) danno XP.
+- **LC-7 🟠 Feed, Twitch e YouTube continuano a pubblicare anche con il
+  modulo spento**, e YouTube continua a consumare quota.
+- **LC-8 🟡 Loop periodici.**
+  - Diversi worker (retention log, soundboard, XP vocale dei clan,
+    decay) non isolano gli errori server per server: **un server
+    problematico blocca il giro per tutti gli altri**.
+  - `/security-score` pubblica in chiaro nel canale la postura di
+    sicurezza del server.
+
+**Cose verificate e a posto:** 0 doppie risposte, 0 `followup` senza
+risposta, gli errori sono effimeri. 7 View persistenti su 9 vengono
+registrate correttamente all'avvio; le 2 che non lo sono sono
+indicate sopra.
+
+---
+
+## 16. Seconda passata — qualità dei test
+
+- **Risultato:** 2054 test, 0 falliti, 0 saltati. **Coverage 71%.**
+  La logica pura e i repository stanno all'80–100%; **i comandi dei
+  cog al 20–45%**.
+  - Meno coperti:
+    - moderazione: actions 22%, softban 25%, channel_control 31%;
+    - role menu 27%, spam-trap 27%, suggerimenti 31%, benvenuti 32%;
+    - verify 36%, ticket 36%.
+- **Perché nessun test ha visto i bug principali:**
+  - BUG-1: il test dei ticket controlla solo che il comando `close`
+    *esista*, non lo esegue mai.
+  - BUG-2: il test di `/setup` usa 2–3 moduli finti, mai i 32 reali.
+  - BUG-3: il test del backup inserisce **lui stesso** la coppia
+    main→backup, nascondendo il bug.
+  - BUG-6: vengono testati solo tre casi fortunati del rollback.
+  - SEC-1: i test di moderazione caricano i comandi ma non li
+    chiamano mai, e non controllano i permessi.
+- **Altri segnali di fiducia falsa:**
+  - 23 test senza nessuna asserzione;
+  - 47 file di test gestiscono il database a mano, alcuni svuotano
+    tabelle intere;
+  - singleton condivisi tra test;
+  - 18 sessioni HTTP mai chiuse durante la suite.
+- **Proposta, da fare prima dei fix così ogni fix ha un test che
+  fallisce prima e passa dopo:**
+  1. **Oggetti finti condivisi e controllati.** Un test verifica che
+     le firme corrispondano a quelle vere di discord.py; avrebbe
+     trovato BUG-1 subito.
+  2. **Un test di politica dei permessi sull'intero albero comandi:**
+     ogni comando admin, mod o owner deve avere `default_permissions`
+     e un controllo, e deve rifiutare un utente senza permessi.
+  3. **Un test di invarianti:**
+     - al massimo 25 opzioni in ogni menu;
+     - ogni metodo di scrittura dei repository ha almeno un chiamante
+       reale;
+     - al massimo 100 comandi top-level (questo esiste già).
+  4. **Un test che esegue ogni comando almeno una volta** con oggetti
+     finti fedeli.
+  5. **Igiene della suite:**
+     - database solo tramite la fixture di pulizia;
+     - reset dei singleton;
+     - la suite fallisce se restano sessioni aperte o task con
+       eccezioni non raccolte.
+
+---
+
+## 17. Piano proposto, a fasi
 
 Ogni fase si chiude come sempre: test prima, suite completa due
 volte, commit, push e verifica dello SHA, aggiornamento di
@@ -583,32 +901,35 @@ SPEC/PROGRESS.
 
 | Fase | Contenuto | Perché in quest'ordine |
 |---|---|---|
-| **R0 — Sicurezza** | SEC-1…8b | Sono falle aperte oggi, indipendenti dal refactor. |
-| **R1 — Bug che rompono funzioni** | BUG-1…16 + gestore errori + `allowed_mentions` globale + avvio e spegnimento dei bot isolati | Il refactor non deve partire da funzioni rotte, altrimenti non si distingue un bug vecchio da uno nuovo. |
-| **R2 — Message content** | Attivare l'intent, poi message delete/bulk/edit log (§8.16), snipe ed editsnipe (§14.9/14.10), verificare AutoMod, ticket e spam-trap | Si fa **dopo R3**: i nuovi log di messaggi devono nascere già nel router dei canali. |
-| **R3 — Router dei canali** | Canali per tipo, forum, creazione automatica; migrazione delle impostazioni esistenti (il `log_channel_id` attuale diventa il valore di default per tutti i tipi) | Serve prima dei log nuovi, così nascono già con il sistema giusto. |
-| **R4 — Struttura comandi** | Nuovi gruppi `/owner`/`/admin`/`/mod`/…, `default_permissions`, ruoli bot-admin e bot-mod, `/owner` solo nel server privato | È il cambiamento più grande, e va fatto una volta sola. |
-| **R5 — Lingue** | File dei testi IT/EN, localizzazioni, risposte tradotte, COMMAND_LIST_ITA/ENG, `/cerca-comando` nuovo | Va fatto dopo R4, perché i nomi dei comandi cambiano lì. |
-| **R6 — Pulizia** | Docstring, codice morto, duplicazioni, prestazioni (PERF-1…7) | Si può anche distribuire nelle fasi precedenti, file per file, man mano che li tocchiamo. |
-| **R7 — NSFW** | §16.10 come istanza separata con `NSFW_TOKEN`, sullo stesso schema dei bot musicali | Dopo R4 e R5, così nasce già con i gruppi e le lingue nuovi. |
-
-Ordine effettivo consigliato: **R0 → R1 → R3 → R2 → R4 → R5 → R7**,
-con R6 distribuita lungo il percorso.
+| **R-T — Rete di test** | Punti 1–3 di §16: oggetti finti controllati, test sui permessi, test sulle invarianti | Senza, molti fix di R0/R1 non avrebbero un test capace di fallire. È la base di tutto il resto. |
+| **R0 — Sicurezza** | SEC-1…16 + `allowed_mentions` globale | Sono falle aperte oggi, indipendenti dal refactor. |
+| **R1 — Bug che rompono funzioni** | BUG-1…16, LC-1…8, gestore errori, avvio dei bot isolati e spegnimento pulito | Il refactor non deve partire da funzioni rotte, altrimenti non si distingue un bug vecchio da uno nuovo. |
+| **R1b — SPEC onesta** | Correggere i marcatori di §12 | Così SPEC.md torna a dire la verità prima di costruirci sopra. |
+| **R2 — Infrastruttura dati** | Migrazioni versionate (DB-1), retention (GDPR-3), pulizia all'uscita da un server (GDPR-1), `forget_user` (GDPR-2) | R3–R5 cambiano lo schema, quindi serve prima un sistema di migrazioni. Il GDPR è un obbligo legale. |
+| **R3 — Router dei canali** | Canali per tipo, forum, creazione automatica; migrazione delle impostazioni esistenti | Serve prima dei log nuovi, così nascono già con il sistema giusto. |
+| **R4 — Message content** | Attivare l'intent; log di messaggi cancellati, cancellati in massa e modificati (§8.16); snipe ed editsnipe (§14.9/14.10); ricontrollare AutoMod, ticket, spam-trap e `/clear` | I nuovi log devono nascere già nel router. |
+| **R5 — Struttura comandi** | Gruppi nuovi, `default_permissions`, `guild_only`, `/owner` solo nel server privato | È il cambiamento più grande, e va fatto una volta sola. |
+| **R6 — Lingue** | Testi IT/EN, localizzazioni, COMMAND_LIST_ITA/ENG, `/cerca-comando` nuovo | Va fatto dopo R5, perché i nomi dei comandi cambiano lì. |
+| **R7 — NSFW** | §16.10 come istanza separata con `NSFW_TOKEN` | Dopo R5 e R6, così nasce già con i gruppi e le lingue nuovi. |
+| **Continuo** | Docstring, codice morto, duplicazioni, prestazioni (PERF-1…7), coverage dei cog | File per file, man mano che li tocchiamo. |
 
 ---
 
-## 13. Decisioni che servono da te prima di partire
+## 18. Decisioni che servono da te prima di partire
 
 1. **Lingua dei nomi dei comandi:** opzione A (localizzazione nativa
    per client) o B (registrazione per server)? Vedi §7.
-2. **Ruoli bot-admin e bot-mod:** va bene che chi è admin solo
-   tramite ruolo del bot debba essere abilitato una volta dal
-   proprietario in *Integrazioni* per vedere i comandi (L5)?
-   L'alternativa è rendere `/admin` visibile a tutti, con il blocco
-   solo a runtime.
+2. ~~Ruoli bot-admin e visibilità~~ → **decisa** (28/09): nascosti a
+   chi non ha il permesso; delega nativa in *Integrazioni*. Resta da
+   decidere la **granularità** di `/mod` (L9): un solo gruppo, oppure
+   `/mod` + `/modban` separati?
 3. **Forum dei log avanzati:** un post per tipo di log, o un post per
    utente o caso?
 4. **Retrocompatibilità:** i vecchi nomi dei comandi spariscono
-   subito con R4, oppure li teniamo per un periodo? Tenerli costa
+   subito con R5, oppure li teniamo per un periodo? Tenerli costa
    slot: siamo a 97 su 100, quindi possiamo tenerne pochissimi.
 5. **Quota YouTube (BUG-16):** passo al metodo RSS + `videos.list`?
+6. **GDPR-1:** quanti giorni di grazia prima di cancellare i dati di un
+   server da cui il bot è uscito? (proposta: 30)
+7. **`/owner eval` e `/owner shell`:** li teniamo attivi in produzione,
+   oppure li spegniamo di default con un interruttore (SEC-13)?
