@@ -229,10 +229,10 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   (server di test locale con `aiohttp.test_utils`). — commit a28f817
   (`core/twitch_watcher.py`/`core/youtube_watcher.py` non toccati:
   URL fissi in codice, mai scelti da un utente, nessun rischio SSRF)
-- [ ] **SEC-8b (#11)** Spam-trap: esenta chi ha `manage_messages`,
+- [x] **SEC-8b (#11)** Spam-trap: esenta chi ha `manage_messages`,
   `administrator`, i ruoli staff configurati o un ruolo sopra quello del
   bot, e non propagare al global-ban in quei casi. I bottoni di appello
-  controllano che chi clicca abbia `ban_members`.
+  controllano che chi clicca abbia `ban_members`. — commit e24059f
 - [ ] **SEC-9** Server web: `access_log` con un formato che non scrive
   il percorso né la query (oppure un logger che li sostituisce con
   `/webhook/***` e `?code=***`). Aggiungi `logs/*.log.*` a

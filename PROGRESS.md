@@ -4683,3 +4683,14 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   `core/twitch_watcher.py`/`core/youtube_watcher.py` non toccati: URL
   fissi, non scelti da un utente. Suite: 2140/2140 verde, due volte.
   Commit a28f817.
+- SEC-8b: `cogs/security/spam_trap.py` — chi scrive nel canale
+  trappola con `manage_messages`/`administrator`, uno dei ruoli staff
+  configurati con `/spamtrap-setup` (nuovi parametri
+  `staff_role_add`/`staff_role_remove`) o un ruolo sopra quello del
+  bot non viene più bannato (nuova `_is_staff_exempt`, controllata
+  PRIMA di ogni altro passo di `_handle_trigger`: niente fetch,
+  transcript, DM, ban né propagazione al global-ban). I bottoni
+  Unban/Reject/Reply del thread di appello ora richiedono
+  `ban_members` (`AppealActionsView.interaction_check`, prima
+  assente: chiunque vedesse il thread poteva sbannare). Suite:
+  2148/2148 verde, due volte. Commit e24059f.

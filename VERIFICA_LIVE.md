@@ -75,3 +75,19 @@ chiudere.
   proprietario del bot, su qualunque server; il path traversal in
   add-local è bloccato anche con un vero filesystem (non solo con
   `pathlib` simulato nei test).
+- [ ] SEC-8b (#11) — commit e24059f — passi:
+  1. Con un secondo account che ha "Gestisci messaggi" (o un ruolo
+     sopra quello del bot), scrivi nel canale trappola: non deve
+     scattare nessun ban, nessun DM, nessuna riga in #spam-log.
+  2. Configura un ruolo con `/spamtrap-setup staff_role_add:@ruolo`,
+     assegnalo a un account senza altri permessi speciali, fallo
+     scrivere nella trappola: stesso risultato del punto 1.
+  3. Con un account senza permessi/ruoli esentati, scrivi nella
+     trappola: il ban scatta come prima (nessuna regressione).
+  4. Apri un thread di appello (o riusa uno esistente) e prova a
+     cliccare Unban/Reject/Reply con un account SENZA "Bannare i
+     membri": deve arrivare il rifiuto effimero, nessuna azione
+     eseguita. Con un account che ha il permesso, i bottoni
+     funzionano come prima.
+  Risultato atteso: lo staff non viene mai bannato dalla propria
+  trappola, e solo chi può bannare può decidere l'esito di un appeal.
