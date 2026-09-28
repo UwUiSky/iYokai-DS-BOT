@@ -39,9 +39,11 @@ from discord.ext import commands
 
 from core.database import db
 from core.premium import PremiumModule, registry
+from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.role_menu_repo import RoleMenu, RoleMenuOption, role_menu_repo
 from core.role_menu_logic import can_add_option, compute_select_sync, compute_toggle_action
 from core.role_safety import check_role_assignable
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.role_menus")
 
@@ -78,7 +80,7 @@ class RoleMenuCog(commands.Cog):
     # Costruzione delle view dinamiche
     # ================================================================
     def _build_button_view(self, menu_id: int, options: list[RoleMenuOption]) -> discord.ui.View:
-        view = discord.ui.View(timeout=None)
+        view = BaseView(timeout=None)
         for opt in options:
             button: discord.ui.Button = discord.ui.Button(
                 label=opt.label or "Role",
@@ -93,7 +95,7 @@ class RoleMenuCog(commands.Cog):
     def _build_select_view(
         self, menu_id: int, options: list[RoleMenuOption], max_selectable: int | None
     ) -> discord.ui.View:
-        view = discord.ui.View(timeout=None)
+        view = BaseView(timeout=None)
         select_options = [
             discord.SelectOption(
                 label=opt.label or "Role", value=str(opt.role_id), emoji=opt.emoji
@@ -288,6 +290,11 @@ class RoleMenuCog(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
         if payload.guild_id is None or payload.member is None or payload.member.bot:
+            return
+
+        # SEC-10: un utente in blacklist non deve poter ottenere ruoli
+        # reagendo a un role menu.
+        if await blacklist_repo.is_user_blacklisted(payload.member.id):
             return
 
         if not await db.is_module_active_for_guild(payload.guild_id, MODULE_ROLE_MENUS):

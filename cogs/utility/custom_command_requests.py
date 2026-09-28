@@ -30,6 +30,7 @@ from core.repositories.custom_command_request_repo import (
     custom_command_request_repo,
 )
 from core.suggestion_logic import APPROVED, PENDING, REJECTED, can_decide
+from core.ui_base import BaseModal, BaseView
 
 logger = logging.getLogger("iyokai.custom_command_requests")
 
@@ -66,7 +67,7 @@ def _build_embed(request: CustomCommandRequest) -> discord.Embed:
     return embed
 
 
-class CustomCommandRequestModal(discord.ui.Modal, title="Richiedi un nuovo comando"):
+class CustomCommandRequestModal(BaseModal, title="Richiedi un nuovo comando"):
     # discord.ui.Label che avvolge il TextInput — pattern corretto e
     # non deprecato, stesso schema già verificato e in uso in
     # StaffReplyModal (cogs/security/spam_trap.py).
@@ -101,7 +102,7 @@ class CustomCommandRequestsCog(commands.Cog):
         self.bot = bot
 
     def _build_decision_view(self, request_id: int) -> discord.ui.View:
-        view = discord.ui.View(timeout=None)
+        view = BaseView(timeout=None)
 
         approve_button: discord.ui.Button = discord.ui.Button(
             label="Approva",
@@ -165,7 +166,7 @@ class CustomCommandRequestsCog(commands.Cog):
 
         request_aggiornata = await custom_command_request_repo.get_request(request_id)
         embed = _build_embed(request_aggiornata)
-        view_disabilitata = discord.ui.View(timeout=None)
+        view_disabilitata = BaseView(timeout=None)
         await interaction.response.edit_message(embed=embed, view=view_disabilitata)
 
         # Notifica di ritorno al richiedente, come previsto dallo

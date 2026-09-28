@@ -55,6 +55,7 @@ from core.ticket_logic import (
     merge_support_role_ids,
 )
 from core.premium import PremiumModule, registry
+from core.ui_base import BaseView
 from cogs.moderation._shared import ensure_module_enabled
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 
@@ -186,7 +187,7 @@ async def _open_ticket_channel(
     )
 
 
-class TicketCategorySelectView(discord.ui.View):
+class TicketCategorySelectView(BaseView):
     """
     SPEC.md §13.2: select menu tra più categorie di ticket, mostrato
     invece del bottone unico quando il server ne ha configurato
@@ -233,7 +234,7 @@ class TicketCategorySelectView(discord.ui.View):
         await _open_ticket_channel(interaction, self._guild, category_channel, scelta.label)
 
 
-class TicketPanelView(discord.ui.View):
+class TicketPanelView(BaseView):
     """
     View PERSISTENTE: timeout=None e un custom_id esplicito sul
     bottone sono entrambi obbligatori perché bot.add_view() la

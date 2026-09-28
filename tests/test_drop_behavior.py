@@ -69,6 +69,13 @@ class _FakeButtonInteraction:
 async def cog_e_database(monkeypatch):
     import cogs.leveling.leveling as leveling_module
 
+    # SEC-10: on_message ora controlla anche la blacklist globale —
+    # non è quello sotto test qui, quindi si disattiva.
+    async def mai_bloccato(user_id):
+        return False
+
+    monkeypatch.setattr(leveling_module.blacklist_repo, "is_user_blacklisted", mai_bloccato)
+
     database = Database()
     await database.connect()
     await database.run_migrations()

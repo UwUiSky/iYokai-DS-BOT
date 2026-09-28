@@ -85,12 +85,27 @@ class TestHandleTriggerRispettaLEsenzione:
 
 
 class TestAppealActionsViewInteractionCheck:
+    def _consenti_a_tutti_la_blacklist(self, monkeypatch) -> None:
+        # SEC-10: AppealActionsView eredita ora da BaseView, che
+        # controlla la blacklist PRIMA del permesso ban_members —
+        # questi test riguardano solo il secondo controllo, quindi il
+        # primo si disattiva qui (nessun utente/server in blacklist).
+        import core.ui_base as ui_base_module
+
+        async def mai_bloccato(*_args):
+            return False
+
+        monkeypatch.setattr(ui_base_module.blacklist_repo, "is_user_blacklisted", mai_bloccato)
+        monkeypatch.setattr(ui_base_module.blacklist_repo, "is_guild_blacklisted", mai_bloccato)
+
     @pytest.mark.asyncio
-    async def test_senza_ban_members_viene_rifiutato(self):
+    async def test_senza_ban_members_viene_rifiutato(self, monkeypatch):
+        self._consenti_a_tutti_la_blacklist(monkeypatch)
         view = AppealActionsView(guild_id=100, case_number=1, user_id=42)
         membro = fake_member(user_id=1, guild_permissions=discord.Permissions.none())
         interaction = AsyncMock()
         interaction.user = membro
+        interaction.guild = None
 
         risultato = await view.interaction_check(interaction)
 
@@ -100,13 +115,15 @@ class TestAppealActionsViewInteractionCheck:
         assert "bannare" in messaggio.lower()
 
     @pytest.mark.asyncio
-    async def test_con_ban_members_viene_accettato(self):
+    async def test_con_ban_members_viene_accettato(self, monkeypatch):
+        self._consenti_a_tutti_la_blacklist(monkeypatch)
         view = AppealActionsView(guild_id=100, case_number=1, user_id=42)
         membro = fake_member(
             user_id=1, guild_permissions=discord.Permissions(ban_members=True)
         )
         interaction = AsyncMock()
         interaction.user = membro
+        interaction.guild = None
 
         risultato = await view.interaction_check(interaction)
 

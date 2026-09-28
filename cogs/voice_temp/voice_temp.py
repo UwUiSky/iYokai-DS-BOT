@@ -47,6 +47,7 @@ from core.voice_temp_logic import (
     should_delete_after_leave,
 )
 from core.premium import PremiumModule, registry
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.voice_temp")
 
@@ -66,7 +67,7 @@ PLATFORM_CHOICES = (
 )
 
 
-class PlatformRoleView(discord.ui.View):
+class PlatformRoleView(BaseView):
     """
     Bottoni PC/Console/Mobile mostrati insieme alla notifica di
     creazione del canale (SPEC.md §12.4 + §12.5 insieme: la notifica
@@ -209,7 +210,7 @@ async def _create_temp_channel(
     return channel
 
 
-class CreateVoiceView(discord.ui.View):
+class CreateVoiceView(BaseView):
     """Persistente — stesso motivo di TicketPanelView (vedi cogs/tickets/tickets.py)."""
 
     def __init__(self) -> None:

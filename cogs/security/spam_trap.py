@@ -69,6 +69,7 @@ from core.spam_trap_logic import (
     purge_window,
 )
 from core.spam_trap_transcript import TranscriptEntry, build_transcript_html
+from core.ui_base import BaseModal, BaseView
 
 logger = logging.getLogger("iyokai.spam_trap")
 
@@ -137,7 +138,7 @@ def _ban_dm_description(guild_name: str) -> str:
     )
 
 
-class AppealActionsView(discord.ui.View):
+class AppealActionsView(BaseView):
     """
     Bottoni per la gestione dell'appeal, mostrati nel thread privato
     in #spam-log. NON persistente — vedi la nota in cima al file per
@@ -151,6 +152,11 @@ class AppealActionsView(discord.ui.View):
         self.user_id = user_id
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # SEC-10: blacklist PRIMA di tutto (BaseView) — se rifiuta
+        # qui, non serve nemmeno guardare i permessi.
+        if not await super().interaction_check(interaction):
+            return False
+
         # SEC-8b: il thread è in un canale che dovrebbe già essere
         # visibile solo allo staff, ma i bottoni stessi non
         # controllavano chi li premeva — chiunque potesse vedere il
@@ -237,7 +243,7 @@ class AppealActionsView(discord.ui.View):
         await interaction.response.send_modal(StaffReplyModal(self.user_id))
 
 
-class StaffReplyModal(discord.ui.Modal, title="Reply to user"):
+class StaffReplyModal(BaseModal, title="Reply to user"):
     # discord.ui.Label che avvolge il TextInput è il pattern corretto
     # e non deprecato (TextInput.label= è deprecato a favore di
     # questo — verificato con discord.py 2.7.1 prima di scrivere

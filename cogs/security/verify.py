@@ -30,8 +30,10 @@ from discord.ext import commands
 
 from core.database import db
 from core.premium import PremiumModule, registry
+from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.verify_repo import verify_repo
 from core.role_safety import check_role_assignable
+from core.ui_base import BaseModal, BaseView
 from core.verify_logic import decide_verify_outcome, meets_account_age, meets_mutual_servers
 
 logger = logging.getLogger("iyokai.verify")
@@ -42,7 +44,7 @@ VERIFY_BUTTON_CUSTOM_ID = "iyokai_verify_button"
 VERIFY_REACTION_EMOJI = "✅"
 
 
-class CaptchaModal(discord.ui.Modal, title="Verification"):
+class CaptchaModal(BaseModal, title="Verification"):
     """
     Captcha testuale (nessuna immagine — evita di introdurre Pillow
     come dipendenza solo per questo). Una semplice domanda di somma,
@@ -89,7 +91,7 @@ class CaptchaModal(discord.ui.Modal, title="Verification"):
         await interaction.response.send_message(outcome.reason, ephemeral=True)
 
 
-class VerifyPanelView(discord.ui.View):
+class VerifyPanelView(BaseView):
     """Persistente — stesso motivo/pattern di TicketPanelView e CreateVoiceView."""
 
     def __init__(self) -> None:
@@ -352,6 +354,11 @@ class VerifyCog(commands.Cog):
         if payload.guild_id is None or payload.member is None or payload.member.bot:
             return
         if str(payload.emoji) != VERIFY_REACTION_EMOJI:
+            return
+
+        # SEC-10: un utente in blacklist non deve potersi verificare
+        # reagendo al pannello.
+        if await blacklist_repo.is_user_blacklisted(payload.member.id):
             return
 
         if not await db.is_module_active_for_guild(payload.guild_id, MODULE_VERIFY):

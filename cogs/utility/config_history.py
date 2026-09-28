@@ -32,6 +32,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.database import db
+from core.ui_base import BaseView
 
 SUPPORTED_LANGUAGES = ("it", "en")
 
@@ -42,7 +43,7 @@ def _format_value(value) -> str:
     return f"`{value}`"
 
 
-class RollbackConfirmView(discord.ui.View):
+class RollbackConfirmView(BaseView):
     """
     Conferma a due passaggi (non persistente — è un'interazione breve
     legata a un singolo comando, non un pannello a vita lunga come i
@@ -96,7 +97,7 @@ class RollbackConfirmView(discord.ui.View):
         await interaction.response.edit_message(content="Rollback annullato.", view=self)
 
 
-class ResetConfirmView(discord.ui.View):
+class ResetConfirmView(BaseView):
     """
     SPEC.md §2.1: conferma a due passaggi, stesso schema di
     RollbackConfirmView — un reset disattiva TUTTI i moduli e

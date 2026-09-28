@@ -21,9 +21,10 @@ from discord.ext import commands
 
 from core.command_search_logic import search_commands
 from core.command_tree_utils import walk_commands
+from core.ui_base import BaseView
 
 
-class _NoResultsView(discord.ui.View):
+class _NoResultsView(BaseView):
     def __init__(self, bot: commands.Bot) -> None:
         super().__init__(timeout=60)
         self.bot = bot

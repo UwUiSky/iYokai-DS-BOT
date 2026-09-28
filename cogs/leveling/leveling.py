@@ -35,9 +35,11 @@ from discord.ext import commands, tasks
 
 from core.database import db
 from core.role_safety import check_role_assignable
+from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
+from core.ui_base import BaseView
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
@@ -166,7 +168,7 @@ class LevelingCog(commands.Cog):
                 "Impossibile assegnare i ruoli-premio a %s nel server %s.", member.id, guild.id
             )
 
-    class DropClaimView(discord.ui.View):
+    class DropClaimView(BaseView):
         """
         "Primo che clicca vince" — self.claimed_by è lo stato
         condiviso in memoria per QUESTO drop specifico (un'istanza
@@ -201,6 +203,11 @@ class LevelingCog(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None:
+            return
+
+        # SEC-10: un utente in blacklist non deve continuare a
+        # guadagnare XP/coin scrivendo messaggi.
+        if await blacklist_repo.is_user_blacklisted(message.author.id):
             return
 
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_LEVELING):
@@ -270,6 +277,11 @@ class LevelingCog(commands.Cog):
             is_afk = channel.id == afk_channel_id
 
             for member in members:
+                # SEC-10: un utente in blacklist non deve continuare a
+                # guadagnare XP vocale.
+                if await blacklist_repo.is_user_blacklisted(member.id):
+                    continue
+
                 others_not_muted = sum(
                     1
                     for other in members
@@ -1764,7 +1776,7 @@ class LevelingCog(commands.Cog):
     # ================================================================
     # Giveaway (SPEC.md §15.5, con requisiti di ruolo/livello)
     # ================================================================
-    class GiveawayEnterView(discord.ui.View):
+    class GiveawayEnterView(BaseView):
         """
         PERSISTENTE (timeout=None, custom_id fisso che incorpora
         l'ID del giveaway) — un giveaway dura ore o giorni, deve

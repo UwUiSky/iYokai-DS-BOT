@@ -29,6 +29,7 @@ from core.premium import PremiumModule, get_guild_premium_breakdown, registry
 from core.premium_status_logic import format_guild_status_line, format_whitelist_entry
 from core.repositories.eval_shell_log_repo import eval_shell_log_repo
 from core.repositories.module_subscription_repo import module_subscription_repo
+from core.ui_base import BaseView
 
 # SPEC.md §3.1: "pagamento mensile|annuale per modulo" — durata in
 # giorni per ciascuna scelta. Nessun gateway di pagamento reale
@@ -57,7 +58,7 @@ def _build_premium_panel_embed(modules: list[PremiumModule]) -> discord.Embed:
     return embed
 
 
-class _PremiumConfirmView(discord.ui.View):
+class _PremiumConfirmView(BaseView):
     """
     Secondo step della conferma (SPEC.md §17.10: "conferma a due
     step"). Il primo step è la selezione del modulo nel menu
@@ -126,13 +127,13 @@ class _PremiumPanelSelect(discord.ui.Select):
         await interaction.response.edit_message(embed=embed, view=view)
 
 
-class _PremiumPanelView(discord.ui.View):
+class _PremiumPanelView(BaseView):
     def __init__(self, cog: "OwnerPremiumCog", modules: list[PremiumModule]) -> None:
         super().__init__(timeout=120)
         self.add_item(_PremiumPanelSelect(cog, modules))
 
 
-class _EvalConfirmView(discord.ui.View):
+class _EvalConfirmView(BaseView):
     """
     Secondo fattore di conferma richiesto esplicitamente dallo schema
     per Eval/Exec/Shell (SPEC.md §17.3, l'unica voce genuinamente
@@ -168,7 +169,7 @@ class _EvalConfirmView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-class _ShellConfirmView(discord.ui.View):
+class _ShellConfirmView(BaseView):
     """Stesso principio di _EvalConfirmView, per i comandi shell —
     ancora più delicati di un eval Python, dato che agiscono
     direttamente sul sistema operativo della macchina che ospita il

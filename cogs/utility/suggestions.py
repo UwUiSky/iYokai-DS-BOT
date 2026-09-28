@@ -23,6 +23,7 @@ from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.suggestion_repo import Suggestion, suggestion_repo
 from core.suggestion_logic import APPROVED, PENDING, REJECTED, can_decide
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.suggestions")
 
@@ -57,7 +58,7 @@ class SuggestionsCog(commands.Cog):
         self.bot = bot
 
     def _build_decision_view(self, suggestion_id: int) -> discord.ui.View:
-        view = discord.ui.View(timeout=None)
+        view = BaseView(timeout=None)
 
         approve_button: discord.ui.Button = discord.ui.Button(
             label="Approva",
@@ -120,7 +121,7 @@ class SuggestionsCog(commands.Cog):
 
         # View vuota: una decisione presa non deve poter essere
         # ri-cliccata (approva/rifiuta due volte, o cambiare idea).
-        view_disabilitata = discord.ui.View(timeout=None)
+        view_disabilitata = BaseView(timeout=None)
         await interaction.response.edit_message(embed=embed, view=view_disabilitata)
 
     # ================================================================

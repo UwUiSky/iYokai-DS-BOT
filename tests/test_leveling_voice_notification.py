@@ -49,6 +49,14 @@ class _FakeGuild:
 async def cog_e_repo(monkeypatch):
     import cogs.leveling.leveling as leveling_module
 
+    # SEC-10: _process_guild_voice_xp ora controlla anche la
+    # blacklist per ogni membro — qui non è quello sotto test, quindi
+    # si disattiva (nessun utente in blacklist).
+    async def mai_bloccato(user_id):
+        return False
+
+    monkeypatch.setattr(leveling_module.blacklist_repo, "is_user_blacklisted", mai_bloccato)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()  # ferma subito il task periodico avviato nel costruttore
 

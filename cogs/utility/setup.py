@@ -38,6 +38,7 @@ from discord.ext import commands
 from core.database import db
 from core.premium import registry, PremiumModule
 from core.setup_wizard_logic import is_last_step, next_step, previous_step
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.setup")
 
@@ -84,7 +85,7 @@ class ModuleSelect(discord.ui.Select):
         await interaction.response.defer()
 
 
-class SetupView(discord.ui.View):
+class SetupView(BaseView):
     def __init__(
         self, guild_id: int, modules_with_state: list[tuple[PremiumModule, bool]]
     ) -> None:
@@ -201,7 +202,7 @@ def _wizard_module_names() -> list[str]:
     ]
 
 
-class SetupWizardView(discord.ui.View):
+class SetupWizardView(BaseView):
     """
     SPEC.md §2.2: a differenza di /setup (tutti i moduli in un solo
     select menu), il wizard mostra un modulo alla volta con Sì/No +
