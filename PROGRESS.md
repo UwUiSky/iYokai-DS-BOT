@@ -4664,3 +4664,12 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   processo. Usato in `render_alert_message` (feed RSS/Atom) e
   `render_webhook_message` (webhook custom). Suite: 2115/2115 verde,
   due volte. Commit 25c3cdc.
+- SEC-7: `allowed_mentions=discord.AllowedMentions(everyone=False,
+  roles=False, users=True, replied_user=False)` nel costruttore dei 3
+  bot (principale in `main.py`, `core/music_worker_bot.py`,
+  `core/backup_creator_bot.py`) — testo esterno non fidato (titolo
+  RSS, payload webhook, nome server) non può più pingare @everyone o
+  un ruolo intero. Nessun punto del codice oggi pinga davvero un
+  ruolo (verificato con grep), quindi nessuna eccezione per-send
+  serve al momento. Suite: 2118/2118 verde, due volte. Commit
+  cb05eff.

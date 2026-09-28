@@ -205,14 +205,16 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   ignora le chiavi sconosciute lasciandole com'erano, niente format
   spec, output troncato a 2000 caratteri. `{` spaiato non è un errore.
   Test: `{title:>999999999}` resta testo, `{` spaiato non solleva. — commit 25c3cdc
-- [ ] **SEC-7 (#5)** `allowed_mentions=discord.AllowedMentions(everyone=False,
+- [x] **SEC-7 (#5)** `allowed_mentions=discord.AllowedMentions(everyone=False,
   roles=False, users=True, replied_user=False)` nel costruttore di
   **ogni** bot (principale, Creator, worker musicali, e NSFW quando
   nascerà). Dove un ping di ruolo è voluto (ruolo supporto ticket,
   ruolo degli alert) passa `allowed_mentions` esplicito solo in quella
   `send`. Cerca tutti i punti con `grep -rn "role.mention\|<@&"`.
   Test: il bot costruito ha il valore giusto; i due o tre punti voluti
-  passano il ruolo esplicitamente.
+  passano il ruolo esplicitamente. — commit cb05eff (nessun punto del
+  codice oggi pinga davvero un ruolo, quindi nessuna eccezione
+  per-send è servita)
 - [ ] **SEC-8 (#9)** SSRF nei feed: modulo `core/safe_http.py` con
   `safe_get(url, max_bytes=2_000_000)`:
   - solo `http`/`https`, porte 80 e 443;
