@@ -253,7 +253,7 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   Test cricchetto: nessuna classe in `cogs/` eredita direttamente da
   `discord.ui.View` o `discord.ui.Modal` (elenco `KNOWN_RAW_VIEWS`
   che si svuota). — commit 9d52a82
-- [ ] **SEC-11** Immagini bomba:
+- [x] **SEC-11** Immagini bomba:
   - `Image.MAX_IMAGE_PIXELS = 40_000_000` impostato in un solo punto
     all'avvio;
   - prima di `.load()` leggi `im.size` (l'apertura è pigra) e rifiuta
@@ -261,7 +261,10 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   - elaborazione in `run_in_executor` con un `asyncio.Semaphore(2)`
     globale.
   Test: un PNG piccolo su disco ma con dimensioni dichiarate enormi
-  viene rifiutato senza allocare la memoria.
+  viene rifiutato senza allocare la memoria. — commit ac11f7a
+  (nessuna issue GitHub collegata: non in tabella REVIEW.md
+  §"Corrispondenza issue → codici" — il commit cita erroneamente
+  "Refs #20", che è in realtà l'issue di SEC-10; correzione qui)
 - [ ] **SEC-12** DM di appello dello spam-trap: una sola query per
   `user_id` sulla tabella degli incidenti (con indice), non un giro su
   tutti i server. Riconosce solo i ban dello spam-trap. Limite di un

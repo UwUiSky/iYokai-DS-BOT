@@ -113,3 +113,24 @@ chiudere.
   nulla dal bot — né tramite interazioni (bottoni/menu/modali) né
   tramite i listener che assegnano XP, ruoli o verifica fuori da
   un'interazione.
+- [ ] SEC-11 — commit ac11f7a — passi:
+  1. Genera un PNG con dimensioni enormi ma tinta unita (es. con
+     Pillow: `Image.new("RGB", (10000, 10000), (10, 20, 30)).save
+     ("bomba.png")` — pochi KB su disco) e allegalo a `/fun grayscale`
+     (o invert/blur/pixelate/meme): deve rispondere che non è stato
+     possibile elaborare l'immagine, senza errori e senza un picco di
+     RAM del processo visibile (`htop`/`docker stats` durante la
+     prova).
+  2. Stesso file allegato a un messaggio nel canale trappola
+     anti-spam (o come avatar di un account di prova che ci scrive):
+     il transcript generato deve saltare la thumbnail di quell'
+     allegato senza fallire l'intero report.
+  3. Con un'immagine normale (una foto qualsiasi), verifica che tutti
+     i comandi `/fun` di manipolazione immagine e il transcript della
+     trappola continuino a funzionare come prima (nessuna
+     regressione).
+  Risultato atteso: un'immagine "bomba" non fa mai allocare al
+  processo la RAM per i suoi pixel decompressi — solo i test
+  automatici possono simulare le dimensioni dichiarate, non l'effetto
+  reale su un processo Discord con limiti di memoria veri (Oracle
+  Free Tier).

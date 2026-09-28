@@ -4719,3 +4719,19 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   (scansione AST): nessuna View/Modal in `cogs/` eredita più
   direttamente da `discord.ui`. Suite: 2167/2167 verde, due volte.
   Commit 9d52a82.
+- SEC-11: `core/safe_image.py` (nuovo) — `safe_open_image()` legge
+  `im.size` dall'header (apertura pigra di Pillow) e rifiuta con
+  `ImmagineTroppoGrande` PRIMA di `.load()` se supera 40 milioni di
+  pixel, così un file piccolo su disco con dimensioni dichiarate
+  enormi non alloca mai la RAM per l'immagine intera.
+  `Image.MAX_IMAGE_PIXELS` impostato allo stesso valore in questo
+  unico punto. `run_image_task()` esegue l'elaborazione Pillow in un
+  thread dietro un `asyncio.Semaphore(2)` globale (al massimo 2
+  insieme in tutto il processo). `core/image_manipulation.py`,
+  `core/meme_logic.py`, `core/image_thumbnail.py` ora aprono
+  l'immagine con `safe_open_image`; `cogs/security/spam_trap.py`
+  (canale trappola) e `cogs/fun/entertainment.py` (`/fun`) usano
+  `run_image_task` al posto di `asyncio.to_thread`. Suite: 2180/2180
+  verde, due volte. Commit ac11f7a (nessuna issue GitHub collegata;
+  il commit cita erroneamente "Refs #20" di SEC-10, corretto in
+  PIANO_FIX.md).
