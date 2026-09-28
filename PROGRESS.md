@@ -4655,3 +4655,12 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   (da verificare live: rifiuto owner-only visibile nell'UI di
   Discord e radio davvero inaccessibile agli admin su un server
   reale — vedi VERIFICA_LIVE.md)
+- SEC-6: `core/template_renderer.py` (nuovo) — `render_template()`
+  sostituisce i placeholder `{nome}` con una regex, senza mai passare
+  da `str.format` (niente format spec, niente indici posizionali,
+  output troncato a 2000 caratteri). Prima un template come
+  `{title:>999999999}` allocava ~1GB di RAM e una `{` spaiata
+  sollevava un'eccezione non gestita — entrambi crashavano l'intero
+  processo. Usato in `render_alert_message` (feed RSS/Atom) e
+  `render_webhook_message` (webhook custom). Suite: 2115/2115 verde,
+  due volte. Commit 25c3cdc.

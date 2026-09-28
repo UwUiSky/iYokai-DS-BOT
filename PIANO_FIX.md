@@ -198,13 +198,13 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
 - [x] **SEC-5 (#7)** `/nonstop-main` diventa owner-only subito (controllo
   `OWNER_ID` a runtime; lo spostamento sotto `/owner` avviene in R5).
   Il nome file di `add-local` si valida come in BUG-10. — commit bde6f00
-- [ ] **SEC-6 (#17)** Sostituisci `str.format` in
+- [x] **SEC-6 (#17)** Sostituisci `str.format` in
   `core/feed_parsing_logic.py` e `core/custom_webhook_logic.py` con una
   funzione `render_template(testo, valori: dict[str, str]) -> str` in
   `core/`: sostituisce solo `{nome}` con una regex `\{([a-z_]+)\}`,
   ignora le chiavi sconosciute lasciandole com'erano, niente format
   spec, output troncato a 2000 caratteri. `{` spaiato non è un errore.
-  Test: `{title:>999999999}` resta testo, `{` spaiato non solleva.
+  Test: `{title:>999999999}` resta testo, `{` spaiato non solleva. — commit 25c3cdc
 - [ ] **SEC-7 (#5)** `allowed_mentions=discord.AllowedMentions(everyone=False,
   roles=False, users=True, replied_user=False)` nel costruttore di
   **ogni** bot (principale, Creator, worker musicali, e NSFW quando
