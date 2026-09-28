@@ -14,8 +14,15 @@ Pillow>=10.0.0
 # Music (client Lavalink)
 wavelink>=3.4.0
 
-# Log strutturati
-structlog>=24.1.0
+# Server web (callback OAuth2 del restore, webhook custom in ricezione
+# — core/restore_web_server.py, core/custom_webhook_server.py). Arriva
+# già di rimbalzo da discord.py, ma va dichiarato esplicitamente qui:
+# senza una voce propria, il limite di versione che consente arrivava
+# da discord.py, non da una scelta nostra (SEC-15) — >=3.13.3 perché
+# le versioni precedenti hanno CVE-2025-53643 (request smuggling),
+# CVE-2025-69224 (request smuggling, parser Python puro) e
+# CVE-2025-69226 (path traversal nei file statici) già risolte.
+aiohttp>=3.13.3
 
 # Cifratura AES-256-GCM dei token OAuth altrui (restore utenti, SPEC.md §11.11)
 cryptography>=42.0.0

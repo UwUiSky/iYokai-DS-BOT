@@ -72,7 +72,8 @@ iYokai-DS-BOT/
 ├── SPEC.md                                  # FONTE DI VERITÀ: specifica completa + stato di ogni voce
 ├── BACKLOG.md                               # Proposte esterne valutate, verdetto esplicito per ciascuna
 ├── PROGRESS.md                             # Cronologia, decisioni tecniche, bug noti
-└── requirements.txt
+├── requirements.txt                         # Dipendenze dirette, con un minimo di versione
+└── requirements.lock                       # Versioni esatte (generato con pip-compile, SEC-15)
 ```
 
 ---
@@ -88,8 +89,12 @@ cd iYokai-DS-BOT
 python3 -m venv venv
 source venv/bin/activate        # su Windows: venv\Scripts\activate
 
-# 3. Dipendenze
-pip install -r requirements.txt
+# 3. Dipendenze — usa requirements.lock (versioni esatte, riproducibili),
+# non requirements.txt direttamente (SEC-15). Per rigenerare il lock
+# dopo aver cambiato requirements.txt:
+#   pip install pip-tools
+#   pip-compile --allow-unsafe --output-file=requirements.lock requirements.txt
+pip install -r requirements.lock
 
 # 4. Configurazione
 cp .env.example .env
