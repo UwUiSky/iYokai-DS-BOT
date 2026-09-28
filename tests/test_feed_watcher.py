@@ -72,8 +72,24 @@ async def server_rss():
     await server.close()
 
 
+def _consenti_server_di_test(monkeypatch) -> None:
+    """
+    SEC-8: safe_get rifiuta per progetto qualunque IP loopback e
+    qualunque porta diversa da 80/443 — esattamente ciò su cui gira
+    il server finto di questi test (127.0.0.1, porta casuale).
+    Disattivato SOLO qui: verifica che feed_watcher chiami davvero
+    safe_get e ne usi il risultato, non la protezione SSRF in sé
+    (già coperta da tests/test_safe_http.py).
+    """
+    import core.safe_http as safe_http_module
+
+    monkeypatch.setattr(safe_http_module, "_ip_e_bloccato", lambda ip: False)
+    monkeypatch.setattr(safe_http_module, "_schema_e_porta_ammessi", lambda url: True)
+
+
 @pytest.mark.asyncio
-async def test_tick_scarica_e_pubblica_le_voci_nuove(clean_db, server_rss):
+async def test_tick_scarica_e_pubblica_le_voci_nuove(clean_db, server_rss, monkeypatch):
+    _consenti_server_di_test(monkeypatch)
     import core.feed_watcher as feed_watcher_module
 
     repo = FeedSubscriptionRepository(pool_provider=lambda: clean_db)
@@ -101,7 +117,8 @@ async def test_tick_scarica_e_pubblica_le_voci_nuove(clean_db, server_rss):
 
 
 @pytest.mark.asyncio
-async def test_tick_pubblica_solo_le_voci_arrivate_dopo(clean_db, server_rss):
+async def test_tick_pubblica_solo_le_voci_arrivate_dopo(clean_db, server_rss, monkeypatch):
+    _consenti_server_di_test(monkeypatch)
     import core.feed_watcher as feed_watcher_module
 
     repo = FeedSubscriptionRepository(pool_provider=lambda: clean_db)

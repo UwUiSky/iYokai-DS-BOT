@@ -6,22 +6,24 @@ Servizio periodico di Custom RSS/Alert (SPEC.md §10.3, §10.7, §10.8)
 core/memory_guard.py: una classe con un tasks.loop periodico,
 avviata una volta da main.py, non un Cog con comandi.
 
-Un HTTP client asincrono (aiohttp, già una dipendenza di discord.py,
-nessuna nuova dipendenza aggiunta) scarica ogni feed sottoscritto,
-core/feed_parsing_logic.py fa il resto (analisi XML, cosa è nuovo,
-rendering del messaggio) — questo file coordina soltanto.
+Lo scaricamento vero passa da core/safe_http.py (SEC-8): l'URL è
+scelto liberamente dall'admin del server, quindi va protetto da SSRF
+prima di essere raggiunto. core/feed_parsing_logic.py fa il resto
+(analisi XML, cosa è nuovo, rendering del messaggio) — questo file
+coordina soltanto.
+Dipende da: core/safe_http.py (SEC-8)
 """
 
 from __future__ import annotations
 
 import logging
 
-import aiohttp
 import discord
 from discord.ext import commands, tasks
 
 from core.feed_parsing_logic import find_new_entries, parse_feed, render_alert_message
 from core.repositories.feed_subscription_repo import feed_subscription_repo
+from core.safe_http import safe_get
 
 logger = logging.getLogger("iyokai.feed_watcher")
 
@@ -31,39 +33,17 @@ TICK_SECONDS = 300  # 5 minuti: gli aggiornamenti RSS non sono mai
 # l'utente finale, solo più traffico verso servizi esterni (Reddit,
 # YouTube) che non controlliamo.
 
-REQUEST_TIMEOUT_SECONDS = 15
-
 
 class FeedWatcherService:
     def __init__(self) -> None:
         self._loop_task: tasks.Loop | None = None
-        self._http_session: aiohttp.ClientSession | None = None
 
     async def _fetch_feed_text(self, url: str) -> str | None:
-        if self._http_session is None:
-            self._http_session = aiohttp.ClientSession()
-
-        try:
-            async with self._http_session.get(
-                url, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
-            ) as risposta:
-                if risposta.status != 200:
-                    logger.warning(
-                        "Feed %s ha risposto con status %d, salto questo giro.",
-                        url,
-                        risposta.status,
-                    )
-                    return None
-                return await risposta.text()
-        except (aiohttp.ClientError, TimeoutError) as exc:
-            logger.warning(
-                "Impossibile scaricare il feed %s: %s — salto questo giro, "
-                "riprovo al prossimo tick (%ds).",
-                url,
-                exc,
-                TICK_SECONDS,
-            )
-            return None
+        # SEC-8: url è scelto liberamente dall'admin del server
+        # (/feed-alerts add) — safe_get rifiuta indirizzi interni,
+        # loopback, metadati cloud, ecc. e logga da sé il motivo del
+        # rifiuto o dell'errore.
+        return await safe_get(url)
 
     async def tick(self, bot: commands.Bot) -> None:
         sottoscrizioni = await feed_subscription_repo.get_all_subscriptions()
@@ -122,9 +102,11 @@ class FeedWatcherService:
                     )
 
     async def close(self) -> None:
-        if self._http_session is not None:
-            await self._http_session.close()
-            self._http_session = None
+        # SEC-8: safe_get apre e chiude la propria ClientSession ad
+        # ogni chiamata (nessuna sessione persistente qui da
+        # chiudere) — il metodo resta per compatibilità con chi lo
+        # chiama già (main.py, i test).
+        return
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:
