@@ -43,6 +43,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 import discord
 import wavelink
@@ -767,8 +768,19 @@ class MusicCog(commands.Cog):
     # ================================================================
     nonstop_main_group = app_commands.Group(
         name="nonstop-main",
-        description="[Admin] Radio 24/7 condivisa del bot principale, playlist personale.",
+        description="[Owner] Radio 24/7 condivisa del bot principale, playlist personale.",
     )
+
+    @staticmethod
+    def _is_owner(interaction: discord.Interaction) -> bool:
+        """
+        SEC-5: la playlist della radio è CONDIVISA da tutti i server
+        (un solo orologio globale, core/main_radio_logic.py) — non
+        ha senso lasciarla modificare a chi ha "Gestisci server" su
+        un server qualsiasi, quel permesso vale solo lì. Owner-only
+        per ora; lo spostamento sotto /owner arriva in R5.
+        """
+        return interaction.user.id == config.OWNER_ID
 
     async def _resolve_radio_track(self, identifier: str) -> wavelink.Playable | None:
         """
@@ -792,16 +804,21 @@ class MusicCog(commands.Cog):
         return risultati[0]
 
     @nonstop_main_group.command(
-        name="add-track", description="[Admin] Aggiunge una traccia alla playlist della radio."
+        name="add-track", description="[Owner] Aggiunge una traccia alla playlist della radio."
     )
     @app_commands.describe(
         query="URL o ricerca (YouTube, Spotify, SoundCloud...)",
         label="Nome descrittivo per /nonstop-main list-tracks (facoltativo)",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def nonstop_main_add_track(
         self, interaction: discord.Interaction, query: str, label: str | None = None
     ) -> None:
+        if not self._is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
         await interaction.response.defer(ephemeral=True)
 
         traccia = await self._resolve_radio_track(query)
@@ -821,21 +838,37 @@ class MusicCog(commands.Cog):
 
     @nonstop_main_group.command(
         name="add-local",
-        description="[Admin] Aggiunge un file dalla cartella inediti alla playlist della radio.",
+        description="[Owner] Aggiunge un file dalla cartella inediti alla playlist della radio.",
     )
     @app_commands.describe(
         filename="Nome del file nella cartella inediti (MAIN_RADIO_LOCAL_FOLDER)",
         label="Nome descrittivo per /nonstop-main list-tracks (facoltativo)",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def nonstop_main_add_local(
         self, interaction: discord.Interaction, filename: str, label: str | None = None
     ) -> None:
+        if not self._is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
         if not config.MAIN_RADIO_LOCAL_FOLDER:
             await interaction.response.send_message(
                 "MAIN_RADIO_LOCAL_FOLDER non è configurata — nessuna cartella inediti "
                 "impostata su questa istanza.",
                 ephemeral=True,
+            )
+            return
+
+        # SEC-5: senza questo controllo un "../../etc/passwd" (o
+        # simile) uscirebbe dalla cartella inediti — il percorso
+        # risolto deve restare DENTRO MAIN_RADIO_LOCAL_FOLDER.
+        cartella = Path(config.MAIN_RADIO_LOCAL_FOLDER).resolve()
+        percorso_risolto = (cartella / filename).resolve()
+        if not percorso_risolto.is_relative_to(cartella):
+            await interaction.response.send_message(
+                "Nome file non valido.", ephemeral=True
             )
             return
 
@@ -863,13 +896,18 @@ class MusicCog(commands.Cog):
         )
 
     @nonstop_main_group.command(
-        name="remove-track", description="[Admin] Rimuove una traccia dalla playlist della radio."
+        name="remove-track", description="[Owner] Rimuove una traccia dalla playlist della radio."
     )
     @app_commands.describe(track_id="ID della traccia (vedi /nonstop-main list-tracks)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def nonstop_main_remove_track(
         self, interaction: discord.Interaction, track_id: int
     ) -> None:
+        if not self._is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
         rimossa = await main_radio_repo.remove_track(track_id)
         if rimossa:
             await interaction.response.send_message("Traccia rimossa.", ephemeral=True)
@@ -879,10 +917,15 @@ class MusicCog(commands.Cog):
             )
 
     @nonstop_main_group.command(
-        name="list-tracks", description="[Admin] Mostra la playlist della radio."
+        name="list-tracks", description="[Owner] Mostra la playlist della radio."
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def nonstop_main_list_tracks(self, interaction: discord.Interaction) -> None:
+        if not self._is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
         tracce = await main_radio_repo.list_tracks()
         if not tracce:
             await interaction.response.send_message(
@@ -902,10 +945,15 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @nonstop_main_group.command(
-        name="start", description="[Admin] Entra nella radio condivisa, nel punto in cui si trova ora."
+        name="start", description="[Owner] Entra nella radio condivisa, nel punto in cui si trova ora."
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def nonstop_main_start(self, interaction: discord.Interaction) -> None:
+        if not self._is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -990,9 +1038,14 @@ class MusicCog(commands.Cog):
             f"a {format_duration(posizione.elapsed_ms_in_track)}."
         )
 
-    @nonstop_main_group.command(name="stop", description="[Admin] Esce dalla radio su questo server.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @nonstop_main_group.command(name="stop", description="[Owner] Esce dalla radio su questo server.")
     async def nonstop_main_stop(self, interaction: discord.Interaction) -> None:
+        if not self._is_owner(interaction):
+            await interaction.response.send_message(
+                "Comando riservato al proprietario del bot.", ephemeral=True
+            )
+            return
+
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(

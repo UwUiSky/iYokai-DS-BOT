@@ -14,6 +14,7 @@ import discord
 import pytest
 
 from cogs.music.player import MusicCog
+from core.config import config
 from core.database import Database
 from core.repositories.main_radio_repo import MainRadioRepository
 
@@ -48,9 +49,14 @@ class _FakeGuild:
 
 
 class _FakeRealMember(discord.Member):
-    def __init__(self, voice, user_id: int = 1) -> None:
+    def __init__(self, voice, user_id: int | None = None) -> None:
         self._voice_finta = voice
-        self._id_finto = user_id
+        # SEC-5: /nonstop-main è owner-only — per default questi
+        # finti rappresentano il proprietario, così i test esistenti
+        # (che verificano il COMPORTAMENTO dei comandi, non chi può
+        # usarli) restano validi. tests_..._non_owner_rifiuta sotto
+        # copre esplicitamente il rifiuto.
+        self._id_finto = user_id if user_id is not None else config.OWNER_ID
 
     @property
     def voice(self):
@@ -154,6 +160,51 @@ async def test_add_track_nessun_risultato_non_salva(database_e_repo, monkeypatch
     await cog.nonstop_main_add_track.callback(cog, interaction, query="query senza risultati", label=None)
 
     assert "Nessun risultato" in interaction.response.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_add_track_utente_non_owner_rifiuta(database_e_repo, monkeypatch):
+    """
+    SEC-5: la playlist è condivisa da tutti i server — un admin con
+    "Gestisci server" su UN server qualsiasi non deve poterla
+    modificare, solo il proprietario del bot.
+    """
+    database, repo = database_e_repo
+    import cogs.music.player as music_module
+    monkeypatch.setattr(music_module, "main_radio_repo", repo)
+
+    cog = MusicCog(bot=None)
+    non_owner = _FakeRealMember(voice=None, user_id=config.OWNER_ID + 1)
+    interaction = _FakeInteraction(guild_id=100, user=non_owner)
+
+    await cog.nonstop_main_add_track.callback(cog, interaction, query="una canzone", label=None)
+
+    assert "riservato al proprietario" in interaction.response.sent_messages[0]
+    assert await repo.list_tracks() == []
+
+
+@pytest.mark.asyncio
+async def test_add_local_percorso_con_traversal_rifiuta(database_e_repo, monkeypatch):
+    """SEC-5: '../' nel nome file non deve uscire da MAIN_RADIO_LOCAL_FOLDER."""
+    database, repo = database_e_repo
+    import cogs.music.player as music_module
+
+    class _ConfigConCartella:
+        MAIN_RADIO_LOCAL_FOLDER = "/musica/inediti"
+        OWNER_ID = config.OWNER_ID
+
+    monkeypatch.setattr(music_module, "config", _ConfigConCartella())
+    monkeypatch.setattr(music_module, "main_radio_repo", repo)
+
+    cog = MusicCog(bot=None)
+    interaction = _FakeInteraction(guild_id=100)
+
+    await cog.nonstop_main_add_local.callback(
+        cog, interaction, filename="../../etc/passwd", label=None
+    )
+
+    assert "Nome file non valido" in interaction.response.sent_messages[0]
+    assert await repo.list_tracks() == []
     assert await repo.list_tracks() == []
 
 
@@ -210,6 +261,7 @@ async def test_add_local_senza_cartella_configurata_avvisa(database_e_repo, monk
 
     class _ConfigVuota:
         MAIN_RADIO_LOCAL_FOLDER = ""
+        OWNER_ID = config.OWNER_ID
 
     monkeypatch.setattr(music_module, "config", _ConfigVuota())
     monkeypatch.setattr(music_module, "main_radio_repo", repo)
