@@ -4,6 +4,13 @@ cogs/security/spam_trap.py
 Spam Trap (SPEC.md §7.3): un canale trappola dove scrivere significa
 ban istantaneo. Modulo CANDIDATO PREMIUM.
 
+SEC-8b: prima di tutto il resto, _handle_trigger controlla se chi ha
+scritto nella trappola è esente (permesso "Gestisci messaggi" o
+"Amministratore", uno dei ruoli staff configurati con
+/spamtrap-setup, o un ruolo sopra quello del bot) — in quel caso non
+scatta nessun ban né propagazione al global-ban. AppealActionsView
+richiede "Bannare i membri" a chi preme i bottoni Unban/Reject/Reply.
+
 Sequenza fissa (vedi PROGRESS.md § Decisioni prese — NON riordinare):
   1. Cattura contenuto del messaggio che ha scatenato la trappola
   2. Raccolta dati per il transcript (PRIMA di qualunque cancellazione)
@@ -72,6 +79,12 @@ LOG_CHANNEL_DEFAULT_NAME = "spam-log"
 
 BAN_ACTION_TYPE = "spam_trap_ban"
 
+# SEC-8b: ruoli staff esentati dalla trappola, oltre a chi ha già
+# "Gestisci messaggi"/"Amministratore" o un ruolo sopra quello del
+# bot — impostazione per server in guild_config.settings (stesso
+# meccanismo già usato altrove, es. i ruoli di supporto dei ticket).
+SETTING_STAFF_ROLES = "spam_trap_staff_role_ids"
+
 # Copy in inglese per gli embed dei canali — richiesto esplicitamente
 # dalla specifica originale ("il tutto ovviamente rigorosamente in
 # inglese").
@@ -91,6 +104,26 @@ LOG_EMBED_DESCRIPTION = (
     "ban date, invite code used and its creator, the content that triggered "
     "the trap, and the number of deleted messages."
 )
+
+
+def _is_staff_exempt(
+    member: discord.Member, guild: discord.Guild, staff_role_ids: set[int]
+) -> bool:
+    """
+    SEC-8b: vero se il messaggio nella trappola non deve mai portare
+    al ban — chi ha già "Gestisci messaggi" o "Amministratore", chi
+    ha uno dei ruoli staff configurati per questo server, o chi ha un
+    ruolo più in alto di quello del bot (il bot non potrebbe bannarlo
+    comunque, e nel frattempo gli avrebbe già cancellato l'accesso al
+    server).
+    """
+    if member.guild_permissions.manage_messages or member.guild_permissions.administrator:
+        return True
+    if any(ruolo.id in staff_role_ids for ruolo in member.roles):
+        return True
+    if member.top_role > guild.me.top_role:
+        return True
+    return False
 
 
 def _ban_dm_description(guild_name: str) -> str:
@@ -116,6 +149,23 @@ class AppealActionsView(discord.ui.View):
         self.guild_id = guild_id
         self.case_number = case_number
         self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # SEC-8b: il thread è in un canale che dovrebbe già essere
+        # visibile solo allo staff, ma i bottoni stessi non
+        # controllavano chi li premeva — chiunque potesse vedere il
+        # thread poteva sbannare. Stesso permesso richiesto dal ban
+        # nativo di Discord.
+        if (
+            not isinstance(interaction.user, discord.Member)
+            or not interaction.user.guild_permissions.ban_members
+        ):
+            await interaction.response.send_message(
+                "Solo chi ha il permesso di bannare può usare questi pulsanti.",
+                ephemeral=True,
+            )
+            return False
+        return True
 
     async def _disable_and_update(
         self, interaction: discord.Interaction, content: str
@@ -229,6 +279,8 @@ class SpamTrapCog(commands.Cog):
     @app_commands.describe(
         trap_channel="Canale trappola (se non scelto, ne viene creato uno)",
         log_channel="Canale dei log (se non scelto, ne viene creato uno)",
+        staff_role_add="SEC-8b: ruolo da esentare dal ban della trappola (aggiunto alla lista)",
+        staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
     )
     @app_commands.checks.has_permissions(manage_guild=True)
     async def spamtrap_setup(
@@ -236,6 +288,8 @@ class SpamTrapCog(commands.Cog):
         interaction: discord.Interaction,
         trap_channel: discord.TextChannel | None = None,
         log_channel: discord.TextChannel | None = None,
+        staff_role_add: discord.Role | None = None,
+        staff_role_remove: discord.Role | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -262,11 +316,24 @@ class SpamTrapCog(commands.Cog):
         if created_log:
             await self._send_log_embed(log_channel)
 
-        await interaction.followup.send(
+        ruoli_staff = await self._staff_role_ids(guild.id)
+        if staff_role_add is not None and staff_role_add.id not in ruoli_staff:
+            ruoli_staff.append(staff_role_add.id)
+        if staff_role_remove is not None and staff_role_remove.id in ruoli_staff:
+            ruoli_staff.remove(staff_role_remove.id)
+        if staff_role_add is not None or staff_role_remove is not None:
+            await db.set_guild_setting(
+                guild.id, SETTING_STAFF_ROLES, ruoli_staff, changed_by=interaction.user.id
+            )
+
+        messaggio = (
             f"Spam Trap configurato: trappola in {trap_channel.mention}, "
-            f"log in {log_channel.mention}.",
-            ephemeral=True,
+            f"log in {log_channel.mention}."
         )
+        if ruoli_staff:
+            menzioni = ", ".join(f"<@&{role_id}>" for role_id in ruoli_staff)
+            messaggio += f"\nRuoli esentati dal ban: {menzioni}."
+        await interaction.followup.send(messaggio, ephemeral=True)
 
     async def _create_trap_channel(self, guild: discord.Guild) -> discord.TextChannel:
         overwrites = {
@@ -349,9 +416,27 @@ class SpamTrapCog(commands.Cog):
     # ================================================================
     # Sequenza di ban
     # ================================================================
+    async def _staff_role_ids(self, guild_id: int) -> list[int]:
+        return await db.get_guild_setting(guild_id, SETTING_STAFF_ROLES, default=[])
+
     async def _handle_trigger(self, message: discord.Message) -> None:
         guild = message.guild
         user = message.author
+
+        # SEC-8b: controllo PRIMA di ogni altra cosa — nessun fetch
+        # del contenuto, nessun transcript, nessun DM per chi è
+        # esentato: la trappola non deve mai bannare lo staff, e in
+        # quel caso non c'è nemmeno da propagare al global-ban.
+        if isinstance(user, discord.Member):
+            ruoli_staff = set(await self._staff_role_ids(guild.id))
+            if _is_staff_exempt(user, guild, ruoli_staff):
+                logger.info(
+                    "Messaggio nella trappola di %s ignorato: %s è staff/esentato.",
+                    guild.id,
+                    user.id,
+                )
+                return
+
         now = datetime.now(timezone.utc)
 
         # 1. Contenuto del messaggio trigger — via fetch REST (vedi
