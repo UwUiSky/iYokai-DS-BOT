@@ -82,6 +82,16 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         CREATE INDEX IF NOT EXISTS idx_moderation_cases_guild_user
             ON moderation_cases (guild_id, user_id);
 
+        -- SEC-12: trovare i casi ATTIVI di un utente su TUTTI i
+        -- server (es. "in quale server ha un ban attivo dello
+        -- spam-trap chi mi ha appena scritto in DM") deve essere UNA
+        -- query, non un giro su ogni server con cui il bot condivide
+        -- una guild — con migliaia di server sarebbe una query per
+        -- ogni singolo DM ricevuto.
+        CREATE INDEX IF NOT EXISTS idx_moderation_cases_user_type_active
+            ON moderation_cases (user_id, action_type)
+            WHERE active = TRUE;
+
         CREATE TABLE IF NOT EXISTS moderation_notes (
             id           SERIAL PRIMARY KEY,
             guild_id     BIGINT NOT NULL,
@@ -224,6 +234,33 @@ class ModerationRepository:
             action_type,
         )
         return _row_to_case(row) if row else None
+
+    async def get_active_cases_for_user_across_guilds(
+        self, user_id: int, action_type: str
+    ) -> list[ModerationCase]:
+        """
+        Come get_latest_active_case, ma su TUTTI i server insieme in
+        UNA query (indice idx_moderation_cases_user_type_active) — a
+        differenza di quello, qui non serve sapere già in quale
+        server cercare. Usato dallo spam-trap per capire, da un
+        singolo DM, in quale server (o server) chi scrive ha un ban
+        attivo dello spam-trap (SEC-12): senza questo, la stessa
+        domanda richiederebbe una query per ogni server con cui il
+        bot condivide una guild.
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT case_number, guild_id, user_id, moderator_id, action_type,
+                   reason, duration_seconds, active, created_at,
+                   revoked_at, revoked_by
+            FROM moderation_cases
+            WHERE user_id = $1 AND action_type = $2 AND active = TRUE
+            ORDER BY case_number DESC
+            """,
+            user_id,
+            action_type,
+        )
+        return [_row_to_case(row) for row in rows]
 
     async def revoke_case(
         self, guild_id: int, case_number: int, revoked_by: int

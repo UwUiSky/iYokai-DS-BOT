@@ -64,10 +64,12 @@ from core.premium import PremiumModule, registry
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
 from core.spam_trap_logic import (
+    DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
     can_appeal,
     partition_messages_for_deletion,
     purge_window,
 )
+from core.spam_trap_rate_tracker import DM_WIDE_KEY, spam_trap_rate_tracker
 from core.spam_trap_transcript import TranscriptEntry, build_transcript_html
 from core.ui_base import BaseModal, BaseView
 
@@ -808,12 +810,34 @@ class SpamTrapCog(commands.Cog):
     async def _handle_possible_appeal(self, message: discord.Message) -> None:
         user = message.author
 
+        # SEC-12: al massimo un DM elaborato ogni 30 secondi per
+        # utente — senza questo, chiunque può inondare il bot di DM e
+        # fargli ripetere la query sui casi attivi (e il resto del
+        # flusso) ad ogni singolo messaggio.
+        conteggio = spam_trap_rate_tracker.record_and_count(
+            DM_WIDE_KEY,
+            user.id,
+            "appeal_dm",
+            datetime.now(timezone.utc),
+            DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
+        )
+        if conteggio > 1:
+            return
+
+        # SEC-12: UNA query su tutti i server insieme (indice
+        # dedicato in moderation_repo), non un giro su ognuno di
+        # quelli con cui il bot condivide una guild — con migliaia di
+        # server sarebbe una query per ogni singolo DM ricevuto.
+        # action_type=BAN_ACTION_TYPE ("spam_trap_ban") esclude già i
+        # ban normali (/ban usa action_type="ban"): solo i ban
+        # scattati dalla trappola contano come appello qui.
+        casi_attivi = await moderation_repo.get_active_cases_for_user_across_guilds(
+            user.id, BAN_ACTION_TYPE
+        )
         candidati: list[tuple[discord.Guild, object]] = []
-        for guild in self.bot.guilds:
-            case = await moderation_repo.get_latest_active_case(
-                guild.id, user.id, BAN_ACTION_TYPE
-            )
-            if case is not None:
+        for case in casi_attivi:
+            guild = self.bot.get_guild(case.guild_id)
+            if guild is not None:
                 candidati.append((guild, case))
 
         if not candidati:

@@ -177,6 +177,48 @@ async def test_get_latest_active_case_restituisce_none_se_nessuno_attivo(repo):
 
 
 @pytest.mark.asyncio
+async def test_get_active_cases_for_user_across_guilds_trova_piu_server(repo):
+    # SEC-12: stesso utente bannato in due server diversi — una sola
+    # query deve trovare entrambi, senza sapere in anticipo in quale
+    # server cercare.
+    await repo.create_case(100, 1, 9, "spam_trap_ban")
+    await repo.create_case(200, 1, 9, "spam_trap_ban")
+
+    attivi = await repo.get_active_cases_for_user_across_guilds(1, "spam_trap_ban")
+
+    assert {c.guild_id for c in attivi} == {100, 200}
+
+
+@pytest.mark.asyncio
+async def test_get_active_cases_for_user_across_guilds_ignora_i_revocati(repo):
+    n1 = await repo.create_case(100, 1, 9, "spam_trap_ban")
+    await repo.revoke_case(100, n1, revoked_by=9)
+
+    attivi = await repo.get_active_cases_for_user_across_guilds(1, "spam_trap_ban")
+    assert attivi == []
+
+
+@pytest.mark.asyncio
+async def test_get_active_cases_for_user_across_guilds_filtra_per_action_type(repo):
+    # SEC-12: un ban normale (action_type="ban") non deve mai
+    # contare come un ban dello spam-trap ("spam_trap_ban").
+    await repo.create_case(100, 1, 9, "ban")
+
+    attivi = await repo.get_active_cases_for_user_across_guilds(1, "spam_trap_ban")
+    assert attivi == []
+
+
+@pytest.mark.asyncio
+async def test_get_active_cases_for_user_across_guilds_non_mischia_altri_utenti(repo):
+    await repo.create_case(100, 1, 9, "spam_trap_ban")
+    await repo.create_case(100, 2, 9, "spam_trap_ban")
+
+    attivi = await repo.get_active_cases_for_user_across_guilds(1, "spam_trap_ban")
+    assert len(attivi) == 1
+    assert attivi[0].user_id == 1
+
+
+@pytest.mark.asyncio
 async def test_note_vengono_salvate_e_lette_in_ordine(repo):
     await repo.add_note(100, 1, 9, "prima nota")
     await repo.add_note(100, 1, 9, "seconda nota")

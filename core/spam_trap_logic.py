@@ -30,6 +30,15 @@ from datetime import datetime, timedelta, timezone
 # l'attenzione dello staff.
 APPEAL_COOLDOWN_SECONDS = 24 * 3600
 
+# SEC-12: al massimo un DM viene ELABORATO (query sui casi attivi,
+# eventuale apertura di un thread) ogni 30 secondi per utente — a
+# differenza di APPEAL_COOLDOWN_SECONDS sopra (che riguarda solo un
+# appello già effettivamente inviato allo staff), questo limita
+# anche i DM che finiscono ignorati (non un appello valido, più
+# server candidati, ecc.), per evitare che chiunque possa inondare il
+# bot di DM per fargli ripetere il lavoro ad ogni messaggio.
+DM_APPEAL_PROCESSING_COOLDOWN_SECONDS = 30
+
 # Discord permette al ban nativo di cancellare automaticamente i
 # messaggi degli ultimi N secondi (delete_message_seconds), MASSIMO
 # 7 giorni. Oltre, serve la purge supplementare via indicizzazione.
