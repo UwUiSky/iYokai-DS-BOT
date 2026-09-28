@@ -123,7 +123,10 @@ class TestRenderAlertMessage:
     def test_template_senza_placeholder_resta_invariato(self):
         assert render_alert_message("Testo fisso", "L", "T", "https://x.com") == "Testo fisso"
 
-    def test_placeholder_sconosciuto_non_solleva_e_lascia_il_template_originale(self):
+    def test_placeholder_sconosciuto_non_solleva_e_resta_intatto(self):
+        # SEC-6: render_template sostituisce SOLO i placeholder che
+        # conosce; quello sconosciuto (typo dell'utente) resta
+        # scritto com'era, gli altri vengono comunque sostituiti.
         template = "{label}: {titolo_sbagliato}"
         risultato = render_alert_message(template, "L", "T", "https://x.com")
-        assert risultato == template
+        assert risultato == "L: {titolo_sbagliato}"

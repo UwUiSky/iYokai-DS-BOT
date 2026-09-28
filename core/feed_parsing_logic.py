@@ -24,12 +24,15 @@ fonti che già parlano RSS/Atom.
 Nessuna rete qui dentro: il download del feed vive nel cog (aiohttp,
 già disponibile tramite discord.py), qui solo il parsing del testo
 XML già scaricato e la logica di "cos'è nuovo".
+Dipende da: core/template_renderer.py (SEC-6)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
+
+from core.template_renderer import render_template
 
 ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
 
@@ -138,13 +141,13 @@ def find_new_entries(
 def render_alert_message(template: str, label: str, title: str, link: str) -> str:
     """
     Sostituisce {label}/{title}/{link} nel template personalizzabile
-    (SPEC.md §10.9). Un placeholder sconosciuto nel template (typo
-    dell'utente, es. {titolo} invece di {title}) non deve far fallire
-    l'invio dell'alert — meglio un messaggio col template originale
-    lasciato così com'è (il typo resta visibile, l'utente lo nota e
-    lo corregge) che nessun messaggio.
+    (SPEC.md §10.9). Usa render_template (SEC-6), non str.format: un
+    template come "{title:>999999999}" con str.format allocherebbe
+    circa 1GB di RAM e farebbe crollare l'intero processo. Un
+    placeholder sconosciuto nel template (typo dell'utente, es.
+    {titolo} invece di {title}) non deve far fallire l'invio
+    dell'alert — meglio un messaggio col template originale lasciato
+    così com'è (il typo resta visibile, l'utente lo nota e lo
+    corregge) che nessun messaggio.
     """
-    try:
-        return template.format(label=label, title=title, link=link)
-    except (KeyError, IndexError):
-        return template
+    return render_template(template, {"label": label, "title": title, "link": link})

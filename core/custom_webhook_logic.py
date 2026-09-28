@@ -17,11 +17,14 @@ principio già usato per la callback OAuth2 del restore (SPEC.md
 dedicato, un URL segreto per webhook (il "token") al posto di una
 sessione, così chiunque conosca l'URL può pubblicare in QUEL canale
 e in nessun altro.
+Dipende da: core/template_renderer.py (SEC-6)
 """
 
 from __future__ import annotations
 
 import secrets
+
+from core.template_renderer import render_template
 
 DEFAULT_MESSAGE_TEMPLATE = "📩 **{label}**\n{title}\n{message}\n{url}"
 
@@ -100,13 +103,16 @@ def extract_webhook_fields(payload: dict) -> tuple[str, str, str]:
 def render_webhook_message(template: str, label: str, payload: dict) -> str:
     """
     Applica il template (placeholder {label} {title} {message} {url},
-    stesso stile dei template RSS già esistenti) e rimuove le righe
-    rimaste vuote (title/message/url assenti dal payload) — un
-    webhook che manda solo `{"message": "..."}` non deve produrre un
-    messaggio Discord con due righe vuote in mezzo.
+    stesso stile dei template RSS già esistenti) con render_template
+    (SEC-6), non str.format — il payload arriva da un servizio terzo
+    non controllato, e un template con una format spec potrebbe
+    allocare memoria a piacere. Rimuove poi le righe rimaste vuote
+    (title/message/url assenti dal payload) — un webhook che manda
+    solo `{"message": "..."}` non deve produrre un messaggio Discord
+    con due righe vuote in mezzo.
     """
     title, message, url = extract_webhook_fields(payload)
-    testo = template.format(label=label, title=title, message=message, url=url)
+    testo = render_template(template, {"label": label, "title": title, "message": message, "url": url})
 
     righe_non_vuote = [riga for riga in testo.split("\n") if riga.strip()]
     return "\n".join(righe_non_vuote)
