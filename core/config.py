@@ -183,6 +183,16 @@ class Config:
     # dataclass, non specifica di questo progetto).
     MEMORY_ALERT_THRESHOLD_MB: int = field(default=512)
 
+    # --- Server web (SEC-14) ---------------------------------------------
+    # Indirizzo su cui ascoltano TUTTI i piccoli server web del progetto
+    # (callback OAuth2 del restore, webhook custom in ricezione — sotto).
+    # Default "127.0.0.1": solo localhost, non tutte le interfacce di
+    # rete. Chi vuole esporli davvero mette un reverse proxy con HTTPS
+    # davanti e lo fa puntare a questo indirizzo/porta, invece di
+    # cambiare questo valore in "0.0.0.0" (che li espone in HTTP semplice
+    # su tutta la rete).
+    WEB_BIND_HOST: str = field(default="127.0.0.1")
+
     # --- Web panel (opzionali finché quel modulo non è attivo) -----------
     OAUTH2_CLIENT_ID: str = field(default="")
     OAUTH2_CLIENT_SECRET: str = field(default="")
@@ -199,18 +209,18 @@ class Config:
     # — in quel caso il restore via OAuth resta disattivato (nessun
     # crash, il chiamante lo controlla esplicitamente).
     OAUTH_ENCRYPTION_KEY: str = field(default="")
-    # Host/porta su cui core/restore_web_server.py ascolta le callback
-    # OAuth2 di Discord dopo che un utente autorizza il restore.
-    RESTORE_WEB_HOST: str = field(default="0.0.0.0")
+    # Porta su cui core/restore_web_server.py ascolta le callback
+    # OAuth2 di Discord dopo che un utente autorizza il restore
+    # (indirizzo: WEB_BIND_HOST, condiviso con il server webhook sotto).
     RESTORE_WEB_PORT: int = field(default=8420)
 
     # --- Webhook custom in ricezione (SPEC.md §10.8) --------------------
-    # Host/porta su cui core/custom_webhook_server.py ascolta i webhook
-    # PUSH di servizi terzi — a differenza del server restore sopra,
-    # questo parte SEMPRE (non richiede credenziali esterne, solo il
-    # nostro DB): la porta di default è diversa da RESTORE_WEB_PORT
-    # apposta, così i due server possono girare insieme senza scontrarsi.
-    ALERTS_WEBHOOK_HOST: str = field(default="0.0.0.0")
+    # Porta su cui core/custom_webhook_server.py ascolta i webhook PUSH
+    # di servizi terzi — a differenza del server restore sopra, questo
+    # parte solo se esiste già almeno un webhook configurato (SEC-14):
+    # niente motivo di tenere una porta in ascolto per una funzione mai
+    # usata. Porta di default diversa da RESTORE_WEB_PORT apposta, così
+    # i due server possono girare insieme senza scontrarsi.
     ALERTS_WEBHOOK_PORT: int = field(default=8421)
     # URL pubblico base (dominio/reverse proxy dell'utente, es.
     # "https://webhooks.miobot.tld") usato per costruire il link da dare
@@ -290,14 +300,13 @@ def _load_config() -> Config:
         PIXABAY_API_KEY=_optional("PIXABAY_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
+        WEB_BIND_HOST=_optional("WEB_BIND_HOST", "127.0.0.1"),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),
         OAUTH2_REDIRECT_URI=_optional("OAUTH2_REDIRECT_URI"),
         WEB_PANEL_SECRET_KEY=_optional("WEB_PANEL_SECRET_KEY"),
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
-        RESTORE_WEB_HOST=_optional("RESTORE_WEB_HOST", "0.0.0.0"),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
-        ALERTS_WEBHOOK_HOST=_optional("ALERTS_WEBHOOK_HOST", "0.0.0.0"),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
         PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", True),

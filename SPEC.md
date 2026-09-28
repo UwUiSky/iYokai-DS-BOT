@@ -711,8 +711,10 @@ sessione perché non richiesto esplicitamente.
   (`/webhook/<token>`, token opaco da 32 byte, mostrato una sola
   volta e non più recuperabile — stesso modello dei webhook in
   ricezione di Discord/Slack/GitHub); un server HTTP dedicato
-  (`core/custom_webhook_server.py`, aiohttp, sempre attivo, porta
-  configurabile via `ALERTS_WEBHOOK_HOST/PORT/PUBLIC_BASE_URL`)
+  (`core/custom_webhook_server.py`, aiohttp, parte solo se esiste già
+  almeno un webhook configurato — SEC-14 — indirizzo/porta
+  configurabili via `WEB_BIND_HOST`/`ALERTS_WEBHOOK_PORT/PUBLIC_BASE_URL`,
+  limite di richieste per token in finestra mobile)
   riceve richieste POST con un corpo JSON (`title`/`message` o
   `content`/`text`, `url` o `link`, troncati rispettivamente a
   256/1500/500 caratteri) e pubblica nel canale scelto usando lo

@@ -569,30 +569,45 @@ async def main() -> None:
             oauth_encryption_key=config.OAUTH_ENCRYPTION_KEY,
         )
         restore_web_runner = await restore_web_start_server(
-            restore_app, config.RESTORE_WEB_HOST, config.RESTORE_WEB_PORT
+            restore_app, config.WEB_BIND_HOST, config.RESTORE_WEB_PORT
         )
     else:
-        logger.info(
+        # SEC-14: WARNING (non INFO) — senza questa chiave un utente
+        # può comunque avviare il flusso di autorizzazione (il comando
+        # /restore lo mostra) e arrivare a un errore solo alla fine,
+        # quindi vale la pena che l'owner lo noti subito nei log.
+        logger.warning(
             "OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI/OAUTH_ENCRYPTION_KEY non "
             "tutti configurati: server callback restore utenti disattivato."
         )
 
     # Server web che riceve i webhook custom in ricezione (SPEC.md
-    # §10.8) — a differenza del server restore sopra, questo parte
-    # SEMPRE: non richiede credenziali esterne, solo il nostro DB
-    # (già connesso a questo punto dell'avvio).
-    custom_webhook_app = custom_webhook_build_app(
-        webhook_repo=custom_webhook_repo,
-        get_channel=bot.get_channel,
-    )
-    custom_webhook_runner = await custom_webhook_start_server(
-        custom_webhook_app, config.ALERTS_WEBHOOK_HOST, config.ALERTS_WEBHOOK_PORT
-    )
-    if not config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
-        logger.info(
-            "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /alerts webhook-create "
-            "mostrerà solo il token, non un URL completo, finché non viene impostata."
+    # §10.8) — a differenza del server restore sopra non richiede
+    # credenziali esterne, ma parte solo se esiste già almeno un
+    # webhook configurato (SEC-14): nessun motivo di tenere una porta
+    # in ascolto per una funzione che nessun server usa. Se il primo
+    # webhook viene creato dopo l'avvio, il server parte al riavvio
+    # successivo — /alerts webhook-create lo segnala nella risposta.
+    custom_webhook_runner = None
+    if await custom_webhook_repo.has_any_webhook():
+        custom_webhook_app = custom_webhook_build_app(
+            webhook_repo=custom_webhook_repo,
+            get_channel=bot.get_channel,
         )
+        custom_webhook_runner = await custom_webhook_start_server(
+            custom_webhook_app, config.WEB_BIND_HOST, config.ALERTS_WEBHOOK_PORT
+        )
+        if not config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
+            logger.info(
+                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /alerts webhook-create "
+                "mostrerà solo il token, non un URL completo, finché non viene impostata."
+            )
+    else:
+        logger.info(
+            "Nessun webhook custom configurato: server webhook disattivato "
+            "(si avvia da solo al prossimo riavvio, dopo il primo /alerts webhook-create)."
+        )
+    bot.custom_webhook_server_running = custom_webhook_runner is not None
 
     try:
         await asyncio.gather(
@@ -608,7 +623,8 @@ async def main() -> None:
         # chiudiamo comunque il pool in modo ordinato.
         if restore_web_runner is not None:
             await restore_web_runner.cleanup()
-        await custom_webhook_runner.cleanup()
+        if custom_webhook_runner is not None:
+            await custom_webhook_runner.cleanup()
         await db.close()
         logger.info("Database disconnesso. Arresto completato.")
 

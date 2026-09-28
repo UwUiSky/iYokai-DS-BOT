@@ -14,16 +14,26 @@ Stesso principio già usato per la callback OAuth2 del restore
 le dipendenze come parametri (repository + bot), niente singleton
 importati direttamente qui dentro, così i test possono passare un
 bot/repository finti senza toccare config.py.
-Dipende da: core/redacted_access_log.py (SEC-9)
+
+SEC-14: ogni token ha un limite di richieste per finestra mobile
+(core/webhook_rate_tracker.py) — un token compromesso o un servizio
+terzo mal configurato non può inondare il canale di destinazione.
+Dipende da: core/redacted_access_log.py (SEC-9), core/webhook_rate_tracker.py (SEC-14)
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from aiohttp import web
 
 from core.redacted_access_log import RedactedAccessLogger
+from core.webhook_rate_tracker import (
+    WEBHOOK_RATE_LIMIT_MAX_REQUESTS,
+    WEBHOOK_RATE_LIMIT_WINDOW_SECONDS,
+    webhook_rate_tracker,
+)
 
 logger = logging.getLogger("iyokai.custom_webhook_server")
 
@@ -44,6 +54,19 @@ def build_app(*, webhook_repo, get_channel) -> web.Application:
         webhook = await webhook_repo.get_by_token(token)
         if webhook is None:
             return web.json_response({"error": "webhook non trovato"}, status=404)
+
+        # SEC-14: limite di richieste per token, finestra mobile in
+        # memoria — controllato DOPO aver verificato che il token
+        # esista, così una richiesta con token sbagliato resta un 404
+        # e non consuma "credito" del limite di un token vero.
+        conteggio = webhook_rate_tracker.record_and_count(
+            token, datetime.now(timezone.utc), WEBHOOK_RATE_LIMIT_WINDOW_SECONDS
+        )
+        if conteggio > WEBHOOK_RATE_LIMIT_MAX_REQUESTS:
+            return web.json_response(
+                {"error": "troppe richieste per questo webhook, riprova più tardi"},
+                status=429,
+            )
 
         try:
             payload = await request.json()

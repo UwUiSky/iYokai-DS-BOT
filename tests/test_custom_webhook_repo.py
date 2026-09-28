@@ -95,3 +95,27 @@ async def test_remove_webhook_di_un_altro_server_fallisce(repo):
 @pytest.mark.asyncio
 async def test_remove_webhook_inesistente_restituisce_false(repo):
     assert await repo.remove_webhook(999999, guild_id=100) is False
+
+
+class TestHasAnyWebhook:
+    """SEC-14: main.py usa questo per decidere se avviare il server
+    webhook — nessun motivo di tenerlo in ascolto se nessun server
+    ha mai creato un webhook custom."""
+
+    @pytest.mark.asyncio
+    async def test_falso_quando_non_ce_ne_sono(self, repo):
+        assert await repo.has_any_webhook() is False
+
+    @pytest.mark.asyncio
+    async def test_vero_appena_ce_ne_e_uno(self, repo):
+        await repo.create_webhook(100, 500, "Monitor", 1)
+
+        assert await repo.has_any_webhook() is True
+
+    @pytest.mark.asyncio
+    async def test_resta_vero_anche_dopo_averne_rimossi_altri(self, repo):
+        a = await repo.create_webhook(100, 500, "A", 1)
+        await repo.create_webhook(100, 501, "B", 1)
+        await repo.remove_webhook(a.id, guild_id=100)
+
+        assert await repo.has_any_webhook() is True

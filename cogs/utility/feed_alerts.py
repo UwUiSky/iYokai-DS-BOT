@@ -142,11 +142,23 @@ class FeedAlertsCog(commands.Cog):
                 f"`/webhook/{webhook.token}`."
             )
 
+        # SEC-14: il server webhook parte solo se ne esiste già almeno
+        # uno all'avvio del bot — se questo è il primo mai creato, il
+        # server non è ancora in ascolto e serve un riavvio.
+        avviso_riavvio = ""
+        if not getattr(self.bot, "custom_webhook_server_running", False):
+            avviso_riavvio = (
+                "\n\n⚠️ Il server che riceve i webhook non è ancora attivo su questa "
+                "istanza (è il primo webhook creato): chiedi all'amministratore del bot "
+                "di riavviarlo perché questo URL/token funzioni."
+            )
+
         await interaction.response.send_message(
             f"✅ Webhook creato (ID `WH-{webhook.id}`) per **{label}**.\n\n{corpo_url}\n\n"
             f"⚠️ Questo URL/token è SEGRETO: chiunque lo conosca può pubblicare in "
             f"{channel.mention}. Non lo mostrerò di nuovo — se lo perdi, crealo di nuovo "
-            f"e rimuovi quello vecchio con /alerts remove.",
+            f"e rimuovi quello vecchio con /alerts remove."
+            f"{avviso_riavvio}",
             ephemeral=True,
         )
 

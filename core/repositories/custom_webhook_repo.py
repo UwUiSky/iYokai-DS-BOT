@@ -120,6 +120,15 @@ class CustomWebhookRepository:
         )
         return [self._row_to_webhook(r) for r in rows]
 
+    async def has_any_webhook(self) -> bool:
+        """
+        SEC-14: main.py lo controlla all'avvio per decidere se avviare
+        il server web che riceve i webhook — nessun motivo di tenerlo
+        in ascolto se nessun server ha mai creato un webhook custom.
+        """
+        row = await self._pool.fetchrow("SELECT EXISTS(SELECT 1 FROM custom_webhooks) AS esiste")
+        return bool(row["esiste"])
+
     async def remove_webhook(self, webhook_id: int, guild_id: int) -> bool:
         """
         Scoperto per guild_id, stesso motivo di feed_subscription_
