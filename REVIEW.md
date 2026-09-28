@@ -929,7 +929,78 @@ SPEC/PROGRESS.
    subito con R5, oppure li teniamo per un periodo? Tenerli costa
    slot: siamo a 97 su 100, quindi possiamo tenerne pochissimi.
 5. **Quota YouTube (BUG-16):** passo al metodo RSS + `videos.list`?
-6. **GDPR-1:** quanti giorni di grazia prima di cancellare i dati di un
-   server da cui il bot è uscito? (proposta: 30)
+6. ~~GDPR-1 giorni di grazia~~ → **decisa**: 90 giorni, conservando ban e kick di sicurezza (#46).
 7. **`/owner eval` e `/owner shell`:** li teniamo attivi in produzione,
    oppure li spegniamo di default con un interruttore (SEC-13)?
+
+---
+
+## 19. Aggiornamento dopo le issue GitHub (28/09 pomeriggio)
+
+**Regole di test:** vale `CLAUDE_MANDATORY_TEST_RULES.md`.
+- Nessun fix è "verificato live" senza bot e database reali.
+- Da questo ambiente cloud Discord, Aiven e Lavalink sono bloccati
+  dal proxy (verificato: risposta 403).
+- I test live si fanno solo con la sessione collegata al PC
+  dell'owner, e i segreti restano nel `.env` locale.
+- Le issue si chiudono solo dopo lo smoke test live. Fino ad allora
+  i commit le citano con "Refs #N".
+
+**Problemi nuovi dalle issue** (non erano in questo log):
+- **SEC-17 🔴 (#29) Ruoli piattaforma dei vocali temporanei senza
+  controllo di gerarchia.** Se un admin configura come ruolo
+  "piattaforma" un ruolo con permessi alti, chiunque crei un vocale
+  può assegnarselo.
+- **BUG-17 🟠 (#33) Drop riscattabile più volte.** Il controllo "già
+  preso" sta in memoria e non è atomico, quindi due clic simultanei
+  pagano due volte.
+- **BUG-18 🟠 (#34) `/voice transfer` accetta chiunque**, anche bot o
+  utenti che non sono nel canale.
+
+**Decisioni prese nelle issue:**
+- **Retention (#46):** i dati si conservano per **90 giorni**
+  dall'uscita dal server, poi vengono cancellati. Le righe di chi è
+  stato bannato o kickato per spam, nuke o raid restano
+  (`retain_for_security`), perché servono come storico di
+  affidabilità se l'utente rientra.
+  - La cancellazione anticipata avviene solo su richiesta, tramite
+    comando o form. Se l'utente ha un ban o kick di sicurezza la
+    richiesta viene rifiutata con una spiegazione.
+- **`/setup` (#49):** diviso **per categoria**, con un campo
+  `category` su ogni modulo. Diventa un sotto-gruppo di `/admin`
+  quando si applica la struttura di R5.
+- **`message_content` (#36):** si attiva, con motivazione per la
+  verifica di Discord e un log all'avvio che mostra gli intent
+  effettivi.
+- **`PREMIUM_ALPHA_UNLOCK_ALL` (#41):** in produzione il default
+  diventa falso, con un avviso nel log all'avvio.
+- **Musica (#45, #47, #48):**
+  - la radio parte da sola quando il bot principale entra in un
+    canale vocale;
+  - la cartella dei file locali viene creata se non esiste;
+  - aggiungiamo in `deploy/lavalink/` il `docker-compose.yml` e
+    l'`application.yml` per il self-host, più una guida con i link
+    ufficiali (lavalink.dev, youtube-source, LavaSrc).
+- **Fuori scope per ora:** l'AI (#50) e il confronto con gli altri bot
+  (#52) sono debito di prodotto, non bug.
+
+**Corrispondenza issue → codici di questo log:**
+
+| Issue | Codice | Issue | Codice |
+|---|---|---|---|
+| 2, 42 | BUG-1 | 3, 40 | SEC-1 |
+| 4, 38, 43, 49 | BUG-2 | 5 | SEC-7 |
+| 6, 36, 39, 44 | BUG-5 / L7 | 7 | SEC-5, BUG-10 |
+| 8 | SEC-3 | 9 | SEC-8 |
+| 10, 14, 32 | SEC-4 | 11 | SEC-8b |
+| 12, 28 | BUG-7 | 13 | BUG-8 |
+| 15 | SEC-2 | 16 | LC-5 |
+| 17 | SEC-6 | 18 | LC-1 |
+| 19, 37, 46 | GDPR-1/2/3 | 20 | SEC-10 |
+| 21 | BUG-4 | 22 | LC-4 |
+| 23, 35 | BUG-14 | 24, 31 | LC-2 |
+| 25 | DB-1 | 26 | BUG-3 |
+| 27 | LC-6 | 29 | SEC-17 |
+| 30 | §12 (7.2) | 33 | BUG-17 |
+| 34 | BUG-18 | 41 | §11 (valori pericolosi) |
+| 45, 47, 48 | BUG-9/10, §12 (9.x) | 50, 52 | fuori scope |
