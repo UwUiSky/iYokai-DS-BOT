@@ -22,4 +22,21 @@ Formato: `- [ ] CODICE (#issue) — commit SHA — passi — risultato atteso`.
 Quando l'owner ha provato: `[x]` con data ed esito, poi l'issue si può
 chiudere.
 
-_(nessuna voce ancora)_
+- [ ] SEC-4/SEC-17 (#10, #14, #29, #32) — commit 599a2d4 — passi:
+  1. Crea un ruolo con permesso `Amministratore` e prova a impostarlo
+     con `/level-roles add`, `/shop add-item`, `/rolemenu add-option`,
+     `/verify setup`, `/voicetemp-platform-setup`: ognuno deve
+     rifiutare con un messaggio che nomina il permesso pericoloso.
+  2. Configura un ruolo-premio "innocuo" (nessun permesso pericoloso,
+     sotto il ruolo del bot) con `/level-roles add`, poi sali di
+     livello nel server di test: il ruolo deve arrivare da solo.
+  3. Dopo il punto 2, aggiungi `Amministratore` al ruolo-premio già
+     configurato (dal pannello ruoli di Discord) e sali di un altro
+     livello: stavolta il ruolo NON deve essere assegnato (ricontrollo
+     al momento dell'assegnazione, non solo alla configurazione).
+  4. Stesso schema del punto 3 per `/verify` (verifica un secondo
+     account dopo aver reso pericoloso il ruolo verificato) e per un
+     role menu in modalità bottone/select/reazione (clicca dopo aver
+     reso pericoloso il ruolo dell'opzione).
+  Risultato atteso: nei punti 1 e 3-4 nessun ruolo pericoloso viene
+  mai assegnato; nel punto 2 il ruolo innocuo arriva normalmente.

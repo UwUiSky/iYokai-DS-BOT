@@ -4615,3 +4615,18 @@ davvero invece di stimare a tavolino — vedi il suo stesso docstring.
 
 Prossimo passo: R0 — sicurezza lato logica (core/role_safety.py e a
 seguire SEC-2..SEC-8+ da PIANO_FIX.md).
+
+## Fase R0 — Sicurezza lato logica (PIANO_FIX.md)
+
+- SEC-4/SEC-17: `core/role_safety.check_role_assignable()` — nuovo
+  controllo condiviso (gerarchia bot/attore, ruolo gestito o
+  @everyone, permessi pericolosi sui ruoli self-service). Collegato
+  in `/shop add-item`+`buy`, `/level-roles add`+assegnazione di
+  livello, `/rolemenu add-option`+click+reazione, `/verify
+  setup`+verifica, `/voicetemp-platform-setup`+click piattaforma.
+  `tests/support/discord_fakes.py`: `fake_role` ora confronta la
+  gerarchia come il vero `discord.Role` (serviva per il controllo).
+  Suite: 2093/2093 verde, due volte. Commit 599a2d4.
+  (da verificare live: assegnazione automatica su livello/verify e
+  click sui bottoni/select di rolemenu e vocali — vedi
+  VERIFICA_LIVE.md)

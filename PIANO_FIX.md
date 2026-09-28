@@ -150,11 +150,19 @@ se il ruolo:
 Va chiamato **due volte**: quando l'admin configura il ruolo e quando
 il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
 
-- [ ] **SEC-4 / SEC-17 (#10, #14, #29, #32)** Usa `check_role_assignable`
-  in `/shop add-item` e acquisto, `/level-roles add` e assegnazione,
-  `/rolemenu add-option` e click, `/verify setup` e verifica, ruolo
-  piattaforma dei vocali temporanei.
-  Test: per ogni punto, un ruolo con `administrator` viene rifiutato.
+- [x] **SEC-4 / SEC-17 (#10, #14, #29, #32)** (599a2d4) `check_role_assignable`
+  collegato in `/shop add-item` + `/shop buy`, `/level-roles add` +
+  assegnazione automatica di livello, `/rolemenu add-option` + click
+  bottone/select + reazione, `/verify setup` + assegnazione a fine
+  verifica, `/voicetemp-platform-setup` + click bottoni piattaforma.
+  Test (tests/test_role_safety_wiring.py): per ognuno dei 5 comandi
+  di configurazione, un ruolo con `administrator` viene rifiutato —
+  eseguito davvero il callback con i finti fedeli, confermato che
+  fallisce senza il collegamento (verificato con `git stash` sui
+  file dei cog prima del commit). "(da verificare live)": serve una
+  prova su un server Discord reale per i tre percorsi di assegnazione
+  automatica (livello, verify, click su rolemenu/vocali) — vedi
+  VERIFICA_LIVE.md.
 - [ ] **SEC-2 (#15)** `/restore-users`: accetta solo se esiste una
   coppia con `main_guild_id == origine` e `backup_guild_id ==
   interaction.guild.id`. Senza coppia: rifiuta con messaggio chiaro.
