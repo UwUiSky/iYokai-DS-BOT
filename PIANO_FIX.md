@@ -174,17 +174,27 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   dove il restore deve riuscire — confermato che fallivano senza il
   fix, `AttributeError` sul modulo che non importava ancora
   `backup_repo`).
-- [ ] **SEC-3 (#8)** OAuth del restore:
-  - `state` firmato: `base64(payload) + "." + HMAC-SHA256`, con dentro
-    origine, destinazione, scadenza (10 minuti) e un nonce monouso
-    salvato in memoria con TTL. Chiave: nuova variabile
-    `RESTORE_STATE_SECRET`, oppure derivata con HKDF dalla chiave di
-    cifratura già esistente (mai la stessa chiave per due scopi);
-  - **niente `user_id` nello state**: dopo lo scambio del codice si
-    chiama `GET /users/@me` con l'access token e si usa l'ID che
-    risponde Discord;
+- [x] **SEC-3 (#8)** (4d5e4a4) OAuth del restore:
+  - `state` firmato in `core/restore_oauth_logic.py`:
+    `base64(payload) + "." + HMAC-SHA256`, con dentro origine,
+    destinazione, scadenza (10 minuti) e un nonce monouso (dizionario
+    in memoria con pulizia lazy, non serve altro: uno state vive al
+    massimo 10 minuti e un riavvio del bot lo invalida comunque).
+    Chiave: derivata con HKDF da `OAUTH_ENCRYPTION_KEY` già
+    esistente (nessuna nuova variabile da configurare, mai la stessa
+    chiave riusata per due scopi);
+  - **niente `user_id` nello state**: `build_authorize_url` non lo
+    accetta più. Dopo lo scambio del code, `RestoreOrchestrator.
+    fetch_current_user` chiama `GET /users/@me` con l'access token e
+    quell'ID (mai uno scritto nello state) è quello usato per
+    salvare il token/aggiungere al server/assegnare il ruolo;
   - confronto della firma con `hmac.compare_digest`.
-  Test: state manomesso, scaduto e riusato vengono rifiutati.
+  Test: tests/test_restore_oauth_logic.py (state manomesso, firma
+  sbagliata, chiave sbagliata, scaduto, riusato, senza chiave
+  configurata), tests/test_restore_web_server.py (stessi casi a
+  livello di endpoint + identità non verificabile da /users/@me),
+  tests/test_restore_orchestrator.py (fetch_current_user con token
+  valido/invalido contro un server aiohttp finto).
 - [ ] **SEC-5 (#7)** `/nonstop-main` diventa owner-only subito (controllo
   `OWNER_ID` a runtime; lo spostamento sotto `/owner` avviene in R5).
   Il nome file di `add-local` si valida come in BUG-10.

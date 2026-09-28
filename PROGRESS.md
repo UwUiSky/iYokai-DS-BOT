@@ -4634,3 +4634,14 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   (`core/repositories/backup_repo.py:get_pair`) prima di leggere lo
   snapshot — prima accettava qualunque ID come server di origine.
   Suite: 2095/2095 verde, due volte. Commit 15ddf7d.
+- SEC-3: lo state OAuth2 del restore è firmato (HMAC-SHA256, chiave
+  derivata con HKDF da OAUTH_ENCRYPTION_KEY), scade dopo 10 minuti e
+  ha un nonce monouso; non contiene più lo user_id — l'identità si
+  scopre solo dopo lo scambio del code, con GET /users/@me
+  (RestoreOrchestrator.fetch_current_user). Prima lo state era in
+  chiaro e falsificabile. Suite: 2106/2106 verde, due volte. Commit
+  4d5e4a4.
+  (da verificare live: il flusso OAuth2 completo — clic sul link nel
+  DM, autorizzazione su Discord, callback — richiede le credenziali
+  OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI e OAUTH_ENCRYPTION_KEY vere,
+  vedi VERIFICA_LIVE.md)

@@ -40,3 +40,22 @@ chiudere.
      reso pericoloso il ruolo dell'opzione).
   Risultato atteso: nei punti 1 e 3-4 nessun ruolo pericoloso viene
   mai assegnato; nel punto 2 il ruolo innocuo arriva normalmente.
+- [ ] SEC-3 (#8) — commit 4d5e4a4 — passi: con
+  OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI e OAUTH_ENCRYPTION_KEY veri
+  configurati, un server "main" e uno "backup" collegati
+  (/define-main, /define-backup), e almeno uno snapshot con un
+  utente senza token salvato:
+  1. `/restore-users` nel server di backup, verso l'ID del main:
+     l'utente riceve un DM con il link di autorizzazione.
+  2. Cliccando il link e autorizzando su Discord, l'utente viene
+     aggiunto al server di backup (e riceve il ruolo di verifica se
+     configurato).
+  3. Ricliccando LO STESSO link una seconda volta: la pagina deve
+     mostrare l'errore "link non valido, scaduto o già usato",
+     nessuna azione ripetuta.
+  4. Aspettando più di 10 minuti prima di cliccare il link: stesso
+     errore di link scaduto.
+  Risultato atteso: il restore funziona una volta sola per link, con
+  scadenza reale a 10 minuti — nessuna delle due condizioni è
+  verificabile con i soli test automatici (serve il tempo reale che
+  passa e la vera autorizzazione OAuth2 di Discord).
