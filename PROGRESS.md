@@ -4630,3 +4630,7 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   (da verificare live: assegnazione automatica su livello/verify e
   click sui bottoni/select di rolemenu e vocali — vedi
   VERIFICA_LIVE.md)
+- SEC-2: `/restore-users` ora controlla la coppia main/backup
+  (`core/repositories/backup_repo.py:get_pair`) prima di leggere lo
+  snapshot — prima accettava qualunque ID come server di origine.
+  Suite: 2095/2095 verde, due volte. Commit 15ddf7d.

@@ -163,9 +163,17 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   prova su un server Discord reale per i tre percorsi di assegnazione
   automatica (livello, verify, click su rolemenu/vocali) — vedi
   VERIFICA_LIVE.md.
-- [ ] **SEC-2 (#15)** `/restore-users`: accetta solo se esiste una
-  coppia con `main_guild_id == origine` e `backup_guild_id ==
-  interaction.guild.id`. Senza coppia: rifiuta con messaggio chiaro.
+- [x] **SEC-2 (#15)** (15ddf7d) `/restore-users`: accetta solo se
+  esiste una coppia con `main_guild_id == origine` e
+  `backup_guild_id == interaction.guild.id`. Senza coppia: rifiuta
+  con messaggio chiaro. Controllo fatto con
+  `core/repositories/backup_repo.py:get_pair`, prima ancora di
+  leggere lo snapshot. Test in tests/test_restore_cog_behavior.py:
+  nessuna coppia, coppia verso un terzo server, coppia corretta (i
+  test già esistenti sono stati aggiornati per definire la coppia
+  dove il restore deve riuscire — confermato che fallivano senza il
+  fix, `AttributeError` sul modulo che non importava ancora
+  `backup_repo`).
 - [ ] **SEC-3 (#8)** OAuth del restore:
   - `state` firmato: `base64(payload) + "." + HMAC-SHA256`, con dentro
     origine, destinazione, scadenza (10 minuti) e un nonce monouso
