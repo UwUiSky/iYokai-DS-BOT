@@ -39,6 +39,7 @@ from discord.ext import commands
 
 from core.database import db
 from core.repositories.voice_temp_repo import voice_temp_repo
+from core.role_safety import check_role_assignable
 from core.voice_temp_logic import (
     can_manage_voice_channel,
     is_category_full,
@@ -107,6 +108,14 @@ class PlatformRoleView(discord.ui.View):
                     "Il ruolo configurato per questa piattaforma non esiste più.",
                     ephemeral=True,
                 )
+                return
+
+            # SEC-4/SEC-17: assegnazione self-service, ricontrolla il
+            # ruolo scelto — può aver preso permessi pericolosi dopo
+            # /voicetemp-platform-setup.
+            motivo_rifiuto = check_role_assignable(guild, ruolo_scelto, guild.me, self_service=True)
+            if motivo_rifiuto is not None:
+                await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
                 return
 
             altri_ruoli_id = {
@@ -378,6 +387,19 @@ class VoiceTempCog(commands.Cog):
                 ephemeral=True,
             )
             return
+
+        if not isinstance(interaction.user, discord.Member):
+            return
+
+        for ruolo in (pc, console, mobile):
+            if ruolo is None:
+                continue
+            motivo_rifiuto = check_role_assignable(
+                interaction.guild, ruolo, interaction.user, self_service=True
+            )
+            if motivo_rifiuto is not None:
+                await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
+                return
 
         await voice_temp_repo.set_platform_roles(
             interaction.guild.id,

@@ -31,6 +31,7 @@ from discord.ext import commands
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.verify_repo import verify_repo
+from core.role_safety import check_role_assignable
 from core.verify_logic import decide_verify_outcome, meets_account_age, meets_mutual_servers
 
 logger = logging.getLogger("iyokai.verify")
@@ -165,6 +166,13 @@ class VerifyCog(commands.Cog):
 
         if outcome.success and config.verified_role_id is not None:
             role = guild.get_role(config.verified_role_id)
+            # SEC-4/SEC-17: assegnazione self-service, ricontrolla il
+            # ruolo — può aver preso permessi pericolosi dopo il
+            # /verify setup.
+            if role is not None and check_role_assignable(
+                guild, role, guild.me, self_service=True
+            ) is not None:
+                role = None
             if role is not None:
                 try:
                     await member.add_roles(role, reason="iYokai Verify")
@@ -240,6 +248,16 @@ class VerifyCog(commands.Cog):
                 "modalità Button se vuoi il captcha.",
                 ephemeral=True,
             )
+            return
+
+        if not isinstance(interaction.user, discord.Member):
+            return
+
+        motivo_rifiuto = check_role_assignable(
+            interaction.guild, verified_role, interaction.user, self_service=True
+        )
+        if motivo_rifiuto is not None:
+            await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
             return
 
         await verify_repo.set_config(

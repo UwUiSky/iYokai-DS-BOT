@@ -65,6 +65,21 @@ def fake_forum_channel(channel_id: int = 333, name: str = "forum") -> MagicMock:
     return canale
 
 
+def _confronto_per_posizione(a, b) -> int:
+    """
+    Replica il confronto reale di discord.Role (Role.__lt__): posizione
+    più bassa prima, a parità di posizione l'id più alto è "più basso"
+    in gerarchia. Restituisce -1/0/1 come una comparazione classica.
+    Non replica il controllo "stessa guild" di discord.py perché nei
+    test un ruolo finto non appartiene mai a più guild finte diverse.
+    """
+    if a.position != b.position:
+        return -1 if a.position < b.position else 1
+    if a.id == b.id:
+        return 0
+    return -1 if a.id > b.id else 1
+
+
 def fake_role(
     role_id: int = 444,
     name: str = "Ruolo",
@@ -81,6 +96,15 @@ def fake_role(
     ruolo.managed = managed
     ruolo.is_default = MagicMock(return_value=(role_id == 0))
     ruolo.permissions = permissions if permissions is not None else discord.Permissions.none()
+
+    # discord.Role definisce __lt__/__le__/__gt__/__ge__ in base alla
+    # posizione in gerarchia (vedi _confronto_per_posizione sopra):
+    # core/role_safety.py li usa per capire se un ruolo è "sopra" un
+    # altro, quindi il finto deve confrontarsi allo stesso modo.
+    ruolo.__lt__ = lambda self, other: _confronto_per_posizione(self, other) < 0
+    ruolo.__le__ = lambda self, other: _confronto_per_posizione(self, other) <= 0
+    ruolo.__gt__ = lambda self, other: _confronto_per_posizione(self, other) > 0
+    ruolo.__ge__ = lambda self, other: _confronto_per_posizione(self, other) >= 0
     return ruolo
 
 

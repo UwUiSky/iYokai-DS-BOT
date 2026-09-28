@@ -41,6 +41,7 @@ from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.role_menu_repo import RoleMenu, RoleMenuOption, role_menu_repo
 from core.role_menu_logic import can_add_option, compute_select_sync, compute_toggle_action
+from core.role_safety import check_role_assignable
 
 logger = logging.getLogger("iyokai.role_menus")
 
@@ -209,6 +210,16 @@ class RoleMenuCog(commands.Cog):
             return
 
         azione = compute_toggle_action(role in interaction.user.roles)
+
+        # SEC-4/SEC-17: ricontrolla il ruolo solo quando lo si sta per
+        # ASSEGNARE (self_service=True) — rimuoverlo resta sempre
+        # permesso, non è un'escalation di permessi.
+        if azione == "add":
+            motivo_rifiuto = check_role_assignable(guild, role, guild.me, self_service=True)
+            if motivo_rifiuto is not None:
+                await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
+                return
+
         try:
             if azione == "add":
                 await interaction.user.add_roles(role, reason="Role menu")
@@ -247,6 +258,13 @@ class RoleMenuCog(commands.Cog):
 
         ruoli_da_aggiungere = [guild.get_role(rid) for rid in da_aggiungere]
         ruoli_da_aggiungere = [r for r in ruoli_da_aggiungere if r is not None]
+        # SEC-4/SEC-17: assegnazione self-service, ricontrolla ogni
+        # ruolo — un ruolo diventato pericoloso viene saltato senza
+        # bloccare l'aggiornamento degli altri.
+        ruoli_da_aggiungere = [
+            r for r in ruoli_da_aggiungere
+            if check_role_assignable(guild, r, guild.me, self_service=True) is None
+        ]
         ruoli_da_rimuovere = [guild.get_role(rid) for rid in da_rimuovere]
         ruoli_da_rimuovere = [r for r in ruoli_da_rimuovere if r is not None]
 
@@ -288,6 +306,10 @@ class RoleMenuCog(commands.Cog):
             return
         role = guild.get_role(option.role_id)
         if role is None:
+            return
+
+        # SEC-4/SEC-17: assegnazione self-service via reazione.
+        if check_role_assignable(guild, role, guild.me, self_service=True) is not None:
             return
 
         try:
@@ -450,6 +472,14 @@ class RoleMenuCog(commands.Cog):
                 f"Limite di opzioni raggiunto per la modalità **{menu.mode}**.",
                 ephemeral=True,
             )
+            return
+
+        if not isinstance(interaction.user, discord.Member):
+            return
+
+        motivo_rifiuto = check_role_assignable(guild, role, interaction.user, self_service=True)
+        if motivo_rifiuto is not None:
+            await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)

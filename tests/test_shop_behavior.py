@@ -12,6 +12,7 @@ from cogs.leveling.leveling import LevelingCog
 from core.database import Database
 from core.repositories.leveling_repo import LevelingRepository
 from core.repositories.shop_repo import ShopRepository
+from tests.support.discord_fakes import fake_guild, fake_member as fake_member_fedele, fake_role
 
 
 class _FakeResponse:
@@ -29,6 +30,12 @@ class _FakeResponse:
 class _FakeGuild:
     def __init__(self, guild_id: int) -> None:
         self.id = guild_id
+        self.me = None
+        self.owner_id = None
+        self._roles_by_id: dict = {}
+
+    def get_role(self, role_id: int):
+        return self._roles_by_id.get(role_id)
 
 
 class _FakeMember(discord.Member):
@@ -140,6 +147,16 @@ async def test_buy_oggetto_con_ruolo_lo_assegna(cog_e_repos):
 
     membro = _FakeMember(1)
     interaction = _FakeInteraction(guild_id=100, user=membro)
+
+    # SEC-4/SEC-17: shop_buy ora chiama check_role_assignable prima di
+    # assegnare il ruolo — serve un guild.get_role/me fedeli (vedi
+    # tests/support/discord_fakes.py) con un ruolo "innocuo" (nessun
+    # permesso pericoloso, sotto il ruolo del bot).
+    bot_member = fake_member_fedele(user_id=1000, name="Yokai Bot", bot=True)
+    ruolo_bot = fake_role(role_id=1001, name="Yokai Bot", position=50)
+    bot_member.top_role = ruolo_bot
+    interaction.guild.me = bot_member
+    interaction.guild._roles_by_id[999] = fake_role(role_id=999, name="VIP", position=1)
 
     await cog.shop_buy.callback(cog, interaction, item_id=item_id)
 

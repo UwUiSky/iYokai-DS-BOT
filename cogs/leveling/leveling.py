@@ -34,6 +34,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from core.database import db
+from core.role_safety import check_role_assignable
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
@@ -132,15 +133,27 @@ class LevelingCog(commands.Cog):
         stessa logica. Salta i ruoli che il membro ha già (un
         re-invio ripetuto non deve fallire né generare richieste
         Discord inutili).
+
+        SEC-4/SEC-17: l'assegnazione è automatica (self_service=True),
+        quindi ogni ruolo viene ricontrollato con check_role_assignable
+        prima di assegnarlo — il ruolo può aver preso permessi
+        pericolosi dopo la configurazione del ruolo-premio.
         """
         ricompense = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
         if not ricompense:
             return
 
         id_ruoli_posseduti = {ruolo.id for ruolo in member.roles}
-        da_assegnare = [
-            discord.Object(id=r.role_id) for r in ricompense if r.role_id not in id_ruoli_posseduti
-        ]
+        da_assegnare = []
+        for r in ricompense:
+            if r.role_id in id_ruoli_posseduti:
+                continue
+            ruolo = guild.get_role(r.role_id)
+            if ruolo is None:
+                continue
+            if check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
+                continue
+            da_assegnare.append(ruolo)
         if not da_assegnare:
             return
 
@@ -509,6 +522,14 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        if not isinstance(interaction.user, discord.Member):
+            return
+
+        motivo_rifiuto = check_role_assignable(guild, role, interaction.user, self_service=True)
+        if motivo_rifiuto is not None:
+            await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
+            return
+
         await level_reward_repo.add_reward(guild.id, level_threshold=level, role_id=role.id)
         await interaction.response.send_message(
             f"✅ Chi raggiunge il livello **{level}** riceverà il ruolo {role.mention}.",
@@ -668,6 +689,22 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # SEC-4/SEC-17: ricontrolla il ruolo PRIMA di far spendere i
+        # coin — il ruolo può aver preso permessi pericolosi dopo che
+        # è stato messo nello shop, e non ha senso far pagare
+        # l'utente per un ruolo che poi non verrà assegnato.
+        ruolo_shop = None
+        if oggetto.role_id is not None:
+            ruolo_shop = guild.get_role(oggetto.role_id)
+            if ruolo_shop is not None:
+                motivo_rifiuto = check_role_assignable(guild, ruolo_shop, guild.me, self_service=True)
+                if motivo_rifiuto is not None:
+                    await interaction.response.send_message(
+                        f"Questo oggetto non è più acquistabile: {motivo_rifiuto}",
+                        ephemeral=True,
+                    )
+                    return
+
         riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, oggetto.price)
         if not riuscito:
             await interaction.response.send_message(
@@ -677,10 +714,10 @@ class LevelingCog(commands.Cog):
 
         await shop_repo.record_purchase(guild.id, interaction.user.id, oggetto.id)
 
-        if oggetto.role_id is not None:
+        if ruolo_shop is not None:
             try:
                 await interaction.user.add_roles(
-                    discord.Object(id=oggetto.role_id), reason=f"Acquisto shop: {oggetto.name}"
+                    ruolo_shop, reason=f"Acquisto shop: {oggetto.name}"
                 )
             except discord.HTTPException:
                 logger.warning(
@@ -715,6 +752,12 @@ class LevelingCog(commands.Cog):
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
             )
             return
+
+        if role is not None and isinstance(interaction.user, discord.Member):
+            motivo_rifiuto = check_role_assignable(guild, role, interaction.user, self_service=True)
+            if motivo_rifiuto is not None:
+                await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
+                return
 
         item_id = await shop_repo.add_item(
             guild.id, name=name, price=price,

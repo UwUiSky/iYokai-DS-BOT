@@ -9,6 +9,7 @@ import pytest
 
 from cogs.leveling.leveling import LevelingCog
 from core.database import Database
+from tests.support.discord_fakes import fake_guild, fake_member, fake_role
 
 
 class _FakeResponse:
@@ -35,9 +36,30 @@ class _FakeRole:
 
 
 class _FakeInteraction:
-    def __init__(self, guild_id: int | None) -> None:
+    def __init__(self, guild_id: int | None, user=None) -> None:
         self.guild = _FakeGuild(guild_id) if guild_id is not None else None
+        self.user = user
         self.response = _FakeResponse()
+
+
+def _guild_e_admin_per_check_role_assignable(guild_id: int):
+    """
+    Serve solo per /level-roles add, che ora chiama
+    core.role_safety.check_role_assignable (SEC-4/SEC-17): a
+    differenza di _FakeGuild/_FakeRole sopra (usate dagli altri test
+    di questo file, che non toccano quel controllo), qui serve un
+    guild/ruolo/admin fedeli — vedi tests/support/discord_fakes.py.
+    """
+    bot_member = fake_member(user_id=999, name="Yokai Bot", bot=True)
+    ruolo_bot = fake_role(role_id=1000, name="Yokai Bot", position=50)
+    bot_member.top_role = ruolo_bot
+
+    ruolo_admin = fake_role(role_id=2000, name="Admin", position=30)
+    admin = fake_member(user_id=1, name="admin", roles=[ruolo_admin])
+    admin.top_role = ruolo_admin
+
+    server = fake_guild(guild_id=guild_id, me=bot_member)
+    return server, admin
 
 
 @pytest.fixture
@@ -63,9 +85,12 @@ async def cog_e_database(monkeypatch):
 @pytest.mark.asyncio
 async def test_add_e_list(cog_e_database):
     cog, repo = cog_e_database
-    interaction_add = _FakeInteraction(guild_id=100)
+    server, admin = _guild_e_admin_per_check_role_assignable(100)
+    interaction_add = _FakeInteraction(guild_id=100, user=admin)
+    interaction_add.guild = server
+    ruolo_premio = fake_role(role_id=555, name="Premio", position=1)
 
-    await cog.level_roles_add.callback(cog, interaction_add, level=10, role=_FakeRole(555))
+    await cog.level_roles_add.callback(cog, interaction_add, level=10, role=ruolo_premio)
 
     assert "livello **10**" in interaction_add.response.sent_messages[0]
 
