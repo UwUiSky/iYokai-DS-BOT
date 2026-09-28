@@ -79,7 +79,7 @@ aggiungere mai nomi a un cricchetto per far passare un test.
 
 Da fare:
 
-- [ ] **RT-1 Oggetti finti fedeli** — `tests/support/discord_fakes.py`.
+- [x] **RT-1 Oggetti finti fedeli** (b8848f1) — `tests/support/discord_fakes.py`.
   - Funzioni `fake_text_channel()`, `fake_voice_channel()`,
     `fake_forum_channel()`, `fake_member()`, `fake_guild()`,
     `fake_role()`, `fake_message()`, `fake_interaction()` costruite con
@@ -96,7 +96,7 @@ Da fare:
     che una chiamata con un argomento inesistente fallisce.
   - I test vecchi con finti scritti a mano **non** si riscrivono tutti
     adesso: si passano ai finti fedeli quando si tocca quel file.
-- [ ] **RT-2 Invarianti dell'albero comandi** — `tests/test_command_tree_invariants.py`
+- [x] **RT-2 Invarianti dell'albero comandi** (b8848f1) — `tests/test_command_tree_invariants.py`
   usando `full_tree`:
   - ogni gruppo ha al massimo 25 sotto-comandi e al massimo 1 livello
     di sotto-gruppi;
@@ -106,20 +106,18 @@ Da fare:
   - ogni `Select` costruito con dati reali ha al massimo 25 opzioni:
     per ora il pannello `/setup` con i 32 moduli reali (oggi fallisce:
     mettilo in un cricchetto `KNOWN_OVERSIZED_SELECTS = {"setup"}`).
-- [ ] **RT-3 Igiene della suite**:
-  - una fixture `autouse` in `tests/conftest.py` che alla fine di ogni
-    test segnala le `aiohttp.ClientSession` non chiuse e i task con
-    eccezioni mai lette. Oggi ce ne sono (lo si vede caricando
-    l'albero completo: "Unclosed client session"). Parti in modalità
-    solo avviso con elenco dei test responsabili, poi rendila bloccante
-    quando l'elenco è vuoto;
-  - un reset dei singleton usati dai test (cache moduli, registry
-    premium) in una fixture riusabile.
-- [ ] **RT-4 Regola per ogni fix successivo** (non è codice, è metodo):
-  ogni fix di R0/R1 aggiunge un test che **esegue davvero il comando o
-  il callback** con i finti fedeli, e che fallisce prima del fix.
-  Controlla che fallisca **per il motivo giusto**, non per un import
-  o una fixture sbagliata.
+- [x] **RT-3 Igiene della suite** (b8848f1): fixture `_rt3_igiene_risorse`
+  (autouse) in modalità solo avviso, `pytest_terminal_summary` elenca
+  le `aiohttp.ClientSession` non chiuse e le eccezioni di task per
+  nodeid. Oggi 6 test caricano l'albero completo e lasciano 6 sessioni
+  aperte ciascuno (worker musicali/Lavalink) — verrà chiuso quando lo
+  shutdown pulito dei worker sarà sistemato (voce collegata più avanti
+  nel piano). `reset_premium_registry`: fixture riusabile, non autouse.
+- [x] **RT-4 Regola per ogni fix successivo** (b8848f1, applicata da qui
+  in avanti — non è codice, è metodo): ogni fix di R0/R1 aggiunge un
+  test che **esegue davvero il comando o il callback** con i finti
+  fedeli, e che fallisce prima del fix. Controlla che fallisca **per
+  il motivo giusto**, non per un import o una fixture sbagliata.
 
 Criterio di fine R-T: suite completa verde due volte, i tre cricchetti
 esistenti invariati, i nuovi test committati.

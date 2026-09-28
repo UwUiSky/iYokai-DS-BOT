@@ -4598,3 +4598,20 @@ quando si ha tempo, per restare più navigabile. Non urgente.
 
 Metodologia acquisita: `scripts/load_simulation.py` per misurare per
 davvero invece di stimare a tavolino — vedi il suo stesso docstring.
+
+## Fase R-T — Rete di test per il ciclo di fix (PIANO_FIX.md)
+
+- RT-1: `tests/support/discord_fakes.py`, finti fedeli con
+  `create_autospec`. `channel.delete(delay=10)` ora solleva `TypeError`
+  (BUG-1 sarebbe stato intercettato).
+- RT-2: `tests/test_command_tree_invariants.py` sull'albero comandi
+  reale — gruppi entro 25 sotto-comandi/1 livello; cricchetto
+  `KNOWN_OVERSIZED_SELECTS = {"setup"}` (32 moduli reali > 25 opzioni,
+  bug confermato #4/#38/#43, fix in R5).
+- RT-3: fixture `_rt3_igiene_risorse` (solo avviso) — 6 test che
+  caricano l'albero completo lasciano 6 `aiohttp.ClientSession`
+  aperte ciascuno (worker musicali).
+- Suite: 2072/2072 verde, due volte. Commit b8848f1.
+
+Prossimo passo: R0 — sicurezza lato logica (core/role_safety.py e a
+seguire SEC-2..SEC-8+ da PIANO_FIX.md).
