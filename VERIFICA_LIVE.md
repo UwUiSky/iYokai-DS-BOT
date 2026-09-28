@@ -134,3 +134,21 @@ chiudere.
   automatici possono simulare le dimensioni dichiarate, non l'effetto
   reale su un processo Discord con limiti di memoria veri (Oracle
   Free Tier).
+- [ ] SEC-12 — commit 647b680 — passi:
+  1. Con un account bannato dallo spam-trap in un server di prova,
+     manda un DM al bot: deve aprire il thread di appello nel canale
+     di log come prima (nessuna regressione).
+  2. Subito dopo, manda un secondo DM entro 30 secondi: non deve
+     succedere nulla (né un nuovo thread né una risposta) — il
+     limite di elaborazione lo ignora silenziosamente.
+  3. Aspetta più di 30 secondi e manda un altro DM: deve tornare a
+     funzionare (rifiutato dal cooldown di 24h sull'appello vero e
+     proprio, che è un limite diverso e resta invariato).
+  4. Con un account bannato con un `/ban` normale (non dallo
+     spam-trap) in un server di prova, manda un DM al bot: non deve
+     succedere nulla (non è un ban dello spam-trap, non deve aprire
+     un appello).
+  Risultato atteso: il flusso di appello funziona come prima per chi
+  è davvero bannato dalla trappola, ma un DM ripetuto o un ban non
+  legato alla trappola non fanno più lavoro — solo la prova su
+  Discord vero conferma i tempi reali del cooldown.

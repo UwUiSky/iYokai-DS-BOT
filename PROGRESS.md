@@ -4735,3 +4735,15 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   verde, due volte. Commit ac11f7a (nessuna issue GitHub collegata;
   il commit cita erroneamente "Refs #20" di SEC-10, corretto in
   PIANO_FIX.md).
+- SEC-12: `moderation_repo.get_active_cases_for_user_across_guilds()`
+  (nuovo indice `idx_moderation_cases_user_type_active` su
+  `(user_id, action_type) WHERE active`) sostituisce il ciclo su
+  `self.bot.guilds` in `_handle_possible_appeal` — una sola query per
+  ogni DM ricevuto, non una per server. Filtra già per
+  `action_type="spam_trap_ban"`, quindi un ban normale non viene mai
+  riconosciuto come appello dello spam-trap. Aggiunto anche un limite
+  di un DM elaborato ogni 30 secondi per utente
+  (`core/spam_trap_rate_tracker.py`, finestra mobile in memoria come
+  `core/security_rate_tracker.py`). Suite: 2190/2190 verde, due
+  volte. Commit 647b680 (nessuna issue GitHub collegata; il commit
+  cita erroneamente "Refs #20" di SEC-10, corretto in PIANO_FIX.md).

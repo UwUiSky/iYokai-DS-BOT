@@ -265,10 +265,13 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   (nessuna issue GitHub collegata: non in tabella REVIEW.md
   §"Corrispondenza issue → codici" — il commit cita erroneamente
   "Refs #20", che è in realtà l'issue di SEC-10; correzione qui)
-- [ ] **SEC-12** DM di appello dello spam-trap: una sola query per
+- [x] **SEC-12** DM di appello dello spam-trap: una sola query per
   `user_id` sulla tabella degli incidenti (con indice), non un giro su
   tutti i server. Riconosce solo i ban dello spam-trap. Limite di un
-  DM elaborato ogni 30 secondi per utente.
+  DM elaborato ogni 30 secondi per utente. — commit 647b680
+  (nessuna issue GitHub collegata: non in tabella REVIEW.md
+  §"Corrispondenza issue → codici" — il commit cita erroneamente
+  "Refs #20", che è in realtà l'issue di SEC-10; correzione qui)
 - [ ] **SEC-13** `[B]` decisione D7. Se l'owner sceglie "spenti di
   default": variabile `ENABLE_EVAL` (default `False` se
   `ENVIRONMENT=production`), e in quel caso `/owner eval`, `shell` e
