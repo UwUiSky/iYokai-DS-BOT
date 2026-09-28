@@ -51,7 +51,6 @@ core/twitch_watcher.py/core/youtube_watcher.py.
 
 from __future__ import annotations
 
-import asyncio
 import io
 import random
 
@@ -68,6 +67,7 @@ from core.image_search_fetcher import image_search_fetcher
 from core.meme_logic import render_meme
 from core.minigames_logic import answer_8ball, flip_coin, play_rps, roll_dice
 from core.premium import PremiumModule, registry
+from core.safe_image import run_image_task
 
 MODULE_FUN = "fun"
 
@@ -236,7 +236,7 @@ class EntertainmentCog(commands.Cog):
         if dati is None:
             return
 
-        risultato = await asyncio.to_thread(apply_grayscale, dati)
+        risultato = await run_image_task(apply_grayscale, dati)
         if risultato is None:
             await interaction.response.send_message(
                 "Non sono riuscito a elaborare questa immagine.", ephemeral=True
@@ -265,7 +265,7 @@ class EntertainmentCog(commands.Cog):
         if dati is None:
             return
 
-        risultato = await asyncio.to_thread(apply_invert, dati)
+        risultato = await run_image_task(apply_invert, dati)
         if risultato is None:
             await interaction.response.send_message(
                 "Non sono riuscito a elaborare questa immagine.", ephemeral=True
@@ -296,7 +296,7 @@ class EntertainmentCog(commands.Cog):
         if dati is None:
             return
 
-        risultato = await asyncio.to_thread(apply_blur, dati, raggio)
+        risultato = await run_image_task(apply_blur, dati, raggio)
         if risultato is None:
             await interaction.response.send_message(
                 "Non sono riuscito a elaborare questa immagine.", ephemeral=True
@@ -327,7 +327,7 @@ class EntertainmentCog(commands.Cog):
         if dati is None:
             return
 
-        risultato = await asyncio.to_thread(apply_pixelate, dati, dimensione_blocco)
+        risultato = await run_image_task(apply_pixelate, dati, dimensione_blocco)
         if risultato is None:
             await interaction.response.send_message(
                 "Non sono riuscito a elaborare questa immagine.", ephemeral=True
@@ -366,7 +366,7 @@ class EntertainmentCog(commands.Cog):
         if dati is None:
             return
 
-        risultato = await asyncio.to_thread(render_meme, dati, top_text, bottom_text)
+        risultato = await run_image_task(render_meme, dati, top_text, bottom_text)
         if risultato is None:
             await interaction.response.send_message(
                 "Non sono riuscito a elaborare questa immagine.", ephemeral=True

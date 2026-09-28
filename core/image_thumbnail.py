@@ -9,6 +9,11 @@ RIGENERATO non è mai il file originale ricaricato — viene decodificato
 in memoria e ricreato pixel per pixel, il che elimina automaticamente
 qualunque metadato originale (EXIF con posizione GPS, informazioni
 del dispositivo, ecc.) senza doverlo ripulire esplicitamente.
+L'apertura passa da core.safe_image.safe_open_image (SEC-11): le
+dimensioni dichiarate vengono controllate prima di decodificare i
+pixel — usato per avatar e allegati del canale trappola, esposti a
+chiunque scriva lì.
+Funzioni coperte: REVIEW.md SEC-11
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ import logging
 from PIL import Image
 
 from core.image_thumbnail_logic import THUMBNAIL_MAX_DIMENSION
+from core.safe_image import safe_open_image
 
 logger = logging.getLogger("iyokai.image_thumbnail")
 
@@ -37,7 +43,11 @@ def generate_thumbnail(image_bytes: bytes, max_dimension: int = THUMBNAIL_MAX_DI
     thumbnail.
     """
     try:
-        with Image.open(io.BytesIO(image_bytes)) as img:
+        # SEC-11: safe_open_image controlla le dimensioni dichiarate
+        # PRIMA di decodificare i pixel — un'immagine "bomba" solleva
+        # un'eccezione qui, presa dal catch ampio sotto come
+        # qualunque altra immagine non valida.
+        with safe_open_image(image_bytes) as img:
             # Le GIF animate e i PNG con trasparenza vanno convertiti
             # esplicitamente: RGBA per preservare la trasparenza dove
             # presente, altrimenti Pillow potrebbe sollevare in fase

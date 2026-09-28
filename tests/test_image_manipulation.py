@@ -25,6 +25,12 @@ def _immagine_di_prova(width: int = 100, height: int = 100, color=(255, 0, 0)) -
     return buffer.getvalue()
 
 
+def _immagine_bomba() -> bytes:
+    # SEC-11: dimensioni dichiarate enormi (8000x8000 = 64.000.000 di
+    # pixel), ma una tinta unita comprime a pochi KB su disco.
+    return _immagine_di_prova(width=8000, height=8000)
+
+
 class TestApplyGrayscale:
     def test_restituisce_bytes_validi(self):
         risultato = apply_grayscale(_immagine_di_prova())
@@ -78,3 +84,21 @@ class TestApplyPixelate:
 
     def test_bytes_non_validi_restituisce_none(self):
         assert apply_pixelate(b"non valido") is None
+
+
+class TestImmagineBomba:
+    """SEC-11: un file piccolo su disco ma con dimensioni dichiarate
+    enormi va rifiutato come qualunque altra immagine non valida,
+    senza sollevare."""
+
+    def test_apply_grayscale_rifiuta_limmagine_bomba(self):
+        assert apply_grayscale(_immagine_bomba()) is None
+
+    def test_apply_invert_rifiuta_limmagine_bomba(self):
+        assert apply_invert(_immagine_bomba()) is None
+
+    def test_apply_blur_rifiuta_limmagine_bomba(self):
+        assert apply_blur(_immagine_bomba()) is None
+
+    def test_apply_pixelate_rifiuta_limmagine_bomba(self):
+        assert apply_pixelate(_immagine_bomba()) is None

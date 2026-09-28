@@ -41,7 +41,6 @@ soggetto al cooldown di 24h). Scelta dichiarata, non un errore.
 
 from __future__ import annotations
 
-import asyncio
 import io
 import logging
 from collections import defaultdict
@@ -59,6 +58,7 @@ from core.image_thumbnail_logic import (
     is_image_attachment,
     is_within_size_limit,
 )
+from core.safe_image import run_image_task
 from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry
 from core.repositories.moderation_repo import moderation_repo
@@ -561,7 +561,7 @@ class SpamTrapCog(commands.Cog):
         except discord.HTTPException:
             return None
 
-        thumbnail_bytes = await asyncio.to_thread(generate_thumbnail, avatar_bytes)
+        thumbnail_bytes = await run_image_task(generate_thumbnail, avatar_bytes)
         if thumbnail_bytes is None:
             return None
         return bytes_to_data_uri(thumbnail_bytes)
@@ -571,10 +571,14 @@ class SpamTrapCog(commands.Cog):
         Scarica e rigenera come thumbnail ogni allegato immagine,
         restituendo le data URI pronte per il transcript. Pillow è
         sincrono/CPU-bound: l'elaborazione vera gira in un thread
-        separato (asyncio.to_thread) per non bloccare l'event loop
-        del bot mentre elabora un'immagine — bloccarlo anche solo per
-        una frazione di secondo può causare timeout dell'heartbeat
-        verso Discord su un bot con molti server attivi insieme.
+        separato (core.safe_image.run_image_task, SEC-11 — al
+        massimo 2 insieme in tutto il processo) per non bloccare
+        l'event loop del bot mentre elabora un'immagine — bloccarlo
+        anche solo per una frazione di secondo può causare timeout
+        dell'heartbeat verso Discord su un bot con molti server
+        attivi insieme. Il canale trappola riceve messaggi da
+        chiunque, quindi anche un'immagine "bomba" può arrivare qui
+        (vedi core/safe_image.py).
         """
         data_uris: list[str] = []
         for attachment in attachments:
@@ -593,7 +597,7 @@ class SpamTrapCog(commands.Cog):
             except discord.HTTPException:
                 continue
 
-            thumbnail_bytes = await asyncio.to_thread(generate_thumbnail, image_bytes)
+            thumbnail_bytes = await run_image_task(generate_thumbnail, image_bytes)
             if thumbnail_bytes is not None:
                 data_uris.append(bytes_to_data_uri(thumbnail_bytes))
         return data_uris

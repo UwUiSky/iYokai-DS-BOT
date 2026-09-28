@@ -3,12 +3,14 @@ core/image_manipulation.py
 ==============================
 Elaborazione VERA dei byte dell'immagine per SPEC.md §16.2 (Image
 manipulation) — stesso principio di core/image_thumbnail.py: Pillow
-è sincrono e CPU-bound, il chiamante (il cog) lo esegue in
-`asyncio.to_thread`, non qui dentro. Ogni funzione restituisce None
-(non solleva) se l'immagine non è apribile da Pillow — un allegato
-con estensione immagine ma contenuto corrotto non deve far fallire
-il comando con un errore poco chiaro, solo restituire "non è stato
-possibile elaborare questa immagine".
+è sincrono e CPU-bound, il chiamante (il cog) la esegue tramite
+core.safe_image.run_image_task, non qui dentro. Ogni funzione
+restituisce None (non solleva) se l'immagine non è apribile da
+Pillow, incluso un file piccolo con dimensioni dichiarate enormi
+(SEC-11, vedi core/safe_image.py) — un allegato del genere non deve
+far fallire il comando con un errore poco chiaro, solo restituire
+"non è stato possibile elaborare questa immagine".
+Funzioni coperte: SPEC.md §16.2, REVIEW.md SEC-11
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ import io
 
 from PIL import Image, ImageFilter, ImageOps
 
+from core.safe_image import safe_open_image
+
 MAX_INPUT_DIMENSION = 4096  # oltre non ha senso elaborare: rallenta
 # solo il comando senza un beneficio visibile per un'immagine che
 # verrà comunque ridimensionata da Discord in anteprima.
@@ -24,8 +28,11 @@ MAX_INPUT_DIMENSION = 4096  # oltre non ha senso elaborare: rallenta
 
 def _load_image(image_bytes: bytes) -> Image.Image | None:
     try:
-        img = Image.open(io.BytesIO(image_bytes))
-        img.load()
+        # SEC-11: safe_open_image controlla le dimensioni dichiarate
+        # PRIMA di decodificare i pixel — un'immagine "bomba" solleva
+        # ImmagineTroppoGrande qui, presa dal catch ampio sotto come
+        # qualunque altra immagine non valida.
+        img = safe_open_image(image_bytes)
     except Exception:
         return None
 

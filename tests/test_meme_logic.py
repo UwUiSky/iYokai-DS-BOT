@@ -46,3 +46,9 @@ class TestRenderMeme:
 
     def test_bytes_non_validi_restituisce_none(self):
         assert render_meme(b"non e' un'immagine", top_text="x") is None
+
+    def test_immagine_bomba_viene_rifiutata(self):
+        # SEC-11: dimensioni dichiarate enormi (8000x8000), file
+        # piccolo su disco (tinta unita) — deve essere rifiutata come
+        # qualunque altra immagine non valida, senza sollevare.
+        assert render_meme(_immagine_di_prova(width=8000, height=8000), top_text="x") is None

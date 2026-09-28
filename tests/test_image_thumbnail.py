@@ -98,3 +98,10 @@ class TestGenerateThumbnail:
         originale = _make_image_bytes(1500, 1500)
         risultato = generate_thumbnail(originale)
         assert len(risultato) < len(originale)
+
+    def test_immagine_bomba_viene_rifiutata(self):
+        # SEC-11: dimensioni dichiarate enormi (8000x8000), file
+        # piccolo su disco (tinta unita) — avatar/allegati del canale
+        # trappola sono esposti a chiunque scriva lì.
+        originale = _make_image_bytes(8000, 8000)
+        assert generate_thumbnail(originale) is None
