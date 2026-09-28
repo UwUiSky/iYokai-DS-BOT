@@ -10,7 +10,8 @@ test_restore_web_server.py).
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
-from core.custom_webhook_server import build_app
+from core.custom_webhook_server import build_app, start_server
+from core.redacted_access_log import RedactedAccessLogger
 
 
 class _FakeWebhook:
@@ -114,3 +115,16 @@ async def test_payload_vuoto_non_solleva():
 
     assert risposta.status == 200
     assert canale.sent_messages == ["📩 **Monitor**"]
+
+
+@pytest.mark.asyncio
+async def test_start_server_usa_l_access_log_redatto():
+    # SEC-9: il token del webhook è nel PERCORSO dell'URL, non va mai
+    # scritto per intero nei log del server.
+    app = build_app(webhook_repo=_FakeWebhookRepo(), get_channel=lambda channel_id: None)
+
+    runner = await start_server(app, host="127.0.0.1", port=0)
+    try:
+        assert runner._kwargs["access_log_class"] is RedactedAccessLogger
+    finally:
+        await runner.cleanup()

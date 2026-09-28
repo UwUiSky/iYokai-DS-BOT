@@ -30,6 +30,7 @@ ENV/
 # Dati generati a runtime (non vanno versionati)
 # ============================================================
 logs/*.log
+logs/*.log.*
 data/*.db
 data/cache/
 *.sqlite3

@@ -11,6 +11,7 @@ Costruito con `build_app()` che accetta le dipendenze come parametri
 (dependency injection) — permette ai test di puntare a un server
 Discord finto e a repository in-memory/di test, senza toccare
 config.py o i singleton globali.
+Dipende da: core/redacted_access_log.py (SEC-9)
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import logging
 
 from aiohttp import web
 
+from core.redacted_access_log import RedactedAccessLogger
 from core.restore_oauth_logic import decode_and_verify_state
 from core.restore_orchestrator import RestoreOrchestrator
 
@@ -149,7 +151,9 @@ def build_app(
 async def start_server(app: web.Application, host: str, port: int) -> web.AppRunner:
     """Avvia il server e restituisce il runner — il chiamante (main.py)
     lo tiene in vita e lo ferma con runner.cleanup() allo shutdown."""
-    runner = web.AppRunner(app)
+    # SEC-9: access_log_class redatto — la query string del callback
+    # contiene "code"/"state" (OAuth2), non va mai scritta nei log.
+    runner = web.AppRunner(app, access_log_class=RedactedAccessLogger)
     await runner.setup()
     site = web.TCPSite(runner, host, port)
     await site.start()

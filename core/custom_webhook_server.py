@@ -14,6 +14,7 @@ Stesso principio già usato per la callback OAuth2 del restore
 le dipendenze come parametri (repository + bot), niente singleton
 importati direttamente qui dentro, così i test possono passare un
 bot/repository finti senza toccare config.py.
+Dipende da: core/redacted_access_log.py (SEC-9)
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ from __future__ import annotations
 import logging
 
 from aiohttp import web
+
+from core.redacted_access_log import RedactedAccessLogger
 
 logger = logging.getLogger("iyokai.custom_webhook_server")
 
@@ -71,7 +74,10 @@ def build_app(*, webhook_repo, get_channel) -> web.Application:
 async def start_server(app: web.Application, host: str, port: int) -> web.AppRunner:
     """Avvia il server e restituisce il runner — il chiamante (main.py)
     lo tiene in vita e lo ferma con runner.cleanup() allo shutdown."""
-    runner = web.AppRunner(app)
+    # SEC-9: access_log_class redatto — l'URL contiene il token
+    # segreto del webhook (/webhook/<token>), non va mai scritto per
+    # intero nei log.
+    runner = web.AppRunner(app, access_log_class=RedactedAccessLogger)
     await runner.setup()
     site = web.TCPSite(runner, host, port)
     await site.start()

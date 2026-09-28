@@ -11,9 +11,10 @@ import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
 from core.oauth_crypto import generate_key
+from core.redacted_access_log import RedactedAccessLogger
 from core.restore_oauth_logic import encode_state, RestoreState
 from core.restore_orchestrator import ExchangedToken
-from core.restore_web_server import build_app
+from core.restore_web_server import build_app, start_server
 
 CHIAVE = generate_key()
 
@@ -292,3 +293,25 @@ async def test_callback_state_riusato_restituisce_errore_la_seconda_volta():
 
     assert prima.status == 200
     assert seconda.status == 400
+
+
+@pytest.mark.asyncio
+async def test_start_server_usa_l_access_log_redatto():
+    # SEC-9: la query string del callback contiene "code"/"state"
+    # (OAuth2), non va mai scritta per intero nei log del server.
+    app = build_app(
+        orchestrator=_FakeOrchestrator(),
+        oauth_repo=_FakeOAuthRepo(),
+        verify_repo_=_FakeVerifyRepo(),
+        client_id="1",
+        client_secret="s",
+        redirect_uri="https://esempio.com/cb",
+        bot_token="bot-token",
+        oauth_encryption_key=CHIAVE,
+    )
+
+    runner = await start_server(app, host="127.0.0.1", port=0)
+    try:
+        assert runner._kwargs["access_log_class"] is RedactedAccessLogger
+    finally:
+        await runner.cleanup()
