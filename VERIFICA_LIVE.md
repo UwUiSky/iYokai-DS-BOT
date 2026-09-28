@@ -91,3 +91,25 @@ chiudere.
      funzionano come prima.
   Risultato atteso: lo staff non viene mai bannato dalla propria
   trappola, e solo chi può bannare può decidere l'esito di un appeal.
+- [ ] SEC-10 (#20) — commit 9d52a82 — passi:
+  1. Metti un account di prova in blacklist globale con
+     `/owner blacklist-user add`. Con quell'account, prova ad
+     aprire un ticket, cliccare "Verificati", cliccare un bottone di
+     un role menu, e cliccare "Partecipa" a un giveaway: ognuno deve
+     rifiutare (per i bottoni, con un messaggio effimero "Sei stato
+     bloccato dall'uso di questo bot."; per i menu/modali la stessa
+     risposta), nessuna azione eseguita.
+  2. Con lo stesso account in blacklist, reagisci con l'emoji giusta
+     a un pannello di verifica in modalità reaction e a un role menu
+     in modalità reaction: nessun ruolo assegnato, nessuna verifica
+     completata (nessuna risposta visibile, è un secondo livello di
+     difesa silenzioso).
+  3. Con lo stesso account, scrivi qualche messaggio in un canale con
+     la leveling attiva e resta in vocale per un paio di minuti:
+     `/rank` deve mostrare XP e coin invariati.
+  4. Rimuovi l'account dalla blacklist e ripeti i punti 1-3: tutto
+     deve tornare a funzionare normalmente (nessuna regressione).
+  Risultato atteso: un utente in blacklist globale non ottiene più
+  nulla dal bot — né tramite interazioni (bottoni/menu/modali) né
+  tramite i listener che assegnano XP, ruoli o verifica fuori da
+  un'interazione.

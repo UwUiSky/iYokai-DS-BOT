@@ -4703,3 +4703,19 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   `logs/*.log.*` a `.gitignore` (mancavano i log ruotati) e cancellato
   il log locale esistente (non in git, ma con query string dei test).
   Suite: 2154/2154 verde, due volte. Commit a31dbba.
+- SEC-10 (anche LC-4): `core/ui_base.py` (nuovo) — `BaseView` e
+  `BaseModal` rifiutano interazioni di utenti/server in blacklist
+  globale (stessa fonte cache di `BlacklistAwareCommandTree`, che
+  copre solo i comandi slash) e rispondono in modo effimero invece di
+  lasciare sparire ogni errore nel nulla. Tutte le View e i Modal del
+  progetto (20 classi in 11 file, più 6 istanziazioni dinamiche in
+  `role_menus.py`, `custom_command_requests.py`, `suggestions.py`)
+  ora ereditano da queste; `AppealActionsView` (spam_trap.py) chiama
+  `super().interaction_check()` prima del suo controllo `ban_members`
+  esistente (SEC-8b). I listener fuori da un'interazione ora ignorano
+  la blacklist anche loro: XP testuale e vocale (`leveling.py`),
+  ruolo da reazione nei role menu (`role_menus.py`), verifica da
+  reazione (`verify.py`). Test cricchetto `test_ui_base_wiring.py`
+  (scansione AST): nessuna View/Modal in `cogs/` eredita più
+  direttamente da `discord.ui`. Suite: 2167/2167 verde, due volte.
+  Commit 9d52a82.

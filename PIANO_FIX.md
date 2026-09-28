@@ -240,18 +240,19 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   interi (non sono in git: verifica con `git ls-files logs`). — commit
   a31dbba (nessuna issue GitHub collegata: non in tabella REVIEW.md
   §"Corrispondenza issue → codici")
-- [ ] **SEC-10 (#20)** Blacklist su bottoni, menu e modali:
+- [x] **SEC-10 (#20)** Blacklist su bottoni, menu e modali:
   - crea `core/ui_base.py` con `class BaseView(discord.ui.View)` e
     `class BaseModal(discord.ui.Modal)`: `interaction_check` rifiuta gli
     utenti e i server in blacklist (cache in memoria, stessa fonte del
     `BlacklistAwareCommandTree`), `on_error` risponde in modo effimero
     e registra l'errore (è anche LC-4);
   - tutte le View e i Modal del progetto ereditano da queste;
-  - i listener che danno qualcosa all'utente (XP, drop, ticket da
-    reazione) ignorano gli utenti in blacklist.
+  - i listener che danno qualcosa all'utente (XP testuale e vocale,
+    ruolo da reazione nei role menu, verifica da reazione) ignorano
+    gli utenti in blacklist.
   Test cricchetto: nessuna classe in `cogs/` eredita direttamente da
   `discord.ui.View` o `discord.ui.Modal` (elenco `KNOWN_RAW_VIEWS`
-  che si svuota).
+  che si svuota). — commit 9d52a82
 - [ ] **SEC-11** Immagini bomba:
   - `Image.MAX_IMAGE_PIXELS = 40_000_000` impostato in un solo punto
     all'avvio;
@@ -463,7 +464,8 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   tempban, softban, `/suggest`, `clan invita|espelli|promuovi|compra-canale|crea|sciogli`,
   salvataggio di `/setup`, verify, comandi immagine di `/fun`,
   `animal`, `search-image`.
-- [ ] **LC-4 (#22)** Coperto da `BaseView.on_error` (SEC-10).
+- [x] **LC-4 (#22)** Coperto da `BaseView.on_error`/`BaseModal.on_error`
+  (SEC-10) — commit 9d52a82.
 - [ ] **LC-5 (#16)** View di appello dello spam-trap persistente:
   `timeout=None`, `custom_id` fissi con l'ID dell'incidente,
   `bot.add_view(...)` all'avvio. Test: la view è tra quelle registrate
