@@ -3,9 +3,12 @@ core/repositories/event_log_repo.py
 ======================================
 Log eventi unificato (BACKLOG.md §3 "Logging strutturato"). Un
 evento salvato UNA VOLTA, consultabile da più angolazioni (membro,
-canale, ruolo, case di moderazione, tempo) — invece di canali
-Discord con embed "usa e getta" che spariscono se il canale viene
-cancellato o il log scrolla via.
+canale, tempo) — invece di canali Discord con embed "usa e getta"
+che spariscono se il canale viene cancellato o il log scrolla via.
+role_id/case_number restano salvati per correlare un evento con un
+ruolo o un case di moderazione quando servirà (DB-2, REVIEW.md: i
+due indici che li rendevano "interrogabili" non erano mai usati da
+nessuna query, rimossi).
 
 Decisione presa nell'analisi (BACKLOG.md §3): niente proiezione su
 Forum Discord per membri/messaggi (alta cardinalità — un server da
@@ -56,20 +59,21 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         );
 
         -- Un indice per ciascuna "angolazione" di consultazione
-        -- dichiarata nell'analisi: membro, canale, ruolo, tempo
-        -- generale. Il case di moderazione è già indicizzato
-        -- altrove (moderation_cases), qui basta poterlo filtrare
-        -- velocemente quando serve incrociare i due.
+        -- USATA DAVVERO da un metodo qui sotto (membro, canale,
+        -- tempo). DB-2: c'erano anche idx_event_log_guild_role e
+        -- idx_event_log_guild_case, ma role_id/case_number compaiono
+        -- solo in log_event() (INSERT), mai in una WHERE di nessun
+        -- metodo di questo file — costavano solo in scrittura sulla
+        -- tabella più trafficata del progetto senza mai essere letti.
+        -- Rimossi qui (per un DB nuovo) e con una migrazione numerata
+        -- (core/migrations/0001_...sql, per un DB esistente che li ha
+        -- già creati).
         CREATE INDEX IF NOT EXISTS idx_event_log_guild_user
             ON event_log (guild_id, target_user_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_event_log_guild_channel
             ON event_log (guild_id, channel_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_event_log_guild_role
-            ON event_log (guild_id, role_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_event_log_guild_time
             ON event_log (guild_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_event_log_guild_case
-            ON event_log (guild_id, case_number);
 
         -- Per la pulizia periodica (retention): trovare le righe più
         -- vecchie di una soglia senza scansionare tutta la tabella.
