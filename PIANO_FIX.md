@@ -284,7 +284,7 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   restare orfano. — commit 8a96320 (nessuna issue GitHub
   collegata: non in tabella REVIEW.md §"Corrispondenza issue →
   codici")
-- [ ] **SEC-14** Server web:
+- [x] **SEC-14** Server web:
   - indirizzo da `WEB_BIND_HOST`, default `127.0.0.1` (davanti ci va un
     reverse proxy con HTTPS);
   - il server webhook parte solo se esiste almeno un webhook
@@ -292,6 +292,8 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   - limite di richieste per token (finestra in memoria);
   - il server del restore non parte se manca la chiave di cifratura
     (log WARNING).
+  — commit 0e9eb3b (nessuna issue GitHub collegata: non in tabella
+  REVIEW.md §"Corrispondenza issue → codici")
 - [ ] **SEC-15** Dipendenze: aggiungi `aiohttp` in `requirements.txt`
   con un minimo senza vulnerabilità note (controlla la versione su
   PyPI e sugli advisory al momento del fix), togli `structlog`,

@@ -4766,3 +4766,20 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   girare in background dopo l'abbandono. Suite: 2205/2205 verde, due
   volte. Commit 8a96320 (nessuna issue GitHub collegata: SEC-13 non è
   in tabella REVIEW.md §"Corrispondenza issue → codici").
+- SEC-14: nuovo `WEB_BIND_HOST` in `core/config.py` (default
+  `127.0.0.1`, non più `0.0.0.0`) — indirizzo condiviso da entrambi i
+  piccoli server web del progetto (callback OAuth2 del restore,
+  webhook custom in ricezione), rimosso `RESTORE_WEB_HOST` e
+  `ALERTS_WEBHOOK_HOST` separati. Il server webhook
+  (`core/custom_webhook_server.py`, avviato da `main.py`) ora parte
+  solo se `custom_webhook_repo.has_any_webhook()` trova almeno un
+  webhook già configurato — se il primo viene creato dopo l'avvio,
+  `/alerts webhook-create` lo dice nella risposta e serve un riavvio.
+  Nuovo `core/webhook_rate_tracker.py` (finestra mobile in memoria,
+  stesso principio di `core/automod_rate_tracker.py` ma con il token
+  come chiave): oltre 10 richieste al minuto per lo stesso token,
+  l'endpoint `/webhook/<token>` risponde 429. Il server del restore,
+  che già non partiva senza `OAUTH_ENCRYPTION_KEY` configurata, ora lo
+  segnala con un log WARNING (prima era INFO). Suite: 2215/2215 verde,
+  due volte. Commit 0e9eb3b (nessuna issue GitHub collegata: SEC-14
+  non è in tabella REVIEW.md §"Corrispondenza issue → codici").

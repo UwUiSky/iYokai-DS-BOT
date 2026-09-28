@@ -178,3 +178,36 @@ chiudere.
   spento; la conferma non scade più su esecuzioni lunghe; un comando
   shell appeso non lascia processi orfani — solo la prova su Discord
   vero e sulla macchina reale conferma questi tre punti.
+- [ ] SEC-14 — commit 0e9eb3b — passi:
+  1. Avvia il bot con `.env` di default (`WEB_BIND_HOST=127.0.0.1`,
+     nessun webhook custom ancora creato): con `netstat -tlnp` (o
+     `ss -tlnp`) sulla macchina, verifica che NON ci sia nulla in
+     ascolto sulla porta `ALERTS_WEBHOOK_PORT` (8421) — il server
+     webhook non deve partire senza webhook configurati.
+  2. Con le credenziali OAuth2 configurate (`OAUTH2_CLIENT_ID/SECRET/
+     REDIRECT_URI`, `OAUTH_ENCRYPTION_KEY`), verifica invece che la
+     porta `RESTORE_WEB_PORT` (8420) sia in ascolto solo su
+     `127.0.0.1` (`curl http://127.0.0.1:8420/oauth/callback` risponde,
+     `curl http://<ip-esterno-della-macchina>:8420/oauth/callback` no).
+  3. Con `OAUTH_ENCRYPTION_KEY` vuota, riavvia il bot e controlla i
+     log all'avvio: deve comparire un WARNING (non un INFO) che dice
+     che il server callback restore è disattivato.
+  4. Su un server di prova, esegui `/alerts webhook-create`: la
+     risposta deve avvisare che il server webhook non è ancora attivo
+     e serve un riavvio (è il primo webhook dell'istanza). Riavvia il
+     bot e verifica con `netstat`/`curl` che la porta 8421 sia ora in
+     ascolto e che una POST a `/webhook/<token>` pubblichi nel canale
+     come previsto.
+  5. Manda più di 10 richieste POST allo stesso `/webhook/<token>` in
+     meno di un minuto (es. con un piccolo script o `for i in
+     {1..12}; do curl -s -o /dev/null -w "%{http_code}\n" -X POST
+     -H "Content-Type: application/json" -d '{"message":"test"}'
+     http://127.0.0.1:8421/webhook/<token>; done`): le prime 10
+     devono rispondere 200, le successive 429, senza pubblicare altri
+     messaggi nel canale.
+  Risultato atteso: nessuna delle due porte resta esposta su tutte le
+  interfacce di rete per default; il server webhook non occupa una
+  porta finché nessuno lo usa; un token non può inondare il canale di
+  destinazione oltre il limite — solo la prova su una macchina reale
+  (con `netstat`/`curl` veri) conferma che i server ascoltano dove e
+  quando devono.
