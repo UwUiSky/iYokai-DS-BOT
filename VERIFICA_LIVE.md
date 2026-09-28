@@ -223,3 +223,17 @@ chiudere.
   Risultato atteso: l'installazione da `requirements.lock` è
   riproducibile sulla macchina reale (non solo nel sandbox dove è
   stato generato) e il bot si avvia e funziona come prima.
+- [ ] #41 — commit 576f155 — passi:
+  1. Con `.env` con `ENVIRONMENT=production` e
+     `PREMIUM_ALPHA_UNLOCK_ALL` vuoto, avvia il bot: nei log non deve
+     comparire il WARNING di PREMIUM_ALPHA_UNLOCK_ALL (è spento di
+     default). Verifica anche a comando (es. `/premium status` su un
+     server senza whitelist/boost) che le feature premium NON siano
+     sbloccate.
+  2. Con `.env` con `ENVIRONMENT=production` e
+     `PREMIUM_ALPHA_UNLOCK_ALL=true` (forzato esplicitamente), avvia
+     il bot: nei log deve comparire il WARNING che lo segnala.
+  Risultato atteso: in produzione le feature premium non sono più
+  sbloccate per tutti "per dimenticanza" — solo la prova su Discord
+  vero con un server senza whitelist/boost conferma che il
+  comportamento a comando corrisponde al valore di configurazione.

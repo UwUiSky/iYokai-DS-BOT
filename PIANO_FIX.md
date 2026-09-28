@@ -320,9 +320,11 @@ il bot lo assegna (il ruolo può aver cambiato permessi nel frattempo).
   fuori da questa voce del piano — non erano nell'elenco puntato di
   PIANO_FIX.md per SEC-16, da valutare se aggiungerle come voci nuove
   in un secondo momento.
-- [ ] **#41** `PREMIUM_ALPHA_UNLOCK_ALL`: default `False` quando
+- [x] **#41** `PREMIUM_ALPHA_UNLOCK_ALL`: default `False` quando
   `ENVIRONMENT=production`, `True` solo in sviluppo; log WARNING
   all'avvio se è `True`. Aggiorna `.env.example` e il commento.
+  — commit 576f155 (Refs #41, vedi REVIEW.md §"Corrispondenza issue →
+  codici")
 - [ ] **#36 (parte R0)** Log INFO all'avvio con gli intent effettivi di
   ogni bot.
 

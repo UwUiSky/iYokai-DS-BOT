@@ -4813,3 +4813,11 @@ seguire SEC-2..SEC-8+ da PIANO_FIX.md).
   esempio, poi sostituita da un segnaposto — se era una password
   reale ancora in uso, va cambiata (dettagli in PIANO_FIX.md, voce
   SEC-16).
+- #41: `PREMIUM_ALPHA_UNLOCK_ALL` ora ha un default calcolato da
+  `ENVIRONMENT` (stesso principio di `ENABLE_EVAL`/SEC-13): `False`
+  in produzione, `True` altrove, sempre sovrascrivibile in `.env`. Se
+  resta acceso all'avvio (sblocca TUTTE le feature premium per TUTTI
+  i server), `main.py` ora logga un WARNING invece che passare
+  inosservato in mezzo agli INFO. Aggiornati `.env.example` e il suo
+  commento. Suite: 2226/2226 verde, due volte. Commit 576f155 (Refs
+  #41).
