@@ -35,6 +35,9 @@ os.environ.setdefault(
 )
 os.environ.setdefault("ENVIRONMENT", "development")
 
+import asyncio
+
+import aiohttp
 import asyncpg
 import pytest
 import pytest_asyncio
@@ -343,3 +346,91 @@ async def db_singleton_run_migrations_with_pool(pool):
         );
         """
     )
+
+
+# ============================================================================
+# RT-3 — Igiene della suite (PIANO_FIX.md).
+#
+# Modalità SOLO AVVISO: raccoglie, per ogni test, le aiohttp.ClientSession
+# rimaste aperte e le eccezioni di task asyncio mai lette, e le stampa in
+# un riepilogo a fine sessione — senza far fallire nessun test. Quando
+# l'elenco sarà vuoto, questa fixture va resa bloccante (assert invece di
+# solo warning) come richiesto dal piano.
+# ============================================================================
+
+_SESSIONI_NON_CHIUSE_PER_TEST: dict[str, int] = {}
+_ECCEZIONI_TASK_PER_TEST: dict[str, list[str]] = {}
+_ClientSession_init_originale = aiohttp.ClientSession.__init__
+
+
+@pytest.fixture(autouse=True)
+async def _rt3_igiene_risorse(request):
+    """
+    Traccia le ClientSession aperte durante il singolo test e installa
+    un exception handler sul loop del test per catturare le eccezioni
+    di task mai lette (quelle che altrimenti finiscono solo nei log
+    come "Task exception was never retrieved").
+    """
+    sessioni_create: list[aiohttp.ClientSession] = []
+
+    def _init_tracciato(self, *args, **kwargs):
+        _ClientSession_init_originale(self, *args, **kwargs)
+        sessioni_create.append(self)
+
+    aiohttp.ClientSession.__init__ = _init_tracciato
+
+    eccezioni_catturate: list[str] = []
+    loop = asyncio.get_running_loop()
+    handler_originale = loop.get_exception_handler()
+
+    def _handler_tracciato(loop, context):
+        eccezioni_catturate.append(context.get("message", str(context)))
+        if handler_originale is not None:
+            handler_originale(loop, context)
+        else:
+            loop.default_exception_handler(context)
+
+    loop.set_exception_handler(_handler_tracciato)
+
+    try:
+        yield
+    finally:
+        aiohttp.ClientSession.__init__ = _ClientSession_init_originale
+        loop.set_exception_handler(handler_originale)
+
+        non_chiuse = [s for s in sessioni_create if not s.closed]
+        if non_chiuse:
+            _SESSIONI_NON_CHIUSE_PER_TEST[request.node.nodeid] = len(non_chiuse)
+        if eccezioni_catturate:
+            _ECCEZIONI_TASK_PER_TEST[request.node.nodeid] = eccezioni_catturate
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """RT-3: riepilogo a fine sessione, solo avviso (non fa fallire nulla)."""
+    if _SESSIONI_NON_CHIUSE_PER_TEST:
+        terminalreporter.section("RT-3: aiohttp.ClientSession non chiuse")
+        for nodeid, conteggio in sorted(_SESSIONI_NON_CHIUSE_PER_TEST.items()):
+            terminalreporter.write_line(f"  {nodeid}: {conteggio} sessione/i")
+
+    if _ECCEZIONI_TASK_PER_TEST:
+        terminalreporter.section("RT-3: eccezioni di task asyncio mai lette")
+        for nodeid, messaggi in sorted(_ECCEZIONI_TASK_PER_TEST.items()):
+            for messaggio in messaggi:
+                terminalreporter.write_line(f"  {nodeid}: {messaggio}")
+
+
+@pytest.fixture
+def reset_premium_registry():
+    """
+    Fixture riusabile (NON autouse) per i test che devono osservare il
+    PremiumRegistry isolato dalle registrazioni fatte dagli altri cog
+    già importati nel processo di test. Salva lo stato attuale e lo
+    ripristina dopo il test, invece di svuotarlo (svuotarlo romperebbe
+    i test successivi nello stesso processo, che si aspettano i moduli
+    reali già registrati).
+    """
+    from core.premium import registry
+
+    stato_originale = dict(registry._modules)
+    yield registry
+    registry._modules = stato_originale
