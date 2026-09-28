@@ -7,11 +7,41 @@ usate qui — stesso principio già impiegato per Twitch in
 tests/test_twitch_watcher.py.
 """
 
+from datetime import datetime, timezone
+
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 
-from core.restore_orchestrator import RestoreOrchestrator
+from core.restore_orchestrator import ExchangedToken, RestoreOrchestrator
+
+
+class TestExchangedTokenReprNonSvelaISegreti:
+    """SEC-16: access_token/refresh_token non devono comparire in un
+    repr() dell'oggetto — un log di debug con questo oggetto non deve
+    esporre credenziali OAuth altrui."""
+
+    def test_repr_non_contiene_i_token(self):
+        token = ExchangedToken(
+            access_token="access-segreto",
+            refresh_token="refresh-segreto",
+            expires_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+
+        testo = repr(token)
+
+        assert "access-segreto" not in testo
+        assert "refresh-segreto" not in testo
+
+    def test_i_campi_restano_leggibili_per_nome(self):
+        token = ExchangedToken(
+            access_token="access-segreto",
+            refresh_token="refresh-segreto",
+            expires_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+
+        assert token.access_token == "access-segreto"
+        assert token.refresh_token == "refresh-segreto"
 
 
 @pytest.fixture

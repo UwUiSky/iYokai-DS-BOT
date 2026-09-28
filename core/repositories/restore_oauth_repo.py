@@ -21,7 +21,7 @@ esplicitamente con l'utente:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 import asyncpg
@@ -37,8 +37,11 @@ STATUS_BANNED_BLACKLISTED = "banned_blacklisted"
 class RestoreOAuthToken:
     source_guild_id: int
     user_id: int
-    access_token: str
-    refresh_token: str
+    # SEC-16: repr=False — decifrati in memoria dopo la lettura dal
+    # repository, un log di debug con questo oggetto non deve
+    # stamparli in chiaro.
+    access_token: str = field(repr=False)
+    refresh_token: str = field(repr=False)
     expires_at: datetime
     status: str
     granted_at: datetime

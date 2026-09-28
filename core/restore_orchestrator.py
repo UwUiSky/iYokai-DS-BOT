@@ -17,7 +17,7 @@ sviluppo non raggiunge Discord comunque (vedi PROGRESS.md).
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import aiohttp
@@ -32,8 +32,10 @@ REQUEST_TIMEOUT_SECONDS = 15
 
 @dataclass(frozen=True)
 class ExchangedToken:
-    access_token: str
-    refresh_token: str
+    # SEC-16: repr=False — un log di debug con questo oggetto non deve
+    # stampare le credenziali OAuth altrui in chiaro.
+    access_token: str = field(repr=False)
+    refresh_token: str = field(repr=False)
     expires_at: datetime
 
 

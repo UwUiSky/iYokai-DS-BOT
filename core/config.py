@@ -106,17 +106,24 @@ class Config:
     """
 
     # --- Discord: token -------------------------------------------
-    YOKAI_BOT_TOKEN: str
-    YOKAI_CREATOR_TOKEN: str
-    MUSIC_TOKENS: list[str]  # le 5 istanze music, in ordine
-    NSFW_TOKEN: str
+    # SEC-16: repr=False su tutti i campi segreti di questa classe —
+    # un `logger.info(config)` o un `print(config)` di debug lasciato
+    # per sbaglio non deve stampare token/password/chiavi in chiaro
+    # nei log. I valori restano normalmente leggibili accedendo al
+    # campo per nome (config.YOKAI_BOT_TOKEN), cambia solo cosa mostra
+    # repr()/str() dell'intero oggetto.
+    YOKAI_BOT_TOKEN: str = field(repr=False)
+    YOKAI_CREATOR_TOKEN: str = field(repr=False)
+    MUSIC_TOKENS: list[str] = field(repr=False)  # le 5 istanze music, in ordine
+    NSFW_TOKEN: str = field(repr=False)
 
     # --- Discord: ID di controllo -----------------------------------
     OWNER_ID: int
     MAIN_GUILD_ID: int
 
     # --- Database -----------------------------------------------------
-    DATABASE_URL: str
+    # repr=False: la password è dentro l'URL (postgresql://utente:PASSWORD@host/db).
+    DATABASE_URL: str = field(repr=False)
     DB_POOL_MIN: int
     DB_POOL_MAX: int
 
@@ -127,7 +134,7 @@ class Config:
     # --- Lavalink ------------------------------------------------------
     LAVALINK_HOST: str
     LAVALINK_PORT: int
-    LAVALINK_PASSWORD: str
+    LAVALINK_PASSWORD: str = field(repr=False)
     # Nodi pubblici multipli in fallback (SPEC.md §9), invece di
     # self-hostare Lavalink sulla stessa VM del bot (peserebbe
     # centinaia di MB extra — vedi PROGRESS.md, decisione presa con
@@ -135,14 +142,14 @@ class Config:
     # di default — se vuoto, il cog Music usa i tre campi sopra
     # (LAVALINK_HOST/PORT/PASSWORD, comportamento originale invariato
     # per chi preferisce comunque self-hostare un singolo nodo).
-    LAVALINK_NODES: str = field(default="")
+    LAVALINK_NODES: str = field(default="", repr=False)
 
     # Twitch (SPEC.md §10.1/10.2) — opzionali: vuoti finché l'utente
     # non registra un'app su dev.twitch.tv. Il watcher (core/twitch_
     # watcher.py) resta semplicemente inattivo finché non sono
     # compilati, non fa fallire l'avvio del bot.
     TWITCH_CLIENT_ID: str = field(default="")
-    TWITCH_CLIENT_SECRET: str = field(default="")
+    TWITCH_CLIENT_SECRET: str = field(default="", repr=False)
 
     # YouTube Data API (SPEC.md §10.4) — opzionale, stesso principio
     # di TWITCH_CLIENT_ID/SECRET sopra: vuota finché l'utente non crea
@@ -153,7 +160,7 @@ class Config:
     # stato LIVE richiede l'endpoint search.list della Data API, che
     # consuma quota — per questo è un metodo di sblocco separato e
     # opzionale, non abilitato di default.
-    YOUTUBE_API_KEY: str = field(default="")
+    YOUTUBE_API_KEY: str = field(default="", repr=False)
 
     # Pixabay (SPEC.md §16.9, ricerca immagini SFW) — opzionale, vuota
     # finché l'utente non crea una API key gratuita su pixabay.com/
@@ -163,7 +170,7 @@ class Config:
     # proprio filtro SFW lato server (`safesearch=true`, impostato
     # sempre da core/image_search_fetcher.py) — non è compito di
     # questo bot rifiltrare i risultati.
-    PIXABAY_API_KEY: str = field(default="")
+    PIXABAY_API_KEY: str = field(default="", repr=False)
 
     # Radio condivisa del bot principale (SPEC.md §9.11) — cartella
     # locale per gli inediti dell'utente, letta SOLO dal nodo
@@ -195,9 +202,9 @@ class Config:
 
     # --- Web panel (opzionali finché quel modulo non è attivo) -----------
     OAUTH2_CLIENT_ID: str = field(default="")
-    OAUTH2_CLIENT_SECRET: str = field(default="")
+    OAUTH2_CLIENT_SECRET: str = field(default="", repr=False)
     OAUTH2_REDIRECT_URI: str = field(default="")
-    WEB_PANEL_SECRET_KEY: str = field(default="")
+    WEB_PANEL_SECRET_KEY: str = field(default="", repr=False)
 
     # --- Restore utenti via OAuth2 (SPEC.md §11.11) ---------------------
     # Chiave di cifratura (AES-256-GCM) dei token OAuth altrui salvati
@@ -208,7 +215,7 @@ class Config:
     # illeggibili per sempre). Vuota finché il modulo non è configurato
     # — in quel caso il restore via OAuth resta disattivato (nessun
     # crash, il chiamante lo controlla esplicitamente).
-    OAUTH_ENCRYPTION_KEY: str = field(default="")
+    OAUTH_ENCRYPTION_KEY: str = field(default="", repr=False)
     # Porta su cui core/restore_web_server.py ascolta le callback
     # OAuth2 di Discord dopo che un utente autorizza il restore
     # (indirizzo: WEB_BIND_HOST, condiviso con il server webhook sotto).

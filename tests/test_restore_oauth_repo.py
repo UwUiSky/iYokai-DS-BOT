@@ -16,9 +16,33 @@ from core.repositories.restore_oauth_repo import (
     STATUS_BANNED_BLACKLISTED,
     STATUS_KICKED_FLAGGED,
     RestoreOAuthRepository,
+    RestoreOAuthToken,
 )
 
 CHIAVE = generate_key()
+
+
+class TestRestoreOAuthTokenReprNonSvelaISegreti:
+    """SEC-16: access_token/refresh_token (decifrati in memoria dopo
+    la lettura dal repository) non devono comparire in un repr()
+    dell'oggetto."""
+
+    def test_repr_non_contiene_i_token(self):
+        token = RestoreOAuthToken(
+            source_guild_id=100,
+            user_id=1,
+            access_token="access-segreto",
+            refresh_token="refresh-segreto",
+            expires_at=datetime.now(timezone.utc),
+            status=STATUS_ACTIVE,
+            granted_at=datetime.now(timezone.utc),
+            left_at=None,
+        )
+
+        testo = repr(token)
+
+        assert "access-segreto" not in testo
+        assert "refresh-segreto" not in testo
 
 
 @pytest.fixture
