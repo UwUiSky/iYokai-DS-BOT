@@ -23,6 +23,19 @@ def test_iyokaibot_si_istanzia_senza_eccezioni():
     assert bot._last_error_alert_at == {}
 
 
+def test_iyokaibot_ha_allowed_mentions_sicuro_di_default():
+    # SEC-7: nessun testo esterno (titoli RSS, payload webhook,
+    # nome di un server) deve poter pingare @everyone/@here o un
+    # ruolo intero solo perché finisce nel testo di un messaggio.
+    # I ping ai singoli utenti restano permessi (conferme, DM).
+    bot = iYokaiBot()
+    am = bot.allowed_mentions
+    assert am.everyone is False
+    assert am.roles is False
+    assert am.users is True
+    assert am.replied_user is False
+
+
 def test_setup_logging_scrive_davvero_un_file_json_valido():
     # Integrazione reale, non solo unit test del formatter isolato
     # (già in tests/test_json_log_formatter.py): chiama la funzione

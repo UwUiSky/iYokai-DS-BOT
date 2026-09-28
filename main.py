@@ -154,6 +154,17 @@ class iYokaiBot(commands.AutoShardedBot):
             # qui e non assegnata dopo (CommandTree.__init__ solleva
             # se il client ha già un tree associato).
             tree_cls=BlacklistAwareCommandTree,
+            # SEC-7: testo esterno non fidato (titoli RSS/webhook,
+            # nome di un server, un template personalizzato) può
+            # contenere "@everyone" o il testo di un ping di ruolo —
+            # senza questo, il bot lo eseguirebbe davvero. I ping ai
+            # singoli utenti restano permessi (conferme, DM); se in
+            # futuro servirà un ping di ruolo voluto (es. ruolo
+            # supporto ticket), va passato allowed_mentions esplicito
+            # in quella singola send, non qui.
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=False, users=True, replied_user=False
+            ),
         )
 
         # Error handler globale per i comandi slash: gestisce in

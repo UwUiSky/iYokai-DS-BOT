@@ -19,3 +19,13 @@ def test_music_worker_bot_ha_gli_intent_voce():
     worker = MusicWorkerBot(worker_index=1)
 
     assert worker.intents.voice_states is True
+
+
+def test_music_worker_bot_ha_allowed_mentions_sicuro():
+    # SEC-7
+    worker = MusicWorkerBot(worker_index=1)
+    am = worker.allowed_mentions
+    assert am.everyone is False
+    assert am.roles is False
+    assert am.users is True
+    assert am.replied_user is False

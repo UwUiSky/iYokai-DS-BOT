@@ -24,5 +24,14 @@ class MusicWorkerBot(commands.Bot):
         # command_prefix non verrà mai usato davvero (nessun comando
         # testuale, nessuno slash command proprio) — richiesto solo
         # perché commands.Bot lo esige al costruttore.
-        super().__init__(command_prefix=commands.when_mentioned, intents=intents)
+        super().__init__(
+            command_prefix=commands.when_mentioned,
+            intents=intents,
+            # SEC-7: nessun comando proprio, ma il worker può comunque
+            # inviare messaggi (es. "ora in riproduzione") — stesso
+            # allowed_mentions sicuro del bot principale.
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=False, users=True, replied_user=False
+            ),
+        )
         self.worker_index = worker_index

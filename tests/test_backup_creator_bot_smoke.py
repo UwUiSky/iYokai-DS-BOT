@@ -12,3 +12,13 @@ def test_backup_creator_bot_si_istanzia_senza_comandi_propri():
     creator = BackupCreatorBot()
 
     assert list(creator.tree.get_commands()) == []
+
+
+def test_backup_creator_bot_ha_allowed_mentions_sicuro():
+    # SEC-7
+    creator = BackupCreatorBot()
+    am = creator.allowed_mentions
+    assert am.everyone is False
+    assert am.roles is False
+    assert am.users is True
+    assert am.replied_user is False
