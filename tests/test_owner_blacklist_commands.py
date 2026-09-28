@@ -379,11 +379,25 @@ class _FakeResponseForPanel:
         self.edited_embeds.append(embed)
         self.edited_views.append(view)
 
+    async def defer(self, *args, **kwargs) -> None:
+        # SEC-13: /owner eval e /owner shell fanno defer() PRIMA di
+        # eseguire (possono superare i 3 secondi che Discord concede
+        # per rispondere a un'interazione) — non c'è altro da
+        # verificare qui oltre al fatto che non sollevi.
+        pass
+
 
 class _FakeInteractionForPanel:
     def __init__(self, user_id: int) -> None:
         self.user = _FakeUser(user_id)
         self.response = _FakeResponseForPanel()
+
+    async def edit_original_response(self, embed=None, view=None) -> None:
+        # SEC-13: dopo il defer(), l'edit finale passa da qui invece
+        # che da response.edit_message() — stessa traccia (edited_
+        # embeds/edited_views) così i test esistenti restano validi.
+        self.response.edited_embeds.append(embed)
+        self.response.edited_views.append(view)
 
 
 @pytest.mark.asyncio

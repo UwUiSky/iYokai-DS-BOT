@@ -45,6 +45,27 @@ def _is_owner(interaction: discord.Interaction) -> bool:
 
 SHELL_TIMEOUT_SECONDS = 30
 
+# SEC-13/D7: messaggio identico per i tre comandi che ENABLE_EVAL
+# può spegnere (eval, shell, cog-load) — eseguono tutti codice
+# arbitrario sulla macchina che ospita il bot.
+_EVAL_DISABLED_MESSAGE = (
+    "Questo comando è disattivato su questa istanza "
+    "(ENABLE_EVAL=false). Un amministratore del bot può riattivarlo "
+    "nel file .env."
+)
+
+
+async def _reply_if_eval_disabled(interaction: discord.Interaction) -> bool:
+    """
+    True (e già risposto) se ENABLE_EVAL è spento — il chiamante deve
+    fermarsi subito dopo. Va chiamato DOPO _is_owner: un comando
+    disattivato non deve rivelare a un non-owner se lo è o meno.
+    """
+    if config.ENABLE_EVAL:
+        return False
+    await interaction.response.send_message(_EVAL_DISABLED_MESSAGE, ephemeral=True)
+    return True
+
 
 def _build_premium_panel_embed(modules: list[PremiumModule]) -> discord.Embed:
     embed = discord.Embed(
@@ -150,16 +171,26 @@ class _EvalConfirmView(BaseView):
 
     @discord.ui.button(label="Esegui", style=discord.ButtonStyle.danger)
     async def esegui(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        # SEC-13 (bug minore §5): defer PRIMA di eseguire — l'eval può
+        # durare più dei 3 secondi che Discord concede per rispondere
+        # a un'interazione, altrimenti l'output finale non arriva mai
+        # a destinazione (interazione scaduta).
+        await interaction.response.defer()
+
+        # SEC-13 (bug minore §5): la riga di log va scritta PRIMA di
+        # eseguire, non dopo — un hang non lascerebbe altrimenti
+        # nessuna traccia di essere mai stato lanciato.
+        log_id = await eval_shell_log_repo.log_started(interaction.user.id, "eval", self.code)
         output, success = await self.cog._run_eval(self.code, interaction)
         output = truncate_output(output)
-        await eval_shell_log_repo.log(interaction.user.id, "eval", self.code, success)
+        await eval_shell_log_repo.mark_result(log_id, success)
 
         embed = discord.Embed(
             title="✅ Eseguito" if success else "❌ Errore durante l'esecuzione",
             description=f"```py\n{output}\n```",
             color=discord.Color.green() if success else discord.Color.red(),
         )
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.edit_original_response(embed=embed, view=None)
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
     async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -182,16 +213,26 @@ class _ShellConfirmView(BaseView):
 
     @discord.ui.button(label="Esegui", style=discord.ButtonStyle.danger)
     async def esegui(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        # SEC-13 (bug minore §5): defer PRIMA di eseguire — un
+        # comando shell può durare fino a SHELL_TIMEOUT_SECONDS,
+        # molto più dei 3 secondi che Discord concede per rispondere.
+        await interaction.response.defer()
+
+        # SEC-13 (bug minore §5): la riga di log va scritta PRIMA di
+        # eseguire, non dopo.
+        log_id = await eval_shell_log_repo.log_started(
+            interaction.user.id, "shell", self.command
+        )
         output, success = await self.cog._run_shell(self.command)
         output = truncate_output(output)
-        await eval_shell_log_repo.log(interaction.user.id, "shell", self.command, success)
+        await eval_shell_log_repo.mark_result(log_id, success)
 
         embed = discord.Embed(
             title="✅ Eseguito" if success else "❌ Comando terminato con errore",
             description=f"```\n{output}\n```",
             color=discord.Color.green() if success else discord.Color.red(),
         )
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.edit_original_response(embed=embed, view=None)
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
     async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -620,12 +661,12 @@ class OwnerPremiumCog(commands.Cog):
         comando che resta appeso (es. in attesa di input) non deve
         bloccare l'event loop del bot per sempre.
         """
+        processo = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
         try:
-            processo = await asyncio.create_subprocess_shell(
-                command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
             stdout_bytes, _ = await asyncio.wait_for(
                 processo.communicate(), timeout=SHELL_TIMEOUT_SECONDS
             )
@@ -633,7 +674,13 @@ class OwnerPremiumCog(commands.Cog):
             successo = processo.returncode == 0
             return output or "(nessun output)", successo
         except asyncio.TimeoutError:
-            return f"Timeout ({SHELL_TIMEOUT_SECONDS}s) superato.", False
+            # SEC-13 (bug minore §5): senza .kill(), il processo
+            # resta orfano e continua a girare sulla macchina anche
+            # dopo che il comando risponde "timeout" — asyncio.
+            # wait_for() interrompe solo l'ATTESA, non il processo.
+            processo.kill()
+            await processo.wait()
+            return f"Timeout ({SHELL_TIMEOUT_SECONDS}s) superato — processo terminato.", False
         except Exception as exc:
             return f"{type(exc).__name__}: {exc}", False
 
@@ -644,6 +691,8 @@ class OwnerPremiumCog(commands.Cog):
             await interaction.response.send_message(
                 "Comando riservato al proprietario del bot.", ephemeral=True
             )
+            return
+        if await _reply_if_eval_disabled(interaction):
             return
 
         embed = discord.Embed(
@@ -663,6 +712,8 @@ class OwnerPremiumCog(commands.Cog):
             await interaction.response.send_message(
                 "Comando riservato al proprietario del bot.", ephemeral=True
             )
+            return
+        if await _reply_if_eval_disabled(interaction):
             return
 
         embed = discord.Embed(
@@ -1028,6 +1079,8 @@ class OwnerPremiumCog(commands.Cog):
             await interaction.response.send_message(
                 "Comando riservato al proprietario del bot.", ephemeral=True
             )
+            return
+        if await _reply_if_eval_disabled(interaction):
             return
 
         try:

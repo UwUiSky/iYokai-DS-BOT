@@ -230,6 +230,17 @@ class Config:
     # a False in .env per far valere davvero i metodi di sblocco.
     PREMIUM_ALPHA_UNLOCK_ALL: bool = field(default=True)
 
+    # --- Sicurezza (SEC-13, decisione owner D7) ----------------------
+    # /owner eval, /owner shell e /owner cog-load eseguono codice
+    # arbitrario sulla macchina che ospita il bot — chi compromette
+    # l'account Discord dell'owner compromette anche il server.
+    # Spento di default in produzione (default calcolato da
+    # ENVIRONMENT in _load_config, non qui: un default statico non
+    # potrebbe dipendere da un'altra variabile), acceso di default
+    # altrove (comodo in sviluppo/test). L'owner può comunque forzare
+    # il valore con ENABLE_EVAL=true/false in .env.
+    ENABLE_EVAL: bool = field(default=True)
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() == "production"
@@ -253,6 +264,10 @@ def _load_config() -> Config:
         _require(f"MUSIC_TOKEN_{i}") for i in range(1, 6)
     ]
 
+    # Letto PRIMA del resto: ENABLE_EVAL ne calcola il default
+    # (SEC-13/D7 — spento di default solo in produzione).
+    environment = _optional("ENVIRONMENT", "development")
+
     return Config(
         YOKAI_BOT_TOKEN=_require("YOKAI_BOT_TOKEN"),
         YOKAI_CREATOR_TOKEN=_require("YOKAI_CREATOR_TOKEN"),
@@ -263,7 +278,7 @@ def _load_config() -> Config:
         DATABASE_URL=_require("DATABASE_URL"),
         DB_POOL_MIN=_optional_int("DB_POOL_MIN", 5),
         DB_POOL_MAX=_optional_int("DB_POOL_MAX", 10),
-        ENVIRONMENT=_optional("ENVIRONMENT", "development"),
+        ENVIRONMENT=environment,
         LOG_LEVEL=_optional("LOG_LEVEL", "INFO"),
         LAVALINK_HOST=_optional("LAVALINK_HOST", "127.0.0.1"),
         LAVALINK_PORT=_optional_int("LAVALINK_PORT", 2333),
@@ -286,6 +301,7 @@ def _load_config() -> Config:
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
         PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", True),
+        ENABLE_EVAL=_optional_bool("ENABLE_EVAL", environment.lower() != "production"),
     )
 
 
