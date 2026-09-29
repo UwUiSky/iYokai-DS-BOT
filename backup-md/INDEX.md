@@ -1,27 +1,47 @@
 # backup-md — Archivio documentazione
 
-I file `.md` del progetto (tranne `README.md` in root) sono stati spostati qui.
+I `.md` del progetto (tranne `README.md` in root) vanno qui **senza riscrittura** (stesso blob git).
 
-## Stato al momento dello spostamento
+## Già presenti (upload API)
 
-| File | In `backup-md/` |
-|------|-----------------|
-| `CLAUDE.md` | Sì (completo) |
-| Altri (`SPEC`, `PROGRESS`, `REVIEW`, `PIANO_FIX`, …) | Recuperabili dalla **git history** al commit `585d1450` (ultimo stato root completa prima delle delete) |
+- `CLAUDE.md` (blob originale)
+- `CLAUDE_MANDATORY_TEST_RULES.md` (verificare hash se serve byte-identico)
+- questo `INDEX.md`
 
-## Recovery rapida (owner)
+## Completare lo spostamento byte-identico (consigliato)
+
+Da una clone locale della repo:
 
 ```bash
-git checkout 585d1450 -- SPEC.md PROGRESS.md REVIEW.md PIANO_FIX.md BACKLOG.md \
-  COMMAND_LIST.md VERIFICA_LIVE.md HANDOFF_GROK.md CLAUDE_MANDATORY_TEST_RULES.md \
-  ISSUE_CLOSURES_ADVISOR.md
+git fetch origin
+git checkout main
 mkdir -p backup-md
-mv SPEC.md PROGRESS.md REVIEW.md PIANO_FIX.md BACKLOG.md COMMAND_LIST.md \
-  VERIFICA_LIVE.md HANDOFF_GROK.md CLAUDE_MANDATORY_TEST_RULES.md \
-  ISSUE_CLOSURES_ADVISOR.md backup-md/
-git add backup-md && git commit -m "chore: completa backup-md con contenuti da history"
+
+# Estrae i file ESATTI dal commit pre-delete (stessi blob SHA)
+for f in \
+  BACKLOG.md COMMAND_LIST.md HANDOFF_GROK.md ISSUE_CLOSURES_ADVISOR.md \
+  PIANO_FIX.md PROGRESS.md REVIEW.md SPEC.md VERIFICA_LIVE.md \
+  CLAUDE_MANDATORY_TEST_RULES.md
+do
+  git show 585d14509685385d4db1f15ef90a80c920f766f4:"$f" > "backup-md/$f"
+done
+
+# CLAUDE.md è già in backup-md/; se serve sovrascrivere dal blob originale:
+git show 585d14509685385d4db1f15ef90a80c920f766f4:CLAUDE.md > backup-md/CLAUDE.md
+
+git add backup-md
+git status   # solo backup-md/*, nessun rewrite dei contenuti se già identici
+git commit -m "chore: backup-md completo byte-identico da 585d145 (solo spostamento)"
+git push origin main
 ```
 
-Oppure: `git show 585d1450:SPEC.md > backup-md/SPEC.md` (ripeti per ogni file).
+Verifica blob (esempio):
+
+```bash
+git hash-object backup-md/SPEC.md
+# atteso: 29f231fb725c76890355362f76dd8febc14ab4bc
+```
+
+Commit riferimento root completa: `585d14509685385d4db1f15ef90a80c920f766f4`.
 
 — iYokai Advisor Bot
