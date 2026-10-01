@@ -19,6 +19,8 @@ Ordine di avvio, e perché è in questo ordine:
      cog li usano già nel loro setup()
   5. Connessione a Discord — per ultima, perché tutto il resto deve
      essere pronto PRIMA che arrivino eventi dal gateway
+Funzioni coperte: SPEC §9.1, §11.1, REVIEW.md BUG-7 (avvio isolato dei
+bot e spegnimento ordinato, vedi core/bot_supervisor.py).
 """
 
 from __future__ import annotations
@@ -33,6 +35,9 @@ import discord
 from discord.ext import commands
 
 from core.config import config
+from core.bot_supervisor import VoceBot, esegui_bot_isolati, installa_gestori_segnali, spegni_ordinatamente
+from core.image_search_fetcher import image_search_fetcher
+from core.animal_fetcher import animal_fetcher
 from core.database import db
 from core.cog_manager import load_all_cogs
 from core.premium import reload_premium_flags_from_database
@@ -646,23 +651,46 @@ async def main() -> None:
         )
     bot.custom_webhook_server_running = custom_webhook_runner is not None
 
+    async def _avvisa_owner(messaggio: str) -> None:
+        owner = await bot.fetch_user(config.OWNER_ID)
+        await owner.send(messaggio)
+
+    # BUG-7: ogni bot parte in un task isolato. Un token musicale
+    # sbagliato (o il Creator che cade) viene registrato e segnalato
+    # all'owner senza fermare gli altri; se cade il principale il
+    # processo esce con un errore.
+    voci = [
+        VoceBot("iYokai Main", lambda: bot.start(config.YOKAI_BOT_TOKEN), critico=True),
+        VoceBot("iYokai Creator", lambda: creator.start(config.YOKAI_CREATOR_TOKEN)),
+        *[
+            VoceBot(f"Music worker {worker.worker_index}", lambda w=worker, t=token: w.start(t))
+            for worker, token in zip(worker_bots, config.MUSIC_TOKENS)
+        ],
+    ]
+    installa_gestori_segnali(asyncio.current_task())
     try:
-        await asyncio.gather(
-            bot.start(config.YOKAI_BOT_TOKEN),
-            creator.start(config.YOKAI_CREATOR_TOKEN),
-            *[
-                worker.start(token)
-                for worker, token in zip(worker_bots, config.MUSIC_TOKENS)
-            ],
-        )
+        await esegui_bot_isolati(voci, notifica=_avvisa_owner)
+    except asyncio.CancelledError:
+        logger.info("Arresto richiesto (SIGTERM/SIGINT): chiusura ordinata.")
     finally:
-        # Se bot.start() termina (crash o spegnimento pulito),
-        # chiudiamo comunque il pool in modo ordinato.
+        # Ordine: web server, bot (fermano i loop dei cog), sessioni
+        # HTTP condivise, database.
         if restore_web_runner is not None:
             await restore_web_runner.cleanup()
         if custom_webhook_runner is not None:
             await custom_webhook_runner.cleanup()
-        await db.close()
+        await spegni_ordinatamente(
+            [bot, creator, *worker_bots],
+            [
+                image_search_fetcher.close,
+                animal_fetcher.close,
+                youtube_watcher.close,
+                twitch_watcher.close,
+                feed_watcher.close,
+                restore_orchestrator.close,
+            ],
+            db.close,
+        )
         logger.info("Database disconnesso. Arresto completato.")
 
 
