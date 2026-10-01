@@ -19,7 +19,9 @@ Fase 2 (finalize_backup_job): chiamata dal listener on_guild_join di
 iYokai Main, quando Main entra in un server che risulta essere il
 backup atteso di un job in corso — trasferisce la proprietà a Main
 e fa uscire Creator, così resta sotto il limite di 10 server e può
-crearne un altro quando servirà.
+crearne un altro quando servirà; registra anche la coppia main →
+backup (backup_pairs, BUG-3).
+Funzioni coperte: SPEC §11.1, §11.12, REVIEW.md BUG-3 (issue #26).
 """
 
 from __future__ import annotations
@@ -102,5 +104,9 @@ async def finalize_backup_job(
         )
         await server_lato_creator.leave()
 
+    # BUG-3: registra la coppia main -> backup. Senza, /promuovi-backup
+    # dice sempre "non registrato" e lo snapshot settimanale degli
+    # utenti non parte mai (nessuna coppia da cui partire).
+    await backup_repo.define_backup(job.main_guild_id, joined_guild.id)
     await backup_repo.mark_completed(job.id, backup_guild_id=joined_guild.id)
     return True

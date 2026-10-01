@@ -22,7 +22,6 @@ KNOWN_UNCALLED = frozenset(
     {
         "automod_advanced_repo.AutomodAdvancedRepository.get_recent_actions",
         "backup_mirror_repo.BackupMirrorRepository.delete_for_main_guild",
-        "backup_repo.BackupRepository.define_backup",
         "backup_repo.BackupRepository.get_job",
         "backup_user_snapshot_repo.BackupUserSnapshotRepository.get_snapshot_count",
         "backup_user_snapshot_repo.BackupUserSnapshotRepository.delete_for_main_guild",

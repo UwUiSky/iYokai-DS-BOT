@@ -150,6 +150,40 @@ async def test_finalize_backup_job_trasferisce_proprieta_e_fa_uscire_creator(mon
 
 
 @pytest.mark.asyncio
+async def test_finalize_backup_job_registra_la_coppia_main_backup():
+    """
+    BUG-3: la coppia main -> backup deve nascere dal codice di produzione
+    (finalize_backup_job), non dal test. Senza, /promuovi-backup dice
+    sempre "non registrato" e lo snapshot degli utenti non parte mai.
+    Il test NON chiama define_backup da solo.
+    """
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = 100")
+        repo = BackupRepository(pool_provider=lambda: database.pool)
+
+        job_id = await repo.enqueue_job(main_guild_id=100)
+        await repo.mark_running(job_id)
+        await repo.set_backup_guild_id(job_id, backup_guild_id=555)
+
+        creator = _FakeCreatorClient(_FakeCreatedGuild(0, ""))
+        creator._guilds_disponibili[555] = _FakeCreatorSideGuild(guild_id=555)
+
+        await finalize_backup_job(_FakeJoinedGuild(guild_id=555), creator, repo)
+
+        coppia = await repo.get_pair(100)
+        assert coppia is not None
+        assert coppia.backup_guild_id == 555
+        assert (await repo.get_pair_by_backup_guild_id(555)).main_guild_id == 100
+    finally:
+        await database.pool.execute("DELETE FROM backup_jobs")
+        await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = 100")
+        await database.close()
+
+
+@pytest.mark.asyncio
 async def test_finalize_backup_job_ignora_un_guild_non_atteso():
     database = Database()
     await database.connect()
