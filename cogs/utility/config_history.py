@@ -79,7 +79,7 @@ class RollbackConfirmView(BaseView):
             )
         else:
             await interaction.response.edit_message(
-                content="❌ Questa voce di storico non esiste più.", view=self
+                content="❌ Questa voce di storico non esiste più o non si può ripristinare.", view=self
             )
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)

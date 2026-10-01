@@ -339,30 +339,73 @@ class Database:
     async def rollback_config_change(self, entry_id: int, rolled_back_by: int | None) -> bool:
         """
         Ripristina old_value di una voce di storico. Restituisce
-        False se la voce non esiste (nulla da ripristinare). Il
-        rollback stesso viene registrato come una NUOVA voce di
-        storico (tramite set_module_active_for_guild/
-        set_guild_setting, non scritto direttamente qui) — un
-        rollback lascia traccia di sé, non sparisce silenziosamente
-        dalla cronologia.
+        False se la voce non esiste o NON si può ripristinare (BUG-6:
+        mai un successo finto). Il rollback stesso viene registrato
+        come una NUOVA voce di storico, scritta dagli stessi metodi
+        usati dai comandi — un rollback lascia traccia di sé.
+
+        - module: torna al valore precedente (mai impostato = False);
+        - setting "language": cambia la colonna `language`;
+        - setting normale: se prima non esisteva la chiave viene
+          RIMOSSA (non messa a null);
+        - reset/import: old_value è la configurazione intera
+          (modules, settings, language) e viene ripristinata intera.
         """
         entry = await self.get_config_history_entry(entry_id)
         if entry is None:
             return False
 
         if entry.change_type == "module":
-            # old_value per un modulo è sempre bool o None (mai stato
-            # attivato prima = tratta come False, non c'è un "modulo
-            # in stato indefinito" sensato da ripristinare).
             valore_da_ripristinare = bool(entry.old_value)
             await self.set_module_active_for_guild(
                 entry.guild_id, entry.key_name, valore_da_ripristinare, changed_by=rolled_back_by
             )
-        else:
-            await self.set_guild_setting(
-                entry.guild_id, entry.key_name, entry.old_value, changed_by=rolled_back_by
+        elif entry.change_type == "setting":
+            if entry.key_name == "language":
+                if not isinstance(entry.old_value, str):
+                    return False
+                await self.set_guild_language(
+                    entry.guild_id, entry.old_value, changed_by=rolled_back_by
+                )
+            elif entry.old_value is None:
+                await self._remove_guild_setting(entry.guild_id, entry.key_name, rolled_back_by)
+            else:
+                await self.set_guild_setting(
+                    entry.guild_id, entry.key_name, entry.old_value, changed_by=rolled_back_by
+                )
+        elif entry.change_type in ("reset", "import"):
+            old = entry.old_value
+            if not (
+                isinstance(old, dict)
+                and isinstance(old.get("modules"), dict)
+                and isinstance(old.get("settings"), dict)
+                and isinstance(old.get("language"), str)
+            ):
+                return False
+            await self.import_full_config(
+                entry.guild_id, old["modules"], old["settings"], old["language"],
+                changed_by=rolled_back_by,
             )
+        else:
+            return False
         return True
+
+    async def _remove_guild_setting(
+        self, guild_id: int, key: str, changed_by: int | None
+    ) -> None:
+        """Toglie una chiave da settings (usata dal rollback di una chiave nuova)."""
+        old_row = await self.pool.fetchrow(
+            "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
+            guild_id,
+            key,
+        )
+        old_value = json.loads(old_row["value"]) if old_row and old_row["value"] is not None else None
+        await self.pool.execute(
+            "UPDATE guild_config SET settings = settings - $2::text, updated_at = now() WHERE guild_id = $1",
+            guild_id,
+            key,
+        )
+        await self._record_config_change(guild_id, changed_by, "setting", key, old_value, None)
 
     # ================================================================
     # Export / Import / Reset configurazione (SPEC.md §2.1/§2.5/§2.6)
