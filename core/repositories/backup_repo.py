@@ -1,16 +1,10 @@
 """
 core/repositories/backup_repo.py
-====================================
-Persistenza dell'orchestrazione Backup System (SPEC.md §11.1, §11.2,
-§11.12). Due tabelle:
-- `backup_pairs`: quale server è il "main" e quale il suo "backup"
-  designato (/define-main, /define-backup) — una riga per server
-  principale, dato che un server ha un solo backup alla volta.
-- `backup_jobs`: la coda SERIALIZZATA (un job alla volta, in ordine
-  di arrivo) dei processi di clonazione da eseguire — con timeout
-  24h, come richiesto esplicitamente dallo schema: un job rimasto
-  bloccato più di un giorno (crash del bot a metà, un errore mai
-  gestito) non deve restare "in corso" per sempre, bloccando la coda.
+================================
+Persistenza del Backup System: coppie main/backup (`backup_pairs`, una
+riga per server main) e coda serializzata dei job di clonazione
+(`backup_jobs`, timeout 24 ore).
+Funzioni coperte: SPEC §11.1, §11.2, §11.12
 """
 
 from __future__ import annotations
@@ -203,6 +197,16 @@ class BackupRepository:
             STATUS_PENDING,
         )
         return row["id"]
+
+    async def has_active_job(self, main_guild_id: int) -> bool:
+        """True se il server ha già un job in attesa o in corso."""
+        riga = await self._pool.fetchval(
+            "SELECT 1 FROM backup_jobs WHERE main_guild_id = $1 AND status IN ($2, $3) LIMIT 1",
+            main_guild_id,
+            STATUS_PENDING,
+            STATUS_RUNNING,
+        )
+        return riga is not None
 
     async def list_stale_jobs(self) -> list[BackupJob]:
         """

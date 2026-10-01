@@ -1,11 +1,9 @@
 """
 cogs/utility/backup.py
-=========================
-Comandi di orchestrazione Backup System (SPEC.md §11.12) — /define-
-main, /define-backup e /promuovi-backup, con i nomi esatti richiesti
-dallo schema (non raggruppati sotto un prefisso comune).
-/restore-users vive in cogs/utility/restore.py (§11.11/§11.12,
-OAuth2 guilds.join) — separato per tenere questo file leggibile.
+======================
+Comandi /define-main, /define-backup e /promuovi-backup del Backup System.
+/restore-users è in cogs/utility/restore.py.
+Funzioni coperte: SPEC §11.12, §11.13
 """
 
 from __future__ import annotations
@@ -57,6 +55,14 @@ class BackupCog(commands.Cog):
         if coppia is None:
             await interaction.response.send_message(
                 "Devi prima registrare questo server con /define-main.", ephemeral=True
+            )
+            return
+
+        if await backup_repo.has_active_job(guild.id):
+            await interaction.response.send_message(
+                "⏳ C'è già un backup in coda o in corso per questo server: "
+                "attendi che finisca prima di accodarne un altro.",
+                ephemeral=True,
             )
             return
 

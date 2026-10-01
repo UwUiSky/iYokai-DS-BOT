@@ -109,6 +109,40 @@ async def test_define_backup_dopo_define_main_accoda_un_job(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_define_backup_rifiuta_un_secondo_job_se_ce_n_e_gia_uno_attivo(monkeypatch):
+    """BUG-4 / REVIEW: un admin non deve poter occupare tutti gli slot del Creator."""
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        import cogs.utility.backup as backup_module
+        from core.repositories.backup_repo import BackupRepository
+
+        repo = BackupRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(backup_module, "backup_repo", repo)
+
+        cog = BackupCog(bot=None)
+        await cog.define_main.callback(cog, _FakeInteraction(guild_id=100))
+
+        prima = _FakeInteraction(guild_id=100)
+        await cog.define_backup.callback(cog, prima)
+        assert "Backup accodato" in prima.response.sent_messages[0]
+
+        seconda = _FakeInteraction(guild_id=100)
+        await cog.define_backup.callback(cog, seconda)
+        assert "già" in seconda.response.sent_messages[0]
+
+        totale = await database.pool.fetchval(
+            "SELECT count(*) FROM backup_jobs WHERE main_guild_id = 100"
+        )
+        assert totale == 1
+    finally:
+        await database.pool.execute("DELETE FROM backup_pairs")
+        await database.pool.execute("DELETE FROM backup_jobs")
+        await database.close()
+
+
+@pytest.mark.asyncio
 async def test_define_main_fuori_da_un_server_rifiuta():
     cog = BackupCog(bot=None)
     interaction = _FakeInteraction(guild_id=None)
