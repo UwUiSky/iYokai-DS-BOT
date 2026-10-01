@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
-from core.backup_orchestrator import start_backup_job
+from core.backup_orchestrator import elimina_server_creato, pulisci_server_orfani, start_backup_job
 from core.backup_reminder_logic import (
     MAX_CREATOR_GUILDS,
     format_slot_wait_message,
@@ -123,15 +123,27 @@ class BackupQueueWorker:
             await self._manda_dm(main_guild, embed, contesto="il promemoria di scadenza")
             await backup_repo.mark_reminder_sent(job.id)
 
+    async def _libera_server_scaduti(self, creator_client: discord.Client) -> None:
+        """
+        BUG-4: un job scaduto lascia un server creato dal Creator che
+        occupa uno slot (max 10). Prima di segnarli scaduti, il
+        Creator cancella i server di quei job.
+        """
+        stale = await backup_repo.list_stale_jobs()
+        scaduti = await backup_repo.expire_stale_jobs()
+        for job in stale:
+            if job.backup_guild_id is not None:
+                await elimina_server_creato(creator_client, job.backup_guild_id)
+        if scaduti:
+            logger.info("%d job di backup scaduti (oltre 24h bloccati).", scaduti)
+
     async def tick(
         self,
         creator_client: discord.Client,
         main_bot: commands.Bot,
         main_permissions: discord.Permissions,
     ) -> None:
-        scaduti = await backup_repo.expire_stale_jobs()
-        if scaduti:
-            logger.info("%d job di backup scaduti (oltre 24h bloccati).", scaduti)
+        await self._libera_server_scaduti(creator_client)
 
         await self._controlla_promemoria_scadenza(main_bot)
 
@@ -175,15 +187,21 @@ class BackupQueueWorker:
             await backup_repo.mark_failed(job.id, str(exc))
             return
 
-        await backup_repo.set_backup_guild_id(job.id, nuovo_server.id)
-        # Mirror in tempo reale (SPEC.md §11.9): sostituisce la mappa
-        # precedente per questo main (il vecchio backup, se esisteva,
-        # non è più valido) con quella appena creata.
-        await backup_mirror_repo.save_mapping(
-            main_guild_id=job.main_guild_id,
-            backup_guild_id=nuovo_server.id,
-            channel_webhook_map=mappa_webhook_mirror,
-        )
+        try:
+            await backup_repo.set_backup_guild_id(job.id, nuovo_server.id)
+            # Mirror in tempo reale (SPEC.md §11.9): sostituisce la mappa
+            # precedente per questo main (il vecchio backup, se esisteva,
+            # non è più valido) con quella appena creata.
+            await backup_mirror_repo.save_mapping(
+                main_guild_id=job.main_guild_id,
+                backup_guild_id=nuovo_server.id,
+                channel_webhook_map=mappa_webhook_mirror,
+            )
+        except Exception as exc:
+            logger.exception("Job di backup #%s fallito dopo la creazione del server.", job.id)
+            await elimina_server_creato(creator_client, nuovo_server.id)
+            await backup_repo.mark_failed(job.id, str(exc))
+            return
         await self._notifica_amministratore(main_guild, url_invito)
 
     def start(
@@ -206,6 +224,11 @@ class BackupQueueWorker:
         async def _before():
             await main_bot.wait_until_ready()
             await creator_client.wait_until_ready()
+            # BUG-4: pulizia dei server orfani rimasti da un crash.
+            try:
+                await pulisci_server_orfani(creator_client, backup_repo)
+            except Exception:
+                logger.exception("Pulizia dei server orfani del Creator fallita.")
 
         self._loop_task = _loop
         _loop.start()

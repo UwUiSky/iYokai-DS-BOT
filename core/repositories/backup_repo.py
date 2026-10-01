@@ -204,6 +204,24 @@ class BackupRepository:
         )
         return row["id"]
 
+    async def list_stale_jobs(self) -> list[BackupJob]:
+        """
+        I job pending/running che expire_stale_jobs() sta per scadere —
+        serve a chi deve ripulire il server creato PRIMA di segnarli
+        scaduti (BUG-4).
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM backup_jobs
+            WHERE status IN ($1, $2)
+              AND created_at < now() - ($3 || ' hours')::interval
+            """,
+            STATUS_PENDING,
+            STATUS_RUNNING,
+            str(TIMEOUT_HOURS),
+        )
+        return [self._row_to_job(r) for r in rows]
+
     async def expire_stale_jobs(self) -> int:
         """
         Marca come 'timed_out' ogni job ancora pending/running più

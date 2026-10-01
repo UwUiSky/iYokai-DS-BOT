@@ -26,6 +26,9 @@ Funzioni coperte: SPEC §11.1, §11.12, REVIEW.md BUG-3 (issue #26).
 
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta, timezone
+
 import discord
 
 from core.backup_clone_logic import (
@@ -38,6 +41,51 @@ from core.backup_clone_logic import (
     create_mirror_webhooks,
 )
 from core.repositories.backup_repo import STATUS_RUNNING, BackupRepository
+
+logger = logging.getLogger("iyokai.backup_orchestrator")
+
+# Un server del Creator senza job in corso più vecchio di così è un resto.
+ETA_MINIMA_SERVER_ORFANO = timedelta(hours=1)
+
+
+async def elimina_server_creato(creator_client: discord.Client, guild_id: int) -> None:
+    """
+    BUG-4: libera lo slot del Creator (max 10 server). Se ne è ancora
+    proprietario lo cancella; se la proprietà è già passata a Main
+    può solo uscire. Un errore di Discord non solleva: è una pulizia.
+    """
+    guild = creator_client.get_guild(guild_id)
+    if guild is None:
+        return
+    try:
+        if guild.owner_id == creator_client.user.id:
+            await guild.delete()
+        else:
+            await guild.leave()
+    except discord.HTTPException:
+        logger.warning("Impossibile liberare il server %s del Creator.", guild_id)
+
+
+async def pulisci_server_orfani(
+    creator_client: discord.Client, backup_repo: BackupRepository
+) -> None:
+    """
+    BUG-4, all'avvio: i server del Creator non legati a un job in corso
+    né a una coppia attiva e più vecchi di un'ora (resti di un crash)
+    vengono cancellati, altrimenti occuperebbero gli slot per sempre.
+    """
+    in_corso = {
+        job.backup_guild_id
+        for job in await backup_repo.get_running_jobs()
+        if job.backup_guild_id is not None
+    }
+    limite = datetime.now(timezone.utc) - ETA_MINIMA_SERVER_ORFANO
+    for guild in list(creator_client.guilds):
+        if guild.id in in_corso or guild.created_at > limite:
+            continue
+        if await backup_repo.get_pair_by_backup_guild_id(guild.id) is not None:
+            continue
+        await elimina_server_creato(creator_client, guild.id)
 
 
 async def start_backup_job(
@@ -57,13 +105,22 @@ async def start_backup_job(
     """
     nuovo_server = await creator_client.create_guild(name=f"Backup di {main_guild.name}")
 
-    mappa_ruoli = await clone_roles(main_guild, nuovo_server)
-    mappa_canali = await clone_categories_and_channels(main_guild, nuovo_server, mappa_ruoli)
-    await clone_emoji(main_guild, nuovo_server)
-    await clone_stickers(main_guild, nuovo_server)
-    await clone_soundboard(main_guild, nuovo_server)
-    await clone_webhooks(main_guild, nuovo_server, mappa_canali)
-    mappa_webhook_mirror = await create_mirror_webhooks(nuovo_server, mappa_canali)
+    try:
+        mappa_ruoli = await clone_roles(main_guild, nuovo_server)
+        mappa_canali = await clone_categories_and_channels(main_guild, nuovo_server, mappa_ruoli)
+        await clone_emoji(main_guild, nuovo_server)
+        await clone_stickers(main_guild, nuovo_server)
+        await clone_soundboard(main_guild, nuovo_server)
+        await clone_webhooks(main_guild, nuovo_server, mappa_canali)
+        mappa_webhook_mirror = await create_mirror_webhooks(nuovo_server, mappa_canali)
+    except Exception:
+        # BUG-4: il server a metà non serve a nessuno e occuperebbe uno
+        # slot del Creator per sempre. Il Creator ne è proprietario.
+        try:
+            await nuovo_server.delete()
+        except discord.HTTPException:
+            logger.warning("Impossibile cancellare il server %s a metà.", nuovo_server.id)
+        raise
 
     url_invito = discord.utils.oauth_url(
         main_client_id,

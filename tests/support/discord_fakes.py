@@ -23,7 +23,7 @@ AsyncMock con la firma vera — basta leggere `.call_args` o impostare
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import discord
 
@@ -141,6 +141,9 @@ def fake_guild(
     server.name = name
     server.owner_id = owner_id
     server.me = me if me is not None else fake_member(user_id=999, name="Yokai Bot", bot=True)
+    # Guild.delete è decorato con @utils.deprecated: l'autospec non lo vede
+    # come coroutine, quindi lo dichiariamo a mano.
+    server.delete = AsyncMock()
     server.roles = []
     server.members = []
     server.get_role = MagicMock(return_value=None)
