@@ -37,6 +37,32 @@ from core.ui_base import BaseView
 SUPPORTED_LANGUAGES = ("it", "en")
 
 
+# Un export reale pesa pochi KB: oltre questo limite il file non è nostro.
+MAX_IMPORT_BYTES = 256 * 1024
+
+
+def errore_schema_import(dati) -> str | None:
+    """
+    Controlla lo schema di un file per /config import PRIMA di scrivere.
+    Restituisce il motivo del rifiuto in italiano, oppure None se valido.
+    """
+    if not isinstance(dati, dict) or not {"modules", "settings", "language"} <= dati.keys():
+        return "Il file non ha il formato atteso (mancano modules/settings/language)."
+    modules, settings, language = dati["modules"], dati["settings"], dati["language"]
+    if not isinstance(modules, dict) or not all(
+        isinstance(nome, str) and nome and isinstance(attivo, bool)
+        for nome, attivo in modules.items()
+    ):
+        return "`modules` deve essere un elenco nome → true/false."
+    if not isinstance(settings, dict) or not all(
+        isinstance(chiave, str) and chiave for chiave in settings
+    ):
+        return "`settings` deve essere un elenco chiave → valore."
+    if language not in SUPPORTED_LANGUAGES:
+        return f"Lingua non supportata. Ammesse: {', '.join(SUPPORTED_LANGUAGES)}."
+    return None
+
+
 def _format_value(value) -> str:
     if value is None:
         return "*(mai impostato)*"
@@ -285,6 +311,13 @@ class ConfigHistoryCog(commands.Cog):
             )
             return
 
+        if file.size > MAX_IMPORT_BYTES:
+            await interaction.response.send_message(
+                "Il file è troppo grande per essere una configurazione esportata.",
+                ephemeral=True,
+            )
+            return
+
         try:
             grezzo = await file.read()
             dati = json.loads(grezzo.decode("utf-8"))
@@ -295,11 +328,9 @@ class ConfigHistoryCog(commands.Cog):
             )
             return
 
-        if not isinstance(dati, dict) or not {"modules", "settings", "language"} <= dati.keys():
-            await interaction.response.send_message(
-                "Il file non ha il formato atteso (mancano modules/settings/language).",
-                ephemeral=True,
-            )
+        errore = errore_schema_import(dati)
+        if errore is not None:
+            await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return
 
         await db.import_full_config(
