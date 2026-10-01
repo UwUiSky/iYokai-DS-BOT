@@ -433,7 +433,7 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   12 test in `tests/test_config_import_validation.py` — commit 80322ff
 
 **Avvio, scheduler e processi**
-- [ ] **BUG-7 (#12, #28)** `main.py`:
+- [x] **BUG-7 (#12, #28)** `main.py`:
   - ogni bot parte in un proprio task con una funzione "supervisore"
     che registra l'errore; se cade un worker musicale o il Creator, gli
     altri restano su (log ERROR e, per il principale, DM all'owner);
@@ -443,6 +443,8 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
     del database, in quest'ordine.
   Test: con un finto bot che fallisce all'avvio, gli altri restano
   attivi; lo spegnimento chiude tutte le sessioni (fixture di RT-3).
+  Fatto in `core/bot_supervisor.py` + `main.py`, 5 test in
+  `tests/test_bot_supervisor.py` — commit 8a218d1 (Refs #12, #28)
 - [ ] **BUG-8 (#13)** `core/scheduler.py`: `try/except` intorno a ogni
   giro e intorno a ogni azione; un'azione senza handler viene segnata
   `failed` con il motivo e non blocca la coda.

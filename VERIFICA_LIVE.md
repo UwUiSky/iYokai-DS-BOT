@@ -314,3 +314,8 @@ chiudere.
   1. Esporta con `/config export`, importa lo stesso file: deve riuscire.
   2. Modifica il file a mano (es. `"tickets": "si"` o `"language": "xx"`) e importalo: deve rispondere con un ❌ chiaro e non cambiare nulla (controlla con `/config export`).
   Risultato atteso: nessun dato sbagliato viene scritto.
+- [ ] BUG-7/#12/#28 — commit 8a218d1 — passi:
+  1. Metti un token musicale sbagliato in `.env` (es. `MUSIC_TOKEN_3`) e avvia il bot: nei log deve comparire un ERROR per 'Music worker 3', il bot principale e gli altri devono restare online e l'owner deve ricevere un DM.
+  2. Con tutti i token giusti, ferma il bot con Ctrl+C (o `kill -TERM`): nei log deve comparire "Arresto richiesto", poi "Database disconnesso. Arresto completato." senza warning di sessioni aiohttp non chiuse.
+  3. Metti un token sbagliato per il bot principale: il processo deve uscire con errore (codice diverso da 0).
+  Risultato atteso: un bot secondario non ne spegne altri; lo spegnimento è pulito. Solo l'avvio con i token veri lo conferma.
