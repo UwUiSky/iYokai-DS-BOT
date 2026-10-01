@@ -333,3 +333,8 @@ chiudere.
   1. Avvia il bot con almeno due server e lascialo girare un giro dei worker (retention, soundboard, XP vocale): nei log non devono comparire errori inattesi.
   2. Se compare un errore "…: errore su <id>, passo al successivo", verifica che gli altri server abbiano comunque completato il giro (es. XP vocale accreditata).
   Risultato atteso: nessun server blocca gli altri; la prova vera richiede server reali.
+- [ ] BUG-3/#26 — commit 3547e4c — passi:
+  1. Lancia un backup completo (`/backup`), autorizza iYokai Main nel server creato e attendi la fine del job.
+  2. `SELECT * FROM backup_pairs;`: deve esserci la riga con `main_guild_id` = il tuo server e `backup_guild_id` = il nuovo server.
+  3. Nel server backup, `/promuovi-backup` non deve più rispondere "non registrato"; dopo una settimana (o forzando il worker) lo snapshot utenti deve partire.
+  Risultato atteso: la coppia viene registrata a fine backup. Solo un backup vero su Discord lo conferma.

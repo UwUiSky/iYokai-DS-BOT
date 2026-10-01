@@ -461,12 +461,14 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   `tests/test_for_each_guild_safely.py` — commit 45d2a78
 
 **Backup e restore**
-- [ ] **BUG-3 (#26)** Nel punto dove il backup è completato (worker
+- [x] **BUG-3 (#26)** Nel punto dove il backup è completato (worker
   della coda), chiama `backup_repo.define_backup(...)` con il vero
   `backup_guild_id`. Togli `define_backup` da `KNOWN_UNCALLED`. Correggi
   il test esistente del backup che inserisce **da solo** la coppia (è
   quello che nascondeva il bug): la coppia deve nascere dal codice di
   produzione.
+  Fatto in `finalize_backup_job` (`core/backup_orchestrator.py`), test
+  in `tests/test_backup_orchestrator.py` — commit 3547e4c (Refs #26)
 - [ ] **BUG-4 (#21)** Se un job fallisce o scade, il Creator cancella il
   server che ha creato (è il proprietario, può farlo). All'avvio, una
   pulizia: server del Creator non legati a nessuna coppia attiva e più
