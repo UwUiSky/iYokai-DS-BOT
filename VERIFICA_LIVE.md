@@ -324,3 +324,8 @@ chiudere.
   2. Sul database di produzione: `SELECT id, action_type, failed_reason FROM scheduled_actions WHERE failed_reason IS NOT NULL;` — eventuali righe sono azioni di tipo non più registrato, da esaminare.
   3. Crea un promemoria con `/remind` a 1 minuto e verifica che arrivi (lo scheduler gira ancora dopo il nuovo codice).
   Risultato atteso: lo scheduler continua a girare e non rilegge azioni orfane ad ogni giro.
+- [ ] BUG-9 — commit 376ff6b — passi:
+  1. Avvia il bot, fai partire `/play` in un canale vocale, poi riavvia il processo senza fermare la musica.
+  2. Dopo il riavvio lancia di nuovo `/play` nello stesso server: deve partire e non rispondere che i bot musicali sono occupati.
+  3. Controlla con `SELECT * FROM music_sessions;` che dopo l'avvio sia vuota.
+  Risultato atteso: nessun worker resta bloccato dopo un riavvio.

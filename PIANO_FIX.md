@@ -450,8 +450,9 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   `failed` con il motivo e non blocca la coda.
   Fatto (`_giro`, colonna `failed_reason`, migrazione `0002`), 3 test in
   `tests/test_scheduler.py` — commit 9683b36 (Refs #13)
-- [ ] **BUG-9** All'avvio svuota `music_sessions` (i worker ripartono da
+- [x] **BUG-9** All'avvio svuota `music_sessions` (i worker ripartono da
   zero). Test: righe vecchie spariscono al setup.
+  Fatto (`MusicSessionRepository.clear_all()` chiamato da `main()`) — commit 376ff6b
 - [ ] **LC-8** Worker periodici: `try/except` **per server** dentro il
   giro (retention log, soundboard, XP vocale clan, decay), così un
   server problematico non blocca gli altri. Stesso schema per tutti:
