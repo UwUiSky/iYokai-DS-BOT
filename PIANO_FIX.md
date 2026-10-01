@@ -469,11 +469,14 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   produzione.
   Fatto in `finalize_backup_job` (`core/backup_orchestrator.py`), test
   in `tests/test_backup_orchestrator.py` — commit 3547e4c (Refs #26)
-- [ ] **BUG-4 (#21)** Se un job fallisce o scade, il Creator cancella il
+- [x] **BUG-4 (#21)** Se un job fallisce o scade, il Creator cancella il
   server che ha creato (è il proprietario, può farlo). All'avvio, una
   pulizia: server del Creator non legati a nessuna coppia attiva e più
   vecchi di un'ora vengono cancellati. Correggi il messaggio "gli slot
   si liberano da soli" finché non è vero.
+  Fatto in `core/backup_orchestrator.py`, `core/backup_queue_worker.py`,
+  `core/repositories/backup_repo.py`; test in
+  `tests/test_backup_creator_cleanup.py` — commit b6eeb81 (Refs #21)
 - [ ] `/define-backup`: al massimo una coppia attiva per server (§4).
 - [ ] Snapshot settimanale: aspetta `wait_until_ready()` (§4).
 - [ ] §12 11.5–11.7: prima di clonare emoji, sticker e suoni, controlla

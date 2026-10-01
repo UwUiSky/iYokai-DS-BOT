@@ -338,3 +338,9 @@ chiudere.
   2. `SELECT * FROM backup_pairs;`: deve esserci la riga con `main_guild_id` = il tuo server e `backup_guild_id` = il nuovo server.
   3. Nel server backup, `/promuovi-backup` non deve più rispondere "non registrato"; dopo una settimana (o forzando il worker) lo snapshot utenti deve partire.
   Risultato atteso: la coppia viene registrata a fine backup. Solo un backup vero su Discord lo conferma.
+
+- [ ] BUG-4/#21 — commit b6eeb81 — passi:
+  1. Fai fallire un backup (es. rimuovi iYokai Main prima della clonazione) oppure lascia scadere un job.
+  2. Controlla in Discord che il server creato da iYokai Creator sia sparito e che gli slot (max 10) siano tornati liberi.
+  3. Riavvia il bot: eventuali server del Creator più vecchi di un'ora e non legati a una coppia devono essere cancellati.
+  Risultato atteso: nessun server orfano resta nel Creator. Solo Discord reale lo conferma.
