@@ -481,9 +481,10 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   Fatto con `has_active_job` — commit 93f7049
 - [x] Snapshot settimanale: aspetta `wait_until_ready()` (§4).
   Fatto in `core/backup_snapshot_worker.py` — commit 1098bb2
-- [ ] §12 11.5–11.7: prima di clonare emoji, sticker e suoni, controlla
+- [x] §12 11.5–11.7: prima di clonare emoji, sticker e suoni, controlla
   i limiti del server di destinazione e salta quello che non ci sta,
   invece di far fallire tutto il backup.
+  Fatto in `core/backup_clone_logic.py` (salta e conta, niente coda: i limiti non cambiano aspettando) — commit e502c1f
 - [ ] §12 11.3: imposta le posizioni dei ruoli clonati. **DA VERIFICARE
   LIVE** (aggiungi a `VERIFICA_LIVE.md`).
 

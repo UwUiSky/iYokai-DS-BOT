@@ -349,3 +349,8 @@ chiudere.
   1. Con un backup attivo, riavvia il bot e controlla nel log "Snapshot settimanale completato" con un numero di utenti > 0.
   2. `SELECT count(*) FROM backup_user_snapshots;` per il tuo server.
   Risultato atteso: lo snapshot del primo giro contiene i membri reali.
+
+- [ ] §12 11.5–11.7 limiti emoji/sticker/suoni — commit e502c1f — passi:
+  1. Fai un backup di un server con più di 50 emoji (o più di 5 sticker / 8 suoni).
+  2. Il backup deve completarsi; nel log compare "saltati N emoji, N sticker, N suoni".
+  Risultato atteso: il backup non fallisce per i limiti. Solo Discord reale lo conferma.
