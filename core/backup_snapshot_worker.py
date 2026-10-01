@@ -1,16 +1,10 @@
 """
 core/backup_snapshot_worker.py
-==================================
-Servizio periodico che rifà lo snapshot settimanale utenti (SPEC.md
-§11.10) — stesso pattern architetturale di core/backup_queue_worker.py
-/core/feed_watcher.py: un tasks.loop periodico, avviato una volta da
-main.py, non un Cog con comandi.
-
-Un tick per ogni main_guild_id che ha già un backup attivo
-(backup_repo.get_all_main_guild_ids_with_backup) — fotografa chi è
-attualmente membro, non un bot, e (se il server usa Verify Base) ha
-il ruolo verificato. Chi è bannato/kickato non compare per
-costruzione: non è più tra guild.members.
+==============================
+Loop settimanale che rifà lo snapshot utenti di ogni server main con un
+backup attivo (membri non bot, verificati se c'è Verify Base). Il primo
+giro aspetta che il bot sia pronto.
+Funzioni coperte: SPEC §11.10
 """
 
 from __future__ import annotations
@@ -73,6 +67,12 @@ class BackupSnapshotWorker:
                 await self.tick(main_bot)
             except Exception:
                 logger.exception("Errore nel tick dello snapshot settimanale utenti")
+
+        @_loop.before_loop
+        async def _before():
+            # Senza questa attesa il primo giro parte prima del login:
+            # le guild sono vuote e lo snapshot salva 0 utenti.
+            await main_bot.wait_until_ready()
 
         self._loop_task = _loop
         self._loop_task.start()

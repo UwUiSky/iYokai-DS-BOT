@@ -159,3 +159,29 @@ async def test_tick_server_non_raggiungibile_non_solleva(repos, monkeypatch):
     await worker.tick(main_bot)  # non deve sollevare
 
     assert await snapshot_repo_test.get_snapshot(100) == []
+
+
+@pytest.mark.asyncio
+async def test_start_aspetta_che_il_bot_sia_pronto_prima_del_primo_tick(monkeypatch):
+    """Il primo giro non deve partire prima del login (guild vuote = 0 utenti)."""
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    pronto = asyncio.Event()
+    bot = MagicMock()
+    bot.wait_until_ready = pronto.wait
+
+    worker = BackupSnapshotWorker()
+    tick = AsyncMock()
+    monkeypatch.setattr(worker, "tick", tick)
+
+    worker.start(bot)
+    try:
+        await asyncio.sleep(0.05)
+        tick.assert_not_awaited()  # bot non ancora pronto
+
+        pronto.set()
+        await asyncio.sleep(0.05)
+        tick.assert_awaited_once()
+    finally:
+        worker.stop()
