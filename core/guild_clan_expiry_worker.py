@@ -11,6 +11,7 @@ frequente: la finestra è di ore, non minuti).
 Elimina anche la categoria e i canali Discord creati alla fondazione
 (se esistono ancora) PRIMA di eliminare il record dal database, così
 non resta una categoria orfana senza nessun clan a cui appartiene.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
+from core.guild_iteration import for_each_guild_safely
 from core.repositories.guild_clan_repo import guild_clan_repo
 
 logger = logging.getLogger("iyokai.guild_clan_expiry_worker")
@@ -35,7 +37,7 @@ class GuildClanExpiryWorker:
     async def tick(self, bot: commands.Bot, now: datetime | None = None) -> None:
         adesso = now or datetime.now(timezone.utc)
 
-        for clan in await guild_clan_repo.get_unofficialized_expired(adesso):
+        async def _per_clan(clan) -> None:
             guild = bot.get_guild(clan.guild_id)
             if guild is not None and clan.category_id is not None:
                 categoria = guild.get_channel(clan.category_id)
@@ -64,6 +66,13 @@ class GuildClanExpiryWorker:
                 "Gilda '%s' (id %s) eliminata automaticamente: deficit di creazione non colmato entro la scadenza.",
                 clan.tag, clan.id,
             )
+
+        # LC-8: una gilda problematica non blocca le altre.
+        await for_each_guild_safely(
+            await guild_clan_repo.get_unofficialized_expired(adesso),
+            _per_clan,
+            nome_worker="Scadenza gilde",
+        )
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:

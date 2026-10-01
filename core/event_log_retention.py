@@ -12,6 +12,7 @@ A differenza di Memory Guard (un solo controllo bot-wide), qui la
 retention è PER SERVER — ogni server può essere Free o Premium
 indipendentemente — quindi il tick itera bot.guilds e controlla lo
 stato premium di ciascuno prima di decidere la soglia da applicare.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 from discord.ext import commands, tasks
 
 from core.event_log_retention_logic import retention_days_for
+from core.guild_iteration import for_each_guild_safely
 from core.premium import guild_has_premium_access
 from core.repositories.event_log_repo import event_log_repo
 from cogs.logging.basic_logs import MODULE_LOGGING
@@ -39,7 +41,8 @@ class EventLogRetentionService:
         now = datetime.now(timezone.utc)
         totale_eliminati = 0
 
-        for guild in bot.guilds:
+        async def _per_server(guild) -> None:
+            nonlocal totale_eliminati
             is_premium = await guild_has_premium_access(guild.id, MODULE_LOGGING, bot=bot)
             giorni = retention_days_for(is_premium)
             soglia = now - timedelta(days=giorni)
@@ -49,6 +52,11 @@ class EventLogRetentionService:
             # va applicata una guild alla volta, non globalmente.
             eliminati = await event_log_repo.prune_old_events_for_guild(guild.id, soglia)
             totale_eliminati += eliminati
+
+        # LC-8: un server problematico non blocca gli altri.
+        await for_each_guild_safely(
+            bot.guilds, _per_server, nome_worker="Retention log eventi"
+        )
 
         if totale_eliminati > 0:
             logger.info(

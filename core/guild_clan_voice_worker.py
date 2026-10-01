@@ -13,6 +13,7 @@ server, non c'è bisogno di on_voice_state_update per sapere chi è
 dove in questo istante — lo stato PRECEDENTE (canale, decadimento,
 tetto) vive nel database tramite core/repositories/clan_voice_
 activity_repo.py, già committato.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from datetime import date, datetime, timezone
 from discord.ext import commands, tasks
 
 from core.guild_clan_boost_logic import compute_boosted_reward, is_boost_active
+from core.guild_iteration import for_each_guild_safely
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
 from core.repositories.guild_clan_repo import guild_clan_repo
 
@@ -41,7 +43,7 @@ class GuildClanVoiceWorker:
 
         trovati_in_vocale: set[tuple[int, int]] = set()
 
-        for guild in bot.guilds:
+        async def _per_server(guild) -> None:
             for canale in guild.voice_channels:
                 for membro in canale.members:
                     if membro.bot:
@@ -87,6 +89,16 @@ class GuildClanVoiceWorker:
                         await guild_clan_repo.apply_treasury_delta(
                             clan.id, coin, reason="voice_tick"
                         )
+
+        # LC-8: un server problematico non blocca gli altri.
+        falliti = await for_each_guild_safely(
+            bot.guilds, _per_server, nome_worker="Guild clan voice worker"
+        )
+        if falliti:
+            # Chi stava in un server fallito non è stato ritrovato: la
+            # pulizia qui sotto lo scambierebbe per uscito dal vocale e
+            # ne azzererebbe lo stato. Si rifà al prossimo giro.
+            return
 
         # Chi risultava "in vocale" al tick precedente ma non è stato
         # ritrovato in NESSUN canale in questo giro è uscito dal

@@ -20,6 +20,7 @@ storico alla prima attivazione**: ogni server ha il proprio
 SETTING_LOG_CHANNEL — nessuna nuova tabella). Logica pura di
 filtro/avanzamento in core/logging_advanced_logic.py
 (`new_entries_since`/`next_watermark`), testata a sé.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ import discord
 from discord.ext import commands, tasks
 
 from core.database import db
+from core.guild_iteration import for_each_guild_safely
 from core.logging_advanced_logic import new_entries_since, next_watermark
 from core.repositories.event_log_repo import event_log_repo
 
@@ -108,9 +110,9 @@ class SoundboardLogService:
             send_event_embed,
         )
 
-        for guild in bot.guilds:
+        async def _per_server(guild) -> None:
             if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED):
-                continue
+                return
 
             raw_watermark = await db.get_guild_setting(guild.id, SETTING_SOUNDBOARD_WATERMARK)
             watermark = datetime.fromisoformat(raw_watermark) if raw_watermark else None
@@ -135,6 +137,9 @@ class SoundboardLogService:
                 await db.set_guild_setting(
                     guild.id, SETTING_SOUNDBOARD_WATERMARK, aggiornato.isoformat()
                 )
+
+        # LC-8: un server problematico non blocca gli altri.
+        await for_each_guild_safely(bot.guilds, _per_server, nome_worker="Log soundboard")
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:

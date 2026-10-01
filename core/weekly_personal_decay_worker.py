@@ -14,6 +14,7 @@ o più tick nello stesso giorno).
 Le coin rimosse dal decadimento confluiscono nella cassa del server
 di appartenenza (core.repositories.guild_chest_repo) — non svaniscono
 mai nel nulla.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from datetime import datetime, timezone
 
 from discord.ext import commands, tasks
 
+from core.guild_iteration import for_each_guild_safely
 from core.leveling_logic import week_key
 from core.repositories.guild_chest_repo import (
     REASON_WEEKLY_PERSONAL_DECAY,
@@ -46,7 +48,8 @@ class WeeklyPersonalDecayWorker:
         da_decadere = await leveling_repo.list_users_needing_weekly_decay(
             settimana_corrente
         )
-        for guild_id, user_id in da_decadere:
+        async def _per_utente(coppia) -> None:
+            guild_id, user_id = coppia
             saldo_prima, saldo_dopo = await leveling_repo.apply_weekly_decay(
                 guild_id, user_id, settimana_corrente
             )
@@ -59,6 +62,11 @@ class WeeklyPersonalDecayWorker:
                 "Decadimento settimanale applicato a %s/%s: %s -> %s.",
                 guild_id, user_id, saldo_prima, saldo_dopo,
             )
+
+        # LC-8: un utente problematico non blocca gli altri.
+        await for_each_guild_safely(
+            da_decadere, _per_utente, nome_worker="Decadimento settimanale personale"
+        )
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:

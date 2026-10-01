@@ -12,6 +12,7 @@ a cui appartiene il clan (SPEC.md §15.15, core.repositories.
 guild_chest_repo) — stessa destinazione del decadimento settimanale
 sui coin personali (core.weekly_personal_decay_worker), non svaniscono
 mai nel nulla.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 
 from discord.ext import commands, tasks
 
+from core.guild_iteration import for_each_guild_safely
 from core.leveling_logic import period_key
 from core.repositories.guild_chest_repo import (
     REASON_MONTHLY_CLAN_DECAY,
@@ -41,9 +43,9 @@ class GuildClanTreasuryDecayWorker:
         adesso = now or datetime.now(timezone.utc)
         periodo_corrente = period_key(adesso)
 
-        for clan in await guild_clan_repo.list_officialized_clans():
+        async def _per_clan(clan) -> None:
             if clan.last_decay_period == periodo_corrente:
-                continue  # già applicato questo mese
+                return  # già applicato questo mese
 
             saldo_prima, saldo_dopo = await guild_clan_repo.apply_monthly_decay(
                 clan.id, periodo_corrente
@@ -57,6 +59,13 @@ class GuildClanTreasuryDecayWorker:
                 "Decadimento mensile applicato al clan %s: %s -> %s.",
                 clan.id, saldo_prima, saldo_dopo,
             )
+
+        # LC-8: un clan problematico non blocca gli altri.
+        await for_each_guild_safely(
+            await guild_clan_repo.list_officialized_clans(),
+            _per_clan,
+            nome_worker="Decadimento mensile tesoreria clan",
+        )
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:
