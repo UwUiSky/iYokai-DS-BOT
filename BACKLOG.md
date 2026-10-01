@@ -316,7 +316,7 @@ staff (NON ban automatico cross-server)"* — una decisione presa
 apposta durante l'audit originale. Sia il Passport di Grok
 ("Reputazione globale basata su assenza di sanzioni recenti... flag
 clean record... i server possono dare privilegi automatici a
-reputation alta") sia il "Trust Score" della sua risposta libera
+Reputation alta") sia il "Trust Score" della sua risposta libera
 **reintroducono lo stesso meccanismo attraverso una porta diversa**.
 Nessuna delle due proposte cita l'altra, ma sono la stessa cosa.
 
