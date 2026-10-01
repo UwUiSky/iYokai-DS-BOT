@@ -479,7 +479,8 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   `tests/test_backup_creator_cleanup.py` — commit b6eeb81 (Refs #21)
 - [x] `/define-backup`: al massimo una coppia attiva per server (§4).
   Fatto con `has_active_job` — commit 93f7049
-- [ ] Snapshot settimanale: aspetta `wait_until_ready()` (§4).
+- [x] Snapshot settimanale: aspetta `wait_until_ready()` (§4).
+  Fatto in `core/backup_snapshot_worker.py` — commit 1098bb2
 - [ ] §12 11.5–11.7: prima di clonare emoji, sticker e suoni, controlla
   i limiti del server di destinazione e salta quello che non ci sta,
   invece di far fallire tutto il backup.

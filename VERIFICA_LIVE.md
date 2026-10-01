@@ -344,3 +344,8 @@ chiudere.
   2. Controlla in Discord che il server creato da iYokai Creator sia sparito e che gli slot (max 10) siano tornati liberi.
   3. Riavvia il bot: eventuali server del Creator più vecchi di un'ora e non legati a una coppia devono essere cancellati.
   Risultato atteso: nessun server orfano resta nel Creator. Solo Discord reale lo conferma.
+
+- [ ] Snapshot settimanale — commit 1098bb2 — passi:
+  1. Con un backup attivo, riavvia il bot e controlla nel log "Snapshot settimanale completato" con un numero di utenti > 0.
+  2. `SELECT count(*) FROM backup_user_snapshots;` per il tuo server.
+  Risultato atteso: lo snapshot del primo giro contiene i membri reali.
