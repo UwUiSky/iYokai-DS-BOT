@@ -6,6 +6,9 @@ bot2"). Persistente, non solo in memoria: se il bot si riavvia con
 una sessione musicale attiva, il worker assegnato a un server non
 deve cambiare a caso al prossimo /play — resta lo stesso finché
 qualcuno non lo disconnette esplicitamente (rilasciando la riga).
+Le righe valgono solo per la vita del processo: all'avvio vengono
+svuotate (clear_all, BUG-9), perché i worker ripartono da zero.
+Funzioni coperte: SPEC §9.2, REVIEW.md BUG-9.
 """
 
 from __future__ import annotations
@@ -63,6 +66,15 @@ class MusicSessionRepository:
 
     async def release_guild(self, guild_id: int) -> None:
         await self._pool.execute("DELETE FROM music_sessions WHERE guild_id = $1", guild_id)
+
+    async def clear_all(self) -> None:
+        """
+        BUG-9: chiamata all'avvio del processo. I worker musicali girano
+        nello stesso processo e dopo un riavvio ripartono da zero (nessun
+        player attivo): le righe rimaste dal processo precedente li
+        farebbero risultare "occupati" per sempre.
+        """
+        await self._pool.execute("DELETE FROM music_sessions")
 
     async def get_occupied_workers(self) -> set[int]:
         """

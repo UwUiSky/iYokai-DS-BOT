@@ -35,6 +35,7 @@ import discord
 from discord.ext import commands
 
 from core.config import config
+from core.repositories.music_session_repo import music_session_repo
 from core.bot_supervisor import VoceBot, esegui_bot_isolati, installa_gestori_segnali, spegni_ordinatamente
 from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
@@ -524,6 +525,11 @@ async def main() -> None:
     await db.connect()
     await db.run_migrations()
     logger.info("Database connesso e migrazioni applicate.")
+
+    # BUG-9: i worker musicali ripartono da zero ad ogni avvio — le
+    # assegnazioni rimaste dal processo precedente li terrebbero
+    # "occupati" per sempre.
+    await music_session_repo.clear_all()
 
     bot = iYokaiBot()
 

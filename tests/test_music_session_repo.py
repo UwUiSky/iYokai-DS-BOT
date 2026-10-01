@@ -70,3 +70,16 @@ async def test_stesso_worker_su_due_server_diversi_conta_una_sola_volta(repo):
     await repo.assign_worker(200, worker_index=2)
 
     assert await repo.get_occupied_workers() == {2}
+
+
+@pytest.mark.asyncio
+async def test_clear_all_svuota_le_righe_vecchie_all_avvio(repo):
+    """BUG-9: dopo un riavvio i worker ripartono da zero, le righe del
+    processo precedente non devono tenerli 'occupati' per sempre."""
+    await repo.assign_worker(guild_id=100, worker_index=1)
+    await repo.assign_worker(guild_id=200, worker_index=2)
+
+    await repo.clear_all()
+
+    assert await repo.get_occupied_workers() == set()
+    assert await repo.get_worker_for_guild(100) is None
