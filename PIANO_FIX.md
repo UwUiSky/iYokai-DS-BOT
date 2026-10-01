@@ -420,12 +420,14 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   Fatto: categorie assegnate in base al tipo di modulo (tabella di #49
   non raggiungibile da qui), `/setup categoria:`, embed di sola lettura,
   cricchetto svuotato — commit c9534fb (Refs #4, #38, #43, #49)
-- [ ] **BUG-6** `/config rollback`: lo storico deve salvare il valore
+- [x] **BUG-6** `/config rollback`: lo storico deve salvare il valore
   precedente **completo** (per `reset` e `import`: la riga intera). Il
   rollback di una chiave che prima non esisteva la **rimuove** (non la
   mette a `null`); il rollback della lingua cambia la colonna
   `language`. Se non si può ripristinare, risponde con un errore, mai
   "✅". Un test per ciascuno dei casi descritti in REVIEW.md.
+  Fatto in `core/database.py` (`rollback_config_change`), 5 test in
+  `tests/test_config_rollback_bug6.py` — commit 071504a
 - [ ] `/config import` (§4 Utility): valida lo schema prima di scrivere
   e rifiuta i dati sbagliati.
 

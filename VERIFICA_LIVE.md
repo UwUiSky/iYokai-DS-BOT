@@ -305,3 +305,8 @@ chiudere.
   2. Esegui `/setup categoria:Utility`, cambia la selezione e premi Salva: lo stato deve cambiare davvero (controlla con `/setup` senza categoria).
   3. Ripeti per ogni categoria: nessun errore e nessuna categoria troncata.
   Risultato atteso: nessun "interazione fallita" e nessun rifiuto; solo Discord vero lo conferma.
+- [ ] BUG-6 — commit 071504a — passi:
+  1. Su un server di prova: `/setup` attiva un modulo, poi `/config reset`, poi `/config history` e `/config rollback` sulla voce del reset: moduli, impostazioni e lingua devono tornare come prima.
+  2. Cambia la lingua con `/config language`, poi rollback di quella voce: `/config language` deve mostrare di nuovo la lingua precedente.
+  3. Imposta per la prima volta `/ticket-support-role add`, poi rollback: `/ticket-support-role list` deve funzionare senza errori (niente null).
+  Risultato atteso: ogni "✅ Rollback eseguito" corrisponde a un ripristino reale.
