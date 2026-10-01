@@ -383,3 +383,79 @@ class TestRegisterHandler:
 
         assert "azione_a" in scheduler._handlers
         assert "azione_b" in scheduler._handlers
+
+
+# ---------------------------------------------------------------------------
+# BUG-8: lo scheduler non deve fermarsi per sempre
+# ---------------------------------------------------------------------------
+
+
+def _collega_db_finto(monkeypatch, clean_db):
+    import core.database as database_module
+
+    class _FakeDbWithPool:
+        pool = clean_db
+
+    monkeypatch.setattr(database_module, "db", _FakeDbWithPool())
+
+
+@pytest.mark.asyncio
+async def test_azione_senza_handler_viene_segnata_failed_e_non_blocca_la_coda(
+    clean_db, monkeypatch
+):
+    _collega_db_finto(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    chiamate = []
+
+    async def handler_finto(guild_id, user_id, payload):
+        chiamate.append(user_id)
+
+    scheduler.register_handler("noto", handler_finto)
+    passato = datetime.now(timezone.utc) - timedelta(seconds=5)
+    orfana = await scheduler.schedule(1, 10, "tipo_senza_handler", passato)
+    valida = await scheduler.schedule(1, 20, "noto", passato + timedelta(seconds=1))
+
+    await scheduler._run_due_actions()
+
+    assert chiamate == [20]  # l'azione orfana non ha bloccato quella valida
+    riga = await clean_db.fetchrow(
+        "SELECT executed, failed_reason FROM scheduled_actions WHERE id = $1", orfana
+    )
+    assert riga["executed"] is False
+    assert "tipo_senza_handler" in riga["failed_reason"]
+    ok = await clean_db.fetchval("SELECT executed FROM scheduled_actions WHERE id = $1", valida)
+    assert ok is True
+
+
+@pytest.mark.asyncio
+async def test_azione_failed_non_viene_riprovata_al_giro_dopo(clean_db, monkeypatch):
+    _collega_db_finto(monkeypatch, clean_db)
+    scheduler = Scheduler()
+    passato = datetime.now(timezone.utc) - timedelta(seconds=5)
+    orfana = await scheduler.schedule(1, 10, "tipo_senza_handler", passato)
+
+    await scheduler._run_due_actions()
+    await clean_db.execute(
+        "UPDATE scheduled_actions SET failed_reason = failed_reason || ' (visto)' WHERE id = $1",
+        orfana,
+    )
+    await scheduler._run_due_actions()
+
+    motivo = await clean_db.fetchval(
+        "SELECT failed_reason FROM scheduled_actions WHERE id = $1", orfana
+    )
+    assert motivo.count("(visto)") == 1  # il secondo giro non l'ha toccata
+
+
+@pytest.mark.asyncio
+async def test_un_errore_nel_giro_non_ferma_il_loop(monkeypatch, caplog):
+    scheduler = Scheduler()
+
+    async def giro_che_esplode():
+        raise ConnectionError("database irraggiungibile")
+
+    monkeypatch.setattr(scheduler, "_run_due_actions", giro_che_esplode)
+
+    await scheduler._giro()  # non deve sollevare: il loop tasks.loop non si ferma
+
+    assert "database irraggiungibile" in caplog.text

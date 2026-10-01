@@ -27,6 +27,7 @@ Ogni cog che ha bisogno di un'azione differita:
    nel proprio setup() — vedi register_handler() più sotto.
 2. Quando serve pianificare, chiama scheduler.schedule(...).
 Non deve mai occuparsi lui stesso di timer o task in background.
+Funzioni coperte: REVIEW.md BUG-8 (issue #13).
 """
 
 from __future__ import annotations
@@ -143,7 +144,7 @@ class Scheduler:
         rows = await db.pool.fetch(
             """
             SELECT id, guild_id, execute_at, payload FROM scheduled_actions
-            WHERE user_id = $1 AND action_type = $2 AND executed = FALSE
+            WHERE user_id = $1 AND action_type = $2 AND executed = FALSE AND failed_reason IS NULL
             ORDER BY execute_at
             LIMIT $3
             """,
@@ -177,7 +178,7 @@ class Scheduler:
         rows = await db.pool.fetch(
             """
             SELECT id, user_id, execute_at, payload FROM scheduled_actions
-            WHERE guild_id = $1 AND action_type = $2 AND executed = FALSE
+            WHERE guild_id = $1 AND action_type = $2 AND executed = FALSE AND failed_reason IS NULL
             ORDER BY execute_at
             LIMIT $3
             """,
@@ -238,7 +239,7 @@ class Scheduler:
                     """
                     SELECT id, guild_id, user_id, action_type, payload
                     FROM scheduled_actions
-                    WHERE execute_at <= now() AND executed = FALSE
+                    WHERE execute_at <= now() AND executed = FALSE AND failed_reason IS NULL
                     ORDER BY execute_at
                     LIMIT 50
                     FOR UPDATE SKIP LOCKED
@@ -248,12 +249,19 @@ class Scheduler:
                 for row in rows:
                     handler = self._handlers.get(row["action_type"])
                     if handler is None:
-                        logger.warning(
-                            "Nessun handler registrato per action_type='%s' "
-                            "(scheduled_actions.id=%s) — azione saltata, "
-                            "resta 'da eseguire'.",
-                            row["action_type"],
+                        # BUG-8: segnata fallita con il motivo, non resta
+                        # "da eseguire" per sempre e non blocca la coda.
+                        motivo = (
+                            f"nessun handler registrato per action_type="
+                            f"'{row['action_type']}'"
+                        )
+                        logger.error(
+                            "Azione pianificata id=%s fallita: %s.", row["id"], motivo
+                        )
+                        await conn.execute(
+                            "UPDATE scheduled_actions SET failed_reason = $2 WHERE id = $1",
                             row["id"],
+                            motivo,
                         )
                         continue
 
@@ -280,6 +288,17 @@ class Scheduler:
                         row["id"],
                     )
 
+    async def _giro(self) -> None:
+        """
+        BUG-8: un errore qui dentro (es. database irraggiungibile un
+        istante) non deve uscire dal loop — tasks.loop si ferma per
+        sempre alla prima eccezione non gestita.
+        """
+        try:
+            await self._run_due_actions()
+        except Exception:
+            logger.exception("Errore nel giro dello scheduler: riprovo al prossimo.")
+
     def start(self, bot: commands.Bot) -> None:
         """
         Avvia il loop periodico. Chiamato una volta sola da main.py
@@ -290,7 +309,7 @@ class Scheduler:
 
         @tasks.loop(seconds=30)
         async def _loop():
-            await self._run_due_actions()
+            await self._giro()
 
         @_loop.before_loop
         async def _before():
