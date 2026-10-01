@@ -428,8 +428,9 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   "✅". Un test per ciascuno dei casi descritti in REVIEW.md.
   Fatto in `core/database.py` (`rollback_config_change`), 5 test in
   `tests/test_config_rollback_bug6.py` — commit 071504a
-- [ ] `/config import` (§4 Utility): valida lo schema prima di scrivere
-  e rifiuta i dati sbagliati.
+- [x] `/config import` (§4 Utility): valida lo schema prima di scrivere
+  e rifiuta i dati sbagliati. Fatto: `errore_schema_import` + limite 256 KB,
+  12 test in `tests/test_config_import_validation.py` — commit 80322ff
 
 **Avvio, scheduler e processi**
 - [ ] **BUG-7 (#12, #28)** `main.py`:

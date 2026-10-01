@@ -310,3 +310,7 @@ chiudere.
   2. Cambia la lingua con `/config language`, poi rollback di quella voce: `/config language` deve mostrare di nuovo la lingua precedente.
   3. Imposta per la prima volta `/ticket-support-role add`, poi rollback: `/ticket-support-role list` deve funzionare senza errori (niente null).
   Risultato atteso: ogni "✅ Rollback eseguito" corrisponde a un ripristino reale.
+- [ ] /config import (validazione) — commit 80322ff — passi:
+  1. Esporta con `/config export`, importa lo stesso file: deve riuscire.
+  2. Modifica il file a mano (es. `"tickets": "si"` o `"language": "xx"`) e importalo: deve rispondere con un ❌ chiaro e non cambiare nulla (controlla con `/config export`).
+  Risultato atteso: nessun dato sbagliato viene scritto.
