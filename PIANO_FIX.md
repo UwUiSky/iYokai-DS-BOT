@@ -453,10 +453,12 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
 - [x] **BUG-9** All'avvio svuota `music_sessions` (i worker ripartono da
   zero). Test: righe vecchie spariscono al setup.
   Fatto (`MusicSessionRepository.clear_all()` chiamato da `main()`) — commit 376ff6b
-- [ ] **LC-8** Worker periodici: `try/except` **per server** dentro il
+- [x] **LC-8** Worker periodici: `try/except` **per server** dentro il
   giro (retention log, soundboard, XP vocale clan, decay), così un
   server problematico non blocca gli altri. Stesso schema per tutti:
   estrai una funzione `for_each_guild_safely(...)` in `core/`.
+  Fatto in `core/guild_iteration.py` su 6 worker, 7 test in
+  `tests/test_for_each_guild_safely.py` — commit 45d2a78
 
 **Backup e restore**
 - [ ] **BUG-3 (#26)** Nel punto dove il backup è completato (worker

@@ -329,3 +329,7 @@ chiudere.
   2. Dopo il riavvio lancia di nuovo `/play` nello stesso server: deve partire e non rispondere che i bot musicali sono occupati.
   3. Controlla con `SELECT * FROM music_sessions;` che dopo l'avvio sia vuota.
   Risultato atteso: nessun worker resta bloccato dopo un riavvio.
+- [ ] LC-8 — commit 45d2a78 — passi:
+  1. Avvia il bot con almeno due server e lascialo girare un giro dei worker (retention, soundboard, XP vocale): nei log non devono comparire errori inattesi.
+  2. Se compare un errore "…: errore su <id>, passo al successivo", verifica che gli altri server abbiano comunque completato il giro (es. XP vocale accreditata).
+  Risultato atteso: nessun server blocca gli altri; la prova vera richiede server reali.
