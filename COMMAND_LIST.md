@@ -266,7 +266,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:
 - **`/schedule-message set`** — [Admin] Programma un messaggio.
 - **`/search`** — Cerca un comando per descrizione.
 - **`/serverstats`** — Mostra le statistiche del server, con grafico di crescita.
-- **`/setup`** — [Admin] Attiva o disattiva i moduli del bot su questo server.
+- **`/setup`** — [Admin] Attiva o disattiva i moduli del bot, per categoria (parametro `categoria`; senza scelta mostra l'elenco di sola lettura).
 - **`/setup-wizard`** — [Admin] Configura passo-passo i moduli principali del bot.
 - **`/sticky remove`** — [Admin] Rimuove lo sticky message di un canale.
 - **`/sticky set`** — [Admin] Imposta lo sticky message di un canale.

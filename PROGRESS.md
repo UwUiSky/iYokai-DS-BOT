@@ -4902,3 +4902,4 @@ PIANO_FIX.md).
   più in crash e che la cancellazione pianificata arriva davvero a
   chiamare `channel.delete()`. Suite: 2243/2243 verde, due volte.
   Commit 6c724d3 (Refs #2, #42).
+- BUG-2/#4/#38/#43/#49: `/setup` si rifiutava sempre (32 moduli, limite 25 di un Select). `PremiumModule` ha ora `category` (10 categorie in `CATEGORIE_MODULI`; `register()` rifiuta le altre), assegnata a tutti i moduli. `/setup` prende `categoria` con un Select dei soli moduli di quella categoria; senza scelta mostra l'elenco di sola lettura; `defer()` prima delle letture (LC-3). Cricchetto `KNOWN_OVERSIZED_SELECTS` svuotato. Nuovo `tests/test_setup_categories.py` sul registry reale; corretto un test clan con mese fisso. Suite: 2250/2250 verde, due volte. Commit c9534fb (Refs #4, #38, #43, #49).

@@ -398,7 +398,7 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   (autospec — riproduce lo stesso `TypeError: unexpected keyword
   argument 'delay'` del bot vero).
   — commit 6c724d3 (Refs #2, #42)
-- [ ] **BUG-2 (#4, #38, #43, #49)** `/setup` per categoria (scelta
+- [x] **BUG-2 (#4, #38, #43, #49)** `/setup` per categoria (scelta
   dell'owner, #49):
   - campo obbligatorio `category: str` in `PremiumModule`, con valori
     ammessi in una costante (`moderation`, `security`, `automod`,
@@ -417,6 +417,9 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   categoria la `Select` si costruisce con i moduli reali; il cricchetto
   `KNOWN_OVERSIZED_SELECTS` si svuota. In R5 il comando diventa
   `/admin setup`.
+  Fatto: categorie assegnate in base al tipo di modulo (tabella di #49
+  non raggiungibile da qui), `/setup categoria:`, embed di sola lettura,
+  cricchetto svuotato — commit c9534fb (Refs #4, #38, #43, #49)
 - [ ] **BUG-6** `/config rollback`: lo storico deve salvare il valore
   precedente **completo** (per `reset` e `import`: la riga intera). Il
   rollback di una chiave che prima non esisteva la **rimuove** (non la

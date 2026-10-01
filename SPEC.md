@@ -86,7 +86,7 @@ file, non da un riassunto.**
 
 ## §2 SETUP & DASHBOARD
 
-- `[x]` 2.1 Pannello interattivo — select menu moduli, conferma, annulla
+- `[x]` 2.1 Pannello interattivo — select menu moduli per categoria (10 categorie, `/setup categoria:`), conferma, annulla (da verificare live)
 - `[x]` 2.1 Bottone "Reset configurazione" — `/config reset`, conferma
   a due passaggi (stesso schema di `/config rollback`), disattiva
   tutti i moduli e azzera tutte le settings, annullabile con

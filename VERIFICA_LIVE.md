@@ -300,3 +300,8 @@ chiudere.
   viene davvero eliminato dopo 10 secondi — solo la prova su Discord
   vero conferma che l'eliminazione arriva a buon fine (i test usano un
   `fake_text_channel()`, non un canale Discord reale).
+- [ ] BUG-2/#4/#38/#43/#49 — commit c9534fb — passi:
+  1. Su un server di prova esegui `/setup` senza categoria: deve mostrare l'elenco di sola lettura con lo stato di tutti i moduli.
+  2. Esegui `/setup categoria:Utility`, cambia la selezione e premi Salva: lo stato deve cambiare davvero (controlla con `/setup` senza categoria).
+  3. Ripeti per ogni categoria: nessun errore e nessuna categoria troncata.
+  Risultato atteso: nessun "interazione fallita" e nessun rifiuto; solo Discord vero lo conferma.
