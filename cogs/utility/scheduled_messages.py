@@ -183,6 +183,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_SCHEDULED_MESSAGES,
             display_name="Scheduled Messages",
+            category="utility",
             description="Messaggi programmati per un canale, in futuro.",
             premium_capable=False,
         )

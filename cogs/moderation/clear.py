@@ -97,6 +97,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_CLEAR,
             display_name="Moderazione — Clear avanzato",
+            category="moderation",
             description="Cancellazione di massa dei messaggi con filtri.",
             premium_capable=True,
         )

@@ -36,8 +36,8 @@ class _FakeInteraction:
 
 
 def _modules_with_state() -> list[tuple[PremiumModule, bool]]:
-    a = PremiumModule(name="wiz_a", display_name="A", description="Modulo A")
-    b = PremiumModule(name="wiz_b", display_name="B", description="Modulo B")
+    a = PremiumModule(category="utility", name="wiz_a", display_name="A", description="Modulo A")
+    b = PremiumModule(category="utility", name="wiz_b", display_name="B", description="Modulo B")
     return [(a, True), (b, False)]
 
 

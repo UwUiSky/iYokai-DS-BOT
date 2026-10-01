@@ -149,6 +149,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_PERMISSION_HEATMAP,
             display_name="Permission Risk Heatmap",
+            category="security",
             description="Mappa dei ruoli con permessi critici + alert su nuove assegnazioni.",
             premium_capable=True,
         )

@@ -59,6 +59,23 @@ class UnlockMethod(str, Enum):
     WHITELIST = "whitelist"                 # server ID inserito a mano da te
 
 
+# BUG-2: categorie ammesse per i moduli, usate da /setup per mostrare un
+# menu per categoria (un solo menu con tutti i moduli supera il limite
+# di 25 opzioni di Discord). register() rifiuta qualunque altro valore.
+CATEGORIE_MODULI = (
+    "moderation",
+    "security",
+    "automod",
+    "logging",
+    "utility",
+    "tickets",
+    "voice",
+    "music",
+    "leveling",
+    "fun",
+)
+
+
 @dataclass
 class PremiumModule:
     """
@@ -74,6 +91,8 @@ class PremiumModule:
     premium_capable: bool = True # False solo per i moduli SEMPRE gratis
                                   # (core, setup, dashboard — vedi schema)
     is_premium_active: bool = False  # <-- LO STATO ATTUALE. Parte spento.
+    category: str = ""           # uno di CATEGORIE_MODULI, obbligatorio
+                                  # (register() rifiuta il vuoto)
 
 
 class PremiumRegistry:
@@ -106,6 +125,13 @@ class PremiumRegistry:
         la parte importante: preserva is_premium_active così com'è,
         un reload non deve resettare lo stato premium a False.
         """
+        if module.category not in CATEGORIE_MODULI:
+            raise ValueError(
+                f"Modulo premium '{module.name}': categoria "
+                f"{module.category!r} non valida. Ammesse: "
+                f"{', '.join(CATEGORIE_MODULI)}."
+            )
+
         esistente = self._modules.get(module.name)
         if esistente is None:
             self._modules[module.name] = module
@@ -115,6 +141,7 @@ class PremiumRegistry:
             esistente.display_name == module.display_name
             and esistente.description == module.description
             and esistente.premium_capable == module.premium_capable
+            and esistente.category == module.category
         )
         if not stessa_dichiarazione:
             raise ValueError(
@@ -126,6 +153,10 @@ class PremiumRegistry:
 
     def get(self, name: str) -> PremiumModule | None:
         return self._modules.get(name)
+
+    def modules_in_category(self, category: str) -> list[PremiumModule]:
+        """Moduli di una categoria, ordinati per nome (usato da /setup)."""
+        return [m for m in self.all_modules() if m.category == category]
 
     def all_modules(self) -> list[PremiumModule]:
         """Usato dal pannello owner per mostrare la lista completa."""

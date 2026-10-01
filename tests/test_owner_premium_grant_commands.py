@@ -60,11 +60,13 @@ async def cog_e_database(monkeypatch):
 
     registry.register(
         PremiumModule(
+            category="utility",
             name="test_grant_modulo", display_name="Modulo Test Grant", description="x"
         )
     )
     registry.register(
         PremiumModule(
+            category="utility",
             name="test_grant_gratuito", display_name="Sempre Gratis", description="x",
             premium_capable=False,
         )

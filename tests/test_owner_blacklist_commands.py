@@ -429,6 +429,7 @@ async def test_premium_panel_ciclo_completo_selezione_e_conferma(monkeypatch):
         registry_isolato = PremiumRegistry()
         registry_isolato.register(
             PremiumModule(
+            category="utility",
                 name="modulo_test_panel",
                 display_name="Modulo Test Panel",
                 description="Per il test del pannello",
@@ -500,6 +501,7 @@ async def test_premium_panel_annulla_non_applica_nulla(monkeypatch):
         registry_isolato = PremiumRegistry()
         registry_isolato.register(
             PremiumModule(
+            category="utility",
                 name="modulo_test_annulla",
                 display_name="Modulo Test Annulla",
                 description="Per il test di annullamento",

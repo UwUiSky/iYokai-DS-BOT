@@ -494,6 +494,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_ACTIONS,
             display_name="Moderazione — Azioni base",
+            category="moderation",
             description="Warn, kick, ban, tempban, timeout.",
             premium_capable=False,  # resta SEMPRE gratis, come da schema
         )

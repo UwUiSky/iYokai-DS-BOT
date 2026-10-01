@@ -744,6 +744,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_TICKETS,
             display_name="Ticket System",
+            category="tickets",
             description="Pannello di apertura ticket, claim, gestione, priorità.",
             premium_capable=False,
         )

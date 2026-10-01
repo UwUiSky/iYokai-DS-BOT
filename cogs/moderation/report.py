@@ -114,6 +114,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_REPORT,
             display_name="Moderazione — Report",
+            category="moderation",
             description="Sistema di segnalazioni verso lo staff.",
             premium_capable=False,
         )

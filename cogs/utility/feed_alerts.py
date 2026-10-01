@@ -359,6 +359,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_FEED_ALERTS,
             display_name="Feed Alerts",
+            category="utility",
             description="Notifiche automatiche da feed RSS/Atom (YouTube, Reddit, RSS generici).",
             premium_capable=False,
         )

@@ -1075,6 +1075,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_MUSIC,
             display_name="Music",
+            category="music",
             description="Riproduzione musicale via Lavalink (play, coda, controlli, multi-istanza).",
             premium_capable=False,
         )

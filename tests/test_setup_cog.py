@@ -87,12 +87,15 @@ async def test_salvataggio_persiste_esattamente_la_selezione():
         )
 
         modulo_a = PremiumModule(
+            category="utility",
             name="test_modulo_a", display_name="Modulo A", description="Test A"
         )
         modulo_b = PremiumModule(
+            category="utility",
             name="test_modulo_b", display_name="Modulo B", description="Test B"
         )
         modulo_c = PremiumModule(
+            category="utility",
             name="test_modulo_c", display_name="Modulo C", description="Test C"
         )
 
@@ -169,9 +172,11 @@ async def test_salvataggio_non_registra_storico_per_moduli_invariati():
         )
 
         modulo_a = PremiumModule(
+            category="utility",
             name="test_invariato_a", display_name="A", description="A"
         )
         modulo_b = PremiumModule(
+            category="utility",
             name="test_cambiato_b", display_name="B", description="B"
         )
 
@@ -232,6 +237,7 @@ async def test_annulla_non_scrive_nulla_sul_database():
 
         try:
             modulo_x = PremiumModule(
+            category="utility",
                 name="test_modulo_x", display_name="Modulo X", description="Test X"
             )
             view = SetupView(guild_id, [(modulo_x, True)])
@@ -272,9 +278,11 @@ async def test_salvataggio_emette_modules_updated_solo_per_i_cambiati():
         )
 
         modulo_a = PremiumModule(
+            category="utility",
             name="test_evento_a", display_name="A", description="A"
         )
         modulo_b = PremiumModule(
+            category="utility",
             name="test_evento_b", display_name="B", description="B"
         )
 
@@ -316,9 +324,11 @@ def test_select_pre_seleziona_i_moduli_gia_attivi():
     # che le SelectOption vengano costruite con default=True solo
     # per i moduli effettivamente attivi.
     modulo_attivo = PremiumModule(
+            category="utility",
         name="attivo", display_name="Attivo", description="x"
     )
     modulo_spento = PremiumModule(
+            category="utility",
         name="spento", display_name="Spento", description="y"
     )
     view = SetupView(

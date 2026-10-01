@@ -22,9 +22,8 @@ MAX_SUBGROUP_DEPTH = 1
 # Cricchetto: nomi di Select che OGGI superano il limite di 25 opzioni
 # con dati reali. Il test fallisce se compare un nome nuovo qui sopra
 # o se uno di questi viene sistemato ma non tolto dall'insieme.
-# /setup: ModuleSelect costruita con tutti i PremiumModule registrati
-# (oggi 32) — limite Discord 25, fix previsto in R5 (paginazione).
-KNOWN_OVERSIZED_SELECTS = {"setup"}
+# BUG-2 risolto: /setup ora ha un Select per categoria, il cricchetto è vuoto.
+KNOWN_OVERSIZED_SELECTS: set[str] = set()
 
 
 def _sottogruppi_e_comandi(gruppo: app_commands.Group) -> tuple[list, list]:
@@ -74,41 +73,28 @@ async def test_ogni_gruppo_ha_al_massimo_25_sottocomandi_e_1_livello():
             await db_singleton.close()
 
 
-async def test_select_moduli_setup_supera_25_opzioni_cricchetto_noto():
+async def test_select_moduli_setup_per_categoria_entra_nel_limite_di_25():
     """
-    Cricchetto: costruisce il vero ModuleSelect con tutti i moduli
-    REALMENTE registrati (non un elenco finto) e conferma che oggi
-    supera il limite di 25 opzioni di Discord — bug reale (#4/#38/#43),
-    fix previsto in R5. Se un giorno passa sotto 25, questo test
-    fallisce apposta: è il segnale per togliere "setup" dal cricchetto.
+    BUG-2 risolto: costruisce il vero ModuleSelect per ogni categoria con
+    i moduli REALMENTE registrati. Se una categoria supera 25 opzioni il
+    test fallisce (servirebbe la paginazione).
     """
     creato_qui = await connect_db_if_needed()
     bot, falliti = await build_full_bot()
     try:
         assert not falliti, f"Cog falliti nel caricamento: {falliti}"
 
-        from core.premium import registry
+        from core.premium import CATEGORIE_MODULI, registry
         from cogs.utility.setup import ModuleSelect, MAX_SELECT_OPTIONS
 
-        moduli = registry.all_modules()
-        modules_with_state = [(m, False) for m in moduli]
-        select = ModuleSelect(modules_with_state)
-
-        supera_il_limite = len(select.options) > MAX_SELECT_OPTIONS
-
-        if "setup" in KNOWN_OVERSIZED_SELECTS:
-            assert supera_il_limite, (
-                "'setup' è nel cricchetto KNOWN_OVERSIZED_SELECTS ma il "
-                f"Select ora ha {len(select.options)} opzioni, entro il "
-                f"limite di {MAX_SELECT_OPTIONS}: il bug è stato sistemato "
-                "— togli 'setup' dal cricchetto in questo file."
+        for categoria in CATEGORIE_MODULI:
+            moduli = registry.modules_in_category(categoria)
+            select = ModuleSelect([(m, False) for m in moduli])
+            assert len(select.options) <= MAX_SELECT_OPTIONS, (
+                f"Categoria '{categoria}': {len(select.options)} opzioni, "
+                f"oltre il limite di {MAX_SELECT_OPTIONS}."
             )
-        else:
-            assert not supera_il_limite, (
-                f"Il Select di /setup ha {len(select.options)} opzioni, "
-                f"oltre il limite di {MAX_SELECT_OPTIONS}, ma 'setup' non "
-                "è (più) nel cricchetto: nuovo problema, o va rimesso lì."
-            )
+        assert not KNOWN_OVERSIZED_SELECTS
     finally:
         await close_full_bot(bot)
         if creato_qui:

@@ -269,6 +269,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_ANTI_RAID,
             display_name="Anti-Raid",
+            category="security",
             description="Rilevamento e risposta automatica a ondate di join sospetti.",
             premium_capable=True,
         )

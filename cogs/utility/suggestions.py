@@ -216,6 +216,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_SUGGESTIONS,
             display_name="Suggestions",
+            category="utility",
             description="Sistema di suggerimenti per i membri, con voto e decisione dello staff.",
             premium_capable=False,
         )

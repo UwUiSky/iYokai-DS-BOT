@@ -189,6 +189,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_REACTIONSNIPE,
             display_name="Reactionsnipe",
+            category="utility",
             description="Mostra l'ultima reazione rimossa in un canale.",
             premium_capable=False,
         )
@@ -197,6 +198,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_GHOST_PING,
             display_name="Ghost Ping Detection",
+            category="utility",
             description="Segnala nel canale log chi menziona e poi cancella il messaggio.",
             premium_capable=False,
         )

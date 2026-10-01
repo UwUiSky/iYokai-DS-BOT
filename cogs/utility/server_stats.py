@@ -112,6 +112,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_SERVER_STATS,
             display_name="Server Stats",
+            category="utility",
             description="Statistiche del server con grafico di crescita giornaliera.",
             premium_capable=False,
         )

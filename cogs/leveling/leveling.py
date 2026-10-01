@@ -1886,6 +1886,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_LEVELING,
             display_name="Livelli & Economia",
+            category="leveling",
             description="XP, livelli, daily/work/pay, classifiche mensili e all-time.",
             premium_capable=False,
         )

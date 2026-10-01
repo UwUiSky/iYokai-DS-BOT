@@ -471,6 +471,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_LOGGING_ADVANCED,
             display_name="Logging Avanzato",
+            category="logging",
             description=(
                 "Log completo: ruoli, canali, inviti, voce, webhook, emoji, "
                 "sticker, thread e impostazioni server (livello Premium del Logging)."

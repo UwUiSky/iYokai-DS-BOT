@@ -42,6 +42,7 @@ async def database():
 async def test_ricarica_applica_lo_stato_attivo_dal_db(database):
     registry.register(
         PremiumModule(
+            category="utility",
             name="test_reload_attivo", display_name="Modulo Test", description="x"
         )
     )
@@ -69,6 +70,7 @@ async def test_ricarica_ignora_modulo_non_registrato_senza_sollevare(database):
 async def test_ricarica_ignora_modulo_diventato_sempre_gratuito(database):
     registry.register(
         PremiumModule(
+            category="utility",
             name="test_reload_gratuito",
             display_name="Modulo Test",
             description="x",

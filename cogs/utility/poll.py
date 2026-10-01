@@ -82,6 +82,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_POLL,
             display_name="Poll",
+            category="utility",
             description="Sondaggi tramite il sistema Poll nativo di Discord.",
             premium_capable=False,
         )

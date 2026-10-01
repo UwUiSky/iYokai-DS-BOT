@@ -892,6 +892,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_AUTOMOD,
             display_name="AutoMod",
+            category="automod",
             description="Filtri base: parole vietate e blocco inviti, sincronizzati con l'AutoMod nativo di Discord.",
             premium_capable=False,
         )

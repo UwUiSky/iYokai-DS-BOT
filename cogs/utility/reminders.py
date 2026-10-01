@@ -183,6 +183,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_REMINDERS,
             display_name="Reminders",
+            category="utility",
             description="Promemoria personali con consegna via DM (fallback nel canale).",
             premium_capable=False,
         )

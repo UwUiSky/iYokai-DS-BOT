@@ -409,7 +409,10 @@ async def test_get_monthly_clan_leaderboard_ordinata_per_xp_del_periodo(repo):
     await repo.add_xp(basso, amount=100)
     await repo.add_xp(alto, amount=9000)
 
-    classifica = await repo.get_monthly_clan_leaderboard(100, period="2026-09")
+    # Il periodo è quello corrente reale (add_xp accredita nel mese di
+    # adesso): un valore fisso come "2026-09" fallisce al cambio di mese.
+    periodo_corrente = datetime.now(timezone.utc).strftime("%Y-%m")
+    classifica = await repo.get_monthly_clan_leaderboard(100, period=periodo_corrente)
 
     assert [(c.id, xp) for c, xp in classifica] == [(alto, 9000), (basso, 100)]
 

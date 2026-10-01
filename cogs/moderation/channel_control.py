@@ -158,6 +158,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_CHANNEL_CONTROL,
             display_name="Moderazione — Controllo canale",
+            category="moderation",
             description="Lock, unlock, slowmode.",
             premium_capable=False,
         )

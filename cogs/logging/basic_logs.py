@@ -379,6 +379,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_LOGGING,
             display_name="Logging semplificato",
+            category="logging",
             description="Log di join/leave/ban/unban e modifiche ai ruoli.",
             premium_capable=False,
         )

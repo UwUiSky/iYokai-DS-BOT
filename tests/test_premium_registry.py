@@ -18,6 +18,7 @@ from core.premium import PremiumModule, PremiumRegistry
 
 def _modulo(name: str = "test_modulo", premium_capable: bool = True) -> PremiumModule:
     return PremiumModule(
+            category="utility",
         name=name,
         display_name="Modulo di Test",
         description="Un modulo per i test.",
@@ -58,6 +59,7 @@ class TestRegister:
         registry.register(_modulo())
 
         modulo_diverso = PremiumModule(
+            category="utility",
             name="test_modulo",
             display_name="Nome Diverso",  # <-- qui la differenza
             description="Un modulo per i test.",
@@ -71,6 +73,7 @@ class TestRegister:
         registry.register(_modulo())
 
         modulo_diverso = PremiumModule(
+            category="utility",
             name="test_modulo",
             display_name="Modulo di Test",
             description="Descrizione diversa",  # <-- qui la differenza

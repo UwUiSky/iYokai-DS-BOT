@@ -137,6 +137,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_STICKY_MESSAGES,
             display_name="Sticky Messages",
+            category="utility",
             description="Messaggio fisso in fondo a un canale, ripubblicato automaticamente.",
             premium_capable=False,
         )

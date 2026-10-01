@@ -84,6 +84,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_SECURITY_SCORE,
             display_name="Security Score",
+            category="security",
             description="Health-check della configurazione di sicurezza del server, con consigli azionabili.",
             premium_capable=False,
         )

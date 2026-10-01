@@ -111,6 +111,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_NAME,
             display_name="Ping",
+            category="utility",
             description="Comando di test per la latenza del bot.",
             premium_capable=False,  # questo resterà SEMPRE gratis
         )

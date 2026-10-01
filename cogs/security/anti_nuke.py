@@ -377,6 +377,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_ANTI_NUKE,
             display_name="Anti-Nuke",
+            category="security",
             description="Rilevamento e risposta automatica ad azioni distruttive di massa sul server.",
             premium_capable=True,
         )

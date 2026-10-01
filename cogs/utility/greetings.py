@@ -301,6 +301,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_GREETINGS,
             display_name="Greetings",
+            category="utility",
             description="Messaggi di benvenuto, addio e boost con segnaposto personalizzabili.",
             premium_capable=False,
         )

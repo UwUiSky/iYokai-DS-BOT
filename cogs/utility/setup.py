@@ -19,12 +19,15 @@ Come funziona
    core/premium.py e cogs/utility/ping.py per il pattern).
 2. Per ognuno, controlla lo stato attuale su questo server
    (db.is_module_active_for_guild).
-3. Mostra un menu a tendina multi-selezione con le opzioni già
-   pre-selezionate secondo lo stato attuale (SelectOption(default=...)).
+3. Con `categoria` mostra un menu a tendina multi-selezione dei soli
+   moduli di quella categoria, con le opzioni già pre-selezionate
+   secondo lo stato attuale (SelectOption(default=...)). Senza
+   `categoria` mostra un elenco di sola lettura di tutti i moduli.
 4. Al salvataggio, scrive lo stato ESATTO della selezione: un modulo
    che era attivo e non viene riselezionato viene disattivato — non
    basta "selezionare quelli da accendere", la selezione RAPPRESENTA
    lo stato finale desiderato.
+Funzioni coperte: SPEC §2.1, §2.2, REVIEW.md BUG-2 (issue #4, #38, #43, #49).
 """
 
 from __future__ import annotations
@@ -43,10 +46,22 @@ from core.ui_base import BaseView
 logger = logging.getLogger("iyokai.setup")
 
 # Limite reale di Discord: un Select accetta al massimo 25 opzioni.
-# Con più moduli di così servirà paginare il pannello (TODO quando
-# il numero di moduli registrati lo richiederà davvero — vedi
-# PROGRESS.md).
+# Per questo /setup mostra un Select per categoria (BUG-2).
 MAX_SELECT_OPTIONS = 25
+
+# BUG-2: nomi leggibili delle categorie di core.premium.CATEGORIE_MODULI.
+ETICHETTE_CATEGORIE = {
+    "moderation": "Moderazione",
+    "security": "Sicurezza",
+    "automod": "AutoMod",
+    "logging": "Log",
+    "utility": "Utility",
+    "tickets": "Ticket",
+    "voice": "Vocali",
+    "music": "Musica",
+    "leveling": "Livelli ed economia",
+    "fun": "Fun",
+}
 
 
 class ModuleSelect(discord.ui.Select):
@@ -294,10 +309,21 @@ class SetupCog(commands.Cog):
 
     @app_commands.command(
         name="setup",
-        description="[Admin] Attiva o disattiva i moduli del bot su questo server.",
+        description="[Admin] Attiva o disattiva i moduli del bot, per categoria.",
+    )
+    @app_commands.describe(
+        categoria="Categoria da configurare. Senza scelta: elenco di sola lettura."
+    )
+    @app_commands.choices(
+        categoria=[
+            app_commands.Choice(name=etichetta, value=valore)
+            for valore, etichetta in ETICHETTE_CATEGORIE.items()
+        ]
     )
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def setup(self, interaction: discord.Interaction) -> None:
+    async def setup(
+        self, interaction: discord.Interaction, categoria: str | None = None
+    ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.",
@@ -305,36 +331,36 @@ class SetupCog(commands.Cog):
             )
             return
 
+        # LC-3: le letture dal database possono superare i 3 secondi.
+        await interaction.response.defer(ephemeral=True)
         await db.ensure_guild_exists(interaction.guild.id)
 
-        modules = registry.all_modules()
+        if categoria is None:
+            embed = await self._embed_stato_moduli(interaction.guild.id)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        modules = registry.modules_in_category(categoria)
         if not modules:
-            await interaction.response.send_message(
-                "Nessun modulo risulta ancora registrato. Riprova tra "
-                "qualche istante o contatta il supporto se il problema persiste.",
+            await interaction.followup.send(
+                "Nessun modulo risulta registrato in questa categoria.",
                 ephemeral=True,
             )
             return
 
         if len(modules) > MAX_SELECT_OPTIONS:
-            # Fallimento controllato, non un crash: un Select con più
-            # di 25 opzioni viene rifiutato da discord.py con un
-            # ValueError. Meglio avvisare chiaramente ora che il
-            # numero di moduli richiede la paginazione del pannello
-            # (vedi PROGRESS.md), piuttosto che rompere il comando
-            # in silenzio o mostrare solo i primi 25 senza dirlo.
+            # Non succede con le categorie attuali (il test sul registry
+            # reale lo verifica); se un giorno accade, avvisa invece di
+            # far rifiutare il Select da discord.py.
             logger.warning(
-                "Registrati %d moduli, oltre il limite di %d gestibile "
-                "da un singolo Select — il pannello /setup necessita "
-                "di paginazione, non ancora implementata.",
+                "Categoria %s con %d moduli, oltre il limite di %d di un Select.",
+                categoria,
                 len(modules),
                 MAX_SELECT_OPTIONS,
             )
-            await interaction.response.send_message(
-                "Il pannello di setup non può ancora mostrare tutti i "
-                "moduli disponibili in una sola schermata (limite "
-                "tecnico di Discord). Contatta lo sviluppatore: questa "
-                "parte necessita di un aggiornamento.",
+            await interaction.followup.send(
+                "Questa categoria ha troppi moduli per una sola schermata. "
+                "Contatta lo sviluppatore.",
                 ephemeral=True,
             )
             return
@@ -348,15 +374,30 @@ class SetupCog(commands.Cog):
         ]
 
         view = SetupView(interaction.guild.id, modules_with_state)
-        await interaction.response.send_message(
-            "**Configurazione moduli**\n"
+        view.message = await interaction.followup.send(
+            f"**Configurazione moduli — {ETICHETTE_CATEGORIE[categoria]}**\n"
             "Seleziona i moduli da attivare su questo server, poi premi "
             "**Salva configurazione**. I moduli già attivi sono "
             "pre-selezionati.",
             view=view,
             ephemeral=True,
+            wait=True,
         )
-        view.message = await interaction.original_response()
+
+    async def _embed_stato_moduli(self, guild_id: int) -> discord.Embed:
+        """Elenco di sola lettura: stato di tutti i moduli, per categoria."""
+        embed = discord.Embed(
+            title="Stato dei moduli",
+            description="Scegli una categoria in `/setup categoria:` per modificarla.",
+        )
+        for valore, etichetta in ETICHETTE_CATEGORIE.items():
+            righe = []
+            for modulo in registry.modules_in_category(valore):
+                attivo = await db.is_module_active_for_guild(guild_id, modulo.name)
+                righe.append(f"{'✅' if attivo else '❌'} {modulo.display_name}")
+            if righe:
+                embed.add_field(name=etichetta, value="\n".join(righe), inline=False)
+        return embed
 
     @app_commands.command(
         name="setup-wizard",

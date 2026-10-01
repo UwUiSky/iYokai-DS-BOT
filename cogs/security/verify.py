@@ -385,6 +385,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_VERIFY,
             display_name="Verify",
+            category="security",
             description="Verifica dei nuovi membri: bottone/reazione, captcha, età account, mutual servers.",
             premium_capable=False,
         )

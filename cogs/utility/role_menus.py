@@ -562,6 +562,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_ROLE_MENUS,
             display_name="Role Menus",
+            category="utility",
             description="Reaction/Button/Select menu per l'auto-assegnazione dei ruoli.",
             premium_capable=False,
         )

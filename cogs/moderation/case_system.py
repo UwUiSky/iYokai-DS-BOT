@@ -179,6 +179,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_CASE_SYSTEM,
             display_name="Moderazione — Case System avanzato",
+            category="moderation",
             description="Storico casi, dettaglio caso, note dello staff.",
             premium_capable=True,
         )

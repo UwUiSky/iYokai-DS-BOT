@@ -566,6 +566,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_VOICE_TEMP,
             display_name="Vocali temporanei",
+            category="voice",
             description="Creazione automatica e manuale di canali vocali personali.",
             premium_capable=False,
         )

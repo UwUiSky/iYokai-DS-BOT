@@ -919,6 +919,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_SPAM_TRAP,
             display_name="Spam Trap",
+            category="security",
             description="Canale trappola con ban istantaneo, purge e appeal.",
             premium_capable=True,
         )

@@ -100,6 +100,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_FUN,
             display_name="Fun",
+            category="fun",
             description="Comandi di intrattenimento (Ship, Rate).",
             premium_capable=False,
         )

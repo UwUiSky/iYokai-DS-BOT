@@ -156,6 +156,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_GLOBAL_BAN,
             display_name="Ban Globale",
+            category="security",
             description="Propaga i ban della Spam Trap verso ogni server aderente alla rete.",
             premium_capable=True,
         )
