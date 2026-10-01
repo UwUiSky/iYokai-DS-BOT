@@ -108,9 +108,17 @@ async def start_backup_job(
     try:
         mappa_ruoli = await clone_roles(main_guild, nuovo_server)
         mappa_canali = await clone_categories_and_channels(main_guild, nuovo_server, mappa_ruoli)
-        await clone_emoji(main_guild, nuovo_server)
-        await clone_stickers(main_guild, nuovo_server)
-        await clone_soundboard(main_guild, nuovo_server)
+        emoji_saltate = await clone_emoji(main_guild, nuovo_server)
+        sticker_saltati = await clone_stickers(main_guild, nuovo_server)
+        suoni_saltati = await clone_soundboard(main_guild, nuovo_server)
+        if emoji_saltate or sticker_saltati or suoni_saltati:
+            logger.warning(
+                "Backup di %s: saltati %d emoji, %d sticker, %d suoni (oltre i limiti o rifiutati da Discord).",
+                main_guild.id,
+                emoji_saltate,
+                sticker_saltati,
+                suoni_saltati,
+            )
         await clone_webhooks(main_guild, nuovo_server, mappa_canali)
         mappa_webhook_mirror = await create_mirror_webhooks(nuovo_server, mappa_canali)
     except Exception:

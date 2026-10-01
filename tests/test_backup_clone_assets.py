@@ -18,8 +18,9 @@ from core.backup_clone_logic import (
 
 
 class _FakeEmoji:
-    def __init__(self, name: str, contenuto: bytes) -> None:
+    def __init__(self, name: str, contenuto: bytes, animated: bool = False) -> None:
         self.name = name
+        self.animated = animated
         self._contenuto = contenuto
 
     async def read(self) -> bytes:
@@ -75,7 +76,14 @@ class _FakeSourceGuildAssets:
 
 
 class _FakeTargetGuildAssets:
-    def __init__(self, canali: dict[int, _FakeTargetChannel] | None = None) -> None:
+    def __init__(
+        self,
+        canali: dict[int, _FakeTargetChannel] | None = None,
+        emoji_limit: int = 50,
+        sticker_limit: int = 5,
+    ) -> None:
+        self.emoji_limit = emoji_limit
+        self.sticker_limit = sticker_limit
         self.chiamate_create_custom_emoji: list[dict] = []
         self.chiamate_create_sticker: list[dict] = []
         self.chiamate_create_soundboard_sound: list[dict] = []
@@ -176,3 +184,85 @@ async def test_clone_webhooks_canale_non_clonato_viene_saltato_senza_sollevare()
     target = _FakeTargetGuildAssets()
 
     await clone_webhooks(source, target, channel_id_map={})  # non deve sollevare
+
+
+# ---- §12 11.5–11.7: i limiti del server di destinazione ---------------
+
+
+@pytest.mark.asyncio
+async def test_clone_emoji_salta_quelle_oltre_il_limite_e_le_conta():
+    source = _FakeSourceGuildAssets(
+        emojis=[_FakeEmoji("uno", b"a"), _FakeEmoji("due", b"b"), _FakeEmoji("tre", b"c")]
+    )
+    target = _FakeTargetGuildAssets(emoji_limit=2)
+
+    saltate = await clone_emoji(source, target)
+
+    assert [c["name"] for c in target.chiamate_create_custom_emoji] == ["uno", "due"]
+    assert saltate == 1
+
+
+@pytest.mark.asyncio
+async def test_clone_emoji_il_limite_e_separato_per_statiche_e_animate():
+    source = _FakeSourceGuildAssets(
+        emojis=[
+            _FakeEmoji("fissa", b"a"),
+            _FakeEmoji("mossa", b"b", animated=True),
+            _FakeEmoji("fissa2", b"c"),
+        ]
+    )
+    target = _FakeTargetGuildAssets(emoji_limit=1)
+
+    saltate = await clone_emoji(source, target)
+
+    assert [c["name"] for c in target.chiamate_create_custom_emoji] == ["fissa", "mossa"]
+    assert saltate == 1
+
+
+@pytest.mark.asyncio
+async def test_clone_emoji_un_errore_di_discord_salta_solo_quella():
+    import discord
+    from unittest.mock import MagicMock
+
+    source = _FakeSourceGuildAssets(emojis=[_FakeEmoji("rotta", b"a"), _FakeEmoji("ok", b"b")])
+    target = _FakeTargetGuildAssets()
+    originale = target.create_custom_emoji
+
+    async def create_che_rifiuta_la_prima(**kwargs):
+        if kwargs["name"] == "rotta":
+            raise discord.HTTPException(MagicMock(status=400, reason="x"), "file troppo grande")
+        await originale(**kwargs)
+
+    target.create_custom_emoji = create_che_rifiuta_la_prima
+
+    saltate = await clone_emoji(source, target)
+
+    assert [c["name"] for c in target.chiamate_create_custom_emoji] == ["ok"]
+    assert saltate == 1
+
+
+@pytest.mark.asyncio
+async def test_clone_stickers_salta_quelli_oltre_il_limite():
+    source = _FakeSourceGuildAssets(
+        stickers=[_FakeSticker(f"s{i}", "d", "👋", b"x") for i in range(3)]
+    )
+    target = _FakeTargetGuildAssets(sticker_limit=2)
+
+    saltati = await clone_stickers(source, target)
+
+    assert len(target.chiamate_create_sticker) == 2
+    assert saltati == 1
+
+
+@pytest.mark.asyncio
+async def test_clone_soundboard_salta_i_suoni_oltre_il_limite():
+    from core.backup_clone_logic import MAX_SUONI_SOUNDBOARD
+
+    suoni = [_FakeSoundboardSound(f"s{i}", 1.0, None, b"x") for i in range(MAX_SUONI_SOUNDBOARD + 2)]
+    source = _FakeSourceGuildAssets(soundboard_sounds=suoni)
+    target = _FakeTargetGuildAssets()
+
+    saltati = await clone_soundboard(source, target)
+
+    assert len(target.chiamate_create_soundboard_sound) == MAX_SUONI_SOUNDBOARD
+    assert saltati == 2

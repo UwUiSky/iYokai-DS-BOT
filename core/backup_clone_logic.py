@@ -1,24 +1,24 @@
 """
 core/backup_clone_logic.py
-==============================
-Clonazione server per server (SPEC.md §11.3 ruoli, §11.4 canali —
-il resto della sezione, in ordine, negli stessi file man mano che si
-costruisce). Funzioni di orchestrazione reali contro l'API discord.py
-(verificata prima di scrivere, non a memoria — vedi le firme usate),
-testabili con oggetti finti che replicano l'interfaccia vera dato
-che non è possibile una connessione Discord reale in questo ambiente.
-
-Chiamate sequenziali (mai `asyncio.gather` per creare più ruoli/
-canali insieme) — discord.py gestisce da solo i rate limit di
-Discord sulle richieste in sequenza, ma spararle tutte insieme
-peggiorerebbe le cose, non le velocizzerebbe.
+==========================
+Clonazione del server per il Backup System: ruoli, canali, emoji,
+sticker, suoni e webhook, una chiamata alla volta (mai in parallelo).
+Emoji, sticker e suoni oltre i limiti del server di destinazione vengono
+saltati e contati, senza far fallire il backup.
+Funzioni coperte: SPEC §11.3–§11.8
 """
 
 from __future__ import annotations
 
 import io
+import logging
 
 import discord
+
+logger = logging.getLogger("iyokai.backup_clone")
+
+# Il server appena creato non ha boost: limite base della soundboard.
+MAX_SUONI_SOUNDBOARD = 8
 
 
 async def clone_roles(source_guild: discord.Guild, target_guild: discord.Guild) -> dict[int, int]:
@@ -184,50 +184,87 @@ async def clone_categories_and_channels(
     return mappa_id
 
 
-async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) -> None:
+async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
     """
-    Clona le emoji personalizzate (SPEC.md §11.5). Scarica ogni
-    immagine dal server originale (emoji.read(), via CDN Discord) e
-    la ricrea nel server di destinazione — Discord non permette di
-    "copiare" un'emoji per riferimento, serve ricaricare i byte
-    dell'immagine da zero.
+    Clona le emoji personalizzate (SPEC.md §11.5): scarica ogni
+    immagine e la ricarica nel server di destinazione. Il limite di
+    Discord è separato per emoji statiche e animate: quelle oltre il
+    limite, o rifiutate da Discord, vengono saltate (non fanno fallire
+    il backup). Restituisce quante ne ha saltate.
     """
+    saltate = 0
+    creati = {False: 0, True: 0}
     for emoji in source_guild.emojis:
-        immagine = await emoji.read()
-        await target_guild.create_custom_emoji(
-            name=emoji.name, image=immagine, reason="Clonazione backup iYokai"
-        )
+        if creati[emoji.animated] >= target_guild.emoji_limit:
+            saltate += 1
+            continue
+        try:
+            immagine = await emoji.read()
+            await target_guild.create_custom_emoji(
+                name=emoji.name, image=immagine, reason="Clonazione backup iYokai"
+            )
+        except discord.HTTPException:
+            logger.warning("Emoji '%s' saltata: Discord l'ha rifiutata.", emoji.name)
+            saltate += 1
+            continue
+        creati[emoji.animated] += 1
+    return saltate
 
 
-async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guild) -> None:
-    """Clona gli sticker personalizzati (SPEC.md §11.6), stesso
-    principio delle emoji: scarica l'immagine, la ricarica come
-    nuovo sticker."""
+async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
+    """Clona gli sticker personalizzati (SPEC.md §11.6). Quelli oltre il
+    limite del server di destinazione, o rifiutati da Discord, vengono
+    saltati. Restituisce quanti ne ha saltati."""
+    saltati = 0
+    creati = 0
     for sticker in source_guild.stickers:
-        immagine = await sticker.read()
-        file_sticker = discord.File(io.BytesIO(immagine), filename=f"{sticker.name}.png")
-        await target_guild.create_sticker(
-            name=sticker.name,
-            description=sticker.description,
-            emoji=sticker.emoji,
-            file=file_sticker,
-            reason="Clonazione backup iYokai",
-        )
+        if creati >= target_guild.sticker_limit:
+            saltati += 1
+            continue
+        try:
+            immagine = await sticker.read()
+            file_sticker = discord.File(io.BytesIO(immagine), filename=f"{sticker.name}.png")
+            await target_guild.create_sticker(
+                name=sticker.name,
+                description=sticker.description,
+                emoji=sticker.emoji,
+                file=file_sticker,
+                reason="Clonazione backup iYokai",
+            )
+        except discord.HTTPException:
+            logger.warning("Sticker '%s' saltato: Discord l'ha rifiutato.", sticker.name)
+            saltati += 1
+            continue
+        creati += 1
+    return saltati
 
 
-async def clone_soundboard(source_guild: discord.Guild, target_guild: discord.Guild) -> None:
-    """Clona i suoni della soundboard (SPEC.md §11.7), stesso
-    principio delle emoji/sticker: scarica l'audio, lo ricarica come
-    nuovo suono."""
+async def clone_soundboard(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
+    """Clona i suoni della soundboard (SPEC.md §11.7). Il server nuovo ha
+    il limite base (MAX_SUONI_SOUNDBOARD): i suoni oltre il limite, o
+    rifiutati da Discord, vengono saltati. Restituisce quanti ne ha
+    saltati."""
+    saltati = 0
+    creati = 0
     for suono in source_guild.soundboard_sounds:
-        audio = await suono.read()
-        await target_guild.create_soundboard_sound(
-            name=suono.name,
-            sound=audio,
-            volume=suono.volume,
-            emoji=suono.emoji,
-            reason="Clonazione backup iYokai",
-        )
+        if creati >= MAX_SUONI_SOUNDBOARD:
+            saltati += 1
+            continue
+        try:
+            audio = await suono.read()
+            await target_guild.create_soundboard_sound(
+                name=suono.name,
+                sound=audio,
+                volume=suono.volume,
+                emoji=suono.emoji,
+                reason="Clonazione backup iYokai",
+            )
+        except discord.HTTPException:
+            logger.warning("Suono '%s' saltato: Discord l'ha rifiutato.", suono.name)
+            saltati += 1
+            continue
+        creati += 1
+    return saltati
 
 
 async def clone_webhooks(
