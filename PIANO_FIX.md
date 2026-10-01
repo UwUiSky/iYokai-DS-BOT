@@ -445,9 +445,11 @@ Ogni voce: test che esegue il comando e fallisce → fix → test verde.
   attivi; lo spegnimento chiude tutte le sessioni (fixture di RT-3).
   Fatto in `core/bot_supervisor.py` + `main.py`, 5 test in
   `tests/test_bot_supervisor.py` — commit 8a218d1 (Refs #12, #28)
-- [ ] **BUG-8 (#13)** `core/scheduler.py`: `try/except` intorno a ogni
+- [x] **BUG-8 (#13)** `core/scheduler.py`: `try/except` intorno a ogni
   giro e intorno a ogni azione; un'azione senza handler viene segnata
   `failed` con il motivo e non blocca la coda.
+  Fatto (`_giro`, colonna `failed_reason`, migrazione `0002`), 3 test in
+  `tests/test_scheduler.py` — commit 9683b36 (Refs #13)
 - [ ] **BUG-9** All'avvio svuota `music_sessions` (i worker ripartono da
   zero). Test: righe vecchie spariscono al setup.
 - [ ] **LC-8** Worker periodici: `try/except` **per server** dentro il
