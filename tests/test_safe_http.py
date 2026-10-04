@@ -1,21 +1,20 @@
 """
 tests/test_safe_http.py
 ===========================
-Test di core/safe_http.py (SEC-8) — protezione SSRF sui feed. I test
-sugli IP realmente pericolosi (127.0.0.1, 169.254.169.254) non usano
-nessun server finto: vengono rifiutati PRIMA di qualunque tentativo
-di connessione, dalla sola risoluzione DNS/controllo IP. I test che
-verificano il comportamento della richiesta vera (limite di byte,
-redirect seguiti a mano) usano un server aiohttp reale in locale
-(aiohttp.test_utils) — che gira anch'esso su 127.0.0.1 con una porta
-casuale, quindi per QUEI SOLI test si disattivano temporaneamente il
-controllo sull'IP di destinazione e quello sulla porta ammessa
-(monkeypatch), lasciando invariato tutto il resto (redirect seguiti
-a mano, limite di byte).
+Test di core/safe_http.py (SEC-8, SEC-18, BUG-20) — protezione SSRF
+sui feed. I test che verificano il comportamento della richiesta vera
+(limite di byte, redirect seguiti a mano) usano un server aiohttp
+reale in locale (aiohttp.test_utils), che gira su 127.0.0.1 con una
+porta casuale: per QUEI SOLI test si disattivano il controllo sull'IP
+di destinazione e quello sulla porta (monkeypatch). I test sul rifiuto
+degli indirizzi interni ammettono invece solo la porta del server
+finto e contano le richieste che riceve: devono essere zero.
 """
 
 import ipaddress
+import socket
 
+import aiohappyeyeballs
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
@@ -50,15 +49,31 @@ class TestIpEBloccato:
             "::1",  # loopback IPv6
             "fe80::1",  # link-local IPv6
             "fc00::1",  # privato IPv6 (ULA)
+            # SEC-18: tutto ciò che non è "instradabile su Internet".
+            "100.64.0.1",  # CGNAT (rete condivisa del provider)
+            "192.88.99.1",  # relay 6to4 (deprecato)
+            "fec0::1",  # site-local IPv6 (deprecato)
+            "192.0.2.1",  # documentazione
+            "198.18.0.1",  # benchmark
+            "240.0.0.1",  # riservato
+            "255.255.255.255",  # broadcast
+            "ff02::1",  # multicast IPv6
+            "::ffff:127.0.0.1",  # loopback IPv4 "travestito" da IPv6
+            "::ffff:10.0.0.5",  # privato IPv4 "travestito" da IPv6
+            "::ffff:100.64.0.1",  # CGNAT "travestito" da IPv6
         ],
     )
     def test_ip_pericolosi_sono_bloccati(self, indirizzo):
         assert _ip_e_bloccato(ipaddress.ip_address(indirizzo)) is True
 
-    def test_ip_pubblico_non_e_bloccato(self):
-        # 8.8.8.8 (Google Public DNS) — un IP pubblico reale, usato
-        # solo come esempio, nessuna richiesta di rete viene fatta.
-        assert _ip_e_bloccato(ipaddress.ip_address("8.8.8.8")) is False
+    @pytest.mark.parametrize(
+        "indirizzo",
+        # IP pubblici reali, usati solo come esempio: nessuna richiesta
+        # di rete viene fatta.
+        ["8.8.8.8", "1.1.1.1", "2001:4860:4860::8888", "::ffff:8.8.8.8"],
+    )
+    def test_ip_pubblico_non_e_bloccato(self, indirizzo):
+        assert _ip_e_bloccato(ipaddress.ip_address(indirizzo)) is False
 
 
 class TestSchemaEPortaAmmessi:
@@ -235,3 +250,145 @@ async def test_redirect_verso_url_malformato_restituisce_none(monkeypatch):
         assert risultato is None
     finally:
         await server.close()
+
+
+# ---------------------------------------------------------------------
+# SEC-18: DNS rebinding. Il nome va risolto UNA volta sola, e la
+# connessione parte verso gli stessi IP che hanno passato il controllo.
+# ---------------------------------------------------------------------
+
+IP_PUBBLICO_DI_ESEMPIO = "93.184.216.34"
+
+
+@pytest.fixture
+async def server_interno():
+    """Un servizio "interno" su 127.0.0.1 che conta le richieste ricevute."""
+    richieste: list[str] = []
+
+    async def handler(request):
+        richieste.append(request.path)
+        return web.Response(text="segreto interno")
+
+    app = web.Application()
+    app.router.add_get("/{resto:.*}", handler)
+    server = TestServer(app)
+    await server.start_server()
+    server.richieste = richieste
+    yield server
+    await server.close()
+
+
+def _dns_finto(monkeypatch, risposte: dict[str, list[list[str]]]) -> list[str]:
+    """
+    Sostituisce la risoluzione DNS di sistema per i nomi in
+    `risposte`: a ogni ricerca dello stesso nome risponde con il
+    gruppo di IP successivo (l'ultimo gruppo si ripete). Restituisce
+    l'elenco dei nomi cercati, nell'ordine.
+    """
+    ricerche: list[str] = []
+    getaddrinfo_vero = socket.getaddrinfo
+
+    def finto(host, port, *args, **kwargs):
+        if host not in risposte:
+            return getaddrinfo_vero(host, port, *args, **kwargs)
+        ricerche.append(host)
+        gruppi = risposte[host]
+        indirizzi = gruppi.pop(0) if len(gruppi) > 1 else gruppi[0]
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port or 0)) for ip in indirizzi]
+
+    monkeypatch.setattr(socket, "getaddrinfo", finto)
+    return ricerche
+
+
+def _solo_connessioni_locali(monkeypatch) -> list[str]:
+    """
+    Nessun test deve uscire su Internet: le connessioni verso
+    127.0.0.1 partono davvero (così il server finto le riceverebbe),
+    quelle verso qualunque altro IP vengono rifiutate subito.
+    Restituisce l'elenco degli IP verso cui si è tentato di connettersi.
+    """
+    tentativi: list[str] = []
+    connessione_vera = aiohappyeyeballs.start_connection
+
+    async def solo_locali(addr_infos, **kwargs):
+        tentativi.extend(info[4][0] for info in addr_infos)
+        locali = [info for info in addr_infos if info[4][0] == "127.0.0.1"]
+        if not locali:
+            raise OSError("rete esterna disattivata nei test")
+        return await connessione_vera(locali, **kwargs)
+
+    monkeypatch.setattr(aiohappyeyeballs, "start_connection", solo_locali)
+    return tentativi
+
+
+@pytest.mark.asyncio
+async def test_dns_rebinding_non_porta_a_una_connessione_verso_loopback(monkeypatch, server_interno):
+    # Prima risposta: IP pubblico (passa il controllo). Seconda: loopback.
+    ricerche = _dns_finto(
+        monkeypatch, {"rebind.test": [[IP_PUBBLICO_DI_ESEMPIO], ["127.0.0.1"]]}
+    )
+    tentativi = _solo_connessioni_locali(monkeypatch)
+    monkeypatch.setattr(safe_http_module, "ALLOWED_PORTS", {80, 443, server_interno.port})
+
+    risultato = await safe_get(f"http://rebind.test:{server_interno.port}/segreto")
+
+    assert server_interno.richieste == []
+    assert risultato is None
+    # Una sola risoluzione, e la connessione tentata solo verso l'IP
+    # che ha passato il controllo.
+    assert ricerche == ["rebind.test"]
+    assert tentativi == [IP_PUBBLICO_DI_ESEMPIO]
+
+
+@pytest.mark.asyncio
+async def test_risposta_dns_mista_scarta_gli_ip_interni(monkeypatch, server_interno):
+    _dns_finto(monkeypatch, {"misto.test": [["127.0.0.1", IP_PUBBLICO_DI_ESEMPIO]]})
+    tentativi = _solo_connessioni_locali(monkeypatch)
+    monkeypatch.setattr(safe_http_module, "ALLOWED_PORTS", {80, 443, server_interno.port})
+
+    risultato = await safe_get(f"http://misto.test:{server_interno.port}/segreto")
+
+    assert server_interno.richieste == []
+    assert risultato is None
+    assert tentativi == [IP_PUBBLICO_DI_ESEMPIO]
+
+
+@pytest.mark.asyncio
+async def test_nome_host_ammesso_viene_scaricato_passando_dal_resolver(monkeypatch, server_interno):
+    # Il percorso normale (nome host -> resolver -> connessione) deve
+    # continuare a funzionare: qui il nome risolve al server finto, e
+    # solo per questo test il suo IP è trattato come ammesso.
+    _dns_finto(monkeypatch, {"feed.test": [["127.0.0.1"]]})
+    monkeypatch.setattr(safe_http_module, "_ip_e_bloccato", lambda ip: False)
+    monkeypatch.setattr(safe_http_module, "ALLOWED_PORTS", {80, 443, server_interno.port})
+
+    risultato = await safe_get(f"http://feed.test:{server_interno.port}/feed.rss")
+
+    assert risultato == "segreto interno"
+    assert server_interno.richieste == ["/feed.rss"]
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "127.0.0.1",
+        "localhost",
+        "2130706433",  # 127.0.0.1 scritto come numero intero
+        "127.1",  # forma abbreviata
+        "0x7f.0.0.1",  # esadecimale
+        "[::ffff:127.0.0.1]",  # IPv4 dentro un IPv6
+        "127.0.0.1.",  # punto finale
+    ],
+)
+@pytest.mark.asyncio
+async def test_ogni_scrittura_di_loopback_viene_rifiutata_senza_connettersi(
+    monkeypatch, server_interno, host
+):
+    # La porta del server finto è ammessa: a fermare la richiesta deve
+    # essere il controllo sull'IP, non quello sulla porta.
+    monkeypatch.setattr(safe_http_module, "ALLOWED_PORTS", {80, 443, server_interno.port})
+
+    risultato = await safe_get(f"http://{host}:{server_interno.port}/segreto")
+
+    assert risultato is None
+    assert server_interno.richieste == []
