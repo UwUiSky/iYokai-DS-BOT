@@ -1,5 +1,16 @@
 # BACKLOG.md — Proposte esterne, valutate
 
+> **Nota del 04/10/2026.** Per decisione dell'owner nessuna funzione
+> richiesta resta fuori dal piano. Le voci qui segnate `RIMANDATA`
+> hanno ora una fase in `revisione/02-piano/PRIORITA.md`: il motore AI
+> (§8) è la fase F12, con i prerequisiti scritti qui; le altre (§6, §7,
+> §9 parte positiva, §11) sono la fase F14. Le voci `RESPINTA` restano
+> respinte: erano proposte di altre AI, non richieste dell'owner.
+> Dove questo file parla di "review di Discord per i 100 server" si
+> intende la **verifica dell'app**. Gli intent privilegiati seguono
+> un'altra regola (10.000 utenti): vedi `revisione/02-piano/DECISIONI.md`
+> D11.
+
 **Questo file non è `SPEC.md`.** `SPEC.md` resta il registro dello
 scope deciso e il suo stato reale — niente entra lì senza essere
 prima valutato e accettato qui.
