@@ -8,7 +8,8 @@ Come si usa:
 - Dentro una fase, dall'alto verso il basso.
 - Ogni voce ha un codice. Il dettaglio è in:
   - [`../01-analisi/REVIEW.md`](../01-analisi/REVIEW.md) per SEC-, BUG-,
-    LC-, GDPR-, DB-, PERF-, RT- e per i paragrafi "§";
+    LC-, GDPR-, DB-, PERF- e per i paragrafi "§";
+  - [`PIANO_FIX.md`](PIANO_FIX.md) (storico) per RT-1…RT-5;
   - [`../01-analisi/LIMITI.md`](../01-analisi/LIMITI.md) per LIM-;
   - [`NUOVE_FUNZIONI.md`](NUOVE_FUNZIONI.md) per NF-;
   - [`MODIFICHE_ESISTENTE.md`](MODIFICHE_ESISTENTE.md) per il "come"

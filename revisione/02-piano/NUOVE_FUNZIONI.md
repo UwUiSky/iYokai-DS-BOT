@@ -120,8 +120,8 @@ va **dentro** un sotto-gruppo esistente (per esempio dentro `config`).
 - **Cosa fa:** Tutti i testi del bot in un unico file per lingua. La lingua del server decide le risposte. I nomi dei comandi sono tradotti da Discord secondo la lingua dell'utente (D1). La ricerca dei comandi capisce sinonimi in entrambe le lingue e mostra solo i comandi che l'utente può usare.
 - **Da chi prendere spunto:** Maki (32 lingue), ProBot (10).
 - **Comandi:** `/admin lingua`, `/utility cerca-comando`.
-- **File nuovi:** `locales/it.json`, `locales/en.json`, `core/command_translator.py`, `scripts/genera_command_list.py`, `tests/test_i18n_completo.py`.
-- **File esistenti da toccare:** `core/i18n.py`, `core/command_search_logic.py`, `cogs/utility/command_search.py`.
+- **File nuovi:** `locales/it.json`, `locales/en.json`, `core/command_translator.py`, `tests/test_i18n_completo.py`.
+- **File esistenti da toccare:** `core/i18n.py`, `core/command_search_logic.py`, `cogs/utility/command_search.py`, `scripts/generate_command_list.py` (da estendere: scrive `COMMAND_LIST_ITA.md` e `COMMAND_LIST_ENG.md`).
 - **Limiti da rispettare:** Nome comando 32, descrizione 100, totale 8000 per comando anche con le traduzioni.
 - **Dipende da:** NF-05 (i nomi cambiano lì). D1.
 
@@ -549,7 +549,6 @@ il loro numero si sceglie quando si scrivono.
 | `locales/it.json` | Tutti i testi in italiano | NF-06 | F8 |
 | `locales/en.json` | Tutti i testi in inglese | NF-06 | F8 |
 | `core/command_translator.py` | Dà a Discord nomi e descrizioni tradotti dei comandi | NF-06 | F8 |
-| `scripts/genera_command_list.py` | Scrive `COMMAND_LIST_ITA.md` e `COMMAND_LIST_ENG.md` | NF-06 | F8 |
 | `tests/test_i18n_completo.py` | Ogni chiave esiste in entrambe le lingue; nessun testo fisso nei cog | NF-06 | F8 |
 | `cogs/utility/autoroles.py` | Comandi e ascolto degli ingressi | NF-07 | F9 |
 | `core/autorole_logic.py` | Decide quali ruoli dare e quando | NF-07 | F9 |
@@ -682,4 +681,4 @@ il loro numero si sceglie quando si scrivono.
 | `tests/test_coin_games_logic.py` | Regole e saldo mai negativo | NF-40 | F13 |
 | `tests/test_profiles.py` | Profilo e collezione | NF-40 | F13 |
 
-Totale: 154 file.
+Totale: 153 file.
