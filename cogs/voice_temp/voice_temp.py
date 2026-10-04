@@ -38,6 +38,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.database import db
+from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
 from core.role_safety import check_role_assignable
 from core.voice_temp_logic import (
@@ -536,7 +537,11 @@ class VoiceTempCog(commands.Cog):
             # temporanei ancora aperti, altrimenti resterebbero orfani
         else:
             config = await voice_temp_repo.get_config(guild.id)
-            if is_generator_join(after_channel_id, config.generator_channel_id):
+            # SEC-21: chi è in blacklist non ottiene un vocale
+            # temporaneo (il cleanup più sotto gira comunque).
+            if is_generator_join(
+                after_channel_id, config.generator_channel_id
+            ) and not await blacklist_repo.is_user_blacklisted(member.id):
                 category = guild.get_channel(config.category_id) if config.category_id else None
                 if isinstance(category, discord.CategoryChannel):
                     channel = await _create_temp_channel(guild, member, category, config)
