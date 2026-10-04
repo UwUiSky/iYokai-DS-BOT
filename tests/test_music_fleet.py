@@ -31,6 +31,9 @@ class _FakeWorkerBot:
         # identico a prima che il controllo di presenza esistesse.
         self._absent_from = absent_from or set()
 
+    def is_ready(self) -> bool:
+        return True
+
     def get_guild(self, guild_id: int) -> _FakeGuildRef | None:
         if guild_id in self._absent_from:
             return None
@@ -217,3 +220,81 @@ def test_build_invite_url_contiene_il_client_id_e_la_guild():
     assert str(1003) in url  # user.id del worker 3 (1000 + 3)
     assert "555" in url
     assert url.startswith("https://discord.com/oauth2/authorize")
+
+
+# ---------------------------------------------------------------------------
+# Worker che non sono partiti (token sbagliato): bot VERI mai loggati, che
+# hanno user=None. Un finto scritto a mano ha sempre `user` e nascondeva
+# l'AttributeError.
+# ---------------------------------------------------------------------------
+
+
+async def _worker_vero(worker_index: int, pronto: bool, guild_ids: set[int] = frozenset()):
+    """Un MusicWorkerBot vero; se `pronto`, nello stato che ha dopo il login."""
+    from types import SimpleNamespace
+
+    from core.music_worker_bot import MusicWorkerBot
+
+    bot = MusicWorkerBot(worker_index=worker_index)
+    if pronto:
+        await bot._async_setup_hook()
+        bot._ready.set()
+        bot._connection.user = SimpleNamespace(id=1000 + worker_index)
+        bot.get_guild = lambda guild_id: _FakeGuildRef(guild_id) if guild_id in guild_ids else None
+    return bot
+
+
+@pytest.fixture
+async def fleet_con_due_worker_non_partiti(clean_db, monkeypatch):
+    """Worker 1 e 2 non partiti; 3 pronto e nel server 100; 4 e 5 pronti ma non invitati."""
+    import core.music_fleet as music_fleet_module
+
+    repo = MusicSessionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(music_fleet_module, "music_session_repo", repo)
+    bots = [
+        await _worker_vero(1, pronto=False),
+        await _worker_vero(2, pronto=False),
+        await _worker_vero(3, pronto=True, guild_ids={100}),
+        await _worker_vero(4, pronto=True),
+        await _worker_vero(5, pronto=True),
+    ]
+    yield MusicFleet(bots), repo
+    for bot in bots:
+        await bot.close()
+
+
+async def test_un_worker_non_partito_non_viene_mai_assegnato(fleet_con_due_worker_non_partiti):
+    fleet, _ = fleet_con_due_worker_non_partiti
+
+    assegnato = await fleet.get_or_assign_worker_for_guild(100)
+
+    assert assegnato is not None and assegnato[0] == 3  # non l'1 o il 2
+
+
+async def test_un_worker_non_partito_non_e_tra_quelli_da_invitare(fleet_con_due_worker_non_partiti):
+    fleet, _ = fleet_con_due_worker_non_partiti
+
+    assert await fleet.get_missing_worker_indices(100) == {4, 5}
+
+
+async def test_play_di_un_admin_con_gli_altri_occupati_non_va_in_crash(
+    fleet_con_due_worker_non_partiti,
+):
+    """Lo scenario del bug: worker pronti occupati, un admin lancia /play."""
+    import discord
+
+    from cogs.music.player import MusicCog
+    from tests.support.discord_fakes import fake_interaction
+
+    fleet, repo = fleet_con_due_worker_non_partiti
+    await repo.assign_worker(999, 3)  # l'unico worker presente è occupato altrove
+    assert await fleet.get_or_assign_worker_for_guild(100) is None
+
+    interazione = fake_interaction()
+    interazione.user.guild_permissions = discord.Permissions(manage_guild=True)
+    cog = MusicCog.__new__(MusicCog)  # serve solo il metodo, non il bot
+
+    messaggio = await cog._messaggio_istanze_esaurite(fleet, 100, interazione)
+
+    assert "Istanza 4" in messaggio and "Istanza 5" in messaggio
+    assert "Istanza 1" not in messaggio and "Istanza 2" not in messaggio

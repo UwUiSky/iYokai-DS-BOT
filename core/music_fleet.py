@@ -76,7 +76,7 @@ class MusicFleet:
 
         non_presenti = await self.get_missing_worker_indices(guild_id)
         occupati = await music_session_repo.get_occupied_workers()
-        libero = find_free_worker(occupati | non_presenti)
+        libero = find_free_worker(occupati | non_presenti | self._worker_non_pronti())
         if libero is None:
             return None
 
@@ -92,11 +92,24 @@ class MusicFleet:
         se qui manca almeno un'istanza delle 5, la soluzione è
         invitarla; se sono già tutte presenti ma tutte occupate
         altrove, la soluzione è un'estensione del limite globale.
+        Le istanze non pronte (non partite) sono escluse: non c'è
+        nulla da invitare.
         """
         return {
             i
             for i in range(1, TOTAL_WORKERS + 1)
-            if self.get_worker_bot(i).get_guild(guild_id) is None
+            if i not in self._worker_non_pronti()
+            and self.get_worker_bot(i).get_guild(guild_id) is None
+        }
+
+    def _worker_non_pronti(self) -> set[int]:
+        """
+        Le istanze che non sono partite (es. token sbagliato) o non sono
+        ancora pronte: non si possono assegnare e non si può costruire
+        il loro link d'invito (`user` è None).
+        """
+        return {
+            i for i in range(1, TOTAL_WORKERS + 1) if not self.get_worker_bot(i).is_ready()
         }
 
     def build_invite_url(self, worker_index: int, guild_id: int) -> str:
