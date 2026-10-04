@@ -117,6 +117,22 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
     )
 
 
+# Utenti con saldo > 1 non ancora decaduti nel periodo $1. Equivale a
+# "last_weekly_decay_period IS DISTINCT FROM $1", ma scritta con IS NULL,
+# < e > perché solo così Postgres può cercare nell'indice parziale
+# idx_leveling_totals_weekly_decay_due invece di leggere tutta la tabella
+# a ogni giro orario.
+QUERY_UTENTI_DA_DECADERE = """
+    SELECT guild_id, user_id FROM leveling_totals
+    WHERE coins_total > 1
+      AND (
+          last_weekly_decay_period IS NULL
+          OR last_weekly_decay_period < $1
+          OR last_weekly_decay_period > $1
+      )
+"""
+
+
 class LevelingRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
@@ -439,14 +455,7 @@ class LevelingRepository:
         saldo di 1 non cambia nulla, non serve marcarlo come
         "coperto" per questa settimana.
         """
-        rows = await self._pool.fetch(
-            """
-            SELECT guild_id, user_id FROM leveling_totals
-            WHERE coins_total > 1
-              AND (last_weekly_decay_period IS DISTINCT FROM $1)
-            """,
-            period,
-        )
+        rows = await self._pool.fetch(QUERY_UTENTI_DA_DECADERE, period)
         return [(r["guild_id"], r["user_id"]) for r in rows]
 
     async def apply_weekly_decay(
