@@ -1,7 +1,7 @@
 # Catalogo — Moderazione
 
 Ogni riga è una funzione o un comando di moderazione manuale che i grandi bot hanno e iYokai non ha (❌) o ha solo in parte (🟡).
-Bot letti: Carl-bot, Dyno, YAGPDB, Zeppelin, Wick, ProBot, MEE6, Lawliet. Le cose che iYokai ha già per intero non sono elencate.
+Bot letti: Carl-bot, Dyno, YAGPDB, Zeppelin, Wick, ProBot, MEE6, Lawliet, Beemo. Le cose che iYokai ha già per intero non sono elencate.
 Stato di iYokai preso da `SPEC.md` §5, `COMMAND_LIST.md` e dal codice in `cogs/moderation/`. I comandi proposti usano i gruppi futuri `/mod`, `/modban`, `/admin`.
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
@@ -118,6 +118,10 @@ Stato di iYokai preso da `SPEC.md` §5, `COMMAND_LIST.md` e dal codice in `cogs/
 | MOD-110 | Informazioni su un invito (chi l'ha creato, server, usi) | Dyno `/inviteinfo` [DYNO] (terzi), Zeppelin `invite` [ZEPPELIN] | ❌ manca | `/mod info invito codice:`; `fetch_invite` | nuova |
 | MOD-111 | Vedere i permessi effettivi di un membro in un canale | Carl-bot `/misc permissions` [CARL], YAGPDB `/viewperms` [YAGPDB] | ❌ manca (`/permission-heatmap` lavora per ruolo) | `/mod info permessi membro: canale:` | nuova |
 | MOD-112 | Sapere in quale vocale si trova un utente e ricevere un avviso quando entra | Zeppelin `where`, `follow` [ZEPPELIN] | ❌ manca | `/mod voce dove` e `segui`; avvisi con scadenza | nuova |
+| MOD-113 | **Motivi già pronti** da richiamare con una parola quando si sanziona | Beemo `/presets set`, `/presets remove`, `/presets view` [BEEMO] | ❌ manca | `/admin config motivi`; nel campo motivo, completamento automatico con i motivi salvati (25 voci); testo fino a 512 caratteri | nuova |
+| MOD-114 | L'utente può **vedere le proprie sanzioni** | Beemo `/mylogs` [BEEMO] | ❌ manca | `/utility le-mie-sanzioni`; effimera; senza note dello staff e senza il nome del moderatore se la moderazione è anonima | nuova |
+| MOD-115 | **Azioni rapide dal menu del tasto destro** sull'utente: ban, kick, timeout, quarantena, pulizia del nome; il motivo si scrive dopo | Wick 5.0 [WICK] | ❌ manca | Comandi del menu contestuale sull'utente (15 per tipo); finestra per motivo e durata; stessi controlli dei comandi | nuova |
+| MOD-116 | Applicare un motivo pronto a un **caso già esistente** | Beemo `/case change reason` con motivo pronto [BEEMO] | ❌ manca | Vale con MOD-037 e MOD-113 | nuova |
 
 ## Fonti
 
@@ -127,17 +131,19 @@ Lette il 4/10/2026.
 - **`[DYNO]`** Dyno: https://discordbotlist.com/bots/dyno/commands (**terzi**: elenco comandi pubblicato su un sito esterno; mostra solo i comandi dalla A alla R). Le pagine ufficiali `docs.dyno.gg` e `dyno.gg/commands` non sono leggibili da qui (si caricano solo con JavaScript).
 - **`[YAGPDB]`** YAGPDB (ufficiale): https://help.yagpdb.xyz/docs/moderation/moderation-tools/ · https://help.yagpdb.xyz/docs/core/all-commands/ (testo letto dal repository della documentazione, https://github.com/botlabs-gg/yagpdb-docs-v2)
 - **`[ZEPPELIN]`** Zeppelin (ufficiale, codice sorgente): https://github.com/ZeppelinBot/Zeppelin — cartelle `backend/src/plugins/ModActions`, `Mutes`, `Cases`, `Slowmode`, `Utility`, `Persist`, `NameHistory`, `LocateUser`. Il sito `zeppelin.gg` non è leggibile da qui.
-- **`[WICK]`** Wick (ufficiale): https://docs.wickbot.com/setup/ · https://docs.wickbot.com/commands/moderation/ban/ · `/kick/` · `/lockdown/` · `/notes/` · `/purge/` · `/quarantine/` · `/sanitize/` · `/slowmode/` · `/timeout/` · `/warn/` · https://docs.wickbot.com/commands/utility/cases/ · `/modcases/` · `/info/`
+- **`[WICK]`** Wick (ufficiale): https://docs.wickbot.com/setup/ · https://docs.wickbot.com/commands/moderation/ban/ · `/kick/` · `/lockdown/` · `/notes/` · `/purge/` · `/quarantine/` · `/sanitize/` · `/slowmode/` · `/timeout/` · `/warn/` · https://docs.wickbot.com/commands/utility/cases/ · `/modcases/` · `/info/` · https://docs.wickbot.com/changelog/v5.x/5.0.0/
+- **`[BEEMO]`** Beemo (ufficiale): https://docs.beemo.gg/moderation/preset-reasons.html · https://docs.beemo.gg/moderation/archives.html
 - **`[PROBOT]`** ProBot (ufficiale): https://probot.io/commands
 - **`[MEE6]`** MEE6 (ufficiale): https://wiki.mee6.xyz/plugins/moderator
 - **`[LAWLIET]`** Lawliet (ufficiale, codice sorgente): https://github.com/Aninoss/lawliet-bot — `src/main/resources/moderation_en_us.properties`
 
 Non letti su fonte ufficiale per questa area: Dyno (solo terzi), Sapphire, Atlas, Maki (siti che si caricano solo con JavaScript). I comandi di Dyno dalla S alla Z (per esempio softban, unban, warn) non compaiono nell'elenco letto e non sono stati usati.
 
+
 ## Conteggio
 
 Contato sulle righe della tabella (`grep -c "^| MOD-"`).
 
-- Righe totali: **112**
-- ❌ manca: **91**
+- Righe totali: **116**
+- ❌ manca: **95**
 - 🟡 parziale: **21**
