@@ -7,12 +7,17 @@ li accetta come parametri per questo esatto motivo (stesso pattern di
 test_restore_web_server.py).
 """
 
+from datetime import datetime, timedelta, timezone
+
+import discord
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
+import core.custom_webhook_server as custom_webhook_server_module
 from core.custom_webhook_server import build_app, start_server
 from core.redacted_access_log import RedactedAccessLogger
-from core.webhook_rate_tracker import webhook_rate_tracker
+from core.webhook_rate_tracker import WEBHOOK_RATE_LIMIT_MAX_REQUESTS, webhook_rate_tracker
+from tests.support.discord_fakes import fake_text_channel
 
 
 @pytest.fixture(autouse=True)
@@ -191,3 +196,214 @@ async def test_start_server_usa_l_access_log_redatto():
         assert runner._kwargs["access_log_class"] is RedactedAccessLogger
     finally:
         await runner.cleanup()
+
+
+# ---------------------------------------------------------------------
+# BUG-33: il limite conta solo le richieste accettate, la coda è
+# limitata, e il controllo avviene prima della query sul database.
+# ---------------------------------------------------------------------
+
+
+class _OrologioFinto:
+    """Sostituisce `datetime` nel modulo del server: l'ora la decide il test."""
+
+    adesso = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls.adesso
+
+
+@pytest.fixture
+def orologio(monkeypatch):
+    monkeypatch.setattr(_OrologioFinto, "adesso", datetime(2026, 1, 1, tzinfo=timezone.utc))
+    monkeypatch.setattr(custom_webhook_server_module, "datetime", _OrologioFinto)
+    return _OrologioFinto
+
+
+class _RepoCheContaLeQuery:
+    """Conosce un solo token valido e conta quante volte viene interrogato."""
+
+    def __init__(self, token_valido: str = "il-token") -> None:
+        self._webhook = _FakeWebhook(1, 100, 500, token_valido, "Monitor", "{message}")
+        self.query = 0
+
+    async def get_by_token(self, token):
+        self.query += 1
+        return self._webhook if token == self._webhook.token else None
+
+
+@pytest.mark.asyncio
+async def test_traffico_costante_sopra_il_limite_non_blocca_per_sempre(orologio):
+    """12 richieste al minuto per 10 minuti: ne passano circa 10 al minuto, non 10 in tutto."""
+    canale = _FakeChannel()
+    app = build_app(webhook_repo=_RepoCheContaLeQuery(), get_channel=lambda channel_id: canale)
+
+    async with TestClient(TestServer(app)) as client:
+        for _ in range(120):
+            await client.post("/webhook/il-token", json={"message": "ciao"})
+            orologio.adesso += timedelta(seconds=5)
+
+    # Mai più di 10 al minuto (100 in tutto), e non molte meno.
+    assert 90 <= len(canale.sent_messages) <= 100
+
+
+@pytest.mark.asyncio
+async def test_le_richieste_rifiutate_non_fanno_crescere_la_coda():
+    canale = _FakeChannel()
+    app = build_app(webhook_repo=_RepoCheContaLeQuery(), get_channel=lambda channel_id: canale)
+
+    async with TestClient(TestServer(app)) as client:
+        for _ in range(200):
+            await client.post("/webhook/il-token", json={"message": "ciao"})
+
+    istanti_in_memoria = sum(len(coda) for coda in webhook_rate_tracker._data._data.values())
+    assert istanti_in_memoria <= WEBHOOK_RATE_LIMIT_MAX_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_oltre_il_limite_il_database_non_viene_interrogato():
+    repo = _RepoCheContaLeQuery()
+    app = build_app(webhook_repo=repo, get_channel=lambda channel_id: _FakeChannel())
+
+    async with TestClient(TestServer(app)) as client:
+        for _ in range(WEBHOOK_RATE_LIMIT_MAX_REQUESTS):
+            await client.post("/webhook/il-token", json={"message": "ciao"})
+        query_prima = repo.query
+        for _ in range(50):
+            risposta = await client.post("/webhook/il-token", json={"message": "ciao"})
+            assert risposta.status == 429
+
+    assert repo.query == query_prima
+
+
+@pytest.mark.asyncio
+async def test_token_sconosciuti_a_raffica_dallo_stesso_ip_non_arrivano_al_database():
+    from core.webhook_rate_tracker import WEBHOOK_UNKNOWN_TOKEN_LIMIT_PER_IP
+
+    repo = _RepoCheContaLeQuery()
+    app = build_app(webhook_repo=repo, get_channel=lambda channel_id: _FakeChannel())
+
+    async with TestClient(TestServer(app)) as client:
+        stati = [
+            (
+                await client.post(
+                    f"/webhook/token-a-caso-{i}",
+                    json={"message": "x"},
+                    headers={"X-Forwarded-For": "203.0.113.7"},
+                )
+            ).status
+            for i in range(100)
+        ]
+
+    assert repo.query == WEBHOOK_UNKNOWN_TOKEN_LIMIT_PER_IP
+    assert stati.count(404) == WEBHOOK_UNKNOWN_TOKEN_LIMIT_PER_IP
+    assert stati.count(429) == 100 - WEBHOOK_UNKNOWN_TOKEN_LIMIT_PER_IP
+
+
+def _richiesta_da(ip_connessione: str, inoltrati: str | None = None):
+    from unittest.mock import Mock
+
+    from aiohttp.test_utils import make_mocked_request
+
+    trasporto = Mock()
+    trasporto.get_extra_info.return_value = (ip_connessione, 12345)
+    headers = {"X-Forwarded-For": inoltrati} if inoltrati is not None else {}
+    return make_mocked_request("POST", "/webhook/x", headers=headers, transport=trasporto)
+
+
+def test_ip_del_client_connessione_diretta_usa_l_ip_della_connessione():
+    from core.custom_webhook_server import _ip_del_client
+
+    # Senza proxy locale l'header lo scrive il client: non ci si fida.
+    assert _ip_del_client(_richiesta_da("203.0.113.7", inoltrati="10.0.0.1")) == "203.0.113.7"
+
+
+def test_ip_del_client_dietro_il_proxy_locale_usa_l_ultimo_inoltrato():
+    from core.custom_webhook_server import _ip_del_client
+
+    richiesta = _richiesta_da("127.0.0.1", inoltrati="198.51.100.99, 203.0.113.7")
+    assert _ip_del_client(richiesta) == "203.0.113.7"
+
+
+def test_ip_del_client_dietro_il_proxy_locale_senza_header_e_sconosciuto():
+    from core.custom_webhook_server import _ip_del_client
+
+    # Meglio nessun limite per IP che un limite unico condiviso da tutti.
+    assert _ip_del_client(_richiesta_da("127.0.0.1")) is None
+
+
+@pytest.mark.asyncio
+async def test_dietro_il_proxy_locale_il_limite_per_ip_usa_l_ip_inoltrato():
+    """
+    Con il reverse proxy sulla stessa macchina tutte le richieste
+    arrivano da 127.0.0.1: i tentativi a vuoto di un client non devono
+    bloccare un altro client.
+    """
+    from core.webhook_rate_tracker import WEBHOOK_UNKNOWN_TOKEN_LIMIT_PER_IP
+
+    canale = _FakeChannel()
+    app = build_app(webhook_repo=_RepoCheContaLeQuery(), get_channel=lambda channel_id: canale)
+
+    async with TestClient(TestServer(app)) as client:
+        for i in range(WEBHOOK_UNKNOWN_TOKEN_LIMIT_PER_IP + 5):
+            await client.post(
+                f"/webhook/token-a-caso-{i}",
+                json={"message": "x"},
+                # Il client può scrivere quello che vuole all'inizio:
+                # conta l'ultimo indirizzo, aggiunto dal proxy.
+                headers={"X-Forwarded-For": "198.51.100.99, 203.0.113.7"},
+            )
+        bloccato = await client.post(
+            "/webhook/il-token", json={"message": "x"}, headers={"X-Forwarded-For": "203.0.113.7"}
+        )
+        altro_client = await client.post(
+            "/webhook/il-token", json={"message": "ciao"}, headers={"X-Forwarded-For": "198.51.100.99"}
+        )
+
+    assert bloccato.status == 429
+    assert altro_client.status == 200
+    assert canale.sent_messages == ["ciao"]
+
+
+# ---------------------------------------------------------------------
+# BUG-33: l'invio su Discord non deve mai finire in un 500 non gestito.
+# ---------------------------------------------------------------------
+
+
+def _app_con_canale_autospec(template: str):
+    canale = fake_text_channel(500)
+    webhook = _FakeWebhook(1, 100, 500, "il-token", "Monitor", template)
+    return build_app(webhook_repo=_FakeWebhookRepo(webhook), get_channel=lambda channel_id: canale), canale
+
+
+class _RispostaHttpFinta:
+    status = 403
+    reason = "Forbidden"
+
+
+@pytest.mark.asyncio
+async def test_messaggio_vuoto_restituisce_422_senza_inviare():
+    app, canale = _app_con_canale_autospec("{message}")
+
+    async with TestClient(TestServer(app)) as client:
+        risposta = await client.post("/webhook/il-token", json={})
+        corpo = await risposta.json()
+
+    assert risposta.status == 422
+    assert "error" in corpo
+    canale.send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_bot_senza_permesso_nel_canale_restituisce_502_json():
+    app, canale = _app_con_canale_autospec("{message}")
+    canale.send.side_effect = discord.Forbidden(_RispostaHttpFinta(), "Missing Permissions")
+
+    async with TestClient(TestServer(app)) as client:
+        risposta = await client.post("/webhook/il-token", json={"message": "ciao"})
+        corpo = await risposta.json()
+
+    assert risposta.status == 502
+    assert "error" in corpo
+
