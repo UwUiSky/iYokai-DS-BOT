@@ -1,25 +1,13 @@
 """
 cogs/utility/config_history.py
 ==================================
-Config Diff & Rollback (SPEC.md §2.7, BACKLOG.md §11), più Reset
-(§2.1), Esporta/Importa (§2.5/§2.6) e Lingua per server (§2.3).
-Legge/scrive tramite i metodi già aggiunti a core/database.py
-(get_config_history, rollback_config_change, get_full_config,
-import_full_config, reset_guild_config, get/set_guild_language) —
-questo file è solo l'interfaccia comandi.
-
-Nessun gate is_module_active_for_guild: è uno strumento diagnostico/
-di gestione per l'admin, non una feature del server da attivare/
-disattivare — stesso principio di /setup, che deve funzionare anche
-PRIMA che qualunque modulo sia attivo.
-
-Nota su §2.3 (Lingua per server): qui si costruisce l'INFRASTRUTTURA
-(colonna già esistente, comando per leggerla/scriverla,
-`core/i18n.py` con un piccolo registro di traduzioni) — non un
-sistema i18n applicato a TUTTO il testo del bot, che resterebbe
-comunque in italiano nella stragrande maggioranza dei cog. Marcato
-`[~]` in SPEC.md apposta, non `[x]`: sarebbe disonesto dichiararlo
-completo.
+Comandi /config: storico e rollback delle modifiche, reset, esporta/
+importa (con controllo dello schema prima di scrivere) e lingua del
+server. È solo l'interfaccia comandi: legge e scrive con i metodi di
+core/database.py. Nessun controllo "modulo attivo": deve funzionare
+anche prima che qualunque modulo sia acceso, come /setup.
+Funzioni coperte: SPEC §2.1, §2.3 (solo infrastruttura), §2.5, §2.6,
+§2.7; REVIEW.md BUG-6, BUG-31, BUG-32.
 """
 
 from __future__ import annotations
@@ -166,10 +154,88 @@ def leggi_json_import(grezzo: bytes):
     return json.loads(grezzo.decode("utf-8-sig"), parse_constant=_rifiuta_costante)
 
 
+# Limiti di Discord: 2000 caratteri per un messaggio, 4096 per la
+# descrizione di un embed. Si resta un po' sotto.
+MAX_CARATTERI_VALORE = 80
+MAX_CARATTERI_CONFERMA = 1900
+MAX_CARATTERI_STORICO = 3900
+
+
+def _tronca(testo: str, massimo: int) -> str:
+    return testo if len(testo) <= massimo else testo[: massimo - 1] + "…"
+
+
+def _e_una_configurazione_intera(value) -> bool:
+    """Il valore salvato nello storico da reset/import: tutta la configurazione."""
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("modules"), dict)
+        and isinstance(value.get("settings"), dict)
+    )
+
+
 def _format_value(value) -> str:
+    """Un valore dello storico in poche parole: mai l'elenco intero."""
     if value is None:
         return "*(mai impostato)*"
-    return f"`{value}`"
+    if _e_una_configurazione_intera(value):
+        return f"*({len(value['modules'])} moduli, {len(value['settings'])} impostazioni)*"
+    testo = str(value).replace("`", "'")  # un backtick chiuderebbe il blocco
+    return f"`{_tronca(testo, MAX_CARATTERI_VALORE)}`"
+
+
+def _chiavi_diverse(prima: dict, dopo: dict) -> list[str]:
+    tutte = prima.keys() | dopo.keys()
+    return sorted(chiave for chiave in tutte if prima.get(chiave) != dopo.get(chiave))
+
+
+def _riassunto_cambi(nome: str, prima: dict, dopo: dict) -> str:
+    """Es. "32 moduli ('anti_nuke', 'automod' e altri 30)"."""
+    diverse = _chiavi_diverse(prima, dopo)
+    if not diverse:
+        return f"0 {nome}"
+    return f"{len(diverse)} {nome} ({_elenco_nomi(diverse)})"
+
+
+def testo_conferma_rollback(entry) -> str:
+    """Domanda di conferma di /config rollback, sempre sotto il limite di Discord."""
+    vecchio, nuovo = entry.old_value, entry.new_value
+    if _e_una_configurazione_intera(vecchio) and _e_una_configurazione_intera(nuovo):
+        testo = (
+            f"Confermi di voler ripristinare l'intera configurazione a com'era prima di "
+            f"questo `{entry.change_type}`? Cambiano "
+            f"{_riassunto_cambi('moduli', nuovo['modules'], vecchio['modules'])} e "
+            f"{_riassunto_cambi('impostazioni', nuovo['settings'], vecchio['settings'])}; "
+            f"lingua: {_format_value(nuovo.get('language'))} → "
+            f"{_format_value(vecchio.get('language'))}."
+        )
+    else:
+        testo = (
+            f"Confermi di voler ripristinare `{_tronca(entry.key_name, MAX_CARATTERI_VALORE)}` a "
+            f"{_format_value(vecchio)} (era {_format_value(nuovo)})?"
+        )
+    return _tronca(testo, MAX_CARATTERI_CONFERMA)
+
+
+def righe_storico(voci) -> str:
+    """
+    Una riga per voce, dalla più recente. Se non stanno tutte nella
+    descrizione di un embed ci si ferma prima e lo si dice.
+    """
+    righe, lunghezza = [], 0
+    for voce in voci:
+        autore = f"<@{voce.changed_by}>" if voce.changed_by else "sconosciuto"
+        riga = (
+            f"`#{voce.id}` **{voce.change_type}** "
+            f"`{_tronca(voce.key_name, MAX_CARATTERI_VALORE)}`: "
+            f"{_format_value(voce.old_value)} → {_format_value(voce.new_value)} — {autore}"
+        )
+        if lunghezza + len(riga) + 1 > MAX_CARATTERI_STORICO:
+            righe.append(f"… e altre {len(voci) - len(righe)} voci più vecchie.")
+            break
+        righe.append(riga)
+        lunghezza += len(riga) + 1
+    return "\n".join(righe)
 
 
 class RollbackConfirmView(BaseView):
@@ -307,18 +373,9 @@ class ConfigHistoryCog(commands.Cog):
             )
             return
 
-        righe = []
-        for voce in voci:
-            autore = f"<@{voce.changed_by}>" if voce.changed_by else "sconosciuto"
-            righe.append(
-                f"`#{voce.id}` **{voce.change_type}** `{voce.key_name}`: "
-                f"{_format_value(voce.old_value)} → {_format_value(voce.new_value)} "
-                f"— {autore}"
-            )
-
         embed = discord.Embed(
             title="📜 Storico configurazione",
-            description="\n".join(righe),
+            description=righe_storico(voci),
             color=discord.Color.blurple(),
         )
         embed.set_footer(text="Usa /config rollback <id> per annullare una voce specifica.")
@@ -347,8 +404,7 @@ class ConfigHistoryCog(commands.Cog):
 
         view = RollbackConfirmView(entry_id, interaction.user.id)
         await interaction.response.send_message(
-            f"Confermi di voler ripristinare `{entry.key_name}` a "
-            f"{_format_value(entry.old_value)} (era {_format_value(entry.new_value)})?",
+            testo_conferma_rollback(entry),
             view=view,
             ephemeral=True,
         )
