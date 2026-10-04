@@ -60,6 +60,25 @@ def _require(name: str) -> str:
     return value
 
 
+def _require_int(name: str) -> int:
+    """
+    Legge una variabile d'ambiente OBBLIGATORIA che deve essere un
+    numero intero (gli ID di Discord). Un valore non numerico ferma
+    l'avvio con un messaggio che nomina la variabile.
+    """
+    value = _require(name)
+    try:
+        return int(value)
+    except ValueError:
+        print(
+            f"\n[CONFIG] ERRORE: la variabile d'ambiente '{name}' deve essere "
+            f"un numero intero (un ID di Discord, solo cifre), trovato: "
+            f"'{value}'.\nControlla il tuo file .env.\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def _optional(name: str, default: str = "") -> str:
     """Legge una variabile d'ambiente opzionale, con un default."""
     return os.getenv(name, default).strip()
@@ -319,8 +338,8 @@ def _load_config() -> Config:
         YOKAI_CREATOR_TOKEN=_require("YOKAI_CREATOR_TOKEN"),
         MUSIC_TOKENS=music_tokens,
         NSFW_TOKEN=_require("NSFW_TOKEN"),
-        OWNER_ID=int(_require("OWNER_ID")),
-        MAIN_GUILD_ID=int(_require("MAIN_GUILD_ID")),
+        OWNER_ID=_require_int("OWNER_ID"),
+        MAIN_GUILD_ID=_require_int("MAIN_GUILD_ID"),
         DATABASE_URL=_require("DATABASE_URL"),
         DB_POOL_MIN=_optional_int("DB_POOL_MIN", 5),
         DB_POOL_MAX=_optional_int("DB_POOL_MAX", 10),
