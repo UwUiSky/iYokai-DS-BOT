@@ -58,18 +58,20 @@ from core.image_thumbnail_logic import (
     is_image_attachment,
     is_within_size_limit,
 )
-from core.safe_image import run_image_task
+from core.safe_image import run_spam_trap_image_task
 from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
 from core.spam_trap_logic import (
+    BAN_ACTION_TYPE,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
     can_appeal,
+    latest_case_per_guild,
     partition_messages_for_deletion,
     purge_window,
 )
-from core.spam_trap_rate_tracker import DM_WIDE_KEY, spam_trap_rate_tracker
+from core.spam_trap_rate_tracker import limite_dm_appello
 from core.spam_trap_transcript import TranscriptEntry, build_transcript_html
 from core.ui_base import BaseModal, BaseView
 
@@ -79,8 +81,6 @@ MODULE_SPAM_TRAP = "spam_trap"
 
 TRAP_CHANNEL_DEFAULT_NAME = "spam-trap"
 LOG_CHANNEL_DEFAULT_NAME = "spam-log"
-
-BAN_ACTION_TYPE = "spam_trap_ban"
 
 # SEC-8b: ruoli staff esentati dalla trappola, oltre a chi ha già
 # "Gestisci messaggi"/"Amministratore" o un ruolo sopra quello del
@@ -127,6 +127,16 @@ def _is_staff_exempt(
     if member.top_role > guild.me.top_role:
         return True
     return False
+
+
+def _saved_text_channel(
+    guild: discord.Guild, channel_id: int | None
+) -> discord.TextChannel | None:
+    """Il canale testuale salvato in config, se esiste ancora nel server."""
+    if channel_id is None:
+        return None
+    canale = guild.get_channel(channel_id)
+    return canale if isinstance(canale, discord.TextChannel) else None
 
 
 def _ban_dm_description(guild_name: str) -> str:
@@ -207,8 +217,11 @@ class AppealActionsView(BaseView):
             )
             return
 
-        await moderation_repo.revoke_case(
-            self.guild_id, self.case_number, interaction.user.id
+        # BUG-24: tutti i casi spam-trap attivi dell'utente in questo
+        # server, non solo quello dell'appello — un caso più vecchio
+        # rimasto attivo farebbe risultare l'utente ancora bannato.
+        await moderation_repo.revoke_active_cases_for_user(
+            self.guild_id, self.user_id, BAN_ACTION_TYPE, interaction.user.id
         )
 
         try:
@@ -285,8 +298,8 @@ class SpamTrapCog(commands.Cog):
         description="[Admin] Configura i canali trappola e log dello Spam Trap.",
     )
     @app_commands.describe(
-        trap_channel="Canale trappola (se non scelto, ne viene creato uno)",
-        log_channel="Canale dei log (se non scelto, ne viene creato uno)",
+        trap_channel="Canale trappola (se non scelto: quello già configurato, o uno nuovo)",
+        log_channel="Canale dei log (se non scelto: quello già configurato, o uno nuovo)",
         staff_role_add="SEC-8b: ruolo da esentare dal ban della trappola (aggiunto alla lista)",
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
     )
@@ -308,6 +321,15 @@ class SpamTrapCog(commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True)
+
+        # BUG-25: un canale non indicato vuol dire "tieni quello già
+        # salvato" (es. si sta solo aggiungendo un ruolo staff). Si
+        # crea un canale solo se non ce n'è uno salvato o non esiste più.
+        config = await spam_trap_repo.get_config(guild.id)
+        if trap_channel is None:
+            trap_channel = _saved_text_channel(guild, config.trap_channel_id)
+        if log_channel is None:
+            log_channel = _saved_text_channel(guild, config.log_channel_id)
 
         created_trap = trap_channel is None
         created_log = log_channel is None
@@ -563,7 +585,7 @@ class SpamTrapCog(commands.Cog):
         except discord.HTTPException:
             return None
 
-        thumbnail_bytes = await run_image_task(generate_thumbnail, avatar_bytes)
+        thumbnail_bytes = await run_spam_trap_image_task(generate_thumbnail, avatar_bytes)
         if thumbnail_bytes is None:
             return None
         return bytes_to_data_uri(thumbnail_bytes)
@@ -573,8 +595,9 @@ class SpamTrapCog(commands.Cog):
         Scarica e rigenera come thumbnail ogni allegato immagine,
         restituendo le data URI pronte per il transcript. Pillow è
         sincrono/CPU-bound: l'elaborazione vera gira in un thread
-        separato (core.safe_image.run_image_task, SEC-11 — al
-        massimo 2 insieme in tutto il processo) per non bloccare
+        separato (core.safe_image.run_spam_trap_image_task: una
+        corsia riservata allo spam-trap, che non aspetta dietro i
+        comandi /fun — SEC-11, SEC-20) per non bloccare
         l'event loop del bot mentre elabora un'immagine — bloccarlo
         anche solo per una frazione di secondo può causare timeout
         dell'heartbeat verso Discord su un bot con molti server
@@ -599,7 +622,7 @@ class SpamTrapCog(commands.Cog):
             except discord.HTTPException:
                 continue
 
-            thumbnail_bytes = await run_image_task(generate_thumbnail, image_bytes)
+            thumbnail_bytes = await run_spam_trap_image_task(generate_thumbnail, image_bytes)
             if thumbnail_bytes is not None:
                 data_uris.append(bytes_to_data_uri(thumbnail_bytes))
         return data_uris
@@ -814,14 +837,11 @@ class SpamTrapCog(commands.Cog):
         # utente — senza questo, chiunque può inondare il bot di DM e
         # fargli ripetere la query sui casi attivi (e il resto del
         # flusso) ad ogni singolo messaggio.
-        conteggio = spam_trap_rate_tracker.record_and_count(
-            DM_WIDE_KEY,
-            user.id,
-            "appeal_dm",
-            datetime.now(timezone.utc),
-            DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
-        )
-        if conteggio > 1:
+        # BUG-22: i DM scartati qui NON vengono registrati, quindi
+        # l'attesa parte sempre dall'ultimo DM elaborato.
+        if not limite_dm_appello.puo_elaborare(
+            user.id, datetime.now(timezone.utc), DM_APPEAL_PROCESSING_COOLDOWN_SECONDS
+        ):
             return
 
         # SEC-12: UNA query su tutti i server insieme (indice
@@ -834,8 +854,11 @@ class SpamTrapCog(commands.Cog):
         casi_attivi = await moderation_repo.get_active_cases_for_user_across_guilds(
             user.id, BAN_ACTION_TYPE
         )
+        # BUG-24: un server conta una volta sola, col suo caso più
+        # recente — due casi attivi nello stesso server non sono "ban
+        # su più server".
         candidati: list[tuple[discord.Guild, object]] = []
-        for case in casi_attivi:
+        for case in latest_case_per_guild(casi_attivi):
             guild = self.bot.get_guild(case.guild_id)
             if guild is not None:
                 candidati.append((guild, case))

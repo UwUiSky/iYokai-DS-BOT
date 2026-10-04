@@ -285,6 +285,30 @@ class ModerationRepository:
         # asyncpg restituisce una stringa tipo "UPDATE 1" o "UPDATE 0"
         return result.endswith(" 1")
 
+    async def revoke_active_cases_for_user(
+        self, guild_id: int, user_id: int, action_type: str, revoked_by: int
+    ) -> int:
+        """
+        Revoca TUTTI i casi attivi di un certo tipo per un utente in
+        un server e restituisce quanti ne ha revocati. Serve quando
+        un utente può avere più casi attivi dello stesso tipo (es.
+        bannato due volte dallo spam-trap, BUG-24).
+        """
+        result = await self._pool.execute(
+            """
+            UPDATE moderation_cases
+            SET active = FALSE, revoked_at = now(), revoked_by = $4
+            WHERE guild_id = $1 AND user_id = $2 AND action_type = $3
+              AND active = TRUE
+            """,
+            guild_id,
+            user_id,
+            action_type,
+            revoked_by,
+        )
+        # asyncpg restituisce una stringa tipo "UPDATE 2".
+        return int(result.split()[-1])
+
     async def add_note(
         self, guild_id: int, user_id: int, moderator_id: int, note: str
     ) -> int:

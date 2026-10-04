@@ -16,6 +16,7 @@ from cogs.leveling.leveling import LevelingCog
 from core.database import Database
 from core.repositories.guild_clan_repo import GuildClanRepository
 from core.repositories.leveling_repo import LevelingRepository
+from tests.support.discord_fakes import fake_member, fake_role
 
 
 class _FakeResponse:
@@ -79,8 +80,10 @@ class _FakeGuild:
         channel_creation_forbidden: bool = False,
     ) -> None:
         self.id = guild_id
+        self.owner_id = 1
         self.default_role = _FakeRole()
-        self.me = _FakeMember(0)
+        self.me = fake_member(0, "Yokai Bot", bot=True)
+        self.me.top_role = fake_role(900, "Yokai Bot", position=50)
         self._channels_by_id: dict[int, object] = {}
         self._next_category_id = 1000
         self._next_channel_id = 2000
@@ -122,8 +125,12 @@ class _FakeGuild:
     async def create_forum(self, name: str, category=None, reason=None):
         return await self._crea_canale_generico(name, category=category, reason=reason, tipo="forum")
 
-    async def create_role(self, name: str, mentionable: bool = False, reason=None):
-        ruolo = _FakeRole(name=name, role_id=self._next_role_id)
+    async def create_role(
+        self, name: str, permissions=None, mentionable: bool = False, reason=None
+    ):
+        # Ruolo finto fedele: core.role_safety ne legge permessi e
+        # posizione prima che venga assegnato.
+        ruolo = fake_role(self._next_role_id, name, position=1, permissions=permissions)
         self._next_role_id += 1
         self.roles.append(ruolo)
         return ruolo

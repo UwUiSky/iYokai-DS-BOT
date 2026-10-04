@@ -898,12 +898,14 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        presenti = {
-            membro.id: membro
-            for canale in guild.voice_channels
-            for membro in canale.members
-            if not membro.bot
-        }
+        # SEC-21: chi è in blacklist non riceve il premio e non viene
+        # contato nel costo per la cassa.
+        presenti: dict[int, discord.Member] = {}
+        for canale in guild.voice_channels:
+            for membro in canale.members:
+                if membro.bot or await blacklist_repo.is_user_blacklisted(membro.id):
+                    continue
+                presenti[membro.id] = membro
         if not presenti:
             await interaction.response.send_message(
                 "Nessuno è in vocale in questo momento — nessuna coin assegnata.", ephemeral=True
@@ -945,6 +947,13 @@ class LevelingCog(commands.Cog):
         if guild is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        # SEC-21: nessun premio a chi è in blacklist.
+        if await blacklist_repo.is_user_blacklisted(membro.id):
+            await interaction.response.send_message(
+                "Questo utente non può ricevere premi.", ephemeral=True
             )
             return
 

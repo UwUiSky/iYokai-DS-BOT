@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from core.guild_clan_voice_worker import GuildClanVoiceWorker
+from core.repositories.blacklist_repo import BlacklistRepository
 from core.repositories.clan_voice_activity_repo import ClanVoiceActivityRepository
 from core.repositories.guild_clan_repo import GuildClanRepository
 
@@ -63,6 +64,11 @@ async def repos(monkeypatch):
     activity_repo = ClanVoiceActivityRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(modulo, "guild_clan_repo", clan_repo)
     monkeypatch.setattr(modulo, "clan_voice_activity_repo", activity_repo)
+    # SEC-21: il tick ora consulta anche la blacklist, sullo stesso pool.
+    await database.pool.execute("DELETE FROM user_blacklist")
+    monkeypatch.setattr(
+        modulo, "blacklist_repo", BlacklistRepository(pool_provider=lambda: database.pool)
+    )
 
     yield clan_repo, activity_repo
     await database.pool.execute("DELETE FROM clan_voice_activity")

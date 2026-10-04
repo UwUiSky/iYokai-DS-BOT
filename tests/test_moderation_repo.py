@@ -225,3 +225,25 @@ async def test_note_vengono_salvate_e_lette_in_ordine(repo):
 
     note = await repo.list_notes_for_user(100, 1)
     assert [n.note for n in note] == ["seconda nota", "prima nota"]
+
+
+@pytest.mark.asyncio
+async def test_revoke_active_cases_for_user_revoca_solo_tipo_utente_e_server_giusti(repo):
+    # BUG-24: due casi attivi dello stesso tipo vanno revocati entrambi;
+    # altri tipi, altri utenti e altri server restano come sono.
+    await repo.create_case(100, 1, 999, "spam_trap_ban")
+    await repo.create_case(100, 1, 999, "spam_trap_ban")
+    ban_normale = await repo.create_case(100, 1, 999, "ban")
+    altro_utente = await repo.create_case(100, 2, 999, "spam_trap_ban")
+    await repo.create_case(200, 1, 999, "spam_trap_ban")
+
+    revocati = await repo.revoke_active_cases_for_user(100, 1, "spam_trap_ban", revoked_by=7)
+
+    assert revocati == 2
+    assert await repo.get_latest_active_case(100, 1, "spam_trap_ban") is None
+    assert (await repo.get_latest_active_case(100, 1, "ban")).case_number == ban_normale
+    assert (
+        await repo.get_latest_active_case(100, 2, "spam_trap_ban")
+    ).case_number == altro_utente
+    assert await repo.get_latest_active_case(200, 1, "spam_trap_ban") is not None
+    assert await repo.revoke_active_cases_for_user(100, 1, "spam_trap_ban", revoked_by=7) == 0

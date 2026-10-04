@@ -8,7 +8,9 @@ magica 8, barzelletta, citazione, curiosità — e image manipulation
 generatore di meme testo-sopra/testo-sotto. Tutti operano
 sull'allegato passato al comando o, se assente, sull'avatar
 dell'utente (o dell'utente menzionato) — così ogni comando funziona
-anche senza dover allegare un'immagine ogni volta.
+anche senza dover allegare un'immagine ogni volta. I comandi immagine
+passano tutti da `_rispondi_con_immagine` (SEC-20): allegato
+controllato prima di scaricarlo, `defer()`, risposta con followup.
 
 Decisione tecnica IMPORTANTE, presa scrivendo questo file: il bot è
 già a 96 comandi slash TOP-LEVEL su un limite GLOBALE di Discord di
@@ -67,17 +69,11 @@ from core.image_search_fetcher import image_search_fetcher
 from core.meme_logic import render_meme
 from core.minigames_logic import answer_8ball, flip_coin, play_rps, roll_dice
 from core.premium import PremiumModule, registry
-from core.safe_image import run_image_task
+from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 
 MODULE_FUN = "fun"
 
 _RPS_CHOICE_DISPLAY = {"sasso": "🪨 Sasso", "carta": "📄 Carta", "forbici": "✂️ Forbici"}
-
-# Dimensione massima di un allegato che accettiamo di scaricare per
-# elaborarlo — un limite di buon senso, non legato a un vincolo di
-# Pillow: evita di scaricare e decodificare in memoria un file da
-# centinaia di MB solo perché ha un'estensione immagine.
-MAX_IMAGE_BYTES = 15 * 1024 * 1024
 
 
 class EntertainmentCog(commands.Cog):
@@ -106,7 +102,30 @@ class EntertainmentCog(commands.Cog):
             return False
         return True
 
-    async def _resolve_image_bytes(
+    async def _allegato_accettabile(
+        self, interaction: discord.Interaction, image: discord.Attachment | None
+    ) -> bool:
+        """
+        Controlla tipo e dimensione dichiarati dell'allegato SENZA
+        scaricarlo (SEC-20). Se non va bene risponde da sola e
+        restituisce False.
+        """
+        if image is None:
+            return True
+        if not (image.content_type or "").startswith("image/"):
+            await interaction.response.send_message(
+                "L'allegato non è un'immagine.", ephemeral=True
+            )
+            return False
+        if image.size > MAX_IMAGE_BYTES:
+            limite_mb = MAX_IMAGE_BYTES // (1024 * 1024)
+            await interaction.response.send_message(
+                f"L'immagine è troppo grande (massimo {limite_mb} MB).", ephemeral=True
+            )
+            return False
+        return True
+
+    async def _scarica_immagine(
         self,
         interaction: discord.Interaction,
         image: discord.Attachment | None,
@@ -114,27 +133,48 @@ class EntertainmentCog(commands.Cog):
     ) -> bytes | None:
         """
         Priorità: allegato esplicito > utente menzionato > l'autore
-        del comando stesso. Restituisce None (e risponde da sola con
-        un messaggio d'errore) se l'allegato non è un'immagine o è
-        troppo grande — così ogni comando che la chiama può limitarsi
-        a controllare il valore di ritorno, senza duplicare la logica
-        di validazione.
+        del comando stesso. None se il download fallisce.
         """
-        if image is not None:
-            if not (image.content_type or "").startswith("image/"):
-                await interaction.response.send_message(
-                    "L'allegato non è un'immagine.", ephemeral=True
-                )
-                return None
-            if image.size > MAX_IMAGE_BYTES:
-                await interaction.response.send_message(
-                    "L'immagine è troppo grande (massimo 15 MB).", ephemeral=True
-                )
-                return None
-            return await image.read()
+        try:
+            if image is not None:
+                return await image.read()
+            soggetto = utente or interaction.user
+            return await soggetto.display_avatar.read()
+        except discord.HTTPException:
+            return None
 
-        soggetto = utente or interaction.user
-        return await soggetto.display_avatar.read()
+    async def _rispondi_con_immagine(
+        self,
+        interaction: discord.Interaction,
+        image: discord.Attachment | None,
+        utente: discord.Member | None,
+        nome_file: str,
+        elabora,
+        *argomenti,
+    ) -> None:
+        """
+        Percorso comune dei comandi immagine (SEC-20): controlli che non
+        richiedono download, poi `defer()` — scaricare ed elaborare può
+        superare i 3 secondi concessi da Discord — e risposta con followup.
+        """
+        if not await self._allegato_accettabile(interaction, image):
+            return
+
+        await interaction.response.defer()
+
+        dati = await self._scarica_immagine(interaction, image, utente)
+        if dati is None:
+            await interaction.followup.send("Non sono riuscito a scaricare l'immagine.")
+            return
+
+        risultato = await run_image_task(elabora, dati, *argomenti)
+        if risultato is None:
+            await interaction.followup.send("Non sono riuscito a elaborare questa immagine.")
+            return
+
+        await interaction.followup.send(
+            file=discord.File(io.BytesIO(risultato), filename=nome_file)
+        )
 
     @fun_group.command(name="coinflip", description="Lancia una moneta: testa o croce.")
     async def coinflip(self, interaction: discord.Interaction) -> None:
@@ -232,19 +272,8 @@ class EntertainmentCog(commands.Cog):
         if not await self._modulo_attivo(interaction):
             return
 
-        dati = await self._resolve_image_bytes(interaction, image, utente)
-        if dati is None:
-            return
-
-        risultato = await run_image_task(apply_grayscale, dati)
-        if risultato is None:
-            await interaction.response.send_message(
-                "Non sono riuscito a elaborare questa immagine.", ephemeral=True
-            )
-            return
-
-        await interaction.response.send_message(
-            file=discord.File(io.BytesIO(risultato), filename="grayscale.png")
+        await self._rispondi_con_immagine(
+            interaction, image, utente, "grayscale.png", apply_grayscale
         )
 
     @fun_group.command(name="invert", description="Inverte i colori di un'immagine.")
@@ -261,19 +290,8 @@ class EntertainmentCog(commands.Cog):
         if not await self._modulo_attivo(interaction):
             return
 
-        dati = await self._resolve_image_bytes(interaction, image, utente)
-        if dati is None:
-            return
-
-        risultato = await run_image_task(apply_invert, dati)
-        if risultato is None:
-            await interaction.response.send_message(
-                "Non sono riuscito a elaborare questa immagine.", ephemeral=True
-            )
-            return
-
-        await interaction.response.send_message(
-            file=discord.File(io.BytesIO(risultato), filename="invert.png")
+        await self._rispondi_con_immagine(
+            interaction, image, utente, "invert.png", apply_invert
         )
 
     @fun_group.command(name="blur", description="Applica una sfocatura a un'immagine.")
@@ -292,19 +310,8 @@ class EntertainmentCog(commands.Cog):
         if not await self._modulo_attivo(interaction):
             return
 
-        dati = await self._resolve_image_bytes(interaction, image, utente)
-        if dati is None:
-            return
-
-        risultato = await run_image_task(apply_blur, dati, raggio)
-        if risultato is None:
-            await interaction.response.send_message(
-                "Non sono riuscito a elaborare questa immagine.", ephemeral=True
-            )
-            return
-
-        await interaction.response.send_message(
-            file=discord.File(io.BytesIO(risultato), filename="blur.png")
+        await self._rispondi_con_immagine(
+            interaction, image, utente, "blur.png", apply_blur, raggio
         )
 
     @fun_group.command(name="pixelate", description="Pixela un'immagine.")
@@ -323,19 +330,8 @@ class EntertainmentCog(commands.Cog):
         if not await self._modulo_attivo(interaction):
             return
 
-        dati = await self._resolve_image_bytes(interaction, image, utente)
-        if dati is None:
-            return
-
-        risultato = await run_image_task(apply_pixelate, dati, dimensione_blocco)
-        if risultato is None:
-            await interaction.response.send_message(
-                "Non sono riuscito a elaborare questa immagine.", ephemeral=True
-            )
-            return
-
-        await interaction.response.send_message(
-            file=discord.File(io.BytesIO(risultato), filename="pixelate.png")
+        await self._rispondi_con_immagine(
+            interaction, image, utente, "pixelate.png", apply_pixelate, dimensione_blocco
         )
 
     @fun_group.command(name="meme", description="Genera un meme con testo sopra/sotto.")
@@ -362,19 +358,8 @@ class EntertainmentCog(commands.Cog):
             )
             return
 
-        dati = await self._resolve_image_bytes(interaction, image, utente)
-        if dati is None:
-            return
-
-        risultato = await run_image_task(render_meme, dati, top_text, bottom_text)
-        if risultato is None:
-            await interaction.response.send_message(
-                "Non sono riuscito a elaborare questa immagine.", ephemeral=True
-            )
-            return
-
-        await interaction.response.send_message(
-            file=discord.File(io.BytesIO(risultato), filename="meme.png")
+        await self._rispondi_con_immagine(
+            interaction, image, utente, "meme.png", render_meme, top_text, bottom_text
         )
 
     @fun_group.command(name="animal", description="Mostra un'immagine casuale di un animale.")

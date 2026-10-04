@@ -25,6 +25,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+# action_type dei casi creati dalla trappola in moderation_cases.
+# Sta qui (e non nel cog) perché serve anche a /unban.
+BAN_ACTION_TYPE = "spam_trap_ban"
+
 # Un utente può fare appello al ban al massimo una volta ogni 24 ore,
 # per evitare che qualcuno spammi il bot in DM cercando di forzare
 # l'attenzione dello staff.
@@ -52,6 +56,21 @@ PURGE_LOOKBACK_DAYS = 30
 # chiamata) solo per messaggi più recenti di 14 giorni. Oltre, serve
 # cancellare uno per uno.
 BULK_DELETE_MAX_AGE_DAYS = 14
+
+
+def latest_case_per_guild(cases: list) -> list:
+    """
+    BUG-24: di più casi attivi nello stesso server tiene solo il più
+    recente (case_number più alto), così un server compare una volta
+    sola tra i candidati all'appello. L'ordine dei server resta quello
+    di arrivo.
+    """
+    per_guild: dict[int, object] = {}
+    for case in cases:
+        attuale = per_guild.get(case.guild_id)
+        if attuale is None or case.case_number > attuale.case_number:
+            per_guild[case.guild_id] = case
+    return list(per_guild.values())
 
 
 def can_appeal(last_appeal_at: datetime | None, now: datetime | None = None) -> bool:

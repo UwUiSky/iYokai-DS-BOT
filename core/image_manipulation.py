@@ -9,8 +9,9 @@ restituisce None (non solleva) se l'immagine non è apribile da
 Pillow, incluso un file piccolo con dimensioni dichiarate enormi
 (SEC-11, vedi core/safe_image.py) — un allegato del genere non deve
 far fallire il comando con un errore poco chiaro, solo restituire
-"non è stato possibile elaborare questa immagine".
-Funzioni coperte: SPEC.md §16.2, REVIEW.md SEC-11
+"non è stato possibile elaborare questa immagine". I filtri lavorano
+sempre su un'immagine già ridotta a 2048 px di lato massimo (SEC-20).
+Funzioni coperte: SPEC.md §16.2, REVIEW.md SEC-11, SEC-20
 """
 
 from __future__ import annotations
@@ -21,23 +22,17 @@ from PIL import Image, ImageFilter, ImageOps
 
 from core.safe_image import safe_open_image
 
-MAX_INPUT_DIMENSION = 4096  # oltre non ha senso elaborare: rallenta
-# solo il comando senza un beneficio visibile per un'immagine che
-# verrà comunque ridimensionata da Discord in anteprima.
-
 
 def _load_image(image_bytes: bytes) -> Image.Image | None:
     try:
-        # SEC-11: safe_open_image controlla le dimensioni dichiarate
-        # PRIMA di decodificare i pixel — un'immagine "bomba" solleva
-        # ImmagineTroppoGrande qui, presa dal catch ampio sotto come
-        # qualunque altra immagine non valida.
+        # SEC-11/SEC-20: safe_open_image rifiuta le immagini con troppi
+        # pixel dichiarati (ImmagineTroppoGrande, presa dal catch ampio
+        # sotto come qualunque altra immagine non valida) e restituisce
+        # l'immagine già ridotta a 2048 px di lato massimo, PRIMA di
+        # qualsiasi filtro.
         img = safe_open_image(image_bytes)
     except Exception:
         return None
-
-    if img.width > MAX_INPUT_DIMENSION or img.height > MAX_INPUT_DIMENSION:
-        img.thumbnail((MAX_INPUT_DIMENSION, MAX_INPUT_DIMENSION))
 
     return img.convert("RGB")
 
