@@ -23,6 +23,7 @@ from datetime import date, datetime, timezone
 
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.guild_clan_boost_logic import compute_boosted_reward, is_boost_active
 from core.guild_iteration import for_each_guild_safely
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
@@ -123,7 +124,7 @@ class GuildClanVoiceWorker:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

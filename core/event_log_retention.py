@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.event_log_retention_logic import retention_days_for
 from core.guild_iteration import for_each_guild_safely
 from core.premium import guild_has_premium_access
@@ -78,7 +79,7 @@ class EventLogRetentionService:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

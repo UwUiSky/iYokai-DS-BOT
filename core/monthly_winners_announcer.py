@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.monthly_winners_logic import (
     PODIUM_SIZE,
     build_announcement_text,
@@ -103,7 +104,7 @@ class MonthlyWinnersAnnouncer:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

@@ -11,7 +11,9 @@ dallo schema): crea il server via Creator, clona tutto quello che si
 può, poi manda all'amministratore del server principale l'URL da
 cliccare per completare l'operazione (limite reale della piattaforma
 Discord — un bot non può autoinvitarsi, vedi core/backup_
-orchestrator.py).
+orchestrator.py). Il loop aspetta solo il bot principale: se il
+Creator non è pronto il giro viene saltato.
+Funzioni coperte: SPEC §11.2, REVIEW.md BUG-19.
 """
 
 from __future__ import annotations
@@ -22,7 +24,8 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
-from core.backup_orchestrator import elimina_server_creato, pulisci_server_orfani, start_backup_job
+from core.bot_ready import attendi_bot_pronto
+from core.backup_orchestrator import elimina_server_creato, start_backup_job
 from core.backup_reminder_logic import (
     MAX_CREATOR_GUILDS,
     format_slot_wait_message,
@@ -204,6 +207,23 @@ class BackupQueueWorker:
             return
         await self._notifica_amministratore(main_guild, url_invito)
 
+    async def _giro(
+        self,
+        creator_client: discord.Client,
+        main_bot: commands.Bot,
+        main_permissions: discord.Permissions,
+    ) -> None:
+        """Un giro del loop: salta se il Creator non è pronto, non solleva mai."""
+        if not creator_client.is_ready():
+            # Il Creator può non essere partito (token sbagliato): è
+            # tollerato, si riprova al giro dopo.
+            logger.debug("Il Creator non è pronto: giro della coda dei backup saltato.")
+            return
+        try:
+            await self.tick(creator_client, main_bot, main_permissions)
+        except Exception:
+            logger.exception("Errore nel tick del backup queue worker")
+
     def start(
         self,
         creator_client: discord.Client,
@@ -215,20 +235,15 @@ class BackupQueueWorker:
 
         @tasks.loop(seconds=TICK_SECONDS)
         async def _loop():
-            try:
-                await self.tick(creator_client, main_bot, main_permissions)
-            except Exception:
-                logger.exception("Errore nel tick del backup queue worker")
+            await self._giro(creator_client, main_bot, main_permissions)
 
         @_loop.before_loop
         async def _before():
-            await main_bot.wait_until_ready()
-            await creator_client.wait_until_ready()
-            # BUG-4: pulizia dei server orfani rimasti da un crash.
-            try:
-                await pulisci_server_orfani(creator_client, backup_repo)
-            except Exception:
-                logger.exception("Pulizia dei server orfani del Creator fallita.")
+            # Solo il bot principale: il Creator si controlla a ogni giro.
+            # La pulizia dei server orfani (pulisci_server_orfani) non
+            # viene richiamata finché BUG-26 è aperto: cancellerebbe
+            # anche server validi che questo database non conosce.
+            await attendi_bot_pronto(main_bot)
 
         self._loop_task = _loop
         _loop.start()

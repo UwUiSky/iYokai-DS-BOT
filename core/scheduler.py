@@ -39,6 +39,8 @@ from typing import Awaitable, Callable
 
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
+
 logger = logging.getLogger("iyokai.scheduler")
 
 # Firma di un handler: riceve guild_id, user_id, e il payload salvato
@@ -313,7 +315,7 @@ class Scheduler:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()
