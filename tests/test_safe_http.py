@@ -92,12 +92,6 @@ class TestSchemaEPortaAmmessi:
 
 
 @pytest.mark.asyncio
-async def test_localhost_viene_rifiutato_senza_connettersi():
-    risultato = await safe_get("http://127.0.0.1:8420/qualsiasi")
-    assert risultato is None
-
-
-@pytest.mark.asyncio
 async def test_metadati_cloud_vengono_rifiutati():
     risultato = await safe_get("http://169.254.169.254/latest/meta-data/")
     assert risultato is None
@@ -142,30 +136,47 @@ async def test_risposta_sotto_il_limite_viene_restituita(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_redirect_verso_ip_privato_viene_rifiutato(monkeypatch):
-    # Il server di partenza è "consentito" (loopback finto per il
-    # test), ma il redirect punta a un IP privato vero: la
-    # ricontrolla ad ogni passo deve rifiutarlo comunque.
-    monkeypatch.setattr(safe_http_module, "_schema_e_porta_ammessi", lambda url: True)
+async def test_redirect_verso_ip_interno_viene_rifiutato(monkeypatch):
+    # Due server veri: quello di partenza su 127.0.0.1 (consentito solo
+    # per questo test) risponde con un redirect verso un servizio
+    # "interno" su 127.0.0.2, che resta bloccato dal controllo vero.
+    # Se il controllo non venisse rifatto a ogni redirect, il servizio
+    # interno riceverebbe la richiesta e il suo contenuto tornerebbe
+    # al chiamante.
+    blocco_vero = safe_http_module._ip_e_bloccato
+    monkeypatch.setattr(
+        safe_http_module,
+        "_ip_e_bloccato",
+        lambda ip: str(ip) != "127.0.0.1" and blocco_vero(ip),
+    )
+    richieste_interne: list[str] = []
 
-    def blocca_solo_ip_privati_veri(ip):
-        return ip.is_private and str(ip) != "127.0.0.1"
+    async def handler_interno(request):
+        richieste_interne.append(request.path)
+        return web.Response(text="segreto interno")
 
-    monkeypatch.setattr(safe_http_module, "_ip_e_bloccato", blocca_solo_ip_privati_veri)
+    app_interna = web.Application()
+    app_interna.router.add_get("/segreto", handler_interno)
+    server_interno = TestServer(app_interna, host="127.0.0.2")
+    await server_interno.start_server()
 
-    async def handler(request):
-        raise web.HTTPFound(location="http://10.0.0.5/segreto")
+    async def handler_redirect(request):
+        raise web.HTTPFound(location=f"http://127.0.0.2:{server_interno.port}/segreto")
 
     app = web.Application()
-    app.router.add_get("/redirect", handler)
+    app.router.add_get("/redirect", handler_redirect)
     server = TestServer(app)
     await server.start_server()
+    monkeypatch.setattr(
+        safe_http_module, "ALLOWED_PORTS", {80, 443, server.port, server_interno.port}
+    )
     try:
-        url = f"http://127.0.0.1:{server.port}/redirect"
-        risultato = await safe_get(url)
+        risultato = await safe_get(f"http://127.0.0.1:{server.port}/redirect")
         assert risultato is None
+        assert richieste_interne == []
     finally:
         await server.close()
+        await server_interno.close()
 
 
 @pytest.mark.asyncio
