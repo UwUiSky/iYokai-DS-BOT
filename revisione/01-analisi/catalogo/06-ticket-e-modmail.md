@@ -3,6 +3,7 @@
 Ogni riga è una funzione, un'opzione o un comando dei ticket che i bot specializzati hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Ticket Tool (ogni pagina delle opzioni dei pannelli), Tickets (tickets.bot), ModMail, YAGPDB, ProBot, Lawliet.
 Stato di iYokai preso da `SPEC.md` §13 e da `cogs/tickets/tickets.py`: pannello con un bottone o menu di categorie, canale privato `ticket-0001`, ruoli di supporto, claim, add / remove di un utente, rename, priorità, close, forceclose, transcript in file di testo, statistiche di base.
+**Voci in questo file: 88** (❌ mancano: 76 · 🟡 parziali: 12).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

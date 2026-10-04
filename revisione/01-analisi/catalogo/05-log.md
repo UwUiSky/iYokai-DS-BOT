@@ -3,6 +3,7 @@
 Ogni riga è un evento registrato o un'impostazione dei log che i grandi bot hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Carl-bot, Zeppelin, YAGPDB, MEE6, Wick, Beemo. I log della moderazione legati ai casi sono in `01-moderazione.md`.
 Stato di iYokai preso da `SPEC.md` §8 e §18 e da `cogs/logging/`: ingressi, uscite, ban, ruoli e nickname dei membri, ruoli, canali, inviti, voce, webhook, emoji, sticker, soundboard, thread, impostazioni del server; un solo canale; storico consultabile con `/logs`.
+**Voci in questo file: 30** (❌ mancano: 27 · 🟡 parziali: 3).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

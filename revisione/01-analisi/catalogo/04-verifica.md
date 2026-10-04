@@ -3,6 +3,7 @@
 Ogni riga è una funzione di verifica che i bot specializzati hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Wick, Double Counter, Captcha.bot, YAGPDB. Le protezioni sugli ingressi (filtri e raid) sono nel file `03-sicurezza-antiraid-antinuke.md`.
 Stato di iYokai preso da `SPEC.md` §4 e da `cogs/security/verify.py`: pannello con bottone o reazione, captcha a somma scritta, età minima dell'account, server in comune, whitelist, blacklist, log di ogni tentativo.
+**Voci in questo file: 31** (❌ mancano: 28 · 🟡 parziali: 3).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

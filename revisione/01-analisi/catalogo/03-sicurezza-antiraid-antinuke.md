@@ -3,6 +3,7 @@
 Ogni riga è una protezione o un'impostazione di sicurezza che i bot specializzati hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Wick (la fonte più ricca), Beemo, Carl-bot, Zeppelin, YAGPDB, Captcha.bot, Double Counter. La verifica dei nuovi membri è nel file `04-verifica.md`; il blocco del server è in `01-moderazione.md` (MOD-090…097).
 Stato di iYokai preso da `SPEC.md` §7 e da `cogs/security/`: anti-nuke con una soglia per categoria, anti-raid sugli ingressi, canale trappola con appello, rete di ban, punteggio di sicurezza.
+**Voci in questo file: 46** (❌ mancano: 33 · 🟡 parziali: 13).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

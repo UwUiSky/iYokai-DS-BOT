@@ -3,6 +3,7 @@
 Ogni riga è un comando o una funzione di backup che i bot specializzati hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Xenon (ogni pagina della documentazione), Wick (backup Premium). RestoreCord non è leggibile: le sue voci vengono dal sito di Xenon, che è un concorrente, e sono segnate (terzi).
 Stato di iYokai preso da `SPEC.md` §11: il backup va rifatto secondo la decisione D8 (snapshot come dati, server creato da un admin). Oggi esistono solo `/define-main`, `/define-backup` (che fallisce), `/promuovi-backup`, `/restore-users`, `/configura-restore`; `/config export` esporta la configurazione del bot, non la struttura del server.
+**Voci in questo file: 41** (❌ mancano: 38 · 🟡 parziali: 3).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

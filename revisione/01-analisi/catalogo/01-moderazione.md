@@ -3,6 +3,7 @@
 Ogni riga è una funzione o un comando di moderazione manuale che i grandi bot hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Carl-bot, Dyno, YAGPDB, Zeppelin, Wick, ProBot, MEE6, Lawliet, Beemo. Le cose che iYokai ha già per intero non sono elencate.
 Stato di iYokai preso da `SPEC.md` §5, `COMMAND_LIST.md` e dal codice in `cogs/moderation/`. I comandi proposti usano i gruppi futuri `/mod`, `/modban`, `/admin`.
+**Voci in questo file: 116** (❌ mancano: 95 · 🟡 parziali: 21).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

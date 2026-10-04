@@ -3,6 +3,7 @@
 Ogni riga è una funzione di configurazione che i grandi bot hanno e iYokai non ha (❌) o ha solo in parte (🟡): pannello web, gestione dei comandi, sistemi di permessi, meccanica del premium, lingue, marchio proprio.
 Bot letti: Carl-bot, Dyno (terzi), YAGPDB, Wick, Ticket Tool, Tickets, Xenon, ModMail, ProBot, Lawliet, Atlas, Captcha.bot, Double Counter, Beemo, Zeppelin, MEE6.
 Stato di iYokai preso da `SPEC.md` §2, §3, §17, §20, §21, §24: `/setup` accende i moduli, `/setup-wizard` copre 6 moduli, `/config export / import / history / rollback / reset`, lingua salvata ma non usata, premium concesso a mano dall'owner, nessun pannello web.
+**Voci in questo file: 46** (❌ mancano: 39 · 🟡 parziali: 7).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|

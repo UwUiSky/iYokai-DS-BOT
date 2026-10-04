@@ -3,6 +3,7 @@
 Ogni riga è un filtro, una condizione, un'azione o un comando dell'AutoMod che i grandi bot hanno e iYokai non ha (❌) o ha solo in parte (🟡).
 Bot letti: Carl-bot, YAGPDB, Zeppelin, Wick, MEE6, ProBot, Lawliet. Il canale trappola e i filtri sugli ingressi sono nel file `03-sicurezza-antiraid-antinuke.md`.
 Stato di iYokai preso da `SPEC.md` §6 e da `cogs/automod/`: 10 filtri, azioni delete / warn / mute / ban, eccezioni globali per canale e ruolo, scala di escalation.
+**Voci in questo file: 75** (❌ mancano: 60 · 🟡 parziali: 15).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|
