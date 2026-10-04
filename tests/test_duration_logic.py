@@ -10,7 +10,7 @@ reminders.py) — vedi core/duration_logic.py per il motivo.
 
 import pytest
 
-from core.duration_logic import parse_duration
+from core.duration_logic import MAX_DURATION_SECONDS, parse_duration
 
 
 class TestParseDuration:
@@ -56,3 +56,16 @@ class TestParseDuration:
     def test_formati_invalidi_sollevano_errore_chiaro(self, testo_invalido):
         with pytest.raises(ValueError):
             parse_duration(testo_invalido)
+
+    @pytest.mark.parametrize("testo", ["9999999999w", "261w", "1826d", "999999999999999999999s"])
+    def test_oltre_il_tetto_di_cinque_anni_viene_rifiutata(self, testo):
+        """
+        Una durata enorme farebbe saltare il calcolo della data di
+        scadenza (OverflowError) o darebbe un ban "a tempo" di secoli.
+        """
+        with pytest.raises(ValueError, match="5 anni"):
+            parse_duration(testo)
+
+    def test_cinque_anni_esatti_sono_ammessi(self):
+        assert parse_duration("1825d") == MAX_DURATION_SECONDS
+        assert parse_duration("260w") < MAX_DURATION_SECONDS

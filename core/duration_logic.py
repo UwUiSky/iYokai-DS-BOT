@@ -40,6 +40,11 @@ _DURATION_UNITS = {
 }
 
 
+# Tetto massimo di una durata: 5 anni. Oltre, il calcolo della data di
+# scadenza può andare fuori scala e una punizione "a tempo" non ha senso.
+MAX_DURATION_SECONDS = 5 * 365 * 86400
+
+
 def parse_duration(text: str) -> int:
     """
     Converte una durata scritta come "30m", "12h", "7d", "2w" in
@@ -51,7 +56,7 @@ def parse_duration(text: str) -> int:
     lettera tra s/m/h/d/w (secondi/minuti/ore/giorni/settimane).
     Niente numeri decimali, niente combinazioni tipo "1h30m": tenerlo
     semplice riduce gli errori di parsing e copre comunque il 99%
-    dei casi d'uso reali.
+    dei casi d'uso reali. Durata massima: MAX_DURATION_SECONDS.
     """
     text = text.strip().lower()
     if len(text) < 2:
@@ -78,4 +83,7 @@ def parse_duration(text: str) -> int:
     if value <= 0:
         raise ValueError("La durata deve essere maggiore di zero.")
 
-    return value * _DURATION_UNITS[unit]
+    seconds = value * _DURATION_UNITS[unit]
+    if seconds > MAX_DURATION_SECONDS:
+        raise ValueError("La durata massima è 5 anni (1825d).")
+    return seconds
