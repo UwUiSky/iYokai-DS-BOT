@@ -8,9 +8,10 @@ default(size=...)`, disponibile da Pillow 10.1+): niente file .ttf
 da incorporare nel repository, stesso principio già seguito da
 core/server_stats_image.py (evitare dipendenze/asset aggiuntivi
 quando il font di sistema di Pillow basta). L'immagine di partenza
-passa da core.safe_image.safe_open_image (SEC-11): le dimensioni
-dichiarate vengono controllate prima di decodificare i pixel.
-Funzioni coperte: SPEC.md §16.3, REVIEW.md SEC-11
+passa da core.safe_image.safe_open_image (SEC-11, SEC-20): le
+dimensioni dichiarate vengono controllate prima di decodificare i
+pixel e l'immagine arriva già ridotta a 2048 px di lato massimo.
+Funzioni coperte: SPEC.md §16.3, REVIEW.md SEC-11, SEC-20
 """
 
 from __future__ import annotations
@@ -22,7 +23,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 from core.safe_image import safe_open_image
 
-MAX_INPUT_DIMENSION = 4096
 FONT_SIZE_RATIO = 12  # dimensione font = altezza immagine / questo valore
 OUTLINE_WIDTH = 2
 MAX_CHARS_PER_LINE = 20
@@ -30,16 +30,14 @@ MAX_CHARS_PER_LINE = 20
 
 def _load_image(image_bytes: bytes) -> Image.Image | None:
     try:
-        # SEC-11: safe_open_image controlla le dimensioni dichiarate
-        # PRIMA di decodificare i pixel — un'immagine "bomba" solleva
-        # ImmagineTroppoGrande qui, presa dal catch ampio sotto come
-        # qualunque altra immagine non valida.
+        # SEC-11/SEC-20: safe_open_image rifiuta le immagini con troppi
+        # pixel dichiarati (ImmagineTroppoGrande, presa dal catch ampio
+        # sotto come qualunque altra immagine non valida) e restituisce
+        # l'immagine già ridotta a 2048 px di lato massimo, PRIMA di
+        # qualsiasi filtro.
         img = safe_open_image(image_bytes)
     except Exception:
         return None
-
-    if img.width > MAX_INPUT_DIMENSION or img.height > MAX_INPUT_DIMENSION:
-        img.thumbnail((MAX_INPUT_DIMENSION, MAX_INPUT_DIMENSION))
 
     return img.convert("RGB")
 

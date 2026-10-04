@@ -13,7 +13,7 @@ L'apertura passa da core.safe_image.safe_open_image (SEC-11): le
 dimensioni dichiarate vengono controllate prima di decodificare i
 pixel — usato per avatar e allegati del canale trappola, esposti a
 chiunque scriva lì.
-Funzioni coperte: REVIEW.md SEC-11
+Funzioni coperte: REVIEW.md SEC-11, SEC-20
 """
 
 from __future__ import annotations
@@ -47,7 +47,10 @@ def generate_thumbnail(image_bytes: bytes, max_dimension: int = THUMBNAIL_MAX_DI
         # PRIMA di decodificare i pixel — un'immagine "bomba" solleva
         # un'eccezione qui, presa dal catch ampio sotto come
         # qualunque altra immagine non valida.
-        with safe_open_image(image_bytes) as img:
+        # SEC-20: chiediamo subito un'immagine piccola (il doppio
+        # della miniatura, per non perdere qualità nel passo LANCZOS
+        # sotto): un JPEG viene così decodificato già ridotto.
+        with safe_open_image(image_bytes, max_side=max_dimension * 2) as img:
             # Le GIF animate e i PNG con trasparenza vanno convertiti
             # esplicitamente: RGBA per preservare la trasparenza dove
             # presente, altrimenti Pillow potrebbe sollevare in fase
