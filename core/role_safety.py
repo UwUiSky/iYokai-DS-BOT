@@ -75,3 +75,20 @@ def check_role_assignable(
                 )
 
     return None
+
+
+def motivo_ruolo_automatico_non_assegnabile(guild: discord.Guild | None, role_id: int) -> str | None:
+    """
+    Per i ruoli che il bot assegna da solo passando dall'API REST,
+    partendo dal solo ID (restore utenti): cerca il ruolo nel server e
+    applica check_role_assignable con self_service=True e il bot come
+    attore. None se il ruolo può essere assegnato, altrimenti il motivo
+    del rifiuto. Se il server o il ruolo non si trovano il controllo
+    non si può fare, quindi vale come rifiuto.
+    """
+    if guild is None:
+        return "server non trovato tra quelli del bot, impossibile controllare il ruolo."
+    role = guild.get_role(role_id)
+    if role is None:
+        return "ruolo non trovato nel server."
+    return check_role_assignable(guild, role, guild.me, self_service=True)

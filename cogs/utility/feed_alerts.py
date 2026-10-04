@@ -21,6 +21,7 @@ from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.premium import PremiumModule, registry
+from core.safe_http import url_e_sicuro
 
 MODULE_FEED_ALERTS = "feed_alerts"
 
@@ -66,6 +67,21 @@ class FeedAlertsCog(commands.Cog):
             )
             return
 
+        # BUG-20: stesso controllo che fa lo scaricamento vero
+        # (core/safe_http.py) — un URL che non verrebbe mai letto va
+        # rifiutato subito, non salvato. Il controllo risolve il nome
+        # host e può superare i 3 secondi di Discord: prima il defer.
+        await interaction.response.defer(ephemeral=True)
+        if not await url_e_sicuro(feed_url):
+            await interaction.followup.send(
+                "⚠️ URL non valido o non raggiungibile. Deve iniziare con `http://` o "
+                "`https://`, usare la porta standard (80 o 443) e puntare a un sito "
+                "pubblico: indirizzi interni o locali non sono ammessi. Controlla di "
+                "averlo copiato per intero e riprova.",
+                ephemeral=True,
+            )
+            return
+
         subscription_id = await feed_subscription_repo.add_subscription(
             guild_id=guild.id,
             channel_id=channel.id,
@@ -75,7 +91,7 @@ class FeedAlertsCog(commands.Cog):
             message_template=message_template,
         )
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Sottoscrizione creata (ID `{subscription_id}`): notificherò in "
             f"{channel.mention} i nuovi contenuti da **{label}**. "
             f"Il primo controllo (entro 5 minuti) memorizza solo lo stato attuale, "

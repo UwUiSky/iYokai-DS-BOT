@@ -1,31 +1,22 @@
 """
 core/restore_oauth_logic.py
 ===============================
-Logica pura del restore utenti via OAuth2 (SPEC.md §11.11) — costruzione
-dell'URL di autorizzazione e dello "state" firmato che lo accompagna,
-senza alcuna chiamata di rete: quella vive in core/restore_orchestrator.py.
+Logica pura del restore utenti via OAuth2: costruzione dell'URL di
+autorizzazione e dello "state" firmato che lo accompagna, senza
+chiamate di rete (quelle vivono in core/restore_orchestrator.py).
+Funzioni coperte: SPEC §11.11 (SEC-3, SEC-19, BUG-21)
 
-SEC-3 (issue #8): lo "state" OAuth2 torna alla callback INVARIATO —
-Discord lo rimanda così com'è insieme al `code` — quindi chiunque può
-leggerlo o costruirsene uno a mano. Per questo:
-- è FIRMATO (HMAC-SHA256): senza la chiave giusta non si può
-  costruire uno state che superi la verifica;
-- ha una SCADENZA (10 minuti) e un NONCE monouso tracciato in memoria:
-  un link vecchio o già usato viene rifiutato, non solo uno manomesso;
-- NON contiene `user_id`: prima lo conteneva in chiaro, quindi
-  chiunque poteva scrivere l'ID di un altro utente e — passando dallo
-  scambio del `code`, comunque necessario — sovrascrivergli il token
-  salvato o azzerargli lo stato di blacklist. L'identità vera si
-  scopre SOLO dopo lo scambio del code, chiamando `GET /users/@me`
-  con l'access_token appena ottenuto (core/restore_orchestrator.py:
-  fetch_current_user) — l'unica fonte affidabile, perché richiede che
-  la PERSONA abbia effettivamente autorizzato con il proprio account.
-
-La chiave di firma non è una nuova variabile da configurare: si
-deriva con HKDF dalla chiave di cifratura dei token già esistente
-(OAUTH_ENCRYPTION_KEY, core/oauth_crypto.py) — mai la stessa chiave
-riusata per due scopi diversi, quindi non cifra/firma nulla
-direttamente, serve solo come materiale per derivarne una seconda.
+Lo state torna alla callback INVARIATO, quindi chiunque può leggerlo o
+scriverne uno a mano. Per questo:
+- è FIRMATO (HMAC-SHA256) con una chiave derivata (HKDF) da
+  OAUTH_ENCRYPTION_KEY: senza la chiave non si costruisce uno state
+  valido;
+- ha una SCADENZA (STATE_TTL_SECONDS) e un NONCE: il link funziona una
+  volta sola, e viene consumato solo quando il restore è riuscito;
+- contiene l'ID del DESTINATARIO PREVISTO del link. Non è l'identità:
+  quella si scopre solo dopo lo scambio del code, con `GET /users/@me`
+  (core/restore_orchestrator.py). Lo state dice solo "per chi era" il
+  link, e la callback rifiuta se chi ha autorizzato è un altro.
 """
 
 from __future__ import annotations
@@ -36,7 +27,7 @@ import hmac
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlencode
 
 from cryptography.hazmat.primitives import hashes
@@ -45,14 +36,20 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize"
 OAUTH_SCOPES = "identify guilds.join"
 
-STATE_TTL_SECONDS = 10 * 60
+# BUG-21: il link arriva in DM e viene aperto quando l'utente lo legge,
+# anche giorni dopo — unica costante per la durata.
+STATE_TTL_SECONDS = 7 * 24 * 60 * 60
 _HKDF_INFO = b"iyokai-restore-state-v1"
 
-# Nonce già consumati: nonce -> scadenza (per la pulizia lazy). In
-# memoria è sufficiente — uno state vive al massimo 10 minuti, e un
-# riavvio del bot lo invalida comunque (serve un click fresco sul
-# pannello di verifica/DM per ottenerne uno nuovo).
+# Nonce di link già andati a buon fine: nonce -> scadenza (per la
+# pulizia lazy). In memoria: dopo un riavvio un link già usato torna
+# apribile, ma solo dal suo destinatario e solo con un nuovo consenso
+# su Discord, quindi al massimo rientra chi era già rientrato.
 _nonces_usati: dict[str, float] = {}
+
+# Nonce di callback in corso in questo momento: due richieste parallele
+# con lo stesso link non devono procedere entrambe.
+_nonces_in_corso: set[str] = set()
 
 
 class RestoreStateSigningError(RuntimeError):
@@ -66,6 +63,13 @@ class RestoreStateSigningError(RuntimeError):
 class RestoreState:
     source_guild_id: int
     target_guild_id: int
+    # SEC-19: a chi è stato mandato il link (non è l'identità: vedi il
+    # docstring del modulo).
+    user_id: int
+    # Compilati da decode_and_verify_state; non contano nel confronto
+    # tra due state.
+    nonce: str = field(default="", compare=False)
+    expires_at: float = field(default=0.0, compare=False)
 
 
 def _derive_signing_key(oauth_encryption_key_b64: str) -> bytes:
@@ -90,17 +94,43 @@ def _pulisci_nonce_scaduti(ora: float) -> None:
         del _nonces_usati[nonce]
 
 
+def riserva_nonce(state: RestoreState, *, now: float | None = None) -> bool:
+    """
+    Prenota il link per la callback che lo sta elaborando. False se il
+    link è già andato a buon fine o se un'altra callback lo sta usando
+    in questo momento. Chi riceve True DEVE poi chiamare rilascia_nonce.
+    """
+    _pulisci_nonce_scaduti(now if now is not None else time.time())
+    if state.nonce in _nonces_usati or state.nonce in _nonces_in_corso:
+        return False
+    _nonces_in_corso.add(state.nonce)
+    return True
+
+
+def rilascia_nonce(state: RestoreState, *, consumato: bool) -> None:
+    """
+    Chiude la prenotazione fatta da riserva_nonce. `consumato=True`
+    solo se il restore è riuscito: da quel momento il link non funziona
+    più. Con False (errore temporaneo, account sbagliato) il link resta
+    utilizzabile (BUG-21).
+    """
+    _nonces_in_corso.discard(state.nonce)
+    if consumato:
+        _nonces_usati[state.nonce] = state.expires_at
+
+
 def encode_state(state: RestoreState, signing_key_b64: str, *, now: float | None = None) -> str:
     """
     `base64(payload_json) + "." + HMAC-SHA256(payload_json)`. Il
-    payload contiene origine, destinazione, scadenza e un nonce
-    monouso — mai lo user_id, vedi il docstring del modulo.
+    payload contiene origine, destinazione, destinatario previsto,
+    scadenza e un nonce nuovo a ogni chiamata.
     """
     ora = now if now is not None else time.time()
     nonce = base64.urlsafe_b64encode(os.urandom(16)).decode("ascii").rstrip("=")
     payload = {
         "source_guild_id": state.source_guild_id,
         "target_guild_id": state.target_guild_id,
+        "user_id": state.user_id,
         "expires_at": ora + STATE_TTL_SECONDS,
         "nonce": nonce,
     }
@@ -117,11 +147,12 @@ def decode_and_verify_state(
     raw: str, signing_key_b64: str, *, now: float | None = None
 ) -> RestoreState | None:
     """
-    None se lo state è malformato, la firma non torna, è scaduto o il
-    nonce è già stato usato — un callback con uno state così va
-    trattato come non valido, mai sollevare un'eccezione: potrebbe
-    essere un tentativo di manomissione o semplicemente un link
-    vecchio ricliccato due volte.
+    None se lo state è malformato, la firma non torna o è scaduto — un
+    callback con uno state così va trattato come non valido, mai
+    sollevare un'eccezione: potrebbe essere un tentativo di
+    manomissione o semplicemente un link vecchio. Verificare NON
+    consuma il link: l'uso singolo passa da riserva_nonce e
+    rilascia_nonce.
     """
     if "." not in raw:
         return None
@@ -138,13 +169,16 @@ def decode_and_verify_state(
         return None
 
     firma_attesa = hmac.new(chiave, payload_bytes, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(firma_attesa, firma_ricevuta):
+    # Confronto su bytes: su str, compare_digest solleva TypeError se
+    # la firma ricevuta contiene caratteri non ASCII (era un HTTP 500).
+    if not hmac.compare_digest(firma_attesa.encode(), firma_ricevuta.encode()):
         return None
 
     try:
         payload = json.loads(payload_bytes)
         source_guild_id = int(payload["source_guild_id"])
         target_guild_id = int(payload["target_guild_id"])
+        user_id = int(payload["user_id"])
         expires_at = float(payload["expires_at"])
         nonce = str(payload["nonce"])
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
@@ -154,12 +188,13 @@ def decode_and_verify_state(
     if expires_at <= ora:
         return None
 
-    _pulisci_nonce_scaduti(ora)
-    if nonce in _nonces_usati:
-        return None
-    _nonces_usati[nonce] = expires_at
-
-    return RestoreState(source_guild_id=source_guild_id, target_guild_id=target_guild_id)
+    return RestoreState(
+        source_guild_id=source_guild_id,
+        target_guild_id=target_guild_id,
+        user_id=user_id,
+        nonce=nonce,
+        expires_at=expires_at,
+    )
 
 
 def build_authorize_url(
@@ -167,16 +202,20 @@ def build_authorize_url(
     redirect_uri: str,
     source_guild_id: int,
     target_guild_id: int,
+    user_id: int,
     signing_key_b64: str,
 ) -> str:
     """
-    URL da mandare in DM all'utente da ripristinare — cliccandolo,
-    autorizza iYokai a: leggere la sua identità (`identify`) e
-    aggiungerlo a un server (`guilds.join`, richiede che iYokai Main
-    abbia i permessi di gestione membri nel server di destinazione).
+    URL da mandare in DM all'utente `user_id` da ripristinare —
+    cliccandolo, autorizza iYokai a: leggere la sua identità
+    (`identify`) e aggiungerlo a un server (`guilds.join`, richiede che
+    iYokai Main abbia i permessi di gestione membri nel server di
+    destinazione). Il link funziona solo per quell'utente (SEC-19).
     """
     state = encode_state(
-        RestoreState(source_guild_id=source_guild_id, target_guild_id=target_guild_id),
+        RestoreState(
+            source_guild_id=source_guild_id, target_guild_id=target_guild_id, user_id=user_id
+        ),
         signing_key_b64,
     )
     query = urlencode(

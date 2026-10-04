@@ -191,3 +191,66 @@ async def test_tick_feed_irraggiungibile_non_solleva(clean_db):
         assert canale.sent_messages == []
     finally:
         await servizio.close()
+
+
+# ---------------------------------------------------------------------
+# BUG-20: una sottoscrizione rotta non deve fermare tutte le successive.
+# ---------------------------------------------------------------------
+
+
+async def _due_sottoscrizioni(repo, url_rotto: str, url_buono: str) -> None:
+    """La prima (id più basso) è quella rotta, la seconda è valida e ha una voce nuova."""
+    await repo.add_subscription(
+        guild_id=100, channel_id=500, feed_url=url_rotto, label="Rotto", created_by=1
+    )
+    id_buono = await repo.add_subscription(
+        guild_id=100, channel_id=500, feed_url=url_buono, label="Buono", created_by=1
+    )
+    await repo.update_last_seen(id_buono, entry_id="post-1")
+
+
+@pytest.mark.asyncio
+async def test_tick_url_malformato_non_ferma_le_sottoscrizioni_successive(
+    clean_db, server_rss, monkeypatch
+):
+    _consenti_server_di_test(monkeypatch)
+    import core.feed_watcher as feed_watcher_module
+
+    repo = FeedSubscriptionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(feed_watcher_module, "feed_subscription_repo", repo)
+
+    # Un URL salvato prima che /alerts add lo convalidasse.
+    url_buono = f"http://{server_rss.host}:{server_rss.port}/feed.rss"
+    await _due_sottoscrizioni(repo, "http://a..b/feed.rss", url_buono)
+
+    canale = _FakeChannel(500)
+    await FeedWatcherService().tick(_FakeBot(_FakeGuild(100, canale)))
+
+    assert len(canale.sent_messages) == 1
+    assert "Nuovo post" in canale.sent_messages[0]
+
+
+@pytest.mark.asyncio
+async def test_tick_errore_imprevisto_su_una_sottoscrizione_non_ferma_le_altre(
+    clean_db, server_rss, monkeypatch
+):
+    _consenti_server_di_test(monkeypatch)
+    import core.feed_watcher as feed_watcher_module
+
+    repo = FeedSubscriptionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(feed_watcher_module, "feed_subscription_repo", repo)
+
+    url_buono = f"http://{server_rss.host}:{server_rss.port}/feed.rss"
+    await _due_sottoscrizioni(repo, "http://rotto.invalid/feed.rss", url_buono)
+
+    class _ServizioConScaricoRotto(FeedWatcherService):
+        async def _fetch_feed_text(self, url: str) -> str | None:
+            if "rotto.invalid" in url:
+                raise RuntimeError("errore imprevisto durante lo scarico")
+            return await super()._fetch_feed_text(url)
+
+    canale = _FakeChannel(500)
+    await _ServizioConScaricoRotto().tick(_FakeBot(_FakeGuild(100, canale)))
+
+    assert len(canale.sent_messages) == 1
+    assert "Nuovo post" in canale.sent_messages[0]

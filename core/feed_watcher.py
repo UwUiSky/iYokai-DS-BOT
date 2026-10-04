@@ -40,7 +40,7 @@ class FeedWatcherService:
 
     async def _fetch_feed_text(self, url: str) -> str | None:
         # SEC-8: url è scelto liberamente dall'admin del server
-        # (/feed-alerts add) — safe_get rifiuta indirizzi interni,
+        # (/alerts add) — safe_get rifiuta indirizzi interni,
         # loopback, metadati cloud, ecc. e logga da sé il motivo del
         # rifiuto o dell'errore.
         return await safe_get(url)
@@ -49,57 +49,68 @@ class FeedWatcherService:
         sottoscrizioni = await feed_subscription_repo.get_all_subscriptions()
 
         for sottoscrizione in sottoscrizioni:
-            testo_xml = await self._fetch_feed_text(sottoscrizione.feed_url)
-            if testo_xml is None:
-                continue
-
-            voci = parse_feed(testo_xml)
-            if not voci:
-                continue
-
-            nuove = find_new_entries(voci, sottoscrizione.last_seen_entry_id)
-
-            # Sempre aggiorniamo last_seen alla voce più recente del
-            # feed ORA, sia che ci fossero voci nuove sia no — anche
-            # al primo controllo mai fatto (last_seen_entry_id=None),
-            # per non ripubblicare l'intero storico al giro
-            # successivo.
-            await feed_subscription_repo.update_last_seen(
-                sottoscrizione.id, voci[0].entry_id
-            )
-
-            if not nuove:
-                continue
-
-            guild = bot.get_guild(sottoscrizione.guild_id)
-            canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
-            if not isinstance(canale, discord.TextChannel):
-                logger.warning(
-                    "Canale %s non raggiungibile per la sottoscrizione #%s (server %s).",
-                    sottoscrizione.channel_id,
+            # BUG-20: ogni sottoscrizione è isolata — un errore su una
+            # (feed rotto, dato inatteso) non deve saltare tutte le
+            # successive, che appartengono anche ad altri server.
+            try:
+                await self._controlla_sottoscrizione(bot, sottoscrizione)
+            except Exception:
+                logger.exception(
+                    "Errore sulla sottoscrizione #%s (server %s): salto alla prossima.",
                     sottoscrizione.id,
                     sottoscrizione.guild_id,
                 )
-                continue
 
-            # Dal più vecchio al più recente delle nuove voci — così
-            # nel canale appaiono in ordine cronologico, non al
-            # contrario.
-            for voce in reversed(nuove):
-                messaggio = render_alert_message(
-                    sottoscrizione.message_template,
-                    label=sottoscrizione.label,
-                    title=voce.title,
-                    link=voce.link,
+    async def _controlla_sottoscrizione(self, bot: commands.Bot, sottoscrizione) -> None:
+        testo_xml = await self._fetch_feed_text(sottoscrizione.feed_url)
+        if testo_xml is None:
+            return
+
+        voci = parse_feed(testo_xml)
+        if not voci:
+            return
+
+        nuove = find_new_entries(voci, sottoscrizione.last_seen_entry_id)
+
+        # Sempre aggiorniamo last_seen alla voce più recente del
+        # feed ORA, sia che ci fossero voci nuove sia no — anche
+        # al primo controllo mai fatto (last_seen_entry_id=None),
+        # per non ripubblicare l'intero storico al giro
+        # successivo.
+        await feed_subscription_repo.update_last_seen(sottoscrizione.id, voci[0].entry_id)
+
+        if not nuove:
+            return
+
+        guild = bot.get_guild(sottoscrizione.guild_id)
+        canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
+        if not isinstance(canale, discord.TextChannel):
+            logger.warning(
+                "Canale %s non raggiungibile per la sottoscrizione #%s (server %s).",
+                sottoscrizione.channel_id,
+                sottoscrizione.id,
+                sottoscrizione.guild_id,
+            )
+            return
+
+        # Dal più vecchio al più recente delle nuove voci — così
+        # nel canale appaiono in ordine cronologico, non al
+        # contrario.
+        for voce in reversed(nuove):
+            messaggio = render_alert_message(
+                sottoscrizione.message_template,
+                label=sottoscrizione.label,
+                title=voce.title,
+                link=voce.link,
+            )
+            try:
+                await canale.send(messaggio)
+            except discord.HTTPException:
+                logger.warning(
+                    "Impossibile pubblicare l'alert nel canale %s (server %s).",
+                    sottoscrizione.channel_id,
+                    sottoscrizione.guild_id,
                 )
-                try:
-                    await canale.send(messaggio)
-                except discord.HTTPException:
-                    logger.warning(
-                        "Impossibile pubblicare l'alert nel canale %s (server %s).",
-                        sottoscrizione.channel_id,
-                        sottoscrizione.guild_id,
-                    )
 
     async def close(self) -> None:
         # SEC-8: safe_get apre e chiude la propria ClientSession ad

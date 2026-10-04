@@ -11,7 +11,7 @@ from __future__ import annotations
 import discord
 import pytest
 
-from core.role_safety import check_role_assignable
+from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 from tests.support.discord_fakes import fake_guild, fake_member, fake_role
 
 
@@ -125,3 +125,40 @@ def test_non_self_service_accetta_ruolo_con_permesso_pericoloso_se_gerarchia_ok(
     motivo = check_role_assignable(server, ruolo, actor, self_service=False)
 
     assert motivo is None
+
+
+# ---------------------------------------------------------------------
+# Ruoli assegnati dal bot via REST a partire dal solo ID (restore).
+# ---------------------------------------------------------------------
+
+
+def test_ruolo_automatico_sicuro_e_assegnabile():
+    server, _actor = _setup(ruolo_bot_posizione=10, ruolo_actor_posizione=5)
+    server.get_role.return_value = fake_role(role_id=555, name="Verificato", position=3)
+
+    assert motivo_ruolo_automatico_non_assegnabile(server, 555) is None
+    server.get_role.assert_called_once_with(555)
+
+
+def test_ruolo_automatico_con_permessi_pericolosi_e_rifiutato():
+    server, _actor = _setup(ruolo_bot_posizione=10, ruolo_actor_posizione=5)
+    server.get_role.return_value = fake_role(
+        role_id=555, name="Verificato", position=3, permissions=discord.Permissions(manage_guild=True)
+    )
+
+    assert "manage_guild" in motivo_ruolo_automatico_non_assegnabile(server, 555)
+
+
+def test_ruolo_automatico_sopra_il_bot_e_rifiutato():
+    server, _actor = _setup(ruolo_bot_posizione=10, ruolo_actor_posizione=5)
+    server.get_role.return_value = fake_role(role_id=555, name="Verificato", position=20)
+
+    assert motivo_ruolo_automatico_non_assegnabile(server, 555) is not None
+
+
+def test_ruolo_automatico_senza_server_o_senza_ruolo_e_rifiutato():
+    server, _actor = _setup(ruolo_bot_posizione=10, ruolo_actor_posizione=5)
+    server.get_role.return_value = None
+
+    assert motivo_ruolo_automatico_non_assegnabile(None, 555) is not None
+    assert motivo_ruolo_automatico_non_assegnabile(server, 555) is not None

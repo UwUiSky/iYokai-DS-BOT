@@ -5,10 +5,31 @@ Test del comportamento REALE dei comandi /alerts — non solo che il
 cog carica, contro PostgreSQL reale.
 """
 
+import socket
+
 import pytest
 
 from cogs.utility.feed_alerts import MODULE_FEED_ALERTS, FeedAlertsCog
 from core.database import Database
+from tests.support.discord_fakes import fake_guild, fake_interaction, fake_text_channel
+
+_getaddrinfo_vero = socket.getaddrinfo
+
+
+@pytest.fixture(autouse=True)
+def dns_finto(monkeypatch):
+    """
+    /alerts add controlla che il nome del feed risolva a un IP
+    pubblico: qui "esempio.com" risponde sempre con un IP pubblico di
+    esempio, senza passare dalla rete vera.
+    """
+
+    def finto(host, port, *args, **kwargs):
+        if host == "esempio.com":
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port or 0))]
+        return _getaddrinfo_vero(host, port, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", finto)
 
 
 class _FakeResponse:
@@ -21,6 +42,17 @@ class _FakeResponse:
             self.sent_messages.append(content)
         if embed is not None:
             self.sent_embeds.append(embed)
+
+    async def defer(self, ephemeral: bool = False) -> None:
+        return
+
+
+class _FakeFollowup:
+    def __init__(self) -> None:
+        self.sent_messages: list[str] = []
+
+    async def send(self, content: str, ephemeral: bool = False) -> None:
+        self.sent_messages.append(content)
 
 
 class _FakeGuild:
@@ -44,6 +76,7 @@ class _FakeInteraction:
         self.guild = _FakeGuild(guild_id) if guild_id is not None else None
         self.user = _FakeUser(user_id)
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup()
 
 
 @pytest.mark.asyncio
@@ -116,7 +149,7 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
             cog, interaction_add, feed_url="https://esempio.com/feed.rss", channel=canale,
             label="Canale di prova", message_template=None,
         )
-        assert "Sottoscrizione creata" in interaction_add.response.sent_messages[0]
+        assert "Sottoscrizione creata" in interaction_add.followup.sent_messages[0]
 
         # list
         interaction_list = _FakeInteraction(guild_id)
@@ -605,4 +638,47 @@ async def test_webhook_create_modulo_disattivato_rifiuta(monkeypatch):
         assert "non è attivo" in interaction.response.sent_messages[0]
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000011")
+        await database.close()
+
+
+# ---------------------------------------------------------------------
+# BUG-20: /alerts add convalida l'URL prima di salvarlo.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "feed_url",
+    [
+        "http://x:99999/feed.rss",  # porta fuori intervallo
+        "http://a..b/feed.rss",  # nome host malformato
+        "http://127.0.0.1/feed.rss",  # indirizzo interno
+        "http://esempio.com:8420/feed.rss",  # porta non ammessa
+        "ftp://esempio.com/feed.rss",  # schema non ammesso
+    ],
+)
+@pytest.mark.asyncio
+async def test_add_url_non_valido_viene_rifiutato_e_non_salvato(clean_db, monkeypatch, feed_url):
+    import cogs.utility.feed_alerts as feed_alerts_module
+    from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.set_module_active_for_guild(900000020, MODULE_FEED_ALERTS, True)
+        repo = FeedSubscriptionRepository(pool_provider=lambda: clean_db)
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        monkeypatch.setattr(feed_alerts_module, "feed_subscription_repo", repo)
+
+        interazione = fake_interaction(guild=fake_guild(guild_id=900000020))
+        cog = FeedAlertsCog(bot=None)
+
+        await cog.add.callback(
+            cog, interazione, feed_url=feed_url, channel=fake_text_channel(500),
+            label="Test", message_template=None,
+        )
+
+        assert await repo.list_subscriptions(900000020) == []
+        interazione.followup.send.assert_awaited_once()
+        assert "URL non valido" in interazione.followup.send.call_args.args[0]
+    finally:
         await database.close()

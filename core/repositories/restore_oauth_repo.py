@@ -101,17 +101,22 @@ class RestoreOAuthRepository:
         access_token: str,
         refresh_token: str,
         expires_at: datetime,
-    ) -> None:
+    ) -> bool:
         """
         Salva/aggiorna un token — cifrato PRIMA di lasciare questo
-        metodo, non dopo. Un nuovo consenso dell'utente resetta
-        sempre lo stato a 'active' e azzera left_at (rifà da capo il
-        conto dei 90 giorni se in precedenza era uscito e poi è
-        rientrato/ha ri-autorizzato).
+        metodo, non dopo. Un nuovo consenso dell'utente riporta lo
+        stato a 'active' e azzera left_at (rifà da capo il conto dei
+        90 giorni se in precedenza era uscito e poi è rientrato/ha
+        ri-autorizzato).
+
+        SEC-19: l'unica eccezione è chi è 'banned_blacklisted' — la
+        riga non viene toccata e il metodo restituisce False: un
+        nuovo consenso non cancella un ban. True in tutti gli altri
+        casi.
         """
         cifrato_access = encrypt_token(access_token, self._key)
         cifrato_refresh = encrypt_token(refresh_token, self._key)
-        await self._pool.execute(
+        risultato = await self._pool.execute(
             """
             INSERT INTO restore_oauth_tokens
                 (source_guild_id, user_id, encrypted_access_token,
@@ -123,6 +128,7 @@ class RestoreOAuthRepository:
                 expires_at = EXCLUDED.expires_at,
                 status = EXCLUDED.status,
                 left_at = NULL
+            WHERE restore_oauth_tokens.status <> $7
             """,
             source_guild_id,
             user_id,
@@ -130,7 +136,11 @@ class RestoreOAuthRepository:
             cifrato_refresh,
             expires_at,
             STATUS_ACTIVE,
+            STATUS_BANNED_BLACKLISTED,
         )
+        # "INSERT 0 1" se la riga è stata scritta, "INSERT 0 0" se il
+        # WHERE ha fermato l'aggiornamento.
+        return risultato.endswith(" 1")
 
     async def get_token(self, source_guild_id: int, user_id: int) -> RestoreOAuthToken | None:
         row = await self._pool.fetchrow(

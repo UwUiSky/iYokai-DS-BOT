@@ -364,3 +364,121 @@ async def test_restore_users_fuori_da_un_server_rifiuta():
     await cog.restore_users.callback(cog, interaction, "100")
 
     assert "solo dentro un server" in interaction.response.sent_messages[0][0]
+
+
+# ---------------------------------------------------------------------
+# SEC-19: il link mandato in DM è legato a chi lo riceve.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_il_link_di_autorizzazione_in_dm_e_legato_al_destinatario(database, monkeypatch):
+    import dataclasses
+    import re
+    from urllib.parse import parse_qs, urlparse
+
+    import cogs.utility.restore as restore_module
+    from core.restore_oauth_logic import decode_and_verify_state
+
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
+    monkeypatch.setattr(restore_module, "db", database)
+    monkeypatch.setattr(
+        restore_module, "config", dataclasses.replace(restore_module.config, OAUTH_ENCRYPTION_KEY=CHIAVE_TEST)
+    )
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None), (2, "Utente2", None)])
+
+    utenti = {1: _FakeUser(1), 2: _FakeUser(2)}
+    cog = RestoreCog(bot=_FakeBot(utenti))
+
+    await cog.restore_users.callback(cog, _FakeInteraction(guild_id=200), "100")
+
+    for user_id, utente in utenti.items():
+        url = re.search(r"https://discord\.com/oauth2/authorize\S+", utente.messaggi_ricevuti[0]).group()
+        state = parse_qs(urlparse(url).query)["state"][0]
+        stato = decode_and_verify_state(state, CHIAVE_TEST)
+        assert (stato.source_guild_id, stato.target_guild_id, stato.user_id) == (100, 200, user_id)
+
+
+# ---------------------------------------------------------------------
+# SEC-4/SEC-17: il ruolo verificato si ricontrolla quando viene assegnato.
+# ---------------------------------------------------------------------
+
+
+class _OrchestratorCheRegistra:
+    def __init__(self) -> None:
+        self.aggiunti: list[int] = []
+        self.ruoli_assegnati: list[tuple[int, int]] = []
+
+    async def join_user_via_oauth(self, *, bot_token, guild_id, user_id, access_token):
+        self.aggiunti.append(user_id)
+        return True
+
+    async def assign_role(self, *, bot_token, guild_id, user_id, role_id):
+        self.ruoli_assegnati.append((user_id, role_id))
+        return True
+
+
+async def _restore_con_ruolo_verificato(database, monkeypatch, ruolo):
+    """Un utente con token attivo, e `ruolo` configurato come ruolo verificato del backup."""
+    import cogs.utility.restore as restore_module
+    from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
+
+    snapshot_repo, oauth_repo, verify_repo_test, backup_repo_test = _patch_repos(monkeypatch, database)
+    monkeypatch.setattr(restore_module, "db", database)
+    orchestrator = _OrchestratorCheRegistra()
+    monkeypatch.setattr(restore_module, "restore_orchestrator", orchestrator)
+
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await oauth_repo.save_token(100, 1, "access", "refresh", datetime.now(timezone.utc) + timedelta(days=7))
+    await verify_repo_test.set_config(200, "button", ruolo.id, 0, 0, False, None)
+
+    bot_membro = fake_member(user_id=999, name="Yokai Bot", bot=True)
+    bot_membro.top_role = fake_role(role_id=9000, name="Bot", position=50)
+    server = fake_guild(guild_id=200, me=bot_membro)
+    server.get_role.return_value = ruolo
+    interaction = fake_interaction(guild=server)
+
+    cog = RestoreCog(bot=_FakeBot({}))
+    await cog.restore_users.callback(cog, interaction, "100")
+    return orchestrator, interaction
+
+
+@pytest.mark.asyncio
+async def test_restore_users_ruolo_verificato_sicuro_viene_assegnato(database, monkeypatch):
+    from tests.support.discord_fakes import fake_role
+
+    orchestrator, _interaction = await _restore_con_ruolo_verificato(
+        database, monkeypatch, fake_role(role_id=555, name="Verificato", position=5)
+    )
+
+    assert orchestrator.aggiunti == [1]
+    assert orchestrator.ruoli_assegnati == [(1, 555)]
+
+
+@pytest.mark.asyncio
+async def test_restore_users_ruolo_verificato_pericoloso_non_viene_assegnato(
+    database, monkeypatch, caplog
+):
+    import logging
+
+    import discord
+
+    from tests.support.discord_fakes import fake_role
+
+    ruolo_admin = fake_role(
+        role_id=555, name="Verificato", position=5, permissions=discord.Permissions(administrator=True)
+    )
+    with caplog.at_level(logging.WARNING, logger="iyokai.restore"):
+        orchestrator, interaction = await _restore_con_ruolo_verificato(
+            database, monkeypatch, ruolo_admin
+        )
+
+    # L'utente entra comunque, ma senza il ruolo.
+    assert orchestrator.aggiunti == [1]
+    assert orchestrator.ruoli_assegnati == []
+    assert "administrator" in caplog.text
+    assert "Ruolo verificato non assegnato" in interaction.followup.send.call_args.args[0]
