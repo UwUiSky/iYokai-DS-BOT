@@ -9,7 +9,7 @@ issue #52) e il motore AI (issue #50).
 Discord la rende impossibile così com'era pensata, qui c'è
 l'alternativa più vicina che funziona.
 
-Quando farle: vedi [`PRIORITA.md`](PRIORITA.md). Cosa cambiare in ciò
+Quando farle: vedi [`PRIORITA.md`](../archivio/PRIORITA.md). Cosa cambiare in ciò
 che esiste già: vedi [`MODIFICHE_ESISTENTE.md`](MODIFICHE_ESISTENTE.md).
 
 ## Regole per ogni funzione nuova

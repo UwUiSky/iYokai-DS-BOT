@@ -36,7 +36,8 @@ dei documenti.
 - I codici si trovano in `revisione/01-analisi/REVIEW.md`,
   `revisione/01-analisi/LIMITI.md` e
   `revisione/02-piano/NUOVE_FUNZIONI.md`.
-- Cosa fare e in che ordine: `revisione/02-piano/PRIORITA.md`.
+- Cosa fare e in che ordine: le **issue di GitHub**, una milestone per
+  fase (F1, F2, …).
 - **Nessuna voce è stata tolta.** Dove Discord rende impossibile una
   funzione così com'era pensata, c'è scritta l'alternativa pianificata.
 - Nessun `[x]` è ancora stato provato su Discord vero: il bot è in zero
@@ -58,7 +59,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §8 LOGGING | 10 | 7 | 1 | 0 |
 | §9 MUSIC | 1 | 8 | 5 | 3 |
 | §10 ALERTS & SOCIAL | 0 | 7 | 3 | 0 |
-| §11 BACKUP SYSTEM | 0 | 11 | 5 | 0 |
+| §11 BACKUP SYSTEM | 0 | 11 | 6 | 0 |
 | §12 TEMPORARY VOICE CHANNELS | 5 | 3 | 0 | 0 |
 | §13 TICKET SYSTEM | 5 | 8 | 0 | 0 |
 | §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 3 | 0 |
@@ -73,13 +74,13 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
 | §25 MOTORE AI | 0 | 0 | 9 | 0 |
-| B iYOKAI APPLICATION (user-installable) | 0 | 0 | 2 | 0 |
+| B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
-| D iYOKAI DESKTOP (presence via RPC) | 0 | 0 | 4 | 2 |
-| E ALTRE APPLICAZIONI DA CREARE | 0 | 1 | 1 | 1 |
-| **Totale** | **97** | **143** | **126** | **7** |
+| D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
+| E APPLICAZIONI DEL PROGETTO | 0 | 3 | 5 | 0 |
+| **Totale** | **97** | **145** | **146** | **6** |
 
-Totale voci: **373**.
+Totale voci: **394**.
 
 ---
 
@@ -703,7 +704,7 @@ provato live, ma il disegno cambia comunque così:
 - i brani locali della radio passano solo dal nodo locale;
 - la radio non viene scollegata dai canali vuoti.
 
-Dettaglio e ordine: `revisione/02-piano/PRIORITA.md` fase F2,
+Dettaglio e ordine: milestone "F2 — Musica" su GitHub,
 `revisione/02-piano/MODIFICHE_ESISTENTE.md` §8.
 
 **Nota storica** (stato prima del 04/10): costruita l'architettura multi-istanza (bot
@@ -957,28 +958,36 @@ coppia non partono mirror, snapshot dei membri, `/restore-users` e
 `/promuovi-backup`. Il token del Creator è ancora obbligatorio
 all'avvio (LIM-39).
 
-**Disegno nuovo (D8, modello Xenon), senza il bot Creator:**
+**Disegno nuovo (D8, seconda versione): il server lo crea un admin, il
+Creator lo porta e lo tiene allo stato corrente.**
 
-1. Il bot salva lo **snapshot** del server come dati: ruoli, canali,
-   permessi, impostazioni, riferimenti a emoji, sticker e suoni.
-2. Per ripristinare o clonare, un admin **crea un server vuoto**. Può
-   partire da un link "modello di server" che il bot genera con
-   `Guild.create_template`.
-3. L'admin invita il bot e lancia lì il comando di collegamento o di
-   caricamento.
-4. Mirror, snapshot settimanale dei membri, `/restore-users` e
-   promozione lavorano su quel server.
+1. Un admin **crea il server di backup** (anche da un link "modello di
+   server" generato dal bot con `Guild.create_template`).
+2. Invita lì **iYokai Creator** e il bot principale, poi lancia il
+   comando di collegamento con il codice generato nel server principale.
+3. Il Creator copia ruoli, canali, permessi, emoji, sticker e suoni, e
+   i messaggi **in ordine cronologico** tramite webhook, uno dopo
+   l'altro (discord.py aspetta da solo quando interviene il rate limit,
+   quindi l'ordine resta giusto).
+4. Poi tiene il server aggiornato: mirror dei messaggi nuovi e
+   controllo periodico delle differenze.
+5. Snapshot settimanale dei membri, `/restore-users` e promozione
+   lavorano su quella coppia.
+
+Il lavoro pesante gira sul token del Creator, così non consuma i limiti
+di frequenza del bot principale né di iYokai Mod (D15).
 
 **Limiti di Discord che restano veri:** un bot non può entrare da solo
 in un server (serve il clic di un umano sull'invito); `guilds.join`
 funziona solo per chi ha dato il consenso prima; i token degli utenti
-durano circa 7 giorni e vanno rinnovati.
+durano circa 7 giorni e vanno rinnovati; al massimo 15 webhook per
+canale.
 
-**Cosa viene tolto:** l'applicazione iYokai Creator,
-`YOKAI_CREATOR_TOKEN`, `core/backup_creator_bot.py`, la coda con i "10
-posti", la pulizia dei server orfani (già disattivata apposta il 04/10
-in `fba882e`). I bug BUG-26, BUG-28 e BUG-29 riguardavano quel flusso:
-superati.
+**Cosa viene tolto:** la creazione del server da parte del bot, il
+passaggio di proprietà, la cancellazione dei server, la coda con i "10
+posti", la pulizia dei server orfani (già disattivata il 04/10 in
+`fba882e`). I bug BUG-26, BUG-28 e BUG-29 riguardavano quel flusso:
+superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[ ]` 11.1 Snapshot del server salvato come dati nel database, con
   più copie datate per server (D8, LIM-39)
@@ -1030,8 +1039,11 @@ superati.
 - `[~]` 11.13 Promozione del backup a nuovo main — `/promuovi-backup`.
   Dopo la promozione `/restore-users` rifiuta sempre (BUG-34, da
   confermare con un test): la coppia storica va conservata
-- `[ ]` 11.14 Rimozione del bot Creator dal codice e dalla
-  configurazione (D8)
+- `[ ]` 11.14 Il Creator smette di creare, cedere e cancellare server:
+  entra nel server creato dall'admin e lo porta allo stato corrente,
+  messaggi in ordine cronologico compresi (D8)
+- `[ ]` 11.17 Aggiornamento continuo del server di backup: controllo
+  periodico delle differenze di ruoli, canali e permessi (D8)
 - `[ ]` 11.15 Salvataggio degli ultimi N messaggi per canale nello
   snapshot (modello Xenon), oltre al mirror in tempo reale
 - `[ ]` 11.16 Modelli di server e sincronia di ban e ruoli tra server
@@ -1723,13 +1735,30 @@ messaggi per addestrare modelli.
 
 # B. iYOKAI APPLICATION (user-installable) — da fare (NF-36, fase F13)
 
-- `[ ]` B.1 Applicazione con scope `USER_INSTALL`: comandi disponibili
-  in qualsiasi server, DM, group DM, anche dove il bot non è invitato
-  → **Stato 04/10:** in piano: NF-36, fase F13.
-- `[ ]` B.2 Utility personali
-- **Nota**: menzionata nella discussione sulle alternative al selfbot,
-  poi mai inserita in nessuna lista di cose da fare — nemmeno nella
-  tabella delle applicazioni del progetto
+Comandi che l'utente installa **su di sé** e usa ovunque: in qualsiasi
+server (anche dove il bot non c'è), nei DM e nei gruppi. L'elenco
+completo, con limiti e motivi, è in
+`revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.
+
+- `[ ]` B.1 Applicazione separata con installazione sull'utente
+  (`USER_INSTALL`) e i tre contesti (server, DM con il bot, DM e gruppi)
+- `[ ]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
+  Ricordamelo, Citazione come immagine, Meme da questa immagine,
+  Controlla i link, Segnala alla rete iYokai, Spiega/riassumi (AI)
+- `[ ]` B.3 Menu sull'utente: Profilo iYokai, Stato nella rete di
+  sicurezza (solo per chi lo chiede, risposta privata)
+- `[ ]` B.4 Utility personali: promemoria, note, liste, fusi orari,
+  conversioni, calcolatrice, QR, colori
+- `[ ]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
+  testi ed embed richiamabili ovunque
+- `[ ]` B.6 Profilo globale: livello, clan, medaglie, rank card
+- `[ ]` B.7 Divertimento e immagini ovunque (stessi comandi di `/fun`)
+- `[ ]` B.8 Musica senza bot nel canale: Attività "radio iYokai"
+  (ascolto condiviso dentro un'Attività di Discord), testi, playlist
+  personali
+- `[ ]` B.9 Assistenza: apri un ticket con il supporto iYokai da ovunque
+- `[ ]` B.10 Storico dei propri comandi e impostazioni personali
+  (lingua, risposte private o pubbliche)
 
 ---
 
@@ -1747,34 +1776,58 @@ messaggi per addestrare modelli.
 
 ---
 
-# D. iYOKAI DESKTOP (presence via RPC) — da fare (NF-37, fase F13)
+# D. iYOKAI DESKTOP — da fare (NF-37, fase F13)
+
+Programma per PC collegato al proprio account iYokai (accesso con
+Discord). Offre in modo regolare ciò che programmi come Nighty fanno
+automatizzando l'account dell'utente. L'elenco completo, funzione per
+funzione, è in `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.
 
 - `[✗]` D.0 Modulo selfbot con user token — **scartato**: viola i ToS
-  Discord, fa bannare l'utente finale, e metterebbe a rischio l'intera
-  applicazione verificata
-- `[ ]` D.1 App locale che usa il socket IPC del client Discord
-  → **Stato 04/10:** in piano: NF-37, fase F13.
-- `[ ]` D.2 Custom presence: giocando / ascoltando / guardando /
-  competendo, immagini grande e piccola, testi, bottoni, timestamp
+  Discord e fa bannare l'utente finale. Ogni funzione di quel tipo è
+  sostituita qui sotto dall'alternativa regolare più vicina.
+- `[ ]` D.1 App locale collegata al client Discord (IPC) e al servizio
+  iYokai (accesso OAuth2, canale in tempo reale)
+- `[ ]` D.2 Stato personalizzato (rich presence): attività, immagini,
+  testi, bottoni, tempo
 - `[ ]` D.3 Rotazione automatica di più stati
 - `[ ]` D.4 Profili salvati
-- `[✗]` D.5 Custom status testuale con emoji, bio animate, cambio
-  avatar/banner a rotazione — **impossibile senza user token**, nessuna
-  via legittima esiste
-  → **Stato 04/10:** resta impossibile senza violare le regole. L'alternativa più vicina è D.2 (rich presence).
+- `[ ]` D.5 Notifiche a schermo: menzioni, parole chiave, risposte ai
+  ticket, promemoria, giveaway vinti, dirette, avvisi per lo staff
+- `[ ]` D.6 Storico delle menzioni con salto al messaggio (nei server
+  dove c'è iYokai)
+- `[ ]` D.7 Storico dei propri comandi e delle azioni fatte dal bot per
+  conto dell'utente
+- `[ ]` D.8 Traduzione rapida (appunti e tasto rapido) e risposte
+  salvate da incollare
+- `[ ]` D.9 Pannello rapido per lo staff: azioni eseguite dal bot nei
+  server dove l'utente ha i permessi (blocca canale, timeout, giveaway)
+- `[ ]` D.10 I miei server: elenco, dove c'è iYokai, dove sono staff
+  (scope OAuth2 `guilds` e `guilds.members.read`)
+- `[ ]` D.11 Funzioni che richiedono l'approvazione di Discord (scope
+  `rpc`): notifiche del client, controllo di microfono e cuffie
+- `[✗]` D.12 Stato testuale con emoji, bio animate, avatar e banner a
+  rotazione, temi del client — **impossibile senza user token**.
+  Alternativa: D.2, il profilo globale B.6 e i "Game Stats Widget" del
+  profilo Discord, se l'app viene ammessa.
 
 ---
 
-# E. ALTRE APPLICAZIONI DA CREARE
+# E. APPLICAZIONI DEL PROGETTO
 
-Con la decisione D8 il Creator non serve più: i bot che girano nello
-stesso processo passano da 7 a 6 (principale + 5 musicali).
+Bot che girano nello stesso processo: principale, Mod, Creator, 5
+musicali, più NSFW quando verrà fatto.
 
-- `[✗]` iYokai Creator (backup) — vedi §11
-  → **Stato 04/10:** non serve più: Discord non lascia creare server ai bot (D8). Va tolto dal codice in F3.
+- `[~]` iYokai (principale) — comandi e interfaccia
+- `[ ]` iYokai Mod (log e moderazione) — D15, fase F3
+- `[~]` iYokai Creator (backup) — resta; non crea più server, porta e
+  tiene aggiornato il server di backup (D8, §11)
 - `[~]` iYokai Music #1-5 — vedi §9
   → **Stato 04/10:** il codice c'è; l'audio dei worker va corretto (LIM-40, D10).
 - `[ ]` iYokai NSFW — vedi §16.10
+- `[ ]` iYokai App (installabile dall'utente) — vedi B
+- `[ ]` iYokai Desktop — vedi D
+- `[ ]` iYokai Panel (sito) — vedi C e §24
 
 ---
 

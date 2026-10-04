@@ -3,101 +3,117 @@
 Bot Discord multi-tenant **iYokai** (Python 3.11, discord.py 2.7.1,
 PostgreSQL/asyncpg, wavelink/Lavalink). Owner: iYokai.
 
-## File da leggere, in ordine di priorità
+## Da dove si parte
 
-1. `CLAUDE_MANDATORY_TEST_RULES.md` — segreti e test live. **Vincolante,
-   prevale su tutto il resto.**
-2. `PIANO_FIX.md` — cosa fare, in che ordine e come. È la tua lista di
-   lavoro: segui le fasi nell'ordine scritto lì.
-3. `REVIEW.md` — il dettaglio di ogni problema (codici SEC-, BUG-, LC-,
-   GDPR-, DB-, PERF-). Prima di sistemare una voce, rileggi la sua
-   descrizione qui e l'issue GitHub collegata.
-4. `SPEC.md` (cosa deve fare il bot), `PROGRESS.md` (storico),
-   `COMMAND_LIST.md` (comandi), `BACKLOG.md` (cose rimandate).
+1. `.claude/orchestratore/STATO.md` — **la memoria del lavoro**: cosa è
+   fatto, cosa è in corso, cosa viene dopo. Si legge per primo.
+2. Le **issue di GitHub** — il lavoro da fare. Una milestone per fase
+   (F1, F2, …), etichette per area e tipo. Non si tengono file di piano.
+3. `CLAUDE_MANDATORY_TEST_RULES.md` — segreti e test live. Vincolante.
+4. `revisione/02-piano/DECISIONI.md` — le scelte già fatte.
+5. `revisione/01-analisi/LIMITI.md` — limiti di Discord e delle
+   librerie, con la lista di controllo.
+6. Il dettaglio, quando serve: `revisione/02-piano/MODIFICHE_ESISTENTE.md`,
+   `revisione/02-piano/NUOVE_FUNZIONI.md`, `revisione/01-analisi/REVIEW.md`,
+   `SPEC.md`.
+
+## Come si lavora: orchestratore e agenti
+
+La sessione principale fa da **orchestratore**
+(`.claude/agents/orchestratore.md`). Gli altri agenti sono in
+`.claude/agents/`: `correttore`, `cacciatore-bug`, `revisore`.
+
+- L'orchestratore sceglie le issue, prepara per ogni agente una
+  **scheda breve** (issue, file da toccare, regole che contano) e
+  tiene aggiornato `STATO.md`. Un agente non rilegge tutto il progetto:
+  parte dalla scheda e, se gli manca qualcosa o viene interrotto,
+  **chiede all'orchestratore** da dove riprendere.
+- Ogni agente lavora in una sua copia (`git worktree`) con un suo
+  database di test. Mai due agenti sugli stessi file.
+- **Niente arriva su `main` senza la revisione dell'orchestratore**:
+  legge il diff, controlla la lista di `LIMITI.md`, fa lo smoke test.
+- Al massimo 3 agenti insieme (2 CPU, e il limite di sessione).
+
+## Test: smoke mirato, suite completa solo quando serve
+
+- **Mentre si lavora a una voce:** solo i test di quella voce.
+- **A gruppo chiuso o dopo un fix grosso:** smoke test sulle funzioni
+  toccate: `python3 scripts/smoke.py` (sceglie da solo i test legati ai
+  file cambiati, più i controlli sull'albero dei comandi).
+- **Suite completa** (`python3 -m pytest -q`, circa 6 minuti): a fine
+  fase, dopo modifiche a `core/database.py`, alle migrazioni, a
+  `main.py` o a `tests/conftest.py`, e prima di un rilascio. Non a ogni
+  commit.
+- Prima il test che fallisce (per il motivo giusto), poi il fix.
+- Database di test: `postgresql://postgres:testpass@127.0.0.1:5432/iyokai_test`
+  (da `tests/conftest.py`; si cambia con `DATABASE_URL`). Se dà
+  "connection refused": `service postgresql start`.
+- Oggetti finti: quelli fedeli di `tests/support/discord_fakes.py`
+  (`create_autospec`). Dove un finto nasconderebbe il problema si usano
+  oggetti veri (un `commands.Bot` non collegato, un processo vero).
+- Albero comandi completo: `tests/support/full_tree.py`
+  (`importlib.import_module` + `setup(bot)`, mai `bot.load_extension`).
+- Un test non prepara da solo i dati che dovrebbe scrivere il codice di
+  produzione.
+- Test "cricchetto" (`KNOWN_*`): quando sistemi un problema togli il
+  nome dall'insieme. Non aggiungerne mai per far passare un test.
+- Regole per gli smoke test: `tests/SMOKE_RULES.md`.
+- Un test verde **non** è una verifica live: i passi da provare su
+  Discord vanno in `revisione/03-verifica/VERIFICA_LIVE.md`.
+
+## Regole di fondo
+
+- **Non omettere mai una funzione richiesta dall'owner** (D18). Se
+  Discord la impedisce così com'è, si realizza l'alternativa più vicina
+  e lo si dice chiaramente. Niente "fuori scope".
+- **Prima di progettare una funzione o un'interfaccia** si passa la
+  lista di controllo di `revisione/01-analisi/LIMITI.md` (Parte 4):
+  liste paginate o con tetto a 25, `max_length` sui testi liberi,
+  `defer()` prima del lavoro lento, embed troncati, motivi ≤ 512.
+- **Ogni impostazione passa da un solo punto del codice**, usato sia
+  dai comandi sia dal futuro pannello web (D16).
+- Le decisioni sono in `DECISIONI.md`. Se ne serve una nuova: si
+  sceglie l'opzione consigliata, la si scrive lì con la data, si avvisa
+  l'owner. Non si lascia una voce ferma.
+- Revisione, non riscrittura: si cambia solo ciò che serve alla voce.
+- Codice semplice: nomi chiari, funzioni corte, niente astrazioni che
+  non servono subito.
+- Un problema nuovo diventa **una issue** (etichette giuste, milestone
+  della fase). Si sistema subito solo se è piccolo e con il suo test.
 
 ## Lingua
 
 Tutto in **italiano**: testi per gli utenti, docstring, commenti,
-messaggi di commit, documentazione, commenti sulle issue.
+commit, documentazione, issue. Frasi brevi e parole semplici.
 
-## Metodo: questa è una revisione, non una riscrittura
+## Commit, push e issue
 
-- Il codice esiste e in gran parte funziona. Cambia solo quello che
-  serve per la voce su cui stai lavorando.
-- Codice semplice e leggibile: nomi chiari, funzioni corte, niente
-  astrazioni che non servono subito. Deve capirlo anche chi è alle
-  prime armi.
-- Se trovi un bug nuovo, aggiungilo a `REVIEW.md` con un codice nuovo e
-  a `PIANO_FIX.md` nella fase giusta. Sistemalo subito solo se è piccolo,
-  nello stesso file che stai già toccando, e con un test.
-- Se una voce è `[B]` (serve una decisione dell'owner, vedi
-  `PIANO_FIX.md` §D), chiedi all'owner e passa alla voce successiva.
-  Non decidere al suo posto.
-
-## Ciclo obbligatorio per ogni voce
-
-1. Leggi la voce in `PIANO_FIX.md`, in `REVIEW.md` e nell'issue.
-2. Scrivi il test **prima** del fix. Eseguilo e controlla che fallisca
-   **per il motivo giusto** (non per un import o una fixture rotta).
-3. Fai il fix.
-4. Esegui il test nuovo, poi la **suite completa due volte**:
-   `python3 -m pytest -q`. Devono essere verdi entrambe.
-5. Aggiorna:
-   - `PIANO_FIX.md`: `[x]` con lo SHA del commit;
-   - `SPEC.md`: `[x]` solo se la funzione è davvero completa e testata;
-     se serve la prova su Discord scrivi "(da verificare live)";
-   - `PROGRESS.md`: una riga su cosa è cambiato;
-   - `COMMAND_LIST.md` se cambiano i comandi;
-   - `VERIFICA_LIVE.md` se il fix va provato su Discord, sul database
-     reale o su Lavalink.
-6. Commit: un codice REVIEW (o un piccolo gruppo legato) per commit.
-   - autore: `Yokai Bot Dev <dev@yokai-bot.local>`;
-   - messaggio in italiano, con `Refs #N` per le issue collegate;
-   - **mai** `Closes #N` o `Fixes #N`: le issue si chiudono solo dopo il
-     test live, dall'owner;
-   - in fondo le righe di attribuzione indicate dal sistema per la
-     sessione corrente.
-7. `git push`, poi verifica che lo SHA locale e quello remoto
-   coincidano (`git rev-parse HEAD` e `git ls-remote origin main`).
-8. Se vuoi, commenta l'issue con lo SHA e i passi della verifica live
-   (mai segreti, mai log con token).
-
-## Test
-
-- Database locale di test: `postgresql://postgres:testpass@127.0.0.1:5432/iyokai_test`
-  (impostato da `tests/conftest.py`). Se i test danno "connection
-  refused", il servizio si è fermato: `service postgresql start`.
-- Albero comandi completo nei test: `tests/support/full_tree.py`. Usa
-  `importlib.import_module` + `setup(bot)`, **non** `bot.load_extension`
-  (ri-esegue i moduli e rompe i singleton degli altri test).
-- Oggetti finti: usa quelli fedeli di `tests/support/discord_fakes.py`
-  (costruiti con `create_autospec`), non finti scritti a mano. Un finto
-  scritto a mano accetta anche chiamate sbagliate: così BUG-1 è rimasto
-  nascosto.
-- Un test non deve mai preparare da solo i dati che il codice di
-  produzione dovrebbe scrivere (così BUG-3 è rimasto nascosto).
-- Test "cricchetto" (`KNOWN_*`): quando sistemi un problema togli il
-  nome dall'insieme nello stesso commit. Non aggiungere mai nomi per
-  far passare un test.
-- Un test verde **non** è una verifica live. Non scrivere mai "verificato
-  su Discord", "funziona in produzione" o simili senza l'esito del test
-  live dell'owner.
+- Autore: `Yokai Bot Dev <dev@yokai-bot.local>`. Messaggio in italiano,
+  con `Refs #N`. In fondo le righe di attribuzione della sessione.
+- Un codice (o un piccolo gruppo legato) per commit.
+- Dopo il push: lo SHA locale e quello remoto devono coincidere.
+- Un'issue si **chiude quando il fix è unito con i suoi test**, con un
+  commento che dice il commit. Se serve ancora la prova su Discord si
+  mette l'etichetta `verifica-live`; la toglie l'owner dopo la prova.
+- Si aggiornano insieme al codice: `SPEC.md` (simbolo della voce),
+  `COMMAND_LIST.md` se cambiano i comandi, `VERIFICA_LIVE.md` se serve
+  una prova live, `STATO.md` a fine gruppo.
 
 ## Divieti
 
-- Nessun segreto nel repository, nei commit, nelle issue o nei log:
-  token Discord, `DATABASE_URL`, password Lavalink, chiavi OAuth o di
-  cifratura. Nei file di esempio solo segnaposto.
-- Non committare `.env` né file in `logs/`.
-- Non aggiungere comandi top-level prima della fase R5 (siamo a 97 su
-  100) e non aggiungere sotto-comandi a `/owner` (è a 25 su 25).
-- Non riscrivere la storia git (`push --force`, `rebase` su commit già
-  pubblicati) senza richiesta esplicita dell'owner.
-- Fuori scope: motore AI (#50) e confronto con altri bot (#52).
+- Nessun segreto nel repository, nei commit, nelle issue o nei log
+  (token, `DATABASE_URL`, password Lavalink, chiavi OAuth). Nei file di
+  esempio solo segnaposto. Non committare `.env` né file in `logs/`.
+- Nessun comando di primo livello nuovo prima della fase F7 (97 su 100)
+  e nessun sotto-comando nuovo in `/owner` (25 su 25). Dopo F7: mai
+  comandi di primo livello nuovi, al massimo 25 figli per gruppo.
+- Non riscrivere la storia git senza richiesta esplicita dell'owner.
+- Niente automazione di account utente (selfbot): viola le regole di
+  Discord. Per le funzioni di quel tipo vale l'alternativa regolare
+  descritta in `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.
 
 ## Docstring in testa ai file
 
-Formato fisso, breve:
 ```
 percorso/del/file.py
 ====================
@@ -105,5 +121,5 @@ A cosa serve (1–2 frasi).
 Funzioni coperte: SPEC §x.y
 Dipende da: … (solo se non ovvio)
 ```
-Niente cronache di sessioni, niente "perché abbiamo scelto", niente
-nomi di altre AI. Quando tocchi un file, sistema anche la sua docstring.
+Niente cronache di sessioni, niente "perché abbiamo scelto", niente nomi
+di altre AI. Quando tocchi un file, sistema anche la sua docstring.

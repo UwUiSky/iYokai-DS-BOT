@@ -206,7 +206,7 @@ Stato di iYokai (misurato): 97 comandi di primo livello su 100;
 
 | Quando | Cosa è cambiato | Cosa rompe in iYokai | Dove si risolve |
 |---|---|---|---|
-| Luglio 2025 | I bot non possono più creare server. discord.py 2.6 segna deprecati `create_guild` e `Guild.delete`. | **Tutto il backup**: `/define-backup` fallisce, quindi niente coppia, niente mirror, niente snapshot, niente `/restore-users`, niente `/promuovi-backup`. Il token del Creator è ancora obbligatorio all'avvio. | D8, fase F3 (`LIM-39`) |
+| Luglio 2025 | I bot non possono più creare server. discord.py 2.6 segna deprecati `create_guild` e `Guild.delete`. | **Tutto il backup**: `/define-backup` fallisce, quindi niente coppia, niente mirror, niente snapshot, niente `/restore-users`, niente `/promuovi-backup`. Il Creator resta, ma non può più creare il server: lo crea un admin e il Creator lo porta allo stato corrente. | D8 seconda versione, fase F3 (`LIM-39`) |
 | 23/02/2026 | Permessi divisi: `PIN_MESSAGES`, `BYPASS_SLOWMODE`, `CREATE_GUILD_EXPRESSIONS`, `CREATE_EVENTS`. | Oggi niente: il bot chiede Amministratore e non fissa messaggi. **Con il backup nuovo** il bot clona emoji e sticker non da proprietario: gli serve `CREATE_GUILD_EXPRESSIONS`. | F3 |
 | 01/03/2026 | Voce solo cifrata (DAVE). | Un nodo Lavalink più vecchio della 4.2.0 non entra in vocale (codice di chiusura 4017). `requirements.txt` accetta wavelink 3.4.0, che non basta. I nodi pubblici hanno versione sconosciuta. | D10, F2 (`LIM-54`) |
 | 03/03/2026 | Comandi del menu contestuale: 15 per tipo. | Niente. È spazio in più per funzioni nuove (es. "Segnala messaggio"). | F9 |
@@ -220,7 +220,7 @@ Stato di iYokai (misurato): 97 comandi di primo livello su 100;
 
 Stato: 🔴 da sistemare · 🟢 già protetto.
 Ogni `LIM-n` è assegnato a una fase in
-[`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md).
+[`../archivio/PRIORITA.md`](../archivio/PRIORITA.md).
 
 ### 3.1 Testi troppo lunghi e liste che crescono
 
@@ -274,7 +274,7 @@ Ogni `LIM-n` è assegnato a una fase in
 | LIM-36 | `cogs/security/spam_trap.py:375,385`, `cogs/utility/restore.py:289-291` | 500 canali; 1000 inviti | Creazione di canali e inviti senza gestire il tetto. | 🔴 |
 | LIM-37 | `core/restore_orchestrator.py:80` | il token dura circa 7 giorni | Esiste solo lo scambio iniziale; il `refresh_token` salvato non viene mai usato. Dopo una settimana ogni consenso raccolto è inutile. | 🔴 |
 | LIM-38 | `core/backup_clone_logic.py:138-182`, `cogs/security/anti_nuke.py:297-310`, `cogs/logging/advanced_logs.py:139-147,258-276` | canali offuscati dal 16/11/2026 | Vedi Parte 2. | 🔴 |
-| LIM-39 | `core/backup_orchestrator.py:62,106,128,167-170`, `core/backup_creator_bot.py`, `core/config.py:138` | i bot non creano server | Vedi Parte 2. `YOKAI_CREATOR_TOKEN` è obbligatorio: senza, il bot non parte. | 🔴 |
+| LIM-39 | `core/backup_orchestrator.py:62,106,128,167-170`, `core/backup_creator_bot.py`, `core/config.py:138` | i bot non creano server | Vedi Parte 2. Vanno tolte creazione, cessione e cancellazione dei server; il Creator resta per la copia (D8). | 🔴 |
 
 ### 3.4 Musica
 

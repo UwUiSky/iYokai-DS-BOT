@@ -8,7 +8,7 @@ Come leggere ogni voce:
 - **Codice**: rimanda a [`../01-analisi/REVIEW.md`](../01-analisi/REVIEW.md)
   (SEC-, BUG-, LC-, GDPR-, DB-, PERF-) o a
   [`../01-analisi/LIMITI.md`](../01-analisi/LIMITI.md) (LIM-).
-- **Fase**: quando si fa, secondo [`PRIORITA.md`](PRIORITA.md).
+- **Fase**: quando si fa, secondo [`PRIORITA.md`](../archivio/PRIORITA.md).
 - ⚡ = **poche righe di codice**. Si può fare subito, sempre con il suo
   test.
 - "Modello" = il bot da cui copiare l'idea, spiegato in
@@ -278,8 +278,8 @@ in fase F3, decisione D8.
 
 | # | Cosa non va | Modifica | Test |
 |---|---|---|---|
-| 12.1 | **LIM-39**: il flusso crea un server; impossibile. | Nuovo flusso: `/define-backup` salva lo snapshot come dati e, se richiesto, genera un link modello (`Guild.create_template`). Nel server nuovo l'admin lancia il comando di collegamento con un codice. Niente cessione di proprietà. | Collegamento con codice giusto, sbagliato, scaduto. |
-| 12.2 | **LIM-39**: Creator ancora nel codice e obbligatorio. | Togliere `core/backup_creator_bot.py`, il cablaggio in `main.py`, `YOKAI_CREATOR_TOKEN` da `core/config.py` e `.env.example`, i "10 posti", `pulisci_server_orfani`, `elimina_server_creato`. | Il bot parte senza il token. Cricchetto dei metodi senza chiamanti aggiornato. |
+| 12.1 | **LIM-39**: il flusso crea un server; impossibile. | Nuovo flusso (D8, seconda versione): `/define-backup` salva lo snapshot come dati, genera il codice di collegamento e, se richiesto, un link modello (`Guild.create_template`). L'admin crea il server, invita **iYokai Creator** e lancia lì il comando di collegamento. Il Creator copia struttura e messaggi (in ordine, un webhook per canale, un invio alla volta) e poi tiene il server aggiornato. Niente cessione di proprietà. | Collegamento con codice giusto, sbagliato, scaduto. |
+| 12.2 | **LIM-39**: il Creator prova ancora a creare, cedere e cancellare server. | **Il Creator resta** (D8, seconda versione). Togliere solo `create_guild`, la cessione di proprietà, `Guild.delete`, i "10 posti", `pulisci_server_orfani`, `elimina_server_creato`. Il lavoro di copia e di mirror passa sul client del Creator. | Nessuna chiamata a `create_guild`/`Guild.delete` nel codice (cricchetto). La copia usa il client del Creator. |
 | 12.3 | Un modello crea già ruoli e canali. | Mappa per **nome** in `core/backup_clone_logic.py`: riusare ciò che esiste, creare il resto. | Clonazione su server da modello: nessun doppione. |
 | 12.4 | REVIEW §12 (11.3): ordine dei ruoli. | Impostare le posizioni dopo la creazione. | Gerarchia uguale (prova live). |
 | 12.5 ⚡ | **LIM-28**: qualità audio copiata tale e quale. | `bitrate=min(canale.bitrate, int(target.bitrate_limit))` in `backup_clone_logic.py:165`. | Server con boost → senza boost: nessun errore. |

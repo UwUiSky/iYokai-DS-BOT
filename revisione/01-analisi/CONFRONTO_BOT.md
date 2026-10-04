@@ -7,7 +7,7 @@ Dati raccolti il **4 ottobre 2026**. È il documento dell'issue #52
 sui limiti. Da oggi le proposte di questo confronto **sono nel piano**:
 - cosa aggiungere: [`../02-piano/NUOVE_FUNZIONI.md`](../02-piano/NUOVE_FUNZIONI.md);
 - cosa migliorare: [`../02-piano/MODIFICHE_ESISTENTE.md`](../02-piano/MODIFICHE_ESISTENTE.md);
-- in che ordine: [`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md).
+- in che ordine: [`../archivio/PRIORITA.md`](../archivio/PRIORITA.md).
 
 I file citati qui sotto si trovano ora in: `revisione/01-analisi/`
 (`REVIEW.md`, `LIMITI.md`), `revisione/02-piano/` (`PIANO_FIX.md`,
@@ -834,7 +834,7 @@ l'account `[DISCORD]`.
 ## 8. Proposta di priorità
 
 > **Superata.** L'ordine di lavoro valido è in
-> [`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md). I passi P1–P10
+> [`../archivio/PRIORITA.md`](../archivio/PRIORITA.md). I passi P1–P10
 > qui sotto sono stati distribuiti nelle fasi F1–F14. La domanda su
 > BUG-26/28/29 è chiusa dalla decisione D8.
 

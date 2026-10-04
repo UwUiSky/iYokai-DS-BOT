@@ -9,6 +9,8 @@ deve chiedere di nuovo**: legge qui e procede.
 - D12–D14: **proposte da questa revisione** per non lasciare voci in
   attesa. Sono l'opzione consigliata. L'owner va avvisato e può
   cambiarle.
+- D8 (seconda versione), D15, D16, D17: **indicate dall'owner** la sera
+  del 04/10/2026.
 
 Regola per il futuro: se serve una decisione nuova, si sceglie
 l'opzione consigliata, la si scrive qui con la data, e si avvisa
@@ -23,47 +25,105 @@ l'owner.
 | D5 | Alert YouTube | Feed RSS per trovare i video nuovi, poi **una** chiamata `videos.list` per gruppo di ID (fino a 50). | F1 (BUG-16, `LIM-45`) |
 | D6 | Conservazione dei dati | 90 giorni dopo l'uscita del bot da un server, poi cancellazione. Restano i ban e i kick di sicurezza (`retain_for_security`). | F5 |
 | D7 | `/owner eval` e `/owner shell` | Spenti di default in produzione (`ENABLE_EVAL`). **Fatto** (`8a96320`, `2596734`). | — |
-| D8 | Backup | **Senza il bot Creator.** Vedi sotto. | F3 |
+| D8 | Backup | Il server di backup lo crea un admin; **il bot Creator lo porta e lo tiene allo stato corrente**. Vedi sotto. | F3 |
 | D9 | Intent `message_content` | Acceso. **Fatto nel codice** (`783329e`). L'owner deve attivarlo nel Developer Portal. | F1 |
 | D10 | Musica | Un nodo wavelink **per ogni bot** per ogni server Lavalink. Scelta esplicita del nodo. Lavalink 4.2.0 o successivo. Vedi sotto. | F2 |
 | D11 | Intent privilegiati | La regola di Discord guarda gli **utenti**: sotto 10.000 si accendono da soli, da 10.000 serve la domanda, da rifare ogni anno (changelog del 10/06/2026). Ogni documento che dice "100 server" per gli intent va corretto. | Tutti i documenti |
 | D12 | Ping nei messaggi scritti dall'admin | In `/schedule-message`, benvenuti e sticky i ping di **ruolo** funzionano, se chi configura ha il permesso "Menziona tutti". `@everyone` e `@here` restano sempre muti. | F1 |
 | D13 | Costi dell'AI | Si parte con i livelli gratuiti dei fornitori. Tetto di spesa mensile per server. Oltre il tetto: risposta locale senza AI. Le funzioni AI che costano sono premium. Niente AI prima della privacy policy. | F12 |
 | D14 | Funzioni senza API gratuita (TikTok, Instagram, X) | Non si abbandonano: si offrono con feed "ponte" e webhook in ingresso, più una chiave API a pagamento facoltativa messa dall'owner. | F13 |
+| D15 | Bot separato per log e moderazione | Nasce **iYokai Mod**: log, AutoMod e azioni di sicurezza girano su un bot diverso dal principale. I compiti sono divisi e ogni bot può sostituire l'altro. Vedi sotto. | F3 |
+| D16 | Pannello web | Si fa dopo che il bot è completo. **Tutto** ciò che si configura con i comandi si configura anche dal pannello, in modo più semplice, più le opzioni che solo un sito permette. Per questo ogni impostazione passa da un solo punto del codice, usato sia dai comandi sia dal pannello. | F10, e ogni funzione nuova |
+| D17 | Lavoro tracciato sulle issue | Il lavoro si segue sulle **issue di GitHub** (etichette e milestone per fase), non su file di piano. I file restano solo per l'analisi dettagliata e le regole. | Sempre |
+| D18 | Funzioni richieste | Nessuna funzione richiesta dall'owner viene omessa o rimandata per scelta di chi scrive il codice. Se Discord la impedisce così com'è, si realizza l'alternativa più vicina e lo si dice. | Sempre |
 
 ---
 
-## D8 in dettaglio — Backup senza Creator
+## D8 in dettaglio — Backup con il Creator che tiene il server aggiornato
 
-**Perché:** Discord ha tolto ai bot la creazione di server (luglio
-2025). discord.py 2.6 segna deprecati `create_guild` e `Guild.delete`.
+**Cosa è cambiato in Discord:** dal luglio 2025 un bot non può più
+**creare** un server. discord.py 2.6 segna deprecati `create_guild` e
+`Guild.delete`. Tutto il resto del lavoro di backup resta possibile.
 
-**Come funziona (modello Xenon):**
-1. Il bot salva lo **snapshot** del server come dati: ruoli, canali,
-   permessi, impostazioni, riferimenti a emoji, sticker e suoni.
-2. Per ripristinare o clonare, un admin **crea un server vuoto**. Può
-   partire da un link "modello di server" che il bot genera con
-   `Guild.create_template`.
-3. L'admin invita il bot nel server nuovo.
-4. Lì lancia un comando di **collegamento** o di **caricamento**.
-5. Da quel momento mirror dei messaggi, snapshot settimanale dei
-   membri, `/restore-users` e promozione lavorano su quel server.
+**Come funziona:**
+1. Un admin **crea il server di backup**. Può partire da un link
+   "modello di server" che il bot genera con `Guild.create_template`,
+   così ruoli e canali nascono già pronti.
+2. L'admin invita nel server nuovo **iYokai Creator** (e il bot
+   principale) con il link che il bot gli dà.
+3. Nel server nuovo lancia il comando di **collegamento** con un codice
+   generato nel server principale. Nasce la coppia principale → backup.
+4. Il **Creator porta il server di backup allo stato corrente**: ruoli,
+   canali, permessi, emoji, sticker, suoni, e i messaggi copiati **in
+   ordine cronologico** con i webhook.
+5. Da lì in poi lo **tiene aggiornato**: mirror dei messaggi nuovi e
+   controllo periodico delle differenze di struttura.
+6. Snapshot settimanale dei membri, `/restore-users` e promozione
+   lavorano su quella coppia.
 
-**Cosa sparisce:** l'applicazione iYokai Creator, `YOKAI_CREATOR_TOKEN`,
-`core/backup_creator_bot.py`, la coda con i "10 posti", la pulizia dei
-server orfani (già disattivata apposta il 04/10).
+**Perché il Creator e non il bot principale:** i limiti di frequenza di
+Discord valgono per ogni bot separatamente. Il lavoro pesante di copia
+gira sul token del Creator e non rallenta comandi, log e moderazione.
 
-**Cosa resta com'è:** `core/backup_clone_logic.py` (lavora su due
-server qualsiasi), il mirror, lo snapshot dei membri, il server web
-OAuth, la parte database della promozione.
+**Ordine dei messaggi e rate limit:** discord.py gestisce già i 429:
+aspetta il tempo indicato e riprova, bucket per bucket. Se i messaggi
+vengono mandati **uno dopo l'altro** (ogni `await webhook.send(...,
+wait=True)` prima del successivo) l'ordine finale è corretto anche
+quando interviene il rate limit; è solo più lento. Vietato mandarli in
+parallelo. Le chiamate fatte a mano con aiohttp (oggi in
+`/restore-users`) **non** hanno questa protezione: vanno riportate su
+discord.py o devono rispettare `Retry-After`.
+
+**Cosa viene tolto dal codice:** la creazione del server
+(`create_guild`), il passaggio di proprietà, la cancellazione dei
+server, la coda con i "10 posti", la pulizia dei server orfani (già
+disattivata il 04/10). BUG-26, BUG-28 e BUG-29 riguardavano quel
+flusso: superati. **Il Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 **Attenzioni:**
-- Un modello crea già ruoli e canali: la clonazione non deve
-  duplicarli. Serve una mappa per **nome**, non per ID.
-- Il bot non è più proprietario del server nuovo: per emoji e sticker
-  gli serve `CREATE_GUILD_EXPRESSIONS`.
-- La coppia di server va ricordata anche dopo una promozione (BUG-34).
-- BUG-26, BUG-28 e BUG-29 riguardavano il vecchio flusso: superati.
+- Un modello crea già ruoli e canali: la copia non deve duplicarli.
+  Serve una mappa per **nome**, non per ID.
+- Il Creator non è proprietario del server: per emoji e sticker gli
+  serve `CREATE_GUILD_EXPRESSIONS`, e serve un ruolo alto per i ruoli.
+- Al massimo 15 webhook per canale: il mirror riusa il suo.
+- La coppia va ricordata anche dopo una promozione (BUG-34).
+- Dal 16/11/2026 i canali che il bot non vede arrivano "offuscati":
+  il Creator deve poter vedere tutti i canali del server principale,
+  altrimenti copia segnaposto (`LIM-38`).
+
+## D15 in dettaglio — iYokai Mod, il bot di log e moderazione
+
+**Perché:** se il bot principale finisce in rate limit, o ha un
+problema, log e moderazione non devono fermarsi. E viceversa.
+
+**Divisione dei compiti** (stesso processo, stesso codice, stesso
+database, token diversi):
+
+| Bot | Compiti |
+|---|---|
+| **iYokai** (principale) | Comandi, bottoni e menu, configurazione, ticket, livelli ed economia, utility, divertimento |
+| **iYokai Mod** (nuovo, `YOKAI_MOD_TOKEN`) | Scrittura dei log, AutoMod, anti-raid, anti-nuke, spam-trap, scadenze di tempban e mute |
+| **iYokai Creator** | Backup: copia, mirror, aggiornamento del server di backup |
+| **iYokai Music 1–5** | Riproduzione |
+
+**Sostituzione:** ogni compito ha un bot titolare e uno di riserva. Un
+piccolo modulo (`core/bot_roles.py`) sceglie chi agisce: il titolare se
+è nel server, ha il permesso e non è bloccato da un rate limit lungo;
+altrimenti la riserva. Se in un server c'è solo il bot principale,
+fa tutto lui come oggi.
+
+**Regole per non fare danni:**
+- Tutti i bot ricevono gli stessi eventi: ogni evento ha **un solo**
+  bot che lo gestisce, altrimenti i log escono doppi.
+- A un comando risponde sempre il bot a cui il comando appartiene.
+- Il blocco di Discord per troppe richieste sbagliate (10.000 in 10
+  minuti) vale per **indirizzo IP**, quindi è comune a tutti i bot sulla
+  stessa macchina: gli errori 401, 403 e 429 vanno evitati, non solo
+  spostati su un altro bot.
+- I webhook hanno limiti propri, separati dal bot: i canali di log
+  usano un webhook per canale, con più righe raggruppate per invio.
+- `/setup` dà i link di invito di tutti i bot necessari e dice quali
+  funzioni restano ridotte se un bot manca.
 
 ## D10 in dettaglio — Musica
 

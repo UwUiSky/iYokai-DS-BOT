@@ -3,7 +3,7 @@
 > **Nota del 04/10/2026.** Questo file ora si trova in
 > `revisione/01-analisi/`. Il testo sotto non è stato riscritto.
 > Il piano di §17 è **superato** da
-> [`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md); le domande di §18
+> [`../archivio/PRIORITA.md`](../archivio/PRIORITA.md); le domande di §18
 > sono chiuse in [`../02-piano/DECISIONI.md`](../02-piano/DECISIONI.md).
 > Il limite L7 ("100 server" per l'intent) è superato da D11, e
 > `message_content` è acceso nel codice. I limiti sono raccolti in

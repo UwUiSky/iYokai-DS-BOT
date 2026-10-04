@@ -4,7 +4,7 @@
 > `revisione/03-verifica/`. In fondo ci sono le prove dei fix della
 > fase R1-bis. Le prove che riguardano il vecchio backup con il bot
 > Creator sono segnate "non eseguibile": si rifanno alla fine della
-> fase F3 (vedi `../02-piano/PRIORITA.md`).
+> fase F3 (vedi `../archivio/PRIORITA.md`).
 
 Qui finiscono i fix che i test automatici non possono certificare
 (servono Discord, il database reale o Lavalink). Li esegue l'owner sul
