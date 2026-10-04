@@ -1,8 +1,17 @@
 # CONFRONTO_BOT.md — iYokai a confronto con i grandi bot Discord
 
 Dati raccolti il **4 ottobre 2026**. È il documento dell'issue #52
-("confronto con altri bot"). **Non cambia `PIANO_FIX.md`**: le proposte
-qui sotto vengono *dopo* il piano di correzione, non al suo posto.
+("confronto con altri bot").
+
+**Aggiornato la sera del 04/10**, dopo la fase R1-bis e i tre controlli
+sui limiti. Da oggi le proposte di questo confronto **sono nel piano**:
+- cosa aggiungere: [`../02-piano/NUOVE_FUNZIONI.md`](../02-piano/NUOVE_FUNZIONI.md);
+- cosa migliorare: [`../02-piano/MODIFICHE_ESISTENTE.md`](../02-piano/MODIFICHE_ESISTENTE.md);
+- in che ordine: [`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md).
+
+I file citati qui sotto si trovano ora in: `revisione/01-analisi/`
+(`REVIEW.md`, `LIMITI.md`), `revisione/02-piano/` (`PIANO_FIX.md`,
+storico) e nella cartella principale (`SPEC.md`, `BACKLOG.md`).
 
 Come leggerlo:
 - **Fonte ufficiale** = sito, documentazione o pagina aiuto del bot.
@@ -19,9 +28,10 @@ Come leggerlo:
    l'endpoint "Create Guild" non c'è più `[DISCORD]`. Il design
    "il Creator crea un server nuovo" va rifatto sul modello di Xenon:
    il backup è un **salvataggio di dati**, e si ricarica su un server
-   che l'admin ha creato a mano `[XENON]`. Nessun file del repository
-   lo dice ancora: in `PIANO_FIX.md` ci sono BUG-26, 28, 29 e parte di
-   BUG-19, tutti su un flusso che non può più girare.
+   che l'admin ha creato a mano `[XENON]`. **Confermato** anche dalla
+   libreria: discord.py 2.6 segna deprecati `create_guild` e
+   `Guild.delete`. La scelta è presa: decisione **D8**, fase F3. I bug
+   BUG-26, 28 e 29 sul vecchio flusso sono superati da D8.
 2. **Manca il pannello web, e tutti i grandi ce l'hanno.** MEE6, Dyno,
    Carl-bot, ProBot, Arcane, Maki, Sapphire, Wick e Ticket Tool si
    configurano da sito. iYokai ha 252 comandi slash. È il divario più
@@ -30,6 +40,8 @@ Come leggerlo:
    circa 28 voci segnate fatte non lo sono e circa 25 sono rotte. Il
    bot è in zero server e niente è stato provato su Discord vero. Il
    confronto va letto così: i concorrenti funzionano oggi, iYokai no.
+   Il 04/10 è stata chiusa la fase R1-bis (2614 test verdi) e `SPEC.md`
+   è stata riallineata allo stato reale.
 4. **MEE6 ha messo quasi tutto a pagamento.** Secondo la sua tabella
    ufficiale (aggiornata il 16/06/2026) nel piano gratuito restano solo
    ricerca, achievement, starboard e 1 promemoria. Moderazione,
@@ -52,6 +64,9 @@ Come leggerlo:
    sue sorgenti `[JOCKIE]`. Hydra ha smesso di vendere funzioni musicali
    il 7/02/2023 `[HYDRA]`. iYokai oggi cerca su YouTube di default. La
    radio con brani tuoi è la parte più sicura e più originale.
+   **Confermato leggendo il codice:** i 5 bot musicali usano la
+   sessione Lavalink del bot principale, quindi quasi certamente non
+   producono audio (`LIM-40`). Si corregge con D10, fase F2.
 8. **Mancano pezzi che gli utenti danno per scontati:** ruolo automatico
    all'ingresso, starboard, comandi personalizzati, risposte
    automatiche, immagine di benvenuto, rank card, log dei messaggi
@@ -60,7 +75,9 @@ Come leggerlo:
    la verifica dell'app per superare i 100 server, con privacy policy,
    identità verificata e 2FA `[DISCORD]`. Chiede anche un modo facile
    per far cancellare i dati agli utenti. iYokai oggi non ha nessuna
-   delle due cose (GDPR-1/2 in `REVIEW.md`).
+   delle due cose (GDPR-1/2 in `REVIEW.md`). Gli **intent privilegiati**
+   seguono un'altra regola: approvazione da 10.000 utenti, da rifare
+   ogni anno (changelog del 10/06/2026, decisione D11).
 10. **Nighty non è un concorrente da imitare.** È un self-bot: gira su
     un account utente, e Discord lo vieta `[NIGHTY]` `[DISCORD]`. Solo
     poche sue idee si possono rifare in modo lecito (vedi §7).
@@ -97,8 +114,11 @@ Non ho usato `SPEC.md` da solo, perché sovrastima. Ho usato:
 - `PIANO_FIX.md` (cosa è già stato corretto e cosa no);
 - `COMMAND_LIST.md` e la cartella `cogs/` (cosa esiste).
 
-Stato del piano al 4/10: fatte R-T, R0, DB e metà di R1. Aperte R1-bis,
-il resto di R1, e tutte le fasi R1b–R7.
+Stato del piano la sera del 4/10: fatte R-T, R0, DB, metà di R1 e
+tutta R1-bis (tranne BUG-26/28/29, superati da D8, e BUG-34, da
+confermare). `message_content` è acceso nel codice (commit `783329e`):
+l'owner deve solo attivarlo nel Developer Portal. Il resto è ordinato
+in `PRIORITA.md` (fasi F1–F14).
 
 Legenda della colonna "iYokai oggi":
 - ✅ il codice c'è e non ha bug aperti noti;
@@ -131,10 +151,10 @@ server. ✅ vuol dire "funziona nei test offline".
 
 | Regola | Cosa dice | Fonte |
 |---|---|---|
-| Creare server | L'endpoint "Create Guild" e "Create Guild from Template" non sono più nella documentazione. discord.js li segna deprecati. La data "luglio 2025" viene da un sito esterno: **non verificata** sul changelog ufficiale, che oggi mostra solo voci da agosto 2025 in poi. | `[DISCORD]` |
+| Creare server | L'endpoint "Create Guild" e "Create Guild from Template" non sono più nella documentazione. discord.js e discord.py (dalla 2.6) li segnano deprecati. La data "luglio 2025" viene da un sito esterno e dal coordinatore del lavoro: il changelog ufficiale oggi mostra solo voci da agosto 2025 in poi. | `[DISCORD]` |
 | Self-bot | "Automatizzare account utente normali... è vietato". | `[DISCORD]` |
 | Verifica app | Serve per superare i 100 server. Chiede privacy policy, identità (via Stripe), 2FA. | `[DISCORD]` |
-| Intent privilegiati | `message_content`, membri e presenze. La pagina ufficiale letta oggi dice: revisione quando l'app arriva a 10.000 utenti. `REVIEW.md` (L7) dice "sopra i 100 server": **da ricontrollare**. | `[DISCORD]` |
+| Intent privilegiati | `message_content`, membri e presenze. Dal 10/06/2026: sotto i 10.000 utenti si accendono da soli; da 10.000 in su serve la domanda, da rifare ogni anno. `REVIEW.md` (L7) dice "sopra i 100 server": è superato (D11). | `[DISCORD]` |
 | Dati utente | Privacy policy obbligatoria. Modo facile per chiedere la cancellazione. Dati cifrati a riposo. | `[DISCORD]` |
 | Permesso dell'utente | "Non avviare processi per conto di un utente senza il suo permesso". "Non contattare gli utenti senza permesso esplicito". | `[DISCORD]` |
 | AI | Vietato usare il contenuto dei messaggi per addestrare modelli AI. | `[DISCORD]` |
@@ -163,7 +183,7 @@ server. ✅ vuol dire "funziona nei test offline".
 | Funzione | Chi la fa meglio e come | iYokai oggi | Nota |
 |---|---|---|---|
 | Parole vietate, inviti | Arcane e iYokai usano l'AutoMod nativo di Discord `[ARCANE]` | ✅ | La sincronizzazione cancella le regole aggiunte a mano (aperto in R1). |
-| Link, maiuscole, emoji, zalgo, allegati | Carl-bot: spam, allegati, menzioni, link, inviti, parole, maiuscole `[CARL]` | 🟡 | Scritti, ma **non scattano** finché `message_content` è spento (BUG-5). |
+| Link, maiuscole, emoji, zalgo, allegati | Carl-bot: spam, allegati, menzioni, link, inviti, parole, maiuscole `[CARL]` | 🟡 | Scritti. L'intent `message_content` è acceso nel codice dal 04/10: va attivato nel Portal e i filtri vanno riprovati (BUG-5). |
 | Punizioni | Carl-bot: cancella, warn, mute, timeout, kick, ban, messaggio in canale o in DM `[CARL]` | ✅ | delete, warn, mute, ban combinabili. |
 | "Calore" che sale e scende | Wick: sistema "Heat", si adatta al comportamento e cala col tempo `[WICK]` | 🟡 | La scala di escalation fa una cosa simile ma più semplice. I conteggi oggi sono gonfiati. |
 | Decisione lasciata ai mod | Carl-bot: "drama channel", i mod decidono con una reazione (Premium) `[CARL]` | ❌ | |
@@ -181,7 +201,7 @@ server. ✅ vuol dire "funziona nei test offline".
 | Recupero dopo un attacco | Wick Premium: copia del server ogni 3 ore, usata dal "panic mode" `[WICK]` | 🟡 | Ricrea solo canali testuali, senza posizione. |
 | Anti-raid sugli ingressi | Wick Premium: scatta con 10 account in 10 minuti (default) `[WICK]`. Beemo: gratis, automatico, 100.000+ server `[BEEMO]` | 🟡 | Scatta anche per **un solo** ingresso senza avatar (BUG-12). |
 | Filtri all'ingresso | Wick "Join Gate": 7 filtri (avatar, età, bot non autorizzati, nomi pubblicitari…) `[WICK]` | 🟡 | Età, nome, avatar. Niente filtro su chi aggiunge bot. |
-| Canale trappola | Carl-bot: honeypot nell'automod `[CARL]` | 🟡 | Più ricco di Carl (appello, pulizia, transcript). Contenuto vuoto fino a `message_content`. |
+| Canale trappola | Carl-bot: honeypot nell'automod `[CARL]` | 🟡 | Più ricco di Carl (appello, pulizia, transcript). Contenuto da riprovare con l'intent acceso. I bottoni di appello muoiono a ogni riavvio (LC-5). |
 | Ban condiviso tra server | Beemo: riconosce i raid da solo su tutti i server `[BEEMO]`. Double Counter: confronto tra database `[DC]` | 🟡 | Solo per i ban della trappola. Oggi salta il controllo premium. |
 | Controllo dei permessi | Wick: pagina che mostra i problemi di sicurezza del server `[WICK]` | ✅ | `/security-score`, `/permission-heatmap`. |
 | Chiave di soccorso | Wick: "rescue key" se perdi l'account owner `[WICK]` | ❌ | |
@@ -216,9 +236,9 @@ server. ✅ vuol dire "funziona nei test offline".
 | Funzione | Chi la fa meglio e come | iYokai oggi | Nota |
 |---|---|---|---|
 | Pannello con bottone | Ticket Tool: 5,8 milioni di server `[TT]` | ✅ | |
-| Più pannelli in uno | Ticket Tool: fino a 25 in un solo messaggio `[TT]`. Tickets: bottoni o menu `[TICKETS]` | 🟡 | Menu a tendina. Si rompe oltre 25 categorie. |
+| Più pannelli in uno | Ticket Tool: fino a 25 in un solo messaggio `[TT]`. Tickets: bottoni o menu `[TICKETS]` | 🟡 | Menu a tendina. Si rompe oltre 25 categorie (`LIM-6`). |
 | Modulo prima di aprire | Ticket Tool: fino a 5 domande in un modal `[TT]`. Tickets: moduli con campi dinamici `[TICKETS]` | ❌ | |
-| Transcript | Ticket Tool: HTML, fino a 1.000 messaggi, anche su Google Drive `[TT]` | 🟡 | C'è, ma oggi esce vuoto (BUG-5). |
+| Transcript | Ticket Tool: HTML, fino a 1.000 messaggi, anche su Google Drive `[TT]` | 🟡 | C'è. Usciva vuoto senza l'intent (BUG-5): da riprovare ora che è acceso. |
 | Presa in carico | Ticket Tool: rinomina, sposta di categoria, cambia permessi (Premium) `[TT]` | 🟡 | `/ticket claim` semplice, senza controllo staff. |
 | Chiusura automatica | Tickets: per inattività, per nessuna risposta, se l'utente esce (Premium) `[TICKETS]` | ❌ | |
 | Voto a fine ticket | Tickets: stelle più questionario `[TICKETS]` | ❌ | |
@@ -226,7 +246,7 @@ server. ✅ vuol dire "funziona nei test offline".
 | Orari di apertura | Ticket Tool (Premium) `[TT]` | ❌ | |
 | Ticket via DM | ModMail: scrivi al bot, nasce un canale per lo staff `[MODMAIL]` | ❌ | |
 | Statistiche | Tickets (Premium) `[TICKETS]` | ✅ | `/ticket-stats`. |
-| Chiusura | — | 🟡 | BUG-1 corretto, BUG-30 aperto. |
+| Chiusura | — | ✅ | BUG-1 e BUG-30 corretti (da provare live). |
 
 ### 3.7 Benvenuto e ruoli
 
@@ -265,7 +285,7 @@ server. ✅ vuol dire "funziona nei test offline".
 
 | Funzione | Chi la fa meglio e come | iYokai oggi | Nota |
 |---|---|---|---|
-| Più bot nello stesso server | Jockie: 4 bot gratis che "agiscono come uno", 27 con premium `[JOCKIE]` | 🟡 | 5 worker. Ma oggi è **uno per server**, non per canale (REVIEW §12). Audio dei worker da provare live. |
+| Più bot nello stesso server | Jockie: 4 bot gratis che "agiscono come uno", 27 con premium `[JOCKIE]` | 🟡 | 5 worker. Ma oggi è **uno per server**, non per canale (REVIEW §12), e i worker quasi certamente non suonano (`LIM-40`). Si corregge con D10. |
 | Sorgenti | Jockie: Spotify, Deezer, Tidal, Apple Music, radio, Bandcamp. **YouTube non è in elenco** `[JOCKIE]`. Maki: "YouTube e altro" `[MAKI]` | 🟡 | YouTube di default. Spotify solo se il nodo ha il plugin. |
 | Canale richieste con player | Hydra (storico): `.setup` creava un canale dedicato con coda e controlli (terzi, 2023) `[HYDRA]` | ❌ | Vedi §6. |
 | Radio 24/7 | Jockie: 37.000+ stazioni radio `[JOCKIE]` | 🟡 | Radio condivisa con brani dell'owner. I file locali non si trovano (BUG-10). |
@@ -313,11 +333,11 @@ musica sia in licenza non l'ho potuto verificare `[MUSICA]`.
 
 | Funzione | Chi la fa meglio e come | iYokai oggi | Nota |
 |---|---|---|---|
-| Twitch | Streamcord: 1,2 milioni di server, ruolo "in diretta", 5 streamer gratis `[STREAMCORD]` | 🟡 | Controllo ogni 90 secondi. Si rompe oltre 100 iscrizioni. |
+| Twitch | Streamcord: 1,2 milioni di server, ruolo "in diretta", 5 streamer gratis `[STREAMCORD]` | 🟡 | Controllo ogni 90 secondi. Si rompe oltre 100 iscrizioni (`LIM-46`). |
 | YouTube video | Arcane: 2 gratis, 51 premium `[ARCANE]`. YAGPDB: 10 gratis `[YAGPDB]` | ✅ | Via feed. |
-| YouTube live | Arcane: video, short e live `[ARCANE]` | 🟡 | Finisce la quota in circa 3 ore (BUG-16). |
-| Reddit, RSS | YAGPDB: Reddit 20 gratis, RSS 2 gratis `[YAGPDB]` | 🟡 | Un indirizzo sbagliato ferma tutti i feed (BUG-20). |
-| TikTok, Instagram, X | Pingcord: ci sono; Instagram e X solo premium `[PINGCORD]`. MEE6: premium `[MEE6]` | ❌ | Scartati dall'owner per mancanza di API gratuite. |
+| YouTube live | Arcane: video, short e live `[ARCANE]` | 🟡 | Finisce la quota in poche ore (BUG-16, `LIM-45`). Soluzione decisa: D5. |
+| Reddit, RSS | YAGPDB: Reddit 20 gratis, RSS 2 gratis `[YAGPDB]` | ✅ | BUG-20 corretto il 04/10. Manca un tetto di feed per server (`LIM-16`). |
+| TikTok, Instagram, X | Pingcord: ci sono; Instagram e X solo premium `[PINGCORD]`. MEE6: premium `[MEE6]` | ❌ | Nessuna API gratuita. Alternativa in piano: feed RSS "ponte" e webhook in ingresso, più chiave API a pagamento facoltativa (vedi `NUOVE_FUNZIONI.md`). |
 | Kick | Streamcord, Pingcord, MEE6 `[STREAMCORD]` `[PINGCORD]` | ❌ | |
 | Velocità | Pingcord: da istantaneo a 2 minuti `[PINGCORD]` | 🟡 | Feed ogni 5 minuti. |
 | Ruolo a chi è in diretta | Streamcord `[STREAMCORD]` | ❌ | |
@@ -327,14 +347,14 @@ musica sia in licenza non l'ho potuto verificare `[MUSICA]`.
 
 | Funzione | Chi la fa meglio e come | iYokai oggi | Nota |
 |---|---|---|---|
-| Salvare ruoli, canali, permessi | Xenon: 15 backup gratis, tenuti senza scadenza `[XENON]` | ❌ | Il design crea un server nuovo: **non più possibile**. |
+| Salvare ruoli, canali, permessi | Xenon: 15 backup gratis, tenuti senza scadenza `[XENON]` | ❌ | Il design crea un server nuovo: **non più possibile**. Nuovo design: D8. |
 | Ricaricare un backup | Xenon: crei un server vuoto, inviti il bot, `/backup load` `[XENON]` | ❌ | |
-| Backup automatici | Xenon: ogni 24 ore gratis, ogni 4 ore al piano più alto `[XENON]` | ❌ | I worker non partono mai (BUG-19). |
-| Messaggi | Xenon: 0 gratis, 50/100/250 per canale a pagamento `[XENON]` | 🟡 | "Mirror" in tempo reale via webhook: idea diversa, oggi copia messaggi vuoti. |
+| Backup automatici | Xenon: ogni 24 ore gratis, ogni 4 ore al piano più alto `[XENON]` | ❌ | I worker ora partono (BUG-19 corretto), ma non hanno un server su cui lavorare finché non c'è D8. |
+| Messaggi | Xenon: 0 gratis, 50/100/250 per canale a pagamento `[XENON]` | 🟡 | "Mirror" in tempo reale via webhook: idea diversa. Oggi non ha mai un webhook di destinazione (dipende da D8). |
 | Ban, nickname, ruoli dei membri | Xenon (premium) `[XENON]` | ❌ | |
 | Modelli di server | Xenon: 5.731 modelli `[XENON]` | ❌ | |
 | Sincronia tra server | Xenon: messaggi, ban, ruoli (premium) `[XENON]` | ❌ | |
-| Ritorno dei membri | RestoreCord: via `guilds.join` (terzi) `[RESTORECORD]`. Xenon: "non può riportare i membri" `[XENON]` | 🟡 | Scritto, ma senza dati e con bug aperti (BUG-21, SEC-19, BUG-34). |
+| Ritorno dei membri | RestoreCord: via `guilds.join` (terzi) `[RESTORECORD]`. Xenon: "non può riportare i membri" `[XENON]` | 🟡 | Scritto. BUG-21 e SEC-19 corretti il 04/10. Restano: nessuna coppia di server (D8), token mai rinnovati (`LIM-37`), ciclo senza pause (`LIM-7`), BUG-34. |
 
 ### 3.14 Statistiche
 
@@ -350,7 +370,7 @@ musica sia in licenza non l'ho potuto verificare `[MUSICA]`.
 | Funzione | Chi la fa meglio e come | iYokai oggi | Nota |
 |---|---|---|---|
 | Mini-giochi | Yggdrasil: gare d'auto, battaglie, spinner `[YGG]` | ✅ | Moneta, dado, sasso-carta-forbici, 8ball. |
-| Immagini e meme | Yggdrasil: pokéfusion, meme `[YGG]` | 🟡 | Manca il `defer`. Limite immagini da stringere (SEC-20). |
+| Immagini e meme | Yggdrasil: pokéfusion, meme `[YGG]` | 🟡 | SEC-20 corretto il 04/10 (limiti e `defer`). Restano `/fun animal` e `/fun search-image` (`LIM-24`, `LIM-48`). |
 | Effetti sonori in vocale | Yggdrasil: 19 suoni `[YGG]`. YAGPDB: 50 gratis `[YAGPDB]` | ❌ | |
 | Telefono tra server | Yggdrasil `[YGG]` | ❌ | |
 | Gioco di economia globale | Dank Memer: 8,6 milioni di server, 300+ oggetti `[DANK]` | ❌ | Altro tipo di prodotto. |
@@ -437,9 +457,11 @@ musica sia in licenza non l'ho potuto verificare `[MUSICA]`.
 | Beemo | 100.000+ | `[BEEMO]` |
 | **iYokai** | **0** | Obiettivo dichiarato: 10.000 |
 
-iYokai oggi: 7 bot in un solo processo, su una macchina sola. Test
-verdi ma copertura al 71%, comandi coperti al 20–45% (`REVIEW.md` §16).
-Nessuna cancellazione dei dati quando il bot esce da un server.
+iYokai oggi: 7 bot in un solo processo, su una macchina sola (con D8
+diventano 6: il Creator sparisce). 2614 test verdi il 04/10. La
+copertura misurata il 28/09 era al 71%, con i comandi al 20–45%
+(`REVIEW.md` §16). Nessuna cancellazione dei dati quando il bot esce da
+un server (fase F5).
 
 ---
 
@@ -447,6 +469,10 @@ Nessuna cancellazione dei dati quando il bot esce da un server.
 
 Impegno: **S** = pochi giorni, **M** = una o due settimane, **L** = un
 mese o più. Sono stime grossolane.
+
+**Dal 04/10 tutte le voci di questa sezione sono nel piano**, nessuna
+esclusa. "Alta, media, bassa" indica solo l'ordine. Il dettaglio di
+ognuna (file, comandi, limiti) è in `NUOVE_FUNZIONI.md`.
 
 ### Priorità ALTA
 
@@ -491,7 +517,7 @@ mese o più. Sono stime grossolane.
 
 | # | Cosa | Chi ce l'ha | Perché | Impegno | Dipende da |
 |---|---|---|---|---|---|
-| B1 | AI (chat, moderazione, ticket) | MEE6, Maki | Costi e privacy. Già rimandata in `BACKLOG.md`. | L | Privacy policy. Chi paga i token. |
+| B1 | AI (chat, moderazione, ticket) | MEE6, Maki | Costi e privacy. Ora in piano: fase F12 (issue #50). | L | Privacy policy pubblicata. Tetto di spesa (D13). |
 | B2 | Bot con marchio proprio | MEE6, Tickets, Sapphire | Ricavo extra, ma tanto lavoro. | L | Premium funzionante. |
 | B3 | Galleria di modelli di server | Xenon (5.731) | Serve una community grande. | L | Backup nuovo. |
 | B4 | Sincronia tra server | Xenon | Utile a chi ha più server. | M | Backup nuovo. |
@@ -511,7 +537,8 @@ Jockie ha la flotta ma fa solo musica. I tutto-in-uno letti hanno un
 bot solo. iYokai mette moderazione e 5 bot musicali in un'installazione.
 - ⚠️ Oggi è un bot **per server**, non per canale vocale. Quindi il
   vantaggio non c'è ancora.
-- ⚠️ I worker forse non suonano (da provare live).
+- ⚠️ I worker quasi certamente non suonano: usano la sessione Lavalink
+  del bot principale (`LIM-40`). Da correggere con D10 e provare live.
 - ⚠️ Jockie ne dà 4 gratis e 27 a pagamento: 5 non è un record.
 
 **2. Radio condivisa con musica tua.**
@@ -524,9 +551,10 @@ tuoi: nessun problema di diritti. Non l'ho trovata altrove.
 Carl-bot ha il canale trappola. iYokai aggiunge: DM prima del ban,
 pulizia dei messaggi fino a 30 giorni, pulizia di inviti e webhook,
 transcript HTML, appello in un thread con bottoni per lo staff.
-- ⚠️ Contenuto e transcript vuoti finché `message_content` è spento.
+- ⚠️ Contenuto e transcript da riprovare: l'intent `message_content` è
+  acceso nel codice dal 04/10.
 - ⚠️ I bottoni di appello muoiono a ogni riavvio (LC-5).
-- ⚠️ Altri bug aperti: BUG-22, BUG-24, BUG-25.
+- ✅ BUG-22, BUG-24 e BUG-25 corretti il 04/10.
 
 **4. Rete di ban tra server, a scelta e reciproca.**
 Chi aderisce dà e riceve. Vale solo per i ban automatici della
@@ -547,8 +575,9 @@ Tatsu, UnbelievaBoat e Dank Memer non hanno niente di simile.
 Xenon dichiara di non poter riportare i membri. RestoreCord li riporta
 ma, secondo Xenon, fa creare all'utente una propria applicazione
 Discord (terzi). iYokai farebbe tutto da solo.
-- ⚠️ **Oggi non funziona niente**: server non creabili, worker fermi,
-  link che scadono in 10 minuti.
+- ⚠️ **Oggi non funziona ancora**: i server non sono creabili (D8).
+  Corretti il 04/10: worker fermi (BUG-19) e link che scadevano in 10
+  minuti (BUG-21: ora 7 giorni, legati al destinatario).
 
 **7. Restore più prudente di RestoreCord.**
 Token cifrati con AES-256-GCM. Tre modalità di consenso per server.
@@ -558,7 +587,8 @@ segnalata a febbraio 2025 (tra 840.000 e 1 milione di record; contestata
 da RestoreCord, che parla di meno di 5.000) (terzi) `[RESTORECORD]`.
 - ⚠️ Confronto onesto: RestoreCord funziona ed è usato. iYokai no.
 - ⚠️ Il restore funziona solo per chi ha dato il consenso prima.
-- ⚠️ I token scadono: va gestito il rinnovo.
+- ⚠️ I token scadono dopo circa 7 giorni e oggi non vengono mai
+  rinnovati (`LIM-37`).
 - ⚠️ La modalità "invito via DM" manda messaggi a utenti che non
   l'hanno chiesto. Discord vieta di contattare utenti senza permesso
   `[DISCORD]`. Va limitata a chi ha accettato prima.
@@ -692,13 +722,14 @@ Per ogni punto: chi lo fa meglio e **come**.
   3. `/backup load` ricrea tutto. Si può scegliere cosa caricare.
   4. Backup automatici a intervalli, con più copie conservate.
 - **Oggi:** un secondo bot crea un server nuovo e lo cede. Impossibile.
-- **Da fare:**
-  - salvare lo snapshot nel database (il codice che legge ruoli e
-    canali c'è già in `core/backup_clone_logic.py`);
-  - ricaricarlo su un server dove il bot è stato invitato;
-  - il bot Creator **non serve più**;
-  - il mirror dei messaggi diventa un salvataggio degli ultimi N
-    messaggi per canale, come Xenon.
+- **Deciso (D8):**
+  - lo snapshot del server si salva come dati nel database;
+  - l'admin crea un server vuoto (anche da un link "modello" che il
+    bot genera con `Guild.create_template`), invita il bot e lancia il
+    comando di collegamento o caricamento;
+  - il bot Creator e `YOKAI_CREATOR_TOKEN` **spariscono**;
+  - mirror, snapshot settimanale dei membri, `/restore-users` e
+    promozione continuano a funzionare su quel server.
 - **Vantaggio da tenere:** dopo il caricamento, il ritorno dei membri.
 
 ### 6.10 Musica
@@ -707,7 +738,8 @@ Per ogni punto: chi lo fa meglio e **come**.
 - **Oggi:** 23 comandi slash. Nessun player con bottoni.
 - **Da fare:** un messaggio "player" con bottoni pausa, salta, stop,
   mescola, ripeti. Si aggiorna da solo. Non servono DJ né voti.
-- **Prima di tutto:** un bot per canale vocale, non per server.
+- **Prima di tutto (D10):** un nodo wavelink per ogni bot, un bot per
+  canale vocale, Lavalink 4.2.0 o successivo.
 
 ### 6.11 Log
 - **Modello:** Carl-bot. Cinque gruppi (messaggi, membri, ingressi,
@@ -727,6 +759,12 @@ Per ogni punto: chi lo fa meglio e **come**.
 ---
 
 ## 7. Idee da NON copiare
+
+Regola dell'owner (04/10): **nessuna funzione richiesta viene
+abbandonata**. In questa sezione restano solo:
+- ciò che Discord o la legge vietano (per ognuno c'è l'alternativa
+  lecita più vicina);
+- ciò che l'owner stesso ha scartato.
 
 ### 7.1 Da Nighty (self-bot)
 Nighty automatizza un account utente. Discord lo vieta e può chiudere
@@ -794,6 +832,13 @@ l'account `[DISCORD]`.
 ---
 
 ## 8. Proposta di priorità
+
+> **Superata.** L'ordine di lavoro valido è in
+> [`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md). I passi P1–P10
+> qui sotto sono stati distribuiti nelle fasi F1–F14. La domanda su
+> BUG-26/28/29 è chiusa dalla decisione D8.
+
+Testo originale del 04/10 mattina, tenuto come storico:
 
 Viene **dopo** `PIANO_FIX.md`. Il piano resta com'è: R1-bis, R1, R1b,
 R2, R3, R4, R5, R6, R7.
@@ -1045,7 +1090,8 @@ bot di cui parla.
 
 ### Cosa non ho potuto verificare su fonte ufficiale
 - La **data esatta** in cui Discord ha tolto la creazione di server ai
-  bot. È verificato che l'endpoint oggi non è documentato.
+  bot ("luglio 2025" viene da terzi). È verificato che l'endpoint oggi
+  non è documentato e che discord.py lo segna deprecato dalla 2.6.
 - I **prezzi** di MEE6, Dyno, Carl-bot, ProBot, Arcane, YAGPDB, Wick,
   Double Counter, Captcha.bot, Ticket Tool, Jockie, Maki, Statbot,
   Pingcord, UnbelievaBoat. Dove c'è un numero, viene da terzi.

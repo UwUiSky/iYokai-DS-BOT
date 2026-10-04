@@ -1,5 +1,14 @@
 # REVIEW.md — Revisione completa del codice iYokai
 
+> **Nota del 04/10/2026.** Questo file ora si trova in
+> `revisione/01-analisi/`. Il testo sotto non è stato riscritto.
+> Il piano di §17 è **superato** da
+> [`../02-piano/PRIORITA.md`](../02-piano/PRIORITA.md); le domande di §18
+> sono chiuse in [`../02-piano/DECISIONI.md`](../02-piano/DECISIONI.md).
+> Il limite L7 ("100 server" per l'intent) è superato da D11, e
+> `message_content` è acceso nel codice. I limiti sono raccolti in
+> [`LIMITI.md`](LIMITI.md). Lo stato dei bug di §20 è in `PRIORITA.md` (F0).
+
 Revisione del 28/09/2026, fatta **prima** di qualsiasi riscrittura, in
 **due passate**. La prima (§2–§11) copre area per area tutti i cog e
 tutto `core/`. La seconda (§12–§16) copre quello che la prima non
