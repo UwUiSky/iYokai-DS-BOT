@@ -22,6 +22,7 @@ Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 
 from __future__ import annotations
 
+import io
 import logging
 import re
 from datetime import timedelta
@@ -64,6 +65,10 @@ from cogs.moderation._shared import ensure_module_enabled, post_to_mod_log, try_
 logger = logging.getLogger("iyokai.automod")
 
 MODULE_AUTOMOD = "automod"
+
+# Oltre questa lunghezza /automod badword-list manda l'elenco come file
+# (un messaggio Discord tiene 2000 caratteri).
+MAX_ELENCO_IN_CHAT = 1900
 
 # Regex di riconoscimento emoji per §6.5 (anti-spam emoji): emoji
 # custom di Discord (`<a?:nome:id>`) + un intervallo unicode ampio
@@ -470,9 +475,19 @@ class AutomodCog(commands.Cog):
             )
             return
 
+        totale = len(config.custom_badwords)
         lista = ", ".join(f"`{w}`" for w in config.custom_badwords)
+        testo = f"Parole vietate configurate ({totale}): {lista}"
+        if len(testo) <= MAX_ELENCO_IN_CHAT:
+            await interaction.response.send_message(testo, ephemeral=True)
+            return
+
+        # Un messaggio tiene 2000 caratteri: un elenco lungo va in un file.
+        contenuto = "\n".join(config.custom_badwords).encode("utf-8")
         await interaction.response.send_message(
-            f"Parole vietate configurate ({len(config.custom_badwords)}): {lista}",
+            f"Parole vietate configurate ({totale}): l'elenco è lungo, "
+            f"lo trovi nel file allegato.",
+            file=discord.File(io.BytesIO(contenuto), filename="parole_vietate.txt"),
             ephemeral=True,
         )
 
