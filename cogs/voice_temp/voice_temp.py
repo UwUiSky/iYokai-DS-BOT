@@ -507,6 +507,18 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
+        if member.bot:
+            await interaction.response.send_message(
+                "Non puoi trasferire il canale a un bot.", ephemeral=True
+            )
+            return
+        if member.voice is None or member.voice.channel is None or member.voice.channel.id != channel.id:
+            await interaction.response.send_message(
+                f"{member.mention} non è nel canale: puoi trasferirlo solo "
+                f"a chi è connesso qui.",
+                ephemeral=True,
+            )
+            return
         await voice_temp_repo.set_owner(channel.id, member.id)
         await interaction.response.send_message(
             f"Proprietà del canale trasferita a {member.mention}."
