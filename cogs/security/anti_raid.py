@@ -207,6 +207,10 @@ class AntiRaidCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
+        # Un bot entra solo se un amministratore lo invita: non è un
+        # ingresso da contare né da mettere in quarantena.
+        if member.bot:
+            return
         guild = member.guild
         if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_RAID):
             return

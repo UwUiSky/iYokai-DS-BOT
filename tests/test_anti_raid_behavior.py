@@ -67,7 +67,9 @@ class _FakeMember(discord.Member):
         created_at: datetime,
         has_avatar: bool = True,
         username: str = "MembroNormale",
+        bot: bool = False,
     ) -> None:
+        self._bot_finto = bot
         self._id_finto = user_id
         self._guild_finta = guild
         self._created_at_finto = created_at
@@ -82,6 +84,10 @@ class _FakeMember(discord.Member):
     @property
     def guild(self):
         return self._guild_finta
+
+    @property
+    def bot(self):
+        return self._bot_finto
 
     @property
     def created_at(self):
@@ -234,3 +240,47 @@ async def test_username_sospetto_scatena_azione(contesto):
     await cog.on_member_join(membro)
 
     assert len(membro.added_roles) == 1
+
+
+@pytest.mark.asyncio
+async def test_un_bot_aggiunto_da_un_admin_non_viene_valutato(contesto):
+    """
+    LC-6: un bot entra solo se un amministratore lo invita. Anche se
+    l'applicazione è appena nata, non va messo in quarantena.
+    """
+    await _salva_config(AntiRaidConfig(enabled=True, min_account_age_seconds=86400))
+
+    owner = _FakeUser(1)
+    guild = _FakeGuild(GUILD_ID, owner)
+    bot_nuovo = _FakeMember(2, guild, created_at=datetime.now(timezone.utc), bot=True)
+
+    cog = AntiRaidCog(bot=None)
+    await cog.on_member_join(bot_nuovo)
+
+    assert bot_nuovo.added_roles == []
+    assert owner.dm_sent == []
+
+    from core.repositories.security_repo import security_repo
+
+    assert await security_repo.get_recent_actions(GUILD_ID) == []
+
+
+@pytest.mark.asyncio
+async def test_gli_ingressi_dei_bot_non_entrano_nel_conteggio_del_raid(contesto):
+    """Due bot aggiunti di fila non fanno sembrare un raid l'ingresso di una persona."""
+    await _salva_config(
+        AntiRaidConfig(enabled=True, join_rate_max=2, min_account_age_seconds=0)
+    )
+
+    owner = _FakeUser(1)
+    guild = _FakeGuild(GUILD_ID, owner)
+    vecchio = datetime.now(timezone.utc) - timedelta(days=365)
+    cog = AntiRaidCog(bot=None)
+
+    for numero in (10, 11, 12):
+        await cog.on_member_join(_FakeMember(numero, guild, created_at=vecchio, bot=True))
+    persona = _FakeMember(20, guild, created_at=vecchio)
+    await cog.on_member_join(persona)
+
+    assert persona.added_roles == []
+    assert owner.dm_sent == []
