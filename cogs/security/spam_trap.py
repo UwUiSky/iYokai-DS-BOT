@@ -129,6 +129,16 @@ def _is_staff_exempt(
     return False
 
 
+def _saved_text_channel(
+    guild: discord.Guild, channel_id: int | None
+) -> discord.TextChannel | None:
+    """Il canale testuale salvato in config, se esiste ancora nel server."""
+    if channel_id is None:
+        return None
+    canale = guild.get_channel(channel_id)
+    return canale if isinstance(canale, discord.TextChannel) else None
+
+
 def _ban_dm_description(guild_name: str) -> str:
     return (
         f"You have been banned from **{guild_name}** for using a restricted "
@@ -288,8 +298,8 @@ class SpamTrapCog(commands.Cog):
         description="[Admin] Configura i canali trappola e log dello Spam Trap.",
     )
     @app_commands.describe(
-        trap_channel="Canale trappola (se non scelto, ne viene creato uno)",
-        log_channel="Canale dei log (se non scelto, ne viene creato uno)",
+        trap_channel="Canale trappola (se non scelto: quello già configurato, o uno nuovo)",
+        log_channel="Canale dei log (se non scelto: quello già configurato, o uno nuovo)",
         staff_role_add="SEC-8b: ruolo da esentare dal ban della trappola (aggiunto alla lista)",
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
     )
@@ -311,6 +321,15 @@ class SpamTrapCog(commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True)
+
+        # BUG-25: un canale non indicato vuol dire "tieni quello già
+        # salvato" (es. si sta solo aggiungendo un ruolo staff). Si
+        # crea un canale solo se non ce n'è uno salvato o non esiste più.
+        config = await spam_trap_repo.get_config(guild.id)
+        if trap_channel is None:
+            trap_channel = _saved_text_channel(guild, config.trap_channel_id)
+        if log_channel is None:
+            log_channel = _saved_text_channel(guild, config.log_channel_id)
 
         created_trap = trap_channel is None
         created_log = log_channel is None
