@@ -17,6 +17,11 @@ Discord fallisce (permessi, rate limit, risorsa già sparita) viene
 solo loggata — il database resta la fonte di verità su appartenenza
 e ruolo, questa sincronizzazione è un livello aggiuntivo che non
 deve mai bloccare un comando già confermato lato dati.
+
+Il ruolo condiviso viene cercato per nome: prima di assegnarlo passa
+da core.role_safety.check_role_assignable (SEC-4/SEC-17), e se viene
+rifiutato non si assegna (resta solo un avviso nei log).
+Funzioni coperte: SPEC.md §15.14, REVIEW.md SEC-4/SEC-17
 """
 
 from __future__ import annotations
@@ -24,6 +29,8 @@ from __future__ import annotations
 import logging
 
 import discord
+
+from core.role_safety import check_role_assignable
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +59,14 @@ async def get_or_create_shared_role(guild: discord.Guild, name: str) -> discord.
     if ruolo is not None:
         return ruolo
     try:
+        # Senza `permissions` Discord copierebbe i permessi di @everyone
+        # (di solito anche "menziona @everyone"): il ruolo è solo
+        # un'etichetta, quindi nasce senza alcun permesso.
         return await guild.create_role(
-            name=name, mentionable=False, reason="Ruolo condiviso Sistema Gilde/Clan"
+            name=name,
+            permissions=discord.Permissions.none(),
+            mentionable=False,
+            reason="Ruolo condiviso Sistema Gilde/Clan",
         )
     except (discord.Forbidden, discord.HTTPException):
         logger.warning("Impossibile creare il ruolo condiviso '%s' nella gilda %s.", name, guild.id)
@@ -110,6 +123,18 @@ async def sync_shared_role(guild, member, role_name: str, should_have: bool) -> 
         return
     try:
         if should_have and ruolo not in member.roles:
+            # SEC-4/SEC-17: il ruolo si trova per NOME, quindi può
+            # essere un ruolo creato da altri con permessi veri. Il
+            # membro lo ottiene da solo (creando un clan o venendo
+            # promosso): vale la stessa regola degli altri ruoli
+            # auto-assegnabili.
+            motivo_rifiuto = check_role_assignable(guild, ruolo, guild.me, self_service=True)
+            if motivo_rifiuto is not None:
+                logger.warning(
+                    "Ruolo '%s' non assegnato a %s nella gilda %s: %s",
+                    role_name, member, guild.id, motivo_rifiuto,
+                )
+                return
             await member.add_roles(ruolo, reason=f"Sincronizzazione ruolo '{role_name}'")
         elif not should_have and ruolo in member.roles:
             await member.remove_roles(ruolo, reason=f"Sincronizzazione ruolo '{role_name}'")
