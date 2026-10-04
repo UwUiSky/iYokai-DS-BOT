@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import re
 import socket
 from urllib.parse import urljoin
 
@@ -28,6 +29,9 @@ DEFAULT_MAX_BYTES = 2_000_000
 MAX_REDIRECTS = 3
 REQUEST_TIMEOUT_SECONDS = 15
 _REDIRECT_STATUS = {301, 302, 303, 307, 308}
+
+# <?xml version="1.0" encoding="ISO-8859-1"?> in testa a un feed.
+_ENCODING_PROLOGO_XML = re.compile(rb"""\s*<\?xml[^>]*encoding=["']([A-Za-z0-9._-]+)["']""")
 
 # Intervalli che Python 3.11 considera ancora "globali" ma che non
 # sono Internet pubblica: relay 6to4 e site-local IPv6 (deprecati).
@@ -166,6 +170,23 @@ async def url_e_sicuro(url: str) -> bool:
     return True
 
 
+def _decodifica(corpo: bytes, charset_header: str | None) -> str:
+    """
+    Decodifica il corpo con la codifica dichiarata dalla risposta:
+    quella dell'header Content-Type, altrimenti quella del prologo XML,
+    altrimenti UTF-8. Una codifica sconosciuta ripiega su UTF-8; i byte
+    non validi vengono sostituiti, mai un'eccezione.
+    """
+    dichiarata = charset_header
+    if dichiarata is None:
+        prologo = _ENCODING_PROLOGO_XML.match(corpo[:200])
+        dichiarata = prologo.group(1).decode("ascii") if prologo else "utf-8"
+    try:
+        return corpo.decode(dichiarata, errors="replace")
+    except LookupError:
+        return corpo.decode("utf-8", errors="replace")
+
+
 async def safe_get(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> str | None:
     """
     Scarica il testo di `url` con protezioni SSRF: redirect Discord-
@@ -222,7 +243,7 @@ async def _scarica(session: aiohttp.ClientSession, url: str, max_bytes: int) -> 
                             max_bytes,
                         )
                         return None
-                return corpo.decode(errors="replace")
+                return _decodifica(bytes(corpo), risposta.charset)
         except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
             # ClientError copre anche il rifiuto di _ResolverSicuro
             # (nessun IP pubblico). ValueError (BUG-20): un Location

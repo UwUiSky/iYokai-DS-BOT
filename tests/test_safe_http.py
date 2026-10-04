@@ -403,3 +403,70 @@ async def test_ogni_scrittura_di_loopback_viene_rifiutata_senza_connettersi(
 
     assert risultato is None
     assert server_interno.richieste == []
+
+
+# ---------------------------------------------------------------------
+# Charset: il testo va letto con la codifica dichiarata dalla risposta,
+# non sempre come UTF-8 (accenti rotti sui feed ISO-8859-1).
+# ---------------------------------------------------------------------
+
+TITOLO_CON_ACCENTI = "Perché è così"
+
+
+async def _scarica_da_server_locale(monkeypatch, corpo: bytes, content_type: str) -> str | None:
+    _consenti_qualsiasi_ip_e_porta(monkeypatch)
+
+    async def handler(request):
+        return web.Response(body=corpo, headers={"Content-Type": content_type})
+
+    app = web.Application()
+    app.router.add_get("/feed", handler)
+    server = TestServer(app)
+    await server.start_server()
+    try:
+        return await safe_get(f"http://127.0.0.1:{server.port}/feed")
+    finally:
+        await server.close()
+
+
+@pytest.mark.asyncio
+async def test_charset_dichiarato_nell_header_viene_rispettato(monkeypatch):
+    corpo = f"<rss><title>{TITOLO_CON_ACCENTI}</title></rss>".encode("iso-8859-1")
+
+    testo = await _scarica_da_server_locale(
+        monkeypatch, corpo, "application/rss+xml; charset=ISO-8859-1"
+    )
+
+    assert TITOLO_CON_ACCENTI in testo
+
+
+@pytest.mark.asyncio
+async def test_charset_dichiarato_solo_nel_prologo_xml_viene_rispettato(monkeypatch):
+    corpo = (
+        '<?xml version="1.0" encoding="ISO-8859-1"?>'
+        f"<rss><title>{TITOLO_CON_ACCENTI}</title></rss>"
+    ).encode("iso-8859-1")
+
+    testo = await _scarica_da_server_locale(monkeypatch, corpo, "application/rss+xml")
+
+    assert TITOLO_CON_ACCENTI in testo
+
+
+@pytest.mark.asyncio
+async def test_senza_charset_dichiarato_si_legge_come_utf8(monkeypatch):
+    corpo = f"<rss><title>{TITOLO_CON_ACCENTI}</title></rss>".encode("utf-8")
+
+    testo = await _scarica_da_server_locale(monkeypatch, corpo, "application/rss+xml")
+
+    assert TITOLO_CON_ACCENTI in testo
+
+
+@pytest.mark.asyncio
+async def test_charset_sconosciuto_ripiega_su_utf8_senza_sollevare(monkeypatch):
+    corpo = f"<rss><title>{TITOLO_CON_ACCENTI}</title></rss>".encode("utf-8")
+
+    testo = await _scarica_da_server_locale(
+        monkeypatch, corpo, "application/rss+xml; charset=non-esiste"
+    )
+
+    assert TITOLO_CON_ACCENTI in testo
