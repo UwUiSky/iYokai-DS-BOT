@@ -364,3 +364,39 @@ async def test_restore_users_fuori_da_un_server_rifiuta():
     await cog.restore_users.callback(cog, interaction, "100")
 
     assert "solo dentro un server" in interaction.response.sent_messages[0][0]
+
+
+# ---------------------------------------------------------------------
+# SEC-19: il link mandato in DM è legato a chi lo riceve.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_il_link_di_autorizzazione_in_dm_e_legato_al_destinatario(database, monkeypatch):
+    import dataclasses
+    import re
+    from urllib.parse import parse_qs, urlparse
+
+    import cogs.utility.restore as restore_module
+    from core.restore_oauth_logic import decode_and_verify_state
+
+    snapshot_repo, _oauth, _verify, backup_repo_test = _patch_repos(monkeypatch, database)
+    monkeypatch.setattr(restore_module, "db", database)
+    monkeypatch.setattr(
+        restore_module, "config", dataclasses.replace(restore_module.config, OAUTH_ENCRYPTION_KEY=CHIAVE_TEST)
+    )
+    await backup_repo_test.define_main(100)
+    await backup_repo_test.define_backup(100, 200)
+    await snapshot_repo.save_snapshot(100, [(1, "Utente1", None), (2, "Utente2", None)])
+
+    utenti = {1: _FakeUser(1), 2: _FakeUser(2)}
+    cog = RestoreCog(bot=_FakeBot(utenti))
+
+    await cog.restore_users.callback(cog, _FakeInteraction(guild_id=200), "100")
+
+    for user_id, utente in utenti.items():
+        url = re.search(r"https://discord\.com/oauth2/authorize\S+", utente.messaggi_ricevuti[0]).group()
+        state = parse_qs(urlparse(url).query)["state"][0]
+        stato = decode_and_verify_state(state, CHIAVE_TEST)
+        assert (stato.source_guild_id, stato.target_guild_id, stato.user_id) == (100, 200, user_id)
+

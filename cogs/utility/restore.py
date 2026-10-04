@@ -43,7 +43,11 @@ from core.restore_batch_logic import (
     MODE_VERIFY_OAUTH,
     plan_restore_action,
 )
-from core.restore_oauth_logic import RestoreStateSigningError, build_authorize_url
+from core.restore_oauth_logic import (
+    STATE_TTL_SECONDS,
+    RestoreStateSigningError,
+    build_authorize_url,
+)
 from core.restore_orchestrator import restore_orchestrator
 from core.restore_retention_logic import was_recently_kicked
 
@@ -206,12 +210,14 @@ class RestoreCog(commands.Cog):
                         redirect_uri=config.OAUTH2_REDIRECT_URI,
                         source_guild_id=source_guild_id,
                         target_guild_id=interaction.guild.id,
+                        user_id=entry.user_id,
                         signing_key_b64=config.OAUTH_ENCRYPTION_KEY,
                     )
                     utente = await self.bot.fetch_user(entry.user_id)
                     await utente.send(
                         f"👋 Il server **{interaction.guild.name}** ha bisogno di ripristinarti "
-                        f"dopo un backup. Clicca per rientrare automaticamente: {url}"
+                        f"dopo un backup. Clicca per rientrare automaticamente (il link è "
+                        f"personale e vale {STATE_TTL_SECONDS // 86400} giorni): {url}"
                     )
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     contatori["dm_falliti"] += 1

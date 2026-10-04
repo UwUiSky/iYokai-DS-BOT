@@ -171,3 +171,30 @@ async def test_save_token_su_utente_esistente_azzera_left_at_e_stato(repo):
     assert token.access_token == "nuovo"
     assert token.left_at is None
     assert token.status == STATUS_ACTIVE
+
+
+# ---------------------------------------------------------------------
+# SEC-19: un nuovo consenso non cancella un ban.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_save_token_su_utente_bannato_non_scrive_e_restituisce_false(repo):
+    assert await repo.save_token(100, 1, "vecchio", "r", _scadenza()) is True
+    await repo.mark_banned(100, 1)
+
+    salvato = await repo.save_token(100, 1, "nuovo", "r2", _scadenza())
+
+    assert salvato is False
+    token = await repo.get_token(100, 1)
+    assert token.status == STATUS_BANNED_BLACKLISTED
+    assert token.access_token == "vecchio"
+
+
+@pytest.mark.asyncio
+async def test_save_token_su_utente_kickato_lo_riporta_attivo(repo):
+    await repo.save_token(100, 1, "vecchio", "r", _scadenza())
+    await repo.mark_kicked(100, 1)
+
+    assert await repo.save_token(100, 1, "nuovo", "r2", _scadenza()) is True
+    assert (await repo.get_token(100, 1)).status == STATUS_ACTIVE
