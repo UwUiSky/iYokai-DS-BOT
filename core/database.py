@@ -247,7 +247,11 @@ class Database:
         # asyncpg restituisce il JSONB già come stringa JSON; lo
         # decodifichiamo per dare al chiamante il tipo Python atteso
         # (int, str, bool...) invece di una stringa JSON grezza.
-        return json.loads(row["value"])
+        valore = json.loads(row["value"])
+        # BUG-31: un `null` salvato vale "chiave assente", come se la
+        # riga non l'avesse: i cog non si aspettano None al posto del
+        # default (es. una lista).
+        return default if valore is None else valore
 
     async def set_guild_setting(
         self, guild_id: int, key: str, value, changed_by: int | None = None
@@ -449,6 +453,8 @@ class Database:
         """
         await self.ensure_guild_exists(guild_id)
         old = await self.get_full_config(guild_id)
+        # Una chiave a `null` vale "assente": non la si scrive (BUG-31).
+        settings = {chiave: valore for chiave, valore in settings.items() if valore is not None}
 
         await self.pool.execute(
             """

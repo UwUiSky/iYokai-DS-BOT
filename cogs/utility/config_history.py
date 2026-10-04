@@ -26,12 +26,15 @@ from __future__ import annotations
 
 import io
 import json
+from datetime import datetime
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from core.database import db
+from core.premium import registry
+from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
 
 SUPPORTED_LANGUAGES = ("it", "en")
@@ -40,27 +43,127 @@ SUPPORTED_LANGUAGES = ("it", "en")
 # Un export reale pesa pochi KB: oltre questo limite il file non è nostro.
 MAX_IMPORT_BYTES = 256 * 1024
 
+# Tipo atteso per ogni chiave di `guild_config.settings` (le chiavi sono
+# le costanti SETTING_* dei cog). Una chiave nuova va aggiunta qui: un
+# test controlla che non ne manchi nessuna.
+SETTINGS_SCHEMA = {
+    "log_channel_id": "id",
+    "mod_log_channel_id": "id",
+    "report_channel_id": "id",
+    "custom_command_requests_channel_id": "id",
+    "suggestions_channel_id": "id",
+    "ticket_category_id": "id",
+    "ticket_support_role_id": "id",
+    "ticket_support_role_ids": "lista_id",
+    "spam_trap_staff_role_ids": "lista_id",
+    "mute_role_id": "id",
+    "backup_restore_mode": "modalita_restore",
+    "backup_auto_invite_on_join": "bool",
+    "logging_soundboard_watermark": "data_iso",
+}
+
+
+MAX_ID_DISCORD = 2**63 - 1  # gli ID stanno in un BIGINT
+MAX_ID_IN_LISTA = 250  # un server non ha più di 250 ruoli
+MAX_NOMI_NEL_MESSAGGIO = 5
+
+
+def _e_un_id(valore) -> bool:
+    # bool è sottoclasse di int: True non è un ID.
+    return isinstance(valore, int) and not isinstance(valore, bool) and 0 < valore <= MAX_ID_DISCORD
+
+
+def _e_una_lista_di_id(valore) -> bool:
+    return (
+        isinstance(valore, list)
+        and len(valore) <= MAX_ID_IN_LISTA
+        and all(_e_un_id(elemento) for elemento in valore)
+    )
+
+
+def _e_una_data_iso(valore) -> bool:
+    if not isinstance(valore, str) or not valore.isascii():
+        return False
+    try:
+        datetime.fromisoformat(valore)
+    except ValueError:
+        return False
+    return True
+
+
+# Per ogni tipo di SETTINGS_SCHEMA: il controllo e come descriverlo.
+CONTROLLI_PER_TIPO = {
+    "id": (_e_un_id, "un ID numerico"),
+    "lista_id": (_e_una_lista_di_id, "un elenco di ID numerici"),
+    "bool": (lambda valore: isinstance(valore, bool), "true oppure false"),
+    "modalita_restore": (
+        lambda valore: valore in (MODE_VERIFY_OAUTH, MODE_ON_DEMAND_OAUTH, MODE_CLASSIC_INVITE),
+        "una modalità di restore valida",
+    ),
+    "data_iso": (_e_una_data_iso, "una data in formato ISO"),
+}
+
+
+def _elenco_nomi(nomi) -> str:
+    """
+    Primi nomi di un elenco, resi innocui per un messaggio Discord: solo
+    ASCII (niente \\u0000 o surrogati isolati), accorciati, senza backtick.
+    """
+    nomi = list(nomi)
+    mostrati = [
+        ascii(str(nome)[:40]).replace("`", "'") for nome in nomi[:MAX_NOMI_NEL_MESSAGGIO]
+    ]
+    altri = len(nomi) - len(mostrati)
+    return ", ".join(mostrati) + (f" e altri {altri}" if altri > 0 else "")
+
+
+def _errore_settings(settings: dict) -> str | None:
+    sconosciute = [chiave for chiave in settings if chiave not in SETTINGS_SCHEMA]
+    if sconosciute:
+        return f"`settings` contiene chiavi sconosciute: {_elenco_nomi(sconosciute)}."
+    for chiave, valore in settings.items():
+        controllo, descrizione = CONTROLLI_PER_TIPO[SETTINGS_SCHEMA[chiave]]
+        if not controllo(valore):
+            return f"Il valore di `{chiave}` non è valido: deve essere {descrizione}."
+    return None
+
 
 def errore_schema_import(dati) -> str | None:
     """
     Controlla lo schema di un file per /config import PRIMA di scrivere.
     Restituisce il motivo del rifiuto in italiano, oppure None se valido.
+    Moduli e chiavi sconosciuti fanno rifiutare tutto il file (non
+    vengono ignorati): meglio nessuna modifica che un import a metà.
     """
     if not isinstance(dati, dict) or not {"modules", "settings", "language"} <= dati.keys():
         return "Il file non ha il formato atteso (mancano modules/settings/language)."
     modules, settings, language = dati["modules"], dati["settings"], dati["language"]
     if not isinstance(modules, dict) or not all(
-        isinstance(nome, str) and nome and isinstance(attivo, bool)
-        for nome, attivo in modules.items()
+        isinstance(attivo, bool) for attivo in modules.values()
     ):
         return "`modules` deve essere un elenco nome → true/false."
-    if not isinstance(settings, dict) or not all(
-        isinstance(chiave, str) and chiave for chiave in settings
-    ):
+    sconosciuti = [nome for nome in modules if registry.get(nome) is None]
+    if sconosciuti:
+        return f"`modules` contiene moduli sconosciuti: {_elenco_nomi(sconosciuti)}."
+    if not isinstance(settings, dict):
         return "`settings` deve essere un elenco chiave → valore."
-    if language not in SUPPORTED_LANGUAGES:
+    if not isinstance(language, str) or language not in SUPPORTED_LANGUAGES:
         return f"Lingua non supportata. Ammesse: {', '.join(SUPPORTED_LANGUAGES)}."
-    return None
+    return _errore_settings(settings)
+
+
+def _rifiuta_costante(nome: str):
+    """json.loads accetta NaN e Infinity, che non sono JSON e PostgreSQL rifiuta."""
+    raise ValueError(f"costante non ammessa: {nome}")
+
+
+def leggi_json_import(grezzo: bytes):
+    """
+    Decodifica il file di /config import (UTF-8, BOM ammesso). Solleva
+    ValueError o RecursionError se non è un JSON accettabile: NaN,
+    interi smisurati, annidamento troppo profondo, byte non UTF-8.
+    """
+    return json.loads(grezzo.decode("utf-8-sig"), parse_constant=_rifiuta_costante)
 
 
 def _format_value(value) -> str:
@@ -318,10 +421,10 @@ class ConfigHistoryCog(commands.Cog):
             )
             return
 
+        grezzo = await file.read()
         try:
-            grezzo = await file.read()
-            dati = json.loads(grezzo.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
+            dati = leggi_json_import(grezzo)
+        except (ValueError, RecursionError):
             await interaction.response.send_message(
                 "Il file non è un JSON valido (probabilmente non prodotto da /config export).",
                 ephemeral=True,
