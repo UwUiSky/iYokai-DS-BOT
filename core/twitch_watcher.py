@@ -22,6 +22,7 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.config import config
 from core.twitch_api_logic import parse_app_access_token_response, parse_get_streams_response
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
@@ -229,7 +230,7 @@ class TwitchWatcherService:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

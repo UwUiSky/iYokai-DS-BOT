@@ -27,11 +27,17 @@ Ogni cog che ha bisogno di un'azione differita:
    nel proprio setup() — vedi register_handler() più sotto.
 2. Quando serve pianificare, chiama scheduler.schedule(...).
 Non deve mai occuparsi lui stesso di timer o task in background.
-Funzioni coperte: REVIEW.md BUG-8 (issue #13).
+
+Se manca l'handler o l'handler solleva, l'azione viene riprovata con
+un'attesa crescente (ATTESE_RIPROVA) e solo dopo MAX_TENTATIVI viene
+abbandonata con il motivo in `failed_reason`. Ogni azione gira nella
+propria transazione.
+Funzioni coperte: REVIEW.md BUG-8, BUG-27 (issue #13, #56).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -39,12 +45,38 @@ from typing import Awaitable, Callable
 
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
+
 logger = logging.getLogger("iyokai.scheduler")
 
 # Firma di un handler: riceve guild_id, user_id, e il payload salvato
 # al momento della pianificazione (dati specifici dell'azione, es.
 # {"reason": "..."} per un tempban).
 ActionHandler = Callable[[int, int, dict], Awaitable[None]]
+
+# Quante azioni al massimo in un giro del loop.
+AZIONI_PER_GIRO = 50
+
+# Attesa dopo il 1°, 2°, 3°… tentativo fallito; l'ultima vale anche per
+# i successivi. Con 8 tentativi un'azione viene riprovata per circa 20 ore.
+ATTESE_RIPROVA = (
+    timedelta(minutes=1),
+    timedelta(minutes=5),
+    timedelta(minutes=30),
+    timedelta(hours=2),
+    timedelta(hours=6),
+)
+MAX_TENTATIVI = 8
+
+# Pausa dopo un giro fallito (database irraggiungibile): raddoppia a ogni
+# errore di fila, fino a questo massimo.
+PAUSA_BASE_ERRORE_SECONDI = 30
+PAUSA_MASSIMA_ERRORE_SECONDI = 600
+
+
+def attesa_prima_di_riprovare(tentativi: int) -> timedelta:
+    """Attesa dopo il tentativo fallito numero `tentativi` (1, 2, 3…)."""
+    return ATTESE_RIPROVA[min(tentativi, len(ATTESE_RIPROVA)) - 1]
 
 
 class Scheduler:
@@ -57,6 +89,7 @@ class Scheduler:
     def __init__(self) -> None:
         self._handlers: dict[str, ActionHandler] = {}
         self._loop_task: tasks.Loop | None = None
+        self._errori_di_fila = 0
 
     def register_handler(self, action_type: str, handler: ActionHandler) -> None:
         """
@@ -222,82 +255,126 @@ class Scheduler:
         }
 
     async def _run_due_actions(self) -> None:
-        """
-        Interrogazione periodica: trova le azioni scadute e non
-        ancora eseguite, le esegue, le marca come eseguite.
+        """Esegue le azioni scadute, al massimo AZIONI_PER_GIRO per giro."""
+        for _ in range(AZIONI_PER_GIRO):
+            if not await self._esegui_prossima_azione():
+                return
 
-        FOR UPDATE SKIP LOCKED: se in futuro ci fosse più di un
-        processo che esegue questo loop (non è il caso oggi, un solo
-        processo iYokai Main), questo evita che due processi
-        eseguano la stessa azione due volte.
+    async def _esegui_prossima_azione(self) -> bool:
+        """
+        Prende UNA azione scaduta e la esegue nella propria transazione:
+        un errore del database su un'azione non annulla i flag
+        "eseguita" già scritti per le precedenti. Restituisce False se
+        non c'è più nulla da fare.
+
+        FOR UPDATE SKIP LOCKED: se un giorno ci fossero due processi,
+        non eseguirebbero la stessa azione due volte.
         """
         from core.database import db
 
         async with db.pool.acquire() as conn:
             async with conn.transaction():
-                rows = await conn.fetch(
+                row = await conn.fetchrow(
                     """
-                    SELECT id, guild_id, user_id, action_type, payload
+                    SELECT id, guild_id, user_id, action_type, payload, attempts
                     FROM scheduled_actions
-                    WHERE execute_at <= now() AND executed = FALSE AND failed_reason IS NULL
-                    ORDER BY execute_at
-                    LIMIT 50
+                    WHERE execute_at <= now()
+                      AND (next_attempt_at IS NULL OR next_attempt_at <= now())
+                      AND executed = FALSE AND failed_reason IS NULL
+                    ORDER BY COALESCE(next_attempt_at, execute_at)
+                    LIMIT 1
                     FOR UPDATE SKIP LOCKED
                     """
                 )
+                if row is None:
+                    return False
 
-                for row in rows:
-                    handler = self._handlers.get(row["action_type"])
-                    if handler is None:
-                        # BUG-8: segnata fallita con il motivo, non resta
-                        # "da eseguire" per sempre e non blocca la coda.
-                        motivo = (
-                            f"nessun handler registrato per action_type="
-                            f"'{row['action_type']}'"
-                        )
-                        logger.error(
-                            "Azione pianificata id=%s fallita: %s.", row["id"], motivo
-                        )
-                        await conn.execute(
-                            "UPDATE scheduled_actions SET failed_reason = $2 WHERE id = $1",
-                            row["id"],
-                            motivo,
-                        )
-                        continue
-
-                    payload = json.loads(row["payload"]) if row["payload"] else {}
-                    try:
-                        await handler(row["guild_id"], row["user_id"], payload)
-                    except Exception:
-                        logger.exception(
-                            "Errore eseguendo l'azione pianificata id=%s "
-                            "(action_type='%s'). Verrà ritentata al giro "
-                            "successivo.",
-                            row["id"],
-                            row["action_type"],
-                        )
-                        # Non marchiamo come eseguita: un errore
-                        # temporaneo (es. Discord irraggiungibile un
-                        # istante) non deve far perdere per sempre
-                        # l'azione pianificata.
-                        continue
-
+                errore = await self._chiama_handler(row)
+                if errore is None:
                     await conn.execute(
                         "UPDATE scheduled_actions SET executed = TRUE, "
                         "executed_at = now() WHERE id = $1",
                         row["id"],
                     )
+                else:
+                    await self._registra_tentativo_fallito(conn, row, errore)
+        return True
+
+    async def _chiama_handler(self, row) -> str | None:
+        """Restituisce None se l'azione è riuscita, altrimenti il motivo."""
+        handler = self._handlers.get(row["action_type"])
+        if handler is None:
+            # Può essere un cog che non si è caricato a questo avvio:
+            # si riprova, non si butta via l'azione (BUG-27).
+            return f"nessun handler registrato per action_type='{row['action_type']}'"
+
+        payload = json.loads(row["payload"]) if row["payload"] else {}
+        try:
+            await handler(row["guild_id"], row["user_id"], payload)
+        except Exception as exc:  # CancelledError non è Exception: esce
+            logger.exception(
+                "Errore eseguendo l'azione pianificata id=%s (action_type='%s').",
+                row["id"],
+                row["action_type"],
+            )
+            return f"{type(exc).__name__}: {exc}"
+        return None
+
+    async def _registra_tentativo_fallito(self, conn, row, errore: str) -> None:
+        """Rimanda l'azione con attesa crescente, o la abbandona al massimo dei tentativi."""
+        tentativi = row["attempts"] + 1
+        if tentativi >= MAX_TENTATIVI:
+            logger.error(
+                "Azione pianificata id=%s (action_type='%s') abbandonata dopo %d tentativi: %s",
+                row["id"],
+                row["action_type"],
+                tentativi,
+                errore,
+            )
+            await conn.execute(
+                "UPDATE scheduled_actions SET attempts = $2, failed_reason = $3 WHERE id = $1",
+                row["id"],
+                tentativi,
+                errore,
+            )
+            return
+
+        attesa = attesa_prima_di_riprovare(tentativi)
+        logger.warning(
+            "Azione pianificata id=%s (action_type='%s') non riuscita (tentativo %d di %d): %s. "
+            "Riprovo tra %s.",
+            row["id"],
+            row["action_type"],
+            tentativi,
+            MAX_TENTATIVI,
+            errore,
+            attesa,
+        )
+        await conn.execute(
+            "UPDATE scheduled_actions SET attempts = $2, next_attempt_at = now() + $3 "
+            "WHERE id = $1",
+            row["id"],
+            tentativi,
+            attesa,
+        )
 
     async def _giro(self) -> None:
         """
-        BUG-8: un errore qui dentro (es. database irraggiungibile un
-        istante) non deve uscire dal loop — tasks.loop si ferma per
-        sempre alla prima eccezione non gestita.
+        BUG-8: un errore qui dentro (es. database irraggiungibile) non
+        deve uscire dal loop — tasks.loop si ferma per sempre alla prima
+        eccezione non gestita. Dopo un errore si aspetta prima del giro
+        successivo, sempre di più se gli errori continuano.
         """
         try:
             await self._run_due_actions()
         except Exception:
-            logger.exception("Errore nel giro dello scheduler: riprovo al prossimo.")
+            self._errori_di_fila += 1
+            raddoppi = min(self._errori_di_fila, 10)
+            pausa = min(PAUSA_BASE_ERRORE_SECONDI * 2**raddoppi, PAUSA_MASSIMA_ERRORE_SECONDI)
+            logger.exception("Errore nel giro dello scheduler: riprovo tra %d secondi.", pausa)
+            await asyncio.sleep(pausa)
+        else:
+            self._errori_di_fila = 0
 
     def start(self, bot: commands.Bot) -> None:
         """
@@ -313,7 +390,7 @@ class Scheduler:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.clan_leaderboard_logic import (
     PODIUM_SIZE,
     build_clan_announcement_text,
@@ -97,7 +98,7 @@ class ClanLeaderboardAnnouncer:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

@@ -1,26 +1,14 @@
 """
 core/migrations/__init__.py
 ===============================
-Sistema di migrazioni versionate (DB-1, #25), sopra le ~41 funzioni
-run_migrations() già esistenti in ogni repository (`core/repositories/
-*.py`). Quelle restano la BASE e girano per prime come sempre —
-CREATE TABLE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS: idempotenti,
-sicure da rieseguire ad ogni avvio, non toccate da questo file.
-
-Le migrazioni NUMERATE (i file "NNNN_descrizione.sql"/".py" in questa
-stessa cartella) sono per i cambiamenti che quel pattern non può fare
-in sicurezza — cambiare un tipo di colonna, togliere una colonna,
-aggiungere una foreign key: cose che vanno fatte UNA volta sola, non
-ad ogni riavvio. Ciascuna gira in una transazione (se fallisce, quella
-transazione fa rollback — le migrazioni precedenti, già committate,
-restano applicate) e sotto un pg_advisory_lock così due processi che
-partono insieme non applicano la stessa migrazione due volte. Una
-migrazione già applicata non si modifica MAI: se serve corregerla, se
-ne aggiunge una nuova con un numero più alto.
-
-Punto di ingresso unico, usato sia da core/database.py (produzione)
-sia da tests/conftest.py (test) — prima la duplicazione manuale tra i
-due era il problema che DB-1 doveva risolvere.
+Migrazioni del database, punto di ingresso unico per produzione
+(core/database.py) e test (tests/conftest.py). Prima la base idempotente
+(tabelle di configurazione e le run_migrations() dei repository), poi i
+file numerati "NNNN_descrizione.sql"/".py" di questa cartella, ognuno
+applicato una volta sola nella propria transazione. Tutto gira su una
+sola connessione che tiene un pg_advisory_lock, così due processi che
+partono insieme si mettono in fila. Una migrazione già applicata non si
+modifica mai: se ne aggiunge una nuova con un numero più alto.
 Funzioni coperte: PIANO_FIX.md "DB — Migrazioni versionate (DB-1, #25)"
 """
 
@@ -29,6 +17,7 @@ from __future__ import annotations
 import importlib.util
 import logging
 import re
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,6 +36,16 @@ MIGRATIONS_DIR = Path(__file__).parent
 
 VERSION_PATTERN = re.compile(r"^(\d{4})_.+\.(sql|py)$")
 
+# asyncpg applica a ogni query il command_timeout del pool (30 secondi in
+# produzione): troppo poco per aspettare il lock o per una migrazione su
+# una tabella grande. Un giorno vale "nessun limite". Una migrazione .py
+# con query lunghe passa questo valore come `timeout=` alle sue query.
+TIMEOUT_MIGRAZIONE = 24 * 60 * 60
+
+
+class MigrationError(Exception):
+    """Cartella delle migrazioni non valida: nome fuori formato o numero doppio."""
+
 
 @dataclass(frozen=True)
 class MigrationFile:
@@ -59,22 +58,50 @@ def discover_migrations(migrations_dir: Path = MIGRATIONS_DIR) -> list[Migration
     """
     Elenca le migrazioni numerate in ordine di versione. Un file
     "NNNN_descrizione.sql" viene eseguito come SQL grezzo; un file
-    "NNNN_descrizione.py" deve esporre `async def up(conn)`. File che
-    non seguono questo formato (__init__.py compreso) vengono
-    ignorati, non sollevano errore.
+    "NNNN_descrizione.py" deve esporre `async def up(conn)`.
+    Solleva MigrationError se un file .sql/.py (tranne __init__.py) non
+    segue il formato o se due file hanno lo stesso numero: saltarli in
+    silenzio lascerebbe lo schema a metà senza che nessuno se ne accorga.
     """
     if not migrations_dir.is_dir():
         return []
 
-    trovate = []
+    per_versione: dict[int, MigrationFile] = {}
     for path in sorted(migrations_dir.iterdir()):
+        if path.name == "__init__.py" or path.suffix not in (".sql", ".py"):
+            continue
         corrispondenza = VERSION_PATTERN.match(path.name)
         if corrispondenza is None:
-            continue
+            raise MigrationError(
+                f"Migrazione con nome non valido: '{path.name}'. "
+                "Formato atteso: NNNN_descrizione.sql oppure .py (4 cifre)."
+            )
         version = int(corrispondenza.group(1))
-        trovate.append(MigrationFile(version=version, name=path.stem, path=path))
+        if version in per_versione:
+            raise MigrationError(
+                f"Due migrazioni con lo stesso numero {version:04d}: "
+                f"'{per_versione[version].path.name}' e '{path.name}'."
+            )
+        per_versione[version] = MigrationFile(version=version, name=path.stem, path=path)
 
-    return sorted(trovate, key=lambda m: m.version)
+    return [per_versione[version] for version in sorted(per_versione)]
+
+
+@asynccontextmanager
+async def _connessione_con_lock(pool: asyncpg.Pool):
+    """
+    Una connessione del pool con il lock advisory preso (i lock advisory
+    sono legati alla connessione, non al pool). Chi arriva secondo
+    aspetta qui il proprio turno, senza limite di tempo.
+    """
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "SELECT pg_advisory_lock($1)", ADVISORY_LOCK_ID, timeout=TIMEOUT_MIGRAZIONE
+        )
+        try:
+            yield conn
+        finally:
+            await conn.execute("SELECT pg_advisory_unlock($1)", ADVISORY_LOCK_ID)
 
 
 async def ensure_schema_migrations_table(pool: asyncpg.Pool) -> None:
@@ -92,12 +119,34 @@ async def ensure_schema_migrations_table(pool: asyncpg.Pool) -> None:
 async def _applica_una_migrazione(conn: asyncpg.Connection, migrazione: MigrationFile) -> None:
     if migrazione.path.suffix == ".sql":
         sql = migrazione.path.read_text(encoding="utf-8")
-        await conn.execute(sql)
+        await conn.execute(sql, timeout=TIMEOUT_MIGRAZIONE)
     else:
         spec = importlib.util.spec_from_file_location(migrazione.name, migrazione.path)
         modulo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modulo)
         await modulo.up(conn)
+
+
+async def _applica_numerate(conn: asyncpg.Connection, migrazioni: list[MigrationFile]) -> list[int]:
+    """Da chiamare con il lock già preso su `conn`."""
+    await ensure_schema_migrations_table(conn)
+    righe = await conn.fetch("SELECT version FROM schema_migrations")
+    gia_applicate = {r["version"] for r in righe}
+
+    applicate: list[int] = []
+    for migrazione in migrazioni:
+        if migrazione.version in gia_applicate:
+            continue
+        async with conn.transaction():
+            await _applica_una_migrazione(conn, migrazione)
+            await conn.execute(
+                "INSERT INTO schema_migrations (version, name) VALUES ($1, $2)",
+                migrazione.version,
+                migrazione.name,
+            )
+        applicate.append(migrazione.version)
+        logger.info("Migrazione applicata: %s", migrazione.name)
+    return applicate
 
 
 async def apply_numbered_migrations(
@@ -106,46 +155,16 @@ async def apply_numbered_migrations(
     """
     Applica in ordine le migrazioni numerate non ancora registrate in
     schema_migrations. Ciascuna gira nella sua transazione: se una
-    fallisce, SOLO quella fa rollback (le precedenti sono già state
-    committate una per una, non tutte insieme in un unico blocco).
-    pg_advisory_lock preso su un'unica connessione per tutta la
-    durata (i lock advisory sono legati alla sessione/connessione,
-    non al pool) — un secondo processo che chiama questa funzione nel
-    frattempo resta in attesa qui, non applica nulla in parallelo.
+    fallisce, SOLO quella fa rollback (le precedenti restano applicate).
     Restituisce le versioni applicate in QUESTA chiamata (lista vuota
     se non c'era nulla da fare, incluso il caso "un altro processo le
     ha già applicate mentre aspettavamo il lock").
     """
-    await ensure_schema_migrations_table(pool)
     migrazioni = discover_migrations(migrations_dir)
     if not migrazioni:
         return []
-
-    applicate: list[int] = []
-    async with pool.acquire() as conn:
-        await conn.execute("SELECT pg_advisory_lock($1)", ADVISORY_LOCK_ID)
-        try:
-            righe = await conn.fetch("SELECT version FROM schema_migrations")
-            gia_applicate = {r["version"] for r in righe}
-
-            for migrazione in migrazioni:
-                if migrazione.version in gia_applicate:
-                    continue
-                async with conn.transaction():
-                    await _applica_una_migrazione(conn, migrazione)
-                    await conn.execute(
-                        "INSERT INTO schema_migrations (version, name) VALUES ($1, $2)",
-                        migrazione.version,
-                        migrazione.name,
-                    )
-                applicate.append(migrazione.version)
-                logger.info(
-                    "Migrazione applicata: %04d_%s", migrazione.version, migrazione.name
-                )
-        finally:
-            await conn.execute("SELECT pg_advisory_unlock($1)", ADVISORY_LOCK_ID)
-
-    return applicate
+    async with _connessione_con_lock(pool) as conn:
+        return await _applica_numerate(conn, migrazioni)
 
 
 async def run_core_config_tables(pool: asyncpg.Pool) -> None:
@@ -404,10 +423,14 @@ async def run_all_migrations(pool: asyncpg.Pool) -> None:
     """
     Punto di ingresso unico: tabelle di base, poi tutte le run_
     migrations() di repository (idempotenti, girano sempre), poi le
-    migrazioni numerate non ancora applicate. Chiamato sia da
-    core.database.Database.run_migrations() (produzione) sia da
-    tests/conftest.py (test) — STESSA funzione, non due copie.
+    migrazioni numerate non ancora applicate. Tutto sulla connessione
+    che tiene il lock: anche i CREATE TABLE IF NOT EXISTS della base, se
+    lanciati da due processi insieme su un database vuoto, falliscono.
+    Le funzioni di base ricevono la connessione al posto del pool (usano
+    solo `.execute`, che hanno entrambi).
     """
-    await run_core_config_tables(pool)
-    await run_all_repo_migrations(pool)
-    await apply_numbered_migrations(pool)
+    migrazioni = discover_migrations()  # prima di tutto: un nome sbagliato ferma l'avvio
+    async with _connessione_con_lock(pool) as conn:
+        await run_core_config_tables(conn)
+        await run_all_repo_migrations(conn)
+        await _applica_numerate(conn, migrazioni)

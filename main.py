@@ -36,7 +36,13 @@ from discord.ext import commands
 
 from core.config import config
 from core.repositories.music_session_repo import music_session_repo
-from core.bot_supervisor import VoceBot, esegui_bot_isolati, installa_gestori_segnali, spegni_ordinatamente
+from core.bot_supervisor import (
+    VoceBot,
+    esegui_bot_isolati,
+    ignora_altri_segnali,
+    installa_gestori_segnali,
+    spegni_ordinatamente,
+)
 from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
 from core.database import db
@@ -503,14 +509,31 @@ class iYokaiBot(commands.AutoShardedBot):
         return False
 
 
-async def main() -> None:
-    setup_logging()
-    logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
+def _servizi_periodici() -> list:
+    """I servizi di core/ con un tasks.loop: vanno fermati prima di chiudere il database."""
+    return [
+        scheduler,
+        memory_guard,
+        event_log_retention,
+        soundboard_log_service,
+        feed_watcher,
+        twitch_watcher,
+        youtube_watcher,
+        monthly_winners_announcer,
+        giveaway_worker,
+        guild_clan_voice_worker,
+        guild_clan_treasury_decay_worker,
+        guild_clan_expiry_worker,
+        weekly_personal_decay_worker,
+        clan_leaderboard_announcer,
+        backup_queue_worker,
+        backup_snapshot_worker,
+    ]
 
-    # #41: PREMIUM_ALPHA_UNLOCK_ALL sblocca TUTTE le feature premium per
-    # TUTTI i server — spento di default in produzione (vedi
-    # core/config.py), ma se l'owner lo forza comunque a true merita un
-    # WARNING visibile nei log, non solo un INFO che si perde nel resto.
+
+def avvisa_opzioni_rischiose() -> None:
+    """WARNING all'avvio per le opzioni che in produzione vanno tenute spente."""
+    # #41: sblocca TUTTE le feature premium per TUTTI i server.
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
         logger.warning(
             "PREMIUM_ALPHA_UNLOCK_ALL è attivo: tutte le feature premium sono "
@@ -518,6 +541,22 @@ async def main() -> None:
             "abbonamento. Normale solo durante la fase alpha — imposta "
             "PREMIUM_ALPHA_UNLOCK_ALL=false in .env quando finisce."
         )
+    # SEC-13: /owner eval, /owner shell e /owner cog-load eseguono codice
+    # arbitrario sulla macchina che ospita il bot.
+    if config.ENABLE_EVAL:
+        logger.warning(
+            "ENABLE_EVAL è attivo: /owner eval, /owner shell e /owner cog-load "
+            "possono eseguire codice arbitrario su questa macchina. Normale solo "
+            "in sviluppo — imposta ENABLE_EVAL=false in .env (o "
+            "ENVIRONMENT=production) sul server vero."
+        )
+
+
+async def main() -> None:
+    setup_logging()
+    logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
+
+    avvisa_opzioni_rischiose()
 
     # Il database va connesso PRIMA del bot, perché setup_hook()
     # (chiamato durante bot.start()) già presuppone che db.pool
@@ -679,8 +718,10 @@ async def main() -> None:
     except asyncio.CancelledError:
         logger.info("Arresto richiesto (SIGTERM/SIGINT): chiusura ordinata.")
     finally:
-        # Ordine: web server, bot (fermano i loop dei cog), sessioni
-        # HTTP condivise, database.
+        # Un secondo SIGTERM/SIGINT non deve interrompere la chiusura.
+        ignora_altri_segnali()
+        # Ordine: web server, servizi periodici di core/, bot (fermano i
+        # loop dei cog), sessioni HTTP condivise, database.
         if restore_web_runner is not None:
             await restore_web_runner.cleanup()
         if custom_webhook_runner is not None:
@@ -696,6 +737,7 @@ async def main() -> None:
                 restore_orchestrator.close,
             ],
             db.close,
+            servizi=_servizi_periodici(),
         )
         logger.info("Database disconnesso. Arresto completato.")
 

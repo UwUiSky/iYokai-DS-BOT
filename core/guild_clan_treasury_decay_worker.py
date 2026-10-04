@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.guild_iteration import for_each_guild_safely
 from core.leveling_logic import period_key
 from core.repositories.guild_chest_repo import (
@@ -80,7 +81,7 @@ class GuildClanTreasuryDecayWorker:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

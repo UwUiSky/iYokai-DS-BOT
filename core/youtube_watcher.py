@@ -27,6 +27,7 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.config import config
 from core.youtube_api_logic import parse_search_live_response
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
@@ -170,7 +171,7 @@ class YoutubeWatcherService:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

@@ -96,6 +96,28 @@ def _optional_bool(name: str, default: bool) -> bool:
     sys.exit(1)
 
 
+AMBIENTI_AMMESSI = ("development", "production")
+
+
+def _require_environment() -> str:
+    """
+    ENVIRONMENT decide i default di ENABLE_EVAL e PREMIUM_ALPHA_UNLOCK_ALL
+    (spenti solo in produzione). Un valore sconosciuto ("prod", "live")
+    o assente li accenderebbe in silenzio: meglio non partire.
+    Maiuscole e spazi intorno non contano.
+    """
+    valore = os.getenv("ENVIRONMENT", "").strip().lower()
+    if valore not in AMBIENTI_AMMESSI:
+        print(
+            f"\n[CONFIG] ERRORE: la variabile d'ambiente 'ENVIRONMENT' deve valere "
+            f"{' oppure '.join(AMBIENTI_AMMESSI)}, trovato: '{valore}'.\n"
+            f"Impostala nel file .env (vedi .env.example).\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return valore
+
+
 @dataclass(frozen=True)
 class Config:
     """
@@ -265,7 +287,7 @@ class Config:
 
     @property
     def is_production(self) -> bool:
-        return self.ENVIRONMENT.lower() == "production"
+        return self.ENVIRONMENT == "production"
 
     @property
     def is_development(self) -> bool:
@@ -288,8 +310,9 @@ def _load_config() -> Config:
 
     # Letto PRIMA del resto: ENABLE_EVAL (SEC-13/D7) e
     # PREMIUM_ALPHA_UNLOCK_ALL (#41) ne calcolano il default — entrambi
-    # spenti di default solo in produzione, accesi altrove.
-    environment = _optional("ENVIRONMENT", "development")
+    # spenti di default in produzione, accesi in sviluppo.
+    environment = _require_environment()
+    in_sviluppo = environment == "development"
 
     return Config(
         YOKAI_BOT_TOKEN=_require("YOKAI_BOT_TOKEN"),
@@ -322,10 +345,8 @@ def _load_config() -> Config:
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
-        PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool(
-            "PREMIUM_ALPHA_UNLOCK_ALL", environment.lower() != "production"
-        ),
-        ENABLE_EVAL=_optional_bool("ENABLE_EVAL", environment.lower() != "production"),
+        PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", in_sviluppo),
+        ENABLE_EVAL=_optional_bool("ENABLE_EVAL", in_sviluppo),
     )
 
 

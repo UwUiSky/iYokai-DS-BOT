@@ -31,6 +31,7 @@ from datetime import datetime
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.database import db
 from core.guild_iteration import for_each_guild_safely
 from core.logging_advanced_logic import new_entries_since, next_watermark
@@ -154,7 +155,7 @@ class SoundboardLogService:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()

@@ -13,6 +13,7 @@ import logging
 
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.backup_snapshot_logic import is_eligible_for_snapshot
 from core.repositories.backup_repo import backup_repo
 from core.repositories.backup_user_snapshot_repo import backup_user_snapshot_repo
@@ -72,7 +73,7 @@ class BackupSnapshotWorker:
         async def _before():
             # Senza questa attesa il primo giro parte prima del login:
             # le guild sono vuote e lo snapshot salva 0 utenti.
-            await main_bot.wait_until_ready()
+            await attendi_bot_pronto(main_bot)
 
         self._loop_task = _loop
         self._loop_task.start()

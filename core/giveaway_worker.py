@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.giveaway_logic import pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
 
@@ -84,7 +85,7 @@ class GiveawayWorker:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()
