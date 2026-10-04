@@ -34,7 +34,7 @@ CORE_DIR = Path(__file__).parent.parent / "core"
 # File di core/ che chiamano ancora wait_until_ready() in un before_loop.
 # feed_watcher.py viene avviato da setup_hook (dopo il login), quindi
 # oggi funziona. Non aggiungere nomi: l'insieme può solo svuotarsi.
-KNOWN_WAIT_UNTIL_READY_DIRETTO = {"feed_watcher.py"}
+KNOWN_WAIT_UNTIL_READY_DIRETTO: set[str] = set()
 
 WORKER_CON_UN_SOLO_BOT = [
     BackupSnapshotWorker,

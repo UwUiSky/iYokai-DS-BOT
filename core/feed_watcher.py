@@ -21,6 +21,7 @@ import logging
 import discord
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.feed_parsing_logic import find_new_entries, parse_feed, render_alert_message
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.safe_http import safe_get
@@ -132,7 +133,7 @@ class FeedWatcherService:
 
         @_loop.before_loop
         async def _before():
-            await bot.wait_until_ready()
+            await attendi_bot_pronto(bot)
 
         self._loop_task = _loop
         _loop.start()
