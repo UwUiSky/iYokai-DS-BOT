@@ -16,7 +16,9 @@ from main import _elenco_intent_attivi, iYokaiBot
 def test_iyokaibot_si_istanzia_senza_eccezioni():
     bot = iYokaiBot()
     assert bot.intents.members is True
-    assert bot.intents.message_content is False
+    # R4: il contenuto dei messaggi serve ad AutoMod, trascrizioni,
+    # spam-trap, mirror del backup e log dei messaggi.
+    assert bot.intents.message_content is True
     # L'error handler dei comandi slash deve risultare registrato.
     assert bot.tree.on_error is not None
     # Il dizionario di cooldown per on_error parte vuoto.
@@ -506,10 +508,10 @@ class TestElencoIntentAttivi:
         assert "message_content" not in risultato
         assert "presences" not in risultato
 
-    def test_bot_principale_mostra_members_ma_non_message_content(self):
+    def test_bot_principale_mostra_members_e_message_content(self):
         bot = iYokaiBot()
 
         risultato = _elenco_intent_attivi(bot)
 
         assert "members" in risultato
-        assert "message_content" not in risultato
+        assert "message_content" in risultato

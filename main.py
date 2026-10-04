@@ -158,14 +158,14 @@ class iYokaiBot(commands.AutoShardedBot):
         # abilitati anche nel Developer Portal, non solo qui.
         intents = discord.Intents.default()
         intents.members = True          # necessario per verify, log join/leave
-        intents.message_content = False  # vedi nota sotto
-
-        # NOTA sul message_content: parte disattivato. Verrà acceso
-        # SOLO quando un modulo specifico lo richiederà davvero
-        # (es. logging dei messaggi cancellati) — non di default,
-        # perché è un privileged intent soggetto a review separata
-        # in fase di verifica del bot, e più cose lo richiedono
-        # inutilmente, più complicata è la review.
+        # Necessario per: filtri AutoMod avanzati, trascrizioni dei
+        # ticket e dello spam-trap, mirror del backup, filtro allegati
+        # di /clear, log dei messaggi cancellati/modificati, snipe.
+        # Senza, Discord consegna i messaggi con il testo vuoto e
+        # queste funzioni sembrano attive ma non fanno nulla.
+        # Va acceso anche nel Developer Portal ("Message Content
+        # Intent"), altrimenti il bot non riesce a collegarsi.
+        intents.message_content = True
 
         super().__init__(
             command_prefix=commands.when_mentioned,  # niente prefisso testuale
