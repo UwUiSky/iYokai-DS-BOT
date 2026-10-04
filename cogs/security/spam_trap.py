@@ -64,8 +64,10 @@ from core.premium import PremiumModule, registry
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
 from core.spam_trap_logic import (
+    BAN_ACTION_TYPE,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
     can_appeal,
+    latest_case_per_guild,
     partition_messages_for_deletion,
     purge_window,
 )
@@ -79,8 +81,6 @@ MODULE_SPAM_TRAP = "spam_trap"
 
 TRAP_CHANNEL_DEFAULT_NAME = "spam-trap"
 LOG_CHANNEL_DEFAULT_NAME = "spam-log"
-
-BAN_ACTION_TYPE = "spam_trap_ban"
 
 # SEC-8b: ruoli staff esentati dalla trappola, oltre a chi ha già
 # "Gestisci messaggi"/"Amministratore" o un ruolo sopra quello del
@@ -207,8 +207,11 @@ class AppealActionsView(BaseView):
             )
             return
 
-        await moderation_repo.revoke_case(
-            self.guild_id, self.case_number, interaction.user.id
+        # BUG-24: tutti i casi spam-trap attivi dell'utente in questo
+        # server, non solo quello dell'appello — un caso più vecchio
+        # rimasto attivo farebbe risultare l'utente ancora bannato.
+        await moderation_repo.revoke_active_cases_for_user(
+            self.guild_id, self.user_id, BAN_ACTION_TYPE, interaction.user.id
         )
 
         try:
@@ -831,8 +834,11 @@ class SpamTrapCog(commands.Cog):
         casi_attivi = await moderation_repo.get_active_cases_for_user_across_guilds(
             user.id, BAN_ACTION_TYPE
         )
+        # BUG-24: un server conta una volta sola, col suo caso più
+        # recente — due casi attivi nello stesso server non sono "ban
+        # su più server".
         candidati: list[tuple[discord.Guild, object]] = []
-        for case in casi_attivi:
+        for case in latest_case_per_guild(casi_attivi):
             guild = self.bot.get_guild(case.guild_id)
             if guild is not None:
                 candidati.append((guild, case))

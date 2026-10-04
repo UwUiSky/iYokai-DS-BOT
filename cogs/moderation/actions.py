@@ -30,6 +30,7 @@ from discord.ext import commands
 from core.permissions import ModerationActor, can_moderate
 from core.repositories.moderation_repo import moderation_repo
 from core.scheduler import scheduler, in_seconds
+from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
     ensure_module_enabled,
@@ -377,6 +378,13 @@ class ModerationActionsCog(commands.Cog):
                     interaction.guild.id, case.case_number, interaction.user.id
                 )
                 break
+
+        # BUG-24: anche i ban scattati dallo spam-trap. Tutti quelli
+        # attivi, non solo l'ultimo: se restassero, l'utente
+        # risulterebbe ancora bannato per l'appello in DM.
+        await moderation_repo.revoke_active_cases_for_user(
+            interaction.guild.id, uid, SPAM_TRAP_BAN_ACTION_TYPE, interaction.user.id
+        )
 
         await interaction.response.send_message(f"Utente `{uid}` sbannato.")
         log_embed = discord.Embed(title="🔓 Unban", color=discord.Color.green())
