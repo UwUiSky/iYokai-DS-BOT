@@ -4509,6 +4509,14 @@ ogni comando) e sui metodi di repository senza chiamanti, entrambi a
 "cricchetto". Suite: 2058 test verdi. Il testo qui sotto è lo stato
 precedente, valido solo come storico.
 
+**Stato al 04/10:** fatte R-T, R0, le migrazioni versionate e la prima
+parte di R1 (ticket, setup, config, avvio, scheduler, backup). Suite:
+2297 test verdi. Una revisione dei fix ha trovato 16 bug e regressioni
+(REVIEW.md §20), tra cui i worker del backup che non partono mai
+(BUG-19): **il prossimo passo è `PIANO_FIX.md` R1-bis**, poi il resto
+di R1 dalla sezione Musica. Nessuna delle 24 voci di `VERIFICA_LIVE.md`
+è ancora stata provata.
+
 **§15 Levels/Economy/Gilde/Classifiche a 9/25** — notifica level-up
 vocale, ruoli-premio e annuncio vincitori mensile fatti. Prossimi pezzi ben delimitati, senza
 bisogno di discussione preventiva:

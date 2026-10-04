@@ -1009,3 +1009,110 @@ SPEC/PROGRESS.
 | 30 | §12 (7.2) | 33 | BUG-17 |
 | 34 | BUG-18 | 41 | §11 (valori pericolosi) |
 | 45, 47, 48 | BUG-9/10, §12 (9.x) | 50, 52 | fuori scope |
+
+---
+
+## 20. Revisione dei fix del 28/09–01/10 (fatta il 04/10)
+
+Riletti i circa 45 fix committati dopo questo log (7.700 righe
+cambiate). Ogni voce "confermato" è stata riprodotta eseguendo codice;
+"plausibile" viene dalla sola lettura. Le correzioni da fare sono in
+`PIANO_FIX.md`, sezione R1-bis.
+
+**Cosa regge:** firma dello state OAuth, direzione del controllo sulla
+coppia in `/restore-users`, `check_role_assignable` e i suoi punti
+d'uso, `render_template`, log d'accesso redatto, `BaseView`/`BaseModal`
+su tutte le View, esenzione dello staff nello spam-trap, runner delle
+migrazioni (lock e transazione sulla stessa connessione), `/setup` per
+categoria, rollback a livello di database, isolamento dei bot
+all'avvio, limiti di emoji/sticker/suoni nel backup. I cricchetti non
+sono stati allargati.
+
+**Gravi**
+- **BUG-19 🔴 I worker del backup non girano mai** (confermato).
+  - **Dove:** `main.py` ~592-595, `core/backup_queue_worker.py`,
+    `core/backup_snapshot_worker.py`.
+  - **Il problema:** vengono avviati prima del login e il loro
+    `before_loop` chiama `wait_until_ready()`, che in quel momento
+    solleva `RuntimeError`: il loop muore subito.
+  - **Effetto:** la coda dei backup non viene mai elaborata, quindi
+    BUG-3 e BUG-4 (coppia registrata, pulizia degli slot) non entrano
+    mai in funzione. Lo snapshot settimanale, che prima saltava solo il
+    primo giro, ora non parte più (regressione di `1098bb2`). Con il
+    nuovo controllo "un job alla volta", il primo `/define-backup`
+    lascia un job in attesa che blocca il server per sempre.
+  - Il worker della coda era già così **prima** di questi fix: la
+    prima revisione non l'aveva visto.
+- **BUG-20 🔴 Un URL malformato ferma tutti i feed** (confermato).
+  `safe_get` solleva su `http://x:99999/` e `http://a..b/`; il giro
+  dei feed si interrompe e tutte le iscrizioni successive, di tutti i
+  server, non vengono più lette. Si può innescare anche da fuori con
+  un redirect.
+- **SEC-18 🔴 DNS rebinding nella protezione SSRF** (confermato). Il
+  nome viene risolto due volte: un DNS che risponde prima un IP
+  pubblico e poi `127.0.0.1` fa leggere al bot un servizio interno.
+  Inoltre `100.64.0.0/10` non è bloccato.
+- **BUG-21 🔴 I link del restore durano 10 minuti** (confermato). Il
+  link arriva in DM ma scade dopo 10 minuti, e un errore temporaneo di
+  Discord lo brucia. L'unico rimedio è rimandare i DM a tutti. La
+  scadenza di 10 minuti veniva dalle istruzioni di `PIANO_FIX.md`: era
+  sbagliata per un link mandato in DM.
+- **SEC-19 🟠 Il link del restore non è legato a chi lo riceve**
+  (confermato). Un utente segnato `banned_blacklisted` che apre il
+  link di un altro entra nel server di backup, riceve il ruolo
+  verificato e torna `active`.
+- **BUG-22 🔴 Il limite sui DM di appello non si riapre mai**
+  (confermato). Chi scrive più spesso di ogni 30 secondi viene
+  ignorato per sempre, senza risposta.
+- **BUG-30 🟠 Un riavvio entro 10 secondi da `/ticket close` lascia il
+  canale per sempre** (confermato). È lo stesso effetto di BUG-1,
+  spostato sui riavvii e sulle ricariche del cog.
+
+**Medi**
+- **BUG-26 🟠** La pulizia dei server del Creator può cancellare backup
+  validi di un altro ambiente che usa lo stesso token (PC di test e
+  produzione), o dopo un reset del database (comportamento confermato,
+  scenario plausibile).
+- **BUG-27 🟠** Scheduler: un'azione senza handler diventa `failed` per
+  sempre. Un cog che non si carica a un avvio fa perdere tutti i
+  tempban in scadenza in quel momento (confermato).
+- **BUG-28 🟠** Fine del backup senza riconciliazione: dopo 24 ore il
+  Creator può cancellare un server dove il bot principale è già
+  entrato; i webhook del mirror non vengono mai puliti (plausibile).
+- **BUG-29 🟠** Il controllo "un solo job attivo" ha una race e nessun
+  modo di annullare un job bloccato (plausibile).
+- **BUG-23 🟠** `/owner shell` al timeout non uccide il comando e non
+  risponde più (confermato con processi veri). Prima almeno rispondeva
+  "Timeout".
+- **SEC-20 🟠** Un'immagine da 39,7 megapixel passa il controllo e un
+  solo filtro usa circa 470 MB; due insieme circa 890 MB (misurato). I
+  comandi immagine non fanno `defer`, e le miniature dello spam-trap
+  aspettano in coda dietro `/fun`.
+- **SEC-21 🟠** Utenti in blacklist ricevono ancora XP vocale di clan e
+  possono creare vocali temporanei (confermato).
+- **SEC-22 🟠** Il mirror del backup inoltra `@everyone` come ping vero
+  nel server di backup (confermato).
+- **BUG-24 🟠** Due casi spam-trap attivi nello stesso server rendono
+  l'appello impossibile (confermato).
+- **BUG-25 🟠** Aggiungere un ruolo esente allo spam-trap ricrea i
+  canali e abbandona quelli vecchi (confermato).
+- **BUG-31 🟠** `/config import` accetta `null` e `[]` come valori e poi
+  ticket e log vanno in crash (confermato).
+- **BUG-32 🟠** La conferma del rollback di un import supera i 2000
+  caratteri e non compare (lunghezze misurate).
+- **BUG-33 🟠** Il limite sui webhook conta anche le richieste
+  rifiutate: con traffico costante sopra soglia il blocco è permanente
+  (confermato).
+- **BUG-34 🟠** `/restore-users` non funziona più dopo
+  `/promuovi-backup` (plausibile, da confermare).
+
+**Minori:** vedi l'elenco in `PIANO_FIX.md` R1-bis.
+
+**Test che non provano il fix:** sette file elencati in `PIANO_FIX.md`
+(RT-5). Il più importante: i test dei worker usano un bot `MagicMock`,
+ed è per questo che BUG-19 è passato con la suite verde.
+
+**Issue chiuse senza test live.** 16 issue sono state chiuse dopo sola
+verifica statica. Quattro di queste hanno difetti residui elencati
+sopra: #8 (BUG-21, SEC-19), #9 (BUG-20, SEC-18), #2/#42 (BUG-30), #5
+(SEC-22).
