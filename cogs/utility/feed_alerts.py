@@ -92,7 +92,7 @@ class FeedAlertsCog(commands.Cog):
         )
 
         await interaction.followup.send(
-            f"✅ Sottoscrizione creata (ID `{subscription_id}`): notificherò in "
+            f"✅ Sottoscrizione creata (ID `RSS-{subscription_id}`): notificherò in "
             f"{channel.mention} i nuovi contenuti da **{label}**. "
             f"Il primo controllo (entro 5 minuti) memorizza solo lo stato attuale, "
             f"non pubblica lo storico esistente.",
@@ -264,7 +264,7 @@ class FeedAlertsCog(commands.Cog):
         )
 
         await interaction.response.send_message(
-            f"✅ Sottoscrizione Twitch creata (ID `{subscription_id}`): notificherò in "
+            f"✅ Sottoscrizione Twitch creata (ID `TW-{subscription_id}`): notificherò in "
             f"{channel.mention} quando **{label}** va live o termina la diretta.",
             ephemeral=True,
         )
@@ -320,7 +320,7 @@ class FeedAlertsCog(commands.Cog):
             )
         )
         await interaction.response.send_message(
-            f"✅ Sottoscrizione YouTube creata (ID `{subscription_id}`): notificherò in "
+            f"✅ Sottoscrizione YouTube creata (ID `YT-{subscription_id}`): notificherò in "
             f"{channel.mention} quando **{label}** va live.{avviso_quota}",
             ephemeral=True,
         )
