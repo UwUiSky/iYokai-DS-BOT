@@ -503,14 +503,9 @@ class iYokaiBot(commands.AutoShardedBot):
         return False
 
 
-async def main() -> None:
-    setup_logging()
-    logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
-
-    # #41: PREMIUM_ALPHA_UNLOCK_ALL sblocca TUTTE le feature premium per
-    # TUTTI i server — spento di default in produzione (vedi
-    # core/config.py), ma se l'owner lo forza comunque a true merita un
-    # WARNING visibile nei log, non solo un INFO che si perde nel resto.
+def avvisa_opzioni_rischiose() -> None:
+    """WARNING all'avvio per le opzioni che in produzione vanno tenute spente."""
+    # #41: sblocca TUTTE le feature premium per TUTTI i server.
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
         logger.warning(
             "PREMIUM_ALPHA_UNLOCK_ALL è attivo: tutte le feature premium sono "
@@ -518,6 +513,22 @@ async def main() -> None:
             "abbonamento. Normale solo durante la fase alpha — imposta "
             "PREMIUM_ALPHA_UNLOCK_ALL=false in .env quando finisce."
         )
+    # SEC-13: /owner eval, /owner shell e /owner cog-load eseguono codice
+    # arbitrario sulla macchina che ospita il bot.
+    if config.ENABLE_EVAL:
+        logger.warning(
+            "ENABLE_EVAL è attivo: /owner eval, /owner shell e /owner cog-load "
+            "possono eseguire codice arbitrario su questa macchina. Normale solo "
+            "in sviluppo — imposta ENABLE_EVAL=false in .env (o "
+            "ENVIRONMENT=production) sul server vero."
+        )
+
+
+async def main() -> None:
+    setup_logging()
+    logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
+
+    avvisa_opzioni_rischiose()
 
     # Il database va connesso PRIMA del bot, perché setup_hook()
     # (chiamato durante bot.start()) già presuppone che db.pool
