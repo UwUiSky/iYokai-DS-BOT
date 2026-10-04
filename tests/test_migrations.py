@@ -11,14 +11,19 @@ toccano le migrazioni reali del progetto.
 """
 
 import asyncio
+import os
+import uuid
 
 import asyncpg
 import pytest
 
 from core.migrations import (
+    ADVISORY_LOCK_ID,
+    MigrationError,
     apply_numbered_migrations,
     discover_migrations,
     ensure_schema_migrations_table,
+    run_all_migrations,
 )
 
 
@@ -35,15 +40,35 @@ class TestDiscoverMigrations:
 
         assert [m.version for m in trovate] == [2, 10]
 
-    def test_ignora_file_che_non_seguono_il_formato(self, tmp_path):
+    def test_ignora_i_file_che_non_sono_migrazioni(self, tmp_path):
         _scrivi_migrazione(tmp_path, "0001_valida.sql", "SELECT 1;")
         _scrivi_migrazione(tmp_path, "__init__.py", "")
         _scrivi_migrazione(tmp_path, "leggimi.txt", "note")
-        _scrivi_migrazione(tmp_path, "abc_senza_numero.sql", "SELECT 1;")
 
         trovate = discover_migrations(tmp_path)
 
         assert [m.name for m in trovate] == ["0001_valida"]
+
+    @pytest.mark.parametrize(
+        "nome_file", ["00003_cinque_cifre.sql", "abc_senza_numero.sql", "0003.sql", "003_tre.py"]
+    )
+    def test_un_nome_fuori_formato_e_un_errore_non_viene_saltato(self, tmp_path, nome_file):
+        _scrivi_migrazione(tmp_path, "0001_valida.sql", "SELECT 1;")
+        _scrivi_migrazione(tmp_path, nome_file, "SELECT 1;")
+
+        with pytest.raises(MigrationError, match=nome_file):
+            discover_migrations(tmp_path)
+
+    def test_due_file_con_lo_stesso_numero_sono_un_errore(self, tmp_path):
+        _scrivi_migrazione(tmp_path, "0002_una.sql", "SELECT 1;")
+        _scrivi_migrazione(tmp_path, "0002_altra.sql", "SELECT 1;")
+
+        with pytest.raises(MigrationError, match="0002_altra.*0002_una|0002_una.*0002_altra"):
+            discover_migrations(tmp_path)
+
+    def test_le_migrazioni_vere_del_progetto_hanno_nomi_validi_e_numeri_unici(self):
+        versioni = [m.version for m in discover_migrations()]
+        assert versioni == sorted(set(versioni)) and versioni[0] == 1
 
     def test_cartella_assente_restituisce_lista_vuota(self, tmp_path):
         assert discover_migrations(tmp_path / "non-esiste") == []
@@ -102,18 +127,12 @@ class TestApplyNumberedMigrations:
             await conn.execute("DELETE FROM schema_migrations WHERE version = 9002")
 
     @pytest.mark.asyncio
-    async def test_due_runner_concorrenti_non_la_applicano_due_volte(self, tmp_path):
-        import os
-
-        dsn = os.environ["DATABASE_URL"]
-        pool_a = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=1)
-        pool_b = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=1)
+    async def test_due_runner_concorrenti_non_la_applicano_due_volte(self, schema_vuoto, tmp_path):
+        # Schema vuoto: nemmeno schema_migrations esiste prima del
+        # gather, la devono creare i runner stessi sotto il lock.
+        pool_a = await _pool_su_schema(schema_vuoto)
+        pool_b = await _pool_su_schema(schema_vuoto)
         try:
-            await ensure_schema_migrations_table(pool_a)
-            async with pool_a.acquire() as conn:
-                await conn.execute("DROP TABLE IF EXISTS test_migrazione_marker_3")
-                await conn.execute("DELETE FROM schema_migrations WHERE version = 9003")
-
             # INSERT (non CREATE TABLE) come "effetto" osservabile:
             # se il lock advisory non funzionasse, i due runner
             # concorrenti scriverebbero DUE righe invece di una.
@@ -133,12 +152,8 @@ class TestApplyNumberedMigrations:
             # l'altro deve averla trovata già fatta al suo turno.
             assert sorted(risultati) == [[], [9003]]
 
-            async with pool_a.acquire() as conn:
-                conteggio = await conn.fetchval("SELECT count(*) FROM test_migrazione_marker_3")
-                assert conteggio == 1  # non 2: nessuna doppia applicazione
-
-                await conn.execute("DROP TABLE test_migrazione_marker_3")
-                await conn.execute("DELETE FROM schema_migrations WHERE version = 9003")
+            conteggio = await pool_a.fetchval("SELECT count(*) FROM test_migrazione_marker_3")
+            assert conteggio == 1  # non 2: nessuna doppia applicazione
         finally:
             await pool_a.close()
             await pool_b.close()
@@ -180,6 +195,78 @@ class TestApplyNumberedMigrations:
         self, db_pool, tmp_path
     ):
         assert await apply_numbered_migrations(db_pool, tmp_path) == []
+
+
+@pytest.fixture
+async def schema_vuoto():
+    """
+    Uno schema Postgres nuovo e vuoto (come un database appena creato),
+    con il nome da usare come search_path. I lock advisory valgono per
+    tutto il database, quindi i runner si mettono in fila lo stesso.
+    """
+    nome = f"test_migr_{uuid.uuid4().hex[:12]}"
+    conn = await asyncpg.connect(dsn=os.environ["DATABASE_URL"])
+    await conn.execute(f'CREATE SCHEMA "{nome}"')
+    try:
+        yield nome
+    finally:
+        await conn.execute(f'DROP SCHEMA "{nome}" CASCADE')
+        await conn.close()
+
+
+async def _pool_su_schema(schema: str, **opzioni) -> asyncpg.Pool:
+    return await asyncpg.create_pool(
+        dsn=os.environ["DATABASE_URL"],
+        min_size=1,
+        max_size=2,
+        server_settings={"search_path": schema},
+        **opzioni,
+    )
+
+
+class TestRunnerSuDatabaseVuoto:
+    async def test_quattro_runner_insieme_su_un_database_vuoto_finiscono_tutti(self, schema_vuoto):
+        """Nessuna tabella creata prima: anche la base deve stare dentro il lock."""
+        pools = [await _pool_su_schema(schema_vuoto) for _ in range(4)]
+        try:
+            esiti = await asyncio.gather(
+                *(run_all_migrations(pool) for pool in pools), return_exceptions=True
+            )
+            assert esiti == [None, None, None, None]
+
+            versioni = await pools[0].fetch("SELECT version FROM schema_migrations ORDER BY version")
+            assert [r["version"] for r in versioni] == [m.version for m in discover_migrations()]
+        finally:
+            for pool in pools:
+                await pool.close()
+
+    async def test_una_migrazione_lenta_non_scade_con_il_command_timeout_del_pool(
+        self, schema_vuoto, tmp_path
+    ):
+        _scrivi_migrazione(tmp_path, "0001_lenta.sql", "SELECT pg_sleep(0.6);")
+        pool = await _pool_su_schema(schema_vuoto, command_timeout=0.2)
+        try:
+            assert await apply_numbered_migrations(pool, tmp_path) == [1]
+        finally:
+            await pool.close()
+
+    async def test_l_attesa_del_lock_non_scade_con_il_command_timeout_del_pool(
+        self, schema_vuoto, tmp_path
+    ):
+        _scrivi_migrazione(tmp_path, "0001_veloce.sql", "SELECT 1;")
+        pool = await _pool_su_schema(schema_vuoto, command_timeout=0.2)
+        altro = await asyncpg.connect(dsn=os.environ["DATABASE_URL"])
+        await altro.execute("SELECT pg_advisory_lock($1)", ADVISORY_LOCK_ID)
+        try:
+            runner = asyncio.create_task(apply_numbered_migrations(pool, tmp_path))
+            await asyncio.sleep(0.6)
+            assert not runner.done()  # in attesa del lock, non in timeout
+
+            await altro.execute("SELECT pg_advisory_unlock($1)", ADVISORY_LOCK_ID)
+            assert await asyncio.wait_for(runner, timeout=5) == [1]
+        finally:
+            await altro.close()
+            await pool.close()
 
 
 class TestMigrazioneDb2Reale:
