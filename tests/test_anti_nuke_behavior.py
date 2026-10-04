@@ -6,9 +6,11 @@ stesso schema di tests/test_anti_raid_behavior.py.
 """
 
 from datetime import datetime, timezone
+from unittest.mock import create_autospec
 
 import discord
 import pytest
+from discord.ext import commands
 
 import cogs.security.anti_nuke as anti_nuke_module
 from cogs.security.anti_nuke import AntiNukeCog, MODULE_ANTI_NUKE
@@ -90,6 +92,14 @@ class _FakeGuild:
 
 GUILD_ID = 700000400
 ACTOR_ID = 900001
+BOT_ID = 999001
+
+
+def _bot_finto():
+    """Bot con la firma vera di commands.Bot e un utente proprio (bot.user)."""
+    bot = create_autospec(commands.Bot, instance=True)
+    bot.user = _FakeUser(BOT_ID)
+    return bot
 
 
 @pytest.fixture
@@ -149,7 +159,7 @@ async def test_sotto_soglia_nessuna_azione(contesto):
     membro = _FakeMember(ACTOR_ID, guild)
     guild._members[ACTOR_ID] = membro
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     risultato = await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "test")
 
     assert risultato is None
@@ -164,7 +174,7 @@ async def test_sopra_soglia_rimuove_i_ruoli_di_default(contesto):
     membro = _FakeMember(ACTOR_ID, guild)
     guild._members[ACTOR_ID] = membro
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "azione 1")
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "azione 2")
 
@@ -186,7 +196,7 @@ async def test_punish_action_ban(contesto):
     membro = _FakeMember(ACTOR_ID, guild)
     guild._members[ACTOR_ID] = membro
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "1")
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "2")
 
@@ -201,7 +211,7 @@ async def test_actor_fidato_non_subisce_nulla(contesto):
     membro = _FakeMember(ACTOR_ID, guild)
     guild._members[ACTOR_ID] = membro
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "1")
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "2")
 
@@ -217,7 +227,7 @@ async def test_owner_come_autore_non_subisce_nulla(contesto):
     membro_owner = _FakeMember(1, guild)
     guild._members[1] = membro_owner
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, 1, "1")
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, 1, "2")
 
@@ -233,7 +243,7 @@ async def test_modulo_disattivato_ignora_tutto(contesto):
     membro = _FakeMember(ACTOR_ID, guild)
     guild._members[ACTOR_ID] = membro
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "1")
     await cog._handle_event(guild, NUKE_CATEGORY_CHANNEL, ACTOR_ID, "2")
 
@@ -248,7 +258,7 @@ async def test_on_member_remove_ignora_un_leave_volontario(contesto):
     guild.set_audit_entries(discord.AuditLogAction.kick, [])  # nessuna voce kick recente
     membro = _FakeMember(500, guild)
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog.on_member_remove(membro)
 
     from core.repositories.security_repo import security_repo
@@ -268,7 +278,7 @@ async def test_on_member_remove_rileva_un_kick_reale(contesto):
     )
     guild._members[ACTOR_ID] = _FakeMember(ACTOR_ID, guild)
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog.on_member_remove(membro_espulso)
 
     from core.repositories.security_repo import security_repo
@@ -311,7 +321,36 @@ async def test_on_guild_channel_delete_ricrea_il_canale_in_recovery(contesto):
 
     canale = _FakeTextChannel("canale-importante", guild)
 
-    cog = AntiNukeCog(bot=None)
+    cog = AntiNukeCog(bot=_bot_finto())
     await cog.on_guild_channel_delete(canale)
 
     assert getattr(guild, "recreated_channel_name", None) == "canale-importante"
+
+
+@pytest.mark.asyncio
+async def test_le_azioni_del_bot_stesso_non_vengono_contate(contesto):
+    """
+    BUG-11: il bot crea e ricrea canali per lavoro suo (recovery,
+    ticket, canali vocali temporanei). Dieci canali creati dal bot non
+    devono far scattare la punizione contro il bot stesso.
+    """
+    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1, punish_action="ban"))
+    owner = _FakeUser(1)
+    guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
+    membro_bot = _FakeMember(BOT_ID, guild)
+    guild._members[BOT_ID] = membro_bot
+
+    cog = AntiNukeCog(bot=_bot_finto())
+    for numero in range(10):
+        esito = await cog._handle_event(
+            guild, NUKE_CATEGORY_CHANNEL, BOT_ID, f"creato #canale-{numero}"
+        )
+        assert esito is None
+
+    assert membro_bot.banned is False
+    assert membro_bot.roles_removed is False
+    assert owner.dm_sent == []
+
+    from core.repositories.security_repo import security_repo
+
+    assert await security_repo.get_recent_actions(GUILD_ID) == []

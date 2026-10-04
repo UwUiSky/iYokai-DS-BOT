@@ -21,31 +21,47 @@ from core.premium import PremiumModule, registry
 
 MODULE_POLL = "poll"
 
+# Limiti dei sondaggi di Discord: 300 caratteri per la domanda, 55 per
+# ogni risposta, 10 risposte. Dichiarati sulle opzioni del comando, è
+# Discord stesso a rifiutare un testo troppo lungo con un suo messaggio.
+TestoDomanda = app_commands.Range[str, 1, 300]
+TestoRisposta = app_commands.Range[str, 1, 55]
+
 
 class PollCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="poll", description="Crea un sondaggio (fino a 5 opzioni).")
+    @app_commands.command(name="poll", description="Crea un sondaggio (fino a 10 opzioni).")
     @app_commands.describe(
-        question="La domanda del sondaggio",
-        option1="Prima opzione",
-        option2="Seconda opzione",
+        question="La domanda del sondaggio (massimo 300 caratteri)",
+        option1="Prima opzione (massimo 55 caratteri)",
+        option2="Seconda opzione (massimo 55 caratteri)",
         option3="Terza opzione (facoltativa)",
         option4="Quarta opzione (facoltativa)",
         option5="Quinta opzione (facoltativa)",
+        option6="Sesta opzione (facoltativa)",
+        option7="Settima opzione (facoltativa)",
+        option8="Ottava opzione (facoltativa)",
+        option9="Nona opzione (facoltativa)",
+        option10="Decima opzione (facoltativa)",
         duration_hours="Durata in ore (default 24, massimo 768 = 32 giorni)",
         multiple="Permetti di votare più di un'opzione",
     )
     async def poll(
         self,
         interaction: discord.Interaction,
-        question: str,
-        option1: str,
-        option2: str,
-        option3: str | None = None,
-        option4: str | None = None,
-        option5: str | None = None,
+        question: TestoDomanda,
+        option1: TestoRisposta,
+        option2: TestoRisposta,
+        option3: TestoRisposta | None = None,
+        option4: TestoRisposta | None = None,
+        option5: TestoRisposta | None = None,
+        option6: TestoRisposta | None = None,
+        option7: TestoRisposta | None = None,
+        option8: TestoRisposta | None = None,
+        option9: TestoRisposta | None = None,
+        option10: TestoRisposta | None = None,
         duration_hours: app_commands.Range[int, 1, 768] = 24,
         multiple: bool = False,
     ) -> None:
@@ -64,7 +80,14 @@ class PollCog(commands.Cog):
             )
             return
 
-        opzioni = [o for o in (option1, option2, option3, option4, option5) if o is not None]
+        opzioni = [
+            o
+            for o in (
+                option1, option2, option3, option4, option5,
+                option6, option7, option8, option9, option10,
+            )
+            if o is not None
+        ]
 
         sondaggio = discord.Poll(
             question=question,

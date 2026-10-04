@@ -60,6 +60,25 @@ def _require(name: str) -> str:
     return value
 
 
+def _require_int(name: str) -> int:
+    """
+    Legge una variabile d'ambiente OBBLIGATORIA che deve essere un
+    numero intero (gli ID di Discord). Un valore non numerico ferma
+    l'avvio con un messaggio che nomina la variabile.
+    """
+    value = _require(name)
+    try:
+        return int(value)
+    except ValueError:
+        print(
+            f"\n[CONFIG] ERRORE: la variabile d'ambiente '{name}' deve essere "
+            f"un numero intero (un ID di Discord, solo cifre), trovato: "
+            f"'{value}'.\nControlla il tuo file .env.\n",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def _optional(name: str, default: str = "") -> str:
     """Legge una variabile d'ambiente opzionale, con un default."""
     return os.getenv(name, default).strip()
@@ -137,7 +156,6 @@ class Config:
     YOKAI_BOT_TOKEN: str = field(repr=False)
     YOKAI_CREATOR_TOKEN: str = field(repr=False)
     MUSIC_TOKENS: list[str] = field(repr=False)  # le 5 istanze music, in ordine
-    NSFW_TOKEN: str = field(repr=False)
 
     # --- Discord: ID di controllo -----------------------------------
     OWNER_ID: int
@@ -165,6 +183,11 @@ class Config:
     # (LAVALINK_HOST/PORT/PASSWORD, comportamento originale invariato
     # per chi preferisce comunque self-hostare un singolo nodo).
     LAVALINK_NODES: str = field(default="", repr=False)
+
+    # Token dell'istanza NSFW: facoltativo finché quell'istanza non
+    # esiste (nessuna parte del bot lo usa ancora). Ha un default,
+    # quindi sta dopo i campi obbligatori.
+    NSFW_TOKEN: str = field(default="", repr=False)
 
     # Twitch (SPEC.md §10.1/10.2) — opzionali: vuoti finché l'utente
     # non registra un'app su dev.twitch.tv. Il watcher (core/twitch_
@@ -318,9 +341,9 @@ def _load_config() -> Config:
         YOKAI_BOT_TOKEN=_require("YOKAI_BOT_TOKEN"),
         YOKAI_CREATOR_TOKEN=_require("YOKAI_CREATOR_TOKEN"),
         MUSIC_TOKENS=music_tokens,
-        NSFW_TOKEN=_require("NSFW_TOKEN"),
-        OWNER_ID=int(_require("OWNER_ID")),
-        MAIN_GUILD_ID=int(_require("MAIN_GUILD_ID")),
+        NSFW_TOKEN=_optional("NSFW_TOKEN", ""),
+        OWNER_ID=_require_int("OWNER_ID"),
+        MAIN_GUILD_ID=_require_int("MAIN_GUILD_ID"),
         DATABASE_URL=_require("DATABASE_URL"),
         DB_POOL_MIN=_optional_int("DB_POOL_MIN", 5),
         DB_POOL_MAX=_optional_int("DB_POOL_MAX", 10),

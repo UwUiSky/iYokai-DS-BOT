@@ -103,6 +103,9 @@ logger = logging.getLogger("iyokai.leveling")
 
 MODULE_LEVELING = "leveling"
 
+# Solo questi tipi di messaggio danno XP: quelli scritti da una persona.
+TIPI_DI_MESSAGGIO_CON_XP = (discord.MessageType.default, discord.MessageType.reply)
+
 
 def _format_seconds(seconds: int) -> str:
     if seconds < 60:
@@ -203,6 +206,10 @@ class LevelingCog(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None:
+            return
+        # I messaggi di sistema (boost, messaggio fissato, benvenuto
+        # automatico) hanno un autore vero ma non li ha scritti lui.
+        if message.type not in TIPI_DI_MESSAGGIO_CON_XP:
             return
 
         # SEC-10: un utente in blacklist non deve continuare a

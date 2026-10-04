@@ -36,8 +36,30 @@ logger = logging.getLogger("iyokai.permission_heatmap")
 MODULE_PERMISSION_HEATMAP = "permission_heatmap"
 
 
+# La descrizione di un embed tiene 4096 caratteri: l'elenco si ferma
+# prima, per lasciare posto alla riga "…e altri N ruoli".
+MAX_CARATTERI_ELENCO = 4000
+
+
 def _permission_flags(permissions: discord.Permissions) -> dict[str, bool]:
     return dict(permissions)
+
+
+def _elenco_entro_il_limite(righe: list[str]) -> str:
+    """Unisce le righe finché ci stanno e dice quanti ruoli restano fuori."""
+    mostrate: list[str] = []
+    lunghezza = 0
+    for riga in righe:
+        lunghezza += len(riga) + 2  # 2 = la riga vuota che separa i ruoli
+        if lunghezza > MAX_CARATTERI_ELENCO:
+            break
+        mostrate.append(riga)
+
+    testo = "\n\n".join(mostrate)
+    esclusi = len(righe) - len(mostrate)
+    if esclusi:
+        testo += f"\n\n…e altri {esclusi} ruoli con permessi critici."
+    return testo
 
 
 class PermissionHeatmapCog(commands.Cog):
@@ -86,7 +108,7 @@ class PermissionHeatmapCog(commands.Cog):
 
         embed = discord.Embed(
             title="🛡️ Permission Risk Heatmap",
-            description="\n\n".join(righe),
+            description=_elenco_entro_il_limite(righe),
             color=discord.Color.orange(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)

@@ -20,8 +20,10 @@ REMINDER_THRESHOLD_HOURS = 2  # manda il promemoria quando restano
 # meno di 2 ore alla scadenza — abbastanza margine perché la persona
 # possa ancora agire, non così presto da sembrare prematuro.
 
-MAX_CREATOR_GUILDS = 10  # limite reale di Discord per un bot non
-# verificato — Creator deve restarci sempre sotto (SPEC.md §11.1).
+MAX_CREATOR_GUILDS = 10  # tetto dei server in cui Creator può stare
+# insieme (SPEC.md §11.1). Viene dalla vecchia regola di Discord "un bot
+# crea server solo se è in meno di 10". Non c'entra con la verifica
+# dell'app (100 server) né con gli intent privilegiati (10.000 utenti).
 
 
 def should_send_timeout_reminder(

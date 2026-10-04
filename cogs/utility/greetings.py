@@ -43,6 +43,10 @@ class GreetingsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
+        # Niente benvenuto ai bot: non possono ricevere messaggi privati
+        # da un altro bot e li ha aggiunti un amministratore.
+        if member.bot:
+            return
         if not await db.is_module_active_for_guild(member.guild.id, MODULE_GREETINGS):
             return
 

@@ -36,3 +36,14 @@ async def test_sticky_messages_cog_si_carica_correttamente():
     assert {"set", "remove"} <= sottocomandi
 
     assert "on_message" in bot.extra_events
+
+
+async def test_sticky_set_dichiara_la_lunghezza_massima_del_testo():
+    """Un messaggio Discord tiene 2000 caratteri: lo sticky non può superarli."""
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await sticky_messages_setup(bot)
+
+    gruppo = bot.tree.get_command("sticky")
+    opzioni = {o["name"]: o for o in gruppo.get_command("set").to_dict(bot.tree)["options"]}
+
+    assert opzioni["message"]["max_length"] == 2000

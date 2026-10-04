@@ -53,6 +53,7 @@ class _FakeMessage:
         self.author = author
         self.guild = guild
         self.channel = channel
+        self.type = discord.MessageType.default  # un messaggio normale
 
 
 class TestLevelingOnMessageIgnoraBlacklist:

@@ -55,8 +55,13 @@ class CommandSearchCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="search", description="Cerca un comando per descrizione.")
-    @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno'")
-    async def search(self, interaction: discord.Interaction, query: str) -> None:
+    @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno' (massimo 100 caratteri)")
+    async def search(
+        self,
+        interaction: discord.Interaction,
+        # Il testo viene ricopiato nella risposta: va tenuto corto.
+        query: app_commands.Range[str, 1, 100],
+    ) -> None:
         tutti_comandi = walk_commands(self.bot.tree.get_commands())
         risultati = search_commands(query, tutti_comandi)
 

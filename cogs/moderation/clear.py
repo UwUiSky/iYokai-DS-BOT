@@ -13,11 +13,12 @@ già internamente. Il limite resta comunque REALE: cancellare molti
 messaggi vecchi può richiedere diversi secondi per via del rate limit
 sulle cancellazioni singole.
 
-Nessun filtro per "contenuto testuale" (es. "contiene parola X"):
-richiederebbe il Message Content Intent, che nel progetto resta
-disattivato di default (vedi main.py) finché un modulo non lo
-giustifica esplicitamente in fase di richiesta della verifica
-Discord — un filtro di clear non vale quella spesa.
+Non c'è un filtro per "contenuto testuale" (es. "contiene parola X").
+Il Message Content Intent è acceso (vedi main.py), quindi il testo dei
+messaggi è disponibile e il filtro si può aggiungere. Regola di
+Discord per gli intent privilegiati: sotto i 10.000 utenti basta
+l'interruttore nel Developer Portal; da 10.000 utenti serve la domanda
+a Discord, da rifare ogni anno.
 """
 
 from __future__ import annotations

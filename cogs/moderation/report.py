@@ -50,10 +50,15 @@ class ModerationReportCog(commands.Cog):
         name="report", description="Segnala un utente allo staff del server."
     )
     @app_commands.describe(
-        member="L'utente da segnalare", reason="Descrizione della segnalazione"
+        member="L'utente da segnalare",
+        reason="Descrizione della segnalazione (da 3 a 1000 caratteri)",
     )
     async def report(
-        self, interaction: discord.Interaction, member: discord.Member, reason: str
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        # Il motivo finisce in un campo di embed, che tiene 1024 caratteri.
+        reason: app_commands.Range[str, 3, 1000],
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_REPORT):
             return
@@ -100,6 +105,14 @@ class ModerationReportCog(commands.Cog):
             await interaction.response.send_message(
                 "Non riesco a inviare la segnalazione nel canale configurato "
                 "(permessi mancanti). Contatta un amministratore.",
+                ephemeral=True,
+            )
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non riesco a inviare la segnalazione nel canale configurato "
+                "(errore di Discord). Riprova tra poco o contatta un "
+                "amministratore.",
                 ephemeral=True,
             )
             return

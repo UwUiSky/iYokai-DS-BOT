@@ -263,6 +263,10 @@ class AntiNukeCog(commands.Cog):
     async def _handle_event(
         self, guild: discord.Guild, category: str, actor_id: int | None, detail_suffix: str
     ) -> SecuritySettings | None:
+        # Le azioni del bot stesso (recovery, ticket, canali temporanei)
+        # non si contano: il bot non deve mai punire se stesso.
+        if actor_id == self.bot.user.id:
+            return None
         if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_NUKE):
             return None
         settings = await security_repo.get_settings(guild.id)

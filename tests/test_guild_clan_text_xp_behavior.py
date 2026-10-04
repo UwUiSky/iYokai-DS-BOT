@@ -10,6 +10,7 @@ all'XP personale già testata altrove, contro PostgreSQL vero.
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
+import discord
 import pytest
 
 from cogs.leveling.leveling import LevelingCog, MODULE_LEVELING
@@ -44,6 +45,7 @@ class _FakeMessage:
         self.author = author
         self.guild = guild
         self.channel = channel
+        self.type = discord.MessageType.default  # un messaggio normale
 
 
 @pytest.fixture
