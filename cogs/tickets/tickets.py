@@ -34,18 +34,18 @@ permesso READ_MESSAGE_HISTORY — stessa assunzione già verificata e
 documentata in core/spam_trap_logic.py). Vedi core/ticket_logic.py
 per la costruzione pura del testo del transcript.
 
-/ticket close: TextChannel.delete() non accetta un parametro `delay`
-(BUG-1) — l'attesa dei 10 secondi prima dell'eliminazione è una
-coroutine propria (_elimina_dopo), lanciata come task tracciato in
-self._eliminazioni_pianificate così non viene raccolto dal garbage
-collector prima di finire, e cancellato in cog_unload.
-Funzioni coperte: SPEC §13.8/§13.9/§13.10/§13.11, REVIEW.md BUG-1
-(issue #2, #42).
+/ticket close: l'eliminazione del canale dopo l'attesa passa dallo
+scheduler persistente (core/scheduler.py, azione
+`ticket_delete_channel`), così sopravvive a un riavvio del bot o a una
+ricarica del cog; gli errori temporanei di Discord vengono riprovati
+dallo scheduler. /ticket forceclose elimina subito e funziona anche su
+un ticket già chiuso il cui canale è rimasto.
+Funzioni coperte: SPEC §13.8/§13.9/§13.10/§13.11, REVIEW.md BUG-1,
+BUG-30 (issue #2, #42).
 """
 
 from __future__ import annotations
 
-import asyncio
 import io
 import logging
 from datetime import datetime, timezone
@@ -64,6 +64,7 @@ from core.ticket_logic import (
     merge_support_role_ids,
 )
 from core.premium import PremiumModule, registry
+from core.scheduler import in_seconds, scheduler
 from core.ui_base import BaseView
 from cogs.moderation._shared import ensure_module_enabled
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
@@ -81,6 +82,10 @@ SETTING_SUPPORT_ROLES = "ticket_support_role_ids"
 # dell'ultimo riavvio del bot) alla view registrata come persistente
 # in setup() — vedi bot.add_view() in fondo al file.
 OPEN_TICKET_CUSTOM_ID = "iyokai_ticket_open"
+
+# Azione dello scheduler che elimina il canale di un ticket chiuso.
+TICKET_DELETE_ACTION_TYPE = "ticket_delete_channel"
+RITARDO_ELIMINAZIONE_SECONDI = 10
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
@@ -316,16 +321,9 @@ class TicketPanelView(BaseView):
 class TicketsCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        # BUG-1: task delle eliminazioni ritardate di /ticket close,
-        # tenuti qui perché un task senza riferimenti può essere
-        # raccolto dal garbage collector prima di finire. Rimossi da
-        # soli a fine task (add_done_callback), cancellati in
-        # cog_unload se il cog viene ricaricato prima che scattino.
-        self._eliminazioni_pianificate: set[asyncio.Task] = set()
-
-    def cog_unload(self) -> None:
-        for task in self._eliminazioni_pianificate:
-            task.cancel()
+        # Canali di cui si sta ancora leggendo la history per il
+        # transcript: lo scheduler non li elimina finché non ha finito.
+        self._transcript_in_corso: set[int] = set()
 
     @app_commands.command(
         name="ticket-setup",
@@ -652,28 +650,58 @@ class TicketsCog(commands.Cog):
         except (discord.Forbidden, discord.HTTPException, discord.NotFound):
             logger.info("Impossibile inviare il transcript in DM all'utente %s (DM chiusi?)", ticket.user_id)
 
-    async def _elimina_dopo(
-        self, channel: discord.TextChannel, ritardo: float, motivo: str
+    async def _transcript_senza_bloccare(
+        self, guild: discord.Guild, channel: discord.TextChannel, ticket
     ) -> None:
-        """
-        BUG-1: TextChannel.delete() non accetta `delay` (firma reale:
-        `(self, *, reason=None)`) — l'attesa va fatta qui con
-        asyncio.sleep(), non passata al metodo di discord.py.
-        """
-        await asyncio.sleep(ritardo)
+        """Un transcript che fallisce non deve mai impedire l'eliminazione del canale."""
+        self._transcript_in_corso.add(channel.id)
         try:
-            await channel.delete(reason=motivo)
-        except (discord.NotFound, discord.Forbidden):
-            logger.warning(
-                "Impossibile eliminare il canale ticket %s dopo la chiusura", channel.id
-            )
+            await self._deliver_transcript(guild, channel, ticket)
+        except Exception:
+            logger.exception("Transcript del ticket %s non riuscito", channel.id)
+        finally:
+            self._transcript_in_corso.discard(channel.id)
 
-    def _pianifica_eliminazione(
-        self, channel: discord.TextChannel, ritardo: float, motivo: str
+    async def _elimina_canale(self, channel_id: int, motivo: str | None) -> None:
+        """
+        Elimina il canale del ticket. 404 = già eliminato, 403 = solo
+        registrato (riprovare non serve). Gli altri errori di Discord
+        (5xx) escono: chi chiama riprova più tardi.
+        """
+        try:
+            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+            await channel.delete(reason=motivo)
+        except discord.NotFound:
+            return
+        except discord.Forbidden:
+            logger.warning("Permessi mancanti per eliminare il canale ticket %s", channel_id)
+
+    async def _pianifica_eliminazione(
+        self, interaction: discord.Interaction, motivo: str, ritardo: int
     ) -> None:
-        task = self.bot.loop.create_task(self._elimina_dopo(channel, ritardo, motivo))
-        self._eliminazioni_pianificate.add(task)
-        task.add_done_callback(self._eliminazioni_pianificate.discard)
+        """BUG-30: nello scheduler persistente, non in un task in memoria."""
+        await scheduler.schedule(
+            interaction.guild.id,
+            interaction.user.id,
+            TICKET_DELETE_ACTION_TYPE,
+            in_seconds(ritardo),
+            {"channel_id": interaction.channel.id, "reason": motivo},
+        )
+
+    async def handle_ticket_delete_channel(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Handler dello scheduler. Se solleva, lo scheduler riprova più tardi."""
+        channel_id = payload["channel_id"]
+        if channel_id in self._transcript_in_corso:
+            # Il transcript sta ancora leggendo i messaggi: si ripassa dopo.
+            await scheduler.schedule(
+                guild_id,
+                user_id,
+                TICKET_DELETE_ACTION_TYPE,
+                in_seconds(RITARDO_ELIMINAZIONE_SECONDI),
+                payload,
+            )
+            return
+        await self._elimina_canale(channel_id, payload.get("reason"))
 
     @ticket_group.command(name="close", description="Chiudi questo ticket.")
     async def close(self, interaction: discord.Interaction) -> None:
@@ -682,13 +710,15 @@ class TicketsCog(commands.Cog):
             return
 
         await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id)
+        # Prima di tutto il resto: da qui in poi un riavvio o un errore
+        # nel transcript non lasciano più il canale per sempre.
+        await self._pianifica_eliminazione(
+            interaction, f"Ticket chiuso da {interaction.user}", RITARDO_ELIMINAZIONE_SECONDI
+        )
         await interaction.response.send_message(
-            "Ticket chiuso. Questo canale verrà eliminato tra 10 secondi."
+            "Ticket chiuso. Questo canale verrà eliminato entro un minuto."
         )
-        await self._deliver_transcript(interaction.guild, interaction.channel, ticket)
-        self._pianifica_eliminazione(
-            interaction.channel, 10, f"Ticket chiuso da {interaction.user}"
-        )
+        await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
 
     @ticket_group.command(
         name="forceclose",
@@ -699,8 +729,9 @@ class TicketsCog(commands.Cog):
         SPEC.md §13.9: a differenza di /ticket close (aperto a
         chiunque abbia accesso al canale, incluso chi ha aperto il
         ticket), questo è riservato allo staff ed elimina il canale
-        SUBITO, senza i 10 secondi di preavviso — pensato per i
-        ticket da chiudere immediatamente (es. abuso, spam).
+        SUBITO, senza attesa — pensato per i ticket da chiudere
+        immediatamente (es. abuso, spam). Funziona anche su un ticket
+        già chiuso il cui canale è rimasto (BUG-30).
         """
         if not await _is_ticket_staff(interaction):
             await interaction.response.send_message(
@@ -710,16 +741,29 @@ class TicketsCog(commands.Cog):
             )
             return
 
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None:
+            await interaction.response.send_message(
+                "Questo comando funziona solo dentro un canale ticket.", ephemeral=True
+            )
             return
 
+        # Su un ticket già chiuso non cambia nulla nel database.
         await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, force=True)
         await interaction.response.send_message(
             f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale."
         )
-        await self._deliver_transcript(interaction.guild, interaction.channel, ticket)
-        await interaction.channel.delete(reason=f"Ticket forzatamente chiuso da {interaction.user}")
+        await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
+
+        motivo = f"Ticket forzatamente chiuso da {interaction.user}"
+        try:
+            await self._elimina_canale(interaction.channel.id, motivo)
+        except discord.HTTPException:
+            logger.warning(
+                "Eliminazione del canale ticket %s non riuscita: riprovo dallo scheduler.",
+                interaction.channel.id,
+            )
+            await self._pianifica_eliminazione(interaction, motivo, RITARDO_ELIMINAZIONE_SECONDI)
 
     # ================================================================
     # SPEC.md §13.12 — traccia la prima risposta nel canale ticket
@@ -749,7 +793,9 @@ async def setup(bot: commands.Bot) -> None:
             premium_capable=False,
         )
     )
-    await bot.add_cog(TicketsCog(bot))
+    cog = TicketsCog(bot)
+    await bot.add_cog(cog)
+    scheduler.register_handler(TICKET_DELETE_ACTION_TYPE, cog.handle_ticket_delete_channel)
 
     # Registrazione della view persistente: DEVE avvenire ad ogni
     # avvio del bot, non solo quando il pannello viene pubblicato per
