@@ -615,6 +615,7 @@ async def main() -> None:
             redirect_uri=config.OAUTH2_REDIRECT_URI,
             bot_token=config.YOKAI_BOT_TOKEN,
             oauth_encryption_key=config.OAUTH_ENCRYPTION_KEY,
+            get_guild=bot.get_guild,
         )
         restore_web_runner = await restore_web_start_server(
             restore_app, config.WEB_BIND_HOST, config.RESTORE_WEB_PORT

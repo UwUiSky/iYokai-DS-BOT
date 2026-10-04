@@ -3,12 +3,15 @@ tests/test_restore_web_server.py
 ====================================
 Test dell'endpoint /oauth/callback (SPEC.md §11.11). build_app()
 accetta le dipendenze come parametri: i test più vecchi usano finti
-minimi; quelli di BUG-21/SEC-19 usano l'orchestrator vero contro un server aiohttp locale che imita Discord
+minimi; quelli di BUG-21/SEC-19 e del controllo sul ruolo usano
+l'orchestrator vero contro un server aiohttp locale che imita Discord
 e il repository vero su PostgreSQL.
 """
 
 import asyncio
+import logging
 
+import discord
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
@@ -23,6 +26,7 @@ from core.repositories.restore_oauth_repo import (
 from core.restore_oauth_logic import encode_state, RestoreState
 from core.restore_orchestrator import ExchangedToken, RestoreOrchestrator
 from core.restore_web_server import build_app, start_server
+from tests.support.discord_fakes import fake_guild, fake_member, fake_role
 
 CHIAVE = generate_key()
 
@@ -85,6 +89,19 @@ def _url_di_callback(
     return f"/oauth/callback?code={code}&state={state}"
 
 
+def _server_con_ruolo(ruolo=None):
+    """Server finto (autospec) in cui il bot è abbastanza in alto da assegnare `ruolo`."""
+    bot_membro = fake_member(user_id=1, name="Yokai Bot", bot=True)
+    bot_membro.top_role = fake_role(role_id=9000, name="Bot", position=50)
+    server = fake_guild(guild_id=200, me=bot_membro)
+    server.get_role.return_value = ruolo
+    return server
+
+
+def _nessun_server(guild_id):
+    return None
+
+
 @pytest.mark.asyncio
 async def test_callback_valido_aggiunge_l_utente_e_salva_il_token():
     orchestrator = _FakeOrchestrator(
@@ -100,6 +117,7 @@ async def test_callback_valido_aggiunge_l_utente_e_salva_il_token():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get(_url_di_callback(100, 200))
@@ -123,11 +141,46 @@ async def test_callback_assegna_il_ruolo_verificato_se_configurato():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=lambda guild_id: _server_con_ruolo(fake_role(role_id=555, position=5)),
     )
     async with TestClient(TestServer(app)) as client:
         await client.get(_url_di_callback(100, 200))
 
     assert orchestrator.chiamate_assign_role == [(200, 999, 555)]
+
+
+@pytest.mark.asyncio
+async def test_callback_ruolo_verificato_pericoloso_non_viene_assegnato(caplog):
+    """
+    SEC-4/SEC-17: il ruolo verificato può aver preso permessi
+    pericolosi dopo il /verify setup — l'utente entra lo stesso, ma
+    senza il ruolo, e resta un avviso nei log.
+    """
+    orchestrator = _FakeOrchestrator(
+        token=ExchangedToken(access_token="a", refresh_token="r", expires_at=None)
+    )
+    ruolo_admin = fake_role(
+        role_id=555, name="Verificato", position=5, permissions=discord.Permissions(administrator=True)
+    )
+    app = build_app(
+        orchestrator=orchestrator,
+        oauth_repo=_FakeOAuthRepo(),
+        verify_repo_=_FakeVerifyRepo(verified_role_id=555),
+        client_id="1",
+        client_secret="s",
+        redirect_uri="https://esempio.com/cb",
+        bot_token="bot-token",
+        oauth_encryption_key=CHIAVE,
+        get_guild=lambda guild_id: _server_con_ruolo(ruolo_admin),
+    )
+    with caplog.at_level(logging.WARNING, logger="iyokai.restore_web_server"):
+        async with TestClient(TestServer(app)) as client:
+            risposta = await client.get(_url_di_callback(100, 200))
+
+    assert risposta.status == 200
+    assert orchestrator.chiamate_join == [(200, 999)]
+    assert orchestrator.chiamate_assign_role == []
+    assert "administrator" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -145,6 +198,7 @@ async def test_callback_consent_only_non_chiama_join():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get(_url_di_callback(100, 0))  # target=0 -> consenso puro
@@ -165,6 +219,7 @@ async def test_callback_senza_code_restituisce_errore():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get("/oauth/callback?state=abc")
@@ -183,6 +238,7 @@ async def test_callback_state_malformato_restituisce_errore():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get("/oauth/callback?code=x&state=stato-non-valido")
@@ -203,6 +259,7 @@ async def test_callback_scambio_token_fallito_restituisce_errore_senza_salvare()
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get(_url_di_callback(100, 200))
@@ -226,6 +283,7 @@ async def test_callback_join_fallito_restituisce_errore_502():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get(_url_di_callback(100, 200))
@@ -254,6 +312,7 @@ async def test_callback_identita_non_verificabile_restituisce_errore_senza_salva
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         risposta = await client.get(_url_di_callback(100, 200))
@@ -274,6 +333,7 @@ async def test_callback_state_scaduto_restituisce_errore():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     state_vecchio = encode_state(RestoreState(100, 200, 999), CHIAVE, now=0)
     async with TestClient(TestServer(app)) as client:
@@ -296,6 +356,7 @@ async def test_callback_state_riusato_restituisce_errore_la_seconda_volta():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     url = _url_di_callback(100, 200)
     async with TestClient(TestServer(app)) as client:
@@ -319,6 +380,7 @@ async def test_start_server_usa_l_access_log_redatto():
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
 
     runner = await start_server(app, host="127.0.0.1", port=0)
@@ -407,6 +469,7 @@ async def ambiente(clean_db):
         redirect_uri="https://esempio.com/cb",
         bot_token="bot-token",
         oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
     )
     async with TestClient(TestServer(app)) as client:
         yield client, discord_finto, oauth_repo

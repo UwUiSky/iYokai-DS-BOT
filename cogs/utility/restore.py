@@ -50,6 +50,7 @@ from core.restore_oauth_logic import (
 )
 from core.restore_orchestrator import restore_orchestrator
 from core.restore_retention_logic import was_recently_kicked
+from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 
 logger = logging.getLogger("iyokai.restore")
 
@@ -171,6 +172,7 @@ class RestoreCog(commands.Cog):
             ACTION_CLASSIC_INVITE: 0,
             ACTION_SKIP_BLACKLISTED: 0,
             "dm_falliti": 0,
+            "ruolo_non_assegnato": 0,
         }
 
         invito_classico_url: str | None = None
@@ -195,12 +197,11 @@ class RestoreCog(commands.Cog):
                     access_token=token.access_token,
                 )
                 if aggiunto and ruolo_verificato_id is not None:
-                    await restore_orchestrator.assign_role(
-                        bot_token=config.YOKAI_BOT_TOKEN,
-                        guild_id=interaction.guild.id,
-                        user_id=entry.user_id,
-                        role_id=ruolo_verificato_id,
+                    assegnato = await self._assegna_ruolo_verificato(
+                        interaction.guild, entry.user_id, ruolo_verificato_id
                     )
+                    if not assegnato:
+                        contatori["ruolo_non_assegnato"] += 1
                 continue
 
             if azione == ACTION_REQUEST_CONSENT:
@@ -249,8 +250,40 @@ class RestoreCog(commands.Cog):
             f"✉️ DM di autorizzazione inviati: {contatori[ACTION_REQUEST_CONSENT]}\n"
             f"📨 Inviti classici inviati: {contatori[ACTION_CLASSIC_INVITE]}\n"
             f"🚫 Saltati (in blacklist da un ban): {contatori[ACTION_SKIP_BLACKLISTED]}\n"
-            f"⚠️ DM non consegnati (privacy/bloccati): {contatori['dm_falliti']}",
+            f"⚠️ DM non consegnati (privacy/bloccati): {contatori['dm_falliti']}"
+            + (
+                f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
+                f"/verify): {contatori['ruolo_non_assegnato']}"
+                if contatori["ruolo_non_assegnato"]
+                else ""
+            ),
             ephemeral=True,
+        )
+
+    async def _assegna_ruolo_verificato(
+        self, guild: discord.Guild, user_id: int, role_id: int
+    ) -> bool:
+        """
+        SEC-4/SEC-17: il ruolo verificato può aver preso permessi
+        pericolosi dopo il /verify setup, quindi si ricontrolla al
+        momento dell'assegnazione. Se non va bene l'utente resta nel
+        server senza il ruolo (False) e resta un avviso nei log.
+        """
+        motivo_rifiuto = motivo_ruolo_automatico_non_assegnabile(guild, role_id)
+        if motivo_rifiuto is not None:
+            logger.warning(
+                "Ruolo verificato %s non assegnato a %s nel server %s durante il restore: %s",
+                role_id,
+                user_id,
+                guild.id,
+                motivo_rifiuto,
+            )
+            return False
+        return await restore_orchestrator.assign_role(
+            bot_token=config.YOKAI_BOT_TOKEN,
+            guild_id=guild.id,
+            user_id=user_id,
+            role_id=role_id,
         )
 
     async def _crea_invito_classico(self, interaction: discord.Interaction) -> str:

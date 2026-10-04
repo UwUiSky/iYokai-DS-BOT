@@ -11,7 +11,7 @@ Costruito con `build_app()` che accetta le dipendenze come parametri
 (dependency injection) — permette ai test di puntare a un server
 Discord finto e a repository in-memory/di test, senza toccare
 config.py o i singleton globali.
-Dipende da: core/redacted_access_log.py (SEC-9)
+Dipende da: core/redacted_access_log.py (SEC-9), core/role_safety.py (SEC-4/SEC-17)
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from core.restore_oauth_logic import (
     riserva_nonce,
 )
 from core.restore_orchestrator import RestoreOrchestrator
+from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 
 logger = logging.getLogger("iyokai.restore_web_server")
 
@@ -66,7 +67,14 @@ def build_app(
     redirect_uri: str,
     bot_token: str,
     oauth_encryption_key: str,
+    get_guild,
 ) -> web.Application:
+    """
+    `get_guild` è una funzione `(guild_id) -> discord.Guild | None`
+    (in produzione `bot.get_guild`): serve solo a ricontrollare il
+    ruolo verificato prima di assegnarlo.
+    """
+
     async def handler_callback(request: web.Request) -> web.Response:
         code = request.query.get("code")
         raw_state = request.query.get("state")
@@ -165,6 +173,23 @@ def build_app(
     async def _assegna_ruolo_verificato(guild_id: int, user_id: int) -> None:
         config_verifica = await verify_repo_.get_config(guild_id)
         if config_verifica is None or config_verifica.verified_role_id is None:
+            return
+
+        # SEC-4/SEC-17: il ruolo può aver preso permessi pericolosi
+        # dopo il /verify setup — si ricontrolla al momento
+        # dell'assegnazione. Se non va bene l'utente resta nel server,
+        # senza il ruolo.
+        motivo_rifiuto = motivo_ruolo_automatico_non_assegnabile(
+            get_guild(guild_id), config_verifica.verified_role_id
+        )
+        if motivo_rifiuto is not None:
+            logger.warning(
+                "Ruolo verificato %s non assegnato a %s nel server %s dopo il restore: %s",
+                config_verifica.verified_role_id,
+                user_id,
+                guild_id,
+                motivo_rifiuto,
+            )
             return
 
         await orchestrator.assign_role(
