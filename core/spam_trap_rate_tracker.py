@@ -34,6 +34,10 @@ class LimiteDmAppello:
         self._ultimo_elaborato.set(user_id, now)
         return True
 
+    def dimentica(self, user_id: int) -> None:
+        """Riapre subito il limite per un utente (il bot gli ha appena fatto una domanda)."""
+        self._ultimo_elaborato.delete(user_id)
+
     def azzera(self) -> None:
         """Dimentica tutti gli utenti (usato dai test)."""
         self._ultimo_elaborato.clear()

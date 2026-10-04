@@ -878,6 +878,9 @@ class SpamTrapCog(commands.Cog):
                     f"You have active bans on multiple servers I moderate: {nomi}. "
                     f"Please mention the server name in your message to continue your appeal."
                 )
+                # Il bot ha appena fatto una domanda: la risposta non
+                # deve essere scartata dal limite dei 30 secondi.
+                limite_dm_appello.dimentica(user.id)
                 return
 
         guild, case = candidati[0]

@@ -226,6 +226,36 @@ class TestRateLimitDM:
 
         assert moderation_repo_finto.get_active_cases_for_user_across_guilds.await_count == 2
 
+    @pytest.mark.asyncio
+    async def test_la_risposta_a_quale_server_non_viene_scartata(self, monkeypatch, orologio):
+        # Con ban attivi in due server il bot chiede "quale server?".
+        # La risposta arriva di solito entro pochi secondi: non deve
+        # essere fermata dal limite dei 30 secondi.
+        import cogs.security.spam_trap as spam_trap_module
+
+        moderation_repo_finto = AsyncMock()
+        moderation_repo_finto.get_active_cases_for_user_across_guilds.return_value = [
+            _CasoFinto(100, 1),
+            _CasoFinto(200, 1),
+        ]
+        monkeypatch.setattr(spam_trap_module, "moderation_repo", moderation_repo_finto)
+        monkeypatch.setattr(spam_trap_module, "spam_trap_repo", AsyncMock())
+        cog = SpamTrapCog(bot=_FakeBot([_FakeGuild(100, "Alpha"), _FakeGuild(200, "Beta")]))
+        utente = _FakeUser(ID_UTENTE)
+        query = moderation_repo_finto.get_active_cases_for_user_across_guilds
+
+        primo = _FakeMessage(utente, "voglio fare appello")
+        await cog._handle_possible_appeal(primo)
+        assert "multiple servers" in primo.channel.sent[0]
+
+        # Niente altro deve partire dopo la domanda: fermiamo qui il
+        # flusso dell'appello vero, che non è l'oggetto di questo test.
+        monkeypatch.setattr(spam_trap_module, "latest_case_per_guild", lambda casi: [])
+        orologio.istante = ISTANTE_ZERO + timedelta(seconds=5)
+        await cog._handle_possible_appeal(_FakeMessage(utente, "Alpha"))
+
+        assert query.await_count == 2
+
 
 class TestLimiteDmAppello:
     def test_registra_solo_i_dm_elaborati(self):
@@ -254,3 +284,12 @@ class TestLimiteDmAppello:
         limite.azzera()
 
         assert limite.puo_elaborare(1, ISTANTE_ZERO, 30) is True
+
+    def test_dimentica_riapre_subito_per_quell_utente(self):
+        limite = LimiteDmAppello()
+        attesa = DM_APPEAL_PROCESSING_COOLDOWN_SECONDS
+
+        assert limite.puo_elaborare(1, ISTANTE_ZERO, attesa) is True
+        limite.dimentica(1)
+
+        assert limite.puo_elaborare(1, ISTANTE_ZERO + timedelta(seconds=1), attesa) is True
