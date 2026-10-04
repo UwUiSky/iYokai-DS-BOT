@@ -60,10 +60,12 @@ class StickyMessagesCog(commands.Cog):
 
         try:
             nuovo_messaggio = await message.channel.send(sticky.message_text)
-        except discord.Forbidden:
+        except discord.HTTPException as errore:
+            # Comprende Forbidden (permessi mancanti) e gli errori 400/5xx.
             logger.warning(
-                "Permessi insufficienti per ripubblicare lo sticky nel canale %s.",
+                "Non riesco a ripubblicare lo sticky nel canale %s: %s",
                 message.channel.id,
+                errore,
             )
             return
 
@@ -81,14 +83,15 @@ class StickyMessagesCog(commands.Cog):
     @sticky_group.command(name="set", description="[Admin] Imposta lo sticky message di un canale.")
     @app_commands.describe(
         channel="Il canale dove impostare lo sticky",
-        message="Il testo dello sticky message",
+        message="Il testo dello sticky message (massimo 2000 caratteri)",
     )
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_sticky(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-        message: str,
+        # Lo sticky è un messaggio normale: Discord ne accetta 2000 caratteri.
+        message: app_commands.Range[str, 1, 2000],
     ) -> None:
         guild = interaction.guild
         if guild is None:

@@ -275,3 +275,52 @@ async def test_on_message_ignora_messaggi_di_bot(monkeypatch):
             "DELETE FROM sticky_messages WHERE channel_id = 800000005"
         )
         await database.close()
+
+
+class _CanaleCheRifiuta(_FakeTextChannel):
+    """Canale in cui Discord rifiuta l'invio con un errore 400."""
+
+    async def send(self, content: str):
+        risposta = _FakeHTTPResponse()
+        risposta.status = 400
+        risposta.reason = "Bad Request"
+        raise discord.HTTPException(response=risposta, message="Invalid Form Body")
+
+
+@pytest.mark.asyncio
+async def test_on_message_errore_400_di_discord_non_solleva(monkeypatch):
+    """
+    LIM-11: se Discord rifiuta lo sticky (errore 400, non solo
+    "permessi mancanti") il listener non deve sollevare a ogni
+    messaggio scritto nel canale.
+    """
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        guild_id, channel_id = 700000006, 800000006
+        await database.pool.execute(
+            "DELETE FROM sticky_messages WHERE channel_id = $1", channel_id
+        )
+        await database.set_module_active_for_guild(guild_id, MODULE_STICKY_MESSAGES, True)
+
+        _collega(monkeypatch, database)
+        repo = sticky_messages_module.sticky_message_repo
+        await repo.set_sticky(channel_id, guild_id, "Testo")
+
+        cog = StickyMessagesCog(bot=None)
+        canale = _CanaleCheRifiuta(channel_id)
+        messaggio = _FakeMessage(_FakeGuild(guild_id), canale)
+
+        await cog.on_message(messaggio)
+
+        sticky = await repo.get_sticky(channel_id)
+        assert sticky.last_message_id is None
+    finally:
+        await database.pool.execute(
+            "DELETE FROM guild_config WHERE guild_id = 700000006"
+        )
+        await database.pool.execute(
+            "DELETE FROM sticky_messages WHERE channel_id = 800000006"
+        )
+        await database.close()
