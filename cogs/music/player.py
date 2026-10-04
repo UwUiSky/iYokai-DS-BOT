@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Coroutine
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -114,6 +115,17 @@ def _build_lavalink_nodes() -> list[wavelink.Node]:
 class MusicCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # Task lanciati senza aspettarli. asyncio tiene solo un
+        # riferimento debole ai task: senza questo insieme Python
+        # potrebbe eliminarli prima che finiscano.
+        self.task_in_background: set[asyncio.Task] = set()
+
+    def avvia_in_background(self, coroutine: Coroutine) -> asyncio.Task:
+        """Lancia un task e ne tiene il riferimento finché non finisce."""
+        task = asyncio.create_task(coroutine)
+        self.task_in_background.add(task)
+        task.add_done_callback(self.task_in_background.discard)
+        return task
 
     # ================================================================
     # Controlli condivisi e instradamento verso il worker giusto
@@ -1080,7 +1092,8 @@ async def setup(bot: commands.Bot) -> None:
             premium_capable=False,
         )
     )
-    await bot.add_cog(MusicCog(bot))
+    cog = MusicCog(bot)
+    await bot.add_cog(cog)
 
     # wavelink.Pool.connect() NON fallisce rapidamente se un nodo è
     # irraggiungibile — verificato con un test diretto: ritenta
@@ -1091,7 +1104,7 @@ async def setup(bot: commands.Bot) -> None:
     # anche solo temporaneamente irraggiungibile. Lanciato come task
     # in background invece: setup() ritorna subito, la connessione
     # (coi suoi ritentativi) continua per conto suo.
-    asyncio.create_task(_connetti_lavalink_in_background(bot))
+    cog.avvia_in_background(_connetti_lavalink_in_background(bot))
 
 
 async def _connetti_lavalink_in_background(bot: commands.Bot) -> None:

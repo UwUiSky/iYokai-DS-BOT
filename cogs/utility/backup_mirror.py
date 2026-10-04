@@ -20,8 +20,10 @@ class BackupMirrorCog(commands.Cog):
         self.bot = bot
         self.dispatcher = BackupMirrorDispatcher(mirror_repo=backup_mirror_repo)
 
-    def cog_unload(self) -> None:
-        self.bot.loop.create_task(self.dispatcher.close())
+    async def cog_unload(self) -> None:
+        # Attesa diretta: un task lanciato e non conservato può essere
+        # eliminato da Python prima di chiudere la sessione HTTP.
+        await self.dispatcher.close()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
