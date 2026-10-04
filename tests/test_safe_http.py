@@ -193,3 +193,45 @@ async def test_troppi_redirect_vengono_rifiutati(monkeypatch):
         assert risultato is None
     finally:
         await server.close()
+
+
+# ---------------------------------------------------------------------
+# BUG-20: un URL malformato vale "rifiutato" (None), mai un'eccezione.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://x:99999/",  # porta fuori intervallo
+        "http://[::1/",  # IPv6 senza parentesi chiusa
+        "http://a..b/",  # etichetta vuota nel nome
+        "http://" + "a" * 64 + ".com/",  # etichetta più lunga di 63 caratteri
+    ],
+)
+@pytest.mark.asyncio
+async def test_url_malformato_restituisce_none_senza_sollevare(url):
+    assert await safe_get(url) is None
+
+
+@pytest.mark.asyncio
+async def test_redirect_verso_url_malformato_restituisce_none(monkeypatch):
+    # Solo l'IP del server finto viene consentito: il controllo su
+    # schema e porta resta quello vero, perché è lì che l'URL
+    # malformato del redirect deve essere scartato.
+    monkeypatch.setattr(safe_http_module, "_ip_e_bloccato", lambda ip: False)
+
+    async def handler(request):
+        # web.HTTPFound convaliderebbe da sé l'URL: l'header va scritto a mano.
+        return web.Response(status=302, headers={"Location": "http://x:99999/"})
+
+    app = web.Application()
+    app.router.add_get("/redirect", handler)
+    server = TestServer(app)
+    await server.start_server()
+    monkeypatch.setattr(safe_http_module, "ALLOWED_PORTS", {80, 443, server.port})
+    try:
+        risultato = await safe_get(f"http://127.0.0.1:{server.port}/redirect")
+        assert risultato is None
+    finally:
+        await server.close()

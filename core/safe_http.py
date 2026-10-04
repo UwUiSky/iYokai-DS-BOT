@@ -38,12 +38,18 @@ def _porta_effettiva(parsed) -> int | None:
 
 
 def _schema_e_porta_ammessi(url: str) -> bool:
-    parsed = urlparse(url)
+    # BUG-20: urlparse e .port sollevano ValueError su un URL
+    # malformato (porta fuori intervallo, IPv6 senza parentesi) —
+    # vale "non ammesso", mai un'eccezione verso il chiamante.
+    try:
+        parsed = urlparse(url)
+        porta = _porta_effettiva(parsed)
+    except ValueError:
+        return False
     if parsed.scheme not in ALLOWED_SCHEMES:
         return False
     if not parsed.hostname:
         return False
-    porta = _porta_effettiva(parsed)
     return porta in ALLOWED_PORTS
 
 
@@ -75,7 +81,9 @@ async def _risolvi_ip(hostname: str) -> list[ipaddress.IPv4Address | ipaddress.I
     loop = asyncio.get_event_loop()
     try:
         infos = await loop.getaddrinfo(hostname, None)
-    except OSError:
+    except (OSError, UnicodeError):
+        # UnicodeError (BUG-20): nome con un'etichetta vuota o più
+        # lunga di 63 caratteri, es. "a..b".
         return []
 
     ip_trovati = []
@@ -88,17 +96,22 @@ async def _risolvi_ip(hostname: str) -> list[ipaddress.IPv4Address | ipaddress.I
     return ip_trovati
 
 
-async def _url_e_sicuro(url: str) -> bool:
+async def url_e_sicuro(url: str) -> bool:
     """
     Controllo completo su un URL prima di scaricarlo: schema/porta
     ammessi, e nessuno degli IP a cui il nome host risolve è in un
     intervallo bloccato. Va richiamato ad OGNI passo di un redirect,
-    non solo sull'URL di partenza.
+    non solo sull'URL di partenza. Un URL malformato vale False, non
+    solleva mai (BUG-20). Usato anche da /alerts add per rifiutare
+    subito un URL che non verrebbe mai scaricato.
     """
     if not _schema_e_porta_ammessi(url):
         return False
 
-    hostname = urlparse(url).hostname
+    try:
+        hostname = urlparse(url).hostname
+    except ValueError:
+        return False
     ip_risolti = await _risolvi_ip(hostname)
     if not ip_risolti:
         return False
@@ -120,7 +133,7 @@ async def safe_get(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> str | Non
 
     async with aiohttp.ClientSession() as session:
         for _ in range(MAX_REDIRECTS + 1):
-            if not await _url_e_sicuro(url_corrente):
+            if not await url_e_sicuro(url_corrente):
                 logger.warning("URL rifiutato (SSRF/schema/porta non ammessi): %s", url_corrente)
                 return None
 
@@ -154,7 +167,9 @@ async def safe_get(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> str | Non
                             )
                             return None
                     return corpo.decode(errors="replace")
-            except (aiohttp.ClientError, TimeoutError) as exc:
+            except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
+                # ValueError (BUG-20): un Location malformato fa
+                # sollevare urljoin o il parser di aiohttp.
                 logger.warning("Impossibile scaricare %s: %s", url_corrente, exc)
                 return None
 
