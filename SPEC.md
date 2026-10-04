@@ -16,14 +16,70 @@ a memoria invece di rileggere lo schema — ripetendo lo stesso errore
 tre volte di fila. Da qui in avanti: **ogni sessione parte da questo
 file, non da un riassunto.**
 
-## Legenda stato
+## Legenda e stato
+
+<!-- LEGENDA-STATO: generata da grep, non modificare a mano i numeri -->
+
+Aggiornato il **04/10/2026**, dopo la fase R1-bis e la riorganizzazione
+dei documenti.
 
 | Simbolo | Significato |
 |---|---|
-| `[x]` | Fatto e testato |
-| `[~]` | Parziale — esiste qualcosa ma non tutto quanto specificato |
-| `[ ]` | Mancante — nessun codice |
-| `[✗]` | Scartato deliberatamente, con motivo |
+| `[x]` | Fatto, coperto dai test e non rotto da nessun problema aperto |
+| `[~]` | Esiste ma è incompleto o rotto. Accanto c'è il codice del problema (BUG-, SEC-, LC-, LIM-, REVIEW §) |
+| `[ ]` | Non fatto. Accanto c'è il codice della funzione (NF-) e la fase |
+| `[✗]` | Scartato dall'owner o impossibile, con il motivo e l'alternativa |
+
+- **"→ Stato 04/10:"** sotto una voce spiega perché ha quel simbolo.
+- **"(da verificare live)"** = i test passano, ma solo una prova su
+  Discord vero può dare la certezza.
+- I codici si trovano in `revisione/01-analisi/REVIEW.md`,
+  `revisione/01-analisi/LIMITI.md` e
+  `revisione/02-piano/NUOVE_FUNZIONI.md`.
+- Cosa fare e in che ordine: `revisione/02-piano/PRIORITA.md`.
+- **Nessuna voce è stata tolta.** Dove Discord rende impossibile una
+  funzione così com'era pensata, c'è scritta l'alternativa pianificata.
+- Nessun `[x]` è ancora stato provato su Discord vero: il bot è in zero
+  server.
+
+### Conteggio per sezione
+
+Numeri calcolati contando i simboli nel file (non a occhio).
+
+| Sezione | `[x]` | `[~]` | `[ ]` | `[✗]` |
+|---|---|---|---|---|
+| §1 CORE SYSTEM | 14 | 5 | 0 | 1 |
+| §2 SETUP & DASHBOARD | 6 | 1 | 1 | 0 |
+| §3 PREMIUM SYSTEM | 9 | 2 | 0 | 0 |
+| §4 VERIFY + FINGERPRINT + ANTI-ALT | 7 | 3 | 9 | 0 |
+| §5 MODERATION | 0 | 12 | 0 | 0 |
+| §6 AUTOMOD | 5 | 10 | 0 | 0 |
+| §7 SECURITY SUITE | 6 | 27 | 1 | 0 |
+| §8 LOGGING | 10 | 7 | 1 | 0 |
+| §9 MUSIC | 1 | 8 | 5 | 3 |
+| §10 ALERTS & SOCIAL | 0 | 7 | 3 | 0 |
+| §11 BACKUP SYSTEM | 0 | 11 | 5 | 0 |
+| §12 TEMPORARY VOICE CHANNELS | 5 | 3 | 0 | 0 |
+| §13 TICKET SYSTEM | 5 | 8 | 0 | 0 |
+| §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 3 | 0 |
+| §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE | 14 | 20 | 0 | 0 |
+| §16 FUN & IMMAGINI | 6 | 2 | 7 | 0 |
+| §17 OWNER / GLOBAL ADMIN | 7 | 3 | 0 | 0 |
+| §18 ROUTER DEI CANALI E LOG SU FORUM | 0 | 0 | 7 | 0 |
+| §19 DATI, PRIVACY E GDPR | 0 | 0 | 9 | 0 |
+| §20 NUOVA STRUTTURA DEI COMANDI | 0 | 0 | 7 | 0 |
+| §21 LINGUE E RICERCA DEI COMANDI | 0 | 0 | 6 | 0 |
+| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 0 | 0 | 17 | 0 |
+| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
+| §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
+| §25 MOTORE AI | 0 | 0 | 9 | 0 |
+| B iYOKAI APPLICATION (user-installable) | 0 | 0 | 2 | 0 |
+| C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
+| D iYOKAI DESKTOP (presence via RPC) | 0 | 0 | 4 | 2 |
+| E ALTRE APPLICAZIONI DA CREARE | 0 | 1 | 1 | 1 |
+| **Totale** | **97** | **143** | **126** | **7** |
+
+Totale voci: **373**.
 
 ---
 
@@ -32,13 +88,15 @@ file, non da un riassunto.**
 ## §1 CORE SYSTEM
 
 - `[x]` 1.1 Multi-Tenant Engine — isolamento config per Guild ID
-- `[x]` 1.1 Attivazione/disattivazione feature per server (check runtime)
+- `[~]` 1.1 Attivazione/disattivazione feature per server (check runtime)
+  → **Stato 04/10:** funziona; resta una gara nella cache dei moduli (REVIEW §4 Core).
 - `[✗]` 1.1 "Scaricamento moduli non utilizzati dalla memoria" — non
   fattibile: `load_extension` è per-processo, non per-guild. Sostituito
   dal check runtime. Vedi § Decisioni in PROGRESS.md
+  → **Stato 04/10:** impossibile per come funziona discord.py; l'alternativa (controllo a runtime) è già fatta.
 - `[x]` 1.2 Cog Manager — load / unload / reload
 - `[x]` 1.2 Controllo stato attivazione modulo per server
-- `[x]` 1.2 Evento `modules_updated` — `SetupView.save()` ora emette
+- `[~]` 1.2 Evento `modules_updated` — `SetupView.save()` ora emette
   `interaction.client.dispatch("modules_updated", guild_id,
   module_name, active, changed_by)` per ogni modulo il cui stato è
   DAVVERO cambiato (stesso criterio già usato per lo storico Config
@@ -46,7 +104,9 @@ file, non da un riassunto.**
   ancora (stesso schema di invite_tracker prima di Spam Trap): un
   futuro listener si registra con `@commands.Cog.listener()` su
   `on_modules_updated`
-- `[x]` **1.3 Memory Guard**
+  → **Stato 04/10:** lo emette solo `/setup`; wizard, import, reset e rollback no (REVIEW §12).
+- `[~]` **1.3 Memory Guard**
+  → **Stato 04/10:** vedi la voce sui VoiceClient.
   - `[x]` Monitoraggio RAM ogni 60 secondi (psutil) — `core/memory_guard.py`, letto per davvero con `psutil.Process().memory_info().rss`, verificato con un test che legge la RAM vera del processo di test (nessun mock)
   - `[x]` Garbage collection forzata su soglia — evoluta a **quattro
     livelli** (NORMAL/WARNING/CRITICAL/EMERGENCY, BACKLOG.md §4):
@@ -56,8 +116,9 @@ file, non da un riassunto.**
     (LRU vera, §1.5), collegata come consumatore reale a
     `core/invite_tracker.py`, che prima cresceva senza limiti con il
     numero di server
-  - `[x]` Distruzione VoiceClient inutilizzati (canale rimasto senza
+  - `[~]` Distruzione VoiceClient inutilizzati (canale rimasto senza
     membri umani)
+    → **Stato 04/10:** scollega anche la radio 24/7 dai canali vuoti (LIM-44).
   - `[x]` Alert DM al proprietario al superamento soglia (con
     cooldown di 30 minuti tra un alert e l'altro, per non spammare
     l'owner ad ogni tick se la RAM resta alta)
@@ -65,10 +126,11 @@ file, non da un riassunto.**
 - `[x]` 1.5 Cache Layer (LRU con dimensione massima) —
   `core/bounded_cache.py`, politica LRU vera verificata esplicitamente
   (un GET conta come uso recente quanto un SET)
-- `[x]` 1.6 Error Handler Globale — `on_error` in `main.py` ora copre
+- `[~]` 1.6 Error Handler Globale — `on_error` in `main.py` ora copre
   anche le eccezioni non catturate nei listener di eventi (non solo
   gli slash command), con alert DM all'owner e cooldown per
   event_method
+  → **Stato 04/10:** tratta "non hai i permessi" come errore imprevisto (BUG-13).
 - `[x]` 1.7 Logger Strutturato — JSON con rotazione
   (`core/json_log_formatter.py` + `RotatingFileHandler`, 10MB×5),
   nessuna nuova dipendenza. Convive con l'output testuale su stdout,
@@ -83,14 +145,17 @@ file, non da un riassunto.**
     in `guild.text_channels`) e ritentarlo invece di passarne uno
     diverso — corretto escludendolo esplicitamente dalla ricerca
 - `[x]` 1.9 Sharding (AutoShardedBot)
+  → **Stato 04/10:** vale per il bot principale; i 5 bot musicali non hanno shard (LIM-33).
 
 ## §2 SETUP & DASHBOARD
 
 - `[x]` 2.1 Pannello interattivo — select menu moduli per categoria (10 categorie, `/setup categoria:`), conferma, annulla (da verificare live)
+  → **Stato 04/10:** BUG-2 corretto (`c9534fb`).
 - `[x]` 2.1 Bottone "Reset configurazione" — `/config reset`, conferma
   a due passaggi (stesso schema di `/config rollback`), disattiva
   tutti i moduli e azzera tutte le settings, annullabile con
   `/config rollback` come qualunque altra voce di storico
+  → **Stato 04/10:** reset ed esportazione toccano solo `guild_config`, non le tabelle dei singoli moduli (REVIEW §12). (da verificare live)
 - `[x]` 2.2 Wizard di configurazione guidata passo-passo —
   `/setup-wizard`, un modulo curato alla volta (Moderazione, AutoMod,
   Logging, Greetings, Vocali temporanei, Ticket) con Attiva/Disattiva
@@ -103,17 +168,22 @@ file, non da un riassunto.**
   bot**: la stragrande maggioranza dei messaggi resta in italiano nei
   singoli cog — tradurre l'intero bot è un lavoro enormemente più
   grande di questa singola voce, onestamente non dichiarato completo
-- `[✗]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
+  → **Stato 04/10:** il comando salva la lingua ma nessun messaggio la legge. Lavoro completo: §21 (NF-06, D1).
+- `[ ]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
   non richiedere il Message Content Intent. **La colonna `prefix` in
   `guild_config` è morta e va rimossa o documentata come deprecata**
+  → **Stato 04/10:** il motivo dello scarto non vale più: l'intent `message_content` è acceso. Alternativa pianificata: prefisso scelto dal server **solo per i comandi personalizzati** (§22, NF-09). I comandi del bot restano slash.
 - `[x]` 2.5 Esporta configurazione — `/config export`, file `.json`
   con moduli/settings/lingua
+  → **Stato 04/10:** esporta solo `guild_config` (REVIEW §12).
 - `[x]` 2.6 Importa configurazione — `/config import`, sovrascrive IN
   BLOCCO (non un merge), validazione del formato prima di applicare
+  → **Stato 04/10:** validazione completa dal 04/10 (`80322ff`, `965ab35`).
 - `[x]` 2.7 Log delle modifiche di setup (audit trail: chi ha
   attivato/disattivato cosa e quando) — esteso oltre la richiesta
   originale con il **rollback**: `/config history` + `/config
   rollback <id>` con conferma a due passaggi (BACKLOG.md §11)
+  → **Stato 04/10:** BUG-6 e BUG-32 corretti (`071504a`, `c2a9582`). (da verificare live)
 
 ## §3 PREMIUM SYSTEM
 
@@ -126,7 +196,8 @@ file, non da un riassunto.**
   `/owner premium-status-all`, un meccanismo di sblocco (whitelist/
   nitro boost/premium via cassa/abbonamenti per modulo) per riga, non
   solo un True/False complessivo
-- `[x]` 3.3 Controllo runtime (`requires_module`)
+- `[~]` 3.3 Controllo runtime (`requires_module`)
+  → **Stato 04/10:** 6 moduli "premium" (log avanzati, spam-trap, anti-nuke, anti-raid, global-ban, heatmap) non controllano il premium (REVIEW §12).
 - `[x]` 3.1 Metodo sblocco: **Boost Nitro** sul server principale
   (`Member.premium_since`) — richiesto esplicitamente dall'utente
   ("per ora attivi solo... nitro boost..."). `core.premium.
@@ -140,6 +211,7 @@ file, non da un riassunto.**
   su richiesta esplicita dell'utente ("per ora attivi solo... nitro
   boost, pagamento mensile|annuale"), non scartato: resta un metodo
   di sblocco previsto, solo non prioritario ora
+  → **Stato 04/10:** in piano con il pagamento vero: §3 e NF-22.
 - `[x]` 3.1 Metodo sblocco: pagamento **mensile o annuale** per
   modulo — l'utente ha aggiunto "mensile" a quanto originariamente
   previsto ("annuale" da solo). Nessun gateway di pagamento reale
@@ -154,6 +226,7 @@ file, non da un riassunto.**
   (server, modulo): a differenza di nitro boost/whitelist (sbloccano
   TUTTO), questo resta scoped al singolo modulo per design, come
   esplicitamente previsto dallo schema originale ("per modulo")
+  → **Stato 04/10:** resta la concessione a mano; il pagamento vero è NF-22.
 - `[x]` **Override temporaneo di fase ALPHA** — **voce nuova**, non
   nello schema originale, aggiunta su richiesta esplicita
   dell'utente: "mi raccomando per ora (dato che è in alpha, tutte le
@@ -163,6 +236,7 @@ file, non da un riassunto.**
   prescindere da whitelist/boost/abbonamento — controllato PRIMA di
   ogni altra condizione. Va impostato a `false` in `.env` quando
   l'alpha finisce, per far valere davvero i metodi di sblocco sopra
+  → **Stato 04/10:** in produzione il default è spento (`576f155`, `2596734`).
 - `[x]` 3.3 Ricarica delle flag premium dal DB all'avvio — **debito
   reale trovato in questa sessione**: `premium_module_flags` esiste
   già (`_apply_premium_toggle` in `cogs/utility/owner_premium.py`
@@ -177,11 +251,13 @@ file, non da un riassunto.**
   o diventati sempre-gratuiti vengono ignorate in silenzio, mai un
   crash all'avvio
 
-## §4 VERIFY + FINGERPRINT + ANTI-ALT — Verify Base completo, il resto dipende dal Web Panel
+## §4 VERIFY + FINGERPRINT + ANTI-ALT — Verify Base presente, il resto dipende dal Web Panel (fase F10)
 
-- `[x]` 4.1 Verify Base
-  - `[x]` Button verify — `VerifyPanelView`, persistente (stesso
+- `[~]` 4.1 Verify Base
+  → **Stato 04/10:** vedi le voci sotto.
+  - `[~]` Button verify — `VerifyPanelView`, persistente (stesso
     pattern di ticket/vocali temporanei)
+    → **Stato 04/10:** lavoro lento prima della risposta (LIM-9).
   - `[x]` Reaction verify — `on_raw_reaction_add`. **Non supporta il
     captcha**: una reazione non è un'Interaction, non può aprire un
     Modal — combinazione rifiutata esplicitamente a `/verify setup`
@@ -190,21 +266,25 @@ file, non da un riassunto.**
     diversa ogni volta), solo in modalità button per il motivo sopra.
     Nessuna immagine: evita Pillow come nuova dipendenza solo per
     questo
+    → **Stato 04/10:** debole contro i bot: captcha a immagine in §22 (NF-18).
   - `[x]` Controllo età account
   - `[x]` Controllo mutual servers — confermato il limite già noto:
     il bot vede solo quanti server IN CUI SI TROVA LUI contengono
     anche l'utente, non tutti i server dell'utente in assoluto
-  - `[x]` Invite tracker (cache inviti + diff al join) — costruito
+  - `[~]` Invite tracker (cache inviti + diff al join) — costruito
     come infrastruttura condivisa in `core/invite_tracker.py`
     (durante lo sviluppo di Spam Trap §7.3, che ne aveva bisogno per
     primo)
+    → **Stato 04/10:** attribuzione sbagliata con ingressi simultanei; scarica gli inviti di tutti i server (LC-6).
 - `[ ]` 4.2 Verify Avanzato (richiede Web Panel) — non tentato,
   dipendenza non costruita
+  → **Stato 04/10:** in piano: NF-21, fase F10.
   - `[ ]` Raccolta IP / ISP / localizzazione
   - `[ ]` Browser fingerprint / device fingerprint
   - `[ ]` OAuth2 scope `identify`
   - `[ ]` Salvataggio fingerprint (hash, mai IP in chiaro)
 - `[ ]` 4.3 Sistema Anti-Alt — dipende da §4.2, non costruito
+  → **Stato 04/10:** in piano: NF-21, fase F10.
   - `[ ]` Database fingerprint
   - `[ ]` Match → segnalazione allo staff (NON ban automatico
     cross-server; vedi § Decisioni)
@@ -220,63 +300,85 @@ file, non da un riassunto.**
 
 ## §5 MODERATION
 
-- `[x]` 5.1 Warn, Kick, Ban, Tempban, Timeout, Unban, Untimeout
-- `[x]` 5.1 **Softban** (ban+unban immediato per cancellare i messaggi)
-- `[x]` 5.1 **Mute via ruolo** — ruolo "Muted" auto-creato con
+- `[~]` 5.1 Warn, Kick, Ban, Tempban, Timeout, Unban, Untimeout
+  → **Stato 04/10:** nessun controllo dei permessi (SEC-1); motivo senza massimo e caso creato prima dell'azione (LIM-8).
+- `[~]` 5.1 **Softban** (ban+unban immediato per cancellare i messaggi)
+  → **Stato 04/10:** SEC-1, LIM-8.
+- `[~]` 5.1 **Mute via ruolo** — ruolo "Muted" auto-creato con
   overwrite su ogni canale esistente al momento della creazione
   (canali creati dopo non ereditano l'overwrite, limite noto)
-- `[x]` 5.2 Case system — numerazione atomica per server, ricerca per
+  → **Stato 04/10:** SEC-1; il ruolo non copre thread, forum e canali nuovi (LIM-30).
+- `[~]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
-- `[x]` 5.3 Note utente
-- `[x]` 5.4 Report system
-- `[x]` 5.5 Lock / Unlock canale
-- `[x]` 5.6 Slowmode
-- `[x]` 5.7 Clear avanzato con filtri
-- `[x]` 5.8 DM all'utente moderato
-- `[x]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
+  → **Stato 04/10:** caso creato prima dell'azione; liste oltre 4096 caratteri (LIM-8).
+- `[~]` 5.3 Note utente
+  → **Stato 04/10:** SEC-1.
+- `[~]` 5.4 Report system
+  → **Stato 04/10:** motivo oltre 1024 caratteri: segnalazione persa (LIM-4).
+- `[~]` 5.5 Lock / Unlock canale
+  → **Stato 04/10:** SEC-1; nessun log (REVIEW §12).
+- `[~]` 5.6 Slowmode
+  → **Stato 04/10:** SEC-1; nessun log (REVIEW §12).
+- `[~]` 5.7 Clear avanzato con filtri
+  → **Stato 04/10:** SEC-1; filtro allegati da riprovare con l'intent acceso (BUG-5).
+- `[~]` 5.8 DM all'utente moderato
+  → **Stato 04/10:** il DM parte prima dell'azione (LIM-8).
+- `[~]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
   `str | None`) su warn/kick/ban/tempban/unban/timeout/softban/
   mute-role/unmute-role, con validazione minimo 3 caratteri.
   `/untimeout` (revoca, non azione punitiva) e `/lock` (stato del
   canale, non azione su un utente) restano con reason opzionale per
   scelta dichiarata, non nella lista esplicita dello schema
-- `[x]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
+  → **Stato 04/10:** manca il massimo di 512 caratteri (LIM-8). Correzione al testo: `/untimeout` non ha il parametro motivo.
+- `[~]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
+  → **Stato 04/10:** `/lock`, `/unlock`, `/slowmode`, `/clear` non creano né casi né log (REVIEW §12).
 
 ## §6 AUTOMOD
 
-- `[x]` 6.1 Anti-badwords (via AutoMod nativo Discord, con merge a tre vie)
-- `[x]` 6.2 Anti-invite (via AutoMod nativo, regex)
-- `[x]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
+- `[~]` 6.1 Anti-badwords (via AutoMod nativo Discord, con merge a tre vie)
+  → **Stato 04/10:** una parola oltre 60 caratteri rompe la sincronizzazione; `edit()` cancella le eccezioni messe a mano (LIM-29).
+- `[~]` 6.2 Anti-invite (via AutoMod nativo, regex)
+  → **Stato 04/10:** LIM-29.
+- `[~]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
   non supporta un elenco whitelist/blacklist di domini come trigger
   nativo. Modalità `off`/`whitelist`/`blacklist` per server,
   `/automod anti-link-mode` + `/automod anti-link-domain`
-- `[x]` 6.4 Anti-spam messaggi — soglia messaggi/finestra
+  → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); lista nera aggirabile (REVIEW §4).
+- `[~]` 6.4 Anti-spam messaggi — soglia messaggi/finestra
   configurabile, finestra mobile in memoria
   (`core/automod_rate_tracker.py`, mai persistita: stato "caldo" di
   pochi secondi, stesso principio di `core/invite_tracker.py`),
   `/automod anti-spam-messages`
-- `[x]` 6.5 Anti-spam emoji — soglia per SINGOLO messaggio (non nel
+  → **Stato 04/10:** il valore `seconds` viene salvato e ignorato (REVIEW §4).
+- `[~]` 6.5 Anti-spam emoji — soglia per SINGOLO messaggio (non nel
   tempo, a differenza di 6.4/6.6/6.10): conta emoji custom Discord +
   un intervallo unicode ampio (nessuna libreria `emoji` aggiunta come
   dipendenza — sotto-conteggio occasionale su emoji unicode rare
   accettato), `/automod anti-spam-emoji`
-- `[x]` 6.6 Anti-spam sticker — soglia sticker/finestra, stesso motore
+  → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
+- `[~]` 6.6 Anti-spam sticker — soglia sticker/finestra, stesso motore
   a finestra mobile di 6.4, `/automod anti-spam-sticker`
-- `[x]` 6.7 Anti-caps — percentuale di lettere maiuscole SUL TOTALE
+  → **Stato 04/10:** `seconds` ignorato (REVIEW §4).
+- `[~]` 6.7 Anti-caps — percentuale di lettere maiuscole SUL TOTALE
   DELLE LETTERE (non sul totale caratteri: punteggiatura/numeri non
   contano né a favore né contro), soglia + lunghezza minima
   configurabili, `/automod anti-caps`
-- `[x]` 6.8 Anti-zalgo — conteggio segni diacritici unicode
+  → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
+- `[~]` 6.8 Anti-zalgo — conteggio segni diacritici unicode
   combinanti (categoria Mn/Me/Mc) oltre una soglia fissa (8, per
   inferenza: il testo normale — accenti italiani compresi — non la
   supera mai), `/automod anti-zalgo`
+  → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
 - `[x]` 6.9 Anti-mass-mention — soglia di menzioni (utenti+ruoli) per
   messaggio, `@everyone`/`@here` contano sempre come sopra soglia,
   `/automod anti-mention`
-- `[x]` 6.10 Anti-attachment-spam — soglia allegati/finestra, stesso
+  → **Stato 04/10:** (da verificare live)
+- `[~]` 6.10 Anti-attachment-spam — soglia allegati/finestra, stesso
   motore a finestra mobile di 6.4/6.6, `/automod anti-attachment`
+  → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); `seconds` ignorato.
 - `[x]` 6.11 Filtri personalizzati per canale — **eccezione**
   (bypassa TUTTI i filtri avanzati insieme, non uno specifico per
   canale: altrimenti servirebbero N eccezioni per N filtri, complessità
@@ -295,67 +397,83 @@ file, non da un riassunto.**
   violazione (`automod_action_log`) + embed opzionale in un canale
   dedicato, `/automod log-channel` + `/automod status` (riepilogo
   configurazione)
-- `[x]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
+- `[~]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
   di severità crescente **nel tempo** in base a quante volte un
   utente ha già triggerato l'AutoMod nativo, con reset dopo un
   periodo configurabile di buona condotta. Concettualmente diversa
   da 6.13 (che è più azioni insieme su UN trigger, non su trigger
   ripetuti nel tempo) — voce nuova, non una ridefinizione di 6.13
+  → **Stato 04/10:** una violazione conta più volte (LIM-32).
 
-## §7 SECURITY SUITE — completa tranne il ban globale via fingerprint/alt-detection (dipende da §4.2, non costruito; sostituito da 7.6 per lo stesso account)
+## §7 SECURITY SUITE — presente, con bug aperti su anti-raid, anti-nuke e spam-trap (fase F1)
 
-- `[x]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
+- `[~]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
   PREMIUM (come Spam Trap). Logica di valutazione pura in
   `core/security_logic.py` (`evaluate_join`), finestra mobile in
   memoria per il join rate (`core/security_rate_tracker.py`, mai
   persistita — stesso principio di `core/automod_rate_tracker.py`).
   Comandi: `/anti-raid enable|join-rate|account-age|username-check|
   avatar-check|lockdown-action|alert-channel|status`
-  - `[x]` Join rate limit (finestra scorrevole) — conteggio join
+  → **Stato 04/10:** BUG-12.
+  - `[~]` Join rate limit (finestra scorrevole) — conteggio join
     guild-wide (non per singolo utente: una `chiave fittizia
     user_id=0`, mai un ID reale su Discord) nella finestra configurata
-  - `[x]` Account age check all'ingresso — età minima configurabile
-  - `[x]` Rilevamento pattern username — regex per inferenza
+    → **Stato 04/10:** conta anche i bot aggiunti dagli admin (BUG-12, LC-6).
+  - `[~]` Account age check all'ingresso — età minima configurabile
+    → **Stato 04/10:** un solo ingresso fa scattare il blocco completo (BUG-12).
+  - `[~]` Rilevamento pattern username — regex per inferenza
     (lettere+4 o più cifre finali, tipico di un account generato in
     massa da un raid-bot), disattivabile
-  - `[x]` Rilevamento pattern avatar — assenza di un avatar
+    → **Stato 04/10:** BUG-12.
+  - `[~]` Rilevamento pattern avatar — assenza di un avatar
     personalizzato, disattivabile (nessun confronto tra avatar
     diversi: solo "ha/non ha un avatar", per semplicità)
-  - `[x]` Lockdown automatico — tre modalità configurabili:
+    → **Stato 04/10:** BUG-12.
+  - `[~]` Lockdown automatico — tre modalità configurabili:
     quarantena, innalzamento del `verification_level` del server, o
     entrambe
-  - `[x]` Quarantine role — creato automaticamente al primo utilizzo
+    → **Stato 04/10:** il livello di verifica resta alto per sempre (BUG-12).
+  - `[~]` Quarantine role — creato automaticamente al primo utilizzo
     (overwrite su ogni canale, stesso schema del ruolo Muted di
     `cogs/moderation/softban_mute.py`, ma un ruolo SEPARATO — un
     sospetto raider appena entrato non è lo stesso caso di un membro
     esistente sanzionato)
-  - `[x]` Alert staff — DM all'owner + canale di alert opzionale
+    → **Stato 04/10:** più ruoli creati con ingressi simultanei (BUG-12); buchi del ruolo (LIM-30).
+  - `[~]` Alert staff — DM all'owner + canale di alert opzionale
     (condiviso con Anti-Nuke)
-- `[x]` 7.2 Anti-Nuke — `cogs/security/anti_nuke.py`, modulo
+    → **Stato 04/10:** un DM per ogni ingresso (BUG-12).
+- `[~]` 7.2 Anti-Nuke — `cogs/security/anti_nuke.py`, modulo
   CANDIDATO PREMIUM. L'autore di un evento non è mai nel payload
   dell'evento gateway: risolto sempre via audit log
   (`guild.audit_logs`, stesso approccio già usato per il cleanup
   webhook/inviti di Spam Trap), con una finestra di tolleranza di 10s
   tra evento e voce di audit log. Comandi: `/anti-nuke enable|limits|
   trusted-add|trusted-remove|punish-action|recovery|status`
-  - `[x]` Protezione canali (create/delete di massa) — soglia/finestra
+  → **Stato 04/10:** può punire il bot stesso (BUG-11).
+  - `[~]` Protezione canali (create/delete di massa) — soglia/finestra
     configurabile per categoria
-  - `[x]` Protezione ruoli — stessa logica, categoria separata
-  - `[x]` Protezione webhook — `on_webhooks_update`, stessa logica
-  - `[x]` Protezione emoji / sticker — `on_guild_emojis_update` +
+    → **Stato 04/10:** BUG-11; registro letto una volta sola (LIM-31).
+  - `[~]` Protezione ruoli — stessa logica, categoria separata
+    → **Stato 04/10:** BUG-11, LIM-31.
+  - `[~]` Protezione webhook — `on_webhooks_update`, stessa logica
+    → **Stato 04/10:** BUG-11, LIM-31.
+  - `[~]` Protezione emoji / sticker — `on_guild_emojis_update` +
     `on_guild_stickers_update`. **Soundboard escluso**: limite reale
     della libreria discord.py 2.7 in uso (nessun evento gateway
     dedicato esposto), non una scelta di scope
-  - `[x]` Rilevamento mass ban / mass kick — `on_member_ban` diretto;
+    → **Stato 04/10:** BUG-11, LIM-31. Correzione al testo: discord.py 2.7.1 **ha** gli eventi soundboard (REVIEW §12).
+  - `[~]` Rilevamento mass ban / mass kick — `on_member_ban` diretto;
     per il kick, `on_member_remove` verifica PRIMA nell'audit log se
     si tratta davvero di un'espulsione (altrimenti ogni leave
     volontario alimenterebbe per errore il contatore)
-  - `[x]` Recovery automatico (ricreazione canali/ruoli) — best-effort,
+    → **Stato 04/10:** BUG-11, LIM-31.
+  - `[~]` Recovery automatico (ricreazione canali/ruoli) — best-effort,
     senza uno snapshot separato persistito: `on_guild_channel_delete`/
     `on_guild_role_delete` ricevono l'oggetto Discord com'era
     nell'ultima cache del client PRIMA della rimozione, quindi
     nome/permessi/posizione sono ancora leggibili al momento della
     ricreazione
+    → **Stato 04/10:** ricrea solo canali testuali, senza posizione; le prime 3 cancellazioni non vengono recuperate (REVIEW §12, #30); canali offuscati (LIM-38).
   - `[x]` Whitelist utenti/bot fidati — `trusted_ids`, esenta
     completamente dai controlli (nessuna azione, nessun log)
   - **Rete di sicurezza**: l'autore non viene MAI punito se è il
@@ -363,43 +481,51 @@ file, non da un riassunto.**
     già in AutoMod §6.13, ma invertita: lì è la vittima potenziale ad
     essere protetta, qui l'owner non può mai essere il "nuke" da
     contrastare per errore)
-- `[x]` 7.3 **Spam Trap** — completo (solo il ban globale via
+- `[~]` 7.3 **Spam Trap** — completo (solo il ban globale via
   fingerprint resta escluso, per la dipendenza esplicita da §4 sotto)
+  → **Stato 04/10:** vedi le voci sotto. BUG-22, BUG-24, BUG-25 corretti il 04/10.
   - `[x]` `/setup` con selezione canale trappola e canale log — via
     parametri `discord.TextChannel` opzionali (rendono nativamente
     come selettore canale di Discord, non un menù a tendina
     testuale, ma stessa funzione)
-  - `[x]` Creazione automatica `#spam-trap` (visibile a everyone, no
+  - `[~]` Creazione automatica `#spam-trap` (visibile a everyone, no
     inviti, no webhook) se non selezionato
-  - `[x]` Creazione automatica `#spam-log` (solo administrator) se
+    → **Stato 04/10:** tetto dei canali non gestito (LIM-36).
+  - `[~]` Creazione automatica `#spam-log` (solo administrator) se
     non selezionato
+    → **Stato 04/10:** LIM-36.
   - `[x]` Embed di presidio in `#spam-trap`, rosso, in inglese, con
     header grande "DO NOT WRITE IN THIS CHANNEL"
   - `[x]` Embed informativo in `#spam-log`, colore tenue, in inglese
-  - `[x]` Sequenza fissa: cattura contenuto → **DM PRIMA del ban** →
+  - `[~]` Sequenza fissa: cattura contenuto → **DM PRIMA del ban** →
     ban con `delete_message_seconds` → purge supplementare → cleanup →
     log
-  - `[x]` Cancellazione messaggi 30 giorni (indicizzazione
+    → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
+  - `[~]` Cancellazione messaggi 30 giorni (indicizzazione
     `message_id` in DB; nativo copre max 7 giorni, la purge
     supplementare copre 7-30)
-  - `[x]` Log con: tag, user ID, data creazione account, data join,
+    → **Stato 04/10:** la tabella degli indici cresce: la pulizia esiste ma non viene mai chiamata (PERF-3).
+  - `[~]` Log con: tag, user ID, data creazione account, data join,
     data ban, codice invito usato, **creatore dell'invito**, contenuto
     che ha fatto scattare la trappola, numero messaggi cancellati per canale
+    → **Stato 04/10:** manca la data del ban; la data di ingresso è quasi sempre assente (REVIEW §12); campo oltre 1024 (LIM-20).
   - `[x]` Cleanup webhook creati dall'utente (via audit log)
   - `[x]` Cleanup inviti creati dall'utente (via audit log)
-  - `[x]` Ban appeal: DM → thread privato in `#spam-log`, con bottoni
+  - `[~]` Ban appeal: DM → thread privato in `#spam-log`, con bottoni
     staff (Unban/Reject/Reply), rate limit 1 appello/24h. Bottoni su
     una `View` NON persistente (timeout 7 giorni) — scelta dichiarata,
     non equivalente ai pannelli persistenti di ticket/vocali: un
     appeal è per natura più breve, non vale la complessità di bottoni
     persistenti per-caso dinamici
-  - `[x]` **Transcript HTML** — timestamp, nome+nickname, contenuto
+    → **Stato 04/10:** i bottoni muoiono a ogni riavvio (LC-5).
+  - `[~]` **Transcript HTML** — timestamp, nome+nickname, contenuto
     con escaping rigoroso anti-XSS, allegati immagine rigenerati come
     thumbnail WebP (Pillow, `core/image_thumbnail.py`), avatar
     dell'utente mostrato una volta per report nell'intestazione. Le
     thumbnail sono incorporate come data URI dentro l'HTML stesso —
     non riospitate da nessuna parte, coerente con "mai riospitare il
     file originale"
+    → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); nessun controllo di peso (LIM-20).
   - `[ ]` Opzione ban globale via fingerprint/alt-detection — dipende
     da §4.2/§4.3 Anti-Alt (raccolta OAuth2 "identify" + IP al momento
     del VERIFY, prima che l'account si comporti male), non costruito.
@@ -408,17 +534,20 @@ file, non da un riassunto.**
     flusso OAuth2 dopo il fatto, quindi il fingerprint andrebbe
     comunque raccolto prima, al verify — la stessa dipendenza di
     sempre
-  - `[x]` **Ban globale via propagazione cross-server** — SPEC.md
+    → **Stato 04/10:** in piano con NF-21.
+  - `[~]` **Ban globale via propagazione cross-server** — SPEC.md
     §7.6 sotto: NON è il ban globale via fingerprint di cui sopra
     (nessuna euristica su account diversi/alt), ma la propagazione
     reale di un ban Spam Trap sullo STESSO account Discord verso ogni
     altro server aderente. Costruito su richiesta esplicita
     dell'utente, come sostituto concretamente realizzabile oggi
-- `[x]` 7.4 Permission Auditor + alert permessi pericolosi —
+    → **Stato 04/10:** vedi 7.6.
+- `[~]` 7.4 Permission Auditor + alert permessi pericolosi —
   `/permission-heatmap` (ruoli con permessi critici + quanti membri
   li possiedono) + DM diretto all'owner quando un membro riceve un
   ruolo con permesso critico
-- `[x]` 7.5 Security Score / health check configurazione server —
+  → **Stato 04/10:** embed oltre 4096 caratteri con molti ruoli (LIM-14).
+- `[~]` 7.5 Security Score / health check configurazione server —
   `cogs/security/security_score.py`, comando `/security-score`.
   Modulo SEMPRE GRATUITO (è un check di lettura, non una protezione
   attiva). Punteggio 0-100 (`core.security_logic.
@@ -427,10 +556,12 @@ file, non da un riassunto.**
   score di un server Discord: 2FA staff, livello di verifica, quota
   di membri amministratori, Anti-Raid/Anti-Nuke attivi, AutoMod
   attivo — ognuno con un consiglio azionabile in caso di penalità
-- `[x]` 7.6 **Ban globale via propagazione cross-server** —
+  → **Stato 04/10:** la risposta è pubblica nel canale (LC-8).
+- `[~]` 7.6 **Ban globale via propagazione cross-server** —
   `cogs/security/global_ban.py` (`/global-ban enable|disable|status`),
   richiesto esplicitamente dall'utente come soluzione al gap di 7.3
   sopra. Modulo CANDIDATO PREMIUM.
+  → **Stato 04/10:** `/global-ban enable` salta il controllo premium (REVIEW §4).
 
   **Perché non è "il" ban globale via fingerprint di §4.3**: quello
   risolve un problema diverso — riconoscere che due ACCOUNT DIVERSI
@@ -464,23 +595,25 @@ file, non da un riassunto.**
   della creazione del case) con un campo aggiuntivo nell'embed di log
   quando la propagazione avviene.
 
-## §8 LOGGING — completo tranne Message delete/edit (rimandato, Message Content Intent)
+## §8 LOGGING — eventi presenti; log dei messaggi e canali divisi da fare (fase F6)
 
 - `[x]` 8.1 Member join
 - `[x]` 8.2 Member leave
 - `[x]` 8.3 Member ban / unban
-- `[x]` 8.4 Member update — ruoli e nickname, nello stesso evento
+- `[~]` 8.4 Member update — ruoli e nickname, nello stesso evento
   senza uscire in anticipo se solo uno dei due cambia
+  → **Stato 04/10:** 42 ruoli cambiati insieme rompono l'embed (LIM-19).
 - `[x]` 8.5 Role create / delete
 - `[x]` 8.6 Role **update** (nome, colore, permessi, hoist,
   mentionable) — `cogs/logging/advanced_logs.py`, livello Premium
   (vedi 8.18 sotto)
-- `[x]` 8.7 Channel create / delete / update — update copre nome,
+- `[~]` 8.7 Channel create / delete / update — update copre nome,
   categoria, topic, nsfw, slowmode, posizione; il diff degli
   overwrite di permesso canale-per-canale resta escluso per scelta
   di scope (complessità non richiesta per un log, non un limite
   tecnico)
-- `[x]` 8.8 Invite create / delete / use — "use" risolto con un nuovo
+  → **Stato 04/10:** spostare un canale genera N messaggi (REVIEW §4); canali offuscati (LIM-38).
+- `[~]` 8.8 Invite create / delete / use — "use" risolto con un nuovo
   metodo, `invite_tracker.resolve_join_invite(guild, member_id)`
   (`core/invite_tracker.py`), non con `find_used_invite()`
   direttamente: quest'ultimo muta la propria cache ad ogni chiamata
@@ -495,17 +628,19 @@ file, non da un riassunto.**
   Cog diversi sullo stesso evento) — riceve la stessa risposta senza
   un secondo fetch/diff. Spam Trap aggiornato per usare lo stesso
   metodo
-- `[x]` 8.9 **Voice state**: join / leave / move / mute / deafen —
+  → **Stato 04/10:** LC-6.
+- `[~]` 8.9 **Voice state**: join / leave / move / mute / deafen —
   "mute"/"deafen" semplificato allo stato EFFETTIVO (server-mute/
   deafen oppure self-mute/self-deafen), non le quattro variabili
   distinte di discord.py, scelta dichiarata per un log leggibile
+  → **Stato 04/10:** il mute volontario è scritto come "mutato dal server" (REVIEW §4).
 - `[x]` 8.10 Webhook create / update / delete — l'evento gateway
   nativo (`on_webhooks_update`) non distingue le tre azioni né dice
   l'autore: risolto via audit log entro una finestra di tolleranza,
   stesso principio già usato per l'autore in Anti-Nuke (§7.2)
 - `[x]` 8.11 Emoji create / delete / update
 - `[x]` 8.12 Sticker create / delete / update
-- `[x]` 8.13 Soundboard create / delete / update — **non via evento
+- `[~]` 8.13 Soundboard create / delete / update — **non via evento
   gateway** (quella parte del limite trovato nell'Anti-Nuke, §7.2,
   resta vera: nessun `on_soundboard_sound_...` esiste nella
   libreria), ma via POLLING PERIODICO dell'audit log
@@ -517,6 +652,7 @@ file, non da un riassunto.**
   ogni 5 minuti, con un "watermark" persistito per server per non
   ri-loggare le stesse voci né riversare lo storico alla prima
   attivazione
+  → **Stato 04/10:** Correzione al testo: gli eventi soundboard **esistono** in discord.py 2.7.1; il giro periodico va sostituito (LIM-31). Il primo evento viene saltato (REVIEW §5).
 - `[x]` 8.14 Thread events — create/delete/update (nome, archiviato,
   bloccato)
 - `[x]` 8.15 Server update (impostazioni guild) — nome, icona,
@@ -525,7 +661,8 @@ file, non da un riassunto.**
 - `[ ]` 8.16 Message delete / bulk delete / edit — **rimandato
   deliberatamente**: richiede il Message Content Intent, da chiedere
   solo quando un modulo lo giustifica (vedi § Decisioni)
-- `[x]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
+  → **Stato 04/10:** l'intent è acceso dal 04/10 (D9). In piano: NF-02, fase F6.
+- `[~]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
   `/logs user`, `/logs channel`, `/logs export` (JSON completo).
@@ -535,7 +672,8 @@ file, non da un riassunto.**
   (BACKLOG.md §3): "membri" è l'unica dimensione ad alta cardinalità
   che avrebbe fatto esplodere i thread durante un raid, "canali" e
   "case" restano un'estensione futura separata
-- `[x]` 8.18 Distinzione log semplificato `[Free]` vs completo
+  → **Stato 04/10:** `/logs user|channel` oltre 4096 caratteri (LIM-15). Correzione al testo: la ricerca "per ruolo e per tempo" non esiste (REVIEW §12).
+- `[~]` 8.18 Distinzione log semplificato `[Free]` vs completo
   `[Premium]` — due moduli distinti: `cogs/logging/basic_logs.py`
   (`MODULE_LOGGING`, 8.1-8.5, SEMPRE GRATUITO) e
   `cogs/logging/advanced_logs.py` (`MODULE_LOGGING_ADVANCED`,
@@ -543,10 +681,32 @@ file, non da un riassunto.**
   volta con `/logs-setup` — è l'attivazione del secondo modulo a
   decidere se gli eventi avanzati iniziano ad arrivarci, non un
   secondo comando di setup
+  → **Stato 04/10:** il modulo avanzato non controlla il premium (REVIEW §12).
 
-## §9 MUSIC — architettura multi-istanza fatta, comandi ridotti (deliberatamente)
+## §9 MUSIC — da correggere secondo la decisione D10 (fase F2); comandi ridotti (deliberatamente)
 
-**Nota di stato**: costruita l'architettura multi-istanza (bot
+**Stato al 04/10/2026 e disegno deciso (D10).** Leggendo il codice e
+wavelink si è visto che oggi **tutti i nodi Lavalink sono collegati con
+il bot principale** (`cogs/music/player.py`). I 5 bot musicali usano
+quella sessione, quindi Lavalink si presenta a Discord con l'identità
+sbagliata: quasi certamente i worker non producono audio (LIM-40). Va
+provato live, ma il disegno cambia comunque così:
+
+- un `wavelink.Node` **per ogni bot** e per ogni server Lavalink, con
+  identificatore proprio;
+- ogni player nasce sul nodo del suo bot (scelta esplicita, mai
+  automatica);
+- ogni nodo si collega in un task suo, con tentativi limitati;
+- un bot per **canale vocale**, non per server;
+- Lavalink 4.2.0 o successivo (cifratura vocale DAVE, obbligatoria dal
+  01/03/2026) e `wavelink>=3.5.1`;
+- i brani locali della radio passano solo dal nodo locale;
+- la radio non viene scollegata dai canali vuoti.
+
+Dettaglio e ordine: `revisione/02-piano/PRIORITA.md` fase F2,
+`revisione/02-piano/MODIFICHE_ESISTENTE.md` §8.
+
+**Nota storica** (stato prima del 04/10): costruita l'architettura multi-istanza (bot
 principale + 5 worker nello stesso processo, instradamento
 automatico) e un set di comandi RIDOTTO rispetto allo schema
 originale — deliberatamente, su richiesta esplicita dell'utente:
@@ -586,16 +746,19 @@ eventualmente rivalutare se emergono segnalazioni concrete di
 ricerche YouTube vuote sui nodi pubblici, non affrontato in questa
 sessione perché non richiesto esplicitamente.
 
-- `[x]` 9.1 Multi-VoiceClient manager (5 applicazioni separate) —
+- `[~]` 9.1 Multi-VoiceClient manager (5 applicazioni separate) —
   `core/music_worker_bot.py`, 5 istanze nello stesso processo
   (non 5 processi separati — vedi PROGRESS.md per il perché)
-- `[x]` 9.2 Assegnazione istanza libera per canale (tabella
+  → **Stato 04/10:** i worker usano la sessione Lavalink del bot principale: quasi certamente nessun audio (LIM-40). (da verificare live)
+- `[~]` 9.2 Assegnazione istanza libera per canale (tabella
   `music_sessions`, logica "se bot1 occupato → bot2") —
   `core/music_fleet.py` + `core/repositories/music_session_repo.py`
-- `[x]` 9.3 Coda indipendente per canale vocale — ogni `wavelink.
+  → **Stato 04/10:** oggi è un bot per **server**, non per canale (REVIEW §12).
+- `[~]` 9.3 Coda indipendente per canale vocale — ogni `wavelink.
   Player` (uno per worker/server) ha la propria coda, indipendente
   dalle altre per costruzione
-- `[x]` 9.4 Comandi: play, skip, stop, pause, resume, queue,
+  → **Stato 04/10:** un secondo canale nello stesso server condivide bot e coda (REVIEW §12).
+- `[~]` 9.4 Comandi: play, skip, stop, pause, resume, queue,
   clear-queue, shuffle, loop track, loop queue, nowplaying (con
   barra di progresso), volume, disconnect. **Limite playlist**:
   `/play` su un
@@ -614,6 +777,7 @@ sessione perché non richiesto esplicitamente.
   **Permanentemente descoperti** (richiesta esplicita dell'utente,
   NON da rimettere in lista in futuro): search distinta da play,
   forceskip, remove, move, seek, lyrics
+  → **Stato 04/10:** `/stop` e `/skip` da un altro canale (REVIEW §4); nessun `defer` (LIM-25); titolo oltre 256 (LIM-21).
 - `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — YouTube funziona via la ricerca di
   default di Lavalink; Spotify richiede un plugin (LavaSrc) sul nodo
@@ -632,6 +796,7 @@ sessione perché non richiesto esplicitamente.
   condivisa (`/nonstop-main add-local`), instradati specificamente
   verso il nodo Lavalink locale — i nodi pubblici non hanno accesso
   al filesystem della macchina
+  → **Stato 04/10:** scelta del nodo al contrario (LIM-42); `local:` e `spotify:` diventano ricerche YouTube (LIM-43, BUG-10).
 - `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
   scartato su richiesta esplicita dell'utente, non un limite tecnico
 - `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6
@@ -641,7 +806,8 @@ sessione perché non richiesto esplicitamente.
   bot (main + 5 worker). Il timeout (300s di default) è gestito
   internamente da wavelink/Lavalink; qui solo la reazione:
   disconnette e libera il worker nella flotta
-- `[x]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
+  → **Stato 04/10:** Correzione al testo: la disconnessione avviene dopo 300 secondi, non subito.
+- `[~]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
   on|off` (loop continuo sulla coda del worker attivo) fatto; il cap
   di 5 istanze (TOTAL_WORKERS) resta un vincolo dell'infrastruttura
   (5 token bot worker configurati), non un numero arbitrario da poter
@@ -657,7 +823,8 @@ sessione perché non richiesto esplicitamente.
   (serve un'estensione del limite GLOBALE, indirizzato ad aprire un
   ticket nel server ufficiale iYokai — nessun link fabbricato, il
   server è già raggiungibile pubblicamente)
-- `[x]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
+  → **Stato 04/10:** dopo 3 brani a canale vuoto il player viene scollegato (LIM-44).
+- `[~]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
   condiviso) — `/nonstop-main add-track|add-local|remove-track|
   list-tracks|start|stop`. "Condiviso" ottenuto con un orologio
   logico (`core/main_radio_logic.py`): non un unico decode audio
@@ -670,20 +837,36 @@ sessione perché non richiesto esplicitamente.
   stesso punto. Verificato con un test end-to-end: un secondo server
   che entra 90 secondi dopo riceve la posizione corretta, non
   riparte da zero
-- `[x]` 9.12 Backend Lavalink — l'intero cog si basa su Lavalink via
+  → **Stato 04/10:** file locali non trovati (BUG-10); radio scollegata dai canali vuoti (LIM-44); avvio automatico da fare (#45).
+- `[~]` 9.12 Backend Lavalink — l'intero cog si basa su Lavalink via
   wavelink, nodi pubblici in cascata + nodo locale (vedi PROGRESS.md)
+  → **Stato 04/10:** un nodo morto blocca gli altri (LIM-41); versione del nodo non controllata (LIM-54).
 
-## §10 ALERTS & SOCIAL — parzialmente fatta
+- `[ ]` 9.13 Un nodo wavelink per ogni bot per ogni server Lavalink,
+  con scelta esplicita del nodo (D10, LIM-40, LIM-42)
+- `[ ]` 9.14 Controllo della versione di Lavalink all'avvio (4.2.0 o
+  successiva) e nodi pubblici solo da `.env` (LIM-54)
+- `[ ]` 9.15 Cartella `deploy/lavalink/` con `docker-compose.yml`,
+  `application.yml` e guida (#47, #48)
+- `[ ]` 9.16 Radio che parte da sola quando il bot principale entra in
+  un canale vocale (#45)
+- `[ ]` 9.17 Canale richieste con messaggio "player" e bottoni, playlist
+  salvate degli utenti (§23, NF-19)
 
-- `[x]` 10.1 Twitch live — via polling Twitch Helix "Get Streams"
+## §10 ALERTS & SOCIAL — presente, con limiti di quota da correggere (fase F1)
+
+- `[~]` 10.1 Twitch live — via polling Twitch Helix "Get Streams"
   (non EventSub webhook, vedi nota tecnica sotto). Testato con
   credenziali fittizie su richiesta esplicita dell'utente (server
   locale finto che imita l'API reale); funzionerà con le sue
   credenziali vere una volta registrate su dev.twitch.tv
-- `[x]` 10.2 Twitch offline — stesso meccanismo di 10.1
-- `[x]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
+  → **Stato 04/10:** oltre 100 iscrizioni e oltre 20 dirette insieme (LIM-46); pubblica anche a modulo spento (LC-7).
+- `[~]` 10.2 Twitch offline — stesso meccanismo di 10.1
+  → **Stato 04/10:** LIM-46, LC-7.
+- `[~]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
   (`youtube.com/feeds/videos.xml?channel_id=...`), nessuna chiave API
-- `[x]` 10.4 YouTube live — via la YouTube Data API v3 (`search.list`,
+  → **Stato 04/10:** LC-7; se sparisce l'ultimo elemento ripubblica tutto (REVIEW §4).
+- `[~]` 10.4 YouTube live — via la YouTube Data API v3 (`search.list`,
   `eventType=live`), non via RSS (che non indica lo stato live). Come
   Twitch (§10.1/§10.2), env-gated: `YOUTUBE_API_KEY` opzionale,
   `core/youtube_watcher.py` resta inattivo finché non è configurata,
@@ -696,15 +879,19 @@ sessione perché non richiesto esplicitamente.
   `/alerts list`/`/alerts remove`) anche senza la chiave configurata
   (resta semplicemente inattiva, un avviso lo dice chiaramente),
   così non va ripetuta quando l'owner del bot la aggiunge in seguito
-- `[✗]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
+  → **Stato 04/10:** quota finita in poche ore (BUG-16, LIM-45). Soluzione decisa: D5.
+- `[ ]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
   gratuita per leggere le pubblicazioni di terzi, solo scraping
   fragile. Confermato dall'utente come vincolo accettato, non un
   limite di sforzo
-- `[✗]` 10.6 Instagram — nessuna API permette di monitorare account
+  → **Stato 04/10:** nessuna API gratuita. Alternativa pianificata (D14, NF-32): feed "ponte" e webhook in ingresso, più chiave a pagamento facoltativa.
+- `[ ]` 10.6 Instagram — nessuna API permette di monitorare account
   di terzi. Scartato, vedi audit di fattibilità
-- `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
+  → **Stato 04/10:** alternativa pianificata (D14, NF-32).
+- `[~]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
-- `[x]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
+  → **Stato 04/10:** LC-7; REVIEW §4 (ripubblica tutto).
+- `[~]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
   add`, qualsiasi URL RSS/Atom). La parte "webhook" è fatta come
   endpoint proprio (non EventSub/PubSubHubbub, vedi Nota tecnica
   sotto): `/alerts webhook-create` crea un URL segreto
@@ -721,10 +908,12 @@ sessione perché non richiesto esplicitamente.
   stesso sistema di template di 10.9. `/alerts list` mostra il
   webhook (`WH-<id>`) senza mai il token; `/alerts remove WH-<id>`
   lo elimina
-- `[x]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
+  → **Stato 04/10:** LC-7; nessun tetto di feed per server (LIM-16). BUG-20 e BUG-33 corretti il 04/10.
+- `[~]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
   `{label}` `{title}` `{link}` nel template (RSS), `{label}` `{title}`
   `{login}` (Twitch)
-- `[✗]` 10.13 X/Twitter — **voce nuova**, non nello schema originale,
+  → **Stato 04/10:** solo RSS e webhook accettano un modello (REVIEW §12).
+- `[ ]` 10.13 X/Twitter — **voce nuova**, non nello schema originale,
   aggiunta su richiesta esplicita dell'utente. Scartata: la lettura
   via API richiede un abbonamento a pagamento nel tier utile (il
   tier gratuito non permette di leggere i post di terzi in modo
@@ -732,6 +921,7 @@ sessione perché non richiesto esplicitamente.
   affidabile nota (i bridge non ufficiali tipo Nitter sono instabili
   e spesso bloccati da X). Confermato dall'utente come vincolo
   accettato
+  → **Stato 04/10:** alternativa pianificata (D14, NF-32).
 
 **Nota tecnica, vale per Twitch/YouTube/Reddit/RSS**: lo schema
 originale chiedeva EventSub (Twitch) e PubSubHubbub (YouTube),
@@ -757,92 +947,95 @@ il webhook porta il proprio URL pubblico se vuole esporlo dietro un
 reverse proxy (`ALERTS_WEBHOOK_PUBLIC_BASE_URL`), altrimenti il
 token va usato con l'IP diretto della VM.
 
-## §11 BACKUP SYSTEM — orchestrazione automatizzabile completa
+## §11 BACKUP SYSTEM — da rifare secondo la decisione D8 (fase F3)
 
-**Nota di stato**: §11 BACKUP SYSTEM è ora COMPLETO al 100% — tutte
-le 13 voci fatte. Le ultime tre (§11.10/§11.11/resto di §11.12,
-backup e restore utenti via OAuth2) sono state costruite dopo aver
-discusso esplicitamente con l'utente il loro design di sicurezza
-(storage token cifrato, modalità di consenso, retention).
+**Stato al 04/10/2026.** Il disegno originale non può più funzionare:
+Discord ha tolto ai bot la possibilità di creare server (luglio 2025) e
+discord.py 2.6 segna deprecati `create_guild` e `Guild.delete`. Senza
+il server creato dal Creator non nasce la coppia main→backup, e senza
+coppia non partono mirror, snapshot dei membri, `/restore-users` e
+`/promuovi-backup`. Il token del Creator è ancora obbligatorio
+all'avvio (LIM-39).
 
-**Limite reale della piattaforma Discord**, verificato con una
-ricerca prima di progettare, non aggirabile dal codice: **un bot non
-può autoinvitarsi in un server**. "Cede ownership → invita iYokai
-Main" nella pratica significa: Creator crea e clona, genera un URL
-di invito OAuth per Main, un umano deve cliccarlo — il codice fa
-tutto il resto in automatico attorno a quel singolo passaggio
-necessario.
+**Disegno nuovo (D8, modello Xenon), senza il bot Creator:**
 
-- `[x]` 11.1 iYokai Creator: crea server → cede ownership → invita
-  iYokai Main → esce (sempre sotto i 10 server) — `core/backup_
-  orchestrator.py` (`start_backup_job()` + `finalize_backup_job()`,
-  divise attorno al passaggio umano necessario sopra), `core/backup_
-  creator_bot.py`
-- `[x]` 11.2 Coda serializzata persistente con timeout 24h —
-  `core/repositories/backup_repo.py` (tabella `backup_jobs`) +
-  `core/backup_queue_worker.py` (un job alla volta, tick ogni 60s).
-  Migliorato su richiesta esplicita dell'utente con un promemoria di
-  scadenza (countdown, un solo DM per job) e il controllo di
-  capacità di Creator (max 10 server): se è già al limite, il worker
-  aspetta e avvisa una sola volta invece di tentare comunque
-- `[x]` 11.3 Clonazione ruoli + permessi — `clone_roles()`, salta
-  @everyone (esiste già) ma ne applica comunque i permessi al
-  default_role di destinazione, salta i ruoli "managed"
-- `[x]` 11.4 Clonazione categorie + canali — `clone_categories_and_
-  channels()`, categorie create prima dei canali, overwrite di
-  permessi rimappati tramite la mappa ruoli
-- `[x]` 11.5 Clonazione emoji — `clone_emoji()`
-- `[x]` 11.6 Clonazione sticker — `clone_stickers()`
-- `[x]` 11.7 Clonazione soundboard — `clone_soundboard()`
-- `[x]` 11.8 Clonazione webhook — `clone_webhooks()`, nome e canale
-  rimappato (l'URL del webhook stesso non è copiabile, va
-  riconfigurato a mano dove serve)
-- `[x]` 11.9 Mirror messaggi in tempo reale via webhook con identità
-  utente (con politica di scarto sui burst, rate limit 5/5s per
-  canale) — `core/backup_mirror_logic.py` (`MirrorRateLimiter`,
-  finestra scorrevole per canale), `core/backup_clone_logic.py`
-  (`create_mirror_webhooks()`, un webhook "iYokai Mirror" per ogni
-  canale testuale clonato), `core/repositories/backup_mirror_repo.py`
-  (mappa canale-main→URL-webhook), `core/backup_mirror_dispatch.py`
-  (`BackupMirrorDispatcher`, decide+inoltra), `cogs/utility/backup_
-  mirror.py` (listener `on_message`). Scarto in burst confermato: chi
-  supera 5 msg/5s su un canale viene semplicemente perso, non
-  accodato
-- `[x]` 11.10 User backup: snapshot periodico (settimanale) dei
-  verificati non bannati/kickati — `core/backup_snapshot_logic.py`
-  (pura: bot esclusi sempre, ruolo verificato richiesto solo se
-  Verify Base è configurato), `core/repositories/backup_user_
-  snapshot_repo.py` (tabella `backup_user_snapshots`, sostituita
-  interamente ad ogni scatto), `core/backup_snapshot_worker.py`
-  (`tasks.loop` settimanale, un tick per ogni main con backup già
-  attivo — `backup_repo.get_all_main_guild_ids_with_backup()`)
-- `[x]` 11.11 Restore massivo utenti via OAuth2 `guilds.join` —
-  token cifrati AES-256-GCM a riposo (`core/oauth_crypto.py`, MAI un
-  algoritmo custom: la sicurezza sta nella chiave segreta, non
-  nell'oscurità dell'algoritmo), `core/repositories/restore_oauth_
-  repo.py` (retention concordata con l'utente: uscita spontanea →
-  cancellato dopo 90gg, kick → preservato e flaggato, ban →
-  preservato e in blacklist — mai riusabile), `core/restore_
-  orchestrator.py` (le due chiamate REST reali: scambio code→token,
-  "Add Guild Member" cioè il vero `guilds.join`, assegnazione ruolo
-  verificato), `core/restore_web_server.py` (server aiohttp minimo,
-  un solo endpoint `/oauth/callback`), `core/restore_batch_logic.py`
-  (decide auto-join/richiedi-consenso/invito-classico/salta-
-  blacklist), `core/restore_retention_logic.py` +
-  listener `on_member_ban/remove/join` in `cogs/utility/restore.py`
-  per distinguere kick da uscita spontanea via audit log. Tre
-  modalità per server (`/configura-restore`, come concordato con
-  l'utente): OAuth al momento della verifica (server nuovi), OAuth
-  solo al bisogno (default, server esistenti — riusa i token già
-  raccolti), o solo invito classico senza alcun token
-- `[x]` 11.12 Comandi `/define-main`, `/define-backup`,
-  `/promuovi-backup`, `/restore-users`, `/configura-restore` — tutti
-  fatti
-- `[x]` 11.13 Auto-propagazione: `/promuovi-backup` (lanciato nel
-  server backup) promuove quel server a main e accoda IMMEDIATAMENTE
-  un nuovo job di backup per lui — `BackupRepository.promote_backup_
-  to_main()` + `get_pair_by_backup_guild_id()`, comando in `cogs/
-  utility/backup.py`
+1. Il bot salva lo **snapshot** del server come dati: ruoli, canali,
+   permessi, impostazioni, riferimenti a emoji, sticker e suoni.
+2. Per ripristinare o clonare, un admin **crea un server vuoto**. Può
+   partire da un link "modello di server" che il bot genera con
+   `Guild.create_template`.
+3. L'admin invita il bot e lancia lì il comando di collegamento o di
+   caricamento.
+4. Mirror, snapshot settimanale dei membri, `/restore-users` e
+   promozione lavorano su quel server.
+
+**Limiti di Discord che restano veri:** un bot non può entrare da solo
+in un server (serve il clic di un umano sull'invito); `guilds.join`
+funziona solo per chi ha dato il consenso prima; i token degli utenti
+durano circa 7 giorni e vanno rinnovati.
+
+**Cosa viene tolto:** l'applicazione iYokai Creator,
+`YOKAI_CREATOR_TOKEN`, `core/backup_creator_bot.py`, la coda con i "10
+posti", la pulizia dei server orfani (già disattivata apposta il 04/10
+in `fba882e`). I bug BUG-26, BUG-28 e BUG-29 riguardavano quel flusso:
+superati.
+
+- `[ ]` 11.1 Snapshot del server salvato come dati nel database, con
+  più copie datate per server (D8, LIM-39)
+- `[ ]` 11.2 Collegamento di un server creato a mano: codice generato
+  nel server principale e usato nel server nuovo; link "modello" con
+  `Guild.create_template`; nessuna cessione di proprietà (D8)
+- `[~]` 11.3 Clonazione ruoli + permessi — `clone_roles()` in
+  `core/backup_clone_logic.py`: salta @everyone ma ne applica i
+  permessi, salta i ruoli "managed". Le posizioni non vengono
+  impostate (REVIEW §12, da verificare live). Con un modello i ruoli
+  esistono già: serve una mappa per **nome**
+- `[~]` 11.4 Clonazione categorie + canali — `clone_categories_and_
+  channels()`: categorie prima dei canali, permessi rimappati. Copia
+  la qualità audio tale e quale (LIM-28); copierebbe i canali
+  offuscati `___hidden___` (LIM-38)
+- `[~]` 11.5 Clonazione emoji — `clone_emoji()`, con controllo dei
+  limiti del server di destinazione (`e502c1f`). Senza essere
+  proprietario serve il permesso `CREATE_GUILD_EXPRESSIONS`.
+  Raggiungibile solo dopo 11.2
+- `[~]` 11.6 Clonazione sticker — `clone_stickers()`, come 11.5
+- `[~]` 11.7 Clonazione soundboard — `clone_soundboard()`, come 11.5
+- `[~]` 11.8 Clonazione webhook — `clone_webhooks()`: nome e canale
+  rimappato (l'URL non è copiabile). 15 webhook copiati + 1 del mirror
+  superano il tetto di 15 per canale (LIM-28)
+- `[~]` 11.9 Mirror messaggi in tempo reale via webhook con identità
+  utente (scarto sui picchi, 5 messaggi ogni 5 secondi per canale) —
+  `core/backup_mirror_logic.py`, `core/backup_mirror_dispatch.py`,
+  `cogs/utility/backup_mirror.py`. SEC-22 corretto (`690a5b6`). Da
+  riprovare con l'intent acceso (BUG-5); nome del webhook (LIM-27);
+  oggi non ha mai un webhook di destinazione (dipende da 11.2)
+- `[~]` 11.10 User backup: snapshot periodico (settimanale) dei
+  verificati non bannati/kickati — `core/backup_snapshot_logic.py`,
+  `core/backup_snapshot_worker.py`. Il worker ora parte (BUG-19,
+  `fba882e`), ma non trova coppie finché non c'è 11.2
+- `[~]` 11.11 Restore massivo utenti via OAuth2 `guilds.join` — token
+  cifrati AES-256-GCM (`core/oauth_crypto.py`), tre modalità per
+  server (`/configura-restore`), conservazione diversa per uscita,
+  kick e ban. Corretti il 04/10: link valido 7 giorni e legato al
+  destinatario (BUG-21, SEC-19, `8590e89`); ruolo verificato
+  controllato (`67e5771`). Aperti: token mai rinnovati (LIM-37); ciclo
+  senza pause e senza gestione dei 429 (LIM-7); la modalità "OAuth alla
+  verifica" non fa niente di diverso (REVIEW §12); invito in DM solo a
+  chi ha dato il consenso; chiave non ruotabile (LIM-52)
+- `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
+  `/promuovi-backup`, `/restore-users`, `/configura-restore` —
+  esistono; `/define-backup` oggi fallisce perché prova a creare un
+  server. In F3 diventano il flusso di 11.1 e 11.2, e in F7 passano
+  sotto `/admin backup` e `/admin restore`
+- `[~]` 11.13 Promozione del backup a nuovo main — `/promuovi-backup`.
+  Dopo la promozione `/restore-users` rifiuta sempre (BUG-34, da
+  confermare con un test): la coppia storica va conservata
+- `[ ]` 11.14 Rimozione del bot Creator dal codice e dalla
+  configurazione (D8)
+- `[ ]` 11.15 Salvataggio degli ultimi N messaggi per canale nello
+  snapshot (modello Xenon), oltre al mirror in tempo reale
+- `[ ]` 11.16 Modelli di server e sincronia di ban e ruoli tra server
+  dello stesso proprietario (§23, NF-39)
 
 ## §12 TEMPORARY VOICE CHANNELS
 
@@ -854,62 +1047,81 @@ necessario.
   `VoiceChannel` è Messageable), inviato sia dalla modalità
   automatica (che prima spostava in totale silenzio) sia da quella
   manuale
-- `[x]` 12.5 Selezione piattaforma all'ingresso (PC / Console /
+- `[~]` 12.5 Selezione piattaforma all'ingresso (PC / Console /
   Mobile) — bottoni SOLO informativi (nessun filtro di visibilità,
   come da decisione finale già registrata) mostrati insieme alla
   notifica 12.4 se il server ha configurato almeno un ruolo
   piattaforma (`/voicetemp-platform-setup`)
-- `[x]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer
-- `[x]` 12.7 Eliminazione automatica a canale vuoto
+  → **Stato 04/10:** i bottoni muoiono dopo 5 minuti (LIM-26).
+- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer
+  → **Stato 04/10:** rinomina senza limiti (LIM-3); `transfer` accetta chiunque (BUG-18).
+- `[~]` 12.7 Eliminazione automatica a canale vuoto
+  → **Stato 04/10:** canali orfani dopo un riavvio (REVIEW §4).
 - `[x]` 12.8 Cap configurabile canali per categoria (`/voicetemp-cap`),
   sempre troncato al limite hard di Discord di 50
 
 ## §13 TICKET SYSTEM
 
 - `[x]` 13.1 Pannello apertura con bottone persistente
-- `[x]` 13.2 Select menu categorie (`/ticket-category add|remove|list`)
+- `[~]` 13.2 Select menu categorie (`/ticket-category add|remove|list`)
   — se il server ne ha configurato almeno una, il pannello mostra il
   select menu invece del bottone unico; retrocompatibile (nessuna
   categoria configurata -> bottone unico storico)
-- `[x]` 13.3 Creazione canale privato
-- `[x]` 13.4 Claim
-- `[x]` 13.5 Add / Remove utente
-- `[x]` 13.6 Rename
-- `[x]` 13.7 Priorità
+  → **Stato 04/10:** oltre 25 categorie, o con un'etichetta o un'emoji non valida, il menu si rompe per tutti (LIM-6).
+- `[~]` 13.3 Creazione canale privato
+  → **Stato 04/10:** doppio clic apre due ticket (REVIEW §4); la creazione spende una rinomina (LIM-3).
+- `[~]` 13.4 Claim
+  → **Stato 04/10:** nessun controllo staff (REVIEW §4).
+- `[~]` 13.5 Add / Remove utente
+  → **Stato 04/10:** nessun controllo staff (REVIEW §4).
+- `[~]` 13.6 Rename
+  → **Stato 04/10:** LIM-3.
+- `[~]` 13.7 Priorità
+  → **Stato 04/10:** nessun controllo staff (REVIEW §4).
 - `[x]` 13.8 Close
+  → **Stato 04/10:** BUG-1 e BUG-30 corretti (`6c724d3`, `10d16f1`). (da verificare live)
 - `[x]` 13.9 Force close (`/ticket forceclose`, riservato allo staff
   — Manage Server o un ruolo di supporto configurato — elimina il
   canale subito, senza i 10s di preavviso di close normale)
-- `[x]` 13.10 Transcript automatico alla chiusura — letto via
+- `[~]` 13.10 Transcript automatico alla chiusura — letto via
   `channel.history()` PRIMA della cancellazione. **Non richiede il
   Message Content Intent**: quell'intent riguarda solo gli eventi
   GATEWAY in tempo reale, non la history REST (governata dal normale
   permesso Read Message History) — stessa verifica già fatta per lo
   Spam Trap in `core/spam_trap_logic.py`
+  → **Stato 04/10:** Correzione al testo: senza l'intent anche la lettura REST dà messaggi vuoti (REVIEW L8). L'intent ora è acceso: da riprovare (BUG-5).
 - `[x]` 13.11 Invio transcript nel canale log configurato (riusa
   `SETTING_LOG_CHANNEL` di §8) + DM all'utente che ha aperto il
   ticket (silenzioso se i DM sono chiusi)
+  → **Stato 04/10:** (da verificare live)
 - `[x]` 13.12 Statistiche ticket (`/ticket-stats [operatore]`) — prese
   in carico, chiuse, tempo medio di prima risposta (per operatore o
   per l'intero server)
-- `[x]` 13.13 Configurazione ruoli di supporto multipli
+- `[~]` 13.13 Configurazione ruoli di supporto multipli
   (`/ticket-support-role add|remove|list`) — combinati con il ruolo
   legacy singolo per retrocompatibilità, nessuna migrazione richiesta
+  → **Stato 04/10:** `remove` non toglie il ruolo storico (REVIEW §4).
 
 ## §14 UTILITY & SERVER MANAGEMENT
 
-- `[x]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
-- `[x]` 14.2 Button Roles — View dinamica persistente per-messaggio
+- `[~]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
+  → **Stato 04/10:** LIM-17.
+- `[~]` 14.2 Button Roles — View dinamica persistente per-messaggio
   (`bot.add_view(view, message_id=...)`, pattern nuovo rispetto ai
   pannelli "bottone fisso" già in uso altrove)
-- `[x]` 14.3 Select Menu Roles — multi-selezione con sincronizzazione
+  → **Stato 04/10:** `toggle=False` ignorato (REVIEW §4); LIM-17.
+- `[~]` 14.3 Select Menu Roles — multi-selezione con sincronizzazione
   che non tocca mai ruoli del membro estranei al menu (verificato
   esplicitamente con un test dedicato)
-- `[x]` 14.4 Welcome messages — canale + DM opzionale, segnaposto
+  → **Stato 04/10:** menu rotto quando resta senza opzioni (LIM-17).
+- `[~]` 14.4 Welcome messages — canale + DM opzionale, segnaposto
   `{user}`/`{username}`/`{server}`/`{membercount}`
-- `[x]` 14.5 Goodbye messages
-- `[x]` 14.6 Boost messages — rilevato su `premium_since` che passa
+  → **Stato 04/10:** testo accettato e poi rifiutato in silenzio (LIM-10); DM senza pausa durante un raid (LIM-35).
+- `[~]` 14.5 Goodbye messages
+  → **Stato 04/10:** LIM-10.
+- `[~]` 14.6 Boost messages — rilevato su `premium_since` che passa
   da `None` a valorizzato, non il caso opposto
+  → **Stato 04/10:** LIM-10.
 - `[ ]` 14.7 Autoresponder (con wildcards e condizioni) — **rimandato
   deliberatamente, stesso motivo di §8.16**: decidere se una parola
   chiave presente nel testo di un messaggio deve far scattare una
@@ -920,12 +1132,14 @@ necessario.
   perché qui il contenuto serve SUBITO, al momento dell'evento, non
   recuperabile in un secondo momento via REST (il messaggio non è
   ancora stato cancellato, ma il gateway lo consegna già vuoto)
-- `[x]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
+  → **Stato 04/10:** l'intent è acceso dal 04/10. In piano: NF-10, fase F9.
+- `[~]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
   dettaglio): modal con nome comando + descrizione + esempio → embed
   automatico nel canale `#suggestions` del server principale con nome
   server, ID server, nome utente, **ID utente** (perché il nome può
   cambiare), descrizione, timestamp → bottoni staff approva/rifiuta →
   notifica di ritorno al richiedente
+  → **Stato 04/10:** due staff possono decidere insieme (REVIEW §5). I comandi creati dal server sono in §22 (NF-09).
 - `[ ]` 14.9 Snipe — **rimandato deliberatamente, stesso motivo di
   §8.16**: mostrare il testo del messaggio cancellato richiede il
   contenuto, azzerato sia in `on_message` (dove andrebbe cache-ato
@@ -933,52 +1147,66 @@ necessario.
   Intent — verificato punto per punto (non liquidato in blocco come
   errore fatto su §8.13/§8.8, vedi PROGRESS.md Fase 70b), a
   differenza di 14.11/14.12 sotto, che infatti SONO stati costruiti
+  → **Stato 04/10:** l'intent è acceso dal 04/10. In piano: NF-03, fase F6.
 - `[ ]` 14.10 Editsnipe — stesso motivo di 14.9 (before/after content)
+  → **Stato 04/10:** in piano: NF-03, fase F6.
 - `[x]` 14.11 Reactionsnipe — `/reactionsnipe`, NON richiede il
   Message Content Intent: `on_raw_reaction_remove` restituisce
   emoji/autore/messaggio senza bisogno del contenuto del messaggio.
   Stato in memoria (non persistito, come tutti i bot "snipe")
-- `[x]` 14.12 Ghost ping detection — traccia in memoria i messaggi
+- `[~]` 14.12 Ghost ping detection — traccia in memoria i messaggi
   con menzioni (`Message.mentions`, popolato da un campo gateway a
   parte dal contenuto — non azzerato dall'intent, verificato
   leggendo `Message._handle_mentions` nella libreria installata) e
   segnala nel canale log se vengono cancellati, senza mai leggere il
   testo del messaggio
-- `[x]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
+  → **Stato 04/10:** segnala anche i messaggi cancellati dai moderatori (REVIEW §5).
+- `[~]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
   (5s) per non cancellare+reinviare ad ogni singolo messaggio in un
   canale attivo
-- `[x]` 14.14 Suggestion system (per i server clienti, distinto da
+  → **Stato 04/10:** messaggi persi o doppi (REVIEW §4); errore non gestito (LIM-11).
+- `[~]` 14.14 Suggestion system (per i server clienti, distinto da
   14.8) — `/suggestion-setup`, `/suggest`, bottoni persistenti
   approva/rifiuta + reazioni native 👍👎 per il voto
-- `[x]` 14.15 Poll — Poll nativo di Discord (`discord.Poll`), fino a
+  → **Stato 04/10:** nessun `defer` (LIM-25); due staff decidono insieme (REVIEW §5).
+- `[~]` 14.15 Poll — Poll nativo di Discord (`discord.Poll`), fino a
   5 opzioni, nessuna logica propria: voto/conteggio/chiusura gestiti
   interamente da Discord
-- `[x]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
+  → **Stato 04/10:** risposta oltre 55 caratteri: errore (LIM-2).
+- `[~]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
   scheduler generico esistente (nessuna tabella nuova). Consegna via
   DM, fallback nel canale se i DM sono chiusi
-- `[x]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
+  → **Stato 04/10:** promemoria lunghi persi in silenzio (LIM-13).
+- `[~]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
   riusa lo stesso scheduler dei Reminder (nessuna tabella nuova).
   Diversamente dal Reminder (personale, via DM), pubblica in un
   CANALE del server
+  → **Stato 04/10:** messaggi lunghi persi in silenzio (LIM-12); ping di ruolo muti (D12).
 - `[x]` 14.18 Server stats (+ grafici) — `/serverstats`: numeri del
   server + grafico a barre della crescita giornaliera (disegnato con
   Pillow, non matplotlib — nessuna nuova dipendenza pesante)
+  → **Stato 04/10:** Correzione al testo: il grafico dipende dal modulo logging (REVIEW §12).
 
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
-- `[x]` 15.1 XP e livelli (testuale + vocale)
+- `[~]` 15.1 XP e livelli (testuale + vocale)
+  → **Stato 04/10:** anche i messaggi di sistema danno XP (LC-6).
 - `[x]` 15.2 Anti-farm XP vocale (self_deaf, soli nel canale, AFK, 2h
   stesso canale, cap giornaliero)
-- `[x]` 15.3 Economy: daily, work, pay, balance
-- `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
+- `[~]` 15.3 Economy: daily, work, pay, balance
+  → **Stato 04/10:** `/daily` e `/work` riscuotibili due volte (BUG-14).
+- `[~]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
-- `[x]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
+  → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).
+- `[~]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
   pulsante persistente "Partecipa" (sopravvive a un riavvio del bot,
   registrato di nuovo per ogni giveaway ancora attivo), requisiti di
   livello E ruolo verificati insieme al momento dell'iscrizione
+  → **Stato 04/10:** in thread e forum i vincitori non vengono avvisati (REVIEW §4); premio oltre 243 caratteri (LIM-18).
 - `[x]` 15.6 Drop messages — piccola probabilità (0.5%) per
   messaggio idoneo, pulsante "primo che clicca vince", coin
   accreditati atomicamente
+  → **Stato 04/10:** BUG-17 è un probabile falso allarme: va confermato con un test.
 - `[x]` 15.7 Classifica mensile (via `period_key`, senza reset schedulato)
 - `[x]` 15.8 Classifica totale all-time
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
@@ -1008,10 +1236,11 @@ necessario.
   vocale stesso (i canali vocali moderni hanno la propria chat
   integrata), l'unico posto sensato per un task periodico su più
   server
-- `[x]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
+- `[~]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
   add|remove|list`, cumulativo (ogni ruolo fino al nuovo livello,
   non solo il più alto), agganciato sia a XP testuale sia vocale
-- `[x]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
+  → **Stato 04/10:** lista oltre 80 righe (LIM-18).
+- `[~]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
   (motore economico di backend calibrato e testato — 10 XP + 4 coin
   a tick/minuto in vocale di gilda (×2 letterale del vocale normale),
   decadimento lineare dopo 3h filate
@@ -1027,17 +1256,20 @@ necessario.
   gilde dello STESSO owner, ANCHE cross-server — un debito di
   documentazione trovato e chiuso: il repository esisteva già da
   prima, non era mai stato collegato a nessun comando)
-  - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
+  → **Stato 04/10:** vedi le voci sotto.
+  - `[~]` Creazione gilda + categoria privata dedicata — `/clan crea`
     valida il tag, crea la categoria Discord (view negata a
     `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
     record (se la categoria fallisce non resta un clan senza spazio
     reale), poi `create_clan` con deficit di creazione e finestra di
     grazia di 24h
-  - `[x]` Eliminazione automatica se il deficit non è colmato in
+    → **Stato 04/10:** nessun `defer` (LIM-25); nome senza limite (LIM-18).
+  - `[~]` Eliminazione automatica se il deficit non è colmato in
     tempo — `core/guild_clan_expiry_worker.py` (nuovo, tick orario):
     elimina canali + categoria Discord (se esistono ancora) e poi il
     record, per i clan non ufficializzati la cui finestra è scaduta
-  - `[x]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
+    → **Stato 04/10:** cancella anche i clan finanziati con un trasferimento (BUG-15).
+  - `[~]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
     (`core/guild_clan_role_service.py`, nuovo): un ruolo Discord
     condiviso "Capo Clan" e uno "Admin Clan" per TUTTO il server,
     riusati da ogni clan (Discord non permette due ruoli alla stessa
@@ -1048,20 +1280,22 @@ necessario.
     (Capo Clan al fondatore), `/clan invita` (accesso base),
     `/clan promuovi` (Admin Clan + overwrite estesi o declassamento),
     `/clan espelli` e `/clan sciogli` (rimozione completa)
+    → **Stato 04/10:** il ruolo Co-Owner non si può assegnare (REVIEW §11). SEC-17 corretto il 04/10.
   - `[x]` Isolamento totale: nessun capo/admin può agire su altre
     gilde — ogni comando di gestione membri recupera SEMPRE la gilda
     del chiamante via `get_member_clan_in_guild` e opera solo sulla
     categoria/membri di quella gilda; un Admin Clan non può espellere
     un altro Admin Clan (serve il Capo), solo il Capo Clan può
     promuovere/retrocedere
-  - `[x]` Comandi di gestione membri: `/clan invita` (Capo/Admin,
+  - `[~]` Comandi di gestione membri: `/clan invita` (Capo/Admin,
     rispetta il tetto `max_members`, rifiuta chi è già in un'altra
     gilda del server), `/clan espelli` (Capo/Admin, il Capo Clan non
     può essere espulso, un Admin non può espellere un altro Admin),
     `/clan promuovi` (solo Capo Clan, ruolo admin/mod/member, rispetta
     i tetti `MAX_ADMINS_PER_CLAN`/`MAX_MODS_PER_CLAN` in
     `guild_clan_logic.py`)
-  - `[x]` Guadagno ×2 XP e coin — vocale: `guild_clan_voice_worker.py`
+    → **Stato 04/10:** `/clan invita` aggiunge senza consenso; manca `/clan lascia` (REVIEW §4).
+  - `[~]` Guadagno ×2 XP e coin — vocale: `guild_clan_voice_worker.py`
     applica il tick per la presenza vocale (agganciato a
     `clan_voice_activity_repo`), ×2 LETTERALE rispetto al vocale
     normale (`TICK_XP=10`/`TICK_COINS=4` in `core/guild_clan_logic.py`
@@ -1076,7 +1310,8 @@ necessario.
     cooldown 60s, NESSUNA coin (come nel testo normale) e NESSUN
     boost applicato (individuale/di gilda restano scoped al solo tick
     vocale, confermato in Fase 54)
-  - `[x]` Tesoreria: **a SENSO UNICO per design** — solo membro ->
+    → **Stato 04/10:** l'XP vocale di clan non ha anti-farm (REVIEW §4).
+  - `[~]` Tesoreria: **a SENSO UNICO per design** — solo membro ->
     gilda (`/clan tesoreria dona`, scala il saldo personale e
     accredita la tesoreria, ufficializzando il clan in automatico se
     il deficit viene colmato), MAI gilda -> membro (nessun prelievo
@@ -1089,7 +1324,8 @@ necessario.
     `/assegna-lobby`/`/assegna-winner` — chiarito esplicitamente
     dall'utente in questa sessione, correggendo un fraintendimento di
     una sessione precedente
-  - `[x]` Trasferimento tesoreria→tesoreria tra due gilde dello
+    → **Stato 04/10:** lo storico dei movimenti non si legge da nessun comando (REVIEW §12).
+  - `[~]` Trasferimento tesoreria→tesoreria tra due gilde dello
     STESSO owner, **ANCHE cross-server** — `core.repositories.
     guild_clan_repo.transfer_between_treasuries` esisteva già da una
     sessione precedente (clan con ID GLOBALE non per server proprio
@@ -1104,7 +1340,8 @@ necessario.
     dall'utente quando il repository fu scritto): senza questo
     comando le coin di una seconda gilda su un altro server
     resterebbero bloccate per sempre lì
-  - `[x]` Decadimento mensile 10% sulla tesoreria NON spesa —
+    → **Stato 04/10:** BUG-15; possibile stallo tra due trasferimenti opposti (REVIEW §5).
+  - `[~]` Decadimento mensile 10% sulla tesoreria NON spesa —
     `guild_clan_treasury_decay_worker.py`, idempotente per periodo
     (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`,
     deposita il delta nella cassa di server (SPEC.md §15.15). **Bug di
@@ -1118,12 +1355,14 @@ necessario.
     `apply_monthly_decay` ora restituisce `(saldo_prima, saldo_dopo)`,
     entrambi letti sotto lo stesso `FOR UPDATE`, e il worker calcola
     il delta da questa coppia
-  - `[x]` Acquisto canali: testuale / vocale / forum — `/clan
+    → **Stato 04/10:** scatta entro un'ora dalla creazione (REVIEW §4).
+  - `[~]` Acquisto canali: testuale / vocale / forum — `/clan
     compra-canale <tipo> [nome]`, Capo/Admin Clan, crea il canale
     Discord VERO dentro la categoria del clan PRIMA di scalare la
     tesoreria (stesso ordine di `/clan crea` con la categoria — se la
     creazione fallisce non resta una spesa senza contropartita), poi
     `increment_channels_unlocked`
+    → **Stato 04/10:** può dare il canale gratis (BUG-14).
   - `[x]` Costo coin raddoppiato/quadruplo per canale successivo
     (25.000 → 50.000 → 200.000 → 800.000) — applicato da `/clan
     compra-canale` via `next_channel_unlock_cost`
@@ -1148,15 +1387,17 @@ necessario.
     tra loro se entrambi attivi (×4 totale). Un acquisto mentre un
     boost è già attivo ESTENDE la scadenza da lì (mai da subito,
     stesso pattern già usato per l'estensione mensile del premium)
-  - `[x]` Comandi: `/clan crea|info|membri|classifica|sciogli|
+  - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|
     tesoreria dona|tesoreria trasferisci|invita|espelli|promuovi|
     compra-canale|boost individuale|boost gilda` — tutti i comandi
     previsti per §15.14 sono scritti, nessuna voce mancante (la
     tesoreria resta a senso unico per design, vedi sopra)
-- `[x]` **15.15 Decadimento economico + cassa di server** (scope
+    → **Stato 04/10:** manca `/clan lascia`; lo scioglimento lascia i ruoli agli altri admin (REVIEW §12).
+- `[~]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
-  - `[x]` Decadimento settimanale 10% sui coin PERSONALI di
+  → **Stato 04/10:** vedi le voci sotto.
+  - `[~]` Decadimento settimanale 10% sui coin PERSONALI di
     QUALUNQUE membro del server (in un clan o no) — logica pura
     (`apply_weekly_personal_decay`, `week_key` in
     `core/leveling_logic.py`: mai negativo, mai sotto 1, sempre
@@ -1166,6 +1407,7 @@ necessario.
     `core/weekly_personal_decay_worker.py`, stesso pattern tick
     orario/idempotente per periodo del worker di tesoreria di clan)
     tutti fatti e testati
+    → **Stato 04/10:** scatta entro un'ora dalla creazione (REVIEW §4).
   - `[x]` Cassa di server: `core/repositories/guild_chest_repo.py`
     (tabelle `guild_chest` + `guild_chest_ledger`), alimentata da
     ENTRAMBI i decadimenti — quello settimanale personale
@@ -1173,7 +1415,7 @@ necessario.
     tesoreria di clan (`guild_clan_treasury_decay_worker`, aggiornato
     per depositare il delta nella cassa del server del clan). Saldo
     e ultimi movimenti consultabili con `/cassa saldo`
-  - `[x]` Uso della cassa: premi per eventi organizzati nel server
+  - `[~]` Uso della cassa: premi per eventi organizzati nel server
     e/o acquisto di mesi di bot premium — lo sblocco premium è
     fatto (`/cassa sblocca-premium`); i premi evento sono fatti con
     due comandi distinti: `/assegna-lobby <importo>` (premio
@@ -1185,7 +1427,8 @@ necessario.
     accredita `importo` coin a un singolo membro scelto), entrambi
     riservati a chi ha `manage_guild` e a spesa dalla cassa di
     server (non dalla tesoreria di un clan)
-  - `[x]` Sblocco premium a doppio cancello: **tempo** dal join del
+    → **Stato 04/10:** `/assegna-lobby` può addebitare due volte (LC-1).
+  - `[~]` Sblocco premium a doppio cancello: **tempo** dal join del
     bot nel server (1° mese dopo 6 mesi, 2° dopo 1 anno, 3° dopo 2
     anni, confermato da `core.premium_pricing_logic.TIER_MONTHS_
     REQUIRED`) **E** costo in coin dalla cassa (500.000/5.000.000/
@@ -1196,8 +1439,9 @@ necessario.
     comprato, saldo) prima di toccare la cassa; `guild_has_premium_
     access` in `core/premium.py` ora controlla anche questo stato
     oltre alla whitelist manuale — comando: `/cassa sblocca-premium`
+    → **Stato 04/10:** doppio clic: doppio addebito (BUG-14).
 
-## §16 FUN & IMMAGINI — parzialmente fatta
+## §16 FUN & IMMAGINI — SFW presente; NSFW da fare (fase F11)
 
 - `[x]` 16.1 Mini-giochi — `/fun coinflip`, `/fun dice [facce]`,
   `/fun rps` (carta/forbici/sasso contro il bot), `/fun 8ball
@@ -1219,6 +1463,7 @@ necessario.
   `asyncio.to_thread(...)` nel cog, mai nel modulo `core/` puro.
   Sotto-comandi del gruppo `/fun` esistente — vedi nota tecnica sotto
   16.8, nessun nuovo slot top-level consumato
+  → **Stato 04/10:** SEC-20 corretto il 04/10 (`b2303a5`). (da verificare live)
 - `[x]` 16.3 Comandi meme — `/fun meme [top-text] [bottom-text]`,
   stile classico Impact (testo bianco, contorno nero) su qualunque
   immagine (allegato > utente menzionato > avatar autore), testo
@@ -1227,7 +1472,7 @@ necessario.
   incorporato nel repository). Richiede almeno uno tra top/bottom
   text, altrimenti messaggio d'errore effimero. Stesso gruppo `/fun`,
   nessun nuovo slot top-level
-- `[x]` 16.4 Comandi animal — `/fun animal <specie>` (cane/gatto/
+- `[~]` 16.4 Comandi animal — `/fun animal <specie>` (cane/gatto/
   volpe), immagine casuale da tre API pubbliche GRATUITE, nessuna
   chiave richiesta: dog.ceo, thecatapi.com, randomfox.ca
   (`core/animal_fetcher.py` interpreta le risposte con `core/animal_
@@ -1236,11 +1481,13 @@ necessario.
   Restituisce un messaggio d'errore effimero (non un'eccezione) se
   la richiesta fallisce. Sotto-comando del gruppo `/fun` esistente,
   nessun nuovo slot top-level
+  → **Stato 04/10:** nessun `defer` (LIM-24).
 - `[x]` 16.5 Ship — percentuale deterministica via hash, non casuale
   ad ogni chiamata
 - `[ ]` 16.6 Howgay — deliberatamente non fatto: troppo vicino a un
   attributo protetto (l'orientamento sessuale) per un giochino
   casuale, anche se comune in altri bot Discord
+  → **Stato 04/10:** resta non fatto per il motivo scritto. Alternativa pianificata: misuratore casuale a tema libero, senza attributi protetti (NF-40).
 - `[x]` 16.7 Rate — punteggio 0-10 deterministico via hash
 - `[x]` 16.8 Altri comandi di intrattenimento classici — `/fun joke`,
   `/fun quote`, `/fun fact`, contenuto testuale curato a mano
@@ -1263,7 +1510,8 @@ necessario.
   totale supera 100 e avvisa se supera 90 — qualunque comando FUTURO
   di §16 (16.2/16.3/16.4/16.9) andrà sotto questo stesso gruppo o un
   gruppo analogo, non come nuovo comando top-level
-- `[x]` 16.9 Ricerca immagini SFW — `/fun search-image <query>`, via
+  → **Stato 04/10:** Correzione al testo: i comandi di primo livello erano 97, non 96.
+- `[~]` 16.9 Ricerca immagini SFW — `/fun search-image <query>`, via
   Pixabay (`PIXABAY_API_KEY`, opzionale come Twitch/YouTube ma —
   a differenza di quelle — il comando non può funzionare affatto
   senza: risponde spiegando come attivare la chiave gratuita invece
@@ -1272,7 +1520,9 @@ necessario.
   garantire risultati SFW (`core/image_search_fetcher.py`/`core/
   image_search_logic.py`, logica pura testata senza rete). Sotto-
   comando del gruppo `/fun` esistente, nessun nuovo slot top-level
+  → **Stato 04/10:** nessun `defer` (LIM-24); condizioni d'uso di Pixabay non rispettate (LIM-48).
 - `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
+  → **Stato 04/10:** in piano: NF-23, fase F11.
   - `[ ]` Solo canali con flag NSFW, verificato a runtime a ogni post
   - `[ ]` Comando ricerca: `r34 <termine>` → immagine casuale
   - `[ ]` Auto-post configurabile: intervallo (numero + minuti/ore),
@@ -1290,11 +1540,14 @@ necessario.
   `/owner eval`/`/owner shell`, il codice/comando va mostrato per
   intero prima dell'esecuzione (bottoni Esegui/Annulla), ogni
   invocazione loggata in modo persistente
+  → **Stato 04/10:** spenti di default in produzione (D7); BUG-23 corretto. (da verificare live)
 - `[x]` 17.4 Blacklist globale utenti — cache come per i moduli,
   blocca ogni interazione tramite `BlacklistAwareCommandTree`
-- `[x]` 17.5 Blacklist globale server — uscita automatica su
+  → **Stato 04/10:** ora ferma anche bottoni, moduli e listener (SEC-10, SEC-21). (da verificare live)
+- `[~]` 17.5 Blacklist globale server — uscita automatica su
   `on_guild_join` se già in blacklist, uscita immediata se aggiunto
   mentre il bot è già dentro
+  → **Stato 04/10:** esce solo il bot principale; gli altri bot restano (REVIEW §12).
 - `[x]` 17.6 Forced cog load / unload / reload — `/owner cog-load|
   cog-unload|cog-reload`. Due bug sistemici trovati e corretti
   facendolo: i nomi dei metodi Python collidevano con hook di ciclo
@@ -1306,21 +1559,173 @@ necessario.
   riusa la stessa catena di fallback del messaggio di benvenuto
   (system_channel → primo canale scrivibile → DM proprietario),
   estratta in un metodo generico su `iYokaiBot`
-- `[x]` 17.8 Statistiche globali (guild count, shard health, RAM,
+- `[~]` 17.8 Statistiche globali (guild count, shard health, RAM,
   latenza, comandi/minuto, errori) — `/owner stats`, contatori a
   finestra scorrevole di 60s (`core/bot_stats.py`)
+  → **Stato 04/10:** `bot_stats` cresce senza fine (REVIEW §4).
 - `[x]` 17.9 Leave guild forzato
-- `[x]` 17.10 Pannello premium interattivo con conferma a due step e
+- `[~]` 17.10 Pannello premium interattivo con conferma a due step e
   log persistente di ogni modifica — `/owner premium-panel`, Select
   + conferma, `premium_toggle_history` (append-only, distinta dallo
   stato più recente)
+  → **Stato 04/10:** nessun controllo a 25 moduli (LIM-22).
+
+## §18 ROUTER DEI CANALI E LOG SU FORUM — da fare (fase F6)
+
+- `[ ]` 18.1 Un canale per **tipo** di uscita (log membri, messaggi,
+  moderazione, voce, server, automod, allarmi, benvenuto…), al posto
+  del canale unico (NF-01)
+- `[ ]` 18.2 Canale di testo oppure forum; nel forum un post per tipo
+  di log (D3)
+- `[ ]` 18.3 Creazione automatica di categoria e canali, o del forum,
+  con i permessi giusti (visibili solo allo staff)
+- `[ ]` 18.4 Canale sparito o senza permessi: avviso agli admin una
+  volta sola, mai un errore a ogni evento (LC-6)
+- `[ ]` 18.5 Migrazione delle impostazioni esistenti nella nuova
+  tabella `output_channels`
+- `[ ]` 18.6 Ignora canali, utenti e prefissi nei log
+- `[ ]` 18.7 Log delle azioni oggi mai registrate: `/lock`, `/unlock`,
+  `/slowmode`, `/clear`, `/untimeout`, `/unmute-role`, scadenza dei
+  tempban, azioni dell'escalation
+
+## §19 DATI, PRIVACY E GDPR — da fare (fase F5)
+
+- `[ ]` 19.1 Registro dei dati personali: ogni tabella con `user_id` o
+  `guild_id` è dichiarata, con il modo di cancellarla (NF-04)
+- `[ ]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
+  tranne ban e kick di sicurezza (D6, GDPR-1)
+- `[ ]` 19.3 Cancellazione dei dati di un utente su richiesta (GDPR-2)
+- `[ ]` 19.4 Esportazione dei dati di un utente in un file (art. 15)
+- `[ ]` 19.5 Pulizia giornaliera delle tabelle che crescono (GDPR-3,
+  PERF-3)
+- `[ ]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner
+- `[ ]` 19.7 Privacy policy e termini pubblicati (serve anche per la
+  verifica dell'app a 100 server)
+- `[ ]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato
+  (serve per la domanda a Discord da 10.000 utenti, D11)
+- `[ ]` 19.9 Token dei webhook salvati come hash; chiave dei token
+  OAuth ruotabile (SEC-16, LIM-52)
+
+## §20 NUOVA STRUTTURA DEI COMANDI — da fare (fase F7)
+
+- `[ ]` 20.1 13 gruppi: `/owner /admin /mod /modban /security /log
+  /ticket /voice /music /level /clan /fun /utility` (NF-05, D2)
+- `[ ]` 20.2 Ogni gruppo dello staff ha i suoi permessi predefiniti:
+  chi non può usare un comando non lo vede (SEC-1)
+- `[ ]` 20.3 Ogni gruppo funziona solo dentro un server (LC-2)
+- `[ ]` 20.4 `/owner` registrato solo nel server dell'owner
+- `[ ]` 20.5 Nessuna compatibilità con i vecchi nomi (D4)
+- `[ ]` 20.6 Al massimo 25 figli per gruppo e un livello di
+  sotto-gruppi, controllati da un test (LIM-57)
+- `[ ]` 20.7 `COMMAND_LIST.md` rigenerato dall'albero vero
+
+## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
+
+- `[ ]` 21.1 Tutti i testi in un file per lingua, italiano e inglese
+  (NF-06)
+- `[ ]` 21.2 La lingua del server decide la lingua delle risposte
+- `[ ]` 21.3 Nomi e descrizioni dei comandi tradotti da Discord secondo
+  la lingua dell'utente (D1)
+- `[ ]` 21.4 `COMMAND_LIST_ITA.md` e `COMMAND_LIST_ENG.md` generati
+- `[ ]` 21.5 `/utility cerca-comando`: sinonimi nelle due lingue, solo
+  i comandi che l'utente può usare e con il modulo attivo
+- `[ ]` 21.6 Risposte oggi in inglese (role menu, verify, spam-trap,
+  benvenuti) portate nel file dei testi
+
+## §22 FUNZIONI NUOVE, PRIMO GRUPPO — da fare (fase F9)
+
+- `[ ]` 22.1 Ruolo automatico all'ingresso (NF-07)
+- `[ ]` 22.2 Ruoli ridati a chi rientra entro 30 giorni (NF-07)
+- `[ ]` 22.3 Ruoli dati dopo un ritardo (NF-07)
+- `[ ]` 22.4 Starboard (NF-08)
+- `[ ]` 22.5 Comandi personalizzati creati dal server: testo o embed,
+  ruolo, pausa; prefisso facoltativo solo per questi (NF-09)
+- `[ ]` 22.6 Costruttore di embed con anteprima e modifica (NF-17)
+- `[ ]` 22.7 Immagine di benvenuto con avatar, nome e sfondo (NF-11)
+- `[ ]` 22.8 Rank card come immagine (NF-12)
+- `[ ]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
+- `[ ]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
+- `[ ]` 22.11 Ticket: chiusura automatica per inattività o utente
+  uscito (NF-13)
+- `[ ]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
+- `[ ]` 22.13 Modalità dei reaction roles: unique, verify, drop,
+  reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
+- `[ ]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
+  del level-up, premi "accumula" o "togli i precedenti", valori
+  configurabili (NF-15)
+- `[ ]` 22.15 Captcha a immagine nella verifica (NF-18)
+- `[ ]` 22.16 Wizard di primo avvio per categoria, con creazione dei
+  canali
+- `[ ]` 22.17 Soglie sui warn dati a mano
+
+## §23 FUNZIONI NUOVE, SECONDO GRUPPO — da fare (fasi F9, F13, F14)
+
+- `[ ]` 23.1 Canale richieste musicali con player e bottoni; playlist
+  salvate (NF-19, fase F9)
+- `[ ]` 23.2 Canali contatore (NF-16)
+- `[ ]` 23.3 Statistiche di attività per canale e per membro, ruoli per
+  attività (NF-25)
+- `[ ]` 23.4 Compleanni (NF-26)
+- `[ ]` 23.5 Inviti: comando personale e classifica (NF-27)
+- `[ ]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
+  messaggi, programmati (NF-28)
+- `[ ]` 23.7 Blocco totale del server e "panic mode" (NF-29)
+- `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
+  quarantena come punizione di default
+- `[ ]` 23.9 Appello anche per i ban dati a mano (NF-30)
+- `[ ]` 23.10 Blocco dei link di phishing (NF-31)
+- `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
+- `[ ]` 23.12 Ticket via messaggio privato (NF-33)
+- `[ ]` 23.13 Moduli e candidature (NF-34)
+- `[ ]` 23.14 Effetti sonori in vocale (NF-35)
+- `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)
+- `[ ]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
+  veri; gioco del conteggio (NF-40)
+- `[ ]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
+  serie, battle pass, profilo globale positivo, punteggio di rischio,
+  carico dello staff (NF-41, fase F14)
+
+## §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER — da fare (fase F10)
+
+Completa la parte C più sotto (pagine di verifica e dell'owner).
+
+- `[ ]` 24.1 Accesso con Discord e scelta del server (NF-20)
+- `[ ]` 24.2 Una pagina per modulo, con interruttore e impostazioni
+- `[ ]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
+  con gli stessi controlli (`core/config_schema.py`)
+- `[ ]` 24.4 Il bot vede un cambio fatto dal pannello senza riavvio
+- `[ ]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
+  moduli dei ticket
+- `[ ]` 24.6 Pagine legali: privacy policy e termini
+- `[ ]` 24.7 Pagamento del premium: abbonamento dentro Discord e
+  pagamento esterno registrato dall'owner (NF-22)
+
+## §25 MOTORE AI — da fare (fase F12, issue #50)
+
+Prerequisiti: privacy policy pubblicata con l'elenco dei fornitori;
+consenso dell'admin per server; tetto di spesa (D13). Vietato usare i
+messaggi per addestrare modelli.
+
+- `[ ]` 25.1 Router con più fornitori in cascata e risposta locale di
+  riserva (NF-24)
+- `[ ]` 25.2 Cache delle risposte a domande uguali o molto simili
+- `[ ]` 25.3 Filtri di sicurezza in ingresso e in uscita; dati
+  personali tolti prima dell'invio
+- `[ ]` 25.4 Conteggio dell'uso e tetto di spesa per server
+- `[ ]` 25.5 Helpdesk: risposte sui comandi e sul server
+- `[ ]` 25.6 Riassunti di canali e ticket
+- `[ ]` 25.7 Lore: tono e ambientazione scelti dal server (tabella e
+  comando possono nascere prima del motore, vedi `BACKLOG.md` §8)
+- `[ ]` 25.8 Generazione di immagini
+- `[ ]` 25.9 Interruttore per server e per canale
 
 ---
 
-# B. iYOKAI APPLICATION (user-installable) — **MAI TRACCIATA**
+# B. iYOKAI APPLICATION (user-installable) — da fare (NF-36, fase F13)
 
 - `[ ]` B.1 Applicazione con scope `USER_INSTALL`: comandi disponibili
   in qualsiasi server, DM, group DM, anche dove il bot non è invitato
+  → **Stato 04/10:** in piano: NF-36, fase F13.
 - `[ ]` B.2 Utility personali
 - **Nota**: menzionata nella discussione sulle alternative al selfbot,
   poi mai inserita in nessuna lista di cose da fare — nemmeno nella
@@ -1328,23 +1733,27 @@ necessario.
 
 ---
 
-# C. WEB PANEL (iYokai Panel) — **MAI INIZIATO**
+# C. WEB PANEL (iYokai Panel) — da fare (NF-20, NF-21, fase F10)
 
 - `[ ]` C.1 Pagina di verify avanzato (IP, ISP, geo, fingerprint)
+  → **Stato 04/10:** in piano: NF-21, fase F10.
 - `[ ]` C.2 Flusso OAuth2 `identify` (verify)
 - `[ ]` C.3 Flusso OAuth2 `guilds.join` separato (restore utenti)
 - `[ ]` C.4 Dashboard owner: premium list, toggle moduli premium
+  → **Stato 04/10:** in piano: NF-20, fase F10. Le pagine di configurazione dei server sono in §24.
 - `[ ]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
   legale per C.1, non opzionale)
+  → **Stato 04/10:** anticipata alla fase F5 (NF-04): serve anche per la verifica dell'app.
 
 ---
 
-# D. iYOKAI DESKTOP (presence via RPC) — **MAI INIZIATO**
+# D. iYOKAI DESKTOP (presence via RPC) — da fare (NF-37, fase F13)
 
 - `[✗]` D.0 Modulo selfbot con user token — **scartato**: viola i ToS
   Discord, fa bannare l'utente finale, e metterebbe a rischio l'intera
   applicazione verificata
 - `[ ]` D.1 App locale che usa il socket IPC del client Discord
+  → **Stato 04/10:** in piano: NF-37, fase F13.
 - `[ ]` D.2 Custom presence: giocando / ascoltando / guardando /
   competendo, immagini grande e piccola, testi, bottoni, timestamp
 - `[ ]` D.3 Rotazione automatica di più stati
@@ -1352,44 +1761,30 @@ necessario.
 - `[✗]` D.5 Custom status testuale con emoji, bio animate, cambio
   avatar/banner a rotazione — **impossibile senza user token**, nessuna
   via legittima esiste
+  → **Stato 04/10:** resta impossibile senza violare le regole. L'alternativa più vicina è D.2 (rich presence).
 
 ---
 
 # E. ALTRE APPLICAZIONI DA CREARE
 
-- `[ ]` iYokai Creator (backup) — vedi §11
-- `[ ]` iYokai Music #1-5 — vedi §9
+Con la decisione D8 il Creator non serve più: i bot che girano nello
+stesso processo passano da 7 a 6 (principale + 5 musicali).
+
+- `[✗]` iYokai Creator (backup) — vedi §11
+  → **Stato 04/10:** non serve più: Discord non lascia creare server ai bot (D8). Va tolto dal codice in F3.
+- `[~]` iYokai Music #1-5 — vedi §9
+  → **Stato 04/10:** il codice c'è; l'audio dei worker va corretto (LIM-40, D10).
 - `[ ]` iYokai NSFW — vedi §16.10
 
 ---
 
-# Conteggio sintetico
+# Note storiche (fino al 28/09/2026)
 
-Ricalcolato meccanicamente (script che conta i marcatori `[x]`/`[~]`/
-`[ ]` per sezione), non a occhio — così resta verificabile da chiunque
-rilancia lo stesso conteggio.
-
-| Sezione | Fatto | Parziale | Mancante |
-|---|---|---|---|
-| §1 Core | 19 | 0 | 0 |
-| §2 Setup | 6 | 1 | 0 |
-| §3 Premium | 10 | 1 | 0 |
-| §4 Verify | 10 | 0 | 9 |
-| §5 Moderation | 12 | 0 | 0 |
-| §6 AutoMod | 15 | 0 | 0 |
-| §7 Security | 33 | 0 | 1 |
-| §8 Logging | 17 | 0 | 1 |
-| §9 Music | 8 | 1 | 0 |
-| §10 Alerts | 7 | 0 | 0 |
-| §11 Backup | 13 | 0 | 0 |
-| §12 Voice temp | 8 | 0 | 0 |
-| §13 Ticket | 13 | 0 | 0 |
-| §14 Utility | 15 | 0 | 3 |
-| §15 Levels/Gilde | 34 | 0 | 0 |
-| §16 Fun/NSFW | 8 | 0 | 7 |
-| §17 Owner | 10 | 0 | 0 |
-| B/C/D/E | 0 | 0 | 14 |
-| **Totale** | **238** | **3** | **35** |
+**Il conteggio aggiornato è nel riquadro "Legenda e stato" in cima al
+file.** Il testo qui sotto è la cronaca delle sessioni precedenti,
+tenuta come storico. I numeri e i "COMPLETO al 100%" che contiene **non
+valgono più**: la revisione del 28/09 (`revisione/01-analisi/REVIEW.md`
+§12) ha mostrato che molte voci segnate fatte non lo erano.
 
 Su 273 voci totali: **167 fatte, 1 parziale, 105 mancanti** — circa
 il 61% dello schema (contando i parziali a metà peso). **§15 Levels/

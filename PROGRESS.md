@@ -4517,6 +4517,14 @@ parte di R1 (ticket, setup, config, avvio, scheduler, backup). Suite:
 di R1 dalla sezione Musica. Nessuna delle 24 voci di `VERIFICA_LIVE.md`
 è ancora stata provata.
 
+**Aggiornamento del 04/10 (sera):** la fase R1-bis è chiusa (suite
+verde, 2614 test) e l'intent `message_content` è acceso nel codice
+(`783329e`): l'owner deve attivarlo nel Developer Portal. I documenti
+della revisione sono ora nella cartella `revisione/` (indice in
+`revisione/README.md`). `PIANO_FIX.md` è storico: **il prossimo passo è
+`revisione/02-piano/PRIORITA.md`, fase F1.** Decisioni in `DECISIONI.md`
+(tra cui D8: backup senza Creator; D11: intent a 10.000 utenti).
+
 **§15 Levels/Economy/Gilde/Classifiche a 9/25** — notifica level-up
 vocale, ruoli-premio e annuncio vincitori mensile fatti. Prossimi pezzi ben delimitati, senza
 bisogno di discussione preventiva:

@@ -1,5 +1,12 @@
 # PIANO_FIX.md — Ordini di lavoro per la correzione di iYokai
 
+> **Superato da [`PRIORITA.md`](PRIORITA.md) (04/10/2026).** Questo file
+> resta come **storico**: dice come sono stati fatti i fix fino alla
+> fase R1-bis. La lista di lavoro valida è `PRIORITA.md`. Le voci `[B]`
+> non esistono più: le decisioni sono in [`DECISIONI.md`](DECISIONI.md).
+> I file `REVIEW.md` e `VERIFICA_LIVE.md` citati sotto sono ora in
+> `revisione/01-analisi/` e `revisione/03-verifica/`.
+
 Questo file dice **cosa** sistemare, **in che ordine** e **come**. Il
 *perché* e i dettagli di ogni problema stanno in `REVIEW.md` (i codici
 SEC-/BUG-/LC-/GDPR-/DB-/PERF- rimandano lì). Le issue GitHub sono
@@ -383,6 +390,10 @@ Approccio a **basso rischio**: non si riscrivono le ~41 funzioni
 
 ## R1-bis — Bug e regressioni trovati nella revisione del 04/10
 
+**Stato: chiusa il 04/10** (suite verde, 2614 test). Restano fuori:
+BUG-26, BUG-28 e BUG-29 (superati dalla decisione D8), BUG-34 (da
+confermare) e la voce sui ping, ora decisione D12.
+
 **Da fare PRIMA di continuare R1.** Sono difetti nei fix già
 committati (R0, DB, prima parte di R1). Dettagli e scenari in
 `REVIEW.md` §20. Stesso metodo di sempre: test che fallisce, fix,
@@ -394,7 +405,7 @@ dei ticket, criterio "server non in una coppia" per la pulizia del
 Creator): le istruzioni qui sotto le **sostituiscono**.
 
 **Gravi**
-- [ ] **BUG-19** I due worker del backup non partono mai.
+- [x] **BUG-19** (`fba882e`, `b0d5302`; la pulizia dei server orfani è stata **disattivata apposta**) I due worker del backup non partono mai.
   `main.py` ~592-595 chiama `backup_queue_worker.start(...)` e
   `backup_snapshot_worker.start(...)` prima del login; il loro
   `before_loop` fa `wait_until_ready()`, che prima del login solleva
@@ -410,14 +421,14 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
   - Invariante: per ogni `tasks.loop` in `core/` che usa
     `wait_until_ready()` in `before_loop`, il punto in cui viene
     avviato è dopo il login.
-- [ ] **BUG-20** `safe_get` solleva invece di restituire `None`
+- [x] **BUG-20** (`c5ebd0f`) `safe_get` solleva invece di restituire `None`
   (`ValueError` su `http://x:99999/`, `UnicodeError` su `http://a..b/`),
   e il giro dei feed si ferma per tutti i server con id successivo.
   - Fix: in `core/safe_http.py` ogni errore di parsing o risoluzione
     vale "URL rifiutato" (`return None`); in `core/feed_watcher.py`
     `try/except` **per iscrizione**; `/alerts add` valida l'URL con la
     stessa funzione prima di salvarlo.
-- [ ] **SEC-18** DNS rebinding in `safe_get`: il nome viene risolto per
+- [x] **SEC-18** (`6509fec`) DNS rebinding in `safe_get`: il nome viene risolto per
   il controllo e poi di nuovo da aiohttp per la connessione.
   - Fix: un `aiohttp.abc.AbstractResolver` personalizzato passato al
     `TCPConnector`, che risolve, **scarta** gli IP non ammessi e
@@ -426,7 +437,7 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
     anche `100.64.0.0/10`, oggi non bloccato).
   - Test: resolver finto che risponde un IP pubblico la prima volta e
     `127.0.0.1` la seconda → nessuna connessione a loopback.
-- [ ] **BUG-21 / SEC-19** Link del restore (sostituisce SEC-3 di R0):
+- [x] **BUG-21 / SEC-19** (`8590e89`) Link del restore (sostituisce SEC-3 di R0):
   - la scadenza di 10 minuti non va bene per un link mandato in DM:
     portala a 7 giorni (costante unica);
   - lo state contiene l'ID del **destinatario previsto**; dopo
@@ -438,14 +449,14 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
     sono riusciti; un errore temporaneo non brucia il link;
   - `hmac.compare_digest` su `bytes`, così una firma non ASCII non dà
     errore 500.
-- [ ] **BUG-22** Il limite di 30 secondi sui DM di appello conta anche i
+- [x] **BUG-22** (`ea2e897`, `77e0fe1`) Il limite di 30 secondi sui DM di appello conta anche i
   DM scartati: chi scrive più spesso di ogni 30 secondi viene ignorato
   per sempre (compresa la risposta alla domanda "quale server?").
   - Fix: si registra il momento solo quando un DM viene **elaborato**
     (dizionario `user_id → ultimo elaborato` in una `BoundedCache`).
   - Test: DM a 0, 10, 35 e 65 secondi → elaborati il primo, il terzo e
     il quarto.
-- [ ] **BUG-30** `/ticket close`: `cog_unload` cancella le eliminazioni
+- [x] **BUG-30** (`10d16f1`) `/ticket close`: `cog_unload` cancella le eliminazioni
   in attesa (lo fa anche `bot.close()`), il database dice già "chiuso",
   `close` e `forceclose` rifiutano, e il canale resta per sempre.
   - Fix: l'eliminazione passa dallo scheduler (`scheduled_actions`, tipo
@@ -456,7 +467,7 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
     difende il comportamento sbagliato.
 
 **Medi**
-- [ ] **BUG-26** Pulizia dei server orfani del Creator: oggi è "orfano"
+- [ ] **BUG-26** (**superato dalla decisione D8**: il Creator viene tolto) Pulizia dei server orfani del Creator: oggi è "orfano"
   tutto ciò che non è in una coppia di **questo** database. Con lo
   stesso token del Creator in due ambienti (PC di test e produzione), o
   dopo un reset del database, cancella backup validi dell'altro
@@ -466,7 +477,7 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
     fallito: `backup_jobs` salva l'ID del server appena creato; la
     pulizia cancella solo gli ID presenti in job `failed`/`expired` di
     questo database. Mai "tutto quello che non conosco".
-- [ ] **BUG-28** Fine del backup senza riconciliazione:
+- [ ] **BUG-28** (**superato dalla decisione D8**) Fine del backup senza riconciliazione:
   - se l'admin accetta l'invito mentre il processo è spento, il job
     resta `running` e dopo 24 ore il Creator cancella un server dove il
     bot principale è già entrato → all'avvio e a ogni giro, controlla
@@ -475,24 +486,24 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
     giù non si scrive `completed`;
   - alla cancellazione di un job, `backup_mirror_repo.delete_for_main_guild`
     (toglilo da `KNOWN_UNCALLED`).
-- [ ] **BUG-29** "Un solo job attivo": indice unico parziale su
+- [ ] **BUG-29** (**superato dalla decisione D8**) "Un solo job attivo": indice unico parziale su
   `backup_jobs(main_guild_id) WHERE status IN ('pending','running')`
   (migrazione) al posto del controllo-poi-inserimento; stesso controllo
   in `/promuovi-backup`; comando per annullare un job; un job `running`
   trovato all'avvio viene chiuso come fallito.
-- [ ] **BUG-27** Scheduler: un'azione senza handler oggi diventa `failed`
+- [x] **BUG-27** (`cf6eea0`) Scheduler: un'azione senza handler oggi diventa `failed`
   per sempre. Se un cog non si carica a un avvio, i tempban scaduti in
   quel momento non vengono mai più tolti.
   - Fix: colonna `attempts`; senza handler o con errore si riprova con
     attesa crescente fino a un massimo (es. 24 ore), poi `failed` con
     DM all'owner. Vale anche per gli handler che sollevano sempre.
     Ogni azione in una transazione propria, non l'intero blocco.
-- [ ] **BUG-23** `/owner shell`: al timeout `kill()` uccide solo la
+- [x] **BUG-23** (`9e8cc1e`) `/owner shell`: al timeout `kill()` uccide solo la
   shell, il comando vero resta vivo e `wait()` resta bloccato.
   - Fix: `start_new_session=True` e `os.killpg(...)` su Linux; su
     Windows `CREATE_NEW_PROCESS_GROUP` e `taskkill /T /F`; attesa finale
     con timeout. Test con un **processo vero** (`sleep 60`).
-- [ ] **SEC-20** Limiti immagini insufficienti: un PNG da 39,7 megapixel
+- [x] **SEC-20** (`b2303a5`) Limiti immagini insufficienti: un PNG da 39,7 megapixel
   passa e un solo `blur` usa circa 470 MB.
   - Fix: limite a 16 megapixel; riduzione a 2048 px di lato massimo
     prima di qualsiasi filtro; `defer()` in tutti i comandi immagine di
@@ -500,77 +511,77 @@ Creator): le istruzioni qui sotto le **sostituiscono**.
     deve ritardare i ban); limite sui byte dell'allegato prima di
     scaricarlo. Test che misura la memoria sulla più grande immagine
     accettata.
-- [ ] **SEC-21** Blacklist: mancano l'XP vocale dei clan
+- [x] **SEC-21** (`7b96e8c`) Blacklist: mancano l'XP vocale dei clan
   (`core/guild_clan_voice_worker.py`), la creazione del vocale
   temporaneo entrando nel canale generatore, e `/assegna-lobby`.
-- [ ] **SEC-22** Mirror del backup (`core/backup_mirror_dispatch.py`):
+- [x] **SEC-22** (`690a5b6`) Mirror del backup (`core/backup_mirror_dispatch.py`):
   `webhook.send(...)` senza `allowed_mentions` → un `@everyone` scritto
   nel server principale diventa un ping vero nel backup. Passa
   `AllowedMentions.none()`.
-- [ ] **BUG-24** Spam-trap: due casi attivi nello stesso server bloccano
+- [x] **BUG-24** (`263fdf2`) Spam-trap: due casi attivi nello stesso server bloccano
   l'appello in un giro infinito. Raggruppa per server (il più recente),
   e `/unban` revoca anche i casi `spam_trap_ban`.
-- [ ] **BUG-25** `/spamtrap-setup staff_role_add:` su un server già
+- [x] **BUG-25** (`3046fda`) `/spamtrap-setup staff_role_add:` su un server già
   configurato crea canali nuovi e abbandona quelli vecchi. Se non
   vengono passati canali, usa quelli già salvati.
-- [ ] **BUG-31** `/config import` non controlla i tipi dei valori in
+- [x] **BUG-31** (`965ab35`) `/config import` non controlla i tipi dei valori in
   `settings`: `null` o `[]` passano e poi rompono ticket e log.
   - Fix: schema per chiave (tipo atteso) e nomi dei moduli validi;
     `get_guild_setting` tratta un `null` salvato come "assente";
     migrazione che toglie le chiavi `null` lasciate dal vecchio
     rollback.
-- [ ] **BUG-32** `/config rollback` di un import: il messaggio di
+- [x] **BUG-32** (`c2a9582`) `/config rollback` di un import: il messaggio di
   conferma supera i 2000 caratteri e non viene inviato; `/config
   history` supera i 4096. Mostra un riassunto (numero di chiavi
   cambiate) e tronca.
-- [ ] **BUG-33** `core/webhook_rate_tracker.py`: anche le richieste
+- [x] **BUG-33** (`eceedc8`) `core/webhook_rate_tracker.py`: anche le richieste
   rifiutate entrano nel conteggio (blocco permanente con traffico
   costante) e la coda cresce senza limite. Conta solo le accettate, coda
   con `maxlen`, limite applicato **prima** della query sul token.
-- [ ] **BUG-34** `/restore-users` dopo `/promuovi-backup`: la coppia
+- [ ] **BUG-34** (ancora da confermare: ora in `PRIORITA.md` F3) `/restore-users` dopo `/promuovi-backup`: la coppia
   viene azzerata dalla promozione e il controllo di SEC-2 rifiuta
   sempre. **Da confermare** con un test sul database, poi decidere
   (conservare la coppia storica).
 
 **Minori**
-- [ ] `core/migrations`: base e creazione di `schema_migrations` dentro
+- [x] (`5fa15fb`) `core/migrations`: base e creazione di `schema_migrations` dentro
   il lock; `command_timeout` disattivato durante le migrazioni; errore
   chiaro su due file con lo stesso numero.
-- [ ] `0001`: l'indice `idx_leveling_totals_weekly_decay_due` non viene
+- [x] (`d17f071`) `0001`: l'indice `idx_leveling_totals_weekly_decay_due` non viene
   usato (`IS DISTINCT FROM`): toglilo con una nuova migrazione o
   riscrivi la query.
-- [ ] `ENABLE_EVAL` e `PREMIUM_ALPHA_UNLOCK_ALL` sono accesi per ogni
+- [x] (`2596734`) `ENABLE_EVAL` e `PREMIUM_ALPHA_UNLOCK_ALL` sono accesi per ogni
   `ENVIRONMENT` diverso da `production` esatto (anche `prod` o vuoto):
   accetta solo valori noti e rifiuta l'avvio sugli altri.
-- [ ] Feed: la risposta viene sempre letta come UTF-8 (accenti rotti sui
+- [x] (`d6bda5e`) Feed: la risposta viene sempre letta come UTF-8 (accenti rotti sui
   feed ISO-8859-1): usa il charset dichiarato.
-- [ ] `allowed_mentions` globale rende muti anche i ping voluti
+- [ ] (ora decisione D12, in `PRIORITA.md` F1) `allowed_mentions` globale rende muti anche i ping voluti
   dall'admin in `/schedule-message`, benvenuti e sticky: `[B]` chiedi
   all'owner se in quei tre punti i ping di ruolo devono funzionare.
-- [ ] Ruoli assegnati senza `check_role_assignable`: ruolo verificato nel
+- [x] (`67e5771`, `42f227d`) Ruoli assegnati senza `check_role_assignable`: ruolo verificato nel
   restore (`core/restore_web_server.py`, `cogs/utility/restore.py`) e
   ruoli clan (`core/guild_clan_role_service.py`).
-- [ ] `core/music_fleet.py`: un worker che non è partito ha `user=None`
+- [x] (`b1452be`) `core/music_fleet.py`: un worker che non è partito ha `user=None`
   → `AttributeError`. Saltalo.
-- [ ] Secondo SIGTERM durante lo spegnimento: ignoralo finché la
+- [x] (`44ede43`) Secondo SIGTERM durante lo spegnimento: ignoralo finché la
   chiusura non è finita.
-- [ ] `/config import`: `NaN`, `\u0000`, annidamento profondo e BOM
+- [x] (`965ab35`) `/config import`: `NaN`, `\u0000`, annidamento profondo e BOM
   devono dare un messaggio di validazione, non l'errore generico.
 
 **RT-5 Test deboli da rinforzare** (passano anche togliendo il fix):
-- [ ] `test_safe_http.py`: redirect verso IP privato e `localhost`
+- [x] (`307941e`) `test_safe_http.py`: redirect verso IP privato e `localhost`
   (usa la porta 8420, quindi lo ferma il controllo della porta).
-- [ ] `test_role_safety_wiring.py`: copre solo i comandi di
+- [x] (`96011cf`) `test_role_safety_wiring.py`: copre solo i comandi di
   configurazione; aggiungi il rifiuto **al momento dell'assegnazione**
   (acquisto, premio di livello, role menu, verify, vocali).
-- [ ] `test_owner_eval_shell.py`: processo finto → usa un processo vero.
-- [ ] `test_config_rollback_bug6.py`: chiama solo il database; aggiungi
+- [x] (`9e8cc1e`) `test_owner_eval_shell.py`: processo finto → usa un processo vero.
+- [x] (`c2a9582`) `test_config_rollback_bug6.py`: chiama solo il database; aggiungi
   il comando e il bottone di conferma.
-- [ ] `test_config_import_validation.py::…troppo_grande…`: il file di
+- [x] (`965ab35`) `test_config_import_validation.py::…troppo_grande…`: il file di
   prova è `{}`.
-- [ ] `test_backup_snapshot_worker.py`, `test_bot_supervisor.py`,
+- [x] (`fba882e`, `44ede43`; resta il test sul cablaggio di `music_sessions`: `PRIORITA.md` F2) `test_backup_snapshot_worker.py`, `test_bot_supervisor.py`,
   `test_music_session_repo.py`: nessuno prova il cablaggio in `main()`.
-- [ ] `test_ui_base_wiring.py`: non vede `from discord.ui import View`
+- [x] (`e04eca5`) `test_ui_base_wiring.py`: non vede `from discord.ui import View`
   né un `interaction_check` ridefinito senza `super()`.
 
 ---
