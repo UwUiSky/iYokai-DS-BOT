@@ -26,6 +26,8 @@ di scrivere tutti i listener sottostanti.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -35,6 +37,7 @@ from core.repositories.event_log_repo import event_log_repo
 
 MODULE_LOGGING = "logging_basic"
 SETTING_LOG_CHANNEL = "log_channel_id"
+MAX_CARATTERI_ELENCO_RUOLI = 1000
 
 
 def diff_roles(
@@ -59,6 +62,28 @@ def nickname_changed(before_nick: str | None, after_nick: str | None) -> bool:
     comunque un cambiamento — non va confuso con "nessun cambiamento".
     """
     return before_nick != after_nick
+
+
+def elenco_ruoli(role_ids: Iterable[int]) -> str:
+    """
+    Menzioni dei ruoli separate da virgola, tagliate a 1000 caratteri
+    (un campo di embed ne tiene 1024). Se qualcuno resta fuori lo dice
+    con "+N altri".
+    """
+    menzioni = [f"<@&{role_id}>" for role_id in role_ids]
+    mostrate: list[str] = []
+    lunghezza = 0
+    for menzione in menzioni:
+        lunghezza += len(menzione) + 2  # 2 = ", "
+        if lunghezza > MAX_CARATTERI_ELENCO_RUOLI:
+            break
+        mostrate.append(menzione)
+
+    testo = ", ".join(mostrate)
+    esclusi = len(menzioni) - len(mostrate)
+    if esclusi:
+        testo += f" +{esclusi} altri"
+    return testo
 
 
 async def _get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
@@ -293,13 +318,13 @@ class BasicLogsCog(commands.Cog):
             if added_ids:
                 embed.add_field(
                     name="Aggiunti",
-                    value=", ".join(f"<@&{rid}>" for rid in added_ids),
+                    value=elenco_ruoli(added_ids),
                     inline=False,
                 )
             if removed_ids:
                 embed.add_field(
                     name="Rimossi",
-                    value=", ".join(f"<@&{rid}>" for rid in removed_ids),
+                    value=elenco_ruoli(removed_ids),
                     inline=False,
                 )
             await channel.send(embed=embed)
