@@ -1,5 +1,11 @@
 # VERIFICA_LIVE.md — Test da fare con il bot vero
 
+> **Nota del 04/10/2026.** Questo file ora si trova in
+> `revisione/03-verifica/`. In fondo ci sono le prove dei fix della
+> fase R1-bis. Le prove che riguardano il vecchio backup con il bot
+> Creator sono segnate "non eseguibile": si rifanno alla fine della
+> fase F3 (vedi `../02-piano/PRIORITA.md`).
+
 Qui finiscono i fix che i test automatici non possono certificare
 (servono Discord, il database reale o Lavalink). Li esegue l'owner sul
 suo PC con il `.env` locale, seguendo `CLAUDE_MANDATORY_TEST_RULES.md`.
@@ -40,25 +46,29 @@ chiudere.
      reso pericoloso il ruolo dell'opzione).
   Risultato atteso: nei punti 1 e 3-4 nessun ruolo pericoloso viene
   mai assegnato; nel punto 2 il ruolo innocuo arriva normalmente.
-- [ ] SEC-3 (#8) — commit 4d5e4a4 — passi: con
-  OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI e OAUTH_ENCRYPTION_KEY veri
-  configurati, un server "main" e uno "backup" collegati
-  (/define-main, /define-backup), e almeno uno snapshot con un
-  utente senza token salvato:
-  1. `/restore-users` nel server di backup, verso l'ID del main:
-     l'utente riceve un DM con il link di autorizzazione.
-  2. Cliccando il link e autorizzando su Discord, l'utente viene
-     aggiunto al server di backup (e riceve il ruolo di verifica se
-     configurato).
-  3. Ricliccando LO STESSO link una seconda volta: la pagina deve
-     mostrare l'errore "link non valido, scaduto o già usato",
-     nessuna azione ripetuta.
-  4. Aspettando più di 10 minuti prima di cliccare il link: stesso
-     errore di link scaduto.
-  Risultato atteso: il restore funziona una volta sola per link, con
-  scadenza reale a 10 minuti — nessuna delle due condizioni è
-  verificabile con i soli test automatici (serve il tempo reale che
-  passa e la vera autorizzazione OAuth2 di Discord).
+- [ ] SEC-3, BUG-21, SEC-19 (#8) — commit 4d5e4a4, poi 8590e89 — passi:
+  con OAUTH2_CLIENT_ID/SECRET/REDIRECT_URI e OAUTH_ENCRYPTION_KEY veri,
+  un server "main" e uno "backup" collegati, e uno snapshot con almeno
+  due utenti senza token salvato (A e B):
+  1. `/restore-users` nel server di backup, verso l'ID del main: A e B
+     ricevono un DM con il link. Il testo dice che il link è personale
+     e vale **7 giorni**.
+  2. A clicca il suo link e autorizza: entra nel server di backup e
+     riceve il ruolo verificato, se configurato.
+  3. A riclicca lo stesso link: errore "link non valido, scaduto o già
+     usato", nessuna azione ripetuta.
+  4. B apre il link **di A** (copiato a mano): deve essere rifiutato,
+     perché il link è legato al destinatario.
+  5. Clicca un link dopo più di 10 minuti (ma entro 7 giorni): deve
+     funzionare ancora.
+  6. Con un utente segnato "bannato, in blacklist" nel restore: anche
+     con un link valido non entra e resta in blacklist.
+  Risultato atteso: un link vale una volta, solo per il suo
+  destinatario, per 7 giorni. Un errore temporaneo di Discord non
+  brucia il link (si può riprovare).
+  **Nota:** finché non c'è il backup nuovo (D8, fase F3) non esiste una
+  coppia di server su cui lanciare `/restore-users`: questa prova si fa
+  alla fine di F3.
 - [ ] SEC-5 (#7) — commit bde6f00 — passi:
   1. Con un account admin (ma non owner del bot) su un server
      qualsiasi, prova `/nonstop-main add-track`, `add-local`,
@@ -291,11 +301,8 @@ chiudere.
   3. Ripeti con `/ticket forceclose` (che non ha mai avuto questo bug,
      nessun ritardo): verifica che il canale sparisca subito, senza
      regressioni.
-  4. Riavvia il bot subito dopo un `/ticket close` (entro i 10
-     secondi, prima che scada il timer): verifica che il canale non
-     resti "fantasma" — o viene comunque eliminato dal task cancellato
-     durante lo spegnimento, oppure va ripulito manualmente; annota il
-     comportamento osservato davvero, non quello atteso in teoria.
+  4. (Sostituito dalla voce BUG-30 più sotto: l'eliminazione ora
+     passa dallo scheduler e sopravvive a un riavvio.)
   Risultato atteso: `/ticket close` non va più in crash e il canale
   viene davvero eliminato dopo 10 secondi — solo la prova su Discord
   vero conferma che l'eliminazione arriva a buon fine (i test usano un
@@ -333,24 +340,160 @@ chiudere.
   1. Avvia il bot con almeno due server e lascialo girare un giro dei worker (retention, soundboard, XP vocale): nei log non devono comparire errori inattesi.
   2. Se compare un errore "…: errore su <id>, passo al successivo", verifica che gli altri server abbiano comunque completato il giro (es. XP vocale accreditata).
   Risultato atteso: nessun server blocca gli altri; la prova vera richiede server reali.
-- [ ] BUG-3/#26 — commit 3547e4c — passi:
+- [ ] BUG-3/#26 — commit 3547e4c — **non eseguibile oggi** (il flusso con il Creator non esiste più: si riprova a fine F3) — passi:
   1. Lancia un backup completo (`/backup`), autorizza iYokai Main nel server creato e attendi la fine del job.
   2. `SELECT * FROM backup_pairs;`: deve esserci la riga con `main_guild_id` = il tuo server e `backup_guild_id` = il nuovo server.
   3. Nel server backup, `/promuovi-backup` non deve più rispondere "non registrato"; dopo una settimana (o forzando il worker) lo snapshot utenti deve partire.
   Risultato atteso: la coppia viene registrata a fine backup. Solo un backup vero su Discord lo conferma.
 
-- [ ] BUG-4/#21 — commit b6eeb81 — passi:
+- [ ] BUG-4/#21 — commit b6eeb81 — **non eseguibile oggi** (il flusso con il Creator non esiste più: si riprova a fine F3) — passi:
   1. Fai fallire un backup (es. rimuovi iYokai Main prima della clonazione) oppure lascia scadere un job.
   2. Controlla in Discord che il server creato da iYokai Creator sia sparito e che gli slot (max 10) siano tornati liberi.
   3. Riavvia il bot: eventuali server del Creator più vecchi di un'ora e non legati a una coppia devono essere cancellati.
   Risultato atteso: nessun server orfano resta nel Creator. Solo Discord reale lo conferma.
 
-- [ ] Snapshot settimanale — commit 1098bb2 — passi:
+- [ ] Snapshot settimanale — commit 1098bb2 — **non eseguibile oggi** (il flusso con il Creator non esiste più: si riprova a fine F3) — passi:
   1. Con un backup attivo, riavvia il bot e controlla nel log "Snapshot settimanale completato" con un numero di utenti > 0.
   2. `SELECT count(*) FROM backup_user_snapshots;` per il tuo server.
   Risultato atteso: lo snapshot del primo giro contiene i membri reali.
 
-- [ ] §12 11.5–11.7 limiti emoji/sticker/suoni — commit e502c1f — passi:
+- [ ] §12 11.5–11.7 limiti emoji/sticker/suoni — commit e502c1f — **non eseguibile oggi** (il flusso con il Creator non esiste più: si riprova a fine F3) — passi:
   1. Fai un backup di un server con più di 50 emoji (o più di 5 sticker / 8 suoni).
   2. Il backup deve completarsi; nel log compare "saltati N emoji, N sticker, N suoni".
   Risultato atteso: il backup non fallisce per i limiti. Solo Discord reale lo conferma.
+
+## Fase R1-bis (fix del 04/10/2026)
+
+- [ ] D9 intent `message_content` (#6, #36, #39, #44) — commit 783329e — passi:
+  1. Nel Developer Portal attiva "Message Content Intent" per il bot
+     principale, poi avvia il bot: deve collegarsi. (Senza
+     l'interruttore il bot non si collega.)
+  2. Nel log di avvio la riga degli intent deve contenere
+     `message_content`.
+  3. Attiva `/automod anti-caps` e scrivi un messaggio tutto in
+     maiuscolo: il filtro deve scattare.
+  4. Apri un ticket, scrivi due messaggi, chiudilo: il transcript deve
+     contenere il testo.
+  Risultato atteso: il bot legge il contenuto dei messaggi.
+- [ ] BUG-19 — commit fba882e, b0d5302 — passi:
+  1. Avvia il bot e leggi il log: nessun `RuntimeError` dai worker.
+  2. Con un token sbagliato per un bot secondario: il bot principale
+     resta acceso e il log non mostra `RuntimeError`.
+  3. Dopo 10 minuti controlla che i feed siano stati letti almeno una
+     volta (un feed di prova pubblica un elemento nuovo).
+  Risultato atteso: i lavori periodici partono tutti dopo il login.
+  La parte "il job di `/define-backup` esce da `pending`" non è più
+  eseguibile (D8).
+- [ ] BUG-20 — commit c5ebd0f — passi:
+  1. `/alerts add` con `http://x:99999/`: deve rifiutare subito.
+  2. Con due feed validi attivi, aspetta un giro (5 minuti): entrambi
+     vengono letti.
+  Risultato atteso: un indirizzo sbagliato non ferma i feed degli altri
+  server.
+- [ ] SEC-18 e test SSRF — commit 6509fec, 307941e — passi:
+  1. `/alerts add` con `http://127.0.0.1:8420/` e con
+     `http://169.254.169.254/`: rifiutati.
+  2. `/alerts add` con un feed vero (es. un feed Reddit): accettato e
+     pubblicato al giro dopo.
+  Risultato atteso: nessun indirizzo interno viene letto; i feed veri
+  funzionano ancora.
+- [ ] Feed con codifica dichiarata — commit d6bda5e — passi:
+  1. Segui un feed in ISO-8859-1 con lettere accentate nel titolo.
+  Risultato atteso: gli accenti escono giusti ("Città", non "Citt�").
+- [ ] Ruolo verificato del restore — commit 67e5771 — passi:
+  1. Dai al ruolo verificato il permesso Amministratore, poi fai
+     rientrare un utente con il restore.
+  Risultato atteso: l'utente entra ma il ruolo **non** viene dato, e il
+  riepilogo lo dice. (Eseguibile a fine F3.)
+- [ ] BUG-33 — commit eceedc8 — passi:
+  1. Manda 12 richieste al minuto allo stesso `/webhook/<token>` per 5
+     minuti.
+  Risultato atteso: ogni minuto 10 accettate e 2 rifiutate con 429. Mai
+  un blocco permanente.
+- [ ] SEC-22 — commit 690a5b6 — passi:
+  1. Con un mirror attivo, scrivi `@everyone` nel server principale.
+  Risultato atteso: nel server di backup il testo compare ma nessuno
+  viene pingato. (Eseguibile a fine F3.)
+- [ ] BUG-22, BUG-24 — commit ea2e897, 77e0fe1, 263fdf2 — passi:
+  1. Fatti bannare dalla trappola, poi `/unban`, rientra, fatti bannare
+     di nuovo.
+  2. Scrivi al bot in DM due volte entro 10 secondi, poi una volta dopo
+     30 secondi: il terzo messaggio deve aprire **un solo** thread di
+     appello.
+  3. Dopo `/unban` scrivi ancora in DM: nessuna risposta.
+  4. Con ban della trappola su due server: il bot chiede "quale
+     server?"; la risposta viene accettata anche se arriva entro 30
+     secondi.
+  Risultato atteso: l'appello si apre sempre, una volta sola.
+- [ ] BUG-25 — commit 3046fda — passi:
+  1. Su un server già configurato: `/spamtrap-setup staff_role_add:@ruolo`.
+  Risultato atteso: nessun canale nuovo; i canali di prima restano
+  attivi.
+- [ ] SEC-21 — commit 7b96e8c — passi:
+  1. Metti un utente di prova in blacklist.
+  2. Fallo entrare nel canale generatore dei vocali: nessun canale
+     creato.
+  3. Tienilo in un vocale di clan: l'XP di clan non sale.
+  4. `/assegna-lobby` con lui in vocale: viene saltato e la cassa non
+     paga la sua quota. `/assegna-winner` su di lui: rifiutato.
+  Risultato atteso: la blacklist ferma anche questi tre punti.
+- [ ] SEC-20 — commit b2303a5 — passi:
+  1. `/fun blur` con una foto da 7 MB: compare "sta pensando", poi il
+     risultato.
+  2. Un file da 9 MB: rifiutato subito.
+  3. Un PNG 5000×5000: "Non sono riuscito a elaborare".
+  4. Durante una raffica di `/fun`, scrivi nella trappola con un altro
+     account: il ban non deve ritardare.
+  Risultato atteso: nessun picco di memoria, nessuna interazione
+  scaduta.
+- [ ] BUG-23 — commit 9e8cc1e — passi (Windows e Linux):
+  1. Imposta per la prova `SHELL_TIMEOUT_SECONDS` a 5.
+  2. `/owner shell` con `ping -n 60 127.0.0.1` (Windows) oppure
+     `sleep 60 | cat` (Linux).
+  Risultato atteso: risposta dopo circa 5 secondi; in Gestione attività
+  o con `ps` non resta nessun processo. Il ramo Windows non è mai stato
+  eseguito nei test: questa è la sua prima prova.
+- [ ] Ruoli clan (SEC-17) — commit 42f227d — passi:
+  1. Dai al ruolo "Admin Clan" il permesso Amministratore, poi promuovi
+     un membro di un clan.
+  Risultato atteso: il ruolo non viene dato e nel log c'è un avviso.
+- [ ] BUG-30 — commit 10d16f1 — passi:
+  1. `/ticket close`, poi riavvia il bot entro 5 secondi: il canale
+     sparisce entro un minuto dal riavvio.
+  2. Segna a mano un ticket come `closed` nel database, poi
+     `/ticket forceclose` nel suo canale: il canale viene eliminato.
+  Risultato atteso: nessun canale ticket resta per sempre.
+- [ ] BUG-27 — commit cf6eea0 — passi:
+  1. Al primo avvio controlla che la migrazione `0003` sia applicata
+     (`SELECT * FROM schema_migrations;`).
+  2. Inserisci in `scheduled_actions` una riga scaduta con un
+     `action_type` sconosciuto.
+  Risultato atteso: `attempts` e `next_attempt_at` crescono a ogni
+  tentativo; dopo 8 tentativi la riga diventa `failed`.
+- [ ] BUG-31, BUG-32 — commit 965ab35, c2a9582 — passi:
+  1. Controlla che la migrazione `0004` sia applicata.
+  2. `/config export`, poi `/config import` dello stesso file, poi
+     `/config rollback <id>`: il bottone Conferma compare e funziona.
+  3. `/config history limit:25`: l'elenco compare.
+  4. Importa un file con `"ticket_support_role_ids": null`: rifiutato
+     con un messaggio chiaro.
+  Risultato atteso: nessun messaggio troppo lungo, nessun valore
+  sbagliato salvato.
+- [ ] Migrazioni (DB-1, DB-2) — commit 5fa15fb, d17f071 — passi:
+  1. Avvia il bot sul database reale: nessun errore di migrazione.
+  2. `EXPLAIN ANALYZE` sulla query del decadimento settimanale: il
+     piano usa l'indice `idx_leveling_totals_weekly_decay_due`.
+  Risultato atteso: migrazioni applicate una volta sola, indice usato.
+- [ ] `ENVIRONMENT` obbligatoria (SEC-13) — commit 2596734 — passi:
+  1. `ENVIRONMENT=prod` nel `.env`: il bot rifiuta di partire e dice
+     quali valori accetta.
+  2. `ENVIRONMENT=development`: parte, con un avviso nel log se eval è
+     acceso.
+  Risultato atteso: solo `development` o `production`.
+- [ ] Flotta musicale (worker non partito) — commit b1452be — passi:
+  1. Con un token musicale sbagliato, lancia `/play` da admin con gli
+     altri worker occupati.
+  Risultato atteso: messaggio chiaro, nessun errore nel log.
+- [ ] Spegnimento (BUG-7) — commit 44ede43 — passi:
+  1. `kill -TERM` due volte a un secondo di distanza.
+  Risultato atteso: il log finisce con "Arresto completato".
