@@ -16,6 +16,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import io
+import os
+import signal
+import subprocess
+import sys
 import traceback
 
 import discord
@@ -44,6 +48,40 @@ def _is_owner(interaction: discord.Interaction) -> bool:
 
 
 SHELL_TIMEOUT_SECONDS = 30
+# BUG-23: dopo aver ucciso il comando andato in timeout, quanto si
+# aspetta al massimo che il processo risulti davvero terminato.
+SHELL_KILL_WAIT_SECONDS = 5
+
+SU_WINDOWS = sys.platform == "win32"
+
+
+def _opzioni_nuovo_gruppo() -> dict:
+    """
+    Opzioni di avvio per /owner shell: il comando parte in un gruppo
+    di processi suo, così al timeout si può uccidere tutto l'albero
+    (la shell E i comandi che ha lanciato), non solo la shell.
+    """
+    if SU_WINDOWS:
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+async def _uccidi_albero(pid: int) -> None:
+    """Uccide il processo `pid` e tutti i suoi discendenti."""
+    if SU_WINDOWS:
+        taskkill = await asyncio.create_subprocess_exec(
+            "taskkill", "/T", "/F", "/PID", str(pid),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await taskkill.wait()
+        return
+    try:
+        # Con start_new_session=True il pid della shell è anche l'id
+        # del suo gruppo di processi.
+        os.killpg(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass  # già terminato tutto da solo
 
 # SEC-13/D7: messaggio identico per i tre comandi che ENABLE_EVAL
 # può spegnere (eval, shell, cog-load) — eseguono tutti codice
@@ -659,30 +697,52 @@ class OwnerPremiumCog(commands.Cog):
         capacità: l'owner verificato ha già accesso diretto a questa
         stessa macchina (l'ha messa su lui). Timeout esplicito: un
         comando che resta appeso (es. in attesa di input) non deve
-        bloccare l'event loop del bot per sempre.
+        tenere occupato il bot per sempre. Un errore di avvio torna
+        come output del comando, non come eccezione.
         """
-        processo = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
+        try:
+            processo = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                **_opzioni_nuovo_gruppo(),
+            )
+        except Exception as exc:
+            return f"{type(exc).__name__}: {exc}", False
+
         try:
             stdout_bytes, _ = await asyncio.wait_for(
                 processo.communicate(), timeout=SHELL_TIMEOUT_SECONDS
             )
-            output = stdout_bytes.decode(errors="replace")
-            successo = processo.returncode == 0
-            return output or "(nessun output)", successo
         except asyncio.TimeoutError:
-            # SEC-13 (bug minore §5): senza .kill(), il processo
-            # resta orfano e continua a girare sulla macchina anche
-            # dopo che il comando risponde "timeout" — asyncio.
-            # wait_for() interrompe solo l'ATTESA, non il processo.
-            processo.kill()
-            await processo.wait()
-            return f"Timeout ({SHELL_TIMEOUT_SECONDS}s) superato — processo terminato.", False
+            return await self._termina_shell_scaduta(processo), False
         except Exception as exc:
             return f"{type(exc).__name__}: {exc}", False
+
+        output = stdout_bytes.decode(errors="replace")
+        return output or "(nessun output)", processo.returncode == 0
+
+    async def _termina_shell_scaduta(self, processo: asyncio.subprocess.Process) -> str:
+        """
+        BUG-23: `processo.kill()` uccideva solo la shell; il comando
+        vero restava vivo con la pipe aperta e l'attesa non finiva mai.
+        Qui si uccide tutto l'albero e l'attesa finale ha un suo
+        timeout, così la risposta arriva in ogni caso.
+        """
+        messaggio = f"Timeout ({SHELL_TIMEOUT_SECONDS}s) superato"
+        try:
+            await asyncio.wait_for(
+                _uccidi_albero(processo.pid), timeout=SHELL_KILL_WAIT_SECONDS
+            )
+            await asyncio.wait_for(processo.wait(), timeout=SHELL_KILL_WAIT_SECONDS)
+        except asyncio.TimeoutError:
+            return (
+                f"{messaggio} — non sono riuscito a terminare il processo "
+                f"(pid {processo.pid}), è ancora in esecuzione."
+            )
+        except OSError as exc:
+            return f"{messaggio} — errore terminando il processo: {exc}"
+        return f"{messaggio} — processo terminato."
 
     @owner_group.command(name="eval", description="[OWNER] Esegue codice Python (con conferma).")
     @app_commands.describe(code="Il codice Python da eseguire")

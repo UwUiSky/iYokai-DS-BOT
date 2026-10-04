@@ -5,10 +5,17 @@ SEC-13: comportamento REALE di /owner eval, /owner shell e
 /owner cog-load. Copre sia D7 (ENABLE_EVAL spegne i tre comandi) sia
 i bug minori di REVIEW.md §5 (log scritto prima dell'esecuzione,
 defer prima di eseguire, il processo shell viene ucciso al timeout).
+
+BUG-23: il timeout di /owner shell si prova con processi veri — deve
+morire tutto l'albero del comando (non solo la shell) e la risposta
+deve arrivare subito.
 """
 
 import asyncio
-from unittest.mock import AsyncMock
+import os
+import subprocess
+import time
+from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
@@ -174,42 +181,137 @@ class TestDeferELogPrimaDiEseguire:
         assert len(interaction.edited) == 1  # edit_original_response, non response.edit_message
 
 
-class TestShellUccideIlProcessoAlTimeout:
-    @pytest.mark.asyncio
-    async def test_processo_appeso_viene_ucciso_al_timeout(self, monkeypatch):
+def _processi_con(marcatore: str) -> list[str]:
+    """Le righe di `ps` dei processi vivi il cui comando contiene il marcatore."""
+    righe = subprocess.run(
+        ["ps", "-eo", "pid,args"], capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+    return [riga for riga in righe if marcatore in riga]
+
+
+async def _aspetta_che_spariscano(marcatore: str, secondi: float = 3.0) -> list[str]:
+    scadenza = time.monotonic() + secondi
+    while _processi_con(marcatore) and time.monotonic() < scadenza:
+        await asyncio.sleep(0.05)
+    return _processi_con(marcatore)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="usa sh, sleep e ps")
+class TestShellConProcessiVeri:
+    """
+    BUG-23: comandi veri, non un processo finto. Ogni test usa una
+    durata di `sleep` unica, così `ps` riconosce il SUO processo.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _timeout_corto(self, monkeypatch):
         import cogs.utility.owner_premium as owner_premium_module
 
-        class _ProcessoFinto:
-            def __init__(self) -> None:
-                self.killed = False
-                self.waited = False
-                self.returncode = None
+        monkeypatch.setattr(owner_premium_module, "SHELL_TIMEOUT_SECONDS", 0.5)
 
-            async def communicate(self):
-                await asyncio.sleep(9999)  # non completa mai entro il timeout
-
-            def kill(self) -> None:
-                self.killed = True
-
-            async def wait(self) -> None:
-                self.waited = True
-
-        processo_finto = _ProcessoFinto()
-
-        async def create_subprocess_shell_finto(*args, **kwargs):
-            return processo_finto
-
-        monkeypatch.setattr(
-            owner_premium_module.asyncio,
-            "create_subprocess_shell",
-            create_subprocess_shell_finto,
-        )
-        monkeypatch.setattr(owner_premium_module, "SHELL_TIMEOUT_SECONDS", 0.05)
-
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "comando,marcatore",
+        [
+            ("sleep 60.0231", "sleep 60.0231"),
+            # Il comando vero è figlio della shell e tiene aperta la pipe.
+            ("sleep 60.0232 | cat", "sleep 60.0232"),
+            ("echo x; sleep 60.0233", "sleep 60.0233"),
+            # Un nipote lanciato in background, che sopravvive alla shell.
+            ("(sleep 60.0234 &) ; sleep 60.0234", "sleep 60.0234"),
+        ],
+        ids=["sleep", "pipe", "echo-poi-sleep", "nipote-in-background"],
+    )
+    async def test_al_timeout_risponde_subito_e_non_lascia_processi(self, comando, marcatore):
         cog = OwnerPremiumCog(bot=None)
-        output, success = await cog._run_shell("sleep 999999")
+        inizio = time.monotonic()
 
-        assert success is False
+        # Se _run_shell restasse bloccato, wait_for fa fallire il test
+        # invece di lasciarlo appeso per 60 secondi.
+        output, successo = await asyncio.wait_for(cog._run_shell(comando), timeout=10)
+
+        assert time.monotonic() - inizio < 5
+        assert successo is False
         assert "Timeout" in output
-        assert processo_finto.killed is True
-        assert processo_finto.waited is True
+        assert await _aspetta_che_spariscano(marcatore) == []
+
+    @pytest.mark.asyncio
+    async def test_comando_normale_restituisce_output_ed_esito(self):
+        cog = OwnerPremiumCog(bot=None)
+
+        assert await cog._run_shell("echo ciao") == ("ciao\n", True)
+        assert await cog._run_shell("echo errore >&2; exit 3") == ("errore\n", False)
+        assert await cog._run_shell("true") == ("(nessun output)", True)
+
+    @pytest.mark.asyncio
+    async def test_errore_di_avvio_torna_come_output_del_comando(self):
+        # Un byte NUL nel comando fa fallire davvero l'avvio del processo.
+        cog = OwnerPremiumCog(bot=None)
+
+        output, successo = await cog._run_shell("echo \x00")
+
+        assert successo is False
+        assert "ValueError" in output
+
+
+class TestShellRamoWindows:
+    """
+    Il ramo Windows non si può eseguire su Linux: qui si controlla che
+    vengano scelti i parametri giusti (nuovo gruppo di processi alla
+    creazione, `taskkill /T /F` al timeout).
+    """
+
+    @pytest.fixture
+    def su_windows(self, monkeypatch):
+        import cogs.utility.owner_premium as owner_premium_module
+
+        monkeypatch.setattr(owner_premium_module, "SU_WINDOWS", True)
+        # La costante esiste solo nel modulo subprocess di Windows.
+        monkeypatch.setattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200, raising=False)
+        return owner_premium_module
+
+    def test_il_comando_parte_in_un_nuovo_gruppo_di_processi(self, su_windows):
+        assert su_windows._opzioni_nuovo_gruppo() == {"creationflags": 0x200}
+
+    def test_su_posix_il_comando_parte_in_una_nuova_sessione(self, monkeypatch):
+        import cogs.utility.owner_premium as owner_premium_module
+
+        monkeypatch.setattr(owner_premium_module, "SU_WINDOWS", False)
+
+        assert owner_premium_module._opzioni_nuovo_gruppo() == {"start_new_session": True}
+
+    @pytest.mark.asyncio
+    async def test_al_timeout_usa_taskkill_su_tutto_l_albero(self, su_windows, monkeypatch):
+        taskkill = create_autospec(asyncio.subprocess.Process, instance=True)
+        avvia = AsyncMock(return_value=taskkill)
+        monkeypatch.setattr(su_windows.asyncio, "create_subprocess_exec", avvia)
+
+        await su_windows._uccidi_albero(4321)
+
+        assert avvia.await_args.args == ("taskkill", "/T", "/F", "/PID", "4321")
+        taskkill.wait.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_se_il_processo_non_muore_la_risposta_arriva_lo_stesso(self, monkeypatch):
+        # taskkill (o killpg) può fallire: l'attesa finale ha un suo
+        # timeout, quindi il comando risponde comunque.
+        import cogs.utility.owner_premium as owner_premium_module
+
+        async def _non_uccide(pid: int) -> None:
+            return None
+
+        monkeypatch.setattr(owner_premium_module, "_uccidi_albero", _non_uccide)
+        monkeypatch.setattr(owner_premium_module, "SHELL_TIMEOUT_SECONDS", 0.2)
+        monkeypatch.setattr(owner_premium_module, "SHELL_KILL_WAIT_SECONDS", 0.2)
+        cog = OwnerPremiumCog(bot=None)
+
+        try:
+            output, successo = await asyncio.wait_for(
+                cog._run_shell("sleep 3.0235"), timeout=2.5
+            )
+        finally:
+            await _aspetta_che_spariscano("sleep 3.0235", secondi=5)
+
+        assert successo is False
+        assert "Timeout" in output
+        assert "ancora in esecuzione" in output
