@@ -94,6 +94,11 @@ class BackupMirrorDispatcher:
                 content=contenuto,
                 username=message.author.display_name,
                 avatar_url=str(message.author.display_avatar.url),
+                # SEC-22: un webhook creato da URL non eredita le
+                # allowed_mentions del bot — senza questo un @everyone
+                # scritto nel server principale diventa un ping vero
+                # nel server di backup.
+                allowed_mentions=discord.AllowedMentions.none(),
             )
         except discord.HTTPException:
             # Un webhook cancellato/canale sparito nel server di

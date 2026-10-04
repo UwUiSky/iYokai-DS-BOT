@@ -1,9 +1,10 @@
 """
 tests/test_backup_mirror_dispatch.py
 ========================================
-Test di BackupMirrorDispatcher (SPEC.md §11.9) — nessuna vera
-chiamata di rete: _send() viene sostituita da una finta che registra
-le chiamate invece di contattare Discord.
+Test di BackupMirrorDispatcher (SPEC.md §11.9). Le decisioni (cosa
+inoltrare) si provano con _send() sostituita da una finta che registra
+le chiamate; l'invio vero (SEC-22) contro un server aiohttp locale che
+imita l'endpoint webhook di Discord.
 """
 
 import pytest
@@ -102,3 +103,54 @@ async def test_rate_limit_scarta_il_burst_oltre_5_messaggi_in_5s():
 
     assert risultati == [True, True, True, True, True, False]
     assert len(dispatcher.chiamate_send) == 5
+
+
+# ---------------------------------------------------------------------
+# SEC-22: l'invio vero (_send non sostituito) contro un server locale
+# che imita l'endpoint webhook di Discord e registra ciò che riceve.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_il_mirror_non_trasforma_everyone_in_un_ping_vero(monkeypatch):
+    import discord
+    from aiohttp import web
+    from aiohttp.test_utils import TestServer
+    from discord.webhook.async_ import Route
+
+    from tests.support.discord_fakes import fake_message
+
+    ricevuti: list[dict] = []
+
+    async def handler(request):
+        ricevuti.append(await request.json())
+        return web.Response(status=204)
+
+    app = web.Application()
+    app.router.add_post("/api/v10/webhooks/{webhook_id}/{token}", handler)
+    server = TestServer(app)
+    await server.start_server()
+    # discord.py manda sempre a discord.com: per il test la base punta al server locale.
+    monkeypatch.setattr(Route, "BASE", str(server.make_url("/api/v10")))
+
+    messaggio = fake_message(content="@everyone guardate qui <@&123456789012345678>")
+    messaggio.channel.id = 10
+    messaggio.author.bot = False
+    messaggio.author.display_name = "Utente"
+    messaggio.author.display_avatar.url = "https://cdn.discordapp.com/embed/avatars/0.png"
+    messaggio.attachments = []
+    # discord.py accetta solo token di almeno 60 caratteri: questo è finto.
+    url_webhook = "https://discord.com/api/webhooks/123456789012345678/" + "token-finto-" * 6
+    repo = _FakeMirrorRepo({10: url_webhook})
+    dispatcher = BackupMirrorDispatcher(mirror_repo=repo)
+    try:
+        assert await dispatcher.handle_message(messaggio) is True
+    finally:
+        await dispatcher.close()
+        await server.close()
+
+    assert len(ricevuti) == 1
+    assert "@everyone" in ricevuti[0]["content"]  # il testo resta, ma...
+    # ...nessuna menzione viene risolta: né @everyone/@here, né ruoli, né utenti.
+    assert ricevuti[0]["allowed_mentions"] == discord.AllowedMentions.none().to_dict()
+    assert ricevuti[0]["allowed_mentions"] == {"parse": []}
