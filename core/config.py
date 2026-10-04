@@ -156,7 +156,6 @@ class Config:
     YOKAI_BOT_TOKEN: str = field(repr=False)
     YOKAI_CREATOR_TOKEN: str = field(repr=False)
     MUSIC_TOKENS: list[str] = field(repr=False)  # le 5 istanze music, in ordine
-    NSFW_TOKEN: str = field(repr=False)
 
     # --- Discord: ID di controllo -----------------------------------
     OWNER_ID: int
@@ -184,6 +183,11 @@ class Config:
     # (LAVALINK_HOST/PORT/PASSWORD, comportamento originale invariato
     # per chi preferisce comunque self-hostare un singolo nodo).
     LAVALINK_NODES: str = field(default="", repr=False)
+
+    # Token dell'istanza NSFW: facoltativo finché quell'istanza non
+    # esiste (nessuna parte del bot lo usa ancora). Ha un default,
+    # quindi sta dopo i campi obbligatori.
+    NSFW_TOKEN: str = field(default="", repr=False)
 
     # Twitch (SPEC.md §10.1/10.2) — opzionali: vuoti finché l'utente
     # non registra un'app su dev.twitch.tv. Il watcher (core/twitch_
@@ -337,7 +341,7 @@ def _load_config() -> Config:
         YOKAI_BOT_TOKEN=_require("YOKAI_BOT_TOKEN"),
         YOKAI_CREATOR_TOKEN=_require("YOKAI_CREATOR_TOKEN"),
         MUSIC_TOKENS=music_tokens,
-        NSFW_TOKEN=_require("NSFW_TOKEN"),
+        NSFW_TOKEN=_optional("NSFW_TOKEN", ""),
         OWNER_ID=_require_int("OWNER_ID"),
         MAIN_GUILD_ID=_require_int("MAIN_GUILD_ID"),
         DATABASE_URL=_require("DATABASE_URL"),
