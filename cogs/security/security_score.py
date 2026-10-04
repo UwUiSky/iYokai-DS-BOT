@@ -76,7 +76,10 @@ class SecurityScoreCog(commands.Cog):
         segnali = await _collect_signals(interaction.guild)
         punteggio, consigli = compute_security_score(segnali)
 
-        await interaction.response.send_message(embed=_build_embed(punteggio, consigli))
+        # Effimera: i punti deboli del server non vanno mostrati a tutto il canale.
+        await interaction.response.send_message(
+            embed=_build_embed(punteggio, consigli), ephemeral=True
+        )
 
 
 async def setup(bot: commands.Bot) -> None:
