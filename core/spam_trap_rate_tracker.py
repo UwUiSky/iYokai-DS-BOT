@@ -1,23 +1,42 @@
 """
 core/spam_trap_rate_tracker.py
 ==================================
-Finestra mobile in memoria per limitare quanti DM di appello dello
-spam-trap vengono elaborati per utente (SEC-12) — stessa
-implementazione generica di core/automod_rate_tracker.py, ma
-un'istanza SEPARATA (vedi il docstring di core/security_rate_tracker.py
-per il perché: chiavi che non si mescolano mai per costruzione, ma
-un'istanza dedicata evita che un bot con molti DM in arrivo saturi una
-cache condivisa con un'altra feature).
-
-Non è per-server (i DM non hanno una guild): si usa `guild_id=0` come
-chiave fittizia "globale", stesso trucco già usato da
-core/security_rate_tracker.py per il join rate limit.
+Limite in memoria sui DM di appello dello spam-trap: al massimo un DM
+ELABORATO ogni N secondi per utente (SEC-12, BUG-22). I DM scartati
+non contano, così chi scrive spesso viene comunque ascoltato appena
+l'attesa finisce.
+Funzioni coperte: SPEC §7.3
 """
 
 from __future__ import annotations
 
-from core.automod_rate_tracker import AutomodRateTracker
+from datetime import datetime
 
-DM_WIDE_KEY = 0
+from core.bounded_cache import BoundedCache
 
-spam_trap_rate_tracker = AutomodRateTracker()
+
+class LimiteDmAppello:
+    def __init__(self, max_size: int = 20_000) -> None:
+        # user_id → momento dell'ultimo DM elaborato.
+        self._ultimo_elaborato: BoundedCache[int, datetime] = BoundedCache(max_size=max_size)
+
+    def __len__(self) -> int:
+        return len(self._ultimo_elaborato)
+
+    def puo_elaborare(self, user_id: int, now: datetime, attesa_secondi: int) -> bool:
+        """
+        True se il DM di questo utente va elaborato adesso; in quel
+        caso (e solo in quello) registra `now` come ultimo elaborato.
+        """
+        ultimo = self._ultimo_elaborato.get(user_id)
+        if ultimo is not None and (now - ultimo).total_seconds() < attesa_secondi:
+            return False
+        self._ultimo_elaborato.set(user_id, now)
+        return True
+
+    def azzera(self) -> None:
+        """Dimentica tutti gli utenti (usato dai test)."""
+        self._ultimo_elaborato.clear()
+
+
+limite_dm_appello = LimiteDmAppello()

@@ -5,14 +5,54 @@ SEC-12: i DM ricevuti dal bot non devono più fare una query per ogni
 server (moderation_repo.get_active_cases_for_user_across_guilds
 sostituisce il giro su self.bot.guilds) e non più di un DM viene
 elaborato ogni 30 secondi per utente.
+
+BUG-22: il limite conta solo i DM ELABORATI. Un DM scartato non
+allunga l'attesa, altrimenti chi scrive più spesso di ogni 30 secondi
+resterebbe ignorato per sempre.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
 
 from cogs.security.spam_trap import BAN_ACTION_TYPE, SpamTrapCog
+from core.spam_trap_logic import DM_APPEAL_PROCESSING_COOLDOWN_SECONDS
+from core.spam_trap_rate_tracker import LimiteDmAppello, limite_dm_appello
+
+ID_UTENTE = 1000001
+ISTANTE_ZERO = datetime(2026, 10, 4, 12, 0, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def limite_dm_azzerato():
+    """
+    Il limite sui DM è un singleton di processo: va azzerato prima e
+    dopo ogni test, così i test possono usare tutti lo stesso utente
+    senza influenzarsi (prima ognuno usava un id diverso per aggirarlo).
+    """
+    limite_dm_appello.azzera()
+    yield
+    limite_dm_appello.azzera()
+
+
+class _OrologioFinto(datetime):
+    """`datetime` con un `now()` comandato dal test."""
+
+    istante = ISTANTE_ZERO
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls.istante
+
+
+@pytest.fixture
+def orologio(monkeypatch):
+    import cogs.security.spam_trap as spam_trap_module
+
+    monkeypatch.setattr(_OrologioFinto, "istante", ISTANTE_ZERO)
+    monkeypatch.setattr(spam_trap_module, "datetime", _OrologioFinto)
+    return _OrologioFinto
 
 
 class _FakeGuild:
@@ -80,12 +120,12 @@ class TestUnaSolaQuery:
     @pytest.mark.asyncio
     async def test_nessun_caso_attivo_usa_una_sola_query(self, cog_con_repo_finto):
         cog, moderation_repo_finto, _, _ = cog_con_repo_finto
-        messaggio = _FakeMessage(_FakeUser(1000001))
+        messaggio = _FakeMessage(_FakeUser(ID_UTENTE))
 
         await cog._handle_possible_appeal(messaggio)
 
         moderation_repo_finto.get_active_cases_for_user_across_guilds.assert_awaited_once_with(
-            1000001, BAN_ACTION_TYPE
+            ID_UTENTE, BAN_ACTION_TYPE
         )
         # Il vecchio metodo (una query per server) non deve più essere
         # chiamato.
@@ -94,7 +134,7 @@ class TestUnaSolaQuery:
     @pytest.mark.asyncio
     async def test_nessun_caso_attivo_non_manda_nessun_messaggio(self, cog_con_repo_finto):
         cog, _, _, _ = cog_con_repo_finto
-        messaggio = _FakeMessage(_FakeUser(1000002))
+        messaggio = _FakeMessage(_FakeUser(ID_UTENTE))
 
         await cog._handle_possible_appeal(messaggio)
 
@@ -110,7 +150,7 @@ class TestFlussoConCasoAttivo:
         ]
         spam_trap_repo_finto.get_last_appeal.return_value = datetime.now(timezone.utc)
 
-        messaggio = _FakeMessage(_FakeUser(1000003))
+        messaggio = _FakeMessage(_FakeUser(ID_UTENTE))
         await cog._handle_possible_appeal(messaggio)
 
         assert any("24 hours" in (testo or "") for testo in messaggio.channel.sent)
@@ -127,7 +167,7 @@ class TestFlussoConCasoAttivo:
             _CasoFinto(guild_id=999999, case_number=1)
         ]
 
-        messaggio = _FakeMessage(_FakeUser(1000004))
+        messaggio = _FakeMessage(_FakeUser(ID_UTENTE))
         await cog._handle_possible_appeal(messaggio)
 
         assert messaggio.channel.sent == []
@@ -137,12 +177,45 @@ class TestRateLimitDM:
     @pytest.mark.asyncio
     async def test_secondo_dm_entro_30_secondi_viene_ignorato(self, cog_con_repo_finto):
         cog, moderation_repo_finto, _, _ = cog_con_repo_finto
-        utente = _FakeUser(1000005)
+        utente = _FakeUser(ID_UTENTE)
 
         await cog._handle_possible_appeal(_FakeMessage(utente))
         await cog._handle_possible_appeal(_FakeMessage(utente))
 
         assert moderation_repo_finto.get_active_cases_for_user_across_guilds.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_dm_scartati_non_allungano_l_attesa(self, cog_con_repo_finto, orologio):
+        # BUG-22: DM a 0, 10, 35 e 65 secondi. Il secondo viene
+        # scartato (10 s dopo il primo elaborato); il terzo e il quarto
+        # sono a 35 e 30 secondi dall'ultimo ELABORATO, quindi passano.
+        # Col vecchio conteggio (anche gli scartati) passava solo il primo.
+        cog, moderation_repo_finto, _, _ = cog_con_repo_finto
+        query = moderation_repo_finto.get_active_cases_for_user_across_guilds
+        utente = _FakeUser(ID_UTENTE)
+
+        elaborati = []
+        for secondi in (0, 10, 35, 65):
+            orologio.istante = ISTANTE_ZERO + timedelta(seconds=secondi)
+            prima = query.await_count
+            await cog._handle_possible_appeal(_FakeMessage(utente))
+            elaborati.append(query.await_count > prima)
+
+        assert elaborati == [True, False, True, True]
+
+    @pytest.mark.asyncio
+    async def test_chi_scrive_ogni_10_secondi_viene_comunque_ascoltato(
+        self, cog_con_repo_finto, orologio
+    ):
+        cog, moderation_repo_finto, _, _ = cog_con_repo_finto
+        utente = _FakeUser(ID_UTENTE)
+
+        for secondi in range(0, 130, 10):
+            orologio.istante = ISTANTE_ZERO + timedelta(seconds=secondi)
+            await cog._handle_possible_appeal(_FakeMessage(utente))
+
+        # 0, 30, 60, 90, 120: uno ogni 30 secondi, non uno solo.
+        assert moderation_repo_finto.get_active_cases_for_user_across_guilds.await_count == 5
 
     @pytest.mark.asyncio
     async def test_utenti_diversi_non_si_bloccano_a_vicenda(self, cog_con_repo_finto):
@@ -152,3 +225,32 @@ class TestRateLimitDM:
         await cog._handle_possible_appeal(_FakeMessage(_FakeUser(1000007)))
 
         assert moderation_repo_finto.get_active_cases_for_user_across_guilds.await_count == 2
+
+
+class TestLimiteDmAppello:
+    def test_registra_solo_i_dm_elaborati(self):
+        limite = LimiteDmAppello()
+        attesa = DM_APPEAL_PROCESSING_COOLDOWN_SECONDS
+
+        esiti = [
+            limite.puo_elaborare(1, ISTANTE_ZERO + timedelta(seconds=s), attesa)
+            for s in (0, 10, 35, 65)
+        ]
+
+        assert esiti == [True, False, True, True]
+
+    def test_non_cresce_oltre_la_dimensione_massima(self):
+        limite = LimiteDmAppello(max_size=3)
+
+        for user_id in range(10):
+            limite.puo_elaborare(user_id, ISTANTE_ZERO, 30)
+
+        assert len(limite) == 3
+
+    def test_azzera_dimentica_tutti(self):
+        limite = LimiteDmAppello()
+        limite.puo_elaborare(1, ISTANTE_ZERO, 30)
+
+        limite.azzera()
+
+        assert limite.puo_elaborare(1, ISTANTE_ZERO, 30) is True

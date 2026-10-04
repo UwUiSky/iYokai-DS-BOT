@@ -69,7 +69,7 @@ from core.spam_trap_logic import (
     partition_messages_for_deletion,
     purge_window,
 )
-from core.spam_trap_rate_tracker import DM_WIDE_KEY, spam_trap_rate_tracker
+from core.spam_trap_rate_tracker import limite_dm_appello
 from core.spam_trap_transcript import TranscriptEntry, build_transcript_html
 from core.ui_base import BaseModal, BaseView
 
@@ -814,14 +814,11 @@ class SpamTrapCog(commands.Cog):
         # utente — senza questo, chiunque può inondare il bot di DM e
         # fargli ripetere la query sui casi attivi (e il resto del
         # flusso) ad ogni singolo messaggio.
-        conteggio = spam_trap_rate_tracker.record_and_count(
-            DM_WIDE_KEY,
-            user.id,
-            "appeal_dm",
-            datetime.now(timezone.utc),
-            DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
-        )
-        if conteggio > 1:
+        # BUG-22: i DM scartati qui NON vengono registrati, quindi
+        # l'attesa parte sempre dall'ultimo DM elaborato.
+        if not limite_dm_appello.puo_elaborare(
+            user.id, datetime.now(timezone.utc), DM_APPEAL_PROCESSING_COOLDOWN_SECONDS
+        ):
             return
 
         # SEC-12: UNA query su tutti i server insieme (indice
