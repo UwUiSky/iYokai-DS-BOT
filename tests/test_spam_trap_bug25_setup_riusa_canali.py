@@ -51,6 +51,7 @@ class _ServerConCanali:
         self._prossimo_id = 7000
         self.guild.create_text_channel.side_effect = self._crea
         self.guild.get_channel.side_effect = self.canali.get
+        self.guild.invites.return_value = []
 
     async def _crea(self, name, **kwargs):
         self._prossimo_id += 1
@@ -191,3 +192,15 @@ async def test_se_fallisce_il_secondo_canale_il_primo_non_resta_orfano(cog):
     assert "500" in interazione.followup.send.call_args.args[0]
     config = await spam_trap_repo.get_config(ID_SERVER)
     assert (config.trap_channel_id, config.log_channel_id) == (None, None)
+
+
+@pytest.mark.asyncio
+async def test_setup_legge_subito_gli_inviti_del_server(cog):
+    # M 3.17: gli inviti non si scaricano più per tutti i server
+    # all'avvio. Chi configura lo spam-trap li ha pronti da subito,
+    # così già il primo ingresso può essere attribuito.
+    server = _ServerConCanali()
+
+    await _lancia_setup(cog, server)
+
+    server.guild.invites.assert_awaited_once()

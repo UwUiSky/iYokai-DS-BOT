@@ -69,6 +69,7 @@ class Scenario:
         self.server.create_text_channel.side_effect = self._crea_canale
         self.server.get_channel.side_effect = self.canali.get
         self.server.audit_logs.side_effect = lambda **_kwargs: self._registro_vuoto()
+        self.server.invites.return_value = []
 
         self.bot = create_autospec(commands.Bot, instance=True)
         self.bot.user = fake_member(user_id=BOT_ID, bot=True)

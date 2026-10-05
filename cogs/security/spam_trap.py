@@ -455,6 +455,8 @@ class SpamTrapCog(commands.Cog):
             return
 
         await spam_trap_repo.set_config(guild.id, trap_channel.id, log_channel.id)
+        # Gli inviti si leggono solo dove servono: da adesso servono qui.
+        await invite_tracker.refresh_guild(guild)
 
         try:
             if created_trap:
