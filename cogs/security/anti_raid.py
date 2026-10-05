@@ -201,10 +201,8 @@ async def _alert_staff(
     guild: discord.Guild,
     settings: SecuritySettings,
     embed: discord.Embed,
-    *,
-    dm_al_proprietario: bool = True,
 ) -> None:
-    if dm_al_proprietario and guild.owner is not None:
+    if guild.owner is not None:
         await try_dm(guild.owner, embed)
     if settings.alert_channel_id is not None:
         canale = guild.get_channel(settings.alert_channel_id)
