@@ -39,6 +39,8 @@ from cogs.moderation._shared import (
     check_can_moderate,
     try_dm,
     validate_reason,
+    Reason,
+    audit_reason,
     post_to_mod_log,
     SETTING_MOD_LOG_CHANNEL,
 )
@@ -161,7 +163,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str,
+        reason: Reason,
         delete_message_days: app_commands.Range[int, 1, 7] = 1,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
@@ -185,7 +187,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
 
         try:
             await member.ban(
-                reason=f"Softban: {reason}",
+                reason=audit_reason(f"Softban: {reason}"),
                 delete_message_seconds=delete_message_days * 86400,
             )
         except discord.Forbidden:
@@ -220,7 +222,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
     )
     @app_commands.describe(member="Il membro da silenziare", reason="Motivo del mute")
     async def mute_role(
-        self, interaction: discord.Interaction, member: discord.Member, reason: str
+        self, interaction: discord.Interaction, member: discord.Member, reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -265,7 +267,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
     )
     @app_commands.describe(member="Il membro da cui rimuovere il mute", reason="Motivo")
     async def unmute_role(
-        self, interaction: discord.Interaction, member: discord.Member, reason: str
+        self, interaction: discord.Interaction, member: discord.Member, reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return

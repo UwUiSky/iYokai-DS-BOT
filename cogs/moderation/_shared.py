@@ -18,6 +18,7 @@ ogni singolo file di comandi.
 from __future__ import annotations
 
 import discord
+from discord import app_commands
 
 from core.database import db
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
@@ -40,6 +41,23 @@ MODULE_REPORT = "moderation_report"
 # cogs/moderation/report.py per il proprio canale, non una nuova
 # colonna dedicata.
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
+
+# Il registro di controllo di Discord accetta un motivo di 512
+# caratteri al massimo (LIM-8). Dichiararlo sull'opzione fa rifiutare
+# il testo troppo lungo a Discord, prima che arrivi al bot.
+MAX_REASON_LENGTH = 512
+Reason = app_commands.Range[str, 3, MAX_REASON_LENGTH]
+
+
+def audit_reason(text: str) -> str:
+    """
+    Taglia a 512 caratteri un motivo destinato al registro di
+    controllo. Serve quando il bot aggiunge un prefisso al motivo
+    scritto dal moderatore (es. "Softban: …").
+    """
+    if len(text) <= MAX_REASON_LENGTH:
+        return text
+    return text[: MAX_REASON_LENGTH - 1] + "…"
 
 
 async def validate_reason(interaction: discord.Interaction, reason: str) -> bool:

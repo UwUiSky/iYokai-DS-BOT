@@ -42,6 +42,7 @@ from cogs.moderation._shared import (
     parse_duration,
     format_duration,
     validate_reason,
+    Reason,
     post_to_mod_log,
 )
 from core.premium import PremiumModule, registry
@@ -93,7 +94,7 @@ class ModerationActionsCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str,
+        reason: Reason,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -126,7 +127,7 @@ class ModerationActionsCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str,
+        reason: Reason,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -178,7 +179,7 @@ class ModerationActionsCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str,
+        reason: Reason,
         delete_message_days: app_commands.Range[int, 0, 7] = 0,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
@@ -232,7 +233,7 @@ class ModerationActionsCog(commands.Cog):
         interaction: discord.Interaction,
         member: discord.Member,
         duration: str,
-        reason: str,
+        reason: Reason,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -342,7 +343,7 @@ class ModerationActionsCog(commands.Cog):
     @app_commands.command(name="unban", description="Rimuove il ban da un utente.")
     @app_commands.describe(user_id="ID Discord dell'utente da sbannare", reason="Motivo dello sblocco")
     async def unban(
-        self, interaction: discord.Interaction, user_id: str, reason: str
+        self, interaction: discord.Interaction, user_id: str, reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -412,7 +413,7 @@ class ModerationActionsCog(commands.Cog):
         interaction: discord.Interaction,
         member: discord.Member,
         duration: str,
-        reason: str,
+        reason: Reason,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
