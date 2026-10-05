@@ -5,8 +5,9 @@ PostgreSQL/asyncpg, wavelink/Lavalink). Owner: iYokai.
 
 ## Da dove si parte
 
-1. `.claude/orchestratore/STATO.md` — **la memoria del lavoro**: cosa è
-   fatto, cosa è in corso, cosa viene dopo. Si legge per primo.
+1. `.claude/memoria/orchestratore.md` — **la memoria del lavoro**: cosa
+   è fatto, cosa è in corso, cosa viene dopo. Si legge per primo.
+   La mappa di agenti, memorie e quaderni è in `.claude/README.md`.
 2. Le **issue di GitHub** — il lavoro da fare. Una milestone per fase
    (F1, F2, …), etichette per area e tipo. Non si tengono file di piano.
 3. `revisione/03-verifica/CLAUDE_MANDATORY_TEST_RULES.md` — segreti e test live. Vincolante.
@@ -17,21 +18,35 @@ PostgreSQL/asyncpg, wavelink/Lavalink). Owner: iYokai.
    `revisione/02-piano/NUOVE_FUNZIONI.md`, `revisione/01-analisi/REVIEW.md`,
    `revisione/SPEC.md`.
 
-## Come si lavora: orchestratore e agenti
+## Come si lavora: orchestratore e agenti specializzati
 
 La sessione principale fa da **orchestratore**
 (`.claude/agents/orchestratore.md`). Gli altri agenti sono in
-`.claude/agents/`: `correttore`, `cacciatore-bug`, `revisore`.
+`.claude/agents/`, ognuno con i suoi parametri:
 
-- L'orchestratore sceglie le issue, prepara per ogni agente una
-  **scheda breve** (issue, file da toccare, regole che contano) e
-  tiene aggiornato `STATO.md`. Un agente non rilegge tutto il progetto:
-  parte dalla scheda e, se gli manca qualcosa o viene interrotto,
-  **chiede all'orchestratore** da dove riprendere.
+- **controllo:** `guardiano-limiti` (prima del codice e sul diff),
+  `cacciatore-bug`, `revisore-capo`, `ottimizzatore`,
+  `sentinella-aggiornamenti`;
+- **sviluppo per area:** `dev-moderazione`, `dev-log-ticket`,
+  `dev-musica`, `dev-backup`, `dev-economia`, `dev-utilita`,
+  `dev-core`, `custode-ai`, `dev-ai`, `dev-web`.
+
+Regole per tutti: `.claude/regole/COMUNI.md` (spendere pochi token,
+memoria compressa, come fermarsi).
+
+- L'orchestratore sceglie le issue e prepara per ogni agente una
+  **scheda breve**. Un agente legge le regole comuni, la **sua
+  memoria** (`.claude/memoria/<nome>.md`) e la scheda: non rilegge il
+  progetto. Se gli manca qualcosa **chiede all'orchestratore**.
+- Ogni agente aggiorna la sua memoria a ogni voce chiusa e sempre
+  prima di fermarsi, con il prossimo passo esatto.
 - Ogni agente lavora in una sua copia (`git worktree`) con un suo
   database di test. Mai due agenti sugli stessi file.
-- **Niente arriva su `main` senza la revisione dell'orchestratore**:
-  legge il diff, controlla la lista di `LIMITI.md`, fa lo smoke test.
+- **Niente arriva su `main` senza i controlli**: `cacciatore-bug`,
+  poi `revisore-capo`, poi smoke test. Per i fix piccoli basta la
+  lettura del diff da parte dell'orchestratore.
+- **Prima di scrivere un comando o un'interfaccia nuovi** il disegno
+  passa dal `guardiano-limiti`.
 - Al massimo 3 agenti insieme (2 CPU, e il limite di sessione).
 
 ## Test: smoke mirato, suite completa solo quando serve
@@ -97,7 +112,7 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
   mette l'etichetta `verifica-live`; la toglie l'owner dopo la prova.
 - Si aggiornano insieme al codice: `revisione/SPEC.md` (simbolo della voce),
   `COMMAND_LIST.md` se cambiano i comandi, `VERIFICA_LIVE.md` se serve
-  una prova live, `STATO.md` a fine gruppo.
+  una prova live, le memorie in `.claude/memoria/` a ogni voce chiusa.
 
 ## Divieti
 
@@ -108,6 +123,8 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
   e nessun sotto-comando nuovo in `/owner` (25 su 25). Dopo F7: mai
   comandi di primo livello nuovi, al massimo 25 figli per gruppo.
 - Non riscrivere la storia git senza richiesta esplicita dell'owner.
+- iYokai **non addestra modelli** e non manda messaggi degli utenti a
+  servizi AI che li usano per addestrare (D19).
 - Niente automazione di account utente (selfbot): viola le regole di
   Discord. Per le funzioni di quel tipo vale l'alternativa regolare
   descritta in `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.

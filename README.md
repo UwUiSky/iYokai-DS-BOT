@@ -209,7 +209,7 @@ iYokai-DS-BOT/
 │   └── support/              oggetti finti fedeli e albero comandi completo
 ├── scripts/                 smoke test, elenco comandi, simulazione di carico
 ├── revisione/               specifica (SPEC.md), analisi, piano, regole e prove live
-├── .claude/                 regole di lavoro (CLAUDE.md), orchestratore, agenti, memoria
+├── .claude/                 regole di lavoro, agenti specializzati, memorie, quaderni (vedi .claude/README.md)
 └── COMMAND_LIST.md          elenco dei comandi
 ```
 
@@ -222,9 +222,12 @@ struttura di `cogs/utility/ping.py`. Viene scoperto e caricato da solo.
 
 - Il lavoro si segue sulle **issue**: etichette per area e tipo, una
   milestone per fase. Niente file di piano.
-- Un **orchestratore** coordina gli agenti che correggono, cercano bug
-  e rivedono il codice; la sua memoria è
-  [`.claude/orchestratore/STATO.md`](.claude/orchestratore/STATO.md).
+- Un **orchestratore** coordina agenti specializzati: sviluppatori per
+  area, cacciatore di bug, revisore capo, ottimizzatore, guardiano dei
+  limiti, sentinella degli aggiornamenti. Ognuno ha i suoi parametri e
+  una memoria compressa. La mappa è in
+  [`.claude/README.md`](.claude/README.md); lo stato del lavoro in
+  [`.claude/memoria/orchestratore.md`](.claude/memoria/orchestratore.md).
 - Prima il test che fallisce, poi la modifica. Niente arriva sul ramo
   principale senza revisione e smoke test.
 - Un'issue si chiude quando il fix è unito con i suoi test; resta

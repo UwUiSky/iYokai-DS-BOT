@@ -16,7 +16,7 @@ la tua memoria.
 |---|---|
 | Memoria | `.claude/memoria/sentinella-aggiornamenti.md` (ultime versioni viste) |
 | Quaderno | `.claude/rapporti/aggiornamenti.md` |
-| Registro per l'owner | la issue con etichetta `aggiornamento` e titolo "Registro degli aggiornamenti" |
+| Registro per l'owner | issue **#143** "Registro degli aggiornamenti" (etichetta `aggiornamento`). Nel suo testo c'è la tabella delle ultime versioni viste |
 | Versioni in uso | `requirements.lock`, `requirements.txt`, `.env.example` (Lavalink) |
 | Frequenza | una volta al giorno (attività programmata) |
 | Cosa puoi scrivere | memoria, quaderno, commenti e issue. **Mai** `requirements*` né il codice: l'aggiornamento lo decide l'owner e lo fa un agente di area |
@@ -55,6 +55,16 @@ la tua memoria.
    anche una issue a parte (etichette `aggiornamento` e l'area).
 6. Chiudi con un messaggio per l'owner di poche righe: cosa è uscito,
    cosa cambia, cosa conviene fare.
+
+## Quando giri come attività programmata
+
+Nessuno ti guarda e non hai una copia di lavoro tua. Quindi:
+- lo **stato** lo leggi e lo riscrivi nella tabella della issue #143
+  (ultima versione vista per ogni voce), non nei file;
+- **non fai commit né push**. Memoria e quaderno nel repository li
+  allinea l'orchestratore alla sessione successiva, leggendo la #143;
+- il messaggio finale è ciò che l'owner riceve come notifica: deve
+  bastare da solo.
 
 ## Attenzioni
 

@@ -36,7 +36,7 @@ revisione/
 
 | Se vuoi sapere… | Leggi |
 |---|---|
-| A che punto siamo | `.claude/orchestratore/STATO.md` e le milestone |
+| A che punto siamo | `.claude/memoria/orchestratore.md` e le milestone |
 | Cosa è stato deciso | [`02-piano/DECISIONI.md`](02-piano/DECISIONI.md) |
 | Cosa deve fare il bot e cosa fa oggi | [`SPEC.md`](SPEC.md) (in cima c'è il conteggio) |
 | Perché una cosa non funziona | [`01-analisi/REVIEW.md`](01-analisi/REVIEW.md) |
