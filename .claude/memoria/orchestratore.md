@@ -37,12 +37,13 @@
 
 ## In corso
 - Suite completa lanciata (log nello scratchpad `suite.log`) dopo l'unione
-  di #133/#135/#136 (`f045c97`, `conftest.py` toccato): controllare l'esito.
+  di #134 (`database.py` toccato): `suite2.log`. La suite precedente: 3182 passati.
 
 ## Coda (in ordine)
-1. Fatti e chiusi: #137, #133, #135, #136 (con `verifica-live`).
-2. **#134** vocali/ticket (`dev-log-ticket`): `/voice kick`, `/voice lock`,
-   `db._remove_guild_setting`, M 3.14 premium log avanzati.
+1. Fatti e chiusi (con `verifica-live`): #137, #133, #135, #136, #134
+   (unito `a3004ee`). Nuove: #144 voice kick gerarchia/unlock, #145 cache
+   premium 60 s.
+2. Prossimo gruppo: #144 (`dev-log-ticket`), #66/#67 (`dev-utilita`), #71, #69/#70.
 3. Utilità/avvisi #66, #67; fun #71; owner/core #69, #70; voci rimaste in
    #57–#62, #65 (ultimo commento di ognuna).
 4. Dopo le unioni: simboli SPEC (M 10.16 = fatto), `COMMAND_LIST.md`
@@ -61,7 +62,7 @@
   `/home/claude/wt/<nome>`; database `iyokai_w<nome>`.
 - **La macchina si riavvia senza avviso**: fare commit e push spesso.
   Dopo un riavvio: `service postgresql start`.
-- Copie di lavoro attuali: `m133` e `c135` (unite; da togliere se pulite).
+- Nessuna copia di lavoro attiva.
 - Con la shell: esportare `DATABASE_URL` del proprio database in OGNI
   comando, altrimenti i test usano quello condiviso.
 - Suite completa: lanciarla con `nohup … &` (il limite di 10 minuti la
