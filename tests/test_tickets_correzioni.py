@@ -435,3 +435,126 @@ async def test_elenco_con_emoji_personalizzate_lunghe_resta_entro_4096():
     embed = interazione.response.send_message.call_args.kwargs["embed"]
     assert len(embed.description) <= 4096
     assert "…e altre" in embed.description
+
+
+# ====================================================================
+# M 6.3 — il canale nasce già con il numero giusto (nessuna rinomina)
+# M 6.4 — un solo ticket aperto per utente, anche con due clic insieme
+# ====================================================================
+async def test_il_canale_nasce_con_il_numero_del_ticket_senza_rinomine():
+    server = Server()
+
+    primo = await server.apri_ticket(server.utente(21))
+    secondo = await server.apri_ticket(server.utente(22))
+
+    assert [c.name for c in server.canali] == ["ticket-0001", "ticket-0002"]
+    primo.edit.assert_not_awaited()
+    secondo.edit.assert_not_awaited()
+    assert (await ticket_repo.get_ticket_by_channel(primo.id)).ticket_number == 1
+    assert (await ticket_repo.get_ticket_by_channel(secondo.id)).ticket_number == 2
+    # Il messaggio di benvenuto porta lo stesso numero del canale.
+    assert secondo.send.call_args.kwargs["embed"].title == "Ticket #0002"
+
+
+async def test_creazione_del_canale_fallita_nessun_ticket_nel_database():
+    server = Server()
+    server.categoria.create_text_channel.side_effect = _errore_http(400)
+    interazione = server.interazione()
+
+    await _open_ticket_channel(interazione, server.guild, server.categoria, None)
+
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 0
+    assert "Impossibile creare" in _testo(interazione.followup.send.call_args)
+    # L'utente può riprovare subito.
+    server.categoria.create_text_channel.side_effect = server._crea_canale
+    await server.apri_ticket()
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 1
+
+
+async def test_due_clic_insieme_un_solo_ticket_e_un_solo_canale():
+    import asyncio
+
+    server = Server()
+    crea_davvero = server._crea_canale
+
+    async def _crea_lentamente(name, **kwargs):
+        await asyncio.sleep(0.05)  # il secondo clic arriva mentre Discord crea il canale
+        return await crea_davvero(name, **kwargs)
+
+    server.categoria.create_text_channel.side_effect = _crea_lentamente
+    primo_clic, secondo_clic = server.interazione(), server.interazione()
+
+    await asyncio.gather(
+        _open_ticket_channel(primo_clic, server.guild, server.categoria, None),
+        _open_ticket_channel(secondo_clic, server.guild, server.categoria, None),
+    )
+
+    assert len(server.canali) == 1
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 1
+    risposte = sorted(
+        _testo(clic.followup.send.call_args) for clic in (primo_clic, secondo_clic)
+    )
+    assert risposte[0].startswith("Sto già aprendo")
+    assert risposte[1].startswith("Ticket creato")
+
+
+async def test_ticket_aperto_da_un_altro_processo_il_canale_in_piu_viene_eliminato():
+    """
+    Il vincolo del database copre il caso che il controllo in memoria
+    non vede (due processi, o un ticket nato tra il controllo e la
+    scrittura): il canale appena creato non deve restare orfano.
+    """
+    server = Server()
+    crea_davvero = server._crea_canale
+
+    async def _crea_mentre_un_altro_apre(name, **kwargs):
+        await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 555_555)
+        return await crea_davvero(name, **kwargs)
+
+    server.categoria.create_text_channel.side_effect = _crea_mentre_un_altro_apre
+    interazione = server.interazione()
+
+    await _open_ticket_channel(interazione, server.guild, server.categoria, None)
+
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 1
+    server.canali[0].delete.assert_awaited_once()
+    assert await ticket_repo.get_ticket_by_channel(server.canali[0].id) is None
+    assert "Hai già un ticket aperto" in _testo(interazione.followup.send.call_args)
+
+
+async def test_il_database_rifiuta_un_secondo_ticket_aperto_per_lo_stesso_utente():
+    from core.repositories.ticket_repo import TicketAlreadyOpenError
+
+    await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 1)
+    with pytest.raises(TicketAlreadyOpenError):
+        await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 2)
+
+    # Chiuso il primo, l'utente può aprirne un altro; un altro utente non è toccato.
+    await ticket_repo.close_ticket(1, ID_STAFF)
+    await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 3)
+    await ticket_repo.create_ticket(ID_SERVER, 999, 4)
+    await ticket_repo.create_ticket(ID_SERVER + 1, ID_UTENTE, 5)
+
+
+async def test_la_migrazione_chiude_i_doppioni_gia_presenti(clean_db):
+    """Un database vero può avere già due ticket aperti dello stesso utente."""
+    from pathlib import Path
+
+    migrazione = (
+        Path(modulo.__file__).parents[2]
+        / "core/migrations/0010_tickets_un_solo_aperto_per_utente.sql"
+    )
+    await clean_db.execute("DROP INDEX uq_tickets_un_aperto_per_utente")
+    for canale in (1, 2, 3):
+        await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, canale)
+    await ticket_repo.create_ticket(ID_SERVER, 999, 4)
+
+    await clean_db.execute(migrazione.read_text(encoding="utf-8"))
+
+    aperti = await clean_db.fetch(
+        "SELECT channel_id FROM tickets WHERE status = 'open' ORDER BY channel_id"
+    )
+    # Resta aperto il più recente dell'utente; l'altro utente non cambia.
+    assert [r["channel_id"] for r in aperti] == [3, 4]
+    chiusi = await clean_db.fetch("SELECT closed_at FROM tickets WHERE status = 'closed'")
+    assert len(chiusi) == 2 and all(r["closed_at"] is not None for r in chiusi)

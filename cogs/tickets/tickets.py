@@ -61,7 +61,11 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.database import db
-from core.repositories.ticket_repo import ticket_repo, VALID_PRIORITIES
+from core.repositories.ticket_repo import (
+    VALID_PRIORITIES,
+    TicketAlreadyOpenError,
+    ticket_repo,
+)
 from core.ticket_logic import (
     MAX_CATEGORY_LABEL_LENGTH,
     MAX_EMOJI_LENGTH,
@@ -99,6 +103,15 @@ TICKET_DELETE_ACTION_TYPE = "ticket_delete_channel"
 RITARDO_ELIMINAZIONE_SECONDI = 10
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
+
+# Chi sta aprendo un ticket in questo momento: (id server, id utente).
+# Ferma il doppio clic prima che nasca un secondo canale. La garanzia
+# vera resta l'indice unico nel database (migrazione 0010).
+_aperture_in_corso: set[tuple[int, int]] = set()
+
+MESSAGGIO_TICKET_GIA_APERTO = (
+    "Hai già un ticket aperto su questo server. Chiudilo prima di aprirne uno nuovo."
+)
 
 
 async def _support_role_ids(guild_id: int) -> list[int]:
@@ -138,15 +151,30 @@ async def _open_ticket_channel(
     (SPEC.md §13.2) — l'interazione arriva già deferred, quindi qui
     si usa sempre .followup.
     """
+    chiave = (guild.id, interaction.user.id)
+    if chiave in _aperture_in_corso:
+        await interaction.followup.send(
+            "Sto già aprendo il tuo ticket, un attimo.", ephemeral=True
+        )
+        return
+    _aperture_in_corso.add(chiave)
+    try:
+        await _crea_ticket(interaction, guild, category, category_label)
+    finally:
+        _aperture_in_corso.discard(chiave)
+
+
+async def _crea_ticket(
+    interaction: discord.Interaction,
+    guild: discord.Guild,
+    category: discord.CategoryChannel,
+    category_label: str | None,
+) -> None:
     already_open = await ticket_repo.count_open_tickets_for_user(
         guild.id, interaction.user.id
     )
     if already_open > 0:
-        await interaction.followup.send(
-            "Hai già un ticket aperto su questo server. Chiudilo "
-            "prima di aprirne uno nuovo.",
-            ephemeral=True,
-        )
+        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
         return
 
     overwrites = {
@@ -166,13 +194,18 @@ async def _open_ticket_channel(
                 view_channel=True, send_messages=True, read_message_history=True
             )
 
+    # Il numero si riserva prima, così il canale nasce già con il nome
+    # giusto: rinominarlo dopo spenderebbe una delle 2 rinomine che
+    # Discord concede ogni 10 minuti (LIM-3).
+    ticket_number = await ticket_repo.reserve_ticket_number(guild.id)
+
     # Il canale si crea PRIMA di registrare il ticket nel DB, così
     # se la creazione fallisce (permessi mancanti, categoria
     # piena — Discord limita 50 canali per categoria) non resta
     # un ticket "fantasma" senza canale reale.
     try:
         channel = await category.create_text_channel(
-            name="ticket-nuovo",  # rinominato subito dopo con il numero vero
+            name=f"ticket-{ticket_number:04d}",
             overwrites=overwrites,
             reason=f"Ticket aperto da {interaction.user}",
         )
@@ -190,10 +223,23 @@ async def _open_ticket_channel(
         )
         return
 
-    ticket_number = await ticket_repo.create_ticket(
-        guild.id, interaction.user.id, channel.id, category_label=category_label
-    )
-    await channel.edit(name=f"ticket-{ticket_number:04d}")
+    try:
+        await ticket_repo.create_ticket(
+            guild.id,
+            interaction.user.id,
+            channel.id,
+            category_label=category_label,
+            ticket_number=ticket_number,
+        )
+    except TicketAlreadyOpenError:
+        # Un altro ticket dello stesso utente è nato nel frattempo: il
+        # canale appena creato non deve restare orfano.
+        try:
+            await channel.delete(reason="Ticket doppio: l'utente ne ha già uno aperto")
+        except discord.HTTPException:
+            logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
+        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+        return
 
     embed = discord.Embed(
         title=f"Ticket #{ticket_number:04d}",
@@ -206,7 +252,10 @@ async def _open_ticket_channel(
     )
     if category_label is not None:
         embed.add_field(name="Categoria", value=category_label)
-    await channel.send(content=interaction.user.mention, embed=embed)
+    try:
+        await channel.send(content=interaction.user.mention, embed=embed)
+    except discord.HTTPException:
+        logger.warning("Messaggio di benvenuto non inviato nel ticket %s.", channel.id)
 
     await interaction.followup.send(
         f"Ticket creato: {channel.mention}", ephemeral=True
