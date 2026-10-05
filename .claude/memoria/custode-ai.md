@@ -20,12 +20,13 @@
 - I messaggi degli utenti vanno solo ai servizi segnati "può ricevere
   messaggi".
 - Le chiavi stanno solo nel `.env` dell'owner.
-- Voce (D22): motore scelto dall'owner Qwen3-TTS VoiceDesign, in un
-  servizio a parte; disegnare una volta e poi clonare il riferimento.
-  Dettaglio in `revisione/02-piano/VOCE_YOKAI.md`. Per lo snodo è un
-  fornitore di tipo `audio`, senza quota e senza chiave.
-- Kokoro scartato per l'italiano (R moscia). Piper Paola: voce sola,
-  piatta; va bene solo come riserva.
+- Voce (D22): motore scelto dall'owner **Kokoro-82M, voce `if_sara`**,
+  locale e dentro il bot. Dettaglio in
+  `revisione/02-piano/VOCE_YOKAI.md`; prototipo dei profili in
+  `scripts/prova_voce.py`. Per lo snodo è un fornitore di tipo
+  `audio`, senza quota e senza chiave.
+- Mai mescolare `if_sara` con voci di altre lingue: R moscia e parole
+  impastate. Alternative studiate: Qwen3-TTS (scheda video), Piper.
 
 ## Aperto
 - Elenco dei servizi e delle chiavi (nomi delle variabili) dall'owner.

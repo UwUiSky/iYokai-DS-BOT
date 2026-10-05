@@ -1,94 +1,107 @@
 """
 scripts/prova_voce.py
 =====================
-Prova a mano una voce italiana per i messaggi vocali di Yokai (D22,
-issue #142). Non fa parte del bot: serve a scegliere motore e voce.
-Usa Piper (voce Paola) tramite sherpa-onnx, tutto sul processore.
+Prova a mano la voce di Yokai con Kokoro-82M, voce italiana "if_sara"
+(D22, issue #142, revisione/02-piano/VOCE_YOKAI.md). Tutto in locale,
+sul processore. Non fa parte del bot: serve a regolare i profili.
 
 Preparazione, una volta sola:
-    pip install sherpa-onnx soundfile numpy
-    curl -L -O https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-it_IT-paola-medium.tar.bz2
-    tar xjf vits-piper-it_IT-paola-medium.tar.bz2
+    pip install kokoro-onnx soundfile numpy
+    curl -L -O https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+    curl -L -O https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
 
-Uso (le frasi si separano con "|": tra una e l'altra c'è una pausa):
-    python3 scripts/prova_voce.py "Buongiorno. | Come state, oggi?"
-    python3 scripts/prova_voce.py --respiri 1,2 --semitoni 1 "Ehi. | Vieni qui. | Siediti."
+Uso:
+    python3 scripts/prova_voce.py                      # un campione per ogni contesto
+    python3 scripts/prova_voce.py --contesto WELCOME "Benvenuta! Dai, vieni a vedere."
 
-Scrive prova.wav e, se c'è ffmpeg, prova.mp3 nella cartella corrente.
+Scrive yokai_<contesto>.wav e, se c'è ffmpeg, anche .mp3.
 """
 
 import argparse
+import re
 import shutil
 import subprocess
-import numpy as np, soundfile as sf, sherpa_onnx
+from dataclasses import dataclass, replace
 
-M = "vits-piper-it_IT-paola-medium"
+import numpy as np
+import soundfile as sf
+from kokoro_onnx import Kokoro
 
-def motore(noise=0.667, noise_w=0.8, length=1.0):
-    cfg = sherpa_onnx.OfflineTtsConfig(
-        model=sherpa_onnx.OfflineTtsModelConfig(
-            vits=sherpa_onnx.OfflineTtsVitsModelConfig(
-                model=f"{M}/it_IT-paola-medium.onnx", tokens=f"{M}/tokens.txt",
-                data_dir=f"{M}/espeak-ng-data", noise_scale=noise,
-                noise_scale_w=noise_w, length_scale=length),
-            num_threads=2, provider="cpu"),
-        max_num_sentences=1)
-    return sherpa_onnx.OfflineTts(cfg)
 
-def silenzio(sr, ms):
-    return np.zeros(int(sr * ms / 1000), dtype=np.float32)
+@dataclass(frozen=True)
+class VoiceProfile:
+    """Come parla Yokai in un contesto. Il timbro (voice) non cambia mai."""
 
-def respiro(sr, ms=420, volume=0.035, seme=0):
-    """Inspirazione finta: rumore filtrato tra 500 e 3500 Hz, che sale e scende."""
-    n = int(sr * ms / 1000)
-    rumore = np.random.default_rng(seme).standard_normal(n)
-    spettro = np.fft.rfft(rumore); f = np.fft.rfftfreq(n, 1 / sr)
-    spettro[(f < 500) | (f > 3500)] = 0
-    x = np.fft.irfft(spettro, n)
-    inviluppo = np.sin(np.linspace(0, np.pi, n)) ** 1.5
-    x = x / (np.abs(x).max() + 1e-9) * inviluppo * volume
-    return x.astype(np.float32)
+    voice: str = "if_sara"
+    speed: float = 1.0      # 1.0 = parlato normale
+    pitch: float = 0.0      # semitoni; restare tra -1 e +1
+    volume: float = 0.0     # decibel
+    pause: int = 260        # millisecondi tra una frase e l'altra
+    style: str = "PUBLIC"
 
-def parla(tts, frasi, pausa=330, respiri=()):
-    pezzi, sr = [], None
-    for i, frase in enumerate(frasi):
-        a = tts.generate(frase, sid=0, speed=1.0)
-        sr = a.sample_rate
-        if i in respiri:
-            pezzi += [respiro(sr, seme=i), silenzio(sr, 60)]
-        pezzi += [np.asarray(a.samples, dtype=np.float32), silenzio(sr, pausa)]
-    return np.concatenate(pezzi), sr
 
-def salva(nome, audio, sr, semitoni=0.0):
-    sf.write(f"{nome}.wav", audio, sr)
-    filtri = ["loudnorm=I=-16"]
-    if semitoni:
-        k = 2 ** (semitoni / 12)
-        filtri = [f"asetrate={int(sr * k)}", f"aresample={sr}", f"atempo={1 / k:.5f}"] + filtri
+BASE = VoiceProfile()
+PROFILI = {
+    "PUBLIC": replace(BASE, speed=1.03, pause=230, style="PUBLIC"),
+    "WELCOME": replace(BASE, speed=1.0, pause=260, style="WELCOME"),
+    "MODERATION": replace(BASE, speed=0.96, pitch=-0.5, pause=380, style="MODERATION"),
+    "ANNOUNCEMENT": replace(BASE, speed=0.98, volume=1.0, pause=320, style="ANNOUNCEMENT"),
+    "NSFW": replace(BASE, speed=0.94, pitch=-0.3, pause=340, style="NSFW"),
+}
+
+ESEMPI = {
+    "PUBLIC": "Oh, guarda chi si è fatto vedere! Bentornato nel server. Allora, che mi racconti di bello?",
+    "WELCOME": "Benvenuta nel server! Dai, vieni a dare un'occhiata in giro. Se ti perdi, chiamami.",
+    "MODERATION": "Attenzione. Questo comportamento non è consentito in questo server. Ti invito a interromperlo.",
+    "ANNOUNCEMENT": "Annuncio importante. Stasera, alle nove, serata giochi nel canale vocale. Vi aspetto tutti.",
+    "NSFW": "Sei ancora sveglio, a quest'ora? Allora resta un altro po' con me. Non ho nessuna fretta.",
+}
+
+
+def frasi(testo: str) -> list[str]:
+    """Divide il testo in frasi: ognuna viene detta da sola, con una pausa dopo."""
+    pezzi = re.split(r"(?<=[.!?…])\s+", testo.strip())
+    return [p for p in pezzi if p]
+
+
+def sintetizza(motore: Kokoro, testo: str, profilo: VoiceProfile) -> tuple[np.ndarray, int]:
+    pezzi, frequenza = [], 24000
+    for frase in frasi(testo):
+        audio, frequenza = motore.create(frase, voice=profilo.voice, speed=profilo.speed, lang="it")
+        pezzi.append(np.asarray(audio, dtype=np.float32))
+        pezzi.append(np.zeros(int(frequenza * profilo.pause / 1000), dtype=np.float32))
+    return np.concatenate(pezzi), frequenza
+
+
+def salva(nome: str, audio: np.ndarray, frequenza: int, profilo: VoiceProfile) -> None:
+    sf.write(f"{nome}.wav", audio, frequenza)
+    print(nome, round(len(audio) / frequenza, 1), "s")
     if shutil.which("ffmpeg") is None:
-        print(nome + ".wav scritto (ffmpeg non trovato: niente mp3)")
         return
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", f"{nome}.wav", "-af", ",".join(filtri),
-                    "-codec:a", "libmp3lame", "-q:a", "3", f"{nome}.mp3"], check=True)
-    print(nome, round(len(audio) / sr, 1), "s")
+    filtri = []
+    if profilo.pitch:
+        k = 2 ** (profilo.pitch / 12)
+        filtri += [f"asetrate={int(frequenza * k)}", f"aresample={frequenza}", f"atempo={1 / k:.5f}"]
+    filtri += ["loudnorm=I=-16", f"volume={profilo.volume}dB"]
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", f"{nome}.wav", "-af", ",".join(filtri),
+         "-codec:a", "libmp3lame", "-q:a", "3", f"{nome}.mp3"],
+        check=True,
+    )
 
 
 def main() -> None:
-    global M
-    p = argparse.ArgumentParser(description="Prova una voce per Yokai.")
-    p.add_argument("testo", help='frasi separate da "|"')
-    p.add_argument("--modello", default=M, help="cartella del modello scaricato")
-    p.add_argument("--variazione", type=float, default=0.8, help="quanto varia l'intonazione (0.3–1.0)")
-    p.add_argument("--ritmo", type=float, default=0.95, help="quanto varia la durata dei suoni (0.3–1.0)")
-    p.add_argument("--lentezza", type=float, default=1.05, help="1.0 normale, più alto = più lenta")
-    p.add_argument("--pausa", type=int, default=350, help="millisecondi tra le frasi")
-    p.add_argument("--respiri", default="", help="frasi precedute da un respiro, contate da 0: per esempio 1,3")
-    p.add_argument("--semitoni", type=float, default=0.0, help="voce più chiara (+) o più scura (-); restare entro 1.5")
+    p = argparse.ArgumentParser(description="Prova la voce di Yokai con Kokoro.")
+    p.add_argument("testo", nargs="?", help="se manca, un esempio per ogni contesto")
+    p.add_argument("--contesto", choices=sorted(PROFILI), default="PUBLIC")
+    p.add_argument("--modello", default="kokoro-v1.0.onnx")
+    p.add_argument("--voci", default="voices-v1.0.bin")
     a = p.parse_args()
-    M = a.modello
-    frasi = [x.strip() for x in a.testo.split("|") if x.strip()]
-    audio, sr = parla(motore(a.variazione, a.ritmo, a.lentezza), frasi, a.pausa, tuple(int(x) for x in a.respiri.split(",") if x.strip()))
-    salva("prova", audio, sr, a.semitoni)
+    motore = Kokoro(a.modello, a.voci)
+    lavori = [(a.contesto, a.testo)] if a.testo else list(ESEMPI.items())
+    for contesto, testo in lavori:
+        audio, frequenza = sintetizza(motore, testo, PROFILI[contesto])
+        salva(f"yokai_{contesto.lower()}", audio, frequenza, PROFILI[contesto])
 
 
 if __name__ == "__main__":

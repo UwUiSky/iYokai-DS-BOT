@@ -236,12 +236,12 @@ Discord; sotto c'è un messaggio con "Trascrivi" e "Nella mia lingua",
 che risponde solo a chi preme, nella lingua del suo client.
 
 **Come:**
-- Motore scelto dall'owner: **Qwen3-TTS VoiceDesign** (aperto, licenza
-  Apache 2.0, italiano compreso), in un **servizio a parte** che il bot
-  chiama: così il motore si cambia senza toccare il bot. Riserve: il
-  modello 0.6B, poi un motore leggero. Niente chiavi, niente quote.
-- Una sola voce: si disegna una volta, si sceglie il campione, e ogni
-  frase si genera clonando quel riferimento.
+- Motore scelto dall'owner: **Kokoro-82M**, voce italiana `if_sara`.
+  Locale, sul processore, dentro il bot (in un thread a parte e in
+  coda). Niente servizi cloud, niente chiavi, niente quote. Il motore
+  sta dietro un'interfaccia: si può cambiare senza toccare il resto.
+  Alternativa già studiata: Qwen3-TTS VoiceDesign (vuole una scheda
+  video).
 - Stesso testo, stessa voce, stessa lingua → stesso file, dalla cache.
 - La trascrizione è il testo di partenza: non serve ascoltare l'audio.
 - Il testo passa dai filtri del server prima di diventare voce.

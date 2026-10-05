@@ -3,6 +3,33 @@
 Specifica scritta dall'owner il 05/10/2026 (Parte 1, riportata com'è)
 e note per realizzarla (Parte 2). Decisione: D22. Lavoro: issue #142.
 
+> **Aggiornamento dell'owner, stesso giorno (vale questo):** il motore
+> è **Kokoro-82M** con la voce italiana **`if_sara`**. Tutto in
+> locale, veloce, gratuito, semplice da integrare nel bot Python.
+> Niente servizi cloud. Qwen3-TTS (Parte 1, punti 1 e 9) resta come
+> alternativa già studiata, se Kokoro non bastasse.
+>
+> Cosa cambia nelle note della Parte 2:
+> - **Niente servizio a parte**: Kokoro gira dentro il bot, sul
+>   processore, in un thread a parte e in coda. Provato il 05/10: 34
+>   secondi di voce in 14 secondi di calcolo su 2 CPU.
+> - **Timbro sempre uguale** per costruzione: la voce è una sola.
+> - **`VoiceProfile`** con `voice`, `speed`, `pitch`, `volume`, `pause`,
+>   `style`. Kokoro regola da solo soltanto la velocità: intonazione e
+>   volume si correggono dopo, sull'audio; le pause si ottengono dicendo
+>   una frase alla volta. Prototipo in `scripts/prova_voce.py`.
+> - **Limite da conoscere**: Kokoro non ha un comando per l'emozione né
+>   per la voce "breathy". Il carattere dei contesti viene da velocità,
+>   pause, piccola correzione dell'intonazione e, soprattutto, da **come
+>   è scritta la frase**. Per questo il testo va preparato per la
+>   prosodia prima della sintesi (`core/voice_text_logic.py`).
+> - **Lingue di Kokoro**: italiano, inglese, spagnolo, francese,
+>   portoghese, giapponese, cinese, hindi. Per le altre lingue serve una
+>   voce di un altro motore.
+> - **Giudizio dell'owner sui primi campioni Kokoro** (voce mescolata
+>   con altre): R moscia e parole impastate. I campioni nuovi usano
+>   `if_sara` pura, una frase alla volta: in attesa del giudizio.
+
 ## Parte 1 — Specifica dell'owner
 
 ```text
