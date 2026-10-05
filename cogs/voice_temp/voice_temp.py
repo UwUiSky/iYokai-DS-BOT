@@ -326,6 +326,11 @@ class CreateVoiceView(BaseView):
         )
 
 
+# Valore di "Connetti" di @everyone prima di /voice lock, per canale.
+# In memoria: i vocali vivono poco; senza dato, unlock rimette None.
+_connect_prima_del_lock: dict[int, bool | None] = {}
+
+
 class VoiceTempCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -572,6 +577,10 @@ class VoiceTempCog(commands.Cog):
             # Si cambia solo "Connetti": gli altri permessi di @everyone
             # su questo canale restano com'erano.
             overwrite = channel.overwrites_for(interaction.guild.default_role)
+            # Si ricorda il valore di prima, ma solo al primo lock: un
+            # secondo lock vedrebbe già False e perderebbe l'originale.
+            if channel.id not in _connect_prima_del_lock:
+                _connect_prima_del_lock[channel.id] = overwrite.connect
             overwrite.update(connect=False)
             await channel.set_permissions(
                 interaction.guild.default_role, overwrite=overwrite
@@ -588,7 +597,8 @@ class VoiceTempCog(commands.Cog):
             return
         try:
             overwrite = channel.overwrites_for(interaction.guild.default_role)
-            overwrite.update(connect=None)
+            # Senza memoria (riavvio del bot dopo il lock) resta None.
+            overwrite.update(connect=_connect_prima_del_lock.get(channel.id))
             await channel.set_permissions(
                 interaction.guild.default_role,
                 overwrite=None if overwrite.is_empty() else overwrite,
@@ -596,6 +606,7 @@ class VoiceTempCog(commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
+        _connect_prima_del_lock.pop(channel.id, None)
         await interaction.response.send_message("Canale sbloccato.")
 
     @staticmethod

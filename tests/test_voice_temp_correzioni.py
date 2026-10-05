@@ -40,6 +40,7 @@ def _ambiente(monkeypatch, clean_db):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
     rinomina.rename_tracker._renames.clear()
+    modulo._connect_prima_del_lock.clear()
     yield
     rinomina.rename_tracker._renames.clear()
     database_module.db._modules_cache.clear()
@@ -747,3 +748,35 @@ async def test_kick_di_un_membro_con_ruolo_piu_basso_funziona():
 
     ospite.move_to.assert_awaited_once()
     assert "espulso" in _testo(interazione.response.send_message.call_args)
+# ====================================================================
+# #144 — /voice unlock ripristina il "Connetti" che @everyone aveva prima
+# ====================================================================
+async def test_unlock_ripristina_il_connetti_che_c_era_prima_del_lock():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    cog = VoiceTempCog(bot=None)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True, speak=False)
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    finale = _overwrite_finale(canale, scena.guild.default_role)
+    assert finale.connect is True
+    assert finale.speak is False
+
+
+async def test_unlock_dopo_due_lock_ripristina_il_valore_originale():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    cog = VoiceTempCog(bot=None)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True)
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
+    await cog.lock.callback(cog, scena.interazione(proprietario))  # già bloccato
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    assert _overwrite_finale(canale, scena.guild.default_role).connect is True
