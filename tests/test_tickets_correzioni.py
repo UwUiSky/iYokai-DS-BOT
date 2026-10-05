@@ -225,3 +225,43 @@ async def test_remove_di_un_ruolo_non_configurato_lo_dice():
     await cog.ticket_support_role_remove.callback(cog, interazione, fake_role(123, "Altro"))
 
     assert "non è tra i ruoli di supporto" in _testo(interazione.response.send_message.call_args)
+
+
+# ====================================================================
+# M 6.5 — un canale cancellato a mano chiude il ticket
+# ====================================================================
+async def test_canale_cancellato_a_mano_l_utente_puo_riaprire():
+    server = Server()
+    primo = await server.apri_ticket()
+    cog = TicketsCog(bot=None)
+
+    await cog.on_guild_channel_delete(primo)
+
+    ticket = await ticket_repo.get_ticket_by_channel(primo.id)
+    assert ticket.status == "closed"
+    assert ticket.closed_at is not None
+    assert ticket.closed_by is None  # non sappiamo chi ha cancellato il canale
+    secondo = await server.apri_ticket()
+    assert secondo.id != primo.id
+    assert (await ticket_repo.get_ticket_by_channel(secondo.id)).status == "open"
+
+
+async def test_canale_qualunque_cancellato_non_tocca_i_ticket():
+    server = Server()
+    canale = await server.apri_ticket()
+    cog = TicketsCog(bot=None)
+
+    await cog.on_guild_channel_delete(fake_text_channel(424242, "altro"))
+
+    assert (await ticket_repo.get_ticket_by_channel(canale.id)).status == "open"
+
+
+async def test_canale_di_un_ticket_gia_chiuso_non_cambia_chi_lo_ha_chiuso():
+    server = Server()
+    canale = await server.apri_ticket()
+    await ticket_repo.close_ticket(canale.id, ID_STAFF)
+    cog = TicketsCog(bot=None)
+
+    await cog.on_guild_channel_delete(canale)
+
+    assert (await ticket_repo.get_ticket_by_channel(canale.id)).closed_by == ID_STAFF

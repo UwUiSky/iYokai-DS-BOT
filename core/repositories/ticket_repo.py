@@ -217,6 +217,23 @@ class TicketRepository:
         )
         return result.endswith(" 1")
 
+    async def close_ticket_of_deleted_channel(self, channel_id: int) -> bool:
+        """
+        Chiude il ticket aperto di un canale che non esiste più
+        (cancellato a mano). `closed_by` resta vuoto: non sappiamo chi
+        ha cancellato il canale, e non deve contare nelle statistiche
+        di nessun operatore.
+        """
+        result = await self._pool.execute(
+            """
+            UPDATE tickets
+            SET status = 'closed', closed_at = now()
+            WHERE channel_id = $1 AND status = 'open'
+            """,
+            channel_id,
+        )
+        return result.endswith(" 1")
+
     async def record_first_response(self, channel_id: int, at: datetime) -> bool:
         """
         SPEC.md §13.12: registra SOLO la prima risposta (il

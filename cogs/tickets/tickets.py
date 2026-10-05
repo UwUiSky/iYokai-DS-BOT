@@ -819,6 +819,22 @@ class TicketsCog(commands.Cog):
             await self._pianifica_eliminazione(interaction, motivo, RITARDO_ELIMINAZIONE_SECONDI)
 
     # ================================================================
+    # Canale di un ticket cancellato a mano
+    # ================================================================
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        """
+        Se qualcuno cancella a mano il canale di un ticket aperto, il
+        ticket va chiuso: altrimenti l'utente resta con "hai già un
+        ticket aperto" per sempre. Dopo /ticket close o forceclose il
+        ticket è già chiuso e qui non cambia nulla.
+        """
+        if await ticket_repo.close_ticket_of_deleted_channel(channel.id):
+            logger.info(
+                "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id
+            )
+
+    # ================================================================
     # SPEC.md §13.12 — traccia la prima risposta nel canale ticket
     # ================================================================
     @commands.Cog.listener()
