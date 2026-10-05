@@ -59,3 +59,8 @@ da rispettare) · scheda del piano a cui appartiene (`NF-xx`, `M x.y`) o
   vero). Per questi bot l'elenco può essere incompleto.
 - Le idee prese da Nighty sono solo quelle realizzabili in modo
   regolare: vedi `../APP_UTENTE_E_DESKTOP.md`.
+- Questo catalogo guarda solo **gli altri bot**. Le funzioni AI di cui
+  si è parlato con l'owner e con le altre AI (comprese le 25 righe di
+  `18-ai.md`) sono tutte in [`../FUNZIONI_AI.md`](../FUNZIONI_AI.md); le
+  funzioni non AI discusse e assenti da ogni lista sono in
+  [`../VOCI_OMESSE.md`](../VOCI_OMESSE.md).

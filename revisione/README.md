@@ -19,6 +19,8 @@ revisione/
     LIMITI.md                  limiti di Discord, librerie e servizi (LIM) + lista di controllo
     CONFRONTO_BOT.md           iYokai a confronto con gli altri bot
     APP_UTENTE_E_DESKTOP.md    cosa offrire dove il bot non c'è e con il programma per PC
+    FUNZIONI_AI.md             tutte le funzioni AI discusse, con la fonte e come farle (AI-R)
+    VOCI_OMESSE.md             funzioni non AI discusse e assenti da ogni lista (OM)
     catalogo/                  ogni funzione degli altri bot che a iYokai manca, voce per voce
   02-piano/
     DECISIONI.md               le scelte già fatte (D1…D18)
@@ -41,6 +43,8 @@ revisione/
 | Quali limiti rispettare | [`01-analisi/LIMITI.md`](01-analisi/LIMITI.md) |
 | Cosa hanno gli altri bot | [`01-analisi/CONFRONTO_BOT.md`](01-analisi/CONFRONTO_BOT.md) e `01-analisi/catalogo/` |
 | Cosa si può fare senza il bot nel server, o da PC | [`01-analisi/APP_UTENTE_E_DESKTOP.md`](01-analisi/APP_UTENTE_E_DESKTOP.md) |
+| Quali funzioni AI sono state discusse e dove sono finite | [`01-analisi/FUNZIONI_AI.md`](01-analisi/FUNZIONI_AI.md) |
+| Quali funzioni discusse non stanno in nessuna lista | [`01-analisi/VOCI_OMESSE.md`](01-analisi/VOCI_OMESSE.md) |
 | Come si sistema una cosa che esiste | [`02-piano/MODIFICHE_ESISTENTE.md`](02-piano/MODIFICHE_ESISTENTE.md) |
 | Come si aggiunge una funzione nuova | [`02-piano/NUOVE_FUNZIONI.md`](02-piano/NUOVE_FUNZIONI.md) |
 | Cosa provare su Discord | [`03-verifica/VERIFICA_LIVE.md`](03-verifica/VERIFICA_LIVE.md) |
@@ -73,6 +77,8 @@ revisione/
 | LIM-n | limite superato o ignorato | `01-analisi/LIMITI.md` Parte 3 |
 | M x.y | modifica a ciò che esiste | `02-piano/MODIFICHE_ESISTENTE.md` |
 | NF-n | funzione nuova | `02-piano/NUOVE_FUNZIONI.md` |
+| AI-R-n | funzione AI discussa (voce di `SPEC.md` §25) | `01-analisi/FUNZIONI_AI.md` |
+| OM-n | funzione non AI discussa e assente dalle liste | `01-analisi/VOCI_OMESSE.md` |
 | D-n | decisione | `02-piano/DECISIONI.md` |
 | F-n | fase | milestone su GitHub |
 
