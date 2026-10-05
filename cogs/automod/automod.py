@@ -87,6 +87,10 @@ MAX_ELENCO_IN_CHAT = 1900
 # AutoMod: una parola più lunga farebbe fallire ogni sincronizzazione.
 MAX_LUNGHEZZA_PAROLA = MAX_KEYWORD_LENGTH
 
+# Finestra massima (in secondi) dei filtri anti-spam: il contatore in
+# memoria tiene un valore per ogni evento dentro la finestra.
+MAX_FINESTRA_SECONDI = 300
+
 # Regex di riconoscimento emoji per §6.5 (anti-spam emoji): emoji
 # custom di Discord (`<a?:nome:id>`) + un intervallo unicode ampio
 # che copre la stragrande maggioranza delle emoji standard. Non usa
@@ -124,27 +128,39 @@ def _mention_count(message: discord.Message) -> int:
     return len(message.mentions) + len(message.role_mentions) + extra
 
 
-def build_message_signals(message: discord.Message) -> MessageSignals:
+def _finestra(filtro: RateFilterConfig) -> int:
+    """La finestra salvata per il filtro, tenuta tra 1 secondo e il massimo."""
+    return max(1, min(filtro.window_seconds, MAX_FINESTRA_SECONDI))
+
+
+def build_message_signals(
+    message: discord.Message, config: AutomodAdvancedConfig
+) -> MessageSignals:
     """
     Estrae dal messaggio REALE tutto quello che serve alla logica
     pura (core/automod_advanced_logic.py) — i conteggi "nel tempo"
     (rate) passano dal tracker in memoria, mai persistiti (vedi
-    core/automod_rate_tracker.py).
+    core/automod_rate_tracker.py). Ogni conteggio usa la finestra in
+    secondi salvata dall'admin per quel filtro.
     """
     now = discord.utils.utcnow()
     guild_id = message.guild.id
     user_id = message.author.id
 
-    recent_messages = rate_tracker.record_and_count(guild_id, user_id, "messages", now, window_seconds=10)
+    recent_messages = rate_tracker.record_and_count(
+        guild_id, user_id, "messages", now, window_seconds=_finestra(config.anti_spam_messages)
+    )
     recent_attachments = 0
     if message.attachments:
         recent_attachments = rate_tracker.record_and_count(
-            guild_id, user_id, "attachments", now, window_seconds=30
+            guild_id, user_id, "attachments", now,
+            window_seconds=_finestra(config.anti_attachment_spam),
         )
     recent_stickers = 0
     if message.stickers:
         recent_stickers = rate_tracker.record_and_count(
-            guild_id, user_id, "stickers", now, window_seconds=30
+            guild_id, user_id, "stickers", now,
+            window_seconds=_finestra(config.anti_spam_sticker),
         )
 
     return MessageSignals(
@@ -636,10 +652,14 @@ class AutomodCog(commands.Cog):
         )
 
     @automod_group.command(name="anti-spam-messages", description="Configura l'anti-spam messaggi (troppi messaggi in poco tempo).")
-    @app_commands.describe(enabled="Attiva/disattiva", max_messages="Numero massimo consentito", seconds="Finestra in secondi")
+    @app_commands.describe(enabled="Attiva/disattiva", max_messages="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_messages(
-        self, interaction: discord.Interaction, enabled: bool, max_messages: int = 5, seconds: int = 10
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        max_messages: int = 5,
+        seconds: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] = 10,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -669,10 +689,14 @@ class AutomodCog(commands.Cog):
         )
 
     @automod_group.command(name="anti-spam-sticker", description="Configura l'anti-spam sticker (troppi sticker in poco tempo).")
-    @app_commands.describe(enabled="Attiva/disattiva", max_sticker="Numero massimo consentito", seconds="Finestra in secondi")
+    @app_commands.describe(enabled="Attiva/disattiva", max_sticker="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_sticker(
-        self, interaction: discord.Interaction, enabled: bool, max_sticker: int = 3, seconds: int = 30
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        max_sticker: int = 3,
+        seconds: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] = 30,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -731,10 +755,14 @@ class AutomodCog(commands.Cog):
         )
 
     @automod_group.command(name="anti-attachment", description="Configura l'anti-attachment-spam (troppi allegati in poco tempo).")
-    @app_commands.describe(enabled="Attiva/disattiva", max_attachments="Numero massimo consentito", seconds="Finestra in secondi")
+    @app_commands.describe(enabled="Attiva/disattiva", max_attachments="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_attachment(
-        self, interaction: discord.Interaction, enabled: bool, max_attachments: int = 5, seconds: int = 30
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        max_attachments: int = 5,
+        seconds: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] = 30,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -904,7 +932,7 @@ class AutomodCog(commands.Cog):
         if is_member_exempt(message.author, settings, message.channel.id):
             return
 
-        segnali = build_message_signals(message)
+        segnali = build_message_signals(message, settings.config)
         violazioni = evaluate_message_violations(segnali, settings.config)
         if not violazioni:
             return

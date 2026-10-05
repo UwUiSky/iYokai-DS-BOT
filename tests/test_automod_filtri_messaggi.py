@@ -200,3 +200,84 @@ async def test_anti_attachment_scatta_oltre_il_massimo(cog):
     messaggi[1].delete.assert_awaited_once()
     assert await _violazioni_registrate() == ["anti_attachment_spam"]
 
+
+# ====================================================================
+# La finestra `seconds=` salvata viene usata davvero (M 2.5)
+# ====================================================================
+@pytest.fixture
+def orologio(monkeypatch):
+    """Orologio finto: il test decide che ore sono a ogni messaggio."""
+    stato = {"adesso": datetime(2026, 10, 5, 12, 0, 0, tzinfo=timezone.utc)}
+    monkeypatch.setattr(discord.utils, "utcnow", lambda: stato["adesso"])
+
+    def avanti(secondi: int) -> None:
+        stato["adesso"] += timedelta(seconds=secondi)
+
+    return avanti
+
+
+async def test_finestra_messaggi_di_5_secondi_rispettata(cog, orologio):
+    # Massimo 2 messaggi ogni 5 secondi. Tre messaggi a 4 secondi l'uno
+    # dall'altro: con la vecchia finestra fissa di 10 secondi il terzo
+    # veniva cancellato, con quella di 5 no.
+    await cog.anti_spam_messages.callback(cog, _interazione_admin(), True, 2, 5)
+    messaggi = [_messaggio(f"messaggio {numero}") for numero in range(3)]
+
+    for messaggio in messaggi:
+        await cog.on_message(messaggio)
+        orologio(4)
+
+    for messaggio in messaggi:
+        messaggio.delete.assert_not_awaited()
+
+
+async def test_finestra_messaggi_di_30_secondi_rispettata(cog, orologio):
+    # Tre messaggi a 12 secondi l'uno dall'altro stanno tutti in 30
+    # secondi: il terzo supera il massimo di 2.
+    await cog.anti_spam_messages.callback(cog, _interazione_admin(), True, 2, 30)
+    messaggi = [_messaggio(f"messaggio {numero}") for numero in range(3)]
+
+    for messaggio in messaggi:
+        await cog.on_message(messaggio)
+        orologio(12)
+
+    messaggi[2].delete.assert_awaited_once()
+
+
+async def test_finestra_sticker_salvata_rispettata(cog, orologio):
+    await cog.anti_spam_sticker.callback(cog, _interazione_admin(), True, 1, 5)
+    sticker = create_autospec(discord.StickerItem, instance=True)
+    messaggi = [_messaggio("", stickers=[sticker]) for _ in range(2)]
+
+    for messaggio in messaggi:
+        await cog.on_message(messaggio)
+        orologio(10)
+
+    messaggi[1].delete.assert_not_awaited()
+
+
+async def test_finestra_allegati_salvata_rispettata(cog, orologio):
+    await cog.anti_attachment.callback(cog, _interazione_admin(), True, 1, 5)
+    allegato = create_autospec(discord.Attachment, instance=True)
+    messaggi = [_messaggio("foto", attachments=[allegato]) for _ in range(2)]
+
+    for messaggio in messaggi:
+        await cog.on_message(messaggio)
+        orologio(10)
+
+    messaggi[1].delete.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "nome_comando", ["anti-spam-messages", "anti-spam-sticker", "anti-attachment"]
+)
+def test_seconds_ha_un_minimo_e_un_massimo(nome_comando):
+    from discord.ext import commands
+
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
+    gruppo = modulo_automod.AutomodCog(bot).automod_group.to_dict(bot.tree)
+    comando = next(c for c in gruppo["options"] if c["name"] == nome_comando)
+    opzione = next(o for o in comando["options"] if o["name"] == "seconds")
+
+    assert opzione["min_value"] == 1
+    assert opzione["max_value"] == modulo_automod.MAX_FINESTRA_SECONDI
