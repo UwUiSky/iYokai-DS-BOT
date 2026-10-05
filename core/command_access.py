@@ -193,6 +193,8 @@ class GruppoYokai(app_commands.Group):
         self.livello = livello
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
         if self.parent is not None and not await self.parent.interaction_check(interaction):
             return False
         if self.livello is not None:
