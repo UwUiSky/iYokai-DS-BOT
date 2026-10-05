@@ -55,6 +55,14 @@ class _FakeMember(discord.Member):
     def guild(self):
         return self._guild_finta
 
+    @property
+    def bot(self):
+        return False
+
+    @property
+    def roles(self):
+        return []
+
     def __str__(self) -> str:
         return f"Membro{self._id_finto}"
 

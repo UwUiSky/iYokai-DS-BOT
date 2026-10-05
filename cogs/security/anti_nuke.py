@@ -23,6 +23,7 @@ nome/permessi/posizione senza dover mantenere uno snapshot separato.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -54,6 +55,9 @@ MODULE_ANTI_NUKE = "anti_nuke"
 # audit log corrispondente arrivano quasi sempre entro pochi secondi
 # l'uno dall'altro, ma non sono garantiti nello stesso istante.
 _AUDIT_LOG_LOOKBACK_SECONDS = 10
+
+# Lunghezza massima di un motivo nel registro di controllo di Discord.
+MAX_MOTIVO = 512
 
 
 def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
@@ -105,6 +109,8 @@ async def _punish_actor(guild: discord.Guild, actor_id: int, config: AntiNukeCon
     if member is None:
         return "nessuna azione: l'autore non è (più) un membro del server"
 
+    reason = reason[:MAX_MOTIVO]
+
     if config.punish_action == "ban":
         try:
             await member.ban(reason=reason, delete_message_seconds=0)
@@ -112,8 +118,20 @@ async def _punish_actor(guild: discord.Guild, actor_id: int, config: AntiNukeCon
         except discord.HTTPException:
             return f"tentativo di ban di {member} fallito (permessi insufficienti?)"
 
+    if member.bot:
+        # Il ruolo di un bot è gestito da Discord e non si può
+        # togliere: un bot che fa danni va tolto dal server.
+        try:
+            await member.kick(reason=reason)
+            return f"bot {member} espulso"
+        except discord.HTTPException:
+            return f"tentativo di espellere il bot {member} fallito (permessi insufficienti?)"
+
+    # I ruoli gestiti da Discord (es. Server Booster) non si possono
+    # togliere: chiederlo farebbe fallire tutta la modifica.
+    ruoli_gestiti = [ruolo for ruolo in member.roles if ruolo.managed]
     try:
-        await member.edit(roles=[], reason=reason)
+        await member.edit(roles=ruoli_gestiti, reason=reason)
         return f"tutti i ruoli rimossi da {member}"
     except discord.HTTPException:
         return f"tentativo di rimuovere i ruoli di {member} fallito (permessi insufficienti?)"
@@ -219,7 +237,7 @@ class AntiNukeCog(commands.Cog):
     @anti_nuke_group.command(name="punish-action", description="Cosa fare all'autore di un'azione distruttiva di massa.")
     @app_commands.choices(
         action=[
-            app_commands.Choice(name="Rimuovi tutti i ruoli", value="strip_roles"),
+            app_commands.Choice(name="Rimuovi tutti i ruoli (un bot viene espulso)", value="strip_roles"),
             app_commands.Choice(name="Banna", value="ban"),
         ]
     )
