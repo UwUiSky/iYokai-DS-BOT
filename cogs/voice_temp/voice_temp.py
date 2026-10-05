@@ -23,6 +23,13 @@ canale è pronto" e, SE il server ha configurato almeno un ruolo
 piattaforma, dei bottoni PC/Console/Mobile — vedi PlatformRoleView.
 Restano SOLO informativi (nessun filtro di visibilità), per la stessa
 ragione già registrata sopra sulle due modalità sempre visibili.
+Anche questi bottoni sono persistenti.
+
+Gestione del canale (/voice …): la rinomina rispetta il limite di
+Discord di 2 ogni 10 minuti (core/channel_rename.py); /voice transfer
+sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
+mentre il bot era spento vengono cancellati.
+Funzioni coperte: SPEC §12
 
 SPEC.md §12.8: il cap per categoria (/voicetemp-cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
@@ -79,14 +86,23 @@ MESSAGGIO_ERRORE_DISCORD = (
 
 # SPEC.md §12.5: selezione piattaforma, SOLO informativa (nessun
 # filtro di visibilità — decisione già presa in fase di progettazione,
-# vedi il docstring del modulo). custom_id fissi perché la view va
-# comunque ricreata ad ogni canale (non è persistente: il canale
-# stesso è temporaneo, non ha senso sopravviva a un riavvio del bot).
+# vedi il docstring del modulo). I custom_id sono fissi e la view è
+# persistente (LIM-26): un canale vive ore, i bottoni devono funzionare
+# anche dopo 5 minuti e dopo un riavvio del bot.
 PLATFORM_CHOICES = (
     ("pc", "PC", "🖥️"),
     ("console", "Console", "🎮"),
     ("mobile", "Mobile", "📱"),
 )
+
+
+def _platform_roles(config) -> dict[str, int | None]:
+    """Chiave della piattaforma -> id del ruolo configurato (None se manca)."""
+    return {
+        "pc": config.role_pc_id,
+        "console": config.role_console_id,
+        "mobile": config.role_mobile_id,
+    }
 
 
 class PlatformRoleView(BaseView):
@@ -98,17 +114,20 @@ class PlatformRoleView(BaseView):
     piattaforma assegna QUEL ruolo e rimuove gli altri due — è un
     indicatore mutuamente esclusivo ("sto giocando da..."), non un
     filtro su cosa il membro può vedere o fare.
+
+    View PERSISTENTE (timeout=None, custom_id fissi, bot.add_view() in
+    setup()): i ruoli non stanno nella view ma si leggono dalla
+    configurazione del server a ogni clic, così il bottone di un
+    messaggio vecchio funziona anche dopo un riavvio. Con `config` la
+    view mostra solo le piattaforme configurate (è quella che va nel
+    messaggio); senza, le ha tutte e tre (è quella registrata
+    all'avvio, che riceve i clic di ogni messaggio).
     """
 
-    def __init__(self, config) -> None:
-        super().__init__(timeout=300)
-        self._roles_by_key = {
-            "pc": config.role_pc_id,
-            "console": config.role_console_id,
-            "mobile": config.role_mobile_id,
-        }
+    def __init__(self, config=None) -> None:
+        super().__init__(timeout=None)
         for key, label, emoji in PLATFORM_CHOICES:
-            if self._roles_by_key.get(key) is None:
+            if config is not None and _platform_roles(config).get(key) is None:
                 continue
             self.add_item(self._make_button(key, label, emoji))
 
@@ -125,7 +144,15 @@ class PlatformRoleView(BaseView):
             if guild is None:
                 return
 
-            ruolo_scelto = guild.get_role(self._roles_by_key[key])
+            roles_by_key = _platform_roles(await voice_temp_repo.get_config(guild.id))
+            if roles_by_key[key] is None:
+                await interaction.response.send_message(
+                    "Questa piattaforma non è più configurata su questo server.",
+                    ephemeral=True,
+                )
+                return
+
+            ruolo_scelto = guild.get_role(roles_by_key[key])
             if ruolo_scelto is None:
                 await interaction.response.send_message(
                     "Il ruolo configurato per questa piattaforma non esiste più.",
@@ -142,7 +169,7 @@ class PlatformRoleView(BaseView):
                 return
 
             altri_ruoli_id = {
-                rid for rid in self._roles_by_key.values() if rid is not None and rid != ruolo_scelto.id
+                rid for rid in roles_by_key.values() if rid is not None and rid != ruolo_scelto.id
             }
             da_rimuovere = [
                 r for r in interaction.user.roles if r.id in altri_ruoli_id
@@ -224,8 +251,12 @@ async def _create_temp_channel(
             await channel.send(embed=embed, view=view)
         else:
             await channel.send(embed=embed)
-    except (discord.Forbidden, discord.HTTPException):
+    except discord.HTTPException:
         logger.warning("Impossibile inviare la notifica di creazione nel canale %s", channel.id)
+    # I clic li riceve la view registrata all'avvio (stessi custom_id):
+    # questa, legata al singolo messaggio, si ferma subito, altrimenti
+    # ne resterebbe una in memoria per ogni canale creato.
+    view.stop()
 
     return channel
 
@@ -746,3 +777,6 @@ async def setup(bot: commands.Bot) -> None:
     )
     await bot.add_cog(VoiceTempCog(bot))
     bot.add_view(CreateVoiceView())
+    # Senza configurazione: tutte e tre le piattaforme, per ricevere i
+    # clic sui bottoni dei messaggi già mandati (vedi PlatformRoleView).
+    bot.add_view(PlatformRoleView())

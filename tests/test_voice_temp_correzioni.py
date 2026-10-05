@@ -457,3 +457,126 @@ async def test_cancellazione_fallita_all_uscita_il_canale_resta_nel_registro(cle
     await _invecchia_i_canali(clean_db)
     await cog.on_ready()
     assert await voice_temp_repo.get_owner(canale.id) is None
+
+
+# ====================================================================
+# M 7.6 — i bottoni piattaforma sopravvivono a un riavvio (LIM-26)
+# ====================================================================
+ID_RUOLO_PC = 601
+ID_RUOLO_MOBILE = 603
+
+
+async def _configura_piattaforme(scena) -> dict[int, MagicMock]:
+    """Configura i vocali e due ruoli piattaforma con i comandi veri dell'admin."""
+    scena.guild.me.top_role = fake_role(role_id=1, position=50)
+    admin = scena.membro(1)
+    admin.top_role = fake_role(role_id=2, position=40)
+    ruoli = {
+        ID_RUOLO_PC: fake_role(ID_RUOLO_PC, "PC", position=5),
+        ID_RUOLO_MOBILE: fake_role(ID_RUOLO_MOBILE, "Mobile", position=4),
+    }
+    scena.guild.get_role.side_effect = ruoli.get
+    cog = VoiceTempCog(bot=None)
+    await cog.voicetemp_setup.callback(
+        cog, scena.interazione(admin), fake_voice_channel(800, "Crea"), scena.categoria
+    )
+    await cog.voicetemp_platform_setup.callback(
+        cog, scena.interazione(admin), ruoli[ID_RUOLO_PC], None, ruoli[ID_RUOLO_MOBILE]
+    )
+    return ruoli
+
+
+async def _bot_riavviato() -> commands.Bot:
+    """Un bot nuovo, come dopo un riavvio: carica il cog e nient'altro."""
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await modulo.setup(bot)
+    return bot
+
+
+def _bottone_persistente(bot, chiave: str):
+    for vista in bot.persistent_views:
+        for elemento in vista.children:
+            if elemento.custom_id == f"iyokai_voice_temp_platform_{chiave}":
+                return elemento
+    raise AssertionError(f"Nessuna view persistente registrata per il bottone {chiave}")
+
+
+async def test_il_messaggio_del_canale_ha_bottoni_che_non_scadono():
+    scena = Scena()
+    await _configura_piattaforme(scena)
+
+    canale = await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
+
+    vista = canale.send.call_args.kwargs["view"]
+    assert vista.timeout is None
+    assert vista.is_persistent()
+    # Solo le piattaforme configurate.
+    assert [b.custom_id for b in vista.children] == [
+        "iyokai_voice_temp_platform_pc",
+        "iyokai_voice_temp_platform_mobile",
+    ]
+
+
+async def test_la_view_del_messaggio_non_resta_in_memoria_e_il_clic_arriva_lo_stesso():
+    """
+    Con il registro delle view vero di discord.py: la view legata al
+    singolo messaggio viene fermata (niente accumulo, una per canale),
+    e il clic su quel messaggio arriva alla view registrata all'avvio.
+    """
+    scena = Scena()
+    await _configura_piattaforme(scena)
+    bot = await _bot_riavviato()
+    try:
+        registro = bot._connection._view_store
+        canale = await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
+        vista = canale.send.call_args.kwargs["view"]
+        id_messaggio = 123456
+        registro.add_view(vista, id_messaggio)  # ciò che fa channel.send dopo l'invio
+        vista.stop()  # già chiamato dal codice: qui vale per il registro vero
+
+        assert vista.is_finished()
+        assert id_messaggio not in registro._views
+        chiave = (discord.ComponentType.button.value, "iyokai_voice_temp_platform_pc")
+        assert registro._views[None][chiave] is _bottone_persistente(bot, "pc")
+    finally:
+        await bot.close()
+
+
+async def test_dopo_un_riavvio_il_bottone_assegna_ancora_il_ruolo():
+    scena = Scena()
+    ruoli = await _configura_piattaforme(scena)
+    await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
+    bot = await _bot_riavviato()
+    try:
+        giocatore = scena.membro(ID_OSPITE)
+        giocatore.roles = [ruoli[ID_RUOLO_MOBILE]]  # aveva scelto Mobile
+        interazione = scena.interazione(giocatore)
+
+        await _bottone_persistente(bot, "pc").callback(interazione)
+
+        giocatore.add_roles.assert_awaited_once()
+        assert giocatore.add_roles.call_args.args == (ruoli[ID_RUOLO_PC],)
+        giocatore.remove_roles.assert_awaited_once()
+        assert giocatore.remove_roles.call_args.args == (ruoli[ID_RUOLO_MOBILE],)
+        risposta = interazione.response.send_message.call_args
+        assert "Piattaforma impostata" in _testo(risposta)
+        assert risposta.kwargs["ephemeral"] is True
+    finally:
+        await bot.close()
+
+
+async def test_bottone_di_una_piattaforma_non_piu_configurata_lo_dice():
+    """Un vecchio messaggio ha ancora il bottone Console, tolto poi dall'admin."""
+    scena = Scena()
+    await _configura_piattaforme(scena)
+    bot = await _bot_riavviato()
+    try:
+        giocatore = scena.membro(ID_OSPITE)
+        interazione = scena.interazione(giocatore)
+
+        await _bottone_persistente(bot, "console").callback(interazione)
+
+        giocatore.add_roles.assert_not_awaited()
+        assert "non è più configurata" in _testo(interazione.response.send_message.call_args)
+    finally:
+        await bot.close()
