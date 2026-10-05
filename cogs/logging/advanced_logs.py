@@ -8,7 +8,8 @@ semplificato [Free] vs completo [Premium]"). Stesso canale di log già
 configurato con `/logs-setup` (SETTING_LOG_CHANNEL, riusato — non
 serve un secondo comando di setup per un secondo canale), ma questi
 eventi arrivano lì SOLO se il server ha sbloccato/attivato anche
-`MODULE_LOGGING_ADVANCED`.
+`MODULE_LOGGING_ADVANCED`. Il controllo (modulo acceso + premium) sta in
+`logging_avanzato_attivo`: ogni listener lo chiama prima di scrivere.
 
 Copre: 8.6 Role update, 8.7 Channel create/delete/update, 8.8 Invite
 create/delete/use, 8.9 Voice state, 8.10 Webhook, 8.11 Emoji, 8.12
@@ -55,11 +56,13 @@ toccato da questo file.
 from __future__ import annotations
 
 import logging
+import time
 
 import discord
 from discord.ext import commands
 
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
+from core.bounded_cache import BoundedCache
 from core.database import db
 from core.invite_tracker import invite_tracker
 from core.logging_advanced_logic import (
@@ -71,11 +74,18 @@ from core.logging_advanced_logic import (
     diff_attributes,
     diff_named_items,
 )
+from core.premium import registry
 from core.repositories.event_log_repo import event_log_repo
+from core.security_access import premium_sbloccato
 
 logger = logging.getLogger("iyokai.advanced_logs")
 
 MODULE_LOGGING_ADVANCED = "logging_advanced"
+
+PREMIUM_CACHE_TTL_SECONDS = 60
+_monotonic = time.monotonic
+# guild_id -> (scadenza, sbloccato)
+_premium_cache: BoundedCache[int, tuple[float, bool]] = BoundedCache(10_000)
 
 # Stessa finestra di tolleranza già usata in cogs/security/anti_nuke.py
 # per risolvere l'autore di un evento via audit log (l'evento gateway
@@ -177,6 +187,35 @@ def _voice_state_snapshot(state: discord.VoiceState) -> dict:
     }
 
 
+async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
+    """
+    True se il server ha acceso il Logging Avanzato E può usarlo.
+    Il modulo è premium-capable (M 3.14): quando l'owner lo rende premium,
+    un server che non lo ha sbloccato smette di scrivere questi log, anche
+    se il modulo risulta acceso. Stesso controllo degli altri moduli
+    premium (core/security_access.premium_sbloccato). Ogni listener e il
+    servizio soundboard lo chiamano PRIMA di scrivere nel database o in
+    un canale.
+
+    Il verdetto sul premium (3 query) si tiene in memoria per
+    PREMIUM_CACHE_TTL_SECONDS per server, solo con il modulo premium e
+    acceso. Non c'è un punto unico dove invalidarlo (whitelist, cassa,
+    abbonamenti e flag del modulo stanno in posti diversi): basta il TTL,
+    quindi uno sblocco o una revoca valgono entro un minuto.
+    """
+    if not await db.is_module_active_for_guild(guild_id, MODULE_LOGGING_ADVANCED):
+        return False
+    if not registry.is_module_premium(MODULE_LOGGING_ADVANCED):
+        return True
+    adesso = _monotonic()
+    voce = _premium_cache.get(guild_id)
+    if voce is not None and voce[0] > adesso:
+        return voce[1]
+    sbloccato = await premium_sbloccato(guild_id, MODULE_LOGGING_ADVANCED, bot)
+    _premium_cache.set(guild_id, (adesso + PREMIUM_CACHE_TTL_SECONDS, sbloccato))
+    return sbloccato
+
+
 async def advanced_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
     enabled = await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED)
     if not enabled:
@@ -242,7 +281,7 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_guild_role_update(self, before: discord.Role, after: discord.Role) -> None:
-        if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         changes = diff_attributes(_role_snapshot(before), _role_snapshot(after), ROLE_TRACKED_KEYS)
         if not changes:
@@ -259,7 +298,7 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
-        if not await db.is_module_active_for_guild(channel.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
         await event_log_repo.log_event(
             channel.guild.id, "channel_create", channel_id=channel.id, details={"name": channel.name}
@@ -268,7 +307,7 @@ class AdvancedLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
-        if not await db.is_module_active_for_guild(channel.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
         await event_log_repo.log_event(
             channel.guild.id, "channel_delete", channel_id=channel.id, details={"name": channel.name}
@@ -279,7 +318,7 @@ class AdvancedLogsCog(commands.Cog):
     async def on_guild_channel_update(
         self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel
     ) -> None:
-        if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         changes = diff_attributes(_channel_snapshot(before), _channel_snapshot(after), CHANNEL_TRACKED_KEYS)
         if not changes:
@@ -297,7 +336,7 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        if not await db.is_module_active_for_guild(member.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(member.guild.id, self.bot):
             return
         risultato = await invite_tracker.resolve_join_invite(member.guild, member.id)
         if risultato is None:
@@ -319,7 +358,7 @@ class AdvancedLogsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_invite_create(self, invite: discord.Invite) -> None:
         guild = invite.guild
-        if guild is None or not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED):
+        if guild is None or not await logging_avanzato_attivo(guild.id, self.bot):
             return
         await event_log_repo.log_event(
             guild.id,
@@ -333,7 +372,7 @@ class AdvancedLogsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_invite_delete(self, invite: discord.Invite) -> None:
         guild = invite.guild
-        if guild is None or not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED):
+        if guild is None or not await logging_avanzato_attivo(guild.id, self.bot):
             return
         await event_log_repo.log_event(
             guild.id,
@@ -350,7 +389,7 @@ class AdvancedLogsCog(commands.Cog):
     async def on_voice_state_update(
         self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
     ) -> None:
-        if not await db.is_module_active_for_guild(member.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(member.guild.id, self.bot):
             return
         eventi = classify_voice_state_change(_voice_state_snapshot(before), _voice_state_snapshot(after))
         for event_type in eventi:
@@ -368,7 +407,7 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_webhooks_update(self, channel: discord.abc.GuildChannel) -> None:
-        if not await db.is_module_active_for_guild(channel.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
         risultato = await _resolve_webhook_change(channel)
         if risultato is None:
@@ -387,7 +426,7 @@ class AdvancedLogsCog(commands.Cog):
     async def on_guild_emojis_update(
         self, guild: discord.Guild, before: list, after: list
     ) -> None:
-        if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(guild.id, self.bot):
             return
         diff = diff_named_items({e.id: e.name for e in before}, {e.id: e.name for e in after})
         for item in diff["created"]:
@@ -407,7 +446,7 @@ class AdvancedLogsCog(commands.Cog):
     async def on_guild_stickers_update(
         self, guild: discord.Guild, before: list, after: list
     ) -> None:
-        if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(guild.id, self.bot):
             return
         diff = diff_named_items({s.id: s.name for s in before}, {s.id: s.name for s in after})
         for item in diff["created"]:
@@ -425,7 +464,7 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread) -> None:
-        if not await db.is_module_active_for_guild(thread.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(thread.guild.id, self.bot):
             return
         await event_log_repo.log_event(
             thread.guild.id, "thread_create", channel_id=thread.id, details={"name": thread.name}
@@ -434,7 +473,7 @@ class AdvancedLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_delete(self, thread: discord.Thread) -> None:
-        if not await db.is_module_active_for_guild(thread.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(thread.guild.id, self.bot):
             return
         await event_log_repo.log_event(
             thread.guild.id, "thread_delete", channel_id=thread.id, details={"name": thread.name}
@@ -443,7 +482,7 @@ class AdvancedLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_update(self, before: discord.Thread, after: discord.Thread) -> None:
-        if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         changes = diff_attributes(_thread_snapshot(before), _thread_snapshot(after), THREAD_TRACKED_KEYS)
         if not changes:
@@ -458,7 +497,7 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild) -> None:
-        if not await db.is_module_active_for_guild(after.id, MODULE_LOGGING_ADVANCED):
+        if not await logging_avanzato_attivo(after.id, self.bot):
             return
         changes = diff_attributes(_guild_snapshot(before), _guild_snapshot(after), GUILD_TRACKED_KEYS)
         if not changes:

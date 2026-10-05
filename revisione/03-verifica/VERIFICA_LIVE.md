@@ -510,3 +510,9 @@ chiudere.
   3. `/clan promuovi` ad Admin/Mod con la gilda già al tetto: rifiuto chiaro.
   4. `/config export` su server con impostazioni vuote, poi `/config import` del file: nessun errore.
   Risultato atteso: nessuna moneta persa o doppia.
+- [ ] Vocali, ticket e log avanzati F1 (#134) — passi:
+  1. Nel tuo vocale temporaneo imposta su @everyone un permesso extra (es. "Parla" negato), poi `/voice lock` e `/voice unlock`: "Parla" resta negato in entrambi i casi, cambia solo "Connetti".
+  2. `/voice kick` di un utente che non è nel canale: messaggio "non è nel canale", nessuna espulsione. Con un utente nel canale: espulso.
+  3. `/ticket support-role remove` su un ruolo impostato con `/ticket-setup`: ruolo tolto, la chiave sparisce (`/config history` la mostra rimossa).
+  4. `/owner premium` rende premium "Logging Avanzato"; su un server non sbloccato con il modulo acceso, modifica un ruolo o entra in un vocale: nessun log (entro un minuto dal cambio). Con whitelist o boost: i log riprendono (entro un minuto).
+  Risultato atteso: nessun errore nel log.

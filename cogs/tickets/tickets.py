@@ -634,10 +634,9 @@ class TicketsCog(commands.Cog):
         # Il ruolo può essere anche quello "storico" impostato con
         # /ticket-setup: va tolto pure da lì, altrimenti continua a
         # vedere i ticket. La chiave si toglie del tutto (un `null`
-        # verrebbe poi rifiutato da /config import): core/database.py
-        # non ha ancora un metodo pubblico per farlo.
+        # verrebbe poi rifiutato da /config import).
         if await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLE) == role.id:
-            await db._remove_guild_setting(guild_id, SETTING_SUPPORT_ROLE, interaction.user.id)
+            await db.remove_guild_setting(guild_id, SETTING_SUPPORT_ROLE, interaction.user.id)
             rimosso = True
 
         if not rimosso:

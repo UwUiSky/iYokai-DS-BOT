@@ -372,7 +372,7 @@ class Database:
                     entry.guild_id, entry.old_value, changed_by=rolled_back_by
                 )
             elif entry.old_value is None:
-                await self._remove_guild_setting(entry.guild_id, entry.key_name, rolled_back_by)
+                await self.remove_guild_setting(entry.guild_id, entry.key_name, rolled_back_by)
             else:
                 await self.set_guild_setting(
                     entry.guild_id, entry.key_name, entry.old_value, changed_by=rolled_back_by
@@ -394,10 +394,10 @@ class Database:
             return False
         return True
 
-    async def _remove_guild_setting(
+    async def remove_guild_setting(
         self, guild_id: int, key: str, changed_by: int | None
     ) -> None:
-        """Toglie una chiave da settings (usata dal rollback di una chiave nuova)."""
+        """Toglie del tutto una chiave da settings (non la mette a null) e la registra nello storico."""
         old_row = await self.pool.fetchrow(
             "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
             guild_id,

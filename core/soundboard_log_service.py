@@ -109,13 +109,13 @@ class SoundboardLogService:
         # questo modulo, ma tenerli comunque separati mantiene ogni
         # file caricabile isolatamente nei test.
         from cogs.logging.advanced_logs import (
-            MODULE_LOGGING_ADVANCED,
             SETTING_SOUNDBOARD_WATERMARK,
+            logging_avanzato_attivo,
             send_event_embed,
         )
 
         async def _per_server(guild) -> None:
-            if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED):
+            if not await logging_avanzato_attivo(guild.id, bot):
                 return
 
             raw_watermark = await db.get_guild_setting(guild.id, SETTING_SOUNDBOARD_WATERMARK)

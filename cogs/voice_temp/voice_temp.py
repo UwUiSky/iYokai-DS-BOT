@@ -567,8 +567,12 @@ class VoiceTempCog(commands.Cog):
         if channel is None:
             return
         try:
+            # Si cambia solo "Connetti": gli altri permessi di @everyone
+            # su questo canale restano com'erano.
+            overwrite = channel.overwrites_for(interaction.guild.default_role)
+            overwrite.update(connect=False)
             await channel.set_permissions(
-                interaction.guild.default_role, connect=False
+                interaction.guild.default_role, overwrite=overwrite
             )
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
@@ -581,7 +585,12 @@ class VoiceTempCog(commands.Cog):
         if channel is None:
             return
         try:
-            await channel.set_permissions(interaction.guild.default_role, overwrite=None)
+            overwrite = channel.overwrites_for(interaction.guild.default_role)
+            overwrite.update(connect=None)
+            await channel.set_permissions(
+                interaction.guild.default_role,
+                overwrite=None if overwrite.is_empty() else overwrite,
+            )
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
@@ -593,14 +602,17 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        if member.voice is not None and member.voice.channel and member.voice.channel.id == channel.id:
-            try:
-                await member.move_to(None, reason="Espulso dal proprietario del canale")
-            except discord.HTTPException:
-                await interaction.response.send_message(
-                    MESSAGGIO_ERRORE_DISCORD, ephemeral=True
-                )
-                return
+        if member.voice is None or member.voice.channel is None or member.voice.channel.id != channel.id:
+            await interaction.response.send_message(
+                f"{member.mention} non è nel canale: non c'è nessuno da espellere.",
+                ephemeral=True,
+            )
+            return
+        try:
+            await member.move_to(None, reason="Espulso dal proprietario del canale")
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
 
     @voice_group.command(name="transfer", description="Trasferisci la proprietà del canale.")
