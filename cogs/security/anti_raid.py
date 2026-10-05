@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import deque
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 import discord
@@ -34,11 +36,13 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
+from core.bounded_cache import BoundedCache
 from core.database import db
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
 from core.security_access import premium_sbloccato
 from core.security_logic import AntiRaidConfig, JoinSignals, evaluate_join, is_raid
+from core.security_raid_state import DURATA_RAID_SECONDI, azzera, segna_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
 
@@ -68,7 +72,39 @@ NOME_CANALE_NASCOSTO = "___hidden___"
 # tempo il livello di verifica torna quello di prima. Vale anche come
 # durata di un "episodio": dentro un episodio il proprietario riceve un
 # solo DM.
-DURATA_BLOCCO_SECONDI = 15 * 60
+DURATA_BLOCCO_SECONDI = DURATA_RAID_SECONDI
+
+# Quanti ultimi ingressi si elencano nell'avviso aggiornato, e quanto
+# può essere lungo un nome (il testo di un embed arriva a 4096).
+MAX_INGRESSI_ELENCATI = 15
+MAX_NOME_ELENCATO = 80
+
+
+@dataclass
+class _Avviso:
+    """L'avviso dell'episodio in corso: un solo messaggio, aggiornato."""
+
+    messaggio: discord.Message | None
+    ultimo_ingresso: datetime
+    conteggio: int = 0
+    recenti: deque = field(default_factory=lambda: deque(maxlen=MAX_INGRESSI_ELENCATI))
+
+
+def _embed_avviso(avviso: _Avviso) -> discord.Embed:
+    righe = "\n".join(f"• {voce}" for voce in avviso.recenti)
+    return discord.Embed(
+        title=f"🚨 Anti-Raid — {avviso.conteggio} join sospetti",
+        description=f"Ultimi ingressi (dal più vecchio):\n{righe}"[:4096],
+        color=discord.Color.red(),
+    )
+
+
+def _allinea_necessario(channel: discord.abc.GuildChannel, role: discord.Role) -> bool:
+    """True se il canale non nega ancora al ruolo tutti i permessi di quarantena."""
+    if channel.name == NOME_CANALE_NASCOSTO:
+        return False
+    permessi = channel.overwrites_for(role)
+    return not all(getattr(permessi, nome) is False for nome in PERMESSI_QUARANTENA)
 
 
 async def _blocca_canale(channel: discord.abc.GuildChannel, role: discord.Role) -> None:
@@ -94,7 +130,7 @@ async def _blocca_canale(channel: discord.abc.GuildChannel, role: discord.Role) 
 
 async def _get_or_create_quarantine_role(
     guild: discord.Guild, settings: SecuritySettings
-) -> discord.Role | None:
+) -> tuple[discord.Role | None, bool]:
     """
     Stesso schema di `_get_or_create_mute_role` in
     cogs/moderation/softban_mute.py (ruolo dedicato + overwrite su
@@ -103,6 +139,9 @@ async def _get_or_create_quarantine_role(
     sanzionato — mescolarli renderebbe impossibile distinguere i due
     casi nell'audit trail del server.
 
+    Restituisce (ruolo, creato_adesso): un ruolo appena creato ha già
+    i permessi su ogni canale, uno trovato no.
+
     Va chiamata dentro il blocco per server del cog
     (AntiRaidCog._ruolo_quarantena): senza, più ingressi insieme
     creerebbero più ruoli.
@@ -110,7 +149,14 @@ async def _get_or_create_quarantine_role(
     if settings.quarantine_role_id is not None:
         role = guild.get_role(settings.quarantine_role_id)
         if role is not None:
-            return role
+            return role, False
+
+    # Un ruolo "Quarantined" già nel server (fatto a mano o da una
+    # versione precedente) si usa, invece di crearne un secondo.
+    esistente = discord.utils.get(guild.roles, name=NOME_RUOLO_QUARANTENA)
+    if esistente is not None and not esistente.managed:
+        await security_repo.save_settings(_replace(settings, quarantine_role_id=esistente.id))
+        return esistente, False
 
     try:
         role = await guild.create_role(
@@ -121,14 +167,14 @@ async def _get_or_create_quarantine_role(
         logger.warning(
             "Impossibile creare il ruolo di quarantena nel server %s: %s", guild.id, errore
         )
-        return None
+        return None, False
 
     for channel in guild.channels:
         await _blocca_canale(channel, role)
 
     nuova = _replace(settings, quarantine_role_id=role.id)
     await security_repo.save_settings(nuova)
-    return role
+    return role, True
 
 
 def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
@@ -175,7 +221,9 @@ class AntiRaidCog(commands.Cog):
         # Un blocco per server sulla creazione del ruolo di quarantena.
         self._blocchi_ruolo: dict[int, asyncio.Lock] = {}
         # Server -> ora dell'ultimo ingresso di raid segnalato.
-        self._ultimo_ingresso_raid: dict[int, datetime] = {}
+        self._avvisi: BoundedCache[int, _Avviso] = BoundedCache(max_size=500)
+        # Server in cui il ruolo di quarantena è già allineato ai canali.
+        self._ruoli_allineati: BoundedCache[int, bool] = BoundedCache(max_size=500)
 
     async def cog_load(self) -> None:
         self._controlla_scadenze.start()
@@ -335,6 +383,10 @@ class AntiRaidCog(commands.Cog):
         if not is_raid(violazioni):
             return
 
+        # Chi manda messaggi ai nuovi arrivati (benvenuto privato) sta
+        # zitto finché dura il raid.
+        segna_raid(guild.id, now)
+
         azione = settings.anti_raid.lockdown_action
         if azione in ("quarantine", "both"):
             ruolo = await self._ruolo_quarantena(guild)
@@ -350,12 +402,7 @@ class AntiRaidCog(commands.Cog):
         dettaglio = f"{member} — violazioni: {', '.join(violazioni)}"
         await security_repo.log_action(guild.id, "raid_join", member.id, dettaglio)
 
-        embed = discord.Embed(
-            title="🚨 Anti-Raid — join sospetto rilevato",
-            description=dettaglio[:4000],
-            color=discord.Color.red(),
-        )
-        await self._avvisa(guild, settings, embed, now)
+        await self._avvisa(guild, settings, f"{member.name} ({member.id})"[:MAX_NOME_ELENCATO], now)
 
     async def _ruolo_quarantena(self, guild: discord.Guild) -> discord.Role | None:
         """
@@ -366,7 +413,17 @@ class AntiRaidCog(commands.Cog):
         blocco = self._blocchi_ruolo.setdefault(guild.id, asyncio.Lock())
         async with blocco:
             settings = await security_repo.get_settings(guild.id)
-            return await _get_or_create_quarantine_role(guild, settings)
+            ruolo, creato = await _get_or_create_quarantine_role(guild, settings)
+            if ruolo is not None and not creato and guild.id not in self._ruoli_allineati:
+                # Una volta per server (finché il bot resta acceso): un
+                # ruolo che esisteva già può avere canali senza i
+                # permessi di quarantena.
+                for canale in guild.channels:
+                    if _allinea_necessario(canale, ruolo):
+                        await _blocca_canale(canale, ruolo)
+            if ruolo is not None:
+                self._ruoli_allineati.set(guild.id, True)
+            return ruolo
 
     async def _alza_verifica(self, guild: discord.Guild, now: datetime) -> None:
         """
@@ -390,18 +447,46 @@ class AntiRaidCog(commands.Cog):
             await security_repo.end_lockdown(guild.id)
 
     async def _avvisa(
-        self, guild: discord.Guild, settings: SecuritySettings, embed: discord.Embed, now: datetime
+        self, guild: discord.Guild, settings: SecuritySettings, voce: str, now: datetime
     ) -> None:
         """
-        Avviso allo staff. Il canale degli allarmi riceve ogni
-        ingresso; il proprietario riceve un solo DM per episodio.
+        Avviso allo staff. Nel canale degli allarmi c'è UN messaggio
+        per episodio, aggiornato a ogni ingresso (conteggio e ultimi
+        nomi); il proprietario riceve un solo DM per episodio.
         """
-        ultimo = self._ultimo_ingresso_raid.get(guild.id)
-        self._ultimo_ingresso_raid[guild.id] = now
+        avviso = self._avvisi.get(guild.id)
         episodio_in_corso = (
-            ultimo is not None and (now - ultimo).total_seconds() <= DURATA_BLOCCO_SECONDI
+            avviso is not None
+            and (now - avviso.ultimo_ingresso).total_seconds() <= DURATA_BLOCCO_SECONDI
         )
-        await _alert_staff(guild, settings, embed, dm_al_proprietario=not episodio_in_corso)
+        if not episodio_in_corso:
+            avviso = _Avviso(messaggio=None, ultimo_ingresso=now)
+        avviso.ultimo_ingresso = now
+        avviso.conteggio += 1
+        avviso.recenti.append(voce)
+        self._avvisi.set(guild.id, avviso)
+        embed = _embed_avviso(avviso)
+
+        if not episodio_in_corso and guild.owner is not None:
+            await try_dm(guild.owner, embed)
+
+        canale = (
+            guild.get_channel(settings.alert_channel_id)
+            if settings.alert_channel_id is not None
+            else None
+        )
+        if not isinstance(canale, discord.TextChannel):
+            return
+        if avviso.messaggio is not None:
+            try:
+                await avviso.messaggio.edit(embed=embed)
+                return
+            except discord.HTTPException:
+                avviso.messaggio = None  # cancellato: se ne manda uno nuovo
+        try:
+            avviso.messaggio = await canale.send(embed=embed)
+        except discord.HTTPException:
+            pass
 
     # ================================================================
     # Fine del blocco: il livello di verifica torna quello di prima
@@ -431,6 +516,7 @@ class AntiRaidCog(commands.Cog):
         # La riga si toglie subito: un ripristino che fallisce non
         # deve essere ritentato ogni minuto per sempre.
         await security_repo.end_lockdown(guild_id)
+        azzera(guild_id)
         guild = self.bot.get_guild(guild_id)
         if guild is None:
             return
