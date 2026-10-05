@@ -528,3 +528,7 @@ chiudere.
   1. Da proprietario non staff di un vocale temporaneo, `/voice kick` su un admin e su un moderatore: rifiutato con messaggio chiaro; su un membro normale: espulso.
   2. Imposta a mano `Connetti = consentito` per @everyone su un vocale temporaneo, `/voice lock` poi `/voice unlock`: torna `consentito`, gli altri permessi non cambiano.
   Risultato atteso: nessun permesso perso.
+- [ ] Ordine dei comandi (D24) — passi:
+  1. Scrivi `/` nel server di prova e guarda l'ordine dei comandi di iYokai (anche aprendo solo l'icona dell'app).
+  2. Segna dove stanno `/cerca-comando` e `/chiedi` rispetto agli altri.
+  Risultato atteso: i due sono i primi. Se no, annota come Discord ordina (nome? uso?) e si cambiano i nomi in `core/command_groups.py`.

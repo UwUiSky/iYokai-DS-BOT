@@ -1,9 +1,10 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-05/10/2026 · ramo `feat/boost-146` (base `699fe0f`) · revisione fatta
+06/10/2026 · ramo `feat/f7-quadro` (base `c64f4fb`, copia /home/claude/wt/f7a) · revisione fatta
 
 ## In corso
+- #76 (`feat/f7-quadro`): DA SISTEMARE `core/premium.py:457` (test per contatore errori o toglierlo) e commento `command_access.py:50`. Alla riconsegna: solo questi due punti.
 - #146 (`feat/boost-146`): DA SISTEMARE solo `COMMAND_LIST.md:67-68` (opzione `tipo`). Alla riconsegna: controllare solo quella.
 - #134 (`fix/f1-134`, base `4b42ada`): DA SISTEMARE solo documentazione (VERIFICA_LIVE, docstring). Alla riconsegna: controllare solo quelle due righe.
 - Revisione #135/#136: DA SISTEMARE (remove_member deadlock). Alla riconsegna: rivedere solo quel punto.
@@ -32,7 +33,10 @@
 - Prove senza fix su #146: tolto il controllo GIA_ATTIVO (20 falliscono), scambio coin/exp nel worker (3), fattore coin (7). `tipi_acquistabili` serve solo al testo del messaggio: non è la regola.
 - Mai `echo ... ->exp` nei comandi: `>` crea un file `exp` nella copia di lavoro.
 
+- Prove su copia in scratchpad (tar senza .git, poi pytest): senza le 3 chiavi in SETTINGS_SCHEMA 3 test falliscono; senza ramo AccessoNegato 1; senza catena al padre 1; senza condizione error_counter 0. Serve DATABASE_URL e le variabili di pytest: non importare i moduli con python -c.
+
 ## Aperto
+- `feat/f7-quadro`: attende test/rimozione contatore e un commento.
 - `feat/boost-146`: attende riga in COMMAND_LIST.
 - `fix/f1-134`: attende due righe di documentazione.
 - `fix/f1-135`: attende correzione di `remove_member`.

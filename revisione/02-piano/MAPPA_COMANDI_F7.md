@@ -331,3 +331,11 @@ con `copy_global_to`: un `/owner` rimasto globale compare due volte.
 - Migrazione dati: gli ID dei vecchi comandi cambiano. Messaggi con
   menzioni `</nome:id>` salvate nel database (guide, `/setup`, errori)
   vanno rigenerati; cercare `</` nei testi.
+
+
+## Aggiunta del 06/10/2026 (owner)
+
+`/cerca-comando` e `/chiedi` sono di **primo livello** (non in `/utility`):
+`/cerca-comando` cerca per descrizione, `/chiedi` risponde su iYokai e
+conversa (F12). Primo livello: 16 gruppi + 2 = 18 su 100. `/utility`
+scende di 2 figli. L'ordine in lista lo decide Discord: da provare dal vivo.

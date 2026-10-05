@@ -1,10 +1,10 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-05/10/2026 · ultimo giro: ramo `feat/boost-146` (base 699fe0f)
+06/10/2026 · ultimo giro: ramo `feat/f7-quadro` (base c64f4fb)
 
 ## In corso
-- Niente a metà. Giro #133 chiuso (rapporto dato).
+- Niente a metà. Giro f7-quadro chiuso (rapporto dato).
 
 ## Fatto
 - Revisione delle correzioni del 28/09–01/10: BUG-19…34, SEC-18…22
@@ -18,6 +18,8 @@
 - Giro fix/f1-134: nome rinominato senza chiamanti residui; lock/unlock/kick a posto (errori Discord presi); 3 test falliscono sulla base, 44/44 sul ramo. Unico rilievo: 3 query per evento col premium acceso.
 
 - Giro feat/boost-146 (#146/D23): nessun bug vero. Migrazione 0020 tracciata in schema_migrations (una volta, in transazione); chiamanti vecchi: nessuno; blocchi membro→coin, gilda solo `clans`: niente deadlock (stress ok); tick con ×2 separato ok. 3 note basse.
+
+- Giro feat/f7-quadro (command_access): 1 alto latente (sotto-gruppo `Group` semplice non eredita il check), @everyone via import config, ruolo admin vale per security. Albero a 2 livelli con `aggiungi_a_gruppo` protetto davvero.
 
 ## Cose imparate
 - Ordine dei blocchi nel clan: riga membro, poi `leveling_totals`, poi `clans`. Un fix che blocca `clans` per primo e poi tocca il membro va in deadlock con `apply_text_tick`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -40,6 +42,8 @@
 - Per importare `core.config` fuori dai test: esportare le righe di `.env.example` e `PREMIUM_ALPHA_UNLOCK_ALL=false` (altrimenti il premium è sempre sbloccato).
 
 - Script fuori dal ramo: `python -m pytest -c pytest.ini --rootdir=. -p tests.conftest <file in scratchpad>` dalla copia di lavoro (serve anche `-p no:cacheprovider`).
+
+- Check dei gruppi: si prova con `cmd._check_can_run(interaction)` su un albero vero (`costruisci_gruppi` + `aggiungi_a_gruppo`), non chiamando `interaction_check` a mano. discord.py guarda solo il genitore diretto e non controlla l'autocomplete.
 
 ## Aperto
 - Giro da fare a fine F1 sulle aree toccate il 05/10 (sicurezza,

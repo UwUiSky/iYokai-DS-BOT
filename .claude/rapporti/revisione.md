@@ -12,3 +12,5 @@
 | 05/10 | `fix/f1-134` | `revisione/03-verifica/VERIFICA_LIVE.md` | Non toccato: aggiungere prove live di #134 (`/voice lock` con altri permessi di @everyone su un vocale temp; `/voice kick` di utente assente; log avanzati su server non sbloccato quando il modulo è premium) | aperto |
 | 05/10 | `fix/f1-134` | `cogs/logging/advanced_logs.py:4-9` | Docstring in testa dice "solo se il server ha sbloccato" ma non cita `logging_avanzato_attivo`: una riga | aperto |
 | 05/10 | `feat/boost-146` | `COMMAND_LIST.md:67-68` | Le due righe `/clan boost gilda` e `individuale` non citano l'opzione `tipo` (exp, coin, super) né i prezzi D23. Aggiornare | aperto |
+| 06/10 | `feat/f7-quadro` | `core/premium.py:457` | `error_counter` non conta più i rifiuti `AccessoNegato`: scelta non chiesta dalla scheda e nessun test la protegge (tolta, 69 test passano). Aggiungere test (contatore non cresce su AccessoNegato, cresce sugli altri) oppure togliere la condizione | aperto |
+| 06/10 | `feat/f7-quadro` | `core/command_access.py:50` | Commento "None = nessun ruolo" falso: nessuna regola ha None. Correggere | aperto |

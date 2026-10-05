@@ -314,3 +314,15 @@ percorso` è in `revisione/02-piano/MAPPA_COMANDI_F7.md`. Si toglie il
 prefisso `[Admin] ` / `[OWNER] ` dalle descrizioni (8 caratteri per comando).
 Il test dei caratteri per comando (massimo 8000, allarme a 6800) e dei nomi
 unici tra figli si aggiunge in `tests/test_command_tree_invariants.py`.
+
+**Aggiornamento D24 (owner, 06/10/2026):** `/cerca-comando` (cerca un comando
+dalla descrizione) e `/chiedi` (informazioni sul bot e dialogo, come il
+vecchio Clyde di Discord) sono comandi di **primo livello**, fuori dai
+gruppi, e devono essere i primi due della lista. Il bot non può impostare
+l'ordine: lo decide Discord (di norma alfabetico, poi per uso). Quindi:
+restano singoli e con questi nomi; **da verificare dal vivo** l'ordine
+reale (voce in `VERIFICA_LIVE.md`). Se Discord ordina per nome, si
+scelgono nomi che vengono prima degli altri (es. i gruppi che iniziano per
+"a" si possono rinominare o i due comandi prendere un nome corto che inizia
+per "a"/"b"); la scelta si fa dopo la prova, con una sola riga da cambiare
+in `core/command_groups.py`. Primo livello: 16 gruppi + 2 = 18 su 100.
