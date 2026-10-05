@@ -42,10 +42,12 @@ def ambiente(monkeypatch, clean_db, reset_premium_registry):
     monkeypatch.setattr(db, "_pool", clean_db)
     db._modules_cache.clear()
     monkeypatch.setattr(modulo_premium, "config", _ConfigSenzaSbloccoAlpha())
+    modulo._premium_cache.clear()
     log_event = AsyncMock()
     monkeypatch.setattr(event_log_repo, "log_event", log_event)
     yield db, log_event
     db._modules_cache.clear()
+    modulo._premium_cache.clear()
     if registry.get(modulo.MODULE_LOGGING_ADVANCED) is not None:
         registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, False)
 
@@ -131,3 +133,67 @@ def test_nessun_listener_controlla_solo_il_modulo_acceso():
     sorgente = inspect.getsource(modulo.AdvancedLogsCog)
     assert "is_module_active_for_guild" not in sorgente
     assert sorgente.count("logging_avanzato_attivo(") >= 15
+
+
+# ====================================================================
+# Cache breve: un evento dietro l'altro non rifà le query del premium
+# ====================================================================
+@pytest.fixture
+def conta_giri(monkeypatch):
+    chiamate = []
+    originale = modulo.premium_sbloccato
+
+    async def _conta(*args, **kwargs):
+        chiamate.append(args)
+        return await originale(*args, **kwargs)
+
+    monkeypatch.setattr(modulo, "premium_sbloccato", _conta)
+    return chiamate
+
+
+async def test_cinque_eventi_fanno_un_solo_giro_di_query_del_premium(ambiente, conta_giri):
+    db, _ = ambiente
+    bot, _ = await _cog_acceso(db)
+    registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
+
+    risultati = [await modulo.logging_avanzato_attivo(GUILD_ID, bot) for _ in range(5)]
+
+    assert risultati == [False] * 5
+    assert len(conta_giri) == 1
+    await bot.close()
+
+
+async def test_dopo_la_scadenza_il_premium_si_rilegge(ambiente, conta_giri, monkeypatch):
+    db, _ = ambiente
+    bot, _ = await _cog_acceso(db)
+    registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
+    adesso = [1000.0]
+    monkeypatch.setattr(modulo, "_monotonic", lambda: adesso[0])
+
+    assert await modulo.logging_avanzato_attivo(GUILD_ID, bot) is False
+    await db.add_guild_to_whitelist(GUILD_ID, added_by=1, reason="test")
+    adesso[0] += modulo.PREMIUM_CACHE_TTL_SECONDS - 1
+    assert await modulo.logging_avanzato_attivo(GUILD_ID, bot) is False  # ancora in cache
+    assert len(conta_giri) == 1
+
+    adesso[0] += 2
+    assert await modulo.logging_avanzato_attivo(GUILD_ID, bot) is True
+    assert len(conta_giri) == 2
+    await bot.close()
+
+
+async def test_modulo_spento_non_usa_ne_riempie_la_cache(ambiente, conta_giri):
+    db, _ = ambiente
+    bot, _ = await _cog_acceso(db)
+    await db.set_module_active_for_guild(GUILD_ID, modulo.MODULE_LOGGING_ADVANCED, False)
+    registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
+
+    assert await modulo.logging_avanzato_attivo(GUILD_ID, bot) is False
+
+    assert conta_giri == []
+    assert len(modulo._premium_cache) == 0
+    await bot.close()
+
+
+def test_la_cache_ha_il_tetto_di_10000_voci():
+    assert modulo._premium_cache.max_size == 10_000

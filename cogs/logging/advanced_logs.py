@@ -55,11 +55,13 @@ toccato da questo file.
 from __future__ import annotations
 
 import logging
+import time
 
 import discord
 from discord.ext import commands
 
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
+from core.bounded_cache import BoundedCache
 from core.database import db
 from core.invite_tracker import invite_tracker
 from core.logging_advanced_logic import (
@@ -71,12 +73,18 @@ from core.logging_advanced_logic import (
     diff_attributes,
     diff_named_items,
 )
+from core.premium import registry
 from core.repositories.event_log_repo import event_log_repo
 from core.security_access import premium_sbloccato
 
 logger = logging.getLogger("iyokai.advanced_logs")
 
 MODULE_LOGGING_ADVANCED = "logging_advanced"
+
+PREMIUM_CACHE_TTL_SECONDS = 60
+_monotonic = time.monotonic
+# guild_id -> (scadenza, sbloccato)
+_premium_cache: BoundedCache[int, tuple[float, bool]] = BoundedCache(10_000)
 
 # Stessa finestra di tolleranza già usata in cogs/security/anti_nuke.py
 # per risolvere l'autore di un evento via audit log (l'evento gateway
@@ -187,10 +195,24 @@ async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
     premium (core/security_access.premium_sbloccato). Ogni listener e il
     servizio soundboard lo chiamano PRIMA di scrivere nel database o in
     un canale.
+
+    Il verdetto sul premium (3 query) si tiene in memoria per
+    PREMIUM_CACHE_TTL_SECONDS per server, solo con il modulo premium e
+    acceso. Non c'è un punto unico dove invalidarlo (whitelist, cassa,
+    abbonamenti e flag del modulo stanno in posti diversi): basta il TTL,
+    quindi uno sblocco o una revoca valgono entro un minuto.
     """
     if not await db.is_module_active_for_guild(guild_id, MODULE_LOGGING_ADVANCED):
         return False
-    return await premium_sbloccato(guild_id, MODULE_LOGGING_ADVANCED, bot)
+    if not registry.is_module_premium(MODULE_LOGGING_ADVANCED):
+        return True
+    adesso = _monotonic()
+    voce = _premium_cache.get(guild_id)
+    if voce is not None and voce[0] > adesso:
+        return voce[1]
+    sbloccato = await premium_sbloccato(guild_id, MODULE_LOGGING_ADVANCED, bot)
+    _premium_cache.set(guild_id, (adesso + PREMIUM_CACHE_TTL_SECONDS, sbloccato))
+    return sbloccato
 
 
 async def advanced_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
