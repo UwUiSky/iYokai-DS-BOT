@@ -211,18 +211,29 @@ async def test_ban_globale_non_si_propaga_se_il_modulo_e_premium_e_non_sbloccato
     bot = create_autospec(commands.Bot, instance=True)
     bot.guilds = [sorgente, bersaglio]
     bot.get_guild.return_value = None
-    registry.register(
-        modulo_premium.PremiumModule(
-            name=global_ban.MODULE_GLOBAL_BAN,
-            display_name="Ban Globale",
-            category="security",
-            description="test",
-            premium_capable=True,
-        )
-    )
+    # Il cog vero registra il modulo, come all'avvio del bot.
+    bot_con_il_cog = await _bot_con("global_ban")
     registry.set_module_premium("global_ban", True)
 
     propagati = await global_ban.propagate_ban(bot, sorgente, 42, "Spam trap triggered")
 
     assert propagati == []
     bersaglio.ban.assert_not_awaited()
+    await bot_con_il_cog.close()
+
+
+async def test_ban_globale_si_propaga_se_il_modulo_non_e_premium(ambiente):
+    import cogs.security.global_ban as global_ban
+
+    sorgente = fake_guild(GUILD_ID, "Alpha")
+    bersaglio = fake_guild(200, "Beta")
+    for server in (sorgente, bersaglio):
+        await ambiente.set_module_active_for_guild(server.id, global_ban.MODULE_GLOBAL_BAN, True)
+    bot = create_autospec(commands.Bot, instance=True)
+    bot.guilds = [sorgente, bersaglio]
+    bot.get_guild.return_value = None
+
+    propagati = await global_ban.propagate_ban(bot, sorgente, 42, "Spam trap triggered")
+
+    assert propagati == [200]
+    bersaglio.ban.assert_awaited_once()
