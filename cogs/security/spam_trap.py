@@ -428,17 +428,42 @@ class SpamTrapCog(commands.Cog):
         created_trap = trap_channel is None
         created_log = log_channel is None
 
-        if trap_channel is None:
-            trap_channel = await self._create_trap_channel(guild)
-        if log_channel is None:
-            log_channel = await self._create_log_channel(guild)
+        try:
+            if trap_channel is None:
+                trap_channel = await self._create_trap_channel(guild)
+            if log_channel is None:
+                log_channel = await self._create_log_channel(guild)
+        except discord.HTTPException as errore:
+            # Un canale creato a metà non resta in giro: senza l'altro
+            # la configurazione non si salva.
+            if created_trap and trap_channel is not None:
+                try:
+                    await trap_channel.delete(reason="iYokai Spam Trap setup non riuscito")
+                except discord.HTTPException:
+                    pass
+            await interaction.followup.send(
+                "Non sono riuscito a creare i canali dello Spam Trap.\n"
+                f"Discord ha risposto: «{str(errore)[:300]}»\n"
+                "Un server può avere al massimo 500 canali (50 per categoria) e mi "
+                "serve il permesso Gestisci canali. Se il limite è raggiunto elimina "
+                "un canale, oppure indica due canali che esistono già con le opzioni "
+                "`trap_channel` e `log_channel`.",
+                ephemeral=True,
+            )
+            return
 
         await spam_trap_repo.set_config(guild.id, trap_channel.id, log_channel.id)
 
-        if created_trap:
-            await self._send_trap_embed(trap_channel)
-        if created_log:
-            await self._send_log_embed(log_channel)
+        try:
+            if created_trap:
+                await self._send_trap_embed(trap_channel)
+            if created_log:
+                await self._send_log_embed(log_channel)
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile scrivere il messaggio iniziale nei canali Spam Trap del server %s.",
+                guild.id,
+            )
 
         ruoli_staff = await self._staff_role_ids(guild.id)
         if staff_role_add is not None and staff_role_add.id not in ruoli_staff:
