@@ -47,6 +47,17 @@ def should_delete_after_leave(
     return remaining_member_count == 0
 
 
+# Un canale creato dal pannello nasce vuoto e l'utente entra dopo: la
+# pulizia all'avvio (che gira anche a ogni riconnessione) non tocca i
+# canali più giovani di così.
+STARTUP_CLEANUP_GRACE_SECONDS = 120
+
+
+def is_old_enough_for_startup_cleanup(age_seconds: float) -> bool:
+    """True se il canale è abbastanza vecchio da poter essere ripulito all'avvio."""
+    return age_seconds >= STARTUP_CLEANUP_GRACE_SECONDS
+
+
 def can_manage_voice_channel(
     actor_id: int, owner_id: int, actor_has_manage_channels: bool
 ) -> bool:

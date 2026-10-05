@@ -6,10 +6,12 @@ inizia con "_" apposta: core/cog_manager.py salta i file che
 iniziano con underscore (non sono cog, sono supporto — vedi
 discover_cog_modules in quel file).
 
-Qui vivono le tre costanti dei nomi modulo (usate sia per il
-controllo "è attivo su questo server?" sia per la registrazione
-premium) e le funzioni che altrimenti si ripeterebbero identiche in
-ogni singolo file di comandi.
+Qui vivono le costanti dei nomi modulo (usate sia per il controllo
+"è attivo su questo server?" sia per la registrazione premium), i
+limiti di Discord che valgono per tutta la moderazione (motivo 512,
+campo 1024, elenchi entro 4000) e le funzioni che altrimenti si
+ripeterebbero identiche in ogni singolo file di comandi.
+Funzioni coperte: SPEC §5
 """
 
 # DA FARE (issue #57, fase F1): correzioni aperte per questo file in
@@ -18,6 +20,7 @@ ogni singolo file di comandi.
 from __future__ import annotations
 
 import discord
+from discord import app_commands
 
 from core.database import db
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
@@ -40,6 +43,62 @@ MODULE_REPORT = "moderation_report"
 # cogs/moderation/report.py per il proprio canale, non una nuova
 # colonna dedicata.
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
+
+# Il registro di controllo di Discord accetta un motivo di 512
+# caratteri al massimo (LIM-8). Dichiararlo sull'opzione fa rifiutare
+# il testo troppo lungo a Discord, prima che arrivi al bot.
+MAX_REASON_LENGTH = 512
+Reason = app_commands.Range[str, 3, MAX_REASON_LENGTH]
+
+
+def audit_reason(text: str) -> str:
+    """
+    Taglia a 512 caratteri un motivo destinato al registro di
+    controllo. Serve quando il bot aggiunge un prefisso al motivo
+    scritto dal moderatore (es. "Softban: …").
+    """
+    if len(text) <= MAX_REASON_LENGTH:
+        return text
+    return text[: MAX_REASON_LENGTH - 1] + "…"
+
+
+# Limiti di un embed (LIM-8): la descrizione tiene 4096 caratteri, un
+# campo 1024. Gli elenchi si fermano a 4000 per lasciare posto alla
+# riga "…e altri N".
+MAX_LIST_LENGTH = 4000
+MAX_FIELD_LENGTH = 1024
+MAX_LINE_TEXT_LENGTH = 300
+
+
+def truncate_text(text: str, limit: int) -> str:
+    """Taglia il testo a `limit` caratteri, con "…" in fondo se tagliato."""
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "…"
+
+
+def join_within_limit(
+    lines: list[str], left_out_text: str, limit: int = MAX_LIST_LENGTH
+) -> str:
+    """
+    Unisce le righe (separate da una riga vuota) finché stanno in
+    `limit` caratteri. Se qualcuna resta fuori aggiunge
+    `left_out_text`, dove "{n}" diventa il numero delle escluse
+    (es. "…e altri {n} casi.").
+    """
+    shown: list[str] = []
+    length = 0
+    for line in lines:
+        length += len(line) + 2  # 2 = la riga vuota che separa le voci
+        if length > limit:
+            break
+        shown.append(line)
+
+    text = "\n\n".join(shown)
+    left_out = len(lines) - len(shown)
+    if left_out:
+        text += "\n\n" + left_out_text.format(n=left_out)
+    return text
 
 
 async def validate_reason(interaction: discord.Interaction, reason: str) -> bool:

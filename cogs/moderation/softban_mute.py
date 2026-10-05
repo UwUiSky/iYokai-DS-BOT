@@ -14,10 +14,11 @@ kick, che non cancella nulla).
 Mute via ruolo: alternativa al timeout nativo di Discord — utile per
 mute più lunghi dei 28 giorni massimi del timeout, o semplicemente
 come preferenza di alcuni admin. Il ruolo "Muted" viene creato
-automaticamente al primo utilizzo, con permessi negati (scrittura,
-reazioni, parlare in vocale) su OGNI canale esistente in quel momento
-— canali creati dopo non erediteranno l'overwrite automaticamente,
-è un limite noto, non nascosto.
+automaticamente al primo utilizzo, con i permessi negati (scrivere,
+anche nei thread, aprire thread, reagire, entrare e parlare in vocale)
+su ogni canale di ogni tipo. I canali creati dopo ricevono lo stesso
+blocco da on_guild_channel_create.
+Funzioni coperte: SPEC §5.1, §5.10
 """
 
 # DA FARE (issue #57, fase F1): correzioni aperte per questo file in
@@ -39,6 +40,8 @@ from cogs.moderation._shared import (
     check_can_moderate,
     try_dm,
     validate_reason,
+    Reason,
+    audit_reason,
     post_to_mod_log,
     SETTING_MOD_LOG_CHANNEL,
 )
@@ -50,6 +53,42 @@ MUTE_ROLE_ACTION_TYPE = "mute_role"
 # Chiave in guild_config.settings per il ruolo mute — stesso
 # meccanismo generico già usato da report.py e dal canale mod-log.
 SETTING_MUTE_ROLE_ID = "mute_role_id"
+
+# Cosa non può fare chi ha il ruolo Muted (LIM-30). Lo stesso blocco
+# vale per ogni tipo di canale: testo, forum, vocale (che ha anche una
+# chat), palco e categoria. I thread seguono il canale che li contiene.
+MUTE_OVERWRITE = {
+    "send_messages": False,
+    "send_messages_in_threads": False,
+    "create_public_threads": False,
+    "create_private_threads": False,
+    "add_reactions": False,
+    "speak": False,
+    "connect": False,
+}
+
+
+async def _apply_mute_overwrite(channel: discord.abc.GuildChannel, role: discord.Role) -> None:
+    """
+    Mette il blocco del ruolo Muted su un canale. Completa solo i
+    permessi non ancora impostati: quelli che un admin ha scelto a mano
+    per il ruolo in quel canale restano (es. un canale "appelli" dove i
+    silenziati possono scrivere). Un canale che fallisce (permessi
+    mancanti, canale appena cancellato) non deve fermare gli altri: lo
+    scriviamo nel log e basta.
+    """
+    overwrite = channel.overwrites_for(role)
+    overwrite.update(
+        **{name: False for name in MUTE_OVERWRITE if getattr(overwrite, name) is None}
+    )
+    try:
+        await channel.set_permissions(role, overwrite=overwrite, reason="Setup ruolo mute")
+    except discord.HTTPException:
+        logger.warning(
+            "Impossibile impostare il blocco mute sul canale %s (server %s).",
+            channel.id,
+            channel.guild.id,
+        )
 
 
 def _case_embed(
@@ -68,16 +107,36 @@ def _case_embed(
     return embed
 
 
+def _has_mute_overwrite(channel: discord.abc.GuildChannel, role: discord.Role) -> bool:
+    """True se nel canale ogni permesso del blocco è già stato deciso (negato o no)."""
+    current = channel.overwrites_for(role)
+    return all(getattr(current, name) is not None for name in MUTE_OVERWRITE)
+
+
+async def _cover_all_channels(guild: discord.Guild, role: discord.Role) -> None:
+    """
+    Mette il blocco sui canali che non l'hanno ancora: tutti per un
+    ruolo appena creato, solo quelli scoperti (canali nati mentre il
+    bot era spento, ruolo creato da una versione vecchia) negli altri
+    casi. Legge dalla cache: se è tutto a posto non chiama Discord.
+    """
+    for channel in guild.channels:
+        if not _has_mute_overwrite(channel, role):
+            await _apply_mute_overwrite(channel, role)
+
+
 async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
     """
     Restituisce il ruolo mute configurato per questo server,
-    creandolo (con gli overwrite su ogni canale esistente) se non
-    esiste ancora. None se il bot non ha i permessi per crearlo.
+    creandolo se non esiste ancora. In entrambi i casi controlla che
+    ogni canale abbia il blocco. None se Discord rifiuta la creazione
+    (permessi mancanti, oppure il server ha già 250 ruoli).
     """
     role_id = await db.get_guild_setting(guild.id, SETTING_MUTE_ROLE_ID)
     if role_id is not None:
         role = guild.get_role(role_id)
         if role is not None:
+            await _cover_all_channels(guild, role)
             return role
         # L'ID salvato non corrisponde più a nessun ruolo esistente
         # (es. eliminato manualmente da un admin) — ne creiamo uno
@@ -87,33 +146,10 @@ async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
         role = await guild.create_role(
             name="Muted", reason="Ruolo mute creato automaticamente da iYokai"
         )
-    except discord.Forbidden:
+    except discord.HTTPException:
         return None
 
-    for channel in guild.channels:
-        try:
-            if isinstance(channel, (discord.TextChannel, discord.ForumChannel)):
-                await channel.set_permissions(
-                    role,
-                    send_messages=False,
-                    add_reactions=False,
-                    reason="Setup ruolo mute",
-                )
-            elif isinstance(channel, discord.VoiceChannel):
-                await channel.set_permissions(
-                    role, speak=False, reason="Setup ruolo mute"
-                )
-        except discord.HTTPException:
-            # Un singolo canale che fallisce (permessi, tipo
-            # inatteso) non deve bloccare la configurazione degli
-            # altri — logghiamo e proseguiamo.
-            logger.warning(
-                "Impossibile impostare l'overwrite mute sul canale %s "
-                "(server %s) — continuo con gli altri.",
-                channel.id,
-                guild.id,
-            )
-
+    await _cover_all_channels(guild, role)
     await db.set_guild_setting(guild.id, SETTING_MUTE_ROLE_ID, role.id)
     return role
 
@@ -121,6 +157,22 @@ async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
 class ModerationSoftbanMuteCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
+        """
+        Un canale nuovo non ha il blocco del ruolo Muted: lo mettiamo
+        subito, altrimenti chi è silenziato potrebbe scriverci. Se lo
+        ha già preso dalla sua categoria non serve nessuna chiamata.
+        """
+        role_id = await db.get_guild_setting(channel.guild.id, SETTING_MUTE_ROLE_ID)
+        if role_id is None:
+            return
+        role = channel.guild.get_role(role_id)
+        if role is None:
+            return
+        if not _has_mute_overwrite(channel, role):
+            await _apply_mute_overwrite(channel, role)
 
     # ================================================================
     # /mod-log-setup (SPEC.md §5.10 — canale dedicato per il log di
@@ -161,7 +213,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: str,
+        reason: Reason,
         delete_message_days: app_commands.Range[int, 1, 7] = 1,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
@@ -170,6 +222,37 @@ class ModerationSoftbanMuteCog(commands.Cog):
             return
         if not await check_can_moderate(interaction, member):
             return
+
+        await interaction.response.defer()
+
+        # Prima l'azione: il caso, il log e il DM partono solo se è
+        # riuscita (LIM-8).
+        try:
+            await member.ban(
+                reason=audit_reason(f"Softban: {reason}"),
+                delete_message_seconds=delete_message_days * 86400,
+            )
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a fare il softban di questo utente: "
+                "controlla i miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
+            )
+            return
+
+        sbloccato = True
+        try:
+            await interaction.guild.unban(
+                discord.Object(id=member.id), reason="Softban: sblocco automatico"
+            )
+        except discord.HTTPException:
+            sbloccato = False
+            logger.warning(
+                "Softban: ban riuscito ma sblocco automatico fallito per "
+                "l'utente %s nel server %s — richiede intervento manuale.",
+                member.id,
+                interaction.guild.id,
+            )
 
         case_number = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
@@ -181,35 +264,16 @@ class ModerationSoftbanMuteCog(commands.Cog):
         embed = _case_embed(
             "🧹 Softban", discord.Color.dark_orange(), member, interaction.user, reason, case_number
         )
-        dm_ok = await try_dm(member, embed)
-
-        try:
-            await member.ban(
-                reason=f"Softban: {reason}",
-                delete_message_seconds=delete_message_days * 86400,
-            )
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per il softban di questo utente.", ephemeral=True
-            )
-            return
-
-        try:
-            await interaction.guild.unban(
-                discord.Object(id=member.id), reason="Softban: sblocco automatico"
-            )
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-            logger.warning(
-                "Softban: ban riuscito ma sblocco automatico fallito per "
-                "l'utente %s nel server %s — richiede intervento manuale.",
-                member.id,
-                interaction.guild.id,
-            )
-
-        if not dm_ok:
-            embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
-        await interaction.response.send_message(embed=embed)
         await post_to_mod_log(interaction.guild, embed)
+
+        avvisi = []
+        if not sbloccato:
+            avvisi.append("Lo sblocco automatico è fallito: usa /unban.")
+        if not await try_dm(member, embed):
+            avvisi.append("Non è stato possibile notificare l'utente in DM.")
+        if avvisi:
+            embed.set_footer(text=" ".join(avvisi))
+        await interaction.followup.send(embed=embed)
 
     # ================================================================
     # /mute-role e /unmute-role
@@ -220,7 +284,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
     )
     @app_commands.describe(member="Il membro da silenziare", reason="Motivo del mute")
     async def mute_role(
-        self, interaction: discord.Interaction, member: discord.Member, reason: str
+        self, interaction: discord.Interaction, member: discord.Member, reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -234,15 +298,19 @@ class ModerationSoftbanMuteCog(commands.Cog):
         role = await _get_or_create_mute_role(interaction.guild)
         if role is None:
             await interaction.followup.send(
-                "Non ho i permessi per creare/gestire il ruolo mute.", ephemeral=True
+                "Non sono riuscito a creare il ruolo mute: controlla i miei "
+                "permessi e che il server non abbia già 250 ruoli.",
+                ephemeral=True,
             )
             return
 
         try:
             await member.add_roles(role, reason=reason)
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.followup.send(
-                "Non ho i permessi per assegnare il ruolo mute.", ephemeral=True
+                "Non sono riuscito ad assegnare il ruolo mute: controlla i "
+                "miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
             )
             return
 
@@ -256,16 +324,16 @@ class ModerationSoftbanMuteCog(commands.Cog):
         embed = _case_embed(
             "🔇 Mute (ruolo)", discord.Color.dark_grey(), member, interaction.user, reason, case_number
         )
+        await post_to_mod_log(interaction.guild, embed)
         await try_dm(member, embed)
         await interaction.followup.send(embed=embed)
-        await post_to_mod_log(interaction.guild, embed)
 
     @app_commands.command(
         name="unmute-role", description="Rimuove il ruolo mute da un membro."
     )
     @app_commands.describe(member="Il membro da cui rimuovere il mute", reason="Motivo")
     async def unmute_role(
-        self, interaction: discord.Interaction, member: discord.Member, reason: str
+        self, interaction: discord.Interaction, member: discord.Member, reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -288,9 +356,11 @@ class ModerationSoftbanMuteCog(commands.Cog):
 
         try:
             await member.remove_roles(role, reason=reason)
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per rimuovere il ruolo mute.", ephemeral=True
+                "Non sono riuscito a rimuovere il ruolo mute: controlla i "
+                "miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
             )
             return
 

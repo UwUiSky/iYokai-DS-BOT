@@ -4,7 +4,9 @@ core/repositories/ticket_repo.py
 Persistenza dei ticket di supporto: numerazione atomica per-server
 (stesso schema di moderation_repo.py — contatore con UPSERT in
 transazione), stato (aperto/chiuso), chi lo ha preso in carico,
-priorità.
+priorità. Un utente può avere un solo ticket aperto per server: lo
+garantisce l'indice unico della migrazione 0010.
+Funzioni coperte: SPEC §13
 """
 
 # DA FARE (issue #62, fase F1): correzioni aperte per questo file in
@@ -68,6 +70,13 @@ class GuildTicketStats:
 
 
 VALID_PRIORITIES = ("normal", "high", "urgent")
+
+# Indice unico parziale creato da core/migrations/0010_…sql.
+ONE_OPEN_TICKET_INDEX = "uq_tickets_un_aperto_per_utente"
+
+
+class TicketAlreadyOpenError(Exception):
+    """L'utente ha già un ticket aperto in questo server."""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -143,42 +152,62 @@ class TicketRepository:
             user_id,
         )
 
+    async def reserve_ticket_number(self, guild_id: int, conn=None) -> int:
+        """
+        Prende il prossimo numero di ticket del server, in modo atomico
+        (stesso UPSERT di ModerationRepository.create_case). Il cog lo
+        chiama PRIMA di creare il canale, così il canale nasce già con
+        il nome giusto e non serve rinominarlo (LIM-3: Discord permette
+        2 rinomine ogni 10 minuti). Se poi il canale non si crea il
+        numero resta saltato: un buco nella numerazione non fa danni.
+        """
+        return await (conn or self._pool).fetchval(
+            """
+            INSERT INTO ticket_counters (guild_id, next_number)
+            VALUES ($1, 2)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET next_number = ticket_counters.next_number + 1
+            RETURNING next_number - 1
+            """,
+            guild_id,
+        )
+
     async def create_ticket(
         self,
         guild_id: int,
         user_id: int,
         channel_id: int,
         category_label: str | None = None,
+        ticket_number: int | None = None,
     ) -> int:
         """
-        Crea un nuovo ticket con numerazione atomica (stesso pattern
-        di ModerationRepository.create_case — vedi quel file per il
-        motivo dell'UPSERT in transazione invece di
-        SELECT-poi-UPDATE). Restituisce il numero assegnato.
+        Registra un nuovo ticket e restituisce il suo numero: quello
+        già riservato con reserve_ticket_number, oppure uno nuovo preso
+        qui nella stessa transazione. Solleva TicketAlreadyOpenError se
+        l'utente ha già un ticket aperto in questo server (in quel caso
+        non viene consumato nessun numero).
         """
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                ticket_number = await conn.fetchval(
-                    """
-                    INSERT INTO ticket_counters (guild_id, next_number)
-                    VALUES ($1, 2)
-                    ON CONFLICT (guild_id) DO UPDATE
-                        SET next_number = ticket_counters.next_number + 1
-                    RETURNING next_number - 1
-                    """,
-                    guild_id,
-                )
-                await conn.execute(
-                    """
-                    INSERT INTO tickets (guild_id, ticket_number, channel_id, user_id, category_label)
-                    VALUES ($1, $2, $3, $4, $5)
-                    """,
-                    guild_id,
-                    ticket_number,
-                    channel_id,
-                    user_id,
-                    category_label,
-                )
+        try:
+            async with self._pool.acquire() as conn:
+                async with conn.transaction():
+                    if ticket_number is None:
+                        ticket_number = await self.reserve_ticket_number(guild_id, conn)
+                    await conn.execute(
+                        """
+                        INSERT INTO tickets
+                            (guild_id, ticket_number, channel_id, user_id, category_label)
+                        VALUES ($1, $2, $3, $4, $5)
+                        """,
+                        guild_id,
+                        ticket_number,
+                        channel_id,
+                        user_id,
+                        category_label,
+                    )
+        except asyncpg.UniqueViolationError as errore:
+            if errore.constraint_name == ONE_OPEN_TICKET_INDEX:
+                raise TicketAlreadyOpenError() from errore
+            raise
         return ticket_number
 
     async def get_ticket_by_channel(self, channel_id: int) -> Ticket | None:
@@ -214,6 +243,23 @@ class TicketRepository:
             channel_id,
             closed_by,
             force,
+        )
+        return result.endswith(" 1")
+
+    async def close_ticket_of_deleted_channel(self, channel_id: int) -> bool:
+        """
+        Chiude il ticket aperto di un canale che non esiste più
+        (cancellato a mano). `closed_by` resta vuoto: non sappiamo chi
+        ha cancellato il canale, e non deve contare nelle statistiche
+        di nessun operatore.
+        """
+        result = await self._pool.execute(
+            """
+            UPDATE tickets
+            SET status = 'closed', closed_at = now()
+            WHERE channel_id = $1 AND status = 'open'
+            """,
+            channel_id,
         )
         return result.endswith(" 1")
 

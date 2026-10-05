@@ -27,6 +27,16 @@ class VoiceTempConfig:
     role_mobile_id: int | None = None
 
 
+@dataclass(frozen=True)
+class TrackedVoiceChannel:
+    """Un vocale temporaneo registrato, con la sua età in secondi."""
+
+    channel_id: int
+    guild_id: int
+    owner_id: int
+    age_seconds: float
+
+
 async def run_migrations(pool: asyncpg.Pool) -> None:
     await pool.execute(
         """
@@ -163,6 +173,29 @@ class VoiceTempRepository:
             new_owner_id,
         )
         return result.endswith(" 1")
+
+    async def list_channels(self) -> list[TrackedVoiceChannel]:
+        """
+        Tutti i vocali temporanei registrati, in ogni server. Serve
+        alla pulizia all'avvio: sono pochi (uno per canale aperto).
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT channel_id, guild_id, owner_id,
+                   extract(epoch FROM now() - created_at) AS age_seconds
+            FROM voice_temp_channels
+            ORDER BY channel_id
+            """
+        )
+        return [
+            TrackedVoiceChannel(
+                channel_id=row["channel_id"],
+                guild_id=row["guild_id"],
+                owner_id=row["owner_id"],
+                age_seconds=float(row["age_seconds"]),
+            )
+            for row in rows
+        ]
 
     async def unregister_channel(self, channel_id: int) -> None:
         await self._pool.execute(

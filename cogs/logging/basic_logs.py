@@ -14,7 +14,8 @@ Discord sparisce se il canale viene cancellato o il log scrolla via;
 la riga nel DB resta, consultabile da /logs user e /logs channel
 (cogs/logging/logs_query.py), esportabile, e soggetta a retention
 configurabile. Le due cose convivono, non si sostituiscono: l'embed
-per la visibilità in tempo reale, il DB per la storia.
+per la visibilità in tempo reale, il DB per la storia. Se l'invio
+dell'embed fallisce l'evento resta nel DB e il listener non solleva.
 
 Punto tecnico verificato prima di scrivere questo file: discord.py
 NON registra un listener di un Cog per la sola convenzione del nome
@@ -29,6 +30,7 @@ di scrivere tutti i listener sottostanti.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 
 import discord
@@ -37,6 +39,8 @@ from discord.ext import commands
 
 from core.database import db
 from core.repositories.event_log_repo import event_log_repo
+
+logger = logging.getLogger("iyokai.logging.basic")
 
 MODULE_LOGGING = "logging_basic"
 SETTING_LOG_CHANNEL = "log_channel_id"
@@ -87,6 +91,24 @@ def elenco_ruoli(role_ids: Iterable[int]) -> str:
     if esclusi:
         testo += f" +{esclusi} altri"
     return testo
+
+
+async def _send_log(channel: discord.TextChannel, embed: discord.Embed) -> None:
+    """
+    Manda l'embed nel canale dei log. Se Discord lo rifiuta (permesso
+    tolto, canale appena cancellato, errore del servizio) scrive una
+    riga nel log del bot e basta: un listener non ha nessuno a cui
+    mostrare l'errore, e l'evento è già salvato nel database.
+    """
+    try:
+        await channel.send(embed=embed)
+    except discord.HTTPException as errore:
+        logger.warning(
+            "Log non inviato nel canale %s (server %s): %s",
+            channel.id,
+            channel.guild.id,
+            errore,
+        )
 
 
 async def _get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
@@ -195,7 +217,7 @@ class BasicLogsCog(commands.Cog):
             inline=False,
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        await channel.send(embed=embed)
+        await _send_log(channel, embed)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
@@ -232,7 +254,7 @@ class BasicLogsCog(commands.Cog):
                 value=discord.utils.format_dt(member.joined_at, style="F"),
                 inline=False,
             )
-        await channel.send(embed=embed)
+        await _send_log(channel, embed)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
@@ -251,7 +273,7 @@ class BasicLogsCog(commands.Cog):
             timestamp=discord.utils.utcnow(),
         )
         embed.add_field(name="Utente", value=f"{user} ({user.id})", inline=False)
-        await channel.send(embed=embed)
+        await _send_log(channel, embed)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User) -> None:
@@ -270,7 +292,7 @@ class BasicLogsCog(commands.Cog):
             timestamp=discord.utils.utcnow(),
         )
         embed.add_field(name="Utente", value=f"{user} ({user.id})", inline=False)
-        await channel.send(embed=embed)
+        await _send_log(channel, embed)
 
     @commands.Cog.listener()
     async def on_member_update(
@@ -330,7 +352,7 @@ class BasicLogsCog(commands.Cog):
                     value=elenco_ruoli(removed_ids),
                     inline=False,
                 )
-            await channel.send(embed=embed)
+            await _send_log(channel, embed)
 
         if nick_changed:
             embed = discord.Embed(
@@ -347,7 +369,7 @@ class BasicLogsCog(commands.Cog):
             embed.add_field(
                 name="Dopo", value=after.nick or "*(nessuno)*", inline=True
             )
-            await channel.send(embed=embed)
+            await _send_log(channel, embed)
 
     # ================================================================
     # Ruoli del server (creazione/eliminazione, non assegnazione)
@@ -371,7 +393,7 @@ class BasicLogsCog(commands.Cog):
             color=discord.Color.green(),
             timestamp=discord.utils.utcnow(),
         )
-        await channel.send(embed=embed)
+        await _send_log(channel, embed)
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:
@@ -397,7 +419,7 @@ class BasicLogsCog(commands.Cog):
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow(),
         )
-        await channel.send(embed=embed)
+        await _send_log(channel, embed)
 
 
 async def setup(bot: commands.Bot) -> None:

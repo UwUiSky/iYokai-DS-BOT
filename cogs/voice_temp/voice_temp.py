@@ -23,6 +23,13 @@ canale è pronto" e, SE il server ha configurato almeno un ruolo
 piattaforma, dei bottoni PC/Console/Mobile — vedi PlatformRoleView.
 Restano SOLO informativi (nessun filtro di visibilità), per la stessa
 ragione già registrata sopra sulle due modalità sempre visibili.
+Anche questi bottoni sono persistenti.
+
+Gestione del canale (/voice …): la rinomina rispetta il limite di
+Discord di 2 ogni 10 minuti (core/channel_rename.py); /voice transfer
+sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
+mentre il bot era spento vengono cancellati.
+Funzioni coperte: SPEC §12
 
 SPEC.md §12.8: il cap per categoria (/voicetemp-cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
@@ -40,6 +47,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.channel_rename import (
+    RenameRateLimited,
+    rename_channel,
+    rename_limit_message,
+    rename_tracker,
+)
 from core.database import db
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
@@ -48,6 +61,7 @@ from core.voice_temp_logic import (
     can_manage_voice_channel,
     is_category_full,
     is_generator_join,
+    is_old_enough_for_startup_cleanup,
     should_delete_after_leave,
 )
 from core.premium import PremiumModule, registry
@@ -59,16 +73,36 @@ MODULE_VOICE_TEMP = "voice_temp"
 
 CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
 
+# Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
+MAX_CHANNEL_NAME_LENGTH = 100
+
+# I permessi che il proprietario ha sul suo canale. /voice transfer li
+# sposta al nuovo proprietario.
+OWNER_PERMISSIONS = {"manage_channels": True, "move_members": True, "mute_members": True}
+
+MESSAGGIO_ERRORE_DISCORD = (
+    "Non sono riuscito a farlo: controlla i miei permessi sul canale e riprova."
+)
+
 # SPEC.md §12.5: selezione piattaforma, SOLO informativa (nessun
 # filtro di visibilità — decisione già presa in fase di progettazione,
-# vedi il docstring del modulo). custom_id fissi perché la view va
-# comunque ricreata ad ogni canale (non è persistente: il canale
-# stesso è temporaneo, non ha senso sopravviva a un riavvio del bot).
+# vedi il docstring del modulo). I custom_id sono fissi e la view è
+# persistente (LIM-26): un canale vive ore, i bottoni devono funzionare
+# anche dopo 5 minuti e dopo un riavvio del bot.
 PLATFORM_CHOICES = (
     ("pc", "PC", "🖥️"),
     ("console", "Console", "🎮"),
     ("mobile", "Mobile", "📱"),
 )
+
+
+def _platform_roles(config) -> dict[str, int | None]:
+    """Chiave della piattaforma -> id del ruolo configurato (None se manca)."""
+    return {
+        "pc": config.role_pc_id,
+        "console": config.role_console_id,
+        "mobile": config.role_mobile_id,
+    }
 
 
 class PlatformRoleView(BaseView):
@@ -80,17 +114,20 @@ class PlatformRoleView(BaseView):
     piattaforma assegna QUEL ruolo e rimuove gli altri due — è un
     indicatore mutuamente esclusivo ("sto giocando da..."), non un
     filtro su cosa il membro può vedere o fare.
+
+    View PERSISTENTE (timeout=None, custom_id fissi, bot.add_view() in
+    setup()): i ruoli non stanno nella view ma si leggono dalla
+    configurazione del server a ogni clic, così il bottone di un
+    messaggio vecchio funziona anche dopo un riavvio. Con `config` la
+    view mostra solo le piattaforme configurate (è quella che va nel
+    messaggio); senza, le ha tutte e tre (è quella registrata
+    all'avvio, che riceve i clic di ogni messaggio).
     """
 
-    def __init__(self, config) -> None:
-        super().__init__(timeout=300)
-        self._roles_by_key = {
-            "pc": config.role_pc_id,
-            "console": config.role_console_id,
-            "mobile": config.role_mobile_id,
-        }
+    def __init__(self, config=None) -> None:
+        super().__init__(timeout=None)
         for key, label, emoji in PLATFORM_CHOICES:
-            if self._roles_by_key.get(key) is None:
+            if config is not None and _platform_roles(config).get(key) is None:
                 continue
             self.add_item(self._make_button(key, label, emoji))
 
@@ -107,7 +144,15 @@ class PlatformRoleView(BaseView):
             if guild is None:
                 return
 
-            ruolo_scelto = guild.get_role(self._roles_by_key[key])
+            roles_by_key = _platform_roles(await voice_temp_repo.get_config(guild.id))
+            if roles_by_key[key] is None:
+                await interaction.response.send_message(
+                    "Questa piattaforma non è più configurata su questo server.",
+                    ephemeral=True,
+                )
+                return
+
+            ruolo_scelto = guild.get_role(roles_by_key[key])
             if ruolo_scelto is None:
                 await interaction.response.send_message(
                     "Il ruolo configurato per questa piattaforma non esiste più.",
@@ -124,7 +169,7 @@ class PlatformRoleView(BaseView):
                 return
 
             altri_ruoli_id = {
-                rid for rid in self._roles_by_key.values() if rid is not None and rid != ruolo_scelto.id
+                rid for rid in roles_by_key.values() if rid is not None and rid != ruolo_scelto.id
             }
             da_rimuovere = [
                 r for r in interaction.user.roles if r.id in altri_ruoli_id
@@ -173,9 +218,7 @@ async def _create_temp_channel(
 
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(),  # eredita, nessuna restrizione
-        owner: discord.PermissionOverwrite(
-            manage_channels=True, move_members=True, mute_members=True
-        ),
+        owner: discord.PermissionOverwrite(**OWNER_PERMISSIONS),
     }
     try:
         channel = await category.create_voice_channel(
@@ -208,8 +251,12 @@ async def _create_temp_channel(
             await channel.send(embed=embed, view=view)
         else:
             await channel.send(embed=embed)
-    except (discord.Forbidden, discord.HTTPException):
+    except discord.HTTPException:
         logger.warning("Impossibile inviare la notifica di creazione nel canale %s", channel.id)
+    # I clic li riceve la view registrata all'avvio (stessi custom_id):
+    # questa, legata al singolo messaggio, si ferma subito, altrimenti
+    # ne resterebbe una in memoria per ogni canale creato.
+    view.stop()
 
     return channel
 
@@ -457,12 +504,46 @@ class VoiceTempCog(commands.Cog):
 
     @voice_group.command(name="rename", description="Rinomina il tuo canale vocale.")
     @app_commands.describe(name="Il nuovo nome del canale")
-    async def rename(self, interaction: discord.Interaction, name: str) -> None:
+    async def rename(
+        self,
+        interaction: discord.Interaction,
+        name: app_commands.Range[str, 1, MAX_CHANNEL_NAME_LENGTH],
+    ) -> None:
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.edit(name=name)
-        await interaction.response.send_message(f"Canale rinominato in **{name}**.")
+
+        # Discord permette 2 rinomine ogni 10 minuti per canale (LIM-3):
+        # alla terza si risponde subito, senza restare in attesa.
+        attesa = rename_tracker.seconds_until_allowed(channel.id)
+        if attesa > 0:
+            await interaction.response.send_message(
+                rename_limit_message(attesa), ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
+        try:
+            await rename_channel(
+                channel, name, reason=f"Vocale rinominato da {interaction.user}"
+            )
+        except RenameRateLimited as limite:
+            await interaction.followup.send(
+                rename_limit_message(limite.retry_after), ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a rinominare il canale: controlla i miei "
+                "permessi e che il nome sia ammesso da Discord.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            f"Canale rinominato in **{name}**.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @voice_group.command(name="limit", description="Imposta il limite di utenti del canale.")
     @app_commands.describe(limit="Numero massimo di utenti (0 per nessun limite)")
@@ -472,7 +553,11 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.edit(user_limit=limit)
+        try:
+            await channel.edit(user_limit=limit)
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         testo = "nessun limite" if limit == 0 else f"{limit} utenti"
         await interaction.response.send_message(f"Limite impostato: {testo}.")
 
@@ -481,9 +566,13 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.set_permissions(
-            interaction.guild.default_role, connect=False
-        )
+        try:
+            await channel.set_permissions(
+                interaction.guild.default_role, connect=False
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await interaction.response.send_message("Canale bloccato.")
 
     @voice_group.command(name="unlock", description="Sblocca il canale.")
@@ -491,7 +580,11 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.set_permissions(interaction.guild.default_role, overwrite=None)
+        try:
+            await channel.set_permissions(interaction.guild.default_role, overwrite=None)
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await interaction.response.send_message("Canale sbloccato.")
 
     @voice_group.command(name="kick", description="Espelli un utente dal tuo canale.")
@@ -501,7 +594,13 @@ class VoiceTempCog(commands.Cog):
         if channel is None:
             return
         if member.voice is not None and member.voice.channel and member.voice.channel.id == channel.id:
-            await member.move_to(None, reason="Espulso dal proprietario del canale")
+            try:
+                await member.move_to(None, reason="Espulso dal proprietario del canale")
+            except discord.HTTPException:
+                await interaction.response.send_message(
+                    MESSAGGIO_ERRORE_DISCORD, ephemeral=True
+                )
+                return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
 
     @voice_group.command(name="transfer", description="Trasferisci la proprietà del canale.")
@@ -522,10 +621,89 @@ class VoiceTempCog(commands.Cog):
                 ephemeral=True,
             )
             return
+        vecchio_id = await voice_temp_repo.get_owner(channel.id)
+        if member.id == vecchio_id:
+            await interaction.response.send_message(
+                f"{member.mention} è già il proprietario del canale.", ephemeral=True
+            )
+            return
+
+        # Prima i permessi su Discord, poi il database: se Discord
+        # rifiuta, la proprietà non cambia.
+        try:
+            await channel.set_permissions(
+                member, reason="Nuovo proprietario del vocale temporaneo", **OWNER_PERMISSIONS
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await voice_temp_repo.set_owner(channel.id, member.id)
+
+        # Al vecchio proprietario i permessi vanno tolti. Se è uscito
+        # dal server non c'è più niente da togliere.
+        vecchio = interaction.guild.get_member(vecchio_id)
+        if vecchio is not None:
+            try:
+                await channel.set_permissions(
+                    vecchio, overwrite=None, reason="Non è più il proprietario del vocale"
+                )
+            except discord.HTTPException:
+                logger.warning(
+                    "Permessi del vecchio proprietario %s non tolti dal canale %s",
+                    vecchio_id,
+                    channel.id,
+                )
+
         await interaction.response.send_message(
             f"Proprietà del canale trasferita a {member.mention}."
         )
+
+    # ================================================================
+    # Pulizia all'avvio dei canali rimasti orfani
+    # ================================================================
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        """
+        Un canale temporaneo si elimina quando esce l'ultima persona.
+        Se succede mentre il bot è spento l'evento va perso e il canale
+        resta per sempre: qui, a ogni avvio (e a ogni riconnessione),
+        si cancellano i canali registrati rimasti vuoti e si tolgono
+        dal registro quelli che non esistono più.
+        """
+        for tracked in await voice_temp_repo.list_channels():
+            if not is_old_enough_for_startup_cleanup(tracked.age_seconds):
+                continue
+            guild = self.bot.get_guild(tracked.guild_id)
+            if guild is None:
+                # Server non raggiungibile adesso (o bot uscito): non
+                # si decide niente, si riprova al prossimo avvio.
+                continue
+            try:
+                await self._cleanup_tracked_channel(guild, tracked.channel_id)
+            except Exception:
+                logger.exception(
+                    "Pulizia all'avvio non riuscita per il vocale temporaneo %s",
+                    tracked.channel_id,
+                )
+
+    async def _cleanup_tracked_channel(self, guild: discord.Guild, channel_id: int) -> None:
+        channel = guild.get_channel(channel_id)
+        if channel is None:
+            await voice_temp_repo.unregister_channel(channel_id)
+            return
+        if channel.members:
+            return
+        try:
+            await channel.delete(reason="Vocale temporaneo rimasto vuoto (pulizia all'avvio)")
+        except discord.NotFound:
+            pass  # già cancellato: resta solo da toglierlo dal registro
+        except discord.HTTPException:
+            logger.warning(
+                "Vocale temporaneo vuoto %s non cancellato: riprovo al prossimo avvio.",
+                channel_id,
+            )
+            return
+        await voice_temp_repo.unregister_channel(channel_id)
 
     # ================================================================
     # Eventi vocali: creazione automatica + eliminazione a canale vuoto
@@ -576,8 +754,14 @@ class VoiceTempCog(commands.Cog):
             if should_delete_after_leave(before_channel_id, owner_id is not None, remaining):
                 try:
                     await before.channel.delete(reason="Vocale temporaneo rimasto vuoto")
-                except (discord.Forbidden, discord.HTTPException):
-                    pass
+                except discord.NotFound:
+                    pass  # già cancellato: resta solo da toglierlo dal registro
+                except discord.HTTPException:
+                    # Resta registrato: lo ritrova la pulizia all'avvio.
+                    logger.warning(
+                        "Vocale temporaneo vuoto %s non cancellato.", before_channel_id
+                    )
+                    return
                 await voice_temp_repo.unregister_channel(before_channel_id)
 
 
@@ -593,3 +777,6 @@ async def setup(bot: commands.Bot) -> None:
     )
     await bot.add_cog(VoiceTempCog(bot))
     bot.add_view(CreateVoiceView())
+    # Senza configurazione: tutte e tre le piattaforme, per ricevere i
+    # clic sui bottoni dei messaggi già mandati (vedi PlatformRoleView).
+    bot.add_view(PlatformRoleView())

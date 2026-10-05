@@ -26,13 +26,17 @@ gli overwrite specifici del singolo ticket.
 
 SPEC.md §13.10/§13.11 (transcript automatico alla chiusura, inviato
 nel canale log + in DM all'utente): la lettura dei messaggi avviene
-via channel.history() PRIMA di cancellare il canale — una chiamata
-REST, che restituisce il contenuto pieno indipendentemente dal
-Message Content Intent (quell'intent riguarda solo gli eventi
-gateway in tempo reale, non la history REST governata dal normale
-permesso READ_MESSAGE_HISTORY — stessa assunzione già verificata e
-documentata in core/spam_trap_logic.py). Vedi core/ticket_logic.py
-per la costruzione pura del testo del transcript.
+via channel.history() PRIMA di cancellare il canale. Il testo dei
+messaggi arriva solo con l'intent Message Content acceso (main.py):
+senza, il transcript lo dice in testa. Un transcript grande viene
+diviso in più file sotto i 10 MiB. Vedi core/ticket_logic.py per la
+costruzione pura del testo.
+
+Limiti di Discord rispettati qui: menu delle categorie (25 voci,
+etichetta 100), nome del canale (100), 2 rinomine ogni 10 minuti (il
+canale nasce già con il numero giusto; /ticket rename passa da
+core/channel_rename.py), un solo ticket aperto per utente (indice
+unico nel database).
 
 /ticket close: l'eliminazione del canale dopo l'attesa passa dallo
 scheduler persistente (core/scheduler.py, azione
@@ -40,8 +44,7 @@ scheduler persistente (core/scheduler.py, azione
 ricarica del cog; gli errori temporanei di Discord vengono riprovati
 dallo scheduler. /ticket forceclose elimina subito e funziona anche su
 un ticket già chiuso il cui canale è rimasto.
-Funzioni coperte: SPEC §13.8/§13.9/§13.10/§13.11, REVIEW.md BUG-1,
-BUG-30 (issue #2, #42).
+Funzioni coperte: SPEC §13.2, §13.8–§13.13
 """
 
 # DA FARE (issue #62, fase F1): correzioni aperte per questo file in
@@ -60,14 +63,31 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.channel_rename import (
+    RenameRateLimited,
+    rename_channel,
+    rename_limit_message,
+    rename_tracker,
+)
 from core.database import db
-from core.repositories.ticket_repo import ticket_repo, VALID_PRIORITIES
+from core.repositories.ticket_repo import (
+    VALID_PRIORITIES,
+    TicketAlreadyOpenError,
+    ticket_repo,
+)
 from core.ticket_logic import (
+    MAX_CATEGORY_LABEL_LENGTH,
+    MAX_EMOJI_LENGTH,
+    MAX_TICKET_CATEGORIES,
+    MESSAGE_CONTENT_WARNING,
     build_transcript_text,
     format_duration_seconds,
     format_transcript_line,
     is_first_response,
+    looks_like_emoji,
     merge_support_role_ids,
+    split_text_by_size,
+    truncate_label,
 )
 from core.premium import PremiumModule, registry
 from core.scheduler import in_seconds, scheduler
@@ -95,6 +115,22 @@ RITARDO_ELIMINAZIONE_SECONDI = 10
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
+# Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
+MAX_CHANNEL_NAME_LENGTH = 100
+
+# Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
+# 8 per lasciare margine al resto della richiesta.
+MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
+
+# Chi sta aprendo un ticket in questo momento: (id server, id utente).
+# Ferma il doppio clic prima che nasca un secondo canale. La garanzia
+# vera resta l'indice unico nel database (migrazione 0010).
+_aperture_in_corso: set[tuple[int, int]] = set()
+
+MESSAGGIO_TICKET_GIA_APERTO = (
+    "Hai già un ticket aperto su questo server. Chiudilo prima di aprirne uno nuovo."
+)
+
 
 async def _support_role_ids(guild_id: int) -> list[int]:
     """SPEC.md §13.13 — combina il ruolo legacy con la lista nuova."""
@@ -105,11 +141,12 @@ async def _support_role_ids(guild_id: int) -> list[int]:
 
 async def _is_ticket_staff(interaction: discord.Interaction) -> bool:
     """
-    SPEC.md §13.9: chi può usare /ticket forceclose — chi ha il
+    SPEC.md §13.9: chi fa parte dello staff dei ticket — chi ha il
     permesso Discord Manage Server, oppure chi ha almeno uno dei
-    ruoli di supporto configurati (§13.13). A differenza di /ticket
-    close (aperto a chiunque abbia accesso al canale, incluso
-    l'utente che lo ha aperto), forceclose è riservato allo staff.
+    ruoli di supporto configurati (§13.13). Allo staff sono riservati
+    forceclose, claim, priority, add e remove; /ticket close resta
+    aperto a chiunque abbia accesso al canale, incluso chi ha aperto
+    il ticket.
     """
     if not isinstance(interaction.user, discord.Member) or interaction.guild is None:
         return False
@@ -132,15 +169,30 @@ async def _open_ticket_channel(
     (SPEC.md §13.2) — l'interazione arriva già deferred, quindi qui
     si usa sempre .followup.
     """
+    chiave = (guild.id, interaction.user.id)
+    if chiave in _aperture_in_corso:
+        await interaction.followup.send(
+            "Sto già aprendo il tuo ticket, un attimo.", ephemeral=True
+        )
+        return
+    _aperture_in_corso.add(chiave)
+    try:
+        await _crea_ticket(interaction, guild, category, category_label)
+    finally:
+        _aperture_in_corso.discard(chiave)
+
+
+async def _crea_ticket(
+    interaction: discord.Interaction,
+    guild: discord.Guild,
+    category: discord.CategoryChannel,
+    category_label: str | None,
+) -> None:
     already_open = await ticket_repo.count_open_tickets_for_user(
         guild.id, interaction.user.id
     )
     if already_open > 0:
-        await interaction.followup.send(
-            "Hai già un ticket aperto su questo server. Chiudilo "
-            "prima di aprirne uno nuovo.",
-            ephemeral=True,
-        )
+        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
         return
 
     overwrites = {
@@ -160,13 +212,18 @@ async def _open_ticket_channel(
                 view_channel=True, send_messages=True, read_message_history=True
             )
 
+    # Il numero si riserva prima, così il canale nasce già con il nome
+    # giusto: rinominarlo dopo spenderebbe una delle 2 rinomine che
+    # Discord concede ogni 10 minuti (LIM-3).
+    ticket_number = await ticket_repo.reserve_ticket_number(guild.id)
+
     # Il canale si crea PRIMA di registrare il ticket nel DB, così
     # se la creazione fallisce (permessi mancanti, categoria
     # piena — Discord limita 50 canali per categoria) non resta
     # un ticket "fantasma" senza canale reale.
     try:
         channel = await category.create_text_channel(
-            name="ticket-nuovo",  # rinominato subito dopo con il numero vero
+            name=f"ticket-{ticket_number:04d}",
             overwrites=overwrites,
             reason=f"Ticket aperto da {interaction.user}",
         )
@@ -184,10 +241,23 @@ async def _open_ticket_channel(
         )
         return
 
-    ticket_number = await ticket_repo.create_ticket(
-        guild.id, interaction.user.id, channel.id, category_label=category_label
-    )
-    await channel.edit(name=f"ticket-{ticket_number:04d}")
+    try:
+        await ticket_repo.create_ticket(
+            guild.id,
+            interaction.user.id,
+            channel.id,
+            category_label=category_label,
+            ticket_number=ticket_number,
+        )
+    except TicketAlreadyOpenError:
+        # Un altro ticket dello stesso utente è nato nel frattempo: il
+        # canale appena creato non deve restare orfano.
+        try:
+            await channel.delete(reason="Ticket doppio: l'utente ne ha già uno aperto")
+        except discord.HTTPException:
+            logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
+        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+        return
 
     embed = discord.Embed(
         title=f"Ticket #{ticket_number:04d}",
@@ -199,12 +269,38 @@ async def _open_ticket_channel(
         color=discord.Color.blurple(),
     )
     if category_label is not None:
-        embed.add_field(name="Categoria", value=category_label)
-    await channel.send(content=interaction.user.mention, embed=embed)
+        embed.add_field(name="Categoria", value=truncate_label(category_label))
+    try:
+        await channel.send(content=interaction.user.mention, embed=embed)
+    except discord.HTTPException:
+        logger.warning("Messaggio di benvenuto non inviato nel ticket %s.", channel.id)
 
     await interaction.followup.send(
         f"Ticket creato: {channel.mention}", ephemeral=True
     )
+
+
+def _category_options(categorie, with_emoji: bool = True) -> list[discord.SelectOption]:
+    """
+    Le opzioni del menu delle categorie, sempre dentro i limiti di
+    Discord (LIM-6) anche con dati salvati prima dei controlli di
+    /ticket-category add: al massimo 25, etichetta tagliata a 100,
+    emoji solo se sembra valida, voci senza nome saltate. Il valore è
+    l'id della riga (corto e unico), non l'etichetta.
+    """
+    opzioni: list[discord.SelectOption] = []
+    for categoria in categorie:
+        if not categoria.label.strip():
+            continue
+        emoji = None
+        if with_emoji and categoria.emoji and looks_like_emoji(categoria.emoji):
+            emoji = categoria.emoji
+        opzioni.append(
+            discord.SelectOption(
+                label=truncate_label(categoria.label), value=str(categoria.id), emoji=emoji
+            )
+        )
+    return opzioni[:MAX_TICKET_CATEGORIES]
 
 
 class TicketCategorySelectView(BaseView):
@@ -217,24 +313,21 @@ class TicketCategorySelectView(BaseView):
     pannello pubblico sempre visibile).
     """
 
-    def __init__(self, guild: discord.Guild, categorie) -> None:
+    def __init__(self, guild: discord.Guild, categorie, with_emoji: bool = True) -> None:
         super().__init__(timeout=180)
         self._guild = guild
         select = discord.ui.Select(
             placeholder="Scegli una categoria...",
-            options=[
-                discord.SelectOption(label=c.label, value=c.label, emoji=c.emoji)
-                for c in categorie
-            ],
+            options=_category_options(categorie, with_emoji),
         )
         select.callback = self._on_select
         self.add_item(select)
 
     async def _on_select(self, interaction: discord.Interaction) -> None:
         select = self.children[0]
-        label_scelta = select.values[0]
+        id_scelto = select.values[0]
         categorie = await ticket_repo.list_categories(self._guild.id)
-        scelta = next((c for c in categorie if c.label == label_scelta), None)
+        scelta = next((c for c in categorie if str(c.id) == id_scelto), None)
         if scelta is None:
             await interaction.response.send_message(
                 "Questa categoria non è più disponibile.", ephemeral=True
@@ -293,12 +386,25 @@ class TicketPanelView(BaseView):
         # unico storico — retrocompatibile con chi non ne ha ancora
         # configurata nessuna.
         categorie = await ticket_repo.list_categories(guild.id)
-        if categorie:
-            await interaction.response.send_message(
-                "Scegli la categoria del tuo ticket:",
-                view=TicketCategorySelectView(guild, categorie),
-                ephemeral=True,
-            )
+        if _category_options(categorie):
+            testo = "Scegli la categoria del tuo ticket:"
+            try:
+                await interaction.response.send_message(
+                    testo, view=TicketCategorySelectView(guild, categorie), ephemeral=True
+                )
+            except discord.HTTPException:
+                # Discord ha rifiutato il menu: quasi sempre un'emoji
+                # personalizzata cancellata o di un altro server. Lo
+                # stesso menu senza emoji, così i ticket si aprono.
+                logger.warning(
+                    "Menu delle categorie ticket rifiutato nel server %s: riprovo senza emoji.",
+                    guild.id,
+                )
+                await interaction.response.send_message(
+                    testo,
+                    view=TicketCategorySelectView(guild, categorie, with_emoji=False),
+                    ephemeral=True,
+                )
             return
 
         category_id = await db.get_guild_setting(guild.id, SETTING_CATEGORY)
@@ -398,12 +504,39 @@ class TicketsCog(commands.Cog):
     async def ticket_category_add(
         self,
         interaction: discord.Interaction,
-        label: str,
+        label: app_commands.Range[str, 1, MAX_CATEGORY_LABEL_LENGTH],
         category: discord.CategoryChannel,
-        emoji: str | None = None,
+        emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
     ) -> None:
         if interaction.guild is None:
             return
+
+        label = label.strip()
+        if not label:
+            await interaction.response.send_message(
+                "Il nome della categoria non può essere vuoto.", ephemeral=True
+            )
+            return
+        if emoji is not None and not looks_like_emoji(emoji.strip()):
+            await interaction.response.send_message(
+                "Quella non sembra un'emoji. Usa un'emoji standard (es. 🎫) "
+                "oppure un'emoji personalizzata di questo server.",
+                ephemeral=True,
+            )
+            return
+
+        # Un menu a tendina tiene 25 opzioni (LIM-6). Aggiornare una
+        # categoria che esiste già non ne aggiunge una.
+        esistenti = await ticket_repo.list_categories(interaction.guild.id)
+        if len(esistenti) >= MAX_TICKET_CATEGORIES and label not in {c.label for c in esistenti}:
+            await interaction.response.send_message(
+                f"Hai già {MAX_TICKET_CATEGORIES} categorie, il massimo che un menu di "
+                "Discord può mostrare. Rimuovine una con /ticket-category remove.",
+                ephemeral=True,
+            )
+            return
+
+        emoji = emoji.strip() if emoji is not None else None
         await ticket_repo.add_category(interaction.guild.id, label, category.id, emoji)
         await interaction.response.send_message(
             f"Categoria **{label}** impostata su **{category.name}**.", ephemeral=True
@@ -412,10 +545,14 @@ class TicketsCog(commands.Cog):
     @ticket_category_group.command(name="remove", description="[Admin] Rimuovi una categoria di ticket.")
     @app_commands.describe(label="Il nome esatto della categoria da rimuovere")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def ticket_category_remove(self, interaction: discord.Interaction, label: str) -> None:
+    async def ticket_category_remove(
+        self,
+        interaction: discord.Interaction,
+        label: app_commands.Range[str, 1, MAX_CATEGORY_LABEL_LENGTH],
+    ) -> None:
         if interaction.guild is None:
             return
-        rimossa = await ticket_repo.remove_category(interaction.guild.id, label)
+        rimossa = await ticket_repo.remove_category(interaction.guild.id, label.strip())
         if rimossa:
             await interaction.response.send_message(f"Categoria **{label}** rimossa.", ephemeral=True)
         else:
@@ -435,8 +572,27 @@ class TicketsCog(commands.Cog):
                 ephemeral=True,
             )
             return
-        righe = [f"- {c.emoji or ''} **{c.label}** -> <#{c.category_id}>".strip() for c in categorie]
-        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+        # In un embed: 25 categorie con nomi lunghi superano i 2000
+        # caratteri di un messaggio, ma stanno nei 4096 della descrizione.
+        righe = [
+            f"- {c.emoji or ''} **{truncate_label(c.label)}** -> <#{c.category_id}>"
+            for c in categorie[:MAX_TICKET_CATEGORIES]
+        ]
+        mostrate: list[str] = []
+        lunghezza = 0
+        for riga in righe:
+            lunghezza += len(riga) + 1
+            if lunghezza > 4000:
+                break
+            mostrate.append(riga)
+        if len(mostrate) < len(categorie):
+            mostrate.append(f"…e altre {len(categorie) - len(mostrate)}.")
+        embed = discord.Embed(
+            title="Categorie dei ticket",
+            description="\n".join(mostrate),
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ================================================================
     # SPEC.md §13.13 — ruoli di supporto multipli
@@ -466,12 +622,33 @@ class TicketsCog(commands.Cog):
     async def ticket_support_role_remove(self, interaction: discord.Interaction, role: discord.Role) -> None:
         if interaction.guild is None:
             return
-        attuali = await db.get_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, default=[])
+        guild_id = interaction.guild.id
+        rimosso = False
+
+        attuali = await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLES, default=[])
         if role.id in attuali:
             attuali.remove(role.id)
-            await db.set_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, attuali)
+            await db.set_guild_setting(guild_id, SETTING_SUPPORT_ROLES, attuali, interaction.user.id)
+            rimosso = True
+
+        # Il ruolo può essere anche quello "storico" impostato con
+        # /ticket-setup: va tolto pure da lì, altrimenti continua a
+        # vedere i ticket. La chiave si toglie del tutto (un `null`
+        # verrebbe poi rifiutato da /config import): core/database.py
+        # non ha ancora un metodo pubblico per farlo.
+        if await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLE) == role.id:
+            await db._remove_guild_setting(guild_id, SETTING_SUPPORT_ROLE, interaction.user.id)
+            rimosso = True
+
+        if not rimosso:
+            await interaction.response.send_message(
+                f"{role.mention} non è tra i ruoli di supporto.", ephemeral=True
+            )
+            return
         await interaction.response.send_message(
-            f"{role.mention} rimosso dai ruoli di supporto.", ephemeral=True
+            f"{role.mention} rimosso dai ruoli di supporto. I ticket già aperti "
+            "restano visibili al ruolo finché non vengono chiusi.",
+            ephemeral=True,
         )
 
     @ticket_support_role_group.command(name="list", description="[Admin] Elenca i ruoli di supporto configurati.")
@@ -537,9 +714,20 @@ class TicketsCog(commands.Cog):
             return None
         return ticket
 
-    @ticket_group.command(name="claim", description="Prendi in carico questo ticket.")
+    async def _get_ticket_for_staff_or_reply(self, interaction: discord.Interaction):
+        """Come _get_ticket_or_reply, ma solo per lo staff dei ticket."""
+        if not await _is_ticket_staff(interaction):
+            await interaction.response.send_message(
+                "Solo lo staff (permesso Manage Server o un ruolo di "
+                "supporto configurato) può usare questo comando.",
+                ephemeral=True,
+            )
+            return None
+        return await self._get_ticket_or_reply(interaction)
+
+    @ticket_group.command(name="claim", description="[Staff] Prendi in carico questo ticket.")
     async def claim(self, interaction: discord.Interaction) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
@@ -548,39 +736,86 @@ class TicketsCog(commands.Cog):
             f"Ticket preso in carico da {interaction.user.mention}."
         )
 
-    @ticket_group.command(name="add", description="Aggiungi un utente a questo ticket.")
+    @ticket_group.command(name="add", description="[Staff] Aggiungi un utente a questo ticket.")
     @app_commands.describe(member="L'utente da aggiungere")
     async def add(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
-        await interaction.channel.set_permissions(
-            member, view_channel=True, send_messages=True, read_message_history=True
-        )
+        try:
+            await interaction.channel.set_permissions(
+                member, view_channel=True, send_messages=True, read_message_history=True
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non sono riuscito ad aggiungere l'utente: controlla i miei permessi sul canale.",
+                ephemeral=True,
+            )
+            return
         await interaction.response.send_message(f"{member.mention} aggiunto al ticket.")
 
-    @ticket_group.command(name="remove", description="Rimuovi un utente da questo ticket.")
+    @ticket_group.command(name="remove", description="[Staff] Rimuovi un utente da questo ticket.")
     @app_commands.describe(member="L'utente da rimuovere")
     async def remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
-        await interaction.channel.set_permissions(member, overwrite=None)
+        try:
+            await interaction.channel.set_permissions(member, overwrite=None)
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non sono riuscito a rimuovere l'utente: controlla i miei permessi sul canale.",
+                ephemeral=True,
+            )
+            return
         await interaction.response.send_message(f"{member.mention} rimosso dal ticket.")
 
     @ticket_group.command(name="rename", description="Rinomina questo ticket.")
     @app_commands.describe(name="Il nuovo nome del canale")
-    async def rename(self, interaction: discord.Interaction, name: str) -> None:
+    async def rename(
+        self,
+        interaction: discord.Interaction,
+        name: app_commands.Range[str, 1, MAX_CHANNEL_NAME_LENGTH],
+    ) -> None:
         ticket = await self._get_ticket_or_reply(interaction)
         if ticket is None:
             return
 
-        await interaction.channel.edit(name=name)
-        await interaction.response.send_message(f"Ticket rinominato in **{name}**.")
+        # Discord permette 2 rinomine ogni 10 minuti per canale (LIM-3):
+        # alla terza si risponde subito, senza restare in attesa.
+        attesa = rename_tracker.seconds_until_allowed(interaction.channel.id)
+        if attesa > 0:
+            await interaction.response.send_message(
+                rename_limit_message(attesa), ephemeral=True
+            )
+            return
 
-    @ticket_group.command(name="priority", description="Imposta la priorità di questo ticket.")
+        await interaction.response.defer()
+        try:
+            await rename_channel(
+                interaction.channel, name, reason=f"Ticket rinominato da {interaction.user}"
+            )
+        except RenameRateLimited as limite:
+            await interaction.followup.send(
+                rename_limit_message(limite.retry_after), ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a rinominare il canale: controlla i miei "
+                "permessi e che il nome sia valido.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            f"Ticket rinominato in **{name}**.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @ticket_group.command(name="priority", description="[Staff] Imposta la priorità di questo ticket.")
     @app_commands.describe(level="Livello di priorità")
     @app_commands.choices(
         level=[app_commands.Choice(name=p, value=p) for p in VALID_PRIORITIES]
@@ -588,7 +823,7 @@ class TicketsCog(commands.Cog):
     async def priority(
         self, interaction: discord.Interaction, level: app_commands.Choice[str]
     ) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
@@ -600,10 +835,10 @@ class TicketsCog(commands.Cog):
 
     async def _build_transcript_text(self, channel: discord.TextChannel, ticket) -> str:
         """
-        SPEC.md §13.10: legge la history del canale (REST — vedi il
-        docstring del modulo sul perché non serve il Message Content
-        Intent) e la trasforma in testo semplice tramite le funzioni
-        pure di core/ticket_logic.py.
+        SPEC.md §13.10: legge la history del canale e la trasforma in
+        testo semplice tramite le funzioni pure di core/ticket_logic.py.
+        Senza l'intent Message Content Discord consegna i messaggi
+        vuoti (BUG-5): in quel caso l'intestazione lo dice.
         """
         header = [
             f"Transcript ticket #{ticket.ticket_number:04d}",
@@ -612,6 +847,8 @@ class TicketsCog(commands.Cog):
             f"Priorità: {ticket.priority}",
             f"Preso in carico da: {ticket.claimed_by or 'nessuno'}",
         ]
+        if not self.bot.intents.message_content:
+            header.append(MESSAGE_CONTENT_WARNING)
         righe = []
         async for messaggio in channel.history(limit=None, oldest_first=True):
             righe.append(
@@ -619,9 +856,25 @@ class TicketsCog(commands.Cog):
                     messaggio.created_at.strftime("%Y-%m-%d %H:%M"),
                     str(messaggio.author),
                     messaggio.content,
+                    [allegato.filename for allegato in messaggio.attachments],
                 )
             )
         return build_transcript_text(header, righe)
+
+    @staticmethod
+    def _transcript_files(testo: str, ticket_number: int) -> list[tuple[str, bytes]]:
+        """
+        (nome, contenuto) dei file del transcript: uno solo di norma,
+        più d'uno se il testo supera il limite di peso (LIM-55).
+        """
+        base = f"ticket-{ticket_number:04d}-transcript"
+        parti = split_text_by_size(testo, MAX_TRANSCRIPT_FILE_BYTES)
+        if len(parti) == 1:
+            return [(f"{base}.txt", parti[0].encode("utf-8"))]
+        return [
+            (f"{base}-parte-{numero}-di-{len(parti)}.txt", parte.encode("utf-8"))
+            for numero, parte in enumerate(parti, start=1)
+        ]
 
     async def _deliver_transcript(
         self, guild: discord.Guild, channel: discord.TextChannel, ticket
@@ -629,31 +882,33 @@ class TicketsCog(commands.Cog):
         """SPEC.md §13.11: invio nel canale log configurato + DM all'utente."""
         try:
             testo = await self._build_transcript_text(channel, ticket)
-        except (discord.Forbidden, discord.HTTPException):
+        except discord.HTTPException:
             logger.warning("Impossibile leggere la history del ticket %s per il transcript", channel.id)
             return
 
-        nome_file = f"ticket-{ticket.ticket_number:04d}-transcript.txt"
+        file_del_transcript = self._transcript_files(testo, ticket.ticket_number)
 
         log_channel_id = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
         if log_channel_id is not None:
             log_channel = guild.get_channel(log_channel_id)
             if isinstance(log_channel, discord.TextChannel):
                 try:
-                    await log_channel.send(
-                        content=f"Transcript ticket #{ticket.ticket_number:04d}",
-                        file=discord.File(io.BytesIO(testo.encode("utf-8")), filename=nome_file),
-                    )
-                except (discord.Forbidden, discord.HTTPException):
+                    for nome_file, contenuto in file_del_transcript:
+                        await log_channel.send(
+                            content=f"Transcript ticket #{ticket.ticket_number:04d}",
+                            file=discord.File(io.BytesIO(contenuto), filename=nome_file),
+                        )
+                except discord.HTTPException:
                     logger.warning("Impossibile inviare il transcript nel canale log del server %s", guild.id)
 
         try:
             utente = guild.get_member(ticket.user_id) or await self.bot.fetch_user(ticket.user_id)
-            await utente.send(
-                content=f"Ecco il transcript del tuo ticket #{ticket.ticket_number:04d}.",
-                file=discord.File(io.BytesIO(testo.encode("utf-8")), filename=nome_file),
-            )
-        except (discord.Forbidden, discord.HTTPException, discord.NotFound):
+            for nome_file, contenuto in file_del_transcript:
+                await utente.send(
+                    content=f"Ecco il transcript del tuo ticket #{ticket.ticket_number:04d}.",
+                    file=discord.File(io.BytesIO(contenuto), filename=nome_file),
+                )
+        except discord.HTTPException:
             logger.info("Impossibile inviare il transcript in DM all'utente %s (DM chiusi?)", ticket.user_id)
 
     async def _transcript_senza_bloccare(
@@ -770,6 +1025,22 @@ class TicketsCog(commands.Cog):
                 interaction.channel.id,
             )
             await self._pianifica_eliminazione(interaction, motivo, RITARDO_ELIMINAZIONE_SECONDI)
+
+    # ================================================================
+    # Canale di un ticket cancellato a mano
+    # ================================================================
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        """
+        Se qualcuno cancella a mano il canale di un ticket aperto, il
+        ticket va chiuso: altrimenti l'utente resta con "hai già un
+        ticket aperto" per sempre. Dopo /ticket close o forceclose il
+        ticket è già chiuso e qui non cambia nulla.
+        """
+        if await ticket_repo.close_ticket_of_deleted_channel(channel.id):
+            logger.info(
+                "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id
+            )
 
     # ================================================================
     # SPEC.md §13.12 — traccia la prima risposta nel canale ticket
