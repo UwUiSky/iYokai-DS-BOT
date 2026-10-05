@@ -322,13 +322,30 @@ va **dentro** un sotto-gruppo esistente (per esempio dentro `config`).
 ### NF-24 — Motore AI
 
 - **Fase:** F12 · **SPEC:** §25
-- **Cosa fa:** Un motore unico con più fornitori in cascata e una risposta locale di riserva. Sopra ci stanno: aiuto sui comandi (helpdesk), riassunti di canali e ticket, "lore" del server (tono e ambientazione scelti dall'admin), generazione di immagini. Con memoria delle risposte già date, filtri di sicurezza e tetto di spesa.
-- **Da chi prendere spunto:** MEE6 (AI venduta a parte), Maki (AI nei piani a pagamento).
-- **Comandi:** `/admin ai …` (configurazione), `/utility chiedi`, `/utility riassumi`, `/fun immagina`.
-- **File nuovi:** `core/ai_router.py`, `core/ai_cache_logic.py`, `core/ai_guardrail_logic.py`, `core/ai_cost_logic.py`, `core/repositories/ai_repo.py`, `cogs/ai/__init__.py`, `cogs/ai/helpdesk.py`, `cogs/ai/summaries.py`, `cogs/ai/lore.py`, `cogs/ai/images.py`, `tests/test_ai_router.py`, `tests/test_ai_guardrail_logic.py`, `tests/test_ai_cost_logic.py`.
-- **Migrazione:** `core/migrations/NNNN_ai.sql`.
-- **Limiti da rispettare:** Vietato usare i messaggi per addestrare modelli; risposta entro 3 secondi con `defer()`; testo 2000/4096; tetto di spesa (D13).
-- **Dipende da:** Privacy policy pubblicata con l'elenco dei fornitori. Consenso dell'admin per server. `message_content`. D13.
+- **Cosa fa:** Tutte le funzioni AI di cui si è parlato sono in [`../01-analisi/FUNZIONI_AI.md`](../01-analisi/FUNZIONI_AI.md): 100 righe con codice `AI-R`, ognuna con la fonte, chi l'ha chiesta, come farla e i limiti. Questa scheda dice solo come sono divise e quali file servono. In breve: un motore unico con più fornitori in cascata e una risposta locale di riserva; sopra ci stanno i 12 gruppi della tabella. Tutto parte spento. L'AI propone, una persona conferma.
+- **Da chi prendere spunto:** MEE6 (AI venduta a parte), Maki (AI nei piani a pagamento), NadekoBot (comandi a parole).
+- **Comandi:** `/admin ai …` (un solo sotto-gruppo: `stato`, `interruttori`, `tetto`, `privacy`, `filtri`, `lore`, `faq`, `riepilogo`, `boss`, `misteri`, `personaggi`, `traduzione`; 12 su 25), `/owner ai …` (`fornitori`, `modello`, `spesa`, `libreria`), `/utility chiedi`, `/utility riassumi`, `/utility cerca-comando`, `/fun immagina`, `/fun gioca boss`, `/fun gioca dungeon`. In più opzioni dentro comandi che ci sono già: `/log cerca`, `/security automod`, `/security panico`, `/admin ticket`, `/owner privacy`. Un figlio da aggiungere all'albero: `/utility parole-chiave` (`/utility` passa da 15 a 16).
+- **Gruppi e file:**
+
+  | Gruppo | Codici | File nuovi | File esistenti da toccare |
+  |---|---|---|---|
+  | Motore e infrastruttura | AI-R-001…AI-R-023 (23) | `core/ai_router.py`, `core/ai_cache_logic.py`, `core/ai_guardrail_logic.py`, `core/ai_cost_logic.py`, `core/repositories/ai_repo.py`, `cogs/ai/__init__.py`, `tests/test_ai_router.py`, `tests/test_ai_guardrail_logic.py`, `tests/test_ai_cost_logic.py`, `cogs/ai/admin.py`, `core/ai_queue_logic.py`, `core/ai_privacy_logic.py`, `core/repositories/ai_library_repo.py`, `tests/test_ai_queue_logic.py`, `tests/test_ai_privacy_logic.py`, `tests/test_ai_library.py` | — |
+  | Assistente e helpdesk | AI-R-024…AI-R-038 (15) | `cogs/ai/helpdesk.py`, `core/ai_helpdesk_logic.py`, `core/repositories/ai_faq_repo.py`, `tests/test_ai_helpdesk_logic.py` | `core/command_search_logic.py`, `cogs/utility/command_search.py` |
+  | Moderazione e sicurezza con AI | AI-R-039…AI-R-042 (4) | `cogs/ai/moderation_assist.py`, `core/ai_moderation_logic.py`, `tests/test_ai_moderation_logic.py` | `cogs/moderation/report.py`, `cogs/automod/automod.py`, `cogs/security/lockdown.py` |
+  | Riassunti e ricerca | AI-R-043…AI-R-048 (6) | `cogs/ai/summaries.py`, `core/ai_digest_logic.py`, `core/ai_digest_worker.py`, `core/repositories/ai_digest_repo.py`, `cogs/utility/keyword_alerts.py`, `core/keyword_alert_logic.py`, `core/repositories/keyword_alert_repo.py`, `tests/test_ai_digest_logic.py`, `tests/test_keyword_alerts.py` | `cogs/logging/logs_query.py` |
+  | Lore, giochi e narrazione | AI-R-049…AI-R-064 (16) | `cogs/ai/lore.py`, `core/lore_logic.py`, `core/repositories/lore_repo.py`, `cogs/fun/boss.py`, `core/boss_logic.py`, `core/boss_worker.py`, `core/repositories/boss_repo.py`, `cogs/fun/dungeon.py`, `core/dungeon_logic.py`, `core/repositories/dungeon_repo.py`, `cogs/ai/characters.py`, `tests/test_lore_logic.py`, `tests/test_boss_logic.py`, `tests/test_dungeon_logic.py` | `core/setup_wizard_logic.py`, `cogs/utility/setup.py` |
+  | Immagini, voce e media | AI-R-065…AI-R-070 (6) | `cogs/ai/images.py`, `core/ai_image_logic.py`, `core/boss_image.py`, `tests/test_ai_image_logic.py`, `tests/test_boss_image.py` | — |
+  | Ticket e staff | AI-R-071…AI-R-075 (5) | `cogs/ai/ticket_assist.py`, `core/ai_ticket_logic.py`, `tests/test_ai_ticket_logic.py` | `cogs/tickets/tickets.py`, `core/ticket_logic.py` |
+  | Livelli, economia e community | AI-R-076…AI-R-080 (5) | `core/lore_collection_logic.py`, `tests/test_lore_collection_logic.py` | `cogs/leveling/leveling.py`, `cogs/leveling/profiles.py`, `core/repositories/profile_repo.py` |
+  | Traduzione e lingue | AI-R-081…AI-R-088 (8) | `cogs/ai/translate.py`, `core/translate_logic.py`, `tests/test_translate_logic.py` | `cogs/user_app/personal.py`, `core/command_search_logic.py` |
+  | Owner e analisi | AI-R-089…AI-R-091 (3) | nessuno in questo repository | `cogs/ai/admin.py` (gruppo 1), `cogs/utility/privacy.py`, `core/ai_cost_logic.py` |
+  | App utente e Desktop | AI-R-092…AI-R-097 (6) | `tests/test_user_app_ai.py` | `cogs/user_app/personal.py` |
+  | Pannello web | AI-R-098…AI-R-100 (3) | nessuno in questo repository | `core/config_schema.py`, `core/panel_bridge.py` |
+
+- **Migrazione:** `core/migrations/NNNN_ai.sql` (motore: uso, cache, consenso, libreria), `core/migrations/NNNN_ai_lore.sql` (può nascere prima del motore), `core/migrations/NNNN_ai_faq.sql`, `core/migrations/NNNN_ai_digest.sql`, `core/migrations/NNNN_keyword_alerts.sql`, `core/migrations/NNNN_boss_dungeon.sql`.
+- **Limiti da rispettare:** Vietato usare i messaggi per addestrare modelli; risposta entro 3 secondi con `defer()`; testo 2000/4096; tetto di spesa (D13); 25 comandi per sotto-gruppo; 5 messaggi dopo la prima risposta dove l'app non è nel server; un riepilogo o un boss a orario lo esegue un solo bot.
+- **Ordine dei lavori:** quello di `FUNZIONI_AI.md` ("Ordine consigliato dentro la fase F12"). Il passo 0 (lore, tetto, interruttori, consenso, livelli di privacy, registro dei comandi, parte del riepilogo fatta di numeri) non manda niente a nessun fornitore e si può fare prima della policy.
+- **Dipende da:** Privacy policy pubblicata con l'elenco dei fornitori. Consenso dell'admin per server. `message_content`. D13. NF-06 (registro dei comandi), NF-25 (attività, per riepilogo e boss), NF-40 (oggetti e profilo, per i premi).
 
 ### NF-25 — Statistiche di attività e ruoli per attività
 
@@ -510,7 +527,7 @@ va **dentro** un sotto-gruppo esistente (per esempio dentro `config`).
 ### NF-41 — Idee rimandate di `BACKLOG.md`
 
 - **Fase:** F14 · **SPEC:** BACKLOG §6, §7, §9, §11
-- **Cosa fa:** Missioni, traguardi, serie di giorni consecutivi, "battle pass"; profilo globale con soli dati positivi; punteggio di rischio che unisce i segnali di sicurezza; misura del carico dello staff (senza premi automatici).
+- **Cosa fa:** Missioni, traguardi, serie di giorni consecutivi, "battle pass"; profilo globale con soli dati positivi; punteggio di rischio che unisce i segnali di sicurezza; misura del carico dello staff (senza premi automatici). **Attenzione:** questa scheda non conteneva tutto ciò che `BACKLOG.md` §7–§9 aveva rimandato. World Boss, Dungeon, frammenti di lore e Spirito Yokai ora sono in NF-24 (`FUNZIONI_AI.md`). Le idee non AI che mancavano (guerra tra clan OM-040, albero delle abilità OM-041, percorso di ingresso OM-048, mentori OM-050, ricordi OM-051, anniversari OM-052, eventi di stagione OM-053, gradi OM-060, profili pronti OM-061, identità del server OM-062 e altre) sono in [`../01-analisi/VOCI_OMESSE.md`](../01-analisi/VOCI_OMESSE.md), con i dettagli da non perdere per missioni, serie e battle pass.
 - **Da chi prendere spunto:** Tatsu, Dank Memer.
 - **Comandi:** Da decidere quando si arriva alla fase.
 - **File nuovi:** nessuno in questo repository.
@@ -627,6 +644,53 @@ il loro numero si sceglie quando si scrivono.
 | `tests/test_ai_router.py` | Cascata dei fornitori e risposta locale | NF-24 | F12 |
 | `tests/test_ai_guardrail_logic.py` | Filtri e dati personali rimossi | NF-24 | F12 |
 | `tests/test_ai_cost_logic.py` | Tetto di spesa rispettato | NF-24 | F12 |
+| `cogs/ai/admin.py` | Comandi `/admin ai` e `/owner ai`: stato, interruttori, tetto, privacy, filtri, fornitori, modello, spesa, libreria | NF-24 | F12 |
+| `core/ai_queue_logic.py` | Coda delle richieste e limite per server e globale | NF-24 | F12 |
+| `core/ai_privacy_logic.py` | Consenso, livelli di privacy e tempo di conservazione del contesto | NF-24 | F12 |
+| `core/repositories/ai_library_repo.py` | Libreria dei contenuti generati e testi di riserva per tema | NF-24 | F12 |
+| `tests/test_ai_queue_logic.py` | Molte richieste insieme: fila, limite, risposta locale oltre l'attesa | NF-24 | F12 |
+| `tests/test_ai_privacy_logic.py` | Senza consenso niente AI; ogni livello passa solo ciò che può | NF-24 | F12 |
+| `tests/test_ai_library.py` | Contenuto salvato e riusato; niente dati di utenti nella libreria | NF-24 | F12 |
+| `core/ai_helpdesk_logic.py` | Sceglie le fonti (FAQ, regole, registro dei comandi) e prepara la risposta con al massimo 3 comandi e il loro stato | NF-24 | F12 |
+| `core/repositories/ai_faq_repo.py` | Base di conoscenza del server: domande, risposte, regole | NF-24 | F12 |
+| `tests/test_ai_helpdesk_logic.py` | Solo comandi che esistono; stato giusto; funziona anche senza AI | NF-24 | F12 |
+| `cogs/ai/moderation_assist.py` | Avvisi allo staff, etichetta delle segnalazioni, riassunto di un incidente, proposta di regole | NF-24 | F12 |
+| `core/ai_moderation_logic.py` | Prepara la proposta e i bottoni di conferma; nessuna azione diretta | NF-24 | F12 |
+| `tests/test_ai_moderation_logic.py` | Nessuna punizione senza conferma; permessi di chi conferma | NF-24 | F12 |
+| `core/ai_digest_logic.py` | Contenuto del riepilogo: i numeri (senza AI) e il testo (con AI) | NF-24 | F12 |
+| `core/ai_digest_worker.py` | Pubblica il riepilogo all'ora scelta, da un solo bot | NF-24 | F12 |
+| `core/repositories/ai_digest_repo.py` | Configurazione del riepilogo e ultimi riepiloghi salvati | NF-24 | F12 |
+| `cogs/utility/keyword_alerts.py` | Parole chiave personali e avviso quando una discussione si accende | NF-24 | F12 |
+| `core/keyword_alert_logic.py` | Conteggio per canale e parola, soglia, pausa tra gli avvisi | NF-24 | F12 |
+| `core/repositories/keyword_alert_repo.py` | Parole registrate per utente | NF-24 | F12 |
+| `tests/test_ai_digest_logic.py` | Solo i canali scelti; embed entro i limiti; riepilogo senza AI | NF-24 | F12 |
+| `tests/test_keyword_alerts.py` | Soglia dei 10 messaggi; nessun avviso per canali che l'utente non vede | NF-24 | F12 |
+| `core/lore_logic.py` | Temi pronti, tema libero, nomi a tema, testo da aggiungere a ogni richiesta | NF-24 | F12 |
+| `core/repositories/lore_repo.py` | Tabella `guild_lore_config` | NF-24 | F12 |
+| `cogs/fun/boss.py` | World Boss: annuncio, bottoni di combattimento, chiusura | NF-24 | F12 |
+| `core/boss_logic.py` | Danno, vita del boss, premi | NF-24 | F12 |
+| `core/boss_worker.py` | Comparsa a orario | NF-24 | F12 |
+| `core/repositories/boss_repo.py` | Eventi, partecipanti, danni | NF-24 | F12 |
+| `cogs/fun/dungeon.py` | Dungeon di gruppo: stanze, voto, misteri | NF-24 | F12 |
+| `core/dungeon_logic.py` | Esito delle scelte secondo classi e livelli; stanze di riserva | NF-24 | F12 |
+| `core/repositories/dungeon_repo.py` | Partite, classi scelte, misteri e premi a tempo | NF-24 | F12 |
+| `cogs/ai/characters.py` | Personaggi AI del server | NF-24 | F12 |
+| `tests/test_lore_logic.py` | Tema di partenza, tema libero filtrato, nomi a tema | NF-24 | F12 |
+| `tests/test_boss_logic.py` | Danno, vita, premi una volta sola, evento senza AI | NF-24 | F12 |
+| `tests/test_dungeon_logic.py` | Voto, esito, partita senza AI | NF-24 | F12 |
+| `core/ai_image_logic.py` | Filtro prima e dopo, quota di immagini, variazioni e ingrandimento | NF-24 | F12 |
+| `core/boss_image.py` | Disegna l'immagine dell'annuncio del boss (Pillow, senza AI) | NF-24 | F12 |
+| `tests/test_ai_image_logic.py` | Richiesta vietata rifiutata; quota rispettata; file sotto 10 MiB | NF-24 | F12 |
+| `tests/test_boss_image.py` | Dimensioni e nome lungo | NF-24 | F12 |
+| `cogs/ai/ticket_assist.py` | Bottone "Chiedi all'assistente", prima risposta, bozza per lo staff, smistamento, riassunto nel transcript | NF-24 | F12 |
+| `core/ai_ticket_logic.py` | Cosa può leggere l'AI in un ticket e come prepara bozza e riassunto | NF-24 | F12 |
+| `tests/test_ai_ticket_logic.py` | Bozza mai inviata da sola; ticket che funziona con l'AI ferma | NF-24 | F12 |
+| `core/lore_collection_logic.py` | Frammenti di lore e Spirito Yokai: come si ottengono, cosa sbloccano | NF-24 | F12 |
+| `tests/test_lore_collection_logic.py` | Frammento dato una volta; spirito cambiabile; nessun effetto sui permessi | NF-24 | F12 |
+| `cogs/ai/translate.py` | Traduzione di un canale, con la bandiera, di più messaggi di fila | NF-24 | F12 |
+| `core/translate_logic.py` | Riconosce la lingua, sceglie il servizio, usa la cache delle traduzioni | NF-24 | F12 |
+| `tests/test_translate_logic.py` | Lingua riconosciuta; testo già tradotto preso dalla cache | NF-24 | F12 |
+| `tests/test_user_app_ai.py` | Cerca comando, assistente personale e scheda di lore fuori dal server: al massimo 5 messaggi dopo la prima risposta | NF-24 | F12 |
 | `cogs/utility/activity_stats.py` | Comandi delle statistiche | NF-25 | F13 |
 | `core/activity_stats_logic.py` | Aggregazione per giorno e calcolo dei ruoli per attività | NF-25 | F13 |
 | `core/repositories/activity_stats_repo.py` | Conteggi giornalieri | NF-25 | F13 |
@@ -681,4 +745,4 @@ il loro numero si sceglie quando si scrivono.
 | `tests/test_coin_games_logic.py` | Regole e saldo mai negativo | NF-40 | F13 |
 | `tests/test_profiles.py` | Profilo e collezione | NF-40 | F13 |
 
-Totale: 153 file.
+Totale: 200 file.
