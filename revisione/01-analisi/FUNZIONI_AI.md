@@ -96,7 +96,10 @@ Ho riletto per intero, non a campione:
 
 **Dov'è oggi:** una voce di `SPEC.md`, una scheda `NF`, un codice del
 catalogo, oppure **in nessuna lista**. `BACKLOG.md` è archivio: non
-conta come lista, ma riporto il suo vecchio verdetto.
+conta come lista, ma riporto il suo vecchio verdetto. La colonna
+fotografa le liste **com'erano prima di questo lavoro** (05/10/2026).
+Da allora ogni riga ha la sua voce in `SPEC.md` §25: la tabella è in
+fondo a questo file.
 
 **Parole usate nella colonna dei limiti:**
 
@@ -369,6 +372,39 @@ in `SPEC.md`. Decide l'owner se farle entrare.
 | 11 | Suggerimenti doppi raggruppati | I suggerimenti simili vengono proposti come uno solo | embedding | Conferma dello staff |
 | 12 | Statistiche spiegate a parole | "Questo mese i nuovi membri sono rimasti di più" | testo | Solo numeri aggregati, nessun nome |
 | 13 | Titolo automatico di ticket e thread | Un titolo breve al posto di `ticket-0001` | testo | Rinomina 2 ogni 10 minuti per canale (`LIM-3`) |
+
+## Dove sta ogni codice in `SPEC.md`
+
+Dal 05/10/2026 ogni riga di questo file ha una voce in `SPEC.md` §25.
+Le voci 25.1–25.9 c'erano già e raccolgono più righe.
+
+| Codice | Voce | Codice | Voce | Codice | Voce | Codice | Voce |
+|---|---|---|---|---|---|---|---|
+| AI-R-001 | 25.1 | AI-R-026 | 25.25 | AI-R-051 | 25.7 | AI-R-076 | 25.69 |
+| AI-R-002 | 25.1 | AI-R-027 | 25.26 | AI-R-052 | 25.47 | AI-R-077 | 25.70 |
+| AI-R-003 | 25.10 | AI-R-028 | 25.27 | AI-R-053 | 25.48 | AI-R-078 | 25.71 |
+| AI-R-004 | 25.2 | AI-R-029 | 25.28 | AI-R-054 | 25.49 | AI-R-079 | 25.72 |
+| AI-R-005 | 25.11 | AI-R-030 | 25.29 | AI-R-055 | 25.50 | AI-R-080 | 25.73 |
+| AI-R-006 | 25.12 | AI-R-031 | 25.30 | AI-R-056 | 25.51 | AI-R-081 | 25.74 |
+| AI-R-007 | 25.1 | AI-R-032 | 25.31 | AI-R-057 | 25.52 | AI-R-082 | 25.75 |
+| AI-R-008 | 25.13 | AI-R-033 | 25.5 | AI-R-058 | 25.53 | AI-R-083 | 25.76 |
+| AI-R-009 | 25.4 | AI-R-034 | 25.32 | AI-R-059 | 25.54 | AI-R-084 | 25.77 |
+| AI-R-010 | 25.4 | AI-R-035 | 25.33 | AI-R-060 | 25.55 | AI-R-085 | 25.78 |
+| AI-R-011 | 25.14 | AI-R-036 | 25.34 | AI-R-061 | 25.56 | AI-R-086 | 25.79 |
+| AI-R-012 | 25.15 | AI-R-037 | 25.35 | AI-R-062 | 25.57 | AI-R-087 | 25.80 |
+| AI-R-013 | 25.3 | AI-R-038 | 25.36 | AI-R-063 | 25.58 | AI-R-088 | 25.81 |
+| AI-R-014 | 25.16 | AI-R-039 | 25.37 | AI-R-064 | 25.59 | AI-R-089 | 25.82 |
+| AI-R-015 | 25.17 | AI-R-040 | 25.38 | AI-R-065 | 25.8 | AI-R-090 | 25.83 |
+| AI-R-016 | 25.18 | AI-R-041 | 25.39 | AI-R-066 | 25.60 | AI-R-091 | 25.84 |
+| AI-R-017 | 25.9 | AI-R-042 | 25.40 | AI-R-067 | 25.61 | AI-R-092 | 25.85 |
+| AI-R-018 | 25.19 | AI-R-043 | 25.6 | AI-R-068 | 25.62 | AI-R-093 | 25.86 |
+| AI-R-019 | 25.9 | AI-R-044 | 25.41 | AI-R-069 | 25.63 | AI-R-094 | 25.87 |
+| AI-R-020 | 25.20 | AI-R-045 | 25.42 | AI-R-070 | 25.64 | AI-R-095 | 25.88 |
+| AI-R-021 | 25.21 | AI-R-046 | 25.43 | AI-R-071 | 25.65 | AI-R-096 | 25.89 |
+| AI-R-022 | 25.22 | AI-R-047 | 25.44 | AI-R-072 | 25.66 | AI-R-097 | 25.90 |
+| AI-R-023 | 25.23 | AI-R-048 | 25.45 | AI-R-073 | 25.67 | AI-R-098 | 25.91 |
+| AI-R-024 | 25.5 | AI-R-049 | 25.7 | AI-R-074 | 25.68 | AI-R-099 | 25.92 |
+| AI-R-025 | 25.24 | AI-R-050 | 25.46 | AI-R-075 | 25.6 | AI-R-100 | 25.93 |
 
 ## Conteggio
 
