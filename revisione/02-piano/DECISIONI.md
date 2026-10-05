@@ -236,12 +236,13 @@ Discord; sotto c'è un messaggio con "Trascrivi" e "Nella mia lingua",
 che risponde solo a chi preme, nella lingua del suo client.
 
 **Come:**
-- Motore scelto dall'owner: **Kokoro-82M**, voce italiana `if_sara`.
+- Motore scelto dall'owner (05/10, dopo le prove): **Piper, voce
+  italiana Paola**, con un filtro audio e i profili per contesto.
   Locale, sul processore, dentro il bot (in un thread a parte e in
   coda). Niente servizi cloud, niente chiavi, niente quote. Il motore
   sta dietro un'interfaccia: si può cambiare senza toccare il resto.
-  Alternativa già studiata: Qwen3-TTS VoiceDesign (vuole una scheda
-  video).
+  Scartati alla prova: Kokoro, Dii, e i motori pesanti (Qwen3-TTS,
+  Chatterbox) perché il server non ha una scheda video.
 - Stesso testo, stessa voce, stessa lingua → stesso file, dalla cache.
 - La trascrizione è il testo di partenza: non serve ascoltare l'audio.
 - Il testo passa dai filtri del server prima di diventare voce.

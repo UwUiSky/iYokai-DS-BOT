@@ -20,13 +20,14 @@
 - I messaggi degli utenti vanno solo ai servizi segnati "può ricevere
   messaggi".
 - Le chiavi stanno solo nel `.env` dell'owner.
-- Voce (D22): motore scelto dall'owner **Kokoro-82M, voce `if_sara`**,
-  locale e dentro il bot. Dettaglio in
-  `revisione/02-piano/VOCE_YOKAI.md`; prototipo dei profili in
+- Voce (D22): scelta finale dell'owner **Piper, voce Paola**, con
+  filtro e profili per contesto, locale e dentro il bot. Dettaglio in
+  `revisione/02-piano/VOCE_YOKAI.md`; prototipo in
   `scripts/prova_voce.py`. Per lo snodo è un fornitore di tipo
   `audio`, senza quota e senza chiave.
-- Mai mescolare `if_sara` con voci di altre lingue: R moscia e parole
-  impastate. Alternative studiate: Qwen3-TTS (scheda video), Piper.
+- Scartati alla prova: Kokoro (R moscia), Dii (non commerciale),
+  Qwen3-TTS e Chatterbox (server senza scheda video: 2 OCPU, 12 GB).
+- Da fare prima della produzione: controllare la licenza di Paola.
 
 ## Aperto
 - Elenco dei servizi e delle chiavi (nomi delle variabili) dall'owner.

@@ -27,7 +27,8 @@
   l'AI scrive da zero; messaggi solo a servizi che non addestrano.
 - D20: agenti specializzati con memoria. D21: aggiornamento a caldo.
 - D22: voce di Yokai (vocali veri + trascrizione e traduzione a
-  bottone; sintesi sul server; tono `piccante` solo in NSFW).
+  bottone; Piper Paola con filtro, sul server; tono `piccante` solo in
+  NSFW). Server: Oracle Always Free, 2 OCPU Ampere, 12 GB, 200 GB.
 - Commit sempre come `Yokai Bot Dev` (confermato dall'owner il 05/10):
   il controllo automatico che chiede di cambiare autore si ignora.
 
@@ -73,8 +74,7 @@
 - Nel `.env`: `ENVIRONMENT=development` oppure `production`.
 - L'**elenco dei servizi AI** che vuole usare (i nomi; le chiavi
   restano nel suo `.env`).
-- Voce (#142): giudizio sui campioni Kokoro `if_sara` del 05/10 (uno
-  per contesto). Se va bene si parte con il codice.
+- Voce (#142): niente in attesa. Scelta fatta: Piper Paola con filtro.
 - Creare l'applicazione **iYokai Mod** quando parte F3.
 - Le prove di `VERIFICA_LIVE.md`.
 - Da riprendere con lui: le idee di Gemini approvate in blocco; log su
