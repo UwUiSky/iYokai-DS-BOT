@@ -94,6 +94,28 @@ async def test_anti_link_blacklist_cancella_il_link_vietato(cog):
     assert await _violazioni_registrate() == ["anti_link"]
 
 
+async def test_anti_link_dominio_scritto_come_link_blocca_anche_le_varianti(cog):
+    # M 2.6: la voce viene salvata come nome host; porta, nome utente e
+    # sottodominio non bastano più per aggirare la lista.
+    await cog.anti_link_mode.callback(cog, _interazione_admin(), _scelta("blacklist"))
+    await cog.anti_link_domain.callback(
+        cog, _interazione_admin(), _scelta("add"), _scelta("blacklist"), "https://www.Evil.com/"
+    )
+    varianti = [
+        _messaggio("https://evil.com:443/premio"),
+        _messaggio("https://x@evil.com/premio"),
+        _messaggio("https://sub.evil.com/premio"),
+    ]
+
+    for messaggio in varianti:
+        await cog.on_message(messaggio)
+
+    for messaggio in varianti:
+        messaggio.delete.assert_awaited_once()
+    impostazioni = await automod_advanced_repo.get_settings(GUILD_ID)
+    assert impostazioni.config.anti_link.blacklist == ("evil.com",)
+
+
 async def test_anti_link_whitelist_cancella_il_link_non_ammesso(cog):
     await cog.anti_link_mode.callback(cog, _interazione_admin(), _scelta("whitelist"))
     await cog.anti_link_domain.callback(

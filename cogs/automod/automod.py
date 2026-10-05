@@ -61,7 +61,7 @@ from core.automod_advanced_logic import (
     VIOLATION_SPAM_STICKER,
     VIOLATION_ZALGO,
     evaluate_message_violations,
-    extract_domains,
+    normalize_domain,
 )
 from core.automod_rate_tracker import rate_tracker
 from core.repositories.automod_repo import automod_repo
@@ -86,6 +86,9 @@ MAX_ELENCO_IN_CHAT = 1900
 # Discord accetta al massimo 60 caratteri per parola in una regola
 # AutoMod: una parola più lunga farebbe fallire ogni sincronizzazione.
 MAX_LUNGHEZZA_PAROLA = MAX_KEYWORD_LENGTH
+
+# Un nome di dominio è lungo al massimo 253 caratteri.
+MAX_LUNGHEZZA_DOMINIO = 253
 
 # Finestra massima (in secondi) dei filtri anti-spam: il contatore in
 # memoria tiene un valore per ogni evento dentro la finestra.
@@ -627,12 +630,20 @@ class AutomodCog(commands.Cog):
         interaction: discord.Interaction,
         action: app_commands.Choice[str],
         lista: app_commands.Choice[str],
-        domain: str,
+        domain: app_commands.Range[str, 1, MAX_LUNGHEZZA_DOMINIO],
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
+        # Si salva il solo nome host: "https://www.Evil.com:443/x" e
+        # "evil.com" sono la stessa voce.
+        dominio = normalize_domain(domain)
+        if not dominio:
+            await interaction.response.send_message(
+                "Non riconosco un dominio in quello che hai scritto. Esempio: `esempio.com`.",
+                ephemeral=True,
+            )
+            return
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
-        dominio = domain.strip().lower()
         attuale = settings.config.anti_link.whitelist if lista.value == "whitelist" else settings.config.anti_link.blacklist
 
         if action.value == "add":
