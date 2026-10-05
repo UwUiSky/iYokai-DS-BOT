@@ -303,3 +303,14 @@ Chiesto dall'owner il 05/10/2026 (notte): "scegli te". Scelta: fare F7 ora.
 - Nessuna compatibilità con i vecchi nomi (D4).
 - Ordine: un agente alla volta sui file dei cog (i comandi si spostano);
   prima il quadro in `core/`, poi le aree.
+
+**Aggiornamento D24 (guardiano-limiti, 05/10/2026):** con 13 gruppi `/admin`
+supera gli 8000 caratteri per comando (9241 oggi, solo con i comandi che
+già esistono). Si passa a **16 gruppi**: `/admin` si divide in `/admin`,
+`/gestione` (ticket, voice, economia, ruoli, benvenuto) e `/moduli`
+(alert e le funzioni nuove), e `automod` resta di primo livello. Restano
+84 posti liberi su 100. Tutta la mappatura `comando di oggi → nuovo
+percorso` è in `revisione/02-piano/MAPPA_COMANDI_F7.md`. Si toglie il
+prefisso `[Admin] ` / `[OWNER] ` dalle descrizioni (8 caratteri per comando).
+Il test dei caratteri per comando (massimo 8000, allarme a 6800) e dei nomi
+unici tra figli si aggiunge in `tests/test_command_tree_invariants.py`.
