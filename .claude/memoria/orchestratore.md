@@ -26,6 +26,7 @@
 - D19: AI **usata, non addestrata**; libreria comune solo per ciò che
   l'AI scrive da zero; messaggi solo a servizi che non addestrano.
 - D20: agenti specializzati con memoria. D21: aggiornamento a caldo.
+- D23: boost clan per tipo (exp, coin, super), niente acquisti sovrapposti.
 - D22: voce di Yokai (vocali veri + trascrizione e traduzione a
   bottone; Piper Paola con filtro, sul server; tono `piccante` solo in
   NSFW). Server: Oracle Always Free, 2 OCPU Ampere, 12 GB, 200 GB.
@@ -37,7 +38,7 @@
 
 ## In corso
 - Suite completa lanciata (log nello scratchpad `suite.log`) dopo l'unione
-  di #134 (`database.py` toccato): `suite2.log`. La suite precedente: 3182 passati.
+  di #146 (migrazione 0020): `suite3.log` nello scratchpad. La precedente: 3198 passati.
 
 ## Coda (in ordine)
 1. Fatti e chiusi (con `verifica-live`): #137, #133, #135, #136, #134
@@ -53,16 +54,16 @@
 6. F2 musica (#64, #45, #47, #48, #126; un nodo per bot), F3 backup
    (#68, #121) e iYokai Mod (#113), poi F5, F6, F7; richieste del
    05/10: #138–#142.
-7. Domanda aperta per l'owner: i boost clan si sommano (2 pagamenti = 48 h)?
-   Oggi sì (scelta consigliata, nessun tetto). Aggiungere `PROMPT_PROGETTO.md`
-   spiegato.
+7. Boost clan per tipo: fatto (#146, D23, unito `c5d88f6`, migrazione 0020).
+   Il cumulo di 48 h non c'è più.
 
 ## Cose pratiche
 - Repository: `/home/claude/repo`. Copie di lavoro:
   `/home/claude/wt/<nome>`; database `iyokai_w<nome>`.
 - **La macchina si riavvia senza avviso**: fare commit e push spesso.
   Dopo un riavvio: `service postgresql start`.
-- Nessuna copia di lavoro attiva.
+- Copia `b146` unita: toglierla se pulita. Database `iyokai_wcaccia` e
+  `iyokai_wrevisore` per i controlli (mai `iyokai_test` dagli agenti).
 - Con la shell: esportare `DATABASE_URL` del proprio database in OGNI
   comando, altrimenti i test usano quello condiviso.
 - Suite completa: lanciarla con `nohup … &` (il limite di 10 minuti la
