@@ -35,8 +35,9 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.database import db
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
+from core.security_access import premium_sbloccato
 from core.security_logic import AntiRaidConfig, JoinSignals, evaluate_join, is_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
@@ -179,6 +180,12 @@ class AntiRaidCog(commands.Cog):
     async def cog_load(self) -> None:
         self._controlla_scadenze.start()
 
+    async def _modulo_utilizzabile(self, guild_id: int) -> bool:
+        """Modulo attivo nel server e, se è premium, sbloccato."""
+        if not await db.is_module_active_for_guild(guild_id, MODULE_ANTI_RAID):
+            return False
+        return await premium_sbloccato(guild_id, MODULE_ANTI_RAID, self.bot)
+
     async def cog_unload(self) -> None:
         self._controlla_scadenze.cancel()
 
@@ -188,6 +195,7 @@ class AntiRaidCog(commands.Cog):
 
     @anti_raid_group.command(name="enable", description="Attiva o disattiva l'Anti-Raid.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def enable(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -198,6 +206,7 @@ class AntiRaidCog(commands.Cog):
     @anti_raid_group.command(name="join-rate", description="Configura il limite di join in un intervallo di tempo.")
     @app_commands.describe(max_joins="Numero massimo di join consentiti nella finestra", seconds="Finestra in secondi")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def join_rate(self, interaction: discord.Interaction, max_joins: int, seconds: int) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -210,6 +219,7 @@ class AntiRaidCog(commands.Cog):
     @anti_raid_group.command(name="account-age", description="Età minima dell'account per non essere considerato sospetto.")
     @app_commands.describe(seconds="Età minima in secondi (es. 86400 = 1 giorno)")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def account_age(self, interaction: discord.Interaction, seconds: int) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -219,6 +229,7 @@ class AntiRaidCog(commands.Cog):
 
     @anti_raid_group.command(name="username-check", description="Attiva/disattiva il rilevamento pattern username sospetti.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def username_check(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -228,6 +239,7 @@ class AntiRaidCog(commands.Cog):
 
     @anti_raid_group.command(name="avatar-check", description="Attiva/disattiva il rilevamento avatar assente.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def avatar_check(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -244,6 +256,7 @@ class AntiRaidCog(commands.Cog):
         ]
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def lockdown_action(self, interaction: discord.Interaction, action: app_commands.Choice[str]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -253,6 +266,7 @@ class AntiRaidCog(commands.Cog):
 
     @anti_raid_group.command(name="alert-channel", description="Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_RAID)
     async def alert_channel(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -261,6 +275,7 @@ class AntiRaidCog(commands.Cog):
         await interaction.response.send_message(f"Canale di alert impostato su {channel.mention}.", ephemeral=True)
 
     @anti_raid_group.command(name="status", description="Mostra la configurazione attuale dell'Anti-Raid.")
+    @requires_module(MODULE_ANTI_RAID)
     async def status(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
@@ -280,7 +295,7 @@ class AntiRaidCog(commands.Cog):
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
         """Un canale creato dopo il ruolo di quarantena riceve lo stesso blocco."""
         guild = channel.guild
-        if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_RAID):
+        if not await self._modulo_utilizzabile(guild.id):
             return
         settings = await security_repo.get_settings(guild.id)
         if settings.quarantine_role_id is None:
@@ -296,7 +311,7 @@ class AntiRaidCog(commands.Cog):
         if member.bot:
             return
         guild = member.guild
-        if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_RAID):
+        if not await self._modulo_utilizzabile(guild.id):
             return
 
         settings = await security_repo.get_settings(guild.id)

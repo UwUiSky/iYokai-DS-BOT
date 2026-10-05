@@ -38,8 +38,9 @@ from discord.ext import commands
 
 from core.bounded_cache import BoundedCache
 from core.database import db
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
+from core.security_access import premium_sbloccato
 from core.security_logic import (
     AntiNukeConfig,
     NUKE_CATEGORY_BAN_KICK,
@@ -196,6 +197,7 @@ class AntiNukeCog(commands.Cog):
 
     @anti_nuke_group.command(name="enable", description="Attiva o disattiva l'Anti-Nuke.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_NUKE)
     async def enable(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
@@ -215,6 +217,7 @@ class AntiNukeCog(commands.Cog):
         ]
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_NUKE)
     async def limits(
         self, interaction: discord.Interaction, category: app_commands.Choice[str], max_actions: int, seconds: int
     ) -> None:
@@ -240,6 +243,7 @@ class AntiNukeCog(commands.Cog):
 
     @anti_nuke_group.command(name="trusted-add", description="Esenta un utente/bot fidato da tutti i controlli Anti-Nuke.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_NUKE)
     async def trusted_add(self, interaction: discord.Interaction, user_id: str) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
@@ -257,6 +261,7 @@ class AntiNukeCog(commands.Cog):
 
     @anti_nuke_group.command(name="trusted-remove", description="Rimuove un utente/bot dalla lista fidati Anti-Nuke.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_NUKE)
     async def trusted_remove(self, interaction: discord.Interaction, user_id: str) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
@@ -279,6 +284,7 @@ class AntiNukeCog(commands.Cog):
         ]
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_NUKE)
     async def punish_action(self, interaction: discord.Interaction, action: app_commands.Choice[str]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
@@ -288,6 +294,7 @@ class AntiNukeCog(commands.Cog):
 
     @anti_nuke_group.command(name="recovery", description="Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_ANTI_NUKE)
     async def recovery(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
@@ -296,6 +303,7 @@ class AntiNukeCog(commands.Cog):
         await interaction.response.send_message(f"Recovery automatico {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
     @anti_nuke_group.command(name="status", description="Mostra la configurazione attuale dell'Anti-Nuke.")
+    @requires_module(MODULE_ANTI_NUKE)
     async def status(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
@@ -322,6 +330,8 @@ class AntiNukeCog(commands.Cog):
     async def _impostazioni_attive(self, guild: discord.Guild) -> SecuritySettings | None:
         """Le impostazioni del server se l'anti-nuke è attivo lì, altrimenti None."""
         if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_NUKE):
+            return None
+        if not await premium_sbloccato(guild.id, MODULE_ANTI_NUKE, self.bot):
             return None
         settings = await security_repo.get_settings(guild.id)
         return settings if settings.anti_nuke.enabled else None

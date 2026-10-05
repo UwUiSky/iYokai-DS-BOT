@@ -64,9 +64,10 @@ from core.image_thumbnail_logic import (
 )
 from core.safe_image import run_spam_trap_image_task
 from core.invite_tracker import invite_tracker
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, registry, requires_module
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
+from core.security_access import premium_sbloccato
 from core.spam_trap_logic import (
     BAN_ACTION_TYPE,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
@@ -398,6 +399,7 @@ class SpamTrapCog(commands.Cog):
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_SPAM_TRAP)
     async def spamtrap_setup(
         self,
         interaction: discord.Interaction,
@@ -524,6 +526,12 @@ class SpamTrapCog(commands.Cog):
     # ================================================================
     # Indicizzazione + trigger
     # ================================================================
+    async def _modulo_utilizzabile(self, guild_id: int) -> bool:
+        """Modulo attivo nel server e, se è premium, sbloccato."""
+        if not await db.is_module_active_for_guild(guild_id, MODULE_SPAM_TRAP):
+            return False
+        return await premium_sbloccato(guild_id, MODULE_SPAM_TRAP, self.bot)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
@@ -533,7 +541,7 @@ class SpamTrapCog(commands.Cog):
             await self._handle_possible_appeal(message)
             return
 
-        if not await db.is_module_active_for_guild(message.guild.id, MODULE_SPAM_TRAP):
+        if not await self._modulo_utilizzabile(message.guild.id):
             return
 
         if isinstance(message.channel, discord.TextChannel):
@@ -551,7 +559,7 @@ class SpamTrapCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        if not await db.is_module_active_for_guild(member.guild.id, MODULE_SPAM_TRAP):
+        if not await self._modulo_utilizzabile(member.guild.id):
             return
         # resolve_join_invite(), non find_used_invite() direttamente:
         # da quando anche il Logging Avanzato (SPEC.md §8.8) risolve

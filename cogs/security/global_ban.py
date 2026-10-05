@@ -37,12 +37,20 @@ from discord.ext import commands
 
 from core.database import db
 from core.global_ban_logic import should_propagate_ban
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, registry, requires_module
 from core.repositories.global_ban_repo import global_ban_repo
+from core.security_access import premium_sbloccato
 
 logger = logging.getLogger("iyokai.global_ban")
 
 MODULE_GLOBAL_BAN = "global_ban"
+
+
+async def _aderisce(bot: commands.Bot, guild_id: int) -> bool:
+    """Il server ha attivato il ban globale e, se il modulo è premium, lo ha sbloccato."""
+    if not await db.is_module_active_for_guild(guild_id, MODULE_GLOBAL_BAN):
+        return False
+    return await premium_sbloccato(guild_id, MODULE_GLOBAL_BAN, bot)
 
 
 async def propagate_ban(
@@ -57,13 +65,13 @@ async def propagate_ban(
     utente già bannato lì) su UN server target non deve bloccare la
     propagazione verso gli altri — viene solo loggato e saltato.
     """
-    source_opted_in = await db.is_module_active_for_guild(source_guild.id, MODULE_GLOBAL_BAN)
+    source_opted_in = await _aderisce(bot, source_guild.id)
     if not source_opted_in:
         return []
 
     propagati: list[int] = []
     for target in list(bot.guilds):
-        target_opted_in = await db.is_module_active_for_guild(target.id, MODULE_GLOBAL_BAN)
+        target_opted_in = await _aderisce(bot, target.id)
         if not should_propagate_ban(
             source_guild_id=source_guild.id,
             target_guild_id=target.id,
@@ -108,6 +116,7 @@ class GlobalBanCog(commands.Cog):
 
     @global_ban_group.command(name="enable", description="Aderisci alla rete di ban globali (propaga e ricevi).")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_GLOBAL_BAN)
     async def enable(self, interaction: discord.Interaction) -> None:
         await db.set_module_active_for_guild(
             interaction.guild.id, MODULE_GLOBAL_BAN, True, changed_by=interaction.user.id
@@ -128,6 +137,7 @@ class GlobalBanCog(commands.Cog):
 
     @global_ban_group.command(name="status", description="Mostra lo stato e la storia recente del ban globale.")
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_GLOBAL_BAN)
     async def status(self, interaction: discord.Interaction) -> None:
         attivo = await db.is_module_active_for_guild(interaction.guild.id, MODULE_GLOBAL_BAN)
         outgoing = await global_ban_repo.get_recent_outgoing(interaction.guild.id, limit=5)
