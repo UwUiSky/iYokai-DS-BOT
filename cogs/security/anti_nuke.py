@@ -75,6 +75,12 @@ MAX_MOTIVO = 512
 
 MOTIVO_RECOVERY = "Anti-Nuke: recovery automatico dopo cancellazione di massa"
 
+# Quanti membri si rimettono a un ruolo ricreato (Discord limita le
+# richieste: oltre il tetto si lascia il resto allo staff) e quante
+# cancellazioni si tengono da parte per autore.
+MAX_MEMBRI_RIPRISTINO = 500
+MAX_IN_ATTESA = 100
+
 # Dal 16/11/2026 un canale che il bot non può vedere arriva con questo
 # nome finto (LIMITI.md, Parte 2).
 NOME_CANALE_NASCOSTO = "___hidden___"
@@ -190,6 +196,9 @@ class AntiNukeCog(commands.Cog):
         self._categorie_ricreate: BoundedCache[int, discord.CategoryChannel] = BoundedCache(
             max_size=500
         )
+        # (server, autore) -> oggetti cancellati non ancora recuperati
+        # perché l'autore era ancora sotto soglia.
+        self._in_attesa: BoundedCache[tuple[int, int], list[object]] = BoundedCache(max_size=500)
 
     anti_nuke_group = app_commands.Group(
         name="anti-nuke", description="Configura la protezione anti-nuke del server."
@@ -344,12 +353,19 @@ class AntiNukeCog(commands.Cog):
         detail_suffix: str,
         target_id: int | None = None,
         attese: tuple[float, ...] = ATTESE_REGISTRO,
+        cancellato: discord.abc.GuildChannel | discord.Role | None = None,
     ) -> SecuritySettings | None:
         """
         Percorso comune dei listener. Prima si controlla se l'anti-nuke
         è attivo: dove è spento il registro di controllo non viene
         letto. Poi si cerca l'autore (nella prima delle `azioni` che ha
         una voce) e si passa al motore.
+
+        Se è passato l'oggetto `cancellato`, lo si tiene da parte per
+        quell'autore: sotto soglia non si ricrea nulla, ma appena
+        l'autore la supera si recupera anche ciò che aveva già
+        cancellato prima (e, se il recupero è attivo, ogni
+        cancellazione successiva).
         """
         settings = await self._impostazioni_attive(guild)
         if settings is None:
@@ -359,7 +375,30 @@ class AntiNukeCog(commands.Cog):
             actor_id = await _resolve_actor(guild, azione, target_id, attese)
             if actor_id is not None:
                 break
-        return await self._handle_event(guild, category, actor_id, detail_suffix, settings)
+        if cancellato is not None and actor_id is not None and actor_id != self.bot.user.id:
+            chiave = (guild.id, actor_id)
+            in_attesa = self._in_attesa.get(chiave) or []
+            in_attesa.append(cancellato)
+            self._in_attesa.set(chiave, in_attesa[-MAX_IN_ATTESA:])
+        violazione = await self._handle_event(guild, category, actor_id, detail_suffix, settings)
+        if violazione is not None and cancellato is not None and violazione.anti_nuke.recovery_enabled:
+            await self._recupera_in_attesa(guild.id, actor_id)
+        return violazione
+
+    async def _recupera_in_attesa(self, guild_id: int, actor_id: int) -> None:
+        """Ricrea tutto ciò che l'autore ha cancellato: prima le categorie, poi il resto."""
+        chiave = (guild_id, actor_id)
+        in_attesa = list(self._in_attesa.get(chiave) or [])
+        self._in_attesa.delete(chiave)
+        in_attesa.sort(key=lambda oggetto: not isinstance(oggetto, discord.CategoryChannel))
+        for oggetto in in_attesa:
+            try:
+                if isinstance(oggetto, discord.Role):
+                    await self._ricrea_ruolo(oggetto)
+                else:
+                    await self._ricrea_canale(oggetto)
+            except discord.HTTPException as errore:
+                logger.warning("Recovery di %s fallita: %s", getattr(oggetto, "name", "?"), errore)
 
     async def _handle_event(
         self,
@@ -406,16 +445,10 @@ class AntiNukeCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
-        settings = await self._evento(
+        await self._evento(
             channel.guild, NUKE_CATEGORY_CHANNEL, (discord.AuditLogAction.channel_delete,),
-            f"cancellato #{channel.name}", target_id=channel.id,
+            f"cancellato #{channel.name}", target_id=channel.id, cancellato=channel,
         )
-
-        if settings is not None and settings.anti_nuke.recovery_enabled:
-            try:
-                await self._ricrea_canale(channel)
-            except discord.HTTPException as errore:
-                logger.warning("Recovery del canale %s fallita: %s", channel.name, errore)
 
     async def _ricrea_canale(self, channel: discord.abc.GuildChannel) -> None:
         """
@@ -459,6 +492,12 @@ class AntiNukeCog(commands.Cog):
             if isinstance(channel, discord.TextChannel):
                 await guild.create_text_channel(news=channel.is_news(), **opzioni)
             else:
+                # I tag si ricreano nuovi (stesso nome, emoji, moderazione):
+                # gli ID vecchi non esistono più.
+                opzioni["available_tags"] = [
+                    discord.ForumTag(name=tag.name, emoji=tag.emoji, moderated=tag.moderated)
+                    for tag in channel.available_tags
+                ]
                 await guild.create_forum(media=channel.is_media(), **opzioni)
         elif isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
             # La qualità audio non può superare quella che il server
@@ -479,23 +518,45 @@ class AntiNukeCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:
-        settings = await self._evento(
+        await self._evento(
             role.guild, NUKE_CATEGORY_ROLE, (discord.AuditLogAction.role_delete,),
-            f"cancellato ruolo {role.name}", target_id=role.id,
+            f"cancellato ruolo {role.name}", target_id=role.id, cancellato=role,
         )
 
-        if settings is not None and settings.anti_nuke.recovery_enabled:
+    async def _ricrea_ruolo(self, role: discord.Role) -> None:
+        """
+        Ricrea un ruolo cancellato con le stesse impostazioni, nella
+        posizione di prima (mai sopra il ruolo più alto del bot) e
+        rimette il ruolo ai membri che lo avevano.
+        """
+        guild = role.guild
+        nuovo = await guild.create_role(
+            name=role.name,
+            permissions=role.permissions,
+            colour=role.colour,
+            hoist=role.hoist,
+            mentionable=role.mentionable,
+            reason=MOTIVO_RECOVERY,
+        )
+        massima = guild.me.top_role.position - 1
+        posizione = min(role.position, massima)
+        if posizione >= 1:
             try:
-                await role.guild.create_role(
-                    name=role.name,
-                    permissions=role.permissions,
-                    colour=role.colour,
-                    hoist=role.hoist,
-                    mentionable=role.mentionable,
-                    reason=MOTIVO_RECOVERY,
-                )
+                await nuovo.edit(position=posizione, reason=MOTIVO_RECOVERY)
+            except discord.HTTPException as errore:
+                logger.warning("Posizione del ruolo %s non ripristinata: %s", role.name, errore)
+
+        membri = list(role.members)
+        if len(membri) > MAX_MEMBRI_RIPRISTINO:
+            logger.warning(
+                "Ruolo %s: %d membri, ne rimetto solo %d.",
+                role.name, len(membri), MAX_MEMBRI_RIPRISTINO,
+            )
+        for membro in membri[:MAX_MEMBRI_RIPRISTINO]:
+            try:
+                await membro.add_roles(nuovo, reason=MOTIVO_RECOVERY)
             except discord.HTTPException:
-                logger.warning("Recovery del ruolo %s fallita.", role.name)
+                continue
 
     @commands.Cog.listener()
     async def on_webhooks_update(self, channel: discord.abc.GuildChannel) -> None:
