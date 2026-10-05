@@ -121,7 +121,9 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 # "last_weekly_decay_period IS DISTINCT FROM $1", ma scritta con IS NULL,
 # < e > perché solo così Postgres può cercare nell'indice parziale
 # idx_leveling_totals_weekly_decay_due invece di leggere tutta la tabella
-# a ogni giro orario.
+# a ogni giro orario. In più: solo righe nate prima di $2 (chi è appena
+# arrivato non decade); le righe senza data sono quelle di prima della
+# migrazione 0019 e valgono come vecchie.
 QUERY_UTENTI_DA_DECADERE = """
     SELECT guild_id, user_id FROM leveling_totals
     WHERE coins_total > 1
@@ -130,6 +132,7 @@ QUERY_UTENTI_DA_DECADERE = """
           OR last_weekly_decay_period < $1
           OR last_weekly_decay_period > $1
       )
+      AND (created_at IS NULL OR created_at < $2)
 """
 
 
@@ -478,9 +481,14 @@ class LevelingRepository:
             return await spend_coins_in(conn, guild_id, user_id, amount)
 
     async def list_users_needing_weekly_decay(
-        self, period: str
+        self, period: str, created_before: datetime
     ) -> list[tuple[int, int]]:
         """
+        Solo le righe nate prima di `created_before`: il primo
+        decadimento arriva dopo una settimana intera, non entro un'ora
+        dal primo guadagno.
+
+
         (guild_id, user_id) di chi ha un saldo personale > soglia
         minima e non ha ancora subito il decadimento settimanale per
         questo period (SPEC.md §15.15) — QUALUNQUE membro con coin,
@@ -490,7 +498,7 @@ class LevelingRepository:
         saldo di 1 non cambia nulla, non serve marcarlo come
         "coperto" per questa settimana.
         """
-        rows = await self._pool.fetch(QUERY_UTENTI_DA_DECADERE, period)
+        rows = await self._pool.fetch(QUERY_UTENTI_DA_DECADERE, period, created_before)
         return [(r["guild_id"], r["user_id"]) for r in rows]
 
     async def apply_weekly_decay(

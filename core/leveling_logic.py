@@ -53,6 +53,31 @@ def week_key(when: datetime | None = None) -> str:
     return f"{iso_year:04d}-W{iso_week:02d}"
 
 
+def previous_period_start(when: datetime | None = None) -> datetime:
+    """
+    Inizio (UTC) del mese precedente a quello di `when`. Serve ai
+    decadimenti: chi è nato dopo questa data non ha ancora vissuto un
+    mese intero, quindi il decadimento mensile non lo tocca.
+    """
+    moment = when or datetime.now(timezone.utc)
+    inizio_mese = moment.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    ultimo_giorno_mese_prima = inizio_mese - timedelta(days=1)
+    return ultimo_giorno_mese_prima.replace(day=1)
+
+
+def previous_week_start(when: datetime | None = None) -> datetime:
+    """
+    Inizio (lunedì, 00:00 UTC) della settimana ISO precedente a quella
+    di `when`. Chi è nato dopo questa data non ha ancora vissuto una
+    settimana intera, quindi il decadimento settimanale non lo tocca.
+    """
+    moment = when or datetime.now(timezone.utc)
+    inizio_settimana = (moment - timedelta(days=moment.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    return inizio_settimana - timedelta(weeks=1)
+
+
 # ======================================================================
 # XP testuale — cooldown anti-spam
 # ======================================================================
