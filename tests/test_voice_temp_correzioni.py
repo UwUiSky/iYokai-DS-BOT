@@ -206,3 +206,108 @@ async def test_gli_altri_comandi_di_gestione_gestiscono_l_errore_di_discord(coma
     risposta = interazione.response.send_message.call_args
     assert "Non sono riuscito" in _testo(risposta)
     assert risposta.kwargs["ephemeral"] is True
+
+
+# ====================================================================
+# M 7.4 — /voice transfer sposta i permessi del canale (BUG-18)
+# ====================================================================
+PERMESSI_DEL_PROPRIETARIO = ("manage_channels", "move_members", "mute_members")
+
+
+async def _trasferisci(scena, chi, a_chi):
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(chi)
+    await cog.transfer.callback(cog, interazione, a_chi)
+    return interazione
+
+
+def _permessi_dati(canale) -> dict:
+    """bersaglio -> PermissionOverwrite (o None se tolto) delle chiamate a set_permissions."""
+    esito = {}
+    for chiamata in canale.set_permissions.call_args_list:
+        bersaglio = chiamata.args[0]
+        if "overwrite" in chiamata.kwargs:
+            esito[bersaglio.id] = chiamata.kwargs["overwrite"]
+        else:
+            permessi = {k: v for k, v in chiamata.kwargs.items() if k != "reason"}
+            esito[bersaglio.id] = discord.PermissionOverwrite(**permessi)
+    return esito
+
+
+async def test_transfer_sposta_i_permessi_e_il_nuovo_proprietario_puo_rinominare():
+    scena = Scena()
+    vecchio = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(vecchio)
+    nuovo = scena.entra(scena.membro(ID_OSPITE), canale)
+
+    interazione = await _trasferisci(scena, vecchio, nuovo)
+
+    assert await voice_temp_repo.get_owner(canale.id) == ID_OSPITE
+    permessi = _permessi_dati(canale)
+    for nome in PERMESSI_DEL_PROPRIETARIO:
+        assert getattr(permessi[ID_OSPITE], nome) is True, nome
+    assert permessi[ID_PROPRIETARIO] is None  # al vecchio proprietario vengono tolti
+    assert nuovo.mention in _testo(interazione.response.send_message.call_args)
+
+    # Il nuovo proprietario gestisce il canale, il vecchio non più.
+    riuscita = await _rinomina(scena, nuovo, "Nuovo nome")
+    assert canale.edit.call_args.kwargs["name"] == "Nuovo nome"
+    assert "Nuovo nome" in _testo(riuscita.followup.send.call_args)
+    rifiutata = await _rinomina(scena, vecchio, "Ci riprovo")
+    assert "Solo il proprietario" in _testo(rifiutata.response.send_message.call_args)
+    assert canale.edit.await_count == 1
+
+
+async def test_transfer_fatto_dallo_staff_toglie_i_permessi_al_vero_proprietario():
+    scena = Scena()
+    vecchio = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(vecchio)
+    nuovo = scena.entra(scena.membro(ID_OSPITE), canale)
+    staff = scena.entra(scena.membro(30, manage_channels=True), canale)
+
+    await _trasferisci(scena, staff, nuovo)
+
+    permessi = _permessi_dati(canale)
+    assert permessi[ID_PROPRIETARIO] is None
+    assert 30 not in permessi
+    assert await voice_temp_repo.get_owner(canale.id) == ID_OSPITE
+
+
+async def test_transfer_permessi_rifiutati_da_discord_la_proprieta_non_cambia():
+    scena = Scena()
+    vecchio = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(vecchio)
+    nuovo = scena.entra(scena.membro(ID_OSPITE), canale)
+    canale.set_permissions.side_effect = _errore_http(403)
+
+    interazione = await _trasferisci(scena, vecchio, nuovo)
+
+    assert await voice_temp_repo.get_owner(canale.id) == ID_PROPRIETARIO
+    risposta = interazione.response.send_message.call_args
+    assert "Non sono riuscito" in _testo(risposta)
+    assert risposta.kwargs["ephemeral"] is True
+
+
+async def test_transfer_a_chi_e_gia_proprietario_non_fa_nulla():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+
+    interazione = await _trasferisci(scena, proprietario, proprietario)
+
+    canale.set_permissions.assert_not_awaited()
+    assert "già il proprietario" in _testo(interazione.response.send_message.call_args)
+
+
+async def test_transfer_con_il_vecchio_proprietario_uscito_dal_server():
+    scena = Scena()
+    vecchio = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(vecchio)
+    nuovo = scena.entra(scena.membro(ID_OSPITE), canale)
+    staff = scena.entra(scena.membro(30, manage_channels=True), canale)
+    del scena.membri[ID_PROPRIETARIO]  # non è più nel server
+
+    await _trasferisci(scena, staff, nuovo)
+
+    assert await voice_temp_repo.get_owner(canale.id) == ID_OSPITE
+    assert list(_permessi_dati(canale)) == [ID_OSPITE]

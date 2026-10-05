@@ -68,6 +68,10 @@ CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
 MAX_CHANNEL_NAME_LENGTH = 100
 
+# I permessi che il proprietario ha sul suo canale. /voice transfer li
+# sposta al nuovo proprietario.
+OWNER_PERMISSIONS = {"manage_channels": True, "move_members": True, "mute_members": True}
+
 MESSAGGIO_ERRORE_DISCORD = (
     "Non sono riuscito a farlo: controlla i miei permessi sul canale e riprova."
 )
@@ -186,9 +190,7 @@ async def _create_temp_channel(
 
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(),  # eredita, nessuna restrizione
-        owner: discord.PermissionOverwrite(
-            manage_channels=True, move_members=True, mute_members=True
-        ),
+        owner: discord.PermissionOverwrite(**OWNER_PERMISSIONS),
     }
     try:
         channel = await category.create_voice_channel(
@@ -587,7 +589,39 @@ class VoiceTempCog(commands.Cog):
                 ephemeral=True,
             )
             return
+        vecchio_id = await voice_temp_repo.get_owner(channel.id)
+        if member.id == vecchio_id:
+            await interaction.response.send_message(
+                f"{member.mention} è già il proprietario del canale.", ephemeral=True
+            )
+            return
+
+        # Prima i permessi su Discord, poi il database: se Discord
+        # rifiuta, la proprietà non cambia.
+        try:
+            await channel.set_permissions(
+                member, reason="Nuovo proprietario del vocale temporaneo", **OWNER_PERMISSIONS
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await voice_temp_repo.set_owner(channel.id, member.id)
+
+        # Al vecchio proprietario i permessi vanno tolti. Se è uscito
+        # dal server non c'è più niente da togliere.
+        vecchio = interaction.guild.get_member(vecchio_id)
+        if vecchio is not None:
+            try:
+                await channel.set_permissions(
+                    vecchio, overwrite=None, reason="Non è più il proprietario del vocale"
+                )
+            except discord.HTTPException:
+                logger.warning(
+                    "Permessi del vecchio proprietario %s non tolti dal canale %s",
+                    vecchio_id,
+                    channel.id,
+                )
+
         await interaction.response.send_message(
             f"Proprietà del canale trasferita a {member.mention}."
         )
