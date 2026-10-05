@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
 from core.premium import registry
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
@@ -116,6 +117,20 @@ def _errore_settings(settings: dict) -> str | None:
         controllo, descrizione = CONTROLLI_PER_TIPO[SETTINGS_SCHEMA[chiave]]
         if not controllo(valore):
             return f"Il valore di `{chiave}` non è valido: deve essere {descrizione}."
+    return None
+
+
+def errore_ruoli_del_bot(guild: discord.Guild, settings: dict) -> str | None:
+    """
+    Le chiavi dei ruoli admin/mod/modban devono essere ruoli veri di
+    QUESTO server: l'id del server (@everyone) farebbe passare tutti.
+    """
+    for chiave in CHIAVI_RUOLI:
+        if chiave in settings and not ruolo_valido_per_server(guild, settings[chiave]):
+            return (
+                f"Il valore di `{chiave}` non è valido: deve essere "
+                f"un ruolo esistente di questo server."
+            )
     return None
 
 
@@ -254,6 +269,20 @@ class RollbackConfirmView(BaseView):
         self.entry_id = entry_id
         self.requested_by_id = requested_by_id
 
+    async def _errore_ruoli_da_ripristinare(self, guild) -> str | None:
+        """Il rollback non deve rimettere un ruolo del bot non valido (vedi errore_ruoli_del_bot)."""
+        entry = await db.get_config_history_entry(self.entry_id)
+        if entry is None or guild is None:
+            return None
+        if entry.change_type == "setting" and entry.old_value is not None:
+            da_ripristinare = {entry.key_name: entry.old_value}
+        elif entry.change_type in ("reset", "import") and isinstance(entry.old_value, dict):
+            impostazioni = entry.old_value.get("settings")
+            da_ripristinare = impostazioni if isinstance(impostazioni, dict) else {}
+        else:
+            return None
+        return errore_ruoli_del_bot(guild, da_ripristinare)
+
     @discord.ui.button(label="Conferma rollback", style=discord.ButtonStyle.danger)
     async def confirm(
         self, interaction: discord.Interaction, button: discord.ui.Button
@@ -262,6 +291,14 @@ class RollbackConfirmView(BaseView):
             await interaction.response.send_message(
                 "Solo chi ha richiesto il rollback può confermarlo.", ephemeral=True
             )
+            return
+
+        errore = await self._errore_ruoli_da_ripristinare(interaction.guild)
+        if errore is not None:
+            for child in self.children:
+                child.disabled = True
+            self.stop()
+            await interaction.response.edit_message(content=f"❌ {errore}", view=self)
             return
 
         riuscito = await db.rollback_config_change(
@@ -498,6 +535,11 @@ class ConfigHistoryCog(commands.Cog):
             return
 
         errore = errore_schema_import(dati)
+        if errore is not None:
+            await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
+            return
+
+        errore = errore_ruoli_del_bot(guild, dati["settings"])
         if errore is not None:
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return

@@ -46,8 +46,21 @@ class TipoRuolo(enum.Enum):
     MODBAN = SETTING_MODBAN_ROLE
 
 
+CHIAVI_RUOLI = (SETTING_ADMIN_ROLE, SETTING_MOD_ROLE, SETTING_MODBAN_ROLE)
+
+
+def ruolo_valido_per_server(guild: discord.Guild, ruolo_id) -> bool:
+    """True se `ruolo_id` è un ruolo vero di questo server (non @everyone, che ha l'id del server)."""
+    return (
+        isinstance(ruolo_id, int)
+        and not isinstance(ruolo_id, bool)
+        and ruolo_id != guild.id
+        and guild.get_role(ruolo_id) is not None
+    )
+
+
 # Per ogni livello del server: permesso di Discord che basta da solo e
-# ruolo del bot che vale al suo posto (None = nessun ruolo).
+# il tipo di ruolo del bot che vale al suo posto.
 _REGOLE: dict[Livello, tuple[str, TipoRuolo]] = {
     Livello.ADMIN: ("manage_guild", TipoRuolo.ADMIN),
     Livello.SECURITY: ("administrator", TipoRuolo.ADMIN),
@@ -110,9 +123,15 @@ def decidi_accesso(
 # Ruoli configurati (D16: un solo punto, usato da comandi e pannello)
 # ----------------------------------------------------------------------
 async def leggi_ruolo(guild_id: int, tipo: TipoRuolo) -> int | None:
-    """ID del ruolo configurato, o None se non c'è."""
+    """
+    ID del ruolo configurato, o None se non c'è. Un valore corrotto
+    (non numerico, <= 0) o uguale all'id del server (@everyone) vale
+    "non configurato": restano i permessi di Discord.
+    """
     valore = await db.get_guild_setting(guild_id, tipo.value)
-    return int(valore) if valore is not None else None
+    if not isinstance(valore, int) or isinstance(valore, bool) or valore <= 0 or valore == guild_id:
+        return None
+    return valore
 
 
 async def imposta_ruolo(
@@ -125,7 +144,7 @@ async def imposta_ruolo(
     if ruolo is not None:
         if ruolo.id == guild.id:
             raise ValueError("Non puoi usare @everyone come ruolo del bot.")
-        if guild.get_role(ruolo.id) is None:
+        if not ruolo_valido_per_server(guild, ruolo.id):
             raise ValueError("Questo ruolo non esiste in questo server.")
     await db.set_guild_setting(
         guild.id, tipo.value, ruolo.id if ruolo is not None else None, changed_by
