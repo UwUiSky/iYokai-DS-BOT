@@ -1,19 +1,15 @@
 """
 core/repositories/leveling_repo.py
 =====================================
-Persistenza di XP, livelli, economia e classifiche.
-
-Due tabelle, con scopi distinti:
-- leveling_totals: lo stato "vivo" per utente — XP e coin
-  CUMULATIVI di sempre (per la classifica all-time e per calcolare
-  il livello attuale), più lo stato tecnico per il cooldown testuale
-  e per il conteggio vocale (canale corrente, minuti consecutivi,
-  minuti di oggi, cooldown daily/work)
-- leveling_activity: righe PER PERIODO (period_key, vedi
-  core/leveling_logic.py) con quanto guadagnato IN QUEL MESE — è la
-  tabella su cui si basa la classifica mensile, e non richiede mai
-  un reset: un nuovo mese è semplicemente un nuovo period_key senza
-  righe ancora scritte
+Persistenza di XP, livelli, coin e classifiche.
+- leveling_totals: lo stato per utente (XP e coin di sempre, livello,
+  attese di daily/work, conteggio dei minuti vocali, decadimento).
+- leveling_activity: una riga per utente e per mese (period_key) con
+  quanto guadagnato in quel mese. La classifica mensile legge da qui e
+  non serve nessun azzeramento: un mese nuovo è una chiave nuova.
+Le funzioni *_in lavorano su una connessione di chi chiama, per mettere
+più movimenti di coin nella stessa transazione.
+Funzioni coperte: SPEC §15.1–15.3, §15.15
 """
 
 from __future__ import annotations

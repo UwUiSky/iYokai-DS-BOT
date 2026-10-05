@@ -1,19 +1,14 @@
 """
 core/repositories/guild_clan_repo.py
 ========================================
-Persistenza del Sistema Gilde/Clan (SPEC.md §15.14). Tre tabelle in
-questo primo pezzo — la creazione/ufficializzazione, i membri con
-ruolo, la tesoreria con registro movimenti (utile anche per la
-classifica donazioni membri richiesta esplicitamente per i pannelli).
-Il tracciamento dell'attività vocale (tick, decadimento) e i comandi
-Discord arrivano in un pezzo successivo, sopra questa base.
-
-Un clan ha un ID GLOBALE (non per server): necessario perché i
-trasferimenti di tesoreria tra clan dello STESSO owner possono
-attraversare server diversi (confermato esplicitamente dall'utente),
-quindi due clan coinvolti in un trasferimento possono avere
-guild_id diversi — servirebbe comunque un ID univoco che non dipenda
-dal server per identificarli entrambi in modo non ambiguo.
+Persistenza delle gilde/clan: gilde, membri con il loro ruolo, tesoreria
+con lo storico dei movimenti, XP di gilda (totale e del mese). Un utente
+sta in una sola gilda per server (vincolo unico, migrazione 0018).
+Ogni operazione sui coin ha il controllo dentro la scrittura.
+Una gilda ha un ID globale, non per server: i trasferimenti di
+tesoreria tra gilde dello stesso capo possono attraversare server
+diversi.
+Funzioni coperte: SPEC §15.14
 """
 
 from __future__ import annotations
