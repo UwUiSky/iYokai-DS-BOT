@@ -72,3 +72,32 @@ async def test_la_cache_ha_un_tetto(repo):
 
     assert repo._config_cache.max_size == modulo.MAX_CONFIG_IN_CACHE
     assert 0 < modulo.MAX_CONFIG_IN_CACHE <= 10_000
+
+
+async def test_lettura_lenta_non_rimette_in_cache_il_valore_vecchio(clean_db):
+    import asyncio
+
+    class _PoolLento(_PoolContaLetture):
+        def __init__(self, pool) -> None:
+            super().__init__(pool)
+            self.letto = asyncio.Event()
+            self.via = asyncio.Event()
+
+        async def fetchrow(self, query, *args):
+            riga = await self._pool.fetchrow(query, *args)  # valore VECCHIO
+            if "verify_config" in query and not self.via.is_set():
+                self.letto.set()
+                await self.via.wait()
+            return riga
+
+    pool = _PoolLento(clean_db)
+    repo = VerifyRepository(pool_provider=lambda: pool)
+    await repo.set_config(100, "button", 555, 0, 0, False, None)
+
+    lettura = asyncio.create_task(repo.get_config(100))
+    await pool.letto.wait()
+    await repo.set_config(100, "reaction", 777, 0, 0, False, None)  # corsa
+    pool.via.set()
+    await lettura
+
+    assert (await repo.get_config(100)).verified_role_id == 777
