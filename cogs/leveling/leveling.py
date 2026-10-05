@@ -1958,6 +1958,11 @@ class LevelingCog(commands.Cog):
             datetime.now(timezone.utc),
         )
         if nuova_scadenza is None:
+            if await guild_clan_repo.get_member(clan.id, interaction.user.id) is None:
+                await interaction.response.send_message(
+                    "Non fai più parte di questa gilda.", ephemeral=True
+                )
+                return
             await interaction.response.send_message(
                 f"Non hai abbastanza coin personali — servono **{INDIVIDUAL_BOOST_COST}**.",
                 ephemeral=True,
@@ -1997,6 +2002,11 @@ class LevelingCog(commands.Cog):
             clan.id, GUILD_BOOST_COST, datetime.now(timezone.utc)
         )
         if nuova_scadenza is None:
+            if await guild_clan_repo.get_clan(clan.id) is None:
+                await interaction.response.send_message(
+                    "Questa gilda non esiste più.", ephemeral=True
+                )
+                return
             await interaction.response.send_message(
                 f"La tesoreria della gilda non basta — servono **{GUILD_BOOST_COST}** coin "
                 f"(ne avete **{clan.treasury_balance}**).",
