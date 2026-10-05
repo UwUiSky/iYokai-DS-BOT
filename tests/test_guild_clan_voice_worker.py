@@ -151,7 +151,10 @@ async def test_ore_vocali_accumulate_anche_con_decadimento_a_zero(repos):
 async def test_boost_individuale_raddoppia_la_ricompensa_del_membro(repos):
     clan_repo, activity_repo = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
-    await clan_repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=ORA + timedelta(hours=1))
+    await clan_repo._pool.execute(
+        "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
+        clan_id, 1, ORA + timedelta(hours=1),
+    )
 
     canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
     guild = _FakeGuild(100, voice_channels=[canale])
@@ -168,7 +171,9 @@ async def test_boost_di_gilda_raddoppia_per_tutti_i_membri(repos):
     clan_repo, activity_repo = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
     await clan_repo.add_member(clan_id, user_id=2)
-    await clan_repo.set_guild_boost_expiry(clan_id, ORA + timedelta(hours=1))
+    await clan_repo._pool.execute(
+        "UPDATE clans SET guild_boost_expires_at = $2 WHERE id = $1", clan_id, ORA + timedelta(hours=1)
+    )
 
     canale = _FakeVoiceChannel(500, members=[_FakeMember(1), _FakeMember(2)])
     guild = _FakeGuild(100, voice_channels=[canale])
@@ -184,8 +189,13 @@ async def test_boost_di_gilda_raddoppia_per_tutti_i_membri(repos):
 async def test_boost_individuale_e_di_gilda_si_moltiplicano(repos):
     clan_repo, activity_repo = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
-    await clan_repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=ORA + timedelta(hours=1))
-    await clan_repo.set_guild_boost_expiry(clan_id, ORA + timedelta(hours=1))
+    await clan_repo._pool.execute(
+        "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
+        clan_id, 1, ORA + timedelta(hours=1),
+    )
+    await clan_repo._pool.execute(
+        "UPDATE clans SET guild_boost_expires_at = $2 WHERE id = $1", clan_id, ORA + timedelta(hours=1)
+    )
 
     canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
     guild = _FakeGuild(100, voice_channels=[canale])
@@ -200,7 +210,10 @@ async def test_boost_individuale_e_di_gilda_si_moltiplicano(repos):
 async def test_boost_scaduto_non_si_applica(repos):
     clan_repo, activity_repo = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
-    await clan_repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=ORA - timedelta(hours=1))
+    await clan_repo._pool.execute(
+        "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
+        clan_id, 1, ORA - timedelta(hours=1),
+    )
 
     canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
     guild = _FakeGuild(100, voice_channels=[canale])
