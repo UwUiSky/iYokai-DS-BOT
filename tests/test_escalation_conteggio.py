@@ -156,3 +156,54 @@ async def test_dopo_la_buona_condotta_il_conteggio_riparte_da_uno(cog, clean_db,
     )
 
     assert await _conteggio(clean_db) == 1
+
+
+# ====================================================================
+# Prima l'azione su Discord, poi il caso (LIMITI, lista di controllo 10 e 11)
+# ====================================================================
+def _errore_http() -> discord.HTTPException:
+    risposta = MagicMock()
+    risposta.status = 500
+    risposta.reason = "Internal Server Error"
+    return discord.HTTPException(risposta, "errore finto di Discord")
+
+
+@pytest.mark.parametrize("azione", ["kick", "ban", "timeout"])
+async def test_azione_fallita_non_lascia_un_caso(cog, clean_db, azione):
+    from discord import app_commands
+    from tests.support.discord_fakes import fake_guild, fake_interaction
+
+    interazione = fake_interaction(guild=fake_guild(guild_id=GUILD_ID))
+    await cog.set_step.callback(
+        cog, interazione, 1, app_commands.Choice(name=azione, value=azione), 10
+    )
+    membro = fake_member(user_id=UTENTE_ID)
+    getattr(membro, azione).side_effect = _errore_http()
+
+    await cog.on_automod_action(_evento(membro, discord.AutoModRuleActionType.block_message))
+
+    getattr(membro, azione).assert_awaited_once()
+    assert await _numero_casi(clean_db) == 0
+
+
+async def test_kick_riuscito_crea_il_caso_dopo_l_azione(cog, clean_db):
+    from discord import app_commands
+    from tests.support.discord_fakes import fake_guild, fake_interaction
+
+    interazione = fake_interaction(guild=fake_guild(guild_id=GUILD_ID))
+    await cog.set_step.callback(
+        cog, interazione, 1, app_commands.Choice(name="Kick", value="kick"), None
+    )
+    membro = fake_member(user_id=UTENTE_ID)
+    casi_al_momento_del_kick = []
+
+    async def _kick(**_kwargs):
+        casi_al_momento_del_kick.append(await _numero_casi(clean_db))
+
+    membro.kick.side_effect = _kick
+
+    await cog.on_automod_action(_evento(membro, discord.AutoModRuleActionType.block_message))
+
+    assert casi_al_momento_del_kick == [0]
+    assert await _numero_casi(clean_db) == 1
+    assert len(membro.kick.call_args.kwargs["reason"]) <= 512

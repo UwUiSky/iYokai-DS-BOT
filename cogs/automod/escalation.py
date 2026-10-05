@@ -48,6 +48,9 @@ ESCALATION_ACTION_TYPE = "automod_escalation"
 # stesso messaggio e contano come una sola infrazione.
 FINESTRA_STESSO_MESSAGGIO = 5
 
+# Lunghezza massima di un motivo nel registro di controllo di Discord.
+MAX_MOTIVO = 512
+
 
 def _adesso() -> datetime:
     return datetime.now(timezone.utc)
@@ -109,62 +112,43 @@ class EscalationCog(commands.Cog):
         reason = (
             f"AutoMod Escalation — infrazione #{nuovo_conteggio} "
             f"(regola: {execution.matched_keyword or 'trigger AutoMod'})"
-        )
+        )[:MAX_MOTIVO]
 
+        # Prima l'azione su Discord, poi il caso: se l'azione fallisce
+        # non resta un caso per una punizione mai data.
         try:
-            if step.action_type == "warn":
-                case_number = await moderation_repo.create_case(
-                    guild_id=execution.guild_id,
-                    user_id=member.id,
-                    moderator_id=self.bot.user.id,
-                    action_type=ESCALATION_ACTION_TYPE,
-                    reason=reason,
-                )
-                try:
-                    await member.send(f"⚠️ {reason} (caso #{case_number})")
-                except discord.HTTPException:
-                    pass
-
-            elif step.action_type == "timeout":
+            if step.action_type == "timeout":
                 await member.timeout(
                     timedelta(seconds=step.duration_seconds or 600), reason=reason
                 )
-                await moderation_repo.create_case(
-                    guild_id=execution.guild_id,
-                    user_id=member.id,
-                    moderator_id=self.bot.user.id,
-                    action_type=ESCALATION_ACTION_TYPE,
-                    reason=reason,
-                    duration_seconds=step.duration_seconds,
-                )
-
             elif step.action_type == "kick":
-                await moderation_repo.create_case(
-                    guild_id=execution.guild_id,
-                    user_id=member.id,
-                    moderator_id=self.bot.user.id,
-                    action_type=ESCALATION_ACTION_TYPE,
-                    reason=reason,
-                )
                 await member.kick(reason=reason)
-
             elif step.action_type == "ban":
-                await moderation_repo.create_case(
-                    guild_id=execution.guild_id,
-                    user_id=member.id,
-                    moderator_id=self.bot.user.id,
-                    action_type=ESCALATION_ACTION_TYPE,
-                    reason=reason,
-                )
                 await member.ban(reason=reason)
-        except discord.Forbidden:
+        except discord.HTTPException as errore:
             logger.warning(
-                "Permessi insufficienti per applicare l'azione di escalation "
-                "'%s' sull'utente %s nel server %s.",
+                "Azione di escalation '%s' non riuscita sull'utente %s nel server %s: %s",
                 step.action_type,
                 member.id,
                 execution.guild_id,
+                errore,
             )
+            return
+
+        case_number = await moderation_repo.create_case(
+            guild_id=execution.guild_id,
+            user_id=member.id,
+            moderator_id=self.bot.user.id,
+            action_type=ESCALATION_ACTION_TYPE,
+            reason=reason,
+            duration_seconds=step.duration_seconds if step.action_type == "timeout" else None,
+        )
+
+        if step.action_type == "warn":
+            try:
+                await member.send(f"⚠️ {reason} (caso #{case_number})")
+            except discord.HTTPException:
+                pass
 
     # ================================================================
     # Comandi
