@@ -11,7 +11,7 @@ deve chiedere di nuovo**: legge qui e procede.
   cambiarle.
 - D8 (seconda versione), D15, D16, D17: **indicate dall'owner** la sera
   del 04/10/2026.
-- D19, D20, D21, D22, D23: **indicate dall'owner** il 05/10/2026.
+- D19, D20, D21, D22, D23, D24: **indicate dall'owner** il 05/10/2026.
 
 Regola per il futuro: se serve una decisione nuova, si sceglie
 l'opzione consigliata, la si scrive qui con la data, e si avvisa
@@ -42,6 +42,7 @@ l'owner.
 | D21 | Aggiornamento a caldo | L'owner aggiorna il bot da Discord. Strada consigliata: il bot prende da GitHub un commit già rivisto. Strada alternativa: file allegato dall'owner. In ogni caso: solo l'owner, controllo del codice, copia del vecchio, ritorno automatico se il caricamento fallisce, interruttore nel `.env`. Vedi sotto. | F9 |
 | D22 | Voce di Yokai | Il bot manda messaggi vocali veri, con sotto i bottoni per trascrizione e traduzione. Sintesi sul server con un modello aperto, audio in cache. Voce femminile adulta; quattro toni scelti dall'admin; il tono `piccante` solo nei canali NSFW. Vedi sotto. | F12 |
 | D23 | Boost del clan per tipo | Tre tipi di boost: **exp**, **coin**, **super** (exp + coin). Per ogni ambito (individuale e di gilda) un beneficio non si compra di nuovo finché il suo boost è attivo: chi ha il boost coin può comprare solo l'exp (e viceversa); chi ha il super non può comprare nessun altro. Vale anche per acquisti insieme. | F1 |
+| D24 | Struttura dei comandi subito | La fase F7 passa **adesso**, dopo #144 e prima di F2. I comandi vanno nei 13 gruppi di `NUOVE_FUNZIONI.md`. Il bot configura da solo chi può usare `/admin`, `/mod`, `/modban`, `/security`, `/log` (passo di `/setup`): ruolo admin del bot e ruolo mod, oltre ai permessi di Discord. Il controllo del tetto di 100 comandi resta acceso. | F7 |
 
 ---
 
@@ -283,3 +284,22 @@ Chiesto dall'owner il 05/10/2026 (sera).
 - Il boost che esiste oggi (×2 a tutto) diventa un `super` già attivo.
 - Nessun comando nuovo: `/clan boost individuale` e `/clan boost gilda`
   prendono un'opzione `tipo` con tre scelte.
+
+## D24 in dettaglio — Struttura dei comandi subito
+
+Chiesto dall'owner il 05/10/2026 (notte): "scegli te". Scelta: fare F7 ora.
+- Motivo: i nuovi comandi (voce, AI, backup, musica) nascono già nel
+  gruppo giusto, niente doppio lavoro; il tetto di 100 non si supera
+  mai, quindi il bot si può provare dal vivo in ogni momento.
+- Il controllo del tetto di 100 **non** si spegne.
+- Accesso: i gruppi si vedono per permesso di Discord (`default_permissions`)
+  e il bot controlla da sé il ruolo scelto dall'admin. Il bot non può
+  nascondere comandi per ruolo da solo (serve l'OAuth dell'admin): il
+  rifiuto "non puoi" è il controllo interno. Un solo punto di codice:
+  `core/command_access.py`, usato dai comandi e dal futuro pannello (D16).
+- Il passo di `/setup` propone di creare o scegliere "ruolo admin del bot"
+  e "ruolo mod": chi non lo configura ha comunque i permessi di Discord
+  come base sicura.
+- Nessuna compatibilità con i vecchi nomi (D4).
+- Ordine: un agente alla volta sui file dei cog (i comandi si spostano);
+  prima il quadro in `core/`, poi le aree.
