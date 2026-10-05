@@ -1,9 +1,11 @@
 """
 core/guild_clan_boost_logic.py
 ===================================
-Boost XP/Coin acquistabili (SPEC.md §15.14) — logica pura, nessun
-DB/Discord qui. Numeri confermati con l'utente prima di scrivere
-questo file: moltiplicatore ×2 per 24h, sia per il boost
+Boost XP/Coin acquistabili (SPEC.md §15.14, D23) — logica pura,
+nessun DB/Discord qui. Tre tipi: `exp` (×2 ai punti esperienza),
+`coin` (×2 alle coin) e `super` (tutti e due). Durata 24h, nessuna
+somma delle durate: un boost si compra solo se nessuno dei suoi
+benefici è già attivo. Il boost
 INDIVIDUALE (comprato dal saldo PERSONALE, si applica SOLO al
 proprio tick vocale di gilda — resta scoped al Sistema Gilde/Clan,
 NON al leveling generale del server) sia per il boost DI GILDA
@@ -15,42 +17,109 @@ e portata diverse (uno paga per sé, l'altro per tutta la gilda).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 
 BOOST_MULTIPLIER = 2
 BOOST_DURATION_HOURS = 24
 
-INDIVIDUAL_BOOST_COST = 10_000
-GUILD_BOOST_COST = 100_000
+
+class Beneficio(str, Enum):
+    EXP = "exp"
+    COIN = "coin"
+
+
+class TipoBoost(str, Enum):
+    EXP = "exp"
+    COIN = "coin"
+    SUPER = "super"
+
+    @property
+    def benefici(self) -> tuple[Beneficio, ...]:
+        if self is TipoBoost.SUPER:
+            return (Beneficio.EXP, Beneficio.COIN)
+        return (Beneficio(self.value),)
+
+
+INDIVIDUAL_BOOST_COSTS: dict[TipoBoost, int] = {
+    TipoBoost.EXP: 6_000,
+    TipoBoost.COIN: 6_000,
+    TipoBoost.SUPER: 10_000,
+}
+GUILD_BOOST_COSTS: dict[TipoBoost, int] = {
+    TipoBoost.EXP: 60_000,
+    TipoBoost.COIN: 60_000,
+    TipoBoost.SUPER: 100_000,
+}
 
 
 def is_boost_active(expires_at: datetime | None, now: datetime) -> bool:
-    """Vero se un boost (individuale o di gilda) è ancora attivo a
-    `now` — None o una scadenza già passata significa non attivo."""
+    """Vero se un beneficio è ancora attivo a `now` — None o una
+    scadenza già passata significa non attivo."""
     if expires_at is None:
         return False
     return expires_at > now
 
 
+def benefici_attivi(
+    scad_exp: datetime | None, scad_coin: datetime | None, now: datetime
+) -> dict[Beneficio, datetime]:
+    """I benefici attivi a `now` con la loro scadenza."""
+    attivi: dict[Beneficio, datetime] = {}
+    if scad_exp is not None and is_boost_active(scad_exp, now):
+        attivi[Beneficio.EXP] = scad_exp
+    if scad_coin is not None and is_boost_active(scad_coin, now):
+        attivi[Beneficio.COIN] = scad_coin
+    return attivi
+
+
+def tipi_acquistabili(
+    scad_exp: datetime | None, scad_coin: datetime | None, now: datetime
+) -> list[TipoBoost]:
+    """I tipi comprabili ora: solo quelli i cui benefici sono tutti
+    spenti (D23)."""
+    attivi = benefici_attivi(scad_exp, scad_coin, now)
+    return [t for t in TipoBoost if not any(b in attivi for b in t.benefici)]
+
+
+def nuove_scadenze(tipo: TipoBoost, now: datetime) -> dict[Beneficio, datetime]:
+    """Scadenza di ciascun beneficio del tipo comprato: sempre
+    now + durata (niente somma con un boost precedente)."""
+    scadenza = now + timedelta(hours=BOOST_DURATION_HOURS)
+    return {b: scadenza for b in tipo.benefici}
+
+
 def compute_boosted_reward(
-    xp: int, coin: int, *, individual_active: bool, guild_active: bool
+    xp: int,
+    coin: int,
+    *,
+    individuale_exp: bool = False,
+    individuale_coin: bool = False,
+    gilda_exp: bool = False,
+    gilda_coin: bool = False,
 ) -> tuple[int, int]:
-    """Applica ×BOOST_MULTIPLIER una volta per ciascun boost attivo
-    (individuale e di gilda si moltiplicano tra loro se entrambi
-    attivi) alla ricompensa già calcolata di un singolo tick."""
-    fattore = 1
-    if individual_active:
-        fattore *= BOOST_MULTIPLIER
-    if guild_active:
-        fattore *= BOOST_MULTIPLIER
-    return xp * fattore, coin * fattore
+    """Applica ×BOOST_MULTIPLIER separatamente a xp e coin: una volta
+    per ogni boost attivo su quel beneficio (individuale e di gilda si
+    moltiplicano tra loro) alla ricompensa già calcolata di un tick."""
+    fattore_xp = BOOST_MULTIPLIER ** (int(individuale_exp) + int(gilda_exp))
+    fattore_coin = BOOST_MULTIPLIER ** (int(individuale_coin) + int(gilda_coin))
+    return xp * fattore_xp, coin * fattore_coin
 
 
-def extend_boost_expiry(current_expiry: datetime | None, now: datetime) -> datetime:
-    """La nuova scadenza dopo l'acquisto di un boost — se uno è già
-    attivo, la nuova durata si estende da lì (non da `now`, altrimenti
-    si comprerebbe tempo già pagato in precedenza); altrimenti parte
-    da `now`. Stesso pattern già usato per l'estensione mensile del
-    premium (`GuildPremiumRepository.record_purchase`)."""
-    base = current_expiry if (current_expiry is not None and current_expiry > now) else now
-    return base + timedelta(hours=BOOST_DURATION_HOURS)
+class StatoBoost(str, Enum):
+    ACQUISTATO = "acquistato"
+    NON_ABBASTANZA_FONDI = "non_abbastanza_fondi"
+    GIA_ATTIVO = "gia_attivo"
+    NON_MEMBRO = "non_membro"  # il membro non è (più) in questa gilda
+    ASSENTE = "assente"  # la gilda non esiste (più) in questo server
+
+
+@dataclass(frozen=True)
+class EsitoBoost:
+    """Esito di un acquisto. `scadenza` solo se ACQUISTATO; `attivi`
+    (beneficio -> fino a quando) solo se GIA_ATTIVO."""
+
+    stato: StatoBoost
+    scadenza: datetime | None = None
+    attivi: tuple[tuple[Beneficio, datetime], ...] = ()
