@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:29 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-04 22:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 252 comandi in 10 categorie.**
 
@@ -133,12 +133,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:
 - **`/loop track`** — Attiva/disattiva la ripetizione della traccia corrente.
 - **`/nonstop off`** — Disattiva il loop continuo.
 - **`/nonstop on`** — Attiva il loop continuo sulla coda attuale.
-- **`/nonstop-main add-local`** — [Admin] Aggiunge un file dalla cartella inediti alla playlist della radio.
-- **`/nonstop-main add-track`** — [Admin] Aggiunge una traccia alla playlist della radio.
-- **`/nonstop-main list-tracks`** — [Admin] Mostra la playlist della radio.
-- **`/nonstop-main remove-track`** — [Admin] Rimuove una traccia dalla playlist della radio.
-- **`/nonstop-main start`** — [Admin] Entra nella radio condivisa, nel punto in cui si trova ora.
-- **`/nonstop-main stop`** — [Admin] Esce dalla radio su questo server.
+- **`/nonstop-main add-local`** — [Owner] Aggiunge un file dalla cartella inediti alla playlist della radio.
+- **`/nonstop-main add-track`** — [Owner] Aggiunge una traccia alla playlist della radio.
+- **`/nonstop-main list-tracks`** — [Owner] Mostra la playlist della radio.
+- **`/nonstop-main remove-track`** — [Owner] Rimuove una traccia dalla playlist della radio.
+- **`/nonstop-main start`** — [Owner] Entra nella radio condivisa, nel punto in cui si trova ora.
+- **`/nonstop-main stop`** — [Owner] Esce dalla radio su questo server.
 - **`/nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/pause`** — Mette in pausa la riproduzione.
 - **`/play`** — Riproduce una canzone o playlist.
@@ -249,7 +249,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:
 - **`/owner whitelist-list`** — [OWNER] Elenca i server nella whitelist premium.
 - **`/owner whitelist-remove`** — [OWNER] Rimuove un server dalla whitelist premium.
 - **`/ping`** — Controlla se iYokai Main è online e la sua latenza.
-- **`/poll`** — Crea un sondaggio (fino a 5 opzioni).
+- **`/poll`** — Crea un sondaggio (fino a 10 opzioni).
 - **`/promuovi-backup`** — [Admin] Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
 - **`/reactionsnipe`** — Mostra l'ultima reazione rimossa in questo canale.
 - **`/reminder cancel`** — Annulla un promemoria.
@@ -266,7 +266,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-09-27 20:
 - **`/schedule-message set`** — [Admin] Programma un messaggio.
 - **`/search`** — Cerca un comando per descrizione.
 - **`/serverstats`** — Mostra le statistiche del server, con grafico di crescita.
-- **`/setup`** — [Admin] Attiva o disattiva i moduli del bot, per categoria (parametro `categoria`; senza scelta mostra l'elenco di sola lettura).
+- **`/setup`** — [Admin] Attiva o disattiva i moduli del bot, per categoria.
 - **`/setup-wizard`** — [Admin] Configura passo-passo i moduli principali del bot.
 - **`/sticky remove`** — [Admin] Rimuove lo sticky message di un canale.
 - **`/sticky set`** — [Admin] Imposta lo sticky message di un canale.
