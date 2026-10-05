@@ -13,7 +13,8 @@ o più tick nello stesso giorno).
 
 Le coin rimosse dal decadimento confluiscono nella cassa del server
 di appartenenza (core.repositories.guild_chest_repo) — non svaniscono
-mai nel nulla.
+mai nel nulla. Il primo decadimento di un utente arriva solo dopo una
+settimana intera dalla sua prima riga.
 Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
@@ -26,7 +27,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.guild_iteration import for_each_guild_safely
-from core.leveling_logic import week_key
+from core.leveling_logic import previous_week_start, week_key
 from core.repositories.guild_chest_repo import (
     REASON_WEEKLY_PERSONAL_DECAY,
     guild_chest_repo,
@@ -46,8 +47,10 @@ class WeeklyPersonalDecayWorker:
         adesso = now or datetime.now(timezone.utc)
         settimana_corrente = week_key(adesso)
 
+        # Chi è arrivato dopo l'inizio della settimana scorsa non ha
+        # ancora vissuto una settimana intera: niente decadimento.
         da_decadere = await leveling_repo.list_users_needing_weekly_decay(
-            settimana_corrente
+            settimana_corrente, created_before=previous_week_start(adesso)
         )
         async def _per_utente(coppia) -> None:
             guild_id, user_id = coppia

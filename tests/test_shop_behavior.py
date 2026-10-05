@@ -13,18 +13,33 @@ from core.database import Database
 from core.repositories.leveling_repo import LevelingRepository
 from core.repositories.shop_repo import ShopRepository
 from tests.support.discord_fakes import fake_guild, fake_member as fake_member_fedele, fake_role
+from tests.support.moduli import attiva_livelli, togli_configurazione
 
 
 class _FakeResponse:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
         self.sent_embeds: list = []
+        self.deferred = False
 
     async def send_message(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
         if content is not None:
             self.sent_messages.append(content)
         if embed is not None:
             self.sent_embeds.append(embed)
+
+    async def defer(self, ephemeral: bool = False) -> None:
+        self.deferred = True
+
+
+class _FakeFollowup:
+    """Dopo un defer() le risposte passano da qui: stessa lista dei messaggi."""
+
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def send(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
+        await self._response.send_message(content, embed=embed, ephemeral=ephemeral)
 
 
 class _FakeGuild:
@@ -56,6 +71,7 @@ class _FakeInteraction:
         self.guild = _FakeGuild(guild_id) if guild_id is not None else None
         self.user = user or _FakeMember(1)
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup(self.response)
 
 
 @pytest.fixture
@@ -71,10 +87,13 @@ async def cog_e_repos(monkeypatch):
     monkeypatch.setattr(leveling_module, "shop_repo", shop_repo)
     monkeypatch.setattr(leveling_module, "leveling_repo", leveling_repo)
 
+    await attiva_livelli(monkeypatch, database.pool, 100)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
     yield cog, shop_repo, leveling_repo
+    await togli_configurazione(database.pool, 100)
     await database.pool.execute("DELETE FROM shop_items")
     await database.pool.execute("DELETE FROM shop_purchases")
     await database.pool.execute("DELETE FROM leveling_totals")
@@ -167,12 +186,22 @@ async def test_buy_oggetto_con_ruolo_lo_assegna(cog_e_repos):
 async def test_buy_oggetto_con_ruolo_gia_posseduto_avvisa(cog_e_repos):
     cog, shop_repo, leveling_repo = cog_e_repos
     item_id = await shop_repo.add_item(100, name="VIP", price=10, role_id=999)
-    await leveling_repo.add_coins(100, 1, 50)
-    await shop_repo.record_purchase(100, user_id=1, item_id=item_id)
+    await leveling_repo.add_coins(100, 1, 60)
 
     membro = _FakeMember(1)
-    interaction = _FakeInteraction(guild_id=100, user=membro)
 
+    def _interazione_con_ruolo():
+        interazione = _FakeInteraction(guild_id=100, user=membro)
+        bot_member = fake_member_fedele(user_id=1000, name="Yokai Bot", bot=True)
+        bot_member.top_role = fake_role(role_id=1001, name="Yokai Bot", position=50)
+        interazione.guild.me = bot_member
+        interazione.guild._roles_by_id[999] = fake_role(role_id=999, name="VIP", position=1)
+        return interazione
+
+    # Il primo acquisto lo fa il comando vero, non il test a mano.
+    await cog.shop_buy.callback(cog, _interazione_con_ruolo(), item_id=item_id)
+
+    interaction = _interazione_con_ruolo()
     await cog.shop_buy.callback(cog, interaction, item_id=item_id)
 
     assert "già acquistato" in interaction.response.sent_messages[0]

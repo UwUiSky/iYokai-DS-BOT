@@ -9,7 +9,9 @@ main.py, non un Cog.
 Tick ogni 30 secondi: abbastanza reattivo perché un giveaway di
 "1 minuto" (durata minima) non resti scaduto per troppo a lungo
 prima dell'estrazione, senza sovraccaricare inutilmente per giveaway
-che durano ore o giorni.
+che durano ore o giorni. L'annuncio va dove il giveaway è stato
+lanciato: canale di testo, thread, post di un forum o chat vocale.
+Funzioni coperte: SPEC §15.5
 """
 
 from __future__ import annotations
@@ -30,6 +32,26 @@ logger = logging.getLogger("iyokai.giveaway_worker")
 TICK_SECONDS = 30
 
 
+async def _canale_del_giveaway(
+    guild: discord.Guild | None, channel_id: int
+) -> discord.abc.Messageable | None:
+    """
+    Il posto dove è stato lanciato il giveaway: un canale di testo, un
+    thread, il post di un forum o la chat di un canale vocale. Un thread
+    archiviato non è in memoria, quindi si chiede a Discord. None se il
+    canale non esiste più o non è un posto dove si può scrivere.
+    """
+    if guild is None:
+        return None
+    canale = guild.get_channel_or_thread(channel_id)
+    if canale is None:
+        try:
+            canale = await guild.fetch_channel(channel_id)
+        except discord.HTTPException:
+            return None
+    return canale if isinstance(canale, discord.abc.Messageable) else None
+
+
 class GiveawayWorker:
     def __init__(self) -> None:
         self._loop_task: tasks.Loop | None = None
@@ -48,8 +70,8 @@ class GiveawayWorker:
             vincitori = pick_winners(partecipanti, giveaway.winners_count, random.Random())
 
             guild = bot.get_guild(giveaway.guild_id)
-            canale = guild.get_channel(giveaway.channel_id) if guild else None
-            if not isinstance(canale, discord.TextChannel):
+            canale = await _canale_del_giveaway(guild, giveaway.channel_id)
+            if canale is None:
                 logger.warning(
                     "Canale %s non raggiungibile per la fine del giveaway %s.",
                     giveaway.channel_id,

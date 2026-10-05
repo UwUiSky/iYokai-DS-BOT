@@ -14,7 +14,9 @@ from core.guild_clan_treasury_decay_worker import GuildClanTreasuryDecayWorker
 from core.repositories.guild_chest_repo import GuildChestRepository
 from core.repositories.guild_clan_repo import GuildClanRepository
 
-ORA = datetime(2026, 10, 1, 0, 30, tzinfo=timezone.utc)  # periodo corrente: 2026-10
+# Le gilde nascono con l'orologio vero; il giro avviene molto dopo, così
+# ogni gilda ha già vissuto un mese intero (M 9.10).
+ORA = datetime(2099, 10, 1, 0, 30, tzinfo=timezone.utc)  # periodo corrente: 2099-10
 
 
 @pytest.fixture
@@ -63,7 +65,7 @@ async def test_decade_la_tesoreria_di_un_clan_ufficializzato(repo):
 
     clan = await clan_repo.get_clan(clan_id)
     assert clan.treasury_balance == 90_000
-    assert clan.last_decay_period == "2026-10"
+    assert clan.last_decay_period == "2099-10"
 
 
 @pytest.mark.asyncio

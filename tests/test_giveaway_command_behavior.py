@@ -14,6 +14,7 @@ from cogs.leveling.leveling import LevelingCog
 from core.database import Database
 from core.repositories.giveaway_repo import GiveawayRepository
 from core.repositories.leveling_repo import LevelingRepository
+from tests.support.moduli import attiva_livelli, togli_configurazione
 
 
 class _FakeResponse:
@@ -83,10 +84,13 @@ async def cog_e_repos(monkeypatch):
     monkeypatch.setattr(leveling_module, "giveaway_repo", giveaway_repo)
     monkeypatch.setattr(leveling_module, "leveling_repo", leveling_repo)
 
+    await attiva_livelli(monkeypatch, database.pool, 100)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
     yield cog, giveaway_repo, leveling_repo
+    await togli_configurazione(database.pool, 100)
     await database.pool.execute("DELETE FROM giveaways")
     await database.pool.execute("DELETE FROM giveaway_entries")
     await database.pool.execute("DELETE FROM leveling_totals")

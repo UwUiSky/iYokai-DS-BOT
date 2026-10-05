@@ -2,24 +2,18 @@
 cogs/leveling/leveling.py
 ============================
 XP testuale (on_message) e vocale (task periodico ogni 60s), livelli,
-economia di base (daily/work/pay/balance), classifiche mensili e
-all-time. Modulo sempre gratuito, come da schema.
+economia (daily/work/pay/balance, shop, drop, giveaway), cassa del
+server, gilde/clan, classifiche mensili e di sempre. Modulo sempre
+gratuito.
+Funzioni coperte: SPEC §15
 
-Message Content Intent: on_message NON richiede quell'intent per
-scattare — il privilegio riguarda solo se message.content è
-popolato o vuoto, non se l'evento MESSAGE_CREATE arriva. Qui non
-leggiamo mai message.content (ci basta sapere CHE un messaggio è
-stato inviato, non cosa dice), quindi questo modulo resta coerente
-con la scelta di lasciare l'intent disattivato di default (vedi
-main.py).
+Message Content Intent: è attivo (vedi main.py), ma questo modulo non
+legge mai message.content: gli basta sapere CHE un messaggio è stato
+inviato, non cosa dice.
 
-Il task periodico per l'XP vocale condivide l'evento
-on_voice_state_update con cogs/voice_temp/voice_temp.py — è normale,
-discord.py consegna lo stesso evento a tutti i cog che lo ascoltano
-— ma qui usiamo un TASK PERIODICO (tasks.loop) invece di reagire
-all'evento stesso, perché l'XP va accumulato minuto per minuto per
-tutta la durata della permanenza in vocale, non solo al momento in
-cui l'utente entra o esce.
+L'XP vocale usa un task periodico (tasks.loop) e non l'evento
+on_voice_state_update: l'XP si accumula minuto per minuto per tutta
+la permanenza in vocale, non solo quando si entra o si esce.
 """
 
 # DA FARE (issue #65, fase F1): correzioni aperte per questo file in
@@ -49,11 +43,15 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
-from core.ui_base import BaseView
+# I due aiuti con il trattino servono al bottone degli inviti in gilda:
+# un bottone "dinamico" non passa dalla BaseView, quindi il controllo
+# blacklist e la risposta agli errori vanno chiamati a mano.
+from core.ui_base import BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
+from cogs.leveling._pagine import invia_lista, taglia
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
-from core.repositories.shop_repo import shop_repo
+from core.repositories.shop_repo import EsitoAcquisto, shop_repo
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.giveaway_logic import is_eligible, pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
@@ -69,6 +67,8 @@ from core.guild_clan_logic import (
     CREATION_GRACE_HOURS,
     MAX_ADMINS_PER_CLAN,
     MAX_MODS_PER_CLAN,
+    TAG_MAX_LENGTH,
+    TAG_MIN_LENGTH,
     is_creation_deficit_covered,
     next_channel_unlock_cost,
     next_channel_voice_hours_requirement,
@@ -76,15 +76,17 @@ from core.guild_clan_logic import (
     voice_ticks_to_hours,
 )
 from core.repositories.guild_clan_repo import (
-    REASON_CHANNEL_UNLOCK,
+    EsitoIngresso,
     REASON_GUILD_BOOST,
     ROLE_ADMIN,
+    ROLE_CO_OWNER,
     ROLE_MEMBER,
     ROLE_MOD,
     ROLE_OWNER,
     guild_clan_repo,
 )
 from core.guild_clan_role_service import (
+    clear_clan_officers_presence,
     clear_member_clan_presence,
     sync_member_clan_role,
 )
@@ -97,11 +99,11 @@ from core.guild_clan_boost_logic import (
     is_boost_active,
 )
 from core.leveling_logic import (
+    DAILY_COOLDOWN_SECONDS,
     DAILY_REWARD_COINS,
+    WORK_COOLDOWN_SECONDS,
     WORK_REWARD_MAX,
     WORK_REWARD_MIN,
-    can_claim_daily,
-    can_claim_work,
     is_eligible_for_voice_xp,
     period_key,
     seconds_until_next_claim,
@@ -117,6 +119,69 @@ MODULE_LEVELING = "leveling"
 TIPI_DI_MESSAGGIO_CON_XP = (discord.MessageType.default, discord.MessageType.reply)
 
 
+# Limite di Discord per il motivo scritto nel registro di controllo.
+LIMITE_MOTIVO = 512
+
+# Chi può gestire la gilda: invitare, espellere, comprare canali e boost.
+RUOLI_UFFICIALI = (ROLE_OWNER, ROLE_CO_OWNER, ROLE_ADMIN)
+
+# LIM-18: lunghezza massima dei testi liberi e dei titoli degli embed.
+MAX_NOME_CLAN = 64
+MAX_NOME_OGGETTO = 80
+MAX_DESCRIZIONE_OGGETTO = 200
+MAX_PREMIO_GIVEAWAY = 200
+MAX_NOME_CANALE = 100
+LIMITE_TITOLO_EMBED = 256
+LIMITE_RIGA_NEGOZIO = 380
+RUOLI_PREMIO_PER_PAGINA = 20
+MEMBRI_PER_PAGINA = 20
+
+
+async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
+    """
+    Controllo comune, prima riga di ogni comando di questo cog (M 9.7).
+    True se il comando non va eseguito, dopo aver già avvisato l'utente:
+    fuori da un server, oppure con il modulo "leveling" spento su questo
+    server. Il test tests/test_leveling_modulo_spento.py passa in
+    rassegna tutti i comandi: uno nuovo senza questa riga lo fa fallire.
+    """
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "Questo comando è disponibile solo dentro un server.", ephemeral=True
+        )
+        return True
+    if await db.is_module_active_for_guild(interaction.guild.id, MODULE_LEVELING):
+        return False
+    await interaction.response.send_message(
+        "Questo modulo non è attivo su questo server. "
+        "Un amministratore può attivarlo con /setup.",
+        ephemeral=True,
+    )
+    return True
+
+
+# Storico della tesoreria in /clan info: quante righe e come chiamarle.
+MOVIMENTI_IN_CLAN_INFO = 5
+NOMI_DEI_MOVIMENTI = {
+    "donation": "donazione",
+    "creation_deficit": "deficit di creazione",
+    "channel_unlock": "canale extra",
+    "channel_unlock_refund": "rimborso canale extra",
+    "monthly_decay": "decadimento mensile",
+    "treasury_transfer_in": "trasferimento in entrata",
+    "treasury_transfer_out": "trasferimento in uscita",
+    "guild_boost": "boost di gilda",
+}
+
+
+def _riga_movimento(movimento) -> str:
+    """Una riga dello storico: data, importo con il segno, causale, autore."""
+    segno = "+" if movimento.amount > 0 else ""
+    causale = NOMI_DEI_MOVIMENTI.get(movimento.reason, movimento.reason)
+    autore = f" — <@{movimento.user_id}>" if movimento.user_id is not None else ""
+    return f"<t:{int(movimento.created_at.timestamp())}:d> {segno}{movimento.amount} {causale}{autore}"
+
+
 def _format_seconds(seconds: int) -> str:
     if seconds < 60:
         return f"{seconds}s"
@@ -126,6 +191,109 @@ def _format_seconds(seconds: int) -> str:
     hours = minutes // 60
     remaining_minutes = minutes % 60
     return f"{hours}h {remaining_minutes}m"
+
+
+# Per quanto resta valido un invito in gilda.
+VALIDITA_INVITO_ORE = 24
+
+
+class BottoneInvitoClan(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=(
+        r"clan_invito:(?P<azione>accetta|rifiuta):"
+        r"(?P<clan_id>\d+):(?P<user_id>\d+):(?P<scadenza>\d+)"
+    ),
+):
+    """
+    Bottone "Accetta" o "Rifiuta" di un invito in gilda (M 9.8). Gilda,
+    invitato e scadenza stanno nel custom_id: dopo un riavvio del bot
+    discord.py ricostruisce il bottone da lì, senza una tabella degli
+    inviti. Va registrato all'avvio con bot.add_dynamic_items (setup).
+    L'invito non scrive nulla: nella gilda si entra solo accettando.
+    """
+
+    def __init__(self, azione: str, clan_id: int, user_id: int, scadenza: int) -> None:
+        accetta = azione == "accetta"
+        super().__init__(
+            discord.ui.Button(
+                label="Accetta" if accetta else "Rifiuta",
+                style=discord.ButtonStyle.success if accetta else discord.ButtonStyle.secondary,
+                custom_id=f"clan_invito:{azione}:{clan_id}:{user_id}:{scadenza}",
+            )
+        )
+        self.azione = azione
+        self.clan_id = clan_id
+        self.user_id = user_id
+        self.scadenza = scadenza
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(
+            match["azione"], int(match["clan_id"]), int(match["user_id"]), int(match["scadenza"])
+        )
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé,
+        # quindi il controllo blacklist si fa qui.
+        if await _utente_o_server_in_blacklist(interaction):
+            return False
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "Questo invito non è per te.", ephemeral=True
+            )
+            return False
+        return True
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        try:
+            await self._rispondi(interaction)
+        except Exception:
+            logger.exception("Errore nel bottone di un invito in gilda")
+            await _rispondi_con_errore(interaction)
+
+    async def _rispondi(self, interaction: discord.Interaction) -> None:
+        if datetime.now(timezone.utc).timestamp() > self.scadenza:
+            await interaction.response.edit_message(
+                content="⌛ Questo invito è scaduto.", view=None
+            )
+            return
+        if self.azione == "rifiuta":
+            await interaction.response.edit_message(
+                content=f"{interaction.user.mention} ha rifiutato l'invito.", view=None
+            )
+            return
+
+        esito = await guild_clan_repo.add_member(self.clan_id, interaction.user.id)
+        if esito == EsitoIngresso.GILDA_INESISTENTE:
+            await interaction.response.edit_message(
+                content="Questa gilda non esiste più.", view=None
+            )
+            return
+        if esito == EsitoIngresso.GIA_IN_UNA_GILDA:
+            await interaction.response.send_message(
+                "Fai già parte di una gilda in questo server: per accettare lasciala prima "
+                "con `/clan lascia`.",
+                ephemeral=True,
+            )
+            return
+        if esito == EsitoIngresso.GILDA_PIENA:
+            await interaction.response.send_message(
+                "La gilda è al completo: riprova quando si libera un posto.", ephemeral=True
+            )
+            return
+
+        guild = interaction.guild
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        nome = taglia(clan.name, MAX_NOME_CLAN) if clan is not None else "la gilda"
+        # Prima la risposta (entro 3 secondi), poi ruoli e permessi.
+        await interaction.response.edit_message(
+            content=f"✅ {interaction.user.mention} è entrato in **{nome}**.", view=None
+        )
+        if clan is not None:
+            categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
+            await sync_member_clan_role(guild, categoria, interaction.user, ROLE_MEMBER)
 
 
 class LevelingCog(commands.Cog):
@@ -200,6 +368,7 @@ class LevelingCog(commands.Cog):
         async def raccogli(
             self, interaction: discord.Interaction, button: discord.ui.Button
         ) -> None:
+            # BUG-17: nessun await tra controllo e assegnazione: è atomico.
             if self.claimed_by is not None:
                 await interaction.response.send_message(
                     "Questo drop è già stato raccolto.", ephemeral=True
@@ -339,10 +508,7 @@ class LevelingCog(commands.Cog):
     async def rank(
         self, interaction: discord.Interaction, member: discord.Member | None = None
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         target = member or interaction.user
@@ -373,10 +539,7 @@ class LevelingCog(commands.Cog):
     async def balance(
         self, interaction: discord.Interaction, member: discord.Member | None = None
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         target = member or interaction.user
@@ -387,52 +550,47 @@ class LevelingCog(commands.Cog):
 
     @app_commands.command(name="daily", description="Riscuoti la ricompensa giornaliera.")
     async def daily(self, interaction: discord.Interaction) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
-        totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
-        if not can_claim_daily(totali.last_daily_at):
-            attesa = seconds_until_next_claim(totali.last_daily_at, 24 * 3600)
+        adesso = datetime.now(timezone.utc)
+        riscosso = await leveling_repo.claim_daily(
+            interaction.guild.id, interaction.user.id,
+            DAILY_REWARD_COINS, DAILY_COOLDOWN_SECONDS, adesso,
+        )
+        if not riscosso:
+            totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
+            attesa = seconds_until_next_claim(totali.last_daily_at, DAILY_COOLDOWN_SECONDS)
             await interaction.response.send_message(
                 f"Hai già riscosso la ricompensa di oggi. Riprova tra {_format_seconds(attesa)}.",
                 ephemeral=True,
             )
             return
 
-        import datetime as _dt
-        now = _dt.datetime.now(_dt.timezone.utc)
-        await leveling_repo.add_coins(interaction.guild.id, interaction.user.id, DAILY_REWARD_COINS)
-        await leveling_repo.set_last_daily(interaction.guild.id, interaction.user.id, now)
         await interaction.response.send_message(
             f"Hai riscosso **{DAILY_REWARD_COINS}** coin! Torna domani per altri."
         )
 
     @app_commands.command(name="work", description="Lavora per guadagnare qualche coin.")
     async def work(self, interaction: discord.Interaction) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
-        totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
-        if not can_claim_work(totali.last_work_at):
-            attesa = seconds_until_next_claim(totali.last_work_at, 3600)
+        adesso = datetime.now(timezone.utc)
+        guadagno = random.randint(WORK_REWARD_MIN, WORK_REWARD_MAX)
+        riscosso = await leveling_repo.claim_work(
+            interaction.guild.id, interaction.user.id,
+            guadagno, WORK_COOLDOWN_SECONDS, adesso,
+        )
+        if not riscosso:
+            totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
+            attesa = seconds_until_next_claim(totali.last_work_at, WORK_COOLDOWN_SECONDS)
             await interaction.response.send_message(
                 f"Sei stanco, riposati un po'. Riprova tra {_format_seconds(attesa)}.",
                 ephemeral=True,
             )
             return
 
-        import datetime as _dt
-        import random
-        now = _dt.datetime.now(_dt.timezone.utc)
-        guadagno = random.randint(WORK_REWARD_MIN, WORK_REWARD_MAX)
-        await leveling_repo.add_coins(interaction.guild.id, interaction.user.id, guadagno)
-        await leveling_repo.set_last_work(interaction.guild.id, interaction.user.id, now)
         await interaction.response.send_message(f"Hai lavorato e guadagnato **{guadagno}** coin!")
 
     @app_commands.command(name="pay", description="Trasferisci coin a un altro utente.")
@@ -443,10 +601,7 @@ class LevelingCog(commands.Cog):
         member: discord.Member,
         amount: app_commands.Range[int, 1, None],
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
         if member.id == interaction.user.id:
             await interaction.response.send_message(
@@ -493,10 +648,7 @@ class LevelingCog(commands.Cog):
         metric: app_commands.Choice[str],
         period: app_commands.Choice[str],
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if metric.value == "xp" and period.value == "alltime":
@@ -545,10 +697,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, level: app_commands.Range[int, 1, 1000], role: discord.Role
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if not isinstance(interaction.user, discord.Member):
@@ -572,7 +721,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         rimossa = await level_reward_repo.remove_reward(reward_id, guild.id)
@@ -589,7 +738,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def level_roles_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         ricompense = await level_reward_repo.list_rewards(guild.id)
@@ -600,12 +749,10 @@ class LevelingCog(commands.Cog):
             return
 
         righe = [f"`{r.id}` livello **{r.level_threshold}** → <@&{r.role_id}>" for r in ricompense]
-        embed = discord.Embed(
-            title="🏅 Ruoli-premio configurati",
-            description="\n".join(righe),
-            color=discord.Color.gold(),
+        await invia_lista(
+            interaction, "🏅 Ruoli-premio configurati", righe, discord.Color.gold(),
+            ephemeral=True, per_pagina=RUOLI_PREMIO_PER_PAGINA,
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
     # ================================================================
@@ -625,10 +772,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         await monthly_winners_repo.set_channel(
@@ -646,7 +790,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         if await monthly_winners_repo.disable(guild.id):
@@ -666,10 +810,7 @@ class LevelingCog(commands.Cog):
     @shop_group.command(name="list", description="Mostra gli oggetti disponibili nello shop.")
     async def shop_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         oggetti = await shop_repo.list_items(guild.id)
@@ -681,22 +822,22 @@ class LevelingCog(commands.Cog):
 
         righe = []
         for oggetto in oggetti:
-            riga = f"`{oggetto.id}` **{oggetto.name}** — {oggetto.price} coin"
+            nome = taglia(oggetto.name, MAX_NOME_OGGETTO)
+            riga = f"`{oggetto.id}` **{nome}** — {oggetto.price} coin"
             if oggetto.role_id is not None:
                 riga += f" (ruolo <@&{oggetto.role_id}>)"
             if oggetto.description:
-                riga += f"\n> {oggetto.description}"
-            righe.append(riga)
+                riga += f"\n> {taglia(oggetto.description, MAX_DESCRIZIONE_OGGETTO)}"
+            righe.append(taglia(riga, LIMITE_RIGA_NEGOZIO))
 
-        embed = discord.Embed(
-            title="🛒 Shop", description="\n".join(righe), color=discord.Color.green()
-        )
-        await interaction.response.send_message(embed=embed)
+        await invia_lista(interaction, "🛒 Shop", righe, discord.Color.green())
 
     @shop_group.command(name="buy", description="Acquista un oggetto dello shop.")
     @app_commands.describe(item_id="ID dell'oggetto (vedi /shop list)")
     async def shop_buy(self, interaction: discord.Interaction, item_id: int) -> None:
         guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -710,54 +851,69 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        if oggetto.role_id is not None and await shop_repo.has_purchased(
-            guild.id, interaction.user.id, oggetto.id
-        ):
+        # SEC-4/SEC-17: il ruolo si ricontrolla PRIMA di far spendere i
+        # coin: può essere stato cancellato o aver preso permessi
+        # pericolosi dopo che è stato messo nello shop.
+        ruolo_shop = None
+        if oggetto.role_id is not None:
+            ruolo_shop = guild.get_role(oggetto.role_id)
+            if ruolo_shop is None:
+                await interaction.response.send_message(
+                    "Questo oggetto non è più acquistabile: il suo ruolo non esiste più.",
+                    ephemeral=True,
+                )
+                return
+            motivo_rifiuto = check_role_assignable(guild, ruolo_shop, guild.me, self_service=True)
+            if motivo_rifiuto is not None:
+                await interaction.response.send_message(
+                    f"Questo oggetto non è più acquistabile: {motivo_rifiuto}",
+                    ephemeral=True,
+                )
+                return
+
+        acquisto = await shop_repo.buy_item(guild.id, interaction.user.id, oggetto)
+        if acquisto.esito == EsitoAcquisto.GIA_ACQUISTATO:
             await interaction.response.send_message(
                 "Hai già acquistato questo oggetto.", ephemeral=True
             )
             return
-
-        # SEC-4/SEC-17: ricontrolla il ruolo PRIMA di far spendere i
-        # coin — il ruolo può aver preso permessi pericolosi dopo che
-        # è stato messo nello shop, e non ha senso far pagare
-        # l'utente per un ruolo che poi non verrà assegnato.
-        ruolo_shop = None
-        if oggetto.role_id is not None:
-            ruolo_shop = guild.get_role(oggetto.role_id)
-            if ruolo_shop is not None:
-                motivo_rifiuto = check_role_assignable(guild, ruolo_shop, guild.me, self_service=True)
-                if motivo_rifiuto is not None:
-                    await interaction.response.send_message(
-                        f"Questo oggetto non è più acquistabile: {motivo_rifiuto}",
-                        ephemeral=True,
-                    )
-                    return
-
-        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, oggetto.price)
-        if not riuscito:
+        if acquisto.esito == EsitoAcquisto.SALDO_INSUFFICIENTE:
             await interaction.response.send_message(
                 f"Non hai abbastanza coin — servono **{oggetto.price}**.", ephemeral=True
             )
             return
 
-        await shop_repo.record_purchase(guild.id, interaction.user.id, oggetto.id)
+        nome = taglia(oggetto.name, 200)
+        conferma = f"✅ Hai acquistato **{nome}** per {oggetto.price} coin!"
+        if ruolo_shop is None:
+            await interaction.response.send_message(conferma)
+            return
 
-        if ruolo_shop is not None:
-            try:
-                await interaction.user.add_roles(
-                    ruolo_shop, reason=f"Acquisto shop: {oggetto.name}"
-                )
-            except discord.HTTPException:
-                logger.warning(
-                    "Impossibile assegnare il ruolo shop %s a %s.",
-                    oggetto.role_id,
-                    interaction.user.id,
-                )
+        # Da qui si parla con Discord: prima il defer, poi il ruolo.
+        await interaction.response.defer()
+        try:
+            await interaction.user.add_roles(
+                ruolo_shop, reason=taglia(f"Acquisto shop: {oggetto.name}", LIMITE_MOTIVO)
+            )
+        except discord.HTTPException:
+            # Il ruolo non è arrivato: l'acquisto si annulla e i coin
+            # tornano indietro.
+            await shop_repo.refund_purchase(
+                acquisto.purchase_id, guild.id, interaction.user.id, oggetto.price
+            )
+            logger.warning(
+                "Impossibile assegnare il ruolo shop %s a %s: acquisto rimborsato.",
+                oggetto.role_id,
+                interaction.user.id,
+            )
+            await interaction.followup.send(
+                "Non sono riuscito a darti il ruolo: l'acquisto è annullato e i "
+                f"**{oggetto.price}** coin ti sono stati restituiti.",
+                ephemeral=True,
+            )
+            return
 
-        await interaction.response.send_message(
-            f"✅ Hai acquistato **{oggetto.name}** per {oggetto.price} coin!"
-        )
+        await interaction.followup.send(conferma)
 
     @shop_group.command(name="add-item", description="[Admin] Aggiunge un oggetto allo shop.")
     @app_commands.describe(
@@ -770,16 +926,13 @@ class LevelingCog(commands.Cog):
     async def shop_add_item(
         self,
         interaction: discord.Interaction,
-        name: str,
+        name: app_commands.Range[str, 1, MAX_NOME_OGGETTO],
         price: app_commands.Range[int, 1, 1000000],
         role: discord.Role | None = None,
-        description: str | None = None,
+        description: app_commands.Range[str, 1, MAX_DESCRIZIONE_OGGETTO] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if role is not None and isinstance(interaction.user, discord.Member):
@@ -803,7 +956,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def shop_remove_item(self, interaction: discord.Interaction, item_id: int) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         if await shop_repo.remove_item(item_id, guild.id):
@@ -828,10 +981,7 @@ class LevelingCog(commands.Cog):
     @chest_group.command(name="saldo", description="Mostra il saldo della cassa del server.")
     async def chest_saldo(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         saldo = await guild_chest_repo.get_balance(guild.id)
@@ -862,10 +1012,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, tier: app_commands.Range[int, 1, 3]
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         risultato = await purchase_premium_tier(
@@ -909,41 +1056,47 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000]
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
-        # SEC-21: chi è in blacklist non riceve il premio e non viene
-        # contato nel costo per la cassa.
-        presenti: dict[int, discord.Member] = {}
-        for canale in guild.voice_channels:
-            for membro in canale.members:
-                if membro.bot or await blacklist_repo.is_user_blacklisted(membro.id):
-                    continue
-                presenti[membro.id] = membro
+        # LIM-25: con molte persone il lavoro supera i 3 secondi.
+        await interaction.response.defer()
+
+        # I presenti si leggono una volta sola, tutti insieme. SEC-21:
+        # chi è in blacklist non riceve il premio e non viene contato
+        # nel costo per la cassa.
+        in_vocale = {
+            membro.id
+            for canale in guild.voice_channels
+            for membro in canale.members
+            if not membro.bot
+        }
+        presenti = [
+            membro_id
+            for membro_id in sorted(in_vocale)
+            if not await blacklist_repo.is_user_blacklisted(membro_id)
+        ]
         if not presenti:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Nessuno è in vocale in questo momento — nessuna coin assegnata.", ephemeral=True
             )
             return
 
+        # LC-1: addebito e accrediti in una sola transazione.
         costo_totale = importo * len(presenti)
-        riuscito = await guild_chest_repo.spend(guild.id, costo_totale, reason=REASON_EVENT_LOBBY_PRIZE)
+        riuscito = await guild_chest_repo.pay_members(
+            guild.id, presenti, importo, reason=REASON_EVENT_LOBBY_PRIZE
+        )
         if not riuscito:
             saldo = await guild_chest_repo.get_balance(guild.id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"La cassa non basta — servono **{costo_totale}** coin per **{len(presenti)}** "
                 f"persone in vocale (ne avete **{saldo}**).",
                 ephemeral=True,
             )
             return
 
-        for membro_id in presenti:
-            await leveling_repo.add_coins(guild.id, membro_id, importo)
-
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Assegnate **{importo}** coin a **{len(presenti)}** persone in vocale "
             f"(**{costo_totale}** coin totali dalla cassa)."
         )
@@ -961,10 +1114,7 @@ class LevelingCog(commands.Cog):
         importo: app_commands.Range[int, 1, 1_000_000],
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # SEC-21: nessun premio a chi è in blacklist.
@@ -974,7 +1124,10 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        riuscito = await guild_chest_repo.spend(guild.id, importo, reason=REASON_EVENT_WINNER_PRIZE)
+        # Addebito e accredito nella stessa transazione, come /assegna-lobby.
+        riuscito = await guild_chest_repo.pay_members(
+            guild.id, [membro.id], importo, reason=REASON_EVENT_WINNER_PRIZE
+        )
         if not riuscito:
             saldo = await guild_chest_repo.get_balance(guild.id)
             await interaction.response.send_message(
@@ -982,8 +1135,6 @@ class LevelingCog(commands.Cog):
                 ephemeral=True,
             )
             return
-
-        await leveling_repo.add_coins(guild.id, membro.id, importo)
 
         await interaction.response.send_message(
             f"🏆 {membro.mention} ha vinto **{importo}** coin dalla cassa del server!"
@@ -1007,28 +1158,38 @@ class LevelingCog(commands.Cog):
         tag=f"Tag della gilda (1-5 caratteri, niente emoji né spazi)",
         name="Nome completo della gilda",
     )
-    async def clan_crea(self, interaction: discord.Interaction, tag: str, name: str) -> None:
+    async def clan_crea(
+        self,
+        interaction: discord.Interaction,
+        tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH],
+        name: app_commands.Range[str, 1, MAX_NOME_CLAN],
+    ) -> None:
         guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         valido, motivo = validate_guild_tag(tag)
         if not valido:
-            await interaction.response.send_message(motivo, ephemeral=True)
+            await interaction.followup.send(motivo, ephemeral=True)
             return
 
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Fai già parte di una gilda in questo server — lasciala prima di crearne una nuova.",
                 ephemeral=True,
             )
             return
 
         if await guild_clan_repo.is_tag_taken(guild.id, tag):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Il tag `{tag}` è già usato da un'altra gilda in questo server.",
                 ephemeral=True,
             )
@@ -1046,15 +1207,15 @@ class LevelingCog(commands.Cog):
                         view_channel=True, send_messages=True, manage_channels=True
                     ),
                 },
-                reason=f"Creazione gilda '{tag}' da {interaction.user}",
+                reason=taglia(f"Creazione gilda '{tag}' da {interaction.user}", LIMITE_MOTIVO),
             )
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non ho i permessi per creare una categoria in questo server.", ephemeral=True
             )
             return
         except discord.HTTPException:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Creazione della categoria fallita — riprova più tardi.", ephemeral=True
             )
             return
@@ -1064,10 +1225,24 @@ class LevelingCog(commands.Cog):
             guild.id, tag=tag, name=name, owner_id=interaction.user.id,
             officialize_deadline=scadenza,
         )
+        if clan_id is None:
+            # Un'altra richiesta è arrivata un attimo prima (stesso tag,
+            # oppure il fondatore è appena entrato in un'altra gilda):
+            # la categoria appena creata non serve più.
+            try:
+                await categoria.delete(reason=f"Gilda '{tag}' non creata")
+            except discord.HTTPException:
+                logger.warning("Impossibile eliminare la categoria %s rimasta senza gilda.", categoria.id)
+            if await guild_clan_repo.is_tag_taken(guild.id, tag):
+                motivo = f"Il tag `{tag}` è già usato da un'altra gilda in questo server."
+            else:
+                motivo = "Fai già parte di una gilda in questo server."
+            await interaction.followup.send(motivo, ephemeral=True)
+            return
         await guild_clan_repo.set_category_id(clan_id, categoria.id)
         await sync_member_clan_role(guild, categoria, interaction.user, ROLE_OWNER)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Gilda **{name}** (`{tag}`) creata! Per ufficializzarla servono "
             f"**{CREATION_DEFICIT}** coin in tesoreria entro **{CREATION_GRACE_HOURS} ore** "
             f"(`/clan tesoreria dona`) — altrimenti verrà eliminata automaticamente."
@@ -1075,12 +1250,13 @@ class LevelingCog(commands.Cog):
 
     @clan_group.command(name="info", description="Mostra le informazioni di una gilda.")
     @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
-    async def clan_info(self, interaction: discord.Interaction, tag: str | None = None) -> None:
+    async def clan_info(
+        self,
+        interaction: discord.Interaction,
+        tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH] | None = None,
+    ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if tag is not None:
@@ -1101,7 +1277,8 @@ class LevelingCog(commands.Cog):
         )
 
         embed = discord.Embed(
-            title=f"🛡️ [{clan.tag}] {clan.name}", color=discord.Color.blurple()
+            title=taglia(f"🛡️ [{clan.tag}] {clan.name}", LIMITE_TITOLO_EMBED),
+            color=discord.Color.blurple(),
         )
         embed.add_field(name="Stato", value=stato, inline=False)
         embed.add_field(name="Capo Clan", value=f"<@{clan.owner_id}>", inline=True)
@@ -1129,16 +1306,25 @@ class LevelingCog(commands.Cog):
                 inline=False,
             )
 
+        movimenti = await guild_clan_repo.list_ledger(clan.id, limit=MOVIMENTI_IN_CLAN_INFO)
+        if movimenti:
+            embed.add_field(
+                name="Ultimi movimenti",
+                value="\n".join(_riga_movimento(m) for m in movimenti),
+                inline=False,
+            )
+
         await interaction.response.send_message(embed=embed)
 
     @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
     @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
-    async def clan_membri(self, interaction: discord.Interaction, tag: str | None = None) -> None:
+    async def clan_membri(
+        self,
+        interaction: discord.Interaction,
+        tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH] | None = None,
+    ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if tag is not None:
@@ -1154,13 +1340,11 @@ class LevelingCog(commands.Cog):
             return
 
         membri = await guild_clan_repo.list_members(clan.id)
-        righe = [f"<@{m.user_id}> — {m.role}" for m in membri]
-        embed = discord.Embed(
-            title=f"Membri di [{clan.tag}] {clan.name}",
-            description="\n".join(righe) if righe else "Nessun membro.",
-            color=discord.Color.blurple(),
+        righe = [f"<@{m.user_id}> — {m.role}" for m in membri] or ["Nessun membro."]
+        await invia_lista(
+            interaction, f"Membri di [{clan.tag}] {clan.name}", righe,
+            discord.Color.blurple(), per_pagina=MEMBRI_PER_PAGINA,
         )
-        await interaction.response.send_message(embed=embed)
 
     @clan_group.command(
         name="classifica", description="Classifica delle gilde per XP (mensile o totale)."
@@ -1178,10 +1362,7 @@ class LevelingCog(commands.Cog):
         period: app_commands.Choice[str] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # Default: totale all-time (comportamento storico del
@@ -1197,7 +1378,7 @@ class LevelingCog(commands.Cog):
                 )
                 return
             righe = [
-                f"**{i+1}.** [{c.tag}] {c.name} — {xp} XP"
+                f"**{i+1}.** [{c.tag}] {taglia(c.name, MAX_NOME_CLAN)} — {xp} XP"
                 for i, (c, xp) in enumerate(voci)
             ]
             titolo = "🏆 Classifica Gilde — questo mese"
@@ -1209,7 +1390,7 @@ class LevelingCog(commands.Cog):
                 )
                 return
             righe = [
-                f"**{i+1}.** [{c.tag}] {c.name} — {c.total_xp} XP"
+                f"**{i+1}.** [{c.tag}] {taglia(c.name, MAX_NOME_CLAN)} — {c.total_xp} XP"
                 for i, c in enumerate(classifica)
             ]
             titolo = "🏆 Classifica Gilde — di sempre"
@@ -1234,10 +1415,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         await clan_leaderboard_config_repo.set_channel(
@@ -1255,7 +1433,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         if await clan_leaderboard_config_repo.disable(guild.id):
@@ -1270,20 +1448,20 @@ class LevelingCog(commands.Cog):
     @clan_group.command(name="sciogli", description="[Capo Clan] Sciogli la tua gilda.")
     async def clan_sciogli(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
+
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
         if clan.owner_id != interaction.user.id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan può sciogliere la gilda.", ephemeral=True
             )
             return
@@ -1292,15 +1470,16 @@ class LevelingCog(commands.Cog):
         if clan.category_id is not None:
             categoria = guild.get_channel(clan.category_id)
 
-        # Il Capo Clan è sempre chi chiama questo comando (controllo
-        # sopra): il suo ruolo/overwrite si puliscono con l'oggetto
-        # Member già in mano. Per gli altri ufficiali (Admin Clan) non
-        # necessariamente in cache, la pulizia dei loro overwrite è
-        # comunque implicita nella cancellazione della categoria; solo
-        # il ruolo condiviso può restarci — accettabile per un clan
-        # sciolto, verrà rimosso automaticamente alla prossima
-        # promozione/espulsione altrove.
+        # Il Capo Clan è chi chiama il comando: si pulisce con l'oggetto
+        # Member già in mano. Gli altri ufficiali (co-owner, Admin Clan)
+        # perdono anche loro il ruolo condiviso; gli overwrite spariscono
+        # con la categoria.
         await clear_member_clan_presence(guild, categoria, interaction.user)
+        altri = [
+            socio for socio in await guild_clan_repo.list_members(clan.id)
+            if socio.user_id != interaction.user.id
+        ]
+        await clear_clan_officers_presence(guild, None, altri)
 
         if categoria is not None:
             for canale in list(categoria.channels):
@@ -1314,94 +1493,139 @@ class LevelingCog(commands.Cog):
                 logger.warning("Impossibile eliminare la categoria della gilda %s.", clan.id)
 
         await guild_clan_repo.delete_clan(clan.id)
-        await interaction.response.send_message(f"La gilda **{clan.name}** è stata sciolta.")
+        await interaction.followup.send(f"La gilda **{clan.name}** è stata sciolta.")
 
     @clan_group.command(name="invita", description="[Capo/Admin Clan] Invita un membro nella tua gilda.")
     @app_commands.describe(membro="Il membro da invitare nella tua gilda")
     async def clan_invita(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
+
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         chi_invita = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_invita is None or chi_invita.role not in (ROLE_OWNER, ROLE_ADMIN):
-            await interaction.response.send_message(
-                "Solo il Capo Clan o un Admin Clan possono invitare nuovi membri.", ephemeral=True
+        if chi_invita is None or chi_invita.role not in RUOLI_UFFICIALI:
+            await interaction.followup.send(
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono invitare nuovi membri.", ephemeral=True
+            )
+            return
+
+        if membro.bot:
+            await interaction.followup.send(
+                "Non puoi invitare un bot in una gilda.", ephemeral=True
             )
             return
 
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id) is not None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{membro.mention} fa già parte di una gilda in questo server.", ephemeral=True
             )
             return
 
         if await guild_clan_repo.count_members(clan.id) >= clan.max_members:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"La gilda ha già raggiunto il limite di **{clan.max_members}** membri.", ephemeral=True
             )
             return
 
-        await guild_clan_repo.add_member(clan.id, membro.id, role=ROLE_MEMBER)
+        # M 9.8: l'invitato entra solo se accetta. I controlli qui sopra
+        # servono a dare subito un messaggio chiaro; quelli che contano
+        # si rifanno dentro la scrittura quando preme "Accetta".
+        scadenza = int(
+            (datetime.now(timezone.utc) + timedelta(hours=VALIDITA_INVITO_ORE)).timestamp()
+        )
+        view = BaseView(timeout=None)
+        view.add_item(BottoneInvitoClan("accetta", clan.id, membro.id, scadenza))
+        view.add_item(BottoneInvitoClan("rifiuta", clan.id, membro.id, scadenza))
+        await interaction.followup.send(
+            f"{membro.mention}, {interaction.user.mention} ti invita nella gilda "
+            f"**{taglia(clan.name, MAX_NOME_CLAN)}** (`{clan.tag}`). "
+            f"L'invito scade <t:{scadenza}:R>.",
+            view=view,
+        )
+
+    @clan_group.command(name="lascia", description="Lascia la gilda di cui fai parte.")
+    async def clan_lascia(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
+
+        # LIM-25: ruoli e permessi sono più chiamate a Discord.
+        await interaction.response.defer(ephemeral=True)
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.followup.send(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+        if clan.owner_id == interaction.user.id:
+            await interaction.followup.send(
+                "Il Capo Clan non può lasciare la gilda — usa `/clan sciogli` per scioglierla.",
+                ephemeral=True,
+            )
+            return
+
+        await guild_clan_repo.remove_member(clan.id, interaction.user.id)
 
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
-        await sync_member_clan_role(guild, categoria, membro, ROLE_MEMBER)
+        await clear_member_clan_presence(guild, categoria, interaction.user)
 
-        await interaction.response.send_message(
-            f"✅ {membro.mention} è stato invitato in **{clan.name}**."
+        await interaction.followup.send(
+            f"Hai lasciato la gilda **{taglia(clan.name, MAX_NOME_CLAN)}**.", ephemeral=True
         )
 
     @clan_group.command(name="espelli", description="[Capo/Admin Clan] Espelli un membro dalla tua gilda.")
     @app_commands.describe(membro="Il membro da espellere dalla tua gilda")
     async def clan_espelli(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
+
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         chi_espelle = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_espelle is None or chi_espelle.role not in (ROLE_OWNER, ROLE_ADMIN):
-            await interaction.response.send_message(
-                "Solo il Capo Clan o un Admin Clan possono espellere membri.", ephemeral=True
+        if chi_espelle is None or chi_espelle.role not in RUOLI_UFFICIALI:
+            await interaction.followup.send(
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono espellere membri.", ephemeral=True
             )
             return
 
         target = await guild_clan_repo.get_member(clan.id, membro.id)
         if target is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
             )
             return
 
         if membro.id == clan.owner_id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Il Capo Clan non può essere espulso — usa `/clan sciogli` per sciogliere la gilda.",
                 ephemeral=True,
             )
             return
 
-        if chi_espelle.role == ROLE_ADMIN and target.role == ROLE_ADMIN:
-            await interaction.response.send_message(
-                "Un Admin Clan non può espellere un altro Admin Clan — serve il Capo Clan.",
+        if chi_espelle.role == ROLE_ADMIN and target.role in (ROLE_ADMIN, ROLE_CO_OWNER):
+            await interaction.followup.send(
+                "Un Admin Clan non può espellere un altro Admin Clan né il Co-Owner — "
+                "serve il Capo Clan.",
                 ephemeral=True,
             )
             return
@@ -1411,7 +1635,7 @@ class LevelingCog(commands.Cog):
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         await clear_member_clan_presence(guild, categoria, membro)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {membro.mention} è stato espulso da **{clan.name}**."
         )
 
@@ -1421,62 +1645,67 @@ class LevelingCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         membro: discord.Member,
-        ruolo: Literal["admin", "mod", "member"],
+        ruolo: Literal["co_owner", "admin", "mod", "member"],
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
+
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         if clan.owner_id != interaction.user.id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan può cambiare il ruolo dei membri.", ephemeral=True
             )
             return
 
         if membro.id == clan.owner_id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Il Capo Clan non può cambiare il proprio ruolo.", ephemeral=True
             )
             return
 
         target = await guild_clan_repo.get_member(clan.id, membro.id)
         if target is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
             )
             return
 
         if ruolo == ROLE_ADMIN and target.role != ROLE_ADMIN:
             if await guild_clan_repo.count_members_with_role(clan.id, ROLE_ADMIN) >= MAX_ADMINS_PER_CLAN:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"La gilda ha già raggiunto il limite di **{MAX_ADMINS_PER_CLAN}** Admin Clan.",
                     ephemeral=True,
                 )
                 return
         elif ruolo == ROLE_MOD and target.role != ROLE_MOD:
             if await guild_clan_repo.count_members_with_role(clan.id, ROLE_MOD) >= MAX_MODS_PER_CLAN:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"La gilda ha già raggiunto il limite di **{MAX_MODS_PER_CLAN}** Mod Clan.",
                     ephemeral=True,
                 )
                 return
 
-        await guild_clan_repo.set_member_role(clan.id, membro.id, ruolo)
+        if not await guild_clan_repo.set_member_role(clan.id, membro.id, ruolo):
+            await interaction.followup.send(
+                "La gilda ha già un Co-Owner: riportalo prima a un altro ruolo.",
+                ephemeral=True,
+            )
+            return
 
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         await sync_member_clan_role(guild, categoria, membro, ruolo)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {membro.mention} è ora **{ruolo}** in **{clan.name}**."
         )
 
@@ -1492,32 +1721,32 @@ class LevelingCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         tipo: Literal["testuale", "vocale", "forum"],
-        nome: str | None = None,
+        nome: app_commands.Range[str, 1, MAX_NOME_CANALE] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
+
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
-            await interaction.response.send_message(
-                "Solo il Capo Clan o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
+        if chi_acquista is None or chi_acquista.role not in RUOLI_UFFICIALI:
+            await interaction.followup.send(
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
             )
             return
 
         costo = next_channel_unlock_cost(clan.channels_unlocked)
         if costo is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "La tua gilda ha già sbloccato tutti i canali extra disponibili.", ephemeral=True
             )
             return
@@ -1525,7 +1754,7 @@ class LevelingCog(commands.Cog):
         ore_richieste = next_channel_voice_hours_requirement(clan.channels_unlocked)
         ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
         if ore_accumulate < ore_richieste:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Servono **{ore_richieste}** ore vocali accumulate dalla gilda per il prossimo "
                 f"canale (ne avete accumulate **{ore_accumulate}**).",
                 ephemeral=True,
@@ -1533,7 +1762,7 @@ class LevelingCog(commands.Cog):
             return
 
         if clan.treasury_balance < costo:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"La tesoreria della gilda non basta — servono **{costo}** coin "
                 f"(ne avete **{clan.treasury_balance}**).",
                 ephemeral=True,
@@ -1542,57 +1771,48 @@ class LevelingCog(commands.Cog):
 
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         if categoria is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "La categoria della tua gilda non esiste più su Discord — contatta lo staff.",
                 ephemeral=True,
             )
             return
 
+        # Prima l'addebito (una sola UPDATE con i controlli dentro),
+        # poi il canale su Discord. Se un altro acquisto è arrivato un
+        # attimo prima, questo non passa.
+        if not await guild_clan_repo.unlock_channel(clan.id, clan.channels_unlocked, costo):
+            await interaction.followup.send(
+                "L'acquisto non è andato a buon fine: la tesoreria o i canali sbloccati sono "
+                "cambiati nel frattempo. Riprova.",
+                ephemeral=True,
+            )
+            return
+
         nome_canale = (nome or f"{clan.tag.lower()}-canale-{clan.channels_unlocked + 1}")[:100]
-        motivo = f"Canale extra sbloccato per la gilda '{clan.tag}'"
+        motivo = taglia(f"Canale extra sbloccato per la gilda '{clan.tag}'", LIMITE_MOTIVO)
         try:
-            # Creato PRIMA di scalare la tesoreria (stesso ordine di
-            # `/clan crea` con la categoria) — se la creazione fallisce
-            # non deve restare una spesa senza contropartita reale.
             if tipo == "testuale":
                 await guild.create_text_channel(nome_canale, category=categoria, reason=motivo)
             elif tipo == "vocale":
                 await guild.create_voice_channel(nome_canale, category=categoria, reason=motivo)
             else:
                 await guild.create_forum(nome_canale, category=categoria, reason=motivo)
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per creare un canale in questa categoria.", ephemeral=True
-            )
-            return
-        except discord.HTTPException:
-            await interaction.response.send_message(
-                "Creazione del canale fallita — riprova più tardi.", ephemeral=True
+        except discord.HTTPException as errore:
+            # Il canale non è nato: la spesa si annulla.
+            await guild_clan_repo.refund_channel_unlock(clan.id, costo)
+            if isinstance(errore, discord.Forbidden):
+                testo = "Non ho i permessi per creare un canale in questa categoria."
+            else:
+                testo = "Creazione del canale fallita — riprova più tardi."
+            await interaction.followup.send(
+                f"{testo} I **{costo}** coin sono tornati in tesoreria.", ephemeral=True
             )
             return
 
-        riuscito = await guild_clan_repo.spend_from_treasury(clan.id, costo, reason=REASON_CHANNEL_UNLOCK)
-        await guild_clan_repo.increment_channels_unlocked(clan.id)
-
-        if riuscito:
-            await interaction.response.send_message(
-                f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
-                f"dalla tesoreria."
-            )
-        else:
-            # Caso limite: il saldo è cambiato tra il controllo sopra
-            # e la spesa atomica (es. decadimento mensile nel
-            # frattempo) — il canale Discord esiste già ed è comunque
-            # conteggiato come sbloccato, ma non si è potuto scalare
-            # la tesoreria di un importo che ora non basta più.
-            logger.warning(
-                "Spesa tesoreria fallita dopo la creazione del canale per il clan %s (saldo cambiato).",
-                clan.id,
-            )
-            await interaction.response.send_message(
-                f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}**, ma la tesoreria non "
-                f"aveva più abbastanza saldo nell'istante della spesa — nessun importo scalato."
-            )
+        await interaction.followup.send(
+            f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
+            f"dalla tesoreria."
+        )
 
     clan_tesoreria_group = app_commands.Group(
         name="tesoreria", description="Tesoreria della tua gilda.", parent=clan_group
@@ -1604,10 +1824,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000_000]
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -1627,8 +1844,8 @@ class LevelingCog(commands.Cog):
         nuovo_saldo = await guild_clan_repo.donate(clan.id, interaction.user.id, importo)
 
         messaggio = f"✅ Hai donato **{importo}** coin alla tesoreria di **{clan.name}** (saldo: {nuovo_saldo})."
+        # La gilda diventa ufficiale dentro la donazione stessa (repository).
         if not clan.officialized and is_creation_deficit_covered(nuovo_saldo):
-            await guild_clan_repo.set_officialized(clan.id)
             messaggio += "\n🎉 Il deficit di creazione è coperto: la gilda è ora **ufficializzata**!"
 
         await interaction.response.send_message(messaggio)
@@ -1644,14 +1861,11 @@ class LevelingCog(commands.Cog):
     async def clan_tesoreria_trasferisci(
         self,
         interaction: discord.Interaction,
-        tag_destinazione: str,
+        tag_destinazione: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH],
         importo: app_commands.Range[int, 1, 1_000_000_000],
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -1704,10 +1918,20 @@ class LevelingCog(commands.Cog):
         nota_cross_server = (
             " (su un altro server)" if destinazione.guild_id != guild.id else ""
         )
-        await interaction.response.send_message(
+        messaggio = (
             f"✅ Trasferite **{importo}** coin dalla tesoreria di **{clan.name}** a "
             f"**{destinazione.name}**{nota_cross_server}."
         )
+        # BUG-15: il trasferimento può aver coperto il debito di creazione.
+        aggiornata = await guild_clan_repo.get_clan_by_tag(
+            destinazione.guild_id, destinazione.tag
+        )
+        if aggiornata is not None and aggiornata.officialized and not destinazione.officialized:
+            messaggio += (
+                f"\n🎉 Il deficit di creazione è coperto: **{destinazione.name}** è ora "
+                "**ufficializzata**!"
+            )
+        await interaction.response.send_message(messaggio)
 
     clan_boost_group = app_commands.Group(
         name="boost", description="Boost XP/coin del Sistema Gilde/Clan.", parent=clan_group
@@ -1719,10 +1943,7 @@ class LevelingCog(commands.Cog):
     )
     async def clan_boost_individuale(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -1758,10 +1979,7 @@ class LevelingCog(commands.Cog):
     )
     async def clan_boost_gilda(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -1772,9 +1990,9 @@ class LevelingCog(commands.Cog):
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
+        if chi_acquista is None or chi_acquista.role not in RUOLI_UFFICIALI:
             await interaction.response.send_message(
-                "Solo il Capo Clan o un Admin Clan possono acquistare il boost di gilda.",
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono acquistare il boost di gilda.",
                 ephemeral=True,
             )
             return
@@ -1866,13 +2084,15 @@ class LevelingCog(commands.Cog):
     async def giveaway(
         self,
         interaction: discord.Interaction,
-        prize: str,
+        prize: app_commands.Range[str, 1, MAX_PREMIO_GIVEAWAY],
         duration_minutes: app_commands.Range[int, 1, 43200],
         winners: app_commands.Range[int, 1, 50] = 1,
         min_level: app_commands.Range[int, 0, 1000] = 0,
         required_role: discord.Role | None = None,
     ) -> None:
         guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
         if guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -1894,7 +2114,7 @@ class LevelingCog(commands.Cog):
         riga_requisiti = f"\nRequisiti: {', '.join(requisiti)}" if requisiti else ""
 
         embed = discord.Embed(
-            title=f"🎉 Giveaway: {prize}",
+            title=taglia(f"🎉 Giveaway: {prize}", LIMITE_TITOLO_EMBED),
             description=(
                 f"Vincitori: **{winners}**\n"
                 f"Termina: <t:{int(scadenza.timestamp())}:R>{riga_requisiti}"
@@ -1917,4 +2137,6 @@ async def setup(bot: commands.Bot) -> None:
             premium_capable=False,
         )
     )
+    # Gli inviti in gilda devono funzionare anche dopo un riavvio.
+    bot.add_dynamic_items(BottoneInvitoClan)
     await bot.add_cog(LevelingCog(bot))

@@ -64,8 +64,9 @@ async def test_create_clan_registra_il_deficit_nel_registro(repo):
 async def test_tag_univoco_per_server(repo):
     await _crea_clan(repo, guild_id=100, tag="ABC")
 
-    with pytest.raises(Exception):  # violazione UNIQUE(guild_id, tag)
-        await _crea_clan(repo, guild_id=100, tag="ABC")
+    # UNIQUE(guild_id, tag): la seconda creazione non scrive nulla.
+    assert await _crea_clan(repo, guild_id=100, tag="ABC") is None
+    assert len(await repo.list_clans(100)) == 1
 
 
 @pytest.mark.asyncio
@@ -96,7 +97,7 @@ async def test_set_officialized(repo):
 @pytest.mark.asyncio
 async def test_get_unofficialized_expired(repo):
     scaduto = await _crea_clan(repo, tag="OLD", deadline=ORA - timedelta(hours=1))
-    non_scaduto = await _crea_clan(repo, tag="NEW", deadline=ORA + timedelta(hours=1))
+    non_scaduto = await _crea_clan(repo, tag="NEW", owner_id=2, deadline=ORA + timedelta(hours=1))
 
     scaduti = await repo.get_unofficialized_expired(ORA)
 
@@ -123,12 +124,32 @@ async def test_delete_clan_rimuove_tutto(repo):
 
 
 @pytest.mark.asyncio
-async def test_increment_channels_unlocked(repo):
+async def test_unlock_channel_scala_e_conta_solo_se_tutto_torna(repo):
     clan_id = await _crea_clan(repo)
-    await repo.increment_channels_unlocked(clan_id)
-    await repo.increment_channels_unlocked(clan_id)
+    await repo.donate(clan_id, user_id=1, amount=15_000 + 60_000)
 
-    assert (await repo.get_clan(clan_id)).channels_unlocked == 2
+    assert await repo.unlock_channel(clan_id, expected_unlocked=0, cost=25_000) is True
+    # Stesso acquisto ripetuto (doppio clic): i canali sbloccati non sono più 0.
+    assert await repo.unlock_channel(clan_id, expected_unlocked=0, cost=25_000) is False
+    # Saldo insufficiente per il secondo canale.
+    assert await repo.unlock_channel(clan_id, expected_unlocked=1, cost=50_000) is False
+
+    clan = await repo.get_clan(clan_id)
+    assert clan.channels_unlocked == 1
+    assert clan.treasury_balance == 35_000
+
+
+@pytest.mark.asyncio
+async def test_refund_channel_unlock_rimette_tutto_com_era(repo):
+    clan_id = await _crea_clan(repo)
+    await repo.donate(clan_id, user_id=1, amount=15_000 + 25_000)
+    await repo.unlock_channel(clan_id, expected_unlocked=0, cost=25_000)
+
+    await repo.refund_channel_unlock(clan_id, 25_000)
+
+    clan = await repo.get_clan(clan_id)
+    assert clan.channels_unlocked == 0
+    assert clan.treasury_balance == 25_000
 
 
 @pytest.mark.asyncio
@@ -379,7 +400,7 @@ async def test_add_xp_importo_non_positivo_solleva(repo):
 @pytest.mark.asyncio
 async def test_get_clan_leaderboard_ordinata_per_xp(repo):
     basso = await _crea_clan(repo, guild_id=100, tag="LOW")
-    alto = await _crea_clan(repo, guild_id=100, tag="HIGH")
+    alto = await _crea_clan(repo, guild_id=100, tag="HIGH", owner_id=2)
     await repo.add_xp(basso, amount=100)
     await repo.add_xp(alto, amount=9000)
 
@@ -405,7 +426,7 @@ async def test_get_clan_leaderboard_solo_del_server_giusto(repo):
 @pytest.mark.asyncio
 async def test_get_monthly_clan_leaderboard_ordinata_per_xp_del_periodo(repo):
     basso = await _crea_clan(repo, guild_id=100, tag="LOW")
-    alto = await _crea_clan(repo, guild_id=100, tag="HIGH")
+    alto = await _crea_clan(repo, guild_id=100, tag="HIGH", owner_id=2)
     await repo.add_xp(basso, amount=100)
     await repo.add_xp(alto, amount=9000)
 
@@ -481,7 +502,7 @@ async def test_apply_text_tick_traccia_anche_la_classifica_mensile(repo):
 async def test_list_officialized_clans_solo_ufficializzati(repo):
     ufficializzato = await _crea_clan(repo, tag="OK")
     await repo.set_officialized(ufficializzato)
-    await _crea_clan(repo, tag="NO")  # non ufficializzato
+    await _crea_clan(repo, tag="NO", owner_id=2)  # non ufficializzato
 
     clan = await repo.list_officialized_clans()
 

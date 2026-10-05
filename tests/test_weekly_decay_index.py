@@ -7,12 +7,15 @@ parziale idx_leveling_totals_weekly_decay_due (migrazione 0001): con
 """
 
 import json
+from datetime import datetime, timezone
 
 import pytest
 
 from core.repositories.leveling_repo import QUERY_UTENTI_DA_DECADERE, LevelingRepository
 
 PERIODO = "2026-W40"
+# Nessun utente di questi test è "appena arrivato" (M 9.10).
+NATI_PRIMA_DI = datetime(2099, 1, 1, tzinfo=timezone.utc)
 INDICE = "idx_leveling_totals_weekly_decay_due"
 
 
@@ -40,7 +43,8 @@ async def test_il_piano_della_query_usa_l_indice_come_condizione_di_ricerca(clea
 
     letterale = PERIODO.replace("'", "''")
     righe = await clean_db.fetchval(
-        "EXPLAIN (FORMAT JSON) " + QUERY_UTENTI_DA_DECADERE.replace("$1", f"'{letterale}'")
+        "EXPLAIN (FORMAT JSON) "
+        + QUERY_UTENTI_DA_DECADERE.replace("$1", f"'{letterale}'").replace("$2", "'2099-01-01'")
     )
     nodi = list(_nodi(json.loads(righe)[0]["Plan"]))
 
@@ -73,7 +77,7 @@ async def test_la_query_riscritta_restituisce_gli_stessi_utenti_di_is_distinct_f
         PERIODO,
     )
 
-    trovati = await repo.list_users_needing_weekly_decay(PERIODO)
+    trovati = await repo.list_users_needing_weekly_decay(PERIODO, created_before=NATI_PRIMA_DI)
 
     assert sorted(trovati) == sorted((r["guild_id"], r["user_id"]) for r in attesi)
     assert sorted(trovati) == [(1, 1), (1, 2), (1, 3)]

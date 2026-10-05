@@ -148,7 +148,9 @@ async def sync_member_clan_role(guild, category, member, role: str) -> None:
     applica ruolo condiviso + overwrite di categoria coerenti col
     ruolo passato."""
     è_capo = role == "owner"
-    è_admin = role == "admin"
+    # Il co-owner su Discord vale come un Admin Clan: stessa etichetta
+    # e stessi permessi sulla categoria della gilda.
+    è_admin = role in ("admin", "co_owner")
     await sync_shared_role(guild, member, CAPO_CLAN_ROLE_NAME, è_capo)
     await sync_shared_role(guild, member, ADMIN_CLAN_ROLE_NAME, è_admin)
     if è_capo or è_admin:
@@ -164,3 +166,16 @@ async def clear_member_clan_presence(guild, category, member) -> None:
     await sync_shared_role(guild, member, CAPO_CLAN_ROLE_NAME, False)
     await sync_shared_role(guild, member, ADMIN_CLAN_ROLE_NAME, False)
     await revoke_access(category, member)
+
+
+async def clear_clan_officers_presence(guild, category, clan_members) -> None:
+    """Scioglimento di una gilda: toglie i ruoli condivisi a TUTTI gli
+    ufficiali (capo, co-owner, admin) ancora presenti nel server, non
+    solo a chi ha lanciato il comando. I membri semplici non hanno
+    ruoli condivisi: per loro basta la cancellazione della categoria."""
+    for socio in clan_members:
+        if socio.role not in ("owner", "co_owner", "admin"):
+            continue
+        membro = guild.get_member(socio.user_id)
+        if membro is not None:
+            await clear_member_clan_presence(guild, category, membro)

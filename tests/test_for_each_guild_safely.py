@@ -77,7 +77,11 @@ async def test_retention_un_server_che_fallisce_non_blocca_gli_altri(monkeypatch
 async def test_decay_tesoreria_un_clan_che_fallisce_non_blocca_gli_altri(monkeypatch):
     import core.guild_clan_treasury_decay_worker as modulo
 
-    clan = lambda i: SimpleNamespace(id=i, guild_id=9, last_decay_period=None)
+    # Gilde vecchie di anni: hanno già vissuto un mese intero.
+    clan = lambda i: SimpleNamespace(
+        id=i, guild_id=9, last_decay_period=None,
+        created_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+    )
     applicati = []
 
     async def lista():
@@ -104,7 +108,7 @@ async def test_decay_settimanale_un_utente_che_fallisce_non_blocca_gli_altri(mon
 
     applicati = []
 
-    async def lista(settimana):
+    async def lista(settimana, created_before):
         return [(1, 10), (1, 20)]
 
     async def decay(guild_id, user_id, settimana):
@@ -126,7 +130,10 @@ async def test_decay_settimanale_un_utente_che_fallisce_non_blocca_gli_altri(mon
 async def test_expiry_un_clan_che_fallisce_non_blocca_gli_altri(monkeypatch):
     import core.guild_clan_expiry_worker as modulo
 
-    clan = lambda i: SimpleNamespace(id=i, guild_id=9, category_id=None, tag=f"T{i}")
+    # Gilde scadute con il debito di creazione ancora aperto.
+    clan = lambda i: SimpleNamespace(
+        id=i, guild_id=9, category_id=None, tag=f"T{i}", treasury_balance=-15_000
+    )
     eliminati = []
 
     async def scaduti(adesso):

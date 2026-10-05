@@ -224,6 +224,8 @@ async def blacklist_vera(monkeypatch, clean_db):
     database_module.db._modules_cache.clear()
     blacklist_repo._user_cache.clear()
     await blacklist_repo.add_user(ID_BLOCCATO, "test SEC-21", added_by=ID_OWNER_BOT)
+    # I comandi dell'economia controllano per prima cosa che il modulo sia attivo.
+    await database_module.db.set_module_active_for_guild(ID_SERVER, "leveling", True)
     yield
     blacklist_repo._user_cache.clear()
     database_module.db._modules_cache.clear()
@@ -232,8 +234,14 @@ async def blacklist_vera(monkeypatch, clean_db):
 def _server_con_vocale(*membri):
     canale = fake_voice_channel(500)
     canale.members = list(membri)
+    # Persone normali in un canale normale: né assordate né mutate, e
+    # nessun canale AFK (il worker delle gilde applica le regole anti-farm).
+    for membro in membri:
+        membro.voice.self_deaf = False
+        membro.voice.self_mute = False
     server = fake_guild(ID_SERVER)
     server.voice_channels = [canale]
+    server.afk_channel = None
     return server
 
 

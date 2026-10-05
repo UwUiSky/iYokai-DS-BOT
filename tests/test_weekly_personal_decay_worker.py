@@ -16,8 +16,9 @@ from core.repositories.guild_chest_repo import GuildChestRepository
 from core.repositories.leveling_repo import LevelingRepository
 from core.weekly_personal_decay_worker import WeeklyPersonalDecayWorker
 
-# 2026-09-24 è un giovedì della settimana ISO 2026-W39
-ORA = datetime(2026, 9, 24, 12, 0, tzinfo=timezone.utc)
+# I saldi nascono con l'orologio vero; il giro avviene molto dopo, così
+# ogni utente ha già vissuto una settimana intera (M 9.10).
+ORA = datetime(2099, 9, 24, 12, 0, tzinfo=timezone.utc)
 
 
 @pytest.fixture

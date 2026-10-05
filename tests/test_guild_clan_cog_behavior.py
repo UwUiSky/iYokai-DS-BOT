@@ -17,18 +17,54 @@ from core.database import Database
 from core.repositories.guild_clan_repo import GuildClanRepository
 from core.repositories.leveling_repo import LevelingRepository
 from tests.support.discord_fakes import fake_member, fake_role
+from tests.support.moduli import attiva_livelli, togli_configurazione
 
 
 class _FakeResponse:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
         self.sent_embeds: list = []
+        self.sent_views: list = []
+        self.edited_messages: list[dict] = []
+        # Ordine delle chiamate: serve a controllare che defer() sia la prima.
+        self.chiamate: list[str] = []
 
-    async def send_message(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
+    async def send_message(
+        self, content: str = None, embed=None, view=None, ephemeral: bool = False
+    ) -> None:
+        self.chiamate.append("send_message")
         if content is not None:
             self.sent_messages.append(content)
         if embed is not None:
             self.sent_embeds.append(embed)
+        if view is not None:
+            self.sent_views.append(view)
+
+    async def defer(self, ephemeral: bool = False) -> None:
+        self.chiamate.append("defer")
+
+    async def edit_message(self, content: str = None, embed=None, view=None) -> None:
+        """Risposta di un bottone: modifica il messaggio su cui sta."""
+        self.chiamate.append("edit_message")
+        self.edited_messages.append({"content": content, "view": view})
+
+
+class _FakeFollowup:
+    """Dopo un defer() le risposte passano da qui: stesse liste della response."""
+
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def send(
+        self, content: str = None, embed=None, view=None, ephemeral: bool = False
+    ) -> None:
+        self._response.chiamate.append("followup")
+        if content is not None:
+            self._response.sent_messages.append(content)
+        if embed is not None:
+            self._response.sent_embeds.append(embed)
+        if view is not None:
+            self._response.sent_views.append(view)
 
 
 class _FakeHTTPResponse:
@@ -93,6 +129,7 @@ class _FakeGuild:
         self.created_channels: list = []
         self.roles: list = []
         self._next_role_id = 1
+        self.presenti: dict[int, object] = {}
 
     async def create_category(self, name: str, overwrites=None, reason=None):
         if self._category_creation_forbidden:
@@ -138,6 +175,10 @@ class _FakeGuild:
     def get_channel(self, channel_id: int):
         return self._channels_by_id.get(channel_id)
 
+    def get_member(self, user_id: int):
+        """I membri presenti nel server: li registra il test con `presenti`."""
+        return self.presenti.get(user_id)
+
 
 class _FakeMember(discord.Member):
     def __init__(self, member_id: int) -> None:
@@ -157,6 +198,10 @@ class _FakeMember(discord.Member):
     @property
     def mention(self):
         return f"<@{self._id_finto}>"
+
+    @property
+    def bot(self) -> bool:
+        return getattr(self, "_e_un_bot", False)
 
     def __hash__(self) -> int:
         return hash(self._id_finto)
@@ -185,6 +230,7 @@ class _FakeInteraction:
         self.guild = guild
         self.user = user or _FakeMember(1)
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup(self.response)
 
 
 @pytest.fixture
@@ -199,6 +245,11 @@ async def cog_e_repos(monkeypatch):
     await database.pool.execute("DELETE FROM clans")
     await database.pool.execute("DELETE FROM leveling_totals")
 
+    # Il database globale usa lo stesso pool di questo test (i comandi
+    # controllano il modulo attivo, i bottoni degli inviti la blacklist),
+    # e il modulo dei livelli è acceso nei due server usati qui.
+    await attiva_livelli(monkeypatch, database.pool, 100, 200)
+
     clan_repo = GuildClanRepository(pool_provider=lambda: database.pool)
     leveling_repo = LevelingRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(leveling_module, "guild_clan_repo", clan_repo)
@@ -208,6 +259,7 @@ async def cog_e_repos(monkeypatch):
     cog.cog_unload()
 
     yield cog, clan_repo, leveling_repo
+    await togli_configurazione(database.pool, 100, 200)
     await database.pool.execute("DELETE FROM clan_treasury_ledger")
     await database.pool.execute("DELETE FROM clan_members")
     await database.pool.execute("DELETE FROM clans")
@@ -527,6 +579,16 @@ async def _crea_clan_con_categoria(clan_repo, guild, owner_id=1, tag="ABC", max_
     return clan_id, categoria
 
 
+async def _clicca_invito(interazione_invito, guild, invitato, azione: str = "accetta"):
+    """L'invitato preme un bottone del messaggio di invito (M 9.8)."""
+    view = interazione_invito.response.sent_views[0]
+    bottone = next(b for b in view.children if b.azione == azione)
+    clic = _FakeInteraction(guild, user=invitato)
+    if await bottone.interaction_check(clic):
+        await bottone.callback(clic)
+    return clic
+
+
 @pytest.mark.asyncio
 async def test_invita_aggiunge_membro_e_gli_da_accesso_alla_categoria(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
@@ -538,7 +600,12 @@ async def test_invita_aggiunge_membro_e_gli_da_accesso_alla_categoria(cog_e_repo
 
     await cog.clan_invita.callback(cog, interaction, membro=invitato)
 
-    assert "invitato" in interaction.response.sent_messages[0]
+    assert "ti invita" in interaction.response.sent_messages[0]
+    # Senza il suo consenso non entra.
+    assert await clan_repo.get_member(clan_id, 2) is None
+
+    await _clicca_invito(interaction, guild, invitato)
+
     membro_db = await clan_repo.get_member(clan_id, 2)
     assert membro_db is not None
     assert membro_db.role == "member"
@@ -557,7 +624,7 @@ async def test_invita_un_admin_puo_farlo(cog_e_repos):
 
     await cog.clan_invita.callback(cog, interaction, membro=invitato)
 
-    assert "invitato" in interaction.response.sent_messages[0]
+    assert "ti invita" in interaction.response.sent_messages[0]
 
 
 @pytest.mark.asyncio
@@ -572,7 +639,7 @@ async def test_invita_un_membro_semplice_non_puo_farlo(cog_e_repos):
 
     await cog.clan_invita.callback(cog, interaction, membro=invitato)
 
-    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
     assert await clan_repo.get_member(clan_id, 2) is None
 
 
@@ -816,7 +883,7 @@ async def test_compra_canale_un_membro_semplice_non_puo_farlo(cog_e_repos):
 
     await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
 
-    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
     assert len(guild.created_channels) == 0
 
 
@@ -858,9 +925,9 @@ async def test_compra_canale_scala_esaurita_avvisa(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
     guild = _FakeGuild(100)
     clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
-    for _ in range(4):
-        await clan_repo.increment_channels_unlocked(clan_id)
-    await clan_repo.donate(clan_id, user_id=1, amount=1_000_000)
+    await clan_repo.donate(clan_id, user_id=1, amount=3_000_000)
+    for gia_sbloccati, costo in enumerate((25_000, 50_000, 200_000, 800_000)):
+        assert await clan_repo.unlock_channel(clan_id, gia_sbloccati, costo) is True
     await clan_repo.add_voice_ticks(clan_id, count=1000 * 60)
     capo = _FakeMember(1)
     interaction = _FakeInteraction(guild, user=capo)
@@ -998,7 +1065,7 @@ async def test_boost_gilda_un_membro_semplice_non_puo_comprarlo(cog_e_repos):
 
     await cog.clan_boost_gilda.callback(cog, interaction)
 
-    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
     assert (await clan_repo.get_clan(clan_id)).guild_boost_expires_at is None
 
 

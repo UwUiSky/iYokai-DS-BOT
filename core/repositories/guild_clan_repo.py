@@ -1,25 +1,21 @@
 """
 core/repositories/guild_clan_repo.py
 ========================================
-Persistenza del Sistema Gilde/Clan (SPEC.md §15.14). Tre tabelle in
-questo primo pezzo — la creazione/ufficializzazione, i membri con
-ruolo, la tesoreria con registro movimenti (utile anche per la
-classifica donazioni membri richiesta esplicitamente per i pannelli).
-Il tracciamento dell'attività vocale (tick, decadimento) e i comandi
-Discord arrivano in un pezzo successivo, sopra questa base.
-
-Un clan ha un ID GLOBALE (non per server): necessario perché i
-trasferimenti di tesoreria tra clan dello STESSO owner possono
-attraversare server diversi (confermato esplicitamente dall'utente),
-quindi due clan coinvolti in un trasferimento possono avere
-guild_id diversi — servirebbe comunque un ID univoco che non dipenda
-dal server per identificarli entrambi in modo non ambiguo.
+Persistenza delle gilde/clan: gilde, membri con il loro ruolo, tesoreria
+con lo storico dei movimenti, XP di gilda (totale e del mese). Un utente
+sta in una sola gilda per server (vincolo unico, migrazione 0018).
+Ogni operazione sui coin ha il controllo dentro la scrittura.
+Una gilda ha un ID globale, non per server: i trasferimenti di
+tesoreria tra gilde dello stesso capo possono attraversare server
+diversi.
+Funzioni coperte: SPEC §15.14
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 
 import asyncpg
 
@@ -33,14 +29,39 @@ ROLE_MEMBER = "member"
 
 REASON_DONATION = "donation"
 REASON_CHANNEL_UNLOCK = "channel_unlock"
+REASON_CHANNEL_UNLOCK_REFUND = "channel_unlock_refund"
 REASON_MONTHLY_DECAY = "monthly_decay"
 REASON_CREATION_DEFICIT = "creation_deficit"
 REASON_TREASURY_TRANSFER_IN = "treasury_transfer_in"
 REASON_TREASURY_TRANSFER_OUT = "treasury_transfer_out"
 REASON_GUILD_BOOST = "guild_boost"
+# Scritto dal worker vocale: una riga al minuto per ogni membro in vocale.
+REASON_VOICE_TICK = "voice_tick"
 
 DEFAULT_MAX_MEMBERS = 50
+
+# Accredito in tesoreria ($2) che rende ufficiale la gilda quando il
+# saldo torna a zero o sopra: stessa regola di
+# core.guild_clan_logic.is_creation_deficit_covered, scritta in SQL per
+# stare nella stessa UPDATE dell'accredito.
+_ACCREDITA_E_UFFICIALIZZA = (
+    "treasury_balance = treasury_balance + $2, "
+    "officialized = officialized OR (treasury_balance + $2 >= 0)"
+)
 MAX_MEMBERS_CEILING = 999
+
+
+class EsitoIngresso(str, Enum):
+    """Com'è andato l'ingresso di un utente in una gilda (add_member)."""
+
+    ENTRATO = "entrato"
+    GIA_IN_UNA_GILDA = "gia_in_una_gilda"
+    GILDA_PIENA = "gilda_piena"
+    GILDA_INESISTENTE = "gilda_inesistente"
+
+
+class _FondatoreGiaInUnaGilda(Exception):
+    """Interna a create_clan: annulla la transazione della creazione."""
 
 
 @dataclass(frozen=True)
@@ -218,7 +239,7 @@ class GuildClanRepository:
         owner_id: int,
         officialize_deadline: datetime,
         max_members: int = DEFAULT_MAX_MEMBERS,
-    ) -> int:
+    ) -> int | None:
         """
         Il saldo tesoreria parte a -CREATION_DEFICIT (in deficit) —
         il clan esiste già (categoria/canali possono essere creati
@@ -227,29 +248,56 @@ class GuildClanRepository:
         automaticamente come owner nella stessa transazione: un clan
         senza il suo stesso owner tra i membri sarebbe uno stato
         incoerente anche solo per un istante.
+
+        Restituisce None, senza scrivere nulla, se nel server esiste
+        già una gilda con lo stesso tag o se il fondatore fa già parte
+        di una gilda del server: lo decidono i vincoli unici, così due
+        creazioni arrivate insieme non passano tutte e due.
         """
+        try:
+            return await self._create_clan(
+                guild_id, tag, name, owner_id, officialize_deadline, max_members
+            )
+        except _FondatoreGiaInUnaGilda:
+            return None
+
+    async def _create_clan(
+        self,
+        guild_id: int,
+        tag: str,
+        name: str,
+        owner_id: int,
+        officialize_deadline: datetime,
+        max_members: int,
+    ) -> int | None:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow(
+                clan_id = await conn.fetchval(
                     """
                     INSERT INTO clans
                         (guild_id, tag, name, owner_id, treasury_balance,
                          officialize_deadline, max_members)
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (guild_id, tag) DO NOTHING
                     RETURNING id
                     """,
                     guild_id, tag, name, owner_id, -CREATION_DEFICIT,
                     officialize_deadline, max_members,
                 )
-                clan_id = row["id"]
+                if clan_id is None:
+                    return None
 
-                await conn.execute(
+                fondatore = await conn.fetchval(
                     """
-                    INSERT INTO clan_members (clan_id, user_id, role)
-                    VALUES ($1, $2, $3)
+                    INSERT INTO clan_members (clan_id, user_id, role, guild_id)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id) DO NOTHING
+                    RETURNING user_id
                     """,
-                    clan_id, owner_id, ROLE_OWNER,
+                    clan_id, owner_id, ROLE_OWNER, guild_id,
                 )
+                if fondatore is None:
+                    raise _FondatoreGiaInUnaGilda
 
                 await conn.execute(
                     """
@@ -281,11 +329,15 @@ class GuildClanRepository:
         return [self._row_to_clan(r) for r in rows]
 
     async def set_officialized(self, clan_id: int) -> None:
+        """Rende ufficiale la gilda. Donazioni e trasferimenti lo fanno
+        da soli; questo serve al controllo delle scadenze per le gilde
+        con il debito già coperto rimaste "non ufficiali"."""
         await self._pool.execute("UPDATE clans SET officialized = true WHERE id = $1", clan_id)
 
     async def get_unofficialized_expired(self, now: datetime) -> list[Clan]:
         """Clan ancora non ufficializzati la cui finestra di 24h è
-        scaduta — pronti per la cancellazione automatica."""
+        scaduta. Chi chiama guarda il saldo: debito coperto, la gilda
+        va resa ufficiale; debito aperto, va cancellata."""
         rows = await self._pool.fetch(
             """
             SELECT * FROM clans
@@ -313,10 +365,65 @@ class GuildClanRepository:
             "UPDATE clans SET category_id = $2 WHERE id = $1", clan_id, category_id
         )
 
-    async def increment_channels_unlocked(self, clan_id: int) -> None:
-        await self._pool.execute(
-            "UPDATE clans SET channels_unlocked = channels_unlocked + 1 WHERE id = $1", clan_id
-        )
+    async def unlock_channel(self, clan_id: int, expected_unlocked: int, cost: int) -> bool:
+        """
+        Compra il prossimo canale extra: toglie `cost` dalla tesoreria e
+        aumenta di uno i canali sbloccati, con UNA sola UPDATE che
+        contiene i controlli (BUG-14). Riesce solo se il saldo basta e
+        se i canali sbloccati sono ancora `expected_unlocked`: così un
+        doppio clic non compra due canali al prezzo del primo. False,
+        senza scrivere nulla, in caso contrario.
+        """
+        if cost <= 0:
+            raise ValueError("Il costo del canale deve essere positivo.")
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                aggiornato = await conn.fetchval(
+                    """
+                    UPDATE clans
+                    SET treasury_balance = treasury_balance - $3,
+                        channels_unlocked = channels_unlocked + 1
+                    WHERE id = $1 AND channels_unlocked = $2 AND treasury_balance >= $3
+                    RETURNING id
+                    """,
+                    clan_id, expected_unlocked, cost,
+                )
+                if aggiornato is None:
+                    return False
+                await conn.execute(
+                    """
+                    INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason)
+                    VALUES ($1, NULL, $2, $3)
+                    """,
+                    clan_id, -cost, REASON_CHANNEL_UNLOCK,
+                )
+                return True
+
+    async def refund_channel_unlock(self, clan_id: int, cost: int) -> None:
+        """
+        Annulla un unlock_channel appena fatto, quando Discord non ha
+        creato il canale: restituisce il costo alla tesoreria e toglie
+        il canale dal conteggio. Il rimborso resta nello storico.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE clans
+                    SET treasury_balance = treasury_balance + $2,
+                        channels_unlocked = GREATEST(channels_unlocked - 1, 0)
+                    WHERE id = $1
+                    """,
+                    clan_id, cost,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason)
+                    VALUES ($1, NULL, $2, $3)
+                    """,
+                    clan_id, cost, REASON_CHANNEL_UNLOCK_REFUND,
+                )
 
     async def add_voice_ticks(self, clan_id: int, count: int = 1) -> None:
         """Accredita `count` tick vocali ACCUMULATI dalla gilda (uno
@@ -345,27 +452,88 @@ class GuildClanRepository:
     # ----------------------------------------------------------------
     # Membri
     # ----------------------------------------------------------------
-    async def add_member(self, clan_id: int, user_id: int, role: str = ROLE_MEMBER) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO clan_members (clan_id, user_id, role)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (clan_id, user_id) DO NOTHING
-            """,
-            clan_id, user_id, role,
-        )
+    async def add_member(
+        self, clan_id: int, user_id: int, role: str = ROLE_MEMBER
+    ) -> EsitoIngresso:
+        """
+        Fa entrare un utente nella gilda, con i controlli dentro la
+        stessa transazione: la riga della gilda è bloccata mentre si
+        contano i posti (due ingressi insieme non superano il tetto), e
+        "una sola gilda per server" lo decide il vincolo unico su
+        (guild_id, user_id).
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                gilda = await conn.fetchrow(
+                    "SELECT guild_id, max_members FROM clans WHERE id = $1 FOR UPDATE", clan_id
+                )
+                if gilda is None:
+                    return EsitoIngresso.GILDA_INESISTENTE
+
+                presenti = await conn.fetchval(
+                    "SELECT COUNT(*) FROM clan_members WHERE clan_id = $1", clan_id
+                )
+                if presenti >= gilda["max_members"]:
+                    return EsitoIngresso.GILDA_PIENA
+
+                entrato = await conn.fetchval(
+                    """
+                    INSERT INTO clan_members (clan_id, user_id, role, guild_id)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id) DO NOTHING
+                    RETURNING user_id
+                    """,
+                    clan_id, user_id, role, gilda["guild_id"],
+                )
+                if entrato is None:
+                    return EsitoIngresso.GIA_IN_UNA_GILDA
+                return EsitoIngresso.ENTRATO
 
     async def remove_member(self, clan_id: int, user_id: int) -> bool:
-        result = await self._pool.execute(
-            "DELETE FROM clan_members WHERE clan_id = $1 AND user_id = $2", clan_id, user_id
-        )
-        return result.endswith(" 1")
+        """Toglie il membro dalla gilda. Se era il co-owner, il posto si libera."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE clans SET co_owner_id = NULL WHERE id = $1 AND co_owner_id = $2",
+                    clan_id, user_id,
+                )
+                result = await conn.execute(
+                    "DELETE FROM clan_members WHERE clan_id = $1 AND user_id = $2",
+                    clan_id, user_id,
+                )
+                return result.endswith(" 1")
 
-    async def set_member_role(self, clan_id: int, user_id: int, role: str) -> None:
-        await self._pool.execute(
-            "UPDATE clan_members SET role = $3 WHERE clan_id = $1 AND user_id = $2",
-            clan_id, user_id, role,
-        )
+    async def set_member_role(self, clan_id: int, user_id: int, role: str) -> bool:
+        """
+        Cambia il ruolo di un membro. Il co-owner è uno solo per gilda:
+        il posto (clans.co_owner_id) si prende con una UPDATE che riesce
+        solo se è libero, quindi due promozioni arrivate insieme non
+        passano tutte e due. Restituisce False, senza scrivere nulla, se
+        la gilda ha già un altro co-owner.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                if role == ROLE_CO_OWNER:
+                    posto_preso = await conn.fetchval(
+                        """
+                        UPDATE clans SET co_owner_id = $2
+                        WHERE id = $1 AND (co_owner_id IS NULL OR co_owner_id = $2)
+                        RETURNING id
+                        """,
+                        clan_id, user_id,
+                    )
+                    if posto_preso is None:
+                        return False
+                else:
+                    await conn.execute(
+                        "UPDATE clans SET co_owner_id = NULL WHERE id = $1 AND co_owner_id = $2",
+                        clan_id, user_id,
+                    )
+                await conn.execute(
+                    "UPDATE clan_members SET role = $3 WHERE clan_id = $1 AND user_id = $2",
+                    clan_id, user_id, role,
+                )
+                return True
 
     async def set_member_boost_expiry(self, clan_id: int, user_id: int, expires_at: datetime) -> None:
         """Nuova scadenza del boost INDIVIDUALE (SPEC.md §15.14, ×2
@@ -406,10 +574,8 @@ class GuildClanRepository:
 
     async def get_member_clan_in_guild(self, guild_id: int, user_id: int) -> Clan | None:
         """Il clan a cui l'utente appartiene in QUESTO server — un
-        utente può stare in un solo clan per server (non specificato
-        esplicitamente, ma implicito nel fatto che il tag forzato sul
-        nickname non avrebbe senso con più clan contemporaneamente
-        nello stesso server)."""
+        utente può stare in un solo clan per server (vincolo unico su
+        clan_members, migrazione 0018)."""
         row = await self._pool.fetchrow(
             """
             SELECT c.* FROM clans c
@@ -431,7 +597,8 @@ class GuildClanRepository:
         (comando Discord) deve prima sottrarre le coin dal saldo
         personale tramite leveling_repo.spend_coins() — questo
         repository si occupa solo della tesoreria di destinazione.
-        Restituisce il nuovo saldo.
+        Se la donazione copre il debito di creazione, la gilda diventa
+        ufficiale nella stessa scrittura. Restituisce il nuovo saldo.
         """
         if amount <= 0:
             raise ValueError("L'importo donato deve essere positivo.")
@@ -439,7 +606,7 @@ class GuildClanRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
-                    "UPDATE clans SET treasury_balance = treasury_balance + $2 "
+                    f"UPDATE clans SET {_ACCREDITA_E_UFFICIALIZZA} "
                     "WHERE id = $1 RETURNING treasury_balance",
                     clan_id, amount,
                 )
@@ -712,18 +879,32 @@ class GuildClanRepository:
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                saldo = await conn.fetchval(
-                    "SELECT treasury_balance FROM clans WHERE id = $1 FOR UPDATE", from_clan_id
+                # Le due righe si bloccano sempre nello stesso ordine
+                # (ID più basso per primo): così A→B e B→A partiti
+                # insieme si mettono in fila invece di bloccarsi a
+                # vicenda.
+                righe = await conn.fetch(
+                    """
+                    SELECT id, treasury_balance FROM clans
+                    WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE
+                    """,
+                    [from_clan_id, to_clan_id],
                 )
-                if saldo is None or saldo < amount:
+                saldi = {r["id"]: r["treasury_balance"] for r in righe}
+                if to_clan_id not in saldi:
+                    return False
+                if saldi.get(from_clan_id, 0) < amount:
                     return False
 
                 await conn.execute(
                     "UPDATE clans SET treasury_balance = treasury_balance - $2 WHERE id = $1",
                     from_clan_id, amount,
                 )
+                # BUG-15: se il trasferimento copre il debito di creazione,
+                # la gilda di destinazione diventa ufficiale qui, nella
+                # stessa scrittura.
                 await conn.execute(
-                    "UPDATE clans SET treasury_balance = treasury_balance + $2 WHERE id = $1",
+                    f"UPDATE clans SET {_ACCREDITA_E_UFFICIALIZZA} WHERE id = $1",
                     to_clan_id, amount,
                 )
                 await conn.execute(
@@ -741,6 +922,23 @@ class GuildClanRepository:
                     to_clan_id, amount, REASON_TREASURY_TRANSFER_IN,
                 )
                 return True
+
+    async def list_ledger(self, clan_id: int, limit: int = 5) -> list[TreasuryLedgerEntry]:
+        """
+        Gli ultimi movimenti della tesoreria, dal più recente. I tick
+        vocali non si contano: sono una riga al minuto per membro e
+        coprirebbero tutto il resto (indice parziale, migrazione 0017).
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM clan_treasury_ledger
+            WHERE clan_id = $1 AND reason <> 'voice_tick'
+            ORDER BY id DESC
+            LIMIT $2
+            """,
+            clan_id, limit,
+        )
+        return [self._row_to_ledger_entry(r) for r in rows]
 
     async def get_donation_leaderboard(
         self, clan_id: int, limit: int = 10

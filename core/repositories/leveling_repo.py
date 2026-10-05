@@ -1,25 +1,21 @@
 """
 core/repositories/leveling_repo.py
 =====================================
-Persistenza di XP, livelli, economia e classifiche.
-
-Due tabelle, con scopi distinti:
-- leveling_totals: lo stato "vivo" per utente — XP e coin
-  CUMULATIVI di sempre (per la classifica all-time e per calcolare
-  il livello attuale), più lo stato tecnico per il cooldown testuale
-  e per il conteggio vocale (canale corrente, minuti consecutivi,
-  minuti di oggi, cooldown daily/work)
-- leveling_activity: righe PER PERIODO (period_key, vedi
-  core/leveling_logic.py) con quanto guadagnato IN QUEL MESE — è la
-  tabella su cui si basa la classifica mensile, e non richiede mai
-  un reset: un nuovo mese è semplicemente un nuovo period_key senza
-  righe ancora scritte
+Persistenza di XP, livelli, coin e classifiche.
+- leveling_totals: lo stato per utente (XP e coin di sempre, livello,
+  attese di daily/work, conteggio dei minuti vocali, decadimento).
+- leveling_activity: una riga per utente e per mese (period_key) con
+  quanto guadagnato in quel mese. La classifica mensile legge da qui e
+  non serve nessun azzeramento: un mese nuovo è una chiave nuova.
+Le funzioni *_in lavorano su una connessione di chi chiama, per mettere
+più movimenti di coin nella stessa transazione.
+Funzioni coperte: SPEC §15.1–15.3, §15.15
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
@@ -121,7 +117,9 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 # "last_weekly_decay_period IS DISTINCT FROM $1", ma scritta con IS NULL,
 # < e > perché solo così Postgres può cercare nell'indice parziale
 # idx_leveling_totals_weekly_decay_due invece di leggere tutta la tabella
-# a ogni giro orario.
+# a ogni giro orario. In più: solo righe nate prima di $2 (chi è appena
+# arrivato non decade); le righe senza data sono quelle di prima della
+# migrazione 0019 e valgono come vecchie.
 QUERY_UTENTI_DA_DECADERE = """
     SELECT guild_id, user_id FROM leveling_totals
     WHERE coins_total > 1
@@ -130,7 +128,83 @@ QUERY_UTENTI_DA_DECADERE = """
           OR last_weekly_decay_period < $1
           OR last_weekly_decay_period > $1
       )
+      AND (created_at IS NULL OR created_at < $2)
 """
+
+
+# ----------------------------------------------------------------------
+# Movimenti di coin su una connessione già aperta. Servono a chi deve
+# mettere più scritture nella stessa transazione (acquisto dello shop,
+# premi dalla cassa): il controllo del saldo sta dentro la UPDATE.
+# ----------------------------------------------------------------------
+async def spend_coins_in(
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+) -> bool:
+    """Toglie `amount` coin solo se il saldo basta. False se non basta."""
+    if amount <= 0:
+        raise ValueError("L'importo da spendere deve essere positivo.")
+    saldo = await conn.fetchval(
+        """
+        UPDATE leveling_totals SET coins_total = coins_total - $3
+        WHERE guild_id = $1 AND user_id = $2 AND coins_total >= $3
+        RETURNING coins_total
+        """,
+        guild_id,
+        user_id,
+        amount,
+    )
+    return saldo is not None
+
+
+async def add_coins_in(
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+) -> int:
+    """Aggiunge coin (saldo e classifica del mese). Restituisce il nuovo saldo."""
+    saldo = await conn.fetchval(
+        """
+        INSERT INTO leveling_totals (guild_id, user_id, coins_total)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (guild_id, user_id) DO UPDATE
+            SET coins_total = leveling_totals.coins_total + $3
+        RETURNING coins_total
+        """,
+        guild_id,
+        user_id,
+        amount,
+    )
+    await conn.execute(
+        """
+        INSERT INTO leveling_activity (guild_id, user_id, period_key, coins)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (guild_id, user_id, period_key) DO UPDATE
+            SET coins = leveling_activity.coins + $4
+        """,
+        guild_id,
+        user_id,
+        period_key(),
+        amount,
+    )
+    return saldo
+
+
+async def refund_coins_in(
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+) -> None:
+    """
+    Restituisce coin spesi poco prima. Tocca solo il saldo: un rimborso
+    non è un guadagno e non deve contare nella classifica del mese.
+    """
+    await conn.execute(
+        """
+        INSERT INTO leveling_totals (guild_id, user_id, coins_total)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (guild_id, user_id) DO UPDATE
+            SET coins_total = leveling_totals.coins_total + $3
+        """,
+        guild_id,
+        user_id,
+        amount,
+    )
 
 
 class LevelingRepository:
@@ -244,7 +318,9 @@ class LevelingRepository:
         None. Il rollover del contatore giornaliero (mezzanotte UTC)
         viene gestito qui, indipendentemente dall'idoneità.
         """
-        today = date.today()
+        # Giorno in UTC, non nell'ora locale della macchina: il tetto
+        # giornaliero deve azzerarsi alla stessa ora per tutti.
+        today = datetime.now(timezone.utc).date()
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
@@ -329,31 +405,9 @@ class LevelingRepository:
 
     async def add_coins(self, guild_id: int, user_id: int, amount: int) -> int:
         """Aggiunge (o sottrae, con amount negativo) coin. Restituisce il nuovo saldo."""
-        row = await self._pool.fetchrow(
-            """
-            INSERT INTO leveling_totals (guild_id, user_id, coins_total)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, user_id) DO UPDATE
-                SET coins_total = leveling_totals.coins_total + $3
-            RETURNING coins_total
-            """,
-            guild_id,
-            user_id,
-            amount,
-        )
-        await self._pool.execute(
-            """
-            INSERT INTO leveling_activity (guild_id, user_id, period_key, coins)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (guild_id, user_id, period_key) DO UPDATE
-                SET coins = leveling_activity.coins + $4
-            """,
-            guild_id,
-            user_id,
-            period_key(),
-            amount,
-        )
-        return row["coins_total"]
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                return await add_coins_in(conn, guild_id, user_id, amount)
 
     async def transfer_coins(
         self, guild_id: int, from_user_id: int, to_user_id: int, amount: int
@@ -368,14 +422,23 @@ class LevelingRepository:
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                saldo = await conn.fetchval(
+                # Le due righe si bloccano sempre nello stesso ordine
+                # (ID più basso per primo): così A→B e B→A partiti
+                # insieme si mettono in fila invece di bloccarsi a
+                # vicenda.
+                saldi = await conn.fetch(
                     """
-                    SELECT coins_total FROM leveling_totals
-                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
+                    SELECT user_id, coins_total FROM leveling_totals
+                    WHERE guild_id = $1 AND user_id = ANY($2::bigint[])
+                    ORDER BY user_id
+                    FOR UPDATE
                     """,
                     guild_id,
-                    from_user_id,
-                ) or 0
+                    [from_user_id, to_user_id],
+                )
+                saldo = next(
+                    (r["coins_total"] for r in saldi if r["user_id"] == from_user_id), 0
+                )
 
                 if saldo < amount:
                     return False
@@ -406,46 +469,22 @@ class LevelingRepository:
 
     async def spend_coins(self, guild_id: int, user_id: int, amount: int) -> bool:
         """
-        Sottrae coin solo se il saldo basta — stesso pattern atomico
-        di transfer_coins (FOR UPDATE dentro una transazione), usata
-        dallo shop (SPEC.md §15.4) e da qualunque futuro consumo di
-        coin. Restituisce False (senza scrivere nulla) se il saldo
-        non basta.
+        Sottrae coin solo se il saldo basta, con una sola UPDATE che
+        contiene il controllo. Restituisce False (senza scrivere nulla)
+        se il saldo non basta: mai un saldo negativo.
         """
-        if amount <= 0:
-            raise ValueError("L'importo da spendere deve essere positivo.")
-
         async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                saldo = await conn.fetchval(
-                    """
-                    SELECT coins_total FROM leveling_totals
-                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
-                    """,
-                    guild_id,
-                    user_id,
-                ) or 0
-
-                if saldo < amount:
-                    return False
-
-                await conn.execute(
-                    """
-                    INSERT INTO leveling_totals (guild_id, user_id, coins_total)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (guild_id, user_id) DO UPDATE
-                        SET coins_total = leveling_totals.coins_total + $3
-                    """,
-                    guild_id,
-                    user_id,
-                    -amount,
-                )
-                return True
+            return await spend_coins_in(conn, guild_id, user_id, amount)
 
     async def list_users_needing_weekly_decay(
-        self, period: str
+        self, period: str, created_before: datetime
     ) -> list[tuple[int, int]]:
         """
+        Solo le righe nate prima di `created_before`: il primo
+        decadimento arriva dopo una settimana intera, non entro un'ora
+        dal primo guadagno.
+
+
         (guild_id, user_id) di chi ha un saldo personale > soglia
         minima e non ha ancora subito il decadimento settimanale per
         questo period (SPEC.md §15.15) — QUALUNQUE membro con coin,
@@ -455,7 +494,7 @@ class LevelingRepository:
         saldo di 1 non cambia nulla, non serve marcarlo come
         "coperto" per questa settimana.
         """
-        rows = await self._pool.fetch(QUERY_UTENTI_DA_DECADERE, period)
+        rows = await self._pool.fetch(QUERY_UTENTI_DA_DECADERE, period, created_before)
         return [(r["guild_id"], r["user_id"]) for r in rows]
 
     async def apply_weekly_decay(
@@ -497,29 +536,64 @@ class LevelingRepository:
                 )
                 return saldo_attuale, nuovo_saldo
 
-    async def set_last_daily(self, guild_id: int, user_id: int, when: datetime) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO leveling_totals (guild_id, user_id, last_daily_at)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, user_id) DO UPDATE SET last_daily_at = $3
-            """,
-            guild_id,
-            user_id,
-            when,
+    async def claim_daily(
+        self, guild_id: int, user_id: int, amount: int, cooldown_seconds: int, now: datetime
+    ) -> bool:
+        """Riscuote il premio giornaliero. Vedi _riscuoti_premio."""
+        return await self._riscuoti_premio(
+            "last_daily_at", guild_id, user_id, amount, cooldown_seconds, now
         )
 
-    async def set_last_work(self, guild_id: int, user_id: int, when: datetime) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO leveling_totals (guild_id, user_id, last_work_at)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, user_id) DO UPDATE SET last_work_at = $3
-            """,
-            guild_id,
-            user_id,
-            when,
+    async def claim_work(
+        self, guild_id: int, user_id: int, amount: int, cooldown_seconds: int, now: datetime
+    ) -> bool:
+        """Riscuote il premio del lavoro. Vedi _riscuoti_premio."""
+        return await self._riscuoti_premio(
+            "last_work_at", guild_id, user_id, amount, cooldown_seconds, now
         )
+
+    async def _riscuoti_premio(
+        self,
+        colonna: str,
+        guild_id: int,
+        user_id: int,
+        amount: int,
+        cooldown_seconds: int,
+        now: datetime,
+    ) -> bool:
+        """
+        Accredita `amount` coin e segna l'ora della riscossione, ma solo
+        se l'attesa è finita. Il controllo sta DENTRO la scrittura (una
+        sola istruzione con WHERE): due richieste arrivate insieme non
+        possono riscuotere tutte e due (BUG-14). Restituisce False, senza
+        scrivere nulla, se l'attesa non è ancora finita.
+        """
+        if colonna not in ("last_daily_at", "last_work_at"):
+            raise ValueError(f"Colonna non ammessa: {colonna}")
+
+        scaduto_prima_di = now - timedelta(seconds=cooldown_seconds)
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                riga = await conn.fetchrow(
+                    f"""
+                    INSERT INTO leveling_totals (guild_id, user_id, coins_total, {colonna})
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id) DO UPDATE
+                        SET coins_total = leveling_totals.coins_total + $3, {colonna} = $4
+                        WHERE leveling_totals.{colonna} IS NULL
+                           OR leveling_totals.{colonna} <= $5
+                    RETURNING coins_total
+                    """,
+                    guild_id,
+                    user_id,
+                    amount,
+                    now,
+                    scaduto_prima_di,
+                )
+                if riga is None:
+                    return False
+                await self._add_period_activity(conn, guild_id, user_id, 0, amount)
+                return True
 
     async def top_xp_alltime(self, guild_id: int, limit: int = 10) -> list[LeaderboardEntry]:
         rows = await self._pool.fetch(

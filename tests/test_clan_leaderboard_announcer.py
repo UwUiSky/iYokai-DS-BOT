@@ -8,6 +8,7 @@ il database restituisce sul serio. Stesso schema di
 tests/test_monthly_winners_announcer.py.
 """
 
+import itertools
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -66,9 +67,13 @@ def repos(clean_db, monkeypatch):
     return clean_db, config_repo, clan_repo
 
 
+_capi = itertools.count(1)
+
+
 async def _crea_clan(clan_repo, guild_id, tag):
+    # Un capo diverso per ogni gilda: un utente sta in una sola gilda per server.
     return await clan_repo.create_clan(
-        guild_id, tag=tag, name=f"Gilda {tag}", owner_id=1,
+        guild_id, tag=tag, name=f"Gilda {tag}", owner_id=next(_capi),
         officialize_deadline=ORA + timedelta(hours=24),
     )
 

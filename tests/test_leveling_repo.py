@@ -8,7 +8,7 @@ corretta — transazioni, rollover giornaliero, saldo mai negativo,
 classifiche filtrate correttamente.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -174,15 +174,22 @@ async def test_transfer_coins_importo_non_positivo_solleva_errore(repo):
 
 
 @pytest.mark.asyncio
-async def test_set_last_daily_e_last_work(repo):
-    from datetime import datetime, timezone
+async def test_claim_daily_e_claim_work_segnano_ora_e_rispettano_l_attesa(repo):
+    from datetime import datetime, timedelta, timezone
     ora = datetime.now(timezone.utc)
-    await repo.set_last_daily(100, 1, ora)
-    await repo.set_last_work(100, 1, ora)
+
+    assert await repo.claim_daily(100, 1, 200, 86400, ora) is True
+    assert await repo.claim_work(100, 1, 50, 3600, ora) is True
+    # Subito dopo: l'attesa non è finita, non si accredita nulla.
+    assert await repo.claim_daily(100, 1, 200, 86400, ora + timedelta(hours=1)) is False
+    assert await repo.claim_work(100, 1, 50, 3600, ora + timedelta(minutes=30)) is False
+    # Attesa finita.
+    assert await repo.claim_work(100, 1, 50, 3600, ora + timedelta(hours=1)) is True
 
     totali = await repo.get_totals(100, 1)
-    assert totali.last_daily_at is not None
-    assert totali.last_work_at is not None
+    assert totali.coins_total == 300
+    assert totali.last_daily_at == ora
+    assert totali.last_work_at == ora + timedelta(hours=1)
 
 
 @pytest.mark.asyncio
@@ -237,11 +244,23 @@ async def test_leaderboard_period_filtra_sul_periodo_corrente(repo, clean_db):
 PERIODO = "2026-W39"
 
 
+# Nessun utente di questi test è "appena arrivato" (M 9.10).
+NATI_PRIMA_DI = datetime(2099, 1, 1, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_list_users_needing_weekly_decay_esclude_chi_e_appena_arrivato(repo):
+    await repo.add_coins(100, 1, 500)
+
+    appena_arrivato = datetime.now(timezone.utc) - timedelta(days=1)
+    assert await repo.list_users_needing_weekly_decay(PERIODO, appena_arrivato) == []
+
+
 @pytest.mark.asyncio
 async def test_list_users_needing_weekly_decay_include_chi_ha_saldo_e_non_decaduto(repo):
     await repo.add_coins(100, 1, 500)
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
 
     assert (100, 1) in da_decadere
 
@@ -250,7 +269,7 @@ async def test_list_users_needing_weekly_decay_include_chi_ha_saldo_e_non_decadu
 async def test_list_users_needing_weekly_decay_esclude_saldo_al_minimo(repo):
     await repo.add_coins(100, 1, 1)  # saldo 1: decadimento è no-op
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
 
     assert (100, 1) not in da_decadere
 
@@ -262,7 +281,7 @@ async def test_list_users_needing_weekly_decay_esclude_chi_ha_gia_il_periodo_cop
     await repo.add_coins(100, 1, 500)
     await repo.apply_weekly_decay(100, 1, PERIODO)
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
 
     assert (100, 1) not in da_decadere
 
@@ -272,7 +291,7 @@ async def test_list_users_needing_weekly_decay_non_mischia_server_diversi(repo):
     await repo.add_coins(100, 1, 500)
     await repo.add_coins(200, 1, 500)
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO)
+    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
 
     assert (100, 1) in da_decadere
     assert (200, 1) in da_decadere

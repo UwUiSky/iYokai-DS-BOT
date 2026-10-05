@@ -11,7 +11,8 @@ Le coin rimosse dal decadimento confluiscono nella cassa del server
 a cui appartiene il clan (SPEC.md §15.15, core.repositories.
 guild_chest_repo) — stessa destinazione del decadimento settimanale
 sui coin personali (core.weekly_personal_decay_worker), non svaniscono
-mai nel nulla.
+mai nel nulla. Il primo decadimento di una gilda arriva solo dopo un
+mese intero dalla sua creazione.
 Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
@@ -24,7 +25,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.guild_iteration import for_each_guild_safely
-from core.leveling_logic import period_key
+from core.leveling_logic import period_key, previous_period_start
 from core.repositories.guild_chest_repo import (
     REASON_MONTHLY_CLAN_DECAY,
     guild_chest_repo,
@@ -44,9 +45,16 @@ class GuildClanTreasuryDecayWorker:
         adesso = now or datetime.now(timezone.utc)
         periodo_corrente = period_key(adesso)
 
+        nate_prima_di = previous_period_start(adesso)
+
         async def _per_clan(clan) -> None:
             if clan.last_decay_period == periodo_corrente:
                 return  # già applicato questo mese
+            if clan.created_at >= nate_prima_di:
+                # La gilda non ha ancora vissuto un mese intero: il
+                # primo decadimento arriva dopo, non entro un'ora dalla
+                # creazione.
+                return
 
             saldo_prima, saldo_dopo = await guild_clan_repo.apply_monthly_decay(
                 clan.id, periodo_corrente

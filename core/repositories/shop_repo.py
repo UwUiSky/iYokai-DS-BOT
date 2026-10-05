@@ -1,22 +1,22 @@
 """
 core/repositories/shop_repo.py
 ==================================
-Shop dell'economia leveling (SPEC.md §15.4 — "nessun posto dove
-spendere i coin"). Oggetti configurabili per server, un prezzo, un
-ruolo OPZIONALE da concedere all'acquisto (un oggetto senza ruolo
-resta puramente decorativo/da collezione — un "pozzo" per i coin,
-legittimo di per sé in un'economia di questo tipo). Le sottrazioni
-di coin passano da LevelingRepository.spend_coins() (atomiche,
-mai un saldo negativo) — questo repository si occupa solo del
-catalogo e dello storico acquisti.
+Shop dell'economia: catalogo degli oggetti per server (prezzo, ruolo
+facoltativo) e acquisti. L'acquisto toglie i coin e registra la riga
+nella stessa transazione; un oggetto a ruolo si compra una volta sola
+per utente (indice unico, migrazione 0015).
+Funzioni coperte: SPEC §15.4
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 
 import asyncpg
+
+from core.repositories.leveling_repo import refund_coins_in, spend_coins_in
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,22 @@ class Purchase:
     user_id: int
     item_id: int
     purchased_at: datetime
+
+
+class EsitoAcquisto(str, Enum):
+    RIUSCITO = "riuscito"
+    GIA_ACQUISTATO = "gia_acquistato"
+    SALDO_INSUFFICIENTE = "saldo_insufficiente"
+
+
+@dataclass(frozen=True)
+class Acquisto:
+    esito: EsitoAcquisto
+    purchase_id: int | None = None
+
+
+class _SaldoInsufficiente(Exception):
+    """Interna a buy_item: annulla la transazione dell'acquisto."""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -123,31 +139,54 @@ class ShopRepository:
         )
         return self._row_to_item(row) if row is not None else None
 
-    async def record_purchase(self, guild_id: int, user_id: int, item_id: int) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO shop_purchases (guild_id, user_id, item_id)
-            VALUES ($1, $2, $3)
-            """,
-            guild_id,
-            user_id,
-            item_id,
-        )
+    async def buy_item(self, guild_id: int, user_id: int, item: ShopItem) -> Acquisto:
+        """
+        Registra l'acquisto e toglie i coin in UNA transazione (BUG-14).
+        Un oggetto a ruolo già comprato non si ricompra: lo decide
+        l'indice unico, non una lettura fatta prima. Se il saldo non
+        basta non resta scritto nulla.
+        """
+        try:
+            async with self._pool.acquire() as conn:
+                async with conn.transaction():
+                    purchase_id = await conn.fetchval(
+                        """
+                        INSERT INTO shop_purchases (guild_id, user_id, item_id, role_id)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (guild_id, user_id, item_id) WHERE role_id IS NOT NULL
+                            DO NOTHING
+                        RETURNING id
+                        """,
+                        guild_id,
+                        user_id,
+                        item.id,
+                        item.role_id,
+                    )
+                    if purchase_id is None:
+                        return Acquisto(EsitoAcquisto.GIA_ACQUISTATO)
+                    if not await spend_coins_in(conn, guild_id, user_id, item.price):
+                        raise _SaldoInsufficiente
+                    return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id)
+        except _SaldoInsufficiente:
+            return Acquisto(EsitoAcquisto.SALDO_INSUFFICIENTE)
 
-    async def has_purchased(self, guild_id: int, user_id: int, item_id: int) -> bool:
-        """Usata per gli oggetti a ruolo: evita di far ricomprare
-        (e sottrarre coin per) qualcosa che l'utente possiede già —
-        chi ha già il ruolo non deve pagarlo una seconda volta."""
-        row = await self._pool.fetchrow(
-            """
-            SELECT 1 FROM shop_purchases
-            WHERE guild_id = $1 AND user_id = $2 AND item_id = $3
-            """,
-            guild_id,
-            user_id,
-            item_id,
-        )
-        return row is not None
+    async def refund_purchase(
+        self, purchase_id: int, guild_id: int, user_id: int, price: int
+    ) -> bool:
+        """
+        Annulla un acquisto appena fatto (il ruolo non è stato dato):
+        cancella la riga e restituisce i coin nella stessa transazione.
+        Chiamarla due volte rimborsa una volta sola.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                cancellato = await conn.fetchval(
+                    "DELETE FROM shop_purchases WHERE id = $1 RETURNING id", purchase_id
+                )
+                if cancellato is None:
+                    return False
+                await refund_coins_in(conn, guild_id, user_id, price)
+                return True
 
 
 def _get_pool():

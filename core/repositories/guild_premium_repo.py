@@ -20,7 +20,7 @@ persistenza, non decide se un acquisto è ammesso.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import asyncpg
 
@@ -90,53 +90,65 @@ class GuildPremiumRepository:
         return GuildPremiumStatus(guild_id=guild_id, premium_until=premium_until)
 
     async def record_purchase(
-        self, guild_id: int, tier: int, cost_paid: int, now: datetime
+        self,
+        guild_id: int,
+        tier: int,
+        cost_paid: int,
+        now: datetime,
+        conn: asyncpg.Connection | None = None,
     ) -> datetime:
         """
-        Registra l'acquisto del tier (fallisce con una violazione di
-        chiave se già acquistato — il chiamante deve aver già
-        verificato `is_tier_purchased` prima, questo metodo non lo
-        rifà per restare atomico in un'unica transazione insieme
-        all'estensione della scadenza premium) ed estende
-        `premium_until` di un mese a partire dal massimo tra `now` e
-        la scadenza attuale — così mesi comprati in momenti diversi
-        si accumulano. Restituisce la nuova scadenza.
+        Registra l'acquisto del tier ed estende `premium_until` di un
+        mese a partire dal massimo tra `now` e la scadenza attuale —
+        così mesi comprati in momenti diversi si accumulano. Restituisce
+        la nuova scadenza.
+
+        Un tier già acquistato fa fallire la INSERT con
+        asyncpg.UniqueViolationError: è la chiave primaria a decidere,
+        non una lettura fatta prima. Con `conn` le scritture entrano
+        nella transazione di chi chiama (BUG-14: l'addebito della cassa
+        e l'acquisto devono riuscire o fallire insieme).
         """
-        from datetime import timedelta
+        if conn is not None:
+            return await self._record_purchase(conn, guild_id, tier, cost_paid, now)
+        async with self._pool.acquire() as propria:
+            async with propria.transaction():
+                return await self._record_purchase(propria, guild_id, tier, cost_paid, now)
 
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
-                    INSERT INTO guild_premium_purchases (guild_id, tier, cost_paid, purchased_at)
-                    VALUES ($1, $2, $3, $4)
-                    """,
-                    guild_id,
-                    tier,
-                    cost_paid,
-                    now,
-                )
+    async def _record_purchase(
+        self, conn: asyncpg.Connection, guild_id: int, tier: int, cost_paid: int, now: datetime
+    ) -> datetime:
+        await conn.execute(
+            """
+            INSERT INTO guild_premium_purchases (guild_id, tier, cost_paid, purchased_at)
+            VALUES ($1, $2, $3, $4)
+            """,
+            guild_id,
+            tier,
+            cost_paid,
+            now,
+        )
 
-                scadenza_attuale = await conn.fetchval(
-                    """
-                    SELECT premium_until FROM guild_premium_status
-                    WHERE guild_id = $1 FOR UPDATE
-                    """,
-                    guild_id,
-                )
-                base = max(scadenza_attuale, now) if scadenza_attuale else now
-                nuova_scadenza = base + timedelta(days=PREMIUM_MONTH_DAYS)
+        scadenza_attuale = await conn.fetchval(
+            """
+            SELECT premium_until FROM guild_premium_status
+            WHERE guild_id = $1 FOR UPDATE
+            """,
+            guild_id,
+        )
+        base = max(scadenza_attuale, now) if scadenza_attuale else now
+        nuova_scadenza = base + timedelta(days=PREMIUM_MONTH_DAYS)
 
-                await conn.execute(
-                    """
-                    INSERT INTO guild_premium_status (guild_id, premium_until)
-                    VALUES ($1, $2)
-                    ON CONFLICT (guild_id) DO UPDATE SET premium_until = $2
-                    """,
-                    guild_id,
-                    nuova_scadenza,
-                )
-                return nuova_scadenza
+        await conn.execute(
+            """
+            INSERT INTO guild_premium_status (guild_id, premium_until)
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET premium_until = $2
+            """,
+            guild_id,
+            nuova_scadenza,
+        )
+        return nuova_scadenza
 
 
 def _get_pool():
