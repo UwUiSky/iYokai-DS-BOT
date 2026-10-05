@@ -115,3 +115,45 @@ class TestIsTicketStaff:
         member = _fake_member(1, roles=[_FakeRole(1)], manage_guild=False)
         interaction = _FakeInteraction(guild, member)
         assert await _is_ticket_staff(interaction) is False
+
+
+# ====================================================================
+# #134 — il ticket toglie la chiave con un metodo pubblico del database
+# ====================================================================
+async def test_remove_guild_setting_toglie_la_chiave_e_la_registra_nello_storico(
+    monkeypatch, clean_db
+):
+    from core.database import db
+
+    _collega_pool_di_test(monkeypatch, clean_db)
+    await db.set_guild_setting(100, SETTING_SUPPORT_ROLE, 42)
+    await db.set_guild_setting(100, "altra_chiave", 7)
+
+    await db.remove_guild_setting(100, SETTING_SUPPORT_ROLE, 555)
+
+    assert await db.get_guild_setting(100, SETTING_SUPPORT_ROLE) is None
+    assert await db.get_guild_setting(100, "altra_chiave") == 7
+    ultima = (await db.get_config_history(100, limit=1))[0]
+    assert (ultima.key_name, ultima.old_value, ultima.new_value) == (SETTING_SUPPORT_ROLE, 42, None)
+
+
+async def test_ticket_support_role_remove_usa_il_metodo_pubblico(monkeypatch, clean_db):
+    from unittest.mock import AsyncMock
+
+    from cogs.tickets.tickets import TicketsCog
+    from core.database import db
+    from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
+
+    _collega_pool_di_test(monkeypatch, clean_db)
+    await db.set_guild_setting(100, SETTING_SUPPORT_ROLE, 42)
+    monkeypatch.setattr(
+        db, "_remove_guild_setting", AsyncMock(side_effect=AssertionError("metodo privato")),
+        raising=False,
+    )
+    cog = TicketsCog(bot=None)
+    interazione = fake_interaction(guild=fake_guild(100), user=fake_member(user_id=555))
+
+    await cog.ticket_support_role_remove.callback(cog, interazione, fake_role(role_id=42))
+
+    assert await db.get_guild_setting(100, SETTING_SUPPORT_ROLE) is None
+    assert "rimosso" in interazione.response.send_message.call_args.args[0]

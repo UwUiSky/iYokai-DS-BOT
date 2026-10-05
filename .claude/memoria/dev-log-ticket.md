@@ -5,16 +5,17 @@
 
 ## In corso
 - Previsione: 4 voci di #134, mi fermo dopo M 3.14.
-- Fatte kick (`4c01028`) e lock/unlock. Prossime: `remove_guild_setting`
-  pubblica in core/database.py + chiamante in cogs/tickets/tickets.py;
-  poi gate premium in cogs/logging/advanced_logs.py.
+- Fatte kick, lock/unlock, `remove_guild_setting`. Prossima: gate premium
+  in cogs/logging/advanced_logs.py (tutti i listener + `advanced_log_channel`)
+  con `premium_sbloccato`, test in tests/test_advanced_logs_premium.py.
 
 ## Fatto
 - F1, moderazione + log + ticket + vocali: unito su main con
   `3758f2a` (nuovo `core/channel_rename.py`, migrazione `0010`).
 - Voci rapide F1 (log dei ruoli, `/voice transfer`).
 - #134 `/voice kick` assente: messaggio vero (`4c01028`).
-- #134 `/voice lock`/`unlock`: cambiano solo "Connetti" (overwrite.update).
+- #134 `/voice lock`/`unlock`: cambiano solo "Connetti" (`523875a`).
+- #134 `db.remove_guild_setting` pubblica (la privata è sparita), ticket e rollback la usano.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
@@ -26,4 +27,4 @@
   `canale.overwrites_for.return_value` va impostato dal test.
 
 ## Aperto
-- #134: restano `_remove_guild_setting` pubblica e M 3.14.
+- #134: resta M 3.14.
