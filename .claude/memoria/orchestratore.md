@@ -39,8 +39,7 @@
 - Niente a metà.
 
 ## Coda (in ordine)
-1. **#137** messaggio privato prima di kick e ban (`dev-moderazione`):
-   piccolo, subito.
+1. ~~#137~~ fatto (`f0e2056`, chiusa). Da provare live.
 2. **F1 resto:** #133, #134, #135, #136; utilità e avvisi (#66, #67);
    divertimento (#71); owner e core (#69, #70). Voci rimaste nelle
    issue di area già lavorate: #57, #58, #59, #60, #61, #62, #65 (le
