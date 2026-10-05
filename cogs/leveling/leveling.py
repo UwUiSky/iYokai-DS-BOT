@@ -22,6 +22,16 @@ tutta la durata della permanenza in vocale, non solo al momento in
 cui l'utente entra o esce.
 """
 
+# DA FARE (issue #65, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
+#   clan).
+# DA FARE (issue #83, fase F9): NF-12, Rank card. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+# DA FARE (issue #86, fase F9): NF-15, Impostazioni dei livelli. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+# DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import logging

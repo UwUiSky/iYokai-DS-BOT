@@ -9,6 +9,9 @@ per query in linguaggio naturale corte tipiche di un comando slash
 ("banna qualcuno", "crea un sondaggio").
 """
 
+# DA FARE (issue #77, fase F8): NF-06, Lingue italiano e inglese, e
+#   `/utility cerca-comando`. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import re

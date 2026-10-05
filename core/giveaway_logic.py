@@ -7,6 +7,9 @@ random.sample() direttamente qui dentro — così la selezione dei
 vincitori resta deterministica e testabile con un seed fisso.
 """
 
+# DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import random

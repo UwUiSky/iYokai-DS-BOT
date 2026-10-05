@@ -16,6 +16,10 @@ Due parti:
   prima che serva davvero)
 """
 
+# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
+#   anti-nuke, spam-trap, ban globale)).
+
 from __future__ import annotations
 
 import logging

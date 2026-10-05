@@ -8,6 +8,9 @@ stessa deviazione dallo schema originale: il campo reason era stato
 reso opzionale in tutti i comandi, contraddicendo la specifica).
 """
 
+# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
+
 from __future__ import annotations
 
 MIN_REASON_LENGTH = 3

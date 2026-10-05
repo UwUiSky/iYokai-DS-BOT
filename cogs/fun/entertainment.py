@@ -51,6 +51,9 @@ test con un server aiohttp finto, stesso schema già usato per
 core/twitch_watcher.py/core/youtube_watcher.py.
 """
 
+# DA FARE (issue #71, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §15 (Fun).
+
 from __future__ import annotations
 
 import io

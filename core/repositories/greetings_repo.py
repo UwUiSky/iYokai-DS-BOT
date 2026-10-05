@@ -7,6 +7,9 @@ insieme — sono impostazioni dello stesso "pannello" concettuale per
 un admin, non serve separarle in tabelle diverse.
 """
 
+# DA FARE (issue #82, fase F9): NF-11, Immagine di benvenuto. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 from dataclasses import dataclass

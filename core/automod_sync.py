@@ -42,6 +42,9 @@ per poterlo segnalare all'amministratore, invece di far fallire
 silenziosamente la sincronizzazione.
 """
 
+# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

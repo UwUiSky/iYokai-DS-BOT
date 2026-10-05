@@ -20,6 +20,9 @@ reazioni, parlare in vocale) su OGNI canale esistente in quel momento
 è un limite noto, non nascosto.
 """
 
+# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
+
 from __future__ import annotations
 
 import logging

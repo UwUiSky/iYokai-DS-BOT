@@ -13,6 +13,9 @@ Nessun gate is_module_active_for_guild: come /request-custom-command,
 feature che un admin di server attiva o disattiva per i propri membri.
 """
 
+# DA FARE (issue #77, fase F8): NF-06, Lingue italiano e inglese, e
+#   `/utility cerca-comando`. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import discord

@@ -14,6 +14,9 @@ quelli configurati; qui serve solo interpretare la stringa di
 configurazione (LAVALINK_NODES in core/config.py) in oggetti Python.
 """
 
+# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+
 from __future__ import annotations
 
 from dataclasses import dataclass

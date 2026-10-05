@@ -14,6 +14,9 @@ attiva o disattiva per i propri membri — sempre disponibile ovunque
 il bot sia presente, come un modulo di contatto/feedback.
 """
 
+# DA FARE (issue #80, fase F9): NF-09, Comandi personalizzati (tag).
+#   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import logging

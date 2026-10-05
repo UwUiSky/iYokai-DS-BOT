@@ -16,6 +16,9 @@ token già raccolti da restore precedenti); in alternativa, invito
 classico senza alcun token.
 """
 
+# DA FARE (issue #68, fase F3): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §12 (Backup e restore).
+
 from __future__ import annotations
 
 import logging

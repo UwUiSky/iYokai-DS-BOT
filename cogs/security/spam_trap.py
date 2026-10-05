@@ -39,6 +39,12 @@ rispondere (l'utente può comunque riscrivere in DM per riaprirla,
 soggetto al cooldown di 24h). Scelta dichiarata, non un errore.
 """
 
+# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
+#   anti-nuke, spam-trap, ban globale)).
+# DA FARE (issue #101, fase F13): NF-30, Appello per i ban normali. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import io

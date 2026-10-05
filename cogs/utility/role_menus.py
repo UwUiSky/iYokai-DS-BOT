@@ -29,6 +29,9 @@ valida. Gli errori vengono intercettati lì, non con una validazione
 finta a monte.
 """
 
+# DA FARE (issue #85, fase F9): NF-14, Modalità dei reaction roles. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import logging

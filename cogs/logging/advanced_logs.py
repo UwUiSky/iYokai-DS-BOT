@@ -49,6 +49,9 @@ il Message Content Intent, vedi § Decisioni in SPEC.md) — non
 toccato da questo file.
 """
 
+# DA FARE (issue #61, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §5 (Log).
+
 from __future__ import annotations
 
 import logging

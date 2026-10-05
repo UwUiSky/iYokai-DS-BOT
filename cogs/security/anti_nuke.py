@@ -17,6 +17,10 @@ della rimozione — permette di ricreare canale/ruolo con lo stesso
 nome/permessi/posizione senza dover mantenere uno snapshot separato.
 """
 
+# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
+#   anti-nuke, spam-trap, ban globale)).
+
 from __future__ import annotations
 
 import logging

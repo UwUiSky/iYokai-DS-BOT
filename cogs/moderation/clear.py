@@ -21,6 +21,9 @@ l'interruttore nel Developer Portal; da 10.000 utenti serve la domanda
 a Discord, da rifare ogni anno.
 """
 
+# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
+
 from __future__ import annotations
 
 import discord

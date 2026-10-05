@@ -15,6 +15,9 @@ stato premium di ciascuno prima di decidere la soglia da applicare.
 Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
 """
 
+# DA FARE (issue #61, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §5 (Log).
+
 from __future__ import annotations
 
 import logging

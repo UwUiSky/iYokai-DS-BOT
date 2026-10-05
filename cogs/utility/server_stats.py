@@ -7,6 +7,9 @@ giornaliera basato sul log eventi unificato (core/repositories/
 event_log_repo.py) — join/leave degli ultimi N giorni.
 """
 
+# DA FARE (issue #96, fase F13): NF-25, Statistiche di attività e ruoli
+#   per attività. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import asyncio

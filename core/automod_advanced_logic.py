@@ -18,6 +18,9 @@ Tenuta separata da ogni chiamata a Discord/DB apposta: testabile con
 semplici input/output, senza mock di discord.py o del database.
 """
 
+# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
+
 from __future__ import annotations
 
 import re

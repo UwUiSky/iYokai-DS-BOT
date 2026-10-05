@@ -6,6 +6,9 @@ gratuito — stessa assunzione dichiarata di role_menus.py: lo schema
 non specifica esplicitamente Free/Premium per questa voce di §14.
 """
 
+# DA FARE (issue #82, fase F9): NF-11, Immagine di benvenuto. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import logging

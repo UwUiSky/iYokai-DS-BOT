@@ -8,6 +8,9 @@ converte gli oggetti Discord veri (VoiceState, Member) in questi
 valori semplici prima di chiamare queste funzioni.
 """
 
+# DA FARE (issue #63, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §7 (Vocali temporanei).
+
 from __future__ import annotations
 
 

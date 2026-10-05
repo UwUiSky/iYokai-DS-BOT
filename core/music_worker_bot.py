@@ -11,6 +11,9 @@ un token separato per ogni sessione musicale simultanea nello stesso
 server — è l'unica ragione d'essere di questa classe.
 """
 
+# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+
 from __future__ import annotations
 
 import discord

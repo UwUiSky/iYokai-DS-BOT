@@ -18,6 +18,9 @@ BoundedCache (SPEC.md §1.5) invece di un dict semplice, per non far
 crescere la memoria senza limite su un bot multi-tenant.
 """
 
+# DA FARE (issue #74, fase F6): NF-03, Snipe ed editsnipe. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import logging

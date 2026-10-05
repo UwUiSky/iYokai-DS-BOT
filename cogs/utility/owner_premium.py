@@ -11,6 +11,11 @@ gratuito in premium — e lo fa per tutti i server contemporaneamente
 altra logica.
 """
 
+# DA FARE (issue #69, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §13 (Owner).
+# DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import asyncio

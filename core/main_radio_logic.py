@@ -21,6 +21,9 @@ Nessuna rete o Discord qui dentro — solo aritmetica su durate e
 timestamp, interamente testabile senza nulla di esterno.
 """
 
+# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+
 from __future__ import annotations
 
 from dataclasses import dataclass

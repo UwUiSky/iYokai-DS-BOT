@@ -20,6 +20,11 @@ Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 `/automod`.
 """
 
+# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
+# DA FARE (issue #102, fase F13): NF-31, Blocco dei link di phishing.
+#   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import io

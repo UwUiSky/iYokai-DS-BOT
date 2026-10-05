@@ -38,6 +38,11 @@ routing verso il worker giusto (con bot finti), la logica pura. Il
 resto va verificato una volta distribuito, con le credenziali vere.
 """
 
+# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+# DA FARE (issue #90, fase F9): NF-19, Canale richieste musicali con
+#   player, playlist salvate. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import asyncio

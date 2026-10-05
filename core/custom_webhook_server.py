@@ -22,6 +22,9 @@ interrogare il database.
 Dipende da: core/redacted_access_log.py (SEC-9), core/webhook_rate_tracker.py (SEC-14)
 """
 
+# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
+
 from __future__ import annotations
 
 import logging

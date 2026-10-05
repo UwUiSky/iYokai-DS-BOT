@@ -7,6 +7,12 @@ transazione), stato (aperto/chiuso), chi lo ha preso in carico,
 priorità.
 """
 
+# DA FARE (issue #62, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §6 (Ticket).
+# DA FARE (issue #84, fase F9): NF-13, Ticket: modulo, più pannelli,
+#   chiusura automatica, voto. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 from dataclasses import dataclass

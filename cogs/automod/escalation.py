@@ -16,6 +16,9 @@ abilitata (EscalationConfig.enabled) — un admin potrebbe volere solo
 il filtro nativo senza la scala di severità crescente.
 """
 
+# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
+
 from __future__ import annotations
 
 import logging

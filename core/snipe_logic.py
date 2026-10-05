@@ -32,6 +32,9 @@ snipe = bloccata". Risultato della verifica:
   controllare alla cancellazione se l'ID era tracciato.
 """
 
+# DA FARE (issue #74, fase F6): NF-03, Snipe ed editsnipe. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 

@@ -44,6 +44,12 @@ Funzioni coperte: SPEC §13.8/§13.9/§13.10/§13.11, REVIEW.md BUG-1,
 BUG-30 (issue #2, #42).
 """
 
+# DA FARE (issue #62, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §6 (Ticket).
+# DA FARE (issue #84, fase F9): NF-13, Ticket: modulo, più pannelli,
+#   chiusura automatica, voto. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import io

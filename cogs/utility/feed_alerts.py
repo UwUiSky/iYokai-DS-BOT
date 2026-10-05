@@ -7,6 +7,12 @@ legato a questo cog) — qui solo /alerts add|remove|list per
 gestire le sottoscrizioni.
 """
 
+# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
+# DA FARE (issue #103, fase F13): NF-32, Alert: Kick, ruolo "in
+#   diretta", TikTok, Instagram e X. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import discord

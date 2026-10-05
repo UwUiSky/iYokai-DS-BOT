@@ -9,6 +9,9 @@ PERSISTENTE (custom_id fisso, registrata di nuovo ad ogni avvio in
 main.py), non effimera come quella dei drop.
 """
 
+# DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 from dataclasses import dataclass

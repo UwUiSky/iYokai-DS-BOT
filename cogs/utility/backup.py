@@ -6,6 +6,11 @@ Comandi /define-main, /define-backup e /promuovi-backup del Backup System.
 Funzioni coperte: SPEC §11.12, §11.13
 """
 
+# DA FARE (issue #68, fase F3): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §12 (Backup e restore).
+# DA FARE (issue #110, fase F13): NF-39, Modelli di server e sincronia
+#   tra server. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import discord

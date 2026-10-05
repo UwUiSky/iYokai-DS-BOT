@@ -14,6 +14,9 @@ avviene una sola volta, sincronamente con l'esecuzione del comando
 richiesta fallisce) e stessa sessione aiohttp riusata tra chiamate.
 """
 
+# DA FARE (issue #71, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §15 (Fun).
+
 from __future__ import annotations
 
 import logging

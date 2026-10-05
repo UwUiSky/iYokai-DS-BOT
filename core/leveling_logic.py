@@ -17,6 +17,12 @@ il mese "si resetta" da solo perché un nuovo mese è semplicemente
 un nuovo period_key senza righe, non uno stato da azzerare.
 """
 
+# DA FARE (issue #65, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
+#   clan).
+# DA FARE (issue #86, fase F9): NF-15, Impostazioni dei livelli. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 from dataclasses import dataclass

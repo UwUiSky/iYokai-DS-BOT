@@ -13,6 +13,10 @@ la interroghi (Spam Trap oggi, Verify in futuro) — non ha comandi
 propri, non si registra nel PremiumRegistry.
 """
 
+# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
+#   anti-nuke, spam-trap, ban globale)).
+
 from __future__ import annotations
 
 import discord

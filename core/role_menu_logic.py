@@ -10,6 +10,9 @@ interagisce (reazione emoji, click bottone, scelta da tendina).
 Nessuna dipendenza da discord.py qui: solo insiemi di ID e stringhe.
 """
 
+# DA FARE (issue #85, fase F9): NF-14, Modalità dei reaction roles. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 from typing import Literal

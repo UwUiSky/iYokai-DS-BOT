@@ -22,6 +22,9 @@ campo TEXT nel DB (base64 di nonce+ciphertext) piuttosto che due
 colonne separate.
 """
 
+# DA FARE (issue #68, fase F3): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §12 (Backup e restore).
+
 from __future__ import annotations
 
 import base64

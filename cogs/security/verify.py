@@ -19,6 +19,13 @@ e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
 costruito — non tentati qui.
 """
 
+# DA FARE (issue #60, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §4 (Verify).
+# DA FARE (issue #89, fase F9): NF-18, Captcha a immagine. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+# DA FARE (issue #92, fase F10): NF-21, Verifica su web e riconoscimento
+#   degli account doppi. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 import logging

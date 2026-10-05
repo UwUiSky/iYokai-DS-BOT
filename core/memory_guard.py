@@ -12,6 +12,9 @@ config sono pronti. Non è un Cog con comandi slash — è un servizio
 bot-wide, non legato alla configurazione di un singolo server.
 """
 
+# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+
 from __future__ import annotations
 
 import asyncio

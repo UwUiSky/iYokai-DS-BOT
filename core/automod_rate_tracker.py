@@ -13,6 +13,9 @@ Una singola istanza condivisa (`rate_tracker` in fondo), usata da
 `cogs/automod/automod_advanced.py`.
 """
 
+# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
+
 from __future__ import annotations
 
 from collections import deque

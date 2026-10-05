@@ -29,6 +29,9 @@ troncato al limite hard di Discord di 50 canali per categoria — vedi
 core/voice_temp_logic.py:effective_category_cap/is_category_full.
 """
 
+# DA FARE (issue #63, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §7 (Vocali temporanei).
+
 from __future__ import annotations
 
 import logging

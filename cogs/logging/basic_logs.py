@@ -24,6 +24,9 @@ Discord non chiama mai. Verificato empiricamente (non assunto) prima
 di scrivere tutti i listener sottostanti.
 """
 
+# DA FARE (issue #61, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §5 (Log).
+
 from __future__ import annotations
 
 from collections.abc import Iterable

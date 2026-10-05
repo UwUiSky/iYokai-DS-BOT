@@ -13,6 +13,9 @@ invece che alla vera api.twitch.tv — stesso principio già usato per
 core/feed_watcher.py (lì con aiohttp.test_utils.TestServer).
 """
 
+# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
+
 from __future__ import annotations
 
 import logging

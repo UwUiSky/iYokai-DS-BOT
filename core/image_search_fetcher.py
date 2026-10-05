@@ -14,6 +14,9 @@ stesso, lato server, a garantire che i risultati siano SFW; questo
 codice si limita a interpretarli (core/image_search_logic.py).
 """
 
+# DA FARE (issue #71, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §15 (Fun).
+
 from __future__ import annotations
 
 import logging

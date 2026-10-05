@@ -23,6 +23,9 @@ Funzioni coperte: SPEC §9.1, §11.1, REVIEW.md BUG-7 (avvio isolato dei
 bot e spegnimento ordinato, vedi core/bot_supervisor.py).
 """
 
+# DA FARE (issue #70, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §14 (Core).
+
 from __future__ import annotations
 
 import asyncio

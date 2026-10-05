@@ -17,6 +17,12 @@ in core/spam_trap_logic.py per lo Spam Trap: qui si applica lo stesso
 principio, non è una nuova scoperta.
 """
 
+# DA FARE (issue #62, fase F1): correzioni aperte per questo file in
+#   revisione/02-piano/MODIFICHE_ESISTENTE.md §6 (Ticket).
+# DA FARE (issue #84, fase F9): NF-13, Ticket: modulo, più pannelli,
+#   chiusura automatica, voto. Vedi
+#   revisione/02-piano/NUOVE_FUNZIONI.md.
+
 from __future__ import annotations
 
 
