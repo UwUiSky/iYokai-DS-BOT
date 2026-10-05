@@ -38,8 +38,12 @@ class _FakeGuild:
         self.id = guild_id
         self._channel = channel
 
-    def get_channel(self, channel_id: int):
+    def get_channel_or_thread(self, channel_id: int):
         return self._channel
+
+    async def fetch_channel(self, channel_id: int):
+        # Non in memoria e non più su Discord: canale sparito.
+        raise discord.NotFound(response=_FakeHttpResponse(), message="canale sparito")
 
 
 class _FakeBot:
