@@ -11,7 +11,7 @@ deve chiedere di nuovo**: legge qui e procede.
   cambiarle.
 - D8 (seconda versione), D15, D16, D17: **indicate dall'owner** la sera
   del 04/10/2026.
-- D19, D20, D21, D22: **indicate dall'owner** il 05/10/2026.
+- D19, D20, D21, D22, D23: **indicate dall'owner** il 05/10/2026.
 
 Regola per il futuro: se serve una decisione nuova, si sceglie
 l'opzione consigliata, la si scrive qui con la data, e si avvisa
@@ -41,6 +41,7 @@ l'owner.
 | D20 | Agenti specializzati | Il lavoro si fa con agenti specializzati (`.claude/agents/`), ognuno con i suoi parametri e con una memoria compressa in un file a parte (`.claude/memoria/`). Regole comuni in `.claude/regole/COMUNI.md`. | Sempre |
 | D21 | Aggiornamento a caldo | L'owner aggiorna il bot da Discord. Strada consigliata: il bot prende da GitHub un commit già rivisto. Strada alternativa: file allegato dall'owner. In ogni caso: solo l'owner, controllo del codice, copia del vecchio, ritorno automatico se il caricamento fallisce, interruttore nel `.env`. Vedi sotto. | F9 |
 | D22 | Voce di Yokai | Il bot manda messaggi vocali veri, con sotto i bottoni per trascrizione e traduzione. Sintesi sul server con un modello aperto, audio in cache. Voce femminile adulta; quattro toni scelti dall'admin; il tono `piccante` solo nei canali NSFW. Vedi sotto. | F12 |
+| D23 | Boost del clan per tipo | Tre tipi di boost: **exp**, **coin**, **super** (exp + coin). Per ogni ambito (individuale e di gilda) un beneficio non si compra di nuovo finché il suo boost è attivo: chi ha il boost coin può comprare solo l'exp (e viceversa); chi ha il super non può comprare nessun altro. Vale anche per acquisti insieme. | F1 |
 
 ---
 
@@ -263,3 +264,22 @@ il testo resta sempre e fa fede.
 **Specifica e note di realizzazione:** `revisione/02-piano/VOCE_YOKAI.md`.
 **Elenco completo degli usi e ordine dei lavori:** issue #142.
 
+
+## D23 in dettaglio — Boost del clan per tipo
+
+Chiesto dall'owner il 05/10/2026 (sera).
+- Tipi: `exp` (×2 ai punti esperienza), `coin` (×2 alle coin), `super`
+  (×2 a tutte e due). Durata 24 h, come oggi.
+- Regola, per ambito (individuale per membro, di gilda per clan): un
+  boost si può comprare solo se **nessuno dei suoi benefici** è già
+  attivo. Quindi: coin attivo → si può comprare solo exp; exp attivo →
+  solo coin; super attivo → niente; coin o exp attivo → il super no.
+  Niente somma delle durate (sostituisce il cumulo di 48 h).
+- Individuale e di gilda si moltiplicano tra loro, come prima.
+- Prezzi (scelta consigliata, costanti in `core/guild_clan_boost_logic.py`):
+  individuale exp 6.000, coin 6.000, super 10.000 (il prezzo di oggi);
+  di gilda exp 60.000, coin 60.000, super 100.000. Il super costa meno
+  dei due singoli insieme.
+- Il boost che esiste oggi (×2 a tutto) diventa un `super` già attivo.
+- Nessun comando nuovo: `/clan boost individuale` e `/clan boost gilda`
+  prendono un'opzione `tipo` con tre scelte.
