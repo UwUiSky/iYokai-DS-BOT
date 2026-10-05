@@ -6,10 +6,12 @@ inizia con "_" apposta: core/cog_manager.py salta i file che
 iniziano con underscore (non sono cog, sono supporto — vedi
 discover_cog_modules in quel file).
 
-Qui vivono le tre costanti dei nomi modulo (usate sia per il
-controllo "è attivo su questo server?" sia per la registrazione
-premium) e le funzioni che altrimenti si ripeterebbero identiche in
-ogni singolo file di comandi.
+Qui vivono le costanti dei nomi modulo (usate sia per il controllo
+"è attivo su questo server?" sia per la registrazione premium), i
+limiti di Discord che valgono per tutta la moderazione (motivo 512,
+campo 1024, elenchi entro 4000) e le funzioni che altrimenti si
+ripeterebbero identiche in ogni singolo file di comandi.
+Funzioni coperte: SPEC §5
 """
 
 # DA FARE (issue #57, fase F1): correzioni aperte per questo file in
