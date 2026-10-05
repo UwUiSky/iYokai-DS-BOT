@@ -41,7 +41,12 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.verify_repo import verify_repo
 from core.role_safety import check_role_assignable
 from core.ui_base import BaseModal, BaseView
-from core.verify_logic import decide_verify_outcome, meets_account_age, meets_mutual_servers
+from core.verify_logic import (
+    VerifyOutcome,
+    decide_verify_outcome,
+    meets_account_age,
+    meets_mutual_servers,
+)
 
 logger = logging.getLogger("iyokai.verify")
 
@@ -80,22 +85,20 @@ class CaptchaModal(BaseModal, title="Verification"):
         self.user_id = user_id
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        # Risposta subito (3 secondi): controlli, ruolo e log vengono dopo.
+        await interaction.response.defer(ephemeral=True)
+
         captcha_ok = self.answer_input.value.strip() == self._expected_answer
         guild = interaction.client.get_guild(self.guild_id)
-        if guild is None:
-            await interaction.response.send_message(
-                "Something went wrong, please try again.", ephemeral=True
-            )
-            return
-        member = guild.get_member(self.user_id)
+        member = guild.get_member(self.user_id) if guild is not None else None
         if member is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Something went wrong, please try again.", ephemeral=True
             )
             return
 
         outcome = await self.cog.run_checks_and_finalize(guild, member, captcha_ok)
-        await interaction.response.send_message(outcome.reason, ephemeral=True)
+        await interaction.followup.send(outcome.reason, ephemeral=True)
 
 
 class VerifyPanelView(BaseView):
@@ -127,14 +130,21 @@ class VerifyPanelView(BaseView):
         if cog is None:
             return
 
+        # Una sola lettura prima di rispondere: serve a sapere se va
+        # aperto il modulo del captcha, che può essere solo la PRIMA
+        # risposta (dopo un defer non si può più aprire).
         config = await verify_repo.get_config(guild.id)
         if config.captcha_enabled:
             await interaction.response.send_modal(
                 CaptchaModal(cog, guild.id, interaction.user.id)
             )
-        else:
-            outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True)
-            await interaction.response.send_message(outcome.reason, ephemeral=True)
+            return
+
+        # Senza captcha: risposta subito (3 secondi), poi controlli,
+        # ruolo e log.
+        await interaction.response.defer(ephemeral=True)
+        outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True)
+        await interaction.followup.send(outcome.reason, ephemeral=True)
 
 
 class VerifyCog(commands.Cog):
@@ -185,11 +195,16 @@ class VerifyCog(commands.Cog):
             if role is not None:
                 try:
                     await member.add_roles(role, reason="iYokai Verify")
-                except discord.Forbidden:
+                except discord.HTTPException as errore:
                     logger.warning(
-                        "Permessi insufficienti per assegnare il ruolo verify "
-                        "nel server %s.",
+                        "Impossibile assegnare il ruolo verify nel server %s: %s",
                         guild.id,
+                        errore,
+                    )
+                    outcome = VerifyOutcome(
+                        True,
+                        "All checks passed, but I couldn't give you the role. "
+                        "Please contact the server staff.",
                     )
 
         if config.log_channel_id is not None:
