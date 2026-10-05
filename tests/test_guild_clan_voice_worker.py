@@ -147,73 +147,129 @@ async def test_ore_vocali_accumulate_anche_con_decadimento_a_zero(repos):
     assert clan.total_voice_ticks == 1  # ma la presenza conta comunque
 
 
-@pytest.mark.asyncio
-async def test_boost_individuale_raddoppia_la_ricompensa_del_membro(repos):
-    clan_repo, activity_repo = repos
-    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+async def _boost_membro(clan_repo, clan_id, user_id, exp=None, coin=None):
     await clan_repo._pool.execute(
-        "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
-        clan_id, 1, ORA + timedelta(hours=1),
+        "UPDATE clan_members SET boost_exp_expires_at = $3, boost_coin_expires_at = $4 "
+        "WHERE clan_id = $1 AND user_id = $2",
+        clan_id, user_id, exp, coin,
     )
 
-    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
+
+async def _boost_gilda(clan_repo, clan_id, exp=None, coin=None):
+    await clan_repo._pool.execute(
+        "UPDATE clans SET guild_boost_exp_expires_at = $2, guild_boost_coin_expires_at = $3 "
+        "WHERE id = $1",
+        clan_id, exp, coin,
+    )
+
+
+async def _tick_un_membro(clan_repo, clan_id, membri=(1,)):
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(u) for u in membri])
     guild = _FakeGuild(100, voice_channels=[canale])
-
     await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+    return await clan_repo.get_clan(clan_id)
 
-    clan = await clan_repo.get_clan(clan_id)
+
+FUTURO = ORA + timedelta(hours=1)
+
+
+@pytest.mark.asyncio
+async def test_super_individuale_raddoppia_xp_e_coin(repos):
+    clan_repo, _ = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await _boost_membro(clan_repo, clan_id, 1, FUTURO, FUTURO)
+
+    clan = await _tick_un_membro(clan_repo, clan_id)
+
     assert clan.total_xp == 20  # 10 * 2
     assert clan.treasury_balance == -15_000 + 8  # 4 * 2
 
 
 @pytest.mark.asyncio
+async def test_solo_exp_individuale_raddoppia_xp_e_non_coin(repos):
+    clan_repo, _ = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await _boost_membro(clan_repo, clan_id, 1, exp=FUTURO)
+
+    clan = await _tick_un_membro(clan_repo, clan_id)
+
+    assert clan.total_xp == 20
+    assert clan.treasury_balance == -15_000 + 4  # coin ×1
+
+
+@pytest.mark.asyncio
+async def test_solo_coin_individuale_raddoppia_coin_e_non_xp(repos):
+    clan_repo, _ = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await _boost_membro(clan_repo, clan_id, 1, coin=FUTURO)
+
+    clan = await _tick_un_membro(clan_repo, clan_id)
+
+    assert clan.total_xp == 10  # xp ×1
+    assert clan.treasury_balance == -15_000 + 8
+
+
+@pytest.mark.asyncio
 async def test_boost_di_gilda_raddoppia_per_tutti_i_membri(repos):
-    clan_repo, activity_repo = repos
+    clan_repo, _ = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
     await clan_repo.add_member(clan_id, user_id=2)
-    await clan_repo._pool.execute(
-        "UPDATE clans SET guild_boost_expires_at = $2 WHERE id = $1", clan_id, ORA + timedelta(hours=1)
-    )
+    await _boost_gilda(clan_repo, clan_id, FUTURO, FUTURO)
 
-    canale = _FakeVoiceChannel(500, members=[_FakeMember(1), _FakeMember(2)])
-    guild = _FakeGuild(100, voice_channels=[canale])
+    clan = await _tick_un_membro(clan_repo, clan_id, membri=(1, 2))
 
-    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
-
-    clan = await clan_repo.get_clan(clan_id)
     assert clan.total_xp == 10 * 2 * 2  # due membri, ×2 ciascuno
     assert clan.treasury_balance == -15_000 + (4 * 2 * 2)
 
 
 @pytest.mark.asyncio
-async def test_boost_individuale_e_di_gilda_si_moltiplicano(repos):
-    clan_repo, activity_repo = repos
+async def test_boost_di_gilda_solo_exp_e_solo_coin(repos):
+    clan_repo, _ = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
-    await clan_repo._pool.execute(
-        "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
-        clan_id, 1, ORA + timedelta(hours=1),
-    )
-    await clan_repo._pool.execute(
-        "UPDATE clans SET guild_boost_expires_at = $2 WHERE id = $1", clan_id, ORA + timedelta(hours=1)
-    )
+    await _boost_gilda(clan_repo, clan_id, exp=FUTURO)
+    clan = await _tick_un_membro(clan_repo, clan_id)
+    assert clan.total_xp == 20
+    assert clan.treasury_balance == -15_000 + 4
 
-    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
-    guild = _FakeGuild(100, voice_channels=[canale])
+    await clan_repo._pool.execute("DELETE FROM clan_voice_activity")
+    await _boost_gilda(clan_repo, clan_id, coin=FUTURO)
+    xp_prima, saldo_prima = clan.total_xp, clan.treasury_balance
+    clan = await _tick_un_membro(clan_repo, clan_id)
+    assert clan.total_xp - xp_prima == 10  # xp ×1
+    assert clan.treasury_balance - saldo_prima == 8  # coin ×2
 
-    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
 
-    clan = await clan_repo.get_clan(clan_id)
+@pytest.mark.asyncio
+async def test_individuale_e_di_gilda_si_moltiplicano(repos):
+    clan_repo, _ = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await _boost_membro(clan_repo, clan_id, 1, FUTURO, FUTURO)
+    await _boost_gilda(clan_repo, clan_id, FUTURO, FUTURO)
+
+    clan = await _tick_un_membro(clan_repo, clan_id)
+
     assert clan.total_xp == 10 * 4  # ×2 individuale * ×2 di gilda
+    assert clan.treasury_balance == -15_000 + 4 * 4
+
+
+@pytest.mark.asyncio
+async def test_exp_individuale_e_coin_di_gilda_restano_separati(repos):
+    clan_repo, _ = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    await _boost_membro(clan_repo, clan_id, 1, exp=FUTURO)
+    await _boost_gilda(clan_repo, clan_id, coin=FUTURO)
+
+    clan = await _tick_un_membro(clan_repo, clan_id)
+
+    assert clan.total_xp == 20
+    assert clan.treasury_balance == -15_000 + 8
 
 
 @pytest.mark.asyncio
 async def test_boost_scaduto_non_si_applica(repos):
     clan_repo, activity_repo = repos
     clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
-    await clan_repo._pool.execute(
-        "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
-        clan_id, 1, ORA - timedelta(hours=1),
-    )
+    await _boost_membro(clan_repo, clan_id, 1, ORA - timedelta(hours=1), ORA - timedelta(hours=1))
 
     canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
     guild = _FakeGuild(100, voice_channels=[canale])
