@@ -93,9 +93,13 @@ from core.guild_clan_role_service import (
 from core.guild_clan_boost_logic import (
     BOOST_DURATION_HOURS,
     BOOST_MULTIPLIER,
-    GUILD_BOOST_COST,
-    INDIVIDUAL_BOOST_COST,
-    is_boost_active,
+    GUILD_BOOST_COSTS,
+    INDIVIDUAL_BOOST_COSTS,
+    Beneficio,
+    StatoBoost,
+    TipoBoost,
+    benefici_attivi,
+    tipi_acquistabili,
 )
 from core.leveling_logic import (
     DAILY_COOLDOWN_SECONDS,
@@ -171,6 +175,66 @@ NOMI_DEI_MOVIMENTI = {
     "treasury_transfer_out": "trasferimento in uscita",
     "guild_boost": "boost di gilda",
 }
+
+
+def _scelte_boost(prezzi: dict) -> list[app_commands.Choice[str]]:
+    """Le tre scelte fisse dell'opzione `tipo` di /clan boost (D23)."""
+    return [
+        app_commands.Choice(
+            name=f"Exp: ×{BOOST_MULTIPLIER} ai punti esperienza ({prezzi[TipoBoost.EXP]} coin)",
+            value=TipoBoost.EXP.value,
+        ),
+        app_commands.Choice(
+            name=f"Coin: ×{BOOST_MULTIPLIER} alle coin ({prezzi[TipoBoost.COIN]} coin)",
+            value=TipoBoost.COIN.value,
+        ),
+        app_commands.Choice(
+            name=f"Super: exp e coin insieme ({prezzi[TipoBoost.SUPER]} coin)",
+            value=TipoBoost.SUPER.value,
+        ),
+    ]
+
+
+def _tipo_da_scelta(scelta) -> TipoBoost:
+    return TipoBoost(getattr(scelta, "value", scelta))
+
+
+def _righe_boost_attivi(attivi: dict) -> list[str]:
+    """Una riga per boost attivo: il super (stessa scadenza su exp e
+    coin) vale una riga sola."""
+    if not attivi:
+        return []
+    exp, coin = attivi.get(Beneficio.EXP), attivi.get(Beneficio.COIN)
+    if exp is not None and exp == coin:
+        return [f"✨ Super (exp e coin) ×{BOOST_MULTIPLIER} fino a <t:{int(exp.timestamp())}:R>"]
+    nomi = {Beneficio.EXP: "Exp", Beneficio.COIN: "Coin"}
+    return [
+        f"✨ {nomi[b]} ×{BOOST_MULTIPLIER} fino a <t:{int(scad.timestamp())}:R>"
+        for b, scad in attivi.items()
+    ]
+
+
+def _testo_boost_gia_attivo(attivi, scad_exp, scad_coin, now, soggetto: str) -> str:
+    """Messaggio preciso quando un boost è rifiutato perché già attivo."""
+    attivi = dict(attivi)
+    exp, coin = attivi.get(Beneficio.EXP), attivi.get(Beneficio.COIN)
+    if exp is not None and exp == coin:
+        descrizione = f"il boost super attivo fino a <t:{int(exp.timestamp())}:R>"
+    else:
+        pezzi = [
+            f"il boost {b.value} attivo fino a <t:{int(scad.timestamp())}:R>"
+            for b, scad in attivi.items()
+        ]
+        descrizione = " e ".join(pezzi)
+    possibili = [
+        t.value for t in tipi_acquistabili(scad_exp, scad_coin, now)
+        if t is not TipoBoost.SUPER
+    ] if len(attivi) == 1 else []
+    if possibili:
+        coda = f"puoi comprare solo il boost {possibili[0]}."
+    else:
+        coda = "non puoi comprare altri boost finché non scade."
+    return f"{soggetto} già {descrizione}: {coda}"
 
 
 def _riga_movimento(movimento) -> str:
@@ -1298,12 +1362,15 @@ class LevelingCog(commands.Cog):
             )
         embed.add_field(name="Canali sbloccati", value=valore_canali, inline=False)
 
-        if is_boost_active(clan.guild_boost_expires_at, datetime.now(timezone.utc)):
-            embed.add_field(
-                name="Boost di gilda",
-                value=f"✨ Attivo ×{BOOST_MULTIPLIER} fino a <t:{int(clan.guild_boost_expires_at.timestamp())}:R>",
-                inline=False,
+        righe_boost = _righe_boost_attivi(
+            benefici_attivi(
+                clan.guild_boost_exp_expires_at,
+                clan.guild_boost_coin_expires_at,
+                datetime.now(timezone.utc),
             )
+        )
+        if righe_boost:
+            embed.add_field(name="Boost di gilda", value="\n".join(righe_boost), inline=False)
 
         movimenti = await guild_clan_repo.list_ledger(clan.id, limit=MOVIMENTI_IN_CLAN_INFO)
         if movimenti:
@@ -1941,7 +2008,11 @@ class LevelingCog(commands.Cog):
         name="individuale",
         description=f"Acquista un boost personale ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h sul tuo tick vocale di gilda.",
     )
-    async def clan_boost_individuale(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(tipo="Cosa raddoppia: exp, coin o entrambi (super)")
+    @app_commands.choices(tipo=_scelte_boost(INDIVIDUAL_BOOST_COSTS))
+    async def clan_boost_individuale(
+        self, interaction: discord.Interaction, tipo: app_commands.Choice[str]
+    ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
@@ -1953,32 +2024,48 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        nuova_scadenza = await guild_clan_repo.buy_member_boost(
-            guild.id, clan.id, interaction.user.id, INDIVIDUAL_BOOST_COST,
-            datetime.now(timezone.utc),
+        tipo_boost = _tipo_da_scelta(tipo)
+        costo = INDIVIDUAL_BOOST_COSTS[tipo_boost]
+        adesso = datetime.now(timezone.utc)
+        esito = await guild_clan_repo.buy_member_boost(
+            guild.id, clan.id, interaction.user.id, tipo_boost, adesso
         )
-        if nuova_scadenza is None:
-            if await guild_clan_repo.get_member(clan.id, interaction.user.id) is None:
-                await interaction.response.send_message(
-                    "Non fai più parte di questa gilda.", ephemeral=True
-                )
-                return
+        if esito.stato is StatoBoost.NON_MEMBRO:
             await interaction.response.send_message(
-                f"Non hai abbastanza coin personali — servono **{INDIVIDUAL_BOOST_COST}**.",
+                "Non fai più parte di questa gilda.", ephemeral=True
+            )
+            return
+        if esito.stato is StatoBoost.GIA_ATTIVO:
+            attivi = dict(esito.attivi)
+            await interaction.response.send_message(
+                _testo_boost_gia_attivo(
+                    esito.attivi, attivi.get(Beneficio.EXP), attivi.get(Beneficio.COIN),
+                    adesso, "Hai",
+                ),
+                ephemeral=True,
+            )
+            return
+        if esito.stato is not StatoBoost.ACQUISTATO:
+            await interaction.response.send_message(
+                f"Non hai abbastanza coin personali — servono **{costo}**.",
                 ephemeral=True,
             )
             return
 
         await interaction.response.send_message(
-            f"✅ Boost personale ×{BOOST_MULTIPLIER} attivo sul tuo tick vocale in **{clan.name}** "
-            f"fino a <t:{int(nuova_scadenza.timestamp())}:f>."
+            f"✅ Boost personale {tipo_boost.value} ×{BOOST_MULTIPLIER} attivo sul tuo tick vocale "
+            f"in **{clan.name}** fino a <t:{int(esito.scadenza.timestamp())}:f>."
         )
 
     @clan_boost_group.command(
         name="gilda",
         description=f"[Capo/Admin Clan] Acquista un boost ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h per TUTTI i membri, dalla tesoreria.",
     )
-    async def clan_boost_gilda(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(tipo="Cosa raddoppia: exp, coin o entrambi (super)")
+    @app_commands.choices(tipo=_scelte_boost(GUILD_BOOST_COSTS))
+    async def clan_boost_gilda(
+        self, interaction: discord.Interaction, tipo: app_commands.Choice[str]
+    ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
@@ -1998,25 +2085,38 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        nuova_scadenza = await guild_clan_repo.buy_guild_boost(
-            clan.id, GUILD_BOOST_COST, datetime.now(timezone.utc)
-        )
-        if nuova_scadenza is None:
-            if await guild_clan_repo.get_clan(clan.id) is None:
-                await interaction.response.send_message(
-                    "Questa gilda non esiste più.", ephemeral=True
-                )
-                return
+        tipo_boost = _tipo_da_scelta(tipo)
+        costo = GUILD_BOOST_COSTS[tipo_boost]
+        adesso = datetime.now(timezone.utc)
+        esito = await guild_clan_repo.buy_guild_boost(clan.id, tipo_boost, adesso)
+        if esito.stato is StatoBoost.ASSENTE:
             await interaction.response.send_message(
-                f"La tesoreria della gilda non basta — servono **{GUILD_BOOST_COST}** coin "
-                f"(ne avete **{clan.treasury_balance}**).",
+                "Questa gilda non esiste più.", ephemeral=True
+            )
+            return
+        if esito.stato is StatoBoost.GIA_ATTIVO:
+            attivi = dict(esito.attivi)
+            await interaction.response.send_message(
+                _testo_boost_gia_attivo(
+                    esito.attivi, attivi.get(Beneficio.EXP), attivi.get(Beneficio.COIN),
+                    adesso, "La gilda ha",
+                ),
+                ephemeral=True,
+            )
+            return
+        if esito.stato is not StatoBoost.ACQUISTATO:
+            gilda_aggiornata = await guild_clan_repo.get_clan(clan.id)
+            saldo = gilda_aggiornata.treasury_balance if gilda_aggiornata else clan.treasury_balance
+            await interaction.response.send_message(
+                f"La tesoreria della gilda non basta — servono **{costo}** coin "
+                f"(ne avete **{saldo}**).",
                 ephemeral=True,
             )
             return
 
         await interaction.response.send_message(
-            f"✅ Boost di gilda ×{BOOST_MULTIPLIER} attivo per TUTTI i membri di **{clan.name}** "
-            f"fino a <t:{int(nuova_scadenza.timestamp())}:f>."
+            f"✅ Boost di gilda {tipo_boost.value} ×{BOOST_MULTIPLIER} attivo per TUTTI i membri "
+            f"di **{clan.name}** fino a <t:{int(esito.scadenza.timestamp())}:f>."
         )
 
     # ================================================================
