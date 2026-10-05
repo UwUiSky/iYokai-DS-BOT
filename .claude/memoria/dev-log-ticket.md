@@ -1,10 +1,10 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
-05/10/2026 · ramo `fix/f1-134` (copia /home/claude/wt/t134) · base `4b42ada`
+05/10/2026 · ramo `fix/f1-144` (copia /home/claude/wt/v144) · base `d31af05`
 
 ## In corso
-- Niente a metà: le 4 voci di #134 sono chiuse. Resta la prova live (vedi rapporto).
+- Niente a metà: le 2 voci di #144 sono chiuse. Resta la prova live (vedi rapporto).
 
 ## Fatto
 - F1, moderazione + log + ticket + vocali: unito su main con
@@ -13,6 +13,7 @@
 - #134 `/voice kick` assente: messaggio vero (`4c01028`).
 - #134 `/voice lock`/`unlock`: cambiano solo "Connetti" (`523875a`).
 - #134 M 3.14 log avanzati premium: `logging_avanzato_attivo` su ogni listener e sul servizio soundboard.
+- #144 `/voice kick`: gerarchia con `can_moderate` + admin/moderatori protetti dai non-staff.
 - #134 `db.remove_guild_setting` pubblica (la privata è sparita), ticket e rollback la usano.
 
 ## Cose imparate
@@ -24,6 +25,8 @@
 - Listener premium: `core.security_access.premium_sbloccato(guild_id, modulo, bot)`.
 - Nei test dei vocali `Scena` (tests/test_voice_temp_correzioni.py);
   `canale.overwrites_for.return_value` va impostato dal test.
+
+- `can_moderate` nega i ruoli pari: nei test del kick proprietario e bot vanno impostati con `top_role` (helper `_con_ruolo`).
 
 ## Aperto
 - M 3.14: nessun messaggio all'utente (i log sono listener, niente interazione);

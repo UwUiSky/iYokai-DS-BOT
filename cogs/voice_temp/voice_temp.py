@@ -53,7 +53,9 @@ from core.channel_rename import (
     rename_limit_message,
     rename_tracker,
 )
+from cogs.moderation._shared import actor_from_member
 from core.database import db
+from core.permissions import can_moderate
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
 from core.role_safety import check_role_assignable
@@ -596,6 +598,32 @@ class VoiceTempCog(commands.Cog):
             return
         await interaction.response.send_message("Canale sbloccato.")
 
+    @staticmethod
+    def _puo_espellere(
+        interaction: discord.Interaction, member: discord.Member
+    ) -> tuple[bool, str]:
+        """
+        Gerarchia dei ruoli (stessa regola della moderazione) più una
+        protezione per amministratori e moderatori: chi non è staff non
+        può espellerli dal proprio canale, qualunque sia il suo ruolo.
+        """
+        guild = interaction.guild
+        autore = interaction.user
+        permesso, motivo = can_moderate(
+            actor_from_member(autore),
+            actor_from_member(member),
+            bot_top_role_position=guild.me.top_role.position,
+        )
+        if not permesso:
+            return False, motivo
+        e_staff = autore.guild_permissions.manage_channels
+        perm = member.guild_permissions
+        if not e_staff and (
+            perm.administrator or perm.moderate_members or perm.kick_members or perm.ban_members
+        ):
+            return False, "Non puoi espellere un amministratore o un moderatore dal tuo canale."
+        return True, ""
+
     @voice_group.command(name="kick", description="Espelli un utente dal tuo canale.")
     @app_commands.describe(member="L'utente da espellere dal canale")
     async def kick(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -607,6 +635,10 @@ class VoiceTempCog(commands.Cog):
                 f"{member.mention} non è nel canale: non c'è nessuno da espellere.",
                 ephemeral=True,
             )
+            return
+        permesso, motivo = self._puo_espellere(interaction, member)
+        if not permesso:
+            await interaction.response.send_message(motivo, ephemeral=True)
             return
         try:
             await member.move_to(None, reason="Espulso dal proprietario del canale")
