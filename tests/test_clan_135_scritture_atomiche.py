@@ -258,3 +258,49 @@ async def test_dona_da_non_membro_o_con_guild_sbagliato_non_spende(cog_e_repos):
 
     assert (await leveling_repo.get_totals(GUILD_ID, 99)).coins_total == 1_000
     assert (await leveling_repo.get_totals(200, 1)).coins_total == 1_000
+
+
+@pytest.mark.asyncio
+async def test_remove_member_e_set_member_role_in_parallelo_senza_deadlock(cog_e_repos):
+    _, clan_repo, _ = cog_e_repos
+    await apri_connessioni(clan_repo._pool, 6)
+    guild = _FakeGuild(GUILD_ID)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+
+    async def esce_e_rientra():
+        for _ in range(400):
+            await clan_repo.add_member(clan_id, 2)
+            await clan_repo.set_member_role(clan_id, 2, "co_owner")
+            await clan_repo.remove_member(clan_id, 2)
+
+    async def retrocessione():
+        for _ in range(400):
+            await clan_repo.set_member_role(clan_id, 2, "member")
+
+    await asyncio.gather(esce_e_rientra(), retrocessione(), retrocessione())
+
+
+# ----------------------------------------------------------------------
+# Messaggi giusti quando l'acquisto fallisce per un altro motivo
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_boost_individuale_se_non_sei_piu_membro_il_messaggio_non_parla_di_coin(
+    cog_e_repos, monkeypatch
+):
+    cog, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(GUILD_ID)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.add_member(clan_id, 2)
+    await leveling_repo.add_coins(GUILD_ID, 2, 3 * INDIVIDUAL_BOOST_COST)
+    clan = await clan_repo.get_clan(clan_id)
+    await clan_repo.remove_member(clan_id, 2)
+
+    async def ancora_dentro(*_):
+        return clan
+
+    monkeypatch.setattr(clan_repo, "get_member_clan_in_guild", ancora_dentro)
+    interazione = _clic(guild, 2)
+    await cog.clan_boost_individuale.callback(cog, interazione)
+
+    assert "coin" not in interazione.response.sent_messages[0]
+    assert "non fai" in interazione.response.sent_messages[0].lower()

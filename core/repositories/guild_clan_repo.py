@@ -495,6 +495,12 @@ class GuildClanRepository:
         """Toglie il membro dalla gilda. Se era il co-owner, il posto si libera."""
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                # Stesso ordine di set_member_role e dei tick: prima il
+                # membro, poi la gilda (altrimenti deadlock).
+                await conn.execute(
+                    "SELECT 1 FROM clan_members WHERE clan_id = $1 AND user_id = $2 FOR UPDATE",
+                    clan_id, user_id,
+                )
                 await conn.execute(
                     "UPDATE clans SET co_owner_id = NULL WHERE id = $1 AND co_owner_id = $2",
                     clan_id, user_id,
