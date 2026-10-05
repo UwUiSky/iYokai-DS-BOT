@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-05/10/2026 · ultimo giro: ramo `fix/f1-135` (base 5c04cf5)
+05/10/2026 · ultimo giro: ramo `fix/f1-134` (base 4b42ada)
 
 ## In corso
 - Niente a metà. Giro #133 chiuso (rapporto dato).
@@ -14,6 +14,8 @@
 - Giro fix/f1-135 (#135/#136): un solo rilievo vero, deadlock `set_member_role` vs `apply_text_tick`. Chiamanti di `EsitoRuolo`: uno solo (leveling.py), a posto. Funzioni rimosse: nessun uso residuo.
 
 - 05/10 revisione ramo fix/f1-133: 4 rilievi (cache verifica con corsa, avviso anti-raid doppio, `_in_attesa` senza scadenza, `raid_in_corso` senza chiamanti).
+
+- Giro fix/f1-134: nome rinominato senza chiamanti residui; lock/unlock/kick a posto (errori Discord presi); 3 test falliscono sulla base, 44/44 sul ramo. Unico rilievo: 3 query per evento col premium acceso.
 
 ## Cose imparate
 - Ordine dei blocchi nel clan: riga membro, poi `leveling_totals`, poi `clans`. Un fix che blocca `clans` per primo e poi tocca il membro va in deadlock con `apply_text_tick`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -31,6 +33,9 @@
   riuscite quando sono fallite.
 
 - Cache "leggi, poi set" con await in mezzo: la scrittura che fa `delete` non basta, serve un numero di versione. Per provare: `ENVIRONMENT=development MAIN_GUILD_ID=1` e token finti.
+
+- Il DB di prova è condiviso: due pytest insieme (clean_db) danno fallimenti a caso. Controllare `pgrep pytest` prima di fidarsi di un rosso.
+- Per importare `core.config` fuori dai test: esportare le righe di `.env.example` e `PREMIUM_ALPHA_UNLOCK_ALL=false` (altrimenti il premium è sempre sbloccato).
 
 ## Aperto
 - Giro da fare a fine F1 sulle aree toccate il 05/10 (sicurezza,

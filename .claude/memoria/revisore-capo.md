@@ -1,9 +1,10 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-05/10/2026 · ramo `fix/f1-135` (base `5c04cf5`) · revisione fatta
+05/10/2026 · ramo `fix/f1-134` (base `4b42ada`) · revisione fatta
 
 ## In corso
+- #134 (`fix/f1-134`, base `4b42ada`): DA SISTEMARE solo documentazione (VERIFICA_LIVE, docstring). Alla riconsegna: controllare solo quelle due righe.
 - Revisione #135/#136: DA SISTEMARE (remove_member deadlock). Alla riconsegna: rivedere solo quel punto.
 
 ## Fatto
@@ -25,5 +26,8 @@
 
 - Con più blocchi su righe, controllare TUTTI i punti che bloccano le stesse tabelle, non solo quelli nel diff: `remove_member` (non toccato) contraddiceva il nuovo ordine. Si prova con un test temporaneo in parallelo.
 
+- Test che girano in parallelo sullo stesso DB di prova (iyokai_wt1xx) danno fallimenti a caso: prima `ps aux | grep "[p]ython -m pytest"`, poi rilancia. Non usare `pgrep -f pytest` (trova se stesso). Interprete giusto: `python3 -m pytest`, non `pytest`.
+
 ## Aperto
+- `fix/f1-134`: attende due righe di documentazione.
 - `fix/f1-135`: attende correzione di `remove_member`.
