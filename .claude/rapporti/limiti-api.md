@@ -9,6 +9,8 @@ Il riferimento completo dei limiti è
 |---|---|---|---|---|---|
 | 05/10 | `core/restore_orchestrator.py` (`/restore-users`) | Chiamate dirette con `aiohttp`: saltano la gestione dei limiti di frequenza di discord.py | 50 richieste al secondo; blocco dell'IP a 10.000 errori in 10 minuti | Passare da `bot.http.request(Route(...))` | aperto (in #68) |
 | 05/10 | `cogs/automod/automod.py` | Liste dei link senza tetto | embed 4096, menu 25 | Tetto alle voci e pagine | issue #133 |
+| 05/10 | albero F7 (D24, `NUOVE_FUNZIONI.md` righe 36-55) | 8000 caratteri per comando | `/admin` 9241 con i dati di oggi (22 figli), `/security` 6973 | Dividere in 16 gruppi (`/gestione`, `/moduli`, `/automod`); test sui caratteri | proposto, vedi `revisione/02-piano/MAPPA_COMANDI_F7.md` |
+| 05/10 | `main.py:300-306` | sync a ogni avvio; 200 creazioni/giorno/server | F7 crea al più 16 comandi nuovi | Sincronizzare solo se l'impronta dell'albero cambia; `/owner` solo nel server dell'owner (niente copia globale in sviluppo) | aperto |
 
 ## Parte B — Cosa l'API di Discord permette e discord.py no
 
