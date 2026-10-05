@@ -8,7 +8,8 @@ semplificato [Free] vs completo [Premium]"). Stesso canale di log già
 configurato con `/logs-setup` (SETTING_LOG_CHANNEL, riusato — non
 serve un secondo comando di setup per un secondo canale), ma questi
 eventi arrivano lì SOLO se il server ha sbloccato/attivato anche
-`MODULE_LOGGING_ADVANCED`.
+`MODULE_LOGGING_ADVANCED`. Il controllo (modulo acceso + premium) sta in
+`logging_avanzato_attivo`: ogni listener lo chiama prima di scrivere.
 
 Copre: 8.6 Role update, 8.7 Channel create/delete/update, 8.8 Invite
 create/delete/use, 8.9 Voice state, 8.10 Webhook, 8.11 Emoji, 8.12
