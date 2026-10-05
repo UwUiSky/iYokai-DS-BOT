@@ -5,12 +5,14 @@ Azioni di moderazione base: warn, kick, ban, unban, tempban, timeout,
 untimeout. Modulo SEMPRE GRATUITO (MODULE_ACTIONS, premium_capable=
 False), coerente con lo schema di progetto ("Azioni base" è [Free]).
 
-Ogni comando segue lo stesso schema in quattro passi:
+Ogni comando segue lo stesso schema:
   1. ensure_module_enabled — il server ha attivato la moderazione?
   2. check_can_moderate — chi comanda può agire su questo bersaglio?
      (gerarchia ruoli, owner, bot stesso — vedi core/permissions.py)
-  3. azione vera su Discord (kick/ban/timeout...)
-  4. registrazione del caso nel case system + risposta + log
+  3. `defer()` prima di parlare con Discord (kick, ban, tempban)
+  4. azione vera su Discord (kick/ban/timeout...)
+  5. solo se l'azione è riuscita: caso, log, DM all'utente, risposta
+Funzioni coperte: SPEC §5.1, §5.8, §5.9, §5.10
 
 Il tempban è l'unico caso "speciale": non esiste un ban a tempo
 nativo su Discord, quindi banniamo normalmente e PIANIFICHIAMO lo
@@ -24,6 +26,7 @@ asyncio.sleep).
 
 from __future__ import annotations
 
+import datetime
 import logging
 
 import discord
@@ -61,6 +64,11 @@ SCHEDULED_TEMPBAN_EXPIRE = "moderation_tempban_expire"
 # un messaggio chiaro invece di un errore HTTP criptico.
 MAX_TIMEOUT_SECONDS = 28 * 86400
 
+_BAN_FALLITO = (
+    "Non sono riuscito a bannare questo utente: controlla i miei permessi "
+    "e la posizione del mio ruolo."
+)
+
 
 def _case_embed(
     title: str,
@@ -79,6 +87,21 @@ def _case_embed(
         embed.add_field(name=extra_field[0], value=extra_field[1], inline=True)
     embed.add_field(name="Motivo", value=reason or "Nessun motivo fornito", inline=False)
     return embed
+
+
+async def _log_dm_e_risposta(
+    interaction: discord.Interaction, member: discord.Member, embed: discord.Embed
+) -> None:
+    """
+    Ultimi passi di una sanzione già riuscita e già registrata: log,
+    DM all'utente, risposta al moderatore. Il DM dopo un kick o un
+    ban arriva solo se l'utente ha un altro server in comune con il
+    bot: quando non arriva lo diciamo al moderatore.
+    """
+    await post_to_mod_log(interaction.guild, embed)
+    if not await try_dm(member, embed):
+        embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
+    await interaction.followup.send(embed=embed)
 
 
 class ModerationActionsCog(commands.Cog):
@@ -136,11 +159,20 @@ class ModerationActionsCog(commands.Cog):
         if not await check_can_moderate(interaction, member):
             return
 
-        # Il DM va mandato PRIMA dell'azione: dopo il kick c'è ancora
-        # un server in comune solo se il bot resta con l'utente in
-        # altri server, quindi qui non è strettamente critico come
-        # nel caso del ban (vedi spam trap), ma manteniamo comunque
-        # l'ordine "notifica prima, azione dopo" per coerenza.
+        await interaction.response.defer()
+
+        # Prima l'azione: il caso, il log e il DM partono solo se è
+        # riuscita (LIM-8).
+        try:
+            await member.kick(reason=reason)
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a espellere questo utente: controlla i "
+                "miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
+            )
+            return
+
         case_number = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
             user_id=member.id,
@@ -151,20 +183,7 @@ class ModerationActionsCog(commands.Cog):
         embed = _case_embed(
             "👢 Kick", discord.Color.orange(), member, interaction.user, reason, case_number
         )
-        dm_ok = await try_dm(member, embed)
-
-        try:
-            await member.kick(reason=reason)
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per espellere questo utente.", ephemeral=True
-            )
-            return
-
-        if not dm_ok:
-            embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
-        await interaction.response.send_message(embed=embed)
-        await post_to_mod_log(interaction.guild, embed)
+        await _log_dm_e_risposta(interaction, member, embed)
 
     # ================================================================
     # /ban
@@ -189,6 +208,17 @@ class ModerationActionsCog(commands.Cog):
         if not await check_can_moderate(interaction, member):
             return
 
+        await interaction.response.defer()
+
+        try:
+            await member.ban(
+                reason=reason,
+                delete_message_seconds=delete_message_days * 86400,
+            )
+        except discord.HTTPException:
+            await interaction.followup.send(_BAN_FALLITO, ephemeral=True)
+            return
+
         case_number = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
             user_id=member.id,
@@ -199,23 +229,7 @@ class ModerationActionsCog(commands.Cog):
         embed = _case_embed(
             "🔨 Ban", discord.Color.red(), member, interaction.user, reason, case_number
         )
-        dm_ok = await try_dm(member, embed)
-
-        try:
-            await member.ban(
-                reason=reason,
-                delete_message_seconds=delete_message_days * 86400,
-            )
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per bannare questo utente.", ephemeral=True
-            )
-            return
-
-        if not dm_ok:
-            embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
-        await interaction.response.send_message(embed=embed)
-        await post_to_mod_log(interaction.guild, embed)
+        await _log_dm_e_risposta(interaction, member, embed)
 
     # ================================================================
     # /tempban
@@ -248,6 +262,14 @@ class ModerationActionsCog(commands.Cog):
             await interaction.response.send_message(str(exc), ephemeral=True)
             return
 
+        await interaction.response.defer()
+
+        try:
+            await member.ban(reason=reason)
+        except discord.HTTPException:
+            await interaction.followup.send(_BAN_FALLITO, ephemeral=True)
+            return
+
         case_number = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
             user_id=member.id,
@@ -255,6 +277,17 @@ class ModerationActionsCog(commands.Cog):
             action_type=TEMPBAN_ACTION_TYPE,
             reason=reason,
             duration_seconds=duration_seconds,
+        )
+
+        # Pianifica lo sblocco automatico. Il payload porta il
+        # case_number, così l'handler può revocare il caso corretto
+        # quando scade (vedi handle_tempban_expire più sotto).
+        await scheduler.schedule(
+            guild_id=interaction.guild.id,
+            user_id=member.id,
+            action_type=SCHEDULED_TEMPBAN_EXPIRE,
+            execute_at=in_seconds(duration_seconds),
+            payload={"case_number": case_number},
         )
 
         embed = _case_embed(
@@ -266,31 +299,7 @@ class ModerationActionsCog(commands.Cog):
             case_number,
             extra_field=("Durata", format_duration(duration_seconds)),
         )
-        dm_ok = await try_dm(member, embed)
-
-        try:
-            await member.ban(reason=reason)
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per bannare questo utente.", ephemeral=True
-            )
-            return
-
-        # Pianifica lo sblocco automatico. Il payload porta il
-        # case_number, così l'handler può revocare il caso corretto
-        # quando scade (vedi _handle_tempban_expire più sotto).
-        await scheduler.schedule(
-            guild_id=interaction.guild.id,
-            user_id=member.id,
-            action_type=SCHEDULED_TEMPBAN_EXPIRE,
-            execute_at=in_seconds(duration_seconds),
-            payload={"case_number": case_number},
-        )
-
-        if not dm_ok:
-            embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
-        await interaction.response.send_message(embed=embed)
-        await post_to_mod_log(interaction.guild, embed)
+        await _log_dm_e_risposta(interaction, member, embed)
 
     async def handle_tempban_expire(
         self, guild_id: int, user_id: int, payload: dict
@@ -363,9 +372,10 @@ class ModerationActionsCog(commands.Cog):
                 "Questo utente non risulta bannato.", ephemeral=True
             )
             return
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per sbannare questo utente.", ephemeral=True
+                "Non sono riuscito a sbannare questo utente: controlla i miei permessi.",
+                ephemeral=True,
             )
             return
 
@@ -438,14 +448,14 @@ class ModerationActionsCog(commands.Cog):
             return
 
         try:
-            import datetime as _dt
             await member.timeout(
-                _dt.timedelta(seconds=duration_seconds),
+                datetime.timedelta(seconds=duration_seconds),
                 reason=reason,
             )
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per mettere in timeout questo utente.",
+                "Non sono riuscito a mettere in timeout questo utente: "
+                "controlla i miei permessi e la posizione del mio ruolo.",
                 ephemeral=True,
             )
             return
@@ -483,9 +493,10 @@ class ModerationActionsCog(commands.Cog):
 
         try:
             await member.timeout(None, reason="Timeout rimosso manualmente")
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per rimuovere il timeout da questo utente.",
+                "Non sono riuscito a rimuovere il timeout da questo utente: "
+                "controlla i miei permessi.",
                 ephemeral=True,
             )
             return

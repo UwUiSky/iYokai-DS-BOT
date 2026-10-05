@@ -173,6 +173,37 @@ class ModerationSoftbanMuteCog(commands.Cog):
         if not await check_can_moderate(interaction, member):
             return
 
+        await interaction.response.defer()
+
+        # Prima l'azione: il caso, il log e il DM partono solo se è
+        # riuscita (LIM-8).
+        try:
+            await member.ban(
+                reason=audit_reason(f"Softban: {reason}"),
+                delete_message_seconds=delete_message_days * 86400,
+            )
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a fare il softban di questo utente: "
+                "controlla i miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
+            )
+            return
+
+        sbloccato = True
+        try:
+            await interaction.guild.unban(
+                discord.Object(id=member.id), reason="Softban: sblocco automatico"
+            )
+        except discord.HTTPException:
+            sbloccato = False
+            logger.warning(
+                "Softban: ban riuscito ma sblocco automatico fallito per "
+                "l'utente %s nel server %s — richiede intervento manuale.",
+                member.id,
+                interaction.guild.id,
+            )
+
         case_number = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
             user_id=member.id,
@@ -183,35 +214,16 @@ class ModerationSoftbanMuteCog(commands.Cog):
         embed = _case_embed(
             "🧹 Softban", discord.Color.dark_orange(), member, interaction.user, reason, case_number
         )
-        dm_ok = await try_dm(member, embed)
-
-        try:
-            await member.ban(
-                reason=audit_reason(f"Softban: {reason}"),
-                delete_message_seconds=delete_message_days * 86400,
-            )
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per il softban di questo utente.", ephemeral=True
-            )
-            return
-
-        try:
-            await interaction.guild.unban(
-                discord.Object(id=member.id), reason="Softban: sblocco automatico"
-            )
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-            logger.warning(
-                "Softban: ban riuscito ma sblocco automatico fallito per "
-                "l'utente %s nel server %s — richiede intervento manuale.",
-                member.id,
-                interaction.guild.id,
-            )
-
-        if not dm_ok:
-            embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
-        await interaction.response.send_message(embed=embed)
         await post_to_mod_log(interaction.guild, embed)
+
+        avvisi = []
+        if not sbloccato:
+            avvisi.append("Lo sblocco automatico è fallito: usa /unban.")
+        if not await try_dm(member, embed):
+            avvisi.append("Non è stato possibile notificare l'utente in DM.")
+        if avvisi:
+            embed.set_footer(text=" ".join(avvisi))
+        await interaction.followup.send(embed=embed)
 
     # ================================================================
     # /mute-role e /unmute-role
@@ -242,9 +254,11 @@ class ModerationSoftbanMuteCog(commands.Cog):
 
         try:
             await member.add_roles(role, reason=reason)
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.followup.send(
-                "Non ho i permessi per assegnare il ruolo mute.", ephemeral=True
+                "Non sono riuscito ad assegnare il ruolo mute: controlla i "
+                "miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
             )
             return
 
@@ -258,9 +272,9 @@ class ModerationSoftbanMuteCog(commands.Cog):
         embed = _case_embed(
             "🔇 Mute (ruolo)", discord.Color.dark_grey(), member, interaction.user, reason, case_number
         )
+        await post_to_mod_log(interaction.guild, embed)
         await try_dm(member, embed)
         await interaction.followup.send(embed=embed)
-        await post_to_mod_log(interaction.guild, embed)
 
     @app_commands.command(
         name="unmute-role", description="Rimuove il ruolo mute da un membro."
@@ -290,9 +304,11 @@ class ModerationSoftbanMuteCog(commands.Cog):
 
         try:
             await member.remove_roles(role, reason=reason)
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per rimuovere il ruolo mute.", ephemeral=True
+                "Non sono riuscito a rimuovere il ruolo mute: controlla i "
+                "miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
             )
             return
 
