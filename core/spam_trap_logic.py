@@ -58,6 +58,36 @@ PURGE_LOOKBACK_DAYS = 30
 BULK_DELETE_MAX_AGE_DAYS = 14
 
 
+# Un campo di un embed tiene 1024 caratteri: l'elenco dei canali
+# ripuliti si ferma prima.
+MAX_DELETED_CHANNELS_TEXT = 1000
+
+
+def format_deleted_channels(
+    deleted_by_channel: dict[str, int], max_chars: int = MAX_DELETED_CHANNELS_TEXT
+) -> str:
+    """
+    Una riga "#canale: numero" per ogni canale ripulito, senza mai
+    superare `max_chars`: i canali che non ci stanno diventano una
+    riga finale "…and N more channel(s)". Il testo è in inglese come
+    il resto del log dello spam-trap.
+    """
+    righe = [f"#{nome}: {quanti}" for nome, quanti in deleted_by_channel.items()]
+    scelte: list[str] = []
+    lunghezza = 0
+    for indice, riga in enumerate(righe):
+        rimaste = len(righe) - indice
+        coda = f"…and {rimaste} more channel(s)"
+        # Deve restare posto per la riga finale, se servirà.
+        spazio = max_chars - (len(coda) + 1 if rimaste > 1 else 0)
+        if lunghezza + len(riga) + (1 if scelte else 0) > spazio:
+            scelte.append(coda)
+            break
+        scelte.append(riga)
+        lunghezza += len(riga) + (1 if len(scelte) > 1 else 0)
+    return "\n".join(scelte)
+
+
 def latest_case_per_guild(cases: list) -> list:
     """
     BUG-24: di più casi attivi nello stesso server tiene solo il più

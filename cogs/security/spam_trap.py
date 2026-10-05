@@ -71,6 +71,7 @@ from core.spam_trap_logic import (
     BAN_ACTION_TYPE,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
     can_appeal,
+    format_deleted_channels,
     latest_case_per_guild,
     partition_messages_for_deletion,
     purge_window,
@@ -85,6 +86,14 @@ MODULE_SPAM_TRAP = "spam_trap"
 
 TRAP_CHANNEL_DEFAULT_NAME = "spam-trap"
 LOG_CHANNEL_DEFAULT_NAME = "spam-log"
+
+# Peso massimo del transcript allegato a un appello. discord.py accetta
+# file fino a 10 MiB (LIMITI.md, LIM-55): si resta sotto con margine, e
+# sotto il limite del server se è più basso.
+MAX_TRANSCRIPT_BYTES = 8 * 1024 * 1024
+
+# Il testo dell'appello finisce nella descrizione di un embed (4096).
+MAX_TESTO_APPELLO = 3500
 
 # SEC-8b: ruoli staff esentati dalla trappola, oltre a chi ha già
 # "Gestisci messaggi"/"Amministratore" o un ruolo sopra quello del
@@ -578,8 +587,10 @@ class SpamTrapCog(commands.Cog):
             author_avatar_data_uri=avatar_data_uri,
         )
 
-        # 3. DM PRIMA del ban.
+        # 3. DM PRIMA del ban. Anche la data di ingresso va letta
+        #    adesso: dopo il ban il membro non è più nel server.
         dm_sent = await self._send_ban_dm(guild, user)
+        joined_at = getattr(user, "joined_at", None)
 
         # 4. Ban.
         try:
@@ -599,6 +610,7 @@ class SpamTrapCog(commands.Cog):
         except discord.HTTPException:
             logger.exception("Errore HTTP bannando %s (Spam Trap).", user.id)
             return
+        banned_at = discord.utils.utcnow()
 
         # 4.1 Ban globale (SPEC.md §7.3) — propagazione best-effort
         #     verso ogni altro server aderente alla rete (vedi
@@ -642,6 +654,8 @@ class SpamTrapCog(commands.Cog):
             guild, user, case_number, trigger_content,
             invite_code, invite_creator_id, deleted_by_channel, dm_sent,
             propagated_guild_ids,
+            joined_at=joined_at,
+            banned_at=banned_at,
         )
 
     async def _send_ban_dm(self, guild: discord.Guild, user: discord.abc.User) -> bool:
@@ -853,6 +867,9 @@ class SpamTrapCog(commands.Cog):
         deleted_by_channel: dict[str, int],
         dm_sent: bool,
         propagated_guild_ids: list[int] | None = None,
+        *,
+        joined_at: datetime | None = None,
+        banned_at: datetime | None = None,
     ) -> None:
         config = await spam_trap_repo.get_config(guild.id)
         if config.log_channel_id is None:
@@ -868,12 +885,14 @@ class SpamTrapCog(commands.Cog):
             value=discord.utils.format_dt(user.created_at, style="F"),
             inline=True,
         )
-        member = guild.get_member(user.id)
-        if member is not None and member.joined_at is not None:
+        embed.add_field(
+            name="Joined",
+            value=discord.utils.format_dt(joined_at, style="F") if joined_at else "Unknown",
+            inline=True,
+        )
+        if banned_at is not None:
             embed.add_field(
-                name="Joined",
-                value=discord.utils.format_dt(member.joined_at, style="F"),
-                inline=True,
+                name="Banned", value=discord.utils.format_dt(banned_at, style="F"), inline=True
             )
         embed.add_field(name="Case", value=f"#{case_number}", inline=True)
 
@@ -892,9 +911,8 @@ class SpamTrapCog(commands.Cog):
         )
 
         if deleted_by_channel:
-            testo_canali = "\n".join(
-                f"#{nome}: {count}" for nome, count in deleted_by_channel.items()
-            )
+            # Tagliato: un campo tiene 1024 caratteri (LIM-20).
+            testo_canali = format_deleted_channels(deleted_by_channel)
         else:
             testo_canali = "None (covered by native ban cleanup, or nothing to delete)"
         embed.add_field(name="Deleted messages (7-30 days)", value=testo_canali, inline=False)
@@ -910,7 +928,14 @@ class SpamTrapCog(commands.Cog):
                 inline=True,
             )
 
-        await log_channel.send(embed=embed)
+        try:
+            await log_channel.send(embed=embed)
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile scrivere il log del ban (caso %s) nel server %s.",
+                case_number,
+                guild.id,
+            )
 
     # ================================================================
     # Ban appeal
@@ -977,8 +1002,6 @@ class SpamTrapCog(commands.Cog):
             )
             return
 
-        await spam_trap_repo.set_last_appeal(guild.id, user.id, datetime.now(timezone.utc))
-
         config = await spam_trap_repo.get_config(guild.id)
         log_channel = guild.get_channel(config.log_channel_id) if config.log_channel_id else None
         if not isinstance(log_channel, discord.TextChannel):
@@ -993,7 +1016,7 @@ class SpamTrapCog(commands.Cog):
             thread = await log_channel.create_thread(
                 name=f"appeal-case-{case.case_number}",
                 type=discord.ChannelType.private_thread,
-                reason=f"Ban appeal from {user}",
+                reason=f"Ban appeal from {user}"[:512],
             )
         except discord.HTTPException:
             await message.channel.send(
@@ -1001,23 +1024,55 @@ class SpamTrapCog(commands.Cog):
             )
             return
 
+        testo_appello = (message.content or "(no text)")[:MAX_TESTO_APPELLO]
+        descrizione = (
+            f"**User:** {user.mention} ({user.id})\n\n**Appeal message:**\n{testo_appello}"
+        )
+
+        files = []
+        if incident is not None and incident.transcript_html:
+            contenuto = incident.transcript_html.encode("utf-8")
+            limite = min(MAX_TRANSCRIPT_BYTES, guild.filesize_limit)
+            if len(contenuto) <= limite:
+                files.append(
+                    discord.File(
+                        io.BytesIO(contenuto),
+                        filename=f"transcript-case-{case.case_number}.html",
+                    )
+                )
+            else:
+                descrizione += (
+                    f"\n\n*Transcript not attached: too large "
+                    f"({len(contenuto) / 1024 / 1024:.1f} MB).*"
+                )
+
         appeal_embed = discord.Embed(
             title=f"Ban Appeal — Case #{case.case_number}",
-            description=f"**User:** {user.mention} ({user.id})\n\n"
-            f"**Appeal message:**\n{message.content or '(no text)'}",
+            description=descrizione,
             color=discord.Color.gold(),
         )
         view = AppealActionsView(guild.id, case.case_number, user.id)
 
-        files = []
-        if incident is not None and incident.transcript_html:
-            transcript_file = discord.File(
-                io.BytesIO(incident.transcript_html.encode("utf-8")),
-                filename=f"transcript-case-{case.case_number}.html",
+        try:
+            await thread.send(embed=appeal_embed, view=view, files=files)
+        except discord.HTTPException:
+            # L'appello non è arrivato allo staff: niente blocco di 24
+            # ore, l'utente può riprovare. Il thread vuoto si toglie.
+            logger.warning(
+                "Invio dell'appello fallito (caso %s, server %s).", case.case_number, guild.id
             )
-            files.append(transcript_file)
+            try:
+                await thread.delete()
+            except discord.HTTPException:
+                pass
+            await message.channel.send(
+                "I couldn't deliver your appeal to the staff right now. Please try again later."
+            )
+            return
 
-        await thread.send(embed=appeal_embed, view=view, files=files)
+        # Solo ora che lo staff ha ricevuto l'appello parte il blocco
+        # di 24 ore.
+        await spam_trap_repo.set_last_appeal(guild.id, user.id, datetime.now(timezone.utc))
 
         await message.channel.send(
             "Your appeal has been submitted to the staff. They will review it "
