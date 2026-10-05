@@ -70,13 +70,17 @@ MUTE_OVERWRITE = {
 
 async def _apply_mute_overwrite(channel: discord.abc.GuildChannel, role: discord.Role) -> None:
     """
-    Mette il blocco del ruolo Muted su un canale, senza toccare gli
-    altri permessi che un admin ha dato al ruolo in quel canale. Un
-    canale che fallisce (permessi mancanti, canale appena cancellato)
-    non deve fermare gli altri: lo scriviamo nel log e basta.
+    Mette il blocco del ruolo Muted su un canale. Completa solo i
+    permessi non ancora impostati: quelli che un admin ha scelto a mano
+    per il ruolo in quel canale restano (es. un canale "appelli" dove i
+    silenziati possono scrivere). Un canale che fallisce (permessi
+    mancanti, canale appena cancellato) non deve fermare gli altri: lo
+    scriviamo nel log e basta.
     """
     overwrite = channel.overwrites_for(role)
-    overwrite.update(**MUTE_OVERWRITE)
+    overwrite.update(
+        **{name: False for name in MUTE_OVERWRITE if getattr(overwrite, name) is None}
+    )
     try:
         await channel.set_permissions(role, overwrite=overwrite, reason="Setup ruolo mute")
     except discord.HTTPException:
@@ -104,8 +108,9 @@ def _case_embed(
 
 
 def _has_mute_overwrite(channel: discord.abc.GuildChannel, role: discord.Role) -> bool:
+    """True se nel canale ogni permesso del blocco è già stato deciso (negato o no)."""
     current = channel.overwrites_for(role)
-    return all(getattr(current, name) is False for name in MUTE_OVERWRITE)
+    return all(getattr(current, name) is not None for name in MUTE_OVERWRITE)
 
 
 async def _cover_all_channels(guild: discord.Guild, role: discord.Role) -> None:
@@ -124,8 +129,8 @@ async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
     """
     Restituisce il ruolo mute configurato per questo server,
     creandolo se non esiste ancora. In entrambi i casi controlla che
-    ogni canale abbia il blocco. None se Discord rifiuta la creazione (permessi
-    mancanti, oppure il server ha già 250 ruoli).
+    ogni canale abbia il blocco. None se Discord rifiuta la creazione
+    (permessi mancanti, oppure il server ha già 250 ruoli).
     """
     role_id = await db.get_guild_setting(guild.id, SETTING_MUTE_ROLE_ID)
     if role_id is not None:
@@ -157,7 +162,8 @@ class ModerationSoftbanMuteCog(commands.Cog):
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
         """
         Un canale nuovo non ha il blocco del ruolo Muted: lo mettiamo
-        subito, altrimenti chi è silenziato potrebbe scriverci.
+        subito, altrimenti chi è silenziato potrebbe scriverci. Se lo
+        ha già preso dalla sua categoria non serve nessuna chiamata.
         """
         role_id = await db.get_guild_setting(channel.guild.id, SETTING_MUTE_ROLE_ID)
         if role_id is None:
@@ -165,7 +171,8 @@ class ModerationSoftbanMuteCog(commands.Cog):
         role = channel.guild.get_role(role_id)
         if role is None:
             return
-        await _apply_mute_overwrite(channel, role)
+        if not _has_mute_overwrite(channel, role):
+            await _apply_mute_overwrite(channel, role)
 
     # ================================================================
     # /mod-log-setup (SPEC.md §5.10 — canale dedicato per il log di

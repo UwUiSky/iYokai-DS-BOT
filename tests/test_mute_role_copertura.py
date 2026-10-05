@@ -137,6 +137,34 @@ async def test_ruolo_gia_esistente_si_coprono_solo_i_canali_scoperti():
     assert vecchio.set_permissions.call_args.kwargs["overwrite"].view_channel is False
 
 
+async def test_un_eccezione_voluta_dall_admin_non_viene_cancellata():
+    """
+    Un canale "appelli" dove l'admin ha permesso apposta ai silenziati
+    di scrivere: il blocco completa solo i permessi non impostati.
+    """
+    server, ruolo = _server_con_ogni_tipo_di_canale()
+    await _get_or_create_mute_role(server)
+    server.get_role.side_effect = lambda role_id: ruolo if role_id == ID_RUOLO else None
+    appelli = fake_text_channel(12, "appelli")
+    appelli.overwrites_for.return_value = discord.PermissionOverwrite(
+        send_messages=True, add_reactions=False
+    )
+    server.channels = [appelli]
+
+    await _get_or_create_mute_role(server)
+
+    permessi = appelli.set_permissions.call_args.kwargs["overwrite"]
+    assert permessi.send_messages is True
+    assert permessi.send_messages_in_threads is False
+    assert permessi.connect is False
+
+    # Completato una volta, al mute successivo non viene più toccato.
+    appelli.overwrites_for.return_value = permessi
+    appelli.set_permissions.reset_mock()
+    await _get_or_create_mute_role(server)
+    appelli.set_permissions.assert_not_awaited()
+
+
 async def test_canale_nuovo_senza_ruolo_muted_nessuna_chiamata():
     server = fake_guild(ID_SERVER)
     nuovo = fake_text_channel(99, "nuovo")
