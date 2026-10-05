@@ -40,6 +40,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.channel_rename import (
+    RenameRateLimited,
+    rename_channel,
+    rename_limit_message,
+    rename_tracker,
+)
 from core.database import db
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
@@ -58,6 +64,13 @@ logger = logging.getLogger("iyokai.voice_temp")
 MODULE_VOICE_TEMP = "voice_temp"
 
 CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
+
+# Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
+MAX_CHANNEL_NAME_LENGTH = 100
+
+MESSAGGIO_ERRORE_DISCORD = (
+    "Non sono riuscito a farlo: controlla i miei permessi sul canale e riprova."
+)
 
 # SPEC.md §12.5: selezione piattaforma, SOLO informativa (nessun
 # filtro di visibilità — decisione già presa in fase di progettazione,
@@ -457,12 +470,46 @@ class VoiceTempCog(commands.Cog):
 
     @voice_group.command(name="rename", description="Rinomina il tuo canale vocale.")
     @app_commands.describe(name="Il nuovo nome del canale")
-    async def rename(self, interaction: discord.Interaction, name: str) -> None:
+    async def rename(
+        self,
+        interaction: discord.Interaction,
+        name: app_commands.Range[str, 1, MAX_CHANNEL_NAME_LENGTH],
+    ) -> None:
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.edit(name=name)
-        await interaction.response.send_message(f"Canale rinominato in **{name}**.")
+
+        # Discord permette 2 rinomine ogni 10 minuti per canale (LIM-3):
+        # alla terza si risponde subito, senza restare in attesa.
+        attesa = rename_tracker.seconds_until_allowed(channel.id)
+        if attesa > 0:
+            await interaction.response.send_message(
+                rename_limit_message(attesa), ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
+        try:
+            await rename_channel(
+                channel, name, reason=f"Vocale rinominato da {interaction.user}"
+            )
+        except RenameRateLimited as limite:
+            await interaction.followup.send(
+                rename_limit_message(limite.retry_after), ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a rinominare il canale: controlla i miei "
+                "permessi e che il nome sia ammesso da Discord.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            f"Canale rinominato in **{name}**.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @voice_group.command(name="limit", description="Imposta il limite di utenti del canale.")
     @app_commands.describe(limit="Numero massimo di utenti (0 per nessun limite)")
@@ -472,7 +519,11 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.edit(user_limit=limit)
+        try:
+            await channel.edit(user_limit=limit)
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         testo = "nessun limite" if limit == 0 else f"{limit} utenti"
         await interaction.response.send_message(f"Limite impostato: {testo}.")
 
@@ -481,9 +532,13 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.set_permissions(
-            interaction.guild.default_role, connect=False
-        )
+        try:
+            await channel.set_permissions(
+                interaction.guild.default_role, connect=False
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await interaction.response.send_message("Canale bloccato.")
 
     @voice_group.command(name="unlock", description="Sblocca il canale.")
@@ -491,7 +546,11 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        await channel.set_permissions(interaction.guild.default_role, overwrite=None)
+        try:
+            await channel.set_permissions(interaction.guild.default_role, overwrite=None)
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await interaction.response.send_message("Canale sbloccato.")
 
     @voice_group.command(name="kick", description="Espelli un utente dal tuo canale.")
@@ -501,7 +560,13 @@ class VoiceTempCog(commands.Cog):
         if channel is None:
             return
         if member.voice is not None and member.voice.channel and member.voice.channel.id == channel.id:
-            await member.move_to(None, reason="Espulso dal proprietario del canale")
+            try:
+                await member.move_to(None, reason="Espulso dal proprietario del canale")
+            except discord.HTTPException:
+                await interaction.response.send_message(
+                    MESSAGGIO_ERRORE_DISCORD, ephemeral=True
+                )
+                return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
 
     @voice_group.command(name="transfer", description="Trasferisci la proprietà del canale.")
