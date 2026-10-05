@@ -72,19 +72,50 @@ async def test_get_item_inesistente_restituisce_none(repo):
 
 
 @pytest.mark.asyncio
-async def test_record_purchase_e_has_purchased(repo):
-    item_id = await repo.add_item(100, name="X", price=10)
+async def test_buy_item_a_ruolo_si_compra_una_volta_sola(repo, clean_db):
+    from core.repositories.leveling_repo import LevelingRepository
+    from core.repositories.shop_repo import EsitoAcquisto
 
-    assert await repo.has_purchased(100, user_id=1, item_id=item_id) is False
+    livelli = LevelingRepository(pool_provider=lambda: clean_db)
+    await livelli.add_coins(100, 1, 50)
+    item_id = await repo.add_item(100, name="X", price=10, role_id=555)
+    oggetto = await repo.get_item(item_id, guild_id=100)
 
-    await repo.record_purchase(100, user_id=1, item_id=item_id)
+    primo = await repo.buy_item(100, 1, oggetto)
+    secondo = await repo.buy_item(100, 1, oggetto)
 
-    assert await repo.has_purchased(100, user_id=1, item_id=item_id) is True
+    assert primo.esito == EsitoAcquisto.RIUSCITO
+    assert secondo.esito == EsitoAcquisto.GIA_ACQUISTATO
+    assert (await livelli.get_totals(100, 1)).coins_total == 40
 
 
 @pytest.mark.asyncio
-async def test_has_purchased_non_confonde_utenti_diversi(repo):
-    item_id = await repo.add_item(100, name="X", price=10)
-    await repo.record_purchase(100, user_id=1, item_id=item_id)
+async def test_buy_item_non_confonde_utenti_diversi(repo, clean_db):
+    from core.repositories.leveling_repo import LevelingRepository
+    from core.repositories.shop_repo import EsitoAcquisto
 
-    assert await repo.has_purchased(100, user_id=2, item_id=item_id) is False
+    livelli = LevelingRepository(pool_provider=lambda: clean_db)
+    await livelli.add_coins(100, 1, 50)
+    await livelli.add_coins(100, 2, 50)
+    item_id = await repo.add_item(100, name="X", price=10, role_id=555)
+    oggetto = await repo.get_item(item_id, guild_id=100)
+
+    await repo.buy_item(100, 1, oggetto)
+
+    assert (await repo.buy_item(100, 2, oggetto)).esito == EsitoAcquisto.RIUSCITO
+
+
+@pytest.mark.asyncio
+async def test_refund_purchase_rimborsa_una_volta_sola(repo, clean_db):
+    from core.repositories.leveling_repo import LevelingRepository
+
+    livelli = LevelingRepository(pool_provider=lambda: clean_db)
+    await livelli.add_coins(100, 1, 50)
+    item_id = await repo.add_item(100, name="X", price=10, role_id=555)
+    oggetto = await repo.get_item(item_id, guild_id=100)
+    acquisto = await repo.buy_item(100, 1, oggetto)
+
+    assert await repo.refund_purchase(acquisto.purchase_id, 100, 1, 10) is True
+    assert await repo.refund_purchase(acquisto.purchase_id, 100, 1, 10) is False
+
+    assert (await livelli.get_totals(100, 1)).coins_total == 50

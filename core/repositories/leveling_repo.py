@@ -133,6 +133,81 @@ QUERY_UTENTI_DA_DECADERE = """
 """
 
 
+# ----------------------------------------------------------------------
+# Movimenti di coin su una connessione già aperta. Servono a chi deve
+# mettere più scritture nella stessa transazione (acquisto dello shop,
+# premi dalla cassa): il controllo del saldo sta dentro la UPDATE.
+# ----------------------------------------------------------------------
+async def spend_coins_in(
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+) -> bool:
+    """Toglie `amount` coin solo se il saldo basta. False se non basta."""
+    if amount <= 0:
+        raise ValueError("L'importo da spendere deve essere positivo.")
+    saldo = await conn.fetchval(
+        """
+        UPDATE leveling_totals SET coins_total = coins_total - $3
+        WHERE guild_id = $1 AND user_id = $2 AND coins_total >= $3
+        RETURNING coins_total
+        """,
+        guild_id,
+        user_id,
+        amount,
+    )
+    return saldo is not None
+
+
+async def add_coins_in(
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+) -> int:
+    """Aggiunge coin (saldo e classifica del mese). Restituisce il nuovo saldo."""
+    saldo = await conn.fetchval(
+        """
+        INSERT INTO leveling_totals (guild_id, user_id, coins_total)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (guild_id, user_id) DO UPDATE
+            SET coins_total = leveling_totals.coins_total + $3
+        RETURNING coins_total
+        """,
+        guild_id,
+        user_id,
+        amount,
+    )
+    await conn.execute(
+        """
+        INSERT INTO leveling_activity (guild_id, user_id, period_key, coins)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (guild_id, user_id, period_key) DO UPDATE
+            SET coins = leveling_activity.coins + $4
+        """,
+        guild_id,
+        user_id,
+        period_key(),
+        amount,
+    )
+    return saldo
+
+
+async def refund_coins_in(
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+) -> None:
+    """
+    Restituisce coin spesi poco prima. Tocca solo il saldo: un rimborso
+    non è un guadagno e non deve contare nella classifica del mese.
+    """
+    await conn.execute(
+        """
+        INSERT INTO leveling_totals (guild_id, user_id, coins_total)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (guild_id, user_id) DO UPDATE
+            SET coins_total = leveling_totals.coins_total + $3
+        """,
+        guild_id,
+        user_id,
+        amount,
+    )
+
+
 class LevelingRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
@@ -331,31 +406,9 @@ class LevelingRepository:
 
     async def add_coins(self, guild_id: int, user_id: int, amount: int) -> int:
         """Aggiunge (o sottrae, con amount negativo) coin. Restituisce il nuovo saldo."""
-        row = await self._pool.fetchrow(
-            """
-            INSERT INTO leveling_totals (guild_id, user_id, coins_total)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, user_id) DO UPDATE
-                SET coins_total = leveling_totals.coins_total + $3
-            RETURNING coins_total
-            """,
-            guild_id,
-            user_id,
-            amount,
-        )
-        await self._pool.execute(
-            """
-            INSERT INTO leveling_activity (guild_id, user_id, period_key, coins)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (guild_id, user_id, period_key) DO UPDATE
-                SET coins = leveling_activity.coins + $4
-            """,
-            guild_id,
-            user_id,
-            period_key(),
-            amount,
-        )
-        return row["coins_total"]
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                return await add_coins_in(conn, guild_id, user_id, amount)
 
     async def transfer_coins(
         self, guild_id: int, from_user_id: int, to_user_id: int, amount: int
@@ -417,41 +470,12 @@ class LevelingRepository:
 
     async def spend_coins(self, guild_id: int, user_id: int, amount: int) -> bool:
         """
-        Sottrae coin solo se il saldo basta — stesso pattern atomico
-        di transfer_coins (FOR UPDATE dentro una transazione), usata
-        dallo shop (SPEC.md §15.4) e da qualunque futuro consumo di
-        coin. Restituisce False (senza scrivere nulla) se il saldo
-        non basta.
+        Sottrae coin solo se il saldo basta, con una sola UPDATE che
+        contiene il controllo. Restituisce False (senza scrivere nulla)
+        se il saldo non basta: mai un saldo negativo.
         """
-        if amount <= 0:
-            raise ValueError("L'importo da spendere deve essere positivo.")
-
         async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                saldo = await conn.fetchval(
-                    """
-                    SELECT coins_total FROM leveling_totals
-                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
-                    """,
-                    guild_id,
-                    user_id,
-                ) or 0
-
-                if saldo < amount:
-                    return False
-
-                await conn.execute(
-                    """
-                    INSERT INTO leveling_totals (guild_id, user_id, coins_total)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (guild_id, user_id) DO UPDATE
-                        SET coins_total = leveling_totals.coins_total + $3
-                    """,
-                    guild_id,
-                    user_id,
-                    -amount,
-                )
-                return True
+            return await spend_coins_in(conn, guild_id, user_id, amount)
 
     async def list_users_needing_weekly_decay(
         self, period: str

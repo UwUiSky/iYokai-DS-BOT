@@ -47,7 +47,7 @@ from core.ui_base import BaseView
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
-from core.repositories.shop_repo import shop_repo
+from core.repositories.shop_repo import EsitoAcquisto, shop_repo
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.giveaway_logic import is_eligible, pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
@@ -109,6 +109,17 @@ MODULE_LEVELING = "leveling"
 
 # Solo questi tipi di messaggio danno XP: quelli scritti da una persona.
 TIPI_DI_MESSAGGIO_CON_XP = (discord.MessageType.default, discord.MessageType.reply)
+
+
+# Limite di Discord per il motivo scritto nel registro di controllo.
+LIMITE_MOTIVO = 512
+
+
+def _taglia(testo: str, limite: int) -> str:
+    """Taglia un testo al limite dato, con i puntini se è stato accorciato."""
+    if len(testo) <= limite:
+        return testo
+    return testo[: limite - 1] + "…"
 
 
 def _format_seconds(seconds: int) -> str:
@@ -706,54 +717,69 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        if oggetto.role_id is not None and await shop_repo.has_purchased(
-            guild.id, interaction.user.id, oggetto.id
-        ):
+        # SEC-4/SEC-17: il ruolo si ricontrolla PRIMA di far spendere i
+        # coin: può essere stato cancellato o aver preso permessi
+        # pericolosi dopo che è stato messo nello shop.
+        ruolo_shop = None
+        if oggetto.role_id is not None:
+            ruolo_shop = guild.get_role(oggetto.role_id)
+            if ruolo_shop is None:
+                await interaction.response.send_message(
+                    "Questo oggetto non è più acquistabile: il suo ruolo non esiste più.",
+                    ephemeral=True,
+                )
+                return
+            motivo_rifiuto = check_role_assignable(guild, ruolo_shop, guild.me, self_service=True)
+            if motivo_rifiuto is not None:
+                await interaction.response.send_message(
+                    f"Questo oggetto non è più acquistabile: {motivo_rifiuto}",
+                    ephemeral=True,
+                )
+                return
+
+        acquisto = await shop_repo.buy_item(guild.id, interaction.user.id, oggetto)
+        if acquisto.esito == EsitoAcquisto.GIA_ACQUISTATO:
             await interaction.response.send_message(
                 "Hai già acquistato questo oggetto.", ephemeral=True
             )
             return
-
-        # SEC-4/SEC-17: ricontrolla il ruolo PRIMA di far spendere i
-        # coin — il ruolo può aver preso permessi pericolosi dopo che
-        # è stato messo nello shop, e non ha senso far pagare
-        # l'utente per un ruolo che poi non verrà assegnato.
-        ruolo_shop = None
-        if oggetto.role_id is not None:
-            ruolo_shop = guild.get_role(oggetto.role_id)
-            if ruolo_shop is not None:
-                motivo_rifiuto = check_role_assignable(guild, ruolo_shop, guild.me, self_service=True)
-                if motivo_rifiuto is not None:
-                    await interaction.response.send_message(
-                        f"Questo oggetto non è più acquistabile: {motivo_rifiuto}",
-                        ephemeral=True,
-                    )
-                    return
-
-        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, oggetto.price)
-        if not riuscito:
+        if acquisto.esito == EsitoAcquisto.SALDO_INSUFFICIENTE:
             await interaction.response.send_message(
                 f"Non hai abbastanza coin — servono **{oggetto.price}**.", ephemeral=True
             )
             return
 
-        await shop_repo.record_purchase(guild.id, interaction.user.id, oggetto.id)
+        nome = _taglia(oggetto.name, 200)
+        conferma = f"✅ Hai acquistato **{nome}** per {oggetto.price} coin!"
+        if ruolo_shop is None:
+            await interaction.response.send_message(conferma)
+            return
 
-        if ruolo_shop is not None:
-            try:
-                await interaction.user.add_roles(
-                    ruolo_shop, reason=f"Acquisto shop: {oggetto.name}"
-                )
-            except discord.HTTPException:
-                logger.warning(
-                    "Impossibile assegnare il ruolo shop %s a %s.",
-                    oggetto.role_id,
-                    interaction.user.id,
-                )
+        # Da qui si parla con Discord: prima il defer, poi il ruolo.
+        await interaction.response.defer()
+        try:
+            await interaction.user.add_roles(
+                ruolo_shop, reason=_taglia(f"Acquisto shop: {oggetto.name}", LIMITE_MOTIVO)
+            )
+        except discord.HTTPException:
+            # Il ruolo non è arrivato: l'acquisto si annulla e i coin
+            # tornano indietro.
+            await shop_repo.refund_purchase(
+                acquisto.purchase_id, guild.id, interaction.user.id, oggetto.price
+            )
+            logger.warning(
+                "Impossibile assegnare il ruolo shop %s a %s: acquisto rimborsato.",
+                oggetto.role_id,
+                interaction.user.id,
+            )
+            await interaction.followup.send(
+                "Non sono riuscito a darti il ruolo: l'acquisto è annullato e i "
+                f"**{oggetto.price}** coin ti sono stati restituiti.",
+                ephemeral=True,
+            )
+            return
 
-        await interaction.response.send_message(
-            f"✅ Hai acquistato **{oggetto.name}** per {oggetto.price} coin!"
-        )
+        await interaction.followup.send(conferma)
 
     @shop_group.command(name="add-item", description="[Admin] Aggiunge un oggetto allo shop.")
     @app_commands.describe(
