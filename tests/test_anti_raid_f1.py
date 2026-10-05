@@ -383,3 +383,15 @@ async def test_canale_che_rifiuta_i_permessi_non_ferma_gli_altri(cog, server):
     membri[2].add_roles.assert_awaited_once()
     server.channels[1].set_permissions.assert_awaited_once()
     nascosto.set_permissions.assert_not_awaited()
+
+
+async def test_errore_del_database_non_ferma_il_controllo_delle_scadenze(cog, monkeypatch):
+    # Un'eccezione che esce da un tasks.loop lo spegne per sempre: un
+    # database irraggiungibile per un minuto non deve lasciare i server
+    # con il livello di verifica alto fino al prossimo riavvio.
+    async def _database_giu(_now):
+        raise ConnectionError("database irraggiungibile")
+
+    monkeypatch.setattr(security_repo, "get_expired_lockdowns", _database_giu)
+
+    await cog._controlla_scadenze.coro(cog)
