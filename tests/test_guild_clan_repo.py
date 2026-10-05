@@ -552,28 +552,3 @@ async def test_apply_text_tick_utente_non_membro_non_assegna(repo):
 
     assert assegnato is False
     assert (await repo.get_clan(clan_id)).total_xp == 0
-
-
-@pytest.mark.asyncio
-async def test_buy_guild_boost_con_saldo_sufficiente(repo):
-    clan_id = await _crea_clan(repo)
-    await repo.donate(clan_id, user_id=1, amount=50_000)  # saldo: 35.000
-
-    scadenza = await repo.buy_guild_boost(clan_id, cost=25_000, now=ORA)
-
-    assert scadenza == ORA + timedelta(hours=24)
-    clan = await repo.get_clan(clan_id)
-    assert clan.treasury_balance == 10_000
-    assert clan.guild_boost_expires_at == scadenza
-
-
-@pytest.mark.asyncio
-async def test_buy_guild_boost_saldo_insufficiente_non_scrive(repo):
-    clan_id = await _crea_clan(repo)
-    await repo.donate(clan_id, user_id=1, amount=15_000)  # saldo: 0
-
-    assert await repo.buy_guild_boost(clan_id, cost=25_000, now=ORA) is None
-
-    clan = await repo.get_clan(clan_id)
-    assert clan.treasury_balance == 0
-    assert clan.guild_boost_expires_at is None

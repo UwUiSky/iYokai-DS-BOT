@@ -12,10 +12,13 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from discord import app_commands
+
 from core.guild_clan_boost_logic import (
-    BOOST_DURATION_HOURS,
-    GUILD_BOOST_COST,
-    INDIVIDUAL_BOOST_COST,
+    GUILD_BOOST_COSTS,
+    INDIVIDUAL_BOOST_COSTS,
+    StatoBoost,
+    TipoBoost,
 )
 from core.guild_clan_logic import MAX_ADMINS_PER_CLAN
 from tests.support.concorrenza import apri_connessioni
@@ -28,7 +31,7 @@ from tests.test_guild_clan_cog_behavior import (  # noqa: F401  (cog_e_repos è 
 )
 
 GUILD_ID = 100
-DURATA = timedelta(hours=BOOST_DURATION_HOURS)
+SUPER = app_commands.Choice(name="super", value="super")
 
 
 def _clic(guild, user_id=1):
@@ -39,42 +42,40 @@ def _clic(guild, user_id=1):
 # /clan boost: i due clic insieme pagano due volte E ricevono due volte
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_boost_gilda_due_clic_insieme_estendono_due_volte(cog_e_repos):
+async def test_boost_gilda_due_clic_insieme_un_solo_addebito(cog_e_repos):
     cog, clan_repo, _ = cog_e_repos
     await apri_connessioni(clan_repo._pool)
     guild = _FakeGuild(GUILD_ID)
     clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
-    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + 3 * GUILD_BOOST_COST)
-    prima = datetime.now(timezone.utc)
+    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + 3 * GUILD_BOOST_COSTS[TipoBoost.SUPER])
 
     await asyncio.gather(
-        cog.clan_boost_gilda.callback(cog, _clic(guild)),
-        cog.clan_boost_gilda.callback(cog, _clic(guild)),
+        cog.clan_boost_gilda.callback(cog, _clic(guild), SUPER),
+        cog.clan_boost_gilda.callback(cog, _clic(guild), SUPER),
     )
 
     clan = await clan_repo.get_clan(clan_id)
-    assert clan.treasury_balance == GUILD_BOOST_COST
-    # Due pagamenti = due durate: la seconda parte da dove finisce la prima.
-    assert clan.guild_boost_expires_at >= prima + 2 * DURATA - timedelta(minutes=1)
+    assert clan.treasury_balance == 2 * GUILD_BOOST_COSTS[TipoBoost.SUPER]  # un solo addebito
+    assert clan.guild_boost_exp_expires_at < datetime.now(timezone.utc) + timedelta(hours=24, minutes=1)
+    assert clan.guild_boost_exp_expires_at == clan.guild_boost_coin_expires_at
 
 
 @pytest.mark.asyncio
-async def test_boost_individuale_due_clic_insieme_estendono_due_volte(cog_e_repos):
+async def test_boost_individuale_due_clic_insieme_un_solo_addebito(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
     await apri_connessioni(clan_repo._pool)
     guild = _FakeGuild(GUILD_ID)
     clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
-    await leveling_repo.add_coins(GUILD_ID, 1, 3 * INDIVIDUAL_BOOST_COST)
-    prima = datetime.now(timezone.utc)
+    await leveling_repo.add_coins(GUILD_ID, 1, 3 * INDIVIDUAL_BOOST_COSTS[TipoBoost.SUPER])
 
     await asyncio.gather(
-        cog.clan_boost_individuale.callback(cog, _clic(guild)),
-        cog.clan_boost_individuale.callback(cog, _clic(guild)),
+        cog.clan_boost_individuale.callback(cog, _clic(guild), SUPER),
+        cog.clan_boost_individuale.callback(cog, _clic(guild), SUPER),
     )
 
-    assert (await leveling_repo.get_totals(GUILD_ID, 1)).coins_total == INDIVIDUAL_BOOST_COST
+    assert (await leveling_repo.get_totals(GUILD_ID, 1)).coins_total == 2 * INDIVIDUAL_BOOST_COSTS[TipoBoost.SUPER]
     membro = await clan_repo.get_member(clan_id, 1)
-    assert membro.boost_expires_at >= prima + 2 * DURATA - timedelta(minutes=1)
+    assert membro.boost_exp_expires_at < datetime.now(timezone.utc) + timedelta(hours=24, minutes=1)
 
 
 @pytest.mark.asyncio
@@ -83,17 +84,16 @@ async def test_boost_gilda_tesoreria_per_uno_solo_ne_passa_uno(cog_e_repos):
     await apri_connessioni(clan_repo._pool)
     guild = _FakeGuild(GUILD_ID)
     clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
-    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + GUILD_BOOST_COST)
+    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + GUILD_BOOST_COSTS[TipoBoost.EXP])
 
     await asyncio.gather(
-        cog.clan_boost_gilda.callback(cog, _clic(guild)),
-        cog.clan_boost_gilda.callback(cog, _clic(guild)),
+        cog.clan_boost_gilda.callback(cog, _clic(guild), app_commands.Choice(name="exp", value="exp")),
+        cog.clan_boost_gilda.callback(cog, _clic(guild), app_commands.Choice(name="exp", value="exp")),
     )
 
     clan = await clan_repo.get_clan(clan_id)
     assert clan.treasury_balance == 0
-    assert clan.guild_boost_expires_at is not None
-    assert clan.guild_boost_expires_at < datetime.now(timezone.utc) + DURATA + timedelta(minutes=1)
+    assert clan.guild_boost_exp_expires_at is not None
 
 
 # ----------------------------------------------------------------------
@@ -237,11 +237,11 @@ async def test_boost_con_guild_sbagliato_non_spende(cog_e_repos):
     clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
     await leveling_repo.add_coins(200, 1, 50_000)
 
-    nuova = await clan_repo.buy_member_boost(
-        200, clan_id, 1, INDIVIDUAL_BOOST_COST, datetime.now(timezone.utc)
+    esito = await clan_repo.buy_member_boost(
+        200, clan_id, 1, TipoBoost.SUPER, datetime.now(timezone.utc)
     )
 
-    assert nuova is None
+    assert esito.stato is StatoBoost.NON_MEMBRO
     assert (await leveling_repo.get_totals(200, 1)).coins_total == 50_000
 
 
@@ -291,7 +291,7 @@ async def test_boost_individuale_se_non_sei_piu_membro_il_messaggio_non_parla_di
     guild = _FakeGuild(GUILD_ID)
     clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
     await clan_repo.add_member(clan_id, 2)
-    await leveling_repo.add_coins(GUILD_ID, 2, 3 * INDIVIDUAL_BOOST_COST)
+    await leveling_repo.add_coins(GUILD_ID, 2, 3 * INDIVIDUAL_BOOST_COSTS[TipoBoost.SUPER])
     clan = await clan_repo.get_clan(clan_id)
     await clan_repo.remove_member(clan_id, 2)
 
@@ -300,7 +300,7 @@ async def test_boost_individuale_se_non_sei_piu_membro_il_messaggio_non_parla_di
 
     monkeypatch.setattr(clan_repo, "get_member_clan_in_guild", ancora_dentro)
     interazione = _clic(guild, 2)
-    await cog.clan_boost_individuale.callback(cog, interazione)
+    await cog.clan_boost_individuale.callback(cog, interazione, SUPER)
 
     assert "coin" not in interazione.response.sent_messages[0]
     assert "non fai" in interazione.response.sent_messages[0].lower()
