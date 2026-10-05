@@ -53,7 +53,10 @@ from core.channel_rename import (
     rename_limit_message,
     rename_tracker,
 )
+from cogs.moderation._shared import actor_from_member
+from core.bounded_cache import BoundedCache
 from core.database import db
+from core.permissions import can_moderate
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
 from core.role_safety import check_role_assignable
@@ -324,6 +327,11 @@ class CreateVoiceView(BaseView):
         )
 
 
+# Valore di "Connetti" di @everyone prima di /voice lock, per canale.
+# In memoria: i vocali vivono poco; senza dato, unlock rimette None.
+_connect_prima_del_lock: BoundedCache[int, bool | None] = BoundedCache(5_000)
+
+
 class VoiceTempCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -570,6 +578,10 @@ class VoiceTempCog(commands.Cog):
             # Si cambia solo "Connetti": gli altri permessi di @everyone
             # su questo canale restano com'erano.
             overwrite = channel.overwrites_for(interaction.guild.default_role)
+            # Si ricorda il valore di prima, ma solo al primo lock: un
+            # secondo lock vedrebbe già False e perderebbe l'originale.
+            if channel.id not in _connect_prima_del_lock:
+                _connect_prima_del_lock.set(channel.id, overwrite.connect)
             overwrite.update(connect=False)
             await channel.set_permissions(
                 interaction.guild.default_role, overwrite=overwrite
@@ -586,7 +598,8 @@ class VoiceTempCog(commands.Cog):
             return
         try:
             overwrite = channel.overwrites_for(interaction.guild.default_role)
-            overwrite.update(connect=None)
+            # Senza memoria (riavvio del bot dopo il lock) resta None.
+            overwrite.update(connect=_connect_prima_del_lock.get(channel.id))
             await channel.set_permissions(
                 interaction.guild.default_role,
                 overwrite=None if overwrite.is_empty() else overwrite,
@@ -594,7 +607,34 @@ class VoiceTempCog(commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
+        _connect_prima_del_lock.delete(channel.id)
         await interaction.response.send_message("Canale sbloccato.")
+
+    @staticmethod
+    def _puo_espellere(
+        interaction: discord.Interaction, member: discord.Member
+    ) -> tuple[bool, str]:
+        """
+        Gerarchia dei ruoli (stessa regola della moderazione) più una
+        protezione per amministratori e moderatori: chi non è staff non
+        può espellerli dal proprio canale, qualunque sia il suo ruolo.
+        """
+        guild = interaction.guild
+        autore = interaction.user
+        permesso, motivo = can_moderate(
+            actor_from_member(autore),
+            actor_from_member(member),
+            bot_top_role_position=guild.me.top_role.position,
+        )
+        if not permesso:
+            return False, motivo
+        e_staff = autore.guild_permissions.manage_channels
+        perm = member.guild_permissions
+        if not e_staff and (
+            perm.administrator or perm.moderate_members or perm.kick_members or perm.ban_members
+        ):
+            return False, "Non puoi espellere un amministratore o un moderatore dal tuo canale."
+        return True, ""
 
     @voice_group.command(name="kick", description="Espelli un utente dal tuo canale.")
     @app_commands.describe(member="L'utente da espellere dal canale")
@@ -607,6 +647,10 @@ class VoiceTempCog(commands.Cog):
                 f"{member.mention} non è nel canale: non c'è nessuno da espellere.",
                 ephemeral=True,
             )
+            return
+        permesso, motivo = self._puo_espellere(interaction, member)
+        if not permesso:
+            await interaction.response.send_message(motivo, ephemeral=True)
             return
         try:
             await member.move_to(None, reason="Espulso dal proprietario del canale")

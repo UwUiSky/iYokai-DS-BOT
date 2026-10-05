@@ -40,6 +40,7 @@ def _ambiente(monkeypatch, clean_db):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
     rinomina.rename_tracker._renames.clear()
+    modulo._connect_prima_del_lock.clear()
     yield
     rinomina.rename_tracker._renames.clear()
     database_module.db._modules_cache.clear()
@@ -102,6 +103,13 @@ class Scena:
 
 def _testo(chiamata) -> str:
     return chiamata.args[0] if chiamata.args else chiamata.kwargs.get("content", "")
+
+
+def _con_ruolo(membro, posizione: int, **permessi):
+    membro.top_role = fake_role(role_id=500 + posizione, name=f"r{posizione}", position=posizione)
+    if permessi:
+        membro.guild_permissions = discord.Permissions(**permessi)
+    return membro
 
 
 # ====================================================================
@@ -187,9 +195,10 @@ async def test_il_nome_nella_conferma_non_puo_menzionare_nessuno():
 @pytest.mark.parametrize("comando", ("limit", "lock", "unlock", "kick"))
 async def test_gli_altri_comandi_di_gestione_gestiscono_l_errore_di_discord(comando):
     scena = Scena()
-    proprietario = scena.membro(ID_PROPRIETARIO)
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
     canale = await scena.crea_canale_di(proprietario)
     ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
     canale.edit.side_effect = _errore_http(403)
     canale.set_permissions.side_effect = _errore_http(403)
     ospite.move_to.side_effect = _errore_http(403)
@@ -604,9 +613,10 @@ async def test_kick_di_chi_non_e_nel_canale_lo_dice_e_non_dice_espulso():
 
 async def test_kick_di_chi_e_nel_canale_lo_espelle():
     scena = Scena()
-    proprietario = scena.membro(ID_PROPRIETARIO)
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
     canale = await scena.crea_canale_di(proprietario)
     ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
     cog = VoiceTempCog(bot=None)
     interazione = scena.interazione(proprietario)
 
@@ -672,3 +682,101 @@ async def test_unlock_senza_altri_permessi_toglie_l_overwrite():
     await cog.unlock.callback(cog, scena.interazione(proprietario))
 
     assert _overwrite_finale(canale, scena.guild.default_role) is None
+
+
+# ====================================================================
+# #144 — /voice kick: controllo di gerarchia (core/permissions.py)
+# ====================================================================
+async def _kick(scena, proprietario, ospite):
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+    await cog.kick.callback(cog, interazione, ospite)
+    return interazione
+
+
+async def test_kick_di_un_membro_con_ruolo_piu_alto_e_negato():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 2)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = _con_ruolo(scena.entra(scena.membro(ID_OSPITE), canale), 5)
+
+    interazione = await _kick(scena, proprietario, ospite)
+
+    ospite.move_to.assert_not_awaited()
+    risposta = interazione.response.send_message.call_args
+    assert "espulso" not in _testo(risposta)
+    assert risposta.kwargs["ephemeral"] is True
+
+
+async def test_kick_di_un_amministratore_e_negato_anche_con_ruolo_basso():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    admin = _con_ruolo(
+        scena.entra(scena.membro(ID_OSPITE, manage_channels=True), canale),
+        1,
+        administrator=True,
+    )
+
+    interazione = await _kick(scena, proprietario, admin)
+
+    admin.move_to.assert_not_awaited()
+    assert interazione.response.send_message.call_args.kwargs["ephemeral"] is True
+
+
+async def test_kick_di_un_moderatore_e_negato_anche_con_ruolo_basso():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    moderatore = _con_ruolo(
+        scena.entra(scena.membro(ID_OSPITE), canale), 1, moderate_members=True
+    )
+
+    await _kick(scena, proprietario, moderatore)
+
+    moderatore.move_to.assert_not_awaited()
+
+
+async def test_kick_di_un_membro_con_ruolo_piu_basso_funziona():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = _con_ruolo(scena.entra(scena.membro(ID_OSPITE), canale), 2)
+
+    interazione = await _kick(scena, proprietario, ospite)
+
+    ospite.move_to.assert_awaited_once()
+    assert "espulso" in _testo(interazione.response.send_message.call_args)
+# ====================================================================
+# #144 — /voice unlock ripristina il "Connetti" che @everyone aveva prima
+# ====================================================================
+async def test_unlock_ripristina_il_connetti_che_c_era_prima_del_lock():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    cog = VoiceTempCog(bot=None)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True, speak=False)
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    finale = _overwrite_finale(canale, scena.guild.default_role)
+    assert finale.connect is True
+    assert finale.speak is False
+
+
+async def test_unlock_dopo_due_lock_ripristina_il_valore_originale():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    cog = VoiceTempCog(bot=None)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True)
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
+    await cog.lock.callback(cog, scena.interazione(proprietario))  # già bloccato
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    assert _overwrite_finale(canale, scena.guild.default_role).connect is True

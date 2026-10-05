@@ -1,10 +1,10 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
-05/10/2026 · ramo `fix/f1-134` (copia /home/claude/wt/t134) · base `4b42ada`
+05/10/2026 · ramo `fix/f1-144` (copia /home/claude/wt/v144) · base `d31af05`
 
 ## In corso
-- Niente a metà: le 4 voci di #134 sono chiuse. Resta la prova live (vedi rapporto).
+- Niente a metà: le 2 voci di #144 sono chiuse. Resta la prova live (vedi rapporto).
 
 ## Fatto
 - F1, moderazione + log + ticket + vocali: unito su main con
@@ -13,6 +13,8 @@
 - #134 `/voice kick` assente: messaggio vero (`4c01028`).
 - #134 `/voice lock`/`unlock`: cambiano solo "Connetti" (`523875a`).
 - #134 M 3.14 log avanzati premium: `logging_avanzato_attivo` su ogni listener e sul servizio soundboard.
+- #144 `/voice kick`: gerarchia con `can_moderate` + admin/moderatori protetti dai non-staff.
+- #144 `/voice unlock`: ripristina il Connetti di prima del lock (memoria in-process `_connect_prima_del_lock`, senza migrazione).
 - #134 `db.remove_guild_setting` pubblica (la privata è sparita), ticket e rollback la usano.
 
 ## Cose imparate
@@ -25,6 +27,10 @@
 - Nei test dei vocali `Scena` (tests/test_voice_temp_correzioni.py);
   `canale.overwrites_for.return_value` va impostato dal test.
 
+- `can_moderate` nega i ruoli pari: nei test del kick proprietario e bot vanno impostati con `top_role` (helper `_con_ruolo`).
+- Stato in-process dei vocali: i test riusano gli id canale (2000+), azzerarlo nella fixture.
+
 ## Aperto
 - M 3.14: nessun messaggio all'utente (i log sono listener, niente interazione);
   se serve un avviso va nel comando che accende il modulo (/config, fuori area).
+- #144: unlock dopo riavvio del bot col canale ancora bloccato rimette None (perde un connect=True originale). Per renderlo persistente serve una colonna in voice_temp_channels (run_migrations idempotente): decide l'orchestratore.
