@@ -1,13 +1,13 @@
 # STATO.md — Memoria dell'orchestratore
 
-Aggiornato: **04/10/2026, sera**. Si aggiorna a ogni gruppo chiuso.
+Aggiornato: **05/10/2026, mattina**. Si aggiorna a ogni gruppo chiuso.
 Breve apposta: il dettaglio sta nelle issue e in `revisione/`.
 
 ## Dove siamo
 
 - Il bot è in **zero server**. Nessuna prova live fatta: tutte le voci
   di `revisione/03-verifica/VERIFICA_LIVE.md` sono aperte.
-- `main` è verde: 2620 test (ultima suite completa: 04/10).
+- `main` è verde: 2676 test (ultima suite completa: 05/10).
 - **Fatto:** rete di test (R-T), sicurezza lato logica (R0), migrazioni
   versionate, prima metà dei bug gravi (R1), tutta R1-bis (BUG-19…25,
   27, 30…33, SEC-18…22), intent `message_content` acceso, SPEC
@@ -30,34 +30,46 @@ Breve apposta: il dettaglio sta nelle issue e in `revisione/`.
 
 ## In corso
 
-- Catalogo completo delle funzioni mancanti rispetto agli altri bot
-  (`revisione/01-analisi/catalogo/`), chiesto dall'owner.
-- Fase F1, gruppo ⚡ (voci di poche righe) e struttura dei file per le
-  funzioni nuove.
+Niente a metà: tutto ciò che è stato fatto è su `main` e pubblicato.
+
+## Fatto nell'ultimo giro (04–05/10)
+
+- **F1, voci rapide (17):** limiti di `/poll`, `/report`, `/search`,
+  sticky, heatmap, log dei ruoli, `badword-list`; l'anti-nuke non conta
+  il bot; anti-raid, benvenuto e XP ignorano bot e messaggi di sistema;
+  `/voice transfer`; `/security-score` effimero; durate oltre 5 anni;
+  ID di `/alerts`; `OWNER_ID` non numerico; `NSFW_TOKEN` facoltativo.
+- **Catalogo** delle funzioni mancanti: 1.452 voci in 18 file
+  (`revisione/01-analisi/catalogo/`); le 939 non ancora in piano hanno
+  una issue per area (#115–#132).
+- **Scheletri** dei file per le funzioni nuove (102 file in `cogs/` e
+  `core/`, con la nota su cosa scriverci) e nota "DA FARE" con il numero
+  di issue in testa a 72 file esistenti.
+- Issue: 56 create dal piano (#57–#112), più #113 (iYokai Mod); chiuse
+  quelle risolte, con etichetta `verifica-live`.
 
 ## Coda (in ordine)
 
-1. **F1 ⚡** — voci di poche righe: issue #57 (moderazione), #58
-   (automod), #59 (sicurezza), #61 (log), #63 (vocali), #66 (utility),
-   #67 (feed), #69 (owner), #70 (core). L'elenco delle voci ⚡ è in
-   `revisione/archivio/PRIORITA.md` §F1.a.
-2. **F1 resto**, per area, tre agenti alla volta su file diversi:
-   sicurezza+automod (#58, #59, #27, #30, #16), moderazione+ticket+
-   vocali+log (#57, #62, #63, #61, #34), livelli (#65, #18, #23, #33,
-   #35), utility+feed+fun (#66, #67, #71), core+owner (#69, #70).
-3. **F2 musica** (#64, #45, #47, #48): prima il nodo wavelink per bot.
-4. **F3** backup (#68) e iYokai Mod.
+1. **F1 resto**, per area, tre agenti alla volta su file diversi:
+   - sicurezza + automod: #58, #59, #30, #16;
+   - moderazione + ticket + vocali + log: #57, #62, #63, #61, #34;
+   - livelli ed economia: #65, #18, #23, #33, #35;
+   - utility + feed + fun: #66, #67, #71;
+   - core + owner: #69, #70.
+   Dentro ogni issue le voci già fatte sono scritte nei commenti.
+2. A fine F1: giro di `cacciatore-bug` sulle aree toccate, poi suite
+   completa.
+3. **F2 musica** (#64, #45, #47, #48, #126): prima il nodo wavelink per
+   bot.
+4. **F3** backup (#68, #121) e iYokai Mod (#113).
 5. Poi F5, F6, F7… come da milestone.
-
-A fine F1: giro di `cacciatore-bug` sulle aree toccate, poi suite
-completa.
 
 ## Cose pratiche
 
 - Repository: `/home/claude/repo`. Copie di lavoro: `/home/claude/wt/<nome>`
   (`git worktree add`). Database per copia: `iyokai_w<nome>`.
 - Postgres si ferma tra una sessione e l'altra: `service postgresql start`.
-- Migrazioni: l'ultima è la `0004`. Riservare i numeri agli agenti
+- Migrazioni: l'ultima è la `0004`. I file scheletro non contengono migrazioni: si creano quando si scrive la funzione. Riservare i numeri agli agenti
   prima di lanciarli (due agenti non devono usare lo stesso numero).
 - 2 CPU: al massimo 3 agenti insieme; la suite completa dura 6 minuti da
   sola, molto di più con altri agenti al lavoro.

@@ -58,7 +58,7 @@ Punti che lo distinguono:
 |---|---|
 | Fase attuale | **Correzione** (fase F1 di 13). Lo sviluppo di funzioni nuove riprende a correzione finita |
 | Server in cui è presente | 0: non è ancora stato provato su Discord vero |
-| Test automatici | 2620, tutti verdi |
+| Test automatici | 2676, tutti verdi |
 | Voci della specifica | 97 fatte · 145 parziali · 146 da fare · 6 scartate ([`SPEC.md`](SPEC.md)) |
 | Lavoro da fare | [Issue](https://github.com/UwUiSky/iYokai-DS-BOT/issues), una [milestone](https://github.com/UwUiSky/iYokai-DS-BOT/milestones) per fase |
 
@@ -154,7 +154,7 @@ modello commentato è [`.env.example`](.env.example).
 
 | Gruppo | Variabili |
 |---|---|
-| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` |
+| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` (facoltativo finché l'istanza NSFW non esiste) |
 | Identità | `OWNER_ID`, `MAIN_GUILD_ID` |
 | Ambiente | `ENVIRONMENT` (`development` o `production`, obbligatoria), `LOG_LEVEL` |
 | Database | `DATABASE_URL`, `DB_POOL_MIN`, `DB_POOL_MAX` |
@@ -246,6 +246,7 @@ struttura di `cogs/utility/ping.py`. Viene scoperto e caricato da solo.
 | [`revisione/01-analisi/REVIEW.md`](revisione/01-analisi/REVIEW.md) | Problemi trovati nel codice |
 | [`revisione/01-analisi/LIMITI.md`](revisione/01-analisi/LIMITI.md) | Limiti di Discord e delle librerie, lista di controllo |
 | [`revisione/01-analisi/CONFRONTO_BOT.md`](revisione/01-analisi/CONFRONTO_BOT.md) | Confronto con gli altri bot |
+| [`revisione/01-analisi/catalogo/`](revisione/01-analisi/catalogo/README.md) | Catalogo voce per voce delle funzioni che gli altri bot hanno e iYokai no (1.452 voci) |
 | [`revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`](revisione/01-analisi/APP_UTENTE_E_DESKTOP.md) | Funzioni possibili senza il bot nel server e da PC |
 | [`revisione/02-piano/DECISIONI.md`](revisione/02-piano/DECISIONI.md) | Decisioni prese |
 | [`revisione/02-piano/MODIFICHE_ESISTENTE.md`](revisione/02-piano/MODIFICHE_ESISTENTE.md) | Cosa cambiare in ciò che esiste |
