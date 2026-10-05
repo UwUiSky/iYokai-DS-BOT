@@ -12,6 +12,8 @@ from datetime import datetime
 
 import asyncpg
 
+from core.bounded_cache import BoundedCache
+
 
 @dataclass(frozen=True)
 class VerifyConfig:
@@ -27,6 +29,10 @@ class VerifyConfig:
 
 
 DEFAULT_METHOD = "button"
+
+# Quante configurazioni di server si tengono in memoria (le meno usate
+# escono per prime).
+MAX_CONFIG_IN_CACHE = 10_000
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -74,6 +80,11 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 class VerifyRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
+        # La configurazione si legge a ogni ingresso, reazione e clic:
+        # senza cache era una query per ognuno. Ogni scrittura la toglie.
+        self._config_cache: BoundedCache[int, VerifyConfig] = BoundedCache(
+            max_size=MAX_CONFIG_IN_CACHE
+        )
 
     @property
     def _pool(self) -> asyncpg.Pool:
@@ -83,6 +94,14 @@ class VerifyRepository:
     # Configurazione
     # ================================================================
     async def get_config(self, guild_id: int) -> VerifyConfig:
+        in_cache = self._config_cache.get(guild_id)
+        if in_cache is not None:
+            return in_cache
+        config = await self._leggi_config(guild_id)
+        self._config_cache.set(guild_id, config)
+        return config
+
+    async def _leggi_config(self, guild_id: int) -> VerifyConfig:
         row = await self._pool.fetchrow(
             "SELECT * FROM verify_config WHERE guild_id = $1", guild_id
         )
@@ -120,6 +139,7 @@ class VerifyRepository:
         captcha_enabled: bool,
         log_channel_id: int | None,
     ) -> None:
+        self._config_cache.delete(guild_id)
         await self._pool.execute(
             """
             INSERT INTO verify_config
@@ -142,6 +162,7 @@ class VerifyRepository:
             captcha_enabled,
             log_channel_id,
         )
+        self._config_cache.delete(guild_id)
 
     async def set_panel_message(
         self, guild_id: int, channel_id: int, message_id: int
@@ -152,6 +173,7 @@ class VerifyRepository:
         ascoltare le reazioni) e utile anche in modalità button per
         diagnostica.
         """
+        self._config_cache.delete(guild_id)
         await self._pool.execute(
             """
             INSERT INTO verify_config (guild_id, panel_channel_id, panel_message_id)
@@ -164,6 +186,7 @@ class VerifyRepository:
             channel_id,
             message_id,
         )
+        self._config_cache.delete(guild_id)
 
     # ================================================================
     # Whitelist / Blacklist
