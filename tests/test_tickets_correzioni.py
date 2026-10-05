@@ -178,3 +178,50 @@ async def test_add_e_remove_errore_di_discord_risposta_chiara(nome):
     await COMANDI_STAFF[nome](cog, interazione, server.utente(77))
 
     assert "Non sono riuscito" in _testo(interazione.response.send_message.call_args)
+
+
+# ====================================================================
+# M 6.7 — /ticket-support-role remove toglie anche il ruolo storico
+# ====================================================================
+async def test_remove_toglie_il_ruolo_impostato_con_ticket_setup():
+    server = Server()
+    ruolo = fake_role(ID_RUOLO_SUPPORTO, "Supporto")
+    server.guild.get_role.side_effect = lambda role_id: ruolo if role_id == ID_RUOLO_SUPPORTO else None
+    cog = TicketsCog(bot=None)
+    # Il ruolo "storico" lo scrive /ticket-setup.
+    await cog.ticket_setup.callback(cog, server.interazione(server.staff()), server.categoria, ruolo)
+    assert await modulo._support_role_ids(ID_SERVER) == [ID_RUOLO_SUPPORTO]
+
+    await cog.ticket_support_role_remove.callback(cog, server.interazione(server.staff()), ruolo)
+
+    assert await modulo._support_role_ids(ID_SERVER) == []
+    # Il ruolo non vede più i ticket nuovi…
+    await server.apri_ticket()
+    permessi = server.categoria.create_text_channel.call_args.kwargs["overwrites"]
+    assert ruolo not in permessi
+    # …e chi lo ha non è più staff.
+    operatore = server.interazione(server.utente(40, ruoli=[ruolo]))
+    assert await modulo._is_ticket_staff(operatore) is False
+
+
+async def test_remove_del_ruolo_storico_non_lascia_un_null_nella_configurazione():
+    """Un `null` nell'export verrebbe poi rifiutato da /config import."""
+    server = Server()
+    ruolo = fake_role(ID_RUOLO_SUPPORTO, "Supporto")
+    cog = TicketsCog(bot=None)
+    await cog.ticket_setup.callback(cog, server.interazione(server.staff()), server.categoria, ruolo)
+
+    await cog.ticket_support_role_remove.callback(cog, server.interazione(server.staff()), ruolo)
+
+    impostazioni = (await db.get_full_config(ID_SERVER))["settings"]
+    assert modulo.SETTING_SUPPORT_ROLE not in impostazioni
+
+
+async def test_remove_di_un_ruolo_non_configurato_lo_dice():
+    server = Server()
+    cog = TicketsCog(bot=None)
+    interazione = server.interazione(server.staff())
+
+    await cog.ticket_support_role_remove.callback(cog, interazione, fake_role(123, "Altro"))
+
+    assert "non è tra i ruoli di supporto" in _testo(interazione.response.send_message.call_args)

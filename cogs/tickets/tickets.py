@@ -467,12 +467,33 @@ class TicketsCog(commands.Cog):
     async def ticket_support_role_remove(self, interaction: discord.Interaction, role: discord.Role) -> None:
         if interaction.guild is None:
             return
-        attuali = await db.get_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, default=[])
+        guild_id = interaction.guild.id
+        rimosso = False
+
+        attuali = await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLES, default=[])
         if role.id in attuali:
             attuali.remove(role.id)
-            await db.set_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, attuali)
+            await db.set_guild_setting(guild_id, SETTING_SUPPORT_ROLES, attuali, interaction.user.id)
+            rimosso = True
+
+        # Il ruolo può essere anche quello "storico" impostato con
+        # /ticket-setup: va tolto pure da lì, altrimenti continua a
+        # vedere i ticket. La chiave si toglie del tutto (un `null`
+        # verrebbe poi rifiutato da /config import): core/database.py
+        # non ha ancora un metodo pubblico per farlo.
+        if await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLE) == role.id:
+            await db._remove_guild_setting(guild_id, SETTING_SUPPORT_ROLE, interaction.user.id)
+            rimosso = True
+
+        if not rimosso:
+            await interaction.response.send_message(
+                f"{role.mention} non è tra i ruoli di supporto.", ephemeral=True
+            )
+            return
         await interaction.response.send_message(
-            f"{role.mention} rimosso dai ruoli di supporto.", ephemeral=True
+            f"{role.mention} rimosso dai ruoli di supporto. I ticket già aperti "
+            "restano visibili al ruolo finché non vengono chiusi.",
+            ephemeral=True,
         )
 
     @ticket_support_role_group.command(name="list", description="[Admin] Elenca i ruoli di supporto configurati.")
