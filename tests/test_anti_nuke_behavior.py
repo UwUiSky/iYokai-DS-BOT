@@ -94,9 +94,6 @@ class _FakeGuild:
         for entry in self._audit_entries.get(action, []):
             yield entry
 
-    async def create_text_channel(self, name, category=None, overwrites=None, reason=None):
-        self.recreated_channel_name = name
-
 
 GUILD_ID = 700000400
 ACTOR_ID = 900001
@@ -301,49 +298,6 @@ async def test_on_member_remove_rileva_un_kick_reale(contesto):
     recenti = await security_repo.get_recent_actions(GUILD_ID)
     assert len(recenti) == 1
     assert recenti[0]["category"] == "nuke_ban_kick"
-
-
-@pytest.mark.asyncio
-async def test_on_guild_channel_delete_ricrea_il_canale_in_recovery(contesto):
-    await _salva_config(AntiNukeConfig(enabled=True, channel_max=0, recovery_enabled=True))
-    owner = _FakeUser(1)
-    guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
-    guild.set_audit_entries(
-        discord.AuditLogAction.channel_delete, [_FakeAuditEntry(user_id=ACTOR_ID, target_id=321)]
-    )
-    guild._members[ACTOR_ID] = _FakeMember(ACTOR_ID, guild)
-
-    class _FakeTextChannel(discord.TextChannel):
-        def __init__(self, name, guild):
-            self._nome_finto = name
-            self._guild_finta = guild
-
-        @property
-        def id(self):
-            return 321
-
-        @property
-        def name(self):
-            return self._nome_finto
-
-        @property
-        def guild(self):
-            return self._guild_finta
-
-        @property
-        def category(self):
-            return None
-
-        @property
-        def overwrites(self):
-            return {}
-
-    canale = _FakeTextChannel("canale-importante", guild)
-
-    cog = AntiNukeCog(bot=_bot_finto())
-    await cog.on_guild_channel_delete(canale)
-
-    assert getattr(guild, "recreated_channel_name", None) == "canale-importante"
 
 
 @pytest.mark.asyncio

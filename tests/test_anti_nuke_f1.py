@@ -237,3 +237,175 @@ async def test_errore_di_discord_sul_registro_non_rompe_l_evento(cog):
     await cog.on_guild_channel_delete(_canale_cancellato(fake_text_channel(), server))
 
     assert await _azioni_registrate() == []
+
+
+# ====================================================================
+# M 3.4 — il recupero ricrea ogni tipo di canale (#30, LIM-38)
+# ====================================================================
+def _server_con_autore() -> MagicMock:
+    autore = fake_member(user_id=AUTORE_ID)
+    return _server(autore, [[_voce(discord.AuditLogAction.channel_delete, AUTORE_ID, 7001)]])
+
+
+def _categoria(category_id: int = 8001, nome: str = "Sezione") -> MagicMock:
+    categoria = create_autospec(discord.CategoryChannel, instance=True)
+    categoria.id = category_id
+    categoria.name = nome
+    return categoria
+
+
+async def test_recupero_canale_testuale_con_posizione_e_argomento(cog):
+    server = _server_con_autore()
+    categoria = _categoria()
+    ruolo = fake_role(role_id=60, name="Staff")
+    permessi = {ruolo: discord.PermissionOverwrite(view_channel=True)}
+    canale = _canale_cancellato(fake_text_channel(), server, nome="annunci-staff")
+    canale.category = categoria
+    canale.overwrites = permessi
+    canale.topic = "Solo per lo staff"
+    canale.nsfw = False
+    canale.slowmode_delay = 10
+    canale.is_news.return_value = False
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_text_channel.assert_awaited_once()
+    argomenti = server.create_text_channel.call_args.kwargs
+    assert argomenti["name"] == "annunci-staff"
+    assert argomenti["category"] is categoria
+    assert argomenti["position"] == 4
+    assert argomenti["topic"] == "Solo per lo staff"
+    assert argomenti["slowmode_delay"] == 10
+    assert argomenti["overwrites"] == permessi
+    assert len(argomenti["reason"]) <= 512
+
+
+async def test_recupero_canale_vocale(cog):
+    server = _server_con_autore()
+    canale = _canale_cancellato(fake_voice_channel(), server, nome="Sala 1")
+    canale.bitrate = 384000  # il server aveva più boost di adesso
+    canale.user_limit = 5
+    canale.nsfw = False
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_voice_channel.assert_awaited_once()
+    argomenti = server.create_voice_channel.call_args.kwargs
+    assert argomenti["name"] == "Sala 1"
+    assert argomenti["position"] == 4
+    assert argomenti["user_limit"] == 5
+    assert argomenti["bitrate"] == 96000  # non oltre il massimo del server
+    server.create_text_channel.assert_not_awaited()
+
+
+async def test_recupero_canale_palco(cog):
+    server = _server_con_autore()
+    canale = _canale_cancellato(create_autospec(discord.StageChannel, instance=True), server, "Palco")
+    canale.bitrate = 64000
+    canale.user_limit = 0
+    canale.nsfw = False
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_stage_channel.assert_awaited_once()
+    assert server.create_stage_channel.call_args.kwargs["name"] == "Palco"
+    server.create_voice_channel.assert_not_awaited()
+
+
+async def test_recupero_categoria(cog):
+    server = _server_con_autore()
+    canale = _canale_cancellato(_categoria(), server, nome="Sezione Clan")
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_category.assert_awaited_once()
+    argomenti = server.create_category.call_args.kwargs
+    assert argomenti["name"] == "Sezione Clan"
+    assert argomenti["position"] == 4
+
+
+async def test_recupero_forum(cog):
+    server = _server_con_autore()
+    canale = _canale_cancellato(fake_forum_channel(), server, nome="aiuto")
+    canale.topic = "Fai qui le tue domande"
+    canale.nsfw = False
+    canale.slowmode_delay = 0
+    canale.is_media.return_value = False
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_forum.assert_awaited_once()
+    argomenti = server.create_forum.call_args.kwargs
+    assert argomenti["name"] == "aiuto"
+    assert argomenti["topic"] == "Fai qui le tue domande"
+    assert argomenti["position"] == 4
+
+
+async def test_canale_ricreato_torna_nella_categoria_ricreata(cog):
+    # Durante un attacco spariscono categoria e canali: il canale
+    # ricreato deve finire nella categoria nuova, non restare fuori.
+    server = _server_con_autore()
+    categoria_nuova = _categoria(category_id=8500)
+    server.create_category.return_value = categoria_nuova
+    categoria_vecchia = _canale_cancellato(_categoria(category_id=8001), server, "Sezione")
+    categoria_vecchia.id = 7001
+    canale = _canale_cancellato(fake_text_channel(), server, nome="chat")
+    canale.category = None           # la categoria non esiste più
+    canale.category_id = 7001
+    canale.topic = None
+    canale.nsfw = False
+    canale.slowmode_delay = 0
+    canale.is_news.return_value = False
+
+    await cog.on_guild_channel_delete(categoria_vecchia)
+    await cog.on_guild_channel_delete(canale)
+
+    assert server.create_text_channel.call_args.kwargs["category"] is categoria_nuova
+    assert "topic" not in server.create_text_channel.call_args.kwargs
+
+
+async def test_canale_nascosto_non_viene_ricreato(cog):
+    # LIM-38: dal 16/11/2026 un canale che il bot non può vedere arriva
+    # con il nome finto "___hidden___". Ricrearlo sarebbe un danno.
+    server = _server_con_autore()
+    canale = _canale_cancellato(fake_text_channel(), server, nome="___hidden___")
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_text_channel.assert_not_awaited()
+    assert await _azioni_registrate() == ["nuke_channel"]
+
+
+async def test_permessi_di_ruoli_spariti_non_bloccano_il_recupero(cog):
+    server = _server_con_autore()
+    ruolo = fake_role(role_id=60, name="Staff")
+    sparito = discord.Object(id=61)  # ruolo cancellato nello stesso attacco
+    canale = _canale_cancellato(fake_text_channel(), server)
+    canale.overwrites = {
+        ruolo: discord.PermissionOverwrite(view_channel=True),
+        sparito: discord.PermissionOverwrite(view_channel=False),
+    }
+    canale.topic = None
+    canale.nsfw = False
+    canale.slowmode_delay = 0
+    canale.is_news.return_value = False
+
+    await cog.on_guild_channel_delete(canale)
+
+    assert list(server.create_text_channel.call_args.kwargs["overwrites"]) == [ruolo]
+
+
+async def test_recupero_fallito_non_rompe_l_evento(cog):
+    server = _server_con_autore()
+    risposta = MagicMock()
+    risposta.status = 400
+    risposta.reason = "Bad Request"
+    server.create_voice_channel.side_effect = discord.HTTPException(risposta, "troppi canali")
+    canale = _canale_cancellato(fake_voice_channel(), server)
+    canale.bitrate = 64000
+    canale.user_limit = 0
+    canale.nsfw = False
+
+    await cog.on_guild_channel_delete(canale)
+
+    server.create_voice_channel.assert_awaited_once()

@@ -17,6 +17,10 @@ Recovery: `on_guild_channel_delete`/`on_guild_role_delete` ricevono
 l'oggetto come l'ultima volta che era nella cache del client, PRIMA
 della rimozione — permette di ricreare canale/ruolo con lo stesso
 nome/permessi/posizione senza dover mantenere uno snapshot separato.
+I canali vengono ricreati dello stesso tipo (testuale, annunci,
+vocale, palco, categoria, forum).
+
+Funzioni coperte: SPEC §7.2
 """
 
 # DA FARE (issue #59, fase F1): correzioni aperte per questo file in
@@ -32,6 +36,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.bounded_cache import BoundedCache
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.security_repo import SecuritySettings, security_repo
@@ -66,6 +71,12 @@ ATTESE_REGISTRO_USCITA = (0, 1.5)
 
 # Lunghezza massima di un motivo nel registro di controllo di Discord.
 MAX_MOTIVO = 512
+
+MOTIVO_RECOVERY = "Anti-Nuke: recovery automatico dopo cancellazione di massa"
+
+# Dal 16/11/2026 un canale che il bot non può vedere arriva con questo
+# nome finto (LIMITI.md, Parte 2).
+NOME_CANALE_NASCOSTO = "___hidden___"
 
 
 def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
@@ -174,6 +185,10 @@ async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: 
 class AntiNukeCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # Categoria cancellata (ID vecchio) -> categoria ricreata.
+        self._categorie_ricreate: BoundedCache[int, discord.CategoryChannel] = BoundedCache(
+            max_size=500
+        )
 
     anti_nuke_group = app_commands.Group(
         name="anti-nuke", description="Configura la protezione anti-nuke del server."
@@ -388,14 +403,62 @@ class AntiNukeCog(commands.Cog):
 
         if settings is not None and settings.anti_nuke.recovery_enabled:
             try:
-                await channel.guild.create_text_channel(
-                    name=channel.name,
-                    category=getattr(channel, "category", None),
-                    overwrites=getattr(channel, "overwrites", None),
-                    reason="Anti-Nuke: recovery automatico dopo cancellazione di massa",
-                ) if isinstance(channel, discord.TextChannel) else None
-            except discord.HTTPException:
-                logger.warning("Recovery del canale %s fallita.", channel.name)
+                await self._ricrea_canale(channel)
+            except discord.HTTPException as errore:
+                logger.warning("Recovery del canale %s fallita: %s", channel.name, errore)
+
+    async def _ricrea_canale(self, channel: discord.abc.GuildChannel) -> None:
+        """
+        Ricrea un canale cancellato, dello stesso tipo, con nome,
+        permessi, posizione e (dove esiste) argomento. I messaggi non
+        si possono recuperare.
+        """
+        if channel.name == NOME_CANALE_NASCOSTO:
+            # Canale che il bot non poteva vedere: Discord ne dà solo
+            # un nome finto, ricrearlo sarebbe un danno.
+            return
+
+        guild = channel.guild
+        opzioni: dict = {
+            "name": channel.name,
+            "position": channel.position,
+            # I permessi di ruoli o membri spariti (Object) farebbero
+            # rifiutare a Discord tutta la creazione.
+            "overwrites": {
+                bersaglio: permessi
+                for bersaglio, permessi in channel.overwrites.items()
+                if not isinstance(bersaglio, discord.Object)
+            },
+            "reason": MOTIVO_RECOVERY,
+        }
+
+        if isinstance(channel, discord.CategoryChannel):
+            nuova = await guild.create_category(**opzioni)
+            self._categorie_ricreate.set(channel.id, nuova)
+            return
+
+        # Se anche la categoria è stata cancellata e ricreata, il
+        # canale torna in quella nuova.
+        opzioni["category"] = channel.category or self._categorie_ricreate.get(channel.category_id)
+
+        if isinstance(channel, (discord.TextChannel, discord.ForumChannel)):
+            if channel.topic:
+                opzioni["topic"] = channel.topic
+            opzioni["nsfw"] = channel.nsfw
+            opzioni["slowmode_delay"] = channel.slowmode_delay
+            if isinstance(channel, discord.TextChannel):
+                await guild.create_text_channel(news=channel.is_news(), **opzioni)
+            else:
+                await guild.create_forum(media=channel.is_media(), **opzioni)
+        elif isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            # La qualità audio non può superare quella che il server
+            # ha adesso (dipende dai boost).
+            opzioni["bitrate"] = min(channel.bitrate, int(guild.bitrate_limit))
+            opzioni["user_limit"] = channel.user_limit
+            if isinstance(channel, discord.StageChannel):
+                await guild.create_stage_channel(**opzioni)
+            else:
+                await guild.create_voice_channel(nsfw=channel.nsfw, **opzioni)
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role: discord.Role) -> None:
@@ -419,7 +482,7 @@ class AntiNukeCog(commands.Cog):
                     colour=role.colour,
                     hoist=role.hoist,
                     mentionable=role.mentionable,
-                    reason="Anti-Nuke: recovery automatico dopo cancellazione di massa",
+                    reason=MOTIVO_RECOVERY,
                 )
             except discord.HTTPException:
                 logger.warning("Recovery del ruolo %s fallita.", role.name)
