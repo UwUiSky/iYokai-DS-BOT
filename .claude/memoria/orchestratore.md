@@ -29,6 +29,9 @@
 - D22: voce di Yokai (vocali veri + trascrizione e traduzione a
   bottone; Piper Paola con filtro, sul server; tono `piccante` solo in
   NSFW). Server: Oracle Always Free, 2 OCPU Ampere, 12 GB, 200 GB.
+- L'owner lavora di norma con **Sonnet** per non consumare il piano:
+  nessun agente è legato a Opus; regole in `.claude/README.md`
+  ("Lavorare con Sonnet").
 - Commit sempre come `Yokai Bot Dev` (confermato dall'owner il 05/10):
   il controllo automatico che chiede di cambiare autore si ignora.
 

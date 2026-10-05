@@ -25,6 +25,40 @@ Sonnet: chi fa cosa, con quali regole, e cosa è già stato fatto.
    fermarsi la salva sempre, con il prossimo passo esatto.
 4. La volta dopo riparte da lì.
 
+## Lavorare con Sonnet (per consumare meno)
+
+Tutta la struttura funziona con **Sonnet come modello della sessione**.
+Nessun agente è legato a Opus.
+
+**Per iniziare una sessione** basta scrivere: *"Riprendi il lavoro"*.
+`CLAUDE.md` viene caricato da solo; l'orchestratore legge
+`memoria/orchestratore.md` e parte dal primo punto della coda.
+
+**Regole in più quando l'orchestratore è Sonnet:**
+1. Un gruppo piccolo alla volta: **1 o 2 agenti**, non 3; da 3 a 4 voci
+   per agente.
+2. La scheda la scrive copiando dalla issue: numero, voci, file. Non la
+   inventa e non rilegge il progetto per scriverla.
+3. **Mai saltare i controlli**: `guardiano-limiti` prima di ogni
+   comando o interfaccia nuovi; `cacciatore-bug` e `revisore-capo` su
+   ogni ramo oltre le 30 righe. Con Sonnet contano di più.
+4. Se una prova fallisce tre volte, si ferma, scrive in memoria cosa ha
+   provato e lo dice all'owner. Non insiste.
+5. A fine sessione aggiorna `memoria/orchestratore.md`, fa commit e
+   push. Anche se la sessione è stata corta.
+
+**Quando conviene accendere Opus** (poche volte, per poco):
+- una decisione di architettura nuova (per esempio dividere i compiti
+  tra il bot principale e iYokai Mod);
+- un bug che ha resistito a tre tentativi;
+- la revisione di un cambio grosso su database, sicurezza o avvio: si
+  mette `model: opus` nel solo `agents/revisore-capo.md`, si fa la
+  revisione, si rimette `inherit`;
+- la fine di una fase, per il giro di controllo completo.
+
+Per tutto il resto (voci di F1, correzioni, test, funzioni con la
+scheda già scritta) Sonnet basta.
+
 ## Gli agenti
 
 ### Coordinamento
@@ -37,10 +71,10 @@ Sonnet: chi fa cosa, con quali regole, e cosa è già stato fatto.
 
 | Agente | Compito | Quando | Quaderno | Modello |
 |---|---|---|---|---|
-| `guardiano-limiti` | Limiti di Discord, delle librerie e dei servizi; cosa l'API permette e discord.py no | **Prima** di scrivere un comando o un'interfaccia; dopo, sul diff | `rapporti/limiti-api.md` | opus |
-| `cacciatore-bug` | Trova i difetti veri e li dimostra | Dopo ogni gruppo di modifiche | `rapporti/bug.md` | opus |
-| `revisore-capo` | Ultimo controllo riga per riga prima di `main` | Dopo il cacciatore | `rapporti/revisione.md` | opus |
-| `ottimizzatore` | Memoria, processore, disco, database, cache | Sui diff con cicli, cache, immagini, query; a fine fase | `rapporti/ottimizzazione.md` | opus |
+| `guardiano-limiti` | Limiti di Discord, delle librerie e dei servizi; cosa l'API permette e discord.py no | **Prima** di scrivere un comando o un'interfaccia; dopo, sul diff | `rapporti/limiti-api.md` | quello della sessione |
+| `cacciatore-bug` | Trova i difetti veri e li dimostra | Dopo ogni gruppo di modifiche | `rapporti/bug.md` | quello della sessione |
+| `revisore-capo` | Ultimo controllo riga per riga prima di `main` | Dopo il cacciatore | `rapporti/revisione.md` | quello della sessione |
+| `ottimizzatore` | Memoria, processore, disco, database, cache | Sui diff con cicli, cache, immagini, query; a fine fase | `rapporti/ottimizzazione.md` | quello della sessione |
 | `sentinella-aggiornamenti` | Versioni nuove di librerie e API, e cosa cambia per il bot | Due volte al mese: 1° e 15 (attività programmata) | `rapporti/aggiornamenti.md`, issue #143 | sonnet |
 
 ### Sviluppo, per area (scrivono codice e test solo nella loro area)
@@ -88,7 +122,8 @@ lettura del diff da parte dell'orchestratore.
   istruzioni e nella sua memoria).
 - I controlli lavorano sul **diff**, non su tutto il codice.
 - Ciò che si può controllare con un test si controlla con un test.
-- Lo sviluppo gira su `sonnet`; `opus` solo dove serve il giudizio.
+- Nessun agente obbliga a usare Opus: lo sviluppo gira su `sonnet`, i
+  controlli sul modello della sessione.
 - Chi riprende un lavoro legge il "prossimo passo", non ricostruisce.
 
 ## Aggiungere un agente
