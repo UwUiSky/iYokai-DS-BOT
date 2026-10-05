@@ -13,6 +13,10 @@ senza questo modulo attivo può comunque bannare/warnare — semplicemente
 non vede lo storico formattato, i casi restano comunque salvati nel
 database (create_case avviene sempre in actions.py, indipendente da
 questo modulo).
+
+Gli elenchi restano dentro i limiti di un embed: ogni riga è tagliata
+e l'elenco si ferma a 4000 caratteri con "…e altri N".
+Funzioni coperte: SPEC §5.2, §5.3
 """
 
 # DA FARE (issue #57, fase F1): correzioni aperte per questo file in
@@ -26,7 +30,18 @@ from discord.ext import commands
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
-from cogs.moderation._shared import MODULE_CASE_SYSTEM, ensure_module_enabled
+from cogs.moderation._shared import (
+    MAX_FIELD_LENGTH,
+    MAX_LINE_TEXT_LENGTH,
+    MODULE_CASE_SYSTEM,
+    ensure_module_enabled,
+    join_within_limit,
+    truncate_text,
+)
+
+# Una nota finisce nella descrizione di un embed insieme alle altre:
+# 1000 caratteri bastano e tengono leggibile l'elenco.
+MAX_NOTE_LENGTH = 1000
 
 # Colori per tipo di azione, usati per rendere lo storico leggibile
 # a colpo d'occhio invece di un elenco di testo uniforme.
@@ -51,7 +66,7 @@ def _format_case_line(case: ModerationCase) -> str:
     icon = _ACTION_ICONS.get(case.action_type, "•")
     stato = "" if case.active else " *(revocato)*"
     data = case.created_at.strftime("%d/%m/%Y %H:%M")
-    motivo = case.reason or "Nessun motivo fornito"
+    motivo = truncate_text(case.reason or "Nessun motivo fornito", MAX_LINE_TEXT_LENGTH)
     return f"{icon} **#{case.case_number}** — {case.action_type} — {data}{stato}\n> {motivo}"
 
 
@@ -82,7 +97,9 @@ class ModerationCaseSystemCog(commands.Cog):
         embed = discord.Embed(
             title=f"Storico moderazione — {member.display_name}",
             color=discord.Color.blurple(),
-            description="\n\n".join(_format_case_line(c) for c in casi),
+            description=join_within_limit(
+                [_format_case_line(c) for c in casi], "…e altri {n} casi."
+            ),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.set_footer(text=f"Ultimi {len(casi)} casi")
@@ -114,7 +131,11 @@ class ModerationCaseSystemCog(commands.Cog):
         embed.add_field(
             name="Data", value=case.created_at.strftime("%d/%m/%Y %H:%M"), inline=True
         )
-        embed.add_field(name="Motivo", value=case.reason or "Nessun motivo fornito", inline=False)
+        embed.add_field(
+            name="Motivo",
+            value=truncate_text(case.reason or "Nessun motivo fornito", MAX_FIELD_LENGTH),
+            inline=False,
+        )
 
         if case.active:
             embed.add_field(name="Stato", value="Attivo", inline=True)
@@ -137,7 +158,10 @@ class ModerationCaseSystemCog(commands.Cog):
     @app_commands.describe(member="Il membro a cui aggiungere la nota", note="Testo della nota")
     @requires_module(MODULE_CASE_SYSTEM)
     async def note_add(
-        self, interaction: discord.Interaction, member: discord.Member, note: str
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        note: app_commands.Range[str, 1, MAX_NOTE_LENGTH],
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
@@ -165,10 +189,12 @@ class ModerationCaseSystemCog(commands.Cog):
             )
             return
 
-        descrizione = "\n\n".join(
-            f"**{n.created_at.strftime('%d/%m/%Y %H:%M')}** — <@{n.moderator_id}>\n> {n.note}"
+        righe = [
+            f"**{n.created_at.strftime('%d/%m/%Y %H:%M')}** — <@{n.moderator_id}>\n"
+            f"> {truncate_text(n.note, MAX_LINE_TEXT_LENGTH)}"
             for n in note
-        )
+        ]
+        descrizione = join_within_limit(righe, "…e altre {n} note.")
         embed = discord.Embed(
             title=f"Note — {member.display_name}",
             description=descrizione,

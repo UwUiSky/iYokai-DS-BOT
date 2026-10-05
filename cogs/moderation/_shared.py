@@ -60,6 +60,45 @@ def audit_reason(text: str) -> str:
     return text[: MAX_REASON_LENGTH - 1] + "…"
 
 
+# Limiti di un embed (LIM-8): la descrizione tiene 4096 caratteri, un
+# campo 1024. Gli elenchi si fermano a 4000 per lasciare posto alla
+# riga "…e altri N".
+MAX_LIST_LENGTH = 4000
+MAX_FIELD_LENGTH = 1024
+MAX_LINE_TEXT_LENGTH = 300
+
+
+def truncate_text(text: str, limit: int) -> str:
+    """Taglia il testo a `limit` caratteri, con "…" in fondo se tagliato."""
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "…"
+
+
+def join_within_limit(
+    lines: list[str], left_out_text: str, limit: int = MAX_LIST_LENGTH
+) -> str:
+    """
+    Unisce le righe (separate da una riga vuota) finché stanno in
+    `limit` caratteri. Se qualcuna resta fuori aggiunge
+    `left_out_text`, dove "{n}" diventa il numero delle escluse
+    (es. "…e altri {n} casi.").
+    """
+    shown: list[str] = []
+    length = 0
+    for line in lines:
+        length += len(line) + 2  # 2 = la riga vuota che separa le voci
+        if length > limit:
+            break
+        shown.append(line)
+
+    text = "\n\n".join(shown)
+    left_out = len(lines) - len(shown)
+    if left_out:
+        text += "\n\n" + left_out_text.format(n=left_out)
+    return text
+
+
 async def validate_reason(interaction: discord.Interaction, reason: str) -> bool:
     """
     Controlla che il motivo fornito sia valido (SPEC.md §5.9, "reason
