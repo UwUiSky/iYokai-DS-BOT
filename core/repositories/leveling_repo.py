@@ -19,7 +19,7 @@ Due tabelle, con scopi distinti:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
@@ -244,7 +244,9 @@ class LevelingRepository:
         None. Il rollover del contatore giornaliero (mezzanotte UTC)
         viene gestito qui, indipendentemente dall'idoneità.
         """
-        today = date.today()
+        # Giorno in UTC, non nell'ora locale della macchina: il tetto
+        # giornaliero deve azzerarsi alla stessa ora per tutti.
+        today = datetime.now(timezone.utc).date()
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
@@ -368,14 +370,23 @@ class LevelingRepository:
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                saldo = await conn.fetchval(
+                # Le due righe si bloccano sempre nello stesso ordine
+                # (ID più basso per primo): così A→B e B→A partiti
+                # insieme si mettono in fila invece di bloccarsi a
+                # vicenda.
+                saldi = await conn.fetch(
                     """
-                    SELECT coins_total FROM leveling_totals
-                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
+                    SELECT user_id, coins_total FROM leveling_totals
+                    WHERE guild_id = $1 AND user_id = ANY($2::bigint[])
+                    ORDER BY user_id
+                    FOR UPDATE
                     """,
                     guild_id,
-                    from_user_id,
-                ) or 0
+                    [from_user_id, to_user_id],
+                )
+                saldo = next(
+                    (r["coins_total"] for r in saldi if r["user_id"] == from_user_id), 0
+                )
 
                 if saldo < amount:
                     return False

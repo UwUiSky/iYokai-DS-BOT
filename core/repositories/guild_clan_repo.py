@@ -712,10 +712,21 @@ class GuildClanRepository:
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                saldo = await conn.fetchval(
-                    "SELECT treasury_balance FROM clans WHERE id = $1 FOR UPDATE", from_clan_id
+                # Le due righe si bloccano sempre nello stesso ordine
+                # (ID più basso per primo): così A→B e B→A partiti
+                # insieme si mettono in fila invece di bloccarsi a
+                # vicenda.
+                righe = await conn.fetch(
+                    """
+                    SELECT id, treasury_balance FROM clans
+                    WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE
+                    """,
+                    [from_clan_id, to_clan_id],
                 )
-                if saldo is None or saldo < amount:
+                saldi = {r["id"]: r["treasury_balance"] for r in righe}
+                if to_clan_id not in saldi:
+                    return False
+                if saldi.get(from_clan_id, 0) < amount:
                     return False
 
                 await conn.execute(
