@@ -59,6 +59,7 @@ class EsitoRuolo(str, Enum):
     FATTO = "fatto"
     CO_OWNER_GIA_PRESO = "co_owner_gia_preso"
     TETTO_RAGGIUNTO = "tetto_raggiunto"
+    NON_MEMBRO = "non_membro"
 
 
 class EsitoIngresso(str, Enum):
@@ -518,6 +519,15 @@ class GuildClanRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                # Ordine dei blocchi uguale a quello dei tick: prima il
+                # membro, poi la gilda (altrimenti deadlock).
+                membro = await conn.fetchval(
+                    "SELECT user_id FROM clan_members "
+                    "WHERE clan_id = $1 AND user_id = $2 FOR UPDATE",
+                    clan_id, user_id,
+                )
+                if membro is None:
+                    return EsitoRuolo.NON_MEMBRO
                 await conn.execute("SELECT 1 FROM clans WHERE id = $1 FOR UPDATE", clan_id)
                 if max_with_role is not None:
                     occupati = await self.count_members_with_role(
@@ -559,9 +569,11 @@ class GuildClanRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 attuale = await conn.fetchrow(
-                    "SELECT boost_expires_at FROM clan_members "
-                    "WHERE clan_id = $1 AND user_id = $2 FOR UPDATE",
-                    clan_id, user_id,
+                    "SELECT m.boost_expires_at FROM clan_members m "
+                    "JOIN clans c ON c.id = m.clan_id "
+                    "WHERE m.clan_id = $1 AND m.user_id = $2 AND c.guild_id = $3 "
+                    "FOR UPDATE OF m",
+                    clan_id, user_id, guild_id,
                 )
                 if attuale is None:
                     return None
@@ -616,6 +628,14 @@ class GuildClanRepository:
             raise ValueError("L'importo donato deve essere positivo.")
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                membro = await conn.fetchval(
+                    "SELECT 1 FROM clan_members m JOIN clans c ON c.id = m.clan_id "
+                    "WHERE m.clan_id = $1 AND m.user_id = $2 AND c.guild_id = $3 "
+                    "FOR SHARE OF m",
+                    clan_id, user_id, guild_id,
+                )
+                if membro is None:
+                    return None
                 if not await spend_coins_in(conn, guild_id, user_id, amount):
                     return None
                 return await self.donate(clan_id, user_id, amount, conn=conn)
@@ -713,9 +733,7 @@ class GuildClanRepository:
         il decadimento mensile (amount negativo, il saldo può solo
         scendere, non serve verificare nulla) e per accreditare i
         guadagni XP/coin di gilda dal tick periodico (amount
-        positivo). Non passa da spend_from_treasury() perché quella
-        rifiuterebbe operazioni non "di spesa volontaria" nel modo
-        sbagliato per questi due casi.
+        positivo).
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
@@ -926,7 +944,7 @@ class GuildClanRepository:
         "stesso owner" è responsabilità del CHIAMANTE (comando
         Discord, che ha già in mano gli oggetti Clan di entrambi) —
         qui viene solo eseguito il movimento, atomicamente, con lo
-        stesso controllo di saldo sufficiente di spend_from_treasury.
+        stesso controllo di saldo sufficiente delle altre spese.
         """
         if amount <= 0:
             raise ValueError("L'importo da trasferire deve essere positivo.")

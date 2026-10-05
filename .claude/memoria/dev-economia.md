@@ -17,6 +17,10 @@
 - #136 `/config export` non scrive più le voci a `null` (strada scelta).
 
 ## Cose imparate
+- Ordine dei blocchi: membro -> leveling_totals -> clans (come `apply_text_tick`);
+  `set_member_role` blocca prima il membro. Il contrario dà deadlock.
+- `buy_member_boost`, `donate_from_member`, `set_member_role` verificano
+  clan/guild/utente; `/config export` toglie null (anche in lista) e chiavi fuori schema.
 - BUG-17 non esiste: c'è il test che lo prova.
 - Le scritture di saldo vanno fatte condizionate nel database.
 - Pagamento + effetto (scadenza boost, tesoreria) = una transazione con
@@ -35,5 +39,4 @@
   (es. `utility`), altrimenti `register()` solleva ValueError.
 
 ## Aperto
-- Export: nei valori lista un `null` interno non viene tolto (solo il
-  livello alto).
+- Boost cumulativi (48h): decisione dell'owner, chiesta dal coordinatore.

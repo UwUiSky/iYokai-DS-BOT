@@ -1690,6 +1690,11 @@ class LevelingCog(commands.Cog):
                 ephemeral=True,
             )
             return
+        if esito == EsitoRuolo.NON_MEMBRO:
+            await interaction.followup.send(
+                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+            )
+            return
         if esito == EsitoRuolo.CO_OWNER_GIA_PRESO:
             await interaction.followup.send(
                 "La gilda ha già un Co-Owner: riportalo prima a un altro ruolo.",

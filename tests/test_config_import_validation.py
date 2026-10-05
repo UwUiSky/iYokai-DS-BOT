@@ -367,3 +367,20 @@ async def test_export_non_scrive_le_voci_vuote_e_il_file_si_reimporta(clean_db):
     assert json.loads(esportato)["settings"] == {"report_channel_id": 5}
     assert "✅" in await _importa(esportato)
     assert (await db.get_full_config(GUILD))["settings"] == {"report_channel_id": 5}
+
+
+@pytest.mark.usefixtures("modulo_tickets")
+async def test_export_toglie_null_nelle_liste_e_chiavi_fuori_schema(clean_db):
+    await clean_db.execute(
+        "INSERT INTO guild_config (guild_id, settings) VALUES ($1, $2::jsonb)",
+        GUILD,
+        json.dumps({"ticket_support_role_ids": [5, None, 6], "chiave_vecchia": 3, "mute_role_id": 7}),
+    )
+    cog = ConfigHistoryCog(bot=None)
+    interazione = fake_interaction(guild=fake_guild(guild_id=GUILD))
+
+    await cog.export.callback(cog, interazione)
+    esportato = interazione.response.send_message.call_args.kwargs["file"].fp.read()
+
+    assert json.loads(esportato)["settings"] == {"ticket_support_role_ids": [5, 6], "mute_role_id": 7}
+    assert "✅" in await _importa(esportato)

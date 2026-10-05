@@ -190,3 +190,71 @@ async def test_promuovi_due_admin_insieme_non_superano_il_tetto(cog_e_repos):
     )
 
     assert await clan_repo.count_members_with_role(clan_id, "admin") == MAX_ADMINS_PER_CLAN
+
+
+# ----------------------------------------------------------------------
+# Deadlock con il tick testuale e verifiche di appartenenza
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_set_member_role_e_apply_text_tick_in_parallelo_senza_deadlock(cog_e_repos):
+    _, clan_repo, _ = cog_e_repos
+    await apri_connessioni(clan_repo._pool, 4)
+    guild = _FakeGuild(GUILD_ID)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.add_member(clan_id, 2)
+
+    async def ruoli():
+        for i in range(150):
+            await clan_repo.set_member_role(clan_id, 2, "mod" if i % 2 else "member")
+
+    async def tick():
+        for _ in range(150):
+            await clan_repo._pool.execute(
+                "UPDATE clan_members SET last_text_xp_at = NULL WHERE clan_id = $1 AND user_id = 2",
+                clan_id,
+            )
+            await clan_repo.apply_text_tick(clan_id, 2)
+
+    await asyncio.gather(ruoli(), tick())
+
+
+@pytest.mark.asyncio
+async def test_non_membro_non_puo_diventare_co_owner(cog_e_repos):
+    _, clan_repo, _ = cog_e_repos
+    guild = _FakeGuild(GUILD_ID)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+
+    esito = await clan_repo.set_member_role(clan_id, 99, "co_owner")
+
+    assert esito.value == "non_membro"
+    assert (await clan_repo.get_clan(clan_id)).co_owner_id is None
+
+
+@pytest.mark.asyncio
+async def test_boost_con_guild_sbagliato_non_spende(cog_e_repos):
+    _, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(GUILD_ID)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+    await leveling_repo.add_coins(200, 1, 50_000)
+
+    nuova = await clan_repo.buy_member_boost(
+        200, clan_id, 1, INDIVIDUAL_BOOST_COST, datetime.now(timezone.utc)
+    )
+
+    assert nuova is None
+    assert (await leveling_repo.get_totals(200, 1)).coins_total == 50_000
+
+
+@pytest.mark.asyncio
+async def test_dona_da_non_membro_o_con_guild_sbagliato_non_spende(cog_e_repos):
+    _, clan_repo, leveling_repo = cog_e_repos
+    guild = _FakeGuild(GUILD_ID)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+    await leveling_repo.add_coins(GUILD_ID, 99, 1_000)
+    await leveling_repo.add_coins(200, 1, 1_000)
+
+    assert await clan_repo.donate_from_member(GUILD_ID, clan_id, 99, 500) is None
+    assert await clan_repo.donate_from_member(200, clan_id, 1, 500) is None
+
+    assert (await leveling_repo.get_totals(GUILD_ID, 99)).coins_total == 1_000
+    assert (await leveling_repo.get_totals(200, 1)).coins_total == 1_000
