@@ -75,6 +75,10 @@ MODULE_AUTOMOD = "automod"
 # (un messaggio Discord tiene 2000 caratteri).
 MAX_ELENCO_IN_CHAT = 1900
 
+# Discord accetta al massimo 60 caratteri per parola in una regola
+# AutoMod: una parola più lunga farebbe fallire ogni sincronizzazione.
+MAX_LUNGHEZZA_PAROLA = 60
+
 # Regex di riconoscimento emoji per §6.5 (anti-spam emoji): emoji
 # custom di Discord (`<a?:nome:id>`) + un intervallo unicode ampio
 # che copre la stragrande maggioranza delle emoji standard. Non usa
@@ -432,9 +436,13 @@ class AutomodCog(commands.Cog):
     )
 
     @automod_group.command(name="badword-add", description="Aggiunge una parola vietata.")
-    @app_commands.describe(word="La parola da vietare")
+    @app_commands.describe(word="La parola da vietare (massimo 60 caratteri)")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def badword_add(self, interaction: discord.Interaction, word: str) -> None:
+    async def badword_add(
+        self,
+        interaction: discord.Interaction,
+        word: app_commands.Range[str, 1, MAX_LUNGHEZZA_PAROLA],
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
 
@@ -448,9 +456,13 @@ class AutomodCog(commands.Cog):
         await interaction.followup.send(messaggio, ephemeral=True)
 
     @automod_group.command(name="badword-remove", description="Rimuove una parola vietata.")
-    @app_commands.describe(word="La parola da rimuovere")
+    @app_commands.describe(word="La parola da rimuovere (massimo 60 caratteri)")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def badword_remove(self, interaction: discord.Interaction, word: str) -> None:
+    async def badword_remove(
+        self,
+        interaction: discord.Interaction,
+        word: app_commands.Range[str, 1, MAX_LUNGHEZZA_PAROLA],
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
 
