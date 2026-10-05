@@ -105,11 +105,12 @@ async def _support_role_ids(guild_id: int) -> list[int]:
 
 async def _is_ticket_staff(interaction: discord.Interaction) -> bool:
     """
-    SPEC.md §13.9: chi può usare /ticket forceclose — chi ha il
+    SPEC.md §13.9: chi fa parte dello staff dei ticket — chi ha il
     permesso Discord Manage Server, oppure chi ha almeno uno dei
-    ruoli di supporto configurati (§13.13). A differenza di /ticket
-    close (aperto a chiunque abbia accesso al canale, incluso
-    l'utente che lo ha aperto), forceclose è riservato allo staff.
+    ruoli di supporto configurati (§13.13). Allo staff sono riservati
+    forceclose, claim, priority, add e remove; /ticket close resta
+    aperto a chiunque abbia accesso al canale, incluso chi ha aperto
+    il ticket.
     """
     if not isinstance(interaction.user, discord.Member) or interaction.guild is None:
         return False
@@ -537,9 +538,20 @@ class TicketsCog(commands.Cog):
             return None
         return ticket
 
-    @ticket_group.command(name="claim", description="Prendi in carico questo ticket.")
+    async def _get_ticket_for_staff_or_reply(self, interaction: discord.Interaction):
+        """Come _get_ticket_or_reply, ma solo per lo staff dei ticket."""
+        if not await _is_ticket_staff(interaction):
+            await interaction.response.send_message(
+                "Solo lo staff (permesso Manage Server o un ruolo di "
+                "supporto configurato) può usare questo comando.",
+                ephemeral=True,
+            )
+            return None
+        return await self._get_ticket_or_reply(interaction)
+
+    @ticket_group.command(name="claim", description="[Staff] Prendi in carico questo ticket.")
     async def claim(self, interaction: discord.Interaction) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
@@ -548,26 +560,40 @@ class TicketsCog(commands.Cog):
             f"Ticket preso in carico da {interaction.user.mention}."
         )
 
-    @ticket_group.command(name="add", description="Aggiungi un utente a questo ticket.")
+    @ticket_group.command(name="add", description="[Staff] Aggiungi un utente a questo ticket.")
     @app_commands.describe(member="L'utente da aggiungere")
     async def add(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
-        await interaction.channel.set_permissions(
-            member, view_channel=True, send_messages=True, read_message_history=True
-        )
+        try:
+            await interaction.channel.set_permissions(
+                member, view_channel=True, send_messages=True, read_message_history=True
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non sono riuscito ad aggiungere l'utente: controlla i miei permessi sul canale.",
+                ephemeral=True,
+            )
+            return
         await interaction.response.send_message(f"{member.mention} aggiunto al ticket.")
 
-    @ticket_group.command(name="remove", description="Rimuovi un utente da questo ticket.")
+    @ticket_group.command(name="remove", description="[Staff] Rimuovi un utente da questo ticket.")
     @app_commands.describe(member="L'utente da rimuovere")
     async def remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
-        await interaction.channel.set_permissions(member, overwrite=None)
+        try:
+            await interaction.channel.set_permissions(member, overwrite=None)
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non sono riuscito a rimuovere l'utente: controlla i miei permessi sul canale.",
+                ephemeral=True,
+            )
+            return
         await interaction.response.send_message(f"{member.mention} rimosso dal ticket.")
 
     @ticket_group.command(name="rename", description="Rinomina questo ticket.")
@@ -580,7 +606,7 @@ class TicketsCog(commands.Cog):
         await interaction.channel.edit(name=name)
         await interaction.response.send_message(f"Ticket rinominato in **{name}**.")
 
-    @ticket_group.command(name="priority", description="Imposta la priorità di questo ticket.")
+    @ticket_group.command(name="priority", description="[Staff] Imposta la priorità di questo ticket.")
     @app_commands.describe(level="Livello di priorità")
     @app_commands.choices(
         level=[app_commands.Choice(name=p, value=p) for p in VALID_PRIORITIES]
@@ -588,7 +614,7 @@ class TicketsCog(commands.Cog):
     async def priority(
         self, interaction: discord.Interaction, level: app_commands.Choice[str]
     ) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
 
