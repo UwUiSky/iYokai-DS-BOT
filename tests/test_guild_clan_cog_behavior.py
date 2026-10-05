@@ -122,6 +122,7 @@ class _FakeGuild:
         self.created_channels: list = []
         self.roles: list = []
         self._next_role_id = 1
+        self.presenti: dict[int, object] = {}
 
     async def create_category(self, name: str, overwrites=None, reason=None):
         if self._category_creation_forbidden:
@@ -166,6 +167,10 @@ class _FakeGuild:
 
     def get_channel(self, channel_id: int):
         return self._channels_by_id.get(channel_id)
+
+    def get_member(self, user_id: int):
+        """I membri presenti nel server: li registra il test con `presenti`."""
+        return self.presenti.get(user_id)
 
 
 class _FakeMember(discord.Member):

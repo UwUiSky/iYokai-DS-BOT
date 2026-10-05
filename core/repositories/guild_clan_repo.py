@@ -39,6 +39,8 @@ REASON_CREATION_DEFICIT = "creation_deficit"
 REASON_TREASURY_TRANSFER_IN = "treasury_transfer_in"
 REASON_TREASURY_TRANSFER_OUT = "treasury_transfer_out"
 REASON_GUILD_BOOST = "guild_boost"
+# Scritto dal worker vocale: una riga al minuto per ogni membro in vocale.
+REASON_VOICE_TICK = "voice_tick"
 
 DEFAULT_MAX_MEMBERS = 50
 
@@ -865,6 +867,23 @@ class GuildClanRepository:
                     to_clan_id, amount, REASON_TREASURY_TRANSFER_IN,
                 )
                 return True
+
+    async def list_ledger(self, clan_id: int, limit: int = 5) -> list[TreasuryLedgerEntry]:
+        """
+        Gli ultimi movimenti della tesoreria, dal più recente. I tick
+        vocali non si contano: sono una riga al minuto per membro e
+        coprirebbero tutto il resto (indice parziale, migrazione 0017).
+        """
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM clan_treasury_ledger
+            WHERE clan_id = $1 AND reason <> 'voice_tick'
+            ORDER BY id DESC
+            LIMIT $2
+            """,
+            clan_id, limit,
+        )
+        return [self._row_to_ledger_entry(r) for r in rows]
 
     async def get_donation_leaderboard(
         self, clan_id: int, limit: int = 10

@@ -44,6 +44,9 @@ class _FakeGuild:
     def get_channel(self, channel_id: int):
         return self._channels_by_id.get(channel_id)
 
+    def get_member(self, user_id: int):
+        return None  # in questi test nessun ufficiale è ancora nel server
+
 
 class _FakeBot:
     def __init__(self, guilds: list) -> None:

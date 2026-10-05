@@ -82,6 +82,7 @@ from core.repositories.guild_clan_repo import (
     guild_clan_repo,
 )
 from core.guild_clan_role_service import (
+    clear_clan_officers_presence,
     clear_member_clan_presence,
     sync_member_clan_role,
 )
@@ -130,6 +131,28 @@ LIMITE_TITOLO_EMBED = 256
 LIMITE_RIGA_NEGOZIO = 380
 RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
+
+
+# Storico della tesoreria in /clan info: quante righe e come chiamarle.
+MOVIMENTI_IN_CLAN_INFO = 5
+NOMI_DEI_MOVIMENTI = {
+    "donation": "donazione",
+    "creation_deficit": "deficit di creazione",
+    "channel_unlock": "canale extra",
+    "channel_unlock_refund": "rimborso canale extra",
+    "monthly_decay": "decadimento mensile",
+    "treasury_transfer_in": "trasferimento in entrata",
+    "treasury_transfer_out": "trasferimento in uscita",
+    "guild_boost": "boost di gilda",
+}
+
+
+def _riga_movimento(movimento) -> str:
+    """Una riga dello storico: data, importo con il segno, causale, autore."""
+    segno = "+" if movimento.amount > 0 else ""
+    causale = NOMI_DEI_MOVIMENTI.get(movimento.reason, movimento.reason)
+    autore = f" — <@{movimento.user_id}>" if movimento.user_id is not None else ""
+    return f"<t:{int(movimento.created_at.timestamp())}:d> {segno}{movimento.amount} {causale}{autore}"
 
 
 def _format_seconds(seconds: int) -> str:
@@ -1192,6 +1215,14 @@ class LevelingCog(commands.Cog):
                 inline=False,
             )
 
+        movimenti = await guild_clan_repo.list_ledger(clan.id, limit=MOVIMENTI_IN_CLAN_INFO)
+        if movimenti:
+            embed.add_field(
+                name="Ultimi movimenti",
+                value="\n".join(_riga_movimento(m) for m in movimenti),
+                inline=False,
+            )
+
         await interaction.response.send_message(embed=embed)
 
     @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
@@ -1360,15 +1391,16 @@ class LevelingCog(commands.Cog):
         if clan.category_id is not None:
             categoria = guild.get_channel(clan.category_id)
 
-        # Il Capo Clan è sempre chi chiama questo comando (controllo
-        # sopra): il suo ruolo/overwrite si puliscono con l'oggetto
-        # Member già in mano. Per gli altri ufficiali (Admin Clan) non
-        # necessariamente in cache, la pulizia dei loro overwrite è
-        # comunque implicita nella cancellazione della categoria; solo
-        # il ruolo condiviso può restarci — accettabile per un clan
-        # sciolto, verrà rimosso automaticamente alla prossima
-        # promozione/espulsione altrove.
+        # Il Capo Clan è chi chiama il comando: si pulisce con l'oggetto
+        # Member già in mano. Gli altri ufficiali (co-owner, Admin Clan)
+        # perdono anche loro il ruolo condiviso; gli overwrite spariscono
+        # con la categoria.
         await clear_member_clan_presence(guild, categoria, interaction.user)
+        altri = [
+            socio for socio in await guild_clan_repo.list_members(clan.id)
+            if socio.user_id != interaction.user.id
+        ]
+        await clear_clan_officers_presence(guild, None, altri)
 
         if categoria is not None:
             for canale in list(categoria.channels):

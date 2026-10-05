@@ -29,7 +29,7 @@ from core.guild_clan_boost_logic import compute_boosted_reward, is_boost_active
 from core.guild_iteration import for_each_guild_safely
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
-from core.repositories.guild_clan_repo import guild_clan_repo
+from core.repositories.guild_clan_repo import REASON_VOICE_TICK, guild_clan_repo
 
 logger = logging.getLogger("iyokai.guild_clan_voice_worker")
 
@@ -94,7 +94,7 @@ class GuildClanVoiceWorker:
                         await guild_clan_repo.add_xp(clan.id, xp)
                     if coin > 0:
                         await guild_clan_repo.apply_treasury_delta(
-                            clan.id, coin, reason="voice_tick"
+                            clan.id, coin, reason=REASON_VOICE_TICK
                         )
 
         # LC-8: un server problematico non blocca gli altri.
