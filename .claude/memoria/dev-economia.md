@@ -1,11 +1,10 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-05/10/2026 · ramo `fix/f1-135` (base `5c04cf5`, non unito, non pushato)
+05/10/2026 · ramo `feat/boost-146` (base `699fe0f`, non unito, non pushato)
 
 ## In corso
-- Niente a metà. #135 e #136 chiusi sul ramo: aspettano unione e prova dal vivo.
-- Previsione del giro: 2 voci (#135 con 4 punti, #136). Fatte.
+- Niente a metà. #146 (D23) chiusa sul ramo: aspetta smoke, unione e prova dal vivo.
 
 ## Fatto
 - F1, livelli + economia + clan: unito su main con `9db9e8a`
@@ -16,6 +15,8 @@
 - #135 `reset_premium_registry`: salva e ripristina `is_premium_active`.
 - #136 `/config export` non scrive più le voci a `null` (strada scelta).
 
+- #146 boost per tipo su `feat/boost-146` (5 commit, migrazione 0020, test `tests/test_clan_146_boost_per_tipo.py`).
+
 ## Cose imparate
 - Ordine dei blocchi: membro -> leveling_totals -> clans (come `apply_text_tick`);
   `set_member_role` blocca prima il membro. Il contrario dà deadlock.
@@ -25,7 +26,7 @@
 - Le scritture di saldo vanno fatte condizionate nel database.
 - Pagamento + effetto (scadenza boost, tesoreria) = una transazione con
   riga bloccata (`FOR UPDATE`); la scadenza si calcola sul valore letto
-  sotto blocco. Due boost insieme si sommano (non uno solo).
+  sotto blocco. Boost D23: sotto blocco si controlla che nessun beneficio del tipo sia attivo; `buy_*_boost` restituiscono `EsitoBoost` (stato, scadenza, attivi); mai somma delle durate.
 - `set_member_role(..., max_with_role=)` controlla il tetto sotto blocco
   della riga gilda; restituisce `EsitoRuolo`, non più bool.
 - `tests/test_repository_callers.py`: ogni metodo di repo deve avere un chiamante
@@ -39,4 +40,5 @@
   (es. `utility`), altrimenti `register()` solleva ValueError.
 
 ## Aperto
-- Boost cumulativi (48h): decisione dell'owner, chiesta dal coordinatore.
+- Colonne vecchie `boost_expires_at`/`guild_boost_expires_at` restano nel database, non usate.
+- I test senza `DATABASE_URL` esportato usano `iyokai_test` (condiviso): esportarlo sempre.
