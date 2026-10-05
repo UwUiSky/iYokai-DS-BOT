@@ -2,24 +2,18 @@
 cogs/leveling/leveling.py
 ============================
 XP testuale (on_message) e vocale (task periodico ogni 60s), livelli,
-economia di base (daily/work/pay/balance), classifiche mensili e
-all-time. Modulo sempre gratuito, come da schema.
+economia (daily/work/pay/balance, shop, drop, giveaway), cassa del
+server, gilde/clan, classifiche mensili e di sempre. Modulo sempre
+gratuito.
+Funzioni coperte: SPEC §15
 
-Message Content Intent: on_message NON richiede quell'intent per
-scattare — il privilegio riguarda solo se message.content è
-popolato o vuoto, non se l'evento MESSAGE_CREATE arriva. Qui non
-leggiamo mai message.content (ci basta sapere CHE un messaggio è
-stato inviato, non cosa dice), quindi questo modulo resta coerente
-con la scelta di lasciare l'intent disattivato di default (vedi
-main.py).
+Message Content Intent: è attivo (vedi main.py), ma questo modulo non
+legge mai message.content: gli basta sapere CHE un messaggio è stato
+inviato, non cosa dice.
 
-Il task periodico per l'XP vocale condivide l'evento
-on_voice_state_update con cogs/voice_temp/voice_temp.py — è normale,
-discord.py consegna lo stesso evento a tutti i cog che lo ascoltano
-— ma qui usiamo un TASK PERIODICO (tasks.loop) invece di reagire
-all'evento stesso, perché l'XP va accumulato minuto per minuto per
-tutta la durata della permanenza in vocale, non solo al momento in
-cui l'utente entra o esce.
+L'XP vocale usa un task periodico (tasks.loop) e non l'evento
+on_voice_state_update: l'XP si accumula minuto per minuto per tutta
+la permanenza in vocale, non solo quando si entra o si esce.
 """
 
 # DA FARE (issue #65, fase F1): correzioni aperte per questo file in
@@ -200,6 +194,7 @@ class LevelingCog(commands.Cog):
         async def raccogli(
             self, interaction: discord.Interaction, button: discord.ui.Button
         ) -> None:
+            # BUG-17: nessun await tra controllo e assegnazione: è atomico.
             if self.claimed_by is not None:
                 await interaction.response.send_message(
                     "Questo drop è già stato raccolto.", ephemeral=True
