@@ -343,3 +343,24 @@ sia il primo tra i bot del server. Cosa può fare il bot e cosa no:
   comandi in pagine. Con il testo cerca per descrizione (F12 per la parte AI).
   `/chiedi` mostra lo stesso pannello come suggerimento. Nessun comando nuovo.
 - Nomi dei comandi pensati per l'ordine alfabetico: dopo la prova dal vivo.
+
+**Aggiornamento D24 (owner, 06/10/2026, 00:27) — `/cerca-comando` come help evoluto:**
+- Senza testo: pannello solo per chi lo apre, con l'**ultimo** comando usato
+  (uno solo, cliccabile) e i bottoni delle categorie che può usare.
+- Con testo: l'opzione `testo` ha il completamento (≤25 suggerimenti) e il
+  risultato mostra i comandi trovati con descrizione e **variabili** (opzioni:
+  nome, descrizione, obbligatoria o no). Ogni comando è una **menzione
+  cliccabile** (`</gruppo comando:ID>`): da cellulare e da PC un tocco lo inserisce
+  nella barra del messaggio. Gli ID si leggono dall'albero registrato
+  (`fetch_commands`) e si aggiornano dopo ogni sync.
+- Bottone "Apri nella wiki" se `WIKI_BASE_URL` è impostato: la wiki del sito
+  (F10) si **genera dall'albero dei comandi** (percorso, descrizione, livello
+  d'accesso, opzioni) con `scripts/genera_wiki.py`: una sola fonte (D16),
+  quindi comandi e documentazione non divergono mai.
+- La ricerca si fa prima con regole (nome, descrizione, sinonimi italiani,
+  somiglianza) e solo dopo con l'AI (F12). Nessun comando nuovo.
+- Prove sull'ordine in lista: nomi ammessi da Discord (regex ufficiale:
+  lettere minuscole, numeri, `-`, `_`, `ʼ`, devanagari, thai); Discord ordina i
+  comandi di un'app **in ordine alfabetico** e mostra in cima i "più usati"
+  dell'utente. Se `_`, `-` o i numeri vengono prima delle lettere lo dice la
+  prova `scripts/prova_ordine_comandi.py` (voce in `VERIFICA_LIVE.md`).

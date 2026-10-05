@@ -532,3 +532,9 @@ chiudere.
   1. Scrivi `/` nel server di prova e guarda l'ordine dei comandi di iYokai (anche aprendo solo l'icona dell'app).
   2. Segna dove stanno `/cerca-comando` e `/chiedi` rispetto agli altri.
   Risultato atteso: i due sono i primi. Se no, annota come Discord ordina (nome? uso?) e si cambiano i nomi in `core/command_groups.py`.
+- [ ] Ordine per nome e posto dell'app (D24, prove del 06/10) — passi:
+  1. `python3 scripts/prova_ordine_comandi.py registra` (server di prova, con `YOKAI_BOT_TOKEN` e `PROVA_GUILD_ID` nel tuo `.env`).
+  2. Scrivi `/` e clicca l'icona di iYokai: annota l'ordine dei comandi `_prova`, `-prova`, `ʼprova`, `0prova`, `1prova`, `aprova`, `mprova`, `zprova` (da telefono e da PC).
+  3. `python3 scripts/prova_ordine_comandi.py rimuovi`.
+  4. Dal Developer Portal rinomina per un minuto l'app (es. `AAA iYokai` o `1 iYokai`), poi guarda se cambia il posto di iYokai tra le app nel selettore (accanto al bot che comincia per M), e rimetti il nome.
+  Risultato atteso: si capisce se simboli e numeri vengono prima delle lettere e se il nome dell'app decide il posto. Scrivi i risultati nella issue.
