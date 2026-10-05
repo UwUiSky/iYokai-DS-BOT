@@ -64,8 +64,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-04 22:
 - **`/cassa sblocca-premium`** — [Admin] Sblocca un mese di bot premium spendendo dalla cassa.
 - **`/clan bacheca disable`** — [Admin] Disattiva l'annuncio automatico della top 3 gilde.
 - **`/clan bacheca set`** — [Admin] Imposta il canale dove annunciare la top 3 gilde del mese.
-- **`/clan boost gilda`** — [Capo/Admin Clan] Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria.
-- **`/clan boost individuale`** — Acquista un boost personale ×2 per 24h sul tuo tick vocale di gilda.
+- **`/clan boost gilda`** — [Capo/Admin Clan] Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria. Opzione `tipo`: exp (60.000), coin (60.000), super exp+coin (100.000). Un tipo si compra solo se nessuno dei suoi benefici è già attivo (D23).
+- **`/clan boost individuale`** — Acquista un boost personale ×2 per 24h sul tuo tick vocale di gilda. Opzione `tipo`: exp (6.000), coin (6.000), super exp+coin (10.000). Stessa regola di non sovrapposizione (D23).
 - **`/clan classifica`** — Classifica delle gilde per XP (mensile o totale).
 - **`/clan compra-canale`** — [Capo/Admin Clan] Sblocca un nuovo canale extra per la tua gilda.
 - **`/clan crea`** — Crea una nuova gilda/clan.

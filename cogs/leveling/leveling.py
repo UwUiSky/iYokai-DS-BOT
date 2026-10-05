@@ -233,7 +233,7 @@ def _testo_boost_gia_attivo(attivi, scad_exp, scad_coin, now, soggetto: str) -> 
     if possibili:
         coda = f"puoi comprare solo il boost {possibili[0]}."
     else:
-        coda = "non puoi comprare altri boost finché non scade."
+        coda = "non puoi comprare altri boost finché quelli attivi non scadono."
     return f"{soggetto} già {descrizione}: {coda}"
 
 
