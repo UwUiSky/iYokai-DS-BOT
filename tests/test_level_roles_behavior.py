@@ -38,7 +38,8 @@ class _FakeRole:
 class _FakeInteraction:
     def __init__(self, guild_id: int | None, user=None) -> None:
         self.guild = _FakeGuild(guild_id) if guild_id is not None else None
-        self.user = user
+        # Un'interazione vera ha sempre un utente: le liste a pagine ne leggono l'ID.
+        self.user = user if user is not None else fake_member(1)
         self.response = _FakeResponse()
 
 

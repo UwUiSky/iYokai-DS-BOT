@@ -44,6 +44,7 @@ from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
 from core.ui_base import BaseView
+from cogs.leveling._pagine import invia_lista, taglia
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
@@ -63,6 +64,8 @@ from core.guild_clan_logic import (
     CREATION_GRACE_HOURS,
     MAX_ADMINS_PER_CLAN,
     MAX_MODS_PER_CLAN,
+    TAG_MAX_LENGTH,
+    TAG_MIN_LENGTH,
     is_creation_deficit_covered,
     next_channel_unlock_cost,
     next_channel_voice_hours_requirement,
@@ -113,12 +116,16 @@ TIPI_DI_MESSAGGIO_CON_XP = (discord.MessageType.default, discord.MessageType.rep
 # Limite di Discord per il motivo scritto nel registro di controllo.
 LIMITE_MOTIVO = 512
 
-
-def _taglia(testo: str, limite: int) -> str:
-    """Taglia un testo al limite dato, con i puntini se è stato accorciato."""
-    if len(testo) <= limite:
-        return testo
-    return testo[: limite - 1] + "…"
+# LIM-18: lunghezza massima dei testi liberi e dei titoli degli embed.
+MAX_NOME_CLAN = 64
+MAX_NOME_OGGETTO = 80
+MAX_DESCRIZIONE_OGGETTO = 200
+MAX_PREMIO_GIVEAWAY = 200
+MAX_NOME_CANALE = 100
+LIMITE_TITOLO_EMBED = 256
+LIMITE_RIGA_NEGOZIO = 380
+RUOLI_PREMIO_PER_PAGINA = 20
+MEMBRI_PER_PAGINA = 20
 
 
 def _format_seconds(seconds: int) -> str:
@@ -606,12 +613,10 @@ class LevelingCog(commands.Cog):
             return
 
         righe = [f"`{r.id}` livello **{r.level_threshold}** → <@&{r.role_id}>" for r in ricompense]
-        embed = discord.Embed(
-            title="🏅 Ruoli-premio configurati",
-            description="\n".join(righe),
-            color=discord.Color.gold(),
+        await invia_lista(
+            interaction, "🏅 Ruoli-premio configurati", righe, discord.Color.gold(),
+            ephemeral=True, per_pagina=RUOLI_PREMIO_PER_PAGINA,
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
     # ================================================================
@@ -687,17 +692,15 @@ class LevelingCog(commands.Cog):
 
         righe = []
         for oggetto in oggetti:
-            riga = f"`{oggetto.id}` **{oggetto.name}** — {oggetto.price} coin"
+            nome = taglia(oggetto.name, MAX_NOME_OGGETTO)
+            riga = f"`{oggetto.id}` **{nome}** — {oggetto.price} coin"
             if oggetto.role_id is not None:
                 riga += f" (ruolo <@&{oggetto.role_id}>)"
             if oggetto.description:
-                riga += f"\n> {oggetto.description}"
-            righe.append(riga)
+                riga += f"\n> {taglia(oggetto.description, MAX_DESCRIZIONE_OGGETTO)}"
+            righe.append(taglia(riga, LIMITE_RIGA_NEGOZIO))
 
-        embed = discord.Embed(
-            title="🛒 Shop", description="\n".join(righe), color=discord.Color.green()
-        )
-        await interaction.response.send_message(embed=embed)
+        await invia_lista(interaction, "🛒 Shop", righe, discord.Color.green())
 
     @shop_group.command(name="buy", description="Acquista un oggetto dello shop.")
     @app_commands.describe(item_id="ID dell'oggetto (vedi /shop list)")
@@ -748,7 +751,7 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        nome = _taglia(oggetto.name, 200)
+        nome = taglia(oggetto.name, 200)
         conferma = f"✅ Hai acquistato **{nome}** per {oggetto.price} coin!"
         if ruolo_shop is None:
             await interaction.response.send_message(conferma)
@@ -758,7 +761,7 @@ class LevelingCog(commands.Cog):
         await interaction.response.defer()
         try:
             await interaction.user.add_roles(
-                ruolo_shop, reason=_taglia(f"Acquisto shop: {oggetto.name}", LIMITE_MOTIVO)
+                ruolo_shop, reason=taglia(f"Acquisto shop: {oggetto.name}", LIMITE_MOTIVO)
             )
         except discord.HTTPException:
             # Il ruolo non è arrivato: l'acquisto si annulla e i coin
@@ -791,10 +794,10 @@ class LevelingCog(commands.Cog):
     async def shop_add_item(
         self,
         interaction: discord.Interaction,
-        name: str,
+        name: app_commands.Range[str, 1, MAX_NOME_OGGETTO],
         price: app_commands.Range[int, 1, 1000000],
         role: discord.Role | None = None,
-        description: str | None = None,
+        description: app_commands.Range[str, 1, MAX_DESCRIZIONE_OGGETTO] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -1038,7 +1041,12 @@ class LevelingCog(commands.Cog):
         tag=f"Tag della gilda (1-5 caratteri, niente emoji né spazi)",
         name="Nome completo della gilda",
     )
-    async def clan_crea(self, interaction: discord.Interaction, tag: str, name: str) -> None:
+    async def clan_crea(
+        self,
+        interaction: discord.Interaction,
+        tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH],
+        name: app_commands.Range[str, 1, MAX_NOME_CLAN],
+    ) -> None:
         guild = interaction.guild
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
@@ -1106,7 +1114,11 @@ class LevelingCog(commands.Cog):
 
     @clan_group.command(name="info", description="Mostra le informazioni di una gilda.")
     @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
-    async def clan_info(self, interaction: discord.Interaction, tag: str | None = None) -> None:
+    async def clan_info(
+        self,
+        interaction: discord.Interaction,
+        tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH] | None = None,
+    ) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -1132,7 +1144,8 @@ class LevelingCog(commands.Cog):
         )
 
         embed = discord.Embed(
-            title=f"🛡️ [{clan.tag}] {clan.name}", color=discord.Color.blurple()
+            title=taglia(f"🛡️ [{clan.tag}] {clan.name}", LIMITE_TITOLO_EMBED),
+            color=discord.Color.blurple(),
         )
         embed.add_field(name="Stato", value=stato, inline=False)
         embed.add_field(name="Capo Clan", value=f"<@{clan.owner_id}>", inline=True)
@@ -1164,7 +1177,11 @@ class LevelingCog(commands.Cog):
 
     @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
     @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
-    async def clan_membri(self, interaction: discord.Interaction, tag: str | None = None) -> None:
+    async def clan_membri(
+        self,
+        interaction: discord.Interaction,
+        tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH] | None = None,
+    ) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -1185,13 +1202,11 @@ class LevelingCog(commands.Cog):
             return
 
         membri = await guild_clan_repo.list_members(clan.id)
-        righe = [f"<@{m.user_id}> — {m.role}" for m in membri]
-        embed = discord.Embed(
-            title=f"Membri di [{clan.tag}] {clan.name}",
-            description="\n".join(righe) if righe else "Nessun membro.",
-            color=discord.Color.blurple(),
+        righe = [f"<@{m.user_id}> — {m.role}" for m in membri] or ["Nessun membro."]
+        await invia_lista(
+            interaction, f"Membri di [{clan.tag}] {clan.name}", righe,
+            discord.Color.blurple(), per_pagina=MEMBRI_PER_PAGINA,
         )
-        await interaction.response.send_message(embed=embed)
 
     @clan_group.command(
         name="classifica", description="Classifica delle gilde per XP (mensile o totale)."
@@ -1228,7 +1243,7 @@ class LevelingCog(commands.Cog):
                 )
                 return
             righe = [
-                f"**{i+1}.** [{c.tag}] {c.name} — {xp} XP"
+                f"**{i+1}.** [{c.tag}] {taglia(c.name, MAX_NOME_CLAN)} — {xp} XP"
                 for i, (c, xp) in enumerate(voci)
             ]
             titolo = "🏆 Classifica Gilde — questo mese"
@@ -1240,7 +1255,7 @@ class LevelingCog(commands.Cog):
                 )
                 return
             righe = [
-                f"**{i+1}.** [{c.tag}] {c.name} — {c.total_xp} XP"
+                f"**{i+1}.** [{c.tag}] {taglia(c.name, MAX_NOME_CLAN)} — {c.total_xp} XP"
                 for i, c in enumerate(classifica)
             ]
             titolo = "🏆 Classifica Gilde — di sempre"
@@ -1523,7 +1538,7 @@ class LevelingCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         tipo: Literal["testuale", "vocale", "forum"],
-        nome: str | None = None,
+        nome: app_commands.Range[str, 1, MAX_NOME_CANALE] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -1591,7 +1606,7 @@ class LevelingCog(commands.Cog):
             return
 
         nome_canale = (nome or f"{clan.tag.lower()}-canale-{clan.channels_unlocked + 1}")[:100]
-        motivo = _taglia(f"Canale extra sbloccato per la gilda '{clan.tag}'", LIMITE_MOTIVO)
+        motivo = taglia(f"Canale extra sbloccato per la gilda '{clan.tag}'", LIMITE_MOTIVO)
         try:
             if tipo == "testuale":
                 await guild.create_text_channel(nome_canale, category=categoria, reason=motivo)
@@ -1666,7 +1681,7 @@ class LevelingCog(commands.Cog):
     async def clan_tesoreria_trasferisci(
         self,
         interaction: discord.Interaction,
-        tag_destinazione: str,
+        tag_destinazione: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH],
         importo: app_commands.Range[int, 1, 1_000_000_000],
     ) -> None:
         guild = interaction.guild
@@ -1898,7 +1913,7 @@ class LevelingCog(commands.Cog):
     async def giveaway(
         self,
         interaction: discord.Interaction,
-        prize: str,
+        prize: app_commands.Range[str, 1, MAX_PREMIO_GIVEAWAY],
         duration_minutes: app_commands.Range[int, 1, 43200],
         winners: app_commands.Range[int, 1, 50] = 1,
         min_level: app_commands.Range[int, 0, 1000] = 0,
@@ -1926,7 +1941,7 @@ class LevelingCog(commands.Cog):
         riga_requisiti = f"\nRequisiti: {', '.join(requisiti)}" if requisiti else ""
 
         embed = discord.Embed(
-            title=f"🎉 Giveaway: {prize}",
+            title=taglia(f"🎉 Giveaway: {prize}", LIMITE_TITOLO_EMBED),
             description=(
                 f"Vincitori: **{winners}**\n"
                 f"Termina: <t:{int(scadenza.timestamp())}:R>{riga_requisiti}"
