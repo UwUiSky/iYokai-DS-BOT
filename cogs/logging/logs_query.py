@@ -10,6 +10,10 @@ Nessun gate is_module_active_for_guild qui: se il modulo è
 disattivato, semplicemente non c'è nulla da mostrare (la tabella
 resta vuota per quel server) — non serve bloccare il comando stesso,
 che a differenza dei listener non ha nessun costo continuo.
+
+Limiti: ogni voce è tagliata e l'elenco si ferma a 4000 caratteri
+(descrizione di un embed: 4096); l'export è diviso in più file, ognuno
+sotto i 10 MiB.
 """
 
 # DA FARE (issue #61, fase F1): correzioni aperte per questo file in
@@ -19,12 +23,26 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from core.repositories.event_log_repo import EventLogEntry, event_log_repo
+
+
+logger = logging.getLogger("iyokai.logging.query")
+
+# La descrizione di un embed tiene 4096 caratteri (LIM-15). Con i
+# dettagli tagliati a 50 caratteri entrano tutte le 25 voci; se una
+# volta non bastasse, l'elenco si ferma a 4000 e dice quante ne mancano.
+MAX_DETAILS_LENGTH = 50
+MAX_LIST_LENGTH = 4000
+
+# Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
+# 8 per lasciare margine al resto della richiesta.
+MAX_EXPORT_FILE_BYTES = 8 * 1024 * 1024
 
 
 def _format_entry(entry: EventLogEntry) -> str:
@@ -35,8 +53,58 @@ def _format_entry(entry: EventLogEntry) -> str:
     if entry.case_number:
         pezzi.append(f"(caso #{entry.case_number})")
     if entry.details:
-        pezzi.append(f"`{json.dumps(entry.details, ensure_ascii=False)}`")
+        # L'accento grave chiuderebbe il blocco di codice a metà.
+        dettagli = json.dumps(entry.details, ensure_ascii=False).replace("`", "'")
+        if len(dettagli) > MAX_DETAILS_LENGTH:
+            dettagli = dettagli[: MAX_DETAILS_LENGTH - 1] + "…"
+        pezzi.append(f"`{dettagli}`")
     return " ".join(pezzi)
+
+
+def _format_entries(entries: list[EventLogEntry]) -> str:
+    """Una voce per riga, finché stanno nella descrizione di un embed."""
+    mostrate: list[str] = []
+    lunghezza = 0
+    for entry in entries:
+        riga = _format_entry(entry)
+        lunghezza += len(riga) + 1  # 1 = l'a capo
+        if lunghezza > MAX_LIST_LENGTH:
+            break
+        mostrate.append(riga)
+
+    testo = "\n".join(mostrate)
+    escluse = len(entries) - len(mostrate)
+    if escluse:
+        testo += f"\n…e altre {escluse} voci: usa /logs export per vederle tutte."
+    return testo
+
+
+def split_export(events: list[dict], max_bytes: int) -> list[bytes]:
+    """
+    Divide gli eventi in più file JSON, ognuno una lista valida e
+    ognuno entro `max_bytes`. Restituisce sempre almeno un file (una
+    lista vuota se non ci sono eventi). Un singolo evento più grande
+    del limite finisce da solo nel suo file.
+    """
+    parti: list[bytes] = []
+    voci: list[bytes] = []
+    peso = 2  # le due parentesi quadre
+
+    def chiudi() -> None:
+        parti.append(b"[\n" + b",\n".join(voci) + b"\n]")
+
+    for event in events:
+        voce = json.dumps(event, ensure_ascii=False, indent=2).encode("utf-8")
+        peso_voce = len(voce) + 2  # virgola e a capo
+        if voci and peso + peso_voce + 2 > max_bytes:
+            chiudi()
+            voci, peso = [], 2
+        voci.append(voce)
+        peso += peso_voce
+
+    if voci or not parti:
+        chiudi()
+    return parti
 
 
 class LogsQueryCog(commands.Cog):
@@ -74,7 +142,7 @@ class LogsQueryCog(commands.Cog):
 
         embed = discord.Embed(
             title=f"📜 Storico eventi — {member}",
-            description="\n".join(_format_entry(e) for e in eventi),
+            description=_format_entries(eventi),
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -108,7 +176,7 @@ class LogsQueryCog(commands.Cog):
 
         embed = discord.Embed(
             title=f"📜 Storico eventi — #{channel.name}",
-            description="\n".join(_format_entry(e) for e in eventi),
+            description=_format_entries(eventi),
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -143,13 +211,27 @@ class LogsQueryCog(commands.Cog):
             }
             for e in eventi
         ]
-        contenuto = json.dumps(payload, ensure_ascii=False, indent=2)
-        file_bytes = io.BytesIO(contenuto.encode("utf-8"))
-        file = discord.File(file_bytes, filename=f"event_log_{guild.id}.json")
-
-        await interaction.followup.send(
-            f"Export completo: {len(eventi)} eventi.", file=file, ephemeral=True
-        )
+        parti = split_export(payload, MAX_EXPORT_FILE_BYTES)
+        totale = len(parti)
+        try:
+            for numero, parte in enumerate(parti, start=1):
+                if totale == 1:
+                    nome = f"event_log_{guild.id}.json"
+                    testo = f"Export completo: {len(eventi)} eventi."
+                else:
+                    nome = f"event_log_{guild.id}_parte_{numero}_di_{totale}.json"
+                    testo = f"Export completo: {len(eventi)} eventi. File {numero} di {totale}."
+                await interaction.followup.send(
+                    testo,
+                    file=discord.File(io.BytesIO(parte), filename=nome),
+                    ephemeral=True,
+                )
+        except discord.HTTPException as errore:
+            logger.warning("Export dei log non inviato (server %s): %s", guild.id, errore)
+            await interaction.followup.send(
+                "Non sono riuscito a inviare il file dell'export. Riprova tra poco.",
+                ephemeral=True,
+            )
 
 
 async def setup(bot: commands.Bot) -> None:
