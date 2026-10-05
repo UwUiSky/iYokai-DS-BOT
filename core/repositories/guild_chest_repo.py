@@ -1,22 +1,12 @@
 """
 core/repositories/guild_chest_repo.py
 =========================================
-Persistenza della "cassa di server" (SPEC.md §15.15) — una tesoreria
-a livello di GUILD, distinta da quella di ogni singolo clan.
-Alimentata da due fonti separate:
-
-- il decadimento SETTIMANALE del 10% sui coin personali di QUALUNQUE
-  membro del server (core.weekly_personal_decay_worker), in un clan
-  o no
-- il decadimento MENSILE del 10% sulla tesoreria non spesa di ogni
-  clan del server (core.guild_clan_treasury_decay_worker)
-
-Le coin nella cassa sono pensate per premi/eventi organizzati dal
-server e/o per lo sblocco del bot premium (quest'ultimo ancora work
-in progress — vedi SPEC.md §15.15). Nessun prelievo individuale: la
-cassa appartiene al server, non a un singolo membro, quindi solo
-`deposit` esiste per ora — la spesa (evento/premium) arriverà con i
-comandi Discord corrispondenti.
+Cassa del server: una tesoreria del server intero, distinta da quella
+di ogni clan. Entrano i coin tolti dal decadimento settimanale dei
+saldi personali e da quello mensile delle tesorerie dei clan; escono
+per i premi evento e per lo sblocco del premium. Ogni movimento resta
+scritto nello storico.
+Funzioni coperte: SPEC §15.15
 """
 
 from __future__ import annotations
@@ -63,6 +53,38 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             ON guild_chest_ledger (guild_id, created_at);
         """
     )
+
+
+async def spend_in(
+    conn: asyncpg.Connection, guild_id: int, amount: int, reason: str
+) -> bool:
+    """
+    Toglie coin dalla cassa su una connessione già aperta, così chi
+    chiama può mettere l'addebito e ciò che si compra nella stessa
+    transazione. Il controllo del saldo sta dentro la UPDATE: mai un
+    saldo negativo. False (senza scrivere nulla) se il saldo non basta.
+    """
+    if amount <= 0:
+        raise ValueError("L'importo da spendere dalla cassa deve essere positivo.")
+
+    saldo = await conn.fetchval(
+        """
+        UPDATE guild_chest SET balance = balance - $2, updated_at = now()
+        WHERE guild_id = $1 AND balance >= $2
+        RETURNING balance
+        """,
+        guild_id,
+        amount,
+    )
+    if saldo is None:
+        return False
+    await conn.execute(
+        "INSERT INTO guild_chest_ledger (guild_id, amount, reason) VALUES ($1, $2, $3)",
+        guild_id,
+        -amount,
+        reason,
+    )
+    return True
 
 
 class GuildChestRepository:
@@ -121,44 +143,13 @@ class GuildChestRepository:
 
     async def spend(self, guild_id: int, amount: int, reason: str) -> bool:
         """
-        Sottrae coin dalla cassa solo se il saldo basta —
-        atomicamente (FOR UPDATE dentro una transazione), stesso
-        pattern di LevelingRepository.spend_coins. Usata per lo
-        sblocco premium (SPEC.md §15.15) e da qualunque futuro
-        acquisto (premi evento). Restituisce False (senza scrivere
-        nulla) se il saldo non basta — mai un saldo negativo.
+        Sottrae coin dalla cassa solo se il saldo basta e scrive il
+        movimento, in una transazione. Restituisce False (senza
+        scrivere nulla) se il saldo non basta.
         """
-        if amount <= 0:
-            raise ValueError("L'importo da spendere dalla cassa deve essere positivo.")
-
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                saldo = await conn.fetchval(
-                    "SELECT balance FROM guild_chest WHERE guild_id = $1 FOR UPDATE",
-                    guild_id,
-                ) or 0
-
-                if saldo < amount:
-                    return False
-
-                await conn.execute(
-                    """
-                    UPDATE guild_chest SET balance = balance - $2, updated_at = now()
-                    WHERE guild_id = $1
-                    """,
-                    guild_id,
-                    amount,
-                )
-                await conn.execute(
-                    """
-                    INSERT INTO guild_chest_ledger (guild_id, amount, reason)
-                    VALUES ($1, $2, $3)
-                    """,
-                    guild_id,
-                    -amount,
-                    reason,
-                )
-                return True
+                return await spend_in(conn, guild_id, amount, reason)
 
     async def list_ledger(
         self, guild_id: int, limit: int = 20

@@ -13,6 +13,9 @@ Orchestrazione dell'acquisto di un tier premium via cassa di server
 
 Ogni controllo è fatto QUI, in un ordine preciso, PRIMA di spendere
 qualunque coin: se un controllo fallisce non viene toccata la cassa.
+L'addebito della cassa e la registrazione dell'acquisto stanno in una
+sola transazione: due richieste arrivate insieme pagano una volta sola
+(BUG-14).
 """
 
 from __future__ import annotations
@@ -21,15 +24,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 
+import asyncpg
+
 from core.premium_pricing_logic import (
     MAX_DEFINED_TIER,
     is_tier_time_unlocked,
     premium_tier_cost,
 )
-from core.repositories.guild_chest_repo import (
-    REASON_PREMIUM_PURCHASE,
-    guild_chest_repo,
-)
+from core.repositories.guild_chest_repo import REASON_PREMIUM_PURCHASE, spend_in
 from core.repositories.guild_premium_repo import guild_premium_repo
 
 
@@ -75,15 +77,21 @@ async def purchase_premium_tier(
 
     costo = premium_tier_cost(tier, member_count)
 
-    speso = await guild_chest_repo.spend(guild_id, costo, REASON_PREMIUM_PURCHASE)
-    if not speso:
-        return PurchaseResult(
-            outcome=PurchaseOutcome.INSUFFICIENT_FUNDS, tier=tier, cost=costo
-        )
+    try:
+        async with db.pool.acquire() as conn:
+            async with conn.transaction():
+                if not await spend_in(conn, guild_id, costo, REASON_PREMIUM_PURCHASE):
+                    return PurchaseResult(
+                        outcome=PurchaseOutcome.INSUFFICIENT_FUNDS, tier=tier, cost=costo
+                    )
+                nuova_scadenza = await guild_premium_repo.record_purchase(
+                    guild_id, tier, costo, adesso, conn=conn
+                )
+    except asyncpg.UniqueViolationError:
+        # Un'altra richiesta ha comprato lo stesso tier un attimo
+        # prima: la transazione è annullata, l'addebito non resta.
+        return PurchaseResult(outcome=PurchaseOutcome.ALREADY_PURCHASED, tier=tier)
 
-    nuova_scadenza = await guild_premium_repo.record_purchase(
-        guild_id, tier, costo, adesso
-    )
     return PurchaseResult(
         outcome=PurchaseOutcome.SUCCESS,
         tier=tier,

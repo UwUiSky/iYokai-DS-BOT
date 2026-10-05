@@ -70,7 +70,6 @@ from core.guild_clan_logic import (
     voice_ticks_to_hours,
 )
 from core.repositories.guild_clan_repo import (
-    REASON_CHANNEL_UNLOCK,
     REASON_GUILD_BOOST,
     ROLE_ADMIN,
     ROLE_MEMBER,
@@ -1570,51 +1569,42 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # Prima l'addebito (una sola UPDATE con i controlli dentro),
+        # poi il canale su Discord. Se un altro acquisto è arrivato un
+        # attimo prima, questo non passa.
+        if not await guild_clan_repo.unlock_channel(clan.id, clan.channels_unlocked, costo):
+            await interaction.response.send_message(
+                "L'acquisto non è andato a buon fine: la tesoreria o i canali sbloccati sono "
+                "cambiati nel frattempo. Riprova.",
+                ephemeral=True,
+            )
+            return
+
         nome_canale = (nome or f"{clan.tag.lower()}-canale-{clan.channels_unlocked + 1}")[:100]
-        motivo = f"Canale extra sbloccato per la gilda '{clan.tag}'"
+        motivo = _taglia(f"Canale extra sbloccato per la gilda '{clan.tag}'", LIMITE_MOTIVO)
         try:
-            # Creato PRIMA di scalare la tesoreria (stesso ordine di
-            # `/clan crea` con la categoria) — se la creazione fallisce
-            # non deve restare una spesa senza contropartita reale.
             if tipo == "testuale":
                 await guild.create_text_channel(nome_canale, category=categoria, reason=motivo)
             elif tipo == "vocale":
                 await guild.create_voice_channel(nome_canale, category=categoria, reason=motivo)
             else:
                 await guild.create_forum(nome_canale, category=categoria, reason=motivo)
-        except discord.Forbidden:
+        except discord.HTTPException as errore:
+            # Il canale non è nato: la spesa si annulla.
+            await guild_clan_repo.refund_channel_unlock(clan.id, costo)
+            if isinstance(errore, discord.Forbidden):
+                testo = "Non ho i permessi per creare un canale in questa categoria."
+            else:
+                testo = "Creazione del canale fallita — riprova più tardi."
             await interaction.response.send_message(
-                "Non ho i permessi per creare un canale in questa categoria.", ephemeral=True
-            )
-            return
-        except discord.HTTPException:
-            await interaction.response.send_message(
-                "Creazione del canale fallita — riprova più tardi.", ephemeral=True
+                f"{testo} I **{costo}** coin sono tornati in tesoreria.", ephemeral=True
             )
             return
 
-        riuscito = await guild_clan_repo.spend_from_treasury(clan.id, costo, reason=REASON_CHANNEL_UNLOCK)
-        await guild_clan_repo.increment_channels_unlocked(clan.id)
-
-        if riuscito:
-            await interaction.response.send_message(
-                f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
-                f"dalla tesoreria."
-            )
-        else:
-            # Caso limite: il saldo è cambiato tra il controllo sopra
-            # e la spesa atomica (es. decadimento mensile nel
-            # frattempo) — il canale Discord esiste già ed è comunque
-            # conteggiato come sbloccato, ma non si è potuto scalare
-            # la tesoreria di un importo che ora non basta più.
-            logger.warning(
-                "Spesa tesoreria fallita dopo la creazione del canale per il clan %s (saldo cambiato).",
-                clan.id,
-            )
-            await interaction.response.send_message(
-                f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}**, ma la tesoreria non "
-                f"aveva più abbastanza saldo nell'istante della spesa — nessun importo scalato."
-            )
+        await interaction.response.send_message(
+            f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
+            f"dalla tesoreria."
+        )
 
     clan_tesoreria_group = app_commands.Group(
         name="tesoreria", description="Tesoreria della tua gilda.", parent=clan_group

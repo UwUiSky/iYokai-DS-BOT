@@ -33,6 +33,7 @@ ROLE_MEMBER = "member"
 
 REASON_DONATION = "donation"
 REASON_CHANNEL_UNLOCK = "channel_unlock"
+REASON_CHANNEL_UNLOCK_REFUND = "channel_unlock_refund"
 REASON_MONTHLY_DECAY = "monthly_decay"
 REASON_CREATION_DEFICIT = "creation_deficit"
 REASON_TREASURY_TRANSFER_IN = "treasury_transfer_in"
@@ -313,10 +314,65 @@ class GuildClanRepository:
             "UPDATE clans SET category_id = $2 WHERE id = $1", clan_id, category_id
         )
 
-    async def increment_channels_unlocked(self, clan_id: int) -> None:
-        await self._pool.execute(
-            "UPDATE clans SET channels_unlocked = channels_unlocked + 1 WHERE id = $1", clan_id
-        )
+    async def unlock_channel(self, clan_id: int, expected_unlocked: int, cost: int) -> bool:
+        """
+        Compra il prossimo canale extra: toglie `cost` dalla tesoreria e
+        aumenta di uno i canali sbloccati, con UNA sola UPDATE che
+        contiene i controlli (BUG-14). Riesce solo se il saldo basta e
+        se i canali sbloccati sono ancora `expected_unlocked`: così un
+        doppio clic non compra due canali al prezzo del primo. False,
+        senza scrivere nulla, in caso contrario.
+        """
+        if cost <= 0:
+            raise ValueError("Il costo del canale deve essere positivo.")
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                aggiornato = await conn.fetchval(
+                    """
+                    UPDATE clans
+                    SET treasury_balance = treasury_balance - $3,
+                        channels_unlocked = channels_unlocked + 1
+                    WHERE id = $1 AND channels_unlocked = $2 AND treasury_balance >= $3
+                    RETURNING id
+                    """,
+                    clan_id, expected_unlocked, cost,
+                )
+                if aggiornato is None:
+                    return False
+                await conn.execute(
+                    """
+                    INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason)
+                    VALUES ($1, NULL, $2, $3)
+                    """,
+                    clan_id, -cost, REASON_CHANNEL_UNLOCK,
+                )
+                return True
+
+    async def refund_channel_unlock(self, clan_id: int, cost: int) -> None:
+        """
+        Annulla un unlock_channel appena fatto, quando Discord non ha
+        creato il canale: restituisce il costo alla tesoreria e toglie
+        il canale dal conteggio. Il rimborso resta nello storico.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE clans
+                    SET treasury_balance = treasury_balance + $2,
+                        channels_unlocked = GREATEST(channels_unlocked - 1, 0)
+                    WHERE id = $1
+                    """,
+                    clan_id, cost,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason)
+                    VALUES ($1, NULL, $2, $3)
+                    """,
+                    clan_id, cost, REASON_CHANNEL_UNLOCK_REFUND,
+                )
 
     async def add_voice_ticks(self, clan_id: int, count: int = 1) -> None:
         """Accredita `count` tick vocali ACCUMULATI dalla gilda (uno

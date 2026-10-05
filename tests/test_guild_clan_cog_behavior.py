@@ -23,12 +23,41 @@ class _FakeResponse:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
         self.sent_embeds: list = []
+        self.sent_views: list = []
+        # Ordine delle chiamate: serve a controllare che defer() sia la prima.
+        self.chiamate: list[str] = []
 
-    async def send_message(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
+    async def send_message(
+        self, content: str = None, embed=None, view=None, ephemeral: bool = False
+    ) -> None:
+        self.chiamate.append("send_message")
         if content is not None:
             self.sent_messages.append(content)
         if embed is not None:
             self.sent_embeds.append(embed)
+        if view is not None:
+            self.sent_views.append(view)
+
+    async def defer(self, ephemeral: bool = False) -> None:
+        self.chiamate.append("defer")
+
+
+class _FakeFollowup:
+    """Dopo un defer() le risposte passano da qui: stesse liste della response."""
+
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def send(
+        self, content: str = None, embed=None, view=None, ephemeral: bool = False
+    ) -> None:
+        self._response.chiamate.append("followup")
+        if content is not None:
+            self._response.sent_messages.append(content)
+        if embed is not None:
+            self._response.sent_embeds.append(embed)
+        if view is not None:
+            self._response.sent_views.append(view)
 
 
 class _FakeHTTPResponse:
@@ -185,6 +214,7 @@ class _FakeInteraction:
         self.guild = guild
         self.user = user or _FakeMember(1)
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup(self.response)
 
 
 @pytest.fixture
@@ -858,9 +888,9 @@ async def test_compra_canale_scala_esaurita_avvisa(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
     guild = _FakeGuild(100)
     clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
-    for _ in range(4):
-        await clan_repo.increment_channels_unlocked(clan_id)
-    await clan_repo.donate(clan_id, user_id=1, amount=1_000_000)
+    await clan_repo.donate(clan_id, user_id=1, amount=3_000_000)
+    for gia_sbloccati, costo in enumerate((25_000, 50_000, 200_000, 800_000)):
+        assert await clan_repo.unlock_channel(clan_id, gia_sbloccati, costo) is True
     await clan_repo.add_voice_ticks(clan_id, count=1000 * 60)
     capo = _FakeMember(1)
     interaction = _FakeInteraction(guild, user=capo)

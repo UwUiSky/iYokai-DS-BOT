@@ -123,12 +123,32 @@ async def test_delete_clan_rimuove_tutto(repo):
 
 
 @pytest.mark.asyncio
-async def test_increment_channels_unlocked(repo):
+async def test_unlock_channel_scala_e_conta_solo_se_tutto_torna(repo):
     clan_id = await _crea_clan(repo)
-    await repo.increment_channels_unlocked(clan_id)
-    await repo.increment_channels_unlocked(clan_id)
+    await repo.donate(clan_id, user_id=1, amount=15_000 + 60_000)
 
-    assert (await repo.get_clan(clan_id)).channels_unlocked == 2
+    assert await repo.unlock_channel(clan_id, expected_unlocked=0, cost=25_000) is True
+    # Stesso acquisto ripetuto (doppio clic): i canali sbloccati non sono più 0.
+    assert await repo.unlock_channel(clan_id, expected_unlocked=0, cost=25_000) is False
+    # Saldo insufficiente per il secondo canale.
+    assert await repo.unlock_channel(clan_id, expected_unlocked=1, cost=50_000) is False
+
+    clan = await repo.get_clan(clan_id)
+    assert clan.channels_unlocked == 1
+    assert clan.treasury_balance == 35_000
+
+
+@pytest.mark.asyncio
+async def test_refund_channel_unlock_rimette_tutto_com_era(repo):
+    clan_id = await _crea_clan(repo)
+    await repo.donate(clan_id, user_id=1, amount=15_000 + 25_000)
+    await repo.unlock_channel(clan_id, expected_unlocked=0, cost=25_000)
+
+    await repo.refund_channel_unlock(clan_id, 25_000)
+
+    clan = await repo.get_clan(clan_id)
+    assert clan.channels_unlocked == 0
+    assert clan.treasury_balance == 25_000
 
 
 @pytest.mark.asyncio
