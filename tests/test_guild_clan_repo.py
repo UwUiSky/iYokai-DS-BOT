@@ -97,7 +97,7 @@ async def test_set_officialized(repo):
 @pytest.mark.asyncio
 async def test_get_unofficialized_expired(repo):
     scaduto = await _crea_clan(repo, tag="OLD", deadline=ORA - timedelta(hours=1))
-    non_scaduto = await _crea_clan(repo, tag="NEW", deadline=ORA + timedelta(hours=1))
+    non_scaduto = await _crea_clan(repo, tag="NEW", owner_id=2, deadline=ORA + timedelta(hours=1))
 
     scaduti = await repo.get_unofficialized_expired(ORA)
 
@@ -400,7 +400,7 @@ async def test_add_xp_importo_non_positivo_solleva(repo):
 @pytest.mark.asyncio
 async def test_get_clan_leaderboard_ordinata_per_xp(repo):
     basso = await _crea_clan(repo, guild_id=100, tag="LOW")
-    alto = await _crea_clan(repo, guild_id=100, tag="HIGH")
+    alto = await _crea_clan(repo, guild_id=100, tag="HIGH", owner_id=2)
     await repo.add_xp(basso, amount=100)
     await repo.add_xp(alto, amount=9000)
 
@@ -426,7 +426,7 @@ async def test_get_clan_leaderboard_solo_del_server_giusto(repo):
 @pytest.mark.asyncio
 async def test_get_monthly_clan_leaderboard_ordinata_per_xp_del_periodo(repo):
     basso = await _crea_clan(repo, guild_id=100, tag="LOW")
-    alto = await _crea_clan(repo, guild_id=100, tag="HIGH")
+    alto = await _crea_clan(repo, guild_id=100, tag="HIGH", owner_id=2)
     await repo.add_xp(basso, amount=100)
     await repo.add_xp(alto, amount=9000)
 
@@ -502,7 +502,7 @@ async def test_apply_text_tick_traccia_anche_la_classifica_mensile(repo):
 async def test_list_officialized_clans_solo_ufficializzati(repo):
     ufficializzato = await _crea_clan(repo, tag="OK")
     await repo.set_officialized(ufficializzato)
-    await _crea_clan(repo, tag="NO")  # non ufficializzato
+    await _crea_clan(repo, tag="NO", owner_id=2)  # non ufficializzato
 
     clan = await repo.list_officialized_clans()
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 
 import asyncpg
 
@@ -53,6 +54,19 @@ _ACCREDITA_E_UFFICIALIZZA = (
     "officialized = officialized OR (treasury_balance + $2 >= 0)"
 )
 MAX_MEMBERS_CEILING = 999
+
+
+class EsitoIngresso(str, Enum):
+    """Com'è andato l'ingresso di un utente in una gilda (add_member)."""
+
+    ENTRATO = "entrato"
+    GIA_IN_UNA_GILDA = "gia_in_una_gilda"
+    GILDA_PIENA = "gilda_piena"
+    GILDA_INESISTENTE = "gilda_inesistente"
+
+
+class _FondatoreGiaInUnaGilda(Exception):
+    """Interna a create_clan: annulla la transazione della creazione."""
 
 
 @dataclass(frozen=True)
@@ -241,9 +255,26 @@ class GuildClanRepository:
         incoerente anche solo per un istante.
 
         Restituisce None, senza scrivere nulla, se nel server esiste
-        già una gilda con lo stesso tag: lo decide il vincolo unico,
-        così due creazioni arrivate insieme non passano tutte e due.
+        già una gilda con lo stesso tag o se il fondatore fa già parte
+        di una gilda del server: lo decidono i vincoli unici, così due
+        creazioni arrivate insieme non passano tutte e due.
         """
+        try:
+            return await self._create_clan(
+                guild_id, tag, name, owner_id, officialize_deadline, max_members
+            )
+        except _FondatoreGiaInUnaGilda:
+            return None
+
+    async def _create_clan(
+        self,
+        guild_id: int,
+        tag: str,
+        name: str,
+        owner_id: int,
+        officialize_deadline: datetime,
+        max_members: int,
+    ) -> int | None:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 clan_id = await conn.fetchval(
@@ -261,13 +292,17 @@ class GuildClanRepository:
                 if clan_id is None:
                     return None
 
-                await conn.execute(
+                fondatore = await conn.fetchval(
                     """
-                    INSERT INTO clan_members (clan_id, user_id, role)
-                    VALUES ($1, $2, $3)
+                    INSERT INTO clan_members (clan_id, user_id, role, guild_id)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id) DO NOTHING
+                    RETURNING user_id
                     """,
-                    clan_id, owner_id, ROLE_OWNER,
+                    clan_id, owner_id, ROLE_OWNER, guild_id,
                 )
+                if fondatore is None:
+                    raise _FondatoreGiaInUnaGilda
 
                 await conn.execute(
                     """
@@ -422,15 +457,42 @@ class GuildClanRepository:
     # ----------------------------------------------------------------
     # Membri
     # ----------------------------------------------------------------
-    async def add_member(self, clan_id: int, user_id: int, role: str = ROLE_MEMBER) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO clan_members (clan_id, user_id, role)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (clan_id, user_id) DO NOTHING
-            """,
-            clan_id, user_id, role,
-        )
+    async def add_member(
+        self, clan_id: int, user_id: int, role: str = ROLE_MEMBER
+    ) -> EsitoIngresso:
+        """
+        Fa entrare un utente nella gilda, con i controlli dentro la
+        stessa transazione: la riga della gilda è bloccata mentre si
+        contano i posti (due ingressi insieme non superano il tetto), e
+        "una sola gilda per server" lo decide il vincolo unico su
+        (guild_id, user_id).
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                gilda = await conn.fetchrow(
+                    "SELECT guild_id, max_members FROM clans WHERE id = $1 FOR UPDATE", clan_id
+                )
+                if gilda is None:
+                    return EsitoIngresso.GILDA_INESISTENTE
+
+                presenti = await conn.fetchval(
+                    "SELECT COUNT(*) FROM clan_members WHERE clan_id = $1", clan_id
+                )
+                if presenti >= gilda["max_members"]:
+                    return EsitoIngresso.GILDA_PIENA
+
+                entrato = await conn.fetchval(
+                    """
+                    INSERT INTO clan_members (clan_id, user_id, role, guild_id)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id) DO NOTHING
+                    RETURNING user_id
+                    """,
+                    clan_id, user_id, role, gilda["guild_id"],
+                )
+                if entrato is None:
+                    return EsitoIngresso.GIA_IN_UNA_GILDA
+                return EsitoIngresso.ENTRATO
 
     async def remove_member(self, clan_id: int, user_id: int) -> bool:
         """Toglie il membro dalla gilda. Se era il co-owner, il posto si libera."""
@@ -517,10 +579,8 @@ class GuildClanRepository:
 
     async def get_member_clan_in_guild(self, guild_id: int, user_id: int) -> Clan | None:
         """Il clan a cui l'utente appartiene in QUESTO server — un
-        utente può stare in un solo clan per server (non specificato
-        esplicitamente, ma implicito nel fatto che il tag forzato sul
-        nickname non avrebbe senso con più clan contemporaneamente
-        nello stesso server)."""
+        utente può stare in un solo clan per server (vincolo unico su
+        clan_members, migrazione 0018)."""
         row = await self._pool.fetchrow(
             """
             SELECT c.* FROM clans c

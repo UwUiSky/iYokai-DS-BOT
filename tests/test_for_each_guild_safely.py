@@ -126,7 +126,10 @@ async def test_decay_settimanale_un_utente_che_fallisce_non_blocca_gli_altri(mon
 async def test_expiry_un_clan_che_fallisce_non_blocca_gli_altri(monkeypatch):
     import core.guild_clan_expiry_worker as modulo
 
-    clan = lambda i: SimpleNamespace(id=i, guild_id=9, category_id=None, tag=f"T{i}")
+    # Gilde scadute con il debito di creazione ancora aperto.
+    clan = lambda i: SimpleNamespace(
+        id=i, guild_id=9, category_id=None, tag=f"T{i}", treasury_balance=-15_000
+    )
     eliminati = []
 
     async def scaduti(adesso):

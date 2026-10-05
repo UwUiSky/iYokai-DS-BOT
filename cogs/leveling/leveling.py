@@ -43,7 +43,10 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.monthly_winners_logic import MEDALS, previous_period_key
-from core.ui_base import BaseView
+# I due aiuti con il trattino servono al bottone degli inviti in gilda:
+# un bottone "dinamico" non passa dalla BaseView, quindi il controllo
+# blacklist e la risposta agli errori vanno chiamati a mano.
+from core.ui_base import BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
 from cogs.leveling._pagine import invia_lista, taglia
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
@@ -73,6 +76,7 @@ from core.guild_clan_logic import (
     voice_ticks_to_hours,
 )
 from core.repositories.guild_clan_repo import (
+    EsitoIngresso,
     REASON_GUILD_BOOST,
     ROLE_ADMIN,
     ROLE_CO_OWNER,
@@ -164,6 +168,109 @@ def _format_seconds(seconds: int) -> str:
     hours = minutes // 60
     remaining_minutes = minutes % 60
     return f"{hours}h {remaining_minutes}m"
+
+
+# Per quanto resta valido un invito in gilda.
+VALIDITA_INVITO_ORE = 24
+
+
+class BottoneInvitoClan(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template=(
+        r"clan_invito:(?P<azione>accetta|rifiuta):"
+        r"(?P<clan_id>\d+):(?P<user_id>\d+):(?P<scadenza>\d+)"
+    ),
+):
+    """
+    Bottone "Accetta" o "Rifiuta" di un invito in gilda (M 9.8). Gilda,
+    invitato e scadenza stanno nel custom_id: dopo un riavvio del bot
+    discord.py ricostruisce il bottone da lì, senza una tabella degli
+    inviti. Va registrato all'avvio con bot.add_dynamic_items (setup).
+    L'invito non scrive nulla: nella gilda si entra solo accettando.
+    """
+
+    def __init__(self, azione: str, clan_id: int, user_id: int, scadenza: int) -> None:
+        accetta = azione == "accetta"
+        super().__init__(
+            discord.ui.Button(
+                label="Accetta" if accetta else "Rifiuta",
+                style=discord.ButtonStyle.success if accetta else discord.ButtonStyle.secondary,
+                custom_id=f"clan_invito:{azione}:{clan_id}:{user_id}:{scadenza}",
+            )
+        )
+        self.azione = azione
+        self.clan_id = clan_id
+        self.user_id = user_id
+        self.scadenza = scadenza
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(
+            match["azione"], int(match["clan_id"]), int(match["user_id"]), int(match["scadenza"])
+        )
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé,
+        # quindi il controllo blacklist si fa qui.
+        if await _utente_o_server_in_blacklist(interaction):
+            return False
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "Questo invito non è per te.", ephemeral=True
+            )
+            return False
+        return True
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        try:
+            await self._rispondi(interaction)
+        except Exception:
+            logger.exception("Errore nel bottone di un invito in gilda")
+            await _rispondi_con_errore(interaction)
+
+    async def _rispondi(self, interaction: discord.Interaction) -> None:
+        if datetime.now(timezone.utc).timestamp() > self.scadenza:
+            await interaction.response.edit_message(
+                content="⌛ Questo invito è scaduto.", view=None
+            )
+            return
+        if self.azione == "rifiuta":
+            await interaction.response.edit_message(
+                content=f"{interaction.user.mention} ha rifiutato l'invito.", view=None
+            )
+            return
+
+        esito = await guild_clan_repo.add_member(self.clan_id, interaction.user.id)
+        if esito == EsitoIngresso.GILDA_INESISTENTE:
+            await interaction.response.edit_message(
+                content="Questa gilda non esiste più.", view=None
+            )
+            return
+        if esito == EsitoIngresso.GIA_IN_UNA_GILDA:
+            await interaction.response.send_message(
+                "Fai già parte di una gilda in questo server: per accettare lasciala prima "
+                "con `/clan lascia`.",
+                ephemeral=True,
+            )
+            return
+        if esito == EsitoIngresso.GILDA_PIENA:
+            await interaction.response.send_message(
+                "La gilda è al completo: riprova quando si libera un posto.", ephemeral=True
+            )
+            return
+
+        guild = interaction.guild
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        nome = taglia(clan.name, MAX_NOME_CLAN) if clan is not None else "la gilda"
+        # Prima la risposta (entro 3 secondi), poi ruoli e permessi.
+        await interaction.response.edit_message(
+            content=f"✅ {interaction.user.mention} è entrato in **{nome}**.", view=None
+        )
+        if clan is not None:
+            categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
+            await sync_member_clan_role(guild, categoria, interaction.user, ROLE_MEMBER)
 
 
 class LevelingCog(commands.Cog):
@@ -1134,16 +1241,18 @@ class LevelingCog(commands.Cog):
             officialize_deadline=scadenza,
         )
         if clan_id is None:
-            # Un'altra creazione con lo stesso tag è arrivata un attimo
-            # prima: la categoria appena creata non serve più.
+            # Un'altra richiesta è arrivata un attimo prima (stesso tag,
+            # oppure il fondatore è appena entrato in un'altra gilda):
+            # la categoria appena creata non serve più.
             try:
-                await categoria.delete(reason=f"Gilda '{tag}' non creata: tag già usato")
+                await categoria.delete(reason=f"Gilda '{tag}' non creata")
             except discord.HTTPException:
                 logger.warning("Impossibile eliminare la categoria %s rimasta senza gilda.", categoria.id)
-            await interaction.followup.send(
-                f"Il tag `{tag}` è già usato da un'altra gilda in questo server.",
-                ephemeral=True,
-            )
+            if await guild_clan_repo.is_tag_taken(guild.id, tag):
+                motivo = f"Il tag `{tag}` è già usato da un'altra gilda in questo server."
+            else:
+                motivo = "Fai già parte di una gilda in questo server."
+            await interaction.followup.send(motivo, ephemeral=True)
             return
         await guild_clan_repo.set_category_id(clan_id, categoria.id)
         await sync_member_clan_role(guild, categoria, interaction.user, ROLE_OWNER)
@@ -1443,6 +1552,12 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        if membro.bot:
+            await interaction.followup.send(
+                "Non puoi invitare un bot in una gilda.", ephemeral=True
+            )
+            return
+
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id) is not None:
             await interaction.followup.send(
                 f"{membro.mention} fa già parte di una gilda in questo server.", ephemeral=True
@@ -1455,13 +1570,54 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        await guild_clan_repo.add_member(clan.id, membro.id, role=ROLE_MEMBER)
+        # M 9.8: l'invitato entra solo se accetta. I controlli qui sopra
+        # servono a dare subito un messaggio chiaro; quelli che contano
+        # si rifanno dentro la scrittura quando preme "Accetta".
+        scadenza = int(
+            (datetime.now(timezone.utc) + timedelta(hours=VALIDITA_INVITO_ORE)).timestamp()
+        )
+        view = BaseView(timeout=None)
+        view.add_item(BottoneInvitoClan("accetta", clan.id, membro.id, scadenza))
+        view.add_item(BottoneInvitoClan("rifiuta", clan.id, membro.id, scadenza))
+        await interaction.followup.send(
+            f"{membro.mention}, {interaction.user.mention} ti invita nella gilda "
+            f"**{taglia(clan.name, MAX_NOME_CLAN)}** (`{clan.tag}`). "
+            f"L'invito scade <t:{scadenza}:R>.",
+            view=view,
+        )
+
+    @clan_group.command(name="lascia", description="Lascia la gilda di cui fai parte.")
+    async def clan_lascia(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        # LIM-25: ruoli e permessi sono più chiamate a Discord.
+        await interaction.response.defer(ephemeral=True)
+
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
+        if clan is None:
+            await interaction.followup.send(
+                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+            )
+            return
+        if clan.owner_id == interaction.user.id:
+            await interaction.followup.send(
+                "Il Capo Clan non può lasciare la gilda — usa `/clan sciogli` per scioglierla.",
+                ephemeral=True,
+            )
+            return
+
+        await guild_clan_repo.remove_member(clan.id, interaction.user.id)
 
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
-        await sync_member_clan_role(guild, categoria, membro, ROLE_MEMBER)
+        await clear_member_clan_presence(guild, categoria, interaction.user)
 
         await interaction.followup.send(
-            f"✅ {membro.mention} è stato invitato in **{clan.name}**."
+            f"Hai lasciato la gilda **{taglia(clan.name, MAX_NOME_CLAN)}**.", ephemeral=True
         )
 
     @clan_group.command(name="espelli", description="[Capo/Admin Clan] Espelli un membro dalla tua gilda.")
@@ -2036,4 +2192,6 @@ async def setup(bot: commands.Bot) -> None:
             premium_capable=False,
         )
     )
+    # Gli inviti in gilda devono funzionare anche dopo un riavvio.
+    bot.add_dynamic_items(BottoneInvitoClan)
     await bot.add_cog(LevelingCog(bot))

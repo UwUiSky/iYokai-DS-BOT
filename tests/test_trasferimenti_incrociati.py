@@ -45,8 +45,9 @@ async def test_trasferimenti_incrociati_tra_tesorerie_non_vanno_in_stallo(clean_
     await apri_connessioni(clean_db)
     repo = GuildClanRepository(pool_provider=lambda: clean_db)
     scadenza = datetime.now(timezone.utc) + timedelta(hours=24)
+    # Stesso capo, due server: una sola gilda per server per utente.
     primo = await repo.create_clan(GUILD_ID, "AAA", "Primo", 1, scadenza)
-    secondo = await repo.create_clan(GUILD_ID, "BBB", "Secondo", 1, scadenza)
+    secondo = await repo.create_clan(GUILD_ID + 1, "BBB", "Secondo", 1, scadenza)
     await repo.donate(primo, 1, 20_000)
     await repo.donate(secondo, 1, 20_000)
 

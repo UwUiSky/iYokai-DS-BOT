@@ -24,6 +24,7 @@ class _FakeResponse:
         self.sent_messages: list[str] = []
         self.sent_embeds: list = []
         self.sent_views: list = []
+        self.edited_messages: list[dict] = []
         # Ordine delle chiamate: serve a controllare che defer() sia la prima.
         self.chiamate: list[str] = []
 
@@ -40,6 +41,11 @@ class _FakeResponse:
 
     async def defer(self, ephemeral: bool = False) -> None:
         self.chiamate.append("defer")
+
+    async def edit_message(self, content: str = None, embed=None, view=None) -> None:
+        """Risposta di un bottone: modifica il messaggio su cui sta."""
+        self.chiamate.append("edit_message")
+        self.edited_messages.append({"content": content, "view": view})
 
 
 class _FakeFollowup:
@@ -192,6 +198,10 @@ class _FakeMember(discord.Member):
     def mention(self):
         return f"<@{self._id_finto}>"
 
+    @property
+    def bot(self) -> bool:
+        return getattr(self, "_e_un_bot", False)
+
     def __hash__(self) -> int:
         return hash(self._id_finto)
 
@@ -233,6 +243,11 @@ async def cog_e_repos(monkeypatch):
     await database.pool.execute("DELETE FROM clan_members")
     await database.pool.execute("DELETE FROM clans")
     await database.pool.execute("DELETE FROM leveling_totals")
+
+    # I bottoni degli inviti controllano la blacklist vera: il database
+    # globale usa lo stesso pool di questo test.
+    import core.database as database_module
+    monkeypatch.setattr(database_module.db, "_pool", database.pool)
 
     clan_repo = GuildClanRepository(pool_provider=lambda: database.pool)
     leveling_repo = LevelingRepository(pool_provider=lambda: database.pool)
@@ -562,6 +577,16 @@ async def _crea_clan_con_categoria(clan_repo, guild, owner_id=1, tag="ABC", max_
     return clan_id, categoria
 
 
+async def _clicca_invito(interazione_invito, guild, invitato, azione: str = "accetta"):
+    """L'invitato preme un bottone del messaggio di invito (M 9.8)."""
+    view = interazione_invito.response.sent_views[0]
+    bottone = next(b for b in view.children if b.azione == azione)
+    clic = _FakeInteraction(guild, user=invitato)
+    if await bottone.interaction_check(clic):
+        await bottone.callback(clic)
+    return clic
+
+
 @pytest.mark.asyncio
 async def test_invita_aggiunge_membro_e_gli_da_accesso_alla_categoria(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
@@ -573,7 +598,12 @@ async def test_invita_aggiunge_membro_e_gli_da_accesso_alla_categoria(cog_e_repo
 
     await cog.clan_invita.callback(cog, interaction, membro=invitato)
 
-    assert "invitato" in interaction.response.sent_messages[0]
+    assert "ti invita" in interaction.response.sent_messages[0]
+    # Senza il suo consenso non entra.
+    assert await clan_repo.get_member(clan_id, 2) is None
+
+    await _clicca_invito(interaction, guild, invitato)
+
     membro_db = await clan_repo.get_member(clan_id, 2)
     assert membro_db is not None
     assert membro_db.role == "member"
@@ -592,7 +622,7 @@ async def test_invita_un_admin_puo_farlo(cog_e_repos):
 
     await cog.clan_invita.callback(cog, interaction, membro=invitato)
 
-    assert "invitato" in interaction.response.sent_messages[0]
+    assert "ti invita" in interaction.response.sent_messages[0]
 
 
 @pytest.mark.asyncio
