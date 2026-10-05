@@ -153,34 +153,34 @@ class EscalationRepository:
     # ================================================================
     # Conteggio infrazioni
     # ================================================================
-    async def get_violation_state(
-        self, guild_id: int, user_id: int
-    ) -> tuple[int, datetime | None]:
-        row = await self._pool.fetchrow(
-            "SELECT violation_count, last_violation_at FROM automod_violations "
-            "WHERE guild_id = $1 AND user_id = $2",
-            guild_id,
-            user_id,
-        )
-        if row is None:
-            return 0, None
-        return row["violation_count"], row["last_violation_at"]
-
     async def record_violation(
-        self, guild_id: int, user_id: int, new_count: int, when: datetime
-    ) -> None:
-        await self._pool.execute(
+        self, guild_id: int, user_id: int, when: datetime, reset_after_days: int
+    ) -> int:
+        """
+        Conta una nuova infrazione e restituisce il conteggio
+        aggiornato. È una sola istruzione SQL: due infrazioni arrivate
+        insieme non possono leggere lo stesso numero e perderne una.
+        Se dall'ultima infrazione sono passati almeno
+        `reset_after_days` giorni (buona condotta), si riparte da 1.
+        """
+        return await self._pool.fetchval(
             """
             INSERT INTO automod_violations (guild_id, user_id, violation_count, last_violation_at)
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, 1, $3)
             ON CONFLICT (guild_id, user_id) DO UPDATE
-                SET violation_count = EXCLUDED.violation_count,
+                SET violation_count = CASE
+                        WHEN automod_violations.last_violation_at
+                             <= EXCLUDED.last_violation_at - make_interval(days => $4)
+                        THEN 1
+                        ELSE automod_violations.violation_count + 1
+                    END,
                     last_violation_at = EXCLUDED.last_violation_at
+            RETURNING violation_count
             """,
             guild_id,
             user_id,
-            new_count,
             when,
+            reset_after_days,
         )
 
     async def reset_violations(self, guild_id: int, user_id: int) -> None:

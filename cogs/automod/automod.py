@@ -36,7 +36,15 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.automod_sync import DesiredRule, ExistingRule, SyncActionType, compute_sync_plan
+from core.automod_sync import (
+    MAX_KEYWORD_LENGTH,
+    MAX_KEYWORD_RULES,
+    DesiredRule,
+    ExistingRule,
+    SyncAction,
+    SyncActionType,
+    compute_sync_plan,
+)
 from core.automod_advanced_logic import (
     AntiLinkConfig,
     AutomodAdvancedConfig,
@@ -53,7 +61,7 @@ from core.automod_advanced_logic import (
     VIOLATION_SPAM_STICKER,
     VIOLATION_ZALGO,
     evaluate_message_violations,
-    extract_domains,
+    normalize_domain,
 )
 from core.automod_rate_tracker import rate_tracker
 from core.repositories.automod_repo import automod_repo
@@ -74,6 +82,17 @@ MODULE_AUTOMOD = "automod"
 # Oltre questa lunghezza /automod badword-list manda l'elenco come file
 # (un messaggio Discord tiene 2000 caratteri).
 MAX_ELENCO_IN_CHAT = 1900
+
+# Discord accetta al massimo 60 caratteri per parola in una regola
+# AutoMod: una parola più lunga farebbe fallire ogni sincronizzazione.
+MAX_LUNGHEZZA_PAROLA = MAX_KEYWORD_LENGTH
+
+# Un nome di dominio è lungo al massimo 253 caratteri.
+MAX_LUNGHEZZA_DOMINIO = 253
+
+# Finestra massima (in secondi) dei filtri anti-spam: il contatore in
+# memoria tiene un valore per ogni evento dentro la finestra.
+MAX_FINESTRA_SECONDI = 300
 
 # Regex di riconoscimento emoji per §6.5 (anti-spam emoji): emoji
 # custom di Discord (`<a?:nome:id>`) + un intervallo unicode ampio
@@ -112,27 +131,39 @@ def _mention_count(message: discord.Message) -> int:
     return len(message.mentions) + len(message.role_mentions) + extra
 
 
-def build_message_signals(message: discord.Message) -> MessageSignals:
+def _finestra(filtro: RateFilterConfig) -> int:
+    """La finestra salvata per il filtro, tenuta tra 1 secondo e il massimo."""
+    return max(1, min(filtro.window_seconds, MAX_FINESTRA_SECONDI))
+
+
+def build_message_signals(
+    message: discord.Message, config: AutomodAdvancedConfig
+) -> MessageSignals:
     """
     Estrae dal messaggio REALE tutto quello che serve alla logica
     pura (core/automod_advanced_logic.py) — i conteggi "nel tempo"
     (rate) passano dal tracker in memoria, mai persistiti (vedi
-    core/automod_rate_tracker.py).
+    core/automod_rate_tracker.py). Ogni conteggio usa la finestra in
+    secondi salvata dall'admin per quel filtro.
     """
     now = discord.utils.utcnow()
     guild_id = message.guild.id
     user_id = message.author.id
 
-    recent_messages = rate_tracker.record_and_count(guild_id, user_id, "messages", now, window_seconds=10)
+    recent_messages = rate_tracker.record_and_count(
+        guild_id, user_id, "messages", now, window_seconds=_finestra(config.anti_spam_messages)
+    )
     recent_attachments = 0
     if message.attachments:
         recent_attachments = rate_tracker.record_and_count(
-            guild_id, user_id, "attachments", now, window_seconds=30
+            guild_id, user_id, "attachments", now,
+            window_seconds=_finestra(config.anti_attachment_spam),
         )
     recent_stickers = 0
     if message.stickers:
         recent_stickers = rate_tracker.record_and_count(
-            guild_id, user_id, "stickers", now, window_seconds=30
+            guild_id, user_id, "stickers", now,
+            window_seconds=_finestra(config.anti_spam_sticker),
         )
 
     return MessageSignals(
@@ -314,18 +345,53 @@ def _build_desired_rules(
     ]
 
 
+AVVISO_TRONCATO = (
+    "Attenzione: una o più regole hanno superato il limite di "
+    "Discord (1000 parole o 10 pattern regex per regola) e "
+    "sono state troncate. Le voci in eccesso non sono state "
+    "applicate."
+)
+AVVISO_TROPPE_REGOLE = (
+    f"Questo server ha già {MAX_KEYWORD_RULES} regole AutoMod a parole "
+    f"chiave, il massimo di Discord: non posso crearne un'altra. "
+    f"Elimina una regola dal pannello di Discord (Impostazioni server → "
+    f"AutoMod) e poi usa `/automod sync`."
+)
+
+
+def _regola_esistente(rule: discord.AutoModRule) -> ExistingRule:
+    return ExistingRule(
+        name=rule.name,
+        keywords=tuple(rule.trigger.keyword_filter or ()),
+        regex_patterns=tuple(rule.trigger.regex_patterns or ()),
+        allow_list=tuple(rule.trigger.allow_list or ()),
+    )
+
+
+def _trigger_completo(action: SyncAction) -> discord.AutoModTrigger:
+    """
+    Trigger con tutti i campi: Discord sostituisce il trigger intero,
+    quindi un campo lasciato fuori (espressioni regolari, lista delle
+    eccezioni) verrebbe cancellato.
+    """
+    return discord.AutoModTrigger(
+        type=discord.AutoModRuleTriggerType.keyword,
+        keyword_filter=list(action.final_keywords),
+        regex_patterns=list(action.final_regex),
+        allow_list=list(action.final_allow_list),
+    )
+
+
 async def _sync_guild(guild: discord.Guild) -> str | None:
     """
-    Esegue davvero la sincronizzazione: legge le regole esistenti da
-    Discord, calcola il piano (logica pura, testata separatamente in
-    tests/test_automod_sync.py), ed esegue create/edit/delete per le
-    azioni che lo richiedono. Dopo ogni azione riuscita, aggiorna
-    anche `automod_last_synced` — è quello che permette al PROSSIMO
-    sync di distinguere correttamente "parole nostre" da "parole
-    dell'admin" (vedi core/automod_sync.py per il perché serve).
+    Allinea le regole AutoMod di Discord alla configurazione salvata:
+    legge le regole, calcola il piano (core/automod_sync.py) ed esegue
+    creazioni, modifiche e cancellazioni. Dopo ogni scrittura riuscita
+    salva in `automod_last_synced` la parte voluta da iYokai: serve al
+    giro dopo per distinguere le nostre parole da quelle dell'admin.
 
-    Restituisce un messaggio di avviso se qualcosa è stato troncato
-    per un limite di Discord, altrimenti None.
+    Restituisce un avviso per l'admin (limite di Discord raggiunto,
+    errore di Discord), altrimenti None.
     """
     try:
         rules = await guild.fetch_automod_rules()
@@ -334,93 +400,87 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
             "Non ho i permessi per leggere/gestire le regole AutoMod "
             "di questo server (serve Manage Server)."
         )
+    except discord.HTTPException as errore:
+        return f"Discord non mi ha fatto leggere le regole AutoMod: {str(errore)[:200]}"
 
-    existing = [
-        ExistingRule(
-            name=rule.name,
-            keywords=tuple(rule.trigger.keyword_filter or ()),
-            regex_patterns=tuple(rule.trigger.regex_patterns or ()),
-        )
-        for rule in rules
-    ]
     # Indicizzato per nome, serve per recuperare l'oggetto AutoModRule
     # vero su cui chiamare .edit()/.delete() quando il piano lo richiede.
     rules_by_name = {rule.name: rule for rule in rules}
+    regole_a_parole = sum(
+        1 for rule in rules if rule.trigger.type == discord.AutoModRuleTriggerType.keyword
+    )
 
     config = await automod_repo.get_config(guild.id)
     last_synced_badwords, _ = await automod_repo.get_last_synced(guild.id, RULE_NAME_BADWORDS)
     _, last_synced_invite_regex = await automod_repo.get_last_synced(guild.id, RULE_NAME_INVITES)
 
+    # Una parola oltre il limite farebbe rifiutare a Discord tutta la
+    # regola: la si lascia fuori e lo si dice.
+    parole_valide = tuple(w for w in config.custom_badwords if len(w) <= MAX_KEYWORD_LENGTH)
+    parole_troppo_lunghe = len(config.custom_badwords) - len(parole_valide)
+
     desired = _build_desired_rules(
-        config.custom_badwords,
+        parole_valide,
         config.block_invites,
         last_synced_badwords,
         last_synced_invite_regex,
     )
+    plan = compute_sync_plan([_regola_esistente(rule) for rule in rules], desired)
 
-    plan = compute_sync_plan(existing, desired)
+    avvisi: list[str] = []
+    if parole_troppo_lunghe:
+        avvisi.append(
+            f"{parole_troppo_lunghe} parole superano i {MAX_KEYWORD_LENGTH} caratteri "
+            f"ammessi da Discord e non sono state applicate."
+        )
+    if any(action.truncated for action in plan):
+        avvisi.append(AVVISO_TRONCATO)
 
-    truncated_any = False
     for action in plan:
-        truncated_any = truncated_any or action.truncated
-
         if action.action == SyncActionType.SKIP:
             continue
 
-        if action.action == SyncActionType.DELETE:
-            existing_rule = rules_by_name.get(action.name)
-            if existing_rule is not None:
-                await existing_rule.delete(reason="Nessun contenuto residuo da mantenere")
-            await automod_repo.clear_last_synced(guild.id, action.name)
+        try:
+            if action.action == SyncActionType.DELETE:
+                existing_rule = rules_by_name.get(action.name)
+                if existing_rule is not None:
+                    await existing_rule.delete(reason="Nessun contenuto residuo da mantenere")
+                    regole_a_parole -= 1
+                await automod_repo.clear_last_synced(guild.id, action.name)
+                continue
+
+            if action.action == SyncActionType.CREATE:
+                if regole_a_parole >= MAX_KEYWORD_RULES:
+                    avvisi.append(AVVISO_TROPPE_REGOLE)
+                    continue
+                await guild.create_automod_rule(
+                    name=action.name,
+                    event_type=discord.AutoModRuleEventType.message_send,
+                    trigger=_trigger_completo(action),
+                    actions=[
+                        discord.AutoModRuleAction(type=discord.AutoModRuleActionType.block_message)
+                    ],
+                    enabled=True,
+                    reason="Sincronizzazione automatica iYokai AutoMod",
+                )
+                regole_a_parole += 1
+            else:
+                await rules_by_name[action.name].edit(
+                    trigger=_trigger_completo(action),
+                    reason="Sincronizzazione automatica iYokai AutoMod",
+                )
+        except discord.HTTPException as errore:
+            # last_synced resta quello vecchio: al prossimo giro si riprova.
+            avvisi.append(
+                f"Discord ha rifiutato la regola «{action.name}»: {str(errore)[:200]}"
+            )
             continue
 
-        actions_payload = [
-            discord.AutoModRuleAction(type=discord.AutoModRuleActionType.block_message)
-        ]
-
-        if action.name == RULE_NAME_BADWORDS:
-            trigger = discord.AutoModTrigger(
-                type=discord.AutoModRuleTriggerType.keyword,
-                keyword_filter=list(action.final_keywords),
-            )
-        else:
-            trigger = discord.AutoModTrigger(
-                type=discord.AutoModRuleTriggerType.keyword,
-                regex_patterns=list(action.final_regex),
-            )
-
-        if action.action == SyncActionType.CREATE:
-            await guild.create_automod_rule(
-                name=action.name,
-                event_type=discord.AutoModRuleEventType.message_send,
-                trigger=trigger,
-                actions=actions_payload,
-                enabled=True,
-                reason="Sincronizzazione automatica iYokai AutoMod",
-            )
-        elif action.action == SyncActionType.UPDATE:
-            existing_rule = rules_by_name[action.name]
-            await existing_rule.edit(
-                trigger=trigger,
-                reason="Sincronizzazione automatica iYokai AutoMod",
-            )
-
-        # Registra cosa abbiamo scritto DAVVERO, solo dopo che la
-        # chiamata a Discord è andata a buon fine — se fosse fallita,
-        # l'eccezione avrebbe già interrotto il ciclo prima di questa
-        # riga, e last_synced resterebbe correttamente quello vecchio.
         await automod_repo.set_last_synced(
-            guild.id, action.name, action.final_keywords, action.final_regex
+            guild.id, action.name, action.own_keywords, action.own_regex
         )
 
-    if truncated_any:
-        return (
-            "Attenzione: una o più regole hanno superato il limite di "
-            "Discord (1000 parole o 10 pattern regex per regola) e "
-            "sono state troncate. Le voci in eccesso non sono state "
-            "applicate."
-        )
-    return None
+    return "\n".join(dict.fromkeys(avvisi)) or None
 
 
 class AutomodCog(commands.Cog):
@@ -432,9 +492,13 @@ class AutomodCog(commands.Cog):
     )
 
     @automod_group.command(name="badword-add", description="Aggiunge una parola vietata.")
-    @app_commands.describe(word="La parola da vietare")
+    @app_commands.describe(word="La parola da vietare (massimo 60 caratteri)")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def badword_add(self, interaction: discord.Interaction, word: str) -> None:
+    async def badword_add(
+        self,
+        interaction: discord.Interaction,
+        word: app_commands.Range[str, 1, MAX_LUNGHEZZA_PAROLA],
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
 
@@ -448,9 +512,13 @@ class AutomodCog(commands.Cog):
         await interaction.followup.send(messaggio, ephemeral=True)
 
     @automod_group.command(name="badword-remove", description="Rimuove una parola vietata.")
-    @app_commands.describe(word="La parola da rimuovere")
+    @app_commands.describe(word="La parola da rimuovere (massimo 60 caratteri)")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def badword_remove(self, interaction: discord.Interaction, word: str) -> None:
+    async def badword_remove(
+        self,
+        interaction: discord.Interaction,
+        word: app_commands.Range[str, 1, MAX_LUNGHEZZA_PAROLA],
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
 
@@ -562,12 +630,20 @@ class AutomodCog(commands.Cog):
         interaction: discord.Interaction,
         action: app_commands.Choice[str],
         lista: app_commands.Choice[str],
-        domain: str,
+        domain: app_commands.Range[str, 1, MAX_LUNGHEZZA_DOMINIO],
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
+        # Si salva il solo nome host: "https://www.Evil.com:443/x" e
+        # "evil.com" sono la stessa voce.
+        dominio = normalize_domain(domain)
+        if not dominio:
+            await interaction.response.send_message(
+                "Non riconosco un dominio in quello che hai scritto. Esempio: `esempio.com`.",
+                ephemeral=True,
+            )
+            return
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
-        dominio = domain.strip().lower()
         attuale = settings.config.anti_link.whitelist if lista.value == "whitelist" else settings.config.anti_link.blacklist
 
         if action.value == "add":
@@ -587,10 +663,14 @@ class AutomodCog(commands.Cog):
         )
 
     @automod_group.command(name="anti-spam-messages", description="Configura l'anti-spam messaggi (troppi messaggi in poco tempo).")
-    @app_commands.describe(enabled="Attiva/disattiva", max_messages="Numero massimo consentito", seconds="Finestra in secondi")
+    @app_commands.describe(enabled="Attiva/disattiva", max_messages="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_messages(
-        self, interaction: discord.Interaction, enabled: bool, max_messages: int = 5, seconds: int = 10
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        max_messages: int = 5,
+        seconds: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] = 10,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -620,10 +700,14 @@ class AutomodCog(commands.Cog):
         )
 
     @automod_group.command(name="anti-spam-sticker", description="Configura l'anti-spam sticker (troppi sticker in poco tempo).")
-    @app_commands.describe(enabled="Attiva/disattiva", max_sticker="Numero massimo consentito", seconds="Finestra in secondi")
+    @app_commands.describe(enabled="Attiva/disattiva", max_sticker="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_sticker(
-        self, interaction: discord.Interaction, enabled: bool, max_sticker: int = 3, seconds: int = 30
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        max_sticker: int = 3,
+        seconds: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] = 30,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -682,10 +766,14 @@ class AutomodCog(commands.Cog):
         )
 
     @automod_group.command(name="anti-attachment", description="Configura l'anti-attachment-spam (troppi allegati in poco tempo).")
-    @app_commands.describe(enabled="Attiva/disattiva", max_attachments="Numero massimo consentito", seconds="Finestra in secondi")
+    @app_commands.describe(enabled="Attiva/disattiva", max_attachments="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_attachment(
-        self, interaction: discord.Interaction, enabled: bool, max_attachments: int = 5, seconds: int = 30
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        max_attachments: int = 5,
+        seconds: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] = 30,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -855,7 +943,7 @@ class AutomodCog(commands.Cog):
         if is_member_exempt(message.author, settings, message.channel.id):
             return
 
-        segnali = build_message_signals(message)
+        segnali = build_message_signals(message, settings.config)
         violazioni = evaluate_message_violations(segnali, settings.config)
         if not violazioni:
             return

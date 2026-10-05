@@ -181,3 +181,141 @@ class TestResolveJoinInvite:
         # Anche un None risolto resta in cache (non ri-diffato al
         # prossimo giro per la stessa coppia).
         assert (100, 999) in tracker._join_results
+
+
+# ====================================================================
+# M 3.17 (LC-6): ingressi insieme — attribuzione giusta o "sconosciuto"
+# ====================================================================
+class _ServerVivo:
+    """
+    Server finto con inviti che cambiano mentre il bot li legge:
+    `invites()` impiega un attimo (come una chiamata vera) e risponde
+    con i contatori di quel momento.
+    """
+
+    def __init__(self, guild_id: int, usi: dict[str, int]) -> None:
+        self.id = guild_id
+        self.usi = dict(usi)
+        self.letture = 0
+
+    def entra_con(self, codice: str | None) -> None:
+        """Un membro entra; None = ingresso senza invito tracciabile (vanity URL)."""
+        if codice is not None:
+            self.usi[codice] = self.usi.get(codice, 0) + 1
+
+    async def invites(self) -> list[_FakeInvite]:
+        self.letture += 1
+        await asyncio.sleep(0.01)
+        return [_FakeInvite(codice, usi, inviter_id=42) for codice, usi in self.usi.items()]
+
+
+class TestIngressiInsieme:
+    @pytest.mark.asyncio
+    async def test_ingresso_senza_invito_non_ruba_l_invito_di_chi_entra_insieme(self):
+        # A entra dal vanity URL (nessun contatore sale), B con l'invito
+        # "yyy", nello stesso istante. Prima A risultava entrato con "yyy".
+        tracker = InviteTracker()
+        server = _ServerVivo(100, {"xxx": 0, "yyy": 0})
+        await tracker.refresh_guild(server)
+        server.entra_con(None)
+        server.entra_con("yyy")
+
+        di_a, di_b = await asyncio.gather(
+            tracker.resolve_join_invite(server, member_id=1),
+            tracker.resolve_join_invite(server, member_id=2),
+        )
+
+        assert di_a is None, "A non ha usato nessun invito: deve restare sconosciuto"
+        assert di_b in (None, ("yyy", 42))
+
+    @pytest.mark.asyncio
+    async def test_due_ingressi_insieme_con_inviti_diversi(self):
+        tracker = InviteTracker()
+        server = _ServerVivo(100, {"xxx": 0, "yyy": 0})
+        await tracker.refresh_guild(server)
+        server.entra_con("xxx")
+        server.entra_con("yyy")
+
+        di_a, di_b = await asyncio.gather(
+            tracker.resolve_join_invite(server, member_id=1),
+            tracker.resolve_join_invite(server, member_id=2),
+        )
+
+        assert di_a in (None, ("xxx", 42))
+        assert di_b in (None, ("yyy", 42))
+
+    @pytest.mark.asyncio
+    async def test_raid_con_lo_stesso_invito_viene_attribuito_a_tutti(self):
+        tracker = InviteTracker()
+        server = _ServerVivo(100, {"raid": 3, "altro": 0})
+        await tracker.refresh_guild(server)
+        for _ in range(4):
+            server.entra_con("raid")
+
+        risultati = await asyncio.gather(
+            *(tracker.resolve_join_invite(server, member_id=numero) for numero in range(1, 5))
+        )
+
+        assert risultati == [("raid", 42)] * 4
+
+    @pytest.mark.asyncio
+    async def test_raid_con_ingressi_uno_dopo_l_altro_ma_gia_contati(self):
+        # Discord ha già contato tutti e tre gli usi quando il bot
+        # guarda per il primo: gli altri due non vedono più differenze.
+        tracker = InviteTracker()
+        server = _ServerVivo(100, {"raid": 0})
+        await tracker.refresh_guild(server)
+        for _ in range(3):
+            server.entra_con("raid")
+
+        risultati = [
+            await tracker.resolve_join_invite(server, member_id=numero) for numero in (1, 2, 3)
+        ]
+
+        assert risultati == [("raid", 42)] * 3
+
+    @pytest.mark.asyncio
+    async def test_usi_gia_attribuiti_non_restano_validi_a_lungo(self):
+        from core.invite_tracker import DURATA_USI_IN_SOSPESO
+
+        adesso = [1000.0]
+        tracker = InviteTracker(orologio=lambda: adesso[0])
+        server = _ServerVivo(100, {"raid": 0})
+        await tracker.refresh_guild(server)
+        for _ in range(3):
+            server.entra_con("raid")
+        assert await tracker.resolve_join_invite(server, member_id=1) == ("raid", 42)
+
+        # Più tardi entra qualcuno dal vanity URL: non è un uso di "raid".
+        adesso[0] += DURATA_USI_IN_SOSPESO + 1
+        assert await tracker.resolve_join_invite(server, member_id=2) is None
+
+    @pytest.mark.asyncio
+    async def test_stesso_ingresso_chiesto_da_due_moduli_non_conta_come_due_persone(self):
+        tracker = InviteTracker()
+        server = _ServerVivo(100, {"xxx": 0})
+        await tracker.refresh_guild(server)
+        server.entra_con("xxx")
+
+        risultati = await asyncio.gather(
+            tracker.resolve_join_invite(server, member_id=1),
+            tracker.resolve_join_invite(server, member_id=1),
+        )
+
+        assert risultati == [("xxx", 42), ("xxx", 42)]
+        assert server.letture == 2  # refresh iniziale + una sola lettura per l'ingresso
+
+    @pytest.mark.asyncio
+    async def test_niente_resta_in_memoria_dopo_gli_ingressi(self):
+        tracker = InviteTracker()
+        server = _ServerVivo(100, {"xxx": 0})
+        await tracker.refresh_guild(server)
+        server.entra_con("xxx")
+
+        await asyncio.gather(
+            tracker.resolve_join_invite(server, member_id=1),
+            tracker.resolve_join_invite(server, member_id=2),
+        )
+
+        assert tracker._guild_locks == {}
+        assert tracker._in_corso == {}

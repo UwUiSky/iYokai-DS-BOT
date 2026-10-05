@@ -55,9 +55,12 @@ def test_appeal_actions_view_si_istanzia_correttamente():
     assert view.case_number == 1
     assert view.user_id == 42
 
-    bottoni = [c for c in view.children if isinstance(c, discord.ui.Button)]
-    etichette = {b.label for b in bottoni}
-    assert {"Unban", "Reject", "Reply"} <= etichette
+    # Ogni bottone è un AppealButton (bottone con custom_id "parlante").
+    etichette = {figlio.item.label for figlio in view.children}
+    assert etichette == {"Unban", "Reject", "Reply"}
+    # SMOKE_RULES: una view che deve vivere oltre un riavvio è persistente.
+    assert view.timeout is None
+    assert view.is_persistent()
 
 
 def test_staff_reply_modal_si_istanzia_correttamente():

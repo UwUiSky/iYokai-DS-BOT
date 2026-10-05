@@ -40,10 +40,14 @@ Se il merge supera questi limiti, il risultato viene TRONCATO (non
 si solleva un errore): il chiamante riceve un flag `truncated=True`
 per poterlo segnalare all'amministratore, invece di far fallire
 silenziosamente la sincronizzazione.
-"""
+- Ogni parola è lunga al massimo 60 caratteri e un server tiene al
+  massimo 6 regole a parole chiave: i due numeri sono qui sotto, il
+  controllo lo fa il cog.
 
-# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
+Il piano porta sempre TUTTI i campi del trigger (parole, espressioni
+regolari, lista delle eccezioni): una modifica su Discord sostituisce
+il trigger intero, quindi un campo lasciato fuori verrebbe cancellato.
+"""
 
 from __future__ import annotations
 
@@ -53,6 +57,8 @@ from enum import Enum
 
 DEFAULT_MAX_KEYWORDS = 1000
 DEFAULT_MAX_REGEX = 10
+MAX_KEYWORD_LENGTH = 60
+MAX_KEYWORD_RULES = 6
 
 # Prefisso con cui iYokai marca le regole che gestisce lui stesso.
 # Solo le regole con questo prefisso nel nome vengono mai aggiornate:
@@ -75,6 +81,7 @@ class ExistingRule:
     name: str
     keywords: tuple[str, ...] = ()
     regex_patterns: tuple[str, ...] = ()
+    allow_list: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -105,11 +112,26 @@ class DesiredRule:
 
 @dataclass(frozen=True)
 class SyncAction:
+    """
+    Cosa fare per una regola. `final_*` è il contenuto completo da
+    scrivere su Discord. `own_*` è la parte voluta da iYokai: è quella
+    da salvare come "ultimo sync", così al giro dopo ciò che l'admin ha
+    aggiunto a mano resta riconoscibile come suo.
+    """
     action: SyncActionType
     name: str
     final_keywords: tuple[str, ...]
     final_regex: tuple[str, ...]
     truncated: bool = False
+    final_allow_list: tuple[str, ...] = ()
+    own_keywords: tuple[str, ...] = ()
+    own_regex: tuple[str, ...] = ()
+
+
+def _solo_presenti(voluti: tuple[str, ...], finali: tuple[str, ...]) -> tuple[str, ...]:
+    """Le voci volute da iYokai che sono davvero finite nella regola."""
+    insieme_finali = set(finali)
+    return tuple(voce for voce in voluti if voce in insieme_finali)
 
 
 def _merge_preserving_order(existing: tuple[str, ...], new: tuple[str, ...]) -> list[str]:
@@ -182,6 +204,8 @@ def compute_sync_plan(
                     final_keywords=tuple(keywords[:max_keywords]),
                     final_regex=tuple(regex[:max_regex]),
                     truncated=truncated,
+                    own_keywords=tuple(keywords[:max_keywords]),
+                    own_regex=tuple(regex[:max_regex]),
                 )
             )
             continue
@@ -238,6 +262,9 @@ def compute_sync_plan(
                     final_keywords=final_keywords,
                     final_regex=final_regex,
                     truncated=truncated,
+                    final_allow_list=existing.allow_list,
+                    own_keywords=_solo_presenti(desired.keywords, final_keywords),
+                    own_regex=_solo_presenti(desired.regex_patterns, final_regex),
                 )
             )
 

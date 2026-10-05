@@ -5,45 +5,7 @@ Test di core/escalation_ladder_logic.py — logica pura, nessuna
 dipendenza da Discord.
 """
 
-from datetime import datetime, timedelta, timezone
-
-from core.escalation_ladder_logic import (
-    LadderStep,
-    get_ladder_action,
-    next_violation_count,
-    should_reset_violation_count,
-)
-
-
-class TestShouldResetViolationCount:
-    def test_nessuna_infrazione_precedente_non_e_da_resettare(self):
-        assert should_reset_violation_count(None, reset_after_days=7) is False
-
-    def test_infrazione_recente_non_resetta(self):
-        ora = datetime(2026, 1, 10, tzinfo=timezone.utc)
-        ultima = ora - timedelta(days=1)
-        assert should_reset_violation_count(ultima, reset_after_days=7, now=ora) is False
-
-    def test_infrazione_abbastanza_vecchia_resetta(self):
-        ora = datetime(2026, 1, 10, tzinfo=timezone.utc)
-        ultima = ora - timedelta(days=10)
-        assert should_reset_violation_count(ultima, reset_after_days=7, now=ora) is True
-
-    def test_esattamente_al_confine_resetta(self):
-        ora = datetime(2026, 1, 10, tzinfo=timezone.utc)
-        ultima = ora - timedelta(days=7)
-        assert should_reset_violation_count(ultima, reset_after_days=7, now=ora) is True
-
-
-class TestNextViolationCount:
-    def test_senza_reset_incrementa(self):
-        assert next_violation_count(current_count=2, should_reset=False) == 3
-
-    def test_con_reset_riparte_da_uno(self):
-        assert next_violation_count(current_count=5, should_reset=True) == 1
-
-    def test_da_zero_senza_reset(self):
-        assert next_violation_count(current_count=0, should_reset=False) == 1
+from core.escalation_ladder_logic import LadderStep, get_ladder_action
 
 
 class TestGetLadderAction:

@@ -38,13 +38,21 @@ diversi sullo stesso evento — fa il lavoro reale una sola volta (un
 Ogni nuovo modulo che deve sapere "con quale invito è entrato questo
 membro" chiama questo metodo, mai `find_used_invite()` direttamente.
 
+**Ingressi insieme nello stesso server.** Gli ingressi di un server si
+risolvono uno alla volta (un `asyncio.Lock` per server). La regola è
+"giusto o sconosciuto": se è salito il contatore di un solo invito e
+gli usi bastano per tutti quelli che stanno entrando insieme, l'invito
+è di tutti (caso tipico: un raid da un solo invito); gli usi in più
+restano "in sospeso" per pochi secondi per gli ingressi che arrivano
+subito dopo. Se gli usi sono meno delle persone, o sono saliti più
+inviti, non si indovina: risultato `None`.
+
 Limiti onesti (già noti, non scoperti a sorpresa):
 - Non funziona con i join tramite vanity URL (non è un invito con
   un codice tracciabile nello stesso modo)
 - Richiede il permesso MANAGE_GUILD per leggere guild.invites()
-- Se due persone entrano nello stesso istante con inviti diversi tra
-  un fetch e l'altro, il caso è ambiguo e diff_invite_uses()
-  (core/spam_trap_logic.py) restituisce None piuttosto che indovinare
+- Chi entra dal vanity URL entro pochi secondi da un raid può
+  risultare entrato con l'invito del raid
 Affidabilità pratica: alta ma non totale, coerente con quanto già
 notato nello schema di progetto originale (~90%).
 """
@@ -56,6 +64,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 import discord
 
@@ -74,9 +83,17 @@ logger = logging.getLogger("iyokai.invite_tracker")
 # all'obiettivo dei 10.000 server dichiarato nel piano originale.
 DEFAULT_MAX_TRACKED_GUILDS = 5000
 
+# Per quanti secondi gli usi di un invito già visti ma non ancora
+# attribuiti (raid: il contatore sale di 5 in un colpo) restano validi
+# per gli ingressi che arrivano subito dopo.
+DURATA_USI_IN_SOSPESO = 10
+
 
 class InviteTracker:
-    def __init__(self, max_tracked_guilds: int = DEFAULT_MAX_TRACKED_GUILDS) -> None:
+    def __init__(
+        self, max_tracked_guilds: int = DEFAULT_MAX_TRACKED_GUILDS, orologio=time.monotonic
+    ) -> None:
+        self._orologio = orologio
         # {guild_id: {invite_code: uses}}
         self._cache: BoundedCache[int, dict[str, int]] = BoundedCache(max_tracked_guilds)
         # {guild_id: {invite_code: inviter_id}} — per risalire a chi
@@ -93,12 +110,17 @@ class InviteTracker:
         self._join_results: BoundedCache[tuple[int, int], tuple[str, int | None] | None] = (
             BoundedCache(max_tracked_guilds * 4)
         )
-        # Un lock per coppia (guild_id, member_id) mentre la
-        # risoluzione è in corso, per far sì che chiamate concorrenti
-        # per lo STESSO join aspettino il risultato invece di
-        # innescare ciascuna il proprio diff (che si pesterebbero i
-        # piedi, vedi nota in cima al file).
-        self._join_locks: dict[tuple[int, int], asyncio.Lock] = {}
+        # Un lock per SERVER: gli ingressi di un server si risolvono
+        # uno alla volta, così ognuno confronta contatori coerenti.
+        # Lock e insieme dei membri "in corso" esistono solo mentre
+        # c'è almeno un ingresso da risolvere per quel server.
+        self._guild_locks: dict[int, asyncio.Lock] = {}
+        self._in_corso: dict[int, set[int]] = {}
+        # {guild_id: (codice, usi rimasti, scadenza)} — usi di un
+        # invito già visti e non ancora attribuiti (vedi nota in cima).
+        self._in_sospeso: BoundedCache[int, tuple[str, int, float]] = BoundedCache(
+            max_tracked_guilds
+        )
 
     async def refresh_guild(self, guild: discord.Guild) -> None:
         """
@@ -191,17 +213,88 @@ class InviteTracker:
         if key in self._join_results:
             return self._join_results.get(key)
 
-        lock = self._join_locks.setdefault(key, asyncio.Lock())
-        async with lock:
-            # Un altro chiamante potrebbe aver già risolto questa
-            # stessa coppia mentre aspettavamo il lock.
-            if key in self._join_results:
-                return self._join_results.get(key)
+        # Nessun `await` tra queste righe e l'attesa del lock: chi
+        # sta già lavorando vede subito che c'è un altro ingresso.
+        in_corso = self._in_corso.setdefault(guild.id, set())
+        in_corso.add(member_id)
+        lock = self._guild_locks.setdefault(guild.id, asyncio.Lock())
+        try:
+            async with lock:
+                # Un altro chiamante potrebbe aver già risolto questa
+                # stessa coppia mentre aspettavamo il lock.
+                if key in self._join_results:
+                    return self._join_results.get(key)
 
-            risultato = await self.find_used_invite(guild)
-            self._join_results.set(key, risultato)
-            self._join_locks.pop(key, None)
-            return risultato
+                risultato = await self._risolvi(guild, member_id, in_corso)
+                self._join_results.set(key, risultato)
+                return risultato
+        finally:
+            in_corso.discard(member_id)
+            if not in_corso:
+                self._in_corso.pop(guild.id, None)
+                self._guild_locks.pop(guild.id, None)
+
+    def _usi_in_sospeso(self, guild_id: int) -> tuple[str, int] | None:
+        sospeso = self._in_sospeso.get(guild_id)
+        if sospeso is None:
+            return None
+        codice, usi, scadenza = sospeso
+        if usi <= 0 or self._orologio() > scadenza:
+            self._in_sospeso.delete(guild_id)
+            return None
+        return codice, usi
+
+    async def _risolvi(
+        self, guild: discord.Guild, member_id: int, in_corso: set[int]
+    ) -> tuple[str, int | None] | None:
+        """
+        Un ingresso, dentro il lock del server. Vedi "Ingressi insieme"
+        in cima al file per la regola.
+        """
+        prima = dict(self._cache.get(guild.id, {}) or {})
+        try:
+            invites_attuali = await guild.invites()
+        except (discord.Forbidden, discord.HTTPException):
+            return None
+
+        dopo = {invite.code: invite.uses or 0 for invite in invites_attuali}
+        inviters_dopo = {
+            invite.code: (invite.inviter.id if invite.inviter else None)
+            for invite in invites_attuali
+        }
+        self._cache.set(guild.id, dopo)
+        self._inviters.set(guild.id, inviters_dopo)
+
+        # Usi nuovi per invito. Un invito che prima non c'era non
+        # conta (stessa prudenza di diff_invite_uses).
+        usi = {
+            codice: dopo[codice] - prima[codice]
+            for codice in dopo
+            if codice in prima and dopo[codice] > prima[codice]
+        }
+        sospeso = self._usi_in_sospeso(guild.id)
+        if sospeso is not None:
+            usi[sospeso[0]] = usi.get(sospeso[0], 0) + sospeso[1]
+
+        if len(usi) != 1:
+            return None  # nessun invito, oppure più di uno: non si indovina
+
+        (codice, disponibili), = usi.items()
+        # Gli altri ingressi dello stesso server arrivati nel frattempo.
+        altri = len(in_corso - {member_id})
+        if disponibili < 1 + altri:
+            # Meno usi che persone entrate insieme: qualcuno è entrato
+            # senza invito tracciabile, e non si può sapere chi.
+            self._in_sospeso.delete(guild.id)
+            return None
+
+        if disponibili > 1:
+            self._in_sospeso.set(
+                guild.id, (codice, disponibili - 1, self._orologio() + DURATA_USI_IN_SOSPESO)
+            )
+        else:
+            self._in_sospeso.delete(guild.id)
+        return codice, inviters_dopo.get(codice)
 
 
 # Istanza unica, condivisa da tutto il progetto — coerente con

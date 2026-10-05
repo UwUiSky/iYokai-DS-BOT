@@ -30,13 +30,11 @@ il contenuto viene sempre recuperato via fetch REST esplicito
 reale. Assunzione sul comportamento reale dell'API Discord, da
 verificare sul server di test.
 
-Scope scelto per l'appeal — view NON persistente: a differenza dei
-pannelli ticket/vocali (che restano pubblicati per mesi), una
-conversazione di appeal è per natura di breve durata. La view ha un
-timeout di 7 giorni; se il bot si riavvia nel mezzo di un appeal
-aperto, i bottoni di quella specifica conversazione smettono di
-rispondere (l'utente può comunque riscrivere in DM per riaprirla,
-soggetto al cooldown di 24h). Scelta dichiarata, non un errore.
+I bottoni dell'appello (Unban, Reject, Reply) sono persistenti: il
+loro custom_id porta server, caso e utente, e setup() li registra con
+`bot.add_dynamic_items`. Rispondono anche dopo un riavvio del bot.
+
+Funzioni coperte: SPEC §7.3
 """
 
 # DA FARE (issue #59, fase F1): correzioni aperte per questo file in
@@ -66,13 +64,15 @@ from core.image_thumbnail_logic import (
 )
 from core.safe_image import run_spam_trap_image_task
 from core.invite_tracker import invite_tracker
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, registry, requires_module
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
+from core.security_access import premium_sbloccato
 from core.spam_trap_logic import (
     BAN_ACTION_TYPE,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
     can_appeal,
+    format_deleted_channels,
     latest_case_per_guild,
     partition_messages_for_deletion,
     purge_window,
@@ -87,6 +87,14 @@ MODULE_SPAM_TRAP = "spam_trap"
 
 TRAP_CHANNEL_DEFAULT_NAME = "spam-trap"
 LOG_CHANNEL_DEFAULT_NAME = "spam-log"
+
+# Peso massimo del transcript allegato a un appello. discord.py accetta
+# file fino a 10 MiB (LIMITI.md, LIM-55): si resta sotto con margine, e
+# sotto il limite del server se è più basso.
+MAX_TRANSCRIPT_BYTES = 8 * 1024 * 1024
+
+# Il testo dell'appello finisce nella descrizione di un embed (4096).
+MAX_TESTO_APPELLO = 3500
 
 # SEC-8b: ruoli staff esentati dalla trappola, oltre a chi ha già
 # "Gestisci messaggi"/"Amministratore" o un ruolo sopra quello del
@@ -156,18 +164,92 @@ def _ban_dm_description(guild_name: str) -> str:
     )
 
 
-class AppealActionsView(BaseView):
+# custom_id dei bottoni dell'appello: dentro ci sono l'azione, il
+# server, il numero del caso e l'utente. Così il bottone si spiega da
+# solo e funziona anche dopo un riavvio del bot, senza tenere niente
+# in memoria (al massimo 74 caratteri sui 100 ammessi).
+MODELLO_ID_APPELLO = (
+    r"spamtrap_appeal:(?P<azione>unban|reject|reply)"
+    r":(?P<guild_id>\d+):(?P<case_number>\d+):(?P<user_id>\d+)"
+)
+
+_BOTTONI_APPELLO = {
+    "unban": ("Unban", discord.ButtonStyle.success),
+    "reject": ("Reject", discord.ButtonStyle.danger),
+    "reply": ("Reply", discord.ButtonStyle.secondary),
+}
+
+
+class AppealButton(discord.ui.DynamicItem[discord.ui.Button], template=MODELLO_ID_APPELLO):
     """
-    Bottoni per la gestione dell'appeal, mostrati nel thread privato
-    in #spam-log. NON persistente — vedi la nota in cima al file per
-    il motivo della scelta.
+    Un bottone dell'appello. discord.py lo ricostruisce dal custom_id a
+    ogni clic (`bot.add_dynamic_items` in setup()): per questo risponde
+    anche su messaggi mandati prima dell'ultimo riavvio. Controlli ed
+    esecuzione sono quelli di AppealActionsView.
     """
 
-    def __init__(self, guild_id: int, case_number: int, user_id: int) -> None:
-        super().__init__(timeout=7 * 24 * 3600)
+    def __init__(
+        self, azione: str, guild_id: int, case_number: int, user_id: int, *, disabled: bool = False
+    ) -> None:
+        etichetta, stile = _BOTTONI_APPELLO[azione]
+        super().__init__(
+            discord.ui.Button(
+                label=etichetta,
+                style=stile,
+                disabled=disabled,
+                custom_id=f"spamtrap_appeal:{azione}:{guild_id}:{case_number}:{user_id}",
+            )
+        )
+        self.azione = azione
         self.guild_id = guild_id
         self.case_number = case_number
         self.user_id = user_id
+
+    @classmethod
+    async def from_custom_id(
+        cls, interaction: discord.Interaction, item: discord.ui.Button, match
+    ) -> "AppealButton":
+        return cls(
+            match["azione"],
+            int(match["guild_id"]),
+            int(match["case_number"]),
+            int(match["user_id"]),
+        )
+
+    def _vista(self) -> "AppealActionsView":
+        return AppealActionsView(self.guild_id, self.case_number, self.user_id)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # Blacklist (SEC-10) e permesso di bannare: i controlli sono
+        # quelli della vista, gli stessi di prima del riavvio.
+        return await self._vista().interaction_check(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        vista = self._vista()
+        try:
+            await getattr(vista, self.azione)(interaction)
+        except Exception as errore:
+            await vista.on_error(interaction, errore, self)
+
+
+class AppealActionsView(BaseView):
+    """
+    Bottoni per la gestione dell'appeal, mostrati nel thread privato
+    in #spam-log. Persistente: nessuna scadenza, e ogni bottone porta
+    nel custom_id il caso a cui si riferisce (vedi AppealButton).
+    """
+
+    def __init__(
+        self, guild_id: int, case_number: int, user_id: int, *, disabled: bool = False
+    ) -> None:
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        self.case_number = case_number
+        self.user_id = user_id
+        for azione in _BOTTONI_APPELLO:
+            self.add_item(AppealButton(azione, guild_id, case_number, user_id, disabled=disabled))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # SEC-10: blacklist PRIMA di tutto (BaseView) — se rifiuta
@@ -194,32 +276,40 @@ class AppealActionsView(BaseView):
     async def _disable_and_update(
         self, interaction: discord.Interaction, content: str
     ) -> None:
-        for child in self.children:
-            child.disabled = True
-        self.stop()
-        await interaction.response.edit_message(content=content, view=self)
+        """Dopo il `defer`: spegne i bottoni e scrive l'esito sul messaggio."""
+        spenta = AppealActionsView(self.guild_id, self.case_number, self.user_id, disabled=True)
+        try:
+            await interaction.edit_original_response(content=content, view=spenta)
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile aggiornare il messaggio dell'appello (caso %s, server %s).",
+                self.case_number,
+                self.guild_id,
+            )
 
-    @discord.ui.button(label="Unban", style=discord.ButtonStyle.success)
-    async def unban(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def unban(self, interaction: discord.Interaction) -> None:
+        # Si risponde subito: unban, database e DM possono superare i
+        # 3 secondi che Discord concede per la prima risposta.
+        await interaction.response.defer()
+
         guild = interaction.client.get_guild(self.guild_id)
         if guild is None:
-            await interaction.response.send_message(
-                "I'm no longer in that server.", ephemeral=True
-            )
+            await interaction.followup.send("I'm no longer in that server.", ephemeral=True)
             return
 
         try:
             await guild.unban(
                 discord.Object(id=self.user_id),
-                reason=f"Spam trap appeal approved by {interaction.user}",
+                reason=f"Spam trap appeal approved by {interaction.user}"[:512],
             )
         except discord.NotFound:
             pass  # già sbannato, procediamo comunque
         except discord.Forbidden:
-            await interaction.response.send_message(
-                "Missing permissions to unban.", ephemeral=True
+            await interaction.followup.send("Missing permissions to unban.", ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Discord refused the unban. Please try again in a moment.", ephemeral=True
             )
             return
 
@@ -241,10 +331,9 @@ class AppealActionsView(BaseView):
 
         await self._disable_and_update(interaction, "✅ Unbanned — appeal approved.")
 
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger)
-    async def reject(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def reject(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+
         guild = interaction.client.get_guild(self.guild_id)
         try:
             user = await interaction.client.fetch_user(self.user_id)
@@ -257,10 +346,7 @@ class AppealActionsView(BaseView):
 
         await self._disable_and_update(interaction, "❌ Appeal rejected.")
 
-    @discord.ui.button(label="Reply", style=discord.ButtonStyle.secondary)
-    async def reply(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def reply(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(StaffReplyModal(self.user_id))
 
 
@@ -282,14 +368,17 @@ class StaffReplyModal(BaseModal, title="Reply to user"):
         self.user_id = user_id
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        # Risposta subito, poi il DM (che può essere lento).
+        await interaction.response.defer(ephemeral=True)
         try:
             user = await interaction.client.fetch_user(self.user_id)
             await user.send(f"**Staff reply:** {self.message_label.component.value}")
-            await interaction.response.send_message("Message sent.", ephemeral=True)
         except discord.HTTPException:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Couldn't deliver the message (DMs closed).", ephemeral=True
             )
+            return
+        await interaction.followup.send("Message sent.", ephemeral=True)
 
 
 class SpamTrapCog(commands.Cog):
@@ -310,6 +399,7 @@ class SpamTrapCog(commands.Cog):
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_SPAM_TRAP)
     async def spamtrap_setup(
         self,
         interaction: discord.Interaction,
@@ -340,17 +430,44 @@ class SpamTrapCog(commands.Cog):
         created_trap = trap_channel is None
         created_log = log_channel is None
 
-        if trap_channel is None:
-            trap_channel = await self._create_trap_channel(guild)
-        if log_channel is None:
-            log_channel = await self._create_log_channel(guild)
+        try:
+            if trap_channel is None:
+                trap_channel = await self._create_trap_channel(guild)
+            if log_channel is None:
+                log_channel = await self._create_log_channel(guild)
+        except discord.HTTPException as errore:
+            # Un canale creato a metà non resta in giro: senza l'altro
+            # la configurazione non si salva.
+            if created_trap and trap_channel is not None:
+                try:
+                    await trap_channel.delete(reason="iYokai Spam Trap setup non riuscito")
+                except discord.HTTPException:
+                    pass
+            await interaction.followup.send(
+                "Non sono riuscito a creare i canali dello Spam Trap.\n"
+                f"Discord ha risposto: «{str(errore)[:300]}»\n"
+                "Un server può avere al massimo 500 canali (50 per categoria) e mi "
+                "serve il permesso Gestisci canali. Se il limite è raggiunto elimina "
+                "un canale, oppure indica due canali che esistono già con le opzioni "
+                "`trap_channel` e `log_channel`.",
+                ephemeral=True,
+            )
+            return
 
         await spam_trap_repo.set_config(guild.id, trap_channel.id, log_channel.id)
+        # Gli inviti si leggono solo dove servono: da adesso servono qui.
+        await invite_tracker.refresh_guild(guild)
 
-        if created_trap:
-            await self._send_trap_embed(trap_channel)
-        if created_log:
-            await self._send_log_embed(log_channel)
+        try:
+            if created_trap:
+                await self._send_trap_embed(trap_channel)
+            if created_log:
+                await self._send_log_embed(log_channel)
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile scrivere il messaggio iniziale nei canali Spam Trap del server %s.",
+                guild.id,
+            )
 
         ruoli_staff = await self._staff_role_ids(guild.id)
         if staff_role_add is not None and staff_role_add.id not in ruoli_staff:
@@ -411,6 +528,12 @@ class SpamTrapCog(commands.Cog):
     # ================================================================
     # Indicizzazione + trigger
     # ================================================================
+    async def _modulo_utilizzabile(self, guild_id: int) -> bool:
+        """Modulo attivo nel server e, se è premium, sbloccato."""
+        if not await db.is_module_active_for_guild(guild_id, MODULE_SPAM_TRAP):
+            return False
+        return await premium_sbloccato(guild_id, MODULE_SPAM_TRAP, self.bot)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
@@ -420,7 +543,7 @@ class SpamTrapCog(commands.Cog):
             await self._handle_possible_appeal(message)
             return
 
-        if not await db.is_module_active_for_guild(message.guild.id, MODULE_SPAM_TRAP):
+        if not await self._modulo_utilizzabile(message.guild.id):
             return
 
         if isinstance(message.channel, discord.TextChannel):
@@ -438,7 +561,7 @@ class SpamTrapCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        if not await db.is_module_active_for_guild(member.guild.id, MODULE_SPAM_TRAP):
+        if not await self._modulo_utilizzabile(member.guild.id):
             return
         # resolve_join_invite(), non find_used_invite() direttamente:
         # da quando anche il Logging Avanzato (SPEC.md §8.8) risolve
@@ -499,8 +622,10 @@ class SpamTrapCog(commands.Cog):
             author_avatar_data_uri=avatar_data_uri,
         )
 
-        # 3. DM PRIMA del ban.
+        # 3. DM PRIMA del ban. Anche la data di ingresso va letta
+        #    adesso: dopo il ban il membro non è più nel server.
         dm_sent = await self._send_ban_dm(guild, user)
+        joined_at = getattr(user, "joined_at", None)
 
         # 4. Ban.
         try:
@@ -520,6 +645,7 @@ class SpamTrapCog(commands.Cog):
         except discord.HTTPException:
             logger.exception("Errore HTTP bannando %s (Spam Trap).", user.id)
             return
+        banned_at = discord.utils.utcnow()
 
         # 4.1 Ban globale (SPEC.md §7.3) — propagazione best-effort
         #     verso ogni altro server aderente alla rete (vedi
@@ -563,6 +689,8 @@ class SpamTrapCog(commands.Cog):
             guild, user, case_number, trigger_content,
             invite_code, invite_creator_id, deleted_by_channel, dm_sent,
             propagated_guild_ids,
+            joined_at=joined_at,
+            banned_at=banned_at,
         )
 
     async def _send_ban_dm(self, guild: discord.Guild, user: discord.abc.User) -> bool:
@@ -774,6 +902,9 @@ class SpamTrapCog(commands.Cog):
         deleted_by_channel: dict[str, int],
         dm_sent: bool,
         propagated_guild_ids: list[int] | None = None,
+        *,
+        joined_at: datetime | None = None,
+        banned_at: datetime | None = None,
     ) -> None:
         config = await spam_trap_repo.get_config(guild.id)
         if config.log_channel_id is None:
@@ -789,12 +920,14 @@ class SpamTrapCog(commands.Cog):
             value=discord.utils.format_dt(user.created_at, style="F"),
             inline=True,
         )
-        member = guild.get_member(user.id)
-        if member is not None and member.joined_at is not None:
+        embed.add_field(
+            name="Joined",
+            value=discord.utils.format_dt(joined_at, style="F") if joined_at else "Unknown",
+            inline=True,
+        )
+        if banned_at is not None:
             embed.add_field(
-                name="Joined",
-                value=discord.utils.format_dt(member.joined_at, style="F"),
-                inline=True,
+                name="Banned", value=discord.utils.format_dt(banned_at, style="F"), inline=True
             )
         embed.add_field(name="Case", value=f"#{case_number}", inline=True)
 
@@ -813,9 +946,8 @@ class SpamTrapCog(commands.Cog):
         )
 
         if deleted_by_channel:
-            testo_canali = "\n".join(
-                f"#{nome}: {count}" for nome, count in deleted_by_channel.items()
-            )
+            # Tagliato: un campo tiene 1024 caratteri (LIM-20).
+            testo_canali = format_deleted_channels(deleted_by_channel)
         else:
             testo_canali = "None (covered by native ban cleanup, or nothing to delete)"
         embed.add_field(name="Deleted messages (7-30 days)", value=testo_canali, inline=False)
@@ -831,7 +963,14 @@ class SpamTrapCog(commands.Cog):
                 inline=True,
             )
 
-        await log_channel.send(embed=embed)
+        try:
+            await log_channel.send(embed=embed)
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile scrivere il log del ban (caso %s) nel server %s.",
+                case_number,
+                guild.id,
+            )
 
     # ================================================================
     # Ban appeal
@@ -898,8 +1037,6 @@ class SpamTrapCog(commands.Cog):
             )
             return
 
-        await spam_trap_repo.set_last_appeal(guild.id, user.id, datetime.now(timezone.utc))
-
         config = await spam_trap_repo.get_config(guild.id)
         log_channel = guild.get_channel(config.log_channel_id) if config.log_channel_id else None
         if not isinstance(log_channel, discord.TextChannel):
@@ -914,7 +1051,7 @@ class SpamTrapCog(commands.Cog):
             thread = await log_channel.create_thread(
                 name=f"appeal-case-{case.case_number}",
                 type=discord.ChannelType.private_thread,
-                reason=f"Ban appeal from {user}",
+                reason=f"Ban appeal from {user}"[:512],
             )
         except discord.HTTPException:
             await message.channel.send(
@@ -922,23 +1059,55 @@ class SpamTrapCog(commands.Cog):
             )
             return
 
+        testo_appello = (message.content or "(no text)")[:MAX_TESTO_APPELLO]
+        descrizione = (
+            f"**User:** {user.mention} ({user.id})\n\n**Appeal message:**\n{testo_appello}"
+        )
+
+        files = []
+        if incident is not None and incident.transcript_html:
+            contenuto = incident.transcript_html.encode("utf-8")
+            limite = min(MAX_TRANSCRIPT_BYTES, guild.filesize_limit)
+            if len(contenuto) <= limite:
+                files.append(
+                    discord.File(
+                        io.BytesIO(contenuto),
+                        filename=f"transcript-case-{case.case_number}.html",
+                    )
+                )
+            else:
+                descrizione += (
+                    f"\n\n*Transcript not attached: too large "
+                    f"({len(contenuto) / 1024 / 1024:.1f} MB).*"
+                )
+
         appeal_embed = discord.Embed(
             title=f"Ban Appeal — Case #{case.case_number}",
-            description=f"**User:** {user.mention} ({user.id})\n\n"
-            f"**Appeal message:**\n{message.content or '(no text)'}",
+            description=descrizione,
             color=discord.Color.gold(),
         )
         view = AppealActionsView(guild.id, case.case_number, user.id)
 
-        files = []
-        if incident is not None and incident.transcript_html:
-            transcript_file = discord.File(
-                io.BytesIO(incident.transcript_html.encode("utf-8")),
-                filename=f"transcript-case-{case.case_number}.html",
+        try:
+            await thread.send(embed=appeal_embed, view=view, files=files)
+        except discord.HTTPException:
+            # L'appello non è arrivato allo staff: niente blocco di 24
+            # ore, l'utente può riprovare. Il thread vuoto si toglie.
+            logger.warning(
+                "Invio dell'appello fallito (caso %s, server %s).", case.case_number, guild.id
             )
-            files.append(transcript_file)
+            try:
+                await thread.delete()
+            except discord.HTTPException:
+                pass
+            await message.channel.send(
+                "I couldn't deliver your appeal to the staff right now. Please try again later."
+            )
+            return
 
-        await thread.send(embed=appeal_embed, view=view, files=files)
+        # Solo ora che lo staff ha ricevuto l'appello parte il blocco
+        # di 24 ore.
+        await spam_trap_repo.set_last_appeal(guild.id, user.id, datetime.now(timezone.utc))
 
         await message.channel.send(
             "Your appeal has been submitted to the staff. They will review it "
@@ -957,3 +1126,6 @@ async def setup(bot: commands.Bot) -> None:
         )
     )
     await bot.add_cog(SpamTrapCog(bot))
+    # I bottoni degli appelli già aperti devono rispondere anche dopo
+    # un riavvio: va registrato a ogni avvio.
+    bot.add_dynamic_items(AppealButton)

@@ -209,7 +209,7 @@ class TestBottoneUnbanDellAppello:
         )
         view = AppealActionsView(ID_ALPHA, caso_recente, ID_UTENTE)
 
-        await view.unban.callback(interazione)
+        await view.unban(interazione)
 
         server.unban.assert_awaited_once()
         assert await _casi_attivi(ID_ALPHA) == []

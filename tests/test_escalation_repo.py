@@ -4,6 +4,9 @@ tests/test_escalation_repo.py
 Test di EscalationRepository contro PostgreSQL reale.
 """
 
+import asyncio
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from core.escalation_ladder_logic import LadderStep
@@ -104,57 +107,63 @@ async def test_config_non_mischia_server(repo):
 # ====================================================================
 # Conteggio infrazioni
 # ====================================================================
-@pytest.mark.asyncio
-async def test_violation_state_di_default(repo):
-    count, last = await repo.get_violation_state(100, 1)
-    assert count == 0
-    assert last is None
+ORA = datetime(2026, 10, 5, 12, 0, 0, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
-async def test_record_e_get_violation_state(repo):
-    from datetime import datetime, timezone
-    ora = datetime.now(timezone.utc)
-
-    await repo.record_violation(100, 1, new_count=1, when=ora)
-
-    count, last = await repo.get_violation_state(100, 1)
-    assert count == 1
-    assert last is not None
+async def test_prima_infrazione_conta_uno(repo):
+    assert await repo.record_violation(100, 1, when=ORA, reset_after_days=30) == 1
 
 
 @pytest.mark.asyncio
-async def test_record_violation_sovrascrive(repo):
-    from datetime import datetime, timezone
-    ora = datetime.now(timezone.utc)
+async def test_ogni_infrazione_aumenta_di_uno(repo):
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
+    secondo = await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
+    terzo = await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
 
-    await repo.record_violation(100, 1, new_count=1, when=ora)
-    await repo.record_violation(100, 1, new_count=2, when=ora)
+    assert (secondo, terzo) == (2, 3)
 
-    count, _ = await repo.get_violation_state(100, 1)
-    assert count == 2
+
+@pytest.mark.asyncio
+async def test_infrazioni_insieme_non_si_perdono(repo):
+    conteggi = await asyncio.gather(
+        *(repo.record_violation(100, 1, when=ORA, reset_after_days=30) for _ in range(20))
+    )
+
+    assert sorted(conteggi) == list(range(1, 21))
+
+
+@pytest.mark.asyncio
+async def test_buona_condotta_fa_ripartire_da_uno(repo):
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
+
+    quasi = await repo.record_violation(
+        100, 1, when=ORA + timedelta(days=29), reset_after_days=30
+    )
+    # 30 giorni esatti dall'ultima infrazione (quella del giorno 29).
+    al_confine = await repo.record_violation(
+        100, 1, when=ORA + timedelta(days=59), reset_after_days=30
+    )
+
+    assert quasi == 3
+    assert al_confine == 1
 
 
 @pytest.mark.asyncio
 async def test_reset_violations(repo):
-    from datetime import datetime, timezone
-    await repo.record_violation(100, 1, new_count=3, when=datetime.now(timezone.utc))
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
 
     await repo.reset_violations(100, 1)
 
-    count, last = await repo.get_violation_state(100, 1)
-    assert count == 0
-    assert last is None
+    assert await repo.record_violation(100, 1, when=ORA, reset_after_days=30) == 1
 
 
 @pytest.mark.asyncio
-async def test_violation_state_non_mischia_utenti(repo):
-    from datetime import datetime, timezone
-    ora = datetime.now(timezone.utc)
-    await repo.record_violation(100, 1, new_count=5, when=ora)
-    await repo.record_violation(100, 2, new_count=1, when=ora)
+async def test_conteggio_non_mischia_utenti_e_server(repo):
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
+    await repo.record_violation(100, 1, when=ORA, reset_after_days=30)
 
-    count_1, _ = await repo.get_violation_state(100, 1)
-    count_2, _ = await repo.get_violation_state(100, 2)
-    assert count_1 == 5
-    assert count_2 == 1
+    assert await repo.record_violation(100, 2, when=ORA, reset_after_days=30) == 1
+    assert await repo.record_violation(200, 1, when=ORA, reset_after_days=30) == 1

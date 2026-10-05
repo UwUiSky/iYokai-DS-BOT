@@ -33,7 +33,8 @@ from core.permission_risk_logic import (
     critical_permissions_of,
     newly_gained_critical_permissions,
 )
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, registry, requires_module
+from core.security_access import premium_sbloccato
 
 logger = logging.getLogger("iyokai.permission_heatmap")
 
@@ -75,6 +76,7 @@ class PermissionHeatmapCog(commands.Cog):
         description="[Admin] Mostra quali ruoli hanno permessi critici e chi li possiede.",
     )
     @app_commands.checks.has_permissions(manage_guild=True)
+    @requires_module(MODULE_PERMISSION_HEATMAP)
     async def permission_heatmap(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
@@ -122,6 +124,8 @@ class PermissionHeatmapCog(commands.Cog):
         self, before: discord.Member, after: discord.Member
     ) -> None:
         if not await db.is_module_active_for_guild(after.guild.id, MODULE_PERMISSION_HEATMAP):
+            return
+        if not await premium_sbloccato(after.guild.id, MODULE_PERMISSION_HEATMAP, self.bot):
             return
 
         before_role_ids = {r.id for r in before.roles}

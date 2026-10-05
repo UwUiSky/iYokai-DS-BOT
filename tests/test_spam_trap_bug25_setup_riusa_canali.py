@@ -51,6 +51,7 @@ class _ServerConCanali:
         self._prossimo_id = 7000
         self.guild.create_text_channel.side_effect = self._crea
         self.guild.get_channel.side_effect = self.canali.get
+        self.guild.invites.return_value = []
 
     async def _crea(self, name, **kwargs):
         self._prossimo_id += 1
@@ -134,3 +135,72 @@ async def test_un_canale_passato_a_mano_sostituisce_quello_salvato(cog):
     assert server.canali_creati == 2
     assert dopo.trap_channel_id == prima.trap_channel_id
     assert dopo.log_channel_id == 9001
+
+
+# ====================================================================
+# M 3.13 (LIM-36): il server non può avere altri canali
+# ====================================================================
+def _troppi_canali():
+    import discord
+    from unittest.mock import MagicMock
+
+    risposta = MagicMock()
+    risposta.status = 400
+    risposta.reason = "Bad Request"
+    return discord.HTTPException(
+        risposta, {"code": 30013, "message": "Maximum number of guild channels reached (500)"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_server_a_500_canali_messaggio_chiaro_e_niente_salvato(cog):
+    server = _ServerConCanali()
+    server.guild.create_text_channel.side_effect = _troppi_canali()
+    interazione = fake_interaction(guild=server.guild)
+
+    await cog.spamtrap_setup.callback(cog, interazione)
+
+    interazione.followup.send.assert_awaited_once()
+    testo = interazione.followup.send.call_args.args[0]
+    assert "500" in testo
+    assert "trap_channel" in testo  # dice come uscirne: indicare canali esistenti
+    assert len(testo) <= 2000
+    config = await spam_trap_repo.get_config(ID_SERVER)
+    assert (config.trap_channel_id, config.log_channel_id) == (None, None)
+
+
+@pytest.mark.asyncio
+async def test_se_fallisce_il_secondo_canale_il_primo_non_resta_orfano(cog):
+    server = _ServerConCanali()
+    crea_davvero = server.guild.create_text_channel.side_effect
+    chiamate = []
+
+    async def _solo_il_primo(name, **kwargs):
+        chiamate.append(name)
+        if len(chiamate) == 2:
+            raise _troppi_canali()
+        return await crea_davvero(name, **kwargs)
+
+    server.guild.create_text_channel.side_effect = _solo_il_primo
+    interazione = fake_interaction(guild=server.guild)
+
+    await cog.spamtrap_setup.callback(cog, interazione)
+
+    (trappola,) = server.canali.values()
+    trappola.delete.assert_awaited_once()
+    trappola.send.assert_not_awaited()
+    assert "500" in interazione.followup.send.call_args.args[0]
+    config = await spam_trap_repo.get_config(ID_SERVER)
+    assert (config.trap_channel_id, config.log_channel_id) == (None, None)
+
+
+@pytest.mark.asyncio
+async def test_setup_legge_subito_gli_inviti_del_server(cog):
+    # M 3.17: gli inviti non si scaricano più per tutti i server
+    # all'avvio. Chi configura lo spam-trap li ha pronti da subito,
+    # così già il primo ingresso può essere attribuito.
+    server = _ServerConCanali()
+
+    await _lancia_setup(cog, server)
+
+    server.guild.invites.assert_awaited_once()

@@ -11,12 +11,16 @@ Anti-Raid e Anti-Nuke) vivono anche loro in questa riga: sono
 configurazione, non stato "caldo" — a differenza delle finestre
 mobili di conteggio (core/security_rate_tracker.py), che restano
 deliberatamente in memoria.
+
+Il blocco anti-raid in corso (livello di verifica di prima e scadenza)
+sta in una tabella a parte, così sopravvive a un riavvio.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
 
 import asyncpg
 
@@ -141,6 +145,15 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_security_action_log_guild
             ON security_action_log (guild_id, created_at DESC);
+
+        -- Blocco anti-raid in corso: il livello di verifica che il
+        -- server aveva prima e quando il blocco scade. Una riga per
+        -- server, cancellata alla fine del blocco.
+        CREATE TABLE IF NOT EXISTS anti_raid_lockdown (
+            guild_id        BIGINT PRIMARY KEY,
+            previous_level  TEXT NOT NULL,
+            expires_at      TIMESTAMPTZ NOT NULL
+        );
         """
     )
 
@@ -208,6 +221,39 @@ class SecurityRepository:
             }
             for r in rows
         ]
+
+
+    # ================================================================
+    # Blocco anti-raid (livello di verifica alzato per un tempo)
+    # ================================================================
+    async def start_or_extend_lockdown(
+        self, guild_id: int, previous_level: str, expires_at: datetime
+    ) -> None:
+        """
+        Apre il blocco o, se è già aperto, ne sposta solo la scadenza:
+        il livello "di prima" resta quello salvato all'apertura.
+        """
+        await self._pool.execute(
+            """
+            INSERT INTO anti_raid_lockdown (guild_id, previous_level, expires_at)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (guild_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
+            """,
+            guild_id,
+            previous_level,
+            expires_at,
+        )
+
+    async def get_expired_lockdowns(self, now: datetime) -> list[tuple[int, str]]:
+        """I blocchi scaduti, come coppie (server, livello di prima)."""
+        rows = await self._pool.fetch(
+            "SELECT guild_id, previous_level FROM anti_raid_lockdown WHERE expires_at <= $1",
+            now,
+        )
+        return [(r["guild_id"], r["previous_level"]) for r in rows]
+
+    async def end_lockdown(self, guild_id: int) -> None:
+        await self._pool.execute("DELETE FROM anti_raid_lockdown WHERE guild_id = $1", guild_id)
 
 
 def _get_pool():

@@ -38,23 +38,48 @@ ZALGO_COMBINING_THRESHOLD = 8
 _URL_PATTERN = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 
 
+def normalize_domain(text: str) -> str:
+    """
+    Riduce un indirizzo o un dominio al solo nome host, in minuscolo:
+    via lo schema, il nome utente, la porta, il percorso, il "www."
+    iniziale e il punto finale. Usata sia per i link dei messaggi sia
+    per le voci che l'admin mette in lista, così si confrontano uguali.
+    Restituisce "" se non c'è un host leggibile.
+    """
+    testo = text.strip()
+    if not testo:
+        return ""
+    if "://" not in testo:
+        testo = "http://" + testo
+    try:
+        host = urlparse(testo).hostname or ""
+    except ValueError:
+        return ""
+    host = host.lower().rstrip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
 def extract_domains(text: str) -> tuple[str, ...]:
     """
-    Estrae i domini (senza sottodomini "www.") da ogni URL http/https
+    Estrae il nome host (vedi normalize_domain) di ogni URL http/https
     trovato nel testo. Un testo senza link restituisce una tupla
     vuota.
     """
     domini = []
     for match in _URL_PATTERN.findall(text):
-        try:
-            host = urlparse(match).netloc.lower()
-        except ValueError:
-            continue
-        if host.startswith("www."):
-            host = host[4:]
+        host = normalize_domain(match)
         if host:
             domini.append(host)
     return tuple(domini)
+
+
+def _in_lista(dominio: str, lista: set[str]) -> bool:
+    """True se il dominio è in lista, lui o un dominio che lo contiene
+    (`sub.evil.com` è coperto dalla voce `evil.com`)."""
+    parti = dominio.split(".")
+    return any(".".join(parti[indice:]) in lista for indice in range(len(parti)))
 
 
 def is_link_violation(
@@ -67,16 +92,18 @@ def is_link_violation(
     `mode` è "off" (mai in violazione), "whitelist" (in violazione
     se ALMENO UN dominio non è nella whitelist — modalità
     restrittiva: blocca tutto tranne quanto elencato) o "blacklist"
-    (in violazione se ALMENO UN dominio è nella blacklist).
+    (in violazione se ALMENO UN dominio è nella blacklist). Una voce
+    di lista copre anche i suoi sottodomini.
     """
     if not domains or mode == "off":
         return False
+    normalizzati = [normalize_domain(d) for d in domains]
     if mode == "whitelist":
-        insieme = {d.lower() for d in whitelist}
-        return any(d.lower() not in insieme for d in domains)
+        insieme = {normalize_domain(d) for d in whitelist} - {""}
+        return any(not _in_lista(d, insieme) for d in normalizzati)
     if mode == "blacklist":
-        insieme = {d.lower() for d in blacklist}
-        return any(d.lower() in insieme for d in domains)
+        insieme = {normalize_domain(d) for d in blacklist} - {""}
+        return any(_in_lista(d, insieme) for d in normalizzati)
     return False
 
 
