@@ -31,4 +31,5 @@
 ## Aperto
 - Parte B del quaderno: cercare cos'altro l'API offre e discord.py no.
 - Trasformare in test i limiti di `LIMITI.md` che ancora non lo sono.
-- Disegni da controllare prima del codice: #138, #139, #141.
+- Disegni da controllare prima del codice: #138, #139, #141, #142
+  (voce: confermare sulla pagina ufficiale le regole dei vocali).

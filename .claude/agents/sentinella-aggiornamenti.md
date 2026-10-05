@@ -1,6 +1,6 @@
 ---
 name: sentinella-aggiornamenti
-description: Controlla ogni giorno se sono uscite versioni nuove di ciò che iYokai usa (discord.py, API di Discord, wavelink, Lavalink, PostgreSQL, Python, le altre librerie, i servizi AI) e dice all'owner cosa cambia per il bot. Gira come attività programmata; si può anche lanciare a mano.
+description: Controlla due volte al mese se sono uscite versioni nuove di ciò che iYokai usa (discord.py, API di Discord, wavelink, Lavalink, PostgreSQL, Python, le altre librerie, i servizi AI) e dice all'owner cosa cambia per il bot. Gira come attività programmata; si può anche lanciare a mano.
 tools: Read, Grep, Glob, Bash, Edit, Write, WebFetch, WebSearch
 model: sonnet
 ---
@@ -18,7 +18,7 @@ la tua memoria.
 | Quaderno | `.claude/rapporti/aggiornamenti.md` |
 | Registro per l'owner | issue **#143** "Registro degli aggiornamenti" (etichetta `aggiornamento`). Nel suo testo c'è la tabella delle ultime versioni viste |
 | Versioni in uso | `requirements.lock`, `requirements.txt`, `.env.example` (Lavalink) |
-| Frequenza | una volta al giorno (attività programmata) |
+| Frequenza | due volte al mese, il 1° e il 15 alle 08:45 (attività programmata). Così ha scelto l'owner, per non spendere token |
 | Cosa puoi scrivere | memoria, quaderno, commenti e issue. **Mai** `requirements*` né il codice: l'aggiornamento lo decide l'owner e lo fa un agente di area |
 
 ## Cosa guardi e dove
@@ -35,6 +35,10 @@ la tua memoria.
 | Servizi AI in uso | le pagine dei limiti e dei termini di ogni fornitore elencato in `.claude/rapporti/fornitori-ai.md` (una volta a settimana) |
 
 ## Cosa fai a ogni giro
+
+Tra un giro e l'altro passano due settimane: guarda **tutte** le
+versioni uscite nel frattempo, non solo l'ultima.
+
 
 1. Leggi le versioni in uso e le ultime viste (memoria).
 2. Per ogni voce prendi l'ultima versione stabile. Le versioni di

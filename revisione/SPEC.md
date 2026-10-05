@@ -24,8 +24,8 @@ Aggiornato il **04/10/2026**, dopo la fase R1-bis e la riorganizzazione
 dei documenti. Il **05/10/2026** §25 è passato da 9 a 93 voci: sono le
 funzioni AI discusse con l'owner e con le altre AI che non erano mai
 entrate in una lista (`revisione/01-analisi/FUNZIONI_AI.md`). Lo stesso
-giorno l'owner ha chiesto altre 12 voci (5.11, 5.12, 14.19, 17.11,
-25.94–25.101).
+giorno l'owner ha chiesto altre 16 voci (5.11, 5.12, 14.19, 17.11,
+25.94–25.105).
 
 | Simbolo | Significato |
 |---|---|
@@ -77,14 +77,14 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §22 FUNZIONI NUOVE, PRIMO GRUPPO | 0 | 0 | 17 | 0 |
 | §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
-| §25 MOTORE AI | 0 | 0 | 101 | 0 |
+| §25 MOTORE AI | 0 | 0 | 105 | 0 |
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
 | D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
 | E APPLICAZIONI DEL PROGETTO | 0 | 3 | 5 | 0 |
-| **Totale** | **97** | **145** | **242** | **6** |
+| **Totale** | **97** | **145** | **246** | **6** |
 
-Totale voci: **490**.
+Totale voci: **494**.
 
 ---
 
@@ -1211,10 +1211,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   server + grafico a barre della crescita giornaliera (disegnato con
   Pillow, non matplotlib — nessuna nuova dipendenza pesante)
   → **Stato 04/10:** Correzione al testo: il grafico dipende dal modulo logging (REVIEW §12).
-- `[ ]` 14.19 **Messaggi vocali** — il bot li legge già; per inviarli
-  serve una chiamata diretta all'API di Discord, perché discord.py
-  2.7.1 non lo offre. Il comportamento lo deve ancora descrivere
-  l'owner (issue #142, fase F13)
+- `[ ]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
+  messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
+  ogni vocale un messaggio con due bottoni: "Trascrivi" e "Nella mia
+  lingua" (li vede solo chi preme, nella lingua del suo client). Si usa
+  per i vocali a comando, nei ticket, nei saluti, negli annunci e nel
+  resto dell'elenco della issue. discord.py 2.7.1 non li invia: serve
+  la chiamata diretta all'API (D22, issue #142, fase F12)
 
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
@@ -1945,6 +1948,14 @@ di quel file.
   una pull request per l'owner (AI-R-107)
 - `[ ]` 25.101 Cerca comando: mostra anche le alternative, spiegate
   (AI-R-108; vedi §21)
+- `[ ]` 25.102 Sintesi vocale sul server, con cache dell'audio e toni
+  della voce scelti dall'admin (AI-R-109; vedi 14.19)
+- `[ ]` 25.103 Trascrizione e traduzione del vocale nella lingua di chi
+  preme il bottone (AI-R-110)
+- `[ ]` 25.104 Trascrivi e traduci i vocali registrati dalle persone,
+  anche dall'app utente (AI-R-111)
+- `[ ]` 25.105 Saluti a voce: risposta al "buongiorno" con il nome, una
+  sola risposta per più persone (AI-R-112)
 
 ---
 

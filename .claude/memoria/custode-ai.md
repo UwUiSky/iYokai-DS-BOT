@@ -20,6 +20,8 @@
 - I messaggi degli utenti vanno solo ai servizi segnati "può ricevere
   messaggi".
 - Le chiavi stanno solo nel `.env` dell'owner.
+- I motori che girano sul server (sintesi vocale, D22) sono fornitori
+  come gli altri, di tipo `audio`, senza quota e senza chiave.
 
 ## Aperto
 - Elenco dei servizi e delle chiavi (nomi delle variabili) dall'owner.

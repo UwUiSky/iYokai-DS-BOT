@@ -4,7 +4,8 @@
 05/10/2026 · ramo `main` · ultimo commit `3dc9031`
 
 ## In corso
-- Giro giornaliero. Registro per l'owner: issue #143.
+- Giro il 1° e il 15 del mese (scelta dell'owner). Prossimo: 15/10.
+  Registro per l'owner: issue #143.
 
 ## Ultime versioni viste (05/10/2026)
 | Cosa | In uso | Ultima vista |

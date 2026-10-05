@@ -11,7 +11,7 @@ deve chiedere di nuovo**: legge qui e procede.
   cambiarle.
 - D8 (seconda versione), D15, D16, D17: **indicate dall'owner** la sera
   del 04/10/2026.
-- D19, D20, D21: **indicate dall'owner** il 05/10/2026.
+- D19, D20, D21, D22: **indicate dall'owner** il 05/10/2026.
 
 Regola per il futuro: se serve una decisione nuova, si sceglie
 l'opzione consigliata, la si scrive qui con la data, e si avvisa
@@ -40,6 +40,7 @@ l'owner.
 | D19 | AI: si usa, non si addestra | iYokai usa servizi AI esistenti e ne salva i risultati per riusarli. Non addestra modelli. L'AI entra in ogni area, ma ogni funzione va anche con l'AI ferma. Vedi sotto. | F12, e ogni funzione nuova |
 | D20 | Agenti specializzati | Il lavoro si fa con agenti specializzati (`.claude/agents/`), ognuno con i suoi parametri e con una memoria compressa in un file a parte (`.claude/memoria/`). Regole comuni in `.claude/regole/COMUNI.md`. | Sempre |
 | D21 | Aggiornamento a caldo | L'owner aggiorna il bot da Discord. Strada consigliata: il bot prende da GitHub un commit già rivisto. Strada alternativa: file allegato dall'owner. In ogni caso: solo l'owner, controllo del codice, copia del vecchio, ritorno automatico se il caricamento fallisce, interruttore nel `.env`. Vedi sotto. | F9 |
+| D22 | Voce di Yokai | Il bot manda messaggi vocali veri, con sotto i bottoni per trascrizione e traduzione. Sintesi sul server con un modello aperto, audio in cache. Voce femminile adulta; quattro toni scelti dall'admin; il tono `piccante` solo nei canali NSFW. Vedi sotto. | F12 |
 
 ---
 
@@ -227,4 +228,30 @@ come opzione di `/owner cog-reload`, senza comandi nuovi.
 **Rischio da conoscere:** chi entra nell'account Discord dell'owner può
 far girare codice sul server. Per questo l'interruttore nel `.env` e
 l'autenticazione a due fattori sull'account.
+
+## D22 in dettaglio — Voce di Yokai
+
+**Cosa:** Yokai parla. Ogni vocale è un vero messaggio vocale di
+Discord; sotto c'è un messaggio con "Trascrivi" e "Nella mia lingua",
+che risponde solo a chi preme, nella lingua del suo client.
+
+**Come:**
+- Sintesi sul server con un modello aperto (niente chiavi, niente
+  quote). Servizi esterni solo per le lingue che il modello non ha.
+- Stesso testo, stessa voce, stessa lingua → stesso file, dalla cache.
+- La trascrizione è il testo di partenza: non serve ascoltare l'audio.
+- Il testo passa dai filtri del server prima di diventare voce.
+- Ogni vocale ha sempre il suo testo a portata di bottone: nessuno
+  resta escluso.
+
+**La voce:** femminile, adulta, calda, scherzosa, provocante; timbro
+vicino all'anime ma mai infantile. Toni: `dolce`, `scherzosa` (di
+partenza), `provocante`, `piccante`. Li sceglie l'admin del server.
+`piccante` (volgarità e allusioni esplicite) vale solo nei canali
+segnati NSFW e sul bot NSFW: Discord è aperto dai 13 anni, e fuori da
+quei canali la voce parla a tutti.
+
+**Dove no:** sanzioni e avvisi di moderazione restano in testo.
+
+**Elenco completo degli usi e ordine dei lavori:** issue #142.
 

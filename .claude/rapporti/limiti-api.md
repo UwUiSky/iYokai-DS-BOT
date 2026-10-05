@@ -18,7 +18,7 @@ discord.py lo offre".
 
 | Funzione | Cosa serve dall'API | discord.py 2.7.1 | Come farla oggi | Controllato il | Stato |
 |---|---|---|---|---|---|
-| Inviare un messaggio vocale | Messaggio con il segno "vocale" e un allegato audio con durata e forma d'onda | Li legge (`Message.is_voice_message`), non li invia | Chiamata diretta | 05/10/2026, sul codice installato | issue #142, in attesa dell'owner |
+| Inviare un messaggio vocale | Messaggio con il segno "vocale" (8192), un solo allegato audio con `duration_secs` e `waveform` (base64, fino a 256 punti); niente testo, embed o bottoni; OGG Opus 48 kHz mono | Li legge (`Message.is_voice_message`), non li invia | Chiamata diretta. Catena provata il 05/10: sintesi → OGG Opus → forma d'onda (9 s = 36 KB) | 05/10/2026, sul codice installato. **Da confermare sulla pagina ufficiale prima del codice**: regole esatte e se vale anche nelle risposte alle interazioni | issue #142, disegno pronto (D22) |
 
 Da controllare al prossimo giro: cos'altro è nel registro delle
 modifiche dell'API e manca in discord.py 2.7.1.

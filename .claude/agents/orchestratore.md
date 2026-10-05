@@ -64,5 +64,5 @@ che non abbia file non salvati.
 - Un problema nuovo è una issue, non un allargamento del compito.
 - A coda vuota in una fase: giro di `cacciatore-bug`, `ottimizzatore`
   e `guardiano-limiti` sulle aree toccate, poi suite completa.
-- A inizio sessione: guarda la issue della `sentinella-aggiornamenti`
-  e `.claude/rapporti/aggiornamenti.md`.
+- A inizio sessione: guarda la issue #143 della
+  `sentinella-aggiornamenti` e allinea il suo quaderno e la sua memoria.

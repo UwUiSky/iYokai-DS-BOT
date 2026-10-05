@@ -41,7 +41,7 @@ Sonnet: chi fa cosa, con quali regole, e cosa è già stato fatto.
 | `cacciatore-bug` | Trova i difetti veri e li dimostra | Dopo ogni gruppo di modifiche | `rapporti/bug.md` | opus |
 | `revisore-capo` | Ultimo controllo riga per riga prima di `main` | Dopo il cacciatore | `rapporti/revisione.md` | opus |
 | `ottimizzatore` | Memoria, processore, disco, database, cache | Sui diff con cicli, cache, immagini, query; a fine fase | `rapporti/ottimizzazione.md` | opus |
-| `sentinella-aggiornamenti` | Versioni nuove di librerie e API, e cosa cambia per il bot | Ogni giorno (attività programmata) | `rapporti/aggiornamenti.md`, issue #143 | sonnet |
+| `sentinella-aggiornamenti` | Versioni nuove di librerie e API, e cosa cambia per il bot | Due volte al mese: 1° e 15 (attività programmata) | `rapporti/aggiornamenti.md`, issue #143 | sonnet |
 
 ### Sviluppo, per area (scrivono codice e test solo nella loro area)
 

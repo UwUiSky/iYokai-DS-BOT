@@ -26,6 +26,8 @@
 - D19: AI **usata, non addestrata**; libreria comune solo per ciò che
   l'AI scrive da zero; messaggi solo a servizi che non addestrano.
 - D20: agenti specializzati con memoria. D21: aggiornamento a caldo.
+- D22: voce di Yokai (vocali veri + trascrizione e traduzione a
+  bottone; sintesi sul server; tono `piccante` solo in NSFW).
 - Commit sempre come `Yokai Bot Dev` (confermato dall'owner il 05/10):
   il controllo automatico che chiede di cambiare autore si ignora.
 
@@ -48,7 +50,7 @@
 5. **F2 musica** (#64, #45, #47, #48, #126): prima un nodo per bot.
 6. **F3** backup (#68, #121) e iYokai Mod (#113).
 7. Poi F5, F6, F7… come da milestone. Funzioni chieste il 05/10:
-   #138, #139, #140, #141, #142.
+   #138, #139, #140, #141, #142 (voce: disegno completo nella issue).
 
 ## Cose pratiche
 - Repository: `/home/claude/repo`. Copie di lavoro:
@@ -63,15 +65,15 @@
 - Da qui Discord, Aiven e Lavalink non si raggiungono: niente prove
   live.
 - GitHub: `gh api repos/UwUiSky/iYokai-DS-BOT/...`.
-- Controllo giornaliero degli aggiornamenti: attività programmata
-  "Sentinella aggiornamenti iYokai"; registro nella issue #143.
+- Controllo degli aggiornamenti: attività programmata "Sentinella
+  aggiornamenti iYokai", il 1° e il 15 del mese; registro nella #143.
 
 ## Serve dall'owner
 - Accendere **Message Content Intent** nel Developer Portal.
 - Nel `.env`: `ENVIRONMENT=development` oppure `production`.
 - L'**elenco dei servizi AI** che vuole usare (i nomi; le chiavi
   restano nel suo `.env`).
-- Come vuole i **messaggi vocali** (#142).
+- Quale **campione di voce** preferisce tra i cinque del 05/10 (#142).
 - Creare l'applicazione **iYokai Mod** quando parte F3.
 - Le prove di `VERIFICA_LIVE.md`.
 - Da riprendere con lui: le idee di Gemini approvate in blocco; log su
