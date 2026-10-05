@@ -311,3 +311,149 @@ async def test_transfer_con_il_vecchio_proprietario_uscito_dal_server():
 
     assert await voice_temp_repo.get_owner(canale.id) == ID_OSPITE
     assert list(_permessi_dati(canale)) == [ID_OSPITE]
+
+
+# ====================================================================
+# M 7.5 — pulizia all'avvio dei canali rimasti orfani
+# ====================================================================
+def _bot_con(scena):
+    bot = create_autospec(commands.Bot, instance=True)
+    bot.get_guild.side_effect = lambda guild_id: scena.guild if guild_id == ID_SERVER else None
+    return bot
+
+
+async def _invecchia_i_canali(clean_db) -> None:
+    """Fa passare il tempo: i canali risultano creati dieci minuti fa."""
+    await clean_db.execute(
+        "UPDATE voice_temp_channels SET created_at = now() - interval '10 minutes'"
+    )
+
+
+async def _canale_vuoto(scena, user_id: int):
+    """Un vocale temporaneo il cui proprietario è uscito mentre il bot era spento."""
+    membro = scena.membro(user_id)
+    canale = await scena.crea_canale_di(membro)
+    canale.members.clear()
+    return canale
+
+
+async def test_canale_vuoto_all_avvio_viene_cancellato(clean_db):
+    scena = Scena()
+    vuoto = await _canale_vuoto(scena, ID_PROPRIETARIO)
+    await _invecchia_i_canali(clean_db)
+
+    await VoiceTempCog(_bot_con(scena)).on_ready()
+
+    vuoto.delete.assert_awaited_once()
+    assert await voice_temp_repo.get_owner(vuoto.id) is None
+
+
+async def test_canale_con_persone_dentro_all_avvio_resta(clean_db):
+    scena = Scena()
+    pieno = await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
+    await _invecchia_i_canali(clean_db)
+
+    await VoiceTempCog(_bot_con(scena)).on_ready()
+
+    pieno.delete.assert_not_awaited()
+    assert await voice_temp_repo.get_owner(pieno.id) == ID_PROPRIETARIO
+
+
+async def test_canale_che_non_esiste_piu_viene_tolto_dal_registro(clean_db):
+    scena = Scena()
+    sparito = await _canale_vuoto(scena, ID_PROPRIETARIO)
+    del scena.canali[sparito.id]  # cancellato a mano mentre il bot era spento
+    await _invecchia_i_canali(clean_db)
+
+    await VoiceTempCog(_bot_con(scena)).on_ready()
+
+    sparito.delete.assert_not_awaited()
+    assert await voice_temp_repo.get_owner(sparito.id) is None
+
+
+async def test_canale_appena_creato_e_ancora_vuoto_non_viene_toccato():
+    """
+    Dal pannello il canale nasce vuoto e l'utente entra dopo. on_ready
+    arriva anche a ogni riconnessione: non deve cancellarglielo sotto
+    i piedi.
+    """
+    scena = Scena()
+    appena_creato = await _canale_vuoto(scena, ID_PROPRIETARIO)
+
+    await VoiceTempCog(_bot_con(scena)).on_ready()
+
+    appena_creato.delete.assert_not_awaited()
+    assert await voice_temp_repo.get_owner(appena_creato.id) == ID_PROPRIETARIO
+
+
+async def test_un_canale_che_non_si_riesce_a_cancellare_non_ferma_gli_altri(clean_db):
+    scena = Scena()
+    bloccato = await _canale_vuoto(scena, ID_PROPRIETARIO)
+    bloccato.delete.side_effect = discord.Forbidden(
+        MagicMock(status=403, reason="Forbidden"), "Missing Permissions"
+    )
+    secondo = await _canale_vuoto(scena, ID_OSPITE)
+    await _invecchia_i_canali(clean_db)
+
+    await VoiceTempCog(_bot_con(scena)).on_ready()
+
+    # Resta nel registro: si riprova al prossimo avvio.
+    assert await voice_temp_repo.get_owner(bloccato.id) == ID_PROPRIETARIO
+    secondo.delete.assert_awaited_once()
+    assert await voice_temp_repo.get_owner(secondo.id) is None
+
+
+async def test_canale_gia_cancellato_da_discord_viene_tolto_dal_registro(clean_db):
+    scena = Scena()
+    canale = await _canale_vuoto(scena, ID_PROPRIETARIO)
+    canale.delete.side_effect = discord.NotFound(
+        MagicMock(status=404, reason="Not Found"), "Unknown Channel"
+    )
+    await _invecchia_i_canali(clean_db)
+
+    await VoiceTempCog(_bot_con(scena)).on_ready()
+
+    assert await voice_temp_repo.get_owner(canale.id) is None
+
+
+async def test_server_non_raggiungibile_all_avvio_i_suoi_canali_restano(clean_db):
+    """Un server in outage non è nella cache: non si decide niente su di lui."""
+    scena = Scena()
+    canale = await _canale_vuoto(scena, ID_PROPRIETARIO)
+    await _invecchia_i_canali(clean_db)
+    bot = _bot_con(scena)
+    bot.get_guild.side_effect = lambda guild_id: None
+
+    await VoiceTempCog(bot).on_ready()
+
+    canale.delete.assert_not_awaited()
+    assert await voice_temp_repo.get_owner(canale.id) == ID_PROPRIETARIO
+
+
+async def test_cancellazione_fallita_all_uscita_il_canale_resta_nel_registro(clean_db):
+    """
+    Se Discord non cancella il canale quando esce l'ultima persona, il
+    canale deve restare registrato: così la pulizia all'avvio lo ritrova.
+    """
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.members.clear()
+    canale.delete.side_effect = discord.DiscordServerError(
+        MagicMock(status=503, reason="Service Unavailable"), "upstream"
+    )
+    prima = create_autospec(discord.VoiceState, instance=True)
+    prima.channel = canale
+    dopo = create_autospec(discord.VoiceState, instance=True)
+    dopo.channel = None
+    cog = VoiceTempCog(_bot_con(scena))
+
+    await cog.on_voice_state_update(proprietario, prima, dopo)
+
+    assert await voice_temp_repo.get_owner(canale.id) == ID_PROPRIETARIO
+
+    # Al riavvio Discord risponde di nuovo: il canale sparisce.
+    canale.delete.side_effect = None
+    await _invecchia_i_canali(clean_db)
+    await cog.on_ready()
+    assert await voice_temp_repo.get_owner(canale.id) is None

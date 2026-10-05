@@ -54,6 +54,7 @@ from core.voice_temp_logic import (
     can_manage_voice_channel,
     is_category_full,
     is_generator_join,
+    is_old_enough_for_startup_cleanup,
     should_delete_after_leave,
 )
 from core.premium import PremiumModule, registry
@@ -627,6 +628,53 @@ class VoiceTempCog(commands.Cog):
         )
 
     # ================================================================
+    # Pulizia all'avvio dei canali rimasti orfani
+    # ================================================================
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        """
+        Un canale temporaneo si elimina quando esce l'ultima persona.
+        Se succede mentre il bot è spento l'evento va perso e il canale
+        resta per sempre: qui, a ogni avvio (e a ogni riconnessione),
+        si cancellano i canali registrati rimasti vuoti e si tolgono
+        dal registro quelli che non esistono più.
+        """
+        for tracked in await voice_temp_repo.list_channels():
+            if not is_old_enough_for_startup_cleanup(tracked.age_seconds):
+                continue
+            guild = self.bot.get_guild(tracked.guild_id)
+            if guild is None:
+                # Server non raggiungibile adesso (o bot uscito): non
+                # si decide niente, si riprova al prossimo avvio.
+                continue
+            try:
+                await self._cleanup_tracked_channel(guild, tracked.channel_id)
+            except Exception:
+                logger.exception(
+                    "Pulizia all'avvio non riuscita per il vocale temporaneo %s",
+                    tracked.channel_id,
+                )
+
+    async def _cleanup_tracked_channel(self, guild: discord.Guild, channel_id: int) -> None:
+        channel = guild.get_channel(channel_id)
+        if channel is None:
+            await voice_temp_repo.unregister_channel(channel_id)
+            return
+        if channel.members:
+            return
+        try:
+            await channel.delete(reason="Vocale temporaneo rimasto vuoto (pulizia all'avvio)")
+        except discord.NotFound:
+            pass  # già cancellato: resta solo da toglierlo dal registro
+        except discord.HTTPException:
+            logger.warning(
+                "Vocale temporaneo vuoto %s non cancellato: riprovo al prossimo avvio.",
+                channel_id,
+            )
+            return
+        await voice_temp_repo.unregister_channel(channel_id)
+
+    # ================================================================
     # Eventi vocali: creazione automatica + eliminazione a canale vuoto
     # ================================================================
     @commands.Cog.listener()
@@ -675,8 +723,14 @@ class VoiceTempCog(commands.Cog):
             if should_delete_after_leave(before_channel_id, owner_id is not None, remaining):
                 try:
                     await before.channel.delete(reason="Vocale temporaneo rimasto vuoto")
-                except (discord.Forbidden, discord.HTTPException):
-                    pass
+                except discord.NotFound:
+                    pass  # già cancellato: resta solo da toglierlo dal registro
+                except discord.HTTPException:
+                    # Resta registrato: lo ritrova la pulizia all'avvio.
+                    logger.warning(
+                        "Vocale temporaneo vuoto %s non cancellato.", before_channel_id
+                    )
+                    return
                 await voice_temp_repo.unregister_channel(before_channel_id)
 
 
