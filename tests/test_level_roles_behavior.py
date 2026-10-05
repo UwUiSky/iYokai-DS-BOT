@@ -10,6 +10,7 @@ import pytest
 from cogs.leveling.leveling import LevelingCog
 from core.database import Database
 from tests.support.discord_fakes import fake_guild, fake_member, fake_role
+from tests.support.moduli import attiva_livelli, togli_configurazione
 
 
 class _FakeResponse:
@@ -75,10 +76,13 @@ async def cog_e_database(monkeypatch):
     repo = LevelRewardRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(leveling_module, "level_reward_repo", repo)
 
+    await attiva_livelli(monkeypatch, database.pool, 100)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()  # ferma subito il task periodico avviato nel costruttore
 
     yield cog, repo
+    await togli_configurazione(database.pool, 100)
     await database.pool.execute("DELETE FROM level_reward_roles")
     await database.close()
 
@@ -164,10 +168,13 @@ async def cog_e_winners_repo(monkeypatch):
     repo = MonthlyWinnersRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(leveling_module, "monthly_winners_repo", repo)
 
+    await attiva_livelli(monkeypatch, database.pool, 100)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
     yield cog, repo
+    await togli_configurazione(database.pool, 100)
     await database.pool.execute("DELETE FROM monthly_winners_config")
     await database.close()
 
@@ -227,10 +234,13 @@ async def cog_e_bacheca_repo(monkeypatch):
     repo = ClanLeaderboardConfigRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(leveling_module, "clan_leaderboard_config_repo", repo)
 
+    await attiva_livelli(monkeypatch, database.pool, 100)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
     yield cog, repo
+    await togli_configurazione(database.pool, 100)
     await database.pool.execute("DELETE FROM clan_leaderboard_config")
     await database.close()
 

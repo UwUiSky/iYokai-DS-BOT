@@ -13,6 +13,7 @@ import pytest
 from cogs.leveling.leveling import LevelingCog
 from core.repositories.guild_chest_repo import REASON_WEEKLY_PERSONAL_DECAY, guild_chest_repo
 from core.repositories.leveling_repo import leveling_repo
+from tests.support.moduli import attiva_livelli
 from tests.support.discord_fakes import (
     fake_guild,
     fake_interaction,
@@ -29,9 +30,7 @@ SALDO_MASSIMO = 2**63 - 1  # il massimo di una colonna BIGINT
 
 @pytest.fixture
 async def cog(monkeypatch, clean_db):
-    import core.database as database_module
-
-    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    await attiva_livelli(monkeypatch, clean_db, GUILD_ID)
     await guild_chest_repo.deposit(GUILD_ID, CASSA, REASON_WEEKLY_PERSONAL_DECAY)
     c = LevelingCog(bot=None)
     c.cog_unload()

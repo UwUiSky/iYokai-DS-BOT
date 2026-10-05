@@ -19,6 +19,7 @@ from core.repositories.leveling_repo import LevelingRepository
 from core.repositories.shop_repo import ShopRepository
 from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
+from tests.support.moduli import attiva_livelli
 
 GUILD_ID = 100
 USER_ID = 1
@@ -34,6 +35,7 @@ class _RispostaHTTPFinta:
 @pytest.fixture
 async def ambiente(clean_db, monkeypatch):
     await apri_connessioni(clean_db)
+    await attiva_livelli(monkeypatch, clean_db, GUILD_ID)
     shop = ShopRepository(pool_provider=lambda: clean_db)
     livelli = LevelingRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(leveling_module, "shop_repo", shop)

@@ -13,6 +13,7 @@ from core.database import Database
 from core.repositories.leveling_repo import LevelingRepository
 from core.repositories.shop_repo import ShopRepository
 from tests.support.discord_fakes import fake_guild, fake_member as fake_member_fedele, fake_role
+from tests.support.moduli import attiva_livelli, togli_configurazione
 
 
 class _FakeResponse:
@@ -86,10 +87,13 @@ async def cog_e_repos(monkeypatch):
     monkeypatch.setattr(leveling_module, "shop_repo", shop_repo)
     monkeypatch.setattr(leveling_module, "leveling_repo", leveling_repo)
 
+    await attiva_livelli(monkeypatch, database.pool, 100)
+
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
     yield cog, shop_repo, leveling_repo
+    await togli_configurazione(database.pool, 100)
     await database.pool.execute("DELETE FROM shop_items")
     await database.pool.execute("DELETE FROM shop_purchases")
     await database.pool.execute("DELETE FROM leveling_totals")

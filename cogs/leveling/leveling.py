@@ -137,6 +137,29 @@ RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
 
 
+async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
+    """
+    Controllo comune, prima riga di ogni comando di questo cog (M 9.7).
+    True se il comando non va eseguito, dopo aver già avvisato l'utente:
+    fuori da un server, oppure con il modulo "leveling" spento su questo
+    server. Il test tests/test_leveling_modulo_spento.py passa in
+    rassegna tutti i comandi: uno nuovo senza questa riga lo fa fallire.
+    """
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "Questo comando è disponibile solo dentro un server.", ephemeral=True
+        )
+        return True
+    if await db.is_module_active_for_guild(interaction.guild.id, MODULE_LEVELING):
+        return False
+    await interaction.response.send_message(
+        "Questo modulo non è attivo su questo server. "
+        "Un amministratore può attivarlo con /setup.",
+        ephemeral=True,
+    )
+    return True
+
+
 # Storico della tesoreria in /clan info: quante righe e come chiamarle.
 MOVIMENTI_IN_CLAN_INFO = 5
 NOMI_DEI_MOVIMENTI = {
@@ -485,10 +508,7 @@ class LevelingCog(commands.Cog):
     async def rank(
         self, interaction: discord.Interaction, member: discord.Member | None = None
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         target = member or interaction.user
@@ -519,10 +539,7 @@ class LevelingCog(commands.Cog):
     async def balance(
         self, interaction: discord.Interaction, member: discord.Member | None = None
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         target = member or interaction.user
@@ -533,10 +550,7 @@ class LevelingCog(commands.Cog):
 
     @app_commands.command(name="daily", description="Riscuoti la ricompensa giornaliera.")
     async def daily(self, interaction: discord.Interaction) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         adesso = datetime.now(timezone.utc)
@@ -559,10 +573,7 @@ class LevelingCog(commands.Cog):
 
     @app_commands.command(name="work", description="Lavora per guadagnare qualche coin.")
     async def work(self, interaction: discord.Interaction) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         adesso = datetime.now(timezone.utc)
@@ -590,10 +601,7 @@ class LevelingCog(commands.Cog):
         member: discord.Member,
         amount: app_commands.Range[int, 1, None],
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
         if member.id == interaction.user.id:
             await interaction.response.send_message(
@@ -640,10 +648,7 @@ class LevelingCog(commands.Cog):
         metric: app_commands.Choice[str],
         period: app_commands.Choice[str],
     ) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if metric.value == "xp" and period.value == "alltime":
@@ -692,10 +697,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, level: app_commands.Range[int, 1, 1000], role: discord.Role
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if not isinstance(interaction.user, discord.Member):
@@ -719,7 +721,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         rimossa = await level_reward_repo.remove_reward(reward_id, guild.id)
@@ -736,7 +738,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def level_roles_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         ricompense = await level_reward_repo.list_rewards(guild.id)
@@ -770,10 +772,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         await monthly_winners_repo.set_channel(
@@ -791,7 +790,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         if await monthly_winners_repo.disable(guild.id):
@@ -811,10 +810,7 @@ class LevelingCog(commands.Cog):
     @shop_group.command(name="list", description="Mostra gli oggetti disponibili nello shop.")
     async def shop_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         oggetti = await shop_repo.list_items(guild.id)
@@ -840,6 +836,8 @@ class LevelingCog(commands.Cog):
     @app_commands.describe(item_id="ID dell'oggetto (vedi /shop list)")
     async def shop_buy(self, interaction: discord.Interaction, item_id: int) -> None:
         guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -934,10 +932,7 @@ class LevelingCog(commands.Cog):
         description: app_commands.Range[str, 1, MAX_DESCRIZIONE_OGGETTO] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if role is not None and isinstance(interaction.user, discord.Member):
@@ -961,7 +956,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def shop_remove_item(self, interaction: discord.Interaction, item_id: int) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         if await shop_repo.remove_item(item_id, guild.id):
@@ -986,10 +981,7 @@ class LevelingCog(commands.Cog):
     @chest_group.command(name="saldo", description="Mostra il saldo della cassa del server.")
     async def chest_saldo(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         saldo = await guild_chest_repo.get_balance(guild.id)
@@ -1020,10 +1012,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, tier: app_commands.Range[int, 1, 3]
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         risultato = await purchase_premium_tier(
@@ -1067,10 +1056,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000]
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: con molte persone il lavoro supera i 3 secondi.
@@ -1128,10 +1114,7 @@ class LevelingCog(commands.Cog):
         importo: app_commands.Range[int, 1, 1_000_000],
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # SEC-21: nessun premio a chi è in blacklist.
@@ -1182,6 +1165,8 @@ class LevelingCog(commands.Cog):
         name: app_commands.Range[str, 1, MAX_NOME_CLAN],
     ) -> None:
         guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -1271,10 +1256,7 @@ class LevelingCog(commands.Cog):
         tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if tag is not None:
@@ -1342,10 +1324,7 @@ class LevelingCog(commands.Cog):
         tag: app_commands.Range[str, TAG_MIN_LENGTH, TAG_MAX_LENGTH] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         if tag is not None:
@@ -1383,10 +1362,7 @@ class LevelingCog(commands.Cog):
         period: app_commands.Choice[str] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # Default: totale all-time (comportamento storico del
@@ -1439,10 +1415,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         await clan_leaderboard_config_repo.set_channel(
@@ -1460,7 +1433,7 @@ class LevelingCog(commands.Cog):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
+        if await _comando_rifiutato(interaction):
             return
 
         if await clan_leaderboard_config_repo.disable(guild.id):
@@ -1475,10 +1448,7 @@ class LevelingCog(commands.Cog):
     @clan_group.command(name="sciogli", description="[Capo Clan] Sciogli la tua gilda.")
     async def clan_sciogli(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: più chiamate a Discord, quindi defer() per primo.
@@ -1529,10 +1499,7 @@ class LevelingCog(commands.Cog):
     @app_commands.describe(membro="Il membro da invitare nella tua gilda")
     async def clan_invita(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: più chiamate a Discord, quindi defer() per primo.
@@ -1589,10 +1556,7 @@ class LevelingCog(commands.Cog):
     @clan_group.command(name="lascia", description="Lascia la gilda di cui fai parte.")
     async def clan_lascia(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: ruoli e permessi sono più chiamate a Discord.
@@ -1624,10 +1588,7 @@ class LevelingCog(commands.Cog):
     @app_commands.describe(membro="Il membro da espellere dalla tua gilda")
     async def clan_espelli(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: più chiamate a Discord, quindi defer() per primo.
@@ -1687,10 +1648,7 @@ class LevelingCog(commands.Cog):
         ruolo: Literal["co_owner", "admin", "mod", "member"],
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: più chiamate a Discord, quindi defer() per primo.
@@ -1766,10 +1724,7 @@ class LevelingCog(commands.Cog):
         nome: app_commands.Range[str, 1, MAX_NOME_CANALE] | None = None,
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         # LIM-25: più chiamate a Discord, quindi defer() per primo.
@@ -1869,10 +1824,7 @@ class LevelingCog(commands.Cog):
         self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000_000]
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -1913,10 +1865,7 @@ class LevelingCog(commands.Cog):
         importo: app_commands.Range[int, 1, 1_000_000_000],
     ) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -1994,10 +1943,7 @@ class LevelingCog(commands.Cog):
     )
     async def clan_boost_individuale(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -2033,10 +1979,7 @@ class LevelingCog(commands.Cog):
     )
     async def clan_boost_gilda(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
-            )
+        if await _comando_rifiutato(interaction):
             return
 
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
@@ -2148,6 +2091,8 @@ class LevelingCog(commands.Cog):
         required_role: discord.Role | None = None,
     ) -> None:
         guild = interaction.guild
+        if await _comando_rifiutato(interaction):
+            return
         if guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True

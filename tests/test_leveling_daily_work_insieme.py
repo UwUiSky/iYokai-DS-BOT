@@ -21,6 +21,7 @@ from core.leveling_logic import (
 from core.repositories.leveling_repo import LevelingRepository
 from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+from tests.support.moduli import attiva_livelli
 
 GUILD_ID = 100
 USER_ID = 1
@@ -29,6 +30,7 @@ USER_ID = 1
 @pytest.fixture
 async def cog_e_repo(clean_db, monkeypatch):
     await apri_connessioni(clean_db)
+    await attiva_livelli(monkeypatch, clean_db, GUILD_ID)
     repo = LevelingRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(leveling_module, "leveling_repo", repo)
     cog = LevelingCog(bot=None)

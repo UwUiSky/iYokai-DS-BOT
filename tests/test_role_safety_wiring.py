@@ -73,9 +73,17 @@ def _interazione_admin_con_ruolo_pericoloso():
     return interazione, server, admin, ruolo_pericoloso
 
 
+async def _attiva_i_livelli(guild_id: int) -> None:
+    """I comandi dell'economia controllano per prima cosa che il modulo sia attivo."""
+    from core.database import db
+
+    await db.set_module_active_for_guild(guild_id, "leveling", True)
+
+
 @pytest.mark.asyncio
-async def test_level_roles_add_rifiuta_ruolo_administrator():
+async def test_level_roles_add_rifiuta_ruolo_administrator(database_collegato):
     interazione, server, admin, ruolo = _interazione_admin_con_ruolo_pericoloso()
+    await _attiva_i_livelli(server.id)
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
@@ -88,8 +96,9 @@ async def test_level_roles_add_rifiuta_ruolo_administrator():
 
 
 @pytest.mark.asyncio
-async def test_shop_add_item_rifiuta_ruolo_administrator():
+async def test_shop_add_item_rifiuta_ruolo_administrator(database_collegato):
     interazione, server, admin, ruolo = _interazione_admin_con_ruolo_pericoloso()
+    await _attiva_i_livelli(server.id)
     cog = LevelingCog(bot=None)
     cog.cog_unload()
 
@@ -248,6 +257,7 @@ class _Acquisto:
     nome = "shop buy"
 
     async def configura(self, scena: _Scena) -> None:
+        await _attiva_i_livelli(ID_SERVER)
         self.cog = LevelingCog(bot=None)
         self.cog.cog_unload()
         await self.cog.shop_add_item.callback(
@@ -270,6 +280,7 @@ class _PremioDiLivello:
     nome = "premio di livello"
 
     async def configura(self, scena: _Scena) -> None:
+        await _attiva_i_livelli(ID_SERVER)
         self.cog = LevelingCog(bot=None)
         self.cog.cog_unload()
         await self.cog.level_roles_add.callback(

@@ -13,6 +13,7 @@ import pytest
 from cogs.leveling.leveling import LevelingCog
 from core.repositories.guild_chest_repo import REASON_WEEKLY_PERSONAL_DECAY, guild_chest_repo
 from core.repositories.leveling_repo import leveling_repo
+from tests.support.moduli import MODULO_LIVELLI, attiva_livelli
 
 # Join molto nel passato rispetto a "ora" (qualunque sia "ora" quando
 # la suite viene eseguita) — garantisce che il tier 1 (6 mesi) sia
@@ -81,9 +82,16 @@ class _FakeInteraction:
 
 
 @pytest.fixture(autouse=True)
-def _collega_pool_di_test(monkeypatch, clean_db):
-    import core.database as database_module
-    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+async def _collega_pool_di_test(monkeypatch, clean_db):
+    # Database globale sul pool del test; il modulo dei livelli si accende
+    # per ogni server con _attiva (i comandi lo controllano per prima cosa).
+    await attiva_livelli(monkeypatch, clean_db)
+
+
+async def _attiva(guild_id: int = 100) -> None:
+    from core.database import db
+
+    await db.set_module_active_for_guild(guild_id, MODULO_LIVELLI, True)
 
 
 @pytest.fixture
@@ -99,10 +107,12 @@ async def _configura_guild(clean_db, guild_id: int, joined_at: datetime = JOIN) 
         guild_id,
         joined_at,
     )
+    await _attiva(guild_id)
 
 
 @pytest.mark.asyncio
 async def test_saldo_di_una_cassa_vuota(cog):
+    await _attiva()
     interaction = _FakeInteraction(guild_id=100)
 
     await cog.chest_saldo.callback(cog, interaction)
@@ -113,6 +123,7 @@ async def test_saldo_di_una_cassa_vuota(cog):
 
 @pytest.mark.asyncio
 async def test_saldo_mostra_gli_ultimi_movimenti(cog):
+    await _attiva()
     await guild_chest_repo.deposit(100, 5_000, REASON_WEEKLY_PERSONAL_DECAY)
     interaction = _FakeInteraction(guild_id=100)
 
@@ -158,12 +169,15 @@ async def test_sblocca_premium_riuscito(cog, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_sblocca_premium_guild_non_configurata(cog):
+async def test_sblocca_premium_su_un_server_mai_configurato_viene_rifiutato(cog):
+    # Un server senza configurazione non ha nessun modulo attivo: il
+    # comando si ferma al controllo comune, prima di toccare la cassa.
     interaction = _FakeInteraction(guild_id=999)
 
     await cog.chest_sblocca_premium.callback(cog, interaction, tier=1)
 
-    assert "Configurazione del server non trovata" in interaction.response.sent_messages[0]
+    assert "non è attivo" in interaction.response.sent_messages[0]
+    assert await guild_chest_repo.get_balance(999) == 0
 
 
 @pytest.mark.asyncio
@@ -182,6 +196,7 @@ async def test_saldo_fuori_da_un_server_avvisa(cog):
 
 @pytest.mark.asyncio
 async def test_assegna_lobby_premia_tutti_i_presenti_in_vocale(cog):
+    await _attiva()
     await guild_chest_repo.deposit(100, 10_000, REASON_WEEKLY_PERSONAL_DECAY)
     canale = _FakeVoiceChannel([_FakeVoiceMember(1), _FakeVoiceMember(2)])
     interaction = _FakeInteraction(guild_id=100, voice_channels=[canale])
@@ -196,6 +211,7 @@ async def test_assegna_lobby_premia_tutti_i_presenti_in_vocale(cog):
 
 @pytest.mark.asyncio
 async def test_assegna_lobby_ignora_i_bot(cog):
+    await _attiva()
     await guild_chest_repo.deposit(100, 10_000, REASON_WEEKLY_PERSONAL_DECAY)
     canale = _FakeVoiceChannel([_FakeVoiceMember(1), _FakeVoiceMember(99, bot=True)])
     interaction = _FakeInteraction(guild_id=100, voice_channels=[canale])
@@ -208,6 +224,7 @@ async def test_assegna_lobby_ignora_i_bot(cog):
 
 @pytest.mark.asyncio
 async def test_assegna_lobby_nessuno_in_vocale_avvisa(cog):
+    await _attiva()
     interaction = _FakeInteraction(guild_id=100, voice_channels=[])
 
     await cog.assegna_lobby.callback(cog, interaction, importo=100)
@@ -217,6 +234,7 @@ async def test_assegna_lobby_nessuno_in_vocale_avvisa(cog):
 
 @pytest.mark.asyncio
 async def test_assegna_lobby_cassa_insufficiente_non_assegna_nulla(cog):
+    await _attiva()
     await guild_chest_repo.deposit(100, 50, REASON_WEEKLY_PERSONAL_DECAY)
     canale = _FakeVoiceChannel([_FakeVoiceMember(1), _FakeVoiceMember(2)])
     interaction = _FakeInteraction(guild_id=100, voice_channels=[canale])
@@ -230,6 +248,7 @@ async def test_assegna_lobby_cassa_insufficiente_non_assegna_nulla(cog):
 
 @pytest.mark.asyncio
 async def test_assegna_winner_premia_il_vincitore(cog):
+    await _attiva()
     await guild_chest_repo.deposit(100, 10_000, REASON_WEEKLY_PERSONAL_DECAY)
     vincitore = _FakeVoiceMember(1)
     interaction = _FakeInteraction(guild_id=100)
@@ -243,6 +262,7 @@ async def test_assegna_winner_premia_il_vincitore(cog):
 
 @pytest.mark.asyncio
 async def test_assegna_winner_cassa_insufficiente_non_assegna_nulla(cog):
+    await _attiva()
     await guild_chest_repo.deposit(100, 1_000, REASON_WEEKLY_PERSONAL_DECAY)
     vincitore = _FakeVoiceMember(1)
     interaction = _FakeInteraction(guild_id=100)

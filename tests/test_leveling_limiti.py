@@ -20,6 +20,7 @@ from core.repositories.guild_clan_repo import guild_clan_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.repositories.shop_repo import shop_repo
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+from tests.support.moduli import attiva_livelli
 
 GUILD_ID = 100
 LIMITE_DESCRIZIONE_EMBED = 4096
@@ -28,9 +29,7 @@ LIMITE_TITOLO_EMBED = 256
 
 @pytest.fixture
 async def cog(monkeypatch, clean_db):
-    import core.database as database_module
-
-    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    await attiva_livelli(monkeypatch, clean_db, GUILD_ID)
     c = LevelingCog(bot=None)
     c.cog_unload()
     return c

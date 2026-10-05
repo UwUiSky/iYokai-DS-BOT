@@ -16,6 +16,7 @@ from cogs.leveling.leveling import LevelingCog
 from core.repositories.guild_chest_repo import REASON_WEEKLY_PERSONAL_DECAY, guild_chest_repo
 from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import fake_guild, fake_interaction
+from tests.support.moduli import attiva_livelli
 from tests.test_guild_clan_cog_behavior import (  # noqa: F401  (cog_e_repos è una fixture)
     _crea_clan_con_categoria,
     _FakeGuild,
@@ -34,15 +35,14 @@ COSTO_PRIMO_CANALE = 25_000
 # ----------------------------------------------------------------------
 @pytest.fixture
 async def cog_con_cassa(monkeypatch, clean_db):
-    import core.database as database_module
-
-    monkeypatch.setattr(database_module.db, "_pool", clean_db)
     await apri_connessioni(clean_db)
+    # Il bot è nel server da più di un anno (serve per il primo tier).
     await clean_db.execute(
         "INSERT INTO guild_config (guild_id, created_at) VALUES ($1, $2)",
         GUILD_ID,
         datetime.now(timezone.utc) - timedelta(days=400),
     )
+    await attiva_livelli(monkeypatch, clean_db, GUILD_ID)
     cog = LevelingCog(bot=None)
     cog.cog_unload()
     return cog

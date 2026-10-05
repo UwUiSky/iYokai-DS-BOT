@@ -17,6 +17,7 @@ from discord.ext import commands
 from cogs.leveling.leveling import LevelingCog
 from core.giveaway_worker import GiveawayWorker
 from core.repositories.giveaway_repo import giveaway_repo
+from tests.support.moduli import attiva_livelli
 from tests.support.discord_fakes import (
     fake_forum_channel,
     fake_guild,
@@ -37,9 +38,7 @@ class _RispostaHTTPFinta:
 
 @pytest.fixture
 async def cog(monkeypatch, clean_db):
-    import core.database as database_module
-
-    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    await attiva_livelli(monkeypatch, clean_db, GUILD_ID)
     c = LevelingCog(bot=None)
     c.cog_unload()
     return c

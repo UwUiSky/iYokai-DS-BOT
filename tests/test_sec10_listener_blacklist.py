@@ -224,6 +224,8 @@ async def blacklist_vera(monkeypatch, clean_db):
     database_module.db._modules_cache.clear()
     blacklist_repo._user_cache.clear()
     await blacklist_repo.add_user(ID_BLOCCATO, "test SEC-21", added_by=ID_OWNER_BOT)
+    # I comandi dell'economia controllano per prima cosa che il modulo sia attivo.
+    await database_module.db.set_module_active_for_guild(ID_SERVER, "leveling", True)
     yield
     blacklist_repo._user_cache.clear()
     database_module.db._modules_cache.clear()

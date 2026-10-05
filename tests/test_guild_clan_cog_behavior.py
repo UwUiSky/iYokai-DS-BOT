@@ -17,6 +17,7 @@ from core.database import Database
 from core.repositories.guild_clan_repo import GuildClanRepository
 from core.repositories.leveling_repo import LevelingRepository
 from tests.support.discord_fakes import fake_member, fake_role
+from tests.support.moduli import attiva_livelli, togli_configurazione
 
 
 class _FakeResponse:
@@ -244,10 +245,10 @@ async def cog_e_repos(monkeypatch):
     await database.pool.execute("DELETE FROM clans")
     await database.pool.execute("DELETE FROM leveling_totals")
 
-    # I bottoni degli inviti controllano la blacklist vera: il database
-    # globale usa lo stesso pool di questo test.
-    import core.database as database_module
-    monkeypatch.setattr(database_module.db, "_pool", database.pool)
+    # Il database globale usa lo stesso pool di questo test (i comandi
+    # controllano il modulo attivo, i bottoni degli inviti la blacklist),
+    # e il modulo dei livelli è acceso nei due server usati qui.
+    await attiva_livelli(monkeypatch, database.pool, 100, 200)
 
     clan_repo = GuildClanRepository(pool_provider=lambda: database.pool)
     leveling_repo = LevelingRepository(pool_provider=lambda: database.pool)
@@ -258,6 +259,7 @@ async def cog_e_repos(monkeypatch):
     cog.cog_unload()
 
     yield cog, clan_repo, leveling_repo
+    await togli_configurazione(database.pool, 100, 200)
     await database.pool.execute("DELETE FROM clan_treasury_ledger")
     await database.pool.execute("DELETE FROM clan_members")
     await database.pool.execute("DELETE FROM clans")
