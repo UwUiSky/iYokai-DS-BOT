@@ -1407,18 +1407,29 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     (`VOICE_HOURS_REQUIRED` — la stessa scala persona-ora da cui
     erano già stati derivati i costi in coin, ora resa un requisito
     verificato) verificate da `/clan compra-canale` insieme al costo
-  - `[x]` Boost individuale XP / Coin acquistabile — `/clan boost
-    individuale`, QUALUNQUE membro (non solo Capo/Admin: paga dal
-    proprio saldo per il proprio guadagno), ×2 per 24h, **10.000**
-    coin personali, si applica SOLO al proprio tick vocale di gilda
-    (mai al leveling generale del server — numeri e scope confermati
-    dall'utente prima di scrivere la logica)
-  - `[x]` Boost di gilda XP / Coin acquistabile — `/clan boost gilda`,
-    Capo/Admin Clan, ×2 per 24h, **100.000** coin dalla tesoreria, si
-    applica al tick di TUTTI i membri; i due boost si moltiplicano
-    tra loro se entrambi attivi (×4 totale). Un acquisto mentre un
-    boost è già attivo ESTENDE la scadenza da lì (mai da subito,
-    stesso pattern già usato per l'estensione mensile del premium)
+  - `[x]` Boost individuale acquistabile (D23, #146) — `/clan boost
+    individuale tipo:<exp|coin|super>`, QUALUNQUE membro (paga dal
+    proprio saldo per il proprio guadagno), ×2 per 24h, coin personali:
+    **exp 6.000**, **coin 6.000**, **super 10.000** (exp + coin). Si
+    applica SOLO al proprio tick vocale di gilda (mai al leveling
+    generale del server); exp raddoppia solo gli XP, coin solo le coin.
+  - `[x]` Boost di gilda acquistabile (D23, #146) — `/clan boost gilda
+    tipo:<exp|coin|super>`, Capo/Admin Clan, ×2 per 24h dalla
+    tesoreria: **exp 60.000**, **coin 60.000**, **super 100.000**; si
+    applica al tick di TUTTI i membri. Individuale e di gilda si
+    moltiplicano tra loro sullo stesso beneficio (×4 totale).
+  - `[x]` Regola d'acquisto (D23): per ambito, un boost si compra solo se
+    NESSUNO dei suoi benefici è già attivo (coin attivo: solo exp; exp
+    attivo: solo coin; super o exp+coin attivi: niente; il super non si
+    compra con exp o coin attivi). Controllo sotto la riga bloccata:
+    due acquisti insieme dello stesso beneficio, ne passa uno solo; se
+    rifiutato nessun addebito. Nessuna somma delle durate: la scadenza
+    è sempre adesso + 24h. Colonne: `boost_exp_expires_at`,
+    `boost_coin_expires_at` (membro), `guild_boost_exp_expires_at`,
+    `guild_boost_coin_expires_at` (gilda); la migrazione 0020 copia la
+    scadenza di prima in entrambe (il boost di oggi diventa un super);
+    le colonne vecchie restano ma non si usano più. La scheda del clan
+    mostra i boost di gilda attivi per tipo.
   - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|
     tesoreria dona|tesoreria trasferisci|invita|espelli|promuovi|
     compra-canale|boost individuale|boost gilda` — tutti i comandi

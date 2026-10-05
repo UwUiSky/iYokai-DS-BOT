@@ -505,7 +505,7 @@ chiudere.
   5. Riavvio: pannello di verifica e reazioni ancora funzionanti.
   Risultato atteso: nessun errore nel log.
 - [ ] Clan e config F1 (#135, #136) — passi:
-  1. `/clan boost gilda` e `individuale` con due clic quasi insieme: due pagamenti, scadenza +48 h (cumulo voluto? vedi domanda all'owner).
+  1. `/clan boost gilda` e `individuale` con due clic quasi insieme: un solo pagamento, l'altro riceve "già attivo" (vedi la voce #146).
   2. `/clan tesoreria dona`: saldo tesoreria e registro coerenti.
   3. `/clan promuovi` ad Admin/Mod con la gilda già al tetto: rifiuto chiaro.
   4. `/config export` su server con impostazioni vuote, poi `/config import` del file: nessun errore.
@@ -516,3 +516,11 @@ chiudere.
   3. `/ticket support-role remove` su un ruolo impostato con `/ticket-setup`: ruolo tolto, la chiave sparisce (`/config history` la mostra rimossa).
   4. `/owner premium` rende premium "Logging Avanzato"; su un server non sbloccato con il modulo acceso, modifica un ruolo o entra in un vocale: nessun log (entro un minuto dal cambio). Con whitelist o boost: i log riprendono (entro un minuto).
   Risultato atteso: nessun errore nel log.
+- [ ] Boost del clan per tipo (#146, D23, migrazione 0020) — passi:
+  1. `/clan boost individuale` mostra l'opzione `tipo` con 3 scelte (exp, coin, super); stessa cosa per `/clan boost gilda`.
+  2. Compra `coin` poi `exp`: entrambi riescono (2 addebiti). Con `coin` attivo prova `coin` e `super`: "Hai già il boost coin attivo fino a ...: puoi comprare solo il boost exp", nessun addebito.
+  3. Con `super` attivo: ogni tipo rifiutato con "non puoi comprare altri boost finché non scade".
+  4. Due clic quasi insieme sullo stesso tipo: un solo addebito.
+  5. Boost che c'era prima dell'aggiornamento: ora vale come super fino alla stessa scadenza.
+  6. In vocale con soli exp attivo: XP della gilda raddoppiati, coin della tesoreria no (e viceversa con coin). `/clan info` elenca i boost di gilda attivi per tipo.
+  Risultato atteso: nessun errore nel log, nessuna coin persa o doppia.
