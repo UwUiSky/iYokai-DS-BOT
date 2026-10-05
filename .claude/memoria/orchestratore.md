@@ -1,7 +1,7 @@
 # Memoria dell'orchestratore
 
 ## Aggiornata
-05/10/2026, pomeriggio · ramo `main` · tutto pubblicato
+05/10/2026, sera · ramo `main` · tutto pubblicato
 
 ## Dove siamo
 - Il bot è in **zero server**. Nessuna prova live fatta: tutte le voci
@@ -36,32 +36,36 @@
   il controllo automatico che chiede di cambiare autore si ignora.
 
 ## In corso
-- Niente a metà.
+- Suite completa lanciata (log nello scratchpad `suite.log`) dopo l'unione
+  di #133/#135/#136 (`f045c97`, `conftest.py` toccato): controllare l'esito.
 
 ## Coda (in ordine)
-1. ~~#137~~ fatto (`f0e2056`, chiusa). Da provare live.
-2. **F1 resto:** #133, #134, #135, #136; utilità e avvisi (#66, #67);
-   divertimento (#71); owner e core (#69, #70). Voci rimaste nelle
-   issue di area già lavorate: #57, #58, #59, #60, #61, #62, #65 (le
-   voci aperte sono nell'ultimo commento di ognuna; molte sono di fasi
-   successive).
-3. **Dopo le unioni del 05/10, ancora da fare:** simboli di `SPEC.md`
-   per le voci sistemate; `COMMAND_LIST.md` (c'è `/clan lascia`);
-   passi di prova in `VERIFICA_LIVE.md`.
-4. Fine F1: giro di `cacciatore-bug`, `ottimizzatore` (PERF-1…7) e
+1. Fatti e chiusi: #137, #133, #135, #136 (con `verifica-live`).
+2. **#134** vocali/ticket (`dev-log-ticket`): `/voice kick`, `/voice lock`,
+   `db._remove_guild_setting`, M 3.14 premium log avanzati.
+3. Utilità/avvisi #66, #67; fun #71; owner/core #69, #70; voci rimaste in
+   #57–#62, #65 (ultimo commento di ognuna).
+4. Dopo le unioni: simboli SPEC (M 10.16 = fatto), `COMMAND_LIST.md`
+   (`/clan lascia`), prove live da agenti S/D/E in `VERIFICA_LIVE.md`.
+5. Fine F1: `cacciatore-bug` + `ottimizzatore` (PERF-1…7) +
    `guardiano-limiti`, poi suite completa.
-5. **F2 musica** (#64, #45, #47, #48, #126): prima un nodo per bot.
-6. **F3** backup (#68, #121) e iYokai Mod (#113).
-7. Poi F5, F6, F7… come da milestone. Funzioni chieste il 05/10:
-   #138, #139, #140, #141, #142 (voce: disegno completo nella issue).
+6. F2 musica (#64, #45, #47, #48, #126; un nodo per bot), F3 backup
+   (#68, #121) e iYokai Mod (#113), poi F5, F6, F7; richieste del
+   05/10: #138–#142.
+7. Domanda aperta per l'owner: i boost clan si sommano (2 pagamenti = 48 h)?
+   Oggi sì (scelta consigliata, nessun tetto). Aggiungere `PROMPT_PROGETTO.md`
+   spiegato.
 
 ## Cose pratiche
 - Repository: `/home/claude/repo`. Copie di lavoro:
   `/home/claude/wt/<nome>`; database `iyokai_w<nome>`.
 - **La macchina si riavvia senza avviso**: fare commit e push spesso.
   Dopo un riavvio: `service postgresql start`.
-- Copie di lavoro ancora presenti e già unite: `s`, `d`, `e`, `ai`. Si
-  tolgono dopo aver controllato che non abbiano file non salvati.
+- Copie di lavoro attuali: `m133` e `c135` (unite; da togliere se pulite).
+- Con la shell: esportare `DATABASE_URL` del proprio database in OGNI
+  comando, altrimenti i test usano quello condiviso.
+- Suite completa: lanciarla con `nohup … &` (il limite di 10 minuti la
+  interrompe).
 - Agenti: al massimo 3 insieme; ognuno usa una sotto-cartella sua nella
   cartella temporanea. Un agente fermato si riprende, non si rifà.
 - La suite completa dura circa 9 minuti da sola.
