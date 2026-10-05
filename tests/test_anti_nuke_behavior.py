@@ -131,6 +131,13 @@ async def contesto(monkeypatch):
 
     monkeypatch.setattr(anti_nuke_module, "security_rate_tracker", AutomodRateTracker())
 
+    # Le attese tra una lettura e l'altra del registro di controllo
+    # non servono in questi test.
+    async def _nessuna_attesa(_secondi):
+        return None
+
+    monkeypatch.setattr(anti_nuke_module, "_aspetta", _nessuna_attesa)
+
     from core.repositories.security_repo import security_repo
 
     original_provider = security_repo._pool_provider
@@ -302,7 +309,7 @@ async def test_on_guild_channel_delete_ricrea_il_canale_in_recovery(contesto):
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
     guild.set_audit_entries(
-        discord.AuditLogAction.channel_delete, [_FakeAuditEntry(user_id=ACTOR_ID)]
+        discord.AuditLogAction.channel_delete, [_FakeAuditEntry(user_id=ACTOR_ID, target_id=321)]
     )
     guild._members[ACTOR_ID] = _FakeMember(ACTOR_ID, guild)
 
@@ -310,6 +317,10 @@ async def test_on_guild_channel_delete_ricrea_il_canale_in_recovery(contesto):
         def __init__(self, name, guild):
             self._nome_finto = name
             self._guild_finta = guild
+
+        @property
+        def id(self):
+            return 321
 
         @property
         def name(self):

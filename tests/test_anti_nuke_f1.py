@@ -56,7 +56,7 @@ def db_finto(clean_db, monkeypatch):
 def attese(monkeypatch):
     """Le attese tra una lettura e l'altra del registro: registrate, non dormite."""
     finta = AsyncMock()
-    monkeypatch.setattr(modulo.asyncio, "sleep", finta)
+    monkeypatch.setattr(modulo, "_aspetta", finta)
     return finta
 
 
@@ -156,3 +156,84 @@ async def test_persona_con_ruolo_gestito_perde_solo_gli_altri_ruoli(cog):
     persona.edit.assert_awaited_once()
     assert persona.edit.call_args.kwargs["roles"] == [booster]
     persona.kick.assert_not_awaited()
+
+
+# ====================================================================
+# M 3.3 — il registro di controllo arriva in ritardo
+# ====================================================================
+async def test_voce_del_registro_arrivata_dopo_due_secondi_viene_contata(cog, attese):
+    autore = fake_member(user_id=AUTORE_ID)
+    voce = _voce(discord.AuditLogAction.channel_delete, AUTORE_ID, 7001)
+    # Prima e seconda lettura: la voce non c'è ancora. Alla terza sì.
+    server = _server(autore, [[], [], [voce]])
+    canale = _canale_cancellato(fake_text_channel(), server)
+
+    await cog.on_guild_channel_delete(canale)
+
+    assert server.audit_logs.call_count == 3
+    assert sum(chiamata.args[0] for chiamata in attese.await_args_list) == 2
+    assert await _azioni_registrate() == ["nuke_channel"]
+    autore.edit.assert_awaited_once()
+
+
+async def test_voce_mai_arrivata_si_smette_di_cercare(cog, attese):
+    autore = fake_member(user_id=AUTORE_ID)
+    server = _server(autore, [[]])
+    canale = _canale_cancellato(fake_text_channel(), server)
+
+    await cog.on_guild_channel_delete(canale)
+
+    assert server.audit_logs.call_count == len(modulo.ATTESE_REGISTRO)
+    assert await _azioni_registrate() == []
+
+
+async def test_voce_di_un_altro_canale_non_viene_presa_per_buona(cog):
+    # Nel registro c'è la cancellazione di un ALTRO canale fatta da un
+    # admin: non va attribuita a questa.
+    autore = fake_member(user_id=AUTORE_ID)
+    altra = _voce(discord.AuditLogAction.channel_delete, autore_id=31337, bersaglio_id=1234)
+    giusta = _voce(discord.AuditLogAction.channel_delete, AUTORE_ID, 7001)
+    server = _server(autore, [[altra], [giusta, altra]])
+    canale = _canale_cancellato(fake_text_channel(), server)
+
+    await cog.on_guild_channel_delete(canale)
+
+    autore.edit.assert_awaited_once()
+
+
+async def test_modulo_spento_il_registro_non_viene_letto(cog, db_finto):
+    db_finto.is_module_active_for_guild.return_value = False
+    autore = fake_member(user_id=AUTORE_ID)
+    server = _server(autore, [[_voce(discord.AuditLogAction.kick, AUTORE_ID, 500)]])
+    uscito = fake_member(user_id=500)
+    uscito.guild = server
+
+    await cog.on_member_remove(uscito)
+    await cog.on_guild_channel_delete(_canale_cancellato(fake_text_channel(), server))
+
+    server.audit_logs.assert_not_called()
+
+
+async def test_anti_nuke_disattivato_il_registro_non_viene_letto(cog):
+    await cog.enable.callback(cog, _interazione(), False)
+    autore = fake_member(user_id=AUTORE_ID)
+    server = _server(autore, [[_voce(discord.AuditLogAction.kick, AUTORE_ID, 500)]])
+    uscito = fake_member(user_id=500)
+    uscito.guild = server
+
+    await cog.on_member_remove(uscito)
+
+    server.audit_logs.assert_not_called()
+
+
+async def test_errore_di_discord_sul_registro_non_rompe_l_evento(cog):
+    autore = fake_member(user_id=AUTORE_ID)
+    server = _server(autore, [[]])
+    risposta = MagicMock()
+    risposta.status = 500
+    risposta.reason = "Internal Server Error"
+    server.audit_logs.side_effect = discord.HTTPException(risposta, "errore finto")
+
+    await cog.on_guild_channel_delete(_canale_cancellato(fake_text_channel(), server))
+
+    assert await _azioni_registrate() == []

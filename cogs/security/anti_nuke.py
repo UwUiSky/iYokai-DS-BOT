@@ -10,6 +10,8 @@ L'autore di un evento non è mai nel payload dell'evento gateway
 stesso (Discord non lo include) — va sempre risolto via audit log
 (`guild.audit_logs`), stesso approccio già usato in
 `cogs/security/spam_trap.py` per il cleanup di webhook/inviti.
+Il registro si legge solo dove l'anti-nuke è attivo, e si rilegge se
+la voce non è ancora arrivata.
 
 Recovery: `on_guild_channel_delete`/`on_guild_role_delete` ricevono
 l'oggetto come l'ultima volta che era nella cache del client, PRIMA
@@ -56,6 +58,12 @@ MODULE_ANTI_NUKE = "anti_nuke"
 # l'uno dall'altro, ma non sono garantiti nello stesso istante.
 _AUDIT_LOG_LOOKBACK_SECONDS = 10
 
+# Secondi di attesa prima di ogni lettura del registro di controllo:
+# subito, poi altre due volte. Per le uscite dal server (quasi sempre
+# volontarie, senza voce nel registro) basta una sola rilettura.
+ATTESE_REGISTRO = (0, 1, 1)
+ATTESE_REGISTRO_USCITA = (0, 1.5)
+
 # Lunghezza massima di un motivo nel registro di controllo di Discord.
 MAX_MOTIVO = 512
 
@@ -80,23 +88,37 @@ def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
     return SecuritySettings(**dati)
 
 
-async def _resolve_actor(guild: discord.Guild, action: discord.AuditLogAction, target_id: int | None = None) -> int | None:
+async def _aspetta(secondi: float) -> None:
+    await asyncio.sleep(secondi)
+
+
+async def _resolve_actor(
+    guild: discord.Guild,
+    action: discord.AuditLogAction,
+    target_id: int | None = None,
+    attese: tuple[float, ...] = ATTESE_REGISTRO,
+) -> int | None:
     """
-    Cerca nell'audit log la voce più recente per questa azione
-    (opzionalmente filtrata per target) entro la finestra di
-    tolleranza. None se non trovata o se il bot non ha i permessi
-    per leggere l'audit log — mai un'eccezione che blocchi l'evento.
+    Cerca nel registro di controllo chi ha fatto questa azione
+    (se `target_id` è dato, solo la voce che riguarda quell'oggetto).
+    Il registro arriva spesso un attimo dopo l'evento: se la voce non
+    c'è ancora si riprova, aspettando ogni volta i secondi di `attese`.
+    None se non si trova o se Discord non lascia leggere il registro —
+    mai un'eccezione che blocchi l'evento.
     """
     now = discord.utils.utcnow()
-    try:
-        async for entry in guild.audit_logs(action=action, limit=10):
-            if (now - entry.created_at).total_seconds() > _AUDIT_LOG_LOOKBACK_SECONDS:
-                break
-            if target_id is not None and getattr(entry.target, "id", None) != target_id:
-                continue
-            return entry.user_id
-    except discord.Forbidden:
-        return None
+    for attesa in attese:
+        if attesa:
+            await _aspetta(attesa)
+        try:
+            async for entry in guild.audit_logs(action=action, limit=10):
+                if (now - entry.created_at).total_seconds() > _AUDIT_LOG_LOOKBACK_SECONDS:
+                    break
+                if target_id is not None and getattr(entry.target, "id", None) != target_id:
+                    continue
+                return entry.user_id
+        except discord.HTTPException:
+            return None
     return None
 
 
@@ -282,18 +304,54 @@ class AntiNukeCog(commands.Cog):
     # così la logica "conta -> valuta -> punisci -> logga -> alert" non
     # si ripete cinque volte quasi identica.
     # ================================================================
-    async def _handle_event(
-        self, guild: discord.Guild, category: str, actor_id: int | None, detail_suffix: str
-    ) -> SecuritySettings | None:
-        # Le azioni del bot stesso (recovery, ticket, canali temporanei)
-        # non si contano: il bot non deve mai punire se stesso.
-        if actor_id == self.bot.user.id:
-            return None
+    async def _impostazioni_attive(self, guild: discord.Guild) -> SecuritySettings | None:
+        """Le impostazioni del server se l'anti-nuke è attivo lì, altrimenti None."""
         if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_NUKE):
             return None
         settings = await security_repo.get_settings(guild.id)
-        if not settings.anti_nuke.enabled or actor_id is None:
+        return settings if settings.anti_nuke.enabled else None
+
+    async def _evento(
+        self,
+        guild: discord.Guild,
+        category: str,
+        azioni: tuple[discord.AuditLogAction, ...],
+        detail_suffix: str,
+        target_id: int | None = None,
+        attese: tuple[float, ...] = ATTESE_REGISTRO,
+    ) -> SecuritySettings | None:
+        """
+        Percorso comune dei listener. Prima si controlla se l'anti-nuke
+        è attivo: dove è spento il registro di controllo non viene
+        letto. Poi si cerca l'autore (nella prima delle `azioni` che ha
+        una voce) e si passa al motore.
+        """
+        settings = await self._impostazioni_attive(guild)
+        if settings is None:
             return None
+        actor_id = None
+        for azione in azioni:
+            actor_id = await _resolve_actor(guild, azione, target_id, attese)
+            if actor_id is not None:
+                break
+        return await self._handle_event(guild, category, actor_id, detail_suffix, settings)
+
+    async def _handle_event(
+        self,
+        guild: discord.Guild,
+        category: str,
+        actor_id: int | None,
+        detail_suffix: str,
+        settings: SecuritySettings | None = None,
+    ) -> SecuritySettings | None:
+        # Le azioni del bot stesso (recovery, ticket, canali temporanei)
+        # non si contano: il bot non deve mai punire se stesso.
+        if actor_id is None or actor_id == self.bot.user.id:
+            return None
+        if settings is None:
+            settings = await self._impostazioni_attive(guild)
+            if settings is None:
+                return None
 
         now = discord.utils.utcnow()
         finestra = category_window_seconds(category, settings.anti_nuke)
@@ -316,13 +374,17 @@ class AntiNukeCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
-        actor_id = await _resolve_actor(channel.guild, discord.AuditLogAction.channel_create, channel.id)
-        await self._handle_event(channel.guild, NUKE_CATEGORY_CHANNEL, actor_id, f"creato #{channel.name}")
+        await self._evento(
+            channel.guild, NUKE_CATEGORY_CHANNEL, (discord.AuditLogAction.channel_create,),
+            f"creato #{channel.name}", target_id=channel.id,
+        )
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
-        actor_id = await _resolve_actor(channel.guild, discord.AuditLogAction.channel_delete)
-        settings = await self._handle_event(channel.guild, NUKE_CATEGORY_CHANNEL, actor_id, f"cancellato #{channel.name}")
+        settings = await self._evento(
+            channel.guild, NUKE_CATEGORY_CHANNEL, (discord.AuditLogAction.channel_delete,),
+            f"cancellato #{channel.name}", target_id=channel.id,
+        )
 
         if settings is not None and settings.anti_nuke.recovery_enabled:
             try:
@@ -337,13 +399,17 @@ class AntiNukeCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role: discord.Role) -> None:
-        actor_id = await _resolve_actor(role.guild, discord.AuditLogAction.role_create, role.id)
-        await self._handle_event(role.guild, NUKE_CATEGORY_ROLE, actor_id, f"creato ruolo {role.name}")
+        await self._evento(
+            role.guild, NUKE_CATEGORY_ROLE, (discord.AuditLogAction.role_create,),
+            f"creato ruolo {role.name}", target_id=role.id,
+        )
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role) -> None:
-        actor_id = await _resolve_actor(role.guild, discord.AuditLogAction.role_delete)
-        settings = await self._handle_event(role.guild, NUKE_CATEGORY_ROLE, actor_id, f"cancellato ruolo {role.name}")
+        settings = await self._evento(
+            role.guild, NUKE_CATEGORY_ROLE, (discord.AuditLogAction.role_delete,),
+            f"cancellato ruolo {role.name}", target_id=role.id,
+        )
 
         if settings is not None and settings.anti_nuke.recovery_enabled:
             try:
@@ -360,42 +426,39 @@ class AntiNukeCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_webhooks_update(self, channel: discord.abc.GuildChannel) -> None:
-        actor_id = await _resolve_actor(channel.guild, discord.AuditLogAction.webhook_create)
-        if actor_id is None:
-            actor_id = await _resolve_actor(channel.guild, discord.AuditLogAction.webhook_delete)
-        await self._handle_event(channel.guild, NUKE_CATEGORY_WEBHOOK, actor_id, f"webhook modificati in #{channel.name}")
+        await self._evento(
+            channel.guild, NUKE_CATEGORY_WEBHOOK,
+            (discord.AuditLogAction.webhook_create, discord.AuditLogAction.webhook_delete),
+            f"webhook modificati in #{channel.name}",
+        )
 
     @commands.Cog.listener()
     async def on_guild_emojis_update(self, guild: discord.Guild, before, after) -> None:
-        # Soundboard non incluso: discord.py 2.7 non esporrebbe un
-        # evento gateway dedicato per le sound board (limite della
-        # libreria/versione, non una scelta di scope) — emoji e
-        # sticker (sotto) restano coperti.
+        # Le sound board non sono contate qui: emoji e sticker (sotto) sì.
         azione = discord.AuditLogAction.emoji_create if len(after) > len(before) else discord.AuditLogAction.emoji_delete
-        actor_id = await _resolve_actor(guild, azione)
-        await self._handle_event(guild, NUKE_CATEGORY_EMOJI, actor_id, "emoji del server modificate")
+        await self._evento(guild, NUKE_CATEGORY_EMOJI, (azione,), "emoji del server modificate")
 
     @commands.Cog.listener()
     async def on_guild_stickers_update(self, guild: discord.Guild, before, after) -> None:
         azione = discord.AuditLogAction.sticker_create if len(after) > len(before) else discord.AuditLogAction.sticker_delete
-        actor_id = await _resolve_actor(guild, azione)
-        await self._handle_event(guild, NUKE_CATEGORY_EMOJI, actor_id, "sticker del server modificati")
+        await self._evento(guild, NUKE_CATEGORY_EMOJI, (azione,), "sticker del server modificati")
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.abc.User) -> None:
-        actor_id = await _resolve_actor(guild, discord.AuditLogAction.ban, user.id)
-        await self._handle_event(guild, NUKE_CATEGORY_BAN_KICK, actor_id, f"ban di {user}")
+        await self._evento(
+            guild, NUKE_CATEGORY_BAN_KICK, (discord.AuditLogAction.ban,),
+            f"ban di {user}", target_id=user.id,
+        )
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
-        # on_member_remove scatta anche per un leave volontario — va
-        # verificato nell'audit log se si tratta DAVVERO di un kick
-        # prima di contarlo, altrimenti ogni utente che lascia il
-        # server da solo alimenterebbe per errore il contatore.
-        actor_id = await _resolve_actor(member.guild, discord.AuditLogAction.kick, member.id)
-        if actor_id is None:
-            return
-        await self._handle_event(member.guild, NUKE_CATEGORY_BAN_KICK, actor_id, f"kick di {member}")
+        # on_member_remove scatta anche per un'uscita volontaria: si
+        # conta solo se nel registro c'è davvero un kick di questo
+        # membro (senza voce il motore non conta niente).
+        await self._evento(
+            member.guild, NUKE_CATEGORY_BAN_KICK, (discord.AuditLogAction.kick,),
+            f"kick di {member}", target_id=member.id, attese=ATTESE_REGISTRO_USCITA,
+        )
 
 
 async def setup(bot: commands.Bot) -> None:
