@@ -245,7 +245,10 @@ quando si costruisce quella voce.
 | Statistiche (NF-25; catalogo UTL-178, STA-024) | Quanti nuovi restano dopo 7, 30, 90 giorni, per mese di ingresso; confronto con il mese prima; pagina sul pannello | Gemini r.327–335, r.628–630; ChatGPT r.5907–5958; SPEC_v2 §C.6 |
 | Carico dello staff (NF-41) | Tempo di risposta, ticket riaperti, sanzioni annullate in appello, soddisfazione; mai una classifica pubblica; proposta di turni | Gemini r.396–400, r.859–860; ChatGPT r.6273–6299; Grok r.109–112 |
 | Appelli (NF-30) | Stati dell'appello, revisore assegnato, comando per vederne lo stato | ChatGPT r.3923–3946, r.6349–6367 |
-| Casi di moderazione (SPEC §5; catalogo MOD-038) | Archivio delle prove con impronta dei file e scadenza; etichette, priorità e seconda revisione del caso | ChatGPT r.5163–5243 |
+| Casi di moderazione (SPEC §5; catalogo MOD-038) | Stato del caso: attivo, scaduto, revocato. Archivio delle prove con impronta dei file e scadenza; etichette, priorità e seconda revisione del caso | ChatGPT r.320–364, r.5163–5243; SPEC_v2 §8.18 |
+| Log dei messaggi (NF-02) | Nel log anche allegati, embed, sticker, il messaggio a cui si rispondeva, gli inoltri | ChatGPT r.524–555 |
+| Storico degli eventi (SPEC 8.17) | Esportazione anche in CSV e in ZIP, non solo JSON | ChatGPT r.480–485; SPEC_v2 §8.21 |
+| Privacy (NF-04) | Per l'owner: cancellare i dati di un canale, o tutto ciò che è prima di una data. Sul pannello un "centro privacy": cosa conserva il bot, per quanto, esporta, cancella | ChatGPT r.1498–1502, r.6407–6431 |
 | Regole di AutoMod (catalogo AMD-075) | Regole scritte come "evento + condizioni + azioni" | ChatGPT r.5245–5291 |
 | Blocco del server (NF-29) | Quattro livelli: leggero, medio, duro, ripristino | ChatGPT r.5718–5743 |
 | Backup automatici (catalogo BKP-008) | Copie delle sole differenze; quante tenerne: 7 del giorno, 4 della settimana, 3 del mese | ChatGPT r.3179–3203 |
@@ -292,8 +295,10 @@ niente vada perso, con il verdetto di `BACKLOG.md`.
 | Cifratura dei dati sensibili, gestore dei segreti, rotazione dei token, firma dei webhook in ingresso | ChatGPT r.4016–4048, r.6444–6513 | In parte in SPEC 19.9 (SEC-16, `LIM-52`) |
 | Mai fidarsi della cache: eventi "raw", lettura diretta di riserva, nomi e avatar salvati al momento dell'evento, segno per gli oggetti cancellati | ChatGPT r.2276–2299, r.4112–4183, r.6833–6921 | Non valutata. Regole di codice da tenere in `LIMITI.md` |
 | Isolamento dei dati per server anche nel database | ChatGPT r.7196–7225 | Non valutata |
+| Registro dei bot in funzione; un solo bot esegue i lavori a orario | ChatGPT r.6954–7000 | Non valutata. Vicina a D15 (`core/bot_roles.py` sceglie quale bot agisce) |
+| Tetto di risorse per server (eventi al secondo, scritture, lavori insieme) | ChatGPT r.7170–7194 | Non valutata |
 | Negozio di moduli e plugin di terzi | ChatGPT r.7350–7401 | §12: respinto (codice non fidato nello stesso processo) |
 
 ## Conteggio
 
-65 righe `OM`. 27 dettagli di voci già in lista. 1 richiesta dell'owner ferma nel catalogo. 17 proposte tecniche. 11 aree controllate senza voci mancanti.
+65 righe `OM`. 30 dettagli di voci già in lista. 1 richiesta dell'owner ferma nel catalogo. 19 proposte tecniche. 11 aree controllate senza voci mancanti.

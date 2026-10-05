@@ -213,7 +213,9 @@ livello; tutto parte spento.
 
 Per la **voce** (da voce a testo, lettura ad alta voce) nelle fonti non
 c'è niente. Il karaoke con punteggio non usa l'AI: è in
-`VOCI_OMESSE.md` (OM-046).
+`VOCI_OMESSE.md` (OM-046). La lettura del testo di un'immagine
+(`APP_UTENTE_E_DESKTOP.md`, A9) usa una libreria sul server, non un
+fornitore AI: non è contata qui.
 
 | ID | Funzione | Cosa fa | Chi l'ha chiesta o proposta | Dov'è oggi | Come farla in iYokai | Prerequisiti e limiti |
 |---|---|---|---|---|---|---|
