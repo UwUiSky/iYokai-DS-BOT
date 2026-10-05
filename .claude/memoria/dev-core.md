@@ -23,6 +23,10 @@
   SimpleNamespace. Un sotto-gruppo controlla solo il padre diretto: usare `GruppoYokai`.
 - Il rifiuto di accesso è `AccessoNegato`, risposto da `handle_app_command_error`
   (core/premium.py): il check non risponde mai da solo.
+- Autocomplete: i check non si applicano; usare `autocomplete_protetto(livello)`.
+  Un `Group` semplice sotto un gruppo protetto dà TypeError: usare `GruppoYokai`.
+- Ruoli del bot: id == guild.id o non numerico = non configurato; import/rollback
+  li validano (`errore_ruoli_del_bot`).
 - Oggi il comando più pesante è `/automod` (3028 caratteri): nessun allarme a 6800.
 
 ## Aperto

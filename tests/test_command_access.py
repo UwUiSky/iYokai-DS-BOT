@@ -262,3 +262,73 @@ async def test_sottogruppo_eredita_il_controllo_del_padre(finto_db):
     with pytest.raises(ca.AccessoNegato):
         await figlio.interaction_check(_interazione())
     assert await figlio.interaction_check(_interazione(perm="moderate_members")) is True
+
+
+# ---- valori strani nelle impostazioni ----
+
+@pytest.mark.parametrize("valore", ["abc", "", [], {}, True, 1.5, -4, 0])
+async def test_valore_corrotto_vale_non_configurato(finto_db, valore):
+    finto_db.valori[(77, ca.SETTING_ADMIN_ROLE)] = valore
+    assert await ca.leggi_ruolo(77, ca.TipoRuolo.ADMIN) is None
+    # nessun errore all'utente: solo i permessi di Discord
+    assert await ca.puo_usare(_interazione(ruoli=[RUOLO]), Livello.ADMIN) is False
+    assert await ca.puo_usare(_interazione(perm="manage_guild"), Livello.ADMIN) is True
+
+
+async def test_ruolo_uguale_a_guild_id_vale_non_configurato(finto_db):
+    # l'id di @everyone è l'id del server: non deve far passare tutti
+    finto_db.valori[(77, ca.SETTING_ADMIN_ROLE)] = 77
+    assert await ca.leggi_ruolo(77, ca.TipoRuolo.ADMIN) is None
+    ix = _interazione(ruoli=[77], guild_ruoli=(77,))
+    assert await ca.puo_usare(ix, Livello.ADMIN) is False
+
+
+# ---- autocomplete ----
+
+async def test_autocomplete_protetto_non_mostra_nulla_a_chi_non_puo(finto_db):
+    chiamate = []
+
+    @ca.autocomplete_protetto(Livello.MOD)
+    async def suggerisci(interaction: discord.Interaction, current: str):
+        chiamate.append(current)
+        return [app_commands.Choice(name="a", value="a")]
+
+    assert await suggerisci(_interazione(), "x") == []
+    assert chiamate == []
+    scelte = await suggerisci(_interazione(perm="moderate_members"), "x")
+    assert [c.name for c in scelte] == ["a"] and chiamate == ["x"]
+
+
+async def test_autocomplete_protetto_funziona_su_un_metodo_e_in_dm(finto_db):
+    class Cog:
+        @ca.autocomplete_protetto(Livello.ADMIN)
+        async def suggerisci(self, interaction: discord.Interaction, current: str):
+            return [app_commands.Choice(name="a", value="a")]
+
+    ix = fake_interaction()
+    ix.guild = None
+    assert await Cog().suggerisci(ix, "") == []
+    assert len(await Cog().suggerisci(_interazione(perm="manage_guild"), "")) == 1
+
+
+def test_autocomplete_protetto_conserva_la_firma():
+    import inspect
+
+    async def suggerisci(interaction: discord.Interaction, current: str):  # pragma: no cover
+        return []
+
+    avvolta = ca.autocomplete_protetto(Livello.MOD)(suggerisci)
+    assert list(inspect.signature(avvolta).parameters) == ["interaction", "current"]
+
+
+# ---- contatore errori in core/premium.py ----
+
+async def test_il_contatore_errori_non_cresce_sul_rifiuto_e_cresce_sugli_altri(finto_db):
+    from core.bot_stats import error_counter
+    from core.premium import handle_app_command_error
+
+    prima = error_counter.count_in_window()
+    await handle_app_command_error(_interazione(), ca.AccessoNegato(Livello.MOD))
+    assert error_counter.count_in_window() == prima
+    await handle_app_command_error(_interazione(), app_commands.AppCommandError("boom"))
+    assert error_counter.count_in_window() == prima + 1

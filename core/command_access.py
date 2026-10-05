@@ -9,6 +9,14 @@ funzioni che leggono e scrivono i ruoli scelti dall'admin del server.
 Funzioni coperte: NF-05 (issue #76)
 Dipende da: core/config.py (OWNER_ID), core/database.py (impostazioni)
 
+REGOLA PER GLI AUTOCOMPLETE: discord.py NON esegue i controlli dei
+comandi né dei gruppi sugli autocomplete. Ogni autocomplete di un comando
+sotto un gruppo protetto (o con `richiedi`) va decorato con
+`@autocomplete_protetto(Livello.X)`, con lo stesso livello del gruppo:
+chi non può usare il comando riceve un elenco vuoto. Sotto un gruppo
+protetto un sotto-gruppo deve essere un `GruppoYokai` (un `Group`
+semplice viene rifiutato con TypeError).
+
 Il rifiuto non risponde da solo: solleva `AccessoNegato`, che il gestore
 globale degli errori (core/premium.py) trasforma in UNA risposta effimera.
 """
@@ -16,6 +24,7 @@ globale degli errori (core/premium.py) trasforma in UNA risposta effimera.
 from __future__ import annotations
 
 import enum
+import functools
 from collections.abc import Iterable
 
 import discord
@@ -198,6 +207,26 @@ def richiedi(livello: Livello):
         return await controlla(interaction, livello)
 
     return app_commands.check(predicate)
+
+
+def autocomplete_protetto(livello: Livello):
+    """
+    Decorator per un autocomplete (funzione o metodo di un cog):
+    `(interaction, current)` o `(self, interaction, current)`. Chi non
+    ha il livello riceve `[]`, mai un errore.
+    """
+
+    def decorator(funzione):
+        @functools.wraps(funzione)
+        async def avvolta(*args, **kwargs):
+            interaction = next((a for a in args if isinstance(a, discord.Interaction)), None)
+            if interaction is None or not await puo_usare(interaction, livello):
+                return []
+            return await funzione(*args, **kwargs)
+
+        return avvolta
+
+    return decorator
 
 
 class GruppoYokai(app_commands.Group):
