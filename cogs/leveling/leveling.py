@@ -1649,8 +1649,8 @@ class LevelingCog(commands.Cog):
         nuovo_saldo = await guild_clan_repo.donate(clan.id, interaction.user.id, importo)
 
         messaggio = f"✅ Hai donato **{importo}** coin alla tesoreria di **{clan.name}** (saldo: {nuovo_saldo})."
+        # La gilda diventa ufficiale dentro la donazione stessa (repository).
         if not clan.officialized and is_creation_deficit_covered(nuovo_saldo):
-            await guild_clan_repo.set_officialized(clan.id)
             messaggio += "\n🎉 Il deficit di creazione è coperto: la gilda è ora **ufficializzata**!"
 
         await interaction.response.send_message(messaggio)
@@ -1726,10 +1726,20 @@ class LevelingCog(commands.Cog):
         nota_cross_server = (
             " (su un altro server)" if destinazione.guild_id != guild.id else ""
         )
-        await interaction.response.send_message(
+        messaggio = (
             f"✅ Trasferite **{importo}** coin dalla tesoreria di **{clan.name}** a "
             f"**{destinazione.name}**{nota_cross_server}."
         )
+        # BUG-15: il trasferimento può aver coperto il debito di creazione.
+        aggiornata = await guild_clan_repo.get_clan_by_tag(
+            destinazione.guild_id, destinazione.tag
+        )
+        if aggiornata is not None and aggiornata.officialized and not destinazione.officialized:
+            messaggio += (
+                f"\n🎉 Il deficit di creazione è coperto: **{destinazione.name}** è ora "
+                "**ufficializzata**!"
+            )
+        await interaction.response.send_message(messaggio)
 
     clan_boost_group = app_commands.Group(
         name="boost", description="Boost XP/coin del Sistema Gilde/Clan.", parent=clan_group

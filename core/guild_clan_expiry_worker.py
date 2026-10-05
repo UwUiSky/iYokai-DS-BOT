@@ -11,7 +11,9 @@ frequente: la finestra è di ore, non minuti).
 Elimina anche la categoria e i canali Discord creati alla fondazione
 (se esistono ancora) PRIMA di eliminare il record dal database, così
 non resta una categoria orfana senza nessun clan a cui appartiene.
-Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro).
+Una gilda con il debito già coperto non si cancella: diventa ufficiale.
+Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro),
+BUG-15.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
+from core.guild_clan_logic import is_creation_deficit_covered
 from core.guild_iteration import for_each_guild_safely
 from core.repositories.guild_clan_repo import guild_clan_repo
 
@@ -39,6 +42,17 @@ class GuildClanExpiryWorker:
         adesso = now or datetime.now(timezone.utc)
 
         async def _per_clan(clan) -> None:
+            # BUG-15: debito già coperto (per esempio con un
+            # trasferimento fatto prima che diventasse ufficiale da
+            # solo): la gilda si rende ufficiale, non si cancella.
+            if is_creation_deficit_covered(clan.treasury_balance):
+                await guild_clan_repo.set_officialized(clan.id)
+                logger.info(
+                    "Gilda '%s' (id %s) resa ufficiale: il debito di creazione era già coperto.",
+                    clan.tag, clan.id,
+                )
+                return
+
             guild = bot.get_guild(clan.guild_id)
             if guild is not None and clan.category_id is not None:
                 categoria = guild.get_channel(clan.category_id)

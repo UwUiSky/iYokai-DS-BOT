@@ -41,6 +41,15 @@ REASON_TREASURY_TRANSFER_OUT = "treasury_transfer_out"
 REASON_GUILD_BOOST = "guild_boost"
 
 DEFAULT_MAX_MEMBERS = 50
+
+# Accredito in tesoreria ($2) che rende ufficiale la gilda quando il
+# saldo torna a zero o sopra: stessa regola di
+# core.guild_clan_logic.is_creation_deficit_covered, scritta in SQL per
+# stare nella stessa UPDATE dell'accredito.
+_ACCREDITA_E_UFFICIALIZZA = (
+    "treasury_balance = treasury_balance + $2, "
+    "officialized = officialized OR (treasury_balance + $2 >= 0)"
+)
 MAX_MEMBERS_CEILING = 999
 
 
@@ -282,11 +291,15 @@ class GuildClanRepository:
         return [self._row_to_clan(r) for r in rows]
 
     async def set_officialized(self, clan_id: int) -> None:
+        """Rende ufficiale la gilda. Donazioni e trasferimenti lo fanno
+        da soli; questo serve al controllo delle scadenze per le gilde
+        con il debito già coperto rimaste "non ufficiali"."""
         await self._pool.execute("UPDATE clans SET officialized = true WHERE id = $1", clan_id)
 
     async def get_unofficialized_expired(self, now: datetime) -> list[Clan]:
         """Clan ancora non ufficializzati la cui finestra di 24h è
-        scaduta — pronti per la cancellazione automatica."""
+        scaduta. Chi chiama guarda il saldo: debito coperto, la gilda
+        va resa ufficiale; debito aperto, va cancellata."""
         rows = await self._pool.fetch(
             """
             SELECT * FROM clans
@@ -487,7 +500,8 @@ class GuildClanRepository:
         (comando Discord) deve prima sottrarre le coin dal saldo
         personale tramite leveling_repo.spend_coins() — questo
         repository si occupa solo della tesoreria di destinazione.
-        Restituisce il nuovo saldo.
+        Se la donazione copre il debito di creazione, la gilda diventa
+        ufficiale nella stessa scrittura. Restituisce il nuovo saldo.
         """
         if amount <= 0:
             raise ValueError("L'importo donato deve essere positivo.")
@@ -495,7 +509,7 @@ class GuildClanRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
-                    "UPDATE clans SET treasury_balance = treasury_balance + $2 "
+                    f"UPDATE clans SET {_ACCREDITA_E_UFFICIALIZZA} "
                     "WHERE id = $1 RETURNING treasury_balance",
                     clan_id, amount,
                 )
@@ -789,8 +803,11 @@ class GuildClanRepository:
                     "UPDATE clans SET treasury_balance = treasury_balance - $2 WHERE id = $1",
                     from_clan_id, amount,
                 )
+                # BUG-15: se il trasferimento copre il debito di creazione,
+                # la gilda di destinazione diventa ufficiale qui, nella
+                # stessa scrittura.
                 await conn.execute(
-                    "UPDATE clans SET treasury_balance = treasury_balance + $2 WHERE id = $1",
+                    f"UPDATE clans SET {_ACCREDITA_E_UFFICIALIZZA} WHERE id = $1",
                     to_clan_id, amount,
                 )
                 await conn.execute(
