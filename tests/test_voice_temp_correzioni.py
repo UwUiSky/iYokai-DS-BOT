@@ -615,3 +615,60 @@ async def test_kick_di_chi_e_nel_canale_lo_espelle():
     ospite.move_to.assert_awaited_once()
     assert "espulso" in _testo(interazione.response.send_message.call_args)
 
+
+# ====================================================================
+# #134 — /voice lock cambia solo "Connetti" per @everyone
+# ====================================================================
+def _overwrite_finale(canale, ruolo) -> discord.PermissionOverwrite | None:
+    chiamata = canale.set_permissions.call_args
+    assert chiamata.args[0] is ruolo
+    if "overwrite" in chiamata.kwargs:
+        return chiamata.kwargs["overwrite"]
+    return discord.PermissionOverwrite(
+        **{k: v for k, v in chiamata.kwargs.items() if k != "reason"}
+    )
+
+
+async def test_lock_cambia_solo_connetti_e_lascia_gli_altri_permessi_di_everyone():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(
+        speak=False, view_channel=True
+    )
+    cog = VoiceTempCog(bot=None)
+
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+
+    finale = _overwrite_finale(canale, scena.guild.default_role)
+    assert finale.connect is False
+    assert finale.speak is False
+    assert finale.view_channel is True
+
+
+async def test_unlock_toglie_solo_connetti_e_lascia_gli_altri_permessi_di_everyone():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(
+        connect=False, speak=False
+    )
+    cog = VoiceTempCog(bot=None)
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    finale = _overwrite_finale(canale, scena.guild.default_role)
+    assert finale.connect is None
+    assert finale.speak is False
+
+
+async def test_unlock_senza_altri_permessi_toglie_l_overwrite():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=False)
+    cog = VoiceTempCog(bot=None)
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    assert _overwrite_finale(canale, scena.guild.default_role) is None

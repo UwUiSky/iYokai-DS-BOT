@@ -567,8 +567,12 @@ class VoiceTempCog(commands.Cog):
         if channel is None:
             return
         try:
+            # Si cambia solo "Connetti": gli altri permessi di @everyone
+            # su questo canale restano com'erano.
+            overwrite = channel.overwrites_for(interaction.guild.default_role)
+            overwrite.update(connect=False)
             await channel.set_permissions(
-                interaction.guild.default_role, connect=False
+                interaction.guild.default_role, overwrite=overwrite
             )
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
@@ -581,7 +585,12 @@ class VoiceTempCog(commands.Cog):
         if channel is None:
             return
         try:
-            await channel.set_permissions(interaction.guild.default_role, overwrite=None)
+            overwrite = channel.overwrites_for(interaction.guild.default_role)
+            overwrite.update(connect=None)
+            await channel.set_permissions(
+                interaction.guild.default_role,
+                overwrite=None if overwrite.is_empty() else overwrite,
+            )
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
