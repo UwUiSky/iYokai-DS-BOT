@@ -122,3 +122,23 @@ async def test_ruolo_salvato_con_canali_vecchi_viene_allineato_una_volta(cog, se
     gia_a_posto.set_permissions.assert_not_awaited()
     for canale in canali[1:]:
         canale.set_permissions.assert_awaited_once()  # una volta, non a ogni ingresso
+
+
+async def test_ingressi_simultanei_mandano_un_solo_messaggio(cog, server):
+    import asyncio
+
+    from tests.test_anti_raid_f1 import _ingresso
+
+    await _azione(cog, "quarantine")
+    canale, messaggio = await _canale_allarmi(cog, server)
+
+    async def _invio_lento(**_kwargs):
+        await asyncio.sleep(0.05)  # come una chiamata vera a Discord
+        return messaggio
+
+    canale.send.side_effect = _invio_lento
+    # Due ingressi prima, per superare la soglia (2); poi 5 insieme.
+    await _raid(cog, server, quanti=2)
+    await asyncio.gather(*(cog.on_member_join(_ingresso(server, 500 + n)) for n in range(5)))
+
+    assert canale.send.await_count == 1

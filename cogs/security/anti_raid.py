@@ -220,6 +220,8 @@ class AntiRaidCog(commands.Cog):
         self.bot = bot
         # Un blocco per server sulla creazione del ruolo di quarantena.
         self._blocchi_ruolo: dict[int, asyncio.Lock] = {}
+        # Un blocco per server sull'invio/modifica dell'avviso.
+        self._blocchi_avviso: dict[int, asyncio.Lock] = {}
         # Server -> ora dell'ultimo ingresso di raid segnalato.
         self._avvisi: BoundedCache[int, _Avviso] = BoundedCache(max_size=500)
         # Server in cui il ruolo di quarantena è già allineato ai canali.
@@ -454,39 +456,43 @@ class AntiRaidCog(commands.Cog):
         per episodio, aggiornato a ogni ingresso (conteggio e ultimi
         nomi); il proprietario riceve un solo DM per episodio.
         """
-        avviso = self._avvisi.get(guild.id)
-        episodio_in_corso = (
-            avviso is not None
-            and (now - avviso.ultimo_ingresso).total_seconds() <= DURATA_BLOCCO_SECONDI
-        )
-        if not episodio_in_corso:
-            avviso = _Avviso(messaggio=None, ultimo_ingresso=now)
-        avviso.ultimo_ingresso = now
-        avviso.conteggio += 1
-        avviso.recenti.append(voce)
-        self._avvisi.set(guild.id, avviso)
-        embed = _embed_avviso(avviso)
+        # Un blocco per server: ingressi simultanei non devono mandare
+        # un messaggio ciascuno prima che il primo sia stato salvato.
+        blocco = self._blocchi_avviso.setdefault(guild.id, asyncio.Lock())
+        async with blocco:
+            avviso = self._avvisi.get(guild.id)
+            episodio_in_corso = (
+                avviso is not None
+                and (now - avviso.ultimo_ingresso).total_seconds() <= DURATA_BLOCCO_SECONDI
+            )
+            if not episodio_in_corso:
+                avviso = _Avviso(messaggio=None, ultimo_ingresso=now)
+            avviso.ultimo_ingresso = now
+            avviso.conteggio += 1
+            avviso.recenti.append(voce)
+            self._avvisi.set(guild.id, avviso)
+            embed = _embed_avviso(avviso)
 
-        if not episodio_in_corso and guild.owner is not None:
-            await try_dm(guild.owner, embed)
+            if not episodio_in_corso and guild.owner is not None:
+                await try_dm(guild.owner, embed)
 
-        canale = (
-            guild.get_channel(settings.alert_channel_id)
-            if settings.alert_channel_id is not None
-            else None
-        )
-        if not isinstance(canale, discord.TextChannel):
-            return
-        if avviso.messaggio is not None:
-            try:
-                await avviso.messaggio.edit(embed=embed)
+            canale = (
+                guild.get_channel(settings.alert_channel_id)
+                if settings.alert_channel_id is not None
+                else None
+            )
+            if not isinstance(canale, discord.TextChannel):
                 return
+            if avviso.messaggio is not None:
+                try:
+                    await avviso.messaggio.edit(embed=embed)
+                    return
+                except discord.HTTPException:
+                    avviso.messaggio = None  # cancellato: se ne manda uno nuovo
+            try:
+                avviso.messaggio = await canale.send(embed=embed)
             except discord.HTTPException:
-                avviso.messaggio = None  # cancellato: se ne manda uno nuovo
-        try:
-            avviso.messaggio = await canale.send(embed=embed)
-        except discord.HTTPException:
-            pass
+                pass
 
     # ================================================================
     # Fine del blocco: il livello di verifica torna quello di prima
