@@ -63,11 +63,16 @@ from discord.ext import commands
 from core.database import db
 from core.repositories.ticket_repo import ticket_repo, VALID_PRIORITIES
 from core.ticket_logic import (
+    MAX_CATEGORY_LABEL_LENGTH,
+    MAX_EMOJI_LENGTH,
+    MAX_TICKET_CATEGORIES,
     build_transcript_text,
     format_duration_seconds,
     format_transcript_line,
     is_first_response,
+    looks_like_emoji,
     merge_support_role_ids,
+    truncate_label,
 )
 from core.premium import PremiumModule, registry
 from core.scheduler import in_seconds, scheduler
@@ -208,6 +213,29 @@ async def _open_ticket_channel(
     )
 
 
+def _category_options(categorie, with_emoji: bool = True) -> list[discord.SelectOption]:
+    """
+    Le opzioni del menu delle categorie, sempre dentro i limiti di
+    Discord (LIM-6) anche con dati salvati prima dei controlli di
+    /ticket-category add: al massimo 25, etichetta tagliata a 100,
+    emoji solo se sembra valida, voci senza nome saltate. Il valore è
+    l'id della riga (corto e unico), non l'etichetta.
+    """
+    opzioni: list[discord.SelectOption] = []
+    for categoria in categorie:
+        if not categoria.label.strip():
+            continue
+        emoji = None
+        if with_emoji and categoria.emoji and looks_like_emoji(categoria.emoji):
+            emoji = categoria.emoji
+        opzioni.append(
+            discord.SelectOption(
+                label=truncate_label(categoria.label), value=str(categoria.id), emoji=emoji
+            )
+        )
+    return opzioni[:MAX_TICKET_CATEGORIES]
+
+
 class TicketCategorySelectView(BaseView):
     """
     SPEC.md §13.2: select menu tra più categorie di ticket, mostrato
@@ -218,24 +246,21 @@ class TicketCategorySelectView(BaseView):
     pannello pubblico sempre visibile).
     """
 
-    def __init__(self, guild: discord.Guild, categorie) -> None:
+    def __init__(self, guild: discord.Guild, categorie, with_emoji: bool = True) -> None:
         super().__init__(timeout=180)
         self._guild = guild
         select = discord.ui.Select(
             placeholder="Scegli una categoria...",
-            options=[
-                discord.SelectOption(label=c.label, value=c.label, emoji=c.emoji)
-                for c in categorie
-            ],
+            options=_category_options(categorie, with_emoji),
         )
         select.callback = self._on_select
         self.add_item(select)
 
     async def _on_select(self, interaction: discord.Interaction) -> None:
         select = self.children[0]
-        label_scelta = select.values[0]
+        id_scelto = select.values[0]
         categorie = await ticket_repo.list_categories(self._guild.id)
-        scelta = next((c for c in categorie if c.label == label_scelta), None)
+        scelta = next((c for c in categorie if str(c.id) == id_scelto), None)
         if scelta is None:
             await interaction.response.send_message(
                 "Questa categoria non è più disponibile.", ephemeral=True
@@ -294,12 +319,25 @@ class TicketPanelView(BaseView):
         # unico storico — retrocompatibile con chi non ne ha ancora
         # configurata nessuna.
         categorie = await ticket_repo.list_categories(guild.id)
-        if categorie:
-            await interaction.response.send_message(
-                "Scegli la categoria del tuo ticket:",
-                view=TicketCategorySelectView(guild, categorie),
-                ephemeral=True,
-            )
+        if _category_options(categorie):
+            testo = "Scegli la categoria del tuo ticket:"
+            try:
+                await interaction.response.send_message(
+                    testo, view=TicketCategorySelectView(guild, categorie), ephemeral=True
+                )
+            except discord.HTTPException:
+                # Discord ha rifiutato il menu: quasi sempre un'emoji
+                # personalizzata cancellata o di un altro server. Lo
+                # stesso menu senza emoji, così i ticket si aprono.
+                logger.warning(
+                    "Menu delle categorie ticket rifiutato nel server %s: riprovo senza emoji.",
+                    guild.id,
+                )
+                await interaction.response.send_message(
+                    testo,
+                    view=TicketCategorySelectView(guild, categorie, with_emoji=False),
+                    ephemeral=True,
+                )
             return
 
         category_id = await db.get_guild_setting(guild.id, SETTING_CATEGORY)
@@ -399,12 +437,39 @@ class TicketsCog(commands.Cog):
     async def ticket_category_add(
         self,
         interaction: discord.Interaction,
-        label: str,
+        label: app_commands.Range[str, 1, MAX_CATEGORY_LABEL_LENGTH],
         category: discord.CategoryChannel,
-        emoji: str | None = None,
+        emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
     ) -> None:
         if interaction.guild is None:
             return
+
+        label = label.strip()
+        if not label:
+            await interaction.response.send_message(
+                "Il nome della categoria non può essere vuoto.", ephemeral=True
+            )
+            return
+        if emoji is not None and not looks_like_emoji(emoji.strip()):
+            await interaction.response.send_message(
+                "Quella non sembra un'emoji. Usa un'emoji standard (es. 🎫) "
+                "oppure un'emoji personalizzata di questo server.",
+                ephemeral=True,
+            )
+            return
+
+        # Un menu a tendina tiene 25 opzioni (LIM-6). Aggiornare una
+        # categoria che esiste già non ne aggiunge una.
+        esistenti = await ticket_repo.list_categories(interaction.guild.id)
+        if len(esistenti) >= MAX_TICKET_CATEGORIES and label not in {c.label for c in esistenti}:
+            await interaction.response.send_message(
+                f"Hai già {MAX_TICKET_CATEGORIES} categorie, il massimo che un menu di "
+                "Discord può mostrare. Rimuovine una con /ticket-category remove.",
+                ephemeral=True,
+            )
+            return
+
+        emoji = emoji.strip() if emoji is not None else None
         await ticket_repo.add_category(interaction.guild.id, label, category.id, emoji)
         await interaction.response.send_message(
             f"Categoria **{label}** impostata su **{category.name}**.", ephemeral=True
@@ -413,10 +478,14 @@ class TicketsCog(commands.Cog):
     @ticket_category_group.command(name="remove", description="[Admin] Rimuovi una categoria di ticket.")
     @app_commands.describe(label="Il nome esatto della categoria da rimuovere")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def ticket_category_remove(self, interaction: discord.Interaction, label: str) -> None:
+    async def ticket_category_remove(
+        self,
+        interaction: discord.Interaction,
+        label: app_commands.Range[str, 1, MAX_CATEGORY_LABEL_LENGTH],
+    ) -> None:
         if interaction.guild is None:
             return
-        rimossa = await ticket_repo.remove_category(interaction.guild.id, label)
+        rimossa = await ticket_repo.remove_category(interaction.guild.id, label.strip())
         if rimossa:
             await interaction.response.send_message(f"Categoria **{label}** rimossa.", ephemeral=True)
         else:
@@ -436,8 +505,27 @@ class TicketsCog(commands.Cog):
                 ephemeral=True,
             )
             return
-        righe = [f"- {c.emoji or ''} **{c.label}** -> <#{c.category_id}>".strip() for c in categorie]
-        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+        # In un embed: 25 categorie con nomi lunghi superano i 2000
+        # caratteri di un messaggio, ma stanno nei 4096 della descrizione.
+        righe = [
+            f"- {c.emoji or ''} **{truncate_label(c.label)}** -> <#{c.category_id}>"
+            for c in categorie[:MAX_TICKET_CATEGORIES]
+        ]
+        mostrate: list[str] = []
+        lunghezza = 0
+        for riga in righe:
+            lunghezza += len(riga) + 1
+            if lunghezza > 4000:
+                break
+            mostrate.append(riga)
+        if len(mostrate) < len(categorie):
+            mostrate.append(f"…e altre {len(categorie) - len(mostrate)}.")
+        embed = discord.Embed(
+            title="Categorie dei ticket",
+            description="\n".join(mostrate),
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ================================================================
     # SPEC.md §13.13 — ruoli di supporto multipli

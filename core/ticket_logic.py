@@ -25,6 +25,47 @@ principio, non è una nuova scoperta.
 
 from __future__ import annotations
 
+import re
+
+# Limiti di un menu a tendina di Discord (LIM-6): 25 opzioni, etichetta
+# di 100 caratteri. Una voce fuori limite blocca il menu per tutti.
+MAX_TICKET_CATEGORIES = 25
+MAX_CATEGORY_LABEL_LENGTH = 100
+# La più lunga è un'emoji personalizzata animata: <a:nome(32):id(20)>.
+MAX_EMOJI_LENGTH = 64
+
+_CUSTOM_EMOJI = re.compile(r"<a?:[A-Za-z0-9_]{2,32}:\d{15,20}>")
+# Le emoji Unicode composte (famiglie, bandiere) arrivano a una
+# quindicina di caratteri.
+_MAX_UNICODE_EMOJI_LENGTH = 16
+# Da qui in su stanno i simboli usati dalle emoji; © e ® sono le sole
+# eccezioni più in basso.
+_FIRST_SYMBOL_CODEPOINT = 0x203C
+
+
+def looks_like_emoji(text: str) -> bool:
+    """
+    True se `text` sembra un'emoji usabile in un menu: una
+    personalizzata (<:nome:id>) oppure un'emoji Unicode. È un
+    controllo prudente fatto senza chiedere a Discord: scarta lettere,
+    spazi e numeri soli ("ciao", ":smile:", "1"). L'ultima parola
+    resta a Discord quando il menu viene mostrato.
+    """
+    if _CUSTOM_EMOJI.fullmatch(text):
+        return True
+    if not text or len(text) > _MAX_UNICODE_EMOJI_LENGTH:
+        return False
+    if any(ch.isalpha() or ch.isspace() for ch in text):
+        return False
+    return any(ord(ch) >= _FIRST_SYMBOL_CODEPOINT or ch in "©®" for ch in text)
+
+
+def truncate_label(label: str, limit: int = MAX_CATEGORY_LABEL_LENGTH) -> str:
+    """Taglia un'etichetta al limite di Discord, con "…" se tagliata."""
+    if len(label) <= limit:
+        return label
+    return label[: limit - 1] + "…"
+
 
 def format_transcript_line(timestamp_str: str, author_display: str, content: str) -> str:
     """Una singola riga del transcript testuale di un ticket."""

@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, create_autospec
 import discord
 import pytest
 from discord import app_commands
+from discord.ext import commands
 
 import cogs.tickets.tickets as modulo
 from cogs.tickets.tickets import TicketsCog, _open_ticket_channel
@@ -265,3 +266,172 @@ async def test_canale_di_un_ticket_gia_chiuso_non_cambia_chi_lo_ha_chiuso():
     await cog.on_guild_channel_delete(canale)
 
     assert (await ticket_repo.get_ticket_by_channel(canale.id)).closed_by == ID_STAFF
+
+
+# ====================================================================
+# M 6.1 — categorie: tetto di 25, etichetta fino a 100, emoji controllata
+# ====================================================================
+def _categoria_discord(category_id: int = ID_CATEGORIA):
+    categoria = create_autospec(discord.CategoryChannel, instance=True)
+    categoria.id = category_id
+    categoria.name = "Ticket"
+    return categoria
+
+
+async def _aggiungi(cog, server, etichetta: str, emoji=None):
+    interazione = server.interazione(server.staff())
+    await cog.ticket_category_add.callback(cog, interazione, etichetta, _categoria_discord(), emoji)
+    return _testo(interazione.response.send_message.call_args)
+
+
+async def _premi_apri_ticket(server, utente=None):
+    """Preme il bottone "Apri Ticket" del pannello. Restituisce l'interazione."""
+    interazione = server.interazione(utente)
+    await modulo.TicketPanelView().open_ticket.callback(interazione)
+    return interazione
+
+
+def _opzioni_del_menu(interazione) -> list[dict]:
+    vista = interazione.response.send_message.call_args.kwargs["view"]
+    return vista.to_components()[0]["components"][0]["options"]
+
+
+async def test_ticket_category_add_dichiara_i_limiti_delle_opzioni():
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await bot.add_cog(TicketsCog(bot))
+
+    gruppo = bot.tree.get_command("ticket-category")
+    for nome in ("add", "remove"):
+        opzioni = {o["name"]: o for o in gruppo.get_command(nome).to_dict(bot.tree)["options"]}
+        assert opzioni["label"]["min_length"] == 1
+        assert opzioni["label"]["max_length"] == 100
+    opzioni = {o["name"]: o for o in gruppo.get_command("add").to_dict(bot.tree)["options"]}
+    assert opzioni["emoji"]["max_length"] <= 100
+
+
+async def test_la_ventiseiesima_categoria_viene_rifiutata():
+    server = Server()
+    cog = TicketsCog(bot=None)
+    for numero in range(25):
+        assert "impostata" in await _aggiungi(cog, server, f"Categoria {numero:02d}")
+
+    risposta = await _aggiungi(cog, server, "Una di troppo")
+
+    assert "25" in risposta
+    assert len(await ticket_repo.list_categories(ID_SERVER)) == 25
+    # Aggiornare una categoria che esiste già resta possibile.
+    assert "impostata" in await _aggiungi(cog, server, "Categoria 03", "🛠️")
+
+
+@pytest.mark.parametrize("emoji", ["ciao", ":smile:", "1", "<:rotta>", "🎫 ticket"])
+async def test_un_testo_che_non_e_un_emoji_viene_rifiutato(emoji):
+    server = Server()
+    cog = TicketsCog(bot=None)
+
+    risposta = await _aggiungi(cog, server, "Supporto", emoji)
+
+    assert "emoji" in risposta.lower()
+    assert await ticket_repo.list_categories(ID_SERVER) == []
+
+
+@pytest.mark.parametrize(
+    "emoji", ["🎫", "🛠️", "🇮🇹", "1️⃣", "👨‍👩‍👧", "<:yokai:123456789012345678>", "<a:gira:123456789012345678>"]
+)
+async def test_le_emoji_vere_sono_accettate(emoji):
+    server = Server()
+    cog = TicketsCog(bot=None)
+
+    assert "impostata" in await _aggiungi(cog, server, "Supporto", emoji)
+
+    assert (await ticket_repo.list_categories(ID_SERVER))[0].emoji == emoji
+
+
+async def test_il_menu_si_costruisce_anche_con_dati_vecchi_fuori_limite():
+    """
+    Dati salvati prima di questi controlli: 30 categorie, un'etichetta
+    di 150 caratteri, un testo che non è un'emoji. Il menu deve uscire
+    lo stesso, dentro i limiti di Discord.
+    """
+    server = Server()
+    for numero in range(28):
+        await ticket_repo.add_category(ID_SERVER, f"Categoria {numero:02d}", ID_CATEGORIA, "🎫")
+    await ticket_repo.add_category(ID_SERVER, "A" * 150, ID_CATEGORIA, "non-emoji")
+    await ticket_repo.add_category(ID_SERVER, "B" * 150, ID_CATEGORIA, None)
+
+    interazione = await _premi_apri_ticket(server)
+
+    opzioni = _opzioni_del_menu(interazione)
+    assert len(opzioni) == 25
+    assert all(1 <= len(o["label"]) <= 100 for o in opzioni)
+    assert all(1 <= len(o["value"]) <= 100 for o in opzioni)
+    assert len({o["value"] for o in opzioni}) == 25
+    lunga = next(o for o in opzioni if o["label"].startswith("AAAA"))
+    assert "emoji" not in lunga
+
+
+async def test_emoji_rifiutata_da_discord_il_menu_esce_senza_emoji():
+    """Un'emoji personalizzata cancellata o di un altro server: errore 400."""
+    server = Server()
+    cog = TicketsCog(bot=None)
+    await _aggiungi(cog, server, "Supporto", "<:sparita:123456789012345678>")
+    interazione = server.interazione()
+    interazione.response.send_message.side_effect = [_errore_http(400), None]
+
+    await modulo.TicketPanelView().open_ticket.callback(interazione)
+
+    assert interazione.response.send_message.await_count == 2
+    opzioni = _opzioni_del_menu(interazione)
+    assert [o["label"] for o in opzioni] == ["Supporto"]
+    assert "emoji" not in opzioni[0]
+
+
+async def test_scegliere_una_categoria_dal_menu_apre_il_ticket_li():
+    server = Server()
+    server.guild.get_channel.side_effect = (
+        lambda channel_id: server.categoria if channel_id == ID_CATEGORIA else None
+    )
+    # isinstance(…, CategoryChannel) deve valere per la categoria finta.
+    cog = TicketsCog(bot=None)
+    await _aggiungi(cog, server, "Supporto tecnico", "🛠️")
+    pannello = await _premi_apri_ticket(server)
+    vista = pannello.response.send_message.call_args.kwargs["view"]
+    menu = vista.children[0]
+    scelta = server.interazione()
+    menu._refresh_state(scelta, {"values": [_opzioni_del_menu(pannello)[0]["value"]]})
+
+    await menu.callback(scelta)
+
+    assert len(server.canali) == 1
+    ticket = await ticket_repo.get_ticket_by_channel(server.canali[0].id)
+    assert ticket.category_label == "Supporto tecnico"
+
+
+async def test_elenco_di_25_categorie_lunghe_resta_in_un_messaggio_valido():
+    server = Server()
+    cog = TicketsCog(bot=None)
+    for numero in range(25):
+        await _aggiungi(cog, server, f"{numero:02d}" + "c" * 98, "🎫")
+    interazione = server.interazione(server.staff())
+
+    await cog.ticket_category_list.callback(cog, interazione)
+
+    chiamata = interazione.response.send_message.call_args
+    assert len(_testo(chiamata)) <= 2000
+    embed = chiamata.kwargs["embed"]
+    assert len(embed.description) <= 4096
+    assert embed.description.count("<#") == 25
+
+
+async def test_elenco_con_emoji_personalizzate_lunghe_resta_entro_4096():
+    server = Server()
+    cog = TicketsCog(bot=None)
+    for numero in range(25):
+        emoji = f"<a:{'e' * 32}:{10**19 + numero}>"
+        await _aggiungi(cog, server, f"{numero:02d}" + "c" * 98, emoji)
+    interazione = server.interazione(server.staff())
+
+    await cog.ticket_category_list.callback(cog, interazione)
+
+    embed = interazione.response.send_message.call_args.kwargs["embed"]
+    assert len(embed.description) <= 4096
+    assert "…e altre" in embed.description
