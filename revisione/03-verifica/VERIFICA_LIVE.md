@@ -524,3 +524,7 @@ chiudere.
   5. Boost che c'era prima dell'aggiornamento: ora vale come super fino alla stessa scadenza.
   6. In vocale con soli exp attivo: XP della gilda raddoppiati, coin della tesoreria no (e viceversa con coin). `/clan info` elenca i boost di gilda attivi per tipo.
   Risultato atteso: nessun errore nel log, nessuna coin persa o doppia.
+- [ ] Vocali temporanei (#144) — passi:
+  1. Da proprietario non staff di un vocale temporaneo, `/voice kick` su un admin e su un moderatore: rifiutato con messaggio chiaro; su un membro normale: espulso.
+  2. Imposta a mano `Connetti = consentito` per @everyone su un vocale temporaneo, `/voice lock` poi `/voice unlock`: torna `consentito`, gli altri permessi non cambiano.
+  Risultato atteso: nessun permesso perso.
