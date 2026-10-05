@@ -75,6 +75,7 @@ from core.guild_clan_logic import (
 from core.repositories.guild_clan_repo import (
     REASON_GUILD_BOOST,
     ROLE_ADMIN,
+    ROLE_CO_OWNER,
     ROLE_MEMBER,
     ROLE_MOD,
     ROLE_OWNER,
@@ -115,6 +116,9 @@ TIPI_DI_MESSAGGIO_CON_XP = (discord.MessageType.default, discord.MessageType.rep
 
 # Limite di Discord per il motivo scritto nel registro di controllo.
 LIMITE_MOTIVO = 512
+
+# Chi può gestire la gilda: invitare, espellere, comprare canali e boost.
+RUOLI_UFFICIALI = (ROLE_OWNER, ROLE_CO_OWNER, ROLE_ADMIN)
 
 # LIM-18: lunghezza massima dei testi liberi e dei titoli degli embed.
 MAX_NOME_CLAN = 64
@@ -1401,9 +1405,9 @@ class LevelingCog(commands.Cog):
             return
 
         chi_invita = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_invita is None or chi_invita.role not in (ROLE_OWNER, ROLE_ADMIN):
+        if chi_invita is None or chi_invita.role not in RUOLI_UFFICIALI:
             await interaction.followup.send(
-                "Solo il Capo Clan o un Admin Clan possono invitare nuovi membri.", ephemeral=True
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono invitare nuovi membri.", ephemeral=True
             )
             return
 
@@ -1449,9 +1453,9 @@ class LevelingCog(commands.Cog):
             return
 
         chi_espelle = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_espelle is None or chi_espelle.role not in (ROLE_OWNER, ROLE_ADMIN):
+        if chi_espelle is None or chi_espelle.role not in RUOLI_UFFICIALI:
             await interaction.followup.send(
-                "Solo il Capo Clan o un Admin Clan possono espellere membri.", ephemeral=True
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono espellere membri.", ephemeral=True
             )
             return
 
@@ -1469,9 +1473,10 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        if chi_espelle.role == ROLE_ADMIN and target.role == ROLE_ADMIN:
+        if chi_espelle.role == ROLE_ADMIN and target.role in (ROLE_ADMIN, ROLE_CO_OWNER):
             await interaction.followup.send(
-                "Un Admin Clan non può espellere un altro Admin Clan — serve il Capo Clan.",
+                "Un Admin Clan non può espellere un altro Admin Clan né il Co-Owner — "
+                "serve il Capo Clan.",
                 ephemeral=True,
             )
             return
@@ -1491,7 +1496,7 @@ class LevelingCog(commands.Cog):
         self,
         interaction: discord.Interaction,
         membro: discord.Member,
-        ruolo: Literal["admin", "mod", "member"],
+        ruolo: Literal["co_owner", "admin", "mod", "member"],
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -1544,7 +1549,12 @@ class LevelingCog(commands.Cog):
                 )
                 return
 
-        await guild_clan_repo.set_member_role(clan.id, membro.id, ruolo)
+        if not await guild_clan_repo.set_member_role(clan.id, membro.id, ruolo):
+            await interaction.followup.send(
+                "La gilda ha già un Co-Owner: riportalo prima a un altro ruolo.",
+                ephemeral=True,
+            )
+            return
 
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         await sync_member_clan_role(guild, categoria, membro, ruolo)
@@ -1585,9 +1595,9 @@ class LevelingCog(commands.Cog):
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
+        if chi_acquista is None or chi_acquista.role not in RUOLI_UFFICIALI:
             await interaction.followup.send(
-                "Solo il Capo Clan o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
             )
             return
 
@@ -1849,9 +1859,9 @@ class LevelingCog(commands.Cog):
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
+        if chi_acquista is None or chi_acquista.role not in RUOLI_UFFICIALI:
             await interaction.response.send_message(
-                "Solo il Capo Clan o un Admin Clan possono acquistare il boost di gilda.",
+                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono acquistare il boost di gilda.",
                 ephemeral=True,
             )
             return

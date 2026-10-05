@@ -431,16 +431,50 @@ class GuildClanRepository:
         )
 
     async def remove_member(self, clan_id: int, user_id: int) -> bool:
-        result = await self._pool.execute(
-            "DELETE FROM clan_members WHERE clan_id = $1 AND user_id = $2", clan_id, user_id
-        )
-        return result.endswith(" 1")
+        """Toglie il membro dalla gilda. Se era il co-owner, il posto si libera."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE clans SET co_owner_id = NULL WHERE id = $1 AND co_owner_id = $2",
+                    clan_id, user_id,
+                )
+                result = await conn.execute(
+                    "DELETE FROM clan_members WHERE clan_id = $1 AND user_id = $2",
+                    clan_id, user_id,
+                )
+                return result.endswith(" 1")
 
-    async def set_member_role(self, clan_id: int, user_id: int, role: str) -> None:
-        await self._pool.execute(
-            "UPDATE clan_members SET role = $3 WHERE clan_id = $1 AND user_id = $2",
-            clan_id, user_id, role,
-        )
+    async def set_member_role(self, clan_id: int, user_id: int, role: str) -> bool:
+        """
+        Cambia il ruolo di un membro. Il co-owner è uno solo per gilda:
+        il posto (clans.co_owner_id) si prende con una UPDATE che riesce
+        solo se è libero, quindi due promozioni arrivate insieme non
+        passano tutte e due. Restituisce False, senza scrivere nulla, se
+        la gilda ha già un altro co-owner.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                if role == ROLE_CO_OWNER:
+                    posto_preso = await conn.fetchval(
+                        """
+                        UPDATE clans SET co_owner_id = $2
+                        WHERE id = $1 AND (co_owner_id IS NULL OR co_owner_id = $2)
+                        RETURNING id
+                        """,
+                        clan_id, user_id,
+                    )
+                    if posto_preso is None:
+                        return False
+                else:
+                    await conn.execute(
+                        "UPDATE clans SET co_owner_id = NULL WHERE id = $1 AND co_owner_id = $2",
+                        clan_id, user_id,
+                    )
+                await conn.execute(
+                    "UPDATE clan_members SET role = $3 WHERE clan_id = $1 AND user_id = $2",
+                    clan_id, user_id, role,
+                )
+                return True
 
     async def set_member_boost_expiry(self, clan_id: int, user_id: int, expires_at: datetime) -> None:
         """Nuova scadenza del boost INDIVIDUALE (SPEC.md §15.14, ×2

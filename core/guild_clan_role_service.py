@@ -148,7 +148,9 @@ async def sync_member_clan_role(guild, category, member, role: str) -> None:
     applica ruolo condiviso + overwrite di categoria coerenti col
     ruolo passato."""
     è_capo = role == "owner"
-    è_admin = role == "admin"
+    # Il co-owner su Discord vale come un Admin Clan: stessa etichetta
+    # e stessi permessi sulla categoria della gilda.
+    è_admin = role in ("admin", "co_owner")
     await sync_shared_role(guild, member, CAPO_CLAN_ROLE_NAME, è_capo)
     await sync_shared_role(guild, member, ADMIN_CLAN_ROLE_NAME, è_admin)
     if è_capo or è_admin:

@@ -602,7 +602,7 @@ async def test_invita_un_membro_semplice_non_puo_farlo(cog_e_repos):
 
     await cog.clan_invita.callback(cog, interaction, membro=invitato)
 
-    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
     assert await clan_repo.get_member(clan_id, 2) is None
 
 
@@ -846,7 +846,7 @@ async def test_compra_canale_un_membro_semplice_non_puo_farlo(cog_e_repos):
 
     await cog.clan_compra_canale.callback(cog, interaction, tipo="testuale", nome=None)
 
-    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
     assert len(guild.created_channels) == 0
 
 
@@ -1028,7 +1028,7 @@ async def test_boost_gilda_un_membro_semplice_non_puo_comprarlo(cog_e_repos):
 
     await cog.clan_boost_gilda.callback(cog, interaction)
 
-    assert "Solo il Capo Clan o un Admin Clan" in interaction.response.sent_messages[0]
+    assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
     assert (await clan_repo.get_clan(clan_id)).guild_boost_expires_at is None
 
 
