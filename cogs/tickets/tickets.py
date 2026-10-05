@@ -269,7 +269,7 @@ async def _crea_ticket(
         color=discord.Color.blurple(),
     )
     if category_label is not None:
-        embed.add_field(name="Categoria", value=category_label)
+        embed.add_field(name="Categoria", value=truncate_label(category_label))
     try:
         await channel.send(content=interaction.user.mention, embed=embed)
     except discord.HTTPException:

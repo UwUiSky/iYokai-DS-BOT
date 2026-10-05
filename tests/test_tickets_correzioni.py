@@ -406,6 +406,16 @@ async def test_scegliere_una_categoria_dal_menu_apre_il_ticket_li():
     assert ticket.category_label == "Supporto tecnico"
 
 
+async def test_etichetta_vecchia_lunghissima_il_benvenuto_resta_un_embed_valido():
+    server = Server()
+
+    canale = await server.apri_ticket(etichetta="E" * 3000)
+
+    campo = canale.send.call_args.kwargs["embed"].fields[0]
+    assert campo.name == "Categoria"
+    assert len(campo.value) <= 1024
+
+
 async def test_elenco_di_25_categorie_lunghe_resta_in_un_messaggio_valido():
     server = Server()
     cog = TicketsCog(bot=None)
