@@ -184,5 +184,10 @@ def reset_premium_registry():
     from core.premium import registry
 
     stato_originale = dict(registry._modules)
+    # I moduli sono oggetti condivisi: la copia del dizionario non basta,
+    # va salvata anche la spunta "premium" di ciascuno.
+    spunte_originali = {nome: m.is_premium_active for nome, m in stato_originale.items()}
     yield registry
     registry._modules = stato_originale
+    for nome, modulo in stato_originale.items():
+        modulo.is_premium_active = spunte_originali[nome]
