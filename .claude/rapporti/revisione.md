@@ -14,3 +14,6 @@
 | 05/10 | `feat/boost-146` | `COMMAND_LIST.md:67-68` | Le due righe `/clan boost gilda` e `individuale` non citano l'opzione `tipo` (exp, coin, super) né i prezzi D23. Aggiornare | aperto |
 | 06/10 | `feat/f7-quadro` | `core/premium.py:457` | `error_counter` non conta più i rifiuti `AccessoNegato`: scelta non chiesta dalla scheda e nessun test la protegge (tolta, 69 test passano). Aggiungere test (contatore non cresce su AccessoNegato, cresce sugli altri) oppure togliere la condizione | aperto |
 | 06/10 | `feat/f7-quadro` | `core/command_access.py:50` | Commento "None = nessun ruolo" falso: nessuna regola ha None. Correggere | aperto |
+
+## 06/10/2026 · #76 `feat/f7-quadro` riconsegna (9cf475e...6cfe06b)
+APPROVATO. Punti precedenti chiusi (test contatore errori; commento). Import/rollback di altre chiavi invariati (il controllo guarda solo admin/mod/modban). Nota non bloccante: il rollback di una voce che rimetterebbe un ruolo ormai cancellato viene rifiutato con messaggio che nomina la chiave.
