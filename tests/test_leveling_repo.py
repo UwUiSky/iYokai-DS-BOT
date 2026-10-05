@@ -174,15 +174,22 @@ async def test_transfer_coins_importo_non_positivo_solleva_errore(repo):
 
 
 @pytest.mark.asyncio
-async def test_set_last_daily_e_last_work(repo):
-    from datetime import datetime, timezone
+async def test_claim_daily_e_claim_work_segnano_ora_e_rispettano_l_attesa(repo):
+    from datetime import datetime, timedelta, timezone
     ora = datetime.now(timezone.utc)
-    await repo.set_last_daily(100, 1, ora)
-    await repo.set_last_work(100, 1, ora)
+
+    assert await repo.claim_daily(100, 1, 200, 86400, ora) is True
+    assert await repo.claim_work(100, 1, 50, 3600, ora) is True
+    # Subito dopo: l'attesa non è finita, non si accredita nulla.
+    assert await repo.claim_daily(100, 1, 200, 86400, ora + timedelta(hours=1)) is False
+    assert await repo.claim_work(100, 1, 50, 3600, ora + timedelta(minutes=30)) is False
+    # Attesa finita.
+    assert await repo.claim_work(100, 1, 50, 3600, ora + timedelta(hours=1)) is True
 
     totali = await repo.get_totals(100, 1)
-    assert totali.last_daily_at is not None
-    assert totali.last_work_at is not None
+    assert totali.coins_total == 300
+    assert totali.last_daily_at == ora
+    assert totali.last_work_at == ora + timedelta(hours=1)
 
 
 @pytest.mark.asyncio

@@ -91,11 +91,11 @@ from core.guild_clan_boost_logic import (
     is_boost_active,
 )
 from core.leveling_logic import (
+    DAILY_COOLDOWN_SECONDS,
     DAILY_REWARD_COINS,
+    WORK_COOLDOWN_SECONDS,
     WORK_REWARD_MAX,
     WORK_REWARD_MIN,
-    can_claim_daily,
-    can_claim_work,
     is_eligible_for_voice_xp,
     period_key,
     seconds_until_next_claim,
@@ -388,19 +388,20 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
-        if not can_claim_daily(totali.last_daily_at):
-            attesa = seconds_until_next_claim(totali.last_daily_at, 24 * 3600)
+        adesso = datetime.now(timezone.utc)
+        riscosso = await leveling_repo.claim_daily(
+            interaction.guild.id, interaction.user.id,
+            DAILY_REWARD_COINS, DAILY_COOLDOWN_SECONDS, adesso,
+        )
+        if not riscosso:
+            totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
+            attesa = seconds_until_next_claim(totali.last_daily_at, DAILY_COOLDOWN_SECONDS)
             await interaction.response.send_message(
                 f"Hai già riscosso la ricompensa di oggi. Riprova tra {_format_seconds(attesa)}.",
                 ephemeral=True,
             )
             return
 
-        import datetime as _dt
-        now = _dt.datetime.now(_dt.timezone.utc)
-        await leveling_repo.add_coins(interaction.guild.id, interaction.user.id, DAILY_REWARD_COINS)
-        await leveling_repo.set_last_daily(interaction.guild.id, interaction.user.id, now)
         await interaction.response.send_message(
             f"Hai riscosso **{DAILY_REWARD_COINS}** coin! Torna domani per altri."
         )
@@ -413,21 +414,21 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
-        if not can_claim_work(totali.last_work_at):
-            attesa = seconds_until_next_claim(totali.last_work_at, 3600)
+        adesso = datetime.now(timezone.utc)
+        guadagno = random.randint(WORK_REWARD_MIN, WORK_REWARD_MAX)
+        riscosso = await leveling_repo.claim_work(
+            interaction.guild.id, interaction.user.id,
+            guadagno, WORK_COOLDOWN_SECONDS, adesso,
+        )
+        if not riscosso:
+            totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
+            attesa = seconds_until_next_claim(totali.last_work_at, WORK_COOLDOWN_SECONDS)
             await interaction.response.send_message(
                 f"Sei stanco, riposati un po'. Riprova tra {_format_seconds(attesa)}.",
                 ephemeral=True,
             )
             return
 
-        import datetime as _dt
-        import random
-        now = _dt.datetime.now(_dt.timezone.utc)
-        guadagno = random.randint(WORK_REWARD_MIN, WORK_REWARD_MAX)
-        await leveling_repo.add_coins(interaction.guild.id, interaction.user.id, guadagno)
-        await leveling_repo.set_last_work(interaction.guild.id, interaction.user.id, now)
         await interaction.response.send_message(f"Hai lavorato e guadagnato **{guadagno}** coin!")
 
     @app_commands.command(name="pay", description="Trasferisci coin a un altro utente.")

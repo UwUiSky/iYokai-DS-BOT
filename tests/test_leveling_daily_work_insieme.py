@@ -16,10 +16,10 @@ from cogs.leveling.leveling import LevelingCog
 from core.leveling_logic import (
     DAILY_REWARD_COINS,
     WORK_REWARD_MAX,
-    WORK_REWARD_MIN,
     period_key,
 )
 from core.repositories.leveling_repo import LevelingRepository
+from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
 
 GUILD_ID = 100
@@ -28,10 +28,7 @@ USER_ID = 1
 
 @pytest.fixture
 async def cog_e_repo(clean_db, monkeypatch):
-    # Si aprono prima tutte le connessioni del pool: così le due chiamate
-    # partono davvero insieme e nessuna aspetta l'apertura di una
-    # connessione.
-    await asyncio.gather(*(clean_db.fetchval("SELECT pg_sleep(0.05)") for _ in range(3)))
+    await apri_connessioni(clean_db)
     repo = LevelingRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(leveling_module, "leveling_repo", repo)
     cog = LevelingCog(bot=None)
@@ -65,8 +62,10 @@ async def test_due_daily_insieme_danno_un_solo_premio(cog_e_repo):
 
 
 @pytest.mark.asyncio
-async def test_due_work_insieme_danno_un_solo_premio(cog_e_repo):
+async def test_due_work_insieme_danno_un_solo_premio(cog_e_repo, monkeypatch):
     cog, repo = cog_e_repo
+    # Guadagno fisso: così un doppio premio non può sembrare uno solo.
+    monkeypatch.setattr(leveling_module.random, "randint", lambda minimo, massimo: massimo)
     prima, seconda = _interazione(), _interazione()
 
     await asyncio.gather(
@@ -75,7 +74,7 @@ async def test_due_work_insieme_danno_un_solo_premio(cog_e_repo):
     )
 
     totali = await repo.get_totals(GUILD_ID, USER_ID)
-    assert WORK_REWARD_MIN <= totali.coins_total <= WORK_REWARD_MAX
+    assert totali.coins_total == WORK_REWARD_MAX
     risposte = _testi(prima) + _testi(seconda)
     assert sum("guadagnato" in testo for testo in risposte) == 1
     assert sum("Sei stanco" in testo for testo in risposte) == 1

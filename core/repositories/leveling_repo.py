@@ -19,7 +19,7 @@ Due tabelle, con scopi distinti:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import asyncpg
 
@@ -497,29 +497,64 @@ class LevelingRepository:
                 )
                 return saldo_attuale, nuovo_saldo
 
-    async def set_last_daily(self, guild_id: int, user_id: int, when: datetime) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO leveling_totals (guild_id, user_id, last_daily_at)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, user_id) DO UPDATE SET last_daily_at = $3
-            """,
-            guild_id,
-            user_id,
-            when,
+    async def claim_daily(
+        self, guild_id: int, user_id: int, amount: int, cooldown_seconds: int, now: datetime
+    ) -> bool:
+        """Riscuote il premio giornaliero. Vedi _riscuoti_premio."""
+        return await self._riscuoti_premio(
+            "last_daily_at", guild_id, user_id, amount, cooldown_seconds, now
         )
 
-    async def set_last_work(self, guild_id: int, user_id: int, when: datetime) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO leveling_totals (guild_id, user_id, last_work_at)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, user_id) DO UPDATE SET last_work_at = $3
-            """,
-            guild_id,
-            user_id,
-            when,
+    async def claim_work(
+        self, guild_id: int, user_id: int, amount: int, cooldown_seconds: int, now: datetime
+    ) -> bool:
+        """Riscuote il premio del lavoro. Vedi _riscuoti_premio."""
+        return await self._riscuoti_premio(
+            "last_work_at", guild_id, user_id, amount, cooldown_seconds, now
         )
+
+    async def _riscuoti_premio(
+        self,
+        colonna: str,
+        guild_id: int,
+        user_id: int,
+        amount: int,
+        cooldown_seconds: int,
+        now: datetime,
+    ) -> bool:
+        """
+        Accredita `amount` coin e segna l'ora della riscossione, ma solo
+        se l'attesa è finita. Il controllo sta DENTRO la scrittura (una
+        sola istruzione con WHERE): due richieste arrivate insieme non
+        possono riscuotere tutte e due (BUG-14). Restituisce False, senza
+        scrivere nulla, se l'attesa non è ancora finita.
+        """
+        if colonna not in ("last_daily_at", "last_work_at"):
+            raise ValueError(f"Colonna non ammessa: {colonna}")
+
+        scaduto_prima_di = now - timedelta(seconds=cooldown_seconds)
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                riga = await conn.fetchrow(
+                    f"""
+                    INSERT INTO leveling_totals (guild_id, user_id, coins_total, {colonna})
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id) DO UPDATE
+                        SET coins_total = leveling_totals.coins_total + $3, {colonna} = $4
+                        WHERE leveling_totals.{colonna} IS NULL
+                           OR leveling_totals.{colonna} <= $5
+                    RETURNING coins_total
+                    """,
+                    guild_id,
+                    user_id,
+                    amount,
+                    now,
+                    scaduto_prima_di,
+                )
+                if riga is None:
+                    return False
+                await self._add_period_activity(conn, guild_id, user_id, 0, amount)
+                return True
 
     async def top_xp_alltime(self, guild_id: int, limit: int = 10) -> list[LeaderboardEntry]:
         rows = await self._pool.fetch(
