@@ -27,7 +27,7 @@ from datetime import date, datetime, timezone
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
-from core.guild_clan_boost_logic import compute_boosted_reward, is_boost_active
+from core.guild_clan_boost_logic import Beneficio, benefici_attivi, compute_boosted_reward
 from core.guild_iteration import for_each_guild_safely
 from core.leveling_logic import is_eligible_for_voice_xp
 from core.repositories.blacklist_repo import blacklist_repo
@@ -101,12 +101,22 @@ class GuildClanVoiceWorker:
                         # accumulate sopra, che restano un conteggio
                         # di presenza indipendente dal guadagno.
                         membro_clan = await guild_clan_repo.get_member(clan.id, membro.id)
-                        individuale_attivo = is_boost_active(
-                            membro_clan.boost_expires_at if membro_clan else None, adesso
+                        individuali = benefici_attivi(
+                            membro_clan.boost_exp_expires_at if membro_clan else None,
+                            membro_clan.boost_coin_expires_at if membro_clan else None,
+                            adesso,
                         )
-                        gilda_attivo = is_boost_active(clan.guild_boost_expires_at, adesso)
+                        di_gilda = benefici_attivi(
+                            clan.guild_boost_exp_expires_at,
+                            clan.guild_boost_coin_expires_at,
+                            adesso,
+                        )
                         xp, coin = compute_boosted_reward(
-                            xp, coin, individual_active=individuale_attivo, guild_active=gilda_attivo
+                            xp, coin,
+                            individuale_exp=Beneficio.EXP in individuali,
+                            individuale_coin=Beneficio.COIN in individuali,
+                            gilda_exp=Beneficio.EXP in di_gilda,
+                            gilda_coin=Beneficio.COIN in di_gilda,
                         )
 
                     if xp > 0:

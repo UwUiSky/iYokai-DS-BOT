@@ -10,6 +10,7 @@ esistente).
 from datetime import datetime, timedelta, timezone
 
 import discord
+from discord import app_commands
 import pytest
 
 from cogs.leveling.leveling import LevelingCog
@@ -960,6 +961,10 @@ async def test_compra_canale_permessi_discord_mancanti_avvisa_e_non_scala(cog_e_
 # boost individuale / di gilda (SPEC.md §15.14, ×2 per 24h)
 # ======================================================================
 
+def _tipo(valore):
+    return app_commands.Choice(name=valore, value=valore)
+
+
 @pytest.mark.asyncio
 async def test_boost_individuale_riuscito_scala_saldo_personale(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
@@ -969,12 +974,13 @@ async def test_boost_individuale_riuscito_scala_saldo_personale(cog_e_repos):
     capo = _FakeMember(1)
     interaction = _FakeInteraction(guild, user=capo)
 
-    await cog.clan_boost_individuale.callback(cog, interaction)
+    await cog.clan_boost_individuale.callback(cog, interaction, _tipo("super"))
 
     assert "Boost personale" in interaction.response.sent_messages[0]
     assert (await leveling_repo.get_totals(100, 1)).coins_total == 10_000
     membro = await clan_repo.get_member(clan_id, 1)
-    assert membro.boost_expires_at is not None
+    assert membro.boost_exp_expires_at is not None
+    assert membro.boost_coin_expires_at is not None
 
 
 @pytest.mark.asyncio
@@ -987,7 +993,7 @@ async def test_boost_individuale_qualunque_membro_puo_comprarlo(cog_e_repos):
     membro_semplice = _FakeMember(5)
     interaction = _FakeInteraction(guild, user=membro_semplice)
 
-    await cog.clan_boost_individuale.callback(cog, interaction)
+    await cog.clan_boost_individuale.callback(cog, interaction, _tipo("super"))
 
     assert "Boost personale" in interaction.response.sent_messages[0]
 
@@ -1001,11 +1007,11 @@ async def test_boost_individuale_saldo_insufficiente_non_scala_nulla(cog_e_repos
     capo = _FakeMember(1)
     interaction = _FakeInteraction(guild, user=capo)
 
-    await cog.clan_boost_individuale.callback(cog, interaction)
+    await cog.clan_boost_individuale.callback(cog, interaction, _tipo("super"))
 
     assert "Non hai abbastanza coin" in interaction.response.sent_messages[0]
     assert (await leveling_repo.get_totals(100, 1)).coins_total == 100
-    assert (await clan_repo.get_member(clan_id, 1)).boost_expires_at is None
+    assert (await clan_repo.get_member(clan_id, 1)).boost_exp_expires_at is None
 
 
 @pytest.mark.asyncio
@@ -1014,26 +1020,31 @@ async def test_boost_individuale_senza_gilda_avvisa(cog_e_repos):
     guild = _FakeGuild(100)
     interaction = _FakeInteraction(guild, user=_FakeMember(1))
 
-    await cog.clan_boost_individuale.callback(cog, interaction)
+    await cog.clan_boost_individuale.callback(cog, interaction, _tipo("super"))
 
     assert "Non fai parte" in interaction.response.sent_messages[0]
 
 
 @pytest.mark.asyncio
-async def test_boost_individuale_estende_un_boost_gia_attivo(cog_e_repos):
+async def test_boost_individuale_gia_attivo_non_si_somma_e_non_costa(cog_e_repos):
     cog, clan_repo, leveling_repo = cog_e_repos
     guild = _FakeGuild(100)
     clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
     await leveling_repo.add_coins(100, 1, 20_000)
     capo = _FakeMember(1)
 
-    await cog.clan_boost_individuale.callback(cog, _FakeInteraction(guild, user=capo))
-    prima_scadenza = (await clan_repo.get_member(clan_id, 1)).boost_expires_at
+    await cog.clan_boost_individuale.callback(cog, _FakeInteraction(guild, user=capo), _tipo("coin"))
+    prima = await clan_repo.get_member(clan_id, 1)
+    interaction = _FakeInteraction(guild, user=capo)
+    await cog.clan_boost_individuale.callback(cog, interaction, _tipo("super"))
 
-    await cog.clan_boost_individuale.callback(cog, _FakeInteraction(guild, user=capo))
-    seconda_scadenza = (await clan_repo.get_member(clan_id, 1)).boost_expires_at
-
-    assert seconda_scadenza == prima_scadenza + timedelta(hours=24)
+    dopo = await clan_repo.get_member(clan_id, 1)
+    assert dopo.boost_coin_expires_at == prima.boost_coin_expires_at
+    assert dopo.boost_exp_expires_at is None
+    assert (await leveling_repo.get_totals(100, 1)).coins_total == 14_000
+    testo = interaction.response.sent_messages[0]
+    assert "Hai già il boost coin attivo fino a <t:" in testo
+    assert "puoi comprare solo il boost exp" in testo
 
 
 @pytest.mark.asyncio
@@ -1045,12 +1056,40 @@ async def test_boost_gilda_riuscito_scala_tesoreria(cog_e_repos):
     capo = _FakeMember(1)
     interaction = _FakeInteraction(guild, user=capo)
 
-    await cog.clan_boost_gilda.callback(cog, interaction)
+    await cog.clan_boost_gilda.callback(cog, interaction, _tipo("super"))
 
     assert "Boost di gilda" in interaction.response.sent_messages[0]
     clan = await clan_repo.get_clan(clan_id)
     assert clan.treasury_balance == 200_000 - 15_000 - 100_000
-    assert clan.guild_boost_expires_at is not None
+    assert clan.guild_boost_exp_expires_at is not None
+    assert clan.guild_boost_coin_expires_at is not None
+
+
+@pytest.mark.asyncio
+async def test_boost_gilda_gia_attivo_messaggio_e_nessun_addebito(cog_e_repos):
+    cog, clan_repo, _ = cog_e_repos
+    guild = _FakeGuild(100)
+    clan_id, _ = await _crea_clan_con_categoria(clan_repo, guild)
+    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + 300_000)
+    capo = _FakeMember(1)
+
+    await cog.clan_boost_gilda.callback(cog, _FakeInteraction(guild, user=capo), _tipo("exp"))
+    interaction = _FakeInteraction(guild, user=capo)
+    await cog.clan_boost_gilda.callback(cog, interaction, _tipo("super"))
+
+    testo = interaction.response.sent_messages[0]
+    assert "La gilda ha già il boost exp attivo fino a <t:" in testo
+    assert "puoi comprare solo il boost coin" in testo
+    assert (await clan_repo.get_clan(clan_id)).treasury_balance == 300_000 - 60_000
+
+
+def test_le_scelte_di_boost_sono_tre_e_nei_limiti():
+    from cogs.leveling.leveling import LevelingCog
+
+    for comando in (LevelingCog.clan_boost_individuale, LevelingCog.clan_boost_gilda):
+        scelte = comando._params["tipo"].choices
+        assert [c.value for c in scelte] == ["exp", "coin", "super"]
+        assert all(len(c.name) <= 100 and len(c.value) <= 100 for c in scelte)
 
 
 @pytest.mark.asyncio
@@ -1063,10 +1102,10 @@ async def test_boost_gilda_un_membro_semplice_non_puo_comprarlo(cog_e_repos):
     membro_semplice = _FakeMember(5)
     interaction = _FakeInteraction(guild, user=membro_semplice)
 
-    await cog.clan_boost_gilda.callback(cog, interaction)
+    await cog.clan_boost_gilda.callback(cog, interaction, _tipo("super"))
 
     assert "Solo il Capo Clan, il Co-Owner o un Admin Clan" in interaction.response.sent_messages[0]
-    assert (await clan_repo.get_clan(clan_id)).guild_boost_expires_at is None
+    assert (await clan_repo.get_clan(clan_id)).guild_boost_exp_expires_at is None
 
 
 @pytest.mark.asyncio
@@ -1078,12 +1117,12 @@ async def test_boost_gilda_tesoreria_insufficiente_non_scala_nulla(cog_e_repos):
     capo = _FakeMember(1)
     interaction = _FakeInteraction(guild, user=capo)
 
-    await cog.clan_boost_gilda.callback(cog, interaction)
+    await cog.clan_boost_gilda.callback(cog, interaction, _tipo("super"))
 
     assert "non basta" in interaction.response.sent_messages[0]
     clan = await clan_repo.get_clan(clan_id)
     assert clan.treasury_balance == 0
-    assert clan.guild_boost_expires_at is None
+    assert clan.guild_boost_exp_expires_at is None
 
 
 # ======================================================================

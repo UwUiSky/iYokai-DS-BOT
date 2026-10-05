@@ -19,7 +19,16 @@ from enum import Enum
 
 import asyncpg
 
-from core.guild_clan_boost_logic import extend_boost_expiry
+from core.guild_clan_boost_logic import (
+    GUILD_BOOST_COSTS,
+    INDIVIDUAL_BOOST_COSTS,
+    EsitoBoost,
+    StatoBoost,
+    Beneficio,
+    TipoBoost,
+    benefici_attivi,
+    nuove_scadenze,
+)
 from core.guild_clan_logic import CREATION_DEFICIT, apply_monthly_treasury_decay
 from core.repositories.leveling_repo import spend_coins_in
 
@@ -92,7 +101,8 @@ class Clan:
     max_members: int
     channels_unlocked: int
     total_voice_ticks: int
-    guild_boost_expires_at: datetime | None
+    guild_boost_exp_expires_at: datetime | None
+    guild_boost_coin_expires_at: datetime | None
     created_at: datetime
 
 
@@ -102,7 +112,8 @@ class ClanMember:
     user_id: int
     role: str
     joined_at: datetime
-    boost_expires_at: datetime | None
+    boost_exp_expires_at: datetime | None
+    boost_coin_expires_at: datetime | None
     last_text_xp_at: datetime | None
 
 
@@ -215,7 +226,8 @@ class GuildClanRepository:
             max_members=row["max_members"],
             channels_unlocked=row["channels_unlocked"],
             total_voice_ticks=row["total_voice_ticks"],
-            guild_boost_expires_at=row["guild_boost_expires_at"],
+            guild_boost_exp_expires_at=row["guild_boost_exp_expires_at"],
+            guild_boost_coin_expires_at=row["guild_boost_coin_expires_at"],
             created_at=row["created_at"],
         )
 
@@ -225,7 +237,8 @@ class GuildClanRepository:
             user_id=row["user_id"],
             role=row["role"],
             joined_at=row["joined_at"],
-            boost_expires_at=row["boost_expires_at"],
+            boost_exp_expires_at=row["boost_exp_expires_at"],
+            boost_coin_expires_at=row["boost_coin_expires_at"],
             last_text_xp_at=row["last_text_xp_at"],
         )
 
@@ -564,62 +577,84 @@ class GuildClanRepository:
                 return EsitoRuolo.FATTO
 
     async def buy_member_boost(
-        self, guild_id: int, clan_id: int, user_id: int, cost: int, now: datetime
-    ) -> datetime | None:
+        self, guild_id: int, clan_id: int, user_id: int, tipo: TipoBoost, now: datetime
+    ) -> EsitoBoost:
         """
-        Boost individuale: toglie le coin personali e scrive la nuova
-        scadenza nella stessa transazione. La scadenza si calcola sul
-        valore letto con la riga bloccata, quindi due acquisti insieme
-        si sommano. None (senza scrivere nulla) se le coin non bastano.
+        Boost individuale (D23): con la riga del membro bloccata si
+        controlla che nessun beneficio del tipo sia già attivo, poi
+        toglie le coin personali (UPDATE condizionata) e scrive le
+        scadenze (now + 24 h) nella stessa transazione. Ordine dei
+        blocchi: membro, poi coin. In ogni esito diverso da ACQUISTATO
+        non scrive e non addebita nulla.
         """
+        costo = INDIVIDUAL_BOOST_COSTS[tipo]
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 attuale = await conn.fetchrow(
-                    "SELECT m.boost_expires_at FROM clan_members m "
-                    "JOIN clans c ON c.id = m.clan_id "
+                    "SELECT m.boost_exp_expires_at, m.boost_coin_expires_at "
+                    "FROM clan_members m JOIN clans c ON c.id = m.clan_id "
                     "WHERE m.clan_id = $1 AND m.user_id = $2 AND c.guild_id = $3 "
                     "FOR UPDATE OF m",
                     clan_id, user_id, guild_id,
                 )
                 if attuale is None:
-                    return None
-                if not await spend_coins_in(conn, guild_id, user_id, cost):
-                    return None
-                nuova = extend_boost_expiry(attuale["boost_expires_at"], now)
-                await conn.execute(
-                    "UPDATE clan_members SET boost_expires_at = $3 "
-                    "WHERE clan_id = $1 AND user_id = $2",
-                    clan_id, user_id, nuova,
+                    return EsitoBoost(StatoBoost.NON_MEMBRO)
+                attivi = benefici_attivi(
+                    attuale["boost_exp_expires_at"], attuale["boost_coin_expires_at"], now
                 )
-                return nuova
+                if any(b in attivi for b in tipo.benefici):
+                    return EsitoBoost(StatoBoost.GIA_ATTIVO, attivi=tuple(attivi.items()))
+                if not await spend_coins_in(conn, guild_id, user_id, costo):
+                    return EsitoBoost(StatoBoost.NON_ABBASTANZA_FONDI)
+                scadenze = nuove_scadenze(tipo, now)
+                await conn.execute(
+                    "UPDATE clan_members SET "
+                    "boost_exp_expires_at = COALESCE($3, boost_exp_expires_at), "
+                    "boost_coin_expires_at = COALESCE($4, boost_coin_expires_at) "
+                    "WHERE clan_id = $1 AND user_id = $2",
+                    clan_id, user_id,
+                    scadenze.get(Beneficio.EXP), scadenze.get(Beneficio.COIN),
+                )
+                return EsitoBoost(StatoBoost.ACQUISTATO, scadenza=next(iter(scadenze.values())))
 
-    async def buy_guild_boost(self, clan_id: int, cost: int, now: datetime) -> datetime | None:
+    async def buy_guild_boost(self, clan_id: int, tipo: TipoBoost, now: datetime) -> EsitoBoost:
         """
-        Boost di gilda: spesa dalla tesoreria, registro e nuova scadenza
-        nella stessa transazione, con la riga della gilda bloccata (due
-        acquisti insieme si sommano). None se la tesoreria non basta.
+        Boost di gilda (D23): con la riga della gilda bloccata controlla
+        i benefici attivi, poi spesa dalla tesoreria, registro e nuove
+        scadenze nella stessa transazione. Senza scritture se rifiutato.
         """
+        costo = GUILD_BOOST_COSTS[tipo]
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 riga = await conn.fetchrow(
-                    "SELECT treasury_balance, guild_boost_expires_at FROM clans "
-                    "WHERE id = $1 FOR UPDATE",
+                    "SELECT treasury_balance, guild_boost_exp_expires_at, "
+                    "guild_boost_coin_expires_at FROM clans WHERE id = $1 FOR UPDATE",
                     clan_id,
                 )
-                if riga is None or riga["treasury_balance"] < cost:
-                    return None
-                nuova = extend_boost_expiry(riga["guild_boost_expires_at"], now)
+                if riga is None:
+                    return EsitoBoost(StatoBoost.ASSENTE)
+                attivi = benefici_attivi(
+                    riga["guild_boost_exp_expires_at"], riga["guild_boost_coin_expires_at"], now
+                )
+                if any(b in attivi for b in tipo.benefici):
+                    return EsitoBoost(StatoBoost.GIA_ATTIVO, attivi=tuple(attivi.items()))
+                if riga["treasury_balance"] < costo:
+                    return EsitoBoost(StatoBoost.NON_ABBASTANZA_FONDI)
+                scadenze = nuove_scadenze(tipo, now)
                 await conn.execute(
                     "UPDATE clans SET treasury_balance = treasury_balance - $2, "
-                    "guild_boost_expires_at = $3 WHERE id = $1",
-                    clan_id, cost, nuova,
+                    "guild_boost_exp_expires_at = COALESCE($3, guild_boost_exp_expires_at), "
+                    "guild_boost_coin_expires_at = COALESCE($4, guild_boost_coin_expires_at) "
+                    "WHERE id = $1",
+                    clan_id, costo,
+                    scadenze.get(Beneficio.EXP), scadenze.get(Beneficio.COIN),
                 )
                 await conn.execute(
                     "INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason) "
                     "VALUES ($1, NULL, $2, $3)",
-                    clan_id, -cost, REASON_GUILD_BOOST,
+                    clan_id, -costo, REASON_GUILD_BOOST,
                 )
-                return nuova
+                return EsitoBoost(StatoBoost.ACQUISTATO, scadenza=next(iter(scadenze.values())))
 
     async def donate_from_member(
         self, guild_id: int, clan_id: int, user_id: int, amount: int
