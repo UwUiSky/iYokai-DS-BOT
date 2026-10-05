@@ -19,22 +19,39 @@ from core.repositories.guild_clan_repo import GuildClanRepository
 ORA = datetime.now(timezone.utc)
 
 
+class _FakeVoiceState:
+    def __init__(self, self_deaf: bool = False, self_mute: bool = False) -> None:
+        self.self_deaf = self_deaf
+        self.self_mute = self_mute
+
+
 class _FakeMember:
-    def __init__(self, member_id: int, bot: bool = False) -> None:
+    def __init__(
+        self, member_id: int, bot: bool = False, self_deaf: bool = False, self_mute: bool = False
+    ) -> None:
         self.id = member_id
         self.bot = bot
+        self.voice = _FakeVoiceState(self_deaf, self_mute)
+
+
+# Una persona qualunque, fuori da ogni gilda, che parla nel canale: senza
+# di lei un membro da solo non maturerebbe nulla (regole anti-farm).
+ID_COMPAGNIA = 9000
 
 
 class _FakeVoiceChannel:
-    def __init__(self, channel_id: int, members: list) -> None:
+    def __init__(self, channel_id: int, members: list, compagnia: bool = True) -> None:
         self.id = channel_id
-        self.members = members
+        self.members = list(members)
+        if compagnia and members:
+            self.members.append(_FakeMember(ID_COMPAGNIA))
 
 
 class _FakeGuild:
-    def __init__(self, guild_id: int, voice_channels: list) -> None:
+    def __init__(self, guild_id: int, voice_channels: list, afk_channel=None) -> None:
         self.id = guild_id
         self.voice_channels = voice_channels
+        self.afk_channel = afk_channel
 
 
 class _FakeBot:
@@ -258,3 +275,85 @@ async def test_membro_uscito_dal_vocale_viene_ripulito(repos):
 
     attivita_dopo = await activity_repo.get_activity(clan_id, user_id=1)
     assert attivita_dopo.current_channel_id is None
+
+
+# ----------------------------------------------------------------------
+# M 9.9: stesse regole anti-farm dell'XP vocale normale
+# ----------------------------------------------------------------------
+async def _guadagno_del_tick(clan_repo, guild) -> tuple[int, int, int]:
+    """(XP, coin in tesoreria, tick vocali) maturati dalla gilda in un tick."""
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    prima = await clan_repo.get_clan(clan_id)
+    await GuildClanVoiceWorker().tick(_FakeBot([guild]), now=ORA)
+    dopo = await clan_repo.get_clan(clan_id)
+    return (
+        dopo.total_xp - prima.total_xp,
+        dopo.treasury_balance - prima.treasury_balance,
+        dopo.total_voice_ticks - prima.total_voice_ticks,
+    )
+
+
+@pytest.mark.asyncio
+async def test_utente_solo_nel_canale_afk_non_matura_nulla(repos):
+    clan_repo, _ = repos
+    afk = _FakeVoiceChannel(700, members=[_FakeMember(1)], compagnia=False)
+    guild = _FakeGuild(100, voice_channels=[afk], afk_channel=afk)
+
+    assert await _guadagno_del_tick(clan_repo, guild) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_nel_canale_afk_non_si_matura_nemmeno_in_compagnia(repos):
+    clan_repo, _ = repos
+    afk = _FakeVoiceChannel(700, members=[_FakeMember(1)])
+    guild = _FakeGuild(100, voice_channels=[afk], afk_channel=afk)
+
+    assert await _guadagno_del_tick(clan_repo, guild) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_utente_da_solo_in_un_canale_non_matura_nulla(repos):
+    clan_repo, _ = repos
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)], compagnia=False)
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    assert await _guadagno_del_tick(clan_repo, guild) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_utente_assordato_non_matura_nulla(repos):
+    clan_repo, _ = repos
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1, self_deaf=True)])
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    assert await _guadagno_del_tick(clan_repo, guild) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_compagnia_tutta_mutata_o_solo_bot_non_conta(repos):
+    clan_repo, _ = repos
+    canale = _FakeVoiceChannel(
+        500,
+        members=[_FakeMember(1), _FakeMember(2, self_mute=True), _FakeMember(3, bot=True)],
+        compagnia=False,
+    )
+    guild = _FakeGuild(100, voice_channels=[canale])
+
+    assert await _guadagno_del_tick(clan_repo, guild) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_chi_smette_di_essere_idoneo_riparte_da_capo(repos):
+    """Chi finisce in AFK viene trattato come uscito dal vocale: stato azzerato."""
+    clan_repo, activity_repo = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1)])
+    await GuildClanVoiceWorker().tick(_FakeBot([_FakeGuild(100, [canale])]), now=ORA)
+    assert (clan_id, 1) in await activity_repo.get_tracked_as_in_voice()
+
+    afk = _FakeVoiceChannel(700, members=[_FakeMember(1)], compagnia=False)
+    await GuildClanVoiceWorker().tick(
+        _FakeBot([_FakeGuild(100, [afk], afk_channel=afk)]), now=ORA
+    )
+
+    assert (clan_id, 1) not in await activity_repo.get_tracked_as_in_voice()

@@ -13,8 +13,10 @@ server, non c'è bisogno di on_voice_state_update per sapere chi è
 dove in questo istante — lo stato PRECEDENTE (canale, decadimento,
 tetto) vive nel database tramite core/repositories/clan_voice_
 activity_repo.py, già committato.
-Funzioni coperte: REVIEW.md LC-8 (errori isolati per server nel giro),
-SEC-21 (gli utenti in blacklist non maturano nulla).
+Valgono le stesse regole anti-farm dell'XP vocale normale
+(core.leveling_logic.is_eligible_for_voice_xp).
+Funzioni coperte: SPEC §15.14; REVIEW.md LC-8 (errori isolati per server
+nel giro), SEC-21 (gli utenti in blacklist non maturano nulla).
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from discord.ext import commands, tasks
 from core.bot_ready import attendi_bot_pronto
 from core.guild_clan_boost_logic import compute_boosted_reward, is_boost_active
 from core.guild_iteration import for_each_guild_safely
+from core.leveling_logic import is_eligible_for_voice_xp
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
 from core.repositories.guild_clan_repo import REASON_VOICE_TICK, guild_clan_repo
@@ -47,13 +50,29 @@ class GuildClanVoiceWorker:
         trovati_in_vocale: set[tuple[int, int]] = set()
 
         async def _per_server(guild) -> None:
+            id_canale_afk = guild.afk_channel.id if guild.afk_channel else None
             for canale in guild.voice_channels:
-                for membro in canale.members:
-                    if membro.bot:
-                        continue
+                persone = [m for m in canale.members if not m.bot]
+                for membro in persone:
                     # SEC-21: chi è in blacklist non porta XP, coin
                     # né ore vocali al clan (controllo in cache).
                     if await blacklist_repo.is_user_blacklisted(membro.id):
+                        continue
+
+                    # Stesse regole anti-farm dell'XP vocale normale:
+                    # niente canale AFK, niente utente assordato, e
+                    # almeno un'altra persona non mutata nel canale. Chi
+                    # non le rispetta vale come "non in vocale": nessun
+                    # guadagno, nessuna ora accumulata.
+                    altri_non_mutati = sum(
+                        1 for altro in persone
+                        if altro.id != membro.id and not altro.voice.self_mute
+                    )
+                    if not is_eligible_for_voice_xp(
+                        is_self_deaf=membro.voice.self_deaf,
+                        is_afk_channel=canale.id == id_canale_afk,
+                        other_members_not_self_muted=altri_non_mutati,
+                    ):
                         continue
 
                     clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id)

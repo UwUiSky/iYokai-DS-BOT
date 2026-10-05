@@ -232,8 +232,14 @@ async def blacklist_vera(monkeypatch, clean_db):
 def _server_con_vocale(*membri):
     canale = fake_voice_channel(500)
     canale.members = list(membri)
+    # Persone normali in un canale normale: né assordate né mutate, e
+    # nessun canale AFK (il worker delle gilde applica le regole anti-farm).
+    for membro in membri:
+        membro.voice.self_deaf = False
+        membro.voice.self_mute = False
     server = fake_guild(ID_SERVER)
     server.voice_channels = [canale]
+    server.afk_channel = None
     return server
 
 
