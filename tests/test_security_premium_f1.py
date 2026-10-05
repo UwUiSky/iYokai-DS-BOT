@@ -58,6 +58,12 @@ def ambiente(monkeypatch, clean_db, reset_premium_registry):
     monkeypatch.setattr(security_repo, "_pool_provider", lambda: clean_db)
     yield database_module.db
     database_module.db._modules_cache.clear()
+    # reset_premium_registry rimette a posto l'elenco dei moduli, non
+    # la loro spunta "premium": la si spegne qui, o resterebbe accesa
+    # per i test che vengono dopo.
+    for nome_modulo in MODULI:
+        if registry.get(nome_modulo) is not None:
+            registry.set_module_premium(nome_modulo, False)
 
 
 async def _bot_con(nome_modulo: str) -> commands.Bot:
