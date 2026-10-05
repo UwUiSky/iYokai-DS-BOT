@@ -215,6 +215,35 @@ async def check_can_moderate(
     return True
 
 
+async def try_dm_message(
+    user: discord.abc.Snowflake, embed: discord.Embed
+) -> discord.Message | None:
+    """
+    Prova a mandare un DM e restituisce il messaggio inviato, o None se
+    non è partito (DM chiusi o nessun server in comune). Serve a kick e
+    ban: il messaggio parte PRIMA dell'azione, perché dopo non c'è più un
+    server in comune e Discord lo rifiuta. Se l'azione fallisce il
+    messaggio si cancella con `delete_dm`.
+    """
+    try:
+        # user qui è sempre un discord.Member/discord.User vero
+        # (Snowflake nel type hint solo per generalità); .send()
+        # esiste su entrambi.
+        return await user.send(embed=embed)  # type: ignore[attr-defined]
+    except (discord.Forbidden, discord.HTTPException):
+        return None
+
+
+async def delete_dm(message: discord.Message | None) -> None:
+    """Cancella un DM già inviato (azione poi fallita). Non solleva errori."""
+    if message is None:
+        return
+    try:
+        await message.delete()
+    except (discord.Forbidden, discord.HTTPException):
+        pass
+
+
 async def try_dm(user: discord.abc.Snowflake, embed: discord.Embed) -> bool:
     """
     Prova a mandare un DM. Restituisce True/False invece di
@@ -222,11 +251,4 @@ async def try_dm(user: discord.abc.Snowflake, embed: discord.Embed) -> bool:
     fallire l'intero comando di moderazione, solo far sapere al
     moderatore che la notifica non è arrivata.
     """
-    try:
-        # user qui è sempre un discord.Member/discord.User vero
-        # (Snowflake nel type hint solo per generalità); .send()
-        # esiste su entrambi.
-        await user.send(embed=embed)  # type: ignore[attr-defined]
-        return True
-    except (discord.Forbidden, discord.HTTPException):
-        return False
+    return await try_dm_message(user, embed) is not None

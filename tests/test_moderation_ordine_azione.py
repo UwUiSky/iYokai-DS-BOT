@@ -3,8 +3,10 @@ tests/test_moderation_ordine_azione.py
 ======================================
 Kick, ban, tempban e softban (M 1.3, M 1.4):
 - chiamano `defer()` prima di parlare con Discord (LIM-25);
-- fanno prima l'azione, poi il caso, il log e il DM (LIM-8): se
-  l'azione fallisce non resta nessun caso e non parte nessun DM;
+- mandano il DM PRIMA dell'azione (dopo un kick o un ban non c'è più un
+  server in comune e Discord lo rifiuta), poi fanno l'azione, il caso e il
+  log (LIM-8): se l'azione fallisce non resta nessun caso né log, e il
+  DM già inviato viene cancellato;
 - gestiscono ogni `discord.HTTPException`, non solo `Forbidden`.
 
 Database vero (clean_db) e repository veri; di Discord solo i finti
@@ -75,7 +77,9 @@ class Scena:
         self._registra(self.interazione.followup.send, "followup")
         self._registra(self.bersaglio.ban, "ban")
         self._registra(self.bersaglio.kick, "kick")
-        self._registra(self.bersaglio.send, "dm")
+        self.messaggio_dm = MagicMock(spec=discord.Message)
+        self._registra(self.messaggio_dm.delete, "dm_cancellato")
+        self._registra_dm(self.bersaglio.send)
         self._registra(self.server.unban, "unban")
         self._registra(self.canale_log.send, "log")
 
@@ -84,6 +88,13 @@ class Scena:
             self.chiamate.append(nome)
 
         finto.side_effect = _annota
+
+    def _registra_dm(self, finto) -> None:
+        async def _invia(*args, **kwargs):
+            self.chiamate.append("dm")
+            return self.messaggio_dm
+
+        finto.side_effect = _invia
 
     def fallisce(self, finto, nome: str, errore: Exception) -> None:
         async def _annota_e_fallisce(*args, **kwargs):
@@ -128,13 +139,17 @@ async def test_defer_prima_di_ogni_chiamata_a_discord(nome):
 
 
 @pytest.mark.parametrize("nome", COMANDI)
-async def test_ordine_azione_caso_log_dm(nome):
+async def test_ordine_dm_azione_log(nome):
     scena = Scena()
 
     await _esegui(nome, scena)
 
     ordine = [c for c in scena.chiamate if c in (_azione(nome), "log", "dm")]
-    assert ordine == [_azione(nome), "log", "dm"]
+    assert ordine == ["dm", _azione(nome), "log"]
+    assert "dm_cancellato" not in scena.chiamate
+    # Il DM porta il motivo, ma non il numero del caso (non c'è ancora).
+    embed_dm = scena.bersaglio.send.call_args.kwargs["embed"]
+    assert all(campo.name != "Caso" for campo in embed_dm.fields)
     casi = await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO)
     assert [c.action_type for c in casi] == [nome]
 
@@ -148,7 +163,7 @@ async def test_ordine_azione_caso_log_dm(nome):
     ],
     ids=["forbidden", "http_400"],
 )
-async def test_azione_fallita_nessun_caso_nessun_dm_nessun_log(nome, errore):
+async def test_azione_fallita_dm_cancellato_nessun_caso_nessun_log(nome, errore):
     scena = Scena()
     finto = scena.bersaglio.kick if nome == "kick" else scena.bersaglio.ban
     scena.fallisce(finto, _azione(nome), errore)
@@ -156,7 +171,8 @@ async def test_azione_fallita_nessun_caso_nessun_dm_nessun_log(nome, errore):
     await _esegui(nome, scena)
 
     assert await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO) == []
-    assert "dm" not in scena.chiamate
+    assert scena.chiamate.index("dm") < scena.chiamate.index(_azione(nome))
+    assert "dm_cancellato" in scena.chiamate
     assert "log" not in scena.chiamate
     assert "unban" not in scena.chiamate
     # Il moderatore riceve comunque una risposta chiara.

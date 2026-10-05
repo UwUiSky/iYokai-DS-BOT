@@ -42,6 +42,8 @@ from cogs.moderation._shared import (
     ensure_module_enabled,
     check_can_moderate,
     try_dm,
+    try_dm_message,
+    delete_dm,
     parse_duration,
     format_duration,
     validate_reason,
@@ -76,30 +78,31 @@ def _case_embed(
     target: discord.abc.User,
     moderator: discord.abc.User,
     reason: str | None,
-    case_number: int,
+    case_number: int | None,
     extra_field: tuple[str, str] | None = None,
 ) -> discord.Embed:
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="Utente", value=f"{target.mention} ({target.id})", inline=False)
     embed.add_field(name="Moderatore", value=moderator.mention, inline=True)
-    embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
+    if case_number is not None:
+        embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
     if extra_field:
         embed.add_field(name=extra_field[0], value=extra_field[1], inline=True)
     embed.add_field(name="Motivo", value=reason or "Nessun motivo fornito", inline=False)
     return embed
 
 
-async def _log_dm_e_risposta(
-    interaction: discord.Interaction, member: discord.Member, embed: discord.Embed
+async def _log_e_risposta(
+    interaction: discord.Interaction, embed: discord.Embed, dm_inviato: bool
 ) -> None:
     """
-    Ultimi passi di una sanzione già riuscita e già registrata: log,
-    DM all'utente, risposta al moderatore. Il DM dopo un kick o un
-    ban arriva solo se l'utente ha un altro server in comune con il
-    bot: quando non arriva lo diciamo al moderatore.
+    Ultimi passi di una sanzione già riuscita e già registrata: log e
+    risposta al moderatore. Il DM è partito prima dell'azione (dopo un
+    kick o un ban non c'è più un server in comune): se non è arrivato
+    lo diciamo al moderatore.
     """
     await post_to_mod_log(interaction.guild, embed)
-    if not await try_dm(member, embed):
+    if not dm_inviato:
         embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
     await interaction.followup.send(embed=embed)
 
@@ -161,11 +164,16 @@ class ModerationActionsCog(commands.Cog):
 
         await interaction.response.defer()
 
-        # Prima l'azione: il caso, il log e il DM partono solo se è
-        # riuscita (LIM-8).
+        # Il DM parte prima (dopo il kick non arriverebbe); il caso e il
+        # log partono solo se l'azione è riuscita (LIM-8).
+        dm = await try_dm_message(
+            member,
+            _case_embed("👢 Kick", discord.Color.orange(), member, interaction.user, reason, None),
+        )
         try:
             await member.kick(reason=reason)
         except discord.HTTPException:
+            await delete_dm(dm)
             await interaction.followup.send(
                 "Non sono riuscito a espellere questo utente: controlla i "
                 "miei permessi e la posizione del mio ruolo.",
@@ -183,7 +191,7 @@ class ModerationActionsCog(commands.Cog):
         embed = _case_embed(
             "👢 Kick", discord.Color.orange(), member, interaction.user, reason, case_number
         )
-        await _log_dm_e_risposta(interaction, member, embed)
+        await _log_e_risposta(interaction, embed, dm is not None)
 
     # ================================================================
     # /ban
@@ -210,12 +218,17 @@ class ModerationActionsCog(commands.Cog):
 
         await interaction.response.defer()
 
+        dm = await try_dm_message(
+            member,
+            _case_embed("🔨 Ban", discord.Color.red(), member, interaction.user, reason, None),
+        )
         try:
             await member.ban(
                 reason=reason,
                 delete_message_seconds=delete_message_days * 86400,
             )
         except discord.HTTPException:
+            await delete_dm(dm)
             await interaction.followup.send(_BAN_FALLITO, ephemeral=True)
             return
 
@@ -229,7 +242,7 @@ class ModerationActionsCog(commands.Cog):
         embed = _case_embed(
             "🔨 Ban", discord.Color.red(), member, interaction.user, reason, case_number
         )
-        await _log_dm_e_risposta(interaction, member, embed)
+        await _log_e_risposta(interaction, embed, dm is not None)
 
     # ================================================================
     # /tempban
@@ -264,9 +277,18 @@ class ModerationActionsCog(commands.Cog):
 
         await interaction.response.defer()
 
+        durata = ("Durata", format_duration(duration_seconds))
+        dm = await try_dm_message(
+            member,
+            _case_embed(
+                "⏳ Tempban", discord.Color.dark_red(), member, interaction.user,
+                reason, None, extra_field=durata,
+            ),
+        )
         try:
             await member.ban(reason=reason)
         except discord.HTTPException:
+            await delete_dm(dm)
             await interaction.followup.send(_BAN_FALLITO, ephemeral=True)
             return
 
@@ -297,9 +319,9 @@ class ModerationActionsCog(commands.Cog):
             interaction.user,
             reason,
             case_number,
-            extra_field=("Durata", format_duration(duration_seconds)),
+            extra_field=durata,
         )
-        await _log_dm_e_risposta(interaction, member, embed)
+        await _log_e_risposta(interaction, embed, dm is not None)
 
     async def handle_tempban_expire(
         self, guild_id: int, user_id: int, payload: dict

@@ -39,6 +39,8 @@ from cogs.moderation._shared import (
     ensure_module_enabled,
     check_can_moderate,
     try_dm,
+    try_dm_message,
+    delete_dm,
     validate_reason,
     Reason,
     audit_reason,
@@ -97,12 +99,13 @@ def _case_embed(
     target: discord.abc.User,
     moderator: discord.abc.User,
     reason: str,
-    case_number: int,
+    case_number: int | None,
 ) -> discord.Embed:
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="Utente", value=f"{target.mention} ({target.id})", inline=False)
     embed.add_field(name="Moderatore", value=moderator.mention, inline=True)
-    embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
+    if case_number is not None:
+        embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
     embed.add_field(name="Motivo", value=reason, inline=False)
     return embed
 
@@ -225,14 +228,21 @@ class ModerationSoftbanMuteCog(commands.Cog):
 
         await interaction.response.defer()
 
-        # Prima l'azione: il caso, il log e il DM partono solo se è
-        # riuscita (LIM-8).
+        # Il DM parte prima (dopo il ban non arriverebbe); il caso e il
+        # log partono solo se l'azione è riuscita (LIM-8).
+        dm = await try_dm_message(
+            member,
+            _case_embed(
+                "🧹 Softban", discord.Color.dark_orange(), member, interaction.user, reason, None
+            ),
+        )
         try:
             await member.ban(
                 reason=audit_reason(f"Softban: {reason}"),
                 delete_message_seconds=delete_message_days * 86400,
             )
         except discord.HTTPException:
+            await delete_dm(dm)
             await interaction.followup.send(
                 "Non sono riuscito a fare il softban di questo utente: "
                 "controlla i miei permessi e la posizione del mio ruolo.",
@@ -269,7 +279,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
         avvisi = []
         if not sbloccato:
             avvisi.append("Lo sblocco automatico è fallito: usa /unban.")
-        if not await try_dm(member, embed):
+        if dm is None:
             avvisi.append("Non è stato possibile notificare l'utente in DM.")
         if avvisi:
             embed.set_footer(text=" ".join(avvisi))
