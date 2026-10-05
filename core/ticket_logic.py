@@ -7,14 +7,11 @@ dentro, niente oggetti discord.py. Il cog (cogs/tickets/tickets.py)
 converte gli oggetti Discord veri in questi valori semplici prima di
 chiamare queste funzioni.
 
-Nota su SPEC.md §13.10/§13.11 (transcript automatico): la lettura dei
-messaggi per costruirlo avviene via channel.history() (REST), che
-restituisce il contenuto pieno indipendentemente dal Message Content
-Intent — quell'intent è un privilegio del solo GATEWAY (eventi in
-tempo reale), non della history REST governata dal normale permesso
-READ_MESSAGE_HISTORY. Stessa assunzione già verificata e documentata
-in core/spam_trap_logic.py per lo Spam Trap: qui si applica lo stesso
-principio, non è una nuova scoperta.
+Nota su SPEC.md §13.10/§13.11 (transcript automatico): i messaggi si
+leggono con channel.history(). Senza l'intent Message Content Discord
+consegna testo e allegati vuoti, anche da lì (BUG-5): in quel caso il
+transcript lo dice in testa (MESSAGE_CONTENT_WARNING).
+Funzioni coperte: SPEC §13.2, §13.10, §13.11, §13.12, §13.13
 """
 
 # DA FARE (issue #62, fase F1): correzioni aperte per questo file in
@@ -67,10 +64,61 @@ def truncate_label(label: str, limit: int = MAX_CATEGORY_LABEL_LENGTH) -> str:
     return label[: limit - 1] + "…"
 
 
-def format_transcript_line(timestamp_str: str, author_display: str, content: str) -> str:
+MESSAGE_CONTENT_WARNING = (
+    "ATTENZIONE: il bot non ha l'intent Message Content, quindi Discord "
+    "non gli consegna il testo dei messaggi. Questo transcript è incompleto."
+)
+
+
+def format_transcript_line(
+    timestamp_str: str,
+    author_display: str,
+    content: str,
+    attachment_names: list[str] | None = None,
+) -> str:
     """Una singola riga del transcript testuale di un ticket."""
     testo = content if content else "*(nessun testo — solo allegati/embed)*"
-    return f"[{timestamp_str}] {author_display}: {testo}"
+    riga = f"[{timestamp_str}] {author_display}: {testo}"
+    if attachment_names:
+        riga += f" [allegati: {', '.join(attachment_names)}]"
+    return riga
+
+
+def split_text_by_size(text: str, max_bytes: int) -> list[str]:
+    """
+    Divide un testo in pezzi che, in UTF-8, pesano al massimo
+    `max_bytes` ciascuno (LIM-55: un file allegato deve restare sotto
+    i 10 MiB). Taglia a fine riga; solo una riga più lunga del limite
+    viene spezzata a metà. I pezzi, riuniti, danno il testo di partenza.
+    """
+    pezzi: list[str] = []
+    corrente: list[str] = []
+    peso = 0
+
+    def chiudi() -> None:
+        nonlocal corrente, peso
+        if corrente:
+            pezzi.append("".join(corrente))
+        corrente, peso = [], 0
+
+    for riga in text.splitlines(keepends=True):
+        for frammento in _split_long_line(riga, max_bytes):
+            peso_frammento = len(frammento.encode("utf-8"))
+            if peso + peso_frammento > max_bytes:
+                chiudi()
+            corrente.append(frammento)
+            peso += peso_frammento
+    chiudi()
+    return pezzi or [""]
+
+
+def _split_long_line(line: str, max_bytes: int) -> list[str]:
+    """Una riga entro il limite resta intera; una più lunga viene spezzata."""
+    if len(line.encode("utf-8")) <= max_bytes:
+        return [line]
+    # Un carattere pesa al massimo 4 byte: così ogni pezzo sta nel limite.
+    passo = max(1, max_bytes // 4)
+    return [line[inizio : inizio + passo] for inizio in range(0, len(line), passo)]
 
 
 def build_transcript_text(

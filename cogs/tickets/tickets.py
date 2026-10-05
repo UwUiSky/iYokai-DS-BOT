@@ -26,13 +26,17 @@ gli overwrite specifici del singolo ticket.
 
 SPEC.md §13.10/§13.11 (transcript automatico alla chiusura, inviato
 nel canale log + in DM all'utente): la lettura dei messaggi avviene
-via channel.history() PRIMA di cancellare il canale — una chiamata
-REST, che restituisce il contenuto pieno indipendentemente dal
-Message Content Intent (quell'intent riguarda solo gli eventi
-gateway in tempo reale, non la history REST governata dal normale
-permesso READ_MESSAGE_HISTORY — stessa assunzione già verificata e
-documentata in core/spam_trap_logic.py). Vedi core/ticket_logic.py
-per la costruzione pura del testo del transcript.
+via channel.history() PRIMA di cancellare il canale. Il testo dei
+messaggi arriva solo con l'intent Message Content acceso (main.py):
+senza, il transcript lo dice in testa. Un transcript grande viene
+diviso in più file sotto i 10 MiB. Vedi core/ticket_logic.py per la
+costruzione pura del testo.
+
+Limiti di Discord rispettati qui: menu delle categorie (25 voci,
+etichetta 100), nome del canale (100), 2 rinomine ogni 10 minuti (il
+canale nasce già con il numero giusto; /ticket rename passa da
+core/channel_rename.py), un solo ticket aperto per utente (indice
+unico nel database).
 
 /ticket close: l'eliminazione del canale dopo l'attesa passa dallo
 scheduler persistente (core/scheduler.py, azione
@@ -40,8 +44,7 @@ scheduler persistente (core/scheduler.py, azione
 ricarica del cog; gli errori temporanei di Discord vengono riprovati
 dallo scheduler. /ticket forceclose elimina subito e funziona anche su
 un ticket già chiuso il cui canale è rimasto.
-Funzioni coperte: SPEC §13.8/§13.9/§13.10/§13.11, REVIEW.md BUG-1,
-BUG-30 (issue #2, #42).
+Funzioni coperte: SPEC §13.2, §13.8–§13.13
 """
 
 # DA FARE (issue #62, fase F1): correzioni aperte per questo file in
@@ -76,12 +79,14 @@ from core.ticket_logic import (
     MAX_CATEGORY_LABEL_LENGTH,
     MAX_EMOJI_LENGTH,
     MAX_TICKET_CATEGORIES,
+    MESSAGE_CONTENT_WARNING,
     build_transcript_text,
     format_duration_seconds,
     format_transcript_line,
     is_first_response,
     looks_like_emoji,
     merge_support_role_ids,
+    split_text_by_size,
     truncate_label,
 )
 from core.premium import PremiumModule, registry
@@ -112,6 +117,10 @@ PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
 MAX_CHANNEL_NAME_LENGTH = 100
+
+# Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
+# 8 per lasciare margine al resto della richiesta.
+MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
 # Ferma il doppio clic prima che nasca un secondo canale. La garanzia
@@ -826,10 +835,10 @@ class TicketsCog(commands.Cog):
 
     async def _build_transcript_text(self, channel: discord.TextChannel, ticket) -> str:
         """
-        SPEC.md §13.10: legge la history del canale (REST — vedi il
-        docstring del modulo sul perché non serve il Message Content
-        Intent) e la trasforma in testo semplice tramite le funzioni
-        pure di core/ticket_logic.py.
+        SPEC.md §13.10: legge la history del canale e la trasforma in
+        testo semplice tramite le funzioni pure di core/ticket_logic.py.
+        Senza l'intent Message Content Discord consegna i messaggi
+        vuoti (BUG-5): in quel caso l'intestazione lo dice.
         """
         header = [
             f"Transcript ticket #{ticket.ticket_number:04d}",
@@ -838,6 +847,8 @@ class TicketsCog(commands.Cog):
             f"Priorità: {ticket.priority}",
             f"Preso in carico da: {ticket.claimed_by or 'nessuno'}",
         ]
+        if not self.bot.intents.message_content:
+            header.append(MESSAGE_CONTENT_WARNING)
         righe = []
         async for messaggio in channel.history(limit=None, oldest_first=True):
             righe.append(
@@ -845,9 +856,25 @@ class TicketsCog(commands.Cog):
                     messaggio.created_at.strftime("%Y-%m-%d %H:%M"),
                     str(messaggio.author),
                     messaggio.content,
+                    [allegato.filename for allegato in messaggio.attachments],
                 )
             )
         return build_transcript_text(header, righe)
+
+    @staticmethod
+    def _transcript_files(testo: str, ticket_number: int) -> list[tuple[str, bytes]]:
+        """
+        (nome, contenuto) dei file del transcript: uno solo di norma,
+        più d'uno se il testo supera il limite di peso (LIM-55).
+        """
+        base = f"ticket-{ticket_number:04d}-transcript"
+        parti = split_text_by_size(testo, MAX_TRANSCRIPT_FILE_BYTES)
+        if len(parti) == 1:
+            return [(f"{base}.txt", parti[0].encode("utf-8"))]
+        return [
+            (f"{base}-parte-{numero}-di-{len(parti)}.txt", parte.encode("utf-8"))
+            for numero, parte in enumerate(parti, start=1)
+        ]
 
     async def _deliver_transcript(
         self, guild: discord.Guild, channel: discord.TextChannel, ticket
@@ -855,31 +882,33 @@ class TicketsCog(commands.Cog):
         """SPEC.md §13.11: invio nel canale log configurato + DM all'utente."""
         try:
             testo = await self._build_transcript_text(channel, ticket)
-        except (discord.Forbidden, discord.HTTPException):
+        except discord.HTTPException:
             logger.warning("Impossibile leggere la history del ticket %s per il transcript", channel.id)
             return
 
-        nome_file = f"ticket-{ticket.ticket_number:04d}-transcript.txt"
+        file_del_transcript = self._transcript_files(testo, ticket.ticket_number)
 
         log_channel_id = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
         if log_channel_id is not None:
             log_channel = guild.get_channel(log_channel_id)
             if isinstance(log_channel, discord.TextChannel):
                 try:
-                    await log_channel.send(
-                        content=f"Transcript ticket #{ticket.ticket_number:04d}",
-                        file=discord.File(io.BytesIO(testo.encode("utf-8")), filename=nome_file),
-                    )
-                except (discord.Forbidden, discord.HTTPException):
+                    for nome_file, contenuto in file_del_transcript:
+                        await log_channel.send(
+                            content=f"Transcript ticket #{ticket.ticket_number:04d}",
+                            file=discord.File(io.BytesIO(contenuto), filename=nome_file),
+                        )
+                except discord.HTTPException:
                     logger.warning("Impossibile inviare il transcript nel canale log del server %s", guild.id)
 
         try:
             utente = guild.get_member(ticket.user_id) or await self.bot.fetch_user(ticket.user_id)
-            await utente.send(
-                content=f"Ecco il transcript del tuo ticket #{ticket.ticket_number:04d}.",
-                file=discord.File(io.BytesIO(testo.encode("utf-8")), filename=nome_file),
-            )
-        except (discord.Forbidden, discord.HTTPException, discord.NotFound):
+            for nome_file, contenuto in file_del_transcript:
+                await utente.send(
+                    content=f"Ecco il transcript del tuo ticket #{ticket.ticket_number:04d}.",
+                    file=discord.File(io.BytesIO(contenuto), filename=nome_file),
+                )
+        except discord.HTTPException:
             logger.info("Impossibile inviare il transcript in DM all'utente %s (DM chiusi?)", ticket.user_id)
 
     async def _transcript_senza_bloccare(
