@@ -176,8 +176,13 @@ async def test_modulo_disattivato_non_valuta_nulla(contesto):
 
 
 @pytest.mark.asyncio
-async def test_account_troppo_nuovo_scatena_quarantena_e_alert(contesto):
-    await _salva_config(AntiRaidConfig(enabled=True, min_account_age_seconds=86400, lockdown_action="quarantine"))
+async def test_account_troppo_nuovo_da_solo_non_fa_scattare_il_blocco(contesto):
+    """
+    BUG-12: un singolo ingresso "sospetto" non è un raid. Il blocco
+    (quarantena, livello di verifica, avviso) scatta solo quando gli
+    ingressi superano la soglia: vedi tests/test_anti_raid_f1.py.
+    """
+    await _salva_config(AntiRaidConfig(enabled=True, min_account_age_seconds=86400, lockdown_action="both"))
 
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner)
@@ -186,29 +191,13 @@ async def test_account_troppo_nuovo_scatena_quarantena_e_alert(contesto):
     cog = AntiRaidCog(bot=None)
     await cog.on_member_join(membro)
 
-    assert len(membro.added_roles) == 1
-    assert len(owner.dm_sent) == 1
+    assert membro.added_roles == []
+    assert guild.edit_calls == []
+    assert owner.dm_sent == []
 
     from core.repositories.security_repo import security_repo
 
-    recenti = await security_repo.get_recent_actions(GUILD_ID)
-    assert len(recenti) == 1
-    assert recenti[0]["category"] == "raid_join"
-
-
-@pytest.mark.asyncio
-async def test_lockdown_action_verification_innalza_il_livello(contesto):
-    await _salva_config(AntiRaidConfig(enabled=True, min_account_age_seconds=86400, lockdown_action="verification"))
-
-    owner = _FakeUser(1)
-    guild = _FakeGuild(GUILD_ID, owner)
-    membro = _FakeMember(2, guild, created_at=datetime.now(timezone.utc) - timedelta(minutes=1))
-
-    cog = AntiRaidCog(bot=None)
-    await cog.on_member_join(membro)
-
-    assert membro.added_roles == []  # nessuna quarantena, solo verification
-    assert guild.edit_calls == [discord.VerificationLevel.highest]
+    assert await security_repo.get_recent_actions(GUILD_ID) == []
 
 
 @pytest.mark.asyncio
@@ -227,7 +216,7 @@ async def test_join_normale_nessuna_azione(contesto):
 
 
 @pytest.mark.asyncio
-async def test_username_sospetto_scatena_azione(contesto):
+async def test_username_sospetto_da_solo_non_fa_scattare_il_blocco(contesto):
     await _salva_config(AntiRaidConfig(enabled=True, min_account_age_seconds=1, check_username_pattern=True))
 
     owner = _FakeUser(1)
@@ -239,7 +228,8 @@ async def test_username_sospetto_scatena_azione(contesto):
     cog = AntiRaidCog(bot=None)
     await cog.on_member_join(membro)
 
-    assert len(membro.added_roles) == 1
+    assert membro.added_roles == []
+    assert owner.dm_sent == []
 
 
 @pytest.mark.asyncio

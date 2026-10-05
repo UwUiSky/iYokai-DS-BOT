@@ -213,3 +213,19 @@ class TestSecurityScore:
             self._signali_perfetti(admin_member_count=0, total_member_count=0)
         )
         assert punteggio == 100
+
+
+class TestIsRaid:
+    def test_solo_la_soglia_di_ingressi_e_un_raid(self):
+        from core.security_logic import is_raid
+
+        assert is_raid((JOIN_VIOLATION_RATE,)) is True
+        assert is_raid((JOIN_VIOLATION_RATE, JOIN_VIOLATION_AVATAR)) is True
+
+    def test_i_segnali_del_singolo_account_non_bastano(self):
+        from core.security_logic import is_raid
+
+        assert is_raid(()) is False
+        assert is_raid(
+            (JOIN_VIOLATION_ACCOUNT_AGE, JOIN_VIOLATION_USERNAME, JOIN_VIOLATION_AVATAR)
+        ) is False

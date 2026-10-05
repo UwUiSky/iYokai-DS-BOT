@@ -11,6 +11,12 @@ Logica di valutazione PURA in core/security_logic.py — qui solo
 l'estrazione dei segnali dal `discord.Member` reale e l'esecuzione
 della risposta (assegnazione ruolo quarantena, innalzamento
 verification_level, alert, log).
+
+Il blocco scatta solo quando gli ingressi superano la soglia. Il
+livello di verifica alzato torna quello di prima alla scadenza del
+blocco (salvata nel database, controllata ogni minuto).
+
+Funzioni coperte: SPEC §7.1
 """
 
 # DA FARE (issue #59, fase F1): correzioni aperte per questo file in
@@ -19,22 +25,32 @@ verification_level, alert, log).
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from datetime import datetime, timedelta
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.security_repo import SecuritySettings, security_repo
-from core.security_logic import AntiRaidConfig, JoinSignals, evaluate_join
+from core.security_logic import AntiRaidConfig, JoinSignals, evaluate_join, is_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
 
 logger = logging.getLogger("iyokai.anti_raid")
 
 MODULE_ANTI_RAID = "anti_raid"
+
+NOME_RUOLO_QUARANTENA = "Quarantined"
+
+# Durata del blocco dopo l'ultimo ingresso del raid: passato questo
+# tempo il livello di verifica torna quello di prima. Vale anche come
+# durata di un "episodio": dentro un episodio il proprietario riceve un
+# solo DM.
+DURATA_BLOCCO_SECONDI = 15 * 60
 
 
 async def _get_or_create_quarantine_role(
@@ -47,6 +63,10 @@ async def _get_or_create_quarantine_role(
     sospetto raider appena entrato, il mute è per un membro esistente
     sanzionato — mescolarli renderebbe impossibile distinguere i due
     casi nell'audit trail del server.
+
+    Va chiamata dentro il blocco per server del cog
+    (AntiRaidCog._ruolo_quarantena): senza, più ingressi insieme
+    creerebbero più ruoli.
     """
     if settings.quarantine_role_id is not None:
         role = guild.get_role(settings.quarantine_role_id)
@@ -55,9 +75,13 @@ async def _get_or_create_quarantine_role(
 
     try:
         role = await guild.create_role(
-            name="Quarantined", reason="Ruolo di quarantena creato automaticamente da iYokai (Anti-Raid)"
+            name=NOME_RUOLO_QUARANTENA,
+            reason="Ruolo di quarantena creato automaticamente da iYokai (Anti-Raid)",
         )
-    except discord.Forbidden:
+    except discord.HTTPException as errore:
+        logger.warning(
+            "Impossibile creare il ruolo di quarantena nel server %s: %s", guild.id, errore
+        )
         return None
 
     for channel in guild.channels:
@@ -99,8 +123,14 @@ def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
     return SecuritySettings(**dati)
 
 
-async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: discord.Embed) -> None:
-    if guild.owner is not None:
+async def _alert_staff(
+    guild: discord.Guild,
+    settings: SecuritySettings,
+    embed: discord.Embed,
+    *,
+    dm_al_proprietario: bool = True,
+) -> None:
+    if dm_al_proprietario and guild.owner is not None:
         await try_dm(guild.owner, embed)
     if settings.alert_channel_id is not None:
         canale = guild.get_channel(settings.alert_channel_id)
@@ -114,6 +144,16 @@ async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: 
 class AntiRaidCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # Un blocco per server sulla creazione del ruolo di quarantena.
+        self._blocchi_ruolo: dict[int, asyncio.Lock] = {}
+        # Server -> ora dell'ultimo ingresso di raid segnalato.
+        self._ultimo_ingresso_raid: dict[int, datetime] = {}
+
+    async def cog_load(self) -> None:
+        self._controlla_scadenze.start()
+
+    async def cog_unload(self) -> None:
+        self._controlla_scadenze.cancel()
 
     anti_raid_group = app_commands.Group(
         name="anti-raid", description="Configura la protezione anti-raid del server."
@@ -235,41 +275,130 @@ class AntiRaidCog(commands.Cog):
             recent_join_count=conteggio,
         )
         violazioni = evaluate_join(segnali, settings.anti_raid, now)
-        if not violazioni:
+        # Il blocco scatta solo sulla soglia di ingressi: un singolo
+        # ingresso "sospetto" (senza avatar, account nuovo) è normale.
+        if not is_raid(violazioni):
             return
 
         azione = settings.anti_raid.lockdown_action
         if azione in ("quarantine", "both"):
-            ruolo = await _get_or_create_quarantine_role(guild, settings)
+            ruolo = await self._ruolo_quarantena(guild)
             if ruolo is not None:
                 try:
                     await member.add_roles(ruolo, reason="Anti-Raid: join sospetto")
                 except discord.HTTPException:
                     pass
-                # Il ruolo potrebbe essere stato appena CREATO da
-                # _get_or_create_quarantine_role: ricarichiamo le
-                # settings per non sovrascrivere il quarantine_role_id
-                # appena salvato con la copia "vecchia" già in mano.
-                settings = await security_repo.get_settings(guild.id)
 
         if azione in ("verification", "both"):
-            try:
-                await guild.edit(
-                    verification_level=discord.VerificationLevel.highest,
-                    reason="Anti-Raid: ondata di join sospetti rilevata",
-                )
-            except discord.HTTPException:
-                pass
+            await self._alza_verifica(guild, now)
 
         dettaglio = f"{member} — violazioni: {', '.join(violazioni)}"
         await security_repo.log_action(guild.id, "raid_join", member.id, dettaglio)
 
         embed = discord.Embed(
             title="🚨 Anti-Raid — join sospetto rilevato",
-            description=dettaglio,
+            description=dettaglio[:4000],
             color=discord.Color.red(),
         )
-        await _alert_staff(guild, settings, embed)
+        await self._avvisa(guild, settings, embed, now)
+
+    async def _ruolo_quarantena(self, guild: discord.Guild) -> discord.Role | None:
+        """
+        Il ruolo di quarantena del server, creato se manca. Un blocco
+        per server: con più ingressi insieme il primo crea il ruolo,
+        gli altri aspettano e lo trovano già salvato.
+        """
+        blocco = self._blocchi_ruolo.setdefault(guild.id, asyncio.Lock())
+        async with blocco:
+            settings = await security_repo.get_settings(guild.id)
+            return await _get_or_create_quarantine_role(guild, settings)
+
+    async def _alza_verifica(self, guild: discord.Guild, now: datetime) -> None:
+        """
+        Porta il livello di verifica al massimo per la durata del
+        blocco. Il livello di prima viene salvato PRIMA di cambiarlo,
+        così un riavvio a metà non lo fa perdere. Se il raid continua
+        si sposta solo la scadenza.
+        """
+        scadenza = now + timedelta(seconds=DURATA_BLOCCO_SECONDI)
+        await security_repo.start_or_extend_lockdown(
+            guild.id, guild.verification_level.name, scadenza
+        )
+        if guild.verification_level == discord.VerificationLevel.highest:
+            return
+        try:
+            await guild.edit(
+                verification_level=discord.VerificationLevel.highest,
+                reason="Anti-Raid: ondata di join sospetti rilevata",
+            )
+        except discord.HTTPException:
+            await security_repo.end_lockdown(guild.id)
+
+    async def _avvisa(
+        self, guild: discord.Guild, settings: SecuritySettings, embed: discord.Embed, now: datetime
+    ) -> None:
+        """
+        Avviso allo staff. Il canale degli allarmi riceve ogni
+        ingresso; il proprietario riceve un solo DM per episodio.
+        """
+        ultimo = self._ultimo_ingresso_raid.get(guild.id)
+        self._ultimo_ingresso_raid[guild.id] = now
+        episodio_in_corso = (
+            ultimo is not None and (now - ultimo).total_seconds() <= DURATA_BLOCCO_SECONDI
+        )
+        await _alert_staff(guild, settings, embed, dm_al_proprietario=not episodio_in_corso)
+
+    # ================================================================
+    # Fine del blocco: il livello di verifica torna quello di prima
+    # ================================================================
+    @tasks.loop(seconds=60)
+    async def _controlla_scadenze(self) -> None:
+        await self.ripristina_blocchi_scaduti(discord.utils.utcnow())
+
+    @_controlla_scadenze.before_loop
+    async def _prima_del_controllo(self) -> None:
+        await self.bot.wait_until_ready()
+
+    async def ripristina_blocchi_scaduti(self, now: datetime) -> None:
+        for guild_id, livello_prima in await security_repo.get_expired_lockdowns(now):
+            try:
+                await self._chiudi_blocco(guild_id, livello_prima)
+            except Exception:
+                # Un server che dà errore non ferma il giro per gli altri.
+                logger.exception("Errore nel chiudere il blocco anti-raid del server %s", guild_id)
+
+    async def _chiudi_blocco(self, guild_id: int, livello_prima: str) -> None:
+        # La riga si toglie subito: un ripristino che fallisce non
+        # deve essere ritentato ogni minuto per sempre.
+        await security_repo.end_lockdown(guild_id)
+        guild = self.bot.get_guild(guild_id)
+        if guild is None:
+            return
+        # Se lo staff ha già cambiato il livello a mano, vale la sua scelta.
+        if guild.verification_level != discord.VerificationLevel.highest:
+            return
+        if livello_prima == discord.VerificationLevel.highest.name:
+            return
+        try:
+            await guild.edit(
+                verification_level=discord.VerificationLevel[livello_prima],
+                reason="Anti-Raid: blocco scaduto, livello di verifica ripristinato",
+            )
+        except (discord.HTTPException, KeyError) as errore:
+            logger.warning(
+                "Ripristino del livello di verifica fallito nel server %s: %s", guild_id, errore
+            )
+            settings = await security_repo.get_settings(guild_id)
+            embed = discord.Embed(
+                title="⚠️ Anti-Raid — livello di verifica da ripristinare a mano",
+                description=(
+                    "Il blocco anti-raid è scaduto ma non sono riuscito a riportare il "
+                    f"livello di verifica del server a **{livello_prima}**. "
+                    "Puoi farlo da Impostazioni server → Configurazione di sicurezza."
+                ),
+                color=discord.Color.orange(),
+            )
+            await _alert_staff(guild, settings, embed)
 
 
 async def setup(bot: commands.Bot) -> None:

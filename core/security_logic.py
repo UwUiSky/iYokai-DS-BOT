@@ -91,6 +91,15 @@ def evaluate_join(signals: JoinSignals, config: AntiRaidConfig, now: datetime) -
     return tuple(violazioni)
 
 
+def is_raid(violations: tuple[str, ...]) -> bool:
+    """
+    Il blocco del server scatta solo quando gli ingressi superano la
+    soglia. Gli altri segnali (account nuovo, nome sospetto, nessun
+    avatar) da soli non bastano: descrivono chi entra durante un raid.
+    """
+    return JOIN_VIOLATION_RATE in violations
+
+
 # ================================================================
 # Anti-Nuke (SPEC.md §7.2)
 # ================================================================
