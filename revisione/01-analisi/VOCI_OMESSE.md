@@ -202,10 +202,11 @@ Gemini dentro gli elenchi approvati tutti insieme (Gemini r.494).
 |---|---|---|---|---|---|---|
 | OM-065 | Attesa prima di cancellare un vocale temporaneo vuoto | Il canale vuoto resta qualche decina di secondi, così chi esce e rientra subito non lo perde. | Proposta: ChatGPT r.4230–4249 | Nessun verdetto: non era stata valutata | Scadenza `cancella_dopo` e un solo lavoro di pulizia (accanto a M 7.5) | F9 |
 
-## 15. Aree controllate senza voci mancanti
+## 15. Aree controllate dove non manca niente, o quasi
 
-In queste aree ho controllato le fonti voce per voce e **non ho trovato
-funzioni assenti dalle liste**. Non aggiungo righe per fare numero.
+In queste aree ho controllato le fonti voce per voce. **Non ho trovato
+funzioni assenti dalle liste**, tranne le poche già contate nelle
+tabelle sopra e richiamate qui. Non aggiungo righe per fare numero.
 
 | Area | Cosa ho controllato | Esito |
 |---|---|---|
