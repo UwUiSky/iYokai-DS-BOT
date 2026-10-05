@@ -26,6 +26,7 @@ revisione/
     DECISIONI.md               le scelte già fatte (D1…D18)
     MODIFICHE_ESISTENTE.md     cosa cambiare in ciò che esiste, area per area (M x.y)
     NUOVE_FUNZIONI.md          le funzioni da aggiungere e i file da creare (NF)
+    VOCE_YOKAI.md              la voce del bot: specifica dell'owner e note per realizzarla
   03-verifica/
     VERIFICA_LIVE.md           le prove da fare con il bot vero, passo per passo
     CLAUDE_MANDATORY_TEST_RULES.md   regole su segreti e prove live (vincolanti)

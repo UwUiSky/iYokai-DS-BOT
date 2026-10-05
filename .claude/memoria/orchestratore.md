@@ -73,7 +73,9 @@
 - Nel `.env`: `ENVIRONMENT=development` oppure `production`.
 - L'**elenco dei servizi AI** che vuole usare (i nomi; le chiavi
   restano nel suo `.env`).
-- Quale **campione di voce** preferisce tra i cinque del 05/10 (#142).
+- Voce (#142): provare `scripts/prova_voce_qwen.py` sul suo PC e
+  scegliere il campione di riferimento; dire com'è fatto il server
+  (processore, memoria, scheda video).
 - Creare l'applicazione **iYokai Mod** quando parte F3.
 - Le prove di `VERIFICA_LIVE.md`.
 - Da riprendere con lui: le idee di Gemini approvate in blocco; log su

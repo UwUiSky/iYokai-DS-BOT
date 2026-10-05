@@ -20,8 +20,12 @@
 - I messaggi degli utenti vanno solo ai servizi segnati "può ricevere
   messaggi".
 - Le chiavi stanno solo nel `.env` dell'owner.
-- I motori che girano sul server (sintesi vocale, D22) sono fornitori
-  come gli altri, di tipo `audio`, senza quota e senza chiave.
+- Voce (D22): motore scelto dall'owner Qwen3-TTS VoiceDesign, in un
+  servizio a parte; disegnare una volta e poi clonare il riferimento.
+  Dettaglio in `revisione/02-piano/VOCE_YOKAI.md`. Per lo snodo è un
+  fornitore di tipo `audio`, senza quota e senza chiave.
+- Kokoro scartato per l'italiano (R moscia). Piper Paola: voce sola,
+  piatta; va bene solo come riserva.
 
 ## Aperto
 - Elenco dei servizi e delle chiavi (nomi delle variabili) dall'owner.

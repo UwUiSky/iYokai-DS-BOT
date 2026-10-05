@@ -236,22 +236,29 @@ Discord; sotto c'è un messaggio con "Trascrivi" e "Nella mia lingua",
 che risponde solo a chi preme, nella lingua del suo client.
 
 **Come:**
-- Sintesi sul server con un modello aperto (niente chiavi, niente
-  quote). Servizi esterni solo per le lingue che il modello non ha.
+- Motore scelto dall'owner: **Qwen3-TTS VoiceDesign** (aperto, licenza
+  Apache 2.0, italiano compreso), in un **servizio a parte** che il bot
+  chiama: così il motore si cambia senza toccare il bot. Riserve: il
+  modello 0.6B, poi un motore leggero. Niente chiavi, niente quote.
+- Una sola voce: si disegna una volta, si sceglie il campione, e ogni
+  frase si genera clonando quel riferimento.
 - Stesso testo, stessa voce, stessa lingua → stesso file, dalla cache.
 - La trascrizione è il testo di partenza: non serve ascoltare l'audio.
 - Il testo passa dai filtri del server prima di diventare voce.
 - Ogni vocale ha sempre il suo testo a portata di bottone: nessuno
   resta escluso.
 
-**La voce:** femminile, adulta, calda, scherzosa, provocante; timbro
-vicino all'anime ma mai infantile. Toni: `dolce`, `scherzosa` (di
+**La voce:** giovane donna adulta, calda, morbida, sicura di sé,
+leggermente seducente; mai infantile, mai da anime, mai robotica
+(specifica dell'owner in `VOCE_YOKAI.md`). Toni: `dolce`, `scherzosa` (di
 partenza), `provocante`, `piccante`. Li sceglie l'admin del server.
 `piccante` (volgarità e allusioni esplicite) vale solo nei canali
 segnati NSFW e sul bot NSFW: Discord è aperto dai 13 anni, e fuori da
 quei canali la voce parla a tutti.
 
-**Dove no:** sanzioni e avvisi di moderazione restano in testo.
+**Moderazione:** la voce può accompagnare un avviso, con tono fermo;
+il testo resta sempre e fa fede.
 
+**Specifica e note di realizzazione:** `revisione/02-piano/VOCE_YOKAI.md`.
 **Elenco completo degli usi e ordine dei lavori:** issue #142.
 
