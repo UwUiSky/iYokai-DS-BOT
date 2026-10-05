@@ -47,11 +47,48 @@ MODULE_ANTI_RAID = "anti_raid"
 
 NOME_RUOLO_QUARANTENA = "Quarantined"
 
+# Cosa non può fare chi è in quarantena. I thread ereditano dal canale
+# che li contiene; la chat di un vocale è coperta da send_messages.
+PERMESSI_QUARANTENA = {
+    "send_messages": False,
+    "send_messages_in_threads": False,
+    "create_public_threads": False,
+    "create_private_threads": False,
+    "add_reactions": False,
+    "speak": False,
+    "connect": False,
+}
+
+# Dal 16/11/2026 un canale che il bot non può vedere arriva con questo
+# nome finto (LIMITI.md, Parte 2): non va toccato.
+NOME_CANALE_NASCOSTO = "___hidden___"
+
 # Durata del blocco dopo l'ultimo ingresso del raid: passato questo
 # tempo il livello di verifica torna quello di prima. Vale anche come
 # durata di un "episodio": dentro un episodio il proprietario riceve un
 # solo DM.
 DURATA_BLOCCO_SECONDI = 15 * 60
+
+
+async def _blocca_canale(channel: discord.abc.GuildChannel, role: discord.Role) -> None:
+    """
+    Nega al ruolo di quarantena scrittura, thread, reazioni e voce su
+    un canale. Gli stessi permessi valgono per ogni tipo di canale
+    (testo, forum, vocale con la sua chat, palco, categoria): quelli
+    che non c'entrano con quel tipo non hanno effetto. Un canale che
+    rifiuta la modifica non ferma gli altri.
+    """
+    if channel.name == NOME_CANALE_NASCOSTO:
+        return
+    try:
+        await channel.set_permissions(
+            role, reason="Anti-Raid: blocco del ruolo di quarantena", **PERMESSI_QUARANTENA
+        )
+    except discord.HTTPException:
+        logger.warning(
+            "Impossibile impostare l'overwrite quarantena sul canale %s (server %s).",
+            channel.id, channel.guild.id,
+        )
 
 
 async def _get_or_create_quarantine_role(
@@ -86,18 +123,7 @@ async def _get_or_create_quarantine_role(
         return None
 
     for channel in guild.channels:
-        try:
-            if isinstance(channel, (discord.TextChannel, discord.ForumChannel)):
-                await channel.set_permissions(
-                    role, send_messages=False, add_reactions=False, reason="Setup ruolo quarantena"
-                )
-            elif isinstance(channel, discord.VoiceChannel):
-                await channel.set_permissions(role, speak=False, connect=False, reason="Setup ruolo quarantena")
-        except discord.HTTPException:
-            logger.warning(
-                "Impossibile impostare l'overwrite quarantena sul canale %s (server %s).",
-                channel.id, guild.id,
-            )
+        await _blocca_canale(channel, role)
 
     nuova = _replace(settings, quarantine_role_id=role.id)
     await security_repo.save_settings(nuova)
@@ -249,6 +275,19 @@ class AntiRaidCog(commands.Cog):
             f"**Azione di lockdown**: {r.lockdown_action}",
         ]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
+        """Un canale creato dopo il ruolo di quarantena riceve lo stesso blocco."""
+        guild = channel.guild
+        if not await db.is_module_active_for_guild(guild.id, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(guild.id)
+        if settings.quarantine_role_id is None:
+            return
+        ruolo = guild.get_role(settings.quarantine_role_id)
+        if ruolo is not None:
+            await _blocca_canale(channel, ruolo)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:

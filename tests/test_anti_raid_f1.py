@@ -291,3 +291,95 @@ async def test_controllo_scadenze_parte_con_il_cog_e_regge_un_bot_non_ancora_pro
         await bot.remove_cog("AntiRaidCog")
         await bot.close()
     assert not cog._controlla_scadenze.is_running()
+
+
+# ====================================================================
+# M 3.8 — il ruolo Quarantined blocca ogni tipo di canale (LIM-30)
+# ====================================================================
+PERMESSI_ATTESI = {
+    "send_messages": False,
+    "send_messages_in_threads": False,
+    "create_public_threads": False,
+    "create_private_threads": False,
+    "add_reactions": False,
+    "speak": False,
+    "connect": False,
+}
+
+
+def _canali_di_ogni_tipo() -> list[MagicMock]:
+    categoria = create_autospec(discord.CategoryChannel, instance=True)
+    palco = create_autospec(discord.StageChannel, instance=True)
+    canali = [fake_text_channel(), fake_voice_channel(), fake_forum_channel(), palco, categoria]
+    for numero, canale in enumerate(canali):
+        canale.id = 9000 + numero
+        canale.name = f"canale-{numero}"
+    return canali
+
+
+def _permessi_negati(canale: MagicMock) -> dict:
+    canale.set_permissions.assert_awaited_once()
+    argomenti = dict(canale.set_permissions.call_args.kwargs)
+    argomenti.pop("reason")
+    return argomenti
+
+
+async def test_ruolo_quarantined_blocca_ogni_tipo_di_canale(cog, server):
+    await _azione(cog, "quarantine")
+    server.channels = _canali_di_ogni_tipo()
+
+    await _raid(cog, server)
+
+    for canale in server.channels:
+        assert _permessi_negati(canale) == PERMESSI_ATTESI
+        assert canale.set_permissions.call_args.args[0].name == "Quarantined"
+
+
+async def test_canale_nuovo_riceve_il_blocco_della_quarantena(cog, server):
+    await _azione(cog, "quarantine")
+    await _raid(cog, server)  # crea e salva il ruolo Quarantined
+    nuovo = fake_text_channel(channel_id=9100, name="nuovo-canale")
+    nuovo.guild = server
+
+    await cog.on_guild_channel_create(nuovo)
+
+    assert _permessi_negati(nuovo) == PERMESSI_ATTESI
+    assert nuovo.set_permissions.call_args.args[0].id == 5000
+
+
+async def test_canale_nuovo_senza_ruolo_di_quarantena_non_viene_toccato(cog, server):
+    nuovo = fake_text_channel(channel_id=9100, name="nuovo-canale")
+    nuovo.guild = server
+
+    await cog.on_guild_channel_create(nuovo)
+
+    nuovo.set_permissions.assert_not_awaited()
+
+
+async def test_canale_nuovo_con_modulo_spento_non_viene_toccato(cog, server, db_finto):
+    await _azione(cog, "quarantine")
+    await _raid(cog, server)
+    db_finto.is_module_active_for_guild.return_value = False
+    nuovo = fake_voice_channel(channel_id=9100, name="nuova-sala")
+    nuovo.guild = server
+
+    await cog.on_guild_channel_create(nuovo)
+
+    nuovo.set_permissions.assert_not_awaited()
+
+
+async def test_canale_che_rifiuta_i_permessi_non_ferma_gli_altri(cog, server):
+    await _azione(cog, "quarantine")
+    server.channels = _canali_di_ogni_tipo()
+    risposta = MagicMock()
+    risposta.status = 403
+    risposta.reason = "Forbidden"
+    server.channels[0].set_permissions.side_effect = discord.Forbidden(risposta, "no")
+    nascosto = fake_text_channel(channel_id=9200, name="___hidden___")
+    server.channels.append(nascosto)
+
+    membri = await _raid(cog, server)
+
+    membri[2].add_roles.assert_awaited_once()
+    server.channels[1].set_permissions.assert_awaited_once()
+    nascosto.set_permissions.assert_not_awaited()
