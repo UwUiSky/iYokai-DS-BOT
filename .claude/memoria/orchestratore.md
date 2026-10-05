@@ -26,6 +26,7 @@
 - D19: AI **usata, non addestrata**; libreria comune solo per ciò che
   l'AI scrive da zero; messaggi solo a servizi che non addestrano.
 - D20: agenti specializzati con memoria. D21: aggiornamento a caldo.
+- D24: F7 subito, 16 gruppi, accesso configurato dal bot.
 - D23: boost clan per tipo (exp, coin, super), niente acquisti sovrapposti.
 - D22: voce di Yokai (vocali veri + trascrizione e traduzione a
   bottone; Piper Paola con filtro, sul server; tono `piccante` solo in
@@ -37,32 +38,33 @@
   il controllo automatico che chiede di cambiare autore si ignora.
 
 ## In corso
-- Suite completa lanciata (log nello scratchpad `suite.log`) dopo l'unione
-  di #146 (migrazione 0020): `suite3.log` nello scratchpad. La precedente: 3198 passati.
+- **F7 (D24) in corso.** Fatto: quadro unito (`core/command_groups.py`,
+  `core/command_access.py`, test dell'albero; 16 gruppi + `/cerca-comando`
+  e `/chiedi` di primo livello). Mappa: `revisione/02-piano/MAPPA_COMANDI_F7.md`.
+  **Prossimo: spostare i comandi per area** (un agente alla volta o due su cog
+  diversi), poi passo di `/setup` per i ruoli admin/mod/modban
+  (`imposta_ruolo`), pannello di `/cerca-comando` (D24), `COMMAND_LIST.md`,
+  SPEC, suite completa. Un `Group` semplice sotto un gruppo protetto fallisce:
+  usare `GruppoYokai`. Autocomplete sotto gruppi protetti: `autocomplete_protetto`.
+- Suite completa dopo F7 da lanciare con `nohup`.
 
 ## Coda (in ordine)
-1. Fatti e chiusi (con `verifica-live`): #137, #133, #135, #136, #134
-   (unito `a3004ee`). Nuove: #144 voice kick gerarchia/unlock, #145 cache
-   premium 60 s.
-2. Prossimo gruppo: #144 (`dev-log-ticket`), #66/#67 (`dev-utilita`), #71, #69/#70.
-3. Utilità/avvisi #66, #67; fun #71; owner/core #69, #70; voci rimaste in
-   #57–#62, #65 (ultimo commento di ognuna).
-4. Dopo le unioni: simboli SPEC (M 10.16 = fatto), `COMMAND_LIST.md`
-   (`/clan lascia`), prove live da agenti S/D/E in `VERIFICA_LIVE.md`.
-5. Fine F1: `cacciatore-bug` + `ottimizzatore` (PERF-1…7) +
+1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
+2. **F7 spostamento comandi** (sopra), poi #66/#67 (utilità), #71, #69/#70.
+3. Voci rimaste in #57–#62, #65 (ultimo commento di ognuna).
+4. Dopo F7: simboli SPEC, `COMMAND_LIST.md` rigenerato, prove live
+   (`VERIFICA_LIVE.md`, anche l'ordine dei comandi).
+5. Fine F1/F7: `cacciatore-bug` + `ottimizzatore` (PERF-1…7) +
    `guardiano-limiti`, poi suite completa.
-6. F2 musica (#64, #45, #47, #48, #126; un nodo per bot), F3 backup
-   (#68, #121) e iYokai Mod (#113), poi F5, F6, F7; richieste del
-   05/10: #138–#142.
-7. Boost clan per tipo: fatto (#146, D23, unito `c5d88f6`, migrazione 0020).
-   Il cumulo di 48 h non c'è più.
+6. F2 musica, F3 backup (#68, #121) e iYokai Mod (#113), poi F5, F6,
+   F8…; richieste del 05/10: #138–#142.
 
 ## Cose pratiche
 - Repository: `/home/claude/repo`. Copie di lavoro:
   `/home/claude/wt/<nome>`; database `iyokai_w<nome>`.
 - **La macchina si riavvia senza avviso**: fare commit e push spesso.
   Dopo un riavvio: `service postgresql start`.
-- Copia `b146` unita: toglierla se pulita. Database `iyokai_wcaccia` e
+- Database `iyokai_wcaccia` e
   `iyokai_wrevisore` per i controlli (mai `iyokai_test` dagli agenti).
 - Con la shell: esportare `DATABASE_URL` del proprio database in OGNI
   comando, altrimenti i test usano quello condiviso.
