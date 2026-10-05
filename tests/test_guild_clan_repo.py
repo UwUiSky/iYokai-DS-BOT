@@ -168,26 +168,6 @@ async def test_add_voice_ticks_valore_non_positivo_solleva(repo):
         await repo.add_voice_ticks(clan_id, count=0)
 
 
-@pytest.mark.asyncio
-async def test_set_guild_boost_expiry(repo):
-    clan_id = await _crea_clan(repo)
-    scadenza = ORA + timedelta(hours=24)
-
-    await repo.set_guild_boost_expiry(clan_id, scadenza)
-
-    assert (await repo.get_clan(clan_id)).guild_boost_expires_at == scadenza
-
-
-@pytest.mark.asyncio
-async def test_set_member_boost_expiry(repo):
-    clan_id = await _crea_clan(repo)
-    scadenza = ORA + timedelta(hours=24)
-
-    await repo.set_member_boost_expiry(clan_id, user_id=1, expires_at=scadenza)
-
-    assert (await repo.get_member(clan_id, 1)).boost_expires_at == scadenza
-
-
 # ----------------------------------------------------------------------
 # Membri
 # ----------------------------------------------------------------------
@@ -271,28 +251,6 @@ async def test_donate_importo_non_positivo_solleva(repo):
 
 
 @pytest.mark.asyncio
-async def test_spend_from_treasury_con_saldo_sufficiente(repo):
-    clan_id = await _crea_clan(repo)
-    await repo.donate(clan_id, user_id=1, amount=50_000)  # saldo: 35.000
-
-    riuscito = await repo.spend_from_treasury(clan_id, amount=25_000, reason="channel_unlock")
-
-    assert riuscito is True
-    assert (await repo.get_clan(clan_id)).treasury_balance == 10_000
-
-
-@pytest.mark.asyncio
-async def test_spend_from_treasury_saldo_insufficiente_non_scrive(repo):
-    clan_id = await _crea_clan(repo)
-    await repo.donate(clan_id, user_id=1, amount=15_000)  # saldo: 0
-
-    riuscito = await repo.spend_from_treasury(clan_id, amount=25_000, reason="channel_unlock")
-
-    assert riuscito is False
-    assert (await repo.get_clan(clan_id)).treasury_balance == 0
-
-
-@pytest.mark.asyncio
 async def test_apply_treasury_delta_positivo(repo):
     clan_id = await _crea_clan(repo)
     await repo.apply_treasury_delta(clan_id, amount=500, reason="tick")
@@ -304,7 +262,7 @@ async def test_apply_treasury_delta_positivo(repo):
 async def test_apply_treasury_delta_negativo_senza_verifica_saldo(repo):
     clan_id = await _crea_clan(repo)
     # Il saldo è già -15.000: apply_treasury_delta non verifica nulla,
-    # a differenza di spend_from_treasury - lo fa scendere comunque.
+    # a differenza di una spesa volontaria - lo fa scendere comunque.
     await repo.apply_treasury_delta(clan_id, amount=-1000, reason="monthly_decay")
 
     assert (await repo.get_clan(clan_id)).treasury_balance == -16_000
@@ -594,3 +552,28 @@ async def test_apply_text_tick_utente_non_membro_non_assegna(repo):
 
     assert assegnato is False
     assert (await repo.get_clan(clan_id)).total_xp == 0
+
+
+@pytest.mark.asyncio
+async def test_buy_guild_boost_con_saldo_sufficiente(repo):
+    clan_id = await _crea_clan(repo)
+    await repo.donate(clan_id, user_id=1, amount=50_000)  # saldo: 35.000
+
+    scadenza = await repo.buy_guild_boost(clan_id, cost=25_000, now=ORA)
+
+    assert scadenza == ORA + timedelta(hours=24)
+    clan = await repo.get_clan(clan_id)
+    assert clan.treasury_balance == 10_000
+    assert clan.guild_boost_expires_at == scadenza
+
+
+@pytest.mark.asyncio
+async def test_buy_guild_boost_saldo_insufficiente_non_scrive(repo):
+    clan_id = await _crea_clan(repo)
+    await repo.donate(clan_id, user_id=1, amount=15_000)  # saldo: 0
+
+    assert await repo.buy_guild_boost(clan_id, cost=25_000, now=ORA) is None
+
+    clan = await repo.get_clan(clan_id)
+    assert clan.treasury_balance == 0
+    assert clan.guild_boost_expires_at is None

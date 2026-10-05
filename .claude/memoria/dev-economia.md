@@ -24,6 +24,9 @@
   sotto blocco. Due boost insieme si sommano (non uno solo).
 - `set_member_role(..., max_with_role=)` controlla il tetto sotto blocco
   della riga gilda; restituisce `EsitoRuolo`, non più bool.
+- `tests/test_repository_callers.py`: ogni metodo di repo deve avere un chiamante
+  di produzione; tolti `set_*_boost_expiry` e `spend_from_treasury` (sostituiti
+  da `buy_*_boost`), `donate`/`count_members_with_role` presi con `conn=`.
 - `spend_coins_in(conn, ...)` (leveling_repo) si riusa dentro altre transazioni.
 - Test di concorrenza: `apri_connessioni(pool)` prima di `asyncio.gather`.
 - Fixture a generatore: la si pilota con `_get_wrapped_function()()`;
@@ -32,7 +35,5 @@
   (es. `utility`), altrimenti `register()` solleva ValueError.
 
 ## Aperto
-- `set_guild_boost_expiry`, `set_member_boost_expiry`, `spend_from_treasury`
-  restano nel repo ma il cog non li usa più per i boost (valutare rimozione).
 - Export: nei valori lista un `null` interno non viene tolto (solo il
   livello alto).

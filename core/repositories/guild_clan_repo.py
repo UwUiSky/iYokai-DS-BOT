@@ -450,15 +450,6 @@ class GuildClanRepository:
             clan_id, count,
         )
 
-    async def set_guild_boost_expiry(self, clan_id: int, expires_at: datetime) -> None:
-        """Nuova scadenza del boost DI GILDA (SPEC.md §15.14, ×2 su
-        XP/coin per TUTTI i membri finché attivo) — il chiamante
-        calcola la scadenza con `extend_boost_expiry` PRIMA di
-        chiamare questo metodo (che qui scrive solo, non decide)."""
-        await self._pool.execute(
-            "UPDATE clans SET guild_boost_expires_at = $2 WHERE id = $1", clan_id, expires_at
-        )
-
     # ----------------------------------------------------------------
     # Membri
     # ----------------------------------------------------------------
@@ -529,10 +520,8 @@ class GuildClanRepository:
             async with conn.transaction():
                 await conn.execute("SELECT 1 FROM clans WHERE id = $1 FOR UPDATE", clan_id)
                 if max_with_role is not None:
-                    occupati = await conn.fetchval(
-                        "SELECT COUNT(*) FROM clan_members "
-                        "WHERE clan_id = $1 AND role = $2 AND user_id <> $3",
-                        clan_id, role, user_id,
+                    occupati = await self.count_members_with_role(
+                        clan_id, role, exclude_user_id=user_id, conn=conn
                     )
                     if occupati >= max_with_role:
                         return EsitoRuolo.TETTO_RAGGIUNTO
@@ -629,17 +618,7 @@ class GuildClanRepository:
             async with conn.transaction():
                 if not await spend_coins_in(conn, guild_id, user_id, amount):
                     return None
-                return await self._donate_in(conn, clan_id, user_id, amount)
-
-    async def set_member_boost_expiry(self, clan_id: int, user_id: int, expires_at: datetime) -> None:
-        """Nuova scadenza del boost INDIVIDUALE (SPEC.md §15.14, ×2
-        sul proprio tick vocale di gilda finché attivo) — il
-        chiamante calcola la scadenza con `extend_boost_expiry`
-        PRIMA di chiamare questo metodo (che qui scrive solo)."""
-        await self._pool.execute(
-            "UPDATE clan_members SET boost_expires_at = $3 WHERE clan_id = $1 AND user_id = $2",
-            clan_id, user_id, expires_at,
-        )
+                return await self.donate(clan_id, user_id, amount, conn=conn)
 
     async def get_member(self, clan_id: int, user_id: int) -> ClanMember | None:
         row = await self._pool.fetchrow(
@@ -659,14 +638,19 @@ class GuildClanRepository:
         )
         return row["n"]
 
-    async def count_members_with_role(self, clan_id: int, role: str) -> int:
-        """Per far rispettare i tetti (max 3 admin, max 5 mod, max 1
-        co-owner) prima di promuovere qualcuno."""
-        row = await self._pool.fetchrow(
-            "SELECT COUNT(*) AS n FROM clan_members WHERE clan_id = $1 AND role = $2",
-            clan_id, role,
+    async def count_members_with_role(
+        self, clan_id: int, role: str, exclude_user_id: int | None = None,
+        conn: asyncpg.Connection | None = None,
+    ) -> int:
+        """Quanti membri hanno il ruolo (senza contare `exclude_user_id`).
+        Con `conn` si conta dentro la transazione di chi chiama."""
+        corpo = (
+            "SELECT COUNT(*) FROM clan_members WHERE clan_id = $1 AND role = $2 "
+            "AND user_id IS DISTINCT FROM $3"
         )
-        return row["n"]
+        if conn is not None:
+            return await conn.fetchval(corpo, clan_id, role, exclude_user_id)
+        return await self._pool.fetchval(corpo, clan_id, role, exclude_user_id)
 
     async def get_member_clan_in_guild(self, guild_id: int, user_id: int) -> Clan | None:
         """Il clan a cui l'utente appartiene in QUESTO server — un
@@ -685,7 +669,9 @@ class GuildClanRepository:
     # ----------------------------------------------------------------
     # Tesoreria
     # ----------------------------------------------------------------
-    async def donate(self, clan_id: int, user_id: int, amount: int) -> int:
+    async def donate(
+        self, clan_id: int, user_id: int, amount: int, conn: asyncpg.Connection | None = None
+    ) -> int:
         """
         Membro -> gilda, l'UNICA direzione permessa per un singolo
         utente (mai il contrario, confermato esplicitamente). Non
@@ -695,13 +681,17 @@ class GuildClanRepository:
         repository si occupa solo della tesoreria di destinazione.
         Se la donazione copre il debito di creazione, la gilda diventa
         ufficiale nella stessa scrittura. Restituisce il nuovo saldo.
+        Con `conn` scrive dentro la transazione di chi chiama
+        (donate_from_member).
         """
         if amount <= 0:
             raise ValueError("L'importo donato deve essere positivo.")
 
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                return await self._donate_in(conn, clan_id, user_id, amount)
+        if conn is None:
+            async with self._pool.acquire() as conn:
+                async with conn.transaction():
+                    return await self._donate_in(conn, clan_id, user_id, amount)
+        return await self._donate_in(conn, clan_id, user_id, amount)
 
     @staticmethod
     async def _donate_in(conn: asyncpg.Connection, clan_id: int, user_id: int, amount: int) -> int:
@@ -716,38 +706,6 @@ class GuildClanRepository:
             clan_id, user_id, amount, REASON_DONATION,
         )
         return row["treasury_balance"]
-
-    async def spend_from_treasury(self, clan_id: int, amount: int, reason: str) -> bool:
-        """
-        Spende dalla tesoreria SOLO se il saldo basta (mai un saldo
-        negativo per una spesa volontaria, a differenza del deficit
-        di creazione che parte apposta negativo) — usata per lo
-        sblocco canali. Restituisce False senza scrivere nulla se il
-        saldo non basta.
-        """
-        if amount <= 0:
-            raise ValueError("L'importo da spendere deve essere positivo.")
-
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                saldo = await conn.fetchval(
-                    "SELECT treasury_balance FROM clans WHERE id = $1 FOR UPDATE", clan_id
-                )
-                if saldo is None or saldo < amount:
-                    return False
-
-                await conn.execute(
-                    "UPDATE clans SET treasury_balance = treasury_balance - $2 WHERE id = $1",
-                    clan_id, amount,
-                )
-                await conn.execute(
-                    """
-                    INSERT INTO clan_treasury_ledger (clan_id, user_id, amount, reason)
-                    VALUES ($1, NULL, $2, $3)
-                    """,
-                    clan_id, -amount, reason,
-                )
-                return True
 
     async def apply_treasury_delta(self, clan_id: int, amount: int, reason: str) -> None:
         """
