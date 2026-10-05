@@ -580,3 +580,38 @@ async def test_bottone_di_una_piattaforma_non_piu_configurata_lo_dice():
         assert "non è più configurata" in _testo(interazione.response.send_message.call_args)
     finally:
         await bot.close()
+
+
+# ====================================================================
+# #134 — /voice kick: l'utente non è nel canale
+# ====================================================================
+async def test_kick_di_chi_non_e_nel_canale_lo_dice_e_non_dice_espulso():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    await scena.crea_canale_di(proprietario)
+    assente = scena.membro(ID_OSPITE)  # non connesso a nessun vocale
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.kick.callback(cog, interazione, assente)
+
+    assente.move_to.assert_not_awaited()
+    risposta = interazione.response.send_message.call_args
+    assert "non è nel canale" in _testo(risposta)
+    assert "espulso" not in _testo(risposta)
+    assert risposta.kwargs["ephemeral"] is True
+
+
+async def test_kick_di_chi_e_nel_canale_lo_espelle():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.kick.callback(cog, interazione, ospite)
+
+    ospite.move_to.assert_awaited_once()
+    assert "espulso" in _testo(interazione.response.send_message.call_args)
+

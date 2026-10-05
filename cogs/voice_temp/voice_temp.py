@@ -593,14 +593,17 @@ class VoiceTempCog(commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        if member.voice is not None and member.voice.channel and member.voice.channel.id == channel.id:
-            try:
-                await member.move_to(None, reason="Espulso dal proprietario del canale")
-            except discord.HTTPException:
-                await interaction.response.send_message(
-                    MESSAGGIO_ERRORE_DISCORD, ephemeral=True
-                )
-                return
+        if member.voice is None or member.voice.channel is None or member.voice.channel.id != channel.id:
+            await interaction.response.send_message(
+                f"{member.mention} non è nel canale: non c'è nessuno da espellere.",
+                ephemeral=True,
+            )
+            return
+        try:
+            await member.move_to(None, reason="Espulso dal proprietario del canale")
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
 
     @voice_group.command(name="transfer", description="Trasferisci la proprietà del canale.")
