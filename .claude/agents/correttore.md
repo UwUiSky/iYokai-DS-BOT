@@ -7,7 +7,7 @@ model: inherit
 Ricevi dall'orchestratore una **scheda**: issue, voci, file permessi,
 copia di lavoro, database. Lavori solo lì.
 
-1. Leggi `CLAUDE.md` e la scheda. Del resto leggi solo ciò che serve
+1. Leggi `.claude/CLAUDE.md` e la scheda. Del resto leggi solo ciò che serve
    alla voce (la riga in `MODIFICHE_ESISTENTE.md` o la scheda in
    `NUOVE_FUNZIONI.md`, il codice da toccare).
 2. Per ogni voce: test che fallisce per il motivo giusto → modifica →

@@ -13,6 +13,7 @@ fase. Ogni issue rimanda qui per il dettaglio.
 
 ```
 revisione/
+  SPEC.md                      cosa deve fare il bot e stato di ogni voce
   01-analisi/
     REVIEW.md                  i problemi trovati nel codice (SEC, BUG, LC, GDPR, DB, PERF)
     LIMITI.md                  limiti di Discord, librerie e servizi (LIM) + lista di controllo
@@ -25,6 +26,7 @@ revisione/
     NUOVE_FUNZIONI.md          le funzioni da aggiungere e i file da creare (NF)
   03-verifica/
     VERIFICA_LIVE.md           le prove da fare con il bot vero, passo per passo
+    CLAUDE_MANDATORY_TEST_RULES.md   regole su segreti e prove live (vincolanti)
   archivio/                    documenti vecchi, solo storico
 ```
 
@@ -34,7 +36,7 @@ revisione/
 |---|---|
 | A che punto siamo | `.claude/orchestratore/STATO.md` e le milestone |
 | Cosa è stato deciso | [`02-piano/DECISIONI.md`](02-piano/DECISIONI.md) |
-| Cosa deve fare il bot e cosa fa oggi | [`../SPEC.md`](../SPEC.md) (in cima c'è il conteggio) |
+| Cosa deve fare il bot e cosa fa oggi | [`SPEC.md`](SPEC.md) (in cima c'è il conteggio) |
 | Perché una cosa non funziona | [`01-analisi/REVIEW.md`](01-analisi/REVIEW.md) |
 | Quali limiti rispettare | [`01-analisi/LIMITI.md`](01-analisi/LIMITI.md) |
 | Cosa hanno gli altri bot | [`01-analisi/CONFRONTO_BOT.md`](01-analisi/CONFRONTO_BOT.md) e `01-analisi/catalogo/` |

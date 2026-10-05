@@ -42,7 +42,7 @@ Anche se verde, **non** equivale a:
 - backup Creator multi-guild
 - migrazioni su Postgres di produzione
 
-Per quelli: `CLAUDE_MANDATORY_TEST_RULES.md` + `revisione/03-verifica/VERIFICA_LIVE.md` + issue `#53`.
+Per quelli: `revisione/03-verifica/CLAUDE_MANDATORY_TEST_RULES.md` + `revisione/03-verifica/VERIFICA_LIVE.md` + issue `#53`.
 
 ---
 

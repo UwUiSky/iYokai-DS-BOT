@@ -59,7 +59,7 @@ Punti che lo distinguono:
 | Fase attuale | **Correzione** (fase F1 di 13). Lo sviluppo di funzioni nuove riprende a correzione finita |
 | Server in cui è presente | 0: non è ancora stato provato su Discord vero |
 | Test automatici | 2676, tutti verdi |
-| Voci della specifica | 97 fatte · 145 parziali · 146 da fare · 6 scartate ([`SPEC.md`](SPEC.md)) |
+| Voci della specifica | 97 fatte · 145 parziali · 146 da fare · 6 scartate ([`revisione/SPEC.md`](revisione/SPEC.md)) |
 | Lavoro da fare | [Issue](https://github.com/UwUiSky/iYokai-DS-BOT/issues), una [milestone](https://github.com/UwUiSky/iYokai-DS-BOT/milestones) per fase |
 
 Le fasi, in ordine: **F1** bug e limiti · **F2** musica · **F3** backup
@@ -72,7 +72,7 @@ pannello web · **F11** NSFW · **F12** AI · **F13** app utente e desktop
 
 ## Funzioni
 
-Lo stato preciso di ogni voce è in [`SPEC.md`](SPEC.md). L'elenco dei
+Lo stato preciso di ogni voce è in [`revisione/SPEC.md`](revisione/SPEC.md). L'elenco dei
 comandi è in [`COMMAND_LIST.md`](COMMAND_LIST.md).
 
 | Area | Cosa comprende |
@@ -208,12 +208,9 @@ iYokai-DS-BOT/
 ├── tests/                   test automatici
 │   └── support/              oggetti finti fedeli e albero comandi completo
 ├── scripts/                 smoke test, elenco comandi, simulazione di carico
-├── revisione/               analisi dettagliata: problemi, limiti, confronto, piano
-├── .claude/                 orchestratore, agenti e memoria del lavoro
-├── SPEC.md                  cosa deve fare il bot e stato di ogni voce
-├── COMMAND_LIST.md          elenco dei comandi
-├── CLAUDE.md                regole di lavoro
-└── CLAUDE_MANDATORY_TEST_RULES.md   regole su segreti e prove live
+├── revisione/               specifica (SPEC.md), analisi, piano, regole e prove live
+├── .claude/                 regole di lavoro (CLAUDE.md), orchestratore, agenti, memoria
+└── COMMAND_LIST.md          elenco dei comandi
 ```
 
 Per aggiungere un modulo: un file nuovo in `cogs/<area>/`, copiando la
@@ -232,7 +229,7 @@ struttura di `cogs/utility/ping.py`. Viene scoperto e caricato da solo.
   principale senza revisione e smoke test.
 - Un'issue si chiude quando il fix è unito con i suoi test; resta
   l'etichetta `verifica-live` finché non è provato su Discord.
-- Le regole complete sono in [`CLAUDE.md`](CLAUDE.md).
+- Le regole complete sono in [`.claude/CLAUDE.md`](.claude/CLAUDE.md).
 
 ---
 
@@ -240,7 +237,7 @@ struttura di `cogs/utility/ping.py`. Viene scoperto e caricato da solo.
 
 | Documento | Contenuto |
 |---|---|
-| [`SPEC.md`](SPEC.md) | Specifica completa e stato di ogni voce |
+| [`revisione/SPEC.md`](revisione/SPEC.md) | Specifica completa e stato di ogni voce |
 | [`COMMAND_LIST.md`](COMMAND_LIST.md) | Tutti i comandi |
 | [`revisione/README.md`](revisione/README.md) | Indice dell'analisi |
 | [`revisione/01-analisi/REVIEW.md`](revisione/01-analisi/REVIEW.md) | Problemi trovati nel codice |

@@ -9,13 +9,13 @@ PostgreSQL/asyncpg, wavelink/Lavalink). Owner: iYokai.
    fatto, cosa è in corso, cosa viene dopo. Si legge per primo.
 2. Le **issue di GitHub** — il lavoro da fare. Una milestone per fase
    (F1, F2, …), etichette per area e tipo. Non si tengono file di piano.
-3. `CLAUDE_MANDATORY_TEST_RULES.md` — segreti e test live. Vincolante.
+3. `revisione/03-verifica/CLAUDE_MANDATORY_TEST_RULES.md` — segreti e test live. Vincolante.
 4. `revisione/02-piano/DECISIONI.md` — le scelte già fatte.
 5. `revisione/01-analisi/LIMITI.md` — limiti di Discord e delle
    librerie, con la lista di controllo.
 6. Il dettaglio, quando serve: `revisione/02-piano/MODIFICHE_ESISTENTE.md`,
    `revisione/02-piano/NUOVE_FUNZIONI.md`, `revisione/01-analisi/REVIEW.md`,
-   `SPEC.md`.
+   `revisione/SPEC.md`.
 
 ## Come si lavora: orchestratore e agenti
 
@@ -95,7 +95,7 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
 - Un'issue si **chiude quando il fix è unito con i suoi test**, con un
   commento che dice il commit. Se serve ancora la prova su Discord si
   mette l'etichetta `verifica-live`; la toglie l'owner dopo la prova.
-- Si aggiornano insieme al codice: `SPEC.md` (simbolo della voce),
+- Si aggiornano insieme al codice: `revisione/SPEC.md` (simbolo della voce),
   `COMMAND_LIST.md` se cambiano i comandi, `VERIFICA_LIVE.md` se serve
   una prova live, `STATO.md` a fine gruppo.
 
