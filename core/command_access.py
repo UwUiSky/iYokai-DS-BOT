@@ -192,6 +192,33 @@ class GruppoYokai(app_commands.Group):
         super().__init__(**kwargs)
         self.livello = livello
 
+    def _livello_effettivo(self) -> Livello | None:
+        gruppo = self
+        while gruppo is not None:
+            livello = getattr(gruppo, "livello", None)
+            if livello is not None:
+                return livello
+            gruppo = gruppo.parent
+        return None
+
+    def add_command(self, command, /, *, override: bool = False) -> None:
+        """
+        Sotto un gruppo protetto un sotto-gruppo deve essere un
+        GruppoYokai: un `Group` semplice non controlla niente e i suoi
+        comandi passerebbero a chiunque.
+        """
+        if (
+            isinstance(command, app_commands.Group)
+            and not isinstance(command, GruppoYokai)
+            and self._livello_effettivo() is not None
+        ):
+            raise TypeError(
+                f"'{command.name}' è un Group semplice sotto un gruppo protetto "
+                f"('{self.name}'): usa GruppoYokai, altrimenti il controllo di "
+                f"accesso non si applica ai suoi comandi."
+            )
+        super().add_command(command, override=override)
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not await super().interaction_check(interaction):
             return False
