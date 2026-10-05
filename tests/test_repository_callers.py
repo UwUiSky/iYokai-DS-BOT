@@ -31,7 +31,6 @@ KNOWN_UNCALLED = frozenset(
         "event_log_repo.EventLogRepository.prune_old_events",
         "giveaway_repo.GiveawayRepository.has_entered",
         "giveaway_repo.GiveawayRepository.count_entries",
-        "guild_clan_repo.GuildClanRepository.get_clan",
         "guild_clan_repo.GuildClanRepository.list_clans",
         "guild_clan_repo.GuildClanRepository.get_donation_leaderboard",
         "guild_premium_repo.GuildPremiumRepository.purchased_tiers",

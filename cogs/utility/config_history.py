@@ -443,6 +443,13 @@ class ConfigHistoryCog(commands.Cog):
             return
 
         config = await db.get_full_config(guild.id)
+        # #136: l'import rifiuta `null` (anche dentro le liste) e le chiavi
+        # fuori schema: l'export le toglie, "vuota" e "assente" sono uguali.
+        config["settings"] = {
+            chiave: ([e for e in valore if e is not None] if isinstance(valore, list) else valore)
+            for chiave, valore in config["settings"].items()
+            if valore is not None and chiave in SETTINGS_SCHEMA
+        }
         contenuto = json.dumps(config, indent=2, ensure_ascii=False)
         file = discord.File(
             io.BytesIO(contenuto.encode("utf-8")),

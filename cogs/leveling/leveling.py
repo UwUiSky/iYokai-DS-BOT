@@ -77,7 +77,7 @@ from core.guild_clan_logic import (
 )
 from core.repositories.guild_clan_repo import (
     EsitoIngresso,
-    REASON_GUILD_BOOST,
+    EsitoRuolo,
     ROLE_ADMIN,
     ROLE_CO_OWNER,
     ROLE_MEMBER,
@@ -95,7 +95,6 @@ from core.guild_clan_boost_logic import (
     BOOST_MULTIPLIER,
     GUILD_BOOST_COST,
     INDIVIDUAL_BOOST_COST,
-    extend_boost_expiry,
     is_boost_active,
 )
 from core.leveling_logic import (
@@ -1680,22 +1679,23 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        if ruolo == ROLE_ADMIN and target.role != ROLE_ADMIN:
-            if await guild_clan_repo.count_members_with_role(clan.id, ROLE_ADMIN) >= MAX_ADMINS_PER_CLAN:
-                await interaction.followup.send(
-                    f"La gilda ha già raggiunto il limite di **{MAX_ADMINS_PER_CLAN}** Admin Clan.",
-                    ephemeral=True,
-                )
-                return
-        elif ruolo == ROLE_MOD and target.role != ROLE_MOD:
-            if await guild_clan_repo.count_members_with_role(clan.id, ROLE_MOD) >= MAX_MODS_PER_CLAN:
-                await interaction.followup.send(
-                    f"La gilda ha già raggiunto il limite di **{MAX_MODS_PER_CLAN}** Mod Clan.",
-                    ephemeral=True,
-                )
-                return
-
-        if not await guild_clan_repo.set_member_role(clan.id, membro.id, ruolo):
+        tetti = {ROLE_ADMIN: MAX_ADMINS_PER_CLAN, ROLE_MOD: MAX_MODS_PER_CLAN}
+        nomi_tetto = {ROLE_ADMIN: "Admin Clan", ROLE_MOD: "Mod Clan"}
+        esito = await guild_clan_repo.set_member_role(
+            clan.id, membro.id, ruolo, max_with_role=tetti.get(ruolo)
+        )
+        if esito == EsitoRuolo.TETTO_RAGGIUNTO:
+            await interaction.followup.send(
+                f"La gilda ha già raggiunto il limite di **{tetti[ruolo]}** {nomi_tetto[ruolo]}.",
+                ephemeral=True,
+            )
+            return
+        if esito == EsitoRuolo.NON_MEMBRO:
+            await interaction.followup.send(
+                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+            )
+            return
+        if esito == EsitoRuolo.CO_OWNER_GIA_PRESO:
             await interaction.followup.send(
                 "La gilda ha già un Co-Owner: riportalo prima a un altro ruolo.",
                 ephemeral=True,
@@ -1834,14 +1834,14 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, importo)
-        if not riuscito:
+        nuovo_saldo = await guild_clan_repo.donate_from_member(
+            guild.id, clan.id, interaction.user.id, importo
+        )
+        if nuovo_saldo is None:
             await interaction.response.send_message(
                 f"Non hai abbastanza coin personali — servono **{importo}**.", ephemeral=True
             )
             return
-
-        nuovo_saldo = await guild_clan_repo.donate(clan.id, interaction.user.id, importo)
 
         messaggio = f"✅ Hai donato **{importo}** coin alla tesoreria di **{clan.name}** (saldo: {nuovo_saldo})."
         # La gilda diventa ufficiale dentro la donazione stessa (repository).
@@ -1953,20 +1953,21 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        riuscito = await leveling_repo.spend_coins(guild.id, interaction.user.id, INDIVIDUAL_BOOST_COST)
-        if not riuscito:
+        nuova_scadenza = await guild_clan_repo.buy_member_boost(
+            guild.id, clan.id, interaction.user.id, INDIVIDUAL_BOOST_COST,
+            datetime.now(timezone.utc),
+        )
+        if nuova_scadenza is None:
+            if await guild_clan_repo.get_member(clan.id, interaction.user.id) is None:
+                await interaction.response.send_message(
+                    "Non fai più parte di questa gilda.", ephemeral=True
+                )
+                return
             await interaction.response.send_message(
                 f"Non hai abbastanza coin personali — servono **{INDIVIDUAL_BOOST_COST}**.",
                 ephemeral=True,
             )
             return
-
-        membro = await guild_clan_repo.get_member(clan.id, interaction.user.id)
-        adesso = datetime.now(timezone.utc)
-        nuova_scadenza = extend_boost_expiry(
-            membro.boost_expires_at if membro is not None else None, adesso
-        )
-        await guild_clan_repo.set_member_boost_expiry(clan.id, interaction.user.id, nuova_scadenza)
 
         await interaction.response.send_message(
             f"✅ Boost personale ×{BOOST_MULTIPLIER} attivo sul tuo tick vocale in **{clan.name}** "
@@ -1997,20 +1998,21 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        riuscito = await guild_clan_repo.spend_from_treasury(
-            clan.id, GUILD_BOOST_COST, reason=REASON_GUILD_BOOST
+        nuova_scadenza = await guild_clan_repo.buy_guild_boost(
+            clan.id, GUILD_BOOST_COST, datetime.now(timezone.utc)
         )
-        if not riuscito:
+        if nuova_scadenza is None:
+            if await guild_clan_repo.get_clan(clan.id) is None:
+                await interaction.response.send_message(
+                    "Questa gilda non esiste più.", ephemeral=True
+                )
+                return
             await interaction.response.send_message(
                 f"La tesoreria della gilda non basta — servono **{GUILD_BOOST_COST}** coin "
                 f"(ne avete **{clan.treasury_balance}**).",
                 ephemeral=True,
             )
             return
-
-        adesso = datetime.now(timezone.utc)
-        nuova_scadenza = extend_boost_expiry(clan.guild_boost_expires_at, adesso)
-        await guild_clan_repo.set_guild_boost_expiry(clan.id, nuova_scadenza)
 
         await interaction.response.send_message(
             f"✅ Boost di gilda ×{BOOST_MULTIPLIER} attivo per TUTTI i membri di **{clan.name}** "
