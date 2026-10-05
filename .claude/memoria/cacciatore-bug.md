@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-05/10/2026 · ultimo giro: ramo `fix/f1-134` (base 4b42ada)
+05/10/2026 · ultimo giro: ramo `feat/boost-146` (base 699fe0f)
 
 ## In corso
 - Niente a metà. Giro #133 chiuso (rapporto dato).
@@ -16,6 +16,8 @@
 - 05/10 revisione ramo fix/f1-133: 4 rilievi (cache verifica con corsa, avviso anti-raid doppio, `_in_attesa` senza scadenza, `raid_in_corso` senza chiamanti).
 
 - Giro fix/f1-134: nome rinominato senza chiamanti residui; lock/unlock/kick a posto (errori Discord presi); 3 test falliscono sulla base, 44/44 sul ramo. Unico rilievo: 3 query per evento col premium acceso.
+
+- Giro feat/boost-146 (#146/D23): nessun bug vero. Migrazione 0020 tracciata in schema_migrations (una volta, in transazione); chiamanti vecchi: nessuno; blocchi membro→coin, gilda solo `clans`: niente deadlock (stress ok); tick con ×2 separato ok. 3 note basse.
 
 ## Cose imparate
 - Ordine dei blocchi nel clan: riga membro, poi `leveling_totals`, poi `clans`. Un fix che blocca `clans` per primo e poi tocca il membro va in deadlock con `apply_text_tick`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -36,6 +38,8 @@
 
 - Il DB di prova è condiviso: due pytest insieme (clean_db) danno fallimenti a caso. Controllare `pgrep pytest` prima di fidarsi di un rosso.
 - Per importare `core.config` fuori dai test: esportare le righe di `.env.example` e `PREMIUM_ALPHA_UNLOCK_ALL=false` (altrimenti il premium è sempre sbloccato).
+
+- Script fuori dal ramo: `python -m pytest -c pytest.ini --rootdir=. -p tests.conftest <file in scratchpad>` dalla copia di lavoro (serve anche `-p no:cacheprovider`).
 
 ## Aperto
 - Giro da fare a fine F1 sulle aree toccate il 05/10 (sicurezza,
