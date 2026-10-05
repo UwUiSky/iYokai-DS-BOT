@@ -23,7 +23,9 @@ file, non da un riassunto.**
 Aggiornato il **04/10/2026**, dopo la fase R1-bis e la riorganizzazione
 dei documenti. Il **05/10/2026** §25 è passato da 9 a 93 voci: sono le
 funzioni AI discusse con l'owner e con le altre AI che non erano mai
-entrate in una lista (`revisione/01-analisi/FUNZIONI_AI.md`).
+entrate in una lista (`revisione/01-analisi/FUNZIONI_AI.md`). Lo stesso
+giorno l'owner ha chiesto altre 12 voci (5.11, 5.12, 14.19, 17.11,
+25.94–25.101).
 
 | Simbolo | Significato |
 |---|---|
@@ -55,7 +57,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §2 SETUP & DASHBOARD | 6 | 1 | 1 | 0 |
 | §3 PREMIUM SYSTEM | 9 | 2 | 0 | 0 |
 | §4 VERIFY + FINGERPRINT + ANTI-ALT | 7 | 3 | 9 | 0 |
-| §5 MODERATION | 0 | 12 | 0 | 0 |
+| §5 MODERATION | 0 | 12 | 2 | 0 |
 | §6 AUTOMOD | 5 | 10 | 0 | 0 |
 | §7 SECURITY SUITE | 6 | 27 | 1 | 0 |
 | §8 LOGGING | 10 | 7 | 1 | 0 |
@@ -64,10 +66,10 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §11 BACKUP SYSTEM | 0 | 11 | 6 | 0 |
 | §12 TEMPORARY VOICE CHANNELS | 5 | 3 | 0 | 0 |
 | §13 TICKET SYSTEM | 5 | 8 | 0 | 0 |
-| §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 3 | 0 |
+| §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 4 | 0 |
 | §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE | 14 | 20 | 0 | 0 |
 | §16 FUN & IMMAGINI | 6 | 2 | 7 | 0 |
-| §17 OWNER / GLOBAL ADMIN | 7 | 3 | 0 | 0 |
+| §17 OWNER / GLOBAL ADMIN | 7 | 3 | 1 | 0 |
 | §18 ROUTER DEI CANALI E LOG SU FORUM | 0 | 0 | 7 | 0 |
 | §19 DATI, PRIVACY E GDPR | 0 | 0 | 9 | 0 |
 | §20 NUOVA STRUTTURA DEI COMANDI | 0 | 0 | 7 | 0 |
@@ -75,14 +77,14 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §22 FUNZIONI NUOVE, PRIMO GRUPPO | 0 | 0 | 17 | 0 |
 | §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
-| §25 MOTORE AI | 0 | 0 | 93 | 0 |
+| §25 MOTORE AI | 0 | 0 | 101 | 0 |
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
 | D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
 | E APPLICAZIONI DEL PROGETTO | 0 | 3 | 5 | 0 |
-| **Totale** | **97** | **145** | **230** | **6** |
+| **Totale** | **97** | **145** | **242** | **6** |
 
-Totale voci: **478**.
+Totale voci: **490**.
 
 ---
 
@@ -337,6 +339,15 @@ Totale voci: **478**.
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
   → **Stato 04/10:** `/lock`, `/unlock`, `/slowmode`, `/clear` non creano né casi né log (REVIEW §12).
+- `[ ]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
+  riceve l'invito per tornare e, al rientro, riprende i ruoli che
+  aveva. L'invito e la data di fine si mandano in privato **prima**
+  del ban (dopo, il bot non può più scrivergli); chi ha autorizzato il
+  ripristino utenti viene riportato dentro in automatico (issue #138,
+  fase F9)
+- `[ ]` 5.12 **Ban in isolamento** — per il tempo scelto l'utente resta
+  nel server ma vede un solo canale, che dice quando finisce; alla
+  scadenza riprende i ruoli di prima (issue #138, fase F9)
 
 ## §6 AUTOMOD
 
@@ -1200,6 +1211,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   server + grafico a barre della crescita giornaliera (disegnato con
   Pillow, non matplotlib — nessuna nuova dipendenza pesante)
   → **Stato 04/10:** Correzione al testo: il grafico dipende dal modulo logging (REVIEW §12).
+- `[ ]` 14.19 **Messaggi vocali** — il bot li legge già; per inviarli
+  serve una chiamata diretta all'API di Discord, perché discord.py
+  2.7.1 non lo offre. Il comportamento lo deve ancora descrivere
+  l'owner (issue #142, fase F13)
 
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
@@ -1583,6 +1598,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   + conferma, `premium_toggle_history` (append-only, distinta dallo
   stato più recente)
   → **Stato 04/10:** nessun controllo a 25 moduli (LIM-22).
+- `[ ]` 17.11 **Aggiornamento a caldo** — l'owner aggiorna il bot da
+  Discord senza entrare nel server: il bot prende il codice rivisto da
+  GitHub (oppure un file allegato dall'owner), controlla che sia
+  valido, tiene una copia del vecchio, ricarica il cog e torna indietro
+  da solo se il caricamento fallisce (D21, issue #141, fase F9)
 
 ## §18 ROUTER DEI CANALI E LOG SU FORUM — da fare (fase F6)
 
@@ -1903,6 +1923,28 @@ di quel file.
 - `[ ]` 25.91 Pagina AI del pannello (AI-R-098; vedi 24.2)
 - `[ ]` 25.92 Riepilogo del server visibile sul pannello (AI-R-099)
 - `[ ]` 25.93 Pagina "Uso dell'AI" nel centro privacy (AI-R-100)
+
+**Richieste dell'owner del 05/10/2026** (D19)
+
+- `[ ]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
+  chat semplice, testo, giudizio, codice, traduzione, confronto,
+  immagini, audio, musica, video (AI-R-101)
+- `[ ]` 25.95 Quote di ogni servizio contate in anticipo, con cambio
+  di servizio prima di finirle (AI-R-102)
+- `[ ]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
+  (AI-R-103)
+- `[ ]` 25.97 Risposte standard imparate dalle risposte dello staff
+  nei ticket, con i loro allegati (AI-R-104; vedi §13)
+- `[ ]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
+  nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
+  giusto (AI-R-105; vedi §13)
+- `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i
+  finali, salvate e riusate in ogni server con lo stesso tema
+  (AI-R-106)
+- `[ ]` 25.100 Funzione richiesta che non esiste: bozza del codice in
+  una pull request per l'owner (AI-R-107)
+- `[ ]` 25.101 Cerca comando: mostra anche le alternative, spiegate
+  (AI-R-108; vedi §21)
 
 ---
 

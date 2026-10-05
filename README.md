@@ -59,7 +59,7 @@ Punti che lo distinguono:
 | Fase attuale | **Correzione** (fase F1 di 13). Lo sviluppo di funzioni nuove riprende a correzione finita |
 | Server in cui è presente | 0: non è ancora stato provato su Discord vero |
 | Test automatici | 2676, tutti verdi |
-| Voci della specifica | 97 fatte · 145 parziali · 146 da fare · 6 scartate ([`revisione/SPEC.md`](revisione/SPEC.md)) |
+| Voci della specifica | 97 fatte · 145 parziali · 242 da fare · 6 scartate ([`revisione/SPEC.md`](revisione/SPEC.md)) |
 | Lavoro da fare | [Issue](https://github.com/UwUiSky/iYokai-DS-BOT/issues), una [milestone](https://github.com/UwUiSky/iYokai-DS-BOT/milestones) per fase |
 
 Le fasi, in ordine: **F1** bug e limiti · **F2** musica · **F3** backup

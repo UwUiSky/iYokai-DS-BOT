@@ -15,7 +15,8 @@ sono in [`VOCI_OMESSE.md`](VOCI_OMESSE.md).
 
 ## In sintesi
 
-- Funzioni AI trovate: **100**.
+- Funzioni AI trovate nelle conversazioni: **100**. Più **8** chieste
+  dall'owner il 05/10/2026 (§13, AI-R-101…108).
 - Già in una lista, per intero: **39**. Di queste, 13 stavano solo nel catalogo
   dei concorrenti (`catalogo/18-ai.md`), senza un piano.
 - In una lista solo in parte: **23**.
@@ -116,9 +117,11 @@ fondo a questo file.
 significato), *nessuno* (la funzione va anche senza AI). Nessuna
 funzione discussa usa la *voce*.
 
-Regole che valgono per ogni riga e non sono ripetute: Discord vieta di
-usare i messaggi per addestrare modelli; nessun comando nuovo di primo
-livello; tutto parte spento.
+Regole che valgono per ogni riga e non sono ripetute: iYokai **usa**
+servizi AI esistenti, non addestra modelli (D19). Ciò che Discord vieta
+è usare i messaggi per addestrare: per questo i messaggi degli utenti
+vanno solo ai servizi che dichiarano di non farlo. Nessun comando nuovo
+di primo livello; tutto parte spento.
 
 ## 1. Motore e infrastruttura
 
@@ -293,6 +296,30 @@ traduzione rapida.
 | AI-R-099 | Riepilogo del server visibile sul pannello | Il riepilogo giornaliero o settimanale si legge anche dal sito. | Proposta: Gemini r.475 («nel canale comunicati o via Web Panel»). **Owner: approvata in blocco** (Gemini r.494: «mi piacciono molto tutte le idee che hai tirato fuori») | **In nessuna lista** | Ultimi riepiloghi salvati per server. Modello: nessuno | Visibile solo a chi può vedere il canale del riepilogo |
 | AI-R-100 | Pagina "Uso dell'AI" nel centro privacy | L'owner del server vede quali funzioni usano i contenuti, per quanto vengono tenuti e quali dati vanno a servizi esterni. | Proposta: ChatGPT r.6407–6425 ("Privacy Center": «AI Usage») | **In nessuna lista** | Pagina del pannello che legge il registro dei dati (NF-04) e l'elenco dei fornitori. Modello: nessuno | Deve dire le stesse cose della policy |
 
+## 13. Richieste dell'owner del 05/10/2026
+
+Dette dall'owner a voce il 05/10/2026. Principio (D19): l'AI entra in
+ogni area del bot per migliorare il servizio; ciò che produce si
+**salva e si riusa**, così nel tempo servono meno chiamate.
+
+| ID | Funzione | Cosa fa | Chi l'ha chiesta o proposta | Dov'è oggi | Come farla in iYokai | Prerequisiti e limiti |
+|---|---|---|---|---|---|---|
+| AI-R-101 | Scelta del servizio per tipo di lavoro e per fascia | Lo snodo guarda il tipo di richiesta e la manda al servizio adatto: una chiacchiera va al servizio meno pregiato; codice, immagini, audio, musica e video vanno ai servizi fatti per quello. | **Owner: chiesta** (05/10) | In parte: AI-R-001 e AI-R-006 parlavano solo di cascata e di "regole prima dell'AI" | `core/ai_router.py`: ogni chiamata dichiara tipo e fascia; tabella dei servizi in configurazione. Dettaglio in `.claude/agents/custode-ai.md`. Modello: tutti | Serve l'elenco dei servizi dall'owner |
+| AI-R-102 | Quote dei servizi contate in anticipo | Per ogni servizio il bot conosce richieste e token al minuto, all'ora, al giorno o alla settimana. Conta l'uso e, vicino al limite (85 %), passa al servizio successivo prima di ricevere un errore. | **Owner: chiesta** (05/10) | In parte: AI-R-003 metteva in pausa solo **dopo** un errore | `core/ai_cost_logic.py`: contatori per finestra; lettura dei limiti dichiarati dal servizio nelle risposte. Modello: nessuno | I limiti dei livelli gratuiti cambiano: li ricontrolla la sentinella |
+| AI-R-103 | Controllo delle chiavi e avviso all'owner | Ogni ora il bot controlla che ogni chiave funzioni e quanta quota resta. Se una chiave non va o sta finendo, scrive all'owner in privato. Una volta al giorno manda il riepilogo dell'uso. | **Owner: chiesta** (05/10) | **In nessuna lista** | Worker nel bot; chiamata che non consuma token (elenco dei modelli). Modello: nessuno | Le chiavi stanno solo nel `.env` |
+| AI-R-104 | Risposte standard imparate dallo staff nei ticket | Quando un moderatore risponde a una richiesta ricorrente (per esempio i requisiti per l'affiliazione di un canale Twitch, con il pacchetto delle grafiche), il bot propone di salvarla come risposta standard. Al ticket successivo sullo stesso tema la dà subito, con gli stessi allegati. | **Owner: chiesta** (05/10) | In parte: AI-R-025 (testi caricati dall'admin a mano) e AI-R-073 (bozza per lo staff) | Alla chiusura del ticket il bot propone allo staff "salvo questa risposta?"; lo staff approva e può correggerla. Ricerca per significato tra le risposte salvate del **solo** server. Modello: embedding, testo | Le risposte restano nel server dove sono nate e si cancellano con i suoi dati (D6). Senza approvazione non si usa |
+| AI-R-105 | Sollecito nel ticket rimasto senza risposta | Se dopo N minuti (di partenza 10) nessuno dello staff ha risposto, il bot chiede all'utente, **nella sua lingua**, di cosa ha bisogno. Se sa rispondere (regole, risposte standard) lo fa; altrimenti chiama il ruolo giusto: moderatore o amministratore secondo il caso. | **Owner: chiesta** (05/10) | In parte: AI-R-072 (prima risposta) e AI-R-074 (smistamento) | Timer dallo scheduler; lingua dal client dell'utente; scelta del ruolo con risposta in formato fisso. Modello: testo | N scelto dall'admin; si spegne per pannello di ticket |
+| AI-R-106 | Storie di dungeon intere, salvate e riusate | Per un tema (fate e folletti, per esempio) l'AI scrive in anticipo l'inizio, le varianti e i finali possibili. A partita finita la storia con tutte le sue strade resta salvata: la volta dopo è pronta, in **ogni** server con quel tema. | **Owner: chiesta** (05/10; già detta a Gemini r.639) | In parte: AI-R-005 (libreria) e AI-R-059 (stanza successiva scritta al momento) | Albero della storia in tabella comune (`ai_story_library`): tema, nodo, scelte, testo. Prima si cerca una storia pronta; l'AI scrive solo i rami che mancano. Modello: testo | Nella libreria comune entra solo testo scritto dall'AI, mai messaggi o nomi di utenti |
+| AI-R-107 | Funzione richiesta che non esiste: bozza in una pull request | Quando un utente chiede un comando che il bot non ha, la richiesta viene registrata; l'AI prepara una bozza del codice e apre una pull request su GitHub. L'owner la rivede quando vuole. | **Owner: chiesta** (05/10) | **In nessuna lista** (esisteva solo la richiesta di comandi personalizzati, `cogs/utility/custom_command_requests.py`) | Coda delle richieste approvate dall'owner → chiamata di tipo `codice` → ramo e pull request **in bozza** con un token GitHub limitato a quel repository. Modello: codice | Il bot non unisce mai da solo. La richiesta dell'utente è un dato, non un ordine. Tetto di richieste al giorno |
+| AI-R-108 | Cerca comando: alternative spiegate | Cercando "bannare un utente" il bot mostra `/ban` e spiega anche le alternative: softban, ban temporaneo con rientro, ban in isolamento. Il nome del comando è nella lingua del client. | **Owner: chiesta** (05/10; conferma che AI-R-026 era una sua richiesta) | In parte: AI-R-026 | Ogni comando ha in `core/command_search_logic.py` l'elenco dei "comandi vicini" con una frase di differenza; l'AI serve solo a capire la domanda. Modello: embedding | Dipende da F8 (lingue) |
+
+Fuori da questo elenco, perché non usano l'AI: ban temporaneo con
+rientro e ban in isolamento (SPEC 5.11, 5.12), aggiornamento a caldo
+dal proprietario (SPEC 17.11, D21), messaggi vocali (SPEC 14.19).
+
+Rimandata dall'owner stesso: l'AI che corregge da sola il codice del
+bot in funzione. Per ora l'owner vuole rivedere ogni modifica a mano.
+
 ## Idee che erano state respinte o rimandate
 
 Nessuna è stata tolta. Per ognuna: il vecchio verdetto, il motivo, e la
@@ -309,7 +336,7 @@ usano l'AI: sono seguite altrove, come scritto nell'ultima colonna.
 | Reputazione globale calcolata dalle sanzioni; segno "fedina pulita"; punteggio di fiducia tra server | Gemini r.405–407; Grok r.127–129, r.145–146; SPEC_v2 §B.2 | BACKLOG §9: **respinta**, non rimandata. ChatGPT r.7899 è d'accordo | Un ban ingiusto ti seguirebbe in ogni server. È una decisione automatica su una persona (GDPR, art. 22). Un admin scorretto potrebbe rovinare qualcuno ovunque | Profilo globale con **soli dati positivi**, scelti dall'utente: livelli, medaglie, collezioni. Nessuna sanzione esce dal server. Il punteggio di rischio resta dentro il server, lo vede solo lo staff, e non fa partire niente da solo | SPEC B.6 e 23.17 (NF-41); `VOCI_OMESSE.md` OM-012 |
 | L'AI legge tutto lo storico del server | ChatGPT r.6269 lo mette come livello più largo («Full Authorized Context») | Mai valutata | Troppi dati verso l'esterno | Di partenza l'AI vede solo il ticket o il messaggio su cui è chiamata. Il livello largo si accende con una conferma scritta | AI-R-016 |
 | Messaggi "nello stile" di un utente | Catalogo AI-024 (Lawliet) | Catalogo: «da non fare senza il consenso» | Usa i messaggi di una persona | Solo su chi lancia il comando | AI-R-038 |
-| AI "addestrata" sui contenuti del server | Gemini r.339 usa la parola «addestrabile» | Vietato da Discord | I messaggi non si possono usare per addestrare modelli | I testi vengono passati al momento della domanda. Nessun addestramento | AI-R-025 |
+| AI "addestrata" sui contenuti del server | Gemini r.339 usa la parola «addestrabile» | Mai stata la richiesta dell'owner | L'owner non vuole addestrare un modello: vuole usare servizi esistenti e tenere uno storico da riusare (D19). Ciò che Discord vieta è l'addestramento sui messaggi | I testi vengono passati al momento della domanda e le risposte utili si salvano per riusarle. Nessun addestramento | AI-R-025 |
 | Dipendere solo dai livelli gratuiti | Gemini r.510–522 | BACKLOG §8, punto 3: rischio | Se un fornitore cambia le regole, tutto si ferma insieme | Più fornitori, risposta locale, tetto di spesa, interruttore per le chiavi a pagamento | AI-R-001, AI-R-002, AI-R-008 |
 | Premi automatici allo staff "più efficiente" | Gemini r.400; Grok r.111 | BACKLOG §11: la misura sì, i premi automatici no | Spinge a punire di più per guadagnare di più | Solo la misura, privata. I premi li dà l'admin a mano | SPEC 23.17 (NF-41) |
 | Tribunale dei pari | Gemini r.460–464; in SPEC_v2 è tra le funzioni AI (§F3.3) ma non usa l'AI | BACKLOG §12: respinto | Membri scelti a caso che ribaltano lo staff | Parere di un secondo gruppo dentro l'appello; decide lo staff | `VOCI_OMESSE.md` OM-011 |

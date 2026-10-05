@@ -11,6 +11,7 @@ deve chiedere di nuovo**: legge qui e procede.
   cambiarle.
 - D8 (seconda versione), D15, D16, D17: **indicate dall'owner** la sera
   del 04/10/2026.
+- D19, D20, D21: **indicate dall'owner** il 05/10/2026.
 
 Regola per il futuro: se serve una decisione nuova, si sceglie
 l'opzione consigliata, la si scrive qui con la data, e si avvisa
@@ -36,6 +37,9 @@ l'owner.
 | D16 | Pannello web | Si fa dopo che il bot è completo. **Tutto** ciò che si configura con i comandi si configura anche dal pannello, in modo più semplice, più le opzioni che solo un sito permette. Per questo ogni impostazione passa da un solo punto del codice, usato sia dai comandi sia dal pannello. | F10, e ogni funzione nuova |
 | D17 | Lavoro tracciato sulle issue | Il lavoro si segue sulle **issue di GitHub** (etichette e milestone per fase), non su file di piano. I file restano solo per l'analisi dettagliata e le regole. | Sempre |
 | D18 | Funzioni richieste | Nessuna funzione richiesta dall'owner viene omessa o rimandata per scelta di chi scrive il codice. Se Discord la impedisce così com'è, si realizza l'alternativa più vicina e lo si dice. | Sempre |
+| D19 | AI: si usa, non si addestra | iYokai usa servizi AI esistenti e ne salva i risultati per riusarli. Non addestra modelli. L'AI entra in ogni area, ma ogni funzione va anche con l'AI ferma. Vedi sotto. | F12, e ogni funzione nuova |
+| D20 | Agenti specializzati | Il lavoro si fa con agenti specializzati (`.claude/agents/`), ognuno con i suoi parametri e con una memoria compressa in un file a parte (`.claude/memoria/`). Regole comuni in `.claude/regole/COMUNI.md`. | Sempre |
+| D21 | Aggiornamento a caldo | L'owner aggiorna il bot da Discord. Strada consigliata: il bot prende da GitHub un commit già rivisto. Strada alternativa: file allegato dall'owner. In ogni caso: solo l'owner, controllo del codice, copia del vecchio, ritorno automatico se il caricamento fallisce, interruttore nel `.env`. Vedi sotto. | F9 |
 
 ---
 
@@ -152,3 +156,75 @@ sbagliata. Quasi certamente non esce audio (`LIM-40`).
 
 `REVIEW.md` L7 e `PIANO_FIX.md` R4 parlano di "100 server" per
 l'intent: è il testo vecchio. Vale questa tabella.
+
+## D19 in dettaglio — AI: si usa, non si addestra
+
+**Il punto.** La regola di Discord per gli sviluppatori dice di non
+usare i contenuti dei messaggi per **addestrare** modelli. iYokai non
+addestra niente: manda una richiesta a un servizio esistente e usa la
+risposta. È permesso.
+
+**L'unica attenzione.** Molti livelli gratuiti usano ciò che ricevono
+per migliorare i propri modelli. Se il bot manda lì i messaggi degli
+utenti, l'addestramento lo fa il fornitore con dati arrivati da noi.
+Per questo ogni servizio ha in tabella la voce "può ricevere messaggi":
+- **sì** (dichiara di non addestrare su ciò che riceve): può ricevere
+  ticket, segnalazioni, testi da riassumere;
+- **no**: riceve solo richieste senza messaggi di utenti (storie,
+  mostri, immagini, codice, domande generiche).
+Prima di ogni invio si tolgono comunque menzioni, ID, email e inviti.
+
+**Cosa si salva e chi lo riusa.**
+
+| Contenuto | Dove vale |
+|---|---|
+| Scritto dall'AI da zero (storie, stanze, mostri, risposte generiche, traduzioni dei testi del bot) | In **tutti** i server: libreria comune |
+| Nato dai messaggi di un server (risposte dello staff nei ticket, riassunti, base di conoscenza) | **Solo** in quel server; si cancella con i suoi dati (D6) |
+| Conti dell'uso | Solo numeri, mai il testo |
+
+**Regole.**
+- Prima la cache e la libreria, poi le regole e il database, per
+  ultima la chiamata all'AI.
+- L'AI propone, una persona decide: nessuna punizione e nessuna
+  risposta "ufficiale" parte da sola. Le risposte imparate dai ticket
+  si usano dopo l'approvazione dello staff.
+- Uno snodo unico sceglie il servizio per tipo di lavoro e per quota
+  rimasta, e controlla le chiavi (`.claude/agents/custode-ai.md`).
+- Il codice scritto dall'AI arriva solo come pull request in bozza.
+  La correzione automatica del bot in funzione è rimandata dall'owner.
+- Ogni scheda di funzione nuova dice dove l'AI aiuta e cosa succede
+  quando l'AI è ferma.
+- Restano valide D13 (tetto di spesa, premium) e la privacy policy con
+  l'elenco dei fornitori prima di accendere l'AI in un server.
+
+## D21 in dettaglio — Aggiornamento a caldo
+
+**Scopo:** aggiornare il bot senza entrare nel server a mano e senza
+fermarlo.
+
+**Come:**
+1. *Da GitHub (consigliata).* L'owner dà il comando; il bot prende da
+   `main` il commit indicato (solo avanzamento lineare), e ricarica i
+   cog cambiati. Il codice ha così storia, revisione e test.
+2. *Da file allegato.* L'owner allega i file già pronti; il bot li
+   mette al posto dei vecchi e ricarica il cog.
+
+**Protezioni, in tutti e due i casi:**
+- solo `OWNER_ID`; spento se nel `.env` manca `ENABLE_HOT_PATCH=1`
+  (come `/owner eval`, D7);
+- solo file `.py` dentro `cogs/` e `core/`; il codice viene compilato
+  prima di sostituire;
+- copia del file vecchio; se il cog non si carica, il bot rimette la
+  copia e lo dice;
+- ogni aggiornamento finisce nel registro (chi, quando, quali file,
+  quale commit);
+- una modifica a `core/` o a `main.py` non si ricarica a caldo in modo
+  affidabile: il bot lo dice e propone il riavvio (pochi secondi).
+
+**Limite:** `/owner` ha già 25 sotto-comandi. L'aggiornamento entra
+come opzione di `/owner cog-reload`, senza comandi nuovi.
+
+**Rischio da conoscere:** chi entra nell'account Discord dell'owner può
+far girare codice sul server. Per questo l'interruttore nel `.env` e
+l'autenticazione a due fattori sull'account.
+
