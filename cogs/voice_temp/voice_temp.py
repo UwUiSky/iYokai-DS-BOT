@@ -54,6 +54,7 @@ from core.channel_rename import (
     rename_tracker,
 )
 from cogs.moderation._shared import actor_from_member
+from core.bounded_cache import BoundedCache
 from core.database import db
 from core.permissions import can_moderate
 from core.repositories.blacklist_repo import blacklist_repo
@@ -328,7 +329,7 @@ class CreateVoiceView(BaseView):
 
 # Valore di "Connetti" di @everyone prima di /voice lock, per canale.
 # In memoria: i vocali vivono poco; senza dato, unlock rimette None.
-_connect_prima_del_lock: dict[int, bool | None] = {}
+_connect_prima_del_lock: BoundedCache[int, bool | None] = BoundedCache(5_000)
 
 
 class VoiceTempCog(commands.Cog):
@@ -580,7 +581,7 @@ class VoiceTempCog(commands.Cog):
             # Si ricorda il valore di prima, ma solo al primo lock: un
             # secondo lock vedrebbe già False e perderebbe l'originale.
             if channel.id not in _connect_prima_del_lock:
-                _connect_prima_del_lock[channel.id] = overwrite.connect
+                _connect_prima_del_lock.set(channel.id, overwrite.connect)
             overwrite.update(connect=False)
             await channel.set_permissions(
                 interaction.guild.default_role, overwrite=overwrite
@@ -606,7 +607,7 @@ class VoiceTempCog(commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        _connect_prima_del_lock.pop(channel.id, None)
+        _connect_prima_del_lock.delete(channel.id)
         await interaction.response.send_message("Canale sbloccato.")
 
     @staticmethod
