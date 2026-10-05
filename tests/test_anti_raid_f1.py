@@ -276,3 +276,18 @@ async def test_un_solo_dm_al_proprietario_per_episodio(cog, server, orologio):
     orologio(seconds=modulo.DURATA_BLOCCO_SECONDI + 60)
     await _raid(cog, server, quanti=3, primo_id=300)
     assert server.owner.send.await_count == 2
+
+
+async def test_controllo_scadenze_parte_con_il_cog_e_regge_un_bot_non_ancora_pronto():
+    # BUG-19: wait_until_ready() prima del login fa morire il loop per sempre.
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
+    cog = modulo.AntiRaidCog(bot)
+    await bot.add_cog(cog)
+    try:
+        await asyncio.sleep(0.05)
+        compito = cog._controlla_scadenze.get_task()
+        assert compito is not None and not compito.done()
+    finally:
+        await bot.remove_cog("AntiRaidCog")
+        await bot.close()
+    assert not cog._controlla_scadenze.is_running()

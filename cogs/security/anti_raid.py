@@ -33,6 +33,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from core.bot_ready import attendi_bot_pronto
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.security_repo import SecuritySettings, security_repo
@@ -357,7 +358,7 @@ class AntiRaidCog(commands.Cog):
 
     @_controlla_scadenze.before_loop
     async def _prima_del_controllo(self) -> None:
-        await self.bot.wait_until_ready()
+        await attendi_bot_pronto(self.bot)
 
     async def ripristina_blocchi_scaduti(self, now: datetime) -> None:
         for guild_id, livello_prima in await security_repo.get_expired_lockdowns(now):
