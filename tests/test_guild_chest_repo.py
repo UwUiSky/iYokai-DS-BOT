@@ -12,6 +12,7 @@ from core.repositories.guild_chest_repo import (
     REASON_MONTHLY_CLAN_DECAY,
     REASON_WEEKLY_PERSONAL_DECAY,
     GuildChestRepository,
+    spend_in,
 )
 
 
@@ -71,11 +72,17 @@ async def test_deposit_registra_un_movimento_nel_ledger(repo):
     assert all(m.guild_id == 100 for m in movimenti)
 
 
+async def _spendi(repo, guild_id: int, amount: int, reason: str) -> bool:
+    """spend_in lavora su una connessione di chi chiama: qui se ne prende una."""
+    async with repo._pool.acquire() as conn:
+        return await spend_in(conn, guild_id, amount, reason)
+
+
 @pytest.mark.asyncio
 async def test_spend_con_saldo_sufficiente(repo):
     await repo.deposit(100, 5_000, REASON_WEEKLY_PERSONAL_DECAY)
 
-    riuscito = await repo.spend(100, 3_000, "premium_purchase")
+    riuscito = await _spendi(repo, 100, 3_000, "premium_purchase")
 
     assert riuscito is True
     assert await repo.get_balance(100) == 2_000
@@ -85,7 +92,7 @@ async def test_spend_con_saldo_sufficiente(repo):
 async def test_spend_con_saldo_insufficiente_fallisce(repo):
     await repo.deposit(100, 1_000, REASON_WEEKLY_PERSONAL_DECAY)
 
-    riuscito = await repo.spend(100, 5_000, "premium_purchase")
+    riuscito = await _spendi(repo, 100, 5_000, "premium_purchase")
 
     assert riuscito is False
     assert await repo.get_balance(100) == 1_000  # invariato
@@ -93,14 +100,14 @@ async def test_spend_con_saldo_insufficiente_fallisce(repo):
 
 @pytest.mark.asyncio
 async def test_spend_su_cassa_mai_vista_fallisce(repo):
-    riuscito = await repo.spend(999, 100, "premium_purchase")
+    riuscito = await _spendi(repo, 999, 100, "premium_purchase")
     assert riuscito is False
 
 
 @pytest.mark.asyncio
 async def test_spend_registra_un_movimento_negativo_nel_ledger(repo):
     await repo.deposit(100, 5_000, REASON_WEEKLY_PERSONAL_DECAY)
-    await repo.spend(100, 3_000, "premium_purchase")
+    await _spendi(repo, 100, 3_000, "premium_purchase")
 
     movimenti = await repo.list_ledger(100)
     spesa = next(m for m in movimenti if m.reason == "premium_purchase")
@@ -110,9 +117,9 @@ async def test_spend_registra_un_movimento_negativo_nel_ledger(repo):
 @pytest.mark.asyncio
 async def test_spend_importo_non_positivo_solleva_errore(repo):
     with pytest.raises(ValueError):
-        await repo.spend(100, 0, "premium_purchase")
+        await _spendi(repo, 100, 0, "premium_purchase")
     with pytest.raises(ValueError):
-        await repo.spend(100, -1, "premium_purchase")
+        await _spendi(repo, 100, -1, "premium_purchase")
 
 
 @pytest.mark.asyncio
@@ -123,3 +130,26 @@ async def test_list_ledger_rispetta_il_limite(repo):
     movimenti = await repo.list_ledger(100, limit=2)
 
     assert len(movimenti) == 2
+
+
+@pytest.mark.asyncio
+async def test_pay_members_paga_tutti_e_scala_la_cassa(repo, clean_db):
+    await repo.deposit(100, 1_000, REASON_WEEKLY_PERSONAL_DECAY)
+
+    assert await repo.pay_members(100, [3, 1, 2], 100, "event_lobby_prize") is True
+
+    assert await repo.get_balance(100) == 700
+    saldi = await clean_db.fetch(
+        "SELECT user_id, coins_total FROM leveling_totals ORDER BY user_id"
+    )
+    assert [(r["user_id"], r["coins_total"]) for r in saldi] == [(1, 100), (2, 100), (3, 100)]
+
+
+@pytest.mark.asyncio
+async def test_pay_members_cassa_insufficiente_non_scrive_nulla(repo, clean_db):
+    await repo.deposit(100, 250, REASON_WEEKLY_PERSONAL_DECAY)
+
+    assert await repo.pay_members(100, [1, 2, 3], 100, "event_lobby_prize") is False
+
+    assert await repo.get_balance(100) == 250
+    assert await clean_db.fetchval("SELECT COUNT(*) FROM leveling_totals") == 0

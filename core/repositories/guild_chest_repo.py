@@ -16,6 +16,8 @@ from datetime import datetime
 
 import asyncpg
 
+from core.repositories.leveling_repo import add_coins_in
+
 REASON_WEEKLY_PERSONAL_DECAY = "weekly_personal_decay"
 REASON_MONTHLY_CLAN_DECAY = "monthly_clan_decay"
 REASON_PREMIUM_PURCHASE = "premium_purchase"
@@ -141,15 +143,27 @@ class GuildChestRepository:
                 )
                 return row["balance"]
 
-    async def spend(self, guild_id: int, amount: int, reason: str) -> bool:
+    async def pay_members(
+        self, guild_id: int, user_ids: list[int], amount_each: int, reason: str
+    ) -> bool:
         """
-        Sottrae coin dalla cassa solo se il saldo basta e scrive il
-        movimento, in una transazione. Restituisce False (senza
-        scrivere nulla) se il saldo non basta.
+        Premio dalla cassa: toglie `amount_each` per ogni utente e
+        accredita tutti, in UNA sola transazione (LC-1). O pagano tutti
+        o non cambia niente: un errore a metà annulla anche l'addebito.
+        Restituisce False (senza scrivere nulla) se la cassa non basta.
         """
+        if not user_ids:
+            raise ValueError("Serve almeno un utente da pagare.")
+
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                return await spend_in(conn, guild_id, amount, reason)
+                if not await spend_in(conn, guild_id, amount_each * len(user_ids), reason):
+                    return False
+                # In ordine di ID, come i trasferimenti tra utenti: due
+                # operazioni sulle stesse righe non si bloccano a vicenda.
+                for user_id in sorted(user_ids):
+                    await add_coins_in(conn, guild_id, user_id, amount_each)
+                return True
 
     async def list_ledger(
         self, guild_id: int, limit: int = 20

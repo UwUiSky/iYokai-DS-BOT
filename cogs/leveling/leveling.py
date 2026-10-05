@@ -936,35 +936,44 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        # SEC-21: chi è in blacklist non riceve il premio e non viene
-        # contato nel costo per la cassa.
-        presenti: dict[int, discord.Member] = {}
-        for canale in guild.voice_channels:
-            for membro in canale.members:
-                if membro.bot or await blacklist_repo.is_user_blacklisted(membro.id):
-                    continue
-                presenti[membro.id] = membro
+        # LIM-25: con molte persone il lavoro supera i 3 secondi.
+        await interaction.response.defer()
+
+        # I presenti si leggono una volta sola, tutti insieme. SEC-21:
+        # chi è in blacklist non riceve il premio e non viene contato
+        # nel costo per la cassa.
+        in_vocale = {
+            membro.id
+            for canale in guild.voice_channels
+            for membro in canale.members
+            if not membro.bot
+        }
+        presenti = [
+            membro_id
+            for membro_id in sorted(in_vocale)
+            if not await blacklist_repo.is_user_blacklisted(membro_id)
+        ]
         if not presenti:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Nessuno è in vocale in questo momento — nessuna coin assegnata.", ephemeral=True
             )
             return
 
+        # LC-1: addebito e accrediti in una sola transazione.
         costo_totale = importo * len(presenti)
-        riuscito = await guild_chest_repo.spend(guild.id, costo_totale, reason=REASON_EVENT_LOBBY_PRIZE)
+        riuscito = await guild_chest_repo.pay_members(
+            guild.id, presenti, importo, reason=REASON_EVENT_LOBBY_PRIZE
+        )
         if not riuscito:
             saldo = await guild_chest_repo.get_balance(guild.id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"La cassa non basta — servono **{costo_totale}** coin per **{len(presenti)}** "
                 f"persone in vocale (ne avete **{saldo}**).",
                 ephemeral=True,
             )
             return
 
-        for membro_id in presenti:
-            await leveling_repo.add_coins(guild.id, membro_id, importo)
-
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Assegnate **{importo}** coin a **{len(presenti)}** persone in vocale "
             f"(**{costo_totale}** coin totali dalla cassa)."
         )
@@ -995,7 +1004,10 @@ class LevelingCog(commands.Cog):
             )
             return
 
-        riuscito = await guild_chest_repo.spend(guild.id, importo, reason=REASON_EVENT_WINNER_PRIZE)
+        # Addebito e accredito nella stessa transazione, come /assegna-lobby.
+        riuscito = await guild_chest_repo.pay_members(
+            guild.id, [membro.id], importo, reason=REASON_EVENT_WINNER_PRIZE
+        )
         if not riuscito:
             saldo = await guild_chest_repo.get_balance(guild.id)
             await interaction.response.send_message(
@@ -1003,8 +1015,6 @@ class LevelingCog(commands.Cog):
                 ephemeral=True,
             )
             return
-
-        await leveling_repo.add_coins(guild.id, membro.id, importo)
 
         await interaction.response.send_message(
             f"🏆 {membro.mention} ha vinto **{importo}** coin dalla cassa del server!"

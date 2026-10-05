@@ -32,6 +32,19 @@ class _FakeResponse:
         if embed is not None:
             self.sent_embeds.append(embed)
 
+    async def defer(self, ephemeral: bool = False) -> None:
+        pass
+
+
+class _FakeFollowup:
+    """Dopo un defer() le risposte passano da qui: stessa lista dei messaggi."""
+
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def send(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
+        await self._response.send_message(content, embed=embed, ephemeral=ephemeral)
+
 
 class _FakeVoiceMember:
     def __init__(self, member_id: int, bot: bool = False) -> None:
@@ -64,6 +77,7 @@ class _FakeInteraction:
         )
         self.user = None
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup(self.response)
 
 
 @pytest.fixture(autouse=True)
