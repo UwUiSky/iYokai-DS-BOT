@@ -326,3 +326,20 @@ scelgono nomi che vengono prima degli altri (es. i gruppi che iniziano per
 "a" si possono rinominare o i due comandi prendere un nome corto che inizia
 per "a"/"b"); la scelta si fa dopo la prova, con una sola riga da cambiare
 in `core/command_groups.py`. Primo livello: 16 gruppi + 2 = 18 su 100.
+
+**Aggiornamento D24 (owner, 06/10/2026, 00:14) — comandi in cima:** l'owner
+vuole che digitando `/` compaiano per primi "ultimo comando usato",
+`/cerca-comando`, `/chiedi`, poi le categorie (admin, mod…), e che il suo bot
+sia il primo tra i bot del server. Cosa può fare il bot e cosa no:
+- L'ordine della lista `/` e l'ordine dei bot nel selettore li decide il
+  **client di Discord** (comandi usati di recente dall'utente, poi per app e
+  per nome). **Nessuna API permette a un bot di cambiarli.** Non si promette.
+- "Ultimo comando usato": Discord lo mostra già da solo per ogni utente.
+- Quello che si fa nel bot: `/cerca-comando` **senza testo** apre un pannello
+  (messaggio effimero) con i **comandi usati di recente dall'utente**
+  (da `command_usage`, per server e utente, con tetto e pulizia) e i
+  **bottoni delle categorie** che l'utente può usare (Admin, Mod, Sicurezza,
+  Gestione… solo se `command_access.puo_usare`), ognuno con l'elenco dei suoi
+  comandi in pagine. Con il testo cerca per descrizione (F12 per la parte AI).
+  `/chiedi` mostra lo stesso pannello come suggerimento. Nessun comando nuovo.
+- Nomi dei comandi pensati per l'ordine alfabetico: dopo la prova dal vivo.
