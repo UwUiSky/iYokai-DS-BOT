@@ -12,7 +12,7 @@ Preparazione, una volta sola:
 
 Uso (le frasi si separano con "|": tra una e l'altra c'è una pausa):
     python3 scripts/prova_voce.py "Buongiorno. | Come state, oggi?"
-    python3 scripts/prova_voce.py --respiri 1 --semitoni 1 "Ehi. | Vieni qui."
+    python3 scripts/prova_voce.py --respiri 1,2 --semitoni 1 "Ehi. | Vieni qui. | Siediti."
 
 Scrive prova.wav e, se c'è ffmpeg, prova.mp3 nella cartella corrente.
 """
@@ -82,12 +82,12 @@ def main() -> None:
     p.add_argument("--ritmo", type=float, default=0.95, help="quanto varia la durata dei suoni (0.3–1.0)")
     p.add_argument("--lentezza", type=float, default=1.05, help="1.0 normale, più alto = più lenta")
     p.add_argument("--pausa", type=int, default=350, help="millisecondi tra le frasi")
-    p.add_argument("--respiri", type=int, nargs="*", default=[], help="numeri delle frasi (da 0) precedute da un respiro")
+    p.add_argument("--respiri", default="", help="frasi precedute da un respiro, contate da 0: per esempio 1,3")
     p.add_argument("--semitoni", type=float, default=0.0, help="voce più chiara (+) o più scura (-); restare entro 1.5")
     a = p.parse_args()
     M = a.modello
     frasi = [x.strip() for x in a.testo.split("|") if x.strip()]
-    audio, sr = parla(motore(a.variazione, a.ritmo, a.lentezza), frasi, a.pausa, tuple(a.respiri))
+    audio, sr = parla(motore(a.variazione, a.ritmo, a.lentezza), frasi, a.pausa, tuple(int(x) for x in a.respiri.split(",") if x.strip()))
     salva("prova", audio, sr, a.semitoni)
 
 
