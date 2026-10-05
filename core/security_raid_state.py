@@ -39,5 +39,5 @@ def raid_in_corso(guild_id: int, now: datetime | None = None) -> bool:
 
 
 def azzera(guild_id: int) -> None:
-    """Il blocco è finito (o il modulo è stato spento)."""
+    """Il blocco anti-raid è scaduto: il raid è finito."""
     _ultimo_ingresso.delete(guild_id)
