@@ -101,3 +101,170 @@ async def test_select_moduli_setup_per_categoria_entra_nel_limite_di_25():
             from core.database import db as db_singleton
 
             await db_singleton.close()
+
+
+# ----------------------------------------------------------------------
+# Mappa F7 §3 punto 6: limiti per comando di primo livello (D24)
+# ----------------------------------------------------------------------
+import re
+
+MAX_CARATTERI_COMANDO = 8000
+SOGLIA_ALLARME_CARATTERI = 6800
+MAX_COMANDI_PRIMO_LIVELLO = 100
+MAX_NOME = 32
+MAX_DESCRIZIONE = 100
+REGEX_NOME = re.compile(r"^[-_ʼ\w]{1,32}$")  # \w include lettere e cifre unicode
+
+
+def _len(valore) -> int:
+    """Lunghezza del testo; i locale_str contano come la loro stringa base."""
+    return len(str(valore))
+
+
+def conta_caratteri(nodo) -> int:
+    """
+    Regola ufficiale di Discord: nome, descrizione, nomi e descrizioni
+    delle opzioni, valori e nomi delle scelte, sotto-gruppi e
+    sotto-comandi (ricorsivo).
+    """
+    totale = _len(nodo.name) + _len(nodo.description)
+    if isinstance(nodo, app_commands.Group):
+        return totale + sum(conta_caratteri(c) for c in nodo.commands)
+    for param in nodo.parameters:
+        totale += _len(param.name) + _len(param.description)
+        for scelta in param.choices:
+            totale += _len(scelta.name) + len(str(scelta.value))
+    return totale
+
+
+def _tutti_i_nodi(radici):
+    for nodo in radici:
+        yield nodo
+        if isinstance(nodo, app_commands.Group):
+            yield from _tutti_i_nodi(nodo.commands)
+
+
+def _percorso(nodo) -> str:
+    return nodo.qualified_name
+
+
+async def _albero_vero():
+    creato_qui = await connect_db_if_needed()
+    bot, falliti = await build_full_bot()
+    assert not falliti, f"Cog falliti nel caricamento: {falliti}"
+    return creato_qui, bot
+
+
+async def _chiudi(creato_qui, bot):
+    await close_full_bot(bot)
+    if creato_qui:
+        from core.database import db as db_singleton
+
+        await db_singleton.close()
+
+
+def test_conta_caratteri_segue_la_regola_ufficiale():
+    @app_commands.choices(c=[app_commands.Choice(name="uno", value="1")])
+    @app_commands.describe(c="desc")
+    async def cb(interaction: discord.Interaction, c: str):  # pragma: no cover
+        pass
+
+    cmd = app_commands.Command(name="abc", description="de", callback=cb)
+    # abc + de + (c + desc) + (uno + 1)
+    assert conta_caratteri(cmd) == 3 + 2 + 1 + 4 + 3 + 1
+    gruppo = app_commands.Group(name="g", description="gg")
+    gruppo.add_command(cmd)
+    assert conta_caratteri(gruppo) == 1 + 2 + conta_caratteri(cmd)
+
+
+async def test_caratteri_per_comando_di_primo_livello_sotto_8000():
+    creato_qui, bot = await _albero_vero()
+    try:
+        for cmd in bot.tree.get_commands():
+            n = conta_caratteri(cmd)
+            assert n <= MAX_CARATTERI_COMANDO, (
+                f"'/{cmd.name}' pesa {n} caratteri: Discord rifiuta oltre "
+                f"{MAX_CARATTERI_COMANDO}. Dividi il gruppo."
+            )
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_allarme_caratteri_oltre_6800():
+    """Allarme al 85%: dà tempo di dividere un gruppo prima del limite."""
+    creato_qui, bot = await _albero_vero()
+    try:
+        sopra = {
+            c.name: conta_caratteri(c)
+            for c in bot.tree.get_commands()
+            if conta_caratteri(c) > SOGLIA_ALLARME_CARATTERI
+        }
+        assert not sopra, (
+            f"Sopra l'allarme di {SOGLIA_ALLARME_CARATTERI} caratteri: {sopra}. "
+            f"Il limite di Discord è {MAX_CARATTERI_COMANDO}."
+        )
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_nomi_unici_tra_fratelli():
+    creato_qui, bot = await _albero_vero()
+    try:
+        def controlla(fratelli, dove):
+            nomi = [c.name for c in fratelli]
+            doppi = {n for n in nomi if nomi.count(n) > 1}
+            assert not doppi, f"Nomi doppi in '{dove}': {sorted(doppi)}"
+
+        controlla(bot.tree.get_commands(), "primo livello")
+        for nodo in _tutti_i_nodi(bot.tree.get_commands()):
+            if isinstance(nodo, app_commands.Group):
+                controlla(nodo.commands, _percorso(nodo))
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_nomi_e_descrizioni_entro_i_limiti_e_regex():
+    creato_qui, bot = await _albero_vero()
+    try:
+        for nodo in _tutti_i_nodi(bot.tree.get_commands()):
+            nome = _percorso(nodo)
+            assert REGEX_NOME.match(str(nodo.name)), f"Nome non valido: '{nome}'"
+            assert str(nodo.name) == str(nodo.name).lower(), f"Nome non minuscolo: '{nome}'"
+            assert 1 <= _len(nodo.description) <= MAX_DESCRIZIONE, (
+                f"Descrizione di '{nome}': {_len(nodo.description)} caratteri "
+                f"(massimo {MAX_DESCRIZIONE})."
+            )
+            if isinstance(nodo, app_commands.Command):
+                for p in nodo.parameters:
+                    assert REGEX_NOME.match(str(p.name)), f"Opzione non valida '{p.name}' in '{nome}'"
+                    assert 1 <= _len(p.description) <= MAX_DESCRIZIONE, (
+                        f"Descrizione dell'opzione '{p.name}' di '{nome}': "
+                        f"{_len(p.description)} caratteri."
+                    )
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_default_permissions_solo_al_primo_livello():
+    creato_qui, bot = await _albero_vero()
+    try:
+        radici = bot.tree.get_commands()
+        for radice in radici:
+            if not isinstance(radice, app_commands.Group):
+                continue
+            for nodo in _tutti_i_nodi(radice.commands):
+                assert nodo.default_permissions is None, (
+                    f"'{_percorso(nodo)}' ha default_permissions: Discord li "
+                    f"accetta solo sul comando di primo livello (LIM-57)."
+                )
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_primo_livello_entro_100_comandi():
+    creato_qui, bot = await _albero_vero()
+    try:
+        n = len(bot.tree.get_commands())
+        assert n <= MAX_COMANDI_PRIMO_LIVELLO, f"{n} comandi di primo livello (massimo 100)."
+    finally:
+        await _chiudi(creato_qui, bot)

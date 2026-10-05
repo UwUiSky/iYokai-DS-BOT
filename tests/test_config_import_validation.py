@@ -21,7 +21,7 @@ from cogs.utility.config_history import (
 )
 from core.database import db
 from core.premium import PremiumModule
-from tests.support.discord_fakes import fake_guild, fake_interaction
+from tests.support.discord_fakes import fake_guild, fake_interaction, fake_role
 from tests.support.full_tree import build_full_bot, close_full_bot
 
 GUILD = 777000602
@@ -41,6 +41,9 @@ SETTINGS_VALIDE = {
     "ticket_support_role_ids": [888888888888888888, 999999999999999999],
     "spam_trap_staff_role_ids": [],
     "mute_role_id": 123123123123123123,
+    "admin_role_id": 234234234234234234,
+    "mod_role_id": 345345345345345345,
+    "modban_role_id": 456456456456456456,
     "backup_restore_mode": "classic_invite",
     "backup_auto_invite_on_join": True,
     "logging_soundboard_watermark": "2026-10-01T12:00:00+00:00",
@@ -166,7 +169,11 @@ def _pool(monkeypatch, clean_db):
 
 async def _importa(contenuto: bytes, size=None):
     cog = ConfigHistoryCog(bot=None)
-    interazione = fake_interaction(guild=fake_guild(guild_id=GUILD))
+    server = fake_guild(guild_id=GUILD)
+    # i ruoli del bot (admin/mod/modban) devono esistere nel server
+    ruoli_esistenti = {SETTINGS_VALIDE[k] for k in ("admin_role_id", "mod_role_id", "modban_role_id")}
+    server.get_role.side_effect = lambda rid: fake_role(role_id=rid) if rid in ruoli_esistenti else None
+    interazione = fake_interaction(guild=server)
     await cog.import_config.callback(cog, interazione, _FakeFile(contenuto, size))
     return interazione.response.send_message.call_args.args[0]
 

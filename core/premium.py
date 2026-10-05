@@ -46,6 +46,7 @@ from discord.ext import commands
 
 from core.config import config
 from core.bot_stats import error_counter
+from core.command_access import AccessoNegato
 
 logger = logging.getLogger("iyokai.premium")
 
@@ -453,7 +454,8 @@ async def handle_app_command_error(
     solo su stderr (comportamento di default di discord.py se non si
     registra un error handler).
     """
-    error_counter.record()  # SPEC.md §17.8, usato da /owner stats
+    if not isinstance(error, AccessoNegato):  # un rifiuto non è un errore
+        error_counter.record()  # SPEC.md §17.8, usato da /owner stats
 
     if isinstance(error, ModuleNotUnlockedError):
         message = (
@@ -462,6 +464,8 @@ async def handle_app_command_error(
             f"Contatta lo staff del server o consulta il pannello di "
             f"gestione per maggiori informazioni."
         )
+    elif isinstance(error, AccessoNegato):
+        message = error.messaggio
     elif isinstance(error, PremiumCheckOutsideGuildError):
         message = "Questo comando è disponibile solo dentro un server."
     else:
