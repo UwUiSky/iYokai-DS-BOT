@@ -266,27 +266,40 @@ class AppealActionsView(BaseView):
     async def _disable_and_update(
         self, interaction: discord.Interaction, content: str
     ) -> None:
+        """Dopo il `defer`: spegne i bottoni e scrive l'esito sul messaggio."""
         spenta = AppealActionsView(self.guild_id, self.case_number, self.user_id, disabled=True)
-        await interaction.response.edit_message(content=content, view=spenta)
+        try:
+            await interaction.edit_original_response(content=content, view=spenta)
+        except discord.HTTPException:
+            logger.warning(
+                "Impossibile aggiornare il messaggio dell'appello (caso %s, server %s).",
+                self.case_number,
+                self.guild_id,
+            )
 
     async def unban(self, interaction: discord.Interaction) -> None:
+        # Si risponde subito: unban, database e DM possono superare i
+        # 3 secondi che Discord concede per la prima risposta.
+        await interaction.response.defer()
+
         guild = interaction.client.get_guild(self.guild_id)
         if guild is None:
-            await interaction.response.send_message(
-                "I'm no longer in that server.", ephemeral=True
-            )
+            await interaction.followup.send("I'm no longer in that server.", ephemeral=True)
             return
 
         try:
             await guild.unban(
                 discord.Object(id=self.user_id),
-                reason=f"Spam trap appeal approved by {interaction.user}",
+                reason=f"Spam trap appeal approved by {interaction.user}"[:512],
             )
         except discord.NotFound:
             pass  # già sbannato, procediamo comunque
         except discord.Forbidden:
-            await interaction.response.send_message(
-                "Missing permissions to unban.", ephemeral=True
+            await interaction.followup.send("Missing permissions to unban.", ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Discord refused the unban. Please try again in a moment.", ephemeral=True
             )
             return
 
@@ -309,6 +322,8 @@ class AppealActionsView(BaseView):
         await self._disable_and_update(interaction, "✅ Unbanned — appeal approved.")
 
     async def reject(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+
         guild = interaction.client.get_guild(self.guild_id)
         try:
             user = await interaction.client.fetch_user(self.user_id)
@@ -343,14 +358,17 @@ class StaffReplyModal(BaseModal, title="Reply to user"):
         self.user_id = user_id
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        # Risposta subito, poi il DM (che può essere lento).
+        await interaction.response.defer(ephemeral=True)
         try:
             user = await interaction.client.fetch_user(self.user_id)
             await user.send(f"**Staff reply:** {self.message_label.component.value}")
-            await interaction.response.send_message("Message sent.", ephemeral=True)
         except discord.HTTPException:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Couldn't deliver the message (DMs closed).", ephemeral=True
             )
+            return
+        await interaction.followup.send("Message sent.", ephemeral=True)
 
 
 class SpamTrapCog(commands.Cog):
