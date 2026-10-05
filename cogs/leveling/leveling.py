@@ -1054,20 +1054,23 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         valido, motivo = validate_guild_tag(tag)
         if not valido:
-            await interaction.response.send_message(motivo, ephemeral=True)
+            await interaction.followup.send(motivo, ephemeral=True)
             return
 
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Fai già parte di una gilda in questo server — lasciala prima di crearne una nuova.",
                 ephemeral=True,
             )
             return
 
         if await guild_clan_repo.is_tag_taken(guild.id, tag):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Il tag `{tag}` è già usato da un'altra gilda in questo server.",
                 ephemeral=True,
             )
@@ -1085,15 +1088,15 @@ class LevelingCog(commands.Cog):
                         view_channel=True, send_messages=True, manage_channels=True
                     ),
                 },
-                reason=f"Creazione gilda '{tag}' da {interaction.user}",
+                reason=taglia(f"Creazione gilda '{tag}' da {interaction.user}", LIMITE_MOTIVO),
             )
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non ho i permessi per creare una categoria in questo server.", ephemeral=True
             )
             return
         except discord.HTTPException:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Creazione della categoria fallita — riprova più tardi.", ephemeral=True
             )
             return
@@ -1103,10 +1106,22 @@ class LevelingCog(commands.Cog):
             guild.id, tag=tag, name=name, owner_id=interaction.user.id,
             officialize_deadline=scadenza,
         )
+        if clan_id is None:
+            # Un'altra creazione con lo stesso tag è arrivata un attimo
+            # prima: la categoria appena creata non serve più.
+            try:
+                await categoria.delete(reason=f"Gilda '{tag}' non creata: tag già usato")
+            except discord.HTTPException:
+                logger.warning("Impossibile eliminare la categoria %s rimasta senza gilda.", categoria.id)
+            await interaction.followup.send(
+                f"Il tag `{tag}` è già usato da un'altra gilda in questo server.",
+                ephemeral=True,
+            )
+            return
         await guild_clan_repo.set_category_id(clan_id, categoria.id)
         await sync_member_clan_role(guild, categoria, interaction.user, ROLE_OWNER)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Gilda **{name}** (`{tag}`) creata! Per ufficializzarla servono "
             f"**{CREATION_DEFICIT}** coin in tesoreria entro **{CREATION_GRACE_HOURS} ore** "
             f"(`/clan tesoreria dona`) — altrimenti verrà eliminata automaticamente."
@@ -1322,14 +1337,17 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
         if clan.owner_id != interaction.user.id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan può sciogliere la gilda.", ephemeral=True
             )
             return
@@ -1360,7 +1378,7 @@ class LevelingCog(commands.Cog):
                 logger.warning("Impossibile eliminare la categoria della gilda %s.", clan.id)
 
         await guild_clan_repo.delete_clan(clan.id)
-        await interaction.response.send_message(f"La gilda **{clan.name}** è stata sciolta.")
+        await interaction.followup.send(f"La gilda **{clan.name}** è stata sciolta.")
 
     @clan_group.command(name="invita", description="[Capo/Admin Clan] Invita un membro nella tua gilda.")
     @app_commands.describe(membro="Il membro da invitare nella tua gilda")
@@ -1372,28 +1390,31 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         chi_invita = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_invita is None or chi_invita.role not in (ROLE_OWNER, ROLE_ADMIN):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan o un Admin Clan possono invitare nuovi membri.", ephemeral=True
             )
             return
 
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id) is not None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{membro.mention} fa già parte di una gilda in questo server.", ephemeral=True
             )
             return
 
         if await guild_clan_repo.count_members(clan.id) >= clan.max_members:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"La gilda ha già raggiunto il limite di **{clan.max_members}** membri.", ephemeral=True
             )
             return
@@ -1403,7 +1424,7 @@ class LevelingCog(commands.Cog):
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         await sync_member_clan_role(guild, categoria, membro, ROLE_MEMBER)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {membro.mention} è stato invitato in **{clan.name}**."
         )
 
@@ -1417,36 +1438,39 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         chi_espelle = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_espelle is None or chi_espelle.role not in (ROLE_OWNER, ROLE_ADMIN):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan o un Admin Clan possono espellere membri.", ephemeral=True
             )
             return
 
         target = await guild_clan_repo.get_member(clan.id, membro.id)
         if target is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
             )
             return
 
         if membro.id == clan.owner_id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Il Capo Clan non può essere espulso — usa `/clan sciogli` per sciogliere la gilda.",
                 ephemeral=True,
             )
             return
 
         if chi_espelle.role == ROLE_ADMIN and target.role == ROLE_ADMIN:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Un Admin Clan non può espellere un altro Admin Clan — serve il Capo Clan.",
                 ephemeral=True,
             )
@@ -1457,7 +1481,7 @@ class LevelingCog(commands.Cog):
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         await clear_member_clan_presence(guild, categoria, membro)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {membro.mention} è stato espulso da **{clan.name}**."
         )
 
@@ -1476,42 +1500,45 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         if clan.owner_id != interaction.user.id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan può cambiare il ruolo dei membri.", ephemeral=True
             )
             return
 
         if membro.id == clan.owner_id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Il Capo Clan non può cambiare il proprio ruolo.", ephemeral=True
             )
             return
 
         target = await guild_clan_repo.get_member(clan.id, membro.id)
         if target is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
             )
             return
 
         if ruolo == ROLE_ADMIN and target.role != ROLE_ADMIN:
             if await guild_clan_repo.count_members_with_role(clan.id, ROLE_ADMIN) >= MAX_ADMINS_PER_CLAN:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"La gilda ha già raggiunto il limite di **{MAX_ADMINS_PER_CLAN}** Admin Clan.",
                     ephemeral=True,
                 )
                 return
         elif ruolo == ROLE_MOD and target.role != ROLE_MOD:
             if await guild_clan_repo.count_members_with_role(clan.id, ROLE_MOD) >= MAX_MODS_PER_CLAN:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"La gilda ha già raggiunto il limite di **{MAX_MODS_PER_CLAN}** Mod Clan.",
                     ephemeral=True,
                 )
@@ -1522,7 +1549,7 @@ class LevelingCog(commands.Cog):
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         await sync_member_clan_role(guild, categoria, membro, ruolo)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {membro.mention} è ora **{ruolo}** in **{clan.name}**."
         )
 
@@ -1547,23 +1574,26 @@ class LevelingCog(commands.Cog):
             )
             return
 
+        # LIM-25: più chiamate a Discord, quindi defer() per primo.
+        await interaction.response.defer()
+
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non fai parte di nessuna gilda in questo server.", ephemeral=True
             )
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_acquista is None or chi_acquista.role not in (ROLE_OWNER, ROLE_ADMIN):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Solo il Capo Clan o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
             )
             return
 
         costo = next_channel_unlock_cost(clan.channels_unlocked)
         if costo is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "La tua gilda ha già sbloccato tutti i canali extra disponibili.", ephemeral=True
             )
             return
@@ -1571,7 +1601,7 @@ class LevelingCog(commands.Cog):
         ore_richieste = next_channel_voice_hours_requirement(clan.channels_unlocked)
         ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
         if ore_accumulate < ore_richieste:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Servono **{ore_richieste}** ore vocali accumulate dalla gilda per il prossimo "
                 f"canale (ne avete accumulate **{ore_accumulate}**).",
                 ephemeral=True,
@@ -1579,7 +1609,7 @@ class LevelingCog(commands.Cog):
             return
 
         if clan.treasury_balance < costo:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"La tesoreria della gilda non basta — servono **{costo}** coin "
                 f"(ne avete **{clan.treasury_balance}**).",
                 ephemeral=True,
@@ -1588,7 +1618,7 @@ class LevelingCog(commands.Cog):
 
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         if categoria is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "La categoria della tua gilda non esiste più su Discord — contatta lo staff.",
                 ephemeral=True,
             )
@@ -1598,7 +1628,7 @@ class LevelingCog(commands.Cog):
         # poi il canale su Discord. Se un altro acquisto è arrivato un
         # attimo prima, questo non passa.
         if not await guild_clan_repo.unlock_channel(clan.id, clan.channels_unlocked, costo):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "L'acquisto non è andato a buon fine: la tesoreria o i canali sbloccati sono "
                 "cambiati nel frattempo. Riprova.",
                 ephemeral=True,
@@ -1621,12 +1651,12 @@ class LevelingCog(commands.Cog):
                 testo = "Non ho i permessi per creare un canale in questa categoria."
             else:
                 testo = "Creazione del canale fallita — riprova più tardi."
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{testo} I **{costo}** coin sono tornati in tesoreria.", ephemeral=True
             )
             return
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
             f"dalla tesoreria."
         )

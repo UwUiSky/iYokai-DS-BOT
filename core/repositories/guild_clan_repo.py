@@ -228,7 +228,7 @@ class GuildClanRepository:
         owner_id: int,
         officialize_deadline: datetime,
         max_members: int = DEFAULT_MAX_MEMBERS,
-    ) -> int:
+    ) -> int | None:
         """
         Il saldo tesoreria parte a -CREATION_DEFICIT (in deficit) —
         il clan esiste già (categoria/canali possono essere creati
@@ -237,21 +237,27 @@ class GuildClanRepository:
         automaticamente come owner nella stessa transazione: un clan
         senza il suo stesso owner tra i membri sarebbe uno stato
         incoerente anche solo per un istante.
+
+        Restituisce None, senza scrivere nulla, se nel server esiste
+        già una gilda con lo stesso tag: lo decide il vincolo unico,
+        così due creazioni arrivate insieme non passano tutte e due.
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow(
+                clan_id = await conn.fetchval(
                     """
                     INSERT INTO clans
                         (guild_id, tag, name, owner_id, treasury_balance,
                          officialize_deadline, max_members)
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (guild_id, tag) DO NOTHING
                     RETURNING id
                     """,
                     guild_id, tag, name, owner_id, -CREATION_DEFICIT,
                     officialize_deadline, max_members,
                 )
-                clan_id = row["id"]
+                if clan_id is None:
+                    return None
 
                 await conn.execute(
                     """

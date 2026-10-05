@@ -64,8 +64,9 @@ async def test_create_clan_registra_il_deficit_nel_registro(repo):
 async def test_tag_univoco_per_server(repo):
     await _crea_clan(repo, guild_id=100, tag="ABC")
 
-    with pytest.raises(Exception):  # violazione UNIQUE(guild_id, tag)
-        await _crea_clan(repo, guild_id=100, tag="ABC")
+    # UNIQUE(guild_id, tag): la seconda creazione non scrive nulla.
+    assert await _crea_clan(repo, guild_id=100, tag="ABC") is None
+    assert len(await repo.list_clans(100)) == 1
 
 
 @pytest.mark.asyncio
