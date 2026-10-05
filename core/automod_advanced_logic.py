@@ -160,6 +160,11 @@ class MessageSignals:
     recent_sticker_count: int = 0
 
 
+# Quanti domini al massimo in ciascuna lista link (whitelist, blacklist):
+# la lista è salvata e riletta a ogni messaggio.
+MAX_DOMINI_LISTA = 100
+
+
 @dataclass(frozen=True)
 class AntiLinkConfig:
     mode: str = "off"  # "off" | "whitelist" | "blacklist"

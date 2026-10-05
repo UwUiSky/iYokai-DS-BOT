@@ -49,6 +49,7 @@ from core.automod_advanced_logic import (
     AntiLinkConfig,
     AutomodAdvancedConfig,
     CapsFilterConfig,
+    MAX_DOMINI_LISTA,
     MessageSignals,
     RateFilterConfig,
     ThresholdFilterConfig,
@@ -647,6 +648,13 @@ class AutomodCog(commands.Cog):
         attuale = settings.config.anti_link.whitelist if lista.value == "whitelist" else settings.config.anti_link.blacklist
 
         if action.value == "add":
+            if dominio not in attuale and len(attuale) >= MAX_DOMINI_LISTA:
+                await interaction.response.send_message(
+                    f"La {lista.name.lower()} ha già {MAX_DOMINI_LISTA} domini, il massimo. "
+                    "Rimuovi un dominio con `/automod anti-link-domain` prima di aggiungerne altri.",
+                    ephemeral=True,
+                )
+                return
             aggiornata = tuple(attuale) if dominio in attuale else tuple(attuale) + (dominio,)
         else:
             aggiornata = tuple(d for d in attuale if d != dominio)
