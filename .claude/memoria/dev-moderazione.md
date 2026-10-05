@@ -16,7 +16,10 @@
 - #133 anti-raid + M 10.16 (`fbef3b0`): un avviso aggiornato; Quarantined
   esistente adottato e allineato; `core/security_raid_state.py`.
 - #133 AutoMod (`f48e6e3`): tetto 100 domini per lista link.
-- #133 verifica: cache config con tetto (commit di chiusura).
+- #133 verifica: cache config con tetto (`822a21b`).
+- #133 correzioni del cacciatore-bug: versione per server nella cache
+  verifica (`4d8123b`); blocco per server sull'avviso anti-raid; voci
+  anti-nuke in attesa con ora, scartate oltre la finestra.
 
 ## Cose imparate
 - Le tabelle di sicurezza stanno in `security_repo.run_migrations`.
@@ -27,6 +30,7 @@
   ancora (i membri tengono l'id); `Role.edit(position=)` per la posizione.
 - Il ruolo ricreato non può stare sopra il ruolo più alto del bot.
 - I test di anti-raid/anti-nuke importano fixture da `test_anti_*_f1.py`.
+- Stato in memoria letto-poi-salvato: versione/blocco contro le corse.
 - Un test che scrive 100 domini uno a uno costa ~25 s: tenerne pochi.
 
 ## Aperto

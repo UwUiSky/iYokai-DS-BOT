@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime
 
 import discord
 from discord import app_commands
@@ -198,7 +199,7 @@ class AntiNukeCog(commands.Cog):
         )
         # (server, autore) -> oggetti cancellati non ancora recuperati
         # perché l'autore era ancora sotto soglia.
-        self._in_attesa: BoundedCache[tuple[int, int], list[object]] = BoundedCache(max_size=500)
+        self._in_attesa: BoundedCache[tuple[int, int], list[tuple[datetime, str, object]]] = BoundedCache(max_size=500)
 
     anti_nuke_group = app_commands.Group(
         name="anti-nuke", description="Configura la protezione anti-nuke del server."
@@ -378,18 +379,31 @@ class AntiNukeCog(commands.Cog):
         if cancellato is not None and actor_id is not None and actor_id != self.bot.user.id:
             chiave = (guild.id, actor_id)
             in_attesa = self._in_attesa.get(chiave) or []
-            in_attesa.append(cancellato)
+            in_attesa.append((discord.utils.utcnow(), category, cancellato))
             self._in_attesa.set(chiave, in_attesa[-MAX_IN_ATTESA:])
         violazione = await self._handle_event(guild, category, actor_id, detail_suffix, settings)
         if violazione is not None and cancellato is not None and violazione.anti_nuke.recovery_enabled:
-            await self._recupera_in_attesa(guild.id, actor_id)
+            await self._recupera_in_attesa(guild.id, actor_id, violazione)
         return violazione
 
-    async def _recupera_in_attesa(self, guild_id: int, actor_id: int) -> None:
-        """Ricrea tutto ciò che l'autore ha cancellato: prima le categorie, poi il resto."""
+    async def _recupera_in_attesa(
+        self, guild_id: int, actor_id: int, settings: SecuritySettings
+    ) -> None:
+        """
+        Ricrea ciò che l'autore ha cancellato dentro la finestra della
+        categoria (prima le categorie, poi il resto). Le cancellazioni
+        più vecchie sono azioni di altri momenti, non di questo attacco:
+        si scartano.
+        """
         chiave = (guild_id, actor_id)
-        in_attesa = list(self._in_attesa.get(chiave) or [])
+        voci = list(self._in_attesa.get(chiave) or [])
         self._in_attesa.delete(chiave)
+        adesso = discord.utils.utcnow()
+        in_attesa = [
+            oggetto
+            for ora, categoria, oggetto in voci
+            if (adesso - ora).total_seconds() <= category_window_seconds(categoria, settings.anti_nuke)
+        ]
         in_attesa.sort(key=lambda oggetto: not isinstance(oggetto, discord.CategoryChannel))
         for oggetto in in_attesa:
             try:

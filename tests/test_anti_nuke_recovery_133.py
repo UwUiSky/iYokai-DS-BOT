@@ -150,3 +150,38 @@ async def test_forum_ricreato_con_i_suoi_tag(cog_soglia_due):
 
     tag = server.create_forum.call_args.kwargs["available_tags"]
     assert [(t.name, t.moderated) for t in tag] == [("Risolto", True), ("Domanda", False)]
+
+
+async def test_cancellazione_vecchia_di_ore_non_viene_ricreata(cog_soglia_due, monkeypatch):
+    # Una cancellazione legittima di ore prima, rimasta in attesa sotto
+    # soglia, non va ricreata quando lo stesso autore fa un attacco dopo.
+    from datetime import datetime, timedelta, timezone
+
+    adesso = {"t": datetime(2026, 10, 5, 8, 0, tzinfo=timezone.utc)}
+    monkeypatch.setattr(discord.utils, "utcnow", lambda: adesso["t"])
+    autore = fake_member(user_id=AUTORE_ID)
+
+    def _voci():
+        return [
+            _voce(discord.AuditLogAction.channel_delete, AUTORE_ID, 7001 + n) for n in range(4)
+        ]
+
+    server = _server(autore, [[]])
+    canali = [_canale_testuale(server, 7001 + n, f"c{n}") for n in range(4)]
+
+    def _registro(**_kw):
+        async def _g():
+            for v in _voci():
+                v.created_at = adesso["t"]
+                yield v
+
+        return _g()
+
+    server.audit_logs.side_effect = _registro
+    await cog_soglia_due.on_guild_channel_delete(canali[0])  # legittima, 8:00
+    adesso["t"] += timedelta(hours=5)
+    for canale in canali[1:]:
+        await cog_soglia_due.on_guild_channel_delete(canale)  # attacco, 13:00
+
+    nomi = sorted(c.kwargs["name"] for c in server.create_text_channel.await_args_list)
+    assert nomi == ["c1", "c2", "c3"]
