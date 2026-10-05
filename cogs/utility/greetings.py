@@ -21,6 +21,7 @@ from core.database import db
 from core.greetings_logic import render_template
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
+from core.security_raid_state import raid_in_corso
 
 logger = logging.getLogger("iyokai.greetings")
 
@@ -70,7 +71,9 @@ class GreetingsCog(commands.Cog):
                         member.guild.id,
                     )
 
-        if config.welcome_dm:
+        # M 10.16: durante un raid niente DM di benvenuto (non si scrive agli
+        # account entrati nel raid).
+        if config.welcome_dm and not raid_in_corso(member.guild.id):
             try:
                 await member.send(testo)
             except discord.HTTPException:

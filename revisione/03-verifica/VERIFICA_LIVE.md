@@ -497,3 +497,16 @@ chiudere.
 - [ ] Spegnimento (BUG-7) — commit 44ede43 — passi:
   1. `kill -TERM` due volte a un secondo di distanza.
   Risultato atteso: il log finisce con "Arresto completato".
+- [ ] Sicurezza F1 (#133, unione `Unione di fix/f1-133`) — passi:
+  1. Anti-nuke con soglia canali a 2: cancella 3 canali di fila → tornano tutti, nella stessa categoria. Cancella un ruolo con membri in posizione alta → torna con posizione e membri. Cancella un forum con tag → tornano anche i tag.
+  2. Raid (più di 10 ingressi in 60 s) con canale allarmi: un solo messaggio, aggiornato. Nessun DM di benvenuto agli entrati durante il raid (il canale di benvenuto sì).
+  3. Server con "Quarantined" fatto a mano: dopo un raid viene adottato e i canali negano scrittura, thread, reazioni, voce e connessione.
+  4. `/automod anti-link-domain` oltre 100 domini per lista: messaggio chiaro.
+  5. Riavvio: pannello di verifica e reazioni ancora funzionanti.
+  Risultato atteso: nessun errore nel log.
+- [ ] Clan e config F1 (#135, #136) — passi:
+  1. `/clan boost gilda` e `individuale` con due clic quasi insieme: due pagamenti, scadenza +48 h (cumulo voluto? vedi domanda all'owner).
+  2. `/clan tesoreria dona`: saldo tesoreria e registro coerenti.
+  3. `/clan promuovi` ad Admin/Mod con la gilda già al tetto: rifiuto chiaro.
+  4. `/config export` su server con impostazioni vuote, poi `/config import` del file: nessun errore.
+  Risultato atteso: nessuna moneta persa o doppia.

@@ -69,3 +69,19 @@ async def test_una_persona_riceve_il_benvenuto_nel_canale_e_in_privato(canale_be
 
     membro.send.assert_awaited_once()
     canale_benvenuto.send.assert_awaited_once()
+
+
+async def test_durante_un_raid_niente_dm_di_benvenuto_ma_il_canale_si(canale_benvenuto):
+    """M 10.16: il DM non parte mentre l'anti-raid ha un raid in corso."""
+    from core import security_raid_state
+
+    membro = _membro_appena_entrato(canale_benvenuto, bot=False)
+    cog = modulo.GreetingsCog(bot=None)
+    security_raid_state.segna_raid(membro.guild.id)
+    try:
+        await cog.on_member_join(membro)
+    finally:
+        security_raid_state.azzera(membro.guild.id)
+
+    membro.send.assert_not_awaited()
+    canale_benvenuto.send.assert_awaited_once()
