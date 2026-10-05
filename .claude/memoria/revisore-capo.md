@@ -1,14 +1,16 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-05/10/2026 · ramo `main` · ultimo commit `3dc9031`
+05/10/2026 · ramo `fix/f1-135` (base `5c04cf5`) · revisione fatta
 
 ## In corso
-- Niente a metà.
+- Revisione #135/#136: DA SISTEMARE (remove_member deadlock). Alla riconsegna: rivedere solo quel punto.
 
 ## Fatto
 - Revisione e unione dei tre rami F1 del 05/10: `7722b71`, `3758f2a`,
   `9db9e8a`. Suite completa verde (3141 test).
+
+- `fix/f1-133` letto per intero; 5 prove senza fix: 4 falliscono giuste, 1 no (invalida dopo scrittura).
 
 ## Cose imparate
 - Un cambio "giusto" in un'area può peggiorarne un'altra: il messaggio
@@ -21,5 +23,7 @@
 - Le funzioni private (`db._…`) usate da un cog sono un segnale: manca
   una funzione pubblica.
 
+- Con più blocchi su righe, controllare TUTTI i punti che bloccano le stesse tabelle, non solo quelli nel diff: `remove_member` (non toccato) contraddiceva il nuovo ordine. Si prova con un test temporaneo in parallelo.
+
 ## Aperto
-- Nessun ramo in attesa.
+- `fix/f1-135`: attende correzione di `remove_member`.
