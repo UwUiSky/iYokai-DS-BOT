@@ -101,3 +101,55 @@ async def test_lettura_lenta_non_rimette_in_cache_il_valore_vecchio(clean_db):
     await lettura
 
     assert (await repo.get_config(100)).verified_role_id == 777
+
+
+@pytest.mark.parametrize("scrittura", ["set_config", "set_panel_message"])
+async def test_lettura_nata_durante_la_scrittura_non_cacha_il_vecchio(clean_db, scrittura):
+    # La lettura parte DOPO l'invalidazione iniziale e finisce DOPO il
+    # commit: solo l'invalidazione dopo la scrittura la ferma.
+    import asyncio
+
+    class _Pool(_PoolContaLetture):
+        def __init__(self, pool) -> None:
+            super().__init__(pool)
+            self.scrittura_ferma = asyncio.Event()
+            self.scrittura_via = asyncio.Event()
+            self.lettura_ferma = asyncio.Event()
+            self.lettura_via = asyncio.Event()
+            self.attivo = False
+
+        async def execute(self, query, *args):
+            if self.attivo and "INSERT INTO verify_config" in query:
+                self.scrittura_ferma.set()
+                await self.scrittura_via.wait()
+            return await self._pool.execute(query, *args)
+
+        async def fetchrow(self, query, *args):
+            riga = await self._pool.fetchrow(query, *args)  # ancora il vecchio
+            if self.attivo and "verify_config" in query:
+                self.lettura_ferma.set()
+                await self.lettura_via.wait()
+            return riga
+
+    pool = _Pool(clean_db)
+    repo = VerifyRepository(pool_provider=lambda: pool)
+    await repo.set_config(100, "button", 555, 0, 0, False, None)
+    pool.attivo = True
+
+    if scrittura == "set_config":
+        nuova = asyncio.create_task(repo.set_config(100, "reaction", 777, 0, 0, False, None))
+    else:
+        nuova = asyncio.create_task(repo.set_panel_message(100, 11, 22))
+    await pool.scrittura_ferma.wait()          # invalidazione iniziale già fatta
+    lettura = asyncio.create_task(repo.get_config(100))
+    await pool.lettura_ferma.wait()            # ha letto il valore vecchio
+    pool.scrittura_via.set()
+    await nuova                                # commit + invalidazione finale
+    pool.lettura_via.set()
+    await lettura
+
+    config = await repo.get_config(100)
+    if scrittura == "set_config":
+        assert config.verified_role_id == 777
+    else:
+        assert (config.panel_channel_id, config.panel_message_id) == (11, 22)
