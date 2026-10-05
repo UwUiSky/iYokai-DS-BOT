@@ -30,13 +30,11 @@ il contenuto viene sempre recuperato via fetch REST esplicito
 reale. Assunzione sul comportamento reale dell'API Discord, da
 verificare sul server di test.
 
-Scope scelto per l'appeal — view NON persistente: a differenza dei
-pannelli ticket/vocali (che restano pubblicati per mesi), una
-conversazione di appeal è per natura di breve durata. La view ha un
-timeout di 7 giorni; se il bot si riavvia nel mezzo di un appeal
-aperto, i bottoni di quella specifica conversazione smettono di
-rispondere (l'utente può comunque riscrivere in DM per riaprirla,
-soggetto al cooldown di 24h). Scelta dichiarata, non un errore.
+I bottoni dell'appello (Unban, Reject, Reply) sono persistenti: il
+loro custom_id porta server, caso e utente, e setup() li registra con
+`bot.add_dynamic_items`. Rispondono anche dopo un riavvio del bot.
+
+Funzioni coperte: SPEC §7.3
 """
 
 # DA FARE (issue #59, fase F1): correzioni aperte per questo file in
@@ -156,18 +154,92 @@ def _ban_dm_description(guild_name: str) -> str:
     )
 
 
-class AppealActionsView(BaseView):
+# custom_id dei bottoni dell'appello: dentro ci sono l'azione, il
+# server, il numero del caso e l'utente. Così il bottone si spiega da
+# solo e funziona anche dopo un riavvio del bot, senza tenere niente
+# in memoria (al massimo 74 caratteri sui 100 ammessi).
+MODELLO_ID_APPELLO = (
+    r"spamtrap_appeal:(?P<azione>unban|reject|reply)"
+    r":(?P<guild_id>\d+):(?P<case_number>\d+):(?P<user_id>\d+)"
+)
+
+_BOTTONI_APPELLO = {
+    "unban": ("Unban", discord.ButtonStyle.success),
+    "reject": ("Reject", discord.ButtonStyle.danger),
+    "reply": ("Reply", discord.ButtonStyle.secondary),
+}
+
+
+class AppealButton(discord.ui.DynamicItem[discord.ui.Button], template=MODELLO_ID_APPELLO):
     """
-    Bottoni per la gestione dell'appeal, mostrati nel thread privato
-    in #spam-log. NON persistente — vedi la nota in cima al file per
-    il motivo della scelta.
+    Un bottone dell'appello. discord.py lo ricostruisce dal custom_id a
+    ogni clic (`bot.add_dynamic_items` in setup()): per questo risponde
+    anche su messaggi mandati prima dell'ultimo riavvio. Controlli ed
+    esecuzione sono quelli di AppealActionsView.
     """
 
-    def __init__(self, guild_id: int, case_number: int, user_id: int) -> None:
-        super().__init__(timeout=7 * 24 * 3600)
+    def __init__(
+        self, azione: str, guild_id: int, case_number: int, user_id: int, *, disabled: bool = False
+    ) -> None:
+        etichetta, stile = _BOTTONI_APPELLO[azione]
+        super().__init__(
+            discord.ui.Button(
+                label=etichetta,
+                style=stile,
+                disabled=disabled,
+                custom_id=f"spamtrap_appeal:{azione}:{guild_id}:{case_number}:{user_id}",
+            )
+        )
+        self.azione = azione
         self.guild_id = guild_id
         self.case_number = case_number
         self.user_id = user_id
+
+    @classmethod
+    async def from_custom_id(
+        cls, interaction: discord.Interaction, item: discord.ui.Button, match
+    ) -> "AppealButton":
+        return cls(
+            match["azione"],
+            int(match["guild_id"]),
+            int(match["case_number"]),
+            int(match["user_id"]),
+        )
+
+    def _vista(self) -> "AppealActionsView":
+        return AppealActionsView(self.guild_id, self.case_number, self.user_id)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # Blacklist (SEC-10) e permesso di bannare: i controlli sono
+        # quelli della vista, gli stessi di prima del riavvio.
+        return await self._vista().interaction_check(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        vista = self._vista()
+        try:
+            await getattr(vista, self.azione)(interaction)
+        except Exception as errore:
+            await vista.on_error(interaction, errore, self)
+
+
+class AppealActionsView(BaseView):
+    """
+    Bottoni per la gestione dell'appeal, mostrati nel thread privato
+    in #spam-log. Persistente: nessuna scadenza, e ogni bottone porta
+    nel custom_id il caso a cui si riferisce (vedi AppealButton).
+    """
+
+    def __init__(
+        self, guild_id: int, case_number: int, user_id: int, *, disabled: bool = False
+    ) -> None:
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        self.case_number = case_number
+        self.user_id = user_id
+        for azione in _BOTTONI_APPELLO:
+            self.add_item(AppealButton(azione, guild_id, case_number, user_id, disabled=disabled))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # SEC-10: blacklist PRIMA di tutto (BaseView) — se rifiuta
@@ -194,15 +266,10 @@ class AppealActionsView(BaseView):
     async def _disable_and_update(
         self, interaction: discord.Interaction, content: str
     ) -> None:
-        for child in self.children:
-            child.disabled = True
-        self.stop()
-        await interaction.response.edit_message(content=content, view=self)
+        spenta = AppealActionsView(self.guild_id, self.case_number, self.user_id, disabled=True)
+        await interaction.response.edit_message(content=content, view=spenta)
 
-    @discord.ui.button(label="Unban", style=discord.ButtonStyle.success)
-    async def unban(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def unban(self, interaction: discord.Interaction) -> None:
         guild = interaction.client.get_guild(self.guild_id)
         if guild is None:
             await interaction.response.send_message(
@@ -241,10 +308,7 @@ class AppealActionsView(BaseView):
 
         await self._disable_and_update(interaction, "✅ Unbanned — appeal approved.")
 
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger)
-    async def reject(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def reject(self, interaction: discord.Interaction) -> None:
         guild = interaction.client.get_guild(self.guild_id)
         try:
             user = await interaction.client.fetch_user(self.user_id)
@@ -257,10 +321,7 @@ class AppealActionsView(BaseView):
 
         await self._disable_and_update(interaction, "❌ Appeal rejected.")
 
-    @discord.ui.button(label="Reply", style=discord.ButtonStyle.secondary)
-    async def reply(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def reply(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(StaffReplyModal(self.user_id))
 
 
@@ -957,3 +1018,6 @@ async def setup(bot: commands.Bot) -> None:
         )
     )
     await bot.add_cog(SpamTrapCog(bot))
+    # I bottoni degli appelli già aperti devono rispondere anche dopo
+    # un riavvio: va registrato a ogni avvio.
+    bot.add_dynamic_items(AppealButton)
