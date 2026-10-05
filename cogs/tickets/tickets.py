@@ -60,6 +60,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.channel_rename import (
+    RenameRateLimited,
+    rename_channel,
+    rename_limit_message,
+    rename_tracker,
+)
 from core.database import db
 from core.repositories.ticket_repo import (
     VALID_PRIORITIES,
@@ -103,6 +109,9 @@ TICKET_DELETE_ACTION_TYPE = "ticket_delete_channel"
 RITARDO_ELIMINAZIONE_SECONDI = 10
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
+
+# Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
+MAX_CHANNEL_NAME_LENGTH = 100
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
 # Ferma il doppio clic prima che nasca un secondo canale. La garanzia
@@ -756,13 +765,46 @@ class TicketsCog(commands.Cog):
 
     @ticket_group.command(name="rename", description="Rinomina questo ticket.")
     @app_commands.describe(name="Il nuovo nome del canale")
-    async def rename(self, interaction: discord.Interaction, name: str) -> None:
+    async def rename(
+        self,
+        interaction: discord.Interaction,
+        name: app_commands.Range[str, 1, MAX_CHANNEL_NAME_LENGTH],
+    ) -> None:
         ticket = await self._get_ticket_or_reply(interaction)
         if ticket is None:
             return
 
-        await interaction.channel.edit(name=name)
-        await interaction.response.send_message(f"Ticket rinominato in **{name}**.")
+        # Discord permette 2 rinomine ogni 10 minuti per canale (LIM-3):
+        # alla terza si risponde subito, senza restare in attesa.
+        attesa = rename_tracker.seconds_until_allowed(interaction.channel.id)
+        if attesa > 0:
+            await interaction.response.send_message(
+                rename_limit_message(attesa), ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
+        try:
+            await rename_channel(
+                interaction.channel, name, reason=f"Ticket rinominato da {interaction.user}"
+            )
+        except RenameRateLimited as limite:
+            await interaction.followup.send(
+                rename_limit_message(limite.retry_after), ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non sono riuscito a rinominare il canale: controlla i miei "
+                "permessi e che il nome sia valido.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            f"Ticket rinominato in **{name}**.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @ticket_group.command(name="priority", description="[Staff] Imposta la priorità di questo ticket.")
     @app_commands.describe(level="Livello di priorità")

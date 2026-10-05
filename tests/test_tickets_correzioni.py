@@ -558,3 +558,94 @@ async def test_la_migrazione_chiude_i_doppioni_gia_presenti(clean_db):
     assert [r["channel_id"] for r in aperti] == [3, 4]
     chiusi = await clean_db.fetch("SELECT closed_at FROM tickets WHERE status = 'closed'")
     assert len(chiusi) == 2 and all(r["closed_at"] is not None for r in chiusi)
+
+
+# ====================================================================
+# M 6.2 — /ticket rename: nome fino a 100 caratteri
+# M 6.3 — sul limite di rinomine: "riprova tra N minuti", nessuna attesa
+# ====================================================================
+@pytest.fixture
+def _rinomine_azzerate():
+    from core.channel_rename import rename_tracker
+
+    rename_tracker._renames.clear()
+    yield
+    rename_tracker._renames.clear()
+
+
+async def test_ticket_rename_dichiara_da_1_a_100_caratteri():
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await bot.add_cog(TicketsCog(bot))
+
+    comando = bot.tree.get_command("ticket").get_command("rename")
+    opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
+
+    assert opzioni["name"]["min_length"] == 1
+    assert opzioni["name"]["max_length"] == 100
+
+
+async def _rinomina(cog, server, canale, nome: str):
+    interazione = server.interazione(server.utente(), canale)
+    await cog.rename.callback(cog, interazione, nome)
+    return interazione
+
+
+async def test_la_terza_rinomina_risponde_subito_riprova_tra(_rinomine_azzerate):
+    server = Server()
+    canale = await server.apri_ticket()
+    cog = TicketsCog(bot=None)
+
+    for nome in ("primo", "secondo"):
+        riuscita = await _rinomina(cog, server, canale, nome)
+        riuscita.response.defer.assert_awaited_once()
+        assert nome in _testo(riuscita.followup.send.call_args)
+    terza = await _rinomina(cog, server, canale, "terzo")
+
+    # L'apertura del ticket non ha speso nessuna rinomina: due passano.
+    assert [c.kwargs["name"] for c in canale.edit.call_args_list] == ["primo", "secondo"]
+    risposta = terza.response.send_message.call_args
+    assert "Riprova tra circa 10 minuti" in _testo(risposta)
+    assert risposta.kwargs["ephemeral"] is True
+    terza.response.defer.assert_not_awaited()
+
+
+async def test_rinomina_rifiutata_da_discord_risposta_chiara(_rinomine_azzerate):
+    server = Server()
+    canale = await server.apri_ticket()
+    canale.edit.side_effect = _errore_http(403)
+    cog = TicketsCog(bot=None)
+
+    interazione = await _rinomina(cog, server, canale, "nuovo-nome")
+
+    assert "Non sono riuscito a rinominare" in _testo(interazione.followup.send.call_args)
+
+
+async def test_rinomina_con_discord_in_attesa_non_resta_appesa(_rinomine_azzerate, monkeypatch):
+    import asyncio
+
+    import core.channel_rename as rinomina
+
+    monkeypatch.setattr(rinomina, "RENAME_TIMEOUT_SECONDS", 0.05)
+    server = Server()
+    canale = await server.apri_ticket()
+
+    async def _attesa_infinita(**kwargs):
+        await asyncio.sleep(600)
+
+    canale.edit.side_effect = _attesa_infinita
+    cog = TicketsCog(bot=None)
+
+    interazione = await asyncio.wait_for(_rinomina(cog, server, canale, "nuovo"), timeout=2)
+
+    assert "Riprova tra circa 10 minuti" in _testo(interazione.followup.send.call_args)
+
+
+async def test_il_nome_nella_risposta_non_puo_menzionare_nessuno(_rinomine_azzerate):
+    server = Server()
+    canale = await server.apri_ticket()
+    cog = TicketsCog(bot=None)
+
+    interazione = await _rinomina(cog, server, canale, "@everyone")
+
+    menzioni = interazione.followup.send.call_args.kwargs["allowed_mentions"]
+    assert menzioni.to_dict() == discord.AllowedMentions.none().to_dict()
