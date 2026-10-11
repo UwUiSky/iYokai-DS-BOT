@@ -97,6 +97,13 @@ async def clean_db(db_pool):
         for riga in righe:
             await conn.execute(f'TRUNCATE TABLE "{riga["table_name"]}" CASCADE')
 
+    # Le tabelle sono vuote: le copie in memoria del singleton (moduli e
+    # impostazioni per server, M 14.9/14.10) non devono sopravvivere al test.
+    from core.database import db as _db_singleton
+
+    _db_singleton._modules_cache.clear()
+    _db_singleton._settings_cache.clear()
+
     yield db_pool
 
 

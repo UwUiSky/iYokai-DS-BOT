@@ -651,3 +651,106 @@ async def test_cancelled_error_esce_dallo_scheduler_e_non_conta_come_tentativo(
 
     riga = await _riga(clean_db, azione)
     assert riga["attempts"] == 0 and riga["failed_reason"] is None and riga["executed"] is False
+
+
+# ----------------------------------------------------------------------
+# M 14.4 (LIM-47): nessuna connessione occupata mentre l'azione parla con Discord
+# ----------------------------------------------------------------------
+import asyncpg
+
+
+@pytest.fixture
+async def pool_a_una_connessione(clean_db, monkeypatch):
+    import os
+
+    import core.database as database_module
+
+    stretto = await asyncpg.create_pool(dsn=os.environ["DATABASE_URL"], min_size=1, max_size=1)
+
+    class _Db:
+        pool = stretto
+
+    monkeypatch.setattr(database_module, "db", _Db())
+    yield stretto
+    await stretto.close()
+
+
+@pytest.mark.asyncio
+async def test_la_connessione_e_libera_durante_l_azione(pool_a_una_connessione):
+    import asyncio
+
+    scheduler = Scheduler()
+    letto = []
+
+    async def handler(guild_id, user_id, payload):
+        # Con un pool di UNA connessione, se lo scheduler la tiene occupata
+        # (transazione aperta durante l'handler) questa lettura non parte mai.
+        letto.append(await asyncio.wait_for(pool_a_una_connessione.fetchval("SELECT 1"), 3))
+
+    scheduler.register_handler("lenta", handler)
+    await scheduler.schedule(1, 2, "lenta", datetime.now(timezone.utc) - timedelta(seconds=5))
+
+    await scheduler._run_due_actions()
+
+    assert letto == [1]
+    riga = await pool_a_una_connessione.fetchrow("SELECT executed, claimed_at FROM scheduled_actions")
+    assert riga["executed"] is True
+
+
+@pytest.mark.asyncio
+async def test_azione_in_corso_non_viene_presa_due_volte(pool_a_una_connessione):
+    scheduler = Scheduler()
+    chiamate = []
+
+    async def handler(guild_id, user_id, payload):
+        chiamate.append(1)
+        # Mentre l'azione gira, un secondo giro non deve rieseguirla.
+        await scheduler._run_due_actions()
+
+    scheduler.register_handler("doppia", handler)
+    await scheduler.schedule(1, 2, "doppia", datetime.now(timezone.utc) - timedelta(seconds=5))
+
+    await scheduler._run_due_actions()
+
+    assert chiamate == [1]
+
+
+@pytest.mark.asyncio
+async def test_azione_fallita_torna_disponibile_con_attesa(pool_a_una_connessione):
+    scheduler = Scheduler()
+
+    async def handler(guild_id, user_id, payload):
+        raise RuntimeError("discord giù")
+
+    scheduler.register_handler("rotta", handler)
+    await scheduler.schedule(1, 2, "rotta", datetime.now(timezone.utc) - timedelta(seconds=5))
+
+    await scheduler._run_due_actions()
+
+    riga = await pool_a_una_connessione.fetchrow(
+        "SELECT attempts, next_attempt_at, claimed_at, executed FROM scheduled_actions"
+    )
+    assert riga["attempts"] == 1
+    assert riga["next_attempt_at"] is not None
+    assert riga["claimed_at"] is None
+    assert riga["executed"] is False
+
+
+@pytest.mark.asyncio
+async def test_prenotazione_scaduta_dopo_un_crash_viene_ripresa(pool_a_una_connessione):
+    scheduler = Scheduler()
+    chiamate = []
+
+    async def handler(guild_id, user_id, payload):
+        chiamate.append(1)
+
+    scheduler.register_handler("orfana", handler)
+    await scheduler.schedule(1, 2, "orfana", datetime.now(timezone.utc) - timedelta(seconds=5))
+    # Il processo è morto a metà: la riga è prenotata da un'ora.
+    await pool_a_una_connessione.execute(
+        "UPDATE scheduled_actions SET claimed_at = now() - interval '1 hour'"
+    )
+
+    await scheduler._run_due_actions()
+
+    assert chiamate == [1]

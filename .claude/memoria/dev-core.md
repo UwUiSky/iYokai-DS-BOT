@@ -1,42 +1,32 @@
 # Memoria di dev-core
 
 ## Aggiornata
-11/10/2026 · ramo `feat/f7-rifiniture` · base `4fe0765`
+11/10/2026 · ramo `feat/giro-core` (da main) · giro #70/#69/#145/#148/NF-04
 
 ## In corso
-- F7 passo 4 chiuso (6 voci su 6): resta la prova smoke e l'unione fatta dall'orchestratore.
+- Previsione: 10+ voci. Chiuse: #145, M 14.2, 14.3, 14.4, 14.6, 14.9, 14.10.
+- Prossimo: M 14.7 (`core/invio_file.py`), 13.2 (blacklist: escono anche i worker musicali),
+  poi NF-04 (migrazioni 0034-0037: guild_presence, retain_for_security, data_deletion_requests,
+  event_log BIGINT+indici; `data_registry`, `forget_user_service`, `retention_worker`, cog `privacy`,
+  hook `on_guild_remove` in main.py), 14.1 (cricchetto max_length), 14.5, 14.8, #148 (valutare).
 
 ## Fatto
-- R1-bis: `core/bot_ready.py`, risolutore fissato in `safe_http`,
-  scheduler con tentativi (migrazione `0003`), schema dell'import
-  della configurazione (`0004`), `ENVIRONMENT` obbligatoria,
-  `/owner shell` che ferma tutti i processi figli.
-- `scripts/smoke.py` e il suo test.
-- F7 quadro (#76): `core/command_groups.py` (16 gruppi), `core/command_access.py`
-  (livelli, check, ruoli admin/mod/modban), test caratteri/nomi/permessi
-  in `test_command_tree_invariants.py`. Nessun comando spostato.
-- F7 passo 4 (#76): test dei `/comando` citati nelle stringhe (`test_riferimenti_comandi.py`),
-  `/owner` mai nell'albero globale, `-cerca-comando` guild_only, descrizioni ≤95,
-  prova `/clan bacheca` livello admin, sync solo se cambia (`core/command_sync.py`,
-  migrazione `0021_command_sync_state`).
+- Giri precedenti: R1-bis, smoke, F7 quadro e passo 4 (gruppi, accesso, sync comandi).
+- #145: `core/premium_cache.py` (punto unico), chiamato da db whitelist, abbonamenti, acquisto cassa, flag modulo.
+- M 14.2/14.3: `handle_app_command_error` (rifiuti = INFO; segnaposto del defer pubblico cancellato).
+- M 14.4: scheduler con prenotazione `claimed_at` (migrazione 0033), nessuna connessione durante l'handler.
+- M 14.6: pool 2/5 in sviluppo. M 14.9: coda `bot_stats` con tetto, cache moduli senza gara.
+- M 14.10: cache impostazioni per server (`db._settings_cache`, TTL 60 s, `clean_db` la svuota).
+- Gia fatte: 13.1 (sotto-gruppi owner premium/blacklist/cog/system; mancano privacy/radio/ai), 13.3, 14.15.
 
 ## Cose imparate
-- La suite completa dura circa 9 minuti (3141 test).
-- `config` è un dataclass congelato: nei test si sostituisce `ca.config` con un
-  SimpleNamespace. Un sotto-gruppo controlla solo il padre diretto: usare `GruppoYokai`.
-- Il rifiuto di accesso è `AccessoNegato`, risposto da `handle_app_command_error`
-  (core/premium.py): il check non risponde mai da solo.
-- Autocomplete: i check non si applicano; usare `autocomplete_protetto(livello)`.
-  Un `Group` semplice sotto un gruppo protetto dà TypeError: usare `GruppoYokai`.
-- Ruoli del bot: id == guild.id o non numerico = non configurato; import/rollback
-  li validano (`errore_ruoli_del_bot`).
-- Oggi il comando più pesante è `/automod` (3028 caratteri): nessun allarme a 6800.
-- `/owner` vive solo in `GRUPPI["owner"]`: i test dell'albero lo leggono da lì (`_radici(bot)`).
-- Sync comandi: impronta per ambito (`global`, `guild:<id>`); errore = impronta non salvata.
-  Se si cancellano comandi a mano su Discord l'impronta non lo sa: cancellare la riga.
+- La suite completa dura circa 9 minuti. `config` e un dataclass congelato: nei test si sostituisce `ca.config`.
+- Rifiuto di accesso = `AccessoNegato` (CheckFailure) risposto da `handle_app_command_error`.
+- Autocomplete sotto gruppi protetti: `autocomplete_protetto(livello)`; sotto-gruppi: `GruppoYokai`.
+- Test su guild_config con SQL grezzo: dopo una lettura la cache impostazioni puo essere vecchia; usare `db._settings_cache.clear()`.
+- Il defer pubblico lascia un messaggio con flag `loading`: va cancellato prima del followup effimero.
+- Le tabelle si dichiarano in `core/data_registry.py` (test di completezza sullo schema vero).
 
 ## Aperto
-- F1 resto: #69, #70.
-- #136: `/config export` scrive `null` che l'importazione rifiuta.
-- #141: aggiornamento a caldo dal proprietario (D21).
-- #135, ultima voce: `reset_premium_registry`.
+- #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
+- 14.12 chiavi esterne, 14.13 codice morto, 14.14 lingue (F8): non in questo giro.

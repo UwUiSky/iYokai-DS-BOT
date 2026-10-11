@@ -24,7 +24,11 @@ singola query, e torna disponibile subito dopo.
 
 from __future__ import annotations
 
+import asyncio
+import copy
 import json
+import time
+import weakref
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -33,6 +37,14 @@ import asyncpg
 from core.bounded_cache import BoundedCache
 from core.config import config
 from core.premium_cache import invalida_cache_premium
+
+
+# M 14.10 (PERF-1): le impostazioni di un server si tengono in memoria. Una
+# scrittura passa sempre da qui e le dimentica; il TTL serve solo se le cambia
+# un altro processo (pannello web, D16).
+SETTINGS_CACHE_TTL_SECONDS = 60
+
+_monotonic = time.monotonic
 
 
 @dataclass(frozen=True)
@@ -66,6 +78,31 @@ class Database:
         # condividono la stessa riga già in cache, invece di avere
         # una entry ciascuno.
         self._modules_cache: BoundedCache[int, dict] = BoundedCache(max_size=10_000)
+        # M 14.10: tutte le impostazioni (JSONB) di un server, con scadenza.
+        self._settings_cache: BoundedCache[int, tuple[float, dict]] = BoundedCache(
+            max_size=10_000
+        )
+        # M 14.9: contatore delle invalidazioni. Una lettura iniziata prima di
+        # una scrittura non rimette in cache il suo valore ormai vecchio.
+        self._versione_cache = 0
+        # M 14.9: un blocco per server (sparisce da solo quando nessuno lo usa).
+        self._blocchi_server: "weakref.WeakValueDictionary[int, asyncio.Lock]" = (
+            weakref.WeakValueDictionary()
+        )
+
+    def _blocco_server(self, guild_id: int) -> asyncio.Lock:
+        """Un cambio alla volta per server: lo storico vede ogni valore "prima" giusto."""
+        blocco = self._blocchi_server.get(guild_id)
+        if blocco is None:
+            blocco = asyncio.Lock()
+            self._blocchi_server[guild_id] = blocco
+        return blocco
+
+    def _dimentica_server(self, guild_id: int) -> None:
+        """Invalida moduli e impostazioni in memoria di un server."""
+        self._versione_cache += 1
+        self._modules_cache.delete(guild_id)
+        self._settings_cache.delete(guild_id)
 
     async def connect(self) -> None:
         """
@@ -168,6 +205,7 @@ class Database:
         """
         modules = self._modules_cache.get(guild_id)
         if modules is None:
+            versione = self._versione_cache
             row = await self.pool.fetchrow(
                 "SELECT modules FROM guild_config WHERE guild_id = $1",
                 guild_id,
@@ -177,7 +215,8 @@ class Database:
             # pattern): il campo torna come stringa JSON grezza, va
             # deserializzato esplicitamente.
             modules = json.loads(row["modules"]) if row is not None else {}
-            self._modules_cache.set(guild_id, modules)
+            if versione == self._versione_cache:  # nessuna scrittura nel frattempo
+                self._modules_cache.set(guild_id, modules)
 
         return bool(modules.get(module_name, False))
 
@@ -195,37 +234,38 @@ class Database:
         (guild_config_history, BACKLOG.md §11 Config Diff & Rollback),
         anche con changed_by NULL se l'autore non è noto al chiamante.
         """
-        await self.ensure_guild_exists(guild_id)
+        async with self._blocco_server(guild_id):
+            await self.ensure_guild_exists(guild_id)
 
-        # Leggiamo il valore PRIMA di sovrascriverlo: senza questo,
-        # lo storico non avrebbe nulla da confrontare per un diff.
-        old_row = await self.pool.fetchrow(
-            "SELECT (modules -> $2)::boolean AS old_value FROM guild_config WHERE guild_id = $1",
-            guild_id,
-            module_name,
-        )
-        old_value = old_row["old_value"] if old_row is not None else None
+            # Leggiamo il valore PRIMA di sovrascriverlo: senza questo,
+            # lo storico non avrebbe nulla da confrontare per un diff.
+            old_row = await self.pool.fetchrow(
+                "SELECT (modules -> $2)::boolean AS old_value FROM guild_config WHERE guild_id = $1",
+                guild_id,
+                module_name,
+            )
+            old_value = old_row["old_value"] if old_row is not None else None
 
-        await self.pool.execute(
-            """
-            UPDATE guild_config
-            SET modules = jsonb_set(modules, ARRAY[$2], to_jsonb($3::boolean)),
-                updated_at = now()
-            WHERE guild_id = $1
-            """,
-            guild_id,
-            module_name,
-            active,
-        )
-        # Invalida (non aggiorna in-place): alla prossima lettura la
-        # cache si ripopola dal DB da zero, così non c'è mai il
-        # rischio che una scrittura parziale lasci la cache
-        # disallineata da quello che è realmente su disco.
-        self._modules_cache.delete(guild_id)
+            await self.pool.execute(
+                """
+                UPDATE guild_config
+                SET modules = jsonb_set(modules, ARRAY[$2], to_jsonb($3::boolean)),
+                    updated_at = now()
+                WHERE guild_id = $1
+                """,
+                guild_id,
+                module_name,
+                active,
+            )
+            # Invalida (non aggiorna in-place): alla prossima lettura la
+            # cache si ripopola dal DB da zero, così non c'è mai il
+            # rischio che una scrittura parziale lasci la cache
+            # disallineata da quello che è realmente su disco.
+            self._dimentica_server(guild_id)
 
-        await self._record_config_change(
-            guild_id, changed_by, "module", module_name, old_value, active
-        )
+            await self._record_config_change(
+                guild_id, changed_by, "module", module_name, old_value, active
+            )
 
     # ================================================================
     # Guild settings — configurazione libera per-modulo (JSONB)
@@ -235,52 +275,67 @@ class Database:
     # un numero. Ogni modulo usa una chiave propria (es.
     # "report_channel_id", "mute_role_id") per non calpestare le
     # impostazioni degli altri moduli.
+    async def _impostazioni_del_server(self, guild_id: int) -> dict:
+        """Tutte le impostazioni del server, dalla memoria se ancora valide (M 14.10)."""
+        adesso = _monotonic()
+        voce = self._settings_cache.get(guild_id)
+        if voce is not None and voce[0] > adesso:
+            return voce[1]
+        versione = self._versione_cache
+        riga = await self.pool.fetchrow(
+            "SELECT settings FROM guild_config WHERE guild_id = $1", guild_id
+        )
+        # asyncpg restituisce il JSONB già come stringa JSON; lo
+        # decodifichiamo per dare al chiamante il tipo Python atteso.
+        impostazioni = json.loads(riga["settings"]) if riga is not None else {}
+        if riga is not None and versione == self._versione_cache:
+            self._settings_cache.set(
+                guild_id, (adesso + SETTINGS_CACHE_TTL_SECONDS, impostazioni)
+            )
+        return impostazioni
+
     async def get_guild_setting(
         self, guild_id: int, key: str, default=None
     ):
-        row = await self.pool.fetchrow(
-            "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
-            guild_id,
-            key,
-        )
-        if row is None or row["value"] is None:
-            return default
-        # asyncpg restituisce il JSONB già come stringa JSON; lo
-        # decodifichiamo per dare al chiamante il tipo Python atteso
-        # (int, str, bool...) invece di una stringa JSON grezza.
-        valore = json.loads(row["value"])
+        valore = (await self._impostazioni_del_server(guild_id)).get(key)
         # BUG-31: un `null` salvato vale "chiave assente", come se la
         # riga non l'avesse: i cog non si aspettano None al posto del
         # default (es. una lista).
-        return default if valore is None else valore
+        if valore is None:
+            return default
+        # Una copia: chi riceve una lista non deve poter sporcare la memoria.
+        return copy.deepcopy(valore) if isinstance(valore, (list, dict)) else valore
 
     async def set_guild_setting(
         self, guild_id: int, key: str, value, changed_by: int | None = None
     ) -> None:
-        await self.ensure_guild_exists(guild_id)
+        async with self._blocco_server(guild_id):
+            await self.ensure_guild_exists(guild_id)
 
-        old_row = await self.pool.fetchrow(
-            "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
-            guild_id,
-            key,
-        )
-        old_value = json.loads(old_row["value"]) if old_row and old_row["value"] is not None else None
+            old_row = await self.pool.fetchrow(
+                "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
+                guild_id,
+                key,
+            )
+            old_value = json.loads(old_row["value"]) if old_row and old_row["value"] is not None else None
 
-        await self.pool.execute(
-            """
-            UPDATE guild_config
-            SET settings = jsonb_set(settings, ARRAY[$2], $3::jsonb),
-                updated_at = now()
-            WHERE guild_id = $1
-            """,
-            guild_id,
-            key,
-            json.dumps(value),
-        )
+            await self.pool.execute(
+                """
+                UPDATE guild_config
+                SET settings = jsonb_set(settings, ARRAY[$2], $3::jsonb),
+                    updated_at = now()
+                WHERE guild_id = $1
+                """,
+                guild_id,
+                key,
+                json.dumps(value),
+            )
 
-        await self._record_config_change(
-            guild_id, changed_by, "setting", key, old_value, value
-        )
+            self._dimentica_server(guild_id)
+
+            await self._record_config_change(
+                guild_id, changed_by, "setting", key, old_value, value
+            )
 
     # ================================================================
     # Config Diff & Rollback (BACKLOG.md §11, estensione di SPEC.md §2.7)
@@ -399,18 +454,20 @@ class Database:
         self, guild_id: int, key: str, changed_by: int | None
     ) -> None:
         """Toglie del tutto una chiave da settings (non la mette a null) e la registra nello storico."""
-        old_row = await self.pool.fetchrow(
-            "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
-            guild_id,
-            key,
-        )
-        old_value = json.loads(old_row["value"]) if old_row and old_row["value"] is not None else None
-        await self.pool.execute(
-            "UPDATE guild_config SET settings = settings - $2::text, updated_at = now() WHERE guild_id = $1",
-            guild_id,
-            key,
-        )
-        await self._record_config_change(guild_id, changed_by, "setting", key, old_value, None)
+        async with self._blocco_server(guild_id):
+            old_row = await self.pool.fetchrow(
+                "SELECT settings -> $2 AS value FROM guild_config WHERE guild_id = $1",
+                guild_id,
+                key,
+            )
+            old_value = json.loads(old_row["value"]) if old_row and old_row["value"] is not None else None
+            await self.pool.execute(
+                "UPDATE guild_config SET settings = settings - $2::text, updated_at = now() WHERE guild_id = $1",
+                guild_id,
+                key,
+            )
+            self._dimentica_server(guild_id)
+            await self._record_config_change(guild_id, changed_by, "setting", key, old_value, None)
 
     # ================================================================
     # Export / Import / Reset configurazione (SPEC.md §2.1/§2.5/§2.6)
@@ -468,7 +525,7 @@ class Database:
             json.dumps(settings),
             language,
         )
-        self._modules_cache.delete(guild_id)
+        self._dimentica_server(guild_id)
 
         await self._record_config_change(
             guild_id,
@@ -498,7 +555,7 @@ class Database:
             """,
             guild_id,
         )
-        self._modules_cache.delete(guild_id)
+        self._dimentica_server(guild_id)
 
         await self._record_config_change(
             guild_id,

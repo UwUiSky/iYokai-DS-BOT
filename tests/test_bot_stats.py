@@ -64,3 +64,33 @@ class TestRollingCounter:
         contatore.record()  # nessun 'at' esplicito
 
         assert contatore.count_in_window() == 1
+
+
+# ----------------------------------------------------------------------
+# M 14.9: la coda non cresce senza fine anche se nessuno chiede il conteggio
+# ----------------------------------------------------------------------
+def test_un_milione_di_eventi_non_riempiono_la_memoria():
+    from datetime import datetime, timezone
+
+    from core.bot_stats import MAX_EVENTI_IN_CODA, RollingCounter
+
+    contatore = RollingCounter()
+    adesso = datetime.now(timezone.utc)
+    for _ in range(1_000_000):
+        contatore.record(adesso)
+
+    assert len(contatore._timestamps) <= MAX_EVENTI_IN_CODA
+    assert contatore.count_in_window(adesso) == MAX_EVENTI_IN_CODA
+
+
+def test_gli_eventi_scaduti_escono_anche_senza_chiedere_il_conteggio():
+    from datetime import datetime, timedelta, timezone
+
+    from core.bot_stats import RollingCounter
+
+    contatore = RollingCounter(window_seconds=60)
+    inizio = datetime.now(timezone.utc)
+    for n in range(100):
+        contatore.record(inizio + timedelta(seconds=n))  # 100 s di eventi, uno al secondo
+
+    assert len(contatore._timestamps) <= 61

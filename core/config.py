@@ -350,8 +350,9 @@ def _load_config() -> Config:
         OWNER_ID=_require_int("OWNER_ID"),
         MAIN_GUILD_ID=_require_int("MAIN_GUILD_ID"),
         DATABASE_URL=_require("DATABASE_URL"),
-        DB_POOL_MIN=_optional_int("DB_POOL_MIN", 5),
-        DB_POOL_MAX=_optional_int("DB_POOL_MAX", 10),
+        # LIM-50 (M 14.6): Aiven gratuito concede 20 connessioni in tutto.
+        DB_POOL_MIN=_optional_int("DB_POOL_MIN", 2 if in_sviluppo else 5),
+        DB_POOL_MAX=_optional_int("DB_POOL_MAX", 5 if in_sviluppo else 10),
         ENVIRONMENT=environment,
         LOG_LEVEL=_optional("LOG_LEVEL", "INFO"),
         LAVALINK_HOST=_optional("LAVALINK_HOST", "127.0.0.1"),
