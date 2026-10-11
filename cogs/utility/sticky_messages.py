@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.sticky_message_repo import sticky_message_repo
@@ -27,7 +28,7 @@ logger = logging.getLogger("iyokai.sticky_messages")
 MODULE_STICKY_MESSAGES = "sticky_messages"
 
 
-class StickyMessagesCog(commands.Cog):
+class StickyMessagesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -76,16 +77,16 @@ class StickyMessagesCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    sticky_group = app_commands.Group(
-        name="sticky", description="Gestisci il messaggio fisso di un canale."
+    @comando_di_gruppo(
+        "admin",
+        nome="sticky-set",
+        descrizione="Imposta lo sticky message di un canale.",
+        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
     )
-
-    @sticky_group.command(name="set", description="[Admin] Imposta lo sticky message di un canale.")
     @app_commands.describe(
         channel="Il canale dove impostare lo sticky",
         message="Il testo dello sticky message (massimo 2000 caratteri)",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def set_sticky(
         self,
         interaction: discord.Interaction,
@@ -107,9 +108,13 @@ class StickyMessagesCog(commands.Cog):
             ephemeral=True,
         )
 
-    @sticky_group.command(name="remove", description="[Admin] Rimuove lo sticky message di un canale.")
+    @comando_di_gruppo(
+        "admin",
+        nome="sticky-togli",
+        descrizione="Rimuove lo sticky message di un canale.",
+        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
+    )
     @app_commands.describe(channel="Il canale da cui rimuovere lo sticky")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def remove_sticky(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:

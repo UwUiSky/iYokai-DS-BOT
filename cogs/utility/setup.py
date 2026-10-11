@@ -38,6 +38,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import registry, PremiumModule
 from core.setup_wizard_logic import is_last_step, next_step, previous_step
@@ -46,7 +47,7 @@ from core.ui_base import BaseView
 logger = logging.getLogger("iyokai.setup")
 
 # Limite reale di Discord: un Select accetta al massimo 25 opzioni.
-# Per questo /setup mostra un Select per categoria (BUG-2).
+# Per questo /admin setup attiva mostra un Select per categoria (BUG-2).
 MAX_SELECT_OPTIONS = 25
 
 # BUG-2: nomi leggibili delle categorie di core.premium.CATEGORIE_MODULI.
@@ -184,7 +185,7 @@ class SetupView(BaseView):
         if self.message is not None:
             try:
                 await self.message.edit(
-                    content="⏱️ Pannello di setup scaduto. Rilancia /setup per riprovare.",
+                    content="⏱️ Pannello di setup scaduto. Rilancia /admin setup attiva per riprovare.",
                     view=self,
                 )
             except discord.HTTPException:
@@ -194,7 +195,7 @@ class SetupView(BaseView):
 def _wizard_module_names() -> list[str]:
     """
     SPEC.md §2.2: elenco curato di moduli "per iniziare" (non tutti
-    quelli registrati — quello è /setup) mostrati uno alla volta dal
+    quelli registrati — quello è /admin setup attiva) mostrati uno alla volta dal
     wizard. Import LOCALI, non a livello di modulo — stesso motivo
     già documentato in core/soundboard_log_service.py: evitare
     qualunque rischio di import circolare tra cog diversi, e restare
@@ -219,7 +220,7 @@ def _wizard_module_names() -> list[str]:
 
 class SetupWizardView(BaseView):
     """
-    SPEC.md §2.2: a differenza di /setup (tutti i moduli in un solo
+    SPEC.md §2.2: a differenza di /admin setup attiva (tutti i moduli in un solo
     select menu), il wizard mostra un modulo alla volta con Sì/No +
     Avanti/Indietro — pensato per chi preferisce essere guidato passo
     per passo invece di vedere l'intera lista in un colpo.
@@ -295,7 +296,7 @@ class SetupWizardView(BaseView):
         if self.message is not None:
             try:
                 await self.message.edit(
-                    content="⏱️ Wizard scaduto senza salvare. Rilancia /setup-wizard per riprovare.",
+                    content="⏱️ Wizard scaduto senza salvare. Rilancia /admin setup wizard per riprovare.",
                     embed=None,
                     view=self,
                 )
@@ -303,13 +304,15 @@ class SetupWizardView(BaseView):
                 pass
 
 
-class SetupCog(commands.Cog):
+class SetupCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(
-        name="setup",
-        description="[Admin] Attiva o disattiva i moduli del bot, per categoria.",
+    @comando_di_gruppo(
+        "admin",
+        nome="attiva",
+        descrizione="Attiva o disattiva i moduli del bot, per categoria.",
+        sottogruppo=("setup", "Attivazione dei moduli e configurazione guidata"),
     )
     @app_commands.describe(
         categoria="Categoria da configurare. Senza scelta: elenco di sola lettura."
@@ -320,7 +323,6 @@ class SetupCog(commands.Cog):
             for valore, etichetta in ETICHETTE_CATEGORIE.items()
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def setup(
         self, interaction: discord.Interaction, categoria: str | None = None
     ) -> None:
@@ -388,7 +390,7 @@ class SetupCog(commands.Cog):
         """Elenco di sola lettura: stato di tutti i moduli, per categoria."""
         embed = discord.Embed(
             title="Stato dei moduli",
-            description="Scegli una categoria in `/setup categoria:` per modificarla.",
+            description="Scegli una categoria in `/admin setup attiva categoria:` per modificarla.",
         )
         for valore, etichetta in ETICHETTE_CATEGORIE.items():
             righe = []
@@ -399,11 +401,12 @@ class SetupCog(commands.Cog):
                 embed.add_field(name=etichetta, value="\n".join(righe), inline=False)
         return embed
 
-    @app_commands.command(
-        name="setup-wizard",
-        description="[Admin] Configura passo-passo i moduli principali del bot.",
+    @comando_di_gruppo(
+        "admin",
+        nome="wizard",
+        descrizione="Configura passo-passo i moduli principali del bot.",
+        sottogruppo=("setup", "Attivazione dei moduli e configurazione guidata"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def setup_wizard(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(

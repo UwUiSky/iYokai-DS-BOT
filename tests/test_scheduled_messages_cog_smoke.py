@@ -12,6 +12,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from core.scheduler import scheduler
 from cogs.utility.scheduled_messages import (
     MODULE_SCHEDULED_MESSAGES,
@@ -31,14 +32,8 @@ async def test_scheduled_messages_cog_si_carica_e_si_registra_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    schedule_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "schedule-message":
-            schedule_group = command
-            break
-    assert schedule_group is not None
-
-    sottocomandi = {c.name for c in schedule_group.commands}
-    assert {"set", "list", "cancel"} <= sottocomandi
+    assert {
+        "messaggi programma", "messaggi programmati", "messaggi annulla",
+    } <= percorsi_del_gruppo("admin")
 
     assert SCHEDULED_MESSAGE_ACTION_TYPE in scheduler._handlers

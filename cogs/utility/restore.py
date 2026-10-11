@@ -2,11 +2,11 @@
 cogs/utility/restore.py
 ===========================
 Restore massivo utenti via OAuth2 (SPEC.md §11.11/§11.12) — comandi
-/configura-restore e /restore-users, più i listener che tengono
+/admin backup restore-modo e /admin backup restore-utenti, più i listener che tengono
 aggiornata la retention dei token salvati (uscita spontanea/kick/
 ban, come concordato esplicitamente con l'utente).
 
-Tre modalità per server (impostate con /configura-restore),
+Tre modalità per server (impostate con /admin backup restore-modo),
 esattamente come discusso: server NUOVI raccolgono il consenso al
 momento della verifica (verify_oauth, non gestito qui — vedi
 cogs/security/verify.py per il pannello che offre il link);
@@ -28,6 +28,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.oauth_crypto import OAuthEncryptionNotConfigured
@@ -66,16 +67,18 @@ SETTING_AUTO_INVITE_ON_JOIN = "backup_auto_invite_on_join"
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
 
 
-class RestoreCog(commands.Cog):
+class RestoreCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     # ------------------------------------------------------------
     # Configurazione
     # ------------------------------------------------------------
-    @app_commands.command(
-        name="configura-restore",
-        description="[Admin] Scegli come questo server gestisce il restore utenti via OAuth2.",
+    @comando_di_gruppo(
+        "admin",
+        nome="restore-modo",
+        descrizione="Scegli come questo server gestisce il restore utenti via OAuth2.",
+        sottogruppo=("backup", "Backup e ripristino del server"),
     )
     @app_commands.describe(
         modalita="Come raccogliere il consenso per il restore automatico",
@@ -88,7 +91,6 @@ class RestoreCog(commands.Cog):
             app_commands.Choice(name="Solo invito classico (nessun token salvato)", value=MODE_CLASSIC_INVITE),
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def configura_restore(
         self,
         interaction: discord.Interaction,
@@ -113,16 +115,17 @@ class RestoreCog(commands.Cog):
         )
 
     # ------------------------------------------------------------
-    # /restore-users
+    # /admin backup restore-utenti
     # ------------------------------------------------------------
-    @app_commands.command(
-        name="restore-users",
-        description="[Admin] Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.",
+    @comando_di_gruppo(
+        "admin",
+        nome="restore-utenti",
+        descrizione="Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.",
+        sottogruppo=("backup", "Backup e ripristino del server"),
     )
     @app_commands.describe(
         server_di_origine="ID del server (main originale) da cui ripristinare gli utenti"
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def restore_users(self, interaction: discord.Interaction, server_di_origine: str) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -148,7 +151,7 @@ class RestoreCog(commands.Cog):
             await interaction.response.send_message(
                 "⚠️ Questo server non è registrato come backup di quello indicato. "
                 "Il restore è permesso solo dal server di origine verso il suo "
-                "backup designato (vedi /define-main e /define-backup).",
+                "backup designato (vedi /admin backup main e /admin backup crea).",
                 ephemeral=True,
             )
             return

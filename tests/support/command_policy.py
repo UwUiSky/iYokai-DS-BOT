@@ -114,22 +114,11 @@ AUDIENCE: dict[str, str] = {
     "search": PUBLIC,
     "serverstats": PUBLIC,
     "reactionsnipe": PUBLIC,
-    "suggest": PUBLIC,
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
-    "config": MIXED,
-    "setup": STAFF,
-    "setup-wizard": STAFF,
-    "alerts": STAFF,
+    "admin": STAFF,  # gruppo condiviso
+    "moduli": STAFF,  # gruppo condiviso
     "greetings": STAFF,
     "rolemenu": STAFF,
-    "schedule-message": STAFF,
-    "sticky": STAFF,
-    "suggestion-setup": STAFF,
-    "define-main": STAFF,
-    "define-backup": STAFF,
-    "promuovi-backup": STAFF,
-    "configura-restore": STAFF,
-    "restore-users": STAFF,
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
 

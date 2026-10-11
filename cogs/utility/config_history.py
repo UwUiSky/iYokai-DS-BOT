@@ -1,7 +1,7 @@
 """
 cogs/utility/config_history.py
 ==================================
-Comandi /config: storico e rollback delle modifiche, reset, esporta/
+Comandi /admin config: storico e rollback delle modifiche, reset, esporta/
 importa (con controllo dello schema prima di scrivere) e lingua del
 server. È solo l'interfaccia comandi: legge e scrive con i metodi di
 core/database.py. Nessun controllo "modulo attivo": deve funzionare
@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
 from core.premium import registry
@@ -136,7 +137,7 @@ def errore_ruoli_del_bot(guild: discord.Guild, settings: dict) -> str | None:
 
 def errore_schema_import(dati) -> str | None:
     """
-    Controlla lo schema di un file per /config import PRIMA di scrivere.
+    Controlla lo schema di un file per /admin config import PRIMA di scrivere.
     Restituisce il motivo del rifiuto in italiano, oppure None se valido.
     Moduli e chiavi sconosciuti fanno rifiutare tutto il file (non
     vengono ignorati): meglio nessuna modifica che un import a metà.
@@ -165,7 +166,7 @@ def _rifiuta_costante(nome: str):
 
 def leggi_json_import(grezzo: bytes):
     """
-    Decodifica il file di /config import (UTF-8, BOM ammesso). Solleva
+    Decodifica il file di /admin config import (UTF-8, BOM ammesso). Solleva
     ValueError o RecursionError se non è un JSON accettabile: NaN,
     interi smisurati, annidamento troppo profondo, byte non UTF-8.
     """
@@ -216,7 +217,7 @@ def _riassunto_cambi(nome: str, prima: dict, dopo: dict) -> str:
 
 
 def testo_conferma_rollback(entry) -> str:
-    """Domanda di conferma di /config rollback, sempre sotto il limite di Discord."""
+    """Domanda di conferma di /admin config rollback, sempre sotto il limite di Discord."""
     vecchio, nuovo = entry.old_value, entry.new_value
     if _e_una_configurazione_intera(vecchio) and _e_una_configurazione_intera(nuovo):
         testo = (
@@ -361,7 +362,7 @@ class ResetConfirmView(BaseView):
         self.stop()
         await interaction.response.edit_message(
             content="✅ Configurazione azzerata: nessun modulo attivo, nessuna "
-            "impostazione, lingua tornata a italiano. Usa /config rollback per "
+            "impostazione, lingua tornata a italiano. Usa /admin config rollback per "
             "annullare se necessario.",
             view=self,
         )
@@ -381,19 +382,17 @@ class ResetConfirmView(BaseView):
         await interaction.response.edit_message(content="Reset annullato.", view=self)
 
 
-class ConfigHistoryCog(commands.Cog):
+class ConfigHistoryCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    config_group = app_commands.Group(
-        name="config", description="Storico delle modifiche di configurazione del server."
-    )
-
-    @config_group.command(
-        name="history", description="[Admin] Mostra le ultime modifiche alla configurazione."
+    @comando_di_gruppo(
+        "admin",
+        nome="history",
+        descrizione="Mostra le ultime modifiche alla configurazione.",
+        sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
     @app_commands.describe(limit="Quante voci mostrare (default 10, massimo 25)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def history(
         self,
         interaction: discord.Interaction,
@@ -418,14 +417,16 @@ class ConfigHistoryCog(commands.Cog):
             description=righe_storico(voci),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text="Usa /config rollback <id> per annullare una voce specifica.")
+        embed.set_footer(text="Usa /admin config rollback <id> per annullare una voce specifica.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @config_group.command(
-        name="rollback", description="[Admin] Ripristina il valore precedente di una modifica."
+    @comando_di_gruppo(
+        "admin",
+        nome="rollback",
+        descrizione="Ripristina il valore precedente di una modifica.",
+        sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.describe(entry_id="ID della voce di storico (mostrato da /config history)")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.describe(entry_id="ID della voce di storico (mostrato da /admin config history)")
     async def rollback(self, interaction: discord.Interaction, entry_id: int) -> None:
         guild = interaction.guild
         if guild is None:
@@ -449,10 +450,12 @@ class ConfigHistoryCog(commands.Cog):
             ephemeral=True,
         )
 
-    @config_group.command(
-        name="reset", description="[Admin] Azzera la configurazione di questo server."
+    @comando_di_gruppo(
+        "admin",
+        nome="reset",
+        descrizione="Azzera la configurazione di questo server.",
+        sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def reset(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
@@ -465,15 +468,17 @@ class ConfigHistoryCog(commands.Cog):
         await interaction.response.send_message(
             "⚠️ Confermi di voler disattivare **tutti** i moduli e azzerare "
             "**tutte** le impostazioni di questo server? L'operazione è "
-            "annullabile con /config rollback.",
+            "annullabile con /admin config rollback.",
             view=view,
             ephemeral=True,
         )
 
-    @config_group.command(
-        name="export", description="[Admin] Esporta la configurazione di questo server in un file."
+    @comando_di_gruppo(
+        "admin",
+        nome="export",
+        descrizione="Esporta la configurazione di questo server in un file.",
+        sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def export(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
@@ -496,17 +501,19 @@ class ConfigHistoryCog(commands.Cog):
             filename=f"iyokai-config-{guild.id}.json",
         )
         await interaction.response.send_message(
-            "Configurazione esportata. Usa /config import su un altro server "
+            "Configurazione esportata. Usa /admin config import su un altro server "
             "per applicarla (SOVRASCRIVE tutto ciò che c'è già).",
             file=file,
             ephemeral=True,
         )
 
-    @config_group.command(
-        name="import", description="[Admin] Importa una configurazione da un file esportato con /config export."
+    @comando_di_gruppo(
+        "admin",
+        nome="import",
+        descrizione="Importa una configurazione da un file esportato con /admin config export.",
+        sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.describe(file="Il file .json prodotto da /config export")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.describe(file="Il file .json prodotto da /admin config export")
     async def import_config(
         self, interaction: discord.Interaction, file: discord.Attachment
     ) -> None:
@@ -529,7 +536,7 @@ class ConfigHistoryCog(commands.Cog):
             dati = leggi_json_import(grezzo)
         except (ValueError, RecursionError):
             await interaction.response.send_message(
-                "Il file non è un JSON valido (probabilmente non prodotto da /config export).",
+                "Il file non è un JSON valido (probabilmente non prodotto da /admin config export).",
                 ephemeral=True,
             )
             return
@@ -554,30 +561,35 @@ class ConfigHistoryCog(commands.Cog):
         await interaction.response.send_message(
             f"✅ Configurazione importata: {len(dati['modules'])} moduli, "
             f"{len(dati['settings'])} impostazioni, lingua `{dati['language']}`. "
-            f"Annullabile con /config rollback.",
+            f"Annullabile con /admin config rollback.",
             ephemeral=True,
         )
 
     # ================================================================
     # SPEC.md §2.3 — Lingua per server
     # ================================================================
-    language_group = app_commands.Group(
-        name="language", description="Lingua del server (infrastruttura, vedi SPEC.md §2.3).", parent=config_group
+    @comando_di_gruppo(
+        "admin",
+        nome="show",
+        descrizione="Mostra la lingua impostata per questo server.",
+        sottogruppo=("lingua", "Lingua del server"),
     )
-
-    @language_group.command(name="show", description="Mostra la lingua impostata per questo server.")
     async def language_show(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             return
         lingua = await db.get_guild_language(interaction.guild.id)
         await interaction.response.send_message(f"Lingua attuale: `{lingua}`.", ephemeral=True)
 
-    @language_group.command(name="set", description="[Admin] Imposta la lingua di questo server.")
+    @comando_di_gruppo(
+        "admin",
+        nome="set",
+        descrizione="Imposta la lingua di questo server.",
+        sottogruppo=("lingua", "Lingua del server"),
+    )
     @app_commands.describe(language="Codice lingua")
     @app_commands.choices(
         language=[app_commands.Choice(name=l, value=l) for l in SUPPORTED_LANGUAGES]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def language_set(
         self, interaction: discord.Interaction, language: app_commands.Choice[str]
     ) -> None:

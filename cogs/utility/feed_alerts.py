@@ -3,7 +3,7 @@ cogs/utility/feed_alerts.py
 ==============================
 Comandi di Custom RSS/Alert (SPEC.md §10.3, §10.7, §10.8, §10.9). Il
 polling vero vive in core/feed_watcher.py (servizio bot-wide, non
-legato a questo cog) — qui solo /alerts add|remove|list per
+legato a questo cog) — qui solo /moduli alert feed|rimuovi|elenco per
 gestire le sottoscrizioni.
 """
 
@@ -19,6 +19,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.custom_webhook_logic import build_webhook_url
 from core.database import db
@@ -32,16 +33,15 @@ from core.safe_http import url_e_sicuro
 MODULE_FEED_ALERTS = "feed_alerts"
 
 
-class FeedAlertsCog(commands.Cog):
+class FeedAlertsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    alerts_group = app_commands.Group(
-        name="alerts", description="Notifiche automatiche da feed RSS/Atom esterni."
-    )
-
-    @alerts_group.command(
-        name="add", description="[Admin] Segui un feed RSS/Atom (YouTube, Reddit, o qualsiasi altro)."
+    @comando_di_gruppo(
+        "moduli",
+        nome="feed",
+        descrizione="Segui un feed RSS/Atom (YouTube, Reddit, o qualsiasi altro).",
+        sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
     )
     @app_commands.describe(
         feed_url="URL del feed RSS/Atom — es. youtube.com/feeds/videos.xml?channel_id=... o reddit.com/r/nome/new/.rss",
@@ -49,7 +49,6 @@ class FeedAlertsCog(commands.Cog):
         label="Nome descrittivo, usato nel messaggio (es. 'Canale YouTube di Mario')",
         message_template="Template personalizzato (facoltativo). Placeholder: {label} {title} {link}",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def add(
         self,
         interaction: discord.Interaction,
@@ -105,9 +104,11 @@ class FeedAlertsCog(commands.Cog):
             ephemeral=True,
         )
 
-    @alerts_group.command(
-        name="webhook-create",
-        description="[Admin] Crea un webhook custom: servizi terzi possono pubblicare in un canale.",
+    @comando_di_gruppo(
+        "moduli",
+        nome="webhook",
+        descrizione="Crea un webhook custom: servizi terzi possono pubblicare in un canale.",
+        sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
     )
     @app_commands.describe(
         channel="Canale dove pubblicare i messaggi ricevuti",
@@ -116,7 +117,6 @@ class FeedAlertsCog(commands.Cog):
             "Template personalizzato (facoltativo). Placeholder: {label} {title} {message} {url}"
         ),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def webhook_create(
         self,
         interaction: discord.Interaction,
@@ -179,18 +179,20 @@ class FeedAlertsCog(commands.Cog):
             f"✅ Webhook creato (ID `WH-{webhook.id}`) per **{label}**.\n\n{corpo_url}\n\n"
             f"⚠️ Questo URL/token è SEGRETO: chiunque lo conosca può pubblicare in "
             f"{channel.mention}. Non lo mostrerò di nuovo — se lo perdi, crealo di nuovo "
-            f"e rimuovi quello vecchio con /alerts remove."
+            f"e rimuovi quello vecchio con /moduli alert rimuovi."
             f"{avviso_riavvio}",
             ephemeral=True,
         )
 
-    @alerts_group.command(
-        name="remove", description="[Admin] Rimuove una sottoscrizione feed, Twitch o un webhook."
+    @comando_di_gruppo(
+        "moduli",
+        nome="rimuovi",
+        descrizione="Rimuove una sottoscrizione feed, Twitch o un webhook.",
+        sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
     )
     @app_commands.describe(
-        subscription_id="ID con prefisso, es. RSS-3, TW-2 o WH-1 (vedi /alerts list)"
+        subscription_id="ID con prefisso, es. RSS-3, TW-2 o WH-1 (vedi /moduli alert elenco)"
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def remove(self, interaction: discord.Interaction, subscription_id: str) -> None:
         guild = interaction.guild
         if guild is None:
@@ -199,7 +201,7 @@ class FeedAlertsCog(commands.Cog):
         prefisso, _, numero_testo = subscription_id.upper().partition("-")
         if not numero_testo.isdigit():
             await interaction.response.send_message(
-                "Formato ID non valido. Usa il formato mostrato da /alerts list, "
+                "Formato ID non valido. Usa il formato mostrato da /moduli alert elenco, "
                 "es. RSS-3, TW-2 o WH-1.",
                 ephemeral=True,
             )
@@ -217,7 +219,7 @@ class FeedAlertsCog(commands.Cog):
         else:
             await interaction.response.send_message(
                 "Prefisso non riconosciuto. Usa RSS-<numero>, TW-<numero>, YT-<numero> "
-                "o WH-<numero> (vedi /alerts list).",
+                "o WH-<numero> (vedi /moduli alert elenco).",
                 ephemeral=True,
             )
             return
@@ -230,15 +232,17 @@ class FeedAlertsCog(commands.Cog):
                 ephemeral=True,
             )
 
-    @alerts_group.command(
-        name="add-twitch", description="[Admin] Notifica quando uno streamer Twitch va live/offline."
+    @comando_di_gruppo(
+        "moduli",
+        nome="twitch",
+        descrizione="Notifica quando uno streamer Twitch va live/offline.",
+        sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
     )
     @app_commands.describe(
         twitch_login="Nome utente Twitch (es. 'shroud', non l'URL completo)",
         channel="Canale dove pubblicare le notifiche",
         label="Nome descrittivo, usato nel messaggio",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def add_twitch(
         self,
         interaction: discord.Interaction,
@@ -275,16 +279,17 @@ class FeedAlertsCog(commands.Cog):
             ephemeral=True,
         )
 
-    @alerts_group.command(
-        name="add-youtube-live",
-        description="[Admin] Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).",
+    @comando_di_gruppo(
+        "moduli",
+        nome="youtube-live",
+        descrizione="Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).",
+        sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
     )
     @app_commands.describe(
         youtube_channel_id="ID del canale YouTube (es. 'UCxxxxxxxxxxxxxxxxxxxxxx', non l'URL)",
         channel="Canale dove pubblicare le notifiche",
         label="Nome descrittivo, usato nel messaggio",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def add_youtube_live(
         self,
         interaction: discord.Interaction,
@@ -331,8 +336,12 @@ class FeedAlertsCog(commands.Cog):
             ephemeral=True,
         )
 
-    @alerts_group.command(name="list", description="[Admin] Mostra i feed seguiti da questo server.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "moduli",
+        nome="elenco",
+        descrizione="Mostra i feed seguiti da questo server.",
+        sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
+    )
     async def list_alerts(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
