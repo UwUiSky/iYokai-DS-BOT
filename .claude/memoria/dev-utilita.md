@@ -1,15 +1,15 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G4 chiuso
+11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G5 chiuso
 
 ## In corso
 - Previsione: 6 gruppi (G1 sticky/benvenuto/programmati/promemoria; G2 role menu; G3 suggerimenti+richieste;
   G4 owner_premium; G5 modules_updated; G6 chiusura). Migrazioni 0027 (ping_ruoli) usata; 0028 libera.
-- Prossimo: G5 `modules_updated` (M 10.13): wizard in setup.py, rollback/reset/import in config_history.py; helper core/modules_updated_logic.py; test prima: tests/test_modules_updated.py.
+- Prossimo: G6 chiusura: suite dei test toccati, smoke --base 90bbeb2, VERIFICA_LIVE.md, hash nell'AUDIT, push del ramo, rapporto.
 
 ## Fatto
-- #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7, G3 10.9, G4 10.12 fatti (AUDIT_UTILITA.md).
+- #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7, G3 10.9, G4 10.12, G5 10.13 fatti (AUDIT_UTILITA.md).
 
 ## Cose imparate
 - Ping nei testi admin: `core/admin_mentions_logic.py` (menzioni_ammesse, puo_pingare_ruoli); il permesso si salva a configurazione.
@@ -19,6 +19,7 @@
 - Role menu: pubblicare PRIMA (`_pubblica_menu` con l'elenco futuro), salvare DOPO; `valida_emoji` in core/role_menu_logic.
 - Decisioni staff (suggerimenti, richieste): `UPDATE … WHERE status='pending' RETURNING`, mai leggi-poi-scrivi.
 - Elenchi dell'owner: `invia_a_pagine` (cogs/utility/_owner_pagine.py); in una vista con decoratori i bottoni sono children prima del Select aggiunto in __init__.
+- `modules_updated`: da ogni percorso che cambia i moduli; per operazioni in blocco confrontare lo stato prima/dopo (core/modules_updated_logic.py). Nei test non chiamare un modulo `setup_module` (pytest lo prende per hook).
 - Registro: i comandi di gruppo si provano con `cog.metodo.callback(cog, interaction, ...)`; limiti con `comando_nel_gruppo(...).to_dict(bot.tree)`.
 (vedi sotto: le trappole di #147/#67 restano valide)
 - Lo stato (last_seen, last_known_live) avanza solo dopo `send` riuscito; ETag solo se nulla da ritentare.

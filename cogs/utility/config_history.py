@@ -23,6 +23,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
+from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.premium import registry
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
@@ -302,9 +303,18 @@ class RollbackConfirmView(BaseView):
             await interaction.response.edit_message(content=f"❌ {errore}", view=self)
             return
 
+        # M 10.13: il rollback può cambiare più moduli (reset/import): si
+        # confronta lo stato prima e dopo per emettere `modules_updated`.
+        guild_id = interaction.guild.id if interaction.guild else None
+        prima = await stato_moduli(db, guild_id) if guild_id else {}
         riuscito = await db.rollback_config_change(
             self.entry_id, rolled_back_by=interaction.user.id
         )
+        if riuscito and guild_id:
+            emetti_modules_updated(
+                interaction.client, guild_id, prima, await stato_moduli(db, guild_id),
+                interaction.user.id,
+            )
         for child in self.children:
             child.disabled = True
         self.stop()
@@ -356,7 +366,12 @@ class ResetConfirmView(BaseView):
             )
             return
 
+        prima = await stato_moduli(db, self.guild_id)
         await db.reset_guild_config(self.guild_id, changed_by=interaction.user.id)
+        emetti_modules_updated(
+            interaction.client, self.guild_id, prima, await stato_moduli(db, self.guild_id),
+            interaction.user.id,
+        )
         for child in self.children:
             child.disabled = True
         self.stop()
@@ -551,12 +566,17 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return
 
+        prima = await stato_moduli(db, guild.id)
         await db.import_full_config(
             guild.id,
             modules=dati["modules"],
             settings=dati["settings"],
             language=dati["language"],
             changed_by=interaction.user.id,
+        )
+        emetti_modules_updated(
+            interaction.client, guild.id, prima, await stato_moduli(db, guild.id),
+            interaction.user.id,
         )
         await interaction.response.send_message(
             f"✅ Configurazione importata: {len(dati['modules'])} moduli, "
