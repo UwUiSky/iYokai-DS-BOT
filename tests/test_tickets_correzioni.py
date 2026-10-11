@@ -182,14 +182,14 @@ async def test_add_e_remove_errore_di_discord_risposta_chiara(nome):
 
 
 # ====================================================================
-# M 6.7 — /ticket-support-role remove toglie anche il ruolo storico
+# M 6.7 — //gestione ticket ruolo-remove toglie anche il ruolo storico
 # ====================================================================
 async def test_remove_toglie_il_ruolo_impostato_con_ticket_setup():
     server = Server()
     ruolo = fake_role(ID_RUOLO_SUPPORTO, "Supporto")
     server.guild.get_role.side_effect = lambda role_id: ruolo if role_id == ID_RUOLO_SUPPORTO else None
     cog = TicketsCog(bot=None)
-    # Il ruolo "storico" lo scrive /ticket-setup.
+    # Il ruolo "storico" lo scrive /gestione ticket setup.
     await cog.ticket_setup.callback(cog, server.interazione(server.staff()), server.categoria, ruolo)
     assert await modulo._support_role_ids(ID_SERVER) == [ID_RUOLO_SUPPORTO]
 
@@ -299,14 +299,16 @@ def _opzioni_del_menu(interazione) -> list[dict]:
 async def test_ticket_category_add_dichiara_i_limiti_delle_opzioni():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(TicketsCog(bot))
-
-    gruppo = bot.tree.get_command("ticket-category")
-    for nome in ("add", "remove"):
-        opzioni = {o["name"]: o for o in gruppo.get_command(nome).to_dict(bot.tree)["options"]}
-        assert opzioni["label"]["min_length"] == 1
-        assert opzioni["label"]["max_length"] == 100
-    opzioni = {o["name"]: o for o in gruppo.get_command("add").to_dict(bot.tree)["options"]}
-    assert opzioni["emoji"]["max_length"] <= 100
+    try:
+        gruppo = bot.tree.get_command("gestione").get_command("ticket")
+        for nome in ("categoria-add", "categoria-remove"):
+            opzioni = {o["name"]: o for o in gruppo.get_command(nome).to_dict(bot.tree)["options"]}
+            assert opzioni["label"]["min_length"] == 1
+            assert opzioni["label"]["max_length"] == 100
+        opzioni = {o["name"]: o for o in gruppo.get_command("categoria-add").to_dict(bot.tree)["options"]}
+        assert opzioni["emoji"]["max_length"] <= 100
+    finally:
+        await bot.remove_cog("TicketsCog")
 
 
 async def test_la_ventiseiesima_categoria_viene_rifiutata():

@@ -73,11 +73,6 @@ AUDIENCE: dict[str, str] = {
     "nonstop-main": OWNER,
     # Ticket
     "ticket": PUBLIC,
-    "ticket-setup": STAFF,
-    "ticket-panel": STAFF,
-    "ticket-category": STAFF,
-    "ticket-support-role": STAFF,
-    "ticket-stats": STAFF,
     # Vocali temporanei
     "voice": PUBLIC,
     "voicetemp-setup": STAFF,
@@ -89,6 +84,7 @@ AUDIENCE: dict[str, str] = {
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "admin": STAFF,  # gruppo condiviso
     "moduli": STAFF,  # gruppo condiviso
+    "gestione": STAFF,  # gruppo condiviso
     "greetings": STAFF,
     "rolemenu": STAFF,
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale

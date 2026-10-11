@@ -29,26 +29,9 @@ async def test_tickets_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert {
-        "ticket-setup",
-        "ticket-panel",
-        "ticket-category",
-        "ticket-support-role",
-        "ticket-stats",
-    } <= comandi
-
-    gruppi = {c.name: c for c in bot.tree.get_commands() if isinstance(c, app_commands.Group)}
-
-    ticket_group = gruppi["ticket"]
-    sottocomandi = {c.name for c in ticket_group.commands}
-    assert {"claim", "add", "remove", "rename", "priority", "close", "forceclose"} <= sottocomandi
-
-    categoria_group = gruppi["ticket-category"]
-    assert {c.name for c in categoria_group.commands} == {"add", "remove", "list"}
-
-    supporto_group = gruppi["ticket-support-role"]
-    assert {c.name for c in supporto_group.commands} == {"add", "remove", "list"}
+    # Nessun vecchio comando di primo livello: tutto sta in /ticket e /gestione ticket.
+    top = {c.name for c in bot.tree.get_commands()}
+    assert not top & {"ticket-setup", "ticket-panel", "ticket-category", "ticket-support-role", "ticket-stats"}
 
     assert "on_message" in bot.extra_events
 
