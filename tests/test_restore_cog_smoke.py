@@ -1,13 +1,14 @@
 """
 tests/test_restore_cog_smoke.py
 ===================================
-Smoke test del cog Restore (/configura-restore, /restore-users).
+Smoke test del cog Restore (/admin backup restore-modo|restore-utenti).
 """
 
 import discord
 from discord.ext import commands
 
 from cogs.utility.restore import setup as restore_setup
+from tests.support.percorsi import percorsi_del_gruppo
 
 
 async def test_restore_cog_si_carica_correttamente():
@@ -16,5 +17,4 @@ async def test_restore_cog_si_carica_correttamente():
 
     assert bot.get_cog("RestoreCog") is not None
 
-    nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"configura-restore", "restore-users"} <= nomi_comandi
+    assert {"backup restore-modo", "backup restore-utenti"} <= percorsi_del_gruppo("admin")

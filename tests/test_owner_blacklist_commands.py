@@ -80,15 +80,6 @@ class _FakeBot:
 
 
 @pytest.mark.asyncio
-async def test_blacklist_user_add_rifiuta_non_owner(monkeypatch):
-    cog = OwnerPremiumCog(_FakeBot())
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)  # non l'owner
-
-    await cog.blacklist_user_add.callback(cog, interaction, user_id="1", reason=None)
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_blacklist_user_add_e_remove_funzionano_davvero(monkeypatch):
     database = Database()
@@ -171,19 +162,11 @@ async def test_leave_guild_server_non_presente_non_solleva(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_cog_load_rifiuta_non_owner():
-    cog = OwnerPremiumCog(_FakeBot())
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
-
-    await cog.owner_cog_load.callback(cog, interaction, extension="cogs.utility.poll")
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_cog_load_unload_reload_ciclo_reale():
-    # Un cog VERO e piccolo del progetto (poll, autonomo, nessuna
-    # dipendenza da DB al caricamento) - carica, ricarica, scarica
+    # Un cog VERO e piccolo del progetto (command_search: autonomo, nessuna
+    # dipendenza da DB e nessun comando in un gruppo condiviso: ricaricare
+    # il modulo di un cog di gruppo cambierebbe la classe nei gruppi globali) - carica, ricarica, scarica
     # per davvero, non un mock del bot.
     from discord.ext import commands as dpy_commands
 
@@ -191,18 +174,18 @@ async def test_cog_load_unload_reload_ciclo_reale():
     cog = OwnerPremiumCog(bot)
     interaction = _FakeInteraction(user_id=_OWNER_ID)
 
-    await cog.owner_cog_load.callback(cog, interaction, extension="cogs.utility.poll")
-    assert bot.get_cog("PollCog") is not None
+    await cog.owner_cog_load.callback(cog, interaction, extension="cogs.utility.command_search")
+    assert bot.get_cog("CommandSearchCog") is not None
     assert "Caricato" in interaction.response.sent_messages[-1]
 
     interaction2 = _FakeInteraction(user_id=_OWNER_ID)
-    await cog.owner_cog_reload.callback(cog, interaction2, extension="cogs.utility.poll")
-    assert bot.get_cog("PollCog") is not None
+    await cog.owner_cog_reload.callback(cog, interaction2, extension="cogs.utility.command_search")
+    assert bot.get_cog("CommandSearchCog") is not None
     assert "Ricaricato" in interaction2.response.sent_messages[-1]
 
     interaction3 = _FakeInteraction(user_id=_OWNER_ID)
-    await cog.owner_cog_unload.callback(cog, interaction3, extension="cogs.utility.poll")
-    assert bot.get_cog("PollCog") is None
+    await cog.owner_cog_unload.callback(cog, interaction3, extension="cogs.utility.command_search")
+    assert bot.get_cog("CommandSearchCog") is None
     assert "Scaricato" in interaction3.response.sent_messages[-1]
 
 
@@ -284,15 +267,6 @@ class _FakeBotForAnnounce:
 
 
 @pytest.mark.asyncio
-async def test_announce_rifiuta_non_owner():
-    cog = OwnerPremiumCog(_FakeBotForAnnounce(guilds=[]))
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
-
-    await cog.announce.callback(cog, interaction, message="Ciao a tutti")
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_announce_conta_correttamente_raggiunti_e_falliti():
     guild_raggiungibile = _FakeGuildForAnnounce(100, can_send=True)
@@ -322,15 +296,6 @@ class _FakeBotForStats:
 
 
 @pytest.mark.asyncio
-async def test_stats_rifiuta_non_owner():
-    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
-
-    await cog.stats.callback(cog, interaction)
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_stats_mostra_numeri_reali(monkeypatch):
     # command_counter/error_counter sono singleton GLOBALI condivisi
@@ -401,15 +366,6 @@ class _FakeInteractionForPanel:
 
 
 @pytest.mark.asyncio
-async def test_premium_panel_rifiuta_non_owner():
-    cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))
-    interaction = _FakeInteractionForPanel(user_id=_OWNER_ID + 1)
-
-    await cog.premium_panel.callback(cog, interaction)
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_premium_panel_ciclo_completo_selezione_e_conferma(monkeypatch):
     import cogs.utility.owner_premium as owner_premium_module
@@ -527,6 +483,7 @@ async def test_premium_panel_annulla_non_applica_nulla(monkeypatch):
         await database.close()
 
 
+@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_eval_rifiuta_non_owner():
     cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))

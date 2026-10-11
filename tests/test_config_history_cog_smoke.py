@@ -8,6 +8,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from tests.support.percorsi import percorsi_del_gruppo
 from cogs.utility.config_history import (
     ResetConfirmView,
     RollbackConfirmView,
@@ -21,21 +22,11 @@ async def test_config_history_cog_si_carica_correttamente():
 
     assert bot.get_cog("ConfigHistoryCog") is not None
 
-    config_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "config":
-            config_group = command
-            break
-    assert config_group is not None
-
-    sottocomandi = {c.name for c in config_group.commands}
-    assert {"history", "rollback", "reset", "export", "import", "language"} <= sottocomandi
-
-    language_group = next(
-        c for c in config_group.commands
-        if isinstance(c, app_commands.Group) and c.name == "language"
-    )
-    assert {c.name for c in language_group.commands} == {"show", "set"}
+    percorsi = percorsi_del_gruppo("admin")
+    assert {
+        "config history", "config rollback", "config reset", "config export", "config import",
+        "lingua show", "lingua set",
+    } <= percorsi
 
 
 def test_rollback_confirm_view_si_istanzia_correttamente():

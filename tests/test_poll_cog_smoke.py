@@ -11,6 +11,7 @@ from discord.ext import commands
 
 from core.database import Database
 from core.premium import registry
+from tests.support.percorsi import comando_nel_gruppo, percorsi_del_gruppo
 from tests.support.discord_fakes import fake_interaction
 from cogs.utility.poll import MODULE_POLL, setup as poll_setup
 
@@ -25,8 +26,7 @@ async def test_poll_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert "poll" in nomi_comandi
+    assert "poll" in percorsi_del_gruppo("utility")
 
 
 async def test_poll_dichiara_i_limiti_di_discord_su_domanda_e_risposte():
@@ -39,7 +39,7 @@ async def test_poll_dichiara_i_limiti_di_discord_su_domanda_e_risposte():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await poll_setup(bot)
 
-    opzioni = {o["name"]: o for o in bot.tree.get_command("poll").to_dict(bot.tree)["options"]}
+    opzioni = {o["name"]: o for o in comando_nel_gruppo("utility", "poll").to_dict(bot.tree)["options"]}
 
     assert opzioni["question"]["max_length"] == 300
     risposte = [nome for nome in opzioni if nome.startswith("option")]

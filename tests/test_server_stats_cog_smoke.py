@@ -8,6 +8,7 @@ import discord
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from cogs.utility.server_stats import (
     MODULE_SERVER_STATS,
     setup as server_stats_setup,
@@ -24,5 +25,4 @@ async def test_server_stats_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert "serverstats" in nomi_comandi
+    assert "serverstats" in percorsi_del_gruppo("utility")

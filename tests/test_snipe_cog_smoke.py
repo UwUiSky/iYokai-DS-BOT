@@ -15,6 +15,7 @@ from cogs.utility.snipe import (
     MODULE_REACTIONSNIPE,
     setup as snipe_setup,
 )
+from tests.support.percorsi import percorsi_del_gruppo
 
 
 async def test_snipe_cog_si_carica_e_i_listener_sono_registrati():
@@ -28,8 +29,7 @@ async def test_snipe_cog_si_carica_e_i_listener_sono_registrati():
     ghost_ping_module = registry.get(MODULE_GHOST_PING)
     assert ghost_ping_module is not None
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert "reactionsnipe" in comandi
+    assert "reactionsnipe" in percorsi_del_gruppo("utility")
 
     eventi_attesi = {"on_raw_reaction_remove", "on_message", "on_raw_message_delete"}
     assert eventi_attesi <= set(bot.extra_events.keys()), (

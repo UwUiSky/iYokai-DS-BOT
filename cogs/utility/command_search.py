@@ -1,14 +1,14 @@
 """
 cogs/utility/command_search.py
 ==================================
-/search: interroga l'albero comandi VERO del bot (bot.tree, non un
+/-cerca-comando: interroga l'albero comandi VERO del bot (bot.tree, non un
 elenco statico che rischierebbe di disallinearsi) per trovare il
 comando più pertinente a una descrizione in linguaggio naturale.
 Nessun risultato → propone di aprire una richiesta verso lo
 sviluppatore, riusando il modal GIÀ ESISTENTE di
 cogs/utility/custom_command_requests.py — non uno nuovo.
 
-Nessun gate is_module_active_for_guild: come /request-custom-command,
+Nessun gate is_module_active_for_guild: come /utility richiedi-comando,
 è uno strumento di scoperta rivolto a chiunque usi il bot, non una
 feature che un admin di server attiva o disattiva per i propri membri.
 """
@@ -53,11 +53,16 @@ class _NoResultsView(BaseView):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
+# Comando di PRIMO livello (non in /utility): il trattino davanti lo fa salire
+# in lista (decisione dell'owner, 06/10/2026). La regex dei nomi lo ammette.
+NOME_CERCA_COMANDO = "-cerca-comando"
+
+
 class CommandSearchCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="search", description="Cerca un comando per descrizione.")
+    @app_commands.command(name=NOME_CERCA_COMANDO, description="Cerca un comando per descrizione.")
     @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno' (massimo 100 caratteri)")
     async def search(
         self,

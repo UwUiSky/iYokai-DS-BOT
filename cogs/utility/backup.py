@@ -1,8 +1,8 @@
 """
 cogs/utility/backup.py
 ======================
-Comandi /define-main, /define-backup e /promuovi-backup del Backup System.
-/restore-users è in cogs/utility/restore.py.
+Comandi /admin backup main, /admin backup crea e /admin backup promuovi del Backup System.
+/admin backup restore-utenti è in cogs/utility/restore.py.
 Funzioni coperte: SPEC §11.12, §11.13
 """
 
@@ -17,17 +17,20 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.repositories.backup_repo import backup_repo
 
 
-class BackupCog(commands.Cog):
+class BackupCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(
-        name="define-main", description="[Admin] Registra questo server come 'main' per il Backup System."
+    @comando_di_gruppo(
+        "admin",
+        nome="main",
+        descrizione="Registra questo server come 'main' per il Backup System.",
+        sottogruppo=("backup", "Backup e ripristino del server"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def define_main(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
@@ -39,15 +42,16 @@ class BackupCog(commands.Cog):
         await backup_repo.define_main(guild.id)
         await interaction.response.send_message(
             "✅ Questo server è ora registrato come 'main' per il Backup System. "
-            "Usa /define-backup per accodare la creazione di un backup.",
+            "Usa /admin backup crea per accodare la creazione di un backup.",
             ephemeral=True,
         )
 
-    @app_commands.command(
-        name="define-backup",
-        description="[Admin] Accoda la creazione di un backup per questo server.",
+    @comando_di_gruppo(
+        "admin",
+        nome="crea",
+        descrizione="Accoda la creazione di un backup per questo server.",
+        sottogruppo=("backup", "Backup e ripristino del server"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def define_backup(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
@@ -59,7 +63,7 @@ class BackupCog(commands.Cog):
         coppia = await backup_repo.get_pair(guild.id)
         if coppia is None:
             await interaction.response.send_message(
-                "Devi prima registrare questo server con /define-main.", ephemeral=True
+                "Devi prima registrare questo server con /admin backup main.", ephemeral=True
             )
             return
 
@@ -78,11 +82,12 @@ class BackupCog(commands.Cog):
             ephemeral=True,
         )
 
-    @app_commands.command(
-        name="promuovi-backup",
-        description="[Admin] Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.",
+    @comando_di_gruppo(
+        "admin",
+        nome="promuovi",
+        descrizione="Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.",
+        sottogruppo=("backup", "Backup e ripristino del server"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def promuovi_backup(self, interaction: discord.Interaction) -> None:
         """
         SPEC.md §11.13 — auto-propagazione: quando un server backup

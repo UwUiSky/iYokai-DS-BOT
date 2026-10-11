@@ -22,6 +22,7 @@ from discord.ext import commands
 from core.database import Database
 from core.premium import PremiumModule
 from cogs.utility.setup import SetupView, setup as setup_cog_setup
+from tests.support.percorsi import percorsi_del_gruppo
 
 
 async def test_setup_cog_si_carica_correttamente():
@@ -30,8 +31,7 @@ async def test_setup_cog_si_carica_correttamente():
 
     assert bot.get_cog("SetupCog") is not None
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"setup", "setup-wizard"} <= comandi
+    assert {"setup attiva", "setup wizard"} <= percorsi_del_gruppo("admin")
 
 
 class _FakeResponse:

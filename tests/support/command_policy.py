@@ -85,31 +85,13 @@ AUDIENCE: dict[str, str] = {
     "voicetemp-cap": STAFF,
     "voicetemp-platform-setup": STAFF,
     # Utility
-    "ping": PUBLIC,
-    "poll": PUBLIC,
-    "reminder": PUBLIC,
-    "search": PUBLIC,
-    "serverstats": PUBLIC,
-    "reactionsnipe": PUBLIC,
-    "suggest": PUBLIC,
-    "request-custom-command": PUBLIC,
-    "config": MIXED,
-    "setup": STAFF,
-    "setup-wizard": STAFF,
-    "alerts": STAFF,
+    "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
+    "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
+    "admin": STAFF,  # gruppo condiviso
+    "moduli": STAFF,  # gruppo condiviso
     "greetings": STAFF,
     "rolemenu": STAFF,
-    "schedule-message": STAFF,
-    "sticky": STAFF,
-    "suggestion-setup": STAFF,
-    "define-main": STAFF,
-    "define-backup": STAFF,
-    "promuovi-backup": STAFF,
-    "configura-restore": STAFF,
-    "restore-users": STAFF,
-    # Owner
-    "owner": OWNER,
-    "custom-command-requests-setup": OWNER,
+    # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
 
 # I gruppi condivisi di F7 hanno già permessi e guild_only: fuori dai cricchetti.

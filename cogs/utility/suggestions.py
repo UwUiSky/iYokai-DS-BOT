@@ -19,6 +19,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.suggestion_repo import Suggestion, suggestion_repo
@@ -53,7 +54,7 @@ def _build_embed(suggestion: Suggestion) -> discord.Embed:
     return embed
 
 
-class SuggestionsCog(commands.Cog):
+class SuggestionsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -127,11 +128,13 @@ class SuggestionsCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    @app_commands.command(
-        name="suggestion-setup", description="[Admin] Imposta il canale dei suggerimenti."
+    @comando_di_gruppo(
+        "admin",
+        nome="canale-suggerimenti",
+        descrizione="Imposta il canale dei suggerimenti.",
+        sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
     @app_commands.describe(channel="Il canale dove pubblicare i suggerimenti")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def suggestion_setup(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
@@ -143,7 +146,11 @@ class SuggestionsCog(commands.Cog):
             f"I suggerimenti verranno pubblicati in {channel.mention}.", ephemeral=True
         )
 
-    @app_commands.command(name="suggest", description="Proponi un'idea per questo server.")
+    @comando_di_gruppo(
+        "utility",
+        nome="suggest",
+        descrizione="Proponi un'idea per questo server.",
+    )
     @app_commands.describe(text="Il tuo suggerimento")
     async def suggest(self, interaction: discord.Interaction, text: str) -> None:
         guild = interaction.guild
@@ -156,7 +163,7 @@ class SuggestionsCog(commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_SUGGESTIONS):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return
@@ -165,7 +172,7 @@ class SuggestionsCog(commands.Cog):
         if channel_id is None:
             await interaction.response.send_message(
                 "Il canale dei suggerimenti non è ancora stato configurato "
-                "(un amministratore deve usare /suggestion-setup).",
+                "(un amministratore deve usare /admin config canale-suggerimenti).",
                 ephemeral=True,
             )
             return
