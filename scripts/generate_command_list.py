@@ -64,22 +64,15 @@ async def main() -> None:
         # l'albero completo.
         comandi_top_level = bot.tree.get_commands()
 
-        # Per assegnare ogni comando alla categoria giusta, guardiamo
-        # a quale cog appartiene il comando (o il primo sottocomando
-        # per i gruppi), non al modulo che lo ha CARICATO per ultimo.
+        # La categoria è il gruppo di primo livello (D24); i comandi
+        # singoli di primo livello (-cerca-comando, -chiedi) vanno in "aiuto".
         for cmd in comandi_top_level:
             if isinstance(cmd, app_commands.Group):
                 sotto = walk_commands(cmd.commands, prefix=cmd.name)
-                riferimento = cmd.commands[0] if cmd.commands else None
+                categoria = cmd.name
             else:
                 sotto = [(cmd.name, cmd.description or "(nessuna descrizione)")]
-                riferimento = cmd
-
-            cog_nome = None
-            if riferimento is not None and riferimento.binding is not None:
-                cog_nome = type(riferimento.binding).__module__
-
-            categoria = cog_nome.split(".")[1] if cog_nome else "altro"
+                categoria = "aiuto"
             per_categoria[categoria].extend(sotto)
 
         _scrivi_markdown(per_categoria)
@@ -91,15 +84,23 @@ async def main() -> None:
 
 def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]]) -> None:
     etichette_categoria = {
-        "moderation": "Moderazione",
-        "security": "Sicurezza",
-        "utility": "Utility",
+        "aiuto": "Aiuto (primo livello)",
+        "admin": "Admin",
         "automod": "AutoMod",
-        "logging": "Logging",
-        "levels": "Livelli",
-        "tickets": "Ticket",
-        "voice_temp": "Canali Vocali Temporanei",
-        "altro": "Altro",
+        "clan": "Clan",
+        "fun": "Divertimento",
+        "gestione": "Gestione",
+        "level": "Livelli",
+        "log": "Log",
+        "mod": "Moderazione",
+        "modban": "Ban (modban)",
+        "moduli": "Moduli",
+        "music": "Musica",
+        "owner": "Owner",
+        "security": "Sicurezza",
+        "ticket": "Ticket",
+        "utility": "Utility",
+        "voice": "Vocali",
     }
 
     righe = [
