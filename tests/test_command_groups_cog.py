@@ -59,21 +59,21 @@ def _bot():
     return commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
 
-async def _autocompleta(self, interaction: discord.Interaction, current: str):
-    return [app_commands.Choice(name="a", value="a")]
-
-
 class CogProva(CogConGruppi, commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.gruppi_yokai = cg.costruisci_gruppi()
         self.chiamate = []
 
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _autocompleta(self, interaction: discord.Interaction, current: str):
+        return [app_commands.Choice(name="a", value="a")]
+
     @comando_di_gruppo("admin", nome="prova", descrizione="Comando di prova", sottogruppo=("config", "Impostazioni"))
     @app_commands.describe(valore="Un numero", scelta="Una scelta", testo="Un testo")
     @app_commands.choices(scelta=[app_commands.Choice(name="Uno", value="1")])
     @app_commands.rename(valore="numero")
-    @app_commands.autocomplete(testo=autocomplete_protetto(Livello.ADMIN)(_autocompleta))
+    @app_commands.autocomplete(testo=_autocompleta)
     @app_commands.checks.cooldown(1, 60)
     async def prova(
         self,
@@ -113,7 +113,7 @@ async def test_il_comando_registrato_ha_il_callback_legato_al_cog():
     await bot.add_cog(cog)
     cmd = _trova(cog)
     assert cmd.binding is cog
-    await cmd._do_call(_ix(), {"numero": 5, "scelta": "1", "testo": "t"})
+    await cmd._do_call(_ix(), {"valore": 5, "scelta": "1", "testo": "t"})
     assert cog.chiamate == [(5, "1", "t")]
 
 
@@ -123,9 +123,10 @@ async def test_describe_choices_rename_autocomplete_range_e_cooldown_restano():
     await bot.add_cog(cog)
     cmd = _trova(cog)
     par = {p.name: p for p in cmd.parameters}
-    assert set(par) == {"numero", "scelta", "testo"}
-    assert par["numero"].description == "Un numero"
-    assert (par["numero"].min_value, par["numero"].max_value) == (1, 9)
+    assert set(par) == {"valore", "scelta", "testo"}
+    assert par["valore"].display_name == "numero"
+    assert par["valore"].description == "Un numero"
+    assert (par["valore"].min_value, par["valore"].max_value) == (1, 9)
     assert [c.value for c in par["scelta"].choices] == ["1"]
     assert par["testo"].autocomplete is True
     assert len(cmd.checks) == 1  # il cooldown
@@ -133,9 +134,8 @@ async def test_describe_choices_rename_autocomplete_range_e_cooldown_restano():
 
 async def test_autocomplete_protetto_dentro_il_gruppo_blocca_chi_non_puo():
     cog = CogProva(_bot())
-    protetto = autocomplete_protetto(Livello.ADMIN)(_autocompleta)
-    assert await protetto(cog, _ix(), "") == []
-    assert len(await protetto(cog, _ix("manage_guild"), "")) == 1
+    assert await cog._autocompleta(_ix(), "") == []
+    assert len(await cog._autocompleta(_ix("manage_guild"), "")) == 1
 
 
 # ----------------------------------------------------------------------
@@ -161,7 +161,9 @@ async def test_check_can_run_blocca_chi_non_ha_il_livello():
     cmd = _trova(cog)
     with pytest.raises(ca.AccessoNegato):
         await cmd._check_can_run(_ix())
-    assert await cmd._check_can_run(_ix("manage_guild")) is True
+    ok = _ix("manage_guild")
+    ok.created_at = discord.utils.utcnow()  # serve al cooldown del comando
+    assert await cmd._check_can_run(ok) is True
     # il gruppo aperto non chiede niente
     assert await _trova(cog, "ticket", None, "aperto")._check_can_run(_ix()) is True
 

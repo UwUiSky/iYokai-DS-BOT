@@ -19,6 +19,8 @@ Pubblici:
 
 from __future__ import annotations
 
+from core.command_groups import nomi_gruppi
+
 PUBLIC = "public"
 STAFF = "staff"
 OWNER = "owner"
@@ -56,8 +58,7 @@ AUDIENCE: dict[str, str] = {
     "report-setup": STAFF,
     "report": PUBLIC,
     # Log
-    "logs-setup": STAFF,
-    "logs-status": STAFF,
+    "log": STAFF,  # gruppo condiviso (core/command_groups.py): canale, stato
     "logs": STAFF,
     # Fun
     "fun": PUBLIC,
@@ -134,11 +135,16 @@ AUDIENCE: dict[str, str] = {
     "custom-command-requests-setup": OWNER,
 }
 
+# I gruppi condivisi di F7 hanno già permessi e guild_only: fuori dai cricchetti.
+_GRUPPI_YOKAI = frozenset(nomi_gruppi())
+
 # Comandi staff/owner che oggi NON hanno default_permissions (tutti,
 # REVIEW.md §6 / SEC-1). Ogni fix toglie il nome da qui.
 KNOWN_MISSING_DEFAULT_PERMISSIONS: frozenset[str] = frozenset(
-    name for name, audience in AUDIENCE.items() if audience in (STAFF, OWNER)
+    name
+    for name, audience in AUDIENCE.items()
+    if audience in (STAFF, OWNER) and name not in _GRUPPI_YOKAI
 )
 
 # Comandi che oggi non sono guild_only (tutti, REVIEW.md LC-2).
-KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE)
+KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE) - _GRUPPI_YOKAI

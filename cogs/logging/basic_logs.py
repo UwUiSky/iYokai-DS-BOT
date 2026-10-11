@@ -37,6 +37,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.repositories.event_log_repo import event_log_repo
 
@@ -135,18 +136,17 @@ async def _get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
     return channel
 
 
-class BasicLogsCog(commands.Cog):
+class BasicLogsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     # ================================================================
     # Comandi di configurazione
     # ================================================================
-    @app_commands.command(
-        name="logs-setup", description="[Admin] Imposta il canale dei log del server."
+    @comando_di_gruppo(
+        "log", nome="canale", descrizione="Imposta il canale dei log del server."
     )
     @app_commands.describe(channel="Il canale dove verranno inviati i log")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def logs_setup(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
@@ -164,8 +164,8 @@ class BasicLogsCog(commands.Cog):
             ephemeral=True,
         )
 
-    @app_commands.command(
-        name="logs-status", description="Mostra il canale di log configurato."
+    @comando_di_gruppo(
+        "log", nome="stato", descrizione="Mostra il canale di log configurato."
     )
     async def logs_status(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -178,7 +178,7 @@ class BasicLogsCog(commands.Cog):
         channel_id = await db.get_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL)
         if channel_id is None:
             await interaction.response.send_message(
-                "Nessun canale di log configurato. Usa /logs-setup.",
+                "Nessun canale di log configurato. Usa /log canale.",
                 ephemeral=True,
             )
             return
