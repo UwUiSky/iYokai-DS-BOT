@@ -46,9 +46,11 @@
   visibilità per ruolo via OAuth (#148). Un `Group` semplice sotto un gruppo
   protetto fallisce: usare `GruppoYokai`.
 
+- 11/10: uniti #147 (pannello) e #67 (voci 11.1–11.10); suite 3565 verdi. Registro delle issue chiuse: `revisione/REGISTRO_RISOLTE.md` (aggiornarlo a ogni chiusura).
+
 ## Coda (in ordine)
 1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
-2. **#147, #148, SPEC/VERIFICA_LIVE di F7**, poi #66/#67 (utilità), #71, #69/#70.
+2. **#66 (utilità), #148, SPEC/VERIFICA_LIVE di F7**, poi (utilità), #71, #69/#70.
 3. Voci rimaste in #57–#62, #65 (ultimo commento di ognuna).
 4. Dopo F7: simboli SPEC, `COMMAND_LIST.md` rigenerato, prove live
    (`VERIFICA_LIVE.md`, anche l'ordine dei comandi).
