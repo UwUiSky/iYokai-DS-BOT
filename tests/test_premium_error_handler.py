@@ -8,6 +8,7 @@ chiama davvero (response.is_done, response.send_message,
 followup.send), per verificare la logica di smistamento.
 """
 
+import discord
 import pytest
 
 from core.premium import (
@@ -41,6 +42,12 @@ class _FakeInteraction:
     def __init__(self, already_done: bool = False) -> None:
         self.response = _FakeResponse(already_done)
         self.followup = _FakeFollowup()
+
+    async def original_response(self):
+        return _Messaggio(False)
+
+    async def delete_original_response(self) -> None:
+        raise AssertionError("non va cancellata una risposta già sostituita")
 
 
 @pytest.mark.asyncio
@@ -108,3 +115,115 @@ async def test_ogni_errore_incrementa_il_contatore_globale(monkeypatch):
     await handle_app_command_error(interaction, ModuleNotUnlockedError("spam_trap", "Spam Trap"))
 
     assert contatore_di_test.count_in_window() == 1
+
+
+# ----------------------------------------------------------------------
+# M 14.2 (BUG-13): un rifiuto per permessi non è un errore imprevisto
+# ----------------------------------------------------------------------
+import logging
+
+from discord import app_commands
+
+
+@pytest.mark.asyncio
+async def test_permessi_mancanti_messaggio_chiaro_e_log_info(caplog):
+    interaction = _FakeInteraction()
+    errore = app_commands.MissingPermissions(["manage_guild", "ban_members"])
+
+    with caplog.at_level(logging.DEBUG, logger="iyokai.premium"):
+        await handle_app_command_error(interaction, errore)
+
+    messaggio, ephemeral = interaction.response.sent_messages[0]
+    assert "permessi" in messaggio
+    assert "errore imprevisto" not in messaggio
+    assert ephemeral is True
+    livelli = {r.levelno for r in caplog.records if r.name == "iyokai.premium"}
+    assert livelli == {logging.INFO}
+
+
+@pytest.mark.asyncio
+async def test_no_private_message_messaggio_solo_server(caplog):
+    interaction = _FakeInteraction()
+    with caplog.at_level(logging.DEBUG, logger="iyokai.premium"):
+        await handle_app_command_error(interaction, app_commands.NoPrivateMessage())
+
+    messaggio, ephemeral = interaction.response.sent_messages[0]
+    assert "solo dentro un server" in messaggio
+    assert ephemeral is True
+    assert all(r.levelno == logging.INFO for r in caplog.records if r.name == "iyokai.premium")
+
+
+@pytest.mark.asyncio
+async def test_check_failure_generico_messaggio_non_consentito(caplog):
+    interaction = _FakeInteraction()
+    with caplog.at_level(logging.DEBUG, logger="iyokai.premium"):
+        await handle_app_command_error(interaction, app_commands.CheckFailure("no"))
+
+    messaggio, ephemeral = interaction.response.sent_messages[0]
+    assert "non puoi usare" in messaggio.lower()
+    assert "errore imprevisto" not in messaggio
+    assert ephemeral is True
+    assert all(r.levelno == logging.INFO for r in caplog.records if r.name == "iyokai.premium")
+
+
+# ----------------------------------------------------------------------
+# M 14.3: errore dopo un defer() pubblico -> mai visibile a tutti
+# ----------------------------------------------------------------------
+class _Flags:
+    def __init__(self, loading: bool) -> None:
+        self.loading = loading
+
+
+class _Messaggio:
+    def __init__(self, loading: bool) -> None:
+        self.flags = _Flags(loading)
+
+
+class _InterazioneConDefer(_FakeInteraction):
+    def __init__(self, loading: bool) -> None:
+        super().__init__(already_done=True)
+        self._loading = loading
+        self.eventi: list[str] = []
+        self.followup.sent_messages = []
+
+        async def _send(content: str, ephemeral: bool = False) -> None:
+            self.eventi.append("followup")
+            self.followup.sent_messages.append((content, ephemeral))
+
+        self.followup.send = _send
+
+    async def original_response(self):
+        return _Messaggio(self._loading)
+
+    async def delete_original_response(self) -> None:
+        self.eventi.append("delete")
+
+
+@pytest.mark.asyncio
+async def test_defer_pubblico_poi_errore_cancella_il_segnaposto_e_manda_effimero():
+    interaction = _InterazioneConDefer(loading=True)
+    await handle_app_command_error(interaction, RuntimeError("boom"))
+
+    assert interaction.eventi == ["delete", "followup"]
+    assert interaction.followup.sent_messages[0][1] is True
+
+
+@pytest.mark.asyncio
+async def test_risposta_gia_data_non_viene_cancellata():
+    interaction = _InterazioneConDefer(loading=False)
+    await handle_app_command_error(interaction, RuntimeError("boom"))
+
+    assert interaction.eventi == ["followup"]
+
+
+@pytest.mark.asyncio
+async def test_cancellazione_del_segnaposto_fallita_non_blocca_il_followup():
+    interaction = _InterazioneConDefer(loading=True)
+
+    async def _fallisce():
+        raise discord.NotFound(type("R", (), {"status": 404, "reason": "x"})(), "gone")
+
+    interaction.delete_original_response = _fallisce
+    await handle_app_command_error(interaction, RuntimeError("boom"))
+
+    assert interaction.eventi == ["followup"]

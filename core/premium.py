@@ -28,8 +28,6 @@ Nessuna parte di questo file, da sola, fa pagare qualcuno. Serve solo
 a predisporre l'interruttore, che oggi resta spento ovunque.
 """
 
-# DA FARE (issue #69, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §13 (Owner).
 # DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
 
@@ -47,6 +45,7 @@ from discord.ext import commands
 from core.config import config
 from core.bot_stats import error_counter
 from core.command_access import AccessoNegato
+from core.premium_cache import invalida_cache_premium, registra_invalidatore  # noqa: F401 (punto unico, #145)
 
 logger = logging.getLogger("iyokai.premium")
 
@@ -200,6 +199,9 @@ class PremiumRegistry:
                 f"e non può diventare premium."
             )
         module.is_premium_active = active
+        # #145: la flag vale per tutti i server, quindi si dimenticano
+        # tutti i verdetti in memoria.
+        invalida_cache_premium(None)
 
 
 # Istanza unica, condivisa da tutto il progetto.
@@ -442,6 +444,24 @@ def requires_module(module_name: str):
     return app_commands.check(predicate)
 
 
+async def _cancella_segnaposto_pubblico(interaction: discord.Interaction) -> None:
+    """
+    M 14.3: dopo un `defer()` pubblico il primo followup prende il posto del
+    "sta pensando..." e resta pubblico anche con ephemeral=True. Se la
+    risposta originale è ancora il segnaposto (flag `loading`) la si cancella:
+    il followup successivo nasce nuovo e quindi davvero effimero. Una risposta
+    già sostituita da un risultato non si tocca.
+    """
+    if not interaction.response.is_done():
+        return
+    try:
+        originale = await interaction.original_response()
+        if getattr(originale.flags, "loading", False):
+            await interaction.delete_original_response()
+    except discord.HTTPException:
+        logger.debug("Segnaposto non cancellabile (già sparito o scaduto).")
+
+
 async def handle_app_command_error(
     interaction: discord.Interaction, error: app_commands.AppCommandError
 ) -> None:
@@ -454,7 +474,8 @@ async def handle_app_command_error(
     solo su stderr (comportamento di default di discord.py se non si
     registra un error handler).
     """
-    if not isinstance(error, AccessoNegato):  # un rifiuto non è un errore
+    rifiuto = isinstance(error, app_commands.CheckFailure)
+    if not rifiuto or isinstance(error, PremiumCheckFailure):
         error_counter.record()  # SPEC.md §17.8, usato da /owner stats
 
     if isinstance(error, ModuleNotUnlockedError):
@@ -466,13 +487,26 @@ async def handle_app_command_error(
         )
     elif isinstance(error, AccessoNegato):
         message = error.messaggio
-    elif isinstance(error, PremiumCheckOutsideGuildError):
+    elif isinstance(error, (PremiumCheckOutsideGuildError, app_commands.NoPrivateMessage)):
         message = "Questo comando è disponibile solo dentro un server."
+    elif isinstance(error, app_commands.MissingPermissions):
+        message = "Non hai i permessi per usare questo comando."
+    elif isinstance(error, app_commands.BotMissingPermissions):
+        message = "Al bot mancano dei permessi per eseguire questo comando."
+    elif isinstance(error, app_commands.CheckFailure):
+        message = "Non puoi usare questo comando qui."
     else:
         logger.error(
             "Errore non gestito in un comando slash: %s", error, exc_info=error
         )
         message = "Si è verificato un errore imprevisto eseguendo il comando."
+
+    if rifiuto and not isinstance(error, PremiumCheckFailure):
+        # M 14.2 (BUG-13): un rifiuto per permessi o controlli non è un
+        # errore del bot: log INFO, nessun traceback.
+        logger.info("Comando rifiutato (%s): %s", type(error).__name__, error)
+
+    await _cancella_segnaposto_pubblico(interaction)
 
     # L'interazione potrebbe essere già stata "risposta" (es. un
     # comando che ha fatto defer() prima di sollevare l'errore):

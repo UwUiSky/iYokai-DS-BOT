@@ -27,6 +27,8 @@ from datetime import datetime
 
 import asyncpg
 
+from core.premium_cache import invalida_cache_premium
+
 
 @dataclass(frozen=True)
 class ModuleSubscription:
@@ -112,7 +114,8 @@ class ModuleSubscriptionRepository:
                     nuova_scadenza,
                     granted_by,
                 )
-                return nuova_scadenza
+        invalida_cache_premium(guild_id)  # #145: dopo il commit
+        return nuova_scadenza
 
     async def revoke(self, guild_id: int, module_name: str) -> bool:
         result = await self._pool.execute(
@@ -120,6 +123,7 @@ class ModuleSubscriptionRepository:
             guild_id,
             module_name,
         )
+        invalida_cache_premium(guild_id)  # #145
         return result.endswith(" 1")
 
     async def is_active(self, guild_id: int, module_name: str, now: datetime | None = None) -> bool:

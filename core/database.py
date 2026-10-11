@@ -32,6 +32,7 @@ import asyncpg
 
 from core.bounded_cache import BoundedCache
 from core.config import config
+from core.premium_cache import invalida_cache_premium
 
 
 @dataclass(frozen=True)
@@ -556,12 +557,14 @@ class Database:
             added_by,
             reason,
         )
+        invalida_cache_premium(guild_id)  # #145
 
     async def remove_guild_from_whitelist(self, guild_id: int) -> None:
         await self.pool.execute(
             "DELETE FROM premium_whitelist WHERE guild_id = $1",
             guild_id,
         )
+        invalida_cache_premium(guild_id)  # #145
 
     async def list_premium_whitelist(self) -> list[dict]:
         """SPEC.md §3.2: esisteva add/remove ma non un modo per

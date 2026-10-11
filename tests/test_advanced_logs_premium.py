@@ -128,6 +128,29 @@ async def test_premium_non_sbloccato_il_suono_soundboard_non_viene_registrato(am
     await bot.close()
 
 
+async def _whitelist_senza_invalidare(db):
+    """Scrive la whitelist come farebbe un'altra istanza: il verdetto in memoria non lo sa."""
+    await db.pool.execute(
+        "INSERT INTO premium_whitelist (guild_id, added_by, reason) VALUES ($1, 1, 'test')",
+        GUILD_ID,
+    )
+
+
+async def test_whitelist_aggiunta_vale_subito_senza_aspettare_il_ttl(ambiente):
+    """#145: aggiunta alla whitelist = verdetto in memoria dimenticato."""
+    db, log_event = ambiente
+    bot, cog = await _cog_acceso(db)
+    registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
+    prima, canale = _server_con_canale()
+    await cog.on_guild_update(prima, _server_rinominato(prima))
+    canale.send.assert_not_awaited()
+
+    await db.add_guild_to_whitelist(GUILD_ID, added_by=1, reason="test")
+    await cog.on_guild_update(prima, _server_rinominato(prima))
+    canale.send.assert_awaited_once()
+    await bot.close()
+
+
 async def test_invalida_verdetto_premium_vale_subito(ambiente):
     db, log_event = ambiente
     bot, cog = await _cog_acceso(db)
@@ -136,7 +159,7 @@ async def test_invalida_verdetto_premium_vale_subito(ambiente):
     await cog.on_guild_update(prima, _server_rinominato(prima))
     canale.send.assert_not_awaited()  # revocato, e il verdetto "no" ora e in memoria
 
-    await db.add_guild_to_whitelist(GUILD_ID, added_by=1, reason="test")
+    await _whitelist_senza_invalidare(db)
     await cog.on_guild_update(prima, _server_rinominato(prima))
     canale.send.assert_not_awaited()  # ancora la cache
 
@@ -189,7 +212,7 @@ async def test_dopo_la_scadenza_il_premium_si_rilegge(ambiente, conta_giri, monk
     monkeypatch.setattr(modulo, "_monotonic", lambda: adesso[0])
 
     assert await modulo.logging_avanzato_attivo(GUILD_ID, bot) is False
-    await db.add_guild_to_whitelist(GUILD_ID, added_by=1, reason="test")
+    await _whitelist_senza_invalidare(db)
     adesso[0] += modulo.PREMIUM_CACHE_TTL_SECONDS - 1
     assert await modulo.logging_avanzato_attivo(GUILD_ID, bot) is False  # ancora in cache
     assert len(conta_giri) == 1

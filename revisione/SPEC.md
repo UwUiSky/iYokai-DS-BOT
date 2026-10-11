@@ -135,7 +135,7 @@ Totale voci: **494**.
   anche le eccezioni non catturate nei listener di eventi (non solo
   gli slash command), con alert DM all'owner e cooldown per
   event_method
-  → **Stato 04/10:** tratta "non hai i permessi" come errore imprevisto (BUG-13).
+  → **Stato 11/10:** corretto (M 14.2, 14.3): permessi e controlli falliti → messaggio effimero chiaro e log INFO; errore dopo un `defer()` pubblico → segnaposto cancellato e followup effimero. (da verificare live)
 - `[x]` 1.7 Logger Strutturato — JSON con rotazione
   (`core/json_log_formatter.py` + `RotatingFileHandler`, 10MB×5),
   nessuna nuova dipendenza. Convive con l'output testuale su stdout,
@@ -194,6 +194,10 @@ Totale voci: **494**.
 
 - `[x]` 3.1 Registry moduli + flag premium per modulo, tutto OFF di default
 - `[x]` 3.2 Whitelist manuale per Server ID (add / remove)
+- `[x]` 3.2 Punto unico di invalidazione del verdetto premium in memoria (#145) —
+  `core/premium_cache.py`: whitelist, cassa, abbonamenti e flag del modulo lo
+  chiamano; i log avanzati si registrano e dimenticano il verdetto subito (non
+  dopo i 60 s). Il boost del server principale resta sul TTL.
 - `[x]` 3.2 Comando per **elencare** i server in whitelist —
   `/owner whitelist-list`
 - `[x]` 3.2 Attiva/disattiva natura premium di un singolo modulo
