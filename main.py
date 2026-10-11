@@ -38,6 +38,7 @@ import discord
 from discord.ext import commands
 
 from core.command_groups import registra_owner
+from core.command_sync import StatoSyncDatabase, sincronizza_all_avvio
 from core.config import config
 from core.repositories.music_session_repo import music_session_repo
 from core.bot_supervisor import (
@@ -305,18 +306,16 @@ class iYokaiBot(commands.AutoShardedBot):
         owner_nel_server = bool(config.MAIN_GUILD_ID) and registra_owner(
             self.tree, config.MAIN_GUILD_ID
         )
-        if config.is_development and config.MAIN_GUILD_ID:
-            guild = discord.Object(id=config.MAIN_GUILD_ID)
-            self.tree.copy_global_to(guild=guild)
-            # copy_global_to non copia i comandi del server: /owner resta suo.
-            await self.tree.sync(guild=guild)
-            logger.info("Slash command sincronizzati sulla guild di sviluppo.")
-        else:
-            await self.tree.sync()
-            logger.info("Slash command sincronizzati globalmente.")
-            if owner_nel_server:
-                await self.tree.sync(guild=discord.Object(id=config.MAIN_GUILD_ID))
-                logger.info("/owner sincronizzato solo nel server dell'owner.")
+        # Si sincronizza solo se l'albero è cambiato (impronta salvata nel
+        # database): la sync è una sovrascrittura in blocco e ha un tetto
+        # giornaliero (mappa F7 §6). Un errore non ferma l'avvio: si riprova
+        # al prossimo.
+        await sincronizza_all_avvio(
+            self.tree,
+            guild_sviluppo_id=config.MAIN_GUILD_ID if config.is_development else None,
+            guild_owner_id=config.MAIN_GUILD_ID if owner_nel_server else None,
+            stato=StatoSyncDatabase(db.pool),
+        )
 
     async def on_ready(self) -> None:
         logger.info(
