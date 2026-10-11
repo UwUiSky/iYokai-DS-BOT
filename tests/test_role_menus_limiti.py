@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
-from discord import app_commands
 from discord.ext import commands
 
 import cogs.utility.role_menus as rm
 from cogs.utility.role_menus import RoleMenuCog, _build_embed
 from core.repositories.role_menu_repo import RoleMenu, RoleMenuOption, RoleMenuRepository
 from core.role_menu_logic import valida_emoji
+from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import (
     fake_guild,
     fake_interaction,
@@ -144,7 +144,7 @@ async def test_emoji_non_valida_rifiutata_e_opzione_non_salvata(clean_db, monkey
 async def test_emoji_personalizzata_sconosciuta_rifiutata(clean_db, monkeypatch):
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
-    interazione = await s.aggiungi(1000, emoji="<:x:123456789012345678>")
+    interazione = await s.aggiungi(1000, emoji="<:xx:123456789012345678>")
     assert "emoji" in _testo_risposta(interazione).lower()
     assert await s.repo.count_options(s.menu_id) == 0
 
@@ -254,3 +254,172 @@ async def test_errore_http_generico_nel_bottone_e_spiegato(clean_db, monkeypatch
     await s.cog._handle_button_click(interazione, s.menu_id, 1000)
 
     assert "riprova" in _testo_risposta(interazione).lower()
+
+
+def _http(status=400):
+    return discord.HTTPException(MagicMock(status=status, reason="x"), "errore")
+
+
+@pytest.mark.asyncio
+async def test_due_aggiunte_insieme_non_perdono_opzioni_ne_duplicano_il_messaggio(clean_db, monkeypatch):
+    import asyncio
+
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await apri_connessioni(clean_db)
+
+    async def invio_lento(**kwargs):
+        await asyncio.sleep(0.05)
+        return s.messaggio
+
+    s.canale.send = AsyncMock(side_effect=invio_lento)
+
+    await asyncio.gather(s.aggiungi(1000), s.aggiungi(1001))
+
+    assert await s.repo.count_options(s.menu_id) == 2
+    assert s.canale.send.await_count == 1  # un solo messaggio, il secondo lo modifica
+    ultimo = s.messaggio.edit.await_args.kwargs["embed"]
+    assert "<@&1000>" in ultimo.fields[0].value and "<@&1001>" in ultimo.fields[0].value
+
+
+@pytest.mark.asyncio
+async def test_reazione_rifiutata_su_messaggio_esistente_non_cambia_l_embed(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu()
+    await s.aggiungi(1000, emoji="🎮")
+    s.messaggio.edit.reset_mock()
+    s.messaggio.add_reaction = AsyncMock(side_effect=_http())
+
+    interazione = await s.aggiungi(1001, emoji="🎲")
+
+    s.messaggio.edit.assert_not_awaited()
+    assert await s.repo.count_options(s.menu_id) == 1
+    assert "non è stata aggiunta" in _testo_risposta(interazione)
+
+
+@pytest.mark.asyncio
+async def test_reazione_rifiutata_su_messaggio_nuovo_lo_cancella(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu()
+    s.messaggio.add_reaction = AsyncMock(side_effect=_http())
+
+    await s.aggiungi(1000, emoji="🎮")
+
+    s.messaggio.delete.assert_awaited_once()
+    assert (await s.repo.get_menu(s.menu_id)).message_id is None
+    assert await s.repo.count_options(s.menu_id) == 0
+
+
+@pytest.mark.asyncio
+async def test_cancellazione_del_messaggio_fallita_non_dice_eliminato(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await s.aggiungi(1000)
+    s.messaggio.delete = AsyncMock(side_effect=_http(403))
+    interazione = s.admin_interaction()
+
+    await s.cog.delete_cmd.callback(s.cog, interazione, menu_id=s.menu_id)
+
+    testo = interazione.response.send_message.await_args.args[0]
+    assert "a mano" in testo and testo != "Role menu eliminato."
+
+
+@pytest.mark.asyncio
+async def test_ultima_opzione_con_cancellazione_fallita_lo_dice(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, mode="select")
+    await s.menu()
+    await s.aggiungi(1000, emoji=None)
+    s.messaggio.delete = AsyncMock(side_effect=_http(403))
+    interazione = s.admin_interaction()
+
+    await s.cog.remove_option_cmd.callback(s.cog, interazione, menu_id=s.menu_id, role=s.ruoli[1000])
+
+    assert "a mano" in _testo_risposta(interazione)
+
+
+@pytest.mark.asyncio
+async def test_menu_oltre_6000_caratteri_non_viene_pubblicato_ne_salvato(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    gigante = discord.Embed(title="t", description="d" * 4000)
+    gigante.add_field(name="n", value="v" * 1000)
+    gigante.add_field(name="n", value="v" * 1000)
+    gigante.add_field(name="n", value="v" * 1000)
+    monkeypatch.setattr(rm, "_build_embed", lambda *_a, **_k: gigante)
+
+    interazione = await s.aggiungi(1000)
+
+    s.canale.send.assert_not_awaited()
+    assert await s.repo.count_options(s.menu_id) == 0
+    assert "6000" in _testo_risposta(interazione)
+
+
+def test_nomi_oltre_il_limite_vengono_troncati_nei_componenti():
+    cog = RoleMenuCog(MagicMock())
+    lunga = "L" * 300
+    opzioni = [RoleMenuOption(id=1, menu_id=1, role_id=5, emoji=None, label=lunga, position=0)]
+    (bottone,) = cog._build_button_view(1, opzioni).children
+    assert len(bottone.label) <= 80
+    (select,) = cog._build_select_view(1, opzioni, None).children
+    assert len(select.options[0].label) <= 100
+    embed = _build_embed(
+        RoleMenu(id=1, guild_id=1, channel_id=1, message_id=None, mode="button", toggle=True,
+                 max_selectable=None, title="T" * 300, description="D" * 3000),
+        opzioni,
+    )
+    assert len(embed.title) <= 256 and len(embed.description) <= 2000 and len(embed) <= 6000
+
+
+@pytest.mark.asyncio
+async def test_errori_http_nella_tendina_e_nelle_reazioni(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, mode="select")
+    await s.menu()
+    await s.aggiungi(1000, emoji=None)
+    membro = fake_member(user_id=3)
+    membro.add_roles.side_effect = _http(500)
+    interazione = fake_interaction(guild=s.guild, user=membro)
+    select = MagicMock()
+    select.values = ["1000"]
+
+    await s.cog._handle_select(interazione, s.menu_id, select)
+
+    assert "riprova" in _testo_risposta(interazione).lower()
+
+    # Reazioni: add e remove non devono sollevare con un errore Discord.
+    monkeypatch.setattr(rm.blacklist_repo, "is_user_blacklisted", AsyncMock(return_value=False))
+    menu_r = _Scena(clean_db, monkeypatch, mode="reaction")
+    await menu_r.menu()
+    await menu_r.aggiungi(1000, emoji="🎮")
+    menu_r.guild.id = 1
+    membro_r = fake_member(user_id=4)
+    membro_r.add_roles.side_effect = _http(500)
+    membro_r.remove_roles.side_effect = _http(500)
+    menu_r.guild.get_member.return_value = membro_r
+    menu_r.cog.bot.get_guild.return_value = menu_r.guild
+    evento = MagicMock()
+    evento.guild_id = 1
+    evento.member = membro_r
+    evento.user_id = 4
+    evento.message_id = 555
+    evento.emoji = "🎮"
+    await menu_r.repo.set_menu_message(menu_r.menu_id, 555)
+
+    await menu_r.cog.on_raw_reaction_add(evento)
+    await menu_r.cog.on_raw_reaction_remove(evento)
+
+
+@pytest.mark.asyncio
+async def test_all_avvio_un_menu_senza_opzioni_non_registra_view(clean_db, monkeypatch):
+    repo = RoleMenuRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(rm, "role_menu_repo", repo)
+    menu_id = await repo.create_menu(
+        guild_id=1, channel_id=700, mode="select", toggle=True, max_selectable=None,
+        title="Vuoto", description="",
+    )
+    await repo.set_menu_message(menu_id, 555)
+    bot = MagicMock()
+    bot.add_cog = AsyncMock()
+
+    await rm.setup(bot)
+
+    bot.add_view.assert_not_called()

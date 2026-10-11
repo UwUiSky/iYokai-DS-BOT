@@ -93,3 +93,87 @@ async def test_sticky_set_ricorda_il_permesso_e_chiede_il_modulo(repo):
     await cog.set_sticky.callback(cog, interazione, fake_text_channel(channel_id=804), "Ciao")
     assert await repo.get_sticky(804) is None
     assert "modulo" in interazione.response.send_message.await_args.args[0].lower()
+
+
+class _CanaleConMessaggi(discord.TextChannel):
+    name = "canale"
+    """Canale finto che ricorda quali messaggi esistono davvero."""
+
+    def __init__(self, channel_id: int) -> None:
+        self.id = channel_id
+        self.vivi: dict[int, str] = {}
+        self._n = 9000
+
+    async def fetch_message(self, message_id: int):
+        if message_id not in self.vivi:
+            raise discord.NotFound(MagicMock(status=404, reason="x"), "no")
+        canale = self
+
+        class _M:
+            id = message_id
+
+            async def delete(self_inner):
+                canale.vivi.pop(message_id, None)
+
+        return _M()
+
+    async def send(self, content: str, **kwargs):
+        await asyncio.sleep(0.2)  # l'invio è ancora "in volo"
+        self._n += 1
+        self.vivi[self._n] = content
+        m = MagicMock()
+        m.id = self._n
+        return m
+
+
+@pytest.mark.asyncio
+async def test_rimozione_durante_una_ripubblicazione_non_lascia_messaggi_orfani(repo):
+    await repo.set_sticky(810, 100, "Regole")
+    canale = _CanaleConMessaggi(810)
+    cog = StickyMessagesCog(bot=None)
+    interazione = fake_interaction(guild=fake_guild(guild_id=100))
+
+    ripubblicazione = asyncio.create_task(cog.on_message(_messaggio(canale)))
+    await asyncio.sleep(0.1)  # l'invio è partito ma non ancora finito
+    await cog.remove_sticky.callback(cog, interazione, canale)
+    await ripubblicazione
+
+    assert canale.vivi == {}  # nessun messaggio resta nel canale
+    assert await repo.get_sticky(810) is None  # e nessuna riga col vecchio ID
+
+
+@pytest.mark.asyncio
+async def test_cambio_del_testo_cancella_il_vecchio_messaggio_e_azzera_l_id(repo):
+    await repo.set_sticky(811, 100, "Vecchio")
+    canale = _CanaleConMessaggi(811)
+    cog = StickyMessagesCog(bot=None)
+    await cog.on_message(_messaggio(canale))
+    assert len(canale.vivi) == 1
+    utente = fake_member(guild_permissions=discord.Permissions(manage_guild=True))
+
+    await cog.set_sticky.callback(
+        cog, fake_interaction(guild=fake_guild(guild_id=100), user=utente), canale, "Nuovo"
+    )
+
+    assert canale.vivi == {}
+    sticky = await repo.get_sticky(811)
+    assert sticky.message_text == "Nuovo" and sticky.last_message_id is None
+
+
+@pytest.mark.asyncio
+async def test_set_durante_una_ripubblicazione_non_lascia_orfani(repo):
+    await repo.set_sticky(812, 100, "Vecchio")
+    canale = _CanaleConMessaggi(812)
+    cog = StickyMessagesCog(bot=None)
+    utente = fake_member(guild_permissions=discord.Permissions(manage_guild=True))
+
+    ripubblicazione = asyncio.create_task(cog.on_message(_messaggio(canale)))
+    await asyncio.sleep(0.1)
+    await cog.set_sticky.callback(
+        cog, fake_interaction(guild=fake_guild(guild_id=100), user=utente), canale, "Nuovo"
+    )
+    await ripubblicazione
+
+    sticky = await repo.get_sticky(812)
+    # Vale solo il messaggio che la riga conosce: nessun altro in canale.
+    assert set(canale.vivi) <= ({sticky.last_message_id} if sticky.last_message_id else set())

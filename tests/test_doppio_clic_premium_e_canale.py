@@ -84,7 +84,7 @@ async def test_sblocca_premium_due_volte_insieme_addebita_una_volta(cog_con_cass
 # ----------------------------------------------------------------------
 async def _clan_pronto_per_un_canale(clan_repo, guild):
     clan_id, categoria = await _crea_clan_con_categoria(clan_repo, guild)
-    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + 4 * COSTO_PRIMO_CANALE)
+    await clan_repo.donate(clan_id, user_id=1, amount=15_000 + COSTO_PRIMO_CANALE)
     await clan_repo.add_voice_ticks(clan_id, count=100 * 60)
     return clan_id
 
@@ -105,7 +105,7 @@ async def test_compra_canale_due_volte_insieme_addebita_una_volta(cog_e_repos):
 
     clan = await clan_repo.get_clan(clan_id)
     assert clan.channels_unlocked == 1
-    assert clan.treasury_balance == 3 * COSTO_PRIMO_CANALE
+    assert clan.treasury_balance == 0
     assert len(guild.created_channels) == 1
     risposte = prima.response.sent_messages + seconda.response.sent_messages
     assert sum("sbloccato per" in testo for testo in risposte) == 1
@@ -122,7 +122,7 @@ async def test_compra_canale_se_discord_non_lo_crea_la_tesoreria_torna_com_era(c
 
     clan = await clan_repo.get_clan(clan_id)
     assert clan.channels_unlocked == 0
-    assert clan.treasury_balance == 4 * COSTO_PRIMO_CANALE
+    assert clan.treasury_balance == COSTO_PRIMO_CANALE
     assert "permessi" in interazione.response.sent_messages[0]
     # Addebito e rimborso restano scritti nello storico della tesoreria.
     movimenti = await clan_repo._pool.fetch(

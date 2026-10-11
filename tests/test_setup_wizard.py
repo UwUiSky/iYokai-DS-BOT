@@ -8,7 +8,6 @@ un'Interaction finta, verifica del salvataggio reale sul database.
 
 from unittest.mock import MagicMock
 
-import discord
 
 from core.database import Database
 from core.premium import PremiumModule

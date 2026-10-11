@@ -6,11 +6,9 @@ percorso che cambia lo stato dei moduli: wizard, import, reset, rollback
 (oltre al salvataggio di `/admin setup attiva`, già coperto in test_setup_cog).
 """
 
-import io
 import json
 from unittest.mock import AsyncMock, MagicMock
 
-import discord
 import pytest
 
 import cogs.utility.config_history as ch

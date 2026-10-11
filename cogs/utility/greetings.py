@@ -19,7 +19,11 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
-from core.admin_mentions_logic import menzioni_ammesse, puo_pingare_ruoli, taglia_messaggio
+from core.admin_mentions_logic import (
+    menzioni_ammesse,
+    taglia_messaggio,
+    utente_puo_pingare_ruoli,
+)
 from core.greetings_logic import MAX_MESSAGE_LENGTH, lunghezza_dopo_segnaposto, render_template
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
@@ -56,10 +60,13 @@ def _errore_lunghezza(guild: discord.Guild, template: str) -> str | None:
     )
 
 
-def _ping_ruoli_di(interaction: discord.Interaction) -> bool:
-    """D12: i ruoli del messaggio vengono avvisati solo se chi configura può menzionarli."""
-    utente = interaction.user
-    return isinstance(utente, discord.Member) and puo_pingare_ruoli(utente.guild_permissions)
+def _ping_ruoli(interaction: discord.Interaction, message: str | None, precedente: bool) -> bool:
+    """
+    D12: il permesso di chi configura conta solo se sta scrivendo il testo.
+    Chi cambia soltanto canale o stato (es. un moderatore con solo "Gestisci
+    server") non accende né spegne il ping deciso da chi ha scritto il testo.
+    """
+    return utente_puo_pingare_ruoli(interaction.user) if message is not None else precedente
 
 
 _SG_BENVENUTO = ("benvenuto", "Messaggi di benvenuto, addio e boost")
@@ -86,7 +93,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             return
 
         testo = taglia_messaggio(_render_for_member(config.welcome_message, member))
-        menzioni = menzioni_ammesse(config.welcome_ping_ruoli, [member])
+        menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
 
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
@@ -125,7 +132,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         testo = taglia_messaggio(_render_for_member(config.goodbye_message, member))
         try:
             await channel.send(
-                testo, allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli, [member])
+                testo, allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli)
             )
         except discord.HTTPException:
             logger.warning(
@@ -158,7 +165,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         testo = taglia_messaggio(_render_for_member(config.boost_message, after))
         try:
             await channel.send(
-                testo, allowed_mentions=menzioni_ammesse(config.boost_ping_ruoli, [after])
+                testo, allowed_mentions=menzioni_ammesse(config.boost_ping_ruoli)
             )
         except discord.HTTPException:
             logger.warning(
@@ -220,7 +227,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             channel_id=canale_finale.id if canale_finale else 0,
             message=testo_finale,
             dm=config_attuale.welcome_dm if dm is None else dm,
-            ping_ruoli=_ping_ruoli_di(interaction),
+            ping_ruoli=_ping_ruoli(interaction, message, config_attuale.welcome_ping_ruoli),
         )
         await interaction.response.send_message(
             f"Welcome message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
@@ -274,7 +281,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             enabled=enabled,
             channel_id=canale_finale.id if canale_finale else 0,
             message=testo_finale,
-            ping_ruoli=_ping_ruoli_di(interaction),
+            ping_ruoli=_ping_ruoli(interaction, message, config_attuale.goodbye_ping_ruoli),
         )
         await interaction.response.send_message(
             f"Goodbye message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
@@ -328,7 +335,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             enabled=enabled,
             channel_id=canale_finale.id if canale_finale else 0,
             message=testo_finale,
-            ping_ruoli=_ping_ruoli_di(interaction),
+            ping_ruoli=_ping_ruoli(interaction, message, config_attuale.boost_ping_ruoli),
         )
         await interaction.response.send_message(
             f"Boost message {'attivato' if enabled else 'disattivato'}.", ephemeral=True

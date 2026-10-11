@@ -130,7 +130,7 @@ def _build_premium_panel_embed(
     for modulo in modules[:MODULI_PER_PAGINA_PANNELLO]:
         stato = "🟢 PREMIUM ATTIVO" if modulo.is_premium_active else "⚪ gratuito"
         embed.add_field(
-            name=modulo.display_name[:256],
+            name=modulo.display_name[:100],
             value=f"`{modulo.name}` — {stato}"[:1024],
             inline=False,
         )
@@ -353,7 +353,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
                 stato = "gratuito (predisposto)"
             lines.append(f"`{m.name}` — {m.display_name}: **{stato}**")
 
-        await invia_a_pagine(interaction, lines or ["Nessun modulo registrato."])
+        await invia_a_pagine(interaction, "Moduli premium", lines or ["Nessun modulo registrato."])
 
     async def _apply_premium_toggle(
         self, module_name: str, active: bool, changed_by: int
@@ -450,7 +450,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         guild_id: str,
-        reason: str | None = None,
+        reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
             gid = int(guild_id)
@@ -511,7 +511,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             format_whitelist_entry(v["guild_id"], v["added_by"], v["reason"], v["added_at"])
             for v in voci
         ]
-        await invia_a_pagine(interaction, righe)
+        await invia_a_pagine(interaction, "Whitelist premium", righe)
 
     # ================================================================
     # Abbonamento mensile/annuale per modulo (SPEC.md §3.1 — pagamento
@@ -631,7 +631,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             f"`{s.module_name}` — fino al `{s.expires_at.date().isoformat()}`"
             for s in abbonamenti
         ]
-        await invia_a_pagine(interaction, righe)
+        await invia_a_pagine(interaction, "Abbonamenti del server", righe)
 
     @comando_di_gruppo(
         "owner",
@@ -664,7 +664,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             f"{'ATTIVO (tutto sbloccato per tutti)' if config.PREMIUM_ALPHA_UNLOCK_ALL else 'non attivo'}:\n"
         )
         await invia_a_pagine(
-            interaction, (intestazione.rstrip("\n"), *righe), dopo_defer=True
+            interaction,
+            "Stato premium dei server",
+            (intestazione.rstrip("\n"), *righe),
+            dopo_defer=True,
         )
 
     async def _run_eval(self, code: str, interaction: discord.Interaction) -> tuple[str, bool]:
@@ -849,7 +852,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(user_id="ID Discord dell'utente", reason="Motivo (facoltativo)")
     async def blacklist_user_add(
-        self, interaction: discord.Interaction, user_id: str, reason: str | None = None
+        self,
+        interaction: discord.Interaction,
+        user_id: str,
+        reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
             uid = int(user_id)
@@ -907,7 +913,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
 
         righe = [f"`{u['user_id']}` — {u['reason'] or 'nessun motivo'}" for u in utenti]
-        await invia_a_pagine(interaction, righe)
+        await invia_a_pagine(interaction, "Utenti in blacklist", righe)
 
     @comando_di_gruppo(
         "owner",
@@ -917,7 +923,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(guild_id="ID del server", reason="Motivo (facoltativo)")
     async def blacklist_guild_add(
-        self, interaction: discord.Interaction, guild_id: str, reason: str | None = None
+        self,
+        interaction: discord.Interaction,
+        guild_id: str,
+        reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
             gid = int(guild_id)
@@ -987,7 +996,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
 
         righe = [f"`{g['guild_id']}` — {g['reason'] or 'nessun motivo'}" for g in server]
-        await invia_a_pagine(interaction, righe)
+        await invia_a_pagine(interaction, "Server in blacklist", righe)
 
     # ================================================================
     # Leave guild forzato (SPEC.md §17.9)

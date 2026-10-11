@@ -6,6 +6,8 @@ risposte a pagine, pannello premium con al massimo 25 voci per tendina,
 Range su codice di eval, comando shell e annuncio.
 """
 
+from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
@@ -34,10 +36,14 @@ def _owner_interaction():
     return fake_interaction(user=fake_member(user_id=config.OWNER_ID))
 
 
-def _tutte_le_risposte(interazione):
-    invii = [c for c in interazione.response.send_message.await_args_list]
-    invii += [c for c in interazione.followup.send.await_args_list]
-    return invii
+def _testo_pagine(vista) -> str:
+    """Tutto il testo di tutte le pagine di una lista dell'owner."""
+    return "\n".join(vista.pagine)
+
+
+def _invio(interazione, dopo_defer=False):
+    mock = interazione.followup.send if dopo_defer else interazione.response.send_message
+    return mock.await_args.kwargs
 
 
 @pytest.mark.asyncio
@@ -51,10 +57,11 @@ async def test_premium_list_con_40_moduli_risposta_valida(monkeypatch):
 
     await cog.premium_list.callback(cog, interazione)
 
-    interazione.response.send_message.assert_awaited_once()
-    contenuto = interazione.response.send_message.await_args.args[0]
-    assert len(contenuto) <= 2000
-    assert "modulo_39" in contenuto or "view" in interazione.response.send_message.await_args.kwargs
+    kwargs = _invio(interazione)
+    assert len(kwargs["embed"].description) <= 4096
+    vista = kwargs.get("view")
+    tutto = _testo_pagine(vista) if vista else kwargs["embed"].description
+    assert all(f"modulo_{i:02d}" in tutto for i in range(40))
 
 
 @pytest.mark.asyncio
@@ -68,21 +75,15 @@ async def test_premium_list_a_pagine_non_perde_nessun_modulo(monkeypatch):
 
     await cog.premium_list.callback(cog, interazione)
 
-    kwargs = interazione.response.send_message.await_args.kwargs
-    vista = kwargs["view"]
-    visti = set()
-    for _ in range(len(vista.pagine)):
-        testo = vista.testo_pagina()
-        assert len(testo) <= 2000
-        visti |= {f"modulo_{i:02d}" for i in range(60) if f"modulo_{i:02d}" in testo}
-        vista.indice = min(vista.indice + 1, len(vista.pagine) - 1)
-    assert len(visti) == 60
+    vista = _invio(interazione)["view"]
+    assert all(len(p) <= 4000 for p in vista.pagine)
+    assert all(f"modulo_{i:02d}" in _testo_pagine(vista) for i in range(60))
 
 
 @pytest.mark.asyncio
 async def test_whitelist_list_non_taglia_ma_pagina(monkeypatch):
     voci = [
-        {"guild_id": 1000 + i, "added_by": 1, "reason": "r" * 100, "added_at": __import__("datetime").datetime(2026, 1, 1)}
+        {"guild_id": 1000 + i, "added_by": 1, "reason": "r" * 100, "added_at": datetime(2026, 1, 1)}
         for i in range(80)
     ]
     monkeypatch.setattr(op.db, "list_premium_whitelist", AsyncMock(return_value=voci))
@@ -91,10 +92,48 @@ async def test_whitelist_list_non_taglia_ma_pagina(monkeypatch):
 
     await cog.whitelist_list.callback(cog, interazione)
 
-    vista = interazione.response.send_message.await_args.kwargs["view"]
-    tutto = "\n".join(vista.pagine)
-    assert all(str(1000 + i) in tutto for i in range(80))
-    assert all(len(p) <= 1900 for p in vista.pagine)
+    vista = _invio(interazione)["view"]
+    assert all(str(1000 + i) in _testo_pagine(vista) for i in range(80))
+    assert all(len(p) <= 4000 for p in vista.pagine)
+
+
+@pytest.mark.asyncio
+async def test_abbonamenti_a_pagine(monkeypatch):
+    from core.repositories.module_subscription_repo import module_subscription_repo
+
+    abbonamenti = [
+        SimpleNamespace(module_name=f"modulo_{i:03d}", expires_at=datetime(2027, 1, 1)) for i in range(300)
+    ]
+    monkeypatch.setattr(module_subscription_repo, "list_for_guild", AsyncMock(return_value=abbonamenti))
+    interazione = _owner_interaction()
+    cog = OwnerPremiumCog(MagicMock())
+
+    await cog.premium_subscriptions.callback(cog, interazione, "123")
+
+    vista = _invio(interazione)["view"]
+    assert len(vista.pagine) > 1
+    assert all(f"modulo_{i:03d}" in _testo_pagine(vista) for i in range(300))
+
+
+@pytest.mark.asyncio
+async def test_status_all_a_pagine_dopo_il_defer(monkeypatch):
+    guilds = [SimpleNamespace(id=9000 + i, name=f"Server numero {i}") for i in range(150)]
+    bot = SimpleNamespace(guilds=guilds)
+    monkeypatch.setattr(
+        op, "get_guild_premium_breakdown",
+        AsyncMock(return_value={"whitelisted": True, "boosts_main_guild": False,
+                                "cassa_active": False, "subscription_count": 0}),
+    )
+    interazione = _owner_interaction()
+    interazione.client = bot
+    cog = OwnerPremiumCog(MagicMock())
+
+    await cog.premium_status_all.callback(cog, interazione)
+
+    interazione.response.defer.assert_awaited_once()
+    vista = _invio(interazione, dopo_defer=True)["view"]
+    assert "150 server totali" in vista.pagine[0]
+    assert all(str(9000 + i) in _testo_pagine(vista) for i in range(150))
 
 
 @pytest.mark.asyncio
@@ -110,10 +149,30 @@ async def test_liste_blacklist_a_pagine(monkeypatch):
     for metodo, primo in (("blacklist_user_list", "10000"), ("blacklist_guild_list", "20000")):
         interazione = _owner_interaction()
         await getattr(cog, metodo).callback(cog, interazione)
-        vista = interazione.response.send_message.await_args.kwargs["view"]
-        assert all(len(p) <= 1900 for p in vista.pagine)
+        vista = _invio(interazione)["view"]
+        assert all(len(p) <= 4000 for p in vista.pagine)
         assert primo in vista.pagine[0]
         assert len(vista.pagine) > 1
+
+
+@pytest.mark.asyncio
+async def test_i_bottoni_delle_pagine_li_usa_solo_l_owner(monkeypatch):
+    monkeypatch.setattr(op.db, "list_premium_whitelist", AsyncMock(return_value=[
+        {"guild_id": 1000 + i, "added_by": 1, "reason": "r" * 100, "added_at": datetime(2026, 1, 1)}
+        for i in range(80)
+    ]))
+    owner = _owner_interaction()
+    cog = OwnerPremiumCog(MagicMock())
+    await cog.whitelist_list.callback(cog, owner)
+    vista = _invio(owner)["view"]
+
+    import core.ui_base as ui_base
+
+    monkeypatch.setattr(ui_base, "_utente_o_server_in_blacklist", AsyncMock(return_value=False))
+    estraneo = fake_interaction(user=fake_member(user_id=config.OWNER_ID + 1))
+    assert await vista.interaction_check(estraneo) is False
+    estraneo.response.send_message.assert_awaited_once()
+    assert await vista.interaction_check(owner) is True
 
 
 @pytest.mark.asyncio
@@ -135,10 +194,12 @@ async def test_pannello_premium_con_40_moduli_tendina_da_25_al_massimo():
 
 def test_embed_del_pannello_non_supera_i_limiti_con_nomi_lunghi():
     moduli = [
-        PremiumModule(name="n" * 60, display_name="D" * 100, description="d", category="utility")
+        PremiumModule(name="n" * 60, display_name="D" * 400, description="d", category="utility")
         for _ in range(25)
     ]
     embed = _build_premium_panel_embed(moduli)
+    opzioni = _PremiumPanelView(MagicMock(), moduli).children[-1].options
+    assert all(len(o.label) <= 100 for o in opzioni)
     assert len(embed) <= 6000
     assert all(len(f.name) <= 256 and len(f.value) <= 1024 for f in embed.fields)
 

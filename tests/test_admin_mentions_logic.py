@@ -7,8 +7,13 @@ D12 / M 10.6: ping di ruolo nei testi dell'admin solo con "Menziona tutti";
 
 import discord
 
-from core.admin_mentions_logic import menzioni_ammesse, puo_pingare_ruoli, taglia_messaggio
-from core.lista_limiti_logic import dividi_in_pagine, righe_entro_limite
+from core.admin_mentions_logic import (
+    menzioni_ammesse,
+    puo_pingare_ruoli,
+    taglia_messaggio,
+    utente_puo_pingare_ruoli,
+)
+from core.lista_limiti_logic import dividi_in_blocchi, righe_entro_limite
 
 
 def test_chi_ha_menziona_tutti_puo_pingare_i_ruoli():
@@ -25,11 +30,19 @@ def test_ruoli_attivi_ma_everyone_sempre_muto():
     assert menzioni_ammesse(False).roles is False
 
 
-def test_utenti_ammessi_solo_quelli_passati():
-    utente = discord.Object(id=5)
-    m = menzioni_ammesse(False, [utente])
-    assert m.users == [utente]
-    assert menzioni_ammesse(False).users == []
+def test_gli_utenti_scritti_dall_admin_pingano():
+    assert menzioni_ammesse(False).users is True
+    assert menzioni_ammesse(True).users is True
+
+
+def test_regola_d12_in_un_punto_solo():
+    from tests.support.discord_fakes import fake_member
+
+    con = fake_member(guild_permissions=discord.Permissions(mention_everyone=True))
+    senza = fake_member(guild_permissions=discord.Permissions(manage_guild=True))
+    assert utente_puo_pingare_ruoli(con) is True
+    assert utente_puo_pingare_ruoli(senza) is False
+    assert utente_puo_pingare_ruoli(discord.Object(id=1)) is False  # non è un Member
 
 
 def test_taglia_messaggio_a_2000():
@@ -48,8 +61,8 @@ def test_righe_entro_limite_non_supera_mai_il_limite():
 
 def test_pagine_ognuna_entro_il_limite_e_nessuna_riga_persa():
     righe = [f"riga {i} " + "x" * 80 for i in range(120)]
-    pagine = dividi_in_pagine(righe, 1900)
+    pagine = dividi_in_blocchi(righe, 1900)
     assert all(len(p) <= 1900 for p in pagine)
     assert "\n".join(pagine).split("\n") == righe
-    assert dividi_in_pagine([], 1900) == [""]
-    assert len(dividi_in_pagine(["z" * 5000], 1900)[0]) == 1900
+    assert dividi_in_blocchi([], 1900) == [""]
+    assert len(dividi_in_blocchi(["z" * 5000], 1900)[0]) == 1900

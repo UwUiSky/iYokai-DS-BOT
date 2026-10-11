@@ -34,7 +34,9 @@ finta a monte.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import weakref
 
 import discord
 from discord import app_commands
@@ -45,7 +47,7 @@ from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.role_menu_repo import RoleMenu, RoleMenuOption, role_menu_repo
-from core.lista_limiti_logic import dividi_in_pagine
+from core.lista_limiti_logic import dividi_in_blocchi
 from core.role_menu_logic import (
     can_add_option,
     compute_select_sync,
@@ -81,7 +83,7 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
         righe = [f"• {opt.label or '(no label)'} — <@&{opt.role_id}>" for opt in options]
     # LIM-17: un campo tiene 1024 caratteri; con 25 etichette lunghe l'elenco
     # va su più campi (mai oltre 25 campi e 6000 caratteri in tutto).
-    for numero, blocco in enumerate(dividi_in_pagine(righe, 1024)):
+    for numero, blocco in enumerate(dividi_in_blocchi(righe, 1024)):
         embed.add_field(name=titolo if numero == 0 else "\u200b", value=blocco, inline=False)
     return embed
 
@@ -96,6 +98,18 @@ _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 class RoleMenuCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # Un blocco per menu: due /menu-aggiungi insieme si mettono in fila
+        # (altrimenti una delle due opzioni sparisce o escono due messaggi).
+        self._blocchi_menu: "weakref.WeakValueDictionary[int, asyncio.Lock]" = (
+            weakref.WeakValueDictionary()
+        )
+
+    def _blocco_menu(self, menu_id: int) -> asyncio.Lock:
+        blocco = self._blocchi_menu.get(menu_id)
+        if blocco is None:
+            blocco = asyncio.Lock()
+            self._blocchi_menu[menu_id] = blocco
+        return blocco
 
     # ================================================================
     # Costruzione delle view dinamiche
@@ -104,7 +118,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         view = BaseView(timeout=None)
         for opt in options:
             button: discord.ui.Button = discord.ui.Button(
-                label=opt.label or "Role",
+                label=(opt.label or "Role")[:80],
                 emoji=opt.emoji,
                 style=discord.ButtonStyle.secondary,
                 custom_id=f"{BUTTON_CUSTOM_ID_PREFIX}:{menu_id}:{opt.role_id}",
@@ -119,7 +133,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         view = BaseView(timeout=None)
         select_options = [
             discord.SelectOption(
-                label=opt.label or "Role", value=str(opt.role_id), emoji=opt.emoji
+                label=(opt.label or "Role")[:100], value=str(opt.role_id), emoji=opt.emoji
             )
             for opt in options
         ]
@@ -188,19 +202,18 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if menu.message_id is not None:
             try:
                 message = await channel.fetch_message(menu.message_id)
-                await message.edit(embed=embed, view=view)
             except discord.NotFound:
                 message = None  # cancellato a mano: si ripubblica
             except discord.HTTPException as errore:
                 logger.warning(
-                    "Impossibile aggiornare il messaggio del role menu %s (server %s): %s",
+                    "Impossibile leggere il messaggio del role menu %s (server %s): %s",
                     menu.id, guild.id, errore,
                 )
                 raise MenuNonPubblicabile(
-                    "Discord ha rifiutato la modifica del messaggio del menu "
-                    "(permessi mancanti o testo troppo lungo)."
+                    "Non riesco a leggere il messaggio del menu (permessi mancanti)."
                 ) from errore
-        if message is None:
+        nuovo = message is None
+        if nuovo:
             try:
                 message = await channel.send(embed=embed, view=view)
             except discord.HTTPException as errore:
@@ -212,21 +225,65 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                     "Non riesco a pubblicare il messaggio del menu nel canale "
                     "(permessi mancanti o testo troppo lungo)."
                 ) from errore
-            await role_menu_repo.set_menu_message(menu.id, message.id)
 
+        reazioni_aggiunte: list[str] = []
         if menu.mode == "reaction":
+            # Le reazioni PRIMA di toccare l'embed: se Discord ne rifiuta una,
+            # il messaggio resta com'era (o, se è nuovo, sparisce).
             try:
                 esistenti = {str(r.emoji) for r in message.reactions}
                 for opt in options:
                     if opt.emoji and opt.emoji not in esistenti:
                         await message.add_reaction(opt.emoji)
+                        reazioni_aggiunte.append(opt.emoji)
             except discord.HTTPException as errore:
+                await self._annulla_pubblicazione(message, nuovo, reazioni_aggiunte)
                 raise MenuNonPubblicabile(
                     "Discord non accetta una delle emoji del menu come reazione."
                 ) from errore
+
+        if not nuovo:
+            try:
+                await message.edit(embed=embed, view=view)
+            except discord.HTTPException as errore:
+                await self._annulla_pubblicazione(message, False, reazioni_aggiunte)
+                logger.warning(
+                    "Impossibile aggiornare il messaggio del role menu %s (server %s): %s",
+                    menu.id, guild.id, errore,
+                )
+                raise MenuNonPubblicabile(
+                    "Discord ha rifiutato la modifica del messaggio del menu "
+                    "(permessi mancanti o testo troppo lungo)."
+                ) from errore
+        else:
+            await role_menu_repo.set_menu_message(menu.id, message.id)
+
+        if menu.mode == "reaction":
+            # Le reazioni dei ruoli tolti dal menu non servono più.
+            tenute = {opt.emoji for opt in options if opt.emoji}
+            for reazione in list(message.reactions):
+                if str(reazione.emoji) not in tenute:
+                    try:
+                        await message.clear_reaction(reazione.emoji)
+                    except discord.HTTPException:
+                        pass
         elif view is not None:
             self.bot.add_view(view, message_id=message.id)
         return message.id
+
+    @staticmethod
+    async def _annulla_pubblicazione(
+        message: discord.Message, nuovo: bool, reazioni_aggiunte: list[str]
+    ) -> None:
+        """Rimette le cose com'erano dopo un rifiuto di Discord (best effort)."""
+        try:
+            if nuovo:
+                await message.delete()
+                return
+            for emoji in reazioni_aggiunte:
+                await message.clear_reaction(emoji)
+        except discord.HTTPException:
+            logger.warning("Non sono riuscito ad annullare la pubblicazione del role menu.")
 
     # ================================================================
     # Gestori delle interazioni
@@ -573,22 +630,37 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 return
 
         await interaction.response.defer(ephemeral=True)
-        # Prima si pubblica il messaggio con la nuova opzione, poi la si salva:
-        # se Discord rifiuta (campo troppo lungo, permessi, emoji) nel
-        # database non resta un'opzione che nel menu non c'è.
-        esistenti = [o for o in await role_menu_repo.get_options(menu_id) if o.role_id != role.id]
-        nuova = RoleMenuOption(
-            id=0, menu_id=menu_id, role_id=role.id, emoji=emoji, label=label,
-            position=len(esistenti),
-        )
-        try:
-            await self._pubblica_menu(guild, menu, esistenti + [nuova])
-        except MenuNonPubblicabile as errore:
-            await interaction.followup.send(
-                f"L'opzione {role.mention} non è stata aggiunta. {errore}", ephemeral=True
+        async with self._blocco_menu(menu_id):
+            # Dentro il blocco si rilegge tutto: un altro comando potrebbe aver
+            # appena pubblicato il messaggio o cambiato le opzioni.
+            menu = await role_menu_repo.get_menu(menu_id)
+            if menu is None:
+                await interaction.followup.send("Questo menu non esiste più.", ephemeral=True)
+                return
+            esistenti = [
+                o for o in await role_menu_repo.get_options(menu_id) if o.role_id != role.id
+            ]
+            if not can_add_option(len(esistenti), menu.mode):
+                await interaction.followup.send(
+                    f"Limite di opzioni raggiunto per la modalità **{menu.mode}**.",
+                    ephemeral=True,
+                )
+                return
+            nuova = RoleMenuOption(
+                id=0, menu_id=menu_id, role_id=role.id, emoji=emoji, label=label,
+                position=len(esistenti),
             )
-            return
-        await role_menu_repo.add_option(menu_id, role.id, emoji, label)
+            # Prima si pubblica il messaggio con la nuova opzione, poi la si salva:
+            # se Discord rifiuta (campo troppo lungo, permessi, emoji) nel
+            # database non resta un'opzione che nel menu non c'è.
+            try:
+                await self._pubblica_menu(guild, menu, esistenti + [nuova])
+            except MenuNonPubblicabile as errore:
+                await interaction.followup.send(
+                    f"L'opzione {role.mention} non è stata aggiunta. {errore}", ephemeral=True
+                )
+                return
+            await role_menu_repo.add_option(menu_id, role.id, emoji, label)
 
         await interaction.followup.send(
             f"Opzione aggiunta: {role.mention}.", ephemeral=True
@@ -616,48 +688,70 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
 
-        opzioni = await role_menu_repo.get_options(menu_id)
-        if not any(o.role_id == role.id for o in opzioni):
-            await interaction.response.send_message(
-                "Quel ruolo non fa parte di questo menu.", ephemeral=True
-            )
-            return
-
         await interaction.response.defer(ephemeral=True)
-        rimaste = [o for o in opzioni if o.role_id != role.id]
-        if not rimaste:
-            # Una tendina senza opzioni non è valida per Discord e un menu
-            # vuoto non serve a nessuno: si toglie il menu intero.
-            await self._elimina_menu(guild, menu)
-            await interaction.followup.send(
-                f"Opzione rimossa: {role.mention}. Il menu era rimasto senza opzioni "
-                f"e l'ho eliminato.",
-                ephemeral=True,
-            )
-            return
+        async with self._blocco_menu(menu_id):
+            menu = await role_menu_repo.get_menu(menu_id)
+            if menu is None:
+                await interaction.followup.send("Questo menu non esiste più.", ephemeral=True)
+                return
+            opzioni = await role_menu_repo.get_options(menu_id)
+            if not any(o.role_id == role.id for o in opzioni):
+                await interaction.followup.send(
+                    "Quel ruolo non fa parte di questo menu.", ephemeral=True
+                )
+                return
 
-        try:
-            await self._pubblica_menu(guild, menu, rimaste)
-        except MenuNonPubblicabile as errore:
-            await interaction.followup.send(
-                f"L'opzione {role.mention} non è stata rimossa: il messaggio del menu "
-                f"non si aggiorna. {errore}",
-                ephemeral=True,
-            )
-            return
-        await role_menu_repo.remove_option(menu_id, role.id)
+            rimaste = [o for o in opzioni if o.role_id != role.id]
+            if not rimaste:
+                # Una tendina senza opzioni non è valida per Discord e un menu
+                # vuoto non serve a nessuno: si toglie il menu intero.
+                messaggio_cancellato = await self._elimina_menu(guild, menu)
+                dettaglio = (
+                    "e l'ho eliminato."
+                    if messaggio_cancellato
+                    else "e l'ho eliminato dal database, ma non sono riuscito a cancellare "
+                    "il messaggio: cancellalo a mano."
+                )
+                await interaction.followup.send(
+                    f"Opzione rimossa: {role.mention}. Il menu era rimasto senza opzioni "
+                    f"{dettaglio}",
+                    ephemeral=True,
+                )
+                return
+
+            try:
+                await self._pubblica_menu(guild, menu, rimaste)
+            except MenuNonPubblicabile as errore:
+                await interaction.followup.send(
+                    f"L'opzione {role.mention} non è stata rimossa: il messaggio del menu "
+                    f"non si aggiorna. {errore}",
+                    ephemeral=True,
+                )
+                return
+            await role_menu_repo.remove_option(menu_id, role.id)
         await interaction.followup.send(f"Opzione rimossa: {role.mention}.", ephemeral=True)
 
-    async def _elimina_menu(self, guild: discord.Guild, menu: RoleMenu) -> None:
+    async def _elimina_menu(self, guild: discord.Guild, menu: RoleMenu) -> bool:
+        """
+        Elimina il menu dal database e prova a cancellare il messaggio.
+        True se il messaggio non c'è più (cancellato, già sparito o mai
+        pubblicato); False se Discord non ha permesso di cancellarlo.
+        """
+        messaggio_sparito = True
         if menu.message_id is not None:
             channel = guild.get_channel(menu.channel_id)
             if isinstance(channel, discord.TextChannel):
                 try:
                     message = await channel.fetch_message(menu.message_id)
                     await message.delete()
-                except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                except discord.NotFound:
                     pass
+                except discord.HTTPException:
+                    messaggio_sparito = False
+            else:
+                messaggio_sparito = False
         await role_menu_repo.delete_menu(menu.id)
+        return messaggio_sparito
 
     @comando_di_gruppo(
         "gestione",
@@ -679,7 +773,14 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await self._elimina_menu(guild, menu)
+        cancellato = await self._elimina_menu(guild, menu)
+        if not cancellato:
+            await interaction.response.send_message(
+                "Role menu eliminato dal database, ma non sono riuscito a cancellare il "
+                "messaggio: cancellalo a mano.",
+                ephemeral=True,
+            )
+            return
         await interaction.response.send_message("Role menu eliminato.", ephemeral=True)
 
 

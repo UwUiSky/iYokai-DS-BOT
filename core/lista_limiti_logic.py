@@ -34,13 +34,13 @@ def righe_entro_limite(righe: Sequence[str], limite: int = 4000) -> tuple[str, i
     return "\n".join(usate), 0
 
 
-def dividi_in_pagine(righe: Sequence[str], limite: int = 1900) -> list[str]:
+def dividi_in_blocchi(righe: Sequence[str], limite: int = 1900) -> list[str]:
     """
-    Pagine di testo, ognuna entro `limite` caratteri, senza spezzare le
+    Blocchi di testo (per i campi di un embed), ognuno entro `limite` caratteri, senza spezzare le
     righe (una riga più lunga del limite viene tagliata). Sempre almeno
-    una pagina.
+    un blocco.
     """
-    pagine: list[str] = []
+    blocchi: list[str] = []
     corrente: list[str] = []
     lunghezza = 0
     for riga in righe:
@@ -48,9 +48,9 @@ def dividi_in_pagine(righe: Sequence[str], limite: int = 1900) -> list[str]:
             riga = riga[: limite - 1] + "…"
         costo = len(riga) + (1 if corrente else 0)
         if corrente and lunghezza + costo > limite:
-            pagine.append("\n".join(corrente))
+            blocchi.append("\n".join(corrente))
             corrente, lunghezza, costo = [], 0, len(riga)
         corrente.append(riga)
         lunghezza += costo
-    pagine.append("\n".join(corrente))
-    return pagine
+    blocchi.append("\n".join(corrente))
+    return blocchi

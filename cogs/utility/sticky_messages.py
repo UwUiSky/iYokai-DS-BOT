@@ -19,7 +19,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.admin_mentions_logic import menzioni_ammesse, puo_pingare_ruoli
+from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -46,6 +46,16 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
             blocco = asyncio.Lock()
             self._blocchi[channel_id] = blocco
         return blocco
+
+    @staticmethod
+    async def _cancella_messaggio(channel: discord.TextChannel, message_id: int | None) -> None:
+        if message_id is None:
+            return
+        try:
+            vecchio = await channel.fetch_message(message_id)
+            await vecchio.delete()
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            pass  # già cancellato o non raggiungibile
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -131,10 +141,16 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
             )
             return
 
-        ping_ruoli = isinstance(interaction.user, discord.Member) and puo_pingare_ruoli(
-            interaction.user.guild_permissions
-        )
-        await sticky_message_repo.set_sticky(channel.id, guild.id, message, ping_ruoli=ping_ruoli)
+        ping_ruoli = utente_puo_pingare_ruoli(interaction.user)
+        # Stesso blocco del listener: mentre si cambia il testo nessuno
+        # ripubblica, e il messaggio vecchio non resta orfano nel canale.
+        async with self._blocco(channel.id):
+            vecchio = await sticky_message_repo.get_sticky(channel.id)
+            await sticky_message_repo.set_sticky(
+                channel.id, guild.id, message, ping_ruoli=ping_ruoli
+            )
+            if vecchio is not None:
+                await self._cancella_messaggio(channel, vecchio.last_message_id)
         await interaction.response.send_message(
             f"Sticky message impostato per {channel.mention}. "
             f"Verrà pubblicato al prossimo messaggio in quel canale.",
@@ -151,8 +167,11 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
     async def remove_sticky(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
-        sticky = await sticky_message_repo.get_sticky(channel.id)
-        rimosso = await sticky_message_repo.remove_sticky(channel.id)
+        async with self._blocco(channel.id):
+            sticky = await sticky_message_repo.get_sticky(channel.id)
+            rimosso = await sticky_message_repo.remove_sticky(channel.id)
+            if rimosso and sticky is not None:
+                await self._cancella_messaggio(channel, sticky.last_message_id)
 
         if not rimosso:
             await interaction.response.send_message(
@@ -160,13 +179,6 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-
-        if sticky is not None and sticky.last_message_id is not None:
-            try:
-                vecchio = await channel.fetch_message(sticky.last_message_id)
-                await vecchio.delete()
-            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                pass
 
         await interaction.response.send_message(
             f"Sticky message rimosso da {channel.mention}.", ephemeral=True

@@ -21,6 +21,7 @@ from cogs.utility.suggestions import SuggestionsCog
 from core.repositories.custom_command_request_repo import CustomCommandRequestRepository
 from core.repositories.suggestion_repo import SuggestionRepository
 from core.suggestion_logic import APPROVED, REJECTED
+from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_message, fake_text_channel
 from tests.support.percorsi import comando_nel_gruppo
 
@@ -50,6 +51,7 @@ async def test_set_status_decide_una_volta_sola(repo):
 @pytest.mark.asyncio
 async def test_due_clic_insieme_una_sola_decisione(repo):
     sid = await repo.create_suggestion(1, 2, 3, "idea")
+    await apri_connessioni(repo._pool)
     cog = SuggestionsCog(bot=MagicMock())
     i1 = fake_interaction(user=_staff(10))
     i2 = fake_interaction(user=_staff(11))
@@ -143,6 +145,7 @@ async def test_richiesta_decisa_una_volta_sola(repo_ccr):
 @pytest.mark.asyncio
 async def test_due_clic_insieme_sulla_richiesta_una_sola_decisione(repo_ccr):
     rid = await _nuova_richiesta(repo_ccr)
+    await apri_connessioni(repo_ccr._pool)
     bot = MagicMock()
     bot.get_user.return_value = None
     bot.fetch_user = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=404, reason="x"), "no"))
@@ -177,3 +180,34 @@ async def test_richiesta_con_invio_fallito_non_resta_orfana(repo_ccr, monkeypatc
     interazione.response.defer.assert_awaited_once()
     assert await repo_ccr._pool.fetchval("SELECT COUNT(*) FROM custom_command_requests") == 0
     assert "non" in interazione.followup.send.await_args.args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_suggerimento_perso_all_ultimo_istante_non_modifica_il_messaggio(repo, monkeypatch):
+    # get_suggestion vede ancora "in attesa" ma un altro ha già deciso:
+    # set_status risponde False e il clic perdente non tocca il messaggio.
+    sid = await repo.create_suggestion(1, 2, 3, "idea")
+    monkeypatch.setattr(repo, "set_status", AsyncMock(return_value=False))
+    cog = SuggestionsCog(bot=MagicMock())
+    interazione = fake_interaction(user=_staff(10))
+
+    await cog._handle_decision(interazione, sid, APPROVED)
+
+    interazione.response.edit_message.assert_not_awaited()
+    assert "già" in interazione.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_richiesta_persa_all_ultimo_istante_non_modifica_ne_notifica(repo_ccr, monkeypatch):
+    rid = await _nuova_richiesta(repo_ccr)
+    monkeypatch.setattr(repo_ccr, "set_status", AsyncMock(return_value=False))
+    bot = MagicMock()
+    bot.fetch_user = AsyncMock()
+    cog = CustomCommandRequestsCog(bot)
+    interazione = fake_interaction(user=_staff(10))
+
+    await cog._handle_decision(interazione, rid, APPROVED)
+
+    interazione.response.edit_message.assert_not_awaited()
+    bot.fetch_user.assert_not_awaited()
+    assert "già" in interazione.response.send_message.await_args.args[0]

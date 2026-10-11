@@ -17,7 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.admin_mentions_logic import menzioni_ammesse, puo_pingare_ruoli
+from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
@@ -143,8 +143,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
                 "channel_id": channel.id,
                 "message": message,
                 # D12: i ruoli del testo vengono avvisati solo se chi programma può menzionarli.
-                "ping_ruoli": isinstance(interaction.user, discord.Member)
-                and puo_pingare_ruoli(interaction.user.guild_permissions),
+                "ping_ruoli": utente_puo_pingare_ruoli(interaction.user),
             },
         )
 

@@ -10,8 +10,6 @@ non pingano mai. Funzioni semplici, provabili senza Discord.
 
 from __future__ import annotations
 
-from typing import Iterable
-
 import discord
 
 
@@ -22,18 +20,22 @@ def puo_pingare_ruoli(permessi: discord.Permissions | None) -> bool:
     return bool(permessi.mention_everyone or permessi.administrator)
 
 
-def menzioni_ammesse(
-    ping_ruoli: bool, utenti: Iterable[discord.abc.Snowflake] = ()
-) -> discord.AllowedMentions:
+def utente_puo_pingare_ruoli(utente: object) -> bool:
     """
-    Menzioni esplicite: `everyone` sempre spento; i ruoli solo se
-    `ping_ruoli`; gli utenti solo quelli passati (es. chi entra).
+    La regola D12 in un punto solo: chi configura un messaggio può farne
+    suonare i ruoli se è un membro con "Menziona tutti" (o amministratore).
+    """
+    return isinstance(utente, discord.Member) and puo_pingare_ruoli(utente.guild_permissions)
+
+
+def menzioni_ammesse(ping_ruoli: bool) -> discord.AllowedMentions:
+    """
+    Menzioni esplicite: `everyone` (@everyone e @here) sempre spento; i
+    ruoli solo se `ping_ruoli`; gli utenti sì (un <@utente> scritto
+    dall'admin avvisa, D12 riguarda solo everyone/here/ruoli).
     """
     return discord.AllowedMentions(
-        everyone=False,
-        roles=bool(ping_ruoli),
-        users=list(utenti),
-        replied_user=False,
+        everyone=False, roles=bool(ping_ruoli), users=True, replied_user=False
     )
 
 
