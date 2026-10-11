@@ -2,7 +2,7 @@
 cogs/security/security_score.py
 ====================================
 Security Score (SPEC.md §7.5): health-check della configurazione di
-sicurezza del server, un comando `/security-score` che restituisce
+sicurezza del server, un comando `/security score` che restituisce
 un punteggio 0-100 + consigli azionabili. Logica pura in
 core/security_logic.py (compute_security_score) — qui solo la
 raccolta dei segnali reali (permessi, 2FA, moduli attivi).
@@ -18,8 +18,9 @@ protezione attiva come Anti-Raid/Anti-Nuke.
 from __future__ import annotations
 
 import discord
-from discord import app_commands
 from discord.ext import commands
+
+from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -67,12 +68,15 @@ def _build_embed(punteggio: int, consigli: tuple[str, ...]) -> discord.Embed:
     return embed
 
 
-class SecurityScoreCog(commands.Cog):
+class SecurityScoreCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="security-score", description="Calcola il punteggio di sicurezza del server con consigli.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="score",
+        descrizione="Calcola il punteggio di sicurezza del server con consigli.",
+    )
     async def security_score(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_SECURITY_SCORE):
             return

@@ -29,14 +29,7 @@ MIXED = "mixed"
 AUDIENCE: dict[str, str] = {
     # AutoMod e sicurezza
     "automod": STAFF,
-    "escalation": STAFF,
-    "anti-nuke": STAFF,
-    "anti-raid": STAFF,
-    "global-ban": STAFF,
-    "permission-heatmap": STAFF,
-    "security-score": STAFF,
-    "spamtrap-setup": STAFF,
-    "verify": STAFF,
+    "security": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Moderazione
     "mod": STAFF,  # gruppo condiviso
     "modban": STAFF,  # gruppo condiviso
