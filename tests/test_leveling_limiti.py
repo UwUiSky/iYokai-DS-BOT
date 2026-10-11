@@ -54,9 +54,9 @@ LUNGHEZZE_ATTESE = {
     ("clan membri", "tag"): 5,
     ("clan compra-canale", "nome"): 100,
     ("clan tesoreria trasferisci", "tag_destinazione"): 5,
-    ("shop add-item", "name"): 80,
-    ("shop add-item", "description"): 200,
-    ("giveaway", "prize"): 200,
+    ("gestione economia shop-add", "name"): 80,
+    ("gestione economia shop-add", "description"): 200,
+    ("gestione economia giveaway", "prize"): 200,
 }
 
 
@@ -75,6 +75,7 @@ async def test_i_testi_liberi_hanno_la_lunghezza_massima():
             chiave = (comando.qualified_name, opzione["name"])
             if chiave in LUNGHEZZE_ATTESE:
                 trovate[chiave] = opzione.get("max_length")
+    await bot.remove_cog("LevelingCog")
     await bot.close()
 
     assert trovate == LUNGHEZZE_ATTESE
@@ -96,6 +97,7 @@ async def test_nessun_testo_libero_senza_lunghezza_massima():
             e_testo = opzione["type"] == discord.AppCommandOptionType.string.value
             if e_testo and not opzione.get("choices") and "max_length" not in opzione:
                 senza_limite.append((comando.qualified_name, opzione["name"]))
+    await bot.remove_cog("LevelingCog")
     await bot.close()
 
     assert senza_limite == []

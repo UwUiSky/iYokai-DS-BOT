@@ -1085,8 +1085,13 @@ async def test_boost_gilda_gia_attivo_messaggio_e_nessun_addebito(cog_e_repos):
 
 def test_le_scelte_di_boost_sono_tre_e_nei_limiti():
     from cogs.leveling.leveling import LevelingCog
+    from core.command_groups import costruisci_gruppi, registra_comandi_del_cog
 
-    for comando in (LevelingCog.clan_boost_individuale, LevelingCog.clan_boost_gilda):
+    cog = LevelingCog.__new__(LevelingCog)
+    registrati = registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)
+    boost = [c for c in registrati if c.qualified_name in ("clan boost individuale", "clan boost gilda")]
+    assert len(boost) == 2
+    for comando in boost:
         scelte = comando._params["tipo"].choices
         assert [c.value for c in scelte] == ["exp", "coin", "super"]
         assert all(len(c.name) <= 100 and len(c.value) <= 100 for c in scelte)
