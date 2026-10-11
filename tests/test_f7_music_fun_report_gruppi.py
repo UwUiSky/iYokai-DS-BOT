@@ -87,3 +87,18 @@ async def test_fun_ha_tutti_i_comandi_nel_gruppo_condiviso():
         assert GRUPPI["fun"].livello is None
     finally:
         await _scarica(bot)
+
+
+async def test_report_e_report_setup_nei_gruppi_nuovi():
+    from cogs.moderation.report import setup as report_setup
+
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await report_setup(bot)
+    try:
+        assert "report" in percorsi_del_gruppo("utility")
+        assert "config canale-report" in percorsi_del_gruppo("admin")
+        assert not {c.name for c in bot.tree.get_commands()} & {"report", "report-setup"}
+        assert GRUPPI["utility"].livello is None
+        assert GRUPPI["admin"].livello is Livello.ADMIN
+    finally:
+        await _scarica(bot)

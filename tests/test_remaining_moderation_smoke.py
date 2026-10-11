@@ -47,7 +47,11 @@ async def test_report_si_carica_correttamente():
     assert module.premium_capable is False
 
     comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"report", "report-setup"} <= comandi
+    assert not comandi & {"report", "report-setup"}
+    from core.command_groups import GRUPPI
+
+    assert GRUPPI["utility"].get_command("report") is not None
+    assert GRUPPI["admin"].get_command("config").get_command("canale-report") is not None
 
 
 async def test_clear_si_carica_e_parametri_leggibili_attraverso_decorator():

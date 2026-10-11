@@ -33,8 +33,6 @@ AUDIENCE: dict[str, str] = {
     # Moderazione
     "mod": STAFF,  # gruppo condiviso
     "modban": STAFF,  # gruppo condiviso
-    "report-setup": STAFF,
-    "report": PUBLIC,
     # Log
     "log": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Fun
