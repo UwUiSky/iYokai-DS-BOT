@@ -19,13 +19,12 @@ la permanenza in vocale, non solo quando si entra o si esce.
 # DA FARE (issue #65, fase F1): correzioni aperte per questo file in
 #   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
 #   clan).
-# DA FARE (issue #83, fase F9): NF-12, Rank card. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 # DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
+import io
 import logging
 import random
 from datetime import datetime, timedelta, timezone
@@ -56,6 +55,8 @@ from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
 from core.repositories.shop_repo import EsitoAcquisto, shop_repo
+from core.rank_card_image import COLORE_DI_BASE, TEMA_DI_BASE, DatiRankCard, render_rank_card
+from core.safe_image import run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.giveaway_logic import is_eligible, pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
@@ -113,6 +114,7 @@ from core.leveling_logic import (
     LIMITI_IMPOSTAZIONI,
     LevelingSettings,
     MAX_REGOLE_PER_TIPO,
+    colore_valido,
     deve_annunciare,
     scegli_premi,
     xp_con_moltiplicatore,
@@ -405,6 +407,11 @@ _SCELTE_PREMI = [
 _SCELTE_MOLTIPLICATORI = [
     app_commands.Choice(name="Si sommano", value="somma"),
     app_commands.Choice(name="Vale solo il più alto", value="massimo"),
+]
+_SCELTE_TEMA = [
+    app_commands.Choice(name="Scuro", value="scuro"),
+    app_commands.Choice(name="Chiaro", value="chiaro"),
+    app_commands.Choice(name="Notte", value="notte"),
 ]
 _NOMI_ANNUNCIO = {c.value: c.name for c in _SCELTE_ANNUNCIO}
 _NOMI_PREMI = {c.value: c.name for c in _SCELTE_PREMI}
@@ -773,37 +780,96 @@ class LevelingCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "level",
         nome="rank",
-        descrizione="Mostra il tuo livello e i tuoi coin.",
+        descrizione="Mostra la rank card: livello, XP, posizione e coin.",
     )
-    @app_commands.describe(member="Il membro di cui vedere il livello (facoltativo)")
+    @app_commands.describe(
+        member="Il membro di cui vedere la card (facoltativo)",
+        colore="Il tuo colore, es. #FF8800 (resta salvato)",
+        tema="Lo sfondo della tua card (resta salvato)",
+        reimposta="Torna al colore e al tema di base",
+    )
+    @app_commands.choices(tema=_SCELTE_TEMA)
     async def rank(
-        self, interaction: discord.Interaction, member: discord.Member | None = None
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member | None = None,
+        colore: app_commands.Range[str, 1, 20] | None = None,
+        tema: app_commands.Choice[str] | None = None,
+        reimposta: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
+        # NF-12: il disegno e il download dell'avatar possono superare i 3
+        # secondi, quindi si risponde subito.
+        await interaction.response.defer()
 
         target = member or interaction.user
+        nota = None
+        vuole_cambiare = colore is not None or tema is not None or reimposta
+        if vuole_cambiare:
+            if target.id != interaction.user.id:
+                nota = "Puoi cambiare solo la tua card: le preferenze di questo membro non sono cambiate."
+            elif reimposta:
+                await leveling_repo.reset_rank_card_prefs(target.id)
+                nota = "Card riportata al colore e al tema di base."
+            else:
+                esadecimale = None
+                if colore is not None:
+                    esadecimale = colore_valido(colore)
+                    if esadecimale is None:
+                        await interaction.followup.send(
+                            "Il colore deve essere nel formato #RRGGBB, per esempio #FF8800.",
+                            ephemeral=True,
+                        )
+                        return
+                await leveling_repo.set_rank_card_prefs(
+                    target.id, colore=esadecimale, tema=tema.value if tema else None
+                )
+
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
+        posizione = await leveling_repo.get_xp_position(interaction.guild.id, target.id)
+        colore_salvato, tema_salvato = await leveling_repo.get_rank_card_prefs(target.id)
 
         xp_livello_attuale = xp_for_level(totali.level)
         xp_prossimo_livello = xp_for_level(totali.level + 1)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
 
-        embed = discord.Embed(
-            title=f"Livello di {target.display_name}",
-            color=discord.Color.blurple(),
+        try:
+            avatar = await target.display_avatar.read()
+        except discord.HTTPException:
+            avatar = None
+        dati = DatiRankCard(
+            nome=target.display_name,
+            livello=totali.level,
+            xp_nel_livello=progresso,
+            xp_richiesti=richiesti,
+            xp_totale=totali.xp_total,
+            posizione=posizione,
+            coin=totali.coins_total,
+            colore=colore_salvato or COLORE_DI_BASE,
+            tema=tema_salvato or TEMA_DI_BASE,
         )
-        embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(name="Livello", value=str(totali.level), inline=True)
-        embed.add_field(name="XP totale", value=str(totali.xp_total), inline=True)
-        embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
-        embed.add_field(
-            name="Progresso al prossimo livello",
-            value=f"{progresso}/{richiesti} XP",
-            inline=False,
-        )
-        await interaction.response.send_message(embed=embed)
+        try:
+            png = await run_image_task(render_rank_card, dati, avatar)
+        except Exception:
+            logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
+            embed = discord.Embed(
+                title=f"Livello di {target.display_name}", color=discord.Color.blurple()
+            )
+            embed.set_thumbnail(url=target.display_avatar.url)
+            embed.add_field(name="Livello", value=str(totali.level), inline=True)
+            embed.add_field(name="XP totale", value=str(totali.xp_total), inline=True)
+            embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
+            embed.add_field(
+                name="Progresso al prossimo livello",
+                value=f"{progresso}/{richiesti} XP",
+                inline=False,
+            )
+            await interaction.followup.send(nota, embed=embed)
+            return
+
+        await interaction.followup.send(nota, file=discord.File(io.BytesIO(png), filename="rank.png"))
 
     @comando_di_gruppo(
         "level",

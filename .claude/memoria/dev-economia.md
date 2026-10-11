@@ -1,64 +1,44 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-11/10/2026 · ramo `feat/giro-eco` (da main `0e7753a`), DB `iyokai_weco`, migrazioni da 0030
+11/10/2026 · ramo `feat/giro-eco` (da main `0e7753a`), DB `iyokai_weco`, migrazioni usate 0030, 0031
 
 ## In corso
-- Giro eco: previsione 4 voci. Fatto 9.18. Poi NF-15 (#86, migrazione 0030, comandi in
-  `/level impostazioni`), poi NF-12 (#83, rank card), poi voci piccole #124/#125 se ci stanno.
-- 9.1-9.17 verificate già fatte (merge `9db9e8a`). Clan voice worker ancora utente per utente (Aperto).
+- Giro eco chiuso a 3 voci (9.18, NF-15, NF-12). Resta: smoke con nohup, push del ramo, rapporto.
+- Prossimo giro: voci piccole #124/#125 (LIV-064..067 XP a mano, LIV-005 livello massimo,
+  ECO-009 monete a mano, ECO-069 conferma acquisto), `/clan` voce worker batch, GDPR rank_card_prefs.
 
 ## Fatto
-- F1, livelli + economia + clan: unito su main con `9db9e8a`
-  (migrazioni `0015`–`0019`, `/clan lascia`, promozione a `co_owner`,
-  `_pagine.py`).
-- #135 clan (boost, dona, promuovi) su `fix/f1-135`: tutti e tre in un
-  commit solo (repo condiviso). Test `tests/test_clan_135_scritture_atomiche.py`.
-- #135 `reset_premium_registry`: salva e ripristina `is_premium_active`.
-- #136 `/config export` non scrive più le voci a `null` (strada scelta).
-
-- F7 passo 3a (#76): /level, /clan (+ bacheca, tesoreria, boost), /gestione economia|ruoli|benvenuto
-  in 4 commit su `feat/f7-gestione-livelli`; test `tests/test_f7_gestione_livelli_gruppi.py`.
-- #146 boost per tipo su `feat/boost-146` (5 commit, migrazione 0020, test `tests/test_clan_146_boost_per_tipo.py`).
-
-- Giro eco 9.18 (PERF-4/6): `apply_weekly_decay_guild` (un UPDATE per server + cassa nella stessa
-  transazione), `list_guilds_needing_weekly_decay`, `add_voice_minutes` (batch), `blacklisted_among`.
+- F1 livelli+economia+clan: unito (`9db9e8a`, migrazioni 0015-0019). 9.1-9.17 verificate fatte.
+- #135 clan atomico, #136 config export, F7 passo 3a (/level, /clan), #146 boost per tipo (0020): uniti o in attesa.
+- Giro eco: 9.18 (PERF-4/6) `589c29c`; NF-15 #86 `7ff9990` (0030, `/level impostazioni`);
+  NF-12 #83 rank card (0031, `core/rank_card_image.py`, `/level rank` con defer).
 
 ## Cose imparate
-- SQL `round()` arrotonda il mezzo in su, Python `round()` al pari: il decadimento in SQL usa
-  `2*round(x/20)` quando `x%10=5`; il test lo confronta con la funzione pura su 600 saldi.
-- `leveling_repo` importa la cassa solo dentro il metodo (la cassa importa `add_coins_in`).
-- Ordine dei blocchi: membro -> leveling_totals -> clans (come `apply_text_tick`);
-  `set_member_role` blocca prima il membro. Il contrario dà deadlock.
-- `buy_member_boost`, `donate_from_member`, `set_member_role` verificano
-  clan/guild/utente; `/config export` toglie null (anche in lista) e chiavi fuori schema.
-- BUG-17 non esiste: c'è il test che lo prova.
-- Le scritture di saldo vanno fatte condizionate nel database.
-- Pagamento + effetto (scadenza boost, tesoreria) = una transazione con
-  riga bloccata (`FOR UPDATE`); la scadenza si calcola sul valore letto
-  sotto blocco. Boost D23: sotto blocco si controlla che nessun beneficio del tipo sia attivo; `buy_*_boost` restituiscono `EsitoBoost` (stato, scadenza, attivi); mai somma delle durate.
-- `set_member_role(..., max_with_role=)` controlla il tetto sotto blocco
-  della riga gilda; restituisce `EsitoRuolo`, non più bool.
-- `tests/test_repository_callers.py`: ogni metodo di repo deve avere un chiamante
-  di produzione; tolti `set_*_boost_expiry` e `spend_from_treasury` (sostituiti
-  da `buy_*_boost`), `donate`/`count_members_with_role` presi con `conn=`.
-- `spend_coins_in(conn, ...)` (leveling_repo) si riusa dentro altre transazioni.
+- Ordine dei blocchi: membro -> leveling_totals -> clans; `set_member_role` blocca prima il membro.
+- Saldi condizionati nel database; pagamento + effetto = una transazione con `FOR UPDATE`.
+- Boost D23: `buy_*_boost` restituiscono `EsitoBoost`; mai somma delle durate.
+- `set_member_role(..., max_with_role=)` controlla il tetto sotto blocco; restituisce `EsitoRuolo`.
+- `tests/test_repository_callers.py`: ogni metodo di repo ha un chiamante di produzione (anche
+  interno al repo); tolto il vecchio, si aggiorna il test. `spend_coins_in(conn, ...)` si riusa.
 - Test di concorrenza: `apri_connessioni(pool)` prima di `asyncio.gather`.
-- Fixture a generatore: la si pilota con `_get_wrapped_function()()`;
-  `close()` non esegue il codice dopo `yield`, serve `next()`.
-- Un test che registra moduli premium usa una categoria ammessa
-  (es. `utility`), altrimenti `register()` solleva ValueError.
-
-- F7: i comandi di un cog con `CogConGruppi` non sono attributi `app_commands.Command`. Nei test
-  `registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)` dà i Command in gruppi
-  isolati (nome qualificato "clan boost gilda"); `cog.metodo.callback(cog, ...)` resta valido.
-- `LevelingCog.cog_unload` resta sincrono (i test lo chiamano senza await): cancella il task e
-  chiama `togli_comandi_del_cog`. Test che fanno `add_cog` devono finire con `remove_cog`.
-- `bacheca set/disable` stanno in /clan (pubblico): `@richiedi(Livello.ADMIN)` nel codice.
-- Test che caricano LevelingCog con bot non connesso: `bot.wait_until_ready = asyncio.Event().wait`.
+- Fixture a generatore: `_get_wrapped_function()()`; test che registrano moduli premium usano `utility`.
+- F7: comandi di `CogConGruppi` non sono `app_commands.Command`: nei test
+  `registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)` (nome "level impostazioni xp").
+  `cog.metodo.callback(cog, ...)` vale. `cog_unload` sincrono; test con `add_cog` finiscono con `remove_cog`.
+- Fixture che crea `LevelingCog(bot=None)` deve essere `async def` (il task parte nel costruttore).
+- SQL `round()` arrotonda il mezzo in su, Python `round()` al pari: il decadimento in SQL usa
+  `2*round(x/20)` se `x%10=5`; il test confronta con la funzione pura su 600 saldi.
+- `leveling_repo` importa la cassa solo dentro il metodo (la cassa importa `add_coins_in`).
+- NF-15: `leveling_settings_repo.get_config` ha cache di 60 s, invalidata da `set_*`/`remove_rule`;
+  il cog usa `_config()` che ricade sui valori di base se il database non risponde. Tetto 25 regole per tipo.
+- Un listener che legge `message.channel.id` rompe i finti senza `id`: i test con `_FakeChannel` lo aggiungono.
+- Rank card: Pillow in `run_image_task`, avatar con `safe_open_image`, ricade sull'embed se il disegno fallisce.
 
 ## Aperto
-- Colonne vecchie `boost_expires_at`/`guild_boost_expires_at` restano nel database, non usate.
-- I test senza `DATABASE_URL` esportato usano `iyokai_test` (condiviso): esportarlo sempre.
-- `tests/support/command_policy.py`: riga `"gestione"` aggiunta qui; se la aggiungono anche ticket/voice, tenerne una.
-- `core/guild_clan_voice_worker.py`: ancora ~6 query per utente a ogni tick (PERF-4 non chiusa lì).
+- Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.
+- Senza `DATABASE_URL` esportato i test usano `iyokai_test` (condiviso): esportarlo sempre.
+- `tests/support/command_policy.py`: riga `"gestione"` (se la aggiungono altri, tenerne una).
+- `core/guild_clan_voice_worker.py`: ~6 query per utente a ogni tick (PERF-4 non chiusa lì).
+- `rank_card_prefs` (user_id) non è ancora nel flusso GDPR di cancellazione (non c'è ancora per `leveling_totals`).
+- Rank card: sfondo con immagine propria (premium) non fatto; `/daily` e `/work` hanno importi fissi.

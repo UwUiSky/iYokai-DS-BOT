@@ -20,6 +20,8 @@ from datetime import datetime, timedelta, timezone
 import asyncpg
 
 from core.leveling_logic import (
+    NOMI_TEMI_RANK_CARD,
+    colore_valido,
     apply_weekly_personal_decay,
     can_earn_text_xp,
     compute_voice_minute,
@@ -465,6 +467,53 @@ class LevelingRepository:
                             conn, guild_id, user_id, grant.xp_granted, grant.coins_granted
                         )
         return risultati
+
+    async def get_xp_position(self, guild_id: int, user_id: int) -> int | None:
+        """
+        Posizione in classifica XP di sempre (1 = primo). A pari XP la
+        posizione è la stessa. None se l'utente non ha nessuna riga.
+        """
+        return await self._pool.fetchval(
+            """
+            SELECT 1 + (
+                SELECT count(*) FROM leveling_totals
+                WHERE guild_id = $1 AND xp_total > t.xp_total
+            )
+            FROM leveling_totals AS t WHERE t.guild_id = $1 AND t.user_id = $2
+            """,
+            guild_id,
+            user_id,
+        )
+
+    async def get_rank_card_prefs(self, user_id: int) -> tuple[str | None, str | None]:
+        """(colore, tema) scelti per la propria rank card; None dove non scelti."""
+        riga = await self._pool.fetchrow(
+            "SELECT colore, tema FROM rank_card_prefs WHERE user_id = $1", user_id
+        )
+        return (riga["colore"], riga["tema"]) if riga else (None, None)
+
+    async def set_rank_card_prefs(
+        self, user_id: int, colore: str | None = None, tema: str | None = None
+    ) -> None:
+        """Cambia solo ciò che viene dato (colore '#RRGGBB' maiuscolo; tema scuro, chiaro, notte)."""
+        if colore is not None and colore_valido(colore) != colore:
+            raise ValueError("Il colore deve essere nel formato #RRGGBB.")
+        if tema is not None and tema not in NOMI_TEMI_RANK_CARD:
+            raise ValueError(f"Tema sconosciuto: {tema}")
+        await self._pool.execute(
+            """
+            INSERT INTO rank_card_prefs (user_id, colore, tema) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE
+                SET colore = COALESCE($2, rank_card_prefs.colore),
+                    tema = COALESCE($3, rank_card_prefs.tema)
+            """,
+            user_id,
+            colore,
+            tema,
+        )
+
+    async def reset_rank_card_prefs(self, user_id: int) -> None:
+        await self._pool.execute("DELETE FROM rank_card_prefs WHERE user_id = $1", user_id)
 
     async def add_coins(self, guild_id: int, user_id: int, amount: int) -> int:
         """Aggiunge (o sottrae, con amount negativo) coin. Restituisce il nuovo saldo."""

@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 18:21 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 18:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 234 comandi in 16 categorie.**
 
@@ -144,7 +144,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 18:
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level pay`** — Trasferisci coin a un altro utente.
-- **`/level rank`** — Mostra il tuo livello e i tuoi coin.
+- **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.
 - **`/level work`** — Lavora per guadagnare qualche coin.

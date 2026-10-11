@@ -624,3 +624,8 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. `/level impostazioni moltiplicatore fattore:2 ruolo:@vip` e scrivi con un account con quel ruolo.
   4. `/level impostazioni premi modo:Sostituisci`, con due ruoli-premio a livelli diversi, e supera il secondo.
   Risultato atteso: il level-up arriva in DM; in #test nessun XP; con @vip gli XP del messaggio sono doppi; al secondo ruolo il primo viene tolto. `/level impostazioni mostra` riassume tutto.
+- [ ] `NF-12` (#83) — passi:
+  1. `/level rank` per te e per un altro membro (con avatar normale e con avatar animato).
+  2. `/level rank colore:#FF8800 tema:Notte`, poi di nuovo `/level rank`; poi `/level rank reimposta:True`.
+  3. `/level rank member:@altro colore:#00FF00`.
+  Risultato atteso: un'immagine PNG con avatar tondo, nome (tagliato se lungo), livello, barra XP, posizione e coin; colore e tema restano salvati; il passo 3 avvisa che si cambia solo la propria card e non salva nulla. Nessun "L'applicazione non ha risposto".

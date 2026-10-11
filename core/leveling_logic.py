@@ -23,6 +23,7 @@ un nuovo period_key senza righe, non uno stato da azzerare.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -401,3 +402,16 @@ def scegli_premi(ricompense, modo: str) -> tuple[list[int], list[int]]:
     da_dare = [r.role_id for r in ricompense if r.level_threshold == massimo]
     da_togliere = [r.role_id for r in ricompense if r.level_threshold != massimo]
     return da_dare, da_togliere
+
+
+# ======================================================================
+# Rank card (NF-12, #83): colore e tema scelti da ciascuno
+# ======================================================================
+NOMI_TEMI_RANK_CARD = ("scuro", "chiaro", "notte")
+_FORMA_COLORE = re.compile(r"^#?([0-9a-fA-F]{6})$")
+
+
+def colore_valido(testo: str) -> str | None:
+    """'#RRGGBB' (maiuscolo) se il testo è un colore esadecimale a sei cifre, altrimenti None."""
+    trovato = _FORMA_COLORE.match((testo or "").strip())
+    return f"#{trovato.group(1).upper()}" if trovato else None
