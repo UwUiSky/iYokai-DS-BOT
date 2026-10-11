@@ -70,7 +70,9 @@ async def ambiente(clean_db, monkeypatch):
 
     monkeypatch.setattr("core.feed_alert_gate.modulo_alert_attivo", _attivo)
     canale = _Canale(500)
-    yield FeedWatcherService(), repo, stato, canale, _Bot(canale), attivo, f"http://{srv.host}:{srv.port}/feed.rss"
+    servizio = FeedWatcherService()
+    yield servizio, repo, stato, canale, _Bot(canale), attivo, f"http://{srv.host}:{srv.port}/feed.rss"
+    await servizio.close()
     await srv.close()
 
 
