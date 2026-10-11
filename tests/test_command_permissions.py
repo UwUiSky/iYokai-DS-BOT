@@ -382,3 +382,17 @@ async def test_senza_oauth_configurato_la_sincronizzazione_non_fa_niente(monkeyp
     guild.id = GUILD
 
     assert await cp.sincronizza_dal_bot(MagicMock(), guild, TipoRuolo.ADMIN, None, 33) is None
+
+
+@pytest.mark.asyncio
+async def test_il_client_scrive_sul_percorso_giusto_con_il_bearer():
+    sessione = SessioneFinta([_Risposta(200, {})])
+    client = cp.ClientPermessi(sessione, "CID", "S", "r")
+
+    await client.scrivi(11, GUILD, 22, [{"id": "1", "type": 1, "permission": True}], "TOK")
+
+    metodo, url, kw = sessione.chiamate[0]
+    assert metodo == "PUT"
+    assert url == f"https://discord.com/api/v10/applications/11/guilds/{GUILD}/commands/22/permissions"
+    assert kw["headers"] == {"Authorization": "Bearer TOK"}
+    assert kw["json"] == {"permissions": [{"id": "1", "type": 1, "permission": True}]}

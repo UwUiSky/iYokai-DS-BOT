@@ -242,7 +242,8 @@ class ClientPermessi:
         return self._token(corpo, user_id)
 
     def _url(self, app_id: int, guild_id: int, command_id: int) -> str:
-        return f"{API}/applications/{app_id}/guilds/{guild_id}/commands/{command_id}/permissions"
+        percorso = ("applications", str(app_id), "guilds", str(guild_id), "commands", str(command_id), "permissions")
+        return "/".join((API, *percorso))
 
     async def leggi(self, app_id: int, guild_id: int, command_id: int, token: str) -> list[dict]:
         try:
