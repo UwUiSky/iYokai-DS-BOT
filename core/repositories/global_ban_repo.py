@@ -122,6 +122,21 @@ class GlobalBanRepository:
         )
         return [r["target_guild_id"] for r in rows]
 
+    async def network_summary(self, user_id: int) -> tuple[int, datetime | None, datetime | None]:
+        """
+        SIC-044: da quanti server della rete l'utente ha un ban della Spam
+        Trap ancora in piedi, e le date del primo e dell'ultimo. Mai i
+        nomi dei server.
+        """
+        row = await self._pool.fetchrow(
+            """
+            SELECT COUNT(DISTINCT source_guild_id) AS server, MIN(created_at) AS primo, MAX(created_at) AS ultimo
+            FROM global_ban_log WHERE user_id = $1 AND revoked_at IS NULL
+            """,
+            user_id,
+        )
+        return row["server"], row["primo"], row["ultimo"]
+
     async def mark_revoked(self, source_guild_id: int, user_id: int) -> None:
         await self._pool.execute(
             """

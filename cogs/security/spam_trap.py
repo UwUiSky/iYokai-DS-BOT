@@ -45,6 +45,7 @@ Funzioni coperte: SPEC §7.3
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from collections import defaultdict
@@ -56,7 +57,8 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
-from cogs.security.global_ban import propagate_ban
+from cogs.security.global_ban import propagate_ban, revoca_ban_propagati
+from core.bounded_cache import BoundedCache
 from core.database import db
 from core.image_thumbnail import generate_thumbnail
 from core.image_thumbnail_logic import (
@@ -94,6 +96,15 @@ LOG_CHANNEL_DEFAULT_NAME = "spam-log"
 # file fino a 10 MiB (LIMITI.md, LIM-55): si resta sotto con margine, e
 # sotto il limite del server se è più basso.
 MAX_TRANSCRIPT_BYTES = 8 * 1024 * 1024
+
+# Quanti messaggi dell'utente entrano nel transcript. Ognuno costa una
+# chiamata a Discord PRIMA del ban: senza un tetto, un account che ha scritto
+# per giorni in cento canali farebbe aspettare il ban per minuti.
+MAX_MESSAGGI_TRANSCRIPT = 40
+
+# Dopo un ban un secondo messaggio nella trappola (l'utente ne scrive
+# cinque di fila) non deve far ripartire tutta la sequenza.
+SECONDI_IGNORA_STESSO_UTENTE = 60
 
 # Il testo dell'appello finisce nella descrizione di un embed (4096).
 MAX_TESTO_APPELLO = 3500
@@ -143,6 +154,28 @@ def _is_staff_exempt(
     if member.top_role > guild.me.top_role:
         return True
     return False
+
+
+def _permessi_mancanti(
+    guild: discord.Guild, trap_channel: discord.TextChannel, log_channel: discord.TextChannel
+) -> list[str]:
+    """Cosa manca al bot perché la trappola e gli appelli funzionino davvero."""
+    avvisi = []
+    permessi = guild.me.guild_permissions
+    if not (permessi.ban_members or permessi.administrator):
+        avvisi.append("Mi manca il permesso Bannare membri: la trappola non potrà bannare nessuno.")
+    nel_log = log_channel.permissions_for(guild.me)
+    if not (nel_log.administrator or (nel_log.view_channel and nel_log.send_messages and nel_log.embed_links)):
+        avvisi.append(f"Nel canale dei log {log_channel.mention} non posso scrivere (servono Vedi canale, Invia messaggi, Incorpora link).")
+    elif not (nel_log.administrator or (nel_log.create_private_threads and nel_log.send_messages_in_threads)):
+        avvisi.append(
+            f"Nel canale dei log {log_channel.mention} mi mancano Crea thread privati e Invia messaggi nei thread: "
+            "senza non posso aprire gli appelli."
+        )
+    nella_trappola = trap_channel.permissions_for(guild.me)
+    if not (nella_trappola.administrator or (nella_trappola.view_channel and nella_trappola.read_message_history)):
+        avvisi.append(f"Nella trappola {trap_channel.mention} non vedo i messaggi (Vedi canale, Leggi cronologia).")
+    return avvisi
 
 
 def _saved_text_channel(
@@ -321,6 +354,12 @@ class AppealActionsView(BaseView):
         await moderation_repo.revoke_active_cases_for_user(
             self.guild_id, self.user_id, BAN_ACTION_TYPE, interaction.user.id
         )
+        # Il ban era arrivato anche agli altri server della rete: l'appello
+        # accolto lo toglie anche da li' (best-effort, non blocca la risposta).
+        try:
+            await revoca_ban_propagati(interaction.client, self.guild_id, self.user_id)
+        except Exception:
+            logger.exception("Revoca dei ban propagati fallita (caso %s).", self.case_number)
 
         try:
             user = await interaction.client.fetch_user(self.user_id)
@@ -386,6 +425,9 @@ class StaffReplyModal(BaseModal, title="Reply to user"):
 class SpamTrapCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # (server, utente) con la sequenza di ban in corso o appena finita.
+        self._in_corso: set[tuple[int, int]] = set()
+        self._banditi_da_poco: BoundedCache[tuple[int, int], datetime] = BoundedCache(max_size=2000)
 
     # ================================================================
     # Setup
@@ -418,6 +460,14 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if trap_channel is not None and log_channel is not None and trap_channel.id == log_channel.id:
+            await interaction.response.send_message(
+                "Il canale trappola e il canale dei log devono essere due canali diversi: "
+                "chi scrive nella trappola viene bannato, e lo staff deve poter scrivere nei log.",
+                ephemeral=True,
+            )
+            return
+
         await interaction.response.defer(ephemeral=True)
 
         # BUG-25: un canale non indicato vuol dire "tieni quello già
@@ -431,6 +481,13 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
 
         created_trap = trap_channel is None
         created_log = log_channel is None
+        if (
+            trap_channel is not None and log_channel is not None
+            and trap_channel.id == log_channel.id
+        ):
+            # Salvati vecchi con lo stesso canale: se ne fa uno nuovo per i log.
+            log_channel = None
+            created_log = True
 
         try:
             if trap_channel is None:
@@ -485,6 +542,8 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             f"Spam Trap configurato: trappola in {trap_channel.mention}, "
             f"log in {log_channel.mention}."
         )
+        for avviso in _permessi_mancanti(guild, trap_channel, log_channel):
+            messaggio += f"\n⚠️ {avviso}"
         if ruoli_staff:
             menzioni = ", ".join(f"<@&{role_id}>" for role_id in ruoli_staff)
             messaggio += f"\nRuoli esentati dal ban: {menzioni}."
@@ -504,8 +563,14 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         )
 
     async def _create_log_channel(self, guild: discord.Guild) -> discord.TextChannel:
+        # Il bot deve poter scrivere e aprire gli appelli anche se il suo ruolo
+        # non ha questi permessi: il canale e' nascosto a tutti tranne a lui.
         overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False)
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            guild.me: discord.PermissionOverwrite(
+                view_channel=True, send_messages=True, embed_links=True, attach_files=True,
+                create_private_threads=True, send_messages_in_threads=True, manage_threads=True,
+            ),
         }
         return await guild.create_text_channel(
             LOG_CHANNEL_DEFAULT_NAME,
@@ -581,6 +646,25 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         return await db.get_guild_setting(guild_id, SETTING_STAFF_ROLES, default=[])
 
     async def _handle_trigger(self, message: discord.Message) -> None:
+        """
+        Un solo giro per utente: chi scrive cinque messaggi di fila nella
+        trappola non deve avere cinque DM, cinque casi e cinque propagazioni
+        della rete di ban.
+        """
+        chiave = (message.guild.id, message.author.id)
+        adesso = datetime.now(timezone.utc)
+        recente = self._banditi_da_poco.get(chiave)
+        if chiave in self._in_corso or (
+            recente is not None and (adesso - recente).total_seconds() < SECONDI_IGNORA_STESSO_UTENTE
+        ):
+            return
+        self._in_corso.add(chiave)
+        try:
+            await self._esegui_sequenza_ban(message)
+        finally:
+            self._in_corso.discard(chiave)
+
+    async def _esegui_sequenza_ban(self, message: discord.Message) -> None:
         guild = message.guild
         user = message.author
 
@@ -648,13 +732,18 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             logger.exception("Errore HTTP bannando %s (Spam Trap).", user.id)
             return
         banned_at = discord.utils.utcnow()
+        self._banditi_da_poco.set((guild.id, user.id), datetime.now(timezone.utc))
 
         # 4.1 Ban globale (SPEC.md §7.3) — propagazione best-effort
         #     verso ogni altro server aderente alla rete (vedi
         #     cogs/security/global_ban.py). Non blocca la sequenza:
         #     se il server non ha aderito, la funzione stessa
         #     restituisce una lista vuota senza fare nulla.
-        propagated_guild_ids = await propagate_ban(self.bot, guild, user.id, "Spam trap triggered")
+        #     Gira in parallelo ai passi seguenti (caso, purge, pulizia): con
+        #     una rete grande ci vuole del tempo, e quei passi non ne dipendono.
+        propagazione = asyncio.create_task(
+            propagate_ban(self.bot, guild, user.id, "Spam trap triggered")
+        )
 
         # 5. Case (riusa il case system di Moderation).
         case_number = await moderation_repo.create_case(
@@ -685,6 +774,12 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             deleted_by_channel,
             transcript_html,
         )
+
+        try:
+            propagated_guild_ids = await propagazione
+        except Exception:
+            logger.exception("Propagazione del ban globale fallita (server %s).", guild.id)
+            propagated_guild_ids = []
 
         # 10. Log.
         await self._send_ban_log(
@@ -768,6 +863,21 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
     ) -> list[TranscriptEntry]:
         indexed = await spam_trap_repo.get_all_user_messages(guild.id, user.id)
         entries: list[TranscriptEntry] = []
+
+        # Solo gli ultimi messaggi (ognuno e' una chiamata a Discord prima del
+        # ban); i piu' vecchi si dichiarano nel transcript invece di tacerli.
+        omessi = max(len(indexed) - MAX_MESSAGGI_TRANSCRIPT, 0)
+        if omessi:
+            indexed = indexed[-MAX_MESSAGGI_TRANSCRIPT:]
+            entries.append(
+                TranscriptEntry(
+                    timestamp=indexed[0].created_at,
+                    author_display_name="iYokai",
+                    author_tag="transcript",
+                    content=f"…{omessi} older message(s) are not included in this transcript.",
+                    is_deleted_source=True,
+                )
+            )
 
         for record in indexed:
             channel = guild.get_channel(record.channel_id)
@@ -870,9 +980,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                         await entry.target.delete(reason="Cleanup after spam trap ban")
                     except discord.HTTPException:
                         pass
-        except discord.Forbidden:
+        except discord.HTTPException:
             logger.warning(
-                "Permessi insufficienti per leggere l'audit log (webhook) nel "
+                "Impossibile leggere l'audit log (webhook) nel "
                 "server %s.",
                 guild.id,
             )
@@ -886,9 +996,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                         await entry.target.delete(reason="Cleanup after spam trap ban")
                     except discord.HTTPException:
                         pass
-        except discord.Forbidden:
+        except discord.HTTPException:
             logger.warning(
-                "Permessi insufficienti per leggere l'audit log (inviti) nel "
+                "Impossibile leggere l'audit log (inviti) nel "
                 "server %s.",
                 guild.id,
             )

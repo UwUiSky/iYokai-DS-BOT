@@ -210,6 +210,34 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "security",
+        nome="controlla",
+        descrizione="Da quanti server della rete questo utente è stato bannato dalla Spam Trap.",
+        sottogruppo=("globalban", "Rete di ban globali tra server."),
+    )
+    @app_commands.describe(utente="L'utente da controllare (anche se non è nel server)")
+    @requires_module(MODULE_GLOBAL_BAN)
+    async def controlla(self, interaction: discord.Interaction, utente: discord.User) -> None:
+        if not await _aderisce(self.bot, interaction.guild.id):
+            await interaction.response.send_message(
+                "Solo i server che partecipano alla rete possono consultarla: /security globalban enable.",
+                ephemeral=True,
+            )
+            return
+        server, primo, ultimo = await global_ban_repo.network_summary(utente.id)
+        if server == 0:
+            testo = f"Nessun server della rete ha bannato {utente.mention} con la Spam Trap."
+        else:
+            testo = (
+                f"{utente.mention} è stato bannato dalla Spam Trap da {server} server della rete "
+                f"(primo ban {discord.utils.format_dt(primo, 'd')}, ultimo {discord.utils.format_dt(ultimo, 'd')}). "
+                "Non mostro quali server: conta solo il numero."
+            )
+        await interaction.response.send_message(
+            testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo(
+        "security",
         nome="status",
         descrizione="Mostra lo stato e la storia recente del ban globale.",
         sottogruppo=("globalban", "Rete di ban globali tra server."),

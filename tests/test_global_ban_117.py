@@ -133,3 +133,36 @@ async def test_il_registro_toglie_le_voci_vecchie(ambiente, clean_db):
     await global_ban_repo.log_propagation(1, 2, 4, "x")
     righe = await clean_db.fetch("SELECT user_id FROM global_ban_log")
     assert [r["user_id"] for r in righe] == [4]
+
+
+# ---------------------------------------------------------------- SIC-044
+async def test_controlla_utente_conta_i_server_senza_dirne_i_nomi(ambiente):
+    sorgente_a, sorgente_b, riceve = _server(1), _server(2), _server(3)
+    ambiente.update({1, 2, 3})
+    bot = _bot(sorgente_a, sorgente_b, riceve)
+    await modulo.propagate_ban(bot, sorgente_a, USER, "x")
+    await modulo.propagate_ban(bot, sorgente_b, USER, "x")
+
+    cog = modulo.GlobalBanCog(bot)
+    interazione = fake_interaction(guild=fake_guild(guild_id=3))
+    utente = MagicMock(id=USER, mention=f"<@{USER}>")
+    await cog.controlla.callback(cog, interazione, utente)
+
+    testo = interazione.response.send_message.call_args.args[0]
+    assert "2 server" in testo
+    assert "S1" not in testo and "S2" not in testo  # niente nomi di altri server
+
+
+async def test_controlla_utente_solo_per_chi_partecipa_alla_rete(ambiente):
+    cog = modulo.GlobalBanCog(MagicMock())
+    interazione = fake_interaction(guild=fake_guild(guild_id=3))
+    await cog.controlla.callback(cog, interazione, MagicMock(id=555, mention="<@555>"))
+    assert "partecipano" in interazione.response.send_message.call_args.args[0]
+
+
+async def test_controlla_utente_mai_bannato(ambiente):
+    ambiente.add(3)
+    cog = modulo.GlobalBanCog(MagicMock())
+    interazione = fake_interaction(guild=fake_guild(guild_id=3))
+    await cog.controlla.callback(cog, interazione, MagicMock(id=555, mention="<@555>"))
+    assert "nessun" in interazione.response.send_message.call_args.args[0].lower()
