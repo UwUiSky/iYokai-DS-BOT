@@ -18,11 +18,10 @@ Il tempban è l'unico caso "speciale": non esiste un ban a tempo
 nativo su Discord, quindi banniamo normalmente e PIANIFICHIAMO lo
 sblocco tramite core/scheduler.py, che sopravvive a un riavvio del
 bot (vedi quel file per il perché serve, non un semplice
-asyncio.sleep).
+asyncio.sleep). Tre modi (#138): fuori, fuori con rientro (invito mandato
+prima del ban, ruoli ridati al ritorno), isolamento (resta nel server,
+vede un solo canale). Funzioni coperte anche: SPEC §5.11, §5.12.
 """
-
-# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
 
 from __future__ import annotations
 
@@ -35,8 +34,18 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core.database import db
 from core.repositories.moderation_repo import moderation_repo
 from core.scheduler import scheduler, in_seconds
+from core.tempban_logic import (
+    MODO_FUORI,
+    MODO_ISOLAMENTO,
+    MODO_RIENTRO,
+    ruoli_da_salvare,
+    ruoli_da_tenere_in_isolamento,
+    testo_fine,
+)
+from cogs.moderation import tempban_modes
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
@@ -45,6 +54,7 @@ from cogs.moderation._shared import (
     try_dm,
     try_dm_message,
     delete_dm,
+    audit_reason,
     parse_duration,
     format_duration,
     validate_reason,
@@ -259,7 +269,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await _log_e_risposta(interaction, embed, dm is not None)
 
     # ================================================================
-    # /tempban
+    # /tempban (con rientro o in isolamento, #138)
     # ================================================================
     @comando_di_gruppo(
         "modban",
@@ -270,6 +280,14 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         member="Il membro da bannare temporaneamente",
         duration="Durata, es. 7d, 12h, 30m",
         reason="Motivo del ban",
+        modo="Fuori dal server, fuori con invito e ruoli al rientro, oppure isolamento",
+    )
+    @app_commands.choices(
+        modo=[
+            app_commands.Choice(name="Fuori dal server", value=MODO_FUORI),
+            app_commands.Choice(name="Fuori, con invito e ruoli al rientro", value=MODO_RIENTRO),
+            app_commands.Choice(name="Isolamento: resta, vede un solo canale", value=MODO_ISOLAMENTO),
+        ]
     )
     async def tempban(
         self,
@@ -277,6 +295,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         member: discord.Member,
         duration: str,
         reason: Reason,
+        modo: str = MODO_FUORI,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -292,52 +311,147 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.defer()
+        guild = interaction.guild
+        fine = in_seconds(duration_seconds)
+        fine_ts = int(fine.timestamp())
+        isolamento = modo == MODO_ISOLAMENTO
 
+        # Isolamento: ruolo e canale pronti prima di toccare l'utente.
+        ruolo_iso = canale_iso = None
+        if isolamento:
+            preparati = await tempban_modes.prepara_isolamento(guild)
+            if preparati is None:
+                await interaction.followup.send(
+                    "Non sono riuscito a preparare ruolo e canale di isolamento: "
+                    "controlla i miei permessi.",
+                    ephemeral=True,
+                )
+                return
+            ruolo_iso, canale_iso = preparati
+
+        # Rientro: l'invito si crea e si manda PRIMA del ban (dopo, il DM
+        # non parte più). Vale oltre la scadenza: non scade, un solo uso.
+        invito = None
+        if modo == MODO_RIENTRO:
+            invito = await tempban_modes.crea_invito(guild)
+
+        titolo = "🔒 Isolamento" if isolamento else "⏳ Tempban"
         durata = ("Durata", format_duration(duration_seconds))
-        dm = await try_dm_message(
-            member,
-            _case_embed(
-                "⏳ Tempban", discord.Color.dark_red(), member, interaction.user,
-                reason, None, extra_field=durata,
-            ),
-        )
+
+        def _embed(caso: int | None, per_dm: bool) -> discord.Embed:
+            e = _case_embed(
+                titolo, discord.Color.dark_red(), member, interaction.user,
+                reason, caso, extra_field=durata,
+            )
+            e.add_field(name="Fine", value=testo_fine(fine_ts), inline=False)
+            if per_dm and invito is not None:
+                e.add_field(name="Invito per rientrare", value=invito.url, inline=False)
+            return e
+
+        dm = await try_dm_message(member, _embed(None, True))
+
+        ruoli_salvati = ruoli_da_salvare(tempban_modes.info_ruoli(member.roles))
         try:
-            await member.ban(reason=reason)
+            if isolamento:
+                tenuti = ruoli_da_tenere_in_isolamento(
+                    tempban_modes.info_ruoli(member.roles), guild.me.top_role.position
+                )
+                nuovi = [r for r in member.roles if r.id in tenuti] + [ruolo_iso]
+                ruoli_salvati = [i for i in ruoli_salvati if i not in tenuti]
+                await member.edit(roles=nuovi, reason=audit_reason(f"Isolamento: {reason}"))
+            else:
+                await member.ban(reason=reason)
         except discord.HTTPException:
             await delete_dm(dm)
+            await tempban_modes.cancella_invito(invito)
             await interaction.followup.send(_BAN_FALLITO, ephemeral=True)
             return
 
         case_number = await moderation_repo.create_case(
-            guild_id=interaction.guild.id,
+            guild_id=guild.id,
             user_id=member.id,
             moderator_id=interaction.user.id,
-            action_type=TEMPBAN_ACTION_TYPE,
+            action_type="isolamento" if isolamento else TEMPBAN_ACTION_TYPE,
             reason=reason,
             duration_seconds=duration_seconds,
         )
+
+        if modo != MODO_FUORI:
+            await moderation_repo.save_tempban_state(
+                guild.id, member.id, modo, ruoli_salvati, fine,
+                invito_codice=invito.code if invito else None,
+                case_number=case_number,
+            )
 
         # Pianifica lo sblocco automatico. Il payload porta il
         # case_number, così l'handler può revocare il caso corretto
         # quando scade (vedi handle_tempban_expire più sotto).
         await scheduler.schedule(
-            guild_id=interaction.guild.id,
+            guild_id=guild.id,
             user_id=member.id,
             action_type=SCHEDULED_TEMPBAN_EXPIRE,
-            execute_at=in_seconds(duration_seconds),
-            payload={"case_number": case_number},
+            execute_at=fine,
+            payload={"case_number": case_number, "modo": modo},
         )
 
-        embed = _case_embed(
-            "⏳ Tempban",
-            discord.Color.dark_red(),
-            member,
-            interaction.user,
-            reason,
-            case_number,
-            extra_field=durata,
-        )
-        await _log_e_risposta(interaction, embed, dm is not None)
+        if isolamento and canale_iso is not None:
+            try:
+                await canale_iso.send(
+                    f"{member.mention} è in isolamento fino a {testo_fine(fine_ts)}.\n"
+                    f"Motivo: {reason}"
+                )
+            except discord.HTTPException:
+                logger.warning("Isolamento: messaggio nel canale non inviato (server %s).", guild.id)
+
+        await _log_e_risposta(interaction, _embed(case_number, False), dm is not None)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
+        """Un canale nuovo non deve essere visibile a chi è in isolamento."""
+        await tempban_modes.nega_canale_nuovo(channel)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """
+        Rientro dopo un tempban con rientro: si ridanno i ruoli salvati.
+        Se l'utente è uscito durante l'isolamento e torna prima della fine,
+        riprende l'isolamento (altrimenti basterebbe uscire e rientrare).
+        """
+        guild = member.guild
+        stato = await moderation_repo.get_tempban_state(guild.id, member.id)
+        if stato is None:
+            return
+        try:
+            if stato["modo"] == MODO_ISOLAMENTO and not stato["scaduto"]:
+                ruolo_id = await db.get_guild_setting(
+                    guild.id, tempban_modes.SETTING_ISOLAMENTO_RUOLO
+                )
+                ruolo = guild.get_role(ruolo_id) if ruolo_id else None
+                if ruolo is not None:
+                    await member.add_roles(ruolo, reason="Isolamento ancora in corso")
+                return
+            if not stato["scaduto"]:
+                return
+            ruoli = tempban_modes.ruoli_da_riprendere(guild, list(stato["ruoli"]))
+            if ruoli:
+                await member.add_roles(*ruoli, reason="Rientro dopo il ban temporaneo")
+        except discord.HTTPException:
+            logger.warning("Rientro: ruoli non ridati a %s (server %s).", member.id, guild.id)
+            return
+        await moderation_repo.delete_tempban_state(guild.id, member.id)
+
+    async def _rilascia_isolamento(
+        self, guild: discord.Guild, member: discord.Member, stato: dict, motivo: str
+    ) -> None:
+        """Toglie il ruolo di isolamento e ridà i ruoli salvati."""
+        ruolo_id = await db.get_guild_setting(guild.id, tempban_modes.SETTING_ISOLAMENTO_RUOLO)
+        ruolo = guild.get_role(ruolo_id) if ruolo_id else None
+        if ruolo is not None and ruolo in member.roles:
+            await member.remove_roles(ruolo, reason=motivo)
+        ruoli = tempban_modes.ruoli_da_riprendere(guild, list(stato["ruoli"]))
+        if ruoli:
+            await member.add_roles(*ruoli, reason=motivo)
+        await moderation_repo.delete_tempban_state(guild.id, member.id)
 
     async def handle_tempban_expire(
         self, guild_id: int, user_id: int, payload: dict
@@ -361,28 +475,60 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        try:
-            await guild.unban(
-                discord.Object(id=user_id), reason="Tempban scaduto automaticamente"
-            )
-        except discord.NotFound:
-            # L'utente non risultava più bannato (già sbannato a
-            # mano): non è un errore, è l'esito che ci aspettavamo.
-            pass
-        except discord.Forbidden:
-            logger.error(
-                "Permessi insufficienti per sbannare user_id=%s in "
-                "guild_id=%s alla scadenza del tempban.",
-                user_id,
-                guild_id,
-            )
-            return
+        modo = payload.get("modo", MODO_FUORI)
+        stato = await moderation_repo.get_tempban_state(guild_id, user_id)
+
+        if modo == MODO_ISOLAMENTO:
+            member = guild.get_member(user_id)
+            if member is not None and stato is not None:
+                try:
+                    await self._rilascia_isolamento(
+                        guild, member, stato, "Isolamento scaduto automaticamente"
+                    )
+                except discord.HTTPException:
+                    logger.error(
+                        "Fine isolamento non riuscita per user_id=%s in guild_id=%s.",
+                        user_id, guild_id,
+                    )
+                    return
+            elif stato is not None:
+                # Uscito durante l'isolamento: al rientro riprende i ruoli.
+                await moderation_repo.mark_tempban_state_expired(guild_id, user_id)
+        else:
+            try:
+                await guild.unban(
+                    discord.Object(id=user_id), reason="Tempban scaduto automaticamente"
+                )
+            except discord.NotFound:
+                # L'utente non risultava più bannato (già sbannato a
+                # mano): non è un errore, è l'esito che ci aspettavamo.
+                pass
+            except discord.Forbidden:
+                logger.error(
+                    "Permessi insufficienti per sbannare user_id=%s in "
+                    "guild_id=%s alla scadenza del tempban.",
+                    user_id,
+                    guild_id,
+                )
+                return
+            if stato is not None:
+                await moderation_repo.mark_tempban_state_expired(guild_id, user_id)
 
         case_number = payload.get("case_number")
         if case_number is not None:
             await moderation_repo.revoke_case(
                 guild_id, case_number, revoked_by=self.bot.user.id
             )
+
+        # M 1.8: anche la scadenza lascia una riga nel log di moderazione.
+        embed = discord.Embed(
+            title="⏱️ Isolamento finito" if modo == MODO_ISOLAMENTO else "⏱️ Tempban scaduto",
+            color=discord.Color.green(),
+        )
+        embed.add_field(name="Utente", value=f"<@{user_id}> ({user_id})", inline=False)
+        if case_number is not None:
+            embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
+        await post_to_mod_log(guild, embed)
 
     # ================================================================
     # /unban
@@ -406,6 +552,30 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         except ValueError:
             await interaction.response.send_message("ID utente non valido.", ephemeral=True)
             return
+
+        # Ban in isolamento (#138): l'utente è ancora nel server, si libera qui.
+        stato = await moderation_repo.get_tempban_state(interaction.guild.id, uid)
+        if stato is not None and stato["modo"] == MODO_ISOLAMENTO:
+            member = interaction.guild.get_member(uid)
+            if member is not None:
+                await interaction.response.defer()
+                try:
+                    await self._rilascia_isolamento(interaction.guild, member, stato, reason)
+                except discord.HTTPException:
+                    await interaction.followup.send(
+                        "Non sono riuscito a liberare l'utente: controlla i miei permessi.",
+                        ephemeral=True,
+                    )
+                    return
+                caso = await moderation_repo.get_latest_active_case(
+                    interaction.guild.id, uid, "isolamento"
+                )
+                if caso is not None:
+                    await moderation_repo.revoke_case(
+                        interaction.guild.id, caso.case_number, interaction.user.id
+                    )
+                await interaction.followup.send(f"Utente `{uid}` liberato dall'isolamento.")
+                return
 
         try:
             await interaction.guild.unban(discord.Object(id=uid), reason=reason)
@@ -434,6 +604,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                     interaction.guild.id, case.case_number, interaction.user.id
                 )
                 break
+
+        # Tempban con rientro sbannato a mano: al ritorno riprende i ruoli.
+        if stato is not None:
+            await moderation_repo.mark_tempban_state_expired(interaction.guild.id, uid)
 
         # BUG-24: anche i ban scattati dallo spam-trap. Tutti quelli
         # attivi, non solo l'ultimo: se restassero, l'utente
@@ -569,6 +743,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             )
 
         await interaction.response.send_message(f"Timeout rimosso da {member.mention}.")
+        log_embed = discord.Embed(title="🔊 Timeout rimosso", color=discord.Color.green())
+        log_embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
+        log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        await post_to_mod_log(interaction.guild, log_embed)
 
 
 async def setup(bot: commands.Bot) -> None:

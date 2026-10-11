@@ -660,3 +660,17 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
 - [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
 - [ ] Dati (NF-04, F5) — quando il registro esisterà: `rank_card_prefs` deve comparire in esportazione e cancellazione.
+
+
+## Moderazione — passaggio `feat/giro-mod` (#138)
+
+- [ ] `5.11` (#138) — passi:
+  1. Con un secondo account: `/modban tempban member:@prova duration:2m reason:prova modo:Fuori, con invito e ruoli al rientro`.
+  2. Controlla il DM ricevuto (data di fine e invito) prima che l'account sparisca dal server.
+  3. Aspetta 2 minuti, entra con l'invito.
+  Risultato atteso: l'invito funziona anche dopo la scadenza; l'account rientra con i ruoli di prima (non quelli sopra il bot); riga nel log di moderazione «Tempban scaduto».
+- [ ] `5.12` (#138) — passi:
+  1. `/modban tempban ... duration:3m modo:Isolamento` su un account con due ruoli.
+  2. Controlla che veda solo #isolamento (con la data di fine), crea un canale nuovo e controlla che non lo veda.
+  3. Fallo uscire e rientrare prima della fine: deve tornare isolato. Poi prova `/modban unban` con l'ID.
+  Risultato atteso: ruoli tolti durante l'isolamento e ridati alla fine (o all'unban); nessun ban vero.

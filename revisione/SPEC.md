@@ -339,15 +339,20 @@ Totale voci: **494**.
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
   → **Stato 04/10:** `/lock`, `/unlock`, `/slowmode`, `/clear` non creano né casi né log (REVIEW §12).
-- `[ ]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
+- `[~]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
   riceve l'invito per tornare e, al rientro, riprende i ruoli che
   aveva. L'invito e la data di fine si mandano in privato **prima**
   del ban (dopo, il bot non può più scrivergli); chi ha autorizzato il
   ripristino utenti viene riportato dentro in automatico (issue #138,
   fase F9)
-- `[ ]` 5.12 **Ban in isolamento** — per il tempo scelto l'utente resta
+  → **Fatto:** `/modban tempban modo:Fuori, con invito e ruoli al rientro` (invito
+  senza scadenza e a un uso, DM prima del ban, ruoli ridati al rientro sotto il
+  ruolo del bot). **Manca:** rientro automatico per chi ha autorizzato l'OAuth (#92).
+- `[x]` 5.12 **Ban in isolamento** — per il tempo scelto l'utente resta
   nel server ma vede un solo canale, che dice quando finisce; alla
   scadenza riprende i ruoli di prima (issue #138, fase F9)
+  → **Fatto:** `/modban tempban modo:Isolamento` (ruolo e canale «isolamento», canali
+  nuovi nascosti, uscita e rientro non liberano, `/modban unban` libera prima).
 
 ## §6 AUTOMOD
 

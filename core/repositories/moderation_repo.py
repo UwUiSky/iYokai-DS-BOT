@@ -352,6 +352,51 @@ class ModerationRepository:
             for r in rows
         ]
 
+    # ------------------------------------------------------------
+    # Ban temporaneo con rientro / isolamento (issue #138)
+    # ------------------------------------------------------------
+    async def save_tempban_state(
+        self,
+        guild_id: int,
+        user_id: int,
+        modo: str,
+        ruoli: list[int],
+        finisce_il: datetime,
+        invito_codice: str | None = None,
+        case_number: int | None = None,
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO tempban_stato
+                (guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (guild_id, user_id) DO UPDATE
+                SET modo = $3, ruoli = $4, invito_codice = $5, case_number = $6,
+                    finisce_il = $7, scaduto = FALSE
+            """,
+            guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il,
+        )
+
+    async def get_tempban_state(self, guild_id: int, user_id: int) -> dict | None:
+        row = await self._pool.fetchrow(
+            "SELECT * FROM tempban_stato WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+        return dict(row) if row else None
+
+    async def mark_tempban_state_expired(self, guild_id: int, user_id: int) -> None:
+        """Il ban è finito: al rientro l'utente riprende i ruoli salvati."""
+        await self._pool.execute(
+            "UPDATE tempban_stato SET scaduto = TRUE WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+
+    async def delete_tempban_state(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM tempban_stato WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+
 
 def _row_to_case(row) -> ModerationCase:
     return ModerationCase(
