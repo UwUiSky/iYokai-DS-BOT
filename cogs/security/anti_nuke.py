@@ -539,7 +539,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
 
         def _riga(nome: str, categoria: str) -> str:
             ora = category_hour_max(categoria, n)
-            testo_ora = f", {ora}/ora" if ora else ", oraria spenta"
+            testo_ora = f", {ora} all'ora" if ora else ", oraria spenta"
             return (
                 f"**{nome}**: max {category_max_count(categoria, n)}/"
                 f"{category_window_seconds(categoria, n)}s{testo_ora}"

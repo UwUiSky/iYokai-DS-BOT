@@ -1,10 +1,10 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-11/10/2026 · ultimo giro: `feat/giro-logt` (router canali, log messaggi, snipe, soundboard)
+11/10/2026 · ultimo giro: `feat/giro-eco` (decadimento a blocchi, XP vocale, /level impostazioni, rank card)
 
 ## In corso
-- Niente a metà. Giro logt chiuso. Prove: scratchpad/cblogt.
+- Niente a metà. Giro eco chiuso. Prove: scratchpad/cbeco (p1 decadimento, p2 corse, p3 deadlock, p6 card, p7 migrazioni, test_prove_eco*.py).
 
 ## Fatto
 - Revisione correzioni 28/09–01/10 (BUG-19…34, SEC-18…22): tutti risolti in R1-bis, tranne 26/28/29 superati (D8).
@@ -15,6 +15,7 @@
 - feat/147-cerca-comando: 0 alti; cache ID sotto lock senza timeout, `invalida()` perso se la fetch fallisce.
 - feat/66-utility: 0 alti. Sticky: il blocco per canale regge (10 messaggi = 1 invio; senza blocco 8). Ping D12, lunghezze dopo segnaposto, 25/2000/4096, SQL condizionato, modules_updated: a posto. Rilievi: role menu pubblica-poi-salva perde opzioni con due admin; `ping_ruoli` si azzera al toggle; `/sticky-set` durante repost; 2 test "doppio clic" dei suggerimenti vuoti. Test instabile del canale clan = test fragile, non codice.
 - feat/giro-logt: 1 alto (riga fantasma del router dopo canale generale cancellato), 6 medi (post forum doppi, avviso perso, audit per tempo, snipe di mod, ticket+forum).
+- feat/giro-eco: 0 alti. SQL del decadimento = funzione pura (50000 saldi fino a 9e18), corse e doppio versamento a posto. Medi: deadlock batch vocale vs decadimento, "sostituisci" toglie senza dare, categoria esclusa inutile, migrazioni rinumerate (versione per numero), test senza permessi/lock.
 
 ## Cose imparate
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -32,6 +33,8 @@
 - Test con gather che si aspetta "una sola riuscita": controllare se il saldo basta per una seconda acquisto in sequenza (clan: 100000 coin = 25000 + 50000). Ritardare la 2a chiamata di 0,15 s lo mostra.
 - Fake `AsyncMock(side_effect=lambda: asyncio.sleep())` NON aspetta: serve `async def`.
 - Router/ripiego: ogni `UPSERT` che crea la riga di un tipo dal ripiego la rende permanente: cercare sempre cosa succede dopo che l'admin cambia il generale.
+- Batch con FOR UPDATE ORDER BY contro UPDATE di massa senza ordine = deadlock: provare con righe inserite in ordine inverso. `schema_migrations` e' per NUMERO: rinumerare una migrazione gia' girata la fa saltare.
+- Prove dentro `tests/` (file temporaneo, poi rm): non usare `-p tests.conftest` (doppia registrazione).
 
 ## Aperto
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).

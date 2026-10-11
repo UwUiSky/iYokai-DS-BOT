@@ -1,9 +1,10 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-11/10/2026 · ramo `feat/sicurezza-audit` (copia /home/claude/wt/sic, 797b6ce) · #59/#117: 2ª rev., solo test da ritoccare
+11/10/2026 · ramo `feat/giro-logt` (6b50b7a) · #72/#73/#74/#61/#145: DA SISTEMARE
 
 ## In corso
+- `feat/giro-logt` (6b50b7a): DA SISTEMARE, 11 righe nel quaderno (cache `_post_noti` al cambio forum, audit letto due volte con snipe+ghost, `/log stato` esplicito, test mancanti snipe/message_logs/router, codice morto soundboard). Smoke 447 verdi. Alla riconsegna: controllare solo quelle.
 - #66 `feat/66-utility` (6e18a89): DA SISTEMARE, 12 righe nel quaderno (ramo `if not deciso` non provato, emoji test, test mancanti greetings/role menu/owner, reaction/menu svuotato, duplicato PagineView, VERIFICA_LIVE percorsi, ruff). Alla riconsegna: controllare solo quelle. Smoke 420 verdi.
 - #59/#117 `feat/sicurezza-audit` (797b6ce): 2ª revisione 11/10: tutte le righe del quaderno e N1-4/R1-2/G1-4 risolte e provate; DA SISTEMARE solo 2 ritocchi ai test (riga nel quaderno). Alla riconsegna: controllare solo quelli.
 - #67 `feat/67-feed-alert` (f3f90f5): DA SISTEMARE, 8 righe nel quaderno (test gruppi videos.list, test pop ETag, codice morto parse_search_live_response, SPEC/config/VERIFICA_LIVE). Alla riconsegna: controllare solo quelle.
@@ -37,6 +38,7 @@
 - Prove su copia in scratchpad (tar senza .git, poi pytest): senza le 3 chiavi in SETTINGS_SCHEMA 3 test falliscono; senza ramo AccessoNegato 1; senza catena al padre 1; senza condizione error_counter 0. Serve DATABASE_URL e le variabili di pytest: non importare i moduli con python -c.
 
 ## Aperto
+- giro-logt prove senza fix (copia tar scratchpad/rl, script mut.py): ~85 mutazioni; 2 bug veri provati con test temporaneo (cache post forum, doppia lettura audit). Sopravvivono: vedi quaderno. Trappola: `str.replace(..,1)` colpisce la PRIMA occorrenza (3 gate uguali in advanced_logs): controllare con `sed -n` che la mutazione sia sul punto giusto.
 - `feat/67-feed-alert`: attende 2 test e documentazione.
 - `feat/147-cerca-comando`: attende i 6 rilievi.
 - `feat/f7-quadro`: approvato, attende unione.
