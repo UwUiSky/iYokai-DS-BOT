@@ -1,11 +1,11 @@
 """
 tests/test_youtube_watcher.py
 =================================
-Test di YoutubeWatcherService con un server aiohttp VERO in locale
-(aiohttp.test_utils), che imita la FORMA della YouTube Data API
-(search.list) — non un mock della sessione HTTP. Stesso schema di
-tests/test_twitch_watcher.py, ma senza il livello OAuth (la Data API
-usa una semplice API key come parametro di query).
+YouTube live secondo D5 (issue #67, voci 11.1, 11.4, 11.6): per ogni
+canale si legge il feed RSS (zero quota), poi UNA chiamata
+`videos.list` per gruppo di 50 ID e si guarda `liveBroadcastContent`.
+Server aiohttp VERO in locale che imita il feed Atom di YouTube e
+videos.list; chiave API fittizia.
 """
 
 import discord
@@ -13,11 +13,12 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 
-from core.youtube_watcher import YoutubeWatcherService
+import core.youtube_watcher as modulo
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
+from core.youtube_watcher import YoutubeWatcherService
 
 
-class _FakeChannel(discord.TextChannel):
+class _Canale(discord.TextChannel):
     def __init__(self, channel_id: int) -> None:
         self.id = channel_id
         self.sent_messages: list[str] = []
@@ -26,160 +27,231 @@ class _FakeChannel(discord.TextChannel):
         self.sent_messages.append(content)
 
 
-class _FakeGuild:
-    def __init__(self, guild_id: int, channel: _FakeChannel) -> None:
-        self.id = guild_id
-        self._channel = channel
+class _Guild:
+    def __init__(self, canale) -> None:
+        self._canale = canale
 
     def get_channel(self, channel_id: int):
-        return self._channel
+        return self._canale
 
 
-class _FakeBot:
-    def __init__(self, guild: _FakeGuild) -> None:
-        self._guild = guild
+class _Bot:
+    def __init__(self, canale) -> None:
+        self._guild = _Guild(canale)
 
     def get_guild(self, guild_id: int):
         return self._guild
 
 
-@pytest.fixture
-async def server_youtube_finto():
-    stato = {"chiamate": 0, "canali_live": {}}  # channel_id -> (video_id, title)
+class _ConfigFinta:
+    YOUTUBE_API_KEY = "chiave-finta"
 
-    async def handler_search(request):
-        stato["chiamate"] += 1
-        assert request.query.get("key") == "chiave-finta"
-        channel_id = request.query.get("channelId")
-        if channel_id in stato["canali_live"]:
-            video_id, titolo = stato["canali_live"][channel_id]
-            items = [{"id": {"videoId": video_id}, "snippet": {"title": titolo}}]
-        else:
-            items = []
+
+def _atom(canale: str, n_video: int = 2) -> str:
+    voci = "".join(
+        f"""<entry><id>yt:video:{canale}_v{i}</id><title>Video {i} di {canale}</title>
+        <link rel="alternate" href="https://www.youtube.com/watch?v={canale}_v{i}"/></entry>"""
+        for i in range(n_video)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<feed xmlns="http://www.w3.org/2005/Atom">{voci}</feed>'
+    )
+
+
+@pytest.fixture
+async def server():
+    stato = {"rss": [], "videos": [], "live": set(), "n_video": 2, "rss_rotto": set()}
+
+    async def rss(request):
+        canale = request.query["channel_id"]
+        stato["rss"].append(canale)
+        if canale in stato["rss_rotto"]:
+            return web.Response(status=500)
+        return web.Response(text=_atom(canale, stato["n_video"]), content_type="application/atom+xml")
+
+    async def videos(request):
+        assert request.query["key"] == "chiave-finta"
+        ids = request.query["id"].split(",")
+        stato["videos"].append(ids)
+        items = [
+            {
+                "id": vid,
+                "snippet": {
+                    "title": f"Titolo {vid}",
+                    "liveBroadcastContent": "live" if vid in stato["live"] else "none",
+                },
+            }
+            for vid in ids
+        ]
         return web.json_response({"items": items})
 
     app = web.Application()
-    app.router.add_get("/search", handler_search)
-    server = TestServer(app)
-    await server.start_server()
-    yield server, stato
-    await server.close()
+    app.router.add_get("/feeds/videos.xml", rss)
+    app.router.add_get("/videos", videos)
+    srv = TestServer(app)
+    await srv.start_server()
+    yield srv, stato
+    await srv.close()
+
+
+@pytest.fixture
+def ambiente(clean_db, server, monkeypatch):
+    srv, stato = server
+    # SEC-8: il server finto e' su loopback e porta casuale; la protezione
+    # SSRF e' provata in test_safe_http.py.
+    import core.safe_http as safe_http_module
+
+    monkeypatch.setattr(safe_http_module, "_ip_e_bloccato", lambda ip: False)
+    monkeypatch.setattr(safe_http_module, "_schema_e_porta_ammessi", lambda url: True)
+
+    monkeypatch.setattr(modulo, "config", _ConfigFinta())
+    repo = YoutubeSubscriptionRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(modulo, "youtube_subscription_repo", repo)
+    attivo = {"valore": True}
+
+    async def _attivo(guild_id):
+        return attivo["valore"]
+
+    monkeypatch.setattr("core.feed_alert_gate.modulo_alert_attivo", _attivo)
+    canale = _Canale(500)
+    base = f"http://{srv.host}:{srv.port}"
+    servizio = YoutubeWatcherService(
+        videos_url=f"{base}/videos",
+        rss_url_template=base + "/feeds/videos.xml?channel_id={channel_id}",
+    )
+    return servizio, repo, stato, canale, _Bot(canale), attivo
 
 
 @pytest.mark.asyncio
-async def test_tick_rileva_canale_appena_andato_live(clean_db, server_youtube_finto, monkeypatch):
-    server, stato = server_youtube_finto
-    import core.youtube_watcher as youtube_watcher_module
-
-    class _ConfigFinta:
-        YOUTUBE_API_KEY = "chiave-finta"
-
-    monkeypatch.setattr(youtube_watcher_module, "config", _ConfigFinta())
-
-    repo = YoutubeSubscriptionRepository(pool_provider=lambda: clean_db)
-    youtube_watcher_module.youtube_subscription_repo = repo
-
-    await repo.add_subscription(100, 500, "UCabc", "Canale A", 1)
-    stato["canali_live"]["UCabc"] = ("video123", "Diretta di prova")
-
-    canale = _FakeChannel(500)
-    bot = _FakeBot(_FakeGuild(100, canale))
-    servizio = YoutubeWatcherService(search_url=f"http://{server.host}:{server.port}/search")
-
+async def test_dieci_canali_una_sola_chiamata_videos_list(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    for i in range(10):
+        await repo.add_subscription(100, 500, f"UC{i}", f"C{i}", 1)
     try:
         await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert len(stato["videos"]) == 1
+    assert len(stato["videos"][0]) == 20  # 10 canali x 2 video
+    assert sorted(stato["rss"]) == sorted(f"UC{i}" for i in range(10))
 
+
+@pytest.mark.asyncio
+async def test_oltre_50_id_si_divide_in_gruppi_da_50(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    stato["n_video"] = 5
+    for i in range(12):  # 60 ID
+        await repo.add_subscription(100, 500, f"UC{i}", f"C{i}", 1)
+    try:
+        await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert [len(g) for g in stato["videos"]] == [50, 10]
+
+
+@pytest.mark.asyncio
+async def test_stesso_canale_in_due_server_un_solo_scarico_e_due_messaggi(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    await repo.add_subscription(100, 500, "UCa", "A", 1)
+    await repo.add_subscription(200, 500, "UCa", "A bis", 1)
+    stato["live"].add("UCa_v0")
+    try:
+        await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert stato["rss"] == ["UCa"]
+    assert len(stato["videos"]) == 1 and len(stato["videos"][0]) == 2
+    assert len(canale.sent_messages) == 2
+
+
+@pytest.mark.asyncio
+async def test_canale_appena_andato_live(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    await repo.add_subscription(100, 500, "UCa", "Canale A", 1)
+    stato["live"].add("UCa_v1")
+    try:
+        await servizio.tick(bot)
         assert len(canale.sent_messages) == 1
         assert "diretta" in canale.sent_messages[0].lower()
-        assert "video123" in canale.sent_messages[0]
-
-        sottoscrizioni = await repo.list_subscriptions(100)
-        assert sottoscrizioni[0].last_known_live is True
+        assert "UCa_v1" in canale.sent_messages[0]
+        assert (await repo.list_subscriptions(100))[0].last_known_live is True
+        await servizio.tick(bot)  # nessun cambiamento: niente doppioni
+        assert len(canale.sent_messages) == 1
     finally:
         await servizio.close()
 
 
 @pytest.mark.asyncio
-async def test_tick_rileva_canale_appena_andato_offline(clean_db, server_youtube_finto, monkeypatch):
-    server, stato = server_youtube_finto
-    import core.youtube_watcher as youtube_watcher_module
-
-    class _ConfigFinta:
-        YOUTUBE_API_KEY = "chiave-finta"
-
-    monkeypatch.setattr(youtube_watcher_module, "config", _ConfigFinta())
-
-    repo = YoutubeSubscriptionRepository(pool_provider=lambda: clean_db)
-    youtube_watcher_module.youtube_subscription_repo = repo
-
-    subscription_id = await repo.add_subscription(100, 500, "UCabc", "Canale A", 1)
-    await repo.update_last_known_live(subscription_id, is_live=True)
-    # stato["canali_live"] resta vuoto -> non è più live
-
-    canale = _FakeChannel(500)
-    bot = _FakeBot(_FakeGuild(100, canale))
-    servizio = YoutubeWatcherService(search_url=f"http://{server.host}:{server.port}/search")
-
+async def test_canale_appena_andato_offline(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    sid = await repo.add_subscription(100, 500, "UCa", "Canale A", 1)
+    await repo.update_last_known_live(sid, True)
     try:
         await servizio.tick(bot)
-
         assert len(canale.sent_messages) == 1
         assert "terminato" in canale.sent_messages[0].lower()
-
-        sottoscrizioni = await repo.list_subscriptions(100)
-        assert sottoscrizioni[0].last_known_live is False
+        assert (await repo.list_subscriptions(100))[0].last_known_live is False
     finally:
         await servizio.close()
 
 
 @pytest.mark.asyncio
-async def test_tick_nessun_cambiamento_non_pubblica_nulla(clean_db, server_youtube_finto, monkeypatch):
-    server, stato = server_youtube_finto
-    import core.youtube_watcher as youtube_watcher_module
-
-    class _ConfigFinta:
-        YOUTUBE_API_KEY = "chiave-finta"
-
-    monkeypatch.setattr(youtube_watcher_module, "config", _ConfigFinta())
-
-    repo = YoutubeSubscriptionRepository(pool_provider=lambda: clean_db)
-    youtube_watcher_module.youtube_subscription_repo = repo
-
-    # Già offline, e resta offline (non aggiunto a canali_live).
-    await repo.add_subscription(100, 500, "UCabc", "Canale A", 1)
-
-    canale = _FakeChannel(500)
-    bot = _FakeBot(_FakeGuild(100, canale))
-    servizio = YoutubeWatcherService(search_url=f"http://{server.host}:{server.port}/search")
-
+async def test_feed_rotto_non_cambia_lo_stato(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    sid = await repo.add_subscription(100, 500, "UCa", "Canale A", 1)
+    await repo.update_last_known_live(sid, True)
+    stato["rss_rotto"].add("UCa")
     try:
         await servizio.tick(bot)
-
-        assert canale.sent_messages == []
     finally:
         await servizio.close()
+    assert canale.sent_messages == []
+    assert (await repo.list_subscriptions(100))[0].last_known_live is True
+
+
+@pytest.mark.asyncio
+async def test_modulo_spento_nessun_messaggio_e_nessuna_quota(ambiente):
+    servizio, repo, stato, canale, bot, attivo = ambiente
+    await repo.add_subscription(100, 500, "UCa", "Canale A", 1)
+    stato["live"].add("UCa_v0")
+    attivo["valore"] = False
+    try:
+        await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert canale.sent_messages == []
+    assert stato["rss"] == [] and stato["videos"] == []
+
+
+@pytest.mark.asyncio
+async def test_modello_personalizzato_usato_e_segnaposto_ignoto_non_rompe(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    await repo.add_subscription(
+        100, 500, "UCa", "A", 1, live_message_template="LIVE {label} {video_id} {titolo}"
+    )
+    stato["live"].add("UCa_v0")
+    try:
+        await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert canale.sent_messages == ["LIVE A UCa_v0 {titolo}"]
 
 
 @pytest.mark.asyncio
 async def test_senza_chiave_configurata_salta_il_tick_senza_sollevare(clean_db, monkeypatch):
-    import core.youtube_watcher as youtube_watcher_module
-
     class _ConfigVuota:
         YOUTUBE_API_KEY = ""
 
-    monkeypatch.setattr(youtube_watcher_module, "config", _ConfigVuota())
-
+    monkeypatch.setattr(modulo, "config", _ConfigVuota())
     repo = YoutubeSubscriptionRepository(pool_provider=lambda: clean_db)
-    youtube_watcher_module.youtube_subscription_repo = repo
-
+    monkeypatch.setattr(modulo, "youtube_subscription_repo", repo)
     await repo.add_subscription(100, 500, "UCabc", "Canale A", 1)
 
-    canale = _FakeChannel(500)
-    bot = _FakeBot(_FakeGuild(100, canale))
+    canale = _Canale(500)
     servizio = YoutubeWatcherService()
-
     try:
-        await servizio.tick(bot)  # non deve sollevare
+        await servizio.tick(_Bot(canale))  # non deve sollevare
         assert canale.sent_messages == []
     finally:
         await servizio.close()

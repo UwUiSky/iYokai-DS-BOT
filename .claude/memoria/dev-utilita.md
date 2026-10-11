@@ -5,13 +5,13 @@
 
 ## In corso
 - Previsione: chiudere 11.1-11.10 in 4 commit (Twitch, YouTube, feed, rete).
-  Fatti: Twitch (11.2, 11.3, 11.4 e 11.6 Twitch). 11.7 e 11.10 erano gia' a posto
-  (test esistenti). Prossimo: YouTube (11.1 RSS + videos.list, 11.4, 11.6), poi
-  feed (11.4, 11.5, 11.8), poi rete (11.9).
+  Fatti: Twitch (11.2, 11.3, 11.4 e 11.6 Twitch), YouTube (11.1, 11.4, 11.6). 11.7 e 11.10 erano gia' a posto
+  (test esistenti). Prossimo: feed (11.4, 11.5, 11.8), poi rete (11.9).
 - Gate modulo: `core/feed_alert_gate.filtra_attive`; i test patchano
   `core.feed_alert_gate.modulo_alert_attivo`.
 
 ## Fatto
+- #67 YouTube D5: RSS per canale (safe_get) + una videos.list per 50 ID; modulo spento = zero quota.
 - #67 Twitch: first=100, blocchi da 100 senza doppioni, 401 svuota token, modulo spento, render_template.
 - F7 2c: /owner (premium, blacklist, cog, system) ad5ad8e; /admin + /moduli ce9f6b9;
   /utility 38bd97e; -cerca-comando 472c185. Refs #76.
@@ -28,5 +28,6 @@
 - `/admin lingua show|set`: lingua è un sottogruppo di /admin (non sotto config).
 
 ## Aperto
+- `parse_search_live_response` (youtube_api_logic) non ha piu' chiamanti: codice morto, da togliere.
 - F1 resto: #66, #67 (utilità e avvisi).
 - Prova live: vedi rapporto F7 2c.
