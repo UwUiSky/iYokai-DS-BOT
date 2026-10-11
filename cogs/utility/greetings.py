@@ -19,7 +19,12 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
-from core.greetings_logic import render_template
+from core.admin_mentions_logic import (
+    menzioni_ammesse,
+    taglia_messaggio,
+    utente_puo_pingare_ruoli,
+)
+from core.greetings_logic import MAX_MESSAGE_LENGTH, lunghezza_dopo_segnaposto, render_template
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
 from core.security_raid_state import raid_in_corso
@@ -37,6 +42,31 @@ def _render_for_member(template: str, member: discord.Member) -> str:
         server_name=member.guild.name,
         member_count=member.guild.member_count or 0,
     )
+
+
+# L'opzione accetta il testo grezzo: il limite vero (2000) si controlla
+# dopo i segnaposto, a configurazione, con `_errore_lunghezza`.
+TestoMessaggio = app_commands.Range[str, 1, MAX_MESSAGE_LENGTH]
+
+
+def _errore_lunghezza(guild: discord.Guild, template: str) -> str | None:
+    """M 10.2 (LIM-10): None se il testo, a segnaposto espansi, sta in 2000 caratteri."""
+    lunghezza = lunghezza_dopo_segnaposto(template, guild.name, guild.member_count or 0)
+    if lunghezza <= MAX_MESSAGE_LENGTH:
+        return None
+    return (
+        f"Con i segnaposto sostituiti il messaggio arriva a {lunghezza} caratteri: "
+        f"Discord ne accetta {MAX_MESSAGE_LENGTH}. Accorcialo."
+    )
+
+
+def _ping_ruoli(interaction: discord.Interaction, message: str | None, precedente: bool) -> bool:
+    """
+    D12: il permesso di chi configura conta solo se sta scrivendo il testo.
+    Chi cambia soltanto canale o stato (es. un moderatore con solo "Gestisci
+    server") non accende né spegne il ping deciso da chi ha scritto il testo.
+    """
+    return utente_puo_pingare_ruoli(interaction.user) if message is not None else precedente
 
 
 _SG_BENVENUTO = ("benvenuto", "Messaggi di benvenuto, addio e boost")
@@ -62,13 +92,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not config.welcome_enabled:
             return
 
-        testo = _render_for_member(config.welcome_message, member)
+        testo = taglia_messaggio(_render_for_member(config.welcome_message, member))
+        menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
 
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
             if isinstance(channel, discord.TextChannel):
                 try:
-                    await channel.send(testo)
+                    await channel.send(testo, allowed_mentions=menzioni)
                 except discord.HTTPException:
                     logger.warning(
                         "Impossibile inviare il welcome message nel server %s.",
@@ -79,12 +110,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         # account entrati nel raid).
         if config.welcome_dm and not raid_in_corso(member.guild.id):
             try:
-                await member.send(testo)
+                await member.send(testo, allowed_mentions=menzioni_ammesse(False))
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
+        if member.bot:
+            return
         if not await db.is_module_active_for_guild(member.guild.id, MODULE_GREETINGS):
             return
 
@@ -96,9 +129,11 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             return
 
-        testo = _render_for_member(config.goodbye_message, member)
+        testo = taglia_messaggio(_render_for_member(config.goodbye_message, member))
         try:
-            await channel.send(testo)
+            await channel.send(
+                testo, allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli)
+            )
         except discord.HTTPException:
             logger.warning(
                 "Impossibile inviare il goodbye message nel server %s.", member.guild.id
@@ -127,9 +162,11 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             return
 
-        testo = _render_for_member(config.boost_message, after)
+        testo = taglia_messaggio(_render_for_member(config.boost_message, after))
         try:
-            await channel.send(testo)
+            await channel.send(
+                testo, allowed_mentions=menzioni_ammesse(config.boost_ping_ruoli)
+            )
         except discord.HTTPException:
             logger.warning(
                 "Impossibile inviare il boost message nel server %s.", after.guild.id
@@ -149,15 +186,15 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         enabled="Attiva o disattiva il welcome message",
         channel="Canale dove pubblicarlo",
         message="Testo del messaggio ({user}, {username}, {server}, {membercount})",
-        dm="Manda anche un DM all'utente",
+        dm="Manda anche un DM all'utente (se non lo indichi resta com'è)",
     )
     async def welcome_setup(
         self,
         interaction: discord.Interaction,
         enabled: bool,
         channel: discord.TextChannel | None = None,
-        message: str | None = None,
-        dm: bool = False,
+        message: TestoMessaggio | None = None,
+        dm: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -178,12 +215,19 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        testo_finale = message or config_attuale.welcome_message
+        errore = _errore_lunghezza(guild, testo_finale)
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
         await greetings_repo.set_welcome(
             guild.id,
             enabled=enabled,
             channel_id=canale_finale.id if canale_finale else 0,
-            message=message or config_attuale.welcome_message,
-            dm=dm,
+            message=testo_finale,
+            dm=config_attuale.welcome_dm if dm is None else dm,
+            ping_ruoli=_ping_ruoli(interaction, message, config_attuale.welcome_ping_ruoli),
         )
         await interaction.response.send_message(
             f"Welcome message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
@@ -205,7 +249,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         enabled: bool,
         channel: discord.TextChannel | None = None,
-        message: str | None = None,
+        message: TestoMessaggio | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -226,11 +270,18 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        testo_finale = message or config_attuale.goodbye_message
+        errore = _errore_lunghezza(guild, testo_finale)
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
         await greetings_repo.set_goodbye(
             guild.id,
             enabled=enabled,
             channel_id=canale_finale.id if canale_finale else 0,
-            message=message or config_attuale.goodbye_message,
+            message=testo_finale,
+            ping_ruoli=_ping_ruoli(interaction, message, config_attuale.goodbye_ping_ruoli),
         )
         await interaction.response.send_message(
             f"Goodbye message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
@@ -252,7 +303,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         enabled: bool,
         channel: discord.TextChannel | None = None,
-        message: str | None = None,
+        message: TestoMessaggio | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -273,11 +324,18 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        testo_finale = message or config_attuale.boost_message
+        errore = _errore_lunghezza(guild, testo_finale)
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+
         await greetings_repo.set_boost(
             guild.id,
             enabled=enabled,
             channel_id=canale_finale.id if canale_finale else 0,
-            message=message or config_attuale.boost_message,
+            message=testo_finale,
+            ping_ruoli=_ping_ruoli(interaction, message, config_attuale.boost_ping_ruoli),
         )
         await interaction.response.send_message(
             f"Boost message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
@@ -312,8 +370,21 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             "boost": config.boost_message,
         }[kind.value]
 
-        testo = _render_for_member(template, interaction.user)
-        await interaction.response.send_message(f"Anteprima:\n\n{testo}", ephemeral=True)
+        # M 10.2: un testo salvato prima del controllo (o allungato da un
+        # cambio di nome del server) non deve far fallire l'anteprima.
+        try:
+            testo = _render_for_member(template, interaction.user)
+        except Exception:
+            logger.exception("Anteprima del messaggio non riuscita nel server %s.", guild.id)
+            await interaction.response.send_message(
+                "Non riesco a mostrare l'anteprima di questo messaggio.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            taglia_messaggio(f"Anteprima:\n\n{testo}"),
+            ephemeral=True,
+            allowed_mentions=menzioni_ammesse(False),
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

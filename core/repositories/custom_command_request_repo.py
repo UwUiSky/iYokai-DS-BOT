@@ -129,18 +129,26 @@ class CustomCommandRequestRepository:
 
     async def set_status(
         self, request_id: int, status: str, decided_by: int, decided_at: datetime
-    ) -> None:
-        await self._pool.execute(
+    ) -> bool:
+        """Decide la richiesta SOLO se è ancora in attesa (M 10.9); False se l'ha già decisa un altro."""
+        riga = await self._pool.fetchrow(
             """
             UPDATE custom_command_requests
             SET status = $2, decided_by = $3, decided_at = $4
-            WHERE id = $1
+            WHERE id = $1 AND status = $5
+            RETURNING id
             """,
             request_id,
             status,
             decided_by,
             decided_at,
+            PENDING,
         )
+        return riga is not None
+
+    async def delete_request(self, request_id: int) -> None:
+        """Toglie una richiesta mai pubblicata (invio fallito)."""
+        await self._pool.execute("DELETE FROM custom_command_requests WHERE id = $1", request_id)
 
     async def list_pending(self) -> list[CustomCommandRequest]:
         """

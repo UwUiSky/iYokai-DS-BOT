@@ -21,6 +21,8 @@ class StickyMessage:
     message_text: str
     last_message_id: int | None
     last_reposted_at: datetime | None
+    # D12 / M 10.6: chi ha impostato lo sticky poteva menzionare i ruoli.
+    ping_ruoli: bool = False
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -55,9 +57,12 @@ class StickyMessageRepository:
             message_text=row["message_text"],
             last_message_id=row["last_message_id"],
             last_reposted_at=row["last_reposted_at"],
+            ping_ruoli=row["ping_ruoli"],
         )
 
-    async def set_sticky(self, channel_id: int, guild_id: int, message_text: str) -> None:
+    async def set_sticky(
+        self, channel_id: int, guild_id: int, message_text: str, ping_ruoli: bool = False
+    ) -> None:
         """
         Crea o sostituisce lo sticky di un canale. last_message_id e
         last_reposted_at vengono azzerati: un nuovo testo è
@@ -67,16 +72,18 @@ class StickyMessageRepository:
         """
         await self._pool.execute(
             """
-            INSERT INTO sticky_messages (channel_id, guild_id, message_text, last_message_id, last_reposted_at)
-            VALUES ($1, $2, $3, NULL, NULL)
+            INSERT INTO sticky_messages (channel_id, guild_id, message_text, last_message_id, last_reposted_at, ping_ruoli)
+            VALUES ($1, $2, $3, NULL, NULL, $4)
             ON CONFLICT (channel_id) DO UPDATE
                 SET message_text = EXCLUDED.message_text,
                     last_message_id = NULL,
-                    last_reposted_at = NULL
+                    last_reposted_at = NULL,
+                    ping_ruoli = EXCLUDED.ping_ruoli
             """,
             channel_id,
             guild_id,
             message_text,
+            ping_ruoli,
         )
 
     async def get_sticky(self, channel_id: int) -> StickyMessage | None:

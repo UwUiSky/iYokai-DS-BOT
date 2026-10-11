@@ -6,7 +6,8 @@ tests/test_setup_cog.py: simulazione dei click sui bottoni con
 un'Interaction finta, verifica del salvataggio reale sul database.
 """
 
-import discord
+from unittest.mock import MagicMock
+
 
 from core.database import Database
 from core.premium import PremiumModule
@@ -33,6 +34,7 @@ class _FakeInteraction:
     def __init__(self) -> None:
         self.response = _FakeResponse()
         self.user = _FakeUser()
+        self.client = MagicMock()  # il wizard emette `modules_updated` (M 10.13)
 
 
 def _modules_with_state() -> list[tuple[PremiumModule, bool]]:

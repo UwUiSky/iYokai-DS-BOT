@@ -579,3 +579,35 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 - [ ] Recupero di un attacco lento (#117) — passi: `limits category:Canali max_actions:100 seconds:60 max_per_hour:3`; come A cancella 1 canale ogni 10 minuti. Risultato atteso: alla quarta cancellazione A è punito e **tutti e 4** i canali vengono ricreati (prima solo quelli dell'ultimo minuto).
 - [ ] Ban globale: revoca e staff (#117) — passi: S1, S2, S3 in rete. 1) Un account di prova **amministratore in S3** scrive nella trappola di S1: bannato in S1 e S2, **non** in S3. 2) Togli al bot in S2 il permesso Bannare membri e premi **Unban** nell'appello: S1 sbannato, S2 resta bannato; ridai il permesso e rifai la revoca (rimetti il ban e premi di nuovo): S2 viene sbannato. 3) Fai bannare lo stesso account anche dalla trappola di S2: l'appello in S1 **non** lo toglie da dove S2 lo ha bannato. 4) `/modban unban` in S1: oltre al messaggio normale arriva "Il ban era arrivato anche ad altri server della rete: tolto da N". Risultato atteso: come descritto.
 - [ ] Verify con captcha (#59) — passi: `/security verify setup` con captcha attivo; da verificato premi di nuovo il pannello. Risultato atteso: "You are already verified" **subito**, senza la finestra del captcha.
+
+- [ ] Utilità: sticky, benvenuto, programmati, promemoria (#66, voci 10.2-10.6, migrazione 0027) — passi:
+  1. Sticky: `/admin messaggi sticky-set` in un canale (con un ruolo che nomina `<@&ruolo>` nel testo); fai scrivere 10 messaggi veloci a due account: resta un solo sticky in fondo. Poi togli al bot "Invia messaggi" nel canale: nessun errore a ogni messaggio (solo un avviso nel log).
+  2. Ping D12: da un account SENZA "Menziona tutti" imposta sticky/benvenuto/messaggio programmato con `<@&ruolo> @everyone`: il ruolo e @everyone non suonano. Rifai da un account CON il permesso: il ruolo suona, `@everyone` mai.
+  3. Benvenuto: `/gestione benvenuto benvenuto message:` con `{server}` e un testo lungo 1990 caratteri su un server dal nome lungo: rifiutato con il numero di caratteri. `/gestione benvenuto benvenuto` senza `dm`: il DM già attivo resta attivo. `/gestione benvenuto anteprima` non va in errore.
+  4. Un bot che entra o esce: nessun benvenuto né addio.
+  5. `/admin messaggi programma` con canale che poi cancelli (o permesso tolto): all'ora fissata chi l'ha programmato riceve un DM che dice che non è partito. Elenco dei programmati con molti messaggi lunghi: non va in errore.
+  6. Promemoria con DM chiusi e `@everyone` nel testo: nel canale di ripiego suona solo chi l'ha impostato.
+  7. Un moderatore con solo "Gestisci server" cambia canale o stato del benvenuto senza riscrivere il testo: il ping di ruolo scelto da un admin non si spegne.
+  8. Togli lo sticky mentre il canale è attivo: nessun messaggio dello sticky resta nel canale.
+  Risultato atteso: nessun messaggio perso in silenzio, nessun ping non voluto.
+- [ ] Menu dei ruoli (#66, voce 10.7) — passi:
+  1. `/gestione ruoli menu-aggiungi` con emoji `ciao`: rifiutata. Con un'emoji personalizzata di un altro server dove il bot non c'è: rifiutata.
+  2. Menu a bottoni con 25 ruoli e etichette di 80 caratteri: il messaggio si pubblica (l'elenco va su più campi).
+  3. Cancella a mano il messaggio del menu e aggiungi un'opzione: il menu viene ripubblicato.
+  4. Togli all'ultimo ruolo: il menu e il messaggio spariscono e il bot lo dice.
+  5. Menu a reazioni: aggiungi un'opzione con un'emoji che Discord rifiuta: l'embed del menu non cambia. Due `/gestione ruoli menu-aggiungi` lanciati insieme: entrambe le opzioni nel menu, un solo messaggio.
+  6. Menu a bottoni creato con `toggle: no`: cliccare di nuovo non toglie il ruolo.
+  Risultato atteso: mai "Opzione aggiunta" se il messaggio non è cambiato.
+- [ ] Suggerimenti e richieste (#66, voce 10.9) — passi:
+  1. Due account dello staff cliccano insieme Approva e Rifiuta su un suggerimento: una sola decisione, l'altro legge "già deciso".
+  2. `/utility suggest` con un testo da 2000 caratteri: pubblicato; con il canale senza permessi: "il suggerimento non è stato inviato" e nessuna riga resta in sospeso.
+  3. Stessa prova a due clic su una richiesta di `/utility richiedi-comando`.
+  Risultato atteso: un solo esito, un solo DM al richiedente.
+- [ ] Pannello e liste dell'owner (#66, voce 10.12) — passi (serve `/owner`, server owner):
+  1. `/owner premium list`, `/owner premium whitelist-list`, `/owner premium subscriptions`, `/owner premium status-all`, `/owner blacklist utente-list`, `/owner blacklist server-list` con tanti elementi: risposta a pagine con Indietro/Avanti.
+  2. `/owner premium panel` con più di 25 moduli premium-capable: tendina da 25 e pagine.
+  3. `/owner system eval` con un testo da 4001 caratteri: Discord lo rifiuta.
+  Risultato atteso: mai un errore generico "L'applicazione non ha risposto".
+- [ ] `modules_updated` (#66, voce 10.13) — passi:
+  1. Con il log a livello debug, attiva un modulo dal wizard (`/admin setup wizard`), da `/admin config import`, dopo un `/admin config reset` e dopo un `/admin config rollback`.
+  Risultato atteso: per ogni modulo cambiato un evento `modules_updated` (un ascoltatore di prova, o `bot.dispatch` loggato); nessun evento per quelli invariati.

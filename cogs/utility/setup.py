@@ -278,6 +278,11 @@ class SetupWizardView(BaseView):
                     await db.set_module_active_for_guild(
                         self.guild_id, module.name, now_enabled, changed_by=interaction.user.id
                     )
+                    # M 10.13: stesso evento del salvataggio di /admin setup attiva.
+                    interaction.client.dispatch(
+                        "modules_updated", self.guild_id, module.name, now_enabled,
+                        interaction.user.id,
+                    )
             for child in self.children:
                 child.disabled = True
             self.stop()

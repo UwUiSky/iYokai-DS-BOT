@@ -110,12 +110,19 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await suggestion_repo.set_status(
+        # Decisione atomica: se un altro membro dello staff ha cliccato un
+        # istante prima, set_status risponde False e il suo esito resta.
+        deciso = await suggestion_repo.set_status(
             suggestion_id,
             new_status,
             decided_by=interaction.user.id,
             decided_at=datetime.now(timezone.utc),
         )
+        if not deciso:
+            await interaction.response.send_message(
+                "Questo suggerimento è già stato deciso.", ephemeral=True
+            )
+            return
 
         suggestion_aggiornata = await suggestion_repo.get_suggestion(suggestion_id)
         embed = _build_embed(suggestion_aggiornata)
@@ -151,8 +158,10 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         nome="suggest",
         descrizione="Proponi un'idea per questo server.",
     )
-    @app_commands.describe(text="Il tuo suggerimento")
-    async def suggest(self, interaction: discord.Interaction, text: str) -> None:
+    @app_commands.describe(text="Il tuo suggerimento (massimo 2000 caratteri)")
+    async def suggest(
+        self, interaction: discord.Interaction, text: app_commands.Range[str, 1, 2000]
+    ) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -185,6 +194,9 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        # LIM-25: salvare, pubblicare e votare sono più chiamate: si risponde
+        # subito con defer e l'esito arriva nel followup.
+        await interaction.response.defer(ephemeral=True)
         suggestion_id = await suggestion_repo.create_suggestion(
             guild.id, channel.id, interaction.user.id, text
         )
@@ -194,10 +206,16 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
 
         try:
             messaggio = await channel.send(embed=embed, view=view)
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Non ho i permessi per pubblicare nel canale dei suggerimenti.",
-                ephemeral=True,
+        except discord.HTTPException as errore:
+            # Mai lasciare una riga senza messaggio: nessuno la vedrebbe.
+            await suggestion_repo.delete_suggestion(suggestion_id)
+            motivo = (
+                "Non ho i permessi per pubblicare nel canale dei suggerimenti."
+                if isinstance(errore, discord.Forbidden)
+                else "Discord ha rifiutato il messaggio."
+            )
+            await interaction.followup.send(
+                f"{motivo} Il suggerimento non è stato inviato.", ephemeral=True
             )
             return
 
@@ -213,7 +231,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
                 suggestion_id,
             )
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"Suggerimento pubblicato in {channel.mention}!", ephemeral=True
         )
 

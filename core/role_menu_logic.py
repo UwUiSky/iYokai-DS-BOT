@@ -15,6 +15,8 @@ Nessuna dipendenza da discord.py qui: solo insiemi di ID e stringhe.
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Literal
 
 # Limiti pratici per modalità — non tutti sono limiti hard dell'API
@@ -64,3 +66,36 @@ def compute_select_sync(
     da_aggiungere = selected_role_ids - current_member_role_ids
     da_rimuovere = (menu_role_ids & current_member_role_ids) - selected_role_ids
     return da_aggiungere, da_rimuovere
+
+
+# LIM-17 (M 10.7): l'emoji di un'opzione si controlla quando l'admin la scrive,
+# non quando Discord la rifiuta. Personalizzata: <:nome:id> o <a:nome:id>.
+_EMOJI_PERSONALIZZATA = re.compile(r"^<a?:[A-Za-z0-9_]{2,32}:(\d{15,22})>$")
+_EMOJI_TASTO = re.compile("^[0-9#*]\ufe0f?\u20e3$")
+MAX_LUNGHEZZA_EMOJI_UNICODE = 20
+
+
+def id_emoji_personalizzata(testo: str) -> int | None:
+    """L'ID di un'emoji personalizzata scritta come <:nome:id>, altrimenti None."""
+    trovata = _EMOJI_PERSONALIZZATA.match(testo)
+    return int(trovata.group(1)) if trovata else None
+
+
+def valida_emoji(testo: str) -> bool:
+    """
+    True se `testo` è UNA emoji: personalizzata ben formata, un tasto
+    (1️⃣) o una sequenza unicode di simboli (bandiere, tonalità, ZWJ).
+    Lettere, cifre, spazi e testo libero sono rifiutati. Se l'emoji
+    personalizzata esiste davvero lo dice poi Discord / la cache del bot.
+    """
+    if not testo or len(testo) > MAX_LUNGHEZZA_EMOJI_UNICODE and not testo.startswith("<"):
+        return False
+    if testo.startswith("<"):
+        return _EMOJI_PERSONALIZZATA.match(testo) is not None
+    if _EMOJI_TASTO.match(testo):
+        return True
+    for carattere in testo:
+        categoria = unicodedata.category(carattere)
+        if ord(carattere) < 128 or not (categoria[0] in ("S", "M") or categoria == "Cf"):
+            return False
+    return unicodedata.category(testo[0])[0] == "S"

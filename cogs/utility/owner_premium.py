@@ -31,6 +31,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.utility._owner_pagine import invia_a_pagine
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -111,15 +112,28 @@ async def _reply_if_eval_disabled(interaction: discord.Interaction) -> bool:
     return True
 
 
-def _build_premium_panel_embed(modules: list[PremiumModule]) -> discord.Embed:
+# LIM-22: una tendina tiene 25 voci. Il pannello mostra 25 moduli per pagina.
+MODULI_PER_PAGINA_PANNELLO = 25
+
+
+def _build_premium_panel_embed(
+    modules: list[PremiumModule], pagina: int = 0, pagine: int = 1
+) -> discord.Embed:
+    descrizione = "Scegli un modulo dal menu qui sotto per cambiarne lo stato."
+    if pagine > 1:
+        descrizione += f"\nPagina {pagina + 1}/{pagine}."
     embed = discord.Embed(
         title="⚙️ Pannello moduli Premium",
-        description="Scegli un modulo dal menu qui sotto per cambiarne lo stato.",
+        description=descrizione,
         color=discord.Color.blurple(),
     )
-    for modulo in modules:
+    for modulo in modules[:MODULI_PER_PAGINA_PANNELLO]:
         stato = "🟢 PREMIUM ATTIVO" if modulo.is_premium_active else "⚪ gratuito"
-        embed.add_field(name=modulo.display_name, value=f"`{modulo.name}` — {stato}", inline=False)
+        embed.add_field(
+            name=modulo.display_name[:100],
+            value=f"`{modulo.name}` — {stato}"[:1024],
+            inline=False,
+        )
     return embed
 
 
@@ -167,11 +181,11 @@ class _PremiumPanelSelect(discord.ui.Select):
         self._modules_by_name = {m.name: m for m in modules}
         options = [
             discord.SelectOption(
-                label=modulo.display_name,
+                label=modulo.display_name[:100],
                 value=modulo.name,
                 description="Premium attivo" if modulo.is_premium_active else "Gratuito",
             )
-            for modulo in modules
+            for modulo in modules[:MODULI_PER_PAGINA_PANNELLO]
         ]
         super().__init__(placeholder="Scegli un modulo da cambiare...", options=options)
 
@@ -193,9 +207,40 @@ class _PremiumPanelSelect(discord.ui.Select):
 
 
 class _PremiumPanelView(BaseView):
-    def __init__(self, cog: "OwnerPremiumCog", modules: list[PremiumModule]) -> None:
+    """Il pannello: una tendina da 25 moduli per pagina, più Indietro / Avanti se servono."""
+
+    def __init__(
+        self, cog: "OwnerPremiumCog", modules: list[PremiumModule], pagina: int = 0
+    ) -> None:
         super().__init__(timeout=120)
-        self.add_item(_PremiumPanelSelect(cog, modules))
+        self.cog = cog
+        self.modules = modules
+        self.pagine = max(1, -(-len(modules) // MODULI_PER_PAGINA_PANNELLO))
+        self.pagina = min(max(pagina, 0), self.pagine - 1)
+        inizio = self.pagina * MODULI_PER_PAGINA_PANNELLO
+        self.modulo_della_pagina = modules[inizio : inizio + MODULI_PER_PAGINA_PANNELLO]
+        self.add_item(_PremiumPanelSelect(cog, self.modulo_della_pagina))
+        if self.pagine > 1:
+            self.indietro.disabled = self.pagina == 0
+            self.avanti.disabled = self.pagina >= self.pagine - 1
+        else:
+            self.remove_item(self.indietro)
+            self.remove_item(self.avanti)
+
+    def embed(self) -> discord.Embed:
+        return _build_premium_panel_embed(self.modulo_della_pagina, self.pagina, self.pagine)
+
+    async def _vai(self, interaction: discord.Interaction, pagina: int) -> None:
+        nuova = _PremiumPanelView(self.cog, self.modules, pagina)
+        await interaction.response.edit_message(embed=nuova.embed(), view=nuova)
+
+    @discord.ui.button(label="Indietro", style=discord.ButtonStyle.secondary, row=1)
+    async def indietro(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._vai(interaction, self.pagina - 1)
+
+    @discord.ui.button(label="Avanti", style=discord.ButtonStyle.secondary, row=1)
+    async def avanti(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._vai(interaction, self.pagina + 1)
 
 
 class _EvalConfirmView(BaseView):
@@ -308,8 +353,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
                 stato = "gratuito (predisposto)"
             lines.append(f"`{m.name}` — {m.display_name}: **{stato}**")
 
-        testo = "\n".join(lines) if lines else "Nessun modulo registrato."
-        await interaction.response.send_message(testo, ephemeral=True)
+        await invia_a_pagine(interaction, "Moduli premium", lines or ["Nessun modulo registrato."])
 
     async def _apply_premium_toggle(
         self, module_name: str, active: bool, changed_by: int
@@ -406,7 +450,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         guild_id: str,
-        reason: str | None = None,
+        reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
             gid = int(guild_id)
@@ -467,8 +511,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             format_whitelist_entry(v["guild_id"], v["added_by"], v["reason"], v["added_at"])
             for v in voci
         ]
-        testo = truncate_output("\n".join(righe))
-        await interaction.response.send_message(testo, ephemeral=True)
+        await invia_a_pagine(interaction, "Whitelist premium", righe)
 
     # ================================================================
     # Abbonamento mensile/annuale per modulo (SPEC.md §3.1 — pagamento
@@ -588,7 +631,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             f"`{s.module_name}` — fino al `{s.expires_at.date().isoformat()}`"
             for s in abbonamenti
         ]
-        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+        await invia_a_pagine(interaction, "Abbonamenti del server", righe)
 
     @comando_di_gruppo(
         "owner",
@@ -620,8 +663,12 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             f"**{len(guilds)} server totali** — override ALPHA "
             f"{'ATTIVO (tutto sbloccato per tutti)' if config.PREMIUM_ALPHA_UNLOCK_ALL else 'non attivo'}:\n"
         )
-        testo = truncate_output(intestazione + "\n".join(righe))
-        await interaction.followup.send(testo, ephemeral=True)
+        await invia_a_pagine(
+            interaction,
+            "Stato premium dei server",
+            (intestazione.rstrip("\n"), *righe),
+            dopo_defer=True,
+        )
 
     async def _run_eval(self, code: str, interaction: discord.Interaction) -> tuple[str, bool]:
         """
@@ -716,7 +763,9 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(code="Il codice Python da eseguire")
-    async def eval_code(self, interaction: discord.Interaction, code: str) -> None:
+    async def eval_code(
+        self, interaction: discord.Interaction, code: app_commands.Range[str, 1, 4000]
+    ) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message(
                 "Comando riservato al proprietario del bot.", ephemeral=True
@@ -740,7 +789,9 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(command="Il comando shell da eseguire")
-    async def shell_command(self, interaction: discord.Interaction, command: str) -> None:
+    async def shell_command(
+        self, interaction: discord.Interaction, command: app_commands.Range[str, 1, 4000]
+    ) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message(
                 "Comando riservato al proprietario del bot.", ephemeral=True
@@ -788,9 +839,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
 
         view = _PremiumPanelView(self, moduli_premium_capable)
-        await interaction.response.send_message(
-            embed=_build_premium_panel_embed(moduli_premium_capable), view=view, ephemeral=True
-        )
+        await interaction.response.send_message(embed=view.embed(), view=view, ephemeral=True)
 
     # ================================================================
     # Blacklist globale (SPEC.md §17.4 utenti, §17.5 server)
@@ -803,7 +852,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(user_id="ID Discord dell'utente", reason="Motivo (facoltativo)")
     async def blacklist_user_add(
-        self, interaction: discord.Interaction, user_id: str, reason: str | None = None
+        self,
+        interaction: discord.Interaction,
+        user_id: str,
+        reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
             uid = int(user_id)
@@ -861,7 +913,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
 
         righe = [f"`{u['user_id']}` — {u['reason'] or 'nessun motivo'}" for u in utenti]
-        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+        await invia_a_pagine(interaction, "Utenti in blacklist", righe)
 
     @comando_di_gruppo(
         "owner",
@@ -871,7 +923,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(guild_id="ID del server", reason="Motivo (facoltativo)")
     async def blacklist_guild_add(
-        self, interaction: discord.Interaction, guild_id: str, reason: str | None = None
+        self,
+        interaction: discord.Interaction,
+        guild_id: str,
+        reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
             gid = int(guild_id)
@@ -941,7 +996,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
 
         righe = [f"`{g['guild_id']}` — {g['reason'] or 'nessun motivo'}" for g in server]
-        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+        await invia_a_pagine(interaction, "Server in blacklist", righe)
 
     # ================================================================
     # Leave guild forzato (SPEC.md §17.9)
@@ -981,7 +1036,9 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(message="Il testo dell'annuncio")
-    async def announce(self, interaction: discord.Interaction, message: str) -> None:
+    async def announce(
+        self, interaction: discord.Interaction, message: app_commands.Range[str, 1, 4000]
+    ) -> None:
         await interaction.response.defer(ephemeral=True)
 
         embed = discord.Embed(

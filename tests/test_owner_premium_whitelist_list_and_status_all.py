@@ -25,9 +25,14 @@ class _FakeResponse:
         self.sent_messages: list[str] = []
         self.deferred = False
 
-    async def send_message(self, content: str = None, ephemeral: bool = False) -> None:
+    async def send_message(
+        self, content: str = None, ephemeral: bool = False, embed=None, view=None
+    ) -> None:
+        # Le liste dell'owner sono embed a pagine: il testo è la descrizione.
         if content is not None:
             self.sent_messages.append(content)
+        elif embed is not None:
+            self.sent_messages.append(embed.description)
 
     async def defer(self, ephemeral: bool = False) -> None:
         self.deferred = True
@@ -37,9 +42,14 @@ class _FakeFollowup:
     def __init__(self) -> None:
         self.sent_messages: list[str] = []
 
-    async def send(self, content: str = None, ephemeral: bool = False) -> None:
+    async def send(
+        self, content: str = None, ephemeral: bool = False, embed=None, view=None
+    ) -> None:
+        # Le liste dell'owner sono embed a pagine: il testo è la descrizione.
         if content is not None:
             self.sent_messages.append(content)
+        elif embed is not None:
+            self.sent_messages.append(embed.description)
 
 
 class _FakeUser:
