@@ -49,6 +49,7 @@ AUDIENCE: dict[str, str] = {
     "pay": PUBLIC,
     "leaderboard": PUBLIC,
     "clan": PUBLIC,
+    "music": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "shop": MIXED,
     "cassa": MIXED,
     "level-roles": STAFF,
@@ -57,20 +58,6 @@ AUDIENCE: dict[str, str] = {
     "assegna-winner": STAFF,
     "giveaway": STAFF,
     # Musica
-    "play": PUBLIC,
-    "skip": PUBLIC,
-    "stop": PUBLIC,
-    "pause": PUBLIC,
-    "resume": PUBLIC,
-    "queue": PUBLIC,
-    "clear-queue": PUBLIC,
-    "shuffle": PUBLIC,
-    "loop": PUBLIC,
-    "nowplaying": PUBLIC,
-    "volume": PUBLIC,
-    "disconnect": PUBLIC,
-    "nonstop": PUBLIC,
-    "nonstop-main": OWNER,
     # Ticket
     "ticket": PUBLIC,
     # Vocali temporanei
