@@ -28,6 +28,7 @@ from core.command_groups import (
 )
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_text_channel
 from tests.test_command_tree_invariants import conta_caratteri
+from tests.support.router_fakes import router_senza_scelte
 
 
 class _FakeDb:
@@ -278,6 +279,7 @@ def test_gruppo_sconosciuto_da_errore_chiaro():
 async def log_cog(monkeypatch):
     database = _FakeDb()
     monkeypatch.setattr(basic_logs, "db", database)
+    router_senza_scelte(monkeypatch)
     bot = _bot()
     cog = basic_logs.BasicLogsCog(bot)
     await bot.add_cog(cog)

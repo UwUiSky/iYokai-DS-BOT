@@ -47,6 +47,10 @@ class _FakeGuild:
     def get_channel(self, channel_id: int):
         return self._channel
 
+    async def audit_logs(self, **kw):
+        return
+        yield  # registro di controllo vuoto: nessun moderatore ha cancellato
+
 
 class _FakeBot:
     def __init__(self, guild: _FakeGuild) -> None:
@@ -101,11 +105,14 @@ class _FakeMessage:
 class _FakeDeletePayload:
     def __init__(self, guild_id: int, message_id: int) -> None:
         self.guild_id = guild_id
+        self.channel_id = 200
         self.message_id = message_id
+        self.cached_message = None
 
 
 @pytest.fixture(autouse=True)
 def _pool(monkeypatch, clean_db):
+    monkeypatch.setattr("cogs.utility.snipe.AUDIT_ATTESA_SECONDI", 0)
     _collega_pool_di_test(monkeypatch, clean_db)
     return clean_db
 

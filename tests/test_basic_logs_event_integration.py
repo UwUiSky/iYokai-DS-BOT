@@ -15,6 +15,7 @@ import pytest
 from core.database import Database
 from core.repositories.event_log_repo import EventLogRepository
 import cogs.logging.basic_logs as basic_logs
+from tests.support.router_fakes import router_senza_scelte
 
 
 class _FakeAvatar:
@@ -40,7 +41,8 @@ class _FakeMember:
 
 
 @pytest.mark.asyncio
-async def test_on_member_join_scrive_nel_log_anche_senza_canale_configurato():
+async def test_on_member_join_scrive_nel_log_anche_senza_canale_configurato(monkeypatch):
+    router_senza_scelte(monkeypatch)
     database = Database()
     await database.connect()
     try:

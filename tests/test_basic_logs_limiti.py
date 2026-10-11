@@ -15,6 +15,7 @@ import cogs.logging.basic_logs as modulo
 from core.database import Database
 from core.repositories.event_log_repo import EventLogRepository
 from tests.support.discord_fakes import fake_guild, fake_member, fake_role, fake_text_channel
+from tests.support.router_fakes import router_senza_scelte
 
 ID_CANALE_LOG = 31337
 
@@ -25,6 +26,7 @@ def canale_log(monkeypatch):
     db_finto.is_module_active_for_guild.return_value = True
     db_finto.get_guild_setting.return_value = ID_CANALE_LOG
     monkeypatch.setattr(modulo, "db", db_finto)
+    router_senza_scelte(monkeypatch)
     monkeypatch.setattr(
         modulo, "event_log_repo", create_autospec(EventLogRepository, instance=True)
     )

@@ -1,190 +1,75 @@
 """
 tests/test_soundboard_log_service.py
-=========================================
-Test di SoundboardLogService.tick() (core/soundboard_log_service.py,
-SPEC.md §8.13) contro un database reale — stesso schema di
-tests/test_event_log_retention.py: sostituzione del pool sul
-singleton reale (molte funzioni lo importano localmente) e sul
-repository usato dal servizio.
+====================================
+Log del soundboard (SPEC §8.13): arriva dagli eventi gateway di
+discord.py, senza giro periodico sull'audit log (M 5.7, LIM-31).
 """
 
-from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
 
-from core.database import Database
-from core.repositories.event_log_repo import EventLogRepository
-from core.soundboard_log_service import SoundboardLogService
-import core.soundboard_log_service as soundboard_log_service_module
-from cogs.logging.advanced_logs import MODULE_LOGGING_ADVANCED, SETTING_SOUNDBOARD_WATERMARK
-
-
-class _FakeAuditEntry:
-    def __init__(self, user_id: int, created_at, name: str | None = None) -> None:
-        self.user_id = user_id
-        self.created_at = created_at
-        self.after = _FakeDiff(name)
-        self.before = _FakeDiff(None)
-        self.target = None
-
-
-class _FakeDiff:
-    def __init__(self, name: str | None) -> None:
-        self.name = name
-
-
-class _FakeGuild:
-    def __init__(self, guild_id: int) -> None:
-        self.id = guild_id
-        self._entries: dict = {}
-        self._forbidden_actions: set = set()
-
-    def set_entries(self, action, entries) -> None:
-        self._entries[action] = entries
-
-    def set_forbidden(self, action) -> None:
-        self._forbidden_actions.add(action)
-
-    async def audit_logs(self, action=None, limit=10):
-        if action in self._forbidden_actions:
-            raise discord.Forbidden(response=_FakeHTTPResponse(), message="no")
-        for entry in self._entries.get(action, [])[:limit]:
-            yield entry
-
-
-class _FakeHTTPResponse:
-    status = 403
-    reason = "Forbidden"
-
-
-class _FakeBot:
-    def __init__(self, guilds: list[_FakeGuild]) -> None:
-        self.guilds = guilds
-
-
-GUILD_ID = 800000200
+import cogs.logging.advanced_logs as modulo
+from core.soundboard_log_service import SoundboardLogService, soundboard_log_service
+from tests.support.discord_fakes import fake_guild
 
 
 @pytest.fixture
-async def contesto(monkeypatch):
-    database = Database()
-    await database.connect()
-    await database.run_migrations()
-    await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD_ID)
-    await database.pool.execute("DELETE FROM event_log WHERE guild_id = $1", GUILD_ID)
-
-    from core.database import db as real_db_singleton
-
-    original_pool = real_db_singleton._pool
-    real_db_singleton._pool = database.pool
-    # is_module_active_for_guild ha una cache PER ISTANZA
-    # (core/bounded_cache.py) — real_db_singleton è un'istanza
-    # Database DIVERSA da quella creata qui sopra, con la sua cache
-    # separata. set_module_active_for_guild() nel test invalida solo
-    # la cache dell'istanza su cui viene chiamato: senza invalidare
-    # anche quella del singleton reale, un test precedente su questo
-    # stesso GUILD_ID lascerebbe qui un valore stantio.
-    real_db_singleton._modules_cache.delete(GUILD_ID)
-
-    original_provider = soundboard_log_service_module.event_log_repo._pool_provider
-    soundboard_log_service_module.event_log_repo._pool_provider = lambda: database.pool
-
-    yield database
-
-    soundboard_log_service_module.event_log_repo._pool_provider = original_provider
-    real_db_singleton._pool = original_pool
-    await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD_ID)
-    await database.pool.execute("DELETE FROM event_log WHERE guild_id = $1", GUILD_ID)
-    await database.close()
+def cog(monkeypatch):
+    monkeypatch.setattr(modulo, "logging_avanzato_attivo", AsyncMock(return_value=True))
+    log_event = AsyncMock()
+    monkeypatch.setattr(modulo.event_log_repo, "log_event", log_event)
+    invio = AsyncMock()
+    monkeypatch.setattr(modulo, "send_event_embed", invio)
+    return modulo.AdvancedLogsCog(bot=MagicMock()), log_event, invio
 
 
-@pytest.mark.asyncio
-async def test_modulo_non_attivo_viene_ignorato(contesto):
-    guild = _FakeGuild(GUILD_ID)
-    guild.set_entries(
-        discord.AuditLogAction.soundboard_sound_create,
-        [_FakeAuditEntry(1, datetime.now(timezone.utc), "boop")],
-    )
-    bot = _FakeBot([guild])
-
-    service = SoundboardLogService()
-    await service.tick(bot)
-
-    watermark = await contesto.get_guild_setting(GUILD_ID, SETTING_SOUNDBOARD_WATERMARK)
-    assert watermark is None
+def _suono(nome="boom", user_id=7):
+    suono = MagicMock()
+    suono.name = nome
+    suono.guild = fake_guild(guild_id=321)
+    suono.user = MagicMock(id=user_id) if user_id else None
+    return suono
 
 
-@pytest.mark.asyncio
-async def test_prima_attivazione_non_riversa_storico_ma_stabilisce_watermark(contesto):
-    await contesto.set_module_active_for_guild(GUILD_ID, MODULE_LOGGING_ADVANCED, True)
-    guild = _FakeGuild(GUILD_ID)
-    creato_il = datetime.now(timezone.utc) - timedelta(minutes=30)
-    guild.set_entries(
-        discord.AuditLogAction.soundboard_sound_create,
-        [_FakeAuditEntry(500, creato_il, "boop")],
-    )
-    bot = _FakeBot([guild])
-
-    service = SoundboardLogService()
-    await service.tick(bot)
-
-    repo = EventLogRepository(pool_provider=lambda: contesto.pool)
-    eventi = await repo.get_recent_events(GUILD_ID)
-    assert eventi == []  # storico non riversato al primo giro
-
-    watermark = await contesto.get_guild_setting(GUILD_ID, SETTING_SOUNDBOARD_WATERMARK)
-    assert watermark is not None  # ma la base è stata stabilita
+async def test_suono_creato_una_riga_di_log_con_chi_lo_ha_creato(cog):
+    c, log_event, invio = cog
+    await c.on_soundboard_sound_create(_suono())
+    log_event.assert_awaited_once()
+    assert log_event.await_args.args[:2] == (321, "soundboard_sound_create")
+    assert log_event.await_args.kwargs["actor_id"] == 7
+    assert invio.await_args.args[1] == "soundboard_sound_create"
+    assert "boom" in invio.await_args.args[2] and "<@7>" in invio.await_args.args[2]
 
 
-@pytest.mark.asyncio
-async def test_secondo_tick_rileva_una_voce_nuova(contesto):
-    await contesto.set_module_active_for_guild(GUILD_ID, MODULE_LOGGING_ADVANCED, True)
-    guild = _FakeGuild(GUILD_ID)
-    vecchia = datetime.now(timezone.utc) - timedelta(minutes=30)
-    guild.set_entries(
-        discord.AuditLogAction.soundboard_sound_create,
-        [_FakeAuditEntry(500, vecchia, "boop")],
-    )
-    bot = _FakeBot([guild])
-    service = SoundboardLogService()
-    await service.tick(bot)  # stabilisce il watermark, non logga nulla
-
-    nuova = datetime.now(timezone.utc)
-    guild.set_entries(
-        discord.AuditLogAction.soundboard_sound_create,
-        [_FakeAuditEntry(500, vecchia, "boop"), _FakeAuditEntry(600, nuova, "yay")],
-    )
-    await service.tick(bot)
-
-    repo = EventLogRepository(pool_provider=lambda: contesto.pool)
-    eventi = await repo.get_recent_events(GUILD_ID)
-    assert len(eventi) == 1
-    assert eventi[0].event_type == "soundboard_sound_create"
-    assert eventi[0].actor_id == 600
-    assert eventi[0].details == {"name": "yay"}
+async def test_suono_modificato_e_cancellato(cog):
+    c, log_event, invio = cog
+    await c.on_soundboard_sound_update(_suono("vecchio"), _suono("nuovo"))
+    await c.on_soundboard_sound_delete(_suono("nuovo", user_id=None))
+    assert [call.args[1] for call in log_event.await_args_list] == [
+        "soundboard_sound_update", "soundboard_sound_delete",
+    ]
+    assert log_event.await_args_list[0].kwargs["details"] == {"name": "nuovo"}
 
 
-@pytest.mark.asyncio
-async def test_permessi_insufficienti_su_unazione_non_blocca_le_altre(contesto):
-    await contesto.set_module_active_for_guild(GUILD_ID, MODULE_LOGGING_ADVANCED, True)
-    guild = _FakeGuild(GUILD_ID)
-    guild.set_forbidden(discord.AuditLogAction.soundboard_sound_create)
-    vecchia = datetime.now(timezone.utc) - timedelta(minutes=30)
-    guild.set_entries(discord.AuditLogAction.soundboard_sound_delete, [_FakeAuditEntry(1, vecchia, "x")])
-    bot = _FakeBot([guild])
-    service = SoundboardLogService()
-    await service.tick(bot)  # stabilisce il watermark solo da "delete"
+async def test_senza_logging_avanzato_il_suono_non_viene_registrato(cog, monkeypatch):
+    c, log_event, invio = cog
+    monkeypatch.setattr(modulo, "logging_avanzato_attivo", AsyncMock(return_value=False))
+    await c.on_soundboard_sound_create(_suono())
+    log_event.assert_not_awaited()
+    invio.assert_not_awaited()
 
-    nuova = datetime.now(timezone.utc)
-    guild.set_entries(
-        discord.AuditLogAction.soundboard_sound_delete,
-        [_FakeAuditEntry(1, vecchia, "x"), _FakeAuditEntry(2, nuova, "z")],
-    )
-    await service.tick(bot)
 
-    repo = EventLogRepository(pool_provider=lambda: contesto.pool)
-    eventi = await repo.get_recent_events(GUILD_ID)
-    assert len(eventi) == 1
-    assert eventi[0].event_type == "soundboard_sound_delete"
-    assert eventi[0].actor_id == 2
+def test_il_servizio_periodico_non_ha_piu_un_giro_sull_audit_log():
+    servizio = SoundboardLogService()
+    servizio.start(MagicMock())
+    assert servizio._loop_task is None
+    assert not hasattr(servizio, "tick")
+    assert soundboard_log_service is not None
+
+
+def test_gli_eventi_esistono_in_discord_py():
+    sorgente = open(discord.state.__file__, encoding="utf-8").read()
+    for nome in ("soundboard_sound_create", "soundboard_sound_update", "soundboard_sound_delete"):
+        assert f"self.dispatch('{nome}'" in sorgente

@@ -683,28 +683,24 @@ Totale voci: **494**.
   stesso principio già usato per l'autore in Anti-Nuke (§7.2)
 - `[x]` 8.11 Emoji create / delete / update
 - `[x]` 8.12 Sticker create / delete / update
-- `[~]` 8.13 Soundboard create / delete / update — **non via evento
-  gateway** (quella parte del limite trovato nell'Anti-Nuke, §7.2,
-  resta vera: nessun `on_soundboard_sound_...` esiste nella
-  libreria), ma via POLLING PERIODICO dell'audit log
-  (`discord.AuditLogAction.soundboard_sound_create/update/delete`
-  esistono ed è lì che Discord registra l'evento — verificato
-  leggendo l'enum reale della libreria installata, non assunto).
-  `core/soundboard_log_service.py`, stesso pattern architetturale di
-  `core/event_log_retention.py` (un `tasks.loop`, non un listener),
-  ogni 5 minuti, con un "watermark" persistito per server per non
-  ri-loggare le stesse voci né riversare lo storico alla prima
-  attivazione
-  → **Stato 04/10:** Correzione al testo: gli eventi soundboard **esistono** in discord.py 2.7.1; il giro periodico va sostituito (LIM-31). Il primo evento viene saltato (REVIEW §5).
+- `[x]` 8.13 Soundboard create / delete / update — dagli eventi gateway
+  di discord.py 2.7.1 (`on_soundboard_sound_create/update/delete`),
+  ascoltati da `cogs/logging/advanced_logs.py`. Il giro periodico
+  sull'audit log è tolto (`core/soundboard_log_service.py` è solo un
+  segnaposto senza ciclo; M 5.7, LIM-31)
 - `[x]` 8.14 Thread events — create/delete/update (nome, archiviato,
   bloccato)
 - `[x]` 8.15 Server update (impostazioni guild) — nome, icona,
   livello di verifica, canale AFK, canale di sistema, filtro
   contenuti espliciti
-- `[ ]` 8.16 Message delete / bulk delete / edit — **rimandato
-  deliberatamente**: richiede il Message Content Intent, da chiedere
-  solo quando un modulo lo giustifica (vedi § Decisioni)
-  → **Stato 04/10:** l'intent è acceso dal 04/10 (D9). In piano: NF-02, fase F6.
+- `[x]` 8.16 Message delete / bulk delete / edit — `cogs/logging/message_logs.py`
+  (NF-02, issue #73): embed con autore, canale e testo (campi 1024,
+  descrizione 4096); cancellazione in blocco = un riepilogo con un
+  file `.txt` sotto i 10 MiB; messaggi dei bot, canali, utenti e
+  prefissi ignorabili con `/log ignora`. Fa parte del Logging
+  Avanzato (premium). Un messaggio fuori dalla cache di discord.py si
+  segnala senza contenuto; la modifica di un messaggio fuori cache non
+  si vede
 - `[~]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
@@ -1196,27 +1192,24 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   cambiare), descrizione, timestamp → bottoni staff approva/rifiuta →
   notifica di ritorno al richiedente
   → **Stato 04/10:** due staff possono decidere insieme (REVIEW §5). I comandi creati dal server sono in §22 (NF-09).
-- `[ ]` 14.9 Snipe — **rimandato deliberatamente, stesso motivo di
-  §8.16**: mostrare il testo del messaggio cancellato richiede il
-  contenuto, azzerato sia in `on_message` (dove andrebbe cache-ato
-  in anticipo) sia in `on_message_delete` senza il Message Content
-  Intent — verificato punto per punto (non liquidato in blocco come
-  errore fatto su §8.13/§8.8, vedi PROGRESS.md Fase 70b), a
-  differenza di 14.11/14.12 sotto, che infatti SONO stati costruiti
-  → **Stato 04/10:** l'intent è acceso dal 04/10. In piano: NF-03, fase F6.
-- `[ ]` 14.10 Editsnipe — stesso motivo di 14.9 (before/after content)
-  → **Stato 04/10:** in piano: NF-03, fase F6.
+- `[x]` 14.9 Snipe — `/utility snipe`: l'ultimo messaggio cancellato nel
+  canale (testo tagliato a 4096, allegati per nome), ricordato 5
+  minuti solo in memoria, solo se il server accende il modulo `snipe`
+  (privacy). Niente menzioni vere nella risposta (NF-03, issue #74)
+- `[x]` 14.10 Editsnipe — `/utility editsnipe`: ultima modifica con
+  prima e dopo (campi 1024), stesse regole di 14.9
 - `[x]` 14.11 Reactionsnipe — `/reactionsnipe`, NON richiede il
   Message Content Intent: `on_raw_reaction_remove` restituisce
   emoji/autore/messaggio senza bisogno del contenuto del messaggio.
   Stato in memoria (non persistito, come tutti i bot "snipe")
-- `[~]` 14.12 Ghost ping detection — traccia in memoria i messaggi
+- `[x]` 14.12 Ghost ping detection — traccia in memoria i messaggi
   con menzioni (`Message.mentions`, popolato da un campo gateway a
   parte dal contenuto — non azzerato dall'intent, verificato
   leggendo `Message._handle_mentions` nella libreria installata) e
   segnala nel canale log se vengono cancellati, senza mai leggere il
-  testo del messaggio
-  → **Stato 04/10:** segnala anche i messaggi cancellati dai moderatori (REVIEW §5).
+  testo del messaggio. Non segnala se il registro di controllo dice che
+  l'ha cancellato un moderatore (M 5.9; se il registro non è leggibile
+  vale la regola di prima); scrive nella destinazione «messaggi» del router
 - `[~]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
   (5s) per non cancellare+reinviare ad ogni singolo messaggio in un
   canale attivo
@@ -1649,20 +1642,23 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   valido, tiene una copia del vecchio, ricarica il cog e torna indietro
   da solo se il caricamento fallisce (D21, issue #141, fase F9)
 
-## §18 ROUTER DEI CANALI E LOG SU FORUM — da fare (fase F6)
+## §18 ROUTER DEI CANALI E LOG SU FORUM — fatto per i log (fase F6)
 
-- `[ ]` 18.1 Un canale per **tipo** di uscita (log membri, messaggi,
-  moderazione, voce, server, automod, allarmi, benvenuto…), al posto
-  del canale unico (NF-01)
-- `[ ]` 18.2 Canale di testo oppure forum; nel forum un post per tipo
-  di log (D3)
-- `[ ]` 18.3 Creazione automatica di categoria e canali, o del forum,
-  con i permessi giusti (visibili solo allo staff)
-- `[ ]` 18.4 Canale sparito o senza permessi: avviso agli admin una
-  volta sola, mai un errore a ogni evento (LC-6)
-- `[ ]` 18.5 Migrazione delle impostazioni esistenti nella nuova
-  tabella `output_channels`
-- `[ ]` 18.6 Ignora canali, utenti e prefissi nei log
+- `[~]` 18.1 Un canale per **tipo** di uscita (NF-01, `core/channel_router.py`,
+  migrazione 0028). Fatti i tipi di log: eventi, messaggi, voce, server
+  (`/log canale tipo:…`, `/log stato`). Restano con il loro canale
+  proprio moderazione (sanzioni), automod, allarmi e benvenuto
+- `[x]` 18.2 Canale di testo oppure forum; nel forum un post per tipo
+  di log (D3). Il post nasce al primo log e, se cancellato, si ricrea
+- `[x]` 18.3 `/log crea-canali` (categoria privata + un canale per tipo)
+  e `/log crea-forum`, visibili solo al bot e a chi ha permessi di
+  amministratore; tetto di 500 canali controllato
+- `[x]` 18.4 Canale sparito o senza permessi: un solo DM al proprietario
+  del server, poi niente finché un invio non riesce di nuovo (LC-6, M 5.5)
+- `[x]` 18.5 Le impostazioni esistenti restano valide: senza una scelta per
+  il tipo vale il canale generale `log_channel_id` (nessun dato da migrare)
+- `[~]` 18.6 Ignora canali, utenti e prefissi: `/log ignora` (migrazione
+  0029) vale per il log dei messaggi; gli altri log non lo usano
 - `[ ]` 18.7 Log delle azioni oggi mai registrate: `/lock`, `/unlock`,
   `/slowmode`, `/clear`, `/untimeout`, `/unmute-role`, scadenza dei
   tempban, azioni dell'escalation

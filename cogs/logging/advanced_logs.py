@@ -3,65 +3,41 @@ cogs/logging/advanced_logs.py
 =================================
 Logging Avanzato (SPEC.md §8.6-§8.15) — livello Premium del Logging,
 distinto dal Logging semplificato SEMPRE GRATUITO di
-`cogs/logging/basic_logs.py` (SPEC.md §8.17, "Distinzione log
-semplificato [Free] vs completo [Premium]"). Stesso canale di log già
-configurato con `/log canale` (SETTING_LOG_CHANNEL, riusato — non
-serve un secondo comando di setup per un secondo canale), ma questi
-eventi arrivano lì SOLO se il server ha sbloccato/attivato anche
-`MODULE_LOGGING_ADVANCED`. Il controllo (modulo acceso + premium) sta in
-`logging_avanzato_attivo`: ogni listener lo chiama prima di scrivere.
+`cogs/logging/basic_logs.py` (SPEC.md §8.17). Questi eventi arrivano nella
+destinazione scelta con `/log canale` (tipo «server» per canali, inviti,
+webhook, emoji, sticker, thread, soundboard e impostazioni; tipo «voce» per
+le entrate e uscite dai vocali) solo se il server ha acceso e sbloccato
+`MODULE_LOGGING_ADVANCED`. Il controllo sta in `logging_avanzato_attivo`:
+ogni listener lo chiama prima di scrivere. Dove scrive lo decide
+`core/channel_router.py` (canale di testo o forum).
 
-Copre: 8.6 Role update, 8.7 Channel create/delete/update, 8.8 Invite
-create/delete/use, 8.9 Voice state, 8.10 Webhook, 8.11 Emoji, 8.12
-Sticker, 8.14 Thread, 8.15 Server update. Ogni evento viene anche
-salvato nel log eventi unificato (core/repositories/event_log_repo.py),
-stesso principio di basic_logs.py.
+Copre: 8.6 Role update, 8.7 Channel create/delete/update (gli spostamenti
+di posizione arrivano in un solo messaggio; i canali offuscati
+`___hidden___` sono ignorati), 8.8 Invite create/delete/use, 8.9 Voice
+state (mute e sordità proprie distinte da quelle del server), 8.10
+Webhook, 8.11 Emoji, 8.12 Sticker, 8.13 Soundboard (eventi gateway di
+discord.py), 8.14 Thread, 8.15 Server update. Ogni evento viene anche
+salvato nel log eventi unificato (core/repositories/event_log_repo.py).
+I messaggi cancellati e modificati (8.16) stanno in
+`cogs/logging/message_logs.py`.
 
 **8.8 "use"**: usa `invite_tracker.resolve_join_invite()`, non
-`find_used_invite()` direttamente — quest'ultimo MUTA la propria
-cache ad ogni chiamata (aggiorna l'istantanea per il prossimo
-confronto), quindi chiamarlo da qui E da Spam Trap sullo STESSO
-evento di join avrebbe fatto sì che la seconda chiamata vedesse il
-diff già "consumato" dalla prima, restituendo `None` in modo
-imprevedibile. `resolve_join_invite()` (vedi la nota architetturale
-in core/invite_tracker.py) risolve questo con un lock + cache per
-coppia (server, membro): la prima chiamata per un dato join fa il
-lavoro reale, ogni altra chiamata per lo stesso join — da qualunque
-modulo, in qualunque ordine — riceve la stessa risposta.
-
-**8.13 Soundboard — coperto, ma non da un listener di questo file**:
-la prima analisi (Fase 70) concludeva erroneamente che fosse
-bloccato — vero solo per gli eventi GATEWAY (`on_webhooks_update` e
-simili non esistono per il soundboard). L'AUDIT LOG del server SI
-registra `soundboard_sound_create/update/delete`
-(`discord.AuditLogAction`, verificato leggendo l'enum reale
-installata), quindi è recuperabile — solo non via un evento push,
-via polling periodico. Costruito come servizio a parte,
-`core/soundboard_log_service.py` (stesso pattern di
-`core/event_log_retention.py`: un `tasks.loop`, non un listener),
-perché un Cog di questo file reagisce a eventi che Discord manda da
-solo — l'audit log va invece INTERROGATO a intervalli. Le funzioni
-`advanced_log_channel`/`send_event_embed`/`EVENT_TITLES` di questo
-file sono condivise (non più `_private`) apposta per essere riusate
-da quel servizio, invece di duplicarle.
-
-**8.16 Message delete/edit resta fuori per scelta esplicita** (serve
-il Message Content Intent, vedi § Decisioni in SPEC.md) — non
-toccato da questo file.
+`find_used_invite()`: quest'ultimo muta la propria cache a ogni chiamata,
+mentre `resolve_join_invite()` dà la stessa risposta a tutti i moduli per
+lo stesso ingresso (vedi core/invite_tracker.py).
 """
-
-# DA FARE (issue #61, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §5 (Log).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
 import discord
 from discord.ext import commands
 
-from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
+from core import channel_router as router
+from core.channel_router import SETTING_LOG_CHANNEL, TIPO_SERVER, TIPO_VOCE
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.invite_tracker import invite_tracker
@@ -74,6 +50,7 @@ from core.logging_advanced_logic import (
     diff_attributes,
     diff_named_items,
 )
+from core.message_log_logic import DESCRIZIONE_MAX, tronca
 from core.premium import registry
 from core.repositories.event_log_repo import event_log_repo
 from core.security_access import premium_sbloccato
@@ -82,10 +59,19 @@ logger = logging.getLogger("iyokai.advanced_logs")
 
 MODULE_LOGGING_ADVANCED = "logging_advanced"
 
+# Gli spostamenti di canale fatti insieme (trascinare un canale cambia la
+# posizione di molti altri) arrivano in un solo messaggio dopo questa attesa.
+SPOSTAMENTI_ATTESA_SECONDI = 5
+# Mute e sordità scelti dall'utente si registrano al massimo una volta al minuto
+# per utente e tipo: chi attiva e disattiva il microfono non riempie il canale.
+VOCE_PROPRIO_ATTESA_SECONDI = 60
+
 PREMIUM_CACHE_TTL_SECONDS = 60
 _monotonic = time.monotonic
 # guild_id -> (scadenza, sbloccato)
 _premium_cache: BoundedCache[int, tuple[float, bool]] = BoundedCache(10_000)
+# (guild_id, user_id, evento) -> ultimo istante registrato
+_voce_propria_cache: BoundedCache[tuple[int, int, str], float] = BoundedCache(10_000)
 
 # Stessa finestra di tolleranza già usata in cogs/security/anti_nuke.py
 # per risolvere l'autore di un evento via audit log (l'evento gateway
@@ -122,22 +108,19 @@ EVENT_TITLES = {
     "voice_join": ("🔊 Entrato in un canale vocale", discord.Color.green()),
     "voice_leave": ("🔈 Uscito da un canale vocale", discord.Color.orange()),
     "voice_move": ("🔀 Spostato di canale vocale", discord.Color.blurple()),
-    "voice_mute": ("🔇 Mutato (server)", discord.Color.orange()),
-    "voice_unmute": ("🔊 Smutato (server)", discord.Color.green()),
-    "voice_deafen": ("🔇 Assordato (server)", discord.Color.orange()),
-    "voice_undeafen": ("🔊 Non più assordato (server)", discord.Color.green()),
+    "voice_mute": ("🔇 Mutato dal server", discord.Color.orange()),
+    "voice_unmute": ("🔊 Smutato dal server", discord.Color.green()),
+    "voice_deafen": ("🔇 Assordato dal server", discord.Color.orange()),
+    "voice_undeafen": ("🔊 Non più assordato dal server", discord.Color.green()),
+    "voice_self_mute": ("🎙️ Si è mutato da solo", discord.Color.light_grey()),
+    "voice_self_unmute": ("🎙️ Ha riattivato il microfono", discord.Color.light_grey()),
+    "voice_self_deafen": ("🎧 Si è assordato da solo", discord.Color.light_grey()),
+    "voice_self_undeafen": ("🎧 Ha riattivato l'audio", discord.Color.light_grey()),
+    "channel_move": ("↕️ Canali spostati", discord.Color.blurple()),
     "soundboard_sound_create": ("🔔 Suono soundboard creato", discord.Color.green()),
     "soundboard_sound_update": ("🔔 Suono soundboard modificato", discord.Color.blurple()),
     "soundboard_sound_delete": ("🔔 Suono soundboard eliminato", discord.Color.red()),
 }
-
-# Guild setting generico (stesso meccanismo di SETTING_LOG_CHANNEL)
-# dove core/soundboard_log_service.py salva il "watermark" — il
-# timestamp dell'ultima voce di audit log soundboard già processata,
-# per non ri-loggare la stessa voce al prossimo giro di polling né,
-# alla primissima attivazione, riversare tutto lo storico esistente.
-SETTING_SOUNDBOARD_WATERMARK = "logging_soundboard_watermark"
-
 
 def _role_snapshot(role: discord.Role) -> dict:
     return {
@@ -176,14 +159,13 @@ def _thread_snapshot(thread: discord.Thread) -> dict:
 
 
 def _voice_state_snapshot(state: discord.VoiceState) -> dict:
-    # Semplificazione dichiarata: "mute"/"deaf" qui è lo stato
-    # EFFETTIVO (server-mute/deafen OPPURE self-mute/self-deafen), non
-    # le quattro variabili distinte di discord.py — un log leggibile
-    # si chiede "è muto?", non "chi/come l'ha mutato".
+    # mute/deaf: decisi da un moderatore; self_*: scelti dall'utente.
     return {
         "channel_id": state.channel.id if state.channel is not None else None,
-        "mute": bool(state.mute or state.self_mute),
-        "deaf": bool(state.deaf or state.self_deaf),
+        "mute": bool(state.mute),
+        "deaf": bool(state.deaf),
+        "self_mute": bool(state.self_mute),
+        "self_deaf": bool(state.self_deaf),
     }
 
 
@@ -201,7 +183,8 @@ async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
     PREMIUM_CACHE_TTL_SECONDS per server, solo con il modulo premium e
     acceso. Non c'è un punto unico dove invalidarlo (whitelist, cassa,
     abbonamenti e flag del modulo stanno in posti diversi): basta il TTL,
-    quindi uno sblocco o una revoca valgono entro un minuto.
+    quindi uno sblocco o una revoca valgono entro un minuto, oppure subito
+    se chi li fa chiama `invalida_verdetto_premium`.
     """
     if not await db.is_module_active_for_guild(guild_id, MODULE_LOGGING_ADVANCED):
         return False
@@ -216,33 +199,42 @@ async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
     return sbloccato
 
 
-async def advanced_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
+def invalida_verdetto_premium(guild_id: int | None = None) -> None:
+    """
+    Dimentica il verdetto premium in memoria (di un server o di tutti): chi
+    cambia whitelist, cassa o abbonamenti può chiamarla per far valere
+    subito lo sblocco o la revoca, senza aspettare il TTL.
+    """
+    if guild_id is None:
+        _premium_cache.clear()
+    else:
+        _premium_cache.delete(guild_id)
+
+
+async def advanced_log_channel(guild: discord.Guild, tipo: str = TIPO_SERVER):
+    """Destinazione (canale o post di un forum) del log avanzato `tipo`, o None."""
     enabled = await db.is_module_active_for_guild(guild.id, MODULE_LOGGING_ADVANCED)
     if not enabled:
         return None
-    channel_id = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
-    if channel_id is None:
-        return None
-    channel = guild.get_channel(channel_id)
-    if not isinstance(channel, discord.TextChannel):
-        return None
-    return channel
+    predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+    return await router.destinazione(guild, tipo, predefinito)
 
 
 async def send_event_embed(
     guild: discord.Guild, event_type: str, description: str
 ) -> None:
-    channel = await advanced_log_channel(guild)
+    tipo = TIPO_VOCE if event_type.startswith("voice_") else TIPO_SERVER
+    channel = await advanced_log_channel(guild, tipo)
     if channel is None:
         return
     title, color = EVENT_TITLES.get(event_type, (event_type, discord.Color.default()))
     embed = discord.Embed(
-        title=title, description=description, color=color, timestamp=discord.utils.utcnow()
+        title=title,
+        description=tronca(description, DESCRIZIONE_MAX),
+        color=color,
+        timestamp=discord.utils.utcnow(),
     )
-    try:
-        await channel.send(embed=embed)
-    except discord.HTTPException:
-        pass
+    await router.invia_a(channel, guild, tipo, embed=embed)
 
 
 async def _resolve_webhook_change(
@@ -275,6 +267,31 @@ async def _resolve_webhook_change(
 class AdvancedLogsCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # guild_id -> canali spostati in attesa del messaggio unico
+        self._spostamenti: dict[int, list[tuple[int, int, int]]] = {}
+        self._invii_spostamenti: set[asyncio.Task] = set()
+
+    def cog_unload(self) -> None:
+        for compito in self._invii_spostamenti:
+            compito.cancel()
+
+    async def _accoda_spostamento(self, guild: discord.Guild, channel_id: int, da: int, a: int) -> None:
+        in_attesa = guild.id in self._spostamenti
+        self._spostamenti.setdefault(guild.id, []).append((channel_id, da, a))
+        if in_attesa:
+            return
+        compito = asyncio.create_task(self._scarica_spostamenti(guild))
+        self._invii_spostamenti.add(compito)
+        compito.add_done_callback(self._invii_spostamenti.discard)
+
+    async def _scarica_spostamenti(self, guild: discord.Guild) -> None:
+        await asyncio.sleep(SPOSTAMENTI_ATTESA_SECONDI)
+        spostati = self._spostamenti.pop(guild.id, [])
+        if not spostati:
+            return
+        righe = [f"<#{c}>: posizione {da} → {a}" for c, da, a in spostati]
+        testo = f"**{len(spostati)}** canali spostati\n" + "\n".join(righe)
+        await send_event_embed(guild, "channel_move", testo)
 
     # ================================================================
     # 8.6 Ruoli — modifica (creazione/eliminazione già in basic_logs)
@@ -298,6 +315,8 @@ class AdvancedLogsCog(commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
+        if router.canale_nascosto(channel):
+            return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
         await event_log_repo.log_event(
@@ -307,6 +326,8 @@ class AdvancedLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        if router.canale_nascosto(channel):
+            return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
         await event_log_repo.log_event(
@@ -318,6 +339,9 @@ class AdvancedLogsCog(commands.Cog):
     async def on_guild_channel_update(
         self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel
     ) -> None:
+        # LIM-38: quando il bot perde o prende accesso a un canale cambia solo il nome finto.
+        if router.canale_nascosto(before) or router.canale_nascosto(after):
+            return
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         changes = diff_attributes(_channel_snapshot(before), _channel_snapshot(after), CHANNEL_TRACKED_KEYS)
@@ -326,6 +350,11 @@ class AdvancedLogsCog(commands.Cog):
         await event_log_repo.log_event(
             after.guild.id, "channel_update", channel_id=after.id, details=changes
         )
+        if set(changes) == {"position"}:
+            await self._accoda_spostamento(
+                after.guild, after.id, changes["position"]["before"], changes["position"]["after"]
+            )
+            return
         await send_event_embed(
             after.guild, "channel_update", f"<#{after.id}>\n" + ", ".join(changes.keys())
         )
@@ -393,6 +422,8 @@ class AdvancedLogsCog(commands.Cog):
             return
         eventi = classify_voice_state_change(_voice_state_snapshot(before), _voice_state_snapshot(after))
         for event_type in eventi:
+            if event_type.startswith("voice_self_") and self._troppo_presto(member, event_type):
+                continue
             canale_rilevante = after.channel or before.channel
             await event_log_repo.log_event(
                 member.guild.id,
@@ -401,6 +432,16 @@ class AdvancedLogsCog(commands.Cog):
                 channel_id=canale_rilevante.id if canale_rilevante is not None else None,
             )
             await send_event_embed(member.guild, event_type, f"{member.mention}")
+
+    @staticmethod
+    def _troppo_presto(member: discord.Member, event_type: str) -> bool:
+        chiave = (member.guild.id, member.id, event_type)
+        adesso = _monotonic()
+        ultimo = _voce_propria_cache.get(chiave)
+        if ultimo is not None and adesso - ultimo < VOCE_PROPRIO_ATTESA_SECONDI:
+            return True
+        _voce_propria_cache.set(chiave, adesso)
+        return False
 
     # ================================================================
     # 8.10 Webhook
@@ -458,6 +499,32 @@ class AdvancedLogsCog(commands.Cog):
         for item in diff["renamed"]:
             await event_log_repo.log_event(guild.id, "sticker_update", details=item)
             await send_event_embed(guild, "sticker_update", f"`{item['before']}` → `{item['after']}`")
+
+    # ================================================================
+    # 8.13 Soundboard (eventi gateway di discord.py)
+    # ================================================================
+    async def _log_soundboard(self, sound, event_type: str, attore: int | None) -> None:
+        guild = getattr(sound, "guild", None)
+        if guild is None or not await logging_avanzato_attivo(guild.id, self.bot):
+            return
+        await event_log_repo.log_event(
+            guild.id, event_type, actor_id=attore, details={"name": sound.name}
+        )
+        descrizione = f"`{sound.name}`" + (f" — <@{attore}>" if attore else "")
+        await send_event_embed(guild, event_type, descrizione)
+
+    @commands.Cog.listener()
+    async def on_soundboard_sound_create(self, sound) -> None:
+        utente = getattr(sound, "user", None)
+        await self._log_soundboard(sound, "soundboard_sound_create", utente.id if utente else None)
+
+    @commands.Cog.listener()
+    async def on_soundboard_sound_update(self, before, after) -> None:
+        await self._log_soundboard(after, "soundboard_sound_update", None)
+
+    @commands.Cog.listener()
+    async def on_soundboard_sound_delete(self, sound) -> None:
+        await self._log_soundboard(sound, "soundboard_sound_delete", None)
 
     # ================================================================
     # 8.14 Thread

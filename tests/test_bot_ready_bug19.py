@@ -26,7 +26,6 @@ from core.guild_clan_voice_worker import GuildClanVoiceWorker
 from core.memory_guard import MemoryGuard
 from core.monthly_winners_announcer import MonthlyWinnersAnnouncer
 from core.scheduler import Scheduler
-from core.soundboard_log_service import SoundboardLogService
 from core.weekly_personal_decay_worker import WeeklyPersonalDecayWorker
 
 CORE_DIR = Path(__file__).parent.parent / "core"
@@ -47,7 +46,6 @@ WORKER_CON_UN_SOLO_BOT = [
     MemoryGuard,
     MonthlyWinnersAnnouncer,
     Scheduler,
-    SoundboardLogService,
     WeeklyPersonalDecayWorker,
 ]
 

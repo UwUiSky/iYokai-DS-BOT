@@ -95,6 +95,8 @@ from core.scheduler import in_seconds, scheduler
 from core.ui_base import BaseView
 from cogs.moderation._shared import ensure_module_enabled
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
+from core import channel_router as router
+from core.channel_router import TIPO_EVENTI
 
 logger = logging.getLogger("iyokai.tickets")
 
@@ -907,18 +909,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
         file_del_transcript = self._transcript_files(testo, ticket.ticket_number)
 
-        log_channel_id = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
-        if log_channel_id is not None:
-            log_channel = guild.get_channel(log_channel_id)
-            if isinstance(log_channel, discord.TextChannel):
-                try:
-                    for nome_file, contenuto in file_del_transcript:
-                        await log_channel.send(
-                            content=f"Transcript ticket #{ticket.ticket_number:04d}",
-                            file=discord.File(io.BytesIO(contenuto), filename=nome_file),
-                        )
-                except discord.HTTPException:
-                    logger.warning("Impossibile inviare il transcript nel canale log del server %s", guild.id)
+        # Il canale dei log può essere un forum: il router lo gestisce (post nel forum).
+        predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+        destinazione = await router.destinazione(guild, TIPO_EVENTI, predefinito)
+        if destinazione is not None:
+            for nome_file, contenuto in file_del_transcript:
+                await router.invia_a(
+                    destinazione,
+                    guild,
+                    TIPO_EVENTI,
+                    content=f"Transcript ticket #{ticket.ticket_number:04d}",
+                    file=discord.File(io.BytesIO(contenuto), filename=nome_file),
+                )
 
         try:
             utente = guild.get_member(ticket.user_id) or await self.bot.fetch_user(ticket.user_id)

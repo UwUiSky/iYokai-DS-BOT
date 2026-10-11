@@ -200,3 +200,25 @@ async def test_un_file_rifiutato_non_ferma_il_dm_all_utente():
     await scena.apri_e_chiudi(TicketsCog(_bot()))
 
     assert len(scena.file_in_dm()) == 1
+
+
+async def test_con_un_forum_come_canale_dei_log_il_transcript_va_in_un_post():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from tests.support.discord_fakes import fake_forum_channel
+    import core.channel_router as router
+
+    router._post_noti.clear()
+    scena = Scena([_messaggio("mario", "Aiuto")])
+    forum = fake_forum_channel(ID_CANALE_LOG)
+    forum.guild = scena.guild
+    post = MagicMock(spec=discord.Thread, id=9001)
+    forum.create_thread = AsyncMock(return_value=MagicMock(thread=post, message=MagicMock()))
+    scena.guild.get_channel.side_effect = lambda cid: forum if cid == ID_CANALE_LOG else None
+
+    await scena.apri_e_chiudi(TicketsCog(_bot()))
+
+    forum.create_thread.assert_awaited_once()
+    file = forum.create_thread.await_args.kwargs["file"]
+    assert file.filename == "ticket-0001-transcript.txt"
+    assert len(scena.file_in_dm()) == 1
