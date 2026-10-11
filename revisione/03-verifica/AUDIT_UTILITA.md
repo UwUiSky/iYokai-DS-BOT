@@ -19,3 +19,12 @@ chiude la riga; il test è il file che la prova.
 | `cogs/utility/scheduled_messages.py` | M 10.6: nessun `allowed_mentions` | `payload["ping_ruoli"]` deciso dal permesso dell'autore | G1 | idem |
 | `cogs/utility/reminders.py` | M 10.5: testo senza limite, lista oltre 4096 | `Range[str,1,1800]`, `righe_entro_limite` | G1 | idem |
 | `cogs/utility/reminders.py` | il canale di ripiego pubblicava il testo dell'utente senza `allowed_mentions` (chiunque poteva far pingare `@everyone` al bot) | solo l'utente stesso menzionabile | G1 | idem |
+| `cogs/utility/role_menus.py` | M 10.7: titolo, descrizione, etichetta senza limite | `Range` 256 / 2000 / 80 sulle opzioni | G2 | `tests/test_role_menus_limiti.py` |
+| `cogs/utility/role_menus.py` | emoji accettata qualunque stringa | `valida_emoji` (unicode, tasto, personalizzata) + emoji personalizzata che il bot vede | G2 | idem |
+| `cogs/utility/role_menus.py` | campo dell'embed oltre 1024 con 25 etichette lunghe: la modifica falliva ma l'admin leggeva "Opzione aggiunta" | elenco su più campi (`dividi_in_pagine`), tetto 6000 | G2 | idem |
+| `cogs/utility/role_menus.py` | opzione salvata nel database prima di pubblicare, errore ingoiato | `_pubblica_menu` prima, `add_option` dopo; se Discord rifiuta l'admin lo legge e nulla è salvato | G2 | idem |
+| `cogs/utility/role_menus.py` | togliere l'ultima opzione lasciava una tendina vuota (non valida) | menu e messaggio eliminati, l'admin lo sa | G2 | idem |
+| `cogs/utility/role_menus.py` | `toggle=False` ignorato dal bottone | il bottone non toglie il ruolo, risponde "già" | G2 | idem |
+| `cogs/utility/role_menus.py` | messaggio del menu cancellato a mano: ogni modifica falliva in silenzio | ripubblicato al posto di quello sparito | G2 | idem |
+| `cogs/utility/role_menus.py` | solo `Forbidden` catturato in bottone, tendina e reazioni | `HTTPException` con risposta all'utente | G2 | idem |
+| `cogs/utility/role_menus.py` | all'avvio un menu rimasto senza opzioni registrava una View vuota | saltato | G2 | idem |
