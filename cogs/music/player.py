@@ -7,11 +7,11 @@ hanno nessun comando proprio, esistono solo per avere una propria
 connessione voce.
 
 Architettura chiarita dall'utente: un solo punto di ingresso comandi
-(qui, sul bot principale). Per /play e i comandi che agiscono su una
+(qui, sul bot principale). Per /music play e i comandi che agiscono su una
 riproduzione, il bot principale non entra MAI in vocale lui stesso —
 instrada verso una delle 5 istanze worker tramite core/music_fleet.py
 (quella già assegnata a questo server, o la prima libera). Il bot
-principale entra in vocale SOLO per /nonstop-main (streaming 24/7
+principale entra in vocale SOLO per /owner radio (streaming 24/7
 dalla playlist personale dell'utente) — un comando completamente
 separato dal resto.
 
@@ -56,6 +56,7 @@ import wavelink
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.main_radio_logic import RadioTrackInfo, compute_current_position
@@ -78,6 +79,12 @@ from core.repositories.main_radio_repo import main_radio_repo
 logger = logging.getLogger("iyokai.music")
 
 MODULE_MUSIC = "music"
+
+# Sotto-gruppi di /music e di /owner (un solo livello).
+SG_LOOP = ("loop", "Ripete la traccia corrente o l'intera coda.")
+SG_VOLUME = ("volume", "Controlla il volume della riproduzione (0-200, come Discord).")
+SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale attiva.")
+RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
 
 
 LOCAL_NODE_IDENTIFIER = "iyokai-local-node"  # identificatore fisso
@@ -117,7 +124,7 @@ def _build_lavalink_nodes() -> list[wavelink.Node]:
     return nodi
 
 
-class MusicCog(commands.Cog):
+class MusicCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Task lanciati senza aspettarli. asyncio tiene solo un
@@ -152,7 +159,7 @@ class MusicCog(commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_MUSIC):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return False
@@ -175,7 +182,7 @@ class MusicCog(commands.Cog):
         """
         Restituisce (guild_del_worker, None) in caso di successo, o
         (None, messaggio_errore) altrimenti. auto_assign=True (usato
-        solo da /play) assegna un nuovo worker libero se il server
+        solo da /music play) assegna un nuovo worker libero se il server
         non ne ha già uno; auto_assign=False (tutti gli altri
         comandi) non assegna nulla — se non c'è una sessione già
         attiva, quei comandi devono fallire pulitamente, non avviarne
@@ -308,7 +315,7 @@ class MusicCog(commands.Cog):
     # ================================================================
     # Comandi (instradati verso un worker)
     # ================================================================
-    @app_commands.command(name="play", description="Riproduce una canzone o playlist.")
+    @comando_di_gruppo("music", nome="play", descrizione="Riproduce una canzone o playlist.")
     @app_commands.describe(query="Nome della canzone, URL, o termine di ricerca")
     async def play(self, interaction: discord.Interaction, query: str) -> None:
         if not await self._controlli_base(interaction):
@@ -365,7 +372,7 @@ class MusicCog(commands.Cog):
             prossima = await player.queue.get_wait()
             await player.play(prossima)
 
-    @app_commands.command(name="skip", description="Salta la traccia in riproduzione.")
+    @comando_di_gruppo("music", nome="skip", descrizione="Salta la traccia in riproduzione.")
     async def skip(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -385,7 +392,7 @@ class MusicCog(commands.Cog):
         await player.skip()
         await interaction.response.send_message("⏭️ Traccia saltata.")
 
-    @app_commands.command(name="stop", description="Ferma la riproduzione e svuota la coda.")
+    @comando_di_gruppo("music", nome="stop", descrizione="Ferma la riproduzione e svuota la coda.")
     async def stop(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -406,7 +413,7 @@ class MusicCog(commands.Cog):
         await player.stop()
         await interaction.response.send_message("⏹️ Riproduzione fermata, coda svuotata.")
 
-    @app_commands.command(name="pause", description="Mette in pausa la riproduzione.")
+    @comando_di_gruppo("music", nome="pause", descrizione="Mette in pausa la riproduzione.")
     async def pause(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -426,7 +433,7 @@ class MusicCog(commands.Cog):
         await player.pause(True)
         await interaction.response.send_message("⏸️ Messo in pausa.")
 
-    @app_commands.command(name="resume", description="Riprende la riproduzione in pausa.")
+    @comando_di_gruppo("music", nome="resume", descrizione="Riprende la riproduzione in pausa.")
     async def resume(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -446,7 +453,7 @@ class MusicCog(commands.Cog):
         await player.pause(False)
         await interaction.response.send_message("▶️ Ripreso.")
 
-    @app_commands.command(name="queue", description="Mostra la coda di riproduzione.")
+    @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
     async def queue_command(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -467,11 +474,9 @@ class MusicCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(
-        name="clear-queue", description="Svuota la coda, senza toccare la traccia in riproduzione."
-    )
+    @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
     async def clear_queue(self, interaction: discord.Interaction) -> None:
-        # NON "clear": nome già usato da /clear di moderation (cancella
+        # NON "clear": nome già usato da /mod clear (cancella
         # messaggi) — un doppione avrebbe fatto fallire la REGISTRAZIONE
         # dell'intero MusicCog in silenzio (bug reale trovato qui:
         # core/cog_manager.load_all_cogs cattura e LOGGA ogni eccezione
@@ -505,7 +510,7 @@ class MusicCog(commands.Cog):
             "La traccia in riproduzione non è stata toccata."
         )
 
-    @app_commands.command(name="shuffle", description="Mescola l'ordine delle tracce in coda.")
+    @comando_di_gruppo("music", nome="shuffle", descrizione="Mescola l'ordine delle tracce in coda.")
     async def shuffle(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -531,11 +536,12 @@ class MusicCog(commands.Cog):
         player.queue.shuffle()
         await interaction.response.send_message("🔀 Coda mescolata.")
 
-    loop_group = app_commands.Group(
-        name="loop", description="Ripete la traccia corrente o l'intera coda."
+    @comando_di_gruppo(
+        "music",
+        nome="track",
+        descrizione="Attiva/disattiva la ripetizione della traccia corrente.",
+        sottogruppo=SG_LOOP,
     )
-
-    @loop_group.command(name="track", description="Attiva/disattiva la ripetizione della traccia corrente.")
     async def loop_track(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -552,8 +558,8 @@ class MusicCog(commands.Cog):
             )
             return
 
-        # Stesso campo (player.queue.mode) usato anche da /loop queue
-        # e da /nonstop: attivare questo disattiva sempre l'altro, non
+        # Stesso campo (player.queue.mode) usato anche da /music loop queue
+        # e da /music nonstop on: attivare questo disattiva sempre l'altro, non
         # si sommano — sono due modalità mutuamente esclusive della
         # stessa coda, non due loop indipendenti.
         if player.queue.mode == wavelink.QueueMode.loop:
@@ -563,7 +569,12 @@ class MusicCog(commands.Cog):
             player.queue.mode = wavelink.QueueMode.loop
             await interaction.response.send_message("🔂 Loop traccia attivato: la traccia corrente si ripete.")
 
-    @loop_group.command(name="queue", description="Attiva/disattiva la ripetizione dell'intera coda.")
+    @comando_di_gruppo(
+        "music",
+        nome="queue",
+        descrizione="Attiva/disattiva la ripetizione dell'intera coda.",
+        sottogruppo=SG_LOOP,
+    )
     async def loop_queue(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -587,9 +598,7 @@ class MusicCog(commands.Cog):
             player.queue.mode = wavelink.QueueMode.loop_all
             await interaction.response.send_message("🔁 Loop coda attivato: l'intera coda si ripete.")
 
-    @app_commands.command(
-        name="nowplaying", description="Mostra la traccia in riproduzione con una barra di avanzamento."
-    )
+    @comando_di_gruppo("music", nome="nowplaying", descrizione="Mostra la traccia in riproduzione con una barra di avanzamento.")
     async def nowplaying(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -628,11 +637,12 @@ class MusicCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    volume_group = app_commands.Group(
-        name="volume", description="Controlla il volume della riproduzione (0-200, come Discord)."
+    @comando_di_gruppo(
+        "music",
+        nome="set",
+        descrizione="Imposta il volume a un valore specifico (0-200).",
+        sottogruppo=SG_VOLUME,
     )
-
-    @volume_group.command(name="set", description="Imposta il volume a un valore specifico (0-200).")
     @app_commands.describe(level="Livello del volume, da 0 a 200")
     async def volume_set(
         self, interaction: discord.Interaction, level: app_commands.Range[int, 0, 200]
@@ -655,7 +665,12 @@ class MusicCog(commands.Cog):
         await player.set_volume(level)
         await interaction.response.send_message(f"🔊 Volume impostato a {level}.")
 
-    @volume_group.command(name="up", description="Aumenta il volume.")
+    @comando_di_gruppo(
+        "music",
+        nome="up",
+        descrizione="Aumenta il volume.",
+        sottogruppo=SG_VOLUME,
+    )
     @app_commands.describe(amount="Quanto aumentare (default 10)")
     async def volume_up(
         self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 200] = 10
@@ -679,7 +694,12 @@ class MusicCog(commands.Cog):
         await player.set_volume(nuovo_volume)
         await interaction.response.send_message(f"🔊 Volume aumentato a {nuovo_volume}.")
 
-    @volume_group.command(name="down", description="Diminuisce il volume.")
+    @comando_di_gruppo(
+        "music",
+        nome="down",
+        descrizione="Diminuisce il volume.",
+        sottogruppo=SG_VOLUME,
+    )
     @app_commands.describe(amount="Quanto diminuire (default 10)")
     async def volume_down(
         self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 200] = 10
@@ -703,7 +723,7 @@ class MusicCog(commands.Cog):
         await player.set_volume(nuovo_volume)
         await interaction.response.send_message(f"🔉 Volume diminuito a {nuovo_volume}.")
 
-    @app_commands.command(name="disconnect", description="Disconnette il music bot dal canale vocale.")
+    @comando_di_gruppo("music", nome="disconnect", descrizione="Disconnette il music bot dal canale vocale.")
     async def disconnect(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -726,14 +746,14 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message("👋 Disconnesso.")
 
     # ================================================================
-    # /nonstop — loop 24/7 sul worker attivo (SPEC.md §9.10, parte)
+    # /music nonstop — loop 24/7 sul worker attivo (SPEC.md §9.10, parte)
     # ================================================================
-    nonstop_group = app_commands.Group(
-        name="nonstop",
-        description="Riproduzione continua in loop sulla sessione musicale attiva.",
+    @comando_di_gruppo(
+        "music",
+        nome="on",
+        descrizione="Attiva il loop continuo sulla coda attuale.",
+        sottogruppo=SG_NONSTOP,
     )
-
-    @nonstop_group.command(name="on", description="Attiva il loop continuo sulla coda attuale.")
     async def nonstop_on(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -753,7 +773,12 @@ class MusicCog(commands.Cog):
         player.queue.mode = wavelink.QueueMode.loop_all
         await interaction.response.send_message("🔁 Loop continuo attivato sulla coda attuale.")
 
-    @nonstop_group.command(name="off", description="Disattiva il loop continuo.")
+    @comando_di_gruppo(
+        "music",
+        nome="off",
+        descrizione="Disattiva il loop continuo.",
+        sottogruppo=SG_NONSTOP,
+    )
     async def nonstop_off(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -774,7 +799,7 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message("Loop continuo disattivato.")
 
     # ================================================================
-    # /nonstop-main — radio condivisa SOLO sul bot principale,
+    # /owner radio — radio condivisa SOLO sul bot principale,
     # playlist personale (SPEC.md §9.11). Non instradata: il bot
     # principale entra in vocale lui stesso, comando distinto da
     # tutto il resto. "Condivisa" significa che ogni server dove è
@@ -783,22 +808,6 @@ class MusicCog(commands.Cog):
     # rende possibile questo senza coordinare i player tra loro in
     # tempo reale.
     # ================================================================
-    nonstop_main_group = app_commands.Group(
-        name="nonstop-main",
-        description="[Owner] Radio 24/7 condivisa del bot principale, playlist personale.",
-    )
-
-    @staticmethod
-    def _is_owner(interaction: discord.Interaction) -> bool:
-        """
-        SEC-5: la playlist della radio è CONDIVISA da tutti i server
-        (un solo orologio globale, core/main_radio_logic.py) — non
-        ha senso lasciarla modificare a chi ha "Gestisci server" su
-        un server qualsiasi, quel permesso vale solo lì. Owner-only
-        per ora; lo spostamento sotto /owner arriva in R5.
-        """
-        return interaction.user.id == config.OWNER_ID
-
     async def _resolve_radio_track(self, identifier: str) -> wavelink.Playable | None:
         """
         Gli identificatori "local:..." vanno risolti SOLO tramite il
@@ -820,22 +829,19 @@ class MusicCog(commands.Cog):
             return risultati[0] if len(risultati) > 0 else None
         return risultati[0]
 
-    @nonstop_main_group.command(
-        name="add-track", description="[Owner] Aggiunge una traccia alla playlist della radio."
+    @comando_di_gruppo(
+        "owner",
+        nome="add-track",
+        descrizione="Aggiunge una traccia alla playlist della radio.",
+        sottogruppo=RADIO,
     )
     @app_commands.describe(
         query="URL o ricerca (YouTube, Spotify, SoundCloud...)",
-        label="Nome descrittivo per /nonstop-main list-tracks (facoltativo)",
+        label="Nome descrittivo per /owner radio list-tracks (facoltativo)",
     )
     async def nonstop_main_add_track(
         self, interaction: discord.Interaction, query: str, label: str | None = None
     ) -> None:
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         await interaction.response.defer(ephemeral=True)
 
         traccia = await self._resolve_radio_track(query)
@@ -853,23 +859,19 @@ class MusicCog(commands.Cog):
             f"✅ Aggiunta **{label or traccia.title}** alla playlist della radio (ID `{track_id}`)."
         )
 
-    @nonstop_main_group.command(
-        name="add-local",
-        description="[Owner] Aggiunge un file dalla cartella inediti alla playlist della radio.",
+    @comando_di_gruppo(
+        "owner",
+        nome="add-local",
+        descrizione="Aggiunge un file dalla cartella inediti alla playlist della radio.",
+        sottogruppo=RADIO,
     )
     @app_commands.describe(
         filename="Nome del file nella cartella inediti (MAIN_RADIO_LOCAL_FOLDER)",
-        label="Nome descrittivo per /nonstop-main list-tracks (facoltativo)",
+        label="Nome descrittivo per /owner radio list-tracks (facoltativo)",
     )
     async def nonstop_main_add_local(
         self, interaction: discord.Interaction, filename: str, label: str | None = None
     ) -> None:
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         if not config.MAIN_RADIO_LOCAL_FOLDER:
             await interaction.response.send_message(
                 "MAIN_RADIO_LOCAL_FOLDER non è configurata — nessuna cartella inediti "
@@ -912,19 +914,16 @@ class MusicCog(commands.Cog):
             f"✅ Aggiunto **{label or filename}** alla playlist della radio (ID `{track_id}`)."
         )
 
-    @nonstop_main_group.command(
-        name="remove-track", description="[Owner] Rimuove una traccia dalla playlist della radio."
+    @comando_di_gruppo(
+        "owner",
+        nome="remove-track",
+        descrizione="Rimuove una traccia dalla playlist della radio.",
+        sottogruppo=RADIO,
     )
-    @app_commands.describe(track_id="ID della traccia (vedi /nonstop-main list-tracks)")
+    @app_commands.describe(track_id="ID della traccia (vedi /owner radio list-tracks)")
     async def nonstop_main_remove_track(
         self, interaction: discord.Interaction, track_id: int
     ) -> None:
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         rimossa = await main_radio_repo.remove_track(track_id)
         if rimossa:
             await interaction.response.send_message("Traccia rimossa.", ephemeral=True)
@@ -933,20 +932,17 @@ class MusicCog(commands.Cog):
                 "Nessuna traccia trovata con questo ID.", ephemeral=True
             )
 
-    @nonstop_main_group.command(
-        name="list-tracks", description="[Owner] Mostra la playlist della radio."
+    @comando_di_gruppo(
+        "owner",
+        nome="list-tracks",
+        descrizione="Mostra la playlist della radio.",
+        sottogruppo=RADIO,
     )
     async def nonstop_main_list_tracks(self, interaction: discord.Interaction) -> None:
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         tracce = await main_radio_repo.list_tracks()
         if not tracce:
             await interaction.response.send_message(
-                "La playlist della radio è vuota. Usa /nonstop-main add-track o add-local.",
+                "La playlist della radio è vuota. Usa /owner radio add-track o add-local.",
                 ephemeral=True,
             )
             return
@@ -961,16 +957,13 @@ class MusicCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @nonstop_main_group.command(
-        name="start", description="[Owner] Entra nella radio condivisa, nel punto in cui si trova ora."
+    @comando_di_gruppo(
+        "owner",
+        nome="start",
+        descrizione="Entra nella radio condivisa, nel punto in cui si trova ora.",
+        sottogruppo=RADIO,
     )
     async def nonstop_main_start(self, interaction: discord.Interaction) -> None:
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
@@ -985,7 +978,7 @@ class MusicCog(commands.Cog):
 
         if guild.voice_client is not None:
             await interaction.response.send_message(
-                "La radio è già attiva su questo server. Usa /nonstop-main stop per fermarla prima.",
+                "La radio è già attiva su questo server. Usa /owner radio stop per fermarla prima.",
                 ephemeral=True,
             )
             return
@@ -993,7 +986,7 @@ class MusicCog(commands.Cog):
         tracce_db = await main_radio_repo.list_tracks()
         if not tracce_db:
             await interaction.response.send_message(
-                "La playlist della radio è vuota. Usa /nonstop-main add-track o add-local prima.",
+                "La playlist della radio è vuota. Usa /owner radio add-track o add-local prima.",
                 ephemeral=True,
             )
             return
@@ -1055,14 +1048,13 @@ class MusicCog(commands.Cog):
             f"a {format_duration(posizione.elapsed_ms_in_track)}."
         )
 
-    @nonstop_main_group.command(name="stop", description="[Owner] Esce dalla radio su questo server.")
+    @comando_di_gruppo(
+        "owner",
+        nome="stop",
+        descrizione="Esce dalla radio su questo server.",
+        sottogruppo=RADIO,
+    )
     async def nonstop_main_stop(self, interaction: discord.Interaction) -> None:
-        if not self._is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(

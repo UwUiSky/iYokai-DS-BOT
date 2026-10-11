@@ -3,7 +3,7 @@ cogs/utility/ping.py
 ======================
 QUESTO FILE È IL MODELLO DI RIFERIMENTO per ogni futuro cog.
 
-Non fa niente di speciale (un comando /ping), ma mostra per intero
+Non fa niente di speciale (un comando /utility ping), ma mostra per intero
 il pattern che TUTTI i cog del progetto devono seguire:
 
   1. Registrazione nel PremiumRegistry (anche se il modulo è gratis
@@ -30,9 +30,9 @@ ha, si comporta come se il comando non esistesse.
 from __future__ import annotations
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 
@@ -44,7 +44,7 @@ from core.premium import PremiumModule, registry
 MODULE_NAME = "utility_ping"
 
 
-class PingCog(commands.Cog):
+class PingCog(CogConGruppi, commands.Cog):
     """
     Un singolo comando di test. Ogni cog reale del progetto avrà
     più comandi, ma la struttura della classe resta questa.
@@ -62,9 +62,10 @@ class PingCog(commands.Cog):
         """
         return await db.is_module_active_for_guild(guild_id, MODULE_NAME)
 
-    @app_commands.command(
-        name="ping",
-        description="Controlla se iYokai Main è online e la sua latenza.",
+    @comando_di_gruppo(
+        "utility",
+        nome="ping",
+        descrizione="Controlla se iYokai Main è online e la sua latenza.",
     )
     async def ping(self, interaction: discord.Interaction) -> None:
         # Passo 1: il modulo è attivo su questo server?
@@ -76,7 +77,7 @@ class PingCog(commands.Cog):
             if not enabled:
                 await interaction.response.send_message(
                     "Questo modulo non è attivo su questo server. "
-                    "Un amministratore può attivarlo con /setup.",
+                    "Un amministratore può attivarlo con /admin setup attiva.",
                     ephemeral=True,
                 )
                 return

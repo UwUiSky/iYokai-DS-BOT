@@ -184,7 +184,7 @@ class EscalationRepository:
         )
 
     async def reset_violations(self, guild_id: int, user_id: int) -> None:
-        """Azzeramento manuale (es. comando admin '/automod escalation reset')."""
+        """Azzeramento manuale (es. da un comando admin)."""
         await self._pool.execute(
             "DELETE FROM automod_violations WHERE guild_id = $1 AND user_id = $2",
             guild_id,

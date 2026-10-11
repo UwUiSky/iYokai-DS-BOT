@@ -26,6 +26,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.repositories.custom_command_request_repo import (
@@ -100,7 +101,7 @@ class CustomCommandRequestModal(BaseModal, title="Richiedi un nuovo comando"):
         )
 
 
-class CustomCommandRequestsCog(commands.Cog):
+class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -247,25 +248,22 @@ class CustomCommandRequestsCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    @app_commands.command(
-        name="request-custom-command", description="Proponi un nuovo comando per il bot."
+    @comando_di_gruppo(
+        "utility", nome="richiedi-comando", descrizione="Proponi un nuovo comando per il bot."
     )
     async def request_custom_command(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(CustomCommandRequestModal(self))
 
-    @app_commands.command(
-        name="custom-command-requests-setup",
-        description="[Owner] Imposta il canale delle richieste (solo nel server principale).",
+    @comando_di_gruppo(
+        "owner",
+        nome="richieste-canale",
+        descrizione="Imposta il canale delle richieste (solo nel server principale).",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(channel="Il canale dove pubblicare le richieste")
     async def setup_requests_channel(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
-        if interaction.user.id != config.OWNER_ID:
-            await interaction.response.send_message(
-                "Solo il proprietario del bot può configurare questo canale.", ephemeral=True
-            )
-            return
         if interaction.guild is None or interaction.guild.id != config.MAIN_GUILD_ID:
             await interaction.response.send_message(
                 "Questo comando va usato nel server principale.", ephemeral=True

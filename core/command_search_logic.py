@@ -1,7 +1,7 @@
 """
 core/command_search_logic.py
 ================================
-Logica pura di /search (nessuna infrastruttura di embedding/NLP
+Logica pura di -cerca-comando (nessuna infrastruttura di embedding/NLP
 disponibile in questo progetto): punteggio per sovrapposizione di
 parole tra la query e nome+descrizione di ogni comando, con un bonus
 se la query intera compare come sottostringa. Semplice ma sufficiente

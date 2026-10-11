@@ -14,6 +14,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from core.scheduler import scheduler
 from cogs.utility.reminders import (
     MODULE_REMINDERS,
@@ -33,14 +34,6 @@ async def test_reminders_cog_si_carica_e_si_registra_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    reminder_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "reminder":
-            reminder_group = command
-            break
-    assert reminder_group is not None
-
-    sottocomandi = {c.name for c in reminder_group.commands}
-    assert {"set", "list", "cancel"} <= sottocomandi
+    assert {"reminder set", "reminder list", "reminder cancel"} <= percorsi_del_gruppo("utility")
 
     assert REMINDER_ACTION_TYPE in scheduler._handlers

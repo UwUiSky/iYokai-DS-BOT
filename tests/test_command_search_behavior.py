@@ -1,7 +1,7 @@
 """
 tests/test_command_search_behavior.py
 =========================================
-Test del comportamento REALE di /search — non solo che il cog carica.
+Test del comportamento REALE di /-cerca-comando — non solo che il cog carica.
 Usa un bot con i comandi reali del progetto caricati (poll, ban, ecc.)
 per verificare che la ricerca trovi davvero qualcosa di sensato, non
 solo che la funzione non sollevi.

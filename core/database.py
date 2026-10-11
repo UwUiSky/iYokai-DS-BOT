@@ -484,7 +484,7 @@ class Database:
         stato di un server appena creato — nessun modulo attivo,
         nessuna setting, lingua italiana di default. Registrato come
         un'unica voce di storico (change_type="reset"), ripristinabile
-        con /config rollback come qualunque altra voce.
+        con /admin config rollback come qualunque altra voce.
         """
         await self.ensure_guild_exists(guild_id)
         old = await self.get_full_config(guild_id)

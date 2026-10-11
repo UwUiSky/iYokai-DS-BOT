@@ -251,7 +251,7 @@ class AutomodAdvancedRepository:
         )
 
     async def get_recent_actions(self, guild_id: int, limit: int = 20) -> list[dict]:
-        """Usato da `/automod log-recenti` per mostrare l'ultimo storico senza uscire da Discord."""
+        """Serve a mostrare l'ultimo storico senza uscire da Discord."""
         rows = await self._pool.fetch(
             """
             SELECT user_id, channel_id, violation, actions_taken, content_excerpt, created_at

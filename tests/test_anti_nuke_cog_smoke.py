@@ -6,7 +6,6 @@ registrazione premium, comandi presenti.
 """
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
@@ -23,11 +22,7 @@ async def test_anti_nuke_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True
 
-    gruppo = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "anti-nuke":
-            gruppo = command
-            break
+    gruppo = bot.tree.get_command("security").get_command("antinuke")
     assert gruppo is not None
 
     nomi_comandi = {c.name for c in gruppo.commands}
@@ -35,3 +30,4 @@ async def test_anti_nuke_cog_si_carica_correttamente():
         "enable", "limits", "trusted-add", "trusted-remove",
         "punish-action", "recovery", "status",
     } <= nomi_comandi
+    await bot.remove_cog("AntiNukeCog")

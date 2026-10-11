@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
 from core.premium import PremiumModule, registry
@@ -28,7 +29,7 @@ MODULE_SCHEDULED_MESSAGES = "scheduled_messages"
 SCHEDULED_MESSAGE_ACTION_TYPE = "scheduled_message_fire"
 
 
-class ScheduledMessagesCog(commands.Cog):
+class ScheduledMessagesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -64,17 +65,17 @@ class ScheduledMessagesCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    schedule_group = app_commands.Group(
-        name="schedule-message", description="Programma un messaggio da pubblicare in futuro."
+    @comando_di_gruppo(
+        "admin",
+        nome="programma",
+        descrizione="Programma un messaggio.",
+        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
     )
-
-    @schedule_group.command(name="set", description="[Admin] Programma un messaggio.")
     @app_commands.describe(
         channel="Il canale dove pubblicare il messaggio",
         duration="Tra quanto tempo, es. 2h, 1d, 7d",
         message="Il testo del messaggio",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def set_scheduled_message(
         self,
         interaction: discord.Interaction,
@@ -92,7 +93,7 @@ class ScheduledMessagesCog(commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_SCHEDULED_MESSAGES):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return
@@ -115,14 +116,16 @@ class ScheduledMessagesCog(commands.Cog):
         await interaction.response.send_message(
             f"📅 Messaggio programmato per {channel.mention} tra "
             f"**{format_duration(duration_seconds)}** "
-            f"(ID `{action_id}`, usa `/schedule-message cancel` per annullarlo).",
+            f"(ID `{action_id}`, usa `/admin messaggi annulla` per annullarlo).",
             ephemeral=True,
         )
 
-    @schedule_group.command(
-        name="list", description="[Admin] Mostra i messaggi programmati di questo server."
+    @comando_di_gruppo(
+        "admin",
+        nome="programmati",
+        descrizione="Mostra i messaggi programmati di questo server.",
+        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def list_scheduled_messages(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
@@ -149,11 +152,13 @@ class ScheduledMessagesCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @schedule_group.command(
-        name="cancel", description="[Admin] Annulla un messaggio programmato."
+    @comando_di_gruppo(
+        "admin",
+        nome="annulla",
+        descrizione="Annulla un messaggio programmato.",
+        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
     )
-    @app_commands.describe(schedule_id="ID (mostrato da /schedule-message list)")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.describe(schedule_id="ID (mostrato da /admin messaggi programmati)")
     async def cancel_scheduled_message(
         self, interaction: discord.Interaction, schedule_id: int
     ) -> None:

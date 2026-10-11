@@ -29,11 +29,7 @@ async def test_verify_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False  # sempre gratis, come da schema
 
-    verify_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "verify":
-            verify_group = command
-            break
+    verify_group = bot.tree.get_command("security").get_command("verify")
     assert verify_group is not None
 
     sottocomandi = {c.name for c in verify_group.commands}
@@ -58,6 +54,7 @@ async def test_verify_cog_si_carica_correttamente():
     } <= param_names
 
     assert "on_raw_reaction_add" in bot.extra_events
+    await bot.remove_cog("VerifyCog")
 
 
 def test_verify_panel_view_e_davvero_persistente():

@@ -5,7 +5,7 @@ Logging Avanzato (SPEC.md §8.6-§8.15) — livello Premium del Logging,
 distinto dal Logging semplificato SEMPRE GRATUITO di
 `cogs/logging/basic_logs.py` (SPEC.md §8.17, "Distinzione log
 semplificato [Free] vs completo [Premium]"). Stesso canale di log già
-configurato con `/logs-setup` (SETTING_LOG_CHANNEL, riusato — non
+configurato con `/log canale` (SETTING_LOG_CHANNEL, riusato — non
 serve un secondo comando di setup per un secondo canale), ma questi
 eventi arrivano lì SOLO se il server ha sbloccato/attivato anche
 `MODULE_LOGGING_ADVANCED`. Il controllo (modulo acceso + premium) sta in

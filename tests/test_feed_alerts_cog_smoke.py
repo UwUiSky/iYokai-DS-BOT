@@ -9,6 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from cogs.utility.feed_alerts import MODULE_FEED_ALERTS, setup as feed_alerts_setup
 
 
@@ -22,14 +23,6 @@ async def test_feed_alerts_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    alerts_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "alerts":
-            alerts_group = command
-            break
-    assert alerts_group is not None
-
-    sottocomandi = {c.name for c in alerts_group.commands}
     assert {
-        "add", "add-twitch", "add-youtube-live", "remove", "list", "webhook-create",
-    } <= sottocomandi
+        "alert feed", "alert twitch", "alert youtube-live", "alert rimuovi", "alert elenco", "alert webhook",
+    } <= percorsi_del_gruppo("moduli")

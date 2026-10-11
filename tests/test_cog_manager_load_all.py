@@ -67,10 +67,9 @@ async def test_tutti_i_cog_si_caricano_insieme_senza_collisioni_di_nome():
     già_connesso = db._pool is not None
     if not già_connesso:
         await db.connect()
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     try:
         await db.run_migrations()
-
-        bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
         moduli = discover_cog_modules()
         falliti: list[tuple[str, str]] = []
@@ -135,5 +134,9 @@ async def test_tutti_i_cog_si_caricano_insieme_senza_collisioni_di_nome():
                 stacklevel=1,
             )
     finally:
+        # Scarica i cog: i comandi dei gruppi condivisi (D24) non devono
+        # restare agli altri test.
+        for nome_cog in list(bot.cogs):
+            await bot.remove_cog(nome_cog)
         if not già_connesso:
             await db.close()

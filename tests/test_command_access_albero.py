@@ -92,7 +92,7 @@ async def test_albero_vero_ogni_group_sotto_un_gruppo_protetto_e_un_gruppoyokai(
     bot, falliti = await build_full_bot()
     try:
         assert not falliti, falliti
-        for radice in bot.tree.get_commands():
+        for radice in [*bot.tree.get_commands(), cg.GRUPPI["owner"]]:
             if not isinstance(radice, app_commands.Group) or getattr(radice, "livello", None) is None:
                 continue
             for figlio in radice.commands:

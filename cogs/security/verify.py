@@ -4,14 +4,14 @@ cogs/security/verify.py
 Verify Base (SPEC.md §4.1, §4.4, §4.5, §4.6). Modulo SEMPRE GRATUITO,
 come da schema.
 
-Due modalità mutuamente esclusive, scelte a `/verify setup`:
+Due modalità mutuamente esclusive, scelte a `/security verify setup`:
 - button: bottone persistente (stesso pattern di TicketPanelView) —
   supporta il captcha, perché un click su bottone È un'Interaction e
   può aprire un Modal.
 - reaction: l'utente reagisce a un messaggio con un'emoji — NON
   supporta il captcha: una reazione non è un'Interaction, non può
   aprire un Modal. La combinazione reaction+captcha viene rifiutata
-  esplicitamente a `/verify setup`, non implementata a metà con un
+  esplicitamente a `/security verify setup`, non implementata a metà con un
   flusso DM fragile.
 
 Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
@@ -34,6 +34,8 @@ import random
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -147,7 +149,7 @@ class VerifyPanelView(BaseView):
         await interaction.followup.send(outcome.reason, ephemeral=True)
 
 
-class VerifyCog(commands.Cog):
+class VerifyCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -187,7 +189,7 @@ class VerifyCog(commands.Cog):
             role = guild.get_role(config.verified_role_id)
             # SEC-4/SEC-17: assegnazione self-service, ricontrolla il
             # ruolo — può aver preso permessi pericolosi dopo il
-            # /verify setup.
+            # /security verify setup.
             if role is not None and check_role_assignable(
                 guild, role, guild.me, self_service=True
             ) is not None:
@@ -228,11 +230,12 @@ class VerifyCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    verify_group = app_commands.Group(
-        name="verify", description="Configura e gestisci il sistema di verifica."
+    @comando_di_gruppo(
+        "security",
+        nome="setup",
+        descrizione="Configura il Verify.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-
-    @verify_group.command(name="setup", description="[Admin] Configura il Verify.")
     @app_commands.describe(
         method="Modalità: bottone (supporta captcha) o reazione",
         verified_role="Ruolo da assegnare dopo la verifica",
@@ -247,7 +250,6 @@ class VerifyCog(commands.Cog):
             app_commands.Choice(name="Reaction", value="reaction"),
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def setup_cmd(
         self,
         interaction: discord.Interaction,
@@ -296,13 +298,17 @@ class VerifyCog(commands.Cog):
 
         await interaction.response.send_message(
             f"Verify configurato: modalità **{method.name}**, ruolo "
-            f"{verified_role.mention}. Usa /verify panel per pubblicare "
+            f"{verified_role.mention}. Usa /security verify panel per pubblicare "
             f"il pannello.",
             ephemeral=True,
         )
 
-    @verify_group.command(name="panel", description="[Admin] Pubblica il pannello di verifica.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="panel",
+        descrizione="Pubblica il pannello di verifica.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
     async def panel_cmd(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -314,7 +320,7 @@ class VerifyCog(commands.Cog):
         config = await verify_repo.get_config(interaction.guild.id)
         if config.verified_role_id is None:
             await interaction.response.send_message(
-                "Configura prima il Verify con /verify setup.", ephemeral=True
+                "Configura prima il Verify con /security verify setup.", ephemeral=True
             )
             return
 
@@ -336,32 +342,48 @@ class VerifyCog(commands.Cog):
 
         await verify_repo.set_panel_message(interaction.guild.id, sent.channel.id, sent.id)
 
-    @verify_group.command(name="whitelist-add", description="[Admin] Aggiungi un utente alla whitelist.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="whitelist-add",
+        descrizione="Aggiungi un utente alla whitelist.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
     async def whitelist_add(self, interaction: discord.Interaction, member: discord.Member) -> None:
         if interaction.guild is None:
             return
         await verify_repo.add_whitelist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} aggiunto alla whitelist.", ephemeral=True)
 
-    @verify_group.command(name="whitelist-remove", description="[Admin] Rimuovi un utente dalla whitelist.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="whitelist-remove",
+        descrizione="Rimuovi un utente dalla whitelist.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
     async def whitelist_remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
         if interaction.guild is None:
             return
         await verify_repo.remove_whitelist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} rimosso dalla whitelist.", ephemeral=True)
 
-    @verify_group.command(name="blacklist-add", description="[Admin] Aggiungi un utente alla blacklist.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="blacklist-add",
+        descrizione="Aggiungi un utente alla blacklist.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
     async def blacklist_add(self, interaction: discord.Interaction, member: discord.Member) -> None:
         if interaction.guild is None:
             return
         await verify_repo.add_blacklist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} aggiunto alla blacklist.", ephemeral=True)
 
-    @verify_group.command(name="blacklist-remove", description="[Admin] Rimuovi un utente dalla blacklist.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="blacklist-remove",
+        descrizione="Rimuovi un utente dalla blacklist.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
     async def blacklist_remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
         if interaction.guild is None:
             return

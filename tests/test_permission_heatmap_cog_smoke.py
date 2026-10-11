@@ -24,7 +24,7 @@ async def test_permission_heatmap_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True  # candidato premium, come Spam Trap
 
-    nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert "permission-heatmap" in nomi_comandi
+    assert bot.tree.get_command("security").get_command("heatmap") is not None
 
     assert "on_member_update" in bot.extra_events
+    await bot.remove_cog("PermissionHeatmapCog")

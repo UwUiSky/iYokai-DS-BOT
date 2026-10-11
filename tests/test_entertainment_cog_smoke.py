@@ -25,12 +25,10 @@ async def test_entertainment_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    fun_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "fun":
-            fun_group = command
-            break
-    assert fun_group is not None, "Il gruppo /fun non risulta registrato"
+    from core.command_groups import GRUPPI
+
+    fun_group = GRUPPI["fun"]
+    assert bot.tree.get_command("fun") is fun_group, "Il gruppo /fun non risulta registrato"
 
     sottocomandi = {c.name for c in fun_group.commands}
     assert {

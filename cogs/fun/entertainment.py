@@ -4,7 +4,7 @@ cogs/fun/entertainment.py
 Mini-giochi (SPEC.md §16.1), altri comandi di intrattenimento
 classici (§16.8): testa/croce, dado, carta/forbici/sasso, palla
 magica 8, barzelletta, citazione, curiosità — e image manipulation
-(§16.2)/meme (§16.3): scala di grigi, inverti, sfoca, pixela,
+(§16.2)/fun meme (§16.3): scala di grigi, inverti, sfoca, pixela,
 generatore di meme testo-sopra/testo-sotto. Tutti operano
 sull'allegato passato al comando o, se assente, sull'avatar
 dell'utente (o dell'utente menzionato) — così ogni comando funziona
@@ -12,29 +12,8 @@ anche senza dover allegare un'immagine ogni volta. I comandi immagine
 passano tutti da `_rispondi_con_immagine` (SEC-20): allegato
 controllato prima di scaricarlo, `defer()`, risposta con followup.
 
-Decisione tecnica IMPORTANTE, presa scrivendo questo file: il bot è
-già a 96 comandi slash TOP-LEVEL su un limite GLOBALE di Discord di
-100 (verificato con una prova reale — caricare tutti i cog insieme e
-contare `bot.tree.get_commands()` — non solo letto sulla
-documentazione). 7 nuovi comandi separati (coinflip/dice/rps/8ball/
-joke/quote/fact) avrebbero sfondato il limite e fatto fallire in
-silenzio la registrazione di un cog successivo in ordine di
-caricamento (esattamente il bug già documentato in
-tests/test_cog_manager_load_all.py per un nome duplicato — qui la
-causa sarebbe stata il limite, non un doppione, ma l'effetto
-identico: un cog che smette di funzionare senza errore visibile).
-Per questo tutti i comandi di questo file vivono sotto UN SOLO
-gruppo (`/fun ...`), che consuma un solo slot top-level indipendente
-da quanti sotto-comandi contiene — lo stesso principio già seguito
-altrove nel progetto per raggruppare comandi correlati (`/config`,
-`/ticket-category`, ecc.), qui applicato per la prima volta come
-misura di risparmio slot deliberata. Ship e Rate (§16.5/§16.7,
-cogs/fun/ship_rate.py) restano comandi top-level a sé: sono già in
-produzione, cambiarli in sotto-comandi ora sarebbe una rottura per
-chi li usa già senza un guadagno di slot che serva adesso (restano
-solo 2 di headroom). Qualunque comando FUTURO di §16 (image
-manipulation, meme, animal, ricerca immagini) andrà sotto questo
-stesso gruppo o un gruppo analogo, non come nuovo comando top-level.
+Tutti i comandi stanno nel gruppo condiviso `/fun` (core/command_groups.py);
+`/fun ship` e `/fun rate` sono in cogs/fun/ship_rate.py.
 
 Terzo lotto (§16.4 Comandi animal, §16.9 Ricerca immagini SFW):
 `/fun animal` usa tre API pubbliche gratuite senza chiave
@@ -65,6 +44,7 @@ from discord.ext import commands
 
 from core.animal_fetcher import animal_fetcher
 from core.classic_entertainment_logic import random_fact, random_joke, random_quote
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.image_manipulation import apply_blur, apply_grayscale, apply_invert, apply_pixelate
@@ -79,14 +59,10 @@ MODULE_FUN = "fun"
 _RPS_CHOICE_DISPLAY = {"sasso": "🪨 Sasso", "carta": "📄 Carta", "forbici": "✂️ Forbici"}
 
 
-class EntertainmentCog(commands.Cog):
+class EntertainmentCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._rng = random.Random()
-
-    fun_group = app_commands.Group(
-        name="fun", description="Mini-giochi e intrattenimento (SPEC.md §16.1/§16.8)."
-    )
 
     async def _modulo_attivo(self, interaction: discord.Interaction) -> bool:
         guild = interaction.guild
@@ -99,7 +75,7 @@ class EntertainmentCog(commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_FUN):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return False
@@ -179,7 +155,7 @@ class EntertainmentCog(commands.Cog):
             file=discord.File(io.BytesIO(risultato), filename=nome_file)
         )
 
-    @fun_group.command(name="coinflip", description="Lancia una moneta: testa o croce.")
+    @comando_di_gruppo("fun", nome="coinflip", descrizione="Lancia una moneta: testa o croce.")
     async def coinflip(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
             return
@@ -187,7 +163,7 @@ class EntertainmentCog(commands.Cog):
         risultato = flip_coin(self._rng)
         await interaction.response.send_message(f"🪙 **{risultato.upper()}**!")
 
-    @fun_group.command(name="dice", description="Tira un dado.")
+    @comando_di_gruppo("fun", nome="dice", descrizione="Tira un dado.")
     @app_commands.describe(sides="Numero di facce del dado (default 6, minimo 2, massimo 1000)")
     async def dice(self, interaction: discord.Interaction, sides: int = 6) -> None:
         if not await self._modulo_attivo(interaction):
@@ -202,7 +178,7 @@ class EntertainmentCog(commands.Cog):
         risultato = roll_dice(self._rng, sides=sides)
         await interaction.response.send_message(f"🎲 Hai tirato un **{risultato}** (d{sides}).")
 
-    @fun_group.command(name="rps", description="Carta, forbici, sasso contro il bot.")
+    @comando_di_gruppo("fun", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
     @app_commands.describe(scelta="Sasso, carta o forbici")
     @app_commands.choices(
         scelta=[
@@ -229,7 +205,7 @@ class EntertainmentCog(commands.Cog):
             f"Bot: {_RPS_CHOICE_DISPLAY[scelta_bot]}"
         )
 
-    @fun_group.command(name="8ball", description="Fai una domanda alla palla magica 8.")
+    @comando_di_gruppo("fun", nome="8ball", descrizione="Fai una domanda alla palla magica 8.")
     @app_commands.describe(domanda="La tua domanda")
     async def eight_ball(self, interaction: discord.Interaction, domanda: str) -> None:
         if not await self._modulo_attivo(interaction):
@@ -243,25 +219,25 @@ class EntertainmentCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @fun_group.command(name="joke", description="Racconta una barzelletta a caso.")
+    @comando_di_gruppo("fun", nome="joke", descrizione="Racconta una barzelletta a caso.")
     async def joke(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
             return
         await interaction.response.send_message(f"😄 {random_joke(self._rng)}")
 
-    @fun_group.command(name="quote", description="Mostra una citazione a caso.")
+    @comando_di_gruppo("fun", nome="quote", descrizione="Mostra una citazione a caso.")
     async def quote(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
             return
         await interaction.response.send_message(f"💬 {random_quote(self._rng)}")
 
-    @fun_group.command(name="fact", description="Mostra una curiosità a caso.")
+    @comando_di_gruppo("fun", nome="fact", descrizione="Mostra una curiosità a caso.")
     async def fact(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
             return
         await interaction.response.send_message(f"🧠 {random_fact(self._rng)}")
 
-    @fun_group.command(name="grayscale", description="Trasforma un'immagine in scala di grigi.")
+    @comando_di_gruppo("fun", nome="grayscale", descrizione="Trasforma un'immagine in scala di grigi.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -279,7 +255,7 @@ class EntertainmentCog(commands.Cog):
             interaction, image, utente, "grayscale.png", apply_grayscale
         )
 
-    @fun_group.command(name="invert", description="Inverte i colori di un'immagine.")
+    @comando_di_gruppo("fun", nome="invert", descrizione="Inverte i colori di un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -297,7 +273,7 @@ class EntertainmentCog(commands.Cog):
             interaction, image, utente, "invert.png", apply_invert
         )
 
-    @fun_group.command(name="blur", description="Applica una sfocatura a un'immagine.")
+    @comando_di_gruppo("fun", nome="blur", descrizione="Applica una sfocatura a un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -317,7 +293,7 @@ class EntertainmentCog(commands.Cog):
             interaction, image, utente, "blur.png", apply_blur, raggio
         )
 
-    @fun_group.command(name="pixelate", description="Pixela un'immagine.")
+    @comando_di_gruppo("fun", nome="pixelate", descrizione="Pixela un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -337,7 +313,7 @@ class EntertainmentCog(commands.Cog):
             interaction, image, utente, "pixelate.png", apply_pixelate, dimensione_blocco
         )
 
-    @fun_group.command(name="meme", description="Genera un meme con testo sopra/sotto.")
+    @comando_di_gruppo("fun", nome="meme", descrizione="Genera un meme con testo sopra/sotto.")
     @app_commands.describe(
         top_text="Testo in alto (facoltativo)",
         bottom_text="Testo in basso (facoltativo)",
@@ -365,7 +341,7 @@ class EntertainmentCog(commands.Cog):
             interaction, image, utente, "meme.png", render_meme, top_text, bottom_text
         )
 
-    @fun_group.command(name="animal", description="Mostra un'immagine casuale di un animale.")
+    @comando_di_gruppo("fun", nome="animal", descrizione="Mostra un'immagine casuale di un animale.")
     @app_commands.describe(specie="Che animale vuoi vedere?")
     @app_commands.choices(
         specie=[
@@ -390,7 +366,7 @@ class EntertainmentCog(commands.Cog):
         embed.set_image(url=url)
         await interaction.response.send_message(embed=embed)
 
-    @fun_group.command(name="search-image", description="Cerca un'immagine SFW su Pixabay.")
+    @comando_di_gruppo("fun", nome="search-image", descrizione="Cerca un'immagine SFW su Pixabay.")
     @app_commands.describe(query="Cosa vuoi cercare?")
     async def search_image(self, interaction: discord.Interaction, query: str) -> None:
         if not await self._modulo_attivo(interaction):

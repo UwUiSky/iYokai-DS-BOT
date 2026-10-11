@@ -293,9 +293,9 @@ mod del bot). Un admin può cambiarlo in Integrazioni.
 | `/admin`, `/gestione`, `/moduli` | `manage_guild` | sì | ruolo admin del bot |
 | `/security` | `administrator` | sì | ruolo admin del bot |
 | `/automod` | `manage_guild` | sì | ruolo admin del bot |
-| `/mod` | `moderate_members` | sì | per sotto-comando: `manage_messages` (clear), `manage_channels` (lock, slowmode) |
-| `/modban` | `ban_members` | sì | `kick_members` per `kick` |
-| `/log` | `manage_guild` | sì | `view_audit_log` per `cerca` e `esporta` |
+| `/mod` | `moderate_members` | sì | livello del gruppo (nessun permesso Discord per sotto-comando) |
+| `/modban` | `ban_members` | sì | livello del gruppo; `kick` sotto `ban_members` |
+| `/log` | `manage_guild` | sì | livello del gruppo (nessun `view_audit_log` per sotto-comando) |
 | `/ticket`, `/voice`, `/music`, `/level`, `/clan`, `/fun`, `/utility` | nessuno (tutti) | sì | `forceclose` e le azioni staff nel codice |
 
 Oggi nessun comando ha `default_permissions` e nessuno è `guild_only`:

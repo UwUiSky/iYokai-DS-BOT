@@ -11,7 +11,7 @@ Ogni evento, oltre a mandare l'embed live nel canale configurato
 (come sempre), viene ora anche salvato nel log eventi unificato
 (core/repositories/event_log_repo.py, BACKLOG.md §3) — un embed su
 Discord sparisce se il canale viene cancellato o il log scrolla via;
-la riga nel DB resta, consultabile da /logs user e /logs channel
+la riga nel DB resta, consultabile da /log cerca utente e /log cerca canale
 (cogs/logging/logs_query.py), esportabile, e soggetta a retention
 configurabile. Le due cose convivono, non si sostituiscono: l'embed
 per la visibilità in tempo reale, il DB per la storia. Se l'invio
@@ -37,6 +37,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.moderation._shared import MODULE_ACTIONS, SETTING_MOD_LOG_CHANNEL, ensure_module_enabled
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.repositories.event_log_repo import event_log_repo
 
@@ -45,6 +47,8 @@ logger = logging.getLogger("iyokai.logging.basic")
 MODULE_LOGGING = "logging_basic"
 SETTING_LOG_CHANNEL = "log_channel_id"
 MAX_CARATTERI_ELENCO_RUOLI = 1000
+TIPO_LOG_EVENTI = "eventi"
+TIPO_LOG_SANZIONI = "sanzioni"
 
 
 def diff_roles(
@@ -135,20 +139,31 @@ async def _get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
     return channel
 
 
-class BasicLogsCog(commands.Cog):
+class BasicLogsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     # ================================================================
     # Comandi di configurazione
     # ================================================================
-    @app_commands.command(
-        name="logs-setup", description="[Admin] Imposta il canale dei log del server."
+    @comando_di_gruppo(
+        "log", nome="canale", descrizione="Imposta il canale dei log del server."
     )
-    @app_commands.describe(channel="Il canale dove verranno inviati i log")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.describe(
+        channel="Il canale dove verranno inviati i log",
+        tipo="Che cosa inviare nel canale (default: eventi del server)",
+    )
+    @app_commands.choices(
+        tipo=[
+            app_commands.Choice(name="Eventi del server", value=TIPO_LOG_EVENTI),
+            app_commands.Choice(name="Sanzioni di moderazione", value=TIPO_LOG_SANZIONI),
+        ]
+    )
     async def logs_setup(
-        self, interaction: discord.Interaction, channel: discord.TextChannel
+        self,
+        interaction: discord.Interaction,
+        channel: discord.TextChannel,
+        tipo: str = TIPO_LOG_EVENTI,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -157,15 +172,25 @@ class BasicLogsCog(commands.Cog):
             )
             return
 
+        if tipo == TIPO_LOG_SANZIONI:
+            if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+                return
+            await db.set_guild_setting(interaction.guild.id, SETTING_MOD_LOG_CHANNEL, channel.id)
+            await interaction.response.send_message(
+                f"Le sanzioni verranno registrate anche in {channel.mention}.",
+                ephemeral=True,
+            )
+            return
+
         await db.set_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL, channel.id)
         await interaction.response.send_message(
             f"I log verranno inviati in {channel.mention}. "
-            f"Ricorda di attivare il modulo con /setup se non l'hai già fatto.",
+            f"Ricorda di attivare il modulo con /admin setup attiva se non l'hai già fatto.",
             ephemeral=True,
         )
 
-    @app_commands.command(
-        name="logs-status", description="Mostra il canale di log configurato."
+    @comando_di_gruppo(
+        "log", nome="stato", descrizione="Mostra il canale di log configurato."
     )
     async def logs_status(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -178,7 +203,7 @@ class BasicLogsCog(commands.Cog):
         channel_id = await db.get_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL)
         if channel_id is None:
             await interaction.response.send_message(
-                "Nessun canale di log configurato. Usa /logs-setup.",
+                "Nessun canale di log configurato. Usa /log canale.",
                 ephemeral=True,
             )
             return
@@ -227,7 +252,7 @@ class BasicLogsCog(commands.Cog):
         (serve interrogare l'audit log con una query separata, che
         aggiungerebbe un'altra chiamata API per ogni singola uscita —
         non ne vale la pena per un log "semplificato"). Un kick fatto
-        con /kick di iYokai risulta già loggato con motivo e
+        con /modban kick di iYokai risulta già loggato con motivo e
         moderatore nel case system di Moderation: questo evento resta
         un log generico di presenza, non sostituisce quello.
         """

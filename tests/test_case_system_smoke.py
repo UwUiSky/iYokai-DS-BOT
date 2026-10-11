@@ -32,17 +32,13 @@ async def test_case_system_cog_si_carica_e_i_parametri_sono_letti_correttamente(
     cog = bot.get_cog("ModerationCaseSystemCog")
     assert cog is not None
 
-    # Verifica il punto critico: il comando /modcase history deve
+    # Verifica il punto critico: il comando /mod caso storico deve
     # avere un parametro "member" di tipo Member, non essersi
     # perso dietro il *args/**kwargs del decorator @requires_module.
-    modcase_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "modcase":
-            modcase_group = command
-            break
-    assert modcase_group is not None, "Il gruppo /modcase non risulta registrato"
+    modcase_group = bot.tree.get_command("mod").get_command("caso")
+    assert modcase_group is not None, "Il sottogruppo /mod caso non risulta registrato"
 
-    history_cmd = modcase_group.get_command("history")
+    history_cmd = modcase_group.get_command("storico")
     assert history_cmd is not None
 
     param_names = [p.name for p in history_cmd.parameters]
@@ -52,19 +48,15 @@ async def test_case_system_cog_si_carica_e_i_parametri_sono_letti_correttamente(
         "parametri sono andati persi nel wrapping."
     )
 
-    view_cmd = modcase_group.get_command("view")
+    view_cmd = modcase_group.get_command("vedi")
     assert view_cmd is not None
     assert "case_number" in [p.name for p in view_cmd.parameters]
 
-    # Stessa verifica sul gruppo /modnote.
-    modnote_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "modnote":
-            modnote_group = command
-            break
+    # Stessa verifica sul sottogruppo /mod nota.
+    modnote_group = bot.tree.get_command("mod").get_command("nota")
     assert modnote_group is not None
 
-    add_cmd = modnote_group.get_command("add")
+    add_cmd = modnote_group.get_command("aggiungi")
     assert add_cmd is not None
     add_param_names = [p.name for p in add_cmd.parameters]
     assert "member" in add_param_names
@@ -76,3 +68,4 @@ async def test_case_system_cog_si_carica_e_i_parametri_sono_letti_correttamente(
     module = registry.get(MODULE_CASE_SYSTEM)
     assert module is not None
     assert module.premium_capable is True
+    await bot.remove_cog("ModerationCaseSystemCog")

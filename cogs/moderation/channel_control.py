@@ -1,7 +1,7 @@
 """
 cogs/moderation/channel_control.py
 =====================================
-Comandi di controllo sul canale: /lock, /unlock, /slowmode. Modulo
+Comandi di controllo sul canale: /mod lock, /mod unlock, /mod slowmode. Modulo
 SEMPRE GRATUITO (MODULE_CHANNEL_CONTROL, premium_capable=False), come
 da schema ("Lock/Unlock" e "Slowmode" sono [Free]).
 """
@@ -15,6 +15,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.premium import PremiumModule, registry
 from cogs.moderation._shared import MODULE_CHANNEL_CONTROL, ensure_module_enabled
 
@@ -24,12 +26,14 @@ from cogs.moderation._shared import MODULE_CHANNEL_CONTROL, ensure_module_enable
 MAX_SLOWMODE_SECONDS = 21600
 
 
-class ModerationChannelControlCog(commands.Cog):
+class ModerationChannelControlCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(
-        name="lock", description="Blocca la possibilità di scrivere in un canale."
+    @comando_di_gruppo(
+        "mod",
+        nome="lock",
+        descrizione="Blocca la possibilità di scrivere in un canale.",
     )
     @app_commands.describe(
         channel="Il canale da bloccare (default: quello attuale)",
@@ -74,8 +78,10 @@ class ModerationChannelControlCog(commands.Cog):
             embed.add_field(name="Motivo", value=reason)
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(
-        name="unlock", description="Sblocca la possibilità di scrivere in un canale."
+    @comando_di_gruppo(
+        "mod",
+        nome="unlock",
+        descrizione="Sblocca la possibilità di scrivere in un canale.",
     )
     @app_commands.describe(channel="Il canale da sbloccare (default: quello attuale)")
     async def unlock(
@@ -118,8 +124,10 @@ class ModerationChannelControlCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(
-        name="slowmode", description="Imposta lo slowmode su un canale."
+    @comando_di_gruppo(
+        "mod",
+        nome="slowmode",
+        descrizione="Imposta lo slowmode su un canale.",
     )
     @app_commands.describe(
         seconds="Secondi di attesa tra un messaggio e l'altro (0 per disattivare, max 21600)",

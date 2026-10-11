@@ -23,6 +23,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
 from core.premium import PremiumModule, registry
@@ -34,7 +35,7 @@ MODULE_REMINDERS = "reminders"
 REMINDER_ACTION_TYPE = "reminder_fire"
 
 
-class RemindersCog(commands.Cog):
+class RemindersCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -80,11 +81,12 @@ class RemindersCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    reminder_group = app_commands.Group(
-        name="reminder", description="Promemoria personali."
+    @comando_di_gruppo(
+        "utility",
+        nome="set",
+        descrizione="Imposta un promemoria.",
+        sottogruppo=("reminder", "Promemoria personali"),
     )
-
-    @reminder_group.command(name="set", description="Imposta un promemoria.")
     @app_commands.describe(
         duration="Tra quanto tempo, es. 30m, 2h, 7d",
         message="Il testo del promemoria",
@@ -102,7 +104,7 @@ class RemindersCog(commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_REMINDERS):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return
@@ -124,11 +126,16 @@ class RemindersCog(commands.Cog):
 
         await interaction.response.send_message(
             f"⏰ Promemoria impostato tra **{format_duration(duration_seconds)}** "
-            f"(ID `{action_id}`, usa `/reminder cancel` per annullarlo).",
+            f"(ID `{action_id}`, usa `/utility reminder cancel` per annullarlo).",
             ephemeral=True,
         )
 
-    @reminder_group.command(name="list", description="Mostra i tuoi promemoria in sospeso.")
+    @comando_di_gruppo(
+        "utility",
+        nome="list",
+        descrizione="Mostra i tuoi promemoria in sospeso.",
+        sottogruppo=("reminder", "Promemoria personali"),
+    )
     async def list_reminders(self, interaction: discord.Interaction) -> None:
         azioni = await scheduler.list_pending_for_user(
             interaction.user.id, REMINDER_ACTION_TYPE
@@ -152,8 +159,13 @@ class RemindersCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @reminder_group.command(name="cancel", description="Annulla un promemoria.")
-    @app_commands.describe(reminder_id="ID del promemoria (mostrato da /reminder list)")
+    @comando_di_gruppo(
+        "utility",
+        nome="cancel",
+        descrizione="Annulla un promemoria.",
+        sottogruppo=("reminder", "Promemoria personali"),
+    )
+    @app_commands.describe(reminder_id="ID del promemoria (mostrato da /utility reminder list)")
     async def cancel_reminder(
         self, interaction: discord.Interaction, reminder_id: int
     ) -> None:

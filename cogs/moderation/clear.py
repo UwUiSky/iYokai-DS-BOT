@@ -30,18 +30,22 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.premium import PremiumModule, registry, requires_module
 from cogs.moderation._shared import MODULE_CLEAR, ensure_module_enabled
 
 MAX_CLEAR_AMOUNT = 200
 
 
-class ModerationClearCog(commands.Cog):
+class ModerationClearCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(
-        name="clear", description="Cancella un numero di messaggi, con filtri opzionali."
+    @comando_di_gruppo(
+        "mod",
+        nome="clear",
+        descrizione="Cancella un numero di messaggi, con filtri opzionali.",
     )
     @app_commands.describe(
         amount="Quanti messaggi cancellare (max 200)",

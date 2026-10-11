@@ -1,13 +1,13 @@
 """
 tests/test_case_system_limiti.py
 ================================
-/modcase history, /modcase view e /modnote list restano dentro i
+/mod caso storico, /mod caso vedi e /mod nota elenca restano dentro i
 limiti di un embed (LIM-8): descrizione entro 4096, campo entro 1024,
-con "…e altri N" quando non ci sta tutto. /modnote add dichiara la
+con "…e altri N" quando non ci sta tutto. /mod nota aggiungi dichiara la
 lunghezza massima della nota.
 
 Database vero (clean_db): le note e i casi li scrive il codice di
-produzione (comando /modnote add e repository delle sanzioni).
+produzione (comando /mod nota aggiungi e repository delle sanzioni).
 """
 
 import discord
@@ -54,8 +54,9 @@ async def test_modnote_add_dichiara_la_lunghezza_massima():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(ModerationCaseSystemCog(bot))
 
-    comando = bot.tree.get_command("modnote").get_command("add")
+    comando = bot.tree.get_command("mod").get_command("nota").get_command("aggiungi")
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
+    await bot.remove_cog("ModerationCaseSystemCog")
 
     assert opzioni["note"]["min_length"] == 1
     assert opzioni["note"]["max_length"] == 1000

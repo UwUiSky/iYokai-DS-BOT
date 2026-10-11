@@ -31,7 +31,7 @@ sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
 Funzioni coperte: SPEC §12
 
-SPEC.md §12.8: il cap per categoria (/voicetemp-cap) è sempre
+SPEC.md §12.8: il cap per categoria (/gestione voice cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
 core/voice_temp_logic.py:effective_category_cap/is_category_full.
 """
@@ -55,6 +55,7 @@ from core.channel_rename import (
 )
 from cogs.moderation._shared import actor_from_member
 from core.bounded_cache import BoundedCache
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.permissions import can_moderate
 from core.repositories.blacklist_repo import blacklist_repo
@@ -73,6 +74,9 @@ from core.ui_base import BaseView
 logger = logging.getLogger("iyokai.voice_temp")
 
 MODULE_VOICE_TEMP = "voice_temp"
+
+# Sotto-gruppo di /gestione con i comandi degli admin.
+GESTIONE_VOICE = ("voice", "Vocali temporanei: generatore, pannello, limite, ruoli piattaforma")
 
 CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
 
@@ -165,7 +169,7 @@ class PlatformRoleView(BaseView):
 
             # SEC-4/SEC-17: assegnazione self-service, ricontrolla il
             # ruolo scelto — può aver preso permessi pericolosi dopo
-            # /voicetemp-platform-setup.
+            # /gestione voice piattaforme.
             motivo_rifiuto = check_role_assignable(guild, ruolo_scelto, guild.me, self_service=True)
             if motivo_rifiuto is not None:
                 await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
@@ -294,7 +298,7 @@ class CreateVoiceView(BaseView):
         if config.category_id is None:
             await interaction.response.send_message(
                 "Il sistema non è ancora configurato. Un amministratore "
-                "deve usare /voicetemp-setup.",
+                "deve usare /gestione voice setup.",
                 ephemeral=True,
             )
             return
@@ -332,22 +336,23 @@ class CreateVoiceView(BaseView):
 _connect_prima_del_lock: BoundedCache[int, bool | None] = BoundedCache(5_000)
 
 
-class VoiceTempCog(commands.Cog):
+class VoiceTempCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     # ================================================================
     # Configurazione
     # ================================================================
-    @app_commands.command(
-        name="voicetemp-setup",
-        description="[Admin] Configura il canale generatore e la categoria dei vocali temporanei.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="setup",
+        descrizione="Configura il canale generatore e la categoria dei vocali temporanei.",
+        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         generator="Il canale vocale che, se raggiunto, crea un vocale temporaneo",
         category="La categoria dove verranno creati i vocali temporanei",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def voicetemp_setup(
         self,
         interaction: discord.Interaction,
@@ -368,11 +373,12 @@ class VoiceTempCog(commands.Cog):
             ephemeral=True,
         )
 
-    @app_commands.command(
-        name="voicetemp-panel",
-        description="[Admin] Pubblica il pannello per la creazione manuale di un vocale.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="panel",
+        descrizione="Pubblica il pannello per la creazione manuale di un vocale.",
+        sottogruppo=GESTIONE_VOICE,
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def voicetemp_panel(self, interaction: discord.Interaction) -> None:
         embed = discord.Embed(
             title="🔊 Vocali temporanei",
@@ -384,14 +390,15 @@ class VoiceTempCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, view=CreateVoiceView())
 
-    @app_commands.command(
-        name="voicetemp-cap",
-        description="[Admin] Imposta il numero massimo di vocali temporanei per categoria.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="cap",
+        descrizione="Imposta il numero massimo di vocali temporanei per categoria.",
+        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
-        cap="Numero massimo di canali nella categoria (max 50, limite Discord). Vuoto per rimuovere il limite."
+        cap="Canali massimi nella categoria (max 50, limite di Discord). Vuoto: nessun limite."
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def voicetemp_cap(
         self,
         interaction: discord.Interaction,
@@ -406,7 +413,7 @@ class VoiceTempCog(commands.Cog):
         config = await voice_temp_repo.get_config(interaction.guild.id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Configura prima generatore e categoria con /voicetemp-setup.",
+                "Configura prima generatore e categoria con /gestione voice setup.",
                 ephemeral=True,
             )
             return
@@ -417,16 +424,17 @@ class VoiceTempCog(commands.Cog):
             f"Cap per categoria impostato: {testo}.", ephemeral=True
         )
 
-    @app_commands.command(
-        name="voicetemp-platform-setup",
-        description="[Admin] Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="piattaforme",
+        descrizione="Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.",
+        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         pc="Ruolo per chi gioca da PC (facoltativo)",
         console="Ruolo per chi gioca da Console (facoltativo)",
         mobile="Ruolo per chi gioca da Mobile (facoltativo)",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def voicetemp_platform_setup(
         self,
         interaction: discord.Interaction,
@@ -443,7 +451,7 @@ class VoiceTempCog(commands.Cog):
         config = await voice_temp_repo.get_config(interaction.guild.id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Configura prima generatore e categoria con /voicetemp-setup.",
+                "Configura prima generatore e categoria con /gestione voice setup.",
                 ephemeral=True,
             )
             return
@@ -476,10 +484,6 @@ class VoiceTempCog(commands.Cog):
     # ================================================================
     # Gestione del proprio canale
     # ================================================================
-    voice_group = app_commands.Group(
-        name="voice", description="Gestisci il tuo canale vocale temporaneo."
-    )
-
     async def _get_managed_channel_or_reply(
         self, interaction: discord.Interaction
     ) -> discord.VoiceChannel | None:
@@ -510,7 +514,7 @@ class VoiceTempCog(commands.Cog):
 
         return channel
 
-    @voice_group.command(name="rename", description="Rinomina il tuo canale vocale.")
+    @comando_di_gruppo("voice", nome="rename", descrizione="Rinomina il tuo canale vocale.")
     @app_commands.describe(name="Il nuovo nome del canale")
     async def rename(
         self,
@@ -553,7 +557,7 @@ class VoiceTempCog(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @voice_group.command(name="limit", description="Imposta il limite di utenti del canale.")
+    @comando_di_gruppo("voice", nome="limit", descrizione="Imposta il limite di utenti del canale.")
     @app_commands.describe(limit="Numero massimo di utenti (0 per nessun limite)")
     async def limit(
         self, interaction: discord.Interaction, limit: app_commands.Range[int, 0, 99]
@@ -569,7 +573,7 @@ class VoiceTempCog(commands.Cog):
         testo = "nessun limite" if limit == 0 else f"{limit} utenti"
         await interaction.response.send_message(f"Limite impostato: {testo}.")
 
-    @voice_group.command(name="lock", description="Blocca il canale (nessun nuovo ingresso).")
+    @comando_di_gruppo("voice", nome="lock", descrizione="Blocca il canale (nessun nuovo ingresso).")
     async def lock(self, interaction: discord.Interaction) -> None:
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
@@ -591,7 +595,7 @@ class VoiceTempCog(commands.Cog):
             return
         await interaction.response.send_message("Canale bloccato.")
 
-    @voice_group.command(name="unlock", description="Sblocca il canale.")
+    @comando_di_gruppo("voice", nome="unlock", descrizione="Sblocca il canale.")
     async def unlock(self, interaction: discord.Interaction) -> None:
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
@@ -636,7 +640,7 @@ class VoiceTempCog(commands.Cog):
             return False, "Non puoi espellere un amministratore o un moderatore dal tuo canale."
         return True, ""
 
-    @voice_group.command(name="kick", description="Espelli un utente dal tuo canale.")
+    @comando_di_gruppo("voice", nome="kick", descrizione="Espelli un utente dal tuo canale.")
     @app_commands.describe(member="L'utente da espellere dal canale")
     async def kick(self, interaction: discord.Interaction, member: discord.Member) -> None:
         channel = await self._get_managed_channel_or_reply(interaction)
@@ -659,7 +663,7 @@ class VoiceTempCog(commands.Cog):
             return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
 
-    @voice_group.command(name="transfer", description="Trasferisci la proprietà del canale.")
+    @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")
     async def transfer(self, interaction: discord.Interaction, member: discord.Member) -> None:
         channel = await self._get_managed_channel_or_reply(interaction)

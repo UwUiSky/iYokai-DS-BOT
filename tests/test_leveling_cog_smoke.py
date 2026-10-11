@@ -17,6 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from cogs.leveling.leveling import MODULE_LEVELING, setup as leveling_setup
 
 
@@ -33,39 +34,16 @@ async def test_leveling_cog_si_carica_correttamente():
 
     assert "on_message" in bot.extra_events
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"rank", "balance", "daily", "work", "pay", "leaderboard"} <= comandi
-
-    level_roles_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "level-roles":
-            level_roles_group = command
-            break
-    assert level_roles_group is not None
-    assert {"add", "remove", "list"} <= {c.name for c in level_roles_group.commands}
-
-    monthly_group = next(
-        c for c in bot.tree.get_commands()
-        if isinstance(c, app_commands.Group) and c.name == "monthly-winners"
-    )
-    assert {"set", "disable"} <= {c.name for c in monthly_group.commands}
-
-    shop_group = next(
-        c for c in bot.tree.get_commands()
-        if isinstance(c, app_commands.Group) and c.name == "shop"
-    )
-    assert {"list", "buy", "add-item", "remove-item"} <= {c.name for c in shop_group.commands}
-    assert "giveaway" in comandi
-
-    clan_group = next(
-        c for c in bot.tree.get_commands()
-        if isinstance(c, app_commands.Group) and c.name == "clan"
-    )
-    bacheca_group = next(
-        c for c in clan_group.commands
-        if isinstance(c, app_commands.Group) and c.name == "bacheca"
-    )
-    assert {"set", "disable"} <= {c.name for c in bacheca_group.commands}
+    assert {"rank", "balance", "daily", "work", "pay", "leaderboard", "shop list", "shop buy", "cassa"} <= percorsi_del_gruppo("level")
+    assert {"livello-add", "livello-remove", "livello-list"} <= {
+        p.split()[-1] for p in percorsi_del_gruppo("gestione") if p.startswith("ruoli ")
+    }
+    gestione = percorsi_del_gruppo("gestione")
+    assert {
+        "economia vincitori-set", "economia vincitori-off", "economia shop-add", "economia shop-remove",
+        "economia cassa-premium", "economia assegna-lobby", "economia assegna-winner", "economia giveaway",
+    } <= gestione
+    assert {"bacheca set", "bacheca disable", "tesoreria dona", "boost individuale", "boost gilda"} <= percorsi_del_gruppo("clan")
 
     # Il task periodico deve essere avviato (non sollevare eccezioni
     # all'avvio del cog) — before_loop attende bot.wait_until_ready(),

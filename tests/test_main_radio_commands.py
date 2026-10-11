@@ -1,7 +1,7 @@
 """
 tests/test_main_radio_commands.py
 =====================================
-Test del comportamento REALE dei comandi /nonstop-main (playlist e
+Test del comportamento REALE dei comandi /owner radio (playlist e
 avvio della radio condivisa) — contro PostgreSQL vero per lo stato
 persistente, con wavelink.Playable.search() e i player finti (non è
 possibile una connessione Lavalink/voce vera in questo ambiente,
@@ -51,7 +51,7 @@ class _FakeGuild:
 class _FakeRealMember(discord.Member):
     def __init__(self, voice, user_id: int | None = None) -> None:
         self._voice_finta = voice
-        # SEC-5: /nonstop-main è owner-only — per default questi
+        # SEC-5: /owner radio è owner-only — per default questi
         # finti rappresentano il proprietario, così i test esistenti
         # (che verificano il COMPORTAMENTO dei comandi, non chi può
         # usarli) restano validi. tests_..._non_owner_rifiuta sotto
@@ -167,20 +167,24 @@ async def test_add_track_utente_non_owner_rifiuta(database_e_repo, monkeypatch):
     """
     SEC-5: la playlist è condivisa da tutti i server — un admin con
     "Gestisci server" su UN server qualsiasi non deve poterla
-    modificare, solo il proprietario del bot.
+    modificare, solo il proprietario del bot. Il controllo lo dà il
+    gruppo /owner (core/command_access.py), non il comando.
     """
-    database, repo = database_e_repo
-    import cogs.music.player as music_module
-    monkeypatch.setattr(music_module, "main_radio_repo", repo)
+    from cogs.music.player import RADIO
+    from core.command_access import AccessoNegato
+    from core.command_groups import registra_comandi_del_cog, togli_comandi_del_cog
+    from tests.support.percorsi import comando_nel_gruppo
 
     cog = MusicCog(bot=None)
-    non_owner = _FakeRealMember(voice=None, user_id=config.OWNER_ID + 1)
-    interaction = _FakeInteraction(guild_id=100, user=non_owner)
-
-    await cog.nonstop_main_add_track.callback(cog, interaction, query="una canzone", label=None)
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-    assert await repo.list_tracks() == []
+    registra_comandi_del_cog(cog, tree=None)
+    try:
+        comando = comando_nel_gruppo("owner", f"{RADIO[0]} add-track")
+        non_owner = _FakeRealMember(voice=None, user_id=config.OWNER_ID + 1)
+        with pytest.raises(AccessoNegato):
+            await comando._check_can_run(_FakeInteraction(guild_id=100, user=non_owner))
+        await comando._check_can_run(_FakeInteraction(guild_id=100))  # l'owner passa
+    finally:
+        togli_comandi_del_cog(cog)
 
 
 @pytest.mark.asyncio

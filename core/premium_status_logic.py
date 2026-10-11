@@ -20,7 +20,7 @@ def format_whitelist_entry(
     reason: str | None,
     added_at: datetime,
 ) -> str:
-    """Una riga per /owner whitelist-list."""
+    """Una riga per /owner premium whitelist-list."""
     riga = f"`{guild_id}` — aggiunto da `{added_by}` il `{added_at.date().isoformat()}`"
     if reason:
         riga += f" — motivo: {reason}"
@@ -36,7 +36,7 @@ def format_guild_status_line(
     subscription_count: int,
 ) -> str:
     """
-    Una riga per /owner premium-status-all: elenca OGNI meccanismo di
+    Una riga per /owner premium status-all: elenca OGNI meccanismo di
     sblocco davvero attivo per questo server, non solo un True/False
     complessivo — così si capisce SUBITO perché un server ha (o non
     ha) accesso, senza dover controllare ogni comando singolarmente.

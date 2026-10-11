@@ -12,6 +12,7 @@ import discord
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from cogs.utility.suggestions import (
     MODULE_SUGGESTIONS,
     setup as suggestions_setup,
@@ -32,7 +33,7 @@ async def test_suggestions_cog_si_carica_correttamente(clean_db):
         assert module is not None
         assert module.premium_capable is False
 
-        nomi_comandi = {c.name for c in bot.tree.get_commands()}
-        assert {"suggestion-setup", "suggest"} <= nomi_comandi
+        assert "config canale-suggerimenti" in percorsi_del_gruppo("admin")
+        assert "suggest" in percorsi_del_gruppo("utility")
     finally:
         await db.close()

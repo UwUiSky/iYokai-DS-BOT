@@ -18,7 +18,7 @@ STATO: scheletro. Il codice non è ancora scritto (issue #72).
 #   Se il canale sparisce, avvisa gli admin una volta sola.
 # Questo file: Comandi per scegliere o creare i canali dei log.
 # Comandi previsti: /log canale, /log crea-canali, /log crea-forum, /log
-#   stato, /log ignora …. Fino a F7 vivono nel gruppo esistente /logs.
+#   stato, /log ignora …. Vivono nel gruppo /log.
 # File collegati: core/channel_router.py,
 #   core/repositories/output_channel_repo.py.
 # Test da scrivere per primi: tests/test_channel_router.py.

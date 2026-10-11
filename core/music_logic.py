@@ -138,7 +138,7 @@ def truncate_playlist_tracks(tracks, limit: int = MAX_PLAYLIST_TRACKS):
 
 def build_progress_bar(elapsed_ms: int, total_ms: int, bar_length: int = 20) -> str:
     """
-    Barra di avanzamento testuale per /nowplaying (SPEC.md §9.4) —
+    Barra di avanzamento testuale per /music nowplaying (SPEC.md §9.4) —
     un pallino 🔘 posizionato lungo una linea di trattini ▬, in base
     a quanto della traccia (o della playlist, il chiamante decide
     cosa passare come total_ms) è già trascorso.

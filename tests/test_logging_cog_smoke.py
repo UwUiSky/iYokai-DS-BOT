@@ -28,8 +28,9 @@ async def test_logging_cog_si_carica_e_tutti_i_listener_sono_registrati():
     assert module is not None
     assert module.premium_capable is False
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"logs-setup", "logs-status"} <= comandi
+    gruppo_log = bot.tree.get_command("log")
+    assert {c.name for c in gruppo_log.commands} == {"canale", "stato"}
+    await bot.remove_cog("BasicLogsCog")
 
     # Il controllo che conta davvero: ognuno di questi eventi deve
     # comparire in bot.extra_events, altrimenti Discord non chiamerà

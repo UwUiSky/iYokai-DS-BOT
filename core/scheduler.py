@@ -101,7 +101,7 @@ class Scheduler:
         e va segnalato subito. Se invece lo stesso action_type viene
         ri-registrato con un handler dello STESSO metodo (stesso
         __qualname__, es. "ReminderCog.handle_reminder_fire") è un
-        reload legittimo — /owner cog-reload richiama setup() (e
+        reload legittimo — /owner cog reload richiama setup() (e
         quindi register_handler()) sullo stesso cog una seconda
         volta, con un NUOVO oggetto bound method che punta alla
         nuova istanza del cog (quella vecchia, distrutta dal reload,
@@ -150,7 +150,7 @@ class Scheduler:
     async def cancel(self, action_id: int) -> None:
         """
         Annulla un'azione pianificata prima che scada (es. un admin
-        fa /unban manuale prima che scada il tempban automatico:
+        fa /modban unban manuale prima che scada il tempban automatico:
         l'azione pianificata va cancellata per non eseguire un
         secondo unban ridondante più avanti).
         """
@@ -166,7 +166,7 @@ class Scheduler:
     ) -> list[dict]:
         """
         Elenca le azioni pianificate non ancora eseguite per un
-        utente e un tipo specifico — es. /reminders list. A
+        utente e un tipo specifico — es. /utility reminder list. A
         differenza di _run_due_actions() (che gira nel loop periodico
         e prende QUALUNQUE azione scaduta, per eseguirla), questa è
         una lettura su richiesta per mostrare all'utente cosa ha
@@ -202,7 +202,7 @@ class Scheduler:
         Come list_pending_for_user(), ma filtrata per SERVER invece
         che per utente — per funzionalità admin dove non conta chi
         ha pianificato l'azione, conta a quale server appartiene
-        (es. /schedule-message list, dove qualunque admin deve poter
+        (es. /admin messaggi programmati, dove qualunque admin deve poter
         vedere tutti i messaggi programmati del proprio server, non
         solo quelli creati da sé stesso).
         """
@@ -232,7 +232,7 @@ class Scheduler:
     async def get_pending_action(self, action_id: int) -> dict | None:
         """
         Legge una singola azione pianificata per id — usata da
-        /reminders cancel per verificare che l'azione esista, che
+        /utility reminder cancel per verificare che l'azione esista, che
         appartenga davvero a chi sta cercando di cancellarla, e che
         non sia già stata eseguita, PRIMA di cancellarla.
         """

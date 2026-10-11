@@ -32,6 +32,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.database import db
 from core.repositories.moderation_repo import moderation_repo
 from cogs.moderation._shared import (
@@ -45,7 +47,6 @@ from cogs.moderation._shared import (
     Reason,
     audit_reason,
     post_to_mod_log,
-    SETTING_MOD_LOG_CHANNEL,
 )
 
 logger = logging.getLogger("iyokai.moderation.softban_mute")
@@ -157,7 +158,7 @@ async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
     return role
 
 
-class ModerationSoftbanMuteCog(commands.Cog):
+class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -178,34 +179,12 @@ class ModerationSoftbanMuteCog(commands.Cog):
             await _apply_mute_overwrite(channel, role)
 
     # ================================================================
-    # /mod-log-setup (SPEC.md §5.10 — canale dedicato per il log di
-    # ogni sanzione, non legato a softban/mute in particolare, ma
-    # vive qui per non aprire un quarto file solo per un comando)
-    # ================================================================
-    @app_commands.command(
-        name="mod-log-setup",
-        description="[Admin] Imposta il canale dove arriva il log di ogni sanzione.",
-    )
-    @app_commands.describe(channel="Il canale mod-log dedicato")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def mod_log_setup(
-        self, interaction: discord.Interaction, channel: discord.TextChannel
-    ) -> None:
-        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
-            return
-
-        await db.set_guild_setting(interaction.guild.id, SETTING_MOD_LOG_CHANNEL, channel.id)
-        await interaction.response.send_message(
-            f"Le sanzioni verranno registrate anche in {channel.mention}.",
-            ephemeral=True,
-        )
-
-    # ================================================================
     # /softban
     # ================================================================
-    @app_commands.command(
-        name="softban",
-        description="Banna e sbanna subito un membro, per cancellarne i messaggi recenti.",
+    @comando_di_gruppo(
+        "modban",
+        nome="softban",
+        descrizione="Banna e sbanna subito un membro, per cancellarne i messaggi recenti.",
     )
     @app_commands.describe(
         member="Il membro da softban",
@@ -278,7 +257,7 @@ class ModerationSoftbanMuteCog(commands.Cog):
 
         avvisi = []
         if not sbloccato:
-            avvisi.append("Lo sblocco automatico è fallito: usa /unban.")
+            avvisi.append("Lo sblocco automatico è fallito: usa /modban unban.")
         if dm is None:
             avvisi.append("Non è stato possibile notificare l'utente in DM.")
         if avvisi:
@@ -288,9 +267,10 @@ class ModerationSoftbanMuteCog(commands.Cog):
     # ================================================================
     # /mute-role e /unmute-role
     # ================================================================
-    @app_commands.command(
-        name="mute-role",
-        description="Silenzia un membro con un ruolo dedicato (alternativa al timeout).",
+    @comando_di_gruppo(
+        "mod",
+        nome="mute",
+        descrizione="Silenzia un membro con un ruolo dedicato (alternativa al timeout).",
     )
     @app_commands.describe(member="Il membro da silenziare", reason="Motivo del mute")
     async def mute_role(
@@ -338,8 +318,10 @@ class ModerationSoftbanMuteCog(commands.Cog):
         await try_dm(member, embed)
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(
-        name="unmute-role", description="Rimuove il ruolo mute da un membro."
+    @comando_di_gruppo(
+        "mod",
+        nome="unmute",
+        descrizione="Rimuove il ruolo mute da un membro.",
     )
     @app_commands.describe(member="Il membro da cui rimuovere il mute", reason="Motivo")
     async def unmute_role(

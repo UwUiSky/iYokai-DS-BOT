@@ -19,6 +19,8 @@ Pubblici:
 
 from __future__ import annotations
 
+from core.command_groups import nomi_gruppi
+
 PUBLIC = "public"
 STAFF = "staff"
 OWNER = "owner"
@@ -27,118 +29,43 @@ MIXED = "mixed"
 AUDIENCE: dict[str, str] = {
     # AutoMod e sicurezza
     "automod": STAFF,
-    "escalation": STAFF,
-    "anti-nuke": STAFF,
-    "anti-raid": STAFF,
-    "global-ban": STAFF,
-    "permission-heatmap": STAFF,
-    "security-score": STAFF,
-    "spamtrap-setup": STAFF,
-    "verify": STAFF,
+    "security": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Moderazione
-    "warn": STAFF,
-    "kick": STAFF,
-    "ban": STAFF,
-    "tempban": STAFF,
-    "unban": STAFF,
-    "timeout": STAFF,
-    "untimeout": STAFF,
-    "softban": STAFF,
-    "mute-role": STAFF,
-    "unmute-role": STAFF,
-    "modcase": STAFF,
-    "modnote": STAFF,
-    "lock": STAFF,
-    "unlock": STAFF,
-    "slowmode": STAFF,
-    "clear": STAFF,
-    "mod-log-setup": STAFF,
-    "report-setup": STAFF,
-    "report": PUBLIC,
+    "mod": STAFF,  # gruppo condiviso
+    "modban": STAFF,  # gruppo condiviso
     # Log
-    "logs-setup": STAFF,
-    "logs-status": STAFF,
-    "logs": STAFF,
+    "log": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Fun
     "fun": PUBLIC,
-    "ship": PUBLIC,
-    "rate": PUBLIC,
     # Livelli, economia, clan
-    "rank": PUBLIC,
-    "balance": PUBLIC,
-    "daily": PUBLIC,
-    "work": PUBLIC,
-    "pay": PUBLIC,
-    "leaderboard": PUBLIC,
-    "clan": PUBLIC,
-    "shop": MIXED,
-    "cassa": MIXED,
-    "level-roles": STAFF,
-    "monthly-winners": STAFF,
-    "assegna-lobby": STAFF,
-    "assegna-winner": STAFF,
-    "giveaway": STAFF,
+    "level": PUBLIC,  # gruppo condiviso (core/command_groups.py)
+    "clan": PUBLIC,  # gruppo condiviso
+    "music": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     # Musica
-    "play": PUBLIC,
-    "skip": PUBLIC,
-    "stop": PUBLIC,
-    "pause": PUBLIC,
-    "resume": PUBLIC,
-    "queue": PUBLIC,
-    "clear-queue": PUBLIC,
-    "shuffle": PUBLIC,
-    "loop": PUBLIC,
-    "nowplaying": PUBLIC,
-    "volume": PUBLIC,
-    "disconnect": PUBLIC,
-    "nonstop": PUBLIC,
-    "nonstop-main": OWNER,
     # Ticket
     "ticket": PUBLIC,
-    "ticket-setup": STAFF,
-    "ticket-panel": STAFF,
-    "ticket-category": STAFF,
-    "ticket-support-role": STAFF,
-    "ticket-stats": STAFF,
     # Vocali temporanei
     "voice": PUBLIC,
-    "voicetemp-setup": STAFF,
-    "voicetemp-panel": STAFF,
-    "voicetemp-cap": STAFF,
-    "voicetemp-platform-setup": STAFF,
     # Utility
-    "ping": PUBLIC,
-    "poll": PUBLIC,
-    "reminder": PUBLIC,
-    "search": PUBLIC,
-    "serverstats": PUBLIC,
-    "reactionsnipe": PUBLIC,
-    "suggest": PUBLIC,
-    "request-custom-command": PUBLIC,
-    "config": MIXED,
-    "setup": STAFF,
-    "setup-wizard": STAFF,
-    "alerts": STAFF,
-    "greetings": STAFF,
-    "rolemenu": STAFF,
-    "schedule-message": STAFF,
-    "sticky": STAFF,
-    "suggestion-setup": STAFF,
-    "define-main": STAFF,
-    "define-backup": STAFF,
-    "promuovi-backup": STAFF,
-    "configura-restore": STAFF,
-    "restore-users": STAFF,
-    # Owner
-    "owner": OWNER,
-    "custom-command-requests-setup": OWNER,
+    "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
+    "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
+    "admin": STAFF,  # gruppo condiviso
+    "moduli": STAFF,  # gruppo condiviso
+    "gestione": STAFF,  # gruppo condiviso
+    # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
+
+# I gruppi condivisi di F7 hanno già permessi e guild_only: fuori dai cricchetti.
+_GRUPPI_YOKAI = frozenset(nomi_gruppi())
 
 # Comandi staff/owner che oggi NON hanno default_permissions (tutti,
 # REVIEW.md §6 / SEC-1). Ogni fix toglie il nome da qui.
 KNOWN_MISSING_DEFAULT_PERMISSIONS: frozenset[str] = frozenset(
-    name for name, audience in AUDIENCE.items() if audience in (STAFF, OWNER)
+    name
+    for name, audience in AUDIENCE.items()
+    if audience in (STAFF, OWNER) and name not in _GRUPPI_YOKAI
 )
 
 # Comandi che oggi non sono guild_only (tutti, REVIEW.md LC-2).
-KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE)
+# `-cerca-comando` è guild_only (D24): tolto dal cricchetto.
+KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE) - _GRUPPI_YOKAI - {"-cerca-comando"}

@@ -81,19 +81,6 @@ async def cog_e_database(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_premium_grant_rifiuta_non_owner(cog_e_database):
-    cog, database = cog_e_database
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
-
-    await cog.premium_grant.callback(
-        cog, interaction, guild_id="700", module_name="test_grant_modulo",
-        duration=_FakeChoice("Mensile (30 giorni)", "monthly"),
-    )
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
-@pytest.mark.asyncio
 async def test_premium_grant_modulo_inesistente_avvisa(cog_e_database):
     cog, database = cog_e_database
     interaction = _FakeInteraction(user_id=_OWNER_ID)

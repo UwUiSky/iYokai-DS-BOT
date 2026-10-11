@@ -31,6 +31,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.eval_shell_logic import truncate_output
@@ -62,7 +63,7 @@ SU_WINDOWS = sys.platform == "win32"
 
 def _opzioni_nuovo_gruppo() -> dict:
     """
-    Opzioni di avvio per /owner shell: il comando parte in un gruppo
+    Opzioni di avvio per /owner system shell: il comando parte in un gruppo
     di processi suo, così al timeout si può uccidere tutto l'albero
     (la shell E i comandi che ha lanciato), non solo la shell.
     """
@@ -128,7 +129,7 @@ class _PremiumConfirmView(BaseView):
     step"). Il primo step è la selezione del modulo nel menu
     (_PremiumPanelView); questo è il vero e proprio "sei sicuro?"
     prima di applicare un cambio che vale per TUTTI i server insieme
-    — lo stesso motivo per cui /owner premium-toggle esiste già come
+    — lo stesso motivo per cui /owner premium toggle esiste già come
     comando esplicito e non come side-effect di qualcos'altro.
     """
 
@@ -203,7 +204,7 @@ class _EvalConfirmView(BaseView):
     per Eval/Exec/Shell (SPEC.md §17.3, l'unica voce genuinamente
     delicata dell'intera sezione Owner, lasciata per ultima di
     proposito). Il codice va mostrato per intero PRIMA di eseguirlo —
-    un /owner eval scritto male, o un typo, non deve poter girare
+    un /owner system eval scritto male, o un typo, non deve poter girare
     senza che l'owner lo riveda un'ultima volta.
     """
 
@@ -285,26 +286,17 @@ class _ShellConfirmView(BaseView):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-class OwnerPremiumCog(commands.Cog):
+class OwnerPremiumCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    owner_group = app_commands.Group(
-        name="owner",
-        description="Comandi riservati al proprietario del bot.",
-    )
-
-    @owner_group.command(
-        name="premium-list",
-        description="[OWNER] Mostra lo stato premium di tutti i moduli.",
+    @comando_di_gruppo(
+        "owner",
+        nome="list",
+        descrizione="Mostra lo stato premium di tutti i moduli.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     async def premium_list(self, interaction: discord.Interaction) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         modules = registry.all_modules()
         lines = []
         for m in modules:
@@ -330,7 +322,7 @@ class OwnerPremiumCog(commands.Cog):
         dell'intero storico (premium_toggle_history, SPEC.md §17.10
         — distinta da premium_module_flags apposta: quella tiene
         solo l'ULTIMO stato, questa ogni cambiamento mai fatto).
-        Condivisa da /owner premium-toggle e dal pannello interattivo
+        Condivisa da /owner premium toggle e dal pannello interattivo
         — un solo punto che applica il cambio, mai due copie della
         stessa logica che potrebbero divergere.
         """
@@ -359,12 +351,14 @@ class OwnerPremiumCog(commands.Cog):
             changed_by,
         )
 
-    @owner_group.command(
-        name="premium-toggle",
-        description="[OWNER] Accende o spegne la natura premium di un modulo.",
+    @comando_di_gruppo(
+        "owner",
+        nome="toggle",
+        descrizione="Accende o spegne la natura premium di un modulo.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
-        module_name="Nome tecnico del modulo (vedi /owner premium-list)",
+        module_name="Nome tecnico del modulo (vedi /owner premium list)",
         active="True per rendere premium, False per rendere gratis",
     )
     async def premium_toggle(
@@ -373,17 +367,11 @@ class OwnerPremiumCog(commands.Cog):
         module_name: str,
         active: bool,
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         module = registry.get(module_name)
         if module is None:
             await interaction.response.send_message(
                 f"Modulo `{module_name}` non trovato. "
-                f"Usa /owner premium-list per la lista esatta.",
+                f"Usa /owner premium list per la lista esatta.",
                 ephemeral=True,
             )
             return
@@ -404,9 +392,11 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
-    @owner_group.command(
-        name="whitelist-add",
-        description="[OWNER] Aggiunge un server alla whitelist premium.",
+    @comando_di_gruppo(
+        "owner",
+        nome="whitelist-add",
+        descrizione="Aggiunge un server alla whitelist premium.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
         guild_id="ID del server da aggiungere",
@@ -418,12 +408,6 @@ class OwnerPremiumCog(commands.Cog):
         guild_id: str,
         reason: str | None = None,
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -438,20 +422,16 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
-    @owner_group.command(
-        name="whitelist-remove",
-        description="[OWNER] Rimuove un server dalla whitelist premium.",
+    @comando_di_gruppo(
+        "owner",
+        nome="whitelist-remove",
+        descrizione="Rimuove un server dalla whitelist premium.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(guild_id="ID del server da rimuovere")
     async def whitelist_remove(
         self, interaction: discord.Interaction, guild_id: str
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -466,20 +446,16 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
-    @owner_group.command(
-        name="whitelist-list",
-        description="[OWNER] Elenca i server nella whitelist premium.",
+    @comando_di_gruppo(
+        "owner",
+        nome="whitelist-list",
+        descrizione="Elenca i server nella whitelist premium.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     async def whitelist_list(self, interaction: discord.Interaction) -> None:
         # SPEC.md §3.2: esistevano add/remove ma non un modo per
         # ELENCARE la whitelist — l'unico modo per controllarla era
         # interrogare il database a mano.
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         voci = await db.list_premium_whitelist()
         if not voci:
             await interaction.response.send_message(
@@ -499,13 +475,15 @@ class OwnerPremiumCog(commands.Cog):
     # gestito FUORI dal bot, l'owner concede a mano dopo averlo
     # incassato: vedi core/repositories/module_subscription_repo.py)
     # ================================================================
-    @owner_group.command(
-        name="premium-grant",
-        description="[OWNER] Concede un abbonamento mensile/annuale a un modulo per un server.",
+    @comando_di_gruppo(
+        "owner",
+        nome="grant",
+        descrizione="Concede un abbonamento mensile/annuale a un modulo per un server.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
         guild_id="ID del server",
-        module_name="Nome tecnico del modulo (vedi /owner premium-list)",
+        module_name="Nome tecnico del modulo (vedi /owner premium list)",
         duration="Mensile (30 giorni) o annuale (365 giorni)",
     )
     @app_commands.choices(
@@ -521,12 +499,6 @@ class OwnerPremiumCog(commands.Cog):
         module_name: str,
         duration: app_commands.Choice[str],
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -537,7 +509,7 @@ class OwnerPremiumCog(commands.Cog):
         if module is None:
             await interaction.response.send_message(
                 f"Modulo `{module_name}` non trovato. "
-                f"Usa /owner premium-list per la lista esatta.",
+                f"Usa /owner premium list per la lista esatta.",
                 ephemeral=True,
             )
             return
@@ -559,9 +531,11 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
-    @owner_group.command(
-        name="premium-revoke",
-        description="[OWNER] Revoca l'abbonamento di un modulo per un server.",
+    @comando_di_gruppo(
+        "owner",
+        nome="revoke",
+        descrizione="Revoca l'abbonamento di un modulo per un server.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
         guild_id="ID del server",
@@ -570,12 +544,6 @@ class OwnerPremiumCog(commands.Cog):
     async def premium_revoke(
         self, interaction: discord.Interaction, guild_id: str, module_name: str
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -593,20 +561,16 @@ class OwnerPremiumCog(commands.Cog):
                 ephemeral=True,
             )
 
-    @owner_group.command(
-        name="premium-subscriptions",
-        description="[OWNER] Mostra gli abbonamenti per modulo attivi su un server.",
+    @comando_di_gruppo(
+        "owner",
+        nome="subscriptions",
+        descrizione="Mostra gli abbonamenti per modulo attivi su un server.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(guild_id="ID del server")
     async def premium_subscriptions(
         self, interaction: discord.Interaction, guild_id: str
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -626,19 +590,15 @@ class OwnerPremiumCog(commands.Cog):
         ]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
-    @owner_group.command(
-        name="premium-status-all",
-        description="[OWNER] Mostra lo stato premium di TUTTI i server in cui è presente il bot.",
+    @comando_di_gruppo(
+        "owner",
+        nome="status-all",
+        descrizione="Mostra lo stato premium di TUTTI i server in cui è presente il bot.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     async def premium_status_all(self, interaction: discord.Interaction) -> None:
         # SPEC.md §3.2: esisteva solo l'attiva/disattiva per un
         # singolo modulo — nessuna vista d'insieme su tutti i server.
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         await interaction.response.defer(ephemeral=True)
 
         guilds = list(interaction.client.guilds)
@@ -749,7 +709,12 @@ class OwnerPremiumCog(commands.Cog):
             return f"{messaggio} — errore terminando il processo: {exc}"
         return f"{messaggio} — processo terminato."
 
-    @owner_group.command(name="eval", description="[OWNER] Esegue codice Python (con conferma).")
+    @comando_di_gruppo(
+        "owner",
+        nome="eval",
+        descrizione="Esegue codice Python (con conferma).",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+    )
     @app_commands.describe(code="Il codice Python da eseguire")
     async def eval_code(self, interaction: discord.Interaction, code: str) -> None:
         if not _is_owner(interaction):
@@ -768,8 +733,11 @@ class OwnerPremiumCog(commands.Cog):
         view = _EvalConfirmView(self, code)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-    @owner_group.command(
-        name="shell", description="[OWNER] Esegue un comando shell (con conferma)."
+    @comando_di_gruppo(
+        "owner",
+        nome="shell",
+        descrizione="Esegue un comando shell (con conferma).",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(command="Il comando shell da eseguire")
     async def shell_command(self, interaction: discord.Interaction, command: str) -> None:
@@ -789,24 +757,13 @@ class OwnerPremiumCog(commands.Cog):
         view = _ShellConfirmView(self, command)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-    @owner_group.command(
-        name="memory-status",
-        description="[OWNER] Mostra il consumo di RAM attuale del processo.",
+    @comando_di_gruppo(
+        "owner",
+        nome="memory-status",
+        descrizione="Mostra il consumo di RAM attuale del processo.",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     async def memory_status(self, interaction: discord.Interaction) -> None:
-        # Vive in questo file (nominalmente "premium") e non in un
-        # proprio file dedicato per un motivo tecnico, non di
-        # comodità: app_commands.Group con lo stesso nome "owner"
-        # registrato da due cog diversi verrebbe rifiutato da
-        # discord.py come comando duplicato. Finché il progetto ha un
-        # solo gruppo /owner, i comandi owner-only condividono questo
-        # file — da riorganizzare se/quando il gruppo crescerà troppo.
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         from core.memory_guard import memory_guard
         from core.memory_guard_logic import format_memory_status
 
@@ -816,17 +773,13 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
-    @owner_group.command(
-        name="premium-panel",
-        description="[OWNER] Pannello interattivo per attivare/disattivare i moduli premium.",
+    @comando_di_gruppo(
+        "owner",
+        nome="panel",
+        descrizione="Pannello interattivo per attivare/disattivare i moduli premium.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     async def premium_panel(self, interaction: discord.Interaction) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         moduli_premium_capable = [m for m in registry.all_modules() if m.premium_capable]
         if not moduli_premium_capable:
             await interaction.response.send_message(
@@ -842,20 +795,16 @@ class OwnerPremiumCog(commands.Cog):
     # ================================================================
     # Blacklist globale (SPEC.md §17.4 utenti, §17.5 server)
     # ================================================================
-    @owner_group.command(
-        name="blacklist-user-add",
-        description="[OWNER] Blocca globalmente un utente dall'uso del bot.",
+    @comando_di_gruppo(
+        "owner",
+        nome="utente-add",
+        descrizione="Blocca globalmente un utente dall'uso del bot.",
+        sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(user_id="ID Discord dell'utente", reason="Motivo (facoltativo)")
     async def blacklist_user_add(
         self, interaction: discord.Interaction, user_id: str, reason: str | None = None
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             uid = int(user_id)
         except ValueError:
@@ -869,20 +818,16 @@ class OwnerPremiumCog(commands.Cog):
             f"Utente `{uid}` bloccato globalmente.", ephemeral=True
         )
 
-    @owner_group.command(
-        name="blacklist-user-remove",
-        description="[OWNER] Rimuove un utente dalla blacklist globale.",
+    @comando_di_gruppo(
+        "owner",
+        nome="utente-remove",
+        descrizione="Rimuove un utente dalla blacklist globale.",
+        sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(user_id="ID Discord dell'utente")
     async def blacklist_user_remove(
         self, interaction: discord.Interaction, user_id: str
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             uid = int(user_id)
         except ValueError:
@@ -901,16 +846,13 @@ class OwnerPremiumCog(commands.Cog):
                 f"Utente `{uid}` non era in blacklist.", ephemeral=True
             )
 
-    @owner_group.command(
-        name="blacklist-user-list", description="[OWNER] Mostra gli utenti bloccati globalmente."
+    @comando_di_gruppo(
+        "owner",
+        nome="utente-list",
+        descrizione="Mostra gli utenti bloccati globalmente.",
+        sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     async def blacklist_user_list(self, interaction: discord.Interaction) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         from core.repositories.blacklist_repo import blacklist_repo
 
         utenti = await blacklist_repo.list_users()
@@ -921,20 +863,16 @@ class OwnerPremiumCog(commands.Cog):
         righe = [f"`{u['user_id']}` — {u['reason'] or 'nessun motivo'}" for u in utenti]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
-    @owner_group.command(
-        name="blacklist-guild-add",
-        description="[OWNER] Blocca globalmente un server (il bot ne uscirà se già presente).",
+    @comando_di_gruppo(
+        "owner",
+        nome="server-add",
+        descrizione="Blocca globalmente un server (il bot ne uscirà se già presente).",
+        sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(guild_id="ID del server", reason="Motivo (facoltativo)")
     async def blacklist_guild_add(
         self, interaction: discord.Interaction, guild_id: str, reason: str | None = None
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -960,20 +898,16 @@ class OwnerPremiumCog(commands.Cog):
                 f"Server `{gid}` bloccato globalmente.", ephemeral=True
             )
 
-    @owner_group.command(
-        name="blacklist-guild-remove",
-        description="[OWNER] Rimuove un server dalla blacklist globale.",
+    @comando_di_gruppo(
+        "owner",
+        nome="server-remove",
+        descrizione="Rimuove un server dalla blacklist globale.",
+        sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(guild_id="ID del server")
     async def blacklist_guild_remove(
         self, interaction: discord.Interaction, guild_id: str
     ) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -992,16 +926,13 @@ class OwnerPremiumCog(commands.Cog):
                 f"Server `{gid}` non era in blacklist.", ephemeral=True
             )
 
-    @owner_group.command(
-        name="blacklist-guild-list", description="[OWNER] Mostra i server bloccati globalmente."
+    @comando_di_gruppo(
+        "owner",
+        nome="server-list",
+        descrizione="Mostra i server bloccati globalmente.",
+        sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     async def blacklist_guild_list(self, interaction: discord.Interaction) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         from core.repositories.blacklist_repo import blacklist_repo
 
         server = await blacklist_repo.list_guilds()
@@ -1015,18 +946,14 @@ class OwnerPremiumCog(commands.Cog):
     # ================================================================
     # Leave guild forzato (SPEC.md §17.9)
     # ================================================================
-    @owner_group.command(
-        name="leave-guild",
-        description="[OWNER] Forza il bot a lasciare un server specifico (senza bloccarlo).",
+    @comando_di_gruppo(
+        "owner",
+        nome="leave-guild",
+        descrizione="Forza il bot a lasciare un server specifico (senza bloccarlo).",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(guild_id="ID del server da cui uscire")
     async def leave_guild(self, interaction: discord.Interaction, guild_id: str) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             gid = int(guild_id)
         except ValueError:
@@ -1047,17 +974,14 @@ class OwnerPremiumCog(commands.Cog):
         )
 
 
-    @owner_group.command(
-        name="announce", description="[OWNER] Manda un annuncio a tutti i server."
+    @comando_di_gruppo(
+        "owner",
+        nome="announce",
+        descrizione="Manda un annuncio a tutti i server.",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(message="Il testo dell'annuncio")
     async def announce(self, interaction: discord.Interaction, message: str) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         await interaction.response.defer(ephemeral=True)
 
         embed = discord.Embed(
@@ -1086,16 +1010,13 @@ class OwnerPremiumCog(commands.Cog):
             ephemeral=True,
         )
 
-    @owner_group.command(
-        name="stats", description="[OWNER] Statistiche globali del bot."
+    @comando_di_gruppo(
+        "owner",
+        nome="stats",
+        descrizione="Statistiche globali del bot.",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     async def stats(self, interaction: discord.Interaction) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         from core.memory_guard import memory_guard
         from core.memory_guard_logic import bytes_to_mb
         from core.bot_stats import command_counter, error_counter
@@ -1135,16 +1056,14 @@ class OwnerPremiumCog(commands.Cog):
     # ================================================================
     # Forced cog load/unload/reload (SPEC.md §17.6)
     # ================================================================
-    @owner_group.command(
-        name="cog-load", description="[OWNER] Carica un'estensione (es. cogs.moderation.actions)."
+    @comando_di_gruppo(
+        "owner",
+        nome="load",
+        descrizione="Carica un'estensione (es. cogs.moderation.actions).",
+        sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
     @app_commands.describe(extension="Percorso completo del modulo, es. cogs.moderation.actions")
     async def owner_cog_load(self, interaction: discord.Interaction, extension: str) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
         if await _reply_if_eval_disabled(interaction):
             return
 
@@ -1172,15 +1091,14 @@ class OwnerPremiumCog(commands.Cog):
 
         await interaction.response.send_message(f"Caricato `{extension}`.", ephemeral=True)
 
-    @owner_group.command(name="cog-unload", description="[OWNER] Scarica un'estensione.")
+    @comando_di_gruppo(
+        "owner",
+        nome="unload",
+        descrizione="Scarica un'estensione.",
+        sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
+    )
     @app_commands.describe(extension="Percorso completo del modulo")
     async def owner_cog_unload(self, interaction: discord.Interaction, extension: str) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             await self.bot.unload_extension(extension)
         except commands.ExtensionError as exc:
@@ -1197,17 +1115,14 @@ class OwnerPremiumCog(commands.Cog):
 
         await interaction.response.send_message(f"Scaricato `{extension}`.", ephemeral=True)
 
-    @owner_group.command(
-        name="cog-reload", description="[OWNER] Ricarica un'estensione già caricata."
+    @comando_di_gruppo(
+        "owner",
+        nome="reload",
+        descrizione="Ricarica un'estensione già caricata.",
+        sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
     @app_commands.describe(extension="Percorso completo del modulo")
     async def owner_cog_reload(self, interaction: discord.Interaction, extension: str) -> None:
-        if not _is_owner(interaction):
-            await interaction.response.send_message(
-                "Comando riservato al proprietario del bot.", ephemeral=True
-            )
-            return
-
         try:
             await self.bot.reload_extension(extension)
         except commands.ExtensionError as exc:

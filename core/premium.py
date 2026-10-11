@@ -121,7 +121,7 @@ class PremiumRegistry:
         identificatore) e va risolto subito — solleva un'eccezione.
 
         Se invece è già registrato con la STESSA dichiarazione, non
-        solleva: è il caso di /owner cog-reload, che richiama
+        solleva: è il caso di /owner cog reload, che richiama
         setup() (e quindi register()) sullo stesso cog una seconda
         volta — trovato con un test reale, non ipotizzato: prima di
         questa correzione, ricaricare QUALUNQUE cog con un modulo
@@ -161,7 +161,7 @@ class PremiumRegistry:
         return self._modules.get(name)
 
     def modules_in_category(self, category: str) -> list[PremiumModule]:
-        """Moduli di una categoria, ordinati per nome (usato da /setup)."""
+        """Moduli di una categoria, ordinati per nome (usato da /admin setup attiva)."""
         return [m for m in self.all_modules() if m.category == category]
 
     def all_modules(self) -> list[PremiumModule]:
@@ -214,7 +214,7 @@ async def reload_premium_flags_from_database() -> None:
     Perché serve: ogni `PremiumModule` nasce con
     `is_premium_active=False` in `register()` (vedi sopra), quindi
     senza questa ricarica lo stato premium impostato con
-    `/owner premium-toggle` andrebbe perso ad ogni riavvio, anche se
+    `/owner premium toggle` andrebbe perso ad ogni riavvio, anche se
     la riga corrispondente resta persistita in
     `premium_module_flags` (scritta da `_apply_premium_toggle` in
     `cogs/utility/owner_premium.py`).
@@ -295,7 +295,7 @@ async def guild_has_premium_access(
     - pagamento mensile/annuale PER MODULO (`module_subscription_
       repo`) — sblocca SOLO il modulo `module_name` richiesto, non
       gli altri: nessun gateway di pagamento reale, l'owner concede
-      l'abbonamento a mano con `/owner premium-grant` dopo averlo
+      l'abbonamento a mano con `/owner premium grant` dopo averlo
       incassato fuori dal bot (vedi il file del repository)
     """
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
@@ -326,7 +326,7 @@ async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
     differenza di guild_has_premium_access (un True/False per un
     singolo modulo), qui servono TUTTI i meccanismi insieme, per
     capire perché un server ha (o non ha) accesso — usato da
-    /owner premium-status-all insieme a core/premium_status_logic.py
+    /owner premium status-all insieme a core/premium_status_logic.py
     per la formattazione.
     """
     from datetime import datetime, timezone

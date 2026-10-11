@@ -34,11 +34,14 @@ async def test_report_dichiara_la_lunghezza_massima_del_motivo():
     """Un campo di embed tiene 1024 caratteri: il motivo si ferma a 1000."""
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo_report.setup(bot)
+    try:
+        comando = bot.tree.get_command("utility").get_command("report")
+        opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
 
-    opzioni = {o["name"]: o for o in bot.tree.get_command("report").to_dict(bot.tree)["options"]}
-
-    assert opzioni["reason"]["min_length"] == 3
-    assert opzioni["reason"]["max_length"] == 1000
+        assert opzioni["reason"]["min_length"] == 3
+        assert opzioni["reason"]["max_length"] == 1000
+    finally:
+        await bot.remove_cog("ModerationReportCog")
 
 
 async def test_report_errore_di_invio_avvisa_chi_segnala(db_finto):

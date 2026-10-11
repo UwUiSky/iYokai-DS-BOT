@@ -15,15 +15,15 @@ from cogs.moderation.actions import ModerationActionsCog
 from cogs.moderation.softban_mute import ModerationSoftbanMuteCog
 
 COMANDI_CON_MOTIVO = (
-    "warn",
-    "kick",
-    "ban",
-    "tempban",
-    "unban",
-    "timeout",
-    "softban",
-    "mute-role",
-    "unmute-role",
+    ("mod", "warn"),
+    ("modban", "kick"),
+    ("modban", "ban"),
+    ("modban", "tempban"),
+    ("modban", "unban"),
+    ("mod", "timeout"),
+    ("modban", "softban"),
+    ("mod", "mute"),
+    ("mod", "unmute"),
 )
 
 
@@ -33,12 +33,14 @@ async def albero():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(ModerationActionsCog(bot))
     await bot.add_cog(ModerationSoftbanMuteCog(bot))
-    return bot.tree
+    yield bot.tree
+    await bot.remove_cog("ModerationActionsCog")
+    await bot.remove_cog("ModerationSoftbanMuteCog")
 
 
-@pytest.mark.parametrize("nome", COMANDI_CON_MOTIVO)
-async def test_il_motivo_dichiara_da_3_a_512_caratteri(albero, nome):
-    comando = albero.get_command(nome)
+@pytest.mark.parametrize("gruppo,nome", COMANDI_CON_MOTIVO)
+async def test_il_motivo_dichiara_da_3_a_512_caratteri(albero, gruppo, nome):
+    comando = albero.get_command(gruppo).get_command(nome)
     opzioni = {o["name"]: o for o in comando.to_dict(albero)["options"]}
 
     assert opzioni["reason"]["required"] is True

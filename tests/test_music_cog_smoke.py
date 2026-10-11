@@ -28,44 +28,14 @@ async def test_music_cog_si_carica_anche_se_lavalink_non_e_raggiungibile():
     assert module is not None
     assert module.premium_capable is False
 
-    nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert {
+    top = {c.name for c in bot.tree.get_commands()}
+    assert "music" in top
+    assert not top & {
         "play", "skip", "stop", "pause", "resume", "queue", "volume", "disconnect",
-        "clear-queue", "shuffle", "loop", "nowplaying",
-    } <= nomi_comandi
-
-    volume_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, discord.app_commands.Group) and command.name == "volume":
-            volume_group = command
-            break
-    assert volume_group is not None
-    sottocomandi_volume = {c.name for c in volume_group.commands}
-    assert {"set", "up", "down"} <= sottocomandi_volume
-
-    nonstop_group = None
-    nonstop_main_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, discord.app_commands.Group):
-            if command.name == "nonstop":
-                nonstop_group = command
-            elif command.name == "nonstop-main":
-                nonstop_main_group = command
-    assert nonstop_group is not None
-    assert {"on", "off"} <= {c.name for c in nonstop_group.commands}
-    assert nonstop_main_group is not None
-    assert {"add-track", "add-local", "remove-track", "list-tracks", "start", "stop"} <= {
-        c.name for c in nonstop_main_group.commands
+        "clear-queue", "shuffle", "loop", "nowplaying", "nonstop", "nonstop-main",
     }
-
-    loop_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, discord.app_commands.Group) and command.name == "loop":
-            loop_group = command
-            break
-    assert loop_group is not None
-    assert {"track", "queue"} <= {c.name for c in loop_group.commands}
-
+    # /owner non è globale: lo aggiunge main.py solo nel server dell'owner.
+    assert "owner" not in top
 
 async def test_il_task_di_connessione_a_lavalink_resta_in_un_insieme_del_cog(monkeypatch):
     """

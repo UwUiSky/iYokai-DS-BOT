@@ -9,6 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from cogs.utility.greetings import MODULE_GREETINGS, setup as greetings_setup
 
 
@@ -22,15 +23,9 @@ async def test_greetings_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    greetings_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "greetings":
-            greetings_group = command
-            break
-    assert greetings_group is not None
-
-    sottocomandi = {c.name for c in greetings_group.commands}
-    assert {"welcome-setup", "goodbye-setup", "boost-setup", "preview"} <= sottocomandi
+    assert {"benvenuto benvenuto", "benvenuto addio", "benvenuto boost", "benvenuto anteprima"} <= percorsi_del_gruppo(
+        "gestione"
+    )
 
     assert {"on_member_join", "on_member_remove", "on_member_update"} <= set(
         bot.extra_events.keys()

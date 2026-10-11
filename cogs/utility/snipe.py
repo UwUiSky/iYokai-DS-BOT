@@ -28,9 +28,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.snipe_logic import is_ghost_ping_candidate
@@ -62,7 +62,7 @@ class _TrackedMention:
     created_at: datetime
 
 
-class SnipeCog(commands.Cog):
+class SnipeCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Chiave: channel_id -> ultima reazione rimossa in quel canale.
@@ -92,9 +92,10 @@ class SnipeCog(commands.Cog):
             ),
         )
 
-    @app_commands.command(
-        name="reactionsnipe",
-        description="Mostra l'ultima reazione rimossa in questo canale.",
+    @comando_di_gruppo(
+        "utility",
+        nome="reactionsnipe",
+        descrizione="Mostra l'ultima reazione rimossa in questo canale.",
     )
     async def reactionsnipe(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None or interaction.channel is None:
