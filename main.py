@@ -86,6 +86,8 @@ from core.custom_webhook_server import start_server as custom_webhook_start_serv
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_exit import esci_da_server_in_blacklist
+from core.command_access import registra_dopo_imposta_ruolo
+from core.command_permissions import sincronizza_dal_bot as sincronizza_permessi_comandi
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
 from core.premium import handle_app_command_error
@@ -244,6 +246,13 @@ class iYokaiBot(commands.AutoShardedBot):
         # registrati — l'ordine qui è per chiarezza, non per un bug
         # reale da evitare.
         scheduler.start(self)
+
+        # #148: quando l'admin sceglie un ruolo del bot, i permessi dei gruppi di comandi
+        # si scrivono su Discord (solo se il server ha autorizzato il bot via OAuth2).
+        async def _permessi_comandi(guild, tipo, vecchio, nuovo):
+            await sincronizza_permessi_comandi(self, guild, tipo, vecchio, nuovo)
+
+        registra_dopo_imposta_ruolo(_permessi_comandi)
 
         # Memory Guard: monitoraggio RAM, GC forzato, alert DM,
         # pulizia VoiceClient inattivi. Stesso pattern dello

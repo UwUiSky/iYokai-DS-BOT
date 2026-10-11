@@ -1671,7 +1671,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 19.1 Registro dei dati personali: ogni tabella con `user_id` o
   `guild_id` è dichiarata, con il modo di cancellarla (NF-04) —
-  `core/data_registry.py`, 86 tabelle (compresi `command_usage`,
+  `core/data_registry.py`, 87 tabelle (compresi `command_usage`,
   `rank_card_prefs`, `event_log`, `log_ignora`, `output_channels`); un test legge lo
   schema vero e fallisce se una tabella o una colonna con una persona non è dichiarata
 - `[x]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
@@ -1709,6 +1709,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 20.6 Al massimo 25 figli per gruppo e un livello di
   sotto-gruppi, controllati da un test (LIM-57)
 - `[ ]` 20.7 `COMMAND_LIST.md` rigenerato dall'albero vero
+- `[~]` 20.8 Gruppi nascosti dalla lista a chi non li può usare, per ruolo scelto dall'admin (#148, OAuth2)
+  → **Stato 11/10:** fatta la parte che si prova senza token vero: `core/command_permissions.py`
+  (state firmato che scade in 15 minuti, link con scope `applications.commands.permissions.update`,
+  fusione con le regole già impostate dall'admin, tetto di 100 regole, client HTTP, rinnovo del token),
+  `command_permission_tokens` (0039, token cifrato), aggancio a `imposta_ruolo`. Resta: l'indirizzo di
+  ritorno OAuth2 sul server web e il bottone «Autorizza» nel passo di `/admin setup attiva`; prova live.
+  Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 
