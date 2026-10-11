@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:20 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 248 comandi in 16 categorie.**
+**Totale: 250 comandi in 16 categorie.**
 
 ## Admin
 
@@ -187,6 +187,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 
 ## Ban (modban)
 
+- **`/modban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
+- **`/modban appelli elenco`** — Mostra gli ultimi appelli del server.
 - **`/modban ban`** — Banna permanentemente un membro.
 - **`/modban kick`** — Espelle un membro dal server.
 - **`/modban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.

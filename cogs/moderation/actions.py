@@ -45,7 +45,8 @@ from core.tempban_logic import (
     ruoli_da_tenere_in_isolamento,
     testo_fine,
 )
-from cogs.moderation import tempban_modes
+from cogs.moderation import _tempban_modes as tempban_modes
+from cogs.moderation.ban_appeal import vista_appello
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
@@ -245,6 +246,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         dm = await try_dm_message(
             member,
             _case_embed("🔨 Ban", discord.Color.red(), member, interaction.user, reason, None),
+            view=await vista_appello(interaction.guild.id),
         )
         try:
             await member.ban(
@@ -348,7 +350,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 e.add_field(name="Invito per rientrare", value=invito.url, inline=False)
             return e
 
-        dm = await try_dm_message(member, _embed(None, True))
+        dm = await try_dm_message(
+            member, _embed(None, True),
+            view=None if modo != MODO_FUORI else await vista_appello(guild.id),
+        )
 
         ruoli_salvati = ruoli_da_salvare(tempban_modes.info_ruoli(member.roles))
         try:

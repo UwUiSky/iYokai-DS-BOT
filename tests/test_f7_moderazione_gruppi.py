@@ -18,6 +18,7 @@ from core.command_access import GruppoYokai, Livello
 
 MODULI = (
     "cogs.moderation.actions",
+    "cogs.moderation.ban_appeal",
     "cogs.moderation.case_system",
     "cogs.moderation.channel_control",
     "cogs.moderation.clear",
@@ -42,6 +43,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod", "avvisi"): {"togli", "azzera", "classifica"},
     ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
+    ("modban", "appelli"): {"canale", "elenco"},
     ("security", None): {"heatmap", "score", "spamtrap"},
     ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("security", "antinuke"): {

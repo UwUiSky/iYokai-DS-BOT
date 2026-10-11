@@ -442,6 +442,52 @@ class ModerationRepository:
         return int(result.split()[-1])
 
     # ------------------------------------------------------------
+    # Appelli contro i ban manuali (NF-30)
+    # ------------------------------------------------------------
+    async def create_appeal(
+        self, guild_id: int, user_id: int, case_number: int | None, testo: str
+    ) -> int:
+        return await self._pool.fetchval(
+            """
+            INSERT INTO ban_appelli (guild_id, user_id, case_number, testo)
+            VALUES ($1, $2, $3, $4) RETURNING id
+            """,
+            guild_id, user_id, case_number, testo,
+        )
+
+    async def last_appeal_time(self, guild_id: int, user_id: int):
+        return await self._pool.fetchval(
+            "SELECT MAX(creato_il) FROM ban_appelli WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+
+    async def get_appeal(self, appeal_id: int) -> dict | None:
+        row = await self._pool.fetchrow("SELECT * FROM ban_appelli WHERE id = $1", appeal_id)
+        return dict(row) if row else None
+
+    async def decide_appeal(self, appeal_id: int, stato: str, deciso_da: int) -> bool:
+        """Chiude un appello ancora aperto; False se era già deciso (due click insieme)."""
+        result = await self._pool.execute(
+            """
+            UPDATE ban_appelli SET stato = $2, deciso_da = $3, deciso_il = now()
+            WHERE id = $1 AND stato = 'aperto'
+            """,
+            appeal_id, stato, deciso_da,
+        )
+        return result.endswith(" 1")
+
+    async def list_appeals(self, guild_id: int, stato: str | None = None, limit: int = 15) -> list[dict]:
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM ban_appelli
+            WHERE guild_id = $1 AND ($2::text IS NULL OR stato = $2)
+            ORDER BY creato_il DESC LIMIT $3
+            """,
+            guild_id, stato, limit,
+        )
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------
     # Ban temporaneo con rientro / isolamento (issue #138)
     # ------------------------------------------------------------
     async def save_tempban_state(

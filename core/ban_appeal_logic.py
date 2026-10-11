@@ -1,32 +1,42 @@
 """
 core/ban_appeal_logic.py
 ========================
-Regole comuni agli appelli (spam-trap e ban manuali).
-Funzioni coperte: SPEC §23 (NF-30)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #101).
+Regole degli appelli contro i ban manuali (ban e tempban): un appello
+ogni 24 ore, testo limitato, nomi dei bottoni, chi può decidere.
+Funzioni coperte: SPEC §23 (NF-30, issue #101)
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #101, fase F13
-# Funzione: NF-30, Appello per i ban normali.
-#
-# Cosa deve fare la funzione: Chi viene bannato a mano può chiedere una
-#   revisione in DM, come già succede per lo spam-trap.
-# Questo file: Regole comuni agli appelli (spam-trap e ban manuali).
-# Comandi previsti: /admin config appelli.
-# File collegati: cogs/moderation/ban_appeal.py.
-# File esistenti da toccare: cogs/security/spam_trap.py.
-# Test da scrivere per primi: tests/test_ban_appeal.py.
-# Limiti da rispettare: Un appello ogni 24 ore; View persistente; solo
-#   chi ha "Bannare membri" decide.
-# Da chi prendere spunto: Circle ("Ban Appeals").
-# Dipende da: LC-5 sistemato (bottoni di appello persistenti).
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+# Un appello ogni 24 ore per utente e server.
+ATTESA_TRA_APPELLI = timedelta(hours=24)
+# Il testo dell'appello finisce nella descrizione di un embed (4096) e in un modulo (4000 al massimo).
+MAX_TESTO_APPELLO = 1500
+MIN_TESTO_APPELLO = 10
+
+STATO_APERTO = "aperto"
+STATO_ACCETTATO = "accettato"
+STATO_RIFIUTATO = "rifiutato"
+
+# Casi che un appello può contestare.
+CASI_CON_APPELLO = ("ban", "tempban")
+
+
+def attesa_rimasta(ultimo: datetime | None, adesso: datetime) -> timedelta | None:
+    """None se può fare appello adesso, altrimenti quanto manca."""
+    if ultimo is None:
+        return None
+    mancano = (ultimo + ATTESA_TRA_APPELLI) - adesso
+    return mancano if mancano > timedelta(0) else None
+
+
+def lunghezza_valida(testo: str) -> bool:
+    return MIN_TESTO_APPELLO <= len(testo.strip()) <= MAX_TESTO_APPELLO
+
+
+def attesa_a_parole(mancano: timedelta) -> str:
+    ore = int(mancano.total_seconds() // 3600)
+    minuti = int(mancano.total_seconds() % 3600 // 60)
+    return f"{ore} ore e {minuti} minuti"

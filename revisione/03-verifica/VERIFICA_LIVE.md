@@ -674,3 +674,9 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Controlla che veda solo #isolamento (con la data di fine), crea un canale nuovo e controlla che non lo veda.
   3. Fallo uscire e rientrare prima della fine: deve tornare isolato. Poi prova `/modban unban` con l'ID.
   Risultato atteso: ruoli tolti durante l'isolamento e ridati alla fine (o all'unban); nessun ban vero.
+- [ ] `NF-30` (#101) — passi:
+  1. `/modban appelli canale channel:#appelli`.
+  2. Banna un secondo account con `/modban ban`: nel DM deve esserci il bottone «Fai appello».
+  3. Clicca il bottone dal DM (l'account è fuori dal server), scrivi il testo, invia. Riprova subito: deve dire di attendere 24 ore.
+  4. Nel canale staff usa «Rifiuta» (nessun ban tolto) su un secondo appello, poi «Accetta» su un terzo; prova anche con un account senza «Bannare membri».
+  Risultato atteso: il modulo si apre anche da un account bannato (se Discord lo impedisce, annotarlo); Accetta toglie il ban e scrive all'utente; il bottone dopo un riavvio del bot funziona ancora. `/modban appelli elenco` mostra gli stati.

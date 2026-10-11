@@ -1,5 +1,5 @@
 """
-cogs/moderation/tempban_modes.py
+cogs/moderation/_tempban_modes.py
 ================================
 Aiuti per il ban temporaneo con rientro e per il ban in isolamento
 (/modban tempban, opzione `modo`): invito da mandare prima del ban,
