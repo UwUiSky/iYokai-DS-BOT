@@ -80,7 +80,6 @@ class _FakeBot:
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_blacklist_user_add_e_remove_funzionano_davvero(monkeypatch):
     database = Database()
     await database.connect()
@@ -161,7 +160,6 @@ async def test_leave_guild_server_non_presente_non_solleva(monkeypatch):
     assert "non risulta presente" in interaction.response.sent_messages[0]
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_cog_load_unload_reload_ciclo_reale():
     # Un cog VERO e piccolo del progetto (command_search: autonomo, nessuna
@@ -267,7 +265,6 @@ class _FakeBotForAnnounce:
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_announce_conta_correttamente_raggiunti_e_falliti():
     guild_raggiungibile = _FakeGuildForAnnounce(100, can_send=True)
     guild_non_raggiungibile = _FakeGuildForAnnounce(200, can_send=False)
@@ -295,7 +292,6 @@ class _FakeBotForStats:
         self.latencies = latencies or []
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_stats_mostra_numeri_reali(monkeypatch):
     # command_counter/error_counter sono singleton GLOBALI condivisi
@@ -365,7 +361,6 @@ class _FakeInteractionForPanel:
         self.response.edited_views.append(view)
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_premium_panel_ciclo_completo_selezione_e_conferma(monkeypatch):
     import cogs.utility.owner_premium as owner_premium_module
@@ -483,7 +478,6 @@ async def test_premium_panel_annulla_non_applica_nulla(monkeypatch):
         await database.close()
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_eval_rifiuta_non_owner():
     cog = OwnerPremiumCog(_FakeBotForStats(guilds=[]))

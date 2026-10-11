@@ -81,7 +81,6 @@ async def cog_e_database(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_premium_grant_modulo_inesistente_avvisa(cog_e_database):
     cog, database = cog_e_database
     interaction = _FakeInteraction(user_id=_OWNER_ID)

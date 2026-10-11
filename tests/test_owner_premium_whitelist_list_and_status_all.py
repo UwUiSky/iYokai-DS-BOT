@@ -79,7 +79,6 @@ class _FakeBot:
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_whitelist_list_vuoto_avvisa(clean_db):
     from core.database import db
 
@@ -117,7 +116,6 @@ async def test_whitelist_list_elenca_le_voci_reali(clean_db):
         await db.close()
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_premium_status_all_mostra_ogni_server_e_meccanismo(clean_db):
     from core.database import db
