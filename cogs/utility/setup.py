@@ -427,7 +427,7 @@ class SetupCog(CogConGruppi, commands.Cog):
 
         if not modules_with_state:
             await interaction.response.send_message(
-                "Nessun modulo disponibile per il wizard al momento. Usa /setup.",
+                "Nessun modulo disponibile per il wizard al momento. Usa /admin setup attiva.",
                 ephemeral=True,
             )
             return

@@ -5,7 +5,7 @@ Comandi /admin config: storico e rollback delle modifiche, reset, esporta/
 importa (con controllo dello schema prima di scrivere) e lingua del
 server. È solo l'interfaccia comandi: legge e scrive con i metodi di
 core/database.py. Nessun controllo "modulo attivo": deve funzionare
-anche prima che qualunque modulo sia acceso, come /setup.
+anche prima che qualunque modulo sia acceso, come /admin setup attiva.
 Funzioni coperte: SPEC §2.1, §2.3 (solo infrastruttura), §2.5, §2.6,
 §2.7; REVIEW.md BUG-6, BUG-31, BUG-32.
 """

@@ -56,7 +56,7 @@ class ServerStatsCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_SERVER_STATS):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return
