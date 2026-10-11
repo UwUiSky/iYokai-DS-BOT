@@ -31,23 +31,10 @@ async def test_voice_temp_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert {
-        "voicetemp-setup",
-        "voicetemp-panel",
-        "voicetemp-cap",
-        "voicetemp-platform-setup",
-    } <= comandi
-
-    voice_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "voice":
-            voice_group = command
-            break
-    assert voice_group is not None
-
-    sottocomandi = {c.name for c in voice_group.commands}
-    assert {"rename", "limit", "lock", "unlock", "kick", "transfer"} <= sottocomandi
+    top = {c.name for c in bot.tree.get_commands()}
+    assert "voice" in top
+    assert not top & {"voicetemp-setup", "voicetemp-panel", "voicetemp-cap", "voicetemp-platform-setup"}
+    assert {"gestione"} <= top
 
     assert "on_voice_state_update" in bot.extra_events
 

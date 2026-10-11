@@ -69,6 +69,7 @@ from core.channel_rename import (
     rename_limit_message,
     rename_tracker,
 )
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.repositories.ticket_repo import (
     VALID_PRIORITIES,
@@ -98,6 +99,9 @@ from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 logger = logging.getLogger("iyokai.tickets")
 
 MODULE_TICKETS = "tickets"
+
+# Sotto-gruppo di /gestione con i comandi degli admin.
+GESTIONE_TICKET = ("ticket", "Ticket: configurazione, pannello, categorie, ruoli di supporto, statistiche")
 
 SETTING_CATEGORY = "ticket_category_id"
 SETTING_SUPPORT_ROLE = "ticket_support_role_id"
@@ -284,7 +288,7 @@ def _category_options(categorie, with_emoji: bool = True) -> list[discord.Select
     """
     Le opzioni del menu delle categorie, sempre dentro i limiti di
     Discord (LIM-6) anche con dati salvati prima dei controlli di
-    /ticket-category add: al massimo 25, etichetta tagliata a 100,
+    /gestione ticket categoria-add: al massimo 25, etichetta tagliata a 100,
     emoji solo se sembra valida, voci senza nome saltate. Il valore è
     l'id della riga (corto e unico), non l'etichetta.
     """
@@ -412,7 +416,7 @@ class TicketPanelView(BaseView):
             await interaction.response.send_message(
                 "Il sistema di ticket non è ancora stato configurato "
                 "(manca la categoria). Un amministratore deve usare "
-                "/ticket-setup.",
+                "/gestione ticket setup.",
                 ephemeral=True,
             )
             return
@@ -421,7 +425,7 @@ class TicketPanelView(BaseView):
         if not isinstance(category, discord.CategoryChannel):
             await interaction.response.send_message(
                 "La categoria configurata per i ticket non esiste più. "
-                "Un amministratore deve riconfigurarla con /ticket-setup.",
+                "Un amministratore deve riconfigurarla con /gestione ticket setup.",
                 ephemeral=True,
             )
             return
@@ -430,22 +434,23 @@ class TicketPanelView(BaseView):
         await _open_ticket_channel(interaction, guild, category, category_label=None)
 
 
-class TicketsCog(commands.Cog):
+class TicketsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Canali di cui si sta ancora leggendo la history per il
         # transcript: lo scheduler non li elimina finché non ha finito.
         self._transcript_in_corso: set[int] = set()
 
-    @app_commands.command(
-        name="ticket-setup",
-        description="[Admin] Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="setup",
+        descrizione="Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.",
+        sottogruppo=GESTIONE_TICKET,
     )
     @app_commands.describe(
         category="La categoria dove verranno creati i canali dei ticket",
         support_role="Ruolo che vedrà automaticamente ogni ticket (facoltativo)",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_setup(
         self,
         interaction: discord.Interaction,
@@ -470,11 +475,12 @@ class TicketsCog(commands.Cog):
             messaggio += f" Ruolo di supporto: {support_role.mention}."
         await interaction.response.send_message(messaggio, ephemeral=True)
 
-    @app_commands.command(
-        name="ticket-panel",
-        description="[Admin] Pubblica il pannello per l'apertura dei ticket in questo canale.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="panel",
+        descrizione="Pubblica il pannello per l'apertura dei ticket in questo canale.",
+        sottogruppo=GESTIONE_TICKET,
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_panel(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_TICKETS):
             return
@@ -489,18 +495,17 @@ class TicketsCog(commands.Cog):
     # ================================================================
     # SPEC.md §13.2 — categorie ticket configurabili
     # ================================================================
-    ticket_category_group = app_commands.Group(
-        name="ticket-category",
-        description="[Admin] Gestisci le categorie mostrate nel select menu di apertura ticket.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="categoria-add",
+        descrizione="Aggiungi (o aggiorna) una categoria di ticket.",
+        sottogruppo=GESTIONE_TICKET,
     )
-
-    @ticket_category_group.command(name="add", description="[Admin] Aggiungi (o aggiorna) una categoria di ticket.")
     @app_commands.describe(
         label="Nome mostrato nel select menu (es. 'Supporto tecnico')",
         category="La categoria Discord dove creare i canali di questa categoria",
         emoji="Emoji da mostrare accanto al nome (facoltativo)",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_category_add(
         self,
         interaction: discord.Interaction,
@@ -531,7 +536,7 @@ class TicketsCog(commands.Cog):
         if len(esistenti) >= MAX_TICKET_CATEGORIES and label not in {c.label for c in esistenti}:
             await interaction.response.send_message(
                 f"Hai già {MAX_TICKET_CATEGORIES} categorie, il massimo che un menu di "
-                "Discord può mostrare. Rimuovine una con /ticket-category remove.",
+                "Discord può mostrare. Rimuovine una con /gestione ticket categoria-remove.",
                 ephemeral=True,
             )
             return
@@ -542,9 +547,13 @@ class TicketsCog(commands.Cog):
             f"Categoria **{label}** impostata su **{category.name}**.", ephemeral=True
         )
 
-    @ticket_category_group.command(name="remove", description="[Admin] Rimuovi una categoria di ticket.")
+    @comando_di_gruppo(
+        "gestione",
+        nome="categoria-remove",
+        descrizione="Rimuovi una categoria di ticket.",
+        sottogruppo=GESTIONE_TICKET,
+    )
     @app_commands.describe(label="Il nome esatto della categoria da rimuovere")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_category_remove(
         self,
         interaction: discord.Interaction,
@@ -560,8 +569,12 @@ class TicketsCog(commands.Cog):
                 f"Nessuna categoria chiamata **{label}**.", ephemeral=True
             )
 
-    @ticket_category_group.command(name="list", description="[Admin] Elenca le categorie di ticket configurate.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "gestione",
+        nome="categoria-list",
+        descrizione="Elenca le categorie di ticket configurate.",
+        sottogruppo=GESTIONE_TICKET,
+    )
     async def ticket_category_list(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             return
@@ -597,14 +610,13 @@ class TicketsCog(commands.Cog):
     # ================================================================
     # SPEC.md §13.13 — ruoli di supporto multipli
     # ================================================================
-    ticket_support_role_group = app_commands.Group(
-        name="ticket-support-role",
-        description="[Admin] Gestisci i ruoli che vedono automaticamente ogni ticket.",
+    @comando_di_gruppo(
+        "gestione",
+        nome="ruolo-add",
+        descrizione="Aggiungi un ruolo di supporto.",
+        sottogruppo=GESTIONE_TICKET,
     )
-
-    @ticket_support_role_group.command(name="add", description="[Admin] Aggiungi un ruolo di supporto.")
     @app_commands.describe(role="Il ruolo da aggiungere")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_support_role_add(self, interaction: discord.Interaction, role: discord.Role) -> None:
         if interaction.guild is None:
             return
@@ -616,9 +628,13 @@ class TicketsCog(commands.Cog):
             f"{role.mention} aggiunto ai ruoli di supporto.", ephemeral=True
         )
 
-    @ticket_support_role_group.command(name="remove", description="[Admin] Rimuovi un ruolo di supporto.")
+    @comando_di_gruppo(
+        "gestione",
+        nome="ruolo-remove",
+        descrizione="Rimuovi un ruolo di supporto.",
+        sottogruppo=GESTIONE_TICKET,
+    )
     @app_commands.describe(role="Il ruolo da rimuovere")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_support_role_remove(self, interaction: discord.Interaction, role: discord.Role) -> None:
         if interaction.guild is None:
             return
@@ -632,9 +648,9 @@ class TicketsCog(commands.Cog):
             rimosso = True
 
         # Il ruolo può essere anche quello "storico" impostato con
-        # /ticket-setup: va tolto pure da lì, altrimenti continua a
+        # /gestione ticket setup: va tolto pure da lì, altrimenti continua a
         # vedere i ticket. La chiave si toglie del tutto (un `null`
-        # verrebbe poi rifiutato da /config import).
+        # verrebbe poi rifiutato da /admin config import).
         if await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLE) == role.id:
             await db.remove_guild_setting(guild_id, SETTING_SUPPORT_ROLE, interaction.user.id)
             rimosso = True
@@ -650,8 +666,12 @@ class TicketsCog(commands.Cog):
             ephemeral=True,
         )
 
-    @ticket_support_role_group.command(name="list", description="[Admin] Elenca i ruoli di supporto configurati.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "gestione",
+        nome="ruolo-list",
+        descrizione="Elenca i ruoli di supporto configurati.",
+        sottogruppo=GESTIONE_TICKET,
+    )
     async def ticket_support_role_list(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             return
@@ -665,9 +685,13 @@ class TicketsCog(commands.Cog):
     # ================================================================
     # SPEC.md §13.12 — statistiche
     # ================================================================
-    @app_commands.command(name="ticket-stats", description="[Admin] Statistiche del sistema di ticket.")
+    @comando_di_gruppo(
+        "gestione",
+        nome="stats",
+        descrizione="Statistiche del sistema di ticket.",
+        sottogruppo=GESTIONE_TICKET,
+    )
     @app_commands.describe(operator="Mostra le statistiche di questo operatore invece di quelle del server")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def ticket_stats(
         self, interaction: discord.Interaction, operator: discord.Member | None = None
     ) -> None:
@@ -699,10 +723,6 @@ class TicketsCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    ticket_group = app_commands.Group(
-        name="ticket", description="Comandi di gestione dei ticket."
-    )
-
     async def _get_ticket_or_reply(self, interaction: discord.Interaction):
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None or ticket.status != "open":
@@ -724,7 +744,7 @@ class TicketsCog(commands.Cog):
             return None
         return await self._get_ticket_or_reply(interaction)
 
-    @ticket_group.command(name="claim", description="[Staff] Prendi in carico questo ticket.")
+    @comando_di_gruppo("ticket", nome="claim", descrizione="Prendi in carico questo ticket.")
     async def claim(self, interaction: discord.Interaction) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
@@ -735,7 +755,7 @@ class TicketsCog(commands.Cog):
             f"Ticket preso in carico da {interaction.user.mention}."
         )
 
-    @ticket_group.command(name="add", description="[Staff] Aggiungi un utente a questo ticket.")
+    @comando_di_gruppo("ticket", nome="add", descrizione="Aggiungi un utente a questo ticket.")
     @app_commands.describe(member="L'utente da aggiungere")
     async def add(self, interaction: discord.Interaction, member: discord.Member) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
@@ -754,7 +774,7 @@ class TicketsCog(commands.Cog):
             return
         await interaction.response.send_message(f"{member.mention} aggiunto al ticket.")
 
-    @ticket_group.command(name="remove", description="[Staff] Rimuovi un utente da questo ticket.")
+    @comando_di_gruppo("ticket", nome="remove", descrizione="Rimuovi un utente da questo ticket.")
     @app_commands.describe(member="L'utente da rimuovere")
     async def remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
@@ -771,7 +791,7 @@ class TicketsCog(commands.Cog):
             return
         await interaction.response.send_message(f"{member.mention} rimosso dal ticket.")
 
-    @ticket_group.command(name="rename", description="Rinomina questo ticket.")
+    @comando_di_gruppo("ticket", nome="rename", descrizione="Rinomina questo ticket.")
     @app_commands.describe(name="Il nuovo nome del canale")
     async def rename(
         self,
@@ -814,7 +834,7 @@ class TicketsCog(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @ticket_group.command(name="priority", description="[Staff] Imposta la priorità di questo ticket.")
+    @comando_di_gruppo("ticket", nome="priority", descrizione="Imposta la priorità di questo ticket.")
     @app_commands.describe(level="Livello di priorità")
     @app_commands.choices(
         level=[app_commands.Choice(name=p, value=p) for p in VALID_PRIORITIES]
@@ -963,7 +983,7 @@ class TicketsCog(commands.Cog):
             return
         await self._elimina_canale(channel_id, payload.get("reason"))
 
-    @ticket_group.command(name="close", description="Chiudi questo ticket.")
+    @comando_di_gruppo("ticket", nome="close", descrizione="Chiudi questo ticket.")
     async def close(self, interaction: discord.Interaction) -> None:
         ticket = await self._get_ticket_or_reply(interaction)
         if ticket is None:
@@ -980,9 +1000,8 @@ class TicketsCog(commands.Cog):
         )
         await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
 
-    @ticket_group.command(
-        name="forceclose",
-        description="[Staff] Chiudi immediatamente questo ticket, senza attesa.",
+    @comando_di_gruppo(
+        "ticket", nome="forceclose", descrizione="Chiudi immediatamente questo ticket, senza attesa."
     )
     async def forceclose(self, interaction: discord.Interaction) -> None:
         """

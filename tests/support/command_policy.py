@@ -33,45 +33,19 @@ AUDIENCE: dict[str, str] = {
     # Moderazione
     "mod": STAFF,  # gruppo condiviso
     "modban": STAFF,  # gruppo condiviso
-    "report-setup": STAFF,
-    "report": PUBLIC,
     # Log
     "log": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Fun
     "fun": PUBLIC,
-    "ship": PUBLIC,
-    "rate": PUBLIC,
     # Livelli, economia, clan
     "level": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "clan": PUBLIC,  # gruppo condiviso
+    "music": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     # Musica
-    "play": PUBLIC,
-    "skip": PUBLIC,
-    "stop": PUBLIC,
-    "pause": PUBLIC,
-    "resume": PUBLIC,
-    "queue": PUBLIC,
-    "clear-queue": PUBLIC,
-    "shuffle": PUBLIC,
-    "loop": PUBLIC,
-    "nowplaying": PUBLIC,
-    "volume": PUBLIC,
-    "disconnect": PUBLIC,
-    "nonstop": PUBLIC,
-    "nonstop-main": OWNER,
     # Ticket
     "ticket": PUBLIC,
-    "ticket-setup": STAFF,
-    "ticket-panel": STAFF,
-    "ticket-category": STAFF,
-    "ticket-support-role": STAFF,
-    "ticket-stats": STAFF,
     # Vocali temporanei
     "voice": PUBLIC,
-    "voicetemp-setup": STAFF,
-    "voicetemp-panel": STAFF,
-    "voicetemp-cap": STAFF,
-    "voicetemp-platform-setup": STAFF,
     # Utility
     "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)

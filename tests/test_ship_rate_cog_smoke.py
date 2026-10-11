@@ -21,5 +21,7 @@ async def test_ship_rate_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert {"ship", "rate"} <= nomi_comandi
+    from core.command_groups import GRUPPI
+
+    assert {"ship", "rate"} <= {c.name for c in GRUPPI["fun"].commands}
+    assert {"ship", "rate"}.isdisjoint(c.name for c in bot.tree.get_commands())
