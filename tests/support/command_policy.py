@@ -38,23 +38,8 @@ AUDIENCE: dict[str, str] = {
     "spamtrap-setup": STAFF,
     "verify": STAFF,
     # Moderazione
-    "warn": STAFF,
-    "kick": STAFF,
-    "ban": STAFF,
-    "tempban": STAFF,
-    "unban": STAFF,
-    "timeout": STAFF,
-    "untimeout": STAFF,
-    "softban": STAFF,
-    "mute-role": STAFF,
-    "unmute-role": STAFF,
-    "modcase": STAFF,
-    "modnote": STAFF,
-    "lock": STAFF,
-    "unlock": STAFF,
-    "slowmode": STAFF,
-    "clear": STAFF,
-    "mod-log-setup": STAFF,
+    "mod": STAFF,  # gruppo condiviso
+    "modban": STAFF,  # gruppo condiviso
     "report-setup": STAFF,
     "report": PUBLIC,
     # Log

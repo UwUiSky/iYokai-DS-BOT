@@ -33,7 +33,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.permissions import ModerationActor, can_moderate
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.repositories.moderation_repo import moderation_repo
 from core.scheduler import scheduler, in_seconds
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
@@ -107,14 +108,18 @@ async def _log_e_risposta(
     await interaction.followup.send(embed=embed)
 
 
-class ModerationActionsCog(commands.Cog):
+class ModerationActionsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     # ================================================================
     # /warn
     # ================================================================
-    @app_commands.command(name="warn", description="Assegna un warn a un membro.")
+    @comando_di_gruppo(
+        "mod",
+        nome="warn",
+        descrizione="Assegna un warn a un membro.",
+    )
     @app_commands.describe(member="Il membro da avvisare", reason="Motivo del warn")
     async def warn(
         self,
@@ -147,7 +152,11 @@ class ModerationActionsCog(commands.Cog):
     # ================================================================
     # /kick
     # ================================================================
-    @app_commands.command(name="kick", description="Espelle un membro dal server.")
+    @comando_di_gruppo(
+        "modban",
+        nome="kick",
+        descrizione="Espelle un membro dal server.",
+    )
     @app_commands.describe(member="Il membro da espellere", reason="Motivo dell'espulsione")
     async def kick(
         self,
@@ -196,7 +205,11 @@ class ModerationActionsCog(commands.Cog):
     # ================================================================
     # /ban
     # ================================================================
-    @app_commands.command(name="ban", description="Banna permanentemente un membro.")
+    @comando_di_gruppo(
+        "modban",
+        nome="ban",
+        descrizione="Banna permanentemente un membro.",
+    )
     @app_commands.describe(
         member="Il membro da bannare",
         reason="Motivo del ban",
@@ -247,8 +260,10 @@ class ModerationActionsCog(commands.Cog):
     # ================================================================
     # /tempban
     # ================================================================
-    @app_commands.command(
-        name="tempban", description="Banna un membro per una durata definita."
+    @comando_di_gruppo(
+        "modban",
+        nome="tempban",
+        descrizione="Banna un membro per una durata definita.",
     )
     @app_commands.describe(
         member="Il membro da bannare temporaneamente",
@@ -371,7 +386,11 @@ class ModerationActionsCog(commands.Cog):
     # ================================================================
     # /unban
     # ================================================================
-    @app_commands.command(name="unban", description="Rimuove il ban da un utente.")
+    @comando_di_gruppo(
+        "modban",
+        nome="unban",
+        descrizione="Rimuove il ban da un utente.",
+    )
     @app_commands.describe(user_id="ID Discord dell'utente da sbannare", reason="Motivo dello sblocco")
     async def unban(
         self, interaction: discord.Interaction, user_id: str, reason: Reason
@@ -432,8 +451,10 @@ class ModerationActionsCog(commands.Cog):
     # ================================================================
     # /timeout e /untimeout
     # ================================================================
-    @app_commands.command(
-        name="timeout", description="Mette in timeout un membro (max 28 giorni)."
+    @comando_di_gruppo(
+        "mod",
+        nome="timeout",
+        descrizione="Mette in timeout un membro (max 28 giorni).",
     )
     @app_commands.describe(
         member="Il membro da mettere in timeout",
@@ -463,7 +484,7 @@ class ModerationActionsCog(commands.Cog):
         if duration_seconds > MAX_TIMEOUT_SECONDS:
             await interaction.response.send_message(
                 "Il timeout nativo di Discord non può superare i 28 giorni. "
-                "Per durate più lunghe usa /tempban se l'intento è "
+                "Per durate più lunghe usa /modban tempban se l'intento è "
                 "allontanare l'utente dal server.",
                 ephemeral=True,
             )
@@ -503,8 +524,10 @@ class ModerationActionsCog(commands.Cog):
         await try_dm(member, embed)
         await post_to_mod_log(interaction.guild, embed)
 
-    @app_commands.command(
-        name="untimeout", description="Rimuove il timeout da un membro."
+    @comando_di_gruppo(
+        "mod",
+        nome="untimeout",
+        descrizione="Rimuove il timeout da un membro.",
     )
     @app_commands.describe(member="Il membro da cui rimuovere il timeout")
     async def untimeout(

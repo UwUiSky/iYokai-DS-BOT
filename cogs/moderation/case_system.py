@@ -28,6 +28,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
 from cogs.moderation._shared import (
@@ -70,15 +72,16 @@ def _format_case_line(case: ModerationCase) -> str:
     return f"{icon} **#{case.case_number}** — {case.action_type} — {data}{stato}\n> {motivo}"
 
 
-class ModerationCaseSystemCog(commands.Cog):
+class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    modcase_group = app_commands.Group(
-        name="modcase", description="Consulta lo storico dei casi di moderazione."
+    @comando_di_gruppo(
+        "mod",
+        nome="storico",
+        descrizione="Mostra lo storico casi di un membro.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
     )
-
-    @modcase_group.command(name="history", description="Mostra lo storico casi di un membro.")
     @app_commands.describe(member="Il membro di cui vedere lo storico")
     @requires_module(MODULE_CASE_SYSTEM)
     async def history(
@@ -105,7 +108,12 @@ class ModerationCaseSystemCog(commands.Cog):
         embed.set_footer(text=f"Ultimi {len(casi)} casi")
         await interaction.response.send_message(embed=embed)
 
-    @modcase_group.command(name="view", description="Mostra i dettagli di un singolo caso.")
+    @comando_di_gruppo(
+        "mod",
+        nome="vedi",
+        descrizione="Mostra i dettagli di un singolo caso.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
     @app_commands.describe(case_number="Il numero del caso da visualizzare")
     @requires_module(MODULE_CASE_SYSTEM)
     async def view(
@@ -150,11 +158,12 @@ class ModerationCaseSystemCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    modnote_group = app_commands.Group(
-        name="modnote", description="Gestisce le note dello staff su un utente."
+    @comando_di_gruppo(
+        "mod",
+        nome="aggiungi",
+        descrizione="Aggiunge una nota su un utente.",
+        sottogruppo=("nota", "Note dello staff su un utente."),
     )
-
-    @modnote_group.command(name="add", description="Aggiunge una nota su un utente.")
     @app_commands.describe(member="Il membro a cui aggiungere la nota", note="Testo della nota")
     @requires_module(MODULE_CASE_SYSTEM)
     async def note_add(
@@ -173,7 +182,12 @@ class ModerationCaseSystemCog(commands.Cog):
             f"Nota aggiunta per {member.mention}.", ephemeral=True
         )
 
-    @modnote_group.command(name="list", description="Elenca le note su un utente.")
+    @comando_di_gruppo(
+        "mod",
+        nome="elenca",
+        descrizione="Elenca le note su un utente.",
+        sottogruppo=("nota", "Note dello staff su un utente."),
+    )
     @app_commands.describe(member="Il membro di cui vedere le note")
     @requires_module(MODULE_CASE_SYSTEM)
     async def note_list(
