@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.greetings_logic import render_template
 from core.premium import PremiumModule, registry
@@ -38,7 +39,10 @@ def _render_for_member(template: str, member: discord.Member) -> str:
     )
 
 
-class GreetingsCog(commands.Cog):
+_SG_BENVENUTO = ("benvenuto", "Messaggi di benvenuto, addio e boost")
+
+
+class GreetingsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -134,12 +138,12 @@ class GreetingsCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    greetings_group = app_commands.Group(
-        name="greetings", description="Configura i messaggi di benvenuto/addio/boost."
-    )
 
-    @greetings_group.command(
-        name="welcome-setup", description="[Admin] Configura il messaggio di benvenuto."
+    @comando_di_gruppo(
+        "gestione",
+        nome="benvenuto",
+        descrizione="Configura il messaggio di benvenuto.",
+        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il welcome message",
@@ -147,7 +151,6 @@ class GreetingsCog(commands.Cog):
         message="Testo del messaggio ({user}, {username}, {server}, {membercount})",
         dm="Manda anche un DM all'utente",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def welcome_setup(
         self,
         interaction: discord.Interaction,
@@ -186,15 +189,17 @@ class GreetingsCog(commands.Cog):
             f"Welcome message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
         )
 
-    @greetings_group.command(
-        name="goodbye-setup", description="[Admin] Configura il messaggio di addio."
+    @comando_di_gruppo(
+        "gestione",
+        nome="addio",
+        descrizione="Configura il messaggio di addio.",
+        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il goodbye message",
         channel="Canale dove pubblicarlo",
         message="Testo del messaggio ({username}, {server}, {membercount})",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def goodbye_setup(
         self,
         interaction: discord.Interaction,
@@ -231,15 +236,17 @@ class GreetingsCog(commands.Cog):
             f"Goodbye message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
         )
 
-    @greetings_group.command(
-        name="boost-setup", description="[Admin] Configura il messaggio di boost."
+    @comando_di_gruppo(
+        "gestione",
+        nome="boost",
+        descrizione="Configura il messaggio di boost.",
+        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il boost message",
         channel="Canale dove pubblicarlo",
         message="Testo del messaggio ({user}, {server})",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def boost_setup(
         self,
         interaction: discord.Interaction,
@@ -276,8 +283,11 @@ class GreetingsCog(commands.Cog):
             f"Boost message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
         )
 
-    @greetings_group.command(
-        name="preview", description="Mostra un'anteprima di come apparirebbe un messaggio."
+    @comando_di_gruppo(
+        "gestione",
+        nome="anteprima",
+        descrizione="Mostra un'anteprima di come apparirebbe un messaggio.",
+        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(kind="Quale messaggio vedere in anteprima")
     @app_commands.choices(

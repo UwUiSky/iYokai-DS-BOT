@@ -69,8 +69,8 @@ async def test_i_testi_liberi_hanno_la_lunghezza_massima():
 
     trovate = {}
     for comando in bot.tree.walk_commands():
-        if not isinstance(comando, app_commands.Command):
-            continue
+        if not isinstance(comando, app_commands.Command) or comando.binding is not cog:
+            continue  # i gruppi sono condivisi: solo i comandi di questo cog
         for opzione in comando.to_dict(bot.tree)["options"]:
             chiave = (comando.qualified_name, opzione["name"])
             if chiave in LUNGHEZZE_ATTESE:
@@ -91,8 +91,8 @@ async def test_nessun_testo_libero_senza_lunghezza_massima():
 
     senza_limite = []
     for comando in bot.tree.walk_commands():
-        if not isinstance(comando, app_commands.Command):
-            continue
+        if not isinstance(comando, app_commands.Command) or comando.binding is not cog:
+            continue  # i gruppi sono condivisi: solo i comandi di questo cog
         for opzione in comando.to_dict(bot.tree)["options"]:
             e_testo = opzione["type"] == discord.AppCommandOptionType.string.value
             if e_testo and not opzione.get("choices") and "max_length" not in opzione:
