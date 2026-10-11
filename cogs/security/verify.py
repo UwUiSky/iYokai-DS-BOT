@@ -41,6 +41,7 @@ from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.verify_repo import verify_repo
+from cogs.moderation._shared import ensure_module_enabled
 from core.role_safety import check_role_assignable
 from core.ui_base import BaseModal, BaseView
 from core.verify_logic import (
@@ -120,6 +121,10 @@ class VerifyPanelView(BaseView):
     ) -> None:
         guild = interaction.guild
         if guild is None or not isinstance(interaction.user, discord.Member):
+            # Un clic senza risposta resta "interazione non riuscita".
+            await interaction.response.send_message(
+                "Questo pulsante funziona solo dentro un server.", ephemeral=True
+            )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_VERIFY):
@@ -130,12 +135,21 @@ class VerifyPanelView(BaseView):
 
         cog = interaction.client.get_cog("VerifyCog")
         if cog is None:
+            await interaction.response.send_message(
+                "La verifica non è disponibile in questo momento. Riprova tra poco.", ephemeral=True
+            )
             return
 
         # Una sola lettura prima di rispondere: serve a sapere se va
         # aperto il modulo del captcha, che può essere solo la PRIMA
         # risposta (dopo un defer non si può più aprire).
         config = await verify_repo.get_config(guild.id)
+        # Chi ha già il ruolo non deve risolvere un captcha per sentirsi dire che è già verificato.
+        if config.verified_role_id is not None and any(
+            r.id == config.verified_role_id for r in interaction.user.roles
+        ):
+            await interaction.response.send_message("You are already verified.", ephemeral=True)
+            return
         if config.captcha_enabled:
             await interaction.response.send_modal(
                 CaptchaModal(cog, guild.id, interaction.user.id)
@@ -172,6 +186,12 @@ class VerifyCog(CogConGruppi, commands.Cog):
         self, guild: discord.Guild, member: discord.Member, captcha_ok: bool
     ):
         config = await verify_repo.get_config(guild.id)
+
+        # Chi ha già il ruolo è già verificato: niente nuovo tentativo, niente riga nel log.
+        if config.verified_role_id is not None and any(
+            r.id == config.verified_role_id for r in member.roles
+        ):
+            return VerifyOutcome(True, "You are already verified.")
 
         is_whitelisted = await verify_repo.is_whitelisted(guild.id, member.id)
         is_blacklisted = await verify_repo.is_blacklisted(guild.id, member.id)
@@ -310,11 +330,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     async def panel_cmd(self, interaction: discord.Interaction) -> None:
-        if interaction.guild is None:
-            await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
-                ephemeral=True,
-            )
+        # Un pannello pubblicato con il modulo spento risponderebbe "Verify non è attivo".
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
 
         config = await verify_repo.get_config(interaction.guild.id)
@@ -338,7 +355,14 @@ class VerifyCog(CogConGruppi, commands.Cog):
         else:
             await interaction.response.send_message(embed=embed)
             sent = await interaction.original_response()
-            await sent.add_reaction(VERIFY_REACTION_EMOJI)
+            try:
+                await sent.add_reaction(VERIFY_REACTION_EMOJI)
+            except discord.HTTPException:
+                await interaction.followup.send(
+                    f"Non riesco ad aggiungere la reazione {VERIFY_REACTION_EMOJI} al pannello "
+                    "(mi manca Aggiungi reazioni?). Aggiungila a mano: il pannello funziona lo stesso.",
+                    ephemeral=True,
+                )
 
         await verify_repo.set_panel_message(interaction.guild.id, sent.channel.id, sent.id)
 
@@ -348,8 +372,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         descrizione="Aggiungi un utente alla whitelist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    async def whitelist_add(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        if interaction.guild is None:
+    @app_commands.describe(member="L'utente (anche se non è nel server)")
+    async def whitelist_add(self, interaction: discord.Interaction, member: discord.User) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.add_whitelist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} aggiunto alla whitelist.", ephemeral=True)
@@ -360,8 +385,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         descrizione="Rimuovi un utente dalla whitelist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    async def whitelist_remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        if interaction.guild is None:
+    @app_commands.describe(member="L'utente (anche se non è nel server)")
+    async def whitelist_remove(self, interaction: discord.Interaction, member: discord.User) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.remove_whitelist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} rimosso dalla whitelist.", ephemeral=True)
@@ -372,8 +398,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         descrizione="Aggiungi un utente alla blacklist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    async def blacklist_add(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        if interaction.guild is None:
+    @app_commands.describe(member="L'utente (anche se non è nel server)")
+    async def blacklist_add(self, interaction: discord.Interaction, member: discord.User) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.add_blacklist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} aggiunto alla blacklist.", ephemeral=True)
@@ -384,8 +411,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         descrizione="Rimuovi un utente dalla blacklist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    async def blacklist_remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        if interaction.guild is None:
+    @app_commands.describe(member="L'utente (anche se non è nel server)")
+    async def blacklist_remove(self, interaction: discord.Interaction, member: discord.User) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.remove_blacklist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} rimosso dalla blacklist.", ephemeral=True)

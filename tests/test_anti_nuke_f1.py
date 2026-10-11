@@ -22,6 +22,7 @@ from discord.ext import commands
 
 import cogs.moderation._shared as modulo_shared
 import cogs.security.anti_nuke as modulo
+import core.security_audit as audit
 from core.automod_rate_tracker import AutomodRateTracker
 from core.database import Database
 from core.repositories.security_repo import security_repo
@@ -56,25 +57,39 @@ def db_finto(clean_db, monkeypatch):
 def attese(monkeypatch):
     """Le attese tra una lettura e l'altra del registro: registrate, non dormite."""
     finta = AsyncMock()
-    monkeypatch.setattr(modulo, "_aspetta", finta)
+    monkeypatch.setattr(audit, "_aspetta", finta)
     return finta
 
 
 @pytest.fixture
-async def cog(db_finto, attese):
+async def cog(db_finto, attese, monkeypatch):
     bot = create_autospec(commands.Bot, instance=True)
     bot.user = fake_member(user_id=BOT_ID, bot=True)
     cog = modulo.AntiNukeCog(bot)
+    # Il ruolo di quarantena non si crea sul server finto.
+    monkeypatch.setattr(modulo, "ruolo_quarantena", AsyncMock(return_value=None))
     # Anti-nuke acceso e soglia canali a zero: la prima azione è già "di massa".
     await cog.enable.callback(cog, _interazione(), True)
+    # Questi test provano il recupero e la punizione "toglie i ruoli"; la
+    # quarantena (default dal #117) ha i suoi test in test_anti_nuke_117.py.
+    await cog.punish_action.callback(
+        cog, _interazione(), app_commands.Choice(name="Rimuovi i ruoli", value="strip_roles")
+    )
     await cog.limits.callback(
         cog, _interazione(), app_commands.Choice(name="Canali", value=NUKE_CATEGORY_CHANNEL), 0, 60
     )
     return cog
 
 
+PROPRIETARIO_ID = 555
+
+
 def _interazione() -> MagicMock:
-    return fake_interaction(guild=fake_guild(guild_id=GUILD_ID))
+    """Chi configura e' il proprietario: le impostazioni delicate le cambia solo lui."""
+    return fake_interaction(
+        guild=fake_guild(guild_id=GUILD_ID, owner_id=PROPRIETARIO_ID),
+        user=fake_member(user_id=PROPRIETARIO_ID),
+    )
 
 
 def _voce(azione, autore_id: int, bersaglio_id: int | None = None) -> MagicMock:
@@ -183,7 +198,7 @@ async def test_voce_mai_arrivata_si_smette_di_cercare(cog, attese):
 
     await cog.on_guild_channel_delete(canale)
 
-    assert server.audit_logs.call_count == len(modulo.ATTESE_REGISTRO)
+    assert server.audit_logs.call_count == len(audit.ATTESE_REGISTRO)
     assert await _azioni_registrate() == []
 
 

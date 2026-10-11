@@ -16,12 +16,16 @@ Il blocco scatta solo quando gli ingressi superano la soglia. Il
 livello di verifica alzato torna quello di prima alla scadenza del
 blocco (salvata nel database, controllata ogni minuto).
 
+Quarantena: il ruolo "Quarantined" (core/security_quarantine.py) si crea
+quando si attiva il modulo, non durante il raid. Con il "blocco della
+quarantena" attivo chi non è fidato non può liberare un membro a mano né
+dargli altri ruoli (si usa /security antiraid rilascia, che è la stessa
+funzione dell'anti-nuke). Le impostazioni che indeboliscono la difesa
+(blocco, rilascio col blocco attivo) le cambia solo chi gestisce:
+proprietario ed extra owner.
+
 Funzioni coperte: SPEC §7.1
 """
-
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
 
 from __future__ import annotations
 
@@ -41,8 +45,22 @@ from core.bounded_cache import BoundedCache
 from core.database import db
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
-from core.security_access import premium_sbloccato
-from core.security_logic import AntiRaidConfig, JoinSignals, evaluate_join, is_raid
+from core.security_access import premium_sbloccato, solo_chi_gestisce
+from core.security_audit import resolve_voce
+from core.security_logic import (
+    NUKE_ACTION_QUARANTINE_HOLD,
+    AntiRaidConfig,
+    JoinSignals,
+    actor_is_trusted,
+    evaluate_join,
+    is_raid,
+)
+from core.security_quarantine import (
+    blocca_canale,
+    problemi_ruoli_del_bot,
+    rilascia_utente,
+    ruolo_quarantena,
+)
 from core.security_raid_state import DURATA_RAID_SECONDI, azzera, segna_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
@@ -51,23 +69,8 @@ logger = logging.getLogger("iyokai.anti_raid")
 
 MODULE_ANTI_RAID = "anti_raid"
 
-NOME_RUOLO_QUARANTENA = "Quarantined"
-
-# Cosa non può fare chi è in quarantena. I thread ereditano dal canale
-# che li contiene; la chat di un vocale è coperta da send_messages.
-PERMESSI_QUARANTENA = {
-    "send_messages": False,
-    "send_messages_in_threads": False,
-    "create_public_threads": False,
-    "create_private_threads": False,
-    "add_reactions": False,
-    "speak": False,
-    "connect": False,
-}
-
-# Dal 16/11/2026 un canale che il bot non può vedere arriva con questo
-# nome finto (LIMITI.md, Parte 2): non va toccato.
-NOME_CANALE_NASCOSTO = "___hidden___"
+# Il ruolo di quarantena e i suoi permessi stanno in
+# core/security_quarantine.py (li usa anche l'anti-nuke, SIC-002).
 
 # Durata del blocco dopo l'ultimo ingresso del raid: passato questo
 # tempo il livello di verifica torna quello di prima. Vale anche come
@@ -98,84 +101,6 @@ def _embed_avviso(avviso: _Avviso) -> discord.Embed:
         description=f"Ultimi ingressi (dal più vecchio):\n{righe}"[:4096],
         color=discord.Color.red(),
     )
-
-
-def _allinea_necessario(channel: discord.abc.GuildChannel, role: discord.Role) -> bool:
-    """True se il canale non nega ancora al ruolo tutti i permessi di quarantena."""
-    if channel.name == NOME_CANALE_NASCOSTO:
-        return False
-    permessi = channel.overwrites_for(role)
-    return not all(getattr(permessi, nome) is False for nome in PERMESSI_QUARANTENA)
-
-
-async def _blocca_canale(channel: discord.abc.GuildChannel, role: discord.Role) -> None:
-    """
-    Nega al ruolo di quarantena scrittura, thread, reazioni e voce su
-    un canale. Gli stessi permessi valgono per ogni tipo di canale
-    (testo, forum, vocale con la sua chat, palco, categoria): quelli
-    che non c'entrano con quel tipo non hanno effetto. Un canale che
-    rifiuta la modifica non ferma gli altri.
-    """
-    if channel.name == NOME_CANALE_NASCOSTO:
-        return
-    try:
-        await channel.set_permissions(
-            role, reason="Anti-Raid: blocco del ruolo di quarantena", **PERMESSI_QUARANTENA
-        )
-    except discord.HTTPException:
-        logger.warning(
-            "Impossibile impostare l'overwrite quarantena sul canale %s (server %s).",
-            channel.id, channel.guild.id,
-        )
-
-
-async def _get_or_create_quarantine_role(
-    guild: discord.Guild, settings: SecuritySettings
-) -> tuple[discord.Role | None, bool]:
-    """
-    Stesso schema di `_get_or_create_mute_role` in
-    cogs/moderation/softban_mute.py (ruolo dedicato + overwrite su
-    ogni canale), ma un ruolo SEPARATO: la quarantena è per un
-    sospetto raider appena entrato, il mute è per un membro esistente
-    sanzionato — mescolarli renderebbe impossibile distinguere i due
-    casi nell'audit trail del server.
-
-    Restituisce (ruolo, creato_adesso): un ruolo appena creato ha già
-    i permessi su ogni canale, uno trovato no.
-
-    Va chiamata dentro il blocco per server del cog
-    (AntiRaidCog._ruolo_quarantena): senza, più ingressi insieme
-    creerebbero più ruoli.
-    """
-    if settings.quarantine_role_id is not None:
-        role = guild.get_role(settings.quarantine_role_id)
-        if role is not None:
-            return role, False
-
-    # Un ruolo "Quarantined" già nel server (fatto a mano o da una
-    # versione precedente) si usa, invece di crearne un secondo.
-    esistente = discord.utils.get(guild.roles, name=NOME_RUOLO_QUARANTENA)
-    if esistente is not None and not esistente.managed:
-        await security_repo.save_settings(_replace(settings, quarantine_role_id=esistente.id))
-        return esistente, False
-
-    try:
-        role = await guild.create_role(
-            name=NOME_RUOLO_QUARANTENA,
-            reason="Ruolo di quarantena creato automaticamente da iYokai (Anti-Raid)",
-        )
-    except discord.HTTPException as errore:
-        logger.warning(
-            "Impossibile creare il ruolo di quarantena nel server %s: %s", guild.id, errore
-        )
-        return None, False
-
-    for channel in guild.channels:
-        await _blocca_canale(channel, role)
-
-    nuova = _replace(settings, quarantine_role_id=role.id)
-    await security_repo.save_settings(nuova)
-    return role, True
 
 
 def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
@@ -217,8 +142,6 @@ async def _alert_staff(
 class AntiRaidCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        # Un blocco per server sulla creazione del ruolo di quarantena.
-        self._blocchi_ruolo: dict[int, asyncio.Lock] = {}
         # Un blocco per server sull'invio/modifica dell'avviso.
         self._blocchi_avviso: dict[int, asyncio.Lock] = {}
         # Server -> ora dell'ultimo ingresso di raid segnalato.
@@ -252,7 +175,24 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, enabled=enabled))
-        await interaction.response.send_message(f"Anti-Raid {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        await interaction.response.send_message(
+            f"Anti-Raid {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+        )
+        if not enabled:
+            return
+        avvisi = []
+        if settings.anti_raid.lockdown_action in ("quarantine", "both"):
+            # Il ruolo e i permessi sui canali si preparano adesso, non durante il raid.
+            if await self._ruolo_quarantena(interaction.guild) is None:
+                avvisi.append(
+                    "Non sono riuscito a creare il ruolo di quarantena (mi manca Gestire ruoli?): "
+                    "durante un raid i nuovi arrivati non verrebbero messi in quarantena."
+                )
+        # SIC-022: se i ruoli non mi lasciano lavorare, meglio saperlo adesso.
+        aggiornate = await security_repo.get_settings(interaction.guild.id)
+        avvisi += problemi_ruoli_del_bot(interaction.guild, aggiornate.quarantine_role_id)
+        if avvisi:
+            await interaction.followup.send("⚠️ " + "\n⚠️ ".join(avvisi), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -260,9 +200,17 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         descrizione="Configura il limite di join in un intervallo di tempo.",
         sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
-    @app_commands.describe(max_joins="Numero massimo di join consentiti nella finestra", seconds="Finestra in secondi")
+    @app_commands.describe(
+        max_joins="Numero massimo di join consentiti nella finestra (da 1 a 1000)",
+        seconds="Finestra in secondi (da 1 a 3600)",
+    )
     @requires_module(MODULE_ANTI_RAID)
-    async def join_rate(self, interaction: discord.Interaction, max_joins: int, seconds: int) -> None:
+    async def join_rate(
+        self,
+        interaction: discord.Interaction,
+        max_joins: app_commands.Range[int, 1, 1000],
+        seconds: app_commands.Range[int, 1, 3600],
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
@@ -277,9 +225,11 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         descrizione="Età minima dell'account per non essere considerato sospetto.",
         sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
-    @app_commands.describe(seconds="Età minima in secondi (es. 86400 = 1 giorno)")
+    @app_commands.describe(seconds="Età minima in secondi (es. 86400 = 1 giorno; 0 = nessun minimo; massimo 1 anno)")
     @requires_module(MODULE_ANTI_RAID)
-    async def account_age(self, interaction: discord.Interaction, seconds: int) -> None:
+    async def account_age(
+        self, interaction: discord.Interaction, seconds: app_commands.Range[int, 0, 31_536_000]
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
@@ -368,8 +318,157 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             f"**Controllo username**: {'sì' if r.check_username_pattern else 'no'}",
             f"**Controllo avatar**: {'sì' if r.check_avatar_pattern else 'no'}",
             f"**Azione di lockdown**: {r.lockdown_action}",
+            f"**Blocco della quarantena**: {'sì' if r.quarantine_hold else 'no'}",
+            f"**Canale degli allarmi**: {f'<#{settings.alert_channel_id}>' if settings.alert_channel_id else 'nessuno (solo DM al proprietario)'}",
+            f"**Ruolo di quarantena**: {f'<@&{settings.quarantine_role_id}>' if settings.quarantine_role_id else 'non ancora creato'}",
         ]
+        problemi = problemi_ruoli_del_bot(interaction.guild, settings.quarantine_role_id)
+        righe += [f"⚠️ {p}" for p in problemi]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @comando_di_gruppo(
+        "security",
+        nome="quarantine-hold",
+        descrizione="Impedisce a chi non è fidato di togliere la quarantena a mano.",
+        sottogruppo=("antiraid", "Protezione anti-raid del server."),
+    )
+    @app_commands.describe(
+        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /security antiraid rilascia"
+    )
+    @requires_module(MODULE_ANTI_RAID)
+    async def quarantine_hold(self, interaction: discord.Interaction, enabled: bool) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        if not await solo_chi_gestisce(interaction, settings.anti_nuke):
+            return
+        await security_repo.save_settings(_replace(settings, quarantine_hold=enabled))
+        await interaction.response.send_message(
+            f"Blocco della quarantena {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "security",
+        nome="rilascia",
+        descrizione="Toglie la quarantena a un membro (il modo giusto, col blocco attivo).",
+        sottogruppo=("antiraid", "Protezione anti-raid del server."),
+    )
+    @app_commands.describe(membro="Il membro da liberare dalla quarantena")
+    @requires_module(MODULE_ANTI_RAID)
+    async def rilascia(self, interaction: discord.Interaction, membro: discord.Member) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        # Col blocco attivo la quarantena si toglie solo da chi gestisce.
+        if settings.anti_raid.quarantine_hold and not await solo_chi_gestisce(interaction, settings.anti_nuke):
+            return
+        ruolo = (
+            interaction.guild.get_role(settings.quarantine_role_id)
+            if settings.quarantine_role_id is not None else None
+        )
+        if ruolo is None or ruolo not in membro.roles:
+            await interaction.response.send_message(
+                f"{membro.mention} non è in quarantena.", ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        esito = await rilascia_utente(
+            membro, caso_numero=None, reason=f"Anti-Raid: quarantena tolta da {interaction.user}"
+        )
+        if not esito.riuscito:
+            await interaction.followup.send(
+                "Discord non mi ha lasciato togliere il ruolo (il mio ruolo è più in basso?).", ephemeral=True
+            )
+            return
+        await security_repo.log_action(
+            interaction.guild.id, "raid_release", membro.id, f"rilasciato da {interaction.user.id}"
+        )
+        if esito.quarantena_tenuta:
+            altri = ", ".join(f"#{n}" for n in esito.altri_casi)
+            testo = (
+                f"{membro.mention} resta in quarantena: ha casi anti-nuke attivi ({altri}). "
+                "Si rilasciano con /security antinuke rilascia."
+            )
+        else:
+            testo = f"{membro.mention} è fuori dalla quarantena."
+        await interaction.followup.send(
+            testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role) -> None:
+        """
+        SIC-004: il ruolo di quarantena resta senza permessi. Un permesso
+        dato a mano (anche per sbaglio) ridarebbe poteri a chi è in quarantena.
+        """
+        if after.permissions.value == 0:
+            return
+        guild = after.guild
+        if not await self._modulo_utilizzabile(guild.id):
+            return
+        settings = await security_repo.get_settings(guild.id)
+        if settings.quarantine_role_id != after.id:
+            return
+        try:
+            await after.edit(
+                permissions=discord.Permissions.none(),
+                reason="Anti-Raid: il ruolo di quarantena non può avere permessi",
+            )
+        except discord.HTTPException:
+            logger.warning("Impossibile azzerare i permessi del ruolo di quarantena (server %s).", guild.id)
+            return
+        await security_repo.log_action(guild.id, "raid_quarantine_perms", None, f"permessi tolti a {after.name}")
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
+        """
+        SIC-003: chi è in quarantena ci resta. Se qualcuno non fidato gli
+        toglie il ruolo, o gli dà altri ruoli, il bot rimette le cose a
+        posto e avvisa.
+        """
+        guild = after.guild
+        prima = {r.id for r in before.roles}
+        dopo = {r.id for r in after.roles}
+        if prima == dopo:
+            return
+        if not await self._modulo_utilizzabile(guild.id):
+            return
+        settings = await security_repo.get_settings(guild.id)
+        qid = settings.quarantine_role_id
+        if not settings.anti_raid.quarantine_hold or qid is None:
+            return
+        tolta = qid in prima and qid not in dopo
+        ruoli_dati = [r for r in after.roles if r.id not in prima and r.id != qid and not r.is_default()]
+        if not tolta and not (qid in dopo and ruoli_dati):
+            return
+        voce = await resolve_voce(guild, discord.AuditLogAction.member_role_update, after.id)
+        if voce is None:
+            return
+        autore = voce[0]
+        if autore == self.bot.user.id or autore == guild.owner_id:
+            return
+        if actor_is_trusted(autore, NUKE_ACTION_QUARANTINE_HOLD, settings.anti_nuke):
+            return
+        ruolo = guild.get_role(qid)
+        if ruolo is None:
+            return
+        try:
+            if tolta:
+                await after.add_roles(ruolo, reason=f"Anti-Raid: quarantena tolta a mano da {autore}"[:512])
+                esito = "quarantena rimessa"
+            else:
+                await after.remove_roles(*ruoli_dati, reason=f"Anti-Raid: ruoli dati a un membro in quarantena da {autore}"[:512])
+                esito = "ruoli tolti"
+        except discord.HTTPException:
+            esito = "annullamento fallito (il mio ruolo è più in basso?)"
+        dettaglio = f"{after} ({after.id}) in quarantena: modificato da {autore} — {esito}"
+        await security_repo.log_action(guild.id, "raid_quarantine_hold", autore, dettaglio)
+        embed = discord.Embed(
+            title="🛡️ Anti-Raid — quarantena", description=dettaglio[:4096], color=discord.Color.orange()
+        )
+        embed.set_footer(text="Per liberare un membro: /security antiraid rilascia")
+        await _alert_staff(guild, settings, embed)
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
@@ -382,7 +481,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         ruolo = guild.get_role(settings.quarantine_role_id)
         if ruolo is not None:
-            await _blocca_canale(channel, ruolo)
+            await blocca_canale(channel, ruolo)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
@@ -420,13 +519,18 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         segna_raid(guild.id, now)
 
         azione = settings.anti_raid.lockdown_action
+        non_in_quarantena = False
         if azione in ("quarantine", "both"):
             ruolo = await self._ruolo_quarantena(guild)
-            if ruolo is not None:
+            if ruolo is None:
+                non_in_quarantena = True
+            else:
                 try:
                     await member.add_roles(ruolo, reason="Anti-Raid: join sospetto")
                 except discord.HTTPException:
-                    pass
+                    # Il raid c'è comunque: si dice nell'avviso che la quarantena non è partita.
+                    logger.warning("Quarantena non assegnata a %s (server %s).", member.id, guild.id)
+                    non_in_quarantena = True
 
         if azione in ("verification", "both"):
             await self._alza_verifica(guild, now)
@@ -434,28 +538,21 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         dettaglio = f"{member} — violazioni: {', '.join(violazioni)}"
         await security_repo.log_action(guild.id, "raid_join", member.id, dettaglio)
 
-        await self._avvisa(guild, settings, f"{member.name} ({member.id})"[:MAX_NOME_ELENCATO], now)
+        voce = f"{member.name} ({member.id})"[:MAX_NOME_ELENCATO - 20]
+        if non_in_quarantena:
+            voce += " ⚠ senza quarantena"
+        await self._avvisa(guild, settings, voce, now)
 
     async def _ruolo_quarantena(self, guild: discord.Guild) -> discord.Role | None:
         """
-        Il ruolo di quarantena del server, creato se manca. Un blocco
-        per server: con più ingressi insieme il primo crea il ruolo,
-        gli altri aspettano e lo trovano già salvato.
+        Il ruolo di quarantena del server, creato se manca (un blocco per
+        server). L'allineamento dei canali a un ruolo trovato si fa una
+        volta per server finché il bot resta acceso.
         """
-        blocco = self._blocchi_ruolo.setdefault(guild.id, asyncio.Lock())
-        async with blocco:
-            settings = await security_repo.get_settings(guild.id)
-            ruolo, creato = await _get_or_create_quarantine_role(guild, settings)
-            if ruolo is not None and not creato and guild.id not in self._ruoli_allineati:
-                # Una volta per server (finché il bot resta acceso): un
-                # ruolo che esisteva già può avere canali senza i
-                # permessi di quarantena.
-                for canale in guild.channels:
-                    if _allinea_necessario(canale, ruolo):
-                        await _blocca_canale(canale, ruolo)
-            if ruolo is not None:
-                self._ruoli_allineati.set(guild.id, True)
-            return ruolo
+        ruolo = await ruolo_quarantena(guild, allinea=guild.id not in self._ruoli_allineati)
+        if ruolo is not None:
+            self._ruoli_allineati.set(guild.id, True)
+        return ruolo
 
     async def _alza_verifica(self, guild: discord.Guild, now: datetime) -> None:
         """

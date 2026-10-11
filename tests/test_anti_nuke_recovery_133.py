@@ -38,11 +38,17 @@ from tests.test_anti_nuke_f1 import (  # noqa: F401  (fixture condivise)
 
 
 @pytest.fixture
-async def cog_soglia_due(db_finto, attese):
+async def cog_soglia_due(db_finto, attese, monkeypatch):
     bot = create_autospec(commands.Bot, instance=True)
     bot.user = fake_member(user_id=BOT_ID, bot=True)
     cog = modulo.AntiNukeCog(bot)
+    monkeypatch.setattr(modulo, "ruolo_quarantena", AsyncMock(return_value=None))
     await cog.enable.callback(cog, _interazione(), True)
+    # Questi test provano il recupero e la punizione "toglie i ruoli"; la
+    # quarantena (default dal #117) ha i suoi test in test_anti_nuke_117.py.
+    await cog.punish_action.callback(
+        cog, _interazione(), app_commands.Choice(name="Rimuovi i ruoli", value="strip_roles")
+    )
     for categoria, nome in ((NUKE_CATEGORY_CHANNEL, "Canali"), (NUKE_CATEGORY_ROLE, "Ruoli")):
         await cog.limits.callback(
             cog, _interazione(), app_commands.Choice(name=nome, value=categoria), 2, 60

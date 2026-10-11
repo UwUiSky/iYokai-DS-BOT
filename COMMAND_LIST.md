@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 12:37 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 13:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 221 comandi in 16 categorie.**
+**Totale: 228 comandi in 16 categorie.**
 
 ## Admin
 
@@ -206,19 +206,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 12:
 
 ## Sicurezza
 
+- **`/security antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
 - **`/security antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
+- **`/security antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
 - **`/security antinuke limits`** — Configura la soglia di rilevamento per una categoria.
 - **`/security antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
 - **`/security antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
+- **`/security antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
 - **`/security antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
-- **`/security antinuke trusted-add`** — Esenta un utente/bot fidato da tutti i controlli Anti-Nuke.
-- **`/security antinuke trusted-remove`** — Rimuove un utente/bot dalla lista fidati Anti-Nuke.
+- **`/security antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
+- **`/security antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
+- **`/security antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
 - **`/security antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
 - **`/security antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
 - **`/security antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
 - **`/security antiraid enable`** — Attiva o disattiva l'Anti-Raid.
 - **`/security antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
 - **`/security antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
+- **`/security antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
+- **`/security antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
 - **`/security antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
 - **`/security antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
 - **`/security escalation disable`** — Disattiva l'escalation ladder.
@@ -228,6 +234,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 12:
 - **`/security escalation set-reset-days`** — Giorni di buona condotta per azzerare il conteggio.
 - **`/security escalation set-step`** — Configura l'azione per un livello della scala.
 - **`/security escalation status`** — Mostra la scala di escalation configurata.
+- **`/security globalban controlla`** — Da quanti server della rete questo utente è stato bannato dalla Spam Trap.
 - **`/security globalban disable`** — Abbandona la rete di ban globali.
 - **`/security globalban enable`** — Aderisci alla rete di ban globali (propaga e ricevi).
 - **`/security globalban status`** — Mostra lo stato e la storia recente del ban globale.

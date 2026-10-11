@@ -24,7 +24,28 @@ from datetime import datetime
 
 import asyncpg
 
-from core.security_logic import AntiNukeConfig, AntiRaidConfig
+from core.security_logic import AntiNukeConfig, AntiRaidConfig, TrustEntry
+
+
+# Quanti casi anti-nuke si tengono per server: i piu' vecchi si tolgono
+# quando ne arriva uno nuovo (regola di pulizia della tabella, LIMITI.md
+# Parte 4, punto 19).
+MAX_CASI_NUKE_PER_SERVER = 500
+
+
+@dataclass(frozen=True)
+class NukeCase:
+    """Un attacco fermato dall'anti-nuke (SIC-017)."""
+
+    guild_id: int
+    case_number: int
+    actor_id: int | None
+    category: str
+    detail: str | None
+    punishment: str | None
+    removed_role_ids: tuple[int, ...]
+    created_at: datetime
+    released_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -58,6 +79,7 @@ def _to_json(settings: SecuritySettings) -> str:
                 "check_username_pattern": r.check_username_pattern,
                 "check_avatar_pattern": r.check_avatar_pattern,
                 "lockdown_action": r.lockdown_action,
+                "quarantine_hold": r.quarantine_hold,
             },
             "anti_nuke": {
                 "enabled": n.enabled,
@@ -71,9 +93,31 @@ def _to_json(settings: SecuritySettings) -> str:
                 "emoji_window_seconds": n.emoji_window_seconds,
                 "ban_kick_max": n.ban_kick_max,
                 "ban_kick_window_seconds": n.ban_kick_window_seconds,
+                "channel_perms_max": n.channel_perms_max,
+                "channel_perms_window_seconds": n.channel_perms_window_seconds,
+                "channel_hour_max": n.channel_hour_max,
+                "role_hour_max": n.role_hour_max,
+                "webhook_hour_max": n.webhook_hour_max,
+                "emoji_hour_max": n.emoji_hour_max,
+                "ban_kick_hour_max": n.ban_kick_hour_max,
+                "channel_perms_hour_max": n.channel_perms_hour_max,
                 "trusted_ids": list(n.trusted_ids),
                 "punish_action": n.punish_action,
                 "recovery_enabled": n.recovery_enabled,
+                "trust_entries": [
+                    {
+                        "target_id": t.target_id,
+                        "kind": t.kind,
+                        "level": t.level,
+                        "categories": list(t.categories),
+                        "channel_category_id": t.channel_category_id,
+                    }
+                    for t in n.trust_entries
+                ],
+                "role_perm_guard": n.role_perm_guard,
+                "member_role_guard": n.member_role_guard,
+                "vanity_guard": n.vanity_guard,
+                "bot_add_guard": n.bot_add_guard,
             },
             "quarantine_role_id": settings.quarantine_role_id,
             "alert_channel_id": settings.alert_channel_id,
@@ -94,6 +138,7 @@ def _from_json(guild_id: int, raw: str) -> SecuritySettings:
         check_username_pattern=r.get("check_username_pattern", True),
         check_avatar_pattern=r.get("check_avatar_pattern", True),
         lockdown_action=r.get("lockdown_action", "quarantine"),
+        quarantine_hold=r.get("quarantine_hold", False),
     )
     anti_nuke = AntiNukeConfig(
         enabled=n.get("enabled", False),
@@ -107,9 +152,32 @@ def _from_json(guild_id: int, raw: str) -> SecuritySettings:
         emoji_window_seconds=n.get("emoji_window_seconds", 60),
         ban_kick_max=n.get("ban_kick_max", 3),
         ban_kick_window_seconds=n.get("ban_kick_window_seconds", 60),
+        channel_perms_max=n.get("channel_perms_max", 5),
+        channel_perms_window_seconds=n.get("channel_perms_window_seconds", 60),
+        channel_hour_max=n.get("channel_hour_max", 10),
+        role_hour_max=n.get("role_hour_max", 10),
+        webhook_hour_max=n.get("webhook_hour_max", 10),
+        emoji_hour_max=n.get("emoji_hour_max", 20),
+        ban_kick_hour_max=n.get("ban_kick_hour_max", 10),
+        channel_perms_hour_max=n.get("channel_perms_hour_max", 20),
         trusted_ids=tuple(n.get("trusted_ids", [])),
+        # Una riga vecchia che non dice la punizione resta com'era: toglie i ruoli.
         punish_action=n.get("punish_action", "strip_roles"),
         recovery_enabled=n.get("recovery_enabled", True),
+        trust_entries=tuple(
+            TrustEntry(
+                target_id=t["target_id"],
+                kind=t.get("kind", "user"),
+                level=t.get("level", "trusted"),
+                categories=tuple(t.get("categories", [])),
+                channel_category_id=t.get("channel_category_id"),
+            )
+            for t in n.get("trust_entries", [])
+        ),
+        role_perm_guard=n.get("role_perm_guard", "off"),
+        member_role_guard=n.get("member_role_guard", False),
+        vanity_guard=n.get("vanity_guard", False),
+        bot_add_guard=n.get("bot_add_guard", False),
     )
 
     return SecuritySettings(
@@ -145,6 +213,25 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_security_action_log_guild
             ON security_action_log (guild_id, created_at DESC);
+
+        -- Registro degli attacchi fermati dall'anti-nuke (SIC-017): un
+        -- numero per server, i ruoli tolti all'autore (per rilasciarlo)
+        -- e l'esito della punizione. Si tengono gli ultimi 500 per server.
+        CREATE TABLE IF NOT EXISTS nuke_cases (
+            guild_id         BIGINT NOT NULL,
+            case_number      INTEGER NOT NULL,
+            actor_id         BIGINT,
+            category         TEXT NOT NULL,
+            detail           TEXT,
+            punishment       TEXT,
+            removed_role_ids BIGINT[] NOT NULL DEFAULT '{}',
+            created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+            released_at      TIMESTAMPTZ,
+            PRIMARY KEY (guild_id, case_number)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_nuke_cases_attivi
+            ON nuke_cases (guild_id, actor_id) WHERE released_at IS NULL;
 
         -- Blocco anti-raid in corso: il livello di verifica che il
         -- server aveva prima e quando il blocco scade. Una riga per
@@ -222,6 +309,120 @@ class SecurityRepository:
             for r in rows
         ]
 
+
+    # ================================================================
+    # Registro degli attacchi (SIC-017)
+    # ================================================================
+    async def create_nuke_case(
+        self,
+        guild_id: int,
+        actor_id: int | None,
+        category: str,
+        detail: str | None,
+        punishment: str | None,
+        removed_role_ids: tuple[int, ...] = (),
+    ) -> int:
+        """Salva un caso col numero successivo del server e lo restituisce."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                # Un blocco per server: due attacchi insieme non prendono lo stesso numero.
+                await conn.execute("SELECT pg_advisory_xact_lock($1)", guild_id)
+                numero = await conn.fetchval(
+                    "SELECT COALESCE(MAX(case_number), 0) + 1 FROM nuke_cases WHERE guild_id = $1",
+                    guild_id,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO nuke_cases
+                        (guild_id, case_number, actor_id, category, detail, punishment, removed_role_ids)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """,
+                    guild_id, numero, actor_id, category, (detail or "")[:1000],
+                    (punishment or "")[:300], list(removed_role_ids),
+                )
+                await conn.execute(
+                    "DELETE FROM nuke_cases WHERE guild_id = $1 AND case_number <= $2",
+                    guild_id, numero - MAX_CASI_NUKE_PER_SERVER,
+                )
+        return numero
+
+    @staticmethod
+    def _row_to_case(r) -> NukeCase:
+        return NukeCase(
+            guild_id=r["guild_id"],
+            case_number=r["case_number"],
+            actor_id=r["actor_id"],
+            category=r["category"],
+            detail=r["detail"],
+            punishment=r["punishment"],
+            removed_role_ids=tuple(r["removed_role_ids"] or ()),
+            created_at=r["created_at"],
+            released_at=r["released_at"],
+        )
+
+    async def get_nuke_case(self, guild_id: int, case_number: int) -> NukeCase | None:
+        row = await self._pool.fetchrow(
+            "SELECT * FROM nuke_cases WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number,
+        )
+        return self._row_to_case(row) if row else None
+
+    async def list_nuke_cases(
+        self, guild_id: int, page: int = 1, per_page: int = 10
+    ) -> tuple[list[NukeCase], int]:
+        """Una pagina di casi (dal piu' recente) e il totale."""
+        totale = await self._pool.fetchval(
+            "SELECT COUNT(*) FROM nuke_cases WHERE guild_id = $1", guild_id
+        )
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM nuke_cases WHERE guild_id = $1
+            ORDER BY case_number DESC LIMIT $2 OFFSET $3
+            """,
+            guild_id, per_page, max(page - 1, 0) * per_page,
+        )
+        return [self._row_to_case(r) for r in rows], totale
+
+    async def active_cases_for_actor(self, guild_id: int, actor_id: int) -> list[NukeCase]:
+        """I casi non ancora rilasciati di questo utente, dal piu' recente."""
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM nuke_cases
+            WHERE guild_id = $1 AND actor_id = $2 AND released_at IS NULL
+            ORDER BY case_number DESC
+            """,
+            guild_id, actor_id,
+        )
+        return [self._row_to_case(r) for r in rows]
+
+    async def extend_nuke_case(
+        self, guild_id: int, case_number: int, punishment: str, removed_role_ids: tuple[int, ...]
+    ) -> None:
+        """
+        Stesso attacco, punizione ripetuta perche' la prima non teneva: il
+        caso resta uno, con l'esito nuovo e i ruoli tolti in piu' (quelli
+        gia' registrati restano).
+        """
+        await self._pool.execute(
+            """
+            UPDATE nuke_cases
+            SET punishment = $3,
+                removed_role_ids = ARRAY(SELECT DISTINCT unnest(removed_role_ids || $4::bigint[]))
+            WHERE guild_id = $1 AND case_number = $2
+            """,
+            guild_id, case_number, punishment[:300], list(removed_role_ids),
+        )
+
+    async def mark_nuke_case_released(self, guild_id: int, case_number: int) -> bool:
+        """Segna il caso come rilasciato. False se non esiste o lo era gia'."""
+        esito = await self._pool.execute(
+            """
+            UPDATE nuke_cases SET released_at = now()
+            WHERE guild_id = $1 AND case_number = $2 AND released_at IS NULL
+            """,
+            guild_id, case_number,
+        )
+        return esito.endswith(" 1")
 
     # ================================================================
     # Blocco anti-raid (livello di verifica alzato per un tempo)

@@ -1,56 +1,27 @@
-# Memoria di dev-moderazione
-
+# Memoria dev-moderazione
 ## Aggiornata
-11/10/2026 · ramo `feat/f7-moderazione` (base `0fd15a7`) · F7 passo 2b chiuso
-
+2026-10-11 (sera), ramo feat/sicurezza-audit (base 90bbeb2), worktree /home/claude/wt/sic.
 ## In corso
-- Niente a metà. Passo 2b fatto (4 commit: mod+modban, security, automod,
-  log). Prossimo giro: #137 (DM prima di kick/ban) se non già fatto
-  dall'orchestratore; poi #138.
-
+Revisione di cacciatore e revisore applicata (commit E): smoke, commit, push. Nessun file a meta.
 ## Fatto
-- F1, sicurezza + AutoMod + verifica: unito su main con `7722b71`
-  (nuovo `core/security_access.py`, tabella `anti_raid_lockdown`).
-- Voci rapide F1 (anti-nuke non conta il bot, anti-raid ignora i bot).
-- #133 anti-nuke (`80f1894`): cancellazioni sotto soglia recuperate al
-  superamento; ruolo con posizione e membri; tag dei forum.
-- #133 anti-raid + M 10.16 (`fbef3b0`): un avviso aggiornato; Quarantined
-  esistente adottato e allineato; `core/security_raid_state.py`.
-- #133 AutoMod (`f48e6e3`): tetto 100 domini per lista link.
-- #133 verifica: cache config con tetto (`822a21b`).
-- #133 correzioni del cacciatore-bug: versione per server nella cache
-  verifica (`4d8123b`); blocco per server sull'avviso anti-raid; voci
-  anti-nuke in attesa con ora, scartate oltre la finestra.
-
-- F7 2b (`Refs #76`): /mod, /modban, /security, /automod, /log nei gruppi
-  condivisi con `@comando_di_gruppo`; `/log canale tipo` fonde mod-log-setup;
-  nuovo `tests/test_f7_moderazione_gruppi.py` (nomi, livelli, vecchi nomi spariti).
-
+- A 8895c79 anti-nuke (SIC-001/002/005-010/017-020/025, #59 3.5)
+- B e684371 anti-raid (SIC-003/004/022), quarantena condivisa
+- C ccdc53b security_score, heatmap, ban globale (SIC-044/046)
+- D 012e083 spam-trap, verify, invite_sync, controlla
+- E revisione: solo-chi-gestisce, fiducia in core, una punizione per attacco, rilascia unico, quarantena fail-open, ban globale (revoca/staff/indici), /modban unban, resolve_voce in core/security_audit.py
+- Doc: revisione/03-verifica/AUDIT_SICUREZZA.md, VERIFICA_LIVE.md, SPEC §7, COMMAND_LIST (228)
+- #59 righe 3.1-3.17 gia fatte
 ## Cose imparate
-- F7: i test che istanziano il cog da solo non vedono più i comandi: serve
-  `await bot.add_cog(...)` e poi `bot.tree.get_command(gruppo)...`; a fine
-  test `await bot.remove_cog(...)` (i gruppi sono globali e condivisi).
-- Un cog con `cog_load`/`cog_unload` propri chiama `await super().cog_load()`
-  / `cog_unload()` (anti_raid).
-- Le tabelle di sicurezza stanno in `security_repo.run_migrations`.
-- Il messaggio privato di kick/ban deve partire PRIMA dell'azione.
-- DATABASE_URL va esportato in OGNI chiamata di shell: senza, i test
-  usano il database condiviso e si pestano con gli altri agenti.
-- discord.py 2.7: dopo on_guild_role_delete `role.members` funziona
-  ancora (i membri tengono l'id); `Role.edit(position=)` per la posizione.
-- Il ruolo ricreato non può stare sopra il ruolo più alto del bot.
-- I test di anti-raid/anti-nuke importano fixture da `test_anti_*_f1.py`.
-- Stato in memoria letto-poi-salvato: versione/blocco contro le corse.
-- Un test che scrive 100 domini uno a uno costa ~25 s: tenerne pochi.
-
+- Tabelle sicurezza create in security_repo.run_migrations, non in core/migrations (0024-0026 non servivano)
+- Lock asyncio a livello modulo: usare WeakKeyDictionary per loop
+- MFALevel non e int: usare .value
+- Smoke supera il limite di 2 min del tool: lanciarlo in background su log; mai due pytest insieme sullo stesso DB (clean_db svuota)
+- Test degli enable/cog con server finto: patchare ruolo_quarantena (ora si crea all'attivazione)
+- Controllo mutazioni: script in scratchpad (sostituisce una riga, lancia i test, ripristina)
 ## Aperto
-- M 10.16: manca l'aggancio in `cogs/utility/greetings.py` (file di
-  `dev-utility`): `if raid_in_corso(member.guild.id): return` prima del
-  DM di benvenuto (riga ~73), con `from core.security_raid_state import
-  raid_in_corso`. La verifica (`cogs/security/verify.py`) non invia DM.
-- #137, #138 (vedi sopra).
-- F7: `/report-setup` e `/report` stanno ancora in cogs/moderation/report.py
-  con i vecchi nomi (mappa: `/admin config canale-report`, `/utility report`).
-- F7: `clear` (manage_messages), `lock`/`slowmode` (manage_channels), `kick`
-  (kick_members), `/log cerca|esporta` (view_audit_log): la mappa §5 li vuole
-  nel codice, oggi nessun controllo (non c'era nemmeno prima).
+- 3.18 (serve router canali NF-01, stub)
+- alt_detection (OAuth #92), lockdown/panic SIC-011-015 (#100), ban_appeal_logic (#101)
+- SIC-016, 021, 023-038, 039-043, 045, 026
+- Fuori perimetro: utility/greetings.py manca hook raid_in_corso (M 10.16)
+- Decisione aperta: quarantena fallita non ripiega su kick/ban (la config 'ban' lo fa gia)
+- Vanity URL via http.request non verificata su Discord reale

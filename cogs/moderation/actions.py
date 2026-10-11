@@ -52,6 +52,7 @@ from cogs.moderation._shared import (
     post_to_mod_log,
 )
 from core.premium import PremiumModule, registry
+from cogs.security.global_ban import revoca_ban_propagati
 
 logger = logging.getLogger("iyokai.moderation.actions")
 
@@ -447,6 +448,19 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
         log_embed.add_field(name="Motivo", value=reason, inline=False)
         await post_to_mod_log(interaction.guild, log_embed)
+
+        # Se il ban era partito da qui verso la rete di ban globali, lo si
+        # toglie anche dagli altri server. Dopo la risposta: con una rete
+        # grande ci vuole piu' dei 3 secondi che Discord concede.
+        try:
+            tolti = await revoca_ban_propagati(interaction.client, interaction.guild.id, uid)
+        except Exception:
+            logger.exception("Revoca dei ban propagati fallita (server %s).", interaction.guild.id)
+            return
+        if tolti:
+            await interaction.followup.send(
+                f"Il ban era arrivato anche ad altri server della rete: tolto da {tolti}.", ephemeral=True
+            )
 
     # ================================================================
     # /timeout e /untimeout

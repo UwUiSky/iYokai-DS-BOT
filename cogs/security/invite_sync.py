@@ -14,10 +14,6 @@ di quei moduli è attivo: leggerli ovunque costava una chiamata a
 Discord per ogni server a ogni avvio.
 """
 
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
-
 from __future__ import annotations
 
 import logging
@@ -51,28 +47,44 @@ class InviteSyncCog(commands.Cog):
         if await inviti_servono(guild.id):
             await invite_tracker.refresh_guild(guild)
 
+    async def _aggiorna_senza_errori(self, guild: discord.Guild | None) -> None:
+        """Un errore leggendo gli inviti di un server resta nei log: non rompe il listener."""
+        if guild is None:
+            return
+        try:
+            await self._aggiorna_se_serve(guild)
+        except Exception:
+            logger.exception("Errore leggendo gli inviti del server %s", guild.id)
+
+    def _server_dell_invito(self, invite: discord.Invite) -> discord.Guild | None:
+        """
+        `invite.guild` può essere un `Guild`, un `PartialInviteGuild` o un
+        `Object`: solo un `Guild` sa rileggere gli inviti, gli altri si
+        cercano tra i server del bot.
+        """
+        server = invite.guild
+        if isinstance(server, discord.Guild):
+            return server
+        id_server = getattr(server, "id", None)
+        return self.bot.get_guild(id_server) if id_server is not None else None
+
     @commands.Cog.listener()
     async def on_ready(self) -> None:
         for guild in list(self.bot.guilds):
-            try:
-                await self._aggiorna_se_serve(guild)
-            except Exception:
-                # Un server che dà errore non ferma il giro per gli altri.
-                logger.exception("Errore leggendo gli inviti del server %s", guild.id)
+            # Un server che dà errore non ferma il giro per gli altri.
+            await self._aggiorna_senza_errori(guild)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild) -> None:
-        await self._aggiorna_se_serve(guild)
+        await self._aggiorna_senza_errori(guild)
 
     @commands.Cog.listener()
     async def on_invite_create(self, invite: discord.Invite) -> None:
-        if invite.guild is not None:
-            await self._aggiorna_se_serve(invite.guild)  # type: ignore[arg-type]
+        await self._aggiorna_senza_errori(self._server_dell_invito(invite))
 
     @commands.Cog.listener()
     async def on_invite_delete(self, invite: discord.Invite) -> None:
-        if invite.guild is not None:
-            await self._aggiorna_se_serve(invite.guild)  # type: ignore[arg-type]
+        await self._aggiorna_senza_errori(self._server_dell_invito(invite))
 
 
 async def setup(bot: commands.Bot) -> None:

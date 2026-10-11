@@ -29,9 +29,10 @@ def should_propagate_ban(
     *, source_guild_id: int, target_guild_id: int, source_opted_in: bool, target_opted_in: bool
 ) -> bool:
     """
-    True solo se: il server sorgente (dove è scattato il ban) e il
-    server target sono aderenti entrambi alla rete di ban globali, e
-    non sono lo stesso server (propagare un ban su se stessi non ha
+    True solo se: il server sorgente (dove è scattato il ban) ha acceso
+    "invia" e il server target ha acceso "ricevi" (SIC-046: due
+    interruttori separati; qui `source_opted_in` e `target_opted_in` sono
+    questi), e non sono lo stesso server (propagare un ban su se stessi non ha
     senso — l'utente è già bannato lì).
     """
     if source_guild_id == target_guild_id:

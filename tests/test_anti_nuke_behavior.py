@@ -13,6 +13,7 @@ import pytest
 from discord.ext import commands
 
 import cogs.security.anti_nuke as anti_nuke_module
+import core.security_audit as audit_module
 from cogs.security.anti_nuke import AntiNukeCog, MODULE_ANTI_NUKE
 from core.database import Database
 from core.repositories.security_repo import SecuritySettings
@@ -115,6 +116,8 @@ async def contesto(monkeypatch):
     await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM security_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM security_action_log WHERE guild_id = $1", GUILD_ID)
+    # I casi aperti di un test non devono far passare il successivo per "stesso attacco".
+    await database.pool.execute("DELETE FROM nuke_cases WHERE guild_id = $1", GUILD_ID)
 
     await database.set_module_active_for_guild(GUILD_ID, MODULE_ANTI_NUKE, True)
 
@@ -133,7 +136,7 @@ async def contesto(monkeypatch):
     async def _nessuna_attesa(_secondi):
         return None
 
-    monkeypatch.setattr(anti_nuke_module, "_aspetta", _nessuna_attesa)
+    monkeypatch.setattr(audit_module, "_aspetta", _nessuna_attesa)
 
     from core.repositories.security_repo import security_repo
 
@@ -180,7 +183,7 @@ async def test_sotto_soglia_nessuna_azione(contesto):
 
 @pytest.mark.asyncio
 async def test_sopra_soglia_rimuove_i_ruoli_di_default(contesto):
-    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1))
+    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1, punish_action="strip_roles"))
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
     membro = _FakeMember(ACTOR_ID, guild)
@@ -233,7 +236,7 @@ async def test_actor_fidato_non_subisce_nulla(contesto):
 
 @pytest.mark.asyncio
 async def test_owner_come_autore_non_subisce_nulla(contesto):
-    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1))
+    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1, punish_action="strip_roles"))
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
     membro_owner = _FakeMember(1, guild)
@@ -249,7 +252,7 @@ async def test_owner_come_autore_non_subisce_nulla(contesto):
 @pytest.mark.asyncio
 async def test_modulo_disattivato_ignora_tutto(contesto):
     await contesto.set_module_active_for_guild(GUILD_ID, MODULE_ANTI_NUKE, False)
-    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1))
+    await _salva_config(AntiNukeConfig(enabled=True, channel_max=1, punish_action="strip_roles"))
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
     membro = _FakeMember(ACTOR_ID, guild)
@@ -264,7 +267,7 @@ async def test_modulo_disattivato_ignora_tutto(contesto):
 
 @pytest.mark.asyncio
 async def test_on_member_remove_ignora_un_leave_volontario(contesto):
-    await _salva_config(AntiNukeConfig(enabled=True, ban_kick_max=0))
+    await _salva_config(AntiNukeConfig(enabled=True, ban_kick_max=0, punish_action="strip_roles"))
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
     guild.set_audit_entries(discord.AuditLogAction.kick, [])  # nessuna voce kick recente
@@ -281,7 +284,7 @@ async def test_on_member_remove_ignora_un_leave_volontario(contesto):
 
 @pytest.mark.asyncio
 async def test_on_member_remove_rileva_un_kick_reale(contesto):
-    await _salva_config(AntiNukeConfig(enabled=True, ban_kick_max=0))
+    await _salva_config(AntiNukeConfig(enabled=True, ban_kick_max=0, punish_action="strip_roles"))
     owner = _FakeUser(1)
     guild = _FakeGuild(GUILD_ID, owner, owner_id=1)
     membro_espulso = _FakeMember(500, guild)

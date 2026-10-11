@@ -14,7 +14,7 @@ Server, canali e membri sono finti fedeli.
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import discord
 import pytest
@@ -93,12 +93,15 @@ def server() -> MagicMock:
 
 
 @pytest.fixture
-async def cog(db_finto, server, orologio):
+async def cog(db_finto, server, orologio, monkeypatch):
     bot = create_autospec(commands.Bot, instance=True)
     bot.get_guild.side_effect = lambda guild_id: server if guild_id == GUILD_ID else None
     cog = modulo.AntiRaidCog(bot)
     # Anti-raid acceso; raid = più di 2 ingressi in 60 secondi.
-    await cog.enable.callback(cog, _interazione(), True)
+    with monkeypatch.context() as m:
+        # Il ruolo di quarantena si prepara a parte: qui i test lo creano al bisogno.
+        m.setattr(modulo.AntiRaidCog, "_ruolo_quarantena", AsyncMock(return_value=None))
+        await cog.enable.callback(cog, _interazione(), True)
     await cog.join_rate.callback(cog, _interazione(), 2, 60)
     return cog
 

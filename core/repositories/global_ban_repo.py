@@ -1,13 +1,12 @@
 """
 core/repositories/global_ban_repo.py
 ========================================
-Persistenza del "ban globale" (SPEC.md §7.3) — solo un log di
-propagazione, non una tabella di configurazione: l'opt-in per
-server usa l'infrastruttura già esistente (`db.is_module_active_for_
-guild`/`set_module_active_for_guild` su `guild_config`), stesso
-meccanismo di attivazione modulo di ogni altro modulo del bot. Una
-tabella di configurazione dedicata sarebbe stata un secondo
-interruttore per dire la stessa cosa — complessità non richiesta.
+Persistenza del "ban globale" (SPEC.md §7.3): il log di propagazione e,
+per SIC-046, le due direzioni per server ("invia" e "ricevi"). L'adesione
+alla rete usa l'infrastruttura già esistente (`db.is_module_active_for_
+guild`/`set_module_active_for_guild` su `guild_config`); la tabella
+`global_ban_direction` dice solo in quale direzione il server partecipa
+(senza riga: in entrambe).
 
 Vedi cogs/security/global_ban.py per il perché questo NON è il ban
 globale via fingerprint/alt-detection descritto in SPEC.md §4.3 (che
@@ -45,12 +44,35 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
         );
 
+        -- Quando il ban propagato e' stato tolto (appello accolto).
+        ALTER TABLE global_ban_log ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
+
+        -- SIC-046: il server puo' inviare i propri ban, riceverli, o entrambe.
+        CREATE TABLE IF NOT EXISTS global_ban_direction (
+            guild_id     BIGINT PRIMARY KEY,
+            send_bans    BOOLEAN NOT NULL DEFAULT TRUE,
+            receive_bans BOOLEAN NOT NULL DEFAULT TRUE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_global_ban_log_source
             ON global_ban_log (source_guild_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_global_ban_log_target
             ON global_ban_log (target_guild_id, created_at DESC);
+        -- I ban ancora in piedi per utente: servono a controlla, alla revoca e
+        -- a "qualcun altro lo ha ancora bannato lì?".
+        CREATE INDEX IF NOT EXISTS idx_global_ban_log_attivi_utente
+            ON global_ban_log (user_id, target_guild_id) WHERE revoked_at IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_global_ban_log_attivi_sorgente
+            ON global_ban_log (source_guild_id, user_id) WHERE revoked_at IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_global_ban_log_creazione
+            ON global_ban_log (created_at);
         """
     )
+
+
+# Per quanti giorni si tengono le propagazioni nel registro: abbastanza per
+# un appello, non per sempre (sono ID di persone).
+GIORNI_REGISTRO = 365
 
 
 class GlobalBanRepository:
@@ -73,6 +95,93 @@ class GlobalBanRepository:
             target_guild_id,
             user_id,
             reason,
+        )
+
+    async def purge_old(self) -> None:
+        """Toglie le propagazioni piu' vecchie di GIORNI_REGISTRO: una volta per giro, non a ogni riga."""
+        await self._pool.execute(
+            "DELETE FROM global_ban_log WHERE created_at < now() - make_interval(days => $1)",
+            GIORNI_REGISTRO,
+        )
+
+    async def get_direction(self, guild_id: int) -> tuple[bool, bool]:
+        """(invia, ricevi) del server; senza riga: entrambe."""
+        row = await self._pool.fetchrow(
+            "SELECT send_bans, receive_bans FROM global_ban_direction WHERE guild_id = $1", guild_id
+        )
+        return (True, True) if row is None else (row["send_bans"], row["receive_bans"])
+
+    async def set_direction(self, guild_id: int, *, send: bool, receive: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO global_ban_direction (guild_id, send_bans, receive_bans)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET send_bans = EXCLUDED.send_bans, receive_bans = EXCLUDED.receive_bans
+            """,
+            guild_id, send, receive,
+        )
+
+    async def active_propagations(self, source_guild_id: int, user_id: int) -> list[int]:
+        """I server in cui il ban di questo utente, partito da qui, e' ancora in piedi."""
+        rows = await self._pool.fetch(
+            """
+            SELECT DISTINCT target_guild_id FROM global_ban_log
+            WHERE source_guild_id = $1 AND user_id = $2 AND revoked_at IS NULL
+            """,
+            source_guild_id, user_id,
+        )
+        return [r["target_guild_id"] for r in rows]
+
+    async def network_summary(self, user_id: int) -> tuple[int, datetime | None, datetime | None]:
+        """
+        SIC-044: da quanti server della rete l'utente ha un ban della Spam
+        Trap ancora in piedi, e le date del primo e dell'ultimo. Mai i
+        nomi dei server.
+        """
+        row = await self._pool.fetchrow(
+            """
+            SELECT COUNT(DISTINCT source_guild_id) AS server, MIN(created_at) AS primo, MAX(created_at) AS ultimo
+            FROM global_ban_log WHERE user_id = $1 AND revoked_at IS NULL
+            """,
+            user_id,
+        )
+        return row["server"], row["primo"], row["ultimo"]
+
+    async def mark_revoked(
+        self, source_guild_id: int, user_id: int, target_guild_ids: list[int] | None = None
+    ) -> None:
+        """
+        Chiude le propagazioni di questa sorgente per l'utente. Con
+        `target_guild_ids` solo quelle verso quei server: un ban che non si
+        e' riusciti a togliere resta aperto e si ritenta.
+        """
+        if target_guild_ids is not None and not target_guild_ids:
+            return
+        await self._pool.execute(
+            """
+            UPDATE global_ban_log SET revoked_at = now()
+            WHERE source_guild_id = $1 AND user_id = $2 AND revoked_at IS NULL
+              AND ($3::bigint[] IS NULL OR target_guild_id = ANY($3::bigint[]))
+            """,
+            source_guild_id, user_id, target_guild_ids,
+        )
+
+    async def banned_by_other_source(
+        self, target_guild_id: int, user_id: int, excluding_source_id: int
+    ) -> bool:
+        """Un'altra sorgente ha ancora un ban in piedi per questo utente in questo server?"""
+        return bool(
+            await self._pool.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM global_ban_log
+                    WHERE target_guild_id = $1 AND user_id = $2
+                      AND source_guild_id <> $3 AND revoked_at IS NULL
+                )
+                """,
+                target_guild_id, user_id, excluding_source_id,
+            )
         )
 
     async def get_recent_outgoing(self, guild_id: int, limit: int = 10) -> list[GlobalBanLogEntry]:

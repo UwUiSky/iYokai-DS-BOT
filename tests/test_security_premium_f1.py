@@ -17,7 +17,7 @@ Il cog è caricato in un `commands.Bot` vero (non collegato); lo sblocco
 
 import importlib
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import discord
 import pytest
@@ -151,7 +151,8 @@ async def _anti_raid_configurato(ambiente):
     server.owner = fake_member(user_id=1)
     server.verification_level = discord.VerificationLevel.medium
     interazione = fake_interaction(guild=server)
-    await cog.enable.callback(cog, interazione, True)
+    with patch("cogs.security.anti_raid.ruolo_quarantena", AsyncMock(return_value=None)):
+        await cog.enable.callback(cog, interazione, True)
     await cog.join_rate.callback(cog, interazione, 0, 60)
     await cog.lockdown_action.callback(
         cog, interazione, app_commands.Choice(name="verification", value="verification")
@@ -188,7 +189,8 @@ async def test_anti_nuke_premium_non_sbloccato_non_legge_il_registro(ambiente):
     bot = await _bot_con("anti_nuke")
     cog = bot.get_cog("AntiNukeCog")
     server = fake_guild(GUILD_ID, owner_id=1)
-    await cog.enable.callback(cog, fake_interaction(guild=server), True)
+    with patch("cogs.security.anti_nuke.ruolo_quarantena", AsyncMock(return_value=None)):
+        await cog.enable.callback(cog, fake_interaction(guild=server), True)
     registry.set_module_premium("anti_nuke", True)
     canale = create_autospec(discord.TextChannel, instance=True)
     canale.id = 7001

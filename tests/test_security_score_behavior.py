@@ -21,6 +21,9 @@ class _FakeResponse:
     def __init__(self) -> None:
         self.embeds_sent: list = []
 
+    def is_done(self) -> bool:
+        return False
+
     async def send_message(self, content=None, embed=None, ephemeral: bool = False) -> None:
         self.embeds_sent.append(embed)
 
@@ -42,10 +45,27 @@ class _FakeMember:
         self.guild_permissions = _FakePermissions(administrator=administrator)
 
 
+class _FakeRole:
+    position = 5
+    id = 99
+
+
+class _FakeMe:
+    """Il bot nel server: ha Gestisci ruoli e un ruolo in alto, nessun problema da segnalare."""
+
+    top_role = _FakeRole()
+    roles = [top_role]
+    guild_permissions = type("P", (), {"manage_roles": True, "administrator": False})()
+
+
 class _FakeGuild:
     def __init__(self, guild_id: int, members: list) -> None:
         self.id = guild_id
         self.members = members
+        self.chunked = True
+        self.owner_id = 0
+        self.roles = []
+        self.me = _FakeMe()
         self.mfa_level = 0
         self.verification_level = discord.VerificationLevel.low
 
