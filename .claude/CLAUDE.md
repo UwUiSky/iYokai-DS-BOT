@@ -110,6 +110,7 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
 - Un'issue si **chiude quando il fix è unito con i suoi test**, con un
   commento che dice il commit. Se serve ancora la prova su Discord si
   mette l'etichetta `verifica-live`; la toglie l'owner dopo la prova.
+- A ogni issue chiusa si aggiunge una riga a `revisione/REGISTRO_RISOLTE.md` (problema, come, commit). Un'issue con voci rimaste per fasi future resta aperta e va nella sezione "Parziali".
 - Si aggiornano insieme al codice: `revisione/SPEC.md` (simbolo della voce),
   `COMMAND_LIST.md` se cambiano i comandi, `VERIFICA_LIVE.md` se serve
   una prova live, le memorie in `.claude/memoria/` a ogni voce chiusa.

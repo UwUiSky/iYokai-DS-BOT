@@ -142,7 +142,7 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
 
 
 def menzione(percorso: str, ids: Mapping[str, int]) -> str:
-    """`</gruppo comando:ID>` (cliccabile su PC e cellulare); senza ID, il testo `/gruppo comando`."""
+    """Menzione cliccabile (PC e cellulare); senza ID, il testo semplice con la barra."""
     id_comando = ids.get(percorso.split(" ")[0])
     if id_comando is None:
         return f"`/{percorso}`"
