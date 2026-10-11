@@ -1,10 +1,10 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
-05/10/2026 · ramo `fix/f1-144` (copia /home/claude/wt/v144) · base `d31af05`
+11/10/2026 · ramo `feat/f7-ticket-musica` (copia /home/claude/wt/f7e) · base `1e5525c`
 
 ## In corso
-- Niente a metà: le 2 voci di #144 sono chiuse. Resta la prova live (vedi rapporto).
+- Niente a metà: F7 passo 3b chiuso per ticket e vocali. Resta la prova live.
 
 ## Fatto
 - F1, moderazione + log + ticket + vocali: unito su main con
@@ -17,6 +17,8 @@
 - #144 `/voice unlock`: ripristina il Connetti di prima del lock (memoria in-process `_connect_prima_del_lock`, senza migrazione).
 - #134 `db.remove_guild_setting` pubblica (la privata è sparita), ticket e rollback la usano.
 
+- F7 3b (#76): ticket in `/ticket` + `/gestione ticket`, vocali in `/voice` + `/gestione voice` (commit `65a80ed`, `99e23ce`).
+
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
 - Cancellazione dei ticket dallo scheduler, non da un task.
@@ -28,6 +30,7 @@
   `canale.overwrites_for.return_value` va impostato dal test.
 
 - `can_moderate` nega i ruoli pari: nei test del kick proprietario e bot vanno impostati con `top_role` (helper `_con_ruolo`).
+- F7: `@comando_di_gruppo` + `CogConGruppi`; i test dei cog caricati con `bot.add_cog` devono fare `remove_cog` (i GRUPPI sono globali). Sotto-gruppo di /gestione = costante `GESTIONE_TICKET`/`GESTIONE_VOICE`.
 - Stato in-process dei vocali: i test riusano gli id canale (2000+), azzerarlo nella fixture.
 
 ## Aperto

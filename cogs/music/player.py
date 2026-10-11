@@ -7,7 +7,7 @@ hanno nessun comando proprio, esistono solo per avere una propria
 connessione voce.
 
 Architettura chiarita dall'utente: un solo punto di ingresso comandi
-(qui, sul bot principale). Per /play e i comandi che agiscono su una
+(qui, sul bot principale). Per /music play e i comandi che agiscono su una
 riproduzione, il bot principale non entra MAI in vocale lui stesso —
 instrada verso una delle 5 istanze worker tramite core/music_fleet.py
 (quella già assegnata a questo server, o la prima libera). Il bot
