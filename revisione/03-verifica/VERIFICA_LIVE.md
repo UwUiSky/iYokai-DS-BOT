@@ -545,3 +545,31 @@ chiudere.
   4. 26º feed rifiutato: con 25 feed attivi, il 26º dà "ha già 25 feed"; `/moduli alert elenco` resta leggibile e mostra sempre gli ID.
   5. Modulo spento: `/admin setup` disattiva `feed_alerts`; nessun messaggio da feed, Twitch o YouTube, e nessuna quota YouTube consumata. Riattivalo: riprendono.
   Risultato atteso: nessun errore nel log, nessun avviso doppio.
+- [ ] Utilità: sticky, benvenuto, programmati, promemoria (#66, voci 10.2-10.6, migrazione 0027) — passi:
+  1. Sticky: `/admin messaggi sticky-set` in un canale (con un ruolo che nomina `<@&ruolo>` nel testo); fai scrivere 10 messaggi veloci a due account: resta un solo sticky in fondo. Poi togli al bot "Invia messaggi" nel canale: nessun errore a ogni messaggio (solo un avviso nel log).
+  2. Ping D12: da un account SENZA "Menziona tutti" imposta sticky/benvenuto/messaggio programmato con `<@&ruolo> @everyone`: il ruolo e @everyone non suonano. Rifai da un account CON il permesso: il ruolo suona, `@everyone` mai.
+  3. Benvenuto: `/gestione benvenuto message:` con `{server}` e un testo lungo 1990 caratteri su un server dal nome lungo: rifiutato con il numero di caratteri. `/gestione benvenuto` senza `dm`: il DM già attivo resta attivo. `/gestione anteprima` non va in errore.
+  4. Un bot che entra o esce: nessun benvenuto né addio.
+  5. `/admin messaggi programma` con canale che poi cancelli (o permesso tolto): all'ora fissata chi l'ha programmato riceve un DM che dice che non è partito. Elenco dei programmati con molti messaggi lunghi: non va in errore.
+  6. Promemoria con DM chiusi e `@everyone` nel testo: nel canale di ripiego suona solo chi l'ha impostato.
+  Risultato atteso: nessun messaggio perso in silenzio, nessun ping non voluto.
+- [ ] Menu dei ruoli (#66, voce 10.7) — passi:
+  1. `/gestione ruoli menu-aggiungi` con emoji `ciao`: rifiutata. Con un'emoji personalizzata di un altro server dove il bot non c'è: rifiutata.
+  2. Menu a bottoni con 25 ruoli e etichette di 80 caratteri: il messaggio si pubblica (l'elenco va su più campi).
+  3. Cancella a mano il messaggio del menu e aggiungi un'opzione: il menu viene ripubblicato.
+  4. Togli all'ultimo ruolo: il menu e il messaggio spariscono e il bot lo dice.
+  5. Menu a bottoni creato con `toggle: no`: cliccare di nuovo non toglie il ruolo.
+  Risultato atteso: mai "Opzione aggiunta" se il messaggio non è cambiato.
+- [ ] Suggerimenti e richieste (#66, voce 10.9) — passi:
+  1. Due account dello staff cliccano insieme Approva e Rifiuta su un suggerimento: una sola decisione, l'altro legge "già deciso".
+  2. `/utility suggest` con un testo da 2000 caratteri: pubblicato; con il canale senza permessi: "il suggerimento non è stato inviato" e nessuna riga resta in sospeso.
+  3. Stessa prova a due clic su una richiesta di `/utility richiedi-comando`.
+  Risultato atteso: un solo esito, un solo DM al richiedente.
+- [ ] Pannello e liste dell'owner (#66, voce 10.12) — passi (serve `/owner`, server owner):
+  1. `/owner premium list`, `whitelist-list`, `utente-list`, `server-list` con tanti elementi: risposta a pagine con Indietro/Avanti.
+  2. `/owner premium panel` con più di 25 moduli premium-capable: tendina da 25 e pagine.
+  3. `/owner system eval` con un testo da 4001 caratteri: Discord lo rifiuta.
+  Risultato atteso: mai un errore generico "L'applicazione non ha risposto".
+- [ ] `modules_updated` (#66, voce 10.13) — passi:
+  1. Con il log a livello debug, attiva un modulo dal wizard (`/admin setup wizard`), da `/admin config import`, dopo un `/admin config reset` e dopo un `/admin config rollback`.
+  Risultato atteso: per ogni modulo cambiato un evento `modules_updated` (un ascoltatore di prova, o `bot.dispatch` loggato); nessun evento per quelli invariati.

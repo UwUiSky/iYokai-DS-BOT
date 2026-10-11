@@ -1,12 +1,12 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G5 chiuso
+11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G6 chiuso, ramo da pushare
 
 ## In corso
 - Previsione: 6 gruppi (G1 sticky/benvenuto/programmati/promemoria; G2 role menu; G3 suggerimenti+richieste;
   G4 owner_premium; G5 modules_updated; G6 chiusura). Migrazioni 0027 (ping_ruoli) usata; 0028 libera.
-- Prossimo: G6 chiusura: suite dei test toccati, smoke --base 90bbeb2, VERIFICA_LIVE.md, hash nell'AUDIT, push del ramo, rapporto.
+- Giro #66 chiuso (smoke --base 90bbeb2: 420 verdi). Prossimo: `/gestione` (greetings, role_menus), `nonstop-main` -> `/owner radio`, `/report`, `registra_comandi_del_cog` salti `owner`; poi F9 (autoroles, starboard, 10.8/10.14/10.15/10.17) e F13 (scheletri).
 
 ## Fatto
 - #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7, G3 10.9, G4 10.12, G5 10.13 fatti (AUDIT_UTILITA.md).
@@ -31,6 +31,7 @@
 - `COMMAND_LIST.md` va rigenerato (scripts/generate_command_list.py) quando cambia l'albero.
 
 ## Aperto
+- Menu dei ruoli: nessun comando per elencare gli ID dei menu (menu-aggiungi chiede `menu_id` a mano); un elenco richiederebbe un sottocomando in `/gestione ruoli` (controllare il tetto 25).
 - Fasi future saltate: 10.8 (F9), 10.11 (F8, già fatto come cerca-comando), 10.14, 10.15, 10.17 (F9); #71 voci Fun non in questi file.
 - Scheletri (counters, forms, starboard, birthdays, autoroles, invites, activity_stats, autoresponder, custom_commands, embed_builder): F9/F13.
 - Registro dati personali (F5): aggiungere `command_usage`. Menzioni di `/owner` non mostrate nel pannello.
