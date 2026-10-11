@@ -256,6 +256,25 @@ async def test_nomi_e_descrizioni_entro_i_limiti_e_regex():
         await _chiudi(creato_qui, bot)
 
 
+SOGLIA_DESCRIZIONE = 95  # sotto il limite di 100: margine per le traduzioni (F8)
+
+
+async def test_nessuna_descrizione_oltre_95_caratteri():
+    creato_qui, bot = await _albero_vero()
+    try:
+        lunghe = []
+        for nodo in _tutti_i_nodi(_radici(bot)):
+            if _len(nodo.description) > SOGLIA_DESCRIZIONE:
+                lunghe.append(f"{_percorso(nodo)}: {_len(nodo.description)}")
+            if isinstance(nodo, app_commands.Command):
+                for p in nodo.parameters:
+                    if _len(p.description) > SOGLIA_DESCRIZIONE:
+                        lunghe.append(f"{_percorso(nodo)} [{p.name}]: {_len(p.description)}")
+        assert not lunghe, f"Descrizioni oltre {SOGLIA_DESCRIZIONE} caratteri (limite 100): {lunghe}"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
 async def test_default_permissions_solo_al_primo_livello():
     creato_qui, bot = await _albero_vero()
     try:

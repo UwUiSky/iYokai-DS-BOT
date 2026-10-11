@@ -619,7 +619,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         descrizione="Imposta la modalità del filtro link.",
         sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
-    @app_commands.describe(mode="off = disattivato, whitelist = blocca tutto tranne i domini elencati, blacklist = blocca solo i domini elencati")
+    @app_commands.describe(mode="off = spento, whitelist = solo i domini elencati, blacklist = blocca i domini elencati")
     @app_commands.choices(
         mode=[
             app_commands.Choice(name="Disattivato", value="off"),
