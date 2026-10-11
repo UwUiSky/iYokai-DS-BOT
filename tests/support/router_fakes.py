@@ -18,4 +18,5 @@ def router_senza_scelte(monkeypatch):
     finto.segna_avvisato.return_value = True
     monkeypatch.setattr(router, "output_channel_repo", finto)
     router._avvisati.clear()
+    router._post_noti.clear()
     return finto

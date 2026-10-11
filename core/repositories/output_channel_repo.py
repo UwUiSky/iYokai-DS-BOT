@@ -19,6 +19,7 @@ class OutputChannel:
     channel_id: int
     post_id: int | None
     avvisato: bool
+    esplicito: bool = True
 
 
 def _riga(row) -> OutputChannel:
@@ -28,6 +29,7 @@ def _riga(row) -> OutputChannel:
         channel_id=row["channel_id"],
         post_id=row["post_id"],
         avvisato=row["avvisato"],
+        esplicito=row["esplicito"],
     )
 
 
@@ -40,13 +42,14 @@ class OutputChannelRepository:
         return self._pool_provider()
 
     async def imposta(self, guild_id: int, tipo: str, channel_id: int) -> None:
-        """Sceglie il canale di un tipo. Azzera post e avviso."""
+        """Scelta esplicita del canale di un tipo. Azzera post e avviso."""
         await self._pool.execute(
             """
             INSERT INTO output_channels (guild_id, tipo, channel_id)
             VALUES ($1, $2, $3)
             ON CONFLICT (guild_id, tipo) DO UPDATE
-                SET channel_id = EXCLUDED.channel_id, post_id = NULL, avvisato = FALSE
+                SET channel_id = EXCLUDED.channel_id, post_id = NULL, avvisato = FALSE,
+                    esplicito = TRUE
             """,
             guild_id, tipo, channel_id,
         )
@@ -71,23 +74,44 @@ class OutputChannelRepository:
         return esito.endswith(" 1")
 
     async def salva_post(self, guild_id: int, tipo: str, channel_id: int, post_id: int) -> None:
+        """
+        Ricorda il post del forum. Una riga nata dal ripiego (non esplicita)
+        segue il forum di adesso; se il forum è cambiato, l'avviso si azzera.
+        """
         await self._pool.execute(
             """
-            INSERT INTO output_channels (guild_id, tipo, channel_id, post_id)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (guild_id, tipo) DO UPDATE SET post_id = EXCLUDED.post_id
+            INSERT INTO output_channels (guild_id, tipo, channel_id, post_id, esplicito)
+            VALUES ($1, $2, $3, $4, FALSE)
+            ON CONFLICT (guild_id, tipo) DO UPDATE SET
+                post_id = EXCLUDED.post_id,
+                avvisato = CASE WHEN output_channels.esplicito
+                                  OR output_channels.channel_id = EXCLUDED.channel_id
+                                THEN output_channels.avvisato ELSE FALSE END,
+                channel_id = CASE WHEN output_channels.esplicito
+                                  THEN output_channels.channel_id ELSE EXCLUDED.channel_id END
             """,
             guild_id, tipo, channel_id, post_id,
         )
 
     async def segna_avvisato(self, guild_id: int, tipo: str, channel_id: int) -> bool:
-        """True solo la prima volta: chi la riceve manda l'avviso."""
+        """
+        Ricorda che per questo canale l'avviso è partito. True solo la prima
+        volta per quel canale. Una riga non esplicita non fissa il canale: se
+        il generale cambia, la riga si ignora.
+        """
         row = await self._pool.fetchrow(
             """
-            INSERT INTO output_channels (guild_id, tipo, channel_id, avvisato)
-            VALUES ($1, $2, $3, TRUE)
-            ON CONFLICT (guild_id, tipo) DO UPDATE SET avvisato = TRUE
-                WHERE NOT output_channels.avvisato
+            INSERT INTO output_channels (guild_id, tipo, channel_id, avvisato, esplicito)
+            VALUES ($1, $2, $3, TRUE, FALSE)
+            ON CONFLICT (guild_id, tipo) DO UPDATE SET
+                avvisato = TRUE,
+                post_id = CASE WHEN output_channels.esplicito
+                                 OR output_channels.channel_id = EXCLUDED.channel_id
+                               THEN output_channels.post_id ELSE NULL END,
+                channel_id = CASE WHEN output_channels.esplicito
+                                  THEN output_channels.channel_id ELSE EXCLUDED.channel_id END
+            WHERE NOT output_channels.avvisato
+               OR (NOT output_channels.esplicito AND output_channels.channel_id <> EXCLUDED.channel_id)
             RETURNING 1
             """,
             guild_id, tipo, channel_id,

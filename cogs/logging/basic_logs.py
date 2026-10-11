@@ -177,10 +177,15 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             return
 
         permessi = channel.permissions_for(interaction.guild.me)
-        if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+        servono = permessi.view_channel and permessi.send_messages and permessi.embed_links
+        if isinstance(channel, discord.ForumChannel):
+            # Il primo log crea un post, i successivi scrivono dentro il post.
+            servono = servono and permessi.create_public_threads and permessi.send_messages_in_threads
+        if not servono:
             await interaction.response.send_message(
                 f"Mi mancano i permessi in {channel.mention}: servono Vedere il canale, "
-                f"Inviare messaggi e Incorporare link.",
+                f"Inviare messaggi, Incorporare link e, per un forum, Creare post "
+                f"e Inviare messaggi nei post.",
                 ephemeral=True,
             )
             return

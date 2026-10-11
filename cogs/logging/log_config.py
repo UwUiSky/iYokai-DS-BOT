@@ -52,6 +52,16 @@ def _riservato(guild: discord.Guild) -> dict:
     }
 
 
+PERMESSI_CANALI = ("manage_channels", "view_channel", "send_messages", "embed_links",
+                   "attach_files", "read_message_history")
+PERMESSI_FORUM = PERMESSI_CANALI + ("create_public_threads", "send_messages_in_threads")
+
+
+def permessi_mancanti(permessi: discord.Permissions, richiesti: tuple[str, ...]) -> list[str]:
+    """Nomi dei permessi richiesti che il bot non ha."""
+    return [p for p in richiesti if not getattr(permessi, p)]
+
+
 class LogConfigCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -65,9 +75,10 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         if guild is None:
             await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
             return
-        if not guild.me.guild_permissions.manage_channels:
+        mancano = permessi_mancanti(guild.me.guild_permissions, PERMESSI_CANALI)
+        if mancano:
             await interaction.response.send_message(
-                "Mi manca il permesso Gestire i canali.", ephemeral=True
+                "Mi mancano dei permessi nel server: " + ", ".join(mancano), ephemeral=True
             )
             return
         if len(guild.channels) + 1 + len(TIPI_LOG) > MAX_CANALI_SERVER:
@@ -114,9 +125,10 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         if guild is None:
             await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
             return
-        if not guild.me.guild_permissions.manage_channels:
+        mancano = permessi_mancanti(guild.me.guild_permissions, PERMESSI_FORUM)
+        if mancano:
             await interaction.response.send_message(
-                "Mi manca il permesso Gestire i canali.", ephemeral=True
+                "Mi mancano dei permessi nel server: " + ", ".join(mancano), ephemeral=True
             )
             return
         if len(guild.channels) + 1 > MAX_CANALI_SERVER:

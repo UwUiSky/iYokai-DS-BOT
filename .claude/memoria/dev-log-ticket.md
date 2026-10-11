@@ -24,6 +24,8 @@
 
 - Giro logt, gruppo 2: NF-03 `/utility snipe|editsnipe` (modulo `snipe`, 5 min, solo memoria), M 5.9 ghost ping non scatta se cancella un moderatore (registro), ghost ping via router.
 
+- Giro logt, correzioni del cacciatore-bug: righe del router `esplicito` (migr. 0030: le righe nate dal ripiego seguono il generale), blocco+ricerca post archiviati nel forum, avviso segnato dopo il DM, registro di controllo per voce (id/conteggio), snipe con potatura/tetto per server/ignora/moderatori, transcript ticket via router, permessi forum, tetto 1/min per mute propri.
+
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
 - Cancellazione dei ticket dallo scheduler, non da un task.

@@ -27,11 +27,13 @@ from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
+from core.message_log_logic import da_ignorare
+from core.repositories.log_ignora_repo import log_ignora_repo
 from core.snipe_logic import (
-    AUDIT_FINESTRA_SECONDI,
+    RicordiSnipe,
+    VoceRegistro,
     cancellato_da_altri,
     is_ghost_ping_candidate,
-    scaduto,
     testo_snipe,
 )
 
@@ -54,6 +56,7 @@ class _MessaggioCancellato:
     content: str
     allegati: tuple[str, ...]
     quando: datetime
+    guild_id: int = 0
 
 
 @dataclass(frozen=True)
@@ -64,6 +67,7 @@ class _MessaggioModificato:
     dopo: str
     jump_url: str
     quando: datetime
+    guild_id: int = 0
 
 
 @dataclass(frozen=True)
@@ -93,17 +97,37 @@ class SnipeCog(CogConGruppi, commands.Cog):
         # cache non lo scarta per LRU).
         self._tracked_mentions: BoundedCache[int, _TrackedMention] = BoundedCache(_CACHE_MAX_SIZE)
         # Chiave: channel_id -> ultimo messaggio cancellato / ultima modifica.
-        self._ultimo_cancellato: BoundedCache[int, _MessaggioCancellato] = BoundedCache(_CACHE_MAX_SIZE)
-        self._ultima_modifica: BoundedCache[int, _MessaggioModificato] = BoundedCache(_CACHE_MAX_SIZE)
+        self._ultimo_cancellato = RicordiSnipe()
+        self._ultima_modifica = RicordiSnipe()
+        # Voci del registro di controllo già viste (id voce -> conteggio).
+        self._voci_viste: dict[int, int] = {}
 
     # ================================================================
     # SPEC.md §14.9 / §14.10 — Snipe ed Editsnipe
     # ================================================================
-    async def _ricorda_cancellato(self, payload: discord.RawMessageDeleteEvent) -> None:
+    async def _ignorato(self, guild: discord.Guild, channel_id: int, message: discord.Message) -> bool:
+        """Canali, utenti e prefissi di /log ignora valgono anche per snipe."""
+        canale = guild.get_channel_or_thread(channel_id)
+        return da_ignorare(
+            await log_ignora_repo.carica(guild.id),
+            channel_id=channel_id,
+            author_id=message.author.id,
+            testo=message.content,
+            category_id=getattr(canale, "category_id", None),
+            thread_parent_id=getattr(canale, "parent_id", None),
+        )
+
+    async def _ricorda_cancellato(self, payload: discord.RawMessageDeleteEvent, evento_ts: float) -> None:
         messaggio = payload.cached_message
         if messaggio is None or messaggio.author.bot:
             return
         if not await db.is_module_active_for_guild(payload.guild_id, MODULE_SNIPE):
+            return
+        guild = self.bot.get_guild(payload.guild_id)
+        if guild is None or await self._ignorato(guild, payload.channel_id, messaggio):
+            return
+        # Quello che tolgono i moderatori o l'automod non si rimostra a tutti.
+        if await self._cancellato_da_moderatore(guild, messaggio.author.id, payload.channel_id, evento_ts):
             return
         self._ultimo_cancellato.set(
             payload.channel_id,
@@ -113,6 +137,7 @@ class SnipeCog(CogConGruppi, commands.Cog):
                 content=messaggio.content,
                 allegati=tuple(a.filename for a in messaggio.attachments),
                 quando=datetime.now(timezone.utc),
+                guild_id=payload.guild_id,
             ),
         )
 
@@ -121,6 +146,8 @@ class SnipeCog(CogConGruppi, commands.Cog):
         if after.guild is None or after.author.bot or before.content == after.content:
             return
         if not await db.is_module_active_for_guild(after.guild.id, MODULE_SNIPE):
+            return
+        if await self._ignorato(after.guild, after.channel.id, after):
             return
         self._ultima_modifica.set(
             after.channel.id,
@@ -131,10 +158,11 @@ class SnipeCog(CogConGruppi, commands.Cog):
                 dopo=after.content,
                 jump_url=after.jump_url,
                 quando=datetime.now(timezone.utc),
+                guild_id=after.guild.id,
             ),
         )
 
-    async def _ricordato(self, interaction: discord.Interaction, cache: BoundedCache):
+    async def _ricordato(self, interaction: discord.Interaction, cache: RicordiSnipe):
         """La voce ancora valida del canale, oppure None dopo aver risposto all'utente."""
         if interaction.guild is None or interaction.channel is None:
             return None
@@ -145,9 +173,6 @@ class SnipeCog(CogConGruppi, commands.Cog):
             )
             return None
         voce = cache.get(interaction.channel.id)
-        if voce is not None and scaduto(voce.quando, datetime.now(timezone.utc)):
-            cache.delete(interaction.channel.id)
-            voce = None
         if voce is None:
             await interaction.response.send_message(
                 "Nessun messaggio da mostrare in questo canale (li ricordo per 5 minuti).",
@@ -267,32 +292,38 @@ class SnipeCog(CogConGruppi, commands.Cog):
             ),
         )
 
-    async def _cancellato_da_moderatore(self, guild: discord.Guild, author_id: int, channel_id: int) -> bool:
-        """M 5.9: il registro dice che un moderatore ha cancellato il messaggio di questo autore."""
+    async def _cancellato_da_moderatore(
+        self, guild: discord.Guild, author_id: int, channel_id: int, evento_ts: float
+    ) -> bool:
+        """M 5.9: il registro dice che un moderatore ha cancellato proprio questo messaggio."""
         await asyncio.sleep(AUDIT_ATTESA_SECONDI)
-        adesso = discord.utils.utcnow()
         voci = []
         try:
-            async for voce in guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=5):
-                extra_canale = getattr(getattr(voce.extra, "channel", None), "id", None)
+            async for voce in guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=10):
                 voci.append(
-                    (
-                        voce.user_id,
-                        getattr(voce.target, "id", None),
-                        extra_canale,
-                        (adesso - voce.created_at).total_seconds(),
+                    VoceRegistro(
+                        entry_id=voce.id,
+                        user_id=voce.user_id,
+                        target_id=getattr(voce.target, "id", None),
+                        channel_id=getattr(getattr(voce.extra, "channel", None), "id", None),
+                        count=getattr(voce.extra, "count", 1) or 1,
+                        created_ts=voce.created_at.timestamp(),
                     )
                 )
         except discord.HTTPException:
             return False  # senza il registro non si può dire: vale la regola di prima
-        return cancellato_da_altri(voci, author_id, channel_id)
+        risultato = cancellato_da_altri(voci, author_id, channel_id, self._voci_viste, evento_ts)
+        if len(self._voci_viste) > _CACHE_MAX_SIZE:
+            self._voci_viste.clear()
+        return risultato
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
         if payload.guild_id is None:
             return
 
-        await self._ricorda_cancellato(payload)
+        evento_ts = discord.utils.utcnow().timestamp()
+        await self._ricorda_cancellato(payload, evento_ts)
 
         tracciato = self._tracked_mentions.get(payload.message_id)
         if tracciato is None:
@@ -308,7 +339,7 @@ class SnipeCog(CogConGruppi, commands.Cog):
         destinazione = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
         if destinazione is None:
             return
-        if await self._cancellato_da_moderatore(guild, tracciato.author_id, tracciato.channel_id):
+        if await self._cancellato_da_moderatore(guild, tracciato.author_id, tracciato.channel_id, evento_ts):
             return
 
         if tracciato.mentions_everyone:

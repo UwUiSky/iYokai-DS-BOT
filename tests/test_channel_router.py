@@ -7,6 +7,8 @@ canale sparito o senza permesso con un solo avviso, canali offuscati.
 
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncio
+
 import discord
 import pytest
 
@@ -25,6 +27,7 @@ def repo(clean_db, monkeypatch):
     repo = OutputChannelRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(router, "output_channel_repo", repo)
     router._avvisati.clear()
+    router._post_noti.clear()
     return repo
 
 
@@ -174,3 +177,119 @@ async def test_repo_segna_avvisato_vale_una_volta_e_imposta_lo_azzera(repo):
     assert [r.tipo for r in await repo.elenco(1)] == ["eventi"]
     assert await repo.rimuovi(1, "eventi") is True
     assert await repo.rimuovi(1, "eventi") is False
+
+
+# ---- correzioni dopo il controllo del cacciatore-bug
+@pytest.mark.asyncio
+async def test_canale_generale_cancellato_poi_nuovo_generale_la_destinazione_torna_valida(repo):
+    owner = fake_member(user_id=555)
+    assert await router.destinazione(_server(owner=owner), router.TIPO_MESSAGGI, 77) is None
+    assert owner.send.await_count == 1
+    nuovo = fake_text_channel(88)
+    for tipo in router.TIPI_LOG:
+        assert await router.destinazione(_server(nuovo, owner=owner), tipo, 88) is nuovo
+    assert owner.send.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_nuovo_avviso_se_il_nuovo_generale_sparisce_a_sua_volta(repo):
+    owner = fake_member(user_id=555)
+    await router.destinazione(_server(owner=owner), router.TIPO_VOCE, 77)
+    await router.destinazione(_server(owner=owner), router.TIPO_VOCE, 88)
+    assert owner.send.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_la_scelta_esplicita_del_tipo_resta_dopo_il_cambio_del_generale(repo):
+    messaggi, nuovo = fake_text_channel(1), fake_text_channel(88)
+    await repo.imposta(900, router.TIPO_MESSAGGI, 1)
+    assert await router.destinazione(_server(messaggi, nuovo), router.TIPO_MESSAGGI, 88) is messaggi
+
+
+@pytest.mark.asyncio
+async def test_il_post_nato_dal_generale_non_blocca_il_cambio_da_forum_a_testo(repo):
+    forum = fake_forum_channel(50)
+    post = MagicMock(spec=discord.Thread, id=5000)
+    post.send = AsyncMock()
+    forum.create_thread = AsyncMock(return_value=MagicMock(thread=post, message=MagicMock()))
+    server = _server(forum)
+    forum.guild = server
+    dest = await router.destinazione(server, router.TIPO_MESSAGGI, 50)
+    await router.invia_a(dest, server, router.TIPO_MESSAGGI, embed=discord.Embed(title="x"))
+    nuovo = fake_text_channel(88)
+    assert await router.destinazione(_server(nuovo, forum), router.TIPO_MESSAGGI, 88) is nuovo
+
+
+@pytest.mark.asyncio
+async def test_tre_invii_insieme_nel_forum_creano_un_solo_post(repo):
+    forum = fake_forum_channel(50)
+    server = _server(forum)
+    forum.guild = server
+    post = MagicMock(spec=discord.Thread, id=7001)
+    post.send = AsyncMock()
+
+    async def crea(**kw):
+        await asyncio.sleep(0.05)
+        return MagicMock(thread=post, message=MagicMock())
+
+    forum.create_thread = AsyncMock(side_effect=crea)
+    dest = await router.destinazione(server, router.TIPO_MESSAGGI, 50)
+    await asyncio.gather(*(dest.send(embed=discord.Embed(title=str(n))) for n in range(3)))
+    assert forum.create_thread.await_count == 1
+    assert post.send.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_post_archiviato_non_in_cache_si_ritrova_e_non_ne_nasce_un_altro(repo):
+    forum = fake_forum_channel(50)
+    server = _server(forum)
+    forum.guild = server
+    archiviato = MagicMock(spec=discord.Thread, id=7002)
+    archiviato.send = AsyncMock()
+    server.fetch_channel = AsyncMock(return_value=archiviato)
+    forum.create_thread = AsyncMock()
+    await repo.imposta(900, router.TIPO_VOCE, 50)
+    await repo.salva_post(900, router.TIPO_VOCE, 50, 7002)
+    dest = await router.destinazione(server, router.TIPO_VOCE, None)
+    await dest.send(embed=discord.Embed(title="x"))
+    archiviato.send.assert_awaited_once()
+    forum.create_thread.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_il_file_si_riavvolge_se_il_post_non_c_e_piu(repo):
+    forum = fake_forum_channel(50)
+    server = _server(forum)
+    forum.guild = server
+    vecchio = MagicMock(spec=discord.Thread, id=7003)
+    vecchio.send = AsyncMock(side_effect=discord.NotFound(_risposta(404), "x"))
+    nuovo = MagicMock(spec=discord.Thread, id=7004)
+    server.get_thread.return_value = vecchio
+    forum.create_thread = AsyncMock(return_value=MagicMock(thread=nuovo, message=MagicMock()))
+    await repo.imposta(900, router.TIPO_VOCE, 50)
+    await repo.salva_post(900, router.TIPO_VOCE, 50, 7003)
+    file = MagicMock(spec=discord.File)
+    dest = await router.destinazione(server, router.TIPO_VOCE, None)
+    await dest.send(file=file)
+    file.reset.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_proprietario_non_in_memoria_l_avviso_non_si_perde(repo):
+    owner = fake_member(user_id=555)
+    await repo.imposta(900, router.TIPO_EVENTI, 77)
+    await router.destinazione(_server(owner=None), router.TIPO_EVENTI, None)
+    assert not (await repo.ottieni(900, router.TIPO_EVENTI)).avvisato
+    for _ in range(3):
+        await router.destinazione(_server(owner=owner), router.TIPO_EVENTI, None)
+    assert owner.send.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_dm_chiusi_l_avviso_si_considera_dato(repo):
+    owner = fake_member(user_id=555)
+    owner.send = AsyncMock(side_effect=discord.Forbidden(_risposta(403), "dm"))
+    await repo.imposta(900, router.TIPO_EVENTI, 77)
+    for _ in range(3):
+        await router.destinazione(_server(owner=owner), router.TIPO_EVENTI, None)
+    assert owner.send.await_count == 1

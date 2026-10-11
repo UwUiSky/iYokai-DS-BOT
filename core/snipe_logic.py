@@ -15,12 +15,17 @@ Funzioni coperte: SPEC §14.9-§14.12 (NF-03, M 5.9)
 
 from __future__ import annotations
 
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
 SNIPE_TTL_SECONDS = 5 * 60
 DESCRIZIONE_MAX = 4096
-# Un'azione del registro di controllo vale se è di pochi secondi fa (LIM-31).
-AUDIT_FINESTRA_SECONDI = 10
+# Una cancellazione di un moderatore scrive una voce nel registro proprio mentre
+# arriva l'evento: una voce più vecchia di così non riguarda questo messaggio.
+TOLLERANZA_REGISTRO_SECONDI = 3
+PER_SERVER_MAX = 50
+TOTALE_MAX = 20_000
+POTATURA_OGNI = 500
 
 
 def scaduto(creato: datetime, adesso: datetime, ttl: int = SNIPE_TTL_SECONDS) -> bool:
@@ -39,24 +44,100 @@ def testo_snipe(content: str, nomi_allegati: list[str]) -> str:
     return testo
 
 
+@dataclass(frozen=True)
+class VoceRegistro:
+    """Una voce «messaggio cancellato» del registro di controllo di Discord."""
+
+    entry_id: int
+    user_id: int | None  # chi ha cancellato
+    target_id: int | None  # di chi era il messaggio
+    channel_id: int | None
+    count: int  # Discord unisce più cancellazioni uguali in una voce sola
+    created_ts: float
+
+
 def cancellato_da_altri(
-    voci: list[tuple[int | None, int | None, int | None, float]],
+    voci: list[VoceRegistro],
     author_id: int,
     channel_id: int,
+    visti: dict[int, int],
+    evento_ts: float,
 ) -> bool:
     """
-    True se il registro di controllo dice che un messaggio dell'autore è stato
-    cancellato in quel canale da qualcun altro (un moderatore) poco fa.
-    Ogni voce è (chi ha cancellato, di chi era il messaggio, canale, secondi fa).
+    True se questa cancellazione (ricevuta a `evento_ts`) è opera di qualcun altro.
+    Vale una voce dell'autore in quel canale, di un altro utente, che o è nuova
+    (creata attorno all'evento) o, se già vista, ha il conteggio salito.
+    `visti` (id voce -> conteggio) si aggiorna qui e va conservato tra le chiamate.
     """
-    return any(
-        eseguito_da is not None
-        and eseguito_da != author_id
-        and bersaglio == author_id
-        and canale == channel_id
-        and eta <= AUDIT_FINESTRA_SECONDI
-        for eseguito_da, bersaglio, canale, eta in voci
-    )
+    trovato = False
+    for v in voci:
+        if v.user_id is None or v.user_id == author_id:
+            continue
+        if v.target_id != author_id or v.channel_id != channel_id:
+            continue
+        if v.entry_id in visti:
+            nuova = v.count > visti[v.entry_id]
+        else:
+            nuova = v.created_ts >= evento_ts - TOLLERANZA_REGISTRO_SECONDI
+        visti[v.entry_id] = v.count
+        trovato = trovato or nuova
+    return trovato
+
+
+class RicordiSnipe:
+    """
+    L'ultima voce per canale, solo in memoria. Scade dopo `ttl` secondi anche
+    in scrittura (potatura), e ogni server ne tiene al più `per_server`, così
+    un server non fa uscire i canali degli altri.
+    """
+
+    def __init__(self, ttl: int = SNIPE_TTL_SECONDS, per_server: int = PER_SERVER_MAX) -> None:
+        self._ttl = ttl
+        self._per_server = per_server
+        self._voci: dict[int, object] = {}  # canale -> voce (con .guild_id e .quando)
+        self._dei_server: dict[int, dict[int, None]] = {}  # server -> canali, dal più vecchio
+        self._scritture = 0
+
+    def __len__(self) -> int:
+        return len(self._voci)
+
+    def _scaduta(self, voce) -> bool:
+        return scaduto(voce.quando, datetime.now(timezone.utc), self._ttl)
+
+    def _togli(self, channel_id: int) -> None:
+        voce = self._voci.pop(channel_id, None)
+        if voce is not None:
+            self._dei_server.get(voce.guild_id, {}).pop(channel_id, None)
+
+    def get(self, channel_id: int):
+        voce = self._voci.get(channel_id)
+        if voce is not None and self._scaduta(voce):
+            self._togli(channel_id)
+            return None
+        return voce
+
+    def delete(self, channel_id: int) -> None:
+        self._togli(channel_id)
+
+    def _pota(self, channels: list[int]) -> None:
+        for c in channels:
+            voce = self._voci.get(c)
+            if voce is not None and self._scaduta(voce):
+                self._togli(c)
+
+    def set(self, channel_id: int, voce) -> None:
+        self._togli(channel_id)
+        canali = self._dei_server.setdefault(voce.guild_id, {})
+        self._pota(list(canali))
+        canali[channel_id] = None
+        self._voci[channel_id] = voce
+        while len(canali) > self._per_server:
+            self._togli(next(iter(canali)))
+        self._scritture += 1
+        if self._scritture % POTATURA_OGNI == 0:
+            self._pota(list(self._voci))
+        while len(self._voci) > TOTALE_MAX:
+            self._togli(next(iter(self._voci)))
 
 
 def is_ghost_ping_candidate(

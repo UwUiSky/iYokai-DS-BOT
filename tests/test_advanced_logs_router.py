@@ -117,3 +117,24 @@ async def test_descrizione_lunga_resta_entro_4096(monkeypatch):
     monkeypatch.setattr(modulo.router, "invia_a", inviato)
     await modulo.send_event_embed(fake_guild(guild_id=77), "channel_move", "x" * 9000)
     assert len(inviato.await_args.kwargs["embed"].description) <= 4096
+
+
+async def test_mute_proprio_ripetuto_si_registra_una_volta_al_minuto(cog, monkeypatch):
+    c, invio = cog
+    modulo._voce_propria_cache.clear()
+    adesso = [1000.0]
+    monkeypatch.setattr(modulo, "_monotonic", lambda: adesso[0])
+    canale = fake_text_channel(5)
+    membro = fake_member(user_id=9)
+    membro.guild = fake_guild(guild_id=77)
+    for _ in range(5):
+        await c.on_voice_state_update(membro, _stato(canale), _stato(canale, self_mute=True))
+    assert invio.await_count == 1
+    assert modulo.event_log_repo.log_event.await_count == 1
+    adesso[0] += modulo.VOCE_PROPRIO_ATTESA_SECONDI + 1
+    await c.on_voice_state_update(membro, _stato(canale), _stato(canale, self_mute=True))
+    assert invio.await_count == 2
+    # il mute del server non è limitato
+    for _ in range(3):
+        await c.on_voice_state_update(membro, _stato(canale), _stato(canale, mute=True))
+    assert invio.await_count == 5

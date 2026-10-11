@@ -52,7 +52,7 @@ def ambiente(clean_db, monkeypatch):
 def _server():
     server = fake_guild(guild_id=600)
     server.channels = []
-    server.me.guild_permissions = discord.Permissions(manage_channels=True)
+    server.me.guild_permissions = discord.Permissions.all()
     n = iter(range(1000, 2000))
 
     def canale(*a, **k):
@@ -196,3 +196,27 @@ async def test_log_stato_mostra_ogni_tipo_e_la_riserva(ambiente):
     testo = ix.response.send_message.call_args.args[0]
     assert testo.count("\n") == 3
     assert "riserva" in testo and "non riesco a scrivere" in testo
+
+
+async def test_crea_forum_senza_permessi_nei_post_non_crea_niente(ambiente):
+    cog = modulo.LogConfigCog(bot=None)
+    server = _server()
+    server.me.guild_permissions = discord.Permissions(
+        manage_channels=True, view_channel=True, send_messages=True, embed_links=True,
+        attach_files=True, read_message_history=True, create_public_threads=True,
+    )
+    ix = fake_interaction(guild=server)
+    await cog.crea_forum.callback(cog, ix)
+    server.create_forum.assert_not_awaited()
+    assert "send_messages_in_threads" in ix.response.send_message.call_args.args[0]
+
+
+async def test_log_canale_su_un_forum_vuole_anche_i_messaggi_nei_post(ambiente):
+    cog = BasicLogsCog(bot=None)
+    ix = fake_interaction(guild=fake_guild(guild_id=600))
+    forum = fake_forum_channel(4002)
+    forum.permissions_for.return_value = discord.Permissions(
+        view_channel=True, send_messages=True, embed_links=True, create_public_threads=True
+    )
+    await cog.logs_setup.callback(cog, ix, forum, "voce")
+    assert "permessi" in ix.response.send_message.call_args.args[0]

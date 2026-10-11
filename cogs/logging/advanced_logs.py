@@ -62,11 +62,16 @@ MODULE_LOGGING_ADVANCED = "logging_advanced"
 # Gli spostamenti di canale fatti insieme (trascinare un canale cambia la
 # posizione di molti altri) arrivano in un solo messaggio dopo questa attesa.
 SPOSTAMENTI_ATTESA_SECONDI = 5
+# Mute e sordità scelti dall'utente si registrano al massimo una volta al minuto
+# per utente e tipo: chi attiva e disattiva il microfono non riempie il canale.
+VOCE_PROPRIO_ATTESA_SECONDI = 60
 
 PREMIUM_CACHE_TTL_SECONDS = 60
 _monotonic = time.monotonic
 # guild_id -> (scadenza, sbloccato)
 _premium_cache: BoundedCache[int, tuple[float, bool]] = BoundedCache(10_000)
+# (guild_id, user_id, evento) -> ultimo istante registrato
+_voce_propria_cache: BoundedCache[tuple[int, int, str], float] = BoundedCache(10_000)
 
 # Stessa finestra di tolleranza già usata in cogs/security/anti_nuke.py
 # per risolvere l'autore di un evento via audit log (l'evento gateway
@@ -417,6 +422,8 @@ class AdvancedLogsCog(commands.Cog):
             return
         eventi = classify_voice_state_change(_voice_state_snapshot(before), _voice_state_snapshot(after))
         for event_type in eventi:
+            if event_type.startswith("voice_self_") and self._troppo_presto(member, event_type):
+                continue
             canale_rilevante = after.channel or before.channel
             await event_log_repo.log_event(
                 member.guild.id,
@@ -425,6 +432,16 @@ class AdvancedLogsCog(commands.Cog):
                 channel_id=canale_rilevante.id if canale_rilevante is not None else None,
             )
             await send_event_embed(member.guild, event_type, f"{member.mention}")
+
+    @staticmethod
+    def _troppo_presto(member: discord.Member, event_type: str) -> bool:
+        chiave = (member.guild.id, member.id, event_type)
+        adesso = _monotonic()
+        ultimo = _voce_propria_cache.get(chiave)
+        if ultimo is not None and adesso - ultimo < VOCE_PROPRIO_ATTESA_SECONDI:
+            return True
+        _voce_propria_cache.set(chiave, adesso)
+        return False
 
     # ================================================================
     # 8.10 Webhook
