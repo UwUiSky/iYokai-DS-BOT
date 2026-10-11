@@ -31,8 +31,8 @@ Esempio: cogs/logging/basic_logs.py (`/log canale`). Se il cog ha un suo
 Nessun gruppo entra da solo nell'albero del bot: i gruppi vuoti non si
 sincronizzano. `registra_comandi_del_cog` aggiunge il gruppo all'albero
 quando il primo comando arriva e lo toglie quando l'ultimo se ne va;
-`registra_gruppi_usati` è la rete di sicurezza di main.py. `/owner` non entra
-mai da qui: va aggiunto a parte, solo nel server dell'owner (`registra_owner`, mappa §5).
+`registra_gruppi_usati` è una funzione di appoggio (oggi usata solo dai test,
+main.py non la chiama). `/owner` non entra mai da qui: va aggiunto a parte, solo nel server dell'owner (`registra_owner`, mappa §5).
 """
 
 from __future__ import annotations
