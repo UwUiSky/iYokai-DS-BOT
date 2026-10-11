@@ -27,6 +27,7 @@ import logging
 import discord
 from discord.ext import commands
 
+from core.automod_rate_tracker import AutomodRateTracker
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
@@ -45,6 +46,12 @@ MODULE_PERMISSION_HEATMAP = "permission_heatmap"
 # La descrizione di un embed tiene 4096 caratteri: l'elenco si ferma
 # prima, per lasciare posto alla riga "…e altri N ruoli".
 MAX_CARATTERI_ELENCO = 4000
+
+# Avvisi al proprietario: al massimo questi in 10 minuti per server. Un
+# ruolo admin dato a 200 membri non deve diventare 200 messaggi privati.
+MAX_AVVISI_PER_FINESTRA = 5
+FINESTRA_AVVISI_SECONDI = 600
+heatmap_rate_tracker = AutomodRateTracker()
 
 
 def _permission_flags(permissions: discord.Permissions) -> dict[str, bool]:
@@ -95,16 +102,17 @@ class PermissionHeatmapCog(CogConGruppi, commands.Cog):
             return
 
         righe = []
-        for role in guild.roles:
-            if role.is_default():
-                continue  # @everyone non è mai utile qui: tutti i membri lo hanno
+        # Dal ruolo più alto al più basso; @everyone per primo se ha permessi
+        # critici: li hanno tutti i membri, è il rischio più grosso.
+        for role in sorted(guild.roles, key=lambda r: (not r.is_default(), -r.position)):
             critici = critical_permissions_of(_permission_flags(role.permissions))
             if not critici:
                 continue
-            righe.append(
-                f"**{role.name}** ({len(role.members)} membri): "
-                f"{', '.join(critici)}"
-            )
+            nome = discord.utils.escape_markdown(discord.utils.escape_mentions(role.name))
+            if role.is_default():
+                righe.append(f"⚠️ **@everyone** (tutti i membri): {', '.join(critici)}")
+                continue
+            righe.append(f"**{nome}** ({len(role.members)} membri): {', '.join(critici)}")
 
         if not righe:
             await interaction.response.send_message(
@@ -151,27 +159,50 @@ class PermissionHeatmapCog(CogConGruppi, commands.Cog):
         if not risultato:
             return
 
-        owner = after.guild.owner
-        if owner is None:
+        guild = after.guild
+        proprietario = guild.owner
+        if proprietario is None:
+            # Non in cache: si chiede a Discord.
+            try:
+                proprietario = await self.bot.fetch_user(guild.owner_id)
+            except discord.HTTPException:
+                return
+
+        # Un ruolo admin dato a molti membri insieme: dopo i primi avvisi
+        # ne parte uno solo che lo dice, poi silenzio fino alla fine della finestra.
+        conteggio = heatmap_rate_tracker.record_and_count(
+            guild.id, 0, "avviso", discord.utils.utcnow(), FINESTRA_AVVISI_SECONDI
+        )
+        if conteggio > MAX_AVVISI_PER_FINESTRA + 1:
             return
-
-        dettagli = []
-        for role_id, permessi in risultato.items():
-            role = after.guild.get_role(role_id)
-            nome_ruolo = role.name if role else f"ruolo #{role_id}"
-            dettagli.append(f"**{nome_ruolo}**: {', '.join(permessi)}")
-
-        try:
-            await owner.send(
+        if conteggio == MAX_AVVISI_PER_FINESTRA + 1:
+            messaggio = (
+                f"⚠️ **Permission Risk Alert** in **{discord.utils.escape_markdown(guild.name)}**: "
+                f"troppi ruoli con permessi critici assegnati in poco tempo. Non ti mando altri avvisi "
+                f"per {FINESTRA_AVVISI_SECONDI // 60} minuti: controlla /security heatmap."
+            )
+        else:
+            dettagli = []
+            for role_id, permessi in risultato.items():
+                role = guild.get_role(role_id)
+                nome_ruolo = (
+                    discord.utils.escape_markdown(discord.utils.escape_mentions(role.name))
+                    if role else f"ruolo #{role_id}"
+                )
+                dettagli.append(f"**{nome_ruolo}**: {', '.join(permessi)}")
+            messaggio = (
                 f"⚠️ **Permission Risk Alert** — {after.mention} ({after.id}) ha "
                 f"appena ricevuto un ruolo con permessi critici in "
-                f"**{after.guild.name}**:\n\n" + "\n".join(dettagli)
-            )
+                f"**{discord.utils.escape_markdown(guild.name)}**:\n\n" + "\n".join(dettagli)
+            )[:2000]
+
+        try:
+            await proprietario.send(messaggio)
         except discord.HTTPException:
             logger.warning(
                 "Impossibile avvisare l'owner del server %s del permesso "
                 "critico appena assegnato (DM chiusi?).",
-                after.guild.id,
+                guild.id,
             )
 
 

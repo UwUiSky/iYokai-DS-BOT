@@ -357,6 +357,8 @@ class ServerSecuritySignals:
     anti_raid_enabled: bool
     anti_nuke_enabled: bool
     automod_badwords_active: bool
+    # SIC-022: cosa, nei ruoli, impedisce al bot di lavorare (frasi pronte).
+    role_problems: tuple[str, ...] = ()
 
 
 _LOW_VERIFICATION_LEVELS = ("none", "low")
@@ -381,7 +383,9 @@ def compute_security_score(signals: ServerSecuritySignals) -> tuple[int, tuple[s
         punteggio -= 10
         consigli.append("Alza il livello di verifica del server (Impostazioni → Moderazione).")
 
-    if signals.total_member_count > 0:
+    # Due amministratori (oltre al proprietario) non sono "troppi" nemmeno
+    # in un server piccolo, dove sarebbero comunque piu' del 5%.
+    if signals.total_member_count > 0 and signals.admin_member_count > 2:
         quota_admin = signals.admin_member_count / signals.total_member_count
         if quota_admin > 0.05:
             punteggio -= 15
@@ -400,5 +404,9 @@ def compute_security_score(signals: ServerSecuritySignals) -> tuple[int, tuple[s
     if not signals.automod_badwords_active:
         punteggio -= 10
         consigli.append("Attiva il modulo AutoMod per un filtro di base sui contenuti.")
+
+    if signals.role_problems:
+        punteggio -= 10
+        consigli.extend(signals.role_problems)
 
     return max(0, punteggio), tuple(consigli)
