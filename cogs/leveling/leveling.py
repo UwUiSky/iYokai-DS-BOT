@@ -529,19 +529,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
     async def _process_guild_voice_xp(self, guild: discord.Guild) -> None:
         afk_channel_id = guild.afk_channel.id if guild.afk_channel else None
 
+        # PERF-4: si raccolgono tutti i presenti del server e si scrive in
+        # una volta sola (una query per la blacklist, una transazione per
+        # l'XP), non una transazione per ogni persona.
+        presenti: list[tuple[discord.Member, discord.VoiceChannel, bool]] = []
         for channel in guild.voice_channels:
             members = [m for m in channel.members if not m.bot]
             if not members:
                 continue
 
             is_afk = channel.id == afk_channel_id
-
             for member in members:
-                # SEC-10: un utente in blacklist non deve continuare a
-                # guadagnare XP vocale.
-                if await blacklist_repo.is_user_blacklisted(member.id):
-                    continue
-
                 others_not_muted = sum(
                     1
                     for other in members
@@ -552,27 +550,37 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     is_afk_channel=is_afk,
                     other_members_not_self_muted=others_not_muted,
                 )
-                grant = await leveling_repo.add_voice_minute(
-                    guild.id, member.id, channel.id, is_eligible=eligible
+                presenti.append((member, channel, eligible))
+
+        if not presenti:
+            return
+
+        # SEC-10: un utente in blacklist non deve continuare a
+        # guadagnare XP vocale.
+        bloccati = await blacklist_repo.blacklisted_among([m.id for m, _, _ in presenti])
+        presenti = [p for p in presenti if p[0].id not in bloccati]
+        if not presenti:
+            return
+
+        risultati = await leveling_repo.add_voice_minutes(
+            guild.id, [(m.id, ch.id, ok) for m, ch, ok in presenti]
+        )
+        for member, channel, _ in presenti:
+            grant = risultati.get(member.id)
+            if grant is None or not grant.leveled_up:
+                continue
+            # Notifica mandata nel canale VOCALE stesso, non in un
+            # canale testuale a parte: i canali vocali moderni hanno
+            # la propria chat integrata (discord.VoiceChannel eredita
+            # da Messageable), ed è l'unico posto sensato per un task
+            # periodico che gira su più server insieme.
+            try:
+                await channel.send(
+                    f"🎉 {member.mention} è salito al livello **{grant.new_level}**!"
                 )
-                if grant is not None and grant.leveled_up:
-                    # Notifica mandata nel canale VOCALE stesso, non
-                    # in un canale testuale a parte: i canali vocali
-                    # moderni hanno la propria chat integrata
-                    # (discord.VoiceChannel eredita da Messageable),
-                    # ed è l'unico posto sensato per un task
-                    # periodico che gira su più server insieme — a
-                    # differenza dei messaggi testuali, non c'è un
-                    # "canale in cui è appena successo qualcosa" da
-                    # riusare.
-                    try:
-                        await channel.send(
-                            f"🎉 {member.mention} è salito al livello "
-                            f"**{grant.new_level}**!"
-                        )
-                    except discord.HTTPException:
-                        pass
-                    await self._grant_level_rewards(member, guild, grant.new_level)
+            except discord.HTTPException:
+                pass
+            await self._grant_level_rewards(member, guild, grant.new_level)
 
     # ================================================================
     # Comandi

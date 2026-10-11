@@ -20,6 +20,11 @@ from core.leveling_logic import TEXT_XP_COOLDOWN_SECONDS, period_key
 def repo(clean_db):
     return LevelingRepository(pool_provider=lambda: clean_db)
 
+async def _minuto(repo, user_id: int, canale: int, idoneo: bool):
+    """Un minuto vocale per un utente, tramite la scrittura raggruppata."""
+    return (await repo.add_voice_minutes(100, [(user_id, canale, idoneo)]))[user_id]
+
+
 
 @pytest.mark.asyncio
 async def test_totali_di_default_per_utente_mai_visto(repo):
@@ -62,7 +67,7 @@ async def test_add_text_xp_registra_attivita_nel_periodo_corrente(repo):
 
 @pytest.mark.asyncio
 async def test_add_voice_minute_idoneo_assegna_xp_e_coin(repo):
-    grant = await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=True)
+    grant = await _minuto(repo, 1, 5000, True)
     assert grant is not None
     assert grant.xp_granted > 0
     assert grant.coins_granted > 0
@@ -74,7 +79,7 @@ async def test_add_voice_minute_idoneo_assegna_xp_e_coin(repo):
 
 @pytest.mark.asyncio
 async def test_add_voice_minute_non_idoneo_non_assegna_nulla(repo):
-    grant = await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=False)
+    grant = await _minuto(repo, 1, 5000, False)
     assert grant is None
 
     totali = await repo.get_totals(100, 1)
@@ -86,7 +91,7 @@ async def test_add_voice_minute_non_idoneo_non_assegna_nulla(repo):
 async def test_add_voice_minute_traccia_il_canale_anche_se_non_idoneo(repo, clean_db):
     # Anche senza guadagno, il canale corrente va tracciato: serve
     # al minuto SUCCESSIVO per sapere se c'è stato un cambio canale.
-    await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=False)
+    await _minuto(repo, 1, 5000, False)
     row = await clean_db.fetchrow(
         "SELECT voice_channel_id FROM leveling_totals WHERE guild_id=100 AND user_id=1"
     )
@@ -95,8 +100,8 @@ async def test_add_voice_minute_traccia_il_canale_anche_se_non_idoneo(repo, clea
 
 @pytest.mark.asyncio
 async def test_add_voice_minute_consecutivi_si_accumulano(repo, clean_db):
-    await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=True)
-    await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=True)
+    await _minuto(repo, 1, 5000, True)
+    await _minuto(repo, 1, 5000, True)
     row = await clean_db.fetchrow(
         "SELECT voice_consecutive_minutes FROM leveling_totals WHERE guild_id=100 AND user_id=1"
     )
@@ -105,9 +110,9 @@ async def test_add_voice_minute_consecutivi_si_accumulano(repo, clean_db):
 
 @pytest.mark.asyncio
 async def test_add_voice_minute_cambio_canale_riazzera_i_consecutivi(repo, clean_db):
-    await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=True)
-    await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=True)
-    await repo.add_voice_minute(100, 1, current_channel_id=6000, is_eligible=True)  # canale diverso
+    await _minuto(repo, 1, 5000, True)
+    await _minuto(repo, 1, 5000, True)
+    await _minuto(repo, 1, 6000, True)  # canale diverso
     row = await clean_db.fetchrow(
         "SELECT voice_consecutive_minutes, voice_channel_id FROM leveling_totals WHERE guild_id=100 AND user_id=1"
     )
@@ -126,7 +131,7 @@ async def test_add_voice_minute_rollover_giornaliero(repo, clean_db):
         """,
         date.today() - timedelta(days=1),
     )
-    await repo.add_voice_minute(100, 1, current_channel_id=5000, is_eligible=True)
+    await _minuto(repo, 1, 5000, True)
     row = await clean_db.fetchrow(
         "SELECT voice_minutes_today FROM leveling_totals WHERE guild_id=100 AND user_id=1"
     )
@@ -249,69 +254,57 @@ NATI_PRIMA_DI = datetime(2099, 1, 1, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
-async def test_list_users_needing_weekly_decay_esclude_chi_e_appena_arrivato(repo):
+async def test_list_guilds_needing_weekly_decay_esclude_chi_e_appena_arrivato(repo):
     await repo.add_coins(100, 1, 500)
 
     appena_arrivato = datetime.now(timezone.utc) - timedelta(days=1)
-    assert await repo.list_users_needing_weekly_decay(PERIODO, appena_arrivato) == []
+    assert await repo.list_guilds_needing_weekly_decay(PERIODO, appena_arrivato) == []
 
 
 @pytest.mark.asyncio
-async def test_list_users_needing_weekly_decay_include_chi_ha_saldo_e_non_decaduto(repo):
+async def test_list_guilds_needing_weekly_decay_include_chi_ha_saldo_e_non_decaduto(repo):
     await repo.add_coins(100, 1, 500)
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
-
-    assert (100, 1) in da_decadere
+    assert await repo.list_guilds_needing_weekly_decay(PERIODO, NATI_PRIMA_DI) == [100]
 
 
 @pytest.mark.asyncio
-async def test_list_users_needing_weekly_decay_esclude_saldo_al_minimo(repo):
+async def test_list_guilds_needing_weekly_decay_esclude_saldo_al_minimo(repo):
     await repo.add_coins(100, 1, 1)  # saldo 1: decadimento è no-op
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
-
-    assert (100, 1) not in da_decadere
+    assert await repo.list_guilds_needing_weekly_decay(PERIODO, NATI_PRIMA_DI) == []
 
 
 @pytest.mark.asyncio
-async def test_list_users_needing_weekly_decay_esclude_chi_ha_gia_il_periodo_coperto(
-    repo, clean_db
-):
+async def test_list_guilds_needing_weekly_decay_esclude_chi_ha_gia_il_periodo_coperto(repo):
     await repo.add_coins(100, 1, 500)
-    await repo.apply_weekly_decay(100, 1, PERIODO)
+    await repo.apply_weekly_decay_guild(100, PERIODO, NATI_PRIMA_DI)
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
-
-    assert (100, 1) not in da_decadere
+    assert await repo.list_guilds_needing_weekly_decay(PERIODO, NATI_PRIMA_DI) == []
 
 
 @pytest.mark.asyncio
-async def test_list_users_needing_weekly_decay_non_mischia_server_diversi(repo):
+async def test_list_guilds_needing_weekly_decay_non_mischia_server_diversi(repo):
     await repo.add_coins(100, 1, 500)
     await repo.add_coins(200, 1, 500)
 
-    da_decadere = await repo.list_users_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)
-
-    assert (100, 1) in da_decadere
-    assert (200, 1) in da_decadere
+    assert sorted(await repo.list_guilds_needing_weekly_decay(PERIODO, NATI_PRIMA_DI)) == [100, 200]
 
 
 @pytest.mark.asyncio
-async def test_apply_weekly_decay_riduce_il_saldo_del_10_percento(repo):
+async def test_apply_weekly_decay_guild_riduce_il_saldo_del_10_percento(repo):
     await repo.add_coins(100, 1, 500)
 
-    prima, dopo = await repo.apply_weekly_decay(100, 1, PERIODO)
+    utenti, tolti = await repo.apply_weekly_decay_guild(100, PERIODO, NATI_PRIMA_DI)
 
-    assert prima == 500
-    assert dopo == 450
+    assert (utenti, tolti) == (1, 50)
     assert (await repo.get_totals(100, 1)).coins_total == 450
 
 
 @pytest.mark.asyncio
-async def test_apply_weekly_decay_marca_il_periodo_coperto(repo, clean_db):
+async def test_apply_weekly_decay_guild_marca_il_periodo_coperto(repo, clean_db):
     await repo.add_coins(100, 1, 500)
-    await repo.apply_weekly_decay(100, 1, PERIODO)
+    await repo.apply_weekly_decay_guild(100, PERIODO, NATI_PRIMA_DI)
 
     row = await clean_db.fetchrow(
         "SELECT last_weekly_decay_period FROM leveling_totals WHERE guild_id = 100 AND user_id = 1"
@@ -320,11 +313,5 @@ async def test_apply_weekly_decay_marca_il_periodo_coperto(repo, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_apply_weekly_decay_su_utente_senza_riga_non_solleva_errore(repo):
-    # Utente mai visto (nessuna riga in leveling_totals): saldo 0,
-    # il decadimento non deve creare una riga né sollevare eccezioni
-    # (non c'è nulla su cui fare UPDATE — la lista da decadere non lo
-    # includerebbe comunque, ma il metodo resta sicuro se chiamato).
-    prima, dopo = await repo.apply_weekly_decay(100, 999, PERIODO)
-    assert prima == 0
-    assert dopo == 0
+async def test_apply_weekly_decay_guild_su_server_senza_righe_non_solleva_errore(repo):
+    assert await repo.apply_weekly_decay_guild(999, PERIODO, NATI_PRIMA_DI) == (0, 0)

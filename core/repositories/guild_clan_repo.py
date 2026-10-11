@@ -808,7 +808,7 @@ class GuildClanRepository:
         questa scrittura il saldo potrebbe essere cambiato da una
         spesa o una donazione nel frattempo. Restituisce
         (saldo_prima, saldo_dopo) — stesso pattern di
-        LevelingRepository.apply_weekly_decay: il chiamante (il
+        LevelingRepository.apply_weekly_decay_guild: il chiamante (il
         worker) DEVE calcolare il delta da QUESTA coppia, non da un
         valore letto prima del lock, altrimenti una donazione
         avvenuta nel frattempo produrrebbe un delta sbagliato verso

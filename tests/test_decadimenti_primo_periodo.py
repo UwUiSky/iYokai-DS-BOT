@@ -103,7 +103,6 @@ async def utente_nuovo(clean_db, monkeypatch):
     leveling_repo = LevelingRepository(pool_provider=lambda: clean_db)
     chest_repo = GuildChestRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(modulo_utenti, "leveling_repo", leveling_repo)
-    monkeypatch.setattr(modulo_utenti, "guild_chest_repo", chest_repo)
     await leveling_repo.add_coins(GUILD_ID, 1, 500)
     return leveling_repo, chest_repo
 

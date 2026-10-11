@@ -114,11 +114,11 @@ class TestLevelingVoceIgnoraBlacklist:
                 self.voice_channels = voice_channels
                 self.afk_channel = None
 
-        async def bloccato_solo_utente_1(user_id):
-            return user_id == 1
+        async def bloccato_solo_utente_1(user_ids):
+            return {u for u in user_ids if u == 1}
 
         monkeypatch.setattr(
-            leveling_module.blacklist_repo, "is_user_blacklisted", bloccato_solo_utente_1
+            leveling_module.blacklist_repo, "blacklisted_among", bloccato_solo_utente_1
         )
 
         repo_finto = AsyncMock()
@@ -133,7 +133,7 @@ class TestLevelingVoceIgnoraBlacklist:
 
         await cog._process_guild_voice_xp(guild)
 
-        repo_finto.add_voice_minute.assert_not_awaited()
+        repo_finto.add_voice_minutes.assert_not_awaited()
 
 
 class TestRoleMenusReactionIgnoraBlacklist:

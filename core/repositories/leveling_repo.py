@@ -120,9 +120,8 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
 # a ogni giro orario. In più: solo righe nate prima di $2 (chi è appena
 # arrivato non decade); le righe senza data sono quelle di prima della
 # migrazione 0019 e valgono come vecchie.
-QUERY_UTENTI_DA_DECADERE = """
-    SELECT guild_id, user_id FROM leveling_totals
-    WHERE coins_total > 1
+CONDIZIONE_DA_DECADERE = """
+    coins_total > 1
       AND (
           last_weekly_decay_period IS NULL
           OR last_weekly_decay_period < $1
@@ -130,6 +129,42 @@ QUERY_UTENTI_DA_DECADERE = """
       )
       AND (created_at IS NULL OR created_at < $2)
 """
+
+QUERY_UTENTI_DA_DECADERE = (
+    "SELECT guild_id, user_id FROM leveling_totals WHERE " + CONDIZIONE_DA_DECADERE
+)
+
+# Un solo UPDATE per server (PERF-6). Il 10% è arrotondato "al pari" nei
+# casi di mezzo (5, 15, 25...) come fa round() di Python in
+# core.leveling_logic.apply_weekly_personal_decay: un test confronta le due
+# strade su centinaia di saldi.
+QUERY_DECADIMENTO_DEL_SERVER = (
+    """
+    WITH da_decadere AS (
+        SELECT user_id, coins_total AS prima,
+               GREATEST(
+                   coins_total - CASE WHEN coins_total % 10 = 5
+                                      THEN 2 * round(coins_total::numeric / 20)
+                                      ELSE round(coins_total::numeric / 10) END,
+                   1
+               )::bigint AS dopo
+        FROM leveling_totals
+        WHERE guild_id = $3 AND
+    """
+    + CONDIZIONE_DA_DECADERE
+    + """
+        FOR UPDATE
+    ), aggiornati AS (
+        UPDATE leveling_totals AS t
+        SET coins_total = d.dopo, last_weekly_decay_period = $1
+        FROM da_decadere AS d
+        WHERE t.guild_id = $3 AND t.user_id = d.user_id
+        RETURNING d.prima - d.dopo AS tolti
+    )
+    SELECT count(*) AS utenti, COALESCE(sum(tolti), 0) AS tolti FROM aggiornati
+    """
+)
+
 
 
 # ----------------------------------------------------------------------
@@ -306,102 +341,104 @@ class LevelingRepository:
                     granted=True, new_xp_total=xp_after, leveled_up=leveled_up, new_level=new_level
                 )
 
-    async def add_voice_minute(
-        self, guild_id: int, user_id: int, current_channel_id: int, is_eligible: bool
-    ) -> VoiceMinuteGrant | None:
+    async def add_voice_minutes(
+        self, guild_id: int, presenze: list[tuple[int, int, bool]]
+    ) -> dict[int, VoiceMinuteGrant | None]:
         """
-        Registra un minuto di presenza vocale. Se `is_eligible` è
-        False (una delle regole anti-farm non è soddisfatta), il
-        canale corrente viene comunque tracciato — serve per sapere
-        se il PROSSIMO minuto idoneo rappresenta un cambio di canale
-        — ma non viene assegnato nulla e la funzione restituisce
-        None. Il rollover del contatore giornaliero (mezzanotte UTC)
-        viene gestito qui, indipendentemente dall'idoneità.
+        Registra un minuto di presenza vocale per tutti i presenti di un
+        server, in UNA transazione (PERF-4): una lettura bloccante delle
+        righe e una scrittura per tutti, non una transazione a testa.
+        `presenze` è una lista di (utente, canale corrente, idoneo).
+        Se `idoneo` è False (una delle regole anti-farm non è
+        soddisfatta) il canale corrente viene comunque tracciato — serve
+        per sapere se il PROSSIMO minuto idoneo è un cambio di canale —
+        ma non si assegna nulla e il risultato per quell'utente è None.
+        Il rollover del contatore giornaliero (mezzanotte UTC) vale per
+        tutti, idonei o no. Restituisce {utente: VoiceMinuteGrant | None}.
         """
+        if not presenze:
+            return {}
         # Giorno in UTC, non nell'ora locale della macchina: il tetto
         # giornaliero deve azzerarsi alla stessa ora per tutti.
         today = datetime.now(timezone.utc).date()
+        ordinati = sorted(presenze)  # in ordine di utente: nessuno stallo tra giri
+        risultati: dict[int, VoiceMinuteGrant | None] = {}
+        scritture = []
+
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
-                    SELECT xp_total, voice_channel_id, voice_consecutive_minutes,
-                           voice_minutes_today, voice_activity_date
-                    FROM leveling_totals WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
-                    """,
-                    guild_id,
-                    user_id,
-                )
-                xp_before = row["xp_total"] if row else 0
-                stored_channel_id = row["voice_channel_id"] if row else None
-                stored_consecutive = row["voice_consecutive_minutes"] if row else 0
-                stored_date = row["voice_activity_date"] if row else None
-
-                # Rollover giornaliero: un nuovo giorno azzera i
-                # minuti di oggi, a prescindere dall'idoneità di
-                # questo specifico minuto.
-                minutes_today = row["voice_minutes_today"] if row and stored_date == today else 0
-
-                changed_channel = stored_channel_id != current_channel_id
-
-                if not is_eligible:
-                    await conn.execute(
+                righe = {
+                    r["user_id"]: r
+                    for r in await conn.fetch(
                         """
-                        INSERT INTO leveling_totals
-                            (guild_id, user_id, voice_channel_id, voice_minutes_today, voice_activity_date)
-                        VALUES ($1, $2, $3, $4, $5)
-                        ON CONFLICT (guild_id, user_id) DO UPDATE
-                            SET voice_channel_id = $3,
-                                voice_minutes_today = $4,
-                                voice_activity_date = $5
+                        SELECT user_id, xp_total, voice_channel_id, voice_consecutive_minutes,
+                               voice_minutes_today, voice_activity_date
+                        FROM leveling_totals
+                        WHERE guild_id = $1 AND user_id = ANY($2::bigint[])
+                        ORDER BY user_id FOR UPDATE
                         """,
                         guild_id,
-                        user_id,
-                        current_channel_id,
-                        minutes_today,
-                        today,
+                        [u for u, _, _ in ordinati],
                     )
-                    return None
+                }
+                for user_id, canale, idoneo in ordinati:
+                    row = righe.get(user_id)
+                    xp_before = row["xp_total"] if row else 0
+                    stored_consecutive = row["voice_consecutive_minutes"] if row else 0
+                    # Un nuovo giorno azzera i minuti di oggi, a prescindere
+                    # dall'idoneità di questo specifico minuto.
+                    minutes_today = (
+                        row["voice_minutes_today"]
+                        if row and row["voice_activity_date"] == today
+                        else 0
+                    )
+                    if not idoneo:
+                        risultati[user_id] = None
+                        scritture.append(
+                            (guild_id, user_id, xp_before, level_for_xp(xp_before), 0,
+                             canale, stored_consecutive, minutes_today)
+                        )
+                        continue
 
-                result = compute_voice_minute(stored_consecutive, minutes_today, changed_channel)
-                xp_after = xp_before + result.xp_granted
-                leveled_up, new_level = did_level_up(xp_before, xp_after)
+                    changed_channel = (row["voice_channel_id"] if row else None) != canale
+                    result = compute_voice_minute(stored_consecutive, minutes_today, changed_channel)
+                    xp_after = xp_before + result.xp_granted
+                    leveled_up, new_level = did_level_up(xp_before, xp_after)
+                    scritture.append(
+                        (guild_id, user_id, xp_after, new_level, result.coins_granted,
+                         canale, result.new_consecutive_minutes, result.new_minutes_today)
+                    )
+                    risultati[user_id] = VoiceMinuteGrant(
+                        xp_granted=result.xp_granted,
+                        coins_granted=result.coins_granted,
+                        leveled_up=leveled_up,
+                        new_level=new_level,
+                    )
 
-                await conn.execute(
+                await conn.executemany(
                     """
                     INSERT INTO leveling_totals
                         (guild_id, user_id, xp_total, level, coins_total,
                          voice_channel_id, voice_consecutive_minutes,
                          voice_minutes_today, voice_activity_date)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::date)
                     ON CONFLICT (guild_id, user_id) DO UPDATE
-                        SET xp_total = $3, level = $4,
-                            coins_total = leveling_totals.coins_total + $5,
-                            voice_channel_id = $6,
-                            voice_consecutive_minutes = $7,
-                            voice_minutes_today = $8,
-                            voice_activity_date = $9
+                        SET xp_total = EXCLUDED.xp_total,
+                            level = EXCLUDED.level,
+                            coins_total = leveling_totals.coins_total + EXCLUDED.coins_total,
+                            voice_channel_id = EXCLUDED.voice_channel_id,
+                            voice_consecutive_minutes = EXCLUDED.voice_consecutive_minutes,
+                            voice_minutes_today = EXCLUDED.voice_minutes_today,
+                            voice_activity_date = EXCLUDED.voice_activity_date
                     """,
-                    guild_id,
-                    user_id,
-                    xp_after,
-                    new_level,
-                    result.coins_granted,
-                    current_channel_id,
-                    result.new_consecutive_minutes,
-                    result.new_minutes_today,
-                    today,
+                    [riga + (today,) for riga in scritture],
                 )
-                await self._add_period_activity(
-                    conn, guild_id, user_id, result.xp_granted, result.coins_granted
-                )
-
-                return VoiceMinuteGrant(
-                    xp_granted=result.xp_granted,
-                    coins_granted=result.coins_granted,
-                    leveled_up=leveled_up,
-                    new_level=new_level,
-                )
+                for user_id, grant in risultati.items():
+                    if grant is not None:
+                        await self._add_period_activity(
+                            conn, guild_id, user_id, grant.xp_granted, grant.coins_granted
+                        )
+        return risultati
 
     async def add_coins(self, guild_id: int, user_id: int, amount: int) -> int:
         """Aggiunge (o sottrae, con amount negativo) coin. Restituisce il nuovo saldo."""
@@ -476,65 +513,49 @@ class LevelingRepository:
         async with self._pool.acquire() as conn:
             return await spend_coins_in(conn, guild_id, user_id, amount)
 
-    async def list_users_needing_weekly_decay(
+    async def list_guilds_needing_weekly_decay(
         self, period: str, created_before: datetime
-    ) -> list[tuple[int, int]]:
+    ) -> list[int]:
         """
-        Solo le righe nate prima di `created_before`: il primo
+        Gli id dei server con almeno un saldo da far decadere (stesse
+        regole di QUERY_UTENTI_DA_DECADERE: saldo > 1, periodo non ancora
+        coperto, riga nata prima di `created_before` — il primo
         decadimento arriva dopo una settimana intera, non entro un'ora
-        dal primo guadagno.
-
-
-        (guild_id, user_id) di chi ha un saldo personale > soglia
-        minima e non ha ancora subito il decadimento settimanale per
-        questo period (SPEC.md §15.15) — QUALUNQUE membro con coin,
-        in un clan o no (richiesta esplicita dell'utente, distinto
-        dal decadimento mensile della tesoreria di clan). Chi ha già
-        un saldo al minimo non viene nemmeno restituito: decadere un
-        saldo di 1 non cambia nulla, non serve marcarlo come
-        "coperto" per questa settimana.
+        dal primo guadagno). Vale per QUALUNQUE membro con coin, in un
+        clan o no (SPEC.md §15.15).
         """
-        rows = await self._pool.fetch(QUERY_UTENTI_DA_DECADERE, period, created_before)
-        return [(r["guild_id"], r["user_id"]) for r in rows]
+        rows = await self._pool.fetch(
+            "SELECT DISTINCT guild_id FROM leveling_totals WHERE " + CONDIZIONE_DA_DECADERE,
+            period,
+            created_before,
+        )
+        return [r["guild_id"] for r in rows]
 
-    async def apply_weekly_decay(
-        self, guild_id: int, user_id: int, period: str
+    async def apply_weekly_decay_guild(
+        self, guild_id: int, period: str, created_before: datetime
     ) -> tuple[int, int]:
         """
-        Applica il decadimento settimanale del 10% sul saldo
-        personale (core.leveling_logic.apply_weekly_personal_decay) e
-        marca il period come coperto, atomicamente (FOR UPDATE) — la
-        percentuale è calcolata QUI, sul saldo letto sotto lock, non
-        passata dal chiamante: altrimenti tra la lettura del
-        chiamante e questa scrittura il saldo potrebbe essere
-        cambiato da una spesa o un guadagno nel frattempo. Restituisce
-        (saldo_prima, saldo_dopo).
+        Decadimento settimanale del 10% per TUTTI i saldi di un server, con
+        un solo UPDATE (PERF-6). La percentuale è calcolata dal database
+        sul saldo bloccato (FOR UPDATE), non passata dal chiamante: una
+        spesa o un guadagno nel frattempo non falsano il risultato. Le
+        coin tolte vanno nella cassa del server nella STESSA transazione.
+        Restituisce (utenti toccati, coin tolte).
         """
+        from core.repositories.guild_chest_repo import (  # import tardivo: la cassa usa questo modulo
+            REASON_WEEKLY_PERSONAL_DECAY,
+            deposit_in,
+        )
+
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                saldo_attuale = await conn.fetchval(
-                    """
-                    SELECT coins_total FROM leveling_totals
-                    WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
-                    """,
-                    guild_id,
-                    user_id,
-                ) or 0
-
-                nuovo_saldo = apply_weekly_personal_decay(saldo_attuale)
-
-                await conn.execute(
-                    """
-                    UPDATE leveling_totals
-                    SET coins_total = $3, last_weekly_decay_period = $4
-                    WHERE guild_id = $1 AND user_id = $2
-                    """,
-                    guild_id,
-                    user_id,
-                    nuovo_saldo,
-                    period,
+                riga = await conn.fetchrow(
+                    QUERY_DECADIMENTO_DEL_SERVER, period, created_before, guild_id
                 )
-                return saldo_attuale, nuovo_saldo
+                utenti, tolti = riga["utenti"], int(riga["tolti"])
+                if tolti > 0:
+                    await deposit_in(conn, guild_id, tolti, REASON_WEEKLY_PERSONAL_DECAY)
+                return utenti, tolti
 
     async def claim_daily(
         self, guild_id: int, user_id: int, amount: int, cooldown_seconds: int, now: datetime

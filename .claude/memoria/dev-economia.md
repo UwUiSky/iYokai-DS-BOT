@@ -1,11 +1,12 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-11/10/2026 · ramo `feat/f7-gestione-livelli` (base `1e5525c`, non pushato)
+11/10/2026 · ramo `feat/giro-eco` (da main `0e7753a`), DB `iyokai_weco`, migrazioni da 0030
 
 ## In corso
-- Niente a metà. F7 passo 3a chiuso sul ramo: aspetta smoke, unione e prova dal vivo.
-  #146 (D23) su `feat/boost-146`: aspetta unione.
+- Giro eco: previsione 4 voci. Fatto 9.18. Poi NF-15 (#86, migrazione 0030, comandi in
+  `/level impostazioni`), poi NF-12 (#83, rank card), poi voci piccole #124/#125 se ci stanno.
+- 9.1-9.17 verificate già fatte (merge `9db9e8a`). Clan voice worker ancora utente per utente (Aperto).
 
 ## Fatto
 - F1, livelli + economia + clan: unito su main con `9db9e8a`
@@ -20,7 +21,13 @@
   in 4 commit su `feat/f7-gestione-livelli`; test `tests/test_f7_gestione_livelli_gruppi.py`.
 - #146 boost per tipo su `feat/boost-146` (5 commit, migrazione 0020, test `tests/test_clan_146_boost_per_tipo.py`).
 
+- Giro eco 9.18 (PERF-4/6): `apply_weekly_decay_guild` (un UPDATE per server + cassa nella stessa
+  transazione), `list_guilds_needing_weekly_decay`, `add_voice_minutes` (batch), `blacklisted_among`.
+
 ## Cose imparate
+- SQL `round()` arrotonda il mezzo in su, Python `round()` al pari: il decadimento in SQL usa
+  `2*round(x/20)` quando `x%10=5`; il test lo confronta con la funzione pura su 600 saldi.
+- `leveling_repo` importa la cassa solo dentro il metodo (la cassa importa `add_coins_in`).
 - Ordine dei blocchi: membro -> leveling_totals -> clans (come `apply_text_tick`);
   `set_member_role` blocca prima il membro. Il contrario dà deadlock.
 - `buy_member_boost`, `donate_from_member`, `set_member_role` verificano
@@ -54,3 +61,4 @@
 - Colonne vecchie `boost_expires_at`/`guild_boost_expires_at` restano nel database, non usate.
 - I test senza `DATABASE_URL` esportato usano `iyokai_test` (condiviso): esportarlo sempre.
 - `tests/support/command_policy.py`: riga `"gestione"` aggiunta qui; se la aggiungono anche ticket/voice, tenerne una.
+- `core/guild_clan_voice_worker.py`: ancora ~6 query per utente a ogni tick (PERF-4 non chiusa lì).

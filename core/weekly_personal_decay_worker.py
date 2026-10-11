@@ -28,10 +28,6 @@ from discord.ext import commands, tasks
 from core.bot_ready import attendi_bot_pronto
 from core.guild_iteration import for_each_guild_safely
 from core.leveling_logic import previous_week_start, week_key
-from core.repositories.guild_chest_repo import (
-    REASON_WEEKLY_PERSONAL_DECAY,
-    guild_chest_repo,
-)
 from core.repositories.leveling_repo import leveling_repo
 
 logger = logging.getLogger("iyokai.weekly_personal_decay_worker")
@@ -49,27 +45,25 @@ class WeeklyPersonalDecayWorker:
 
         # Chi è arrivato dopo l'inizio della settimana scorsa non ha
         # ancora vissuto una settimana intera: niente decadimento.
-        da_decadere = await leveling_repo.list_users_needing_weekly_decay(
-            settimana_corrente, created_before=previous_week_start(adesso)
+        nati_prima_di = previous_week_start(adesso)
+        server = await leveling_repo.list_guilds_needing_weekly_decay(
+            settimana_corrente, created_before=nati_prima_di
         )
-        async def _per_utente(coppia) -> None:
-            guild_id, user_id = coppia
-            saldo_prima, saldo_dopo = await leveling_repo.apply_weekly_decay(
-                guild_id, user_id, settimana_corrente
+
+        async def _per_server(guild_id: int) -> None:
+            # PERF-6: un solo UPDATE per server; le coin tolte arrivano
+            # in cassa nella stessa transazione.
+            utenti, tolti = await leveling_repo.apply_weekly_decay_guild(
+                guild_id, settimana_corrente, nati_prima_di
             )
-            delta = saldo_prima - saldo_dopo
-            if delta > 0:
-                await guild_chest_repo.deposit(
-                    guild_id, delta, REASON_WEEKLY_PERSONAL_DECAY
-                )
             logger.info(
-                "Decadimento settimanale applicato a %s/%s: %s -> %s.",
-                guild_id, user_id, saldo_prima, saldo_dopo,
+                "Decadimento settimanale nel server %s: %s saldi, %s coin alla cassa.",
+                guild_id, utenti, tolti,
             )
 
-        # LC-8: un utente problematico non blocca gli altri.
+        # LC-8: un server problematico non blocca gli altri.
         await for_each_guild_safely(
-            da_decadere, _per_utente, nome_worker="Decadimento settimanale personale"
+            server, _per_server, nome_worker="Decadimento settimanale personale"
         )
 
     def start(self, bot: commands.Bot) -> None:

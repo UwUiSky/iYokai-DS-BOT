@@ -57,6 +57,36 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
     )
 
 
+async def deposit_in(
+    conn: asyncpg.Connection, guild_id: int, amount: int, reason: str
+) -> int:
+    """
+    Accredita la cassa su una connessione già aperta (stessa transazione
+    di chi chiama) e scrive il ledger. Restituisce il nuovo saldo.
+    """
+    if amount <= 0:
+        raise ValueError("L'importo da depositare in cassa deve essere positivo.")
+    saldo = await conn.fetchval(
+        """
+        INSERT INTO guild_chest (guild_id, balance)
+        VALUES ($1, $2)
+        ON CONFLICT (guild_id) DO UPDATE
+            SET balance = guild_chest.balance + $2,
+                updated_at = now()
+        RETURNING balance
+        """,
+        guild_id,
+        amount,
+    )
+    await conn.execute(
+        "INSERT INTO guild_chest_ledger (guild_id, amount, reason) VALUES ($1, $2, $3)",
+        guild_id,
+        amount,
+        reason,
+    )
+    return saldo
+
+
 async def spend_in(
     conn: asyncpg.Connection, guild_id: int, amount: int, reason: str
 ) -> bool:
@@ -115,33 +145,9 @@ class GuildChestRepository:
         già, come per il ledger di tesoreria di clan). Restituisce il
         nuovo saldo della cassa.
         """
-        if amount <= 0:
-            raise ValueError("L'importo da depositare in cassa deve essere positivo.")
-
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
-                    INSERT INTO guild_chest (guild_id, balance)
-                    VALUES ($1, $2)
-                    ON CONFLICT (guild_id) DO UPDATE
-                        SET balance = guild_chest.balance + $2,
-                            updated_at = now()
-                    RETURNING balance
-                    """,
-                    guild_id,
-                    amount,
-                )
-                await conn.execute(
-                    """
-                    INSERT INTO guild_chest_ledger (guild_id, amount, reason)
-                    VALUES ($1, $2, $3)
-                    """,
-                    guild_id,
-                    amount,
-                    reason,
-                )
-                return row["balance"]
+                return await deposit_in(conn, guild_id, amount, reason)
 
     async def pay_members(
         self, guild_id: int, user_ids: list[int], amount_each: int, reason: str
