@@ -87,15 +87,17 @@ def test_voce_di_lista_scritta_come_link_funziona_lo_stesso():
     ) == (VIOLATION_ANTI_LINK,)
 
 
-def test_comando_domain_ha_un_limite_di_lunghezza():
+async def test_comando_domain_ha_un_limite_di_lunghezza():
     import discord
     from discord.ext import commands
 
     import cogs.automod.automod as modulo_automod
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
-    gruppo = modulo_automod.AutomodCog(bot).automod_group.to_dict(bot.tree)
-    comando = next(c for c in gruppo["options"] if c["name"] == "anti-link-domain")
-    opzione = next(o for o in comando["options"] if o["name"] == "domain")
+    await bot.add_cog(modulo_automod.AutomodCog(bot))
+    comando = bot.tree.get_command("automod").get_command("filtri").get_command("anti-link-domain")
+    dati = comando.to_dict(bot.tree)
+    await bot.remove_cog("AutomodCog")
+    opzione = next(o for o in dati["options"] if o["name"] == "domain")
 
     assert opzione["max_length"] == 253
