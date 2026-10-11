@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock
 import discord
 
 import cogs.security.anti_raid as modulo
+from core.security_quarantine import PERMESSI_QUARANTENA
 from core.repositories.security_repo import security_repo
 from tests.support.discord_fakes import fake_role, fake_text_channel
 from tests.test_anti_raid_f1 import (  # noqa: F401  (fixture condivise)
@@ -113,7 +114,7 @@ async def test_ruolo_salvato_con_canali_vecchi_viene_allineato_una_volta(cog, se
     # Il primo canale ha già tutti i permessi di quarantena: non si tocca.
     gia_a_posto = canali[0]
     gia_a_posto.overwrites_for.return_value = discord.PermissionOverwrite(
-        **modulo.PERMESSI_QUARANTENA
+        **PERMESSI_QUARANTENA
     )
     server.channels = canali
 

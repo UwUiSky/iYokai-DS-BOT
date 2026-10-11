@@ -37,9 +37,6 @@ loro custom_id porta server, caso e utente, e setup() li registra con
 Funzioni coperte: SPEC §7.3
 """
 
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
 # DA FARE (issue #101, fase F13): NF-30, Appello per i ban normali. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
 
@@ -71,7 +68,7 @@ from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
-from core.security_access import premium_sbloccato
+from core.security_access import SETTING_STAFF_ROLES, is_staff_exempt, premium_sbloccato
 from core.spam_trap_logic import (
     BAN_ACTION_TYPE,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
@@ -109,12 +106,6 @@ SECONDI_IGNORA_STESSO_UTENTE = 60
 # Il testo dell'appello finisce nella descrizione di un embed (4096).
 MAX_TESTO_APPELLO = 3500
 
-# SEC-8b: ruoli staff esentati dalla trappola, oltre a chi ha già
-# "Gestisci messaggi"/"Amministratore" o un ruolo sopra quello del
-# bot — impostazione per server in guild_config.settings (stesso
-# meccanismo già usato altrove, es. i ruoli di supporto dei ticket).
-SETTING_STAFF_ROLES = "spam_trap_staff_role_ids"
-
 # Copy in inglese per gli embed dei canali — richiesto esplicitamente
 # dalla specifica originale ("il tutto ovviamente rigorosamente in
 # inglese").
@@ -136,24 +127,9 @@ LOG_EMBED_DESCRIPTION = (
 )
 
 
-def _is_staff_exempt(
-    member: discord.Member, guild: discord.Guild, staff_role_ids: set[int]
-) -> bool:
-    """
-    SEC-8b: vero se il messaggio nella trappola non deve mai portare
-    al ban — chi ha già "Gestisci messaggi" o "Amministratore", chi
-    ha uno dei ruoli staff configurati per questo server, o chi ha un
-    ruolo più in alto di quello del bot (il bot non potrebbe bannarlo
-    comunque, e nel frattempo gli avrebbe già cancellato l'accesso al
-    server).
-    """
-    if member.guild_permissions.manage_messages or member.guild_permissions.administrator:
-        return True
-    if any(ruolo.id in staff_role_ids for ruolo in member.roles):
-        return True
-    if member.top_role > guild.me.top_role:
-        return True
-    return False
+# L'esenzione dello staff sta in core/security_access.py: la usa anche il ban
+# globale nei server di destinazione.
+_is_staff_exempt = is_staff_exempt
 
 
 def _permessi_mancanti(
@@ -745,41 +721,48 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             propagate_ban(self.bot, guild, user.id, "Spam trap triggered")
         )
 
-        # 5. Case (riusa il case system di Moderation).
-        case_number = await moderation_repo.create_case(
-            guild_id=guild.id,
-            user_id=user.id,
-            moderator_id=self.bot.user.id,
-            action_type=BAN_ACTION_TYPE,
-            reason="Triggered the spam trap channel",
-        )
-
-        # 6. Purge supplementare (7-30 giorni).
-        deleted_by_channel = await self._purge_supplementary(guild, user, now)
-
-        # 7. Cleanup webhook/inviti.
-        await self._cleanup_user_artifacts(guild, user)
-
-        # 8. Invito usato al join.
-        join_invite = await spam_trap_repo.get_latest_join_invite(guild.id, user.id)
-        invite_code, invite_creator_id = join_invite if join_invite else (None, None)
-
-        # 9. Incidente (contesto + transcript).
-        await spam_trap_repo.create_incident(
-            guild.id,
-            case_number,
-            trigger_content,
-            invite_code,
-            invite_creator_id,
-            deleted_by_channel,
-            transcript_html,
-        )
-
         try:
-            propagated_guild_ids = await propagazione
-        except Exception:
-            logger.exception("Propagazione del ban globale fallita (server %s).", guild.id)
-            propagated_guild_ids = []
+            # 5. Case (riusa il case system di Moderation).
+            case_number = await moderation_repo.create_case(
+                guild_id=guild.id,
+                user_id=user.id,
+                moderator_id=self.bot.user.id,
+                action_type=BAN_ACTION_TYPE,
+                reason="Triggered the spam trap channel",
+            )
+
+            # 6. Purge supplementare (7-30 giorni).
+            deleted_by_channel = await self._purge_supplementary(guild, user, now)
+
+            # 7. Cleanup webhook/inviti.
+            await self._cleanup_user_artifacts(guild, user)
+
+            # 8. Invito usato al join.
+            join_invite = await spam_trap_repo.get_latest_join_invite(guild.id, user.id)
+            invite_code, invite_creator_id = join_invite if join_invite else (None, None)
+
+            # 9. Incidente (contesto + transcript).
+            await spam_trap_repo.create_incident(
+                guild.id,
+                case_number,
+                trigger_content,
+                invite_code,
+                invite_creator_id,
+                deleted_by_channel,
+                transcript_html,
+            )
+
+            try:
+                propagated_guild_ids = await propagazione
+            except Exception:
+                logger.exception("Propagazione del ban globale fallita (server %s).", guild.id)
+                propagated_guild_ids = []
+        except BaseException:
+            # La sequenza e' saltata a meta': la propagazione non resta un
+            # lavoro orfano che banna in giro senza che nessuno ne sappia niente.
+            propagazione.cancel()
+            await asyncio.gather(propagazione, return_exceptions=True)
+            raise
 
         # 10. Log.
         await self._send_ban_log(

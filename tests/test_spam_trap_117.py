@@ -121,3 +121,75 @@ async def test_una_revoca_che_fallisce_non_blocca_lo_unban(scenario, monkeypatch
 async def test_pulizia_dopo_il_ban_regge_un_errore_del_registro(scenario):
     scenario.server.audit_logs.side_effect = discord.HTTPException(MagicMock(status=500), "boom")
     await scenario.cog._cleanup_user_artifacts(scenario.server, scenario.utente)  # non solleva
+
+
+def _canale_con_permessi(**permessi):
+    from tests.support.discord_fakes import fake_text_channel
+
+    canale = fake_text_channel()
+    canale.mention = "#canale"
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(**permessi))
+    return canale
+
+
+def _server_senza_bannare(*, ban: bool):
+    from tests.support.discord_fakes import fake_guild
+
+    server = fake_guild()
+    server.me.guild_permissions = discord.Permissions(ban_members=ban)
+    return server
+
+
+def test_tutti_e_tre_gli_avvisi_dei_permessi_mancanti():
+    trappola = _canale_con_permessi()
+    log = _canale_con_permessi()
+
+    avvisi = modulo._permessi_mancanti(_server_senza_bannare(ban=False), trappola, log)
+
+    assert len(avvisi) == 3
+    assert "Bannare membri" in avvisi[0]
+    assert "non posso scrivere" in avvisi[1]
+    assert "non vedo i messaggi" in avvisi[2]
+
+
+def test_senza_thread_nel_log_l_avviso_e_quello_degli_appelli():
+    trappola = _canale_con_permessi(view_channel=True, read_message_history=True)
+    log = _canale_con_permessi(view_channel=True, send_messages=True, embed_links=True)
+
+    avvisi = modulo._permessi_mancanti(_server_senza_bannare(ban=True), trappola, log)
+
+    assert len(avvisi) == 1 and "thread" in avvisi[0] and "appelli" in avvisi[0]
+
+
+def test_con_tutto_a_posto_nessun_avviso():
+    tutto = dict(
+        view_channel=True, send_messages=True, embed_links=True, read_message_history=True,
+        create_private_threads=True, send_messages_in_threads=True,
+    )
+    assert modulo._permessi_mancanti(
+        _server_senza_bannare(ban=True), _canale_con_permessi(**tutto), _canale_con_permessi(**tutto)
+    ) == []
+
+
+async def test_se_la_sequenza_salta_la_propagazione_non_resta_orfana(scenario, monkeypatch):
+    creati = []
+    crea_originale = asyncio.create_task
+
+    def _crea(coro, **kw):
+        task = crea_originale(coro, **kw)
+        creati.append(task)
+        return task
+
+    async def propagazione_lenta(*_a, **_k):
+        await asyncio.sleep(30)
+
+    monkeypatch.setattr(modulo, "propagate_ban", propagazione_lenta)
+    monkeypatch.setattr(modulo.asyncio, "create_task", _crea)
+    monkeypatch.setattr(modulo.moderation_repo, "create_case", AsyncMock(side_effect=RuntimeError("db giu'")))
+
+    with pytest.raises(RuntimeError):
+        await scenario.cog._esegui_sequenza_ban(
+            scenario.messaggio(scenario.trappola, 900_000, datetime.now(timezone.utc))
+        )
+
+    assert creati and all(t.done() for t in creati)  # nessun lavoro rimasto in giro

@@ -144,6 +144,12 @@ class VerifyPanelView(BaseView):
         # aperto il modulo del captcha, che può essere solo la PRIMA
         # risposta (dopo un defer non si può più aprire).
         config = await verify_repo.get_config(guild.id)
+        # Chi ha già il ruolo non deve risolvere un captcha per sentirsi dire che è già verificato.
+        if config.verified_role_id is not None and any(
+            r.id == config.verified_role_id for r in interaction.user.roles
+        ):
+            await interaction.response.send_message("You are already verified.", ephemeral=True)
+            return
         if config.captcha_enabled:
             await interaction.response.send_modal(
                 CaptchaModal(cog, guild.id, interaction.user.id)

@@ -28,6 +28,9 @@ class _FakeGuild:
         self.banned: list[int] = []
         self.raise_forbidden = raise_forbidden
 
+    def get_member(self, user_id):
+        return None
+
     async def ban(self, obj, reason=None, delete_message_seconds=0) -> None:
         if self.raise_forbidden:
             raise discord.Forbidden(response=_FakeHTTPResponse(), message="Permessi insufficienti")

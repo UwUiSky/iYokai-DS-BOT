@@ -16,12 +16,16 @@ Il blocco scatta solo quando gli ingressi superano la soglia. Il
 livello di verifica alzato torna quello di prima alla scadenza del
 blocco (salvata nel database, controllata ogni minuto).
 
+Quarantena: il ruolo "Quarantined" (core/security_quarantine.py) si crea
+quando si attiva il modulo, non durante il raid. Con il "blocco della
+quarantena" attivo chi non è fidato non può liberare un membro a mano né
+dargli altri ruoli (si usa /security antiraid rilascia, che è la stessa
+funzione dell'anti-nuke). Le impostazioni che indeboliscono la difesa
+(blocco, rilascio col blocco attivo) le cambia solo chi gestisce:
+proprietario ed extra owner.
+
 Funzioni coperte: SPEC §7.1
 """
-
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
 
 from __future__ import annotations
 
@@ -41,7 +45,8 @@ from core.bounded_cache import BoundedCache
 from core.database import db
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
-from core.security_access import premium_sbloccato
+from core.security_access import premium_sbloccato, solo_chi_gestisce
+from core.security_audit import resolve_voce
 from core.security_logic import (
     NUKE_ACTION_QUARANTINE_HOLD,
     AntiRaidConfig,
@@ -51,17 +56,14 @@ from core.security_logic import (
     is_raid,
 )
 from core.security_quarantine import (
-    NOME_CANALE_NASCOSTO,
-    NOME_RUOLO_QUARANTENA,
-    PERMESSI_QUARANTENA,
     blocca_canale,
     problemi_ruoli_del_bot,
+    rilascia_utente,
     ruolo_quarantena,
 )
 from core.security_raid_state import DURATA_RAID_SECONDI, azzera, segna_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
-from cogs.security.anti_nuke import _resolve_voce
 
 logger = logging.getLogger("iyokai.anti_raid")
 
@@ -173,13 +175,24 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, enabled=enabled))
-        testo = f"Anti-Raid {'attivato' if enabled else 'disattivato'}."
-        if enabled:
-            # SIC-022: se i ruoli non mi lasciano lavorare, meglio saperlo adesso.
-            problemi = problemi_ruoli_del_bot(interaction.guild, settings.quarantine_role_id)
-            if problemi:
-                testo += "\n⚠️ " + "\n⚠️ ".join(problemi)
-        await interaction.response.send_message(testo, ephemeral=True)
+        await interaction.response.send_message(
+            f"Anti-Raid {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+        )
+        if not enabled:
+            return
+        avvisi = []
+        if settings.anti_raid.lockdown_action in ("quarantine", "both"):
+            # Il ruolo e i permessi sui canali si preparano adesso, non durante il raid.
+            if await self._ruolo_quarantena(interaction.guild) is None:
+                avvisi.append(
+                    "Non sono riuscito a creare il ruolo di quarantena (mi manca Gestire ruoli?): "
+                    "durante un raid i nuovi arrivati non verrebbero messi in quarantena."
+                )
+        # SIC-022: se i ruoli non mi lasciano lavorare, meglio saperlo adesso.
+        aggiornate = await security_repo.get_settings(interaction.guild.id)
+        avvisi += problemi_ruoli_del_bot(interaction.guild, aggiornate.quarantine_role_id)
+        if avvisi:
+            await interaction.followup.send("⚠️ " + "\n⚠️ ".join(avvisi), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -327,6 +340,8 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
+        if not await solo_chi_gestisce(interaction, settings.anti_nuke):
+            return
         await security_repo.save_settings(_replace(settings, quarantine_hold=enabled))
         await interaction.response.send_message(
             f"Blocco della quarantena {'attivato' if enabled else 'disattivato'}.", ephemeral=True
@@ -344,6 +359,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
+        # Col blocco attivo la quarantena si toglie solo da chi gestisce.
+        if settings.anti_raid.quarantine_hold and not await solo_chi_gestisce(interaction, settings.anti_nuke):
+            return
         ruolo = (
             interaction.guild.get_role(settings.quarantine_role_id)
             if settings.quarantine_role_id is not None else None
@@ -355,9 +373,10 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             )
             return
         await interaction.response.defer(ephemeral=True)
-        try:
-            await membro.remove_roles(ruolo, reason=f"Anti-Raid: quarantena tolta da {interaction.user}"[:512])
-        except discord.HTTPException:
+        esito = await rilascia_utente(
+            membro, caso_numero=None, reason=f"Anti-Raid: quarantena tolta da {interaction.user}"
+        )
+        if not esito.riuscito:
             await interaction.followup.send(
                 "Discord non mi ha lasciato togliere il ruolo (il mio ruolo è più in basso?).", ephemeral=True
             )
@@ -365,9 +384,16 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await security_repo.log_action(
             interaction.guild.id, "raid_release", membro.id, f"rilasciato da {interaction.user.id}"
         )
+        if esito.quarantena_tenuta:
+            altri = ", ".join(f"#{n}" for n in esito.altri_casi)
+            testo = (
+                f"{membro.mention} resta in quarantena: ha casi anti-nuke attivi ({altri}). "
+                "Si rilasciano con /security antinuke rilascia."
+            )
+        else:
+            testo = f"{membro.mention} è fuori dalla quarantena."
         await interaction.followup.send(
-            f"{membro.mention} è fuori dalla quarantena.", ephemeral=True,
-            allowed_mentions=discord.AllowedMentions.none(),
+            testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )
 
     @commands.Cog.listener()
@@ -416,7 +442,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         ruoli_dati = [r for r in after.roles if r.id not in prima and r.id != qid and not r.is_default()]
         if not tolta and not (qid in dopo and ruoli_dati):
             return
-        voce = await _resolve_voce(guild, discord.AuditLogAction.member_role_update, after.id)
+        voce = await resolve_voce(guild, discord.AuditLogAction.member_role_update, after.id)
         if voce is None:
             return
         autore = voce[0]

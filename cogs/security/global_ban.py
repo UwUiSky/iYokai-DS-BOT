@@ -23,14 +23,11 @@ il modulo attivo — un server che non ha aderito non riceve mai un
 ban deciso altrove.
 """
 
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
-
 from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
 
 import discord
 from discord import app_commands
@@ -42,7 +39,7 @@ from core.database import db
 from core.global_ban_logic import should_propagate_ban
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.global_ban_repo import global_ban_repo
-from core.security_access import premium_sbloccato
+from core.security_access import SETTING_STAFF_ROLES, is_staff_exempt, premium_sbloccato
 
 logger = logging.getLogger("iyokai.global_ban")
 
@@ -70,6 +67,72 @@ async def _direzioni(bot: commands.Bot, guild_id: int) -> tuple[bool, bool]:
     return await global_ban_repo.get_direction(guild_id)
 
 
+@dataclass
+class _Episodio:
+    """
+    Una propagazione (o la sua revoca) per (server sorgente, utente). La
+    propagazione tiene il blocco finche' gira; una revoca arrivata nel
+    mezzo alza `revocato`, la propagazione si ferma al ban successivo e la
+    revoca, quando prende il blocco, trova il registro completo di cio' che
+    e' partito. Cosi' dopo un appello accolto non parte nessun ban in piu'.
+    """
+
+    blocco: asyncio.Lock = field(default_factory=asyncio.Lock)
+    revocato: bool = False
+    in_uso: int = 0
+
+
+_episodi: dict[tuple[int, int], _Episodio] = {}
+
+
+def _prendi_episodio(chiave: tuple[int, int]) -> _Episodio:
+    episodio = _episodi.get(chiave)
+    if episodio is None:
+        episodio = _episodi[chiave] = _Episodio()
+    episodio.in_uso += 1
+    return episodio
+
+
+def _lascia_episodio(chiave: tuple[int, int], episodio: _Episodio) -> None:
+    episodio.in_uso -= 1
+    if episodio.in_uso <= 0 and _episodi.get(chiave) is episodio:
+        del _episodi[chiave]
+
+
+async def _banna_e_registra(
+    target: discord.Guild, source_guild: discord.Guild, user_id: int, reason: str
+) -> bool:
+    """Un ban sul server di arrivo e la riga nel registro, come un'unica operazione."""
+    try:
+        await target.ban(
+            discord.Object(id=user_id),
+            reason=f"{PREFISSO_MOTIVO} — Spam Trap innescata su {source_guild.name}: {reason}"[:512],
+            delete_message_seconds=0,
+        )
+    except discord.Forbidden:
+        logger.warning(
+            "Ban globale: permessi insufficienti per bannare %s nel server %s.", user_id, target.id
+        )
+        return False
+    except discord.HTTPException:
+        logger.warning(
+            "Ban globale: errore HTTP bannando %s nel server %s (probabilmente già bannato).",
+            user_id, target.id,
+        )
+        return False
+    await global_ban_repo.log_propagation(source_guild.id, target.id, user_id, reason)
+    return True
+
+
+async def _staff_nel_server(target: discord.Guild, user_id: int) -> bool:
+    """L'utente e' staff (admin/mod, un bot, ruolo staff) nel server di arrivo? Lo staff non si banna."""
+    membro = target.get_member(user_id)
+    if membro is None:
+        return False
+    ruoli = await db.get_guild_setting(target.id, SETTING_STAFF_ROLES, default=[])
+    return is_staff_exempt(membro, target, set(ruoli or ()))
+
+
 async def propagate_ban(
     bot: commands.Bot, source_guild: discord.Guild, user_id: int, reason: str
 ) -> list[int]:
@@ -79,53 +142,53 @@ async def propagate_ban(
     effettivamente propagato (per il log di chi ha chiamato).
 
     Il server sorgente deve avere acceso "invia", quello di arrivo
-    "ricevi" (SIC-046).
+    "ricevi" (SIC-046). Chi nel server di arrivo e' staff (amministratore,
+    moderatore, ruolo staff della Spam Trap) o un bot non viene bannato
+    li': una Spam Trap altrui non puo' togliere un admin al suo server.
 
     Best-effort: un fallimento (permessi insufficienti, rate limit,
     utente già bannato lì) su UN server target non deve bloccare la
-    propagazione verso gli altri — viene solo loggato e saltato.
+    propagazione verso gli altri — viene solo loggato e saltato. Se nel
+    frattempo l'appello viene accolto (`revoca_ban_propagati`) si ferma.
     """
     source_invia, _ = await _direzioni(bot, source_guild.id)
     if not source_invia:
         return []
 
+    # La pulizia del registro vecchio una volta per giro, non a ogni riga.
+    await global_ban_repo.purge_old()
+
+    chiave = (source_guild.id, user_id)
+    episodio = _prendi_episodio(chiave)
     propagati: list[int] = []
-    for target in list(bot.guilds):
-        if target.id == source_guild.id:
-            continue
-        _, target_riceve = await _direzioni(bot, target.id)
-        if not should_propagate_ban(
-            source_guild_id=source_guild.id,
-            target_guild_id=target.id,
-            source_opted_in=source_invia,
-            target_opted_in=target_riceve,
-        ):
-            continue
-
-        try:
-            await target.ban(
-                discord.Object(id=user_id),
-                reason=f"{PREFISSO_MOTIVO} — Spam Trap innescata su {source_guild.name}: {reason}"[:512],
-                delete_message_seconds=0,
-            )
-        except discord.Forbidden:
-            logger.warning(
-                "Ban globale: permessi insufficienti per bannare %s nel server %s.",
-                user_id, target.id,
-            )
-            continue
-        except discord.HTTPException:
-            logger.warning(
-                "Ban globale: errore HTTP bannando %s nel server %s (probabilmente già bannato).",
-                user_id, target.id,
-            )
-            continue
-
-        await global_ban_repo.log_propagation(source_guild.id, target.id, user_id, reason)
-        propagati.append(target.id)
-        if PAUSA_TRA_I_BAN:
-            await asyncio.sleep(PAUSA_TRA_I_BAN)
-
+    try:
+        async with episodio.blocco:
+            for target in list(bot.guilds):
+                if episodio.revocato:
+                    break
+                if target.id == source_guild.id:
+                    continue
+                _, target_riceve = await _direzioni(bot, target.id)
+                if not should_propagate_ban(
+                    source_guild_id=source_guild.id,
+                    target_guild_id=target.id,
+                    source_opted_in=source_invia,
+                    target_opted_in=target_riceve,
+                ):
+                    continue
+                if await _staff_nel_server(target, user_id):
+                    logger.info(
+                        "Ban globale: %s è staff nel server %s, non lo banno lì.", user_id, target.id
+                    )
+                    continue
+                # Il ban e la sua riga di registro non si spezzano se chi chiama viene annullato.
+                if not await asyncio.shield(_banna_e_registra(target, source_guild, user_id, reason)):
+                    continue
+                propagati.append(target.id)
+                if PAUSA_TRA_I_BAN:
+                    await asyncio.sleep(PAUSA_TRA_I_BAN)
+    finally:
+        _lascia_episodio(chiave, episodio)
     return propagati
 
 
@@ -133,29 +196,47 @@ async def revoca_ban_propagati(bot: commands.Bot, source_guild_id: int, user_id:
     """
     L'appello è stato accolto: toglie il ban anche dai server in cui era
     arrivato da qui. Si tocca solo un ban che porta il motivo della rete:
-    uno messo a mano dallo staff di quel server resta. Restituisce in
-    quanti server il ban è stato tolto.
+    uno messo a mano dallo staff di quel server resta, e resta anche se un
+    altro server della rete lo ha bannato lì e il suo ban è ancora in piedi.
+    Un ban che Discord non lascia togliere resta nel registro e si ritenta
+    alla prossima revoca. Restituisce in quanti server il ban è stato tolto.
     """
+    chiave = (source_guild_id, user_id)
+    episodio = _prendi_episodio(chiave)
+    episodio.revocato = True  # una propagazione in corso si ferma al ban successivo
     tolti = 0
-    for target_id in await global_ban_repo.active_propagations(source_guild_id, user_id):
-        target = bot.get_guild(target_id)
-        if target is None:
-            continue
-        try:
-            ban = await target.fetch_ban(discord.Object(id=user_id))
-            if not (ban.reason or "").startswith(PREFISSO_MOTIVO):
-                continue
-            await target.unban(
-                discord.Object(id=user_id), reason="Ban globale revocato: appello accolto"
-            )
-            tolti += 1
-        except discord.NotFound:
-            continue  # già sbannato lì
-        except discord.HTTPException:
-            logger.warning("Ban globale: impossibile togliere %s dal server %s.", user_id, target_id)
-        if PAUSA_TRA_I_BAN:
-            await asyncio.sleep(PAUSA_TRA_I_BAN)
-    await global_ban_repo.mark_revoked(source_guild_id, user_id)
+    chiusi: list[int] = []
+    try:
+        async with episodio.blocco:
+            for target_id in await global_ban_repo.active_propagations(source_guild_id, user_id):
+                target = bot.get_guild(target_id)
+                if target is None:
+                    continue
+                if await global_ban_repo.banned_by_other_source(target_id, user_id, source_guild_id):
+                    chiusi.append(target_id)  # il nostro ban e' chiuso, quello dell'altra sorgente tiene
+                    continue
+                try:
+                    ban = await target.fetch_ban(discord.Object(id=user_id))
+                    if not (ban.reason or "").startswith(PREFISSO_MOTIVO):
+                        chiusi.append(target_id)  # ban dello staff di quel server: non e' nostro
+                        continue
+                    await target.unban(
+                        discord.Object(id=user_id), reason="Ban globale revocato: appello accolto"
+                    )
+                    tolti += 1
+                    chiusi.append(target_id)
+                except discord.NotFound:
+                    chiusi.append(target_id)  # già sbannato lì
+                except discord.HTTPException:
+                    logger.warning(
+                        "Ban globale: impossibile togliere %s dal server %s, resta da ritentare.",
+                        user_id, target_id,
+                    )
+                if PAUSA_TRA_I_BAN:
+                    await asyncio.sleep(PAUSA_TRA_I_BAN)
+            await global_ban_repo.mark_revoked(source_guild_id, user_id, chiusi)
+    finally:
+        _lascia_episodio(chiave, episodio)
     return tolti
 
 

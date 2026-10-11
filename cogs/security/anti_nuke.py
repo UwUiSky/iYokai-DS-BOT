@@ -20,12 +20,15 @@ nome/permessi/posizione senza dover mantenere uno snapshot separato.
 I canali vengono ricreati dello stesso tipo (testuale, annunci,
 vocale, palco, categoria, forum).
 
+Punizione (quarantena, ruoli tolti o ban): una sola per attacco. Un
+attacco e' un caso numerato (/security antinuke casi), un DM al
+proprietario, un avviso; gli eventi che arrivano dopo la punizione non ne
+creano altri finche' la punizione tiene. Impostazioni che cambiano chi e'
+esente o quanto e' forte la difesa: solo il proprietario e gli extra owner
+(core/security_access.solo_chi_gestisce).
+
 Funzioni coperte: SPEC §7.2
 """
-
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
 
 from __future__ import annotations
 
@@ -44,9 +47,14 @@ from core.database import db
 from core.permission_risk_logic import critical_permissions_of
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
-from core.security_access import premium_sbloccato, puo_gestire_antinuke
+from core.security_access import premium_sbloccato, solo_chi_gestisce
+from core.security_audit import (
+    ATTESE_REGISTRO,
+    ATTESE_REGISTRO_USCITA,
+    LOOKBACK_REGISTRO_SECONDI,
+    resolve_voce,
+)
 from core.security_logic import (
-    ALL_TRUST_ACTIONS,
     AntiNukeConfig,
     HOUR_WINDOW_SECONDS,
     NUKE_ACTION_BOT_ADD,
@@ -59,37 +67,32 @@ from core.security_logic import (
     NUKE_CATEGORY_EMOJI,
     NUKE_CATEGORY_ROLE,
     NUKE_CATEGORY_WEBHOOK,
-    ROLE_PERM_GUARD_MODES,
     TRUST_KIND_USER,
     TRUST_KIND_WEBHOOK,
     TRUST_LEVEL_EXTRA_OWNER,
     TRUST_LEVEL_TRUSTED,
-    TrustEntry,
     actor_is_trusted,
     category_hour_max,
     category_max_count,
     category_window_seconds,
-    is_extra_owner,
+    aggiungi_fiducia,
     is_nuke_violation,
+    rimuovi_fiducia,
+    voci_fiducia,
 )
-from core.security_quarantine import metti_in_quarantena, rilascia_da_quarantena
+from core.security_quarantine import (
+    azzera_contatori,
+    metti_in_quarantena,
+    problemi_ruoli_del_bot,
+    rilascia_utente,
+    ruolo_quarantena,
+)
 from core.security_rate_tracker import security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
 
 logger = logging.getLogger("iyokai.anti_nuke")
 
 MODULE_ANTI_NUKE = "anti_nuke"
-
-# Finestra di ricerca nell'audit log: l'evento gateway e la riga di
-# audit log corrispondente arrivano quasi sempre entro pochi secondi
-# l'uno dall'altro, ma non sono garantiti nello stesso istante.
-_AUDIT_LOG_LOOKBACK_SECONDS = 10
-
-# Secondi di attesa prima di ogni lettura del registro di controllo:
-# subito, poi altre due volte. Per le uscite dal server (quasi sempre
-# volontarie, senza voce nel registro) basta una sola rilettura.
-ATTESE_REGISTRO = (0, 1, 1)
-ATTESE_REGISTRO_USCITA = (0, 1.5)
 
 # Lunghezza massima di un motivo nel registro di controllo di Discord.
 MAX_MOTIVO = 512
@@ -139,53 +142,6 @@ def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
     return SecuritySettings(**dati)
 
 
-async def _aspetta(secondi: float) -> None:
-    await asyncio.sleep(secondi)
-
-
-async def _resolve_voce(
-    guild: discord.Guild,
-    action: discord.AuditLogAction,
-    target_id: int | None = None,
-    attese: tuple[float, ...] = ATTESE_REGISTRO,
-) -> tuple[int, int | None] | None:
-    """
-    Cerca nel registro di controllo chi ha fatto questa azione
-    (se `target_id` è dato, solo la voce che riguarda quell'oggetto).
-    Restituisce (autore, oggetto dell'azione). Il registro arriva spesso
-    un attimo dopo l'evento: se la voce non c'è ancora si riprova,
-    aspettando ogni volta i secondi di `attese`. None se non si trova o
-    se Discord non lascia leggere il registro — mai un'eccezione che
-    blocchi l'evento.
-    """
-    now = discord.utils.utcnow()
-    for attesa in attese:
-        if attesa:
-            await _aspetta(attesa)
-        try:
-            async for entry in guild.audit_logs(action=action, limit=10):
-                if (now - entry.created_at).total_seconds() > _AUDIT_LOG_LOOKBACK_SECONDS:
-                    break
-                oggetto = getattr(entry.target, "id", None)
-                if target_id is not None and oggetto != target_id:
-                    continue
-                return entry.user_id, oggetto
-        except discord.HTTPException:
-            return None
-    return None
-
-
-async def _resolve_actor(
-    guild: discord.Guild,
-    action: discord.AuditLogAction,
-    target_id: int | None = None,
-    attese: tuple[float, ...] = ATTESE_REGISTRO,
-) -> int | None:
-    """Solo l'autore della voce trovata da `_resolve_voce` (None se non c'è)."""
-    voce = await _resolve_voce(guild, action, target_id, attese)
-    return voce[0] if voce else None
-
-
 async def _punish_actor(
     guild: discord.Guild, actor_id: int, config: AntiNukeConfig, reason: str
 ) -> tuple[str, list[int]]:
@@ -219,9 +175,15 @@ async def _punish_actor(
             return f"tentativo di espellere il bot {member} fallito (permessi insufficienti?)", []
 
     if config.punish_action == "quarantine":
-        riuscito, tolti = await metti_in_quarantena(member, reason, togli_ruoli=True)
-        if riuscito:
-            return f"{member} messo in quarantena (ruoli tolti: {len(tolti)})", tolti
+        esito = await metti_in_quarantena(member, reason, togli_ruoli=True)
+        if esito.completo:
+            return f"{member} messo in quarantena (ruoli tolti: {len(esito.ruoli_tolti)})", esito.ruoli_tolti
+        if esito.in_quarantena:
+            # Il ruolo c'e' ma i poteri no: non e' una quarantena, e chi legge lo deve sapere.
+            return (
+                f"⚠️ {member} ha il ruolo di quarantena ma i suoi ruoli NON sono stati tolti: "
+                "l'autore è ancora potente (il mio ruolo è sotto il suo?)"
+            ), []
         # Senza ruolo di quarantena (permesso mancante) si toglie comunque il potere.
 
     # I ruoli gestiti da Discord (es. Server Booster) non si possono
@@ -233,6 +195,16 @@ async def _punish_actor(
         return f"tutti i ruoli rimossi da {member}", tolti
     except discord.HTTPException:
         return f"tentativo di rimuovere i ruoli di {member} fallito (permessi insufficienti?)", []
+
+
+def _finestra_recupero(categoria: str, config: AntiNukeConfig) -> int:
+    """
+    Quanto indietro si recupera ciò che l'autore ha cancellato. Con la
+    soglia oraria accesa un attacco lento si estende per un'ora: la
+    finestra breve ne perderebbe quasi tutto.
+    """
+    breve = category_window_seconds(categoria, config)
+    return max(breve, HOUR_WINDOW_SECONDS) if category_hour_max(categoria, config) > 0 else breve
 
 
 def _categoria_del_canale(channel: discord.abc.GuildChannel) -> int | None:
@@ -254,6 +226,10 @@ async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: 
                 pass
 
 
+def _campi_fiducia(config: AntiNukeConfig) -> dict:
+    return {"trusted_ids": config.trusted_ids, "trust_entries": config.trust_entries}
+
+
 class AntiNukeCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -264,26 +240,16 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         # (server, autore) -> oggetti cancellati non ancora recuperati
         # perché l'autore era ancora sotto soglia.
         self._in_attesa: BoundedCache[tuple[int, int], list[tuple[datetime, str, object]]] = BoundedCache(max_size=500)
+        # (server, autore) -> blocco: eventi simultanei dello stesso attacco
+        # non puniscono due volte.
+        self._blocchi_punizione: BoundedCache[tuple[int, int], asyncio.Lock] = BoundedCache(max_size=500)
         # Server -> (ora dell'ultimo controllo dei prune, ID dell'ultima voce contata).
         self._prune: BoundedCache[int, tuple[datetime, int | None]] = BoundedCache(max_size=500)
 
     async def _solo_chi_gestisce(
         self, interaction: discord.Interaction, settings: SecuritySettings
     ) -> bool:
-        """
-        Le impostazioni che danno o tolgono la fiducia le cambiano solo il
-        proprietario e gli extra owner (SIC-018). Risponde da solo, con un
-        rifiuto, se chi chiama non è tra questi.
-        """
-        guild = interaction.guild
-        if puo_gestire_antinuke(guild.owner_id, interaction.user.id, settings.anti_nuke):
-            return True
-        await interaction.response.send_message(
-            "Solo il proprietario del server e gli extra owner possono cambiare questa impostazione "
-            "dell'Anti-Nuke: un amministratore qualsiasi non può esentarsi da solo.",
-            ephemeral=True,
-        )
-        return False
+        return await solo_chi_gestisce(interaction, settings.anti_nuke)
 
     @comando_di_gruppo(
         "security",
@@ -301,6 +267,29 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             return
         await security_repo.save_settings(_replace(settings, enabled=enabled))
         await interaction.response.send_message(f"Anti-Nuke {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        if enabled and settings.anti_nuke.punish_action == "quarantine":
+            await self._prepara_quarantena(interaction)
+
+    async def _prepara_quarantena(self, interaction: discord.Interaction) -> None:
+        """
+        Il ruolo di quarantena (e i suoi permessi sui canali) si crea adesso,
+        non durante l'attacco: con centinaia di canali ci vuole piu' del
+        tempo che si ha. Un messaggio a parte dice se qualcosa non va.
+        """
+        guild = interaction.guild
+        ruolo = await ruolo_quarantena(guild)
+        if ruolo is None:
+            avviso = (
+                "⚠️ Non sono riuscito a creare il ruolo di quarantena (mi manca Gestire ruoli?): "
+                "durante un attacco userei il ripiego, togliere i ruoli."
+            )
+        else:
+            settings = await security_repo.get_settings(guild.id)
+            problemi = problemi_ruoli_del_bot(guild, settings.quarantine_role_id)
+            if not problemi:
+                return
+            avviso = "⚠️ " + "\n⚠️ ".join(problemi)
+        await interaction.followup.send(avviso, ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -336,6 +325,8 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
+        if not await self._solo_chi_gestisce(interaction, settings):
+            return
         prefisso = category.value
         campi = {f"{prefisso}_max": max_actions, f"{prefisso}_window_seconds": seconds}
         if max_per_hour is not None:
@@ -404,48 +395,21 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             return
         genere = tipo.value if tipo else TRUST_KIND_USER
         grado = livello.value if livello else TRUST_LEVEL_TRUSTED
-        if grado == TRUST_LEVEL_EXTRA_OWNER:
-            if interaction.user.id != interaction.guild.owner_id:
-                await interaction.response.send_message(
-                    "Solo il proprietario del server può nominare un extra owner.", ephemeral=True
-                )
-                return
-            if genere != TRUST_KIND_USER or azione is not None or categoria_canali is not None:
-                await interaction.response.send_message(
-                    "Un extra owner è un utente e vale per tutte le azioni: niente tipo, azione o categoria.",
-                    ephemeral=True,
-                )
-                return
-        n = settings.anti_nuke
-        # Stessa persona e stesso genere: la nuova voce prende il posto della vecchia.
-        altre = tuple(
-            v for v in n.trust_entries if not (v.target_id == id_utente and v.kind == genere)
+        nuova, errore = aggiungi_fiducia(
+            settings.anti_nuke,
+            chi_id=interaction.user.id,
+            owner_id=interaction.guild.owner_id,
+            target_id=id_utente,
+            kind=genere,
+            level=grado,
+            categories=(azione.value,) if azione else (),
+            channel_category_id=categoria_canali.id if categoria_canali else None,
+            max_voci=MAX_FIDATI,
         )
-        semplice = (
-            genere == TRUST_KIND_USER and grado == TRUST_LEVEL_TRUSTED
-            and azione is None and categoria_canali is None
-        )
-        if len(altre) + len(n.trusted_ids) >= MAX_FIDATI:
-            await interaction.response.send_message(
-                f"La lista dei fidati è piena ({MAX_FIDATI}): toglierne qualcuno con /security antinuke trusted-remove.",
-                ephemeral=True,
-            )
+        if nuova is None:
+            await interaction.response.send_message(errore, ephemeral=True)
             return
-        if semplice:
-            nuovi_ids = n.trusted_ids if id_utente in n.trusted_ids else n.trusted_ids + (id_utente,)
-            nuove_voci = altre
-        else:
-            nuovi_ids = tuple(i for i in n.trusted_ids if not (genere == TRUST_KIND_USER and i == id_utente))
-            nuove_voci = altre + (
-                TrustEntry(
-                    target_id=id_utente,
-                    kind=genere,
-                    level=grado,
-                    categories=(azione.value,) if azione else (),
-                    channel_category_id=categoria_canali.id if categoria_canali else None,
-                ),
-            )
-        await security_repo.save_settings(_replace(settings, trusted_ids=nuovi_ids, trust_entries=nuove_voci))
+        await security_repo.save_settings(_replace(settings, **_campi_fiducia(nuova)))
         cosa = "Webhook" if genere == TRUST_KIND_WEBHOOK else "Utente"
         limite = ""
         if azione:
@@ -478,20 +442,16 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         settings = await security_repo.get_settings(interaction.guild.id)
         if not await self._solo_chi_gestisce(interaction, settings):
             return
-        n = settings.anti_nuke
-        # Togliere un extra owner spetta solo al proprietario.
-        if is_extra_owner(id_utente, n) and interaction.user.id != interaction.guild.owner_id:
-            await interaction.response.send_message(
-                "Solo il proprietario del server può togliere un extra owner.", ephemeral=True
-            )
-            return
-        await security_repo.save_settings(
-            _replace(
-                settings,
-                trusted_ids=tuple(i for i in n.trusted_ids if i != id_utente),
-                trust_entries=tuple(v for v in n.trust_entries if v.target_id != id_utente),
-            )
+        nuova, errore = rimuovi_fiducia(
+            settings.anti_nuke,
+            chi_id=interaction.user.id,
+            owner_id=interaction.guild.owner_id,
+            target_id=id_utente,
         )
+        if nuova is None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        await security_repo.save_settings(_replace(settings, **_campi_fiducia(nuova)))
         await interaction.response.send_message(f"`{id_utente}` rimosso dalla lista fidati.", ephemeral=True)
 
     @comando_di_gruppo(
@@ -506,8 +466,8 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         n = settings.anti_nuke
-        righe = [f"<@{i}> (`{i}`) — fidato, tutte le azioni" for i in n.trusted_ids]
-        for v in n.trust_entries:
+        righe = []
+        for v in voci_fiducia(n):
             soggetto = f"webhook `{v.target_id}`" if v.kind == TRUST_KIND_WEBHOOK else f"<@{v.target_id}> (`{v.target_id}`)"
             grado = "extra owner" if v.level == TRUST_LEVEL_EXTRA_OWNER else "fidato"
             ambito = ", ".join(v.categories) if v.categories else "tutte le azioni"
@@ -541,8 +501,12 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
+        if not await self._solo_chi_gestisce(interaction, settings):
+            return
         await security_repo.save_settings(_replace(settings, punish_action=action.value))
         await interaction.response.send_message(f"Azione punitiva impostata su **{action.name}**.", ephemeral=True)
+        if action.value == "quarantine" and settings.anti_nuke.enabled:
+            await self._prepara_quarantena(interaction)
 
     @comando_di_gruppo(
         "security",
@@ -555,6 +519,8 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
+        if not await self._solo_chi_gestisce(interaction, settings):
+            return
         await security_repo.save_settings(_replace(settings, recovery_enabled=enabled))
         await interaction.response.send_message(f"Recovery automatico {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
@@ -589,8 +555,8 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             _riga("Permessi dei canali", NUKE_CATEGORY_CHANNEL_PERMS),
             f"**Azione punitiva**: {n.punish_action}",
             f"**Recovery automatico**: {'sì' if n.recovery_enabled else 'no'}",
-            f"**Utenti fidati**: {len(n.trusted_ids) + sum(1 for v in n.trust_entries if v.level != TRUST_LEVEL_EXTRA_OWNER)}",
-            f"**Extra owner**: {sum(1 for v in n.trust_entries if v.level == TRUST_LEVEL_EXTRA_OWNER)}",
+            f"**Utenti fidati**: {sum(1 for v in voci_fiducia(n) if v.level != TRUST_LEVEL_EXTRA_OWNER)}",
+            f"**Extra owner**: {sum(1 for v in voci_fiducia(n) if v.level == TRUST_LEVEL_EXTRA_OWNER)}",
             f"**Guardia permessi dei ruoli**: {n.role_perm_guard}",
             f"**Guardia ruoli pericolosi ai membri**: {'sì' if n.member_role_guard else 'no'}",
             f"**Guardia link personalizzato**: {'sì' if n.vanity_guard else 'no'}",
@@ -747,20 +713,26 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-        riuscito, saltati = await rilascia_da_quarantena(
-            membro, registrato.removed_role_ids,
-            f"Anti-Nuke: caso #{caso} rilasciato da {interaction.user}",
+        esito = await rilascia_utente(
+            membro, caso_numero=caso, reason=f"Anti-Nuke: caso #{caso} rilasciato da {interaction.user}"
         )
-        if not riuscito:
+        if not esito.riuscito:
             await interaction.followup.send(
                 "Discord non mi ha lasciato cambiare i ruoli di quel membro (il mio ruolo è più in basso del suo?).",
                 ephemeral=True,
             )
             return
-        await security_repo.mark_nuke_case_released(guild.id, caso)
-        testo = f"Caso #{caso} rilasciato: {membro.mention} è fuori dalla quarantena."
-        if saltati:
-            testo += f" Non ho potuto rimettere {len(saltati)} ruolo/i (cancellati, gestiti o sopra al mio)."
+        azzera_contatori(guild.id, membro.id, security_rate_tracker)
+        if esito.quarantena_tenuta:
+            altri = ", ".join(f"#{n}" for n in esito.altri_casi)
+            testo = (
+                f"Caso #{caso} rilasciato: {membro.mention} ha di nuovo i ruoli di quel caso. "
+                f"Resta in quarantena: ha altri casi attivi ({altri}), da rilasciare uno per uno."
+            )
+        else:
+            testo = f"Caso #{caso} rilasciato: {membro.mention} è fuori dalla quarantena."
+        if esito.saltati:
+            testo += f" Non ho potuto rimettere {len(esito.saltati)} ruolo/i (cancellati, gestiti o sopra al mio)."
         await interaction.followup.send(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     # ================================================================
@@ -809,14 +781,16 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         actor_id = None
         oggetto_id = None
         for azione in azioni:
-            voce = await _resolve_voce(guild, azione, target_id, attese)
+            voce = await resolve_voce(guild, azione, target_id, attese)
             if voce is not None:
                 actor_id, oggetto_id = voce
                 break
         if cancellato is not None and actor_id is not None and actor_id != self.bot.user.id:
             chiave = (guild.id, actor_id)
             in_attesa = self._in_attesa.get(chiave) or []
-            in_attesa.append((discord.utils.utcnow(), category, cancellato))
+            adesso = discord.utils.utcnow()
+            in_attesa = [v for v in in_attesa if (adesso - v[0]).total_seconds() <= HOUR_WINDOW_SECONDS]
+            in_attesa.append((adesso, category, cancellato))
             self._in_attesa.set(chiave, in_attesa[-MAX_IN_ATTESA:])
         violazione = await self._handle_event(
             guild, category, actor_id, detail_suffix, settings,
@@ -842,7 +816,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         in_attesa = [
             oggetto
             for ora, categoria, oggetto in voci
-            if (adesso - ora).total_seconds() <= category_window_seconds(categoria, settings.anti_nuke)
+            if (adesso - ora).total_seconds() <= _finestra_recupero(categoria, settings.anti_nuke)
         ]
         in_attesa.sort(key=lambda oggetto: not isinstance(oggetto, discord.CategoryChannel))
         # Più cambi ai permessi dello stesso canale: vale il primo "prima" (SIC-007).
@@ -878,6 +852,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         # non si contano: il bot non deve mai punire se stesso.
         if actor_id is None or actor_id == self.bot.user.id:
             return None
+        # Il proprietario non si ferma: non c'è nessuno sopra di lui.
+        if actor_id == guild.owner_id:
+            return None
         if settings is None:
             settings = await self._impostazioni_attive(guild)
             if settings is None:
@@ -909,13 +886,55 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         ):
             return None
 
-        esito, tolti = await _punish_actor(
-            guild, actor_id, settings.anti_nuke, reason=f"Anti-Nuke: {category} — {detail_suffix}"
-        )
         sopra_ora = conteggio_ora > category_hour_max(category, settings.anti_nuke) > 0
         quanti = f"{conteggio_ora} azioni in un'ora" if sopra_ora and conteggio <= category_max_count(
             category, settings.anti_nuke
         ) else f"{conteggio} azioni in {finestra}s"
+
+        # Una punizione per attacco: gli eventi che arrivano mentre il primo
+        # sta ancora punendo, o dopo, aspettano e trovano il caso gia' aperto.
+        chiave = (guild.id, actor_id)
+        blocco = self._blocchi_punizione.get(chiave)
+        if blocco is None:
+            blocco = asyncio.Lock()
+            self._blocchi_punizione.set(chiave, blocco)
+        async with blocco:
+            await self._punisci_una_volta(guild, settings, category, actor_id, detail_suffix, quanti)
+        return settings
+
+    async def _punisci_una_volta(
+        self,
+        guild: discord.Guild,
+        settings: SecuritySettings,
+        category: str,
+        actor_id: int,
+        detail_suffix: str,
+        quanti: str,
+    ) -> None:
+        reason = f"Anti-Nuke: {category} — {detail_suffix}"
+        aperti = await security_repo.active_cases_for_actor(guild.id, actor_id)
+        episodio = next(
+            (
+                c for c in aperti
+                if (discord.utils.utcnow() - c.created_at).total_seconds() <= HOUR_WINDOW_SECONDS
+            ),
+            None,
+        )
+        if episodio is not None:
+            if await self._punizione_in_vigore(guild, actor_id, settings.anti_nuke):
+                return  # stesso attacco, gia' fermato: niente caso, DM o avviso in piu'
+            # La punizione non tiene (quarantena tolta a mano, ruoli tornati): si ripete,
+            # sullo stesso caso. I ruoli tolti adesso si aggiungono a quelli gia' registrati.
+            esito, tolti = await _punish_actor(guild, actor_id, settings.anti_nuke, reason=reason)
+            await security_repo.extend_nuke_case(
+                guild.id, episodio.case_number, esito, tuple(tolti)
+            )
+            await security_repo.log_action(
+                guild.id, f"nuke_{category}", actor_id, f"{detail_suffix} — punizione ripetuta — {esito}"
+            )
+            return
+
+        esito, tolti = await _punish_actor(guild, actor_id, settings.anti_nuke, reason=reason)
         dettaglio = f"{detail_suffix} — {quanti} — {esito}"
         await security_repo.log_action(guild.id, f"nuke_{category}", actor_id, dettaglio)
         numero = await security_repo.create_nuke_case(
@@ -930,7 +949,21 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if tolti:
             embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /security antinuke rilascia caso:{numero}")
         await _alert_staff(guild, settings, embed)
-        return settings
+
+    async def _punizione_in_vigore(
+        self, guild: discord.Guild, actor_id: int, config: AntiNukeConfig
+    ) -> bool:
+        """True se l'autore non ha piu' potere: fuori dal server, o col ruolo di quarantena e nient'altro."""
+        member = guild.get_member(actor_id)
+        if member is None or config.punish_action == "ban":
+            return member is None
+        if member.bot:
+            return False
+        rimasti = [r for r in member.roles if not r.managed and not r.is_default()]
+        if config.punish_action == "quarantine":
+            qid = (await security_repo.get_settings(guild.id)).quarantine_role_id
+            return qid is not None and any(r.id == qid for r in rimasti) and all(r.id == qid for r in rimasti)
+        return not rimasti
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
@@ -1116,7 +1149,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         None. Senza autore noto non si annulla niente: potrebbe essere il
         proprietario.
         """
-        voce = await _resolve_voce(guild, azione_registro, target_id, attese)
+        voce = await resolve_voce(guild, azione_registro, target_id, attese)
         if voce is None:
             return None
         autore = voce[0]
@@ -1307,7 +1340,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         self._prune.set(guild.id, (adesso, ultimo[1] if ultimo else None))
         try:
             async for voce in guild.audit_logs(action=discord.AuditLogAction.member_prune, limit=3):
-                if (adesso - voce.created_at).total_seconds() > _AUDIT_LOG_LOOKBACK_SECONDS * 3:
+                if (adesso - voce.created_at).total_seconds() > LOOKBACK_REGISTRO_SECONDI * 3:
                     break
                 if ultimo is not None and ultimo[1] == voce.id:
                     return

@@ -230,6 +230,9 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             PRIMARY KEY (guild_id, case_number)
         );
 
+        CREATE INDEX IF NOT EXISTS idx_nuke_cases_attivi
+            ON nuke_cases (guild_id, actor_id) WHERE released_at IS NULL;
+
         -- Blocco anti-raid in corso: il livello di verifica che il
         -- server aveva prima e quando il blocco scade. Una riga per
         -- server, cancellata alla fine del blocco.
@@ -379,6 +382,36 @@ class SecurityRepository:
             guild_id, per_page, max(page - 1, 0) * per_page,
         )
         return [self._row_to_case(r) for r in rows], totale
+
+    async def active_cases_for_actor(self, guild_id: int, actor_id: int) -> list[NukeCase]:
+        """I casi non ancora rilasciati di questo utente, dal piu' recente."""
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM nuke_cases
+            WHERE guild_id = $1 AND actor_id = $2 AND released_at IS NULL
+            ORDER BY case_number DESC
+            """,
+            guild_id, actor_id,
+        )
+        return [self._row_to_case(r) for r in rows]
+
+    async def extend_nuke_case(
+        self, guild_id: int, case_number: int, punishment: str, removed_role_ids: tuple[int, ...]
+    ) -> None:
+        """
+        Stesso attacco, punizione ripetuta perche' la prima non teneva: il
+        caso resta uno, con l'esito nuovo e i ruoli tolti in piu' (quelli
+        gia' registrati restano).
+        """
+        await self._pool.execute(
+            """
+            UPDATE nuke_cases
+            SET punishment = $3,
+                removed_role_ids = ARRAY(SELECT DISTINCT unnest(removed_role_ids || $4::bigint[]))
+            WHERE guild_id = $1 AND case_number = $2
+            """,
+            guild_id, case_number, punishment[:300], list(removed_role_ids),
+        )
 
     async def mark_nuke_case_released(self, guild_id: int, case_number: int) -> bool:
         """Segna il caso come rilasciato. False se non esiste o lo era gia'."""

@@ -75,3 +75,29 @@ async def test_reazione_rifiutata_non_rompe_il_pannello(scenario):
     await scenario.cog.panel_cmd.callback(scenario.cog, interazione)
     interazione.followup.send.assert_awaited_once()
     assert "reazione" in interazione.followup.send.call_args.args[0]
+
+
+async def test_chi_e_gia_verificato_vede_l_avviso_prima_del_captcha(scenario, clean_db):
+    await scenario.configura(captcha=True)
+    scenario.utente.roles = [scenario.ruolo]
+    interazione = scenario.clic()
+
+    await VerifyPanelView().verify_click.callback(interazione)
+
+    interazione.response.send_modal.assert_not_called()
+    assert "already verified" in interazione.response.send_message.call_args.args[0]
+
+
+async def test_whitelist_e_blacklist_con_modulo_spento_sono_rifiutate(scenario, clean_db):
+    import core.database as database_module
+    from core.repositories.verify_repo import verify_repo
+
+    await database_module.db.set_module_active_for_guild(100, MODULE_VERIFY, False)
+    database_module.db._modules_cache.clear()
+    utente = MagicMock(id=555, mention="<@555>")
+    for nome in ("whitelist_add", "blacklist_add"):
+        interazione = fake_interaction(guild=scenario.server, user=fake_member(user_id=1))
+        await getattr(scenario.cog, nome).callback(scenario.cog, interazione, utente)
+        assert "non è attivo" in interazione.response.send_message.call_args.args[0], nome
+    assert not await verify_repo.is_whitelisted(100, 555)
+    assert not await verify_repo.is_blacklisted(100, 555)

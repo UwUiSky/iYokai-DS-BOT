@@ -6,17 +6,21 @@ Security Suite (SPEC.md §7.1/§7.2/§7.5): Anti-Raid, Anti-Nuke,
 Security Score. Stesso principio di core/automod_advanced_logic.py —
 testabile con semplici input/output, il motore che legge Discord/DB
 vive nei cog.
-"""
 
-# DA FARE (issue #59, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §3 (Sicurezza (anti-raid,
-#   anti-nuke, spam-trap, ban globale)).
+Anti-Nuke: soglia breve e soglia oraria per categoria, fiducia a livelli
+(`TrustEntry`: fidato o extra owner, limitata a un'azione, a una categoria
+di canali o a un webhook). La lista delle fiducie ha UNA fonte,
+`trust_entries`: `aggiungi_fiducia` e `rimuovi_fiducia` (con le regole su
+chi puo' toccare un extra owner) fondono nel nuovo formato anche i
+`trusted_ids` vecchi; `voci_fiducia` li legge tutti insieme.
+"""
 
 from __future__ import annotations
 
+import dataclasses
 import re
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
 
 # ================================================================
 # Anti-Raid (SPEC.md §7.1)
@@ -131,15 +135,6 @@ ALL_NUKE_CATEGORIES = (
     NUKE_CATEGORY_CHANNEL_PERMS,
 )
 
-# Tutti i "tipi di azione" per cui si puo' limitare una fiducia.
-ALL_TRUST_ACTIONS = ALL_NUKE_CATEGORIES + (
-    NUKE_ACTION_ROLE_PERMS,
-    NUKE_ACTION_MEMBER_ROLE,
-    NUKE_ACTION_VANITY,
-    NUKE_ACTION_BOT_ADD,
-    NUKE_ACTION_QUARANTINE_HOLD,
-)
-
 TRUST_LEVEL_TRUSTED = "trusted"
 TRUST_LEVEL_EXTRA_OWNER = "extra_owner"
 TRUST_KIND_USER = "user"
@@ -147,8 +142,6 @@ TRUST_KIND_WEBHOOK = "webhook"
 
 # Finestra della seconda soglia (SIC-001): un'ora.
 HOUR_WINDOW_SECONDS = 3600
-
-ROLE_PERM_GUARD_MODES = ("off", "public", "all")
 
 
 @dataclass(frozen=True)
@@ -286,6 +279,74 @@ def is_extra_owner(user_id: int, config: AntiNukeConfig) -> bool:
         and voce.target_id == user_id
         for voce in config.trust_entries
     )
+
+
+def voci_fiducia(config: AntiNukeConfig) -> tuple[TrustEntry, ...]:
+    """
+    Tutte le fiducie del server, in un solo elenco. `trusted_ids` e'
+    il formato di prima (un ID e basta): chi lo ha ancora salvato conta
+    come una fiducia semplice, finche' la prima modifica non lo fonde
+    nell'elenco (da li' in poi la fonte e' una sola: `trust_entries`).
+    """
+    presenti = {(v.target_id, v.kind) for v in config.trust_entries}
+    vecchie = tuple(
+        TrustEntry(target_id=i) for i in config.trusted_ids if (i, TRUST_KIND_USER) not in presenti
+    )
+    return config.trust_entries + vecchie
+
+
+def aggiungi_fiducia(
+    config: AntiNukeConfig,
+    *,
+    chi_id: int,
+    owner_id: int,
+    target_id: int,
+    kind: str = TRUST_KIND_USER,
+    level: str = TRUST_LEVEL_TRUSTED,
+    categories: tuple[str, ...] = (),
+    channel_category_id: int | None = None,
+    max_voci: int = 100,
+) -> tuple[AntiNukeConfig | None, str | None]:
+    """
+    Aggiunge (o sostituisce) una fiducia. Restituisce (nuova config, None)
+    oppure (None, motivo del rifiuto). Le regole stanno qui, non nel comando:
+    - un extra owner lo nomina solo il proprietario, ed e' sempre un
+      utente valido per tutte le azioni (niente tipo, azione o categoria);
+    - un extra owner esistente lo cambia (declassa o sostituisce) solo
+      il proprietario: altrimenti un extra owner ne toglierebbe un altro
+      dalla porta di servizio;
+    - la lista ha un tetto.
+    """
+    e_owner = chi_id == owner_id
+    if level == TRUST_LEVEL_EXTRA_OWNER:
+        if not e_owner:
+            return None, "Solo il proprietario del server può nominare un extra owner."
+        if kind != TRUST_KIND_USER or categories or channel_category_id is not None:
+            return None, "Un extra owner è un utente e vale per tutte le azioni: niente tipo, azione o categoria."
+    if kind == TRUST_KIND_USER and not e_owner and is_extra_owner(target_id, config):
+        return None, "Solo il proprietario del server può cambiare un extra owner."
+    voci = voci_fiducia(config)
+    altre = tuple(v for v in voci if not (v.target_id == target_id and v.kind == kind))
+    if len(altre) >= max_voci:
+        return None, f"La lista dei fidati è piena ({max_voci}): toglierne qualcuno con /security antinuke trusted-remove."
+    nuova = TrustEntry(
+        target_id=target_id,
+        kind=kind,
+        level=level,
+        categories=tuple(categories),
+        channel_category_id=channel_category_id,
+    )
+    return dataclasses.replace(config, trusted_ids=(), trust_entries=altre + (nuova,)), None
+
+
+def rimuovi_fiducia(
+    config: AntiNukeConfig, *, chi_id: int, owner_id: int, target_id: int
+) -> tuple[AntiNukeConfig | None, str | None]:
+    """Toglie ogni fiducia di `target_id`. Togliere un extra owner spetta solo al proprietario."""
+    if is_extra_owner(target_id, config) and chi_id != owner_id:
+        return None, "Solo il proprietario del server può togliere un extra owner."
+    voci = tuple(v for v in voci_fiducia(config) if v.target_id != target_id)
+    return dataclasses.replace(config, trusted_ids=(), trust_entries=voci), None
 
 
 def is_nuke_violation(

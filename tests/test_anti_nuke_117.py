@@ -19,7 +19,7 @@ from discord import app_commands
 import cogs.security.anti_nuke as modulo
 import core.security_quarantine as quarantena
 from core.repositories.security_repo import security_repo
-from core.security_logic import NUKE_CATEGORY_CHANNEL, NUKE_CATEGORY_WEBHOOK
+from core.security_logic import NUKE_CATEGORY_CHANNEL, NUKE_CATEGORY_WEBHOOK, voci_fiducia
 from tests.support.discord_fakes import (
     fake_guild,
     fake_interaction,
@@ -91,7 +91,7 @@ async def test_senza_soglia_oraria_non_scatta(cog):
 # ====================================================================
 async def test_quarantena_di_default_toglie_i_ruoli_e_salva_il_caso(cog, monkeypatch):
     await cog.punish_action.callback(cog, _interazione(), _scelta("quarantine"))
-    finta = AsyncMock(return_value=(True, [52, 53]))
+    finta = AsyncMock(return_value=quarantena.EsitoQuarantena(True, [52, 53]))
     monkeypatch.setattr(modulo, "metti_in_quarantena", finta)
     autore = fake_member(user_id=AUTORE_ID, roles=[fake_role(role_id=52, position=5)])
     server = _server(autore, [[]])
@@ -108,7 +108,7 @@ async def test_quarantena_di_default_toglie_i_ruoli_e_salva_il_caso(cog, monkeyp
 
 async def test_se_la_quarantena_non_riesce_si_tolgono_i_ruoli(cog, monkeypatch):
     await cog.punish_action.callback(cog, _interazione(), _scelta("quarantine"))
-    monkeypatch.setattr(modulo, "metti_in_quarantena", AsyncMock(return_value=(False, [])))
+    monkeypatch.setattr(modulo, "metti_in_quarantena", AsyncMock(return_value=quarantena.EsitoQuarantena(False)))
     booster = fake_role(role_id=51, name="Booster", managed=True)
     admin = fake_role(role_id=52, name="Admin", position=5)
     autore = fake_member(user_id=AUTORE_ID, roles=[booster, admin])
@@ -137,10 +137,10 @@ async def test_metti_in_quarantena_toglie_gli_altri_ruoli_e_aggiunge_il_ruolo(cl
         SecuritySettings(GUILD_ID, AntiRaidConfig(), AntiNukeConfig(), 900, None)
     )
 
-    riuscito, tolti = await quarantena.metti_in_quarantena(membro, "motivo", togli_ruoli=True)
+    esito = await quarantena.metti_in_quarantena(membro, "motivo", togli_ruoli=True)
 
-    assert riuscito is True
-    assert tolti == [52]
+    assert esito.completo is True
+    assert esito.ruoli_tolti == [52]
     assert membro.edit.call_args.kwargs["roles"] == [booster, quarantined]
 
 
@@ -177,24 +177,27 @@ async def test_casi_elenco_e_dettaglio(cog):
     assert "non esiste" in _risposta(assenti)
 
 
-async def test_rilascia_rimette_i_ruoli_una_volta_sola(cog, monkeypatch):
+async def test_rilascia_rimette_i_ruoli_una_volta_sola(cog):
     numero = await security_repo.create_nuke_case(GUILD_ID, AUTORE_ID, "channel", "x", "quarantena", (52,))
-    finta = AsyncMock(return_value=(True, []))
-    monkeypatch.setattr(modulo, "rilascia_da_quarantena", finta)
-    autore = fake_member(user_id=AUTORE_ID)
-    interazione = _interazione()
-    interazione.guild.get_member = MagicMock(return_value=autore)
+    ruolo = fake_role(role_id=52, name="Admin", position=2)
+    autore = fake_member(user_id=AUTORE_ID, roles=[])
 
-    await cog.rilascia.callback(cog, interazione, numero)
-    finta.assert_awaited_once()
-    assert finta.call_args.args[1] == (52,)
+    def _interazione_con_server():
+        interazione = _interazione()
+        interazione.guild.get_member = MagicMock(return_value=autore)
+        interazione.guild.get_role = MagicMock(side_effect=lambda i: ruolo if i == 52 else None)
+        interazione.guild.me.top_role = fake_role(role_id=9, position=10)
+        autore.guild = interazione.guild
+        return interazione
+
+    await cog.rilascia.callback(cog, _interazione_con_server(), numero)
+    assert ruolo in autore.edit.call_args.kwargs["roles"]
     assert (await security_repo.get_nuke_case(GUILD_ID, numero)).released_at is not None
 
-    di_nuovo = _interazione()
-    di_nuovo.guild.get_member = MagicMock(return_value=autore)
+    di_nuovo = _interazione_con_server()
     await cog.rilascia.callback(cog, di_nuovo, numero)
     assert "già" in di_nuovo.followup.send.call_args.args[0]
-    finta.assert_awaited_once()
+    autore.edit.assert_awaited_once()
 
 
 # ====================================================================
@@ -221,7 +224,7 @@ async def test_il_proprietario_nomina_un_extra_owner_che_poi_gestisce_i_fidati(c
 
     # L'extra owner aggiunge un fidato semplice...
     await cog.trusted_add.callback(cog, _come(888), "42")
-    assert (await security_repo.get_settings(GUILD_ID)).anti_nuke.trusted_ids == (42,)
+    assert {v.target_id for v in voci_fiducia((await security_repo.get_settings(GUILD_ID)).anti_nuke)} == {888, 42}
 
     # ...ma non nomina altri extra owner, ne' toglie l'altro extra owner.
     rifiuto = _come(888)

@@ -131,6 +131,10 @@ async def test_il_registro_toglie_le_voci_vecchie(ambiente, clean_db):
         "VALUES (1, 2, 3, now() - interval '400 days')"
     )
     await global_ban_repo.log_propagation(1, 2, 4, "x")
+    # Scrivere una riga non fa pulizia (una query in piu' a ogni ban): la pulizia e' a parte.
+    righe = await clean_db.fetch("SELECT user_id FROM global_ban_log ORDER BY user_id")
+    assert [r["user_id"] for r in righe] == [3, 4]
+    await global_ban_repo.purge_old()
     righe = await clean_db.fetch("SELECT user_id FROM global_ban_log")
     assert [r["user_id"] for r in righe] == [4]
 

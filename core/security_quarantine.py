@@ -18,13 +18,15 @@ import asyncio
 import dataclasses
 import logging
 import weakref
+from dataclasses import dataclass, field
 
 import discord
 
 from core.bounded_cache import BoundedCache
 from core.permission_risk_logic import critical_permissions_of
 from core.repositories.security_repo import SecuritySettings, security_repo
-from core.security_logic import bot_role_problems
+from core.security_logic import ALL_NUKE_CATEGORIES, bot_role_problems
+from core.security_rate_tracker import security_rate_tracker
 
 logger = logging.getLogger("iyokai.security_quarantine")
 
@@ -96,6 +98,19 @@ async def blocca_canale(channel: discord.abc.GuildChannel, role: discord.Role) -
         )
 
 
+async def _senza_permessi(role: discord.Role) -> None:
+    """Un ruolo di quarantena con permessi darebbe poteri a chi e' in quarantena (SIC-004)."""
+    if role.permissions.value == 0:
+        return
+    try:
+        await role.edit(
+            permissions=discord.Permissions.none(),
+            reason="Anti-Raid: il ruolo di quarantena non può avere permessi",
+        )
+    except discord.HTTPException:
+        logger.warning("Impossibile azzerare i permessi del ruolo di quarantena %s.", role.id)
+
+
 async def _trova_o_crea(
     guild: discord.Guild, settings: SecuritySettings
 ) -> tuple[discord.Role | None, bool]:
@@ -106,12 +121,14 @@ async def _trova_o_crea(
     if settings.quarantine_role_id is not None:
         role = guild.get_role(settings.quarantine_role_id)
         if role is not None:
+            await _senza_permessi(role)
             return role, False
 
     # Un ruolo "Quarantined" gia' nel server (fatto a mano o da una
     # versione precedente) si usa, invece di crearne un secondo.
     esistente = discord.utils.get(guild.roles, name=NOME_RUOLO_QUARANTENA)
     if esistente is not None and not esistente.managed:
+        await _senza_permessi(esistente)
         await security_repo.save_settings(
             dataclasses.replace(settings, quarantine_role_id=esistente.id)
         )
@@ -153,65 +170,118 @@ async def ruolo_quarantena(guild: discord.Guild, *, allinea: bool = True) -> dis
         return ruolo
 
 
+@dataclass(frozen=True)
+class EsitoQuarantena:
+    """
+    Cosa e' successo davvero. `in_quarantena`: il ruolo e' stato dato.
+    `ruoli_non_tolti`: si voleva togliere anche il potere e non e' riuscito
+    (di solito un ruolo sopra a quello del bot): chi e' dentro e' ancora
+    potente e chi riferisce l'esito non deve dire "messo in quarantena" e basta.
+    """
+
+    in_quarantena: bool
+    ruoli_tolti: list[int] = field(default_factory=list)
+    ruoli_non_tolti: bool = False
+
+    @property
+    def completo(self) -> bool:
+        return self.in_quarantena and not self.ruoli_non_tolti
+
+
 async def metti_in_quarantena(
     member: discord.Member, reason: str, *, togli_ruoli: bool
-) -> tuple[bool, list[int]]:
+) -> EsitoQuarantena:
     """
     Mette `member` nel ruolo di quarantena. Con `togli_ruoli` gli toglie
     anche gli altri ruoli (tranne quelli gestiti da Discord) e ne
     restituisce gli ID, cosi' si possono rimettere al rilascio.
-    Restituisce (riuscito, ID dei ruoli tolti). Se il server non
-    permette di togliere i ruoli, almeno aggiunge la quarantena.
+    Se il server non permette di togliere i ruoli, almeno aggiunge la
+    quarantena, ma lo dice: `ruoli_non_tolti`.
     """
     guild = member.guild
     ruolo = await ruolo_quarantena(guild)
     if ruolo is None:
-        return False, []
+        return EsitoQuarantena(False)
     reason = reason[:512]
 
+    non_tolti = False
     if togli_ruoli:
         tolti = [r for r in member.roles if not r.managed and not r.is_default() and r.id != ruolo.id]
         restano = [r for r in member.roles if r.managed and not r.is_default()]
         try:
             await member.edit(roles=restano + [ruolo], reason=reason)
-            return True, [r.id for r in tolti]
+            return EsitoQuarantena(True, [r.id for r in tolti])
         except discord.HTTPException:
             logger.warning("Quarantena: impossibile togliere i ruoli a %s, aggiungo solo il ruolo.", member.id)
+            non_tolti = True
 
     try:
         await member.add_roles(ruolo, reason=reason)
-        return True, []
     except discord.HTTPException:
-        return False, []
+        return EsitoQuarantena(False, ruoli_non_tolti=non_tolti)
+    return EsitoQuarantena(True, ruoli_non_tolti=non_tolti)
 
 
-async def rilascia_da_quarantena(
-    member: discord.Member, ruoli_da_rimettere: tuple[int, ...], reason: str
-) -> tuple[bool, list[int]]:
+@dataclass(frozen=True)
+class EsitoRilascio:
+    riuscito: bool
+    # Ruoli del caso che non si sono potuti rimettere (cancellati, gestiti, sopra al bot).
+    saltati: tuple[int, ...] = ()
+    # Altri casi attivi dello stesso utente: la quarantena resta finche' ci sono.
+    altri_casi: tuple[int, ...] = ()
+    quarantena_tenuta: bool = False
+
+
+def azzera_contatori(guild_id: int, user_id: int, tracker=None) -> None:
+    """Dopo un rilascio l'utente riparte da zero: i conteggi vecchi non lo ripuniscono subito."""
+    categorie = tuple(ALL_NUKE_CATEGORIES) + tuple(f"{c}:ora" for c in ALL_NUKE_CATEGORIES)
+    (tracker or security_rate_tracker).forget(guild_id, user_id, categorie)
+
+
+async def rilascia_utente(
+    member: discord.Member, *, caso_numero: int | None, reason: str
+) -> EsitoRilascio:
     """
-    Toglie la quarantena e rimette i ruoli indicati (quelli che ancora
-    esistono, non sono gestiti e stanno sotto il ruolo piu' alto del
-    bot). Restituisce (riuscito, ID dei ruoli che non si sono potuti rimettere).
+    L'unico modo di liberare qualcuno dalla quarantena (anti-nuke e
+    anti-raid usano questo). Con un caso rimette i ruoli di QUEL caso e lo
+    segna rilasciato; senza, toglie solo la quarantena. Se l'utente ha altri
+    casi attivi la quarantena resta: ogni caso va rilasciato da se'.
     """
     guild = member.guild
     settings = await security_repo.get_settings(guild.id)
     ruolo = guild.get_role(settings.quarantine_role_id) if settings.quarantine_role_id else None
+    caso = await security_repo.get_nuke_case(guild.id, caso_numero) if caso_numero is not None else None
+    altri = tuple(
+        c.case_number for c in await security_repo.active_cases_for_actor(guild.id, member.id)
+        if c.case_number != caso_numero
+    )
+    tieni = ruolo is not None and bool(altri)
+
     saltati: list[int] = []
     da_rimettere: list[discord.Role] = []
-    for role_id in ruoli_da_rimettere:
+    for role_id in (caso.removed_role_ids if caso else ()):
         role = guild.get_role(role_id)
         if role is None or role.managed or role.is_default() or role >= guild.me.top_role:
             saltati.append(role_id)
         else:
             da_rimettere.append(role)
 
-    attuali = [r for r in member.roles if not r.is_default() and (ruolo is None or r.id != ruolo.id)]
-    nuovi = attuali + [r for r in da_rimettere if r not in attuali]
+    reason = reason[:512]
     try:
-        await member.edit(roles=nuovi, reason=reason[:512])
+        if da_rimettere:
+            attuali = [
+                r for r in member.roles
+                if not r.is_default() and (ruolo is None or tieni or r.id != ruolo.id)
+            ]
+            await member.edit(roles=attuali + [r for r in da_rimettere if r not in attuali], reason=reason)
+        elif ruolo is not None and ruolo in member.roles and not tieni:
+            await member.remove_roles(ruolo, reason=reason)
     except discord.HTTPException:
-        return False, saltati
-    return True, saltati
+        return EsitoRilascio(False, tuple(saltati), altri, tieni)
+
+    if caso is not None:
+        await security_repo.mark_nuke_case_released(guild.id, caso.case_number)
+    return EsitoRilascio(True, tuple(saltati), altri, tieni)
 
 
 def problemi_ruoli_del_bot(guild: discord.Guild, quarantine_role_id: int | None) -> tuple[str, ...]:

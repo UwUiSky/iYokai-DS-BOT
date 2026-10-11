@@ -99,3 +99,18 @@ async def test_il_nome_del_ruolo_non_rompe_il_messaggio(db_finto):
     testo = owner.send.await_args.args[0]
     assert "@everyone" not in testo.replace("@​everyone", "")
     assert "**\\*\\*" in testo or "\\*\\*" in testo
+
+
+async def test_la_mappa_nel_comando_non_si_rompe_con_nomi_di_ruoli_strani(db_finto):
+    server = fake_guild()
+    ruolo = fake_role(role_id=10, name="**@everyone** `x`", position=1, permissions=ADMIN)
+    ruolo.members = []
+    server.roles = [ruolo]
+    interazione = fake_interaction(guild=server)
+    cog = modulo.PermissionHeatmapCog(bot=None)
+
+    await cog.permission_heatmap.callback(cog, interazione)
+
+    testo = interazione.response.send_message.call_args.kwargs["embed"].description
+    assert "@everyone" not in testo.replace("@​everyone", "")  # la menzione e' disinnescata
+    assert "\\*\\*" in testo  # e il grassetto del nome non rompe quello del messaggio

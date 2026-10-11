@@ -143,6 +143,7 @@ async def test_rilascia_toglie_la_quarantena_e_la_registra(cog, server):
     membro = _membro(server, [quarantena])
     interazione = _interazione()
     interazione.guild = server
+    interazione.user = fake_member(user_id=server.owner_id)  # col blocco attivo rilascia chi gestisce
     await cog.rilascia.callback(cog, interazione, membro)
     membro.remove_roles.assert_awaited_once()
     assert "raid_release" in [r["category"] for r in await security_repo.get_recent_actions(GUILD_ID)]
@@ -150,6 +151,7 @@ async def test_rilascia_toglie_la_quarantena_e_la_registra(cog, server):
     libero = _membro(server, [])
     altra = _interazione()
     altra.guild = server
+    altra.user = fake_member(user_id=server.owner_id)
     await cog.rilascia.callback(cog, altra, libero)
     assert "non è in quarantena" in altra.response.send_message.call_args.args[0]
     libero.remove_roles.assert_not_awaited()
@@ -183,9 +185,13 @@ async def test_enable_avvisa_se_il_ruolo_del_bot_non_basta(cog, server):
     server.me.guild_permissions = NIENTE
     server.me.top_role = fake_role(role_id=2, name="Bot", position=3)
     server.me.roles = [server.me.top_role]
-    server.roles = [fake_role(role_id=3, name="Admin", position=9, permissions=ADMIN), server.me.top_role]
+    # Il ruolo di quarantena si crea all'attivazione: esiste gia' quando si guarda la gerarchia.
+    ruolo_quarantena = await cog._ruolo_quarantena(server)
+    server.roles = [
+        fake_role(role_id=3, name="Admin", position=9, permissions=ADMIN), server.me.top_role, ruolo_quarantena
+    ]
     await cog.enable.callback(cog, interazione, True)
-    testo = interazione.response.send_message.call_args.args[0]
+    testo = interazione.followup.send.call_args.args[0]
     assert "Gestisci ruoli" in testo and "sopra al mio" in testo
 
 

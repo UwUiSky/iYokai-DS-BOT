@@ -53,5 +53,10 @@ class AutomodRateTracker:
         self._data.set(chiave, coda)
         return len(coda)
 
+    def forget(self, guild_id: int, user_id: int, categories: tuple[str, ...]) -> None:
+        """Azzera i conteggi di un utente per queste categorie (es. dopo un rilascio)."""
+        for categoria in categories:
+            self._data.delete((guild_id, user_id, categoria))
+
 
 rate_tracker = AutomodRateTracker()

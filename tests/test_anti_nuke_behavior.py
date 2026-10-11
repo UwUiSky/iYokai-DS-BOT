@@ -13,6 +13,7 @@ import pytest
 from discord.ext import commands
 
 import cogs.security.anti_nuke as anti_nuke_module
+import core.security_audit as audit_module
 from cogs.security.anti_nuke import AntiNukeCog, MODULE_ANTI_NUKE
 from core.database import Database
 from core.repositories.security_repo import SecuritySettings
@@ -115,6 +116,8 @@ async def contesto(monkeypatch):
     await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM security_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM security_action_log WHERE guild_id = $1", GUILD_ID)
+    # I casi aperti di un test non devono far passare il successivo per "stesso attacco".
+    await database.pool.execute("DELETE FROM nuke_cases WHERE guild_id = $1", GUILD_ID)
 
     await database.set_module_active_for_guild(GUILD_ID, MODULE_ANTI_NUKE, True)
 
@@ -133,7 +136,7 @@ async def contesto(monkeypatch):
     async def _nessuna_attesa(_secondi):
         return None
 
-    monkeypatch.setattr(anti_nuke_module, "_aspetta", _nessuna_attesa)
+    monkeypatch.setattr(audit_module, "_aspetta", _nessuna_attesa)
 
     from core.repositories.security_repo import security_repo
 
