@@ -1,11 +1,12 @@
 # Memoria di dev-moderazione
 
 ## Aggiornata
-05/10/2026 · ramo `fix/f1-133` (base `5c04cf5`) · #133 chiusa nel ramo
+11/10/2026 · ramo `feat/f7-moderazione` (base `0fd15a7`) · F7 passo 2b chiuso
 
 ## In corso
-- Niente a metà. Prossimo giro: #137 (DM prima di kick/ban) se non già
-  fatto dall'orchestratore; poi #138.
+- Niente a metà. Passo 2b fatto (4 commit: mod+modban, security, automod,
+  log). Prossimo giro: #137 (DM prima di kick/ban) se non già fatto
+  dall'orchestratore; poi #138.
 
 ## Fatto
 - F1, sicurezza + AutoMod + verifica: unito su main con `7722b71`
@@ -21,7 +22,16 @@
   verifica (`4d8123b`); blocco per server sull'avviso anti-raid; voci
   anti-nuke in attesa con ora, scartate oltre la finestra.
 
+- F7 2b (`Refs #76`): /mod, /modban, /security, /automod, /log nei gruppi
+  condivisi con `@comando_di_gruppo`; `/log canale tipo` fonde mod-log-setup;
+  nuovo `tests/test_f7_moderazione_gruppi.py` (nomi, livelli, vecchi nomi spariti).
+
 ## Cose imparate
+- F7: i test che istanziano il cog da solo non vedono più i comandi: serve
+  `await bot.add_cog(...)` e poi `bot.tree.get_command(gruppo)...`; a fine
+  test `await bot.remove_cog(...)` (i gruppi sono globali e condivisi).
+- Un cog con `cog_load`/`cog_unload` propri chiama `await super().cog_load()`
+  / `cog_unload()` (anti_raid).
 - Le tabelle di sicurezza stanno in `security_repo.run_migrations`.
 - Il messaggio privato di kick/ban deve partire PRIMA dell'azione.
 - DATABASE_URL va esportato in OGNI chiamata di shell: senza, i test
@@ -39,3 +49,8 @@
   DM di benvenuto (riga ~73), con `from core.security_raid_state import
   raid_in_corso`. La verifica (`cogs/security/verify.py`) non invia DM.
 - #137, #138 (vedi sopra).
+- F7: `/report-setup` e `/report` stanno ancora in cogs/moderation/report.py
+  con i vecchi nomi (mappa: `/admin config canale-report`, `/utility report`).
+- F7: `clear` (manage_messages), `lock`/`slowmode` (manage_channels), `kick`
+  (kick_members), `/log cerca|esporta` (view_audit_log): la mappa §5 li vuole
+  nel codice, oggi nessun controllo (non c'era nemmeno prima).

@@ -17,12 +17,8 @@ async def test_logs_query_cog_si_carica_correttamente():
 
     assert bot.get_cog("LogsQueryCog") is not None
 
-    logs_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "logs":
-            logs_group = command
-            break
-    assert logs_group is not None
-
-    sottocomandi = {c.name for c in logs_group.commands}
-    assert {"user", "channel", "export"} <= sottocomandi
+    gruppo = bot.tree.get_command("log")
+    cerca = gruppo.get_command("cerca")
+    assert {c.name for c in cerca.commands} == {"utente", "canale"}
+    assert gruppo.get_command("esporta") is not None
+    await bot.remove_cog("LogsQueryCog")
