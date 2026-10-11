@@ -22,7 +22,6 @@ import cogs.logging.advanced_logs as modulo
 import core.premium as modulo_premium
 from core.premium import registry
 from core.repositories.event_log_repo import event_log_repo
-from core.soundboard_log_service import SoundboardLogService
 from tests.support.discord_fakes import fake_guild, fake_member, fake_text_channel
 
 GUILD_ID = 100
@@ -113,18 +112,37 @@ async def test_premium_sbloccato_i_log_avanzati_scrivono(ambiente):
     await bot.close()
 
 
-async def test_premium_non_sbloccato_il_servizio_soundboard_non_legge_l_audit_log(ambiente):
+async def test_premium_non_sbloccato_il_suono_soundboard_non_viene_registrato(ambiente):
     db, log_event = ambiente
-    bot, _ = await _cog_acceso(db)
+    bot, cog = await _cog_acceso(db)
     registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
-    server, _ = _server_con_canale()
-    server.audit_logs = MagicMock(side_effect=AssertionError("audit log letto"))
-    bot_finto = MagicMock(guilds=[server])
-    bot_finto.get_guild.return_value = None  # nessun boost sul server principale
+    server, canale = _server_con_canale()
+    suono = MagicMock(guild=server)
+    suono.name = "boom"
+    bot.get_guild = MagicMock(return_value=None)  # nessun boost sul server principale
 
-    await SoundboardLogService().tick(bot_finto)
+    await cog.on_soundboard_sound_create(suono)
 
-    server.audit_logs.assert_not_called()
+    log_event.assert_not_awaited()
+    canale.send.assert_not_awaited()
+    await bot.close()
+
+
+async def test_invalida_verdetto_premium_vale_subito(ambiente):
+    db, log_event = ambiente
+    bot, cog = await _cog_acceso(db)
+    registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
+    prima, canale = _server_con_canale()
+    await cog.on_guild_update(prima, _server_rinominato(prima))
+    canale.send.assert_not_awaited()  # revocato, e il verdetto "no" ora e in memoria
+
+    await db.add_guild_to_whitelist(GUILD_ID, added_by=1, reason="test")
+    await cog.on_guild_update(prima, _server_rinominato(prima))
+    canale.send.assert_not_awaited()  # ancora la cache
+
+    modulo.invalida_verdetto_premium(GUILD_ID)
+    await cog.on_guild_update(prima, _server_rinominato(prima))
+    canale.send.assert_awaited_once()
     await bot.close()
 
 

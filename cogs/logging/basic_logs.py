@@ -3,9 +3,10 @@ cogs/logging/basic_logs.py
 =============================
 Logging semplificato: join, leave, ban, unban, creazione/eliminazione
 ruoli, cambi di ruolo e nickname sui membri. Modulo SEMPRE GRATUITO
-(MODULE_LOGGING), come da schema — il log "completo" (messaggi
-cancellati/modificati, che richiede il Message Content Intent) è
-previsto più avanti, nella Security Suite completa.
+(MODULE_LOGGING). Comandi /log canale (anche per messaggi, voce e server,
+con canale di testo o forum) e /log stato. Dove scrive lo decide
+core/channel_router.py.
+Funzioni coperte: SPEC §8.1-§8.5, §8.17, §18
 
 Ogni evento, oltre a mandare l'embed live nel canale configurato
 (come sempre), viene ora anche salvato nel log eventi unificato
@@ -25,9 +26,6 @@ Discord non chiama mai. Verificato empiricamente (non assunto) prima
 di scrivere tutti i listener sottostanti.
 """
 
-# DA FARE (issue #61, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §5 (Log).
-
 from __future__ import annotations
 
 import logging
@@ -38,6 +36,13 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_ACTIONS, SETTING_MOD_LOG_CHANNEL, ensure_module_enabled
+from core import channel_router as router
+from core.channel_router import (
+    DESCRIZIONE_TIPO,
+    SETTING_LOG_CHANNEL,
+    TIPI_LOG,
+    TIPO_EVENTI,
+)
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.repositories.event_log_repo import event_log_repo
@@ -45,9 +50,8 @@ from core.repositories.event_log_repo import event_log_repo
 logger = logging.getLogger("iyokai.logging.basic")
 
 MODULE_LOGGING = "logging_basic"
-SETTING_LOG_CHANNEL = "log_channel_id"
 MAX_CARATTERI_ELENCO_RUOLI = 1000
-TIPO_LOG_EVENTI = "eventi"
+TIPO_LOG_EVENTI = TIPO_EVENTI
 TIPO_LOG_SANZIONI = "sanzioni"
 
 
@@ -97,46 +101,27 @@ def elenco_ruoli(role_ids: Iterable[int]) -> str:
     return testo
 
 
-async def _send_log(channel: discord.TextChannel, embed: discord.Embed) -> None:
+async def _send_log(channel, embed: discord.Embed, tipo: str = TIPO_EVENTI) -> None:
     """
-    Manda l'embed nel canale dei log. Se Discord lo rifiuta (permesso
-    tolto, canale appena cancellato, errore del servizio) scrive una
-    riga nel log del bot e basta: un listener non ha nessuno a cui
-    mostrare l'errore, e l'evento è già salvato nel database.
+    Manda l'embed nella destinazione dei log. Se Discord lo rifiuta
+    (permesso tolto, canale cancellato, errore del servizio) il router
+    scrive una riga nel log del bot e, per permesso o canale mancante,
+    avvisa il proprietario una volta sola: l'evento è già nel database.
     """
-    try:
-        await channel.send(embed=embed)
-    except discord.HTTPException as errore:
-        logger.warning(
-            "Log non inviato nel canale %s (server %s): %s",
-            channel.id,
-            channel.guild.id,
-            errore,
-        )
+    await router.invia_a(channel, channel.guild, tipo, embed=embed)
 
 
-async def _get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
+async def _get_log_channel(guild: discord.Guild, tipo: str = TIPO_EVENTI):
     """
-    Restituisce il canale di log configurato per questo server, solo
-    se il modulo è attivo E un canale è stato impostato E quel canale
-    esiste ancora. In ogni altro caso restituisce None: i listener
-    controllano questo valore e non fanno nulla se è None, senza mai
-    sollevare un errore per un server che non ha configurato nulla —
-    un evento Discord non ha nessuno a cui rispondere con un
-    messaggio d'errore, a differenza di uno slash command.
+    Destinazione dei log di `tipo` (canale di testo o post di un forum)
+    solo se il modulo è attivo E un canale è stato scelto E esiste
+    ancora. In ogni altro caso None: i listener non fanno nulla, senza
+    mai sollevare un errore (un evento non ha nessuno a cui rispondere).
     """
-    enabled = await db.is_module_active_for_guild(guild.id, MODULE_LOGGING)
-    if not enabled:
+    if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING):
         return None
-
-    channel_id = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
-    if channel_id is None:
-        return None
-
-    channel = guild.get_channel(channel_id)
-    if not isinstance(channel, discord.TextChannel):
-        return None
-    return channel
+    predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+    return await router.destinazione(guild, tipo, predefinito)
 
 
 class BasicLogsCog(CogConGruppi, commands.Cog):
@@ -147,22 +132,25 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
     # Comandi di configurazione
     # ================================================================
     @comando_di_gruppo(
-        "log", nome="canale", descrizione="Imposta il canale dei log del server."
+        "log", nome="canale", descrizione="Imposta il canale (o il forum) dei log del server."
     )
     @app_commands.describe(
-        channel="Il canale dove verranno inviati i log",
+        channel="Canale di testo o forum dove verranno inviati i log",
         tipo="Che cosa inviare nel canale (default: eventi del server)",
     )
     @app_commands.choices(
         tipo=[
             app_commands.Choice(name="Eventi del server", value=TIPO_LOG_EVENTI),
+            app_commands.Choice(name="Messaggi cancellati e modificati", value="messaggi"),
+            app_commands.Choice(name="Entrate e uscite dai vocali", value="voce"),
+            app_commands.Choice(name="Canali, inviti e impostazioni del server", value="server"),
             app_commands.Choice(name="Sanzioni di moderazione", value=TIPO_LOG_SANZIONI),
         ]
     )
     async def logs_setup(
         self,
         interaction: discord.Interaction,
-        channel: discord.TextChannel,
+        channel: discord.TextChannel | discord.ForumChannel,
         tipo: str = TIPO_LOG_EVENTI,
     ) -> None:
         if interaction.guild is None:
@@ -173,6 +161,12 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             return
 
         if tipo == TIPO_LOG_SANZIONI:
+            if isinstance(channel, discord.ForumChannel):
+                await interaction.response.send_message(
+                    "Le sanzioni vanno in un canale di testo, non in un forum.",
+                    ephemeral=True,
+                )
+                return
             if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
                 return
             await db.set_guild_setting(interaction.guild.id, SETTING_MOD_LOG_CHANNEL, channel.id)
@@ -182,15 +176,28 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await db.set_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL, channel.id)
+        permessi = channel.permissions_for(interaction.guild.me)
+        if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+            await interaction.response.send_message(
+                f"Mi mancano i permessi in {channel.mention}: servono Vedere il canale, "
+                f"Inviare messaggi e Incorporare link.",
+                ephemeral=True,
+            )
+            return
+
+        if tipo == TIPO_LOG_EVENTI:
+            # Il canale degli eventi è anche quello di riserva degli altri tipi.
+            await db.set_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL, channel.id)
+        await router.output_channel_repo.imposta(interaction.guild.id, tipo, channel.id)
+        dove = "nel forum (un post per tipo)" if isinstance(channel, discord.ForumChannel) else "in"
         await interaction.response.send_message(
-            f"I log verranno inviati in {channel.mention}. "
+            f"I log «{DESCRIZIONE_TIPO[tipo]}» verranno inviati {dove} {channel.mention}. "
             f"Ricorda di attivare il modulo con /admin setup attiva se non l'hai già fatto.",
             ephemeral=True,
         )
 
     @comando_di_gruppo(
-        "log", nome="stato", descrizione="Mostra il canale di log configurato."
+        "log", nome="stato", descrizione="Mostra dove vanno i log del server."
     )
     async def logs_status(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -200,19 +207,30 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        channel_id = await db.get_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL)
-        if channel_id is None:
+        guild = interaction.guild
+        generale = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+        if generale is None and not await router.output_channel_repo.elenco(guild.id):
             await interaction.response.send_message(
                 "Nessun canale di log configurato. Usa /log canale.",
                 ephemeral=True,
             )
             return
 
-        channel = interaction.guild.get_channel(channel_id)
-        testo = channel.mention if channel is not None else f"canale eliminato (ID {channel_id})"
-        await interaction.response.send_message(
-            f"Canale di log configurato: {testo}", ephemeral=True
-        )
+        scelte = {r.tipo: r for r in await router.output_channel_repo.elenco(guild.id)}
+        righe = []
+        for tipo in TIPI_LOG:
+            riga = scelte.get(tipo)
+            channel_id = riga.channel_id if riga else generale
+            if channel_id is None:
+                righe.append(f"**{DESCRIZIONE_TIPO[tipo]}**: non impostato")
+                continue
+            canale = guild.get_channel(channel_id)
+            testo = canale.mention if canale is not None else f"canale eliminato (ID {channel_id})"
+            extra = " (riserva)" if riga is None else ""
+            if riga is not None and riga.avvisato:
+                extra = " (non riesco a scrivere: controlla i permessi)"
+            righe.append(f"**{DESCRIZIONE_TIPO[tipo]}**: {testo}{extra}")
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     # ================================================================
     # Membri

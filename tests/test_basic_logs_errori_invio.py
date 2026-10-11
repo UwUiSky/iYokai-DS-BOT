@@ -18,6 +18,7 @@ import cogs.logging.basic_logs as modulo
 from core.database import Database
 from core.repositories.event_log_repo import EventLogRepository
 from tests.support.discord_fakes import fake_guild, fake_member, fake_role, fake_text_channel
+from tests.support.router_fakes import router_senza_scelte
 
 ID_CANALE_LOG = 31337
 
@@ -36,6 +37,7 @@ def repo_eventi(monkeypatch):
     db_finto.is_module_active_for_guild.return_value = True
     db_finto.get_guild_setting.return_value = ID_CANALE_LOG
     monkeypatch.setattr(modulo, "db", db_finto)
+    router_senza_scelte(monkeypatch)
     repo = create_autospec(EventLogRepository, instance=True)
     monkeypatch.setattr(modulo, "event_log_repo", repo)
     return repo
@@ -46,6 +48,7 @@ def _server_con_canale_rotto(errore: Exception):
     canale.send.side_effect = errore
     server = fake_guild()
     server.get_channel.return_value = canale
+    canale.guild = server
     return server, canale
 
 

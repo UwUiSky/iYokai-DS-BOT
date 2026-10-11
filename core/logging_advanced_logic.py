@@ -118,8 +118,9 @@ def classify_voice_state_change(before: dict, after: dict) -> list[str]:
     Un singolo `on_voice_state_update` può contenere più cambiamenti
     insieme (es. mute E cambio canale nello stesso evento) — per
     questo restituisce una LISTA di categorie, non una sola.
-    Ordine: movimento di canale prima di mute/deafen, così un log
-    letto in sequenza racconta prima "dove", poi "come".
+    Ordine: movimento di canale, poi mute/sordità del server, poi
+    quelle scelte dall'utente: un log letto in sequenza racconta prima
+    "dove", poi "come".
     """
     eventi: list[str] = []
 
@@ -138,5 +139,12 @@ def classify_voice_state_change(before: dict, after: dict) -> list[str]:
 
     if before.get("deaf") != after.get("deaf"):
         eventi.append("voice_deafen" if after.get("deaf") else "voice_undeafen")
+
+    # Mute e sordità scelti dall'utente stesso: un altro evento, un altro titolo.
+    if before.get("self_mute") != after.get("self_mute"):
+        eventi.append("voice_self_mute" if after.get("self_mute") else "voice_self_unmute")
+
+    if before.get("self_deaf") != after.get("self_deaf"):
+        eventi.append("voice_self_deafen" if after.get("self_deaf") else "voice_self_undeafen")
 
     return eventi

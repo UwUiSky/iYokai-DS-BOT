@@ -611,3 +611,21 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 - [ ] `modules_updated` (#66, voce 10.13) — passi:
   1. Con il log a livello debug, attiva un modulo dal wizard (`/admin setup wizard`), da `/admin config import`, dopo un `/admin config reset` e dopo un `/admin config rollback`.
   Risultato atteso: per ogni modulo cambiato un evento `modules_updated` (un ascoltatore di prova, o `bot.dispatch` loggato); nessun evento per quelli invariati.
+- [ ] Router dei canali e log su forum (#72, NF-01, M 5.5) — passi:
+  1. `/log crea-canali`: categoria `📜 Log` privata con 4 canali; `/log stato` li elenca. Un utente normale non li vede.
+  2. `/log crea-forum` su un server Community: forum `log` privato. Fai un evento di ogni tipo (entra un membro, cancella un messaggio, entra in un vocale, crea un canale): compare un post per tipo, con più messaggi nello stesso post. Cancella un post a mano e rifai l'evento: ne nasce uno nuovo.
+  3. `/log canale tipo:messaggi` su un canale dove il bot non può scrivere: rifiutato con i permessi che mancano. Togli il permesso al bot dopo averlo impostato e fai 3 eventi: il proprietario del server riceve un solo DM; ridai il permesso, poi toglilo di nuovo: nuovo DM.
+  4. Cancella il canale dei log a mano: un solo DM al proprietario, nessun errore a ogni evento.
+  Risultato atteso: mai più di un avviso per problema, nessuna riga persa nel database.
+- [ ] Log dei messaggi (#73, NF-02) — passi (serve `message_content` acceso nel Portal e il Logging Avanzato sbloccato):
+  1. Scrivi, modifica e cancella un messaggio: due embed (prima/dopo e cancellato) con autore e canale. Un messaggio da 3000 caratteri: embed valido.
+  2. `/clear` 20 messaggi: un solo riepilogo con il file `messaggi_cancellati.txt`.
+  3. `/log ignora azione:Aggiungi canale:…`, poi cancella lì: nessun log. Stessa prova con un utente e con il prefisso `!`.
+  4. Cancella un messaggio vecchio (prima di un riavvio del bot): il log dice che il contenuto non c'è più.
+  Risultato atteso: nessun messaggio di bot nel log, nessun testo nella tabella `event_log`.
+- [ ] Log avanzati (#61, M 5.6, 5.7, 5.8) — passi:
+  1. Trascina un canale sopra altri 5: un solo messaggio «Canali spostati» dopo circa 5 secondi.
+  2. Entra in un vocale e muta il microfono tu: «Si è mutato da solo». Fatti mutare da un moderatore (muta server): «Mutato dal server».
+  3. Aggiungi, rinomina ed elimina un suono soundboard: una riga per evento, subito (senza aspettare 5 minuti), anche il primo.
+  4. Dal 16/11/2026: dai/togli al bot l'accesso a un canale: nessun log con `___hidden___`.
+  Risultato atteso: nessun doppione, nessun evento saltato.

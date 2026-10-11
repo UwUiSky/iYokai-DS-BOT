@@ -135,7 +135,7 @@ async def test_log_canale_ha_il_tipo_con_le_scelte(bot):
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
     assert opzioni["channel"]["required"] is True
     assert opzioni["tipo"].get("required", False) is False
-    assert {c["value"] for c in opzioni["tipo"]["choices"]} == {"eventi", "sanzioni"}
+    assert {c["value"] for c in opzioni["tipo"]["choices"]} == {"eventi", "messaggi", "voce", "server", "sanzioni"}
 
 
 class _FakeDb:

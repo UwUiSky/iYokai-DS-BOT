@@ -12,6 +12,7 @@ import pytest
 
 from core.database import Database
 import cogs.logging.basic_logs as basic_logs
+from tests.support.router_fakes import router_senza_scelte
 
 
 class _FakeChannel:
@@ -31,14 +32,20 @@ class _FakeTextChannel(_FakeChannel):
 class _FakeGuild:
     def __init__(self, guild_id: int, channels: dict[int, object]) -> None:
         self.id = guild_id
+        self.name = "Server"
+        self.owner_id = 1
         self._channels = channels
+
+    def get_member(self, user_id: int):
+        return None
 
     def get_channel(self, channel_id: int):
         return self._channels.get(channel_id)
 
 
 @pytest.mark.asyncio
-async def test_nessun_modulo_attivo_restituisce_none():
+async def test_nessun_modulo_attivo_restituisce_none(monkeypatch):
+    router_senza_scelte(monkeypatch)
     database = Database()
     await database.connect()
     try:
@@ -66,7 +73,8 @@ async def test_nessun_modulo_attivo_restituisce_none():
 
 
 @pytest.mark.asyncio
-async def test_modulo_attivo_ma_nessun_canale_configurato_restituisce_none():
+async def test_modulo_attivo_ma_nessun_canale_configurato_restituisce_none(monkeypatch):
+    router_senza_scelte(monkeypatch)
     database = Database()
     await database.connect()
     try:
@@ -94,7 +102,8 @@ async def test_modulo_attivo_ma_nessun_canale_configurato_restituisce_none():
 
 
 @pytest.mark.asyncio
-async def test_canale_configurato_ma_non_piu_esistente_restituisce_none():
+async def test_canale_configurato_ma_non_piu_esistente_restituisce_none(monkeypatch):
+    router_senza_scelte(monkeypatch)
     database = Database()
     await database.connect()
     try:
@@ -124,7 +133,8 @@ async def test_canale_configurato_ma_non_piu_esistente_restituisce_none():
 
 
 @pytest.mark.asyncio
-async def test_canale_di_tipo_sbagliato_restituisce_none():
+async def test_canale_di_tipo_sbagliato_restituisce_none(monkeypatch):
+    router_senza_scelte(monkeypatch)
     # Anche se un ID è configurato e "esiste" tra i canali del server,
     # se non è un TextChannel (es. l'admin ha configurato per errore
     # un canale vocale) il log non deve provare a scriverci.
