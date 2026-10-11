@@ -50,6 +50,9 @@ class LevelingSettingsRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
         self._cache: BoundedCache[int, tuple[float, ConfigLivelli]] = BoundedCache(max_size=5_000)
+        # Sale a ogni modifica: una lettura partita prima di un salvataggio
+        # non rimette in cache il valore vecchio.
+        self._versione: dict[int, int] = {}
 
     @property
     def _pool(self) -> asyncpg.Pool:
@@ -60,6 +63,7 @@ class LevelingSettingsRepository:
         if voce is not None and time.monotonic() - voce[0] < SECONDI_DI_CACHE:
             return voce[1]
 
+        versione = self._versione.get(guild_id, 0)
         riga = await self._pool.fetchrow(
             "SELECT * FROM leveling_settings WHERE guild_id = $1", guild_id
         )
@@ -76,8 +80,13 @@ class LevelingSettingsRepository:
             mult_canali={r["target_id"]: float(r["factor"]) for r in regole if r["kind"] == "mult_canale"},
             mult_ruoli={r["target_id"]: float(r["factor"]) for r in regole if r["kind"] == "mult_ruolo"},
         )
-        self._cache.set(guild_id, (time.monotonic(), config))
+        if self._versione.get(guild_id, 0) == versione:
+            self._cache.set(guild_id, (time.monotonic(), config))
         return config
+
+    def _invalida(self, guild_id: int) -> None:
+        self._versione[guild_id] = self._versione.get(guild_id, 0) + 1
+        self._cache.delete(guild_id)
 
     async def set_options(self, guild_id: int, **campi) -> LevelingSettings:
         """
@@ -111,7 +120,7 @@ class LevelingSettingsRepository:
                 guild_id,
                 *campi.values(),
             )
-            self._cache.delete(guild_id)
+            self._invalida(guild_id)
         return (await self.get_config(guild_id)).impostazioni
 
     async def set_rule(
@@ -155,14 +164,14 @@ class LevelingSettingsRepository:
                     """,
                     guild_id, kind, target_id, factor,
                 )
-        self._cache.delete(guild_id)
+        self._invalida(guild_id)
 
     async def remove_rule(self, guild_id: int, kind: str, target_id: int) -> bool:
         risultato = await self._pool.execute(
             "DELETE FROM leveling_xp_rules WHERE guild_id=$1 AND kind=$2 AND target_id=$3",
             guild_id, kind, target_id,
         )
-        self._cache.delete(guild_id)
+        self._invalida(guild_id)
         return risultato.endswith(" 1")
 
 

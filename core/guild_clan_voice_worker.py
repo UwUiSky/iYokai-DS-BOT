@@ -15,6 +15,9 @@ tetto) vive nel database tramite core/repositories/clan_voice_
 activity_repo.py, già committato.
 Valgono le stesse regole anti-farm dell'XP vocale normale
 (core.leveling_logic.is_eligible_for_voice_xp).
+Chi è escluso dall'XP (canale, categoria o ruolo, `/level impostazioni
+escludi`) non matura nulla nemmeno per la gilda: stessa regola dell'XP
+testuale dei clan.
 Funzioni coperte: SPEC §15.14; REVIEW.md LC-8 (errori isolati per server
 nel giro), SEC-21 (gli utenti in blacklist non maturano nulla).
 """
@@ -29,10 +32,11 @@ from discord.ext import commands, tasks
 from core.bot_ready import attendi_bot_pronto
 from core.guild_clan_boost_logic import Beneficio, benefici_attivi, compute_boosted_reward
 from core.guild_iteration import for_each_guild_safely
-from core.leveling_logic import is_eligible_for_voice_xp
+from core.leveling_logic import ConfigLivelli, id_canali_per_le_regole, is_eligible_for_voice_xp
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
 from core.repositories.guild_clan_repo import REASON_VOICE_TICK, guild_clan_repo
+from core.repositories.leveling_settings_repo import leveling_settings_repo
 
 logger = logging.getLogger("iyokai.guild_clan_voice_worker")
 
@@ -51,12 +55,24 @@ class GuildClanVoiceWorker:
 
         async def _per_server(guild) -> None:
             id_canale_afk = guild.afk_channel.id if guild.afk_channel else None
+            try:
+                regole = await leveling_settings_repo.get_config(guild.id)
+            except Exception:
+                logger.warning("Impostazioni dei livelli non lette per %s.", guild.id)
+                regole = ConfigLivelli()
             for canale in guild.voice_channels:
                 persone = [m for m in canale.members if not m.bot]
                 for membro in persone:
                     # SEC-21: chi è in blacklist non porta XP, coin
                     # né ore vocali al clan (controllo in cache).
                     if await blacklist_repo.is_user_blacklisted(membro.id):
+                        continue
+
+                    # NF-15: canali, categorie e ruoli senza XP valgono come
+                    # "non in vocale" anche per la gilda.
+                    if regole.e_escluso(
+                        id_canali_per_le_regole(canale), [r.id for r in getattr(membro, "roles", [])]
+                    ):
                         continue
 
                     # Stesse regole anti-farm dell'XP vocale normale:

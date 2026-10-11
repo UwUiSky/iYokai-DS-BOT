@@ -73,7 +73,30 @@ def _font(dimensione: int) -> ImageFont.ImageFont:
             return ImageFont.truetype(candidato, dimensione)
         except OSError:
             continue
-    return ImageFont.load_default(size=dimensione)
+    try:
+        return ImageFont.load_default(size=dimensione)
+    except TypeError:  # Pillow prima della 10.1: font fisso
+        return ImageFont.load_default()
+
+
+def senza_quadrati(testo: str, font) -> str:
+    """
+    Toglie dal testo i caratteri che il font non sa disegnare (emoji, scritture
+    rare): al loro posto Pillow disegnerebbe quadrati vuoti. Se non resta
+    niente, "Utente".
+    """
+    def firma(carattere: str) -> bytes:
+        tela = Image.new("L", (120, 120), 0)
+        ImageDraw.Draw(tela).text((10, 10), carattere, font=font, fill=255)
+        return tela.tobytes()
+
+    try:
+        vuoto = firma("\uffff")  # il "quadrato" che il font disegna per ciò che non conosce
+        giusti = [c for c in testo if c.isspace() or c == "…" or firma(c) != vuoto]
+    except Exception:  # font o Pillow che non disegnano così: si lascia il testo com'è
+        return testo
+    pulito = " ".join("".join(giusti).split())
+    return pulito or "Utente"
 
 
 def _compatto(numero: int) -> str:
@@ -144,7 +167,7 @@ def render_rank_card(dati: DatiRankCard, avatar_bytes: bytes | None) -> bytes:
         larghezza_livello += draw.textlength(posizione, font=f_medio) + 24
 
     # Nome a sinistra, nello spazio che resta.
-    nome = _taglia_al_largo(draw, dati.nome, f_grande, int(x_fine - x_testo - larghezza_livello - 24))
+    nome = _taglia_al_largo(draw, senza_quadrati(dati.nome, f_grande), f_grande, int(x_fine - x_testo - larghezza_livello - 24))
     draw.text((x_testo, 44), nome, font=f_grande, fill=tema.testo)
 
     # Barra dell'XP.

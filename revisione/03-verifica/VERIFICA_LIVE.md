@@ -654,3 +654,9 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. `/level rank colore:#FF8800 tema:Notte`, poi di nuovo `/level rank`; poi `/level rank reimposta:True`.
   3. `/level rank member:@altro colore:#00FF00`.
   Risultato atteso: un'immagine PNG con avatar tondo, nome (tagliato se lungo), livello, barra XP, posizione e coin; colore e tema restano salvati; il passo 3 avvisa che si cambia solo la propria card e non salva nulla. Nessun "L'applicazione non ha risposto".
+- [ ] `NF-15` bis (#86) — passi:
+  1. `/level impostazioni escludi canale:<una categoria>`, poi scrivi in un canale dentro la categoria e in uno fuori.
+  2. Con `premi modo:Sostituisci`, metti il ruolo-premio del livello alto sopra il ruolo del bot e fai salire un membro.
+  Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
+- [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
+- [ ] Dati (NF-04, F5) — quando il registro esisterà: `rank_card_prefs` deve comparire in esportazione e cancellazione.

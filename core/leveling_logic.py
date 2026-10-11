@@ -340,21 +340,34 @@ class ConfigLivelli:
     mult_canali: dict = field(default_factory=dict)
     mult_ruoli: dict = field(default_factory=dict)
 
-    def fattori_attivi(self, channel_id: int, role_ids) -> list[float]:
-        """I fattori che valgono per questo canale e per questi ruoli."""
+    def fattori_attivi(self, channel_ids, role_ids) -> list[float]:
+        """
+        I fattori che valgono per questo canale e per questi ruoli.
+        `channel_ids`: un id o la lista di id_canali_per_le_regole (vale la
+        prima regola trovata, dal più specifico).
+        """
+        if isinstance(channel_ids, int):
+            channel_ids = [channel_ids]
         fattori = []
-        if channel_id in self.mult_canali:
-            fattori.append(self.mult_canali[channel_id])
+        for cid in channel_ids:
+            if cid in self.mult_canali:
+                fattori.append(self.mult_canali[cid])
+                break
         fattori.extend(self.mult_ruoli[r] for r in role_ids if r in self.mult_ruoli)
         return fattori
 
-    def moltiplicatore(self, channel_id: int, role_ids) -> float:
+    def moltiplicatore(self, channel_ids, role_ids) -> float:
         return moltiplicatore_xp(
-            self.impostazioni.multiplier_mode, self.fattori_attivi(channel_id, role_ids)
+            self.impostazioni.multiplier_mode, self.fattori_attivi(channel_ids, role_ids)
         )
 
-    def e_escluso(self, channel_id: int, role_ids) -> bool:
-        return channel_id in self.canali_esclusi or any(r in self.ruoli_esclusi for r in role_ids)
+    def e_escluso(self, channel_ids, role_ids) -> bool:
+        """Escluso se lo è il canale (o il suo canale di origine o la sua categoria) o un ruolo."""
+        if isinstance(channel_ids, int):
+            channel_ids = [channel_ids]
+        return any(c in self.canali_esclusi for c in channel_ids) or any(
+            r in self.ruoli_esclusi for r in role_ids
+        )
 
 
 def moltiplicatore_xp(modo: str, fattori: list[float]) -> float:
@@ -374,17 +387,45 @@ def xp_con_moltiplicatore(base: int, moltiplicatore: float) -> int:
     return max(0, int(base * moltiplicatore + 0.5))
 
 
-def deve_annunciare(livello: int, impostazioni: LevelingSettings, ha_ruolo_premio: bool) -> bool:
-    """Se il level-up a `livello` va annunciato (spento, livello minimo, ogni N, solo premi)."""
+def deve_annunciare(
+    livello: int,
+    impostazioni: LevelingSettings,
+    ha_ruolo_premio: bool,
+    livello_precedente: int | None = None,
+) -> bool:
+    """
+    Se il level-up a `livello` va annunciato (spento, livello minimo, ogni N,
+    solo premi). Se in un colpo solo si salta più di un livello
+    (`livello_precedente` più basso di uno), "ogni N" conta ogni livello
+    saltato; `ha_ruolo_premio` lo calcola il chiamante su tutti i saltati.
+    """
     if impostazioni.levelup_mode == "spento":
         return False
     if livello < impostazioni.levelup_min_level:
         return False
-    if livello % impostazioni.levelup_every != 0:
+    prima = livello - 1 if livello_precedente is None else min(livello_precedente, livello - 1)
+    ogni = impostazioni.levelup_every
+    if livello // ogni <= prima // ogni:  # nessun multiplo di N tra i livelli saltati
         return False
     if impostazioni.levelup_only_rewards and not ha_ruolo_premio:
         return False
     return True
+
+
+def id_canali_per_le_regole(canale) -> list[int]:
+    """
+    Gli id che contano per esclusioni e moltiplicatori di un canale, dal più
+    specifico: il canale stesso, il canale di origine di un thread o di un
+    post di forum, la categoria (le regole su una categoria valgono per i
+    canali che contiene).
+    """
+    ids = [canale.id]
+    origine = getattr(canale, "parent", None)
+    for candidato in (getattr(canale, "parent_id", None), getattr(canale, "category_id", None),
+                      getattr(origine, "category_id", None)):
+        if isinstance(candidato, int) and candidato not in ids:
+            ids.append(candidato)
+    return ids
 
 
 def scegli_premi(ricompense, modo: str) -> tuple[list[int], list[int]]:
