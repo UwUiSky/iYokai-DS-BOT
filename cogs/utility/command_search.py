@@ -58,9 +58,9 @@ class CommandSearchCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    # Comando di PRIMO livello (non in /utility), solo nei server come tutti gli altri (D24).
+    # Comando di PRIMO livello (non in /utility); usabile anche in DM (D24, 11/10/2026).
     @app_commands.command(name=NOME_CERCA_COMANDO, description="Cerca un comando per descrizione.")
-    @app_commands.guild_only()
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno' (massimo 100 caratteri)")
     async def search(
         self,

@@ -347,4 +347,4 @@ dell'owner: 17 su 100. Foglie 252 (vecchie 253: `logs-setup` e `mod-log-setup`
 fuse in `log canale`). Nessun comando perso, senza posto o duplicato. Caratteri
 massimi: `/gestione` 4816, `/security` 3685, `/owner` 3315 (limite 8000, allarme
 6800). `-cerca-comando` (123 caratteri) non è nella tabella §5: nessun permesso
-e usabile anche in DM, da confermare con l'owner.
+e usabile anche in DM (confermato dall'owner l'11/10).

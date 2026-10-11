@@ -29,14 +29,14 @@ async def test_command_search_cog_si_carica_correttamente():
     assert not isinstance(comando, app_commands.Group)
 
 
-async def test_cerca_comando_e_solo_nei_server_come_tutti_i_comandi():
-    """D24: tutti i comandi sono nei server, anche i due di primo livello."""
+async def test_cerca_comando_funziona_anche_in_dm():
+    """D24: `-cerca-comando` è usabile anche in DM (richiesta owner 11/10)."""
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await command_search_setup(bot)
 
     comando = bot.tree.get_command(NOME_CERCA_COMANDO)
-    assert comando.guild_only is True
-    assert bot.tree.get_command(NOME_CERCA_COMANDO).to_dict(bot.tree)["contexts"] == [0]
+    assert comando.guild_only is False
+    assert sorted(comando.to_dict(bot.tree)["contexts"]) == [0, 1, 2]
 
 
 def test_i_nomi_dei_due_comandi_di_primo_livello_stanno_in_command_groups():
