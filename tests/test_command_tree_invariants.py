@@ -256,6 +256,18 @@ async def test_nomi_e_descrizioni_entro_i_limiti_e_regex():
         await _chiudi(creato_qui, bot)
 
 
+async def test_dopo_il_setup_di_tutti_i_cog_owner_non_e_nell_albero_globale():
+    """/owner lo aggiunge solo main.py (registra_owner) nel server dell'owner."""
+    from core.command_groups import GRUPPI
+
+    creato_qui, bot = await _albero_vero()
+    try:
+        assert bot.tree.get_command("owner") is None
+        assert GRUPPI["owner"].commands, "i cog owner devono riempire il gruppo condiviso"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
 SOGLIA_DESCRIZIONE = 95  # sotto il limite di 100: margine per le traduzioni (F8)
 
 

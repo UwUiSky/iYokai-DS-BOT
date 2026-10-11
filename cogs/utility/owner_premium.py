@@ -290,13 +290,6 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    async def cog_load(self) -> None:
-        await super().cog_load()
-        # /owner non è globale (mappa §5): lo aggiunge main.py solo nel
-        # server dell'owner. Qui lo si toglie dall'albero globale.
-        if self.bot.tree.get_command("owner") is not None:
-            self.bot.tree.remove_command("owner")
-
     @comando_di_gruppo(
         "owner",
         nome="list",
