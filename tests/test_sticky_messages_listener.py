@@ -53,7 +53,7 @@ class _FakeTextChannel(discord.TextChannel):
             raise discord.NotFound(response=_FakeHTTPResponse(), message="non trovato")
         return _FakeOldMessage(message_id, self)
 
-    async def send(self, content: str):
+    async def send(self, content: str, **kwargs):
         self._prossimo_id += 1
         self.sent_messages.append(content)
         return _FakeSentMessage(self._prossimo_id)
@@ -280,7 +280,7 @@ async def test_on_message_ignora_messaggi_di_bot(monkeypatch):
 class _CanaleCheRifiuta(_FakeTextChannel):
     """Canale in cui Discord rifiuta l'invio con un errore 400."""
 
-    async def send(self, content: str):
+    async def send(self, content: str, **kwargs):
         risposta = _FakeHTTPResponse()
         risposta.status = 400
         risposta.reason = "Bad Request"

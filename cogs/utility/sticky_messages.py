@@ -10,13 +10,16 @@ messaggio in un canale attivo.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import weakref
 from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.admin_mentions_logic import menzioni_ammesse, puo_pingare_ruoli
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -31,6 +34,18 @@ MODULE_STICKY_MESSAGES = "sticky_messages"
 class StickyMessagesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # M 10.4: un blocco per canale. Il blocco vive finché qualcuno lo
+        # tiene (WeakValueDictionary): nessun elenco da ripulire.
+        self._blocchi: "weakref.WeakValueDictionary[int, asyncio.Lock]" = (
+            weakref.WeakValueDictionary()
+        )
+
+    def _blocco(self, channel_id: int) -> asyncio.Lock:
+        blocco = self._blocchi.get(channel_id)
+        if blocco is None:
+            blocco = asyncio.Lock()
+            self._blocchi[channel_id] = blocco
+        return blocco
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -44,35 +59,42 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_STICKY_MESSAGES):
             return
 
-        sticky = await sticky_message_repo.get_sticky(message.channel.id)
-        if sticky is None:
-            return
+        # Lettura, cancellazione, invio e salvataggio dello stato sono un
+        # blocco solo: con dieci messaggi veloci ne passa uno e gli altri
+        # trovano il debounce già scattato.
+        async with self._blocco(message.channel.id):
+            sticky = await sticky_message_repo.get_sticky(message.channel.id)
+            if sticky is None:
+                return
 
-        ora = datetime.now(timezone.utc)
-        if not should_repost_sticky(sticky.last_reposted_at, ora):
-            return
+            ora = datetime.now(timezone.utc)
+            if not should_repost_sticky(sticky.last_reposted_at, ora):
+                return
 
-        if sticky.last_message_id is not None:
+            if sticky.last_message_id is not None:
+                try:
+                    vecchio = await message.channel.fetch_message(sticky.last_message_id)
+                    await vecchio.delete()
+                except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                    pass  # già cancellato o non raggiungibile: non blocca la ripubblicazione
+
             try:
-                vecchio = await message.channel.fetch_message(sticky.last_message_id)
-                await vecchio.delete()
-            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                pass  # già cancellato o non raggiungibile: non blocca la ripubblicazione
+                nuovo_messaggio = await message.channel.send(
+                    sticky.message_text,
+                    allowed_mentions=menzioni_ammesse(sticky.ping_ruoli),
+                )
+            except discord.HTTPException as errore:
+                # Comprende Forbidden (permessi mancanti) e gli errori 400/5xx.
+                logger.warning(
+                    "Non riesco a ripubblicare lo sticky nel canale %s: %s",
+                    message.channel.id,
+                    errore,
+                )
+                return
 
-        try:
-            nuovo_messaggio = await message.channel.send(sticky.message_text)
-        except discord.HTTPException as errore:
-            # Comprende Forbidden (permessi mancanti) e gli errori 400/5xx.
-            logger.warning(
-                "Non riesco a ripubblicare lo sticky nel canale %s: %s",
-                message.channel.id,
-                errore,
+            await sticky_message_repo.update_repost_state(
+                message.channel.id, nuovo_messaggio.id, ora
             )
-            return
-
-        await sticky_message_repo.update_repost_state(
-            message.channel.id, nuovo_messaggio.id, ora
-        )
 
     # ================================================================
     # Comandi
@@ -101,7 +123,18 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await sticky_message_repo.set_sticky(channel.id, guild.id, message)
+        if not await db.is_module_active_for_guild(guild.id, MODULE_STICKY_MESSAGES):
+            await interaction.response.send_message(
+                "Questo modulo non è attivo su questo server. "
+                "Un amministratore può attivarlo con /admin setup attiva.",
+                ephemeral=True,
+            )
+            return
+
+        ping_ruoli = isinstance(interaction.user, discord.Member) and puo_pingare_ruoli(
+            interaction.user.guild_permissions
+        )
+        await sticky_message_repo.set_sticky(channel.id, guild.id, message, ping_ruoli=ping_ruoli)
         await interaction.response.send_message(
             f"Sticky message impostato per {channel.mention}. "
             f"Verrà pubblicato al prossimo messaggio in quel canale.",

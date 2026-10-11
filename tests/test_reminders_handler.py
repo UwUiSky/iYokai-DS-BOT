@@ -23,7 +23,7 @@ class _FakeUser:
         self._dm_fallisce = dm_fallisce
         self.dm_ricevuti: list[str] = []
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         if self._dm_fallisce:
             raise discord.HTTPException(response=_FakeHTTPResponse(), message="DM chiusi")
         self.dm_ricevuti.append(content)
@@ -35,7 +35,7 @@ class _FakeChannel(discord.TextChannel):
         self._invio_fallisce = invio_fallisce
         self.messaggi_inviati: list[str] = []
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         if self._invio_fallisce:
             raise discord.HTTPException(response=_FakeHTTPResponse(), message="canale non raggiungibile")
         self.messaggi_inviati.append(content)

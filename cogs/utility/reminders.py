@@ -26,6 +26,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
+from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.scheduler import scheduler
 
@@ -33,6 +34,10 @@ logger = logging.getLogger("iyokai.reminders")
 
 MODULE_REMINDERS = "reminders"
 REMINDER_ACTION_TYPE = "reminder_fire"
+
+# LIM-13: il testo finale ("⏰ Promemoria: " + testo, più la menzione nel canale
+# di ripiego) deve stare in 2000 caratteri.
+TestoPromemoria = app_commands.Range[str, 1, 1800]
 
 
 class RemindersCog(CogConGruppi, commands.Cog):
@@ -66,7 +71,14 @@ class RemindersCog(CogConGruppi, commands.Cog):
             channel = guild.get_channel(channel_id) if guild else None
             if isinstance(channel, discord.TextChannel):
                 try:
-                    await channel.send(f"<@{user_id}> {testo}")
+                    # Il testo l'ha scritto l'utente: può pingare solo se stesso,
+                    # mai @everyone né ruoli.
+                    await channel.send(
+                        f"<@{user_id}> {testo}",
+                        allowed_mentions=discord.AllowedMentions(
+                            everyone=False, roles=False, users=[discord.Object(id=user_id)]
+                        ),
+                    )
                     return
                 except discord.HTTPException:
                     pass
@@ -92,7 +104,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
         message="Il testo del promemoria",
     )
     async def set_reminder(
-        self, interaction: discord.Interaction, duration: str, message: str
+        self, interaction: discord.Interaction, duration: str, message: TestoPromemoria
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -152,9 +164,10 @@ class RemindersCog(CogConGruppi, commands.Cog):
             testo = azione["payload"].get("message", "(nessun testo)")
             righe.append(f"`#{azione['id']}` {quando} — {testo}")
 
+        descrizione, _ = righe_entro_limite(righe, 4000)  # LIM-13: 4096 al massimo
         embed = discord.Embed(
             title="⏰ I tuoi promemoria",
-            description="\n".join(righe),
+            description=descrizione,
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)

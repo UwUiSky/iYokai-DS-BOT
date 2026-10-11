@@ -17,10 +17,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.admin_mentions_logic import menzioni_ammesse, puo_pingare_ruoli
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
 from core.premium import PremiumModule, registry
+from core.lista_limiti_logic import righe_entro_limite
 from core.scheduler import scheduler
 
 logger = logging.getLogger("iyokai.scheduled_messages")
@@ -28,10 +30,22 @@ logger = logging.getLogger("iyokai.scheduled_messages")
 MODULE_SCHEDULED_MESSAGES = "scheduled_messages"
 SCHEDULED_MESSAGE_ACTION_TYPE = "scheduled_message_fire"
 
+# LIM-12: un messaggio normale sta in 2000 caratteri; 1800 lascia margine ai
+# segnaposto e alle menzioni che Discord espande.
+TestoProgrammato = app_commands.Range[str, 1, 1800]
+
 
 class ScheduledMessagesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    async def _avvisa_autore(self, user_id: int, testo: str) -> None:
+        """M 10.5: se il messaggio non parte, chi l'ha programmato lo deve sapere."""
+        try:
+            utente = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
+            await utente.send(testo)
+        except (discord.HTTPException, AttributeError):
+            logger.warning("Non sono riuscito ad avvisare l'utente %s dell'invio fallito.", user_id)
 
     async def handle_scheduled_message_fire(
         self, guild_id: int, user_id: int, payload: dict
@@ -39,6 +53,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         """Handler chiamato dallo scheduler quando un messaggio programmato scade."""
         channel_id = payload.get("channel_id")
         testo = payload.get("message", "")
+        anteprima = testo[:100] + ("…" if len(testo) > 100 else "")
 
         guild = self.bot.get_guild(guild_id)
         channel = guild.get_channel(channel_id) if guild else None
@@ -50,16 +65,30 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
                 guild_id,
                 channel_id,
             )
+            await self._avvisa_autore(
+                user_id,
+                f"Il messaggio che avevi programmato non è stato pubblicato: il canale "
+                f"<#{channel_id}> non esiste più o non lo vedo.\n> {anteprima}",
+            )
             return
 
         try:
-            await channel.send(testo)
-        except discord.HTTPException:
+            await channel.send(
+                testo,
+                allowed_mentions=menzioni_ammesse(bool(payload.get("ping_ruoli", False))),
+            )
+        except discord.HTTPException as errore:
             logger.warning(
                 "Impossibile pubblicare il messaggio programmato nel canale %s "
-                "(server %s): permessi insufficienti o errore Discord.",
+                "(server %s): %s",
                 channel_id,
                 guild_id,
+                errore,
+            )
+            await self._avvisa_autore(
+                user_id,
+                f"Il messaggio che avevi programmato non è stato pubblicato in "
+                f"{channel.mention}: permessi insufficienti o errore di Discord.\n> {anteprima}",
             )
 
     # ================================================================
@@ -81,7 +110,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         channel: discord.TextChannel,
         duration: str,
-        message: str,
+        message: TestoProgrammato,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -110,7 +139,13 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
             user_id=interaction.user.id,
             action_type=SCHEDULED_MESSAGE_ACTION_TYPE,
             execute_at=execute_at,
-            payload={"channel_id": channel.id, "message": message},
+            payload={
+                "channel_id": channel.id,
+                "message": message,
+                # D12: i ruoli del testo vengono avvisati solo se chi programma può menzionarli.
+                "ping_ruoli": isinstance(interaction.user, discord.Member)
+                and puo_pingare_ruoli(interaction.user.guild_permissions),
+            },
         )
 
         await interaction.response.send_message(
@@ -145,9 +180,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
             testo = azione["payload"].get("message", "(nessun testo)")
             righe.append(f"`#{azione['id']}` {quando} in <#{channel_id}> — {testo[:80]}")
 
+        descrizione, _ = righe_entro_limite(righe, 4000)  # LIM-13: 4096 al massimo
         embed = discord.Embed(
             title="📅 Messaggi programmati",
-            description="\n".join(righe),
+            description=descrizione,
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)

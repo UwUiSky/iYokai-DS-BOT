@@ -43,3 +43,25 @@ def render_template(
         .replace("{server}", server_name)
         .replace("{membercount}", str(member_count))
     )
+
+
+# LIM-10 (M 10.2): il messaggio finale è un messaggio normale (2000). La
+# lunghezza si misura DOPO i segnaposto, con i valori peggiori di chi non
+# si conosce al momento della configurazione: una menzione utente (<@ + 20
+# cifre + >) e un nome utente di 32 caratteri.
+MAX_MESSAGE_LENGTH = 2000
+_LUNGHEZZA_MENZIONE_UTENTE = 23
+_LUNGHEZZA_NOME_UTENTE = 32
+
+
+def lunghezza_dopo_segnaposto(template: str, server_name: str, member_count: int) -> int:
+    """Lunghezza peggiore del testo dopo la sostituzione dei segnaposto."""
+    return len(
+        render_template(
+            template,
+            user_mention="m" * _LUNGHEZZA_MENZIONE_UTENTE,
+            username="u" * _LUNGHEZZA_NOME_UTENTE,
+            server_name=server_name,
+            member_count=member_count,
+        )
+    )

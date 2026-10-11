@@ -36,6 +36,11 @@ class GreetingsConfig:
     boost_enabled: bool
     boost_channel_id: int | None
     boost_message: str
+    # D12 / M 10.6: ping di ruolo ammessi solo se chi ha configurato il
+    # messaggio aveva "Menziona tutti".
+    welcome_ping_ruoli: bool = False
+    goodbye_ping_ruoli: bool = False
+    boost_ping_ruoli: bool = False
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -96,62 +101,87 @@ class GreetingsRepository:
             boost_enabled=row["boost_enabled"],
             boost_channel_id=row["boost_channel_id"],
             boost_message=row["boost_message"] or DEFAULT_BOOST_TEMPLATE,
+            welcome_ping_ruoli=row["welcome_ping_ruoli"],
+            goodbye_ping_ruoli=row["goodbye_ping_ruoli"],
+            boost_ping_ruoli=row["boost_ping_ruoli"],
         )
 
     async def set_welcome(
-        self, guild_id: int, enabled: bool, channel_id: int, message: str, dm: bool
+        self,
+        guild_id: int,
+        enabled: bool,
+        channel_id: int,
+        message: str,
+        dm: bool,
+        ping_ruoli: bool = False,
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO greetings_config (guild_id, welcome_enabled, welcome_channel_id, welcome_message, welcome_dm)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO greetings_config (guild_id, welcome_enabled, welcome_channel_id, welcome_message, welcome_dm, welcome_ping_ruoli)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (guild_id) DO UPDATE
                 SET welcome_enabled = EXCLUDED.welcome_enabled,
                     welcome_channel_id = EXCLUDED.welcome_channel_id,
                     welcome_message = EXCLUDED.welcome_message,
-                    welcome_dm = EXCLUDED.welcome_dm
+                    welcome_dm = EXCLUDED.welcome_dm,
+                    welcome_ping_ruoli = EXCLUDED.welcome_ping_ruoli
             """,
             guild_id,
             enabled,
             channel_id,
             message,
             dm,
+            ping_ruoli,
         )
 
     async def set_goodbye(
-        self, guild_id: int, enabled: bool, channel_id: int, message: str
+        self,
+        guild_id: int,
+        enabled: bool,
+        channel_id: int,
+        message: str,
+        ping_ruoli: bool = False,
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO greetings_config (guild_id, goodbye_enabled, goodbye_channel_id, goodbye_message)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO greetings_config (guild_id, goodbye_enabled, goodbye_channel_id, goodbye_message, goodbye_ping_ruoli)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id) DO UPDATE
                 SET goodbye_enabled = EXCLUDED.goodbye_enabled,
                     goodbye_channel_id = EXCLUDED.goodbye_channel_id,
-                    goodbye_message = EXCLUDED.goodbye_message
+                    goodbye_message = EXCLUDED.goodbye_message,
+                    goodbye_ping_ruoli = EXCLUDED.goodbye_ping_ruoli
             """,
             guild_id,
             enabled,
             channel_id,
             message,
+            ping_ruoli,
         )
 
     async def set_boost(
-        self, guild_id: int, enabled: bool, channel_id: int, message: str
+        self,
+        guild_id: int,
+        enabled: bool,
+        channel_id: int,
+        message: str,
+        ping_ruoli: bool = False,
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO greetings_config (guild_id, boost_enabled, boost_channel_id, boost_message)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO greetings_config (guild_id, boost_enabled, boost_channel_id, boost_message, boost_ping_ruoli)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id) DO UPDATE
                 SET boost_enabled = EXCLUDED.boost_enabled,
                     boost_channel_id = EXCLUDED.boost_channel_id,
-                    boost_message = EXCLUDED.boost_message
+                    boost_message = EXCLUDED.boost_message,
+                    boost_ping_ruoli = EXCLUDED.boost_ping_ruoli
             """,
             guild_id,
             enabled,
             channel_id,
             message,
+            ping_ruoli,
         )
 
 
