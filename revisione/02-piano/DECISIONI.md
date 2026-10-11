@@ -352,7 +352,8 @@ sia il primo tra i bot del server. Cosa può fare il bot e cosa no:
   nome, descrizione, obbligatoria o no). Ogni comando è una **menzione
   cliccabile** (`</gruppo comando:ID>`): da cellulare e da PC un tocco lo inserisce
   nella barra del messaggio. Gli ID si leggono dall'albero registrato
-  (`fetch_commands`) e si aggiornano dopo ogni sync.
+  (`fetch_commands`) e la cache si ricarica allo scadere del tempo (1 ora) o quando manca l'ID di un comando
+  (comando nuovo dopo una sync, al massimo una volta al minuto).
 - Bottone "Apri nella wiki" se `WIKI_BASE_URL` è impostato: la wiki del sito
   (F10) si **genera dall'albero dei comandi** (percorso, descrizione, livello
   d'accesso, opzioni) con `scripts/genera_wiki.py`: una sola fonte (D16),

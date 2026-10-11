@@ -48,6 +48,7 @@ AUDIENCE: dict[str, str] = {
     "voice": PUBLIC,
     # Utility
     "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
+    "-chiedi": PUBLIC,  # primo livello, mostra il pannello di -cerca-comando (#147)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "admin": STAFF,  # gruppo condiviso
     "moduli": STAFF,  # gruppo condiviso

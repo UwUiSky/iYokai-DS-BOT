@@ -282,6 +282,11 @@ class Config:
     # esplicitamente invece di mostrare un URL http://0.0.0.0 inutile.
     ALERTS_WEBHOOK_PUBLIC_BASE_URL: str = field(default="")
 
+    # --- Wiki dei comandi (issue #147) --------------------------------
+    # Indirizzo della wiki del sito (es. "https://yokai.example/wiki"):
+    # se impostato, -cerca-comando mostra il bottone "Apri nella wiki".
+    WIKI_BASE_URL: str = field(default="")
+
     # --- Premium (SPEC.md §3) ---------------------------------------
     # Override temporaneo di fase ALPHA: quando True, `core.premium.
     # guild_has_premium_access` restituisce sempre True per QUALUNQUE
@@ -368,6 +373,7 @@ def _load_config() -> Config:
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
+        WIKI_BASE_URL=_optional("WIKI_BASE_URL", ""),
         PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", in_sviluppo),
         ENABLE_EVAL=_optional_bool("ENABLE_EVAL", in_sviluppo),
     )

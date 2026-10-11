@@ -206,6 +206,7 @@ def richiedi(livello: Livello):
     async def predicate(interaction: discord.Interaction) -> bool:
         return await controlla(interaction, livello)
 
+    predicate.livello = livello  # letto da -cerca-comando per nascondere i comandi che l'utente non può usare
     return app_commands.check(predicate)
 
 
