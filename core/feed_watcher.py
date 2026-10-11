@@ -23,7 +23,7 @@ import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
-from core.feed_alert_gate import filtra_attive
+from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.feed_parsing_logic import (
     data_piu_recente,
     find_new_entries,
@@ -49,6 +49,7 @@ SCARICHI_IN_PARALLELO = 5
 class FeedWatcherService:
     def __init__(self) -> None:
         self._loop_task: tasks.Loop | None = None
+        self._avvisi = AvvisoUnaVolta()
         self._etag_per_url: dict[str, str] = {}
 
     async def _fetch_feed_text(self, url: str, etag: str | None = None) -> Scaricamento | None:
@@ -144,13 +145,15 @@ class FeedWatcherService:
         guild = bot.get_guild(sottoscrizione.guild_id)
         canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
         if not isinstance(canale, discord.TextChannel):
-            logger.warning(
-                "Canale %s non raggiungibile per la sottoscrizione #%s (server %s).",
-                sottoscrizione.channel_id,
-                sottoscrizione.id,
-                sottoscrizione.guild_id,
-            )
+            if self._avvisi.prima_volta(("rss", sottoscrizione.id)):
+                logger.warning(
+                    "Canale %s non raggiungibile per la sottoscrizione #%s (server %s).",
+                    sottoscrizione.channel_id,
+                    sottoscrizione.id,
+                    sottoscrizione.guild_id,
+                )
             return False
+        self._avvisi.riarma(("rss", sottoscrizione.id))
 
         # Dal più vecchio al più recente delle nuove voci — così
         # nel canale appaiono in ordine cronologico, non al

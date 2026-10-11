@@ -24,7 +24,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.config import config
-from core.feed_alert_gate import filtra_attive
+from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.feed_parsing_logic import parse_feed
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.safe_http import chiudi_sessione_condivisa, safe_get
@@ -53,6 +53,7 @@ class YoutubeWatcherService:
         rss_url_template: str = YOUTUBE_RSS_URL,
     ) -> None:
         self._loop_task: tasks.Loop | None = None
+        self._avvisi = AvvisoUnaVolta()
         self._http_session: aiohttp.ClientSession | None = None
         self._videos_url = videos_url
         self._rss_url_template = rss_url_template
@@ -150,13 +151,15 @@ class YoutubeWatcherService:
             guild = bot.get_guild(sottoscrizione.guild_id)
             canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
             if not isinstance(canale, discord.TextChannel):
-                logger.warning(
-                    "Canale %s non raggiungibile per la sottoscrizione YouTube #%s (server %s).",
-                    sottoscrizione.channel_id,
-                    sottoscrizione.id,
-                    sottoscrizione.guild_id,
-                )
+                if self._avvisi.prima_volta(("yt", sottoscrizione.id)):
+                    logger.warning(
+                        "Canale %s non raggiungibile per la sottoscrizione YouTube #%s (server %s).",
+                        sottoscrizione.channel_id,
+                        sottoscrizione.id,
+                        sottoscrizione.guild_id,
+                    )
                 continue
+            self._avvisi.riarma(("yt", sottoscrizione.id))
 
             if appena_andato_live:
                 messaggio = render_template(
@@ -186,6 +189,7 @@ class YoutubeWatcherService:
                     sottoscrizione.channel_id,
                     sottoscrizione.guild_id,
                 )
+
     async def close(self) -> None:
         if self._http_session is not None:
             await self._http_session.close()

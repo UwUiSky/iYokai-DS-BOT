@@ -24,7 +24,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.config import config
-from core.feed_alert_gate import filtra_attive
+from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.template_renderer import render_template
 from core.twitch_api_logic import parse_app_access_token_response, parse_get_streams_response
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
@@ -53,6 +53,7 @@ class TwitchWatcherService:
         streams_url: str = TWITCH_STREAMS_URL,
     ) -> None:
         self._loop_task: tasks.Loop | None = None
+        self._avvisi = AvvisoUnaVolta()
         self._http_session: aiohttp.ClientSession | None = None
         self._oauth_url = oauth_url
         self._streams_url = streams_url
@@ -188,13 +189,15 @@ class TwitchWatcherService:
             guild = bot.get_guild(sottoscrizione.guild_id)
             canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
             if not isinstance(canale, discord.TextChannel):
-                logger.warning(
-                    "Canale %s non raggiungibile per la sottoscrizione Twitch #%s (server %s).",
-                    sottoscrizione.channel_id,
-                    sottoscrizione.id,
-                    sottoscrizione.guild_id,
-                )
+                if self._avvisi.prima_volta(("tw", sottoscrizione.id)):
+                    logger.warning(
+                        "Canale %s non raggiungibile per la sottoscrizione Twitch #%s (server %s).",
+                        sottoscrizione.channel_id,
+                        sottoscrizione.id,
+                        sottoscrizione.guild_id,
+                    )
                 continue
+            self._avvisi.riarma(("tw", sottoscrizione.id))
 
             if appena_andato_live:
                 messaggio = render_template(

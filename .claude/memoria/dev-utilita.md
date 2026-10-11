@@ -8,6 +8,7 @@
   11.7 e 11.10 erano gia' a posto (test esistenti). Da fare: rapporto, smoke, push del ramo.
 
 ## Fatto
+- #67 revisione: test gruppo 500 YouTube e ETag a 3 giri, tolto parse_search_live_response, config/SPEC aggiornati, VERIFICA_LIVE, avviso canale una sola volta (AvvisoUnaVolta).
 - #67 correzioni cacciatore-bug: videos.list senza maxResults, tetto 25 atomico (lock advisory), avanzamento dopo invio, ETag dopo elaborazione completa, data GREATEST, sessione chiusa al cambio loop, elenco con righe troncate.
 - #67 Rete: safe_get con sessione condivisa, User-Agent, ETag; feed_watcher scarica gli URL uguali una volta (in parallelo, max 5).
 - #67 Feed: modulo spento, data ultimo pubblicato (migrazione 0023, id sparito = niente doppioni), tetto 25 feed e elenco tagliato.
@@ -32,6 +33,5 @@
 - `/admin lingua show|set`: lingua è un sottogruppo di /admin (non sotto config).
 
 ## Aperto
-- `parse_search_live_response` (youtube_api_logic) non ha piu' chiamanti: codice morto, da togliere.
 - F1 resto: #66, #67 (utilità e avvisi).
 - Prova live: vedi rapporto F7 2c.

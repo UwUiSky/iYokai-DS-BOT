@@ -538,3 +538,10 @@ chiudere.
   3. `python3 scripts/prova_ordine_comandi.py rimuovi`.
   4. Dal Developer Portal rinomina per un minuto l'app (es. `AAA iYokai` o `1 iYokai`), poi guarda se cambia il posto di iYokai tra le app nel selettore (accanto al bot che comincia per M), e rimetti il nome.
   Risultato atteso: si capisce se simboli e numeri vengono prima delle lettere e se il nome dell'app decide il posto. Scrivi i risultati nella issue.
+- [ ] Avvisi feed, Twitch e YouTube (#67, voci 11.1-11.9, migrazione 0023) — passi:
+  1. YouTube live (serve `YOUTUBE_API_KEY`): `/moduli alert youtube-live` su un canale che sta facendo una diretta; entro 5 minuti arriva l'avviso. Poi la diretta finisce: arriva l'avviso di fine. Sulla Google Cloud Console la quota usata sale di 1 unità per giro, non di 100 per canale.
+  2. 304 reale con ETag: `/moduli alert feed` su un feed vero che manda `ETag` (es. un RSS di Reddit o di un blog); nel log di debug del server o con un proxy si vede il secondo giro rispondere 304. Quando esce un contenuto nuovo, arriva un solo messaggio.
+  3. Twitch oltre 20 stream: segui più di 20 streamer che sono live insieme; tutti ricevono l'avviso (prima ne arrivavano solo 20).
+  4. 26º feed rifiutato: con 25 feed attivi, il 26º dà "ha già 25 feed"; `/moduli alert elenco` resta leggibile e mostra sempre gli ID.
+  5. Modulo spento: `/admin setup` disattiva `feed_alerts`; nessun messaggio da feed, Twitch o YouTube, e nessuna quota YouTube consumata. Riattivalo: riprendono.
+  Risultato atteso: nessun errore nel log, nessun avviso doppio.

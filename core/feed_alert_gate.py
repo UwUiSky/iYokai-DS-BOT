@@ -29,3 +29,19 @@ async def filtra_attive(sottoscrizioni: list) -> list:
         if esito[s.guild_id]:
             tenute.append(s)
     return tenute
+
+
+class AvvisoUnaVolta:
+    """Logga un problema una sola volta finche' dura; `riarma` quando passa."""
+
+    def __init__(self) -> None:
+        self._attivi: set = set()
+
+    def prima_volta(self, chiave) -> bool:
+        if chiave in self._attivi:
+            return False
+        self._attivi.add(chiave)
+        return True
+
+    def riarma(self, chiave) -> None:
+        self._attivi.discard(chiave)

@@ -21,6 +21,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.custom_webhook_logic import build_webhook_url
 from core.database import db
+from core.feed_alert_gate import MODULE_FEED_ALERTS
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
@@ -28,7 +29,6 @@ from core.repositories.youtube_subscription_repo import youtube_subscription_rep
 from core.premium import PremiumModule, registry
 from core.safe_http import url_e_sicuro
 
-MODULE_FEED_ALERTS = "feed_alerts"
 
 # LIM-16 (M 11.8): ogni feed e' uno scarico ogni 5 minuti.
 MAX_FEED_PER_SERVER = 25

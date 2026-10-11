@@ -61,7 +61,7 @@ def _atom(canale: str, n_video: int = 2) -> str:
 
 @pytest.fixture
 async def server():
-    stato = {"rss": [], "videos": [], "live": set(), "n_video": 2, "rss_rotto": set()}
+    stato = {"fallisci_chiamata": None, "rss": [], "videos": [], "live": set(), "n_video": 2, "rss_rotto": set()}
 
     async def rss(request):
         canale = request.query["channel_id"]
@@ -78,6 +78,8 @@ async def server():
             return web.json_response({"error": "maxResults non ammesso con id"}, status=400)
         ids = request.query["id"].split(",")
         stato["videos"].append(ids)
+        if stato["fallisci_chiamata"] == len(stato["videos"]):
+            return web.Response(status=500)
         items = [
             {
                 "id": vid,
@@ -187,6 +189,27 @@ async def test_oltre_50_id_si_divide_in_gruppi_da_50(ambiente):
     finally:
         await servizio.close()
     assert [len(g) for g in stato["videos"]] == [50, 10]
+
+
+@pytest.mark.asyncio
+async def test_secondo_gruppo_in_errore_non_cambia_lo_stato_dei_suoi_canali(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    stato["n_video"] = 5
+    stato["fallisci_chiamata"] = 2  # la seconda videos.list risponde 500
+    for i in range(12):  # 60 ID: gruppo 1 = UC0..UC9, gruppo 2 = UC10, UC11
+        await repo.add_subscription(100, 500, f"UC{i}", f"C{i}", 1)
+    sub11 = [s for s in await repo.list_subscriptions(100) if s.youtube_channel_id == "UC11"][0]
+    await repo.update_last_known_live(sub11.id, True)  # UC11 risulterebbe offline
+    stato["live"].add("UC0_v0")  # UC0 e' nel primo gruppo
+    try:
+        await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert len(stato["videos"]) == 2
+    per_canale = {s.youtube_channel_id: s for s in await repo.list_subscriptions(100)}
+    assert per_canale["UC0"].last_known_live is True  # primo gruppo ok
+    assert per_canale["UC11"].last_known_live is True  # secondo gruppo in errore: invariato
+    assert len(canale.sent_messages) == 1  # solo l'avviso di UC0
 
 
 @pytest.mark.asyncio

@@ -199,6 +199,74 @@ async def test_etag_cambiato_o_assente_riscarica(ambiente):
     assert stato["con_etag"] == 0
 
 
+@pytest.mark.asyncio
+async def test_etag_tre_giri_ok_poi_errore_poi_200_non_304(ambiente, monkeypatch):
+    servizio, repo, stato, canale, bot, url, _ = ambiente
+    sid = await repo.add_subscription(100, 500, url, "X", 1)
+    await repo.update_last_seen(sid, "post-3", datetime(2026, 10, 3, 12, tzinfo=timezone.utc))
+    await servizio.tick(bot)  # giro 1: nulla di nuovo, ETag "a" ricordato
+    assert servizio._etag_per_url[url] == '"a"'
+
+    stato["etag"] = '"b"'
+    stato["testo"] = _rss((4, 4), (3, 3))
+    originale = repo.update_last_seen
+    chiamate = {"n": 0}
+
+    async def rotto_una_volta(*a, **k):
+        chiamate["n"] += 1
+        if chiamate["n"] == 1:
+            raise RuntimeError("db giu'")
+        return await originale(*a, **k)
+
+    monkeypatch.setattr(repo, "update_last_seen", rotto_una_volta)
+    await servizio.tick(bot)  # giro 2: 200 (ETag cambiato), l'aggiornamento solleva
+    assert url not in servizio._etag_per_url
+
+    await servizio.tick(bot)  # giro 3: deve essere un 200, non un 304
+    assert stato["con_etag"] == 0
+    assert servizio._etag_per_url[url] == '"b"'
+
+
+@pytest.mark.asyncio
+async def test_canale_irraggiungibile_si_logga_una_volta_e_si_riarma(ambiente):
+    import logging
+
+    servizio, repo, stato, canale, bot, url, _ = ambiente
+    sid = await repo.add_subscription(100, 500, url, "X", 1)
+    await repo.update_last_seen(sid, "post-1", datetime(2026, 10, 1, 12, tzinfo=timezone.utc))
+
+    class _BotSenzaCanale:
+        def get_guild(self, guild_id):
+            return None
+
+    registro = []
+
+    class _Raccolta(logging.Handler):
+        def emit(self, record):
+            registro.append(record)
+
+    def avvisi():
+        return [r for r in registro if "non raggiungibile" in r.getMessage()]
+
+    logger = logging.getLogger("iyokai.feed_watcher")
+    logger.addHandler(_Raccolta())
+    livello_prima, logger.disabled = logger.level, False
+    logger.setLevel(logging.WARNING)
+    try:
+        await servizio.tick(_BotSenzaCanale())
+        await servizio.tick(_BotSenzaCanale())
+        await servizio.tick(_BotSenzaCanale())
+        assert len(avvisi()) == 1
+        await servizio.tick(bot)  # il canale torna: si riarma
+        stato["etag"] = None  # niente 304: il feed si riscarica
+        await repo.update_last_seen(sid, "post-1")  # di nuovo indietro: ci sono voci da inviare
+        await servizio.tick(_BotSenzaCanale())
+        assert len(avvisi()) == 2  # dopo il successo l'avviso si e' riarmato
+    finally:
+        logger.handlers = [h for h in logger.handlers if not isinstance(h, _Raccolta)]
+        logger.setLevel(livello_prima)
+
+
 # --- P6bis: la data non torna indietro ---------------------------------
 
 @pytest.mark.asyncio
