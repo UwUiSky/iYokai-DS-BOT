@@ -215,7 +215,7 @@ class ModerationRepository:
     ) -> ModerationCase | None:
         """
         Trova l'ultimo caso ATTIVO di un certo tipo per un utente.
-        Usato ad esempio da /unban per sapere quale caso "ban" (o
+        Usato ad esempio da /modban unban per sapere quale caso "ban" (o
         "tempban") revocare quando qualcuno viene sbannato.
         """
         row = await self._pool.fetchrow(
@@ -267,7 +267,7 @@ class ModerationRepository:
     ) -> bool:
         """
         Marca un caso come non più attivo (es. un ban è stato
-        revocato con /unban). Restituisce True se una riga è stata
+        revocato con /modban unban). Restituisce True se una riga è stata
         effettivamente aggiornata, False se il caso non esisteva o
         era già inattivo — così il chiamante distingue "fatto" da
         "non c'era nulla da fare".

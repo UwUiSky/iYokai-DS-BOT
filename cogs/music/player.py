@@ -166,7 +166,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_MUSIC):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return False
@@ -189,7 +189,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         """
         Restituisce (guild_del_worker, None) in caso di successo, o
         (None, messaggio_errore) altrimenti. auto_assign=True (usato
-        solo da /play) assegna un nuovo worker libero se il server
+        solo da /music play) assegna un nuovo worker libero se il server
         non ne ha già uno; auto_assign=False (tutti gli altri
         comandi) non assegna nulla — se non c'è una sessione già
         attiva, quei comandi devono fallire pulitamente, non avviarne

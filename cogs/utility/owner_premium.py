@@ -63,7 +63,7 @@ SU_WINDOWS = sys.platform == "win32"
 
 def _opzioni_nuovo_gruppo() -> dict:
     """
-    Opzioni di avvio per /owner shell: il comando parte in un gruppo
+    Opzioni di avvio per /owner system shell: il comando parte in un gruppo
     di processi suo, così al timeout si può uccidere tutto l'albero
     (la shell E i comandi che ha lanciato), non solo la shell.
     """
@@ -204,7 +204,7 @@ class _EvalConfirmView(BaseView):
     per Eval/Exec/Shell (SPEC.md §17.3, l'unica voce genuinamente
     delicata dell'intera sezione Owner, lasciata per ultima di
     proposito). Il codice va mostrato per intero PRIMA di eseguirlo —
-    un /owner eval scritto male, o un typo, non deve poter girare
+    un /owner system eval scritto male, o un typo, non deve poter girare
     senza che l'owner lo riveda un'ultima volta.
     """
 

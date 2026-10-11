@@ -121,7 +121,7 @@ class PremiumRegistry:
         identificatore) e va risolto subito — solleva un'eccezione.
 
         Se invece è già registrato con la STESSA dichiarazione, non
-        solleva: è il caso di /owner cog-reload, che richiama
+        solleva: è il caso di /owner cog reload, che richiama
         setup() (e quindi register()) sullo stesso cog una seconda
         volta — trovato con un test reale, non ipotizzato: prima di
         questa correzione, ricaricare QUALUNQUE cog con un modulo
@@ -161,7 +161,7 @@ class PremiumRegistry:
         return self._modules.get(name)
 
     def modules_in_category(self, category: str) -> list[PremiumModule]:
-        """Moduli di una categoria, ordinati per nome (usato da /setup)."""
+        """Moduli di una categoria, ordinati per nome (usato da /admin setup attiva)."""
         return [m for m in self.all_modules() if m.category == category]
 
     def all_modules(self) -> list[PremiumModule]:
@@ -326,7 +326,7 @@ async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
     differenza di guild_has_premium_access (un True/False per un
     singolo modulo), qui servono TUTTI i meccanismi insieme, per
     capire perché un server ha (o non ha) accesso — usato da
-    /owner premium-status-all insieme a core/premium_status_logic.py
+    /owner premium status-all insieme a core/premium_status_logic.py
     per la formattazione.
     """
     from datetime import datetime, timezone

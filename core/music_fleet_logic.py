@@ -6,7 +6,7 @@ Architettura chiarita dall'utente: UN SOLO punto di ingresso comandi
 (il bot principale), ma l'esecuzione vera (join vocale, riproduzione)
 avviene su una delle 5 istanze separate (MUSIC_TOKENS, già dichiarati
 in config.py) — quella libera per prima. Il bot principale non entra
-MAI in un canale per /play: la sua unica funzione vocale è lo
+MAI in un canale per /music play: la sua unica funzione vocale è lo
 streaming 24/7 dalla playlist personale dell'utente, un comando
 completamente separato (vedi cogs/music/player.py).
 """

@@ -2,9 +2,9 @@
 core/command_tree_utils.py
 =============================
 walk_commands() cammina ricorsivamente l'albero comandi: un
-app_commands.Group (es. /owner, /reminder, /sticky) contiene
+app_commands.Group (es. /owner, /utility reminder) contiene
 sottocomandi che bot.tree.get_commands() da solo non espande.
-Condivisa da scripts/generate_command_list.py e da /search
+Condivisa da scripts/generate_command_list.py e da -cerca-comando
 (cogs/utility/command_search.py) — un solo posto che sa come
 espandere l'albero, non due copie della stessa logica che
 rischierebbero di divergere.

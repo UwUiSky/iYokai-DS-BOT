@@ -185,7 +185,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         await db.set_guild_setting(interaction.guild.id, SETTING_LOG_CHANNEL, channel.id)
         await interaction.response.send_message(
             f"I log verranno inviati in {channel.mention}. "
-            f"Ricorda di attivare il modulo con /setup se non l'hai già fatto.",
+            f"Ricorda di attivare il modulo con /admin setup attiva se non l'hai già fatto.",
             ephemeral=True,
         )
 

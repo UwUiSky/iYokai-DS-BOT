@@ -2,7 +2,7 @@
 core/music_fleet.py
 =======================
 Gestore della flotta Music (SPEC.md §9.1/9.2). Il bot principale non
-entra MAI in vocale per /play — instrada verso una delle 5 istanze
+entra MAI in vocale per /music play — instrada verso una delle 5 istanze
 worker (client Discord separati con il proprio token, connessi allo
 stesso Pool Lavalink condiviso — verificato prima di scrivere questo
 file: wavelink.Pool è un singleton di processo, ogni Player si lega
@@ -63,7 +63,7 @@ class MusicFleet:
     ) -> tuple[int, commands.Bot] | None:
         """
         La sessione già assegnata a questo server, se esiste — così
-        un secondo /play nello stesso server non salta a un worker
+        un secondo /music play nello stesso server non salta a un worker
         diverso a caso. Altrimenti il primo worker libero E presente
         in questo server (escludere chi non è invitato qui PRIMA di
         assegnarlo — non dopo — evita di occupare per sempre uno slot
@@ -130,7 +130,7 @@ class MusicFleet:
         )
 
     async def release_guild(self, guild_id: int) -> None:
-        """Chiamata quando una sessione finisce (es. /disconnect) —
+        """Chiamata quando una sessione finisce (es. /music disconnect) —
         libera il worker per il prossimo server che ne ha bisogno."""
         await music_session_repo.release_guild(guild_id)
 

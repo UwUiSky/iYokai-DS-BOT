@@ -111,7 +111,7 @@ class BackupRepository:
         associato (NULL), se non esisteva già una riga per questo
         server. Se esisteva già, non tocca il backup_guild_id
         esistente (evita di cancellare un abbinamento già fatto
-        rilanciando /define-main per errore)."""
+        rilanciando /admin backup main per errore)."""
         await self._pool.execute(
             """
             INSERT INTO backup_pairs (main_guild_id, backup_guild_id)
@@ -141,7 +141,7 @@ class BackupRepository:
 
     async def get_pair_by_backup_guild_id(self, backup_guild_id: int) -> BackupPair | None:
         """Trova la coppia partendo dal server BACKUP (l'inverso di
-        get_pair, che parte dal main) — serve a /promuovi-backup per
+        get_pair, che parte dal main) — serve a /admin backup promuovi per
         capire "di quale main ero il backup" quando il comando viene
         lanciato dentro al server backup stesso (SPEC.md §11.13)."""
         row = await self._pool.fetchrow(

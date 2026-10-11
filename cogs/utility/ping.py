@@ -3,7 +3,7 @@ cogs/utility/ping.py
 ======================
 QUESTO FILE È IL MODELLO DI RIFERIMENTO per ogni futuro cog.
 
-Non fa niente di speciale (un comando /ping), ma mostra per intero
+Non fa niente di speciale (un comando /utility ping), ma mostra per intero
 il pattern che TUTTI i cog del progetto devono seguire:
 
   1. Registrazione nel PremiumRegistry (anche se il modulo è gratis
