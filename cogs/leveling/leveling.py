@@ -1261,11 +1261,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # promozioni, acquisto canali e boost restano il pezzo successivo.
     # ================================================================
 
-    clan_group = app_commands.Group(
-        name="clan", description="Sistema Gilde/Clan: crea, gestisci, dona alla tesoreria."
-    )
 
-    @clan_group.command(name="crea", description="Crea una nuova gilda/clan.")
+    @comando_di_gruppo(
+        "clan",
+        nome="crea",
+        descrizione="Crea una nuova gilda/clan.",
+    )
     @app_commands.describe(
         tag=f"Tag della gilda (1-5 caratteri, niente emoji né spazi)",
         name="Nome completo della gilda",
@@ -1360,7 +1361,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             f"(`/clan tesoreria dona`) — altrimenti verrà eliminata automaticamente."
         )
 
-    @clan_group.command(name="info", description="Mostra le informazioni di una gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="info",
+        descrizione="Mostra le informazioni di una gilda.",
+    )
     @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
     async def clan_info(
         self,
@@ -1431,7 +1436,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @clan_group.command(name="membri", description="Mostra i membri di una gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="membri",
+        descrizione="Mostra i membri di una gilda.",
+    )
     @app_commands.describe(tag="Tag della gilda (facoltativo: la tua, se non specificato)")
     async def clan_membri(
         self,
@@ -1461,8 +1470,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             discord.Color.blurple(), per_pagina=MEMBRI_PER_PAGINA,
         )
 
-    @clan_group.command(
-        name="classifica", description="Classifica delle gilde per XP (mensile o totale)."
+    @comando_di_gruppo(
+        "clan",
+        nome="classifica",
+        descrizione="Classifica delle gilde per XP (mensile o totale).",
     )
     @app_commands.describe(period="Questo mese o di sempre")
     @app_commands.choices(
@@ -1515,17 +1526,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    clan_bacheca_group = app_commands.Group(
-        name="bacheca",
-        description="[Admin] Annuncio automatico della top 3 gilde a fine mese.",
-        parent=clan_group,
-    )
 
-    @clan_bacheca_group.command(
-        name="set", description="[Admin] Imposta il canale dove annunciare la top 3 gilde del mese."
+    @comando_di_gruppo(
+        "clan",
+        nome="set",
+        descrizione="Imposta il canale dove annunciare la top 3 gilde del mese.",
+        sottogruppo=_SG_BACHECA,
     )
     @app_commands.describe(channel="Canale dell'annuncio (la 'bacheca clan')")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @richiedi(Livello.ADMIN)
     async def clan_bacheca_set(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
@@ -1542,10 +1551,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @clan_bacheca_group.command(
-        name="disable", description="[Admin] Disattiva l'annuncio automatico della top 3 gilde."
+    @comando_di_gruppo(
+        "clan",
+        nome="disable",
+        descrizione="Disattiva l'annuncio automatico della top 3 gilde.",
+        sottogruppo=_SG_BACHECA,
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @richiedi(Livello.ADMIN)
     async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1560,7 +1572,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 "L'annuncio della top 3 gilde non era attivo su questo server.", ephemeral=True
             )
 
-    @clan_group.command(name="sciogli", description="[Capo Clan] Sciogli la tua gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="sciogli",
+        descrizione="Sciogli la tua gilda.",
+    )
     async def clan_sciogli(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1610,7 +1626,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await guild_clan_repo.delete_clan(clan.id)
         await interaction.followup.send(f"La gilda **{clan.name}** è stata sciolta.")
 
-    @clan_group.command(name="invita", description="[Capo/Admin Clan] Invita un membro nella tua gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="invita",
+        descrizione="Invita un membro nella tua gilda.",
+    )
     @app_commands.describe(membro="Il membro da invitare nella tua gilda")
     async def clan_invita(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         guild = interaction.guild
@@ -1668,7 +1688,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             view=view,
         )
 
-    @clan_group.command(name="lascia", description="Lascia la gilda di cui fai parte.")
+    @comando_di_gruppo(
+        "clan",
+        nome="lascia",
+        descrizione="Lascia la gilda di cui fai parte.",
+    )
     async def clan_lascia(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1699,7 +1723,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             f"Hai lasciato la gilda **{taglia(clan.name, MAX_NOME_CLAN)}**.", ephemeral=True
         )
 
-    @clan_group.command(name="espelli", description="[Capo/Admin Clan] Espelli un membro dalla tua gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="espelli",
+        descrizione="Espelli un membro dalla tua gilda.",
+    )
     @app_commands.describe(membro="Il membro da espellere dalla tua gilda")
     async def clan_espelli(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         guild = interaction.guild
@@ -1754,7 +1782,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             f"✅ {membro.mention} è stato espulso da **{clan.name}**."
         )
 
-    @clan_group.command(name="promuovi", description="[Capo Clan] Cambia il ruolo di un membro della tua gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="promuovi",
+        descrizione="Cambia il ruolo di un membro della tua gilda.",
+    )
     @app_commands.describe(membro="Il membro a cui cambiare ruolo", ruolo="Il nuovo ruolo da assegnare")
     async def clan_promuovi(
         self,
@@ -1825,9 +1857,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             f"✅ {membro.mention} è ora **{ruolo}** in **{clan.name}**."
         )
 
-    @clan_group.command(
-        name="compra-canale",
-        description="[Capo/Admin Clan] Sblocca un nuovo canale extra per la tua gilda.",
+    @comando_di_gruppo(
+        "clan",
+        nome="compra-canale",
+        descrizione="Sblocca un nuovo canale extra per la tua gilda.",
     )
     @app_commands.describe(
         tipo="Tipo di canale da creare",
@@ -1930,11 +1963,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
             f"dalla tesoreria."
         )
 
-    clan_tesoreria_group = app_commands.Group(
-        name="tesoreria", description="Tesoreria della tua gilda.", parent=clan_group
-    )
 
-    @clan_tesoreria_group.command(name="dona", description="Dona coin personali alla tesoreria della tua gilda.")
+    @comando_di_gruppo(
+        "clan",
+        nome="dona",
+        descrizione="Dona coin personali alla tesoreria della tua gilda.",
+        sottogruppo=_SG_TESORERIA,
+    )
     @app_commands.describe(importo="Quante coin donare (dal tuo saldo personale)")
     async def clan_tesoreria_dona(
         self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000_000]
@@ -1966,9 +2001,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         await interaction.response.send_message(messaggio)
 
-    @clan_tesoreria_group.command(
-        name="trasferisci",
-        description="[Capo Clan] Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).",
+    @comando_di_gruppo(
+        "clan",
+        nome="trasferisci",
+        descrizione="Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).",
+        sottogruppo=_SG_TESORERIA,
     )
     @app_commands.describe(
         tag_destinazione="Tag dell'altra gilda di cui sei Capo Clan (anche su un server diverso)",
@@ -2049,13 +2086,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
         await interaction.response.send_message(messaggio)
 
-    clan_boost_group = app_commands.Group(
-        name="boost", description="Boost XP/coin del Sistema Gilde/Clan.", parent=clan_group
-    )
 
-    @clan_boost_group.command(
-        name="individuale",
-        description=f"Acquista un boost personale ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h sul tuo tick vocale di gilda.",
+    @comando_di_gruppo(
+        "clan",
+        nome="individuale",
+        descrizione=f"Acquista un boost personale ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h sul tuo tick vocale di gilda.",
+        sottogruppo=_SG_BOOST,
     )
     @app_commands.describe(tipo="Cosa raddoppia: exp, coin o entrambi (super)")
     @app_commands.choices(tipo=_scelte_boost(INDIVIDUAL_BOOST_COSTS))
@@ -2106,9 +2142,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             f"in **{clan.name}** fino a <t:{int(esito.scadenza.timestamp())}:f>."
         )
 
-    @clan_boost_group.command(
-        name="gilda",
-        description=f"[Capo/Admin Clan] Acquista un boost ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h per TUTTI i membri, dalla tesoreria.",
+    @comando_di_gruppo(
+        "clan",
+        nome="gilda",
+        descrizione=f"Acquista un boost ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h per TUTTI i membri, dalla tesoreria.",
+        sottogruppo=_SG_BOOST,
     )
     @app_commands.describe(tipo="Cosa raddoppia: exp, coin o entrambi (super)")
     @app_commands.choices(tipo=_scelte_boost(GUILD_BOOST_COSTS))
