@@ -38,7 +38,6 @@ KNOWN_UNCALLED = frozenset(
         "restore_oauth_repo.RestoreOAuthRepository.purge_expired_voluntary_leaves",
         "security_repo.SecurityRepository.get_recent_actions",
         "spam_trap_repo.SpamTrapRepository.prune_old_index",
-        "verify_repo.VerifyRepository.get_recent_attempts",
     }
 )
 

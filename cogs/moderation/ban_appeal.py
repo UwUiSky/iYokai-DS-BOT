@@ -33,6 +33,7 @@ from core.ban_appeal_logic import (
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.ui_base import BaseModal, BaseView
 from core.repositories.moderation_repo import moderation_repo
 from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, post_to_mod_log, truncate_text
 
@@ -41,16 +42,16 @@ logger = logging.getLogger("iyokai.moderation.ban_appeal")
 SETTING_CANALE_APPELLI = "appelli_channel_id"
 
 
-async def vista_appello(guild_id: int) -> discord.ui.View | None:
+async def vista_appello(guild_id: int) -> BaseView | None:
     """Il bottone da mettere nel DM del ban; None se il server non ha il canale appelli."""
     if await db.get_guild_setting(guild_id, SETTING_CANALE_APPELLI) is None:
         return None
-    vista = discord.ui.View(timeout=None)
+    vista = BaseView(timeout=None)
     vista.add_item(BottoneApriAppello(guild_id))
     return vista
 
 
-class ModuloAppello(discord.ui.Modal, title="Appello contro il ban"):
+class ModuloAppello(BaseModal, title="Appello contro il ban"):
     testo = discord.ui.TextInput(
         label="Perché dovremmo togliere il ban?",
         style=discord.TextStyle.paragraph,
@@ -99,7 +100,7 @@ async def invia_appello(
     )
     embed.add_field(name="Utente", value=f"<@{utente.id}> ({utente.id})", inline=False)
     embed.add_field(name="Motivo del ban", value=truncate_text(caso.reason or "Nessun motivo", 1000), inline=False)
-    vista = discord.ui.View(timeout=None)
+    vista = BaseView(timeout=None)
     vista.add_item(BottoneEsitoAppello(appello_id, True))
     vista.add_item(BottoneEsitoAppello(appello_id, False))
     try:

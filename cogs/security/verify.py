@@ -461,15 +461,15 @@ class VerifyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "security",
         nome="opzioni",
-        descrizione="Ruolo «non verificato» e ruoli extra dati con la verifica.",
+        descrizione="Ruolo «non verificato» e ruoli extra.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
-        non_verificato="Ruolo dato all'ingresso e tolto alla verifica",
-        extra_1="Ruolo in più dato alla verifica",
-        extra_2="Un altro ruolo in più",
-        extra_3="Un altro ruolo in più",
-        azzera="Togli ruolo «non verificato» e ruoli extra",
+        non_verificato="Dato all'ingresso, tolto alla verifica",
+        extra_1="Ruolo extra alla verifica",
+        extra_2="Altro ruolo extra",
+        extra_3="Altro ruolo extra",
+        azzera="Togli questi ruoli",
     )
     async def options_cmd(
         self,
@@ -535,7 +535,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "security",
         nome="tentativi",
-        descrizione="Ultimi tentativi di verifica di un utente.",
+        descrizione="Tentativi di verifica di un utente.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(member="L'utente (anche se non è nel server)")
@@ -558,10 +558,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "security",
         nome="statistiche",
-        descrizione="Quanti tentativi di verifica riusciti e falliti.",
+        descrizione="Verifiche riuscite e fallite.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    @app_commands.describe(giorni="Quanti giorni guardare indietro (default 7)")
+    @app_commands.describe(giorni="Giorni indietro (default 7)")
     async def stats_cmd(
         self, interaction: discord.Interaction, giorni: app_commands.Range[int, 1, 365] = 7
     ) -> None:

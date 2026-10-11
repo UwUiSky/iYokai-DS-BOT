@@ -361,6 +361,7 @@ Totale voci: **494**.
   → **Stato 04/10:** una parola oltre 60 caratteri rompe la sincronizzazione; `edit()` cancella le eccezioni messe a mano (LIM-29).
 - `[~]` 6.2 Anti-invite (via AutoMod nativo, regex)
   → **Stato 04/10:** LIM-29.
+- `[x]` 6.3b Messaggi modificati controllati di nuovo dai filtri lato bot (AMD-021, #116); la modifica non conta per l'anti-spam
 - `[~]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
   non supporta un elenco whitelist/blacklist di domini come trigger

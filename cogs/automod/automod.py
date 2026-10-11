@@ -140,7 +140,7 @@ def _finestra(filtro: RateFilterConfig) -> int:
 
 
 def build_message_signals(
-    message: discord.Message, config: AutomodAdvancedConfig
+    message: discord.Message, config: AutomodAdvancedConfig, conta_nel_tempo: bool = True
 ) -> MessageSignals:
     """
     Estrae dal messaggio REALE tutto quello che serve alla logica
@@ -152,6 +152,20 @@ def build_message_signals(
     now = discord.utils.utcnow()
     guild_id = message.guild.id
     user_id = message.author.id
+
+    if not conta_nel_tempo:
+        # Messaggio modificato (AMD-021): vale per il testo, non ai conteggi
+        # nel tempo. Una modifica non è un messaggio in più.
+        return MessageSignals(
+            content=message.content or "",
+            mention_count=_mention_count(message),
+            emoji_count=_count_emoji(message.content or ""),
+            attachment_count=len(message.attachments),
+            sticker_count=len(message.stickers),
+            recent_message_count=0,
+            recent_attachment_count=0,
+            recent_sticker_count=0,
+        )
 
     recent_messages = rate_tracker.record_and_count(
         guild_id, user_id, "messages", now, window_seconds=_finestra(config.anti_spam_messages)
@@ -1019,6 +1033,19 @@ class AutomodCog(CogConGruppi, commands.Cog):
         qui — un messaggio bloccato da una regola nativa non arriva
         comunque mai a on_message, quindi non c'è doppia valutazione.
         """
+        await self._controlla(message, modificato=False)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
+        """
+        AMD-021: chi modifica un messaggio per far passare ciò che era
+        bloccato viene controllato di nuovo. Solo se il testo è cambiato.
+        """
+        if before.content == after.content:
+            return
+        await self._controlla(after, modificato=True)
+
+    async def _controlla(self, message: discord.Message, modificato: bool) -> None:
         if message.guild is None or message.author.bot:
             return
         if not isinstance(message.author, discord.Member):
@@ -1031,7 +1058,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if is_member_exempt(message.author, settings, message.channel.id):
             return
 
-        segnali = build_message_signals(message, settings.config)
+        segnali = build_message_signals(message, settings.config, conta_nel_tempo=not modificato)
         violazioni = evaluate_message_violations(segnali, settings.config)
         if not violazioni:
             return
