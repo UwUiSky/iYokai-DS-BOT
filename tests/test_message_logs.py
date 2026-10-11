@@ -190,3 +190,97 @@ async def test_blocco_un_solo_riepilogo_con_un_file(ambiente):
     assert "5" in kw["embed"].description and "2" in kw["embed"].description
     assert kw["file"].filename == "messaggi_cancellati.txt"
     assert b"testo 1" in kw["file"].fp.getvalue()
+
+
+# ---------------------------------------------------- rafforzamento (revisione)
+from core import message_log_logic as logica
+from core.message_log_logic import riga_blocco, senza_accento_grave
+
+
+async def test_senza_logging_avanzato_modifica_e_blocco_non_scrivono(ambiente, monkeypatch):
+    cog, canale_log, _, _, server = ambiente
+    monkeypatch.setattr(modulo, "logging_avanzato_attivo", AsyncMock(return_value=False))
+    prima, dopo = _messaggio("a"), _messaggio("b")
+    prima.guild = dopo.guild = server
+    await cog.on_message_edit(prima, dopo)
+    p = MagicMock(guild_id=GUILD, channel_id=CANALE, message_ids={1}, cached_messages=[_messaggio("x")])
+    await cog.on_raw_bulk_message_delete(p)
+    canale_log.send.assert_not_awaited()
+
+
+async def test_blocco_toglie_dal_file_i_messaggi_ignorati_e_dei_bot(ambiente):
+    cog, canale_log, ignora, _, _ = ambiente
+    ignora.carica.return_value = Ignorati(utenti=frozenset({7}))
+    visibile, ignorato, bot = _messaggio("visibile"), _messaggio("ignorato"), _messaggio("di bot", autore_bot=True)
+    for n, (m, uid) in enumerate([(visibile, 42), (ignorato, 7), (bot, 43)]):
+        m.id, m.author.id = 100 + n, uid
+        m.created_at = discord.utils.utcnow()
+    p = MagicMock(guild_id=GUILD, channel_id=CANALE, message_ids={100, 101, 102}, cached_messages=[visibile, ignorato, bot])
+    await cog.on_raw_bulk_message_delete(p)
+    dati = canale_log.send.call_args.kwargs["file"].fp.getvalue()
+    assert b"visibile" in dati and b"ignorato" not in dati and b"di bot" not in dati
+
+
+async def test_blocco_dentro_un_canale_ignorato_non_scrive(ambiente):
+    cog, canale_log, ignora, _, _ = ambiente
+    ignora.carica.return_value = Ignorati(canali=frozenset({CANALE}))
+    p = MagicMock(guild_id=GUILD, channel_id=CANALE, message_ids={1}, cached_messages=[])
+    await cog.on_raw_bulk_message_delete(p)
+    canale_log.send.assert_not_awaited()
+
+
+async def test_tre_accenti_gravi_nel_testo_non_chiudono_un_blocco_di_codice(ambiente):
+    cog, canale_log, *_ = ambiente
+    assert "```" not in senza_accento_grave("a ```code``` b")
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("x ```y``` z")))
+    assert "```" not in canale_log.send.call_args.kwargs["embed"].description
+
+
+async def test_modifica_di_un_bot_non_si_registra_e_non_interroga_gli_ignorati(ambiente):
+    cog, canale_log, ignora, _, server = ambiente
+    prima, dopo = _messaggio("a", autore_bot=True), _messaggio("b", autore_bot=True)
+    prima.guild = dopo.guild = server
+    await cog.on_message_edit(prima, dopo)
+    canale_log.send.assert_not_awaited()
+    ignora.carica.assert_not_awaited()
+
+
+def test_nomi_degli_allegati_con_accento_grave_e_righe_con_a_capo():
+    assert "`a'b.png`" in logica.testo_allegati(["a`b.png"])
+    riga = riga_blocco(MessaggioArchiviato(1, 2, "Mario", "uno\ndue", "2026-10-11 10:00:00"))
+    assert "uno ⏎ due" in riga and "\n" not in riga
+
+
+def test_elenco_degli_ignorati_lunghissimo_resta_sotto_1900():
+    ig = Ignorati(canali=frozenset(range(10**18, 10**18 + 300)))
+    assert len(logica.testo_elenco_ignorati(ig)) <= 1900
+
+
+async def test_due_aggiunte_insieme_con_un_posto_solo_ne_entra_una(clean_db):
+    import asyncio
+
+    repo = LogIgnoraRepository(pool_provider=lambda: clean_db)
+    esiti = await asyncio.gather(
+        repo.aggiungi(GUILD, "canale", "1", 1), repo.aggiungi(GUILD, "canale", "2", 1)
+    )
+    assert sorted(esiti) == [False, True]
+
+
+async def test_gli_ignorati_si_tengono_in_memoria_e_si_rileggono_dopo_una_scrittura(clean_db):
+    repo = LogIgnoraRepository(pool_provider=lambda: clean_db)
+    letture = []
+    originale = repo._leggi
+
+    async def spia(guild_id):
+        letture.append(guild_id)
+        return await originale(guild_id)
+
+    repo._leggi = spia
+    await repo.carica(GUILD)
+    await repo.carica(GUILD)
+    assert len(letture) == 1
+    await repo.aggiungi(GUILD, "utente", "9", 10)
+    assert (await repo.carica(GUILD)).utenti == frozenset({9})
+    await repo.rimuovi(GUILD, "utente", "9")
+    assert (await repo.carica(GUILD)).utenti == frozenset()
+    assert len(letture) == 3

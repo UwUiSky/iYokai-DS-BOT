@@ -18,8 +18,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from core.testo_limiti import DESCRIZIONE_MAX, tronca
+
 SNIPE_TTL_SECONDS = 5 * 60
-DESCRIZIONE_MAX = 4096
 # Una cancellazione di un moderatore scrive una voce nel registro proprio mentre
 # arriva l'evento: una voce più vecchia di così non riguarda questo messaggio.
 TOLLERANZA_REGISTRO_SECONDI = 3
@@ -33,15 +34,12 @@ def scaduto(creato: datetime, adesso: datetime, ttl: int = SNIPE_TTL_SECONDS) ->
     return (adesso - creato).total_seconds() > ttl
 
 
-def testo_snipe(content: str, nomi_allegati: list[str]) -> str:
-    """Il testo da mostrare: contenuto (tagliato a 4096) e allegati; mai vuoto."""
+def testo_snipe(content: str, nomi_allegati: list[str], limite: int = DESCRIZIONE_MAX) -> str:
+    """Il testo da mostrare: contenuto e allegati tagliati a `limite`; mai vuoto."""
     parti = [content] if content else []
     if nomi_allegati:
         parti.append("📎 " + ", ".join(nomi_allegati))
-    testo = "\n".join(parti) or "*(nessun testo)*"
-    if len(testo) > DESCRIZIONE_MAX:
-        testo = testo[: DESCRIZIONE_MAX - 1] + "…"
-    return testo
+    return tronca("\n".join(parti) or "*(nessun testo)*", limite)
 
 
 @dataclass(frozen=True)

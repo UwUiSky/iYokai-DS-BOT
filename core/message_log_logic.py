@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-CAMPO_MAX = 1024
-DESCRIZIONE_MAX = 4096
+from core.testo_limiti import CAMPO_MAX, tronca
+
 # LIM-55: un allegato deve restare sotto i 10 MiB. Si lascia margine.
 FILE_MAX_BYTE = 8 * 1024 * 1024
 RIGA_BLOCCO_MAX = 500
@@ -20,13 +20,6 @@ RIGA_BLOCCO_MAX = 500
 GENERI_IGNORA = ("canale", "utente", "prefisso")
 PREFISSO_MAX = 20
 IGNORATI_MAX_PER_SERVER = 200
-
-
-def tronca(testo: str, limite: int) -> str:
-    """Taglia a `limite` caratteri; se taglia, finisce con «…»."""
-    if len(testo) <= limite:
-        return testo
-    return testo[: limite - 1] + "…"
 
 
 def senza_accento_grave(testo: str) -> str:

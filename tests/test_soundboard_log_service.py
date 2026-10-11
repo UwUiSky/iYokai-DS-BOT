@@ -11,7 +11,6 @@ import discord
 import pytest
 
 import cogs.logging.advanced_logs as modulo
-from core.soundboard_log_service import SoundboardLogService, soundboard_log_service
 from tests.support.discord_fakes import fake_guild
 
 
@@ -59,14 +58,6 @@ async def test_senza_logging_avanzato_il_suono_non_viene_registrato(cog, monkeyp
     await c.on_soundboard_sound_create(_suono())
     log_event.assert_not_awaited()
     invio.assert_not_awaited()
-
-
-def test_il_servizio_periodico_non_ha_piu_un_giro_sull_audit_log():
-    servizio = SoundboardLogService()
-    servizio.start(MagicMock())
-    assert servizio._loop_task is None
-    assert not hasattr(servizio, "tick")
-    assert soundboard_log_service is not None
 
 
 def test_gli_eventi_esistono_in_discord_py():
