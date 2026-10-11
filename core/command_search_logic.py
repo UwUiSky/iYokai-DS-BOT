@@ -14,7 +14,19 @@ per query in linguaggio naturale corte tipiche di un comando slash
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
+from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from urllib.parse import quote, urlparse
+
+import discord
+from discord import app_commands
+
 import re
+
+logger = logging.getLogger("iyokai.command_search")
 
 
 STOPWORD_ITALIANE = frozenset(
@@ -103,3 +115,271 @@ def search_commands(
     risultati = [r for r in risultati if r[2] >= threshold]
     risultati.sort(key=lambda r: r[2], reverse=True)
     return risultati[:limit]
+
+
+# ======================================================================
+# Pannello e ricerca di -cerca-comando (issue #147)
+# ======================================================================
+MAX_RISULTATI = 5
+MAX_SUGGERIMENTI = 25  # limite di Discord per il completamento
+CATEGORIE_PER_PAGINA = 20  # 4 righe da 5 bottoni; la quinta riga è per frecce e wiki (max 25 componenti)
+COMANDI_PER_PAGINA = 10
+MAX_OPZIONI_MOSTRATE = 10
+
+
+@dataclass(frozen=True)
+class Opzione:
+    nome: str
+    descrizione: str
+    obbligatoria: bool
+
+
+@dataclass(frozen=True)
+class ComandoInfo:
+    percorso: str  # "gruppo sottogruppo comando", senza barra
+    descrizione: str
+    gruppo: str  # il comando di primo livello
+    opzioni: tuple[Opzione, ...]
+
+
+def raccogli_comandi(comandi: Iterable, prefisso: str = "") -> list[ComandoInfo]:
+    """Cammina l'albero (gruppi annidati compresi) e dà un `ComandoInfo` per ogni comando foglia."""
+    risultati: list[ComandoInfo] = []
+    for cmd in comandi:
+        percorso = f"{prefisso} {cmd.name}".strip()
+        if isinstance(cmd, app_commands.Group):
+            risultati.extend(raccogli_comandi(cmd.commands, percorso))
+            continue
+        opzioni = tuple(
+            Opzione(p.name, str(p.description or ""), bool(p.required))
+            for p in getattr(cmd, "parameters", ())
+        )
+        risultati.append(
+            ComandoInfo(percorso, cmd.description or "(nessuna descrizione)", percorso.split(" ")[0], opzioni)
+        )
+    return risultati
+
+
+def menzione(percorso: str, ids: Mapping[str, int]) -> str:
+    """`</gruppo comando:ID>` (cliccabile su PC e cellulare); senza ID, il testo `/gruppo comando`."""
+    id_comando = ids.get(percorso.split(" ")[0])
+    if id_comando is None:
+        return f"`/{percorso}`"
+    return f"</{percorso}:{id_comando}>"
+
+
+def pagina(elementi: Sequence, indice: int, per_pagina: int) -> tuple[list, int, int]:
+    """(elementi della pagina, indice corretto, numero di pagine). Mai meno di una pagina."""
+    totale = max(1, -(-len(elementi) // per_pagina))
+    indice = min(max(indice, 0), totale - 1)
+    return list(elementi[indice * per_pagina : (indice + 1) * per_pagina]), indice, totale
+
+
+# Gruppi di sinonimi italiani (e qualche termine inglese): la ricerca prova a
+# sostituire una parola della richiesta con le altre del gruppo.
+SINONIMI: tuple[tuple[str, ...], ...] = (
+    ("banna", "caccia", "espelli", "allontana", "kick", "ban"),
+    ("silenzia", "muta", "zittisci", "timeout", "mute"),
+    ("avvisa", "ammonisci", "richiama", "warn", "avviso"),
+    ("cancella", "elimina", "pulisci", "rimuovi", "svuota"),
+    ("sondaggio", "votazione", "referendum", "poll"),
+    ("promemoria", "ricordami", "ricorda", "reminder", "sveglia"),
+    ("musica", "canzone", "suona", "brano", "riproduci"),
+    ("classifica", "livello", "livelli", "punti", "esperienza"),
+    ("monete", "soldi", "denaro", "economia", "negozio"),
+    ("compleanno", "compleanni", "birthday"),
+    ("giveaway", "sorteggio", "estrazione", "regalo", "concorso"),
+    ("segnala", "report", "denuncia", "segnalazione"),
+    ("aiuto", "help", "guida", "istruzioni"),
+    ("canale", "stanza", "chat"),
+    ("ruolo", "ruoli", "grado"),
+    ("benvenuto", "saluto", "accoglienza"),
+    ("suggerimento", "proposta", "idea", "suggerisci"),
+)
+
+
+def _varianti(query: str) -> list[str]:
+    parole = re.findall(r"[a-zàèéìòù0-9]+", query.lower())
+    varianti = []
+    for i, parola in enumerate(parole):
+        if parola in STOPWORD_ITALIANE:
+            continue
+        for gruppo in SINONIMI:
+            if any(_condividono_radice(parola, m) for m in gruppo):
+                for membro in gruppo:
+                    if membro != parola:
+                        varianti.append(" ".join(parole[:i] + [membro] + parole[i + 1 :]))
+    return varianti
+
+
+def _punteggio(query: str, info: ComandoInfo) -> float:
+    pulita = query.strip().lstrip("/").strip().lower()
+    if not pulita:
+        return 0.0
+    if pulita == info.percorso.lower():
+        return 10.0
+    migliore = score_command(pulita, info.percorso, info.descrizione)
+    for variante in _varianti(pulita):
+        migliore = max(migliore, 0.9 * score_command(variante, info.percorso, info.descrizione))
+    return migliore
+
+
+def cerca(
+    query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_RISULTATI, soglia: float = 0.34
+) -> list[ComandoInfo]:
+    punti = [(_punteggio(query, c), c) for c in comandi]
+    punti = [(p, c) for p, c in punti if p >= soglia]
+    punti.sort(key=lambda t: (-t[0], t[1].percorso))
+    return [c for _, c in punti[:limite]]
+
+
+def suggerimenti(query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_SUGGERIMENTI) -> list[tuple[str, str]]:
+    """(etichetta, valore) per il completamento: al massimo 25, etichetta e valore fino a 100 caratteri."""
+    pulita = query.strip().lstrip("/").strip().lower()
+    if pulita:
+        punti = []
+        for c in comandi:
+            if c.percorso.lower().startswith(pulita):
+                p = 3.0
+            elif pulita in c.percorso.lower():
+                p = 2.0
+            else:
+                p = _punteggio(pulita, c)
+            if p >= 0.34:
+                punti.append((p, c))
+        punti.sort(key=lambda t: (-t[0], t[1].percorso))
+        scelti = [c for _, c in punti]
+    else:
+        scelti = list(comandi)
+    risultato = []
+    for c in scelti:
+        if len(c.percorso) > 100:
+            continue
+        risultato.append((f"/{c.percorso} — {c.descrizione}"[:100], c.percorso))
+        if len(risultato) >= limite:
+            break
+    return risultato
+
+
+async def gruppi_accessibili(
+    nomi: Iterable[str],
+    livello_di: Callable[[str], object | None],
+    puo: Callable[[object], Awaitable[bool]],
+) -> list[str]:
+    """Tiene i gruppi senza livello e quelli il cui livello `puo` ammette (una domanda per livello)."""
+    memo: dict[object, bool] = {}
+    visibili = []
+    for nome in nomi:
+        livello = livello_di(nome)
+        if livello is None:
+            visibili.append(nome)
+            continue
+        if livello not in memo:
+            memo[livello] = bool(await puo(livello))
+        if memo[livello]:
+            visibili.append(nome)
+    return visibili
+
+
+def url_wiki(base: str | None, percorso: str | None = None) -> str | None:
+    """Indirizzo della wiki (solo se `WIKI_BASE_URL` è un http/https valido); `percorso` "a b" -> /a/b."""
+    base = (base or "").strip().rstrip("/")
+    parsed = urlparse(base)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    if not percorso:
+        return base
+    url = base + "/" + "/".join(quote(p) for p in percorso.split(" "))
+    return url if len(url) <= 512 else base
+
+
+def _taglia(testo: str, massimo: int, compatta: bool = True) -> str:
+    testo = " ".join(str(testo).split()) if compatta else str(testo)
+    return testo if len(testo) <= massimo else testo[: massimo - 1] + "…"
+
+
+def _testo_opzioni(opzioni: Sequence[Opzione]) -> str:
+    if not opzioni:
+        return "Nessuna opzione."
+    righe = []
+    for o in opzioni[:MAX_OPZIONI_MOSTRATE]:
+        sigla = "obbligatoria" if o.obbligatoria else "facoltativa"
+        righe.append(f"• `{o.nome}` ({sigla}) {_taglia(o.descrizione, 60)}".rstrip())
+    if len(opzioni) > MAX_OPZIONI_MOSTRATE:
+        righe.append(f"…e altre {len(opzioni) - MAX_OPZIONI_MOSTRATE}.")
+    return "\n".join(righe)
+
+
+def embed_risultati(risultati: Sequence[ComandoInfo], ids: Mapping[str, int], query: str) -> discord.Embed:
+    embed = discord.Embed(
+        title=_taglia(f"🔍 Risultati per «{query}»", 256), color=discord.Color.blurple()
+    )
+    for c in risultati[:MAX_RISULTATI]:
+        valore = f"{menzione(c.percorso, ids)}\n{_taglia(c.descrizione, 150)}\n{_testo_opzioni(c.opzioni)}"
+        embed.add_field(name=_taglia(f"/{c.percorso}", 256), value=_taglia(valore, 1024, False), inline=False)
+    return embed
+
+
+def embed_pannello(ultimo: str | None, ids: Mapping[str, int], *, in_dm: bool) -> discord.Embed:
+    righe = []
+    if ultimo:
+        righe.append(f"**Ultimo comando usato:** {menzione(ultimo, ids)}")
+    else:
+        righe.append("Non hai ancora usato nessun comando qui.")
+    righe.append("Scegli una categoria con i bottoni, oppure scrivi cosa vuoi fare nel campo `query`.")
+    if in_dm:
+        righe.append("In privato puoi solo cercare: i comandi si usano nei server.")
+    return discord.Embed(title="🔍 Cerca un comando", description="\n\n".join(righe), color=discord.Color.blurple())
+
+
+def embed_categoria(
+    gruppo: str, comandi: Sequence[ComandoInfo], ids: Mapping[str, int], indice: int
+) -> tuple[discord.Embed, int, int]:
+    pezzo, indice, totale = pagina(comandi, indice, COMANDI_PER_PAGINA)
+    righe = [f"{menzione(c.percorso, ids)} — {_taglia(c.descrizione, 100)}" for c in pezzo]
+    embed = discord.Embed(
+        title=_taglia(f"📂 {gruppo}", 256),
+        description=_taglia("\n".join(righe) or "Nessun comando.", 4096, False),
+        color=discord.Color.blurple(),
+    )
+    embed.set_footer(text=f"Pagina {indice + 1}/{totale}")
+    return embed, indice, totale
+
+
+class CacheIdComandi:
+    """
+    ID dei comandi di primo livello, letti da Discord (`fetch_commands`) per le menzioni
+    cliccabili. Si ricarica quando scade (`ttl`), quando serve un comando che manca
+    (comando nuovo dopo una sync) non più spesso di ogni `attesa_minima` secondi, o dopo
+    `invalida()`. Un errore di Discord non solleva: restano i vecchi ID.
+    """
+
+    def __init__(self, ttl: float = 3600.0, attesa_minima: float = 60.0, orologio: Callable[[], float] = time.monotonic):
+        self.ttl = ttl
+        self.attesa_minima = attesa_minima
+        self._orologio = orologio
+        self._ids: dict[str, int] = {}
+        self._caricata: float | None = None
+        self._tentativo: float | None = None
+        self._forzata = False
+        self._lock = asyncio.Lock()
+
+    def invalida(self) -> None:
+        """Da chiamare dopo ogni sync dei comandi: il prossimo uso ricarica gli ID."""
+        self._forzata = True
+
+    async def ottieni(self, fetch: Callable[[], Awaitable[Iterable]], serve: Iterable[str] = ()) -> dict[str, int]:
+        async with self._lock:
+            adesso = self._orologio()
+            scaduta = self._caricata is None or adesso - self._caricata >= self.ttl
+            manca = any(n not in self._ids for n in serve)
+            puo_tentare = self._tentativo is None or adesso - self._tentativo >= self.attesa_minima
+            if self._forzata or (puo_tentare and (scaduta or manca)):
+                self._tentativo = adesso
+                self._forzata = False
+                try:
+                    self._ids = {c.name: c.id for c in await fetch()}
+                    self._caricata = adesso
+                except Exception as exc:
+                    logger.warning("ID dei comandi non letti (%s): uso quelli vecchi.", type(exc).__name__)
+            return dict(self._ids)

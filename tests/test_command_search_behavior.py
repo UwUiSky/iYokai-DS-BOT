@@ -22,7 +22,7 @@ class _FakeResponse:
         self.edited_embeds: list = []
         self.sent_modals: list = []
 
-    async def send_message(self, embed=None, view=None, ephemeral: bool = False) -> None:
+    async def send_message(self, embed=None, view=None, ephemeral: bool = False, **_) -> None:
         if embed is not None:
             self.sent_embeds.append(embed)
         if view is not None:
@@ -38,6 +38,8 @@ class _FakeResponse:
 class _FakeInteraction:
     def __init__(self) -> None:
         self.response = _FakeResponse()
+        self.guild = None  # come in DM: nessun accesso a gruppi protetti
+        self.user = type("U", (), {"id": 1})()
 
 
 def _bot_con_comandi_reali() -> commands.Bot:

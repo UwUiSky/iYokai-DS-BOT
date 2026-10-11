@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 07:48 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 09:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 220 comandi in 16 categorie.**
+**Totale: 221 comandi in 16 categorie.**
 
 ## Admin
 
@@ -31,6 +31,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 07:
 ## Aiuto (primo livello)
 
 - **`/-cerca-comando`** — Cerca un comando per descrizione.
+- **`/-chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
 
 ## AutoMod
 

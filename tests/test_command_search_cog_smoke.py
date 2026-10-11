@@ -63,4 +63,5 @@ async def test_search_dichiara_la_lunghezza_massima_del_testo_cercato():
     opzioni = {o["name"]: o for o in bot.tree.get_command(NOME_CERCA_COMANDO).to_dict(bot.tree)["options"]}
 
     assert opzioni["query"]["min_length"] == 1
+    assert not opzioni["query"].get("required")  # senza testo: pannello
     assert opzioni["query"]["max_length"] == 100
