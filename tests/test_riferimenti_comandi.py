@@ -21,7 +21,7 @@ from tests.support.full_tree import build_full_bot, close_full_bot, connect_db_i
 RADICE = Path(__file__).resolve().parent.parent
 
 # `/nome` (anche tra apici o virgolette; non preceduto da lettere, `/`, `<`, `:`, `.`, `@`) seguito da fino a 3 parole.
-_RIFERIMENTO = re.compile(r"(?<![\w/<:.\-@#])/([a-z][a-z0-9_-]*)(?![\w/])((?: [a-z][a-z0-9_-]*){0,3})")
+_RIFERIMENTO = re.compile(r"(?<![\w/<:.\-@#}])/([a-z][a-z0-9_-]*)(?![\w/])((?: [a-z][a-z0-9_-]*){0,3})")
 
 # Parole italiane che, dopo un gruppo, iniziano la frase e non sono un sotto-comando.
 _PAROLE_DI_FRASE = frozenset(

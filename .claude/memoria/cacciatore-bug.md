@@ -1,10 +1,10 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-11/10/2026 · ultimo giro: ramo `feat/66-utility` (sticky, benvenuti, role menu, programmati, liste owner, modules_updated)
+11/10/2026 · ultimo giro: `feat/giro-logt` (router canali, log messaggi, snipe, soundboard)
 
 ## In corso
-- Niente a metà. Giro utilita-66 chiuso (rapporto dato). Prove: scratchpad/cb66.
+- Niente a metà. Giro logt chiuso. Prove: scratchpad/cblogt.
 
 ## Fatto
 - Revisione correzioni 28/09–01/10 (BUG-19…34, SEC-18…22): tutti risolti in R1-bis, tranne 26/28/29 superati (D8).
@@ -14,6 +14,7 @@
 - feat/sicurezza-audit: 6 alti (limits/punish/recovery senza `_solo_chi_gestisce`, extra owner declassa extra owner, punizione a ogni evento, antiraid aperto, quarantena fail-open, revoca ban globale). Prove: cbsic_proofs.
 - feat/147-cerca-comando: 0 alti; cache ID sotto lock senza timeout, `invalida()` perso se la fetch fallisce.
 - feat/66-utility: 0 alti. Sticky: il blocco per canale regge (10 messaggi = 1 invio; senza blocco 8). Ping D12, lunghezze dopo segnaposto, 25/2000/4096, SQL condizionato, modules_updated: a posto. Rilievi: role menu pubblica-poi-salva perde opzioni con due admin; `ping_ruoli` si azzera al toggle; `/sticky-set` durante repost; 2 test "doppio clic" dei suggerimenti vuoti. Test instabile del canale clan = test fragile, non codice.
+- feat/giro-logt: 1 alto (riga fantasma del router dopo canale generale cancellato), 6 medi (post forum doppi, avviso perso, audit per tempo, snipe di mod, ticket+forum).
 
 ## Cose imparate
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -30,6 +31,7 @@
 - Test di corsa: senza `apri_connessioni` il pool apre le connessioni una alla volta e le due chiamate non si sovrappongono: il test passa anche col codice vecchio. Provare sempre togliendo il fix (mutazione in scratchpad: sottoclasse del repo con l'SQL vecchio, o `_blocco` -> `asyncio.Lock()` nuovo).
 - Test con gather che si aspetta "una sola riuscita": controllare se il saldo basta per una seconda acquisto in sequenza (clan: 100000 coin = 25000 + 50000). Ritardare la 2a chiamata di 0,15 s lo mostra.
 - Fake `AsyncMock(side_effect=lambda: asyncio.sleep())` NON aspetta: serve `async def`.
+- Router/ripiego: ogni `UPSERT` che crea la riga di un tipo dal ripiego la rende permanente: cercare sempre cosa succede dopo che l'admin cambia il generale.
 
 ## Aperto
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).
