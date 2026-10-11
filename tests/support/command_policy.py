@@ -108,7 +108,7 @@ AUDIENCE: dict[str, str] = {
     "voicetemp-cap": STAFF,
     "voicetemp-platform-setup": STAFF,
     # Utility
-    "search": PUBLIC,
+    "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "admin": STAFF,  # gruppo condiviso
     "moduli": STAFF,  # gruppo condiviso
