@@ -28,7 +28,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo

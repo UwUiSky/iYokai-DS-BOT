@@ -9,7 +9,6 @@ Funzioni coperte: NF-05 (issue #76)
 from __future__ import annotations
 
 import discord
-import pytest
 from discord import app_commands
 from discord.ext import commands
 

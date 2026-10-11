@@ -14,7 +14,6 @@ Funzioni coperte: SPEC §11.12, §11.13
 from __future__ import annotations
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
