@@ -192,7 +192,7 @@ class ModerationRepository:
         return _row_to_case(row) if row else None
 
     async def list_cases_for_user(
-        self, guild_id: int, user_id: int, limit: int = 10
+        self, guild_id: int, user_id: int, limit: int = 10, action_type: str | None = None
     ) -> list[ModerationCase]:
         rows = await self._pool.fetch(
             """
@@ -201,14 +201,81 @@ class ModerationRepository:
                    revoked_at, revoked_by
             FROM moderation_cases
             WHERE guild_id = $1 AND user_id = $2
+              AND ($4::text IS NULL OR action_type = $4)
             ORDER BY case_number DESC
             LIMIT $3
             """,
             guild_id,
             user_id,
             limit,
+            action_type,
         )
         return [_row_to_case(row) for row in rows]
+
+    async def list_cases_by_moderator(
+        self, guild_id: int, moderator_id: int, limit: int = 25, action_type: str | None = None
+    ) -> list[ModerationCase]:
+        """Casi fatti da un moderatore, dal più recente (MOD-041)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT case_number, guild_id, user_id, moderator_id, action_type,
+                   reason, duration_seconds, active, created_at,
+                   revoked_at, revoked_by
+            FROM moderation_cases
+            WHERE guild_id = $1 AND moderator_id = $2
+              AND ($4::text IS NULL OR action_type = $4)
+            ORDER BY case_number DESC
+            LIMIT $3
+            """,
+            guild_id, moderator_id, limit, action_type,
+        )
+        return [_row_to_case(row) for row in rows]
+
+    async def moderator_ranking(self, guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
+        """(moderatore, numero di azioni), dal più attivo (MOD-039)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT moderator_id, COUNT(*) AS n
+            FROM moderation_cases
+            WHERE guild_id = $1
+            GROUP BY moderator_id
+            ORDER BY n DESC, moderator_id
+            LIMIT $2
+            """,
+            guild_id, limit,
+        )
+        return [(r["moderator_id"], r["n"]) for r in rows]
+
+    async def warn_ranking(self, guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
+        """(utente, warn attivi), dal più avvisato (MOD-031)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT user_id, COUNT(*) AS n
+            FROM moderation_cases
+            WHERE guild_id = $1 AND action_type = 'warn' AND active = TRUE
+            GROUP BY user_id
+            ORDER BY n DESC, user_id
+            LIMIT $2
+            """,
+            guild_id, limit,
+        )
+        return [(r["user_id"], r["n"]) for r in rows]
+
+    async def update_case_reason(self, guild_id: int, case_number: int, reason: str) -> bool:
+        """Cambia il motivo di un caso (MOD-037). False se il caso non esiste."""
+        result = await self._pool.execute(
+            "UPDATE moderation_cases SET reason = $3 WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number, reason,
+        )
+        return result.endswith(" 1")
+
+    async def delete_case(self, guild_id: int, case_number: int) -> bool:
+        """Elimina un caso (MOD-044). La numerazione non si riusa."""
+        result = await self._pool.execute(
+            "DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number,
+        )
+        return result.endswith(" 1")
 
     async def get_latest_active_case(
         self, guild_id: int, user_id: int, action_type: str
@@ -333,7 +400,7 @@ class ModerationRepository:
             SELECT id, guild_id, user_id, moderator_id, note, created_at
             FROM moderation_notes
             WHERE guild_id = $1 AND user_id = $2
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, id DESC
             LIMIT $3
             """,
             guild_id,
@@ -351,6 +418,28 @@ class ModerationRepository:
             )
             for r in rows
         ]
+
+    async def delete_note(self, guild_id: int, note_id: int) -> bool:
+        """Toglie una nota (MOD-054). Solo se è di questo server."""
+        result = await self._pool.execute(
+            "DELETE FROM moderation_notes WHERE guild_id = $1 AND id = $2", guild_id, note_id
+        )
+        return result.endswith(" 1")
+
+    async def update_note(self, guild_id: int, note_id: int, testo: str) -> bool:
+        """Cambia il testo di una nota (MOD-055)."""
+        result = await self._pool.execute(
+            "UPDATE moderation_notes SET note = $3 WHERE guild_id = $1 AND id = $2",
+            guild_id, note_id, testo,
+        )
+        return result.endswith(" 1")
+
+    async def delete_notes_for_user(self, guild_id: int, user_id: int) -> int:
+        """Cancella tutte le note di un membro (MOD-056); quante."""
+        result = await self._pool.execute(
+            "DELETE FROM moderation_notes WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+        return int(result.split()[-1])
 
     # ------------------------------------------------------------
     # Ban temporaneo con rientro / isolamento (issue #138)

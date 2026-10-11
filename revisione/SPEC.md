@@ -315,17 +315,17 @@ Totale voci: **494**.
   → **Stato 04/10:** SEC-1; il ruolo non copre thread, forum e canali nuovi (LIM-30).
 - `[~]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
-  → **Stato 04/10:** caso creato prima dell'azione; liste oltre 4096 caratteri (LIM-8).
+  → **Stato 11/10:** ordine azione→caso→log→DM e liste entro 4000 fatti. Aggiunti: storico per tipo, `/mod caso motivo|elimina|classifica-staff` (MOD-037, 039, 041, 042, 044).
 - `[~]` 5.3 Note utente
-  → **Stato 04/10:** SEC-1.
+  → **Stato 11/10:** `/mod nota rimuovi|modifica|svuota` (MOD-054..056); l'elenco mostra il numero. Warn: `/mod avvisi togli|azzera|classifica` (MOD-028, 029, 031).
 - `[~]` 5.4 Report system
   → **Stato 04/10:** motivo oltre 1024 caratteri: segnalazione persa (LIM-4).
 - `[~]` 5.5 Lock / Unlock canale
-  → **Stato 04/10:** SEC-1; nessun log (REVIEW §12).
+  → **Stato 11/10:** ora scrive nel log di moderazione; motivo al massimo 512 caratteri.
 - `[~]` 5.6 Slowmode
-  → **Stato 04/10:** SEC-1; nessun log (REVIEW §12).
+  → **Stato 11/10:** ora scrive nel log di moderazione.
 - `[~]` 5.7 Clear avanzato con filtri
-  → **Stato 04/10:** SEC-1; filtro allegati da riprovare con l'intent acceso (BUG-5).
+  → **Stato 11/10:** filtri nuovi (testo, link, inviti, embed, menzioni, ruolo, persone, fissati), canale a scelta, riga di log (MOD-069, 071, 073-079, 083, 084, 086, 088). Filtro allegati da riprovare con l'intent acceso (BUG-5).
 - `[~]` 5.8 DM all'utente moderato
   → **Stato 04/10:** il DM parte prima dell'azione (LIM-8).
 - `[~]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
@@ -338,7 +338,7 @@ Totale voci: **494**.
 - `[~]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
-  → **Stato 04/10:** `/lock`, `/unlock`, `/slowmode`, `/clear` non creano né casi né log (REVIEW §12).
+  → **Stato 11/10:** `/lock`, `/unlock`, `/slowmode`, `/clear`, `/untimeout`, `/unmute` e la scadenza dei tempban scrivono nel log (M 1.8).
 - `[~]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
   riceve l'invito per tornare e, al rientro, riprende i ruoli che
   aveva. L'invito e la data di fine si mandano in privato **prima**

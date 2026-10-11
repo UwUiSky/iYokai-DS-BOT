@@ -1,27 +1,21 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-11 (sera), ramo feat/sicurezza-audit (base 90bbeb2), worktree /home/claude/wt/sic.
+2026-10-11 (notte), ramo feat/giro-mod (da main), worktree /home/claude/wt/mod, DB iyokai_wmod, migrazioni da 0040.
 ## In corso
-Revisione di cacciatore e revisore applicata (commit E): smoke, commit, push. Nessun file a meta.
+Previsione: 5 gruppi (tempban #138, caso/note/warn+clear+log, appelli, verify, filtri AutoMod).
+Fatti i primi due. Prossimo: appelli NF-30 (cogs/moderation/ban_appeal.py, core/ban_appeal_logic.py: scheletri) oppure 1.10 (soglie warn manuali: serve flag in escalation_repo + migrazione 0041).
 ## Fatto
-- A 8895c79 anti-nuke (SIC-001/002/005-010/017-020/025, #59 3.5)
-- B e684371 anti-raid (SIC-003/004/022), quarantena condivisa
-- C ccdc53b security_score, heatmap, ban globale (SIC-044/046)
-- D 012e083 spam-trap, verify, invite_sync, controlla
-- E revisione: solo-chi-gestisce, fiducia in core, una punizione per attacco, rilascia unico, quarantena fail-open, ban globale (revoca/staff/indici), /modban unban, resolve_voce in core/security_audit.py
-- Doc: revisione/03-verifica/AUDIT_SICUREZZA.md, VERIFICA_LIVE.md, SPEC §7, COMMAND_LIST (228)
-- #59 righe 3.1-3.17 gia fatte
+- G1 #138: /modban tempban modo (fuori|rientro|isolamento), core/tempban_logic.py, cogs/moderation/tempban_modes.py, migrazione 0040 tempban_stato, unban libera l'isolamento
+- G2 #57: M 1.8 (log lock/unlock/slowmode/clear/untimeout/unmute/scadenza), caso (motivo/elimina/classifica-staff/storico per tipo), nota (rimuovi/modifica/svuota), avvisi (togli/azzera/classifica), clear con 12 filtri (core/clear_filter_logic.py)
+- Gia fatte prima del giro: M 1.1-1.7, 1.9 (test_moderation_*), #60 4.1 (test_verify_risposta_subito)
 ## Cose imparate
-- Tabelle sicurezza create in security_repo.run_migrations, non in core/migrations (0024-0026 non servivano)
-- Lock asyncio a livello modulo: usare WeakKeyDictionary per loop
-- MFALevel non e int: usare .value
-- Smoke supera il limite di 2 min del tool: lanciarlo in background su log; mai due pytest insieme sullo stesso DB (clean_db svuota)
-- Test degli enable/cog con server finto: patchare ruolo_quarantena (ora si crea all'attivazione)
-- Controllo mutazioni: script in scratchpad (sostituisce una riga, lancia i test, ripristina)
+- Tabelle sicurezza in security_repo.run_migrations; le nuove di moderazione in core/migrations/NNNN (clean_db le svuota da information_schema)
+- Smoke oltre 2 min: lanciarlo con nohup su log; mai due pytest sullo stesso DB
+- Gruppo /mod: 11 figli diretti + sottogruppi caso(5), nota(5), avvisi(3); tetto 25. test_f7_moderazione_gruppi.py ATTESI va aggiornato a ogni comando nuovo
+- Il bot non puo scrivere a un bannato: DM e invito prima del ban; ban fallito = cancellare DM e invito
+- Isolamento: member.edit(roles=...) una sola chiamata; ruoli gestiti o sopra il bot restano; salvati solo i tolti
+- Comandi distruttivi (elimina caso, svuota note, azzera warn) controllano manage_guild nel codice
 ## Aperto
-- 3.18 (serve router canali NF-01, stub)
-- alt_detection (OAuth #92), lockdown/panic SIC-011-015 (#100), ban_appeal_logic (#101)
-- SIC-016, 021, 023-038, 039-043, 045, 026
-- Fuori perimetro: utility/greetings.py manca hook raid_in_corso (M 10.16)
-- Decisione aperta: quarantena fallita non ripiega su kick/ban (la config 'ban' lo fa gia)
-- Vanity URL via http.request non verificata su Discord reale
+- M 1.10 soglie sui warn manuali (F9); rientro automatico OAuth di #138 (serve #92)
+- Appelli NF-30/#101 (scheletri), alt_detection, lockdown (#100)
+- Catalogo #115 ancora aperto per il resto (bulk, voce, nickname, DM personalizzati, motivi pronti)

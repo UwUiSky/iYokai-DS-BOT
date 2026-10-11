@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:13 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:20 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 239 comandi in 16 categorie.**
+**Totale: 248 comandi in 16 categorie.**
 
 ## Admin
 
@@ -162,6 +162,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 
 ## Moderazione
 
+- **`/mod avvisi azzera`** — Toglie tutti i warn attivi di un membro (serve «Gestire il server»).
+- **`/mod avvisi classifica`** — I membri con più warn attivi.
+- **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
+- **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
+- **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
+- **`/mod caso motivo`** — Cambia il motivo di un caso già registrato.
 - **`/mod caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod caso vedi`** — Mostra i dettagli di un singolo caso.
 - **`/mod clear`** — Cancella un numero di messaggi, con filtri opzionali.
@@ -169,6 +175,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 - **`/mod mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
 - **`/mod nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod nota elenca`** — Elenca le note su un utente.
+- **`/mod nota modifica`** — Cambia il testo di una nota.
+- **`/mod nota rimuovi`** — Toglie una nota (il numero è nell'elenco delle note).
+- **`/mod nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
 - **`/mod slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.

@@ -13,16 +13,15 @@ già internamente. Il limite resta comunque REALE: cancellare molti
 messaggi vecchi può richiedere diversi secondi per via del rate limit
 sulle cancellazioni singole.
 
-Non c'è un filtro per "contenuto testuale" (es. "contiene parola X").
-Il Message Content Intent è acceso (vedi main.py), quindi il testo dei
-messaggi è disponibile e il filtro si può aggiungere. Regola di
-Discord per gli intent privilegiati: sotto i 10.000 utenti basta
-l'interruttore nel Developer Portal; da 10.000 utenti serve la domanda
-a Discord, da rifare ogni anno.
+Filtri (core/clear_filter_logic.py): utente, ruolo, solo bot, solo persone,
+allegati, testo contenuto o non contenuto, link, inviti, embed, menzioni,
+salta i fissati. Il testo dei messaggi serve il Message Content Intent
+(acceso in main.py; sotto i 10.000 utenti basta l'interruttore nel
+Developer Portal, da 10.000 serve la domanda a Discord, da rifare ogni
+anno). Il canale può essere diverso da quello del comando; ogni pulizia
+scrive una riga nel log di moderazione (M 1.8).
+Funzioni coperte: SPEC §5.4 (MOD-069, 071, 073-079, 083, 084, 086, 088)
 """
-
-# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
 
 from __future__ import annotations
 
@@ -33,7 +32,13 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.premium import PremiumModule, registry, requires_module
-from cogs.moderation._shared import MODULE_CLEAR, ensure_module_enabled
+from core.clear_filter_logic import FiltriClear, descrivi_filtri, messaggio_passa
+from cogs.moderation._shared import (
+    MODULE_CLEAR,
+    ensure_module_enabled,
+    post_to_mod_log,
+    truncate_text,
+)
 
 MAX_CLEAR_AMOUNT = 200
 
@@ -48,10 +53,20 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         descrizione="Cancella un numero di messaggi, con filtri opzionali.",
     )
     @app_commands.describe(
-        amount="Quanti messaggi cancellare (max 200)",
+        amount="Quanti messaggi controllare (max 200)",
         member="Cancella solo i messaggi di questo utente",
-        bots_only="Cancella solo i messaggi inviati da bot",
+        bots_only="Cancella solo i messaggi inviati da bot o webhook",
         attachments_only="Cancella solo i messaggi con allegati",
+        channel="Il canale da pulire (default: quello attuale)",
+        humans_only="Cancella solo i messaggi di persone (non bot)",
+        contains="Cancella solo i messaggi che contengono questo testo",
+        not_contains="Cancella solo i messaggi che NON contengono questo testo",
+        links_only="Cancella solo i messaggi con link",
+        invites_only="Cancella solo i messaggi con inviti Discord",
+        embeds_only="Cancella solo i messaggi con embed",
+        mentions_only="Cancella solo i messaggi con menzioni",
+        role="Cancella solo i messaggi di chi ha questo ruolo",
+        skip_pinned="Salta i messaggi fissati",
     )
     @requires_module(MODULE_CLEAR)
     async def clear(
@@ -61,24 +76,46 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         member: discord.Member | None = None,
         bots_only: bool = False,
         attachments_only: bool = False,
+        channel: discord.TextChannel | None = None,
+        humans_only: bool = False,
+        contains: app_commands.Range[str, 1, 100] | None = None,
+        not_contains: app_commands.Range[str, 1, 100] | None = None,
+        links_only: bool = False,
+        invites_only: bool = False,
+        embeds_only: bool = False,
+        mentions_only: bool = False,
+        role: discord.Role | None = None,
+        skip_pinned: bool = False,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CLEAR):
             return
 
-        if not isinstance(interaction.channel, discord.TextChannel):
+        target = channel or interaction.channel
+        if not isinstance(target, discord.TextChannel):
             await interaction.response.send_message(
                 "Questo comando funziona solo su canali testuali.", ephemeral=True
             )
             return
 
-        def check(message: discord.Message) -> bool:
-            if member is not None and message.author.id != member.id:
-                return False
-            if bots_only and not message.author.bot:
-                return False
-            if attachments_only and not message.attachments:
-                return False
-            return True
+        filtri = FiltriClear(
+            autore_id=member.id if member else None,
+            solo_bot=bots_only,
+            solo_persone=humans_only,
+            solo_allegati=attachments_only,
+            contiene=contains,
+            non_contiene=not_contains,
+            solo_link=links_only,
+            solo_inviti=invites_only,
+            solo_embed=embeds_only,
+            solo_menzioni=mentions_only,
+            ruolo_id=role.id if role else None,
+            salta_fissati=skip_pinned,
+        )
+        if bots_only and humans_only:
+            await interaction.response.send_message(
+                "«Solo bot» e «solo persone» insieme non cancellano niente.", ephemeral=True
+            )
+            return
 
         # Risponde SUBITO in modo ephemeral, prima di iniziare la
         # cancellazione: se ci sono molti messaggi vecchi (>14 giorni)
@@ -87,10 +124,10 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
 
         try:
-            eliminati = await interaction.channel.purge(limit=amount, check=check)
-        except discord.Forbidden:
+            eliminati = await target.purge(limit=amount, check=lambda m: messaggio_passa(m, filtri))
+        except discord.HTTPException:
             await interaction.followup.send(
-                "Non ho i permessi per cancellare messaggi in questo canale.",
+                "Non sono riuscito a cancellare i messaggi: controlla i miei permessi in questo canale.",
                 ephemeral=True,
             )
             return
@@ -98,6 +135,14 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(
             f"{len(eliminati)} messaggi cancellati.", ephemeral=True
         )
+        embed = discord.Embed(title="🧹 Clear", color=discord.Color.light_grey())
+        embed.add_field(name="Canale", value=target.mention, inline=True)
+        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        embed.add_field(name="Cancellati", value=str(len(eliminati)), inline=True)
+        embed.add_field(
+            name="Filtri", value=truncate_text(descrivi_filtri(filtri), 1000), inline=False
+        )
+        await post_to_mod_log(interaction.guild, embed)
 
 
 async def setup(bot: commands.Bot) -> None:
