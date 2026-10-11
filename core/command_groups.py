@@ -31,8 +31,8 @@ Esempio: cogs/logging/basic_logs.py (`/log canale`). Se il cog ha un suo
 Nessun gruppo entra da solo nell'albero del bot: i gruppi vuoti non si
 sincronizzano. `registra_comandi_del_cog` aggiunge il gruppo all'albero
 quando il primo comando arriva e lo toglie quando l'ultimo se ne va;
-`registra_gruppi_usati` è la rete di sicurezza di main.py. `/owner` va
-aggiunto a parte, solo nel server dell'owner (`registra_owner`, mappa §5).
+`registra_gruppi_usati` è la rete di sicurezza di main.py. `/owner` non entra
+mai da qui: va aggiunto a parte, solo nel server dell'owner (`registra_owner`, mappa §5).
 """
 
 from __future__ import annotations
@@ -226,6 +226,12 @@ def _comandi_marcati(cog) -> list[ComandoDiGruppo]:
     return list(visti.values())
 
 
+def _stessa_classe(a: object, b: object) -> bool:
+    """Stesso cog anche se un reload ha ricreato la classe (stesso modulo e nome)."""
+    ta, tb = type(a), type(b)
+    return ta is tb or (ta.__module__, ta.__qualname__) == (tb.__module__, tb.__qualname__)
+
+
 def registra_comandi_del_cog(
     cog,
     *,
@@ -249,7 +255,7 @@ def registra_comandi_del_cog(
     for m in marcati:  # prima controlla tutto, poi tocca l'albero
         if m.marca.gruppo not in tutti:
             raise KeyError(f"Gruppo sconosciuto '{m.marca.gruppo}' per il comando '{m.marca.nome}'.")
-        if tree is not None:
+        if tree is not None and m.marca.gruppo != "owner":
             _conflitto_nell_albero(tree, m.marca.gruppo, tutti[m.marca.gruppo])
 
     registrati: list[tuple[str, tuple[str, str] | None, app_commands.Command]] = []
@@ -261,7 +267,7 @@ def registra_comandi_del_cog(
             radice = tutti[marca.gruppo]
             dove: Any = radice if marca.sottogruppo is None else radice.get_command(marca.sottogruppo[0])
             presente = dove.get_command(marca.nome) if dove is not None else None
-            if presente is not None and type(presente.binding) is not type(cog):
+            if presente is not None and not _stessa_classe(presente.binding, cog):
                 raise ValueError(
                     f"'/{marca.gruppo} {marca.nome}' esiste già, di un altro cog: scegli un altro nome."
                 )
@@ -272,7 +278,7 @@ def registra_comandi_del_cog(
         togli_comandi_del_cog(cog)
         raise
     if tree is not None:
-        for nome in {g for g, _, _ in registrati}:
+        for nome in {g for g, _, _ in registrati} - {"owner"}:  # /owner: solo registra_owner
             if tree.get_command(nome) is None:
                 tree.add_command(tutti[nome], override=True)
     cog._yokai_registrazioni = (tutti, tree, registrati)

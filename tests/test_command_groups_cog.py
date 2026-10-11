@@ -337,3 +337,42 @@ async def test_reload_e_unload_di_basic_logs(monkeypatch):
     await bot.remove_cog("BasicLogsCog")
     assert bot.tree.get_command("log") is None
     assert cg.GRUPPI["log"].commands == []
+
+
+# ----------------------------------------------------------------------
+# /owner non entra mai nell'albero globale; il reload non dà falsi conflitti
+# ----------------------------------------------------------------------
+def _cog_owner():
+    class CogOwnerProva(CogConGruppi, commands.Cog):
+        def __init__(self, bot):
+            self.bot = bot
+            self.gruppi_yokai = cg.costruisci_gruppi()
+
+        @comando_di_gruppo("owner", nome="prova", descrizione="Comando owner di prova", sottogruppo=("system", "Sistema"))
+        async def prova(self, interaction: discord.Interaction) -> None: ...
+
+    return CogOwnerProva
+
+
+async def test_un_cog_owner_caricato_e_ricaricato_non_mette_owner_nell_albero_globale():
+    bot = _bot()
+    classe = _cog_owner()
+    cog = classe(bot)
+    await bot.add_cog(cog)
+    assert bot.tree.get_command("owner") is None
+    assert cog.gruppi_yokai["owner"].get_command("system").get_command("prova") is not None
+    await bot.add_cog(classe(bot), override=True)  # come /owner cog reload
+    assert bot.tree.get_command("owner") is None
+    await bot.remove_cog("CogOwnerProva")
+    assert bot.tree.get_command("owner") is None
+
+
+async def test_una_classe_ricreata_dal_reload_non_e_un_altro_cog():
+    bot = _bot()
+    primo = _cog_owner()(bot)
+    registra_comandi_del_cog(primo, tree=bot.tree)
+    secondo = _cog_owner()(bot)
+    secondo.gruppi_yokai = primo.gruppi_yokai  # stesso albero di gruppi, classe ricreata
+    assert type(primo) is not type(secondo)
+    registra_comandi_del_cog(secondo, tree=bot.tree)  # niente ValueError
+    assert bot.tree.get_command("owner") is None
