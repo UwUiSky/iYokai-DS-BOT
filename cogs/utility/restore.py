@@ -259,7 +259,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             f"⚠️ DM non consegnati (privacy/bloccati): {contatori['dm_falliti']}"
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
-                f"/verify): {contatori['ruolo_non_assegnato']}"
+                f"/security verify setup): {contatori['ruolo_non_assegnato']}"
                 if contatori["ruolo_non_assegnato"]
                 else ""
             ),
@@ -271,7 +271,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
     ) -> bool:
         """
         SEC-4/SEC-17: il ruolo verificato può aver preso permessi
-        pericolosi dopo il /verify setup, quindi si ricontrolla al
+        pericolosi dopo il /security verify setup, quindi si ricontrolla al
         momento dell'assegnazione. Se non va bene l'utente resta nel
         server senza il ruolo (False) e resta un avviso nei log.
         """

@@ -4,7 +4,7 @@ cogs/fun/entertainment.py
 Mini-giochi (SPEC.md §16.1), altri comandi di intrattenimento
 classici (§16.8): testa/croce, dado, carta/forbici/sasso, palla
 magica 8, barzelletta, citazione, curiosità — e image manipulation
-(§16.2)/meme (§16.3): scala di grigi, inverti, sfoca, pixela,
+(§16.2)/fun meme (§16.3): scala di grigi, inverti, sfoca, pixela,
 generatore di meme testo-sopra/testo-sotto. Tutti operano
 sull'allegato passato al comando o, se assente, sull'avatar
 dell'utente (o dell'utente menzionato) — così ogni comando funziona
@@ -75,7 +75,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(guild.id, MODULE_FUN):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /setup.",
+                "Un amministratore può attivarlo con /admin setup attiva.",
                 ephemeral=True,
             )
             return False

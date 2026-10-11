@@ -9,7 +9,8 @@ from discord.ext import commands
 
 from discord import app_commands
 
-from cogs.utility.command_search import NOME_CERCA_COMANDO, setup as command_search_setup
+from cogs.utility.command_search import setup as command_search_setup
+from core.command_groups import NOME_CERCA_COMANDO, NOME_CHIEDI
 from tests.support.percorsi import percorsi_del_gruppo
 
 
@@ -28,11 +29,25 @@ async def test_command_search_cog_si_carica_correttamente():
     assert not isinstance(comando, app_commands.Group)
 
 
+async def test_cerca_comando_e_solo_nei_server_come_tutti_i_comandi():
+    """D24: tutti i comandi sono nei server, anche i due di primo livello."""
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await command_search_setup(bot)
+
+    comando = bot.tree.get_command(NOME_CERCA_COMANDO)
+    assert comando.guild_only is True
+    assert bot.tree.get_command(NOME_CERCA_COMANDO).to_dict(bot.tree)["contexts"] == [0]
+
+
+def test_i_nomi_dei_due_comandi_di_primo_livello_stanno_in_command_groups():
+    assert (NOME_CERCA_COMANDO, NOME_CHIEDI) == ("-cerca-comando", "-chiedi")
+
+
 def test_i_due_nomi_con_il_trattino_sono_validi_per_discord():
     """Il trattino davanti è ammesso dalla regola dei nomi (mappa F7 §6); `/chiedi` arriva con #147."""
     from tests.test_command_tree_invariants import REGEX_NOME
 
-    for nome in (NOME_CERCA_COMANDO, "-chiedi"):
+    for nome in (NOME_CERCA_COMANDO, NOME_CHIEDI):
         assert REGEX_NOME.match(nome) and nome == nome.lower() and len(nome) <= 32
 
 

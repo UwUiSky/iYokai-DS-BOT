@@ -41,7 +41,7 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         -- vie in core/automod_sync.py per distinguere "parole
         -- aggiunte a mano dall'admin" (da preservare per sempre) da
         -- "parole che erano nostre e che ora vogliamo poter
-        -- rimuovere" (altrimenti /automod badword-remove non
+        -- rimuovere" (altrimenti /automod parole remove non
         -- avrebbe mai effetto sulla regola Discord reale).
         CREATE TABLE IF NOT EXISTS automod_last_synced (
             guild_id      BIGINT NOT NULL,

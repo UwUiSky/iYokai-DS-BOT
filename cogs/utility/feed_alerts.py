@@ -44,7 +44,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         sottogruppo=("alert", "Avvisi da feed, Twitch, YouTube e webhook"),
     )
     @app_commands.describe(
-        feed_url="URL del feed RSS/Atom — es. youtube.com/feeds/videos.xml?channel_id=... o reddit.com/r/nome/new/.rss",
+        feed_url="URL del feed RSS/Atom, es. reddit.com/r/nome/new/.rss",
         channel="Canale dove pubblicare le notifiche",
         label="Nome descrittivo, usato nel messaggio (es. 'Canale YouTube di Mario')",
         message_template="Template personalizzato (facoltativo). Placeholder: {label} {title} {link}",

@@ -22,6 +22,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import NOME_CERCA_COMANDO
 from core.command_search_logic import search_commands
 from core.command_tree_utils import walk_commands
 from core.ui_base import BaseView
@@ -53,16 +54,13 @@ class _NoResultsView(BaseView):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-# Comando di PRIMO livello (non in /utility): il trattino davanti lo fa salire
-# in lista (decisione dell'owner, 06/10/2026). La regex dei nomi lo ammette.
-NOME_CERCA_COMANDO = "-cerca-comando"
-
-
 class CommandSearchCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
+    # Comando di PRIMO livello (non in /utility), solo nei server come tutti gli altri (D24).
     @app_commands.command(name=NOME_CERCA_COMANDO, description="Cerca un comando per descrizione.")
+    @app_commands.guild_only()
     @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno' (massimo 100 caratteri)")
     async def search(
         self,

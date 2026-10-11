@@ -4,7 +4,7 @@ core/repositories/music_session_repo.py
 Tabella music_sessions (SPEC.md §9.2, "logica se bot1 occupato →
 bot2"). Persistente, non solo in memoria: se il bot si riavvia con
 una sessione musicale attiva, il worker assegnato a un server non
-deve cambiare a caso al prossimo /play — resta lo stesso finché
+deve cambiare a caso al prossimo /music play — resta lo stesso finché
 qualcuno non lo disconnette esplicitamente (rilasciando la riga).
 Le righe valgono solo per la vita del processo: all'avvio vengono
 svuotate (clear_all, BUG-9), perché i worker ripartono da zero.
@@ -80,7 +80,7 @@ class MusicSessionRepository:
         """
         Tutti i worker attualmente assegnati a QUALUNQUE server —
         usata insieme a core/music_fleet_logic.find_free_worker() per
-        decidere quale istanza è libera per un nuovo /play.
+        decidere quale istanza è libera per un nuovo /music play.
         """
         rows = await self._pool.fetch("SELECT DISTINCT worker_index FROM music_sessions")
         return {row["worker_index"] for row in rows}

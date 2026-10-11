@@ -397,7 +397,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
-        cap="Numero massimo di canali nella categoria (max 50, limite Discord). Vuoto per rimuovere il limite."
+        cap="Canali massimi nella categoria (max 50, limite di Discord). Vuoto: nessun limite."
     )
     async def voicetemp_cap(
         self,

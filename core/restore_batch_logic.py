@@ -1,7 +1,7 @@
 """
 core/restore_batch_logic.py
 ===============================
-Logica pura (nessun I/O) di /restore-users (SPEC.md §11.11/§11.12):
+Logica pura (nessun I/O) di /admin backup restore-utenti (SPEC.md §11.11/§11.12):
 per ogni utente nello snapshot, decide COSA fare — nessuna chiamata
 a Discord o al database qui, solo la decisione; l'esecuzione vera
 vive nel comando (cogs/utility/restore.py).

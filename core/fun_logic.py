@@ -4,7 +4,7 @@ core/fun_logic.py
 Logica pura di Ship (SPEC.md §16.5) e Rate (§16.7). Deterministica
 via hash, non random.randint() ad ogni chiamata — stessa coppia di
 utenti o stesso testo devono dare sempre lo stesso risultato,
-altrimenti /ship @a @b darebbe un numero diverso ogni volta che
+altrimenti /fun ship @a @b darebbe un numero diverso ogni volta che
 qualcuno lo richiama, che sembra un bug più che una feature scherzosa
 (la gente si aspetta un risultato "loro", stabile, non un dado).
 """

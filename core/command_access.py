@@ -48,7 +48,7 @@ class Livello(enum.Enum):
 
 
 class TipoRuolo(enum.Enum):
-    """Ruoli del bot che l'admin sceglie nel passo di /setup."""
+    """Ruoli del bot che l'admin sceglie nel passo di /admin setup attiva."""
 
     ADMIN = SETTING_ADMIN_ROLE
     MOD = SETTING_MOD_ROLE

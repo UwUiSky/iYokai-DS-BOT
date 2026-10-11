@@ -39,7 +39,7 @@ async def test_ogni_gruppo_ha_al_massimo_25_sottocomandi_e_1_livello():
         assert not falliti, f"Cog falliti nel caricamento: {falliti}"
 
         gruppi_top_level = [
-            c for c in bot.tree.get_commands() if isinstance(c, app_commands.Group)
+            c for c in _radici(bot) if isinstance(c, app_commands.Group)
         ]
         assert gruppi_top_level, "Nessun gruppo top-level trovato: l'albero è vuoto?"
 
@@ -137,6 +137,17 @@ def conta_caratteri(nodo) -> int:
     return totale
 
 
+def _radici(bot):
+    """Comandi globali più `/owner`, che vive solo nel server dell'owner (gruppo condiviso)."""
+    from core.command_groups import GRUPPI
+
+    radici = list(bot.tree.get_commands())
+    assert bot.tree.get_command("owner") is None, "/owner non deve stare nell'albero globale"
+    if GRUPPI["owner"].commands:
+        radici.append(GRUPPI["owner"])
+    return radici
+
+
 def _tutti_i_nodi(radici):
     for nodo in radici:
         yield nodo
@@ -180,7 +191,7 @@ def test_conta_caratteri_segue_la_regola_ufficiale():
 async def test_caratteri_per_comando_di_primo_livello_sotto_8000():
     creato_qui, bot = await _albero_vero()
     try:
-        for cmd in bot.tree.get_commands():
+        for cmd in _radici(bot):
             n = conta_caratteri(cmd)
             assert n <= MAX_CARATTERI_COMANDO, (
                 f"'/{cmd.name}' pesa {n} caratteri: Discord rifiuta oltre "
@@ -196,7 +207,7 @@ async def test_allarme_caratteri_oltre_6800():
     try:
         sopra = {
             c.name: conta_caratteri(c)
-            for c in bot.tree.get_commands()
+            for c in _radici(bot)
             if conta_caratteri(c) > SOGLIA_ALLARME_CARATTERI
         }
         assert not sopra, (
@@ -215,8 +226,8 @@ async def test_nomi_unici_tra_fratelli():
             doppi = {n for n in nomi if nomi.count(n) > 1}
             assert not doppi, f"Nomi doppi in '{dove}': {sorted(doppi)}"
 
-        controlla(bot.tree.get_commands(), "primo livello")
-        for nodo in _tutti_i_nodi(bot.tree.get_commands()):
+        controlla(_radici(bot), "primo livello")
+        for nodo in _tutti_i_nodi(_radici(bot)):
             if isinstance(nodo, app_commands.Group):
                 controlla(nodo.commands, _percorso(nodo))
     finally:
@@ -226,7 +237,7 @@ async def test_nomi_unici_tra_fratelli():
 async def test_nomi_e_descrizioni_entro_i_limiti_e_regex():
     creato_qui, bot = await _albero_vero()
     try:
-        for nodo in _tutti_i_nodi(bot.tree.get_commands()):
+        for nodo in _tutti_i_nodi(_radici(bot)):
             nome = _percorso(nodo)
             assert REGEX_NOME.match(str(nodo.name)), f"Nome non valido: '{nome}'"
             assert str(nodo.name) == str(nodo.name).lower(), f"Nome non minuscolo: '{nome}'"
@@ -245,10 +256,29 @@ async def test_nomi_e_descrizioni_entro_i_limiti_e_regex():
         await _chiudi(creato_qui, bot)
 
 
+SOGLIA_DESCRIZIONE = 95  # sotto il limite di 100: margine per le traduzioni (F8)
+
+
+async def test_nessuna_descrizione_oltre_95_caratteri():
+    creato_qui, bot = await _albero_vero()
+    try:
+        lunghe = []
+        for nodo in _tutti_i_nodi(_radici(bot)):
+            if _len(nodo.description) > SOGLIA_DESCRIZIONE:
+                lunghe.append(f"{_percorso(nodo)}: {_len(nodo.description)}")
+            if isinstance(nodo, app_commands.Command):
+                for p in nodo.parameters:
+                    if _len(p.description) > SOGLIA_DESCRIZIONE:
+                        lunghe.append(f"{_percorso(nodo)} [{p.name}]: {_len(p.description)}")
+        assert not lunghe, f"Descrizioni oltre {SOGLIA_DESCRIZIONE} caratteri (limite 100): {lunghe}"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
 async def test_default_permissions_solo_al_primo_livello():
     creato_qui, bot = await _albero_vero()
     try:
-        radici = bot.tree.get_commands()
+        radici = _radici(bot)
         for radice in radici:
             if not isinstance(radice, app_commands.Group):
                 continue

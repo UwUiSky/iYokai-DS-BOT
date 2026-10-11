@@ -67,4 +67,5 @@ KNOWN_MISSING_DEFAULT_PERMISSIONS: frozenset[str] = frozenset(
 )
 
 # Comandi che oggi non sono guild_only (tutti, REVIEW.md LC-2).
-KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE) - _GRUPPI_YOKAI
+# `-cerca-comando` è guild_only (D24): tolto dal cricchetto.
+KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE) - _GRUPPI_YOKAI - {"-cerca-comando"}
