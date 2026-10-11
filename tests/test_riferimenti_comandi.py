@@ -1,8 +1,8 @@
 """
 tests/test_riferimenti_comandi.py
 =================================
-Ogni `/comando sotto...` citato in una stringa o docstring di cogs/ e
-core/ deve esistere nell'albero vero (tests/support/full_tree.py).
+Ogni `/comando sotto...` citato in una stringa o docstring di main.py,
+cogs/ e core/ deve esistere nell'albero vero (tests/support/full_tree.py).
 Così un comando spostato non lascia messaggi con il nome vecchio.
 Funzioni coperte: SPEC §20 (NF-05), F7 passo 4
 """
@@ -20,8 +20,8 @@ from tests.support.full_tree import build_full_bot, close_full_bot, connect_db_i
 
 RADICE = Path(__file__).resolve().parent.parent
 
-# `/nome` (non preceduto da lettere, `/`, `<`, `:`, `.`, `@`) seguito da fino a 3 parole.
-_RIFERIMENTO = re.compile(r"(?<![\w/<:.\-@#`'\"])/([a-z][a-z0-9_-]*)(?![\w/])((?: [a-z][a-z0-9_-]*){0,3})")
+# `/nome` (anche tra apici o virgolette; non preceduto da lettere, `/`, `<`, `:`, `.`, `@`) seguito da fino a 3 parole.
+_RIFERIMENTO = re.compile(r"(?<![\w/<:.\-@#])/([a-z][a-z0-9_-]*)(?![\w/])((?: [a-z][a-z0-9_-]*){0,3})")
 
 # Parole italiane che, dopo un gruppo, iniziano la frase e non sono un sotto-comando.
 _PAROLE_DI_FRASE = frozenset(
@@ -40,17 +40,17 @@ ECCEZIONI: frozenset[str] = frozenset(
 
 
 def riferimenti_nel_codice() -> list[tuple[str, int, str]]:
-    """(file, riga, riferimento grezzo) per ogni `/comando ...` nelle stringhe di cogs/ e core/."""
+    """(file, riga, riferimento grezzo) per ogni `/comando ...` nelle stringhe di main.py, cogs/ e core/."""
     trovati = []
-    for cartella in ("cogs", "core"):
-        for percorso in sorted((RADICE / cartella).rglob("*.py")):
-            albero = ast.parse(percorso.read_text(encoding="utf-8"))
-            for nodo in ast.walk(albero):
-                if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str):
-                    for m in _RIFERIMENTO.finditer(nodo.value):
-                        grezzo = "/" + m.group(1) + m.group(2)
-                        riga = nodo.lineno + nodo.value.count("\n", 0, m.start())
-                        trovati.append((str(percorso.relative_to(RADICE)), riga, grezzo))
+    file = [RADICE / "main.py"] + [p for c in ("cogs", "core") for p in sorted((RADICE / c).rglob("*.py"))]
+    for percorso in file:
+        albero = ast.parse(percorso.read_text(encoding="utf-8"))
+        for nodo in ast.walk(albero):
+            if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str):
+                for m in _RIFERIMENTO.finditer(nodo.value):
+                    grezzo = "/" + m.group(1) + m.group(2)
+                    riga = nodo.lineno + nodo.value.count("\n", 0, m.start())
+                    trovati.append((str(percorso.relative_to(RADICE)), riga, grezzo))
     return trovati
 
 
@@ -78,6 +78,8 @@ def test_il_riconoscitore_distingue_comandi_e_prosa():
     assert [g for _, _, g in _trovati_in("usa /admin setup attiva per attivarlo")] == ["/admin setup attiva per"]
     assert _trovati_in("vedi https://x.it/users/me e cogs/utility/setup.py") == []
     assert _trovati_in("percorso /guilds/123") == []
+    assert [g for _, _, g in _trovati_in("Run `/admin setup attiva`.")] == ["/admin setup attiva"]
+    assert [g for _, _, g in _trovati_in('scrivi "/setup" o \'/play\'')] == ["/setup", "/play"]
 
 
 def _trovati_in(testo: str) -> list[tuple[str, int, str]]:

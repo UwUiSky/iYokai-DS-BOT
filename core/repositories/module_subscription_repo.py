@@ -9,7 +9,7 @@ uno nativo utilizzabile da un bot normale, e questo progetto non
 processa mai pagamenti — vedi core/premium_purchase_service.py per
 lo stesso principio applicato al premium via cassa di server):
 il pagamento avviene FUORI dal bot (PayPal, bonifico, ecc.), e
-l'OWNER concede l'abbonamento a mano con `/owner premium-grant` dopo
+l'OWNER concede l'abbonamento a mano con `/owner premium grant` dopo
 averlo incassato — stesso schema "owner concede manualmente" già
 usato per whitelist/blacklist in questo stesso cog.
 

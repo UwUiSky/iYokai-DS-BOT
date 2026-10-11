@@ -412,7 +412,7 @@ class iYokaiBot(commands.AutoShardedBot):
         embed = discord.Embed(
             title="👋 Thanks for adding iYokai!",
             description=(
-                "Run `/setup` to choose which modules you want active on "
+                "Run `/admin setup attiva` to choose which modules you want active on "
                 "this server. Everything starts disabled until you turn it on."
             ),
             color=discord.Color.blurple(),
@@ -424,14 +424,14 @@ class iYokaiBot(commands.AutoShardedBot):
     ) -> bool:
         """
         Catena di fallback GENERICA (estratta da _send_welcome_message
-        quando è servita una seconda volta, per /owner announce —
+        quando è servita una seconda volta, per /owner system announce —
         SPEC.md §17.7): system_channel → primo canale scrivibile → DM
         al proprietario. `contesto` è solo per i log, non cambia il
         comportamento — permette di distinguere nei log "benvenuto
         fallito" da "annuncio fallito" senza duplicare la logica.
 
         Restituisce True se l'invio è riuscito con QUALCHE metodo,
-        False se tutti e tre hanno fallito — /owner announce lo usa
+        False se tutti e tre hanno fallito — /owner system announce lo usa
         per contare quanti server ha effettivamente raggiunto.
         """
         can_send_system = (
@@ -555,11 +555,11 @@ def avvisa_opzioni_rischiose() -> None:
             "abbonamento. Normale solo durante la fase alpha — imposta "
             "PREMIUM_ALPHA_UNLOCK_ALL=false in .env quando finisce."
         )
-    # SEC-13: /owner eval, /owner shell e /owner cog-load eseguono codice
+    # SEC-13: /owner system eval, /owner system shell e /owner cog load eseguono codice
     # arbitrario sulla macchina che ospita il bot.
     if config.ENABLE_EVAL:
         logger.warning(
-            "ENABLE_EVAL è attivo: /owner eval, /owner shell e /owner cog-load "
+            "ENABLE_EVAL è attivo: /owner system eval, /owner system shell e /owner cog load "
             "possono eseguire codice arbitrario su questa macchina. Normale solo "
             "in sviluppo — imposta ENABLE_EVAL=false in .env (o "
             "ENVIRONMENT=production) sul server vero."
@@ -589,7 +589,7 @@ async def main() -> None:
     # Le 5 istanze Music worker (SPEC.md §9.1) girano nello STESSO
     # processo del bot principale, come task asyncio concorrenti —
     # non 6 processi separati. Decisione presa per due motivi: (1)
-    # il bot principale deve poter instradare /play verso il worker
+    # il bot principale deve poter instradare /music play verso il worker
     # giusto con una semplice chiamata Python (self.bot.music_fleet),
     # non con una comunicazione tra processi che aggiungerebbe
     # latenza; (2) 6 processi separati moltiplicherebbero 6 volte
@@ -689,7 +689,7 @@ async def main() -> None:
     # webhook configurato (SEC-14): nessun motivo di tenere una porta
     # in ascolto per una funzione che nessun server usa. Se il primo
     # webhook viene creato dopo l'avvio, il server parte al riavvio
-    # successivo — /alerts webhook-create lo segnala nella risposta.
+    # successivo — /moduli alert webhook lo segnala nella risposta.
     custom_webhook_runner = None
     if await custom_webhook_repo.has_any_webhook():
         custom_webhook_app = custom_webhook_build_app(
@@ -701,13 +701,13 @@ async def main() -> None:
         )
         if not config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
             logger.info(
-                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /alerts webhook-create "
+                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /moduli alert webhook "
                 "mostrerà solo il token, non un URL completo, finché non viene impostata."
             )
     else:
         logger.info(
             "Nessun webhook custom configurato: server webhook disattivato "
-            "(si avvia da solo al prossimo riavvio, dopo il primo /alerts webhook-create)."
+            "(si avvia da solo al prossimo riavvio, dopo il primo /moduli alert webhook)."
         )
     bot.custom_webhook_server_running = custom_webhook_runner is not None
 

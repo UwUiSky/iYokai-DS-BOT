@@ -214,7 +214,7 @@ async def reload_premium_flags_from_database() -> None:
     Perché serve: ogni `PremiumModule` nasce con
     `is_premium_active=False` in `register()` (vedi sopra), quindi
     senza questa ricarica lo stato premium impostato con
-    `/owner premium-toggle` andrebbe perso ad ogni riavvio, anche se
+    `/owner premium toggle` andrebbe perso ad ogni riavvio, anche se
     la riga corrispondente resta persistita in
     `premium_module_flags` (scritta da `_apply_premium_toggle` in
     `cogs/utility/owner_premium.py`).
@@ -295,7 +295,7 @@ async def guild_has_premium_access(
     - pagamento mensile/annuale PER MODULO (`module_subscription_
       repo`) — sblocca SOLO il modulo `module_name` richiesto, non
       gli altri: nessun gateway di pagamento reale, l'owner concede
-      l'abbonamento a mano con `/owner premium-grant` dopo averlo
+      l'abbonamento a mano con `/owner premium grant` dopo averlo
       incassato fuori dal bot (vedi il file del repository)
     """
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
