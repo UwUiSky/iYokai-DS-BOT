@@ -11,8 +11,6 @@ gratuito in premium — e lo fa per tutti i server contemporaneamente
 altra logica.
 """
 
-# DA FARE (issue #69, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §13 (Owner).
 # DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
 
@@ -32,6 +30,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
+from core.blacklist_exit import esci_da_server_in_blacklist
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -941,11 +940,11 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         # Se il bot è già in quel server, ne esce subito — non ha
         # senso bloccare un server e restarci dentro fino al prossimo
         # riavvio o al prossimo controllo casuale.
-        guild_gia_presente = self.bot.get_guild(gid)
-        if guild_gia_presente is not None:
-            await guild_gia_presente.leave()
+        # M 13.2: escono il bot principale e i worker musicali.
+        usciti = await esci_da_server_in_blacklist(self.bot, gid)
+        if usciti:
             await interaction.response.send_message(
-                f"Server `{gid}` bloccato globalmente — il bot ne è appena uscito.",
+                f"Server `{gid}` bloccato globalmente — sono usciti {usciti} bot.",
                 ephemeral=True,
             )
         else:

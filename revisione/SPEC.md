@@ -1614,10 +1614,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 17.4 Blacklist globale utenti — cache come per i moduli,
   blocca ogni interazione tramite `BlacklistAwareCommandTree`
   → **Stato 04/10:** ora ferma anche bottoni, moduli e listener (SEC-10, SEC-21). (da verificare live)
-- `[~]` 17.5 Blacklist globale server — uscita automatica su
+- `[x]` 17.5 Blacklist globale server — uscita automatica su
   `on_guild_join` se già in blacklist, uscita immediata se aggiunto
   mentre il bot è già dentro
-  → **Stato 04/10:** esce solo il bot principale; gli altri bot restano (REVIEW §12).
+  → **Stato 11/10:** corretto (M 13.2): escono il bot principale e i cinque worker musicali
+  (`core/blacklist_exit.py`), sia al comando sia all'ingresso. (da verificare live)
 - `[x]` 17.6 Forced cog load / unload / reload — `/owner cog-load|
   cog-unload|cog-reload`. Due bug sistemici trovati e corretti
   facendolo: i nomi dei metodi Python collidevano con hook di ciclo
@@ -1666,17 +1667,29 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `/slowmode`, `/clear`, `/untimeout`, `/unmute-role`, scadenza dei
   tempban, azioni dell'escalation
 
-## §19 DATI, PRIVACY E GDPR — da fare (fase F5)
+## §19 DATI, PRIVACY E GDPR — fatto per i dati personali (fase F5); restano policy e intent
 
-- `[ ]` 19.1 Registro dei dati personali: ogni tabella con `user_id` o
-  `guild_id` è dichiarata, con il modo di cancellarla (NF-04)
-- `[ ]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
-  tranne ban e kick di sicurezza (D6, GDPR-1)
-- `[ ]` 19.3 Cancellazione dei dati di un utente su richiesta (GDPR-2)
-- `[ ]` 19.4 Esportazione dei dati di un utente in un file (art. 15)
-- `[ ]` 19.5 Pulizia giornaliera delle tabelle che crescono (GDPR-3,
-  PERF-3)
-- `[ ]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner
+- `[x]` 19.1 Registro dei dati personali: ogni tabella con `user_id` o
+  `guild_id` è dichiarata, con il modo di cancellarla (NF-04) —
+  `core/data_registry.py`, 86 tabelle (compresi `command_usage`,
+  `rank_card_prefs`, `event_log`, `log_ignora`, `output_channels`); un test legge lo
+  schema vero e fallisce se una tabella o una colonna con una persona non è dichiarata
+- `[x]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
+  tranne ban e kick di sicurezza (D6, GDPR-1) — `on_guild_remove` segna `guild_presence.left_at`
+  (migrazione 0034); un rientro prima dei 90 giorni azzera il conto; la colonna calcolata
+  `moderation_cases.retain_for_security` (0035) tiene ban, tempban, softban, kick (#46)
+  → **Scelta (da confermare):** la cancellazione richiesta dall'utente toglie tutto ciò che non è
+  di sicurezza e dice cosa resta; non rifiuta l'intera richiesta.
+- `[x]` 19.3 Cancellazione dei dati di un utente su richiesta (GDPR-2) —
+  `core/forget_user_service.py`, una transazione; richieste in `data_deletion_requests` (0036),
+  una in attesa per utente, esito senza dati personali, conservato 24 mesi
+- `[x]` 19.4 Esportazione dei dati di un utente in un file (art. 15) — JSON sotto 8 MiB,
+  senza token, tabelle grandi accorciate e dichiarate
+- `[x]` 19.5 Pulizia giornaliera delle tabelle che crescono (GDPR-3,
+  PERF-3) — `core/retention_worker.py` (scadenze nel registro: 30 giorni azioni concluse,
+  90 verifiche, 180 automod e trascrizioni, 365 sicurezza/storico/casse); `event_log.id` BIGINT (0037)
+- `[x]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner —
+  `/utility privacy esporta|cancella`, `/owner privacy richieste|approva|rifiuta`. (da verificare live)
 - `[ ]` 19.7 Privacy policy e termini pubblicati (serve anche per la
   verifica dell'app a 100 server)
 - `[ ]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato

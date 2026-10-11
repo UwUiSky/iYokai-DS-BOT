@@ -659,4 +659,28 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Con `premi modo:Sostituisci`, metti il ruolo-premio del livello alto sopra il ruolo del bot e fai salire un membro.
   Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
 - [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
-- [ ] Dati (NF-04, F5) — quando il registro esisterà: `rank_card_prefs` deve comparire in esportazione e cancellazione.
+- [ ] Dati (NF-04, F5) — `rank_card_prefs` compare in esportazione e sparisce con la cancellazione: vedi «Core e privacy».
+
+
+## Core e privacy — passaggio `feat/giro-core` (#70, #69, #145, #75, #19, #37, #46)
+
+- [ ] `NF-04` esportazione (#75) — passi:
+  1. Con un account di prova che ha XP, una rank card colorata e un `/level rank`, lancia `/utility privacy esporta`.
+  2. Rilancialo subito: deve rispondere che c'è un'attesa di 60 secondi.
+  Risultato atteso: un file JSON visibile solo a te, con `leveling_totals`, `rank_card_prefs`, `command_usage`; nessun token OAuth; il secondo lancio è rifiutato dal tempo di attesa.
+- [ ] `NF-04` cancellazione (#37, #46) — passi:
+  1. Con l'account di prova (che ha anche un avviso e un kick ricevuti): `/utility privacy cancella motivo:prova`. Ripeti: deve dire che c'è già una richiesta.
+  2. Come owner: `/owner privacy richieste` (nel server dell'owner), poi `/owner privacy approva richiesta:<numero>`.
+  3. Con l'account di prova: `/level rank` e `/utility privacy esporta`.
+  Risultato atteso: l'owner vede la richiesta; dopo l'approvazione l'utente riceve un messaggio privato con righe cancellate, rese anonime e conservate; XP e rank card sono spariti; l'avviso è sparito; il kick resta (e il messaggio lo dice). Con i messaggi privati chiusi l'approvazione riesce lo stesso e lo dice. `/owner privacy rifiuta` con un motivo: l'utente lo legge e nulla si cancella.
+- [ ] `NF-04` uscita dal server (#19, D6) — passi:
+  1. Fai uscire il bot da un server di prova (o toglilo): controlla `guild_presence.left_at` valorizzato.
+  2. Rientra entro pochi minuti: `left_at` torna vuoto e la configurazione del server è intatta.
+  3. Per la cancellazione dopo 90 giorni: imposta a mano `left_at` a 91 giorni fa e riavvia il bot (o aspetta il giro giornaliero).
+  Risultato atteso: i dati del server spariscono, restano solo ban e kick di sicurezza. Il bot non cancella mai un server in cui si trova.
+- [ ] `M 13.2` blacklist (#69) — `/owner blacklist server-add` per un server dove sono presenti bot principale e almeno un worker musicale: escono tutti; il messaggio dice quanti. Reinvitare un worker in quel server: uscita all'ingresso del principale (il worker da solo non controlla ancora la blacklist: apri una issue se serve).
+- [ ] `M 14.2` / `M 14.3` (#70) — passi:
+  1. Con un account senza permesso lancia un comando di moderazione: messaggio chiaro, nessun «errore imprevisto» nel log del bot (solo una riga INFO).
+  2. Prova un comando che fa `defer()` pubblico e poi fallisce (es. forzando un errore in sviluppo): il messaggio d'errore lo vede solo chi ha lanciato il comando e il «sta pensando» pubblico sparisce.
+- [ ] `M 14.4` scheduler (#70) — pianifica un promemoria da 1 minuto e un tempban breve: eseguiti entro 30-60 secondi; con la tabella `scheduled_actions` controlla che `claimed_at` torni vuoto dopo l'esecuzione.
+- [ ] `#145` premium (#145) — con il modulo Logging avanzato premium: aggiungi un server alla whitelist (`/owner premium whitelist-add`) e subito dopo genera un evento di log: il log arriva senza aspettare 60 secondi; rimuovilo dalla whitelist: smette subito.

@@ -56,6 +56,8 @@ from core.premium import reload_premium_flags_from_database
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
+from core.retention_worker import retention_worker
+from core.repositories.guild_presence_repo import guild_presence_repo
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.youtube_watcher import youtube_watcher
@@ -83,6 +85,7 @@ from core.custom_webhook_server import build_app as custom_webhook_build_app
 from core.custom_webhook_server import start_server as custom_webhook_start_server
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.music_worker_bot import MusicWorkerBot
+from core.blacklist_exit import esci_da_server_in_blacklist
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
 from core.premium import handle_app_command_error
@@ -252,6 +255,11 @@ class iYokaiBot(commands.AutoShardedBot):
         # stato Free/Premium. Stesso pattern di Memory Guard.
         event_log_retention.start(self)
 
+        # Privacy (NF-04, D6): ogni giorno cancella i dati dei server in cui il
+        # bot non c'è più da 90 giorni e le righe scadute delle tabelle che
+        # crescono. Parte dopo attendi_bot_pronto, come gli altri.
+        retention_worker.start(self)
+
         # Feed watcher (SPEC.md §10.3/10.7/10.8): polling ogni 5
         # minuti dei feed RSS/Atom sottoscritti (YouTube, Reddit,
         # RSS qualsiasi) — stesso pattern di Memory Guard/Retention.
@@ -394,12 +402,26 @@ class iYokaiBot(commands.AutoShardedBot):
                 guild.name,
                 guild.id,
             )
-            await guild.leave()
+            await esci_da_server_in_blacklist(self, guild.id, guild)
             return
 
         await db.ensure_guild_exists(guild.id)
+        await guild_presence_repo.segna_entrato(guild.id)  # NF-04: un rientro azzera i 90 giorni
         logger.info("Nuovo server: %s (ID: %s)", guild.name, guild.id)
         await self._send_welcome_message(guild)
+
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        """
+        NF-04 (#19, D6): il bot non è più nel server. I dati non si cancellano
+        subito: parte il conto dei 90 giorni (core/retention_worker.py). Se il
+        bot rientra prima, non si perde niente.
+        """
+        try:
+            await guild_presence_repo.segna_uscito(guild.id)
+        except Exception:
+            logger.exception("Uscita dal server %s non registrata.", guild.id)
+            return
+        logger.info("Uscito dal server %s: i dati restano 90 giorni.", guild.id)
 
     async def _send_welcome_message(self, guild: discord.Guild) -> None:
         embed = discord.Embed(
@@ -522,6 +544,7 @@ def _servizi_periodici() -> list:
         scheduler,
         memory_guard,
         event_log_retention,
+        retention_worker,
         feed_watcher,
         twitch_watcher,
         youtube_watcher,

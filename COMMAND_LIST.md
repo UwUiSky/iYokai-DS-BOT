@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:13 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:32 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 239 comandi in 16 categorie.**
+**Totale: 241 comandi in 16 categorie.**
 
 ## Admin
 
@@ -272,6 +272,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility poll`** — Crea un sondaggio (fino a 10 opzioni).
+- **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
+- **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.
 - **`/utility reactionsnipe`** — Mostra l'ultima reazione rimossa in questo canale.
 - **`/utility reminder cancel`** — Annulla un promemoria.
 - **`/utility reminder list`** — Mostra i tuoi promemoria in sospeso.
