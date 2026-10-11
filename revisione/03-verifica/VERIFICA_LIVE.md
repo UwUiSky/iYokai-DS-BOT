@@ -629,3 +629,9 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. Aggiungi, rinomina ed elimina un suono soundboard: una riga per evento, subito (senza aspettare 5 minuti), anche il primo.
   4. Dal 16/11/2026: dai/togli al bot l'accesso a un canale: nessun log con `___hidden___`.
   Risultato atteso: nessun doppione, nessun evento saltato.
+- [ ] Snipe, editsnipe e ghost ping (#74, NF-03; #61, M 5.9) — passi (serve `message_content` e il modulo `snipe` acceso):
+  1. Scrivi e cancella un messaggio con un allegato: `/utility snipe` lo mostra (testo e nome del file). Dopo 5 minuti: «Nessun messaggio da mostrare».
+  2. Modifica un messaggio: `/utility editsnipe` mostra prima e dopo. Un messaggio da 3000 caratteri: embed valido.
+  3. Spegni il modulo: i comandi dicono che non è attivo e il bot non ricorda niente.
+  4. Ghost ping: menziona un utente e cancella tu il messaggio: avviso nel canale dei log. Ripeti facendo cancellare il messaggio a un moderatore: nessun avviso. Cancella tu un secondo messaggio con menzione subito dopo che un moderatore ne ha cancellato un altro tuo: l'avviso deve comparire (il registro di Discord può unire le cancellazioni dello stesso moderatore: annota cosa succede).
+  Risultato atteso: nessun testo salvato su disco, nessun avviso per le cancellazioni dei moderatori.

@@ -1,41 +1,62 @@
 """
 core/snipe_logic.py
 =======================
-Logica pura per Reactionsnipe (SPEC.md §14.11) e Ghost ping detection
-(§14.12) — solo stringhe/int/bool qui dentro, niente discord.py.
+Logica pura per Snipe ed Editsnipe (SPEC.md §14.9, §14.10), Reactionsnipe
+(§14.11) e Ghost ping detection (§14.12) — solo stringhe, numeri e date,
+niente discord.py.
 
-Nota architetturale importante (stessa disciplina già applicata a
-SPEC.md §8.13/§8.8 — vedi PROGRESS.md Fase 70b — e a §13.10/§13.11):
-QUESTE due funzionalità sono state verificate una per una contro il
-Message Content Intent, non liquidate in blocco come "famiglia
-snipe = bloccata". Risultato della verifica:
-
-- Snipe (§14.9) ed Editsnipe (§14.10) mostrano il CONTENUTO del
-  messaggio cancellato/modificato — quel contenuto è vuoto sia in
-  on_message sia in on_message_delete/on_message_edit senza il
-  Message Content Intent (privilegio gateway, non richiesto da
-  questo bot — vedi SPEC.md §8.16 per la stessa decisione già presa
-  sul logging). Restano rimandati, stesso motivo di §8.16 — non
-  costruibili senza quell'intent, punto verificato sulla libreria
-  installata (discord.Intents.message_content.__doc__), non assunto.
-- Reactionsnipe (§14.11) NON ha bisogno del contenuto del messaggio:
-  on_raw_reaction_remove restituisce emoji, autore e ID messaggio,
-  nient'altro serve per "chi ha rimosso quale reazione da dove".
-- Ghost ping detection (§14.12) NON ha bisogno del contenuto: la
-  lista dei membri menzionati (Message.mentions) arriva dal campo
-  "mentions" del payload gateway, POPOLATO SEMPRE da Discord
-  indipendentemente dall'intent (verificato leggendo
-  Message._handle_mentions nella libreria installata: legge da un
-  campo a parte, non da un parsing del contenuto). Basta quindi
-  tracciare "questo messaggio menzionava qualcuno" (id autore + id
-  menzionati + timestamp, ZERO contenuto) in una cache leggera, e
-  controllare alla cancellazione se l'ID era tracciato.
+Snipe ed Editsnipe mostrano il testo del messaggio: servono il Message
+Content Intent (acceso, D9). Restano in memoria per pochi minuti e non
+vengono mai scritti su disco. Reactionsnipe e Ghost ping non leggono il
+testo: usano emoji, autore e l'elenco dei membri menzionati, che Discord
+manda sempre.
+Funzioni coperte: SPEC §14.9-§14.12 (NF-03, M 5.9)
 """
 
-# DA FARE (issue #74, fase F6): NF-03, Snipe ed editsnipe. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-
 from __future__ import annotations
+
+from datetime import datetime
+
+SNIPE_TTL_SECONDS = 5 * 60
+DESCRIZIONE_MAX = 4096
+# Un'azione del registro di controllo vale se è di pochi secondi fa (LIM-31).
+AUDIT_FINESTRA_SECONDI = 10
+
+
+def scaduto(creato: datetime, adesso: datetime, ttl: int = SNIPE_TTL_SECONDS) -> bool:
+    """True se il messaggio ricordato ha più di `ttl` secondi."""
+    return (adesso - creato).total_seconds() > ttl
+
+
+def testo_snipe(content: str, nomi_allegati: list[str]) -> str:
+    """Il testo da mostrare: contenuto (tagliato a 4096) e allegati; mai vuoto."""
+    parti = [content] if content else []
+    if nomi_allegati:
+        parti.append("📎 " + ", ".join(nomi_allegati))
+    testo = "\n".join(parti) or "*(nessun testo)*"
+    if len(testo) > DESCRIZIONE_MAX:
+        testo = testo[: DESCRIZIONE_MAX - 1] + "…"
+    return testo
+
+
+def cancellato_da_altri(
+    voci: list[tuple[int | None, int | None, int | None, float]],
+    author_id: int,
+    channel_id: int,
+) -> bool:
+    """
+    True se il registro di controllo dice che un messaggio dell'autore è stato
+    cancellato in quel canale da qualcun altro (un moderatore) poco fa.
+    Ogni voce è (chi ha cancellato, di chi era il messaggio, canale, secondi fa).
+    """
+    return any(
+        eseguito_da is not None
+        and eseguito_da != author_id
+        and bersaglio == author_id
+        and canale == channel_id
+        and eta <= AUDIT_FINESTRA_SECONDI
+        for eseguito_da, bersaglio, canale, eta in voci
+    )
 
 
 def is_ghost_ping_candidate(

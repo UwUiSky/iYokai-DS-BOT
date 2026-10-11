@@ -1192,27 +1192,24 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   cambiare), descrizione, timestamp → bottoni staff approva/rifiuta →
   notifica di ritorno al richiedente
   → **Stato 04/10:** due staff possono decidere insieme (REVIEW §5). I comandi creati dal server sono in §22 (NF-09).
-- `[ ]` 14.9 Snipe — **rimandato deliberatamente, stesso motivo di
-  §8.16**: mostrare il testo del messaggio cancellato richiede il
-  contenuto, azzerato sia in `on_message` (dove andrebbe cache-ato
-  in anticipo) sia in `on_message_delete` senza il Message Content
-  Intent — verificato punto per punto (non liquidato in blocco come
-  errore fatto su §8.13/§8.8, vedi PROGRESS.md Fase 70b), a
-  differenza di 14.11/14.12 sotto, che infatti SONO stati costruiti
-  → **Stato 04/10:** l'intent è acceso dal 04/10. In piano: NF-03, fase F6.
-- `[ ]` 14.10 Editsnipe — stesso motivo di 14.9 (before/after content)
-  → **Stato 04/10:** in piano: NF-03, fase F6.
+- `[x]` 14.9 Snipe — `/utility snipe`: l'ultimo messaggio cancellato nel
+  canale (testo tagliato a 4096, allegati per nome), ricordato 5
+  minuti solo in memoria, solo se il server accende il modulo `snipe`
+  (privacy). Niente menzioni vere nella risposta (NF-03, issue #74)
+- `[x]` 14.10 Editsnipe — `/utility editsnipe`: ultima modifica con
+  prima e dopo (campi 1024), stesse regole di 14.9
 - `[x]` 14.11 Reactionsnipe — `/reactionsnipe`, NON richiede il
   Message Content Intent: `on_raw_reaction_remove` restituisce
   emoji/autore/messaggio senza bisogno del contenuto del messaggio.
   Stato in memoria (non persistito, come tutti i bot "snipe")
-- `[~]` 14.12 Ghost ping detection — traccia in memoria i messaggi
+- `[x]` 14.12 Ghost ping detection — traccia in memoria i messaggi
   con menzioni (`Message.mentions`, popolato da un campo gateway a
   parte dal contenuto — non azzerato dall'intent, verificato
   leggendo `Message._handle_mentions` nella libreria installata) e
   segnala nel canale log se vengono cancellati, senza mai leggere il
-  testo del messaggio
-  → **Stato 04/10:** segnala anche i messaggi cancellati dai moderatori (REVIEW §5).
+  testo del messaggio. Non segnala se il registro di controllo dice che
+  l'ha cancellato un moderatore (M 5.9; se il registro non è leggibile
+  vale la regola di prima); scrive nella destinazione «messaggi» del router
 - `[~]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
   (5s) per non cancellare+reinviare ad ogni singolo messaggio in un
   canale attivo

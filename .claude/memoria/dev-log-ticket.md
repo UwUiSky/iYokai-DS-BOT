@@ -4,8 +4,8 @@
 11/10/2026 · ramo `feat/giro-logt` (copia /home/claude/wt/logt) · base `0e7753a`
 
 ## In corso
-- Giro: #61 (5.1, 5.2, 5.5-5.9), #145 (lato log), NF-01/02/03. Previsto: 3 gruppi (log+router, snipe, rapporto).
-- Gruppo 1 fatto (router, messaggi, 5.5-5.8). Prossimo: NF-03 snipe/editsnipe + 5.9 ghost ping in `cogs/utility/snipe.py` e `core/snipe_logic.py`; test `tests/test_snipe_messaggi.py`.
+- Giro finito: gruppo 1 (log+router) e gruppo 2 (snipe, 5.9) chiusi. Restano fuori: NF-13/6.9 (F9), #145 lato premium.
+- Prossimo: smoke del ramo (`scripts/smoke.py --base 0e7753a`, in background), push, rapporto.
 
 ## Fatto
 - F1, moderazione + log + ticket + vocali: unito su main con
@@ -21,6 +21,8 @@
 - F7 3b (#76): ticket in `/ticket` + `/gestione ticket`, vocali in `/voice` + `/gestione voice` (commit `65a80ed`, `99e23ce`).
 
 - Giro logt, gruppo 1: NF-01 router (`core/channel_router.py`, migr. 0028, tipi eventi/messaggi/voce/server), `/log crea-canali|crea-forum|ignora`, NF-02 `message_logs.py` (migr. 0029), 5.5 avviso unico, 5.6 spostamenti raggruppati + mute proprio, 5.7 soundboard da eventi (servizio ora segnaposto), 5.8 `___hidden___`, #145 `invalida_verdetto_premium`.
+
+- Giro logt, gruppo 2: NF-03 `/utility snipe|editsnipe` (modulo `snipe`, 5 min, solo memoria), M 5.9 ghost ping non scatta se cancella un moderatore (registro), ghost ping via router.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
@@ -39,6 +41,8 @@
 - Router: destinazione = riga `output_channels` del tipo, altrimenti `log_channel_id`. I test dei log senza DB usano `tests/support/router_fakes.router_senza_scelte`; il canale finto deve avere `.guild = server`.
 - Il log dei messaggi usa `logging_avanzato_attivo` (premium); ignora i bot; la modifica di un messaggio fuori cache non si vede (si usa `on_message_edit`).
 - Il proprietario si trova con `guild.get_member(guild.owner_id)`, non con `guild.owner`.
+
+- Un nome `test*` importato in un file di test viene raccolto da pytest: importare il modulo, non la funzione.
 
 ## Aperto
 - main.py (non mio) importa ancora `soundboard_log_service`: si può togliere (il servizio non ha più ciclo).

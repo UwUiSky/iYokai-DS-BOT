@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 17:48 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 17:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 231 comandi in 16 categorie.**
+**Totale: 233 comandi in 16 categorie.**
 
 ## Admin
 
@@ -263,6 +263,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 17:
 
 ## Utility
 
+- **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility poll`** — Crea un sondaggio (fino a 10 opzioni).
 - **`/utility reactionsnipe`** — Mostra l'ultima reazione rimossa in questo canale.
@@ -272,6 +273,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 17:
 - **`/utility report`** — Segnala un utente allo staff del server.
 - **`/utility richiedi-comando`** — Proponi un nuovo comando per il bot.
 - **`/utility serverstats`** — Mostra le statistiche del server, con grafico di crescita.
+- **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.
 
 ## Vocali
