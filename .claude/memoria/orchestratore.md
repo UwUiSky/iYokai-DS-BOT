@@ -1,7 +1,7 @@
 # Memoria dell'orchestratore
 
 ## Aggiornata
-05/10/2026, sera · ramo `main` · tutto pubblicato
+11/10/2026 · ramo `main` · F7 unita
 
 ## Dove siamo
 - Il bot è in **zero server**. Nessuna prova live fatta: tutte le voci
@@ -38,19 +38,17 @@
   il controllo automatico che chiede di cambiare autore si ignora.
 
 ## In corso
-- **F7 (D24) in corso.** Fatto: quadro unito (`core/command_groups.py`,
-  `core/command_access.py`, test dell'albero; 16 gruppi + `/cerca-comando`
-  e `/chiedi` di primo livello). Mappa: `revisione/02-piano/MAPPA_COMANDI_F7.md`.
-  **Prossimo: spostare i comandi per area** (un agente alla volta o due su cog
-  diversi), poi passo di `/setup` per i ruoli admin/mod/modban
-  (`imposta_ruolo`), pannello di `/cerca-comando` (D24), `COMMAND_LIST.md`,
-  SPEC, suite completa. Un `Group` semplice sotto un gruppo protetto fallisce:
-  usare `GruppoYokai`. Autocomplete sotto gruppi protetti: `autocomplete_protetto`.
-- Suite completa dopo F7 da lanciare con `nohup`.
+- **F7 (D24) unita in main (11/10).** 16 gruppi + `-cerca-comando` e `-chiedi`
+  (col trattino), `/owner` solo nel server dell'owner, sync con hash.
+  Suite 3467 verdi. `COMMAND_LIST.md` rigenerato (220 comandi, senza `/owner`).
+  Restano: simboli SPEC e voci `VERIFICA_LIVE.md` per F7, passo di `/setup`
+  per i ruoli (`imposta_ruolo`), pannello di `-cerca-comando` (#147),
+  visibilità per ruolo via OAuth (#148). Un `Group` semplice sotto un gruppo
+  protetto fallisce: usare `GruppoYokai`.
 
 ## Coda (in ordine)
 1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
-2. **F7 spostamento comandi** (sopra), poi #66/#67 (utilità), #71, #69/#70.
+2. **#147, #148, SPEC/VERIFICA_LIVE di F7**, poi #66/#67 (utilità), #71, #69/#70.
 3. Voci rimaste in #57–#62, #65 (ultimo commento di ognuna).
 4. Dopo F7: simboli SPEC, `COMMAND_LIST.md` rigenerato, prove live
    (`VERIFICA_LIVE.md`, anche l'ordine dei comandi).
