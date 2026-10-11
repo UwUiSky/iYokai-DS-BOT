@@ -1,15 +1,15 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G2 chiuso
+11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G3 chiuso
 
 ## In corso
 - Previsione: 6 gruppi (G1 sticky/benvenuto/programmati/promemoria; G2 role menu; G3 suggerimenti+richieste;
   G4 owner_premium; G5 modules_updated; G6 chiusura). Migrazioni 0027 (ping_ruoli) usata; 0028 libera.
-- Prossimo: G3 `suggestions.py` + `custom_command_requests.py` (M 10.9), test prima: tests/test_suggestions_limiti.py.
+- Prossimo: G4 `owner_premium.py` (M 10.12): liste a pagine, pannello premium a 25, Range 4000 su eval/shell; test prima: tests/test_owner_premium_limiti.py. Vista a pagine in `cogs/utility/_owner_pagine.py`.
 
 ## Fatto
-- #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7 fatto (AUDIT_UTILITA.md).
+- #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7 e G3 10.9 fatti (AUDIT_UTILITA.md).
 
 ## Cose imparate
 - Ping nei testi admin: `core/admin_mentions_logic.py` (menzioni_ammesse, puo_pingare_ruoli); il permesso si salva a configurazione.
@@ -17,6 +17,7 @@
 - Handler dello scheduler: se rilancia l'errore l'azione viene ritentata; per errori permanenti avvisare l'autore e non rilanciare.
 - Fake dei test: `send(content, **kwargs)` per accettare `allowed_mentions`.
 - Role menu: pubblicare PRIMA (`_pubblica_menu` con l'elenco futuro), salvare DOPO; `valida_emoji` in core/role_menu_logic.
+- Decisioni staff (suggerimenti, richieste): `UPDATE … WHERE status='pending' RETURNING`, mai leggi-poi-scrivi.
 - Registro: i comandi di gruppo si provano con `cog.metodo.callback(cog, interaction, ...)`; limiti con `comando_nel_gruppo(...).to_dict(bot.tree)`.
 (vedi sotto: le trappole di #147/#67 restano valide)
 - Lo stato (last_seen, last_known_live) avanza solo dopo `send` riuscito; ETag solo se nulla da ritentare.

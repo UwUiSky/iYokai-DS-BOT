@@ -28,3 +28,7 @@ chiude la riga; il test è il file che la prova.
 | `cogs/utility/role_menus.py` | messaggio del menu cancellato a mano: ogni modifica falliva in silenzio | ripubblicato al posto di quello sparito | G2 | idem |
 | `cogs/utility/role_menus.py` | solo `Forbidden` catturato in bottone, tendina e reazioni | `HTTPException` con risposta all'utente | G2 | idem |
 | `cogs/utility/role_menus.py` | all'avvio un menu rimasto senza opzioni registrava una View vuota | saltato | G2 | idem |
+| `cogs/utility/suggestions.py` + `core/repositories/suggestion_repo.py` | M 10.9: due staff che decidono insieme sovrascrivevano la decisione (leggi poi scrivi) | `set_status` = `UPDATE … WHERE status = 'pending' RETURNING`; chi perde legge "già deciso" | G3 | `tests/test_suggestions_limiti.py` |
+| `cogs/utility/suggestions.py` | `/suggest` lavorava (salva, pubblica, reagisce) prima di rispondere; testo senza limite (embed 4096) | `defer()` e followup; `Range[str,1,2000]` | G3 | idem |
+| `cogs/utility/suggestions.py` | invio fallito (non solo `Forbidden`) lasciava una riga senza messaggio, con eccezione non gestita | `HTTPException` gestita, riga cancellata, l'utente lo sa | G3 | idem |
+| `cogs/utility/custom_command_requests.py` + repo | stessa decisione non atomica; pubblicazione prima di rispondere; richiesta "salvata" ma mai visibile se l'invio falliva | `set_status` atomico, `defer()`, riga cancellata se l'invio fallisce; DM al richiedente senza menzioni | G3 | idem |

@@ -104,18 +104,30 @@ class SuggestionRepository:
 
     async def set_status(
         self, suggestion_id: int, status: str, decided_by: int, decided_at: datetime
-    ) -> None:
-        await self._pool.execute(
+    ) -> bool:
+        """
+        Decide un suggerimento SOLO se è ancora in attesa (M 10.9): con due
+        membri dello staff che cliccano insieme ne vince uno, l'altro
+        riceve False. Una sola istruzione, nessuna lettura prima.
+        """
+        riga = await self._pool.fetchrow(
             """
             UPDATE suggestions
             SET status = $2, decided_by = $3, decided_at = $4
-            WHERE id = $1
+            WHERE id = $1 AND status = $5
+            RETURNING id
             """,
             suggestion_id,
             status,
             decided_by,
             decided_at,
+            PENDING,
         )
+        return riga is not None
+
+    async def delete_suggestion(self, suggestion_id: int) -> None:
+        """Toglie un suggerimento mai pubblicato (invio fallito)."""
+        await self._pool.execute("DELETE FROM suggestions WHERE id = $1", suggestion_id)
 
     async def list_pending(self, guild_id: int | None = None) -> list[Suggestion]:
         """

@@ -161,12 +161,17 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await custom_command_request_repo.set_status(
+        deciso = await custom_command_request_repo.set_status(
             request_id,
             new_status,
             decided_by=interaction.user.id,
             decided_at=datetime.now(timezone.utc),
         )
+        if not deciso:  # M 10.9: un altro dello staff ha deciso un istante prima
+            await interaction.response.send_message(
+                "Questa richiesta è già stata decisa.", ephemeral=True
+            )
+            return
 
         request_aggiornata = await custom_command_request_repo.get_request(request_id)
         embed = _build_embed(request_aggiornata)
@@ -181,7 +186,8 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
             )
             esito = "approvata ✅" if new_status == APPROVED else "rifiutata ❌"
             await richiedente.send(
-                f"La tua richiesta per il comando `{request.command_name}` è stata {esito}."
+                f"La tua richiesta per il comando `{request.command_name}` è stata {esito}.",
+                allowed_mentions=discord.AllowedMentions.none(),
             )
         except discord.HTTPException:
             logger.warning(
@@ -215,6 +221,8 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        # LIM-25: salvataggio e pubblicazione sono più chiamate: defer subito.
+        await interaction.response.defer(ephemeral=True)
         request_id = await custom_command_request_repo.create_request(
             requester_guild_id=interaction.guild.id if interaction.guild else 0,
             requester_guild_name=interaction.guild.name if interaction.guild else "DM",
@@ -230,10 +238,11 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
 
         try:
             messaggio = await channel.send(embed=embed, view=view)
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "Richiesta salvata, ma non è stato possibile pubblicarla — "
-                "contatta lo staff.",
+        except discord.HTTPException:
+            # Una richiesta senza messaggio non la vedrebbe nessuno: si toglie.
+            await custom_command_request_repo.delete_request(request_id)
+            await interaction.followup.send(
+                "Non è stato possibile inviare la richiesta allo staff. Riprova più tardi.",
                 ephemeral=True,
             )
             return
@@ -241,7 +250,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
         await custom_command_request_repo.set_message_id(request_id, messaggio.id)
         self.bot.add_view(view, message_id=messaggio.id)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "Richiesta inviata! Riceverai un DM quando verrà decisa.", ephemeral=True
         )
 
