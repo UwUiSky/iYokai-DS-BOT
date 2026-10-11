@@ -13,9 +13,6 @@ invece che alla vera api.twitch.tv — stesso principio già usato per
 core/feed_watcher.py (lì con aiohttp.test_utils.TestServer).
 """
 
-# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
-
 from __future__ import annotations
 
 import logging
@@ -27,6 +24,8 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.config import config
+from core.feed_alert_gate import filtra_attive
+from core.template_renderer import render_template
 from core.twitch_api_logic import parse_app_access_token_response, parse_get_streams_response
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
 
@@ -42,6 +41,9 @@ TWITCH_STREAMS_URL = "https://api.twitch.tv/helix/streams"
 # Margine di sicurezza prima della scadenza reale del token, per non
 # rischiare di usarne uno scaduto proprio mentre sta per spirare.
 TOKEN_REFRESH_MARGIN_SECONDS = 60
+# LIM-46: Get Streams accetta al massimo 100 login per richiesta e
+# restituisce 20 stream per pagina se `first` non è indicato.
+MAX_LOGIN_PER_RICHIESTA = 100
 
 
 class TwitchWatcherService:
@@ -119,6 +121,7 @@ class TwitchWatcherService:
 
         sessione = self._get_session()
         parametri = [("user_login", login) for login in logins]
+        parametri.append(("first", str(MAX_LOGIN_PER_RICHIESTA)))
         try:
             async with sessione.get(
                 self._streams_url,
@@ -129,6 +132,13 @@ class TwitchWatcherService:
                 },
                 timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
             ) as risposta:
+                if risposta.status == 401:
+                    # Token revocato o scaduto prima del previsto: lo
+                    # buttiamo, il prossimo giro ne chiede uno nuovo.
+                    self._access_token = None
+                    self._token_expires_at = None
+                    logger.warning("Token Twitch rifiutato (401): ne chiedo uno nuovo al prossimo giro.")
+                    return None
                 if risposta.status != 200:
                     logger.warning(
                         "Richiesta a Get Streams fallita con status %d, salto questo giro.",
@@ -147,23 +157,25 @@ class TwitchWatcherService:
 
     async def tick(self, bot: commands.Bot) -> None:
         sottoscrizioni = await twitch_subscription_repo.get_all_subscriptions()
+        # LC-7: server con il modulo spento = nessuna richiesta, nessun messaggio.
+        sottoscrizioni = await filtra_attive(sottoscrizioni)
         if not sottoscrizioni:
             return
 
-        logins = [s.twitch_login for s in sottoscrizioni]
-        # Un'unica chiamata batch per TUTTI i login sottoscritti (fino
-        # a 100 per richiesta secondo i limiti Twitch), invece di una
-        # chiamata per sottoscrizione — molto più leggero sui limiti
-        # di rate dell'API con tanti server/streamer sottoscritti.
-        payload = await self._fetch_streams(logins)
-        if payload is None:
-            return
-
-        stati = parse_get_streams_response(payload, logins)
-        stato_per_login = {s.login: s for s in stati}
+        # Login unici (lo stesso streamer può essere seguito da più
+        # server), in blocchi da 100: una richiesta per blocco.
+        logins = list(dict.fromkeys(s.twitch_login.lower() for s in sottoscrizioni))
+        stato_per_login = {}
+        for i in range(0, len(logins), MAX_LOGIN_PER_RICHIESTA):
+            blocco = logins[i : i + MAX_LOGIN_PER_RICHIESTA]
+            payload = await self._fetch_streams(blocco)
+            if payload is None:
+                continue  # le sottoscrizioni di questo blocco restano com'erano
+            for stato in parse_get_streams_response(payload, blocco):
+                stato_per_login[stato.login] = stato
 
         for sottoscrizione in sottoscrizioni:
-            stato = stato_per_login.get(sottoscrizione.twitch_login)
+            stato = stato_per_login.get(sottoscrizione.twitch_login.lower())
             if stato is None:
                 continue
 
@@ -189,14 +201,18 @@ class TwitchWatcherService:
                 continue
 
             if appena_andato_live:
-                messaggio = sottoscrizione.live_message_template.format(
-                    label=sottoscrizione.label,
-                    title=stato.title or "",
-                    login=sottoscrizione.twitch_login,
+                messaggio = render_template(
+                    sottoscrizione.live_message_template,
+                    {
+                        "label": sottoscrizione.label,
+                        "title": stato.title or "",
+                        "login": sottoscrizione.twitch_login,
+                    },
                 )
             else:
-                messaggio = sottoscrizione.offline_message_template.format(
-                    label=sottoscrizione.label, login=sottoscrizione.twitch_login
+                messaggio = render_template(
+                    sottoscrizione.offline_message_template,
+                    {"label": sottoscrizione.label, "login": sottoscrizione.twitch_login},
                 )
 
             try:
