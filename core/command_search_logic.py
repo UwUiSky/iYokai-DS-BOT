@@ -140,22 +140,30 @@ class ComandoInfo:
     descrizione: str
     gruppo: str  # il comando di primo livello
     opzioni: tuple[Opzione, ...]
+    # Livelli richiesti per usarlo: quelli dei gruppi sopra di lui (`GruppoYokai.livello`)
+    # e quelli dei suoi `@richiedi`.
+    livelli: tuple = ()
 
 
-def raccogli_comandi(comandi: Iterable, prefisso: str = "") -> list[ComandoInfo]:
+def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ()) -> list[ComandoInfo]:
     """Cammina l'albero (gruppi annidati compresi) e dà un `ComandoInfo` per ogni comando foglia."""
     risultati: list[ComandoInfo] = []
     for cmd in comandi:
         percorso = f"{prefisso} {cmd.name}".strip()
         if isinstance(cmd, app_commands.Group):
-            risultati.extend(raccogli_comandi(cmd.commands, percorso))
+            proprio = getattr(cmd, "livello", None)
+            risultati.extend(raccogli_comandi(cmd.commands, percorso, livelli + ((proprio,) if proprio else ())))
             continue
+        dei_check = tuple(l for l in (getattr(c, "livello", None) for c in getattr(cmd, "checks", ())) if l)
         opzioni = tuple(
             Opzione(p.name, str(p.description or ""), bool(p.required))
             for p in getattr(cmd, "parameters", ())
         )
         risultati.append(
-            ComandoInfo(percorso, cmd.description or "(nessuna descrizione)", percorso.split(" ")[0], opzioni)
+            ComandoInfo(
+                percorso, cmd.description or "(nessuna descrizione)", percorso.split(" ")[0], opzioni,
+                livelli + dei_check,
+            )
         )
     return risultati
 
@@ -261,23 +269,18 @@ def suggerimenti(query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_S
     return risultato
 
 
-async def gruppi_accessibili(
-    nomi: Iterable[str],
-    livello_di: Callable[[str], object | None],
-    puo: Callable[[object], Awaitable[bool]],
-) -> list[str]:
-    """Tiene i gruppi senza livello e quelli il cui livello `puo` ammette (una domanda per livello)."""
+async def filtra_per_livelli(
+    comandi: Iterable[ComandoInfo], puo: Callable[[object], Awaitable[bool]]
+) -> list[ComandoInfo]:
+    """Tiene i comandi i cui livelli sono tutti ammessi da `puo` (una domanda per livello distinto)."""
     memo: dict[object, bool] = {}
     visibili = []
-    for nome in nomi:
-        livello = livello_di(nome)
-        if livello is None:
-            visibili.append(nome)
-            continue
-        if livello not in memo:
-            memo[livello] = bool(await puo(livello))
-        if memo[livello]:
-            visibili.append(nome)
+    for c in comandi:
+        for livello in c.livelli:
+            if livello not in memo:
+                memo[livello] = bool(await puo(livello))
+        if all(memo[l] for l in c.livelli):
+            visibili.append(c)
     return visibili
 
 
@@ -351,35 +354,55 @@ class CacheIdComandi:
     ID dei comandi di primo livello, letti da Discord (`fetch_commands`) per le menzioni
     cliccabili. Si ricarica quando scade (`ttl`), quando serve un comando che manca
     (comando nuovo dopo una sync) non più spesso di ogni `attesa_minima` secondi, o dopo
-    `invalida()`. Un errore di Discord non solleva: restano i vecchi ID.
+    `invalida()`. La lettura corre fuori dal lock, in un unico compito condiviso, e chi
+    aspetta non supera `timeout` secondi: poi usa i vecchi ID (la lettura continua da sola).
+    Un errore di Discord non solleva e non cancella l'invalidazione.
     """
 
-    def __init__(self, ttl: float = 3600.0, attesa_minima: float = 60.0, orologio: Callable[[], float] = time.monotonic):
+    def __init__(
+        self,
+        ttl: float = 3600.0,
+        attesa_minima: float = 60.0,
+        orologio: Callable[[], float] = time.monotonic,
+        timeout: float = 2.0,
+    ):
         self.ttl = ttl
         self.attesa_minima = attesa_minima
+        self.timeout = timeout
         self._orologio = orologio
         self._ids: dict[str, int] = {}
         self._caricata: float | None = None
         self._tentativo: float | None = None
         self._forzata = False
         self._lock = asyncio.Lock()
+        self._compito: asyncio.Task | None = None
 
     def invalida(self) -> None:
         """Da chiamare dopo ogni sync dei comandi: il prossimo uso ricarica gli ID."""
         self._forzata = True
 
+    async def _carica(self, fetch, adesso: float) -> None:
+        try:
+            self._ids = {c.name: c.id for c in await fetch()}
+            self._caricata = adesso
+            self._forzata = False  # azzerata solo se la lettura riesce
+        except Exception as exc:
+            logger.warning("ID dei comandi non letti (%s): uso quelli vecchi.", type(exc).__name__)
+
     async def ottieni(self, fetch: Callable[[], Awaitable[Iterable]], serve: Iterable[str] = ()) -> dict[str, int]:
-        async with self._lock:
+        async with self._lock:  # solo la decisione: nessuna chiamata a Discord qui dentro
             adesso = self._orologio()
-            scaduta = self._caricata is None or adesso - self._caricata >= self.ttl
-            manca = any(n not in self._ids for n in serve)
-            puo_tentare = self._tentativo is None or adesso - self._tentativo >= self.attesa_minima
-            if self._forzata or (puo_tentare and (scaduta or manca)):
-                self._tentativo = adesso
-                self._forzata = False
-                try:
-                    self._ids = {c.name: c.id for c in await fetch()}
-                    self._caricata = adesso
-                except Exception as exc:
-                    logger.warning("ID dei comandi non letti (%s): uso quelli vecchi.", type(exc).__name__)
-            return dict(self._ids)
+            if self._compito is None or self._compito.done():
+                scaduta = self._caricata is None or adesso - self._caricata >= self.ttl
+                manca = any(n not in self._ids for n in serve)
+                puo_tentare = self._tentativo is None or adesso - self._tentativo >= self.attesa_minima
+                if self._forzata or (puo_tentare and (scaduta or manca)):
+                    self._tentativo = adesso
+                    self._compito = asyncio.ensure_future(self._carica(fetch, adesso))
+            compito = self._compito if self._compito is not None and not self._compito.done() else None
+        if compito is not None:
+            try:
+                await asyncio.wait_for(asyncio.shield(compito), timeout=self.timeout)
+            except asyncio.TimeoutError:
+                logger.warning("Lettura degli ID dei comandi lenta: uso quelli vecchi.")
+        return dict(self._ids)

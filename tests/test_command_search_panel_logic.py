@@ -99,16 +99,20 @@ def test_cerca_senza_corrispondenze_e_vuota():
     assert L.cerca("zzzqqq", L.raccogli_comandi(_albero())) == []
 
 
-async def test_filtra_per_accesso_tiene_solo_i_gruppi_consentiti():
+async def test_filtra_per_livelli_tiene_solo_i_comandi_consentiti():
     chiamate = []
 
     async def puo(livello):
         chiamate.append(livello)
         return livello == "mod"
 
-    livelli = {"mod": "mod", "modban": "modban", "fun": None}
-    visibili = await L.gruppi_accessibili(["mod", "modban", "fun", "-chiedi"], livelli.get, puo)
-    assert visibili == ["mod", "fun", "-chiedi"]
+    def c(nome, *livelli):
+        return L.ComandoInfo(nome, "d", nome, (), tuple(livelli))
+
+    visibili = await L.filtra_per_livelli(
+        [c("a", "mod"), c("b", "modban"), c("c"), c("d", "mod", "modban"), c("e", "modban")], puo
+    )
+    assert [v.percorso for v in visibili] == ["a", "c"]
     assert chiamate.count("modban") == 1
 
 

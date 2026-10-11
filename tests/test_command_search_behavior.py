@@ -31,13 +31,26 @@ class _FakeResponse:
     async def edit_message(self, embed=None, view=None) -> None:
         self.edited_embeds.append(embed)
 
+    async def defer(self, **_) -> None:
+        pass
+
     async def send_modal(self, modal) -> None:
         self.sent_modals.append(modal)
+
+
+class _FakeFollowup:
+    def __init__(self, response) -> None:
+        self._r = response
+
+    async def send(self, embed=None, view=None, **_) -> None:
+        await self._r.send_message(embed=embed, view=view)
 
 
 class _FakeInteraction:
     def __init__(self) -> None:
         self.response = _FakeResponse()
+        self.guild_id = None
+        self.followup = _FakeFollowup(self.response)
         self.guild = None  # come in DM: nessun accesso a gruppi protetti
         self.user = type("U", (), {"id": 1})()
 

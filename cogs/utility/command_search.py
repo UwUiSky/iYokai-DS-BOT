@@ -90,31 +90,23 @@ class CommandSearchCog(commands.Cog):
     # ------------------------------------------------------------------
     async def _ids(self, interaction: discord.Interaction, serve=()) -> dict[str, int]:
         """ID dei comandi da Discord (`fetch_commands`). Nel server dell'owner contano anche i comandi del server."""
-        guild = interaction.guild
-        if guild is not None and guild.id == config.MAIN_GUILD_ID:
+        guild_id = interaction.guild_id
+        if guild_id is not None and guild_id == config.MAIN_GUILD_ID:
             async def fetch():
                 globali = await self.bot.tree.fetch_commands()
-                del_server = await self.bot.tree.fetch_commands(guild=discord.Object(id=guild.id))
+                del_server = await self.bot.tree.fetch_commands(guild=discord.Object(id=guild_id))
                 return [*globali, *del_server]  # quelli del server vincono
 
             return await self.cache_ids_main.ottieni(fetch, serve)
         return await self.cache_ids.ottieni(self.bot.tree.fetch_commands, serve)
 
     async def _comandi_accessibili(self, interaction: discord.Interaction) -> list[logica.ComandoInfo]:
-        radici = self.bot.tree.get_commands()
-        gruppi_albero = {c.name for c in radici if isinstance(c, app_commands.Group)}
-        tutti = logica.raccogli_comandi(radici)
-        gruppi = sorted({c.gruppo for c in tutti if c.gruppo in gruppi_albero})
+        """I comandi che l'utente può usare: livello dei gruppi e `@richiedi` di ogni comando (albero vero)."""
 
         async def puo(livello):
             return await puo_usare(interaction, livello)
 
-        visibili = set(
-            await logica.gruppi_accessibili(
-                gruppi, lambda n: getattr(GRUPPI.get(n), "livello", None), puo
-            )
-        )
-        return [c for c in tutti if c.gruppo not in gruppi_albero or c.gruppo in visibili]
+        return await logica.filtra_per_livelli(logica.raccogli_comandi(self.bot.tree.get_commands()), puo)
 
     def _categorie(self, comandi: list[logica.ComandoInfo]) -> tuple[list[str], dict[str, list[logica.ComandoInfo]]]:
         gruppi_albero = {c.name for c in self.bot.tree.get_commands() if isinstance(c, app_commands.Group)}
@@ -130,7 +122,9 @@ class CommandSearchCog(commands.Cog):
         return ordine, per_categoria
 
     async def _mostra_pannello(self, interaction: discord.Interaction) -> None:
-        guild_id = interaction.guild.id if interaction.guild is not None else None
+        # Le chiamate a database e a Discord possono superare i 3 secondi: si risponde subito.
+        await interaction.response.defer(ephemeral=True)
+        guild_id = interaction.guild_id
         comandi = await self._comandi_accessibili(interaction)
         categorie, per_categoria = self._categorie(comandi)
         try:
@@ -144,11 +138,48 @@ class CommandSearchCog(commands.Cog):
             comandi=per_categoria,
             ids=ids,
             ultimo=ultimo,
-            in_dm=interaction.guild is None,
+            in_dm=guild_id is None,
             wiki_base=os.getenv("WIKI_BASE_URL", ""),
         )
         view = PannelloView(dati)
-        await interaction.response.send_message(embed=view.embed, view=view, ephemeral=True)
+        await interaction.followup.send(embed=view.embed, view=view, ephemeral=True)
+
+    async def _ricerca(self, interaction: discord.Interaction, query: str, nota: str | None = None) -> None:
+        if not query.strip():
+            await interaction.response.send_message(
+                "Scrivi almeno una parola per cercare, oppure lascia vuoto per il pannello.", ephemeral=True
+            )
+            return
+        query = query.strip()
+        await interaction.response.defer(ephemeral=True)
+        in_dm = interaction.guild_id is None
+        comandi = await self._comandi_accessibili(interaction)
+        risultati = logica.cerca(query, comandi)
+
+        if risultati:
+            ids = await self._ids(interaction, serve={r.gruppo for r in risultati})
+            embed = logica.embed_risultati(risultati, ids, query)
+            if in_dm:
+                embed.set_footer(text="In privato puoi solo cercare: i comandi si usano nei server.")
+            extra = {}
+            view = RisultatiView(os.getenv("WIKI_BASE_URL", ""), risultati[0].percorso)
+            if view.children:
+                extra["view"] = view
+            if nota:
+                extra["content"] = nota
+            await interaction.followup.send(embed=embed, ephemeral=True, **extra)
+            return
+
+        embed = discord.Embed(
+            title="Nessun comando trovato",
+            description=(
+                f'Non ho trovato un comando che corrisponda a "{query}". '
+                f"Vuoi proporre questa funzione allo sviluppatore?"
+            ),
+            color=discord.Color.orange(),
+        )
+        extra = {"content": nota} if nota else {}
+        await interaction.followup.send(embed=embed, view=_NoResultsView(self.bot), ephemeral=True, **extra)
 
     # ------------------------------------------------------------------
     # Comandi
@@ -163,36 +194,10 @@ class CommandSearchCog(commands.Cog):
         # Il testo viene ricopiato nella risposta: va tenuto corto.
         query: app_commands.Range[str, 1, 100] | None = None,
     ) -> None:
-        if not query:
+        if query is None:
             await self._mostra_pannello(interaction)
             return
-
-        in_dm = getattr(interaction, "guild", None) is None
-        comandi = await self._comandi_accessibili(interaction)
-        risultati = logica.cerca(query, comandi)
-
-        if risultati:
-            ids = await self._ids(interaction, serve={r.gruppo for r in risultati})
-            embed = logica.embed_risultati(risultati, ids, query)
-            if in_dm:
-                embed.set_footer(text="In privato puoi solo cercare: i comandi si usano nei server.")
-            view = RisultatiView(os.getenv("WIKI_BASE_URL", ""), risultati[0].percorso)
-            if not view.children:
-                view = None
-            kwargs = {"view": view} if view is not None else {}
-            await interaction.response.send_message(embed=embed, ephemeral=True, **kwargs)
-            return
-
-        embed = discord.Embed(
-            title="Nessun comando trovato",
-            description=(
-                f'Non ho trovato un comando che corrisponda a "{query}". '
-                f"Vuoi proporre questa funzione allo sviluppatore?"
-            ),
-            color=discord.Color.orange(),
-        )
-        view = _NoResultsView(self.bot)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await self._ricerca(interaction, query)
 
     @search.autocomplete("query")
     async def autocompleta_query(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
@@ -211,11 +216,16 @@ class CommandSearchCog(commands.Cog):
         interaction: discord.Interaction,
         domanda: app_commands.Range[str, 1, 500] | None = None,
     ) -> None:
-        if domanda:
-            # Fino all'AI (F12) la domanda si tratta come una ricerca; max 100 caratteri.
-            await self.search.callback(self, interaction, domanda[:100])
+        if domanda is None:
+            await self._mostra_pannello(interaction)
             return
-        await self._mostra_pannello(interaction)
+        pulita = domanda.strip()
+        nota = None
+        if len(pulita) > 100:
+            # Fino all'AI (F12) la domanda si tratta come una ricerca da 100 caratteri al massimo.
+            nota = "La domanda era lunga: ho cercato solo con i primi 100 caratteri."
+            pulita = pulita[:100]
+        await self._ricerca(interaction, pulita, nota)
 
     # ------------------------------------------------------------------
     # Ultimo comando usato
@@ -228,8 +238,7 @@ class CommandSearchCog(commands.Cog):
         if percorso in (NOME_CERCA_COMANDO, NOME_CHIEDI):
             return
         try:
-            guild = interaction.guild
-            await self.repo.registra(guild.id if guild is not None else None, interaction.user.id, percorso)
+            await self.repo.registra(interaction.guild_id, interaction.user.id, percorso)
         except Exception:
             logger.warning("Ultimo comando non salvato.", exc_info=True)
 

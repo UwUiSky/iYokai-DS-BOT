@@ -20,7 +20,7 @@ from cogs.utility import command_search as modulo
 from cogs.utility.command_search import CommandSearchCog
 from core.command_access import Livello
 from core.command_groups import NOME_CERCA_COMANDO, NOME_CHIEDI, costruisci_gruppi
-from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+from tests.support.discord_fakes import fake_interaction as _fake_interaction
 
 
 async def _cb(interaction):  # pragma: no cover
@@ -61,9 +61,16 @@ def cog(monkeypatch):
     return c
 
 
+def fake_interaction():
+    i = _fake_interaction()
+    i.guild_id = i.guild.id
+    return i
+
+
 def _invio(interazione):
-    chiamata = interazione.response.send_message.call_args
-    return chiamata.kwargs
+    """Il pannello e i risultati partono con defer() e arrivano con followup.send."""
+    interazione.response.defer.assert_awaited_once()
+    return interazione.followup.send.call_args.kwargs
 
 
 def _componenti(view):
@@ -171,6 +178,7 @@ async def test_ricerca_non_mostra_comandi_di_gruppi_non_accessibili(cog):
 async def test_in_dm_avvisa_che_i_comandi_si_usano_nei_server(cog):
     i = fake_interaction()
     i.guild = None
+    i.guild_id = None
     await cog.search.callback(cog, i, query=None)
     assert "server" in _invio(i)["embed"].description.lower()
     cog.repo.ultimo.assert_awaited_once_with(None, i.user.id)
@@ -179,6 +187,7 @@ async def test_in_dm_avvisa_che_i_comandi_si_usano_nei_server(cog):
 async def test_ricerca_in_dm_avvisa_anche_nei_risultati(cog):
     i = fake_interaction()
     i.guild = None
+    i.guild_id = None
     await cog.search.callback(cog, i, query="comando di fun")
     assert "server" in (_invio(i)["embed"].footer.text or "").lower()
 
@@ -251,5 +260,6 @@ async def test_listener_in_dm_registra_con_guild_none(cog):
     c.qualified_name = "utility ping"
     i = fake_interaction()
     i.guild = None
+    i.guild_id = None
     await cog.on_app_command_completion(i, c)
     cog.repo.registra.assert_awaited_once_with(None, i.user.id, "utility ping")

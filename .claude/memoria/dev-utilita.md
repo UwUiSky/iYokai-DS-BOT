@@ -29,6 +29,7 @@
   Dopo una sync si chiama `CommandSearchCog.invalida_id()` oppure si ricarica da sé quando manca un ID (max 1/min).
 - Pannello: 20 bottoni categoria (righe 0-3) + frecce e wiki (riga 4) = 23 componenti.
 - Comandi con parametro opzionale: `Range[str,1,100] | None = None`.
+- Il pannello filtra per livelli di gruppi e `@richiedi` (`richiedi` ora mette `predicate.livello`); fetch ID fuori dal lock, timeout 2 s; defer prima delle chiamate lente; usare `interaction.guild_id`.
 - `COMMAND_LIST.md` va rigenerato (scripts/generate_command_list.py) quando cambia l'albero.
 
 ## Aperto
@@ -38,4 +39,3 @@
 - Registro dati personali (F5, core/data_registry.py + forget_user_service): aggiungere `command_usage`
   (chiave user_id e guild_id, 90 giorni, tetto 200.000 righe).
 - Menzioni di `/owner` non mostrate nel pannello (è solo nel server owner).
-- `richiedi()` sui singoli comandi non filtra il pannello (solo il livello del gruppo).
