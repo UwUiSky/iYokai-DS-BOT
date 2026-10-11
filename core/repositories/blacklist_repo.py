@@ -94,6 +94,31 @@ class BlacklistRepository:
         self._user_cache.set(user_id, risultato)
         return risultato
 
+    async def blacklisted_among(self, user_ids: list[int]) -> set[int]:
+        """
+        Quali di questi utenti sono in blacklist, con una sola query per
+        quelli non ancora in cache (PERF-4: i cicli vocali chiedevano
+        un utente alla volta).
+        """
+        in_blacklist: set[int] = set()
+        da_chiedere: list[int] = []
+        for user_id in set(user_ids):
+            cached = self._user_cache.get(user_id)
+            if cached is None:
+                da_chiedere.append(user_id)
+            elif cached:
+                in_blacklist.add(user_id)
+        if da_chiedere:
+            rows = await self._pool.fetch(
+                "SELECT user_id FROM user_blacklist WHERE user_id = ANY($1::bigint[])",
+                da_chiedere,
+            )
+            trovati = {r["user_id"] for r in rows}
+            for user_id in da_chiedere:
+                self._user_cache.set(user_id, user_id in trovati)
+            in_blacklist |= trovati
+        return in_blacklist
+
     async def list_users(self, limit: int = 100) -> list[dict]:
         rows = await self._pool.fetch(
             "SELECT * FROM user_blacklist ORDER BY added_at DESC LIMIT $1", limit

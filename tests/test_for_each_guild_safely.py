@@ -103,23 +103,22 @@ async def test_decay_tesoreria_un_clan_che_fallisce_non_blocca_gli_altri(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_decay_settimanale_un_utente_che_fallisce_non_blocca_gli_altri(monkeypatch):
+async def test_decay_settimanale_un_server_che_fallisce_non_blocca_gli_altri(monkeypatch):
     import core.weekly_personal_decay_worker as modulo
 
     applicati = []
 
     async def lista(settimana, created_before):
-        return [(1, 10), (1, 20)]
+        return [10, 20]
 
-    async def decay(guild_id, user_id, settimana):
-        if user_id == 10:
+    async def decay(guild_id, settimana, created_before):
+        if guild_id == 10:
             raise RuntimeError("boom")
-        applicati.append(user_id)
-        return 50, 45
+        applicati.append(guild_id)
+        return 3, 45
 
-    monkeypatch.setattr(modulo.leveling_repo, "list_users_needing_weekly_decay", lista)
-    monkeypatch.setattr(modulo.leveling_repo, "apply_weekly_decay", decay)
-    monkeypatch.setattr(modulo.guild_chest_repo, "deposit", AsyncMock())
+    monkeypatch.setattr(modulo.leveling_repo, "list_guilds_needing_weekly_decay", lista)
+    monkeypatch.setattr(modulo.leveling_repo, "apply_weekly_decay_guild", decay)
 
     await modulo.WeeklyPersonalDecayWorker().tick(datetime(2026, 10, 1, tzinfo=timezone.utc))
 

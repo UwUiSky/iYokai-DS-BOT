@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 17:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 19:37 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 233 comandi in 16 categorie.**
+**Totale: 239 comandi in 16 categorie.**
 
 ## Admin
 
@@ -136,9 +136,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 17:
 - **`/level balance`** — Mostra i tuoi coin.
 - **`/level cassa`** — Mostra il saldo della cassa del server.
 - **`/level daily`** — Riscuoti la ricompensa giornaliera.
+- **`/level impostazioni annuncio`** — Dove e quando annunciare i level-up.
+- **`/level impostazioni escludi`** — Un canale o un ruolo non dà XP (rifallo per toglierlo dall'elenco).
+- **`/level impostazioni moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
+- **`/level impostazioni mostra`** — Mostra le impostazioni dei livelli di questo server.
+- **`/level impostazioni premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
+- **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level pay`** — Trasferisci coin a un altro utente.
-- **`/level rank`** — Mostra il tuo livello e i tuoi coin.
+- **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.
 - **`/level work`** — Lavora per guadagnare qualche coin.

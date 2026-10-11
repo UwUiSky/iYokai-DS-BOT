@@ -71,7 +71,7 @@ async def test_il_giorno_dell_xp_vocale_e_in_utc(clean_db, monkeypatch):
     time.tzset()
     try:
         repo = LevelingRepository(pool_provider=lambda: clean_db)
-        await repo.add_voice_minute(GUILD_ID, 1, current_channel_id=5, is_eligible=True)
+        await repo.add_voice_minutes(GUILD_ID, [(1, 5, True)])
         giorno_salvato = await clean_db.fetchval(
             "SELECT voice_activity_date FROM leveling_totals WHERE guild_id = $1 AND user_id = 1",
             GUILD_ID,

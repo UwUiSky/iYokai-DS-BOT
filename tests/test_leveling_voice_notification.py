@@ -52,10 +52,10 @@ async def cog_e_repo(monkeypatch):
     # SEC-10: _process_guild_voice_xp ora controlla anche la
     # blacklist per ogni membro — qui non è quello sotto test, quindi
     # si disattiva (nessun utente in blacklist).
-    async def mai_bloccato(user_id):
-        return False
+    async def mai_bloccato(user_ids):
+        return set()
 
-    monkeypatch.setattr(leveling_module.blacklist_repo, "is_user_blacklisted", mai_bloccato)
+    monkeypatch.setattr(leveling_module.blacklist_repo, "blacklisted_among", mai_bloccato)
 
     cog = LevelingCog(bot=None)
     cog.cog_unload()  # ferma subito il task periodico avviato nel costruttore
@@ -63,8 +63,8 @@ async def cog_e_repo(monkeypatch):
     chiamate_add_voice_minute: list = []
 
     class _RepoFinto:
-        async def add_voice_minute(self, guild_id, user_id, current_channel_id, is_eligible):
-            return chiamate_add_voice_minute.pop(0)
+        async def add_voice_minutes(self, guild_id, presenze, **_impostazioni):
+            return {utente: chiamate_add_voice_minute.pop(0) for utente, _, _ in presenze}
 
     class _RewardRepoFinto:
         async def get_rewards_up_to_level(self, guild_id, level):

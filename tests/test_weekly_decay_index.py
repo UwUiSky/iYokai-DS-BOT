@@ -77,7 +77,7 @@ async def test_la_query_riscritta_restituisce_gli_stessi_utenti_di_is_distinct_f
         PERIODO,
     )
 
-    trovati = await repo.list_users_needing_weekly_decay(PERIODO, created_before=NATI_PRIMA_DI)
+    trovati = [tuple(r) for r in await clean_db.fetch(QUERY_UTENTI_DA_DECADERE, PERIODO, NATI_PRIMA_DI)]
 
     assert sorted(trovati) == sorted((r["guild_id"], r["user_id"]) for r in attesi)
     assert sorted(trovati) == [(1, 1), (1, 2), (1, 3)]

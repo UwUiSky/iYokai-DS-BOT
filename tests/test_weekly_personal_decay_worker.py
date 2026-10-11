@@ -36,7 +36,6 @@ async def repos(monkeypatch):
     leveling_repo = LevelingRepository(pool_provider=lambda: database.pool)
     chest_repo = GuildChestRepository(pool_provider=lambda: database.pool)
     monkeypatch.setattr(modulo, "leveling_repo", leveling_repo)
-    monkeypatch.setattr(modulo, "guild_chest_repo", chest_repo)
 
     yield leveling_repo, chest_repo
     await database.pool.execute("DELETE FROM leveling_totals")

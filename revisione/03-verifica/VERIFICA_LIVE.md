@@ -635,3 +635,22 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. Spegni il modulo: i comandi dicono che non è attivo e il bot non ricorda niente.
   4. Ghost ping: menziona un utente e cancella tu il messaggio: avviso nel canale dei log. Ripeti facendo cancellare il messaggio a un moderatore: nessun avviso. Cancella tu un secondo messaggio con menzione subito dopo che un moderatore ne ha cancellato un altro tuo: l'avviso deve comparire (il registro di Discord può unire le cancellazioni dello stesso moderatore: annota cosa succede).
   Risultato atteso: nessun testo salvato su disco, nessun avviso per le cancellazioni dei moderatori.
+
+
+## Livelli ed economia — passaggio `feat/giro-eco` (#65, #86)
+
+- [ ] `M 9.18` (#65) — passi:
+  1. Entra in un canale vocale con un secondo account (due persone, nessuno assordato, non AFK) e resta 3 minuti.
+  2. Controlla `/level rank` di entrambi.
+  Risultato atteso: entrambi hanno XP e coin (5 XP e 2 coin al minuto di base); l'account assordato o nel canale AFK no.
+- [ ] `NF-15` (#86) — passi:
+  1. `/level impostazioni annuncio modo:Messaggio privato`, poi scrivi finché sali di livello.
+  2. `/level impostazioni escludi canale:#test`, scrivi in #test e in un altro canale.
+  3. `/level impostazioni moltiplicatore fattore:2 ruolo:@vip` e scrivi con un account con quel ruolo.
+  4. `/level impostazioni premi modo:Sostituisci`, con due ruoli-premio a livelli diversi, e supera il secondo.
+  Risultato atteso: il level-up arriva in DM; in #test nessun XP; con @vip gli XP del messaggio sono doppi; al secondo ruolo il primo viene tolto. `/level impostazioni mostra` riassume tutto.
+- [ ] `NF-12` (#83) — passi:
+  1. `/level rank` per te e per un altro membro (con avatar normale e con avatar animato).
+  2. `/level rank colore:#FF8800 tema:Notte`, poi di nuovo `/level rank`; poi `/level rank reimposta:True`.
+  3. `/level rank member:@altro colore:#00FF00`.
+  Risultato atteso: un'immagine PNG con avatar tondo, nome (tagliato se lungo), livello, barra XP, posizione e coin; colore e tema restano salvati; il passo 3 avvisa che si cambia solo la propria card e non salva nulla. Nessun "L'applicazione non ha risposto".

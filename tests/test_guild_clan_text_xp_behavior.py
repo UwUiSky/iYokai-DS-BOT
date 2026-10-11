@@ -36,6 +36,8 @@ class _FakeGuild:
 
 
 class _FakeChannel:
+    id = 111
+
     async def send(self, content: str = None, view=None) -> None:
         pass
 

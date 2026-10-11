@@ -20,12 +20,11 @@ un nuovo period_key senza righe, non uno stato da azzerare.
 # DA FARE (issue #65, fase F1): correzioni aperte per questo file in
 #   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
 #   clan).
-# DA FARE (issue #86, fase F9): NF-15, Impostazioni dei livelli. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 
@@ -86,7 +85,11 @@ TEXT_XP_COOLDOWN_SECONDS = 60
 TEXT_XP_AMOUNT = 15
 
 
-def can_earn_text_xp(last_xp_at: datetime | None, now: datetime | None = None) -> bool:
+def can_earn_text_xp(
+    last_xp_at: datetime | None,
+    now: datetime | None = None,
+    cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS,
+) -> bool:
     """
     True se è passato abbastanza tempo dall'ultimo guadagno di XP
     testuale di questo utente. Impedisce che scrivere messaggi a
@@ -96,7 +99,7 @@ def can_earn_text_xp(last_xp_at: datetime | None, now: datetime | None = None) -
     if last_xp_at is None:
         return True
     current = now or datetime.now(timezone.utc)
-    return (current - last_xp_at).total_seconds() >= TEXT_XP_COOLDOWN_SECONDS
+    return (current - last_xp_at).total_seconds() >= cooldown_seconds
 
 
 # ======================================================================
@@ -283,3 +286,132 @@ def seconds_until_next_claim(
     elapsed = (current - last_claim_at).total_seconds()
     remaining = cooldown_seconds - elapsed
     return max(0, int(remaining))
+
+
+# ======================================================================
+# Impostazioni dei livelli per server (NF-15, #86)
+# ======================================================================
+MODI_ANNUNCIO = ("spento", "canale_corrente", "dm", "canale_scelto")
+MODI_PREMI = ("accumula", "sostituisci")
+MODI_MOLTIPLICATORI = ("somma", "massimo")
+
+# Minimo e massimo di ogni numero configurabile. Un solo posto: lo usano
+# i comandi, l'archivio e (D16) il futuro pannello web.
+LIMITI_IMPOSTAZIONI = {
+    "text_xp": (1, 100),
+    "text_cooldown_seconds": (10, 600),
+    "voice_xp_per_minute": (0, 50),
+    "voice_coins_per_minute": (0, 50),
+    "levelup_min_level": (0, 1000),
+    "levelup_every": (1, 100),
+}
+FATTORE_MINIMO = 0.1
+FATTORE_MASSIMO = 10.0
+MAX_REGOLE_PER_TIPO = 25  # 25 scelte per opzione (LIMITI.md)
+
+TIPI_REGOLA = ("canale_escluso", "ruolo_escluso", "mult_canale", "mult_ruolo")
+TIPI_REGOLA_CON_FATTORE = ("mult_canale", "mult_ruolo")
+
+
+@dataclass(frozen=True)
+class LevelingSettings:
+    """Impostazioni di un server. I valori di partenza sono il comportamento di prima."""
+
+    text_xp: int = TEXT_XP_AMOUNT
+    text_cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS
+    voice_xp_per_minute: int = VOICE_XP_PER_MINUTE
+    voice_coins_per_minute: int = VOICE_COINS_PER_MINUTE
+    levelup_mode: str = "canale_corrente"
+    levelup_channel_id: int | None = None
+    levelup_min_level: int = 0
+    levelup_every: int = 1
+    levelup_only_rewards: bool = False
+    reward_mode: str = "accumula"
+    multiplier_mode: str = "somma"
+
+
+@dataclass(frozen=True)
+class ConfigLivelli:
+    """Impostazioni più regole (canali e ruoli esclusi, moltiplicatori) di un server."""
+
+    impostazioni: LevelingSettings = field(default_factory=LevelingSettings)
+    canali_esclusi: frozenset = frozenset()
+    ruoli_esclusi: frozenset = frozenset()
+    mult_canali: dict = field(default_factory=dict)
+    mult_ruoli: dict = field(default_factory=dict)
+
+    def fattori_attivi(self, channel_id: int, role_ids) -> list[float]:
+        """I fattori che valgono per questo canale e per questi ruoli."""
+        fattori = []
+        if channel_id in self.mult_canali:
+            fattori.append(self.mult_canali[channel_id])
+        fattori.extend(self.mult_ruoli[r] for r in role_ids if r in self.mult_ruoli)
+        return fattori
+
+    def moltiplicatore(self, channel_id: int, role_ids) -> float:
+        return moltiplicatore_xp(
+            self.impostazioni.multiplier_mode, self.fattori_attivi(channel_id, role_ids)
+        )
+
+    def e_escluso(self, channel_id: int, role_ids) -> bool:
+        return channel_id in self.canali_esclusi or any(r in self.ruoli_esclusi for r in role_ids)
+
+
+def moltiplicatore_xp(modo: str, fattori: list[float]) -> float:
+    """
+    "somma": 1 più lo scarto di ogni fattore (2.0 e 1.5 danno 2.5).
+    "massimo": vale solo il più alto. Senza fattori: 1.
+    """
+    if not fattori:
+        return 1.0
+    if modo == "massimo":
+        return max(fattori)
+    return round(1.0 + sum(f - 1.0 for f in fattori), 4)
+
+
+def xp_con_moltiplicatore(base: int, moltiplicatore: float) -> int:
+    """XP intero; il mezzo arrotonda in su, mai sotto zero."""
+    return max(0, int(base * moltiplicatore + 0.5))
+
+
+def deve_annunciare(livello: int, impostazioni: LevelingSettings, ha_ruolo_premio: bool) -> bool:
+    """Se il level-up a `livello` va annunciato (spento, livello minimo, ogni N, solo premi)."""
+    if impostazioni.levelup_mode == "spento":
+        return False
+    if livello < impostazioni.levelup_min_level:
+        return False
+    if livello % impostazioni.levelup_every != 0:
+        return False
+    if impostazioni.levelup_only_rewards and not ha_ruolo_premio:
+        return False
+    return True
+
+
+def scegli_premi(ricompense, modo: str) -> tuple[list[int], list[int]]:
+    """
+    Dai premi fino al livello raggiunto (ordinati per livello) sceglie
+    (ruoli da dare, ruoli da togliere). "accumula": tutti, niente da
+    togliere. "sostituisci": solo quelli del livello più alto, gli altri
+    si tolgono.
+    """
+    if not ricompense:
+        return [], []
+    if modo != "sostituisci":
+        return [r.role_id for r in ricompense], []
+    massimo = max(r.level_threshold for r in ricompense)
+    da_dare = [r.role_id for r in ricompense if r.level_threshold == massimo]
+    da_togliere = [r.role_id for r in ricompense if r.level_threshold != massimo]
+    return da_dare, da_togliere
+
+
+# ======================================================================
+# Rank card (NF-12, #83): colore e tema scelti da ciascuno
+# ======================================================================
+NOMI_TEMI_RANK_CARD = ("scuro", "chiaro", "notte")
+_FORMA_COLORE = re.compile(r"^#?([0-9a-fA-F]{6})$")
+
+
+def colore_valido(testo: str) -> str | None:
+    """'#RRGGBB' (maiuscolo) se il testo è un colore esadecimale a sei cifre, altrimenti None."""
+    trovato = _FORMA_COLORE.match((testo or "").strip())
+    return f"#{trovato.group(1).upper()}" if trovato else None

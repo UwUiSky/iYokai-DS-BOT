@@ -19,15 +19,12 @@ la permanenza in vocale, non solo quando si entra o si esce.
 # DA FARE (issue #65, fase F1): correzioni aperte per questo file in
 #   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
 #   clan).
-# DA FARE (issue #83, fase F9): NF-12, Rank card. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-# DA FARE (issue #86, fase F9): NF-15, Impostazioni dei livelli. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 # DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
+import io
 import logging
 import random
 from datetime import datetime, timedelta, timezone
@@ -44,6 +41,10 @@ from core.role_safety import check_role_assignable
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
+from core.repositories.leveling_settings_repo import (
+    RegolaPiena,
+    leveling_settings_repo,
+)
 from core.monthly_winners_logic import MEDALS, previous_period_key
 # I due aiuti con il trattino servono al bottone degli inviti in gilda:
 # un bottone "dinamico" non passa dalla BaseView, quindi il controllo
@@ -54,6 +55,8 @@ from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
 from core.repositories.shop_repo import EsitoAcquisto, shop_repo
+from core.rank_card_image import COLORE_DI_BASE, TEMA_DI_BASE, DatiRankCard, render_rank_card
+from core.safe_image import run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.giveaway_logic import is_eligible, pick_winners
 from core.repositories.giveaway_repo import giveaway_repo
@@ -104,7 +107,17 @@ from core.guild_clan_boost_logic import (
     tipi_acquistabili,
 )
 from core.leveling_logic import (
+    ConfigLivelli,
     DAILY_COOLDOWN_SECONDS,
+    FATTORE_MASSIMO,
+    FATTORE_MINIMO,
+    LIMITI_IMPOSTAZIONI,
+    LevelingSettings,
+    MAX_REGOLE_PER_TIPO,
+    colore_valido,
+    deve_annunciare,
+    scegli_premi,
+    xp_con_moltiplicatore,
     DAILY_REWARD_COINS,
     WORK_COOLDOWN_SECONDS,
     WORK_REWARD_MAX,
@@ -140,6 +153,19 @@ LIMITE_TITOLO_EMBED = 256
 LIMITE_RIGA_NEGOZIO = 380
 RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
+
+
+def _id_canale_per_le_regole(canale, config: ConfigLivelli) -> int:
+    """
+    L'id del canale a cui applicare esclusioni e moltiplicatori: quello
+    del canale stesso se ha una regola, altrimenti quello di origine di un
+    thread o di un post di forum (se ce l'ha).
+    """
+    origine = getattr(canale, "parent_id", None)
+    if not isinstance(origine, int):
+        return canale.id
+    regolato = config.canali_esclusi | set(config.mult_canali)
+    return canale.id if canale.id in regolato or origine not in regolato else origine
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -366,6 +392,81 @@ _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 _SG_SHOP = ("shop", "Negozio: spendi i tuoi coin su oggetti o ruoli.")
 _SG_BACHECA = ("bacheca", "Annuncio automatico della top 3 gilde a fine mese.")
 _SG_TESORERIA = ("tesoreria", "Tesoreria della tua gilda.")
+_SG_IMPOSTAZIONI = ("impostazioni", "Impostazioni dei livelli: XP, annunci, ruoli-premio, esclusioni.")
+
+_SCELTE_ANNUNCIO = [
+    app_commands.Choice(name="Spento", value="spento"),
+    app_commands.Choice(name="Nel canale in cui scrive", value="canale_corrente"),
+    app_commands.Choice(name="Messaggio privato", value="dm"),
+    app_commands.Choice(name="In un canale scelto", value="canale_scelto"),
+]
+_SCELTE_PREMI = [
+    app_commands.Choice(name="Accumula (tieni tutti i ruoli)", value="accumula"),
+    app_commands.Choice(name="Sostituisci (togli i precedenti)", value="sostituisci"),
+]
+_SCELTE_MOLTIPLICATORI = [
+    app_commands.Choice(name="Si sommano", value="somma"),
+    app_commands.Choice(name="Vale solo il più alto", value="massimo"),
+]
+_SCELTE_TEMA = [
+    app_commands.Choice(name="Scuro", value="scuro"),
+    app_commands.Choice(name="Chiaro", value="chiaro"),
+    app_commands.Choice(name="Notte", value="notte"),
+]
+_NOMI_ANNUNCIO = {c.value: c.name for c in _SCELTE_ANNUNCIO}
+_NOMI_PREMI = {c.value: c.name for c in _SCELTE_PREMI}
+_NOMI_MOLTIPLICATORI = {c.value: c.name for c in _SCELTE_MOLTIPLICATORI}
+
+
+def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
+    """Riepilogo delle impostazioni dei livelli (entra nei limiti degli embed)."""
+    i = config.impostazioni
+    annuncio = _NOMI_ANNUNCIO[i.levelup_mode]
+    if i.levelup_mode == "canale_scelto" and i.levelup_channel_id:
+        annuncio += f" (<#{i.levelup_channel_id}>)"
+    filtri = []
+    if i.levelup_min_level:
+        filtri.append(f"dal livello {i.levelup_min_level}")
+    if i.levelup_every > 1:
+        filtri.append(f"ogni {i.levelup_every} livelli")
+    if i.levelup_only_rewards:
+        filtri.append("solo con ruolo-premio")
+    embed = discord.Embed(title="Impostazioni dei livelli", color=discord.Color.blurple())
+    embed.add_field(
+        name="XP e coin",
+        value=(
+            f"Messaggio: **{i.text_xp}** XP, ogni **{i.text_cooldown_seconds}** s\n"
+            f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto"
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="Annuncio level-up",
+        value=annuncio + (f" — {', '.join(filtri)}" if filtri else ""),
+        inline=False,
+    )
+    embed.add_field(name="Ruoli-premio", value=_NOMI_PREMI[i.reward_mode], inline=True)
+    embed.add_field(name="Moltiplicatori", value=_NOMI_MOLTIPLICATORI[i.multiplier_mode], inline=True)
+
+    def elenco(righe: list[str]) -> str:
+        if not righe:
+            return "nessuno"
+        testo = ", ".join(righe[:15])
+        return testo + (f" e altri {len(righe) - 15}" if len(righe) > 15 else "")
+
+    embed.add_field(
+        name="Senza XP",
+        value=elenco([f"<#{c}>" for c in sorted(config.canali_esclusi)]
+                     + [f"<@&{r}>" for r in sorted(config.ruoli_esclusi)]),
+        inline=False,
+    )
+    embed.add_field(
+        name="Moltiplicatori attivi",
+        value=elenco([f"<#{c}> ×{f:g}" for c, f in sorted(config.mult_canali.items())]
+                     + [f"<@&{r}> ×{f:g}" for r, f in sorted(config.mult_ruoli.items())]),
+        inline=False,
+    )
+    return embed
 _SG_BOOST = ("boost", "Boost XP/coin del Sistema Gilde/Clan.")
 
 
@@ -381,8 +482,57 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
     # XP testuale
     # ================================================================
+    async def _config(self, guild_id: int) -> ConfigLivelli:
+        """
+        Le impostazioni dei livelli del server. Se il database non risponde
+        valgono i valori di sempre: un guasto qui non deve fermare l'XP.
+        """
+        try:
+            return await leveling_settings_repo.get_config(guild_id)
+        except Exception:
+            logger.warning("Impostazioni dei livelli non lette per %s: uso quelle di base.", guild_id)
+            return ConfigLivelli()
+
+    async def _annuncia_level_up(
+        self,
+        member: discord.Member,
+        guild: discord.Guild,
+        canale_corrente,
+        new_level: int,
+        impostazioni: LevelingSettings,
+    ) -> None:
+        """
+        Dice del level-up dove ha scelto il server (spento, canale in cui
+        è successo, DM, canale scelto). Un errore di Discord non ferma mai
+        l'assegnazione dei ruoli.
+        """
+        ha_premio = False
+        if impostazioni.levelup_only_rewards:
+            premi = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
+            ha_premio = any(r.level_threshold == new_level for r in premi)
+        if not deve_annunciare(new_level, impostazioni, ha_premio):
+            return
+
+        testo = f"🎉 {member.mention} è salito al livello **{new_level}**!"
+        if impostazioni.levelup_mode == "dm":
+            destinazione = member
+        elif impostazioni.levelup_mode == "canale_scelto":
+            destinazione = guild.get_channel(impostazioni.levelup_channel_id or 0)
+        else:
+            destinazione = canale_corrente
+        if destinazione is None:
+            return
+        try:
+            await destinazione.send(testo)
+        except discord.HTTPException:
+            pass
+
     async def _grant_level_rewards(
-        self, member: discord.Member, guild: discord.Guild, new_level: int
+        self,
+        member: discord.Member,
+        guild: discord.Guild,
+        new_level: int,
+        modo: str = "accumula",
     ) -> None:
         """
         Condiviso tra XP testuale e vocale (SPEC.md §15.13) — un
@@ -390,6 +540,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         stessa logica. Salta i ruoli che il membro ha già (un
         re-invio ripetuto non deve fallire né generare richieste
         Discord inutili).
+
+        `modo` (NF-15): "accumula" tiene tutti i ruoli dei livelli
+        raggiunti; "sostituisci" dà solo quello del livello più alto e
+        toglie gli altri ruoli-premio.
 
         SEC-4/SEC-17: l'assegnazione è automatica (self_service=True),
         quindi ogni ruolo viene ricontrollato con check_role_assignable
@@ -400,27 +554,41 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if not ricompense:
             return
 
+        id_da_dare, id_da_togliere = scegli_premi(ricompense, modo)
         id_ruoli_posseduti = {ruolo.id for ruolo in member.roles}
         da_assegnare = []
-        for r in ricompense:
-            if r.role_id in id_ruoli_posseduti:
+        for role_id in id_da_dare:
+            if role_id in id_ruoli_posseduti:
                 continue
-            ruolo = guild.get_role(r.role_id)
+            ruolo = guild.get_role(role_id)
             if ruolo is None:
                 continue
             if check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
                 continue
             da_assegnare.append(ruolo)
-        if not da_assegnare:
-            return
+
+        da_togliere = []
+        for role_id in id_da_togliere:
+            if role_id not in id_ruoli_posseduti:
+                continue
+            ruolo = guild.get_role(role_id)
+            # Si tolgono solo i ruoli che il bot può gestire (gerarchia).
+            if ruolo is None or ruolo.managed or ruolo.position >= guild.me.top_role.position:
+                continue
+            da_togliere.append(ruolo)
 
         try:
-            await member.add_roles(
-                *da_assegnare, reason=f"Ruolo-premio per aver raggiunto il livello {new_level}"
-            )
+            if da_assegnare:
+                await member.add_roles(
+                    *da_assegnare, reason=f"Ruolo-premio per aver raggiunto il livello {new_level}"
+                )
+            if da_togliere:
+                await member.remove_roles(
+                    *da_togliere, reason=f"Ruolo-premio sostituito al livello {new_level}"
+                )
         except discord.HTTPException:
             logger.warning(
-                "Impossibile assegnare i ruoli-premio a %s nel server %s.", member.id, guild.id
+                "Impossibile aggiornare i ruoli-premio di %s nel server %s.", member.id, guild.id
             )
 
     class DropClaimView(BaseView):
@@ -456,6 +624,36 @@ class LevelingCog(CogConGruppi, commands.Cog):
             button.label = f"Raccolto da {interaction.user.display_name}"
             await interaction.response.edit_message(view=self)
 
+    async def _xp_testuale(
+        self, message: discord.Message, config: ConfigLivelli, id_ruoli: list[int], id_canale: int
+    ) -> None:
+        impostazioni = config.impostazioni
+        clan = await guild_clan_repo.get_member_clan_in_guild(message.guild.id, message.author.id)
+        if clan is not None and clan.officialized:
+            # Lato TESTUALE del guadagno ×2 di gilda (SPEC.md
+            # §15.14) — indipendente dall'XP personale sotto: stesso
+            # cooldown del testo normale, nessuna coin, nessun boost
+            # (scoped al solo vocale, Fase 54). Un fallimento qui non
+            # deve mai impedire l'XP personale.
+            await guild_clan_repo.apply_text_tick(clan.id, message.author.id)
+
+        importo = xp_con_moltiplicatore(
+            impostazioni.text_xp, config.moltiplicatore(id_canale, id_ruoli)
+        )
+        risultato = await leveling_repo.add_text_xp(
+            message.guild.id,
+            message.author.id,
+            amount=importo,
+            cooldown_seconds=impostazioni.text_cooldown_seconds,
+        )
+        if risultato.granted and risultato.leveled_up:
+            await self._annuncia_level_up(
+                message.author, message.guild, message.channel, risultato.new_level, impostazioni
+            )
+            await self._grant_level_rewards(
+                message.author, message.guild, risultato.new_level, impostazioni.reward_mode
+            )
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None:
@@ -473,26 +671,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_LEVELING):
             return
 
-        clan = await guild_clan_repo.get_member_clan_in_guild(message.guild.id, message.author.id)
-        if clan is not None and clan.officialized:
-            # Lato TESTUALE del guadagno ×2 di gilda (SPEC.md
-            # §15.14) — indipendente dall'XP personale sopra: stesso
-            # cooldown del testo normale, nessuna coin, nessun boost
-            # (scoped al solo vocale, Fase 54). Un fallimento qui non
-            # deve mai impedire l'XP personale, quindi va PRIMA
-            # dell'add_text_xp solo per ordine di lettura, non di
-            # dipendenza — le due chiamate sono indipendenti.
-            await guild_clan_repo.apply_text_tick(clan.id, message.author.id)
-
-        risultato = await leveling_repo.add_text_xp(message.guild.id, message.author.id)
-        if risultato.granted and risultato.leveled_up:
-            try:
-                await message.channel.send(
-                    f"🎉 {message.author.mention} è salito al livello **{risultato.new_level}**!"
-                )
-            except discord.HTTPException:
-                pass
-            await self._grant_level_rewards(message.author, message.guild, risultato.new_level)
+        config = await self._config(message.guild.id)
+        id_ruoli = [r.id for r in getattr(message.author, "roles", [])]
+        # NF-15: canali e ruoli senza XP. Il drop sotto resta indipendente.
+        # Un thread o un post di forum vale come il suo canale di origine.
+        id_canale = _id_canale_per_le_regole(message.channel, config)
+        if not config.e_escluso(id_canale, id_ruoli):
+            await self._xp_testuale(message, config, id_ruoli, id_canale)
 
         if should_trigger_drop(random.random()):
             importo = random.randint(DEFAULT_MIN_COINS, DEFAULT_MAX_COINS)
@@ -529,19 +714,19 @@ class LevelingCog(CogConGruppi, commands.Cog):
     async def _process_guild_voice_xp(self, guild: discord.Guild) -> None:
         afk_channel_id = guild.afk_channel.id if guild.afk_channel else None
 
+        # PERF-4: si raccolgono tutti i presenti del server e si scrive in
+        # una volta sola (una query per la blacklist, una transazione per
+        # l'XP), non una transazione per ogni persona.
+        config = await self._config(guild.id)
+        presenti: list[tuple[discord.Member, discord.VoiceChannel, bool]] = []
+        moltiplicatori: dict[int, float] = {}
         for channel in guild.voice_channels:
             members = [m for m in channel.members if not m.bot]
             if not members:
                 continue
 
             is_afk = channel.id == afk_channel_id
-
             for member in members:
-                # SEC-10: un utente in blacklist non deve continuare a
-                # guadagnare XP vocale.
-                if await blacklist_repo.is_user_blacklisted(member.id):
-                    continue
-
                 others_not_muted = sum(
                     1
                     for other in members
@@ -552,27 +737,42 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     is_afk_channel=is_afk,
                     other_members_not_self_muted=others_not_muted,
                 )
-                grant = await leveling_repo.add_voice_minute(
-                    guild.id, member.id, channel.id, is_eligible=eligible
-                )
-                if grant is not None and grant.leveled_up:
-                    # Notifica mandata nel canale VOCALE stesso, non
-                    # in un canale testuale a parte: i canali vocali
-                    # moderni hanno la propria chat integrata
-                    # (discord.VoiceChannel eredita da Messageable),
-                    # ed è l'unico posto sensato per un task
-                    # periodico che gira su più server insieme — a
-                    # differenza dei messaggi testuali, non c'è un
-                    # "canale in cui è appena successo qualcosa" da
-                    # riusare.
-                    try:
-                        await channel.send(
-                            f"🎉 {member.mention} è salito al livello "
-                            f"**{grant.new_level}**!"
-                        )
-                    except discord.HTTPException:
-                        pass
-                    await self._grant_level_rewards(member, guild, grant.new_level)
+                id_ruoli = [r.id for r in getattr(member, "roles", [])]
+                # NF-15: canali e ruoli senza XP valgono come non idonei.
+                if config.e_escluso(channel.id, id_ruoli):
+                    eligible = False
+                moltiplicatori[member.id] = config.moltiplicatore(channel.id, id_ruoli)
+                presenti.append((member, channel, eligible))
+
+        if not presenti:
+            return
+
+        # SEC-10: un utente in blacklist non deve continuare a
+        # guadagnare XP vocale.
+        bloccati = await blacklist_repo.blacklisted_among([m.id for m, _, _ in presenti])
+        presenti = [p for p in presenti if p[0].id not in bloccati]
+        if not presenti:
+            return
+
+        risultati = await leveling_repo.add_voice_minutes(
+            guild.id,
+            [(m.id, ch.id, ok) for m, ch, ok in presenti],
+            impostazioni=config.impostazioni,
+            moltiplicatori=moltiplicatori,
+        )
+        for member, channel, _ in presenti:
+            grant = risultati.get(member.id)
+            if grant is None or not grant.leveled_up:
+                continue
+            # Il canale "corrente" è quello VOCALE stesso: i canali vocali
+            # moderni hanno la propria chat integrata, ed è l'unico posto
+            # sensato per un task periodico che gira su più server insieme.
+            await self._annuncia_level_up(
+                member, guild, channel, grant.new_level, config.impostazioni
+            )
+            await self._grant_level_rewards(
+                member, guild, grant.new_level, config.impostazioni.reward_mode
+            )
 
     # ================================================================
     # Comandi
@@ -580,37 +780,96 @@ class LevelingCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "level",
         nome="rank",
-        descrizione="Mostra il tuo livello e i tuoi coin.",
+        descrizione="Mostra la rank card: livello, XP, posizione e coin.",
     )
-    @app_commands.describe(member="Il membro di cui vedere il livello (facoltativo)")
+    @app_commands.describe(
+        member="Il membro di cui vedere la card (facoltativo)",
+        colore="Il tuo colore, es. #FF8800 (resta salvato)",
+        tema="Lo sfondo della tua card (resta salvato)",
+        reimposta="Torna al colore e al tema di base",
+    )
+    @app_commands.choices(tema=_SCELTE_TEMA)
     async def rank(
-        self, interaction: discord.Interaction, member: discord.Member | None = None
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member | None = None,
+        colore: app_commands.Range[str, 1, 20] | None = None,
+        tema: app_commands.Choice[str] | None = None,
+        reimposta: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
+        # NF-12: il disegno e il download dell'avatar possono superare i 3
+        # secondi, quindi si risponde subito.
+        await interaction.response.defer()
 
         target = member or interaction.user
+        nota = None
+        vuole_cambiare = colore is not None or tema is not None or reimposta
+        if vuole_cambiare:
+            if target.id != interaction.user.id:
+                nota = "Puoi cambiare solo la tua card: le preferenze di questo membro non sono cambiate."
+            elif reimposta:
+                await leveling_repo.reset_rank_card_prefs(target.id)
+                nota = "Card riportata al colore e al tema di base."
+            else:
+                esadecimale = None
+                if colore is not None:
+                    esadecimale = colore_valido(colore)
+                    if esadecimale is None:
+                        await interaction.followup.send(
+                            "Il colore deve essere nel formato #RRGGBB, per esempio #FF8800.",
+                            ephemeral=True,
+                        )
+                        return
+                await leveling_repo.set_rank_card_prefs(
+                    target.id, colore=esadecimale, tema=tema.value if tema else None
+                )
+
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
+        posizione = await leveling_repo.get_xp_position(interaction.guild.id, target.id)
+        colore_salvato, tema_salvato = await leveling_repo.get_rank_card_prefs(target.id)
 
         xp_livello_attuale = xp_for_level(totali.level)
         xp_prossimo_livello = xp_for_level(totali.level + 1)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
 
-        embed = discord.Embed(
-            title=f"Livello di {target.display_name}",
-            color=discord.Color.blurple(),
+        try:
+            avatar = await target.display_avatar.read()
+        except discord.HTTPException:
+            avatar = None
+        dati = DatiRankCard(
+            nome=target.display_name,
+            livello=totali.level,
+            xp_nel_livello=progresso,
+            xp_richiesti=richiesti,
+            xp_totale=totali.xp_total,
+            posizione=posizione,
+            coin=totali.coins_total,
+            colore=colore_salvato or COLORE_DI_BASE,
+            tema=tema_salvato or TEMA_DI_BASE,
         )
-        embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(name="Livello", value=str(totali.level), inline=True)
-        embed.add_field(name="XP totale", value=str(totali.xp_total), inline=True)
-        embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
-        embed.add_field(
-            name="Progresso al prossimo livello",
-            value=f"{progresso}/{richiesti} XP",
-            inline=False,
-        )
-        await interaction.response.send_message(embed=embed)
+        try:
+            png = await run_image_task(render_rank_card, dati, avatar)
+        except Exception:
+            logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
+            embed = discord.Embed(
+                title=f"Livello di {target.display_name}", color=discord.Color.blurple()
+            )
+            embed.set_thumbnail(url=target.display_avatar.url)
+            embed.add_field(name="Livello", value=str(totali.level), inline=True)
+            embed.add_field(name="XP totale", value=str(totali.xp_total), inline=True)
+            embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
+            embed.add_field(
+                name="Progresso al prossimo livello",
+                value=f"{progresso}/{richiesti} XP",
+                inline=False,
+            )
+            await interaction.followup.send(nota, embed=embed)
+            return
+
+        await interaction.followup.send(nota, file=discord.File(io.BytesIO(png), filename="rank.png"))
 
     @comando_di_gruppo(
         "level",
@@ -2266,6 +2525,225 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message(
                     "Avevi già partecipato a questo giveaway.", ephemeral=True
                 )
+
+    # ================================================================
+    # Impostazioni dei livelli (NF-15, #86) — /level impostazioni
+    # ================================================================
+    @comando_di_gruppo(
+        "level",
+        nome="mostra",
+        descrizione="Mostra le impostazioni dei livelli di questo server.",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_mostra(self, interaction: discord.Interaction) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        config = await leveling_settings_repo.get_config(interaction.guild.id)
+        await interaction.response.send_message(
+            embed=_embed_impostazioni(config), ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "level",
+        nome="annuncio",
+        descrizione="Dove e quando annunciare i level-up.",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(
+        modo="Dove annunciare: spento, canale in cui scrive, messaggio privato o canale scelto",
+        canale="Il canale (solo con 'canale scelto')",
+        livello_minimo="Non annunciare sotto questo livello",
+        ogni="Annuncia solo ogni N livelli (5 = ai livelli 5, 10, 15...)",
+        solo_premi="Annuncia solo i livelli che danno un ruolo-premio",
+    )
+    @app_commands.choices(modo=_SCELTE_ANNUNCIO)
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_annuncio(
+        self,
+        interaction: discord.Interaction,
+        modo: app_commands.Choice[str] | None = None,
+        canale: discord.TextChannel | None = None,
+        livello_minimo: app_commands.Range[int, 0, 1000] | None = None,
+        ogni: app_commands.Range[int, 1, 100] | None = None,
+        solo_premi: bool | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        campi = {}
+        if modo is not None:
+            campi["levelup_mode"] = modo.value
+        if canale is not None:
+            campi["levelup_channel_id"] = canale.id
+        if livello_minimo is not None:
+            campi["levelup_min_level"] = livello_minimo
+        if ogni is not None:
+            campi["levelup_every"] = ogni
+        if solo_premi is not None:
+            campi["levelup_only_rewards"] = solo_premi
+        await self._salva_impostazioni(interaction, campi)
+
+    @comando_di_gruppo(
+        "level",
+        nome="premi",
+        descrizione="Ruoli-premio: tienili tutti o tieni solo quello più alto.",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(modo="'accumula' li tiene tutti, 'sostituisci' toglie i precedenti")
+    @app_commands.choices(modo=_SCELTE_PREMI)
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_premi(
+        self, interaction: discord.Interaction, modo: app_commands.Choice[str]
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        await self._salva_impostazioni(interaction, {"reward_mode": modo.value})
+
+    @comando_di_gruppo(
+        "level",
+        nome="xp",
+        descrizione="Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(
+        testo="XP per ogni messaggio che conta (1-100)",
+        attesa="Secondi tra due messaggi che danno XP (10-600)",
+        voce_xp="XP per ogni minuto in vocale (0-50)",
+        voce_coin="Coin per ogni minuto in vocale (0-50)",
+        moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
+    )
+    @app_commands.choices(moltiplicatori=_SCELTE_MOLTIPLICATORI)
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_xp(
+        self,
+        interaction: discord.Interaction,
+        testo: app_commands.Range[int, 1, 100] | None = None,
+        attesa: app_commands.Range[int, 10, 600] | None = None,
+        voce_xp: app_commands.Range[int, 0, 50] | None = None,
+        voce_coin: app_commands.Range[int, 0, 50] | None = None,
+        moltiplicatori: app_commands.Choice[str] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        campi = {}
+        if testo is not None:
+            campi["text_xp"] = testo
+        if attesa is not None:
+            campi["text_cooldown_seconds"] = attesa
+        if voce_xp is not None:
+            campi["voice_xp_per_minute"] = voce_xp
+        if voce_coin is not None:
+            campi["voice_coins_per_minute"] = voce_coin
+        if moltiplicatori is not None:
+            campi["multiplier_mode"] = moltiplicatori.value
+        await self._salva_impostazioni(interaction, campi)
+
+    async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:
+        if not campi:
+            await interaction.response.send_message(
+                "Scegli almeno un valore da cambiare.", ephemeral=True
+            )
+            return
+        try:
+            await leveling_settings_repo.set_options(interaction.guild.id, **campi)
+        except ValueError as errore:
+            await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
+            return
+        config = await leveling_settings_repo.get_config(interaction.guild.id)
+        await interaction.response.send_message(
+            "✅ Impostazioni salvate.", embed=_embed_impostazioni(config), ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "level",
+        nome="escludi",
+        descrizione="Un canale o un ruolo non dà XP (rifallo per toglierlo dall'elenco).",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(
+        canale="Il canale (anche vocale, thread e forum) senza XP",
+        ruolo="Il ruolo i cui membri non prendono XP",
+    )
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_escludi(
+        self,
+        interaction: discord.Interaction,
+        canale: discord.abc.GuildChannel | None = None,
+        ruolo: discord.Role | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if (canale is None) == (ruolo is None):
+            await interaction.response.send_message(
+                "Scegli un canale oppure un ruolo, non entrambi.", ephemeral=True
+            )
+            return
+        tipo, bersaglio = (
+            ("canale_escluso", canale) if canale is not None else ("ruolo_escluso", ruolo)
+        )
+        config = await leveling_settings_repo.get_config(interaction.guild.id)
+        gia = bersaglio.id in (
+            config.canali_esclusi if canale is not None else config.ruoli_esclusi
+        )
+        if gia:
+            await leveling_settings_repo.remove_rule(interaction.guild.id, tipo, bersaglio.id)
+            testo = f"✅ {bersaglio.mention} dà di nuovo XP."
+        else:
+            try:
+                await leveling_settings_repo.set_rule(interaction.guild.id, tipo, bersaglio.id)
+            except RegolaPiena:
+                await interaction.response.send_message(
+                    f"❌ Hai già {MAX_REGOLE_PER_TIPO} esclusioni di questo tipo.", ephemeral=True
+                )
+                return
+            testo = f"✅ {bersaglio.mention} non dà più XP."
+        await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "level",
+        nome="moltiplicatore",
+        descrizione="XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(
+        fattore="Da 0.1 a 10 (2 = XP doppi); 1 toglie la regola",
+        canale="Il canale (anche vocale)",
+        ruolo="Il ruolo",
+    )
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_moltiplicatore(
+        self,
+        interaction: discord.Interaction,
+        fattore: app_commands.Range[float, FATTORE_MINIMO, FATTORE_MASSIMO],
+        canale: discord.abc.GuildChannel | None = None,
+        ruolo: discord.Role | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if (canale is None) == (ruolo is None):
+            await interaction.response.send_message(
+                "Scegli un canale oppure un ruolo, non entrambi.", ephemeral=True
+            )
+            return
+        tipo, bersaglio = (
+            ("mult_canale", canale) if canale is not None else ("mult_ruolo", ruolo)
+        )
+        if fattore == 1:
+            await leveling_settings_repo.remove_rule(interaction.guild.id, tipo, bersaglio.id)
+            testo = f"✅ Nessun moltiplicatore su {bersaglio.mention}."
+        else:
+            try:
+                await leveling_settings_repo.set_rule(
+                    interaction.guild.id, tipo, bersaglio.id, round(fattore, 2)
+                )
+            except RegolaPiena:
+                await interaction.response.send_message(
+                    f"❌ Hai già {MAX_REGOLE_PER_TIPO} moltiplicatori di questo tipo.",
+                    ephemeral=True,
+                )
+                return
+            testo = f"✅ XP ×{fattore:g} su {bersaglio.mention}."
+        await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
         "gestione",
