@@ -217,8 +217,10 @@ async def test_snipe_rispetta_log_ignora(ambiente):
 class _Registro:
     def __init__(self, voci):
         self.voci = voci
+        self.chiamate = 0
 
     def __call__(self, **kw):
+        self.chiamate += 1
         voci = self.voci
 
         async def gen():
@@ -299,3 +301,97 @@ async def test_ghost_ping_registro_illeggibile_segnala_come_prima(monkeypatch):
     await cog.on_message(msg)
     await cog.on_raw_message_delete(_cancella(msg))
     log_channel.send.assert_awaited_once()
+
+
+async def test_con_snipe_e_ghost_ping_accesi_il_moderatore_non_fa_scattare_il_ghost_ping(ambiente, monkeypatch):
+    cog, attivi = ambiente
+    attivi[modulo.MODULE_GHOST_PING] = True
+    _, server = cog._test
+    registro = _Registro([_voce_registro(9, 42, CANALE, secondi_fa=0)])
+    server.audit_logs = registro
+    log_channel = fake_text_channel(999)
+    log_channel.send = AsyncMock()
+    monkeypatch.setattr(modulo.router, "destinazione", AsyncMock(return_value=log_channel))
+    msg = _msg("ciao @tu")
+    msg.mentions = [MagicMock(id=5)]
+    msg.mention_everyone = False
+    await cog.on_message(msg)
+    await cog.on_raw_message_delete(_cancella(msg))
+    log_channel.send.assert_not_awaited()
+    assert cog._ultimo_cancellato.get(CANALE) is None
+    assert registro.chiamate == 1  # il registro si legge una volta sola per evento
+
+
+async def test_con_snipe_e_ghost_ping_accesi_l_autore_fa_scattare_il_ghost_ping_e_lo_snipe(ambiente, monkeypatch):
+    cog, attivi = ambiente
+    attivi[modulo.MODULE_GHOST_PING] = True
+    log_channel = fake_text_channel(999)
+    log_channel.send = AsyncMock()
+    monkeypatch.setattr(modulo.router, "destinazione", AsyncMock(return_value=log_channel))
+    msg = _msg("ciao @tu")
+    msg.mentions = [MagicMock(id=5)]
+    msg.mention_everyone = False
+    await cog.on_message(msg)
+    await cog.on_raw_message_delete(_cancella(msg))
+    log_channel.send.assert_awaited_once()
+    assert cog._ultimo_cancellato.get(CANALE) is not None
+
+
+async def test_modifica_con_modulo_spento_non_si_ricorda(ambiente):
+    cog, attivi = ambiente
+    attivi[modulo.MODULE_SNIPE] = False
+    await cog.on_message_edit(_msg("a"), _msg("b"))
+    assert cog._ultima_modifica.get(CANALE) is None
+
+
+async def test_modifica_di_un_bot_non_si_ricorda(ambiente):
+    cog, _ = ambiente
+    await cog.on_message_edit(_msg("a", bot=True), _msg("b", bot=True))
+    assert cog._ultima_modifica.get(CANALE) is None
+
+
+async def test_editsnipe_non_menziona_nessuno_e_taglia_con_i_puntini(ambiente):
+    cog, _ = ambiente
+    await cog.on_message_edit(_msg("a" * 3000), _msg("b" * 3000))
+    ix = _ix()
+    await cog.editsnipe.callback(cog, ix)
+    kw = ix.response.send_message.call_args.kwargs
+    assert kw["allowed_mentions"].users is False
+    campi = {c.name: c.value for c in kw["embed"].fields}
+    assert len(campi["Prima"]) == 1024 and campi["Prima"].endswith("…")
+
+
+async def test_voci_viste_del_registro_si_svuotano_oltre_il_tetto(ambiente):
+    cog, _ = ambiente
+    cog._voci_viste.update({n: 1 for n in range(modulo._CACHE_MAX_SIZE + 5)})
+    await cog._cancellato_da_moderatore(cog._test[1], 42, CANALE, 0.0)
+    assert cog._voci_viste == {}
+
+
+def test_la_potatura_periodica_toglie_le_voci_scadute_di_tutti_i_server(monkeypatch):
+    monkeypatch.setattr(snipe_logic, "POTATURA_OGNI", 3)
+    ricordi = RicordiSnipe()
+    vecchio = datetime.now(timezone.utc) - timedelta(hours=1)
+
+    class V:
+        def __init__(self, guild_id, quando=None):
+            self.guild_id, self.quando = guild_id, quando or datetime.now(timezone.utc)
+
+    ricordi.set(1, V(1, vecchio))  # server 1: nessuno scrive più lì
+    ricordi.set(2, V(2))
+    assert len(ricordi) == 2
+    ricordi.set(3, V(3))  # terza scrittura: potatura di tutti
+    assert len(ricordi) == 2 and ricordi.get(1) is None
+
+
+def test_tetto_totale_delle_voci(monkeypatch):
+    monkeypatch.setattr(snipe_logic, "TOTALE_MAX", 3)
+    ricordi = RicordiSnipe()
+
+    class V:
+        def __init__(self, guild_id):
+            self.guild_id, self.quando = guild_id, datetime.now(timezone.utc)
+
+    for n in range(6):
+        ricordi.set(n, V(n))
+    assert len(ricordi) == 3 and ricordi.get(0) is None and ricordi.get(5) is not None

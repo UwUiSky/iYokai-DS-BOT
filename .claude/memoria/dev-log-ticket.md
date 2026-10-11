@@ -26,6 +26,8 @@
 
 - Giro logt, correzioni del cacciatore-bug: righe del router `esplicito` (migr. 0030: le righe nate dal ripiego seguono il generale), blocco+ricerca post archiviati nel forum, avviso segnato dopo il DM, registro di controllo per voce (id/conteggio), snipe con potatura/tetto per server/ignora/moderatori, transcript ticket via router, permessi forum, tetto 1/min per mute propri.
 
+- Revisione: `_post_noti` verificata con `parent_id`; registro letto una volta per evento (`on_raw_message_delete`); `/log stato` usa `esplicito`; servizio soundboard e `new_entries_since` tolti; `core/testo_limiti.py` (tronca, CAMPO_MAX, DESCRIZIONE_MAX); cache 30 s degli ignorati nel repo. Restano `truncate_text` (moderazione) e `taglia` (livelli): non miei.
+
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
 - Cancellazione dei ticket dallo scheduler, non da un task.
@@ -47,7 +49,6 @@
 - Un nome `test*` importato in un file di test viene raccolto da pytest: importare il modulo, non la funzione.
 
 ## Aperto
-- main.py (non mio) importa ancora `soundboard_log_service`: si può togliere (il servizio non ha più ciclo).
 - #145: serve che chi cambia whitelist/cassa/abbonamenti (core/premium.py, dev-core) chiami `advanced_logs.invalida_verdetto_premium(guild_id)`.
 - Router: moderazione (sanzioni), automod, allarmi e benvenuto non passano ancora dal router (§18.1 resta `[~]`).
 - M 3.14: nessun messaggio all'utente (i log sono listener, niente interazione);

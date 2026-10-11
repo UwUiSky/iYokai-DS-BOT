@@ -9,7 +9,6 @@ quello del server (M 5.6), tipo «voce» e «server».
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-import discord
 import pytest
 
 import cogs.logging.advanced_logs as modulo
@@ -138,3 +137,20 @@ async def test_mute_proprio_ripetuto_si_registra_una_volta_al_minuto(cog, monkey
     for _ in range(3):
         await c.on_voice_state_update(membro, _stato(canale), _stato(canale, mute=True))
     assert invio.await_count == 5
+
+
+async def test_due_spostamenti_di_fila_usano_un_solo_invio_e_lo_scarico_si_ferma_con_il_cog(cog):
+    c, invio = cog
+    modulo.SPOSTAMENTI_ATTESA_SECONDI = 30
+    try:
+        server = fake_guild(guild_id=77)
+        for n in range(2):
+            await c.on_guild_channel_update(_canale(n, posizione=n, server=server), _canale(n, posizione=n + 1, server=server))
+        assert len(c._invii_spostamenti) == 1
+        compito = next(iter(c._invii_spostamenti))
+        c.cog_unload()
+        await asyncio.gather(compito, return_exceptions=True)
+        assert compito.cancelled()
+        invio.assert_not_awaited()
+    finally:
+        modulo.SPOSTAMENTI_ATTESA_SECONDI = 0

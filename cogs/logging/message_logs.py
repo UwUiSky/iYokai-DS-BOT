@@ -23,18 +23,16 @@ from core import channel_router as router
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
 from core.message_log_logic import (
-    CAMPO_MAX,
-    DESCRIZIONE_MAX,
     MessaggioArchiviato,
     da_ignorare,
     file_blocco,
     riepilogo_blocco,
     senza_accento_grave,
     testo_allegati,
-    tronca,
 )
 from core.repositories.event_log_repo import event_log_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
+from core.testo_limiti import CAMPO_MAX, DESCRIZIONE_MAX, tronca
 
 logger = logging.getLogger("iyokai.logging.messaggi")
 
@@ -73,6 +71,8 @@ class MessageLogsCog(commands.Cog):
         if guild is None:
             return
         messaggio = payload.cached_message
+        if messaggio is not None and messaggio.author.bot:
+            return
         canale = guild.get_channel_or_thread(payload.channel_id)
         ignorati = await log_ignora_repo.carica(guild.id)
         if _scartato(ignorati, canale, messaggio, payload.channel_id):
@@ -153,7 +153,7 @@ class MessageLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
-        if after.guild is None or before.content == after.content:
+        if after.guild is None or after.author.bot or before.content == after.content:
             return
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return

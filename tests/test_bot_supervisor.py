@@ -266,7 +266,7 @@ def test_main_ferma_tutti_i_servizi_periodici_che_importa():
         nome for nome, oggetto in vars(main_module).items()
         if any(oggetto is servizio for servizio in main_module._servizi_periodici())
     }
-    assert len(con_loop) >= 16
+    assert len(con_loop) >= 15
     assert con_loop == fermati
 
 

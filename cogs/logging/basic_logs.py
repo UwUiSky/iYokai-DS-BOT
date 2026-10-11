@@ -225,13 +225,16 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         righe = []
         for tipo in TIPI_LOG:
             riga = scelte.get(tipo)
-            channel_id = riga.channel_id if riga else generale
+            if riga is not None and not riga.esplicito and riga.channel_id != generale:
+                riga = None  # riga di ripiego di un canale che non è più il generale
+            esplicito = riga is not None and riga.esplicito
+            channel_id = riga.channel_id if esplicito else generale
             if channel_id is None:
                 righe.append(f"**{DESCRIZIONE_TIPO[tipo]}**: non impostato")
                 continue
             canale = guild.get_channel(channel_id)
             testo = canale.mention if canale is not None else f"canale eliminato (ID {channel_id})"
-            extra = " (riserva)" if riga is None else ""
+            extra = "" if esplicito else " (riserva)"
             if riga is not None and riga.avvisato:
                 extra = " (non riesco a scrivere: controlla i permessi)"
             righe.append(f"**{DESCRIZIONE_TIPO[tipo]}**: {testo}{extra}")

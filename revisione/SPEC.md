@@ -686,8 +686,7 @@ Totale voci: **494**.
 - `[x]` 8.13 Soundboard create / delete / update — dagli eventi gateway
   di discord.py 2.7.1 (`on_soundboard_sound_create/update/delete`),
   ascoltati da `cogs/logging/advanced_logs.py`. Il giro periodico
-  sull'audit log è tolto (`core/soundboard_log_service.py` è solo un
-  segnaposto senza ciclo; M 5.7, LIM-31)
+  sull'audit log e il servizio `soundboard_log_service` sono tolti (M 5.7, LIM-31)
 - `[x]` 8.14 Thread events — create/delete/update (nome, archiviato,
   bloccato)
 - `[x]` 8.15 Server update (impostazioni guild) — nome, icona,

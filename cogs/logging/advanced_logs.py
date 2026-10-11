@@ -50,7 +50,7 @@ from core.logging_advanced_logic import (
     diff_attributes,
     diff_named_items,
 )
-from core.message_log_logic import DESCRIZIONE_MAX, tronca
+from core.testo_limiti import DESCRIZIONE_MAX, tronca
 from core.premium import registry
 from core.repositories.event_log_repo import event_log_repo
 from core.security_access import premium_sbloccato

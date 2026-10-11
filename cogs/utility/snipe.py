@@ -29,6 +29,7 @@ from core.database import db
 from core.premium import PremiumModule, registry
 from core.message_log_logic import da_ignorare
 from core.repositories.log_ignora_repo import log_ignora_repo
+from core.testo_limiti import CAMPO_MAX
 from core.snipe_logic import (
     RicordiSnipe,
     VoceRegistro,
@@ -46,7 +47,6 @@ MODULE_GHOST_PING = "ghost_ping_detection"
 _CACHE_MAX_SIZE = 2000
 # Il registro di controllo arriva in ritardo: si aspetta un attimo prima di leggerlo.
 AUDIT_ATTESA_SECONDI = 1.5
-CAMPO_MAX = 1024
 
 
 @dataclass(frozen=True)
@@ -117,29 +117,14 @@ class SnipeCog(CogConGruppi, commands.Cog):
             thread_parent_id=getattr(canale, "parent_id", None),
         )
 
-    async def _ricorda_cancellato(self, payload: discord.RawMessageDeleteEvent, evento_ts: float) -> None:
+    async def _vuole_snipe(self, payload: discord.RawMessageDeleteEvent, guild: discord.Guild) -> bool:
+        """Il messaggio cancellato va ricordato per /utility snipe (modulo acceso, non ignorato)."""
         messaggio = payload.cached_message
         if messaggio is None or messaggio.author.bot:
-            return
+            return False
         if not await db.is_module_active_for_guild(payload.guild_id, MODULE_SNIPE):
-            return
-        guild = self.bot.get_guild(payload.guild_id)
-        if guild is None or await self._ignorato(guild, payload.channel_id, messaggio):
-            return
-        # Quello che tolgono i moderatori o l'automod non si rimostra a tutti.
-        if await self._cancellato_da_moderatore(guild, messaggio.author.id, payload.channel_id, evento_ts):
-            return
-        self._ultimo_cancellato.set(
-            payload.channel_id,
-            _MessaggioCancellato(
-                author_id=messaggio.author.id,
-                author_nome=messaggio.author.display_name,
-                content=messaggio.content,
-                allegati=tuple(a.filename for a in messaggio.attachments),
-                quando=datetime.now(timezone.utc),
-                guild_id=payload.guild_id,
-            ),
-        )
+            return False
+        return not await self._ignorato(guild, payload.channel_id, messaggio)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
@@ -211,8 +196,8 @@ class SnipeCog(CogConGruppi, commands.Cog):
             color=discord.Color.orange(),
             timestamp=voce.quando,
         )
-        embed.add_field(name="Prima", value=testo_snipe(voce.prima, [])[:CAMPO_MAX], inline=False)
-        embed.add_field(name="Dopo", value=testo_snipe(voce.dopo, [])[:CAMPO_MAX], inline=False)
+        embed.add_field(name="Prima", value=testo_snipe(voce.prima, [], CAMPO_MAX), inline=False)
+        embed.add_field(name="Dopo", value=testo_snipe(voce.dopo, [], CAMPO_MAX), inline=False)
         embed.set_footer(text=f"Scritto da {voce.author_nome}")
         await interaction.response.send_message(
             embed=embed, allowed_mentions=discord.AllowedMentions.none()
@@ -321,27 +306,45 @@ class SnipeCog(CogConGruppi, commands.Cog):
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
         if payload.guild_id is None:
             return
-
         evento_ts = discord.utils.utcnow().timestamp()
-        await self._ricorda_cancellato(payload, evento_ts)
-
         tracciato = self._tracked_mentions.get(payload.message_id)
-        if tracciato is None:
-            return
-        self._tracked_mentions.delete(payload.message_id)
-
-        if not await db.is_module_active_for_guild(payload.guild_id, MODULE_GHOST_PING):
-            return
+        if tracciato is not None:
+            self._tracked_mentions.delete(payload.message_id)
         guild = self.bot.get_guild(payload.guild_id)
         if guild is None:
             return
-        predefinito = await db.get_guild_setting(payload.guild_id, SETTING_LOG_CHANNEL)
-        destinazione = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
-        if destinazione is None:
-            return
-        if await self._cancellato_da_moderatore(guild, tracciato.author_id, tracciato.channel_id, evento_ts):
+
+        ricorda = await self._vuole_snipe(payload, guild)
+        destinazione = None
+        if tracciato is not None and await db.is_module_active_for_guild(payload.guild_id, MODULE_GHOST_PING):
+            predefinito = await db.get_guild_setting(payload.guild_id, SETTING_LOG_CHANNEL)
+            destinazione = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
+        if not ricorda and destinazione is None:
             return
 
+        # Una sola lettura del registro per evento: la seconda vedrebbe la voce già «vista».
+        messaggio = payload.cached_message
+        autore = messaggio.author.id if messaggio is not None else tracciato.author_id
+        da_moderatore = await self._cancellato_da_moderatore(guild, autore, payload.channel_id, evento_ts)
+        if da_moderatore:
+            return  # né snipe né ghost ping: l'ha tolto un moderatore o l'automod
+
+        if ricorda:
+            self._ultimo_cancellato.set(
+                payload.channel_id,
+                _MessaggioCancellato(
+                    author_id=messaggio.author.id,
+                    author_nome=messaggio.author.display_name,
+                    content=messaggio.content,
+                    allegati=tuple(a.filename for a in messaggio.attachments),
+                    quando=datetime.now(timezone.utc),
+                    guild_id=payload.guild_id,
+                ),
+            )
+        if destinazione is not None:
+            await self._avvisa_ghost_ping(guild, destinazione, tracciato)
+
+    async def _avvisa_ghost_ping(self, guild: discord.Guild, destinazione, tracciato: _TrackedMention) -> None:
         if tracciato.mentions_everyone:
             menzioni = "@everyone/@here"
         else:

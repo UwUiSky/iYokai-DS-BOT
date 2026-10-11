@@ -127,6 +127,7 @@ async def test_forum_il_primo_invio_crea_il_post_poi_si_riusa(repo):
     forum = fake_forum_channel(8)
     post = MagicMock(spec=discord.Thread)
     post.id = 801
+    post.parent_id = 8
     post.send = AsyncMock()
     forum.create_thread = AsyncMock(
         return_value=MagicMock(thread=post, message=MagicMock())
@@ -153,6 +154,7 @@ async def test_forum_post_cancellato_ne_nasce_uno_nuovo(repo):
     forum = fake_forum_channel(8)
     nuovo = MagicMock(spec=discord.Thread)
     nuovo.id = 802
+    nuovo.parent_id = 8
     vecchio = MagicMock(spec=discord.Thread)
     vecchio.id = 801
     vecchio.send = AsyncMock(side_effect=discord.NotFound(_risposta(404), "x"))
@@ -209,7 +211,7 @@ async def test_la_scelta_esplicita_del_tipo_resta_dopo_il_cambio_del_generale(re
 @pytest.mark.asyncio
 async def test_il_post_nato_dal_generale_non_blocca_il_cambio_da_forum_a_testo(repo):
     forum = fake_forum_channel(50)
-    post = MagicMock(spec=discord.Thread, id=5000)
+    post = MagicMock(spec=discord.Thread, id=5000, parent_id=50)
     post.send = AsyncMock()
     forum.create_thread = AsyncMock(return_value=MagicMock(thread=post, message=MagicMock()))
     server = _server(forum)
@@ -225,7 +227,7 @@ async def test_tre_invii_insieme_nel_forum_creano_un_solo_post(repo):
     forum = fake_forum_channel(50)
     server = _server(forum)
     forum.guild = server
-    post = MagicMock(spec=discord.Thread, id=7001)
+    post = MagicMock(spec=discord.Thread, id=7001, parent_id=50)
     post.send = AsyncMock()
 
     async def crea(**kw):
@@ -293,3 +295,87 @@ async def test_dm_chiusi_l_avviso_si_considera_dato(repo):
     for _ in range(3):
         await router.destinazione(_server(owner=owner), router.TIPO_EVENTI, None)
     assert owner.send.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cambiando_forum_il_log_va_nel_forum_nuovo_non_nel_post_vecchio(repo):
+    vecchio_forum, nuovo_forum = fake_forum_channel(50), fake_forum_channel(60)
+    server = _server(vecchio_forum, nuovo_forum)
+    vecchio_forum.guild = nuovo_forum.guild = server
+    post_vecchio = MagicMock(spec=discord.Thread, id=1, parent_id=50)
+    post_vecchio.send = AsyncMock()
+    post_nuovo = MagicMock(spec=discord.Thread, id=2, parent_id=60)
+    post_nuovo.send = AsyncMock()
+    vecchio_forum.create_thread = AsyncMock(return_value=MagicMock(thread=post_vecchio, message=MagicMock()))
+    nuovo_forum.create_thread = AsyncMock(return_value=MagicMock(thread=post_nuovo, message=MagicMock()))
+
+    await repo.imposta(900, router.TIPO_VOCE, 50)
+    dest = await router.destinazione(server, router.TIPO_VOCE, None)
+    await dest.send(embed=discord.Embed(title="a"))
+    await repo.imposta(900, router.TIPO_VOCE, 60)  # /log canale tipo:voce nel forum nuovo
+    dest = await router.destinazione(server, router.TIPO_VOCE, None)
+    await dest.send(embed=discord.Embed(title="b"))
+
+    nuovo_forum.create_thread.assert_awaited_once()
+    post_vecchio.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_il_post_di_un_altro_forum_nella_riga_non_si_usa(repo):
+    forum = fake_forum_channel(60)
+    server = _server(forum)
+    forum.guild = server
+    altro = MagicMock(spec=discord.Thread, id=3)
+    altro.send = AsyncMock()
+    server.get_thread.return_value = altro
+    nuovo = MagicMock(spec=discord.Thread, id=4, parent_id=60)
+    forum.create_thread = AsyncMock(return_value=MagicMock(thread=nuovo, message=MagicMock()))
+    await repo.imposta(900, router.TIPO_VOCE, 50)
+    await repo.salva_post(900, router.TIPO_VOCE, 50, 3)  # post del forum 50
+    await repo.imposta(900, router.TIPO_VOCE, 60)  # poi si passa al forum 60
+    dest = await router.destinazione(server, router.TIPO_VOCE, None)
+    await dest.send(embed=discord.Embed(title="x"))
+    altro.send.assert_not_awaited()
+    forum.create_thread.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_riga_di_un_altro_canale_non_fissa_la_destinazione_del_generale(repo):
+    vecchio, generale = fake_text_channel(77), fake_text_channel(88)
+    await repo.segna_avvisato(900, router.TIPO_SERVER, 77)  # riga non esplicita sul canale 77
+    assert await router.destinazione(_server(vecchio, generale), router.TIPO_SERVER, 88) is generale
+
+
+@pytest.mark.asyncio
+async def test_salva_post_non_sposta_una_scelta_esplicita(repo):
+    await repo.imposta(900, router.TIPO_VOCE, 50)
+    await repo.salva_post(900, router.TIPO_VOCE, 99, 7)
+    riga = await repo.ottieni(900, router.TIPO_VOCE)
+    assert riga.channel_id == 50 and riga.esplicito and riga.post_id == 7
+
+
+@pytest.mark.asyncio
+async def test_due_avvisi_insieme_mandano_un_solo_dm(repo):
+    owner = fake_member(user_id=555)
+    gate = asyncio.Event()
+
+    async def lento(*a, **k):
+        await gate.wait()
+
+    owner.send = AsyncMock(side_effect=lento)
+    server = _server(owner=owner)
+    primo = asyncio.create_task(router.avvisa_proprietario(server, router.TIPO_EVENTI, 77, "x"))
+    await asyncio.sleep(0.05)
+    await router.avvisa_proprietario(server, router.TIPO_EVENTI, 77, "x")  # mentre il primo è in corso
+    gate.set()
+    await primo
+    assert owner.send.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_dm_fallito_per_errore_di_rete_non_segna_l_avviso(repo):
+    owner = fake_member(user_id=555)
+    owner.send = AsyncMock(side_effect=discord.HTTPException(_risposta(500), "boom"))
+    await router.avvisa_proprietario(_server(owner=owner), router.TIPO_EVENTI, 77, "x")
+    riga = await repo.ottieni(900, router.TIPO_EVENTI)
+    assert riga is None or not riga.avvisato

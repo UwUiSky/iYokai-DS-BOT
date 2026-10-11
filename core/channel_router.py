@@ -88,7 +88,9 @@ class PostForum:
         chiave = (self.guild.id, self.tipo)
         noto = _post_noti.get(chiave)
         if noto is not None:
-            return noto
+            if getattr(noto, "parent_id", None) == self.forum.id:
+                return noto
+            _post_noti.delete(chiave)  # il tipo ora scrive in un altro forum
         riga = await output_channel_repo.ottieni(self.guild.id, self.tipo)
         post_id = riga.post_id if riga and riga.channel_id == self.forum.id else None
         if post_id is None:

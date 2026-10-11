@@ -220,3 +220,52 @@ async def test_log_canale_su_un_forum_vuole_anche_i_messaggi_nei_post(ambiente):
     )
     await cog.logs_setup.callback(cog, ix, forum, "voce")
     assert "permessi" in ix.response.send_message.call_args.args[0]
+
+
+async def test_log_stato_dopo_un_cambio_del_generale_non_mostra_il_canale_vecchio(ambiente):
+    repo, db = ambiente
+    await repo.segna_avvisato(600, "messaggi", 10)  # riga di ripiego sul vecchio generale
+    db.scritti[(600, router.SETTING_LOG_CHANNEL)] = 20  # nuovo generale
+    server = fake_guild(guild_id=600)
+    server.get_channel.side_effect = {10: fake_text_channel(10), 20: fake_text_channel(20)}.get
+    cog = BasicLogsCog(bot=None)
+    ix = fake_interaction(guild=server)
+    await cog.logs_status.callback(cog, ix)
+    testo = ix.response.send_message.call_args.args[0]
+    assert "<#10>" not in testo and testo.count("<#20>") == 4
+    assert "non riesco" not in testo
+
+
+async def test_crea_forum_con_il_server_a_500_canali_non_crea_niente(ambiente):
+    cog = modulo.LogConfigCog(bot=None)
+    pieno = _server()
+    pieno.channels = [object()] * 500
+    ix = fake_interaction(guild=pieno)
+    await cog.crea_forum.callback(cog, ix)
+    pieno.create_forum.assert_not_awaited()
+    assert "500" in ix.response.send_message.call_args.args[0]
+
+
+async def test_le_sanzioni_non_vanno_in_un_forum(ambiente):
+    repo, db = ambiente
+    cog = BasicLogsCog(bot=None)
+    ix = fake_interaction(guild=fake_guild(guild_id=600))
+    await cog.logs_setup.callback(cog, ix, fake_forum_channel(4003), "sanzioni")
+    assert "canale di testo" in ix.response.send_message.call_args.args[0]
+    assert db.scritti == {}
+
+
+async def test_crea_canali_risponde_dopo_defer_e_scrive_un_topic_valido(ambiente):
+    cog = modulo.LogConfigCog(bot=None)
+    server = _server()
+    ix = fake_interaction(guild=server)
+    await cog.crea_canali.callback(cog, ix)
+    ix.response.defer.assert_awaited_once()
+    for chiamata in server.create_text_channel.await_args_list:
+        assert 0 < len(chiamata.kwargs["topic"]) <= 1024
+        assert len(chiamata.args[0]) <= 100
+
+
+def test_il_prefisso_di_ignora_ha_un_massimo_nel_comando():
+    note = modulo.LogConfigCog.ignora.callback.__annotations__
+    assert "Range" in str(note["prefisso"]) or "20" in str(note["prefisso"])

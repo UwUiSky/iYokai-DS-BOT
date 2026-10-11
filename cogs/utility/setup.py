@@ -197,7 +197,7 @@ def _wizard_module_names() -> list[str]:
     SPEC.md §2.2: elenco curato di moduli "per iniziare" (non tutti
     quelli registrati — quello è /admin setup attiva) mostrati uno alla volta dal
     wizard. Import LOCALI, non a livello di modulo — stesso motivo
-    già documentato in core/soundboard_log_service.py: evitare
+    già usato in core/channel_router.py: evitare
     qualunque rischio di import circolare tra cog diversi, e restare
     caricabile in isolamento nei test.
     """
