@@ -680,3 +680,8 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. Clicca il bottone dal DM (l'account è fuori dal server), scrivi il testo, invia. Riprova subito: deve dire di attendere 24 ore.
   4. Nel canale staff usa «Rifiuta» (nessun ban tolto) su un secondo appello, poi «Accetta» su un terzo; prova anche con un account senza «Bannare membri».
   Risultato atteso: il modulo si apre anche da un account bannato (se Discord lo impedisce, annotarlo); Accetta toglie il ban e scrive all'utente; il bottone dopo un riavvio del bot funziona ancora. `/modban appelli elenco` mostra gli stati.
+- [ ] `VER-014/015/016` (#118) — passi:
+  1. `/security verify opzioni non_verificato:@Nuovo extra_1:@Membro`, poi fai entrare un account di prova.
+  2. L'account riceve @Nuovo; clicca il pannello di verifica.
+  3. Con un altro account: `/security verify manuale member:@prova`; poi `/security verify tentativi` e `statistiche`.
+  Risultato atteso: alla verifica l'account perde @Nuovo e prende il ruolo di verifica più @Membro; la verifica a mano appare nei tentativi come «Verificato a mano».

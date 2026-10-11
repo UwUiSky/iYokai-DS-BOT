@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 250 comandi in 16 categorie.**
+**Totale: 254 comandi in 16 categorie.**
 
 ## Admin
 
@@ -263,8 +263,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 - **`/security spamtrap`** — Configura i canali trappola e log dello Spam Trap.
 - **`/security verify blacklist-add`** — Aggiungi un utente alla blacklist.
 - **`/security verify blacklist-remove`** — Rimuovi un utente dalla blacklist.
+- **`/security verify manuale`** — Verifica a mano un membro, senza controlli.
+- **`/security verify opzioni`** — Ruolo «non verificato» e ruoli extra dati con la verifica.
 - **`/security verify panel`** — Pubblica il pannello di verifica.
 - **`/security verify setup`** — Configura il Verify.
+- **`/security verify statistiche`** — Quanti tentativi di verifica riusciti e falliti.
+- **`/security verify tentativi`** — Ultimi tentativi di verifica di un utente.
 - **`/security verify whitelist-add`** — Aggiungi un utente alla whitelist.
 - **`/security verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
 

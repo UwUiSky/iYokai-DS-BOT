@@ -17,12 +17,8 @@ tra quelli in cui si trova LUI STESSO, contengono anche questo
 utente — non tutti i server dell'utente in assoluto (Discord non
 espone quel dato a un bot). È un segnale debole, non una prova.
 Già annotato così nello schema di progetto originale.
+Funzioni coperte: SPEC §4.1, §4.4-§4.6
 """
-
-# DA FARE (issue #60, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §4 (Verify).
-# DA FARE (issue #89, fase F9): NF-18, Captcha a immagine. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 

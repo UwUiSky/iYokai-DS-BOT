@@ -3,11 +3,12 @@
 2026-10-11 (notte), ramo feat/giro-mod (da main), worktree /home/claude/wt/mod, DB iyokai_wmod, migrazioni da 0040.
 ## In corso
 Previsione: 5 gruppi (tempban #138, caso/note/warn+clear+log, appelli, verify, filtri AutoMod).
-Fatti tre. Prossimo: verify (#60 gia ok; VER-014/015/016 in cogs/security/verify.py + core/verify_logic.py), poi filtri AutoMod piccoli. 1.10 resta aperta.
+Fatti quattro. Prossimo: filtri AutoMod piccoli in cogs/automod/automod.py (1096 righe: leggere a pezzi), poi rapporto. 1.10 resta aperta.
 ## Fatto
 - G1 #138: /modban tempban modo (fuori|rientro|isolamento), core/tempban_logic.py, cogs/moderation/_tempban_modes.py, migrazione 0040 tempban_stato, unban libera l'isolamento
 - G2 #57: M 1.8 (log lock/unlock/slowmode/clear/untimeout/unmute/scadenza), caso (motivo/elimina/classifica-staff/storico per tipo), nota (rimuovi/modifica/svuota), avvisi (togli/azzera/classifica), clear con 12 filtri (core/clear_filter_logic.py)
 - G3 #101: appelli ban manuali (ban_appeal.py, ban_appeal_logic.py, migrazione 0041 ban_appelli, /modban appelli canale|elenco, DM con bottone)
+- G4 #118/#60: verify opzioni (non verificato, 3 ruoli extra via guild settings), manuale, tentativi, statistiche (verify_repo.attempt_stats)
 - Gia fatte prima del giro: M 1.1-1.7, 1.9 (test_moderation_*), #60 4.1 (test_verify_risposta_subito)
 ## Cose imparate
 - Tabelle sicurezza in security_repo.run_migrations; le nuove di moderazione in core/migrations/NNNN (clean_db le svuota da information_schema)

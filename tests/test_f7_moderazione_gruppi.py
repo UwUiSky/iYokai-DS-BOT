@@ -57,6 +57,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("security", "globalban"): {"enable", "disable", "status", "controlla"},
     ("security", "verify"): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",
+        "opzioni", "manuale", "tentativi", "statistiche",
     },
     ("automod", None): {"sync", "mute-duration", "log-channel", "status"},
     ("automod", "filtri"): {

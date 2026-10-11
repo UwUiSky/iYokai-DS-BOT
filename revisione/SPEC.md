@@ -262,7 +262,8 @@ Totale voci: **494**.
   → **Stato 04/10:** vedi le voci sotto.
   - `[~]` Button verify — `VerifyPanelView`, persistente (stesso
     pattern di ticket/vocali temporanei)
-    → **Stato 04/10:** lavoro lento prima della risposta (LIM-9).
+    → **Stato 11/10:** `defer` o modulo come prima risposta (LIM-9) — fatto.
+    Aggiunti (#118): `/security verify opzioni` (ruolo «non verificato» all'ingresso, fino a 3 ruoli extra), `manuale`, `tentativi`, `statistiche` (VER-014, 015, 016, 030, 031).
   - `[x]` Reaction verify — `on_raw_reaction_add`. **Non supporta il
     captcha**: una reazione non è un'Interaction, non può aprire un
     Modal — combinazione rifiutata esplicitamente a `/verify setup`

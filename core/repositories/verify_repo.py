@@ -283,6 +283,21 @@ class VerifyRepository:
         )
         return [(r["success"], r["reason"], r["attempted_at"]) for r in rows]
 
+    async def attempt_stats(self, guild_id: int, days: int) -> tuple[int, int, int]:
+        """(riusciti, falliti, utenti diversi) negli ultimi `days` giorni (VER-030)."""
+        row = await self._pool.fetchrow(
+            """
+            SELECT COUNT(*) FILTER (WHERE success) AS ok,
+                   COUNT(*) FILTER (WHERE NOT success) AS ko,
+                   COUNT(DISTINCT user_id) AS utenti
+            FROM verify_attempts
+            WHERE guild_id = $1 AND attempted_at >= now() - make_interval(days => $2)
+            """,
+            guild_id,
+            days,
+        )
+        return row["ok"], row["ko"], row["utenti"]
+
 
 def _get_pool():
     from core.database import db
