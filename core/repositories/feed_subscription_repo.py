@@ -83,14 +83,20 @@ class FeedSubscriptionRepository:
         label: str,
         created_by: int,
         message_template: str | None = None,
-    ) -> int:
-        row = await self._pool.fetchrow(
-            """
+        max_per_guild: int | None = None,
+    ) -> int | None:
+        """
+        Con `max_per_guild` conteggio e scrittura sono atomici (lock
+        advisory per server nella stessa transazione): None = tetto
+        raggiunto, nulla scritto. Richieste in parallelo non lo superano.
+        """
+        sql = """
             INSERT INTO feed_subscriptions
                 (guild_id, channel_id, feed_url, label, message_template, created_by)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
-            """,
+            """
+        args = (
             guild_id,
             channel_id,
             feed_url,
@@ -98,7 +104,23 @@ class FeedSubscriptionRepository:
             message_template or DEFAULT_MESSAGE_TEMPLATE,
             created_by,
         )
-        return row["id"]
+        if max_per_guild is None:
+            row = await self._pool.fetchrow(sql, *args)
+            return row["id"]
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext('feed_subscriptions'), $1)",
+                    guild_id % 2_147_483_647,
+                )
+                presenti = await conn.fetchval(
+                    "SELECT count(*) FROM feed_subscriptions WHERE guild_id = $1", guild_id
+                )
+                if presenti >= max_per_guild:
+                    return None
+                row = await conn.fetchrow(sql, *args)
+                return row["id"]
 
     async def remove_subscription(self, subscription_id: int, guild_id: int) -> bool:
         """
@@ -133,12 +155,12 @@ class FeedSubscriptionRepository:
         entry_id: str,
         published: datetime | None = None,
     ) -> None:
-        """Con `published` None la data ricordata resta quella di prima."""
+        """La data ricordata non torna mai indietro (GREATEST ignora i NULL)."""
         await self._pool.execute(
             """
             UPDATE feed_subscriptions
                SET last_seen_entry_id = $2,
-                   last_seen_published = COALESCE($3, last_seen_published)
+                   last_seen_published = GREATEST(last_seen_published, $3)
              WHERE id = $1
             """,
             subscription_id,

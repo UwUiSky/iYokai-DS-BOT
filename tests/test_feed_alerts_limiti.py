@@ -54,9 +54,8 @@ def _feed(i: int, url_lungo: bool = False):
 
 @pytest.mark.asyncio
 async def test_il_26_feed_viene_rifiutato(repo):
-    repo["feed_subscription_repo"].list_subscriptions.return_value = [
-        _feed(i) for i in range(modulo.MAX_FEED_PER_SERVER)
-    ]
+    # il repository risponde None quando il tetto e' raggiunto (atomico)
+    repo["feed_subscription_repo"].add_subscription.return_value = None
     cog = modulo.FeedAlertsCog(bot=None)
     interazione = fake_interaction()
 
@@ -65,16 +64,14 @@ async def test_il_26_feed_viene_rifiutato(repo):
         channel=fake_text_channel(), label="Il ventiseiesimo",
     )
 
-    testo = interazione.response.send_message.call_args.args[0]
-    assert "25" in testo
-    repo["feed_subscription_repo"].add_subscription.assert_not_awaited()
+    testo = interazione.followup.send.call_args.args[0]
+    assert "25" in testo and "✅" not in testo
+    kwargs = repo["feed_subscription_repo"].add_subscription.call_args.kwargs
+    assert kwargs["max_per_guild"] == modulo.MAX_FEED_PER_SERVER == 25
 
 
 @pytest.mark.asyncio
 async def test_il_25_feed_viene_accettato(repo):
-    repo["feed_subscription_repo"].list_subscriptions.return_value = [
-        _feed(i) for i in range(modulo.MAX_FEED_PER_SERVER - 1)
-    ]
     cog = modulo.FeedAlertsCog(bot=None)
     interazione = fake_interaction()
 
@@ -83,7 +80,7 @@ async def test_il_25_feed_viene_accettato(repo):
         channel=fake_text_channel(), label="Il venticinquesimo",
     )
 
-    repo["feed_subscription_repo"].add_subscription.assert_awaited_once()
+    assert "✅" in interazione.followup.send.call_args.args[0]
 
 
 @pytest.mark.asyncio

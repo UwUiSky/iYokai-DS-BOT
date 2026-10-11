@@ -72,6 +72,10 @@ async def server():
 
     async def videos(request):
         assert request.query["key"] == "chiave-finta"
+        stato.setdefault("parametri", []).append(set(request.query.keys()))
+        if "maxResults" in request.query:
+            # l'API vera rifiuta maxResults insieme a id
+            return web.json_response({"error": "maxResults non ammesso con id"}, status=400)
         ids = request.query["id"].split(",")
         stato["videos"].append(ids)
         items = [
@@ -135,6 +139,41 @@ async def test_dieci_canali_una_sola_chiamata_videos_list(ambiente):
     assert len(stato["videos"]) == 1
     assert len(stato["videos"][0]) == 20  # 10 canali x 2 video
     assert sorted(stato["rss"]) == sorted(f"UC{i}" for i in range(10))
+
+
+@pytest.mark.asyncio
+async def test_videos_list_usa_id_senza_maxresults(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    await repo.add_subscription(100, 500, "UCa", "A", 1)
+    stato["live"].add("UCa_v0")
+    try:
+        await servizio.tick(bot)
+    finally:
+        await servizio.close()
+    assert stato["parametri"] == [{"key", "id", "part"}]
+    assert len(canale.sent_messages) == 1  # con maxResults l'API risponde 400
+
+
+@pytest.mark.asyncio
+async def test_invio_fallito_ritenta_al_giro_dopo(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    await repo.add_subscription(100, 500, "UCa", "A", 1)
+    stato["live"].add("UCa_v0")
+    originale = canale.send
+
+    async def rotto(content):
+        raise discord.Forbidden(type("R", (), {"status": 403, "reason": "x"})(), "no")
+
+    canale.send = rotto
+    try:
+        await servizio.tick(bot)
+        assert (await repo.list_subscriptions(100))[0].last_known_live is False
+        canale.send = originale
+        await servizio.tick(bot)
+        assert len(canale.sent_messages) == 1
+        assert (await repo.list_subscriptions(100))[0].last_known_live is True
+    finally:
+        await servizio.close()
 
 
 @pytest.mark.asyncio

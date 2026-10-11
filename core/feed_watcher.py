@@ -92,10 +92,11 @@ class FeedWatcherService:
                 continue
             if esito is None or esito.non_modificato or esito.testo is None:
                 continue
-            if esito.etag:
-                self._etag_per_url[url] = esito.etag
-            else:
-                self._etag_per_url.pop(url, None)
+            # P4: l'ETag si ricorda solo se TUTTE le sottoscrizioni del
+            # gruppo sono state elaborate: se una solleva (DB, ...), al
+            # giro dopo il feed va riscaricato, non risposto con 304.
+            self._etag_per_url.pop(url, None)
+            tutte_ok = True
 
             voci = parse_feed(esito.testo)
             for sottoscrizione in gruppo:
@@ -103,35 +104,42 @@ class FeedWatcherService:
                 # (feed rotto, dato inatteso) non deve saltare tutte le
                 # successive, che appartengono anche ad altri server.
                 try:
-                    await self._controlla_sottoscrizione(bot, sottoscrizione, voci)
+                    if not await self._controlla_sottoscrizione(bot, sottoscrizione, voci):
+                        tutte_ok = False  # c'e' qualcosa da ritentare: niente 304
                 except Exception:
+                    tutte_ok = False
                     logger.exception(
                         "Errore sulla sottoscrizione #%s (server %s): salto alla prossima.",
                         sottoscrizione.id,
                         sottoscrizione.guild_id,
                     )
+            if tutte_ok and esito.etag:
+                self._etag_per_url[url] = esito.etag
 
-    async def _controlla_sottoscrizione(self, bot: commands.Bot, sottoscrizione, voci) -> None:
+    async def _controlla_sottoscrizione(self, bot: commands.Bot, sottoscrizione, voci) -> bool:
+        """True se non resta nulla da ritentare (invii riusciti o niente da inviare)."""
         if not voci:
-            return
+            return True
 
         nuove = find_new_entries(
             voci, sottoscrizione.last_seen_entry_id, sottoscrizione.last_seen_published
         )
 
-        # Sempre aggiorniamo last_seen alla voce più recente del
-        # feed ORA, sia che ci fossero voci nuove sia no — anche
-        # al primo controllo mai fatto (last_seen_entry_id=None),
-        # per non ripubblicare l'intero storico al giro
-        # successivo.
-        # M 11.5: insieme all'ID si ricorda la data, per il caso in cui
-        # quell'elemento sparisca dal feed.
-        await feed_subscription_repo.update_last_seen(
-            sottoscrizione.id, voci[0].entry_id, data_piu_recente(voci)
-        )
-
+        data_feed = data_piu_recente(voci)
         if not nuove:
-            return
+            # Primo controllo mai fatto: si ricorda lo stato attuale senza
+            # pubblicare lo storico. Riga vecchia senza data: si completa.
+            # Altrimenti niente da scrivere: in particolare mai tornare
+            # indietro con una copia vecchia del feed (CDN, mirror).
+            if sottoscrizione.last_seen_entry_id is None:
+                await feed_subscription_repo.update_last_seen(
+                    sottoscrizione.id, voci[0].entry_id, data_feed
+                )
+            elif sottoscrizione.last_seen_published is None and data_feed is not None:
+                await feed_subscription_repo.update_last_seen(
+                    sottoscrizione.id, sottoscrizione.last_seen_entry_id, data_feed
+                )
+            return True
 
         guild = bot.get_guild(sottoscrizione.guild_id)
         canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
@@ -142,7 +150,7 @@ class FeedWatcherService:
                 sottoscrizione.id,
                 sottoscrizione.guild_id,
             )
-            return
+            return False
 
         # Dal più vecchio al più recente delle nuove voci — così
         # nel canale appaiono in ordine cronologico, non al
@@ -157,11 +165,20 @@ class FeedWatcherService:
             try:
                 await canale.send(messaggio)
             except discord.HTTPException:
+                # P3: invio fallito = niente avanzamento; la voce (e le
+                # successive, per mantenere l'ordine) si ritenta al giro dopo.
                 logger.warning(
                     "Impossibile pubblicare l'alert nel canale %s (server %s).",
                     sottoscrizione.channel_id,
                     sottoscrizione.guild_id,
                 )
+                return False
+            # P3: si avanza solo dopo un invio riuscito, voce per voce;
+            # la data non torna mai indietro (GREATEST nel repository).
+            await feed_subscription_repo.update_last_seen(
+                sottoscrizione.id, voce.entry_id, voce.published
+            )
+        return True
 
     async def close(self) -> None:
         # La sessione HTTP e' quella condivisa di core/safe_http.py.

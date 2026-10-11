@@ -177,3 +177,24 @@ async def test_modello_personalizzato_usato_e_segnaposto_ignoto_non_rompe(ambien
     finally:
         await servizio.close()
     assert canale.sent_messages == ["LIVE Uno uno {titolo} {title:>99999999}"]
+
+
+@pytest.mark.asyncio
+async def test_invio_fallito_ritenta_al_giro_dopo(ambiente):
+    servizio, repo, stato, canale, bot, _ = ambiente
+    await repo.add_subscription(100, 500, "uno", "Uno", 1)
+    stato["live"].add("uno")
+    originale = canale.send
+
+    async def rotto(content):
+        raise discord.Forbidden(type("R", (), {"status": 403, "reason": "x"})(), "no")
+
+    canale.send = rotto
+    try:
+        await servizio.tick(bot)
+        assert (await repo.list_subscriptions(100))[0].last_known_live is False
+        canale.send = originale
+        await servizio.tick(bot)
+        assert len(canale.sent_messages) == 1
+    finally:
+        await servizio.close()

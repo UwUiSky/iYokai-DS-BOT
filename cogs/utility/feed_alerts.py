@@ -34,6 +34,7 @@ MODULE_FEED_ALERTS = "feed_alerts"
 MAX_FEED_PER_SERVER = 25
 # Un embed accetta 4096 caratteri nella descrizione; si lascia margine per la riga finale.
 MAX_CARATTERI_ELENCO = 3900
+MAX_CARATTERI_RIGA = 300
 
 
 def _elenco_tagliato(righe: list[str]) -> str:
@@ -41,6 +42,10 @@ def _elenco_tagliato(righe: list[str]) -> str:
     usate: list[str] = []
     lunghezza = 0
     for riga in righe:
+        # Ogni riga inizia con l'ID: una riga lunghissima (URL) si tronca,
+        # cosi' l'ID per rimuoverla si vede sempre.
+        if len(riga) > MAX_CARATTERI_RIGA:
+            riga = riga[: MAX_CARATTERI_RIGA - 1] + "…"
         if lunghezza + len(riga) + 1 > MAX_CARATTERI_ELENCO:
             break
         usate.append(riga)
@@ -90,14 +95,6 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        if len(await feed_subscription_repo.list_subscriptions(guild.id)) >= MAX_FEED_PER_SERVER:
-            await interaction.response.send_message(
-                f"Questo server ha già {MAX_FEED_PER_SERVER} feed, il massimo consentito. "
-                "Rimuovine uno con /moduli alert rimuovi prima di aggiungerne un altro.",
-                ephemeral=True,
-            )
-            return
-
         # BUG-20: stesso controllo che fa lo scaricamento vero
         # (core/safe_http.py) — un URL che non verrebbe mai letto va
         # rifiutato subito, non salvato. Il controllo risolve il nome
@@ -120,7 +117,15 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             label=label,
             created_by=interaction.user.id,
             message_template=message_template,
+            max_per_guild=MAX_FEED_PER_SERVER,  # controllo e scrittura atomici
         )
+        if subscription_id is None:
+            await interaction.followup.send(
+                f"Questo server ha già {MAX_FEED_PER_SERVER} feed, il massimo consentito. "
+                "Rimuovine uno con /moduli alert rimuovi prima di aggiungerne un altro.",
+                ephemeral=True,
+            )
+            return
 
         await interaction.followup.send(
             f"✅ Sottoscrizione creata (ID `RSS-{subscription_id}`): notificherò in "

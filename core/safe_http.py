@@ -209,10 +209,14 @@ _resolver: _ResolverSicuro | None = None
 _loop_sessione: asyncio.AbstractEventLoop | None = None
 
 
-def _sessione_condivisa() -> aiohttp.ClientSession:
+async def _sessione_condivisa() -> aiohttp.ClientSession:
     global _sessione, _resolver, _loop_sessione
     ciclo = asyncio.get_running_loop()
-    if _sessione is None or _sessione.closed or _loop_sessione is not ciclo:
+    if _sessione is not None and not _sessione.closed and _loop_sessione is not ciclo:
+        # Il loop e' cambiato: la sessione vecchia non serve piu', si chiude
+        # (altrimenti resta aperta fino alla fine del processo).
+        await chiudi_sessione_condivisa()
+    if _sessione is None or _sessione.closed:
         _resolver = _ResolverSicuro()
         _sessione = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(resolver=_resolver),
@@ -231,7 +235,7 @@ async def chiudi_sessione_condivisa() -> None:
         try:
             await sessione.close()
         except RuntimeError:  # loop di un altro ciclo gia' chiuso
-            pass
+            sessione.detach()
     if resolver is not None:
         try:
             await resolver.close()
@@ -248,7 +252,7 @@ async def safe_get_con_etag(
     `non_modificato=True` e nessun testo. None = rifiuto o errore.
     """
     try:
-        return await _scarica(_sessione_condivisa(), url, max_bytes, etag)
+        return await _scarica(await _sessione_condivisa(), url, max_bytes, etag)
     except RuntimeError:  # sessione chiusa mentre la si usava
         return None
 

@@ -185,10 +185,6 @@ class TwitchWatcherService:
             if not (appena_andato_live or appena_andato_offline):
                 continue
 
-            await twitch_subscription_repo.update_last_known_live(
-                sottoscrizione.id, stato.is_live
-            )
-
             guild = bot.get_guild(sottoscrizione.guild_id)
             canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
             if not isinstance(canale, discord.TextChannel):
@@ -217,6 +213,11 @@ class TwitchWatcherService:
 
             try:
                 await canale.send(messaggio)
+                # P3: lo stato avanza solo dopo un invio riuscito: se
+                # fallisce, al giro dopo si ritenta invece di perdere l'avviso.
+                await twitch_subscription_repo.update_last_known_live(
+                    sottoscrizione.id, stato.is_live
+                )
             except discord.HTTPException:
                 logger.warning(
                     "Impossibile pubblicare l'alert Twitch nel canale %s (server %s).",
