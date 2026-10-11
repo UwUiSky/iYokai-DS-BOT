@@ -12,6 +12,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.fun_logic import (
     compute_rate_score,
@@ -29,11 +30,11 @@ def _barra_percentuale(percentuale: int, lunghezza: int = 10) -> str:
     return "█" * piene + "░" * (lunghezza - piene)
 
 
-class ShipRateCog(commands.Cog):
+class ShipRateCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="ship", description="Calcola la compatibilità tra due utenti.")
+    @comando_di_gruppo("fun", nome="ship", descrizione="Calcola la compatibilità tra due utenti.")
     @app_commands.describe(user1="Il primo utente", user2="Il secondo utente")
     async def ship(
         self,
@@ -68,7 +69,7 @@ class ShipRateCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="rate", description="Valuta qualcosa da 0 a 10.")
+    @comando_di_gruppo("fun", nome="rate", descrizione="Valuta qualcosa da 0 a 10.")
     @app_commands.describe(thing="Cosa vuoi far valutare")
     async def rate(self, interaction: discord.Interaction, thing: str) -> None:
         guild = interaction.guild

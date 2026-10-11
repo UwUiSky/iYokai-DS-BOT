@@ -39,8 +39,6 @@ AUDIENCE: dict[str, str] = {
     "log": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Fun
     "fun": PUBLIC,
-    "ship": PUBLIC,
-    "rate": PUBLIC,
     # Livelli, economia, clan
     "rank": PUBLIC,
     "balance": PUBLIC,

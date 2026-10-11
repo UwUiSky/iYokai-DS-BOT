@@ -68,3 +68,22 @@ async def test_music_un_livello_di_sottogruppi_e_al_massimo_25_figli():
         assert radio is not None and not any(c.description.startswith("[") for c in radio.commands)
     finally:
         await _scarica(bot)
+
+
+async def test_fun_ha_tutti_i_comandi_nel_gruppo_condiviso():
+    from cogs.fun.entertainment import setup as ent_setup
+    from cogs.fun.ship_rate import setup as ship_setup
+
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    await ent_setup(bot)
+    await ship_setup(bot)
+    try:
+        assert percorsi_del_gruppo("fun") >= {
+            "coinflip", "dice", "rps", "8ball", "joke", "quote", "fact", "grayscale", "invert",
+            "blur", "pixelate", "meme", "animal", "search-image", "ship", "rate",
+        }
+        top = {c.name for c in bot.tree.get_commands()}
+        assert "fun" in top and not top & {"ship", "rate"}
+        assert GRUPPI["fun"].livello is None
+    finally:
+        await _scarica(bot)
