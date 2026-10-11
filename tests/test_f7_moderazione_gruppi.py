@@ -44,11 +44,12 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("security", None): {"heatmap", "score", "spamtrap"},
     ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("security", "antinuke"): {
-        "enable", "limits", "trusted-add", "trusted-remove", "punish-action", "recovery", "status",
+        "enable", "limits", "trusted-add", "trusted-remove", "trusted-list", "punish-action", "recovery", "status",
+        "guardie", "casi", "rilascia",
     },
     ("security", "antiraid"): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
-        "lockdown-action", "alert-channel", "status",
+        "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
     },
     ("security", "globalban"): {"enable", "disable", "status"},
     ("security", "verify"): {
