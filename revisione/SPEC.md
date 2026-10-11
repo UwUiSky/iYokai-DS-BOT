@@ -426,9 +426,17 @@ Totale voci: **494**.
   `core/security_logic.py` (`evaluate_join`), finestra mobile in
   memoria per il join rate (`core/security_rate_tracker.py`, mai
   persistita — stesso principio di `core/automod_rate_tracker.py`).
-  Comandi: `/anti-raid enable|join-rate|account-age|username-check|
-  avatar-check|lockdown-action|alert-channel|status`
+  Comandi: `/security antiraid enable|join-rate|account-age|username-check|
+  avatar-check|lockdown-action|alert-channel|status|quarantine-hold|rilascia`
   → **Stato 04/10:** BUG-12.
+  → **Stato 11/10 (#59, #117, ramo `feat/sicurezza-audit`):** un avviso
+  solo per episodio; ruolo "Quarantined" preparato all'attivazione e
+  sempre senza permessi (SIC-004, anche se esisteva già a mano); blocco
+  della quarantena (SIC-003) e `rilascia` (unico, in
+  `core/security_quarantine.py`: per caso, tiene la quarantena se
+  l'utente ha altri casi); soglie con limiti; avvisi sui ruoli del bot
+  (SIC-022). `quarantine-hold` e il rilascio col blocco acceso li cambia
+  solo chi gestisce (proprietario ed extra owner).
   - `[~]` Join rate limit (finestra scorrevole) — conteggio join
     guild-wide (non per singolo utente: una `chiave fittizia
     user_id=0`, mai un ID reale su Discord) nella finestra configurata
@@ -461,9 +469,18 @@ Totale voci: **494**.
   dell'evento gateway: risolto sempre via audit log
   (`guild.audit_logs`, stesso approccio già usato per il cleanup
   webhook/inviti di Spam Trap), con una finestra di tolleranza di 10s
-  tra evento e voce di audit log. Comandi: `/anti-nuke enable|limits|
-  trusted-add|trusted-remove|punish-action|recovery|status`
+  tra evento e voce di audit log (`core/security_audit.py`). Comandi:
+  `/security antinuke enable|limits|trusted-add|trusted-remove|
+  trusted-list|punish-action|recovery|status|guardie|casi|rilascia`
   → **Stato 04/10:** può punire il bot stesso (BUG-11).
+  → **Stato 11/10 (#59 riga 3.5, #117):** due soglie per categoria (breve
+  e oraria, SIC-001); punizione di default la quarantena (SIC-002); una
+  sola punizione per attacco, con un caso numerato (`casi`, SIC-017); fiducia
+  a livelli: fidato o extra owner, per azione, per categoria di canali, per
+  webhook (SIC-018/019/020), con UNA fonte (`trust_entries`) e regole nel core;
+  guardie su permessi dei ruoli, ruoli ai membri, link, bot aggiunti, prune
+  (SIC-005…010, 025). Soglie, punizione, recovery e fiducia le cambia solo
+  chi gestisce.
   - `[~]` Protezione canali (create/delete di massa) — soglia/finestra
     configurabile per categoria
     → **Stato 04/10:** BUG-11; registro letto una volta sola (LIM-31).
@@ -498,6 +515,11 @@ Totale voci: **494**.
 - `[~]` 7.3 **Spam Trap** — completo (solo il ban globale via
   fingerprint resta escluso, per la dipendenza esplicita da §4 sotto)
   → **Stato 04/10:** vedi le voci sotto. BUG-22, BUG-24, BUG-25 corretti il 04/10.
+  → **Stato 11/10 (#59 righe 3.9–3.13, #117):** un solo giro per utente
+  (nessun DM, caso o propagazione doppi); trappola e log su canali diversi;
+  avvisi su Bannare membri, thread e lettura; transcript con tetto di 40
+  messaggi; un appello accolto toglie anche i ban propagati; se la sequenza
+  salta la propagazione non resta orfana.
   - `[x]` `/setup` con selezione canale trappola e canale log — via
     parametri `discord.TextChannel` opzionali (rendono nativamente
     come selettore canale di Discord, non un menù a tendina
@@ -576,6 +598,13 @@ Totale voci: **494**.
   richiesto esplicitamente dall'utente come soluzione al gap di 7.3
   sopra. Modulo CANDIDATO PREMIUM.
   → **Stato 04/10:** `/global-ban enable` salta il controllo premium (REVIEW §4).
+  → **Stato 11/10 (#117 SIC-044, 046):** due direzioni (invia, ricevi);
+  `/security globalban controlla` (solo il numero di server); la revoca
+  (`revoca_ban_propagati`, anche da `/modban unban`) chiude solo le righe
+  degli unban riusciti, lascia il ban che un'altra sorgente tiene ancora e
+  ferma una propagazione in corso; lo staff (amministratore, moderatore, bot,
+  ruolo staff della Spam Trap) del server di arrivo non viene bannato;
+  pulizia del registro una volta per giro, con indici.
 
   **Perché non è "il" ban globale via fingerprint di §4.3**: quello
   risolve un problema diverso — riconoscere che due ACCOUNT DIVERSI
