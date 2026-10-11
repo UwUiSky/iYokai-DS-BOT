@@ -21,7 +21,7 @@ from cogs.utility import command_search as modulo
 from cogs.utility.command_search import CommandSearchCog
 from core import command_search_logic as L
 from core.command_access import Livello, richiedi
-from core.command_groups import NOME_CHIEDI, costruisci_gruppi
+from core.command_groups import costruisci_gruppi
 from tests.support.discord_fakes import fake_interaction
 from tests.support.full_tree import build_full_bot, close_full_bot, connect_db_if_needed
 
@@ -45,40 +45,45 @@ async def test_fetch_lenta_non_blocca_gli_altri_ne_supera_il_timeout():
 
 async def test_cache_piena_non_aspetta_una_fetch_lenta_in_corso():
     stato = {"lenta": False}
+    orologio = [0.0]
 
     async def fetch():
         if stato["lenta"]:
             await asyncio.sleep(5)
         return [_C("fun", 1)]
 
-    cache = L.CacheIdComandi(ttl=3600, attesa_minima=0, timeout=0.2)
+    cache = L.CacheIdComandi(ttl=10, attesa_minima=0, timeout=0.2, orologio=lambda: orologio[0])
     await cache.ottieni(fetch)
     stato["lenta"] = True
-    cache.invalida()
-    await cache.ottieni(fetch)  # parte la fetch lenta, scade il timeout
+    orologio[0] = 11.0  # scaduta: parte la fetch lenta, scade il timeout
+    await cache.ottieni(fetch)
     inizio = time.monotonic()
     assert await cache.ottieni(fetch) == {"fun": 1}
     assert time.monotonic() - inizio < 1.0
 
 
-async def test_invalida_resta_se_la_fetch_fallisce():
-    stato = {"rompi": True}
+async def test_errore_di_discord_tiene_i_vecchi_id_e_riprova_dopo_l_attesa():
+    stato = {"rompi": False, "n": 0}
+    orologio = [0.0]
 
     async def fetch():
+        stato["n"] += 1
         if stato["rompi"]:
             raise RuntimeError("giù")
         return [_C("fun", 2)]
 
-    cache = L.CacheIdComandi(ttl=3600, attesa_minima=0, timeout=1)
-    await cache.ottieni(fetch)  # prima caricamento fallito
-    stato["rompi"] = False
+    cache = L.CacheIdComandi(ttl=10, attesa_minima=60, timeout=1, orologio=lambda: orologio[0])
     await cache.ottieni(fetch)
-    cache.invalida()
     stato["rompi"] = True
-    await cache.ottieni(fetch)  # fallisce: l'invalidazione non va persa
+    orologio[0] = 11.0
+    assert await cache.ottieni(fetch) == {"fun": 2}  # errore: vecchi ID, nessuna eccezione
+    n = stato["n"]
+    await cache.ottieni(fetch)
+    assert stato["n"] == n  # non riprova prima di 60 s
     stato["rompi"] = False
-    assert (await cache.ottieni(fetch))["fun"] == 2
-    assert cache._forzata is False
+    orologio[0] = 80.0
+    await cache.ottieni(fetch)
+    assert stato["n"] == n + 1
 
 
 async def _cb(interaction):  # pragma: no cover
@@ -154,7 +159,6 @@ def cog(monkeypatch):
     monkeypatch.setattr(modulo, "command_usage_repo", repo)
     c.repo = repo
     monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
-    monkeypatch.delenv("WIKI_BASE_URL", raising=False)
     return c
 
 
@@ -219,3 +223,35 @@ async def test_chiedi_con_spazi_rifiuta_e_con_domanda_lunga_avvisa(cog):
     cog.cache_ids.ottieni = AsyncMock(return_value={})
     await cog.chiedi.callback(cog, i, domanda="aperto " * 40)
     assert "100" in i.followup.send.call_args.kwargs["content"]
+
+
+async def test_chiedi_taglia_la_domanda_a_100_caratteri(cog):
+    visti = []
+
+    async def spia(interaction, query, nota=None):
+        visti.append((query, nota))
+
+    cog._ricerca = spia
+    await cog.chiedi.callback(cog, fake_interaction(), domanda="x" * 150)
+    assert len(visti[0][0]) == 100 and "100" in visti[0][1]
+    await cog.chiedi.callback(cog, fake_interaction(), domanda="  breve  ")
+    assert visti[1] == ("breve", None)
+
+
+async def test_il_pannello_chiede_anche_l_id_del_gruppo_dell_ultimo_comando(cog):
+    i = fake_interaction()
+    i.guild_id = i.guild.id
+    cog.repo.ultimo.return_value = "gruppoassente comando"  # non è tra i comandi visibili
+    spia = AsyncMock(return_value={})
+    cog.cache_ids.ottieni = spia
+    await cog.search.callback(cog, i, query=None)
+    assert "gruppoassente" in spia.call_args.args[1]
+
+
+async def test_cog_load_pulisce_i_dati_vecchi(monkeypatch):
+    repo = MagicMock(giorni=90, tetto=5, pulisci=AsyncMock(return_value=0))
+    monkeypatch.setattr(modulo, "command_usage_repo", repo)
+    await CommandSearchCog(_albero_con_richiedi()).cog_load()
+    repo.pulisci.assert_awaited_once_with(90, 5)
+    repo.pulisci.side_effect = RuntimeError("db non pronto")
+    await CommandSearchCog(_albero_con_richiedi()).cog_load()  # non solleva

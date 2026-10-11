@@ -85,14 +85,31 @@ def test_suggerimenti_filtrano_per_testo():
 
 def test_cerca_trova_per_sinonimo_italiano():
     comandi = L.raccogli_comandi(_albero())
-    # "cacciare" non compare nelle descrizioni: lo trova il sinonimo di "bannare".
-    trovati = L.cerca("voglio cacciare un utente", comandi)
-    assert trovati and trovati[0].percorso == "modban ban"
+    # "cacciare" e "allontana" non compaiono in nessuna descrizione: li trova solo il sinonimo di "banna".
+    for parola in ("cacciare", "allontana"):
+        trovati = L.cerca(parola, comandi)
+        assert trovati and trovati[0].percorso == "modban ban", parola
+
+
+def test_le_varianti_dei_sinonimi_non_prendono_il_bonus_sottostringa():
+    # "ban" è una sottostringa di "modban": non deve far comparire comandi che non c'entrano.
+    comandi = L.raccogli_comandi(_albero())
+    assert "modban lista mostra" not in [c.percorso for c in L.cerca("cacciare", comandi)]
 
 
 def test_cerca_percorso_esatto_vince_e_toglie_la_barra():
     comandi = L.raccogli_comandi(_albero())
     assert L.cerca("/modban lista mostra", comandi)[0].percorso == "modban lista mostra"
+
+
+def test_percorso_esatto_batte_un_comando_che_lo_cita_nella_descrizione():
+    esatto = L.ComandoInfo("modban ban", "zzz", "modban", ())
+    citato = L.ComandoInfo("aaa", "modban ban", "aaa", ())
+    assert L.cerca("modban ban", [citato, esatto])[0] is esatto
+
+
+def test_url_wiki_oltre_512_caratteri_ricade_sulla_base():
+    assert L.url_wiki("https://wiki.example", " ".join(["parolalunga"] * 60)) == "https://wiki.example"
 
 
 def test_cerca_senza_corrispondenze_e_vuota():
@@ -189,21 +206,3 @@ async def test_cache_id_si_aggiorna_se_manca_un_id_ma_non_di_continuo():
     orologio[0] += 61
     assert (await cache.ottieni(fetch, serve=["mod"]))["mod"] == 9
     assert len(chiamate) == 2
-
-
-async def test_cache_id_invalida_forza_il_ricaricamento_e_sopporta_errori():
-    stato = {"n": 0, "rompi": False}
-
-    async def fetch(guild=None):
-        stato["n"] += 1
-        if stato["rompi"]:
-            raise discord.HTTPException(response=type("R", (), {"status": 500, "reason": "x"})(), message="x")
-        return [_AppCmd("fun", stato["n"])]
-
-    cache = L.CacheIdComandi(ttl=3600, attesa_minima=0, orologio=lambda: 1.0)
-    assert (await cache.ottieni(fetch))["fun"] == 1
-    cache.invalida()
-    assert (await cache.ottieni(fetch))["fun"] == 2
-    stato["rompi"] = True
-    cache.invalida()
-    assert await cache.ottieni(fetch) == {"fun": 2}  # errore: tiene i vecchi ID, nessuna eccezione

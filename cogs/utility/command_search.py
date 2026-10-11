@@ -1,27 +1,26 @@
 """
 cogs/utility/command_search.py
 ==================================
-/-cerca-comando: interroga l'albero comandi VERO del bot (bot.tree, non un
-elenco statico che rischierebbe di disallinearsi) per trovare il
-comando più pertinente a una descrizione in linguaggio naturale.
-Nessun risultato → propone di aprire una richiesta verso lo
-sviluppatore, riusando il modal GIÀ ESISTENTE di
-cogs/utility/custom_command_requests.py — non uno nuovo.
+-cerca-comando e -chiedi (issue #147), comandi di primo livello usabili anche in DM.
 
-Nessun gate is_module_active_for_guild: come /utility richiedi-comando,
-è uno strumento di scoperta rivolto a chiunque usi il bot, non una
-feature che un admin di server attiva o disattiva per i propri membri.
+- Senza testo: pannello effimero con l'ultimo comando usato (tabella `command_usage`,
+  scritta dall'evento `app_command_completion`) e i bottoni delle categorie, filtrate
+  con i livelli dei gruppi e dei `@richiedi` di ogni comando, a pagine.
+- Con testo: completamento (max 25) e risultati con descrizione e opzioni, interrogando
+  l'albero VERO del bot (`bot.tree`), con menzioni cliccabili `</gruppo comando:ID>`
+  (ID da `fetch_commands`: cache che si ricarica per scadenza o quando manca un ID).
+- Nessun risultato: propone di aprire una richiesta allo sviluppatore, riusando il modal
+  di cogs/utility/custom_command_requests.py.
+- -chiedi mostra lo stesso pannello (la risposta AI arriverà in F12).
+- Bottone "Apri nella wiki" se WIKI_BASE_URL è impostato.
+
+Nessun gate is_module_active_for_guild: è uno strumento di scoperta rivolto a chiunque.
 """
 
-# Issue #147: pannello senza testo (ultimo comando + categorie), ricerca con
-# completamento, menzioni cliccabili, `-chiedi` con lo stesso pannello.
-# Ultimo comando: scritto dall'evento `app_command_completion` (tabella command_usage).
-# La wiki generata (scripts/genera_wiki.py) e l'AI non sono qui.
 
 from __future__ import annotations
 
 import logging
-import os
 
 import discord
 from discord import app_commands
@@ -80,11 +79,6 @@ class CommandSearchCog(commands.Cog):
         except Exception:
             logger.info("Pulizia di command_usage rimandata.")
 
-    def invalida_id(self) -> None:
-        """Da chiamare dopo una sync dei comandi: le menzioni ricaricano gli ID."""
-        self.cache_ids.invalida()
-        self.cache_ids_main.invalida()
-
     # ------------------------------------------------------------------
     # Dati
     # ------------------------------------------------------------------
@@ -139,7 +133,7 @@ class CommandSearchCog(commands.Cog):
             ids=ids,
             ultimo=ultimo,
             in_dm=guild_id is None,
-            wiki_base=os.getenv("WIKI_BASE_URL", ""),
+            wiki_base=config.WIKI_BASE_URL,
         )
         view = PannelloView(dati)
         await interaction.followup.send(embed=view.embed, view=view, ephemeral=True)
@@ -162,7 +156,7 @@ class CommandSearchCog(commands.Cog):
             if in_dm:
                 embed.set_footer(text="In privato puoi solo cercare: i comandi si usano nei server.")
             extra = {}
-            view = RisultatiView(os.getenv("WIKI_BASE_URL", ""), risultati[0].percorso)
+            view = RisultatiView(config.WIKI_BASE_URL, risultati[0].percorso)
             if view.children:
                 extra["view"] = view
             if nota:

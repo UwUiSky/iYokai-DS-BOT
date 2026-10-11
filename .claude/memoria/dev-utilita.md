@@ -26,7 +26,7 @@
 - `test_repository_callers`: ogni metodo di repo deve avere un chiamante di produzione (niente metodi "per dopo").
 - Ultimo comando usato: evento `app_command_completion` (discord.py 2.7) nel cog, niente toccare blacklist_tree.
 - ID per le menzioni: `tree.fetch_commands()`; in sviluppo/server owner i comandi sono del server (id diversi): cache a parte.
-  Dopo una sync si chiama `CommandSearchCog.invalida_id()` oppure si ricarica da sé quando manca un ID (max 1/min).
+  La cache si ricarica per TTL (1 h) o quando manca un ID (max 1/min); niente invalidazione esplicita.
 - Pannello: 20 bottoni categoria (righe 0-3) + frecce e wiki (riga 4) = 23 componenti.
 - Comandi con parametro opzionale: `Range[str,1,100] | None = None`.
 - Il pannello filtra per livelli di gruppi e `@richiedi` (`richiedi` ora mette `predicate.livello`); fetch ID fuori dal lock, timeout 2 s; defer prima delle chiamate lente; usare `interaction.guild_id`.

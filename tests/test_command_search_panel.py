@@ -9,6 +9,7 @@ Funzioni coperte: NF-06 (issue #147)
 
 from __future__ import annotations
 
+import dataclasses
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
@@ -25,6 +26,11 @@ from tests.support.discord_fakes import fake_interaction as _fake_interaction
 
 async def _cb(interaction):  # pragma: no cover
     pass
+
+
+def _wiki(monkeypatch, url: str) -> None:
+    """`config` è congelata: la si sostituisce con una copia che ha WIKI_BASE_URL diversa."""
+    monkeypatch.setattr(modulo, "config", dataclasses.replace(modulo.config, WIKI_BASE_URL=url))
 
 
 def _bot(n_gruppi_extra: int = 0) -> commands.Bot:
@@ -57,7 +63,7 @@ def cog(monkeypatch):
         return livello is Livello.MOD
 
     monkeypatch.setattr(modulo, "puo_usare", solo_mod)
-    monkeypatch.delenv("WIKI_BASE_URL", raising=False)
+    _wiki(monkeypatch, "")
     return c
 
 
@@ -111,7 +117,7 @@ async def test_pannello_rispetta_i_limiti_di_discord_con_molte_categorie(monkeyp
     repo = MagicMock(ultimo=AsyncMock(return_value=None))
     monkeypatch.setattr(modulo, "command_usage_repo", repo)
     monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
-    monkeypatch.setenv("WIKI_BASE_URL", "https://wiki.example")
+    _wiki(monkeypatch, "https://wiki.example")
     i = fake_interaction()
     await c.search.callback(c, i, query=None)
 
@@ -135,7 +141,7 @@ async def test_bottone_wiki_solo_se_la_variabile_e_impostata(cog, monkeypatch):
     await cog.search.callback(cog, i, query=None)
     assert all(b.label != "Apri nella wiki" for b in _invio(i)["view"].children)
 
-    monkeypatch.setenv("WIKI_BASE_URL", "https://wiki.example")
+    _wiki(monkeypatch, "https://wiki.example")
     i = fake_interaction()
     await cog.search.callback(cog, i, query=None)
     wiki = next(b for b in _invio(i)["view"].children if b.label == "Apri nella wiki")

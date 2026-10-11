@@ -1,16 +1,13 @@
 """
 core/command_search_logic.py
 ================================
-Logica pura di -cerca-comando (nessuna infrastruttura di embedding/NLP
-disponibile in questo progetto): punteggio per sovrapposizione di
+Logica pura di -cerca-comando e del suo pannello (issue #147; nessuna
+infrastruttura di embedding/NLP disponibile): punteggio per sovrapposizione di
 parole tra la query e nome+descrizione di ogni comando, con un bonus
 se la query intera compare come sottostringa. Semplice ma sufficiente
 per query in linguaggio naturale corte tipiche di un comando slash
 ("banna qualcuno", "crea un sondaggio").
 """
-
-# DA FARE (issue #77, fase F8): NF-06, Lingue italiano e inglese, e
-#   `/utility cerca-comando`. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -64,7 +61,7 @@ def _condividono_radice(parola_a: str, parola_b: str, prefisso_minimo: int = 4) 
     return parola_a[:prefisso_minimo] == parola_b[:prefisso_minimo]
 
 
-def score_command(query: str, name: str, description: str) -> float:
+def score_command(query: str, name: str, description: str, bonus_sottostringa: bool = True) -> float:
     """
     Punteggio di rilevanza — non normalizzato a [0, 1] in modo
     rigoroso (il bonus sottostringa può farlo superare 1), pensato
@@ -87,34 +84,10 @@ def score_command(query: str, name: str, description: str) -> float:
 
     punteggio = corrispondenze / len(parole_query)
 
-    if query.strip().lower() in testo_comando.lower():
+    if bonus_sottostringa and query.strip().lower() in testo_comando.lower():
         punteggio += 0.5
 
     return punteggio
-
-
-def search_commands(
-    query: str,
-    commands: list[tuple[str, str]],
-    threshold: float = 0.34,
-    limit: int = 3,
-) -> list[tuple[str, str, float]]:
-    """
-    commands è una lista di (nome, descrizione). Restituisce i
-    migliori risultati SOPRA la soglia, ordinati per punteggio
-    decrescente — una soglia troppo bassa restituirebbe risultati
-    non pertinenti quanto quello vero, una troppo alta perderebbe
-    corrispondenze legittime con parole diverse ma sinonimiche
-    (limite intrinseco di un punteggio per sovrapposizione di parole,
-    non un vero motore semantico).
-    """
-    risultati = [
-        (nome, descrizione, score_command(query, nome, descrizione))
-        for nome, descrizione in commands
-    ]
-    risultati = [r for r in risultati if r[2] >= threshold]
-    risultati.sort(key=lambda r: r[2], reverse=True)
-    return risultati[:limit]
 
 
 # ======================================================================
@@ -154,7 +127,7 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
             proprio = getattr(cmd, "livello", None)
             risultati.extend(raccogli_comandi(cmd.commands, percorso, livelli + ((proprio,) if proprio else ())))
             continue
-        dei_check = tuple(l for l in (getattr(c, "livello", None) for c in getattr(cmd, "checks", ())) if l)
+        dei_check = tuple(liv for liv in (getattr(c, "livello", None) for c in getattr(cmd, "checks", ())) if liv)
         opzioni = tuple(
             Opzione(p.name, str(p.description or ""), bool(p.required))
             for p in getattr(cmd, "parameters", ())
@@ -228,7 +201,7 @@ def _punteggio(query: str, info: ComandoInfo) -> float:
         return 10.0
     migliore = score_command(pulita, info.percorso, info.descrizione)
     for variante in _varianti(pulita):
-        migliore = max(migliore, 0.9 * score_command(variante, info.percorso, info.descrizione))
+        migliore = max(migliore, 0.9 * score_command(variante, info.percorso, info.descrizione, bonus_sottostringa=False))
     return migliore
 
 
@@ -279,7 +252,7 @@ async def filtra_per_livelli(
         for livello in c.livelli:
             if livello not in memo:
                 memo[livello] = bool(await puo(livello))
-        if all(memo[l] for l in c.livelli):
+        if all(memo[liv] for liv in c.livelli):
             visibili.append(c)
     return visibili
 
@@ -353,10 +326,9 @@ class CacheIdComandi:
     """
     ID dei comandi di primo livello, letti da Discord (`fetch_commands`) per le menzioni
     cliccabili. Si ricarica quando scade (`ttl`), quando serve un comando che manca
-    (comando nuovo dopo una sync) non più spesso di ogni `attesa_minima` secondi, o dopo
-    `invalida()`. La lettura corre fuori dal lock, in un unico compito condiviso, e chi
+    (comando nuovo dopo una sync) non più spesso di ogni `attesa_minima` secondi. La lettura corre fuori dal lock, in un unico compito condiviso, e chi
     aspetta non supera `timeout` secondi: poi usa i vecchi ID (la lettura continua da sola).
-    Un errore di Discord non solleva e non cancella l'invalidazione.
+    Un errore di Discord non solleva: restano i vecchi ID e si riprova dopo `attesa_minima`.
     """
 
     def __init__(
@@ -373,19 +345,13 @@ class CacheIdComandi:
         self._ids: dict[str, int] = {}
         self._caricata: float | None = None
         self._tentativo: float | None = None
-        self._forzata = False
         self._lock = asyncio.Lock()
         self._compito: asyncio.Task | None = None
-
-    def invalida(self) -> None:
-        """Da chiamare dopo ogni sync dei comandi: il prossimo uso ricarica gli ID."""
-        self._forzata = True
 
     async def _carica(self, fetch, adesso: float) -> None:
         try:
             self._ids = {c.name: c.id for c in await fetch()}
             self._caricata = adesso
-            self._forzata = False  # azzerata solo se la lettura riesce
         except Exception as exc:
             logger.warning("ID dei comandi non letti (%s): uso quelli vecchi.", type(exc).__name__)
 
@@ -396,7 +362,7 @@ class CacheIdComandi:
                 scaduta = self._caricata is None or adesso - self._caricata >= self.ttl
                 manca = any(n not in self._ids for n in serve)
                 puo_tentare = self._tentativo is None or adesso - self._tentativo >= self.attesa_minima
-                if self._forzata or (puo_tentare and (scaduta or manca)):
+                if puo_tentare and (scaduta or manca):
                     self._tentativo = adesso
                     self._compito = asyncio.ensure_future(self._carica(fetch, adesso))
             compito = self._compito if self._compito is not None and not self._compito.done() else None
