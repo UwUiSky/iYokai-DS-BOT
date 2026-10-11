@@ -339,3 +339,12 @@ con `copy_global_to`: un `/owner` rimasto globale compare due volte.
 `/cerca-comando` cerca per descrizione, `/chiedi` risponde su iYokai e
 conversa (F12). Primo livello: 16 gruppi + 2 = 18 su 100. `/utility`
 scende di 2 figli. L'ordine in lista lo decide Discord: da provare dal vivo.
+
+## Verifica sull'albero reale del 11/10/2026 (`feat/f7-decoratore`, `4fe0765`)
+
+16 comandi globali (15 gruppi + `-cerca-comando`) e `/owner` solo nel server
+dell'owner: 17 su 100. Foglie 252 (vecchie 253: `logs-setup` e `mod-log-setup`
+fuse in `log canale`). Nessun comando perso, senza posto o duplicato. Caratteri
+massimi: `/gestione` 4816, `/security` 3685, `/owner` 3315 (limite 8000, allarme
+6800). `-cerca-comando` (123 caratteri) non è nella tabella §5: nessun permesso
+e usabile anche in DM, da confermare con l'owner.
