@@ -115,6 +115,7 @@ from core.leveling_logic import (
     LevelingSettings,
     MAX_REGOLE_PER_TIPO,
     colore_valido,
+    id_canali_per_le_regole,
     deve_annunciare,
     scegli_premi,
     xp_con_moltiplicatore,
@@ -153,19 +154,6 @@ LIMITE_TITOLO_EMBED = 256
 LIMITE_RIGA_NEGOZIO = 380
 RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
-
-
-def _id_canale_per_le_regole(canale, config: ConfigLivelli) -> int:
-    """
-    L'id del canale a cui applicare esclusioni e moltiplicatori: quello
-    del canale stesso se ha una regola, altrimenti quello di origine di un
-    thread o di un post di forum (se ce l'ha).
-    """
-    origine = getattr(canale, "parent_id", None)
-    if not isinstance(origine, int):
-        return canale.id
-    regolato = config.canali_esclusi | set(config.mult_canali)
-    return canale.id if canale.id in regolato or origine not in regolato else origine
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -500,6 +488,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         canale_corrente,
         new_level: int,
         impostazioni: LevelingSettings,
+        livello_precedente: int | None = None,
     ) -> None:
         """
         Dice del level-up dove ha scelto il server (spento, canale in cui
@@ -509,8 +498,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ha_premio = False
         if impostazioni.levelup_only_rewards:
             premi = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
-            ha_premio = any(r.level_threshold == new_level for r in premi)
-        if not deve_annunciare(new_level, impostazioni, ha_premio):
+            # Con un salto di più livelli conta il premio di qualunque livello saltato.
+            prima = new_level - 1 if livello_precedente is None else min(livello_precedente, new_level - 1)
+            ha_premio = any(prima < r.level_threshold <= new_level for r in premi)
+        if not deve_annunciare(new_level, impostazioni, ha_premio, livello_precedente):
             return
 
         testo = f"🎉 {member.mention} è salito al livello **{new_level}**!"
@@ -577,12 +568,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 continue
             da_togliere.append(ruolo)
 
+        # "Sostituisci": i vecchi ruoli si tolgono SOLO se il nuovo è arrivato
+        # (o c'era già). Un ruolo nuovo non assegnabile non lascia il membro
+        # senza nessun ruolo-premio.
+        nuovo_assicurato = all(
+            r in id_ruoli_posseduti or r in {x.id for x in da_assegnare} for r in id_da_dare
+        )
         try:
             if da_assegnare:
                 await member.add_roles(
                     *da_assegnare, reason=f"Ruolo-premio per aver raggiunto il livello {new_level}"
                 )
-            if da_togliere:
+            if da_togliere and nuovo_assicurato:
                 await member.remove_roles(
                     *da_togliere, reason=f"Ruolo-premio sostituito al livello {new_level}"
                 )
@@ -625,8 +622,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             await interaction.response.edit_message(view=self)
 
     async def _xp_testuale(
-        self, message: discord.Message, config: ConfigLivelli, id_ruoli: list[int], id_canale: int
+        self, message: discord.Message, config: ConfigLivelli, id_ruoli: list[int], id_canale: list[int]
     ) -> None:
+        # Chi è escluso (canale, categoria o ruolo) non dà XP nemmeno alla
+        # gilda: questo metodo non viene chiamato (vedi on_message).
         impostazioni = config.impostazioni
         clan = await guild_clan_repo.get_member_clan_in_guild(message.guild.id, message.author.id)
         if clan is not None and clan.officialized:
@@ -648,7 +647,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         if risultato.granted and risultato.leveled_up:
             await self._annuncia_level_up(
-                message.author, message.guild, message.channel, risultato.new_level, impostazioni
+                message.author, message.guild, message.channel, risultato.new_level,
+                impostazioni, risultato.previous_level,
             )
             await self._grant_level_rewards(
                 message.author, message.guild, risultato.new_level, impostazioni.reward_mode
@@ -675,7 +675,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         id_ruoli = [r.id for r in getattr(message.author, "roles", [])]
         # NF-15: canali e ruoli senza XP. Il drop sotto resta indipendente.
         # Un thread o un post di forum vale come il suo canale di origine.
-        id_canale = _id_canale_per_le_regole(message.channel, config)
+        id_canale = id_canali_per_le_regole(message.channel)
         if not config.e_escluso(id_canale, id_ruoli):
             await self._xp_testuale(message, config, id_ruoli, id_canale)
 
@@ -739,9 +739,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
                 id_ruoli = [r.id for r in getattr(member, "roles", [])]
                 # NF-15: canali e ruoli senza XP valgono come non idonei.
-                if config.e_escluso(channel.id, id_ruoli):
+                id_canale = id_canali_per_le_regole(channel)
+                if config.e_escluso(id_canale, id_ruoli):
                     eligible = False
-                moltiplicatori[member.id] = config.moltiplicatore(channel.id, id_ruoli)
+                moltiplicatori[member.id] = config.moltiplicatore(id_canale, id_ruoli)
                 presenti.append((member, channel, eligible))
 
         if not presenti:
@@ -768,7 +769,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # moderni hanno la propria chat integrata, ed è l'unico posto
             # sensato per un task periodico che gira su più server insieme.
             await self._annuncia_level_up(
-                member, guild, channel, grant.new_level, config.impostazioni
+                member, guild, channel, grant.new_level, config.impostazioni,
+                grant.previous_level,
             )
             await self._grant_level_rewards(
                 member, guild, grant.new_level, config.impostazioni.reward_mode
@@ -837,7 +839,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         try:
             avatar = await target.display_avatar.read()
-        except discord.HTTPException:
+        except Exception:  # anche errori di rete (aiohttp) dopo il defer: la card esce senza avatar
             avatar = None
         dati = DatiRankCard(
             nome=target.display_name,
@@ -2657,11 +2659,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "level",
         nome="escludi",
-        descrizione="Un canale o un ruolo non dà XP (rifallo per toglierlo dall'elenco).",
+        descrizione="Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).",
         sottogruppo=_SG_IMPOSTAZIONI,
     )
     @app_commands.describe(
-        canale="Il canale (anche vocale, thread e forum) senza XP",
+        canale="Il canale senza XP (anche vocale o forum). Una categoria vale per tutti i suoi canali",
         ruolo="Il ruolo i cui membri non prendono XP",
     )
     @richiedi(Livello.ADMIN)

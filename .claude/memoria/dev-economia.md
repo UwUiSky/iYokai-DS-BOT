@@ -4,6 +4,7 @@
 11/10/2026 · ramo `feat/giro-eco` (da main `0e7753a`), DB `iyokai_weco`, migrazioni usate 0030, 0031
 
 ## In corso
+- Correzioni del cacciatore-bug applicate (test `tests/test_giro_eco_correzioni.py`); migrazioni in main: 0031 impostazioni, 0032 rank card.
 - Giro eco chiuso a 3 voci (9.18, NF-15, NF-12). Resta: smoke con nohup, push del ramo, rapporto.
 - Prossimo giro: voci piccole #124/#125 (LIV-064..067 XP a mano, LIV-005 livello massimo,
   ECO-009 monete a mano, ECO-069 conferma acquisto), `/clan` voce worker batch, GDPR rank_card_prefs.
@@ -34,6 +35,9 @@
   il cog usa `_config()` che ricade sui valori di base se il database non risponde. Tetto 25 regole per tipo.
 - Un listener che legge `message.channel.id` rompe i finti senza `id`: i test con `_FakeChannel` lo aggiungono.
 - Rank card: Pillow in `run_image_task`, avatar con `safe_open_image`, ricade sull'embed se il disegno fallisce.
+
+- Blocchi: sempre `ORDER BY user_id` prima di `FOR UPDATE` (batch vocale e decadimento); righe nuove si creano vuote (`ON CONFLICT DO NOTHING`) prima di scrivere.
+- `id_canali_per_le_regole`: canale, origine del thread, categoria. Esclusioni valgono anche per XP clan (testo e vocale).
 
 ## Aperto
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.

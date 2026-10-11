@@ -1720,6 +1720,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 11/10:** `/level rank` disegna la card (avatar, livello, barra, posizione, coin);
   colore e tema (scuro, chiaro, notte) salvati per utente (migrazione 0031).
   Resta lo sfondo con immagine propria (premium, da fare con `dev-core`).
+  `rank_card_prefs` è per utente (senza server): va nel registro dei dati NF-04 (F5) per esportazione e cancellazione.
 - `[ ]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
 - `[ ]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
 - `[ ]` 22.11 Ticket: chiusura automatica per inattività o utente

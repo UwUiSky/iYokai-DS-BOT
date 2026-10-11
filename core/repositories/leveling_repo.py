@@ -41,6 +41,7 @@ class TextXpResult:
     new_xp_total: int
     leveled_up: bool
     new_level: int
+    previous_level: int | None = None  # il livello prima del guadagno, se si sa
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class VoiceMinuteGrant:
     coins_granted: int
     leveled_up: bool
     new_level: int
+    previous_level: int | None = None  # il livello prima del minuto, se si sa
 
 
 @dataclass(frozen=True)
@@ -158,6 +160,7 @@ QUERY_DECADIMENTO_DEL_SERVER = (
     """
     + CONDIZIONE_DA_DECADERE
     + """
+        ORDER BY user_id
         FOR UPDATE
     ), aggiornati AS (
         UPDATE leveling_totals AS t
@@ -313,19 +316,27 @@ class LevelingRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
+                sql_riga = """
                     SELECT xp_total, last_text_xp_at FROM leveling_totals
                     WHERE guild_id = $1 AND user_id = $2 FOR UPDATE
-                    """,
-                    guild_id,
-                    user_id,
-                )
+                    """
+                row = await conn.fetchrow(sql_riga, guild_id, user_id)
+                if row is None:
+                    # Riga nuova: si crea (vuota) prima di scrivere, così chi arriva
+                    # insieme (XP vocale) la trova e aspetta, invece di sovrascriverla.
+                    await conn.execute(
+                        "INSERT INTO leveling_totals (guild_id, user_id) VALUES ($1, $2) "
+                        "ON CONFLICT DO NOTHING",
+                        guild_id,
+                        user_id,
+                    )
+                    row = await conn.fetchrow(sql_riga, guild_id, user_id)
                 xp_before = row["xp_total"] if row else 0
                 last_xp_at = row["last_text_xp_at"] if row else None
 
                 now = datetime.now(timezone.utc)
-                if not can_earn_text_xp(last_xp_at, now, cooldown_seconds):
+                # Un moltiplicatore che porta l'XP a 0 non fa partire l'attesa.
+                if amount <= 0 or not can_earn_text_xp(last_xp_at, now, cooldown_seconds):
                     return TextXpResult(
                         granted=False, new_xp_total=xp_before, leveled_up=False,
                         new_level=level_for_xp(xp_before),
@@ -350,7 +361,8 @@ class LevelingRepository:
                 await self._add_period_activity(conn, guild_id, user_id, amount, 0)
 
                 return TextXpResult(
-                    granted=True, new_xp_total=xp_after, leveled_up=leveled_up, new_level=new_level
+                    granted=True, new_xp_total=xp_after, leveled_up=leveled_up,
+                    new_level=new_level, previous_level=level_for_xp(xp_before),
                 )
 
     async def add_voice_minutes(
@@ -387,20 +399,28 @@ class LevelingRepository:
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                righe = {
-                    r["user_id"]: r
-                    for r in await conn.fetch(
-                        """
-                        SELECT user_id, xp_total, voice_channel_id, voice_consecutive_minutes,
-                               voice_minutes_today, voice_activity_date
-                        FROM leveling_totals
-                        WHERE guild_id = $1 AND user_id = ANY($2::bigint[])
-                        ORDER BY user_id FOR UPDATE
-                        """,
+                sql_righe = """
+                    SELECT user_id, xp_total, voice_channel_id, voice_consecutive_minutes,
+                           voice_minutes_today, voice_activity_date
+                    FROM leveling_totals
+                    WHERE guild_id = $1 AND user_id = ANY($2::bigint[])
+                    ORDER BY user_id FOR UPDATE
+                    """
+                id_utenti = [u for u, _, _ in ordinati]
+                righe = {r["user_id"]: r for r in await conn.fetch(sql_righe, guild_id, id_utenti)}
+                mancanti = [u for u in id_utenti if u not in righe]
+                if mancanti:
+                    # Righe nuove: si creano (vuote, in ordine di utente) prima di
+                    # scrivere, così un messaggio arrivato insieme non viene
+                    # sovrascritto; poi si rileggono sotto blocco.
+                    await conn.execute(
+                        "INSERT INTO leveling_totals (guild_id, user_id) "
+                        "SELECT $1, u FROM unnest($2::bigint[]) AS u ORDER BY u "
+                        "ON CONFLICT DO NOTHING",
                         guild_id,
-                        [u for u, _, _ in ordinati],
+                        mancanti,
                     )
-                }
+                    righe = {r["user_id"]: r for r in await conn.fetch(sql_righe, guild_id, id_utenti)}
                 for user_id, canale, idoneo in ordinati:
                     row = righe.get(user_id)
                     xp_before = row["xp_total"] if row else 0
@@ -441,6 +461,7 @@ class LevelingRepository:
                         coins_granted=result.coins_granted,
                         leveled_up=leveled_up,
                         new_level=new_level,
+                        previous_level=level_for_xp(xp_before),
                     )
 
                 await conn.executemany(
@@ -485,6 +506,9 @@ class LevelingRepository:
             user_id,
         )
 
+    # Ritenzione (NF-04): `rank_card_prefs` è per utente, senza server: dato
+    # personale di profilo. Va nel registro dei dati (esporta/cancella, F5);
+    # finché il registro non c'è nessuno lo ripulisce.
     async def get_rank_card_prefs(self, user_id: int) -> tuple[str | None, str | None]:
         """(colore, tema) scelti per la propria rank card; None dove non scelti."""
         riga = await self._pool.fetchrow(
