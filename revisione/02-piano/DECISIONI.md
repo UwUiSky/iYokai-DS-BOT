@@ -364,3 +364,11 @@ sia il primo tra i bot del server. Cosa può fare il bot e cosa no:
   comandi di un'app **in ordine alfabetico** e mostra in cima i "più usati"
   dell'utente. Se `_`, `-` o i numeri vengono prima delle lettere lo dice la
   prova `scripts/prova_ordine_comandi.py` (voce in `VERIFICA_LIVE.md`).
+
+**D24, nota finale (11/10/2026).** I due comandi di primo livello si chiamano
+`-cerca-comando` e `-chiedi` (col trattino, per stare in cima alla lista;
+il resto dei nomi è normale). `-cerca-comando` non funziona in DM. Nascondere
+i comandi per ruolo con un controllo su database non è possibile: il
+controllo parte dopo che il comando è stato lanciato. La strada vera è
+l'OAuth dell'admin con permessi per ruolo (issue #148); per ora valgono
+`default_permissions` e il controllo interno.
