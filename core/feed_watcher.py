@@ -16,6 +16,7 @@ Dipende da: core/safe_http.py (SEC-8)
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -30,7 +31,7 @@ from core.feed_parsing_logic import (
     render_alert_message,
 )
 from core.repositories.feed_subscription_repo import feed_subscription_repo
-from core.safe_http import safe_get
+from core.safe_http import Scaricamento, chiudi_sessione_condivisa, safe_get_con_etag
 
 logger = logging.getLogger("iyokai.feed_watcher")
 
@@ -41,41 +42,76 @@ TICK_SECONDS = 300  # 5 minuti: gli aggiornamenti RSS non sono mai
 # YouTube) che non controlliamo.
 
 
+# Quanti feed diversi si scaricano insieme (M 11.9, PERF-7).
+SCARICHI_IN_PARALLELO = 5
+
+
 class FeedWatcherService:
     def __init__(self) -> None:
         self._loop_task: tasks.Loop | None = None
+        self._etag_per_url: dict[str, str] = {}
 
-    async def _fetch_feed_text(self, url: str) -> str | None:
+    async def _fetch_feed_text(self, url: str, etag: str | None = None) -> Scaricamento | None:
         # SEC-8: url è scelto liberamente dall'admin del server
         # (/alerts add) — safe_get rifiuta indirizzi interni,
         # loopback, metadati cloud, ecc. e logga da sé il motivo del
-        # rifiuto o dell'errore.
-        return await safe_get(url)
+        # rifiuto o dell'errore. Sessione condivisa, User-Agent ed ETag
+        # (304 = feed invariato) sono in safe_get_con_etag.
+        return await safe_get_con_etag(url, etag)
 
     async def tick(self, bot: commands.Bot) -> None:
         sottoscrizioni = await feed_subscription_repo.get_all_subscriptions()
         # LC-7: server con il modulo spento = nessuno scarico, nessun messaggio.
         sottoscrizioni = await filtra_attive(sottoscrizioni)
 
+        # M 11.9: indirizzi uguali (anche di server diversi) = uno scarico.
+        per_url: dict[str, list] = {}
         for sottoscrizione in sottoscrizioni:
-            # BUG-20: ogni sottoscrizione è isolata — un errore su una
-            # (feed rotto, dato inatteso) non deve saltare tutte le
-            # successive, che appartengono anche ad altri server.
-            try:
-                await self._controlla_sottoscrizione(bot, sottoscrizione)
-            except Exception:
-                logger.exception(
-                    "Errore sulla sottoscrizione #%s (server %s): salto alla prossima.",
-                    sottoscrizione.id,
-                    sottoscrizione.guild_id,
-                )
+            per_url.setdefault(sottoscrizione.feed_url, []).append(sottoscrizione)
+        self._etag_per_url = {u: e for u, e in self._etag_per_url.items() if u in per_url}
 
-    async def _controlla_sottoscrizione(self, bot: commands.Bot, sottoscrizione) -> None:
-        testo_xml = await self._fetch_feed_text(sottoscrizione.feed_url)
-        if testo_xml is None:
-            return
+        semaforo = asyncio.Semaphore(SCARICHI_IN_PARALLELO)
 
-        voci = parse_feed(testo_xml)
+        async def scarica(url: str, gruppo: list):
+            # Una sottoscrizione mai inizializzata (last_seen vuoto) ha
+            # bisogno del contenuto: niente ETag, altrimenti un 304 la
+            # lascerebbe senza stato.
+            serve_tutto = any(s.last_seen_entry_id is None for s in gruppo)
+            etag = None if serve_tutto else self._etag_per_url.get(url)
+            async with semaforo:
+                return await self._fetch_feed_text(url, etag)
+
+        esiti = await asyncio.gather(
+            *(scarica(url, gruppo) for url, gruppo in per_url.items()),
+            return_exceptions=True,
+        )
+
+        for (url, gruppo), esito in zip(per_url.items(), esiti):
+            if isinstance(esito, BaseException):
+                logger.error("Errore nello scarico del feed %s: %r", url, esito)
+                continue
+            if esito is None or esito.non_modificato or esito.testo is None:
+                continue
+            if esito.etag:
+                self._etag_per_url[url] = esito.etag
+            else:
+                self._etag_per_url.pop(url, None)
+
+            voci = parse_feed(esito.testo)
+            for sottoscrizione in gruppo:
+                # BUG-20: ogni sottoscrizione è isolata — un errore su una
+                # (feed rotto, dato inatteso) non deve saltare tutte le
+                # successive, che appartengono anche ad altri server.
+                try:
+                    await self._controlla_sottoscrizione(bot, sottoscrizione, voci)
+                except Exception:
+                    logger.exception(
+                        "Errore sulla sottoscrizione #%s (server %s): salto alla prossima.",
+                        sottoscrizione.id,
+                        sottoscrizione.guild_id,
+                    )
+
+    async def _controlla_sottoscrizione(self, bot: commands.Bot, sottoscrizione, voci) -> None:
         if not voci:
             return
 
@@ -128,11 +164,8 @@ class FeedWatcherService:
                 )
 
     async def close(self) -> None:
-        # SEC-8: safe_get apre e chiude la propria ClientSession ad
-        # ogni chiamata (nessuna sessione persistente qui da
-        # chiudere) — il metodo resta per compatibilità con chi lo
-        # chiama già (main.py, i test).
-        return
+        # La sessione HTTP e' quella condivisa di core/safe_http.py.
+        await chiudi_sessione_condivisa()
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:

@@ -4,13 +4,11 @@
 11/10/2026 · ramo `feat/67-feed-alert` · #67 voci 11.1-11.10 (salto 11.11, 11.12)
 
 ## In corso
-- Previsione: chiudere 11.1-11.10 in 4 commit (Twitch, YouTube, feed, rete).
-  Fatti: Twitch (11.2, 11.3, 11.4 e 11.6 Twitch), YouTube (11.1, 11.4, 11.6), feed (11.4, 11.5, 11.8). 11.7 e 11.10 erano gia' a posto
-  (test esistenti). Prossimo: rete (11.9: sessione condivisa, User-Agent, ETag, URL uguali scaricati una volta).
-- Gate modulo: `core/feed_alert_gate.filtra_attive`; i test patchano
-  `core.feed_alert_gate.modulo_alert_attivo`.
+- #67 chiusa tranne 11.11 (F5) e 11.12 (F13), non miei in questo giro. Niente a meta'.
+  11.7 e 11.10 erano gia' a posto (test esistenti). Da fare: rapporto, smoke, push del ramo.
 
 ## Fatto
+- #67 Rete: safe_get con sessione condivisa, User-Agent, ETag; feed_watcher scarica gli URL uguali una volta (in parallelo, max 5).
 - #67 Feed: modulo spento, data ultimo pubblicato (migrazione 0023, id sparito = niente doppioni), tetto 25 feed e elenco tagliato.
 - #67 YouTube D5: RSS per canale (safe_get) + una videos.list per 50 ID; modulo spento = zero quota.
 - #67 Twitch: first=100, blocchi da 100 senza doppioni, 401 svuota token, modulo spento, render_template.
@@ -19,6 +17,8 @@
 - Voci rapide F1: limiti di `/poll`, `/search`, messaggi fissi, ID di `/alerts`.
 
 ## Cose imparate
+- Sessione condivisa di safe_http legata al loop: i test che la usano chiamano `chiudi_sessione_condivisa()`.
+- Watcher avvisi: i test patchano `core.feed_alert_gate.modulo_alert_attivo`; ETag mai se una sottoscrizione ha last_seen vuoto.
 - `@comando_di_gruppo` va sopra describe/choices; il permesso lo dà il gruppo.
 - `registra_comandi_del_cog` mette anche `owner` nell'albero globale: i cog owner
   fanno `tree.remove_command("owner")` in cog_load; main.py lo toglie e usa

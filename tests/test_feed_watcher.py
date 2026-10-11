@@ -252,10 +252,10 @@ async def test_tick_errore_imprevisto_su_una_sottoscrizione_non_ferma_le_altre(
     await _due_sottoscrizioni(repo, "http://rotto.invalid/feed.rss", url_buono)
 
     class _ServizioConScaricoRotto(FeedWatcherService):
-        async def _fetch_feed_text(self, url: str) -> str | None:
+        async def _fetch_feed_text(self, url: str, etag: str | None = None):
             if "rotto.invalid" in url:
                 raise RuntimeError("errore imprevisto durante lo scarico")
-            return await super()._fetch_feed_text(url)
+            return await super()._fetch_feed_text(url, etag)
 
     canale = _FakeChannel(500)
     await _ServizioConScaricoRotto().tick(_FakeBot(_FakeGuild(100, canale)))

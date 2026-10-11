@@ -27,7 +27,7 @@ from core.config import config
 from core.feed_alert_gate import filtra_attive
 from core.feed_parsing_logic import parse_feed
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
-from core.safe_http import safe_get
+from core.safe_http import chiudi_sessione_condivisa, safe_get
 from core.template_renderer import render_template
 from core.youtube_api_logic import (
     VIDEO_PER_CANALE,
@@ -190,6 +190,7 @@ class YoutubeWatcherService:
         if self._http_session is not None:
             await self._http_session.close()
             self._http_session = None
+        await chiudi_sessione_condivisa()
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:
