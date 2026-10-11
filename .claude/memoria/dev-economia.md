@@ -1,10 +1,11 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-05/10/2026 · ramo `feat/boost-146` (base `699fe0f`, non unito, non pushato)
+11/10/2026 · ramo `feat/f7-gestione-livelli` (base `1e5525c`, non pushato)
 
 ## In corso
-- Niente a metà. #146 (D23) chiusa sul ramo: aspetta smoke, unione e prova dal vivo.
+- Niente a metà. F7 passo 3a chiuso sul ramo: aspetta smoke, unione e prova dal vivo.
+  #146 (D23) su `feat/boost-146`: aspetta unione.
 
 ## Fatto
 - F1, livelli + economia + clan: unito su main con `9db9e8a`
@@ -15,6 +16,8 @@
 - #135 `reset_premium_registry`: salva e ripristina `is_premium_active`.
 - #136 `/config export` non scrive più le voci a `null` (strada scelta).
 
+- F7 passo 3a (#76): /level, /clan (+ bacheca, tesoreria, boost), /gestione economia|ruoli|benvenuto
+  in 4 commit su `feat/f7-gestione-livelli`; test `tests/test_f7_gestione_livelli_gruppi.py`.
 - #146 boost per tipo su `feat/boost-146` (5 commit, migrazione 0020, test `tests/test_clan_146_boost_per_tipo.py`).
 
 ## Cose imparate
@@ -39,6 +42,15 @@
 - Un test che registra moduli premium usa una categoria ammessa
   (es. `utility`), altrimenti `register()` solleva ValueError.
 
+- F7: i comandi di un cog con `CogConGruppi` non sono attributi `app_commands.Command`. Nei test
+  `registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)` dà i Command in gruppi
+  isolati (nome qualificato "clan boost gilda"); `cog.metodo.callback(cog, ...)` resta valido.
+- `LevelingCog.cog_unload` resta sincrono (i test lo chiamano senza await): cancella il task e
+  chiama `togli_comandi_del_cog`. Test che fanno `add_cog` devono finire con `remove_cog`.
+- `bacheca set/disable` stanno in /clan (pubblico): `@richiedi(Livello.ADMIN)` nel codice.
+- Test che caricano LevelingCog con bot non connesso: `bot.wait_until_ready = asyncio.Event().wait`.
+
 ## Aperto
 - Colonne vecchie `boost_expires_at`/`guild_boost_expires_at` restano nel database, non usate.
 - I test senza `DATABASE_URL` esportato usano `iyokai_test` (condiviso): esportarlo sempre.
+- `tests/support/command_policy.py`: riga `"gestione"` aggiunta qui; se la aggiungono anche ticket/voice, tenerne una.

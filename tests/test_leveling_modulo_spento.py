@@ -12,6 +12,7 @@ import pytest
 from discord import app_commands
 
 from cogs.leveling.leveling import MODULE_LEVELING, LevelingCog
+from core.command_groups import costruisci_gruppi, registra_comandi_del_cog
 from core.repositories.leveling_repo import leveling_repo
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
 from tests.support.moduli import attiva_livelli
@@ -20,7 +21,8 @@ GUILD_ID = 100
 
 
 def _tutti_i_comandi(cog: LevelingCog) -> list[app_commands.Command]:
-    return [c for c in cog.walk_app_commands() if isinstance(c, app_commands.Command)]
+    """I comandi del cog, messi in gruppi isolati (non toccano quelli globali)."""
+    return registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)
 
 
 def _nomi_dei_comandi() -> list[str]:
@@ -47,8 +49,9 @@ async def _lancia(cog: LevelingCog, nome: str, interazione) -> None:
 def test_l_elenco_copre_tutte_le_famiglie_di_comandi():
     nomi = _nomi_dei_comandi()
     assert len(nomi) >= 35
-    for atteso in ("daily", "shop buy", "cassa saldo", "assegna-lobby", "clan crea",
-                   "clan tesoreria dona", "clan boost gilda", "giveaway", "level-roles add"):
+    for atteso in ("level daily", "level shop buy", "level cassa", "gestione economia assegna-lobby",
+                   "clan crea", "clan tesoreria dona", "clan boost gilda", "gestione economia giveaway",
+                   "gestione ruoli livello-add", "gestione economia cassa-premium"):
         assert atteso in nomi
 
 

@@ -42,20 +42,8 @@ AUDIENCE: dict[str, str] = {
     "ship": PUBLIC,
     "rate": PUBLIC,
     # Livelli, economia, clan
-    "rank": PUBLIC,
-    "balance": PUBLIC,
-    "daily": PUBLIC,
-    "work": PUBLIC,
-    "pay": PUBLIC,
-    "leaderboard": PUBLIC,
-    "clan": PUBLIC,
-    "shop": MIXED,
-    "cassa": MIXED,
-    "level-roles": STAFF,
-    "monthly-winners": STAFF,
-    "assegna-lobby": STAFF,
-    "assegna-winner": STAFF,
-    "giveaway": STAFF,
+    "level": PUBLIC,  # gruppo condiviso (core/command_groups.py)
+    "clan": PUBLIC,  # gruppo condiviso
     # Musica
     "play": PUBLIC,
     "skip": PUBLIC,
@@ -89,8 +77,7 @@ AUDIENCE: dict[str, str] = {
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "admin": STAFF,  # gruppo condiviso
     "moduli": STAFF,  # gruppo condiviso
-    "greetings": STAFF,
-    "rolemenu": STAFF,
+    "gestione": STAFF,  # gruppo condiviso
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
 

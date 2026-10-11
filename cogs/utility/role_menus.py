@@ -40,6 +40,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
@@ -75,7 +76,10 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
     return embed
 
 
-class RoleMenuCog(commands.Cog):
+_SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
+
+
+class RoleMenuCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
@@ -372,11 +376,13 @@ class RoleMenuCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    rolemenu_group = app_commands.Group(
-        name="rolemenu", description="Crea e gestisci i menu di assegnazione ruoli."
-    )
 
-    @rolemenu_group.command(name="create", description="[Admin] Crea un nuovo role menu.")
+    @comando_di_gruppo(
+        "gestione",
+        nome="menu-crea",
+        descrizione="Crea un nuovo role menu.",
+        sottogruppo=_SG_RUOLI,
+    )
     @app_commands.describe(
         title="Titolo del menu",
         mode="Modalità di interazione",
@@ -392,7 +398,6 @@ class RoleMenuCog(commands.Cog):
             app_commands.Choice(name="Select menu", value="select"),
         ]
     )
-    @app_commands.checks.has_permissions(manage_roles=True)
     async def create_cmd(
         self,
         interaction: discord.Interaction,
@@ -429,22 +434,24 @@ class RoleMenuCog(commands.Cog):
 
         await interaction.response.send_message(
             f"Role menu creato (ID `{menu_id}`, modalità **{mode.name}**). "
-            f"Usa `/rolemenu add-option` per aggiungere le opzioni — il "
+            f"Usa `/gestione ruoli menu-aggiungi` per aggiungere le opzioni — il "
             f"messaggio verrà pubblicato/aggiornato automaticamente ad "
             f"ogni opzione aggiunta.",
             ephemeral=True,
         )
 
-    @rolemenu_group.command(
-        name="add-option", description="[Admin] Aggiungi un'opzione a un role menu."
+    @comando_di_gruppo(
+        "gestione",
+        nome="menu-aggiungi",
+        descrizione="Aggiungi un'opzione a un role menu.",
+        sottogruppo=_SG_RUOLI,
     )
     @app_commands.describe(
-        menu_id="ID del menu (mostrato da /rolemenu create)",
+        menu_id="ID del menu (mostrato da /gestione ruoli menu-crea)",
         role="Il ruolo da assegnare",
         emoji="Emoji (obbligatoria per reaction/button)",
         label="Etichetta del bottone/opzione (obbligatoria per button/select)",
     )
-    @app_commands.checks.has_permissions(manage_roles=True)
     async def add_option_cmd(
         self,
         interaction: discord.Interaction,
@@ -500,11 +507,13 @@ class RoleMenuCog(commands.Cog):
             f"Opzione aggiunta: {role.mention}.", ephemeral=True
         )
 
-    @rolemenu_group.command(
-        name="remove-option", description="[Admin] Rimuovi un'opzione da un role menu."
+    @comando_di_gruppo(
+        "gestione",
+        nome="menu-togli",
+        descrizione="Rimuovi un'opzione da un role menu.",
+        sottogruppo=_SG_RUOLI,
     )
     @app_commands.describe(menu_id="ID del menu", role="Il ruolo da rimuovere dal menu")
-    @app_commands.checks.has_permissions(manage_roles=True)
     async def remove_option_cmd(
         self, interaction: discord.Interaction, menu_id: int, role: discord.Role
     ) -> None:
@@ -531,9 +540,13 @@ class RoleMenuCog(commands.Cog):
         await self._refresh_menu_message(guild, menu)
         await interaction.followup.send(f"Opzione rimossa: {role.mention}.", ephemeral=True)
 
-    @rolemenu_group.command(name="delete", description="[Admin] Elimina un role menu.")
+    @comando_di_gruppo(
+        "gestione",
+        nome="menu-elimina",
+        descrizione="Elimina un role menu.",
+        sottogruppo=_SG_RUOLI,
+    )
     @app_commands.describe(menu_id="ID del menu da eliminare")
-    @app_commands.checks.has_permissions(manage_roles=True)
     async def delete_cmd(self, interaction: discord.Interaction, menu_id: int) -> None:
         guild = interaction.guild
         if guild is None:

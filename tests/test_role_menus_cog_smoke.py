@@ -13,6 +13,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
+from tests.support.percorsi import percorsi_del_gruppo
 from core.repositories.role_menu_repo import RoleMenuOption
 from cogs.utility.role_menus import (
     MODULE_ROLE_MENUS,
@@ -47,15 +48,9 @@ async def test_role_menus_cog_si_carica_correttamente(clean_db):
     assert module is not None
     assert module.premium_capable is False
 
-    rolemenu_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "rolemenu":
-            rolemenu_group = command
-            break
-    assert rolemenu_group is not None
-
-    sottocomandi = {c.name for c in rolemenu_group.commands}
-    assert {"create", "add-option", "remove-option", "delete"} <= sottocomandi
+    assert {"ruoli menu-crea", "ruoli menu-aggiungi", "ruoli menu-togli", "ruoli menu-elimina"} <= percorsi_del_gruppo(
+        "gestione"
+    )
 
     assert {"on_raw_reaction_add", "on_raw_reaction_remove"} <= set(bot.extra_events.keys())
 
