@@ -20,7 +20,18 @@ from aiohttp import web
 from aiohttp.test_utils import TestServer
 
 import core.safe_http as safe_http_module
-from core.safe_http import _ip_e_bloccato, _schema_e_porta_ammessi, safe_get
+from core.safe_http import (
+    _ip_e_bloccato,
+    _schema_e_porta_ammessi,
+    chiudi_sessione_condivisa,
+    safe_get,
+)
+
+
+@pytest.fixture(autouse=True)
+async def _chiudi_la_sessione_condivisa():
+    yield
+    await chiudi_sessione_condivisa()
 
 
 def _consenti_qualsiasi_ip_e_porta(monkeypatch) -> None:
