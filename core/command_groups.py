@@ -45,6 +45,11 @@ from discord import app_commands
 
 from core.command_access import GruppoYokai, Livello
 
+# I due comandi di primo livello fuori dai gruppi (D24, 06/10/2026). Il trattino
+# davanti li fa salire in lista; la regex dei nomi di Discord lo ammette.
+NOME_CERCA_COMANDO = "-cerca-comando"
+NOME_CHIEDI = "-chiedi"
+
 # nome: (descrizione, permesso predefinito di Discord o None, livello)
 _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "owner": ("Comandi riservati al proprietario del bot", "administrator", Livello.OWNER),
