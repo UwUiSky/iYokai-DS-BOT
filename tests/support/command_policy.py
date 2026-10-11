@@ -75,10 +75,6 @@ AUDIENCE: dict[str, str] = {
     "ticket": PUBLIC,
     # Vocali temporanei
     "voice": PUBLIC,
-    "voicetemp-setup": STAFF,
-    "voicetemp-panel": STAFF,
-    "voicetemp-cap": STAFF,
-    "voicetemp-platform-setup": STAFF,
     # Utility
     "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
