@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.event_log_repo import event_log_repo
@@ -30,12 +31,14 @@ MODULE_SERVER_STATS = "server_stats"
 DEFAULT_DAYS = 14
 
 
-class ServerStatsCog(commands.Cog):
+class ServerStatsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(
-        name="serverstats", description="Mostra le statistiche del server, con grafico di crescita."
+    @comando_di_gruppo(
+        "utility",
+        nome="serverstats",
+        descrizione="Mostra le statistiche del server, con grafico di crescita.",
     )
     @app_commands.describe(days="Quanti giorni indietro per il grafico (default 14, massimo 90)")
     async def server_stats(

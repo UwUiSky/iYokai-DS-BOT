@@ -108,12 +108,7 @@ AUDIENCE: dict[str, str] = {
     "voicetemp-cap": STAFF,
     "voicetemp-platform-setup": STAFF,
     # Utility
-    "ping": PUBLIC,
-    "poll": PUBLIC,
-    "reminder": PUBLIC,
     "search": PUBLIC,
-    "serverstats": PUBLIC,
-    "reactionsnipe": PUBLIC,
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "admin": STAFF,  # gruppo condiviso
     "moduli": STAFF,  # gruppo condiviso

@@ -16,6 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 
@@ -28,11 +29,15 @@ TestoDomanda = app_commands.Range[str, 1, 300]
 TestoRisposta = app_commands.Range[str, 1, 55]
 
 
-class PollCog(commands.Cog):
+class PollCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="poll", description="Crea un sondaggio (fino a 10 opzioni).")
+    @comando_di_gruppo(
+        "utility",
+        nome="poll",
+        descrizione="Crea un sondaggio (fino a 10 opzioni).",
+    )
     @app_commands.describe(
         question="La domanda del sondaggio (massimo 300 caratteri)",
         option1="Prima opzione (massimo 55 caratteri)",
