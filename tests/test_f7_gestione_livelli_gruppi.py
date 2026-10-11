@@ -127,7 +127,8 @@ async def test_scaricare_il_cog_toglie_i_comandi(clean_db):
     await _scarica(bot)
     assert "rank" not in percorsi_del_gruppo("level")
     assert not any(p.startswith("economia ") for p in percorsi_del_gruppo("gestione"))
-    assert not percorsi_del_gruppo("gestione")
+    # solo i percorsi dei cog scaricati: GRUPPI è globale e altri test possono lasciarvi comandi loro
+    assert not (percorsi_del_gruppo("gestione") & (ECONOMIA_ATTESI | RUOLI_ATTESI | BENVENUTO_ATTESI))
 
 
 async def test_bacheca_clan_chiede_il_livello_admin_del_bot(clean_db, monkeypatch):
