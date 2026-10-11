@@ -200,11 +200,11 @@ class Config:
     # di TWITCH_CLIENT_ID/SECRET sopra: vuota finché l'utente non crea
     # una API key sulla Google Cloud Console. Il watcher (core/
     # youtube_watcher.py) resta inattivo finché non è compilata, non
-    # fa fallire l'avvio del bot. A differenza del feed RSS già usato
-    # per "nuovo video" (§10.3, nessuna chiave richiesta), rilevare lo
-    # stato LIVE richiede l'endpoint search.list della Data API, che
-    # consuma quota — per questo è un metodo di sblocco separato e
-    # opzionale, non abilitato di default.
+    # fa fallire l'avvio del bot. Lo stato LIVE si legge dal
+    # feed RSS del canale (nessuna quota) più una `videos.list` per
+    # gruppo di 50 ID (1 unità di quota, D5): serve la chiave, per
+    # questo è un metodo di sblocco separato e opzionale, non
+    # abilitato di default.
     YOUTUBE_API_KEY: str = field(default="", repr=False)
 
     # Pixabay (SPEC.md §16.9, ricerca immagini SFW) — opzionale, vuota

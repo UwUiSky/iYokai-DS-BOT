@@ -33,6 +33,14 @@ RSS_DI_ESEMPIO = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+@pytest.fixture(autouse=True)
+def _modulo_attivo(monkeypatch):
+    async def _si(guild_id):
+        return True
+
+    monkeypatch.setattr("core.feed_alert_gate.modulo_alert_attivo", _si)
+
+
 class _FakeChannel(discord.TextChannel):
     def __init__(self, channel_id: int) -> None:
         self.id = channel_id
@@ -244,10 +252,10 @@ async def test_tick_errore_imprevisto_su_una_sottoscrizione_non_ferma_le_altre(
     await _due_sottoscrizioni(repo, "http://rotto.invalid/feed.rss", url_buono)
 
     class _ServizioConScaricoRotto(FeedWatcherService):
-        async def _fetch_feed_text(self, url: str) -> str | None:
+        async def _fetch_feed_text(self, url: str, etag: str | None = None):
             if "rotto.invalid" in url:
                 raise RuntimeError("errore imprevisto durante lo scarico")
-            return await super()._fetch_feed_text(url)
+            return await super()._fetch_feed_text(url, etag)
 
     canale = _FakeChannel(500)
     await _ServizioConScaricoRotto().tick(_FakeBot(_FakeGuild(100, canale)))

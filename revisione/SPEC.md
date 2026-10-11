@@ -880,8 +880,10 @@ sessione perché non richiesto esplicitamente.
 - `[~]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
   (`youtube.com/feeds/videos.xml?channel_id=...`), nessuna chiave API
   → **Stato 04/10:** LC-7; se sparisce l'ultimo elemento ripubblica tutto (REVIEW §4).
-- `[~]` 10.4 YouTube live — via la YouTube Data API v3 (`search.list`,
-  `eventType=live`), non via RSS (che non indica lo stato live). Come
+- `[~]` 10.4 YouTube live — via il feed RSS del canale (ID dei video
+  recenti, nessuna quota) e una `videos.list` della YouTube Data API v3 per
+  gruppo di 50 ID, guardando `liveBroadcastContent` (D5; `search.list`
+  costava 100 unita' per canale, BUG-16). Come
   Twitch (§10.1/§10.2), env-gated: `YOUTUBE_API_KEY` opzionale,
   `core/youtube_watcher.py` resta inattivo finché non è configurata,
   nessun fallimento all'avvio. Intervallo di controllo più lungo di
@@ -2232,7 +2234,7 @@ risalente a una sessione precedente — "§10 resta parziale solo per
 d'ambiente (`YOUTUBE_API_KEY`), watcher (`core/youtube_watcher.py`)
 inattivo finché non è configurata, nessun impatto sull'avvio del bot
 per chi non la usa. `core/youtube_api_logic.py` interpreta la
-risposta di `search.list` (logica pura, testata senza rete);
+risposta di `videos.list` (logica pura, testata senza rete);
 `core/repositories/youtube_subscription_repo.py` persiste le
 sottoscrizioni (stesso schema di twitch_subscription_repo.py);
 `/alerts add-youtube-live` le crea (prefisso `YT-`, integrato in

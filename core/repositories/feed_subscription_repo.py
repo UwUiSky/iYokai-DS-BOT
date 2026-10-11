@@ -28,6 +28,8 @@ class FeedSubscription:
     last_seen_entry_id: str | None
     created_by: int
     created_at: datetime
+    # Aggiunta dalla migrazione 0023 (M 11.5): None finche' non si e' mai pubblicato/visto una data.
+    last_seen_published: datetime | None = None
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -70,6 +72,7 @@ class FeedSubscriptionRepository:
             last_seen_entry_id=row["last_seen_entry_id"],
             created_by=row["created_by"],
             created_at=row["created_at"],
+            last_seen_published=row["last_seen_published"],
         )
 
     async def add_subscription(
@@ -80,14 +83,20 @@ class FeedSubscriptionRepository:
         label: str,
         created_by: int,
         message_template: str | None = None,
-    ) -> int:
-        row = await self._pool.fetchrow(
-            """
+        max_per_guild: int | None = None,
+    ) -> int | None:
+        """
+        Con `max_per_guild` conteggio e scrittura sono atomici (lock
+        advisory per server nella stessa transazione): None = tetto
+        raggiunto, nulla scritto. Richieste in parallelo non lo superano.
+        """
+        sql = """
             INSERT INTO feed_subscriptions
                 (guild_id, channel_id, feed_url, label, message_template, created_by)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
-            """,
+            """
+        args = (
             guild_id,
             channel_id,
             feed_url,
@@ -95,7 +104,23 @@ class FeedSubscriptionRepository:
             message_template or DEFAULT_MESSAGE_TEMPLATE,
             created_by,
         )
-        return row["id"]
+        if max_per_guild is None:
+            row = await self._pool.fetchrow(sql, *args)
+            return row["id"]
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext('feed_subscriptions'), $1)",
+                    guild_id % 2_147_483_647,
+                )
+                presenti = await conn.fetchval(
+                    "SELECT count(*) FROM feed_subscriptions WHERE guild_id = $1", guild_id
+                )
+                if presenti >= max_per_guild:
+                    return None
+                row = await conn.fetchrow(sql, *args)
+                return row["id"]
 
     async def remove_subscription(self, subscription_id: int, guild_id: int) -> bool:
         """
@@ -124,11 +149,23 @@ class FeedSubscriptionRepository:
         rows = await self._pool.fetch("SELECT * FROM feed_subscriptions ORDER BY id")
         return [self._row_to_subscription(r) for r in rows]
 
-    async def update_last_seen(self, subscription_id: int, entry_id: str) -> None:
+    async def update_last_seen(
+        self,
+        subscription_id: int,
+        entry_id: str,
+        published: datetime | None = None,
+    ) -> None:
+        """La data ricordata non torna mai indietro (GREATEST ignora i NULL)."""
         await self._pool.execute(
-            "UPDATE feed_subscriptions SET last_seen_entry_id = $2 WHERE id = $1",
+            """
+            UPDATE feed_subscriptions
+               SET last_seen_entry_id = $2,
+                   last_seen_published = GREATEST(last_seen_published, $3)
+             WHERE id = $1
+            """,
             subscription_id,
             entry_id,
+            published,
         )
 
 

@@ -18,6 +18,14 @@ from core.twitch_watcher import TwitchWatcherService
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 
 
+@pytest.fixture(autouse=True)
+def _modulo_attivo(monkeypatch):
+    async def _si(guild_id):
+        return True
+
+    monkeypatch.setattr("core.feed_alert_gate.modulo_alert_attivo", _si)
+
+
 class _FakeChannel(discord.TextChannel):
     def __init__(self, channel_id: int) -> None:
         self.id = channel_id

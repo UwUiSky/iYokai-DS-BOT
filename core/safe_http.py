@@ -8,15 +8,14 @@ SEC-18). `url_e_sicuro(url)`: lo stesso controllo senza scaricare.
 Funzioni coperte: SPEC §10.8 (SEC-8, SEC-18)
 """
 
-# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
-
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import re
 import socket
+from dataclasses import dataclass
 from urllib.parse import urljoin
 
 import aiohttp
@@ -32,6 +31,9 @@ DEFAULT_MAX_BYTES = 2_000_000
 MAX_REDIRECTS = 3
 REQUEST_TIMEOUT_SECONDS = 15
 _REDIRECT_STATUS = {301, 302, 303, 307, 308}
+
+# M 11.9 (LIM-51): i siti dei feed chiedono di sapere chi li scarica.
+USER_AGENT = "iYokai-Bot/1.0 (Discord bot; lettore di feed RSS)"
 
 # <?xml version="1.0" encoding="ISO-8859-1"?> in testa a un feed.
 _ENCODING_PROLOGO_XML = re.compile(rb"""\s*<\?xml[^>]*encoding=["']([A-Za-z0-9._-]+)["']""")
@@ -190,6 +192,71 @@ def _decodifica(corpo: bytes, charset_header: str | None) -> str:
         return corpo.decode("utf-8", errors="replace")
 
 
+@dataclass(frozen=True)
+class Scaricamento:
+    """Esito di safe_get_con_etag. `testo` e' None se il server ha risposto 304."""
+
+    testo: str | None
+    etag: str | None = None
+    non_modificato: bool = False
+
+
+# Sessione unica per tutti gli scarichi (M 11.9): evita una connessione
+# TLS nuova per ogni feed. E' legata al loop in cui e' nata: se il loop
+# cambia (test, riavvio) se ne crea una nuova.
+_sessione: aiohttp.ClientSession | None = None
+_resolver: _ResolverSicuro | None = None
+_loop_sessione: asyncio.AbstractEventLoop | None = None
+
+
+async def _sessione_condivisa() -> aiohttp.ClientSession:
+    global _sessione, _resolver, _loop_sessione
+    ciclo = asyncio.get_running_loop()
+    if _sessione is not None and not _sessione.closed and _loop_sessione is not ciclo:
+        # Il loop e' cambiato: la sessione vecchia non serve piu', si chiude
+        # (altrimenti resta aperta fino alla fine del processo).
+        await chiudi_sessione_condivisa()
+    if _sessione is None or _sessione.closed:
+        _resolver = _ResolverSicuro()
+        _sessione = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(resolver=_resolver),
+            headers={"User-Agent": USER_AGENT},
+        )
+        _loop_sessione = ciclo
+    return _sessione
+
+
+async def chiudi_sessione_condivisa() -> None:
+    """Da chiamare allo spegnimento del bot (e nei test che la usano)."""
+    global _sessione, _resolver, _loop_sessione
+    sessione, resolver = _sessione, _resolver
+    _sessione = _resolver = _loop_sessione = None
+    if sessione is not None and not sessione.closed:
+        try:
+            await sessione.close()
+        except RuntimeError:  # loop di un altro ciclo gia' chiuso
+            sessione.detach()
+    if resolver is not None:
+        try:
+            await resolver.close()
+        except RuntimeError:
+            pass
+
+
+async def safe_get_con_etag(
+    url: str, etag: str | None = None, *, max_bytes: int = DEFAULT_MAX_BYTES
+) -> Scaricamento | None:
+    """
+    Come safe_get, ma con la sessione condivisa e l'ETag: se `etag` e'
+    quello che il server ha ancora, risponde 304 e il risultato ha
+    `non_modificato=True` e nessun testo. None = rifiuto o errore.
+    """
+    try:
+        return await _scarica(await _sessione_condivisa(), url, max_bytes, etag)
+    except RuntimeError:  # sessione chiusa mentre la si usava
+        return None
+
+
 async def safe_get(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> str | None:
     """
     Scarica il testo di `url` con protezioni SSRF: redirect Discord-
@@ -201,16 +268,13 @@ async def safe_get(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> str | Non
     errore di rete — il chiamante tratta "None" come "salta questo
     giro", mai come "server risponde vuoto".
     """
-    resolver = _ResolverSicuro()
-    try:
-        connettore = aiohttp.TCPConnector(resolver=resolver)
-        async with aiohttp.ClientSession(connector=connettore) as session:
-            return await _scarica(session, url, max_bytes)
-    finally:
-        await resolver.close()
+    esito = await safe_get_con_etag(url, max_bytes=max_bytes)
+    return None if esito is None else esito.testo
 
 
-async def _scarica(session: aiohttp.ClientSession, url: str, max_bytes: int) -> str | None:
+async def _scarica(
+    session: aiohttp.ClientSession, url: str, max_bytes: int, etag: str | None = None
+) -> Scaricamento | None:
     url_corrente = url
 
     for _ in range(MAX_REDIRECTS + 1):
@@ -223,6 +287,7 @@ async def _scarica(session: aiohttp.ClientSession, url: str, max_bytes: int) -> 
             async with session.get(
                 destinazione,
                 allow_redirects=False,
+                headers={"If-None-Match": etag} if etag else None,
                 timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
             ) as risposta:
                 if risposta.status in _REDIRECT_STATUS:
@@ -231,6 +296,9 @@ async def _scarica(session: aiohttp.ClientSession, url: str, max_bytes: int) -> 
                         return None
                     url_corrente = urljoin(url_corrente, location)
                     continue
+
+                if risposta.status == 304 and etag:
+                    return Scaricamento(testo=None, etag=etag, non_modificato=True)
 
                 if risposta.status != 200:
                     logger.warning("%s ha risposto con status %d.", url_corrente, risposta.status)
@@ -246,7 +314,10 @@ async def _scarica(session: aiohttp.ClientSession, url: str, max_bytes: int) -> 
                             max_bytes,
                         )
                         return None
-                return _decodifica(bytes(corpo), risposta.charset)
+                return Scaricamento(
+                    testo=_decodifica(bytes(corpo), risposta.charset),
+                    etag=risposta.headers.get("ETag"),
+                )
         except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
             # ClientError copre anche il rifiuto di _ResolverSicuro
             # (nessun IP pubblico). ValueError (BUG-20): un Location
