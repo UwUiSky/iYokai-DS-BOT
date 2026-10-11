@@ -11,6 +11,7 @@ Funzioni coperte: SPEC §3.3
 from __future__ import annotations
 
 from core.premium import guild_has_premium_access, registry
+from core.security_logic import AntiNukeConfig, is_extra_owner
 
 
 async def premium_sbloccato(guild_id: int, module_name: str, bot=None) -> bool:
@@ -22,3 +23,14 @@ async def premium_sbloccato(guild_id: int, module_name: str, bot=None) -> bool:
     if not registry.is_module_premium(module_name):
         return True
     return await guild_has_premium_access(guild_id, module_name, bot=bot)
+
+
+def puo_gestire_antinuke(owner_id: int, user_id: int, config: AntiNukeConfig) -> bool:
+    """
+    SIC-018: chi puo' cambiare la lista dei fidati e le protezioni piu'
+    delicate dell'anti-nuke: il proprietario del server e gli "extra
+    owner". Un amministratore qualsiasi (o un "fidato") no: altrimenti
+    il primo admin che decide di fare danni si metterebbe da solo nella
+    lista degli esenti.
+    """
+    return user_id == owner_id or is_extra_owner(user_id, config)

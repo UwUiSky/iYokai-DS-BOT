@@ -4,9 +4,16 @@
 11/10/2026 · ramo `feat/f7-moderazione` (base `0fd15a7`) · F7 passo 2b chiuso
 
 ## In corso
-- Niente a metà. Passo 2b fatto (4 commit: mod+modban, security, automod,
-  log). Prossimo giro: #137 (DM prima di kick/ban) se non già fatto
-  dall'orchestratore; poi #138.
+- Giro AUDIT sicurezza (ramo `feat/sicurezza-audit`, base 90bbeb2, #59/#117).
+  Fatto: A anti-nuke (fiducia, soglia oraria, quarantena, casi, guardie),
+  B anti-raid (SIC-003/004/022, range). Prossimo: C security_score +
+  permission_heatmap + global_ban (SIC-022 nel punteggio, SIC-046 due
+  interruttori, annulla ban propagati allo sban); D spam_trap (doppio
+  trigger concorrente, trap==log, permessi bot sul canale log), verify
+  (User invece di Member, risposte mancanti), invite_sync (guild Object);
+  poi COMMAND_LIST, AUDIT_SICUREZZA.md, VERIFICA_LIVE.md, smoke, push.
+- Non fare: alt_detection (OAuth, #92), lockdown/panico (#100), ban_appeal (#101).
+- env di shell: file scratchpad env.sh (source prima di ogni pytest).
 
 ## Fatto
 - F1, sicurezza + AutoMod + verifica: unito su main con `7722b71`

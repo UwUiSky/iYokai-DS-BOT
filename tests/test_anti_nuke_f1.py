@@ -67,6 +67,11 @@ async def cog(db_finto, attese):
     cog = modulo.AntiNukeCog(bot)
     # Anti-nuke acceso e soglia canali a zero: la prima azione è già "di massa".
     await cog.enable.callback(cog, _interazione(), True)
+    # Questi test provano il recupero e la punizione "toglie i ruoli"; la
+    # quarantena (default dal #117) ha i suoi test in test_anti_nuke_117.py.
+    await cog.punish_action.callback(
+        cog, _interazione(), app_commands.Choice(name="Rimuovi i ruoli", value="strip_roles")
+    )
     await cog.limits.callback(
         cog, _interazione(), app_commands.Choice(name="Canali", value=NUKE_CATEGORY_CHANNEL), 0, 60
     )
