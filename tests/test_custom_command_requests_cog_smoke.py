@@ -23,7 +23,14 @@ async def test_custom_command_requests_cog_si_carica_correttamente(clean_db):
 
         assert bot.get_cog("CustomCommandRequestsCog") is not None
 
-        nomi_comandi = {c.name for c in bot.tree.get_commands()}
-        assert {"request-custom-command", "custom-command-requests-setup"} <= nomi_comandi
+        from core.command_groups import GRUPPI
+
+        utility = {c.name for c in GRUPPI["utility"].commands}
+        assert "richiedi-comando" in utility
+        system = GRUPPI["owner"].get_command("system")
+        assert system is not None and system.get_command("richieste-canale") is not None
+        # i vecchi comandi di primo livello non esistono più
+        nomi_top = {c.name for c in bot.tree.get_commands()}
+        assert not {"request-custom-command", "custom-command-requests-setup"} & nomi_top
     finally:
         await db.close()

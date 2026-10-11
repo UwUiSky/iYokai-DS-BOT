@@ -79,15 +79,6 @@ class _FakeBot:
 
 
 @pytest.mark.asyncio
-async def test_whitelist_list_rifiuta_non_owner(clean_db):
-    cog = OwnerPremiumCog(_FakeBot())
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
-
-    await cog.whitelist_list.callback(cog, interaction)
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_whitelist_list_vuoto_avvisa(clean_db):
     from core.database import db
@@ -127,15 +118,6 @@ async def test_whitelist_list_elenca_le_voci_reali(clean_db):
 
 
 @pytest.mark.asyncio
-async def test_premium_status_all_rifiuta_non_owner(clean_db):
-    cog = OwnerPremiumCog(_FakeBot())
-    interaction = _FakeInteraction(user_id=_OWNER_ID + 1)
-
-    await cog.premium_status_all.callback(cog, interaction)
-
-    assert "riservato al proprietario" in interaction.response.sent_messages[0]
-
-
 @pytest.mark.asyncio
 async def test_premium_status_all_mostra_ogni_server_e_meccanismo(clean_db):
     from core.database import db

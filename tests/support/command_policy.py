@@ -115,7 +115,7 @@ AUDIENCE: dict[str, str] = {
     "serverstats": PUBLIC,
     "reactionsnipe": PUBLIC,
     "suggest": PUBLIC,
-    "request-custom-command": PUBLIC,
+    "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "config": MIXED,
     "setup": STAFF,
     "setup-wizard": STAFF,
@@ -130,9 +130,7 @@ AUDIENCE: dict[str, str] = {
     "promuovi-backup": STAFF,
     "configura-restore": STAFF,
     "restore-users": STAFF,
-    # Owner
-    "owner": OWNER,
-    "custom-command-requests-setup": OWNER,
+    # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
 
 # I gruppi condivisi di F7 hanno già permessi e guild_only: fuori dai cricchetti.

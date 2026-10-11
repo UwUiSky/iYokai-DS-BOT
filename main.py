@@ -37,6 +37,7 @@ from pathlib import Path
 import discord
 from discord.ext import commands
 
+from core.command_groups import registra_owner
 from core.config import config
 from core.repositories.music_session_repo import music_session_repo
 from core.bot_supervisor import (
@@ -297,14 +298,25 @@ class iYokaiBot(commands.AutoShardedBot):
         # Sincronizza gli slash command con Discord. In sviluppo,
         # sincronizzare su una singola guild è istantaneo; la sync
         # globale può richiedere fino a un'ora per propagarsi.
+        # `/owner` non è mai globale (mappa F7 §5): va solo nel server
+        # dell'owner. Si toglie dall'albero globale PRIMA di copy_global_to,
+        # così in sviluppo non compare due volte.
+        self.tree.remove_command("owner")
+        owner_nel_server = bool(config.MAIN_GUILD_ID) and registra_owner(
+            self.tree, config.MAIN_GUILD_ID
+        )
         if config.is_development and config.MAIN_GUILD_ID:
             guild = discord.Object(id=config.MAIN_GUILD_ID)
             self.tree.copy_global_to(guild=guild)
+            # copy_global_to non copia i comandi del server: /owner resta suo.
             await self.tree.sync(guild=guild)
             logger.info("Slash command sincronizzati sulla guild di sviluppo.")
         else:
             await self.tree.sync()
             logger.info("Slash command sincronizzati globalmente.")
+            if owner_nel_server:
+                await self.tree.sync(guild=discord.Object(id=config.MAIN_GUILD_ID))
+                logger.info("/owner sincronizzato solo nel server dell'owner.")
 
     async def on_ready(self) -> None:
         logger.info(
