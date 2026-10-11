@@ -128,3 +128,53 @@ async def test_scaricare_il_cog_toglie_i_comandi(clean_db):
     assert "rank" not in percorsi_del_gruppo("level")
     assert not any(p.startswith("economia ") for p in percorsi_del_gruppo("gestione"))
     assert not percorsi_del_gruppo("gestione")
+
+
+async def test_bacheca_clan_chiede_il_livello_admin_del_bot(clean_db, monkeypatch):
+    """`/clan bacheca set|disable`: permesso di Discord OPPURE ruolo admin del bot; altrimenti rifiuto."""
+    import types
+
+    import pytest
+
+    from core import command_access as ca
+    from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
+
+    ruolo_admin = 555
+    impostazioni = {(77, ca.SETTING_ADMIN_ROLE): ruolo_admin}
+
+    class _Db:
+        async def get_guild_setting(self, guild_id, key, default=None):
+            return impostazioni.get((guild_id, key), default)
+
+    monkeypatch.setattr(ca, "db", _Db())
+    monkeypatch.setattr(ca, "config", types.SimpleNamespace(OWNER_ID=1))
+
+    def interazione(*, perm=None, ruoli=()):
+        guild = fake_guild(guild_id=77, owner_id=2)
+        guild.get_role.side_effect = lambda rid: fake_role(role_id=rid) if rid == ruolo_admin else None
+        membro = fake_member(
+            user_id=3,
+            roles=[fake_role(role_id=r) for r in ruoli],
+            guild_permissions=discord.Permissions(**{perm: True}) if perm else discord.Permissions.none(),
+        )
+        return fake_interaction(guild=guild, user=membro)
+
+    bot = await _carica(clean_db)
+    try:
+        for percorso in ("bacheca set", "bacheca disable"):
+            check = comando_nel_gruppo("clan", percorso).checks[0]
+            assert await check(interazione(perm="manage_guild")) is True
+            assert await check(interazione(ruoli=[ruolo_admin])) is True  # non solo manage_guild
+            with pytest.raises(ca.AccessoNegato):
+                await check(interazione(perm="manage_messages"))
+    finally:
+        await _scarica(bot)
+
+
+async def test_nel_gruppo_clan_solo_la_bacheca_ha_controlli_di_permesso(clean_db):
+    bot = await _carica(clean_db)
+    try:
+        con_check = {p for p in CLAN_ATTESI if comando_nel_gruppo("clan", p).checks}
+        assert con_check == {"bacheca set", "bacheca disable"}
+    finally:
+        await _scarica(bot)
