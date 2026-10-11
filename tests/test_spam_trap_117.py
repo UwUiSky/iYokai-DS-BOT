@@ -192,4 +192,5 @@ async def test_se_la_sequenza_salta_la_propagazione_non_resta_orfana(scenario, m
             scenario.messaggio(scenario.trappola, 900_000, datetime.now(timezone.utc))
         )
 
-    assert creati and all(t.done() for t in creati)  # nessun lavoro rimasto in giro
+    # Annullata, non attesa fino in fondo: senza il `cancel()` il test aspetterebbe i 30 secondi.
+    assert creati and all(t.cancelled() for t in creati)

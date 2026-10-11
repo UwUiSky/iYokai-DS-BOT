@@ -575,3 +575,18 @@ async def test_attacco_lento_si_recupera_per_intero(cog, monkeypatch):
 
     nomi = sorted(c.kwargs["name"] for c in server.create_text_channel.await_args_list)
     assert nomi == ["c0", "c1", "c2"]
+
+
+async def test_ruolo_di_quarantena_salvato_per_id_perde_i_permessi(server_raid):
+    _, server = server_raid
+    salvato = fake_role(role_id=QID, name="Altro nome", permissions=ADMIN)
+    salvato.edit = AsyncMock()
+    server.get_role.side_effect = lambda rid: salvato if rid == QID else None
+    await security_repo.save_settings(
+        modulo_raid._replace(await security_repo.get_settings(GUILD_ID), quarantine_role_id=QID)
+    )
+
+    ruolo = await quarantena.ruolo_quarantena(server)
+
+    assert ruolo is salvato
+    assert salvato.edit.call_args.kwargs["permissions"] == NIENTE

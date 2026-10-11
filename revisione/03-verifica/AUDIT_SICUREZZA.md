@@ -77,4 +77,4 @@ Difetti trovati dopo il passaggio, tutti con test scritto prima (rossi senza la 
 
 Test aggiunti dove le mutazioni sopravvivevano: owner esente, ruoli gestiti/cancellati/sopra al bot nel rilascio, fallback `add_roles`, ruolo di quarantena sopra al bot, avvisi in `status` dell'anti-raid, i tre avvisi dei permessi della spam-trap (+ thread e caso senza avvisi), `whitelist`/`blacklist` a modulo spento, `revoked_at` fuori dal conteggio della rete, escape dei nomi nella mappa dei permessi, `Range` veri.
 
-Non fatto della richiesta: «tenta kick/ban se la punizione configurata lo prevede» per la quarantena fallita: la punizione configurata è "quarantena", che non prevede kick né ban; chi vuole il ban lo sceglie con `punish-action Banna`, e un bot si espelle già. Se si vuole il ripiego sul ban, è una scelta da decidere.
+**Decisione aperta (da proporre all'owner):** ripiego su kick/ban quando la quarantena non riesce a togliere i ruoli. Oggi la punizione configurata è "quarantena", che non lo prevede; con `punish-action Banna` il ban parte già e un bot si espelle già. Finché l'owner non decide, l'esito parziale è solo dichiarato nell'avviso e nel caso.
