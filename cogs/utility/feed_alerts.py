@@ -7,8 +7,6 @@ legato a questo cog) — qui solo /moduli alert feed|rimuovi|elenco per
 gestire le sottoscrizioni.
 """
 
-# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
 # DA FARE (issue #103, fase F13): NF-32, Alert: Kick, ruolo "in
 #   diretta", TikTok, Instagram e X. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
@@ -31,6 +29,26 @@ from core.premium import PremiumModule, registry
 from core.safe_http import url_e_sicuro
 
 MODULE_FEED_ALERTS = "feed_alerts"
+
+# LIM-16 (M 11.8): ogni feed e' uno scarico ogni 5 minuti.
+MAX_FEED_PER_SERVER = 25
+# Un embed accetta 4096 caratteri nella descrizione; si lascia margine per la riga finale.
+MAX_CARATTERI_ELENCO = 3900
+
+
+def _elenco_tagliato(righe: list[str]) -> str:
+    """Righe intere fino al tetto, poi 'e altre N' (la descrizione di un embed arriva a 4096)."""
+    usate: list[str] = []
+    lunghezza = 0
+    for riga in righe:
+        if lunghezza + len(riga) + 1 > MAX_CARATTERI_ELENCO:
+            break
+        usate.append(riga)
+        lunghezza += len(riga) + 1
+    mancanti = len(righe) - len(usate)
+    if mancanti:
+        usate.append(f"… e altre {mancanti} sottoscrizioni.")
+    return "\n".join(usate)
 
 
 class FeedAlertsCog(CogConGruppi, commands.Cog):
@@ -68,6 +86,14 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
                 "Un amministratore può attivarlo con /admin setup attiva.",
+                ephemeral=True,
+            )
+            return
+
+        if len(await feed_subscription_repo.list_subscriptions(guild.id)) >= MAX_FEED_PER_SERVER:
+            await interaction.response.send_message(
+                f"Questo server ha già {MAX_FEED_PER_SERVER} feed, il massimo consentito. "
+                "Rimuovine uno con /moduli alert rimuovi prima di aggiungerne un altro.",
                 ephemeral=True,
             )
             return
@@ -379,7 +405,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         ]
         embed = discord.Embed(
             title="🔔 Sottoscrizioni attive",
-            description="\n".join(righe),
+            description=_elenco_tagliato(righe),
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)

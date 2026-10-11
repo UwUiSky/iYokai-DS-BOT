@@ -14,9 +14,6 @@ coordina soltanto.
 Dipende da: core/safe_http.py (SEC-8)
 """
 
-# DA FARE (issue #67, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §11 (Feed e alert).
-
 from __future__ import annotations
 
 import logging
@@ -25,7 +22,13 @@ import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
-from core.feed_parsing_logic import find_new_entries, parse_feed, render_alert_message
+from core.feed_alert_gate import filtra_attive
+from core.feed_parsing_logic import (
+    data_piu_recente,
+    find_new_entries,
+    parse_feed,
+    render_alert_message,
+)
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.safe_http import safe_get
 
@@ -51,6 +54,8 @@ class FeedWatcherService:
 
     async def tick(self, bot: commands.Bot) -> None:
         sottoscrizioni = await feed_subscription_repo.get_all_subscriptions()
+        # LC-7: server con il modulo spento = nessuno scarico, nessun messaggio.
+        sottoscrizioni = await filtra_attive(sottoscrizioni)
 
         for sottoscrizione in sottoscrizioni:
             # BUG-20: ogni sottoscrizione è isolata — un errore su una
@@ -74,14 +79,20 @@ class FeedWatcherService:
         if not voci:
             return
 
-        nuove = find_new_entries(voci, sottoscrizione.last_seen_entry_id)
+        nuove = find_new_entries(
+            voci, sottoscrizione.last_seen_entry_id, sottoscrizione.last_seen_published
+        )
 
         # Sempre aggiorniamo last_seen alla voce più recente del
         # feed ORA, sia che ci fossero voci nuove sia no — anche
         # al primo controllo mai fatto (last_seen_entry_id=None),
         # per non ripubblicare l'intero storico al giro
         # successivo.
-        await feed_subscription_repo.update_last_seen(sottoscrizione.id, voci[0].entry_id)
+        # M 11.5: insieme all'ID si ricorda la data, per il caso in cui
+        # quell'elemento sparisca dal feed.
+        await feed_subscription_repo.update_last_seen(
+            sottoscrizione.id, voci[0].entry_id, data_piu_recente(voci)
+        )
 
         if not nuove:
             return

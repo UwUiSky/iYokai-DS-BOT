@@ -29,6 +29,17 @@ RSS_DI_ESEMPIO = """<?xml version="1.0" encoding="UTF-8"?>
 </rss>
 """
 
+RSS_CON_DATE = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <item><title>3</title><link>https://e.com/3</link><guid>post-3</guid>
+    <pubDate>Sat, 03 Oct 2026 12:00:00 GMT</pubDate></item>
+  <item><title>2</title><link>https://e.com/2</link><guid>post-2</guid>
+    <pubDate>Fri, 02 Oct 2026 12:00:00 GMT</pubDate></item>
+  <item><title>1</title><link>https://e.com/1</link><guid>post-1</guid>
+    <pubDate>Thu, 01 Oct 2026 12:00:00 GMT</pubDate></item>
+</channel></rss>
+"""
+
 ATOM_DI_ESEMPIO = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>Canale YouTube di esempio</title>
@@ -104,13 +115,39 @@ class TestFindNewEntries:
         nuove = find_new_entries(voci, last_seen_entry_id="reddit-post-2")
         assert nuove == []
 
-    def test_id_mai_visto_restituisce_tutte_le_voci(self):
-        # Il feed potrebbe essere stato completamente sostituito
-        # (raro, ma possibile) - meglio pubblicare tutto quello che
-        # c'è ora piuttosto che bloccarsi in silenzio per sempre.
-        voci = parse_feed(RSS_DI_ESEMPIO)
-        nuove = find_new_entries(voci, last_seen_entry_id="id-che-non-esiste-piu")
-        assert len(nuove) == 2
+    # M 11.5: se l'ultimo elemento visto sparisce dal feed non si
+    # ripubblica tutto (prima: "id mai visto = tutte le voci").
+    def test_id_sparito_senza_data_ricordata_non_pubblica_nulla(self):
+        voci = parse_feed(RSS_CON_DATE)
+        assert find_new_entries(voci, last_seen_entry_id="sparito") == []
+
+    def test_id_sparito_pubblica_solo_le_voci_piu_recenti_della_data_ricordata(self):
+        from datetime import datetime, timezone
+
+        voci = parse_feed(RSS_CON_DATE)
+        ricordata = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
+        nuove = find_new_entries(voci, "sparito", ricordata)
+        assert [v.entry_id for v in nuove] == ["post-3"]
+
+    def test_id_presente_ignora_la_data(self):
+        from datetime import datetime, timezone
+
+        voci = parse_feed(RSS_CON_DATE)
+        vecchia = datetime(2000, 1, 1, tzinfo=timezone.utc)
+        assert [v.entry_id for v in find_new_entries(voci, "post-2", vecchia)] == ["post-3"]
+
+    def test_date_lette_da_rss_e_atom(self):
+        from core.feed_parsing_logic import data_piu_recente
+
+        voci = parse_feed(RSS_CON_DATE)
+        assert voci[0].published.isoformat() == "2026-10-03T12:00:00+00:00"
+        assert data_piu_recente(voci) == voci[0].published
+        atom = parse_feed(
+            '<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>a</id><title>t</title>'
+            '<published>2026-10-01T08:30:00+02:00</published></entry></feed>'
+        )
+        assert atom[0].published.isoformat() == "2026-10-01T08:30:00+02:00"
+        assert parse_feed(RSS_DI_ESEMPIO)[0].published is None
 
 
 class TestRenderAlertMessage:

@@ -33,6 +33,14 @@ RSS_DI_ESEMPIO = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+@pytest.fixture(autouse=True)
+def _modulo_attivo(monkeypatch):
+    async def _si(guild_id):
+        return True
+
+    monkeypatch.setattr("core.feed_alert_gate.modulo_alert_attivo", _si)
+
+
 class _FakeChannel(discord.TextChannel):
     def __init__(self, channel_id: int) -> None:
         self.id = channel_id

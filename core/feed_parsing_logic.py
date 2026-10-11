@@ -30,6 +30,8 @@ Dipende da: core/template_renderer.py (SEC-6)
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from xml.etree import ElementTree as ET
 
 from core.template_renderer import render_template
@@ -42,6 +44,23 @@ class FeedEntry:
     entry_id: str
     title: str
     link: str
+    published: datetime | None = None  # M 11.5: sempre con fuso, oppure None
+
+
+def _data_o_none(testo: str) -> datetime | None:
+    """Data di pubblicazione (RFC 822 dei feed RSS o ISO 8601 di Atom) con fuso; None se illeggibile."""
+    if not testo:
+        return None
+    try:
+        data = parsedate_to_datetime(testo)
+    except (TypeError, ValueError, IndexError):
+        try:
+            data = datetime.fromisoformat(testo)
+        except ValueError:
+            return None
+    if data.tzinfo is None:
+        data = data.replace(tzinfo=timezone.utc)
+    return data
 
 
 def parse_feed(xml_text: str) -> list[FeedEntry]:
@@ -89,6 +108,7 @@ def _parse_rss(root: ET.Element) -> list[FeedEntry]:
                 entry_id=entry_id,
                 title=_testo_o_default(item.find("title"), "(senza titolo)"),
                 link=link,
+                published=_data_o_none(_testo_o_default(item.find("pubDate"))),
             )
         )
     return voci
@@ -107,13 +127,24 @@ def _parse_atom(root: ET.Element) -> list[FeedEntry]:
                 entry_id=entry_id,
                 title=_testo_o_default(entry.find("atom:title", ATOM_NS), "(senza titolo)"),
                 link=link,
+                published=_data_o_none(
+                    _testo_o_default(entry.find("atom:published", ATOM_NS))
+                    or _testo_o_default(entry.find("atom:updated", ATOM_NS))
+                ),
             )
         )
     return voci
 
 
+def data_piu_recente(entries: list[FeedEntry]) -> datetime | None:
+    date = [e.published for e in entries if e.published is not None]
+    return max(date) if date else None
+
+
 def find_new_entries(
-    entries: list[FeedEntry], last_seen_entry_id: str | None
+    entries: list[FeedEntry],
+    last_seen_entry_id: str | None,
+    last_seen_published: datetime | None = None,
 ) -> list[FeedEntry]:
     """
     Voci NUOVE dall'ultimo controllo, nell'ordine del feed (di
@@ -129,6 +160,18 @@ def find_new_entries(
     """
     if last_seen_entry_id is None:
         return []
+
+    if all(e.entry_id != last_seen_entry_id for e in entries):
+        # M 11.5 (REVIEW §4): l'ultimo elemento visto non c'e' piu' nel
+        # feed (cancellato o uscito dalla finestra). Senza questa
+        # protezione si ripubblicherebbe tutto: valgono solo le voci con
+        # data piu' recente dell'ultima pubblicata. Senza una data
+        # ricordata (righe vecchie) non si pubblica nulla.
+        if last_seen_published is None:
+            return []
+        return [
+            e for e in entries if e.published is not None and e.published > last_seen_published
+        ]
 
     nuove = []
     for entry in entries:

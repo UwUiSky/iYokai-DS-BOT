@@ -28,6 +28,8 @@ class FeedSubscription:
     last_seen_entry_id: str | None
     created_by: int
     created_at: datetime
+    # Aggiunta dalla migrazione 0023 (M 11.5): None finche' non si e' mai pubblicato/visto una data.
+    last_seen_published: datetime | None = None
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -70,6 +72,7 @@ class FeedSubscriptionRepository:
             last_seen_entry_id=row["last_seen_entry_id"],
             created_by=row["created_by"],
             created_at=row["created_at"],
+            last_seen_published=row["last_seen_published"],
         )
 
     async def add_subscription(
@@ -124,11 +127,23 @@ class FeedSubscriptionRepository:
         rows = await self._pool.fetch("SELECT * FROM feed_subscriptions ORDER BY id")
         return [self._row_to_subscription(r) for r in rows]
 
-    async def update_last_seen(self, subscription_id: int, entry_id: str) -> None:
+    async def update_last_seen(
+        self,
+        subscription_id: int,
+        entry_id: str,
+        published: datetime | None = None,
+    ) -> None:
+        """Con `published` None la data ricordata resta quella di prima."""
         await self._pool.execute(
-            "UPDATE feed_subscriptions SET last_seen_entry_id = $2 WHERE id = $1",
+            """
+            UPDATE feed_subscriptions
+               SET last_seen_entry_id = $2,
+                   last_seen_published = COALESCE($3, last_seen_published)
+             WHERE id = $1
+            """,
             subscription_id,
             entry_id,
+            published,
         )
 
 
