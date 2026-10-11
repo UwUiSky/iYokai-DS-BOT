@@ -1,10 +1,10 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-11/10/2026 · ultimo giro: ramo `feat/f7-decoratore` (permessi dei gruppi)
+11/10/2026 · ultimo giro: ramo `feat/147-cerca-comando` (pannello, -chiedi, command_usage)
 
 ## In corso
-- Niente a metà. Giro f7-quadro chiuso (rapporto dato).
+- Niente a metà. Giro 147 chiuso (rapporto dato).
 
 ## Fatto
 - Revisione delle correzioni del 28/09–01/10: BUG-19…34, SEC-18…22
@@ -22,6 +22,8 @@
 - Giro feat/f7-quadro (command_access): 1 alto latente (sotto-gruppo `Group` semplice non eredita il check), @everyone via import config, ruolo admin vale per security. Albero a 2 livelli con `aggiungi_a_gruppo` protetto davvero.
 
 - Giro feat/f7-decoratore (permessi): matrice 252 foglie x 8 profili vs 4903ef0, nessuna regressione di permesso; `/owner` rientra nell'albero globale se si ricarica custom_command_requests; ruolo bot vs default_permissions; messaggi con `/setup` e `/verify` vecchi.
+
+- Giro feat/147-cerca-comando: 0 alti. Cache ID sotto lock senza timeout + nessun defer (media); `invalida()` perso se la fetch fallisce, `invalida_id` senza chiamanti; ricerca mostra `/clan bacheca` ai membri; `guild` None con `guild_id` pieno = trattato da DM. Upsert/pulizia/embed/componenti/migrazione 0022 a posto. Prove in scratchpad/cb147.
 
 ## Cose imparate
 - Ordine dei blocchi nel clan: riga membro, poi `leveling_totals`, poi `clans`. Un fix che blocca `clans` per primo e poi tocca il membro va in deadlock con `apply_text_tick`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -48,6 +50,8 @@
 - Check dei gruppi: si prova con `cmd._check_can_run(interaction)` su un albero vero (`costruisci_gruppi` + `aggiungi_a_gruppo`), non chiamando `interaction_check` a mano. discord.py guarda solo il genitore diretto e non controlla l'autocomplete.
 
 - Su main (4903ef0) i comandi staff NON avevano controlli (warn/kick/ban/status...): 'prima' = aperto; confrontare con `Command._check_can_run` su albero vecchio estratto con `git archive` in scratchpad (cb-f7b/matrice.py, msgs.py).
+
+- Per provare un cog sull'albero VERO: `generate_command_list.py` mostra come caricare i cog con `BlacklistAwareCommandTree`; db.connect()+run_migrations(). Nome DB con maiuscole: `CREATE DATABASE "iyokai_wcacciaA"` tra virgolette, altrimenti Postgres lo mette minuscolo. I test del cerca-comando mockano `puo_usare` e `ottieni`: non vedono i permessi veri.
 
 ## Aperto
 - Giro da fare a fine F1 sulle aree toccate il 05/10 (sicurezza,

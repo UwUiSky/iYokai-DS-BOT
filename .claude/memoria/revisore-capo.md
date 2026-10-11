@@ -1,9 +1,11 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-11/10/2026 · ramo `feat/f7-decoratore` (copia /home/claude/wt/f7d) · revisore A: DA SISTEMARE (rifiniture)
+11/10/2026 · ramo `feat/147-cerca-comando` (copia /home/claude/wt/cerca) · #147: DA SISTEMARE (6 rilievi)
 
 ## In corso
+- #67 `feat/67-feed-alert` (f3f90f5): DA SISTEMARE, 8 righe nel quaderno (test gruppi videos.list, test pop ETag, codice morto parse_search_live_response, SPEC/config/VERIFICA_LIVE). Alla riconsegna: controllare solo quelle.
+- #147 `feat/147-cerca-comando` (e669c36): DA SISTEMARE, 6 righe nel quaderno (invalida_id senza chiamanti, test sinonimi/taglio/url/esatto/serve/cog_load, bonus sottostringa sulle varianti, search_commands morto + docstring, ruff). Alla riconsegna: controllare solo quelle.
 - #76 integrazione `feat/f7-decoratore` (d39e1ea), revisore B: DA SISTEMARE, 7 righe nel quaderno (main.py:415 `/setup`, test riferimenti cieco ai backtick, codice morto music cog_load, test d'ordine). Alla riconsegna: controllare solo quelle.
 - #76 (`feat/f7-quadro`, HEAD 6cfe06b): APPROVATO alla riconsegna (06/10). Manca solo l'unione.
 - #146 (`feat/boost-146`): DA SISTEMARE solo `COMMAND_LIST.md:67-68` (opzione `tipo`). Alla riconsegna: controllare solo quella.
@@ -39,6 +41,8 @@
 - Prove su copia in scratchpad (tar senza .git, poi pytest): senza le 3 chiavi in SETTINGS_SCHEMA 3 test falliscono; senza ramo AccessoNegato 1; senza catena al padre 1; senza condizione error_counter 0. Serve DATABASE_URL e le variabili di pytest: non importare i moduli con python -c.
 
 ## Aperto
+- `feat/67-feed-alert`: attende 2 test e documentazione.
+- `feat/147-cerca-comando`: attende i 6 rilievi.
 - `feat/f7-quadro`: approvato, attende unione.
 - `feat/boost-146`: attende riga in COMMAND_LIST.
 - `fix/f1-134`: attende due righe di documentazione.
@@ -50,3 +54,7 @@
 
 - F7d prove senza fix (copia in scratchpad/rb/cp): command_sync sempre-sync 1, salva-su-errore 1, senza sorted 1, owner senza guild 1, senza copy_global 1 falliscono; senza togli_comandi in LevelingCog.cog_unload 1; senza richiedi ADMIN su bacheca 3; /owner senza Livello.OWNER 1. Il controllo `/owner radio` sta nel gruppo, non nei comandi: provato con _check_can_run su tutto l'albero (gestione e owner tutti NEGATO a un membro semplice).
 - Test dei riferimenti ai comandi: guarda se il lookbehind esclude i backtick e se legge main.py. Il globale GRUPPI è condiviso tra test: asserzioni di 'gruppo vuoto' dipendono dall'ordine.
+
+- #147 prove senza fix (copia tar in scratchpad/rv147/cp, DB iyokai_wrevisore): senza predicate.livello 1, filtro menu 1, upsert 1, guild 0 1, cache unica 1, defer 1, any/all 1, 25 categorie 1, footer DM 1, pulizia ogni N 1 falliscono; NON falliscono: sinonimi, esatto, taglio -chiedi, url>512, serve, cog_load. Con test di ricerca: la frase intera trova già per parole, serve una query di UNA parola per provare i sinonimi. Bonus sottostringa su varianti corte (ban) dà falsi positivi.
+
+- #67 prove senza fix (copia tar in scratchpad/rc2, script mut.sh): lock advisory, tetto, gate modulo (3 watcher), first=100, 401, dedupe login, ETag/If-None-Match, User-Agent, elenco tagliato falliscono giusti; NON falliscono: `pop` ETag e `all(i in gruppi_riusciti)`. Voci già a posto sul base (11.7, 11.10) senza diff: verifica con `git show base:file`. Suite completa >10 min: non lanciarla, la decide l'orchestratore.

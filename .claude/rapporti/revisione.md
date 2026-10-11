@@ -35,3 +35,25 @@ Esito DA SISTEMARE (solo rifiniture: corpi dei comandi invariati, custom_id inva
 | 11/10 | `feat/f7-decoratore` | `tests/test_command_sync.py:12` | `import pytest` inutilizzato (ruff F401, nuovo) | aperto |
 | 11/10 | `feat/f7-decoratore` | `cogs/music/player.py:568,569,756`, `main.py:592` | Commenti con nomi vecchi (`/loop queue`, `/nonstop`, `/play`) → `/music loop queue`, `/music nonstop`, `/music play` | aperto (bassa) |
 | 11/10 | `feat/f7-decoratore` | `core/command_groups.py:34` | Il testo dice che `registra_gruppi_usati` è la rete di sicurezza di `main.py`, ma `main.py` non la chiama (solo test). O la chiami o correggi il testo (fuori dai miei file) | domanda |
+
+## 11/10/2026 · #147 `feat/147-cerca-comando` (a56c96b...e669c36)
+Esito DA SISTEMARE (smoke 350 verdi; logica e dati corretti; restano 6 rilievi).
+| 11/10 | `feat/147-cerca-comando` | `cogs/utility/command_search.py:83` | `invalida_id` non ha nessun chiamante: la cache degli ID non si aggiorna "dopo ogni sync" (commit e DECISIONI lo promettono). Chiamarla dopo la sync (main.py/command_sync) oppure toglierla e correggere le frasi | aperto |
+| 11/10 | idem | `tests/test_command_search_panel_logic.py:86` | Il test dei sinonimi passa anche senza sinonimi (la frase trova già "utente"): provato `for variante in []`. Usa una query che si lega solo per sinonimo (`"cacciare"`, `"allontana"`) | aperto |
+| 11/10 | idem | `core/command_search_logic.py:90,230` | Il bonus sottostringa vale anche per le varianti: `"cacciare"` → variante `"ban"` → trova `modban lista mostra` (non c'entra). Niente bonus sottostringa per le varianti, o confronto a parola intera + test | aperto |
+| 11/10 | idem | `tests/test_command_search_bug147.py:211`, `test_command_search_panel_logic.py:119,86,93` | Senza il fix passano lo stesso: `pulita[:100]` (command_search.py:227), url>512, ramo "percorso esatto", `serve` con l'ultimo comando (command_search.py:~137), pulizia in `cog_load`. Un test ciascuno | aperto |
+| 11/10 | idem | `core/command_search_logic.py:96`, `:12-13` | `search_commands` senza chiamanti in produzione (solo test): codice morto/duplicato di `cerca`. Toglilo o fai usare a `cerca`. Docstring di testa con "DA FARE #77 F8" ormai vecchio; docstring del cog (1-15) non dice di pannello, `-chiedi`, `command_usage` | aperto |
+| 11/10 | idem | `tests/test_command_search_bug147.py:24`, `command_search_logic.py:157,282` | ruff: `NOME_CHIEDI` inutilizzato; E741 variabile `l` | aperto (bassa) |
+| 11/10 | idem | `command_search.py:142,165` | `WIKI_BASE_URL` letto con `os.getenv` e assente da `.env.example` (D16). Decide l'orchestratore: portarlo in `core/config.py` + `.env.example` | domanda |
+| 11/10 | idem | #147 | Non fatti (voluti dall'autore): `scripts/genera_wiki.py` (dev-web/F10), voce in `data_registry` (F5, file ancora scheletro). La issue resta aperta: il ramo usa solo `Refs` | domanda |
+
+## 11/10/2026 · #67 `feat/67-feed-alert` (a56c96b..f3f90f5) voci 11.1–11.10
+Esito DA SISTEMARE (logica e sicurezza corrette; mancano 2 test e la documentazione). Smoke 227 verdi; mutazioni in copia: 21 su 23 fanno fallire un test.
+| 11/10 | `feat/67-feed-alert` | `core/youtube_watcher.py:~135` | `if all(i in gruppi_riusciti ...)` (gruppo videos.list fallito = canale saltato, niente falso "ha terminato la diretta"): messo `if True` 74 test verdi. Test: 2 gruppi, il secondo risponde 500, il canale con ID nel secondo non cambia stato | aperto |
+| 11/10 | `feat/67-feed-alert` | `core/feed_watcher.py:~96` | `self._etag_per_url.pop(url, None)`: tolto, 74 verdi. Il test "etag non ricordato" parte senza ETag, quindi non lo prova. Test: tick 1 riuscito (ETag salvato), il feed cambia, tick 2 con `update_last_seen` che solleva, tick 3 deve essere 200 | aperto |
+| 11/10 | `feat/67-feed-alert` | `core/youtube_api_logic.py:41`, `tests/test_youtube_api_logic.py` | `parse_search_live_response` senza chiamanti (la memoria di dev-utilita lo dice): codice morto. Togli funzione, import e suoi test; riscrivi docstring righe 1-30 ("Perché search.list") | aperto |
+| 11/10 | `feat/67-feed-alert` | `core/config.py:205-208`, `revisione/SPEC.md:883,2235` | Dicono ancora che il live usa `search.list` a 100 unità: ora è RSS + `videos.list`. Aggiorna anche lo stato di 10.4 | aperto |
+| 11/10 | `feat/67-feed-alert` | `revisione/03-verifica/VERIFICA_LIVE.md` (~380-396) | Nessuna voce per ciò che solo Discord/YouTube/Twitch veri provano: YouTube live con RSS + `videos.list`, 304 reale con ETag, Twitch oltre 20 stream, 26º feed rifiutato, modulo spento. Aggiungi | aperto |
+| 11/10 | `feat/67-feed-alert` | `core/feed_alert_gate.py:14` | `MODULE_FEED_ALERTS` duplicata in `cogs/utility/feed_alerts.py:31`: importa dal gate (una sola costante) | aperto (bassa) |
+| 11/10 | `feat/67-feed-alert` | `core/youtube_watcher.py:189` | Manca la riga vuota prima di `async def close` | aperto (bassa) |
+| 11/10 | `feat/67-feed-alert` | `core/twitch_watcher.py:~178`, `youtube_watcher.py:~150` | Canale non raggiungibile: ora lo stato non avanza, quindi il warning esce a ogni giro (prima una volta). Accettabile; decidere se loggare una volta sola | domanda |
