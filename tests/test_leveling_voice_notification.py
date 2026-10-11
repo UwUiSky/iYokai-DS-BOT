@@ -63,7 +63,7 @@ async def cog_e_repo(monkeypatch):
     chiamate_add_voice_minute: list = []
 
     class _RepoFinto:
-        async def add_voice_minutes(self, guild_id, presenze):
+        async def add_voice_minutes(self, guild_id, presenze, **_impostazioni):
             return {utente: chiamate_add_voice_minute.pop(0) for utente, _, _ in presenze}
 
     class _RewardRepoFinto:

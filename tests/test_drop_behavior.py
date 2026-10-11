@@ -31,6 +31,8 @@ class _FakeGuild:
 
 
 class _FakeChannel:
+    id = 111
+
     def __init__(self) -> None:
         self.sent_views: list = []
         self.sent_contents: list[str] = []

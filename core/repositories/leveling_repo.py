@@ -14,7 +14,7 @@ Funzioni coperte: SPEC §15.1–15.3, §15.15
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -27,6 +27,9 @@ from core.leveling_logic import (
     level_for_xp,
     period_key,
     TEXT_XP_AMOUNT,
+    TEXT_XP_COOLDOWN_SECONDS,
+    LevelingSettings,
+    xp_con_moltiplicatore,
 )
 
 
@@ -291,9 +294,16 @@ class LevelingRepository:
             coins,
         )
 
-    async def add_text_xp(self, guild_id: int, user_id: int) -> TextXpResult:
+    async def add_text_xp(
+        self,
+        guild_id: int,
+        user_id: int,
+        amount: int = TEXT_XP_AMOUNT,
+        cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS,
+    ) -> TextXpResult:
         """
-        Assegna XP testuale se il cooldown lo consente. Tutto dentro
+        Assegna `amount` XP testuale se l'attesa (`cooldown_seconds`, per
+        server) lo consente. Tutto dentro
         una transazione per evitare che due messaggi arrivati quasi
         insieme (stesso utente, connessioni diverse del bot in un
         futuro multi-processo) leggano lo stesso "last_text_xp_at"
@@ -313,13 +323,13 @@ class LevelingRepository:
                 last_xp_at = row["last_text_xp_at"] if row else None
 
                 now = datetime.now(timezone.utc)
-                if not can_earn_text_xp(last_xp_at, now):
+                if not can_earn_text_xp(last_xp_at, now, cooldown_seconds):
                     return TextXpResult(
                         granted=False, new_xp_total=xp_before, leveled_up=False,
                         new_level=level_for_xp(xp_before),
                     )
 
-                xp_after = xp_before + TEXT_XP_AMOUNT
+                xp_after = xp_before + amount
                 leveled_up, new_level = did_level_up(xp_before, xp_after)
 
                 await conn.execute(
@@ -335,14 +345,18 @@ class LevelingRepository:
                     new_level,
                     now,
                 )
-                await self._add_period_activity(conn, guild_id, user_id, TEXT_XP_AMOUNT, 0)
+                await self._add_period_activity(conn, guild_id, user_id, amount, 0)
 
                 return TextXpResult(
                     granted=True, new_xp_total=xp_after, leveled_up=leveled_up, new_level=new_level
                 )
 
     async def add_voice_minutes(
-        self, guild_id: int, presenze: list[tuple[int, int, bool]]
+        self,
+        guild_id: int,
+        presenze: list[tuple[int, int, bool]],
+        impostazioni: LevelingSettings | None = None,
+        moltiplicatori: dict[int, float] | None = None,
     ) -> dict[int, VoiceMinuteGrant | None]:
         """
         Registra un minuto di presenza vocale per tutti i presenti di un
@@ -354,8 +368,12 @@ class LevelingRepository:
         per sapere se il PROSSIMO minuto idoneo è un cambio di canale —
         ma non si assegna nulla e il risultato per quell'utente è None.
         Il rollover del contatore giornaliero (mezzanotte UTC) vale per
-        tutti, idonei o no. Restituisce {utente: VoiceMinuteGrant | None}.
+        tutti, idonei o no. `impostazioni` cambia XP e monete di ogni
+        minuto (NF-15); `moltiplicatori` ({utente: fattore}) moltiplica
+        solo l'XP. Restituisce {utente: VoiceMinuteGrant | None}.
         """
+        impostazioni = impostazioni or LevelingSettings()
+        moltiplicatori = moltiplicatori or {}
         if not presenze:
             return {}
         # Giorno in UTC, non nell'ora locale della macchina: il tetto
@@ -402,6 +420,14 @@ class LevelingRepository:
 
                     changed_channel = (row["voice_channel_id"] if row else None) != canale
                     result = compute_voice_minute(stored_consecutive, minutes_today, changed_channel)
+                    if result.xp_granted > 0:  # minuto che conta: valgono i numeri del server
+                        result = replace(
+                            result,
+                            xp_granted=xp_con_moltiplicatore(
+                                impostazioni.voice_xp_per_minute, moltiplicatori.get(user_id, 1.0)
+                            ),
+                            coins_granted=impostazioni.voice_coins_per_minute,
+                        )
                     xp_after = xp_before + result.xp_granted
                     leveled_up, new_level = did_level_up(xp_before, xp_after)
                     scritture.append(

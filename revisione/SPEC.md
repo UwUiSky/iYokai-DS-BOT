@@ -74,7 +74,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §19 DATI, PRIVACY E GDPR | 0 | 0 | 9 | 0 |
 | §20 NUOVA STRUTTURA DEI COMANDI | 0 | 0 | 7 | 0 |
 | §21 LINGUE E RICERCA DEI COMANDI | 0 | 0 | 6 | 0 |
-| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 0 | 0 | 17 | 0 |
+| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 1 | 0 | 16 | 0 |
 | §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
 | §25 MOTORE AI | 0 | 0 | 105 | 0 |
@@ -82,7 +82,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
 | D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
 | E APPLICAZIONI DEL PROGETTO | 0 | 3 | 5 | 0 |
-| **Totale** | **97** | **145** | **246** | **6** |
+| **Totale** | **98** | **145** | **245** | **6** |
 
 Totale voci: **494**.
 
@@ -1729,9 +1729,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
 - `[ ]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
-- `[ ]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
+- `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
   del level-up, premi "accumula" o "togli i precedenti", valori
   configurabili (NF-15)
+  → **Stato 11/10:** `/level impostazioni` (mostra, annuncio, premi, xp,
+  escludi, moltiplicatore); migrazione 0030; `core/repositories/leveling_settings_repo.py`.
+  Annuncio: spento, canale corrente, DM, canale scelto, livello minimo, ogni N,
+  solo con premio. Moltiplicatori: somma o massimo. Restano fuori `/daily` e `/work`
+  (importi fissi) e il tetto di livello.
 - `[ ]` 22.15 Captcha a immagine nella verifica (NF-18)
 - `[ ]` 22.16 Wizard di primo avvio per categoria, con creazione dei
   canali

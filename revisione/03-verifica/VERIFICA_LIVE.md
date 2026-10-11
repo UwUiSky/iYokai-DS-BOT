@@ -611,3 +611,16 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 - [ ] `modules_updated` (#66, voce 10.13) — passi:
   1. Con il log a livello debug, attiva un modulo dal wizard (`/admin setup wizard`), da `/admin config import`, dopo un `/admin config reset` e dopo un `/admin config rollback`.
   Risultato atteso: per ogni modulo cambiato un evento `modules_updated` (un ascoltatore di prova, o `bot.dispatch` loggato); nessun evento per quelli invariati.
+
+## Livelli ed economia — passaggio `feat/giro-eco` (#65, #86)
+
+- [ ] `M 9.18` (#65) — passi:
+  1. Entra in un canale vocale con un secondo account (due persone, nessuno assordato, non AFK) e resta 3 minuti.
+  2. Controlla `/level rank` di entrambi.
+  Risultato atteso: entrambi hanno XP e coin (5 XP e 2 coin al minuto di base); l'account assordato o nel canale AFK no.
+- [ ] `NF-15` (#86) — passi:
+  1. `/level impostazioni annuncio modo:Messaggio privato`, poi scrivi finché sali di livello.
+  2. `/level impostazioni escludi canale:#test`, scrivi in #test e in un altro canale.
+  3. `/level impostazioni moltiplicatore fattore:2 ruolo:@vip` e scrivi con un account con quel ruolo.
+  4. `/level impostazioni premi modo:Sostituisci`, con due ruoli-premio a livelli diversi, e supera il secondo.
+  Risultato atteso: il level-up arriva in DM; in #test nessun XP; con @vip gli XP del messaggio sono doppi; al secondo ruolo il primo viene tolto. `/level impostazioni mostra` riassume tutto.
