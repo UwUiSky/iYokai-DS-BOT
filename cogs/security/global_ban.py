@@ -32,8 +32,9 @@ from __future__ import annotations
 import logging
 
 import discord
-from discord import app_commands
 from discord.ext import commands
+
+from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.global_ban_logic import should_propagate_ban
@@ -105,17 +106,16 @@ async def propagate_ban(
     return propagati
 
 
-class GlobalBanCog(commands.Cog):
+class GlobalBanCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    global_ban_group = app_commands.Group(
-        name="global-ban",
-        description="Configura la rete di ban globali (propagazione cross-server dei ban Spam Trap).",
+    @comando_di_gruppo(
+        "security",
+        nome="enable",
+        descrizione="Aderisci alla rete di ban globali (propaga e ricevi).",
+        sottogruppo=("globalban", "Rete di ban globali tra server."),
     )
-
-    @global_ban_group.command(name="enable", description="Aderisci alla rete di ban globali (propaga e ricevi).")
-    @app_commands.checks.has_permissions(manage_guild=True)
     @requires_module(MODULE_GLOBAL_BAN)
     async def enable(self, interaction: discord.Interaction) -> None:
         await db.set_module_active_for_guild(
@@ -127,16 +127,24 @@ class GlobalBanCog(commands.Cog):
             ephemeral=True,
         )
 
-    @global_ban_group.command(name="disable", description="Abbandona la rete di ban globali.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="disable",
+        descrizione="Abbandona la rete di ban globali.",
+        sottogruppo=("globalban", "Rete di ban globali tra server."),
+    )
     async def disable(self, interaction: discord.Interaction) -> None:
         await db.set_module_active_for_guild(
             interaction.guild.id, MODULE_GLOBAL_BAN, False, changed_by=interaction.user.id
         )
         await interaction.response.send_message("❌ Ban globale disattivato.", ephemeral=True)
 
-    @global_ban_group.command(name="status", description="Mostra lo stato e la storia recente del ban globale.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="status",
+        descrizione="Mostra lo stato e la storia recente del ban globale.",
+        sottogruppo=("globalban", "Rete di ban globali tra server."),
+    )
     @requires_module(MODULE_GLOBAL_BAN)
     async def status(self, interaction: discord.Interaction) -> None:
         attivo = await db.is_module_active_for_guild(interaction.guild.id, MODULE_GLOBAL_BAN)

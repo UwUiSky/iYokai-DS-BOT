@@ -29,37 +29,14 @@ MIXED = "mixed"
 AUDIENCE: dict[str, str] = {
     # AutoMod e sicurezza
     "automod": STAFF,
-    "escalation": STAFF,
-    "anti-nuke": STAFF,
-    "anti-raid": STAFF,
-    "global-ban": STAFF,
-    "permission-heatmap": STAFF,
-    "security-score": STAFF,
-    "spamtrap-setup": STAFF,
-    "verify": STAFF,
+    "security": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Moderazione
-    "warn": STAFF,
-    "kick": STAFF,
-    "ban": STAFF,
-    "tempban": STAFF,
-    "unban": STAFF,
-    "timeout": STAFF,
-    "untimeout": STAFF,
-    "softban": STAFF,
-    "mute-role": STAFF,
-    "unmute-role": STAFF,
-    "modcase": STAFF,
-    "modnote": STAFF,
-    "lock": STAFF,
-    "unlock": STAFF,
-    "slowmode": STAFF,
-    "clear": STAFF,
-    "mod-log-setup": STAFF,
+    "mod": STAFF,  # gruppo condiviso
+    "modban": STAFF,  # gruppo condiviso
     "report-setup": STAFF,
     "report": PUBLIC,
     # Log
-    "log": STAFF,  # gruppo condiviso (core/command_groups.py): canale, stato
-    "logs": STAFF,
+    "log": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Fun
     "fun": PUBLIC,
     "ship": PUBLIC,

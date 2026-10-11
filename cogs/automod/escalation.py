@@ -32,6 +32,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.escalation_ladder_logic import get_ladder_action
@@ -56,7 +58,7 @@ def _adesso() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class EscalationCog(commands.Cog):
+class EscalationCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._gia_contati: BoundedCache[tuple, datetime] = BoundedCache(max_size=5000)
@@ -153,31 +155,37 @@ class EscalationCog(commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
-    escalation_group = app_commands.Group(
-        name="escalation", description="Configura la scala di escalation AutoMod."
+    @comando_di_gruppo(
+        "security",
+        nome="enable",
+        descrizione="Attiva l'escalation ladder.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
-
-    @escalation_group.command(name="enable", description="[Admin] Attiva l'escalation ladder.")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def enable(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             return
         await escalation_repo.set_enabled(interaction.guild.id, True)
         await interaction.response.send_message("Escalation ladder attivata.", ephemeral=True)
 
-    @escalation_group.command(name="disable", description="[Admin] Disattiva l'escalation ladder.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="disable",
+        descrizione="Disattiva l'escalation ladder.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
+    )
     async def disable(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             return
         await escalation_repo.set_enabled(interaction.guild.id, False)
         await interaction.response.send_message("Escalation ladder disattivata.", ephemeral=True)
 
-    @escalation_group.command(
-        name="set-reset-days", description="[Admin] Giorni di buona condotta per azzerare il conteggio."
+    @comando_di_gruppo(
+        "security",
+        nome="set-reset-days",
+        descrizione="Giorni di buona condotta per azzerare il conteggio.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     @app_commands.describe(days="Numero di giorni (default 30)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def set_reset_days(
         self, interaction: discord.Interaction, days: app_commands.Range[int, 1, 365]
     ) -> None:
@@ -188,8 +196,11 @@ class EscalationCog(commands.Cog):
             f"Il conteggio si azzererà dopo {days} giorni senza infrazioni.", ephemeral=True
         )
 
-    @escalation_group.command(
-        name="set-step", description="[Admin] Configura l'azione per un livello della scala."
+    @comando_di_gruppo(
+        "security",
+        nome="set-step",
+        descrizione="Configura l'azione per un livello della scala.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     @app_commands.describe(
         level="Numero dell'infrazione (1 = prima volta, 2 = seconda...)",
@@ -204,7 +215,6 @@ class EscalationCog(commands.Cog):
             app_commands.Choice(name="Ban", value="ban"),
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def set_step(
         self,
         interaction: discord.Interaction,
@@ -230,11 +240,13 @@ class EscalationCog(commands.Cog):
             ephemeral=True,
         )
 
-    @escalation_group.command(
-        name="remove-step", description="[Admin] Rimuove un livello dalla scala personalizzata."
+    @comando_di_gruppo(
+        "security",
+        nome="remove-step",
+        descrizione="Rimuove un livello dalla scala personalizzata.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     @app_commands.describe(level="Il livello da rimuovere")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def remove_step(self, interaction: discord.Interaction, level: int) -> None:
         if interaction.guild is None:
             return
@@ -246,11 +258,13 @@ class EscalationCog(commands.Cog):
                 "Nessun gradino personalizzato trovato a questo livello.", ephemeral=True
             )
 
-    @escalation_group.command(
-        name="reset", description="[Admin] Azzera il conteggio infrazioni di un membro."
+    @comando_di_gruppo(
+        "security",
+        nome="reset",
+        descrizione="Azzera il conteggio infrazioni di un membro.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     @app_commands.describe(member="Il membro da azzerare")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def reset(self, interaction: discord.Interaction, member: discord.Member) -> None:
         if interaction.guild is None:
             return
@@ -259,8 +273,11 @@ class EscalationCog(commands.Cog):
             f"Conteggio infrazioni di {member.mention} azzerato.", ephemeral=True
         )
 
-    @escalation_group.command(
-        name="status", description="Mostra la scala di escalation configurata."
+    @comando_di_gruppo(
+        "security",
+        nome="status",
+        descrizione="Mostra la scala di escalation configurata.",
+        sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     async def status(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:

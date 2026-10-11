@@ -2,7 +2,7 @@
 cogs/logging/logs_query.py
 =============================
 Interfaccia comandi sul log eventi unificato (BACKLOG.md §3):
-/logs user, /logs channel, /logs export. Nessuna logica propria
+/log cerca utente, /log cerca canale, /log esporta. Nessuna logica propria
 oltre alla formattazione — legge tramite core/repositories/
 event_log_repo.py, scritto da cogs/logging/basic_logs.py.
 
@@ -28,6 +28,8 @@ import logging
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.repositories.event_log_repo import EventLogEntry, event_log_repo
 
@@ -75,7 +77,7 @@ def _format_entries(entries: list[EventLogEntry]) -> str:
     testo = "\n".join(mostrate)
     escluse = len(entries) - len(mostrate)
     if escluse:
-        testo += f"\n…e altre {escluse} voci: usa /logs export per vederle tutte."
+        testo += f"\n…e altre {escluse} voci: usa /log esporta per vederle tutte."
     return testo
 
 
@@ -107,19 +109,19 @@ def split_export(events: list[dict], max_bytes: int) -> list[bytes]:
     return parti
 
 
-class LogsQueryCog(commands.Cog):
+class LogsQueryCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    logs_group = app_commands.Group(
-        name="logs", description="Consulta lo storico eventi del server."
+    @comando_di_gruppo(
+        "log",
+        nome="utente",
+        descrizione="Mostra lo storico eventi di un utente.",
+        sottogruppo=("cerca", "Cerca nello storico eventi del server."),
     )
-
-    @logs_group.command(name="user", description="[Admin] Mostra lo storico eventi di un utente.")
     @app_commands.describe(
         member="L'utente da consultare", limit="Quante voci mostrare (default 15, massimo 25)"
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def logs_user(
         self,
         interaction: discord.Interaction,
@@ -147,13 +149,15 @@ class LogsQueryCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @logs_group.command(
-        name="channel", description="[Admin] Mostra lo storico eventi di un canale."
+    @comando_di_gruppo(
+        "log",
+        nome="canale",
+        descrizione="Mostra lo storico eventi di un canale.",
+        sottogruppo=("cerca", "Cerca nello storico eventi del server."),
     )
     @app_commands.describe(
         channel="Il canale da consultare", limit="Quante voci mostrare (default 15, massimo 25)"
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def logs_channel(
         self,
         interaction: discord.Interaction,
@@ -181,11 +185,11 @@ class LogsQueryCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @logs_group.command(
-        name="export",
-        description="[Admin] Esporta lo storico eventi completo del server come file JSON.",
+    @comando_di_gruppo(
+        "log",
+        nome="esporta",
+        descrizione="Esporta lo storico eventi completo del server come file JSON.",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def logs_export(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:

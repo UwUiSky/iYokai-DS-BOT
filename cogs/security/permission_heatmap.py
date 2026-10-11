@@ -7,7 +7,7 @@ gli altri moduli avanzati di Security Suite (Spam Trap è
 premium_capable=True).
 
 Due parti:
-- `/permission-heatmap`: comando su richiesta, elenca i ruoli con
+- `/security heatmap`: comando su richiesta, elenca i ruoli con
   permessi critici e quanti membri li possiedono
 - alert automatico: quando un membro riceve (via ruolo) un permesso
   critico che prima non aveva, un DM al proprietario del server —
@@ -25,8 +25,9 @@ from __future__ import annotations
 import logging
 
 import discord
-from discord import app_commands
 from discord.ext import commands
+
+from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.permission_risk_logic import (
@@ -67,15 +68,15 @@ def _elenco_entro_il_limite(righe: list[str]) -> str:
     return testo
 
 
-class PermissionHeatmapCog(commands.Cog):
+class PermissionHeatmapCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(
-        name="permission-heatmap",
-        description="[Admin] Mostra quali ruoli hanno permessi critici e chi li possiede.",
+    @comando_di_gruppo(
+        "security",
+        nome="heatmap",
+        descrizione="Mostra quali ruoli hanno permessi critici e chi li possiede.",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     @requires_module(MODULE_PERMISSION_HEATMAP)
     async def permission_heatmap(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild

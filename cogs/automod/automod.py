@@ -36,6 +36,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.automod_sync import (
     MAX_KEYWORD_LENGTH,
     MAX_KEYWORD_RULES,
@@ -484,17 +486,17 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
     return "\n".join(dict.fromkeys(avvisi)) or None
 
 
-class AutomodCog(commands.Cog):
+class AutomodCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    automod_group = app_commands.Group(
-        name="automod", description="Configura il filtro automatico dei messaggi."
+    @comando_di_gruppo(
+        "automod",
+        nome="add",
+        descrizione="Aggiunge una parola vietata.",
+        sottogruppo=("parole", "Parole vietate."),
     )
-
-    @automod_group.command(name="badword-add", description="Aggiunge una parola vietata.")
     @app_commands.describe(word="La parola da vietare (massimo 60 caratteri)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def badword_add(
         self,
         interaction: discord.Interaction,
@@ -512,9 +514,13 @@ class AutomodCog(commands.Cog):
             messaggio += f"\n⚠️ {avviso}"
         await interaction.followup.send(messaggio, ephemeral=True)
 
-    @automod_group.command(name="badword-remove", description="Rimuove una parola vietata.")
+    @comando_di_gruppo(
+        "automod",
+        nome="remove",
+        descrizione="Rimuove una parola vietata.",
+        sottogruppo=("parole", "Parole vietate."),
+    )
     @app_commands.describe(word="La parola da rimuovere (massimo 60 caratteri)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def badword_remove(
         self,
         interaction: discord.Interaction,
@@ -537,7 +543,12 @@ class AutomodCog(commands.Cog):
             messaggio += f"\n⚠️ {avviso}"
         await interaction.followup.send(messaggio, ephemeral=True)
 
-    @automod_group.command(name="badword-list", description="Mostra le parole vietate configurate.")
+    @comando_di_gruppo(
+        "automod",
+        nome="list",
+        descrizione="Mostra le parole vietate configurate.",
+        sottogruppo=("parole", "Parole vietate."),
+    )
     async def badword_list(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -565,11 +576,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(
-        name="invites", description="Attiva o disattiva il blocco automatico degli inviti Discord."
+    @comando_di_gruppo(
+        "automod",
+        nome="invites",
+        descrizione="Attiva o disattiva il blocco automatico degli inviti Discord.",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="True per bloccare gli inviti, False per consentirli")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def invites(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -584,10 +597,11 @@ class AutomodCog(commands.Cog):
             messaggio += f"\n⚠️ {avviso}"
         await interaction.followup.send(messaggio, ephemeral=True)
 
-    @automod_group.command(
-        name="sync", description="Forza una sincronizzazione manuale delle regole AutoMod."
+    @comando_di_gruppo(
+        "automod",
+        nome="sync",
+        descrizione="Forza una sincronizzazione manuale delle regole AutoMod.",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def sync(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -599,7 +613,12 @@ class AutomodCog(commands.Cog):
     # ================================================================
     # Filtri avanzati lato bot (SPEC.md §6.3-§6.10)
     # ================================================================
-    @automod_group.command(name="anti-link-mode", description="Imposta la modalità del filtro link.")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-link-mode",
+        descrizione="Imposta la modalità del filtro link.",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(mode="off = disattivato, whitelist = blocca tutto tranne i domini elencati, blacklist = blocca solo i domini elencati")
     @app_commands.choices(
         mode=[
@@ -608,7 +627,6 @@ class AutomodCog(commands.Cog):
             app_commands.Choice(name="Blacklist", value="blacklist"),
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_link_mode(self, interaction: discord.Interaction, mode: app_commands.Choice[str]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -619,13 +637,17 @@ class AutomodCog(commands.Cog):
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(f"Modalità anti-link impostata su **{mode.name}**.", ephemeral=True)
 
-    @automod_group.command(name="anti-link-domain", description="Aggiunge o rimuove un dominio dalla whitelist/blacklist link.")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-link-domain",
+        descrizione="Aggiunge o rimuove un dominio dalla whitelist/blacklist link.",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(action="add o remove", lista="whitelist o blacklist", domain="Il dominio, es. esempio.com")
     @app_commands.choices(
         action=[app_commands.Choice(name="Aggiungi", value="add"), app_commands.Choice(name="Rimuovi", value="remove")],
         lista=[app_commands.Choice(name="Whitelist", value="whitelist"), app_commands.Choice(name="Blacklist", value="blacklist")],
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_link_domain(
         self,
         interaction: discord.Interaction,
@@ -651,7 +673,7 @@ class AutomodCog(commands.Cog):
             if dominio not in attuale and len(attuale) >= MAX_DOMINI_LISTA:
                 await interaction.response.send_message(
                     f"La {lista.name.lower()} ha già {MAX_DOMINI_LISTA} domini, il massimo. "
-                    "Rimuovi un dominio con `/automod anti-link-domain` prima di aggiungerne altri.",
+                    "Rimuovi un dominio con `/automod filtri anti-link-domain` prima di aggiungerne altri.",
                     ephemeral=True,
                 )
                 return
@@ -670,9 +692,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(name="anti-spam-messages", description="Configura l'anti-spam messaggi (troppi messaggi in poco tempo).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-spam-messages",
+        descrizione="Configura l'anti-spam messaggi (troppi messaggi in poco tempo).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva", max_messages="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_messages(
         self,
         interaction: discord.Interaction,
@@ -693,9 +719,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(name="anti-spam-emoji", description="Configura l'anti-spam emoji (troppe emoji in un messaggio).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-spam-emoji",
+        descrizione="Configura l'anti-spam emoji (troppe emoji in un messaggio).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva", max_emoji="Numero massimo di emoji per messaggio")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_emoji(self, interaction: discord.Interaction, enabled: bool, max_emoji: int = 5) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -707,9 +737,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(name="anti-spam-sticker", description="Configura l'anti-spam sticker (troppi sticker in poco tempo).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-spam-sticker",
+        descrizione="Configura l'anti-spam sticker (troppi sticker in poco tempo).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva", max_sticker="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_spam_sticker(
         self,
         interaction: discord.Interaction,
@@ -730,9 +764,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(name="anti-caps", description="Configura l'anti-caps (troppo maiuscolo).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-caps",
+        descrizione="Configura l'anti-caps (troppo maiuscolo).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva", percent="Percentuale di lettere maiuscole per far scattare il filtro", min_length="Lunghezza minima del messaggio (in lettere) da valutare")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_caps(
         self, interaction: discord.Interaction, enabled: bool, percent: int = 70, min_length: int = 10
     ) -> None:
@@ -748,9 +786,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(name="anti-zalgo", description="Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-zalgo",
+        descrizione="Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_zalgo(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -759,9 +801,13 @@ class AutomodCog(commands.Cog):
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(f"Anti-zalgo {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
-    @automod_group.command(name="anti-mention", description="Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-mention",
+        descrizione="Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva", max_mentions="Numero massimo di menzioni per messaggio")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_mention(self, interaction: discord.Interaction, enabled: bool, max_mentions: int = 5) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -773,9 +819,13 @@ class AutomodCog(commands.Cog):
             ephemeral=True,
         )
 
-    @automod_group.command(name="anti-attachment", description="Configura l'anti-attachment-spam (troppi allegati in poco tempo).")
+    @comando_di_gruppo(
+        "automod",
+        nome="anti-attachment",
+        descrizione="Configura l'anti-attachment-spam (troppi allegati in poco tempo).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(enabled="Attiva/disattiva", max_attachments="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def anti_attachment(
         self,
         interaction: discord.Interaction,
@@ -803,8 +853,12 @@ class AutomodCog(commands.Cog):
     # dall'automod in generale, non filtro per filtro (altrimenti
     # servirebbero N eccezioni per N filtri, complessità non richiesta)
     # ================================================================
-    @automod_group.command(name="exempt-channel-add", description="Esenta un canale da tutti i filtri AutoMod avanzati.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "automod",
+        nome="channel-add",
+        descrizione="Esenta un canale da tutti i filtri AutoMod avanzati.",
+        sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
+    )
     async def exempt_channel_add(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -814,8 +868,12 @@ class AutomodCog(commands.Cog):
             await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(f"Canale {channel.mention} esentato dai filtri avanzati.", ephemeral=True)
 
-    @automod_group.command(name="exempt-channel-remove", description="Rimuove l'esenzione di un canale.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "automod",
+        nome="channel-remove",
+        descrizione="Rimuove l'esenzione di un canale.",
+        sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
+    )
     async def exempt_channel_remove(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -826,8 +884,12 @@ class AutomodCog(commands.Cog):
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(f"Esenzione rimossa per {channel.mention}.", ephemeral=True)
 
-    @automod_group.command(name="exempt-role-add", description="Esenta un ruolo da tutti i filtri AutoMod avanzati.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "automod",
+        nome="role-add",
+        descrizione="Esenta un ruolo da tutti i filtri AutoMod avanzati.",
+        sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
+    )
     async def exempt_role_add(self, interaction: discord.Interaction, role: discord.Role) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -837,8 +899,12 @@ class AutomodCog(commands.Cog):
             await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(f"Ruolo {role.mention} esentato dai filtri avanzati.", ephemeral=True)
 
-    @automod_group.command(name="exempt-role-remove", description="Rimuove l'esenzione di un ruolo.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "automod",
+        nome="role-remove",
+        descrizione="Rimuove l'esenzione di un ruolo.",
+        sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
+    )
     async def exempt_role_remove(self, interaction: discord.Interaction, role: discord.Role) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -852,7 +918,12 @@ class AutomodCog(commands.Cog):
     # ================================================================
     # Azioni configurabili + log (SPEC.md §6.13/§6.14)
     # ================================================================
-    @automod_group.command(name="actions-set", description="Configura quali azioni eseguire quando un filtro avanzato scatta.")
+    @comando_di_gruppo(
+        "automod",
+        nome="actions-set",
+        descrizione="Configura quali azioni eseguire quando un filtro avanzato scatta.",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
     @app_commands.describe(
         violation="Quale filtro", delete="Cancella il messaggio", warn="Assegna un warn",
         mute="Timeout temporaneo (durata: /automod mute-duration)", ban="Banna l'utente",
@@ -860,7 +931,6 @@ class AutomodCog(commands.Cog):
     @app_commands.choices(
         violation=[app_commands.Choice(name=label, value=key) for key, label in _VIOLATION_LABELS.items()]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def actions_set(
         self,
         interaction: discord.Interaction,
@@ -883,9 +953,12 @@ class AutomodCog(commands.Cog):
             f"Azioni per **{violation.name}** impostate: {', '.join(scelte) or 'nessuna'}.", ephemeral=True
         )
 
-    @automod_group.command(name="mute-duration", description="Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.")
+    @comando_di_gruppo(
+        "automod",
+        nome="mute-duration",
+        descrizione="Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.",
+    )
     @app_commands.describe(seconds="Durata in secondi (max 28 giorni, limite di Discord)")
-    @app_commands.checks.has_permissions(manage_guild=True)
     async def mute_duration(self, interaction: discord.Interaction, seconds: int) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -900,8 +973,11 @@ class AutomodCog(commands.Cog):
         await automod_advanced_repo.save_settings(_replace_settings(settings, mute_duration_seconds=seconds))
         await interaction.response.send_message(f"Durata del mute AutoMod impostata a {seconds} secondi.", ephemeral=True)
 
-    @automod_group.command(name="log-channel", description="Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "automod",
+        nome="log-channel",
+        descrizione="Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.",
+    )
     async def log_channel(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -909,7 +985,11 @@ class AutomodCog(commands.Cog):
         await automod_advanced_repo.save_settings(_replace_settings(settings, log_channel_id=channel.id))
         await interaction.response.send_message(f"Canale di log AutoMod impostato su {channel.mention}.", ephemeral=True)
 
-    @automod_group.command(name="status", description="Mostra la configurazione attuale dei filtri AutoMod avanzati.")
+    @comando_di_gruppo(
+        "automod",
+        nome="status",
+        descrizione="Mostra la configurazione attuale dei filtri AutoMod avanzati.",
+    )
     async def status(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return

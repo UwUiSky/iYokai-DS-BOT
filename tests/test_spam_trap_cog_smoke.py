@@ -31,14 +31,7 @@ async def test_spam_trap_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True  # candidato premium, come da schema
 
-    comandi = {c.name for c in bot.tree.get_commands()}
-    assert "spamtrap-setup" in comandi
-
-    setup_cmd = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Command) and command.name == "spamtrap-setup":
-            setup_cmd = command
-            break
+    setup_cmd = bot.tree.get_command("security").get_command("spamtrap")
     assert setup_cmd is not None
     param_names = {p.name for p in setup_cmd.parameters}
     assert {"trap_channel", "log_channel"} <= param_names
@@ -46,6 +39,7 @@ async def test_spam_trap_cog_si_carica_correttamente():
     # I due listener: on_message (indicizzazione + trigger + appeal
     # via DM) e on_member_join (cattura invito al join).
     assert {"on_message", "on_member_join"} <= set(bot.extra_events.keys())
+    await bot.remove_cog("SpamTrapCog")
 
 
 def test_appeal_actions_view_si_istanzia_correttamente():

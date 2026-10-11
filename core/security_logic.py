@@ -221,11 +221,11 @@ def compute_security_score(signals: ServerSecuritySignals) -> tuple[int, tuple[s
 
     if not signals.anti_raid_enabled:
         punteggio -= 15
-        consigli.append("Attiva l'Anti-Raid con /anti-raid enable.")
+        consigli.append("Attiva l'Anti-Raid con /security antiraid enable.")
 
     if not signals.anti_nuke_enabled:
         punteggio -= 15
-        consigli.append("Attiva l'Anti-Nuke con /anti-nuke enable.")
+        consigli.append("Attiva l'Anti-Nuke con /security antinuke enable.")
 
     if not signals.automod_badwords_active:
         punteggio -= 10

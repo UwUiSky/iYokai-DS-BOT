@@ -6,7 +6,6 @@ premium, parametri dei comandi leggibili da discord.py.
 """
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from core.premium import registry
@@ -23,18 +22,17 @@ async def test_automod_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False  # sempre gratis, come da schema
 
-    automod_group = None
-    for command in bot.tree.get_commands():
-        if isinstance(command, app_commands.Group) and command.name == "automod":
-            automod_group = command
-            break
+    automod_group = bot.tree.get_command("automod")
     assert automod_group is not None
 
-    nomi_comandi = {c.name for c in automod_group.commands}
-    assert {"badword-add", "badword-remove", "badword-list", "invites", "sync"} <= nomi_comandi
-    # Filtri avanzati (SPEC.md §6.3-§6.14), aggiunti nello stesso cog/
-    # stesso gruppo /automod (vedi il docstring del modulo per il perché).
-    assert {
+    parole = automod_group.get_command("parole")
+    filtri = automod_group.get_command("filtri")
+    esenzioni = automod_group.get_command("esenzioni")
+    assert {c.name for c in parole.commands} == {"add", "remove", "list"}
+    assert {"invites"} <= {c.name for c in filtri.commands}
+    assert {"sync", "mute-duration", "log-channel", "status"} <= {c.name for c in automod_group.commands}
+    assert {c.name for c in filtri.commands} == {
+        "invites",
         "anti-link-mode",
         "anti-link-domain",
         "anti-spam-messages",
@@ -44,21 +42,21 @@ async def test_automod_cog_si_carica_correttamente():
         "anti-zalgo",
         "anti-mention",
         "anti-attachment",
-        "exempt-channel-add",
-        "exempt-channel-remove",
-        "exempt-role-add",
-        "exempt-role-remove",
         "actions-set",
-        "mute-duration",
-        "log-channel",
-        "status",
-    } <= nomi_comandi
+    }
+    assert {c.name for c in esenzioni.commands} == {
+        "channel-add",
+        "channel-remove",
+        "role-add",
+        "role-remove",
+    }
 
-    add_cmd = automod_group.get_command("badword-add")
+    add_cmd = parole.get_command("add")
     assert "word" in [p.name for p in add_cmd.parameters]
 
-    invites_cmd = automod_group.get_command("invites")
+    invites_cmd = filtri.get_command("invites")
     assert "enabled" in [p.name for p in invites_cmd.parameters]
 
-    anti_caps_cmd = automod_group.get_command("anti-caps")
+    anti_caps_cmd = filtri.get_command("anti-caps")
     assert {"enabled", "percent", "min_length"} <= {p.name for p in anti_caps_cmd.parameters}
+    await bot.remove_cog("AutomodCog")

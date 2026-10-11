@@ -293,13 +293,15 @@ async def test_finestra_allegati_salvata_rispettata(cog, orologio):
 @pytest.mark.parametrize(
     "nome_comando", ["anti-spam-messages", "anti-spam-sticker", "anti-attachment"]
 )
-def test_seconds_ha_un_minimo_e_un_massimo(nome_comando):
+async def test_seconds_ha_un_minimo_e_un_massimo(nome_comando):
     from discord.ext import commands
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
-    gruppo = modulo_automod.AutomodCog(bot).automod_group.to_dict(bot.tree)
-    comando = next(c for c in gruppo["options"] if c["name"] == nome_comando)
-    opzione = next(o for o in comando["options"] if o["name"] == "seconds")
+    await bot.add_cog(modulo_automod.AutomodCog(bot))
+    comando = bot.tree.get_command("automod").get_command("filtri").get_command(nome_comando)
+    dati = comando.to_dict(bot.tree)
+    await bot.remove_cog("AutomodCog")
+    opzione = next(o for o in dati["options"] if o["name"] == "seconds")
 
     assert opzione["min_value"] == 1
     assert opzione["max_value"] == modulo_automod.MAX_FINESTRA_SECONDI

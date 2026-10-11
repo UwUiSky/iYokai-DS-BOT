@@ -37,6 +37,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_groups import CogConGruppi, comando_di_gruppo
+
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.premium import PremiumModule, registry, requires_module
@@ -190,7 +192,7 @@ async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: 
                 pass
 
 
-class AntiNukeCog(commands.Cog):
+class AntiNukeCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Categoria cancellata (ID vecchio) -> categoria ricreata.
@@ -201,12 +203,12 @@ class AntiNukeCog(commands.Cog):
         # perché l'autore era ancora sotto soglia.
         self._in_attesa: BoundedCache[tuple[int, int], list[tuple[datetime, str, object]]] = BoundedCache(max_size=500)
 
-    anti_nuke_group = app_commands.Group(
-        name="anti-nuke", description="Configura la protezione anti-nuke del server."
+    @comando_di_gruppo(
+        "security",
+        nome="enable",
+        descrizione="Attiva o disattiva l'Anti-Nuke.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
-
-    @anti_nuke_group.command(name="enable", description="Attiva o disattiva l'Anti-Nuke.")
-    @app_commands.checks.has_permissions(manage_guild=True)
     @requires_module(MODULE_ANTI_NUKE)
     async def enable(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
@@ -215,7 +217,12 @@ class AntiNukeCog(commands.Cog):
         await security_repo.save_settings(_replace(settings, enabled=enabled))
         await interaction.response.send_message(f"Anti-Nuke {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
-    @anti_nuke_group.command(name="limits", description="Configura la soglia di rilevamento per una categoria.")
+    @comando_di_gruppo(
+        "security",
+        nome="limits",
+        descrizione="Configura la soglia di rilevamento per una categoria.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
+    )
     @app_commands.describe(max_actions="Numero massimo di azioni consentite nella finestra", seconds="Finestra in secondi")
     @app_commands.choices(
         category=[
@@ -226,7 +233,6 @@ class AntiNukeCog(commands.Cog):
             app_commands.Choice(name="Ban/Kick", value=NUKE_CATEGORY_BAN_KICK),
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     @requires_module(MODULE_ANTI_NUKE)
     async def limits(
         self, interaction: discord.Interaction, category: app_commands.Choice[str], max_actions: int, seconds: int
@@ -251,8 +257,12 @@ class AntiNukeCog(commands.Cog):
             f"Soglia **{category.name}** impostata a {max_actions} ogni {seconds}s.", ephemeral=True
         )
 
-    @anti_nuke_group.command(name="trusted-add", description="Esenta un utente/bot fidato da tutti i controlli Anti-Nuke.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="trusted-add",
+        descrizione="Esenta un utente/bot fidato da tutti i controlli Anti-Nuke.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
+    )
     @requires_module(MODULE_ANTI_NUKE)
     async def trusted_add(self, interaction: discord.Interaction, user_id: str) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
@@ -269,8 +279,12 @@ class AntiNukeCog(commands.Cog):
             )
         await interaction.response.send_message(f"Utente `{id_utente}` esentato dai controlli Anti-Nuke.", ephemeral=True)
 
-    @anti_nuke_group.command(name="trusted-remove", description="Rimuove un utente/bot dalla lista fidati Anti-Nuke.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="trusted-remove",
+        descrizione="Rimuove un utente/bot dalla lista fidati Anti-Nuke.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
+    )
     @requires_module(MODULE_ANTI_NUKE)
     async def trusted_remove(self, interaction: discord.Interaction, user_id: str) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
@@ -286,14 +300,18 @@ class AntiNukeCog(commands.Cog):
         )
         await interaction.response.send_message(f"Utente `{id_utente}` rimosso dalla lista fidati.", ephemeral=True)
 
-    @anti_nuke_group.command(name="punish-action", description="Cosa fare all'autore di un'azione distruttiva di massa.")
+    @comando_di_gruppo(
+        "security",
+        nome="punish-action",
+        descrizione="Cosa fare all'autore di un'azione distruttiva di massa.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
+    )
     @app_commands.choices(
         action=[
             app_commands.Choice(name="Rimuovi tutti i ruoli (un bot viene espulso)", value="strip_roles"),
             app_commands.Choice(name="Banna", value="ban"),
         ]
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     @requires_module(MODULE_ANTI_NUKE)
     async def punish_action(self, interaction: discord.Interaction, action: app_commands.Choice[str]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
@@ -302,8 +320,12 @@ class AntiNukeCog(commands.Cog):
         await security_repo.save_settings(_replace(settings, punish_action=action.value))
         await interaction.response.send_message(f"Azione punitiva impostata su **{action.name}**.", ephemeral=True)
 
-    @anti_nuke_group.command(name="recovery", description="Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @comando_di_gruppo(
+        "security",
+        nome="recovery",
+        descrizione="Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
+    )
     @requires_module(MODULE_ANTI_NUKE)
     async def recovery(self, interaction: discord.Interaction, enabled: bool) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
@@ -312,7 +334,12 @@ class AntiNukeCog(commands.Cog):
         await security_repo.save_settings(_replace(settings, recovery_enabled=enabled))
         await interaction.response.send_message(f"Recovery automatico {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
-    @anti_nuke_group.command(name="status", description="Mostra la configurazione attuale dell'Anti-Nuke.")
+    @comando_di_gruppo(
+        "security",
+        nome="status",
+        descrizione="Mostra la configurazione attuale dell'Anti-Nuke.",
+        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
+    )
     @requires_module(MODULE_ANTI_NUKE)
     async def status(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):

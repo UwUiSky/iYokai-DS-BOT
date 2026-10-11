@@ -7,7 +7,7 @@ ban istantaneo. Modulo CANDIDATO PREMIUM.
 SEC-8b: prima di tutto il resto, _handle_trigger controlla se chi ha
 scritto nella trappola è esente (permesso "Gestisci messaggi" o
 "Amministratore", uno dei ruoli staff configurati con
-/spamtrap-setup, o un ruolo sopra quello del bot) — in quel caso non
+/security spamtrap, o un ruolo sopra quello del bot) — in quel caso non
 scatta nessun ban né propagazione al global-ban. AppealActionsView
 richiede "Bannare i membri" a chi preme i bottoni Unban/Reject/Reply.
 
@@ -53,6 +53,8 @@ from datetime import datetime, timezone
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from cogs.security.global_ban import propagate_ban
 from core.database import db
@@ -381,16 +383,17 @@ class StaffReplyModal(BaseModal, title="Reply to user"):
         await interaction.followup.send("Message sent.", ephemeral=True)
 
 
-class SpamTrapCog(commands.Cog):
+class SpamTrapCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     # ================================================================
     # Setup
     # ================================================================
-    @app_commands.command(
-        name="spamtrap-setup",
-        description="[Admin] Configura i canali trappola e log dello Spam Trap.",
+    @comando_di_gruppo(
+        "security",
+        nome="spamtrap",
+        descrizione="Configura i canali trappola e log dello Spam Trap.",
     )
     @app_commands.describe(
         trap_channel="Canale trappola (se non scelto: quello già configurato, o uno nuovo)",
@@ -398,7 +401,6 @@ class SpamTrapCog(commands.Cog):
         staff_role_add="SEC-8b: ruolo da esentare dal ban della trappola (aggiunto alla lista)",
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
     )
-    @app_commands.checks.has_permissions(manage_guild=True)
     @requires_module(MODULE_SPAM_TRAP)
     async def spamtrap_setup(
         self,
