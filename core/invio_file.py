@@ -89,3 +89,29 @@ async def invia_file(
         file = discord.File(io.BytesIO(pezzo), filename=nome_parte)
         await invia(contenuto if numero == 0 else None, file=file, **kwargs)
     return len(parti)
+
+
+async def invia_file_su_interazione(
+    interaction: discord.Interaction,
+    dati: bytes,
+    nome: str,
+    *,
+    contenuto: str | None = None,
+    dividi: bool = True,
+    **kwargs,
+) -> int:
+    """
+    `invia_file` per un comando che non ha ancora risposto: la prima parte va con
+    `response.send_message`, le altre (e tutto, se si è già risposto) con `followup.send`.
+    Con `dividi=False` un file troppo grande solleva `FileTroppoGrande` prima di inviare niente.
+    """
+    primo = [not interaction.response.is_done()]
+
+    async def invia(testo, **kw):
+        if primo[0]:
+            primo[0] = False
+            await interaction.response.send_message(testo, **kw)
+        else:
+            await interaction.followup.send(testo, **kw)
+
+    return await invia_file(invia, dati, nome, contenuto=contenuto, dividi=dividi, **kwargs)

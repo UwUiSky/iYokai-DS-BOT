@@ -67,3 +67,56 @@ async def test_troppe_parti_vengono_rifiutate():
 
     with pytest.raises(FileTroppoGrande):
         await invia_file(invia, b"x" * 30, "a.bin", limite=1, max_parti=5)
+
+
+def test_il_bordo_del_limite_e_incluso():
+    assert dividi_in_parti(b"x" * 10, "a.bin", limite=10) == [("a.bin", b"x" * 10)]  # esattamente al limite: intero
+    assert len(dividi_in_parti(b"x" * 11, "a.bin", limite=10)) == 2
+
+
+def test_un_a_capo_in_testa_alla_parte_non_produce_una_parte_di_un_byte():
+    parti = dividi_in_parti(b"\n" + b"x" * 30, "a.txt", limite=10)
+    assert [len(d) for _, d in parti][0] == 10
+    assert b"".join(d for _, d in parti) == b"\n" + b"x" * 30
+
+
+@pytest.mark.asyncio
+async def test_su_interazione_la_prima_parte_risponde_le_altre_vanno_in_followup():
+    from types import SimpleNamespace
+
+    from core.invio_file import invia_file_su_interazione
+
+    visti = []
+
+    async def risposta(testo, **kw):
+        visti.append(("response", testo, kw["file"].filename))
+
+    async def seguito(testo, **kw):
+        visti.append(("followup", testo, kw["file"].filename))
+
+    interazione = SimpleNamespace(
+        response=SimpleNamespace(is_done=lambda: False, send_message=risposta),
+        followup=SimpleNamespace(send=seguito),
+    )
+
+    n = await invia_file_su_interazione(interazione, b"x" * 25, "a.txt", contenuto="Ecco", limite=10, ephemeral=True)
+
+    assert n == 3
+    assert [v[0] for v in visti] == ["response", "followup", "followup"]
+    assert visti[0][1] == "Ecco" and visti[1][1] is None
+
+
+@pytest.mark.asyncio
+async def test_su_interazione_senza_divisione_un_file_grande_non_parte():
+    from types import SimpleNamespace
+
+    from core.invio_file import invia_file_su_interazione
+
+    async def mai(*a, **k):
+        raise AssertionError("non va inviato")
+
+    interazione = SimpleNamespace(
+        response=SimpleNamespace(is_done=lambda: False, send_message=mai), followup=SimpleNamespace(send=mai)
+    )
+    with pytest.raises(FileTroppoGrande):
+        await invia_file_su_interazione(interazione, b"x" * 25, "a.json", limite=10, dividi=False)

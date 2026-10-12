@@ -1711,12 +1711,17 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   sotto-gruppi, controllati da un test (LIM-57)
 - `[ ]` 20.7 `COMMAND_LIST.md` rigenerato dall'albero vero
 - `[~]` 20.8 Gruppi nascosti dalla lista a chi non li può usare, per ruolo scelto dall'admin (#148, OAuth2)
-  → **Stato 11/10:** fatta la parte che si prova senza token vero: `core/command_permissions.py`
-  (state firmato che scade in 15 minuti, link con scope `applications.commands.permissions.update`,
-  fusione con le regole già impostate dall'admin, tetto di 100 regole, client HTTP, rinnovo del token),
-  `command_permission_tokens` (0039, token cifrato), aggancio a `imposta_ruolo`. Resta: l'indirizzo di
-  ritorno OAuth2 sul server web e il bottone «Autorizza» nel passo di `/admin setup attiva`; prova live.
-  Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
+  → **Stato 12/10:** `core/command_permissions.py`: state firmato di **5 minuti** e **monouso**
+  (`consuma_state`/`rilascia_state`), link con scope `applications.commands.permissions.update identify`,
+  fusione con le regole già impostate dall'admin (una regola «nega» sul ruolo scelto diventa «consenti»),
+  tetto di 100 regole, client HTTP, rinnovo del token (solo `invalid_grant` cancella; 429/5xx/rete lo
+  tengono; un rinnovo alla volta per server), `command_permission_tokens` (0039, token cifrato, cancellato
+  all'uscita del bot), aggancio a `imposta_ruolo`. **Fatto il 12/10:** l'indirizzo di ritorno (stessa
+  `/oauth/callback` del restore, `gestisci_callback`) e il bottone-link «Nascondi i comandi…» sotto
+  `/admin setup attiva` senza categoria (solo con OAuth2 configurato), nessun comando nuovo.
+  **Resta aperta (`[~]`):** nessun comando o finestra chiama ancora `imposta_ruolo` (scelta dei ruoli
+  admin/mod/modban da interfaccia): finché non c'è, il token si salva ma i permessi non si scrivono;
+  prova live. Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 

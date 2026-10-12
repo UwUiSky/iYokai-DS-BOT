@@ -27,7 +27,6 @@ Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 
 from __future__ import annotations
 
-import io
 import logging
 import re
 from datetime import timedelta
@@ -75,6 +74,7 @@ from core.repositories.automod_advanced_repo import (
 )
 from core.repositories.moderation_repo import moderation_repo
 from core.database import db
+from core.invio_file import invia_file_su_interazione
 from core.premium import PremiumModule, registry
 from cogs.moderation._shared import ensure_module_enabled, post_to_mod_log, try_dm
 
@@ -569,10 +569,11 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
         # Un messaggio tiene 2000 caratteri: un elenco lungo va in un file.
         contenuto = "\n".join(config.custom_badwords).encode("utf-8")
-        await interaction.response.send_message(
-            f"Parole vietate configurate ({totale}): l'elenco è lungo, "
-            f"lo trovi nel file allegato.",
-            file=discord.File(io.BytesIO(contenuto), filename="parole_vietate.txt"),
+        await invia_file_su_interazione(
+            interaction,
+            contenuto,
+            "parole_vietate.txt",
+            contenuto=f"Parole vietate configurate ({totale}): l'elenco è lungo, lo trovi nel file allegato.",
             ephemeral=True,
         )
 

@@ -12,7 +12,6 @@ Funzioni coperte: SPEC §2.1, §2.3 (solo infrastruttura), §2.5, §2.6,
 
 from __future__ import annotations
 
-import io
 import json
 from datetime import datetime
 
@@ -23,6 +22,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
+from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.premium import registry
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
@@ -511,16 +511,24 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             if valore is not None and chiave in SETTINGS_SCHEMA
         }
         contenuto = json.dumps(config, indent=2, ensure_ascii=False)
-        file = discord.File(
-            io.BytesIO(contenuto.encode("utf-8")),
-            filename=f"iyokai-config-{guild.id}.json",
-        )
-        await interaction.response.send_message(
-            "Configurazione esportata. Usa /admin config import su un altro server "
-            "per applicarla (SOVRASCRIVE tutto ciò che c'è già).",
-            file=file,
-            ephemeral=True,
-        )
+        try:
+            # Un export che non sta in un file non si divide: l'import vuole un file solo.
+            await invia_file_su_interazione(
+                interaction,
+                contenuto.encode("utf-8"),
+                f"iyokai-config-{guild.id}.json",
+                contenuto=(
+                    "Configurazione esportata. Usa /admin config import su un altro server "
+                    "per applicarla (SOVRASCRIVE tutto ciò che c'è già)."
+                ),
+                dividi=False,
+                ephemeral=True,
+            )
+        except FileTroppoGrande:
+            await interaction.response.send_message(
+                "La configurazione è troppo grande per un file di Discord: non riesco a esportarla.",
+                ephemeral=True,
+            )
 
     @comando_di_gruppo(
         "admin",

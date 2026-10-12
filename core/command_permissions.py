@@ -342,6 +342,20 @@ class ClientPermessi:
         )
 
 
+def link_per_admin(guild_id: int, user_id: int) -> str | None:
+    """
+    Il link di autorizzazione per questo admin in questo server, o None se l'OAuth2 non è
+    configurato (client, redirect o chiave mancanti): allora resta la base, senza bottone.
+    """
+    from core.config import config
+
+    if not (config.OAUTH2_CLIENT_ID and config.OAUTH2_REDIRECT_URI and config.OAUTH_ENCRYPTION_KEY):
+        return None
+    return url_autorizzazione(
+        config.OAUTH2_CLIENT_ID, config.OAUTH2_REDIRECT_URI, guild_id, user_id, config.OAUTH_ENCRYPTION_KEY
+    )
+
+
 # ----------------------------------------------------------------------
 # Applicare il ruolo scelto
 # ----------------------------------------------------------------------

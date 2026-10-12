@@ -570,3 +570,63 @@ async def test_la_callback_salva_il_token_solo_per_l_account_giusto_e_una_volta(
 @pytest.mark.asyncio
 async def test_la_callback_ignora_gli_state_di_altri_flussi():
     assert await cp.gestisci_callback("c", "non-e-uno-state", CHIAVE, client=ClientDiRitorno(), repo=RepoFinto(None)) is None
+
+
+@pytest.mark.asyncio
+async def test_leggi_con_404_vuol_dire_nessuna_regola_ma_un_altro_errore_no():
+    def sessione(stato):
+        class Risposta:
+            status = stato
+
+            async def json(self, content_type=None):
+                return {}
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+        class Sessione:
+            def request(self, *a, **k):
+                return Risposta()
+
+        return Sessione()
+
+    assert await cp.ClientPermessi(sessione(404), "C", "S", "r").leggi(1, GUILD, 9, "T") == []
+    with pytest.raises(cp.ErroreDiscord):
+        await cp.ClientPermessi(sessione(500), "C", "S", "r").leggi(1, GUILD, 9, "T")
+
+
+def test_il_codice_d_errore_e_solo_una_parola_breve():
+    assert cp.ErroreDiscord(400, "invalid_grant").codice == "invalid_grant"
+    assert cp.ErroreDiscord(400, "refresh_token=SEGRETO abc").codice == ""  # un corpo non passa
+    assert cp.ErroreDiscord(400, "x" * 80).codice == ""
+
+
+def test_il_link_per_l_admin_c_e_solo_con_l_oauth2_configurato(monkeypatch):
+    import core.config as configurazione
+    from types import SimpleNamespace
+
+    vuota = SimpleNamespace(OAUTH2_CLIENT_ID="", OAUTH2_REDIRECT_URI="", OAUTH_ENCRYPTION_KEY="")
+    monkeypatch.setattr(configurazione, "config", vuota)
+    assert cp.link_per_admin(GUILD, 77) is None
+
+    piena = SimpleNamespace(OAUTH2_CLIENT_ID="CID", OAUTH2_REDIRECT_URI="https://x.example/oauth/callback", OAUTH_ENCRYPTION_KEY=CHIAVE)
+    monkeypatch.setattr(configurazione, "config", piena)
+    url = cp.link_per_admin(GUILD, 77)
+    assert url.startswith(cp.URL_AUTORIZZAZIONE) and "identify" in url
+
+
+@pytest.mark.asyncio
+async def test_il_setup_mostra_il_bottone_solo_se_il_link_c_e(monkeypatch):
+    import discord
+
+    import cogs.utility.setup as setup_modulo
+
+    monkeypatch.setattr(cp, "link_per_admin", lambda g, u: None)
+    assert setup_modulo.vista_autorizzazione(GUILD, 77) is discord.utils.MISSING
+
+    monkeypatch.setattr(cp, "link_per_admin", lambda g, u: "https://discord.com/oauth2/authorize?x=1")
+    vista = setup_modulo.vista_autorizzazione(GUILD, 77)
+    assert [b.url for b in vista.children] == ["https://discord.com/oauth2/authorize?x=1"]
