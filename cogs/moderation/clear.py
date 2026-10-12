@@ -18,7 +18,8 @@ allegati, testo contenuto o non contenuto, link, inviti, embed, menzioni,
 salta i fissati. Il testo dei messaggi serve il Message Content Intent
 (acceso in main.py; sotto i 10.000 utenti basta l'interruttore nel
 Developer Portal, da 10.000 serve la domanda a Discord, da rifare ogni
-anno). Il canale può essere diverso da quello del comando; ogni pulizia
+anno). Il canale può essere diverso da quello del comando; chi usa il comando
+deve poter vedere e gestire i messaggi di quel canale. Ogni pulizia
 scrive una riga nel log di moderazione (M 1.8).
 Funzioni coperte: SPEC §5.4 (MOD-069, 071, 073-079, 083, 084, 086, 088)
 """
@@ -94,6 +95,15 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         if not isinstance(target, discord.TextChannel):
             await interaction.response.send_message(
                 "Questo comando funziona solo su canali testuali.", ephemeral=True
+            )
+            return
+
+        # Il permesso vale nel canale scelto, non solo nel server: chi non vede
+        # un canale (o non può gestirne i messaggi) non può pulirlo da qui.
+        permessi = target.permissions_for(interaction.user)
+        if not (permessi.view_channel and permessi.manage_messages):
+            await interaction.response.send_message(
+                f"Non hai il permesso «Gestire i messaggi» in {target.mention}.", ephemeral=True
             )
             return
 

@@ -195,26 +195,38 @@ class VerifyCog(CogConGruppi, commands.Cog):
         «non verificato». Ogni ruolo passa dal controllo dei permessi pericolosi
         (SEC-4/SEC-17: può averli presi dopo il setup). False se Discord rifiuta.
         """
+        non_verificato_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO)
+        extra = list(await db.get_guild_setting(guild.id, SETTING_RUOLI_EXTRA) or [])
         da_dare = []
-        ids = [verified_role_id] + list(await db.get_guild_setting(guild.id, SETTING_RUOLI_EXTRA) or [])
-        for ruolo_id in ids:
+        for ruolo_id in [verified_role_id, *extra]:
             ruolo = guild.get_role(ruolo_id)
-            if ruolo is None:
-                continue
-            if check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
+            if ruolo is None or check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
+                if ruolo_id == verified_role_id:
+                    # Senza il ruolo di verifica non si completa niente, e il
+                    # «non verificato» resta: altrimenti l'utente perde l'accesso.
+                    logger.warning(
+                        "Ruolo di verifica non assegnabile nel server %s: verifica non completata.",
+                        guild.id,
+                    )
+                    return False
                 continue
             da_dare.append(ruolo)
-        if da_dare:
-            try:
-                await member.add_roles(*da_dare, reason="iYokai Verify")
-            except discord.HTTPException as errore:
-                logger.warning(
-                    "Impossibile assegnare il ruolo verify nel server %s: %s", guild.id, errore
-                )
-                return False
-        non_verificato_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO)
+        try:
+            await member.add_roles(*da_dare, reason="iYokai Verify")
+        except discord.HTTPException as errore:
+            logger.warning(
+                "Impossibile assegnare il ruolo verify nel server %s: %s", guild.id, errore
+            )
+            return False
         non_verificato = guild.get_role(non_verificato_id) if non_verificato_id else None
-        if non_verificato is not None and non_verificato in member.roles:
+        # Se coincide con un ruolo appena dato, toglierlo annullerebbe la verifica;
+        # se è uguale o sopra il bot, Discord rifiuta: si salta senza tentare.
+        if (
+            non_verificato is not None
+            and non_verificato.id not in {r.id for r in da_dare}
+            and non_verificato in member.roles
+            and non_verificato < guild.me.top_role
+        ):
             try:
                 await member.remove_roles(non_verificato, reason="iYokai Verify")
             except discord.HTTPException:

@@ -89,3 +89,47 @@ async def test_tentativi_e_statistiche(scenario):
     assert "Captcha" in staff.response.send_message.call_args.kwargs["embed"].description
     await scenario.cog.stats_cmd.callback(scenario.cog, staff, 7)
     assert "2" in staff.response.send_message.call_args.args[0]
+
+
+async def test_non_verificato_uguale_al_ruolo_di_verifica_non_viene_tolto(scenario):
+    _ruoli(scenario)
+    await scenario.configura(captcha=False)
+    await db.set_guild_setting(GUILD_ID, SETTING_RUOLO_NON_VERIFICATO, scenario.ruolo.id)
+    scenario.utente.roles = [scenario.ruolo]
+    scenario.utente.remove_roles = AsyncMock()
+    scenario.utente.add_roles = AsyncMock()
+
+    assert await scenario.cog.dai_ruoli_di_verifica(scenario.server, scenario.utente, scenario.ruolo.id)
+
+    scenario.utente.remove_roles.assert_not_awaited()
+
+
+async def test_ruolo_di_verifica_sopra_il_bot_non_completa_e_tiene_il_non_verificato(scenario):
+    _ruoli(scenario)
+    await scenario.configura(captcha=False)
+    scenario.ruolo.position = 99  # sopra il bot (50)
+    await db.set_guild_setting(GUILD_ID, SETTING_RUOLO_NON_VERIFICATO, scenario.non_ver.id)
+    scenario.utente.roles = [scenario.non_ver]
+    scenario.utente.remove_roles = AsyncMock()
+    scenario.utente.add_roles = AsyncMock()
+
+    assert not await scenario.cog.dai_ruoli_di_verifica(scenario.server, scenario.utente, scenario.ruolo.id)
+
+    scenario.utente.add_roles.assert_not_awaited()
+    scenario.utente.remove_roles.assert_not_awaited()
+    esito = await scenario.cog.run_checks_and_finalize(scenario.server, scenario.utente, True)
+    assert "couldn't give you the role" in esito.reason
+
+
+async def test_non_verificato_sopra_il_bot_non_si_prova_a_togliere(scenario):
+    _ruoli(scenario)
+    await scenario.configura(captcha=False)
+    scenario.non_ver.position = 99
+    await db.set_guild_setting(GUILD_ID, SETTING_RUOLO_NON_VERIFICATO, scenario.non_ver.id)
+    scenario.utente.roles = [scenario.non_ver]
+    scenario.utente.remove_roles = AsyncMock()
+    scenario.utente.add_roles = AsyncMock()
+
+    assert await scenario.cog.dai_ruoli_di_verifica(scenario.server, scenario.utente, scenario.ruolo.id)
+
+    scenario.utente.remove_roles.assert_not_awaited()

@@ -685,3 +685,15 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. L'account riceve @Nuovo; clicca il pannello di verifica.
   3. Con un altro account: `/security verify manuale member:@prova`; poi `/security verify tentativi` e `statistiche`.
   Risultato atteso: alla verifica l'account perde @Nuovo e prende il ruolo di verifica più @Membro; la verifica a mano appare nei tentativi come «Verificato a mano».
+- [ ] `5.12` bis (#138, giro bug) — passi:
+  1. Isola un account con due ruoli (`modo:Isolamento`, 5m), poi rilancia `/modban tempban ... modo:Isolamento` sullo stesso account (3m).
+  2. Aspetta la fine dei 3 minuti; poi prova lo stesso con `/modban unban` durante il secondo isolamento e con un tempban con rientro sopra l'isolamento.
+  Risultato atteso: alla fine l'account riprende i DUE ruoli veri e NON resta col ruolo «Isolamento»; la scadenza dei 5 minuti non libera il secondo isolamento; dopo `unban` nessuna scadenza scatta più. Con i DM chiusi nel tempban con rientro, il moderatore riceve l'invito in un messaggio solo suo.
+- [ ] `NF-30` bis (#101, giro bug) — passi:
+  1. Fai appello con un account bannato e accetta dal canale staff togliendo al bot il permesso «Bannare membri» (poi riprova con il permesso).
+  2. Premi «Accetta» due volte di fila, e prova a fare appello 3 volte in pochi secondi.
+  Risultato atteso: senza permesso il ban resta, l'appello resta aperto e lo staff vede il motivo; col permesso il ban cade e l'appello passa ad «accettato»; un solo appello ogni 24 ore anche con clic ripetuti.
+- [ ] `clear` canale (#57, giro bug) — `/mod clear amount:5 channel:#staff` da un account che non vede #staff o non ha «Gestire i messaggi» là. Risultato atteso: rifiutato, nessun messaggio cancellato.
+- [ ] `VER-014` bis (#118, giro bug) — con il ruolo di verifica sopra il bot: il pannello dice di contattare lo staff e l'utente tiene @Nuovo. Con @Nuovo uguale al ruolo di verifica: l'utente resta verificato.
+- [ ] `AMD-021` bis (#116, giro bug) — regola con sola azione «warn»: modifica più volte lo stesso messaggio che viola. Risultato atteso: un solo warn.
+- [ ] Isolamento su server grande (#138) — su un server con molti canali, `modo:Isolamento` finisce senza «L'applicazione non ha risposto» e nasconde tutti i canali.

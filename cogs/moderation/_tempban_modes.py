@@ -3,18 +3,21 @@ cogs/moderation/_tempban_modes.py
 ================================
 Aiuti per il ban temporaneo con rientro e per il ban in isolamento
 (/modban tempban, opzione `modo`): invito da mandare prima del ban,
-ruolo e canale di isolamento, ruoli salvati e ridati.
+ruolo e canale di isolamento, ruoli salvati e ridati, membro dalla cache o
+da Discord, stato ripristinato se l'azione fallisce.
 Funzioni coperte: SPEC §5.11, §5.12 (issue #138)
 Dipende da: core/tempban_logic.py
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
 
 from core.database import db
+from core.repositories.moderation_repo import moderation_repo
 from core.tempban_logic import (
     INVITO_MAX_ETA,
     INVITO_MAX_USI,
@@ -26,6 +29,9 @@ logger = logging.getLogger("iyokai.moderation.tempban_modes")
 
 SETTING_ISOLAMENTO_RUOLO = "isolamento_role_id"
 SETTING_ISOLAMENTO_CANALE = "isolamento_channel_id"
+
+# Quante modifiche dei permessi dei canali partono insieme.
+PARALLELI_SET_PERMISSIONS = 8
 
 
 def info_ruolo(ruolo: discord.Role) -> RuoloInfo:
@@ -126,9 +132,15 @@ async def prepara_isolamento(
             await db.set_guild_setting(guild.id, SETTING_ISOLAMENTO_CANALE, canale.id)
     except discord.HTTPException:
         return None
-    for altro in guild.channels:
-        if altro.id != canale.id:
+    # In parallelo (pochi per volta): in un server grande, in serie, si supera
+    # il quarto d'ora che Discord concede per rispondere all'interazione.
+    limite = asyncio.Semaphore(PARALLELI_SET_PERMISSIONS)
+
+    async def _uno(altro: discord.abc.GuildChannel) -> None:
+        async with limite:
             await _nega_su_canale(altro, ruolo)
+
+    await asyncio.gather(*(_uno(a) for a in guild.channels if a.id != canale.id))
     return ruolo, canale
 
 
@@ -152,3 +164,27 @@ def ruoli_da_riprendere(guild: discord.Guild, salvati: list[int]) -> list[discor
     )
     ruoli = [guild.get_role(i) for i in salvati if i in ammessi]
     return [r for r in ruoli if r is not None]
+
+
+async def trova_membro(guild: discord.Guild, user_id: int) -> discord.Member | None:
+    """Il membro dalla cache o, a cache fredda, da Discord. None se non è nel server."""
+    membro = guild.get_member(user_id)
+    if membro is not None:
+        return membro
+    try:
+        return await guild.fetch_member(user_id)
+    except discord.NotFound:
+        return None
+
+
+async def ripristina_stato(guild_id: int, user_id: int, precedente: dict | None) -> None:
+    """Azione fallita: lo stato torna com'era (o sparisce se prima non c'era)."""
+    if precedente is None:
+        await moderation_repo.delete_tempban_state(guild_id, user_id)
+        return
+    await moderation_repo.save_tempban_state(
+        guild_id, user_id, precedente["modo"], list(precedente["ruoli"]),
+        precedente["finisce_il"], precedente["invito_codice"], precedente["case_number"],
+    )
+    if precedente["scaduto"]:
+        await moderation_repo.mark_tempban_state_expired(guild_id, user_id)

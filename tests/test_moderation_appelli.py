@@ -137,3 +137,104 @@ async def test_rifiuta_non_sbanna_e_secondo_click_non_conta(amb):
     await decidi_appello(inter2, aid, True)
     server.unban.assert_not_awaited()
     assert (await moderation_repo.get_appeal(aid))["stato"] == "rifiutato"
+
+
+# ----------------- correzioni del giro bug -----------------
+
+async def test_accetta_toglie_il_ban_prima_di_segnare_accettato(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    inter, _ = _inter_staff(server)
+    visto = []
+
+    async def _unban(*a, **k):
+        visto.append((await moderation_repo.get_appeal(aid))["stato"])
+
+    server.unban.side_effect = _unban
+    await decidi_appello(inter, aid, True)
+
+    assert visto == ["aperto"]
+    assert (await moderation_repo.get_appeal(aid))["stato"] == "accettato"
+
+
+async def test_unban_fallito_lascia_aperti_appello_e_caso(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    inter, utente = _inter_staff(server)
+    server.unban.side_effect = discord.HTTPException(MagicMock(status=403, reason="x"), "x")
+
+    await decidi_appello(inter, aid, True)
+
+    assert (await moderation_repo.get_appeal(aid))["stato"] == "aperto"
+    assert await moderation_repo.get_latest_active_case(G, UTENTE, "ban") is not None
+    utente.send.assert_not_awaited()
+
+
+async def test_accetta_non_tocca_un_ban_piu_recente(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    vecchio = (await moderation_repo.get_appeal(aid))["case_number"]
+    # Il vecchio ban è stato tolto a mano e l'utente è stato bannato di nuovo.
+    await moderation_repo.revoke_case(G, vecchio, 10)
+    nuovo = await moderation_repo.create_case(G, UTENTE, 10, "ban", "di nuovo")
+    inter, _ = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    server.unban.assert_not_awaited()
+    assert (await moderation_repo.get_latest_active_case(G, UTENTE, "ban")).case_number == nuovo
+
+
+async def test_accetta_revoca_solo_il_caso_dell_appello(amb):
+    server, _, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "tempban", "altro", duration_seconds=60)
+    aid = await _appello(bot)
+    inter, _ = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    # Il tempban (un altro caso) resta attivo: l'appello riguardava il ban.
+    assert (await moderation_repo.get_latest_active_case(G, UTENTE, "tempban")) is not None
+
+
+async def test_accetta_cancella_la_scadenza_automatica(amb):
+    from core.scheduler import scheduler, in_seconds
+
+    server, _, bot = amb
+    await scheduler.schedule(
+        guild_id=G, user_id=UTENTE, action_type="moderation_tempban_expire",
+        execute_at=in_seconds(3600), payload={"case_number": 1, "modo": "fuori"},
+    )
+    aid = await _appello(bot)
+    inter, _ = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    assert await scheduler.list_pending_for_user(UTENTE, "moderation_tempban_expire") == []
+
+
+async def test_tre_appelli_insieme_ne_creano_uno(amb):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    _, canale, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "ban", "spam")
+    await apri_connessioni(moderation_repo._pool)
+
+    esiti = await asyncio.gather(
+        *(invia_appello(bot, G, fake_member(UTENTE), "x" * 30, ADESSO) for _ in range(3))
+    )
+
+    assert len(await moderation_repo.list_appeals(G)) == 1
+    assert sum("inviato" in e.lower() for e in esiti) == 1
+    assert canale.send.await_count == 1
+
+
+async def test_appello_non_consegnato_non_blocca_per_24_ore(amb):
+    _, canale, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "ban", "spam")
+    canale.send.side_effect = discord.HTTPException(MagicMock(status=500, reason="x"), "x")
+
+    assert "non sono riuscito" in (await invia_appello(bot, G, fake_member(UTENTE), "x" * 30, ADESSO)).lower()
+    assert await moderation_repo.list_appeals(G) == []

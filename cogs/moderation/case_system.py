@@ -50,6 +50,10 @@ from cogs.moderation._shared import (
 # 1000 caratteri bastano e tengono leggibile l'elenco.
 MAX_NOTE_LENGTH = 1000
 
+# Numeri di caso e di nota sono INTEGER nel database: oltre questo limite
+# Postgres darebbe DataError.
+INT4_MAX = 2**31 - 1
+
 # Colori per tipo di azione, usati per rendere lo storico leggibile
 # a colpo d'occhio invece di un elenco di testo uniforme.
 TIPI_CASO = [
@@ -167,7 +171,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     @app_commands.describe(case_number="Il numero del caso da visualizzare")
     @requires_module(MODULE_CASE_SYSTEM)
     async def view(
-        self, interaction: discord.Interaction, case_number: int
+        self, interaction: discord.Interaction, case_number: app_commands.Range[int, 1, INT4_MAX]
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
@@ -278,7 +282,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     @app_commands.describe(case_number="Il numero del caso", reason="Il nuovo motivo")
     @requires_module(MODULE_CASE_SYSTEM)
     async def case_reason(
-        self, interaction: discord.Interaction, case_number: int, reason: Reason
+        self, interaction: discord.Interaction, case_number: app_commands.Range[int, 1, INT4_MAX], reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
@@ -303,7 +307,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(case_number="Il numero del caso da eliminare")
     @requires_module(MODULE_CASE_SYSTEM)
-    async def case_delete(self, interaction: discord.Interaction, case_number: int) -> None:
+    async def case_delete(self, interaction: discord.Interaction, case_number: app_commands.Range[int, 1, INT4_MAX]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
         if await _rifiuta_senza_gestione(interaction):
@@ -370,7 +374,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(nota_id="Il numero della nota")
     @requires_module(MODULE_CASE_SYSTEM)
-    async def note_remove(self, interaction: discord.Interaction, nota_id: int) -> None:
+    async def note_remove(self, interaction: discord.Interaction, nota_id: app_commands.Range[int, 1, INT4_MAX]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
         if not await moderation_repo.delete_note(interaction.guild.id, nota_id):
@@ -389,7 +393,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     async def note_edit(
         self,
         interaction: discord.Interaction,
-        nota_id: int,
+        nota_id: app_commands.Range[int, 1, INT4_MAX],
         note: app_commands.Range[str, 1, MAX_NOTE_LENGTH],
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
@@ -426,7 +430,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(case_number="Il numero del caso di tipo warn")
     @requires_module(MODULE_CASE_SYSTEM)
-    async def warn_remove(self, interaction: discord.Interaction, case_number: int) -> None:
+    async def warn_remove(self, interaction: discord.Interaction, case_number: app_commands.Range[int, 1, INT4_MAX]) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
         caso = await moderation_repo.get_case(interaction.guild.id, case_number)

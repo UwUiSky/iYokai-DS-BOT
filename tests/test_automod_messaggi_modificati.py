@@ -65,3 +65,32 @@ async def test_modifica_non_conta_per_lo_spam(contesto, monkeypatch):
 
     assert registrazioni == []
     assert dopo.deleted is False
+
+
+@pytest.mark.asyncio
+async def test_modifiche_ripetute_con_sola_azione_warn_danno_un_warn(contesto):
+    from cogs.automod import automod as modulo
+    from core.repositories.moderation_repo import moderation_repo
+
+    modulo._avvisati.clear()
+    await _salva_config(
+        contesto,
+        config=AutomodAdvancedConfig(anti_zalgo_enabled=True),
+        actions={"anti_zalgo": ("warn",)},
+    )
+    prima, dopo = _prima_dopo("ciao", "A" + "\u0301" * 10)
+    prima.id = dopo.id = 777
+    cog = AutomodCog(bot=None)
+
+    await cog.on_message_edit(prima, dopo)
+    seconda = _stesso(dopo, "B" + "\u0301" * 12)
+    await cog.on_message_edit(dopo, seconda)
+
+    casi = await moderation_repo.list_cases_for_user(GUILD_ID, 1)
+    assert [c.action_type for c in casi].count("warn") == 1
+
+
+def _stesso(messaggio, testo):
+    copia = _FakeMessage(messaggio.guild, messaggio.author, messaggio.channel, content=testo)
+    copia.id = messaggio.id
+    return copia

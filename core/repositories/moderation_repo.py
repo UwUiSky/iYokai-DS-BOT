@@ -20,7 +20,7 @@ numero di caso.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
@@ -444,22 +444,38 @@ class ModerationRepository:
     # ------------------------------------------------------------
     # Appelli contro i ban manuali (NF-30)
     # ------------------------------------------------------------
-    async def create_appeal(
-        self, guild_id: int, user_id: int, case_number: int | None, testo: str
-    ) -> int:
-        return await self._pool.fetchval(
-            """
-            INSERT INTO ban_appelli (guild_id, user_id, case_number, testo)
-            VALUES ($1, $2, $3, $4) RETURNING id
-            """,
-            guild_id, user_id, case_number, testo,
-        )
+    async def create_appeal_if_allowed(
+        self, guild_id: int, user_id: int, case_number: int | None, testo: str,
+        attesa: timedelta,
+    ) -> tuple[int | None, datetime | None]:
+        """
+        Crea l'appello solo se l'ultimo ha più di `attesa`: controllo e scrittura
+        sotto lo stesso blocco (tre invii insieme valgono uno).
+        Restituisce (id, None) se creato, (None, ora dell'ultimo) se bisogna attendere.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock($1, $2)", guild_id % 2**31, user_id % 2**31
+                )
+                ultimo = await conn.fetchval(
+                    "SELECT MAX(creato_il) FROM ban_appelli WHERE guild_id = $1 AND user_id = $2",
+                    guild_id, user_id,
+                )
+                if ultimo is not None and ultimo + attesa > datetime.now(timezone.utc):
+                    return None, ultimo
+                appello_id = await conn.fetchval(
+                    """
+                    INSERT INTO ban_appelli (guild_id, user_id, case_number, testo)
+                    VALUES ($1, $2, $3, $4) RETURNING id
+                    """,
+                    guild_id, user_id, case_number, testo,
+                )
+                return appello_id, None
 
-    async def last_appeal_time(self, guild_id: int, user_id: int):
-        return await self._pool.fetchval(
-            "SELECT MAX(creato_il) FROM ban_appelli WHERE guild_id = $1 AND user_id = $2",
-            guild_id, user_id,
-        )
+    async def delete_appeal(self, appeal_id: int) -> None:
+        """Toglie un appello che non è arrivato allo staff (non deve bloccare le 24 ore)."""
+        await self._pool.execute("DELETE FROM ban_appelli WHERE id = $1", appeal_id)
 
     async def get_appeal(self, appeal_id: int) -> dict | None:
         row = await self._pool.fetchrow("SELECT * FROM ban_appelli WHERE id = $1", appeal_id)
@@ -511,6 +527,27 @@ class ModerationRepository:
             """,
             guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il,
         )
+
+    async def set_tempban_state_case(self, guild_id: int, user_id: int, case_number: int) -> None:
+        await self._pool.execute(
+            "UPDATE tempban_stato SET case_number = $3 WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id, case_number,
+        )
+
+    async def cancel_tempban_jobs(self, guild_id: int, user_id: int) -> int:
+        """
+        Cancella le scadenze automatiche ancora in attesa per l'utente: dopo un
+        unban, un appello accettato o un nuovo tempban non devono più scattare.
+        """
+        result = await self._pool.execute(
+            """
+            DELETE FROM scheduled_actions
+            WHERE guild_id = $1 AND user_id = $2
+              AND action_type = 'moderation_tempban_expire' AND executed = FALSE
+            """,
+            guild_id, user_id,
+        )
+        return int(result.split()[-1])
 
     async def get_tempban_state(self, guild_id: int, user_id: int) -> dict | None:
         row = await self._pool.fetchrow(

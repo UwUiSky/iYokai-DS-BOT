@@ -30,6 +30,7 @@ from __future__ import annotations
 import io
 import logging
 import re
+from collections import OrderedDict
 from datetime import timedelta
 
 import discord
@@ -217,11 +218,32 @@ def _is_safe_from_automated_action(member: discord.Member) -> bool:
     return member.guild_permissions.administrator or member.guild_permissions.manage_guild
 
 
+# Messaggi già avvisati, con tetto: (id messaggio, violazione). Serve a non
+# dare un warn a ogni modifica dello stesso messaggio.
+_AVVISATI_MAX = 2000
+_avvisati: "OrderedDict[tuple[int, str], None]" = OrderedDict()
+
+
+def _warn_da_dare(message_id: int, violazione: str, modificato: bool) -> bool:
+    """
+    Registra il warn. Per un messaggio modificato è False se lo stesso
+    messaggio ha già avuto un warn per la stessa violazione.
+    """
+    chiave = (message_id, violazione)
+    gia = chiave in _avvisati
+    _avvisati[chiave] = None
+    _avvisati.move_to_end(chiave)
+    while len(_avvisati) > _AVVISATI_MAX:
+        _avvisati.popitem(last=False)
+    return not (modificato and gia)
+
+
 async def _execute_actions(
     message: discord.Message,
     violation: str,
     actions: tuple[str, ...],
     settings: AutomodAdvancedSettings,
+    modificato: bool = False,
 ) -> tuple[str, ...]:
     """
     Esegue le azioni configurate per questa violazione, nell'ordine
@@ -249,6 +271,10 @@ async def _execute_actions(
             continue
 
         if azione == "warn":
+            # Lo stesso messaggio, modificato più volte, vale un warn solo
+            # per violazione (senza «delete» il testo resta al suo posto).
+            if not _warn_da_dare(message.id, violation, modificato):
+                continue
             reason = f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}"
             case_number = await moderation_repo.create_case(
                 guild_id=message.guild.id,
@@ -1065,7 +1091,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
         for violazione in violazioni:
             azioni_configurate = settings.actions.get(violazione, ("delete",))
-            eseguite = await _execute_actions(message, violazione, azioni_configurate, settings)
+            eseguite = await _execute_actions(
+                message, violazione, azioni_configurate, settings, modificato=modificato
+            )
             await _log_violation(message, violazione, eseguite, settings)
             # Se il messaggio è stato cancellato dalla prima
             # violazione, le successive (stesso messaggio, altri

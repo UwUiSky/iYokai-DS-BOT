@@ -199,6 +199,7 @@ async def test_modban_unban_toglie_anche_i_ban_propagati(monkeypatch):
     repo = MagicMock()
     repo.get_latest_active_case = AsyncMock(return_value=None)
     repo.get_tempban_state = AsyncMock(return_value=None)
+    repo.cancel_tempban_jobs = AsyncMock()
     repo.revoke_active_cases_for_user = AsyncMock()
     monkeypatch.setattr(actions, "moderation_repo", repo)
 

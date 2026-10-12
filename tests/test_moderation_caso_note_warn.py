@@ -147,3 +147,20 @@ async def test_warn_togli_azzera_classifica():
     con, _ = _inter(gestione=True)
     await cog.warn_reset.callback(cog, con, fake_member(1))
     assert (await moderation_repo.get_case(G, 3)).active is False
+
+
+def test_numeri_di_caso_e_nota_hanno_il_tetto_del_database():
+    """Oltre 2^31-1 Postgres darebbe DataError: il limite sta nel comando."""
+    import typing
+
+    cog = ModerationCaseSystemCog
+    visti = 0
+    for nome in dir(cog):
+        comando = getattr(cog, nome)
+        if not hasattr(comando, "callback"):
+            continue
+        for parametro, tipo in typing.get_type_hints(comando.callback).items():
+            if parametro in ("case_number", "nota_id"):
+                visti += 1
+                assert tipo.max_value == 2**31 - 1 and tipo.min_value == 1, (nome, parametro)
+    assert visti >= 6

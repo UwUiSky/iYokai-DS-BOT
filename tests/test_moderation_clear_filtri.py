@@ -144,3 +144,29 @@ async def test_lock_unlock_slowmode_lasciano_una_riga_di_log(ambiente):
     assert canale_log.send.await_count == 3
     for chiamata in canale_log.send.call_args_list:
         assert any(f.name == "Moderatore" for f in chiamata.kwargs["embed"].fields)
+
+
+async def test_clear_su_un_canale_senza_permesso_dell_utente_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    altro = fake_text_channel(66, "staff-privato")
+    altro.purge = AsyncMock(return_value=[])
+    altro.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=False))
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10, channel=altro)
+
+    altro.purge.assert_not_awaited()
+    assert inter.response.send_message.call_args.kwargs["ephemeral"] is True
+    altro.permissions_for.assert_called_with(inter.user)
+
+
+async def test_clear_senza_gestire_messaggi_nel_canale_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    canale.permissions_for = MagicMock(
+        return_value=discord.Permissions(view_channel=True, manage_messages=False)
+    )
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10)
+
+    canale.purge.assert_not_awaited()
