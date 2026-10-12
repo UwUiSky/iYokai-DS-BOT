@@ -740,3 +740,24 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Rifai `/fun search-image query:gatto` subito: poi dopo 10 secondi, con le stesse parole.
   3. `/fun search-image` con 101 caratteri nel testo.
   Risultato atteso: nessun "L'applicazione non ha risposto"; la ricerca arriva come immagine allegata (non collegata) con la riga "Immagine da Pixabay" che apre la pagina giusta; il passo 2 subito dopo dice di aspettare; la stessa ricerca ripetuta usa la cache (nel log una sola chiamata a Pixabay); Discord rifiuta il testo oltre 100 caratteri.
+
+## Backup e restore — passaggio `feat/r3-bak` (#68)
+
+Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOKAI_CREATOR_TOKEN`), un secondo account admin e un account senza permessi. Un bot non può creare server: lo crea l'admin.
+
+- [ ] `12.1` / `12.2` / `12.9` (#68) — collegamento e copia vera. Passi:
+  1. Nel server principale: `/admin backup main`, poi `/admin backup crea modello:True`.
+  2. Crea a mano un server nuovo (anche dal link modello). Invita iYokai e iYokai Creator con i due link. Controlla nel selettore dei permessi che compaia «Creare espressioni».
+  3. Nel server nuovo: `/admin backup collega codice:<codice>`. Prima prova un codice sbagliato, poi uno già usato, poi (dopo 24 ore o con la data cambiata nel database) uno scaduto.
+  4. Aspetta il DM «Backup pronto» al proprietario del server principale.
+  Risultato atteso: struttura, ruoli e permessi uguali; nessun doppione se si è partiti dal modello; il Creator **resta** nel server di backup; codice sbagliato/usato/scaduto rifiutati con un messaggio; un account senza «Amministratore» rifiutato; il Creator assente nel server nuovo dà il messaggio che spiega come invitarlo.
+- [ ] `12.4` (#68) — gerarchia dei ruoli. Passi: confronta l'ordine dei ruoli nei due server (il ruolo del Creator deve stare **in alto**). Risultato atteso: ordine identico; se il Creator è in basso, il riepilogo dice «Ordine dei ruoli non impostato».
+- [ ] `12.5` (#68) — server principale con boost e canale vocale a 384 kbps, backup senza boost. Risultato atteso: copia riuscita, bitrate ridotto al massimo del server di backup, nessun errore.
+- [ ] `12.6` (#68) — un canale con 15 webhook. Risultato atteso: nel backup 14 webhook copiati + «iYokai Mirror»; il riepilogo cita 1 webhook oltre il limite; il mirror funziona in quel canale. Rilancia la copia: nessun secondo «iYokai Mirror».
+- [ ] `12.7` (#68) — un account con nome «Discord Fan» scrive nel principale. Risultato atteso: il messaggio compare nel backup con il nome «disc0rd Fan».
+- [ ] `12.8` (#68) — un canale chiamato `___hidden___` (o che il bot non vede). Risultato atteso: saltato; il riepilogo dice quanti e di dare al bot il permesso di vedere tutti i canali.
+- [ ] `12.13` (#68, BUG-34) — nel server di backup collegato: `/admin backup promuovi`, poi `/admin backup restore-utenti server_di_origine:<id del vecchio main>`. Risultato atteso: il restore parte (prima rifiutava); un terzo server resta rifiutato.
+- [ ] `12.10` (#68) — token OAuth salvato con scadenza nel passato (database di prova, solo la data) e refresh token vero. `/admin backup restore-utenti`. Risultato atteso: l'utente viene aggiunto con il token rinnovato; con refresh token revocato riceve il DM di consenso.
+- [ ] `12.11` (#68) — restore con molti utenti (30+ in snapshot, DM aperti). Risultato atteso: pausa visibile tra un DM e l'altro, nessun errore 429 non gestito, conteggi che contano solo gli esiti riusciti, un solo riepilogo finale (anche oltre i 15 minuti: finisce nel canale).
+- [ ] `12.15` (#68) — metti in `OAUTH_ENCRYPTION_KEY` due chiavi separate da virgola (nuova, vecchia). Risultato atteso: i token vecchi si leggono ancora, i nuovi si scrivono con la prima; una riga rovinata a mano nel database non ferma il restore (avviso nel log, richiesta di nuovo consenso).
+- [ ] `#46 D / #15` (#46) — da un terzo server: `/admin backup restore-utenti` con l'ID di un main che non ti ha come backup. Risultato atteso: rifiutato.

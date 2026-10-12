@@ -319,7 +319,6 @@ async def test_primo_livello_entro_100_comandi():
 # ----------------------------------------------------------------------
 KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     {
-    "admin backup restore-utenti:server_di_origine",
     "admin messaggi programma:duration",
     "fun 8ball:domanda",
     "fun meme:bottom_text",

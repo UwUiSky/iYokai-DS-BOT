@@ -21,12 +21,17 @@ esplicitamente con l'utente:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
 import asyncpg
 
+from cryptography.exceptions import InvalidTag
+
 from core.oauth_crypto import decrypt_token, encrypt_token
+
+logger = logging.getLogger("iyokai.restore_oauth_repo")
 
 STATUS_ACTIVE = "active"
 STATUS_KICKED_FLAGGED = "kicked_flagged"
@@ -82,12 +87,18 @@ class RestoreOAuthRepository:
     def _key(self) -> str:
         return self._encryption_key_provider()
 
+    @staticmethod
+    def _aad(source_guild_id: int, user_id: int) -> bytes:
+        """Dato associato (M 12.15): il cifrato vale solo per questa riga."""
+        return f"{source_guild_id}:{user_id}".encode("ascii")
+
     def _row_to_token(self, row) -> RestoreOAuthToken:
+        aad = self._aad(row["source_guild_id"], row["user_id"])
         return RestoreOAuthToken(
             source_guild_id=row["source_guild_id"],
             user_id=row["user_id"],
-            access_token=decrypt_token(row["encrypted_access_token"], self._key),
-            refresh_token=decrypt_token(row["encrypted_refresh_token"], self._key),
+            access_token=decrypt_token(row["encrypted_access_token"], self._key, aad=aad),
+            refresh_token=decrypt_token(row["encrypted_refresh_token"], self._key, aad=aad),
             expires_at=row["expires_at"],
             status=row["status"],
             granted_at=row["granted_at"],
@@ -114,8 +125,9 @@ class RestoreOAuthRepository:
         nuovo consenso non cancella un ban. True in tutti gli altri
         casi.
         """
-        cifrato_access = encrypt_token(access_token, self._key)
-        cifrato_refresh = encrypt_token(refresh_token, self._key)
+        aad = self._aad(source_guild_id, user_id)
+        cifrato_access = encrypt_token(access_token, self._key, aad=aad)
+        cifrato_refresh = encrypt_token(refresh_token, self._key, aad=aad)
         risultato = await self._pool.execute(
             """
             INSERT INTO restore_oauth_tokens
@@ -148,7 +160,42 @@ class RestoreOAuthRepository:
             source_guild_id,
             user_id,
         )
-        return self._row_to_token(row) if row is not None else None
+        if row is None:
+            return None
+        try:
+            return self._row_to_token(row)
+        except (InvalidTag, ValueError):
+            # M 12.15: una riga rovinata non blocca il resto; si chiede di nuovo il consenso.
+            logger.warning(
+                "Token OAuth illeggibile (riga rovinata o chiave diversa): server %s, utente %s.",
+                source_guild_id,
+                user_id,
+            )
+            return None
+
+    async def aggiorna_token(
+        self,
+        source_guild_id: int,
+        user_id: int,
+        access_token: str,
+        refresh_token: str,
+        expires_at: datetime,
+    ) -> None:
+        """Dopo un rinnovo (M 12.10): cambia solo i token e la scadenza, lo stato resta."""
+        aad = self._aad(source_guild_id, user_id)
+        await self._pool.execute(
+            """
+            UPDATE restore_oauth_tokens
+            SET encrypted_access_token = $3, encrypted_refresh_token = $4, expires_at = $5
+            WHERE source_guild_id = $1 AND user_id = $2 AND status <> $6
+            """,
+            source_guild_id,
+            user_id,
+            encrypt_token(access_token, self._key, aad=aad),
+            encrypt_token(refresh_token, self._key, aad=aad),
+            expires_at,
+            STATUS_BANNED_BLACKLISTED,
+        )
 
     async def mark_left_voluntarily(self, source_guild_id: int, user_id: int) -> None:
         await self._pool.execute(

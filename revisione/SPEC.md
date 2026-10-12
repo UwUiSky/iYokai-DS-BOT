@@ -1080,10 +1080,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   server (`/configura-restore`), conservazione diversa per uscita,
   kick e ban. Corretti il 04/10: link valido 7 giorni e legato al
   destinatario (BUG-21, SEC-19, `8590e89`); ruolo verificato
-  controllato (`67e5771`). Aperti: token mai rinnovati (LIM-37); ciclo
-  senza pause e senza gestione dei 429 (LIM-7); la modalità "OAuth alla
-  verifica" non fa niente di diverso (REVIEW §12); invito in DM solo a
-  chi ha dato il consenso; chiave non ruotabile (LIM-52)
+  controllato (`67e5771`). Fatti (M 12.10, 12.11, 12.13, 12.15): token
+  rinnovati con il refresh token (LIM-37); attesa del `Retry-After` sui
+  429, pausa tra i DM, conteggi dopo l'esito, riepilogo nel canale se la
+  risposta è scaduta (LIM-7); coppia storica dopo la promozione (BUG-34);
+  chiave ruotabile con prefisso di versione, cifrato legato a server e
+  utente, riga rovinata saltata (LIM-52, SEC-16). Aperti: la modalità
+  "OAuth alla verifica" non fa niente di diverso (12.14, serve
+  `cogs/security/verify.py`); invito in DM solo a chi ha dato il consenso
+  (12.12, manca il dato del consenso)
 - `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
   `/promuovi-backup`, `/restore-users`, `/configura-restore` —
   esistono; `/define-backup` oggi fallisce perché prova a creare un

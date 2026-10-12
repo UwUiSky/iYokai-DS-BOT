@@ -16,13 +16,15 @@ token già raccolti da restore precedenti); in alternativa, invito
 classico senza alcun token.
 """
 
-# DA FARE (issue #68, fase F3): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §12 (Backup e restore).
+# DA FARE (issue #68, fase F3): restano M 12.12 (DM solo con consenso) e
+#   M 12.14 (link di consenso a fine verifica): servono dati e codice del
+#   flusso di verifica (cogs/security/verify.py).
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -34,7 +36,7 @@ from core.database import db
 from core.oauth_crypto import OAuthEncryptionNotConfigured
 from core.repositories.backup_repo import backup_repo
 from core.repositories.backup_user_snapshot_repo import backup_user_snapshot_repo
-from core.repositories.restore_oauth_repo import restore_oauth_repo
+from core.repositories.restore_oauth_repo import STATUS_BANNED_BLACKLISTED, restore_oauth_repo
 from core.repositories.verify_repo import verify_repo
 from core.restore_batch_logic import (
     ACTION_AUTO_JOIN,
@@ -57,6 +59,12 @@ from core.restore_retention_logic import was_recently_kicked
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 
 logger = logging.getLogger("iyokai.restore")
+
+# M 12.11: pausa dopo ogni DM tentato (i DM a utenti diversi hanno un limite loro)
+# e margine entro cui un token si rinnova prima di scadere (M 12.10).
+PAUSA_TRA_DM_SECONDI = 1.5
+MARGINE_RINNOVO_TOKEN = timedelta(minutes=5)
+_pausa = asyncio.sleep
 
 SETTING_RESTORE_MODE = "backup_restore_mode"
 SETTING_AUTO_INVITE_ON_JOIN = "backup_auto_invite_on_join"
@@ -126,7 +134,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         server_di_origine="ID del server (main originale) da cui ripristinare gli utenti"
     )
-    async def restore_users(self, interaction: discord.Interaction, server_di_origine: str) -> None:
+    async def restore_users(
+        self, interaction: discord.Interaction, server_di_origine: app_commands.Range[str, 1, 20]
+    ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -146,8 +156,8 @@ class RestoreCog(CogConGruppi, commands.Cog):
         # admin potrebbe scrivere l'ID di un server qualunque e
         # farsi ripristinare (o invitare a forza) gli utenti di
         # qualcun altro nel proprio server.
-        coppia = await backup_repo.get_pair(source_guild_id)
-        if coppia is None or coppia.backup_guild_id != interaction.guild.id:
+        # M 12.13 (BUG-34): vale anche la coppia storica dopo una promozione.
+        if not await backup_repo.is_backup_of(source_guild_id, interaction.guild.id):
             await interaction.response.send_message(
                 "⚠️ Questo server non è registrato come backup di quello indicato. "
                 "Il restore è permesso solo dal server di origine verso il suo "
@@ -178,6 +188,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             ACTION_CLASSIC_INVITE: 0,
             ACTION_SKIP_BLACKLISTED: 0,
             "dm_falliti": 0,
+            "join_falliti": 0,
             "ruolo_non_assegnato": 0,
         }
 
@@ -185,14 +196,15 @@ class RestoreCog(CogConGruppi, commands.Cog):
 
         for entry in snapshot:
             token = await restore_oauth_repo.get_token(source_guild_id, entry.user_id)
+            token = await self._rinnova_se_serve(source_guild_id, entry.user_id, token)
             token_status = token.status if token is not None else None
             token_scaduto = (
                 token is not None and token.expires_at < datetime.now(timezone.utc)
             )
             azione = plan_restore_action(modalita, token_status, token_scaduto)
-            contatori[azione] += 1
 
             if azione == ACTION_SKIP_BLACKLISTED:
+                contatori[azione] += 1
                 continue
 
             if azione == ACTION_AUTO_JOIN:
@@ -202,7 +214,11 @@ class RestoreCog(CogConGruppi, commands.Cog):
                     user_id=entry.user_id,
                     access_token=token.access_token,
                 )
-                if aggiunto and ruolo_verificato_id is not None:
+                if not aggiunto:
+                    contatori["join_falliti"] += 1
+                    continue
+                contatori[azione] += 1  # M 12.11: si conta dopo l'esito
+                if ruolo_verificato_id is not None:
                     assegnato = await self._assegna_ruolo_verificato(
                         interaction.guild, entry.user_id, ruolo_verificato_id
                     )
@@ -226,6 +242,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         f"dopo un backup. Clicca per rientrare automaticamente (il link è "
                         f"personale e vale {STATE_TTL_SECONDS // 86400} giorni): {url}"
                     )
+                    contatori[azione] += 1
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     contatori["dm_falliti"] += 1
                 except RestoreStateSigningError:
@@ -235,6 +252,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         entry.user_id,
                     )
                     contatori["dm_falliti"] += 1
+                await _pausa(PAUSA_TRA_DM_SECONDI)
                 continue
 
             if azione == ACTION_CLASSIC_INVITE:
@@ -246,25 +264,58 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         f"👋 Il server **{interaction.guild.name}** ha bisogno di ripristinarti "
                         f"dopo un backup. Ecco l'invito: {invito_classico_url}"
                     )
+                    contatori[azione] += 1
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     contatori["dm_falliti"] += 1
+                await _pausa(PAUSA_TRA_DM_SECONDI)
                 continue
 
-        await interaction.followup.send(
+        riepilogo = (
             "**Restore completato.**\n"
             f"✅ Aggiunti automaticamente (token già autorizzato): {contatori[ACTION_AUTO_JOIN]}\n"
             f"✉️ DM di autorizzazione inviati: {contatori[ACTION_REQUEST_CONSENT]}\n"
             f"📨 Inviti classici inviati: {contatori[ACTION_CLASSIC_INVITE]}\n"
             f"🚫 Saltati (in blacklist da un ban): {contatori[ACTION_SKIP_BLACKLISTED]}\n"
-            f"⚠️ DM non consegnati (privacy/bloccati): {contatori['dm_falliti']}"
+            f"⚠️ DM non consegnati (privacy/bloccati): {contatori['dm_falliti']}\n"
+            f"⚠️ Aggiunta non riuscita: {contatori['join_falliti']}"
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
                 f"/security verify setup): {contatori['ruolo_non_assegnato']}"
                 if contatori["ruolo_non_assegnato"]
                 else ""
-            ),
-            ephemeral=True,
+            )
         )
+        await self._manda_riepilogo(interaction, riepilogo)
+
+    async def _manda_riepilogo(self, interaction: discord.Interaction, testo: str) -> None:
+        """Un solo messaggio finale. Il ciclo può durare più dei 15 minuti di vita
+        della risposta dell'interazione: in quel caso il riepilogo va nel canale."""
+        try:
+            await interaction.followup.send(testo, ephemeral=True)
+        except discord.HTTPException:
+            canale = interaction.channel
+            if canale is not None:
+                await canale.send(testo)
+
+    async def _rinnova_se_serve(self, source_guild_id: int, user_id: int, token):
+        """
+        M 12.10 (LIM-37): un token scaduto o vicino alla scadenza si rinnova con il
+        refresh token e si salva. Se Discord rifiuta il rinnovo (token revocato) si
+        restituisce il token com'è: sarà trattato come scaduto e si chiede il consenso.
+        """
+        if token is None or token.status == STATUS_BANNED_BLACKLISTED:
+            return token
+        if token.expires_at - MARGINE_RINNOVO_TOKEN > datetime.now(timezone.utc):
+            return token
+        nuovo = await restore_orchestrator.refresh_access_token(
+            config.OAUTH2_CLIENT_ID, config.OAUTH2_CLIENT_SECRET, token.refresh_token
+        )
+        if nuovo is None:
+            return token
+        await restore_oauth_repo.aggiorna_token(
+            source_guild_id, user_id, nuovo.access_token, nuovo.refresh_token, nuovo.expires_at
+        )
+        return await restore_oauth_repo.get_token(source_guild_id, user_id)
 
     async def _assegna_ruolo_verificato(
         self, guild: discord.Guild, user_id: int, role_id: int

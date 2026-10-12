@@ -52,9 +52,10 @@ def test_decifrare_con_la_chiave_sbagliata_solleva():
 
 def test_testo_cifrato_manomesso_solleva_invece_di_corrompere_silenziosamente():
     cifrato = encrypt_token("segreto", CHIAVE_VALIDA)
-    grezzo = bytearray(base64.urlsafe_b64decode(cifrato))
+    prefisso, id_chiave, corpo = cifrato.split(".", 2)
+    grezzo = bytearray(base64.urlsafe_b64decode(corpo))
     grezzo[-1] ^= 0xFF  # altera un byte del ciphertext/tag
-    manomesso = base64.urlsafe_b64encode(bytes(grezzo)).decode("ascii")
+    manomesso = f"{prefisso}.{id_chiave}.{base64.urlsafe_b64encode(bytes(grezzo)).decode('ascii')}"
 
     with pytest.raises(InvalidTag):
         decrypt_token(manomesso, CHIAVE_VALIDA)
