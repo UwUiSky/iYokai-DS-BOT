@@ -18,10 +18,13 @@ log) — stesso modulo/stesso cog dei filtri base sopra, non uno
 separato: sono entrambi "AutoMod", solo con motore diverso (native
 Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 `/automod`.
+
+I filtri lato bot controllano anche i messaggi MODIFICATI (`on_message_edit`,
+AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
+messaggio modificato più volte vale un solo warn per violazione.
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021)
 """
 
-# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
 # DA FARE (issue #102, fase F13): NF-31, Blocco dei link di phishing.
 #   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
@@ -29,6 +32,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import OrderedDict
 from datetime import timedelta
 
 import discord
@@ -140,7 +144,7 @@ def _finestra(filtro: RateFilterConfig) -> int:
 
 
 def build_message_signals(
-    message: discord.Message, config: AutomodAdvancedConfig
+    message: discord.Message, config: AutomodAdvancedConfig, conta_nel_tempo: bool = True
 ) -> MessageSignals:
     """
     Estrae dal messaggio REALE tutto quello che serve alla logica
@@ -152,6 +156,20 @@ def build_message_signals(
     now = discord.utils.utcnow()
     guild_id = message.guild.id
     user_id = message.author.id
+
+    if not conta_nel_tempo:
+        # Messaggio modificato (AMD-021): vale per il testo, non ai conteggi
+        # nel tempo. Una modifica non è un messaggio in più.
+        return MessageSignals(
+            content=message.content or "",
+            mention_count=_mention_count(message),
+            emoji_count=_count_emoji(message.content or ""),
+            attachment_count=len(message.attachments),
+            sticker_count=len(message.stickers),
+            recent_message_count=0,
+            recent_attachment_count=0,
+            recent_sticker_count=0,
+        )
 
     recent_messages = rate_tracker.record_and_count(
         guild_id, user_id, "messages", now, window_seconds=_finestra(config.anti_spam_messages)
@@ -203,11 +221,32 @@ def _is_safe_from_automated_action(member: discord.Member) -> bool:
     return member.guild_permissions.administrator or member.guild_permissions.manage_guild
 
 
+# Messaggi già avvisati, con tetto: (id messaggio, violazione). Serve a non
+# dare un warn a ogni modifica dello stesso messaggio.
+_AVVISATI_MAX = 2000
+_avvisati: "OrderedDict[tuple[int, str], None]" = OrderedDict()
+
+
+def _warn_da_dare(message_id: int, violazione: str, modificato: bool) -> bool:
+    """
+    Registra il warn. Per un messaggio modificato è False se lo stesso
+    messaggio ha già avuto un warn per la stessa violazione.
+    """
+    chiave = (message_id, violazione)
+    gia = chiave in _avvisati
+    _avvisati[chiave] = None
+    _avvisati.move_to_end(chiave)
+    while len(_avvisati) > _AVVISATI_MAX:
+        _avvisati.popitem(last=False)
+    return not (modificato and gia)
+
+
 async def _execute_actions(
     message: discord.Message,
     violation: str,
     actions: tuple[str, ...],
     settings: AutomodAdvancedSettings,
+    modificato: bool = False,
 ) -> tuple[str, ...]:
     """
     Esegue le azioni configurate per questa violazione, nell'ordine
@@ -235,6 +274,10 @@ async def _execute_actions(
             continue
 
         if azione == "warn":
+            # Lo stesso messaggio, modificato più volte, vale un warn solo
+            # per violazione (senza «delete» il testo resta al suo posto).
+            if not _warn_da_dare(message.id, violation, modificato):
+                continue
             reason = f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}"
             case_number = await moderation_repo.create_case(
                 guild_id=message.guild.id,
@@ -1020,6 +1063,19 @@ class AutomodCog(CogConGruppi, commands.Cog):
         qui — un messaggio bloccato da una regola nativa non arriva
         comunque mai a on_message, quindi non c'è doppia valutazione.
         """
+        await self._controlla(message, modificato=False)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
+        """
+        AMD-021: chi modifica un messaggio per far passare ciò che era
+        bloccato viene controllato di nuovo. Solo se il testo è cambiato.
+        """
+        if before.content == after.content:
+            return
+        await self._controlla(after, modificato=True)
+
+    async def _controlla(self, message: discord.Message, modificato: bool) -> None:
         if message.guild is None or message.author.bot:
             return
         if not isinstance(message.author, discord.Member):
@@ -1032,14 +1088,16 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if is_member_exempt(message.author, settings, message.channel.id):
             return
 
-        segnali = build_message_signals(message, settings.config)
+        segnali = build_message_signals(message, settings.config, conta_nel_tempo=not modificato)
         violazioni = evaluate_message_violations(segnali, settings.config)
         if not violazioni:
             return
 
         for violazione in violazioni:
             azioni_configurate = settings.actions.get(violazione, ("delete",))
-            eseguite = await _execute_actions(message, violazione, azioni_configurate, settings)
+            eseguite = await _execute_actions(
+                message, violazione, azioni_configurate, settings, modificato=modificato
+            )
             await _log_violation(message, violazione, eseguite, settings)
             # Se il messaggio è stato cancellato dalla prima
             # violazione, le successive (stesso messaggio, altri

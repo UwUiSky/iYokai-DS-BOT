@@ -3,11 +3,11 @@ cogs/moderation/channel_control.py
 =====================================
 Comandi di controllo sul canale: /mod lock, /mod unlock, /mod slowmode. Modulo
 SEMPRE GRATUITO (MODULE_CHANNEL_CONTROL, premium_capable=False), come
-da schema ("Lock/Unlock" e "Slowmode" sono [Free]).
+da schema ("Lock/Unlock" e "Slowmode" sono [Free]). Ogni comando scrive
+una riga nel log di moderazione (M 1.8); il motivo del lock è al massimo
+512 caratteri (registro di Discord).
+Funzioni coperte: SPEC §5.5, §5.10
 """
-
-# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
 
 from __future__ import annotations
 
@@ -18,12 +18,24 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.premium import PremiumModule, registry
-from cogs.moderation._shared import MODULE_CHANNEL_CONTROL, ensure_module_enabled
+from cogs.moderation._shared import (
+    MODULE_CHANNEL_CONTROL,
+    Reason,
+    ensure_module_enabled,
+    post_to_mod_log,
+)
 
 # Limite reale di Discord per lo slowmode: 6 ore (21600 secondi). Lo
 # controlliamo prima di chiamare l'API per dare un errore chiaro
 # invece di un 400 generico.
 MAX_SLOWMODE_SECONDS = 21600
+
+
+async def _log(interaction: discord.Interaction, embed: discord.Embed) -> None:
+    """Riga nel log di moderazione, con chi ha dato il comando (M 1.8)."""
+    copia = embed.copy()
+    copia.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+    await post_to_mod_log(interaction.guild, copia)
 
 
 class ModerationChannelControlCog(CogConGruppi, commands.Cog):
@@ -43,7 +55,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel | None = None,
-        reason: str | None = None,
+        reason: Reason | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CHANNEL_CONTROL):
             return
@@ -63,7 +75,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             await target.set_permissions(
                 everyone, overwrite=overwrite, reason=reason or "Canale bloccato"
             )
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
                 "Non ho i permessi per modificare questo canale.", ephemeral=True
             )
@@ -77,6 +89,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         if reason:
             embed.add_field(name="Motivo", value=reason)
         await interaction.response.send_message(embed=embed)
+        await _log(interaction, embed)
 
     @comando_di_gruppo(
         "mod",
@@ -111,7 +124,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             await target.set_permissions(
                 everyone, overwrite=overwrite, reason="Canale sbloccato"
             )
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
                 "Non ho i permessi per modificare questo canale.", ephemeral=True
             )
@@ -123,6 +136,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             color=discord.Color.green(),
         )
         await interaction.response.send_message(embed=embed)
+        await _log(interaction, embed)
 
     @comando_di_gruppo(
         "mod",
@@ -151,7 +165,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
 
         try:
             await target.edit(slowmode_delay=seconds)
-        except discord.Forbidden:
+        except discord.HTTPException:
             await interaction.response.send_message(
                 "Non ho i permessi per modificare questo canale.", ephemeral=True
             )
@@ -162,6 +176,8 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         else:
             messaggio = f"Slowmode impostato a {seconds}s in {target.mention}."
         await interaction.response.send_message(messaggio)
+        embed = discord.Embed(title="🐌 Slowmode", description=messaggio, color=discord.Color.blurple())
+        await _log(interaction, embed)
 
 
 async def setup(bot: commands.Bot) -> None:

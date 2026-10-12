@@ -1,0 +1,799 @@
+"""
+tests/test_moderation_tempban_modi.py
+=====================================
+Ban temporaneo con rientro e ban in isolamento (issue #138, SPEC 5.11/5.12).
+Logica dei ruoli, stato su database vero e comandi con i finti fedeli di Discord.
+"""
+
+import datetime
+from unittest.mock import AsyncMock, MagicMock
+
+import discord
+import pytest
+
+import core.scheduler as modulo_scheduler
+from cogs.moderation._shared import MODULE_ACTIONS
+from cogs.moderation import _tempban_modes as tempban_modes_modulo
+from cogs.moderation.actions import ModerationActionsCog
+from core.database import db
+from core.repositories.moderation_repo import moderation_repo
+from core.tempban_logic import (
+    MODO_FUORI,
+    MODO_ISOLAMENTO,
+    MODO_RIENTRO,
+    RuoloInfo,
+    ruoli_da_ridare,
+    ruoli_da_salvare,
+    ruoli_da_tenere_in_isolamento,
+)
+from tests.support.discord_fakes import (
+    fake_guild,
+    fake_interaction,
+    fake_member,
+    fake_role,
+    fake_text_channel,
+)
+
+ID_SERVER = 100
+ID_BERSAGLIO = 20
+
+
+# ---------------------------- logica pura ----------------------------
+
+def test_ruoli_da_salvare_salta_everyone_e_gestiti():
+    ruoli = [
+        RuoloInfo(100, 0, is_default=True),
+        RuoloInfo(1, 5),
+        RuoloInfo(2, 6, managed=True),
+    ]
+    assert ruoli_da_salvare(ruoli) == [1]
+
+
+def test_ruoli_da_ridare_solo_sotto_il_bot_esistenti_e_non_gestiti():
+    server = [
+        RuoloInfo(1, 5),
+        RuoloInfo(2, 60),  # sopra il bot
+        RuoloInfo(3, 5, managed=True),
+        RuoloInfo(4, 4),
+    ]
+    # 9 non esiste più
+    assert ruoli_da_ridare([1, 2, 3, 4, 9], server, posizione_bot=50) == [1, 4]
+
+
+def test_ruoli_da_tenere_in_isolamento():
+    ruoli = [RuoloInfo(1, 5), RuoloInfo(2, 5, managed=True), RuoloInfo(3, 70), RuoloInfo(100, 0, is_default=True)]
+    assert ruoli_da_tenere_in_isolamento(ruoli, posizione_bot=50) == [2, 3]
+
+
+# ------------------------------ ambiente ------------------------------
+
+@pytest.fixture(autouse=True)
+async def _ambiente(monkeypatch, clean_db):
+    import core.database as database_module
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    database_module.db._modules_cache.clear()
+    await db.set_module_active_for_guild(ID_SERVER, MODULE_ACTIONS, True)
+    yield
+    database_module.db._modules_cache.clear()
+
+
+async def test_stato_salvato_letto_e_cancellato():
+    fine = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    await moderation_repo.save_tempban_state(ID_SERVER, ID_BERSAGLIO, MODO_RIENTRO, [1, 2], fine, "abc", 7)
+    stato = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert stato["ruoli"] == [1, 2] and stato["invito_codice"] == "abc" and not stato["scaduto"]
+    await moderation_repo.mark_tempban_state_expired(ID_SERVER, ID_BERSAGLIO)
+    assert (await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))["scaduto"]
+    await moderation_repo.delete_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+class Scena:
+    def __init__(self) -> None:
+        self.chiamate: list[str] = []
+        self.server = fake_guild(ID_SERVER, owner_id=1)
+        self.server.me.top_role = fake_role(role_id=3, position=50)
+        self.server.me.id = 999
+        self.canale_invito = fake_text_channel(5001, "regole")
+        self.server.system_channel = self.canale_invito
+        self.server.rules_channel = None
+        self.invito = MagicMock(spec=discord.Invite)
+        self.invito.url = "https://discord.gg/xyz"
+        self.invito.code = "xyz"
+        self.invito.delete = AsyncMock()
+        self.canale_invito.create_invite = AsyncMock(side_effect=self._crea_invito)
+        self.server.text_channels = [self.canale_invito]
+        self.server.channels = [self.canale_invito]
+        self.server.get_channel.return_value = None
+        self.server.roles = []
+
+        self.ruolo_a = fake_role(role_id=11, name="A", position=5)
+        self.ruolo_alto = fake_role(role_id=12, name="Alto", position=70)
+        self.ruolo_gestito = fake_role(role_id=13, name="Bot", position=6, managed=True)
+        self.everyone = fake_role(role_id=ID_SERVER, name="@everyone", position=0)
+        self.everyone.is_default = MagicMock(return_value=True)
+        self.server.roles = [self.everyone, self.ruolo_a, self.ruolo_alto, self.ruolo_gestito]
+        self.server.get_role = MagicMock(side_effect=lambda i: next((r for r in self.server.roles if r.id == i), None))
+        self.server.default_role = self.everyone
+
+        self.moderatore = fake_member(10, roles=[fake_role(role_id=1, position=40)])
+        self.moderatore.guild = self.server
+        self.bersaglio = fake_member(
+            ID_BERSAGLIO, roles=[self.everyone, self.ruolo_a, self.ruolo_alto, self.ruolo_gestito]
+        )
+        self.bersaglio.guild = self.server
+        self.server.get_member.return_value = self.moderatore
+        self.interazione = fake_interaction(guild=self.server, user=self.moderatore)
+        self.interazione.client = MagicMock()
+        self.interazione.client.delete_invite = AsyncMock()
+
+        self.messaggio_dm = MagicMock(spec=discord.Message)
+        self.messaggio_dm.delete = AsyncMock(side_effect=lambda: self.chiamate.append("dm_cancellato"))
+        self._annota(self.bersaglio.send, "dm", self.messaggio_dm)
+        self._annota(self.bersaglio.ban, "ban")
+        self._annota(self.bersaglio.edit, "edit")
+
+    async def _crea_invito(self, **kwargs):
+        self.chiamate.append("invito")
+        self.kwargs_invito = kwargs
+        return self.invito
+
+    def _annota(self, finto, nome, ritorno=None):
+        async def _f(*a, **k):
+            self.chiamate.append(nome)
+            return ritorno
+
+        finto.side_effect = _f
+
+
+async def _tempban(scena, modo):
+    cog = ModerationActionsCog(bot=None)
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "7d", "Spam ripetuto", modo)
+    return cog
+
+
+async def test_rientro_invito_e_dm_prima_del_ban_e_ruoli_salvati(monkeypatch):
+    pianificate = []
+
+    async def _pianifica(**kw):
+        pianificate.append(kw)
+
+    monkeypatch.setattr(modulo_scheduler.scheduler, "schedule", _pianifica)
+    scena = Scena()
+
+    await _tempban(scena, MODO_RIENTRO)
+
+    assert scena.chiamate == ["invito", "dm", "ban"]
+    # L'invito vale oltre la scadenza: non scade e si usa una volta.
+    assert scena.kwargs_invito["max_age"] == 0 and scena.kwargs_invito["max_uses"] == 1
+    embed = scena.bersaglio.send.call_args.kwargs["embed"]
+    testo = " ".join(f.value for f in embed.fields) + (embed.description or "")
+    assert "https://discord.gg/xyz" in testo and "<t:" in testo
+    stato = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert stato["modo"] == MODO_RIENTRO and stato["ruoli"] == [11, 12]
+    assert pianificate[0]["payload"]["modo"] == MODO_RIENTRO
+
+
+async def test_rientro_ban_fallito_cancella_dm_invito_e_stato(monkeypatch):
+    scena = Scena()
+
+    async def _fallisce(*a, **k):
+        raise discord.HTTPException(MagicMock(status=400, reason="x"), "x")
+
+    scena.bersaglio.ban.side_effect = _fallisce
+    await _tempban(scena, MODO_RIENTRO)
+
+    assert "dm_cancellato" in scena.chiamate
+    scena.invito.delete.assert_awaited()
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+    assert await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO) == []
+
+
+async def test_modo_fuori_non_crea_invito_ne_stato():
+    scena = Scena()
+    await _tempban(scena, MODO_FUORI)
+    assert scena.chiamate == ["dm", "ban"]
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+async def test_scadenza_rientro_sbanna_e_al_rientro_ridona_i_ruoli():
+    scena = Scena()
+    cog = await _tempban(scena, MODO_RIENTRO)
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    scena.server.unban = AsyncMock()
+
+    await cog.handle_tempban_expire(
+        ID_SERVER, ID_BERSAGLIO, {"case_number": caso.case_number, "modo": MODO_RIENTRO}
+    )
+
+    scena.server.unban.assert_awaited()
+    assert (await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))["scaduto"]
+
+    # Il utente rientra: riprende i ruoli sotto il bot (11), non quello alto (12).
+    nuovo = fake_member(ID_BERSAGLIO, roles=[scena.everyone])
+    nuovo.guild = scena.server
+    nuovo.add_roles = AsyncMock()
+    await cog.on_member_join(nuovo)
+    ridati = nuovo.add_roles.call_args.args
+    assert [r.id for r in ridati] == [11]
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+async def test_rientro_non_ancora_scaduto_non_ridona_ruoli():
+    scena = Scena()
+    cog = await _tempban(scena, MODO_RIENTRO)
+    nuovo = fake_member(ID_BERSAGLIO, roles=[scena.everyone])
+    nuovo.guild = scena.server
+    nuovo.add_roles = AsyncMock()
+    await cog.on_member_join(nuovo)
+    nuovo.add_roles.assert_not_awaited()
+
+
+def _prepara_isolamento(scena):
+    """Server finto che sa creare ruolo e canale di isolamento."""
+    ruolo_iso = fake_role(role_id=900, name="Isolamento", position=2)
+    canale_iso = fake_text_channel(901, "isolamento")
+    canale_iso.send = AsyncMock()
+    scena.server.create_role = AsyncMock(return_value=ruolo_iso)
+    scena.server.create_text_channel = AsyncMock(return_value=canale_iso)
+    for canale in scena.server.channels:
+        canale.set_permissions = AsyncMock()
+        canale.overwrites_for = MagicMock(return_value=discord.PermissionOverwrite())
+    canale_iso.set_permissions = AsyncMock()
+    return ruolo_iso, canale_iso
+
+
+async def test_isolamento_non_banna_toglie_i_ruoli_e_avvisa_nel_canale(monkeypatch):
+    pianificate = []
+
+    async def _pianifica(**kw):
+        pianificate.append(kw)
+
+    monkeypatch.setattr(modulo_scheduler.scheduler, "schedule", _pianifica)
+    scena = Scena()
+    ruolo_iso, canale_iso = _prepara_isolamento(scena)
+
+    await _tempban(scena, MODO_ISOLAMENTO)
+
+    assert "ban" not in scena.chiamate
+    # Un'unica modifica dei ruoli: restano gestito e alto (non rimovibili) + isolamento.
+    ruoli_finali = scena.bersaglio.edit.call_args.kwargs["roles"]
+    assert {r.id for r in ruoli_finali} == {12, 13, 900}
+    # Il ruolo non vede nessun canale tranne quello di isolamento.
+    scena.canale_invito.set_permissions.assert_awaited()
+    sovrascrittura = scena.canale_invito.set_permissions.call_args.kwargs["overwrite"]
+    assert sovrascrittura.view_channel is False
+    canale_iso.send.assert_awaited()
+    assert "<t:" in canale_iso.send.call_args.args[0] or "<t:" in str(canale_iso.send.call_args)
+    stato = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert stato["modo"] == MODO_ISOLAMENTO and stato["ruoli"] == [11]
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    assert caso.action_type == "isolamento"
+    assert pianificate[0]["payload"]["modo"] == MODO_ISOLAMENTO
+
+
+async def test_scadenza_isolamento_ridona_i_ruoli_e_toglie_il_ruolo():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    scena.server.get_member.return_value = scena.bersaglio
+    scena.bersaglio.roles = [scena.everyone, scena.ruolo_alto, scena.ruolo_gestito, ruolo_iso]
+    scena.server.get_role = MagicMock(side_effect=lambda i: ruolo_iso if i == 900 else next((r for r in scena.server.roles if r.id == i), None))
+    scena.bersaglio.remove_roles = AsyncMock()
+    scena.bersaglio.add_roles = AsyncMock()
+
+    await cog.handle_tempban_expire(
+        ID_SERVER, ID_BERSAGLIO, {"case_number": caso.case_number, "modo": MODO_ISOLAMENTO}
+    )
+
+    scena.bersaglio.remove_roles.assert_awaited()
+    assert [r.id for r in scena.bersaglio.add_roles.call_args.args] == [11]
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+async def test_canale_nuovo_riceve_il_divieto_dell_isolamento():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    cog.bot = MagicMock()
+    nuovo = fake_text_channel(777, "nuovo")
+    nuovo.guild = scena.server
+    nuovo.set_permissions = AsyncMock()
+    nuovo.overwrites_for = MagicMock(return_value=discord.PermissionOverwrite())
+    scena.server.get_role = MagicMock(side_effect=lambda i: ruolo_iso if i == 900 else None)
+
+    await cog.on_guild_channel_create(nuovo)
+
+    nuovo.set_permissions.assert_awaited()
+
+
+async def test_unban_libera_chi_e_in_isolamento_senza_sbannare():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    scena.server.get_member.return_value = scena.bersaglio
+    scena.bersaglio.roles = [scena.everyone, ruolo_iso]
+    scena.server.get_role = MagicMock(side_effect=lambda i: ruolo_iso if i == 900 else next((r for r in scena.server.roles if r.id == i), None))
+    scena.bersaglio.remove_roles = AsyncMock()
+    scena.bersaglio.add_roles = AsyncMock()
+    scena.server.unban = AsyncMock()
+
+    await cog.unban.callback(cog, scena.interazione, str(ID_BERSAGLIO), "Basta così")
+
+    scena.server.unban.assert_not_awaited()
+    scena.bersaglio.remove_roles.assert_awaited()
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    assert caso.active is False
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+# ----------------- correzioni del giro bug (isolamento, job, invito) -----------------
+
+def _con_ruolo_iso(scena, ruolo_iso):
+    scena.server.roles.append(ruolo_iso)
+
+
+async def _pendenti():
+    from core.scheduler import scheduler
+
+    return await scheduler.list_pending_for_user(ID_BERSAGLIO, "moderation_tempban_expire")
+
+
+async def test_secondo_isolamento_non_salva_il_ruolo_iso_e_tiene_i_ruoli_veri():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    assert (await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))["ruoli"] == [11]
+
+    # Ora è già isolato: ha solo i ruoli non rimovibili e il ruolo di isolamento.
+    _con_ruolo_iso(scena, ruolo_iso)
+    scena.bersaglio.roles = [scena.everyone, scena.ruolo_alto, scena.ruolo_gestito, ruolo_iso]
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "3d", "Ancora", MODO_ISOLAMENTO)
+
+    stato = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert stato["ruoli"] == [11]  # niente 900, e il ruolo vero non è perso
+
+
+async def test_tempban_con_rientro_su_chi_e_isolato_tiene_i_ruoli_veri():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    _con_ruolo_iso(scena, ruolo_iso)
+    scena.bersaglio.roles = [scena.everyone, scena.ruolo_alto, scena.ruolo_gestito, ruolo_iso]
+
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "3d", "Basta", MODO_RIENTRO)
+
+    stato = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert stato["modo"] == MODO_RIENTRO and 11 in stato["ruoli"] and 900 not in stato["ruoli"]
+
+
+async def test_stato_salvato_prima_di_togliere_i_ruoli():
+    scena = Scena()
+    _prepara_isolamento(scena)
+    visto = []
+
+    async def _edit(*a, **k):
+        visto.append(await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))
+
+    scena.bersaglio.edit.side_effect = _edit
+    await _tempban(scena, MODO_ISOLAMENTO)
+
+    assert visto[0] is not None and visto[0]["ruoli"] == [11]
+
+
+async def test_isolamento_fallito_non_lascia_stato_e_ripristina_il_precedente():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    prima = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    _con_ruolo_iso(scena, ruolo_iso)
+
+    async def _fallisce(*a, **k):
+        raise discord.HTTPException(MagicMock(status=500, reason="x"), "x")
+
+    scena.bersaglio.edit.side_effect = _fallisce
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "3d", "Ancora", MODO_ISOLAMENTO)
+
+    dopo = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert dopo["ruoli"] == prima["ruoli"] and dopo["case_number"] == prima["case_number"]
+
+
+async def test_secondo_tempban_sostituisce_la_scadenza_e_il_vecchio_job_non_libera():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    primo = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0].case_number
+    _con_ruolo_iso(scena, ruolo_iso)
+    scena.bersaglio.roles = [scena.everyone, scena.ruolo_alto, scena.ruolo_gestito, ruolo_iso]
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "3d", "Ancora", MODO_ISOLAMENTO)
+
+    assert len(await _pendenti()) == 1  # il job vecchio è stato cancellato
+
+    # Anche se il vecchio job scattasse lo stesso, non libera il caso nuovo.
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    scena.server.get_member.return_value = scena.bersaglio
+    scena.bersaglio.remove_roles = AsyncMock()
+    scena.bersaglio.add_roles = AsyncMock()
+    await cog.handle_tempban_expire(ID_SERVER, ID_BERSAGLIO, {"case_number": primo, "modo": MODO_ISOLAMENTO})
+
+    scena.bersaglio.remove_roles.assert_not_awaited()
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is not None
+
+
+async def test_unban_cancella_la_scadenza_automatica():
+    scena = Scena()
+    cog = await _tempban(scena, MODO_RIENTRO)
+    assert len(await _pendenti()) == 1
+    scena.server.unban = AsyncMock()
+
+    await cog.unban.callback(cog, scena.interazione, str(ID_BERSAGLIO), "Basta così")
+
+    assert await _pendenti() == []
+
+
+async def test_dm_chiuso_l_invito_va_al_moderatore():
+    scena = Scena()
+
+    async def _chiuso(*a, **k):
+        raise discord.Forbidden(MagicMock(status=403, reason="x"), "x")
+
+    scena.bersaglio.send.side_effect = _chiuso
+    await _tempban(scena, MODO_RIENTRO)
+
+    testi = [str(c) for c in scena.interazione.followup.send.call_args_list]
+    assert any("https://discord.gg/xyz" in t for t in testi)
+    ultimo = scena.interazione.followup.send.call_args_list[-1]
+    assert ultimo.kwargs.get("ephemeral") is True
+
+
+async def test_scadenza_isolamento_con_cache_fredda_cerca_il_membro():
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    scena.server.get_member.return_value = None
+    scena.server.fetch_member = AsyncMock(return_value=scena.bersaglio)
+    scena.bersaglio.roles = [scena.everyone, ruolo_iso]
+    scena.server.get_role = MagicMock(side_effect=lambda i: ruolo_iso if i == 900 else next((r for r in scena.server.roles if r.id == i), None))
+    scena.bersaglio.remove_roles = AsyncMock()
+    scena.bersaglio.add_roles = AsyncMock()
+
+    await cog.handle_tempban_expire(ID_SERVER, ID_BERSAGLIO, {"case_number": caso.case_number, "modo": MODO_ISOLAMENTO})
+
+    scena.bersaglio.remove_roles.assert_awaited()
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+async def test_isolamento_nasconde_i_canali_in_parallelo():
+    import asyncio
+
+    from cogs.moderation import _tempban_modes as modi
+
+    scena = Scena()
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    attivi = {"ora": 0, "max": 0}
+
+    async def _lento(*a, **k):
+        attivi["ora"] += 1
+        attivi["max"] = max(attivi["max"], attivi["ora"])
+        await asyncio.sleep(0.02)
+        attivi["ora"] -= 1
+
+    canali = []
+    for i in range(20):
+        c = fake_text_channel(2000 + i, f"c{i}")
+        c.set_permissions = AsyncMock(side_effect=_lento)
+        c.overwrites_for = MagicMock(return_value=discord.PermissionOverwrite())
+        canali.append(c)
+    scena.server.channels = canali
+
+    await modi.prepara_isolamento(scena.server)
+
+    assert attivi["max"] > 1
+
+
+# --------- secondo passaggio di revisione: ban su isolato, rientro, OAuth, mutazioni ---------
+
+async def _isolato(scena):
+    """Un utente già isolato con un solo ruolo vero salvato; ritorna (cog, ruolo_iso)."""
+    ruolo_iso, _ = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    _con_ruolo_iso(scena, ruolo_iso)
+    scena.bersaglio.roles = [scena.everyone, scena.ruolo_alto, scena.ruolo_gestito, ruolo_iso]
+    scena.server.get_role = MagicMock(
+        side_effect=lambda i: next((r for r in scena.server.roles if r.id == i), None)
+    )
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    cog.bot.delete_invite = AsyncMock()
+    return cog, ruolo_iso
+
+
+async def test_ban_su_chi_e_isolato_pulisce_tutto_e_poi_unban_sbanna_davvero():
+    scena = Scena()
+    cog, _ = await _isolato(scena)
+    assert len(await _pendenti()) == 1
+
+    await cog.ban.callback(cog, scena.interazione, scena.bersaglio, "Troppo", 0)
+
+    assert "ban" in scena.chiamate
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+    assert await _pendenti() == []
+    assert await moderation_repo.get_latest_active_case(ID_SERVER, ID_BERSAGLIO, "isolamento") is None
+
+    scena.server.unban = AsyncMock()
+    scena.server.get_member.return_value = None
+    scena.server.fetch_member = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404, reason="x"), "x"))
+    await cog.unban.callback(cog, scena.interazione, str(ID_BERSAGLIO), "Revisione")
+
+    scena.server.unban.assert_awaited()
+
+
+async def test_kick_su_chi_e_isolato_pulisce_stato_e_scadenza():
+    scena = Scena()
+    cog, _ = await _isolato(scena)
+    scena.bersaglio.kick = AsyncMock()
+
+    await cog.kick.callback(cog, scena.interazione, scena.bersaglio, "Fuori")
+
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+    assert await _pendenti() == []
+
+
+async def test_unban_di_isolato_uscito_dal_server_sbanna_o_segna_scaduto():
+    scena = Scena()
+    cog, _ = await _isolato(scena)
+    scena.server.get_member.return_value = None
+    scena.server.fetch_member = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404, reason="x"), "x"))
+    scena.server.unban = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404, reason="x"), "x"))
+
+    await cog.unban.callback(cog, scena.interazione, str(ID_BERSAGLIO), "Basta")
+
+    assert (await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))["scaduto"]
+    assert await _pendenti() == []
+    assert "liberato" in scena.interazione.response.send_message.call_args.args[0]
+
+
+async def test_rientro_senza_invito_possibile_non_banna():
+    scena = Scena()
+    scena.canale_invito.create_invite.side_effect = discord.HTTPException(
+        MagicMock(status=403, reason="x"), "x"
+    )
+
+    await _tempban(scena, MODO_RIENTRO)
+
+    assert "ban" not in scena.chiamate and "dm" not in scena.chiamate
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+    assert "non banno" in scena.interazione.followup.send.call_args.args[0]
+
+
+async def test_rientro_senza_invito_ma_con_oauth_banna(monkeypatch):
+    scena = Scena()
+    scena.canale_invito.create_invite.side_effect = discord.HTTPException(
+        MagicMock(status=403, reason="x"), "x"
+    )
+    monkeypatch.setattr(tempban_modes_modulo, "rientro_oauth_possibile", AsyncMock(return_value=True))
+
+    await _tempban(scena, MODO_RIENTRO)
+
+    assert "ban" in scena.chiamate
+    assert (await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))["oauth_rientro"] is True
+
+
+async def test_canali_non_nascosti_sono_contati_e_detti_al_moderatore():
+    scena = Scena()
+    _prepara_isolamento(scena)
+    scena.canale_invito.set_permissions.side_effect = discord.HTTPException(
+        MagicMock(status=403, reason="x"), "x"
+    )
+
+    await _tempban(scena, MODO_ISOLAMENTO)
+
+    testi = [c.args[0] for c in scena.interazione.followup.send.call_args_list if c.args]
+    assert any("1 canali non sono stati nascosti" in t for t in testi)
+
+
+async def test_scadenza_con_oauth_fa_rientrare_da_solo_e_toglie_l_invito(monkeypatch):
+    scena = Scena()
+    monkeypatch.setattr(tempban_modes_modulo, "rientro_oauth_possibile", AsyncMock(return_value=True))
+    cog = await _tempban(scena, MODO_RIENTRO)
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    cog.bot.delete_invite = AsyncMock()
+    scena.server.unban = AsyncMock()
+    rientra = AsyncMock(return_value=True)
+    monkeypatch.setattr(tempban_modes_modulo, "rientra_via_oauth", rientra)
+
+    await cog.handle_tempban_expire(ID_SERVER, ID_BERSAGLIO, {"case_number": caso.case_number, "modo": MODO_RIENTRO})
+
+    rientra.assert_awaited_once_with(ID_SERVER, ID_BERSAGLIO)
+    cog.bot.delete_invite.assert_awaited()
+    # Lo stato è già scaduto: l'ingresso (on_member_join) ridà i ruoli.
+    assert (await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO))["scaduto"]
+
+
+async def test_scadenza_senza_autorizzazione_non_prova_oauth(monkeypatch):
+    scena = Scena()
+    cog = await _tempban(scena, MODO_RIENTRO)
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    scena.server.unban = AsyncMock()
+    rientra = AsyncMock(return_value=True)
+    monkeypatch.setattr(tempban_modes_modulo, "rientra_via_oauth", rientra)
+
+    await cog.handle_tempban_expire(ID_SERVER, ID_BERSAGLIO, {"case_number": caso.case_number, "modo": MODO_RIENTRO})
+
+    rientra.assert_not_awaited()
+
+
+async def test_oauth_possibile_solo_con_token_valido_fino_alla_fine(monkeypatch):
+    from types import SimpleNamespace
+
+    fine = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+
+    def _token(stato, scade):
+        return SimpleNamespace(status=stato, expires_at=scade, access_token="x")
+
+    for token, atteso in [
+        (_token("active", fine + datetime.timedelta(days=1)), True),
+        (_token("kicked_flagged", fine + datetime.timedelta(days=1)), True),
+        (_token("active", fine - datetime.timedelta(hours=1)), False),
+        (_token("banned_blacklisted", fine + datetime.timedelta(days=1)), False),
+        (None, False),
+    ]:
+        monkeypatch.setattr(tempban_modes_modulo.restore_oauth_repo, "get_token", AsyncMock(return_value=token))
+        assert await tempban_modes_modulo.rientro_oauth_possibile(1, 2, fine) is atteso
+
+
+async def test_rientra_via_oauth_usa_il_guilds_join(monkeypatch):
+    from types import SimpleNamespace
+
+    scade = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    monkeypatch.setattr(
+        tempban_modes_modulo.restore_oauth_repo, "get_token",
+        AsyncMock(return_value=SimpleNamespace(status="active", expires_at=scade, access_token="tok")),
+    )
+    join = AsyncMock(return_value=True)
+    monkeypatch.setattr(tempban_modes_modulo.restore_orchestrator, "join_user_via_oauth", join)
+
+    assert await tempban_modes_modulo.rientra_via_oauth(ID_SERVER, ID_BERSAGLIO) is True
+
+    assert join.call_args.kwargs["access_token"] == "tok"
+    assert join.call_args.kwargs["guild_id"] == ID_SERVER and join.call_args.kwargs["user_id"] == ID_BERSAGLIO
+
+
+async def test_unban_di_un_rientro_cancella_l_invito_e_chiude_gli_appelli():
+    scena = Scena()
+    cog = await _tempban(scena, MODO_RIENTRO)
+    await moderation_repo.create_appeal_if_allowed(ID_SERVER, ID_BERSAGLIO, 1, "x" * 30, datetime.timedelta(hours=24))
+    scena.server.unban = AsyncMock()
+
+    await cog.unban.callback(cog, scena.interazione, str(ID_BERSAGLIO), "Basta")
+
+    scena.interazione.client.delete_invite.assert_awaited_once()
+    assert scena.interazione.client.delete_invite.call_args.args[0] == "xyz"
+    assert (await moderation_repo.list_appeals(ID_SERVER))[0]["stato"] == "accettato"
+
+
+# ------------------------- mutazioni sopravvissute -------------------------
+
+async def test_isolato_che_esce_e_rientra_torna_isolato():
+    scena = Scena()
+    cog, ruolo_iso = await _isolato(scena)
+    nuovo = fake_member(ID_BERSAGLIO, roles=[scena.everyone])
+    nuovo.guild = scena.server
+    nuovo.add_roles = AsyncMock()
+    scena.server.get_role = MagicMock(side_effect=lambda i: ruolo_iso if i == 900 else None)
+
+    await cog.on_member_join(nuovo)
+
+    assert nuovo.add_roles.call_args.args[0].id == 900
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is not None
+
+
+async def test_il_canale_di_isolamento_non_viene_nascosto_a_chi_e_isolato():
+    scena = Scena()
+    ruolo_iso, canale_iso = _prepara_isolamento(scena)
+    cog = await _tempban(scena, MODO_ISOLAMENTO)
+    scena.server.get_role = MagicMock(side_effect=lambda i: ruolo_iso if i == 900 else None)
+    canale_iso.set_permissions.reset_mock()
+    canale_iso.guild = scena.server
+
+    await cog.on_guild_channel_create(canale_iso)
+
+    canale_iso.set_permissions.assert_not_awaited()
+
+
+async def test_canale_di_isolamento_si_legge_ma_non_si_scrive():
+    scena = Scena()
+    _prepara_isolamento(scena)
+    await _tempban(scena, MODO_ISOLAMENTO)
+
+    sovrascritture = scena.server.create_text_channel.call_args.kwargs["overwrites"]
+    permessi = next(v for k, v in sovrascritture.items() if getattr(k, "id", None) == 900)
+    assert permessi.view_channel is True and permessi.send_messages is False
+    assert permessi.read_message_history is True
+
+
+async def test_invito_unico_e_con_ripiego_su_un_altro_canale():
+    scena = Scena()
+    secondo = fake_text_channel(5002, "altro")
+    secondo.create_invite = AsyncMock(side_effect=scena._crea_invito)
+    scena.server.text_channels = [scena.canale_invito, secondo]
+    scena.canale_invito.create_invite.side_effect = discord.HTTPException(
+        MagicMock(status=403, reason="x"), "x"
+    )
+
+    await _tempban(scena, MODO_RIENTRO)
+
+    assert scena.kwargs_invito["unique"] is True
+    assert "ban" in scena.chiamate
+
+
+async def test_secondo_isolamento_chiude_il_caso_precedente():
+    scena = Scena()
+    cog, _ = await _isolato(scena)
+    primo = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0].case_number
+
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "3d", "Ancora", MODO_ISOLAMENTO)
+
+    assert (await moderation_repo.get_case(ID_SERVER, primo)).active is False
+
+
+async def test_tempban_fuori_su_isolato_cancella_lo_stato():
+    scena = Scena()
+    cog, _ = await _isolato(scena)
+
+    await cog.tempban.callback(cog, scena.interazione, scena.bersaglio, "3d", "Fuori", MODO_FUORI)
+
+    assert await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO) is None
+
+
+async def test_la_scadenza_scrive_nel_log_di_moderazione(monkeypatch):
+    import cogs.moderation.actions as azioni
+
+    scena = Scena()
+    cog = await _tempban(scena, MODO_FUORI)
+    caso = (await moderation_repo.list_cases_for_user(ID_SERVER, ID_BERSAGLIO))[0]
+    cog.bot = MagicMock()
+    cog.bot.get_guild.return_value = scena.server
+    cog.bot.user.id = 999
+    scena.server.unban = AsyncMock()
+    log = AsyncMock()
+    monkeypatch.setattr(azioni, "post_to_mod_log", log)
+
+    await cog.handle_tempban_expire(ID_SERVER, ID_BERSAGLIO, {"case_number": caso.case_number, "modo": MODO_FUORI})
+
+    assert "Tempban scaduto" in log.call_args.args[1].title
+    assert (await moderation_repo.get_case(ID_SERVER, caso.case_number)).active is False
+
+
+async def test_ripristino_dello_stato_mantiene_il_segno_scaduto():
+    fine = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    await moderation_repo.save_tempban_state(ID_SERVER, ID_BERSAGLIO, MODO_RIENTRO, [1], fine, "abc", 7)
+    await moderation_repo.mark_tempban_state_expired(ID_SERVER, ID_BERSAGLIO)
+    precedente = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    await moderation_repo.save_tempban_state(ID_SERVER, ID_BERSAGLIO, MODO_ISOLAMENTO, [2], fine)
+
+    await tempban_modes_modulo.ripristina_stato(ID_SERVER, ID_BERSAGLIO, precedente)
+
+    dopo = await moderation_repo.get_tempban_state(ID_SERVER, ID_BERSAGLIO)
+    assert dopo["scaduto"] and dopo["modo"] == MODO_RIENTRO and dopo["ruoli"] == [1]

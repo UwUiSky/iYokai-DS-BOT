@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:32 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 13:15 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 241 comandi in 16 categorie.**
+**Totale: 256 comandi in 16 categorie.**
 
 ## Admin
 
@@ -162,6 +162,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 
 ## Moderazione
 
+- **`/mod avvisi azzera`** — Toglie tutti i warn attivi di un membro (serve «Gestire il server»).
+- **`/mod avvisi classifica`** — I membri con più warn attivi.
+- **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
+- **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
+- **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
+- **`/mod caso motivo`** — Cambia il motivo di un caso già registrato.
 - **`/mod caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod caso vedi`** — Mostra i dettagli di un singolo caso.
 - **`/mod clear`** — Cancella un numero di messaggi, con filtri opzionali.
@@ -169,6 +175,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 - **`/mod mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
 - **`/mod nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod nota elenca`** — Elenca le note su un utente.
+- **`/mod nota modifica`** — Cambia il testo di una nota.
+- **`/mod nota rimuovi`** — Toglie una nota (il numero è nell'elenco delle note).
+- **`/mod nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
 - **`/mod slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.
@@ -178,6 +187,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 
 ## Ban (modban)
 
+- **`/modban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
+- **`/modban appelli elenco`** — Mostra gli ultimi appelli del server.
 - **`/modban ban`** — Banna permanentemente un membro.
 - **`/modban kick`** — Espelle un membro dal server.
 - **`/modban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.
@@ -252,8 +263,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-11 20:
 - **`/security spamtrap`** — Configura i canali trappola e log dello Spam Trap.
 - **`/security verify blacklist-add`** — Aggiungi un utente alla blacklist.
 - **`/security verify blacklist-remove`** — Rimuovi un utente dalla blacklist.
+- **`/security verify manuale`** — Verifica a mano un membro, senza controlli.
+- **`/security verify opzioni`** — Ruolo «non verificato» e ruoli extra.
 - **`/security verify panel`** — Pubblica il pannello di verifica.
 - **`/security verify setup`** — Configura il Verify.
+- **`/security verify statistiche`** — Verifiche riuscite e fallite.
+- **`/security verify tentativi`** — Tentativi di verifica di un utente.
 - **`/security verify whitelist-add`** — Aggiungi un utente alla whitelist.
 - **`/security verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
 

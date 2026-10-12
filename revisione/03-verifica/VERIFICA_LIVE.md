@@ -659,6 +659,43 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Con `premi modo:Sostituisci`, metti il ruolo-premio del livello alto sopra il ruolo del bot e fai salire un membro.
   Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
 - [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
+
+
+## Moderazione — passaggio `feat/giro-mod` (#138)
+
+- [ ] `5.11` (#138) — passi:
+  1. Con un secondo account: `/modban tempban member:@prova duration:2m reason:prova modo:Fuori, con invito e ruoli al rientro`.
+  2. Controlla il DM ricevuto (data di fine e invito) prima che l'account sparisca dal server.
+  3. Aspetta 2 minuti, entra con l'invito.
+  Risultato atteso: l'invito funziona anche dopo la scadenza; l'account rientra con i ruoli di prima (non quelli sopra il bot); riga nel log di moderazione «Tempban scaduto».
+- [ ] `5.12` (#138) — passi:
+  1. `/modban tempban ... duration:3m modo:Isolamento` su un account con due ruoli.
+  2. Controlla che veda solo #isolamento (con la data di fine), crea un canale nuovo e controlla che non lo veda.
+  3. Fallo uscire e rientrare prima della fine: deve tornare isolato. Poi prova `/modban unban` con l'ID.
+  Risultato atteso: ruoli tolti durante l'isolamento e ridati alla fine (o all'unban); nessun ban vero.
+- [ ] `NF-30` (#101) — passi:
+  1. `/modban appelli canale channel:#appelli`.
+  2. Banna un secondo account con `/modban ban`: nel DM deve esserci il bottone «Fai appello».
+  3. Clicca il bottone dal DM (l'account è fuori dal server), scrivi il testo, invia. Riprova subito: deve dire di attendere 24 ore.
+  4. Nel canale staff usa «Rifiuta» (nessun ban tolto) su un secondo appello, poi «Accetta» su un terzo; prova anche con un account senza «Bannare membri».
+  Risultato atteso: il modulo si apre anche da un account bannato (se Discord lo impedisce, annotarlo); Accetta toglie il ban e scrive all'utente; il bottone dopo un riavvio del bot funziona ancora. `/modban appelli elenco` mostra gli stati.
+- [ ] `VER-014/015/016` (#118) — passi:
+  1. `/security verify opzioni non_verificato:@Nuovo extra_1:@Membro`, poi fai entrare un account di prova.
+  2. L'account riceve @Nuovo; clicca il pannello di verifica.
+  3. Con un altro account: `/security verify manuale member:@prova`; poi `/security verify tentativi` e `statistiche`.
+  Risultato atteso: alla verifica l'account perde @Nuovo e prende il ruolo di verifica più @Membro; la verifica a mano appare nei tentativi come «Verificato a mano».
+- [ ] `5.12` bis (#138, giro bug) — passi:
+  1. Isola un account con due ruoli (`modo:Isolamento`, 5m), poi rilancia `/modban tempban ... modo:Isolamento` sullo stesso account (3m).
+  2. Aspetta la fine dei 3 minuti; poi prova lo stesso con `/modban unban` durante il secondo isolamento e con un tempban con rientro sopra l'isolamento.
+  Risultato atteso: alla fine l'account riprende i DUE ruoli veri e NON resta col ruolo «Isolamento»; la scadenza dei 5 minuti non libera il secondo isolamento; dopo `unban` nessuna scadenza scatta più. Con i DM chiusi nel tempban con rientro, il moderatore riceve l'invito in un messaggio solo suo.
+- [ ] `NF-30` bis (#101, giro bug) — passi:
+  1. Fai appello con un account bannato e accetta dal canale staff togliendo al bot il permesso «Bannare membri» (poi riprova con il permesso).
+  2. Premi «Accetta» due volte di fila, e prova a fare appello 3 volte in pochi secondi.
+  Risultato atteso: senza permesso il ban resta, l'appello resta aperto e lo staff vede il motivo; col permesso il ban cade e l'appello passa ad «accettato»; un solo appello ogni 24 ore anche con clic ripetuti.
+- [ ] `clear` canale (#57, giro bug) — `/mod clear amount:5 channel:#staff` da un account che non vede #staff o non ha «Gestire i messaggi» là. Risultato atteso: rifiutato, nessun messaggio cancellato.
+- [ ] `VER-014` bis (#118, giro bug) — con il ruolo di verifica sopra il bot: il pannello dice di contattare lo staff e l'utente tiene @Nuovo. Con @Nuovo uguale al ruolo di verifica: l'utente resta verificato.
+- [ ] `AMD-021` bis (#116, giro bug) — regola con sola azione «warn»: modifica più volte lo stesso messaggio che viola. Risultato atteso: un solo warn.
+- [ ] Isolamento su server grande (#138) — su un server con molti canali, `modo:Isolamento` finisce senza «L'applicazione non ha risposto» e nasconde tutti i canali.
 - [ ] Dati (NF-04, F5) — `rank_card_prefs` compare in esportazione e sparisce con la cancellazione: vedi «Core e privacy».
 
 
@@ -694,3 +731,6 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 - [ ] `NF-04` ter cancellazione (#37) — l'utente ha un promemoria in coda e un tempban in corso: dopo l'approvazione il promemoria è sparito, lo sban programmato resta e il rapporto parla di «sban programmati».
 
 **Note di rilascio (core):** la migrazione `0037` riscrive `event_log` (id a BIGINT): su una tabella con milioni di righe blocca la tabella all'avvio. Applicarla fuori orario o con il bot spento. La `0050` rifà la colonna calcolata `retain_for_security` di `moderation_cases` e l'indice dei ticket.
+
+- [ ] `5.11` OAuth (#138) — con un account che ha autorizzato il ripristino utenti (`/admin backup restore-utenti`, token valido): `/modban tempban ... duration:2m modo:Fuori, con invito e ruoli al rientro`. Risultato atteso: alla scadenza l'account rientra da solo (nessun invito usato) con i ruoli di prima; riga di log «Rientro: Automatico». Senza autorizzazione e senza «Creare invito» il comando si ferma prima del ban.
+- [ ] `5.12` ter (#138) — `/modban ban` su un account isolato, poi `/modban unban`: l'account risulta sbannato davvero. Se Discord rifiuta di nascondere qualche canale, il moderatore legge quanti.

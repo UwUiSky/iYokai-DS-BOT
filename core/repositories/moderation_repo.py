@@ -20,7 +20,7 @@ numero di caso.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
@@ -192,7 +192,7 @@ class ModerationRepository:
         return _row_to_case(row) if row else None
 
     async def list_cases_for_user(
-        self, guild_id: int, user_id: int, limit: int = 10
+        self, guild_id: int, user_id: int, limit: int = 10, action_type: str | None = None
     ) -> list[ModerationCase]:
         rows = await self._pool.fetch(
             """
@@ -201,14 +201,81 @@ class ModerationRepository:
                    revoked_at, revoked_by
             FROM moderation_cases
             WHERE guild_id = $1 AND user_id = $2
+              AND ($4::text IS NULL OR action_type = $4)
             ORDER BY case_number DESC
             LIMIT $3
             """,
             guild_id,
             user_id,
             limit,
+            action_type,
         )
         return [_row_to_case(row) for row in rows]
+
+    async def list_cases_by_moderator(
+        self, guild_id: int, moderator_id: int, limit: int = 25, action_type: str | None = None
+    ) -> list[ModerationCase]:
+        """Casi fatti da un moderatore, dal più recente (MOD-041)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT case_number, guild_id, user_id, moderator_id, action_type,
+                   reason, duration_seconds, active, created_at,
+                   revoked_at, revoked_by
+            FROM moderation_cases
+            WHERE guild_id = $1 AND moderator_id = $2
+              AND ($4::text IS NULL OR action_type = $4)
+            ORDER BY case_number DESC
+            LIMIT $3
+            """,
+            guild_id, moderator_id, limit, action_type,
+        )
+        return [_row_to_case(row) for row in rows]
+
+    async def moderator_ranking(self, guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
+        """(moderatore, numero di azioni), dal più attivo (MOD-039)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT moderator_id, COUNT(*) AS n
+            FROM moderation_cases
+            WHERE guild_id = $1
+            GROUP BY moderator_id
+            ORDER BY n DESC, moderator_id
+            LIMIT $2
+            """,
+            guild_id, limit,
+        )
+        return [(r["moderator_id"], r["n"]) for r in rows]
+
+    async def warn_ranking(self, guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
+        """(utente, warn attivi), dal più avvisato (MOD-031)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT user_id, COUNT(*) AS n
+            FROM moderation_cases
+            WHERE guild_id = $1 AND action_type = 'warn' AND active = TRUE
+            GROUP BY user_id
+            ORDER BY n DESC, user_id
+            LIMIT $2
+            """,
+            guild_id, limit,
+        )
+        return [(r["user_id"], r["n"]) for r in rows]
+
+    async def update_case_reason(self, guild_id: int, case_number: int, reason: str) -> bool:
+        """Cambia il motivo di un caso (MOD-037). False se il caso non esiste."""
+        result = await self._pool.execute(
+            "UPDATE moderation_cases SET reason = $3 WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number, reason,
+        )
+        return result.endswith(" 1")
+
+    async def delete_case(self, guild_id: int, case_number: int) -> bool:
+        """Elimina un caso (MOD-044). La numerazione non si riusa."""
+        result = await self._pool.execute(
+            "DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number,
+        )
+        return result.endswith(" 1")
 
     async def get_latest_active_case(
         self, guild_id: int, user_id: int, action_type: str
@@ -333,7 +400,7 @@ class ModerationRepository:
             SELECT id, guild_id, user_id, moderator_id, note, created_at
             FROM moderation_notes
             WHERE guild_id = $1 AND user_id = $2
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, id DESC
             LIMIT $3
             """,
             guild_id,
@@ -351,6 +418,170 @@ class ModerationRepository:
             )
             for r in rows
         ]
+
+    async def delete_note(self, guild_id: int, note_id: int) -> bool:
+        """Toglie una nota (MOD-054). Solo se è di questo server."""
+        result = await self._pool.execute(
+            "DELETE FROM moderation_notes WHERE guild_id = $1 AND id = $2", guild_id, note_id
+        )
+        return result.endswith(" 1")
+
+    async def update_note(self, guild_id: int, note_id: int, testo: str) -> bool:
+        """Cambia il testo di una nota (MOD-055)."""
+        result = await self._pool.execute(
+            "UPDATE moderation_notes SET note = $3 WHERE guild_id = $1 AND id = $2",
+            guild_id, note_id, testo,
+        )
+        return result.endswith(" 1")
+
+    async def delete_notes_for_user(self, guild_id: int, user_id: int) -> int:
+        """Cancella tutte le note di un membro (MOD-056); quante."""
+        result = await self._pool.execute(
+            "DELETE FROM moderation_notes WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+        return int(result.split()[-1])
+
+    # ------------------------------------------------------------
+    # Appelli contro i ban manuali (NF-30)
+    # ------------------------------------------------------------
+    async def create_appeal_if_allowed(
+        self, guild_id: int, user_id: int, case_number: int | None, testo: str,
+        attesa: timedelta,
+    ) -> tuple[int | None, datetime | None]:
+        """
+        Crea l'appello solo se l'ultimo ha più di `attesa`: controllo e scrittura
+        sotto lo stesso blocco (tre invii insieme valgono uno).
+        Restituisce (id, None) se creato, (None, ora dell'ultimo) se bisogna attendere.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock($1, $2)", guild_id % 2**31, user_id % 2**31
+                )
+                ultimo = await conn.fetchval(
+                    "SELECT MAX(creato_il) FROM ban_appelli WHERE guild_id = $1 AND user_id = $2",
+                    guild_id, user_id,
+                )
+                if ultimo is not None and ultimo + attesa > datetime.now(timezone.utc):
+                    return None, ultimo
+                appello_id = await conn.fetchval(
+                    """
+                    INSERT INTO ban_appelli (guild_id, user_id, case_number, testo)
+                    VALUES ($1, $2, $3, $4) RETURNING id
+                    """,
+                    guild_id, user_id, case_number, testo,
+                )
+                return appello_id, None
+
+    async def close_open_appeals(self, guild_id: int, user_id: int, deciso_da: int) -> int:
+        """Un unban chiude gli appelli ancora aperti dell'utente (come accettati)."""
+        result = await self._pool.execute(
+            """
+            UPDATE ban_appelli SET stato = 'accettato', deciso_da = $3, deciso_il = now()
+            WHERE guild_id = $1 AND user_id = $2 AND stato = 'aperto'
+            """,
+            guild_id, user_id, deciso_da,
+        )
+        return int(result.split()[-1])
+
+    async def delete_appeal(self, appeal_id: int) -> None:
+        """Toglie un appello che non è arrivato allo staff (non deve bloccare le 24 ore)."""
+        await self._pool.execute("DELETE FROM ban_appelli WHERE id = $1", appeal_id)
+
+    async def get_appeal(self, appeal_id: int) -> dict | None:
+        row = await self._pool.fetchrow("SELECT * FROM ban_appelli WHERE id = $1", appeal_id)
+        return dict(row) if row else None
+
+    async def decide_appeal(self, appeal_id: int, stato: str, deciso_da: int) -> bool:
+        """Chiude un appello ancora aperto; False se era già deciso (due click insieme)."""
+        result = await self._pool.execute(
+            """
+            UPDATE ban_appelli SET stato = $2, deciso_da = $3, deciso_il = now()
+            WHERE id = $1 AND stato = 'aperto'
+            """,
+            appeal_id, stato, deciso_da,
+        )
+        return result.endswith(" 1")
+
+    async def list_appeals(self, guild_id: int, stato: str | None = None, limit: int = 15) -> list[dict]:
+        rows = await self._pool.fetch(
+            """
+            SELECT * FROM ban_appelli
+            WHERE guild_id = $1 AND ($2::text IS NULL OR stato = $2)
+            ORDER BY creato_il DESC LIMIT $3
+            """,
+            guild_id, stato, limit,
+        )
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------
+    # Ban temporaneo con rientro / isolamento (issue #138)
+    # ------------------------------------------------------------
+    async def save_tempban_state(
+        self,
+        guild_id: int,
+        user_id: int,
+        modo: str,
+        ruoli: list[int],
+        finisce_il: datetime,
+        invito_codice: str | None = None,
+        case_number: int | None = None,
+        oauth_rientro: bool = False,
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO tempban_stato
+                (guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il,
+                 oauth_rientro)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (guild_id, user_id) DO UPDATE
+                SET modo = $3, ruoli = $4, invito_codice = $5, case_number = $6,
+                    finisce_il = $7, scaduto = FALSE, oauth_rientro = $8
+            """,
+            guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il,
+            oauth_rientro,
+        )
+
+    async def set_tempban_state_case(self, guild_id: int, user_id: int, case_number: int) -> None:
+        await self._pool.execute(
+            "UPDATE tempban_stato SET case_number = $3 WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id, case_number,
+        )
+
+    async def cancel_tempban_jobs(self, guild_id: int, user_id: int) -> int:
+        """
+        Cancella le scadenze automatiche ancora in attesa per l'utente: dopo un
+        unban, un appello accettato o un nuovo tempban non devono più scattare.
+        """
+        result = await self._pool.execute(
+            """
+            DELETE FROM scheduled_actions
+            WHERE guild_id = $1 AND user_id = $2
+              AND action_type = 'moderation_tempban_expire' AND executed = FALSE
+            """,
+            guild_id, user_id,
+        )
+        return int(result.split()[-1])
+
+    async def get_tempban_state(self, guild_id: int, user_id: int) -> dict | None:
+        row = await self._pool.fetchrow(
+            "SELECT * FROM tempban_stato WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+        return dict(row) if row else None
+
+    async def mark_tempban_state_expired(self, guild_id: int, user_id: int) -> None:
+        """Il ban è finito: al rientro l'utente riprende i ruoli salvati."""
+        await self._pool.execute(
+            "UPDATE tempban_stato SET scaduto = TRUE WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+
+    async def delete_tempban_state(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM tempban_stato WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
 
 
 def _row_to_case(row) -> ModerationCase:

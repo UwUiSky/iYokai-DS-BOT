@@ -115,6 +115,8 @@ class _FakeTextChannel(discord.TextChannel):
 
 
 class _FakeMessage:
+    _prossimo_id = 5000
+
     def __init__(
         self,
         guild: _FakeGuild,
@@ -137,6 +139,8 @@ class _FakeMessage:
         self.attachments = list(attachments)
         self.stickers = list(stickers)
         self.deleted = False
+        _FakeMessage._prossimo_id += 1
+        self.id = _FakeMessage._prossimo_id
 
     async def delete(self) -> None:
         self.deleted = True

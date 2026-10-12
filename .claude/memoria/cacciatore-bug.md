@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-11/10/2026 · ultimo giro: `feat/giro-mod` (tempban modi, appelli, clear filtri, verify opzioni, automod modifiche)
+12/10/2026 · ultimo giro: `feat/giro-core` (privacy NF-04, permessi OAuth #148, premium #145, scheduler, FK)
 
 ## In corso
 - Niente a metà. Giro eco chiuso. Prove: scratchpad/cbeco (p1 decadimento, p2 corse, p3 deadlock, p6 card, p7 migrazioni, test_prove_eco*.py).
@@ -17,6 +17,8 @@
 - feat/giro-logt: 1 alto (riga fantasma del router dopo canale generale cancellato), 6 medi (post forum doppi, avviso perso, audit per tempo, snipe di mod, ticket+forum).
 - feat/giro-eco: 0 alti. SQL del decadimento = funzione pura (50000 saldi fino a 9e18), corse e doppio versamento a posto. Medi: deadlock batch vocale vs decadimento, "sostituisci" toglie senza dare, categoria esclusa inutile, migrazioni rinumerate (versione per numero), test senza permessi/lock.
 - feat/giro-mod: 2 alti (secondo isolamento sovrascrive i ruoli salvati; clear `channel` senza permessi sul canale) + crash tra edit ruoli e stato; medi: job vecchio rilascia isolamento nuovo, appello accettato revoca tutto/unban fallito, verify non-verificato=verifica, invito perso con DM chiusi. IDOR appelli e permessi Accetta/Rifiuta: a posto.
+
+- feat/giro-core: 2 alti (contatore casi purgato con ban trattenuti; server riaggiunto a bot spento mai piu' purgato) + export con dati altrui (alto). Medi: ticket aperti user_id=0 (unico), clan senza titolare, escalation non trattenuta, rinnovo token cancella su 429/5xx, cache premium gara, sban programmato purgato. Prove: scratchpad/cbcore. Cricchetto max_length: ok.
 
 ## Cose imparate
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -36,6 +38,8 @@
 - Router/ripiego: ogni `UPSERT` che crea la riga di un tipo dal ripiego la rende permanente: cercare sempre cosa succede dopo che l'admin cambia il generale.
 - Batch con FOR UPDATE ORDER BY contro UPDATE di massa senza ordine = deadlock: provare con righe inserite in ordine inverso. `schema_migrations` e' per NUMERO: rinumerare una migrazione gia' girata la fa saltare.
 - Prove dentro `tests/` (file temporaneo, poi rm): non usare `-p tests.conftest` (doppia registrazione).
+
+- Anonimizzare a valore fisso (user_id=0) incontra gli indici unici parziali: controllare pg_indexes. Registro NF-04: coprire anche gli action_type scritti dai cog (non solo la colonna generata).
 
 ## Aperto
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).

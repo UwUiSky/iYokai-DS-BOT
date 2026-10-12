@@ -216,7 +216,7 @@ async def check_can_moderate(
 
 
 async def try_dm_message(
-    user: discord.abc.Snowflake, embed: discord.Embed
+    user: discord.abc.Snowflake, embed: discord.Embed, view: discord.ui.View | None = None
 ) -> discord.Message | None:
     """
     Prova a mandare un DM e restituisce il messaggio inviato, o None se
@@ -229,6 +229,8 @@ async def try_dm_message(
         # user qui è sempre un discord.Member/discord.User vero
         # (Snowflake nel type hint solo per generalità); .send()
         # esiste su entrambi.
+        if view is not None:
+            return await user.send(embed=embed, view=view)  # type: ignore[attr-defined]
         return await user.send(embed=embed)  # type: ignore[attr-defined]
     except (discord.Forbidden, discord.HTTPException):
         return None

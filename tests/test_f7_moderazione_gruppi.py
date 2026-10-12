@@ -18,6 +18,7 @@ from core.command_access import GruppoYokai, Livello
 
 MODULI = (
     "cogs.moderation.actions",
+    "cogs.moderation.ban_appeal",
     "cogs.moderation.case_system",
     "cogs.moderation.channel_control",
     "cogs.moderation.clear",
@@ -38,9 +39,11 @@ MODULI = (
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod", None): {"warn", "timeout", "untimeout", "clear", "lock", "unlock", "slowmode", "mute", "unmute"},
-    ("mod", "caso"): {"storico", "vedi"},
-    ("mod", "nota"): {"aggiungi", "elenca"},
+    ("mod", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff"},
+    ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
+    ("mod", "avvisi"): {"togli", "azzera", "classifica"},
     ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
+    ("modban", "appelli"): {"canale", "elenco"},
     ("security", None): {"heatmap", "score", "spamtrap"},
     ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("security", "antinuke"): {
@@ -54,6 +57,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("security", "globalban"): {"enable", "disable", "status", "controlla"},
     ("security", "verify"): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",
+        "opzioni", "manuale", "tentativi", "statistiche",
     },
     ("automod", None): {"sync", "mute-duration", "log-channel", "status"},
     ("automod", "filtri"): {

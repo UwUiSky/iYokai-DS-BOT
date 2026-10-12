@@ -21,9 +21,6 @@ blocco da on_guild_channel_create.
 Funzioni coperte: SPEC §5.1, §5.10
 """
 
-# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
-
 from __future__ import annotations
 
 import logging
@@ -365,6 +362,11 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             )
 
         await interaction.response.send_message(f"Ruolo mute rimosso da {member.mention}.")
+        log_embed = discord.Embed(title="🔊 Mute (ruolo) tolto", color=discord.Color.green())
+        log_embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
+        log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        log_embed.add_field(name="Motivo", value=reason, inline=False)
+        await post_to_mod_log(interaction.guild, log_embed)
 
 
 async def setup(bot: commands.Bot) -> None:

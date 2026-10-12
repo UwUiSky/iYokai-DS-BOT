@@ -14,17 +14,17 @@ Due modalità mutuamente esclusive, scelte a `/security verify setup`:
   esplicitamente a `/security verify setup`, non implementata a metà con un
   flusso DM fragile.
 
+Ruoli (impostazioni del server, `/security verify opzioni`): un ruolo
+«non verificato» dato all'ingresso e tolto alla verifica (VER-014) e fino
+a tre ruoli in più dati insieme a quello di verifica (VER-015). Lo staff
+può verificare a mano un membro (VER-016), cercare i tentativi di un
+utente (VER-031) e vedere le statistiche (VER-030).
+
 Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
 e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
 costruito — non tentati qui.
+Funzioni coperte: SPEC §4.1, §4.4-§4.6
 """
-
-# DA FARE (issue #60, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §4 (Verify).
-# DA FARE (issue #89, fase F9): NF-18, Captcha a immagine. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-# DA FARE (issue #92, fase F10): NF-21, Verifica su web e riconoscimento
-#   degli account doppi. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -54,6 +54,11 @@ from core.verify_logic import (
 logger = logging.getLogger("iyokai.verify")
 
 MODULE_VERIFY = "verify"
+
+# Impostazioni dei ruoli extra (guild_config.settings).
+SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
+SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
+MAX_RUOLI_EXTRA = 3
 
 VERIFY_BUTTON_CUSTOM_ID = "iyokai_verify_button"
 VERIFY_REACTION_EMOJI = "✅"
@@ -182,6 +187,68 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 count += 1
         return count
 
+    async def dai_ruoli_di_verifica(
+        self, guild: discord.Guild, member: discord.Member, verified_role_id: int
+    ) -> bool:
+        """
+        Dà il ruolo di verifica e gli eventuali ruoli extra, toglie il ruolo
+        «non verificato». Ogni ruolo passa dal controllo dei permessi pericolosi
+        (SEC-4/SEC-17: può averli presi dopo il setup). False se Discord rifiuta.
+        """
+        non_verificato_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO)
+        extra = list(await db.get_guild_setting(guild.id, SETTING_RUOLI_EXTRA) or [])
+        da_dare = []
+        for ruolo_id in [verified_role_id, *extra]:
+            ruolo = guild.get_role(ruolo_id)
+            if ruolo is None or check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
+                if ruolo_id == verified_role_id:
+                    # Senza il ruolo di verifica non si completa niente, e il
+                    # «non verificato» resta: altrimenti l'utente perde l'accesso.
+                    logger.warning(
+                        "Ruolo di verifica non assegnabile nel server %s: verifica non completata.",
+                        guild.id,
+                    )
+                    return False
+                continue
+            da_dare.append(ruolo)
+        try:
+            await member.add_roles(*da_dare, reason="iYokai Verify")
+        except discord.HTTPException as errore:
+            logger.warning(
+                "Impossibile assegnare il ruolo verify nel server %s: %s", guild.id, errore
+            )
+            return False
+        non_verificato = guild.get_role(non_verificato_id) if non_verificato_id else None
+        # Se coincide con un ruolo appena dato, toglierlo annullerebbe la verifica;
+        # se è uguale o sopra il bot, Discord rifiuta: si salta senza tentare.
+        if (
+            non_verificato is not None
+            and non_verificato.id not in {r.id for r in da_dare}
+            and non_verificato in member.roles
+            and non_verificato < guild.me.top_role
+        ):
+            try:
+                await member.remove_roles(non_verificato, reason="iYokai Verify")
+            except discord.HTTPException:
+                logger.warning("Ruolo non verificato non tolto (server %s).", guild.id)
+        return True
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """Il ruolo «non verificato» parte all'ingresso (VER-014)."""
+        if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_VERIFY):
+            return
+        ruolo_id = await db.get_guild_setting(member.guild.id, SETTING_RUOLO_NON_VERIFICATO)
+        ruolo = member.guild.get_role(ruolo_id) if ruolo_id else None
+        if ruolo is None or check_role_assignable(
+            member.guild, ruolo, member.guild.me, self_service=True
+        ) is not None:
+            return
+        try:
+            await member.add_roles(ruolo, reason="iYokai Verify: in attesa di verifica")
+        except discord.HTTPException:
+            logger.warning("Ruolo non verificato non dato a %s (server %s).", member.id, member.guild.id)
+
     async def run_checks_and_finalize(
         self, guild: discord.Guild, member: discord.Member, captcha_ok: bool
     ):
@@ -206,28 +273,12 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await verify_repo.log_attempt(guild.id, member.id, outcome.success, outcome.reason)
 
         if outcome.success and config.verified_role_id is not None:
-            role = guild.get_role(config.verified_role_id)
-            # SEC-4/SEC-17: assegnazione self-service, ricontrolla il
-            # ruolo — può aver preso permessi pericolosi dopo il
-            # /security verify setup.
-            if role is not None and check_role_assignable(
-                guild, role, guild.me, self_service=True
-            ) is not None:
-                role = None
-            if role is not None:
-                try:
-                    await member.add_roles(role, reason="iYokai Verify")
-                except discord.HTTPException as errore:
-                    logger.warning(
-                        "Impossibile assegnare il ruolo verify nel server %s: %s",
-                        guild.id,
-                        errore,
-                    )
-                    outcome = VerifyOutcome(
-                        True,
-                        "All checks passed, but I couldn't give you the role. "
-                        "Please contact the server staff.",
-                    )
+            if not await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
+                outcome = VerifyOutcome(
+                    True,
+                    "All checks passed, but I couldn't give you the role. "
+                    "Please contact the server staff.",
+                )
 
         if config.log_channel_id is not None:
             log_channel = guild.get_channel(config.log_channel_id)
@@ -417,6 +468,123 @@ class VerifyCog(CogConGruppi, commands.Cog):
             return
         await verify_repo.remove_blacklist(interaction.guild.id, member.id)
         await interaction.response.send_message(f"{member.mention} rimosso dalla blacklist.", ephemeral=True)
+
+
+    @comando_di_gruppo(
+        "security",
+        nome="opzioni",
+        descrizione="Ruolo «non verificato» e ruoli extra.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
+    @app_commands.describe(
+        non_verificato="Dato all'ingresso, tolto alla verifica",
+        extra_1="Ruolo extra alla verifica",
+        extra_2="Altro ruolo extra",
+        extra_3="Altro ruolo extra",
+        azzera="Togli questi ruoli",
+    )
+    async def options_cmd(
+        self,
+        interaction: discord.Interaction,
+        non_verificato: discord.Role | None = None,
+        extra_1: discord.Role | None = None,
+        extra_2: discord.Role | None = None,
+        extra_3: discord.Role | None = None,
+        azzera: bool = False,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
+            return
+        guild = interaction.guild
+        if azzera:
+            await db.set_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO, None)
+            await db.set_guild_setting(guild.id, SETTING_RUOLI_EXTRA, None)
+            await interaction.response.send_message("Ruoli extra della verifica tolti.", ephemeral=True)
+            return
+        extra = [r for r in (extra_1, extra_2, extra_3) if r is not None]
+        for ruolo in ([non_verificato] if non_verificato else []) + extra:
+            motivo = check_role_assignable(guild, ruolo, interaction.user, self_service=True)
+            if motivo is not None:
+                await interaction.response.send_message(f"{ruolo.mention}: {motivo}", ephemeral=True)
+                return
+        if non_verificato is not None:
+            await db.set_guild_setting(
+                guild.id, SETTING_RUOLO_NON_VERIFICATO, non_verificato.id, changed_by=interaction.user.id
+            )
+        if extra:
+            await db.set_guild_setting(
+                guild.id, SETTING_RUOLI_EXTRA, [r.id for r in extra][:MAX_RUOLI_EXTRA],
+                changed_by=interaction.user.id,
+            )
+        await interaction.response.send_message("Opzioni della verifica salvate.", ephemeral=True)
+
+    @comando_di_gruppo(
+        "security",
+        nome="manuale",
+        descrizione="Verifica a mano un membro, senza controlli.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
+    @app_commands.describe(member="Il membro da verificare")
+    async def manual_cmd(self, interaction: discord.Interaction, member: discord.Member) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
+            return
+        config = await verify_repo.get_config(interaction.guild.id)
+        if config.verified_role_id is None:
+            await interaction.response.send_message(
+                "Configura prima il Verify con /security verify setup.", ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        if not await self.dai_ruoli_di_verifica(interaction.guild, member, config.verified_role_id):
+            await interaction.followup.send(
+                "Non sono riuscito a dare i ruoli: controlla i miei permessi.", ephemeral=True
+            )
+            return
+        await verify_repo.log_attempt(
+            interaction.guild.id, member.id, True, f"Verificato a mano da {interaction.user.id}"
+        )
+        await interaction.followup.send(f"{member.mention} verificato a mano.", ephemeral=True)
+
+    @comando_di_gruppo(
+        "security",
+        nome="tentativi",
+        descrizione="Tentativi di verifica di un utente.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
+    @app_commands.describe(member="L'utente (anche se non è nel server)")
+    async def attempts_cmd(self, interaction: discord.Interaction, member: discord.User) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
+            return
+        tentativi = await verify_repo.get_recent_attempts(interaction.guild.id, member.id, 15)
+        if not tentativi:
+            await interaction.response.send_message("Nessun tentativo registrato.", ephemeral=True)
+            return
+        righe = [
+            f"{'✅' if ok else '❌'} {quando.strftime('%d/%m/%Y %H:%M')} — {motivo[:150]}"
+            for ok, motivo, quando in tentativi
+        ]
+        embed = discord.Embed(
+            title=f"Tentativi di {member}", description="\n".join(righe)[:4000], color=discord.Color.blurple()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo(
+        "security",
+        nome="statistiche",
+        descrizione="Verifiche riuscite e fallite.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
+    @app_commands.describe(giorni="Giorni indietro (default 7)")
+    async def stats_cmd(
+        self, interaction: discord.Interaction, giorni: app_commands.Range[int, 1, 365] = 7
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
+            return
+        riusciti, falliti, utenti = await verify_repo.attempt_stats(interaction.guild.id, giorni)
+        await interaction.response.send_message(
+            f"Ultimi {giorni} giorni: **{riusciti}** verifiche riuscite, **{falliti}** fallite, "
+            f"{utenti} utenti diversi.",
+            ephemeral=True,
+        )
 
     # ================================================================
     # Modalità reaction

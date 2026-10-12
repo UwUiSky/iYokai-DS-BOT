@@ -266,7 +266,8 @@ Totale voci: **494**.
   → **Stato 04/10:** vedi le voci sotto.
   - `[~]` Button verify — `VerifyPanelView`, persistente (stesso
     pattern di ticket/vocali temporanei)
-    → **Stato 04/10:** lavoro lento prima della risposta (LIM-9).
+    → **Stato 11/10:** `defer` o modulo come prima risposta (LIM-9) — fatto.
+    Aggiunti (#118): `/security verify opzioni` (ruolo «non verificato» all'ingresso, fino a 3 ruoli extra), `manuale`, `tentativi`, `statistiche` (VER-014, 015, 016, 030, 031).
   - `[x]` Reaction verify — `on_raw_reaction_add`. **Non supporta il
     captcha**: una reazione non è un'Interaction, non può aprire un
     Modal — combinazione rifiutata esplicitamente a `/verify setup`
@@ -319,17 +320,17 @@ Totale voci: **494**.
   → **Stato 04/10:** SEC-1; il ruolo non copre thread, forum e canali nuovi (LIM-30).
 - `[~]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
-  → **Stato 04/10:** caso creato prima dell'azione; liste oltre 4096 caratteri (LIM-8).
+  → **Stato 11/10:** ordine azione→caso→log→DM e liste entro 4000 fatti. Aggiunti: storico per tipo, `/mod caso motivo|elimina|classifica-staff` (MOD-037, 039, 041, 042, 044).
 - `[~]` 5.3 Note utente
-  → **Stato 04/10:** SEC-1.
+  → **Stato 11/10:** `/mod nota rimuovi|modifica|svuota` (MOD-054..056); l'elenco mostra il numero. Warn: `/mod avvisi togli|azzera|classifica` (MOD-028, 029, 031).
 - `[~]` 5.4 Report system
   → **Stato 04/10:** motivo oltre 1024 caratteri: segnalazione persa (LIM-4).
 - `[~]` 5.5 Lock / Unlock canale
-  → **Stato 04/10:** SEC-1; nessun log (REVIEW §12).
+  → **Stato 11/10:** ora scrive nel log di moderazione; motivo al massimo 512 caratteri.
 - `[~]` 5.6 Slowmode
-  → **Stato 04/10:** SEC-1; nessun log (REVIEW §12).
+  → **Stato 11/10:** ora scrive nel log di moderazione.
 - `[~]` 5.7 Clear avanzato con filtri
-  → **Stato 04/10:** SEC-1; filtro allegati da riprovare con l'intent acceso (BUG-5).
+  → **Stato 11/10:** filtri nuovi (testo, link, inviti, embed, menzioni, ruolo, persone, fissati), canale a scelta, riga di log (MOD-069, 071, 073-079, 083, 084, 086, 088). Filtro allegati da riprovare con l'intent acceso (BUG-5).
 - `[~]` 5.8 DM all'utente moderato
   → **Stato 04/10:** il DM parte prima dell'azione (LIM-8).
 - `[~]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
@@ -342,16 +343,21 @@ Totale voci: **494**.
 - `[~]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
-  → **Stato 04/10:** `/lock`, `/unlock`, `/slowmode`, `/clear` non creano né casi né log (REVIEW §12).
-- `[ ]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
+  → **Stato 11/10:** `/lock`, `/unlock`, `/slowmode`, `/clear`, `/untimeout`, `/unmute` e la scadenza dei tempban scrivono nel log (M 1.8).
+- `[x]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
   riceve l'invito per tornare e, al rientro, riprende i ruoli che
   aveva. L'invito e la data di fine si mandano in privato **prima**
   del ban (dopo, il bot non può più scrivergli); chi ha autorizzato il
   ripristino utenti viene riportato dentro in automatico (issue #138,
   fase F9)
-- `[ ]` 5.12 **Ban in isolamento** — per il tempo scelto l'utente resta
+  → **Fatto:** `/modban tempban modo:Fuori, con invito e ruoli al rientro` (invito
+  senza scadenza e a un uso, DM prima del ban, ruoli ridati al rientro sotto il
+  ruolo del bot). **Rientro automatico:** chi ha autorizzato il ripristino utenti (token valido fino alla fine del ban) rientra da solo alla scadenza con `join_user_via_oauth` (`tempban_stato.oauth_rientro`); gli altri usano l'invito. Un tempban con rientro non parte se non c'è né invito né autorizzazione. **Da provare live.**
+- `[x]` 5.12 **Ban in isolamento** — per il tempo scelto l'utente resta
   nel server ma vede un solo canale, che dice quando finisce; alla
   scadenza riprende i ruoli di prima (issue #138, fase F9)
+  → **Fatto:** `/modban tempban modo:Isolamento` (ruolo e canale «isolamento», canali
+  nuovi nascosti, uscita e rientro non liberano, `/modban unban` libera prima).
 
 ## §6 AUTOMOD
 
@@ -359,6 +365,7 @@ Totale voci: **494**.
   → **Stato 04/10:** una parola oltre 60 caratteri rompe la sincronizzazione; `edit()` cancella le eccezioni messe a mano (LIM-29).
 - `[~]` 6.2 Anti-invite (via AutoMod nativo, regex)
   → **Stato 04/10:** LIM-29.
+- `[x]` 6.3b Messaggi modificati controllati di nuovo dai filtri lato bot (AMD-021, #116); la modifica non conta per l'anti-spam
 - `[~]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
   non supporta un elenco whitelist/blacklist di domini come trigger
@@ -1785,7 +1792,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
-- `[ ]` 23.9 Appello anche per i ban dati a mano (NF-30)
+- `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
 - `[ ]` 23.10 Blocco dei link di phishing (NF-31)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[ ]` 23.12 Ticket via messaggio privato (NF-33)
