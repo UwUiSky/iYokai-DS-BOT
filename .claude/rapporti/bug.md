@@ -97,3 +97,15 @@
 | 11/10 | `0031_rank_card_preferenze.sql` | Tabella per `user_id` senza `guild_id`: commento "nessun altro dato personale"; non c'e' ancora un registro NF-04: va in `data_registry` (esporta/cancella), mai ripulita | bassa | plausibile (F5 non scritta) |
 | 11/10 | `rank_card_image.py` | Emoji nel nome = quadrati vuoti (solo DejaVu); `display_avatar.read()` cattura solo HTTPException (errori aiohttp dopo il defer); `Pillow>=10.0` ma il fallback usa `load_default(size=)` (10.1) | bassa | confermato (emoji), resto plausibile |
 | 11/10 | tests `test_leveling_settings.py`, `test_perf_raggruppate.py` | Nessun test sui permessi di `/level impostazioni` (si chiama `.callback`); il blocco advisory del tetto 25 non e' provato (tolto: 52 verdi, 26 regole); nessun test di corsa/deadlock sul decadimento | media | confermato |
+| 11/10 | `actions.py:~368` + `moderation_repo.save_tempban_state` (feat/giro-mod) | 2o isolamento/tempban su chi e' gia' isolato: salva `[ruolo iso]` e l'UPSERT cancella i ruoli veri; alla fine il ruolo iso viene ridato (resta isolato) e i ruoli persi | alta | confermato (P1) |
+| 11/10 | `actions.py:~355-375` | `member.edit(roles=)` PRIMA di salvare lo stato: crash/errore DB dopo l'edit = ruoli tolti, nessuno stato, nessun job | alta | confermato (P2) |
+| 11/10 | `actions.py:handle_tempban_expire` | Job non cancellato da /unban, appello accettato, 2o tempban; il vecchio job libera l'isolamento NUOVO (revoca un caso diverso) | media | confermato (P4) |
+| 11/10 | `ban_appeal.py:decidi_appello` | Accetta: segna "accettato" prima dell'unban; se l'unban fallisce i casi sono comunque revocati; revoca TUTTI i ban attivi (anche uno nuovo); non tocca `tempban_stato` ne' il job | media | confermato (P7, P8) |
+| 11/10 | `clear.py:~90` | Opzione `channel`: nessun controllo `permissions_for(utente).manage_messages` sul canale scelto: si puo' pulire un canale che non si vede | alta | confermato (P9) |
+| 11/10 | `actions.py` rientro | DM chiuso: l'invito (mai scade, 1 uso) non e' nella risposta al mod ne' cancellato; resta orfano | media | confermato (P3) |
+| 11/10 | `ban_appeal.py:invia_appello` | Controllo 24 h letto-poi-scritto: 3 invii insieme = 3 appelli | bassa | confermato (P5) |
+| 11/10 | `verify.py:dai_ruoli_di_verifica` | Ruolo non-verificato uguale al ruolo di verifica: dato e tolto; ruolo di verifica sopra il bot: scartato, non-verificato tolto, esito "riuscito" | media | confermato (P11, P12) |
+| 11/10 | `case_system.py` motivo/elimina/togli, nota rimuovi/modifica | `case_number`/`nota_id` senza Range: oltre 2^31 -> `DataError` non gestito | bassa | confermato (P10) |
+| 11/10 | `actions.py:handle_tempban_expire` isolamento | `guild.get_member` None a cache fredda: segna scaduto ma non toglie il ruolo | media | plausibile |
+| 11/10 | `automod.py:on_message_edit` | Azioni solo "warn": ogni modifica che viola da' un warn in piu' | bassa | plausibile |
+| 11/10 | `_tempban_modes.py:prepara_isolamento` | set_permissions su ogni canale in serie: server grandi oltre i 15 min del followup | bassa | plausibile |
