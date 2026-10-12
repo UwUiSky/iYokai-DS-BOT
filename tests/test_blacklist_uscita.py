@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from core.blacklist_exit import esci_da_server_in_blacklist
+from core.blacklist_exit import esci_da_server_in_blacklist, esci_dettaglio
 
 
 def _bot_con_server(guild_id: int | None, *, errore: Exception | None = None):
@@ -74,11 +74,13 @@ async def test_il_comando_blacklist_server_add_fa_uscire_tutti(monkeypatch):
 
     chiamate = []
 
+    risultato = [(4, 0)]
+
     async def finto(bot, guild_id):
         chiamate.append(guild_id)
-        return 4
+        return risultato[0]
 
-    monkeypatch.setattr(modulo, "esci_da_server_in_blacklist", finto)
+    monkeypatch.setattr(modulo, "esci_dettaglio", finto)
     repo = MagicMock()
     repo.add_guild = AsyncMock()
     import core.repositories.blacklist_repo as blacklist_modulo
@@ -95,3 +97,20 @@ async def test_il_comando_blacklist_server_add_fa_uscire_tutti(monkeypatch):
     assert chiamate == [77]
     testo = interazione.response.send_message.await_args.args[0]
     assert "4" in testo
+
+    # se i leave() falliscono il messaggio non finge che sia andato tutto bene
+    risultato[0] = (0, 2)
+    await cog.blacklist_guild_add.callback(cog, interazione, "77", "spam")
+    testo = interazione.response.send_message.await_args.args[0]
+    assert "ATTENZIONE" in testo and "2 bot non sono riusciti" in testo
+
+
+@pytest.mark.asyncio
+async def test_il_dettaglio_conta_anche_i_falliti():
+    principale, _ = _bot_con_server(
+        77, errore=discord.HTTPException(MagicMock(status=500, reason="x"), "boom")
+    )
+    w, _ = _bot_con_server(77, errore=discord.HTTPException(MagicMock(status=500, reason="x"), "boom"))
+    principale.music_fleet = _flotta(w)
+
+    assert await esci_dettaglio(principale, 77) == (0, 2)

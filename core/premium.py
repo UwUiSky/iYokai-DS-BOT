@@ -34,6 +34,7 @@ a predisporre l'interruttore, che oggi resta spento ovunque.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable
@@ -45,7 +46,7 @@ from discord.ext import commands
 from core.config import config
 from core.bot_stats import error_counter
 from core.command_access import AccessoNegato
-from core.premium_cache import invalida_cache_premium, registra_invalidatore  # noqa: F401 (punto unico, #145)
+from core.premium_cache import invalida_cache_premium
 
 logger = logging.getLogger("iyokai.premium")
 
@@ -493,6 +494,8 @@ async def handle_app_command_error(
         message = "Non hai i permessi per usare questo comando."
     elif isinstance(error, app_commands.BotMissingPermissions):
         message = "Al bot mancano dei permessi per eseguire questo comando."
+    elif isinstance(error, app_commands.CommandOnCooldown):  # è un CheckFailure: va prima del ramo generico
+        message = f"Attendi {max(1, math.ceil(error.retry_after))} secondi prima di rilanciare questo comando."
     elif isinstance(error, app_commands.CheckFailure):
         message = "Non puoi usare questo comando qui."
     else:

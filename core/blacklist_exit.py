@@ -23,14 +23,14 @@ def _bot_da_far_uscire(bot) -> list:
     return bots
 
 
-async def esci_da_server_in_blacklist(bot, guild_id: int, guild=None) -> int:
+async def esci_dettaglio(bot, guild_id: int, guild=None) -> tuple[int, int]:
     """
     Fa lasciare il server `guild_id` a ogni bot che ci è dentro. Un bot che
     fallisce (Discord giù, già uscito) non ferma gli altri. Restituisce
-    quanti bot sono usciti. `guild` è l'oggetto già in mano al bot principale
+    (usciti, falliti). `guild` è l'oggetto già in mano al bot principale
     (l'evento di ingresso), usato al posto della ricerca nella sua cache.
     """
-    usciti = 0
+    usciti = falliti = 0
     for client in _bot_da_far_uscire(bot):
         server = guild if (client is bot and guild is not None) else client.get_guild(guild_id)
         if server is None:
@@ -39,7 +39,13 @@ async def esci_da_server_in_blacklist(bot, guild_id: int, guild=None) -> int:
             await server.leave()
             usciti += 1
         except discord.HTTPException:
+            falliti += 1
             logger.warning(
                 "Uscita dal server %s non riuscita per un bot (blacklist).", guild_id, exc_info=True
             )
-    return usciti
+    return usciti, falliti
+
+
+async def esci_da_server_in_blacklist(bot, guild_id: int, guild=None) -> int:
+    """Come `esci_dettaglio`, ma restituisce solo quanti bot sono usciti."""
+    return (await esci_dettaglio(bot, guild_id, guild))[0]

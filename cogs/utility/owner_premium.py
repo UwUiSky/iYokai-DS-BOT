@@ -30,7 +30,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
-from core.blacklist_exit import esci_da_server_in_blacklist
+from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -941,16 +941,16 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         # senso bloccare un server e restarci dentro fino al prossimo
         # riavvio o al prossimo controllo casuale.
         # M 13.2: escono il bot principale e i worker musicali.
-        usciti = await esci_da_server_in_blacklist(self.bot, gid)
+        usciti, falliti = await esci_dettaglio(self.bot, gid)
+        testo = f"Server `{gid}` bloccato globalmente."
         if usciti:
-            await interaction.response.send_message(
-                f"Server `{gid}` bloccato globalmente — sono usciti {usciti} bot.",
-                ephemeral=True,
+            testo += f" Sono usciti {usciti} bot."
+        if falliti:
+            testo += (
+                f" ATTENZIONE: {falliti} bot non sono riusciti a uscire (Discord non ha risposto): "
+                "sono ancora nel server, riprova o toglili a mano."
             )
-        else:
-            await interaction.response.send_message(
-                f"Server `{gid}` bloccato globalmente.", ephemeral=True
-            )
+        await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
         "owner",

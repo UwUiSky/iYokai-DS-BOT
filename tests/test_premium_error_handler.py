@@ -227,3 +227,56 @@ async def test_cancellazione_del_segnaposto_fallita_non_blocca_il_followup():
     await handle_app_command_error(interaction, RuntimeError("boom"))
 
     assert interaction.eventi == ["followup"]
+
+
+# ----------------------------------------------------------------------
+# Revisione 12/10: cooldown, BotMissingPermissions, contatore dei rifiuti, risposta non ancora data
+# ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_il_cooldown_dice_quanti_secondi_attendere():
+    interaction = _FakeInteraction()
+    errore = app_commands.CommandOnCooldown(app_commands.Cooldown(1, 60.0), 41.2)
+
+    await handle_app_command_error(interaction, errore)
+
+    messaggio, ephemeral = interaction.response.sent_messages[0]
+    assert "42 secondi" in messaggio and "non puoi usare" not in messaggio.lower()
+    assert ephemeral is True
+
+
+@pytest.mark.asyncio
+async def test_il_bot_senza_permessi_ha_un_messaggio_suo():
+    interaction = _FakeInteraction()
+
+    await handle_app_command_error(interaction, app_commands.BotMissingPermissions(["manage_roles"]))
+
+    assert "Al bot mancano dei permessi" in interaction.response.sent_messages[0][0]
+
+
+@pytest.mark.asyncio
+async def test_un_rifiuto_per_permessi_non_conta_come_errore_ma_un_errore_vero_si(monkeypatch):
+    import core.premium as premium_module
+    from core.bot_stats import RollingCounter
+
+    contatore = RollingCounter()
+    monkeypatch.setattr(premium_module, "error_counter", contatore)
+
+    await handle_app_command_error(_FakeInteraction(), app_commands.MissingPermissions(["ban_members"]))
+    await handle_app_command_error(_FakeInteraction(), app_commands.CommandOnCooldown(app_commands.Cooldown(1, 5.0), 1.0))
+    assert contatore.count_in_window() == 0
+
+    await handle_app_command_error(_FakeInteraction(), RuntimeError("boom"))
+    assert contatore.count_in_window() == 1
+
+
+@pytest.mark.asyncio
+async def test_se_non_si_e_ancora_risposto_non_si_cerca_il_segnaposto():
+    class Interazione(_FakeInteraction):
+        async def original_response(self):
+            raise AssertionError("niente risposta data: non c'e' nessun segnaposto da cercare")
+
+    interaction = Interazione(already_done=False)
+
+    await handle_app_command_error(interaction, RuntimeError("boom"))
+
+    assert len(interaction.response.sent_messages) == 1

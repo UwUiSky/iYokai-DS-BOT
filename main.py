@@ -87,6 +87,7 @@ from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_exit import esci_da_server_in_blacklist
 from core.command_access import registra_dopo_imposta_ruolo
+from core.repositories.command_permission_token_repo import command_permission_token_repo
 from core.command_permissions import sincronizza_dal_bot as sincronizza_permessi_comandi
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
@@ -430,6 +431,12 @@ class iYokaiBot(commands.AutoShardedBot):
         except Exception:
             logger.exception("Uscita dal server %s non registrata.", guild.id)
             return
+        # #148: il token OAuth2 dell'admin non serve più (il bot non scrive permessi in un server
+        # che non ha): via subito, non dopo i 90 giorni.
+        try:
+            await command_permission_token_repo.cancella(guild.id)
+        except Exception:
+            logger.exception("Token dei permessi del server %s non cancellato.", guild.id)
         logger.info("Uscito dal server %s: i dati restano 90 giorni.", guild.id)
 
     async def _send_welcome_message(self, guild: discord.Guild) -> None:
