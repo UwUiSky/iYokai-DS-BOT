@@ -97,6 +97,13 @@ from core.music_queue_logic import (
     share_by_user,
 )
 from core.music_radio_view import RadioListView, pagina_embed
+from core.music_settings_logic import (
+    channel_not_allowed,
+    clamp_volume,
+    load_music_settings,
+    msg_brano_troppo_lungo,
+    track_too_long,
+)
 from core.premium import PremiumModule, registry
 from core.repositories.main_radio_repo import main_radio_repo
 
@@ -139,6 +146,12 @@ def chiave_del_bot(bot) -> str:
     """'main' per il bot principale, 'w<N>' per il worker N."""
     indice = getattr(bot, "worker_index", None)
     return worker_key(indice) if isinstance(indice, int) else MAIN_KEY
+
+
+def _troppo_lungo(traccia, impostazioni) -> bool:
+    return track_too_long(
+        getattr(traccia, "length", 0), impostazioni, getattr(traccia, "is_stream", False)
+    )
 
 
 def crea_cartella_locale() -> None:
@@ -416,6 +429,14 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         await interaction.response.defer()
 
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        rifiuto = channel_not_allowed(
+            getattr(getattr(interaction.user.voice, "channel", None), "id", 0), impostazioni
+        )  # MUS-059
+        if rifiuto:
+            await interaction.followup.send(rifiuto)
+            return
+
         worker_bot, worker_guild, errore = await self._get_worker(
             interaction.guild.id, auto_assign=True, interaction=interaction
         )
@@ -449,6 +470,29 @@ class MusicCog(CogConGruppi, commands.Cog):
             await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
             return
 
+        # MUS-044: i brani oltre la durata massima non entrano in coda.
+        scartate_lunghe = 0
+        tracce_playlist: list = []
+        if isinstance(risultati, wavelink.Playlist):
+            candidate = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
+            tracce_playlist = [t for t in candidate if not _troppo_lungo(t, impostazioni)]
+            scartate_lunghe = len(candidate) - len(tracce_playlist)
+            if not tracce_playlist:
+                if nuova_sessione:
+                    await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+                await interaction.followup.send(
+                    f"Nessun brano della playlist rispetta la durata massima di "
+                    f"{impostazioni.max_track_minutes} minuti."
+                )
+                return
+        elif _troppo_lungo(risultati[0], impostazioni):
+            if nuova_sessione:
+                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await interaction.followup.send(
+                msg_brano_troppo_lungo(risultati[0].title, risultati[0].length, impostazioni)
+            )
+            return
+
         if player is None:
             canale_worker = worker_guild.get_channel(canale_id)
             if canale_worker is None:
@@ -466,7 +510,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         if isinstance(risultati, wavelink.Playlist):
             tracce_totali = len(risultati)
-            tracce_da_aggiungere = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
+            tracce_da_aggiungere = tracce_playlist
             for t in tracce_da_aggiungere:
                 t.extras = {"requester_id": interaction.user.id}  # MUS-036/027/030
             if in_cima:  # MUS-021
@@ -483,6 +527,11 @@ class MusicCog(CogConGruppi, commands.Cog):
             else:
                 await interaction.followup.send(
                     f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** ({tracce_totali} tracce) alla coda."
+                    + (
+                        f" ({scartate_lunghe} oltre la durata massima non aggiunte.)"
+                        if scartate_lunghe
+                        else ""
+                    )
                 )
         else:
             traccia = risultati[0]
@@ -851,8 +900,11 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await player.set_volume(level)
-        await interaction.response.send_message(f"🔊 Volume impostato a {level}.")
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        livello = clamp_volume(level, impostazioni)  # MUS-047
+        await player.set_volume(livello)
+        limite = " (il massimo scelto dal server)" if livello < level else ""
+        await interaction.response.send_message(f"🔊 Volume impostato a {livello}{limite}.")
 
     @comando_di_gruppo(
         "music",
@@ -881,7 +933,8 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
-        nuovo_volume = min(200, player.volume + amount)
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        nuovo_volume = clamp_volume(player.volume + amount, impostazioni)  # MUS-047
         await player.set_volume(nuovo_volume)
         await interaction.response.send_message(f"🔊 Volume aumentato a {nuovo_volume}.")
 
@@ -973,6 +1026,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
         await interaction.response.defer()
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        rifiuto = channel_not_allowed(
+            getattr(getattr(interaction.user.voice, "channel", None), "id", 0), impostazioni
+        )  # MUS-059
+        if rifiuto:
+            await interaction.followup.send(rifiuto)
+            return
         worker_bot, worker_guild, errore = await self._get_worker(
             interaction.guild.id, auto_assign=True, interaction=interaction
         )

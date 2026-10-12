@@ -28,6 +28,11 @@ from core.music_queue_logic import (
 )
 
 
+
+async def _senza_impostazioni(guild_id, key, default=None):
+    return default
+
+
 # ----------------------------- logica pura -----------------------------
 def test_richiedente_letto_dagli_extras():
     t = SimpleNamespace(extras=SimpleNamespace(requester_id=7))
@@ -152,7 +157,9 @@ def _t(titolo, uid=None):
 
 def _cog(player, monkeypatch):
     monkeypatch.setattr(
-        player_module, "db", SimpleNamespace(is_module_active_for_guild=AsyncMock(return_value=True))
+        player_module, "db", SimpleNamespace(
+            is_module_active_for_guild=AsyncMock(return_value=True), get_guild_setting=_senza_impostazioni
+        )
     )
     guild_w = SimpleNamespace(voice_client=player)
     worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild_w)
@@ -298,7 +305,9 @@ async def test_play_in_cima_mette_il_brano_per_primo_e_ricorda_chi_lo_ha_messo(m
             return 1, worker
 
     monkeypatch.setattr(
-        player_module, "db", SimpleNamespace(is_module_active_for_guild=AsyncMock(return_value=True))
+        player_module, "db", SimpleNamespace(
+            is_module_active_for_guild=AsyncMock(return_value=True), get_guild_setting=_senza_impostazioni
+        )
     )
     player.node = object()
     cog = MusicCog(bot=SimpleNamespace(music_fleet=_F()))
@@ -314,7 +323,9 @@ async def test_play_in_cima_mette_il_brano_per_primo_e_ricorda_chi_lo_ha_messo(m
 @pytest.mark.asyncio
 async def test_join_senza_nodi_libera_la_sessione(monkeypatch):
     monkeypatch.setattr(
-        player_module, "db", SimpleNamespace(is_module_active_for_guild=AsyncMock(return_value=True))
+        player_module, "db", SimpleNamespace(
+            is_module_active_for_guild=AsyncMock(return_value=True), get_guild_setting=_senza_impostazioni
+        )
     )
     guild_w = SimpleNamespace(voice_client=None, get_channel=lambda cid: object())
     worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild_w)

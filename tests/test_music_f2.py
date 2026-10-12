@@ -37,6 +37,11 @@ from core.music_logic import (
 )
 from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
 
+
+async def _senza_impostazioni(guild_id, key, default=None):
+    return default
+
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
@@ -346,7 +351,9 @@ class _FlottaDi:
 
 @pytest.fixture
 def modulo_attivo(monkeypatch):
-    finto = SimpleNamespace(is_module_active_for_guild=AsyncMock(return_value=True))
+    finto = SimpleNamespace(
+            is_module_active_for_guild=AsyncMock(return_value=True), get_guild_setting=_senza_impostazioni
+        )
     monkeypatch.setattr(player_module, "db", finto)
 
 

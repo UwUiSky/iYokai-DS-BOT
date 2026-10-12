@@ -18,9 +18,13 @@ limitata.
 
 from __future__ import annotations
 
+import logging
+
 import discord
 from discord.ext import commands
 
+from core.database import db
+from core.music_settings_logic import load_music_settings
 from core.music_fleet_logic import TOTAL_WORKERS, find_free_worker
 from core.repositories.music_session_repo import music_session_repo
 
@@ -28,6 +32,18 @@ from core.repositories.music_session_repo import music_session_repo
 # in un canale vocale — usati per generare il link d'invito quando
 # manca a un server (SPEC.md §9, cap istanze concorrenti).
 WORKER_INVITE_PERMISSIONS = discord.Permissions(view_channel=True, connect=True, speak=True)
+
+
+logger = logging.getLogger("iyokai.music")
+
+
+async def _resta_a_coda_finita(guild_id: int) -> bool:
+    """MUS-055: l'admin ha scelto che il bot resti nel canale a coda finita."""
+    try:
+        return (await load_music_settings(db, guild_id)).stay_when_queue_ends
+    except Exception:
+        logger.debug("Impostazioni musicali non leggibili (%s).", guild_id, exc_info=True)
+        return False
 
 
 class MusicFleet:
@@ -163,6 +179,8 @@ async def handle_inactive_player(player, fleet: MusicFleet) -> None:
         return
     guild = player.guild
     canale = player.channel
+    if guild is not None and await _resta_a_coda_finita(guild.id):
+        return  # MUS-055: resta; il worker resta assegnato a questo canale
     await player.disconnect()
     if guild is not None and canale is not None:
         await fleet.release_session(guild.id, canale.id)

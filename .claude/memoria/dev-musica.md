@@ -4,11 +4,10 @@
 12/10/2026 · ramo `feat/r3-mus` (copia /home/claude/wt/mus) · base `c23a815` · DB iyokai_wmus · migrazioni da 0060
 
 ## In corso
-- Previsione giro F2: 5 voci. Fatte: #64, #47+#48, #45, #126 (parte 1). Prossimo: #126 parte 2 =
-  impostazioni del server (tabella `music_settings`, migrazione 0061, `/admin musica impostazioni|riepilogo`):
-  MUS-047 volume massimo, 044 durata massima, 055 uscire o restare a coda finita, 059 canale vocale
-  permesso, 066 riepilogo. Poi #90 / #106 solo se resta spazio.
-- /music ha 19 figli (limite 25): lasciare spazio a `playlist` (NF-19).
+- Previsione giro F2: 5 voci. Fatte: #64, #47+#48, #45, #126 parti 1 e 2. Prossimo: #90 (NF-19, canale
+  richieste: migrazioni 0062/0063, `request_channel.py`, `music_request_logic/repo`, `music_playlist_repo`,
+  view persistente) se resta spazio; poi #106 (`/fun suono`, serve un worker libero).
+- /music ha 18 figli (limite 25): lasciare spazio a `playlist` (NF-19).
 
 ## Fatto
 - F7 3b (#76): `/music` sotto-gruppi, `/owner radio` (`6d8894f`).
@@ -21,6 +20,10 @@
 - #126 parte 1: MUS-020 join, 021 play in-cima, 027 remove assenti, 029 skipto, 030 remove intervallo/utente,
   031 previous, 032 history, 035 queue cerca, 036 quote per utente, 039 shuffle solo-miei.
   Nuovo `core/music_queue_logic.py`; richiedente in `track.extras.requester_id`.
+
+- #126 parte 2: MUS-044 durata massima, 047 volume massimo, 055 restare a coda finita, 059 canale permesso,
+  066 riepilogo. `cogs/music/settings.py` (`/admin musica impostazioni|riepilogo`), `core/music_settings_logic.py`
+  (impostazioni in guild_config.settings, nessuna tabella nuova). COMMAND_LIST.md rigenerato.
 
 ## Cose imparate
 - D10: nodo per bot e per server Lavalink; Pool.nodes e' una mappa per identificatore: `<base>@<chiave>`
