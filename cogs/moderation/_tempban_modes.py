@@ -3,7 +3,7 @@ cogs/moderation/_tempban_modes.py
 ================================
 Aiuti per il ban temporaneo con rientro e per il ban in isolamento
 (/modban tempban, opzione `modo`): invito da mandare prima del ban,
-ruolo e canale di isolamento, ruoli salvati e ridati, membro dalla cache o
+ruolo e canale di isolamento, ruoli salvati e ridati, rientro con OAuth, membro dalla cache o
 da Discord, stato ripristinato se l'azione fallisce.
 Funzioni coperte: SPEC §5.11, §5.12 (issue #138)
 Dipende da: core/tempban_logic.py
@@ -13,11 +13,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 import discord
 
+from core.config import config
 from core.database import db
+from core.oauth_crypto import OAuthEncryptionNotConfigured
 from core.repositories.moderation_repo import moderation_repo
+from core.repositories.restore_oauth_repo import (
+    STATUS_ACTIVE,
+    STATUS_KICKED_FLAGGED,
+    restore_oauth_repo,
+)
+from core.restore_orchestrator import restore_orchestrator
 from core.tempban_logic import (
     INVITO_MAX_ETA,
     INVITO_MAX_USI,
@@ -89,22 +98,26 @@ def _nega_vista(overwrite: discord.PermissionOverwrite) -> bool:
     return True
 
 
-async def _nega_su_canale(canale: discord.abc.GuildChannel, ruolo: discord.Role) -> None:
+async def _nega_su_canale(canale: discord.abc.GuildChannel, ruolo: discord.Role) -> bool:
+    """True se il canale è nascosto (o lo era già); False se Discord ha rifiutato."""
     ow = canale.overwrites_for(ruolo)
     if not _nega_vista(ow):
-        return
+        return True
     try:
         await canale.set_permissions(ruolo, overwrite=ow, reason="Isolamento: canale nascosto")
     except discord.HTTPException:
         logger.warning("Isolamento: canale %s non nascosto (server %s).", canale.id, canale.guild.id)
+        return False
+    return True
 
 
 async def prepara_isolamento(
     guild: discord.Guild,
-) -> tuple[discord.Role, discord.TextChannel] | None:
+) -> tuple[discord.Role, discord.TextChannel, int] | None:
     """
     Ruolo e canale di isolamento del server, creati al primo uso. Il ruolo
     non vede nessun canale tranne quello di isolamento (letto, non scritto).
+    Il terzo valore è quanti canali Discord NON ha lasciato nascondere.
     None se Discord rifiuta la creazione.
     """
     ruolo_id = await db.get_guild_setting(guild.id, SETTING_ISOLAMENTO_RUOLO)
@@ -136,12 +149,12 @@ async def prepara_isolamento(
     # il quarto d'ora che Discord concede per rispondere all'interazione.
     limite = asyncio.Semaphore(PARALLELI_SET_PERMISSIONS)
 
-    async def _uno(altro: discord.abc.GuildChannel) -> None:
+    async def _uno(altro: discord.abc.GuildChannel) -> bool:
         async with limite:
-            await _nega_su_canale(altro, ruolo)
+            return await _nega_su_canale(altro, ruolo)
 
-    await asyncio.gather(*(_uno(a) for a in guild.channels if a.id != canale.id))
-    return ruolo, canale
+    esiti = await asyncio.gather(*(_uno(a) for a in guild.channels if a.id != canale.id))
+    return ruolo, canale, esiti.count(False)
 
 
 async def nega_canale_nuovo(canale: discord.abc.GuildChannel) -> None:
@@ -185,6 +198,47 @@ async def ripristina_stato(guild_id: int, user_id: int, precedente: dict | None)
     await moderation_repo.save_tempban_state(
         guild_id, user_id, precedente["modo"], list(precedente["ruoli"]),
         precedente["finisce_il"], precedente["invito_codice"], precedente["case_number"],
+        precedente.get("oauth_rientro", False),
     )
     if precedente["scaduto"]:
         await moderation_repo.mark_tempban_state_expired(guild_id, user_id)
+
+
+async def cancella_invito_per_codice(client: discord.Client | None, codice: str | None) -> None:
+    """Toglie l'invito di rientro quando lo stato sparisce senza che l'utente rientri."""
+    if not codice or client is None:
+        return
+    try:
+        await client.delete_invite(codice, reason="Invito di rientro non più necessario")
+    except discord.HTTPException:
+        pass
+
+
+async def rientro_oauth_possibile(guild_id: int, user_id: int, fine: datetime) -> bool:
+    """
+    True se l'utente ha autorizzato il ripristino utenti (token valido, non in
+    blacklist) e il token dura fino alla fine del ban: allora rientra da solo.
+    """
+    try:
+        token = await restore_oauth_repo.get_token(guild_id, user_id)
+    except OAuthEncryptionNotConfigured:
+        return False
+    if token is None or token.status not in (STATUS_ACTIVE, STATUS_KICKED_FLAGGED):
+        return False
+    return token.expires_at > fine
+
+
+async def rientra_via_oauth(guild_id: int, user_id: int) -> bool:
+    """Riporta nel server chi aveva autorizzato il ripristino (guilds.join). False se non riesce."""
+    try:
+        token = await restore_oauth_repo.get_token(guild_id, user_id)
+    except OAuthEncryptionNotConfigured:
+        return False
+    if token is None or token.expires_at <= datetime.now(timezone.utc):
+        return False
+    return await restore_orchestrator.join_user_via_oauth(
+        bot_token=config.YOKAI_BOT_TOKEN,
+        guild_id=guild_id,
+        user_id=user_id,
+        access_token=token.access_token,
+    )

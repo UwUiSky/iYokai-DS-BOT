@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import enum
 import functools
+import logging
 from collections.abc import Iterable
 
 import discord
@@ -143,6 +144,18 @@ async def leggi_ruolo(guild_id: int, tipo: TipoRuolo) -> int | None:
     return valore
 
 
+# #148: chi vuole sapere quando l'admin cambia un ruolo (oggi: la scrittura dei permessi
+# dei comandi su Discord, core/command_permissions.py) si registra qui. Un errore del
+# callback non impedisce di salvare il ruolo.
+_dopo_imposta_ruolo = None
+
+
+def registra_dopo_imposta_ruolo(callback) -> None:
+    """`callback(guild, tipo, ruolo_vecchio_id, ruolo_nuovo_id)` async; None per toglierlo."""
+    global _dopo_imposta_ruolo
+    _dopo_imposta_ruolo = callback
+
+
 async def imposta_ruolo(
     guild: discord.Guild,
     tipo: TipoRuolo,
@@ -155,9 +168,16 @@ async def imposta_ruolo(
             raise ValueError("Non puoi usare @everyone come ruolo del bot.")
         if not ruolo_valido_per_server(guild, ruolo.id):
             raise ValueError("Questo ruolo non esiste in questo server.")
-    await db.set_guild_setting(
-        guild.id, tipo.value, ruolo.id if ruolo is not None else None, changed_by
-    )
+    vecchio = await leggi_ruolo(guild.id, tipo)
+    nuovo = ruolo.id if ruolo is not None else None
+    await db.set_guild_setting(guild.id, tipo.value, nuovo, changed_by)
+    if _dopo_imposta_ruolo is not None:
+        try:
+            await _dopo_imposta_ruolo(guild, tipo, vecchio, nuovo)
+        except Exception:  # noqa: BLE001 - il ruolo è già salvato: il resto è un di più
+            logging.getLogger("iyokai.command_access").exception(
+                "Aggiornamento dei permessi dei comandi fallito per il server %s.", guild.id
+            )
 
 
 # ----------------------------------------------------------------------

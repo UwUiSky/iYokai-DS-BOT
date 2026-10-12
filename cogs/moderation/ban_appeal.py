@@ -37,6 +37,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.ui_base import BaseModal, BaseView
 from core.repositories.moderation_repo import moderation_repo
+from cogs.moderation._tempban_modes import cancella_invito_per_codice
 from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, post_to_mod_log, truncate_text
 
 logger = logging.getLogger("iyokai.moderation.ban_appeal")
@@ -164,29 +165,43 @@ class BottoneEsitoAppello(
 _APPELLI_IN_CORSO: set[int] = set()
 
 
-async def _accetta(guild: discord.Guild, appello: dict, moderatore_id: int) -> str | None:
+async def _accetta(
+    guild: discord.Guild, appello: dict, moderatore_id: int, client: discord.Client | None = None
+) -> tuple[str | None, str | None]:
     """
     Toglie il ban contestato PRIMA di segnare l'appello come accettato.
-    None se riuscito; altrimenti il messaggio per lo staff (appello da lasciare aperto).
+    Restituisce (errore, testo per l'utente). Con un errore l'appello resta aperto.
+    Se il caso contestato non è più attivo (ban già tolto, caso eliminato o
+    sostituito) non si sbanna: l'appello si chiude e l'utente riceve il testo giusto.
     Tocca solo il caso dell'appello: un ban più recente non viene revocato.
     """
     uid = appello["user_id"]
     numero = appello["case_number"]
     caso = await moderation_repo.get_case(guild.id, numero) if numero is not None else None
     if caso is None or not caso.active:
-        return "Il ban contestato non è più attivo (già tolto o sostituito): niente da togliere."
+        altro = None
+        for tipo in CASI_CON_APPELLO:
+            altro = altro or await moderation_repo.get_latest_active_case(guild.id, uid, tipo)
+        if altro is not None:
+            return None, (
+                f"Il ban che contestavi su **{guild.name}** non è più in vigore, ma ne risulta "
+                "un altro: per quello puoi fare un nuovo appello."
+            )
+        return None, f"Il ban su **{guild.name}** che contestavi risulta già tolto."
     try:
         await guild.unban(discord.Object(id=uid), reason=f"Appello #{appello['id']} accettato")
     except discord.NotFound:
         pass
     except discord.HTTPException:
-        return "Non sono riuscito a togliere il ban: l'appello resta aperto. Controlla i miei permessi."
+        return "Non sono riuscito a togliere il ban: l'appello resta aperto. Controlla i miei permessi.", None
     await moderation_repo.revoke_case(guild.id, numero, moderatore_id)
     # La scadenza automatica di un tempban non serve più.
     await moderation_repo.cancel_tempban_jobs(guild.id, uid)
-    if await moderation_repo.get_tempban_state(guild.id, uid) is not None:
+    stato_tempban = await moderation_repo.get_tempban_state(guild.id, uid)
+    if stato_tempban is not None:
         await moderation_repo.mark_tempban_state_expired(guild.id, uid)
-    return None
+        await cancella_invito_per_codice(client, stato_tempban["invito_codice"])
+    return None, None
 
 
 async def decidi_appello(interaction: discord.Interaction, appello_id: int, accetta: bool) -> None:
@@ -205,13 +220,17 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
     if appello["stato"] != STATO_APERTO or appello_id in _APPELLI_IN_CORSO:
         await interaction.response.send_message("Questo appello è già stato deciso.", ephemeral=True)
         return
-    await interaction.response.defer()
+    # Subito, senza await in mezzo: due clic insieme non passano entrambi.
+    _APPELLI_IN_CORSO.add(appello_id)
     uid = appello["user_id"]
     avviso = ""
-    _APPELLI_IN_CORSO.add(appello_id)
+    testo_utente = None
     try:
+        await interaction.response.defer()
         if accetta:
-            esito = await _accetta(guild, appello, interaction.user.id)
+            esito, testo_utente = await _accetta(
+                guild, appello, interaction.user.id, interaction.client
+            )
             if esito is not None:
                 # Il ban non è stato tolto: l'appello resta aperto, si può riprovare.
                 await interaction.followup.send(esito, ephemeral=True)
@@ -221,7 +240,7 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
             return
     finally:
         _APPELLI_IN_CORSO.discard(appello_id)
-    messaggio = (
+    messaggio = testo_utente or (
         f"Il tuo appello su **{guild.name}** è stato accettato."
         if accetta
         else f"Il tuo appello su **{guild.name}** è stato rifiutato."

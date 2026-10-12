@@ -94,3 +94,18 @@ def _stesso(messaggio, testo):
     copia = _FakeMessage(messaggio.guild, messaggio.author, messaggio.channel, content=testo)
     copia.id = messaggio.id
     return copia
+
+
+def test_il_registro_dei_warn_ha_un_tetto(monkeypatch):
+    from cogs.automod import automod as modulo
+
+    modulo._avvisati.clear()
+    monkeypatch.setattr(modulo, "_AVVISATI_MAX", 5)
+    for i in range(50):
+        assert modulo._warn_da_dare(i, "anti_zalgo", modificato=False)
+
+    assert len(modulo._avvisati) == 5
+    # Un messaggio vecchio, uscito dal registro, non è più ricordato.
+    assert modulo._warn_da_dare(0, "anti_zalgo", modificato=True)
+    # Uno recente sì.
+    assert not modulo._warn_da_dare(49, "anti_zalgo", modificato=True)

@@ -16,6 +16,10 @@ from datetime import datetime, timedelta, timezone
 
 DEFAULT_WINDOW_SECONDS = 60
 
+# M 14.9: tetto alla coda. Oltre questo numero di eventi nella finestra il
+# conteggio si ferma al tetto: per un pannello "comandi al minuto" basta.
+MAX_EVENTI_IN_CODA = 100_000
+
 
 class RollingCounter:
     """
@@ -27,10 +31,16 @@ class RollingCounter:
 
     def __init__(self, window_seconds: int = DEFAULT_WINDOW_SECONDS) -> None:
         self._window_seconds = window_seconds
-        self._timestamps: deque[datetime] = deque()
+        self._timestamps: deque[datetime] = deque(maxlen=MAX_EVENTI_IN_CODA)
 
     def record(self, at: datetime | None = None) -> None:
-        self._timestamps.append(at or datetime.now(timezone.utc))
+        momento = at or datetime.now(timezone.utc)
+        self._timestamps.append(momento)
+        # Toglie dalla testa quello che è già fuori finestra: la coda non
+        # cresce se nessuno chiede il conteggio (gli eventi arrivano in ordine).
+        soglia = momento - timedelta(seconds=self._window_seconds)
+        while self._timestamps and self._timestamps[0] < soglia:
+            self._timestamps.popleft()
 
     def count_in_window(self, now: datetime | None = None) -> int:
         """
@@ -45,7 +55,9 @@ class RollingCounter:
         """
         now = now or datetime.now(timezone.utc)
         soglia = now - timedelta(seconds=self._window_seconds)
-        self._timestamps = deque(t for t in self._timestamps if t >= soglia)
+        self._timestamps = deque(
+            (t for t in self._timestamps if t >= soglia), maxlen=MAX_EVENTI_IN_CODA
+        )
         return len(self._timestamps)
 
 

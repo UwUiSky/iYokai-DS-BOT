@@ -18,10 +18,13 @@ log) — stesso modulo/stesso cog dei filtri base sopra, non uno
 separato: sono entrambi "AutoMod", solo con motore diverso (native
 Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 `/automod`.
+
+I filtri lato bot controllano anche i messaggi MODIFICATI (`on_message_edit`,
+AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
+messaggio modificato più volte vale un solo warn per violazione.
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021)
 """
 
-# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
 # DA FARE (issue #102, fase F13): NF-31, Blocco dei link di phishing.
 #   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 

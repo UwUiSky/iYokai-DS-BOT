@@ -135,7 +135,7 @@ Totale voci: **494**.
   anche le eccezioni non catturate nei listener di eventi (non solo
   gli slash command), con alert DM all'owner e cooldown per
   event_method
-  → **Stato 04/10:** tratta "non hai i permessi" come errore imprevisto (BUG-13).
+  → **Stato 11/10:** corretto (M 14.2, 14.3): permessi e controlli falliti → messaggio effimero chiaro e log INFO; errore dopo un `defer()` pubblico → segnaposto cancellato e followup effimero. (da verificare live)
 - `[x]` 1.7 Logger Strutturato — JSON con rotazione
   (`core/json_log_formatter.py` + `RotatingFileHandler`, 10MB×5),
   nessuna nuova dipendenza. Convive con l'output testuale su stdout,
@@ -194,6 +194,10 @@ Totale voci: **494**.
 
 - `[x]` 3.1 Registry moduli + flag premium per modulo, tutto OFF di default
 - `[x]` 3.2 Whitelist manuale per Server ID (add / remove)
+- `[x]` 3.2 Punto unico di invalidazione del verdetto premium in memoria (#145) —
+  `core/premium_cache.py`: whitelist, cassa, abbonamenti e flag del modulo lo
+  chiamano; i log avanzati si registrano e dimenticano il verdetto subito (non
+  dopo i 60 s). Il boost del server principale resta sul TTL.
 - `[x]` 3.2 Comando per **elencare** i server in whitelist —
   `/owner whitelist-list`
 - `[x]` 3.2 Attiva/disattiva natura premium di un singolo modulo
@@ -340,7 +344,7 @@ Totale voci: **494**.
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
   → **Stato 11/10:** `/lock`, `/unlock`, `/slowmode`, `/clear`, `/untimeout`, `/unmute` e la scadenza dei tempban scrivono nel log (M 1.8).
-- `[~]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
+- `[x]` 5.11 **Ban temporaneo con rientro** — alla scadenza l'utente
   riceve l'invito per tornare e, al rientro, riprende i ruoli che
   aveva. L'invito e la data di fine si mandano in privato **prima**
   del ban (dopo, il bot non può più scrivergli); chi ha autorizzato il
@@ -348,7 +352,7 @@ Totale voci: **494**.
   fase F9)
   → **Fatto:** `/modban tempban modo:Fuori, con invito e ruoli al rientro` (invito
   senza scadenza e a un uso, DM prima del ban, ruoli ridati al rientro sotto il
-  ruolo del bot). **Manca:** rientro automatico per chi ha autorizzato l'OAuth (#92).
+  ruolo del bot). **Rientro automatico:** chi ha autorizzato il ripristino utenti (token valido fino alla fine del ban) rientra da solo alla scadenza con `join_user_via_oauth` (`tempban_stato.oauth_rientro`); gli altri usano l'invito. Un tempban con rientro non parte se non c'è né invito né autorizzazione. **Da provare live.**
 - `[x]` 5.12 **Ban in isolamento** — per il tempo scelto l'utente resta
   nel server ma vede un solo canale, che dice quando finisce; alla
   scadenza riprende i ruoli di prima (issue #138, fase F9)
@@ -1617,10 +1621,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 17.4 Blacklist globale utenti — cache come per i moduli,
   blocca ogni interazione tramite `BlacklistAwareCommandTree`
   → **Stato 04/10:** ora ferma anche bottoni, moduli e listener (SEC-10, SEC-21). (da verificare live)
-- `[~]` 17.5 Blacklist globale server — uscita automatica su
+- `[x]` 17.5 Blacklist globale server — uscita automatica su
   `on_guild_join` se già in blacklist, uscita immediata se aggiunto
   mentre il bot è già dentro
-  → **Stato 04/10:** esce solo il bot principale; gli altri bot restano (REVIEW §12).
+  → **Stato 11/10:** corretto (M 13.2): escono il bot principale e i cinque worker musicali
+  (`core/blacklist_exit.py`), sia al comando sia all'ingresso. (da verificare live)
 - `[x]` 17.6 Forced cog load / unload / reload — `/owner cog-load|
   cog-unload|cog-reload`. Due bug sistemici trovati e corretti
   facendolo: i nomi dei metodi Python collidevano con hook di ciclo
@@ -1669,17 +1674,30 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `/slowmode`, `/clear`, `/untimeout`, `/unmute-role`, scadenza dei
   tempban, azioni dell'escalation
 
-## §19 DATI, PRIVACY E GDPR — da fare (fase F5)
+## §19 DATI, PRIVACY E GDPR — fatto per i dati personali (fase F5); restano policy e intent
 
-- `[ ]` 19.1 Registro dei dati personali: ogni tabella con `user_id` o
-  `guild_id` è dichiarata, con il modo di cancellarla (NF-04)
-- `[ ]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
-  tranne ban e kick di sicurezza (D6, GDPR-1)
-- `[ ]` 19.3 Cancellazione dei dati di un utente su richiesta (GDPR-2)
-- `[ ]` 19.4 Esportazione dei dati di un utente in un file (art. 15)
-- `[ ]` 19.5 Pulizia giornaliera delle tabelle che crescono (GDPR-3,
-  PERF-3)
-- `[ ]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner
+- `[x]` 19.1 Registro dei dati personali: ogni tabella con `user_id` o
+  `guild_id` è dichiarata, con il modo di cancellarla (NF-04) —
+  `core/data_registry.py`, 87 tabelle (compresi `command_usage`,
+  `rank_card_prefs`, `event_log`, `log_ignora`, `output_channels`); un test legge lo
+  schema vero e fallisce se una tabella o una colonna con una persona non è dichiarata
+- `[x]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
+  tranne ban e kick di sicurezza (D6, GDPR-1) — `on_guild_remove` segna `guild_presence.left_at`
+  (migrazione 0034); un rientro prima dei 90 giorni azzera il conto; la colonna calcolata
+  `moderation_cases.retain_for_security` (0035, rifatta in 0050) tiene ban, tempban, softban, kick, escalation dell'automod e mute con ruolo (#46)
+  → **Scelta (da confermare):** la cancellazione richiesta dall'utente toglie tutto ciò che non è
+  di sicurezza e dice cosa resta; non rifiuta l'intera richiesta.
+- `[x]` 19.3 Cancellazione dei dati di un utente su richiesta (GDPR-2) —
+  `core/forget_user_service.py`, una transazione; richieste in `data_deletion_requests` (0036),
+  una in attesa per utente, esito senza dati personali, conservato 24 mesi
+- `[x]` 19.4 Esportazione dei dati di un utente in un file (art. 15) — JSON sotto 8 MiB,
+  senza token, solo righe DELL'utente (non quelle dove ha solo agito su altri), in ordine di chiave
+  primaria, tabelle grandi accorciate e tagli dichiarati
+- `[x]` 19.5 Pulizia giornaliera delle tabelle che crescono (GDPR-3,
+  PERF-3) — `core/retention_worker.py` (scadenze nel registro: 30 giorni azioni concluse,
+  90 verifiche, 180 automod e trascrizioni, 365 sicurezza/storico/casse); `event_log.id` BIGINT (0037)
+- `[x]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner —
+  `/utility privacy esporta|cancella`, `/owner privacy richieste|approva|rifiuta`. (da verificare live)
 - `[ ]` 19.7 Privacy policy e termini pubblicati (serve anche per la
   verifica dell'app a 100 server)
 - `[ ]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato
@@ -1699,6 +1717,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 20.6 Al massimo 25 figli per gruppo e un livello di
   sotto-gruppi, controllati da un test (LIM-57)
 - `[ ]` 20.7 `COMMAND_LIST.md` rigenerato dall'albero vero
+- `[~]` 20.8 Gruppi nascosti dalla lista a chi non li può usare, per ruolo scelto dall'admin (#148, OAuth2)
+  → **Stato 11/10:** fatta la parte che si prova senza token vero: `core/command_permissions.py`
+  (state firmato che scade in 15 minuti, link con scope `applications.commands.permissions.update`,
+  fusione con le regole già impostate dall'admin, tetto di 100 regole, client HTTP, rinnovo del token),
+  `command_permission_tokens` (0039, token cifrato), aggancio a `imposta_ruolo`. Resta: l'indirizzo di
+  ritorno OAuth2 sul server web e il bottone «Autorizza» nel passo di `/admin setup attiva`; prova live.
+  Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 

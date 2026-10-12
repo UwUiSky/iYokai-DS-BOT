@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from cogs.moderation._shared import MODULE_ACTIONS, SETTING_MOD_LOG_CHANNEL
+from cogs.moderation._shared import MODULE_ACTIONS
 from cogs.moderation.ban_appeal import (
     SETTING_CANALE_APPELLI,
     decidi_appello,
@@ -238,3 +238,159 @@ async def test_appello_non_consegnato_non_blocca_per_24_ore(amb):
 
     assert "non sono riuscito" in (await invia_appello(bot, G, fake_member(UTENTE), "x" * 30, ADESSO)).lower()
     assert await moderation_repo.list_appeals(G) == []
+
+
+# --------- secondo passaggio: caso non attivo, doppio clic, comandi, log ---------
+
+async def test_appello_su_caso_gia_tolto_si_chiude_come_accettato_senza_sbannare(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    numero = (await moderation_repo.get_appeal(aid))["case_number"]
+    await moderation_repo.revoke_case(G, numero, 10)
+    inter, utente = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    server.unban.assert_not_awaited()
+    assert (await moderation_repo.get_appeal(aid))["stato"] == "accettato"
+    assert "già tolto" in utente.send.call_args.args[0]
+
+
+async def test_appello_su_caso_eliminato_si_chiude(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    numero = (await moderation_repo.get_appeal(aid))["case_number"]
+    await moderation_repo.delete_case(G, numero)
+    inter, utente = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    assert (await moderation_repo.get_appeal(aid))["stato"] == "accettato"
+    server.unban.assert_not_awaited()
+
+
+async def test_appello_su_caso_sostituito_avvisa_che_ce_un_altro_ban(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    await moderation_repo.revoke_case(G, (await moderation_repo.get_appeal(aid))["case_number"], 10)
+    await moderation_repo.create_case(G, UTENTE, 10, "ban", "di nuovo")
+    inter, utente = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    server.unban.assert_not_awaited()
+    assert "un altro" in utente.send.call_args.args[0]
+
+
+async def test_doppio_clic_insieme_sbanna_una_volta_sola(amb):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    server, _, bot = amb
+    aid = await _appello(bot)
+    inter1, _ = _inter_staff(server)
+    inter2, _ = _inter_staff(server)
+    await apri_connessioni(moderation_repo._pool)
+
+    await asyncio.gather(decidi_appello(inter1, aid, True), decidi_appello(inter2, aid, True))
+
+    assert server.unban.await_count == 1
+    assert (await moderation_repo.get_appeal(aid))["stato"] == "accettato"
+
+
+async def test_appello_di_un_altro_server_non_si_decide(amb):
+    server, _, bot = amb
+    aid = await _appello(bot)
+    altro = fake_guild(777)
+    altro.unban = AsyncMock()
+    inter, _ = _inter_staff(altro)
+
+    await decidi_appello(inter, aid, True)
+
+    altro.unban.assert_not_awaited()
+    assert (await moderation_repo.get_appeal(aid))["stato"] == "aperto"
+    assert "non trovato" in inter.response.send_message.call_args.args[0]
+
+
+async def test_testo_troppo_corto_o_lungo_e_canale_mancante(amb):
+    _, canale, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "ban", "spam")
+
+    assert "tra 10 e 1500" in await invia_appello(bot, G, fake_member(UTENTE), "corto", ADESSO)
+    assert "tra 10 e 1500" in await invia_appello(bot, G, fake_member(UTENTE), "x" * 1501, ADESSO)
+    await db.set_guild_setting(G, SETTING_CANALE_APPELLI, None)
+    assert "non accetta appelli" in await invia_appello(bot, G, fake_member(UTENTE), "x" * 30, ADESSO)
+    canale.send.assert_not_awaited()
+    assert await moderation_repo.list_appeals(G) == []
+
+
+async def test_un_tempban_si_puo_contestare_e_accettando_si_chiude(amb):
+    server, _, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "tempban", "spam", duration_seconds=3600)
+    await invia_appello(bot, G, fake_member(UTENTE), "x" * 30, ADESSO)
+    aid = (await moderation_repo.list_appeals(G))[0]["id"]
+    inter, _ = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    server.unban.assert_awaited()
+    assert await moderation_repo.get_latest_active_case(G, UTENTE, "tempban") is None
+
+
+async def test_accettare_chiude_lo_stato_del_tempban_e_scrive_nel_log(amb, monkeypatch):
+    import cogs.moderation.ban_appeal as modulo
+
+    server, _, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "tempban", "spam", duration_seconds=3600)
+    from datetime import datetime as _dt
+
+    await moderation_repo.save_tempban_state(G, UTENTE, "rientro", [1], _dt.now(timezone.utc) + timedelta(days=1))
+    await invia_appello(bot, G, fake_member(UTENTE), "x" * 30, ADESSO)
+    aid = (await moderation_repo.list_appeals(G))[0]["id"]
+    log = AsyncMock()
+    monkeypatch.setattr(modulo, "post_to_mod_log", log)
+    inter, _ = _inter_staff(server)
+
+    await decidi_appello(inter, aid, True)
+
+    assert (await moderation_repo.get_tempban_state(G, UTENTE))["scaduto"] is True
+    assert "accettato" in log.call_args.args[1].title
+
+
+async def test_comandi_appelli_canale_ed_elenco(amb):
+    from cogs.moderation.ban_appeal import ModerationBanAppealCog
+
+    server, _, bot = amb
+    cog = ModerationBanAppealCog(bot)
+    inter = fake_interaction(guild=server, user=fake_member(10))
+    canale_nuovo = fake_text_channel(6000, "nuovo")
+
+    await cog.canale.callback(cog, inter, canale_nuovo)
+    assert await db.get_guild_setting(G, SETTING_CANALE_APPELLI) == 6000
+    await cog.canale.callback(cog, inter, None)
+    assert await db.get_guild_setting(G, SETTING_CANALE_APPELLI) is None
+
+    inter2 = fake_interaction(guild=server, user=fake_member(10))
+    await cog.elenco.callback(cog, inter2, None)
+    assert inter2.response.send_message.call_args.args[0] == "Nessun appello."
+    await moderation_repo.create_case(G, UTENTE, 10, "ban", "spam")
+    await moderation_repo.create_appeal_if_allowed(G, UTENTE, 1, "x" * 30, timedelta(hours=24))
+    await cog.elenco.callback(cog, inter2, None)
+    assert f"<@{UTENTE}>" in inter2.response.send_message.call_args.kwargs["embed"].description
+
+
+async def test_modulo_appello_risponde_con_l_esito(amb):
+    from cogs.moderation.ban_appeal import ModuloAppello
+
+    _, canale, bot = amb
+    await moderation_repo.create_case(G, UTENTE, 10, "ban", "spam")
+    modulo = ModuloAppello(G)
+    modulo.testo._value = "x" * 30
+    inter = fake_interaction(guild=None, user=fake_member(UTENTE))
+    inter.client = bot
+
+    await modulo.on_submit(inter)
+
+    assert "inviato" in inter.followup.send.call_args.args[0].lower()
+    canale.send.assert_awaited_once()

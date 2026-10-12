@@ -1,43 +1,121 @@
 """
 core/repositories/guild_presence_repo.py
 ========================================
-Quando il bot è entrato e uscito da ogni server.
+Quando il bot è entrato e uscito da ogni server (tabella `guild_presence`,
+migrazione 0034). L'uscita avvia i 90 giorni dopo i quali il lavoro giornaliero
+cancella i dati del server (D6); un rientro prima non perde niente.
 Funzioni coperte: SPEC §19 (NF-04)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #75).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #75, fase F5
-# Funzione: NF-04, Privacy: cancellazione, esportazione, conservazione.
-#
-# Cosa deve fare la funzione: Ogni utente può chiedere una copia dei
-#   suoi dati o la loro cancellazione. I dati di un server vengono
-#   cancellati 90 giorni dopo l'uscita del bot (D6). Un solo lavoro
-#   giornaliero pulisce le tabelle che crescono.
-# Questo file: Quando il bot è entrato e uscito da ogni server.
-# Comandi previsti: /utility privacy esporta, /utility privacy cancella;
-#   /owner privacy richieste, /owner privacy approva. Fino a F7: sotto
-#   il gruppo esistente /config.
-# File collegati: cogs/utility/privacy.py, core/data_registry.py,
-#   core/forget_user_service.py, core/retention_worker.py,
-#   core/repositories/data_deletion_request_repo.py.
-# Test da scrivere per primi: tests/test_data_registry.py,
-#   tests/test_forget_user.py, tests/test_retention_worker.py.
-# Migrazione: core/migrations/NNNN_guild_presence.sql,
-#   core/migrations/NNNN_retain_for_security.sql,
-#   core/migrations/NNNN_data_deletion_requests.sql. (prossimo numero
-#   libero in core/migrations/).
-# Limiti da rispettare: Esportazione come file sotto 10 MiB; DM con
-#   HTTPException catturata.
-# Da chi prendere spunto: Double Counter (/privacy, conservazione
-#   dichiarata di 24 mesi).
-# Dipende da: GDPR-1/2/3 di REVIEW.md. D6.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
+import asyncpg
+
+from core.data_registry import GIORNI_DOPO_USCITA
+
+
+class GuildPresenceRepository:
+    def __init__(self, pool_provider) -> None:
+        self._pool_provider = pool_provider
+
+    @property
+    def _pool(self) -> asyncpg.Pool:
+        return self._pool_provider()
+
+    async def segna_entrato(self, guild_id: int) -> None:
+        """Il bot è nel server. Dopo una cancellazione già fatta riparte da zero."""
+        await self._pool.execute(
+            """
+            INSERT INTO guild_presence (guild_id) VALUES ($1)
+            ON CONFLICT (guild_id) DO UPDATE SET
+                left_at = NULL,
+                joined_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                                 THEN now() ELSE guild_presence.joined_at END,
+                purged_at = NULL
+            """,
+            guild_id,
+        )
+
+    async def segna_uscito(self, guild_id: int, quando: datetime | None = None) -> None:
+        """Il bot è uscito: avvia i 90 giorni (se erano già avviati restano quelli)."""
+        await self._pool.execute(
+            """
+            INSERT INTO guild_presence (guild_id, left_at) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET
+                left_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                               THEN EXCLUDED.left_at  -- già cancellato e tornato senza che nessuno lo segnasse
+                               ELSE COALESCE(guild_presence.left_at, EXCLUDED.left_at) END,
+                joined_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                                 THEN now() ELSE guild_presence.joined_at END,
+                purged_at = NULL
+            """,
+            guild_id,
+            quando or datetime.now(timezone.utc),
+        )
+
+    async def sincronizza(self, guild_ids: set[int]) -> int:
+        """
+        All'avvio: i server in cui il bot è davvero sono "entrati", quelli che il
+        database ricorda ma il bot non vede più sono "usciti" (parte il conto dei
+        90 giorni). Restituisce quanti ha segnato usciti.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                # Un server riaggiunto a bot spento (nessun on_guild_join) ma già cancellato
+                # riparte da zero, come `segna_entrato`: senza questo `purged_at` resta e la
+                # prossima uscita non partirebbe mai (i dati nuovi resterebbero per sempre).
+                await conn.execute(
+                    """
+                    INSERT INTO guild_presence (guild_id) SELECT unnest($1::bigint[])
+                    ON CONFLICT (guild_id) DO UPDATE SET
+                        left_at = NULL,
+                        joined_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                                         THEN now() ELSE guild_presence.joined_at END,
+                        purged_at = NULL
+                    WHERE guild_presence.left_at IS NOT NULL OR guild_presence.purged_at IS NOT NULL
+                    """,
+                    list(guild_ids),
+                )
+                righe = await conn.fetch(
+                    """
+                    UPDATE guild_presence SET left_at = now()
+                    WHERE left_at IS NULL AND purged_at IS NULL AND NOT (guild_id = ANY($1::bigint[]))
+                    RETURNING guild_id
+                    """,
+                    list(guild_ids),
+                )
+        return len(righe)
+
+    async def da_cancellare(
+        self, adesso: datetime | None = None, giorni: int = GIORNI_DOPO_USCITA
+    ) -> list[int]:
+        """I server usciti da più di `giorni` e non ancora cancellati."""
+        soglia = (adesso or datetime.now(timezone.utc)) - timedelta(days=giorni)
+        righe = await self._pool.fetch(
+            "SELECT guild_id FROM guild_presence "
+            "WHERE left_at IS NOT NULL AND left_at < $1 AND purged_at IS NULL ORDER BY left_at",
+            soglia,
+        )
+        return [r["guild_id"] for r in righe]
+
+    async def segna_cancellato(self, guild_id: int, conn: asyncpg.Connection | None = None) -> None:
+        corpo = "UPDATE guild_presence SET purged_at = now() WHERE guild_id = $1"
+        if conn is not None:
+            await conn.execute(corpo, guild_id)
+        else:
+            await self._pool.execute(corpo, guild_id)
+
+    async def get(self, guild_id: int) -> dict | None:
+        riga = await self._pool.fetchrow("SELECT * FROM guild_presence WHERE guild_id = $1", guild_id)
+        return dict(riga) if riga else None
+
+
+def _get_pool():
+    from core.database import db
+
+    return db.pool
+
+
+guild_presence_repo = GuildPresenceRepository(pool_provider=_get_pool)

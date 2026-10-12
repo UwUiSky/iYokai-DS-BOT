@@ -473,6 +473,17 @@ class ModerationRepository:
                 )
                 return appello_id, None
 
+    async def close_open_appeals(self, guild_id: int, user_id: int, deciso_da: int) -> int:
+        """Un unban chiude gli appelli ancora aperti dell'utente (come accettati)."""
+        result = await self._pool.execute(
+            """
+            UPDATE ban_appelli SET stato = 'accettato', deciso_da = $3, deciso_il = now()
+            WHERE guild_id = $1 AND user_id = $2 AND stato = 'aperto'
+            """,
+            guild_id, user_id, deciso_da,
+        )
+        return int(result.split()[-1])
+
     async def delete_appeal(self, appeal_id: int) -> None:
         """Toglie un appello che non è arrivato allo staff (non deve bloccare le 24 ore)."""
         await self._pool.execute("DELETE FROM ban_appelli WHERE id = $1", appeal_id)
@@ -515,17 +526,20 @@ class ModerationRepository:
         finisce_il: datetime,
         invito_codice: str | None = None,
         case_number: int | None = None,
+        oauth_rientro: bool = False,
     ) -> None:
         await self._pool.execute(
             """
             INSERT INTO tempban_stato
-                (guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il,
+                 oauth_rientro)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (guild_id, user_id) DO UPDATE
                 SET modo = $3, ruoli = $4, invito_codice = $5, case_number = $6,
-                    finisce_il = $7, scaduto = FALSE
+                    finisce_il = $7, scaduto = FALSE, oauth_rientro = $8
             """,
             guild_id, user_id, modo, ruoli, invito_codice, case_number, finisce_il,
+            oauth_rientro,
         )
 
     async def set_tempban_state_case(self, guild_id: int, user_id: int, case_number: int) -> None:

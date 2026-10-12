@@ -659,7 +659,6 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Con `premi modo:Sostituisci`, metti il ruolo-premio del livello alto sopra il ruolo del bot e fai salire un membro.
   Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
 - [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
-- [ ] Dati (NF-04, F5) — quando il registro esisterà: `rank_card_prefs` deve comparire in esportazione e cancellazione.
 
 
 ## Moderazione — passaggio `feat/giro-mod` (#138)
@@ -697,3 +696,35 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 - [ ] `VER-014` bis (#118, giro bug) — con il ruolo di verifica sopra il bot: il pannello dice di contattare lo staff e l'utente tiene @Nuovo. Con @Nuovo uguale al ruolo di verifica: l'utente resta verificato.
 - [ ] `AMD-021` bis (#116, giro bug) — regola con sola azione «warn»: modifica più volte lo stesso messaggio che viola. Risultato atteso: un solo warn.
 - [ ] Isolamento su server grande (#138) — su un server con molti canali, `modo:Isolamento` finisce senza «L'applicazione non ha risposto» e nasconde tutti i canali.
+- [ ] Dati (NF-04, F5) — `rank_card_prefs` compare in esportazione e sparisce con la cancellazione: vedi «Core e privacy».
+
+
+## Core e privacy — passaggio `feat/giro-core` (#70, #69, #145, #75, #19, #37, #46)
+
+- [ ] `NF-04` esportazione (#75) — passi:
+  1. Con un account di prova che ha XP, una rank card colorata e un `/level rank`, lancia `/utility privacy esporta`.
+  2. Rilancialo subito: deve rispondere che c'è un'attesa di 60 secondi.
+  Risultato atteso: un file JSON visibile solo a te, con `leveling_totals`, `rank_card_prefs`, `command_usage`; nessun token OAuth; il secondo lancio è rifiutato dal tempo di attesa.
+- [ ] `NF-04` cancellazione (#37, #46) — passi:
+  1. Con l'account di prova (che ha anche un avviso e un kick ricevuti): `/utility privacy cancella motivo:prova`. Ripeti: deve dire che c'è già una richiesta.
+  2. Come owner: `/owner privacy richieste` (nel server dell'owner), poi `/owner privacy approva richiesta:<numero>`.
+  3. Con l'account di prova: `/level rank` e `/utility privacy esporta`.
+  Risultato atteso: l'owner vede la richiesta; dopo l'approvazione l'utente riceve un messaggio privato con righe cancellate, rese anonime e conservate; XP e rank card sono spariti; l'avviso è sparito; il kick resta (e il messaggio lo dice). Con i messaggi privati chiusi l'approvazione riesce lo stesso e lo dice. `/owner privacy rifiuta` con un motivo: l'utente lo legge e nulla si cancella.
+- [ ] `NF-04` uscita dal server (#19, D6) — passi:
+  1. Fai uscire il bot da un server di prova (o toglilo): controlla `guild_presence.left_at` valorizzato.
+  2. Rientra entro pochi minuti: `left_at` torna vuoto e la configurazione del server è intatta.
+  3. Per la cancellazione dopo 90 giorni: imposta a mano `left_at` a 91 giorni fa e riavvia il bot (o aspetta il giro giornaliero).
+  Risultato atteso: i dati del server spariscono, restano solo ban e kick di sicurezza. Il bot non cancella mai un server in cui si trova.
+- [ ] `M 13.2` blacklist (#69) — `/owner blacklist server-add` per un server dove sono presenti bot principale e almeno un worker musicale: escono tutti; il messaggio dice quanti. Reinvitare un worker in quel server: uscita all'ingresso del principale (il worker da solo non controlla ancora la blacklist: apri una issue se serve).
+- [ ] `M 14.2` / `M 14.3` (#70) — passi:
+  1. Con un account senza permesso lancia un comando di moderazione: messaggio chiaro, nessun «errore imprevisto» nel log del bot (solo una riga INFO).
+  2. Prova un comando che fa `defer()` pubblico e poi fallisce (es. forzando un errore in sviluppo): il messaggio d'errore lo vede solo chi ha lanciato il comando e il «sta pensando» pubblico sparisce.
+- [ ] `M 14.4` scheduler (#70) — pianifica un promemoria da 1 minuto e un tempban breve: eseguiti entro 30-60 secondi; con la tabella `scheduled_actions` controlla che `claimed_at` torni vuoto dopo l'esecuzione.
+- [ ] `#145` premium (#145) — con il modulo Logging avanzato premium: aggiungi un server alla whitelist (`/owner premium whitelist-add`) e subito dopo genera un evento di log: il log arriva senza aspettare 60 secondi; rimuovilo dalla whitelist: smette subito.
+- [ ] `#148` permessi dei gruppi per ruolo (OAuth2) — **provabile a metà**: l'indirizzo di ritorno c'è (stessa `/oauth/callback` del restore, `OAUTH2_REDIRECT_URI`), manca ancora il bottone nel setup che mostra il link (e la scelta dei ruoli). Quando c'è: (1) autorizza il bot dal passo di `/admin setup attiva` con un admin vero e controlla la pagina «Autorizzazione salvata»; riaprire lo stesso link deve dare «già usato», e aprirlo con un altro account Discord «link per un altro account»; (2) scegli il ruolo admin: in Impostazioni → Integrazioni → iYokai → `/admin`, `/gestione`, `/moduli`, `/security`, `/automod`, `/log` compare quel ruolo; il ruolo mod su `/mod`, il ruolo ban su `/modban`; (3) un membro senza permessi né ruolo non vede i gruppi; (4) cambia ruolo: il vecchio sparisce e le regole messe a mano dall'admin restano (una regola «nega» sul ruolo scelto diventa «consenti»); (5) revoca l'app dal profilo Discord: la scelta di un ruolo continua a funzionare e il bot dimentica il token (solo con la revoca vera, non con un errore temporaneo di Discord).
+- [ ] `NF-04` bis esportazione (#75) — con un account di staff che ha scritto note, casi e preso in carico ticket di altri: `/utility privacy esporta` non contiene quelle righe né gli id dello staff; `event_log` senza `details`. Su un account con più di 5000 righe in una tabella il messaggio dice quale tabella è tagliata.
+- [ ] `NF-04` bis DM di esportazione e cancellazione (#37) — l'approvazione manda un messaggio privato con il rapporto: prova con DM aperti e chiusi; titolare di un clan con altri membri (il clan passa al co-titolare o al più anziano e il messaggio lo dice) e titolare da solo (il clan sparisce; il canale/categoria Discord del clan resta da togliere a mano); due utenti con un ticket aperto nello stesso server chiedono la cancellazione: entrambe riescono.
+- [ ] `NF-04` bis uscita e rientro (#19, #46) — (1) fai uscire il bot da un server con almeno un ban e un `/warn`; (2) a bot spento riaggiungilo (nessun `on_guild_join`) e riavvia: `guild_presence.left_at` e `purged_at` vuoti; (3) con `left_at` a 91 giorni fa e dati nel server, fai partire il giro e riaggiungi il bot nello stesso momento: i dati restano e `left_at` è vuoto; (4) dopo una cancellazione vera, rientra e lancia `/warn`: il numero del caso continua dopo il ban trattenuto, nessun errore; (5) un tempban in corso al momento della cancellazione conserva lo sban programmato.
+
+- [ ] `5.11` OAuth (#138) — con un account che ha autorizzato il ripristino utenti (`/admin backup restore-utenti`, token valido): `/modban tempban ... duration:2m modo:Fuori, con invito e ruoli al rientro`. Risultato atteso: alla scadenza l'account rientra da solo (nessun invito usato) con i ruoli di prima; riga di log «Rientro: Automatico». Senza autorizzazione e senza «Creare invito» il comando si ferma prima del ban.
+- [ ] `5.12` ter (#138) — `/modban ban` su un account isolato, poi `/modban unban`: l'account risulta sbannato davvero. Se Discord rifiuta di nascondere qualche canale, il moderatore legge quanti.

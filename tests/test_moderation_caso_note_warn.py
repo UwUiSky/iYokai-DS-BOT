@@ -164,3 +164,22 @@ def test_numeri_di_caso_e_nota_hanno_il_tetto_del_database():
                 visti += 1
                 assert tipo.max_value == 2**31 - 1 and tipo.min_value == 1, (nome, parametro)
     assert visti >= 6
+
+
+async def test_le_query_del_repo_non_toccano_un_altro_server():
+    """Ogni query filtra per server: stesso numero in un altro server = niente."""
+    ALTRO = 999
+    numero = await moderation_repo.create_case(G, 1, 10, "warn", "uno")
+    nota = await moderation_repo.add_note(G, 1, 10, "nota")
+
+    assert not await moderation_repo.update_case_reason(ALTRO, numero, "cambiato")
+    assert not await moderation_repo.delete_case(ALTRO, numero)
+    assert not await moderation_repo.update_note(ALTRO, nota, "cambiata")
+    assert not await moderation_repo.delete_note(ALTRO, nota)
+    assert await moderation_repo.delete_notes_for_user(ALTRO, 1) == 0
+    assert await moderation_repo.list_cases_by_moderator(ALTRO, 10) == []
+    assert await moderation_repo.moderator_ranking(ALTRO) == []
+
+    caso = await moderation_repo.get_case(G, numero)
+    assert caso is not None and caso.reason == "uno"
+    assert len(await moderation_repo.list_notes_for_user(G, 1)) == 1

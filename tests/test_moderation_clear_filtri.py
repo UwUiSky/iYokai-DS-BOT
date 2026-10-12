@@ -23,7 +23,6 @@ from tests.support.discord_fakes import (
     fake_guild,
     fake_interaction,
     fake_member,
-    fake_message,
     fake_role,
     fake_text_channel,
 )
@@ -150,7 +149,9 @@ async def test_clear_su_un_canale_senza_permesso_dell_utente_non_cancella(ambien
     inter, canale, _ = ambiente
     altro = fake_text_channel(66, "staff-privato")
     altro.purge = AsyncMock(return_value=[])
-    altro.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=False))
+    altro.permissions_for = MagicMock(
+        return_value=discord.Permissions(view_channel=False, manage_messages=True)
+    )
     cog = ModerationClearCog(bot=None)
 
     await cog.clear.callback(cog, inter, 10, channel=altro)
@@ -158,6 +159,36 @@ async def test_clear_su_un_canale_senza_permesso_dell_utente_non_cancella(ambien
     altro.purge.assert_not_awaited()
     assert inter.response.send_message.call_args.kwargs["ephemeral"] is True
     altro.permissions_for.assert_called_with(inter.user)
+
+
+def test_menzioni_di_ruolo_e_testo_in_minuscolo():
+    con_ruolo = _msg("x")
+    con_ruolo.role_mentions = [fake_role(role_id=3)]
+    assert messaggio_passa(con_ruolo, FiltriClear(solo_menzioni=True))
+    assert messaggio_passa(_msg("CIAO"), FiltriClear(contiene="ciao"))
+    assert not messaggio_passa(_msg("CIAO"), FiltriClear(non_contiene="ciao"))
+
+
+async def test_clear_bot_e_persone_insieme_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10, bots_only=True, humans_only=True)
+
+    canale.purge.assert_not_awaited()
+    assert "insieme" in inter.response.send_message.call_args.args[0]
+
+
+async def test_lock_con_errore_http_dice_che_non_puo(ambiente):
+    inter, canale, canale_log = ambiente
+    cog = ModerationChannelControlCog(bot=None)
+    inter.guild.default_role = fake_role(role_id=ID_SERVER)
+    canale.set_permissions.side_effect = discord.HTTPException(MagicMock(status=403, reason="x"), "x")
+
+    await cog.lock.callback(cog, inter, None, None)
+
+    assert "permessi" in inter.response.send_message.call_args.args[0]
+    canale_log.send.assert_not_awaited()
 
 
 async def test_clear_senza_gestire_messaggi_nel_canale_non_cancella(ambiente):

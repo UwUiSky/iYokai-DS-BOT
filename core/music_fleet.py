@@ -38,6 +38,11 @@ class MusicFleet:
             )
         self._worker_bots = worker_bots
 
+    @property
+    def worker_bots(self) -> list[commands.Bot]:
+        """Tutti i worker (una copia): serve a chi deve agire su ogni bot, come la blacklist."""
+        return list(self._worker_bots)
+
     def get_worker_bot(self, worker_index: int) -> commands.Bot:
         """worker_index è 1-based (worker 1..5) — coerente con
         core/music_fleet_logic.find_free_worker() e la colonna

@@ -31,7 +31,7 @@ Non deve mai occuparsi lui stesso di timer o task in background.
 Se manca l'handler o l'handler solleva, l'azione viene riprovata con
 un'attesa crescente (ATTESE_RIPROVA) e solo dopo MAX_TENTATIVI viene
 abbandonata con il motivo in `failed_reason`. Ogni azione gira nella
-propria transazione.
+propria prenotazione, senza transazione aperta durante l'azione.
 Funzioni coperte: REVIEW.md BUG-8, BUG-27 (issue #13, #56).
 """
 
@@ -67,6 +67,9 @@ ATTESE_RIPROVA = (
     timedelta(hours=6),
 )
 MAX_TENTATIVI = 8
+
+# Una prenotazione più vecchia di così è di un processo morto a metà.
+PRENOTAZIONE_SCADE = timedelta(minutes=10)
 
 # Pausa dopo un giro fallito (database irraggiungibile): raddoppia a ogni
 # errore di fila, fino a questo massimo.
@@ -262,13 +265,14 @@ class Scheduler:
 
     async def _esegui_prossima_azione(self) -> bool:
         """
-        Prende UNA azione scaduta e la esegue nella propria transazione:
-        un errore del database su un'azione non annulla i flag
-        "eseguita" già scritti per le precedenti. Restituisce False se
-        non c'è più nulla da fare.
+        M 14.4 (LIM-47): prenota UNA azione scaduta (breve transazione), chiude
+        la transazione, esegue l'handler SENZA tenere nessuna connessione, poi
+        segna l'esito. Restituisce False se non c'è più nulla da fare.
 
-        FOR UPDATE SKIP LOCKED: se un giorno ci fossero due processi,
-        non eseguirebbero la stessa azione due volte.
+        La prenotazione (`claimed_at`) fa le veci di FOR UPDATE durante
+        l'esecuzione: un secondo giro o un secondo processo non la rivedono.
+        Se il processo muore a metà, dopo PRENOTAZIONE_SCADE la riga torna
+        disponibile.
         """
         from core.database import db
 
@@ -281,24 +285,53 @@ class Scheduler:
                     WHERE execute_at <= now()
                       AND (next_attempt_at IS NULL OR next_attempt_at <= now())
                       AND executed = FALSE AND failed_reason IS NULL
+                      AND (claimed_at IS NULL OR claimed_at < now() - $1::interval)
                     ORDER BY COALESCE(next_attempt_at, execute_at)
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
-                    """
+                    """,
+                    PRENOTAZIONE_SCADE,
                 )
                 if row is None:
                     return False
+                await conn.execute(
+                    "UPDATE scheduled_actions SET claimed_at = now() WHERE id = $1",
+                    row["id"],
+                )
 
-                errore = await self._chiama_handler(row)
+        try:
+            errore = await self._chiama_handler(row)
+        except asyncio.CancelledError:
+            # Spegnimento a metà: senza questo l'azione (es. uno sban) aspetta
+            # PRENOTAZIONE_SCADE dopo il riavvio. L'handler deve reggere una seconda esecuzione.
+            await asyncio.shield(self._libera_prenotazione(db, row["id"]))
+            raise
+
+        try:
+            async with db.pool.acquire() as conn:
                 if errore is None:
                     await conn.execute(
                         "UPDATE scheduled_actions SET executed = TRUE, "
-                        "executed_at = now() WHERE id = $1",
+                        "executed_at = now(), claimed_at = NULL WHERE id = $1",
                         row["id"],
                     )
                 else:
                     await self._registra_tentativo_fallito(conn, row, errore)
+        except Exception:
+            # Esito non scritto: si libera la prenotazione (al meglio) così
+            # il prossimo giro riprova subito invece di aspettare la scadenza.
+            await self._libera_prenotazione(db, row["id"])
+            raise
         return True
+
+    async def _libera_prenotazione(self, db, action_id: int) -> None:
+        try:
+            await db.pool.execute(
+                "UPDATE scheduled_actions SET claimed_at = NULL WHERE id = $1 AND executed = FALSE",
+                action_id,
+            )
+        except Exception:  # noqa: BLE001 - database già in errore: ci pensa PRENOTAZIONE_SCADE
+            logger.warning("Prenotazione dell'azione %s non liberata.", action_id)
 
     async def _chiama_handler(self, row) -> str | None:
         """Restituisce None se l'azione è riuscita, altrimenti il motivo."""
@@ -332,7 +365,7 @@ class Scheduler:
                 errore,
             )
             await conn.execute(
-                "UPDATE scheduled_actions SET attempts = $2, failed_reason = $3 WHERE id = $1",
+                "UPDATE scheduled_actions SET attempts = $2, failed_reason = $3, claimed_at = NULL WHERE id = $1",
                 row["id"],
                 tentativi,
                 errore,
@@ -351,7 +384,7 @@ class Scheduler:
             attesa,
         )
         await conn.execute(
-            "UPDATE scheduled_actions SET attempts = $2, next_attempt_at = now() + $3 "
+            "UPDATE scheduled_actions SET attempts = $2, next_attempt_at = now() + $3, claimed_at = NULL "
             "WHERE id = $1",
             row["id"],
             tentativi,

@@ -125,6 +125,23 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
+    async def _chiudi_sanzioni_a_tempo(
+        self, guild: discord.Guild, user_id: int, moderatore_id: int
+    ) -> None:
+        """
+        Un ban o un kick diretto sostituisce un isolamento o un tempban in corso:
+        via scadenza, stato, invito di rientro e caso (altrimenti un `/unban`
+        successivo prenderebbe la strada dell'isolamento e non sbannerebbe).
+        """
+        stato = await moderation_repo.get_tempban_state(guild.id, user_id)
+        await moderation_repo.cancel_tempban_jobs(guild.id, user_id)
+        if stato is None:
+            return
+        await moderation_repo.delete_tempban_state(guild.id, user_id)
+        await tempban_modes.cancella_invito_per_codice(self.bot, stato["invito_codice"])
+        if stato["case_number"] is not None:
+            await moderation_repo.revoke_case(guild.id, stato["case_number"], moderatore_id)
+
     # ================================================================
     # /warn
     # ================================================================
@@ -210,6 +227,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="kick",
             reason=reason,
         )
+        await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
         embed = _case_embed(
             "👢 Kick", discord.Color.orange(), member, interaction.user, reason, case_number
         )
@@ -266,6 +284,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="ban",
             reason=reason,
         )
+        await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
         embed = _case_embed(
             "🔨 Ban", discord.Color.red(), member, interaction.user, reason, case_number
         )
@@ -321,6 +340,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
 
         # Isolamento: ruolo e canale pronti prima di toccare l'utente.
         ruolo_iso = canale_iso = None
+        canali_non_nascosti = 0
         if isolamento:
             preparati = await tempban_modes.prepara_isolamento(guild)
             if preparati is None:
@@ -330,13 +350,25 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                     ephemeral=True,
                 )
                 return
-            ruolo_iso, canale_iso = preparati
+            ruolo_iso, canale_iso, canali_non_nascosti = preparati
 
         # Rientro: l'invito si crea e si manda PRIMA del ban (dopo, il DM
         # non parte più). Vale oltre la scadenza: non scade, un solo uso.
         invito = None
+        oauth_rientro = False
         if modo == MODO_RIENTRO:
             invito = await tempban_modes.crea_invito(guild)
+            oauth_rientro = await tempban_modes.rientro_oauth_possibile(guild.id, member.id, fine)
+            if invito is None and not oauth_rientro:
+                # Senza invito e senza autorizzazione l'utente non potrebbe più
+                # rientrare: si ferma prima di bannare.
+                await interaction.followup.send(
+                    "Non posso creare un invito di rientro (nessun canale me lo permette) e "
+                    "l'utente non ha autorizzato il rientro automatico: non banno. "
+                    "Dammi «Creare invito» su un canale, oppure usa un'altra modalità.",
+                    ephemeral=True,
+                )
+                return
 
         titolo = "🔒 Isolamento" if isolamento else "⏳ Tempban"
         durata = ("Durata", format_duration(duration_seconds))
@@ -383,6 +415,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 guild.id, member.id, modo, ruoli_salvati, fine,
                 invito_codice=invito.code if invito else None,
                 case_number=None,
+                oauth_rientro=oauth_rientro,
             )
         try:
             if isolamento:
@@ -411,6 +444,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         elif precedente is not None:
             # Bannato fuori: l'isolamento di prima non ha più senso.
             await moderation_repo.delete_tempban_state(guild.id, member.id)
+        if precedente is not None and precedente["invito_codice"] not in (
+            None, invito.code if invito else None
+        ):
+            await tempban_modes.cancella_invito_per_codice(self.bot, precedente["invito_codice"])
 
         # La sanzione di prima è sostituita da questa: la sua scadenza non deve
         # più scattare (libererebbe il caso nuovo) e il suo caso si chiude.
@@ -441,6 +478,13 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 logger.warning("Isolamento: messaggio nel canale non inviato (server %s).", guild.id)
 
         await _log_e_risposta(interaction, _embed(case_number, False), dm is not None)
+        if canali_non_nascosti:
+            await interaction.followup.send(
+                f"Attenzione: {canali_non_nascosti} canali non sono stati nascosti "
+                "(Discord ha rifiutato): l'utente li vede ancora. Controlla i miei permessi "
+                "su quei canali.",
+                ephemeral=True,
+            )
         if dm is None and invito is not None:
             # DM chiuso: l'invito (non scade, un solo uso) non deve restare
             # orfano. Lo vede solo il moderatore, che lo gira all'utente.
@@ -521,6 +565,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
 
         modo = payload.get("modo", MODO_FUORI)
+        rientrato_da_solo = False
         stato = await moderation_repo.get_tempban_state(guild_id, user_id)
 
         # Un vecchio job (sostituito da un nuovo caso) non deve liberare
@@ -571,6 +616,15 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 return
             if stato is not None:
                 await moderation_repo.mark_tempban_state_expired(guild_id, user_id)
+                if stato["oauth_rientro"] and await tempban_modes.rientra_via_oauth(
+                    guild_id, user_id
+                ):
+                    # Il rientro è automatico: l'invito non serve più. I ruoli li
+                    # ridà on_member_join (lo stato è scaduto).
+                    rientrato_da_solo = True
+                    await tempban_modes.cancella_invito_per_codice(
+                        self.bot, stato["invito_codice"]
+                    )
 
         case_number = payload.get("case_number")
         if case_number is not None:
@@ -586,7 +640,19 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         embed.add_field(name="Utente", value=f"<@{user_id}> ({user_id})", inline=False)
         if case_number is not None:
             embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
+        if rientrato_da_solo:
+            embed.add_field(name="Rientro", value="Automatico (autorizzazione OAuth)", inline=True)
         await post_to_mod_log(guild, embed)
+
+    async def _fine_isolamento(self, interaction: discord.Interaction, uid: int) -> None:
+        """Isolamento chiuso a mano: via scadenza, caso e appelli aperti."""
+        await moderation_repo.cancel_tempban_jobs(interaction.guild.id, uid)
+        caso = await moderation_repo.get_latest_active_case(interaction.guild.id, uid, "isolamento")
+        if caso is not None:
+            await moderation_repo.revoke_case(
+                interaction.guild.id, caso.case_number, interaction.user.id
+            )
+        await moderation_repo.close_open_appeals(interaction.guild.id, uid, interaction.user.id)
 
     # ================================================================
     # /unban
@@ -613,35 +679,35 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
 
         # Ban in isolamento (#138): l'utente è ancora nel server, si libera qui.
         stato = await moderation_repo.get_tempban_state(interaction.guild.id, uid)
-        if stato is not None and stato["modo"] == MODO_ISOLAMENTO:
-            await interaction.response.defer()
+        isolato = stato is not None and stato["modo"] == MODO_ISOLAMENTO
+        if isolato:
             try:
                 member = await tempban_modes.trova_membro(interaction.guild, uid)
-                if member is not None:
-                    await self._rilascia_isolamento(interaction.guild, member, stato, reason)
-                else:
-                    # Uscito durante l'isolamento: al rientro riprende i ruoli.
-                    await moderation_repo.mark_tempban_state_expired(interaction.guild.id, uid)
             except discord.HTTPException:
-                await interaction.followup.send(
-                    "Non sono riuscito a liberare l'utente: controlla i miei permessi.",
-                    ephemeral=True,
-                )
+                member = None
+            if member is not None:
+                await interaction.response.defer()
+                try:
+                    await self._rilascia_isolamento(interaction.guild, member, stato, reason)
+                except discord.HTTPException:
+                    await interaction.followup.send(
+                        "Non sono riuscito a liberare l'utente: controlla i miei permessi.",
+                        ephemeral=True,
+                    )
+                    return
+                await self._fine_isolamento(interaction, uid)
+                await interaction.followup.send(f"Utente `{uid}` liberato dall'isolamento.")
                 return
-            await moderation_repo.cancel_tempban_jobs(interaction.guild.id, uid)
-            caso = await moderation_repo.get_latest_active_case(
-                interaction.guild.id, uid, "isolamento"
-            )
-            if caso is not None:
-                await moderation_repo.revoke_case(
-                    interaction.guild.id, caso.case_number, interaction.user.id
-                )
-            await interaction.followup.send(f"Utente `{uid}` liberato dall'isolamento.")
-            return
 
         try:
             await interaction.guild.unban(discord.Object(id=uid), reason=reason)
         except discord.NotFound:
+            if isolato:
+                # Uscito durante l'isolamento e non bannato: al rientro riprende i ruoli.
+                await moderation_repo.mark_tempban_state_expired(interaction.guild.id, uid)
+                await self._fine_isolamento(interaction, uid)
+                await interaction.response.send_message(f"Utente `{uid}` liberato dall'isolamento.")
+                return
             await interaction.response.send_message(
                 "Questo utente non risulta bannato.", ephemeral=True
             )
@@ -673,6 +739,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         # Tempban con rientro sbannato a mano: al ritorno riprende i ruoli.
         if stato is not None:
             await moderation_repo.mark_tempban_state_expired(interaction.guild.id, uid)
+            await tempban_modes.cancella_invito_per_codice(interaction.client, stato["invito_codice"])
+        await moderation_repo.close_open_appeals(interaction.guild.id, uid, interaction.user.id)
 
         # BUG-24: anche i ban scattati dallo spam-trap. Tutti quelli
         # attivi, non solo l'ultimo: se restassero, l'utente

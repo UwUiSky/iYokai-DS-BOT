@@ -249,6 +249,9 @@ async def test_migrazione_0018_toglie_doppioni_e_orfani_e_mette_il_vincolo(clean
         try:
             # Stato di prima della migrazione, con i dati sporchi.
             await conn.execute("DROP INDEX IF EXISTS uq_clan_members_server_utente")
+            # La chiave esterna (migrazione 0038) vieta già la riga orfana: qui si
+            # simula lo stato di prima, dentro una transazione che viene annullata.
+            await conn.execute("ALTER TABLE clan_members DROP CONSTRAINT IF EXISTS fk_clan_members_clan")
             await conn.execute("ALTER TABLE clan_members DROP COLUMN IF EXISTS guild_id")
             vecchio = datetime.now(timezone.utc) - timedelta(days=30)
             for clan_id, user_id, ruolo, quando in (

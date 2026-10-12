@@ -40,6 +40,7 @@ from core import channel_router as router
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_SERVER, TIPO_VOCE
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.premium_cache import registra_invalidatore
 from core.invite_tracker import invite_tracker
 from core.logging_advanced_logic import (
     CHANNEL_TRACKED_KEYS,
@@ -70,6 +71,9 @@ PREMIUM_CACHE_TTL_SECONDS = 60
 _monotonic = time.monotonic
 # guild_id -> (scadenza, sbloccato)
 _premium_cache: BoundedCache[int, tuple[float, bool]] = BoundedCache(10_000)
+# Sale a ogni invalidazione: un verdetto letto PRIMA di uno sblocco non si scrive DOPO l'invalida
+# (stesso schema di `_versione_cache` in core/database.py).
+_versione_verdetto = 0
 # (guild_id, user_id, evento) -> ultimo istante registrato
 _voce_propria_cache: BoundedCache[tuple[int, int, str], float] = BoundedCache(10_000)
 
@@ -181,10 +185,11 @@ async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
 
     Il verdetto sul premium (3 query) si tiene in memoria per
     PREMIUM_CACHE_TTL_SECONDS per server, solo con il modulo premium e
-    acceso. Non c'è un punto unico dove invalidarlo (whitelist, cassa,
-    abbonamenti e flag del modulo stanno in posti diversi): basta il TTL,
-    quindi uno sblocco o una revoca valgono entro un minuto, oppure subito
-    se chi li fa chiama `invalida_verdetto_premium`.
+    acceso. Whitelist, cassa, abbonamenti e flag del modulo passano da
+    `core.premium_cache.invalida_cache_premium` (#145), che chiama
+    `invalida_verdetto_premium`: sblocco e revoca valgono subito. Resta il
+    TTL come rete di sicurezza (il boost del server principale non ha un
+    punto di scrittura).
     """
     if not await db.is_module_active_for_guild(guild_id, MODULE_LOGGING_ADVANCED):
         return False
@@ -194,8 +199,10 @@ async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
     voce = _premium_cache.get(guild_id)
     if voce is not None and voce[0] > adesso:
         return voce[1]
+    versione = _versione_verdetto
     sbloccato = await premium_sbloccato(guild_id, MODULE_LOGGING_ADVANCED, bot)
-    _premium_cache.set(guild_id, (adesso + PREMIUM_CACHE_TTL_SECONDS, sbloccato))
+    if versione == _versione_verdetto:  # nessuna invalidazione mentre leggevo
+        _premium_cache.set(guild_id, (adesso + PREMIUM_CACHE_TTL_SECONDS, sbloccato))
     return sbloccato
 
 
@@ -205,10 +212,17 @@ def invalida_verdetto_premium(guild_id: int | None = None) -> None:
     cambia whitelist, cassa o abbonamenti può chiamarla per far valere
     subito lo sblocco o la revoca, senza aspettare il TTL.
     """
+    global _versione_verdetto
+    _versione_verdetto += 1
     if guild_id is None:
         _premium_cache.clear()
     else:
         _premium_cache.delete(guild_id)
+
+
+# #145: punto unico in core/premium_cache.py. Whitelist, cassa, abbonamenti e
+# flag del modulo chiamano `invalida_cache_premium` e arrivano qui.
+registra_invalidatore(invalida_verdetto_premium)
 
 
 async def advanced_log_channel(guild: discord.Guild, tipo: str = TIPO_SERVER):

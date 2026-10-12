@@ -68,11 +68,17 @@ def build_app(
     bot_token: str,
     oauth_encryption_key: str,
     get_guild,
+    permessi_callback=None,
 ) -> web.Application:
     """
     `get_guild` è una funzione `(guild_id) -> discord.Guild | None`
     (in produzione `bot.get_guild`): serve solo a ricontrollare il
     ruolo verificato prima di assegnarlo.
+
+    `permessi_callback(code, raw_state)` (facoltativa) è il ritorno dell'autorizzazione per i
+    permessi dei comandi (#148, core/command_permissions.py): sulla stessa callback OAuth2,
+    perché il redirect registrato è uno solo. Restituisce (stato HTTP, messaggio) o None se lo
+    state non è suo.
     """
 
     async def handler_callback(request: web.Request) -> web.Response:
@@ -80,6 +86,12 @@ def build_app(
         raw_state = request.query.get("state")
         if not code or not raw_state:
             return _pagina_errore("Link incompleto o scaduto.", 400)
+
+        if permessi_callback is not None:
+            esito = await permessi_callback(code, raw_state)
+            if esito is not None:
+                stato_http, messaggio = esito
+                return _pagina_ok(messaggio) if stato_http == 200 else _pagina_errore(messaggio, stato_http)
 
         # SEC-3: state firmato e con scadenza — vedi
         # core/restore_oauth_logic.py.

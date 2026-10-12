@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-# Un appello ogni 24 ore per utente e server.
-ATTESA_TRA_APPELLI = timedelta(hours=24)
+from core.spam_trap_logic import APPEAL_COOLDOWN_SECONDS
+
+# Un appello ogni 24 ore per utente e server (una sola regola, con lo spam-trap).
+ATTESA_TRA_APPELLI = timedelta(seconds=APPEAL_COOLDOWN_SECONDS)
 # Il testo dell'appello finisce nella descrizione di un embed (4096) e in un modulo (4000 al massimo).
 MAX_TESTO_APPELLO = 1500
 MIN_TESTO_APPELLO = 10

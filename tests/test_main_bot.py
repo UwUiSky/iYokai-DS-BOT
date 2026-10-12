@@ -339,6 +339,11 @@ def _collega_singleton_per_test(monkeypatch, database):
     monkeypatch.setattr(
         main_module, "blacklist_repo", BlacklistRepository(pool_provider=lambda: database.pool)
     )
+    from core.repositories.guild_presence_repo import GuildPresenceRepository
+
+    monkeypatch.setattr(
+        main_module, "guild_presence_repo", GuildPresenceRepository(pool_provider=lambda: database.pool)
+    )
 
 
 class _FakeCreatorSideGuildPerTest:
