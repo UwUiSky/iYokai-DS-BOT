@@ -59,6 +59,11 @@ class _FakeTargetGuild:
         self._ruoli_creati: dict[int, _FakeRole] = {}
         self._prossimo_id = 9000
         self.default_role = _FakeRole(0, "@everyone", 0, is_default=True)
+        self.roles = [self.default_role]
+        self.posizioni_impostate: dict | None = None
+
+    async def edit_role_positions(self, positions, **kwargs) -> None:
+        self.posizioni_impostate = dict(positions)
 
     async def create_role(self, **kwargs) -> _FakeRole:
         self.chiamate_create_role.append(kwargs)
@@ -74,6 +79,7 @@ class _FakeTargetGuild:
             mentionable=kwargs.get("mentionable", False),
         )
         self._ruoli_creati[nuovo_id] = nuovo_ruolo
+        self.roles.append(nuovo_ruolo)
         return nuovo_ruolo
 
     def get_role(self, role_id: int):

@@ -20,7 +20,7 @@ import time
 import aiohttp
 import discord
 
-from core.backup_mirror_logic import MirrorRateLimiter
+from core.backup_mirror_logic import MirrorRateLimiter, nome_sicuro_per_webhook
 
 logger = logging.getLogger("iyokai.backup_mirror")
 
@@ -92,7 +92,7 @@ class BackupMirrorDispatcher:
         try:
             await webhook.send(
                 content=contenuto,
-                username=message.author.display_name,
+                username=nome_sicuro_per_webhook(message.author.display_name),
                 avatar_url=str(message.author.display_avatar.url),
                 # SEC-22: un webhook creato da URL non eredita le
                 # allowed_mentions del bot — senza questo un @everyone

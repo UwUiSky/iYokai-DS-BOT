@@ -154,3 +154,42 @@ async def test_il_mirror_non_trasforma_everyone_in_un_ping_vero(monkeypatch):
     # ...nessuna menzione viene risolta: né @everyone/@here, né ruoli, né utenti.
     assert ricevuti[0]["allowed_mentions"] == discord.AllowedMentions.none().to_dict()
     assert ricevuti[0]["allowed_mentions"] == {"parse": []}
+
+
+@pytest.mark.asyncio
+async def test_il_mirror_copia_il_messaggio_di_un_utente_con_discord_nel_nome(monkeypatch):
+    """M 12.7 (LIM-27): il nome mittente non contiene "discord" né "clyde"."""
+    from aiohttp import web
+    from aiohttp.test_utils import TestServer
+    from discord.webhook.async_ import Route
+
+    from tests.support.discord_fakes import fake_message
+
+    ricevuti: list[dict] = []
+
+    async def handler(request):
+        ricevuti.append(await request.json())
+        return web.Response(status=204)
+
+    app = web.Application()
+    app.router.add_post("/api/v10/webhooks/{webhook_id}/{token}", handler)
+    server = TestServer(app)
+    await server.start_server()
+    monkeypatch.setattr(Route, "BASE", str(server.make_url("/api/v10")))
+
+    messaggio = fake_message(content="ciao")
+    messaggio.channel.id = 10
+    messaggio.author.bot = False
+    messaggio.author.display_name = "Discord Fan"
+    messaggio.author.display_avatar.url = "https://cdn.discordapp.com/embed/avatars/0.png"
+    messaggio.attachments = []
+    url_webhook = "https://discord.com/api/webhooks/123456789012345678/" + "token-finto-" * 6
+    dispatcher = BackupMirrorDispatcher(mirror_repo=_FakeMirrorRepo({10: url_webhook}))
+    try:
+        assert await dispatcher.handle_message(messaggio) is True
+    finally:
+        await dispatcher.close()
+        await server.close()
+
+    assert len(ricevuti) == 1
+    assert "discord" not in ricevuti[0]["username"].lower()
