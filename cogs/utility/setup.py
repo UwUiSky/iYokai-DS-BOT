@@ -309,6 +309,25 @@ class SetupWizardView(BaseView):
                 pass
 
 
+def vista_autorizzazione(guild_id: int, user_id: int):
+    """
+    #148: bottone-link per far scrivere al bot i permessi dei comandi (OAuth2 dell'admin).
+    `MISSING` (nessuna vista) se l'OAuth2 non è configurato: resta la base di sempre.
+    """
+    from core.command_permissions import link_per_admin
+
+    try:
+        url = link_per_admin(guild_id, user_id)
+    except Exception:  # chiave non valida: meglio nessun bottone che un errore nel setup
+        logger.warning("Link di autorizzazione dei permessi non costruibile.", exc_info=True)
+        url = None
+    if url is None:
+        return discord.utils.MISSING
+    vista = BaseView(timeout=180)
+    vista.add_item(discord.ui.Button(label="Nascondi i comandi a chi non può usarli (OAuth2)", url=url))
+    return vista
+
+
 class SetupCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -344,7 +363,11 @@ class SetupCog(CogConGruppi, commands.Cog):
 
         if categoria is None:
             embed = await self._embed_stato_moduli(interaction.guild.id)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            extra = {}
+            vista = vista_autorizzazione(interaction.guild.id, interaction.user.id)
+            if vista is not discord.utils.MISSING:
+                extra["view"] = vista
+            await interaction.followup.send(embed=embed, ephemeral=True, **extra)
             return
 
         modules = registry.modules_in_category(categoria)

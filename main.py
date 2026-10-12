@@ -56,6 +56,8 @@ from core.premium import reload_premium_flags_from_database
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
 from core.event_log_retention import event_log_retention
+from core.retention_worker import retention_worker
+from core.repositories.guild_presence_repo import guild_presence_repo
 from core.feed_watcher import feed_watcher
 from core.twitch_watcher import twitch_watcher
 from core.youtube_watcher import youtube_watcher
@@ -83,6 +85,10 @@ from core.custom_webhook_server import build_app as custom_webhook_build_app
 from core.custom_webhook_server import start_server as custom_webhook_start_server
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.music_worker_bot import MusicWorkerBot
+from core.blacklist_exit import esci_da_server_in_blacklist
+from core.command_access import registra_dopo_imposta_ruolo
+from core.repositories.command_permission_token_repo import command_permission_token_repo
+from core.command_permissions import sincronizza_dal_bot as sincronizza_permessi_comandi
 from core.blacklist_tree import BlacklistAwareCommandTree
 from core.repositories.blacklist_repo import blacklist_repo
 from core.premium import handle_app_command_error
@@ -242,6 +248,13 @@ class iYokaiBot(commands.AutoShardedBot):
         # reale da evitare.
         scheduler.start(self)
 
+        # #148: quando l'admin sceglie un ruolo del bot, i permessi dei gruppi di comandi
+        # si scrivono su Discord (solo se il server ha autorizzato il bot via OAuth2).
+        async def _permessi_comandi(guild, tipo, vecchio, nuovo):
+            await sincronizza_permessi_comandi(self, guild, tipo, vecchio, nuovo)
+
+        registra_dopo_imposta_ruolo(_permessi_comandi)
+
         # Memory Guard: monitoraggio RAM, GC forzato, alert DM,
         # pulizia VoiceClient inattivi. Stesso pattern dello
         # scheduler — un servizio bot-wide, non legato a un cog.
@@ -251,6 +264,11 @@ class iYokaiBot(commands.AutoShardedBot):
         # una volta al giorno, soglia diversa per server in base allo
         # stato Free/Premium. Stesso pattern di Memory Guard.
         event_log_retention.start(self)
+
+        # Privacy (NF-04, D6): ogni giorno cancella i dati dei server in cui il
+        # bot non c'è più da 90 giorni e le righe scadute delle tabelle che
+        # crescono. Parte dopo attendi_bot_pronto, come gli altri.
+        retention_worker.start(self)
 
         # Feed watcher (SPEC.md §10.3/10.7/10.8): polling ogni 5
         # minuti dei feed RSS/Atom sottoscritti (YouTube, Reddit,
@@ -394,12 +412,32 @@ class iYokaiBot(commands.AutoShardedBot):
                 guild.name,
                 guild.id,
             )
-            await guild.leave()
+            await esci_da_server_in_blacklist(self, guild.id, guild)
             return
 
         await db.ensure_guild_exists(guild.id)
+        await guild_presence_repo.segna_entrato(guild.id)  # NF-04: un rientro azzera i 90 giorni
         logger.info("Nuovo server: %s (ID: %s)", guild.name, guild.id)
         await self._send_welcome_message(guild)
+
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        """
+        NF-04 (#19, D6): il bot non è più nel server. I dati non si cancellano
+        subito: parte il conto dei 90 giorni (core/retention_worker.py). Se il
+        bot rientra prima, non si perde niente.
+        """
+        try:
+            await guild_presence_repo.segna_uscito(guild.id)
+        except Exception:
+            logger.exception("Uscita dal server %s non registrata.", guild.id)
+            return
+        # #148: il token OAuth2 dell'admin non serve più (il bot non scrive permessi in un server
+        # che non ha): via subito, non dopo i 90 giorni.
+        try:
+            await command_permission_token_repo.cancella(guild.id)
+        except Exception:
+            logger.exception("Token dei permessi del server %s non cancellato.", guild.id)
+        logger.info("Uscito dal server %s: i dati restano 90 giorni.", guild.id)
 
     async def _send_welcome_message(self, guild: discord.Guild) -> None:
         embed = discord.Embed(
@@ -522,6 +560,7 @@ def _servizi_periodici() -> list:
         scheduler,
         memory_guard,
         event_log_retention,
+        retention_worker,
         feed_watcher,
         twitch_watcher,
         youtube_watcher,
@@ -555,6 +594,22 @@ def avvisa_opzioni_rischiose() -> None:
             "possono eseguire codice arbitrario su questa macchina. Normale solo "
             "in sviluppo — imposta ENABLE_EVAL=false in .env (o "
             "ENVIRONMENT=production) sul server vero."
+        )
+
+
+async def _callback_permessi_comandi(code: str, raw_state: str):
+    """#148: ritorno dell'OAuth2 dei permessi dei comandi (stessa callback del restore)."""
+    import aiohttp
+
+    from core.command_permissions import ClientPermessi, gestisci_callback
+    from core.repositories.command_permission_token_repo import command_permission_token_repo
+
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as sessione:
+        client = ClientPermessi(
+            sessione, config.OAUTH2_CLIENT_ID, config.OAUTH2_CLIENT_SECRET, config.OAUTH2_REDIRECT_URI
+        )
+        return await gestisci_callback(
+            code, raw_state, config.OAUTH_ENCRYPTION_KEY, client=client, repo=command_permission_token_repo
         )
 
 
@@ -661,6 +716,7 @@ async def main() -> None:
             bot_token=config.YOKAI_BOT_TOKEN,
             oauth_encryption_key=config.OAUTH_ENCRYPTION_KEY,
             get_guild=bot.get_guild,
+            permessi_callback=_callback_permessi_comandi,
         )
         restore_web_runner = await restore_web_start_server(
             restore_app, config.WEB_BIND_HOST, config.RESTORE_WEB_PORT

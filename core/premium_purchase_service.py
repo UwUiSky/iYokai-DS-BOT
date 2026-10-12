@@ -26,6 +26,7 @@ from enum import Enum
 
 import asyncpg
 
+from core.premium_cache import invalida_cache_premium
 from core.premium_pricing_logic import (
     MAX_DEFINED_TIER,
     is_tier_time_unlocked,
@@ -92,6 +93,7 @@ async def purchase_premium_tier(
         # prima: la transazione è annullata, l'addebito non resta.
         return PurchaseResult(outcome=PurchaseOutcome.ALREADY_PURCHASED, tier=tier)
 
+    invalida_cache_premium(guild_id)  # #145: la transazione è chiusa
     return PurchaseResult(
         outcome=PurchaseOutcome.SUCCESS,
         tier=tier,

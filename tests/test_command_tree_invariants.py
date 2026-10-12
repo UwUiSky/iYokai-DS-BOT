@@ -310,3 +310,84 @@ async def test_primo_livello_entro_100_comandi():
         assert n <= MAX_COMANDI_PRIMO_LIVELLO, f"{n} comandi di primo livello (massimo 100)."
     finally:
         await _chiudi(creato_qui, bot)
+
+
+# ----------------------------------------------------------------------
+# M 14.1 (LIM-1): ogni opzione di testo libero ha un massimo (max_length).
+# Cricchetto: contiene le opzioni che OGGI non lo hanno. Il test fallisce se
+# ne compare una nuova o se una viene sistemata e non tolta da qui.
+# ----------------------------------------------------------------------
+KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
+    {
+    "admin backup restore-utenti:server_di_origine",
+    "admin messaggi programma:duration",
+    "fun 8ball:domanda",
+    "fun meme:bottom_text",
+    "fun meme:top_text",
+    "fun rate:thing",
+    "fun search-image:query",
+    "mod lock:reason",
+    "mod timeout:duration",
+    "modban tempban:duration",
+    "modban unban:user_id",
+    "moduli alert feed:feed_url",
+    "moduli alert feed:label",
+    "moduli alert feed:message_template",
+    "moduli alert rimuovi:subscription_id",
+    "moduli alert twitch:label",
+    "moduli alert twitch:twitch_login",
+    "moduli alert webhook:label",
+    "moduli alert webhook:message_template",
+    "moduli alert youtube-live:label",
+    "moduli alert youtube-live:youtube_channel_id",
+    "music play:query",
+    "owner radio add-local:filename",
+    "owner radio add-local:label",
+    "owner radio add-track:label",
+    "owner radio add-track:query",
+    "utility reminder set:duration",
+    }
+)
+
+
+async def test_ogni_opzione_di_testo_ha_un_massimo():
+    from discord import AppCommandOptionType
+
+    creato_qui, bot = await _albero_vero()
+    try:
+        senza_massimo = set()
+        for nodo in _tutti_i_nodi(_radici(bot)):
+            if isinstance(nodo, app_commands.Group):
+                continue
+            for p in nodo.parameters:
+                # Per le stringhe discord.py tiene il massimo in `max_value`.
+                if p.type is AppCommandOptionType.string and not p.choices and p.max_value is None:
+                    senza_massimo.add(f"{nodo.qualified_name}:{p.name}")
+        nuovi = sorted(senza_massimo - KNOWN_SENZA_MAX_LENGTH)
+        sistemati = sorted(KNOWN_SENZA_MAX_LENGTH - senza_massimo)
+        assert nuovi == [], f"Opzioni di testo senza massimo (usa Range[str, 1, N]): {nuovi}"
+        assert sistemati == [], f"Ora hanno un massimo: toglile da KNOWN_SENZA_MAX_LENGTH: {sistemati}"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_i_limiti_interi_delle_opzioni_entrano_nei_53_bit_di_discord():
+    """Discord rifiuta min/max interi oltre ±(2^53-1): un solo invio sbagliato blocca tutti i /owner."""
+    from discord import AppCommandOptionType
+
+    massimo = 2**53 - 1
+    creato_qui, bot = await _albero_vero()
+    try:
+        fuori = []
+        for nodo in _tutti_i_nodi(_radici(bot)):
+            if isinstance(nodo, app_commands.Group):
+                continue
+            for p in nodo.parameters:
+                if p.type not in (AppCommandOptionType.integer, AppCommandOptionType.number):
+                    continue
+                for nome, valore in (("min", p.min_value), ("max", p.max_value)):
+                    if valore is not None and abs(valore) > massimo:
+                        fuori.append(f"{nodo.qualified_name}:{p.name} {nome}={valore}")
+        assert fuori == [], f"Limiti interi oltre 2**53-1: {fuori}"
+    finally:
+        await _chiudi(creato_qui, bot)

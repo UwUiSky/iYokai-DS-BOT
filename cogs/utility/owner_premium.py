@@ -11,8 +11,6 @@ gratuito in premium — e lo fa per tutti i server contemporaneamente
 altra logica.
 """
 
-# DA FARE (issue #69, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §13 (Owner).
 # DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
 #   revisione/02-piano/NUOVE_FUNZIONI.md.
 
@@ -32,6 +30,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
+from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -408,7 +407,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     async def premium_toggle(
         self,
         interaction: discord.Interaction,
-        module_name: str,
+        module_name: app_commands.Range[str, 1, 100],
         active: bool,
     ) -> None:
         module = registry.get(module_name)
@@ -449,7 +448,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     async def whitelist_add(
         self,
         interaction: discord.Interaction,
-        guild_id: str,
+        guild_id: app_commands.Range[str, 1, 25],
         reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
@@ -474,7 +473,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(guild_id="ID del server da rimuovere")
     async def whitelist_remove(
-        self, interaction: discord.Interaction, guild_id: str
+        self, interaction: discord.Interaction, guild_id: app_commands.Range[str, 1, 25]
     ) -> None:
         try:
             gid = int(guild_id)
@@ -538,8 +537,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     async def premium_grant(
         self,
         interaction: discord.Interaction,
-        guild_id: str,
-        module_name: str,
+        guild_id: app_commands.Range[str, 1, 25],
+        module_name: app_commands.Range[str, 1, 100],
         duration: app_commands.Choice[str],
     ) -> None:
         try:
@@ -585,7 +584,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         module_name="Nome tecnico del modulo",
     )
     async def premium_revoke(
-        self, interaction: discord.Interaction, guild_id: str, module_name: str
+        self, interaction: discord.Interaction, guild_id: app_commands.Range[str, 1, 25], module_name: app_commands.Range[str, 1, 100]
     ) -> None:
         try:
             gid = int(guild_id)
@@ -612,7 +611,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(guild_id="ID del server")
     async def premium_subscriptions(
-        self, interaction: discord.Interaction, guild_id: str
+        self, interaction: discord.Interaction, guild_id: app_commands.Range[str, 1, 25]
     ) -> None:
         try:
             gid = int(guild_id)
@@ -854,7 +853,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     async def blacklist_user_add(
         self,
         interaction: discord.Interaction,
-        user_id: str,
+        user_id: app_commands.Range[str, 1, 25],
         reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
@@ -878,7 +877,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(user_id="ID Discord dell'utente")
     async def blacklist_user_remove(
-        self, interaction: discord.Interaction, user_id: str
+        self, interaction: discord.Interaction, user_id: app_commands.Range[str, 1, 25]
     ) -> None:
         try:
             uid = int(user_id)
@@ -925,7 +924,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     async def blacklist_guild_add(
         self,
         interaction: discord.Interaction,
-        guild_id: str,
+        guild_id: app_commands.Range[str, 1, 25],
         reason: app_commands.Range[str, 1, 512] | None = None,
     ) -> None:
         try:
@@ -941,17 +940,17 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         # Se il bot è già in quel server, ne esce subito — non ha
         # senso bloccare un server e restarci dentro fino al prossimo
         # riavvio o al prossimo controllo casuale.
-        guild_gia_presente = self.bot.get_guild(gid)
-        if guild_gia_presente is not None:
-            await guild_gia_presente.leave()
-            await interaction.response.send_message(
-                f"Server `{gid}` bloccato globalmente — il bot ne è appena uscito.",
-                ephemeral=True,
+        # M 13.2: escono il bot principale e i worker musicali.
+        usciti, falliti = await esci_dettaglio(self.bot, gid)
+        testo = f"Server `{gid}` bloccato globalmente."
+        if usciti:
+            testo += f" Sono usciti {usciti} bot."
+        if falliti:
+            testo += (
+                f" ATTENZIONE: {falliti} bot non sono riusciti a uscire (Discord non ha risposto): "
+                "sono ancora nel server, riprova o toglili a mano."
             )
-        else:
-            await interaction.response.send_message(
-                f"Server `{gid}` bloccato globalmente.", ephemeral=True
-            )
+        await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
         "owner",
@@ -961,7 +960,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(guild_id="ID del server")
     async def blacklist_guild_remove(
-        self, interaction: discord.Interaction, guild_id: str
+        self, interaction: discord.Interaction, guild_id: app_commands.Range[str, 1, 25]
     ) -> None:
         try:
             gid = int(guild_id)
@@ -1008,7 +1007,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(guild_id="ID del server da cui uscire")
-    async def leave_guild(self, interaction: discord.Interaction, guild_id: str) -> None:
+    async def leave_guild(self, interaction: discord.Interaction, guild_id: app_commands.Range[str, 1, 25]) -> None:
         try:
             gid = int(guild_id)
         except ValueError:
@@ -1120,7 +1119,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
     @app_commands.describe(extension="Percorso completo del modulo, es. cogs.moderation.actions")
-    async def owner_cog_load(self, interaction: discord.Interaction, extension: str) -> None:
+    async def owner_cog_load(self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100]) -> None:
         if await _reply_if_eval_disabled(interaction):
             return
 
@@ -1155,7 +1154,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
     @app_commands.describe(extension="Percorso completo del modulo")
-    async def owner_cog_unload(self, interaction: discord.Interaction, extension: str) -> None:
+    async def owner_cog_unload(self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100]) -> None:
         try:
             await self.bot.unload_extension(extension)
         except commands.ExtensionError as exc:
@@ -1179,7 +1178,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
     @app_commands.describe(extension="Percorso completo del modulo")
-    async def owner_cog_reload(self, interaction: discord.Interaction, extension: str) -> None:
+    async def owner_cog_reload(self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100]) -> None:
         try:
             await self.bot.reload_extension(extension)
         except commands.ExtensionError as exc:
