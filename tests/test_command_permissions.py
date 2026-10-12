@@ -5,6 +5,7 @@ tests/test_command_permissions.py
 comandi con il token OAuth2 dell'admin. Qui tutto con HTTP finto: nessun token vero.
 """
 
+import asyncio
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -396,3 +397,176 @@ async def test_il_client_scrive_sul_percorso_giusto_con_il_bearer():
     assert url == f"https://discord.com/api/v10/applications/11/guilds/{GUILD}/commands/22/permissions"
     assert kw["headers"] == {"Authorization": "Bearer TOK"}
     assert kw["json"] == {"permissions": [{"id": "1", "type": 1, "permission": True}]}
+
+
+# ------------------------------------------------------------------ secondo giro (cacciatore-bug 12/10)
+class ClientConRotazione:
+    """Come Discord: ogni rinnovo brucia il refresh token e ne dà uno nuovo; il vecchio dà 400 invalid_grant."""
+
+    def __init__(self, validi=("RT",), errore=None):
+        self.validi = set(validi)
+        self.errore = errore  # (stato, codice) da sollevare a ogni rinnovo
+        self.rinnovi = 0
+        self.scritti = {}
+
+    async def rinnova(self, refresh_token):
+        self.rinnovi += 1
+        await asyncio.sleep(0.05)
+        if self.errore:
+            raise cp.ErroreDiscord(*self.errore)
+        if refresh_token not in self.validi:
+            raise cp.ErroreDiscord(400, "invalid_grant")
+        self.validi.discard(refresh_token)
+        nuovo = f"RT{self.rinnovi}"
+        self.validi.add(nuovo)
+        return cp.TokenPermessi(f"AT{self.rinnovi}", nuovo, datetime.now(timezone.utc) + timedelta(days=7))
+
+    async def leggi(self, app_id, guild_id, command_id, token):
+        return []
+
+    async def scrivi(self, app_id, guild_id, command_id, regole, token):
+        self.scritti[command_id] = regole
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stato,codice", [(429, ""), (500, ""), (503, ""), (0, ""), (400, "invalid_request")])
+async def test_un_rinnovo_che_non_riesce_per_colpa_di_discord_non_cancella_il_token(stato, codice):
+    repo = RepoFinto(_token(scade_tra_ore=1))
+    client = ClientConRotazione(errore=(stato, codice))
+
+    esito = await cp.applica_ruolo(GUILD, TipoRuolo.MOD, None, 6, repo=repo, client=client, app_id=1, comandi=COMANDI)
+
+    assert esito.stato == cp.STATO_DA_RIPROVARE
+    assert repo.cancellati == [] and repo.token is not None
+    assert client.scritti == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stato", [400, 401])
+async def test_solo_invalid_grant_cancella_il_token(stato):
+    repo = RepoFinto(_token(scade_tra_ore=1))
+    client = ClientConRotazione(errore=(stato, "invalid_grant"))
+
+    esito = await cp.applica_ruolo(GUILD, TipoRuolo.MOD, None, 6, repo=repo, client=client, app_id=1, comandi=COMANDI)
+
+    assert esito.stato == cp.STATO_TOKEN_NON_VALIDO
+    assert repo.cancellati == [GUILD]
+
+
+@pytest.mark.asyncio
+async def test_il_client_vero_legge_il_codice_ma_non_il_corpo():
+    class Risposta:
+        status = 400
+
+        async def json(self, content_type=None):
+            return {"error": "invalid_grant", "error_description": "refresh_token=SEGRETO"}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+    class Sessione:
+        def request(self, *a, **k):
+            return Risposta()
+
+    with pytest.raises(cp.ErroreDiscord) as e:
+        await cp.ClientPermessi(Sessione(), "C", "S", "r").rinnova("RT")
+
+    assert e.value.token_non_piu_valido
+    assert "SEGRETO" not in str(e.value) and "SEGRETO" not in repr(e.value.__dict__)
+
+
+@pytest.mark.asyncio
+async def test_due_rinnovi_insieme_non_si_calpestano(clean_db):
+    """Gather vera su un database vero: il secondo rinnovo non brucia il token nuovo del primo."""
+    from core.repositories.command_permission_token_repo import CommandPermissionTokenRepository
+    from tests.support.concorrenza import apri_connessioni
+
+    repo = CommandPermissionTokenRepository(pool_provider=lambda: clean_db, chiave_provider=lambda: CHIAVE)
+    await repo.salva(GUILD, 77, cp.TokenPermessi("AT", "RT", datetime.now(timezone.utc) + timedelta(hours=1)))
+    client = ClientConRotazione()
+    await apri_connessioni(clean_db, 3)
+
+    esiti = await asyncio.gather(
+        *(cp.applica_ruolo(GUILD, TipoRuolo.MOD, None, 6, repo=repo, client=client, app_id=1, comandi=COMANDI) for _ in range(3))
+    )
+
+    assert [e.stato for e in esiti] == [cp.STATO_OK] * 3
+    assert client.rinnovi == 1  # gli altri due usano il token appena salvato
+    salvato = await repo.get(GUILD)
+    assert salvato is not None and salvato.refresh_token == "RT1" and salvato.user_id == 77
+
+
+@pytest.mark.asyncio
+async def test_un_invalid_grant_dopo_la_rotazione_di_un_altro_non_cancella(monkeypatch):
+    """Il refresh token e' stato ruotato da un altro processo tra la lettura e il rinnovo."""
+    repo = RepoFinto(_token(scade_tra_ore=1))
+    nuovo = cp.TokenPermessi("AT-N", "RT-N", datetime.now(timezone.utc) + timedelta(days=7), user_id=77)
+
+    class Client(ClientConRotazione):
+        async def rinnova(self, refresh_token):
+            repo.token = nuovo  # l'altro processo ha appena salvato il token ruotato
+            raise cp.ErroreDiscord(400, "invalid_grant")
+
+    esito = await cp.applica_ruolo(GUILD, TipoRuolo.MOD, None, 6, repo=repo, client=Client(), app_id=1, comandi=COMANDI)
+
+    assert esito.stato == cp.STATO_OK and repo.cancellati == []
+
+
+def test_una_regola_nega_sul_ruolo_scelto_diventa_consenti():
+    esistenti = [{"id": "33", "type": 1, "permission": False}, {"id": "9", "type": 1, "permission": False}]
+
+    regole = cp.unisci_regole(esistenti, None, 33)
+
+    assert {"id": "33", "type": 1, "permission": True} in regole
+    assert {"id": "9", "type": 1, "permission": False} in regole  # le altre regole dell'admin non si toccano
+    assert len(regole) == 2
+
+
+def test_lo_state_si_usa_una_volta_sola():
+    state = cp.crea_state(GUILD, 77, CHIAVE)
+
+    primo = cp.consuma_state(state, CHIAVE)
+    assert primo is not None
+    assert cp.consuma_state(state, CHIAVE) is None  # in uso
+    cp.rilascia_state(primo, consumato=False)
+    secondo = cp.consuma_state(state, CHIAVE)  # un errore temporaneo non brucia il link
+    assert secondo is not None
+    cp.rilascia_state(secondo, consumato=True)
+    assert cp.consuma_state(state, CHIAVE) is None  # bruciato
+
+
+def test_lo_state_dura_pochi_minuti():
+    assert cp.STATE_TTL_SECONDI <= 5 * 60
+
+
+class ClientDiRitorno:
+    def __init__(self, user_id=77, errore=False):
+        self.user_id, self.errore = user_id, errore
+
+    async def scambia_codice(self, codice, user_id=None):
+        if self.errore:
+            raise cp.ErroreDiscord(400, "invalid_grant")
+        return cp.TokenPermessi("AT", "RT", datetime.now(timezone.utc) + timedelta(days=7))
+
+    async def utente_corrente(self, token):
+        return self.user_id
+
+
+@pytest.mark.asyncio
+async def test_la_callback_salva_il_token_solo_per_l_account_giusto_e_una_volta():
+    repo = RepoFinto(None)
+    state = cp.crea_state(GUILD, 77, CHIAVE)
+
+    assert (await cp.gestisci_callback("c", state, CHIAVE, client=ClientDiRitorno(user_id=999), repo=repo))[0] == 403
+    assert repo.salvati == []
+    esito = await cp.gestisci_callback("c", state, CHIAVE, client=ClientDiRitorno(), repo=repo)  # il 403 non brucia il link
+    assert esito[0] == 200 and repo.salvati[0][0] == GUILD and repo.salvati[0][1] == 77
+    assert (await cp.gestisci_callback("c", state, CHIAVE, client=ClientDiRitorno(), repo=repo))[0] == 400  # già usato
+
+
+@pytest.mark.asyncio
+async def test_la_callback_ignora_gli_state_di_altri_flussi():
+    assert await cp.gestisci_callback("c", "non-e-uno-state", CHIAVE, client=ClientDiRitorno(), repo=RepoFinto(None)) is None

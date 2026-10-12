@@ -593,3 +593,35 @@ async def test_firma_non_ascii_mostra_la_pagina_di_link_non_valido(ambiente):
 
     assert risposta.status == 400
     assert "Link non valido" in await risposta.text()
+
+
+@pytest.mark.asyncio
+async def test_la_callback_passa_prima_ai_permessi_dei_comandi_e_poi_al_restore():
+    """#148: stessa callback OAuth2 per due flussi. Uno state dei permessi non arriva al restore."""
+    visti = []
+
+    async def permessi(code, raw_state):
+        visti.append(raw_state)
+        return (200, "Autorizzazione salvata.") if raw_state == "mio" else None
+
+    orchestrator = _FakeOrchestrator(token=None)
+    app = build_app(
+        orchestrator=orchestrator,
+        oauth_repo=_FakeOAuthRepo(),
+        verify_repo_=_FakeVerifyRepo(verified_role_id=None),
+        client_id="1",
+        client_secret="s",
+        redirect_uri="https://esempio.com/cb",
+        bot_token="bot-token",
+        oauth_encryption_key=CHIAVE,
+        get_guild=_nessun_server,
+        permessi_callback=permessi,
+    )
+    async with TestClient(TestServer(app)) as client:
+        mio = await client.get("/oauth/callback?code=c&state=mio")
+        corpo_mio = await mio.text()
+        altro = await client.get("/oauth/callback?code=c&state=altro")
+
+    assert mio.status == 200 and "Autorizzazione salvata" in corpo_mio
+    assert altro.status == 400  # non e' uno state del restore: rifiutato come prima
+    assert visti == ["mio", "altro"]

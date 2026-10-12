@@ -21,17 +21,20 @@ ha il ruolo, lo rende visibile a chi lo ha. Mai un token nei log né nei messagg
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
+import aiohttp
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
@@ -40,11 +43,13 @@ from core.command_access import TipoRuolo
 logger = logging.getLogger("iyokai.command_permissions")
 
 SCOPE = "applications.commands.permissions.update"
+# `identify` serve solo a scoprire CHI ha autorizzato (come per il restore, SEC-19).
+SCOPE_RICHIESTI = f"{SCOPE} identify"
 URL_AUTORIZZAZIONE = "https://discord.com/oauth2/authorize"
 API = "https://discord.com/api/v10"
 MAX_REGOLE = 100
 TIPO_REGOLA_RUOLO = 1
-STATE_TTL_SECONDI = 15 * 60
+STATE_TTL_SECONDI = 5 * 60  # il link si usa subito: 5 minuti, e una volta sola
 RINNOVA_SE_SCADE_ENTRO = timedelta(hours=6)
 _HKDF_INFO = b"iyokai-command-permissions-state-v1"
 _SCOPO_STATE = "cmdperm"
@@ -53,6 +58,7 @@ STATO_OK = "ok"
 STATO_PARZIALE = "parziale"
 STATO_SENZA_AUTORIZZAZIONE = "senza_autorizzazione"
 STATO_TOKEN_NON_VALIDO = "token_non_valido"
+STATO_DA_RIPROVARE = "da_riprovare"  # Discord non risponde (429, 5xx, rete): il token resta
 
 # Quali gruppi apre ogni ruolo scelto nel setup (issue #148).
 GRUPPI_DEL_RUOLO: dict[TipoRuolo, tuple[str, ...]] = {
@@ -60,6 +66,9 @@ GRUPPI_DEL_RUOLO: dict[TipoRuolo, tuple[str, ...]] = {
     TipoRuolo.MOD: ("mod",),
     TipoRuolo.MODBAN: ("modban",),
 }
+
+
+_CODICE_ERRORE = re.compile(r"^[a-z_]{1,40}$")
 
 
 class PermessiNonConfigurati(RuntimeError):
@@ -71,11 +80,20 @@ class TroppeRegole(ValueError):
 
 
 class ErroreDiscord(RuntimeError):
-    """Risposta non riuscita di Discord. Porta solo il codice: mai il corpo né i token."""
+    """
+    Risposta non riuscita di Discord. Porta solo il numero di stato e il codice d'errore
+    OAuth2 (`invalid_grant`...): mai il corpo né i token. Stato 0 = rete o scadenza.
+    """
 
     def __init__(self, stato: int, dettaglio: str = "") -> None:
         self.stato = stato
+        self.codice = dettaglio if _CODICE_ERRORE.match(dettaglio or "") else ""
         super().__init__(f"Discord ha risposto {stato}")
+
+    @property
+    def token_non_piu_valido(self) -> bool:
+        """Solo `invalid_grant` (400/401) dice che il refresh token è morto davvero."""
+        return self.stato in (400, 401) and self.codice == "invalid_grant"
 
 
 @dataclass(frozen=True)
@@ -90,6 +108,8 @@ class TokenPermessi:
 class StatoOAuth:
     guild_id: int
     user_id: int
+    nonce: str = ""
+    scade_il: float = 0.0
 
 
 @dataclass
@@ -142,9 +162,40 @@ def verifica_state(raw: str, chiave_b64: str, *, ora: float | None = None) -> St
         dati = json.loads(corpo)
         if dati["p"] != _SCOPO_STATE or float(dati["e"]) <= (time.time() if ora is None else ora):
             return None
-        return StatoOAuth(guild_id=int(dati["g"]), user_id=int(dati["u"]))
+        return StatoOAuth(
+            guild_id=int(dati["g"]), user_id=int(dati["u"]), nonce=str(dati.get("n", "")), scade_il=float(dati["e"])
+        )
     except (PermessiNonConfigurati, ValueError, KeyError, TypeError, json.JSONDecodeError):
         return None
+
+
+_NONCE_USATI: dict[str, float] = {}  # nonce -> scadenza dello state: monouso (in memoria, un solo processo)
+_NONCE_IN_CORSO: set[str] = set()
+
+
+def consuma_state(raw: str, chiave_b64: str, *, ora: float | None = None) -> StatoOAuth | None:
+    """
+    Come `verifica_state`, ma lo state vale UNA volta e per UNA richiesta alla volta: se è già
+    usato o in uso dà None. Chi lo riceve chiama poi `rilascia_state` (stesso schema del
+    restore, BUG-21: un errore temporaneo non brucia il link).
+    """
+    adesso = time.time() if ora is None else ora
+    stato = verifica_state(raw, chiave_b64, ora=adesso)
+    if stato is None or not stato.nonce:
+        return None
+    for nonce in [n for n, scade in _NONCE_USATI.items() if scade <= adesso]:
+        del _NONCE_USATI[nonce]
+    if stato.nonce in _NONCE_USATI or stato.nonce in _NONCE_IN_CORSO:
+        return None
+    _NONCE_IN_CORSO.add(stato.nonce)
+    return stato
+
+
+def rilascia_state(stato: StatoOAuth, *, consumato: bool) -> None:
+    """`consumato=True` brucia il link; False lo lascia riusabile fino alla scadenza."""
+    _NONCE_IN_CORSO.discard(stato.nonce)
+    if consumato:
+        _NONCE_USATI[stato.nonce] = stato.scade_il
 
 
 def url_autorizzazione(
@@ -155,7 +206,7 @@ def url_autorizzazione(
             "client_id": client_id,
             "redirect_uri": redirect_uri,
             "response_type": "code",
-            "scope": SCOPE,
+            "scope": SCOPE_RICHIESTI,
             "state": crea_state(guild_id, user_id, chiave_b64),
         }
     )
@@ -180,7 +231,12 @@ def unisci_regole(
     regole = [r for r in esistenti if not e_nostro_vecchio(r)]
     if ruolo_nuovo is not None:
         nostra = {"id": str(ruolo_nuovo), "type": TIPO_REGOLA_RUOLO, "permission": True}
-        if not any(r.get("type") == TIPO_REGOLA_RUOLO and str(r.get("id")) == str(ruolo_nuovo) for r in regole):
+        for i, r in enumerate(regole):
+            if r.get("type") == TIPO_REGOLA_RUOLO and str(r.get("id")) == str(ruolo_nuovo):
+                if r.get("permission") is not True:  # una regola "nega" sul ruolo scelto lo terrebbe fuori
+                    regole[i] = {**r, "permission": True}
+                break
+        else:
             regole.append(nostra)
     if len(regole) > MAX_REGOLE:
         raise TroppeRegole(f"Il comando avrebbe {len(regole)} regole, il massimo è {MAX_REGOLE}.")
@@ -201,10 +257,23 @@ class ClientPermessi:
         return f"ClientPermessi(client_id={self._client_id!r})"
 
     async def _chiedi(self, metodo: str, url: str, **kw):
-        async with self._sessione.request(metodo, url, **kw) as risposta:
-            if risposta.status >= 400:
-                raise ErroreDiscord(risposta.status)
-            return await risposta.json(content_type=None)
+        try:
+            async with self._sessione.request(metodo, url, **kw) as risposta:
+                if risposta.status >= 400:
+                    raise ErroreDiscord(risposta.status, await self._codice_errore(risposta))
+                return await risposta.json(content_type=None)
+        except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+            raise ErroreDiscord(0) from exc
+
+    @staticmethod
+    async def _codice_errore(risposta) -> str:
+        """Il campo `error` della risposta OAuth2 (es. invalid_grant). Mai altro del corpo."""
+        try:
+            corpo = await risposta.json(content_type=None)
+            codice = corpo.get("error") if isinstance(corpo, dict) else None
+            return codice if isinstance(codice, str) else ""
+        except Exception:
+            return ""
 
     def _token(self, corpo: dict, user_id: int | None = None) -> TokenPermessi:
         return TokenPermessi(
@@ -241,6 +310,14 @@ class ClientPermessi:
         )
         return self._token(corpo, user_id)
 
+    async def utente_corrente(self, token: str) -> int | None:
+        """L'id di chi ha autorizzato (scope `identify`). None se Discord non risponde con un id."""
+        corpo = await self._chiedi("GET", f"{API}/users/@me", headers={"Authorization": f"Bearer {token}"})
+        try:
+            return int(corpo["id"])
+        except (KeyError, TypeError, ValueError):
+            return None
+
     def _url(self, app_id: int, guild_id: int, command_id: int) -> str:
         percorso = ("applications", str(app_id), "guilds", str(guild_id), "commands", str(command_id), "permissions")
         return "/".join((API, *percorso))
@@ -268,6 +345,45 @@ class ClientPermessi:
 # ----------------------------------------------------------------------
 # Applicare il ruolo scelto
 # ----------------------------------------------------------------------
+def _in_scadenza(token: TokenPermessi) -> bool:
+    return token.scade_il - datetime.now(timezone.utc) < RINNOVA_SE_SCADE_ENTRO
+
+
+_BLOCCHI_RINNOVO: dict[tuple[int, int], asyncio.Lock] = {}
+
+
+async def _token_valido(guild_id: int, token: TokenPermessi, repo, client) -> tuple[TokenPermessi | None, str]:
+    """
+    Il token da usare, rinnovato se serve. I rinnovi dello stesso server vanno uno alla volta:
+    il refresh token ruota a ogni uso, il secondo rinnovo userebbe quello già bruciato.
+    Solo `invalid_grant` cancella il token; 429, 5xx e rete lo lasciano e dicono di riprovare.
+    """
+    if not _in_scadenza(token):
+        return token, STATO_OK
+    blocco = _BLOCCHI_RINNOVO.setdefault((id(asyncio.get_running_loop()), guild_id), asyncio.Lock())
+    async with blocco:
+        attuale = await repo.get(guild_id)
+        if attuale is None:
+            return None, STATO_TOKEN_NON_VALIDO  # revocato mentre aspettavo
+        if not _in_scadenza(attuale):
+            return attuale, STATO_OK  # l'ha già rinnovato un altro
+        try:
+            nuovo = await client.rinnova(attuale.refresh_token)
+        except ErroreDiscord as e:
+            if not e.token_non_piu_valido:
+                logger.warning("Rinnovo del token nel server %s non riuscito (%s): lo tengo.", guild_id, e.stato)
+                return None, STATO_DA_RIPROVARE
+            ora = await repo.get(guild_id)
+            if ora is not None and ora.refresh_token != attuale.refresh_token and not _in_scadenza(ora):
+                return ora, STATO_OK  # un altro processo l'aveva ruotato e salvato
+            await repo.cancella(guild_id)
+            return None, STATO_TOKEN_NON_VALIDO
+        if nuovo.user_id is None:
+            nuovo = TokenPermessi(nuovo.access_token, nuovo.refresh_token, nuovo.scade_il, attuale.user_id)
+        await repo.salva(guild_id, nuovo.user_id, nuovo)
+        return nuovo, STATO_OK
+
+
 async def applica_ruolo(
     guild_id: int,
     tipo: TipoRuolo,
@@ -287,17 +403,9 @@ async def applica_ruolo(
     if token is None:
         return EsitoPermessi(STATO_SENZA_AUTORIZZAZIONE)
 
-    try:
-        if token.scade_il - datetime.now(timezone.utc) < RINNOVA_SE_SCADE_ENTRO:
-            token = await client.rinnova(token.refresh_token)
-            if token.user_id is None:
-                precedente = await repo.get(guild_id)
-                token = TokenPermessi(token.access_token, token.refresh_token, token.scade_il,
-                                      precedente.user_id if precedente else None)
-            await repo.salva(guild_id, token.user_id, token)
-    except ErroreDiscord:
-        await repo.cancella(guild_id)
-        return EsitoPermessi(STATO_TOKEN_NON_VALIDO)
+    token, stato = await _token_valido(guild_id, token, repo, client)
+    if token is None:
+        return EsitoPermessi(stato)
 
     esito = EsitoPermessi(STATO_OK)
     for nome in GRUPPI_DEL_RUOLO[tipo]:
@@ -320,6 +428,42 @@ async def applica_ruolo(
     if esito.errori:
         esito.stato = STATO_PARZIALE
     return esito
+
+
+# ----------------------------------------------------------------------
+# Ritorno dall'autorizzazione (la pagina web la chiama dalla callback OAuth2)
+# ----------------------------------------------------------------------
+async def gestisci_callback(
+    codice: str, raw_state: str, chiave_b64: str, *, client, repo
+) -> tuple[int, str] | None:
+    """
+    None se lo state non è di questo flusso (la callback lo passa al restore). Altrimenti
+    (stato HTTP, messaggio): salva il token cifrato per il server dello state, solo se a
+    autorizzare è stato l'account a cui era destinato il link. Il link si brucia solo se
+    è andato tutto bene.
+    """
+    stato = consuma_state(raw_state, chiave_b64)
+    if stato is None:
+        if verifica_state(raw_state, chiave_b64) is None:
+            return None
+        return 400, "Link già usato — richiedine uno nuovo."
+    riuscito = False
+    try:
+        try:
+            token = await client.scambia_codice(codice)
+            user_id = await client.utente_corrente(token.access_token)
+        except ErroreDiscord:
+            return 400, "L'autorizzazione con Discord non è riuscita — riprova dal link che hai ricevuto."
+        if user_id is None or user_id != stato.user_id:
+            return 403, "Questo link era per un altro account Discord. Aprilo con l'account che l'ha richiesto."
+        try:
+            await repo.salva(stato.guild_id, user_id, token)
+        except PermessiNonConfigurati:
+            return 503, "Il bot non è configurato per salvare l'autorizzazione."
+        riuscito = True
+        return 200, "Autorizzazione salvata: ora il bot può nascondere i comandi a chi non può usarli."
+    finally:
+        rilascia_state(stato, consumato=riuscito)
 
 
 # ----------------------------------------------------------------------

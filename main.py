@@ -590,6 +590,22 @@ def avvisa_opzioni_rischiose() -> None:
         )
 
 
+async def _callback_permessi_comandi(code: str, raw_state: str):
+    """#148: ritorno dell'OAuth2 dei permessi dei comandi (stessa callback del restore)."""
+    import aiohttp
+
+    from core.command_permissions import ClientPermessi, gestisci_callback
+    from core.repositories.command_permission_token_repo import command_permission_token_repo
+
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as sessione:
+        client = ClientPermessi(
+            sessione, config.OAUTH2_CLIENT_ID, config.OAUTH2_CLIENT_SECRET, config.OAUTH2_REDIRECT_URI
+        )
+        return await gestisci_callback(
+            code, raw_state, config.OAUTH_ENCRYPTION_KEY, client=client, repo=command_permission_token_repo
+        )
+
+
 async def main() -> None:
     setup_logging()
     logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
@@ -693,6 +709,7 @@ async def main() -> None:
             bot_token=config.YOKAI_BOT_TOKEN,
             oauth_encryption_key=config.OAUTH_ENCRYPTION_KEY,
             get_guild=bot.get_guild,
+            permessi_callback=_callback_permessi_comandi,
         )
         restore_web_runner = await restore_web_start_server(
             restore_app, config.WEB_BIND_HOST, config.RESTORE_WEB_PORT
