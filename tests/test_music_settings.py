@@ -259,7 +259,7 @@ async def test_a_coda_finita_il_bot_resta_se_il_server_lo_vuole(monkeypatch):
 
     class _P:
         guild = SimpleNamespace(id=900)
-        channel = SimpleNamespace(id=11)
+        channel = SimpleNamespace(id=11, members=[SimpleNamespace(bot=False)])
 
         async def disconnect(self):
             disconnessioni.append(1)
@@ -275,3 +275,52 @@ async def test_a_coda_finita_il_bot_resta_se_il_server_lo_vuole(monkeypatch):
     archivio.valori[(900, KEY_STAY_WHEN_QUEUE_ENDS)] = False
     await handle_inactive_player(_P(), _F())
     assert disconnessioni == [1] and rilasci == [(900, 11)]
+
+
+@pytest.mark.asyncio
+async def test_volume_up_non_abbassa_mai_un_volume_gia_sopra_il_massimo(monkeypatch):
+    archivio = _Archivio()
+    archivio.valori[(900, KEY_MAX_VOLUME)] = 50
+    impostato = []
+
+    async def set_volume(v):
+        impostato.append(v)
+
+    player = SimpleNamespace(volume=100, set_volume=set_volume)
+    cog, _ = _cog_con_worker(player, monkeypatch, archivio)
+    await cog.volume_up.callback(cog, _Interazione(), amount=10)
+    assert impostato == [100]
+
+
+def test_l_application_yml_non_accende_spotify_senza_chiavi():
+    yaml = pytest.importorskip("yaml")
+    import pathlib
+
+    app = yaml.safe_load(
+        (pathlib.Path(__file__).resolve().parent.parent / "deploy/lavalink/application.yml").read_text()
+    )
+    assert app["plugins"]["lavasrc"]["sources"]["spotify"] is False
+
+
+@pytest.mark.asyncio
+async def test_resta_a_coda_finita_non_trattiene_il_bot_in_un_canale_vuoto(monkeypatch):
+    import core.music_fleet as modulo
+
+    archivio = _Archivio()
+    archivio.valori[(900, KEY_STAY_WHEN_QUEUE_ENDS)] = True
+    monkeypatch.setattr(modulo, "db", archivio)
+    rilasci, disc = [], []
+
+    class _P:
+        guild = SimpleNamespace(id=900)
+        channel = SimpleNamespace(id=11, members=[SimpleNamespace(bot=True)])  # solo bot
+
+        async def disconnect(self):
+            disc.append(1)
+
+    class _F:
+        async def release_session(self, g, c):
+            rilasci.append((g, c))
+
+    await handle_inactive_player(_P(), _F())
+    assert disc == [1] and rilasci == [(900, 11)]

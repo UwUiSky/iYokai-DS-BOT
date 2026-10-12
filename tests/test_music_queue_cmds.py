@@ -70,6 +70,11 @@ def test_intervalli_e_utenti():
     assert indices_of_absent([1, 2, 3, None], {2}) == [0, 2]  # senza richiedente: resta
 
 
+def test_brano_precedente_a_coda_finita_riprende_l_ultimo_finito():
+    assert previous_track_position(1, c_e_un_corrente=False) == 0
+    assert previous_track_position(0, c_e_un_corrente=False) is None
+
+
 def test_brano_precedente():
     assert previous_track_position(0) is None
     assert previous_track_position(1) is None
@@ -121,10 +126,15 @@ class _Interazione:
         self.followup.send = self.followup.send_message
 
 
+class _Storico(list):
+    def delete(self, i):
+        del self[i]
+
+
 class _Coda:
     def __init__(self, tracce, storico=None):
         self.tracce = list(tracce)
-        self.history = list(storico) if storico is not None else []
+        self.history = _Storico(storico or [])
         self.mode = None
 
     def __len__(self):
@@ -141,6 +151,12 @@ class _Coda:
 
     def put_at(self, i, t):
         self.tracce.insert(i, t)
+
+    def put(self, t):
+        self.tracce.extend(t if isinstance(t, list) else [t])
+
+    def clear(self):
+        self.tracce.clear()
 
     async def put_wait(self, t):
         self.tracce.extend(t if isinstance(t, list) else [t])
@@ -243,8 +259,20 @@ async def test_previous_rimette_il_corrente_in_cima_e_suona_il_precedente(monkey
 
     await cog.previous.callback(cog, i)
 
-    player.play.assert_awaited_once_with(prima)
+    player.play.assert_awaited_once_with(prima, add_history=False)
     assert [t.title for t in player.queue] == ["ora", "dopo"]
+    # lo storico non conserva il brano lasciato: due "previous" non fanno avanti-indietro
+    assert list(player.queue.history) == [prima]
+
+
+@pytest.mark.asyncio
+async def test_previous_a_coda_finita_riprende_l_ultimo_brano_finito(monkeypatch):
+    finito = _t("finito")
+    player = _player([], corrente=None, storico=[_t("vecchio"), finito])
+    cog = _cog(player, monkeypatch)
+    await cog.previous.callback(cog, _Interazione())
+    player.play.assert_awaited_once_with(finito, add_history=False)
+    assert list(player.queue.tracce) == []
 
 
 @pytest.mark.asyncio
@@ -370,3 +398,34 @@ async def test_shuffle_solo_miei_tocca_solo_i_brani_dell_utente(monkeypatch):
         titoli = [t.title for t in player.queue]
         assert titoli[1] == "b" and titoli[3] == "d"
         assert sorted(titoli) == ["a", "b", "c", "d", "e"]
+
+
+@pytest.mark.asyncio
+async def test_skipto_in_loop_all_rimette_in_fondo_i_brani_saltati(monkeypatch):
+    import wavelink
+
+    player = _player([_t("a"), _t("b"), _t("c"), _t("d")])
+    player.queue.mode = wavelink.QueueMode.loop_all
+    cog = _cog(player, monkeypatch)
+    await cog.skipto.callback(cog, _Interazione(), numero=3)
+    assert [t.title for t in player.queue] == ["c", "d", "a", "b"]
+
+
+@pytest.mark.asyncio
+async def test_shuffle_solo_miei_non_lascia_mai_la_coda_vuota_tra_un_await_e_l_altro(monkeypatch):
+    """Atomico: clear e put senza await in mezzo (un altro comando non vede la coda vuota)."""
+    player = _player([_t("a", 1), _t("b", 2), _t("c", 1)])
+    eventi = []
+    originale_clear, originale_put = player.queue.clear, player.queue.put
+    player.queue.clear = lambda: (eventi.append("clear"), originale_clear())[1]
+    player.queue.put = lambda t: (eventi.append("put"), originale_put(t))[1]
+
+    async def _vietato(t):
+        raise AssertionError("put_wait: un await con la coda vuota")
+
+    player.queue.put_wait = _vietato
+    cog = _cog(player, monkeypatch)
+    for _ in range(5):
+        await cog.shuffle.callback(cog, _Interazione(), solo_miei=True)
+    assert len(player.queue) == 3
+    assert eventi[:2] == ["clear", "put"]

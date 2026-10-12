@@ -17,7 +17,7 @@ all'avvio con un avviso), `wavelink>=3.5.1`.
 cd deploy/lavalink
 export LAVALINK_PASSWORD='una-password-lunga'      # la stessa del .env del bot
 export MAIN_RADIO_LOCAL_FOLDER=/percorso/inediti   # facoltativo
-export SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=...   # facoltativi
+export SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=...   # facoltativi: poi `spotify: true` in application.yml
 docker compose up -d
 docker compose logs -f lavalink    # al primo avvio scarica i plugin
 ```

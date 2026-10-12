@@ -20,6 +20,11 @@ from datetime import datetime
 
 import asyncpg
 
+from core.music_fleet_logic import find_free_worker
+
+# Chiave del lock che serializza le assegnazioni di worker (tra processi e task).
+_LOCK_ASSEGNAZIONE = 7_060_001
+
 
 @dataclass(frozen=True)
 class MusicSession:
@@ -51,18 +56,59 @@ class MusicSessionRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    async def assign_worker(self, guild_id: int, channel_id: int, worker_index: int) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO music_sessions (guild_id, channel_id, worker_index)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, channel_id) DO UPDATE
-                SET worker_index = EXCLUDED.worker_index, assigned_at = now()
-            """,
-            guild_id,
-            channel_id,
-            worker_index,
-        )
+    async def assign_free_worker(
+        self, guild_id: int, channel_id: int, esclusi: set[int]
+    ) -> int | None:
+        """
+        Assegnazione ATOMICA (M 8.6): sotto un advisory lock di transazione legge i
+        worker occupati, sceglie il primo libero fuori da `esclusi` e scrive la riga.
+        Due /music play insieme non prendono mai lo stesso worker. Se il canale ha
+        gia' una sessione, ritorna quella. None se non c'e' nessun worker libero.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock($1)", _LOCK_ASSEGNAZIONE)
+                esistente = await conn.fetchval(
+                    "SELECT worker_index FROM music_sessions WHERE guild_id = $1 AND channel_id = $2",
+                    guild_id,
+                    channel_id,
+                )
+                if esistente is not None:
+                    return esistente
+                righe = await conn.fetch("SELECT DISTINCT worker_index FROM music_sessions")
+                occupati = {r["worker_index"] for r in righe}
+                libero = find_free_worker(occupati | set(esclusi))
+                if libero is None:
+                    return None
+                await conn.execute(
+                    "INSERT INTO music_sessions (guild_id, channel_id, worker_index) VALUES ($1, $2, $3)",
+                    guild_id,
+                    channel_id,
+                    libero,
+                )
+                return libero
+
+    async def move_session(self, guild_id: int, da_canale: int, a_canale: int) -> None:
+        """Il worker e' stato spostato a mano in un altro canale: la riga lo segue."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                if await conn.fetchval(
+                    "SELECT EXISTS (SELECT 1 FROM music_sessions WHERE guild_id=$1 AND channel_id=$2)",
+                    guild_id,
+                    a_canale,
+                ):
+                    await conn.execute(
+                        "DELETE FROM music_sessions WHERE guild_id=$1 AND channel_id=$2",
+                        guild_id,
+                        da_canale,
+                    )
+                else:
+                    await conn.execute(
+                        "UPDATE music_sessions SET channel_id=$3 WHERE guild_id=$1 AND channel_id=$2",
+                        guild_id,
+                        da_canale,
+                        a_canale,
+                    )
 
     async def get_worker_for_channel(self, guild_id: int, channel_id: int) -> int | None:
         row = await self._pool.fetchrow(
@@ -95,15 +141,6 @@ class MusicSessionRepository:
         farebbero risultare "occupati" per sempre.
         """
         await self._pool.execute("DELETE FROM music_sessions")
-
-    async def get_occupied_workers(self) -> set[int]:
-        """
-        Tutti i worker attualmente assegnati a QUALUNQUE server —
-        usata insieme a core/music_fleet_logic.find_free_worker() per
-        decidere quale istanza è libera per un nuovo /music play.
-        """
-        rows = await self._pool.fetch("SELECT DISTINCT worker_index FROM music_sessions")
-        return {row["worker_index"] for row in rows}
 
 
 def _get_pool():

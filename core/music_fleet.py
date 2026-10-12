@@ -25,7 +25,7 @@ from discord.ext import commands
 
 from core.database import db
 from core.music_settings_logic import load_music_settings
-from core.music_fleet_logic import TOTAL_WORKERS, find_free_worker
+from core.music_fleet_logic import TOTAL_WORKERS
 from core.repositories.music_session_repo import music_session_repo
 
 # Permessi minimi richiesti a un'istanza worker per unirsi e parlare
@@ -100,13 +100,10 @@ class MusicFleet:
         if worker_index is not None:
             return worker_index, self.get_worker_bot(worker_index)
 
-        non_presenti = await self.get_missing_worker_indices(guild_id)
-        occupati = await music_session_repo.get_occupied_workers()
-        libero = find_free_worker(occupati | non_presenti | self._worker_non_pronti())
+        esclusi = await self.get_missing_worker_indices(guild_id) | self._worker_non_pronti()
+        libero = await music_session_repo.assign_free_worker(guild_id, channel_id, esclusi)
         if libero is None:
             return None
-
-        await music_session_repo.assign_worker(guild_id, channel_id, libero)
         return libero, self.get_worker_bot(libero)
 
     async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
@@ -179,8 +176,25 @@ async def handle_inactive_player(player, fleet: MusicFleet) -> None:
         return
     guild = player.guild
     canale = player.channel
-    if guild is not None and await _resta_a_coda_finita(guild.id):
-        return  # MUS-055: resta; il worker resta assegnato a questo canale
+    umani = [m for m in getattr(canale, "members", []) if not getattr(m, "bot", False)]
+    if guild is not None and umani and await _resta_a_coda_finita(guild.id):
+        return  # MUS-055: resta a coda finita, ma solo se in canale c'e' ancora qualcuno
     await player.disconnect()
     if guild is not None and canale is not None:
         await fleet.release_session(guild.id, canale.id)
+
+
+async def handle_worker_voice_update(fleet: MusicFleet, bot, member, before, after) -> None:
+    """
+    Listener `on_voice_state_update` dei bot worker: se il worker viene scollegato a
+    mano esce dal canale -> la sessione si libera; se viene spostato in un altro
+    canale la riga lo segue. Senza questo lo slot resterebbe occupato per sempre.
+    """
+    utente = getattr(bot, "user", None)
+    if utente is None or member.id != utente.id or before.channel is None:
+        return
+    guild_id = member.guild.id
+    if after.channel is None:
+        await fleet.release_session(guild_id, before.channel.id)
+    elif after.channel.id != before.channel.id:
+        await music_session_repo.move_session(guild_id, before.channel.id, after.channel.id)

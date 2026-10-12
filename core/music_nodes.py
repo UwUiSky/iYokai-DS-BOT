@@ -41,6 +41,10 @@ logger = logging.getLogger("iyokai.music")
 
 MAIN_KEY = "main"
 
+# Dopo i tentativi di wavelink un nodo non resta scartato per sempre: nuovo giro
+# con pause crescenti (secondi); l'ultima si ripete.
+RETRY_PAUSES = (30.0, 60.0, 120.0, 300.0)
+
 
 def worker_key(worker_index: int) -> str:
     return f"w{worker_index}"
@@ -64,7 +68,11 @@ class MusicNodeManager:
         connetti: Callable[..., Awaitable[None]] = _connetti_con_wavelink,
         leggi_versione: Callable[..., Awaitable[str | None]] = _versione_del_nodo,
         retries: int = NODE_CONNECT_RETRIES,
+        attesa_pronto: float = 15.0,
+        pause_riprova: tuple[float, ...] = RETRY_PAUSES,
     ) -> None:
+        self._attesa_pronto = attesa_pronto
+        self._pause_riprova = pause_riprova
         self._pubblici = list(pubblici)
         self._locale = locale
         self._connetti = connetti
@@ -95,9 +103,8 @@ class MusicNodeManager:
                     password=self._locale.password,
                     client=client,
                     retries=self._retries,
-                    # La radio 24/7 non deve essere scollegata dai canali
-                    # vuoti (LIM-44): vale per ogni player del nodo locale.
-                    inactive_channel_tokens=None,
+                    # NB: niente `inactive_channel_tokens=None` qui: varrebbe per OGNI
+                    # player del nodo. L'esenzione e' solo sul player della radio.
                 )
             )
         self._nodi[chiave] = nodi
@@ -115,29 +122,58 @@ class MusicNodeManager:
         return task
 
     async def _collega_uno(self, client, nodo: wavelink.Node) -> None:
-        try:
-            wait = getattr(client, "wait_until_ready", None)
-            if wait is not None:
-                await wait()  # l'header User-Id richiede client.user
-            await self._connetti(nodo, client)
-            if nodo.status is not wavelink.NodeStatus.CONNECTED:
-                logger.warning("Nodo Lavalink %s non raggiungibile: scartato.", nodo.identifier)
+        """Collega il nodo; se non riesce (o e' troppo vecchio) riprova con pause crescenti."""
+        tentativo = 0
+        while True:
+            try:
+                if await self._tenta(client, nodo):
+                    return
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Collegamento del nodo Lavalink %s fallito.", nodo.identifier)
                 await self._scarta(nodo)
-                return
-            versione = await self._leggi_versione(nodo)
-            if not is_supported_lavalink(versione):
-                logger.warning(
-                    "Nodo Lavalink %s scartato: versione %s sotto la 4.2.0 "
-                    "(serve per la cifratura vocale DAVE).",
-                    nodo.identifier,
-                    versione,
-                )
-                await self._scarta(nodo)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.exception("Collegamento del nodo Lavalink %s fallito.", nodo.identifier)
+            pausa = self._pause_riprova[min(tentativo, len(self._pause_riprova) - 1)]
+            tentativo += 1
+            logger.info("Nodo %s: nuovo tentativo tra %s secondi.", nodo.identifier, pausa)
+            await asyncio.sleep(pausa)
+
+    async def _tenta(self, client, nodo: wavelink.Node) -> bool:
+        wait = getattr(client, "wait_until_ready", None)
+        if wait is not None:
+            await wait()  # l'header User-Id richiede client.user
+        await self._connetti(nodo, client)
+        if not await self._attendi_connesso(nodo):
+            logger.warning("Nodo Lavalink %s non raggiungibile: scartato.", nodo.identifier)
             await self._scarta(nodo)
+            return False
+        versione = await self._leggi_versione(nodo)
+        if not is_supported_lavalink(versione):
+            logger.warning(
+                "Nodo Lavalink %s scartato: versione %s sotto la 4.2.0 "
+                "(serve per la cifratura vocale DAVE).",
+                nodo.identifier,
+                versione,
+            )
+            await self._scarta(nodo)
+            return False
+        return True
+
+    async def _attendi_connesso(self, nodo: wavelink.Node) -> bool:
+        """
+        `Pool.connect` torna con il nodo ancora CONNECTING: CONNECTED arriva col
+        messaggio `ready` di Lavalink. Si aspetta (polling) fino a `attesa_pronto`.
+        """
+        fine = asyncio.get_running_loop().time() + self._attesa_pronto
+        while True:
+            if nodo.status is wavelink.NodeStatus.CONNECTED:
+                return True
+            ws = nodo._websocket
+            if ws is not None and not ws.is_connected():
+                return False  # tentativi esauriti: wavelink ha chiuso tutto
+            if asyncio.get_running_loop().time() >= fine:
+                return False
+            await asyncio.sleep(0.05)
 
     async def _scarta(self, nodo: wavelink.Node) -> None:
         try:

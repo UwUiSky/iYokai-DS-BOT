@@ -24,17 +24,17 @@ def cog():
 @pytest.mark.asyncio
 async def test_ricerca_normale_gira_sul_nodo_scelto(cog):
     nodo = object()
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=["t"])) as ricerca:
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=["t"])) as ricerca:
         risultato, usato = await cog._cerca("una canzone qualsiasi", nodo)
 
     assert risultato == ["t"] and usato is nodo
-    ricerca.assert_called_once_with("una canzone qualsiasi", node=nodo)
+    ricerca.assert_called_once_with("ytmsearch:una canzone qualsiasi", node=nodo)
 
 
 @pytest.mark.asyncio
 async def test_query_non_spotify_senza_risultati_non_tenta_il_nodo_locale(cog):
     nodo, locale = object(), object()
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=[])) as ricerca:
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=[])) as ricerca:
         risultato, usato = await cog._cerca("niente", nodo, locale)
 
     assert risultato == [] and usato is nodo
@@ -79,12 +79,13 @@ async def test_query_spotify_senza_nodo_locale_restituisce_vuoto(cog):
 
 @pytest.mark.asyncio
 async def test_una_query_local_scritta_da_un_utente_non_va_mai_al_filesystem(cog):
-    """Solo la radio legge i percorsi locali: una ricerca utente `local:` è una ricerca normale."""
+    """Solo la radio legge i percorsi locali: una ricerca utente `local:` è rifiutata."""
     nodo = object()
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=[])) as ricerca, patch(
+    with patch("wavelink.Playable.search", new=AsyncMock()) as ricerca, patch(
         "wavelink.Pool.fetch_tracks", new=AsyncMock()
     ) as grezzo:
-        await cog._cerca("local:/etc/passwd", nodo)
+        risultato, _ = await cog._cerca("local:/etc/passwd", nodo)
 
-    ricerca.assert_called_once()
+    assert not risultato  # rifiutata: nessuna chiamata a Lavalink
+    ricerca.assert_not_called()
     grezzo.assert_not_called()

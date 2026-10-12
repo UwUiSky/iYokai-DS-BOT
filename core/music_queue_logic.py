@@ -86,13 +86,16 @@ def indices_of_absent(richiedenti: list[int | None], presenti: set[int]) -> list
     return [i for i, r in enumerate(richiedenti) if r is not None and r not in presenti]
 
 
-def previous_track_position(lunghezza_storico: int) -> int | None:
+def previous_track_position(lunghezza_storico: int, c_e_un_corrente: bool = True) -> int | None:
     """
-    L'indice nello storico del brano PRECEDENTE a quello in corso: lo
-    storico contiene anche il brano in corso (wavelink lo aggiunge quando
-    parte), quindi il precedente è il penultimo. None se non c'è.
+    L'indice nello storico del brano da riprendere. Con un brano in corso, lo
+    storico lo contiene (wavelink lo aggiunge quando parte): il precedente e' il
+    penultimo. A coda finita (nessun brano in corso) l'ultimo dello storico e' il
+    brano appena finito: e' quello che si riprende. None se non c'e'.
     """
-    return lunghezza_storico - 2 if lunghezza_storico >= 2 else None
+    if c_e_un_corrente:
+        return lunghezza_storico - 2 if lunghezza_storico >= 2 else None
+    return lunghezza_storico - 1 if lunghezza_storico >= 1 else None
 
 
 def own_shuffle_order(

@@ -26,7 +26,7 @@ from core.music_logic import (
     is_supported_lavalink,
     local_path_for_node,
     msg_canale_pieno,
-    needs_raw_fetch,
+    classify_query,
     node_identifier,
     order_nodes,
     paginate_lines,
@@ -92,10 +92,14 @@ def test_nomi_di_file_locali():
     assert local_path_for_node("/audio/local/", "a.mp3") == "/audio/local/a.mp3"
 
 
-def test_solo_spotify_va_preso_senza_prefisso_di_ricerca():
-    assert needs_raw_fetch("spotify:track:abc")
-    assert not needs_raw_fetch("local:/etc/passwd")  # BUG-10 + sicurezza
-    assert not needs_raw_fetch("una canzone")
+def test_le_query_degli_utenti_non_sono_mai_grezze():
+    """BUG-10 + sicurezza: percorsi e `//host/x` rifiutati, il testo ha sempre il prefisso."""
+    for brutta in ["//audio/local/x.mp3", "/etc/passwd", "local:/etc/passwd", "file:///x",
+                   "C:\\x.mp3", "~/x", "ftp://a/b", "http:///x", "spotify:boh", ""]:
+        assert classify_query(brutta) == "rifiutata", brutta
+    assert classify_query("https://youtu.be/x") == "url"
+    assert classify_query("spotify:track:4b93D55xv3YCH5mT4p6HPn") == "spotify"
+    assert classify_query("una canzone") == "testo"
 
 
 def test_titolo_lungo_resta_nel_limite_dell_embed():
@@ -140,75 +144,170 @@ class _Client:
         return None
 
 
-def _gestore(connetti, versione="4.2.0", pubblici=2):
+def _gestore(connetti, versione="4.2.0", pubblici=2, **kw):
     configs = [LavalinkNodeConfig(f"http://pub{i}.test:80", "pw") for i in range(pubblici)]
     locale = LavalinkNodeConfig("http://127.0.0.1:2333", "pw")
 
     async def leggi(nodo):
         return versione(nodo) if callable(versione) else versione
 
-    return MusicNodeManager(configs, locale, connetti=connetti, leggi_versione=leggi, retries=2)
+    kw.setdefault("attesa_pronto", 0.3)
+    kw.setdefault("pause_riprova", (0.05,))
+    return MusicNodeManager(
+        configs, locale, connetti=connetti, leggi_versione=leggi, retries=2, **kw
+    )
+
+
+async def _aspetta(condizione, secondi=3.0):
+    fine = asyncio.get_running_loop().time() + secondi
+    while not condizione():
+        assert asyncio.get_running_loop().time() < fine, "condizione mai verificata"
+        await asyncio.sleep(0.02)
+
+
+def _connessi(g, chiave):
+    return {n.uri for n in g.nodi_di(chiave) if n.status is wavelink.NodeStatus.CONNECTED}
+
+
+async def _chiudi(g):
+    with patch("wavelink.Pool.close", new=AsyncMock()):
+        await g.close()
+
+
+def _connetti_in_ritardo(ritardo=0.1):
+    """Come wavelink: torna con il nodo CONNECTING, CONNECTED arriva piu' tardi (messaggio `ready`)."""
+
+    async def connetti(nodo, client):
+        nodo._status = wavelink.NodeStatus.CONNECTING
+
+        async def _ready():
+            await asyncio.sleep(ritardo)
+            nodo._status = wavelink.NodeStatus.CONNECTED
+
+        asyncio.get_running_loop().create_task(_ready())
+
+    return connetti
+
+
+@pytest.mark.asyncio
+async def test_il_nodo_che_diventa_connected_dopo_il_ritorno_di_connect_non_viene_scartato():
+    g = _gestore(_connetti_in_ritardo(0.15), attesa_pronto=2.0)
+    g.avvia(_Client("main"), MAIN_KEY)
+
+    await _aspetta(lambda: len(_connessi(g, MAIN_KEY)) == 3)
+    assert g.node_for(MAIN_KEY) is not None
+    await _chiudi(g)
+
+
+@pytest.mark.asyncio
+async def test_con_un_lavalink_finto_vero_il_nodo_si_collega_e_resta():
+    """Websocket e /v4/info veri (tests/support/fake_lavalink.py): parte CONNECTING, poi `ready`."""
+    from tests.support import fake_lavalink
+
+    runner = await fake_lavalink.start(23417)
+    try:
+        class _C:
+            user = SimpleNamespace(id=111)
+
+            async def wait_until_ready(self):
+                pass
+
+            def dispatch(self, *a, **k):
+                pass
+
+        g = MusicNodeManager([], LavalinkNodeConfig("http://127.0.0.1:23417", "x"), retries=1,
+                             attesa_pronto=5.0)
+        g.avvia(_C(), MAIN_KEY)
+        await _aspetta(lambda: g.node_for(MAIN_KEY) is not None, 6)
+        assert g.node_for(MAIN_KEY).status is wavelink.NodeStatus.CONNECTED
+        assert "iyokai-local-node@main" in wavelink.Pool.nodes
+        await g.close()
+    finally:
+        await runner.cleanup()
 
 
 @pytest.mark.asyncio
 async def test_ogni_bot_ha_il_suo_nodo_con_il_suo_client():
-    visti = []
-
-    async def connetti(nodo, client):
-        visti.append((nodo.identifier, client.nome))
-        nodo._status = wavelink.NodeStatus.CONNECTED
-
-    g = _gestore(connetti)
+    g = _gestore(_connetti_in_ritardo(0.02))
     principale, w3 = _Client("main"), _Client("w3")
-    await asyncio.gather(*g.avvia(principale, MAIN_KEY), *g.avvia(w3, worker_key(3)))
+    g.avvia(principale, MAIN_KEY)
+    g.avvia(w3, worker_key(3))
+    await _aspetta(lambda: len(_connessi(g, "w3")) == 3 and len(_connessi(g, MAIN_KEY)) == 3)
 
     nodi_w3 = g.nodi_di("w3")
-    assert nodi_w3 and all(n.client is w3 for n in nodi_w3)
+    assert all(n.client is w3 for n in nodi_w3)
     assert all(n.client is principale for n in g.nodi_di("main"))
     assert not ({n.identifier for n in nodi_w3} & {n.identifier for n in g.nodi_di("main")})
     assert g.node_for("w3") in nodi_w3
     assert all(n.identifier.endswith("@w3") for n in nodi_w3)
-    assert len(visti) == 2 * 3  # (2 pubblici + 1 locale) per bot
+    await _chiudi(g)
 
 
 @pytest.mark.asyncio
 async def test_primo_nodo_irraggiungibile_gli_altri_si_collegano():
+    ritardo = _connetti_in_ritardo(0.02)
+
     async def connetti(nodo, client):
         if "pub0" in nodo.uri:
             raise OSError("irraggiungibile")
-        nodo._status = wavelink.NodeStatus.CONNECTED
+        await ritardo(nodo, client)
 
     g = _gestore(connetti)
-    await asyncio.gather(*g.avvia(_Client("main"), MAIN_KEY))
+    g.avvia(_Client("main"), MAIN_KEY)
 
-    collegati = {n.uri for n in g.nodi_di(MAIN_KEY) if n.status is wavelink.NodeStatus.CONNECTED}
-    assert collegati == {"http://pub1.test:80", "http://127.0.0.1:2333"}
+    await _aspetta(lambda: _connessi(g, MAIN_KEY) == {"http://pub1.test:80", "http://127.0.0.1:2333"})
     assert g.node_for(MAIN_KEY) is not None
+    await _chiudi(g)
 
 
 @pytest.mark.asyncio
-async def test_un_nodo_che_esaurisce_i_tentativi_viene_scartato():
-    async def connetti(nodo, client):
-        return None  # wavelink termina senza errore ma il nodo resta DISCONNECTED
+async def test_un_nodo_che_non_diventa_mai_connected_viene_scartato_e_poi_riprovato():
+    tentativi = []
 
-    g = _gestore(connetti)
-    await asyncio.gather(*g.avvia(_Client("main"), MAIN_KEY))
+    async def connetti(nodo, client):
+        tentativi.append(nodo.identifier)  # non diventa mai CONNECTED
+
+    g = _gestore(connetti, pubblici=0, attesa_pronto=0.05)
+    g.avvia(_Client("main"), MAIN_KEY)
+
+    await _aspetta(lambda: len(tentativi) >= 3)  # M 8.2: non si arrende dopo il primo giro
     assert g.node_for(MAIN_KEY) is None
+    await _chiudi(g)
+
+
+@pytest.mark.asyncio
+async def test_il_nodo_si_ricollega_quando_lavalink_torna():
+    stato = {"su": False}
+    ritardo = _connetti_in_ritardo(0.02)
+
+    async def connetti(nodo, client):
+        if not stato["su"]:
+            raise OSError("giu'")
+        await ritardo(nodo, client)
+
+    g = _gestore(connetti, pubblici=0)
+    g.avvia(_Client("main"), MAIN_KEY)
+    await asyncio.sleep(0.2)
+    assert g.node_for(MAIN_KEY) is None
+
+    stato["su"] = True
+    await _aspetta(lambda: g.node_for(MAIN_KEY) is not None)
+    await _chiudi(g)
 
 
 @pytest.mark.asyncio
 async def test_nodo_lavalink_4_1_scartato_con_avviso(caplog):
-    async def connetti(nodo, client):
-        nodo._status = wavelink.NodeStatus.CONNECTED
-
-    g = _gestore(connetti, versione=lambda n: "4.1.1" if "pub0" in n.uri else "4.2.0")
+    g = _gestore(
+        _connetti_in_ritardo(0.02),
+        versione=lambda n: "4.1.1" if "pub0" in n.uri else "4.2.0",
+    )
     with caplog.at_level("WARNING", logger="iyokai.music"):
-        await asyncio.gather(*g.avvia(_Client("main"), MAIN_KEY))
+        g.avvia(_Client("main"), MAIN_KEY)
+        await _aspetta(lambda: "http://pub1.test:80" in _connessi(g, MAIN_KEY))
+        await _aspetta(lambda: any("4.2.0" in r.getMessage() for r in caplog.records))
 
-    connessi = {n.uri for n in g.nodi_di(MAIN_KEY) if n.status is wavelink.NodeStatus.CONNECTED}
-    assert "http://pub0.test:80" not in connessi
-    assert "http://pub1.test:80" in connessi
-    assert any("4.2.0" in r.getMessage() for r in caplog.records)
+    assert "http://pub0.test:80" not in _connessi(g, MAIN_KEY)
+    await _chiudi(g)
 
 
 @pytest.mark.asyncio
@@ -318,7 +417,9 @@ class _CanaleDelWorker:
             playing=True,
             queue=SimpleNamespace(put_wait=AsyncMock(), is_empty=True),
             node=cls.keywords["nodes"][0],
+            set_volume=AsyncMock(),
         )
+        self.player = player
         return player
 
 
@@ -375,6 +476,7 @@ async def test_il_player_di_un_worker_nasce_sul_nodo_di_quel_worker(modulo_attiv
     # la ricerca parte dal nodo del worker 2, non da quello del principale
     assert cerca.await_args.args[1] is nodo_w2
     assert canale.cls.keywords["nodes"] == [nodo_w2]
+    canale.player.set_volume.assert_awaited_once_with(100)  # MUS-047: volume all'ingresso
     assert canale.cls.func is wavelink.Player
 
 
@@ -862,3 +964,126 @@ async def test_avviso_se_la_cartella_inediti_e_impostata_ma_manca_il_nodo_locale
     with caplog.at_level("WARNING", logger="iyokai.music"):
         await player_module.avvisa_se_manca_il_nodo_locale(gestore, [])  # cartella non impostata
     assert not caplog.records
+
+
+# ---------------------------------------------------------------------------
+# Correzioni del cacciatore-bug (12/10)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_play_con_una_query_a_percorso_e_rifiutato_prima_di_assegnare_un_worker(modulo_attivo):
+    flotta = _FlottaDi(SimpleNamespace(worker_index=1))
+    cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=_Gestore()))
+    for brutta in ["//audio/local/x.mp3", "local:/audio/local/x.mp3", "/etc/passwd"]:
+        i = _Interazione()
+        await cog.play.callback(cog, i, query=brutta)
+        assert "non è valida" in i.followup.inviati[0]
+    assert flotta.rilasci == []
+
+
+@pytest.mark.asyncio
+async def test_il_testo_libero_ha_sempre_il_prefisso_di_ricerca():
+    nodo = object()
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=[1])) as grezzo, patch(
+        "wavelink.Playable.search", new=AsyncMock()
+    ) as ricerca:
+        await MusicCog._cerca_su("//audio/local/x.mp3", nodo)
+        grezzo.assert_not_called()
+        await MusicCog._cerca_su("due parole", nodo)
+
+    grezzo.assert_awaited_once_with("ytmsearch:due parole", node=nodo)
+    ricerca.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_solo_la_radio_e_esente_dal_canale_vuoto_non_tutto_il_nodo_locale():
+    g = MusicNodeManager([], LavalinkNodeConfig("http://127.0.0.1:2333", "x"))
+    (locale,) = g.costruisci_nodi(_Client("main"), MAIN_KEY)
+    assert locale._inactive_channel_tokens == 3  # il default di wavelink: i worker liberano lo slot
+
+
+@pytest.mark.asyncio
+async def test_due_play_insieme_nello_stesso_canale_un_solo_connect_e_nessun_rilascio(modulo_attivo):
+    class _Canale2(_CanaleDelWorker):
+        connessioni = 0
+
+        async def connect(self, cls):
+            _Canale2.connessioni += 1
+            await asyncio.sleep(0.05)  # il 2o play arriva mentre il 1o si collega
+            player = await super().connect(cls)
+            guild.voice_client = player
+            return player
+
+    canale = _Canale2(11)
+    guild = _GuildDelWorker(canale)
+    worker = SimpleNamespace(worker_index=2, get_guild=lambda gid: guild)
+    flotta = _FlottaDi(worker)
+    gestore = _Gestore()
+    gestore.nodi["w2"] = object()
+    cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=gestore))
+    tracce = [SimpleNamespace(title=f"T{n}", length=1000, extras=None) for n in range(2)]
+
+    async def _cerca(query, nodo, locale=None):
+        return [tracce[int(query)]], nodo
+
+    with patch.object(cog, "_cerca", new=_cerca):
+        a, b = _Interazione(), _Interazione()
+        await asyncio.gather(
+            cog.play.callback(cog, a, query="0"), cog.play.callback(cog, b, query="1")
+        )
+
+    assert _Canale2.connessioni == 1
+    assert flotta.rilasci == []
+    assert "Aggiunta" in a.followup.inviati[0] and "Aggiunta" in b.followup.inviati[0]
+
+
+@pytest.mark.asyncio
+async def test_ricerca_fallita_non_libera_lo_slot_se_il_bot_sta_gia_suonando(modulo_attivo):
+    canale = _CanaleDelWorker(11)
+    guild = _GuildDelWorker(canale)
+    guild.voice_client = SimpleNamespace(node=object(), playing=True)
+    worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild)
+    flotta = _FlottaDi(worker)
+    cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=_Gestore()))
+
+    with patch.object(cog, "_cerca", new=AsyncMock(return_value=([], object()))):
+        await cog.play.callback(cog, _Interazione(), query="niente")
+
+    assert flotta.rilasci == []
+
+
+@pytest.mark.asyncio
+async def test_il_worker_scollegato_a_mano_libera_la_sessione_e_spostato_la_segue():
+    from core.music_fleet import handle_worker_voice_update
+
+    rilasci, mosse = [], []
+
+    class _F:
+        async def release_session(self, g, c):
+            rilasci.append((g, c))
+
+    import core.music_fleet as modulo
+
+    class _Repo:
+        async def move_session(self, g, a, b):
+            mosse.append((g, a, b))
+
+    bot = SimpleNamespace(user=SimpleNamespace(id=42))
+    guild = SimpleNamespace(id=900)
+    membro = SimpleNamespace(id=42, guild=guild)
+    stato = lambda cid: SimpleNamespace(channel=None if cid is None else SimpleNamespace(id=cid))
+    with patch.object(modulo, "music_session_repo", _Repo()):
+        await handle_worker_voice_update(_F(), bot, membro, stato(11), stato(None))
+        await handle_worker_voice_update(_F(), bot, membro, stato(11), stato(22))
+        await handle_worker_voice_update(_F(), bot, membro, stato(None), stato(11))  # entra: niente
+        await handle_worker_voice_update(
+            _F(), bot, SimpleNamespace(id=7, guild=guild), stato(11), stato(None)
+        )  # un altro utente: niente
+
+    assert rilasci == [(900, 11)]
+    assert mosse == [(900, 11, 22)]
+
+
+def test_i_file_gitignore_coprono_plugin_e_inediti_di_lavalink():
+    testo = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "deploy/lavalink/plugins/" in testo
+    assert "deploy/lavalink/radio-local/" in testo

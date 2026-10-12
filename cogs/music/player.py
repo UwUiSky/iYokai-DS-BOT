@@ -61,13 +61,18 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.main_radio_logic import RadioTrackInfo, compute_current_position, next_track_index
-from core.music_fleet import MusicFleet
+from core.music_fleet import MusicFleet, handle_worker_voice_update
 from core.music_fleet_logic import TOTAL_WORKERS
 from core.music_logic import (
     EMBED_DESCRIPTION_LIMIT,
     MAX_PLAYLIST_TRACKS,
+    MSG_QUERY_RIFIUTATA,
     MSG_TEMPO_SCADUTO,
+    QUERY_RIFIUTATA,
+    QUERY_SPOTIFY,
+    QUERY_URL,
     LavalinkNodeConfig,
+    classify_query,
     build_progress_bar,
     build_queue_display,
     format_duration,
@@ -76,7 +81,6 @@ from core.music_logic import (
     local_identifier,
     local_path_for_node,
     local_path_from_identifier,
-    needs_raw_fetch,
     paginate_lines,
     parse_lavalink_nodes,
     truncate_playlist_tracks,
@@ -174,6 +178,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         # Server in cui la radio si sta avviando (comando o ingresso del
         # bot in vocale): evita un secondo avvio dallo stesso evento.
         self._radio_in_avvio: set[int] = set()
+        self._lock_canali: dict[tuple[int, int], asyncio.Lock] = {}
 
     async def cog_load(self) -> None:
         await super().cog_load()
@@ -373,12 +378,24 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     @staticmethod
     async def _cerca_su(query: str, nodo: wavelink.Node) -> wavelink.Search | None:
-        if needs_raw_fetch(query):
-            return await wavelink.Pool.fetch_tracks(query, node=nodo)
-        return await wavelink.Playable.search(query, node=nodo)
+        """
+        Mai una query grezza scritta da un utente: URL http(s) e URI Spotify
+        validi vanno cosi' come sono; qualunque altro testo diventa SEMPRE
+        `ytmsearch:<testo>`. Percorsi, `//host/...`, `local:` e simili sono
+        rifiutati prima (classify_query): con `sources.local` attivo
+        farebbero leggere i file di Lavalink.
+        """
+        tipo = classify_query(query)
+        if tipo == QUERY_RIFIUTATA:
+            return None
+        if tipo == QUERY_SPOTIFY:
+            return await wavelink.Pool.fetch_tracks(query.strip(), node=nodo)
+        if tipo == QUERY_URL:
+            return await wavelink.Playable.search(query.strip(), node=nodo)
+        return await wavelink.Pool.fetch_tracks(f"ytmsearch:{query.strip()}", node=nodo)
 
     async def _entra_in_canale(
-        self, canale, nodo: wavelink.Node
+        self, canale, nodo: wavelink.Node, volume: int | None = None
     ) -> tuple[wavelink.Player | None, str | None]:
         """
         Entra in un canale vocale con un player sul nodo scelto. LIM-34:
@@ -407,6 +424,8 @@ class MusicCog(CogConGruppi, commands.Cog):
             logger.exception("Ingresso nel canale vocale %s non riuscito.", canale.id)
             return None, "Non riesco a entrare nel canale vocale. Riprova tra poco."
         player.autoplay = wavelink.AutoPlayMode.partial
+        if volume is not None:  # volume massimo del server anche all'ingresso (MUS-047)
+            await player.set_volume(volume)
         return player, None
 
     # ================================================================
@@ -437,6 +456,10 @@ class MusicCog(CogConGruppi, commands.Cog):
             await interaction.followup.send(rifiuto)
             return
 
+        if classify_query(query) == QUERY_RIFIUTATA:
+            await interaction.followup.send(MSG_QUERY_RIFIUTATA)
+            return
+
         worker_bot, worker_guild, errore = await self._get_worker(
             interaction.guild.id, auto_assign=True, interaction=interaction
         )
@@ -445,6 +468,25 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         canale_id = interaction.user.voice.channel.id
+        # Due /music play insieme nello stesso canale: uno alla volta, cosi' il
+        # secondo trova il player gia' creato dal primo (niente doppio connect, niente
+        # slot rilasciato sotto un bot che suona).
+        async with self._lock_canale(interaction.guild.id, canale_id):
+            await self._play_nel_canale(
+                interaction, query, in_cima, impostazioni, worker_bot, worker_guild, canale_id
+            )
+
+    def _lock_canale(self, guild_id: int, canale_id: int) -> asyncio.Lock:
+        return self._lock_canali.setdefault((guild_id, canale_id), asyncio.Lock())
+
+    async def _rilascia_se_libero(self, worker_guild, guild_id: int, canale_id: int) -> None:
+        """Libera lo slot SOLO se il bot non e' in vocale (mai sotto un player che suona)."""
+        if worker_guild.voice_client is None:
+            await self.bot.music_fleet.release_session(guild_id, canale_id)
+
+    async def _play_nel_canale(
+        self, interaction, query, in_cima, impostazioni, worker_bot, worker_guild, canale_id
+    ) -> None:
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         nuova_sessione = player is None
         gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
@@ -453,8 +495,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         # D10: il player vive sul nodo del SUO bot; la ricerca gira sullo stesso.
         nodo = player.node if player is not None else (gestore.node_for(chiave) if gestore else None)
         if nodo is None:
-            if nuova_sessione:
-                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
             await interaction.followup.send(MSG_NESSUN_NODO)
             return
 
@@ -465,8 +506,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             logger.warning("Ricerca musicale fallita sul nodo %s.", nodo.identifier, exc_info=True)
             risultati = None
         if not risultati:
-            if nuova_sessione:
-                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
             await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
             return
 
@@ -478,16 +518,14 @@ class MusicCog(CogConGruppi, commands.Cog):
             tracce_playlist = [t for t in candidate if not _troppo_lungo(t, impostazioni)]
             scartate_lunghe = len(candidate) - len(tracce_playlist)
             if not tracce_playlist:
-                if nuova_sessione:
-                    await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+                await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
                 await interaction.followup.send(
                     f"Nessun brano della playlist rispetta la durata massima di "
                     f"{impostazioni.max_track_minutes} minuti."
                 )
                 return
         elif _troppo_lungo(risultati[0], impostazioni):
-            if nuova_sessione:
-                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
             await interaction.followup.send(
                 msg_brano_troppo_lungo(risultati[0].title, risultati[0].length, impostazioni)
             )
@@ -496,15 +534,17 @@ class MusicCog(CogConGruppi, commands.Cog):
         if player is None:
             canale_worker = worker_guild.get_channel(canale_id)
             if canale_worker is None:
-                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+                await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
                 await interaction.followup.send(
                     "Non riesco a raggiungere il tuo canale vocale dall'istanza assegnata "
                     "— il music bot potrebbe non avere accesso a questo canale."
                 )
                 return
-            player, errore = await self._entra_in_canale(canale_worker, nodo)
+            player, errore = await self._entra_in_canale(
+                canale_worker, nodo, volume=min(100, impostazioni.max_volume)
+            )
             if errore:
-                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+                await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
                 await interaction.followup.send(errore)
                 return
 
@@ -757,9 +797,9 @@ class MusicCog(CogConGruppi, commands.Cog):
                     "Non hai abbastanza brani tuoi in coda da mescolare.", ephemeral=True
                 )
                 return
-            for _ in range(len(tracce)):
-                player.queue.delete(0)
-            await player.queue.put_wait([tracce[i] for i in ordine])
+            # senza nessun await in mezzo: nessun altro comando vede la coda vuota
+            player.queue.clear()
+            player.queue.put([tracce[i] for i in ordine])
             await interaction.response.send_message("🔀 Ho mescolato i tuoi brani in coda.")
             return
 
@@ -934,7 +974,8 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         impostazioni = await load_music_settings(db, interaction.guild.id)
-        nuovo_volume = clamp_volume(player.volume + amount, impostazioni)  # MUS-047
+        # MUS-047: mai oltre il massimo, ma "alza" non abbassa mai (volume gia' sopra il massimo)
+        nuovo_volume = max(player.volume, clamp_volume(player.volume + amount, impostazioni))
         await player.set_volume(nuovo_volume)
         await interaction.response.send_message(f"🔊 Volume aumentato a {nuovo_volume}.")
 
@@ -1077,8 +1118,11 @@ class MusicCog(CogConGruppi, commands.Cog):
                 f"La coda ha {len(player.queue)} brani: il numero {numero} non c'è.", ephemeral=True
             )
             return
-        for _ in range(numero - 1):
+        saltati = [player.queue[i] for i in range(numero - 1)]
+        for _ in saltati:
             player.queue.delete(0)
+        if saltati and player.queue.mode == wavelink.QueueMode.loop_all:
+            player.queue.put(saltati)  # in loop-all i brani saltati vanno in fondo, non persi
         titolo = truncate_title(player.queue[0].title, 150)
         await player.skip()
         await interaction.response.send_message(f"⏭️ Salto a **{titolo}**.")
@@ -1134,16 +1178,24 @@ class MusicCog(CogConGruppi, commands.Cog):
         if player is None:
             return
         storico = player.queue.history
-        posizione = previous_track_position(len(storico)) if storico is not None else None
+        posizione = (
+            previous_track_position(len(storico), player.current is not None)
+            if storico is not None
+            else None
+        )
         if posizione is None:
             await interaction.response.send_message(
                 "Non c'è un brano precedente.", ephemeral=True
             )
             return
         precedente = storico[posizione]
-        if player.current is not None:  # il brano in corso torna in cima alla coda
+        if player.current is not None:
+            # il brano in corso torna in cima alla coda e lascia lo storico: cosi' il
+            # precedente di "precedente" e' ancora il brano prima, senza avanti-indietro
             player.queue.put_at(0, player.current)
-        await player.play(precedente)
+            storico.delete(len(storico) - 1)
+        # add_history=False: il brano ripreso e' gia' (o torna a essere) l'ultimo dello storico
+        await player.play(precedente, add_history=False)
         await interaction.response.send_message(
             f"⏮️ Torno a **{truncate_title(precedente.title, 150)}**."
         )
@@ -1639,12 +1691,19 @@ async def _connetti_lavalink_in_background(bot: commands.Bot) -> None:
         flotta = getattr(bot, "music_fleet", None)
         for worker in getattr(flotta, "worker_bots", []):
             gestore.avvia(worker, chiave_del_bot(worker))
+            worker.add_listener(
+                functools.partial(_su_voce_del_worker, flotta, worker), "on_voice_state_update"
+            )
         await avvisa_se_manca_il_nodo_locale(gestore, task_principale)
     except Exception:
         logger.exception(
             "Avvio dei nodi Lavalink interrotto in modo inatteso — "
             "Music resterà non funzionante finché un nodo non sarà raggiungibile."
         )
+
+
+async def _su_voce_del_worker(flotta, worker, member, before, after) -> None:
+    await handle_worker_voice_update(flotta, worker, member, before, after)
 
 
 async def avvisa_se_manca_il_nodo_locale(gestore: MusicNodeManager, task_principale) -> None:

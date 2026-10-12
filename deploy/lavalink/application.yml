@@ -39,7 +39,8 @@ plugins:
       - "ytsearch:%QUERY%"
       - "scsearch:%QUERY%"
     sources:
-      spotify: true
+      spotify: false      # metti true SOLO con clientId e clientSecret veri (sotto):
+                          # con chiavi vuote LavaSrc puo' non avviarsi
       applemusic: false
       deezer: false       # richiede chiavi extra
     spotify:

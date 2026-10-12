@@ -25,7 +25,14 @@
   066 riepilogo. `cogs/music/settings.py` (`/admin musica impostazioni|riepilogo`), `core/music_settings_logic.py`
   (impostazioni in guild_config.settings, nessuna tabella nuova). COMMAND_LIST.md rigenerato.
 
+- Bug del cacciatore (12/10) corretti: nodo atteso CONNECTED (polling) + ricollegamento con pause crescenti;
+  assegnazione worker atomica (`assign_free_worker`, advisory lock); `classify_query` (mai query grezze);
+  lock per canale nel play; previous senza avanti-indietro; token canale vuoto solo sul player radio;
+  listener voce dei worker (rilascio/spostamento); volume all'ingresso; skipto loop-all; shuffle atomico.
+
 ## Cose imparate
+- `Pool.connect` torna con il nodo CONNECTING: CONNECTED arriva col messaggio `ready` (tests/support/fake_lavalink.py).
+- Mai `Playable.search` su testo utente (yarl vede `//x` come host): testo -> `Pool.fetch_tracks("ytmsearch:...")`.
 - D10: nodo per bot e per server Lavalink; Pool.nodes e' una mappa per identificatore: `<base>@<chiave>`
   (`main`, `w1`..`w5`). Pool.get_node() sceglie tra TUTTI i bot: mai usarlo, usare `MusicNodeManager.node_for`.
 - wavelink: con `retries` finito e nodo morto `Pool.connect` NON solleva: il nodo resta DISCONNECTED nel Pool.

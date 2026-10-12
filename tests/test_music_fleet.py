@@ -7,6 +7,7 @@ comportamento reale di assegnazione/riuso/rilascio.
 """
 
 import pytest
+from tests.support.music_sessioni import assegna, occupati
 
 from core.music_fleet import MusicFleet
 from core.repositories.music_session_repo import MusicSessionRepository
@@ -287,7 +288,7 @@ async def test_play_di_un_admin_con_gli_altri_occupati_non_va_in_crash(
     from tests.support.discord_fakes import fake_interaction
 
     fleet, repo = fleet_con_due_worker_non_partiti
-    await repo.assign_worker(999, 1, 3)  # l'unico worker presente è occupato altrove
+    await assegna(repo, 999, 1, 3)  # l'unico worker presente è occupato altrove
     assert await fleet.get_or_assign_worker_for_channel(100, 1) is None
 
     interazione = fake_interaction()
@@ -317,3 +318,26 @@ async def test_due_canali_nello_stesso_server_hanno_due_bot_e_due_code(fleet_e_r
     await fleet.release_session(100, 11)
     assert await fleet.get_worker_for_channel(100, 11) is None
     assert (await fleet.get_worker_for_channel(100, 22))[0] == secondo  # l'altra resta
+
+
+async def test_dieci_assegnazioni_insieme_non_danno_mai_lo_stesso_worker(fleet_e_repo):
+    """Assegnazione atomica: 10 /music play in parallelo su 10 canali -> 5 worker diversi, 5 rifiuti."""
+    import asyncio
+
+    fleet, _ = fleet_e_repo
+    esiti = await asyncio.gather(
+        *(fleet.get_or_assign_worker_for_channel(100 + n, 1) for n in range(10))
+    )
+    assegnati = [e[0] for e in esiti if e is not None]
+    assert len(assegnati) == 5
+    assert sorted(assegnati) == [1, 2, 3, 4, 5]
+    assert esiti.count(None) == 5
+
+
+async def test_lo_stesso_canale_insieme_riceve_lo_stesso_worker(fleet_e_repo):
+    import asyncio
+
+    fleet, repo = fleet_e_repo
+    esiti = await asyncio.gather(*(fleet.get_or_assign_worker_for_channel(100, 7) for _ in range(6)))
+    assert len({e[0] for e in esiti}) == 1
+    assert len(await occupati(repo)) == 1

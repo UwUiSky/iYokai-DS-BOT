@@ -270,15 +270,47 @@ def local_path_from_identifier(identificatore: str) -> str | None:
     return identificatore[len(LOCAL_PREFIX):]
 
 
-def needs_raw_fetch(query: str) -> bool:
+QUERY_URL = "url"
+QUERY_SPOTIFY = "spotify"
+QUERY_TESTO = "testo"
+QUERY_RIFIUTATA = "rifiutata"
+MSG_QUERY_RIFIUTATA = (
+    "Questa ricerca non è valida: scrivi un titolo oppure un link http(s) "
+    "(non percorsi di file né indirizzi particolari)."
+)
+_SPOTIFY_URI = re.compile(
+    r"^spotify:(track|album|playlist|artist|show|episode):[A-Za-z0-9]+$", re.IGNORECASE
+)
+_PERCORSO_WINDOWS = re.compile(r"^[a-z]:[\\/]", re.IGNORECASE)
+
+
+def classify_query(query: str) -> str:
     """
-    Query che NON vanno trasformate in una ricerca YouTube Music
-    (`Playable.search` aggiunge `ytmsearch:` a tutto ciò che non è un URL
-    http): gli URI di Spotify. I percorsi locali NON sono qui di proposito:
-    passano solo dalla radio (`local_path_from_identifier`), mai da una
-    ricerca scritta da un utente.
+    Cosa e' una ricerca scritta da un utente (mai query grezze, BUG-10):
+    - URL http(s) con un host -> QUERY_URL (passa cosi' com'e')
+    - URI Spotify completo -> QUERY_SPOTIFY
+    - percorsi (`/x`, `//host/x`, `\\x`, `C:\\x`, `~`), `local:`, `file:`, ogni altro
+      `://` o `spotify:` malformato -> QUERY_RIFIUTATA
+    - il resto -> QUERY_TESTO: il chiamante aggiunge SEMPRE il prefisso di ricerca.
+    I percorsi locali della radio non passano di qui (`local_path_from_identifier`).
     """
-    return query.strip().lower().startswith("spotify:")
+    t = query.strip()
+    if not t:
+        return QUERY_RIFIUTATA
+    low = t.lower()
+    if low.startswith(("http://", "https://")):
+        return QUERY_URL if urlparse(t).hostname else QUERY_RIFIUTATA
+    if _SPOTIFY_URI.match(t):
+        return QUERY_SPOTIFY
+    if (
+        t.startswith(("/", "\\", "~"))
+        or low.startswith(("local:", "file:", "spotify:"))
+        or _PERCORSO_WINDOWS.match(t)
+        or "://" in t
+        or any(ord(c) < 32 for c in t)
+    ):
+        return QUERY_RIFIUTATA
+    return QUERY_TESTO
 
 
 def truncate_title(titolo: str, limite: int = EMBED_TITLE_LIMIT) -> str:
