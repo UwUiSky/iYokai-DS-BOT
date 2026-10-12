@@ -26,6 +26,7 @@ Giro chiuso a 3 voci (previste 4). Niente a metà. Prossimo giro, in quest'ordin
 - `#15` (verifica del backup in `/restore-users`) c'è già (`cogs/utility/restore.py:149`) ma fallisce dopo la
   promozione (BUG-34): serve `backup_repo.is_backup_of` (fatto nel repo, da usare in restore.py).
 - I fake dei test clone sono minimi: dopo ogni nuova chiamata a Discord aggiungere il metodo al fake.
+- Metodi di repo senza chiamante rompono `tests/test_repository_callers.py`: toglierli con i loro test.
 - Cifrato token: formato `v2.<idchiave>.<b64>`, AAD `guild:utente`; `OAUTH_ENCRYPTION_KEY` può avere più chiavi con virgola.
 - `main.py` (non mio) chiama `finalize_backup_job`, `backup_queue_worker.start(creator, bot, perms)`.
 

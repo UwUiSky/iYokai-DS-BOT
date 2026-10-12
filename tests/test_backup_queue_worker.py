@@ -146,7 +146,7 @@ async def test_tick_job_senza_server_di_backup_fallisce(database_e_repo, monkeyp
     _database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
     _con(worker_module, monkeypatch, repo, mirror_repo)
-    job_id = await repo.enqueue_job(main_guild_id=100)
+    job_id = await repo._pool.fetchval("INSERT INTO backup_jobs (main_guild_id, status) VALUES (100, 'pending') RETURNING id")
 
     await BackupQueueWorker().tick(_FakeCreatorClient(), _FakeMainBot(_FakeMainGuild(100, _FakeOwner())))
 

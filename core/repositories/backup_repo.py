@@ -209,18 +209,6 @@ class BackupRepository:
     # ----------------------------------------------------------------
     # Coda job (§11.2)
     # ----------------------------------------------------------------
-    async def enqueue_job(self, main_guild_id: int) -> int:
-        row = await self._pool.fetchrow(
-            """
-            INSERT INTO backup_jobs (main_guild_id, status)
-            VALUES ($1, $2)
-            RETURNING id
-            """,
-            main_guild_id,
-            STATUS_PENDING,
-        )
-        return row["id"]
-
     async def enqueue_linked_job(self, main_guild_id: int, backup_guild_id: int) -> int:
         """Job già legato al server di backup (D8): il Creator lo trova da solo."""
         return await self._pool.fetchval(
@@ -278,24 +266,6 @@ class BackupRepository:
         )
         return riga is not None
 
-    async def list_stale_jobs(self) -> list[BackupJob]:
-        """
-        I job pending/running che expire_stale_jobs() sta per scadere —
-        serve a chi deve ripulire il server creato PRIMA di segnarli
-        scaduti (BUG-4).
-        """
-        rows = await self._pool.fetch(
-            """
-            SELECT * FROM backup_jobs
-            WHERE status IN ($1, $2)
-              AND created_at < now() - ($3 || ' hours')::interval
-            """,
-            STATUS_PENDING,
-            STATUS_RUNNING,
-            str(TIMEOUT_HOURS),
-        )
-        return [self._row_to_job(r) for r in rows]
-
     async def expire_stale_jobs(self) -> int:
         """
         Marca come 'timed_out' ogni job ancora pending/running più
@@ -334,34 +304,11 @@ class BackupRepository:
         )
         return self._row_to_job(row) if row is not None else None
 
-    async def get_running_jobs(self) -> list[BackupJob]:
-        """Tutti i job attualmente 'running' — usata per controllare
-        quali si stanno avvicinando al timeout e meritano un
-        promemoria (un job può restare 'running' anche per ore,
-        in attesa che qualcuno clicchi il link di invito)."""
-        rows = await self._pool.fetch(
-            "SELECT * FROM backup_jobs WHERE status = $1", STATUS_RUNNING
-        )
-        return [self._row_to_job(r) for r in rows]
-
-    async def mark_reminder_sent(self, job_id: int) -> None:
-        await self._pool.execute(
-            "UPDATE backup_jobs SET reminder_sent_at = now() WHERE id = $1", job_id
-        )
-
     async def mark_running(self, job_id: int) -> None:
         await self._pool.execute(
             "UPDATE backup_jobs SET status = $2, updated_at = now() WHERE id = $1",
             job_id,
             STATUS_RUNNING,
-        )
-
-    async def set_backup_guild_id(self, job_id: int, backup_guild_id: int) -> None:
-        """Lega un job al server di backup (usato dal listener di ingresso)."""
-        await self._pool.execute(
-            "UPDATE backup_jobs SET backup_guild_id = $2, updated_at = now() WHERE id = $1",
-            job_id,
-            backup_guild_id,
         )
 
     async def mark_completed(self, job_id: int, backup_guild_id: int) -> None:

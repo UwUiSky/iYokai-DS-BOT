@@ -387,9 +387,8 @@ async def test_on_guild_join_server_atteso_da_backup_job_viene_finalizzato_non_c
         repo_di_test = BackupRepository(pool_provider=lambda: database.pool)
         monkeypatch.setattr(main_module, "backup_repo", repo_di_test)
 
-        job_id = await repo_di_test.enqueue_job(main_guild_id=1)
+        job_id = await repo_di_test.enqueue_linked_job(1, guild_id)
         await repo_di_test.mark_running(job_id)
-        await repo_di_test.set_backup_guild_id(job_id, backup_guild_id=guild_id)
 
         bot = iYokaiBot()
         guild_lato_creator = _FakeCreatorSideGuildPerTest()
