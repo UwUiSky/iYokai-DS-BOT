@@ -557,19 +557,25 @@ async def test_la_migrazione_chiude_i_doppioni_gia_presenti(clean_db):
         / "core/migrations/0010_tickets_un_solo_aperto_per_utente.sql"
     )
     await clean_db.execute("DROP INDEX uq_tickets_un_aperto_per_utente")
-    for canale in (1, 2, 3):
-        await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, canale)
-    await ticket_repo.create_ticket(ID_SERVER, 999, 4)
+    try:
+        for canale in (1, 2, 3):
+            await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, canale)
+        await ticket_repo.create_ticket(ID_SERVER, 999, 4)
 
-    await clean_db.execute(migrazione.read_text(encoding="utf-8"))
+        await clean_db.execute(migrazione.read_text(encoding="utf-8"))
 
-    aperti = await clean_db.fetch(
-        "SELECT channel_id FROM tickets WHERE status = 'open' ORDER BY channel_id"
-    )
-    # Resta aperto il più recente dell'utente; l'altro utente non cambia.
-    assert [r["channel_id"] for r in aperti] == [3, 4]
-    chiusi = await clean_db.fetch("SELECT closed_at FROM tickets WHERE status = 'closed'")
-    assert len(chiusi) == 2 and all(r["closed_at"] is not None for r in chiusi)
+        aperti = await clean_db.fetch(
+            "SELECT channel_id FROM tickets WHERE status = 'open' ORDER BY channel_id"
+        )
+        # Resta aperto il più recente dell'utente; l'altro utente non cambia.
+        assert [r["channel_id"] for r in aperti] == [3, 4]
+        chiusi = await clean_db.fetch("SELECT closed_at FROM tickets WHERE status = 'closed'")
+        assert len(chiusi) == 2 and all(r["closed_at"] is not None for r in chiusi)
+    finally:
+        # Il database dei test è condiviso: l'indice torna come lo lascia la 0050 (senza user_id = 0).
+        ultima = (Path(modulo.__file__).parents[2] / "core/migrations/0050_privacy_secondo_giro.sql").read_text(encoding="utf-8")
+        await clean_db.execute("DROP INDEX IF EXISTS uq_tickets_un_aperto_per_utente")
+        await clean_db.execute(ultima[ultima.index("CREATE UNIQUE INDEX"):])
 
 
 # ====================================================================

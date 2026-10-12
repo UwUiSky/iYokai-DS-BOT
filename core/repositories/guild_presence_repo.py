@@ -44,7 +44,12 @@ class GuildPresenceRepository:
             """
             INSERT INTO guild_presence (guild_id, left_at) VALUES ($1, $2)
             ON CONFLICT (guild_id) DO UPDATE SET
-                left_at = COALESCE(guild_presence.left_at, EXCLUDED.left_at)
+                left_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                               THEN EXCLUDED.left_at  -- già cancellato e tornato senza che nessuno lo segnasse
+                               ELSE COALESCE(guild_presence.left_at, EXCLUDED.left_at) END,
+                joined_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                                 THEN now() ELSE guild_presence.joined_at END,
+                purged_at = NULL
             """,
             guild_id,
             quando or datetime.now(timezone.utc),
@@ -58,11 +63,18 @@ class GuildPresenceRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                # Un server riaggiunto a bot spento (nessun on_guild_join) ma già cancellato
+                # riparte da zero, come `segna_entrato`: senza questo `purged_at` resta e la
+                # prossima uscita non partirebbe mai (i dati nuovi resterebbero per sempre).
                 await conn.execute(
                     """
                     INSERT INTO guild_presence (guild_id) SELECT unnest($1::bigint[])
-                    ON CONFLICT (guild_id) DO UPDATE SET left_at = NULL
-                    WHERE guild_presence.left_at IS NOT NULL AND guild_presence.purged_at IS NULL
+                    ON CONFLICT (guild_id) DO UPDATE SET
+                        left_at = NULL,
+                        joined_at = CASE WHEN guild_presence.purged_at IS NOT NULL
+                                         THEN now() ELSE guild_presence.joined_at END,
+                        purged_at = NULL
+                    WHERE guild_presence.left_at IS NOT NULL OR guild_presence.purged_at IS NOT NULL
                     """,
                     list(guild_ids),
                 )

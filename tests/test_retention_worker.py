@@ -104,7 +104,7 @@ async def test_purga_cancella_il_server_e_tiene_ban_e_kick(clean_db, presenza):
     await _dati_del_server(clean_db, ALTRO)
     await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
 
-    tolte = await lavoro.purga_server(clean_db, G)
+    tolte = await lavoro.purga_server(clean_db, G, ADESSO)
 
     assert tolte["leveling_totals"] == 1
     assert await _conta(clean_db, "guild_config", "guild_id", G) == 0
@@ -169,8 +169,9 @@ async def test_la_cancellazione_di_un_server_svuota_le_cache_in_memoria(clean_db
     await _dati_del_server(clean_db, G)
     await db.set_guild_setting(G, "canale", 5)
     assert await db.get_guild_setting(G, "canale") == 5
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
 
-    await lavoro.purga_server(clean_db, G)
+    await lavoro.purga_server(clean_db, G, ADESSO)
 
     assert await db.get_guild_setting(G, "canale", default="niente") == "niente"
 
@@ -204,3 +205,112 @@ async def test_le_richieste_di_cancellazione_si_tengono_24_mesi(clean_db, presen
 
     assert tolte["data_deletion_requests"] == 1
     assert await clean_db.fetchval("SELECT count(*) FROM data_deletion_requests") == 2
+
+
+# ------------------------------------------------------------------ secondo giro (cacciatore-bug 12/10)
+@pytest.mark.asyncio
+async def test_il_contatore_dei_casi_riparte_dal_massimo_trattenuto(clean_db, presenza):
+    """Ban n.2 resta: dopo la purga il prossimo caso è n.3, non n.1 (niente UniqueViolation)."""
+    from core.repositories.moderation_repo import ModerationRepository
+
+    await _dati_del_server(clean_db, G)
+    await clean_db.execute("INSERT INTO moderation_case_counters (guild_id,next_number) VALUES ($1,3)", G)
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+
+    await lavoro.purga_server(clean_db, G, ADESSO)
+
+    assert await clean_db.fetchval("SELECT next_number FROM moderation_case_counters WHERE guild_id = $1", G) == 3
+    repo = ModerationRepository(pool_provider=lambda: clean_db)
+    assert await repo.create_case(G, 9, 9, "warn", "dopo il rientro") == 3
+    assert await repo.create_case(G, 9, 9, "warn", "ancora") == 4
+
+
+@pytest.mark.asyncio
+async def test_senza_casi_trattenuti_il_contatore_va_via(clean_db, presenza):
+    await clean_db.execute("INSERT INTO guild_config (guild_id) VALUES ($1)", G)
+    await clean_db.execute("INSERT INTO moderation_cases (guild_id,case_number,user_id,moderator_id,action_type) VALUES ($1,1,5,9,'warn')", G)
+    await clean_db.execute("INSERT INTO moderation_case_counters (guild_id,next_number) VALUES ($1,2)", G)
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+
+    await lavoro.purga_server(clean_db, G, ADESSO)
+
+    assert await _conta(clean_db, "moderation_case_counters", "guild_id", G) == 0
+
+
+@pytest.mark.asyncio
+async def test_sincronizza_ripristina_un_server_gia_purgato_e_riaggiunto_a_bot_spento(clean_db, presenza):
+    await _dati_del_server(clean_db, G)
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+    await lavoro.purga_server(clean_db, G, ADESSO)
+    assert (await presenza.get(G))["purged_at"] is not None
+
+    await presenza.sincronizza({G})  # nessun on_guild_join: il bot era spento
+
+    riga = await presenza.get(G)
+    assert riga["left_at"] is None and riga["purged_at"] is None
+    # alla seconda uscita il conto dei 90 giorni parte davvero
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=95))
+    assert await presenza.da_cancellare(ADESSO) == [G]
+
+
+@pytest.mark.asyncio
+async def test_segna_uscito_su_un_server_gia_purgato_riavvia_il_conto(clean_db, presenza):
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+    await clean_db.execute("UPDATE guild_presence SET purged_at = now() WHERE guild_id = $1", G)
+
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=95))
+
+    riga = await presenza.get(G)
+    assert riga["purged_at"] is None
+    assert await presenza.da_cancellare(ADESSO) == [G]
+
+
+@pytest.mark.asyncio
+async def test_il_rientro_tra_la_lista_e_la_cancellazione_ferma_la_purga(clean_db, presenza):
+    """Interleaving: lista presa, poi segna_entrato, poi purga_server -> niente viene cancellato."""
+    await _dati_del_server(clean_db, G)
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+    lista = await presenza.da_cancellare(ADESSO)
+    assert lista == [G]
+
+    await presenza.segna_entrato(G)  # il bot rientra proprio ora
+    esito = await lavoro.purga_server(clean_db, G, ADESSO)
+
+    assert esito is None
+    assert await _conta(clean_db, "leveling_totals", "guild_id", G) == 1
+    riga = await presenza.get(G)
+    assert riga["left_at"] is None and riga["purged_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_rientro_e_purga_insieme_non_lasciano_uno_stato_incoerente(clean_db, presenza):
+    from tests.support.concorrenza import apri_connessioni
+
+    await _dati_del_server(clean_db, G)
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+    await apri_connessioni(clean_db, 3)
+    import asyncio
+
+    await asyncio.gather(lavoro.purga_server(clean_db, G, ADESSO), presenza.segna_entrato(G))
+
+    riga = await presenza.get(G)
+    # o la purga ha vinto e il rientro ha azzerato tutto, o il rientro ha vinto e non si è cancellato niente
+    assert riga["left_at"] is None and riga["purged_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_lo_sban_programmato_non_si_cancella_con_il_server(clean_db, presenza):
+    """Il tempban resta come caso: se la purga togliesse lo sban in coda diventerebbe permanente."""
+    await _dati_del_server(clean_db, G)
+    await clean_db.execute(
+        "INSERT INTO scheduled_actions (guild_id,user_id,action_type,execute_at) VALUES ($1,5,'moderation_tempban_expire', now() + interval '1 day')", G
+    )
+    await clean_db.execute(
+        "INSERT INTO scheduled_actions (guild_id,user_id,action_type,execute_at,executed) VALUES ($1,5,'moderation_tempban_expire', now(), TRUE)", G
+    )
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+
+    await lavoro.purga_server(clean_db, G, ADESSO)
+
+    righe = await clean_db.fetch("SELECT action_type, executed FROM scheduled_actions WHERE guild_id = $1", G)
+    assert [(r["action_type"], r["executed"]) for r in righe] == [("moderation_tempban_expire", False)]

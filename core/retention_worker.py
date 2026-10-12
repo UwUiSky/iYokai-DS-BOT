@@ -14,13 +14,13 @@ Il lavoro regge una seconda esecuzione: cancellare due volte è innocuo.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
-from core.data_registry import REGISTRO, tabelle_con_scadenza
+from core.data_registry import GIORNI_DOPO_USCITA, REGISTRO, tabelle_con_scadenza
 from core.forget_user_service import tabelle_esistenti, _conta
 from core.repositories.guild_presence_repo import guild_presence_repo
 
@@ -29,11 +29,27 @@ logger = logging.getLogger("iyokai.retention")
 TICK_SECONDS = 24 * 3600
 
 
-async def purga_server(pool: asyncpg.Pool, guild_id: int) -> dict[str, int]:
-    """Cancella i dati del server (una transazione). Restituisce {tabella: righe cancellate}."""
+async def purga_server(
+    pool: asyncpg.Pool,
+    guild_id: int,
+    adesso: datetime | None = None,
+    giorni: int = GIORNI_DOPO_USCITA,
+) -> dict[str, int] | None:
+    """
+    Cancella i dati del server (una transazione). Restituisce {tabella: righe cancellate},
+    o None se il server non è più da cancellare: la riga di presenza si ricontrolla QUI,
+    bloccata, perché tra la lista e la cancellazione il bot può essere rientrato.
+    """
+    soglia = (adesso or datetime.now(timezone.utc)) - timedelta(days=giorni)
     cancellate: dict[str, int] = {}
     async with pool.acquire() as conn:
         async with conn.transaction():
+            presenza = await conn.fetchrow(
+                "SELECT left_at, purged_at FROM guild_presence WHERE guild_id = $1 FOR UPDATE", guild_id
+            )
+            if presenza is None or presenza["purged_at"] is not None or presenza["left_at"] is None \
+                    or presenza["left_at"] >= soglia:
+                return None  # rientrato (o già fatto): non si cancella niente
             esistenti = await tabelle_esistenti(conn)
             for t in REGISTRO:
                 sql = t.sql_cancella_server()
@@ -42,6 +58,9 @@ async def purga_server(pool: asyncpg.Pool, guild_id: int) -> dict[str, int]:
                 n = _conta(await conn.execute(sql, guild_id))
                 if n:
                     cancellate[t.nome] = n
+            for t in REGISTRO:  # ciò che deve sopravvivere alla cancellazione (contatore dei casi)
+                if t.dopo_purga_server and t.nome in esistenti:
+                    await conn.execute(t.dopo_purga_server, guild_id)
             await guild_presence_repo.segna_cancellato(guild_id, conn=conn)
     _dimentica_memoria(guild_id)
     return cancellate
@@ -91,7 +110,9 @@ async def giro(
             await guild_presence_repo.segna_entrato(guild_id)  # è tornato e nessuno lo aveva segnato
             continue
         try:
-            server[guild_id] = await purga_server(pool, guild_id)
+            fatto = await purga_server(pool, guild_id, adesso)
+            if fatto is not None:
+                server[guild_id] = fatto
         except asyncpg.PostgresError:
             logger.exception("Cancellazione dei dati del server %s fallita.", guild_id)
     scaduti = await pulisci_scaduti(pool)

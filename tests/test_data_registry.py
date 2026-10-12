@@ -150,3 +150,27 @@ def test_le_tabelle_figlie_vengono_prima_delle_madri():
         ("clan_voice_activity", "clans"),
     ):
         assert ordine.index(figlia) < ordine.index(madre)
+
+
+# ------------------------------------------------------------------ secondo giro (cacciatore-bug 12/10)
+def test_l_esportazione_guarda_solo_le_colonne_dell_utente():
+    for t in reg.tabelle_esportabili():
+        sql = t.sql_esporta(10, ("id",))
+        for colonna in t.colonne_attore:
+            if colonna not in t.colonne_utente:
+                assert colonna not in sql.split("WHERE")[1], f"{t.nome} esporta le righe di chi ha solo agito ({colonna})"
+        assert "ORDER BY" in sql
+
+
+def test_event_log_non_esporta_i_dettagli_ne_le_righe_dove_l_utente_ha_agito_su_altri():
+    t = reg.tabella("event_log")
+    assert "details" in t.escludi_dall_esportazione
+    assert "target_user_id IS NULL OR target_user_id = actor_id" in t.sql_esporta(1)
+
+
+def test_la_purga_del_server_tiene_lo_sban_in_coda_e_ricostruisce_il_contatore():
+    assert "NOT COALESCE(" in reg.tabella("scheduled_actions").sql_cancella_server()
+    from cogs.moderation.actions import SCHEDULED_TEMPBAN_EXPIRE
+
+    assert SCHEDULED_TEMPBAN_EXPIRE in reg.tabella("scheduled_actions").sql_cancella_server()
+    assert reg.tabella("moderation_case_counters").dopo_purga_server

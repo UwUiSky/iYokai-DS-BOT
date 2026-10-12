@@ -118,7 +118,7 @@ async def test_lo_staff_che_ha_agito_diventa_anonimo(clean_db):
 
     assert await _conta(clean_db, "moderation_cases", "moderator_id", U) == 0
     assert await clean_db.fetchval("SELECT moderator_id FROM moderation_cases WHERE case_number = 4") == 0
-    assert await clean_db.fetchval("SELECT co_owner_id FROM clans") == 0
+    assert await clean_db.fetchval("SELECT co_owner_id FROM clans") is None
     assert await clean_db.fetchval("SELECT user_id FROM clan_treasury_ledger") is None
 
 
@@ -133,13 +133,49 @@ async def test_azione_in_coda_resta_quella_conclusa_va(clean_db):
 
 
 @pytest.mark.asyncio
-async def test_il_titolare_di_un_clan_non_viene_toccato(clean_db):
-    await _prepara(clean_db)
+async def test_il_titolare_passa_al_co_titolare(clean_db):
+    await _prepara(clean_db)  # V titolare, U co-titolare
+    clan = await clean_db.fetchval("SELECT id FROM clans")
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'owner')", clan, G, V)
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'co_owner')", clan, G, U)
 
     rapporto = await servizio.dimentica_utente(clean_db, V)
 
-    assert await clean_db.fetchval("SELECT owner_id FROM clans") == V
-    assert rapporto["clans"]["conservate"] == 1
+    riga = await clean_db.fetchrow("SELECT owner_id, co_owner_id FROM clans")
+    assert (riga["owner_id"], riga["co_owner_id"]) == (U, None)
+    assert await clean_db.fetchval("SELECT role FROM clan_members WHERE user_id = $1", U) == "owner"
+    assert await clean_db.fetchval("SELECT count(*) FROM clan_members WHERE user_id = $1", V) == 0
+    assert rapporto["clans"]["anonimizzate"] == 1 and rapporto["clans"]["conservate"] == 0
+
+
+@pytest.mark.asyncio
+async def test_il_titolare_senza_co_titolare_passa_al_membro_piu_anziano(clean_db):
+    await _prepara(clean_db)
+    await clean_db.execute("UPDATE clans SET co_owner_id = NULL")
+    clan = await clean_db.fetchval("SELECT id FROM clans")
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'owner')", clan, G, V)
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role,joined_at) VALUES ($1,$2,31,'member', now() - interval '1 day')", clan, G)
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role,joined_at) VALUES ($1,$2,32,'member', now() - interval '9 days')", clan, G)
+
+    await servizio.dimentica_utente(clean_db, V)
+
+    assert await clean_db.fetchval("SELECT owner_id FROM clans") == 32
+    assert await clean_db.fetchval("SELECT role FROM clan_members WHERE user_id = 32") == "owner"
+
+
+@pytest.mark.asyncio
+async def test_il_titolare_da_solo_scioglie_il_clan_senza_righe_orfane(clean_db):
+    await _prepara(clean_db)
+    clan = await clean_db.fetchval("SELECT id FROM clans")
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'owner')", clan, G, V)
+    await clean_db.execute("UPDATE clans SET co_owner_id = NULL")
+    await clean_db.execute("DELETE FROM clan_treasury_ledger")
+
+    rapporto = await servizio.dimentica_utente(clean_db, V)
+
+    assert await clean_db.fetchval("SELECT count(*) FROM clans") == 0
+    assert await clean_db.fetchval("SELECT count(*) FROM clan_members") == 0
+    assert rapporto["clans"]["cancellate"] == 1
 
 
 @pytest.mark.asyncio
@@ -255,3 +291,130 @@ async def test_rifiutare_non_cancella_niente(clean_db):
     assert await _conta(clean_db, "leveling_totals", "user_id", U) == 1
     nuova_id, nuova = await repo.crea(U)  # dopo il rifiuto può chiederne un'altra
     assert nuova is True and nuova_id != richiesta
+
+
+# ------------------------------------------------------------------ secondo giro (cacciatore-bug 12/10)
+@pytest.mark.asyncio
+async def test_ticket_aperti_di_due_utenti_si_anonimizzano_insieme(clean_db):
+    """Prima dava UniqueViolation sull'indice (guild, user_id) WHERE open."""
+    await clean_db.execute("INSERT INTO tickets (guild_id,ticket_number,channel_id,user_id) VALUES ($1,1,11,$2)", G, U)
+    await clean_db.execute("INSERT INTO tickets (guild_id,ticket_number,channel_id,user_id) VALUES ($1,2,12,$2)", G, V)
+    await servizio.dimentica_utente(clean_db, U)
+
+    await servizio.dimentica_utente(clean_db, V)  # il secondo non deve rompere
+
+    assert await clean_db.fetchval("SELECT count(*) FROM tickets WHERE user_id = 0") == 2
+
+
+@pytest.mark.asyncio
+async def test_il_kick_e_il_mute_dell_automod_restano(clean_db):
+    for numero, azione in ((1, "automod_escalation"), (2, "mute_role"), (3, "warn")):
+        await clean_db.execute(
+            "INSERT INTO moderation_cases (guild_id,case_number,user_id,moderator_id,action_type) VALUES ($1,$2,$3,77,$4)",
+            G, numero, U, azione,
+        )
+
+    rapporto = await servizio.dimentica_utente(clean_db, U)
+
+    assert {r["action_type"] for r in await clean_db.fetch("SELECT action_type FROM moderation_cases")} == {
+        "automod_escalation", "mute_role"
+    }
+    assert rapporto["moderation_cases"]["conservate"] == 2
+
+
+def test_ogni_action_type_dei_cog_e_dichiarato():
+    """Se un cog scrive un nuovo action_type, qualcuno deve decidere se resta (ban/kick) o va."""
+    import ast
+    import importlib
+    from pathlib import Path
+
+    # trattenuti: lo dice la migrazione 0050; "non trattenuti": scelta consapevole
+    trattenuti = {"ban", "tempban", "softban", "kick", "spam_trap_ban", "automod_escalation", "mute_role"}
+    non_trattenuti = {"warn", "timeout"}
+    trovati = set()
+    for percorso in Path("cogs").rglob("*.py"):
+        albero = ast.parse(percorso.read_text())
+        costanti = {
+            n.targets[0].id: n.value.value
+            for n in albero.body
+            if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)
+            and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)
+        }
+        for nodo in ast.walk(albero):
+            if isinstance(nodo, ast.Call) and getattr(nodo.func, "attr", "") == "create_case":
+                for kw in nodo.keywords:
+                    if kw.arg != "action_type":
+                        continue
+                    if isinstance(kw.value, ast.Constant):
+                        trovati.add(kw.value.value)
+                    elif isinstance(kw.value, ast.Name) and kw.value.id in costanti:
+                        trovati.add(costanti[kw.value.id])
+                    elif isinstance(kw.value, ast.Name):  # importata da un altro modulo
+                        modulo = importlib.import_module(str(percorso.with_suffix("")).replace("/", "."))
+                        trovati.add(getattr(modulo, kw.value.id))
+    assert trovati, "nessun create_case trovato: il test non guarda niente"
+    assert trovati <= trattenuti | non_trattenuti, f"action_type non dichiarati: {trovati - trattenuti - non_trattenuti}"
+
+
+@pytest.mark.asyncio
+async def test_la_colonna_retain_for_security_segue_l_elenco(clean_db):
+    for i, azione in enumerate(("ban", "tempban", "softban", "kick", "spam_trap_ban", "automod_escalation", "mute_role", "warn", "timeout")):
+        await clean_db.execute(
+            "INSERT INTO moderation_cases (guild_id,case_number,user_id,moderator_id,action_type) VALUES ($1,$2,1,2,$3)", G, i + 1, azione
+        )
+    righe = {r["action_type"]: r["retain_for_security"] for r in await clean_db.fetch("SELECT action_type, retain_for_security FROM moderation_cases")}
+    assert [a for a, v in righe.items() if not v] == ["warn", "timeout"] or set(a for a, v in righe.items() if not v) == {"warn", "timeout"}
+
+
+@pytest.mark.asyncio
+async def test_l_esportazione_non_contiene_cio_che_l_utente_ha_scritto_su_altri(clean_db):
+    await _prepara(clean_db)  # U e' anche moderatore del caso 4 su V, e actor di eventi
+    await clean_db.execute("INSERT INTO moderation_notes (guild_id,user_id,moderator_id,note) VALUES ($1,$2,$3,'segreto su V')", G, V, U)
+    await clean_db.execute(
+        "INSERT INTO tickets (guild_id,ticket_number,channel_id,user_id,claimed_by,status) VALUES ($1,90,90,$2,$3,'closed')", G, V, U
+    )
+    await clean_db.execute("INSERT INTO event_log (guild_id,event_type,target_user_id,actor_id,details) VALUES ($1,'warn',$2,$3,'{\"altro\":\"dato di V\"}')", G, V, U)
+
+    dati = await servizio.esporta_utente(clean_db, U)
+    testo = json.dumps(dati, default=str)
+
+    assert "segreto su V" not in testo and "dato di V" not in testo
+    assert all(r["user_id"] == U for r in dati["tabelle"]["moderation_cases"]["righe"])
+    assert "moderation_notes" not in dati["tabelle"]
+    assert all(r["user_id"] == U for r in dati["tabelle"]["tickets"]["righe"])
+    for r in dati["tabelle"]["event_log"]["righe"]:
+        assert "details" not in r and r["target_user_id"] == U
+    # l'id dello staff che ha agito su U non esce
+    assert all(r["moderator_id"] is None for r in dati["tabelle"]["moderation_cases"]["righe"])
+
+
+@pytest.mark.asyncio
+async def test_l_esportazione_e_ordinata_e_dichiara_il_taglio(clean_db):
+    for i in range(1, 8):
+        await clean_db.execute(
+            "INSERT INTO moderation_cases (guild_id,case_number,user_id,moderator_id,action_type) VALUES ($1,$2,$3,77,'warn')", G, 8 - i, U
+        )
+
+    dati = await servizio.esporta_utente(clean_db, U, righe_max=5)
+
+    numeri = [r["case_number"] for r in dati["tabelle"]["moderation_cases"]["righe"]]
+    assert len(numeri) == 5
+    ids = [r["id"] for r in dati["tabelle"]["moderation_cases"]["righe"]]
+    assert ids == sorted(ids)  # per chiave primaria, non a caso
+    assert dati["troncate"] == ["moderation_cases"]
+    assert "troncata" in dati["tabelle"]["moderation_cases"]
+    intero = await servizio.esporta_utente(clean_db, U, righe_max=50)
+    assert "troncate" not in intero
+
+
+def test_serializza_misura_ogni_riga_una_volta(monkeypatch):
+    righe = [{"n": i, "testo": "x" * 200} for i in range(400)]
+    dati = {"tabelle": {"a": {"descrizione": "a", "righe": list(righe)}, "b": {"descrizione": "b", "righe": righe[:10]}}}
+    chiamate = []
+    vero = json.dumps
+    monkeypatch.setattr(servizio.json, "dumps", lambda *a, **k: (chiamate.append(1), vero(*a, **k))[1])
+
+    testo, accorciate = servizio.serializza_esportazione(dati, limite_byte=20_000)
+
+    assert len(testo) <= 20_000 and accorciate and accorciate[0] == "a"
+    assert len(chiamate) <= 400 + 10 + 4  # ~una per riga + il documento, non una per ogni dimezzamento

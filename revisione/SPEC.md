@@ -1677,14 +1677,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 19.2 Uscita da un server: dati cancellati dopo 90 giorni,
   tranne ban e kick di sicurezza (D6, GDPR-1) — `on_guild_remove` segna `guild_presence.left_at`
   (migrazione 0034); un rientro prima dei 90 giorni azzera il conto; la colonna calcolata
-  `moderation_cases.retain_for_security` (0035) tiene ban, tempban, softban, kick (#46)
+  `moderation_cases.retain_for_security` (0035, rifatta in 0050) tiene ban, tempban, softban, kick, escalation dell'automod e mute con ruolo (#46)
   → **Scelta (da confermare):** la cancellazione richiesta dall'utente toglie tutto ciò che non è
   di sicurezza e dice cosa resta; non rifiuta l'intera richiesta.
 - `[x]` 19.3 Cancellazione dei dati di un utente su richiesta (GDPR-2) —
   `core/forget_user_service.py`, una transazione; richieste in `data_deletion_requests` (0036),
   una in attesa per utente, esito senza dati personali, conservato 24 mesi
 - `[x]` 19.4 Esportazione dei dati di un utente in un file (art. 15) — JSON sotto 8 MiB,
-  senza token, tabelle grandi accorciate e dichiarate
+  senza token, solo righe DELL'utente (non quelle dove ha solo agito su altri), in ordine di chiave
+  primaria, tabelle grandi accorciate e tagli dichiarati
 - `[x]` 19.5 Pulizia giornaliera delle tabelle che crescono (GDPR-3,
   PERF-3) — `core/retention_worker.py` (scadenze nel registro: 30 giorni azioni concluse,
   90 verifiche, 180 automod e trascrizioni, 365 sicurezza/storico/casse); `event_log.id` BIGINT (0037)

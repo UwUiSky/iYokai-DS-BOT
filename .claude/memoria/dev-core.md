@@ -1,11 +1,11 @@
 # Memoria di dev-core
 
 ## Aggiornata
-11/10/2026 · ramo `feat/giro-core` (da main) · giro #70/#69/#145/#148/NF-04
+12/10/2026 · ramo `feat/giro-core` (main unito) · correzioni del cacciatore-bug (NF-04, #148, #145)
 
 ## In corso
-- Giro quasi chiuso. Resta: suite completa (la fa l'orchestratore), rapporto, push del ramo.
-- Se si riprende: #148 manca l'indirizzo di ritorno OAuth2 (web) e il bottone nel setup (prova live).
+- Correzioni 1-10 e basse del cacciatore fatte (commit sul ramo). Resta: smoke, push, rapporto.
+- Se si riprende: #148 manca solo il bottone con il link nel setup + scelta dei ruoli (nessuno chiama `imposta_ruolo`).
 
 ## Fatto
 - Giri precedenti: R1-bis, smoke, F7 quadro e passo 4 (gruppi, accesso, sync comandi).
@@ -18,6 +18,12 @@
 - NF-04: `data_registry` (87 tabelle), `forget_user_service`, `retention_worker`, repo presenza/richieste, cog `privacy`,
   migrazioni 0034-0036, `on_guild_remove`. #19/#37/#46 chiusi dallo stesso codice.
 - #148 parte senza token: `core/command_permissions.py`, tabella `command_permission_tokens` (0039), hook `imposta_ruolo`.
+- Giro 12/10: contatore casi ricostruito dopo la purga (`dopo_purga_server`), `sincronizza`/`segna_uscito` ripristinano
+  `purged_at`, purga ricontrolla `left_at` con FOR UPDATE, sban programmato trattenuto (`conserva_server_se`),
+  esportazione solo dell'utente + ORDER BY pk + `troncate`, titolare clan trasferito/sciolto, migrazione 0050
+  (retain_for_security con automod_escalation e mute_role; indice ticket senza user_id=0), rinnovo OAuth (solo
+  invalid_grant cancella, lock per server), state monouso + callback `/oauth/callback` condivisa (`gestisci_callback`),
+  scheduler libera `claimed_at` se cancellato, cache log avanzati con numero di versione.
 - Gia fatte: 13.1 (sotto-gruppi owner), 13.3, 14.5, 14.8, 14.15.
 
 ## Cose imparate
@@ -30,9 +36,14 @@
 - Migrazioni gia applicate in un DB di prova non si rieseguono se le modifichi: cancella la riga da schema_migrations.
 - Una chiave esterna nuova rompe i test di altre aree che inseriscono righe orfane: controllare prima.
 - discord.py: per le stringhe il massimo sta in `Parameter.max_value`.
+- Un test che esegue una migrazione a mano su `clean_db` sporca il DB condiviso (es. 0010 rimette l'indice vecchio): ripristinare nel finally.
+- Esportazione: mai `colonne_attore`; i campi con id di staff escono None. Nuova colonna di stato in un cog che scrive casi: aggiornare 0050-style e il test AST degli action_type.
+- Numeri migrazione: mod usa 0040-0041; core ha preso 0050 (verificare la scheda prima della prossima).
 - Il token OAuth, gli state e i corpi delle risposte Discord non vanno mai in log o messaggi.
 
 ## Aperto
 - #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.
+- #148: bottone/link nel setup + picker dei ruoli ancora mancanti (prova live parziale).
+- Clan sciolto dalla cancellazione: categoria/canali Discord restano da togliere a mano.
 - Worker musicale da solo non controlla la blacklist all'ingresso (solo il principale).

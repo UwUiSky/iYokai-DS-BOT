@@ -39,7 +39,8 @@ TESTO_CANCELLA = (
     "Cosa succede: cancello o rendo anonimi i tuoi dati (livelli, monete, clan, preferenze, ticket, "
     "suggerimenti, token di ripristino).\n"
     "Cosa resta: ban, kick, registri di sicurezza e ban globali, per proteggere i server, e le azioni "
-    "ancora in coda. Se sei titolare di un clan, prima trasferiscilo o sciogli il clan."
+    "ancora in coda. Se sei titolare di un clan, passa al co-titolare o al membro più anziano; "
+    "se sei solo, il clan viene sciolto."
 )
 
 
@@ -64,6 +65,12 @@ class PrivacyCog(CogConGruppi, commands.Cog):
             messaggio = "Non conservo dati su di te. Il file contiene solo l'intestazione."
         if accorciate:
             messaggio += " Alcune tabelle erano troppo grandi e sono state accorciate: " + ", ".join(accorciate) + "."
+        if dati.get("troncate"):
+            messaggio += (
+                f" Ho esportato al massimo {servizio.RIGHE_MAX_PER_TABELLA} righe per tabella; ce ne sono di più in: "
+                + ", ".join(dati["troncate"])
+                + ". Scrivi al proprietario per il resto."
+            )
         await invia_file(
             interaction.followup.send,
             testo,

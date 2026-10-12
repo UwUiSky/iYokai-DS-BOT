@@ -20,6 +20,12 @@ Regole (decisioni D6 e #46):
   e tiene il resto (statistiche); "conserva" le lascia (sicurezza, #37);
   "nessuna" se la tabella non riguarda persone.
 - `conserva_se`: righe che restano comunque (ban e kick: `retain_for_security`).
+- `conserva_server_se`: righe che restano solo alla pulizia di un server (uno sban
+  programmato: senza, il tempban diventerebbe permanente).
+- `dopo_purga_server`: SQL (con $1) eseguito dopo la cancellazione del server, per
+  ricostruire ciò che deve sopravvivere (il contatore dei casi).
+- Esportazione: solo le righe DELL'utente (`colonne_utente`), mai quelle dove è solo
+  autore di un'azione su altri; i campi di altre persone (staff) escono vuoti.
 - `server`: che cosa succede alla tabella 90 giorni dopo l'uscita del bot.
 - `scadenza`: righe più vecchie di N giorni, tolte dal lavoro giornaliero.
 """
@@ -63,6 +69,9 @@ class TabellaDati:
     anonimizza: tuple[tuple[str, str], ...] = ()  # (colonna, espressione SQL)
     conserva_se: str | None = None  # righe che restano sia per l'utente sia per il server
     conserva_utente_se: str | None = None  # righe che restano solo alla cancellazione di un utente
+    conserva_server_se: str | None = None  # righe che restano solo alla pulizia di un server
+    dopo_purga_server: str | None = None  # SQL con $1, dopo la cancellazione del server
+    filtro_esportazione: str | None = None  # SQL con $1, se non bastano le colonne dell'utente
     esporta: bool = False
     escludi_dall_esportazione: tuple[str, ...] = ()
     server: str = "cancella"  # cancella | conserva
@@ -115,9 +124,20 @@ class TabellaDati:
             f"AND COALESCE({self._conserva_utente()}, FALSE)"
         )
 
-    def sql_esporta(self, limite: int) -> str:
-        colonne = self.colonne_utente + self.colonne_attore
-        return f"SELECT * FROM {self.nome} WHERE {self._dove_utente(colonne)} LIMIT {int(limite)}"
+    def sql_esporta(self, limite: int, ordine: tuple[str, ...] = ()) -> str:
+        """
+        Solo le righe dove l'utente è il SOGGETTO. `ordine` (la chiave primaria) rende il
+        taglio a `limite` ripetibile; se ne chiede una in più per accorgersi del taglio.
+        """
+        dove = self.filtro_esportazione or self._dove_utente(self.colonne_utente)
+        if not all(_IDENTIFICATORE.match(c) for c in ordine):
+            raise ValueError("Colonna d'ordine non valida.")
+        ordinamento = ", ".join(ordine) if ordine else "ctid"
+        return f"SELECT * FROM {self.nome} WHERE {dove} ORDER BY {ordinamento} LIMIT {int(limite)}"
+
+    def _conserva_server(self) -> str | None:
+        parti = [p for p in (self.conserva_se, self.conserva_server_se) if p]
+        return "(" + ") OR (".join(parti) + ")" if parti else None
 
     def _filtro_server(self) -> str | None:
         if self.filtro_server:
@@ -131,8 +151,8 @@ class TabellaDati:
         if filtro is None or self.server != "cancella":
             return None
         dove = filtro
-        if self.conserva_se:
-            dove += f" AND NOT COALESCE({self.conserva_se}, FALSE)"
+        if self._conserva_server():
+            dove += f" AND NOT COALESCE({self._conserva_server()}, FALSE)"
         return f"DELETE FROM {self.nome} WHERE {dove}"
 
     def sql_scaduti(self) -> str | None:
@@ -159,7 +179,14 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonne_attore=("moderator_id", "revoked_by"), colonna_server="guild_id",
        utente="cancella", conserva_se="retain_for_security", esporta=True,
        nota="ban e kick restano (#37, #46)"),
-    _t("moderation_case_counters", "Contatore dei numeri di caso", colonna_server="guild_id"),
+    _t("moderation_case_counters", "Contatore dei numeri di caso", colonna_server="guild_id",
+       dopo_purga_server=(
+           "INSERT INTO moderation_case_counters (guild_id, next_number) "
+           "SELECT guild_id, max(case_number) + 1 FROM moderation_cases WHERE guild_id = $1 GROUP BY guild_id "
+           "ON CONFLICT (guild_id) DO UPDATE SET next_number = "
+           "GREATEST(moderation_case_counters.next_number, EXCLUDED.next_number)"
+       ),
+       nota="ban e kick restano: il contatore riparte dal numero più alto trattenuto"),
     _t("automod_action_log", "Azioni dell'automod",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("created_at", 180)),
@@ -212,6 +239,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
                    ("actor_id", "CASE WHEN actor_id = $1 THEN NULL ELSE actor_id END"),
                    ("details", "'{}'::jsonb")),
        conserva_se="event_type IN ('ban', 'tempban', 'softban', 'kick', 'spam_trap_ban')",
+       filtro_esportazione=("target_user_id = $1 OR (actor_id = $1 AND "
+                            "(target_user_id IS NULL OR target_user_id = actor_id))"),
+       escludi_dall_esportazione=("details",),
        esporta=True, gestita_da="core/event_log_retention.py (30 giorni, 180 con il premium)"),
     _t("log_ignora", "Canali, utenti e prefissi ignorati dai log", colonna_server="guild_id"),
     _t("output_channels", "Canali di destinazione dei log e degli avvisi", colonna_server="guild_id"),
@@ -261,8 +291,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("clan_monthly_xp", "XP mensile dei clan", colonna_server="guild_id"),
     _t("clan_leaderboard_config", "Bacheca dei clan", colonna_server="guild_id"),
     _t("clans", "Clan", colonne_utente=("owner_id",), colonne_attore=("co_owner_id",),
-       colonna_server="guild_id", utente="conserva", azzera_attore=True, esporta=True,
-       nota="il titolare di un clan lo trasferisce o lo scioglie prima: owner_id non si azzera"),
+       colonna_server="guild_id", utente="conserva", azzera_attore=False, esporta=True,
+       nota="il titolare passa al co-titolare o al membro più anziano, da solo scioglie il clan "
+            "(forget_user_service._clan_del_titolare); il co-titolare esce con NULL"),
     # ---------------------------------------------------------------- ticket, suggerimenti, moduli
     _t("tickets", "Ticket", colonne_utente=("user_id",), colonne_attore=("claimed_by", "closed_by"),
        colonna_server="guild_id", utente="anonimizza", anonimizza=(("user_id", str(UTENTE_CANCELLATO)),),
@@ -309,7 +340,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
     # ---------------------------------------------------------------- coda e configurazione
     _t("scheduled_actions", "Azioni differite (tempban, promemoria, messaggi)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",
-       conserva_utente_se="NOT (executed OR failed_reason IS NOT NULL)", esporta=True,
+       conserva_utente_se="NOT (executed OR failed_reason IS NOT NULL)",
+       conserva_server_se="action_type = 'moderation_tempban_expire' AND NOT (executed OR failed_reason IS NOT NULL)",
+       esporta=True,
        scadenza=Scadenza("COALESCE(executed_at, created_at)", 30, "executed OR failed_reason IS NOT NULL"),
        nota="le azioni ancora in coda restano: ad esempio uno sban programmato"),
     _t("guild_config", "Configurazione del server", colonna_server="guild_id"),
@@ -365,7 +398,7 @@ def tabelle_con_utente() -> tuple[TabellaDati, ...]:
 
 
 def tabelle_esportabili() -> tuple[TabellaDati, ...]:
-    return tuple(t for t in REGISTRO if t.esporta and t.colonne_tutte)
+    return tuple(t for t in REGISTRO if t.esporta and t.colonne_utente)
 
 
 def tabelle_con_scadenza() -> tuple[TabellaDati, ...]:
