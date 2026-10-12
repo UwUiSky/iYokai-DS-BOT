@@ -325,7 +325,6 @@ KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     "fun meme:bottom_text",
     "fun meme:top_text",
     "fun rate:thing",
-    "fun search-image:query",
     "mod timeout:duration",
     "modban tempban:duration",
     "modban unban:user_id",

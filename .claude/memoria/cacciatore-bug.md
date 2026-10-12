@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-12/10/2026 · ultimo giro: `feat/giro-core` (privacy NF-04, permessi OAuth #148, premium #145, scheduler, FK)
+12/10/2026 · ultimo giro: `feat/r3-bak` (backup D8, restore OAuth, cifratura v2)
 
 ## In corso
 - Niente a metà. Giro eco chiuso. Prove: scratchpad/cbeco (p1 decadimento, p2 corse, p3 deadlock, p6 card, p7 migrazioni, test_prove_eco*.py).
@@ -20,7 +20,13 @@
 
 - feat/giro-core: 2 alti (contatore casi purgato con ban trattenuti; server riaggiunto a bot spento mai piu' purgato) + export con dati altrui (alto). Medi: ticket aperti user_id=0 (unico), clan senza titolare, escalation non trattenuta, rinnovo token cancella su 429/5xx, cache premium gara, sban programmato purgato. Prove: scratchpad/cbcore. Cricchetto max_length: ok.
 
+- feat/r3-bak: 2 alti (get_token None su riga illeggibile = bannito riinvitato; Creator senza permessi/Forbidden su ruoli). Medi: collega senza controlli sul server, 2 codici=2 job, finalize salta blacklist, 429 sul rinnovo, restore senza blocco, tabelle 0070 fuori dal registro. Prove: scratchpad/cbbak (env.sh, p1-p5).
+
+- feat/r3-mus (musica F2): 3 alti (nodo sano scartato perche' ancora CONNECTING; worker assegnato due volte; `//percorso` grezzo a Lavalink), medi: `play` stesso canale rilascia la sessione viva, `previous` avanti-indietro, `inactive_channel_tokens=None` su tutto il nodo locale. Prove: scratchpad/cbmus (fake_lavalink.py riusabile).
+
 ## Cose imparate
+- wavelink: `Pool.connect` torna con status CONNECTING (CONNECTED col messaggio `ready`); i test con `connetti` finto non lo vedono. Prova con un finto Lavalink aiohttp (/v4/websocket manda ready, /v4/info).
+- Env per script fuori dai test: `.env.example` con i vuoti riempiti da `fake_<NOME>`, `*_ID=1`.
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
 - Controllare sempre l'ordine di avvio (il worker backup non partiva mai), non solo la logica.
 - Un fix scritto in un piano può essere sbagliato: si prova, non si copia. BUG-17 era falso positivo: provare la corsa con `tests/support/concorrenza.py`.
@@ -40,6 +46,8 @@
 - Prove dentro `tests/` (file temporaneo, poi rm): non usare `-p tests.conftest` (doppia registrazione).
 
 - Anonimizzare a valore fisso (user_id=0) incontra gli indici unici parziali: controllare pg_indexes. Registro NF-04: coprire anche gli action_type scritti dai cog (non solo la colonna generata).
+
+- Chiave multipla (`a,b`): `b64decode` si ferma al primo `=`, quindi la firma dello state usa la prima chiave (a posto). Ogni nuova tabella: lanciare `tests/test_data_registry.py`.
 
 ## Aperto
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).
