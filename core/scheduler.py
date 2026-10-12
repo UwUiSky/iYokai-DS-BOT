@@ -299,7 +299,13 @@ class Scheduler:
                     row["id"],
                 )
 
-        errore = await self._chiama_handler(row)
+        try:
+            errore = await self._chiama_handler(row)
+        except asyncio.CancelledError:
+            # Spegnimento a metà: senza questo l'azione (es. uno sban) aspetta
+            # PRENOTAZIONE_SCADE dopo il riavvio. L'handler deve reggere una seconda esecuzione.
+            await asyncio.shield(self._libera_prenotazione(db, row["id"]))
+            raise
 
         try:
             async with db.pool.acquire() as conn:

@@ -238,3 +238,31 @@ async def test_modulo_spento_non_usa_ne_riempie_la_cache(ambiente, conta_giri):
 
 def test_la_cache_ha_il_tetto_di_10000_voci():
     assert modulo._premium_cache.max_size == 10_000
+
+
+async def test_un_verdetto_letto_prima_dello_sblocco_non_si_scrive_dopo_l_invalida(ambiente, monkeypatch):
+    """#145: la lettura parte, lo sblocco invalida, la lettura finisce con il verdetto vecchio: non resta 60 s."""
+    import asyncio
+
+    from core.premium_cache import invalida_cache_premium
+
+    db, _ = ambiente
+    bot, _ = await _cog_acceso(db)
+    registry.set_module_premium(modulo.MODULE_LOGGING_ADVANCED, True)
+    letto, riparti = asyncio.Event(), asyncio.Event()
+
+    async def lenta(*args, **kwargs):
+        letto.set()
+        await riparti.wait()
+        return False  # il verdetto di PRIMA dello sblocco
+
+    monkeypatch.setattr(modulo, "premium_sbloccato", lenta)
+    task = asyncio.create_task(modulo.logging_avanzato_attivo(GUILD_ID, bot))
+    await letto.wait()
+
+    invalida_cache_premium(GUILD_ID)  # lo sblocco arriva mentre la lettura e' in corso
+    riparti.set()
+
+    assert await task is False  # questa chiamata ha il verdetto che aveva letto
+    assert modulo._premium_cache.get(GUILD_ID) is None  # ma non lo lascia in cache
+    await bot.close()

@@ -71,6 +71,9 @@ PREMIUM_CACHE_TTL_SECONDS = 60
 _monotonic = time.monotonic
 # guild_id -> (scadenza, sbloccato)
 _premium_cache: BoundedCache[int, tuple[float, bool]] = BoundedCache(10_000)
+# Sale a ogni invalidazione: un verdetto letto PRIMA di uno sblocco non si scrive DOPO l'invalida
+# (stesso schema di `_versione_cache` in core/database.py).
+_versione_verdetto = 0
 # (guild_id, user_id, evento) -> ultimo istante registrato
 _voce_propria_cache: BoundedCache[tuple[int, int, str], float] = BoundedCache(10_000)
 
@@ -196,8 +199,10 @@ async def logging_avanzato_attivo(guild_id: int, bot=None) -> bool:
     voce = _premium_cache.get(guild_id)
     if voce is not None and voce[0] > adesso:
         return voce[1]
+    versione = _versione_verdetto
     sbloccato = await premium_sbloccato(guild_id, MODULE_LOGGING_ADVANCED, bot)
-    _premium_cache.set(guild_id, (adesso + PREMIUM_CACHE_TTL_SECONDS, sbloccato))
+    if versione == _versione_verdetto:  # nessuna invalidazione mentre leggevo
+        _premium_cache.set(guild_id, (adesso + PREMIUM_CACHE_TTL_SECONDS, sbloccato))
     return sbloccato
 
 
@@ -207,6 +212,8 @@ def invalida_verdetto_premium(guild_id: int | None = None) -> None:
     cambia whitelist, cassa o abbonamenti può chiamarla per far valere
     subito lo sblocco o la revoca, senza aspettare il TTL.
     """
+    global _versione_verdetto
+    _versione_verdetto += 1
     if guild_id is None:
         _premium_cache.clear()
     else:

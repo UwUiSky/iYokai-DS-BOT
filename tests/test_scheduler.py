@@ -754,3 +754,29 @@ async def test_prenotazione_scaduta_dopo_un_crash_viene_ripresa(pool_a_una_conne
     await scheduler._run_due_actions()
 
     assert chiamate == [1]
+
+
+@pytest.mark.asyncio
+async def test_lo_spegnimento_a_meta_azione_libera_la_prenotazione(pool_a_una_connessione):
+    """Task cancellato con l'handler in corso: dopo il riavvio l'azione e' subito disponibile, non dopo 10 minuti."""
+    import asyncio
+
+    scheduler = Scheduler()
+    partito = asyncio.Event()
+
+    async def handler(guild_id, user_id, payload):
+        partito.set()
+        await asyncio.sleep(3600)
+
+    scheduler.register_handler("lunga", handler)
+    azione = await scheduler.schedule(1, 2, "lunga", datetime.now(timezone.utc) - timedelta(seconds=5))
+    task = asyncio.create_task(scheduler._run_due_actions())
+    await asyncio.wait_for(partito.wait(), 3)
+    assert await pool_a_una_connessione.fetchval("SELECT claimed_at IS NOT NULL FROM scheduled_actions WHERE id = $1", azione)
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    riga = await pool_a_una_connessione.fetchrow("SELECT claimed_at, executed, attempts FROM scheduled_actions WHERE id = $1", azione)
+    assert riga["claimed_at"] is None and riga["executed"] is False and riga["attempts"] == 0
