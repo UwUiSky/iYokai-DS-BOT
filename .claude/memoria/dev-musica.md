@@ -41,6 +41,6 @@
 
 ## Aperto
 - 8.16 (defer nei comandi musicali) e' di F1; 8.19 = NF-19 (#90).
-- Prova live (VERIFICA_LIVE.md): audio dai 5 worker, due canali/stesso server, radio in canale vuoto,
+- Prove live scritte in VERIFICA_LIVE.md (sezione «Musica F2»); da eseguire: audio dai 5 worker, due canali/stesso server, radio in canale vuoto,
   ingresso del principale in vocale, brano locale, nodo 4.1 scartato, canale palco/pieno.
 - `LAVALINK_NODES` e' vuoto di default: senza nodi pubblici in .env resta solo il locale.
