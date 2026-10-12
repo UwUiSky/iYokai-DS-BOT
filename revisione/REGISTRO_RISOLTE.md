@@ -15,6 +15,68 @@ Le prove ancora da fare su Discord restano in `03-verifica/VERIFICA_LIVE.md`.
 | #146 | Boost clan: un solo tipo, acquisti sovrapposti | Tre tipi (exp, coin, super), niente acquisti sovrapposti dello stesso beneficio (D23, migrazione 0020) | aaf4ea2 | 07/10 |
 | #76, #3, #24, #31, #40 | Struttura dei comandi: limite di 100 comandi di primo livello | F7 (D24): 16 gruppi + `-cerca-comando` e `-chiedi`, accesso per ruolo, `/owner` solo nel server owner, sync con hash | d477200 | 11/10 |
 
+## Issue dell'Advisor Bot (#2–#56)
+
+Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sistemate. Le aperte sono in lavorazione (privacy: ramo core, musica: F2, AI: F12).
+
+| Issue | Problema | Come |
+|---|---|---|
+| #2 | /ticket close crashes – channel.delete() does not accept delay= parameter | Aggiornamento 04/10: la revisione aveva trovato un difetto residuo (un riavvio entro 10 secondi lasciava il canale per sempre, BUG-30). Sistemato: l'eliminazione passa dallo scheduler e sopravvive ai… |
+| #3 | Moderation commands lack Discord permission checks (default_permissions / has_p | Risolta con F7 (D24): 16 gruppi, accesso per ruolo, `guild_only` sui gruppi (d477200) |
+| #4 | /setup is unusable – exceeds Discord Select 25-option limit | Risolto: `/setup` ora lavora per categoria e non supera più le 25 opzioni (commit `c9534fb`, test in `tests/test_setup_categories.py` e `tests/test_command_tree_invariants.py`). Resta l'etichetta… |
+| #5 | No global allowed_mentions – risk of @everyone / @here from feeds, reminders, c | Aggiornamento 04/10: sistemato anche il mirror del backup, che inoltrava `@everyone` come ping vero nel server di backup (SEC-22, commit `690a5b6`). |
+| #6 | message_content intent is disabled – several features silently receive empty message | Risolto nel codice: l'intent `message_content` è acceso sul bot principale (commit `783329e`) e all'avvio vengono scritti nel log gli intent effettivi (`3666a66`). **Serve dall'owner:** accendere… |
+| #7 | /nonstop-main add-local allows path traversal + global playlist editable by any | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #8 | Restore OAuth state is unsigned plain text – can be forged | Aggiornamento 04/10: il link del restore ora dura 7 giorni, è legato al destinatario, non si brucia per un errore temporaneo e rifiuta chi è in blacklist (BUG-21, SEC-19, commit `8590e89`). |
+| #9 | Feed watcher performs unrestricted HTTP GET – SSRF risk | Aggiornamento 04/10: sistemati due difetti residui: un URL malformato fermava tutti i feed (BUG-20, `c5ebd0f`) e la protezione era aggirabile con il DNS rebinding (SEC-18, `6509fec`). |
+| #10 | level-roles / shop can assign roles above bot or caller hierarchy | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #11 | Spam Trap bans staff members – no exemption for admins/mods | Aggiornamento 04/10: sistemati il limite sui DM di appello che non si riapriva (BUG-22, `ea2e897`, `77e0fe1`), i casi doppi (BUG-24, `263fdf2`) e i canali ricreati da `/spamtrap-setup` (BUG-25,… |
+| #12 | All bots (Main + Creator + 5 Music) start in a single asyncio.gather – one failure k | Risolto: ogni bot parte in un task proprio, un worker che cade non ferma gli altri, lo spegnimento è ordinato e un secondo SIGTERM non lo interrompe (commit `8a218d1`, `44ede43`). Resta l'etichetta… |
+| #13 | Scheduler loop has no outer try/except – a single unexpected error can stop all sche | Risolto: lo scheduler non si ferma più; un'azione senza handler o che fallisce viene riprovata con attesa crescente e solo dopo 8 tentativi diventa `failed`; una transazione per azione (commit… |
+| #14 | Role menus accept any role without hierarchy checks | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #15 | /restore-users accepts any source guild ID – no verification that current serve | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #16 | Spam-trap appeal buttons stop working after bot restart (View not persistent) | Risolta: la View dell'appello spam-trap non scade più e ogni bottone porta azione, server, caso e utente nel custom_id; setup() li registra a ogni avvio → 7eb3142 (M 3.9, merge 7722b71). Chiusa;… |
+| #17 | Feed / custom templates use str.format – format-string DoS possible | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #18 | /assegna-lobby spends full chest amount then credits one-by-one – partial failure lo | Risolta in f4b7cf0 (M 9.4, merge 9db9e8a): - defer() come prima chiamata - addebito della cassa e accrediti di tutti in una sola transazione (errore a metà: tutto annullato) - presenti letti una sola… |
+| #19 | [GDPR / Bug] No data cleanup when the bot leaves a guild – data retained forever | Aperta: vedi sotto |
+| #20 | Blacklist only blocks slash commands – buttons, selects and modals remain usabl | Risolto: la blacklist vale anche per bottoni, menu, modali e per i listener che danno qualcosa all'utente, compresi XP vocale dei clan, vocali temporanei e premi (commit `9d52a82`, `7b96e8c`). Resta… |
+| #21 | Failed backup jobs can leave orphan guilds on Creator – slots leak forever | Superata dal nuovo disegno del backup (decisione D8): Discord non lascia più creare server ai bot, quindi il flusso "il Creator crea e cede un server" non esiste più. Il nuovo flusso è nella issue… |
+| #22 | Most Views lack on_error – users only see “Interaction failed” | Risolto: tutte le View e i Modal ereditano da `core/ui_base.py`, che risponde in modo effimero in caso di errore (commit `9d52a82`; controllo automatico in `tests/test_ui_base_wiring.py`, `e04eca5`).… |
+| #23 | Shop purchase has TOCTOU race – concurrent buys can bypass “already purchased” for r | Risolta in cd9b545 (M 9.2, merge 9db9e8a): - acquisto e addebito in una sola transazione - oggetto a ruolo comprato una sola volta, deciso dall'indice unico (migrazione 0015) - se il ruolo non… |
+| #24 | Many guild-only commands lack app_commands.guild_only – usable in DMs with poor erro | Risolta con F7 (D24): 16 gruppi, accesso per ruolo, `guild_only` sui gruppi (d477200) |
+| #25 | [Architecture] Database migrations are ad-hoc CREATE/ALTER IF NOT EXISTS – no versioned mi | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #26 | Backup pair is never updated with real backup_guild_id – promote/restore have no dat | Superata dal nuovo disegno del backup (decisione D8): Discord non lascia più creare server ai bot, quindi il flusso "il Creator crea e cede un server" non esiste più. Il nuovo flusso è nella issue… |
+| #27 | Anti-Raid counts bot joins toward join-rate and may quarantine bots | Fatto: l'anti-raid non conta né mette in quarantena i bot aggiunti dagli admin (`f9cffb1`). Il resto di BUG-12 (lockdown per un solo ingresso, quarantena doppia) è nella issue #59. |
+| #28 | Process shutdown does not cleanly stop Music workers, Creator, or shared HTTP sessio | Risolto: ogni bot parte in un task proprio, un worker che cade non ferma gli altri, lo spegnimento è ordinato e un secondo SIGTERM non lo interrompe (commit `8a218d1`, `44ede43`). Resta l'etichetta… |
+| #29 | Voice-temp platform role assignment lacks hierarchy checks | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #30 | Anti-Nuke recovery only recreates TextChannels – voice/categories/forums lost foreve | Risolta in 4b83b89 (M 3.4, merge 7722b71): il recupero ricrea testuali, annunci, vocali, palchi, categorie e forum, con permessi, posizione, argomento, slowmode, limite utenti e qualità audio. I… |
+| #31 | /global-ban enable/disable crash in DMs – no guild None guard | Risolta con F7 (D24): 16 gruppi, accesso per ruolo, `guild_only` sui gruppi (d477200) |
+| #32 | Verify can assign verified_role above bot hierarchy | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #33 | DropClaimView race – concurrent clicks can grant coins multiple times | Falso positivo confermato (BUG-17, M 9.6): il difetto non esiste, perché tra il controllo di claimed_by e l'assegnazione non c'è nessun await, quindi due clic non possono passare insieme. - Test con… |
+| #34 | /voice transfer allows transferring ownership to bots or users not in the channel | Risolta (merge 3758f2a): - bot e utenti fuori dal canale rifiutati → 9f58b37 - permessi del canale passati al nuovo proprietario; trasferimento a chi è già proprietario non fa nulla → d79593d Chiusa;… |
+| #35 | /daily and /work have TOCTOU race – concurrent claims can bypass cooldown | Risolta in db8d8ff (M 9.1, merge 9db9e8a): il controllo dell'attesa sta dentro la scrittura (una sola INSERT … ON CONFLICT DO UPDATE … WHERE attesa finita … RETURNING). Test con due /daily e due… |
+| #36 | [Verification / Intent] message_content=False + features that silently depend on it – Disc | Risolto nel codice: l'intent `message_content` è acceso sul bot principale (commit `783329e`) e all'avvio vengono scritti nel log gli intent effettivi (`3666a66`). **Serve dall'owner:** accendere… |
+| #37 | [GDPR] No user data deletion form / command / endpoint – only guild-leave cleanup also mis | Aperta: vedi sotto |
+| #38 | /setup is effectively unusable – >25 registered modules hits Discord Select limit (c | Risolto: `/setup` ora lavora per categoria e non supera più le 25 opzioni (commit `c9534fb`, test in `tests/test_setup_categories.py` e `tests/test_command_tree_invariants.py`). Resta l'etichetta… |
+| #39 | [Silent Bug] AutoMod advanced content filters appear active but never match when message_c | Risolto nel codice: l'intent `message_content` è acceso sul bot principale (commit `783329e`) e all'avvio vengono scritti nel log gli intent effettivi (`3666a66`). **Serve dall'owner:** accendere… |
+| #40 | /clear, /lock, /unlock have no Discord permission checks – any member can invok | Risolta con F7 (D24): 16 gruppi, accesso per ruolo, `guild_only` sui gruppi (d477200) |
+| #41 | [Config] PREMIUM_ALPHA_UNLOCK_ALL defaults to True – all premium features free for every s | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #42 | [Re-confirmed] /ticket close still crashes – channel.delete(delay=10) is invalid API | Verificata nel codice dall'Advisor; resta la prova live (VERIFICA_LIVE.md) |
+| #43 | [Design + Fix] /setup oltre il limite 25 Select – soluzioni legali Discord API (paginazion | Risolto: `/setup` ora lavora per categoria e non supera più le 25 opzioni (commit `c9534fb`, test in `tests/test_setup_categories.py` e `tests/test_command_tree_invariants.py`). Resta l'etichetta… |
+| #44 | [Analysis] Funzioni “rotte”: intent message_content vs codice scritto male – classificazio | Analisi recepita: la classe A (intent spento) è risolta con `783329e`; le voci di classe B ancora aperte sono nelle issue della milestone F1; la classe C è nelle milestone F2, F3 e F5. |
+| #45 | [Music] Gap vs specifica: radio 24/7 auto-join, cartella locale, cascade OK, nodi audio, f | Aperta: vedi sotto |
+| #46 | [GDPR / Spec gap] Retention 90gg, form cancellazione, preserve ban/kick spam-nuke, OAuth r | Aperta: vedi sotto |
+| #47 | [Music/Infra] Self-host Lavalink mancante in repo – guida + application.yml + Docker + leg | Aperta: vedi sotto |
+| #48 | [Docs] Documentazione nodi pubblici Lavalink ESISTE online – il pattern hardcoded non sost | Aperta: vedi sotto |
+| #49 | [Design] /setup per categorie (admin, utility, moderation, security…) – struttura comandi  | Risolto: `/setup` ora lavora per categoria e non supera più le 25 opzioni (commit `c9534fb`, test in `tests/test_setup_categories.py` e `tests/test_command_tree_invariants.py`). Resta l'etichetta… |
+| #50 | [Feature gap] AI Engine & feature con IA – elenco completo richiesto ma non implementato ( | Aperta: vedi sotto |
+| #51 | [Meta] Indice audit iYokai Advisor – issue aperte per area (no duplicati) + cosa è 🟡 solo  | Sostituita dal sistema di etichette e milestone: una milestone per fase (F1…F14), etichette per area e tipo. La memoria del lavoro è in `.claude/orchestratore/STATO.md`. |
+| #52 | [Product] Gap vs bot major (MEE6, Dyno, Carl-bot, ProBot, Arcane, YAGPDB…) – feature da va | Sostituita dal confronto dettagliato (`revisione/01-analisi/CONFRONTO_BOT.md`) e dalle issue delle funzioni nuove #72–#112 (etichetta `funzione-nuova`). Il catalogo voce per voce è in preparazione in… |
+| #53 | [Process] Test live OBBLIGATORI: token Discord (chat) + Postgres Aiven (chat) — mai in rep | Aperta: vedi sotto |
+| #54 | /config rollback non ripristina import/reset – change_type gestito come setting sing | Risolto: il rollback di import e reset ripristina davvero o risponde con un errore; la conferma e `/config history` restano nei limiti di Discord (commit `071504a`, `c2a9582`). Resta l'etichetta… |
+| #55 | music_sessions non vengono svuotate all’avvio – worker “occupati” fantasma dopo cras | Risolto: `music_sessions` viene svuotata una volta all'avvio, prima che i bot partano (commit `376ff6b`). Resta l'etichetta `verifica-live`: i passi di prova sono in… |
+| #56 | Scheduler: action_type senza handler restano forever in coda e possono saturare LIMI | Risolto: lo scheduler non si ferma più; un'azione senza handler o che fallisce viene riprovata con attesa crescente e solo dopo 8 tentativi diventa `failed`; una transazione per azione (commit… |
+
 ## Parziali (issue ancora aperte, voci già fatte)
 
 - #147: pannello di `-cerca-comando`, ricerca, `-chiedi`, `command_usage` (0022). Mancano `scripts/genera_wiki.py` (F10) e l'AI (F12).
