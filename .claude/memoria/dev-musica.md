@@ -1,13 +1,13 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-12/10/2026 · ramo `feat/r3-mus` (copia /home/claude/wt/mus) · base `c23a815` · DB iyokai_wmus · migrazioni da 0060
+13/10/2026 · ramo `feat/r3-mus` (copia /home/claude/wt/mus) · base `c23a815` · DB iyokai_wmus · migrazioni da 0060
 
 ## In corso
 - Previsione giro F2: 5 voci. Fatte: #64, #47+#48, #45, #126 parti 1 e 2. Prossimo: #90 (NF-19, canale
   richieste: migrazioni 0062/0063, `request_channel.py`, `music_request_logic/repo`, `music_playlist_repo`,
   view persistente) se resta spazio; poi #106 (`/fun suono`, serve un worker libero).
-- /music ha 18 figli (limite 25): lasciare spazio a `playlist` (NF-19).
+- /music ha 17 figli (limite 25): lasciare spazio a `playlist` (NF-19).
 
 ## Fatto
 - F7 3b (#76): `/music` sotto-gruppi, `/owner radio` (`6d8894f`).
@@ -17,8 +17,7 @@
   `scripts/check_lavalink_nodes.py` (+ test).
 
 - #45: avvio automatico radio, mkdir, traversal, avviso nodo locale mancante: gia' in F2 #64/#47.
-- #126 parte 1: MUS-020 join, 021 play in-cima, 027 remove assenti, 029 skipto, 030 remove intervallo/utente,
-  031 previous, 032 history, 035 queue cerca, 036 quote per utente, 039 shuffle solo-miei.
+- #126 parte 1: MUS-020 join, 021 play in-cima, 029 skipto, 031 previous, 032 history, 036 quote per utente, 039 shuffle solo-miei.
   Nuovo `core/music_queue_logic.py`; richiedente in `track.extras.requester_id`.
 
 - #126 parte 2: MUS-044 durata massima, 047 volume massimo, 055 restare a coda finita, 059 canale permesso,
@@ -29,6 +28,10 @@
   assegnazione worker atomica (`assign_free_worker`, advisory lock); `classify_query` (mai query grezze);
   lock per canale nel play; previous senza avanti-indietro; token canale vuoto solo sul player radio;
   listener voce dei worker (rilascio/spostamento); volume all'ingresso; skipto loop-all; shuffle atomico.
+
+- Revisore capo (13/10): chiavi `SETTING_*` in SETTINGS_SCHEMA (tipi int_0_200, int_0_1440); avviso nodo locale con
+  attesa limitata (60 s, ricollegamento in background); TOLTI `/music remove` e `queue cerca` (SPEC 9.4: domanda
+  per l'owner in VERIFICA_LIVE); URL utente solo dopo `url_e_sicuro`; defer in skipto/previous; test mancanti; ruff.
 
 ## Cose imparate
 - `Pool.connect` torna con il nodo CONNECTING: CONNECTED arriva col messaggio `ready` (tests/support/fake_lavalink.py).

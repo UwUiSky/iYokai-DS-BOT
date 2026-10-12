@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 20:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 22:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 263 comandi in 16 categorie.**
+**Totale: 262 comandi in 16 categorie.**
 
 ## Admin
 
@@ -221,7 +221,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 20:
 - **`/music play`** — Riproduce una canzone o playlist.
 - **`/music previous`** — Torna al brano precedente.
 - **`/music queue`** — Mostra la coda di riproduzione.
-- **`/music remove`** — Toglie brani dalla coda: un intervallo, di un utente, o di chi è uscito.
 - **`/music resume`** — Riprende la riproduzione in pausa.
 - **`/music shuffle`** — Mescola l'ordine delle tracce in coda.
 - **`/music skip`** — Salta la traccia in riproduzione.

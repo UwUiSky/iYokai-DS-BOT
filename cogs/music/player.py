@@ -91,13 +91,9 @@ from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
 from core.music_queue_logic import (
     MAX_HISTORY_SHOWN,
     format_share,
-    indices_of_absent,
-    indices_of_user,
     own_shuffle_order,
     previous_track_position,
-    range_to_indices,
     requester_of,
-    search_titles,
     share_by_user,
 )
 from core.music_radio_view import RadioListView, pagina_embed
@@ -110,6 +106,7 @@ from core.music_settings_logic import (
 )
 from core.premium import PremiumModule, registry
 from core.repositories.main_radio_repo import main_radio_repo
+from core.safe_http import url_e_sicuro
 
 logger = logging.getLogger("iyokai.music")
 
@@ -391,6 +388,11 @@ class MusicCog(CogConGruppi, commands.Cog):
         if tipo == QUERY_SPOTIFY:
             return await wavelink.Pool.fetch_tracks(query.strip(), node=nodo)
         if tipo == QUERY_URL:
+            # Lavalink (sources.http) scaricherebbe da dentro la rete del
+            # server: niente 127.0.0.1, 10.x, metadati cloud (SSRF).
+            if not await url_e_sicuro(query.strip()):
+                logger.info("URL musicale rifiutato (non pubblico): %s", query.strip()[:80])
+                return None
             return await wavelink.Playable.search(query.strip(), node=nodo)
         return await wavelink.Pool.fetch_tracks(f"ytmsearch:{query.strip()}", node=nodo)
 
@@ -679,12 +681,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("▶️ Ripreso.")
 
     @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
-    @app_commands.describe(cerca="Cerca un brano dentro la coda (parte del titolo)")
-    async def queue_command(
-        self,
-        interaction: discord.Interaction,
-        cerca: app_commands.Range[str, 1, 100] | None = None,
-    ) -> None:
+    async def queue_command(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
 
@@ -698,18 +695,6 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         titolo_attuale = player.current.title if player and player.current else None
         titoli_in_coda = [truncate_title(t.title, 150) for t in player.queue] if player else []
-
-        if cerca:  # MUS-035
-            trovati = search_titles(titoli_in_coda, cerca)
-            righe = [f"{pos}. {titolo}" for pos, titolo in trovati]
-            embed = discord.Embed(
-                title=truncate_title(f"🔎 In coda: {cerca}"),
-                description="\n".join(righe)[:EMBED_DESCRIPTION_LIMIT]
-                or "Nessun brano in coda corrisponde a questa ricerca.",
-                color=discord.Color.blurple(),
-            )
-            await interaction.response.send_message(embed=embed)
-            return
 
         embed = discord.Embed(
             title="🎵 Coda di riproduzione",
@@ -1124,52 +1109,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if saltati and player.queue.mode == wavelink.QueueMode.loop_all:
             player.queue.put(saltati)  # in loop-all i brani saltati vanno in fondo, non persi
         titolo = truncate_title(player.queue[0].title, 150)
+        await interaction.response.defer()
         await player.skip()
-        await interaction.response.send_message(f"⏭️ Salto a **{titolo}**.")
-
-    @comando_di_gruppo("music", nome="remove", descrizione="Toglie brani dalla coda: un intervallo, di un utente, o di chi è uscito.")
-    @app_commands.describe(
-        da="Prima posizione da togliere",
-        a="Ultima posizione (se manca, solo `da`)",
-        utente="Toglie tutti i brani messi da questo utente",
-        assenti="Toglie i brani di chi non è più nel canale vocale",
-    )
-    async def remove(
-        self,
-        interaction: discord.Interaction,
-        da: app_commands.Range[int, 1, 10000] | None = None,
-        a: app_commands.Range[int, 1, 10000] | None = None,
-        utente: discord.Member | None = None,
-        assenti: bool = False,
-    ) -> None:
-        # MUS-027 (assenti), MUS-030 (intervallo o utente)
-        criteri = [da is not None, utente is not None, assenti]
-        if sum(criteri) != 1 or (a is not None and da is None):
-            await interaction.response.send_message(
-                "Scegli UN solo criterio: `da` (con `a` facoltativo), `utente` oppure `assenti`.",
-                ephemeral=True,
-            )
-            return
-        player = await self._giocatore_attivo(interaction)
-        if player is None:
-            return
-        richiedenti = [requester_of(t) for t in player.queue]
-        if da is not None:
-            indici = range_to_indices(da, a, len(player.queue))
-            if isinstance(indici, str):
-                await interaction.response.send_message(indici, ephemeral=True)
-                return
-        elif utente is not None:
-            indici = indices_of_user(richiedenti, utente.id)
-        else:
-            presenti = {m.id for m in interaction.user.voice.channel.members}
-            indici = indices_of_absent(richiedenti, presenti)
-        if not indici:
-            await interaction.response.send_message("Nessun brano da togliere.", ephemeral=True)
-            return
-        for indice in sorted(indici, reverse=True):
-            player.queue.delete(indice)
-        await interaction.response.send_message(f"🗑️ Tolti {len(indici)} brani dalla coda.")
+        await interaction.followup.send(f"⏭️ Salto a **{titolo}**.")
 
     @comando_di_gruppo("music", nome="previous", descrizione="Torna al brano precedente.")
     async def previous(self, interaction: discord.Interaction) -> None:
@@ -1189,6 +1131,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
         precedente = storico[posizione]
+        await interaction.response.defer()
         if player.current is not None:
             # il brano in corso torna in cima alla coda e lascia lo storico: cosi' il
             # precedente di "precedente" e' ancora il brano prima, senza avanti-indietro
@@ -1196,9 +1139,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             storico.delete(len(storico) - 1)
         # add_history=False: il brano ripreso e' gia' (o torna a essere) l'ultimo dello storico
         await player.play(precedente, add_history=False)
-        await interaction.response.send_message(
-            f"⏮️ Torno a **{truncate_title(precedente.title, 150)}**."
-        )
+        await interaction.followup.send(f"⏮️ Torno a **{truncate_title(precedente.title, 150)}**.")
 
     @comando_di_gruppo("music", nome="history", descrizione="Mostra gli ultimi brani già suonati.")
     async def history(self, interaction: discord.Interaction) -> None:
@@ -1706,11 +1647,22 @@ async def _su_voce_del_worker(flotta, worker, member, before, after) -> None:
     await handle_worker_voice_update(flotta, worker, member, before, after)
 
 
-async def avvisa_se_manca_il_nodo_locale(gestore: MusicNodeManager, task_principale) -> None:
-    """#45/#47: con la cartella inediti impostata, il nodo locale serve — se non è collegato, WARNING."""
+ATTESA_AVVISO_NODO_LOCALE = 60.0  # secondi
+
+
+async def avvisa_se_manca_il_nodo_locale(
+    gestore: MusicNodeManager, task_principale, attesa: float = ATTESA_AVVISO_NODO_LOCALE
+) -> None:
+    """
+    #45/#47: con la cartella inediti impostata, il nodo locale serve — se
+    non è collegato dopo `attesa` secondi, WARNING. L'attesa è limitata: i
+    task di collegamento riprovano all'infinito (in background, a parte) e
+    non vanno mai aspettati fino in fondo; qui non vengono cancellati.
+    """
     if not config.MAIN_RADIO_LOCAL_FOLDER:
         return
-    await asyncio.gather(*task_principale, return_exceptions=True)
+    if task_principale:
+        await asyncio.wait(task_principale, timeout=attesa)
     if gestore.locale_di(MAIN_KEY) is None:
         logger.warning(
             "MAIN_RADIO_LOCAL_FOLDER è impostata ma il nodo Lavalink locale non è collegato "

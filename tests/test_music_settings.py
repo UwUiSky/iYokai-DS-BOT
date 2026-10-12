@@ -18,9 +18,9 @@ from cogs.music.settings import MusicSettingsCog
 from core.database import Database
 from core.music_fleet import handle_inactive_player
 from core.music_settings_logic import (
-    KEY_ALLOWED_CHANNEL,
-    KEY_MAX_VOLUME,
-    KEY_STAY_WHEN_QUEUE_ENDS,
+    SETTING_ALLOWED_CHANNEL,
+    SETTING_MAX_VOLUME,
+    SETTING_STAY_WHEN_QUEUE_ENDS,
     MusicSettings,
     channel_not_allowed,
     clamp_volume,
@@ -72,13 +72,13 @@ async def test_le_impostazioni_si_salvano_e_si_rileggono():
         await database.run_migrations()
         assert await load_music_settings(database, guild_id) == MusicSettings(guild_id=guild_id)
 
-        await save_music_setting(database, guild_id, KEY_MAX_VOLUME, 60, changed_by=1)
-        await save_music_setting(database, guild_id, KEY_STAY_WHEN_QUEUE_ENDS, True, changed_by=1)
-        await save_music_setting(database, guild_id, KEY_ALLOWED_CHANNEL, 42, changed_by=1)
+        await save_music_setting(database, guild_id, SETTING_MAX_VOLUME, 60, changed_by=1)
+        await save_music_setting(database, guild_id, SETTING_STAY_WHEN_QUEUE_ENDS, True, changed_by=1)
+        await save_music_setting(database, guild_id, SETTING_ALLOWED_CHANNEL, 42, changed_by=1)
         s = await load_music_settings(database, guild_id)
         assert (s.max_volume, s.stay_when_queue_ends, s.allowed_voice_channel_id) == (60, True, 42)
 
-        await save_music_setting(database, guild_id, KEY_ALLOWED_CHANNEL, None, changed_by=1)
+        await save_music_setting(database, guild_id, SETTING_ALLOWED_CHANNEL, None, changed_by=1)
         assert (await load_music_settings(database, guild_id)).allowed_voice_channel_id is None
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
@@ -203,7 +203,7 @@ def _cog_con_worker(player, monkeypatch, archivio):
 @pytest.mark.asyncio
 async def test_il_volume_non_supera_il_massimo_scelto(monkeypatch):
     archivio = _Archivio()
-    archivio.valori[(900, KEY_MAX_VOLUME)] = 80
+    archivio.valori[(900, SETTING_MAX_VOLUME)] = 80
     impostato = []
 
     async def set_volume(v):
@@ -220,7 +220,7 @@ async def test_il_volume_non_supera_il_massimo_scelto(monkeypatch):
 @pytest.mark.asyncio
 async def test_play_fuori_dal_canale_permesso_viene_rifiutato(monkeypatch):
     archivio = _Archivio()
-    archivio.valori[(900, KEY_ALLOWED_CHANNEL)] = 99
+    archivio.valori[(900, SETTING_ALLOWED_CHANNEL)] = 99
     cog, rilasci = _cog_con_worker(None, monkeypatch, archivio)
     i = _Interazione(canale_id=11)
 
@@ -268,11 +268,11 @@ async def test_a_coda_finita_il_bot_resta_se_il_server_lo_vuole(monkeypatch):
         async def release_session(self, g, c):
             rilasci.append((g, c))
 
-    archivio.valori[(900, KEY_STAY_WHEN_QUEUE_ENDS)] = True
+    archivio.valori[(900, SETTING_STAY_WHEN_QUEUE_ENDS)] = True
     await handle_inactive_player(_P(), _F())
     assert disconnessioni == [] and rilasci == []
 
-    archivio.valori[(900, KEY_STAY_WHEN_QUEUE_ENDS)] = False
+    archivio.valori[(900, SETTING_STAY_WHEN_QUEUE_ENDS)] = False
     await handle_inactive_player(_P(), _F())
     assert disconnessioni == [1] and rilasci == [(900, 11)]
 
@@ -280,7 +280,7 @@ async def test_a_coda_finita_il_bot_resta_se_il_server_lo_vuole(monkeypatch):
 @pytest.mark.asyncio
 async def test_volume_up_non_abbassa_mai_un_volume_gia_sopra_il_massimo(monkeypatch):
     archivio = _Archivio()
-    archivio.valori[(900, KEY_MAX_VOLUME)] = 50
+    archivio.valori[(900, SETTING_MAX_VOLUME)] = 50
     impostato = []
 
     async def set_volume(v):
@@ -307,7 +307,7 @@ async def test_resta_a_coda_finita_non_trattiene_il_bot_in_un_canale_vuoto(monke
     import core.music_fleet as modulo
 
     archivio = _Archivio()
-    archivio.valori[(900, KEY_STAY_WHEN_QUEUE_ENDS)] = True
+    archivio.valori[(900, SETTING_STAY_WHEN_QUEUE_ENDS)] = True
     monkeypatch.setattr(modulo, "db", archivio)
     rilasci, disc = [], []
 

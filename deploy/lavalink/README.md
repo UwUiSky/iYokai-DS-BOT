@@ -65,3 +65,11 @@ add-local` con un file della cartella. Le prove sul serio sono in
 `revisione/03-verifica/VERIFICA_LIVE.md`.
 
 Altro: `docs/music-lavalink.md` (documentazione ufficiale, nodi pubblici).
+
+## Rete (sorgente `http`)
+
+`sources.http: true` permette i link diretti a un file audio. Il bot rifiuta
+prima gli indirizzi interni (127.0.0.1, 10.x, 192.168.x, metadati cloud), ma non
+può vedere dove porta un redirect: sull'host di Lavalink limita anche il traffico
+in uscita verso le reti private e `169.254.169.254`. Se non ti servono i link
+diretti, metti `http: false` in `application.yml`.

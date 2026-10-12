@@ -17,10 +17,10 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.music_settings_logic import (
-    KEY_ALLOWED_CHANNEL,
-    KEY_MAX_TRACK_MINUTES,
-    KEY_MAX_VOLUME,
-    KEY_STAY_WHEN_QUEUE_ENDS,
+    SETTING_ALLOWED_CHANNEL,
+    SETTING_MAX_TRACK_MINUTES,
+    SETTING_MAX_VOLUME,
+    SETTING_STAY_WHEN_QUEUE_ENDS,
     MAX_TRACK_MINUTES,
     MAX_VOLUME,
     load_music_settings,
@@ -76,13 +76,13 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             )
             return
         cambi = {
-            KEY_MAX_VOLUME: volume_massimo,
-            KEY_MAX_TRACK_MINUTES: durata_massima,
-            KEY_STAY_WHEN_QUEUE_ENDS: resta_a_coda_finita,
+            SETTING_MAX_VOLUME: volume_massimo,
+            SETTING_MAX_TRACK_MINUTES: durata_massima,
+            SETTING_STAY_WHEN_QUEUE_ENDS: resta_a_coda_finita,
         }
         cambi = {k: v for k, v in cambi.items() if v is not None}
         if canale_vocale is not None:
-            cambi[KEY_ALLOWED_CHANNEL] = canale_vocale.id
+            cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
         if not cambi and not tutti_i_canali:
             await interaction.response.send_message(
                 "Non hai cambiato nulla: indica almeno un'opzione. "
@@ -95,7 +95,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         for chiave, valore in cambi.items():
             await save_music_setting(db, guild.id, chiave, valore, interaction.user.id)
         if tutti_i_canali:
-            await save_music_setting(db, guild.id, KEY_ALLOWED_CHANNEL, None, interaction.user.id)
+            await save_music_setting(db, guild.id, SETTING_ALLOWED_CHANNEL, None, interaction.user.id)
 
         impostazioni = await load_music_settings(db, guild.id)
         embed = discord.Embed(

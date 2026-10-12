@@ -1,12 +1,12 @@
 """
 tests/test_music_queue_cmds.py
 ==================================
-Catalogo MUS (issue #126) sulla coda: join, skipto, remove, previous,
-history, queue con ricerca e quote per utente, play in cima. Logica pura
+Catalogo MUS (issue #126) sulla coda: join, skipto, previous,
+history, queue con quote per utente, play in cima. Logica pura
 in core/music_queue_logic.py; i comandi con un player finto.
 """
 
-import asyncio
+import inspect
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -17,13 +17,9 @@ import cogs.music.player as player_module
 from cogs.music.player import MusicCog
 from core.music_queue_logic import (
     format_share,
-    indices_of_absent,
-    indices_of_user,
     own_shuffle_order,
     previous_track_position,
-    range_to_indices,
     requester_of,
-    search_titles,
     share_by_user,
 )
 
@@ -50,24 +46,6 @@ def test_quote_per_utente():
     molti = share_by_user(list(range(100)))
     assert len(format_share(molti, 1024)) <= 1024
     assert format_share(molti).count("\n") == 4  # al massimo 5 utenti
-
-
-def test_ricerca_nella_coda():
-    titoli = ["Blue Monday", "Bluebird", "Red"]
-    assert search_titles(titoli, "BLUE") == [(1, "Blue Monday"), (2, "Bluebird")]
-    assert search_titles(titoli, "  ") == []
-    assert len(search_titles(["a"] * 50, "a")) == 10
-
-
-def test_intervalli_e_utenti():
-    assert range_to_indices(2, 3, 5) == [1, 2]
-    assert range_to_indices(4, None, 5) == [3]
-    assert range_to_indices(4, 99, 5) == [3, 4]  # oltre la fine: si ferma alla fine
-    assert "solo 5" in range_to_indices(6, None, 5)
-    assert "non è valido" in range_to_indices(3, 2, 5)
-    assert range_to_indices(1, None, 0) == "La coda è vuota."
-    assert indices_of_user([1, 2, 1, None], 1) == [0, 2]
-    assert indices_of_absent([1, 2, 3, None], {2}) == [0, 2]  # senza richiedente: resta
 
 
 def test_brano_precedente_a_coda_finita_riprende_l_ultimo_finito():
@@ -207,7 +185,7 @@ async def test_skipto_toglie_i_brani_prima_e_salta(monkeypatch):
 
     assert [t.title for t in player.queue] == ["c"]
     player.skip.assert_awaited_once()
-    assert "c" in i.response.inviati[0]
+    assert "c" in i.followup.inviati[0]
 
 
 @pytest.mark.asyncio
@@ -218,35 +196,6 @@ async def test_skipto_oltre_la_coda_rifiuta(monkeypatch):
     await cog.skipto.callback(cog, i, numero=5)
     assert "1 brani" in i.response.inviati[0]
     player.skip.assert_not_called()
-    assert len(player.queue) == 1
-
-
-@pytest.mark.asyncio
-async def test_remove_intervallo_utente_e_assenti(monkeypatch):
-    player = _player([_t("a", 1), _t("b", 2), _t("c", 2), _t("d", 3), _t("e")])
-    cog = _cog(player, monkeypatch)
-
-    i = _Interazione()
-    await cog.remove.callback(cog, i, da=2, a=3)
-    assert [t.title for t in player.queue] == ["a", "d", "e"]
-
-    i = _Interazione()
-    await cog.remove.callback(cog, i, utente=SimpleNamespace(id=1))
-    assert [t.title for t in player.queue] == ["d", "e"]
-
-    i = _Interazione(membri=[99])  # l'utente 3 non è nel canale
-    await cog.remove.callback(cog, i, assenti=True)
-    assert [t.title for t in player.queue] == ["e"]  # "e" non ha richiedente noto: resta
-
-
-@pytest.mark.asyncio
-async def test_remove_vuole_un_solo_criterio(monkeypatch):
-    player = _player([_t("a", 1)])
-    cog = _cog(player, monkeypatch)
-    for kw in ({}, {"da": 1, "assenti": True}, {"a": 2}):
-        i = _Interazione()
-        await cog.remove.callback(cog, i, **kw)
-        assert "UN solo criterio" in i.response.inviati[0]
     assert len(player.queue) == 1
 
 
@@ -301,13 +250,9 @@ async def test_history_mostra_gli_ultimi_senza_il_corrente(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_queue_cerca_e_mostra_le_quote(monkeypatch):
+async def test_queue_mostra_le_quote(monkeypatch):
     player = _player([_t("Blue Monday", 1), _t("Red", 1), _t("Bluebird", 2)], corrente=_t("x"))
     cog = _cog(player, monkeypatch)
-
-    i = _Interazione()
-    await cog.queue_command.callback(cog, i, cerca="blue")
-    assert i.response.embeds[0].description == "1. Blue Monday\n3. Bluebird"
 
     i = _Interazione()
     await cog.queue_command.callback(cog, i)
@@ -315,9 +260,26 @@ async def test_queue_cerca_e_mostra_le_quote(monkeypatch):
     assert campo.name == "Chi ha messo cosa" and "<@1> — 2 brani (67%)" in campo.value
     assert len(campo.value) <= 1024
 
-    i = _Interazione()
-    await cog.queue_command.callback(cog, i, cerca="zzz")
-    assert "Nessun brano" in i.response.embeds[0].description
+
+def test_remove_e_la_ricerca_nella_coda_non_esistono():
+    """SPEC §9.4: scoperti per richiesta esplicita dell'owner."""
+    assert not hasattr(MusicCog, "remove")
+    assert "cerca" not in inspect.signature(MusicCog.queue_command.callback).parameters
+
+
+@pytest.mark.asyncio
+async def test_skipto_e_previous_fanno_defer_prima_del_lavoro_lento(monkeypatch):
+    for nome, kw in (("skipto", {"numero": 2}), ("previous", {})):
+        ordine = []
+        player = _player([_t("a"), _t("b")], corrente=_t("ora"), storico=[_t("p"), _t("ora")])
+        player.skip = AsyncMock(side_effect=lambda: ordine.append("lavoro"))
+        player.play = AsyncMock(side_effect=lambda *a, **k: ordine.append("lavoro"))
+        cog = _cog(player, monkeypatch)
+        i = _Interazione()
+        i.response.defer = AsyncMock(side_effect=lambda **k: ordine.append("defer"))
+        await getattr(cog, nome).callback(cog, i, **kw)
+        assert ordine == ["defer", "lavoro"], nome
+        assert i.followup.inviati and not i.response.inviati
 
 
 @pytest.mark.asyncio

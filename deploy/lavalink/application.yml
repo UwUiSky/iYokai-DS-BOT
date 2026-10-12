@@ -21,6 +21,10 @@ lavalink:
       youtube: false      # lo fa il plugin, non il modulo integrato
       soundcloud: true
       bandcamp: true
+      # http serve per i link diretti a un file audio (SPEC 9.5 "URL"). Il bot
+      # rifiuta prima gli indirizzi interni (core/safe_http.url_e_sicuro), ma non
+      # vede i redirect: sull'host di Lavalink blocca comunque in uscita le reti
+      # private e 169.254.169.254 (vedi README, "Rete"). Metti false se non servono.
       http: true
       local: true         # serve per gli inediti della radio (/audio/local)
     bufferDurationMs: 400

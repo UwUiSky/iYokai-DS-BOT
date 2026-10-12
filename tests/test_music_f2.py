@@ -1070,7 +1070,10 @@ async def test_il_worker_scollegato_a_mano_libera_la_sessione_e_spostato_la_segu
     bot = SimpleNamespace(user=SimpleNamespace(id=42))
     guild = SimpleNamespace(id=900)
     membro = SimpleNamespace(id=42, guild=guild)
-    stato = lambda cid: SimpleNamespace(channel=None if cid is None else SimpleNamespace(id=cid))
+
+    def stato(cid):
+        return SimpleNamespace(channel=None if cid is None else SimpleNamespace(id=cid))
+
     with patch.object(modulo, "music_session_repo", _Repo()):
         await handle_worker_voice_update(_F(), bot, membro, stato(11), stato(None))
         await handle_worker_voice_update(_F(), bot, membro, stato(11), stato(22))
@@ -1087,3 +1090,261 @@ def test_i_file_gitignore_coprono_plugin_e_inediti_di_lavalink():
     testo = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "deploy/lavalink/plugins/" in testo
     assert "deploy/lavalink/radio-local/" in testo
+
+
+# ---------------------------------------------------------------------------
+# Revisore capo (13/10): URL sicuri, attesa limitata, buchi di copertura
+# ---------------------------------------------------------------------------
+class _ClienteVero:
+    """Quanto basta a wavelink per collegare un nodo vero."""
+
+    user = SimpleNamespace(id=111)
+
+    async def wait_until_ready(self):
+        pass
+
+    def dispatch(self, *a, **k):
+        pass
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "indirizzo",
+    [
+        "http://127.0.0.1:2333/v4/info",
+        "http://10.0.0.5/a.mp3",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://localhost/a.mp3",
+        "http://[::1]/a.mp3",
+        "http://192.168.1.10/a.mp3",
+    ],
+)
+async def test_un_url_interno_non_arriva_mai_a_lavalink(indirizzo):
+    with patch("wavelink.Playable.search", new=AsyncMock()) as ricerca, patch(
+        "wavelink.Pool.fetch_tracks", new=AsyncMock()
+    ) as grezzo:
+        assert await MusicCog._cerca_su(indirizzo, object()) is None
+    ricerca.assert_not_called()
+    grezzo.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_un_url_pubblico_arriva_a_lavalink():
+    nodo = object()
+    with patch("wavelink.Playable.search", new=AsyncMock(return_value=["x"])) as ricerca:
+        assert await MusicCog._cerca_su("https://93.184.216.34/a.mp3", nodo) == ["x"]
+    ricerca.assert_awaited_once_with("https://93.184.216.34/a.mp3", node=nodo)
+
+
+@pytest.mark.asyncio
+async def test_il_nome_host_che_risolve_a_un_ip_interno_e_rifiutato():
+    risolvi = AsyncMock(return_value=False)
+    with patch.object(player_module, "url_e_sicuro", new=risolvi), patch(
+        "wavelink.Playable.search", new=AsyncMock()
+    ) as ricerca:
+        assert await MusicCog._cerca_su("https://nome.finto.test/a.mp3", object()) is None
+    risolvi.assert_awaited_once()
+    ricerca.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_l_avviso_del_nodo_locale_ha_un_attesa_limitata_con_un_nodo_morto_vero(
+    monkeypatch, caplog
+):
+    """Porta chiusa: i task di collegamento non finiscono mai, l'avviso arriva comunque."""
+    monkeypatch.setattr(player_module, "config", SimpleNamespace(MAIN_RADIO_LOCAL_FOLDER="/x"))
+    g = MusicNodeManager(
+        [],
+        LavalinkNodeConfig("http://127.0.0.1:1", "x"),
+        retries=1,
+        attesa_pronto=0.3,
+        pause_riprova=(30.0,),
+    )
+    task = g.avvia(_ClienteVero(), MAIN_KEY)
+    try:
+        with caplog.at_level("WARNING", logger="iyokai.music"):
+            await asyncio.wait_for(
+                player_module.avvisa_se_manca_il_nodo_locale(g, task, attesa=1.0), timeout=10
+            )
+        assert any("nodo Lavalink locale non è collegato" in r.getMessage() for r in caplog.records)
+        assert all(not t.done() for t in task)  # il ricollegamento prosegue in background
+    finally:
+        await g.close()
+
+
+@pytest.mark.parametrize(
+    "brutta",
+    ["ciao\x00mondo", "ciao\x1b[0m", "a\tb", "a\nb", "file:x", "FILE:/etc/passwd", "file:///x"],
+)
+def test_classify_query_rifiuta_caratteri_di_controllo_e_file(brutta):
+    assert classify_query(brutta) == "rifiutata"
+
+
+def test_paginate_lines_rispetta_ogni_limite_da_solo():
+    # solo il tetto di righe
+    pagine = paginate_lines(["a"] * 30, max_chars=3500, max_lines=25)
+    assert [p.count("\n") + 1 for p in pagine] == [25, 5]
+    # solo il tetto di caratteri (poche righe lunghe)
+    pagine = paginate_lines(["x" * 100] * 10, max_chars=350, max_lines=25)
+    assert all(len(p) <= 350 for p in pagine) and len(pagine) > 1
+    # una riga piu' lunga del tetto viene tagliata
+    (unica,) = paginate_lines(["y" * 5000], max_chars=3500, max_lines=25)
+    assert len(unica) <= 3500
+
+
+def _con_impostazioni(monkeypatch, **chiavi):
+    async def leggi(guild_id, key, default=None):
+        return chiavi.get(key, default)
+
+    monkeypatch.setattr(
+        player_module,
+        "db",
+        SimpleNamespace(is_module_active_for_guild=AsyncMock(return_value=True), get_guild_setting=leggi),
+    )
+
+
+class _Lista(list):
+    """Una playlist finta: lista di tracce con un nome."""
+
+    name = "Lista"
+
+
+def _playlist(durate_ms):
+    return _Lista(
+        SimpleNamespace(title=f"T{n}", length=ms, extras=None, is_stream=False)
+        for n, ms in enumerate(durate_ms)
+    )
+
+
+def _cog_per_play(monkeypatch, **chiavi):
+    _con_impostazioni(monkeypatch, **chiavi)
+    monkeypatch.setattr(wavelink, "Playlist", _Lista)
+    canale = _CanaleDelWorker(11)
+    guild = _GuildDelWorker(canale)
+    worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild)
+    flotta = _FlottaDi(worker)
+    gestore = _Gestore()
+    gestore.nodi["w1"] = object()
+    return MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=gestore)), flotta, canale
+
+
+@pytest.mark.asyncio
+async def test_playlist_con_brani_oltre_la_durata_massima_li_scarta_e_lo_dice(monkeypatch):
+    cog, flotta, canale = _cog_per_play(monkeypatch, music_max_track_minutes=5)
+    lista = _playlist([60_000, 3_600_000, 120_000])  # il 2o dura un'ora
+    i = _Interazione()
+    with patch.object(cog, "_cerca", new=AsyncMock(return_value=(lista, object()))):
+        await cog.play.callback(cog, i, query="https://93.184.216.34/lista")
+
+    messa = canale.player.queue.put_wait.await_args.args[0]
+    assert [t.title for t in messa] == ["T0", "T2"]
+    assert "1 oltre la durata massima" in i.followup.inviati[0]
+
+
+@pytest.mark.asyncio
+async def test_playlist_tutta_oltre_la_durata_massima_non_fa_entrare_il_bot(monkeypatch):
+    cog, flotta, canale = _cog_per_play(monkeypatch, music_max_track_minutes=1)
+    i = _Interazione()
+    with patch.object(
+        cog, "_cerca", new=AsyncMock(return_value=(_playlist([600_000, 900_000]), object()))
+    ):
+        await cog.play.callback(cog, i, query="https://93.184.216.34/lista")
+
+    assert canale.cls is None  # niente connect
+    assert "durata massima di 1 minuti" in i.followup.inviati[0]
+    assert flotta.rilasci == [(900, 11)]
+
+
+@pytest.mark.asyncio
+async def test_playlist_in_cima_mette_le_tracce_in_testa_nello_stesso_ordine(monkeypatch):
+    cog, flotta, canale = _cog_per_play(monkeypatch)
+    lista = _playlist([1000, 1000, 1000])
+    player = SimpleNamespace(
+        queue=SimpleNamespace(
+            put_at=lambda pos, t: coda.insert(pos, t), put_wait=AsyncMock(), is_empty=False
+        ),
+        playing=True,
+        node=object(),
+    )
+    coda = [SimpleNamespace(title="gia")]
+    canale._player = player
+    cog.bot.music_fleet.worker_bot.get_guild = lambda gid: SimpleNamespace(
+        voice_client=player, get_channel=lambda c: canale
+    )
+    i = _Interazione()
+    with patch.object(cog, "_cerca", new=AsyncMock(return_value=(lista, player.node))):
+        await cog.play.callback(cog, i, query="https://93.184.216.34/lista", in_cima=True)
+
+    assert [t.title for t in coda] == ["T0", "T1", "T2", "gia"]
+    player.queue.put_wait.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_join_fuori_dal_canale_permesso_e_rifiutato_senza_assegnare_un_worker(monkeypatch):
+    _con_impostazioni(monkeypatch, music_allowed_voice_channel_id=555)
+    flotta = _FlottaDi(SimpleNamespace(worker_index=1))
+    assegnazioni = []
+    flotta.get_or_assign_worker_for_channel = AsyncMock(side_effect=assegnazioni.append)
+    cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=_Gestore()))
+    i = _Interazione(canale_id=11)  # non e' il 555
+
+    await cog.join.callback(cog, i)
+
+    assert i.followup.inviati or i.response.inviati
+    assert "555" in (i.followup.inviati + i.response.inviati)[0]
+    flotta.get_or_assign_worker_for_channel.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_join_nel_canale_permesso_procede(monkeypatch):
+    _con_impostazioni(monkeypatch, music_allowed_voice_channel_id=11)
+    canale = _CanaleDelWorker(11)
+    guild = _GuildDelWorker(canale)
+    worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild)
+    flotta = _FlottaDi(worker)
+    gestore = _Gestore()
+    gestore.nodi["w1"] = object()
+    cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=gestore))
+    i = _Interazione(canale_id=11)
+
+    await cog.join.callback(cog, i)
+
+    assert canale.cls is not None
+    assert "Sono entrato" in i.followup.inviati[-1]
+
+
+@pytest.mark.asyncio
+async def test_la_radio_non_parte_due_volte_mentre_e_gia_in_avvio(monkeypatch, modulo_attivo):
+    guild = SimpleNamespace(id=5, voice_client=None)
+    cog = MusicCog(bot=SimpleNamespace(user=SimpleNamespace(id=42)))
+    cog._avvia_radio = AsyncMock(return_value="ok")
+    cog._radio_in_avvio.add(5)  # /owner radio start sta gia' avviando
+    dopo = SimpleNamespace(channel=SimpleNamespace(id=77))
+
+    await cog.on_voice_state_update(
+        SimpleNamespace(id=42, guild=guild), SimpleNamespace(channel=None), dopo
+    )
+
+    assert not cog.task_in_background
+    cog._avvia_radio.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_la_radio_non_parte_da_sola_a_modulo_spento(monkeypatch):
+    monkeypatch.setattr(
+        player_module,
+        "db",
+        SimpleNamespace(is_module_active_for_guild=AsyncMock(return_value=False)),
+    )
+    guild = SimpleNamespace(id=5, voice_client=None)
+    cog = MusicCog(bot=SimpleNamespace(user=SimpleNamespace(id=42)))
+    cog._avvia_radio = AsyncMock(return_value="ok")
+
+    await cog.on_voice_state_update(
+        SimpleNamespace(id=42, guild=guild),
+        SimpleNamespace(channel=None),
+        SimpleNamespace(channel=SimpleNamespace(id=77)),
+    )
+
+    assert not cog.task_in_background
+    cog._avvia_radio.assert_not_called()

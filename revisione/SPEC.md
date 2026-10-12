@@ -824,27 +824,27 @@ sessione perché non richiesto esplicitamente.
   sorgente di wavelink e bloccato con un test di regressione che
   fallirebbe se una futura versione cambiasse questo comportamento.
   **Permanentemente descoperti** (richiesta esplicita dell'utente,
-  NON da rimettere in lista in futuro): search distinta da play,
-  forceskip, remove, move, seek, lyrics
+  NON da rimettere in lista in futuro): search distinta da play
+  (nemmeno `/music queue cerca:`), forceskip, `/music remove`, move,
+  seek, lyrics. (13/10: `/music remove` e `queue cerca` erano stati
+  scritti in F2 per errore e sono stati tolti; domanda per l'owner in
+  VERIFICA_LIVE.)
   → **Stato 04/10:** `/stop` e `/skip` da un altro canale (REVIEW §4); nessun `defer` (LIM-25); titolo oltre 256 (LIM-21).
 - `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
-  SoundCloud, URL, file locali — YouTube funziona via la ricerca di
-  default di Lavalink; Spotify richiede un plugin (LavaSrc) sul nodo
-  Lavalink usato, non verificabile se presente su un nodo pubblico di
-  terzi senza controllarlo direttamente — **fallback ORA predisposto**
-  (`MusicCog._search_with_spotify_fallback`, `core.music_logic.
-  is_spotify_query`): se una query Spotify non produce risultati sui
-  nodi pubblici, si ritenta UNA volta pinnata specificamente sul nodo
-  locale/self-hostato (`LOCAL_NODE_IDENTIFIER`, lo stesso già usato
-  per i file locali qui sotto) — funziona non appena l'utente
-  configura lì un nodo con LavaSrc installato (`LAVALINK_HOST/PORT/
-  PASSWORD` in `.env`), nessun altro codice da scrivere quando lo
-  farà. Fino ad allora il comportamento resta identico a oggi (il
-  fallback semplicemente non trova nulla, come un nodo pubblico senza
-  Spotify farebbe comunque). **File locali ORA fatti** per la radio
-  condivisa (`/nonstop-main add-local`), instradati specificamente
-  verso il nodo Lavalink locale — i nodi pubblici non hanno accesso
-  al filesystem della macchina
+  SoundCloud, URL, file locali — **un nodo wavelink per bot** (D10): il
+  bot principale e ogni worker hanno i propri nodi, uno per server in
+  `LAVALINK_NODES` (nessun nodo pubblico nel codice) più il nodo
+  locale/self-hostato (`LAVALINK_HOST/PORT/PASSWORD`, identificatore
+  `iyokai-local-node@<bot>`). La ricerca gira sul nodo del bot che
+  suonerà (`MusicCog._cerca`): testo libero → sempre `ytmsearch:`;
+  URL http(s) solo se `core.safe_http.url_e_sicuro` li ammette (niente
+  reti interne); URI `spotify:` passano così come sono (servono
+  LavaSrc sul nodo, che oggi non è attivo: senza risultati si ritenta
+  una volta sul nodo locale se c'è); `local:`, percorsi e `file:` sono
+  rifiutati (`classify_query`). **File locali** solo per la radio
+  condivisa (`/owner radio add-local`), instradati al nodo locale
+  (Lavalink >= 4.2.0, `LAVALINK_LOCAL_ROOT`); i nodi pubblici non
+  hanno accesso al filesystem della macchina
   → **Stato 04/10:** scelta del nodo al contrario (LIM-42); `local:` e `spotify:` diventano ricerche YouTube (LIM-43, BUG-10).
 - `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
   scartato su richiesta esplicita dell'utente, non un limite tecnico

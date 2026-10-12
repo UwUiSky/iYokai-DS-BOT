@@ -9,7 +9,6 @@ Un server HTTP finto in locale, nessuna rete vera.
 import importlib.util
 import pathlib
 
-import aiohttp
 import pytest
 from aiohttp import web
 

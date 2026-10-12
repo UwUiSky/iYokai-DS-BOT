@@ -84,3 +84,23 @@ async def test_clear_all_svuota_le_righe_vecchie_all_avvio(repo):
 
     assert await occupati(repo) == set()
     assert await repo.get_worker_for_channel(100, 1) is None
+
+
+@pytest.mark.asyncio
+async def test_move_session_sposta_la_riga_nel_canale_libero(repo):
+    await assegna(repo, 100, 1, worker_index=2)
+    await repo.move_session(100, 1, 5)
+
+    assert await repo.get_worker_for_channel(100, 1) is None
+    assert await repo.get_worker_for_channel(100, 5) == 2
+
+
+@pytest.mark.asyncio
+async def test_move_session_con_canale_di_arrivo_gia_occupato_non_duplica_e_non_viola(repo):
+    await assegna(repo, 100, 1, worker_index=2)
+    await assegna(repo, 100, 5, worker_index=3)  # nel canale di arrivo c'e' gia' un altro worker
+
+    await repo.move_session(100, 1, 5)  # non deve sollevare (chiave unica)
+
+    assert await repo.get_worker_for_channel(100, 1) is None
+    assert await repo.get_worker_for_channel(100, 5) == 3  # la sessione che c'era resta

@@ -52,6 +52,10 @@ SETTINGS_VALIDE = {
     "backup_restore_mode": "classic_invite",
     "backup_auto_invite_on_join": True,
     "logging_soundboard_watermark": "2026-10-01T12:00:00+00:00",
+    "music_max_volume": 150,
+    "music_max_track_minutes": 0,
+    "music_stay_when_queue_ends": False,
+    "music_allowed_voice_channel_id": 161616161616161616,
 }
 
 
@@ -117,6 +121,14 @@ class TestErroreSchemaImport:
             {"logging_soundboard_watermark": "ieri"},
             {"logging_soundboard_watermark": "2026-10-01\x00"},
             {"logging_soundboard_watermark": 5},
+            {"music_max_volume": 201},
+            {"music_max_volume": -1},
+            {"music_max_volume": True},
+            {"music_max_volume": "100"},
+            {"music_max_track_minutes": 1441},
+            {"music_max_track_minutes": 1.5},
+            {"music_stay_when_queue_ends": 1},
+            {"music_allowed_voice_channel_id": 0},
         ],
     )
     def test_valore_di_tipo_sbagliato_viene_rifiutato(self, settings):

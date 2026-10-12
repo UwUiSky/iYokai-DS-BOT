@@ -20,10 +20,10 @@ MAX_VOLUME = 200
 MAX_TRACK_MINUTES = 1440  # un giorno: oltre non ha senso un tetto
 
 
-KEY_MAX_VOLUME = "music_max_volume"
-KEY_MAX_TRACK_MINUTES = "music_max_track_minutes"
-KEY_STAY_WHEN_QUEUE_ENDS = "music_stay_when_queue_ends"
-KEY_ALLOWED_CHANNEL = "music_allowed_voice_channel_id"
+SETTING_MAX_VOLUME = "music_max_volume"
+SETTING_MAX_TRACK_MINUTES = "music_max_track_minutes"
+SETTING_STAY_WHEN_QUEUE_ENDS = "music_stay_when_queue_ends"
+SETTING_ALLOWED_CHANNEL = "music_allowed_voice_channel_id"
 
 
 @dataclass(frozen=True)
@@ -83,12 +83,12 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
     get = database.get_guild_setting
     return MusicSettings(
         guild_id=guild_id,
-        max_volume=max(0, min(MAX_VOLUME, int(await get(guild_id, KEY_MAX_VOLUME, MAX_VOLUME)))),
+        max_volume=max(0, min(MAX_VOLUME, int(await get(guild_id, SETTING_MAX_VOLUME, MAX_VOLUME)))),
         max_track_minutes=max(
-            0, min(MAX_TRACK_MINUTES, int(await get(guild_id, KEY_MAX_TRACK_MINUTES, 0)))
+            0, min(MAX_TRACK_MINUTES, int(await get(guild_id, SETTING_MAX_TRACK_MINUTES, 0)))
         ),
-        stay_when_queue_ends=bool(await get(guild_id, KEY_STAY_WHEN_QUEUE_ENDS, False)),
-        allowed_voice_channel_id=await get(guild_id, KEY_ALLOWED_CHANNEL, None),
+        stay_when_queue_ends=bool(await get(guild_id, SETTING_STAY_WHEN_QUEUE_ENDS, False)),
+        allowed_voice_channel_id=await get(guild_id, SETTING_ALLOWED_CHANNEL, None),
     )
 
 
