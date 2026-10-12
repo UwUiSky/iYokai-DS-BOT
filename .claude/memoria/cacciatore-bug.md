@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-11/10/2026 · ultimo giro: `feat/giro-eco` (decadimento a blocchi, XP vocale, /level impostazioni, rank card)
+11/10/2026 · ultimo giro: `feat/giro-mod` (tempban modi, appelli, clear filtri, verify opzioni, automod modifiche)
 
 ## In corso
 - Niente a metà. Giro eco chiuso. Prove: scratchpad/cbeco (p1 decadimento, p2 corse, p3 deadlock, p6 card, p7 migrazioni, test_prove_eco*.py).
@@ -16,6 +16,7 @@
 - feat/66-utility: 0 alti. Sticky: il blocco per canale regge (10 messaggi = 1 invio; senza blocco 8). Ping D12, lunghezze dopo segnaposto, 25/2000/4096, SQL condizionato, modules_updated: a posto. Rilievi: role menu pubblica-poi-salva perde opzioni con due admin; `ping_ruoli` si azzera al toggle; `/sticky-set` durante repost; 2 test "doppio clic" dei suggerimenti vuoti. Test instabile del canale clan = test fragile, non codice.
 - feat/giro-logt: 1 alto (riga fantasma del router dopo canale generale cancellato), 6 medi (post forum doppi, avviso perso, audit per tempo, snipe di mod, ticket+forum).
 - feat/giro-eco: 0 alti. SQL del decadimento = funzione pura (50000 saldi fino a 9e18), corse e doppio versamento a posto. Medi: deadlock batch vocale vs decadimento, "sostituisci" toglie senza dare, categoria esclusa inutile, migrazioni rinumerate (versione per numero), test senza permessi/lock.
+- feat/giro-mod: 2 alti (secondo isolamento sovrascrive i ruoli salvati; clear `channel` senza permessi sul canale) + crash tra edit ruoli e stato; medi: job vecchio rilascia isolamento nuovo, appello accettato revoca tutto/unban fallito, verify non-verificato=verifica, invito perso con DM chiusi. IDOR appelli e permessi Accetta/Rifiuta: a posto.
 
 ## Cose imparate
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
@@ -39,3 +40,4 @@
 ## Aperto
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).
 - Rilievi senza fix: issue #133–#137 e nuovi di 11/10 (vedi `rapporti/bug.md`).
+- Giro mod: i comandi di sanzione devono salvare lo stato PRIMA dell'azione irreversibile; UPSERT di stato da membro gia' in stato = perdita dati. Prove: `Scena` di test_moderation_tempban_modi riusabile.
