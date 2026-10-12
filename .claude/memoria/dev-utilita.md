@@ -1,7 +1,7 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-11/10/2026 · ramo feat/66-utility (base 90bbeb2) · G6 chiuso, ramo da pushare
+12/10/2026 · ramo feat/r2-util (base a85523c) · #71 F1 chiusa (15.1, 15.2), ramo da pushare
 
 ## In corso
 - Previsione: 6 gruppi (G1 sticky/benvenuto/programmati/promemoria; G2 role menu; G3 suggerimenti+richieste;
@@ -9,6 +9,7 @@
 - Giro #66 chiuso (smoke --base 90bbeb2: 420 verdi). Prossimo: `/gestione` (greetings, role_menus), `nonstop-main` -> `/owner radio`, `/report`, `registra_comandi_del_cog` salti `owner`; poi F9 (autoroles, starboard, 10.8/10.14/10.15/10.17) e F13 (scheletri).
 
 ## Fatto
+- #71 F1: 15.1 (defer + Range 1-100) e 15.2 (cache 24h, allegato, credito, pausa 10s) in cogs/fun/entertainment.py + core/image_search_fetcher.py; resto di §15 non esiste in F1.
 - #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7, G3 10.9, G4 10.12, G5 10.13 fatti (AUDIT_UTILITA.md).
 
 ## Cose imparate
@@ -31,8 +32,10 @@
 - `test_repository_callers`: ogni metodo di repo deve avere un chiamante di produzione.
 - `COMMAND_LIST.md` va rigenerato (scripts/generate_command_list.py) quando cambia l'albero.
 
+- Fun/Pixabay: la cache è in memoria (si perde al riavvio); `Range[...]` in get_type_hints è un oggetto con min_value/max_value; ComandoDiGruppo: usare `.callback`.
+
 ## Aperto
 - - Menu dei ruoli: nessun comando per elencare gli ID dei menu (menu-aggiungi chiede `menu_id` a mano); un elenco richiederebbe un sottocomando in `/gestione ruoli` (controllare il tetto 25).
-- Fasi future saltate: 10.8 (F9), 10.11 (F8, già fatto come cerca-comando), 10.14, 10.15, 10.17 (F9); #71 voci Fun non in questi file.
+- Fasi future saltate: 10.8 (F9), 10.11 (F8, già fatto come cerca-comando), 10.14, 10.15, 10.17 (F9).
 - Scheletri (counters, forms, starboard, birthdays, autoroles, invites, activity_stats, autoresponder, custom_commands, embed_builder): F9/F13.
 - Registro dati personali (F5): aggiungere `command_usage`. Menzioni di `/owner` non mostrate nel pannello.

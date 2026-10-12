@@ -28,7 +28,7 @@ async def server_pixabay_finto():
             {
                 "total": 1,
                 "totalHits": 1,
-                "hits": [{"webformatURL": "https://pixabay.com/a.jpg", "tags": "gatto"}],
+                "hits": [{"webformatURL": "https://esempio.invalid/a.jpg", "tags": "gatto"}],
             }
         )
 
@@ -53,7 +53,7 @@ async def test_chiave_vuota_restituisce_none_senza_contattare_il_server(server_p
     base = str(server.make_url("/"))
     service = ImageSearchFetcherService(search_url=f"{base}api/")
     try:
-        risultato = await service.fetch_image_url("", "gatto", random.Random(1))
+        risultato = await service.fetch_image("", "gatto", random.Random(1))
         assert risultato is None
         assert stato["ultima_query"] is None
     finally:
@@ -61,13 +61,13 @@ async def test_chiave_vuota_restituisce_none_senza_contattare_il_server(server_p
 
 
 @pytest.mark.asyncio
-async def test_ricerca_con_risultati_restituisce_un_url(server_pixabay_finto):
+async def test_ricerca_invia_query_e_safesearch_e_scarta_host_non_ammessi(server_pixabay_finto):
     server, stato = server_pixabay_finto
     base = str(server.make_url("/"))
     service = ImageSearchFetcherService(search_url=f"{base}api/")
     try:
-        risultato = await service.fetch_image_url("chiave-finta", "gatto", random.Random(1))
-        assert risultato == "https://pixabay.com/a.jpg"
+        risultato = await service.fetch_image("chiave-finta", "gatto", random.Random(1))
+        assert risultato is None  # host non ammesso: nessun download
         assert stato["ultima_query"] == "gatto"
         assert stato["ultima_safesearch"] == "true"
     finally:
@@ -80,7 +80,7 @@ async def test_ricerca_senza_risultati_restituisce_none(server_pixabay_finto):
     base = str(server.make_url("/"))
     service = ImageSearchFetcherService(search_url=f"{base}api/")
     try:
-        risultato = await service.fetch_image_url(
+        risultato = await service.fetch_image(
             "chiave-finta", "nessun-risultato", random.Random(1)
         )
         assert risultato is None
@@ -94,7 +94,7 @@ async def test_status_non_200_restituisce_none(server_pixabay_finto):
     base = str(server.make_url("/"))
     service = ImageSearchFetcherService(search_url=f"{base}errore")
     try:
-        assert await service.fetch_image_url("chiave-finta", "gatto", random.Random(1)) is None
+        assert await service.fetch_image("chiave-finta", "gatto", random.Random(1)) is None
     finally:
         await service.close()
 
@@ -103,6 +103,6 @@ async def test_status_non_200_restituisce_none(server_pixabay_finto):
 async def test_server_irraggiungibile_restituisce_none():
     service = ImageSearchFetcherService(search_url="http://127.0.0.1:1/non-esiste")
     try:
-        assert await service.fetch_image_url("chiave-finta", "gatto", random.Random(1)) is None
+        assert await service.fetch_image("chiave-finta", "gatto", random.Random(1)) is None
     finally:
         await service.close()

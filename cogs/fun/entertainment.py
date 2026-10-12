@@ -12,6 +12,7 @@ anche senza dover allegare un'immagine ogni volta. I comandi immagine
 passano tutti da `_rispondi_con_immagine` (SEC-20): allegato
 controllato prima di scaricarlo, `defer()`, risposta con followup.
 
+Funzioni coperte: SPEC §16.1-16.4, §16.8-16.9; M 15.1, M 15.2.
 Tutti i comandi stanno nel gruppo condiviso `/fun` (core/command_groups.py);
 `/fun ship` e `/fun rate` sono in cogs/fun/ship_rate.py.
 
@@ -30,13 +31,11 @@ test con un server aiohttp finto, stesso schema già usato per
 core/twitch_watcher.py/core/youtube_watcher.py.
 """
 
-# DA FARE (issue #71, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §15 (Fun).
-
 from __future__ import annotations
 
 import io
 import random
+import time
 
 import discord
 from discord import app_commands
@@ -55,6 +54,8 @@ from core.premium import PremiumModule, registry
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 
 MODULE_FUN = "fun"
+PAUSA_RICERCA_IMMAGINI_SECONDI = 10
+MAX_UTENTI_NELLA_PAUSA = 1000
 
 _RPS_CHOICE_DISPLAY = {"sasso": "🪨 Sasso", "carta": "📄 Carta", "forbici": "✂️ Forbici"}
 
@@ -63,6 +64,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._rng = random.Random()
+        self._ultima_ricerca_immagini: dict[int, float] = {}
 
     async def _modulo_attivo(self, interaction: discord.Interaction) -> bool:
         guild = interaction.guild
@@ -354,9 +356,11 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         if not await self._modulo_attivo(interaction):
             return
 
+        await interaction.response.defer()
+
         url = await animal_fetcher.fetch_image_url(specie.value)
         if url is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non sono riuscito a recuperare un'immagine in questo momento. Riprova più tardi.",
                 ephemeral=True,
             )
@@ -364,11 +368,31 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         embed = discord.Embed(title=f"{specie.name} casuale", color=discord.Color.orange())
         embed.set_image(url=url)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+
+    def _secondi_di_pausa(self, utente_id: int) -> int:
+        """Secondi da aspettare prima di una nuova ricerca (0 = via libera)."""
+        ultima = self._ultima_ricerca_immagini.get(utente_id)
+        if ultima is None:
+            return 0
+        restano = PAUSA_RICERCA_IMMAGINI_SECONDI - (time.monotonic() - ultima)
+        return max(0, int(restano) + 1) if restano > 0 else 0
+
+    def _segna_ricerca(self, utente_id: int) -> None:
+        ora = time.monotonic()
+        if len(self._ultima_ricerca_immagini) >= MAX_UTENTI_NELLA_PAUSA:
+            self._ultima_ricerca_immagini = {
+                u: t
+                for u, t in self._ultima_ricerca_immagini.items()
+                if ora - t < PAUSA_RICERCA_IMMAGINI_SECONDI
+            }
+        self._ultima_ricerca_immagini[utente_id] = ora
 
     @comando_di_gruppo("fun", nome="search-image", descrizione="Cerca un'immagine SFW su Pixabay.")
-    @app_commands.describe(query="Cosa vuoi cercare?")
-    async def search_image(self, interaction: discord.Interaction, query: str) -> None:
+    @app_commands.describe(query="Cosa vuoi cercare? (massimo 100 caratteri)")
+    async def search_image(
+        self, interaction: discord.Interaction, query: app_commands.Range[str, 1, 100]
+    ) -> None:
         if not await self._modulo_attivo(interaction):
             return
 
@@ -380,18 +404,35 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             )
             return
 
-        url = await image_search_fetcher.fetch_image_url(
+        attesa = self._secondi_di_pausa(interaction.user.id)
+        if attesa:
+            await interaction.response.send_message(
+                f"Aspetta {attesa} secondi prima di una nuova ricerca.", ephemeral=True
+            )
+            return
+        self._segna_ricerca(interaction.user.id)
+
+        await interaction.response.defer()
+
+        risultato = await image_search_fetcher.fetch_image(
             config.PIXABAY_API_KEY, query, self._rng
         )
-        if url is None:
-            await interaction.response.send_message(
-                f"Nessun risultato per «{query}».", ephemeral=True
+        if risultato is None:
+            await interaction.followup.send(
+                "Nessun risultato per questa ricerca (o Pixabay non risponde).", ephemeral=True
             )
             return
 
-        embed = discord.Embed(title=f"Risultato per «{query}»", color=discord.Color.blue())
-        embed.set_image(url=url)
-        await interaction.response.send_message(embed=embed)
+        nome_file = f"pixabay.{risultato.estensione}"
+        embed = discord.Embed(
+            title="Risultato della ricerca",
+            description=f"Immagine da [Pixabay]({risultato.pagina})",
+            color=discord.Color.blue(),
+        )
+        embed.set_image(url=f"attachment://{nome_file}")
+        await interaction.followup.send(
+            embed=embed, file=discord.File(io.BytesIO(risultato.dati), filename=nome_file)
+        )
 
 
 async def setup(bot: commands.Bot) -> None:
