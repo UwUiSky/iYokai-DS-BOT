@@ -406,11 +406,10 @@ async def test_on_guild_join_server_atteso_da_backup_job_viene_finalizzato_non_c
         )
         assert riga is None
 
-        # Ma la finalizzazione vera E' avvenuta: Creator ha trasferito
-        # la proprietà ed è uscito.
-        assert guild_lato_creator.leave_chiamato is True
+        # D8: il Creator resta (tiene il backup aggiornato), nessuna cessione.
+        assert guild_lato_creator.leave_chiamato is False
         job = await repo_di_test.get_job(job_id)
-        assert job.status == "completed"
+        assert job.status == "running"
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 600000003")
         await database.pool.execute("DELETE FROM backup_jobs")

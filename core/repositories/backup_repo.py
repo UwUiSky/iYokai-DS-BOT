@@ -149,6 +149,19 @@ class BackupRepository:
         )
         return self._row_to_pair(row) if row is not None else None
 
+    async def is_backup_of(self, main_guild_id: int, guild_id: int) -> bool:
+        """True se guild_id è il backup registrato di main_guild_id, oggi o
+        prima di una promozione (coppia storica, BUG-34)."""
+        coppia = await self.get_pair(main_guild_id)
+        if coppia is not None and coppia.backup_guild_id == guild_id:
+            return True
+        storica = await self._pool.fetchval(
+            "SELECT 1 FROM backup_pair_history WHERE old_main_guild_id = $1 AND promoted_guild_id = $2",
+            main_guild_id,
+            guild_id,
+        )
+        return storica is not None
+
     async def promote_backup_to_main(self, old_main_guild_id: int, new_main_guild_id: int) -> None:
         """
         Promuove un server backup a nuovo main (SPEC.md §11.13) —
@@ -168,6 +181,16 @@ class BackupRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                # BUG-34: la coppia storica resta, altrimenti /admin backup
+                # restore-utenti rifiuta il server appena promosso.
+                await conn.execute(
+                    """
+                    INSERT INTO backup_pair_history (old_main_guild_id, promoted_guild_id)
+                    VALUES ($1, $2) ON CONFLICT DO NOTHING
+                    """,
+                    old_main_guild_id,
+                    new_main_guild_id,
+                )
                 await conn.execute(
                     "UPDATE backup_pairs SET backup_guild_id = NULL, updated_at = now() "
                     "WHERE main_guild_id = $1",
@@ -197,6 +220,53 @@ class BackupRepository:
             STATUS_PENDING,
         )
         return row["id"]
+
+    async def enqueue_linked_job(self, main_guild_id: int, backup_guild_id: int) -> int:
+        """Job già legato al server di backup (D8): il Creator lo trova da solo."""
+        return await self._pool.fetchval(
+            """
+            INSERT INTO backup_jobs (main_guild_id, backup_guild_id, status)
+            VALUES ($1, $2, $3) RETURNING id
+            """,
+            main_guild_id,
+            backup_guild_id,
+            STATUS_PENDING,
+        )
+
+    # ----------------------------------------------------------------
+    # Codici di collegamento (M 12.1)
+    # ----------------------------------------------------------------
+    async def salva_codice_collegamento(
+        self, main_guild_id: int, code_hash: str, creato_da: int, scadenza: datetime
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO backup_link_codes (main_guild_id, code_hash, created_by, expires_at)
+            VALUES ($1, $2, $3, $4)
+            """,
+            main_guild_id,
+            code_hash,
+            creato_da,
+            scadenza,
+        )
+
+    async def trova_codice_collegamento(self, code_hash: str):
+        return await self._pool.fetchrow(
+            "SELECT main_guild_id, expires_at, used_at FROM backup_link_codes WHERE code_hash = $1",
+            code_hash,
+        )
+
+    async def consuma_codice_collegamento(self, code_hash: str, adesso: datetime) -> bool:
+        """Brucia il codice. False se era già stato usato."""
+        riga = await self._pool.fetchval(
+            """
+            UPDATE backup_link_codes SET used_at = $2
+            WHERE code_hash = $1 AND used_at IS NULL RETURNING id
+            """,
+            code_hash,
+            adesso,
+        )
+        return riga is not None
 
     async def has_active_job(self, main_guild_id: int) -> bool:
         """True se il server ha già un job in attesa o in corso."""
@@ -287,15 +357,7 @@ class BackupRepository:
         )
 
     async def set_backup_guild_id(self, job_id: int, backup_guild_id: int) -> None:
-        """
-        Impostato SUBITO dopo che Creator ha creato il nuovo server
-        — prima ancora che il job sia completato — così il listener
-        che reagisce a Main che entra in un server nuovo può già
-        trovare il job giusto tramite get_job_by_backup_guild_id(),
-        senza dover aspettare mark_completed() (che arriva solo alla
-        fine, dopo che Main si è unito e la proprietà è stata
-        trasferita).
-        """
+        """Lega un job al server di backup (usato dal listener di ingresso)."""
         await self._pool.execute(
             "UPDATE backup_jobs SET backup_guild_id = $2, updated_at = now() WHERE id = $1",
             job_id,
@@ -349,7 +411,8 @@ class BackupRepository:
         da un job in corso, o un server qualsiasi in cui Main è
         stato invitato per altri motivi."""
         row = await self._pool.fetchrow(
-            "SELECT * FROM backup_jobs WHERE backup_guild_id = $1", backup_guild_id
+            "SELECT * FROM backup_jobs WHERE backup_guild_id = $1 ORDER BY id DESC LIMIT 1",
+            backup_guild_id,
         )
         return self._row_to_job(row) if row is not None else None
 

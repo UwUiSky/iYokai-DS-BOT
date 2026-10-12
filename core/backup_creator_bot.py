@@ -1,19 +1,12 @@
 """
 core/backup_creator_bot.py
-==============================
-Bot minimale iYokai Creator (SPEC.md §11.1). Nessun comando proprio,
-nessun cog caricato — esiste solo per creare nuovi server e clonarci
-dentro il contenuto del server principale (core/backup_orchestrator.
-py), poi cedere la proprietà e uscire di nuovo. Il token è già
-dichiarato in config.py (YOKAI_CREATOR_TOKEN) da prima di questa
-sessione, mai usato finora.
-
-Resta SEMPRE sotto il limite di 10 server (creare senza mai
-restare) — è l'unico motivo per cui è un'applicazione Discord
-separata invece di far creare i server direttamente al bot
-principale: Main deve poter gestire più di 10 server
-contemporaneamente, Creator no, e i due ruoli non devono
-interferire tra loro.
+==========================
+Bot minimale iYokai Creator (SPEC.md §11.1, D8). Nessun comando proprio:
+entra nel server di backup creato da un admin, lo porta allo stato corrente
+del server principale e lo tiene aggiornato (core/backup_orchestrator.py).
+Ha un'applicazione separata perché i limiti di frequenza di Discord valgono
+per ogni bot: il lavoro pesante di copia non rallenta il bot principale.
+Funzioni coperte: SPEC §11.1, M 12.2
 """
 
 from __future__ import annotations

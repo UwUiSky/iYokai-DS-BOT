@@ -1041,18 +1041,20 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[ ]` 11.1 Snapshot del server salvato come dati nel database, con
   più copie datate per server (D8, LIM-39)
-- `[ ]` 11.2 Collegamento di un server creato a mano: codice generato
-  nel server principale e usato nel server nuovo; link "modello" con
-  `Guild.create_template`; nessuna cessione di proprietà (D8)
-- `[~]` 11.3 Clonazione ruoli + permessi — `clone_roles()` in
+- `[x]` 11.2 Collegamento di un server creato a mano: `/admin backup
+  crea` genera il codice (24 ore, monouso, salvato come impronta) e, a
+  richiesta, il link "modello" (`Guild.create_template`); `/admin backup
+  collega` lo usa nel server nuovo (`core/backup_link_logic.py`); la copia
+  gira sul client del Creator; nessuna cessione di proprietà (D8)
+- `[x]` 11.3 Clonazione ruoli + permessi — `clone_roles()` in
   `core/backup_clone_logic.py`: salta @everyone ma ne applica i
-  permessi, salta i ruoli "managed". Le posizioni non vengono
-  impostate (REVIEW §12, da verificare live). Con un modello i ruoli
-  esistono già: serve una mappa per **nome**
+  permessi, salta i ruoli "managed", riusa per nome quelli già presenti
+  (modello) e imposta le posizioni alla fine (gerarchia: prova live)
 - `[~]` 11.4 Clonazione categorie + canali — `clone_categories_and_
-  channels()`: categorie prima dei canali, permessi rimappati. Copia
-  la qualità audio tale e quale (LIM-28); copierebbe i canali
-  offuscati `___hidden___` (LIM-38)
+  channels()`: categorie prima dei canali, permessi rimappati. Riusa per
+  nome canali e categorie già presenti; qualità audio limitata a quella
+  del server di destinazione (LIM-28); canali `___hidden___` saltati e
+  contati (LIM-38)
 - `[~]` 11.5 Clonazione emoji — `clone_emoji()`, con controllo dei
   limiti del server di destinazione (`e502c1f`). Senza essere
   proprietario serve il permesso `CREATE_GUILD_EXPRESSIONS`.
@@ -1060,14 +1062,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[~]` 11.6 Clonazione sticker — `clone_stickers()`, come 11.5
 - `[~]` 11.7 Clonazione soundboard — `clone_soundboard()`, come 11.5
 - `[~]` 11.8 Clonazione webhook — `clone_webhooks()`: nome e canale
-  rimappato (l'URL non è copiabile). 15 webhook copiati + 1 del mirror
-  superano il tetto di 15 per canale (LIM-28)
+  rimappato (l'URL non è copiabile). Al massimo 14 per canale: uno dei 15
+  resta per il mirror (LIM-28)
 - `[~]` 11.9 Mirror messaggi in tempo reale via webhook con identità
   utente (scarto sui picchi, 5 messaggi ogni 5 secondi per canale) —
   `core/backup_mirror_logic.py`, `core/backup_mirror_dispatch.py`,
   `cogs/utility/backup_mirror.py`. SEC-22 corretto (`690a5b6`). Da
-  riprovare con l'intent acceso (BUG-5); nome del webhook (LIM-27);
-  oggi non ha mai un webhook di destinazione (dipende da 11.2)
+  riprovare con l'intent acceso (BUG-5); il nome del mittente non
+  contiene "discord" né "clyde" (LIM-27); il webhook "iYokai Mirror" si
+  riusa se esiste. Raggiungibile dopo 11.2
 - `[~]` 11.10 User backup: snapshot periodico (settimanale) dei
   verificati non bannati/kickati — `core/backup_snapshot_logic.py`,
   `core/backup_snapshot_worker.py`. Il worker ora parte (BUG-19,

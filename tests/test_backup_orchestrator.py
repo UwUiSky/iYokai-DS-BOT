@@ -1,201 +1,143 @@
 """
 tests/test_backup_orchestrator.py
-=====================================
-Test di core/backup_orchestrator.py. Le funzioni di clonazione sono
-già testate a fondo altrove (tests/test_backup_clone_*.py) — qui si
-verifica solo l'ORCHESTRAZIONE: che create_guild venga chiamato con
-il nome giusto, che l'URL di invito abbia la forma corretta, che la
-finalizzazione trasferisca la proprietà e faccia uscire Creator solo
-quando il guild è davvero atteso da un job.
+=================================
+Test di core/backup_orchestrator.py (D8): la copia usa il server di backup
+che il Creator ha già, nessuna creazione o cessione di server, e
+finalize_backup_job dice solo se un server è atteso. Ogni test pulisce
+il database prima e dopo: l'ordine di esecuzione non conta (#68).
 """
 
-import discord
 import pytest
 
-from core.backup_orchestrator import finalize_backup_job, start_backup_job
-from core.repositories.backup_repo import BackupRepository
+from core.backup_orchestrator import finalize_backup_job, popola_server_backup, riassunto_copia
+from core.backup_clone_logic import RiepilogoCopia
 from core.database import Database
+from core.repositories.backup_repo import BackupRepository
+
+MAIN, BACKUP, ALTRO = 920001, 920002, 920003
 
 
-class _FakeSourceGuildCompleta:
-    """Un server sorgente con TUTTE le collezioni vuote — sufficiente
-    per far scorrere le funzioni di clonazione senza sollevare, dato
-    che quelle funzioni sono già testate a fondo altrove con dati
-    veri; qui serve solo che l'orchestrazione le chiami tutte."""
+class _SorgenteVuota:
+    """Server sorgente con tutte le collezioni vuote: la clonazione vera è
+    provata in tests/test_backup_clone_*.py, qui basta che l'orchestrazione la chiami."""
 
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.roles = []
-        self.categories = []
-        self.channels = []
-        self.emojis = []
-        self.stickers = []
-        self.soundboard_sounds = []
-        self.default_role = _FakeRoleMinimo()
+    id = MAIN
+    name = "Il Mio Server"
+
+    def __init__(self) -> None:
+        import discord
+
+        self.roles, self.categories, self.channels = [], [], []
+        self.emojis, self.stickers, self.soundboard_sounds = [], [], []
+        self.default_role = _Ruolo()
+        self.me = object()
+        self._perm = discord.Permissions.all()
 
     async def webhooks(self):
         return []
 
 
-class _FakeCreatedGuild:
-    def __init__(self, guild_id: int, name: str) -> None:
-        self.id = guild_id
-        self.name = name
-        self.default_role = _FakeRoleMinimo()
+class _Ruolo:
+    def __init__(self) -> None:
+        import discord
 
-    def get_role(self, role_id: int):
-        return None
-
-
-class _FakeRoleMinimo:
-    def __init__(self, role_id: int = 0) -> None:
-        self.id = role_id
+        self.id = 1
         self.permissions = discord.Permissions.none()
+
+    def is_default(self) -> bool:
+        return True
 
     async def edit(self, **kwargs) -> None:
         pass
 
 
-class _FakeCreatorClient:
-    def __init__(self, guild_creato: _FakeCreatedGuild) -> None:
-        self._guild_creato = guild_creato
-        self.chiamate_create_guild: list[dict] = []
-        self._guilds_disponibili: dict[int, "_FakeCreatorSideGuild"] = {}
+class _DestinazioneVuota:
+    id = BACKUP
+    name = "Backup"
+    categories: list = []
+    channels: list = []
+    roles: list = []
+    bitrate_limit = 96000.0
 
-    async def create_guild(self, **kwargs) -> _FakeCreatedGuild:
-        self.chiamate_create_guild.append(kwargs)
-        return self._guild_creato
+    def __init__(self) -> None:
+        self.default_role = _Ruolo()
+        self.default_role.id = 2
+        self.chiamate_edit_role_positions = 0
 
-    def get_guild(self, guild_id: int):
-        return self._guilds_disponibili.get(guild_id)
+    async def edit_role_positions(self, *a, **k) -> None:
+        self.chiamate_edit_role_positions += 1
 
 
-class _FakeCreatorSideGuild:
+@pytest.fixture
+async def repo():
+    database = Database()
+    await database.connect()
+    await database.run_migrations()
+    pulizia = (
+        "DELETE FROM backup_jobs WHERE main_guild_id = ANY($1)",
+        "DELETE FROM backup_pairs WHERE main_guild_id = ANY($1)",
+    )
+    ids = [MAIN, BACKUP, ALTRO, 100]
+    for q in pulizia:
+        await database.pool.execute(q, ids)
+    yield BackupRepository(pool_provider=lambda: database.pool)
+    for q in pulizia:
+        await database.pool.execute(q, ids)
+    await database.close()
+
+
+class _Joined:
     def __init__(self, guild_id: int) -> None:
         self.id = guild_id
-        self.chiamate_edit: list[dict] = []
-        self.leave_chiamato = False
-
-    async def edit(self, **kwargs) -> None:
-        self.chiamate_edit.append(kwargs)
-
-    async def leave(self) -> None:
-        self.leave_chiamato = True
-
-
-class _FakeJoinedGuild:
-    def __init__(self, guild_id: int) -> None:
-        self.id = guild_id
-        self.me = object()  # rappresenta il bot Main stesso in questo server
 
 
 @pytest.mark.asyncio
-async def test_start_backup_job_crea_il_server_con_il_nome_giusto():
-    source = _FakeSourceGuildCompleta(name="Il Mio Server")
-    creato = _FakeCreatedGuild(guild_id=555, name="Backup di Il Mio Server")
-    creator = _FakeCreatorClient(creato)
+async def test_popola_server_backup_restituisce_mappa_mirror_e_riepilogo(monkeypatch):
+    import core.backup_orchestrator as modulo
 
-    nuovo_server, _url, _mappa_webhook = await start_backup_job(
-        creator, source, main_client_id=999, main_permissions=discord.Permissions.none()
-    )
+    monkeypatch.setattr(modulo, "conta_canali_non_visibili", lambda g: 0)
+    mappa, riepilogo = await popola_server_backup(_SorgenteVuota(), _DestinazioneVuota())
 
-    assert creator.chiamate_create_guild[0]["name"] == "Backup di Il Mio Server"
-    assert nuovo_server is creato
+    assert mappa == {}
+    assert isinstance(riepilogo, RiepilogoCopia)
 
 
-@pytest.mark.asyncio
-async def test_start_backup_job_restituisce_un_url_di_invito_valido():
-    source = _FakeSourceGuildCompleta(name="Test")
-    creato = _FakeCreatedGuild(guild_id=555, name="Backup di Test")
-    creator = _FakeCreatorClient(creato)
-
-    _server, url, _mappa_webhook = await start_backup_job(
-        creator, source, main_client_id=123456, main_permissions=discord.Permissions(administrator=True)
-    )
-
-    assert "client_id=123456" in url
-    assert "guild_id=555" in url
-    assert "disable_guild_select=true" in url
-    assert url.startswith("https://discord.com/oauth2/authorize")
+def test_il_riepilogo_dice_solo_cio_che_non_e_andato_come_l_originale():
+    assert riassunto_copia(RiepilogoCopia()) == ""
+    testo = riassunto_copia(RiepilogoCopia(canali_offuscati=2, canali_non_visibili=3, webhook_saltati=1))
+    assert "offuscati saltati: 2" in testo
+    assert "3 canali non visibili" in testo
+    assert "14 per canale" in testo
 
 
 @pytest.mark.asyncio
-async def test_finalize_backup_job_trasferisce_proprieta_e_fa_uscire_creator(monkeypatch):
-    database = Database()
-    await database.connect()
+async def test_server_con_copia_in_corso_e_atteso_e_non_cambia_stato(repo):
+    job_id = await repo.enqueue_linked_job(MAIN, BACKUP)
+    await repo.mark_running(job_id)
+
+    assert await finalize_backup_job(_Joined(BACKUP), None, repo) is True
+    assert (await repo.get_job(job_id)).status == "running"
+
+
+@pytest.mark.asyncio
+async def test_server_di_backup_gia_collegato_e_atteso(repo):
+    await repo.define_backup(MAIN, BACKUP)
+    assert await finalize_backup_job(_Joined(BACKUP), None, repo) is True
+
+
+@pytest.mark.asyncio
+async def test_un_server_qualsiasi_non_e_atteso(repo):
+    assert await finalize_backup_job(_Joined(ALTRO), None, repo) is False
+
+
+@pytest.mark.asyncio
+async def test_i_dati_di_un_altro_test_non_cambiano_l_esito(repo):
+    """#68: prima il test dipendeva da righe lasciate da altri; con il DB
+    sporco di proposito l'esito resta quello giusto."""
+    await repo.define_backup(MAIN + 50, BACKUP)  # riga non nostra, stesso backup
     try:
-        await database.run_migrations()
-        repo = BackupRepository(pool_provider=lambda: database.pool)
-
-        job_id = await repo.enqueue_job(main_guild_id=100)
+        job_id = await repo.enqueue_linked_job(MAIN, BACKUP)
         await repo.mark_running(job_id)
-        await repo.set_backup_guild_id(job_id, backup_guild_id=555)
-
-        joined_guild = _FakeJoinedGuild(guild_id=555)
-        creato_lato_creator = _FakeCreatorSideGuild(guild_id=555)
-        creator = _FakeCreatorClient(_FakeCreatedGuild(0, ""))
-        creator._guilds_disponibili[555] = creato_lato_creator
-
-        risultato = await finalize_backup_job(joined_guild, creator, repo)
-
-        assert risultato is True
-        assert creato_lato_creator.chiamate_edit[0]["owner"] is joined_guild.me
-        assert creato_lato_creator.leave_chiamato is True
-
-        job = await repo.get_job(job_id)
-        assert job.status == "completed"
+        assert await finalize_backup_job(_Joined(ALTRO), None, repo) is False
     finally:
-        await database.pool.execute("DELETE FROM backup_jobs")
-        await database.close()
-
-
-@pytest.mark.asyncio
-async def test_finalize_backup_job_registra_la_coppia_main_backup():
-    """
-    BUG-3: la coppia main -> backup deve nascere dal codice di produzione
-    (finalize_backup_job), non dal test. Senza, /promuovi-backup dice
-    sempre "non registrato" e lo snapshot degli utenti non parte mai.
-    Il test NON chiama define_backup da solo.
-    """
-    database = Database()
-    await database.connect()
-    try:
-        await database.run_migrations()
-        await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = 100")
-        repo = BackupRepository(pool_provider=lambda: database.pool)
-
-        job_id = await repo.enqueue_job(main_guild_id=100)
-        await repo.mark_running(job_id)
-        await repo.set_backup_guild_id(job_id, backup_guild_id=555)
-
-        creator = _FakeCreatorClient(_FakeCreatedGuild(0, ""))
-        creator._guilds_disponibili[555] = _FakeCreatorSideGuild(guild_id=555)
-
-        await finalize_backup_job(_FakeJoinedGuild(guild_id=555), creator, repo)
-
-        coppia = await repo.get_pair(100)
-        assert coppia is not None
-        assert coppia.backup_guild_id == 555
-        assert (await repo.get_pair_by_backup_guild_id(555)).main_guild_id == 100
-    finally:
-        await database.pool.execute("DELETE FROM backup_jobs")
-        await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = 100")
-        await database.close()
-
-
-@pytest.mark.asyncio
-async def test_finalize_backup_job_ignora_un_guild_non_atteso():
-    database = Database()
-    await database.connect()
-    try:
-        await database.run_migrations()
-        repo = BackupRepository(pool_provider=lambda: database.pool)
-
-        joined_guild = _FakeJoinedGuild(guild_id=999999)  # nessun job lo aspetta
-        creator = _FakeCreatorClient(_FakeCreatedGuild(0, ""))
-
-        risultato = await finalize_backup_job(joined_guild, creator, repo)
-
-        assert risultato is False
-    finally:
-        await database.close()
+        await repo._pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = $1", MAIN + 50)

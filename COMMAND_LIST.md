@@ -1,12 +1,13 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 19:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 19:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 256 comandi in 16 categorie.**
+**Totale: 257 comandi in 16 categorie.**
 
 ## Admin
 
-- **`/admin backup crea`** — Accoda la creazione di un backup per questo server.
+- **`/admin backup collega`** — Collega QUESTO server come backup, con il codice ricevuto dal server principale.
+- **`/admin backup crea`** — Prepara il backup: codice di collegamento e link per il nuovo server.
 - **`/admin backup main`** — Registra questo server come 'main' per il Backup System.
 - **`/admin backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
 - **`/admin backup restore-modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
