@@ -5,14 +5,16 @@
 
 ## In corso
 - Previsione giro F2: 5 voci (#64, #47+#48, #45, #126 piccole, poi #90/#106 se resta spazio).
-- Fatto #64 (tranne 8.16 e 8.19). Prossimo: #47+#48 = `deploy/lavalink/` (docker-compose.yml,
-  application.yml con segnaposto, README) + `docs/music-lavalink.md` (link ufficiali, /v4/info,
-  nodi pubblici non sono fonte unica) + script che pinga i nodi (WARNING se morto).
+- Fatto #64 (tranne 8.16, 8.19) e #47+#48. Prossimo: #45 (resta: add-local con traversal gia' coperto;
+  verificare cascade/documento) poi #126 piccole nello stesso codice (MUS-020, 021, 029, 031, 032,
+  035, 053-057...). Sezioni di /music: contare i figli (max 25) prima di aggiungere comandi.
 
 ## Fatto
 - F7 3b (#76): `/music` sotto-gruppi, `/owner radio` (`6d8894f`).
 - F2 #64: 8.1-8.8, 8.10-8.15, 8.17, 8.18 (commit "Musica F2: un nodo per bot"). 8.16 e' di F1.
   Nuovi: `core/music_nodes.py` (gestore nodi), `core/music_radio_view.py`, migrazione 0060.
+- F2 #47+#48: `deploy/lavalink/` (compose, application.yml segnaposto, README), `docs/music-lavalink.md`,
+  `scripts/check_lavalink_nodes.py` (+ test).
 
 ## Cose imparate
 - D10: nodo per bot e per server Lavalink; Pool.nodes e' una mappa per identificatore: `<base>@<chiave>`

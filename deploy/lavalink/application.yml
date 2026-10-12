@@ -1,0 +1,53 @@
+# Configurazione Lavalink 4 per iYokai (issue #47, #48).
+# NESSUN SEGRETO QUI: i valori in MAIUSCOLO sono segnaposto.
+#   - la password vera arriva da LAVALINK_PASSWORD (docker-compose.yml)
+#   - le chiavi di Spotify arrivano da SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET
+# Versioni dei plugin: controlla le ultime su
+#   https://github.com/lavalink-devs/youtube-source/releases
+#   https://github.com/topi314/LavaSrc/releases
+server:
+  port: 2333
+  address: 0.0.0.0   # dentro il container; fuori e' legato a 127.0.0.1 dal compose
+
+lavalink:
+  plugins:
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.13.3"
+      repository: "https://maven.lavalink.dev/releases"
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
+      repository: "https://maven.lavalink.dev/releases"
+  server:
+    password: "CAMBIA_CON_LAVALINK_PASSWORD"
+    sources:
+      youtube: false      # lo fa il plugin, non il modulo integrato
+      soundcloud: true
+      bandcamp: true
+      http: true
+      local: true         # serve per gli inediti della radio (/audio/local)
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    playerUpdateInterval: 5
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+  lavasrc:
+    providers:
+      - 'ytsearch:"%ISRC%"'
+      - "ytsearch:%QUERY%"
+      - "scsearch:%QUERY%"
+    sources:
+      spotify: true
+      applemusic: false
+      deezer: false       # richiede chiavi extra
+    spotify:
+      clientId: "${SPOTIFY_CLIENT_ID}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET}"
+      countryCode: "IT"
+
+logging:
+  level:
+    root: INFO
+    lavalink: INFO

@@ -1,0 +1,33 @@
+# Lavalink proprio per iYokai (issue #47). Guida: deploy/lavalink/README.md
+#
+# Avvio (dalla cartella deploy/lavalink/):
+#   export LAVALINK_PASSWORD='<una password lunga, la stessa del .env del bot>'
+#   export MAIN_RADIO_LOCAL_FOLDER=/percorso/assoluto/inediti   # facoltativo
+#   docker compose up -d
+#
+# Nessun segreto in questo file: password e chiavi arrivano dall'ambiente.
+services:
+  lavalink:
+    # Il tag `4` segue la 4.x piu' recente: serve la 4.2.0 o successiva
+    # (cifratura vocale DAVE, obbligatoria da 01/03/2026).
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: iyokai-lavalink
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx512M
+      # La password dell'ambiente vince su quella (segnaposto) di application.yml.
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:?imposta LAVALINK_PASSWORD}
+      # Solo per Spotify (LavaSrc); lasciali vuoti se non li usi.
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID:-}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET:-}
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml:ro
+      # I plugin scaricati restano tra un riavvio e l'altro.
+      - ./plugins:/opt/Lavalink/plugins
+      # La cartella degli inediti, in sola lettura. Nel bot:
+      #   MAIN_RADIO_LOCAL_FOLDER = la cartella sul tuo PC / server
+      #   LAVALINK_LOCAL_ROOT     = /audio/local   (come la vede Lavalink)
+      - ${MAIN_RADIO_LOCAL_FOLDER:-./radio-local}:/audio/local:ro
+    ports:
+      # Solo localhost: Lavalink non va esposto su Internet.
+      - "127.0.0.1:2333:2333"
