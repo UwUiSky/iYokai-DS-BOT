@@ -4,10 +4,11 @@
 12/10/2026 · ramo `feat/r3-mus` (copia /home/claude/wt/mus) · base `c23a815` · DB iyokai_wmus · migrazioni da 0060
 
 ## In corso
-- Previsione giro F2: 5 voci (#64, #47+#48, #45, #126 piccole, poi #90/#106 se resta spazio).
-- Fatto #64 (tranne 8.16, 8.19) e #47+#48. Prossimo: #45 (resta: add-local con traversal gia' coperto;
-  verificare cascade/documento) poi #126 piccole nello stesso codice (MUS-020, 021, 029, 031, 032,
-  035, 053-057...). Sezioni di /music: contare i figli (max 25) prima di aggiungere comandi.
+- Previsione giro F2: 5 voci. Fatte: #64, #47+#48, #45, #126 (parte 1). Prossimo: #126 parte 2 =
+  impostazioni del server (tabella `music_settings`, migrazione 0061, `/admin musica impostazioni|riepilogo`):
+  MUS-047 volume massimo, 044 durata massima, 055 uscire o restare a coda finita, 059 canale vocale
+  permesso, 066 riepilogo. Poi #90 / #106 solo se resta spazio.
+- /music ha 19 figli (limite 25): lasciare spazio a `playlist` (NF-19).
 
 ## Fatto
 - F7 3b (#76): `/music` sotto-gruppi, `/owner radio` (`6d8894f`).
@@ -15,6 +16,11 @@
   Nuovi: `core/music_nodes.py` (gestore nodi), `core/music_radio_view.py`, migrazione 0060.
 - F2 #47+#48: `deploy/lavalink/` (compose, application.yml segnaposto, README), `docs/music-lavalink.md`,
   `scripts/check_lavalink_nodes.py` (+ test).
+
+- #45: avvio automatico radio, mkdir, traversal, avviso nodo locale mancante: gia' in F2 #64/#47.
+- #126 parte 1: MUS-020 join, 021 play in-cima, 027 remove assenti, 029 skipto, 030 remove intervallo/utente,
+  031 previous, 032 history, 035 queue cerca, 036 quote per utente, 039 shuffle solo-miei.
+  Nuovo `core/music_queue_logic.py`; richiedente in `track.extras.requester_id`.
 
 ## Cose imparate
 - D10: nodo per bot e per server Lavalink; Pool.nodes e' una mappa per identificatore: `<base>@<chiave>`

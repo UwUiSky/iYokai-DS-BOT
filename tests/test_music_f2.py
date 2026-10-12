@@ -834,3 +834,24 @@ def test_il_requirements_chiede_wavelink_3_5_1():
         r for r in (ROOT / "requirements.txt").read_text().splitlines() if r.startswith("wavelink")
     )
     assert riga.replace(" ", "") == "wavelink>=3.5.1"
+
+
+@pytest.mark.asyncio
+async def test_avviso_se_la_cartella_inediti_e_impostata_ma_manca_il_nodo_locale(monkeypatch, caplog):
+    gestore = _Gestore()  # nessun nodo locale collegato
+    monkeypatch.setattr(player_module, "config", SimpleNamespace(MAIN_RADIO_LOCAL_FOLDER="/x"))
+    with caplog.at_level("WARNING", logger="iyokai.music"):
+        await player_module.avvisa_se_manca_il_nodo_locale(gestore, [])
+    assert any("nodo Lavalink locale non è collegato" in r.getMessage() for r in caplog.records)
+
+    caplog.clear()
+    gestore.locali[MAIN_KEY] = object()  # collegato: nessun avviso
+    with caplog.at_level("WARNING", logger="iyokai.music"):
+        await player_module.avvisa_se_manca_il_nodo_locale(gestore, [])
+    assert not caplog.records
+
+    monkeypatch.setattr(player_module, "config", SimpleNamespace(MAIN_RADIO_LOCAL_FOLDER=""))
+    gestore.locali.clear()
+    with caplog.at_level("WARNING", logger="iyokai.music"):
+        await player_module.avvisa_se_manca_il_nodo_locale(gestore, [])  # cartella non impostata
+    assert not caplog.records

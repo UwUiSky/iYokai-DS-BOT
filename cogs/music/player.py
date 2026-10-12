@@ -84,6 +84,18 @@ from core.music_logic import (
     voice_join_problem,
 )
 from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
+from core.music_queue_logic import (
+    MAX_HISTORY_SHOWN,
+    format_share,
+    indices_of_absent,
+    indices_of_user,
+    own_shuffle_order,
+    previous_track_position,
+    range_to_indices,
+    requester_of,
+    search_titles,
+    share_by_user,
+)
 from core.music_radio_view import RadioListView, pagina_embed
 from core.premium import PremiumModule, registry
 from core.repositories.main_radio_repo import main_radio_repo
@@ -388,8 +400,17 @@ class MusicCog(CogConGruppi, commands.Cog):
     # Comandi (instradati verso un worker)
     # ================================================================
     @comando_di_gruppo("music", nome="play", descrizione="Riproduce una canzone o playlist.")
-    @app_commands.describe(query="Nome della canzone, URL, o termine di ricerca")
-    async def play(self, interaction: discord.Interaction, query: str) -> None:
+    @app_commands.describe(
+        query="Nome della canzone, URL, o termine di ricerca",
+        in_cima="Metti il brano in cima alla coda, subito dopo quello in corso",
+    )
+    @app_commands.rename(in_cima="in-cima")
+    async def play(
+        self,
+        interaction: discord.Interaction,
+        query: app_commands.Range[str, 1, 300],
+        in_cima: bool = False,
+    ) -> None:
         if not await self._controlli_base(interaction):
             return
 
@@ -446,7 +467,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         if isinstance(risultati, wavelink.Playlist):
             tracce_totali = len(risultati)
             tracce_da_aggiungere = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
-            await player.queue.put_wait(tracce_da_aggiungere)
+            for t in tracce_da_aggiungere:
+                t.extras = {"requester_id": interaction.user.id}  # MUS-036/027/030
+            if in_cima:  # MUS-021
+                for t in reversed(tracce_da_aggiungere):
+                    player.queue.put_at(0, t)
+            else:
+                await player.queue.put_wait(tracce_da_aggiungere)
             if tracce_totali > MAX_PLAYLIST_TRACKS:
                 await interaction.followup.send(
                     f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** — "
@@ -459,7 +486,11 @@ class MusicCog(CogConGruppi, commands.Cog):
                 )
         else:
             traccia = risultati[0]
-            await player.queue.put_wait(traccia)
+            traccia.extras = {"requester_id": interaction.user.id}
+            if in_cima:
+                player.queue.put_at(0, traccia)
+            else:
+                await player.queue.put_wait(traccia)
             await interaction.followup.send(
                 f"➕ Aggiunta **{truncate_title(traccia.title, 200)}** "
                 f"({format_duration(traccia.length)}) alla coda."
@@ -559,7 +590,12 @@ class MusicCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("▶️ Ripreso.")
 
     @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
-    async def queue_command(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(cerca="Cerca un brano dentro la coda (parte del titolo)")
+    async def queue_command(
+        self,
+        interaction: discord.Interaction,
+        cerca: app_commands.Range[str, 1, 100] | None = None,
+    ) -> None:
         if not await self._controlli_base(interaction):
             return
 
@@ -572,7 +608,19 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         titolo_attuale = player.current.title if player and player.current else None
-        titoli_in_coda = [t.title for t in player.queue] if player else []
+        titoli_in_coda = [truncate_title(t.title, 150) for t in player.queue] if player else []
+
+        if cerca:  # MUS-035
+            trovati = search_titles(titoli_in_coda, cerca)
+            righe = [f"{pos}. {titolo}" for pos, titolo in trovati]
+            embed = discord.Embed(
+                title=truncate_title(f"🔎 In coda: {cerca}"),
+                description="\n".join(righe)[:EMBED_DESCRIPTION_LIMIT]
+                or "Nessun brano in coda corrisponde a questa ricerca.",
+                color=discord.Color.blurple(),
+            )
+            await interaction.response.send_message(embed=embed)
+            return
 
         embed = discord.Embed(
             title="🎵 Coda di riproduzione",
@@ -581,6 +629,10 @@ class MusicCog(CogConGruppi, commands.Cog):
             ],
             color=discord.Color.blurple(),
         )
+        if player and len(player.queue) > 0:  # MUS-036
+            quote = share_by_user([requester_of(t) for t in player.queue])
+            if quote:
+                embed.add_field(name="Chi ha messo cosa", value=format_share(quote), inline=False)
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
@@ -622,7 +674,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("music", nome="shuffle", descrizione="Mescola l'ordine delle tracce in coda.")
-    async def shuffle(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(solo_miei="Mescola soltanto i brani che hai messo tu")
+    @app_commands.rename(solo_miei="solo-miei")
+    async def shuffle(self, interaction: discord.Interaction, solo_miei: bool = False) -> None:
         if not await self._controlli_base(interaction):
             return
 
@@ -644,6 +698,20 @@ class MusicCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(
                 "Non c'è abbastanza in coda da mescolare.", ephemeral=True
             )
+            return
+
+        if solo_miei:  # MUS-039
+            tracce = list(player.queue)
+            ordine = own_shuffle_order([requester_of(t) for t in tracce], interaction.user.id)
+            if ordine == list(range(len(tracce))):
+                await interaction.response.send_message(
+                    "Non hai abbastanza brani tuoi in coda da mescolare.", ephemeral=True
+                )
+                return
+            for _ in range(len(tracce)):
+                player.queue.delete(0)
+            await player.queue.put_wait([tracce[i] for i in ordine])
+            await interaction.response.send_message("🔀 Ho mescolato i tuoi brani in coda.")
             return
 
         player.queue.shuffle()
@@ -874,6 +942,174 @@ class MusicCog(CogConGruppi, commands.Cog):
             interaction.guild.id, canale_id or interaction.user.voice.channel.id
         )
         await interaction.response.send_message("👋 Disconnesso.")
+
+    # ================================================================
+    # Catalogo MUS (issue #126): entrare, saltare, togliere, tornare indietro
+    # ================================================================
+    async def _giocatore_attivo(self, interaction: discord.Interaction):
+        """Controlli comuni dei comandi sulla coda: il player del canale dell'utente, o None
+        (e la risposta d'errore è già partita)."""
+        if not await self._controlli_base(interaction):
+            return None
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return None
+        player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        if player is None:
+            await interaction.response.send_message(
+                "Non sono connesso a nessun canale vocale.", ephemeral=True
+            )
+            return None
+        return player
+
+    @comando_di_gruppo(
+        "music", nome="join", descrizione="Fa entrare il music bot nel tuo canale, senza suonare."
+    )
+    async def join(self, interaction: discord.Interaction) -> None:
+        # MUS-020
+        if not await self._controlli_base(interaction):
+            return
+        await interaction.response.defer()
+        worker_bot, worker_guild, errore = await self._get_worker(
+            interaction.guild.id, auto_assign=True, interaction=interaction
+        )
+        if errore:
+            await interaction.followup.send(errore)
+            return
+        canale_id = interaction.user.voice.channel.id
+        if worker_guild.voice_client is not None:
+            await interaction.followup.send("Il music bot è già nel tuo canale vocale.")
+            return
+        gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
+        nodo = gestore.node_for(chiave_del_bot(worker_bot)) if gestore else None
+        if nodo is None:
+            await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await interaction.followup.send(MSG_NESSUN_NODO)
+            return
+        canale_worker = worker_guild.get_channel(canale_id)
+        if canale_worker is None:
+            await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await interaction.followup.send(
+                "Non riesco a raggiungere il tuo canale vocale dall'istanza assegnata."
+            )
+            return
+        player, errore = await self._entra_in_canale(canale_worker, nodo)
+        if errore:
+            await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await interaction.followup.send(errore)
+            return
+        await interaction.followup.send("🎧 Sono entrato nel canale. Usa /music play per suonare.")
+
+    @comando_di_gruppo("music", nome="skipto", descrizione="Salta direttamente al brano numero N della coda.")
+    @app_commands.describe(numero="Posizione nella coda (1 = il prossimo brano)")
+    async def skipto(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 10000]
+    ) -> None:
+        # MUS-029
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        if numero > len(player.queue):
+            await interaction.response.send_message(
+                f"La coda ha {len(player.queue)} brani: il numero {numero} non c'è.", ephemeral=True
+            )
+            return
+        for _ in range(numero - 1):
+            player.queue.delete(0)
+        titolo = truncate_title(player.queue[0].title, 150)
+        await player.skip()
+        await interaction.response.send_message(f"⏭️ Salto a **{titolo}**.")
+
+    @comando_di_gruppo("music", nome="remove", descrizione="Toglie brani dalla coda: un intervallo, di un utente, o di chi è uscito.")
+    @app_commands.describe(
+        da="Prima posizione da togliere",
+        a="Ultima posizione (se manca, solo `da`)",
+        utente="Toglie tutti i brani messi da questo utente",
+        assenti="Toglie i brani di chi non è più nel canale vocale",
+    )
+    async def remove(
+        self,
+        interaction: discord.Interaction,
+        da: app_commands.Range[int, 1, 10000] | None = None,
+        a: app_commands.Range[int, 1, 10000] | None = None,
+        utente: discord.Member | None = None,
+        assenti: bool = False,
+    ) -> None:
+        # MUS-027 (assenti), MUS-030 (intervallo o utente)
+        criteri = [da is not None, utente is not None, assenti]
+        if sum(criteri) != 1 or (a is not None and da is None):
+            await interaction.response.send_message(
+                "Scegli UN solo criterio: `da` (con `a` facoltativo), `utente` oppure `assenti`.",
+                ephemeral=True,
+            )
+            return
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        richiedenti = [requester_of(t) for t in player.queue]
+        if da is not None:
+            indici = range_to_indices(da, a, len(player.queue))
+            if isinstance(indici, str):
+                await interaction.response.send_message(indici, ephemeral=True)
+                return
+        elif utente is not None:
+            indici = indices_of_user(richiedenti, utente.id)
+        else:
+            presenti = {m.id for m in interaction.user.voice.channel.members}
+            indici = indices_of_absent(richiedenti, presenti)
+        if not indici:
+            await interaction.response.send_message("Nessun brano da togliere.", ephemeral=True)
+            return
+        for indice in sorted(indici, reverse=True):
+            player.queue.delete(indice)
+        await interaction.response.send_message(f"🗑️ Tolti {len(indici)} brani dalla coda.")
+
+    @comando_di_gruppo("music", nome="previous", descrizione="Torna al brano precedente.")
+    async def previous(self, interaction: discord.Interaction) -> None:
+        # MUS-031
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        storico = player.queue.history
+        posizione = previous_track_position(len(storico)) if storico is not None else None
+        if posizione is None:
+            await interaction.response.send_message(
+                "Non c'è un brano precedente.", ephemeral=True
+            )
+            return
+        precedente = storico[posizione]
+        if player.current is not None:  # il brano in corso torna in cima alla coda
+            player.queue.put_at(0, player.current)
+        await player.play(precedente)
+        await interaction.response.send_message(
+            f"⏮️ Torno a **{truncate_title(precedente.title, 150)}**."
+        )
+
+    @comando_di_gruppo("music", nome="history", descrizione="Mostra gli ultimi brani già suonati.")
+    async def history(self, interaction: discord.Interaction) -> None:
+        # MUS-032
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        storico = list(player.queue.history or [])
+        if player.current is not None and storico:
+            storico = storico[:-1]  # l'ultimo è il brano in corso
+        recenti = list(reversed(storico))[:MAX_HISTORY_SHOWN]
+        if not recenti:
+            await interaction.response.send_message(
+                "Non è ancora stato suonato nessun brano prima di questo.", ephemeral=True
+            )
+            return
+        righe = [f"{i}. {truncate_title(t.title, 150)}" for i, t in enumerate(recenti, start=1)]
+        embed = discord.Embed(
+            title="🕘 Già suonati",
+            description="\n".join(righe)[:EMBED_DESCRIPTION_LIMIT],
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed)
 
     # ================================================================
     # /music nonstop — loop 24/7 sul worker attivo (SPEC.md §9.10, parte)
@@ -1339,12 +1575,26 @@ async def _connetti_lavalink_in_background(bot: commands.Bot) -> None:
     """
     gestore: MusicNodeManager = bot.music_nodes
     try:
-        gestore.avvia(bot, MAIN_KEY)
+        task_principale = gestore.avvia(bot, MAIN_KEY)
         flotta = getattr(bot, "music_fleet", None)
         for worker in getattr(flotta, "worker_bots", []):
             gestore.avvia(worker, chiave_del_bot(worker))
+        await avvisa_se_manca_il_nodo_locale(gestore, task_principale)
     except Exception:
         logger.exception(
             "Avvio dei nodi Lavalink interrotto in modo inatteso — "
             "Music resterà non funzionante finché un nodo non sarà raggiungibile."
+        )
+
+
+async def avvisa_se_manca_il_nodo_locale(gestore: MusicNodeManager, task_principale) -> None:
+    """#45/#47: con la cartella inediti impostata, il nodo locale serve — se non è collegato, WARNING."""
+    if not config.MAIN_RADIO_LOCAL_FOLDER:
+        return
+    await asyncio.gather(*task_principale, return_exceptions=True)
+    if gestore.locale_di(MAIN_KEY) is None:
+        logger.warning(
+            "MAIN_RADIO_LOCAL_FOLDER è impostata ma il nodo Lavalink locale non è collegato "
+            "(o è sotto la 4.2.0): i brani inediti della radio non si potranno suonare. "
+            "Vedi deploy/lavalink/README.md."
         )

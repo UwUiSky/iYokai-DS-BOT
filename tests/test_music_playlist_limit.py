@@ -99,6 +99,10 @@ class _FakeRealMember(discord.Member):
     def voice(self):
         return self._voice_finta
 
+    @property
+    def id(self):
+        return 1
+
 
 class _FakeInteraction:
     def __init__(self, guild_id: int, user) -> None:
