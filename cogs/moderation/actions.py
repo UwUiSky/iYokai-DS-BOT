@@ -130,7 +130,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     ) -> None:
         """
         Un ban o un kick diretto sostituisce un isolamento o un tempban in corso:
-        via scadenza, stato, invito di rientro e caso (altrimenti un `/unban`
+        via scadenza, stato, invito di rientro e caso (altrimenti un `/modban unban`
         successivo prenderebbe la strada dell'isolamento e non sbannerebbe).
         """
         stato = await moderation_repo.get_tempban_state(guild.id, user_id)
