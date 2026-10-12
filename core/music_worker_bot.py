@@ -11,8 +11,8 @@ un token separato per ogni sessione musicale simultanea nello stesso
 server — è l'unica ragione d'essere di questa classe.
 """
 
-# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+# F2 (#64): M 8.12 solo gli intent `guilds` e `voice_states`, nessun
+# messaggio tenuto in memoria; M 8.13 AutoShardedBot (oltre 2.500 server).
 
 from __future__ import annotations
 
@@ -20,16 +20,19 @@ import discord
 from discord.ext import commands
 
 
-class MusicWorkerBot(commands.Bot):
+class MusicWorkerBot(commands.AutoShardedBot):
     def __init__(self, worker_index: int) -> None:
-        intents = discord.Intents.default()
-        intents.voice_states = True
+        # LIM-49: il worker non legge i messaggi. Gli intent sono solo
+        # questi due: `guilds` (vede i server e i canali) e
+        # `voice_states` (entra e resta in vocale).
+        intents = discord.Intents(guilds=True, voice_states=True)
         # command_prefix non verrà mai usato davvero (nessun comando
         # testuale, nessuno slash command proprio) — richiesto solo
         # perché commands.Bot lo esige al costruttore.
         super().__init__(
             command_prefix=commands.when_mentioned,
             intents=intents,
+            max_messages=None,
             # SEC-7: nessun comando proprio, ma il worker può comunque
             # inviare messaggi (es. "ora in riproduzione") — stesso
             # allowed_mentions sicuro del bot principale.

@@ -54,15 +54,22 @@ class TestParseLavalinkNodes:
         risultato = parse_lavalink_nodes("http://a.com:2333|")
         assert risultato == [LavalinkNodeConfig(uri="http://a.com:2333", password="")]
 
-    def test_default_public_nodes_si_analizza_correttamente(self):
-        # Il caso reale: la password di Serenetia è essa stessa un
-        # URL (con "://" dentro) - verifica che il separatore "|"
-        # non venga confuso con quello.
-        from core.music_logic import DEFAULT_PUBLIC_LAVALINK_NODES
-
-        risultato = parse_lavalink_nodes(DEFAULT_PUBLIC_LAVALINK_NODES)
-        assert len(risultato) == 5
+    def test_password_che_e_un_url_si_analizza_correttamente(self):
+        # Il caso reale di un nodo pubblico: la password è essa stessa un
+        # URL (con "://" dentro) - il separatore "|" non va confuso.
+        risultato = parse_lavalink_nodes(
+            "http://lavalink.esempio.test:80|https://dsc.gg/qualcosa,"
+            "https://b.esempio.test:443|pwd"
+        )
+        assert len(risultato) == 2
+        assert risultato[0].password == "https://dsc.gg/qualcosa"
         assert all(nodo.uri.startswith(("http://", "https://")) for nodo in risultato)
+
+    def test_nessun_nodo_pubblico_scritto_nel_codice(self):
+        # LIM-54: i nodi pubblici vivono solo in .env (LAVALINK_NODES).
+        import core.music_logic as modulo
+
+        assert not hasattr(modulo, "DEFAULT_PUBLIC_LAVALINK_NODES")
 
 
 class TestFormatDuration:

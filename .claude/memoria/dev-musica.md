@@ -1,19 +1,35 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-11/10/2026 · ramo `feat/f7-ticket-musica` (copia /home/claude/wt/f7e) · base `1e5525c`
+12/10/2026 · ramo `feat/r3-mus` (copia /home/claude/wt/mus) · base `c23a815` · DB iyokai_wmus · migrazioni da 0060
 
 ## In corso
-- Niente a metà. F7 passo 3b chiuso per musica e radio.
+- Previsione giro F2: 5 voci (#64, #47+#48, #45, #126 piccole, poi #90/#106 se resta spazio).
+- Fatto #64 (tranne 8.16 e 8.19). Prossimo: #47+#48 = `deploy/lavalink/` (docker-compose.yml,
+  application.yml con segnaposto, README) + `docs/music-lavalink.md` (link ufficiali, /v4/info,
+  nodi pubblici non sono fonte unica) + script che pinga i nodi (WARNING se morto).
 
 ## Fatto
-- F7 3b (#76): `/music` con sotto-gruppi loop/volume/nonstop, `/nonstop-main` -> `/owner radio` (`6d8894f`).
+- F7 3b (#76): `/music` sotto-gruppi, `/owner radio` (`6d8894f`).
+- F2 #64: 8.1-8.8, 8.10-8.15, 8.17, 8.18 (commit "Musica F2: un nodo per bot"). 8.16 e' di F1.
+  Nuovi: `core/music_nodes.py` (gestore nodi), `core/music_radio_view.py`, migrazione 0060.
 
 ## Cose imparate
-- D10: un nodo per bot. È la prima cosa da fare in F2.
-- F7: il controllo owner lo dà il gruppo `/owner` (non c'è più `_is_owner`); il cog toglie `owner` dall'albero globale in `cog_load` (lo aggiunge main.py solo nel server dell'owner).
-- Sotto-gruppi come costanti (`SG_LOOP`, `RADIO`): descrizioni con apostrofo rompono le regex.
+- D10: nodo per bot e per server Lavalink; Pool.nodes e' una mappa per identificatore: `<base>@<chiave>`
+  (`main`, `w1`..`w5`). Pool.get_node() sceglie tra TUTTI i bot: mai usarlo, usare `MusicNodeManager.node_for`.
+- wavelink: con `retries` finito e nodo morto `Pool.connect` NON solleva: il nodo resta DISCONNECTED nel Pool.
+  Controllare `node.status` e fare `close(eject=True)`.
+- `Playable.search` mette `ytmsearch:` a tutto cio' che non e' URL http (BUG-10): `spotify:` e `local:` vanno
+  con `Pool.fetch_tracks`. `local:` solo dalla radio, mai da una ricerca utente (lettura file).
+- Il player nasce sul nodo che ha dato i risultati (plugin LavaSrc/YouTube solo su certi nodi): cerca, poi entra.
+- Sessioni per (guild, canale): PK doppia; ogni comando cerca la sessione nel canale dell'utente (cosi' 8.7 e' gratis).
+- Il worker e' AutoShardedBot: nei test chiamare `await bot._async_setup_hook()` prima di `close()`.
+- Radio: `player.is_radio=True` (esente da memory_guard e handle_inactive_player) + `inactive_channel_tokens=None`.
+- Una View in `cogs/` non va bene (ogni file di cogs/ e' un'estensione con setup): le view stanno in `core/`.
+- Config nuova: `LAVALINK_LOCAL_ROOT` (percorso visto dal nodo; Docker = punto di montaggio).
 
 ## Aperto
-- Tutta la fase F2 (#64, #45, #47, #48, #126).
-- Provare dal vivo `/owner radio`, `/music loop|volume|nonstop`.
+- 8.16 (defer nei comandi musicali) e' di F1; 8.19 = NF-19 (#90).
+- Prova live (VERIFICA_LIVE.md): audio dai 5 worker, due canali/stesso server, radio in canale vuoto,
+  ingresso del principale in vocale, brano locale, nodo 4.1 scartato, canale palco/pieno.
+- `LAVALINK_NODES` e' vuoto di default: senza nodi pubblici in .env resta solo il locale.

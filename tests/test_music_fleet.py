@@ -56,7 +56,7 @@ def fleet_e_repo(clean_db, monkeypatch):
 async def test_primo_play_assegna_il_worker_1(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
-    risultato = await fleet.get_or_assign_worker_for_guild(guild_id=100)
+    risultato = await fleet.get_or_assign_worker_for_channel(100, 1)
 
     assert risultato is not None
     indice, bot_worker = risultato
@@ -68,8 +68,8 @@ async def test_primo_play_assegna_il_worker_1(fleet_e_repo):
 async def test_secondo_server_prende_il_worker_2(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
-    await fleet.get_or_assign_worker_for_guild(guild_id=100)
-    indice2, _ = await fleet.get_or_assign_worker_for_guild(guild_id=200)
+    await fleet.get_or_assign_worker_for_channel(100, 1)
+    indice2, _ = await fleet.get_or_assign_worker_for_channel(200, 1)
 
     assert indice2 == 2
 
@@ -78,8 +78,8 @@ async def test_secondo_server_prende_il_worker_2(fleet_e_repo):
 async def test_stesso_server_riusa_lo_stesso_worker(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
-    indice_primo, _ = await fleet.get_or_assign_worker_for_guild(guild_id=100)
-    indice_secondo, _ = await fleet.get_or_assign_worker_for_guild(guild_id=100)
+    indice_primo, _ = await fleet.get_or_assign_worker_for_channel(100, 1)
+    indice_secondo, _ = await fleet.get_or_assign_worker_for_channel(100, 1)
 
     assert indice_primo == indice_secondo
 
@@ -89,9 +89,9 @@ async def test_tutti_i_worker_occupati_restituisce_none(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
     for guild_id in range(1, 6):
-        await fleet.get_or_assign_worker_for_guild(guild_id)
+        await fleet.get_or_assign_worker_for_channel(guild_id, 1)
 
-    risultato = await fleet.get_or_assign_worker_for_guild(guild_id=999)
+    risultato = await fleet.get_or_assign_worker_for_channel(999, 1)
     assert risultato is None
 
 
@@ -100,40 +100,40 @@ async def test_release_libera_il_worker_per_il_prossimo(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
     for guild_id in range(1, 6):
-        await fleet.get_or_assign_worker_for_guild(guild_id)
+        await fleet.get_or_assign_worker_for_channel(guild_id, 1)
 
-    await fleet.release_guild(guild_id=3)  # aveva il worker 3
+    await fleet.release_session(3, 1)  # aveva il worker 3
 
-    indice, _ = await fleet.get_or_assign_worker_for_guild(guild_id=999)
+    indice, _ = await fleet.get_or_assign_worker_for_channel(999, 1)
     assert indice == 3
 
 
 @pytest.mark.asyncio
-async def test_get_worker_for_guild_senza_sessione_restituisce_none(fleet_e_repo):
+async def test_get_worker_for_canale_senza_sessione_restituisce_none(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
-    risultato = await fleet.get_worker_for_guild(guild_id=999)
+    risultato = await fleet.get_worker_for_channel(999, 1)
 
     assert risultato is None
 
 
 @pytest.mark.asyncio
-async def test_get_worker_for_guild_non_assegna_un_worker_nuovo(fleet_e_repo):
+async def test_get_worker_for_canale_non_assegna_un_worker_nuovo(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
-    await fleet.get_worker_for_guild(guild_id=999)  # sola lettura
+    await fleet.get_worker_for_channel(999, 1)  # sola lettura
 
     # Nessuna sessione deve essere stata creata dalla semplice lettura.
-    assert await repo.get_worker_for_guild(999) is None
+    assert await repo.get_worker_for_channel(999, 1) is None
 
 
 @pytest.mark.asyncio
-async def test_get_worker_for_guild_trova_una_sessione_esistente(fleet_e_repo):
+async def test_get_worker_for_canale_trova_una_sessione_esistente(fleet_e_repo):
     fleet, repo = fleet_e_repo
 
-    await fleet.get_or_assign_worker_for_guild(guild_id=100)
+    await fleet.get_or_assign_worker_for_channel(100, 1)
 
-    risultato = await fleet.get_worker_for_guild(guild_id=100)
+    risultato = await fleet.get_worker_for_channel(100, 1)
     assert risultato is not None
     indice, bot_worker = risultato
     assert indice == 1
@@ -167,7 +167,7 @@ async def test_worker_non_presente_nel_server_viene_escluso_dall_assegnazione(cl
     worker_bots = [_FakeWorkerBot(1, absent_from={100}), *[_FakeWorkerBot(i) for i in range(2, 6)]]
     fleet = MusicFleet(worker_bots)
 
-    indice, _ = await fleet.get_or_assign_worker_for_guild(guild_id=100)
+    indice, _ = await fleet.get_or_assign_worker_for_channel(100, 1)
 
     assert indice == 2
 
@@ -182,7 +182,7 @@ async def test_worker_assente_da_tutti_i_server_lascia_nessuno_libero(clean_db, 
     worker_bots = [_FakeWorkerBot(i, absent_from={999}) for i in range(1, 6)]
     fleet = MusicFleet(worker_bots)
 
-    risultato = await fleet.get_or_assign_worker_for_guild(guild_id=999)
+    risultato = await fleet.get_or_assign_worker_for_channel(999, 1)
 
     assert risultato is None
 
@@ -236,8 +236,8 @@ async def _worker_vero(worker_index: int, pronto: bool, guild_ids: set[int] = fr
     from core.music_worker_bot import MusicWorkerBot
 
     bot = MusicWorkerBot(worker_index=worker_index)
+    await bot._async_setup_hook()  # AutoShardedBot: senza, close() non trova la sua coda
     if pronto:
-        await bot._async_setup_hook()
         bot._ready.set()
         bot._connection.user = SimpleNamespace(id=1000 + worker_index)
         bot.get_guild = lambda guild_id: _FakeGuildRef(guild_id) if guild_id in guild_ids else None
@@ -266,7 +266,7 @@ async def fleet_con_due_worker_non_partiti(clean_db, monkeypatch):
 async def test_un_worker_non_partito_non_viene_mai_assegnato(fleet_con_due_worker_non_partiti):
     fleet, _ = fleet_con_due_worker_non_partiti
 
-    assegnato = await fleet.get_or_assign_worker_for_guild(100)
+    assegnato = await fleet.get_or_assign_worker_for_channel(100, 1)
 
     assert assegnato is not None and assegnato[0] == 3  # non l'1 o il 2
 
@@ -287,8 +287,8 @@ async def test_play_di_un_admin_con_gli_altri_occupati_non_va_in_crash(
     from tests.support.discord_fakes import fake_interaction
 
     fleet, repo = fleet_con_due_worker_non_partiti
-    await repo.assign_worker(999, 3)  # l'unico worker presente è occupato altrove
-    assert await fleet.get_or_assign_worker_for_guild(100) is None
+    await repo.assign_worker(999, 1, 3)  # l'unico worker presente è occupato altrove
+    assert await fleet.get_or_assign_worker_for_channel(100, 1) is None
 
     interazione = fake_interaction()
     interazione.user.guild_permissions = discord.Permissions(manage_guild=True)
@@ -298,3 +298,22 @@ async def test_play_di_un_admin_con_gli_altri_occupati_non_va_in_crash(
 
     assert "Istanza 4" in messaggio and "Istanza 5" in messaggio
     assert "Istanza 1" not in messaggio and "Istanza 2" not in messaggio
+
+
+async def test_due_canali_nello_stesso_server_hanno_due_bot_e_due_code(fleet_e_repo):
+    """M 8.6: la sessione è per (server, canale), non per server."""
+    fleet, repo = fleet_e_repo
+
+    primo, _ = await fleet.get_or_assign_worker_for_channel(100, 11)
+    secondo, _ = await fleet.get_or_assign_worker_for_channel(100, 22)
+    ancora_primo, _ = await fleet.get_or_assign_worker_for_channel(100, 11)
+
+    assert primo != secondo
+    assert ancora_primo == primo
+    assert (await fleet.get_worker_for_channel(100, 22))[0] == secondo
+    assert await fleet.get_worker_for_channel(100, 33) is None
+    assert await fleet.guild_has_session(100) is True
+
+    await fleet.release_session(100, 11)
+    assert await fleet.get_worker_for_channel(100, 11) is None
+    assert (await fleet.get_worker_for_channel(100, 22))[0] == secondo  # l'altra resta

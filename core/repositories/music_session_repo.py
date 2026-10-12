@@ -8,7 +8,9 @@ deve cambiare a caso al prossimo /music play — resta lo stesso finché
 qualcuno non lo disconnette esplicitamente (rilasciando la riga).
 Le righe valgono solo per la vita del processo: all'avvio vengono
 svuotate (clear_all, BUG-9), perché i worker ripartono da zero.
-Funzioni coperte: SPEC §9.2, REVIEW.md BUG-9.
+Dalla migrazione 0060 (M 8.6) la sessione è per (server, canale vocale):
+due canali dello stesso server hanno due bot e due code.
+Funzioni coperte: SPEC §9.2, REVIEW.md BUG-9, M 8.6.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import asyncpg
 @dataclass(frozen=True)
 class MusicSession:
     guild_id: int
+    channel_id: int
     worker_index: int
     assigned_at: datetime
 
@@ -30,9 +33,11 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
     await pool.execute(
         """
         CREATE TABLE IF NOT EXISTS music_sessions (
-            guild_id      BIGINT PRIMARY KEY,
+            guild_id      BIGINT NOT NULL,
+            channel_id    BIGINT NOT NULL DEFAULT 0,
             worker_index  INTEGER NOT NULL,
-            assigned_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+            assigned_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (guild_id, channel_id)
         );
         """
     )
@@ -46,26 +51,41 @@ class MusicSessionRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    async def assign_worker(self, guild_id: int, worker_index: int) -> None:
+    async def assign_worker(self, guild_id: int, channel_id: int, worker_index: int) -> None:
         await self._pool.execute(
             """
-            INSERT INTO music_sessions (guild_id, worker_index)
-            VALUES ($1, $2)
-            ON CONFLICT (guild_id) DO UPDATE
+            INSERT INTO music_sessions (guild_id, channel_id, worker_index)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (guild_id, channel_id) DO UPDATE
                 SET worker_index = EXCLUDED.worker_index, assigned_at = now()
             """,
             guild_id,
+            channel_id,
             worker_index,
         )
 
-    async def get_worker_for_guild(self, guild_id: int) -> int | None:
+    async def get_worker_for_channel(self, guild_id: int, channel_id: int) -> int | None:
         row = await self._pool.fetchrow(
-            "SELECT worker_index FROM music_sessions WHERE guild_id = $1", guild_id
+            "SELECT worker_index FROM music_sessions WHERE guild_id = $1 AND channel_id = $2",
+            guild_id,
+            channel_id,
         )
         return row["worker_index"] if row is not None else None
 
-    async def release_guild(self, guild_id: int) -> None:
-        await self._pool.execute("DELETE FROM music_sessions WHERE guild_id = $1", guild_id)
+    async def guild_has_session(self, guild_id: int) -> bool:
+        """Vero se il server ha almeno una sessione (in qualunque canale)."""
+        return bool(
+            await self._pool.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM music_sessions WHERE guild_id = $1)", guild_id
+            )
+        )
+
+    async def release_session(self, guild_id: int, channel_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM music_sessions WHERE guild_id = $1 AND channel_id = $2",
+            guild_id,
+            channel_id,
+        )
 
     async def clear_all(self) -> None:
         """

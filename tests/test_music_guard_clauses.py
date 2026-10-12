@@ -230,16 +230,16 @@ class _FakeFleet:
 
     def __init__(self, worker_bot: _FakeWorkerBot) -> None:
         self._worker_bot = worker_bot
-        self.release_guild_chiamato_per: list[int] = []
+        self.release_session_chiamato_per: list[int] = []
 
-    async def get_worker_for_guild(self, guild_id: int):
+    async def get_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return 1, self._worker_bot
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return 1, self._worker_bot
 
-    async def release_guild(self, guild_id: int) -> None:
-        self.release_guild_chiamato_per.append(guild_id)
+    async def release_session(self, guild_id: int, channel_id: int = 0) -> None:
+        self.release_session_chiamato_per.append(guild_id)
 
 
 class _FakeBotConFleet:
@@ -332,21 +332,6 @@ async def test_volume_up_dentro_al_range_funziona_normalmente(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_build_lavalink_nodes_pubblici_per_primi_locale_per_ultimo():
-    from cogs.music.player import _build_lavalink_nodes
-
-    nodi = _build_lavalink_nodes()
-
-    # 5 nodi pubblici di default + 1 nodo locale (LAVALINK_HOST/
-    # PORT/PASSWORD) sempre in coda, come richiesto: pubblici
-    # tentati per primi, il nodo locale/self-hostato SOLO come
-    # ultima risorsa se tutti i pubblici falliscono.
-    assert len(nodi) == 6
-    assert "heavencloud" in nodi[0].uri
-    assert "127.0.0.1" in nodi[-1].uri or "localhost" in nodi[-1].uri
-
-
-@pytest.mark.asyncio
 async def test_clear_senza_sessione_attiva_rifiuta(monkeypatch):
     database = Database()
     await database.connect()
@@ -359,8 +344,11 @@ async def test_clear_senza_sessione_attiva_rifiuta(monkeypatch):
         monkeypatch.setattr(music_module, "db", database)
 
         class _FakeFleetVuota:
-            async def get_worker_for_guild(self, guild_id: int):
+            async def get_worker_for_channel(self, guild_id: int, channel_id: int = 0):
                 return None
+
+            async def guild_has_session(self, guild_id: int) -> bool:
+                return False
 
         cog = MusicCog(bot=_FakeBotConFleet(_FakeFleetVuota()))
         interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))

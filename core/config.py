@@ -183,6 +183,10 @@ class Config:
     # (LAVALINK_HOST/PORT/PASSWORD, comportamento originale invariato
     # per chi preferisce comunque self-hostare un singolo nodo).
     LAVALINK_NODES: str = field(default="", repr=False)
+    # M 8.4: radice delle tracce locali COME LA VEDE il nodo Lavalink (con
+    # Docker è il punto di montaggio, es. /audio/local). Vuota = la stessa
+    # cartella del bot (MAIN_RADIO_LOCAL_FOLDER).
+    LAVALINK_LOCAL_ROOT: str = field(default="")
 
     # Token dell'istanza NSFW: facoltativo finché quell'istanza non
     # esiste (nessuna parte del bot lo usa ancora). Ha un default,
@@ -359,6 +363,7 @@ def _load_config() -> Config:
         LAVALINK_PORT=_optional_int("LAVALINK_PORT", 2333),
         LAVALINK_PASSWORD=_optional("LAVALINK_PASSWORD", ""),
         LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
+        LAVALINK_LOCAL_ROOT=_optional("LAVALINK_LOCAL_ROOT", ""),
         TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
         YOUTUBE_API_KEY=_optional("YOUTUBE_API_KEY", ""),

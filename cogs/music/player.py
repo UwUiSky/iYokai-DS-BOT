@@ -15,10 +15,11 @@ principale entra in vocale SOLO per /owner radio (streaming 24/7
 dalla playlist personale dell'utente) — un comando completamente
 separato dal resto.
 
-Connessione a nodi Lavalink PUBBLICI gratuiti in cascata, con il
-nodo locale/self-hostato dell'utente sempre per ultimo (decisione
-presa con l'utente — vedi PROGRESS.md, core/music_logic.py per la
-provenienza dei nodi pubblici).
+Nodi Lavalink (D10, F2): ogni bot (principale + 5 worker) ha il SUO
+nodo per ogni server Lavalink (core/music_nodes.py): un nodo è legato a
+un solo utente bot. Nodi pubblici solo da LAVALINK_NODES (.env), nodo
+locale/self-hostato per ultimo; ogni player nasce sul nodo del suo bot
+(`wavelink.Player(nodes=[nodo])`) e la ricerca usa quel nodo.
 
 wavelink gestisce da solo l'avanzamento automatico della coda
 (player.autoplay = AutoPlayMode.partial, impostato a ogni nuova
@@ -38,14 +39,14 @@ routing verso il worker giusto (con bot finti), la logica pura. Il
 resto va verificato una volta distribuito, con le credenziali vere.
 """
 
-# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+# F2 (#64): M 8.1-8.8, 8.11, 8.14, 8.15, 8.17 fatti qui; 8.16 (defer) è di F1.
 # DA FARE (issue #90, fase F9): NF-19, Canale richieste musicali con
 #   player, playlist salvate. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from collections.abc import Coroutine
 from datetime import datetime, timezone
@@ -59,20 +60,31 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
-from core.main_radio_logic import RadioTrackInfo, compute_current_position
+from core.main_radio_logic import RadioTrackInfo, compute_current_position, next_track_index
 from core.music_fleet import MusicFleet
 from core.music_fleet_logic import TOTAL_WORKERS
 from core.music_logic import (
-    DEFAULT_PUBLIC_LAVALINK_NODES,
+    EMBED_DESCRIPTION_LIMIT,
     MAX_PLAYLIST_TRACKS,
+    MSG_TEMPO_SCADUTO,
     LavalinkNodeConfig,
     build_progress_bar,
     build_queue_display,
     format_duration,
+    is_safe_local_filename,
     is_spotify_query,
+    local_identifier,
+    local_path_for_node,
+    local_path_from_identifier,
+    needs_raw_fetch,
+    paginate_lines,
     parse_lavalink_nodes,
     truncate_playlist_tracks,
+    truncate_title,
+    voice_join_problem,
 )
+from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
+from core.music_radio_view import RadioListView, pagina_embed
 from core.premium import PremiumModule, registry
 from core.repositories.main_radio_repo import main_radio_repo
 
@@ -87,41 +99,44 @@ SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale 
 RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
 
 
-LOCAL_NODE_IDENTIFIER = "iyokai-local-node"  # identificatore fisso
-# per poter ritrovare SPECIFICAMENTE il nodo locale/self-hostato
-# (l'unico che può avere accesso al filesystem di questa macchina —
-# vedi _resolve_local_track più sotto), non uno qualunque scelto a
-# caso da wavelink.Pool tra tutti i nodi configurati.
+MSG_ALTRO_CANALE = (
+    "Il music bot è in un altro canale vocale: devi essere nel suo stesso canale "
+    "per usare questo comando."
+)
+MSG_NESSUN_NODO = (
+    "Nessun nodo Lavalink è collegato in questo momento per questo music bot. "
+    "Riprova tra poco; se continua, avvisa lo staff del bot."
+)
 
 
-def _build_lavalink_nodes() -> list[wavelink.Node]:
+def crea_gestore_nodi() -> MusicNodeManager:
     """
-    Ordine deciso con l'utente: nodi PUBBLICI gratuiti in cascata per
-    primi (DEFAULT_PUBLIC_LAVALINK_NODES — verificati con una ricerca,
-    vedi core/music_logic.py per la provenienza e l'avviso di
-    riverificarli periodicamente), eventuali nodi extra configurati
-    in LAVALINK_NODES, e il nodo locale/self-hostato dell'utente
-    (LAVALINK_HOST/PORT/PASSWORD) SEMPRE per ultimo — provato solo se
-    tutti i nodi pubblici sopra falliscono o non rispondono, così non
-    si carica inutilmente la macchina che ospita anche il bot stesso
-    quando un nodo pubblico basta.
+    Nodi pubblici SOLO da LAVALINK_NODES (.env) — nel codice non ce n'è
+    nessuno (LIM-54) — e il nodo locale/self-hostato (LAVALINK_HOST/
+    PORT/PASSWORD), che nella scelta viene sempre per ultimo (LIM-42).
     """
-    nodi_config: list[LavalinkNodeConfig] = list(
-        parse_lavalink_nodes(DEFAULT_PUBLIC_LAVALINK_NODES)
+    pubblici = parse_lavalink_nodes(config.LAVALINK_NODES)
+    locale = LavalinkNodeConfig(
+        uri=f"http://{config.LAVALINK_HOST}:{config.LAVALINK_PORT}",
+        password=config.LAVALINK_PASSWORD,
     )
-    nodi_config.extend(parse_lavalink_nodes(config.LAVALINK_NODES))
+    return MusicNodeManager(pubblici, locale)
 
-    uri_locale = f"http://{config.LAVALINK_HOST}:{config.LAVALINK_PORT}"
 
-    nodi = [wavelink.Node(uri=nodo.uri, password=nodo.password) for nodo in nodi_config]
-    nodi.append(
-        wavelink.Node(
-            identifier=LOCAL_NODE_IDENTIFIER,
-            uri=uri_locale,
-            password=config.LAVALINK_PASSWORD,
-        )
-    )
-    return nodi
+def chiave_del_bot(bot) -> str:
+    """'main' per il bot principale, 'w<N>' per il worker N."""
+    indice = getattr(bot, "worker_index", None)
+    return worker_key(indice) if isinstance(indice, int) else MAIN_KEY
+
+
+def crea_cartella_locale() -> None:
+    """M 8.4 / #45: la cartella degli inediti viene creata se manca."""
+    if not config.MAIN_RADIO_LOCAL_FOLDER:
+        return
+    try:
+        Path(config.MAIN_RADIO_LOCAL_FOLDER).mkdir(parents=True, exist_ok=True)
+    except OSError:
+        logger.warning("Impossibile creare la cartella inediti della radio.", exc_info=True)
 
 
 class MusicCog(CogConGruppi, commands.Cog):
@@ -131,6 +146,19 @@ class MusicCog(CogConGruppi, commands.Cog):
         # riferimento debole ai task: senza questo insieme Python
         # potrebbe eliminarli prima che finiscano.
         self.task_in_background: set[asyncio.Task] = set()
+        # Server in cui la radio si sta avviando (comando o ingresso del
+        # bot in vocale): evita un secondo avvio dallo stesso evento.
+        self._radio_in_avvio: set[int] = set()
+
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        crea_cartella_locale()
+
+    async def cog_unload(self) -> None:
+        await super().cog_unload()
+        gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
+        if gestore is not None:
+            await gestore.close()  # M 8.2: chiusura del Pool allo spegnimento
 
     def avvia_in_background(self, coroutine: Coroutine) -> asyncio.Task:
         """Lancia un task e ne tiene il riferimento finché non finisce."""
@@ -179,49 +207,64 @@ class MusicCog(CogConGruppi, commands.Cog):
         auto_assign: bool,
         interaction: discord.Interaction | None = None,
     ) -> tuple[discord.Guild | None, str | None]:
+        """(guild_del_worker, None) o (None, messaggio_errore). Vedi `_get_worker`."""
+        _bot, worker_guild, errore = await self._get_worker(
+            guild_id, auto_assign=auto_assign, interaction=interaction
+        )
+        return worker_guild, errore
+
+    async def _get_worker(
+        self,
+        guild_id: int,
+        *,
+        auto_assign: bool,
+        interaction: discord.Interaction | None = None,
+    ) -> tuple[commands.Bot | None, discord.Guild | None, str | None]:
         """
-        Restituisce (guild_del_worker, None) in caso di successo, o
-        (None, messaggio_errore) altrimenti. auto_assign=True (usato
-        solo da /music play) assegna un nuovo worker libero se il server
-        non ne ha già uno; auto_assign=False (tutti gli altri
-        comandi) non assegna nulla — se non c'è una sessione già
-        attiva, quei comandi devono fallire pulitamente, non avviarne
-        una nuova per sbaglio. `interaction` serve SOLO quando
-        auto_assign=True, per differenziare il messaggio di errore
-        (admin/non-admin) quando nessun worker è disponibile — vedi
-        `_messaggio_istanze_esaurite`.
+        (bot_del_worker, guild_del_worker, None) o (None, None, errore).
+
+        M 8.6: la sessione è per (server, canale vocale): si cerca quella
+        del canale in cui si trova l'utente. auto_assign=True (solo
+        /music play) assegna un worker libero se il canale non ne ha già
+        uno; auto_assign=False (tutti gli altri comandi) non assegna
+        nulla. M 8.7: un utente in un canale diverso da quello del player
+        non trova la sessione e viene rifiutato con un messaggio chiaro.
+        `interaction` serve sempre: dà il canale dell'utente (e, con
+        auto_assign, distingue admin e non admin nel messaggio di
+        istanze esaurite).
         """
         fleet: MusicFleet = self.bot.music_fleet
+        voce = getattr(getattr(interaction, "user", None), "voice", None)
+        canale = getattr(voce, "channel", None)
+        canale_id = getattr(canale, "id", 0) or 0
 
         if auto_assign:
-            assegnazione = await fleet.get_or_assign_worker_for_guild(guild_id)
+            assegnazione = await fleet.get_or_assign_worker_for_channel(guild_id, canale_id)
             if assegnazione is None:
                 errore_assenza = await self._messaggio_istanze_esaurite(
                     fleet, guild_id, interaction
                 )
-                return None, errore_assenza
+                return None, None, errore_assenza
         else:
-            assegnazione = await fleet.get_worker_for_guild(guild_id)
+            assegnazione = await fleet.get_worker_for_channel(guild_id, canale_id)
             if assegnazione is None:
-                return None, "Non c'è nessuna sessione musicale attiva su questo server."
+                if await fleet.guild_has_session(guild_id):
+                    return None, None, MSG_ALTRO_CANALE
+                return None, None, "Non c'è nessuna sessione musicale attiva su questo server."
 
         _worker_index, worker_bot = assegnazione
         worker_guild = worker_bot.get_guild(guild_id)
         if worker_guild is None:
-            # Non dovrebbe più succedere (get_or_assign_worker_for_guild
-            # ora esclude i worker non presenti PRIMA di assegnarli),
-            # ma se capita comunque (es. il bot è stato rimosso dal
-            # server DOPO l'assegnazione) va rilasciato subito — senza
-            # questa release lo slot in music_sessions resterebbe
-            # occupato per sempre per questo server, un bug reale
-            # trovato mentre si costruiva questa gestione.
+            # Il bot è stato rimosso dal server DOPO l'assegnazione: va
+            # rilasciato subito, o lo slot in music_sessions resterebbe
+            # occupato per sempre.
             if auto_assign:
-                await fleet.release_guild(guild_id)
-            return None, (
+                await fleet.release_session(guild_id, canale_id)
+            return None, None, (
                 "Il music bot assegnato a questo server non risulta invitato qui. "
                 "Contatta lo staff del bot."
             )
-        return worker_guild, None
+        return worker_bot, worker_guild, None
 
     async def _messaggio_istanze_esaurite(
         self,
@@ -284,33 +327,62 @@ class MusicCog(CogConGruppi, commands.Cog):
             "con lo staff del bot per richiedere più istanze."
         )
 
-    async def _search_with_spotify_fallback(
-        self, query: str
-    ) -> wavelink.Search | None:
+    async def _cerca(
+        self, query: str, nodo: wavelink.Node, nodo_locale: wavelink.Node | None = None
+    ) -> tuple[wavelink.Search | None, wavelink.Node]:
         """
-        SPEC.md §9.5 — Spotify richiede il plugin LavaSrc, presente
-        (dichiarato) sui nodi pubblici di default ma non verificabile
-        senza controllarli direttamente: possono non risolvere o non
-        rispondere. Instradamento GIÀ predisposto per un nodo
-        personale con LavaSrc (LAVALINK_HOST/PORT/PASSWORD, lo stesso
-        "nodo locale" già usato per gli inediti della radio — SPEC.md
-        §9.11): se una query Spotify non produce risultati sui nodi
-        pubblici, si ritenta UNA volta pinnata specificamente su quel
-        nodo. Se il nodo personale non è configurato o è anch'esso
-        senza LavaSrc, il fallback semplicemente non trova nulla,
-        come oggi — nessun comportamento nuovo finché l'utente non
-        aggiunge le credenziali del proprio nodo in .env.
+        LIM-42/43: la ricerca gira su un nodo SCELTO (quello del bot che
+        suonerà), mai su "il meno carico di tutto il Pool". I link di
+        Spotify (`spotify:`) non diventano una ricerca su YouTube Music.
+        Se una query Spotify non dà nulla sui nodi pubblici, si ritenta
+        UNA volta sul nodo locale del plugin LavaSrc (SPEC.md §9.5).
+        Restituisce anche il nodo che ha risposto: il player deve nascere
+        lì, perché le tracce dei plugin si suonano solo dove il plugin c'è.
         """
-        risultati = await wavelink.Playable.search(query)
+        risultati = await self._cerca_su(query, nodo)
         if risultati or not is_spotify_query(query):
-            return risultati
+            return risultati, nodo
+        if nodo_locale is None or nodo_locale is nodo:
+            return risultati, nodo
+        return await self._cerca_su(query, nodo_locale), nodo_locale
 
+    @staticmethod
+    async def _cerca_su(query: str, nodo: wavelink.Node) -> wavelink.Search | None:
+        if needs_raw_fetch(query):
+            return await wavelink.Pool.fetch_tracks(query, node=nodo)
+        return await wavelink.Playable.search(query, node=nodo)
+
+    async def _entra_in_canale(
+        self, canale, nodo: wavelink.Node
+    ) -> tuple[wavelink.Player | None, str | None]:
+        """
+        Entra in un canale vocale con un player sul nodo scelto. LIM-34:
+        canale palco, canale pieno e tempo scaduto hanno un messaggio
+        chiaro invece di un errore muto. (player, None) o (None, errore).
+        """
+        me = getattr(getattr(canale, "guild", None), "me", None)
+        permessi = canale.permissions_for(me) if me is not None else None
+        problema = voice_join_problem(
+            is_stage=isinstance(canale, discord.StageChannel),
+            user_limit=getattr(canale, "user_limit", 0) or 0,
+            presenti=len(getattr(canale, "members", [])),
+            puo_superare_limite=bool(
+                permessi and (permessi.administrator or permessi.move_members)
+            ),
+        )
+        if problema:
+            return None, problema
         try:
-            nodo_locale = wavelink.Pool.get_node(LOCAL_NODE_IDENTIFIER)
-        except wavelink.exceptions.InvalidNodeException:
-            return risultati
-
-        return await wavelink.Playable.search(query, node=nodo_locale)
+            player = await canale.connect(cls=functools.partial(wavelink.Player, nodes=[nodo]))
+        except (asyncio.TimeoutError, wavelink.exceptions.ChannelTimeoutException):
+            return None, MSG_TEMPO_SCADUTO
+        except discord.Forbidden:
+            return None, "Non ho il permesso di entrare in questo canale vocale."
+        except (discord.ClientException, discord.HTTPException):
+            logger.exception("Ingresso nel canale vocale %s non riuscito.", canale.id)
+            return None, "Non riesco a entrare nel canale vocale. Riprova tra poco."
+        player.autoplay = wavelink.AutoPlayMode.partial
+        return player, None
 
     # ================================================================
     # Comandi (instradati verso un worker)
@@ -323,29 +395,53 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         await interaction.response.defer()
 
-        worker_guild, errore = await self._get_worker_guild(
+        worker_bot, worker_guild, errore = await self._get_worker(
             interaction.guild.id, auto_assign=True, interaction=interaction
         )
         if errore:
             await interaction.followup.send(errore)
             return
 
+        canale_id = interaction.user.voice.channel.id
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
+        nuova_sessione = player is None
+        gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
+        chiave = chiave_del_bot(worker_bot)
+
+        # D10: il player vive sul nodo del SUO bot; la ricerca gira sullo stesso.
+        nodo = player.node if player is not None else (gestore.node_for(chiave) if gestore else None)
+        if nodo is None:
+            if nuova_sessione:
+                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await interaction.followup.send(MSG_NESSUN_NODO)
+            return
+
+        nodo_locale = gestore.locale_di(chiave) if (gestore and nuova_sessione) else None
+        try:
+            risultati, nodo = await self._cerca(query, nodo, nodo_locale)
+        except wavelink.exceptions.WavelinkException:
+            logger.warning("Ricerca musicale fallita sul nodo %s.", nodo.identifier, exc_info=True)
+            risultati = None
+        if not risultati:
+            if nuova_sessione:
+                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+            await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
+            return
+
         if player is None:
-            canale_worker = worker_guild.get_channel(interaction.user.voice.channel.id)
+            canale_worker = worker_guild.get_channel(canale_id)
             if canale_worker is None:
+                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
                 await interaction.followup.send(
                     "Non riesco a raggiungere il tuo canale vocale dall'istanza assegnata "
                     "— il music bot potrebbe non avere accesso a questo canale."
                 )
                 return
-            player = await canale_worker.connect(cls=wavelink.Player)
-            player.autoplay = wavelink.AutoPlayMode.partial
-
-        risultati = await self._search_with_spotify_fallback(query)
-        if not risultati:
-            await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
-            return
+            player, errore = await self._entra_in_canale(canale_worker, nodo)
+            if errore:
+                await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
+                await interaction.followup.send(errore)
+                return
 
         if isinstance(risultati, wavelink.Playlist):
             tracce_totali = len(risultati)
@@ -353,19 +449,20 @@ class MusicCog(CogConGruppi, commands.Cog):
             await player.queue.put_wait(tracce_da_aggiungere)
             if tracce_totali > MAX_PLAYLIST_TRACKS:
                 await interaction.followup.send(
-                    f"📃 Aggiunta la playlist **{risultati.name}** — "
+                    f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** — "
                     f"{MAX_PLAYLIST_TRACKS} tracce su {tracce_totali} totali "
                     f"(limite massimo per singola playlist)."
                 )
             else:
                 await interaction.followup.send(
-                    f"📃 Aggiunta la playlist **{risultati.name}** ({tracce_totali} tracce) alla coda."
+                    f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** ({tracce_totali} tracce) alla coda."
                 )
         else:
             traccia = risultati[0]
             await player.queue.put_wait(traccia)
             await interaction.followup.send(
-                f"➕ Aggiunta **{traccia.title}** ({format_duration(traccia.length)}) alla coda."
+                f"➕ Aggiunta **{truncate_title(traccia.title, 200)}** "
+                f"({format_duration(traccia.length)}) alla coda."
             )
 
         if not player.playing and not player.queue.is_empty:
@@ -377,7 +474,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -397,7 +496,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -418,7 +519,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -438,7 +541,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -458,7 +563,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -469,7 +576,9 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         embed = discord.Embed(
             title="🎵 Coda di riproduzione",
-            description=build_queue_display(titolo_attuale, titoli_in_coda),
+            description=build_queue_display(titolo_attuale, titoli_in_coda)[
+                :EMBED_DESCRIPTION_LIMIT
+            ],
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed)
@@ -487,7 +596,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -515,7 +626,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -546,7 +659,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -579,7 +694,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -603,7 +720,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -631,7 +750,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             righe.append(f"📃 {tracce_in_coda} altre tracce in coda")
 
         embed = discord.Embed(
-            title=f"🎵 {traccia.title}",
+            title=truncate_title(f"🎵 {traccia.title}"),
             description="\n".join(righe),
             color=discord.Color.blurple(),
         )
@@ -650,7 +769,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -678,7 +799,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -707,7 +830,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -728,7 +853,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -740,9 +867,12 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        canale_id = player.channel.id if player.channel is not None else 0
         await player.disconnect()
         fleet: MusicFleet = self.bot.music_fleet
-        await fleet.release_guild(interaction.guild.id)
+        await fleet.release_session(
+            interaction.guild.id, canale_id or interaction.user.voice.channel.id
+        )
         await interaction.response.send_message("👋 Disconnesso.")
 
     # ================================================================
@@ -758,7 +888,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -783,7 +915,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not await self._controlli_base(interaction):
             return
 
-        worker_guild, errore = await self._get_worker_guild(interaction.guild.id, auto_assign=False)
+        worker_guild, errore = await self._get_worker_guild(
+            interaction.guild.id, auto_assign=False, interaction=interaction
+        )
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -808,20 +942,52 @@ class MusicCog(CogConGruppi, commands.Cog):
     # rende possibile questo senza coordinare i player tra loro in
     # tempo reale.
     # ================================================================
-    async def _resolve_radio_track(self, identifier: str) -> wavelink.Playable | None:
+    def _nodo_della_radio(self, locale_richiesto: bool) -> tuple[wavelink.Node | None, str | None]:
         """
-        Gli identificatori "local:..." vanno risolti SOLO tramite il
-        nodo locale/self-hostato (LOCAL_NODE_IDENTIFIER) — nessun
-        nodo pubblico ha accesso al filesystem di questa macchina,
-        verificato prima di progettare questa feature. Tutto il
-        resto (URL/ricerche su piattaforme pubbliche) può passare
-        per qualunque nodo disponibile, wavelink sceglie da solo.
+        Il nodo del bot principale per la radio. I brani locali si
+        leggono SOLO dal nodo locale (nessun nodo pubblico vede il
+        filesystem di questa macchina): se la playlist ne ha, il player
+        nasce lì. (nodo, None) o (None, messaggio).
         """
-        if identifier.startswith("local:"):
-            nodo_locale = wavelink.Pool.get_node(LOCAL_NODE_IDENTIFIER)
-            risultati = await wavelink.Playable.search(identifier, node=nodo_locale)
-        else:
-            risultati = await wavelink.Playable.search(identifier)
+        gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
+        if gestore is None:
+            return None, MSG_NESSUN_NODO
+        if locale_richiesto:
+            nodo = gestore.locale_di(MAIN_KEY)
+            if nodo is None:
+                return None, (
+                    "La playlist ha brani locali ma il nodo Lavalink locale non è collegato "
+                    "(o è sotto la versione 4.2.0). Vedi deploy/lavalink/README.md."
+                )
+            return nodo, None
+        nodo = gestore.node_for(MAIN_KEY)
+        return (nodo, None) if nodo is not None else (None, MSG_NESSUN_NODO)
+
+    async def _resolve_radio_track(
+        self, identifier: str, nodo: wavelink.Node | None = None
+    ) -> wavelink.Playable | None:
+        """
+        BUG-10 / LIM-43: un identificatore "local:<percorso>" va al nodo
+        locale con il percorso visto dal NODO (`Pool.fetch_tracks`, mai
+        `Playable.search`, che lo trasformerebbe in una ricerca su YouTube
+        Music). Tutto il resto passa dal nodo scelto per la radio.
+        """
+        gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
+        percorso = local_path_from_identifier(identifier)
+        try:
+            if percorso is not None:
+                nodo_locale = gestore.locale_di(MAIN_KEY) if gestore else None
+                if nodo_locale is None:
+                    return None
+                risultati = await wavelink.Pool.fetch_tracks(percorso, node=nodo_locale)
+            else:
+                nodo = nodo or (gestore.node_for(MAIN_KEY) if gestore else None)
+                if nodo is None:
+                    return None
+                risultati = await self._cerca_su(identifier, nodo)
+        except wavelink.exceptions.WavelinkException:
+            logger.warning("Brano della radio non risolto (%s).", identifier[:80], exc_info=True)
+            return None
 
         if not risultati:
             return None
@@ -842,6 +1008,12 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def nonstop_main_add_track(
         self, interaction: discord.Interaction, query: str, label: str | None = None
     ) -> None:
+        if query.strip().startswith("local:"):
+            await interaction.response.send_message(
+                "Per i file della cartella inediti usa /owner radio add-local.", ephemeral=True
+            )
+            return
+
         await interaction.response.defer(ephemeral=True)
 
         traccia = await self._resolve_radio_track(query)
@@ -852,11 +1024,12 @@ class MusicCog(CogConGruppi, commands.Cog):
         track_id = await main_radio_repo.add_track(
             identifier=query,
             duration_ms=traccia.length,
-            label=label or traccia.title,
+            label=truncate_title(label or traccia.title, 200),
             added_by=interaction.user.id,
         )
         await interaction.followup.send(
-            f"✅ Aggiunta **{label or traccia.title}** alla playlist della radio (ID `{track_id}`)."
+            f"✅ Aggiunta **{truncate_title(label or traccia.title, 200)}** "
+            f"alla playlist della radio (ID `{track_id}`)."
         )
 
     @comando_di_gruppo(
@@ -880,12 +1053,12 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # SEC-5: senza questo controllo un "../../etc/passwd" (o
-        # simile) uscirebbe dalla cartella inediti — il percorso
-        # risolto deve restare DENTRO MAIN_RADIO_LOCAL_FOLDER.
+        # SEC-5 / #45: il nome deve essere un nome di file semplice, e il
+        # percorso risolto deve restare DENTRO la cartella inediti.
         cartella = Path(config.MAIN_RADIO_LOCAL_FOLDER).resolve()
-        percorso_risolto = (cartella / filename).resolve()
-        if not percorso_risolto.is_relative_to(cartella):
+        if not is_safe_local_filename(filename) or not (
+            (cartella / filename).resolve().is_relative_to(cartella)
+        ):
             await interaction.response.send_message(
                 "Nome file non valido.", ephemeral=True
             )
@@ -893,8 +1066,10 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
 
-        percorso_completo = f"{config.MAIN_RADIO_LOCAL_FOLDER.rstrip('/')}/{filename}"
-        identificatore = f"local:{percorso_completo}"
+        # M 8.4: il percorso è quello che vede il NODO Lavalink (con Docker
+        # è il punto di montaggio), non quello del bot.
+        radice_nodo = config.LAVALINK_LOCAL_ROOT or config.MAIN_RADIO_LOCAL_FOLDER
+        identificatore = local_identifier(local_path_for_node(radice_nodo, filename))
 
         traccia = await self._resolve_radio_track(identificatore)
         if traccia is None:
@@ -948,14 +1123,15 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         righe = [
-            f"`{t.id}` **{t.label}** ({format_duration(t.duration_ms)})" for t in tracce
+            f"`{t.id}` **{truncate_title(t.label, 150)}** ({format_duration(t.duration_ms)})"
+            for t in tracce
         ]
-        embed = discord.Embed(
-            title="📻 Playlist della radio",
-            description="\n".join(righe),
-            color=discord.Color.blurple(),
+        pagine = paginate_lines(righe)  # M 8.15: descrizione entro 4096, a pagine
+        view = RadioListView(pagine, interaction.user.id) if len(pagine) > 1 else None
+        kwargs = {"view": view} if view is not None else {}
+        await interaction.response.send_message(
+            embed=pagina_embed(pagine, 0), ephemeral=True, **kwargs
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
         "owner",
@@ -983,8 +1159,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
-        tracce_db = await main_radio_repo.list_tracks()
-        if not tracce_db:
+        if not await main_radio_repo.list_tracks():
             await interaction.response.send_message(
                 "La playlist della radio è vuota. Usa /owner radio add-track o add-local prima.",
                 ephemeral=True,
@@ -992,6 +1167,27 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.defer()
+        messaggio = await self._avvia_radio(guild, interaction.user.voice.channel)
+        await interaction.followup.send(messaggio)
+
+    async def _avvia_radio(self, guild: discord.Guild, canale) -> str:
+        """
+        Avvia la radio condivisa in `canale` dal punto in cui si trova ora
+        e restituisce il messaggio per l'utente. Usata dal comando e
+        dall'ingresso del bot principale in vocale (M 8.8, #45).
+        """
+        if guild.id in self._radio_in_avvio:
+            return "La radio si sta già avviando su questo server."
+        self._radio_in_avvio.add(guild.id)
+        try:
+            return await self._avvia_radio_interna(guild, canale)
+        finally:
+            self._radio_in_avvio.discard(guild.id)
+
+    async def _avvia_radio_interna(self, guild: discord.Guild, canale) -> str:
+        tracce_db = await main_radio_repo.list_tracks()
+        if not tracce_db:
+            return "La playlist della radio è vuota. Usa /owner radio add-track o add-local prima."
 
         adesso = datetime.now(timezone.utc)
         stato = await main_radio_repo.get_state()
@@ -1012,41 +1208,78 @@ class MusicCog(CogConGruppi, commands.Cog):
         ]
         posizione = compute_current_position(tracce_info, indice_riferimento, inizio_riferimento, adesso)
         if posizione is None:
-            await interaction.followup.send(
-                "Stato della radio incoerente (playlist cambiata nel frattempo?). Riprova."
-            )
-            return
+            return "Stato della radio incoerente (playlist cambiata nel frattempo?). Riprova."
+
+        nodo, errore_nodo = self._nodo_della_radio(
+            any(local_path_from_identifier(t.identifier) is not None for t in tracce_db)
+        )
+        if nodo is None:
+            return errore_nodo
 
         traccia_corrente_db = tracce_db[posizione.track_index]
-        traccia_corrente = await self._resolve_radio_track(traccia_corrente_db.identifier)
+        traccia_corrente = await self._resolve_radio_track(traccia_corrente_db.identifier, nodo)
         if traccia_corrente is None:
-            await interaction.followup.send(
+            return (
                 f"Impossibile risolvere la traccia attuale della radio "
-                f"(**{traccia_corrente_db.label}**) — verifica che sia ancora disponibile."
+                f"(**{truncate_title(traccia_corrente_db.label, 150)}**) — "
+                "verifica che sia ancora disponibile."
             )
-            return
 
-        player: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
-        player.autoplay = wavelink.AutoPlayMode.partial
+        player, errore = await self._entra_in_canale(canale, nodo)
+        if errore:
+            return errore
+        # M 8.5 / LIM-44: la radio 24/7 non lascia il canale se resta vuoto
+        # (né il controllo memoria né l'evento "inattivo" la toccano).
+        player.is_radio = True
+        player.inactive_channel_tokens = None
 
         # Il resto della playlist DOPO la traccia attuale, in ordine,
-        # con loop — così una volta finita la traccia corrente il
-        # player prosegue da solo lungo la stessa playlist condivisa.
-        indici_successivi = [
-            (posizione.track_index + i) % len(tracce_db) for i in range(1, len(tracce_db))
-        ]
-        for indice in indici_successivi:
-            traccia_futura = await self._resolve_radio_track(tracce_db[indice].identifier)
+        # con loop (next_track_index, M 8.17) — così una volta finita la
+        # traccia corrente il player prosegue da solo lungo la stessa
+        # playlist condivisa.
+        indice = posizione.track_index
+        for _ in range(1, len(tracce_db)):
+            indice = next_track_index(indice, len(tracce_db))
+            traccia_futura = await self._resolve_radio_track(tracce_db[indice].identifier, nodo)
             if traccia_futura is not None:
                 await player.queue.put_wait(traccia_futura)
         player.queue.mode = wavelink.QueueMode.loop_all
 
         await player.play(traccia_corrente, start=posizione.elapsed_ms_in_track)
 
-        await interaction.followup.send(
-            f"🔴 Radio avviata: **{traccia_corrente_db.label}**, "
+        return (
+            f"🔴 Radio avviata: **{truncate_title(traccia_corrente_db.label, 150)}**, "
             f"a {format_duration(posizione.elapsed_ms_in_track)}."
         )
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(
+        self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
+    ) -> None:
+        """
+        M 8.8 / #45: quando il bot PRINCIPALE si ritrova in un canale
+        vocale senza un player (messo lì a mano da un admin, o rimasto
+        dopo un riavvio), la radio parte da sola dal punto giusto.
+        Solo il principale: i worker non caricano questo cog. Se il bot è
+        entrato con /owner radio start il player esiste già e non si
+        fa nulla. Se esce, lo stato condiviso non si tocca.
+        """
+        if self.bot.user is None or member.id != self.bot.user.id:
+            return
+        if after.channel is None or member.guild.voice_client is not None:
+            return
+        if member.guild.id in self._radio_in_avvio:
+            return
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_MUSIC):
+            return
+        self.avvia_in_background(self._avvia_radio_da_ingresso(member.guild, after.channel))
+
+    async def _avvia_radio_da_ingresso(self, guild: discord.Guild, canale) -> None:
+        try:
+            esito = await self._avvia_radio(guild, canale)
+            logger.info("Radio avviata all'ingresso del bot in vocale (%s): %s", guild.id, esito)
+        except Exception:
+            logger.exception("Avvio automatico della radio fallito (%s).", guild.id)
 
     @comando_di_gruppo(
         "owner",
@@ -1090,25 +1323,28 @@ async def setup(bot: commands.Bot) -> None:
         )
     )
     cog = MusicCog(bot)
+    # I nodi si creano e si collegano in background (un task per nodo,
+    # M 8.2): setup() ritorna subito anche se Lavalink è irraggiungibile.
+    bot.music_nodes = crea_gestore_nodi()
     await bot.add_cog(cog)
-
-    # wavelink.Pool.connect() NON fallisce rapidamente se un nodo è
-    # irraggiungibile — verificato con un test diretto: ritenta
-    # all'infinito al proprio interno e la await non ritorna mai (né
-    # solleva), quindi un try/except attorno a un await diretto qui
-    # non serve a nulla e bloccherebbe l'intero avvio del bot (load_
-    # all_cogs aspetta ogni setup() in sequenza) se Lavalink fosse
-    # anche solo temporaneamente irraggiungibile. Lanciato come task
-    # in background invece: setup() ritorna subito, la connessione
-    # (coi suoi ritentativi) continua per conto suo.
     cog.avvia_in_background(_connetti_lavalink_in_background(bot))
 
 
 async def _connetti_lavalink_in_background(bot: commands.Bot) -> None:
+    """
+    D10: un nodo per ogni bot (principale + 5 worker) e per ogni server
+    Lavalink. Ogni nodo ha un task suo con tentativi limitati: un nodo
+    morto non blocca gli altri (M 8.2). I task li tiene il gestore e li
+    ferma `cog_unload`.
+    """
+    gestore: MusicNodeManager = bot.music_nodes
     try:
-        await wavelink.Pool.connect(nodes=_build_lavalink_nodes(), client=bot)
+        gestore.avvia(bot, MAIN_KEY)
+        flotta = getattr(bot, "music_fleet", None)
+        for worker in getattr(flotta, "worker_bots", []):
+            gestore.avvia(worker, chiave_del_bot(worker))
     except Exception:
         logger.exception(
-            "Connessione a Lavalink interrotta in modo inatteso — "
+            "Avvio dei nodi Lavalink interrotto in modo inatteso — "
             "Music resterà non funzionante finché un nodo non sarà raggiungibile."
         )

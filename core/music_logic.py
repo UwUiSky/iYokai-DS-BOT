@@ -14,12 +14,28 @@ quelli configurati; qui serve solo interpretare la stringa di
 configurazione (LAVALINK_NODES in core/config.py) in oggetti Python.
 """
 
-# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+# Fase F2 (issue #64, D10): nodi per bot, versione minima di Lavalink,
+# scelta esplicita del nodo, percorsi locali, titoli tagliati.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from urllib.parse import urlparse
+
+# Lavalink 4.2.0 o successivo: cifratura vocale DAVE, obbligatoria da
+# 01/03/2026 (D10, LIM-54).
+MIN_LAVALINK_VERSION = (4, 2, 0)
+
+# Tentativi di collegamento di ogni nodo prima di rinunciare (LIM-41):
+# un nodo morto non deve riprovare per sempre né tenere fermi gli altri.
+NODE_CONNECT_RETRIES = 3
+
+# Base dell'identificatore del nodo locale/self-hostato. Ogni bot ha il
+# suo nodo con identificatore "<base>@<chiave del bot>" (D10).
+LOCAL_NODE_BASE = "iyokai-local-node"
+
+EMBED_TITLE_LIMIT = 256  # LIM-21
 
 
 @dataclass(frozen=True)
@@ -27,25 +43,6 @@ class LavalinkNodeConfig:
     uri: str
     password: str
 
-
-# Nodi pubblici gratuiti verificati con una ricerca (settembre 2026) —
-# usati come cascata di DEFAULT quando LAVALINK_NODES non è impostato
-# esplicitamente, così Music funziona senza che l'utente debba
-# configurare nulla al primo avvio. HeavenCloud per primi (4 nodi
-# regionali, dichiara supporto Spotify/Apple Music/Deezer via plugin
-# LavaSRC — utile dato che l'utente vuole più sorgenti oltre YouTube),
-# poi Serenetia come ulteriore fallback. Elenchi come questo cambiano
-# nel tempo (nodi che spariscono, ne nascono di nuovi) — da
-# riverificare periodicamente, non è un elenco statico per sempre:
-# fonte aggiornata con controllo di qualità settimanale su
-# https://lavalink.darrennathanael.com/.
-DEFAULT_PUBLIC_LAVALINK_NODES = (
-    "https://lavalink.heavencloud.in:443|heavencloud,"
-    "https://us.lavalink.heavencloud.in:443|heavencloud,"
-    "https://sg.lavalink.heavencloud.in:443|heavencloud,"
-    "https://eu.lavalink.heavencloud.in:443|heavencloud,"
-    "http://lavalink.serenetia.com:80|https://dsc.gg/ajidevserver"
-)
 
 
 def parse_lavalink_nodes(raw: str) -> list[LavalinkNodeConfig]:
@@ -174,3 +171,178 @@ def is_spotify_query(query: str) -> bool:
     """
     query_pulita = query.strip().lower()
     return query_pulita.startswith("spotify:") or "open.spotify.com" in query_pulita
+
+
+# ----------------------------------------------------------------
+# Nodi per bot, versione, scelta (F2, D10)
+# ----------------------------------------------------------------
+_SEMVER = re.compile(r"^\s*v?(\d+)\.(\d+)(?:\.(\d+))?")
+
+
+def parse_semver(testo: str | None) -> tuple[int, int, int] | None:
+    """'4.2.0', 'v4.1.1-beta' o '4.2' -> (maggiore, minore, patch). None se illeggibile."""
+    if not testo:
+        return None
+    m = _SEMVER.match(str(testo))
+    if m is None:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+
+
+def is_supported_lavalink(versione: str | None) -> bool:
+    """Vero se la versione è almeno MIN_LAVALINK_VERSION. Illeggibile = no."""
+    v = parse_semver(versione)
+    return v is not None and v >= MIN_LAVALINK_VERSION
+
+
+def node_identifier(base: str, client_key: str) -> str:
+    """Identificatore del nodo di UN bot (il Pool ne tiene uno per identificatore)."""
+    return f"{base}@{client_key}"
+
+
+def public_node_base(uri: str) -> str:
+    """Base dell'identificatore di un nodo pubblico: 'pub-<host>-<porta>'."""
+    parsed = urlparse(uri if "//" in uri else f"//{uri}")
+    host = parsed.hostname or uri
+    porta = parsed.port
+    return f"pub-{host}" + (f"-{porta}" if porta else "")
+
+
+def is_local_node(identifier: str) -> bool:
+    return identifier.startswith(LOCAL_NODE_BASE)
+
+
+def _stato_connesso(nodo) -> bool:
+    stato = getattr(nodo, "status", None)
+    return str(getattr(stato, "name", stato)).upper() == "CONNECTED"
+
+
+def order_nodes(nodi) -> list:
+    """
+    LIM-42: solo i nodi CONNESSI; i pubblici per primi (meno carichi
+    davanti), il locale per ultimo. Il chiamante cerca sul primo e
+    passa al successivo solo se serve.
+    """
+    connessi = [n for n in nodi if _stato_connesso(n)]
+    return sorted(
+        connessi,
+        key=lambda n: (is_local_node(n.identifier), len(getattr(n, "players", {}) or {})),
+    )
+
+
+def choose_node(nodi):
+    """Il nodo scelto per cercare o per creare un player; None se nessuno è connesso."""
+    ordinati = order_nodes(nodi)
+    return ordinati[0] if ordinati else None
+
+
+# ----------------------------------------------------------------
+# Brani locali della radio (BUG-10, LIM-43)
+# ----------------------------------------------------------------
+LOCAL_PREFIX = "local:"
+
+
+def is_safe_local_filename(nome: str) -> bool:
+    """Un nome di file semplice: niente cartelle, niente '..', niente caratteri di controllo."""
+    if not nome or nome != nome.strip() or len(nome) > 255:
+        return False
+    if nome in (".", "..") or "/" in nome or "\\" in nome:
+        return False
+    return not any(ord(c) < 32 for c in nome)
+
+
+def local_path_for_node(radice: str, nome: str) -> str:
+    """
+    Il percorso del file COME LO VEDE IL NODO Lavalink (con Docker non
+    coincide con quello del bot: `LAVALINK_LOCAL_ROOT`, es. /audio/local).
+    """
+    return f"{radice.rstrip('/')}/{nome}"
+
+
+def local_identifier(percorso: str) -> str:
+    return f"{LOCAL_PREFIX}{percorso}"
+
+
+def local_path_from_identifier(identificatore: str) -> str | None:
+    """'local:/audio/local/a.mp3' -> '/audio/local/a.mp3'; None se non è locale."""
+    if not identificatore.startswith(LOCAL_PREFIX):
+        return None
+    return identificatore[len(LOCAL_PREFIX):]
+
+
+def needs_raw_fetch(query: str) -> bool:
+    """
+    Query che NON vanno trasformate in una ricerca YouTube Music
+    (`Playable.search` aggiunge `ytmsearch:` a tutto ciò che non è un URL
+    http): gli URI di Spotify. I percorsi locali NON sono qui di proposito:
+    passano solo dalla radio (`local_path_from_identifier`), mai da una
+    ricerca scritta da un utente.
+    """
+    return query.strip().lower().startswith("spotify:")
+
+
+def truncate_title(titolo: str, limite: int = EMBED_TITLE_LIMIT) -> str:
+    """Titolo dell'embed entro il limite di Discord (LIM-21), con i puntini."""
+    if len(titolo) <= limite:
+        return titolo
+    return titolo[: limite - 1].rstrip() + "…"
+
+
+# ----------------------------------------------------------------
+# Pagine e messaggi di ingresso in vocale (LIM-21, LIM-34)
+# ----------------------------------------------------------------
+EMBED_DESCRIPTION_LIMIT = 4096
+
+
+def paginate_lines(righe: list[str], max_chars: int = 3500, max_lines: int = 25) -> list[str]:
+    """
+    Divide un elenco in pagine che stanno in una descrizione di embed
+    (4096): al massimo `max_lines` righe e `max_chars` caratteri per
+    pagina. Una riga più lunga del tetto viene tagliata. Sempre almeno
+    una pagina.
+    """
+    pagine: list[str] = []
+    corrente: list[str] = []
+    lunghezza = 0
+    for riga in righe:
+        riga = truncate_title(riga, max_chars)
+        extra = len(riga) + 1
+        if corrente and (len(corrente) >= max_lines or lunghezza + extra > max_chars):
+            pagine.append("\n".join(corrente))
+            corrente, lunghezza = [], 0
+        corrente.append(riga)
+        lunghezza += extra
+    pagine.append("\n".join(corrente))
+    return pagine
+
+
+MSG_CANALE_PALCO = (
+    "Questo è un canale palco: i music bot non possono suonarci. "
+    "Usa un canale vocale normale."
+)
+MSG_TEMPO_SCADUTO = (
+    "Il music bot non è riuscito a entrare nel canale vocale in tempo "
+    "(Discord non ha risposto). Riprova tra poco."
+)
+
+
+def msg_canale_pieno(presenti: int, limite: int) -> str:
+    return (
+        f"Il canale vocale è pieno ({presenti}/{limite}): il music bot non può "
+        "entrare. Libera un posto o alza il limite del canale."
+    )
+
+
+def voice_join_problem(
+    *, is_stage: bool, user_limit: int, presenti: int, puo_superare_limite: bool
+) -> str | None:
+    """
+    LIM-34: il messaggio da mostrare PRIMA di provare a entrare, o None
+    se si può provare. Canale palco e canale pieno (a meno che il bot
+    abbia Muovi membri/Amministratore, che aggira il limite).
+    """
+    if is_stage:
+        return MSG_CANALE_PALCO
+    if user_limit and presenti >= user_limit and not puo_superare_limite:
+        return msg_canale_pieno(presenti, user_limit)
+    return None
