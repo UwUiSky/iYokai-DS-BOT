@@ -734,3 +734,9 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 
 - [ ] `5.11` OAuth (#138) — con un account che ha autorizzato il ripristino utenti (`/admin backup restore-utenti`, token valido): `/modban tempban ... duration:2m modo:Fuori, con invito e ruoli al rientro`. Risultato atteso: alla scadenza l'account rientra da solo (nessun invito usato) con i ruoli di prima; riga di log «Rientro: Automatico». Senza autorizzazione e senza «Creare invito» il comando si ferma prima del ban.
 - [ ] `5.12` ter (#138) — `/modban ban` su un account isolato, poi `/modban unban`: l'account risulta sbannato davvero. Se Discord rifiuta di nascondere qualche canale, il moderatore legge quanti.
+- [ ] Dati (NF-04, F5) — quando il registro esisterà: `rank_card_prefs` deve comparire in esportazione e cancellazione.
+- [ ] `M 15.1` + `M 15.2` (#71) — passi (serve `PIXABAY_API_KEY` nel `.env`):
+  1. `/fun animal specie:Cane` e `/fun search-image query:gatto`.
+  2. Rifai `/fun search-image query:gatto` subito: poi dopo 10 secondi, con le stesse parole.
+  3. `/fun search-image` con 101 caratteri nel testo.
+  Risultato atteso: nessun "L'applicazione non ha risposto"; la ricerca arriva come immagine allegata (non collegata) con la riga "Immagine da Pixabay" che apre la pagina giusta; il passo 2 subito dopo dice di aspettare; la stessa ricerca ripetuta usa la cache (nel log una sola chiamata a Pixabay); Discord rifiuta il testo oltre 100 caratteri.

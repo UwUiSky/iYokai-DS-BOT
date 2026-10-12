@@ -38,3 +38,26 @@ def parse_pixabay_response(payload: dict) -> list[str]:
         if isinstance(url, str) and url:
             urls.append(url)
     return urls
+
+
+def parse_pixabay_hits(payload: dict) -> list[tuple[str, str]]:
+    """
+    Come `parse_pixabay_response`, ma ogni risultato è la coppia
+    (url dell'immagine, url della sua pagina su Pixabay). Se manca la
+    pagina si usa la home di Pixabay: il credito c'è sempre.
+    """
+    if not isinstance(payload, dict) or not isinstance(payload.get("hits"), list):
+        return []
+
+    trovati = []
+    for hit in payload["hits"]:
+        if not isinstance(hit, dict):
+            continue
+        url = hit.get("webformatURL")
+        if not (isinstance(url, str) and url):
+            continue
+        pagina = hit.get("pageURL")
+        if not (isinstance(pagina, str) and pagina.startswith("https://")):
+            pagina = "https://pixabay.com"
+        trovati.append((url, pagina))
+    return trovati
