@@ -6,7 +6,7 @@ core/data_registry.py. Una sola transazione: o tutto o niente.
 Funzioni coperte: SPEC §19 (NF-04, GDPR-2, #37)
 
 Che cosa NON si cancella (e si dice all'utente): ban e kick (`retain_for_security`),
-registri di sicurezza e ban globali, azioni ancora in coda. Il titolare di un clan
+registri di sicurezza e ban globali, sban programmati. Il titolare di un clan
 non resta: il clan passa al co-titolare (o al membro più anziano), da solo si scioglie.
 Il resto sì.
 """
@@ -37,7 +37,7 @@ async def tabelle_esistenti(conn) -> set[str]:
     return {r["table_name"] for r in righe}
 
 
-def _conta(esito: str) -> int:
+def righe_toccate(esito: str) -> int:
     try:
         return int(esito.rsplit(" ", 1)[-1])
     except ValueError:
@@ -75,7 +75,7 @@ async def _clan_del_titolare(conn, user_id: int) -> dict[str, int]:
         )
         await conn.execute("UPDATE clan_members SET role = 'owner' WHERE clan_id = $1 AND user_id = $2", riga["id"], erede)
         esito["trasferiti"] += 1
-    esito["co_titolare"] = _conta(
+    esito["co_titolare"] = righe_toccate(
         await conn.execute("UPDATE clans SET co_owner_id = NULL WHERE co_owner_id = $1", user_id)
     )
     return esito
@@ -100,13 +100,13 @@ async def _dimentica_in(conn, user_id: int) -> dict[str, dict[str, int]]:
         voce = {"cancellate": 0, "anonimizzate": 0, "conservate": 0}
         if t.colonne_utente:
             if t.utente == "cancella":
-                voce["cancellate"] = _conta(await conn.execute(t.sql_cancella_utente(), user_id))
+                voce["cancellate"] = righe_toccate(await conn.execute(t.sql_cancella_utente(), user_id))
             elif t.utente == "anonimizza":
-                voce["anonimizzate"] = _conta(await conn.execute(t.sql_anonimizza_utente(), user_id))
+                voce["anonimizzate"] = righe_toccate(await conn.execute(t.sql_anonimizza_utente(), user_id))
             if t.utente == "conserva" or t.conserva_se or t.conserva_utente_se:
                 voce["conservate"] = await conn.fetchval(t.sql_conta_conservate(), user_id)
         for colonna in t.attori_da_azzerare():
-            voce["anonimizzate"] += _conta(await conn.execute(t.sql_azzera_attore(colonna), user_id))
+            voce["anonimizzate"] += righe_toccate(await conn.execute(t.sql_azzera_attore(colonna), user_id))
         if any(voce.values()):
             if t.nome in rapporto:  # il clan già descritto sopra: si sommano
                 for chiave, valore in voce.items():
@@ -148,7 +148,7 @@ def testo_rapporto(rapporto: dict[str, dict[str, int]]) -> str:
     if t["conservate"]:
         righe.append(
             f"Righe conservate: {t['conservate']}. Restano per sicurezza dei server: "
-            "ban, kick, registri di sicurezza e azioni ancora in coda."
+            "ban, kick, registri di sicurezza e sban programmati."
         )
     return "\n".join(righe)
 

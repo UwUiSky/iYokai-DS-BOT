@@ -38,8 +38,8 @@ TESTO_CANCELLA = (
     "Richiesta ricevuta (numero {numero}). Il proprietario del bot la esamina e ti scrive in privato.\n"
     "Cosa succede: cancello o rendo anonimi i tuoi dati (livelli, monete, clan, preferenze, ticket, "
     "suggerimenti, token di ripristino).\n"
-    "Cosa resta: ban, kick, registri di sicurezza e ban globali, per proteggere i server, e le azioni "
-    "ancora in coda. Se sei titolare di un clan, passa al co-titolare o al membro più anziano; "
+    "Cosa resta: ban, kick, registri di sicurezza e ban globali, per proteggere i server, e gli sban programmati. "
+    "La richiesta stessa, con il motivo che scrivi, resta 24 mesi come prova di ciò che è stato fatto. Se sei titolare di un clan, passa al co-titolare o al membro più anziano; "
     "se sei solo, il clan viene sciolto."
 )
 
@@ -128,7 +128,7 @@ class PrivacyCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(richiesta="Il numero della richiesta")
     async def privacy_approva(
-        self, interaction: discord.Interaction, richiesta: app_commands.Range[int, 1, 2**62]
+        self, interaction: discord.Interaction, richiesta: app_commands.Range[int, 1, 2**53 - 1]
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         esito = await servizio.esegui_richiesta(db.pool, richiesta, interaction.user.id)
@@ -154,7 +154,7 @@ class PrivacyCog(CogConGruppi, commands.Cog):
     async def privacy_rifiuta(
         self,
         interaction: discord.Interaction,
-        richiesta: app_commands.Range[int, 1, 2**62],
+        richiesta: app_commands.Range[int, 1, 2**53 - 1],
         motivo: app_commands.Range[str, 1, MOTIVO_MAX],
     ) -> None:
         await interaction.response.defer(ephemeral=True)

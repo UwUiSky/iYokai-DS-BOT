@@ -21,7 +21,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.data_registry import GIORNI_DOPO_USCITA, REGISTRO, tabelle_con_scadenza
-from core.forget_user_service import tabelle_esistenti, _conta
+from core.forget_user_service import tabelle_esistenti, righe_toccate
 from core.repositories.guild_presence_repo import guild_presence_repo
 
 logger = logging.getLogger("iyokai.retention")
@@ -55,7 +55,7 @@ async def purga_server(
                 sql = t.sql_cancella_server()
                 if sql is None or t.nome not in esistenti:
                     continue
-                n = _conta(await conn.execute(sql, guild_id))
+                n = righe_toccate(await conn.execute(sql, guild_id))
                 if n:
                     cancellate[t.nome] = n
             for t in REGISTRO:  # ciò che deve sopravvivere alla cancellazione (contatore dei casi)
@@ -71,7 +71,7 @@ def _dimentica_memoria(guild_id: int) -> None:
     from core.database import db
     from core.premium_cache import invalida_cache_premium
 
-    db._dimentica_server(guild_id)
+    db.dimentica_server(guild_id)
     invalida_cache_premium(guild_id)
 
 
@@ -84,7 +84,7 @@ async def pulisci_scaduti(pool: asyncpg.Pool) -> dict[str, int]:
         if t.nome not in esistenti:
             continue
         try:
-            n = _conta(await pool.execute(t.sql_scaduti(), t.scadenza.giorni))
+            n = righe_toccate(await pool.execute(t.sql_scaduti(), t.scadenza.giorni))
         except asyncpg.PostgresError:
             logger.exception("Pulizia di %s fallita: passo alla prossima tabella.", t.nome)
             continue

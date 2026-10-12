@@ -369,3 +369,25 @@ async def test_ogni_opzione_di_testo_ha_un_massimo():
         assert sistemati == [], f"Ora hanno un massimo: toglile da KNOWN_SENZA_MAX_LENGTH: {sistemati}"
     finally:
         await _chiudi(creato_qui, bot)
+
+
+async def test_i_limiti_interi_delle_opzioni_entrano_nei_53_bit_di_discord():
+    """Discord rifiuta min/max interi oltre ±(2^53-1): un solo invio sbagliato blocca tutti i /owner."""
+    from discord import AppCommandOptionType
+
+    massimo = 2**53 - 1
+    creato_qui, bot = await _albero_vero()
+    try:
+        fuori = []
+        for nodo in _tutti_i_nodi(_radici(bot)):
+            if isinstance(nodo, app_commands.Group):
+                continue
+            for p in nodo.parameters:
+                if p.type not in (AppCommandOptionType.integer, AppCommandOptionType.number):
+                    continue
+                for nome, valore in (("min", p.min_value), ("max", p.max_value)):
+                    if valore is not None and abs(valore) > massimo:
+                        fuori.append(f"{nodo.qualified_name}:{p.name} {nome}={valore}")
+        assert fuori == [], f"Limiti interi oltre 2**53-1: {fuori}"
+    finally:
+        await _chiudi(creato_qui, bot)

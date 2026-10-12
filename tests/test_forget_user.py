@@ -45,7 +45,11 @@ async def _prepara(pool):
     await pool.execute("INSERT INTO event_log (guild_id,event_type,target_user_id,actor_id) VALUES ($1,'ban',$2,77)", G, U)
     await pool.execute("INSERT INTO global_ban_log (source_guild_id,target_guild_id,user_id) VALUES ($1,6,$2)", G, U)
     # azione ancora in coda (resta) e azione già eseguita (va)
-    await pool.execute("INSERT INTO scheduled_actions (guild_id,user_id,action_type,execute_at) VALUES ($1,$2,'unban', now())", G, U)
+    await pool.execute("INSERT INTO scheduled_actions (guild_id,user_id,action_type,execute_at) VALUES ($1,$2,'moderation_tempban_expire', now())", G, U)
+    # un promemoria ancora in coda ha testo libero: va via
+    await pool.execute(
+        "INSERT INTO scheduled_actions (guild_id,user_id,action_type,execute_at,payload) VALUES ($1,$2,'reminder_fire', now(), '{\"message\": \"cosa privata\"}')", G, U
+    )
     await pool.execute(
         "INSERT INTO scheduled_actions (guild_id,user_id,action_type,execute_at,executed) VALUES ($1,$2,'reminder', now(), TRUE)", G, U
     )
@@ -129,7 +133,7 @@ async def test_azione_in_coda_resta_quella_conclusa_va(clean_db):
     await servizio.dimentica_utente(clean_db, U)
 
     tipi = {r["action_type"] for r in await clean_db.fetch("SELECT action_type FROM scheduled_actions WHERE user_id = $1", U)}
-    assert tipi == {"unban"}
+    assert tipi == {"moderation_tempban_expire"}  # il promemoria in coda e' andato
 
 
 @pytest.mark.asyncio
@@ -418,3 +422,70 @@ def test_serializza_misura_ogni_riga_una_volta(monkeypatch):
 
     assert len(testo) <= 20_000 and accorciate and accorciate[0] == "a"
     assert len(chiamate) <= 400 + 10 + 4  # ~una per riga + il documento, non una per ogni dimezzamento
+
+
+@pytest.mark.asyncio
+async def test_l_attore_di_un_registro_di_sicurezza_resta(clean_db):
+    await clean_db.execute("INSERT INTO security_action_log (guild_id, actor_id, category) VALUES ($1,$2,'x')", G, U)
+
+    rapporto = await servizio.dimentica_utente(clean_db, U)
+
+    assert await clean_db.fetchval("SELECT actor_id FROM security_action_log") == U
+    assert "security_action_log" not in rapporto or rapporto["security_action_log"]["anonimizzate"] == 0
+
+
+@pytest.mark.asyncio
+async def test_il_co_titolare_batte_il_membro_piu_anziano(clean_db):
+    await _prepara(clean_db)
+    clan = await clean_db.fetchval("SELECT id FROM clans")
+    await clean_db.execute("UPDATE clans SET co_owner_id = 33")
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'owner')", clan, G, V)
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role,joined_at) VALUES ($1,$2,32,'member', now() - interval '30 days')", clan, G)
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role,joined_at) VALUES ($1,$2,33,'co_owner', now() - interval '1 day')", clan, G)
+
+    await servizio.dimentica_utente(clean_db, V)
+
+    assert await clean_db.fetchval("SELECT owner_id FROM clans") == 33
+    assert await clean_db.fetchval("SELECT co_owner_id FROM clans") is None
+
+
+@pytest.mark.asyncio
+async def test_sciogliere_un_clan_toglie_anche_l_attivita_vocale(clean_db):
+    await _prepara(clean_db)
+    clan = await clean_db.fetchval("SELECT id FROM clans")
+    await clean_db.execute("UPDATE clans SET co_owner_id = NULL")
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'owner')", clan, G, V)
+    await clean_db.execute("INSERT INTO clan_voice_activity (clan_id,user_id) VALUES ($1,$2)", clan, V)
+    await clean_db.execute("INSERT INTO clan_voice_activity (clan_id,user_id) VALUES ($1,$2)", clan, 4242)
+
+    await servizio.dimentica_utente(clean_db, V)
+
+    assert await clean_db.fetchval("SELECT count(*) FROM clan_voice_activity") == 0
+
+
+@pytest.mark.asyncio
+async def test_titolare_di_un_clan_e_co_titolare_di_un_altro_nel_rapporto(clean_db):
+    """Il rapporto 'clans' somma trasferimenti e cancellazioni delle due vie."""
+    await _prepara(clean_db)  # clan 1: V titolare, U co-titolare
+    primo = await clean_db.fetchval("SELECT id FROM clans")
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'owner')", primo, G, V)
+    await clean_db.execute("INSERT INTO clan_members (clan_id,guild_id,user_id,role) VALUES ($1,$2,$3,'co_owner')", primo, G, U)
+    await clean_db.execute("INSERT INTO clans (guild_id,tag,name,owner_id,co_owner_id,officialize_deadline) VALUES ($1,'U2','Due',$2,$3,now())", G + 1, 77, V)
+
+    rapporto = await servizio.dimentica_utente(clean_db, V)
+
+    assert rapporto["clans"]["anonimizzate"] == 2  # un passaggio di titolarita' + un posto di co-titolare svuotato
+
+
+@pytest.mark.asyncio
+async def test_l_ordine_dell_esportazione_segue_la_chiave_primaria_non_la_posizione_fisica(clean_db):
+    for n in (1, 2, 3):
+        await clean_db.execute(
+            "INSERT INTO moderation_cases (guild_id,case_number,user_id,moderator_id,action_type) VALUES ($1,$2,$3,77,'warn')", G, n, U
+        )
+    await clean_db.execute("UPDATE moderation_cases SET reason = 'x' WHERE case_number = 1")  # la riga cambia posto
+
+    dati = await servizio.esporta_utente(clean_db, U)
+
+    ids = [r["id"] for r in dati["tabelle"]["moderation_cases"]["righe"]]
+    assert ids == sorted(ids)

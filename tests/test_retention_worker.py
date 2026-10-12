@@ -314,3 +314,35 @@ async def test_lo_sban_programmato_non_si_cancella_con_il_server(clean_db, prese
 
     righe = await clean_db.fetch("SELECT action_type, executed FROM scheduled_actions WHERE guild_id = $1", G)
     assert [(r["action_type"], r["executed"]) for r in righe] == [("moderation_tempban_expire", False)]
+
+
+@pytest.mark.asyncio
+async def test_con_il_bot_senza_server_visibili_non_si_segna_nessuno_uscito(clean_db, presenza):
+    """bot.guilds vuoto (cache non pronta) non vuol dire che il bot e' uscito da tutto."""
+    from types import SimpleNamespace
+
+    await presenza.segna_entrato(G)
+    await presenza.segna_entrato(ALTRO)
+
+    await lavoro.RetentionWorker().tick(SimpleNamespace(guilds=[]))
+
+    assert (await presenza.get(G))["left_at"] is None
+    assert (await presenza.get(ALTRO))["left_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_un_server_gia_purgato_non_e_ne_da_cancellare_ne_da_segnare_uscito(clean_db, presenza):
+    await presenza.segna_uscito(G, ADESSO - timedelta(days=100))
+    await clean_db.execute("UPDATE guild_presence SET purged_at = now() WHERE guild_id = $1", G)
+
+    assert await presenza.da_cancellare(ADESSO) == []
+    assert await presenza.sincronizza({ALTRO}) == 0  # G e' purgato e assente: resta com'e'
+    riga = await presenza.get(G)
+    assert riga["purged_at"] is not None and riga["left_at"] == ADESSO - timedelta(days=100)
+
+
+@pytest.mark.asyncio
+async def test_event_log_ha_l_id_a_64_bit(clean_db):
+    assert await clean_db.fetchval(
+        "SELECT data_type FROM information_schema.columns WHERE table_name = 'event_log' AND column_name = 'id'"
+    ) == "bigint"

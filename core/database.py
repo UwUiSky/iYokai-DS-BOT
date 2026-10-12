@@ -98,7 +98,7 @@ class Database:
             self._blocchi_server[guild_id] = blocco
         return blocco
 
-    def _dimentica_server(self, guild_id: int) -> None:
+    def dimentica_server(self, guild_id: int) -> None:
         """Invalida moduli e impostazioni in memoria di un server."""
         self._versione_cache += 1
         self._modules_cache.delete(guild_id)
@@ -261,7 +261,7 @@ class Database:
             # cache si ripopola dal DB da zero, così non c'è mai il
             # rischio che una scrittura parziale lasci la cache
             # disallineata da quello che è realmente su disco.
-            self._dimentica_server(guild_id)
+            self.dimentica_server(guild_id)
 
             await self._record_config_change(
                 guild_id, changed_by, "module", module_name, old_value, active
@@ -331,7 +331,7 @@ class Database:
                 json.dumps(value),
             )
 
-            self._dimentica_server(guild_id)
+            self.dimentica_server(guild_id)
 
             await self._record_config_change(
                 guild_id, changed_by, "setting", key, old_value, value
@@ -466,7 +466,7 @@ class Database:
                 guild_id,
                 key,
             )
-            self._dimentica_server(guild_id)
+            self.dimentica_server(guild_id)
             await self._record_config_change(guild_id, changed_by, "setting", key, old_value, None)
 
     # ================================================================
@@ -525,7 +525,7 @@ class Database:
             json.dumps(settings),
             language,
         )
-        self._dimentica_server(guild_id)
+        self.dimentica_server(guild_id)
 
         await self._record_config_change(
             guild_id,
@@ -555,7 +555,7 @@ class Database:
             """,
             guild_id,
         )
-        self._dimentica_server(guild_id)
+        self.dimentica_server(guild_id)
 
         await self._record_config_change(
             guild_id,

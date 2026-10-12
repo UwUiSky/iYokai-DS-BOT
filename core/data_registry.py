@@ -340,11 +340,11 @@ REGISTRO: tuple[TabellaDati, ...] = (
     # ---------------------------------------------------------------- coda e configurazione
     _t("scheduled_actions", "Azioni differite (tempban, promemoria, messaggi)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",
-       conserva_utente_se="NOT (executed OR failed_reason IS NOT NULL)",
+       conserva_utente_se="action_type = 'moderation_tempban_expire' AND NOT (executed OR failed_reason IS NOT NULL)",
        conserva_server_se="action_type = 'moderation_tempban_expire' AND NOT (executed OR failed_reason IS NOT NULL)",
        esporta=True,
        scadenza=Scadenza("COALESCE(executed_at, created_at)", 30, "executed OR failed_reason IS NOT NULL"),
-       nota="le azioni ancora in coda restano: ad esempio uno sban programmato"),
+       nota="resta solo lo sban programmato (tempban): promemoria e messaggi programmati hanno testo libero e vanno via"),
     _t("guild_config", "Configurazione del server", colonna_server="guild_id"),
     _t("guild_presence", "Quando il bot è entrato e uscito da ogni server", server="conserva",
        nota="serve a contare i 90 giorni"),

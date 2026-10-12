@@ -68,8 +68,11 @@ async def test_lettura_lenta_non_rimette_in_cache_un_valore_vecchio(db):
 
 
 async def test_due_cambi_insieme_lasciano_uno_storico_coerente(db):
-    istanza, _ = db
+    from tests.support.concorrenza import apri_connessioni
+
+    istanza, pool = db
     await istanza.ensure_guild_exists(GUILD)
+    await apri_connessioni(pool._vero, 3)  # senza connessioni già aperte le due chiamate non partono insieme
 
     await asyncio.gather(
         istanza.set_module_active_for_guild(GUILD, "xp", True),
@@ -153,3 +156,38 @@ async def test_la_cache_scade(db, monkeypatch):
 async def test_server_senza_riga_restituisce_il_default(db):
     istanza, _ = db
     assert await istanza.get_guild_setting(999_001, "qualsiasi", default=5) == 5
+
+
+async def test_due_impostazioni_insieme_sulla_stessa_chiave_hanno_uno_storico_coerente(db):
+    """Gather vera: senza il blocco per server il secondo legge il vecchio valore prima del primo."""
+    from tests.support.concorrenza import apri_connessioni
+
+    istanza, pool = db
+    await istanza.ensure_guild_exists(GUILD)
+    await apri_connessioni(pool._vero, 3)
+
+    await asyncio.gather(
+        istanza.set_guild_setting(GUILD, "canale", 1),
+        istanza.set_guild_setting(GUILD, "canale", 2),
+    )
+
+    storico = sorted(await istanza.get_config_history(GUILD, limit=10), key=lambda e: e.id)
+    assert len(storico) == 2
+    assert storico[1].old_value == storico[0].new_value
+    assert await istanza.get_guild_setting(GUILD, "canale") == storico[1].new_value
+
+
+async def test_lettura_lenta_delle_impostazioni_non_rimette_in_cache_il_valore_vecchio(db):
+    istanza, pool = db
+    await istanza.set_guild_setting(GUILD, "canale", 1)
+    istanza._settings_cache.clear()
+    pool.cancello = asyncio.Event()
+    pool.fermo_su = "SELECT settings FROM guild_config"
+
+    lettore = asyncio.create_task(istanza.get_guild_setting(GUILD, "canale"))
+    await pool.arrivato.wait()  # ha letto 1 ma non l'ha ancora messo in cache
+    await istanza.set_guild_setting(GUILD, "canale", 2)
+    pool.cancello.set()
+    assert await lettore == 1  # il suo valore era vecchio, va bene
+
+    assert await istanza.get_guild_setting(GUILD, "canale") == 2  # ma non resta in cache
