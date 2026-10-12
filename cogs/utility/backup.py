@@ -216,7 +216,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         """
         SPEC.md §11.13 — il backup promosso diventa main senza backup:
         un admin ne crea uno nuovo con /admin backup crea (un bot non può
-        creare server, D8). La coppia storica resta per /restore-utenti.
+        creare server, D8). La coppia storica resta per /admin backup restore-utenti.
 
         Va lanciato DENTRO al server che finora era il backup — non
         serve altro ID: lo troviamo risalendo da backup_guild_id a
