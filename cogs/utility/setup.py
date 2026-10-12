@@ -323,7 +323,7 @@ def vista_autorizzazione(guild_id: int, user_id: int):
         url = None
     if url is None:
         return discord.utils.MISSING
-    vista = discord.ui.View(timeout=None)
+    vista = BaseView(timeout=180)
     vista.add_item(discord.ui.Button(label="Nascondi i comandi a chi non può usarli (OAuth2)", url=url))
     return vista
 
