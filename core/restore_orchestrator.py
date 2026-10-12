@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -37,6 +38,21 @@ REQUEST_TIMEOUT_SECONDS = 15
 # M 12.11 (LIM-7): tentativi dopo un 429 e attesa massima accettata.
 MAX_TENTATIVI_429 = 3
 ATTESA_MASSIMA_SECONDI = 60.0
+
+
+class LimiteDiFrequenza(Exception):
+    """Discord risponde ancora 429 dopo i tentativi: riprovare più tardi."""
+
+
+def attesa_da_retry_after(valore: str | None) -> float:
+    """Secondi da attendere dal ``Retry-After``: mai nan, mai negativi, al massimo 60."""
+    try:
+        attesa = float(valore) if valore is not None else 1.0
+    except (TypeError, ValueError):
+        return 1.0
+    if math.isnan(attesa):
+        return 1.0
+    return min(max(attesa, 0.0), ATTESA_MASSIMA_SECONDI)
 
 
 @dataclass(frozen=True)
@@ -81,12 +97,9 @@ class RestoreOrchestrator:
                 stato = risposta.status
                 if stato != 429:
                     return stato
-                try:
-                    attesa = float(risposta.headers.get("Retry-After", "1"))
-                except ValueError:
-                    attesa = 1.0
+                attesa = attesa_da_retry_after(risposta.headers.get("Retry-After"))
             if tentativo + 1 < MAX_TENTATIVI_429:
-                await self._sleep(min(max(attesa, 0.0), ATTESA_MASSIMA_SECONDI))
+                await self._sleep(attesa)
         return stato
 
     async def refresh_access_token(
@@ -95,7 +108,9 @@ class RestoreOrchestrator:
         """
         Rinnova un token scaduto o vicino alla scadenza (M 12.10, LIM-37).
         None se Discord rifiuta (token revocato) o la rete non risponde: il
-        chiamante ripiega sulla richiesta di consenso.
+        chiamante ripiega sulla richiesta di consenso. Su un 429 attende il
+        ``Retry-After`` e riprova; se resta 429 solleva LimiteDiFrequenza (il
+        token non è scaduto: non va chiesto un nuovo consenso).
         """
         return await self._richiedi_token(
             {
@@ -129,20 +144,30 @@ class RestoreOrchestrator:
 
     async def _richiedi_token(self, dati: dict) -> ExchangedToken | None:
         sessione = self._get_session()
+        payload = None
         try:
-            async with sessione.post(
-                self._token_url,
-                data=dati,
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
-            ) as risposta:
-                if risposta.status != 200:
-                    logger.warning(
-                        "Richiesta token OAuth2 (%s) fallita con status %d.",
-                        dati.get("grant_type"),
-                        risposta.status,
-                    )
-                    return None
-                payload = await risposta.json()
+            for tentativo in range(MAX_TENTATIVI_429):
+                async with sessione.post(
+                    self._token_url,
+                    data=dati,
+                    timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
+                ) as risposta:
+                    if risposta.status == 429:
+                        attesa = attesa_da_retry_after(risposta.headers.get("Retry-After"))
+                    elif risposta.status != 200:
+                        logger.warning(
+                            "Richiesta token OAuth2 (%s) fallita con status %d.",
+                            dati.get("grant_type"),
+                            risposta.status,
+                        )
+                        return None
+                    else:
+                        payload = await risposta.json()
+                        break
+                if tentativo + 1 < MAX_TENTATIVI_429:
+                    await self._sleep(attesa)
+            else:
+                raise LimiteDiFrequenza()
         except (aiohttp.ClientError, TimeoutError) as exc:
             logger.warning("Impossibile contattare l'endpoint token di Discord: %s", exc)
             return None

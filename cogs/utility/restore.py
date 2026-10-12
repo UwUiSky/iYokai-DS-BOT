@@ -54,7 +54,7 @@ from core.restore_oauth_logic import (
     RestoreStateSigningError,
     build_authorize_url,
 )
-from core.restore_orchestrator import restore_orchestrator
+from core.restore_orchestrator import LimiteDiFrequenza, restore_orchestrator
 from core.restore_retention_logic import was_recently_kicked
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 
@@ -176,6 +176,18 @@ class RestoreCog(CogConGruppi, commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
 
+        # Un solo ripristino alla volta per server: due insieme rinnoverebbero lo
+        # stesso token (Discord ruota il refresh token) e manderebbero DM doppi.
+        async with restore_oauth_repo.blocco_restore(interaction.guild.id) as preso:
+            if not preso:
+                await interaction.followup.send(
+                    "⏳ C'è già un ripristino in corso per questo server: attendi che finisca.",
+                    ephemeral=True,
+                )
+                return
+            await self._esegui_restore(interaction, source_guild_id, snapshot)
+
+    async def _esegui_restore(self, interaction, source_guild_id: int, snapshot) -> None:
         modalita = await db.get_guild_setting(
             interaction.guild.id, SETTING_RESTORE_MODE, DEFAULT_RESTORE_MODE
         )
@@ -189,15 +201,30 @@ class RestoreCog(CogConGruppi, commands.Cog):
             ACTION_SKIP_BLACKLISTED: 0,
             "dm_falliti": 0,
             "join_falliti": 0,
+            "illeggibili": 0,
+            "rimandati": 0,
+            "gia_contattati": 0,
             "ruolo_non_assegnato": 0,
         }
 
         invito_classico_url: str | None = None
 
         for entry in snapshot:
+            stato_riga = await restore_oauth_repo.get_stato(source_guild_id, entry.user_id)
             token = await restore_oauth_repo.get_token(source_guild_id, entry.user_id)
-            token = await self._rinnova_se_serve(source_guild_id, entry.user_id, token)
+            if stato_riga is not None and token is None:
+                # Riga che non si legge (chiave cambiata, dato rovinato): errore già nel log.
+                # Mai un permesso a rientrare: un bannato resta saltato, gli altri si trattano
+                # come senza token (nuovo consenso).
+                contatori["illeggibili"] += 1
+            try:
+                token = await self._rinnova_se_serve(source_guild_id, entry.user_id, token)
+            except LimiteDiFrequenza:
+                contatori["rimandati"] += 1  # il token non è scaduto: niente DM, si riprova dopo
+                continue
             token_status = token.status if token is not None else None
+            if stato_riga == STATUS_BANNED_BLACKLISTED:
+                token_status = STATUS_BANNED_BLACKLISTED
             token_scaduto = (
                 token is not None and token.expires_at < datetime.now(timezone.utc)
             )
@@ -226,6 +253,14 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         contatori["ruolo_non_assegnato"] += 1
                 continue
 
+            if azione in (ACTION_REQUEST_CONSENT, ACTION_CLASSIC_INVITE) and (
+                await restore_oauth_repo.gia_contattato(
+                    interaction.guild.id, source_guild_id, entry.user_id
+                )
+            ):
+                contatori["gia_contattati"] += 1  # niente DM ripetuti ai rilanci
+                continue
+
             if azione == ACTION_REQUEST_CONSENT:
                 try:
                     url = build_authorize_url(
@@ -243,6 +278,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         f"personale e vale {STATE_TTL_SECONDS // 86400} giorni): {url}"
                     )
                     contatori[azione] += 1
+                    await restore_oauth_repo.segna_contattato(
+                        interaction.guild.id, source_guild_id, entry.user_id, azione
+                    )
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     contatori["dm_falliti"] += 1
                 except RestoreStateSigningError:
@@ -265,6 +303,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         f"dopo un backup. Ecco l'invito: {invito_classico_url}"
                     )
                     contatori[azione] += 1
+                    await restore_oauth_repo.segna_contattato(
+                        interaction.guild.id, source_guild_id, entry.user_id, azione
+                    )
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     contatori["dm_falliti"] += 1
                 await _pausa(PAUSA_TRA_DM_SECONDI)
@@ -277,7 +318,10 @@ class RestoreCog(CogConGruppi, commands.Cog):
             f"📨 Inviti classici inviati: {contatori[ACTION_CLASSIC_INVITE]}\n"
             f"🚫 Saltati (in blacklist da un ban): {contatori[ACTION_SKIP_BLACKLISTED]}\n"
             f"⚠️ DM non consegnati (privacy/bloccati): {contatori['dm_falliti']}\n"
-            f"⚠️ Aggiunta non riuscita: {contatori['join_falliti']}"
+            f"⚠️ Aggiunta non riuscita: {contatori['join_falliti']}\n"
+            f"🔒 Token illeggibili (da rifare): {contatori['illeggibili']}\n"
+            f"⏱️ Rimandati (limite di frequenza): {contatori['rimandati']}\n"
+            f"🔁 Già contattati di recente: {contatori['gia_contattati']}"
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
                 f"/security verify setup): {contatori['ruolo_non_assegnato']}"

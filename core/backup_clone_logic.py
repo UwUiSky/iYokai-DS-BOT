@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import io
 import logging
+from collections import Counter
 from dataclasses import dataclass
 
 import discord
@@ -33,6 +34,14 @@ NOME_WEBHOOK_MIRROR = "iYokai Mirror"
 MOTIVO = "Clonazione backup iYokai"
 
 
+def _permessi_consentiti(target_guild, permessi: discord.Permissions) -> discord.Permissions:
+    """Un bot può dare solo i permessi che ha: il resto si toglie (Discord darebbe 403)."""
+    me = getattr(target_guild, "me", None)
+    if me is None or me.guild_permissions.administrator:
+        return permessi
+    return discord.Permissions(permessi.value & me.guild_permissions.value)
+
+
 @dataclass
 class RiepilogoCopia:
     """Cosa è stato riusato, adattato o saltato durante la copia."""
@@ -47,6 +56,8 @@ class RiepilogoCopia:
     sticker_saltati: int = 0
     suoni_saltati: int = 0
     posizioni_ruoli_fallite: bool = False
+    ruoli_non_aggiornati: int = 0
+    permessi_ridotti: int = 0
 
 
 async def clone_roles(
@@ -101,15 +112,22 @@ async def clone_roles(
     ordine: dict = {}
     for indice, ruolo in enumerate(ruoli_da_clonare, start=1):
         riusato = esistenti.pop(ruolo.name, None)
+        permessi = _permessi_consentiti(target_guild, ruolo.permissions)
+        if permessi != ruolo.permissions:
+            riepilogo.permessi_ridotti += 1
         if riusato is not None:
-            if riusato.permissions != ruolo.permissions:
-                await riusato.edit(permissions=ruolo.permissions, reason=MOTIVO)
+            if riusato.permissions != permessi:
+                try:
+                    await riusato.edit(permissions=permessi, reason=MOTIVO)
+                except discord.Forbidden:
+                    # ruolo sopra quello del Creator: si usa com'è e si va avanti
+                    riepilogo.ruoli_non_aggiornati += 1
             nuovo_ruolo = riusato
             riepilogo.ruoli_riusati += 1
         else:
             nuovo_ruolo = await target_guild.create_role(
                 name=ruolo.name,
-                permissions=ruolo.permissions,
+                permissions=permessi,
                 colour=ruolo.colour,
                 hoist=ruolo.hoist,
                 mentionable=ruolo.mentionable,
@@ -203,10 +221,12 @@ async def clone_categories_and_channels(
         if not isinstance(c, discord.CategoryChannel)
     }
 
+    offuscate: set[int] = set()
     categorie_ordinate = sorted(source_guild.categories, key=lambda c: c.position)
     for categoria in categorie_ordinate:
         if categoria.name == NOME_CANALE_OFFUSCATO:
             riepilogo.canali_offuscati += 1
+            offuscate.add(categoria.id)
             continue
         overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild)
         nuova_categoria = cat_esistenti.pop(categoria.name, None)
@@ -225,7 +245,9 @@ async def clone_categories_and_channels(
         if isinstance(canale, discord.CategoryChannel):
             continue  # già clonate sopra
 
-        if canale.name == NOME_CANALE_OFFUSCATO:
+        if canale.name == NOME_CANALE_OFFUSCATO or (
+            canale.category is not None and canale.category.id in offuscate
+        ):
             riepilogo.canali_offuscati += 1
             continue
 
@@ -241,7 +263,22 @@ async def clone_categories_and_channels(
 
         nuovo_canale = canali_esistenti.pop(chiave, None)
         if nuovo_canale is not None:
-            await nuovo_canale.edit(overwrites=overwrites, reason=MOTIVO)
+            # M 12.3: il canale del modello si allinea all'originale (non solo i permessi).
+            if isinstance(canale, discord.VoiceChannel):
+                await nuovo_canale.edit(
+                    overwrites=overwrites,
+                    bitrate=min(canale.bitrate, int(target_guild.bitrate_limit)),
+                    user_limit=canale.user_limit,
+                    reason=MOTIVO,
+                )
+            else:
+                await nuovo_canale.edit(
+                    overwrites=overwrites,
+                    topic=canale.topic or "",
+                    nsfw=canale.nsfw,
+                    slowmode_delay=canale.slowmode_delay,
+                    reason=MOTIVO,
+                )
             riepilogo.canali_riusati += 1
         elif isinstance(canale, discord.VoiceChannel):
             nuovo_canale = await target_guild.create_voice_channel(
@@ -390,7 +427,7 @@ async def clone_webhooks(
     ripetono. Gli altri si contano in ``riepilogo.webhook_saltati``.
     """
     riepilogo = riepilogo or RiepilogoCopia()
-    nomi_presenti: dict[int, set[str]] = {}
+    nomi_presenti: dict[int, Counter] = {}
     totale: dict[int, int] = {}
     webhook_sorgente = await source_guild.webhooks()
     for webhook in webhook_sorgente:
@@ -404,17 +441,18 @@ async def clone_webhooks(
 
         if nuovo_channel_id not in nomi_presenti:
             gia = await nuovo_canale.webhooks()
-            nomi_presenti[nuovo_channel_id] = {w.name for w in gia}
+            nomi_presenti[nuovo_channel_id] = Counter(w.name for w in gia)
             totale[nuovo_channel_id] = len(gia)
 
-        if webhook.name in nomi_presenti[nuovo_channel_id]:
+        # Un omonimo già presente copre un solo webhook dell'originale (rilanci senza doppioni).
+        if nomi_presenti[nuovo_channel_id][webhook.name] > 0:
+            nomi_presenti[nuovo_channel_id][webhook.name] -= 1
             continue
         if totale[nuovo_channel_id] >= MAX_WEBHOOK_COPIATI:
             riepilogo.webhook_saltati += 1
             continue
 
         await nuovo_canale.create_webhook(name=webhook.name, reason=MOTIVO)
-        nomi_presenti[nuovo_channel_id].add(webhook.name)
         totale[nuovo_channel_id] += 1
 
 

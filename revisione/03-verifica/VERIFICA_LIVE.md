@@ -761,3 +761,10 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
 - [ ] `12.11` (#68) — restore con molti utenti (30+ in snapshot, DM aperti). Risultato atteso: pausa visibile tra un DM e l'altro, nessun errore 429 non gestito, conteggi che contano solo gli esiti riusciti, un solo riepilogo finale (anche oltre i 15 minuti: finisce nel canale).
 - [ ] `12.15` (#68) — metti in `OAUTH_ENCRYPTION_KEY` due chiavi separate da virgola (nuova, vecchia). Risultato atteso: i token vecchi si leggono ancora, i nuovi si scrivono con la prima; una riga rovinata a mano nel database non ferma il restore (avviso nel log, richiesta di nuovo consenso).
 - [ ] `#46 D / #15` (#46) — da un terzo server: `/admin backup restore-utenti` con l'ID di un main che non ti ha come backup. Risultato atteso: rifiutato.
+
+### Correzioni del cacciatore-bug — stesso ramo (#68)
+
+- [ ] Permessi del Creator (#68) — nel server principale un ruolo «Mod» con «Espellere membri» e un ruolo sopra il Creator. Invita il Creator col link di `/admin backup crea` (senza Amministratore) e collega. Risultato atteso: copia finita; il riepilogo dice «Ruoli con permessi che il Creator non ha» e «Ruoli sopra quello del Creator, non aggiornati»; con Amministratore al Creator, nessuna delle due righe e permessi identici. (Non provabile senza Discord: se Discord rifiuta ancora, annotare quale permesso.)
+- [ ] Collegamento (#68) — un secondo admin prova a usare il codice di un altro: rifiutato. Un server già backup di un altro main, o un main che ha già un backup: rifiutato. Due codici insieme: il secondo rifiuta finché la copia è in corso.
+- [ ] Restore (#68) — lancia `/admin backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
+- [ ] Ingresso (#68) — fai rientrare iYokai in un server di backup in blacklist: esce. Rientro in un backup normale: nessun benvenuto, ma `left_at` azzerato.

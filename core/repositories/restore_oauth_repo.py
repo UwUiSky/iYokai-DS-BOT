@@ -22,6 +22,7 @@ esplicitamente con l'utente:
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -165,13 +166,66 @@ class RestoreOAuthRepository:
         try:
             return self._row_to_token(row)
         except (InvalidTag, ValueError):
-            # M 12.15: una riga rovinata non blocca il resto; si chiede di nuovo il consenso.
-            logger.warning(
+            # M 12.15: una riga rovinata non blocca il resto. Chi chiama controlla lo
+            # stato in chiaro (get_stato): un bannato resta bannato, e una riga
+            # illeggibile non è mai un permesso a rientrare.
+            logger.error(
                 "Token OAuth illeggibile (riga rovinata o chiave diversa): server %s, utente %s.",
                 source_guild_id,
                 user_id,
             )
             return None
+
+    async def get_stato(self, source_guild_id: int, user_id: int) -> str | None:
+        """Lo stato in chiaro della riga (senza decifrare). None se la riga non esiste."""
+        return await self._pool.fetchval(
+            "SELECT status FROM restore_oauth_tokens WHERE source_guild_id = $1 AND user_id = $2",
+            source_guild_id,
+            user_id,
+        )
+
+    @asynccontextmanager
+    async def blocco_restore(self, target_guild_id: int):
+        """
+        Un solo ripristino alla volta per server (advisory lock di PostgreSQL, tenuto su
+        una connessione dedicata). Restituisce True se il blocco è stato preso, altrimenti
+        False: in quel caso c'è già un ripristino in corso.
+        """
+        chiave = target_guild_id | (1 << 62)
+        async with self._pool.acquire() as conn:
+            preso = await conn.fetchval("SELECT pg_try_advisory_lock($1)", chiave)
+            try:
+                yield bool(preso)
+            finally:
+                if preso:
+                    await conn.fetchval("SELECT pg_advisory_unlock($1)", chiave)
+
+    async def gia_contattato(
+        self, target_guild_id: int, source_guild_id: int, user_id: int, giorni: int = 7
+    ) -> bool:
+        """True se l'utente ha già ricevuto un DM di rientro negli ultimi ``giorni``."""
+        riga = await self._pool.fetchval(
+            """
+            SELECT 1 FROM restore_contacts
+            WHERE target_guild_id = $1 AND source_guild_id = $2 AND user_id = $3
+              AND contacted_at > now() - make_interval(days => $4)
+            """,
+            target_guild_id, source_guild_id, user_id, giorni,
+        )
+        return riga is not None
+
+    async def segna_contattato(
+        self, target_guild_id: int, source_guild_id: int, user_id: int, tipo: str
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO restore_contacts (target_guild_id, source_guild_id, user_id, kind)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (target_guild_id, source_guild_id, user_id)
+            DO UPDATE SET kind = EXCLUDED.kind, contacted_at = now()
+            """,
+            target_guild_id, source_guild_id, user_id, tipo,
+        )
 
     async def aggiorna_token(
         self,

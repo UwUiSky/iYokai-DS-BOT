@@ -16,7 +16,9 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.backup_link_logic import (
+    ESITO_GIA_COLLEGATO,
     ESITO_GIA_USATO,
+    ESITO_NON_AUTORIZZATO,
     ESITO_OK,
     ESITO_SCADUTO,
     ESITO_STESSO_SERVER,
@@ -169,7 +171,17 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True)
-        esito = await collega_backup(backup_repo, codice, guild.id)
+        async def e_admin_del_main(main_guild_id: int) -> bool:
+            main = self.bot.get_guild(main_guild_id)
+            membro = main.get_member(interaction.user.id) if main is not None else None
+            return membro is not None and (
+                membro.guild_permissions.administrator or main.owner_id == membro.id
+            )
+
+        esito = await collega_backup(
+            backup_repo, codice, guild.id,
+            utente_id=interaction.user.id, puo_collegare=e_admin_del_main,
+        )
         if esito.esito == ESITO_OK:
             await interaction.followup.send(
                 f"✅ Server collegato come backup (job `#{esito.job_id}`). Il Creator copia "
@@ -180,6 +192,14 @@ class BackupCog(CogConGruppi, commands.Cog):
         messaggi = {
             ESITO_SCADUTO: "⌛ Il codice è scaduto: creane uno nuovo con /admin backup crea.",
             ESITO_GIA_USATO: "⚠️ Il codice è già stato usato: creane uno nuovo con /admin backup crea.",
+            ESITO_GIA_COLLEGATO: (
+                "⚠️ Collegamento non possibile: o questo server fa già parte di un'altra coppia, "
+                "o il server principale ha già un backup o una copia in corso."
+            ),
+            ESITO_NON_AUTORIZZATO: (
+                "⛔ Il codice lo può usare solo chi lo ha creato, e deve essere ancora "
+                "amministratore del server principale."
+            ),
             ESITO_STESSO_SERVER: "⚠️ Il server principale non può essere il proprio backup.",
         }
         await interaction.followup.send(

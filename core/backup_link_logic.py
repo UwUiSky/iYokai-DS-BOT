@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -28,6 +29,8 @@ ESITO_SCONOSCIUTO = "sconosciuto"
 ESITO_SCADUTO = "scaduto"
 ESITO_GIA_USATO = "gia_usato"
 ESITO_STESSO_SERVER = "stesso_server"
+ESITO_GIA_COLLEGATO = "gia_collegato"
+ESITO_NON_AUTORIZZATO = "non_autorizzato"
 
 
 @dataclass(frozen=True)
@@ -67,31 +70,29 @@ async def collega_backup(
     codice: str,
     backup_guild_id: int,
     adesso: datetime | None = None,
+    utente_id: int | None = None,
+    puo_collegare: Callable[[int], Awaitable[bool]] | None = None,
 ) -> EsitoCollegamento:
     """
     Verifica il codice, registra la coppia principale -> backup e mette in
-    coda la copia. Il codice si brucia solo se il collegamento riesce.
+    coda la copia, tutto in una transazione: il codice si brucia solo se
+    coppia e job sono scritti. Il codice è personale (``utente_id`` deve essere
+    chi lo ha creato) e ``puo_collegare(main_guild_id)`` conferma che è ancora
+    admin del server principale. Rifiuta un server già in un'altra coppia,
+    un main che ha già un backup o una copia già in corso.
     """
     adesso = adesso or datetime.now(timezone.utc)
     impronta = hash_codice(codice)
     riga = await repo.trova_codice_collegamento(impronta)
     if riga is None:
         return EsitoCollegamento(ESITO_SCONOSCIUTO)
-    if riga["used_at"] is not None:
-        return EsitoCollegamento(ESITO_GIA_USATO)
-    if riga["expires_at"] <= adesso:
-        return EsitoCollegamento(ESITO_SCADUTO)
+    if utente_id is not None and riga["created_by"] != utente_id:
+        return EsitoCollegamento(ESITO_NON_AUTORIZZATO)
+    if puo_collegare is not None and not await puo_collegare(riga["main_guild_id"]):
+        return EsitoCollegamento(ESITO_NON_AUTORIZZATO)
 
-    main_guild_id = riga["main_guild_id"]
-    if main_guild_id == backup_guild_id:
-        return EsitoCollegamento(ESITO_STESSO_SERVER)
-
-    if not await repo.consuma_codice_collegamento(impronta, adesso):
-        return EsitoCollegamento(ESITO_GIA_USATO)  # un altro l'ha usato nel frattempo
-
-    await repo.define_backup(main_guild_id, backup_guild_id)
-    job_id = await repo.enqueue_linked_job(main_guild_id, backup_guild_id)
-    return EsitoCollegamento(ESITO_OK, main_guild_id=main_guild_id, job_id=job_id)
+    esito, main_guild_id, job_id = await repo.collega_atomico(impronta, backup_guild_id, adesso)
+    return EsitoCollegamento(esito, main_guild_id=main_guild_id, job_id=job_id)
 
 
 def permessi_invito_main() -> discord.Permissions:
@@ -113,7 +114,11 @@ def permessi_invito_main() -> discord.Permissions:
 
 
 def permessi_invito_creator() -> discord.Permissions:
-    """Permessi del Creator: struttura, webhook, emoji, sticker, suoni, messaggi."""
+    """
+    Permessi del Creator: struttura, webhook, emoji, sticker, suoni, messaggi.
+    Un bot può dare ai ruoli solo i permessi che ha: la copia riduce gli altri e lo
+    dice nel riepilogo. Per una copia fedele l'admin dà al Creator Amministratore.
+    """
     return permessi_invito_main()
 
 

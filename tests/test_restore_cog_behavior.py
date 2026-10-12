@@ -103,6 +103,8 @@ async def database():
     yield db_instance
     await db_instance.pool.execute("DELETE FROM backup_user_snapshots")
     await db_instance.pool.execute("DELETE FROM restore_oauth_tokens")
+    await db_instance.pool.execute("DELETE FROM restore_contacts")
+    await db_instance.pool.execute("DELETE FROM backup_pair_history")
     await db_instance.pool.execute("DELETE FROM guild_config")
     await db_instance.pool.execute("DELETE FROM guild_config_history")
     await db_instance.pool.execute("DELETE FROM verify_config")

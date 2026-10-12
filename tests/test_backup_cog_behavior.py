@@ -69,8 +69,24 @@ class _FakeCreator:
         return object() if guild_id in self._ids else None
 
 
+class _FakeMembro:
+    def __init__(self, uid):
+        self.id = uid
+        self.guild_permissions = type("P", (), {"administrator": True})()
+
+
+class _FakeGuildPrincipale:
+    owner_id = 0
+
+    def get_member(self, uid):
+        return _FakeMembro(uid)
+
+
 class _FakeBot:
     user = _FakeBotUser()
+
+    def get_guild(self, guild_id):
+        return _FakeGuildPrincipale()
 
     def __init__(self, creator=None) -> None:
         self.backup_creator_client = creator

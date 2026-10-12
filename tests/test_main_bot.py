@@ -398,12 +398,12 @@ async def test_on_guild_join_server_atteso_da_backup_job_viene_finalizzato_non_c
 
         await bot.on_guild_join(guild)
 
-        # Il trattamento da "nuovo server" NON deve essere avvenuto:
-        # nessuna riga di configurazione creata.
+        # Un server di backup passa dai controlli come tutti (configurazione e
+        # presenza registrate), ma non riceve il benvenuto.
         riga = await database.pool.fetchrow(
             "SELECT 1 FROM guild_config WHERE guild_id = $1", guild_id
         )
-        assert riga is None
+        assert riga is not None
 
         # D8: il Creator resta (tiene il backup aggiornato), nessuna cessione.
         assert guild_lato_creator.leave_chiamato is False

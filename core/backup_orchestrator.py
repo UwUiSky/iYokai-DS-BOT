@@ -80,6 +80,13 @@ def riassunto_copia(riepilogo: RiepilogoCopia) -> str:
         righe.append(f"Canali senza mirror (webhook al massimo): {riepilogo.mirror_non_creati}.")
     if riepilogo.posizioni_ruoli_fallite:
         righe.append("Ordine dei ruoli non impostato: metti il ruolo del Creator in alto.")
+    if riepilogo.ruoli_non_aggiornati:
+        righe.append(f"Ruoli sopra quello del Creator, non aggiornati: {riepilogo.ruoli_non_aggiornati}.")
+    if riepilogo.permessi_ridotti:
+        righe.append(
+            f"Ruoli con permessi che il Creator non ha: {riepilogo.permessi_ridotti}. "
+            "Per una copia fedele dai al Creator il permesso Amministratore."
+        )
     saltati = riepilogo.emoji_saltate + riepilogo.sticker_saltati + riepilogo.suoni_saltati
     if saltati:
         righe.append(f"Emoji, sticker e suoni oltre i limiti del server: {saltati}.")

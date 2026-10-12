@@ -73,6 +73,12 @@ class BackupQueueWorker:
         )
         await self._manda_dm(main_guild, embed, contesto="il backup pronto")
 
+    async def _fallisci(self, job, messaggio: str) -> None:
+        """Job fallito: il server non resta registrato come backup (sarebbe vuoto)."""
+        await backup_repo.mark_failed(job.id, messaggio)
+        if job.backup_guild_id is not None:
+            await backup_repo.rimuovi_coppia(job.main_guild_id, job.backup_guild_id)
+
     async def _scadenza_job(self) -> None:
         """Un job bloccato da oltre 24 ore non deve fermare la coda."""
         scaduti = await backup_repo.expire_stale_jobs()
@@ -110,8 +116,8 @@ class BackupQueueWorker:
         # M 12.2: la copia usa il client del Creator, non quello principale.
         backup_guild = creator_client.get_guild(job.backup_guild_id)
         if backup_guild is None:
-            await backup_repo.mark_failed(
-                job.id, "iYokai Creator non è nel server di backup: invitalo e rilancia il collegamento."
+            await self._fallisci(
+                job, "iYokai Creator non è nel server di backup: invitalo e rilancia il collegamento."
             )
             return
 
@@ -119,7 +125,7 @@ class BackupQueueWorker:
             mappa_webhook_mirror, riepilogo = await popola_server_backup(main_guild, backup_guild)
         except Exception as exc:
             logger.exception("Job di backup #%s fallito durante la copia.", job.id)
-            await backup_repo.mark_failed(job.id, str(exc)[:500])
+            await self._fallisci(job, str(exc)[:500])
             return
 
         try:
@@ -132,7 +138,7 @@ class BackupQueueWorker:
             await backup_repo.mark_completed(job.id, backup_guild_id=backup_guild.id)
         except Exception as exc:
             logger.exception("Job di backup #%s fallito dopo la copia.", job.id)
-            await backup_repo.mark_failed(job.id, str(exc)[:500])
+            await self._fallisci(job, str(exc)[:500])
             return
         await self._notifica_amministratore(main_guild, backup_guild, riassunto_copia(riepilogo))
 
