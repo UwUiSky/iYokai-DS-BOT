@@ -1768,11 +1768,19 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   colore e tema (scuro, chiaro, notte) salvati per utente (migrazione 0031).
   Resta lo sfondo con immagine propria (premium, da fare con `dev-core`).
   `rank_card_prefs` è per utente (senza server): va nel registro dei dati NF-04 (F5) per esportazione e cancellazione.
-- `[ ]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
-- `[ ]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
-- `[ ]` 22.11 Ticket: chiusura automatica per inattività o utente
+- `[x]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
+  → **Stato 13/10:** fino a 5 domande per pannello (`/gestione ticket modulo-aggiungi|modulo-rimuovi|modulo-mostra`), finestra
+  Discord, risposte nell'embed del ticket (migrazione 0100). Pannello con 0 domande: il ticket si apre subito.
+- `[x]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
+  → **Stato 13/10:** fino a 25 pannelli per server (`pannello-crea|rimuovi|lista|pubblica`); un messaggio porta fino a 25 bottoni
+  persistenti (`DynamicItem`, custom_id `tkt:pan:<id>`). Il pannello storico (`/gestione ticket panel`) resta com'è.
+- `[x]` 22.11 Ticket: chiusura automatica per inattività o utente
   uscito (NF-13)
-- `[ ]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
+  → **Stato 13/10:** per inattività (`/gestione ticket chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
+  vale per i ticket nati da un pannello) e quando l'utente lascia il server.
+- `[~]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
+  → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/gestione ticket voto`), una volta sola, media in `/gestione ticket stats`.
+  Il limite per utente resta 1 (indice unico, migrazione 0010/0050): un limite più alto non è previsto.
 - `[ ]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
 - `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale

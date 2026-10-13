@@ -39,6 +39,10 @@ class Ticket:
     category_label: str | None = None
     first_response_at: datetime | None = None
     force_closed: bool = False
+    panel_id: int | None = None
+    last_activity_at: datetime | None = None
+    rating: int | None = None
+    rated_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -179,6 +183,7 @@ class TicketRepository:
         channel_id: int,
         category_label: str | None = None,
         ticket_number: int | None = None,
+        panel_id: int | None = None,
     ) -> int:
         """
         Registra un nuovo ticket e restituisce il suo numero: quello
@@ -195,14 +200,16 @@ class TicketRepository:
                     await conn.execute(
                         """
                         INSERT INTO tickets
-                            (guild_id, ticket_number, channel_id, user_id, category_label)
-                        VALUES ($1, $2, $3, $4, $5)
+                            (guild_id, ticket_number, channel_id, user_id, category_label,
+                             panel_id, last_activity_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, now())
                         """,
                         guild_id,
                         ticket_number,
                         channel_id,
                         user_id,
                         category_label,
+                        panel_id,
                     )
         except asyncpg.UniqueViolationError as errore:
             if errore.constraint_name == ONE_OPEN_TICKET_INDEX:
@@ -279,6 +286,52 @@ class TicketRepository:
             at,
         )
         return result.endswith(" 1")
+
+    async def touch_activity(self, channel_id: int, at: datetime) -> bool:
+        """NF-13: ultimo messaggio nel ticket aperto (serve alla chiusura automatica)."""
+        esito = await self._pool.execute(
+            """
+            UPDATE tickets SET last_activity_at = $2
+            WHERE channel_id = $1 AND status = 'open'
+              AND (last_activity_at IS NULL OR last_activity_at < $2)
+            """,
+            channel_id,
+            at,
+        )
+        return esito.endswith(" 1")
+
+    async def get_open_ticket_for_user(self, guild_id: int, user_id: int) -> Ticket | None:
+        """Il ticket aperto di un utente (al massimo uno: indice unico)."""
+        row = await self._pool.fetchrow(
+            "SELECT * FROM tickets WHERE guild_id = $1 AND user_id = $2 AND status = 'open'",
+            guild_id,
+            user_id,
+        )
+        return _row_to_ticket(row) if row else None
+
+    async def set_rating(self, ticket_id: int, user_id: int, stars: int) -> bool:
+        """
+        NF-13: voto di chi ha aperto il ticket, dato una volta sola e solo a
+        ticket chiuso. False se il ticket non è suo, è ancora aperto o ha già un voto.
+        """
+        esito = await self._pool.execute(
+            """
+            UPDATE tickets SET rating = $3, rated_at = now()
+            WHERE id = $1 AND user_id = $2 AND status = 'closed' AND rating IS NULL
+            """,
+            ticket_id,
+            user_id,
+            stars,
+        )
+        return esito.endswith(" 1")
+
+    async def get_rating_summary(self, guild_id: int) -> tuple[float | None, int]:
+        """Media e numero dei voti del server."""
+        riga = await self._pool.fetchrow(
+            "SELECT avg(rating)::float AS media, count(rating) AS voti FROM tickets WHERE guild_id = $1",
+            guild_id,
+        )
+        return riga["media"], riga["voti"]
 
     async def set_priority(self, channel_id: int, priority: str) -> bool:
         if priority not in VALID_PRIORITIES:
@@ -404,6 +457,10 @@ def _row_to_ticket(row) -> Ticket:
         category_label=row["category_label"],
         first_response_at=row["first_response_at"],
         force_closed=row["force_closed"],
+        panel_id=row["panel_id"],
+        last_activity_at=row["last_activity_at"],
+        rating=row["rating"],
+        rated_at=row["rated_at"],
     )
 
 

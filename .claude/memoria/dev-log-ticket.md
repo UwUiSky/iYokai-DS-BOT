@@ -1,32 +1,21 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
-11/10/2026 · ramo `feat/giro-logt` (copia /home/claude/wt/logt) · base `0e7753a`
+13/10/2026 · ramo `feat/r4-tkt` (copia /home/claude/wt/tkt) · base `main` 793656c · migrazioni da 0100
 
 ## In corso
-- Giro finito: gruppo 1 (log+router) e gruppo 2 (snipe, 5.9) chiusi. Restano fuori: NF-13/6.9 (F9), #145 lato premium.
-- Prossimo: smoke del ramo (`scripts/smoke.py --base 0e7753a`, in background), push, rapporto.
+- Giro r4-tkt (per FILE): ordine correzioni → NF-13 → NF-33 → #139 non-AI → cataloghi. Previsione: 4 gruppi.
+- Fatto: correzioni (già tutte nel codice), NF-13 (gruppo 1). Prossimo: NF-33 ModMail
+  (`cogs/tickets/modmail.py`, `core/modmail_logic.py`, `repositories/modmail_repo.py`, migr. 0101).
 
 ## Fatto
-- F1, moderazione + log + ticket + vocali: unito su main con
-  `3758f2a` (nuovo `core/channel_rename.py`, migrazione `0010`).
-- Voci rapide F1 (log dei ruoli, `/voice transfer`).
-- #134 `/voice kick` assente: messaggio vero (`4c01028`).
-- #134 `/voice lock`/`unlock`: cambiano solo "Connetti" (`523875a`).
-- #134 M 3.14 log avanzati premium: `logging_avanzato_attivo` su ogni listener e sul servizio soundboard.
-- #144 `/voice kick`: gerarchia con `can_moderate` + admin/moderatori protetti dai non-staff.
-- #144 `/voice unlock`: ripristina il Connetti di prima del lock (memoria in-process `_connect_prima_del_lock`, senza migrazione).
-- #134 `db.remove_guild_setting` pubblica (la privata è sparita), ticket e rollback la usano.
-
-- F7 3b (#76): ticket in `/ticket` + `/gestione ticket`, vocali in `/voice` + `/gestione voice` (commit `65a80ed`, `99e23ce`).
-
-- Giro logt, gruppo 1: NF-01 router (`core/channel_router.py`, migr. 0028, tipi eventi/messaggi/voce/server), `/log crea-canali|crea-forum|ignora`, NF-02 `message_logs.py` (migr. 0029), 5.5 avviso unico, 5.6 spostamenti raggruppati + mute proprio, 5.7 soundboard da eventi (servizio ora segnaposto), 5.8 `___hidden___`, #145 `invalida_verdetto_premium`.
-
-- Giro logt, gruppo 2: NF-03 `/utility snipe|editsnipe` (modulo `snipe`, 5 min, solo memoria), M 5.9 ghost ping non scatta se cancella un moderatore (registro), ghost ping via router.
-
-- Giro logt, correzioni del cacciatore-bug: righe del router `esplicito` (migr. 0030: le righe nate dal ripiego seguono il generale), blocco+ricerca post archiviati nel forum, avviso segnato dopo il DM, registro di controllo per voce (id/conteggio), snipe con potatura/tetto per server/ignora/moderatori, transcript ticket via router, permessi forum, tetto 1/min per mute propri.
-
-- Revisione: `_post_noti` verificata con `parent_id`; registro letto una volta per evento (`on_raw_message_delete`); `/log stato` usa `esplicito`; servizio soundboard e `new_entries_since` tolti; `core/testo_limiti.py` (tronca, CAMPO_MAX, DESCRIZIONE_MAX); cache 30 s degli ignorati nel repo. Restano `truncate_text` (moderazione) e `taglia` (livelli): non miei.
+- Giri precedenti (F1, F7, router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145): tutti su main.
+- Verifica 13/10: #62 e #61 chiuse dal codice (M 6.1-6.8, M 5.1-5.9 con test); #145 chiusa
+  (`core/premium_cache.py` + test_premium_invalidazione). Resta solo M 6.9 = NF-13.
+- NF-13 (#84): migr. 0100 (ticket_panels, ticket_form_questions, tickets.panel_id/last_activity_at/rating),
+  `/gestione ticket pannello-crea|rimuovi|lista|pubblica`, `modulo-aggiungi|rimuovi|mostra`, `chiusura-auto`, `voto`;
+  bottoni DynamicItem `tkt:pan:<id>` e `tkt:voto:<id>:<n>`; chiusura per inattività (scheduler `ticket_autoclose`)
+  e per uscita utente; test_ticket_form.py, test_ticket_autoclose.py.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
@@ -54,3 +43,7 @@
 - M 3.14: nessun messaggio all'utente (i log sono listener, niente interazione);
   se serve un avviso va nel comando che accende il modulo (/config, fuori area).
 - #144: unlock dopo riavvio del bot col canale ancora bloccato rimette None (perde un connect=True originale). Per renderlo persistente serve una colonna in voice_temp_channels (run_migrations idempotente): decide l'orchestratore.
+- Test con DB: se cambi una migrazione già applicata a iyokai_wtkt, `DROP` delle tabelle e `DELETE FROM schema_migrations WHERE version=N`.
+- Un DynamicItem non passa da BaseView: serve `interaction_check` con `super()` + blacklist (test_ui_base_wiring lo impone).
+- Ogni metodo di repository nuovo deve avere un chiamante in produzione (test_repository_callers).
+- Tabelle nuove vanno in `core/data_registry.py` (figlie prima delle madri).
