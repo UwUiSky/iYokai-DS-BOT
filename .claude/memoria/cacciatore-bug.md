@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-12/10/2026 · ultimo giro: `feat/r3-bak` (backup D8, restore OAuth, cifratura v2)
+13/10/2026 · ultimo giro: `feat/r4-liv` (livelli, economia, giveaway, giochi, profili)
 
 ## In corso
 - Niente a metà. Giro eco chiuso. Prove: scratchpad/cbeco (p1 decadimento, p2 corse, p3 deadlock, p6 card, p7 migrazioni, test_prove_eco*.py).
@@ -23,6 +23,8 @@
 - feat/r3-bak: 2 alti (get_token None su riga illeggibile = bannito riinvitato; Creator senza permessi/Forbidden su ruoli). Medi: collega senza controlli sul server, 2 codici=2 job, finalize salta blacklist, 429 sul rinnovo, restore senza blocco, tabelle 0070 fuori dal registro. Prove: scratchpad/cbbak (env.sh, p1-p5).
 
 - feat/r3-mus (musica F2): 3 alti (nodo sano scartato perche' ancora CONNECTING; worker assegnato due volte; `//percorso` grezzo a Lavalink), medi: `play` stesso canale rilascia la sessione viva, `previous` avanti-indietro, `inactive_channel_tokens=None` su tutto il nodo locale. Prove: scratchpad/cbmus (fake_lavalink.py riusabile).
+
+- feat/r4-liv: 1 alto (`/gestione xp livello` 10M = loop fermo, level_for_xp lineare), medi: gerarchia attore su ruoli-premio, cooldown /fun gioca aggirato, mark_ended non e' claim, elenco modelli >2000, programmato muto senza permessi, migrazione 0091 doppia con r4-uti. Monete (shop, profilo, gioca, pay, modifica): 120 operazioni insieme, mai negativo, scorte esatte. Prove: scratchpad/cbliv (h.py, p1-p3, test_prove_liv.py).
 
 ## Cose imparate
 - wavelink: `Pool.connect` torna con status CONNECTING (CONNECTED col messaggio `ready`); i test con `connetti` finto non lo vedono. Prova con un finto Lavalink aiohttp (/v4/websocket manda ready, /v4/info).
@@ -48,6 +50,8 @@
 - Anonimizzare a valore fisso (user_id=0) incontra gli indici unici parziali: controllare pg_indexes. Registro NF-04: coprire anche gli action_type scritti dai cog (non solo la colonna generata).
 
 - Chiave multipla (`a,b`): `b64decode` si ferma al primo `=`, quindi la firma dello state usa la prima chiave (a posto). Ogni nuova tabella: lanciare `tests/test_data_registry.py`.
+
+- Prove su cog con fake: `registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)`, poi `comandi[nome].callback(cog, inter, ...)`; file temporaneo in tests/ e poi spostato in scratchpad. Controllare sempre i numeri di migrazione contro gli altri rami r4 (`git diff --name-only main...ramo -- core/migrations`).
 
 ## Aperto
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).
