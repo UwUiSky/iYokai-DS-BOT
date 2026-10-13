@@ -47,6 +47,7 @@ class Ticket:
     sollecito_at: datetime | None = None
     escalato_at: datetime | None = None
     standard_reply_id: int | None = None
+    close_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -238,7 +239,9 @@ class TicketRepository:
         )
         return result.endswith(" 1")
 
-    async def close_ticket(self, channel_id: int, closed_by: int, force: bool = False) -> bool:
+    async def close_ticket(
+        self, channel_id: int, closed_by: int, force: bool = False, reason: str | None = None
+    ) -> bool:
         """
         SPEC.md §13.9: `force` distingue una force-close (staff, che
         bypassa i controlli di appartenenza fatti nel cog) da una
@@ -248,14 +251,38 @@ class TicketRepository:
         result = await self._pool.execute(
             """
             UPDATE tickets
-            SET status = 'closed', closed_at = now(), closed_by = $2, force_closed = $3
+            SET status = 'closed', closed_at = now(), closed_by = $2, force_closed = $3,
+                close_reason = $4
             WHERE channel_id = $1 AND status = 'open'
             """,
             channel_id,
             closed_by,
             force,
+            reason,
         )
         return result.endswith(" 1")
+
+    async def release_ticket(self, channel_id: int) -> bool:
+        """TKT-048: toglie la presa in carico (False se nessuno l'aveva)."""
+        esito = await self._pool.execute(
+            "UPDATE tickets SET claimed_by = NULL WHERE channel_id = $1 AND status = 'open' AND claimed_by IS NOT NULL",
+            channel_id,
+        )
+        return esito.endswith(" 1")
+
+    async def list_open_tickets(self, guild_id: int, limit: int = 25) -> list[Ticket]:
+        """TKT-058: i ticket aperti di un server, i più vecchi prima."""
+        righe = await self._pool.fetch(
+            "SELECT * FROM tickets WHERE guild_id = $1 AND status = 'open' ORDER BY id LIMIT $2",
+            guild_id,
+            limit,
+        )
+        return [_row_to_ticket(r) for r in righe]
+
+    async def count_open_tickets(self, guild_id: int) -> int:
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM tickets WHERE guild_id = $1 AND status = 'open'", guild_id
+        )
 
     async def close_ticket_of_deleted_channel(self, channel_id: int) -> bool:
         """
@@ -496,6 +523,7 @@ def _row_to_ticket(row) -> Ticket:
         sollecito_at=row["sollecito_at"],
         escalato_at=row["escalato_at"],
         standard_reply_id=row["standard_reply_id"],
+        close_reason=row["close_reason"],
     )
 
 

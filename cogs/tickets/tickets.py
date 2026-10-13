@@ -134,6 +134,11 @@ RITARDO_ELIMINAZIONE_SECONDI = 10
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
+# TKT-056: motivo di chiusura salvato col ticket (compare anche nel transcript).
+MAX_MOTIVO_CHIUSURA = 500
+# TKT-058: quanti ticket chiude in una volta /admin ticket chiudi-tutti (ognuno ha il suo transcript).
+MAX_CHIUSURA_DI_MASSA = 25
+
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
 MAX_CHANNEL_NAME_LENGTH = 100
 
@@ -1328,41 +1333,130 @@ class TicketsCog(CogConGruppi, commands.Cog):
             f"Ticket preso in carico da {interaction.user.mention}."
         )
 
-    @comando_di_gruppo("ticket", nome="add", descrizione="Aggiungi un utente a questo ticket.")
-    @app_commands.describe(member="L'utente da aggiungere")
-    async def add(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    @staticmethod
+    async def _bersaglio_o_risposta(interaction: discord.Interaction, member, ruolo):
+        """TKT-047: un utente oppure un ruolo intero (mai @everyone). None dopo aver risposto."""
+        if (member is None) == (ruolo is None):
+            await interaction.response.send_message("Scegli un utente oppure un ruolo.", ephemeral=True)
+            return None
+        bersaglio = member or ruolo
+        if ruolo is not None and ruolo.id == interaction.guild.id:
+            await interaction.response.send_message(
+                "@everyone non si può aggiungere o togliere: aprirebbe il ticket a tutti.", ephemeral=True
+            )
+            return None
+        return bersaglio
+
+    @comando_di_gruppo("ticket", nome="add", descrizione="Aggiungi un utente o un ruolo a questo ticket.")
+    @app_commands.describe(member="L'utente da aggiungere", ruolo="Oppure un ruolo intero")
+    async def add(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member | None = None,
+        ruolo: discord.Role | None = None,
+    ) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
+            return
+        bersaglio = await self._bersaglio_o_risposta(interaction, member, ruolo)
+        if bersaglio is None:
             return
 
         try:
             await interaction.channel.set_permissions(
-                member, view_channel=True, send_messages=True, read_message_history=True
+                bersaglio, view_channel=True, send_messages=True, read_message_history=True
             )
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito ad aggiungere l'utente: controlla i miei permessi sul canale.",
+                "Non sono riuscito ad aggiungere il destinatario: controlla i miei permessi sul canale.",
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message(f"{member.mention} aggiunto al ticket.")
+        await interaction.response.send_message(
+            f"{bersaglio.mention} aggiunto al ticket.", allowed_mentions=discord.AllowedMentions.none()
+        )
 
-    @comando_di_gruppo("ticket", nome="remove", descrizione="Rimuovi un utente da questo ticket.")
-    @app_commands.describe(member="L'utente da rimuovere")
-    async def remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    @comando_di_gruppo("ticket", nome="remove", descrizione="Rimuovi un utente o un ruolo da questo ticket.")
+    @app_commands.describe(member="L'utente da rimuovere", ruolo="Oppure un ruolo intero")
+    async def remove(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member | None = None,
+        ruolo: discord.Role | None = None,
+    ) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
+        bersaglio = await self._bersaglio_o_risposta(interaction, member, ruolo)
+        if bersaglio is None:
+            return
 
         try:
-            await interaction.channel.set_permissions(member, overwrite=None)
+            await interaction.channel.set_permissions(bersaglio, overwrite=None)
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito a rimuovere l'utente: controlla i miei permessi sul canale.",
+                "Non sono riuscito a rimuovere il destinatario: controlla i miei permessi sul canale.",
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message(f"{member.mention} rimosso dal ticket.")
+        await interaction.response.send_message(
+            f"{bersaglio.mention} rimosso dal ticket.", allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo("ticket", nome="rilascia", descrizione="Lascia la presa in carico di questo ticket.")
+    async def rilascia(self, interaction: discord.Interaction) -> None:
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        if ticket.claimed_by is None:
+            await interaction.response.send_message("Nessuno ha preso in carico questo ticket.", ephemeral=True)
+            return
+        if ticket.claimed_by != interaction.user.id and not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message(
+                "Solo chi lo ha preso in carico (o chi ha Manage Server) può rilasciarlo.", ephemeral=True
+            )
+            return
+        await ticket_repo.release_ticket(interaction.channel.id)
+        await interaction.response.send_message(
+            f"{interaction.user.mention} ha lasciato il ticket: può prenderlo un altro con `/ticket claim`.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo("ticket", nome="passa", descrizione="Passa la presa in carico a un collega.")
+    @app_commands.describe(collega="Il collega dello staff")
+    async def passa(self, interaction: discord.Interaction, collega: discord.Member) -> None:
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        ruoli_supporto = set(await _support_role_ids(interaction.guild.id))
+        e_staff = collega.guild_permissions.manage_guild or bool(ruoli_supporto & {r.id for r in collega.roles})
+        if collega.bot or not e_staff:
+            await interaction.response.send_message(
+                f"{collega.mention} non fa parte dello staff dei ticket.",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await ticket_repo.claim_ticket(interaction.channel.id, collega.id)
+        await interaction.response.send_message(f"Ticket passato a {collega.mention}.")
+
+    @comando_di_gruppo("ticket", nome="transcript", descrizione="Ricevi il transcript senza chiudere il ticket.")
+    async def transcript(self, interaction: discord.Interaction) -> None:
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            testo = await self._build_transcript_text(interaction.channel, ticket)
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non riesco a leggere i messaggi del canale: controlla i miei permessi.", ephemeral=True
+            )
+            return
+        for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+            await interaction.followup.send(
+                file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
+            )
 
     @comando_di_gruppo("ticket", nome="rename", descrizione="Rinomina questo ticket.")
     @app_commands.describe(name="Il nuovo nome del canale")
@@ -1439,6 +1533,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
             f"Priorità: {ticket.priority}",
             f"Preso in carico da: {ticket.claimed_by or 'nessuno'}",
         ]
+        if ticket.close_reason:
+            header.append(f"Motivo di chiusura: {ticket.close_reason}")
         if not self.bot.intents.message_content:
             header.append(MESSAGE_CONTENT_WARNING)
         righe = []
@@ -1614,11 +1710,24 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     async def _chiudi_da_sistema(
-        self, guild: discord.Guild, channel, ticket, *, motivo: str, avviso: str, chiedi_voto: bool
-    ) -> None:
-        """Chiusura fatta dal bot (inattività, utente uscito): stesso ordine di /ticket close."""
-        if not await ticket_repo.close_ticket(channel.id, guild.me.id):
-            return
+        self,
+        guild: discord.Guild,
+        channel,
+        ticket,
+        *,
+        motivo: str,
+        avviso: str,
+        chiedi_voto: bool,
+        chiuso_da: int | None = None,
+        ragione: str | None = None,
+    ) -> bool:
+        """
+        Chiusura fatta dal bot (inattività, utente uscito) o per conto dello staff (chiusura di
+        massa): stesso ordine di /ticket close. `ragione` è il motivo salvato col ticket.
+        """
+        if not await ticket_repo.close_ticket(channel.id, chiuso_da or guild.me.id, reason=ragione):
+            return False
+        ticket = await ticket_repo.get_ticket_by_channel(channel.id) or ticket
         await self._pianifica_eliminazione_canale(
             guild.id, ticket.user_id, channel.id, motivo, RITARDO_ELIMINAZIONE_SECONDI
         )
@@ -1629,6 +1738,48 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await self._transcript_senza_bloccare(guild, channel, ticket)
         if chiedi_voto:
             await self._richiedi_voto(guild, ticket)
+        return True
+
+    @comando_di_gruppo(
+        "admin",
+        nome="chiudi-tutti",
+        descrizione="Chiudi i ticket aperti (fino a 25 alla volta).",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(motivo="Il motivo, salvato in ogni ticket")
+    async def chiudi_tutti(
+        self,
+        interaction: discord.Interaction,
+        motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        chiusi = 0
+        for ticket in await ticket_repo.list_open_tickets(guild.id, MAX_CHIUSURA_DI_MASSA):
+            channel = guild.get_channel(ticket.channel_id)
+            if channel is None:
+                await ticket_repo.close_ticket_of_deleted_channel(ticket.channel_id)
+                continue
+            fatto = await self._chiudi_da_sistema(
+                guild,
+                channel,
+                ticket,
+                motivo=f"Chiusura di massa di {interaction.user}",
+                avviso=f"Ticket chiuso da {interaction.user.mention} (chiusura di tutti i ticket)."
+                + (f"\nMotivo: {motivo}" if motivo else "")
+                + " Questo canale verrà eliminato a breve.",
+                chiedi_voto=True,
+                chiuso_da=interaction.user.id,
+                ragione=motivo,
+            )
+            chiusi += 1 if fatto else 0
+        restanti = await ticket_repo.count_open_tickets(guild.id)
+        testo = f"Chiusi {chiusi} ticket."
+        if restanti:
+            testo += f" Ne restano {restanti} aperti: rilancia il comando."
+        await interaction.followup.send(testo, ephemeral=True)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
@@ -1664,12 +1815,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await self._elimina_canale(channel_id, payload.get("reason"))
 
     @comando_di_gruppo("ticket", nome="close", descrizione="Chiudi questo ticket.")
-    async def close(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(motivo="Perché lo chiudi (si salva col ticket)")
+    async def close(
+        self,
+        interaction: discord.Interaction,
+        motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
+    ) -> None:
         ticket = await self._get_ticket_or_reply(interaction)
         if ticket is None:
             return
 
-        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id)
+        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, reason=motivo)
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
         # Prima di tutto il resto: da qui in poi un riavvio o un errore
         # nel transcript non lasciano più il canale per sempre.
         await self._pianifica_eliminazione(
@@ -1677,6 +1834,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(
             "Ticket chiuso. Questo canale verrà eliminato entro un minuto."
+            + (f"\nMotivo: {motivo}" if motivo else ""),
+            allowed_mentions=discord.AllowedMentions.none(),
         )
         await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
         await self._richiedi_voto(interaction.guild, ticket)
@@ -1684,7 +1843,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "ticket", nome="forceclose", descrizione="Chiudi immediatamente questo ticket, senza attesa."
     )
-    async def forceclose(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(motivo="Perché lo chiudi (si salva col ticket)")
+    async def forceclose(
+        self,
+        interaction: discord.Interaction,
+        motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
+    ) -> None:
         """
         SPEC.md §13.9: a differenza di /ticket close (aperto a
         chiunque abbia accesso al canale, incluso chi ha aperto il
@@ -1709,9 +1873,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         # Su un ticket già chiuso non cambia nulla nel database.
-        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, force=True)
+        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, force=True, reason=motivo)
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
         await interaction.response.send_message(
-            f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale."
+            f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale.",
+            allowed_mentions=discord.AllowedMentions.none(),
         )
         await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
         await self._richiedi_voto(interaction.guild, ticket)
