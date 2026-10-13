@@ -67,15 +67,18 @@ class BirthdayWorker:
         if not membri:
             return
         permessi = discord.AllowedMentions(users=True, roles=config.ping_ruoli, everyone=False)
+        consegnati = 0
         try:
-            for testo in dividi_auguri(config.message, [m.mention for m in membri]):
+            for testo, quanti in dividi_auguri(config.message, [m.mention for m in membri]):
                 await canale.send(testo, allowed_mentions=permessi)
+                consegnati += quanti
         except discord.HTTPException as errore:
-            # Gli auguri non sono (tutti) partiti: si riprova al giro dopo, per tutta la giornata.
+            # Si riprova al giro dopo, ma SOLO per chi non ha ricevuto gli auguri: gli altri sono già serviti.
             logger.warning("Auguri non inviati nel server %s: %s", config.guild_id, errore)
-            await self._repo.release_claim(config.guild_id, utenti, ora.year)
-            return
-        if config.role_id is not None:
+            non_serviti = {m.id for m in membri[consegnati:]}
+            await self._repo.release_claim(config.guild_id, [u for u in utenti if u in non_serviti], ora.year)
+            membri = membri[:consegnati]
+        if config.role_id is not None and membri:
             await self._ruolo(guild, config.role_id, membri, ora)
 
     async def _ruolo(self, guild, role_id: int, membri, ora: datetime) -> None:

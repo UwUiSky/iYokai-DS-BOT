@@ -13,6 +13,8 @@ from datetime import datetime
 
 import asyncpg
 
+from core.repositories.tetto_server import tetto_per_server
+
 from core.autorole_logic import (
     GIORNI_MEMORIA_PREDEFINITI,
     MAX_REGOLE,
@@ -46,18 +48,19 @@ class AutoroleRepository:
         Aggiunge (o aggiorna il ritardo di) una regola. False se il server ha già
         MAX_REGOLE regole e questo ruolo è nuovo. Controllo e scrittura in un'unica query.
         """
-        riga = await self._pool.fetchrow(
-            """
-            INSERT INTO autorole_rules (guild_id, role_id, delay_seconds, created_by)
-            SELECT $1, $2, $3, $4
-            WHERE EXISTS (SELECT 1 FROM autorole_rules WHERE guild_id = $1 AND role_id = $2)
-               OR (SELECT count(*) FROM autorole_rules WHERE guild_id = $1) < $5
-            ON CONFLICT (guild_id, role_id) DO UPDATE SET delay_seconds = EXCLUDED.delay_seconds
-            RETURNING role_id
-            """,
-            guild_id, role_id, delay_seconds, created_by, MAX_REGOLE,
-        )
-        return riga is not None
+        async with tetto_per_server(self._pool, "autorole_rules", guild_id) as conn:
+            riga = await conn.fetchrow(
+                """
+                INSERT INTO autorole_rules (guild_id, role_id, delay_seconds, created_by)
+                SELECT $1, $2, $3, $4
+                WHERE EXISTS (SELECT 1 FROM autorole_rules WHERE guild_id = $1 AND role_id = $2)
+                   OR (SELECT count(*) FROM autorole_rules WHERE guild_id = $1) < $5
+                ON CONFLICT (guild_id, role_id) DO UPDATE SET delay_seconds = EXCLUDED.delay_seconds
+                RETURNING role_id
+                """,
+                guild_id, role_id, delay_seconds, created_by, MAX_REGOLE,
+            )
+            return riga is not None
 
     async def remove_rule(self, guild_id: int, role_id: int) -> bool:
         esito = await self._pool.execute(

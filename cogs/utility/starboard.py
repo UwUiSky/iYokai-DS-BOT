@@ -87,6 +87,9 @@ class StarboardCog(CogConGruppi, commands.Cog):
             return
         if canale.is_nsfw() and not config.allow_nsfw:
             return
+        pubblico = canale.permissions_for(guild.default_role)
+        if not (pubblico.view_channel and pubblico.read_message_history):
+            return  # la bacheca è pubblica: i canali che @everyone non vede non ci finiscono
 
         async with self._blocco(message_id):
             try:
@@ -117,6 +120,9 @@ class StarboardCog(CogConGruppi, commands.Cog):
                 logger.warning("Bacheca %s: invio fallito: %s", config.channel_id, errore)
                 await starboard_repo.release_post(message_id)
                 return
+            except BaseException:
+                await starboard_repo.release_post(message_id)  # errore imprevisto: il posto non resta bloccato
+                raise
             await starboard_repo.set_board_message(message_id, inviato.id, stelle)
 
     async def _conta(self, messaggio: discord.Message, config) -> int:

@@ -5,6 +5,7 @@ NF-34 (#105): moduli e candidature. Fino a 5 domande, etichette da 45, risposte 
 una candidatura in attesa per persona, decisione una sola volta, ruolo all'accettazione.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
@@ -234,3 +235,53 @@ async def test_albero_dei_comandi():
     for nome in ("crea", "elimina", "elenco"):
         assert comando_nel_gruppo("moduli", f"candidature {nome}") is not None
     assert comando_nel_gruppo("utility", "modulo") is not None
+
+
+@pytest.mark.asyncio
+async def test_errore_imprevisto_nell_invio_rilascia_la_candidatura():
+    cog = _cog()
+    guild = fake_guild(guild_id=G)
+    canale = fake_text_channel(50)
+    canale.send = AsyncMock(side_effect=RuntimeError("boom"))
+    guild.get_channel = lambda cid: canale
+    with patch.object(modulo.form_repo, "add_response", AsyncMock(return_value=5)), \
+         patch.object(modulo.form_repo, "get_response", AsyncMock(return_value=_risposta())), \
+         patch.object(modulo.form_repo, "delete_response", AsyncMock()) as canc:
+        with pytest.raises(RuntimeError):
+            await cog.invia_candidatura(fake_interaction(guild=guild), _form(), ["Mario"])
+    canc.assert_awaited_once_with(5)
+
+
+@pytest.mark.asyncio
+async def test_modulo_eliminato_durante_la_compilazione(repo):
+    import asyncpg
+    cog = _cog()
+    f = await _modulo(repo)
+    await repo.delete_form(G, "staff")
+    guild = fake_guild(guild_id=G)
+    guild.get_channel = lambda cid: fake_text_channel(50)
+    i = fake_interaction(guild=guild)
+    with patch.object(modulo, "form_repo", repo):
+        await cog.invia_candidatura(i, f, ["x"])
+    assert "eliminato" in i.followup.send.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_due_decisioni_insieme_ne_vince_una_sola(repo):
+    """Con il database vero: accetta e rifiuta premuti nello stesso istante, un solo esito."""
+    f = await _modulo(repo)
+    rid = await repo.add_response(f, 7, ["a"])
+    cog = _cog()
+    guild = fake_guild(guild_id=G)
+    candidato = fake_member(user_id=7)
+    candidato.add_roles, candidato.send = AsyncMock(), AsyncMock()
+    guild.get_member = lambda uid: candidato
+    guild.get_role = lambda rid_: fake_role(60, "Staff", position=1)
+    i1, i2 = _staff_interaction(guild), _staff_interaction(guild)
+    with patch.object(modulo, "form_repo", repo), \
+         patch.object(modulo, "motivo_ruolo_automatico_non_assegnabile", return_value=None):
+        await asyncio.gather(cog.decidi(i1, rid, "accepted"), cog.decidi(i2, rid, "rejected"))
+    assert candidato.send.await_count == 1
+    assert i1.message.edit.await_count + i2.message.edit.await_count == 1
+    stato = (await repo.get_response(rid)).status
+    assert (candidato.add_roles.await_count == 1) == (stato == "accepted")

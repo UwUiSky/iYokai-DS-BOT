@@ -191,8 +191,8 @@ def _interazione(utente=None):
 async def test_uso_con_slash_risponde_con_testo_senza_ping(scena):
     i, server, utente = _interazione()
     await scena.tag.callback(scena, i, "regole", "@everyone")
-    kw = i.response.send_message.await_args.kwargs
-    testo = i.response.send_message.await_args.args[0]
+    kw = i.followup.send.await_args.kwargs
+    testo = i.followup.send.await_args.args[0]
     assert "Mario" in testo or "<@5>" in testo
     assert "@everyone" not in testo.replace("@​everyone", "")
     assert kw["allowed_mentions"].everyone is False and kw["allowed_mentions"].roles is False
@@ -236,7 +236,7 @@ async def test_ruolo_diventato_pericoloso_non_si_da_ma_il_tag_risponde(scena):
     scena.repo.get_tag.return_value = _tag(role_id=10, role_action="dai")
     await scena.tag.callback(scena, i, "regole", "")
     utente.add_roles.assert_not_awaited()
-    i.response.send_message.assert_awaited()
+    i.followup.send.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -244,7 +244,7 @@ async def test_embed_tag(scena):
     scena.repo.get_tag.return_value = _tag(use_embed=True, response="x" * 1900)
     i, *_ = _interazione()
     await scena.tag.callback(scena, i, "regole", "")
-    assert isinstance(i.response.send_message.await_args.kwargs["embed"], discord.Embed)
+    assert isinstance(i.followup.send.await_args.kwargs["embed"], discord.Embed)
 
 
 @pytest.mark.asyncio
@@ -324,3 +324,17 @@ async def test_albero_dei_comandi():
     assert opzioni["nome"]["max_length"] == 32 and opzioni["argomenti"]["max_length"] <= 500
     crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "comandi crea").to_dict(bot.tree)["options"]}
     assert crea["testo"]["max_length"] == 2000 and crea["nome"]["max_length"] == 32
+
+
+@pytest.mark.asyncio
+async def test_il_tag_prenota_la_risposta_prima_di_toccare_i_ruoli(scena):
+    """Dare il ruolo può durare più dei 3 secondi concessi: prima si fa defer, poi si chiama Discord."""
+    i, server, utente = _interazione()
+    ruolo = fake_role(10, "Giocatore", position=1)
+    server.get_role = lambda rid: ruolo
+    scena.repo.get_tag.return_value = _tag(role_id=10, role_action="dai")
+    ordine = []
+    i.response.defer = AsyncMock(side_effect=lambda *a, **k: ordine.append("defer"))
+    utente.add_roles = AsyncMock(side_effect=lambda *a, **k: ordine.append("ruolo"))
+    await scena.tag.callback(scena, i, "regole", "")
+    assert ordine[:2] == ["defer", "ruolo"]

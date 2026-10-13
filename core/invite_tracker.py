@@ -234,6 +234,11 @@ class InviteTracker:
                 self._in_corso.pop(guild.id, None)
                 self._guild_locks.pop(guild.id, None)
 
+    def forget_member(self, guild_id: int, member_id: int) -> None:
+        """Dimentica il risultato di un ingresso (da chiamare quando il membro esce): se rientra
+        con un altro invito, `resolve_join_invite` deve rifare il calcolo, non ridare il vecchio."""
+        self._join_results.delete((guild_id, member_id))
+
     def _usi_in_sospeso(self, guild_id: int) -> tuple[str, int] | None:
         sospeso = self._in_sospeso.get(guild_id)
         if sospeso is None:

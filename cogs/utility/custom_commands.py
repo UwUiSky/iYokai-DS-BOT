@@ -194,14 +194,15 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 f"Aspetta ancora {int(residuo) + 1} secondi prima di riusarlo.", ephemeral=True
             )
             return
+        # Dare o togliere il ruolo sono chiamate a Discord che possono superare i 3 secondi
+        # concessi per rispondere: si prenota la risposta prima.
+        await interaction.response.defer()
         testo, nota = await self._prepara(tag, interaction.user, interaction.channel, argomenti)
         menzioni = menzioni_ammesse(tag.ping_ruoli)
         if tag.use_embed:
-            await interaction.response.send_message(
-                embed=discord.Embed(description=testo), allowed_mentions=menzioni
-            )
+            await interaction.followup.send(embed=discord.Embed(description=testo), allowed_mentions=menzioni)
         else:
-            await interaction.response.send_message(testo, allowed_mentions=menzioni)
+            await interaction.followup.send(testo, allowed_mentions=menzioni)
         if nota:
             await interaction.followup.send(nota, ephemeral=True)
         await custom_command_repo.add_use(guild.id, tag.name)

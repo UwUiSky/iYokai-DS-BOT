@@ -128,6 +128,26 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         self._blocchi_menu: "weakref.WeakValueDictionary[int, asyncio.Lock]" = (
             weakref.WeakValueDictionary()
         )
+        self._blocchi_membro: "weakref.WeakValueDictionary[tuple[int, int], asyncio.Lock]" = (
+            weakref.WeakValueDictionary()
+        )
+
+    def _blocco_membro(self, menu_id: int, user_id: int) -> asyncio.Lock:
+        """Un blocco per (menu, membro): due clic insieme di una persona si mettono in fila."""
+        chiave = (menu_id, user_id)
+        blocco = self._blocchi_membro.get(chiave)
+        if blocco is None:
+            blocco = asyncio.Lock()
+            self._blocchi_membro[chiave] = blocco
+        return blocco
+
+    @staticmethod
+    async def _membro_aggiornato(guild: discord.Guild, member: discord.Member) -> discord.Member:
+        """I ruoli di chi clicca, riletti DOPO aver preso il blocco (l'interazione porta una foto vecchia)."""
+        try:
+            return await guild.fetch_member(member.id)
+        except discord.HTTPException:
+            return member
 
     def _blocco_menu(self, menu_id: int) -> asyncio.Lock:
         blocco = self._blocchi_menu.get(menu_id)
@@ -337,30 +357,32 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if menu is None:
             await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
             return
-        ruoli_membro = {r.id for r in interaction.user.roles}
-        negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
-        if negato is not None:
-            await interaction.response.send_message(negato, ephemeral=True)
-            return
-        opzioni = await role_menu_repo.get_options(menu_id)
-        decisione = decidi_azione(
-            menu.behavior,
-            attiva=True,
-            via_reazione=False,
-            ruolo_id=role_id,
-            ruoli_menu={o.role_id for o in opzioni},
-            ruoli_membro=ruoli_membro,
-            toggle=menu.toggle,
-            temp_secondi=menu.temp_seconds,
-        )
-        if decisione.rifiuto is not None:
-            await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
-            return
+        async with self._blocco_membro(menu.id, interaction.user.id):
+            utente = await self._membro_aggiornato(guild, interaction.user)
+            ruoli_membro = {r.id for r in utente.roles}
+            negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
+            if negato is not None:
+                await interaction.response.send_message(negato, ephemeral=True)
+                return
+            opzioni = await role_menu_repo.get_options(menu_id)
+            decisione = decidi_azione(
+                menu.behavior,
+                attiva=True,
+                via_reazione=False,
+                ruolo_id=role_id,
+                ruoli_menu={o.role_id for o in opzioni},
+                ruoli_membro=ruoli_membro,
+                toggle=menu.toggle,
+                temp_secondi=menu.temp_seconds,
+            )
+            if decisione.rifiuto is not None:
+                await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
+                return
 
-        errore = await self._applica(guild, interaction.user, decisione, "Role menu")
-        if errore is not None:
-            await interaction.response.send_message(errore, ephemeral=True)
-            return
+            errore = await self._applica(guild, utente, decisione, "Role menu")
+            if errore is not None:
+                await interaction.response.send_message(errore, ephemeral=True)
+                return
         if decisione.aggiungi:
             testo = f"Role {role.mention} added."
             if decisione.temporaneo_secondi:
@@ -403,6 +425,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return "Discord ha dato un errore: riprova tra poco."
         if decisione.temporaneo_secondi and da_dare:
             for ruolo in da_dare:
+                # Ruolo ripreso prima della scadenza: la vecchia rimozione lo toglierebbe subito.
+                for vecchia in await scheduler.list_pending_for_user(member.id, ROLEMENU_TEMP_ACTION_TYPE, 100):
+                    if vecchia["guild_id"] == guild.id and vecchia["payload"].get("role_id") == ruolo.id:
+                        await scheduler.cancel(vecchia["id"])
                 await scheduler.schedule(
                     guild.id, member.id, ROLEMENU_TEMP_ACTION_TYPE,
                     in_seconds(decisione.temporaneo_secondi), {"role_id": ruolo.id},
@@ -439,25 +465,27 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
             return
         options = await role_menu_repo.get_options(menu_id)
-        ruoli_membro = {r.id for r in interaction.user.roles}
-        negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
-        if negato is not None:
-            await interaction.response.send_message(negato, ephemeral=True)
-            return
-        decisione = decidi_selezione(
-            menu.behavior,
-            ruoli_menu={opt.role_id for opt in options},
-            ruoli_membro=ruoli_membro,
-            scelti={int(v) for v in select.values},
-            temp_secondi=menu.temp_seconds,
-        )
-        if decisione.rifiuto is not None:
-            await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
-            return
-        errore = await self._applica(guild, interaction.user, decisione, "Role menu")
-        if errore is not None:
-            await interaction.response.send_message(errore, ephemeral=True)
-            return
+        async with self._blocco_membro(menu.id, interaction.user.id):
+            utente = await self._membro_aggiornato(guild, interaction.user)
+            ruoli_membro = {r.id for r in utente.roles}
+            negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
+            if negato is not None:
+                await interaction.response.send_message(negato, ephemeral=True)
+                return
+            decisione = decidi_selezione(
+                menu.behavior,
+                ruoli_menu={opt.role_id for opt in options},
+                ruoli_membro=ruoli_membro,
+                scelti={int(v) for v in select.values},
+                temp_secondi=menu.temp_seconds,
+            )
+            if decisione.rifiuto is not None:
+                await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
+                return
+            errore = await self._applica(guild, utente, decisione, "Role menu")
+            if errore is not None:
+                await interaction.response.send_message(errore, ephemeral=True)
+                return
 
         await interaction.response.send_message("Your roles have been updated.", ephemeral=True)
 
@@ -494,25 +522,27 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         self, guild: discord.Guild, menu: RoleMenu, role_id: int, member: discord.Member, *, attiva: bool, motivo: str
     ) -> None:
         """Una reazione messa o tolta su un menu: accesso, comportamento, ruoli (nessuna risposta possibile)."""
-        ruoli_membro = {r.id for r in member.roles}
-        if membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro) is not None:
-            return
-        opzioni = await role_menu_repo.get_options(menu.id)
-        decisione = decidi_azione(
-            menu.behavior,
-            attiva=attiva,
-            via_reazione=True,
-            ruolo_id=role_id,
-            ruoli_menu={o.role_id for o in opzioni},
-            ruoli_membro=ruoli_membro,
-            toggle=menu.toggle,
-            temp_secondi=menu.temp_seconds,
-        )
-        if decisione.rifiuto is not None:
-            return
-        errore = await self._applica(guild, member, decisione, motivo)
-        if errore is not None:
-            logger.warning("Reazione sul menu %s nel server %s: %s", menu.id, guild.id, errore)
+        async with self._blocco_membro(menu.id, member.id):
+            member = await self._membro_aggiornato(guild, member)
+            ruoli_membro = {r.id for r in member.roles}
+            if membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro) is not None:
+                return
+            opzioni = await role_menu_repo.get_options(menu.id)
+            decisione = decidi_azione(
+                menu.behavior,
+                attiva=attiva,
+                via_reazione=True,
+                ruolo_id=role_id,
+                ruoli_menu={o.role_id for o in opzioni},
+                ruoli_membro=ruoli_membro,
+                toggle=menu.toggle,
+                temp_secondi=menu.temp_seconds,
+            )
+            if decisione.rifiuto is not None:
+                return
+            errore = await self._applica(guild, member, decisione, motivo)
+            if errore is not None:
+                logger.warning("Reazione sul menu %s nel server %s: %s", menu.id, guild.id, errore)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:

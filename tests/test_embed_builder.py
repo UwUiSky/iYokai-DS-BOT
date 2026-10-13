@@ -5,6 +5,7 @@ NF-17 (#88): costruttore di embed. Tutti i limiti (256, 4096, 1024, 25, 6000) co
 salvataggio; anteprima; pubblica e modifica anche dopo; indirizzi delle immagini controllati.
 """
 
+import asyncio
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -59,6 +60,10 @@ def test_embed_vuoto_rifiutato():
         _e(image_url="ftp://x/y.png"),
         _e(image_url="https://x/" + "a" * 2100),
         _e(thumbnail_url="javascript:alert(1)"),
+        _e(image_url="https://x.it/a b.png"),
+        _e(image_url="https://x.it/a.png\nhttps://evil.it/b.png"),
+        _e(image_url="https://x.it/a.png\r"),
+        _e(thumbnail_url="https://x.it/\ta.png"),
     ],
 )
 def test_limiti_rifiutati_al_salvataggio(dati):
@@ -252,3 +257,26 @@ async def test_albero_dei_comandi():
     crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "embed crea").to_dict(bot.tree)["options"]}
     assert crea["titolo"]["max_length"] == 256 and crea["descrizione"]["max_length"] == 4096
     assert crea["piede"]["max_length"] == 2048
+
+
+@pytest.mark.asyncio
+async def test_due_campi_aggiunti_insieme_restano_entrambi(scena):
+    """Senza il blocco per embed la seconda modifica parte dallo stato vecchio e cancella il campo della prima."""
+    stato = {"data": json.loads(a_json(_e()))}
+
+    async def leggi(guild_id, nome):
+        await asyncio.sleep(0.005)
+        return SimpleNamespace(name="a", data=json.loads(json.dumps(stato["data"])), channel_id=None, message_id=None)
+
+    async def scrivi(guild_id, nome, data_json):
+        await asyncio.sleep(0.005)
+        stato["data"] = json.loads(data_json)
+        return True
+
+    scena.repo.get, scena.repo.update_data = leggi, scrivi
+    await asyncio.gather(
+        scena.modifica.callback(scena, fake_interaction(), "a", campo_nome="Uno", campo_valore="1"),
+        scena.modifica.callback(scena, fake_interaction(), "a", campo_nome="Due", campo_valore="2"),
+    )
+    nomi = [c[0] for c in stato["data"]["fields"]]
+    assert sorted(nomi) == ["Due", "Uno"]

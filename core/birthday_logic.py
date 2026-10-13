@@ -30,25 +30,28 @@ def festeggia_oggi(giorno: int, mese: int, oggi: date) -> bool:
     return oggi.day == giorno and oggi.month == mese
 
 
-def dividi_auguri(modello: str, menzioni: list[str]) -> list[str]:
+def dividi_auguri(modello: str, menzioni: list[str]) -> list[tuple[str, int]]:
     """
-    I messaggi di auguri: il modello con `{users}` sostituito dai festeggiati, in più
-    messaggi se sono tanti (mai oltre 2000 caratteri ciascuno).
+    I messaggi di auguri come (testo, quanti festeggiati contiene): il modello con `{users}`
+    sostituito dai festeggiati, in più messaggi se sono tanti. Mai oltre 2000 caratteri, e mai
+    una menzione tagliata a metà: se `{users}` compare più volte nel modello, lo spazio per i
+    nomi si divide tra le occorrenze.
     """
     if "{users}" not in modello:
         modello = f"{modello} {{users}}"
+    ripetizioni = modello.count("{users}")
     base = len(modello.replace("{users}", ""))
-    spazio = max(_MAX_DISCORD - base, 30)
-    messaggi: list[str] = []
+    spazio = max((_MAX_DISCORD - base) // ripetizioni, 30)
+    messaggi: list[tuple[str, int]] = []
     corrente: list[str] = []
     lunghezza = 0
     for menzione in menzioni:
         costo = len(menzione) + (2 if corrente else 0)
         if corrente and lunghezza + costo > spazio:
-            messaggi.append(modello.replace("{users}", ", ".join(corrente)))
+            messaggi.append((modello.replace("{users}", ", ".join(corrente)), len(corrente)))
             corrente, lunghezza, costo = [], 0, len(menzione)
         corrente.append(menzione)
         lunghezza += costo
     if corrente:
-        messaggi.append(modello.replace("{users}", ", ".join(corrente)))
-    return [m[:_MAX_DISCORD] for m in messaggi]
+        messaggi.append((modello.replace("{users}", ", ".join(corrente)), len(corrente)))
+    return messaggi

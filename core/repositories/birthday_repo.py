@@ -39,7 +39,9 @@ class BirthdayRepository:
             """
             INSERT INTO birthdays (guild_id, user_id, day, month) VALUES ($1, $2, $3, $4)
             ON CONFLICT (guild_id, user_id) DO UPDATE
-                SET day = EXCLUDED.day, month = EXCLUDED.month, last_announced_year = NULL
+                SET day = EXCLUDED.day, month = EXCLUDED.month,
+                    last_announced_year = CASE WHEN birthdays.day = EXCLUDED.day AND birthdays.month = EXCLUDED.month
+                                               THEN birthdays.last_announced_year END
             """,
             guild_id, user_id, day, month,
         )

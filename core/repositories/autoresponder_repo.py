@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from core.repositories.tetto_server import tetto_per_server
+
 from core.autoresponder_logic import MAX_RISPOSTE
 
 
@@ -51,23 +53,24 @@ class AutoresponderRepository:
         created_by: int,
     ) -> tuple[str, int | None]:
         """("ok", id), ("esiste", None) o ("pieno", None). Tetto e scrittura nella stessa query."""
-        riga = await self._pool.fetchrow(
-            """
-            INSERT INTO autoresponders
-                (guild_id, trigger, match_mode, response, channel_id, role_id, ping_ruoli, created_by)
-            SELECT $1, $2, $3, $4, $5, $6, $7, $8
-            WHERE (SELECT count(*) FROM autoresponders WHERE guild_id = $1) < $9
-            ON CONFLICT (guild_id, lower(trigger)) DO NOTHING
-            RETURNING id
-            """,
-            guild_id, trigger, match_mode, response, channel_id, role_id, ping_ruoli, created_by, MAX_RISPOSTE,
-        )
-        if riga is not None:
-            return "ok", riga["id"]
-        esiste = await self._pool.fetchval(
-            "SELECT 1 FROM autoresponders WHERE guild_id = $1 AND lower(trigger) = lower($2)", guild_id, trigger
-        )
-        return ("esiste" if esiste else "pieno"), None
+        async with tetto_per_server(self._pool, "autoresponders", guild_id) as conn:
+            riga = await conn.fetchrow(
+                """
+                INSERT INTO autoresponders
+                    (guild_id, trigger, match_mode, response, channel_id, role_id, ping_ruoli, created_by)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8
+                WHERE (SELECT count(*) FROM autoresponders WHERE guild_id = $1) < $9
+                ON CONFLICT (guild_id, lower(trigger)) DO NOTHING
+                RETURNING id
+                """,
+                guild_id, trigger, match_mode, response, channel_id, role_id, ping_ruoli, created_by, MAX_RISPOSTE,
+            )
+            if riga is not None:
+                return "ok", riga["id"]
+            esiste = await conn.fetchval(
+                "SELECT 1 FROM autoresponders WHERE guild_id = $1 AND lower(trigger) = lower($2)", guild_id, trigger
+            )
+            return ("esiste" if esiste else "pieno"), None
 
     async def list(self, guild_id: int) -> list[Autoresponder]:
         righe = await self._pool.fetch(

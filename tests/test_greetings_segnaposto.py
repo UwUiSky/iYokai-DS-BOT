@@ -33,3 +33,16 @@ def test_la_lunghezza_peggiore_conta_i_segnaposto_nuovi():
     assert lunghezza_dopo_segnaposto("{displayname}", "S", 1) >= 32
     assert lunghezza_dopo_segnaposto("{serverid}", "S", 1) >= 20
     assert lunghezza_dopo_segnaposto("{displayname}" * 80, "S", 1) > MAX_MESSAGE_LENGTH
+
+
+def test_nome_visualizzato_con_menzioni_viene_neutralizzato():
+    """Un nome visualizzato come '@everyone' non deve diventare un ping nel testo di benvenuto."""
+    from unittest.mock import MagicMock
+    from cogs.utility.greetings import _render_for_member
+    m = MagicMock()
+    m.mention, m.name, m.id = "<@5>", "x", 5
+    m.display_name = "@everyone <@&123456789012345678>"
+    m.guild.name, m.guild.member_count, m.guild.id = "S @here", 3, 1
+    testo = _render_for_member("{displayname} / {server}", m)
+    assert "@everyone" not in testo.replace("@​everyone", "") and "@here" not in testo.replace("@​here", "")
+    assert "<@&" not in testo

@@ -49,11 +49,11 @@ def _render_for_member(template: str, member: discord.Member) -> str:
     return render_template(
         template,
         user_mention=member.mention,
-        username=member.name,
-        server_name=member.guild.name,
+        username=discord.utils.escape_mentions(member.name),
+        server_name=discord.utils.escape_mentions(member.guild.name),
         member_count=member.guild.member_count or 0,
         user_id=member.id,
-        display_name=member.display_name,
+        display_name=discord.utils.escape_mentions(member.display_name),
         server_id=member.guild.id,
     )
 

@@ -110,6 +110,7 @@ class _Scena:
         self.bacheca.send = AsyncMock(return_value=SimpleNamespace(id=999, edit=AsyncMock()))
         self.canale = fake_text_channel(10, "chat")
         self.canale.is_nsfw = MagicMock(return_value=nsfw)
+        self.canale.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=True, read_message_history=True))
         self.autore = fake_member(5, "autore")
         self.messaggio = fake_message(100, author=self.autore, channel=self.canale, guild=self.guild, content="ciao")
         self.messaggio.attachments = []
@@ -251,3 +252,46 @@ async def test_i_comandi_stanno_in_moduli_starboard():
         assert comando_nel_gruppo("moduli", f"starboard {nome}") is not None
     opzioni = {o["name"]: o for o in comando_nel_gruppo("moduli", "starboard soglia").to_dict(bot.tree)["options"]}
     assert opzioni["numero"]["max_value"] == SOGLIA_MAX
+
+
+@pytest.mark.asyncio
+async def test_canale_privato_non_finisce_in_bacheca(monkeypatch):
+    """Un canale che @everyone non vede (staff, ticket) non va in una bacheca pubblica."""
+    s = _Scena(monkeypatch, stelle=5, soglia=3)
+    s.canale.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=False))
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_not_awaited()
+    s.repo.claim_post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_errore_non_http_libera_il_posto(monkeypatch):
+    s = _Scena(monkeypatch, stelle=3, soglia=3)
+    s.bacheca.send = AsyncMock(side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError):
+        await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.repo.release_post.assert_awaited_once_with(100)
+
+
+@pytest.mark.asyncio
+async def test_il_blocco_per_messaggio_evita_il_doppio_invio(monkeypatch):
+    """Senza l'asyncio.Lock due eventi insieme passano entrambi da get_post vuoto: qui il
+    database non protegge (claim sempre vero), quindi a fermare il secondo è solo il blocco."""
+    s = _Scena(monkeypatch, stelle=3, soglia=3)
+    stato = {}
+
+    async def get_post(message_id):
+        return stato.get(message_id)
+
+    async def invio(*a, **k):
+        await asyncio.sleep(0.01)
+        return SimpleNamespace(id=999, edit=AsyncMock())
+
+    async def set_board(message_id, board_id, stelle):
+        stato[message_id] = SimpleNamespace(board_message_id=board_id, stars=stelle)
+
+    s.repo.get_post, s.repo.set_board_message = get_post, set_board
+    s.bacheca.send = AsyncMock(side_effect=invio)
+    s.bacheca.fetch_message = AsyncMock(return_value=SimpleNamespace(edit=AsyncMock()))
+    await asyncio.gather(s.cog.aggiorna(s.guild.id, 10, 100), s.cog.aggiorna(s.guild.id, 10, 100))
+    assert s.bacheca.send.await_count == 1

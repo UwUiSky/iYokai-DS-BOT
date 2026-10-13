@@ -52,6 +52,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
+        invite_tracker.forget_member(member.guild.id, member.id)
         if member.bot:
             return
         try:

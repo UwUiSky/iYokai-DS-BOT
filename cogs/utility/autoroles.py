@@ -25,6 +25,8 @@ from core.autorole_logic import (
     ruoli_da_ricordare,
     ruoli_da_ridare,
 )
+from cogs.utility.role_menus import ROLEMENU_TEMP_ACTION_TYPE
+from core.birthday_worker import BIRTHDAY_ROLE_ACTION_TYPE
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -39,6 +41,8 @@ logger = logging.getLogger("iyokai.autoroles")
 MODULE_AUTOROLES = "autoroles"
 MODULE_VERIFY = "verify"
 AUTOROLE_ACTION_TYPE = "autorole_give"
+# Azioni dello scheduler che tolgono un ruolo dopo un po': quei ruoli non vanno ricordati.
+TIPI_RUOLO_A_TEMPO = (ROLEMENU_TEMP_ACTION_TYPE, BIRTHDAY_ROLE_ACTION_TYPE)
 
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 
@@ -82,26 +86,42 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as errore:
             logger.warning("Ruoli automatici non dati a %s nel server %s: %s", member.id, member.guild.id, errore)
 
+    async def _ruoli_ricordati_da_ridare(self, member: discord.Member) -> list[int]:
+        """I ruoli che aveva prima di uscire (se la memoria è accesa e il rientro è entro i giorni)."""
+        config = await autorole_repo.get_config(member.guild.id)
+        if not config.remember_enabled:
+            return []
+        ricordati = await autorole_repo.pop_memory(member.guild.id, member.id)
+        if ricordati is None:
+            return []
+        return ruoli_da_ridare(ricordati.role_ids, ricordati.left_at, datetime.now(timezone.utc), config.remember_days)
+
     async def _applica_regole(self, member: discord.Member) -> None:
-        """Ruoli ricordati e regole: subito o in coda sullo scheduler."""
+        """Ruoli ricordati e regole: subito o in coda sullo scheduler. Si arriva qui solo quando il
+        membro non è più in attesa (schermata di verifica / ruolo Verify), mai prima."""
+        if member.bot:
+            return
         guild = member.guild
         regole = await autorole_repo.list_rules(guild.id)
         posseduti = {r.id for r in member.roles}
         subito, dopo = piano_ingresso(regole, is_bot=member.bot, ruoli_posseduti=posseduti)
-        if member.bot:
-            return
+        ricordati = [r for r in await self._ruoli_ricordati_da_ridare(member) if r not in posseduti and r not in subito]
         pausa = raid_in_corso(guild.id)
         if pausa:
             # Durante un raid i ruoli non si danno: si programmano a raid finito.
-            dopo = dopo + [(rid, 0) for rid in subito]
-            subito = []
+            dopo = dopo + [(rid, 0) for rid in subito + ricordati]
+            subito, programmati_ricordati = [], set(ricordati)
+        else:
+            subito = subito + ricordati
+            programmati_ricordati = set()
         if subito:
             await self._assegna(member, subito)
         for rid, attesa in dopo:
             secondi = attesa + (DURATA_RAID_SECONDI if pausa else 0)
-            await scheduler.schedule(
-                guild.id, member.id, AUTOROLE_ACTION_TYPE, in_seconds(secondi), {"role_id": rid}
-            )
+            payload = {"role_id": rid}
+            if rid in programmati_ricordati:
+                payload["ricordato"] = True  # niente regola dietro: non va ricontrollata allo scatto
+            await scheduler.schedule(guild.id, member.id, AUTOROLE_ACTION_TYPE, in_seconds(secondi), payload)
 
     async def handle_autorole_give(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Handler dello scheduler: dà un ruolo ritardato se la regola c'è ancora e il membro pure."""
@@ -110,7 +130,16 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         if guild is None or role_id is None:
             return
         member = guild.get_member(user_id)
-        if member is None or not await autorole_repo.has_rule(guild_id, role_id):
+        if member is None:
+            return
+        if not payload.get("ricordato") and not await autorole_repo.has_rule(guild_id, role_id):
+            return
+        if member.pending:
+            return  # non ha ancora accettato le regole: i ruoli arrivano da on_member_update
+        if raid_in_corso(guild_id):
+            await scheduler.schedule(
+                guild_id, user_id, AUTOROLE_ACTION_TYPE, in_seconds(DURATA_RAID_SECONDI), payload
+            )
             return
         if role_id in {r.id for r in member.roles}:
             return
@@ -125,16 +154,6 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             return
         if not await db.is_module_active_for_guild(member.guild.id, MODULE_AUTOROLES):
             return
-
-        config = await autorole_repo.get_config(member.guild.id)
-        if config.remember_enabled:
-            ricordati = await autorole_repo.pop_memory(member.guild.id, member.id)
-            if ricordati is not None:
-                ruoli = ruoli_da_ridare(
-                    ricordati.role_ids, ricordati.left_at, datetime.now(timezone.utc), config.remember_days
-                )
-                if ruoli:
-                    await self._assegna(member, ruoli)
 
         verificato = await self._ruolo_verificato_atteso(member.guild)
         if membro_in_attesa(
@@ -176,7 +195,14 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         config = await autorole_repo.get_config(member.guild.id)
         if not config.remember_enabled:
             return
-        ruoli = ruoli_da_ricordare(member.roles)
+        # I ruoli a tempo (menu di ruoli, compleanno) non si ricordano: al rientro diventerebbero permanenti.
+        a_tempo = {
+            a["payload"].get("role_id")
+            for tipo in TIPI_RUOLO_A_TEMPO
+            for a in await scheduler.list_pending_for_user(member.id, tipo, 100)
+            if a["guild_id"] == member.guild.id
+        }
+        ruoli = [r for r in ruoli_da_ricordare(member.roles) if r not in a_tempo]
         if not ruoli:
             return
         await autorole_repo.save_memory(member.guild.id, member.id, ruoli, datetime.now(timezone.utc))

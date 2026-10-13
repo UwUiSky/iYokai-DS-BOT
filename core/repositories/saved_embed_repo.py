@@ -13,6 +13,8 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from core.repositories.tetto_server import tetto_per_server
+
 from core.embed_builder_logic import MAX_EMBED
 
 
@@ -50,22 +52,23 @@ class SavedEmbedRepository:
     async def create(self, guild_id: int, name: str, data_json: str, created_by: int) -> str:
         """"ok", "esiste" o "pieno" (tetto per server); tetto e scrittura nella stessa query."""
         nome = name.lower()
-        riga = await self._pool.fetchrow(
-            """
-            INSERT INTO saved_embeds (guild_id, name, data, created_by)
-            SELECT $1, $2, $3::jsonb, $4
-            WHERE (SELECT count(*) FROM saved_embeds WHERE guild_id = $1) < $5
-            ON CONFLICT (guild_id, name) DO NOTHING
-            RETURNING name
-            """,
-            guild_id, nome, data_json, created_by, MAX_EMBED,
-        )
-        if riga is not None:
-            return "ok"
-        esiste = await self._pool.fetchval(
-            "SELECT 1 FROM saved_embeds WHERE guild_id = $1 AND name = $2", guild_id, nome
-        )
-        return "esiste" if esiste else "pieno"
+        async with tetto_per_server(self._pool, "saved_embeds", guild_id) as conn:
+            riga = await conn.fetchrow(
+                """
+                INSERT INTO saved_embeds (guild_id, name, data, created_by)
+                SELECT $1, $2, $3::jsonb, $4
+                WHERE (SELECT count(*) FROM saved_embeds WHERE guild_id = $1) < $5
+                ON CONFLICT (guild_id, name) DO NOTHING
+                RETURNING name
+                """,
+                guild_id, nome, data_json, created_by, MAX_EMBED,
+            )
+            if riga is not None:
+                return "ok"
+            esiste = await conn.fetchval(
+                "SELECT 1 FROM saved_embeds WHERE guild_id = $1 AND name = $2", guild_id, nome
+            )
+            return "esiste" if esiste else "pieno"
 
     async def get(self, guild_id: int, name: str) -> SavedEmbed | None:
         r = await self._pool.fetchrow(

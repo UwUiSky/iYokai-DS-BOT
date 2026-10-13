@@ -298,3 +298,14 @@ class TestMigrazioneDb2Reale:
             assert await conn.fetchval(
                 "SELECT to_regclass('public.idx_leveling_totals_weekly_decay_due') IS NOT NULL"
             )
+
+
+def test_i_numeri_delle_migrazioni_non_si_ripetono():
+    """Due file con lo stesso numero (es. 0091 di due rami) non si applicherebbero in modo prevedibile."""
+    from collections import Counter
+    from pathlib import Path
+
+    cartella = Path(__file__).resolve().parent.parent / "core" / "migrations"
+    numeri = Counter(f.name[:4] for f in cartella.glob("[0-9][0-9][0-9][0-9]_*.sql"))
+    assert [n for n, c in numeri.items() if c > 1] == []
+    assert (cartella / "0096_forms.sql").exists() and not (cartella / "0091_forms.sql").exists()

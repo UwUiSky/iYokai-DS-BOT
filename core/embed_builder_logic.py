@@ -59,8 +59,8 @@ def lunghezza_totale(dati: DatiEmbed) -> int:
 
 
 def _url_valido(url: str) -> bool:
-    if len(url) > MAX_URL:
-        return False
+    if len(url) > MAX_URL or any(c.isspace() or ord(c) < 32 for c in url):
+        return False  # spazi e a-capo: Discord li taglia o li rifiuta, e nei log fanno confusione
     analizzato = urlparse(url)
     return analizzato.scheme in ("http", "https") and bool(analizzato.hostname) and not analizzato.username
 

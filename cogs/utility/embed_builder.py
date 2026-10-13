@@ -10,7 +10,9 @@ Funzioni coperte: SPEC §22 (NF-17)
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import weakref
 
 import discord
 from discord import app_commands
@@ -52,6 +54,15 @@ _CANCELLA = "-"  # in modifica, "-" toglie il valore
 class EmbedBuilderCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._blocchi: "weakref.WeakValueDictionary[tuple[int, str], asyncio.Lock]" = weakref.WeakValueDictionary()
+
+    def _blocco(self, guild_id: int, nome: str) -> asyncio.Lock:
+        chiave = (guild_id, nome.lower())
+        blocco = self._blocchi.get(chiave)
+        if blocco is None:
+            blocco = asyncio.Lock()
+            self._blocchi[chiave] = blocco
+        return blocco
 
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
@@ -174,6 +185,18 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         if not await self._pronto(interaction):
             return
         await interaction.response.defer(ephemeral=True)
+        # Un blocco per embed: due modifiche insieme (es. due campi aggiunti) si mettono in fila,
+        # altrimenti la seconda riparte dallo stato vecchio e cancella il campo della prima.
+        async with self._blocco(interaction.guild.id, nome):
+            await self._applica_modifica(
+                interaction, nome, titolo, descrizione, colore, immagine, miniatura, piede,
+                campo_nome, campo_valore, campo_inline, togli_campo,
+            )
+
+    async def _applica_modifica(
+        self, interaction, nome, titolo, descrizione, colore, immagine, miniatura, piede,
+        campo_nome, campo_valore, campo_inline, togli_campo,
+    ) -> None:
         salvato = await saved_embed_repo.get(interaction.guild.id, nome)
         if salvato is None:
             await interaction.followup.send("Non c'è un embed con quel nome.", ephemeral=True)

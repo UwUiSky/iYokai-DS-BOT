@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from core.repositories.tetto_server import tetto_per_server
+
 from core.form_logic import MAX_MODULI, PENDING, Domanda
 
 
@@ -71,23 +73,24 @@ class FormRepository:
         accept_role_id: int | None, domande: list[Domanda], created_by: int,
     ) -> str:
         """"ok", "esiste" o "pieno"; tetto e scrittura nella stessa query."""
-        riga = await self._pool.fetchrow(
-            """
-            INSERT INTO forms (guild_id, name, title, review_channel_id, accept_role_id, questions, created_by)
-            SELECT $1, $2, $3, $4, $5, $6::jsonb, $7
-            WHERE (SELECT count(*) FROM forms WHERE guild_id = $1) < $8
-            ON CONFLICT (guild_id, name) DO NOTHING
-            RETURNING id
-            """,
-            guild_id, name.lower(), title, review_channel_id, accept_role_id,
-            json.dumps([d.a_dict() for d in domande]), created_by, MAX_MODULI,
-        )
-        if riga is not None:
-            return "ok"
-        esiste = await self._pool.fetchval(
-            "SELECT 1 FROM forms WHERE guild_id = $1 AND name = $2", guild_id, name.lower()
-        )
-        return "esiste" if esiste else "pieno"
+        async with tetto_per_server(self._pool, "forms", guild_id) as conn:
+            riga = await conn.fetchrow(
+                """
+                INSERT INTO forms (guild_id, name, title, review_channel_id, accept_role_id, questions, created_by)
+                SELECT $1, $2, $3, $4, $5, $6::jsonb, $7
+                WHERE (SELECT count(*) FROM forms WHERE guild_id = $1) < $8
+                ON CONFLICT (guild_id, name) DO NOTHING
+                RETURNING id
+                """,
+                guild_id, name.lower(), title, review_channel_id, accept_role_id,
+                json.dumps([d.a_dict() for d in domande]), created_by, MAX_MODULI,
+            )
+            if riga is not None:
+                return "ok"
+            esiste = await conn.fetchval(
+                "SELECT 1 FROM forms WHERE guild_id = $1 AND name = $2", guild_id, name.lower()
+            )
+            return "esiste" if esiste else "pieno"
 
     async def get_form(self, guild_id: int, name: str) -> Form | None:
         r = await self._pool.fetchrow("SELECT * FROM forms WHERE guild_id = $1 AND name = $2", guild_id, name.lower())

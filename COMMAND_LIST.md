@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 07:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 14:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 302 comandi in 16 categorie.**
 
@@ -12,14 +12,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 07:
 - **`/admin backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
 - **`/admin backup restore-modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
 - **`/admin backup restore-utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
-- **`/admin comandi crea`** — Crea un comando personalizzato.
-- **`/admin comandi elenco`** — Mostra i comandi personalizzati del server.
-- **`/admin comandi elimina`** — Elimina un comando personalizzato.
-- **`/admin comandi modifica`** — Cambia un comando personalizzato.
-- **`/admin comandi prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
-- **`/admin comandi risposta-crea`** — Crea una risposta automatica.
-- **`/admin comandi risposta-elimina`** — Elimina una risposta automatica.
-- **`/admin comandi risposte`** — Mostra le risposte automatiche del server.
 - **`/admin config canale-report`** — Imposta il canale delle segnalazioni.
 - **`/admin config canale-suggerimenti`** — Imposta il canale dei suggerimenti.
 - **`/admin config export`** — Esporta la configurazione di questo server in un file.
@@ -30,18 +22,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 07:
 - **`/admin lingua set`** — Imposta la lingua di questo server.
 - **`/admin lingua show`** — Mostra la lingua impostata per questo server.
 - **`/admin messaggi annulla`** — Annulla un messaggio programmato.
-- **`/admin messaggi embed-crea`** — Crea un embed e guarda l'anteprima.
-- **`/admin messaggi embed-elenco`** — Mostra gli embed salvati.
-- **`/admin messaggi embed-elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
-- **`/admin messaggi embed-modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
-- **`/admin messaggi embed-pubblica`** — Manda un embed salvato in un canale.
 - **`/admin messaggi programma`** — Programma un messaggio.
 - **`/admin messaggi programmati`** — Mostra i messaggi programmati di questo server.
 - **`/admin messaggi sticky-set`** — Imposta lo sticky message di un canale.
 - **`/admin messaggi sticky-togli`** — Rimuove lo sticky message di un canale.
-- **`/admin moduli crea`** — Crea un modulo o una candidatura.
-- **`/admin moduli elenco`** — I moduli di questo server.
-- **`/admin moduli elimina`** — Elimina un modulo e le sue risposte.
 - **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
@@ -235,11 +219,27 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 07:
 - **`/moduli alert twitch`** — Notifica quando uno streamer Twitch va live/offline.
 - **`/moduli alert webhook`** — Crea un webhook custom: servizi terzi possono pubblicare in un canale.
 - **`/moduli alert youtube-live`** — Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).
+- **`/moduli candidature crea`** — Crea un modulo o una candidatura.
+- **`/moduli candidature elenco`** — I moduli di questo server.
+- **`/moduli candidature elimina`** — Elimina un modulo e le sue risposte.
+- **`/moduli comandi crea`** — Crea un comando personalizzato.
+- **`/moduli comandi elenco`** — Mostra i comandi personalizzati del server.
+- **`/moduli comandi elimina`** — Elimina un comando personalizzato.
+- **`/moduli comandi modifica`** — Cambia un comando personalizzato.
+- **`/moduli comandi prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+- **`/moduli comandi risposta-crea`** — Crea una risposta automatica.
+- **`/moduli comandi risposta-elimina`** — Elimina una risposta automatica.
+- **`/moduli comandi risposte`** — Mostra le risposte automatiche del server.
 - **`/moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
 - **`/moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
 - **`/moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/moduli contatori elenco`** — Mostra i contatori del server.
 - **`/moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
+- **`/moduli embed crea`** — Crea un embed e guarda l'anteprima.
+- **`/moduli embed elenco`** — Mostra gli embed salvati.
+- **`/moduli embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
+- **`/moduli embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
+- **`/moduli embed pubblica`** — Manda un embed salvato in un canale.
 - **`/moduli starboard disattiva`** — Spegni la bacheca.
 - **`/moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.

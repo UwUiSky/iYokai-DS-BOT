@@ -49,12 +49,14 @@ def test_auguri_in_piu_messaggi_se_i_festeggiati_sono_tanti():
     menzioni = [f"<@{100000000000000000 + i}>" for i in range(200)]
     messaggi = dividi_auguri("🎂 Buon compleanno {users}!", menzioni)
     assert len(messaggi) > 1
-    assert all(len(m) <= 2000 for m in messaggi)
-    assert sum(m.count("<@") for m in messaggi) == 200
+    assert all(len(m) <= 2000 for m, _ in messaggi)
+    assert sum(m.count("<@") for m, _ in messaggi) == 200
+    assert sum(n for _, n in messaggi) == 200
 
 
 def test_auguri_modello_senza_segnaposto_aggiunge_i_nomi():
-    [m] = dividi_auguri("Auguri!", ["<@1>", "<@2>"])
+    [(m, n)] = dividi_auguri("Auguri!", ["<@1>", "<@2>"])
+    assert n == 2
     assert "<@1>" in m and "<@2>" in m
 
 
@@ -275,3 +277,36 @@ async def test_albero_dei_comandi():
         assert comando_nel_gruppo("moduli", f"compleanni {nome}") is not None
     opz = {o["name"]: o for o in comando_nel_gruppo("level", "compleanno imposta").to_dict(bot.tree)["options"]}
     assert opz["giorno"]["max_value"] == 31 and opz["mese"]["max_value"] == 12
+
+
+def test_users_ripetuto_nel_modello_non_taglia_le_menzioni():
+    menzioni = [f"<@{100000000000000000 + i}>" for i in range(150)]
+    messaggi = dividi_auguri("{users} auguri a {users}!", menzioni)
+    for testo, _ in messaggi:
+        assert len(testo) <= 2000
+        assert testo.count("<@") == 2 * _
+        assert not testo.rstrip("!").endswith("<@")
+    assert sum(n for _, n in messaggi) == 150
+
+
+@pytest.mark.asyncio
+async def test_invio_parziale_rilascia_solo_chi_non_ha_ricevuto_gli_auguri():
+    s = _Scena(utenti=(5, 6))
+    from unittest.mock import patch
+    due = [("auguri a <@5>", 1), ("auguri a <@6>", 1)]
+    s.canale.send.side_effect = [None, discord.HTTPException(MagicMock(status=500, reason="x"), "boom")]
+    with patch("core.birthday_worker.dividi_auguri", return_value=due):
+        await s.worker.tick(s.bot, s.ora)
+    s.repo.release_claim.assert_awaited_once_with(1, [6], 2026)
+    s.membri[5].add_roles.assert_awaited_once()
+    s.membri[6].add_roles.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reimpostare_la_stessa_data_non_riapre_gli_auguri_dell_anno(repo):
+    await repo.set_birthday(1, 5, 14, 3)
+    assert await repo.claim_due(1, date(2026, 3, 14)) == [5]
+    await repo.set_birthday(1, 5, 14, 3)
+    assert await repo.claim_due(1, date(2026, 3, 14)) == []
+    await repo.set_birthday(1, 5, 15, 3)  # data cambiata: si riparte
+    assert await repo.claim_due(1, date(2026, 3, 15)) == [5]

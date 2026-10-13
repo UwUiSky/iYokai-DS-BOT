@@ -5,7 +5,7 @@ NF-27 (#98): chi ha invitato chi. Una riga per membro, classifica di 10 righe, a
 sull'attribuzione (LC-6), dato cancellabile dall'utente (registro NF-04).
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 import pytest
@@ -133,3 +133,17 @@ async def test_albero_dei_comandi():
     await modulo.setup(bot)
     for nome in ("utente", "classifica"):
         assert comando_nel_gruppo("level", f"inviti {nome}") is not None
+
+
+@pytest.mark.asyncio
+async def test_chi_esce_e_rientra_con_un_altro_invito_viene_ricalcolato():
+    """Il risultato dell'ingresso restava in memoria: il rientro riceveva l'invito vecchio."""
+    from core.invite_tracker import InviteTracker
+    t = InviteTracker()
+    t._join_results.set((1, 7), ("vecchio", 5))
+    assert await t.resolve_join_invite(MagicMock(id=1), 7) == ("vecchio", 5)
+    cog = _cog()
+    guild = fake_guild(guild_id=1)
+    with patch.object(modulo, "invite_tracker", t), patch.object(modulo.invite_stats_repo, "mark_left", AsyncMock()):
+        await cog.on_member_remove(_m(7, guild))
+    assert (1, 7) not in t._join_results

@@ -150,7 +150,7 @@ def cog(monkeypatch):
     repo_finto.save_memory = AsyncMock()
     repo_finto.pop_memory = AsyncMock(return_value=None)
     monkeypatch.setattr(modulo, "autorole_repo", repo_finto)
-    monkeypatch.setattr(modulo, "scheduler", MagicMock(schedule=AsyncMock(return_value=1)))
+    monkeypatch.setattr(modulo, "scheduler", MagicMock(schedule=AsyncMock(return_value=1), list_pending_for_user=AsyncMock(return_value=[])))
     monkeypatch.setattr(modulo, "raid_in_corso", lambda guild_id: False)
     # nessuna verifica attiva (la prova della verifica è a parte)
     monkeypatch.setattr(AutorolesCog, "_ruolo_verificato_atteso", AsyncMock(return_value=None))
@@ -338,6 +338,7 @@ async def test_il_ruolo_ritardato_non_si_da_se_la_regola_e_stata_tolta(cog):
     server, ruoli = _server_con_ruoli(10)
     membro = fake_member(50)
     membro.guild = server
+    membro.pending = False
     membro.add_roles = AsyncMock()
     server.get_member = lambda uid: membro
     cog.bot.get_guild = lambda gid: server
@@ -347,3 +348,84 @@ async def test_il_ruolo_ritardato_non_si_da_se_la_regola_e_stata_tolta(cog):
     cog.repo.has_rule = AsyncMock(return_value=True)
     await cog.handle_autorole_give(server.id, 50, {"role_id": 10})
     membro.add_roles.assert_awaited_once()
+
+
+def _ricordati(cog, ruoli_ids):
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    cog.repo.pop_memory.return_value = MagicMock(
+        role_ids=ruoli_ids, left_at=datetime.now(timezone.utc) - timedelta(days=1)
+    )
+
+
+@pytest.mark.asyncio
+async def test_rientro_in_attesa_non_riprende_i_ruoli_ricordati(cog):
+    server, _ = _server_con_ruoli(5)
+    _ricordati(cog, [5])
+    membro = fake_member(50)
+    membro.guild = server
+    membro.pending = True
+    membro.add_roles = AsyncMock()
+    await cog.on_member_join(membro)
+    membro.add_roles.assert_not_awaited()
+    cog.repo.pop_memory.assert_not_awaited()  # la memoria resta per quando avrà accettato le regole
+
+
+@pytest.mark.asyncio
+async def test_rientro_durante_un_raid_programma_i_ruoli_ricordati(cog, monkeypatch):
+    monkeypatch.setattr(modulo, "raid_in_corso", lambda guild_id: True)
+    server, _ = _server_con_ruoli(5)
+    _ricordati(cog, [5])
+    membro = fake_member(50)
+    membro.guild = server
+    membro.pending = False
+    membro.add_roles = AsyncMock()
+    await cog.on_member_join(membro)
+    membro.add_roles.assert_not_awaited()
+    assert modulo.scheduler.schedule.await_args.args[4] == {"role_id": 5, "ricordato": True}
+
+
+@pytest.mark.asyncio
+async def test_il_ruolo_ricordato_programmato_non_ha_bisogno_della_regola(cog):
+    server, _ = _server_con_ruoli(5)
+    membro = fake_member(50)
+    membro.guild = server
+    membro.pending = False
+    membro.add_roles = AsyncMock()
+    server.get_member = lambda uid: membro
+    cog.bot.get_guild = lambda gid: server
+    cog.repo.has_rule = AsyncMock(return_value=False)
+    await cog.handle_autorole_give(server.id, 50, {"role_id": 5, "ricordato": True})
+    membro.add_roles.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ruolo_ritardato_non_scatta_durante_un_raid_o_con_membro_in_attesa(cog, monkeypatch):
+    server, _ = _server_con_ruoli(10)
+    membro = fake_member(50)
+    membro.guild = server
+    membro.pending = True
+    membro.add_roles = AsyncMock()
+    server.get_member = lambda uid: membro
+    cog.bot.get_guild = lambda gid: server
+    cog.repo.has_rule = AsyncMock(return_value=True)
+    await cog.handle_autorole_give(server.id, 50, {"role_id": 10})
+    membro.add_roles.assert_not_awaited()
+    membro.pending = False
+    monkeypatch.setattr(modulo, "raid_in_corso", lambda guild_id: True)
+    await cog.handle_autorole_give(server.id, 50, {"role_id": 10})
+    membro.add_roles.assert_not_awaited()
+    modulo.scheduler.schedule.assert_awaited_once()  # ripianificato a raid finito
+
+
+@pytest.mark.asyncio
+async def test_uscita_non_ricorda_i_ruoli_a_tempo(cog):
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    server, _ = _server_con_ruoli()
+    membro = fake_member(50, roles=[fake_role(5, "G"), fake_role(6, "Temporaneo")])
+    membro.guild = server
+    modulo.scheduler.list_pending_for_user = AsyncMock(
+        side_effect=lambda uid, tipo, lim: [{"guild_id": server.id, "payload": {"role_id": 6}}]
+        if tipo == modulo.ROLEMENU_TEMP_ACTION_TYPE else []
+    )
+    await cog.on_member_remove(membro)
+    assert cog.repo.save_memory.await_args.args[2] == [5]

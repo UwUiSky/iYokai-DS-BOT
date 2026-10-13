@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from core.repositories.tetto_server import tetto_per_server
+
 from core.custom_command_logic import MAX_TAG
 
 
@@ -54,24 +56,25 @@ class CustomCommandRepository:
         created_by: int,
     ) -> str:
         """"ok", "esiste" (nome già preso) o "pieno" (tetto per server). Controllo e scrittura in una query."""
-        riga = await self._pool.fetchrow(
-            """
-            INSERT INTO custom_commands
-                (guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli, created_by)
-            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
-            WHERE (SELECT count(*) FROM custom_commands WHERE guild_id = $1) < $10
-            ON CONFLICT (guild_id, name) DO NOTHING
-            RETURNING name
-            """,
-            guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli,
-            created_by, MAX_TAG,
-        )
-        if riga is not None:
-            return "ok"
-        esiste = await self._pool.fetchval(
-            "SELECT 1 FROM custom_commands WHERE guild_id = $1 AND name = $2", guild_id, name
-        )
-        return "esiste" if esiste else "pieno"
+        async with tetto_per_server(self._pool, "custom_commands", guild_id) as conn:
+            riga = await conn.fetchrow(
+                """
+                INSERT INTO custom_commands
+                    (guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli, created_by)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+                WHERE (SELECT count(*) FROM custom_commands WHERE guild_id = $1) < $10
+                ON CONFLICT (guild_id, name) DO NOTHING
+                RETURNING name
+                """,
+                guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli,
+                created_by, MAX_TAG,
+            )
+            if riga is not None:
+                return "ok"
+            esiste = await conn.fetchval(
+                "SELECT 1 FROM custom_commands WHERE guild_id = $1 AND name = $2", guild_id, name
+            )
+            return "esiste" if esiste else "pieno"
 
     async def get_tag(self, guild_id: int, name: str) -> CustomCommand | None:
         r = await self._pool.fetchrow(

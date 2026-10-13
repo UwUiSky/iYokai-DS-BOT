@@ -6,6 +6,7 @@ binding, temp, lock), ruoli ammessi o esclusi; RUO-050/051 (#123): elenco dei me
 e modifica di titolo e descrizione di un menu già pubblicato.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
@@ -155,7 +156,7 @@ class _Scena:
         self.repo = RoleMenuRepository(pool_provider=lambda: clean_db)
         monkeypatch.setattr(rm, "role_menu_repo", self.repo)
         monkeypatch.setattr(rm.db, "is_module_active_for_guild", AsyncMock(return_value=True))
-        self.scheduler = MagicMock(schedule=AsyncMock(return_value=1))
+        self.scheduler = MagicMock(schedule=AsyncMock(return_value=1), cancel=AsyncMock(), list_pending_for_user=AsyncMock(return_value=[]))
         monkeypatch.setattr(rm, "scheduler", self.scheduler)
         bot_member = fake_member(user_id=999, name="Yokai Bot", bot=True)
         bot_member.top_role = fake_role(role_id=100, name="Bot", position=50)
@@ -191,6 +192,7 @@ class _Scena:
         return u
 
     def interazione(self, utente):
+        self.guild.fetch_member = AsyncMock(return_value=utente)
         return fake_interaction(guild=self.guild, user=utente, channel=self.canale)
 
 
@@ -308,10 +310,12 @@ async def test_reazione_reversed_toglie_quando_si_mette(clean_db, monkeypatch):
     s.bot.get_guild.return_value = s.guild
     u = s.utente(1000)
     s.guild.get_member = lambda uid: u
+    s.guild.fetch_member = AsyncMock(return_value=u)
     await s.cog.on_raw_reaction_add(_payload(member=u))
     u.remove_roles.assert_awaited_once()
     u2 = s.utente()
     s.guild.get_member = lambda uid: u2
+    s.guild.fetch_member = AsyncMock(return_value=u2)
     await s.cog.on_raw_reaction_remove(_payload())
     u2.add_roles.assert_awaited_once()
 
@@ -427,3 +431,40 @@ async def test_albero_dei_comandi_nuovi():
         assert comando_nel_gruppo("gestione", f"ruoli {nome}") is not None
     crea = {o["name"]: o for o in comando_nel_gruppo("gestione", "ruoli menu-crea").to_dict(bot.tree)["options"]}
     assert len(crea["comportamento"]["choices"]) == len(COMPORTAMENTI)
+
+
+@pytest.mark.asyncio
+async def test_due_clic_insieme_su_binding_danno_un_solo_ruolo(clean_db, monkeypatch):
+    """L'interazione porta i ruoli di prima del clic: senza blocco per membro e rilettura
+    entrambi i clic vedono 'nessun ruolo' e se ne prendono due."""
+    s = _Scena(clean_db, monkeypatch, comportamento="binding")
+    await s.menu()
+    u = s.utente()
+    vivi = []
+
+    async def dai(*ruoli, reason=None):
+        await asyncio.sleep(0.01)
+        vivi.extend(ruoli)
+        u.roles = list(vivi)
+
+    u.add_roles = AsyncMock(side_effect=dai)
+    stale = [s.interazione(u), s.interazione(u)]
+    await asyncio.gather(
+        s.cog._handle_button_click(stale[0], s.menu_id, 1000),
+        s.cog._handle_button_click(stale[1], s.menu_id, 1001),
+    )
+    assert len(vivi) == 1
+
+
+@pytest.mark.asyncio
+async def test_ruolo_a_tempo_ripreso_annulla_la_vecchia_rimozione(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, comportamento="temp", temp=600)
+    await s.menu()
+    s.scheduler.list_pending_for_user.return_value = [
+        {"id": 7, "guild_id": 1, "payload": {"role_id": 1000}},
+        {"id": 8, "guild_id": 1, "payload": {"role_id": 1001}},
+    ]
+    u = s.utente()
+    await s.cog._handle_button_click(s.interazione(u), s.menu_id, 1000)
+    s.scheduler.cancel.assert_awaited_once_with(7)
+    s.scheduler.schedule.assert_awaited_once()

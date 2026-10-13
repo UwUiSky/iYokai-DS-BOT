@@ -270,3 +270,17 @@ async def test_albero_dei_comandi():
     crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "contatori crea").to_dict(bot.tree)["options"]}
     assert len(crea["tipo"]["choices"]) == len(TIPI)
     assert crea["etichetta"]["max_length"] <= 85
+
+
+@pytest.mark.asyncio
+async def test_crea_su_un_canale_che_chi_configura_non_puo_gestire(scena_cog):
+    """Il bot rinominerebbe un canale che l'admin non può toccare (es. di un'altra categoria riservata)."""
+    i, _ = _interazione()
+    canale = MagicMock(spec=discord.VoiceChannel)
+    canale.id = 10
+    canale.mention = "<#10>"
+    canale.permissions_for = MagicMock(
+        side_effect=lambda chi: discord.Permissions(manage_channels=chi is not i.user, view_channel=True)
+    )
+    await scena_cog.crea.callback(scena_cog, i, "members", canale, None, None)
+    scena_cog.repo.create.assert_not_awaited()

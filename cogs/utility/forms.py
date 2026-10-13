@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 
+import asyncpg
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -156,18 +157,26 @@ class FormsCog(CogConGruppi, commands.Cog):
             )
             return
         await interaction.response.defer(ephemeral=True)
-        risposta_id = await form_repo.add_response(form, interaction.user.id, valori)
+        try:
+            risposta_id = await form_repo.add_response(form, interaction.user.id, valori)
+        except asyncpg.ForeignKeyViolationError:
+            await interaction.followup.send("Questo modulo è stato eliminato mentre lo compilavi.", ephemeral=True)
+            return
         if risposta_id is None:
             await interaction.followup.send("Hai già una candidatura in attesa per questo modulo.", ephemeral=True)
             return
-        risposta = await form_repo.get_response(risposta_id)
-        view = self.costruisci_view(risposta_id)
         try:
+            risposta = await form_repo.get_response(risposta_id)
+            view = self.costruisci_view(risposta_id)
             messaggio = await canale.send(
                 embed=embed_risposta(form, risposta), view=view, allowed_mentions=_NESSUNA_MENZIONE
             )
-        except discord.HTTPException:
+        except BaseException as errore:
+            # Qualunque cosa vada storta prima che lo staff la veda: la candidatura si rilascia,
+            # altrimenti la persona resterebbe bloccata da una "candidatura in attesa" invisibile.
             await form_repo.delete_response(risposta_id)
+            if not isinstance(errore, discord.HTTPException):
+                raise
             await interaction.followup.send(
                 "Non sono riuscito a consegnare la candidatura allo staff (permessi del canale). Riprova più tardi.",
                 ephemeral=True,

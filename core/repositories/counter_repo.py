@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from core.repositories.tetto_server import tetto_per_server
+
 from core.counter_logic import MAX_CONTATORI
 
 
@@ -40,22 +42,23 @@ class CounterRepository:
         self, guild_id: int, channel_id: int, kind: str, label: str, target: int | None, created_by: int
     ) -> str:
         """"ok", "esiste" (canale già usato) o "pieno" (tetto per server)."""
-        riga = await self._pool.fetchrow(
-            """
-            INSERT INTO counters (guild_id, channel_id, kind, label, target, created_by)
-            SELECT $1, $2, $3, $4, $5, $6
-            WHERE (SELECT count(*) FROM counters WHERE guild_id = $1) < $7
-            ON CONFLICT (guild_id, channel_id) DO NOTHING
-            RETURNING id
-            """,
-            guild_id, channel_id, kind, label, target, created_by, MAX_CONTATORI,
-        )
-        if riga is not None:
-            return "ok"
-        esiste = await self._pool.fetchval(
-            "SELECT 1 FROM counters WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
-        )
-        return "esiste" if esiste else "pieno"
+        async with tetto_per_server(self._pool, "counters", guild_id) as conn:
+            riga = await conn.fetchrow(
+                """
+                INSERT INTO counters (guild_id, channel_id, kind, label, target, created_by)
+                SELECT $1, $2, $3, $4, $5, $6
+                WHERE (SELECT count(*) FROM counters WHERE guild_id = $1) < $7
+                ON CONFLICT (guild_id, channel_id) DO NOTHING
+                RETURNING id
+                """,
+                guild_id, channel_id, kind, label, target, created_by, MAX_CONTATORI,
+            )
+            if riga is not None:
+                return "ok"
+            esiste = await conn.fetchval(
+                "SELECT 1 FROM counters WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+            )
+            return "esiste" if esiste else "pieno"
 
     async def list_for_guild(self, guild_id: int) -> list[Counter]:
         righe = await self._pool.fetch(f"SELECT {_COLONNE} FROM counters WHERE guild_id = $1 ORDER BY id", guild_id)

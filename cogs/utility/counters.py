@@ -116,6 +116,13 @@ class CountersCog(CogConGruppi, commands.Cog):
                     ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
                 )
                 return
+            if not canale.permissions_for(interaction.user).manage_channels:
+                await interaction.response.send_message(
+                    f"Per collegare un contatore a {canale.mention} serve il permesso «Gestire i canali» "
+                    "anche a te su quel canale: il bot lo rinominerebbe al tuo posto.",
+                    ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
+                )
+                return
         await interaction.response.defer(ephemeral=True)
         creato = False
         if canale is None:
