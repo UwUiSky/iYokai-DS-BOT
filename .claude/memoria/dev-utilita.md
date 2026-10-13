@@ -47,3 +47,4 @@
 ## Round r4 (feat/r4-uti)
 - Fatti G1-G9 (autorole, starboard, tag, autoresponder, welcome image, role menu modi, embed, counters, compleanni, inviti 0089). Prossimo: G10 forms (0090 è di altri: usare 0089+... controllare il numero libero), poi COMMAND_LIST, SPEC, push, rapporto.
 - Inviti: usare solo invite_tracker.resolve_join_invite; dataclass senza @property (il test callers li segnala).
+- G10 forms fatto (0091). COMMAND_LIST e SPEC aggiornati. Resta: commit, push, rapporto. Autoresponder 14.7 lasciato [ ] (niente wildcard/condizioni).
