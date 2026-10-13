@@ -1,34 +1,67 @@
 """
 core/counter_logic.py
 =====================
-Calcola il testo di ogni contatore.
+Calcola il testo di ogni contatore (NF-16, SPEC §23.2): il numero da mostrare
+per ogni tipo e il nome del canale. Funzioni pure.
 Funzioni coperte: SPEC §23 (NF-16)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #87).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #87, fase F13
-# Funzione: NF-16, Canali contatore.
-#
-# Cosa deve fare la funzione: Canali il cui nome mostra un numero:
-#   membri, membri online, boost, obiettivo.
-# Questo file: Calcola il testo di ogni contatore.
-# Comandi previsti: /admin contatori crea|elimina|elenco.
-# File collegati: cogs/utility/counters.py, core/counter_worker.py,
-#   core/repositories/counter_repo.py.
-# Test da scrivere per primi: tests/test_counters.py.
-# Migrazione: core/migrations/NNNN_counters.sql. (prossimo numero libero
-#   in core/migrations/).
-# Limiti da rispettare: Rinomina 2 ogni 10 minuti per canale:
-#   aggiornamento al massimo ogni 10 minuti (LIM-3); tetto per server.
-# Da chi prendere spunto: ServerStats, Arcane (3 gratis), Statbot.
-# Dipende da: Nessuna.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+MAX_CONTATORI = 5  # per server
+MAX_ETICHETTA = 80
+MAX_NOME_CANALE = 100  # limite di Discord
+INTERVALLO_SECONDI = 600  # LIM-3: 2 rinomine ogni 10 minuti per canale
+
+TIPI = ("members", "online", "boosts", "goal")
+ETICHETTE_DI_BASE = {
+    "members": "👥 Membri: {n}",
+    "online": "🟢 Online: {n}",
+    "boosts": "🚀 Boost: {n}",
+    "goal": "🎯 Obiettivo: {n}/{target}",
+}
+NOMI_TIPI = {
+    "members": "membri",
+    "online": "membri online",
+    "boosts": "boost",
+    "goal": "obiettivo di membri",
+}
+
+
+@dataclass(frozen=True)
+class Istantanea:
+    member_count: int
+    online_count: int | None  # None = non si sa (serve una richiesta a parte)
+    boost_count: int
+
+
+def valore_del_contatore(kind: str, snap: Istantanea) -> int | None:
+    """Il numero da mostrare; None se non è noto (il contatore resta com'è)."""
+    if kind in ("members", "goal"):
+        return snap.member_count
+    if kind == "online":
+        return snap.online_count
+    if kind == "boosts":
+        return snap.boost_count
+    return None
+
+
+def valida_etichetta(etichetta: str, kind: str) -> str | None:
+    """None se l'etichetta va bene, altrimenti il motivo."""
+    if not etichetta or "{n}" not in etichetta:
+        return "L'etichetta deve contenere {n}, il posto del numero."
+    if len(etichetta) > MAX_ETICHETTA:
+        return f"L'etichetta supera {MAX_ETICHETTA} caratteri."
+    if kind == "goal" and "{target}" not in etichetta:
+        return "Per l'obiettivo l'etichetta deve contenere anche {target}."
+    return None
+
+
+def nome_canale(etichetta: str, valore: int, target: int | None) -> str:
+    """Il nome del canale (al massimo 100 caratteri, come vuole Discord)."""
+    testo = etichetta.replace("{n}", str(valore))
+    if target is not None:
+        testo = testo.replace("{target}", str(target))
+    return testo[:MAX_NOME_CANALE]

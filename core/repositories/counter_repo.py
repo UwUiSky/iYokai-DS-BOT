@@ -1,34 +1,86 @@
 """
 core/repositories/counter_repo.py
 =================================
-Contatori configurati.
+Canali contatore (NF-16). Tabella: core/migrations/0087_counters.sql.
 Funzioni coperte: SPEC §23 (NF-16)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #87).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #87, fase F13
-# Funzione: NF-16, Canali contatore.
-#
-# Cosa deve fare la funzione: Canali il cui nome mostra un numero:
-#   membri, membri online, boost, obiettivo.
-# Questo file: Contatori configurati.
-# Comandi previsti: /admin contatori crea|elimina|elenco.
-# File collegati: cogs/utility/counters.py, core/counter_logic.py,
-#   core/counter_worker.py.
-# Test da scrivere per primi: tests/test_counters.py.
-# Migrazione: core/migrations/NNNN_counters.sql. (prossimo numero libero
-#   in core/migrations/).
-# Limiti da rispettare: Rinomina 2 ogni 10 minuti per canale:
-#   aggiornamento al massimo ogni 10 minuti (LIM-3); tetto per server.
-# Da chi prendere spunto: ServerStats, Arcane (3 gratis), Statbot.
-# Dipende da: Nessuna.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import asyncpg
+
+from core.counter_logic import MAX_CONTATORI
+
+
+@dataclass(frozen=True)
+class Counter:
+    id: int
+    guild_id: int
+    channel_id: int
+    kind: str
+    label: str
+    target: int | None
+    last_value: int | None
+
+
+_COLONNE = "id, guild_id, channel_id, kind, label, target, last_value"
+
+
+class CounterRepository:
+    def __init__(self, pool_provider) -> None:
+        self._pool_provider = pool_provider
+
+    @property
+    def _pool(self) -> asyncpg.Pool:
+        return self._pool_provider()
+
+    async def create(
+        self, guild_id: int, channel_id: int, kind: str, label: str, target: int | None, created_by: int
+    ) -> str:
+        """"ok", "esiste" (canale già usato) o "pieno" (tetto per server)."""
+        riga = await self._pool.fetchrow(
+            """
+            INSERT INTO counters (guild_id, channel_id, kind, label, target, created_by)
+            SELECT $1, $2, $3, $4, $5, $6
+            WHERE (SELECT count(*) FROM counters WHERE guild_id = $1) < $7
+            ON CONFLICT (guild_id, channel_id) DO NOTHING
+            RETURNING id
+            """,
+            guild_id, channel_id, kind, label, target, created_by, MAX_CONTATORI,
+        )
+        if riga is not None:
+            return "ok"
+        esiste = await self._pool.fetchval(
+            "SELECT 1 FROM counters WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+        return "esiste" if esiste else "pieno"
+
+    async def list_for_guild(self, guild_id: int) -> list[Counter]:
+        righe = await self._pool.fetch(f"SELECT {_COLONNE} FROM counters WHERE guild_id = $1 ORDER BY id", guild_id)
+        return [Counter(**dict(r)) for r in righe]
+
+    async def list_all(self) -> list[Counter]:
+        righe = await self._pool.fetch(f"SELECT {_COLONNE} FROM counters ORDER BY guild_id, id")
+        return [Counter(**dict(r)) for r in righe]
+
+    async def delete(self, guild_id: int, counter_id: int) -> bool:
+        esito = await self._pool.execute(
+            "DELETE FROM counters WHERE guild_id = $1 AND id = $2", guild_id, counter_id
+        )
+        return esito.endswith(" 1")
+
+    async def delete_by_channel(self, channel_id: int) -> None:
+        await self._pool.execute("DELETE FROM counters WHERE channel_id = $1", channel_id)
+
+    async def set_last_value(self, counter_id: int, value: int) -> None:
+        await self._pool.execute("UPDATE counters SET last_value = $2 WHERE id = $1", counter_id, value)
+
+
+def _get_pool():
+    from core.database import db
+    return db.pool
+
+
+counter_repo = CounterRepository(pool_provider=_get_pool)
