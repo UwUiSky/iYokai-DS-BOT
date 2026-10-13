@@ -1045,7 +1045,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   crea` genera il codice (24 ore, monouso, salvato come impronta) e, a
   richiesta, il link "modello" (`Guild.create_template`); `/admin backup
   collega` lo usa nel server nuovo (`core/backup_link_logic.py`); la copia
-  gira sul client del Creator; nessuna cessione di proprietà (D8)
+  gira sul client del Creator; nessuna cessione di proprietà (D8); copia
+  anche gli ultimi 50 messaggi per canale con il webhook, uno alla volta
+  (`core/backup_messages_logic.py`; prova live: ordine e tempi)
 - `[x]` 11.3 Clonazione ruoli + permessi — `clone_roles()` in
   `core/backup_clone_logic.py`: salta @everyone ma ne applica i
   permessi, salta i ruoli "managed", riusa per nome quelli già presenti

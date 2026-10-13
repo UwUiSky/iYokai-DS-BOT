@@ -26,7 +26,12 @@ from core.backup_clone_logic import (
     conta_canali_non_visibili,
     create_mirror_webhooks,
 )
-from core.repositories.backup_repo import STATUS_PENDING, STATUS_RUNNING, BackupRepository
+from core.backup_messages_logic import copia_messaggi
+from core.repositories.backup_repo import (
+    STATUS_PENDING,
+    STATUS_RUNNING,
+    BackupRepository,
+)
 
 logger = logging.getLogger("iyokai.backup_orchestrator")
 
@@ -52,6 +57,14 @@ async def popola_server_backup(
     riepilogo.suoni_saltati = await clone_soundboard(main_guild, backup_guild)
     await clone_webhooks(main_guild, backup_guild, mappa_canali, riepilogo)
     mappa_webhook_mirror = await create_mirror_webhooks(backup_guild, mappa_canali, riepilogo)
+
+    # D8: gli ultimi messaggi, dopo il mirror (i nuovi li copia lui). Un errore qui
+    # non butta via la struttura già copiata: si dice all'admin.
+    try:
+        await copia_messaggi(main_guild, backup_guild, mappa_canali, mappa_webhook_mirror, riepilogo)
+    except Exception:
+        logger.exception("Copia dei messaggi interrotta per il server %s.", main_guild.id)
+        riepilogo.messaggi_interrotti = True
 
     if riepilogo.emoji_saltate or riepilogo.sticker_saltati or riepilogo.suoni_saltati:
         logger.warning(
@@ -87,6 +100,15 @@ def riassunto_copia(riepilogo: RiepilogoCopia) -> str:
             f"Ruoli con permessi che il Creator non ha: {riepilogo.permessi_ridotti}. "
             "Per una copia fedele dai al Creator il permesso Amministratore."
         )
+    if riepilogo.messaggi_interrotti:
+        righe.append("Copia dei messaggi interrotta da un errore: rilancia il collegamento per riprovare.")
+    if riepilogo.canali_messaggi_saltati:
+        righe.append(
+            f"Messaggi non copiati in {riepilogo.canali_messaggi_saltati} canali "
+            "(illeggibili, senza mirror, o già con messaggi nel backup)."
+        )
+    if riepilogo.messaggi_falliti:
+        righe.append(f"Messaggi rifiutati da Discord: {riepilogo.messaggi_falliti} messaggi.")
     saltati = riepilogo.emoji_saltate + riepilogo.sticker_saltati + riepilogo.suoni_saltati
     if saltati:
         righe.append(f"Emoji, sticker e suoni oltre i limiti del server: {saltati}.")

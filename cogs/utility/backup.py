@@ -185,7 +185,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if esito.esito == ESITO_OK:
             await interaction.followup.send(
                 f"✅ Server collegato come backup (job `#{esito.job_id}`). Il Creator copia "
-                "struttura e messaggi: riceverai un DM quando ha finito, poi lo tiene aggiornato.",
+                "la struttura e gli ultimi 50 messaggi di ogni canale: riceverai un DM quando ha finito, poi lo tiene aggiornato.",
                 ephemeral=True,
             )
             return

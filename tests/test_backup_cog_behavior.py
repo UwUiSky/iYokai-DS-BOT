@@ -228,6 +228,9 @@ async def test_collega_con_il_codice_giusto_mette_in_coda_la_copia(monkeypatch):
         await cog.collega.callback(cog, interaction, codice)
 
         assert "collegato" in interaction.response.sent_messages[0]
+        from core.backup_messages_logic import MESSAGGI_PER_CANALE
+
+        assert f"ultimi {MESSAGGI_PER_CANALE} messaggi" in interaction.response.sent_messages[0]
         job = await repo.get_next_pending_job()
         assert (job.main_guild_id, job.backup_guild_id) == (100, 200)
     finally:

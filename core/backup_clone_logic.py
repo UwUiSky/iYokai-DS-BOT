@@ -58,6 +58,11 @@ class RiepilogoCopia:
     posizioni_ruoli_fallite: bool = False
     ruoli_non_aggiornati: int = 0
     permessi_ridotti: int = 0
+    messaggi_copiati: int = 0
+    messaggi_saltati: int = 0
+    messaggi_falliti: int = 0
+    canali_messaggi_saltati: int = 0
+    messaggi_interrotti: bool = False
 
 
 async def clone_roles(
