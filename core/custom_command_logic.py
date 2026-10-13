@@ -1,41 +1,91 @@
 """
 core/custom_command_logic.py
 ============================
-Validazione, segnaposto, pausa.
+Logica pura dei comandi personalizzati (tag, NF-09, SPEC §22.5): nomi,
+prefisso, testo con segnaposto, pausa, azione sul ruolo.
 Funzioni coperte: SPEC §22 (NF-09)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #80).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #80, fase F9
-# Funzione: NF-09, Comandi personalizzati (tag).
-#
-# Cosa deve fare la funzione: Ogni server crea i suoi comandi: un nome,
-#   un testo o un embed, un ruolo da dare o togliere, una pausa tra un
-#   uso e l'altro. Si usano con /utility tag <nome> e, se l'admin vuole,
-#   anche con un prefisso scelto dal server (solo per i tag: è
-#   l'alternativa al "prefisso personalizzato" di SPEC §2.4).
-# Questo file: Validazione, segnaposto, pausa.
-# Comandi previsti: /admin comandi crea|modifica|elimina|elenco,
-#   /utility tag.
-# File collegati: cogs/utility/custom_commands.py,
-#   core/repositories/custom_command_repo.py.
-# File esistenti da toccare: cogs/utility/custom_command_requests.py
-#   resta (richieste all'owner).
-# Test da scrivere per primi: tests/test_custom_commands.py.
-# Migrazione: core/migrations/NNNN_custom_commands.sql. (prossimo numero
-#   libero in core/migrations/).
-# Limiti da rispettare: Testo 2000; nome 32; tetto per server (es. 50
-#   gratis); nessun str.format (si usa core/template_renderer.py); ruoli
-#   con check_role_assignable.
-# Da chi prendere spunto: YAGPDB (100 gratis), Carl-bot (tag), MEE6.
-# Dipende da: message_content solo per l'uso con prefisso.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+import re
+from datetime import datetime
+
+import discord
+
+from core.template_renderer import render_template
+
+MAX_TAG = 50  # per server (gratis)
+MAX_NOME = 32
+MAX_TESTO = 2000
+MAX_ARGOMENTI = 200
+MAX_PAUSA = 3600
+AZIONI_RUOLO = ("nessuna", "dai", "togli", "alterna")
+
+_NOME_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
+# Il prefisso: da 1 a 3 simboli, mai lettere o cifre, mai caratteri che Discord legge come
+# comando o menzione.
+_PREFISSO_VIETATI = set("/@#<>*_`~|\\")
+
+
+def normalizza_nome(grezzo: str) -> str | None:
+    """Il nome in minuscolo se valido (lettere a-z, cifre, - e _; 1-32), altrimenti None."""
+    nome = grezzo.strip().lower()
+    return nome if _NOME_RE.match(nome) else None
+
+
+def valida_prefisso(prefisso: str) -> str | None:
+    """None se il prefisso va bene, altrimenti il motivo in italiano."""
+    if not 1 <= len(prefisso) <= 3:
+        return "Il prefisso deve avere da 1 a 3 caratteri."
+    for c in prefisso:
+        if c.isalnum() or c.isspace():
+            return "Il prefisso non può contenere lettere, cifre o spazi."
+        if c in _PREFISSO_VIETATI:
+            return "Quel simbolo ha un significato per Discord: scegline un altro (per esempio ! ? . $)."
+    return None
+
+
+def nome_da_messaggio(contenuto: str, prefisso: str | None) -> tuple[str, str] | None:
+    """Da `!regole uno due` a ("regole", "uno due"); None se non è un tag col prefisso."""
+    if not prefisso or not contenuto.startswith(prefisso):
+        return None
+    resto = contenuto[len(prefisso):]
+    if not resto or resto[0].isspace():
+        return None
+    nome, _, argomenti = resto.partition(" ")
+    nome = nome.strip().lower()
+    if not _NOME_RE.match(nome):
+        return None
+    return nome, argomenti.strip()
+
+
+_DA_UTENTI = frozenset({"args", "username"})
+
+
+def costruisci_risposta(testo: str, valori: dict[str, str]) -> str:
+    """
+    Il testo del tag con i segnaposto sostituiti (mai str.format). Gli argomenti e il nome
+    li scrive chi usa il comando: le menzioni lì dentro diventano testo inerte.
+    """
+    sicuri = {k: discord.utils.escape_mentions(v) if k in _DA_UTENTI else v for k, v in valori.items()}
+    return render_template(testo, sicuri)
+
+
+def pausa_residua(ultimo_uso: datetime | None, ora: datetime, secondi: int) -> float:
+    """Secondi ancora da aspettare (0 se si può usare)."""
+    if ultimo_uso is None or secondi <= 0:
+        return 0
+    passato = (ora - ultimo_uso).total_seconds()
+    return max(secondi - passato, 0)
+
+
+def azione_ruolo(azione: str, ha_ruolo: bool) -> str | None:
+    """Cosa fare col ruolo: "dai", "togli" o None (niente da fare)."""
+    if azione == "dai":
+        return None if ha_ruolo else "dai"
+    if azione == "togli":
+        return "togli" if ha_ruolo else None
+    if azione == "alterna":
+        return "togli" if ha_ruolo else "dai"
+    return None

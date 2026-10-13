@@ -326,6 +326,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("starboard_config", "Impostazioni della bacheca (starboard)", colonna_server="guild_id"),
     _t("starboard_posts", "Messaggi pubblicati nella bacheca", colonne_utente=("author_id",),
        colonna_server="guild_id", utente="cancella", esporta=True),
+    _t("custom_commands", "Comandi personalizzati (tag) del server", colonne_attore=("created_by",),
+       colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),
     _t("autorole_memory", "Ruoli ricordati di chi è uscito", colonne_utente=("user_id",),
