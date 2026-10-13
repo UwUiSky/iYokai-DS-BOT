@@ -118,6 +118,16 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             "Compleanno cancellato." if fatto else "Non avevi un compleanno registrato.", ephemeral=True
         )
 
+    @comando_di_gruppo("level", nome="mostra", descrizione="Mostra il compleanno che hai registrato.", sottogruppo=_SG_COMPLEANNO)
+    async def mostra(self, interaction: discord.Interaction) -> None:
+        if not await self._pronto(interaction):
+            return
+        data = await birthday_repo.get_birthday(interaction.guild.id, interaction.user.id)
+        await interaction.response.send_message(
+            f"Hai registrato il {data[0]} {_MESI[data[1] - 1]}." if data else "Non hai registrato nessun compleanno.",
+            ephemeral=True,
+        )
+
     # ---- admin
     @comando_di_gruppo("moduli", nome="canale", descrizione="Scegli il canale degli auguri (vuoto per spegnerli).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(

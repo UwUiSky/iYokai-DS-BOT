@@ -236,6 +236,16 @@ async def test_rimuovi_cancella_il_dato(cog):
 
 
 @pytest.mark.asyncio
+async def test_mostra_dice_la_data_registrata(cog):
+    i = fake_interaction()
+    await cog.mostra.callback(cog, i)
+    assert "14 marzo" in i.response.send_message.await_args.args[0]
+    cog.repo.get_birthday.return_value = None
+    await cog.mostra.callback(cog, i)
+    assert "Non hai" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
 async def test_canale_senza_permessi_rifiutato(cog):
     i = fake_interaction()
     canale = fake_text_channel(50)
@@ -259,7 +269,7 @@ async def test_ruolo_non_assegnabile_rifiutato_alla_configurazione(cog):
 async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("imposta", "rimuovi"):
+    for nome in ("imposta", "rimuovi", "mostra"):
         assert comando_nel_gruppo("level", f"compleanno {nome}") is not None
     for nome in ("canale", "ruolo"):
         assert comando_nel_gruppo("moduli", f"compleanni {nome}") is not None
