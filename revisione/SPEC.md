@@ -1817,8 +1817,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.13 Moduli e candidature (NF-34)
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
 - `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)
-- `[ ]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
+- `[x]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
+  → **Stato 13/10:** `/fun gioca` (monetina, dadi, slot; puntata 1-10000, una sola scrittura sul saldo, pausa di 5 s),
+  `/fun misura` (tema libero, stabile per il giorno, rifiuta temi su caratteristiche protette),
+  `/fun conteggio` (canale, spegni, stato; a turno, record) con `core/repositories/counting_game_repo.py` (migrazione 0092);
+  `/level profilo` (presentazione di 140 caratteri, badge, sfondo come colore) e `/level collezione negozio|compra|equipaggia`
+  (14 oggetti nel codice, migrazione 0093, acquisto atomico). Resta fuori: sfondo con immagine (serve il disegno della card
+  e un controllo delle immagini) e profilo come immagine; le vincite dei giochi non contano nella classifica del mese.
 - `[ ]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)

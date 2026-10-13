@@ -812,3 +812,17 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
   3. Con un account @vip: entra e il bot dice «Hai 3 ingressi». Con un account @staff: entra senza messaggi.
   4. `/gestione economia giveaway-modello azione:Salva nome:prova premio:Test durata_minuti:2`, poi `azione:Avvia nome:prova inizia_tra:1`.
   Risultato atteso: l'annuncio elenca requisiti, ruolo che salta e ingressi extra; il programmato appare da solo dopo circa 1 minuto (al massimo 30 secondi di ritardo) con il bottone che funziona; alla fine i vincitori sono avvisati nello stesso canale (anche se è un thread o un post di forum).
+- [ ] `NF-40` giochi (#111) — passi:
+  1. `/fun gioca gioco:Monetina puntata:50 scelta:Testa` più volte (aspetta 5 secondi tra una e l'altra), poi `gioco:Slot puntata:10` e `gioco:Dadi`.
+  2. Con meno coin della puntata; poi due volte di fila senza aspettare.
+  3. `/fun misura tema:coraggio`, ripetilo (stesso numero); `/fun misura tema:<un tema sulla religione>`.
+  Risultato atteso: il saldo mostrato dopo ogni partita coincide con `/level balance`; con coin insufficienti rifiuta senza togliere nulla; la seconda partita immediata dice di aspettare; la misura è stabile nel giorno; il tema vietato è rifiutato in privato.
+- [ ] `NF-40` conteggio (#111) — passi:
+  1. `/fun conteggio azione:Scegli il canale canale:#conta`.
+  2. Con due account scrivete a turno 1, 2, 3; poi lo stesso account scrive due numeri di fila; poi un numero sbagliato; poi una frase qualsiasi.
+  Risultato atteso: ✅ sui numeri giusti; ❌ e messaggio «ha rovinato tutto» sul doppio turno e sul numero sbagliato, con ripartenza da 1; le frasi non fanno nulla. `/fun conteggio azione:Stato` mostra ultimo numero e record. Dopo `Spegni` i numeri non contano più (fino a 60 secondi).
+- [ ] `NF-40` profilo (#111) — passi:
+  1. `/level collezione negozio`, poi `/level collezione compra oggetto:Stella` con coin sufficienti e con coin insufficienti.
+  2. `/level collezione equipaggia tipo:Badge oggetto:Stella`, poi uno sfondo comprato.
+  3. `/level profilo presentazione:Ciao a tutti`, poi `/level profilo membro:@altro`.
+  Risultato atteso: le coin scendono del prezzo una sola volta (doppio clic rapido sul comando non paga due volte); il profilo mostra badge nel titolo, colore dello sfondo, presentazione, livello, posizione, coin e collezione; la presentazione di un altro non si può cambiare.

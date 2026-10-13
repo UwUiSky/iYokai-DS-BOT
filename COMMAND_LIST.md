@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 266 comandi in 16 categorie.**
+**Totale: 273 comandi in 16 categorie.**
 
 ## Admin
 
@@ -86,12 +86,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:
 - **`/fun animal`** — Mostra un'immagine casuale di un animale.
 - **`/fun blur`** — Applica una sfocatura a un'immagine.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
+- **`/fun conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
+- **`/fun gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/fun grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/fun invert`** — Inverte i colori di un'immagine.
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun meme`** — Genera un meme con testo sopra/sotto.
+- **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun pixelate`** — Pixela un'immagine.
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
@@ -141,6 +144,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:
 
 - **`/level balance`** — Mostra i tuoi coin.
 - **`/level cassa`** — Mostra il saldo della cassa del server.
+- **`/level collezione compra`** — Compra un badge o uno sfondo con le tue coin.
+- **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
+- **`/level collezione negozio`** — Mostra badge e sfondi in vendita e quelli che hai.
 - **`/level daily`** — Riscuoti la ricompensa giornaliera.
 - **`/level impostazioni annuncio`** — Dove e quando annunciare i level-up.
 - **`/level impostazioni escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
@@ -150,6 +156,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level pay`** — Trasferisci coin a un altro utente.
+- **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.

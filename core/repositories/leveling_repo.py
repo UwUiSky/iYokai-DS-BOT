@@ -618,6 +618,29 @@ class LevelingRepository:
             async with conn.transaction():
                 return await add_coins_in(conn, guild_id, user_id, amount)
 
+    async def gioca(
+        self, guild_id: int, user_id: int, puntata: int, restituzione: int
+    ) -> int | None:
+        """
+        Chiude una partita con le monete (NF-40): toglie la puntata e dà la
+        restituzione in UNA scrittura, solo se il saldo copre la puntata.
+        Restituisce il nuovo saldo, o None (senza scrivere) se non basta.
+        Le vincite dei giochi non contano nella classifica del mese.
+        """
+        if puntata <= 0 or restituzione < 0:
+            raise ValueError("Puntata e restituzione non valide.")
+        return await self._pool.fetchval(
+            """
+            UPDATE leveling_totals SET coins_total = coins_total - $3 + $4
+            WHERE guild_id = $1 AND user_id = $2 AND coins_total >= $3
+            RETURNING coins_total
+            """,
+            guild_id,
+            user_id,
+            puntata,
+            restituzione,
+        )
+
     async def transfer_coins(
         self, guild_id: int, from_user_id: int, to_user_id: int, amount: int
     ) -> bool:
