@@ -1,9 +1,11 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-12/10/2026 · ramo `feat/giro-mod` (47c7fc6) · #138/#101/#57/#60/#116: DA SISTEMARE
+13/10/2026 · ramo `feat/r3-mus` (2851f89) #64/#47/#48/#45/#126: DA SISTEMARE (8 righe nel quaderno)
 
 ## In corso
+- #64 `feat/r3-mus` (2851f89): DA SISTEMARE. Alta: 4 chiavi `music_*` (KEY_*) fuori da SETTINGS_SCHEMA (export le perde); avviso nodo locale mai emesso con nodo morto (gather infinito); `/music remove` contro SPEC 9.4 (serve ok owner). Media: SSRF URL a Lavalink (`url_e_sicuro`), `skipto`/`previous` senza defer, ~10 mutazioni sopravvissute. Alla riconsegna controllare solo quelle. Smoke 430 + 305 test musica verdi; 70 mutazioni (scratchpad/rm64). Migrazione 0060 libera, provata 2 volte su DB vecchio; unione con r3-bak: solo documenti.
+- #68 `feat/r3-bak` (abf27fb): DA SISTEMARE. Alta: copia dei messaggi D8 non fatta (testo di `collega` falso, SPEC 11.2 `[x]`). Media: worker `main_guild None` senza `_fallisci`; test cog `collega` senza utente_id/puo_collegare; chiave vecchia seconda; collegamenti paralleli + UniqueViolation. Alla riconsegna controllare solo quelle. 387 test del ramo verdi; 53 mutazioni (scratchpad/rv2/mut.py, copia r3).
 - `feat/giro-mod` (47c7fc6): DA SISTEMARE, 12 righe nel quaderno (settings fuori da SETTINGS_SCHEMA = test rosso, /ban su isolato + /unban non sbanna, rientro senza invito banna lo stesso, appello bloccato se il caso non è attivo, OAuth di #138 non fatto, registry dati all'unione con giro-core, test mancanti). Alla riconsegna: controllare solo quelle. Smoke 58 verdi + 133 test del ramo verdi.
 - `feat/giro-logt` (6b50b7a): 11 righe (cache `_post_noti`, audit letto due volte, `/log stato`, test snipe/message_logs/router, codice morto soundboard). Smoke 447.
 - #66 `feat/66-utility` (6e18a89): 12 righe (ramo `if not deciso`, emoji test, test greetings/role menu/owner, duplicato PagineView, VERIFICA_LIVE, ruff). Smoke 420.
@@ -30,6 +32,9 @@
 - Doppio clic: due controlli ridondanti (stato letto prima + UPDATE condizionato) si coprono a vicenda; serve `asyncio.gather` con connessioni vere (`tests/support/concorrenza.apri_connessioni`).
 - Suite completa >10 min: non lanciarla. Voci già a posto sul base: `git show base:file`.
 - Prove #76: GRUPPI globale condiviso tra test; guarda se il lookbehind esclude i backtick; `autocomplete_protetto` con wraps resta valido.
+- Chiavi impostazione chiamate `KEY_*` (non `SETTING_*`) sfuggono al test invariante ma servono lo stesso in SETTINGS_SCHEMA: l'export le scarta, l'import le rifiuta.
+- Task di collegamento che riprovano per sempre: chi fa `gather` su di loro non finisce mai. Provare con gestore vero e nodo morto, non con lista vuota.
+- Mutazioni: se il processo viene ucciso a metà il file resta mutato e falsa le prove dopo: `diff -rq` con la copia pulita prima di ogni giro. `pkill -f` col testo del comando uccide la propria shell; lanciare a blocchi in primo piano (timeout 590).
 
 ## Aperto
 - giro-mod sopravvissute (mutazioni): scadenza senza log, /unban isolato (cancel jobs, member None, mark expired), canale nuovo = iso, send_messages, unique invito, fallback canali invito, ripristino scaduto, ricollega isolato al join, revoca caso precedente, delete stato fuori; appelli: lunghezza, canale None, guild diverso, doppio clic, log, cmd canale, tempban; case: filtri guild repo (6), validate_reason, già tolto; clear: view_channel, bot+umani, role_mentions, lower, lock HTTP; verify: `options_cmd` mai chiamato, bot/modulo al join, extra saltati, manuale senza config, tetto 3; automod: tetto e move_to_end.
