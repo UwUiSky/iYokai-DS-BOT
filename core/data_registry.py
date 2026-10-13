@@ -333,6 +333,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("counters", "Canali contatore", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("birthdays", "Compleanni (giorno e mese)", colonne_utente=("user_id",), colonna_server="guild_id",
        utente="cancella", esporta=True, nota="NF-26: niente anno di nascita"),
+    _t("invite_joins", "Chi ha invitato chi", colonne_utente=("user_id", "inviter_id"), colonna_server="guild_id",
+       utente="cancella", esporta=True, nota="NF-27: l'attribuzione può sbagliare con ingressi simultanei"),
     _t("birthday_config", "Impostazioni dei compleanni", colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),

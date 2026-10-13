@@ -57,7 +57,7 @@ Affidabilità pratica: alta ma non totale, coerente con quanto già
 notato nello schema di progetto originale (~90%).
 """
 
-# DA FARE (issue #98, fase F13): NF-27, Inviti: comando e classifica.
+# Comando e classifica (NF-27): cogs/utility/invites.py.
 #   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
