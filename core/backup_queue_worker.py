@@ -102,9 +102,7 @@ class BackupQueueWorker:
 
         main_guild = main_bot.get_guild(job.main_guild_id)
         if main_guild is None:
-            await backup_repo.mark_failed(
-                job.id, "iYokai Main non risulta essere nel server richiesto."
-            )
+            await self._fallisci(job, "iYokai Main non risulta essere nel server richiesto.")
             return
 
         if job.backup_guild_id is None:

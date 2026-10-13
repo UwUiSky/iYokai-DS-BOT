@@ -69,11 +69,13 @@ async def database_e_repo():
     await database.connect()
     await database.run_migrations()
     await database.pool.execute("DELETE FROM backup_jobs")
+    await database.pool.execute("DELETE FROM backup_pairs")
     await database.pool.execute("DELETE FROM backup_mirror_webhooks")
     repo = BackupRepository(pool_provider=lambda: database.pool)
     mirror_repo = BackupMirrorRepository(pool_provider=lambda: database.pool)
     yield database, repo, mirror_repo
     await database.pool.execute("DELETE FROM backup_jobs")
+    await database.pool.execute("DELETE FROM backup_pairs")
     await database.pool.execute("DELETE FROM backup_mirror_webhooks")
     await database.close()
 
@@ -207,3 +209,31 @@ async def test_il_worker_non_crea_ne_cancella_server():
 
     assert not hasattr(worker_module, "elimina_server_creato")
     assert not hasattr(worker_module, "MAX_CREATOR_GUILDS")
+
+
+@pytest.mark.asyncio
+async def test_main_assente_toglie_la_coppia(database_e_repo, monkeypatch):
+    """Il Main non è nel server: il job fallisce e il server vuoto non resta backup."""
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+    _con(worker_module, monkeypatch, repo, mirror_repo)
+    await repo.define_backup(555, 777)
+    job_id = await repo.enqueue_linked_job(555, 777)
+
+    await BackupQueueWorker().tick(_FakeCreatorClient([777]), _FakeMainBot(_FakeMainGuild(100, _FakeOwner())))
+
+    assert (await repo.get_job(job_id)).status == STATUS_FAILED
+    assert await repo.get_pair_by_backup_guild_id(777) is None
+
+
+@pytest.mark.asyncio
+async def test_creator_assente_toglie_la_coppia(database_e_repo, monkeypatch):
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+    _con(worker_module, monkeypatch, repo, mirror_repo)
+    await repo.define_backup(100, 777)
+    await repo.enqueue_linked_job(100, 777)
+
+    await BackupQueueWorker().tick(_FakeCreatorClient(), _FakeMainBot(_FakeMainGuild(100, _FakeOwner())))
+
+    assert await repo.get_pair_by_backup_guild_id(777) is None
