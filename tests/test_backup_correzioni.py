@@ -9,6 +9,7 @@ ingresso del bot in un server di backup.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from datetime import datetime, timedelta, timezone
 
@@ -26,6 +27,7 @@ from core.backup_link_logic import (
 )
 from core.database import Database
 from core.repositories.backup_repo import STATUS_PENDING, BackupRepository
+from tests.support.concorrenza import apri_connessioni
 from tests.test_backup_clone_channels import _FakeCategory, _FakeSourceGuild, _FakeTextChannel
 from tests.test_backup_clone_logic import _FakeRole, _FakeSourceGuild as _FakeSourceRoles
 from tests.test_backup_clone_riuso import _CanaleDest, _DestinazioneCanali, _DestinazioneRuoli, _Hook, _Resp
@@ -81,12 +83,45 @@ async def test_il_main_con_gia_un_backup_diverso_non_viene_sostituito_in_silenzi
 
 @pytest.mark.asyncio
 async def test_due_codici_validi_non_danno_due_job(repo):
+    """In parallelo (connessioni vere): il blocco sul main lascia passare un solo collegamento."""
     c1, _ = await crea_codice_collegamento(repo, M, creato_da=1)
     c2, _ = await crea_codice_collegamento(repo, M, creato_da=1)
-    assert (await collega_backup(repo, c1, B)).esito == ESITO_OK
-    assert (await collega_backup(repo, c2, B2)).esito != ESITO_OK
+    await apri_connessioni(repo._pool)
+    esiti = await asyncio.gather(collega_backup(repo, c1, B), collega_backup(repo, c2, B2))
+    assert sorted(e.esito for e in esiti) == sorted([ESITO_OK, ESITO_GIA_COLLEGATO])
     n = await repo._pool.fetchval("SELECT count(*) FROM backup_jobs WHERE main_guild_id = $1", M)
     assert n == 1
+
+
+@pytest.mark.asyncio
+async def test_lo_stesso_codice_due_volte_insieme_brucia_una_sola_volta(repo):
+    codice, _ = await crea_codice_collegamento(repo, M, creato_da=1)
+    await apri_connessioni(repo._pool)
+    esiti = await asyncio.gather(collega_backup(repo, codice, B), collega_backup(repo, codice, B))
+    assert sorted(e.esito for e in esiti) == sorted([ESITO_OK, ESITO_GIA_USATO])
+
+
+@pytest.mark.asyncio
+async def test_due_main_diversi_sullo_stesso_server_di_backup_insieme(repo):
+    """Il 2º non muore con UniqueViolationError: riceve gia_collegato."""
+    c1, _ = await crea_codice_collegamento(repo, M, creato_da=1)
+    c2, _ = await crea_codice_collegamento(repo, X, creato_da=1)
+    await apri_connessioni(repo._pool)
+    esiti = await asyncio.gather(collega_backup(repo, c1, B), collega_backup(repo, c2, B))
+    assert sorted(e.esito for e in esiti) == sorted([ESITO_OK, ESITO_GIA_COLLEGATO])
+    assert (await repo.get_pair_by_backup_guild_id(B)) is not None
+
+
+@pytest.mark.asyncio
+async def test_collegamenti_incrociati_insieme_non_vanno_in_stallo(repo):
+    """M->B e B->M insieme: i blocchi si prendono in ordine fisso, nessuno stallo."""
+    c1, _ = await crea_codice_collegamento(repo, M, creato_da=1)
+    c2, _ = await crea_codice_collegamento(repo, B, creato_da=1)
+    await apri_connessioni(repo._pool)
+    esiti = await asyncio.wait_for(
+        asyncio.gather(collega_backup(repo, c1, B), collega_backup(repo, c2, M)), timeout=10
+    )
+    assert sorted(e.esito for e in esiti) == sorted([ESITO_OK, ESITO_GIA_COLLEGATO])
 
 
 @pytest.mark.asyncio

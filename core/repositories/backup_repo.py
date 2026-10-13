@@ -270,7 +270,10 @@ class BackupRepository:
                 if main == backup_guild_id:
                     return ("stesso_server", main, None)
 
-                await conn.execute("SELECT pg_advisory_xact_lock($1)", main)
+                # Blocchi sul main e sul server di backup, sempre in ordine crescente
+                # (nessuno stallo): due main non collegano lo stesso server insieme.
+                for chiave in sorted({main, backup_guild_id}):
+                    await conn.execute("SELECT pg_advisory_xact_lock($1)", chiave)
                 attivo = await conn.fetchval(
                     "SELECT 1 FROM backup_jobs WHERE main_guild_id = $1 AND status IN ($2, $3) LIMIT 1",
                     main, STATUS_PENDING, STATUS_RUNNING,
