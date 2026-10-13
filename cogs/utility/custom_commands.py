@@ -5,7 +5,7 @@ Comandi personalizzati del server, detti tag (NF-09, SPEC §22.5): un nome,
 un testo o un embed, un ruolo da dare o togliere, una pausa. Si usano con
 `/utility tag` e, se l'admin sceglie un prefisso, anche scrivendo
 `<prefisso>nome` (usa guild_config.prefix, M 10.15). Si gestiscono con
-`/admin comandi crea|modifica|elimina|elenco|prefisso`.
+`/moduli comandi crea|modifica|elimina|elenco|prefisso`.
 Funzioni coperte: SPEC §22 (NF-09)
 """
 
@@ -239,7 +239,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 return False
         return True
 
-    @comando_di_gruppo("admin", nome="crea", descrizione="Crea un comando personalizzato.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="crea", descrizione="Crea un comando personalizzato.", sottogruppo=_SG_COMANDI)
     @app_commands.describe(
         nome=f"Il nome (lettere minuscole, cifre, - e _; massimo {MAX_NOME})",
         testo="La risposta. Segnaposto: {user} {username} {server} {channel} {args}",
@@ -282,12 +282,12 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         )
         messaggi = {
             "ok": f"Comando `{normalizzato}` creato. Si usa con `/utility tag`.",
-            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin comandi modifica`.",
+            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/moduli comandi modifica`.",
             "pieno": f"Questo server ha già {MAX_TAG} comandi personalizzati: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("admin", nome="modifica", descrizione="Cambia un comando personalizzato.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="modifica", descrizione="Cambia un comando personalizzato.", sottogruppo=_SG_COMANDI)
     @app_commands.describe(
         nome="Il comando da cambiare",
         testo="Nuova risposta",
@@ -335,7 +335,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "Comando aggiornato." if fatto else "Non esiste un comando con quel nome.", ephemeral=True
         )
 
-    @comando_di_gruppo("admin", nome="elimina", descrizione="Elimina un comando personalizzato.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="elimina", descrizione="Elimina un comando personalizzato.", sottogruppo=_SG_COMANDI)
     @app_commands.describe(nome="Il comando da eliminare")
     @app_commands.autocomplete(nome=_completa_admin)
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -347,7 +347,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "Comando eliminato." if fatto else "Non esiste un comando con quel nome.", ephemeral=True
         )
 
-    @comando_di_gruppo("admin", nome="elenco", descrizione="Mostra i comandi personalizzati del server.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra i comandi personalizzati del server.", sottogruppo=_SG_COMANDI)
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -359,7 +359,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         embed = discord.Embed(title=f"Comandi personalizzati ({len(tag)}/{MAX_TAG})", description=testo + piede)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("admin", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.", sottogruppo=_SG_COMANDI)
     @app_commands.describe(simbolo="1-3 simboli, per esempio ! — lascia vuoto per spegnere il prefisso")
     async def prefisso(self, interaction: discord.Interaction, simbolo: app_commands.Range[str, 0, 3] = "") -> None:
         if not await self._pronto(interaction):

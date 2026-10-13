@@ -3,7 +3,7 @@ cogs/utility/embed_builder.py
 =============================
 Costruttore di embed (NF-17, SPEC §22.6): l'admin compone un embed con titolo,
 testo, colore, immagini e campi, lo vede in anteprima, lo pubblica e lo modifica
-anche dopo. Comandi in `/admin messaggi embed-*`. Tutti i limiti si controllano
+anche dopo. Comandi in `/moduli embed *`. Tutti i limiti si controllano
 al salvataggio (core/embed_builder_logic.py).
 Funzioni coperte: SPEC §22 (NF-17)
 """
@@ -44,7 +44,7 @@ logger = logging.getLogger("iyokai.embed_builder")
 
 MODULE_EMBED_BUILDER = "embed_builder"
 
-_SG_MESSAGGI = ("messaggi", "Messaggi programmati e messaggi fissi")
+_SG_MESSAGGI = ("embed", "Costruttore di embed")
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 _CANCELLA = "-"  # in modifica, "-" toglie il valore
 
@@ -83,7 +83,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Crea
     # ================================================================
-    @comando_di_gruppo("admin", nome="embed-crea", descrizione="Crea un embed e guarda l'anteprima.", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("moduli", nome="crea", descrizione="Crea un embed e guarda l'anteprima.", sottogruppo=_SG_MESSAGGI)
     @app_commands.describe(
         nome=f"Il nome per ritrovarlo (a-z, cifre, - e _; massimo {MAX_NOME})",
         titolo="Il titolo",
@@ -127,14 +127,14 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             return
         esito = await saved_embed_repo.create(interaction.guild.id, normalizzato, a_json(dati), interaction.user.id)
         if esito == "esiste":
-            await interaction.followup.send(f"Esiste già un embed `{normalizzato}`: usa `embed-modifica`.", ephemeral=True)
+            await interaction.followup.send(f"Esiste già un embed `{normalizzato}`: usa `/moduli embed modifica`.", ephemeral=True)
             return
         if esito == "pieno":
             await interaction.followup.send(f"Questo server ha già {MAX_EMBED} embed salvati: eliminane uno.", ephemeral=True)
             return
         await interaction.followup.send(
-            f"Embed `{normalizzato}` salvato. Anteprima qui sotto; per aggiungere campi usa `embed-modifica`, "
-            "per mandarlo in un canale `embed-pubblica`.",
+            f"Embed `{normalizzato}` salvato. Anteprima qui sotto; per aggiungere campi usa `/moduli embed modifica`, "
+            "per mandarlo in un canale `/moduli embed pubblica`.",
             embed=costruisci(dati),
             ephemeral=True,
         )
@@ -142,7 +142,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Modifica
     # ================================================================
-    @comando_di_gruppo("admin", nome="embed-modifica", descrizione="Cambia un embed salvato (e il messaggio già pubblicato).", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("moduli", nome="modifica", descrizione="Cambia un embed salvato (e il messaggio già pubblicato).", sottogruppo=_SG_MESSAGGI)
     @app_commands.describe(
         nome="L'embed da cambiare",
         titolo=f"Nuovo titolo (\"{_CANCELLA}\" lo toglie)",
@@ -226,7 +226,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 await messaggio.edit(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
             except discord.NotFound:
                 await saved_embed_repo.set_published(interaction.guild.id, nome, None, None)
-                nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `embed-pubblica`."
+                nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/moduli embed pubblica`."
             except discord.HTTPException as errore:
                 logger.warning("Embed %s: messaggio non aggiornato: %s", nome, errore)
                 await interaction.followup.send(
@@ -242,7 +242,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Pubblica, elenco, elimina
     # ================================================================
-    @comando_di_gruppo("admin", nome="embed-pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("moduli", nome="pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=_SG_MESSAGGI)
     @app_commands.describe(nome="L'embed da mandare", canale="Il canale (di norma quello dove sei)")
     async def pubblica(
         self,
@@ -276,11 +276,11 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             return
         await saved_embed_repo.set_published(interaction.guild.id, nome, destinazione.id, inviato.id)
         await interaction.response.send_message(
-            f"Embed pubblicato in {destinazione.mention}. Se lo cambi con `embed-modifica` si aggiorna da solo.",
+            f"Embed pubblicato in {destinazione.mention}. Se lo cambi con `/moduli embed modifica` si aggiorna da solo.",
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("admin", nome="embed-elenco", descrizione="Mostra gli embed salvati.", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra gli embed salvati.", sottogruppo=_SG_MESSAGGI)
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -295,7 +295,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("admin", nome="embed-elimina", descrizione="Elimina un embed salvato (il messaggio pubblicato resta).", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("moduli", nome="elimina", descrizione="Elimina un embed salvato (il messaggio pubblicato resta).", sottogruppo=_SG_MESSAGGI)
     @app_commands.describe(nome="L'embed da eliminare")
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
         if not await self._pronto(interaction):

@@ -191,6 +191,6 @@ async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("risposta-crea", "risposta-elimina", "risposte"):
-        assert comando_nel_gruppo("admin", f"comandi {nome}") is not None
-    crea = {o["name"]: o for o in comando_nel_gruppo("admin", "comandi risposta-crea").to_dict(bot.tree)["options"]}
+        assert comando_nel_gruppo("moduli", f"comandi {nome}") is not None
+    crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "comandi risposta-crea").to_dict(bot.tree)["options"]}
     assert crea["risposta"]["max_length"] == 2000 and crea["parola"]["max_length"] == 100

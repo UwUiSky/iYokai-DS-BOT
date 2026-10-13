@@ -5,7 +5,7 @@ Moduli e candidature (NF-34, SPEC §23): l'admin crea un modulo con fino a 5 dom
 (candidatura staff, ingresso in un clan); chi lo compila lo fa in una finestra (modale) e la
 risposta arriva in un canale dello staff con i bottoni Accetta e Rifiuta (persistenti).
 Accettare può dare un ruolo. Una sola candidatura in attesa per persona e modulo.
-Comandi: `/admin moduli crea|elimina|elenco`, `/utility modulo`.
+Comandi: `/moduli candidature crea|elimina|elenco`, `/utility modulo`.
 Funzioni coperte: SPEC §23 (NF-34)
 """
 
@@ -33,7 +33,7 @@ logger = logging.getLogger("iyokai.forms")
 
 MODULE_FORMS = "forms"
 BUTTON_PREFIX = "iyokai_form"
-_SG_MODULI = ("moduli", "Moduli e candidature")
+_SG_MODULI = ("candidature", "Moduli e candidature")
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 _NON_ATTIVO = (
     "Questo modulo non è attivo su questo server. Un amministratore può attivarlo con /admin setup attiva."
@@ -212,7 +212,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_modal(FormModal(self, form))
 
-    @comando_di_gruppo("admin", nome="crea", descrizione="Crea un modulo o una candidatura.", sottogruppo=_SG_MODULI)
+    @comando_di_gruppo("moduli", nome="crea", descrizione="Crea un modulo o una candidatura.", sottogruppo=_SG_MODULI)
     @app_commands.describe(
         nome="Nome corto, senza spazi",
         titolo=f"Titolo della finestra (massimo {MAX_TITOLO} caratteri)",
@@ -252,12 +252,12 @@ class FormsCog(CogConGruppi, commands.Cog):
         )
         messaggi = {
             "ok": f"Modulo `{nome.lower()}` creato con {len(elenco)} domande. Chi vuole compilarlo usa `/utility modulo`.",
-            "esiste": f"Esiste già un modulo `{nome.lower()}`: eliminalo prima con `/admin moduli elimina`.",
+            "esiste": f"Esiste già un modulo `{nome.lower()}`: eliminalo prima con `/moduli candidature elimina`.",
             "pieno": f"Questo server ha già {MAX_MODULI} moduli: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("admin", nome="elimina", descrizione="Elimina un modulo e le sue risposte.", sottogruppo=_SG_MODULI)
+    @comando_di_gruppo("moduli", nome="elimina", descrizione="Elimina un modulo e le sue risposte.", sottogruppo=_SG_MODULI)
     @app_commands.describe(nome="Il modulo da eliminare")
     @app_commands.autocomplete(nome=_nomi_admin)
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -269,13 +269,13 @@ class FormsCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("admin", nome="elenco", descrizione="I moduli di questo server.", sottogruppo=_SG_MODULI)
+    @comando_di_gruppo("moduli", nome="elenco", descrizione="I moduli di questo server.", sottogruppo=_SG_MODULI)
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
         moduli = await form_repo.list_forms(interaction.guild.id)
         if not moduli:
-            await interaction.response.send_message("Nessun modulo: creane uno con `/admin moduli crea`.", ephemeral=True)
+            await interaction.response.send_message("Nessun modulo: creane uno con `/moduli candidature crea`.", ephemeral=True)
             return
         righe = [f"`{f.name}`: {f.title} ({len(f.domande)} domande) → <#{f.review_channel_id}>" for f in moduli]
         await interaction.response.send_message("\n".join(righe), ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)

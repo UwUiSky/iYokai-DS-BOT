@@ -318,9 +318,9 @@ async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("crea", "modifica", "elimina", "elenco", "prefisso"):
-        assert comando_nel_gruppo("admin", f"comandi {nome}") is not None
+        assert comando_nel_gruppo("moduli", f"comandi {nome}") is not None
     tag = comando_nel_gruppo("utility", "tag")
     opzioni = {o["name"]: o for o in tag.to_dict(bot.tree)["options"]}
     assert opzioni["nome"]["max_length"] == 32 and opzioni["argomenti"]["max_length"] <= 500
-    crea = {o["name"]: o for o in comando_nel_gruppo("admin", "comandi crea").to_dict(bot.tree)["options"]}
+    crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "comandi crea").to_dict(bot.tree)["options"]}
     assert crea["testo"]["max_length"] == 2000 and crea["nome"]["max_length"] == 32

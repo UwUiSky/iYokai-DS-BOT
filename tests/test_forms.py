@@ -232,5 +232,5 @@ async def test_albero_dei_comandi():
     with patch.object(modulo.form_repo, "list_pending", AsyncMock(return_value=[])):
         await modulo.setup(bot)
     for nome in ("crea", "elimina", "elenco"):
-        assert comando_nel_gruppo("admin", f"moduli {nome}") is not None
+        assert comando_nel_gruppo("moduli", f"candidature {nome}") is not None
     assert comando_nel_gruppo("utility", "modulo") is not None

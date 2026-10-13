@@ -1765,9 +1765,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `/moduli starboard imposta|soglia|disattiva` (0081): un post per messaggio, canali vietati ai minori esclusi. Da provare live.
 - `[x]` 22.5 Comandi personalizzati creati dal server: testo o embed,
   ruolo, pausa; prefisso facoltativo solo per questi (NF-09)
-  → **Stato 13/10:** `/admin comandi crea|modifica|elimina|elenco|prefisso`, `/utility tag` (0082); massimo 50 per server, menzioni neutralizzate. Resta lo scripting avanzato (condizioni, variabili, cron).
+  → **Stato 13/10:** `/moduli comandi crea|modifica|elimina|elenco|prefisso`, `/utility tag` (0082); massimo 50 per server, menzioni neutralizzate. Resta lo scripting avanzato (condizioni, variabili, cron).
 - `[x]` 22.6 Costruttore di embed con anteprima e modifica (NF-17)
-  → **Stato 13/10:** `/admin messaggi embed-crea|modifica|pubblica|elenco|elimina` (0086), limiti Discord controllati al salvataggio.
+  → **Stato 13/10:** `/moduli embed crea|modifica|pubblica|elenco|elimina` (0086), limiti Discord controllati al salvataggio.
 - `[x]` 22.7 Immagine di benvenuto con avatar, nome e sfondo (NF-11)
   → **Stato 13/10:** `/gestione benvenuto immagine` (0084): 4 modelli e sfondo proprio. L'editor completo resta al pannello web (NF-20).
 - `[x]` 22.8 Rank card come immagine (NF-12)
@@ -1818,7 +1818,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[ ]` 23.12 Ticket via messaggio privato (NF-33)
 - `[x]` 23.13 Moduli e candidature (NF-34)
-  → **Stato 13/10:** `/admin moduli crea|elimina|elenco`, `/utility modulo` (0091): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
+  → **Stato 13/10:** `/moduli candidature crea|elimina|elenco`, `/utility modulo` (0096): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
 - `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)
 - `[ ]` 23.16 Profili, collezioni e giochi con le monete, senza soldi

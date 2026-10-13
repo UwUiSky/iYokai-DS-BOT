@@ -3,7 +3,7 @@ cogs/utility/autoresponder.py
 =============================
 Risposte automatiche (NF-10, SPEC §14.7): quando un messaggio contiene una
 parola o frase scelta, il bot risponde da solo. Condizioni: canale, ruolo,
-corrispondenza esatta o parziale. Comandi in `/admin comandi risposta-*`.
+corrispondenza esatta o parziale. Comandi in `/moduli comandi risposta-*`.
 Richiede l'intent `message_content` (D9).
 Funzioni coperte: SPEC §14.7 (NF-10)
 """
@@ -120,7 +120,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("admin", nome="risposta-crea", descrizione="Crea una risposta automatica.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="risposta-crea", descrizione="Crea una risposta automatica.", sottogruppo=_SG_COMANDI)
     @app_commands.describe(
         parola="La parola o frase che fa scattare la risposta",
         risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel}",
@@ -153,13 +153,13 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         _cache_regole._data.pop(interaction.guild.id, None)
         messaggi = {
             "ok": f"Risposta automatica n. {nuovo_id} creata.",
-            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/admin comandi risposta-elimina`.",
+            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/moduli comandi risposta-elimina`.",
             "pieno": f"Questo server ha già {MAX_RISPOSTE} risposte automatiche: eliminane una.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("admin", nome="risposta-elimina", descrizione="Elimina una risposta automatica.", sottogruppo=_SG_COMANDI)
-    @app_commands.describe(numero="Il numero mostrato da /admin comandi risposte")
+    @comando_di_gruppo("moduli", nome="risposta-elimina", descrizione="Elimina una risposta automatica.", sottogruppo=_SG_COMANDI)
+    @app_commands.describe(numero="Il numero mostrato da /moduli comandi risposte")
     async def risposta_elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return
@@ -169,7 +169,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             "Risposta eliminata." if fatta else "Non esiste una risposta con quel numero.", ephemeral=True
         )
 
-    @comando_di_gruppo("admin", nome="risposte", descrizione="Mostra le risposte automatiche del server.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("moduli", nome="risposte", descrizione="Mostra le risposte automatiche del server.", sottogruppo=_SG_COMANDI)
     async def risposte(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

@@ -1,7 +1,7 @@
 """
 core/repositories/form_repo.py
 ==============================
-Moduli e risposte (NF-34). Tabelle: core/migrations/0091_forms.sql.
+Moduli e risposte (NF-34). Tabelle: core/migrations/0096_forms.sql.
 Funzioni coperte: SPEC §23 (NF-34)
 """
 

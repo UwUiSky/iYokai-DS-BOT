@@ -247,8 +247,8 @@ async def test_modifica_campi_aggiunge_e_toglie(scena):
 async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("embed-crea", "embed-modifica", "embed-pubblica", "embed-elenco", "embed-elimina"):
-        assert comando_nel_gruppo("admin", f"messaggi {nome}") is not None
-    crea = {o["name"]: o for o in comando_nel_gruppo("admin", "messaggi embed-crea").to_dict(bot.tree)["options"]}
+    for nome in ("crea", "modifica", "pubblica", "elenco", "elimina"):
+        assert comando_nel_gruppo("moduli", f"embed {nome}") is not None
+    crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "embed crea").to_dict(bot.tree)["options"]}
     assert crea["titolo"]["max_length"] == 256 and crea["descrizione"]["max_length"] == 4096
     assert crea["piede"]["max_length"] == 2048
