@@ -6,7 +6,7 @@
 ## In corso
 - Previsione giro r4: 10 gruppi (G1 autoroles NF-07; G2 starboard NF-08; G3 tag NF-09 + prefix 10.15 + risposte NF-10; G4 greetings NF-11; G5 role menu NF-14 + 10.8; G6 embed NF-17; G7 contatori NF-16; G8 compleanni NF-26; G9 inviti NF-27; G10 moduli NF-34). Migrazioni 0080+ (0080 autoroles usata).
 - Comandi nuovi: /gestione ruoli auto-*; /moduli starboard|contatori|compleanni; admin: messaggi/comandi. Tabelle nuove vanno in core/data_registry.py (test_data_registry).
-- G3b autoresponder NF-10 (0083), G4 greetings NF-11 + RUO-018..021 (0084), G5 role menu NF-14 + M10.8 + RUO-050/051 (0085) fatti. Prossimo: G6 embed NF-17 (cogs/utility/embed_builder.py + saved_embed_repo + 0086, comandi in /admin messaggi), G7 contatori NF-16 (0087, /moduli contatori), G8 compleanni NF-26, G9 inviti NF-27, G10 moduli NF-34.
+- G3b autoresponder NF-10 (0083), G4 greetings NF-11 + RUO-018..021 (0084), G5 role menu NF-14 + M10.8 + RUO-050/051 (0085) fatti. G6 embed NF-17 (0086, /admin messaggi embed-*) fatto. Prossimo: G7 contatori NF-16 (0087, /moduli contatori), G8 compleanni NF-26, G9 inviti NF-27, G10 moduli NF-34.
 
 ## Fatto
 - r4 G1 NF-07 autoroles (0080); G2 NF-08 starboard (0081); G3a NF-09 tag + M10.15 (0082, /admin comandi crea|modifica|elimina|elenco|prefisso, /utility tag; prefix = guild_config.prefix): commit nel log.

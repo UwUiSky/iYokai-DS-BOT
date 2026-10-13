@@ -329,6 +329,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("custom_commands", "Comandi personalizzati (tag) del server", colonne_attore=("created_by",),
        colonna_server="guild_id"),
     _t("autoresponders", "Risposte automatiche del server", colonne_attore=("created_by",), colonna_server="guild_id"),
+    _t("saved_embeds", "Embed salvati dal costruttore", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),
     _t("autorole_memory", "Ruoli ricordati di chi è uscito", colonne_utente=("user_id",),
