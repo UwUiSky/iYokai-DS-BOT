@@ -219,6 +219,28 @@ def did_level_up(xp_before: int, xp_after: int, max_level: int = 0) -> tuple[boo
     return (level_after > level_before), level_after
 
 
+@dataclass(frozen=True)
+class StimaLivello:
+    xp_mancanti: int
+    messaggi: int
+    minuti_vocale: int | None  # None se in vocale non si guadagnano XP
+    secondi_minimi_testo: int  # con un messaggio a ogni attesa, senza moltiplicatori
+
+
+def stima_per_livello(
+    xp_attuale: int,
+    livello_obiettivo: int,
+    xp_per_messaggio: int,
+    attesa_secondi: int,
+    xp_voce_minuto: int,
+) -> StimaLivello:
+    """Quanto manca a un livello (LIV-074): XP, messaggi e minuti in vocale, senza moltiplicatori."""
+    mancanti = max(0, xp_for_level(livello_obiettivo) - xp_attuale)
+    messaggi = -(-mancanti // xp_per_messaggio) if xp_per_messaggio > 0 else 0
+    minuti = -(-mancanti // xp_voce_minuto) if xp_voce_minuto > 0 else None
+    return StimaLivello(mancanti, messaggi, minuti, messaggi * attesa_secondi)
+
+
 AZIONI_XP = ("aggiungi", "togli", "livello", "xp_nel_livello", "azzera")
 AZIONI_MONETE = ("aggiungi", "togli", "imposta", "azzera")
 
@@ -376,6 +398,7 @@ class LevelingSettings:
     work_min: int = WORK_REWARD_MIN
     work_max: int = WORK_REWARD_MAX
     max_level: int = 0
+    shop_confirm: bool = False  # ECO-069: chiede conferma prima di comprare
 
 
 @dataclass(frozen=True)

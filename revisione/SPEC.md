@@ -1274,6 +1274,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[~]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
   → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).
+  → **Stato 13/10:** sistemati (9.2, 9.12). Aggiunti scorte limitate, ruolo richiesto per comprare,
+  `/gestione economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
+  migrazioni 0094 e 0095. Resta fuori: ruolo comprato che scade, categorie, ordine, oggetti «a elenco» (ECO-063, 065..068).
 - `[~]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
   pulsante persistente "Partecipa" (sopravvive a un riavvio del bot,
   registrato di nuovo per ogni giveaway ancora attivo), requisiti di

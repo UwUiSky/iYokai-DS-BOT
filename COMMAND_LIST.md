@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 273 comandi in 16 categorie.**
+**Totale: 276 comandi in 16 categorie.**
 
 ## Admin
 
@@ -112,13 +112,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:
 - **`/gestione economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
 - **`/gestione economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
 - **`/gestione economia giveaway`** — Avvia un giveaway.
-- **`/gestione economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina o avvia.
-- **`/gestione economia monete`** — Modifica il saldo di un membro: aggiungi, togli, imposta, azzera.
+- **`/gestione economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
+- **`/gestione economia monete`** — Modifica il saldo di un membro.
 - **`/gestione economia shop-add`** — Aggiunge un oggetto allo shop.
+- **`/gestione economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
 - **`/gestione economia shop-remove`** — Rimuove un oggetto dallo shop.
 - **`/gestione economia vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
 - **`/gestione economia vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
-- **`/gestione economia xp`** — Modifica XP e livello di un membro: aggiungi, togli, imposta, azzera.
+- **`/gestione economia xp`** — Modifica XP e livello di un membro.
 - **`/gestione ruoli livello-add`** — Assegna un ruolo a chi raggiunge un livello.
 - **`/gestione ruoli livello-list`** — Mostra i ruoli-premio configurati su questo server.
 - **`/gestione ruoli livello-remove`** — Rimuove un ruolo-premio configurato.
@@ -143,6 +144,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:
 ## Livelli
 
 - **`/level balance`** — Mostra i tuoi coin.
+- **`/level calcola`** — Quanti messaggi o minuti in vocale mancano per arrivare a un livello.
 - **`/level cassa`** — Mostra il saldo della cassa del server.
 - **`/level collezione compra`** — Compra un badge o uno sfondo con le tue coin.
 - **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
@@ -152,6 +154,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:
 - **`/level impostazioni escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
 - **`/level impostazioni moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/level impostazioni mostra`** — Mostra le impostazioni dei livelli di questo server.
+- **`/level impostazioni negozio`** — Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).
 - **`/level impostazioni premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level leaderboard`** — Mostra la classifica del server.

@@ -6,15 +6,16 @@
 ## In corso
 - Previsione giro: 5 gruppi (A importi+tetto, B staff XP/monete, C NF-28 giveaway, D NF-40, E voci catalogo). Ordine fisso.
 - A (NF-15 resto + docstring #65 + LIV-005) e B (`/gestione economia xp|monete`, LIV-064..067/041, ECO-009/011): fatti, smoke verde.
-- D NF-40 fatto (0092 conteggio, 0093 profili), smoke in corso: da committare. Prossimo: E voci catalogo piccole,
-  nell'ordine: ECO-069 conferma acquisto (shop buy), ECO-062 scorte, ECO-064 modifica oggetto, LIV-074 calcolatore messaggi, LIV-063 top 100.
-  Poi rapporto finale (<=30 righe) e push.
+- E (shop: 0094, 0095) e F (`/level calcola`, classifica a 100, posizione nel saldo) fatti; smoke finale poi commit e push.
+  Poi: rapporto finale (<=30 righe). Non fatto: LIV-004..009/013/017.. (XP per tipo di messaggio, servono contenuto/reazioni), ECO-004 banca, ECO-006 registro, servizi esterni (voto bot), NF-12 sfondo premium.
 
 ## Fatto
 - F1 livelli+economia+clan unito (`9db9e8a`); giro eco: 9.18, NF-15 (0031), NF-12 (0032) in main.
-- Giro r4: A+B `1ecd983` (0090); C giveaway `203a3af` (0091); D NF-40 (0092/0093: `coin_games`, `counting_game_repo`, `profile_repo`, `profiles.py`).
+- Giro r4: A+B `1ecd983` (0090); C giveaway `203a3af` (0091); D NF-40 `0319d95` (0092/0093); E shop+F classifiche (0094/0095, commit del giro finale).
 
 ## Cose imparate
+- Migrazioni: mai modificare una già applicata al DB di prova (il runner non la rilancia): una nuova per ogni aggiunta.
+- Shop: scorte e coin nella stessa transazione, scorte prima dei coin anche nel rimborso (niente stallo).
 - Giochi con le monete: `leveling_repo.gioca` = una UPDATE (puntata tolta, vincita data, `WHERE coins_total >= puntata`); mai nella classifica del mese.
 - Conteggio: giudizio sotto `FOR UPDATE` della riga del server; un numero uguale arrivato dopo un reset può essere giusto (non è un bug).
 - Giveaway: `get_entries` tolto (test_repository_callers); si usa `get_weighted_entries`. `data_registry` vuole ogni tabella nuova (giveaway_message_counts, giveaway_templates).
@@ -44,6 +45,7 @@
 - `id_canali_per_le_regole`: canale, origine del thread, categoria. Esclusioni valgono anche per XP clan (testo e vocale).
 
 ## Aperto
+- `/gestione` pesa ~6480 caratteri su 8000 (allarme a 6800): prima di aggiungere altro a `/gestione economia` serve una decisione F7 (spostare giveaway/shop altrove).
 - Scratchpad condiviso con altri agenti: `env.sh` viene sovrascritto; usare `envliv.sh` (DATABASE_URL wliv).
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.
 - Senza `DATABASE_URL` esportato i test usano `iyokai_test` (condiviso): esportarlo sempre.

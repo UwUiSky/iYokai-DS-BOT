@@ -579,6 +579,20 @@ class LevelingRepository:
             user_id,
         )
 
+    async def get_coins_position(self, guild_id: int, user_id: int) -> int | None:
+        """Posizione per coin (1 = più ricco); a pari coin la stessa. None se non ha nessuna riga."""
+        return await self._pool.fetchval(
+            """
+            SELECT 1 + (
+                SELECT count(*) FROM leveling_totals
+                WHERE guild_id = $1 AND coins_total > t.coins_total
+            )
+            FROM leveling_totals AS t WHERE t.guild_id = $1 AND t.user_id = $2
+            """,
+            guild_id,
+            user_id,
+        )
+
     # Ritenzione (NF-04): `rank_card_prefs` è per utente, senza server: dato
     # personale di profilo. Va nel registro dei dati (esporta/cancella, F5);
     # finché il registro non c'è nessuno lo ripulisce.

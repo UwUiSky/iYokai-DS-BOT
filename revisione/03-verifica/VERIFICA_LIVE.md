@@ -826,3 +826,14 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
   2. `/level collezione equipaggia tipo:Badge oggetto:Stella`, poi uno sfondo comprato.
   3. `/level profilo presentazione:Ciao a tutti`, poi `/level profilo membro:@altro`.
   Risultato atteso: le coin scendono del prezzo una sola volta (doppio clic rapido sul comando non paga due volte); il profilo mostra badge nel titolo, colore dello sfondo, presentazione, livello, posizione, coin e collezione; la presentazione di un altro non si può cambiare.
+- [ ] `ECO-062 / ECO-064 / ECO-061 / ECO-069` (#125) — passi:
+  1. `/gestione economia shop-add name:Raro price:50 scorte:2 ruolo_richiesto:@vip`, poi `/level shop list`.
+  2. Con un account senza @vip: `/level shop buy`. Con due account @vip: compra il primo, il secondo; un terzo account @vip prova dopo.
+  3. `/gestione economia shop-edit item_id:<id> price:80 scorte_illimitate:True`, poi un nuovo acquisto.
+  4. `/level impostazioni negozio conferma:True`, poi `/level shop buy`: premi «Annulla», ripeti e premi «Conferma» (anche due volte di fila).
+  Risultato atteso: la lista mostra «rimasti 2» e il ruolo richiesto; senza @vip rifiuta senza togliere coin; dopo due acquisti dice «esaurito» senza addebito; dopo l'edit il prezzo nuovo vale solo per gli acquisti successivi; con la conferma attiva non si paga finché non premi «Conferma», e il secondo clic dice «Già fatto». Se il ruolo-premio non si può dare, scorte e coin tornano indietro.
+- [ ] `LIV-063 / LIV-074 / ECO-016` (#124, #125) — passi:
+  1. `/level leaderboard metric:XP period:Di sempre posizioni:50` in un server con più di 10 membri con XP.
+  2. `/level calcola livello:10`, poi `/level calcola livello:10 member:@altro`.
+  3. `/level balance`.
+  Risultato atteso: la classifica ha le pagine con ◀ ▶ (10 per pagina) e solo chi l'ha aperta le sfoglia; il calcolo dà XP, messaggi e minuti in vocale coerenti con `/level impostazioni mostra`; il saldo dice anche la posizione («#N in classifica»).

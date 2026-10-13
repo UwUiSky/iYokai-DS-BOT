@@ -509,6 +509,7 @@ async def test_i_comandi_stanno_sotto_level_impostazioni(cog_comandi):
         "level impostazioni escludi",
         "level impostazioni moltiplicatore",
         "level impostazioni mostra",
+        "level impostazioni negozio",
         "level impostazioni premi",
         "level impostazioni xp",
     ]
