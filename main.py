@@ -388,24 +388,10 @@ class iYokaiBot(commands.AutoShardedBot):
         non ha senso configurare o dare il benvenuto a un server che
         il bot deve comunque abbandonare.
 
-        Un server che risulta essere il backup ATTESO da un job di
-        Backup System in corso (SPEC.md §11.1) viene gestito da
-        finalize_backup_job() — trasferimento di proprietà da Creator
-        a questo bot, Creator che esce — e NON riceve il trattamento
-        normale (nessuna riga di configurazione, nessun benvenuto):
-        non è un server "nuovo" per un utente qualsiasi, è un
-        artefatto interno dell'orchestrazione di backup.
+        Un server di backup collegato o con una copia in corso (SPEC.md
+        §11.1) passa dagli stessi controlli (blacklist, configurazione,
+        presenza) ma non riceve il messaggio di benvenuto.
         """
-        if self.backup_creator_client is not None:
-            era_atteso = await finalize_backup_job(guild, self.backup_creator_client, backup_repo)
-            if era_atteso:
-                logger.info(
-                    "Server %s (ID: %s) era il backup atteso di un job — finalizzato.",
-                    guild.name,
-                    guild.id,
-                )
-                return
-
         if await blacklist_repo.is_guild_blacklisted(guild.id):
             logger.info(
                 "Server %s (ID: %s) è in blacklist — esco immediatamente.",
@@ -417,6 +403,13 @@ class iYokaiBot(commands.AutoShardedBot):
 
         await db.ensure_guild_exists(guild.id)
         await guild_presence_repo.segna_entrato(guild.id)  # NF-04: un rientro azzera i 90 giorni
+        if self.backup_creator_client is not None and await finalize_backup_job(
+            guild, self.backup_creator_client, backup_repo
+        ):
+            # Un server di backup passa da blacklist, configurazione e presenza come tutti,
+            # ma non riceve il messaggio di benvenuto.
+            logger.info("Server %s (ID: %s) è un backup collegato: niente benvenuto.", guild.name, guild.id)
+            return
         logger.info("Nuovo server: %s (ID: %s)", guild.name, guild.id)
         await self._send_welcome_message(guild)
 

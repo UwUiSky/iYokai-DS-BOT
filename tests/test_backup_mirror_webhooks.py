@@ -23,6 +23,9 @@ class _FakeTargetTextChannel(discord.TextChannel):
         self._webhook_url = webhook_url
         self.chiamate_create_webhook: list[dict] = []
 
+    async def webhooks(self):
+        return []
+
     async def create_webhook(self, **kwargs):
         self.chiamate_create_webhook.append(kwargs)
         return _FakeWebhookCreato(self._webhook_url)

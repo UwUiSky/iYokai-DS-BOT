@@ -59,6 +59,11 @@ class _FakeTargetGuild:
         self._ruoli_creati: dict[int, _FakeRole] = {}
         self._prossimo_id = 9000
         self.default_role = _FakeRole(0, "@everyone", 0, is_default=True)
+        self.roles = [self.default_role]
+        self.posizioni_impostate: dict | None = None
+
+    async def edit_role_positions(self, positions, **kwargs) -> None:
+        self.posizioni_impostate = dict(positions)
 
     async def create_role(self, **kwargs) -> _FakeRole:
         self.chiamate_create_role.append(kwargs)
@@ -74,6 +79,7 @@ class _FakeTargetGuild:
             mentionable=kwargs.get("mentionable", False),
         )
         self._ruoli_creati[nuovo_id] = nuovo_ruolo
+        self.roles.append(nuovo_ruolo)
         return nuovo_ruolo
 
     def get_role(self, role_id: int):
@@ -197,7 +203,7 @@ class TestRemapPermissionOverwrites:
         target = _FakeTargetGuild()
         target._ruoli_creati[20] = ruolo_clonato
 
-        overwrite_finto = object()
+        overwrite_finto = discord.PermissionOverwrite(view_channel=True)
         source_overwrites = {ruolo_originale: overwrite_finto}
         role_id_map = {10: 20}
 
@@ -209,7 +215,7 @@ class TestRemapPermissionOverwrites:
         everyone_originale = _FakeRole(1, "@everyone", 0, is_default=True)
         target = _FakeTargetGuild()
 
-        overwrite_finto = object()
+        overwrite_finto = discord.PermissionOverwrite(view_channel=True)
         source_overwrites = {everyone_originale: overwrite_finto}
 
         risultato = remap_permission_overwrites(source_overwrites, {}, target)
@@ -220,7 +226,7 @@ class TestRemapPermissionOverwrites:
         ruolo_managed = _FakeRole(99, "Bot Role", 1, managed=True)
         target = _FakeTargetGuild()
 
-        source_overwrites = {ruolo_managed: object()}
+        source_overwrites = {ruolo_managed: discord.PermissionOverwrite(view_channel=True)}
         # role_id_map non contiene 99, dato che clone_roles lo avrebbe
         # saltato (managed=True) - remap deve gestirlo senza sollevare.
         risultato = remap_permission_overwrites(source_overwrites, {}, target)
@@ -237,3 +243,61 @@ class TestRemapPermissionOverwrites:
         risultato = remap_permission_overwrites(source_overwrites, {}, target)
 
         assert risultato == {}
+
+
+class _Io:
+    def __init__(self, permessi: discord.Permissions) -> None:
+        self.guild_permissions = permessi
+
+
+class TestOverwriteRidottiAllaMascheraDelCreator:
+    """Il Creator (invito senza Amministratore) non può dare ciò che non ha: Discord darebbe 403."""
+
+    def _target(self, permessi):
+        target = _FakeTargetGuild()
+        target.me = _Io(permessi)
+        return target
+
+    def test_consentiti_e_negati_perdono_i_permessi_che_il_creator_non_ha(self):
+        from core.backup_clone_logic import RiepilogoCopia
+
+        target = self._target(discord.Permissions(view_channel=True, send_messages=True))
+        ruolo = _FakeRole(10, "Mod", 1)
+        target._ruoli_creati[20] = clone = _FakeRole(20, "Mod", 1)
+        overwrite = discord.PermissionOverwrite(
+            view_channel=True, connect=True, speak=True, add_reactions=False, send_messages=False
+        )
+        riepilogo = RiepilogoCopia()
+
+        risultato = remap_permission_overwrites({ruolo: overwrite}, {10: 20}, target, riepilogo)
+
+        ridotto = risultato[clone]
+        assert ridotto.view_channel is True      # ce l'ha: resta
+        assert ridotto.send_messages is False    # negato che ha: resta
+        assert ridotto.connect is None           # consentito che non ha: tolto
+        assert ridotto.speak is None
+        assert ridotto.add_reactions is None     # negato che non ha: tolto
+        assert riepilogo.permessi_ridotti == 1
+
+    def test_everyone_si_riduce_come_gli_altri(self):
+        target = self._target(discord.Permissions(view_channel=True))
+        everyone = _FakeRole(1, "@everyone", 0, is_default=True)
+
+        risultato = remap_permission_overwrites(
+            {everyone: discord.PermissionOverwrite(view_channel=True, connect=True)}, {}, target
+        )
+
+        assert risultato[target.default_role].connect is None
+
+    def test_con_amministratore_o_overwrite_gia_ok_nulla_cambia_e_nulla_si_conta(self):
+        from core.backup_clone_logic import RiepilogoCopia
+
+        overwrite = discord.PermissionOverwrite(view_channel=True, connect=True)
+        for permessi in (discord.Permissions(administrator=True), discord.Permissions(view_channel=True, connect=True)):
+            target = self._target(permessi)
+            ruolo = _FakeRole(10, "Mod", 1)
+            target._ruoli_creati[20] = clone = _FakeRole(20, "Mod", 1)
+            riepilogo = RiepilogoCopia()
+            risultato = remap_permission_overwrites({ruolo: overwrite}, {10: 20}, target, riepilogo)
+            assert risultato == {clone: overwrite}
+            assert riepilogo.permessi_ridotti == 0

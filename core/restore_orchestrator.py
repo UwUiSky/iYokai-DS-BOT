@@ -8,6 +8,10 @@ Member" di Discord (questo È il meccanismo `guilds.join`: un bot con
 il proprio token PUT-a un utente in un server usando l'access_token
 OAuth2 che quell'utente ha appena concesso).
 
+Rispetta i limiti di frequenza: su un 429 attende il ``Retry-After`` e riprova
+(M 12.11). Rinnova i token scaduti con ``grant_type=refresh_token`` (M 12.10).
+Funzioni coperte: SPEC §11.11, M 12.10, M 12.11
+
 Isolato in una classe con URL base iniettabili (stesso pattern di
 TwitchWatcherService) così i test possono puntare a un server aiohttp
 finto locale invece che a Discord vero — la rete del sandbox di
@@ -16,7 +20,9 @@ sviluppo non raggiunge Discord comunque (vedi PROGRESS.md).
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -28,6 +34,25 @@ DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
 DISCORD_API_BASE_URL = "https://discord.com/api/v10"
 
 REQUEST_TIMEOUT_SECONDS = 15
+
+# M 12.11 (LIM-7): tentativi dopo un 429 e attesa massima accettata.
+MAX_TENTATIVI_429 = 3
+ATTESA_MASSIMA_SECONDI = 60.0
+
+
+class LimiteDiFrequenza(Exception):
+    """Discord risponde ancora 429 dopo i tentativi: riprovare più tardi."""
+
+
+def attesa_da_retry_after(valore: str | None) -> float:
+    """Secondi da attendere dal ``Retry-After``: mai nan, mai negativi, al massimo 60."""
+    try:
+        attesa = float(valore) if valore is not None else 1.0
+    except (TypeError, ValueError):
+        return 1.0
+    if math.isnan(attesa):
+        return 1.0
+    return min(max(attesa, 0.0), ATTESA_MASSIMA_SECONDI)
 
 
 @dataclass(frozen=True)
@@ -44,7 +69,9 @@ class RestoreOrchestrator:
         self,
         token_url: str = DISCORD_TOKEN_URL,
         api_base_url: str = DISCORD_API_BASE_URL,
+        sleep=asyncio.sleep,
     ) -> None:
+        self._sleep = sleep
         self._http_session: aiohttp.ClientSession | None = None
         self._token_url = token_url
         self._api_base_url = api_base_url
@@ -59,6 +86,41 @@ class RestoreOrchestrator:
             await self._http_session.close()
             self._http_session = None
 
+    async def _put_con_attesa(self, url: str, **kwargs) -> int:
+        """PUT che su un 429 attende il Retry-After e riprova (poi restituisce 429)."""
+        sessione = self._get_session()
+        stato = 0
+        for tentativo in range(MAX_TENTATIVI_429):
+            async with sessione.put(
+                url, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS), **kwargs
+            ) as risposta:
+                stato = risposta.status
+                if stato != 429:
+                    return stato
+                attesa = attesa_da_retry_after(risposta.headers.get("Retry-After"))
+            if tentativo + 1 < MAX_TENTATIVI_429:
+                await self._sleep(attesa)
+        return stato
+
+    async def refresh_access_token(
+        self, client_id: str, client_secret: str, refresh_token: str
+    ) -> ExchangedToken | None:
+        """
+        Rinnova un token scaduto o vicino alla scadenza (M 12.10, LIM-37).
+        None se Discord rifiuta (token revocato) o la rete non risponde: il
+        chiamante ripiega sulla richiesta di consenso. Su un 429 attende il
+        ``Retry-After`` e riprova; se resta 429 solleva LimiteDiFrequenza (il
+        token non è scaduto: non va chiesto un nuovo consenso).
+        """
+        return await self._richiedi_token(
+            {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            }
+        )
+
     async def exchange_code_for_token(
         self, client_id: str, client_secret: str, redirect_uri: str, code: str
     ) -> ExchangedToken | None:
@@ -70,25 +132,42 @@ class RestoreOrchestrator:
         callback) mostra un errore all'utente in quel caso, non
         salva nulla.
         """
+        return await self._richiedi_token(
+            {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+            }
+        )
+
+    async def _richiedi_token(self, dati: dict) -> ExchangedToken | None:
         sessione = self._get_session()
+        payload = None
         try:
-            async with sessione.post(
-                self._token_url,
-                data={
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "redirect_uri": redirect_uri,
-                },
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
-            ) as risposta:
-                if risposta.status != 200:
-                    logger.warning(
-                        "Scambio code->token OAuth2 fallito con status %d.", risposta.status
-                    )
-                    return None
-                payload = await risposta.json()
+            for tentativo in range(MAX_TENTATIVI_429):
+                async with sessione.post(
+                    self._token_url,
+                    data=dati,
+                    timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
+                ) as risposta:
+                    if risposta.status == 429:
+                        attesa = attesa_da_retry_after(risposta.headers.get("Retry-After"))
+                    elif risposta.status != 200:
+                        logger.warning(
+                            "Richiesta token OAuth2 (%s) fallita con status %d.",
+                            dati.get("grant_type"),
+                            risposta.status,
+                        )
+                        return None
+                    else:
+                        payload = await risposta.json()
+                        break
+                if tentativo + 1 < MAX_TENTATIVI_429:
+                    await self._sleep(attesa)
+            else:
+                raise LimiteDiFrequenza()
         except (aiohttp.ClientError, TimeoutError) as exc:
             logger.warning("Impossibile contattare l'endpoint token di Discord: %s", exc)
             return None
@@ -148,15 +227,10 @@ class RestoreOrchestrator:
         bloccare il restore, l'utente è comunque già DENTRO al
         server, semplicemente resta da verificare a mano.
         """
-        sessione = self._get_session()
         url = f"{self._api_base_url}/guilds/{guild_id}/members/{user_id}/roles/{role_id}"
         try:
-            async with sessione.put(
-                url,
-                headers={"Authorization": f"Bot {bot_token}"},
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
-            ) as risposta:
-                return risposta.status == 204
+            stato = await self._put_con_attesa(url, headers={"Authorization": f"Bot {bot_token}"})
+            return stato == 204
         except (aiohttp.ClientError, TimeoutError) as exc:
             logger.warning("Impossibile assegnare il ruolo verificato dopo il restore: %s", exc)
             return False
@@ -171,24 +245,22 @@ class RestoreOrchestrator:
         nel server" è raggiunto); False su qualunque altro esito
         (token scaduto/revocato, bot senza permessi, server sparito).
         """
-        sessione = self._get_session()
         url = f"{self._api_base_url}/guilds/{guild_id}/members/{user_id}"
         try:
-            async with sessione.put(
+            stato = await self._put_con_attesa(
                 url,
                 headers={"Authorization": f"Bot {bot_token}"},
                 json={"access_token": access_token},
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
-            ) as risposta:
-                if risposta.status in (201, 204):
-                    return True
-                logger.warning(
-                    "guilds.join fallito per utente %s nel server %s (status %d).",
-                    user_id,
-                    guild_id,
-                    risposta.status,
-                )
-                return False
+            )
+            if stato in (201, 204):
+                return True
+            logger.warning(
+                "guilds.join fallito per utente %s nel server %s (status %d).",
+                user_id,
+                guild_id,
+                stato,
+            )
+            return False
         except (aiohttp.ClientError, TimeoutError) as exc:
             logger.warning("Impossibile contattare l'endpoint guilds.join di Discord: %s", exc)
             return False

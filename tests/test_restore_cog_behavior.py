@@ -103,6 +103,8 @@ async def database():
     yield db_instance
     await db_instance.pool.execute("DELETE FROM backup_user_snapshots")
     await db_instance.pool.execute("DELETE FROM restore_oauth_tokens")
+    await db_instance.pool.execute("DELETE FROM restore_contacts")
+    await db_instance.pool.execute("DELETE FROM backup_pair_history")
     await db_instance.pool.execute("DELETE FROM guild_config")
     await db_instance.pool.execute("DELETE FROM guild_config_history")
     await db_instance.pool.execute("DELETE FROM verify_config")
@@ -129,7 +131,6 @@ def _patch_repos(monkeypatch, database):
 @pytest.mark.asyncio
 async def test_configura_restore_salva_la_modalita(database, monkeypatch):
     import cogs.utility.restore as restore_module
-    from core.database import db as db_singleton
 
     monkeypatch.setattr(restore_module, "db", database)
     cog = RestoreCog(bot=None)

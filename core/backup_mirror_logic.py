@@ -16,7 +16,27 @@ cancellato all'improvviso).
 
 from __future__ import annotations
 
+import re
 from collections import deque
+
+# LIM-38: Discord mostra così i canali che il bot non può leggere.
+NOME_CANALE_OFFUSCATO = "___hidden___"
+
+# LIM-27: un nome di webhook non può contenere queste parole.
+_PAROLE_VIETATE = re.compile(r"discord|clyde", re.IGNORECASE)
+_MAX_NOME_WEBHOOK = 80
+
+
+def nome_sicuro_per_webhook(nome: str) -> str:
+    """
+    M 12.7 (LIM-27): il nome del mittente copiato dal mirror non può contenere
+    "discord" né "clyde" (in nessuna forma di maiuscole); lunghezza 2-80.
+    Le due parole diventano ``disc0rd`` e ``cl1de`` (resta leggibile).
+    """
+    sostituzioni = {"discord": "disc0rd", "clyde": "cl1de"}
+    pulito = _PAROLE_VIETATE.sub(lambda m: sostituzioni[m.group(0).lower()], nome or "")
+    pulito = pulito.strip()[:_MAX_NOME_WEBHOOK]
+    return pulito if len(pulito) >= 2 else (pulito + "__")[:2]
 
 
 class MirrorRateLimiter:

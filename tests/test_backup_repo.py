@@ -133,7 +133,7 @@ async def test_promote_backup_to_main_su_server_gia_main_azzera_il_suo_backup(re
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_enqueue_e_get_next_pending_job(repo):
-    job_id = await repo.enqueue_job(main_guild_id=100)
+    job_id = await repo.enqueue_linked_job(100, 700)
 
     job = await repo.get_next_pending_job()
     assert job.id == job_id
@@ -143,8 +143,8 @@ async def test_enqueue_e_get_next_pending_job(repo):
 
 @pytest.mark.asyncio
 async def test_get_next_pending_job_rispetta_l_ordine_fifo(repo):
-    primo = await repo.enqueue_job(100)
-    await repo.enqueue_job(200)
+    primo = await repo.enqueue_linked_job(100, 700 + 100)
+    await repo.enqueue_linked_job(200, 700 + 200)
 
     job = await repo.get_next_pending_job()
     assert job.id == primo
@@ -152,7 +152,7 @@ async def test_get_next_pending_job_rispetta_l_ordine_fifo(repo):
 
 @pytest.mark.asyncio
 async def test_get_next_pending_job_ignora_job_non_pending(repo):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
     await repo.mark_running(job_id)
 
     assert await repo.get_next_pending_job() is None
@@ -160,7 +160,7 @@ async def test_get_next_pending_job_ignora_job_non_pending(repo):
 
 @pytest.mark.asyncio
 async def test_mark_running_cambia_lo_stato(repo):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
     await repo.mark_running(job_id)
 
     job = await repo.get_job(job_id)
@@ -169,7 +169,7 @@ async def test_mark_running_cambia_lo_stato(repo):
 
 @pytest.mark.asyncio
 async def test_mark_completed_salva_il_backup_guild_id(repo):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
     await repo.mark_completed(job_id, backup_guild_id=555)
 
     job = await repo.get_job(job_id)
@@ -179,7 +179,7 @@ async def test_mark_completed_salva_il_backup_guild_id(repo):
 
 @pytest.mark.asyncio
 async def test_mark_failed_salva_il_messaggio_di_errore(repo):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
     await repo.mark_failed(job_id, "qualcosa è andato storto")
 
     job = await repo.get_job(job_id)
@@ -189,8 +189,8 @@ async def test_mark_failed_salva_il_messaggio_di_errore(repo):
 
 @pytest.mark.asyncio
 async def test_expire_stale_jobs_marca_i_job_vecchi(repo, clean_db):
-    job_id = await repo.enqueue_job(100)
-    # Retrodatiamo manualmente created_at oltre le 24h — enqueue_job
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
+    # Retrodatiamo manualmente created_at oltre le 24h — enqueue_linked_job
     # usa sempre now(), non c'è un modo pubblico di simulare il
     # passare del tempo se non toccando direttamente la riga.
     await clean_db.execute(
@@ -207,7 +207,7 @@ async def test_expire_stale_jobs_marca_i_job_vecchi(repo, clean_db):
 
 @pytest.mark.asyncio
 async def test_expire_stale_jobs_non_tocca_job_recenti(repo):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
 
     scaduti = await repo.expire_stale_jobs()
 
@@ -218,7 +218,7 @@ async def test_expire_stale_jobs_non_tocca_job_recenti(repo):
 
 @pytest.mark.asyncio
 async def test_expire_stale_jobs_scade_anche_i_job_running_bloccati(repo, clean_db):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
     await repo.mark_running(job_id)
     await clean_db.execute(
         "UPDATE backup_jobs SET created_at = now() - interval '25 hours' WHERE id = $1",
@@ -234,7 +234,7 @@ async def test_expire_stale_jobs_scade_anche_i_job_running_bloccati(repo, clean_
 
 @pytest.mark.asyncio
 async def test_expire_stale_jobs_non_tocca_job_gia_completati(repo, clean_db):
-    job_id = await repo.enqueue_job(100)
+    job_id = await repo.enqueue_linked_job(100, 700 + 100)
     await repo.mark_completed(job_id, backup_guild_id=555)
     await clean_db.execute(
         "UPDATE backup_jobs SET created_at = now() - interval '25 hours' WHERE id = $1",
@@ -254,21 +254,8 @@ async def test_get_job_inesistente_restituisce_none(repo):
 
 
 @pytest.mark.asyncio
-async def test_set_backup_guild_id_prima_del_completamento(repo):
-    job_id = await repo.enqueue_job(100)
-    await repo.mark_running(job_id)
-
-    await repo.set_backup_guild_id(job_id, backup_guild_id=777)
-
-    job = await repo.get_job(job_id)
-    assert job.backup_guild_id == 777
-    assert job.status == STATUS_RUNNING  # non ancora completato
-
-
-@pytest.mark.asyncio
 async def test_get_job_by_backup_guild_id(repo):
-    job_id = await repo.enqueue_job(100)
-    await repo.set_backup_guild_id(job_id, backup_guild_id=777)
+    job_id = await repo.enqueue_linked_job(100, 777)
 
     job = await repo.get_job_by_backup_guild_id(777)
     assert job.id == job_id
@@ -280,30 +267,10 @@ async def test_get_job_by_backup_guild_id_sconosciuto_restituisce_none(repo):
 
 
 @pytest.mark.asyncio
-async def test_get_running_jobs_restituisce_solo_i_running(repo):
-    job_pending = await repo.enqueue_job(100)
-    job_running = await repo.enqueue_job(200)
-    await repo.mark_running(job_running)
+async def test_get_job_by_backup_guild_id_prende_il_piu_recente(repo):
+    """Due job sullo stesso server di backup (il primo fallito): conta l'ultimo."""
+    primo = await repo.enqueue_linked_job(100, 777)
+    await repo.mark_failed(primo, "x")
+    secondo = await repo.enqueue_linked_job(100, 777)
 
-    running = await repo.get_running_jobs()
-
-    assert [j.id for j in running] == [job_running]
-
-
-@pytest.mark.asyncio
-async def test_get_running_jobs_lista_vuota_se_nessuno_in_corso(repo):
-    await repo.enqueue_job(100)  # resta pending
-    assert await repo.get_running_jobs() == []
-
-
-@pytest.mark.asyncio
-async def test_mark_reminder_sent_imposta_il_timestamp(repo):
-    job_id = await repo.enqueue_job(100)
-
-    job_prima = await repo.get_job(job_id)
-    assert job_prima.reminder_sent_at is None
-
-    await repo.mark_reminder_sent(job_id)
-
-    job_dopo = await repo.get_job(job_id)
-    assert job_dopo.reminder_sent_at is not None
+    assert (await repo.get_job_by_backup_guild_id(777)).id == secondo

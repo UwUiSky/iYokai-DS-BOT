@@ -90,6 +90,8 @@ class _FakeCreatedChannel:
 
 
 class _FakeTargetGuild:
+    bitrate_limit = 96000.0
+
     def __init__(self) -> None:
         self.chiamate_create_category: list[dict] = []
         self.chiamate_create_text_channel: list[dict] = []

@@ -766,3 +766,30 @@ Prima: Lavalink 4.2.0 o successivo raggiungibile (`deploy/lavalink/README.md`), 
 **Domanda per l'owner:** vuoi `/music remove` (e la ricerca dentro `/music queue`)? Oggi sono TOLTI perché SPEC §9.4 li dichiara permanentemente scoperti per tua richiesta esplicita. Se li vuoi, va cambiata la SPEC e il codice (rimessi in un solo commit: la logica era già scritta e provata).
 
 **Note di rilascio (musica):** la migrazione `0060` cambia la chiave di `music_sessions` in (server, canale). Le righe vecchie si svuotano comunque all'avvio. Nodi pubblici: nel codice non ce ne sono più, vanno messi in `LAVALINK_NODES`. Variabile nuova: `LAVALINK_LOCAL_ROOT`.
+## Backup e restore — passaggio `feat/r3-bak` (#68)
+
+Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOKAI_CREATOR_TOKEN`), un secondo account admin e un account senza permessi. Un bot non può creare server: lo crea l'admin.
+
+- [ ] `12.1` / `12.2` / `12.9` (#68) — collegamento e copia vera. Passi:
+  1. Nel server principale: `/admin backup main`, poi `/admin backup crea modello:True`.
+  2. Crea a mano un server nuovo (anche dal link modello). Invita iYokai e iYokai Creator con i due link. Controlla nel selettore dei permessi che compaia «Creare espressioni».
+  3. Nel server nuovo: `/admin backup collega codice:<codice>`. Prima prova un codice sbagliato, poi uno già usato, poi (dopo 24 ore o con la data cambiata nel database) uno scaduto.
+  4. Aspetta il DM «Backup pronto» al proprietario del server principale.
+  Risultato atteso: struttura, ruoli e permessi uguali; nessun doppione se si è partiti dal modello; il Creator **resta** nel server di backup; codice sbagliato/usato/scaduto rifiutati con un messaggio; un account senza «Amministratore» rifiutato; il Creator assente nel server nuovo dà il messaggio che spiega come invitarlo.
+- [ ] `12.4` (#68) — gerarchia dei ruoli. Passi: confronta l'ordine dei ruoli nei due server (il ruolo del Creator deve stare **in alto**). Risultato atteso: ordine identico; se il Creator è in basso, il riepilogo dice «Ordine dei ruoli non impostato».
+- [ ] `12.5` (#68) — server principale con boost e canale vocale a 384 kbps, backup senza boost. Risultato atteso: copia riuscita, bitrate ridotto al massimo del server di backup, nessun errore.
+- [ ] `12.6` (#68) — un canale con 15 webhook. Risultato atteso: nel backup 14 webhook copiati + «iYokai Mirror»; il riepilogo cita 1 webhook oltre il limite; il mirror funziona in quel canale. Rilancia la copia: nessun secondo «iYokai Mirror».
+- [ ] `12.7` (#68) — un account con nome «Discord Fan» scrive nel principale. Risultato atteso: il messaggio compare nel backup con il nome «disc0rd Fan».
+- [ ] `12.8` (#68) — un canale chiamato `___hidden___` (o che il bot non vede). Risultato atteso: saltato; il riepilogo dice quanti e di dare al bot il permesso di vedere tutti i canali.
+- [ ] `12.13` (#68, BUG-34) — nel server di backup collegato: `/admin backup promuovi`, poi `/admin backup restore-utenti server_di_origine:<id del vecchio main>`. Risultato atteso: il restore parte (prima rifiutava); un terzo server resta rifiutato.
+- [ ] `12.10` (#68) — token OAuth salvato con scadenza nel passato (database di prova, solo la data) e refresh token vero. `/admin backup restore-utenti`. Risultato atteso: l'utente viene aggiunto con il token rinnovato; con refresh token revocato riceve il DM di consenso.
+- [ ] `12.11` (#68) — restore con molti utenti (30+ in snapshot, DM aperti). Risultato atteso: pausa visibile tra un DM e l'altro, nessun errore 429 non gestito, conteggi che contano solo gli esiti riusciti, un solo riepilogo finale (anche oltre i 15 minuti: finisce nel canale).
+- [ ] `12.15` (#68) — metti in `OAUTH_ENCRYPTION_KEY` due chiavi separate da virgola (nuova, vecchia). Risultato atteso: i token vecchi si leggono ancora, i nuovi si scrivono con la prima; una riga rovinata a mano nel database non ferma il restore (avviso nel log, richiesta di nuovo consenso).
+- [ ] `#46 D / #15` (#46) — da un terzo server: `/admin backup restore-utenti` con l'ID di un main che non ti ha come backup. Risultato atteso: rifiutato.
+
+### Correzioni del cacciatore-bug — stesso ramo (#68)
+
+- [ ] Permessi del Creator (#68) — nel server principale un ruolo «Mod» con «Espellere membri» e un ruolo sopra il Creator. Invita il Creator col link di `/admin backup crea` (senza Amministratore) e collega. Risultato atteso: copia finita; il riepilogo dice «Ruoli con permessi che il Creator non ha» e «Ruoli sopra quello del Creator, non aggiornati»; con Amministratore al Creator, nessuna delle due righe e permessi identici. (Non provabile senza Discord: se Discord rifiuta ancora, annotare quale permesso.)
+- [ ] Collegamento (#68) — un secondo admin prova a usare il codice di un altro: rifiutato. Un server già backup di un altro main, o un main che ha già un backup: rifiutato. Due codici insieme: il secondo rifiuta finché la copia è in corso.
+- [ ] Restore (#68) — lancia `/admin backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
+- [ ] Ingresso (#68) — fai rientrare iYokai in un server di backup in blacklist: esce. Rientro in un backup normale: nessun benvenuto, ma `left_at` azzerato.

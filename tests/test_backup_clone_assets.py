@@ -63,6 +63,9 @@ class _FakeTargetChannel:
     async def create_webhook(self, **kwargs) -> None:
         self.chiamate_create_webhook.append(kwargs)
 
+    async def webhooks(self):
+        return []
+
 
 class _FakeSourceGuildAssets:
     def __init__(self, emojis=None, stickers=None, soundboard_sounds=None, webhooks_list=None) -> None:
