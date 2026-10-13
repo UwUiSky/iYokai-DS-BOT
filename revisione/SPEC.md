@@ -707,10 +707,16 @@ Totale voci: **494**.
   (NF-02, issue #73): embed con autore, canale e testo (campi 1024,
   descrizione 4096); cancellazione in blocco = un riepilogo con un
   file `.txt` sotto i 10 MiB; messaggi dei bot, canali, utenti e
-  prefissi ignorabili con `/log ignora`. Fa parte del Logging
+  prefissi, ruoli ed espressioni regolari (al massimo 5, solo schemi a
+  basso costo) ignorabili con `/log ignora` (LOG-022, LOG-024, migrazione
+  0103); categorie, thread e bot già ignorati (LOG-021, LOG-023). Fa parte del Logging
   Avanzato (premium). Un messaggio fuori dalla cache di discord.py si
   segnala senza contenuto; la modifica di un messaggio fuori cache non
   si vede
+- `[x]` 8.18 Catalogo log (#119): timeout dati e tolti anche dal menu di Discord (`basic_logs.py`,
+  LOG-009); cambio di nome utente, nome visualizzato e avatar (`on_user_update`, LOG-007, LOG-008);
+  palchi aperti, modificati, chiusi nel tipo «voce» (`advanced_logs.py`, LOG-013).
+  Restano: LOG-005, 006, 012, 017, 027, 029, 030.
 - `[~]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).

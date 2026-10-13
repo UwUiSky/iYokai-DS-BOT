@@ -5,8 +5,9 @@
 
 ## In corso
 - Giro r4-tkt (per FILE): ordine correzioni → NF-13 → NF-33 → #139 non-AI → cataloghi. Previsione: 4 gruppi.
-- Fatto: correzioni, NF-13, NF-33, #139 non-AI (gruppo 3). Prossimo: cataloghi #119/#120/#127 voci piccole
-  (log: LOG-023 ignora bot, LOG-009 timeout; ticket: TKT-054 conferma chiusura, TKT-056 motivo, TKT-058 chiudi tutti; vocali: VOC-001 prendi proprietà, VOC-005 bitrate). Migr. libera da 0103.
+- Fatto: correzioni, NF-13, NF-33, #139 non-AI, catalogo log (gruppo 4). Prossimo: catalogo ticket #120 in `/ticket`
+  (TKT-056 motivo di chiusura, TKT-048 rilascia, TKT-049 passa, TKT-069 transcript su richiesta, TKT-058 chiudi tutti in /admin ticket)
+  poi vocali #127 (VOC-001 claim, 002/003 permit/deny, 005 bitrate, 004 nascondi). Migr. libera da 0104.
 
 ## Fatto
 - Giri precedenti (F1, F7, router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145): tutti su main.
@@ -21,6 +22,8 @@
 - #139 non-AI: migr. 0102 (ticket_standard_replies, colonne in panels/tickets), `cogs/tickets/risposte.py`,
   `core/ticket_standard_logic.py`, `/admin ticket standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`, scheduler `ticket_sollecito`;
   hook in tickets.py (on_message, _transcript_senza_bloccare, _crea_ticket); test_ticket_standard.py.
+- Catalogo log (#119): migr. 0103; LOG-022 ruoli, LOG-024 regex (solo schemi bassi costi), LOG-009 timeout, LOG-007/008 profilo utente,
+  LOG-013 palchi; LOG-021/023 erano già fatti. Test tests/test_log_catalogo.py.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.

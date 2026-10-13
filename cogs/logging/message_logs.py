@@ -38,7 +38,7 @@ logger = logging.getLogger("iyokai.logging.messaggi")
 
 
 def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int) -> bool:
-    """Canale/utente/prefisso ignorati e messaggi dei bot."""
+    """Canale, utente, ruolo, prefisso ed espressione ignorati; messaggi dei bot."""
     if message is not None and message.author.bot:
         return True
     return da_ignorare(
@@ -48,6 +48,7 @@ def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int
         testo=message.content if message is not None else None,
         category_id=getattr(canale, "category_id", None),
         thread_parent_id=getattr(canale, "parent_id", None),
+        ruoli_autore=[r.id for r in getattr(message.author, "roles", [])] if message is not None else (),
     )
 
 
