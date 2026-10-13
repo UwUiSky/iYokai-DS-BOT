@@ -6,9 +6,6 @@ Persistenza dei Role Menu (SPEC.md §14.1-14.3). Due tabelle: il menu
 emoji, etichetta).
 """
 
-# DA FARE (issue #85, fase F9): NF-14, Modalità dei reaction roles. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,6 +24,11 @@ class RoleMenu:
     max_selectable: int | None
     title: str
     description: str
+    # NF-14: comportamento e accesso (colonne di 0085_role_menu_modalita.sql)
+    behavior: str = "normal"
+    temp_seconds: int | None = None
+    allowed_role_ids: tuple[int, ...] = ()
+    excluded_role_ids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,31 @@ class RoleMenuRepository:
             max_selectable=row["max_selectable"],
             title=row["title"],
             description=row["description"],
+            behavior=row["behavior"],
+            temp_seconds=row["temp_seconds"],
+            allowed_role_ids=tuple(row["allowed_role_ids"]),
+            excluded_role_ids=tuple(row["excluded_role_ids"]),
+        )
+
+    async def list_menus_for_guild(self, guild_id: int) -> list[RoleMenu]:
+        righe = await self._pool.fetch("SELECT * FROM role_menus WHERE guild_id = $1 ORDER BY id", guild_id)
+        return [self._row_to_menu(r) for r in righe]
+
+    async def update_menu(self, menu_id: int, **campi) -> bool:
+        """Cambia titolo, descrizione, comportamento o durata (campi da un elenco fisso)."""
+        ammessi = {"title", "description", "behavior", "temp_seconds", "toggle", "max_selectable"}
+        if not campi or not set(campi) <= ammessi:
+            raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
+        impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=2))
+        esito = await self._pool.execute(
+            f"UPDATE role_menus SET {impostazioni} WHERE id = $1", menu_id, *campi.values()
+        )
+        return esito.endswith(" 1")
+
+    async def set_access_lists(self, menu_id: int, allowed: list[int], excluded: list[int]) -> None:
+        await self._pool.execute(
+            "UPDATE role_menus SET allowed_role_ids = $2, excluded_role_ids = $3 WHERE id = $1",
+            menu_id, allowed, excluded,
         )
 
     async def create_menu(
@@ -105,12 +132,14 @@ class RoleMenuRepository:
         max_selectable: int | None,
         title: str,
         description: str,
+        behavior: str = "normal",
+        temp_seconds: int | None = None,
     ) -> int:
         row = await self._pool.fetchrow(
             """
             INSERT INTO role_menus
-                (guild_id, channel_id, mode, toggle, max_selectable, title, description)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (guild_id, channel_id, mode, toggle, max_selectable, title, description, behavior, temp_seconds)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id
             """,
             guild_id,
@@ -120,6 +149,8 @@ class RoleMenuRepository:
             max_selectable,
             title,
             description,
+            behavior,
+            temp_seconds,
         )
         return row["id"]
 

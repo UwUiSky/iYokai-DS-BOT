@@ -35,6 +35,7 @@ finta a monte.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 import weakref
 
@@ -47,14 +48,22 @@ from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.role_menu_repo import RoleMenu, RoleMenuOption, role_menu_repo
-from core.lista_limiti_logic import dividi_in_blocchi
+from core.lista_limiti_logic import dividi_in_blocchi, righe_entro_limite
 from core.role_menu_logic import (
+    COMPORTAMENTI,
+    COMPORTAMENTO_DI_BASE,
+    MAX_RUOLI_ACCESSO,
+    MAX_TEMP_SECONDI,
+    Decisione,
     can_add_option,
-    compute_select_sync,
-    compute_toggle_action,
+    comportamento_ammesso,
+    decidi_azione,
+    decidi_selezione,
     id_emoji_personalizzata,
+    membro_ammesso,
     valida_emoji,
 )
+from core.scheduler import in_seconds, scheduler
 from core.role_safety import check_role_assignable
 from core.ui_base import BaseView
 
@@ -64,6 +73,7 @@ MODULE_ROLE_MENUS = "role_menus"
 
 BUTTON_CUSTOM_ID_PREFIX = "iyokai_rolemenu_btn"
 SELECT_CUSTOM_ID_PREFIX = "iyokai_rolemenu_select"
+ROLEMENU_TEMP_ACTION_TYPE = "rolemenu_temp_remove"
 
 
 def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed:
@@ -72,6 +82,8 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
         description=(menu.description or None) and menu.description[:2000],
         color=discord.Color.blurple(),
     )
+    if menu.behavior != COMPORTAMENTO_DI_BASE:
+        embed.set_footer(text=COMPORTAMENTI.get(menu.behavior, menu.behavior)[:2048])
     if not options:
         embed.add_field(name="—", value="No roles configured yet.", inline=False)
         return embed
@@ -86,6 +98,19 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
     for numero, blocco in enumerate(dividi_in_blocchi(righe, 1024)):
         embed.add_field(name=titolo if numero == 0 else "\u200b", value=blocco, inline=False)
     return embed
+
+
+_SCELTE_COMPORTAMENTO = [app_commands.Choice(name=nome, value=nome) for nome in COMPORTAMENTI]
+
+
+def _errore_comportamento(mode: str, comportamento: str, durata_minuti: int | None) -> str | None:
+    """Il motivo per cui il comportamento non va con la modalità o manca la durata, altrimenti None."""
+    if not comportamento_ammesso(mode, comportamento):
+        solo = "reazioni" if comportamento == "reversed" else "reazioni e bottoni"
+        return f"Il comportamento «{comportamento}» non funziona con questa modalità: vale solo per le {solo}."
+    if comportamento == "temp" and not durata_minuti:
+        return "Per il comportamento temp indica la durata del ruolo in minuti."
+    return None
 
 
 class MenuNonPubblicabile(Exception):
@@ -308,47 +333,93 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
 
-        ha_il_ruolo = role in interaction.user.roles
-        if ha_il_ruolo:
-            # toggle=False: il bottone dà il ruolo ma non lo toglie.
-            menu = await role_menu_repo.get_menu(menu_id)
-            if menu is not None and not menu.toggle:
-                await interaction.response.send_message(
-                    f"Hai già il ruolo {role.mention}: da questo menu non si può togliere.",
-                    ephemeral=True,
-                )
-                return
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None:
+            await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
+            return
+        ruoli_membro = {r.id for r in interaction.user.roles}
+        negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
+        if negato is not None:
+            await interaction.response.send_message(negato, ephemeral=True)
+            return
+        opzioni = await role_menu_repo.get_options(menu_id)
+        decisione = decidi_azione(
+            menu.behavior,
+            attiva=True,
+            via_reazione=False,
+            ruolo_id=role_id,
+            ruoli_menu={o.role_id for o in opzioni},
+            ruoli_membro=ruoli_membro,
+            toggle=menu.toggle,
+            temp_secondi=menu.temp_seconds,
+        )
+        if decisione.rifiuto is not None:
+            await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
+            return
 
-        azione = compute_toggle_action(ha_il_ruolo)
+        errore = await self._applica(guild, interaction.user, decisione, "Role menu")
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        if decisione.aggiungi:
+            testo = f"Role {role.mention} added."
+            if decisione.temporaneo_secondi:
+                testo += f" Lo perderai tra {max(decisione.temporaneo_secondi // 60, 1)} minuti."
+        elif decisione.togli:
+            testo = f"Role {role.mention} removed."
+        else:
+            testo = "Nessun cambiamento."
+        await interaction.response.send_message(testo, ephemeral=True)
 
-        # SEC-4/SEC-17: ricontrolla il ruolo solo quando lo si sta per
-        # ASSEGNARE (self_service=True) — rimuoverlo resta sempre
-        # permesso, non è un'escalation di permessi.
-        if azione == "add":
-            motivo_rifiuto = check_role_assignable(guild, role, guild.me, self_service=True)
-            if motivo_rifiuto is not None:
-                await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
-                return
-
+    async def _applica(
+        self, guild: discord.Guild, member: discord.Member, decisione: Decisione, motivo: str
+    ) -> str | None:
+        """
+        Dà e toglie i ruoli di una decisione. SEC-4/SEC-17: ogni ruolo da DARE si ricontrolla
+        (self_service); toglierlo resta sempre permesso. None se tutto bene, altrimenti il
+        testo per l'utente. Il ruolo temporaneo programma la propria rimozione.
+        """
+        da_dare = []
+        for rid in decisione.aggiungi:
+            ruolo = guild.get_role(rid)
+            if ruolo is None:
+                continue
+            rifiuto = check_role_assignable(guild, ruolo, guild.me, self_service=True)
+            if rifiuto is not None:
+                if len(decisione.aggiungi) == 1:
+                    return rifiuto
+                continue  # un ruolo diventato pericoloso si salta, gli altri passano
+            da_dare.append(ruolo)
+        da_togliere = [r for r in (guild.get_role(rid) for rid in decisione.togli) if r is not None]
         try:
-            if azione == "add":
-                await interaction.user.add_roles(role, reason="Role menu")
-            else:
-                await interaction.user.remove_roles(role, reason="Role menu")
+            if da_dare:
+                await member.add_roles(*da_dare, reason=motivo)
+            if da_togliere:
+                await member.remove_roles(*da_togliere, reason=motivo)
         except discord.Forbidden:
-            await interaction.response.send_message(
-                "I don't have permission to manage that role.", ephemeral=True
-            )
-            return
+            return "I don't have permission to manage that role."
         except discord.HTTPException:
-            logger.warning("Errore Discord assegnando il ruolo %s nel server %s.", role_id, guild.id)
-            await interaction.response.send_message(
-                "Discord ha dato un errore: riprova tra poco.", ephemeral=True
-            )
-            return
+            logger.warning("Errore Discord con i ruoli del menu nel server %s.", guild.id)
+            return "Discord ha dato un errore: riprova tra poco."
+        if decisione.temporaneo_secondi and da_dare:
+            for ruolo in da_dare:
+                await scheduler.schedule(
+                    guild.id, member.id, ROLEMENU_TEMP_ACTION_TYPE,
+                    in_seconds(decisione.temporaneo_secondi), {"role_id": ruolo.id},
+                )
+        return None
 
-        verbo = "added" if azione == "add" else "removed"
-        await interaction.response.send_message(f"Role {role.mention} {verbo}.", ephemeral=True)
+    async def handle_rolemenu_temp(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Handler dello scheduler: toglie il ruolo a tempo, se il membro c'è ancora e lo ha."""
+        guild = self.bot.get_guild(guild_id)
+        role_id = payload.get("role_id")
+        if guild is None or role_id is None:
+            return
+        member = guild.get_member(user_id)
+        ruolo = guild.get_role(role_id)
+        if member is None or ruolo is None or ruolo not in member.roles:
+            return
+        await member.remove_roles(ruolo, reason="Role menu (ruolo a tempo scaduto)")
 
     async def _handle_select(
         self, interaction: discord.Interaction, menu_id: int, select: discord.ui.Select
@@ -363,43 +434,29 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
 
-        options = await role_menu_repo.get_options(menu_id)
-        menu_role_ids = {opt.role_id for opt in options}
-        selected_role_ids = {int(v) for v in select.values}
-        current_role_ids = {r.id for r in interaction.user.roles}
-
-        da_aggiungere, da_rimuovere = compute_select_sync(
-            current_role_ids, menu_role_ids, selected_role_ids
-        )
-
-        ruoli_da_aggiungere = [guild.get_role(rid) for rid in da_aggiungere]
-        ruoli_da_aggiungere = [r for r in ruoli_da_aggiungere if r is not None]
-        # SEC-4/SEC-17: assegnazione self-service, ricontrolla ogni
-        # ruolo — un ruolo diventato pericoloso viene saltato senza
-        # bloccare l'aggiornamento degli altri.
-        ruoli_da_aggiungere = [
-            r for r in ruoli_da_aggiungere
-            if check_role_assignable(guild, r, guild.me, self_service=True) is None
-        ]
-        ruoli_da_rimuovere = [guild.get_role(rid) for rid in da_rimuovere]
-        ruoli_da_rimuovere = [r for r in ruoli_da_rimuovere if r is not None]
-
-        try:
-            if ruoli_da_aggiungere:
-                await interaction.user.add_roles(*ruoli_da_aggiungere, reason="Role menu")
-            if ruoli_da_rimuovere:
-                await interaction.user.remove_roles(*ruoli_da_rimuovere, reason="Role menu")
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "I don't have permission to manage one or more of those roles.",
-                ephemeral=True,
-            )
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None:
+            await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
             return
-        except discord.HTTPException:
-            logger.warning("Errore Discord aggiornando i ruoli del menu %s.", menu_id)
-            await interaction.response.send_message(
-                "Discord ha dato un errore: riprova tra poco.", ephemeral=True
-            )
+        options = await role_menu_repo.get_options(menu_id)
+        ruoli_membro = {r.id for r in interaction.user.roles}
+        negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
+        if negato is not None:
+            await interaction.response.send_message(negato, ephemeral=True)
+            return
+        decisione = decidi_selezione(
+            menu.behavior,
+            ruoli_menu={opt.role_id for opt in options},
+            ruoli_membro=ruoli_membro,
+            scelti={int(v) for v in select.values},
+            temp_secondi=menu.temp_seconds,
+        )
+        if decisione.rifiuto is not None:
+            await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
+            return
+        errore = await self._applica(guild, interaction.user, decisione, "Role menu")
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
             return
 
         await interaction.response.send_message("Your roles have been updated.", ephemeral=True)
@@ -429,24 +486,33 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
 
         guild = self.bot.get_guild(payload.guild_id)
-        if guild is None:
+        if guild is None or guild.get_role(option.role_id) is None:
             return
-        role = guild.get_role(option.role_id)
-        if role is None:
-            return
+        await self._reazione(guild, menu, option.role_id, payload.member, attiva=True, motivo="Role menu (reaction)")
 
-        # SEC-4/SEC-17: assegnazione self-service via reazione.
-        if check_role_assignable(guild, role, guild.me, self_service=True) is not None:
+    async def _reazione(
+        self, guild: discord.Guild, menu: RoleMenu, role_id: int, member: discord.Member, *, attiva: bool, motivo: str
+    ) -> None:
+        """Una reazione messa o tolta su un menu: accesso, comportamento, ruoli (nessuna risposta possibile)."""
+        ruoli_membro = {r.id for r in member.roles}
+        if membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro) is not None:
             return
-
-        try:
-            await payload.member.add_roles(role, reason="Role menu (reaction)")
-        except discord.HTTPException:  # comprende Forbidden
-            logger.warning(
-                "Permessi insufficienti per assegnare il ruolo via reazione "
-                "nel server %s.",
-                payload.guild_id,
-            )
+        opzioni = await role_menu_repo.get_options(menu.id)
+        decisione = decidi_azione(
+            menu.behavior,
+            attiva=attiva,
+            via_reazione=True,
+            ruolo_id=role_id,
+            ruoli_menu={o.role_id for o in opzioni},
+            ruoli_membro=ruoli_membro,
+            toggle=menu.toggle,
+            temp_secondi=menu.temp_seconds,
+        )
+        if decisione.rifiuto is not None:
+            return
+        errore = await self._applica(guild, member, decisione, motivo)
+        if errore is not None:
+            logger.warning("Reazione sul menu %s nel server %s: %s", menu.id, guild.id, errore)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
@@ -460,7 +526,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
 
         menu = await role_menu_repo.get_menu_by_message(payload.guild_id, payload.message_id)
-        if menu is None or menu.mode != "reaction" or not menu.toggle:
+        if menu is None or menu.mode != "reaction":
             return
 
         option = await role_menu_repo.get_option_by_emoji(menu.id, str(payload.emoji))
@@ -473,18 +539,11 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         member = guild.get_member(payload.user_id)
         if member is None or member.bot:
             return
-        role = guild.get_role(option.role_id)
-        if role is None:
+        if guild.get_role(option.role_id) is None:
             return
-
-        try:
-            await member.remove_roles(role, reason="Role menu (reaction removed)")
-        except discord.HTTPException:  # comprende Forbidden
-            logger.warning(
-                "Permessi insufficienti per rimuovere il ruolo via reazione "
-                "nel server %s.",
-                payload.guild_id,
-            )
+        await self._reazione(
+            guild, menu, option.role_id, member, attiva=False, motivo="Role menu (reaction removed)"
+        )
 
     # ================================================================
     # Comandi
@@ -503,13 +562,16 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         channel="Canale dove pubblicare il menu (default: questo canale)",
         toggle="Ri-cliccare/reagire toglie il ruolo? (solo bottone/reazione)",
         max_selectable="Quante opzioni si possono scegliere insieme (solo select)",
+        comportamento="Come si comporta il menu (unique, verify, drop, reversed, binding, temp, lock)",
+        durata_minuti="Quanto dura il ruolo (solo comportamento temp)",
     )
     @app_commands.choices(
         mode=[
             app_commands.Choice(name="Reaction", value="reaction"),
             app_commands.Choice(name="Button", value="button"),
             app_commands.Choice(name="Select menu", value="select"),
-        ]
+        ],
+        comportamento=_SCELTE_COMPORTAMENTO,
     )
     async def create_cmd(
         self,
@@ -520,6 +582,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         channel: discord.TextChannel | None = None,
         toggle: bool = True,
         max_selectable: app_commands.Range[int, 1, 25] | None = None,
+        comportamento: str = COMPORTAMENTO_DI_BASE,
+        durata_minuti: app_commands.Range[int, 1, MAX_TEMP_SECONDI // 60] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -527,6 +591,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
             )
             return
+
+        errore = _errore_comportamento(mode.value, comportamento, durata_minuti)
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        if mode.value == "select" and comportamento == "unique":
+            max_selectable = 1
 
         target_channel = channel or interaction.channel
         if not isinstance(target_channel, discord.TextChannel):
@@ -543,6 +614,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             max_selectable=max_selectable,
             title=title,
             description=description,
+            behavior=comportamento,
+            temp_seconds=durata_minuti * 60 if durata_minuti else None,
         )
 
         await interaction.response.send_message(
@@ -755,6 +828,148 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "gestione",
+        nome="menu-elenco",
+        descrizione="Mostra i menu di ruoli del server, con gli ID.",
+        sottogruppo=_SG_RUOLI,
+    )
+    async def list_cmd(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        menu = await role_menu_repo.list_menus_for_guild(guild.id)
+        righe = []
+        for m in menu:
+            n = await role_menu_repo.count_options(m.id)
+            righe.append(f"`{m.id}` · {m.title[:60]} · {m.mode}/{m.behavior} · <#{m.channel_id}> · {n} opzioni")
+        testo, _ = righe_entro_limite(righe or ["Nessun menu di ruoli."], 3900)
+        await interaction.response.send_message(
+            embed=discord.Embed(title=f"Menu di ruoli ({len(menu)})", description=testo),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="menu-modifica",
+        descrizione="Cambia titolo, descrizione o comportamento di un menu già pubblicato.",
+        sottogruppo=_SG_RUOLI,
+    )
+    @app_commands.describe(
+        menu_id="ID del menu (lo mostra /gestione ruoli menu-elenco)",
+        titolo="Nuovo titolo",
+        descrizione="Nuova descrizione",
+        comportamento="Nuovo comportamento",
+        durata_minuti="Durata del ruolo (comportamento temp)",
+    )
+    @app_commands.choices(comportamento=_SCELTE_COMPORTAMENTO)
+    async def edit_cmd(
+        self,
+        interaction: discord.Interaction,
+        menu_id: int,
+        titolo: app_commands.Range[str, 1, 256] | None = None,
+        descrizione: app_commands.Range[str, 0, 2000] | None = None,
+        comportamento: str | None = None,
+        durata_minuti: app_commands.Range[int, 1, MAX_TEMP_SECONDI // 60] | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None or menu.guild_id != guild.id:
+            await interaction.response.send_message(
+                "Nessun role menu trovato con questo ID in questo server.", ephemeral=True
+            )
+            return
+        campi: dict = {}
+        if titolo is not None:
+            campi["title"] = titolo
+        if descrizione is not None:
+            campi["description"] = descrizione
+        if comportamento is not None or durata_minuti is not None:
+            nuovo = comportamento or menu.behavior
+            durata = durata_minuti or (menu.temp_seconds // 60 if menu.temp_seconds else None)
+            errore = _errore_comportamento(menu.mode, nuovo, durata)
+            if errore is not None:
+                await interaction.response.send_message(errore, ephemeral=True)
+                return
+            campi["behavior"] = nuovo
+            campi["temp_seconds"] = durata * 60 if nuovo == "temp" and durata else None
+            if menu.mode == "select" and nuovo == "unique":
+                campi["max_selectable"] = 1
+        if not campi:
+            await interaction.response.send_message("Non hai indicato nulla da cambiare.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        async with self._blocco_menu(menu_id):
+            menu = await role_menu_repo.get_menu(menu_id)
+            if menu is None:
+                await interaction.followup.send("Questo menu non esiste più.", ephemeral=True)
+                return
+            opzioni = await role_menu_repo.get_options(menu_id)
+            if opzioni:
+                # Prima il messaggio, poi il database: se Discord rifiuta, il menu resta com'era.
+                try:
+                    await self._pubblica_menu(guild, dataclasses.replace(menu, **campi), opzioni)
+                except MenuNonPubblicabile as errore:
+                    await interaction.followup.send(
+                        f"Il menu non è stato modificato: il messaggio non si aggiorna. {errore}", ephemeral=True
+                    )
+                    return
+            await role_menu_repo.update_menu(menu_id, **campi)
+        await interaction.followup.send("Menu aggiornato.", ephemeral=True)
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="menu-accesso",
+        descrizione="Limita un menu a certi ruoli o escludine altri.",
+        sottogruppo=_SG_RUOLI,
+    )
+    @app_commands.describe(
+        menu_id="ID del menu",
+        ruolo="Il ruolo da aggiungere o togliere dall'elenco",
+        elenco="Ammessi: solo chi ha uno di questi ruoli. Esclusi: chi ne ha uno non può usare il menu",
+        azione="Aggiungere o togliere il ruolo dall'elenco",
+    )
+    @app_commands.choices(
+        elenco=[app_commands.Choice(name="ammesso", value="ammesso"), app_commands.Choice(name="escluso", value="escluso")],
+        azione=[app_commands.Choice(name="aggiungi", value="aggiungi"), app_commands.Choice(name="togli", value="togli")],
+    )
+    async def access_cmd(
+        self,
+        interaction: discord.Interaction,
+        menu_id: int,
+        ruolo: discord.Role,
+        elenco: str,
+        azione: str = "aggiungi",
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None or menu.guild_id != guild.id:
+            await interaction.response.send_message(
+                "Nessun role menu trovato con questo ID in questo server.", ephemeral=True
+            )
+            return
+        ammessi, esclusi = list(menu.allowed_role_ids), list(menu.excluded_role_ids)
+        lista = ammessi if elenco == "ammesso" else esclusi
+        if azione == "aggiungi":
+            if ruolo.id not in lista:
+                if len(lista) >= MAX_RUOLI_ACCESSO:
+                    await interaction.response.send_message(
+                        f"L'elenco ha già {MAX_RUOLI_ACCESSO} ruoli: togline uno.", ephemeral=True
+                    )
+                    return
+                lista.append(ruolo.id)
+        elif ruolo.id in lista:
+            lista.remove(ruolo.id)
+        await role_menu_repo.set_access_lists(menu_id, ammessi, esclusi)
+        await interaction.response.send_message(
+            f"Ruoli ammessi: {len(ammessi)} · esclusi: {len(esclusi)}.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "gestione",
         nome="menu-elimina",
         descrizione="Elimina un role menu.",
         sottogruppo=_SG_RUOLI,
@@ -796,6 +1011,7 @@ async def setup(bot: commands.Bot) -> None:
     )
     cog = RoleMenuCog(bot)
     await bot.add_cog(cog)
+    scheduler.register_handler(ROLEMENU_TEMP_ACTION_TYPE, cog.handle_rolemenu_temp)
 
     # Ricostruzione delle View dinamiche persistenti PER-MESSAGGIO,
     # per OGNI menu bottone/select esistente su qualunque server, ad

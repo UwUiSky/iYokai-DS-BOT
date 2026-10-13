@@ -6,7 +6,7 @@
 ## In corso
 - Previsione giro r4: 10 gruppi (G1 autoroles NF-07; G2 starboard NF-08; G3 tag NF-09 + prefix 10.15 + risposte NF-10; G4 greetings NF-11; G5 role menu NF-14 + 10.8; G6 embed NF-17; G7 contatori NF-16; G8 compleanni NF-26; G9 inviti NF-27; G10 moduli NF-34). Migrazioni 0080+ (0080 autoroles usata).
 - Comandi nuovi: /gestione ruoli auto-*; /moduli starboard|contatori|compleanni; admin: messaggi/comandi. Tabelle nuove vanno in core/data_registry.py (test_data_registry).
-- G3b autoresponder NF-10 (0083), G4 greetings NF-11 + RUO-018..021 (0084) fatti. Prossimo: G5 role menu NF-14 + M10.8 + RUO-050/051 (cogs/utility/role_menus.py, core/role_menu_logic.py, role_menu_repo, 0085), poi G6 embed NF-17 (0086).
+- G3b autoresponder NF-10 (0083), G4 greetings NF-11 + RUO-018..021 (0084), G5 role menu NF-14 + M10.8 + RUO-050/051 (0085) fatti. Prossimo: G6 embed NF-17 (cogs/utility/embed_builder.py + saved_embed_repo + 0086, comandi in /admin messaggi), G7 contatori NF-16 (0087, /moduli contatori), G8 compleanni NF-26, G9 inviti NF-27, G10 moduli NF-34.
 
 ## Fatto
 - r4 G1 NF-07 autoroles (0080); G2 NF-08 starboard (0081); G3a NF-09 tag + M10.15 (0082, /admin comandi crea|modifica|elimina|elenco|prefisso, /utility tag; prefix = guild_config.prefix): commit nel log.
@@ -14,6 +14,8 @@
 - #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7, G3 10.9, G4 10.12, G5 10.13 fatti (AUDIT_UTILITA.md).
 
 ## Cose imparate
+- Role menu: `_applica(guild, member, decisione, motivo)` e `decidi_azione/decidi_selezione` (core/role_menu_logic) sono l'unico punto che da/toglie ruoli; pass guild esplicito (i fake non hanno member.guild).
+- smoke --base main diventa lento (2-3 min) con più gruppi: lanciarlo con timeout 600000.
 - Tabelle nuove: .sql in core/migrations + voce in core/data_registry.py (Scadenza per i dati a tempo). Comandi: `@comando_di_gruppo("gestione"/"moduli"/"admin", sottogruppo=(nome, descr))`; autocomplete admin = `autocomplete_protetto(Livello.ADMIN)`; test albero: `await modulo.setup(Bot)` poi `comando_nel_gruppo("gruppo", "sotto cmd")`.
 - Ping nei testi admin: `core/admin_mentions_logic.py` (menzioni_ammesse, puo_pingare_ruoli); il permesso si salva a configurazione.
 - Elenchi che crescono: `core/lista_limiti_logic.py` (righe_entro_limite per embed, dividi_in_pagine per messaggi).
