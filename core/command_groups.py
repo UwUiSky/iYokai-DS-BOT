@@ -54,7 +54,8 @@ NOME_CHIEDI = "-chiedi"
 _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "owner": ("Comandi riservati al proprietario del bot", "administrator", Livello.OWNER),
     "admin": ("Impianto del bot: setup, configurazione, lingua, backup, messaggi", "manage_guild", Livello.ADMIN),
-    "gestione": ("Gestione del server: ticket, vocali, economia, ruoli, benvenuto", "manage_guild", Livello.ADMIN),
+    "gestione": ("Gestione del server: ticket, vocali, ruoli, benvenuto", "manage_guild", Livello.ADMIN),
+    "economia": ("Economia del server: XP, monete, negozio e giveaway (staff)", "manage_guild", Livello.ADMIN),
     "moduli": ("Moduli del server: alert, starboard, contatori, compleanni", "manage_guild", Livello.ADMIN),
     "security": ("Sicurezza: anti-raid, anti-nuke, verifica, ban globale", "administrator", Livello.SECURITY),
     "automod": ("Moderazione automatica: filtri, parole vietate, esenzioni", "manage_guild", Livello.ADMIN),
@@ -72,7 +73,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 
 
 def nomi_gruppi() -> tuple[str, ...]:
-    """I nomi dei 16 gruppi, nell'ordine della mappa."""
+    """I nomi dei gruppi, nell'ordine della mappa."""
     return tuple(_DEFINIZIONI)
 
 

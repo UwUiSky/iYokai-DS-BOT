@@ -16,23 +16,23 @@ from core import command_groups as cg
 from core.command_access import Livello
 
 ATTESI = [
-    "owner", "admin", "gestione", "moduli", "security", "automod", "mod", "modban",
+    "owner", "admin", "gestione", "economia", "moduli", "security", "automod", "mod", "modban",
     "log", "ticket", "voice", "music", "level", "clan", "fun", "utility",
 ]
 PERMESSI = {
-    "admin": "manage_guild", "gestione": "manage_guild", "moduli": "manage_guild",
+    "admin": "manage_guild", "gestione": "manage_guild", "economia": "manage_guild", "moduli": "manage_guild",
     "automod": "manage_guild", "log": "manage_guild",
     "security": "administrator", "owner": "administrator",
     "mod": "moderate_members", "modban": "ban_members",
 }
 LIVELLI = {
-    "owner": Livello.OWNER, "admin": Livello.ADMIN, "gestione": Livello.ADMIN,
+    "owner": Livello.OWNER, "admin": Livello.ADMIN, "gestione": Livello.ADMIN, "economia": Livello.ADMIN,
     "moduli": Livello.ADMIN, "automod": Livello.ADMIN, "security": Livello.SECURITY,
     "mod": Livello.MOD, "modban": Livello.MODBAN, "log": Livello.LOG,
 }
 
 
-def test_i_16_gruppi_in_ordine():
+def test_i_gruppi_in_ordine():
     assert list(cg.nomi_gruppi()) == ATTESI
 
 
