@@ -13,21 +13,37 @@ non moltiplicare 6 volte l'overhead di interprete su una VM già
 limitata.
 """
 
-# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+# F2 (#64): M 8.1 un nodo per bot (core/music_nodes.py), M 8.6
+# assegnazione per (server, canale vocale).
 
 from __future__ import annotations
+
+import logging
 
 import discord
 from discord.ext import commands
 
-from core.music_fleet_logic import TOTAL_WORKERS, find_free_worker
+from core.database import db
+from core.music_settings_logic import load_music_settings
+from core.music_fleet_logic import TOTAL_WORKERS
 from core.repositories.music_session_repo import music_session_repo
 
 # Permessi minimi richiesti a un'istanza worker per unirsi e parlare
 # in un canale vocale — usati per generare il link d'invito quando
 # manca a un server (SPEC.md §9, cap istanze concorrenti).
 WORKER_INVITE_PERMISSIONS = discord.Permissions(view_channel=True, connect=True, speak=True)
+
+
+logger = logging.getLogger("iyokai.music")
+
+
+async def _resta_a_coda_finita(guild_id: int) -> bool:
+    """MUS-055: l'admin ha scelto che il bot resti nel canale a coda finita."""
+    try:
+        return (await load_music_settings(db, guild_id)).stay_when_queue_ends
+    except Exception:
+        logger.debug("Impostazioni musicali non leggibili (%s).", guild_id, exc_info=True)
+        return False
 
 
 class MusicFleet:
@@ -49,46 +65,45 @@ class MusicFleet:
         worker_index della tabella music_sessions."""
         return self._worker_bots[worker_index - 1]
 
-    async def get_worker_for_guild(self, guild_id: int) -> tuple[int, commands.Bot] | None:
+    async def get_worker_for_channel(
+        self, guild_id: int, channel_id: int
+    ) -> tuple[int, commands.Bot] | None:
         """
-        Sola lettura — la sessione già assegnata a questo server, se
-        esiste, SENZA assegnarne una nuova. Usata dai comandi che
-        agiscono su una riproduzione già in corso (skip, stop, queue,
-        ecc.): se nessun worker è assegnato, quei comandi devono
-        fallire pulitamente ("nessuna riproduzione in corso"), non
-        avviare per sbaglio una sessione nuova su un worker libero.
+        Sola lettura — la sessione già assegnata a questo canale vocale,
+        se esiste, SENZA assegnarne una nuova (M 8.6: un bot per canale,
+        non per server). Usata dai comandi che agiscono su una
+        riproduzione già in corso (skip, stop, queue, ecc.).
         """
-        worker_index = await music_session_repo.get_worker_for_guild(guild_id)
+        worker_index = await music_session_repo.get_worker_for_channel(guild_id, channel_id)
         if worker_index is None:
             return None
         return worker_index, self.get_worker_bot(worker_index)
 
-    async def get_or_assign_worker_for_guild(
-        self, guild_id: int
+    async def guild_has_session(self, guild_id: int) -> bool:
+        """Il server ha una sessione in QUALCHE canale (per il messaggio giusto)."""
+        return await music_session_repo.guild_has_session(guild_id)
+
+    async def get_or_assign_worker_for_channel(
+        self, guild_id: int, channel_id: int
     ) -> tuple[int, commands.Bot] | None:
         """
-        La sessione già assegnata a questo server, se esiste — così
-        un secondo /music play nello stesso server non salta a un worker
-        diverso a caso. Altrimenti il primo worker libero E presente
-        in questo server (escludere chi non è invitato qui PRIMA di
-        assegnarlo — non dopo — evita di occupare per sempre uno slot
-        in `music_sessions` per un worker che non potrà mai connettersi
-        in questo server, un bug reale trovato mentre si costruiva la
-        gestione del limite istanze), assegnato e registrato subito.
-        None se non c'è nessun worker sia libero sia presente qui in
-        questo momento.
+        La sessione già assegnata a questo canale, se esiste — così un
+        secondo /music play nello stesso canale non salta a un worker
+        diverso. Un ALTRO canale dello stesso server prende un altro
+        worker (due canali, due bot, due code). Altrimenti il primo
+        worker libero E presente in questo server (escludere chi non è
+        invitato qui PRIMA di assegnarlo — non dopo — evita di occupare
+        per sempre uno slot per un worker che non potrà mai connettersi
+        qui). None se non c'è nessun worker sia libero sia presente.
         """
-        worker_index = await music_session_repo.get_worker_for_guild(guild_id)
+        worker_index = await music_session_repo.get_worker_for_channel(guild_id, channel_id)
         if worker_index is not None:
             return worker_index, self.get_worker_bot(worker_index)
 
-        non_presenti = await self.get_missing_worker_indices(guild_id)
-        occupati = await music_session_repo.get_occupied_workers()
-        libero = find_free_worker(occupati | non_presenti | self._worker_non_pronti())
+        esclusi = await self.get_missing_worker_indices(guild_id) | self._worker_non_pronti()
+        libero = await music_session_repo.assign_free_worker(guild_id, channel_id, esclusi)
         if libero is None:
             return None
-
-        await music_session_repo.assign_worker(guild_id, libero)
         return libero, self.get_worker_bot(libero)
 
     async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
@@ -134,10 +149,10 @@ class MusicFleet:
             scopes=["bot"],
         )
 
-    async def release_guild(self, guild_id: int) -> None:
+    async def release_session(self, guild_id: int, channel_id: int) -> None:
         """Chiamata quando una sessione finisce (es. /music disconnect) —
-        libera il worker per il prossimo server che ne ha bisogno."""
-        await music_session_repo.release_guild(guild_id)
+        libera il worker per il prossimo canale che ne ha bisogno."""
+        await music_session_repo.release_session(guild_id, channel_id)
 
 
 async def handle_inactive_player(player, fleet: MusicFleet) -> None:
@@ -152,11 +167,34 @@ async def handle_inactive_player(player, fleet: MusicFleet) -> None:
     qualunque dei 6 client, dato che ognuno ha la propria
     connessione voce indipendente.
 
-    release_guild() su un server che non aveva un worker assegnato
+    release_session() su un canale senza worker assegnato
     (es. la radio del bot principale, mai registrata nella flotta)
     non fa nulla — DELETE su una riga inesistente, innocuo.
     """
+    if getattr(player, "is_radio", False):
+        # LIM-44: la radio 24/7 non lascia il canale per inattività.
+        return
     guild = player.guild
+    canale = player.channel
+    umani = [m for m in getattr(canale, "members", []) if not getattr(m, "bot", False)]
+    if guild is not None and umani and await _resta_a_coda_finita(guild.id):
+        return  # MUS-055: resta a coda finita, ma solo se in canale c'e' ancora qualcuno
     await player.disconnect()
-    if guild is not None:
-        await fleet.release_guild(guild.id)
+    if guild is not None and canale is not None:
+        await fleet.release_session(guild.id, canale.id)
+
+
+async def handle_worker_voice_update(fleet: MusicFleet, bot, member, before, after) -> None:
+    """
+    Listener `on_voice_state_update` dei bot worker: se il worker viene scollegato a
+    mano esce dal canale -> la sessione si libera; se viene spostato in un altro
+    canale la riga lo segue. Senza questo lo slot resterebbe occupato per sempre.
+    """
+    utente = getattr(bot, "user", None)
+    if utente is None or member.id != utente.id or before.channel is None:
+        return
+    guild_id = member.guild.id
+    if after.channel is None:
+        await fleet.release_session(guild_id, before.channel.id)
+    elif after.channel.id != before.channel.id:
+        await music_session_repo.move_session(guild_id, before.channel.id, after.channel.id)

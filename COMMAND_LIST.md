@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 19:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 22:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 256 comandi in 16 categorie.**
+**Totale: 262 comandi in 16 categorie.**
 
 ## Admin
 
@@ -25,6 +25,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 19:
 - **`/admin messaggi programmati`** — Mostra i messaggi programmati di questo server.
 - **`/admin messaggi sticky-set`** — Imposta lo sticky message di un canale.
 - **`/admin messaggi sticky-togli`** — Rimuove lo sticky message di un canale.
+- **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
+- **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin setup wizard`** — Configura passo-passo i moduli principali del bot.
 
@@ -208,6 +210,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 19:
 
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
+- **`/music history`** — Mostra gli ultimi brani già suonati.
+- **`/music join`** — Fa entrare il music bot nel tuo canale, senza suonare.
 - **`/music loop queue`** — Attiva/disattiva la ripetizione dell'intera coda.
 - **`/music loop track`** — Attiva/disattiva la ripetizione della traccia corrente.
 - **`/music nonstop off`** — Disattiva il loop continuo.
@@ -215,10 +219,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-12 19:
 - **`/music nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/music pause`** — Mette in pausa la riproduzione.
 - **`/music play`** — Riproduce una canzone o playlist.
+- **`/music previous`** — Torna al brano precedente.
 - **`/music queue`** — Mostra la coda di riproduzione.
 - **`/music resume`** — Riprende la riproduzione in pausa.
 - **`/music shuffle`** — Mescola l'ordine delle tracce in coda.
 - **`/music skip`** — Salta la traccia in riproduzione.
+- **`/music skipto`** — Salta direttamente al brano numero N della coda.
 - **`/music stop`** — Ferma la riproduzione e svuota la coda.
 - **`/music volume down`** — Diminuisce il volume.
 - **`/music volume set`** — Imposta il volume a un valore specifico (0-200).

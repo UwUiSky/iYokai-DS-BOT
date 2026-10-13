@@ -12,7 +12,7 @@ psutil>=5.9.0
 Pillow>=10.1.0
 
 # Music (client Lavalink)
-wavelink>=3.4.0
+wavelink>=3.5.1
 
 # Server web (callback OAuth2 del restore, webhook custom in ricezione
 # — core/restore_web_server.py, core/custom_webhook_server.py). Arriva

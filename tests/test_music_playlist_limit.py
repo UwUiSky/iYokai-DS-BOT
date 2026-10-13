@@ -60,6 +60,7 @@ class _FakePlayer:
     def __init__(self) -> None:
         self.queue = _FakeQueue()
         self.playing = True  # evita che /play tenti di avviare subito la prossima traccia
+        self.node = object()
 
 
 class _FakeResponse:
@@ -98,6 +99,10 @@ class _FakeRealMember(discord.Member):
     def voice(self):
         return self._voice_finta
 
+    @property
+    def id(self):
+        return 1
+
 
 class _FakeInteraction:
     def __init__(self, guild_id: int, user) -> None:
@@ -127,7 +132,7 @@ class _FakeFleet:
     def __init__(self, player) -> None:
         self._player = player
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         worker_guild = _FakeWorkerGuild(voice_client=self._player)
         worker_bot = _FakeWorkerBot(worker_guild)
         return 1, worker_bot
@@ -165,7 +170,7 @@ async def test_play_con_playlist_sopra_il_limite_la_taglia_a_750(monkeypatch):
 
         playlist_finta = _FakePlaylist(1000, name="Playlist Gigante")
         with patch.object(
-            cog, "_search_with_spotify_fallback", new=AsyncMock(return_value=playlist_finta)
+            cog, "_cerca", new=AsyncMock(return_value=(playlist_finta, object()))
         ):
             await cog.play.callback(
                 cog, interaction, query="https://open.spotify.com/playlist/xyz"
@@ -196,7 +201,7 @@ async def test_play_con_playlist_sotto_il_limite_non_la_taglia(monkeypatch):
 
         playlist_finta = _FakePlaylist(20, name="Playlist Piccola")
         with patch.object(
-            cog, "_search_with_spotify_fallback", new=AsyncMock(return_value=playlist_finta)
+            cog, "_cerca", new=AsyncMock(return_value=(playlist_finta, object()))
         ):
             await cog.play.callback(
                 cog, interaction, query="https://open.spotify.com/playlist/abc"
@@ -227,7 +232,7 @@ async def test_play_con_playlist_esattamente_al_limite_non_la_taglia(monkeypatch
 
         playlist_finta = _FakePlaylist(750, name="Playlist Esatta")
         with patch.object(
-            cog, "_search_with_spotify_fallback", new=AsyncMock(return_value=playlist_finta)
+            cog, "_cerca", new=AsyncMock(return_value=(playlist_finta, object()))
         ):
             await cog.play.callback(
                 cog, interaction, query="https://open.spotify.com/playlist/exact"

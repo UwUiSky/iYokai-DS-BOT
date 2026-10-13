@@ -12,8 +12,7 @@ config sono pronti. Non è un Cog con comandi slash — è un servizio
 bot-wide, non legato alla configurazione di un singolo server.
 """
 
-# DA FARE (issue #64, fase F2): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §8 (Musica).
+# F2 (#64): M 8.5 la radio 24/7 (player con `is_radio`) non viene scollegata.
 
 from __future__ import annotations
 
@@ -94,6 +93,8 @@ class MemoryGuard:
             channel = voice_client.channel
             if channel is None:
                 continue
+            if getattr(voice_client, "is_radio", False):
+                continue  # LIM-44 / M 8.5: la radio 24/7 resta anche in un canale vuoto
             umani = [m for m in channel.members if not m.bot]
             if should_disconnect_voice_client(len(umani)):
                 try:

@@ -71,6 +71,7 @@ class _FakeInteraction:
 class _FakePlayer:
     def __init__(self) -> None:
         self.disconnect_chiamato = False
+        self.channel = type("Canale", (), {"id": 42})()
 
     async def disconnect(self) -> None:
         self.disconnect_chiamato = True
@@ -93,11 +94,14 @@ class _FakeFleetSenzaSessione:
     """Nessuna sessione esiste mai — simula un server che non ha
     ancora fatto /play."""
 
-    async def get_worker_for_guild(self, guild_id: int):
+    async def get_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return None
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return None
+
+    async def guild_has_session(self, guild_id: int) -> bool:
+        return False
 
 
 class _FakeFleetTuttiOccupati:
@@ -105,7 +109,7 @@ class _FakeFleetTuttiOccupati:
     altrove — nessuna mancante da invitare, quindi il messaggio deve
     guidare verso l'estensione del limite (ticket), non un invito."""
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return None
 
     async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
@@ -117,12 +121,12 @@ class _FakeFleetWorkerNonInvitato:
     non risulta nel server (get_guild restituisce None) — es. non è
     mai stato invitato, o è stato espulso."""
 
-    async def get_worker_for_guild(self, guild_id: int):
+    async def get_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         worker_bot = _FakeWorkerBot(worker_guild=None)
         return 1, worker_bot
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
-        return await self.get_worker_for_guild(guild_id)
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
+        return await self.get_worker_for_channel(guild_id, channel_id)
 
 
 class _FakeFleetIstanzeMancanti:
@@ -130,7 +134,7 @@ class _FakeFleetIstanzeMancanti:
     invitato tutte le 5 istanze (2 mancanti) — scenario diverso dalla
     saturazione globale sopra: qui la soluzione è invitarne altre."""
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return None
 
     async def get_missing_worker_indices(self, guild_id: int) -> set[int]:
@@ -143,18 +147,18 @@ class _FakeFleetIstanzeMancanti:
 class _FakeFleetConSessione:
     def __init__(self, player) -> None:
         self._player = player
-        self.release_guild_chiamato_per: list[int] = []
+        self.release_session_chiamato_per: list[int] = []
 
-    async def get_worker_for_guild(self, guild_id: int):
+    async def get_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         worker_guild = _FakeWorkerGuild(voice_client=self._player)
         worker_bot = _FakeWorkerBot(worker_guild)
         return 1, worker_bot
 
-    async def get_or_assign_worker_for_guild(self, guild_id: int):
-        return await self.get_worker_for_guild(guild_id)
+    async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
+        return await self.get_worker_for_channel(guild_id, channel_id)
 
-    async def release_guild(self, guild_id: int) -> None:
-        self.release_guild_chiamato_per.append(guild_id)
+    async def release_session(self, guild_id: int, channel_id: int = 0) -> None:
+        self.release_session_chiamato_per.append(guild_id)
 
 
 class _FakeBot:
@@ -238,7 +242,7 @@ async def test_disconnect_rilascia_il_worker_nella_flotta(monkeypatch):
         await cog.disconnect.callback(cog, interaction)
 
         assert player_finto.disconnect_chiamato is True
-        assert fleet.release_guild_chiamato_per == [guild_id]
+        assert fleet.release_session_chiamato_per == [guild_id]
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", guild_id)
         await database.close()

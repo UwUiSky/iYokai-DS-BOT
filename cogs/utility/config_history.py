@@ -59,6 +59,10 @@ SETTINGS_SCHEMA = {
     "backup_restore_mode": "modalita_restore",
     "backup_auto_invite_on_join": "bool",
     "logging_soundboard_watermark": "data_iso",
+    "music_max_volume": "int_0_200",
+    "music_max_track_minutes": "int_0_1440",
+    "music_stay_when_queue_ends": "bool",
+    "music_allowed_voice_channel_id": "id",
 }
 
 
@@ -90,6 +94,13 @@ def _e_una_data_iso(valore) -> bool:
     return True
 
 
+def _intero_tra(minimo: int, massimo: int):
+    # bool è sottoclasse di int: True non è un numero valido.
+    return lambda valore: (
+        isinstance(valore, int) and not isinstance(valore, bool) and minimo <= valore <= massimo
+    )
+
+
 # Per ogni tipo di SETTINGS_SCHEMA: il controllo e come descriverlo.
 CONTROLLI_PER_TIPO = {
     "id": (_e_un_id, "un ID numerico"),
@@ -100,6 +111,8 @@ CONTROLLI_PER_TIPO = {
         "una modalità di restore valida",
     ),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
+    "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
+    "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
 }
 
 

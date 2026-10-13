@@ -1,20 +1,19 @@
 """
 tests/test_music_spotify_fallback.py
 ========================================
-Test di MusicCog._search_with_spotify_fallback (SPEC.md §9.5) — la
-query Spotify che non risolve sui nodi pubblici deve ritentare
-pinnata sul nodo locale/self-hostato (LOCAL_NODE_IDENTIFIER), MAI
-per query non-Spotify o quando il nodo locale non è configurato.
-Nessuna connessione vera a Lavalink qui: wavelink.Playable.search e
-wavelink.Pool.get_node sono mockati.
+Test di MusicCog._cerca (SPEC.md §9.5, M 8.3, BUG-10) — la ricerca gira
+su un nodo SCELTO, mai su "il meno carico del Pool"; un link `spotify:`
+non diventa una ricerca su YouTube Music; la query Spotify senza
+risultati ritenta UNA volta sul nodo locale del bot, mai per le altre.
+Nessuna connessione vera a Lavalink: wavelink.Playable.search e
+wavelink.Pool.fetch_tracks sono mockati.
 """
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import wavelink
 
-from cogs.music.player import LOCAL_NODE_IDENTIFIER, MusicCog
+from cogs.music.player import MusicCog
 
 
 @pytest.fixture
@@ -23,49 +22,73 @@ def cog():
 
 
 @pytest.mark.asyncio
-async def test_query_non_spotify_non_tenta_alcun_fallback(cog):
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=[])) as ricerca:
-        risultato = await cog._search_with_spotify_fallback("una canzone qualsiasi")
+async def test_ricerca_normale_gira_sul_nodo_scelto(cog):
+    nodo = object()
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=["t"])) as ricerca:
+        risultato, usato = await cog._cerca("una canzone qualsiasi", nodo)
 
-    assert risultato == []
-    ricerca.assert_called_once_with("una canzone qualsiasi")
+    assert risultato == ["t"] and usato is nodo
+    ricerca.assert_called_once_with("ytmsearch:una canzone qualsiasi", node=nodo)
 
 
 @pytest.mark.asyncio
-async def test_query_spotify_con_risultato_sui_nodi_pubblici_non_tenta_il_fallback(cog):
-    risultato_atteso = ["traccia_finta"]
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=risultato_atteso)) as ricerca:
-        risultato = await cog._search_with_spotify_fallback("spotify:track:abc123")
+async def test_query_non_spotify_senza_risultati_non_tenta_il_nodo_locale(cog):
+    nodo, locale = object(), object()
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=[])) as ricerca:
+        risultato, usato = await cog._cerca("niente", nodo, locale)
 
-    assert risultato == risultato_atteso
-    ricerca.assert_called_once_with("spotify:track:abc123")
+    assert risultato == [] and usato is nodo
+    ricerca.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_uri_spotify_non_diventa_ricerca_youtube_music(cog):
+    nodo = object()
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=["t"])) as grezzo, patch(
+        "wavelink.Playable.search", new=AsyncMock()
+    ) as ricerca:
+        risultato, _ = await cog._cerca("spotify:track:abc123", nodo)
+
+    assert risultato == ["t"]
+    grezzo.assert_called_once_with("spotify:track:abc123", node=nodo)
+    ricerca.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_query_spotify_senza_risultati_ritenta_sul_nodo_locale(cog):
-    nodo_locale_finto = object()
+    nodo, locale = object(), object()
 
-    async def _search_finta(query, node=None):
-        if node is None:
-            return []  # nodi pubblici: niente
-        assert node is nodo_locale_finto
-        return ["traccia_dal_nodo_locale"]
+    async def _fetch(query, node=None):
+        return [] if node is nodo else ["dal_nodo_locale"]
 
-    with patch("wavelink.Playable.search", new=AsyncMock(side_effect=_search_finta)):
-        with patch("wavelink.Pool.get_node", return_value=nodo_locale_finto) as get_node:
-            risultato = await cog._search_with_spotify_fallback("spotify:track:abc123")
+    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(side_effect=_fetch)):
+        risultato, usato = await cog._cerca("spotify:track:abc123", nodo, locale)
 
-    get_node.assert_called_once_with(LOCAL_NODE_IDENTIFIER)
-    assert risultato == ["traccia_dal_nodo_locale"]
+    assert risultato == ["dal_nodo_locale"]
+    assert usato is locale  # il player deve nascere dove c'è il plugin
 
 
 @pytest.mark.asyncio
-async def test_query_spotify_senza_nodo_locale_configurato_restituisce_vuoto(cog):
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=[])):
-        with patch(
-            "wavelink.Pool.get_node",
-            side_effect=wavelink.exceptions.InvalidNodeException("nessun nodo"),
-        ):
-            risultato = await cog._search_with_spotify_fallback("spotify:track:abc123")
+async def test_query_spotify_senza_nodo_locale_restituisce_vuoto(cog):
+    nodo = object()
+    # L'URL passa dal controllo SSRF (DNS): nel test è sempre "pubblico".
+    with patch("cogs.music.player.url_e_sicuro", new=AsyncMock(return_value=True)), patch(
+        "wavelink.Playable.search", new=AsyncMock(return_value=[])
+    ):
+        risultato, usato = await cog._cerca("https://open.spotify.com/track/x", nodo, None)
 
-    assert risultato == []
+    assert risultato == [] and usato is nodo
+
+
+@pytest.mark.asyncio
+async def test_una_query_local_scritta_da_un_utente_non_va_mai_al_filesystem(cog):
+    """Solo la radio legge i percorsi locali: una ricerca utente `local:` è rifiutata."""
+    nodo = object()
+    with patch("wavelink.Playable.search", new=AsyncMock()) as ricerca, patch(
+        "wavelink.Pool.fetch_tracks", new=AsyncMock()
+    ) as grezzo:
+        risultato, _ = await cog._cerca("local:/etc/passwd", nodo)
+
+    assert not risultato  # rifiutata: nessuna chiamata a Lavalink
+    ricerca.assert_not_called()
+    grezzo.assert_not_called()

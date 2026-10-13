@@ -338,7 +338,6 @@ KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     "moduli alert webhook:message_template",
     "moduli alert youtube-live:label",
     "moduli alert youtube-live:youtube_channel_id",
-    "music play:query",
     "owner radio add-local:filename",
     "owner radio add-local:label",
     "owner radio add-track:label",

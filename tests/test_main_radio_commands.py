@@ -108,6 +108,27 @@ class _FakeVoiceChannel:
         return self._player
 
 
+class _GestoreNodiFinto:
+    """Un gestore con un nodo pubblico e uno locale, sempre collegati."""
+
+    def __init__(self) -> None:
+        self.nodo_pubblico = object()
+        self.nodo_locale = object()
+
+    def node_for(self, chiave):
+        return self.nodo_pubblico
+
+    def locale_di(self, chiave):
+        return self.nodo_locale
+
+
+class _BotConNodi:
+    user = None
+
+    def __init__(self) -> None:
+        self.music_nodes = _GestoreNodiFinto()
+
+
 @pytest.fixture
 async def database_e_repo():
     database = Database()
@@ -128,7 +149,7 @@ async def test_add_track_risolve_e_salva(database_e_repo, monkeypatch):
 
     cog = MusicCog(bot=None)
 
-    async def _risolvi(identifier):
+    async def _risolvi(identifier, nodo=None):
         return _FakeTrack(title="Titolo Risolto", length=200_000)
 
     cog._resolve_radio_track = _risolvi
@@ -151,7 +172,7 @@ async def test_add_track_nessun_risultato_non_salva(database_e_repo, monkeypatch
 
     cog = MusicCog(bot=None)
 
-    async def _nessun_risultato(identifier):
+    async def _nessun_risultato(identifier, nodo=None):
         return None
 
     cog._resolve_radio_track = _nessun_risultato
@@ -288,9 +309,9 @@ async def test_start_primo_avvio_in_assoluto_imposta_lo_stato_da_zero(database_e
     await repo.add_track("traccia-a", 180_000, "Traccia A", 1)
     await repo.add_track("traccia-b", 200_000, "Traccia B", 1)
 
-    cog = MusicCog(bot=None)
+    cog = MusicCog(bot=_BotConNodi())
 
-    async def _risolvi(identifier):
+    async def _risolvi(identifier, nodo=None):
         return _FakeTrack(title=identifier, length=180_000)
 
     cog._resolve_radio_track = _risolvi
@@ -329,9 +350,9 @@ async def test_start_con_stato_esistente_calcola_la_posizione_reale(database_e_r
     riferimento = datetime.now(timezone.utc) - timedelta(seconds=90)
     await repo.set_state(track_index=0, track_started_at=riferimento, is_active=True)
 
-    cog = MusicCog(bot=None)
+    cog = MusicCog(bot=_BotConNodi())
 
-    async def _risolvi(identifier):
+    async def _risolvi(identifier, nodo=None):
         return _FakeTrack(title=identifier, length=180_000)
 
     cog._resolve_radio_track = _risolvi
