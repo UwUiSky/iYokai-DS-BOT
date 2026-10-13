@@ -75,3 +75,19 @@ def test_chiave_di_lunghezza_sbagliata_solleva_not_configured():
 def test_chiave_non_base64_solleva_not_configured():
     with pytest.raises(OAuthEncryptionNotConfigured):
         encrypt_token("qualcosa", "questo non è base64 valido!!!")
+
+
+def test_formato_vecchio_cifrato_con_la_seconda_chiave_si_legge():
+    import os
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    prima, seconda = generate_key(), generate_key()
+    nonce = os.urandom(12)
+    vecchio = base64.urlsafe_b64encode(
+        nonce + AESGCM(base64.urlsafe_b64decode(seconda)).encrypt(nonce, b"antico", None)
+    ).decode()
+
+    assert decrypt_token(vecchio, f"{prima},{seconda}", aad=b"100:1") == "antico"
+    with pytest.raises(InvalidTag):
+        decrypt_token(vecchio, prima, aad=b"100:1")

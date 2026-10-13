@@ -325,3 +325,86 @@ async def test_promuovi_backup_promuove_senza_accodare_copie_orfane(monkeypatch)
         await database.pool.execute("DELETE FROM backup_jobs")
         await database.pool.execute("DELETE FROM backup_pair_history WHERE old_main_guild_id = 100")
         await database.close()
+
+
+# ---- 13/10: il cog passa davvero utente_id e puo_collegare a collega_backup ----
+
+class _MembroMain:
+    def __init__(self, uid, admin):
+        self.id = uid
+        self.guild_permissions = type("P", (), {"administrator": admin})()
+
+
+class _MainFinto:
+    def __init__(self, owner_id=0, membri=None):
+        self.owner_id = owner_id
+        self._membri = membri or {}
+
+    def get_member(self, uid):
+        return self._membri.get(uid)
+
+
+class _BotMain(_FakeBot):
+    def __init__(self, creator, main):
+        super().__init__(creator)
+        self._main = main
+
+    def get_guild(self, guild_id):
+        return self._main
+
+
+async def _collega_con(monkeypatch, creato_da, main_finto):
+    """Esegue /admin backup collega dal server 200 (utente 42, admin lì). Restituisce (messaggio, coppia)."""
+    from core.backup_link_logic import crea_codice_collegamento
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        import cogs.utility.backup as backup_module
+        from core.repositories.backup_repo import BackupRepository
+
+        repo = BackupRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(backup_module, "backup_repo", repo)
+        cog = BackupCog(bot=_BotMain(_FakeCreator([200]), main_finto))
+        codice, _ = await crea_codice_collegamento(repo, 100, creato_da=creato_da)
+        interaction = _FakeInteraction(guild_id=200)
+
+        await cog.collega.callback(cog, interaction, codice)
+
+        return interaction.response.sent_messages[0], await repo.get_pair(100)
+    finally:
+        await database.pool.execute("DELETE FROM backup_link_codes WHERE main_guild_id = 100")
+        await database.pool.execute("DELETE FROM backup_pairs")
+        await database.pool.execute("DELETE FROM backup_jobs")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_collega_con_il_codice_di_un_altro_utente_e_rifiutato(monkeypatch):
+    messaggio, coppia = await _collega_con(monkeypatch, 7, _MainFinto(membri={42: _MembroMain(42, True)}))
+    assert "solo chi lo ha creato" in messaggio
+    assert coppia is None
+
+
+@pytest.mark.asyncio
+async def test_collega_da_chi_non_e_admin_del_main_e_rifiutato(monkeypatch):
+    messaggio, coppia = await _collega_con(monkeypatch, 42, _MainFinto(membri={42: _MembroMain(42, False)}))
+    assert "amministratore" in messaggio
+    assert coppia is None
+
+
+@pytest.mark.asyncio
+async def test_collega_da_chi_non_e_nel_main_e_rifiutato(monkeypatch):
+    messaggio, coppia = await _collega_con(monkeypatch, 42, _MainFinto())
+    assert "amministratore" in messaggio
+    assert coppia is None
+
+
+@pytest.mark.asyncio
+async def test_collega_dall_owner_del_main_senza_admin_e_ammesso(monkeypatch):
+    messaggio, coppia = await _collega_con(
+        monkeypatch, 42, _MainFinto(owner_id=42, membri={42: _MembroMain(42, False)})
+    )
+    assert "collegato" in messaggio
+    assert coppia is not None and coppia.backup_guild_id == 200
