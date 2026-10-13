@@ -1813,7 +1813,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
 - `[ ]` 23.10 Blocco dei link di phishing (NF-31)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
-- `[ ]` 23.12 Ticket via messaggio privato (NF-33)
+- `[x]` 23.12 Ticket via messaggio privato (NF-33)
+  → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/gestione ticket dm`), risposta anche anonima
+  (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/gestione ticket dm-blocca`),
+  menu se l'utente è in più server (migrazione 0101). Il testo dei messaggi non è salvato nel database.
 - `[ ]` 23.13 Moduli e candidature (NF-34)
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
 - `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)

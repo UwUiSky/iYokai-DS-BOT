@@ -5,8 +5,8 @@
 
 ## In corso
 - Giro r4-tkt (per FILE): ordine correzioni → NF-13 → NF-33 → #139 non-AI → cataloghi. Previsione: 4 gruppi.
-- Fatto: correzioni (già tutte nel codice), NF-13 (gruppo 1). Prossimo: NF-33 ModMail
-  (`cogs/tickets/modmail.py`, `core/modmail_logic.py`, `repositories/modmail_repo.py`, migr. 0101).
+- Fatto: correzioni, NF-13 (c8a533e), NF-33 (gruppo 2). Prossimo: #139 parte non-AI
+  (risposte standard + sollecito: logica/dati in `core/ticket_standard_logic.py` + repo, migr. 0102; aggancio in tickets.py).
 
 ## Fatto
 - Giri precedenti (F1, F7, router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145): tutti su main.
@@ -16,6 +16,8 @@
   `/gestione ticket pannello-crea|rimuovi|lista|pubblica`, `modulo-aggiungi|rimuovi|mostra`, `chiusura-auto`, `voto`;
   bottoni DynamicItem `tkt:pan:<id>` e `tkt:voto:<id>:<n>`; chiusura per inattività (scheduler `ticket_autoclose`)
   e per uscita utente; test_ticket_form.py, test_ticket_autoclose.py.
+- NF-33 (#104): migr. 0101 (modmail_threads, modmail_blocks), `cogs/tickets/modmail.py`, `/gestione ticket dm|dm-blocca`,
+  `/ticket rispondi|dm-chiudi`; un solo thread aperto per utente (indice unico globale); test_modmail.py.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
