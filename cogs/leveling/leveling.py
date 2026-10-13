@@ -51,8 +51,16 @@ from core.repositories.shop_repo import EsitoAcquisto, shop_repo
 from core.rank_card_image import COLORE_DI_BASE, TEMA_DI_BASE, DatiRankCard, render_rank_card
 from core.safe_image import run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
-from core.giveaway_logic import is_eligible, pick_winners
-from core.repositories.giveaway_repo import giveaway_repo
+from core.giveaway_logic import (
+    MAX_INGRESSI_EXTRA,
+    MAX_MESSAGGI_RICHIESTI,
+    MAX_PREMIO_GIVEAWAY,
+    biglietti_di,
+    descrizione_giveaway,
+    requisiti_mancanti,
+    titolo_giveaway,
+)
+from core.repositories.giveaway_repo import ModelloPieno, giveaway_repo
 from core.premium_pricing_logic import TIER_MONTHS_REQUIRED
 from core.premium_purchase_service import PurchaseOutcome, purchase_premium_tier
 from core.repositories.guild_chest_repo import (
@@ -138,7 +146,6 @@ RUOLI_UFFICIALI = (ROLE_OWNER, ROLE_CO_OWNER, ROLE_ADMIN)
 MAX_NOME_CLAN = 64
 MAX_NOME_OGGETTO = 80
 MAX_DESCRIZIONE_OGGETTO = 200
-MAX_PREMIO_GIVEAWAY = 200
 MAX_NOME_CANALE = 100
 LIMITE_TITOLO_EMBED = 256
 LIMITE_RIGA_NEGOZIO = 380
@@ -384,6 +391,13 @@ _SCELTE_AZIONE_MONETE = [
     app_commands.Choice(name="Togli coin", value="togli"),
     app_commands.Choice(name="Imposta il saldo", value="imposta"),
     app_commands.Choice(name="Azzera il saldo", value="azzera"),
+]
+
+_SCELTE_AZIONE_MODELLO = [
+    app_commands.Choice(name="Salva (o aggiorna)", value="salva"),
+    app_commands.Choice(name="Elenca", value="elenco"),
+    app_commands.Choice(name="Elimina", value="elimina"),
+    app_commands.Choice(name="Avvia un giveaway dal modello", value="avvia"),
 ]
 
 _SCELTE_ANNUNCIO = [
@@ -697,6 +711,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_LEVELING):
             return
+
+        # NF-28: i messaggi contano per i giveaway che chiedono un minimo.
+        try:
+            await giveaway_repo.count_message(message.guild.id, message.author.id)
+        except Exception:
+            logger.warning("Messaggi dei giveaway non contati nel server %s.", message.guild.id)
 
         config = await self._config(message.guild.id)
         id_ruoli = [r.id for r in getattr(message.author, "roles", [])]
@@ -2633,24 +2653,29 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
             totali = await leveling_repo.get_totals(giveaway.guild_id, interaction.user.id)
             ruoli_utente = {r.id for r in interaction.user.roles}
-            if not is_eligible(
-                totali.level, ruoli_utente, giveaway.min_level, giveaway.required_role_id
-            ):
-                requisiti = []
-                if giveaway.min_level > 0:
-                    requisiti.append(f"livello {giveaway.min_level}")
-                if giveaway.required_role_id is not None:
-                    requisiti.append(f"il ruolo <@&{giveaway.required_role_id}>")
+            messaggi = (
+                await giveaway_repo.message_count(self.giveaway_id, interaction.user.id)
+                if giveaway.min_messages > 0
+                else 0
+            )
+            salto = {giveaway.bypass_role_id} if giveaway.bypass_role_id is not None else set()
+            mancanti = requisiti_mancanti(
+                totali.level, ruoli_utente, giveaway.min_level, giveaway.required_role_id,
+                messaggi, giveaway.min_messages, salto,
+            )
+            if mancanti:
                 await interaction.response.send_message(
-                    f"Non soddisfi i requisiti per partecipare (richiesto: {', '.join(requisiti)}).",
+                    f"Non soddisfi i requisiti per partecipare (richiesto: {', '.join(mancanti)}).",
                     ephemeral=True,
                 )
                 return
 
-            nuova = await giveaway_repo.add_entry(self.giveaway_id, interaction.user.id)
+            biglietti = biglietti_di(ruoli_utente, giveaway.bonus_role_id, giveaway.bonus_entries)
+            nuova = await giveaway_repo.add_entry(self.giveaway_id, interaction.user.id, biglietti)
             if nuova:
+                extra = f" Hai {biglietti} ingressi." if biglietti > 1 else ""
                 await interaction.response.send_message(
-                    "✅ Partecipazione registrata, in bocca al lupo!", ephemeral=True
+                    f"✅ Partecipazione registrata, in bocca al lupo!{extra}", ephemeral=True
                 )
             else:
                 await interaction.response.send_message(
@@ -2890,6 +2915,59 @@ class LevelingCog(CogConGruppi, commands.Cog):
             testo = f"✅ XP ×{fattore:g} su {bersaglio.mention}."
         await interaction.response.send_message(testo, ephemeral=True)
 
+    async def _avvia_giveaway(
+        self,
+        interaction: discord.Interaction,
+        *,
+        prize: str,
+        durata_minuti: int,
+        winners: int,
+        min_level: int,
+        required_role_id: int | None,
+        min_messaggi: int,
+        bypass_role_id: int | None,
+        bonus_role_id: int | None,
+        ingressi_extra: int,
+        inizia_tra: int | None,
+    ) -> None:
+        """Crea il giveaway (subito o programmato) e risponde. Condiviso da /giveaway e dai modelli."""
+        guild = interaction.guild
+        if ingressi_extra > 0 and bonus_role_id is None:
+            await interaction.response.send_message(
+                "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
+            )
+            return
+        adesso = datetime.now(timezone.utc)
+        programmato = inizia_tra is not None
+        inizio = adesso + timedelta(minutes=inizia_tra) if programmato else adesso
+        scadenza = inizio + timedelta(minutes=durata_minuti)
+
+        giveaway_id = await giveaway_repo.create_giveaway(
+            guild.id, interaction.channel.id, prize, winners, min_level,
+            required_role_id, scadenza, interaction.user.id,
+            min_messages=min_messaggi, bypass_role_id=bypass_role_id,
+            bonus_role_id=bonus_role_id, bonus_entries=ingressi_extra,
+            starts_at=inizio if programmato else None,
+            duration_seconds=durata_minuti * 60 if programmato else None,
+        )
+        if programmato:
+            await interaction.response.send_message(
+                f"🗓️ Giveaway programmato: parte <t:{int(inizio.timestamp())}:R> in questo canale "
+                f"e dura {durata_minuti} minuti.",
+                ephemeral=True,
+            )
+            return
+
+        embed = discord.Embed(
+            title=titolo_giveaway(prize),
+            description=descrizione_giveaway(await giveaway_repo.get_giveaway(giveaway_id)),
+            color=discord.Color.blurple(),
+        )
+        view = self.GiveawayEnterView(giveaway_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        messaggio = await interaction.original_response()
+        await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
+
     @comando_di_gruppo(
         "gestione",
         nome="giveaway",
@@ -2902,6 +2980,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         winners="Numero di vincitori (default 1)",
         min_level="Livello minimo richiesto (facoltativo)",
         required_role="Ruolo richiesto per partecipare (facoltativo)",
+        min_messaggi="Messaggi da scrivere dopo la partenza del giveaway (facoltativo)",
+        ruolo_bypass="Chi ha questo ruolo salta i requisiti (facoltativo)",
+        ruolo_extra="Ruolo che ha più ingressi (facoltativo)",
+        ingressi_extra="Ingressi in più per chi ha il ruolo extra",
+        inizia_tra="Programma la partenza tra tanti minuti (facoltativo)",
     )
     async def giveaway(
         self,
@@ -2911,43 +2994,137 @@ class LevelingCog(CogConGruppi, commands.Cog):
         winners: app_commands.Range[int, 1, 50] = 1,
         min_level: app_commands.Range[int, 0, 1000] = 0,
         required_role: discord.Role | None = None,
+        min_messaggi: app_commands.Range[int, 0, MAX_MESSAGGI_RICHIESTI] = 0,
+        ruolo_bypass: discord.Role | None = None,
+        ruolo_extra: discord.Role | None = None,
+        ingressi_extra: app_commands.Range[int, 0, MAX_INGRESSI_EXTRA] = 0,
+        inizia_tra: app_commands.Range[int, 1, 43200] | None = None,
     ) -> None:
-        guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
-        if guild is None or interaction.channel is None:
+        if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
             )
             return
-
-        scadenza = datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
-
-        giveaway_id = await giveaway_repo.create_giveaway(
-            guild.id, interaction.channel.id, prize, winners, min_level,
-            required_role.id if required_role else None, scadenza, interaction.user.id,
+        await self._avvia_giveaway(
+            interaction, prize=prize, durata_minuti=duration_minutes, winners=winners,
+            min_level=min_level, required_role_id=required_role.id if required_role else None,
+            min_messaggi=min_messaggi, bypass_role_id=ruolo_bypass.id if ruolo_bypass else None,
+            bonus_role_id=ruolo_extra.id if ruolo_extra else None,
+            ingressi_extra=ingressi_extra, inizia_tra=inizia_tra,
         )
 
-        requisiti = []
-        if min_level > 0:
-            requisiti.append(f"livello **{min_level}**")
-        if required_role is not None:
-            requisiti.append(f"ruolo {required_role.mention}")
-        riga_requisiti = f"\nRequisiti: {', '.join(requisiti)}" if requisiti else ""
+    @comando_di_gruppo(
+        "gestione",
+        nome="giveaway-modello",
+        descrizione="Modelli di giveaway: salva, elenca, elimina o avvia.",
+        sottogruppo=_SG_ECONOMIA,
+    )
+    @app_commands.describe(
+        azione="Cosa fare",
+        nome="Nome del modello (serve per salva, elimina e avvia)",
+        premio="Cosa si vince (per salva)",
+        vincitori="Numero di vincitori (per salva)",
+        durata_minuti="Durata in minuti (per salva)",
+        min_livello="Livello minimo (per salva)",
+        ruolo_richiesto="Ruolo richiesto (per salva)",
+        min_messaggi="Messaggi richiesti dopo la partenza (per salva)",
+        ruolo_bypass="Ruolo che salta i requisiti (per salva)",
+        ruolo_extra="Ruolo con più ingressi (per salva)",
+        ingressi_extra="Ingressi in più per il ruolo extra (per salva)",
+        inizia_tra="Programma la partenza tra tanti minuti (per avvia)",
+    )
+    @app_commands.choices(azione=_SCELTE_AZIONE_MODELLO)
+    async def giveaway_modello(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        nome: app_commands.Range[str, 1, 32] | None = None,
+        premio: app_commands.Range[str, 1, MAX_PREMIO_GIVEAWAY] | None = None,
+        vincitori: app_commands.Range[int, 1, 50] | None = None,
+        durata_minuti: app_commands.Range[int, 1, 43200] | None = None,
+        min_livello: app_commands.Range[int, 0, 1000] | None = None,
+        ruolo_richiesto: discord.Role | None = None,
+        min_messaggi: app_commands.Range[int, 0, MAX_MESSAGGI_RICHIESTI] | None = None,
+        ruolo_bypass: discord.Role | None = None,
+        ruolo_extra: discord.Role | None = None,
+        ingressi_extra: app_commands.Range[int, 0, MAX_INGRESSI_EXTRA] | None = None,
+        inizia_tra: app_commands.Range[int, 1, 43200] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if interaction.guild is None or interaction.channel is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        guild_id = interaction.guild.id
+        cosa = azione.value
 
-        embed = discord.Embed(
-            title=taglia(f"🎉 Giveaway: {prize}", LIMITE_TITOLO_EMBED),
-            description=(
-                f"Vincitori: **{winners}**\n"
-                f"Termina: <t:{int(scadenza.timestamp())}:R>{riga_requisiti}"
-            ),
-            color=discord.Color.blurple(),
+        if cosa == "elenco":
+            modelli = await giveaway_repo.list_templates(guild_id)
+            if not modelli:
+                await interaction.response.send_message("Nessun modello salvato.", ephemeral=True)
+                return
+            righe = [
+                taglia(f"• **{m.name}** — {m.prize}, {m.winners_count} vincitori, {m.duration_minutes} min", 120)
+                for m in modelli
+            ]
+            await interaction.response.send_message("\n".join(righe), ephemeral=True)
+            return
+
+        if nome is None:
+            await interaction.response.send_message("Indica il nome del modello.", ephemeral=True)
+            return
+
+        if cosa == "elimina":
+            tolto = await giveaway_repo.delete_template(guild_id, nome)
+            await interaction.response.send_message(
+                "✅ Modello eliminato." if tolto else "Questo modello non esiste.", ephemeral=True
+            )
+            return
+
+        if cosa == "salva":
+            if premio is None or durata_minuti is None:
+                await interaction.response.send_message(
+                    "Per salvare servono almeno il premio e la durata.", ephemeral=True
+                )
+                return
+            if ingressi_extra and ruolo_extra is None:
+                await interaction.response.send_message(
+                    "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
+                )
+                return
+            try:
+                await giveaway_repo.save_template(
+                    guild_id, nome, prize=premio, winners_count=vincitori or 1,
+                    duration_minutes=durata_minuti, min_level=min_livello or 0,
+                    required_role_id=ruolo_richiesto.id if ruolo_richiesto else None,
+                    min_messages=min_messaggi or 0,
+                    bypass_role_id=ruolo_bypass.id if ruolo_bypass else None,
+                    bonus_role_id=ruolo_extra.id if ruolo_extra else None,
+                    bonus_entries=ingressi_extra or 0,
+                )
+            except ModelloPieno:
+                await interaction.response.send_message(
+                    "Ci sono già 25 modelli: eliminane uno prima.", ephemeral=True
+                )
+                return
+            await interaction.response.send_message(f"✅ Modello **{nome}** salvato.", ephemeral=True)
+            return
+
+        modello = await giveaway_repo.get_template(guild_id, nome)  # cosa == "avvia"
+        if modello is None:
+            await interaction.response.send_message("Questo modello non esiste.", ephemeral=True)
+            return
+        await self._avvia_giveaway(
+            interaction, prize=modello.prize, durata_minuti=modello.duration_minutes,
+            winners=modello.winners_count, min_level=modello.min_level,
+            required_role_id=modello.required_role_id, min_messaggi=modello.min_messages,
+            bypass_role_id=modello.bypass_role_id, bonus_role_id=modello.bonus_role_id,
+            ingressi_extra=modello.bonus_entries, inizia_tra=inizia_tra,
         )
-
-        view = self.GiveawayEnterView(giveaway_id)
-        await interaction.response.send_message(embed=embed, view=view)
-        messaggio = await interaction.original_response()
-        await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(

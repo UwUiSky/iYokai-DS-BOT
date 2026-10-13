@@ -6,14 +6,16 @@
 ## In corso
 - Previsione giro: 5 gruppi (A importi+tetto, B staff XP/monete, C NF-28 giveaway, D NF-40, E voci catalogo). Ordine fisso.
 - A (NF-15 resto + docstring #65 + LIV-005) e B (`/gestione economia xp|monete`, LIV-064..067/041, ECO-009/011): fatti, smoke verde.
-- Prossimo: C NF-28 giveaway (`core/giveaway_logic.py`, `giveaway_repo`, worker; migr. 0091): modelli, ingressi extra per ruolo,
-  min messaggi (conteggio dall'inizio del giveaway, no NF-25), ruolo che salta i requisiti, programmati (starts_at, worker posta). Poi D NF-40.
+- C NF-28 giveaway fatto (0091): da committare dopo smoke. Prossimo: D NF-40 (`core/coin_games_logic.py`, `cogs/fun/coin_games.py`,
+  `cogs/leveling/profiles.py`, `profile_repo`; migr. 0092): `/fun gioca`, `/fun misura`, gioco del conteggio, `/level profilo`.
+  Poi E voci catalogo (ECO-069 conferma acquisto, ECO-062 scorte...).
 
 ## Fatto
 - F1 livelli+economia+clan unito (`9db9e8a`); giro eco: 9.18, NF-15 (0031), NF-12 (0032) in main.
-- Giro r4: A+B commit `liv1` (0090, test importi_e_tetto + gestione_staff).
+- Giro r4: A+B `1ecd983` (0090); C giveaway avanzati (0091, `tests/test_giveaway_avanzati.py`).
 
 ## Cose imparate
+- Giveaway: `get_entries` tolto (test_repository_callers); si usa `get_weighted_entries`. `data_registry` vuole ogni tabella nuova (giveaway_message_counts, giveaway_templates).
 - Modifiche staff (xp/monete) non contano come attività del mese: `modifica_xp/monete` scrivono solo `leveling_totals`.
 - `_grant_level_rewards(..., togli_superiori=True)` toglie anche i ruoli dei livelli non più raggiunti.
 - Ordine dei blocchi: membro -> leveling_totals -> clans; `set_member_role` blocca prima il membro.

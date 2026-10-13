@@ -806,3 +806,9 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
   2. `/gestione economia xp azione:Azzera XP e livello membro:@x`.
   Risultato atteso: al passo 1 perde il ruolo del livello 10 e tiene quello del 5; al passo 2 li perde tutti. La risposta dice livello e XP prima e dopo, senza menzioni che notificano.
 - [ ] `ECO-009 / ECO-011` (#125) — `/gestione economia monete azione:Togli coin membro:@x importo:99999` su un membro con pochi coin, poi `azione:Azzera il saldo`. Risultato atteso: il saldo arriva a 0, mai negativo; `/level balance` di @x lo conferma.
+- [ ] `NF-28` (#99) — passi:
+  1. `/gestione economia giveaway prize:Test duration_minutes:3 min_messaggi:3 ruolo_extra:@vip ingressi_extra:2 ruolo_bypass:@staff`.
+  2. Con un account senza ruoli premi «Partecipa» subito: rifiutato (mancano i messaggi). Scrivi 3 messaggi in qualunque canale e riprova: entra.
+  3. Con un account @vip: entra e il bot dice «Hai 3 ingressi». Con un account @staff: entra senza messaggi.
+  4. `/gestione economia giveaway-modello azione:Salva nome:prova premio:Test durata_minuti:2`, poi `azione:Avvia nome:prova inizia_tra:1`.
+  Risultato atteso: l'annuncio elenca requisiti, ruolo che salta e ingressi extra; il programmato appare da solo dopo circa 1 minuto (al massimo 30 secondi di ritardo) con il bottone che funziona; alla fine i vincitori sono avvisati nello stesso canale (anche se è un thread o un post di forum).

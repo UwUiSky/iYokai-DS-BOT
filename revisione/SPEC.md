@@ -1800,8 +1800,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   attività (NF-25)
 - `[ ]` 23.4 Compleanni (NF-26)
 - `[ ]` 23.5 Inviti: comando personale e classifica (NF-27)
-- `[ ]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
+- `[x]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
+  → **Stato 13/10:** `/gestione economia giveaway` (min_messaggi, ruolo_bypass, ruolo_extra +
+  ingressi_extra, inizia_tra) e `/gestione economia giveaway-modello` (salva, elenco, elimina, avvia;
+  25 modelli per server); migrazione 0091. I messaggi si contano **dall'inizio del giveaway** (non lo storico):
+  il conteggio storico per canale e membro arriva con NF-25. Il worker fa partire i programmati.
+  Avviso ai vincitori in thread e forum: già fatto (M 9.15).
 - `[ ]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:45 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 265 comandi in 16 categorie.**
+**Totale: 266 comandi in 16 categorie.**
 
 ## Admin
 
@@ -109,6 +109,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 12:
 - **`/gestione economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
 - **`/gestione economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
 - **`/gestione economia giveaway`** — Avvia un giveaway.
+- **`/gestione economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina o avvia.
 - **`/gestione economia monete`** — Modifica il saldo di un membro: aggiungi, togli, imposta, azzera.
 - **`/gestione economia shop-add`** — Aggiunge un oggetto allo shop.
 - **`/gestione economia shop-remove`** — Rimuove un oggetto dallo shop.
