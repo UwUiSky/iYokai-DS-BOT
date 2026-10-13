@@ -71,7 +71,10 @@ async def test_query_spotify_senza_risultati_ritenta_sul_nodo_locale(cog):
 @pytest.mark.asyncio
 async def test_query_spotify_senza_nodo_locale_restituisce_vuoto(cog):
     nodo = object()
-    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock(return_value=[])):
+    # L'URL passa dal controllo SSRF (DNS): nel test è sempre "pubblico".
+    with patch("cogs.music.player.url_e_sicuro", new=AsyncMock(return_value=True)), patch(
+        "wavelink.Playable.search", new=AsyncMock(return_value=[])
+    ):
         risultato, usato = await cog._cerca("https://open.spotify.com/track/x", nodo, None)
 
     assert risultato == [] and usato is nodo
