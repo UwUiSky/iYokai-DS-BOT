@@ -793,3 +793,16 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
 - [ ] Collegamento (#68) — un secondo admin prova a usare il codice di un altro: rifiutato. Un server già backup di un altro main, o un main che ha già un backup: rifiutato. Due codici insieme: il secondo rifiuta finché la copia è in corso.
 - [ ] Restore (#68) — lancia `/admin backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
 - [ ] Ingresso (#68) — fai rientrare iYokai in un server di backup in blacklist: esce. Rientro in un backup normale: nessun benvenuto, ma `left_at` azzerato.
+
+## Livelli, economia e giochi — passaggio `feat/r4-liv` (#65, #86, #99, #111, #124, #125)
+
+- [ ] `NF-15` ter (#86, LIV-005) — passi:
+  1. `/level impostazioni xp daily:300 lavoro_min:10 lavoro_max:20 livello_massimo:3`.
+  2. `/level daily` e `/level work`; poi fai salire un membro oltre il livello 3.
+  3. `/level rank` di quel membro.
+  Risultato atteso: daily dà 300 coin, work da 10 a 20; il membro si ferma al livello 3 senza altri annunci e la card dice «Livello massimo».
+- [ ] `LIV-064..067 / LIV-041` (#124) — con due ruoli-premio (livello 5 e livello 10) e un membro al livello 10 con entrambi i ruoli:
+  1. `/gestione economia xp azione:Imposta il livello membro:@x valore:6`.
+  2. `/gestione economia xp azione:Azzera XP e livello membro:@x`.
+  Risultato atteso: al passo 1 perde il ruolo del livello 10 e tiene quello del 5; al passo 2 li perde tutti. La risposta dice livello e XP prima e dopo, senza menzioni che notificano.
+- [ ] `ECO-009 / ECO-011` (#125) — `/gestione economia monete azione:Togli coin membro:@x importo:99999` su un membro con pochi coin, poi `azione:Azzera il saldo`. Risultato atteso: il saldo arriva a 0, mai negativo; `/level balance` di @x lo conferma.

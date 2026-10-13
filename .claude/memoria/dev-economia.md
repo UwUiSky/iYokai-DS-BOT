@@ -1,21 +1,21 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-11/10/2026 · ramo `feat/giro-eco` (da main `0e7753a`), DB `iyokai_weco`, migrazioni usate 0030, 0031
+13/10/2026 · ramo `feat/r4-liv` (da main `793656c`), DB `iyokai_wliv`, migrazioni da 0090. Lavoro PER FILE (richiesta owner).
 
 ## In corso
-- Correzioni del cacciatore-bug applicate (test `tests/test_giro_eco_correzioni.py`); migrazioni in main: 0031 impostazioni, 0032 rank card.
-- Giro eco chiuso a 3 voci (9.18, NF-15, NF-12). Resta: smoke con nohup, push del ramo, rapporto.
-- Prossimo giro: voci piccole #124/#125 (LIV-064..067 XP a mano, LIV-005 livello massimo,
-  ECO-009 monete a mano, ECO-069 conferma acquisto), `/clan` voce worker batch, GDPR rank_card_prefs.
+- Previsione giro: 5 gruppi (A importi+tetto, B staff XP/monete, C NF-28 giveaway, D NF-40, E voci catalogo). Ordine fisso.
+- A (NF-15 resto + docstring #65 + LIV-005) e B (`/gestione economia xp|monete`, LIV-064..067/041, ECO-009/011): fatti, smoke verde.
+- Prossimo: C NF-28 giveaway (`core/giveaway_logic.py`, `giveaway_repo`, worker; migr. 0091): modelli, ingressi extra per ruolo,
+  min messaggi (conteggio dall'inizio del giveaway, no NF-25), ruolo che salta i requisiti, programmati (starts_at, worker posta). Poi D NF-40.
 
 ## Fatto
-- F1 livelli+economia+clan: unito (`9db9e8a`, migrazioni 0015-0019). 9.1-9.17 verificate fatte.
-- #135 clan atomico, #136 config export, F7 passo 3a (/level, /clan), #146 boost per tipo (0020): uniti o in attesa.
-- Giro eco: 9.18 (PERF-4/6) `589c29c`; NF-15 #86 `7ff9990` (0030, `/level impostazioni`);
-  NF-12 #83 rank card (0031, `core/rank_card_image.py`, `/level rank` con defer).
+- F1 livelli+economia+clan unito (`9db9e8a`); giro eco: 9.18, NF-15 (0031), NF-12 (0032) in main.
+- Giro r4: A+B commit `liv1` (0090, test importi_e_tetto + gestione_staff).
 
 ## Cose imparate
+- Modifiche staff (xp/monete) non contano come attività del mese: `modifica_xp/monete` scrivono solo `leveling_totals`.
+- `_grant_level_rewards(..., togli_superiori=True)` toglie anche i ruoli dei livelli non più raggiunti.
 - Ordine dei blocchi: membro -> leveling_totals -> clans; `set_member_role` blocca prima il membro.
 - Saldi condizionati nel database; pagamento + effetto = una transazione con `FOR UPDATE`.
 - Boost D23: `buy_*_boost` restituiscono `EsitoBoost`; mai somma delle durate.
@@ -40,9 +40,10 @@
 - `id_canali_per_le_regole`: canale, origine del thread, categoria. Esclusioni valgono anche per XP clan (testo e vocale).
 
 ## Aperto
+- Scratchpad condiviso con altri agenti: `env.sh` viene sovrascritto; usare `envliv.sh` (DATABASE_URL wliv).
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.
 - Senza `DATABASE_URL` esportato i test usano `iyokai_test` (condiviso): esportarlo sempre.
 - `tests/support/command_policy.py`: riga `"gestione"` (se la aggiungono altri, tenerne una).
 - `core/guild_clan_voice_worker.py`: ~6 query per utente a ogni tick (PERF-4 non chiusa lì).
 - `rank_card_prefs` (user_id) non è ancora nel flusso GDPR di cancellazione (non c'è ancora per `leveling_totals`).
-- Rank card: sfondo con immagine propria (premium) non fatto; `/daily` e `/work` hanno importi fissi.
+- Rank card: sfondo con immagine propria (premium) non fatto (dev-core).

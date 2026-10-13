@@ -3,24 +3,17 @@ cogs/leveling/leveling.py
 ============================
 XP testuale (on_message) e vocale (task periodico ogni 60s), livelli,
 economia (daily/work/pay/balance, shop, drop, giveaway), cassa del
-server, gilde/clan, classifiche mensili e di sempre. Modulo sempre
-gratuito.
-Funzioni coperte: SPEC §15
+server, gilde/clan, classifiche mensili e di sempre, impostazioni dei
+livelli. Modulo sempre gratuito.
+Funzioni coperte: SPEC §15, §22.14, §23.6
 
-Message Content Intent: è attivo (vedi main.py), ma questo modulo non
-legge mai message.content: gli basta sapere CHE un messaggio è stato
-inviato, non cosa dice.
+Message Content Intent: è attivo (vedi main.py). L'XP però non guarda
+mai il testo: gli basta sapere CHE un messaggio è stato inviato.
 
 L'XP vocale usa un task periodico (tasks.loop) e non l'evento
 on_voice_state_update: l'XP si accumula minuto per minuto per tutta
 la permanenza in vocale, non solo quando si entra o si esce.
 """
-
-# DA FARE (issue #65, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
-#   clan).
-# DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -119,10 +112,7 @@ from core.leveling_logic import (
     deve_annunciare,
     scegli_premi,
     xp_con_moltiplicatore,
-    DAILY_REWARD_COINS,
     WORK_COOLDOWN_SECONDS,
-    WORK_REWARD_MAX,
-    WORK_REWARD_MIN,
     is_eligible_for_voice_xp,
     period_key,
     seconds_until_next_claim,
@@ -382,6 +372,20 @@ _SG_BACHECA = ("bacheca", "Annuncio automatico della top 3 gilde a fine mese.")
 _SG_TESORERIA = ("tesoreria", "Tesoreria della tua gilda.")
 _SG_IMPOSTAZIONI = ("impostazioni", "Impostazioni dei livelli: XP, annunci, ruoli-premio, esclusioni.")
 
+_SCELTE_AZIONE_XP = [
+    app_commands.Choice(name="Aggiungi XP", value="aggiungi"),
+    app_commands.Choice(name="Togli XP", value="togli"),
+    app_commands.Choice(name="Imposta il livello", value="livello"),
+    app_commands.Choice(name="Imposta gli XP dentro il livello", value="xp_nel_livello"),
+    app_commands.Choice(name="Azzera XP e livello", value="azzera"),
+]
+_SCELTE_AZIONE_MONETE = [
+    app_commands.Choice(name="Aggiungi coin", value="aggiungi"),
+    app_commands.Choice(name="Togli coin", value="togli"),
+    app_commands.Choice(name="Imposta il saldo", value="imposta"),
+    app_commands.Choice(name="Azzera il saldo", value="azzera"),
+]
+
 _SCELTE_ANNUNCIO = [
     app_commands.Choice(name="Spento", value="spento"),
     app_commands.Choice(name="Nel canale in cui scrive", value="canale_corrente"),
@@ -424,7 +428,9 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
         name="XP e coin",
         value=(
             f"Messaggio: **{i.text_xp}** XP, ogni **{i.text_cooldown_seconds}** s\n"
-            f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto"
+            f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto\n"
+            f"Daily: **{i.daily_coins}** coin · Work: **{i.work_min}-{i.work_max}** coin\n"
+            f"Livello massimo: **{i.max_level or 'nessun tetto'}**"
         ),
         inline=False,
     )
@@ -524,6 +530,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guild: discord.Guild,
         new_level: int,
         modo: str = "accumula",
+        togli_superiori: bool = False,
     ) -> None:
         """
         Condiviso tra XP testuale e vocale (SPEC.md §15.13) — un
@@ -542,7 +549,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
         pericolosi dopo la configurazione del ruolo-premio.
         """
         ricompense = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
-        if not ricompense:
+        non_piu_raggiunti = []
+        if togli_superiori:
+            non_piu_raggiunti = [
+                r.role_id
+                for r in await level_reward_repo.list_rewards(guild.id)
+                if r.level_threshold > new_level
+            ]
+        if not ricompense and not non_piu_raggiunti:
             return
 
         id_da_dare, id_da_togliere = scegli_premi(ricompense, modo)
@@ -568,6 +582,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 continue
             da_togliere.append(ruolo)
 
+        da_togliere_sempre = []
+        for role_id in non_piu_raggiunti:
+            ruolo = guild.get_role(role_id) if role_id in id_ruoli_posseduti else None
+            if ruolo is None or ruolo.managed or ruolo.position >= guild.me.top_role.position:
+                continue
+            da_togliere_sempre.append(ruolo)
+
         # "Sostituisci": i vecchi ruoli si tolgono SOLO se il nuovo è arrivato
         # (o c'era già). Un ruolo nuovo non assegnabile non lascia il membro
         # senza nessun ruolo-premio.
@@ -582,6 +603,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             if da_togliere and nuovo_assicurato:
                 await member.remove_roles(
                     *da_togliere, reason=f"Ruolo-premio sostituito al livello {new_level}"
+                )
+            if da_togliere_sempre:
+                await member.remove_roles(
+                    *da_togliere_sempre,
+                    reason=f"Livello sceso a {new_level}: ruolo-premio non più raggiunto",
                 )
         except discord.HTTPException:
             logger.warning(
@@ -644,6 +670,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             message.author.id,
             amount=importo,
             cooldown_seconds=impostazioni.text_cooldown_seconds,
+            max_level=impostazioni.max_level,
         )
         if risultato.granted and risultato.leveled_up:
             await self._annuncia_level_up(
@@ -836,6 +863,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         xp_prossimo_livello = xp_for_level(totali.level + 1)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
+        tetto = (await self._config(interaction.guild.id)).impostazioni.max_level
+        if tetto and totali.level >= tetto:
+            progresso, richiesti = 0, 0  # al livello massimo non c'è un prossimo livello
 
         try:
             avatar = await target.display_avatar.read()
@@ -865,7 +895,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
             embed.add_field(
                 name="Progresso al prossimo livello",
-                value=f"{progresso}/{richiesti} XP",
+                value=f"{progresso}/{richiesti} XP" if richiesti else "Livello massimo",
                 inline=False,
             )
             await interaction.followup.send(nota, embed=embed)
@@ -901,9 +931,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         adesso = datetime.now(timezone.utc)
+        importo = (await self._config(interaction.guild.id)).impostazioni.daily_coins
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
-            DAILY_REWARD_COINS, DAILY_COOLDOWN_SECONDS, adesso,
+            importo, DAILY_COOLDOWN_SECONDS, adesso,
         )
         if not riscosso:
             totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
@@ -915,7 +946,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.send_message(
-            f"Hai riscosso **{DAILY_REWARD_COINS}** coin! Torna domani per altri."
+            f"Hai riscosso **{importo}** coin! Torna domani per altri."
         )
 
     @comando_di_gruppo(
@@ -928,7 +959,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         adesso = datetime.now(timezone.utc)
-        guadagno = random.randint(WORK_REWARD_MIN, WORK_REWARD_MAX)
+        impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, WORK_COOLDOWN_SECONDS, adesso,
@@ -1517,6 +1549,103 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         await interaction.response.send_message(
             f"🏆 {membro.mention} ha vinto **{importo}** coin dalla cassa del server!"
+        )
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="xp",
+        descrizione="Modifica XP e livello di un membro: aggiungi, togli, imposta, azzera.",
+        sottogruppo=_SG_ECONOMIA,
+    )
+    @app_commands.describe(
+        azione="Cosa fare",
+        membro="Il membro",
+        valore="XP o livello (non serve per azzerare)",
+    )
+    @app_commands.choices(azione=_SCELTE_AZIONE_XP)
+    async def gestione_xp(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        membro: discord.Member,
+        valore: app_commands.Range[int, 0, 10_000_000] = 0,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if membro.bot:
+            await interaction.response.send_message(
+                "I bot non hanno XP.", ephemeral=True
+            )
+            return
+        if azione.value != "azzera" and valore == 0 and azione.value in ("aggiungi", "togli"):
+            await interaction.response.send_message(
+                "Indica quanti XP (almeno 1).", ephemeral=True
+            )
+            return
+        # Dopo la scrittura si toccano i ruoli su Discord: si risponde con defer.
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        config = await self._config(guild.id)
+        tetto = config.impostazioni.max_level
+        esito = await leveling_repo.modifica_xp(
+            guild.id, membro.id, azione.value, valore, tetto
+        )
+        await self._grant_level_rewards(
+            membro, guild, esito.livello_dopo, config.impostazioni.reward_mode,
+            togli_superiori=True,
+        )
+        logger.info(
+            "XP modificati dallo staff: server %s, staff %s, membro %s, %s %s (%s -> %s).",
+            guild.id, interaction.user.id, membro.id, azione.value, valore,
+            esito.xp_prima, esito.xp_dopo,
+        )
+        await interaction.followup.send(
+            f"✅ {membro.mention}: livello **{esito.livello_prima} → {esito.livello_dopo}**, "
+            f"XP **{esito.xp_prima} → {esito.xp_dopo}**.",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="monete",
+        descrizione="Modifica il saldo di un membro: aggiungi, togli, imposta, azzera.",
+        sottogruppo=_SG_ECONOMIA,
+    )
+    @app_commands.describe(
+        azione="Cosa fare", membro="Il membro", importo="Quante coin (non serve per azzerare)"
+    )
+    @app_commands.choices(azione=_SCELTE_AZIONE_MONETE)
+    async def gestione_monete(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        membro: discord.Member,
+        importo: app_commands.Range[int, 0, 1_000_000_000] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if membro.bot:
+            await interaction.response.send_message("I bot non hanno coin.", ephemeral=True)
+            return
+        if azione.value != "azzera" and not importo and not (azione.value == "imposta" and importo == 0):
+            await interaction.response.send_message(
+                "Indica l'importo.", ephemeral=True
+            )
+            return
+        guild = interaction.guild
+        esito = await leveling_repo.modifica_monete(
+            guild.id, membro.id, azione.value, importo or 0
+        )
+        logger.info(
+            "Coin modificate dallo staff: server %s, staff %s, membro %s, %s %s (%s -> %s).",
+            guild.id, interaction.user.id, membro.id, azione.value, importo,
+            esito.prima, esito.dopo,
+        )
+        await interaction.response.send_message(
+            f"✅ {membro.mention}: saldo **{esito.prima} → {esito.dopo}** coin.",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     # ================================================================
@@ -2613,6 +2742,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         voce_xp="XP per ogni minuto in vocale (0-50)",
         voce_coin="Coin per ogni minuto in vocale (0-50)",
         moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
+        daily="Coin di /level daily (0-10000)",
+        lavoro_min="Coin minimi di /level work (0-10000)",
+        lavoro_max="Coin massimi di /level work (0-10000)",
+        livello_massimo="Livello massimo raggiungibile (0 = nessun tetto)",
     )
     @app_commands.choices(moltiplicatori=_SCELTE_MOLTIPLICATORI)
     @richiedi(Livello.ADMIN)
@@ -2624,6 +2757,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         voce_xp: app_commands.Range[int, 0, 50] | None = None,
         voce_coin: app_commands.Range[int, 0, 50] | None = None,
         moltiplicatori: app_commands.Choice[str] | None = None,
+        daily: app_commands.Range[int, 0, 10000] | None = None,
+        lavoro_min: app_commands.Range[int, 0, 10000] | None = None,
+        lavoro_max: app_commands.Range[int, 0, 10000] | None = None,
+        livello_massimo: app_commands.Range[int, 0, 1000] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -2638,6 +2775,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             campi["voice_coins_per_minute"] = voce_coin
         if moltiplicatori is not None:
             campi["multiplier_mode"] = moltiplicatori.value
+        for nome, valore in (
+            ("daily_coins", daily), ("work_min", lavoro_min),
+            ("work_max", lavoro_max), ("max_level", livello_massimo),
+        ):
+            if valore is not None:
+                campi[nome] = valore
         await self._salva_impostazioni(interaction, campi)
 
     async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:

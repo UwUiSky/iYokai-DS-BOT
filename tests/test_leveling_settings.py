@@ -286,7 +286,7 @@ async def test_senza_impostazioni_l_xp_e_quello_di_prima(cog_xp):
     await cog.on_message(_messaggio())
 
     repo_xp.add_text_xp.assert_awaited_once()
-    assert repo_xp.add_text_xp.await_args.kwargs == {"amount": 15, "cooldown_seconds": 60}
+    assert repo_xp.add_text_xp.await_args.kwargs == {"amount": 15, "cooldown_seconds": 60, "max_level": 0}
 
 
 @pytest.mark.asyncio
@@ -390,7 +390,7 @@ async def test_xp_testuale_usa_importo_e_attesa_configurati(cog_xp):
 
     await cog.on_message(_messaggio())
 
-    assert repo_xp.add_text_xp.await_args.kwargs == {"amount": 40, "cooldown_seconds": 120}
+    assert repo_xp.add_text_xp.await_args.kwargs == {"amount": 40, "cooldown_seconds": 120, "max_level": 0}
 
 
 # ----------------------------------------------------------------------

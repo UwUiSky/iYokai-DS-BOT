@@ -1783,6 +1783,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   Annuncio: spento, canale corrente, DM, canale scelto, livello minimo, ogni N,
   solo con premio. Moltiplicatori: somma o massimo. Restano fuori `/daily` e `/work`
   (importi fissi) e il tetto di livello.
+  → **Stato 13/10:** fatti anche gli importi di `/level daily` e `/work` e il livello
+  massimo (LIV-005): `/level impostazioni xp daily|lavoro_min|lavoro_max|livello_massimo`
+  (migrazione 0090). Al tetto gli XP salgono ma il livello no, e non c'è annuncio.
 - `[ ]` 22.15 Captcha a immagine nella verifica (NF-18)
 - `[ ]` 22.16 Wizard di primo avvio per categoria, con creazione dei
   canali
