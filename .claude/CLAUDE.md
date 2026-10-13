@@ -121,8 +121,9 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
   (token, `DATABASE_URL`, password Lavalink, chiavi OAuth). Nei file di
   esempio solo segnaposto. Non committare `.env` né file in `logs/`.
 - Nessun comando di primo livello nuovo prima della fase F7 (97 su 100)
-  e nessun sotto-comando nuovo in `/owner` (25 su 25). Dopo F7: mai
-  comandi di primo livello nuovi, al massimo 25 figli per gruppo.
+  e nessun sotto-comando nuovo in `/owner` (25 su 25). Dopo F7: nessun
+  comando di primo livello nuovo; un nuovo **gruppo** solo se un gruppo supera i 6.800
+  caratteri (D25), con decisione scritta. Al massimo 25 figli per gruppo.
 - Non riscrivere la storia git senza richiesta esplicita dell'owner.
 - iYokai **non addestra modelli** e non manda messaggi degli utenti a
   servizi AI che li usano per addestrare (D19).
