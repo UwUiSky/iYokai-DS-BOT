@@ -663,6 +663,157 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
 
+    async def _assegna_proprieta(
+        self,
+        interaction: discord.Interaction,
+        channel: discord.VoiceChannel,
+        member: discord.Member,
+        vecchio_id: int | None,
+    ) -> bool:
+        """Passa la proprietà a `member`. False (dopo aver risposto) se Discord rifiuta."""
+        # Prima i permessi su Discord, poi il database: se Discord
+        # rifiuta, la proprietà non cambia.
+        try:
+            await channel.set_permissions(
+                member, reason="Nuovo proprietario del vocale temporaneo", **OWNER_PERMISSIONS
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return False
+        await voice_temp_repo.set_owner(channel.id, member.id)
+
+        # Al vecchio proprietario i permessi vanno tolti. Se è uscito
+        # dal server non c'è più niente da togliere.
+        vecchio = interaction.guild.get_member(vecchio_id)
+        if vecchio is not None:
+            try:
+                await channel.set_permissions(
+                    vecchio, overwrite=None, reason="Non è più il proprietario del vocale"
+                )
+            except discord.HTTPException:
+                logger.warning(
+                    "Permessi del vecchio proprietario %s non tolti dal canale %s",
+                    vecchio_id,
+                    channel.id,
+                )
+        return True
+
+    @comando_di_gruppo("voice", nome="claim", descrizione="Prendi il canale se il proprietario non c'è più.")
+    async def claim(self, interaction: discord.Interaction) -> None:
+        """VOC-001: il proprietario è uscito ma il canale resta (altri dentro): si può rilevare."""
+        if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
+            await interaction.response.send_message(
+                "Devi essere connesso a un canale vocale temporaneo per usare questo comando.",
+                ephemeral=True,
+            )
+            return
+        channel = interaction.user.voice.channel
+        vecchio_id = await voice_temp_repo.get_owner(channel.id)
+        if vecchio_id is None:
+            await interaction.response.send_message(
+                "Questo non è un canale vocale temporaneo gestito da iYokai.", ephemeral=True
+            )
+            return
+        if vecchio_id == interaction.user.id:
+            await interaction.response.send_message("Sei già il proprietario del canale.", ephemeral=True)
+            return
+        if any(m.id == vecchio_id for m in channel.members):
+            await interaction.response.send_message(
+                "Il proprietario è ancora nel canale: chiedi a lui di usare `/voice transfer`.",
+                ephemeral=True,
+            )
+            return
+        if not await self._assegna_proprieta(interaction, channel, interaction.user, vecchio_id):
+            return
+        await interaction.response.send_message(
+            f"{interaction.user.mention} è il nuovo proprietario del canale.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo("voice", nome="permit", descrizione="Permetti a un utente di entrare anche se il canale è bloccato.")
+    @app_commands.describe(member="L'utente da ammettere")
+    async def permit(self, interaction: discord.Interaction, member: discord.Member) -> None:
+        channel = await self._get_managed_channel_or_reply(interaction)
+        if channel is None:
+            return
+        try:
+            overwrite = channel.overwrites_for(member)
+            overwrite.update(connect=True, view_channel=True)
+            await channel.set_permissions(member, overwrite=overwrite, reason="Ammesso dal proprietario del vocale")
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
+        await interaction.response.send_message(
+            f"{member.mention} può entrare nel canale.", allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo("voice", nome="deny", descrizione="Vieta a un utente di entrare nel canale.")
+    @app_commands.describe(member="L'utente da escludere")
+    async def deny(self, interaction: discord.Interaction, member: discord.Member) -> None:
+        channel = await self._get_managed_channel_or_reply(interaction)
+        if channel is None:
+            return
+        if member.id == interaction.user.id or member.id == await voice_temp_repo.get_owner(channel.id):
+            await interaction.response.send_message(
+                "Non puoi vietare l'accesso al proprietario del canale.", ephemeral=True
+            )
+            return
+        permesso, motivo = self._puo_espellere(interaction, member)
+        if not permesso:
+            await interaction.response.send_message(motivo, ephemeral=True)
+            return
+        try:
+            overwrite = channel.overwrites_for(member)
+            overwrite.update(connect=False)
+            await channel.set_permissions(member, overwrite=overwrite, reason="Escluso dal proprietario del vocale")
+            if member.voice is not None and member.voice.channel is not None and member.voice.channel.id == channel.id:
+                await member.move_to(None, reason="Escluso dal proprietario del canale")
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
+        await interaction.response.send_message(
+            f"{member.mention} non può più entrare nel canale.", allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo("voice", nome="bitrate", descrizione="Imposta la qualità audio del canale (kbps).")
+    @app_commands.describe(kbps="Qualità in kbps (8-384, dipende dal livello del server)")
+    async def bitrate(
+        self, interaction: discord.Interaction, kbps: app_commands.Range[int, 8, 384]
+    ) -> None:
+        channel = await self._get_managed_channel_or_reply(interaction)
+        if channel is None:
+            return
+        massimo = interaction.guild.bitrate_limit // 1000
+        if kbps > massimo:
+            await interaction.response.send_message(
+                f"Questo server arriva al massimo a {int(massimo)} kbps.", ephemeral=True
+            )
+            return
+        try:
+            await channel.edit(bitrate=kbps * 1000)
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
+        await interaction.response.send_message(f"Qualità audio impostata a {kbps} kbps.")
+
+    @comando_di_gruppo("voice", nome="nascondi", descrizione="Nascondi o mostra il canale a chi non è dentro.")
+    @app_commands.describe(nascosto="Sì per nasconderlo, no per mostrarlo di nuovo")
+    async def nascondi(self, interaction: discord.Interaction, nascosto: bool) -> None:
+        channel = await self._get_managed_channel_or_reply(interaction)
+        if channel is None:
+            return
+        try:
+            overwrite = channel.overwrites_for(interaction.guild.default_role)
+            overwrite.update(view_channel=False if nascosto else None)
+            await channel.set_permissions(
+                interaction.guild.default_role,
+                overwrite=None if overwrite.is_empty() else overwrite,
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
+        await interaction.response.send_message("Canale nascosto." if nascosto else "Canale di nuovo visibile.")
+
     @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")
     async def transfer(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -688,31 +839,8 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # Prima i permessi su Discord, poi il database: se Discord
-        # rifiuta, la proprietà non cambia.
-        try:
-            await channel.set_permissions(
-                member, reason="Nuovo proprietario del vocale temporaneo", **OWNER_PERMISSIONS
-            )
-        except discord.HTTPException:
-            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+        if not await self._assegna_proprieta(interaction, channel, member, vecchio_id):
             return
-        await voice_temp_repo.set_owner(channel.id, member.id)
-
-        # Al vecchio proprietario i permessi vanno tolti. Se è uscito
-        # dal server non c'è più niente da togliere.
-        vecchio = interaction.guild.get_member(vecchio_id)
-        if vecchio is not None:
-            try:
-                await channel.set_permissions(
-                    vecchio, overwrite=None, reason="Non è più il proprietario del vocale"
-                )
-            except discord.HTTPException:
-                logger.warning(
-                    "Permessi del vecchio proprietario %s non tolti dal canale %s",
-                    vecchio_id,
-                    channel.id,
-                )
 
         await interaction.response.send_message(
             f"Proprietà del canale trasferita a {member.mention}."

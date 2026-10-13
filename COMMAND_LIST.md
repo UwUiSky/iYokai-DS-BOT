@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 06:31 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 08:07 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 263 comandi in 16 categorie.**
+**Totale: 290 comandi in 16 categorie.**
 
 ## Admin
 
@@ -30,6 +30,23 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 06:
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin setup wizard`** — Configura passo-passo i moduli principali del bot.
+- **`/admin ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
+- **`/admin ticket chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
+- **`/admin ticket dm`** — Accendi o spegni il ModMail (ticket in DM).
+- **`/admin ticket dm-blocca`** — Blocca o sblocca un utente dal ModMail.
+- **`/admin ticket modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
+- **`/admin ticket modulo-mostra`** — Mostra le domande del modulo di un pannello.
+- **`/admin ticket modulo-rimuovi`** — Togli una domanda dal modulo.
+- **`/admin ticket pannello-crea`** — Crea un pannello di ticket.
+- **`/admin ticket pannello-lista`** — Elenca i pannelli di ticket del server.
+- **`/admin ticket pannello-pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
+- **`/admin ticket pannello-rimuovi`** — Elimina un pannello e il suo modulo.
+- **`/admin ticket risposta-elimina`** — Elimina una risposta standard.
+- **`/admin ticket risposta-modifica`** — Correggi una risposta standard.
+- **`/admin ticket risposte-lista`** — Elenca le risposte standard del server.
+- **`/admin ticket sollecito`** — Sollecito dopo N minuti senza staff (0 = spento).
+- **`/admin ticket standard`** — Risposte standard imparate dallo staff.
+- **`/admin ticket voto`** — Voto a stelle in DM alla chiusura.
 
 ## Aiuto (primo livello)
 
@@ -160,7 +177,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 06:
 - **`/log crea-canali`** — Crea una categoria privata con un canale per ogni tipo di log.
 - **`/log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
 - **`/log esporta`** — Esporta lo storico eventi completo del server come file JSON.
-- **`/log ignora`** — Sceglie cosa il log dei messaggi non registra (canali, utenti, prefissi).
+- **`/log ignora`** — Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).
 - **`/log stato`** — Mostra dove vanno i log del server.
 
 ## Moderazione
@@ -281,13 +298,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 06:
 
 ## Ticket
 
-- **`/ticket add`** — Aggiungi un utente a questo ticket.
+- **`/ticket add`** — Aggiungi un utente o un ruolo a questo ticket.
 - **`/ticket claim`** — Prendi in carico questo ticket.
 - **`/ticket close`** — Chiudi questo ticket.
+- **`/ticket dm-chiudi`** — Chiudi questa conversazione ModMail.
 - **`/ticket forceclose`** — Chiudi immediatamente questo ticket, senza attesa.
+- **`/ticket passa`** — Passa la presa in carico a un collega.
 - **`/ticket priority`** — Imposta la priorità di questo ticket.
-- **`/ticket remove`** — Rimuovi un utente da questo ticket.
+- **`/ticket remove`** — Rimuovi un utente o un ruolo da questo ticket.
 - **`/ticket rename`** — Rinomina questo ticket.
+- **`/ticket rilascia`** — Lascia la presa in carico di questo ticket.
+- **`/ticket rispondi`** — Rispondi all'utente di questa conversazione ModMail.
+- **`/ticket transcript`** — Ricevi il transcript senza chiudere il ticket.
 
 ## Utility
 
@@ -308,9 +330,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 06:
 
 ## Vocali
 
+- **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
+- **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
+- **`/voice deny`** — Vieta a un utente di entrare nel canale.
 - **`/voice kick`** — Espelli un utente dal tuo canale.
 - **`/voice limit`** — Imposta il limite di utenti del canale.
 - **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
+- **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
+- **`/voice permit`** — Permetti a un utente di entrare anche se il canale è bloccato.
 - **`/voice rename`** — Rinomina il tuo canale vocale.
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.

@@ -1131,7 +1131,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   notifica 12.4 se il server ha configurato almeno un ruolo
   piattaforma (`/voicetemp-platform-setup`)
   → **Stato 04/10:** i bottoni muoiono dopo 5 minuti (LIM-26).
-- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer
+- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer, claim (proprietario assente), permit, deny, bitrate, nascondi (#127)
   → **Stato 04/10:** rinomina senza limiti (LIM-3); `transfer` accetta chiunque (BUG-18).
 - `[~]` 12.7 Eliminazione automatica a canale vuoto
   → **Stato 04/10:** canali orfani dopo un riavvio (REVIEW §4).

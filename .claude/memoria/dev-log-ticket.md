@@ -58,3 +58,5 @@
 - Non mettere chiavi nuove in guild_config.settings (SETTING_*): vanno in cogs/utility/config_history.py (non mio): tabella propria (es. modmail_config).
 - I tre dataclass del pannello dopo `imposta_*` sono vecchi: rileggere con `pannello_per_id` nei test.
 - /gestione è a 4832/8000 caratteri, /admin a 5214 (allarme 6800): i comandi avanzati dei ticket stanno in `/admin ticket` (ADMIN_TICKET in tickets.py). Misura con tests/test_command_tree_invariants (_albero_vero).
+- ticket catalogo #120 committato, smoke ok; ora voce #127
+- voce #127 fatta (claim/permit/deny/bitrate/nascondi), da committare+smoke; poi push e rapporto
