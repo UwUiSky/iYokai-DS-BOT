@@ -9,7 +9,7 @@
 - Fatti in questo giro: vedi Fatto.
 
 ## Fatto
-- r4 G1 NF-07 autoroles (cog, logic, repo, 0080, tests/test_autoroles.py): commit nel log.
+- r4 G1 NF-07 autoroles (0080); G2 NF-08 starboard (0081, /moduli starboard imposta|soglia|disattiva): commit nel log.
 - #71 F1: 15.1 (defer + Range 1-100) e 15.2 (cache 24h, allegato, credito, pausa 10s) in cogs/fun/entertainment.py + core/image_search_fetcher.py; resto di §15 non esiste in F1.
 - #147 e #67: vedi main. G1 (#66): 10.1/10.3/10.16 già a posto; 10.2, 10.4, 10.5, 10.6 fatti; G2 10.7, G3 10.9, G4 10.12, G5 10.13 fatti (AUDIT_UTILITA.md).
 
