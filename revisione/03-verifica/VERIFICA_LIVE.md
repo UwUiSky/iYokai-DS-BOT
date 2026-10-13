@@ -793,3 +793,11 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
 - [ ] Collegamento (#68) — un secondo admin prova a usare il codice di un altro: rifiutato. Un server già backup di un altro main, o un main che ha già un backup: rifiutato. Due codici insieme: il secondo rifiuta finché la copia è in corso.
 - [ ] Restore (#68) — lancia `/admin backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
 - [ ] Ingresso (#68) — fai rientrare iYokai in un server di backup in blacklist: esce. Rientro in un backup normale: nessun benvenuto, ma `left_at` azzerato.
+
+## Utilità — passaggio `feat/r4-uti` (#66, #78–#82, #85, #87, #88, #97, #98, #105)
+
+Servono: un server di prova con iYokai, un account admin, due account senza permessi, un secondo account per entrare e uscire.
+
+- [ ] NF-07 (#78) — ruoli automatici. Passi: `/admin setup attiva` per «Ruoli automatici»; `/gestione ruoli auto-aggiungi ruolo:@A`, poi `... ruolo:@B ritardo_minuti:2`. Fai entrare un account nuovo. Risultato atteso: @A subito, @B dopo 2 minuti; `auto-elenco` mostra le due righe. Con un ruolo gestito da integrazione o sopra quello del bot: rifiutato con il motivo. Un bot aggiunto al server non riceve nulla.
+- [ ] NF-07 (#78) — rientro. `/gestione ruoli auto-ricorda attivo:True giorni:7`. Dai due ruoli a un account, fallo uscire e rientrare. Risultato atteso: riprende i ruoli (una volta sola; un secondo rientro non li ridà). Un ruolo tolto dal server nel frattempo o salito sopra il bot viene saltato senza errore.
+- [ ] NF-07 (#78) — attesa. Con le regole di Discord (Membership Screening) attive: il ruolo arriva solo dopo l'accettazione. Con `Verify` attivo: arriva solo dopo il ruolo di verificato. Durante un raid (anti-raid in allarme) i ruoli slittano di 15 minuti.
