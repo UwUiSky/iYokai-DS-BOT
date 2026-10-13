@@ -43,6 +43,10 @@ class Ticket:
     last_activity_at: datetime | None = None
     rating: int | None = None
     rated_at: datetime | None = None
+    utente_scritto_at: datetime | None = None
+    sollecito_at: datetime | None = None
+    escalato_at: datetime | None = None
+    standard_reply_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -300,6 +304,33 @@ class TicketRepository:
         )
         return esito.endswith(" 1")
 
+    async def _segna_una_volta(self, channel_id: int, colonna: str, valore_sql: str = "now()", *args) -> bool:
+        """UPDATE ... SET colonna = valore WHERE colonna IS NULL: True solo alla prima volta (due eventi insieme: uno solo vince)."""
+        assert colonna in {"utente_scritto_at", "sollecito_at", "escalato_at", "standard_reply_id"}
+        esito = await self._pool.execute(
+            f"UPDATE tickets SET {colonna} = {valore_sql} "
+            f"WHERE channel_id = $1 AND status = 'open' AND {colonna} IS NULL",
+            channel_id,
+            *args,
+        )
+        return esito.endswith(" 1")
+
+    async def mark_user_wrote(self, channel_id: int) -> bool:
+        """#139: la prima volta che chi ha aperto il ticket scrive."""
+        return await self._segna_una_volta(channel_id, "utente_scritto_at")
+
+    async def mark_sollecito(self, channel_id: int) -> bool:
+        """#139: il bot ha chiesto «di cosa hai bisogno?» (una volta sola)."""
+        return await self._segna_una_volta(channel_id, "sollecito_at")
+
+    async def mark_escalation(self, channel_id: int) -> bool:
+        """#139: lo staff è stato chiamato (una volta sola)."""
+        return await self._segna_una_volta(channel_id, "escalato_at")
+
+    async def mark_standard_reply(self, channel_id: int, reply_id: int) -> bool:
+        """#139: al ticket è già stata data una risposta standard (una sola)."""
+        return await self._segna_una_volta(channel_id, "standard_reply_id", "$2", reply_id)
+
     async def get_open_ticket_for_user(self, guild_id: int, user_id: int) -> Ticket | None:
         """Il ticket aperto di un utente (al massimo uno: indice unico)."""
         row = await self._pool.fetchrow(
@@ -461,6 +492,10 @@ def _row_to_ticket(row) -> Ticket:
         last_activity_at=row["last_activity_at"],
         rating=row["rating"],
         rated_at=row["rated_at"],
+        utente_scritto_at=row["utente_scritto_at"],
+        sollecito_at=row["sollecito_at"],
+        escalato_at=row["escalato_at"],
+        standard_reply_id=row["standard_reply_id"],
     )
 
 

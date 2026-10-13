@@ -137,6 +137,8 @@ MAX_CHANNEL_NAME_LENGTH = 100
 
 # NF-13: chiusura automatica per inattività (scheduler persistente).
 TICKET_AUTOCLOSE_ACTION_TYPE = "ticket_autoclose"
+# #139: sollecito se nessuno dello staff risponde entro N minuti (gestito da cogs/tickets/risposte.py).
+TICKET_SOLLECITO_ACTION_TYPE = "ticket_sollecito"
 # L'attività si scrive nel database al più una volta al minuto per canale.
 _ATTIVITA_OGNI_SECONDI = 60
 
@@ -321,6 +323,18 @@ async def _crea_ticket(
             )
         except Exception:  # noqa: BLE001 - il ticket esiste già: la chiusura automatica non lo blocca
             logger.exception("Chiusura automatica del ticket %s non pianificata.", channel.id)
+
+    if panel is not None and panel.sollecito_minuti:
+        try:
+            await scheduler.schedule(
+                guild.id,
+                interaction.user.id,
+                TICKET_SOLLECITO_ACTION_TYPE,
+                in_seconds(panel.sollecito_minuti * 60),
+                {"channel_id": channel.id},
+            )
+        except Exception:  # noqa: BLE001 - il ticket esiste già: il sollecito non lo blocca
+            logger.exception("Sollecito del ticket %s non pianificato.", channel.id)
 
     await interaction.followup.send(
         f"Ticket creato: {channel.mention}", ephemeral=True
@@ -1496,6 +1510,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await self._deliver_transcript(guild, channel, ticket)
         except Exception:
             logger.exception("Transcript del ticket %s non riuscito", channel.id)
+        try:
+            # #139: dopo la chiusura il bot propone allo staff di salvare la risposta come standard.
+            risposte = self.bot.get_cog("RisposteStandardCog")
+            if risposte is not None:
+                await risposte.proponi_da_ticket(guild, channel, ticket)
+        except Exception:
+            logger.exception("Proposta di risposta standard del ticket %s non riuscita", channel.id)
         finally:
             self._transcript_in_corso.discard(channel.id)
 
@@ -1734,6 +1755,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         # NF-13: l'ultimo messaggio di una persona tiene vivo il ticket (chiusura automatica).
         if not message.author.bot and ticket.panel_id is not None:
             await self._segna_attivita(message.channel.id)
+
+        # #139: risposta standard e sollecito (cog a parte, senza AI).
+        if message.author.id == ticket.user_id and not message.author.bot:
+            risposte = self.bot.get_cog("RisposteStandardCog")
+            if risposte is not None:
+                await risposte.su_messaggio_dell_utente(message, ticket)
 
         if ticket.first_response_at is not None:
             return

@@ -2040,11 +2040,18 @@ di quel file.
   di servizio prima di finirle (AI-R-102)
 - `[ ]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
   (AI-R-103)
-- `[ ]` 25.97 Risposte standard imparate dalle risposte dello staff
+- `[~]` 25.97 Risposte standard imparate dalle risposte dello staff
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
-- `[ ]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
+  → **Stato 13/10 (parte senza AI):** alla chiusura il bot propone nel canale dei log la prima risposta dello staff (allegati
+  ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
+  accese per pannello (`/gestione ticket-auto standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
+  parole chiave, riconoscimento del tema oltre le parole, archivio durevole dei file (oggi: link nel canale dei log).
+- `[~]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)
+  → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/gestione ticket-auto sollecito`), domanda in
+  italiano, risposta standard se c'è, altrimenti chiama il ruolo scelto per il pannello (o i ruoli di supporto). Resta con
+  l'AI: lingua dell'utente e scelta tra moderatore e amministratore secondo il caso.
 - `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i
   finali, salvate e riusate in ogni server con lo stesso tema
   (AI-R-106)

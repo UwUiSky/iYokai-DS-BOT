@@ -313,6 +313,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("modmail_config", "Categoria del ModMail", colonne_attore=("updated_by",), colonna_server="guild_id"),
     _t("modmail_blocks", "Utenti bloccati dal ModMail", colonne_utente=("user_id",),
        colonne_attore=("blocked_by",), colonna_server="guild_id", utente="cancella"),
+    _t("ticket_standard_replies", "Risposte standard dei ticket (testo scritto dallo staff)",
+       colonne_attore=("approved_by",), colonna_server="guild_id"),
     _t("ticket_form_questions", "Domande del modulo dei ticket",
        filtro_server="panel_id IN (SELECT id FROM ticket_panels WHERE guild_id = $1)"),
     _t("ticket_panels", "Pannelli dei ticket", colonna_server="guild_id"),

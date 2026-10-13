@@ -38,6 +38,9 @@ class PannelloTicket:
     welcome_text: str | None
     autoclose_minutes: int | None
     rating_enabled: bool
+    standard_attive: bool = False
+    sollecito_minuti: int | None = None
+    ruolo_escalation: int | None = None
 
 
 @dataclass(frozen=True)
@@ -56,7 +59,8 @@ def _pannello(r) -> PannelloTicket:
         id=r["id"], guild_id=r["guild_id"], name=r["name"], category_id=r["category_id"],
         button_label=r["button_label"], button_emoji=r["button_emoji"],
         welcome_text=r["welcome_text"], autoclose_minutes=r["autoclose_minutes"],
-        rating_enabled=r["rating_enabled"],
+        rating_enabled=r["rating_enabled"], standard_attive=r["standard_attive"],
+        sollecito_minuti=r["sollecito_minuti"], ruolo_escalation=r["ruolo_escalation"],
     )
 
 
@@ -135,6 +139,21 @@ class TicketFormRepository:
     async def imposta_voto(self, panel_id: int, attivo: bool) -> bool:
         esito = await self._pool.execute(
             "UPDATE ticket_panels SET rating_enabled = $2 WHERE id = $1", panel_id, attivo
+        )
+        return esito.endswith(" 1")
+
+    async def imposta_standard(self, panel_id: int, attive: bool) -> bool:
+        """#139: risposte standard accese o spente per il pannello."""
+        esito = await self._pool.execute(
+            "UPDATE ticket_panels SET standard_attive = $2 WHERE id = $1", panel_id, attive
+        )
+        return esito.endswith(" 1")
+
+    async def imposta_sollecito(self, panel_id: int, minuti: int | None, ruolo_id: int | None) -> bool:
+        """#139: dopo `minuti` senza risposta dello staff il bot chiede all'utente; `ruolo_id` è chi chiamare."""
+        esito = await self._pool.execute(
+            "UPDATE ticket_panels SET sollecito_minuti = $2, ruolo_escalation = $3 WHERE id = $1",
+            panel_id, minuti, ruolo_id,
         )
         return esito.endswith(" 1")
 

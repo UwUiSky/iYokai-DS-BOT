@@ -5,8 +5,8 @@
 
 ## In corso
 - Giro r4-tkt (per FILE): ordine correzioni → NF-13 → NF-33 → #139 non-AI → cataloghi. Previsione: 4 gruppi.
-- Fatto: correzioni, NF-13 (c8a533e), NF-33 (gruppo 2). Prossimo: #139 parte non-AI
-  (risposte standard + sollecito: logica/dati in `core/ticket_standard_logic.py` + repo, migr. 0102; aggancio in tickets.py).
+- Fatto: correzioni, NF-13, NF-33, #139 non-AI (gruppo 3). Prossimo: cataloghi #119/#120/#127 voci piccole
+  (log: LOG-023 ignora bot, LOG-009 timeout; ticket: TKT-054 conferma chiusura, TKT-056 motivo, TKT-058 chiudi tutti; vocali: VOC-001 prendi proprietà, VOC-005 bitrate). Migr. libera da 0103.
 
 ## Fatto
 - Giri precedenti (F1, F7, router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145): tutti su main.
@@ -18,6 +18,9 @@
   e per uscita utente; test_ticket_form.py, test_ticket_autoclose.py.
 - NF-33 (#104): migr. 0101 (modmail_threads, modmail_blocks), `cogs/tickets/modmail.py`, `/gestione ticket dm|dm-blocca`,
   `/ticket rispondi|dm-chiudi`; un solo thread aperto per utente (indice unico globale); test_modmail.py.
+- #139 non-AI: migr. 0102 (ticket_standard_replies, colonne in panels/tickets), `cogs/tickets/risposte.py`,
+  `core/ticket_standard_logic.py`, `/gestione ticket-auto standard|sollecito|lista|modifica|elimina`, scheduler `ticket_sollecito`;
+  hook in tickets.py (on_message, _transcript_senza_bloccare, _crea_ticket); test_ticket_standard.py.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`.
@@ -49,3 +52,5 @@
 - Un DynamicItem non passa da BaseView: serve `interaction_check` con `super()` + blacklist (test_ui_base_wiring lo impone).
 - Ogni metodo di repository nuovo deve avere un chiamante in produzione (test_repository_callers).
 - Tabelle nuove vanno in `core/data_registry.py` (figlie prima delle madri).
+- Non mettere chiavi nuove in guild_config.settings (SETTING_*): vanno in cogs/utility/config_history.py (non mio): tabella propria (es. modmail_config).
+- I tre dataclass del pannello dopo `imposta_*` sono vecchi: rileggere con `pannello_per_id` nei test.
