@@ -79,5 +79,8 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 
 ## Parziali (issue ancora aperte, voci già fatte)
 
+- #64 (musica, F2, 13/10): un nodo wavelink per bot, sessioni per canale, radio e brani locali, Lavalink proprio in `deploy/lavalink`, impostazioni del server, voci piccole della coda. Mancano canale richieste e playlist (#90) ed effetti sonori (#106).
+- #68 (backup, 13/10): collegamento con codice, clonazione su server da modello, restore con rinnovo token e chiave ruotabile, copia degli ultimi 50 messaggi. Mancano 12.12/12.14 (consenso al DM nella verifica), #121, NF-39.
+
 - #147: pannello di `-cerca-comando`, ricerca, `-chiedi`, `command_usage` (0022). Mancano `scripts/genera_wiki.py` (F10) e l'AI (F12).
 - #67: voci 11.1–11.10 (Twitch, YouTube, feed, rete). Mancano 11.11 (F5) e 11.12 (F13).

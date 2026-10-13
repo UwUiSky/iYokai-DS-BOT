@@ -289,7 +289,7 @@ def classify_query(query: str) -> str:
     Cosa e' una ricerca scritta da un utente (mai query grezze, BUG-10):
     - URL http(s) con un host -> QUERY_URL (passa cosi' com'e')
     - URI Spotify completo -> QUERY_SPOTIFY
-    - percorsi (`/x`, `//host/x`, `\\x`, `C:\\x`, `~`), `local:`, `file:`, ogni altro
+    - percorsi (con barra iniziale, doppia barra, backslash, lettera di unità, `~`), `local:`, `file:`, ogni altro
       `://` o `spotify:` malformato -> QUERY_RIFIUTATA
     - il resto -> QUERY_TESTO: il chiamante aggiunge SEMPRE il prefisso di ricerca.
     I percorsi locali della radio non passano di qui (`local_path_from_identifier`).
