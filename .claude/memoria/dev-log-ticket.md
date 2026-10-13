@@ -13,13 +13,13 @@
 - Verifica 13/10: #62 e #61 chiuse dal codice (M 6.1-6.8, M 5.1-5.9 con test); #145 chiusa
   (`core/premium_cache.py` + test_premium_invalidazione). Resta solo M 6.9 = NF-13.
 - NF-13 (#84): migr. 0100 (ticket_panels, ticket_form_questions, tickets.panel_id/last_activity_at/rating),
-  `/gestione ticket pannello-crea|rimuovi|lista|pubblica`, `modulo-aggiungi|rimuovi|mostra`, `chiusura-auto`, `voto`;
+  `/admin ticket pannello-crea|rimuovi|lista|pubblica`, `modulo-aggiungi|rimuovi|mostra`, `chiusura-auto`, `voto`;
   bottoni DynamicItem `tkt:pan:<id>` e `tkt:voto:<id>:<n>`; chiusura per inattività (scheduler `ticket_autoclose`)
   e per uscita utente; test_ticket_form.py, test_ticket_autoclose.py.
-- NF-33 (#104): migr. 0101 (modmail_threads, modmail_blocks), `cogs/tickets/modmail.py`, `/gestione ticket dm|dm-blocca`,
+- NF-33 (#104): migr. 0101 (modmail_threads, modmail_blocks), `cogs/tickets/modmail.py`, `/admin ticket dm|dm-blocca`,
   `/ticket rispondi|dm-chiudi`; un solo thread aperto per utente (indice unico globale); test_modmail.py.
 - #139 non-AI: migr. 0102 (ticket_standard_replies, colonne in panels/tickets), `cogs/tickets/risposte.py`,
-  `core/ticket_standard_logic.py`, `/gestione ticket-auto standard|sollecito|lista|modifica|elimina`, scheduler `ticket_sollecito`;
+  `core/ticket_standard_logic.py`, `/admin ticket standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`, scheduler `ticket_sollecito`;
   hook in tickets.py (on_message, _transcript_senza_bloccare, _crea_ticket); test_ticket_standard.py.
 
 ## Cose imparate
@@ -54,3 +54,4 @@
 - Tabelle nuove vanno in `core/data_registry.py` (figlie prima delle madri).
 - Non mettere chiavi nuove in guild_config.settings (SETTING_*): vanno in cogs/utility/config_history.py (non mio): tabella propria (es. modmail_config).
 - I tre dataclass del pannello dopo `imposta_*` sono vecchi: rileggere con `pannello_per_id` nei test.
+- /gestione è a 4832/8000 caratteri, /admin a 5214 (allarme 6800): i comandi avanzati dei ticket stanno in `/admin ticket` (ADMIN_TICKET in tickets.py). Misura con tests/test_command_tree_invariants (_albero_vero).

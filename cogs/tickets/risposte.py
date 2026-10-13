@@ -15,7 +15,7 @@ Parte senza AI di #139 (AI-R-104, AI-R-105), accesa per pannello:
 Funziona anche con l'AI ferma: la ricerca è per parole (core/ticket_standard_logic.py).
 La parte con l'AI (lingua dell'utente, scelta migliore, ruolo «giusto» secondo il caso)
 si aggancia dopo (dev-ai). Il timer passa dallo scheduler (azione `ticket_sollecito`).
-Comandi: `/gestione ticket-auto standard|sollecito|lista|modifica|elimina`.
+Comandi: `/admin ticket standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`.
 Funzioni coperte: SPEC §25.97, §25.98
 """
 
@@ -30,6 +30,7 @@ from discord.ext import commands
 
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 from cogs.tickets.tickets import (
+    ADMIN_TICKET,
     TICKET_SOLLECITO_ACTION_TYPE,
     _is_ticket_staff,
     _support_role_ids,
@@ -47,8 +48,6 @@ from core.scheduler import scheduler
 from core.ui_base import BaseModal, BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
 
 logger = logging.getLogger("iyokai.tickets.risposte")
-
-GESTIONE_TICKET_AUTO = ("ticket-auto", "Ticket: risposte standard e sollecito")
 
 _ESTENSIONI_IMMAGINE = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 MENZIONI_MASSIME = 5
@@ -196,7 +195,7 @@ class BottoneRispostaStandard(
         if self.azione == "no":
             if r.status == "approved":
                 await interaction.response.send_message(
-                    "È già approvata: per toglierla usa `/gestione ticket-auto elimina`.", ephemeral=True
+                    "È già approvata: per toglierla usa `/admin ticket risposta-elimina`.", ephemeral=True
                 )
                 return
             await ticket_standard_repo.elimina(r.guild_id, r.id)
@@ -400,12 +399,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         return panel
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="standard",
-        descrizione="Accendi o spegni le risposte standard imparate dallo staff per un pannello.",
-        sottogruppo=GESTIONE_TICKET_AUTO,
+        descrizione="Risposte standard imparate dallo staff.",
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(pannello="Il pannello", attive="Sì per proporle e usarle, no per spegnerle")
+    @app_commands.describe(pannello="Il pannello", attive="Accese o spente")
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def standard(
         self, interaction: discord.Interaction, pannello: app_commands.Range[str, 1, 50], attive: bool
@@ -423,15 +422,15 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="sollecito",
-        descrizione="Dopo N minuti senza risposta dello staff, il bot chiede all'utente di cosa ha bisogno.",
-        sottogruppo=GESTIONE_TICKET_AUTO,
+        descrizione="Sollecito dopo N minuti senza staff (0 = spento).",
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
         pannello="Il pannello",
-        minuti="Minuti di attesa (da 1 a 1440), 0 per spegnere",
-        ruolo="Chi chiamare se non c'è una risposta pronta (predefinito: i ruoli di supporto)",
+        minuti="Minuti di attesa (1-1440)",
+        ruolo="Chi chiamare (predefinito: il supporto)",
     )
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def sollecito(
@@ -461,12 +460,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
-        "gestione",
-        nome="lista",
+        "admin",
+        nome="risposte-lista",
         descrizione="Elenca le risposte standard del server.",
-        sottogruppo=GESTIONE_TICKET_AUTO,
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(stato="Quali mostrare (predefinito: tutte)")
+    @app_commands.describe(stato="Quali mostrare")
     @app_commands.choices(
         stato=[
             app_commands.Choice(name="approvate", value="approved"),
@@ -487,12 +486,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(logica.taglia("\n".join(righe), 1900), ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
-        nome="modifica",
-        descrizione="Correggi titolo, parole chiave e testo di una risposta standard.",
-        sottogruppo=GESTIONE_TICKET_AUTO,
+        "admin",
+        nome="risposta-modifica",
+        descrizione="Correggi una risposta standard.",
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(numero="Il numero della risposta (da /gestione ticket-auto lista)")
+    @app_commands.describe(numero="Numero della risposta")
     async def modifica(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2**31 - 1]) -> None:
         r = await ticket_standard_repo.per_id(numero)
         if r is None or interaction.guild is None or r.guild_id != interaction.guild.id:
@@ -501,12 +500,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_modal(ModuloRispostaStandard(r))
 
     @comando_di_gruppo(
-        "gestione",
-        nome="elimina",
+        "admin",
+        nome="risposta-elimina",
         descrizione="Elimina una risposta standard.",
-        sottogruppo=GESTIONE_TICKET_AUTO,
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(numero="Il numero della risposta (da /gestione ticket-auto lista)")
+    @app_commands.describe(numero="Numero della risposta")
     async def elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2**31 - 1]) -> None:
         if interaction.guild is None:
             return

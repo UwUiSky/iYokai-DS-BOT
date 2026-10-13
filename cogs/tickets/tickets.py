@@ -115,6 +115,8 @@ MODULE_TICKETS = "tickets"
 
 # Sotto-gruppo di /gestione con i comandi degli admin.
 GESTIONE_TICKET = ("ticket", "Ticket: configurazione, pannello, categorie, ruoli di supporto, statistiche")
+# Sotto-gruppo di /admin con i ticket avanzati (NF-13, NF-33, #139): /gestione ha poco spazio (8000 caratteri per gruppo).
+ADMIN_TICKET = ("ticket", "Ticket avanzati: pannelli, modulo, chiusura, DM, risposte")
 
 SETTING_CATEGORY = "ticket_category_id"
 SETTING_SUPPORT_ROLE = "ticket_support_role_id"
@@ -762,23 +764,23 @@ class TicketsCog(CogConGruppi, commands.Cog):
         panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome.strip())
         if panel is None:
             await interaction.response.send_message(
-                f"Nessun pannello chiamato **{nome.strip()[:100]}**. Vedi `/gestione ticket pannello-lista`.",
+                f"Nessun pannello chiamato **{nome.strip()[:100]}**. Vedi `/admin ticket pannello-lista`.",
                 ephemeral=True,
             )
         return panel
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="pannello-crea",
-        descrizione="Crea un pannello di ticket (bottone, categoria Discord, testo di benvenuto).",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Crea un pannello di ticket.",
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
-        nome="Nome del pannello (lo usi negli altri comandi)",
-        categoria="Categoria Discord dove nascono i canali di questo pannello",
-        etichetta="Testo del bottone (predefinito: il nome)",
-        emoji="Emoji del bottone (facoltativa)",
-        benvenuto="Messaggio nel ticket; {utente} diventa la menzione (facoltativo)",
+        nome="Nome del pannello",
+        categoria="Categoria dei canali",
+        etichetta="Testo del bottone",
+        emoji="Emoji del bottone",
+        benvenuto="Benvenuto ({utente} = menzione)",
     )
     async def pannello_crea(
         self,
@@ -823,16 +825,16 @@ class TicketsCog(CogConGruppi, commands.Cog):
             )
             return
         await interaction.response.send_message(
-            f"Pannello **{panel.name}** creato. Aggiungi le domande con `/gestione ticket modulo-aggiungi` "
-            "e pubblicalo con `/gestione ticket pannello-pubblica`.",
+            f"Pannello **{panel.name}** creato. Aggiungi le domande con `/admin ticket modulo-aggiungi` "
+            "e pubblicalo con `/admin ticket pannello-pubblica`.",
             ephemeral=True,
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="pannello-rimuovi",
-        descrizione="Elimina un pannello e il suo modulo (i ticket già aperti restano).",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Elimina un pannello e il suo modulo.",
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(nome="Il pannello da eliminare")
     @app_commands.autocomplete(nome=_completa_pannelli)
@@ -850,10 +852,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="pannello-lista",
         descrizione="Elenca i pannelli di ticket del server.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=ADMIN_TICKET,
     )
     async def pannello_lista(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -861,7 +863,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         pannelli = await ticket_form_repo.elenca_pannelli(interaction.guild.id)
         if not pannelli:
             await interaction.response.send_message(
-                "Nessun pannello. Creane uno con `/gestione ticket pannello-crea`.", ephemeral=True
+                "Nessun pannello. Creane uno con `/admin ticket pannello-crea`.", ephemeral=True
             )
             return
         righe = []
@@ -876,15 +878,15 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo[:1900], ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="pannello-pubblica",
-        descrizione="Pubblica in questo canale un messaggio con i bottoni di uno o più pannelli.",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Pubblica qui i bottoni di uno o più pannelli.",
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
-        pannelli="Uno o più nomi separati da virgola (fino a 25)",
-        titolo="Titolo del messaggio (facoltativo)",
-        testo="Testo del messaggio (facoltativo)",
+        pannelli="Nomi separati da virgola",
+        titolo="Titolo del messaggio",
+        testo="Testo del messaggio",
     )
     @app_commands.autocomplete(pannelli=_completa_pannelli)
     async def pannello_pubblica(
@@ -915,17 +917,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, view=vista)
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="modulo-aggiungi",
-        descrizione="Aggiungi una domanda al modulo di un pannello (fino a 5).",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Aggiungi una domanda al modulo (max 5).",
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
         pannello="Il pannello",
-        domanda="Testo della domanda (fino a 45 caratteri)",
-        suggerimento="Testo grigio dentro il campo (facoltativo)",
-        obbligatoria="Se vuoi che sia obbligatoria (predefinito: sì)",
-        lunga="Risposta su più righe (predefinito: no)",
+        domanda="La domanda (max 45 caratteri)",
+        suggerimento="Testo grigio nel campo",
+        obbligatoria="Risposta obbligatoria",
+        lunga="Risposta su più righe",
     )
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def modulo_aggiungi(
@@ -950,7 +952,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except TroppeDomande:
             await interaction.response.send_message(
                 f"Il modulo ha già {form.MAX_DOMANDE} domande: è il massimo di Discord. "
-                "Togline una con `/gestione ticket modulo-rimuovi`.",
+                "Togline una con `/admin ticket modulo-rimuovi`.",
                 ephemeral=True,
             )
             return
@@ -959,12 +961,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="modulo-rimuovi",
-        descrizione="Togli una domanda dal modulo di un pannello.",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Togli una domanda dal modulo.",
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(pannello="Il pannello", numero="Numero della domanda (da /gestione ticket modulo-mostra)")
+    @app_commands.describe(pannello="Il pannello", numero="Numero della domanda")
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def modulo_rimuovi(
         self,
@@ -981,10 +983,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(f"Non c'è una domanda {numero}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="modulo-mostra",
         descrizione="Mostra le domande del modulo di un pannello.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(pannello="Il pannello")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -1008,12 +1010,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="chiusura-auto",
-        descrizione="Chiudi da solo i ticket di un pannello fermi da N minuti (0 = spenta).",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Chiudi i ticket fermi da N minuti (0 = spenta).",
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(pannello="Il pannello", minuti="Minuti senza messaggi (da 5 a 43200), 0 per spegnere")
+    @app_commands.describe(pannello="Il pannello", minuti="Minuti senza messaggi (5-43200)")
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def chiusura_auto(
         self,
@@ -1040,12 +1042,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="voto",
-        descrizione="Accendi o spegni il voto a stelle in DM alla chiusura di un pannello.",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Voto a stelle in DM alla chiusura.",
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(pannello="Il pannello", attivo="Sì per chiedere il voto, no per non chiederlo")
+    @app_commands.describe(pannello="Il pannello", attivo="Chiedi il voto")
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def voto(
         self,
@@ -1512,7 +1514,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             logger.exception("Transcript del ticket %s non riuscito", channel.id)
         try:
             # #139: dopo la chiusura il bot propone allo staff di salvare la risposta come standard.
-            risposte = self.bot.get_cog("RisposteStandardCog")
+            risposte = self._cog_risposte()
             if risposte is not None:
                 await risposte.proponi_da_ticket(guild, channel, ticket)
         except Exception:
@@ -1758,7 +1760,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
         # #139: risposta standard e sollecito (cog a parte, senza AI).
         if message.author.id == ticket.user_id and not message.author.bot:
-            risposte = self.bot.get_cog("RisposteStandardCog")
+            risposte = self._cog_risposte()
             if risposte is not None:
                 await risposte.su_messaggio_dell_utente(message, ticket)
 
@@ -1769,6 +1771,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         await ticket_repo.record_first_response(message.channel.id, datetime.now(timezone.utc))
+
+    def _cog_risposte(self):
+        """Il cog delle risposte standard (#139), se caricato."""
+        return self.bot.get_cog("RisposteStandardCog") if self.bot is not None else None
 
     async def _segna_attivita(self, channel_id: int) -> None:
         """Scrive l'attività nel database al più una volta al minuto per canale."""

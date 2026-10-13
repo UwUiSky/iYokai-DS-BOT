@@ -1769,17 +1769,17 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   Resta lo sfondo con immagine propria (premium, da fare con `dev-core`).
   `rank_card_prefs` è per utente (senza server): va nel registro dei dati NF-04 (F5) per esportazione e cancellazione.
 - `[x]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
-  → **Stato 13/10:** fino a 5 domande per pannello (`/gestione ticket modulo-aggiungi|modulo-rimuovi|modulo-mostra`), finestra
+  → **Stato 13/10:** fino a 5 domande per pannello (`/admin ticket modulo-aggiungi|modulo-rimuovi|modulo-mostra`), finestra
   Discord, risposte nell'embed del ticket (migrazione 0100). Pannello con 0 domande: il ticket si apre subito.
 - `[x]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
   → **Stato 13/10:** fino a 25 pannelli per server (`pannello-crea|rimuovi|lista|pubblica`); un messaggio porta fino a 25 bottoni
   persistenti (`DynamicItem`, custom_id `tkt:pan:<id>`). Il pannello storico (`/gestione ticket panel`) resta com'è.
 - `[x]` 22.11 Ticket: chiusura automatica per inattività o utente
   uscito (NF-13)
-  → **Stato 13/10:** per inattività (`/gestione ticket chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
+  → **Stato 13/10:** per inattività (`/admin ticket chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
   vale per i ticket nati da un pannello) e quando l'utente lascia il server.
 - `[~]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
-  → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/gestione ticket voto`), una volta sola, media in `/gestione ticket stats`.
+  → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/admin ticket voto`), una volta sola, media in `/gestione ticket stats`.
   Il limite per utente resta 1 (indice unico, migrazione 0010/0050): un limite più alto non è previsto.
 - `[ ]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
@@ -1814,8 +1814,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.10 Blocco dei link di phishing (NF-31)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)
-  → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/gestione ticket dm`), risposta anche anonima
-  (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/gestione ticket dm-blocca`),
+  → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima
+  (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/admin ticket dm-blocca`),
   menu se l'utente è in più server (migrazione 0101). Il testo dei messaggi non è salvato nel database.
 - `[ ]` 23.13 Moduli e candidature (NF-34)
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
@@ -2044,12 +2044,12 @@ di quel file.
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
   → **Stato 13/10 (parte senza AI):** alla chiusura il bot propone nel canale dei log la prima risposta dello staff (allegati
   ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
-  accese per pannello (`/gestione ticket-auto standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
+  accese per pannello (`/admin ticket standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
   parole chiave, riconoscimento del tema oltre le parole, archivio durevole dei file (oggi: link nel canale dei log).
 - `[~]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)
-  → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/gestione ticket-auto sollecito`), domanda in
+  → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/admin ticket sollecito`), domanda in
   italiano, risposta standard se c'è, altrimenti chiama il ruolo scelto per il pannello (o i ruoli di supporto). Resta con
   l'AI: lingua dell'utente e scelta tra moderatore e amministratore secondo il caso.
 - `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i

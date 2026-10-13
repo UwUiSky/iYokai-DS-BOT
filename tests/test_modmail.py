@@ -421,8 +421,8 @@ async def test_i_comandi_stanno_nei_gruppi_e_sotto_i_25_figli(scena):
     await modulo.setup(bot)
     try:
         assert {"rispondi", "dm-chiudi"} <= percorsi_del_gruppo("ticket")
-        assert {"ticket dm", "ticket dm-blocca"} <= percorsi_del_gruppo("gestione")
-        assert len({p for p in percorsi_del_gruppo("gestione") if p.startswith("ticket ")}) <= 25
+        assert {"ticket dm", "ticket dm-blocca"} <= percorsi_del_gruppo("admin")
+        assert len({p for p in percorsi_del_gruppo("admin") if p.startswith("ticket ")}) <= 25
         assert len(percorsi_del_gruppo("ticket")) <= 25
     finally:
         for cog in list(bot.cogs):

@@ -16,7 +16,7 @@ passano da `/ticket rispondi` restano interni: l'utente non li vede mai.
 Configurazione per server: tabella `modmail_config` (categoria dove nascono i
 canali; non in `guild_config.settings` per non toccare lo schema di /admin
 config, che sta in cogs/utility). Il modulo `tickets` deve essere acceso.
-Comandi: `/gestione ticket dm`, `/gestione ticket dm-blocca`, `/ticket rispondi`,
+Comandi: `/admin ticket dm`, `/admin ticket dm-blocca`, `/ticket rispondi`,
 `/ticket dm-chiudi`.
 Funzioni coperte: SPEC §23 (NF-33)
 """
@@ -35,7 +35,7 @@ from discord.ext import commands
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 from cogs.moderation._shared import ensure_module_enabled
 from cogs.tickets.tickets import (
-    GESTIONE_TICKET,
+    ADMIN_TICKET,
     MAX_TRANSCRIPT_FILE_BYTES,
     MODULE_TICKETS,
     RITARDO_ELIMINAZIONE_SECONDI,
@@ -353,14 +353,14 @@ class ModMailCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="dm",
-        descrizione="Accendi o spegni i ticket via messaggio privato (ModMail).",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Accendi o spegni il ModMail (ticket in DM).",
+        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
-        attivo="Sì per accenderli, no per spegnerli",
-        categoria="Categoria dove nascono i canali dello staff (obbligatoria all'accensione)",
+        attivo="Acceso o spento",
+        categoria="Categoria dei canali dello staff",
     )
     async def dm(
         self, interaction: discord.Interaction, attivo: bool, categoria: discord.CategoryChannel | None = None
@@ -386,12 +386,12 @@ class ModMailCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin",
         nome="dm-blocca",
-        descrizione="Impedisci (o permetti di nuovo) a un utente di usare il ModMail.",
-        sottogruppo=GESTIONE_TICKET,
+        descrizione="Blocca o sblocca un utente dal ModMail.",
+        sottogruppo=ADMIN_TICKET,
     )
-    @app_commands.describe(utente="L'utente", bloccato="Sì per bloccarlo, no per sbloccarlo")
+    @app_commands.describe(utente="L'utente", bloccato="Sì per bloccarlo")
     async def dm_blocca(self, interaction: discord.Interaction, utente: discord.User, bloccato: bool = True) -> None:
         if interaction.guild is None:
             return

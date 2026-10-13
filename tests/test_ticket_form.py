@@ -280,7 +280,7 @@ async def test_setup_registra_i_bottoni_dinamici_e_i_comandi_stanno_nei_limiti()
         assert bot._connection._view_store._dynamic_items  # BottonePannello, BottoneVoto
         from tests.support.percorsi import percorsi_del_gruppo
 
-        gestione = {p for p in percorsi_del_gruppo("gestione") if p.startswith("ticket ")}
+        gestione = {p for p in percorsi_del_gruppo("admin") if p.startswith("ticket ")}
         assert {"ticket pannello-crea", "ticket pannello-pubblica", "ticket modulo-aggiungi",
                 "ticket chiusura-auto", "ticket voto"} <= gestione
         assert len(gestione) <= 25
