@@ -12,7 +12,6 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import discord
 import pytest
 
 from core.backup_link_logic import (

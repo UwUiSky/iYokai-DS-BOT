@@ -8,7 +8,6 @@ preso, come reagisce a successo e fallimento, che la copia usi il
 server visto dal Creator (D8).
 """
 
-import discord
 import pytest
 
 from core.backup_queue_worker import BackupQueueWorker

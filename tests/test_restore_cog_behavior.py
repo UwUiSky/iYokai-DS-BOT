@@ -131,7 +131,6 @@ def _patch_repos(monkeypatch, database):
 @pytest.mark.asyncio
 async def test_configura_restore_salva_la_modalita(database, monkeypatch):
     import cogs.utility.restore as restore_module
-    from core.database import db as db_singleton
 
     monkeypatch.setattr(restore_module, "db", database)
     cog = RestoreCog(bot=None)

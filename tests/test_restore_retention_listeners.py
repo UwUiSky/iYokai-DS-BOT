@@ -7,7 +7,6 @@ RestoreCog (SPEC.md §11.11) — retention dei token OAuth salvati.
 
 from datetime import datetime, timedelta, timezone
 
-import discord
 import pytest
 
 from cogs.utility.restore import RestoreCog

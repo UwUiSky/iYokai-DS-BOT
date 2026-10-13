@@ -26,7 +26,7 @@ from core.backup_link_logic import (
     collega_backup,
 )
 from core.database import Database
-from core.repositories.backup_repo import STATUS_PENDING, BackupRepository
+from core.repositories.backup_repo import BackupRepository
 from tests.support.concorrenza import apri_connessioni
 from tests.test_backup_clone_channels import _FakeCategory, _FakeSourceGuild, _FakeTextChannel
 from tests.test_backup_clone_logic import _FakeRole, _FakeSourceGuild as _FakeSourceRoles
