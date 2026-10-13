@@ -147,10 +147,21 @@ async def clone_roles(
     return mappa_id
 
 
+def _overwrite_consentito(
+    target_guild, overwrite: discord.PermissionOverwrite
+) -> discord.PermissionOverwrite:
+    """Come i ruoli: nell'overwrite restano solo i permessi che il Creator ha (sia consentiti sia negati)."""
+    consentiti, negati = overwrite.pair()
+    return discord.PermissionOverwrite.from_pair(
+        _permessi_consentiti(target_guild, consentiti), _permessi_consentiti(target_guild, negati)
+    )
+
+
 def remap_permission_overwrites(
     source_overwrites: dict,
     role_id_map: dict[int, int],
     target_guild: discord.Guild,
+    riepilogo: "RiepilogoCopia | None" = None,
 ) -> dict:
     """
     Converte gli overwrite di permessi (canale/categoria) dal server
@@ -166,6 +177,11 @@ def remap_permission_overwrites(
     for destinatario, overwrite in source_overwrites.items():
         if not isinstance(destinatario, discord.Role):
             continue  # overwrite per singolo utente, saltato
+
+        ridotto = _overwrite_consentito(target_guild, overwrite)
+        if riepilogo is not None and ridotto.pair() != overwrite.pair():
+            riepilogo.permessi_ridotti += 1
+        overwrite = ridotto
 
         if destinatario.is_default():
             # @everyone esiste già nel server di destinazione, non
@@ -228,7 +244,7 @@ async def clone_categories_and_channels(
             riepilogo.canali_offuscati += 1
             offuscate.add(categoria.id)
             continue
-        overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild)
+        overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild, riepilogo)
         nuova_categoria = cat_esistenti.pop(categoria.name, None)
         if nuova_categoria is not None:
             await nuova_categoria.edit(overwrites=overwrites, reason=MOTIVO)
@@ -255,7 +271,7 @@ async def clone_categories_and_channels(
         if canale.category is not None:
             categoria_destinazione = mappa_categorie.get(canale.category.id)
 
-        overwrites = remap_permission_overwrites(canale.overwrites, role_id_map, target_guild)
+        overwrites = remap_permission_overwrites(canale.overwrites, role_id_map, target_guild, riepilogo)
 
         chiave = (_famiglia(canale), canale.name, canale.category.name if canale.category else None)
         if chiave[0] is None:
