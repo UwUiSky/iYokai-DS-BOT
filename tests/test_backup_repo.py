@@ -264,3 +264,13 @@ async def test_get_job_by_backup_guild_id(repo):
 @pytest.mark.asyncio
 async def test_get_job_by_backup_guild_id_sconosciuto_restituisce_none(repo):
     assert await repo.get_job_by_backup_guild_id(999999) is None
+
+
+@pytest.mark.asyncio
+async def test_get_job_by_backup_guild_id_prende_il_piu_recente(repo):
+    """Due job sullo stesso server di backup (il primo fallito): conta l'ultimo."""
+    primo = await repo.enqueue_linked_job(100, 777)
+    await repo.mark_failed(primo, "x")
+    secondo = await repo.enqueue_linked_job(100, 777)
+
+    assert (await repo.get_job_by_backup_guild_id(777)).id == secondo

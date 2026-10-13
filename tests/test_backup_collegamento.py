@@ -157,3 +157,16 @@ async def test_restore_dopo_la_promozione_riconosce_la_coppia_storica(repo):
     assert await repo.is_backup_of(MAIN, BACKUP)
     assert not await repo.is_backup_of(MAIN, BACKUP + 5)
     assert not await repo.is_backup_of(BACKUP, MAIN)
+
+
+@pytest.mark.asyncio
+async def test_il_codice_vale_24_ore_esatte(repo):
+    adesso = datetime.now(timezone.utc)
+    assert VALIDITA_CODICE == timedelta(hours=24)
+    _codice, scadenza = await crea_codice_collegamento(repo, MAIN, creato_da=1, adesso=adesso)
+    assert scadenza == adesso + timedelta(hours=24)
+
+    dentro, _ = await crea_codice_collegamento(
+        repo, MAIN, creato_da=1, adesso=adesso - timedelta(hours=23, minutes=59)
+    )
+    assert (await collega_backup(repo, dentro, BACKUP, adesso=adesso)).esito == ESITO_OK

@@ -367,3 +367,82 @@ async def test_riepilogo_nel_canale_se_la_risposta_dell_interazione_e_scaduta(da
     await cog.restore_users.callback(cog, interaction, "100")
 
     assert len(messaggi_canale) == 1 and "Restore completato" in messaggi_canale[0]
+
+
+# ------------------------------------------- mutazioni sopravvissute (13/10) ----
+
+@pytest.mark.asyncio
+async def test_aggiorna_token_non_tocca_un_bannato(database):
+    repo = _repo(database, generate_key())
+    await repo.save_token(930001, 1, "vecchio", "ref", SCADE)
+    await database.pool.execute(
+        "UPDATE restore_oauth_tokens SET status = 'banned_blacklisted' "
+        "WHERE source_guild_id = 930001 AND user_id = 1"
+    )
+
+    await repo.aggiorna_token(930001, 1, "nuovo", "ref-nuovo", SCADE)
+
+    assert (await repo.get_token(930001, 1)).access_token == "vecchio"
+
+
+@pytest.fixture
+async def contatti(database):
+    await database.pool.execute("DELETE FROM restore_contacts WHERE target_guild_id = 930002")
+    yield _repo(database, generate_key())
+    await database.pool.execute("DELETE FROM restore_contacts WHERE target_guild_id = 930002")
+
+
+async def _contatto_di(database, giorni_fa: int):
+    await database.pool.execute(
+        "UPDATE restore_contacts SET contacted_at = now() - make_interval(days => $1) "
+        "WHERE target_guild_id = 930002",
+        giorni_fa,
+    )
+
+
+@pytest.mark.asyncio
+async def test_contatto_vale_sette_giorni(database, contatti):
+    await contatti.segna_contattato(930002, 930001, 5, "dm")
+    assert await contatti.gia_contattato(930002, 930001, 5)
+    await _contatto_di(database, 6)
+    assert await contatti.gia_contattato(930002, 930001, 5)
+    await _contatto_di(database, 8)
+    assert not await contatti.gia_contattato(930002, 930001, 5)
+    # altri utenti, altri server: nessun contatto
+    assert not await contatti.gia_contattato(930002, 930001, 6)
+    assert not await contatti.gia_contattato(930003, 930001, 5)
+    assert not await contatti.gia_contattato(930002, 930009, 5)
+
+
+@pytest.mark.asyncio
+async def test_segna_contattato_di_nuovo_rinnova_la_data(database, contatti):
+    await contatti.segna_contattato(930002, 930001, 5, "dm")
+    await _contatto_di(database, 20)
+    assert not await contatti.gia_contattato(930002, 930001, 5)
+
+    await contatti.segna_contattato(930002, 930001, 5, "consenso")
+
+    assert await contatti.gia_contattato(930002, 930001, 5)
+    tipo = await database.pool.fetchval(
+        "SELECT kind FROM restore_contacts WHERE target_guild_id = 930002 AND user_id = 5"
+    )
+    assert tipo == "consenso"
+
+
+@pytest.mark.asyncio
+async def test_margine_di_5_minuti_sul_rinnovo(database_cog, monkeypatch):
+    """Scade tra 4 minuti: si rinnova. Tra 6: no."""
+    from core.restore_orchestrator import ExchangedToken
+
+    restore_module, _s, oauth, _b, _p = await _prepara(monkeypatch, database_cog, [1])
+    orch = _OrchFinto(rinnovo=ExchangedToken("n", "nr", datetime.now(timezone.utc) + timedelta(days=7)))
+    monkeypatch.setattr(restore_module, "restore_orchestrator", orch)
+    cog = restore_module.RestoreCog(bot=_FakeBot({}))
+
+    await oauth.save_token(100, 1, "a", "ref-1", datetime.now(timezone.utc) + timedelta(minutes=6))
+    await cog._rinnova_se_serve(100, 1, await oauth.get_token(100, 1))
+    assert orch.rinnovi == []
+
+    await oauth.save_token(100, 1, "a", "ref-1", datetime.now(timezone.utc) + timedelta(minutes=4))
+    await cog._rinnova_se_serve(100, 1, await oauth.get_token(100, 1))
+    assert orch.rinnovi == ["ref-1"]

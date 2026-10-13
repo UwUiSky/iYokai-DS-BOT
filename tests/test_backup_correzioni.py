@@ -263,6 +263,54 @@ async def test_webhook_omonimi_si_copiano_tutti_entro_il_limite():
 
 # ----------------------------------------------------------- orchestrator ----
 
+class _DestFissa:
+    def __init__(self, canale):
+        self._c = canale
+
+    def get_channel(self, i):
+        return self._c
+
+
+async def test_rilancio_con_omonimi_gia_presenti_crea_solo_i_mancanti():
+    canale = _CanaleDest(200, "chat", esistenti=[_Hook("bot"), _Hook("altro")])
+    await clone_webhooks(_SrcHooks([_H("bot", 1)] * 3 + [_H("altro", 1)]), _DestFissa(canale), {1: 200}, RiepilogoCopia())
+    assert canale.creati == ["bot", "bot"]  # un "bot" e "altro" ci sono già
+
+
+async def test_rilancio_completo_non_crea_nulla_e_non_conta_saltati():
+    canale = _CanaleDest(200, "chat", esistenti=[_Hook("bot")] * 3)
+    riepilogo = RiepilogoCopia()
+    await clone_webhooks(_SrcHooks([_H("bot", 1)] * 3), _DestFissa(canale), {1: 200}, riepilogo)
+    assert canale.creati == [] and riepilogo.webhook_saltati == 0
+
+
+async def test_i_webhook_gia_presenti_contano_nel_limite():
+    canale = _CanaleDest(200, "chat", esistenti=[_Hook(f"v{i}") for i in range(13)])
+    riepilogo = RiepilogoCopia()
+    await clone_webhooks(_SrcHooks([_H("bot", 1)] * 3), _DestFissa(canale), {1: 200}, riepilogo)
+    assert canale.creati == ["bot"] and riepilogo.webhook_saltati == 2
+
+
+def test_canali_non_visibili_si_contano_con_il_permesso_del_bot():
+    from core.backup_clone_logic import conta_canali_non_visibili
+
+    class _Canale:
+        def __init__(self, vede):
+            self._v = vede
+
+        def permissions_for(self, me):
+            assert me == "io"
+            return discord.Permissions(view_channel=self._v)
+
+    class _G:
+        me = "io"
+        channels = [_Canale(True), _Canale(False), _Canale(False)]
+
+    assert conta_canali_non_visibili(_G()) == 2
+    _G.channels = [_Canale(True)]
+    assert conta_canali_non_visibili(_G()) == 0
+
+
 def test_retry_after_nan_inf_negativo_diventano_attese_valide():
     from core.restore_orchestrator import attesa_da_retry_after
 
