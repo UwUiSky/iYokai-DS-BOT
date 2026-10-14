@@ -11,7 +11,7 @@
 ## Fatto
 - r6 (1) 650d4a2: `core/config_schema.py` (imposta_modulo, imposta_lingua_server);
   setup.py e /admin lingua set lo usano.
-- r6 (2): pannello `core/web_panel_server.py` + `web_panel_logic.py` +
+- r6 (2) 7b27a1f, 0d94f23: pannello `core/web_panel_server.py` + `web_panel_logic.py` +
   `panel_bridge.py`, pagine in `pannello_web/`, sessioni 0150, wiki
   `/wiki`, pagina premium (#93); D26 (pannello nel processo del bot).
 
