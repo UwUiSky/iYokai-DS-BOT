@@ -4,7 +4,7 @@ tests/test_anti_nuke_117.py
 Catalogo #117, anti-nuke:
 - SIC-001  seconda soglia (un'ora) che prende l'attacco lento;
 - SIC-002  quarantena come punizione, con fallback sul toglie-ruoli;
-- SIC-017  registro degli attacchi (/security antinuke casi, rilascia);
+- SIC-017  registro degli attacchi (/antinuke casi, rilascia);
 - SIC-018  extra owner e fidati: chi puo' cambiare la lista;
 - SIC-019  fiducia limitata a un tipo di azione o a una categoria di canali;
 - SIC-020  esenzione di un webhook.

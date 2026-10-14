@@ -20,6 +20,11 @@ a tre ruoli in più dati insieme a quello di verifica (VER-015). Lo staff
 può verificare a mano un membro (VER-016), cercare i tentativi di un
 utente (VER-031) e vedere le statistiche (VER-030).
 
+Captcha (`/security verify setup`, opzione `captcha_tipo`): «testo» e' una
+somma scritta nel modulo; «immagine» (NF-18) manda un'immagine con lettere
+storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
+3 tentativi (core/captcha_image.py).
+
 Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
 e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
 costruito — non tentati qui.
@@ -28,6 +33,8 @@ Funzioni coperte: SPEC §4.1, §4.4-§4.6
 
 from __future__ import annotations
 
+import asyncio
+import io
 import logging
 import random
 
@@ -35,6 +42,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import captcha_image
+from core.bounded_cache import BoundedCache
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
@@ -58,6 +67,8 @@ MODULE_VERIFY = "verify"
 # Impostazioni dei ruoli extra (guild_config.settings).
 SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
 SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
+SETTING_LOG_COMPATTO = "verify_log_compatto"  # VER-029: True = una riga, False = scheda completa
+SETTING_CAPTCHA_TIPO = "verify_captcha_tipo"  # captcha_image.TIPO_TESTO | TIPO_IMMAGINE
 MAX_RUOLI_EXTRA = 3
 
 VERIFY_BUTTON_CUSTOM_ID = "iyokai_verify_button"
@@ -109,6 +120,70 @@ class CaptchaModal(BaseModal, title="Verification"):
         await interaction.followup.send(outcome.reason, ephemeral=True)
 
 
+class CaptchaImmagineModal(BaseModal, title="Verifica"):
+    """Campo per ricopiare le lettere dell'immagine (etichetta sotto i 45 caratteri)."""
+
+    def __init__(self, cog: "VerifyCog", guild_id: int, user_id: int) -> None:
+        super().__init__()
+        self.answer_input = discord.ui.TextInput(max_length=captcha_image.LUNGHEZZA_CODICE + 3)
+        self.add_item(discord.ui.Label(text="Scrivi le lettere dell'immagine", component=self.answer_input))
+        self.cog = cog
+        self.guild_id = guild_id
+        self.user_id = user_id
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        chiave = (self.guild_id, self.user_id)
+        sfida = self.cog.sfide.get(chiave)
+        if sfida is None:
+            await interaction.followup.send("Il tempo e' scaduto: premi di nuovo «Verify».", ephemeral=True)
+            return
+        esito = sfida.prova(self.answer_input.value)
+        if esito == "sbagliata":
+            await interaction.followup.send(
+                f"Non e' giusto. Ti restano {sfida.tentativi_rimasti} tentativi: premi «Scrivi il codice» "
+                "sotto l'immagine.",
+                ephemeral=True,
+            )
+            return
+        self.cog.sfide.delete(chiave)
+        guild = interaction.client.get_guild(self.guild_id)
+        member = guild.get_member(self.user_id) if guild is not None else None
+        if member is None:
+            await interaction.followup.send("Qualcosa e' andato storto, riprova.", ephemeral=True)
+            return
+        outcome = await self.cog.run_checks_and_finalize(guild, member, esito == "ok")
+        if esito == "ok":
+            await interaction.followup.send(outcome.reason, ephemeral=True)
+        else:
+            motivo = "i tentativi sono finiti" if esito == "esaurita" else "il tempo e' scaduto"
+            await interaction.followup.send(
+                f"Verifica non riuscita: {motivo}. Premi di nuovo «Verify» per un codice nuovo.", ephemeral=True
+            )
+
+
+class CaptchaImmagineView(BaseView):
+    """Il bottone sotto l'immagine: apre il modulo (deve essere la prima risposta)."""
+
+    def __init__(self, cog: "VerifyCog", guild_id: int, user_id: int) -> None:
+        super().__init__(timeout=captcha_image.TEMPO_MASSIMO_SECONDI)
+        self.cog = cog
+        self.guild_id = guild_id
+        self.user_id = user_id
+
+    @discord.ui.button(label="Scrivi il codice", style=discord.ButtonStyle.primary)
+    async def scrivi(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("Questo codice e' di un altro utente.", ephemeral=True)
+            return
+        sfida = self.cog.sfide.get((self.guild_id, self.user_id))
+        if sfida is None or sfida.chiusa or sfida.scaduta():
+            self.cog.sfide.delete((self.guild_id, self.user_id))
+            await interaction.response.send_message("Il tempo e' scaduto: premi di nuovo «Verify».", ephemeral=True)
+            return
+        await interaction.response.send_modal(CaptchaImmagineModal(self.cog, self.guild_id, self.user_id))
+
+
 class VerifyPanelView(BaseView):
     """Persistente — stesso motivo/pattern di TicketPanelView e CreateVoiceView."""
 
@@ -155,6 +230,11 @@ class VerifyPanelView(BaseView):
         ):
             await interaction.response.send_message("You are already verified.", ephemeral=True)
             return
+        if config.captcha_enabled and await db.get_guild_setting(
+            guild.id, SETTING_CAPTCHA_TIPO, captcha_image.TIPO_TESTO
+        ) == captcha_image.TIPO_IMMAGINE:
+            await cog.manda_captcha_immagine(interaction, guild.id)
+            return
         if config.captcha_enabled:
             await interaction.response.send_modal(
                 CaptchaModal(cog, guild.id, interaction.user.id)
@@ -171,6 +251,21 @@ class VerifyPanelView(BaseView):
 class VerifyCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # (server, utente) -> sfida aperta; in memoria e con tetto: dopo un riavvio si chiede un codice nuovo.
+        self.sfide: BoundedCache = BoundedCache(2000)
+
+    async def manda_captcha_immagine(self, interaction: discord.Interaction, guild_id: int) -> None:
+        """Risponde al clic con l'immagine e il bottone che apre il modulo."""
+        await interaction.response.defer(ephemeral=True)
+        sfida = captcha_image.nuova_sfida()
+        png = await asyncio.to_thread(captcha_image.disegna_immagine, sfida.codice)
+        self.sfide.set((guild_id, interaction.user.id), sfida)
+        await interaction.followup.send(
+            "Ricopia le lettere dell'immagine (hai 3 minuti e 3 tentativi).",
+            file=discord.File(io.BytesIO(png), filename="verifica.png"),
+            view=CaptchaImmagineView(self, guild_id, interaction.user.id),
+            ephemeral=True,
+        )
 
     def _count_mutual_guilds(self, user_id: int, excluding_guild_id: int) -> int:
         """
@@ -283,14 +378,18 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if config.log_channel_id is not None:
             log_channel = guild.get_channel(config.log_channel_id)
             if isinstance(log_channel, discord.TextChannel):
+                compatto = await db.get_guild_setting(guild.id, SETTING_LOG_COMPATTO, False)
                 embed = discord.Embed(
                     title="Verify succeeded" if outcome.success else "Verify failed",
                     color=discord.Color.green() if outcome.success else discord.Color.red(),
                 )
-                embed.add_field(
-                    name="User", value=f"{member.mention} ({member.id})", inline=False
-                )
-                embed.add_field(name="Reason", value=outcome.reason, inline=False)
+                if compatto:
+                    embed.description = f"{member.mention} ({member.id}): {outcome.reason}"[:400]
+                else:
+                    embed.add_field(
+                        name="User", value=f"{member.mention} ({member.id})", inline=False
+                    )
+                    embed.add_field(name="Reason", value=outcome.reason, inline=False)
                 try:
                     await log_channel.send(embed=embed)
                 except discord.HTTPException:
@@ -312,14 +411,19 @@ class VerifyCog(CogConGruppi, commands.Cog):
         verified_role="Ruolo da assegnare dopo la verifica",
         min_account_age_days="Età minima dell'account in giorni (0 = disattivato)",
         min_mutual_servers="Server in comune minimi richiesti (0 = disattivato)",
-        captcha_enabled="Richiedi un captcha testuale (solo modalità bottone)",
+        captcha_enabled="Richiedi un captcha (solo modalità bottone)",
+        captcha_tipo="Tipo di captcha: somma scritta o immagine con lettere storte",
         log_channel="Canale dove loggare ogni tentativo",
     )
     @app_commands.choices(
         method=[
             app_commands.Choice(name="Button", value="button"),
             app_commands.Choice(name="Reaction", value="reaction"),
-        ]
+        ],
+        captcha_tipo=[
+            app_commands.Choice(name="Somma scritta", value=captcha_image.TIPO_TESTO),
+            app_commands.Choice(name="Immagine", value=captcha_image.TIPO_IMMAGINE),
+        ],
     )
     async def setup_cmd(
         self,
@@ -330,6 +434,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         min_mutual_servers: app_commands.Range[int, 0, 100] = 0,
         captcha_enabled: bool = False,
         log_channel: discord.TextChannel | None = None,
+        captcha_tipo: app_commands.Choice[str] | None = None,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -338,6 +443,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
             )
             return
 
+        # Scegliere il tipo «immagine» accende il captcha da solo.
+        immagine = captcha_tipo is not None and captcha_tipo.value == captcha_image.TIPO_IMMAGINE
+        captcha_enabled = captcha_enabled or immagine
         if method.value == "reaction" and captcha_enabled:
             await interaction.response.send_message(
                 "Il captcha non è supportato in modalità reaction: una "
@@ -366,6 +474,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
             captcha_enabled=captcha_enabled,
             log_channel_id=log_channel.id if log_channel else None,
         )
+        if captcha_tipo is not None:
+            await db.set_guild_setting(
+                interaction.guild.id, SETTING_CAPTCHA_TIPO, captcha_tipo.value, changed_by=interaction.user.id
+            )
 
         await interaction.response.send_message(
             f"Verify configurato: modalità **{method.name}**, ruolo "
@@ -482,6 +594,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_2="Altro ruolo extra",
         extra_3="Altro ruolo extra",
         azzera="Togli questi ruoli",
+        log_compatto="Nel log una riga sola per tentativo, invece della scheda completa",
     )
     async def options_cmd(
         self,
@@ -491,10 +604,13 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_2: discord.Role | None = None,
         extra_3: discord.Role | None = None,
         azzera: bool = False,
+        log_compatto: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         guild = interaction.guild
+        if log_compatto is not None:
+            await db.set_guild_setting(guild.id, SETTING_LOG_COMPATTO, log_compatto, changed_by=interaction.user.id)
         if azzera:
             await db.set_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO, None)
             await db.set_guild_setting(guild.id, SETTING_RUOLI_EXTRA, None)

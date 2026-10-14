@@ -22,11 +22,10 @@ Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 I filtri lato bot controllano anche i messaggi MODIFICATI (`on_message_edit`,
 AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
 messaggio modificato più volte vale un solo warn per violazione.
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021)
+Il blocco del phishing (NF-31, `/automod filtri phishing`) usa la lista di
+core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021), §23 (NF-31)
 """
-
-# DA FARE (issue #102, fase F13): NF-31, Blocco dei link di phishing.
-#   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -40,6 +39,9 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import channel_router as router
+from core.phishing_list_fetcher import lista_phishing
+from core.repositories.output_channel_repo import output_channel_repo
 
 from core.automod_sync import (
     MAX_KEYWORD_LENGTH,
@@ -66,6 +68,12 @@ from core.automod_advanced_logic import (
     VIOLATION_SPAM_MESSAGES,
     VIOLATION_SPAM_STICKER,
     VIOLATION_ZALGO,
+    VIOLATION_PHISHING,
+    VIOLATION_A_CAPO,
+    VIOLATION_LUNGHEZZA,
+    VIOLATION_SPOILER,
+    AZIONI_DI_PARTENZA,
+    AZIONI_DI_PARTENZA_GENERALI,
     evaluate_message_violations,
     normalize_domain,
 )
@@ -122,6 +130,10 @@ _VIOLATION_LABELS = {
     VIOLATION_ZALGO: "Anti-Zalgo",
     VIOLATION_MASS_MENTION: "Anti-Mass-Mention",
     VIOLATION_ATTACHMENT_SPAM: "Anti-Attachment-Spam",
+    VIOLATION_PHISHING: "Anti-Phishing",
+    VIOLATION_A_CAPO: "Troppi a-capo",
+    VIOLATION_LUNGHEZZA: "Messaggio troppo lungo",
+    VIOLATION_SPOILER: "Troppi spoiler",
 }
 
 
@@ -329,10 +341,14 @@ async def _log_violation(
         message.guild.id, message.author.id, message.channel.id, violation, actions_taken, contenuto
     )
 
-    if settings.log_channel_id is None:
-        return
-    canale = message.guild.get_channel(settings.log_channel_id)
-    if not isinstance(canale, discord.TextChannel):
+    if violation == VIOLATION_PHISHING:
+        # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
+        canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
+    else:
+        canale = message.guild.get_channel(settings.log_channel_id) if settings.log_channel_id else None
+        if not isinstance(canale, discord.TextChannel):
+            canale = None
+    if canale is None:
         return
 
     embed = discord.Embed(
@@ -343,7 +359,12 @@ async def _log_violation(
     embed.add_field(name="Canale", value=message.channel.mention, inline=True)
     embed.add_field(name="Azioni eseguite", value=", ".join(actions_taken) or "nessuna", inline=True)
     if contenuto:
-        embed.add_field(name="Contenuto", value=contenuto, inline=False)
+        # Nel log di phishing il link non deve restare cliccabile.
+        valore = f"`{contenuto.replace('`', '')}`" if violation == VIOLATION_PHISHING else contenuto
+        embed.add_field(name="Contenuto", value=valore, inline=False)
+    if violation == VIOLATION_PHISHING:
+        await router.invia_a(canale, message.guild, router.TIPO_PHISHING, embed=embed)
+        return
     try:
         await canale.send(embed=embed)
     except discord.HTTPException:
@@ -847,6 +868,69 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "automod",
+        nome="phishing",
+        descrizione="Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
+    @app_commands.describe(
+        enabled="Attiva/disattiva",
+        canale_log="Canale o forum dove scrivere ogni link bloccato (vuoto: il log dell'AutoMod)",
+    )
+    async def anti_phishing(
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        canale_log: discord.TextChannel | discord.ForumChannel | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        if canale_log is not None:
+            await output_channel_repo.imposta(interaction.guild.id, router.TIPO_PHISHING, canale_log.id)
+        settings = await automod_advanced_repo.get_settings(interaction.guild.id)
+        await automod_advanced_repo.save_settings(_replace_settings(settings, anti_phishing_enabled=enabled))
+        if enabled:
+            lista_phishing.aggiorna_se_serve()
+        await interaction.response.send_message(
+            f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
+            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`."
+            + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "automod",
+        nome="forma-testo",
+        descrizione="Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
+    @app_commands.describe(
+        max_a_capo="Massimo di righe a capo (muri di testo); 0 = spento",
+        max_lunghezza="Massimo di caratteri per messaggio; 0 = spento",
+        max_spoiler="Massimo di pezzi ||nascosti||; 0 = spento",
+    )
+    async def forma_testo(
+        self,
+        interaction: discord.Interaction,
+        max_a_capo: app_commands.Range[int, 0, 200] | None = None,
+        max_lunghezza: app_commands.Range[int, 0, 4000] | None = None,
+        max_spoiler: app_commands.Range[int, 0, 100] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        settings = await automod_advanced_repo.get_settings(interaction.guild.id)
+        c = settings.config
+        nuovi = {
+            "max_a_capo": c.max_a_capo if max_a_capo is None else max_a_capo,
+            "max_lunghezza": c.max_lunghezza if max_lunghezza is None else max_lunghezza,
+            "max_spoiler": c.max_spoiler if max_spoiler is None else max_spoiler,
+        }
+        await automod_advanced_repo.save_settings(_replace_settings(settings, **nuovi))
+        nomi = {"max_a_capo": "a-capo", "max_lunghezza": "caratteri", "max_spoiler": "spoiler"}
+        righe = [f"{nomi[k]}: {v if v else 'spento'}" for k, v in nuovi.items()]
+        await interaction.response.send_message("Limiti salvati. " + "; ".join(righe) + ".", ephemeral=True)
+
+    @comando_di_gruppo(
+        "automod",
         nome="anti-mention",
         descrizione="Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).",
         sottogruppo=("filtri", "Filtri automatici sui messaggi."),
@@ -1046,6 +1130,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"**Anti-Spam Sticker**: {'ON' if c.anti_spam_sticker.enabled else 'OFF'} (max {c.anti_spam_sticker.max_count}/{c.anti_spam_sticker.window_seconds}s)",
             f"**Anti-Caps**: {'ON' if c.anti_caps.enabled else 'OFF'} (soglia {c.anti_caps.threshold_percent}%)",
             f"**Anti-Zalgo**: {'ON' if c.anti_zalgo_enabled else 'OFF'}",
+            f"**Anti-Phishing**: {'ON' if c.anti_phishing_enabled else 'OFF'}",
+            f"**Forma del testo**: a-capo {c.max_a_capo or 'spento'}, caratteri {c.max_lunghezza or 'spento'}, "
+            f"spoiler {c.max_spoiler or 'spento'}",
             f"**Anti-Mass-Mention**: {'ON' if c.anti_mass_mention.enabled else 'OFF'} (max {c.anti_mass_mention.max_count})",
             f"**Anti-Attachment-Spam**: {'ON' if c.anti_attachment_spam.enabled else 'OFF'} (max {c.anti_attachment_spam.max_count}/{c.anti_attachment_spam.window_seconds}s)",
             f"**Canali esenti**: {len(settings.exempt_channel_ids)}",
@@ -1089,12 +1176,16 @@ class AutomodCog(CogConGruppi, commands.Cog):
             return
 
         segnali = build_message_signals(message, settings.config, conta_nel_tempo=not modificato)
-        violazioni = evaluate_message_violations(segnali, settings.config)
+        if settings.config.anti_phishing_enabled:
+            lista_phishing.aggiorna_se_serve()
+        violazioni = evaluate_message_violations(segnali, settings.config, lista_phishing.domini)
         if not violazioni:
             return
 
         for violazione in violazioni:
-            azioni_configurate = settings.actions.get(violazione, ("delete",))
+            azioni_configurate = settings.actions.get(
+                violazione, AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI)
+            )
             eseguite = await _execute_actions(
                 message, violazione, azioni_configurate, settings, modificato=modificato
             )

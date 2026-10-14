@@ -28,18 +28,26 @@ TIPO_MESSAGGI = "messaggi"
 TIPO_VOCE = "voce"
 TIPO_SERVER = "server"
 TIPI_LOG = (TIPO_EVENTI, TIPO_MESSAGGI, TIPO_VOCE, TIPO_SERVER)
+# Tipi di uscita che non sono log: non entrano in TIPI_LOG, quindi /log setup
+# non crea canali per loro. Si scelgono dal comando della funzione che li usa.
+TIPO_ALLARMI = "allarmi"  # allarmi dell'anti-nuke (#59 3.18)
+TIPO_PHISHING = "phishing"  # log del filtro phishing (SIC-043)
 
 DESCRIZIONE_TIPO = {
     TIPO_EVENTI: "Eventi dei membri e dei ruoli",
     TIPO_MESSAGGI: "Messaggi cancellati e modificati",
     TIPO_VOCE: "Entrate e uscite dai vocali",
     TIPO_SERVER: "Canali, inviti, webhook, emoji e impostazioni del server",
+    TIPO_ALLARMI: "Allarmi dell'anti-nuke",
+    TIPO_PHISHING: "Link di phishing cancellati",
 }
 NOME_POST = {
     TIPO_EVENTI: "Log eventi",
     TIPO_MESSAGGI: "Log messaggi",
     TIPO_VOCE: "Log voce",
     TIPO_SERVER: "Log server",
+    TIPO_ALLARMI: "Allarmi anti-nuke",
+    TIPO_PHISHING: "Log phishing",
 }
 
 # LIM-38: dal 16/11/2026 Discord mostra così i canali che il bot non vede.

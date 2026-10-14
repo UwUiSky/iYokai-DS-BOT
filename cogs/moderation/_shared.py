@@ -22,7 +22,10 @@ from __future__ import annotations
 import discord
 from discord import app_commands
 
+from core import lockdown_service
 from core.database import db
+from core.lockdown_logic import puo_agire_in_panico
+from core.repositories.security_repo import security_repo
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
 from core.moderation_validation_logic import is_valid_reason
 from core.permissions import ModerationActor, can_moderate
@@ -152,6 +155,18 @@ async def ensure_module_enabled(
             ephemeral=True,
         )
         return False
+
+    if module_name != MODULE_REPORT and lockdown_service.panico_riservato(interaction.guild.id):
+        # SIC-012: durante il panico /mod e /modban li usano solo proprietario e fidati
+        # (/report resta aperto: e' il canale con cui i membri avvisano lo staff).
+        impostazioni = await security_repo.get_settings(interaction.guild.id)
+        if not puo_agire_in_panico(interaction.user.id, interaction.guild.owner_id, impostazioni.anti_nuke):
+            await interaction.response.send_message(
+                "Il server e' in panico: in questo momento i comandi di moderazione li usano solo il proprietario "
+                "e gli utenti fidati.",
+                ephemeral=True,
+            )
+            return False
 
     enabled = await db.is_module_active_for_guild(interaction.guild.id, module_name)
     if not enabled:

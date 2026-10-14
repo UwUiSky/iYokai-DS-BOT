@@ -142,9 +142,14 @@ async def contesto(monkeypatch):
 
     original_provider = security_repo._pool_provider
     security_repo._pool_provider = lambda: database.pool
+    from core.repositories.output_channel_repo import output_channel_repo
+
+    originale_uscite = output_channel_repo._pool_provider
+    output_channel_repo._pool_provider = lambda: database.pool
 
     yield database
 
+    output_channel_repo._pool_provider = originale_uscite
     security_repo._pool_provider = original_provider
     await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM security_config WHERE guild_id = $1", GUILD_ID)

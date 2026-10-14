@@ -22,7 +22,7 @@ async def test_anti_nuke_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True
 
-    gruppo = bot.tree.get_command("security").get_command("antinuke")
+    gruppo = bot.tree.get_command("antinuke")
     assert gruppo is not None
 
     nomi_comandi = {c.name for c in gruppo.commands}

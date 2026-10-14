@@ -21,7 +21,7 @@ I canali vengono ricreati dello stesso tipo (testuale, annunci,
 vocale, palco, categoria, forum).
 
 Punizione (quarantena, ruoli tolti o ban): una sola per attacco. Un
-attacco e' un caso numerato (/security antinuke casi), un DM al
+attacco e' un caso numerato (/antinuke casi), un DM al
 proprietario, un avviso; gli eventi che arrivano dopo la punizione non ne
 creano altri finche' la punizione tiene. Impostazioni che cambiano chi e'
 esente o quanto e' forte la difesa: solo il proprietario e gli extra owner
@@ -42,10 +42,13 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core import channel_router as router
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.lockdown_service import panico_automatico
 from core.permission_risk_logic import critical_permissions_of
 from core.premium import PremiumModule, registry, requires_module
+from core.repositories.output_channel_repo import output_channel_repo
 from core.repositories.security_repo import SecuritySettings, security_repo
 from core.security_access import premium_sbloccato, solo_chi_gestisce
 from core.security_audit import (
@@ -215,15 +218,16 @@ def _categoria_del_canale(channel: discord.abc.GuildChannel) -> int | None:
 
 
 async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: discord.Embed) -> None:
+    """DM al proprietario e avviso nel canale degli allarmi (#59 3.18).
+
+    Il canale lo sceglie `/antinuke canale-allarmi` (router dei canali,
+    puo' essere anche un forum); senza scelta vale quello dell'anti-raid.
+    """
     if guild.owner is not None:
         await try_dm(guild.owner, embed)
-    if settings.alert_channel_id is not None:
-        canale = guild.get_channel(settings.alert_channel_id)
-        if isinstance(canale, discord.TextChannel):
-            try:
-                await canale.send(embed=embed)
-            except discord.HTTPException:
-                pass
+    dest = await router.destinazione(guild, router.TIPO_ALLARMI, settings.alert_channel_id)
+    if dest is not None:
+        await router.invia_a(dest, guild, router.TIPO_ALLARMI, embed=embed)
 
 
 def _campi_fiducia(config: AntiNukeConfig) -> dict:
@@ -252,10 +256,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         return await solo_chi_gestisce(interaction, settings.anti_nuke)
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="enable",
         descrizione="Attiva o disattiva l'Anti-Nuke.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @requires_module(MODULE_ANTI_NUKE)
     async def enable(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -292,10 +295,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(avviso, ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="limits",
         descrizione="Configura la soglia di rilevamento per una categoria.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @app_commands.describe(
         category="Tipo di azione da controllare",
@@ -340,10 +342,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="trusted-add",
         descrizione="Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @app_commands.describe(
         user_id="ID dell'utente, del bot o del webhook da esentare",
@@ -422,10 +423,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="trusted-remove",
         descrizione="Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @app_commands.describe(user_id="ID da togliere dalla lista (utente, bot o webhook)")
     @requires_module(MODULE_ANTI_NUKE)
@@ -455,10 +455,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"`{id_utente}` rimosso dalla lista fidati.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="trusted-list",
         descrizione="Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @requires_module(MODULE_ANTI_NUKE)
     async def trusted_list(self, interaction: discord.Interaction) -> None:
@@ -484,10 +483,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="punish-action",
         descrizione="Cosa fare all'autore di un'azione distruttiva di massa.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @app_commands.choices(
         action=[
@@ -509,10 +507,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             await self._prepara_quarantena(interaction)
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="recovery",
         descrizione="Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @requires_module(MODULE_ANTI_NUKE)
     async def recovery(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -525,10 +522,29 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Recovery automatico {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
+        nome="canale-allarmi",
+        descrizione="Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).",
+    )
+    @app_commands.describe(channel="Canale di testo o forum degli allarmi")
+    @requires_module(MODULE_ANTI_NUKE)
+    async def canale_allarmi(
+        self, interaction: discord.Interaction, channel: discord.TextChannel | discord.ForumChannel
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        if not await self._solo_chi_gestisce(interaction, settings):
+            return
+        await output_channel_repo.imposta(interaction.guild.id, router.TIPO_ALLARMI, channel.id)
+        await interaction.response.send_message(
+            f"Gli allarmi dell'Anti-Nuke arriveranno in {channel.mention}.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "antinuke",
         nome="status",
         descrizione="Mostra la configurazione attuale dell'Anti-Nuke.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @requires_module(MODULE_ANTI_NUKE)
     async def status(self, interaction: discord.Interaction) -> None:
@@ -536,6 +552,8 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         n = settings.anti_nuke
+        scelta = await output_channel_repo.ottieni(interaction.guild.id, router.TIPO_ALLARMI)
+        id_allarmi = scelta.channel_id if scelta and scelta.esplicito else settings.alert_channel_id
 
         def _riga(nome: str, categoria: str) -> str:
             ora = category_hour_max(categoria, n)
@@ -554,6 +572,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             _riga("Ban/Kick", NUKE_CATEGORY_BAN_KICK),
             _riga("Permessi dei canali", NUKE_CATEGORY_CHANNEL_PERMS),
             f"**Azione punitiva**: {n.punish_action}",
+            f"**Canale degli allarmi**: {f'<#{id_allarmi}>' if id_allarmi else 'nessuno (solo DM al proprietario)'}",
             f"**Recovery automatico**: {'sì' if n.recovery_enabled else 'no'}",
             f"**Utenti fidati**: {sum(1 for v in voci_fiducia(n) if v.level != TRUST_LEVEL_EXTRA_OWNER)}",
             f"**Extra owner**: {sum(1 for v in voci_fiducia(n) if v.level == TRUST_LEVEL_EXTRA_OWNER)}",
@@ -565,10 +584,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="guardie",
         descrizione="Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @app_commands.describe(
         permessi_ruoli="Annulla l'aggiunta di permessi pericolosi a un ruolo, se l'autore non è fidato",
@@ -618,10 +636,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="casi",
         descrizione="Registro degli attacchi fermati: elenco o dettaglio di un caso.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
     @app_commands.describe(
         numero="Numero del caso da vedere nel dettaglio (vuoto: l'elenco)",
@@ -675,18 +692,17 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             description="\n".join(righe)[:4000],
             color=discord.Color.red(),
         )
-        embed.set_footer(text=f"Pagina {pagina}/{pagine} · {totale} casi · /security antinuke casi numero:N per il dettaglio")
+        embed.set_footer(text=f"Pagina {pagina}/{pagine} · {totale} casi · /antinuke casi numero:N per il dettaglio")
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )
 
     @comando_di_gruppo(
-        "security",
+        "antinuke",
         nome="rilascia",
         descrizione="Toglie la quarantena all'autore di un caso e gli rimette i ruoli.",
-        sottogruppo=("antinuke", "Protezione anti-nuke del server."),
     )
-    @app_commands.describe(caso="Numero del caso (vedi /security antinuke casi)")
+    @app_commands.describe(caso="Numero del caso (vedi /antinuke casi)")
     @requires_module(MODULE_ANTI_NUKE)
     async def rilascia(
         self, interaction: discord.Interaction, caso: app_commands.Range[int, 1, 1_000_000]
@@ -947,8 +963,10 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             color=discord.Color.red(),
         )
         if tolti:
-            embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /security antinuke rilascia caso:{numero}")
+            embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /antinuke rilascia caso:{numero}")
         await _alert_staff(guild, settings, embed)
+        # SIC-011: se il server l'ha scelto, un attacco riconosciuto accende il panico.
+        await panico_automatico(guild, f"Anti-Nuke: {category}")
 
     async def _punizione_in_vigore(
         self, guild: discord.Guild, actor_id: int, config: AntiNukeConfig

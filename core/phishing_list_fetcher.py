@@ -1,32 +1,103 @@
 """
 core/phishing_list_fetcher.py
 =============================
-Scarica e tiene in memoria la lista.
+Tiene in memoria la lista dei domini di phishing: parte dal file locale
+(`data/phishing_domains.txt`) e, se e' impostata la variabile
+`PHISHING_LIST_URL`, la integra con una lista scaricata.
 Funzioni coperte: SPEC §23 (NF-31)
 
-STATO: scheletro. Il codice non è ancora scritto (issue #102).
+Regole del download: al massimo uno ogni 6 ore, attesa massima 10 secondi,
+risposta fino a 2 MB, testo con un dominio per riga o JSON con un elenco di
+domini. Se il download fallisce resta la lista che c'era. Condizioni d'uso
+della fonte: le sceglie chi imposta l'indirizzo (vedi LIMITI.md, parte 5).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #102, fase F13
-# Funzione: NF-31, Blocco dei link di phishing.
-#
-# Cosa deve fare la funzione: Il bot riconosce i link truffa più comuni
-#   (finti regali Nitro, finti login) e li cancella.
-# Questo file: Scarica e tiene in memoria la lista.
-# Comandi previsti: /security automod phishing.
-# File collegati: core/phishing_logic.py.
-# File esistenti da toccare: cogs/automod/automod.py.
-# Test da scrivere per primi: tests/test_phishing_logic.py.
-# Limiti da rispettare: Lista aggiornata da una fonte esterna: cache e
-#   condizioni d'uso scritte in LIMITI.md.
-# Da chi prendere spunto: Captcha.bot, Wick.
-# Dipende da: message_content.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+import time
+
+import aiohttp
+
+from core.phishing_logic import MAX_DOMINI_LISTA, carica_domini, carica_lista_locale
+
+logger = logging.getLogger("iyokai.phishing")
+
+VARIABILE_URL = "PHISHING_LIST_URL"
+INTERVALLO_SECONDI = 6 * 3600
+ATTESA_SECONDI = 10
+MAX_BYTE = 2 * 1024 * 1024
+
+
+def interpreta_lista(corpo: str) -> frozenset[str]:
+    """Testo con un dominio per riga, oppure un JSON con un elenco di stringhe."""
+    corpo = corpo.strip()
+    if corpo.startswith("["):
+        try:
+            voci = json.loads(corpo)
+        except ValueError:
+            return frozenset()
+        return carica_domini("\n".join(v for v in voci if isinstance(v, str)))
+    return carica_domini(corpo)
+
+
+class ListaPhishing:
+    def __init__(self) -> None:
+        self._locale = carica_lista_locale()
+        self._scaricata: frozenset[str] = frozenset()
+        self._ultimo_tentativo = 0.0
+        self._compito: asyncio.Task | None = None
+
+    @property
+    def domini(self) -> frozenset[str]:
+        return self._locale | self._scaricata
+
+    def url(self) -> str | None:
+        valore = os.environ.get(VARIABILE_URL, "").strip()
+        return valore if valore.startswith("https://") else None
+
+    async def scarica(self, url: str) -> bool:
+        """True se la lista scaricata e' valida e sostituisce la precedente."""
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=ATTESA_SECONDI)) as sessione:
+                async with sessione.get(url) as risposta:
+                    if risposta.status != 200:
+                        logger.warning("Lista phishing: risposta %s.", risposta.status)
+                        return False
+                    # read(n) puo' tornare solo il primo pezzo arrivato: si legge fino alla fine (o al tetto).
+                    pezzi: list[bytes] = []
+                    letti = 0
+                    async for pezzo in risposta.content.iter_chunked(65536):
+                        pezzi.append(pezzo)
+                        letti += len(pezzo)
+                        if letti > MAX_BYTE:
+                            break
+                    corpo = b"".join(pezzi)
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as errore:
+            logger.warning("Lista phishing non scaricata: %s", type(errore).__name__)
+            return False
+        if len(corpo) > MAX_BYTE:
+            logger.warning("Lista phishing troppo grande: ignorata.")
+            return False
+        domini = interpreta_lista(corpo.decode("utf-8", errors="ignore"))
+        if not domini or len(domini) >= MAX_DOMINI_LISTA:
+            return False
+        self._scaricata = domini
+        return True
+
+    def aggiorna_se_serve(self) -> None:
+        """Lancia il download in sottofondo se e' passato l'intervallo; torna subito."""
+        url = self.url()
+        adesso = time.monotonic()
+        if url is None or (self._compito is not None and not self._compito.done()):
+            return
+        if self._ultimo_tentativo and adesso - self._ultimo_tentativo < INTERVALLO_SECONDI:
+            return
+        self._ultimo_tentativo = adesso
+        self._compito = asyncio.get_running_loop().create_task(self.scarica(url))
+
+
+lista_phishing = ListaPhishing()

@@ -40,6 +40,8 @@ async def test_automod_cog_si_carica_correttamente():
         "anti-spam-sticker",
         "anti-caps",
         "anti-zalgo",
+        "phishing",
+        "forma-testo",
         "anti-mention",
         "anti-attachment",
         "actions-set",
