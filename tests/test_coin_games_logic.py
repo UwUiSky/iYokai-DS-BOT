@@ -109,6 +109,10 @@ def test_la_misura_e_stabile_nello_stesso_giorno_e_cambia_con_il_tema():
         ("la tua transizione al lunedì", True),
         ("quanto sei stratosferico", True),
         ("fame di marzapane", True),
+        ("quanto sei bracelet", True),
+        ("quanto sei bravo come autista", True),
+        ("Cristiano Ronaldo", True),
+        ("quanto sei autistico", False),
         # varianti e imbrogli
         ("quanto sei g a y", False),
         ("quanto sei g.a.y", False),

@@ -77,7 +77,7 @@ _PAROLE_VIETATE = re.compile(
     r"queer|lgbt\w*|razz[ae]|razzial\w*|razzis\w*|etnia|etnie|etnic\w*|neg(?:ro|ri|ra|re)|"
     r"religio\w*|musulman\w*|islam\w*|ebre[oaie]|ebraic\w*|cristian\w*|cattolic\w*|"
     r"ate(?:o|i|a|e|ism\w*|ist\w*)|buddis\w*|indu|induism\w*|induist\w*|"
-    r"disabil\w*|handicap\w*|autis\w*|malat\w*|depress\w*|tumor\w*|cancro|"
+    r"disabil\w*|handicap\w*|autism\w*|autistic\w*|malat\w*|depress\w*|tumor\w*|cancro|"
     r"immigrat\w*|stranier\w*|nazional\w*|politic\w*|comunist\w*|fascist\w*|"
     r"sessualit\w*|orientamento|"
     r"race|races|racial|racism|racist|ethnic\w*|religion\w*|muslim\w*|jewish|christian\w*|"
@@ -122,6 +122,8 @@ def tema_ammesso(tema: str) -> bool:
     normale = _normalizza_per_filtro(tema)
     if not normale:
         return False
+    # Un nome proprio famoso non è una religione.
+    normale = normale.replace("cristiano ronaldo", "ronaldo")
     return _PAROLE_VIETATE.search(normale) is None
 
 

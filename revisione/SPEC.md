@@ -1277,6 +1277,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** sistemati (9.2, 9.12). Aggiunti scorte limitate, ruolo richiesto per comprare,
   `/economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
   migrazioni 0094 e 0095. Resta fuori: ruolo comprato che scade, categorie, ordine, oggetti «a elenco» (ECO-063, 065..068).
+  → **Stato 14/10 (giro correzioni):** la conferma vale per il prezzo mostrato (se cambia, `buy_item` con
+  `prezzo_atteso` rifiuta senza addebito; il prezzo si legge con la riga bloccata); `item_id` va da 1 a 2147483647;
+  il nome di soli spazi è rifiutato.
 - `[~]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
   pulsante persistente "Partecipa" (sopravvive a un riavvio del bot,
   registrato di nuovo per ogni giveaway ancora attivo), requisiti di
@@ -1789,6 +1792,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** fatti anche gli importi di `/level daily` e `/work` e il livello
   massimo (LIV-005): `/level impostazioni xp daily|lavoro_min|lavoro_max|livello_massimo`
   (migrazione 0090). Al tetto gli XP salgono ma il livello no, e non c'è annuncio.
+  → **Stato 14/10 (giro correzioni):** `/economia xp livello` ha un tetto assoluto di 1000
+  (`LIVELLO_MASSIMO`) e `level_for_xp` usa la formula chiusa (nessun ciclo); l'XP a mano passa
+  `esecutore` a `_grant_level_rewards`, che non dà né toglie ruoli sopra il ruolo più alto di chi
+  ha lanciato il comando (il proprietario del server è escluso dal limite); il minimo del lavoro
+  non supera il massimo per vincolo del database (migrazione 0099).
 - `[ ]` 22.15 Captcha a immagine nella verifica (NF-18)
 - `[ ]` 22.16 Wizard di primo avvio per categoria, con creazione dei
   canali
@@ -1810,6 +1818,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   25 modelli per server); migrazione 0091. I messaggi si contano **dall'inizio del giveaway** (non lo storico):
   il conteggio storico per canale e membro arriva con NF-25. Il worker fa partire i programmati.
   Avviso ai vincitori in thread e forum: già fatto (M 9.15).
+  → **Stato 14/10 (giro correzioni):** i comandi staff stanno nel gruppo `/economia` (D25), non più in `/gestione`.
+  Il worker conclude un giveaway con una scrittura condizionata (`mark_ended` vero a uno solo: un annuncio solo);
+  un programmato che non parte (canale sparito, bot senza permessi, invio rifiutato) non si chiude: resta con il
+  motivo (migrazione 0098) e `/economia giveaway-programmati` lo elenca o lo annulla; «Partecipa» è rifiutato dopo
+  `ends_at`; i messaggi si contano con l'attesa dell'XP e non nei canali esclusi; l'elenco dei modelli sta in 2000
+  caratteri; il blocco dei salvataggi usa una chiave propria (non quella di `security_repo`).
 - `[ ]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
@@ -1828,6 +1842,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `/level profilo` (presentazione di 140 caratteri, badge, sfondo come colore) e `/level collezione negozio|compra|equipaggia`
   (14 oggetti nel codice, migrazione 0093, acquisto atomico). Resta fuori: sfondo con immagine (serve il disegno della card
   e un controllo delle immagini) e profilo come immagine; le vincite dei giochi non contano nella classifica del mese.
+  → **Stato 14/10 (giro correzioni):** l'attesa tra due partite la decide il database nella stessa scrittura
+  della puntata (`leveling_totals.ultima_partita_at`, migrazione 0097): dieci richieste insieme giocano una partita
+  sola; `/fun gioca` richiede anche il modulo Livelli; il filtro di `/fun misura` guarda le parole intere
+  (non le sottostringhe) e normalizza lettere cirilliche/greche simili, caratteri invisibili, punteggiatura e
+  lettere staccate.
 - `[ ]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)

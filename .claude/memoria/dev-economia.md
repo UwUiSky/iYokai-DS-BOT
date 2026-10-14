@@ -45,7 +45,11 @@
 - `id_canali_per_le_regole`: canale, origine del thread, categoria. Esclusioni valgono anche per XP clan (testo e vocale).
 
 ## Aperto
-- `/gestione` pesa ~6480 caratteri su 8000 (allarme a 6800): prima di aggiungere altro a `/gestione economia` serve una decisione F7 (spostare giveaway/shop altrove).
+- Giro correzioni 14/10: i comandi staff di xp, monete, shop, giveaway, cassa, vincitori stanno ora in `/economia` (D25, nessun sottogruppo, `"economia": STAFF` in command_policy). `/gestione` non li ha più.
+- Migrazioni mie: 0090-0095, 0097 (ultima_partita_at), 0098 (giveaway.errore), 0099 (CHECK work_min<=work_max). NON usare 0096 (di uti, forms).
+- `mark_ended` ritorna bool (rivendicazione); programmato che non parte: `segna_errore` (started=false, errore=testo), il worker lo salta; `/economia giveaway-programmati` elenca/annulla.
+- `level_for_xp` in formula chiusa (isqrt); `LIVELLO_MASSIMO`=1000 per l'XP a mano; `_grant_level_rewards(esecutore=...)` applica la gerarchia dello staff.
+- Test di concorrenza: `apri_connessioni` prima di `asyncio.gather`; per provare il blocco advisory a chiave singola tenere `pg_advisory_xact_lock(guild_id)` in una transazione aperta.
 - Scratchpad condiviso con altri agenti: `env.sh` viene sovrascritto; usare `envliv.sh` (DATABASE_URL wliv).
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.
 - Senza `DATABASE_URL` esportato i test usano `iyokai_test` (condiviso): esportarlo sempre.

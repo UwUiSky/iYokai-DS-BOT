@@ -837,3 +837,11 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
   2. `/level calcola livello:10`, poi `/level calcola livello:10 member:@altro`.
   3. `/level balance`.
   Risultato atteso: la classifica ha le pagine con ◀ ▶ (10 per pagina) e solo chi l'ha aperta le sfoglia; il calcolo dà XP, messaggi e minuti in vocale coerenti con `/level impostazioni mostra`; il saldo dice anche la posizione («#N in classifica»).
+- [ ] `giro correzioni feat/r4-liv` (14/10) — passi:
+  1. `/economia xp azione:Imposta il livello membro:@x valore:5000`: deve rifiutare (massimo 1000). Con `valore:1000` il bot risponde subito.
+  2. Con un account staff che ha Gestisci server ma un ruolo basso: `/economia xp azione:Imposta il livello membro:@x valore:10` con un ruolo-premio più alto del suo: il ruolo NON arriva a @x.
+  3. `/economia giveaway prize:Test duration_minutes:3 inizia_tra:1` in un canale dove il bot non può scrivere (o che poi elimini): dopo circa 1 minuto `/economia giveaway-programmati azione:Elenca` lo mostra con ⚠️ e il motivo; `azione:Annulla numero:<n>` lo toglie.
+  4. `/economia giveaway-modello azione:Elenca` con molti modelli salvati: una sola risposta, mai un errore.
+  5. `/fun gioca` premuto due volte in fretta: una sola partita, l'altra dice di aspettare. Con il modulo Livelli spento: rifiuta.
+  6. `/level impostazioni negozio conferma:True`, `/level shop buy`, poi (altro account staff) `/economia shop-edit item_id:<id> price:<altro>`, poi «Conferma»: «Il prezzo è cambiato», nessun addebito.
+  Risultato atteso: come descritto in ogni passo; nessun errore imprevisto nei log.
