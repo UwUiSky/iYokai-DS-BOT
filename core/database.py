@@ -390,6 +390,37 @@ class Database:
         )
         return [self._row_to_history_entry(r) for r in rows]
 
+    async def get_config_history_filtrato(
+        self,
+        guild_id: int,
+        *,
+        limit: int = 10,
+        changed_by: int | None = None,
+        change_type: str | None = None,
+        dal: datetime | None = None,
+        prima_del: datetime | None = None,
+    ) -> list[ConfigHistoryEntry]:
+        """Storico con filtri (autore, tipo, intervallo di date). Tutti i filtri sono parametri, mai testo nella query."""
+        rows = await self.pool.fetch(
+            """
+            SELECT * FROM guild_config_history
+            WHERE guild_id = $1
+              AND ($2::bigint IS NULL OR changed_by = $2)
+              AND ($3::text IS NULL OR change_type = $3)
+              AND ($4::timestamptz IS NULL OR created_at >= $4)
+              AND ($5::timestamptz IS NULL OR created_at < $5)
+            ORDER BY created_at DESC, id DESC
+            LIMIT $6
+            """,
+            guild_id,
+            changed_by,
+            change_type,
+            dal,
+            prima_del,
+            limit,
+        )
+        return [self._row_to_history_entry(r) for r in rows]
+
     async def get_config_history_entry(self, entry_id: int) -> ConfigHistoryEntry | None:
         row = await self.pool.fetchrow(
             "SELECT * FROM guild_config_history WHERE id = $1", entry_id

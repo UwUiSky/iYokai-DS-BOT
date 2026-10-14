@@ -291,6 +291,16 @@ class Config:
     # se impostato, -cerca-comando mostra il bottone "Apri nella wiki".
     WIKI_BASE_URL: str = field(default="")
 
+    # Invito al server di supporto, mostrato da `/utility info` (vuoto = non si mostra).
+    SUPPORT_SERVER_URL: str = field(default="")
+
+    # --- Aggiornamento a caldo (#141, D21) ---------------------------
+    # Spento se non c'è ENABLE_HOT_PATCH=1. `HOT_PATCH_REPO` è "proprietario/repository"; il token serve solo se il
+    # repository è privato (permesso di sola lettura sul contenuto).
+    ENABLE_HOT_PATCH: bool = field(default=False)
+    HOT_PATCH_REPO: str = field(default="UwUiSky/iYokai-DS-BOT")
+    HOT_PATCH_GITHUB_TOKEN: str = field(default="", repr=False)
+
     # --- Premium (SPEC.md §3) ---------------------------------------
     # Override temporaneo di fase ALPHA: quando True, `core.premium.
     # guild_has_premium_access` restituisce sempre True per QUALUNQUE
@@ -380,6 +390,10 @@ def _load_config() -> Config:
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
         WIKI_BASE_URL=_optional("WIKI_BASE_URL", ""),
+        SUPPORT_SERVER_URL=_optional("SUPPORT_SERVER_URL", ""),
+        ENABLE_HOT_PATCH=_optional_bool("ENABLE_HOT_PATCH", False),
+        HOT_PATCH_REPO=_optional("HOT_PATCH_REPO", "UwUiSky/iYokai-DS-BOT"),
+        HOT_PATCH_GITHUB_TOKEN=_optional("HOT_PATCH_GITHUB_TOKEN", ""),
         PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", in_sviluppo),
         ENABLE_EVAL=_optional_bool("ENABLE_EVAL", in_sviluppo),
     )

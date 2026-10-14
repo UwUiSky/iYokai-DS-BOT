@@ -22,6 +22,8 @@ import logging
 import discord
 
 from core.bot_stats import command_counter
+from core.command_policy import valuta_interazione
+from core.i18n import testo_per
 from core.repositories.blacklist_repo import blacklist_repo
 
 logger = logging.getLogger("iyokai.blacklist_tree")
@@ -46,6 +48,17 @@ class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
             # (il bot dovrebbe già essere uscito da tempo — vedi
             # on_guild_join in main.py — questo è solo un secondo
             # livello di difesa se per qualche motivo è ancora dentro).
+            return False
+
+        # CFG-008/009/010: comando spento, canale non permesso, utente o ruolo ignorato (core/command_policy.py).
+        motivo = await valuta_interazione(interaction)
+        if motivo is not None:
+            try:
+                await interaction.response.send_message(
+                    await testo_per(interaction, motivo), ephemeral=True
+                )
+            except discord.HTTPException:
+                pass
             return False
 
         # Contato qui, non con un hook "on_completion" dedicato: 

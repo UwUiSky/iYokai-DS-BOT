@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:17 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 380 comandi in 18 categorie.**
+**Totale: 389 comandi in 18 categorie.**
 
 ## Admin
 
@@ -17,8 +17,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/admin config export`** — Esporta la configurazione di questo server in un file.
 - **`/admin config history`** — Mostra le ultime modifiche alla configurazione.
 - **`/admin config import`** — Importa una configurazione da un file esportato con /admin config export.
+- **`/admin config nickname-bot`** — Cambia il nome del bot in questo server.
+- **`/admin config pulizia`** — Toglie dalla configurazione canali e ruoli che non esistono più.
 - **`/admin config reset`** — Azzera la configurazione di questo server.
 - **`/admin config rollback`** — Ripristina il valore precedente di una modifica.
+- **`/admin config sincronizza`** — Riscrive i permessi dei comandi di questo server.
 - **`/admin lingua set`** — Imposta la lingua di questo server.
 - **`/admin lingua show`** — Mostra la lingua impostata per questo server.
 - **`/admin messaggi annulla`** — Annulla un messaggio programmato.
@@ -407,9 +410,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 ## Utility
 
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
+- **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
 - **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
+- **`/utility politica canali`** — Dove il bot risponde ai comandi.
+- **`/utility politica comando`** — Spegne o riaccende un singolo comando.
+- **`/utility politica diagnosi`** — Scopre perché un comando non funziona qui.
+- **`/utility politica elenco`** — Mostra la politica dei comandi e, se vuoi, azzera un elenco.
+- **`/utility politica ignora`** — Il bot ignora un ruolo o un utente.
 - **`/utility poll`** — Crea un sondaggio (fino a 10 opzioni).
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.

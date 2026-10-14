@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:17 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 380 commands in 18 categories.**
+**Total: 389 commands in 18 categories.**
 
 ## Admin
 
@@ -12,6 +12,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:1
 - **`/admin backup promote`** — Promotes THIS server (so far a backup) to new main, if the original main is lost.
 - **`/admin backup restore-modo`** — Picks how this server handles user restore via OAuth2.
 - **`/admin backup restore-utenti`** — Restores into THIS server the users of another server's latest snapshot.
+- **`/admin config bot-nickname`** — Changes the bot's name in this server.
+- **`/admin config cleanup`** — Removes channels and roles that no longer exist from the settings.
 - **`/admin config export`** — Exports this server's configuration to a file.
 - **`/admin config history`** — Shows the latest configuration changes.
 - **`/admin config import`** — Imports a configuration from a file exported with /admin config export.
@@ -19,6 +21,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:1
 - **`/admin config reset`** — Resets this server's configuration.
 - **`/admin config rollback`** — Restores the previous value of a change.
 - **`/admin config suggestions-channel`** — Sets the suggestions channel.
+- **`/admin config sync`** — Rewrites this server's command permissions.
 - **`/admin language set`** — Sets this server's language.
 - **`/admin language show`** — Shows the language set for this server.
 - **`/admin messages cancel`** — Cancels a scheduled message.
@@ -408,8 +411,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:1
 
 - **`/utility editsnipe`** — Shows the last edited message in this channel.
 - **`/utility form`** — Fills in a form or application of this server.
+- **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
+- **`/utility policy channels`** — Where the bot answers commands.
+- **`/utility policy comando`** — Turns a single command off or on again.
+- **`/utility policy diagnosis`** — Finds out why a command does not work here.
+- **`/utility policy ignore`** — The bot ignores a role or a user.
+- **`/utility policy list`** — Shows the command policy and, if you want, clears a list.
 - **`/utility poll`** — Creates a poll (up to 10 options).
 - **`/utility privacy cancella`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
