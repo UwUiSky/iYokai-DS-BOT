@@ -299,9 +299,12 @@ async def guild_has_premium_access(
       `_guild_owner_boosts_main_guild`), richiede `bot`
     - pagamento mensile/annuale PER MODULO (`module_subscription_
       repo`) — sblocca SOLO il modulo `module_name` richiesto, non
-      gli altri: nessun gateway di pagamento reale, l'owner concede
-      l'abbonamento a mano con `/owner premium grant` dopo averlo
-      incassato fuori dal bot (vedi il file del repository)
+      gli altri: l'owner concede l'abbonamento a mano con
+      `/owner premium grant` dopo averlo incassato fuori dal bot
+      (vedi il file del repository)
+    - abbonamento Discord (app premium, NF-22,
+      `core/premium_entitlement_service.py`) — sblocca TUTTI i moduli
+      finché dura
     """
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
         return True
@@ -322,7 +325,12 @@ async def guild_has_premium_access(
     if await _guild_owner_boosts_main_guild(guild_id, bot):
         return True
 
-    return await module_subscription_repo.is_active(guild_id, module_name)
+    if await module_subscription_repo.is_active(guild_id, module_name):
+        return True
+
+    from core.premium_entitlement_service import server_ha_abbonamento
+
+    return await server_ha_abbonamento(guild_id)
 
 
 async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
@@ -346,7 +354,10 @@ async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
     cassa_active = cassa_status.is_active(datetime.now(timezone.utc))
     abbonamenti = await module_subscription_repo.list_for_guild(guild_id)
 
+    from core.premium_entitlement_service import server_ha_abbonamento
+
     return {
+        "discord_attivo": await server_ha_abbonamento(guild_id),
         "whitelisted": whitelisted,
         "boosts_main_guild": boosts_main_guild,
         "cassa_active": cassa_active,

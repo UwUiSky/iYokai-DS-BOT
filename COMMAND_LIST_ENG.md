@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:43 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 389 commands in 18 categories.**
+**Total: 391 commands in 18 categories.**
 
 ## Admin
 
@@ -31,6 +31,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:3
 - **`/admin messages sticky-togli`** — Removes a channel's sticky message.
 - **`/admin music settings`** — Changes the server's music settings.
 - **`/admin music summary`** — Shows all the server's music settings.
+- **`/admin premium redeem`** — Redeems a premium code for this server.
+- **`/admin premium status`** — Shows how premium is unlocked in this server.
 - **`/admin setup enable`** — Turns the bot's modules on or off, by category.
 - **`/admin setup wizard`** — Step-by-step setup of the bot's main modules.
 - **`/admin ticket auto-close`** — Closes tickets idle for N minutes (0 = off).
@@ -317,7 +319,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:3
 - **`/owner cog load`** — Loads an extension (e.g. cogs.moderation.actions).
 - **`/owner cog reload`** — Reloads an already loaded extension.
 - **`/owner cog unload`** — Unloads an extension.
-- **`/owner premium grant`** — Grants a monthly/yearly subscription to a module for a server.
+- **`/owner premium grant`** — Grants premium to a server, or creates a code to redeem.
 - **`/owner premium list`** — Shows the premium status of all modules.
 - **`/owner premium panel`** — Interactive panel to turn premium modules on or off.
 - **`/owner premium revoke`** — Revokes a module's subscription for a server.

@@ -291,6 +291,9 @@ class Config:
     # se impostato, -cerca-comando mostra il bottone "Apri nella wiki".
     WIKI_BASE_URL: str = field(default="")
 
+    # SKU dell'abbonamento premium venduto dentro Discord (NF-22). 0 = vale qualsiasi SKU dell'applicazione.
+    PREMIUM_SKU_ID: int = field(default=0)
+
     # Invito al server di supporto, mostrato da `/utility info` (vuoto = non si mostra).
     SUPPORT_SERVER_URL: str = field(default="")
 
@@ -390,6 +393,7 @@ def _load_config() -> Config:
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
         WIKI_BASE_URL=_optional("WIKI_BASE_URL", ""),
+        PREMIUM_SKU_ID=_optional_int("PREMIUM_SKU_ID", 0),
         SUPPORT_SERVER_URL=_optional("SUPPORT_SERVER_URL", ""),
         ENABLE_HOT_PATCH=_optional_bool("ENABLE_HOT_PATCH", False),
         HOT_PATCH_REPO=_optional("HOT_PATCH_REPO", "UwUiSky/iYokai-DS-BOT"),

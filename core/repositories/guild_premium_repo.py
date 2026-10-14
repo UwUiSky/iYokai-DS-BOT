@@ -150,6 +150,31 @@ class GuildPremiumRepository:
         )
         return nuova_scadenza
 
+    async def estendi(self, guild_id: int, giorni: int, now: datetime) -> datetime:
+        """
+        Allunga `premium_until` di `giorni` a partire dal massimo tra `now` e la scadenza attuale, senza toccare i
+        tier comprati (usato dai codici premium, CFG-038). Restituisce la nuova scadenza.
+        """
+        from core.premium_cache import invalida_cache_premium
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                attuale = await conn.fetchval(
+                    "SELECT premium_until FROM guild_premium_status WHERE guild_id = $1 FOR UPDATE", guild_id
+                )
+                base = max(attuale, now) if attuale else now
+                nuova = base + timedelta(days=giorni)
+                await conn.execute(
+                    """
+                    INSERT INTO guild_premium_status (guild_id, premium_until) VALUES ($1, $2)
+                    ON CONFLICT (guild_id) DO UPDATE SET premium_until = $2
+                    """,
+                    guild_id,
+                    nuova,
+                )
+        invalida_cache_premium(guild_id)
+        return nuova
+
 
 def _get_pool():
     from core.database import db

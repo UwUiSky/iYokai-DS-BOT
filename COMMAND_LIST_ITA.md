@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:43 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 389 comandi in 18 categorie.**
+**Totale: 391 comandi in 18 categorie.**
 
 ## Admin
 
@@ -31,6 +31,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/admin messaggi sticky-togli`** — Rimuove lo sticky message di un canale.
 - **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin premium riscatta`** — Riscatta un codice premium per questo server.
+- **`/admin premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin setup wizard`** — Configura passo-passo i moduli principali del bot.
 - **`/admin ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
@@ -317,7 +319,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/owner cog load`** — Carica un'estensione (es. cogs.moderation.actions).
 - **`/owner cog reload`** — Ricarica un'estensione già caricata.
 - **`/owner cog unload`** — Scarica un'estensione.
-- **`/owner premium grant`** — Concede un abbonamento mensile/annuale a un modulo per un server.
+- **`/owner premium grant`** — Concede il premium a un server, o crea un codice da riscattare.
 - **`/owner premium list`** — Mostra lo stato premium di tutti i moduli.
 - **`/owner premium panel`** — Pannello interattivo per attivare/disattivare i moduli premium.
 - **`/owner premium revoke`** — Revoca l'abbonamento di un modulo per un server.

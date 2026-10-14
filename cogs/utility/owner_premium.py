@@ -36,6 +36,7 @@ from core.config import config
 from core.database import db
 from core.eval_shell_logic import truncate_output
 from core.premium import PremiumModule, get_guild_premium_breakdown, registry
+from core.premium_code_service import GIORNI_PERMANENTE, TUTTI_I_MODULI, applica_sblocco, crea_codice
 from core.premium_status_logic import format_guild_status_line, format_whitelist_entry
 from core.repositories.eval_shell_log_repo import eval_shell_log_repo
 from core.repositories.module_subscription_repo import module_subscription_repo
@@ -46,7 +47,7 @@ from core.ui_base import BaseView
 # integrato (vedi module_subscription_repo.py): il pagamento avviene
 # fuori dal bot, l'owner concede l'abbonamento a mano dopo averlo
 # incassato.
-SUBSCRIPTION_DURATION_DAYS = {"monthly": 30, "yearly": 365}
+SUBSCRIPTION_DURATION_DAYS = {"monthly": 30, "yearly": 365, "permanent": GIORNI_PERMANENTE}
 
 
 def _is_owner(interaction: discord.Interaction) -> bool:
@@ -520,55 +521,68 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="grant",
-        descrizione="Concede un abbonamento mensile/annuale a un modulo per un server.",
+        descrizione="Concede il premium a un server, o crea un codice da riscattare.",
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
-        guild_id="ID del server",
-        module_name="Nome tecnico del modulo (vedi /owner premium list)",
-        duration="Mensile (30 giorni) o annuale (365 giorni)",
+        module_name="Nome tecnico del modulo (vedi /owner premium list) o «tutti»",
+        duration="Mensile (30 giorni), annuale (365 giorni) o permanente",
+        guild_id="ID del server; vuoto = crea un codice che il server riscatta con /admin premium riscatta",
     )
     @app_commands.choices(
         duration=[
             app_commands.Choice(name="Mensile (30 giorni)", value="monthly"),
             app_commands.Choice(name="Annuale (365 giorni)", value="yearly"),
+            app_commands.Choice(name="Permanente", value="permanent"),
         ]
     )
     async def premium_grant(
         self,
         interaction: discord.Interaction,
-        guild_id: app_commands.Range[str, 1, 25],
         module_name: app_commands.Range[str, 1, 100],
         duration: app_commands.Choice[str],
+        guild_id: app_commands.Range[str, 1, 25] | None = None,
     ) -> None:
-        try:
-            gid = int(guild_id)
-        except ValueError:
-            await interaction.response.send_message("ID server non valido.", ephemeral=True)
-            return
+        gid = None
+        if guild_id is not None:
+            try:
+                gid = int(guild_id)
+            except ValueError:
+                await interaction.response.send_message("ID server non valido.", ephemeral=True)
+                return
 
-        module = registry.get(module_name)
-        if module is None:
-            await interaction.response.send_message(
-                f"Modulo `{module_name}` non trovato. "
-                f"Usa /owner premium list per la lista esatta.",
-                ephemeral=True,
-            )
-            return
-        if not module.premium_capable:
-            await interaction.response.send_message(
-                f"`{module_name}` è marcato come sempre-gratuito "
-                f"e non può avere un abbonamento.",
-                ephemeral=True,
-            )
-            return
+        tutti = module_name.strip().lower() == TUTTI_I_MODULI
+        if not tutti:
+            module = registry.get(module_name)
+            if module is None:
+                await interaction.response.send_message(
+                    f"Modulo `{module_name}` non trovato. "
+                    f"Usa /owner premium list per la lista esatta.",
+                    ephemeral=True,
+                )
+                return
+            if not module.premium_capable:
+                await interaction.response.send_message(
+                    f"`{module_name}` è marcato come sempre-gratuito "
+                    f"e non può avere un abbonamento.",
+                    ephemeral=True,
+                )
+                return
 
         giorni = SUBSCRIPTION_DURATION_DAYS[duration.value]
-        scadenza = await module_subscription_repo.grant(
-            gid, module_name, duration_days=giorni, granted_by=interaction.user.id
-        )
+        modulo_scelto = None if tutti else module_name
+        cosa = "tutti i moduli premium" if tutti else f"`{module_name}`"
+        if gid is None:
+            codice = await crea_codice(modulo_scelto, giorni, interaction.user.id)
+            await interaction.response.send_message(
+                f"Codice creato per {cosa} ({duration.name}): `{codice}`\n"
+                f"Si vede solo adesso: copialo. Vale una volta sola.",
+                ephemeral=True,
+            )
+            return
+        scadenza = await applica_sblocco(gid, modulo_scelto, giorni, interaction.user.id)
         await interaction.response.send_message(
-            f"✅ Abbonamento **{duration.name}** concesso per `{module_name}` "
+            f"✅ Premium **{duration.name}** concesso per {cosa} "
             f"al server `{gid}` — valido fino al `{scadenza.date().isoformat()}`.",
             ephemeral=True,
         )
@@ -655,6 +669,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
                     boosts_main_guild=dettaglio["boosts_main_guild"],
                     cassa_active=dettaglio["cassa_active"],
                     subscription_count=dettaglio["subscription_count"],
+                    discord_attivo=dettaglio.get("discord_attivo", False),
                 )
             )
 

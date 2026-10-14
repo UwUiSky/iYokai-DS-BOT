@@ -90,5 +90,14 @@
   "pol_spento": "`/{comando}` è ora spento in questo server.",
   "pol_titolo": "Politica dei comandi",
   "pol_tolto": "Regola tolta.",
-  "pol_vuota": "Nessuna regola: tutti i comandi funzionano ovunque."
+  "pol_vuota": "Nessuna regola: tutti i comandi funzionano ovunque.",
+  "prem_riscatta_attesa": "Troppi codici sbagliati di fila: riprova tra qualche minuto.",
+  "prem_riscatta_non_valido": "Questo codice non esiste o è già stato usato.",
+  "prem_riscatta_ok_modulo": "Codice riscattato: il modulo `{modulo}` è sbloccato fino al {data}.",
+  "prem_riscatta_ok_tutti": "Codice riscattato: tutti i moduli premium sono sbloccati fino al {data}.",
+  "prem_stato_acquista": "Per sbloccare il premium: abbonamento dentro Discord dal [negozio del bot]({url}), cassa del server, oppure chiedi al proprietario del bot.",
+  "prem_stato_acquista_senza_negozio": "Per sbloccare il premium: cassa del server, oppure chiedi al proprietario del bot.",
+  "prem_stato_alpha": "Per ora il premium è sbloccato per tutti i server (fase di prova).",
+  "prem_stato_nessuno": "Questo server non ha nessuno sblocco premium.",
+  "prem_stato_titolo": "Premium di questo server"
 }

@@ -90,5 +90,14 @@
   "pol_spento": "`/{comando}` is now turned off on this server.",
   "pol_titolo": "Command policy",
   "pol_tolto": "Rule removed.",
-  "pol_vuota": "No rules: every command works everywhere."
+  "pol_vuota": "No rules: every command works everywhere.",
+  "prem_riscatta_attesa": "Too many wrong codes in a row: try again in a few minutes.",
+  "prem_riscatta_non_valido": "This code does not exist or has already been used.",
+  "prem_riscatta_ok_modulo": "Code redeemed: the `{modulo}` module is unlocked until {data}.",
+  "prem_riscatta_ok_tutti": "Code redeemed: all premium modules are unlocked until {data}.",
+  "prem_stato_acquista": "To unlock premium: subscribe inside Discord from the [bot's store]({url}), use the server's cashbox, or ask the bot owner.",
+  "prem_stato_acquista_senza_negozio": "To unlock premium: use the server's cashbox, or ask the bot owner.",
+  "prem_stato_alpha": "For now premium is unlocked for every server (trial phase).",
+  "prem_stato_nessuno": "This server has no premium unlock.",
+  "prem_stato_titolo": "Premium for this server"
 }
