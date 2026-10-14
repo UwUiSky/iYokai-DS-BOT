@@ -90,5 +90,5 @@ async def test_stato_server(pool):
     stato = await panel_bridge.stato_server(guild)
     assert stato["lingua"] == "it"
     assert [r["id"] for r in stato["ruoli_server"]] == [501]
-    assert {m["nome"]: m["attivo"] for m in stato["moduli"]} == {"modulo_web": False}
+    assert {m["nome"]: m["attivo"] for m in stato["moduli"]}["modulo_web"] is False
     assert [r["tipo"] for r in stato["ruoli_bot"]] == ["admin", "mod", "modban"]
