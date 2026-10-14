@@ -10,7 +10,6 @@ Funzioni coperte: SPEC §22 (NF-17)
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -29,8 +28,6 @@ MAX_PIEDE = 2048
 MAX_TOTALE = 6000
 MAX_URL = 2000
 
-_NOME_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
-
 
 @dataclass(frozen=True)
 class DatiEmbed:
@@ -41,11 +38,6 @@ class DatiEmbed:
     thumbnail_url: str | None = None
     footer: str | None = None
     fields: tuple[tuple[str, str, bool], ...] = ()
-
-
-def normalizza_nome(grezzo: str) -> str | None:
-    nome = grezzo.strip().lower()
-    return nome if _NOME_RE.match(nome) else None
 
 
 def lunghezza_totale(dati: DatiEmbed) -> int:

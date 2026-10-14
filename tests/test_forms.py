@@ -254,7 +254,6 @@ async def test_errore_imprevisto_nell_invio_rilascia_la_candidatura():
 
 @pytest.mark.asyncio
 async def test_modulo_eliminato_durante_la_compilazione(repo):
-    import asyncpg
     cog = _cog()
     f = await _modulo(repo)
     await repo.delete_form(G, "staff")
@@ -285,3 +284,77 @@ async def test_due_decisioni_insieme_ne_vince_una_sola(repo):
     assert i1.message.edit.await_count + i2.message.edit.await_count == 1
     stato = (await repo.get_response(rid)).status
     assert (candidato.add_roles.await_count == 1) == (stato == "accepted")
+
+
+@pytest.mark.asyncio
+async def test_accettazione_con_ruolo_non_assegnabile_non_da_il_ruolo():
+    """Il ruolo scelto alla creazione può essere salito sopra il bot: si ricontrolla ad ogni accettazione."""
+    cog = _cog()
+    guild = fake_guild(guild_id=G)
+    candidato = fake_member(user_id=7)
+    candidato.add_roles, candidato.send = AsyncMock(), AsyncMock()
+    guild.get_member = lambda uid: candidato
+    guild.get_role = lambda rid: fake_role(60, "Staff", position=1)
+    i = _staff_interaction(guild)
+    with patch.object(modulo.form_repo, "get_response", AsyncMock(return_value=_risposta())), \
+         patch.object(modulo.form_repo, "get_form_by_id", AsyncMock(return_value=_form())), \
+         patch.object(modulo.form_repo, "decide", AsyncMock(return_value=True)), \
+         patch.object(modulo, "motivo_ruolo_automatico_non_assegnabile", return_value="sopra il bot"):
+        await cog.decidi(i, 5, "accepted")
+    candidato.add_roles.assert_not_awaited()
+    assert "non è stato dato" in i.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_una_candidatura_di_un_altro_server_non_si_decide():
+    cog = _cog()
+    i = _staff_interaction(fake_guild(guild_id=G + 1))
+    decide = AsyncMock(return_value=True)
+    with patch.object(modulo.form_repo, "get_response", AsyncMock(return_value=_risposta())), \
+         patch.object(modulo.form_repo, "get_form_by_id", AsyncMock(return_value=_form())), \
+         patch.object(modulo.form_repo, "decide", decide):
+        await cog.decidi(i, 5, "accepted")
+    decide.assert_not_awaited()
+    assert "non esiste più" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("nome", ["Staff Team", "a" * 33, "nome!", "😀"])
+async def test_il_nome_del_modulo_e_validato(nome):
+    cog = _cog()
+    i = fake_interaction(guild=fake_guild(guild_id=G))
+    crea = AsyncMock(return_value="ok")
+    canale = MagicMock()
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+         patch.object(modulo.form_repo, "create_form", crea):
+        await cog.crea.callback(cog, i, nome, "Titolo", canale, "Nome", None)
+    crea.assert_not_awaited()
+    assert "lettere minuscole" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_il_nome_si_salva_in_minuscolo():
+    cog = _cog()
+    guild = fake_guild(guild_id=G)
+    i = fake_interaction(guild=guild)
+    canale = MagicMock()
+    canale.id = 50
+    canale.permissions_for.return_value = discord.Permissions(view_channel=True, send_messages=True, embed_links=True)
+    crea = AsyncMock(return_value="ok")
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+         patch.object(modulo.form_repo, "create_form", crea):
+        await cog.crea.callback(cog, i, "Staff", "Titolo", canale, "Nome", None)
+    assert crea.await_args.args[1] == "staff"
+
+
+@pytest.mark.asyncio
+async def test_all_avvio_si_riattivano_solo_le_candidature_piu_recenti(repo):
+    from core.form_logic import Domanda
+    from core.repositories.form_repo import Form  # noqa: F401
+    assert await repo.create_form(G, "staff", "T", 50, None, [Domanda("N")], 7) == "ok"
+    form = await repo.get_form(G, "staff")
+    for u in range(5):
+        rid = await repo.add_response(form, 100 + u, ["x"])
+        await repo.set_review_message(rid, 900 + u)
+    recenti = await repo.list_pending(limite=3)
+    assert [r.user_id for r in recenti] == [104, 103, 102]

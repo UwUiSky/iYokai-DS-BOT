@@ -174,3 +174,21 @@ def test_la_purga_del_server_tiene_lo_sban_in_coda_e_ricostruisce_il_contatore()
 
     assert SCHEDULED_TEMPBAN_EXPIRE in reg.tabella("scheduled_actions").sql_cancella_server()
     assert reg.tabella("moderation_case_counters").dopo_purga_server
+
+
+def test_i_dati_di_inviti_e_bacheca_hanno_una_regola_di_pulizia():
+    con = {t.nome for t in reg.tabelle_con_scadenza()}
+    assert {"invite_joins", "starboard_posts", "autorole_memory"} <= con
+
+
+@pytest.mark.asyncio
+async def test_la_scadenza_toglie_gli_inviti_di_chi_e_uscito_da_tempo(clean_db):
+    t = reg.tabella("invite_joins")
+    await clean_db.execute(
+        "INSERT INTO invite_joins (guild_id, user_id, inviter_id, code, left_at) VALUES "
+        "(1, 10, 99, 'a', now() - interval '200 days'), (1, 11, 99, 'a', now() - interval '5 days'), "
+        "(1, 12, 99, 'a', NULL)"
+    )
+    await clean_db.execute(t.sql_scaduti(), t.scadenza.giorni)
+    righe = {r["user_id"] for r in await clean_db.fetch("SELECT user_id FROM invite_joins")}
+    assert righe == {11, 12}

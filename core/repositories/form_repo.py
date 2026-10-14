@@ -14,7 +14,7 @@ import asyncpg
 
 from core.repositories.tetto_server import tetto_per_server
 
-from core.form_logic import MAX_MODULI, PENDING, Domanda
+from core.form_logic import MAX_MODULI, MAX_VIEW_ALL_AVVIO, PENDING, Domanda
 
 
 @dataclass(frozen=True)
@@ -136,9 +136,12 @@ class FormRepository:
         )
         return riga is not None
 
-    async def list_pending(self) -> list[FormResponse]:
+    async def list_pending(self, limite: int = MAX_VIEW_ALL_AVVIO) -> list[FormResponse]:
+        """Le candidature in attesa più recenti (tetto: ogni una ha una View in memoria)."""
         righe = await self._pool.fetch(
-            "SELECT * FROM form_responses WHERE status = 'pending' AND review_message_id IS NOT NULL"
+            "SELECT * FROM form_responses WHERE status = 'pending' AND review_message_id IS NOT NULL "
+            "ORDER BY id DESC LIMIT $1",
+            limite,
         )
         return [_risposta(r) for r in righe]
 

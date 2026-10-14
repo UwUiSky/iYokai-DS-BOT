@@ -90,14 +90,14 @@ async def test_set_threshold_senza_config_non_crea_nulla(repo):
 async def test_un_solo_messaggio_in_bacheca_per_originale(repo):
     assert await repo.claim_post(1, 10, 100, author_id=5) is True
     assert await repo.claim_post(1, 10, 100, author_id=5) is False
-    await repo.release_post(100)  # invio fallito: si può riprovare
-    assert await repo.get_post(100) is None
+    await repo.release_post(1, 100)  # invio fallito: si può riprovare
+    assert await repo.get_post(1, 100) is None
     assert await repo.claim_post(1, 10, 100, author_id=5) is True
-    await repo.set_board_message(100, 999, stars=3)
-    post = await repo.get_post(100)
+    await repo.set_board_message(1, 100, 999, stars=3)
+    post = await repo.get_post(1, 100)
     assert post.board_message_id == 999 and post.stars == 3
-    await repo.release_post(100)  # già pubblicato: resta
-    assert await repo.get_post(100) is not None
+    await repo.release_post(1, 100)  # già pubblicato: resta
+    assert await repo.get_post(1, 100) is not None
 
 
 # -------------------------------------------------------------------------- cog
@@ -151,7 +151,7 @@ async def test_sopra_soglia_pubblica_una_volta(monkeypatch):
     s.bacheca.send.assert_awaited_once()
     assert s.bacheca.send.await_args.kwargs["embed"] is not None
     assert s.bacheca.send.await_args.kwargs["allowed_mentions"].everyone is False
-    s.repo.set_board_message.assert_awaited_once_with(100, 999, 3)
+    s.repo.set_board_message.assert_awaited_once_with(s.guild.id, 100, 999, 3)
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_messaggio_gia_in_bacheca_si_aggiorna_non_si_duplica(monkeypatch):
     await s.cog.aggiorna(s.guild.id, 10, 100)
     s.bacheca.send.assert_not_awaited()
     vecchio.edit.assert_awaited_once()
-    s.repo.set_board_message.assert_awaited_once_with(100, 999, 4)
+    s.repo.set_board_message.assert_awaited_once_with(s.guild.id, 100, 999, 4)
 
 
 @pytest.mark.asyncio
@@ -207,7 +207,7 @@ async def test_invio_fallito_libera_il_posto(monkeypatch):
     s = _Scena(monkeypatch, stelle=3, soglia=3)
     s.bacheca.send = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=400), "no"))
     await s.cog.aggiorna(s.guild.id, 10, 100)
-    s.repo.release_post.assert_awaited_once_with(100)
+    s.repo.release_post.assert_awaited_once_with(s.guild.id, 100)
 
 
 @pytest.mark.asyncio
@@ -270,7 +270,7 @@ async def test_errore_non_http_libera_il_posto(monkeypatch):
     s.bacheca.send = AsyncMock(side_effect=RuntimeError("boom"))
     with pytest.raises(RuntimeError):
         await s.cog.aggiorna(s.guild.id, 10, 100)
-    s.repo.release_post.assert_awaited_once_with(100)
+    s.repo.release_post.assert_awaited_once_with(s.guild.id, 100)
 
 
 @pytest.mark.asyncio
@@ -280,14 +280,14 @@ async def test_il_blocco_per_messaggio_evita_il_doppio_invio(monkeypatch):
     s = _Scena(monkeypatch, stelle=3, soglia=3)
     stato = {}
 
-    async def get_post(message_id):
+    async def get_post(guild_id, message_id):
         return stato.get(message_id)
 
     async def invio(*a, **k):
         await asyncio.sleep(0.01)
         return SimpleNamespace(id=999, edit=AsyncMock())
 
-    async def set_board(message_id, board_id, stelle):
+    async def set_board(guild_id, message_id, board_id, stelle):
         stato[message_id] = SimpleNamespace(board_message_id=board_id, stars=stelle)
 
     s.repo.get_post, s.repo.set_board_message = get_post, set_board
@@ -295,3 +295,99 @@ async def test_il_blocco_per_messaggio_evita_il_doppio_invio(monkeypatch):
     s.bacheca.fetch_message = AsyncMock(return_value=SimpleNamespace(edit=AsyncMock()))
     await asyncio.gather(s.cog.aggiorna(s.guild.id, 10, 100), s.cog.aggiorna(s.guild.id, 10, 100))
     assert s.bacheca.send.await_count == 1
+
+
+def _thread(privato: bool, padre):
+    t = MagicMock(spec=discord.Thread)
+    t.id = 10
+    t.is_private.return_value = privato
+    t.is_nsfw.return_value = False
+    t.parent = padre
+    t.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=True, read_message_history=True))
+    t.fetch_message = AsyncMock()
+    return t
+
+
+@pytest.mark.asyncio
+async def test_thread_privato_non_finisce_in_bacheca(monkeypatch):
+    """Il thread privato eredita i permessi del padre: sembrerebbe pubblico, ma lo vedono in pochi."""
+    s = _Scena(monkeypatch, stelle=5, soglia=3)
+    thread = _thread(True, s.canale)
+    thread.fetch_message = AsyncMock(return_value=s.messaggio)
+    s.guild.get_channel = lambda cid: {50: s.bacheca}.get(cid)
+    s.guild.get_thread = lambda cid: thread
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_not_awaited()
+    s.repo.claim_post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_thread_con_padre_fuori_cache_non_finisce_in_bacheca(monkeypatch):
+    s = _Scena(monkeypatch, stelle=5, soglia=3)
+    thread = _thread(False, None)
+    thread.permissions_for = MagicMock(side_effect=discord.ClientException("Parent channel not found"))
+    s.guild.get_channel = lambda cid: {50: s.bacheca}.get(cid)
+    s.guild.get_thread = lambda cid: thread
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_thread_pubblico_ci_finisce(monkeypatch):
+    s = _Scena(monkeypatch, stelle=5, soglia=3)
+    thread = _thread(False, s.canale)
+    thread.fetch_message = AsyncMock(return_value=s.messaggio)
+    s.guild.get_channel = lambda cid: {50: s.bacheca}.get(cid)
+    s.guild.get_thread = lambda cid: thread
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_il_voto_dell_autore_conta_solo_se_acceso(monkeypatch):
+    s = _Scena(monkeypatch, stelle=2, soglia=3)
+    utenti = [SimpleNamespace(id=1000, bot=False), SimpleNamespace(id=1001, bot=False), SimpleNamespace(id=5, bot=False)]
+
+    async def _users(limit=None):
+        for u in utenti:
+            yield u
+
+    s.messaggio.reactions = [SimpleNamespace(emoji="⭐", users=_users)]
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_not_awaited()
+    s.config.self_star = True
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_comando_imposta_passa_nsfw_e_voto_autore(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.repo.set_config = AsyncMock()
+    canale = fake_text_channel(50, "bacheca")
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, embed_links=True))
+    interazione = fake_interaction(guild=s.guild)
+    await s.cog.imposta.callback(s.cog, interazione, canale, 3, "⭐", True, False)
+    s.repo.set_config.assert_awaited_once_with(
+        s.guild.id, 50, 3, "⭐", allow_nsfw=True, self_star=False
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_config_senza_opzioni_lascia_nsfw_e_voto_autore(repo):
+    await repo.set_config(1, 50, 3, "⭐", allow_nsfw=True, self_star=True)
+    await repo.set_config(1, 51, 4, "⭐")  # rilancio senza le due opzioni: restano accese
+    c = await repo.get_config(1)
+    assert (c.channel_id, c.threshold, c.allow_nsfw, c.self_star) == (51, 4, True, True)
+    await repo.set_config(1, 51, 4, "⭐", allow_nsfw=False)
+    assert (await repo.get_config(1)).allow_nsfw is False
+
+
+@pytest.mark.asyncio
+async def test_post_e_aggiornamenti_sono_per_server(repo):
+    await repo.claim_post(1, 10, 100, author_id=5)
+    assert await repo.get_post(2, 100) is None
+    await repo.set_board_message(2, 100, 999, stars=3)  # altro server: non tocca
+    assert (await repo.get_post(1, 100)).board_message_id is None
+    await repo.release_post(2, 100)
+    assert await repo.get_post(1, 100) is not None

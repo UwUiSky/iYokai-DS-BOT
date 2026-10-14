@@ -34,10 +34,10 @@ from core.embed_builder_logic import (
     a_json,
     costruisci,
     da_json,
-    normalizza_nome,
     valida,
 )
 from core.lista_limiti_logic import righe_entro_limite
+from core.nome_logic import normalizza_nome
 from core.premium import PremiumModule, registry
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.safe_http import url_e_sicuro
@@ -242,23 +242,26 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         if salvato.message_id is not None:
             # Prima il messaggio già pubblicato, poi il database: se Discord rifiuta, resta com'era.
             canale = interaction.guild.get_channel(salvato.channel_id)
-            try:
-                if canale is None:
-                    raise discord.NotFound(_RispostaFinta(404), "canale sparito")
-                messaggio = await canale.fetch_message(salvato.message_id)
-                await messaggio.edit(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
-            except discord.NotFound:
+            aggiornato = False
+            if canale is not None:
+                try:
+                    messaggio = await canale.fetch_message(salvato.message_id)
+                    await messaggio.edit(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
+                    aggiornato = True
+                except discord.NotFound:
+                    pass  # messaggio cancellato a mano
+                except discord.HTTPException as errore:
+                    logger.warning("Embed %s: messaggio non aggiornato: %s", nome, errore)
+                    await interaction.followup.send(
+                        "L'embed non è stato cambiato: Discord non mi lascia modificare il messaggio già pubblicato.",
+                        ephemeral=True,
+                    )
+                    return
+            if aggiornato:
+                nota = " Il messaggio pubblicato è stato aggiornato."
+            else:
                 await saved_embed_repo.set_published(interaction.guild.id, nome, None, None)
                 nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/moduli embed pubblica`."
-            except discord.HTTPException as errore:
-                logger.warning("Embed %s: messaggio non aggiornato: %s", nome, errore)
-                await interaction.followup.send(
-                    "L'embed non è stato cambiato: Discord non mi lascia modificare il messaggio già pubblicato.",
-                    ephemeral=True,
-                )
-                return
-            else:
-                nota = " Il messaggio pubblicato è stato aggiornato."
         await saved_embed_repo.update_data(interaction.guild.id, nome, a_json(dati))
         await interaction.followup.send(f"Embed aggiornato.{nota}", embed=embed, ephemeral=True)
 
@@ -327,14 +330,6 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             "Embed eliminato." if fatto else "Non c'è un embed con quel nome.", ephemeral=True
         )
-
-
-class _RispostaFinta:
-    """Il minimo che discord.NotFound vuole da una risposta HTTP."""
-
-    def __init__(self, status: int) -> None:
-        self.status = status
-        self.reason = "Not Found"
 
 
 async def setup(bot: commands.Bot) -> None:

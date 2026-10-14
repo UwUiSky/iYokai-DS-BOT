@@ -29,9 +29,6 @@ valida. Gli errori vengono intercettati lì, non con una validazione
 finta a monte.
 """
 
-# DA FARE (issue #85, fase F9): NF-14, Modalità dei reaction roles. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-
 from __future__ import annotations
 
 import asyncio
@@ -357,12 +354,14 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if menu is None:
             await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
             return
+        # fetch_member, add_roles e scheduler possono superare i 3 secondi: si prenota la risposta.
+        await interaction.response.defer(ephemeral=True)
         async with self._blocco_membro(menu.id, interaction.user.id):
             utente = await self._membro_aggiornato(guild, interaction.user)
             ruoli_membro = {r.id for r in utente.roles}
             negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
             if negato is not None:
-                await interaction.response.send_message(negato, ephemeral=True)
+                await interaction.followup.send(negato, ephemeral=True)
                 return
             opzioni = await role_menu_repo.get_options(menu_id)
             decisione = decidi_azione(
@@ -376,12 +375,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 temp_secondi=menu.temp_seconds,
             )
             if decisione.rifiuto is not None:
-                await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
+                await interaction.followup.send(decisione.rifiuto, ephemeral=True)
                 return
 
             errore = await self._applica(guild, utente, decisione, "Role menu")
             if errore is not None:
-                await interaction.response.send_message(errore, ephemeral=True)
+                await interaction.followup.send(errore, ephemeral=True)
                 return
         if decisione.aggiungi:
             testo = f"Role {role.mention} added."
@@ -391,7 +390,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             testo = f"Role {role.mention} removed."
         else:
             testo = "Nessun cambiamento."
-        await interaction.response.send_message(testo, ephemeral=True)
+        await interaction.followup.send(testo, ephemeral=True)
 
     async def _applica(
         self, guild: discord.Guild, member: discord.Member, decisione: Decisione, motivo: str
@@ -464,13 +463,14 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if menu is None:
             await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
             return
+        await interaction.response.defer(ephemeral=True)
         options = await role_menu_repo.get_options(menu_id)
         async with self._blocco_membro(menu.id, interaction.user.id):
             utente = await self._membro_aggiornato(guild, interaction.user)
             ruoli_membro = {r.id for r in utente.roles}
             negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
             if negato is not None:
-                await interaction.response.send_message(negato, ephemeral=True)
+                await interaction.followup.send(negato, ephemeral=True)
                 return
             decisione = decidi_selezione(
                 menu.behavior,
@@ -480,14 +480,14 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 temp_secondi=menu.temp_seconds,
             )
             if decisione.rifiuto is not None:
-                await interaction.response.send_message(decisione.rifiuto, ephemeral=True)
+                await interaction.followup.send(decisione.rifiuto, ephemeral=True)
                 return
             errore = await self._applica(guild, utente, decisione, "Role menu")
             if errore is not None:
-                await interaction.response.send_message(errore, ephemeral=True)
+                await interaction.followup.send(errore, ephemeral=True)
                 return
 
-        await interaction.response.send_message("Your roles have been updated.", ephemeral=True)
+        await interaction.followup.send("Your roles have been updated.", ephemeral=True)
 
     # ================================================================
     # Modalità reaction
@@ -921,6 +921,11 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             errore = _errore_comportamento(menu.mode, nuovo, durata)
             if errore is not None:
                 await interaction.response.send_message(errore, ephemeral=True)
+                return
+            if durata_minuti is not None and nuovo != "temp":
+                await interaction.response.send_message(
+                    "La durata serve solo al comportamento temp: scegli temp oppure togli la durata.", ephemeral=True
+                )
                 return
             campi["behavior"] = nuovo
             campi["temp_seconds"] = durata * 60 if nuovo == "temp" and durata else None

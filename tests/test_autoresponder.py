@@ -5,7 +5,6 @@ NF-10 (#81): risposte automatiche con condizioni (canale, ruolo, esatta o
 parziale), mai ai bot, pausa per canale, tetto per server, testo 2000.
 """
 
-from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -194,3 +193,43 @@ async def test_albero_dei_comandi():
         assert comando_nel_gruppo("moduli", f"comandi {nome}") is not None
     crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "comandi risposta-crea").to_dict(bot.tree)["options"]}
     assert crea["risposta"]["max_length"] == 2000 and crea["parola"]["max_length"] == 100
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("parola,risposta", [("   ", "Ciao!"), ("ciao", "   "), ("\t", "\n")])
+async def test_parola_o_risposta_vuote_dopo_lo_strip_sono_rifiutate(scena, parola, risposta):
+    i = fake_interaction(user=fake_member(5))
+    await scena.risposta_crea.callback(scena, i, parola, risposta, "parziale", None, None)
+    scena.repo.create.assert_not_awaited()
+    assert "vuote" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_la_parola_si_salva_senza_spazi_ai_bordi(scena):
+    i = fake_interaction(user=fake_member(5))
+    await scena.risposta_crea.callback(scena, i, "  ciao  ", "Ciao!", "parziale", None, None)
+    assert scena.repo.create.await_args.args[1] == "ciao"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("permessi,atteso", [
+    (discord.Permissions(mention_everyone=True), True),
+    (discord.Permissions(administrator=True), True),
+    (discord.Permissions(manage_guild=True), False),
+])
+async def test_il_ping_dei_ruoli_dipende_dal_permesso_di_chi_crea(scena, permessi, atteso):
+    i = fake_interaction(user=fake_member(5))
+    i.user.guild_permissions = permessi
+    await scena.risposta_crea.callback(scena, i, "ciao", "Ciao <@&123456789012345678>", "parziale", None, None)
+    assert scena.repo.create.await_args.kwargs["ping_ruoli"] is atteso
+
+
+@pytest.mark.asyncio
+async def test_il_nome_dell_autore_non_pinga_ruoli(scena):
+    scena.repo.list.return_value = [SimpleNamespace(
+        id=1, trigger="ciao", match_mode="parziale", channel_id=None, role_id=None,
+        response="Ciao {username}", ping_ruoli=True)]
+    msg, canale = _messaggio()
+    msg.author.display_name = "<@&123456789012345678>"
+    await scena.on_message(msg)
+    assert "<@&123456789012345678>" not in canale.send.await_args.args[0]

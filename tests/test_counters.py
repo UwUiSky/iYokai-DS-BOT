@@ -14,7 +14,7 @@ from discord.ext import commands
 
 import cogs.utility.counters as modulo
 from cogs.utility.counters import CountersCog
-from core.channel_rename import ChannelRenameTracker, RenameRateLimited
+from core.channel_rename import RenameRateLimited
 from core.counter_logic import (
     ETICHETTE_DI_BASE,
     MAX_CONTATORI,
@@ -26,7 +26,7 @@ from core.counter_logic import (
 )
 from core.counter_worker import CounterWorker
 from core.repositories.counter_repo import CounterRepository
-from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+from tests.support.discord_fakes import fake_guild, fake_interaction
 from tests.support.percorsi import comando_nel_gruppo
 
 

@@ -218,7 +218,7 @@ async def test_bottone_verify_non_toglie(clean_db, monkeypatch):
     i = s.interazione(u)
     await s.cog._handle_button_click(i, s.menu_id, 1000)
     u.remove_roles.assert_not_awaited()
-    assert "non si" in i.response.send_message.await_args.args[0]
+    assert "non si" in i.followup.send.await_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -273,7 +273,7 @@ async def test_ruoli_ammessi_ed_esclusi(clean_db, monkeypatch):
     i = s.interazione(senza)
     await s.cog._handle_button_click(i, s.menu_id, 1000)
     senza.add_roles.assert_not_awaited()
-    assert "riservato" in i.response.send_message.await_args.args[0]
+    assert "riservato" in i.followup.send.await_args.args[0]
     escluso = s.utente(1005, 1006)
     await s.cog._handle_button_click(s.interazione(escluso), s.menu_id, 1000)
     escluso.add_roles.assert_not_awaited()
@@ -392,6 +392,28 @@ async def test_modifica_titolo_ripubblica_il_messaggio_e_poi_salva(clean_db, mon
     await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, titolo="Nuovo titolo")
     assert (await s.repo.get_menu(s.menu_id)).title == "Nuovo titolo"
     s.canale.send.assert_awaited_once()
+    assert s.canale.send.await_args.kwargs["embed"].title == "Nuovo titolo"  # il messaggio porta i valori NUOVI
+
+
+@pytest.mark.asyncio
+async def test_modifica_comportamento_si_vede_nel_messaggio(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, comportamento="verify")
+    assert "verify" in s.canale.send.await_args.kwargs["embed"].footer.text
+    assert (await s.repo.get_menu(s.menu_id)).behavior == "verify"
+
+
+@pytest.mark.asyncio
+async def test_modifica_durata_su_menu_non_temp_e_rifiutata(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, durata_minuti=10)
+    assert "temp" in i.response.send_message.await_args.args[0]
+    assert (await s.repo.get_menu(s.menu_id)).temp_seconds is None
+    s.canale.send.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -468,3 +490,68 @@ async def test_ruolo_a_tempo_ripreso_annulla_la_vecchia_rimozione(clean_db, monk
     await s.cog._handle_button_click(s.interazione(u), s.menu_id, 1000)
     s.scheduler.cancel.assert_awaited_once_with(7)
     s.scheduler.schedule.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_l_istantanea_vecchia_dell_interazione_viene_riletta(clean_db, monkeypatch):
+    """interaction.user porta i ruoli di prima; quelli veri (fetch_member) hanno già una scelta binding."""
+    s = _Scena(clean_db, monkeypatch, comportamento="binding")
+    await s.menu()
+    vivo = s.utente(1000)
+    vecchio = fake_member(user_id=50, roles=[])
+    vecchio.guild = s.guild
+    vecchio.add_roles = AsyncMock()
+    s.guild.fetch_member = AsyncMock(return_value=vivo)
+    i = fake_interaction(guild=s.guild, user=vecchio, channel=s.canale)
+    await s.cog._handle_button_click(i, s.menu_id, 1001)
+    vivo.add_roles.assert_not_awaited()
+    vecchio.add_roles.assert_not_awaited()
+    assert "definitiva" in i.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_si_prenota_la_risposta_prima_delle_chiamate_a_discord(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    eventi = []
+    u = s.utente()
+    i = s.interazione(u)
+    i.response.defer = AsyncMock(side_effect=lambda **k: eventi.append("defer"))
+
+    async def rileggi(_id):
+        eventi.append("fetch_member")
+        return u
+
+    s.guild.fetch_member = AsyncMock(side_effect=rileggi)
+    u.add_roles = AsyncMock(side_effect=lambda *a, **k: eventi.append("add_roles"))
+    await s.cog._handle_button_click(i, s.menu_id, 1000)
+    assert eventi == ["defer", "fetch_member", "add_roles"]
+    i.response.send_message.assert_not_awaited()
+    i.followup.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_la_tendina_prenota_la_risposta_per_prima(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, mode="select")
+    await s.menu()
+    eventi = []
+    u = s.utente()
+    i = s.interazione(u)
+    i.response.defer = AsyncMock(side_effect=lambda **k: eventi.append("defer"))
+    s.guild.fetch_member = AsyncMock(side_effect=lambda _id: (eventi.append("fetch_member"), u)[1])
+    select = MagicMock()
+    select.values = ["1000"]
+    await s.cog._handle_select(i, s.menu_id, select)
+    assert eventi[:2] == ["defer", "fetch_member"]
+    i.followup.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_accesso_ha_un_tetto_di_20_ruoli(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await s.repo.set_access_lists(s.menu_id, list(range(2000, 2020)), [])
+    i = s.interazione(s.utente())
+    await s.cog.access_cmd.callback(s.cog, i, menu_id=s.menu_id, ruolo=s.ruoli[1005], elenco="ammesso", azione="aggiungi")
+    assert len((await s.repo.get_menu(s.menu_id)).allowed_role_ids) == 20
+    assert "20" in i.response.send_message.await_args.args[0]

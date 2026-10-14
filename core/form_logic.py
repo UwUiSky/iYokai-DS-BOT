@@ -18,6 +18,7 @@ MAX_TITOLO = 45
 MAX_NOME = 32
 MAX_RISPOSTA = 1024
 MAX_MODULI = 10
+MAX_VIEW_ALL_AVVIO = 2000  # candidature in attesa riattivate all'avvio (le più recenti)
 SEPARATORE = "|"
 PREFISSO_LUNGA = "+"
 

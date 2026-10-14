@@ -32,11 +32,11 @@ from core.custom_command_logic import (
     azione_ruolo,
     costruisci_risposta,
     nome_da_messaggio,
-    normalizza_nome,
     pausa_residua,
     valida_prefisso,
 )
 from core.database import db
+from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.repositories.custom_command_repo import custom_command_repo
@@ -47,6 +47,7 @@ logger = logging.getLogger("iyokai.custom_commands")
 MODULE_CUSTOM_COMMANDS = "custom_commands"
 
 _SG_COMANDI = ("comandi", "Comandi personalizzati e risposte automatiche")
+TESTO_VUOTO = "(il comando non ha prodotto nessun testo)"
 _TTL_PREFISSO = 60  # secondi: il prefisso si rilegge ogni minuto, non a ogni messaggio
 
 # (server, nome, utente) -> ultimo uso; (server) -> (prefisso, scadenza)
@@ -87,7 +88,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "channel": getattr(canale, "mention", ""),
             "args": argomenti,
         }
-        return costruisci_risposta(tag.response, valori), nota
+        return costruisci_risposta(tag.response, valori).strip() or TESTO_VUOTO, nota
 
     async def _applica_ruolo(self, tag, membro: discord.Member) -> str | None:
         if tag.role_id is None or tag.role_action == "nessuna":

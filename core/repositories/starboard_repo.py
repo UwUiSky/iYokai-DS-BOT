@@ -47,16 +47,22 @@ class StarboardRepository:
         )
         return None if r is None else StarboardConfig(**dict(r))
 
-    async def set_config(self, guild_id: int, channel_id: int, threshold: int, emoji: str) -> None:
+    async def set_config(
+        self, guild_id: int, channel_id: int, threshold: int, emoji: str,
+        *, allow_nsfw: bool | None = None, self_star: bool | None = None,
+    ) -> None:
+        """None su `allow_nsfw` / `self_star` = lascia il valore che c'è (o il predefinito, falso)."""
         await self._pool.execute(
             """
-            INSERT INTO starboard_config (guild_id, channel_id, threshold, emoji, enabled)
-            VALUES ($1, $2, $3, $4, TRUE)
+            INSERT INTO starboard_config (guild_id, channel_id, threshold, emoji, enabled, allow_nsfw, self_star)
+            VALUES ($1, $2, $3, $4, TRUE, COALESCE($5, FALSE), COALESCE($6, FALSE))
             ON CONFLICT (guild_id) DO UPDATE
                 SET channel_id = EXCLUDED.channel_id, threshold = EXCLUDED.threshold,
-                    emoji = EXCLUDED.emoji, enabled = TRUE
+                    emoji = EXCLUDED.emoji, enabled = TRUE,
+                    allow_nsfw = COALESCE($5, starboard_config.allow_nsfw),
+                    self_star = COALESCE($6, starboard_config.self_star)
             """,
-            guild_id, channel_id, threshold, emoji,
+            guild_id, channel_id, threshold, emoji, allow_nsfw, self_star,
         )
 
     async def set_threshold(self, guild_id: int, threshold: int) -> bool:
@@ -84,24 +90,26 @@ class StarboardRepository:
         )
         return r is not None
 
-    async def get_post(self, message_id: int) -> StarboardPost | None:
+    async def get_post(self, guild_id: int, message_id: int) -> StarboardPost | None:
         r = await self._pool.fetchrow(
-            "SELECT source_message_id, board_message_id, stars FROM starboard_posts WHERE source_message_id = $1",
-            message_id,
+            "SELECT source_message_id, board_message_id, stars FROM starboard_posts "
+            "WHERE guild_id = $1 AND source_message_id = $2",
+            guild_id, message_id,
         )
         return None if r is None else StarboardPost(**dict(r))
 
-    async def set_board_message(self, message_id: int, board_message_id: int, stars: int) -> None:
+    async def set_board_message(self, guild_id: int, message_id: int, board_message_id: int, stars: int) -> None:
         await self._pool.execute(
-            "UPDATE starboard_posts SET board_message_id = $2, stars = $3 WHERE source_message_id = $1",
-            message_id, board_message_id, stars,
+            "UPDATE starboard_posts SET board_message_id = $3, stars = $4 "
+            "WHERE guild_id = $1 AND source_message_id = $2",
+            guild_id, message_id, board_message_id, stars,
         )
 
-    async def release_post(self, message_id: int) -> None:
+    async def release_post(self, guild_id: int, message_id: int) -> None:
         """Invio fallito: toglie la prenotazione se non è ancora stato pubblicato nulla."""
         await self._pool.execute(
-            "DELETE FROM starboard_posts WHERE source_message_id = $1 AND board_message_id IS NULL",
-            message_id,
+            "DELETE FROM starboard_posts WHERE guild_id = $1 AND source_message_id = $2 AND board_message_id IS NULL",
+            guild_id, message_id,
         )
 
 

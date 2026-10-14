@@ -140,9 +140,15 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
     ) -> None:
         if not await self._pronto(interaction):
             return
+        parola = parola.strip()
+        if not parola or not risposta.strip():
+            await interaction.response.send_message(
+                "La parola e la risposta non possono essere vuote o fatte di soli spazi.", ephemeral=True
+            )
+            return
         esito, nuovo_id = await autoresponder_repo.create(
             interaction.guild.id,
-            parola.strip(),
+            parola,
             match_mode=modalita,
             response=risposta,
             channel_id=canale.id if canale else None,
@@ -150,7 +156,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             ping_ruoli=utente_puo_pingare_ruoli(interaction.user),
             created_by=interaction.user.id,
         )
-        _cache_regole._data.pop(interaction.guild.id, None)
+        _cache_regole.delete(interaction.guild.id)
         messaggi = {
             "ok": f"Risposta automatica n. {nuovo_id} creata.",
             "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/moduli comandi risposta-elimina`.",
@@ -164,7 +170,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         if not await self._pronto(interaction):
             return
         fatta = await autoresponder_repo.delete(interaction.guild.id, numero)
-        _cache_regole._data.pop(interaction.guild.id, None)
+        _cache_regole.delete(interaction.guild.id)
         await interaction.response.send_message(
             "Risposta eliminata." if fatta else "Non esiste una risposta con quel numero.", ephemeral=True
         )

@@ -21,6 +21,7 @@ from discord.ext import commands
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.nome_logic import normalizza_nome
 from core.form_logic import (
     ACCEPTED, MAX_MODULI, MAX_NOME, MAX_RISPOSTA, MAX_TITOLO, REJECTED,
     campi_riepilogo, leggi_domande, puo_decidere,
@@ -102,7 +103,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             return
         risposta = await form_repo.get_response(response_id)
         form = await form_repo.get_form_by_id(risposta.form_id) if risposta else None
-        if risposta is None or form is None:
+        if risposta is None or form is None or risposta.guild_id != getattr(interaction.guild, "id", None):
             await interaction.response.send_message("Questa candidatura non esiste più.", ephemeral=True)
             return
         if not puo_decidere(risposta.status) or not await form_repo.decide(response_id, stato, interaction.user.id):
@@ -240,6 +241,13 @@ class FormsCog(CogConGruppi, commands.Cog):
     ) -> None:
         if not await self._pronto(interaction):
             return
+        normalizzato = normalizza_nome(nome)
+        if normalizzato is None:
+            await interaction.response.send_message(
+                "Il nome può avere solo lettere minuscole (a-z), cifre, - e _, senza spazi.", ephemeral=True
+            )
+            return
+        nome = normalizzato
         elenco, errore = leggi_domande(domande)
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
@@ -260,8 +268,8 @@ class FormsCog(CogConGruppi, commands.Cog):
             interaction.guild.id, nome, titolo, canale.id, ruolo.id if ruolo else None, elenco, interaction.user.id
         )
         messaggi = {
-            "ok": f"Modulo `{nome.lower()}` creato con {len(elenco)} domande. Chi vuole compilarlo usa `/utility modulo`.",
-            "esiste": f"Esiste già un modulo `{nome.lower()}`: eliminalo prima con `/moduli candidature elimina`.",
+            "ok": f"Modulo `{nome}` creato con {len(elenco)} domande. Chi vuole compilarlo usa `/utility modulo`.",
+            "esiste": f"Esiste già un modulo `{nome}`: eliminalo prima con `/moduli candidature elimina`.",
             "pieno": f"Questo server ha già {MAX_MODULI} moduli: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)

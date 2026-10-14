@@ -58,7 +58,6 @@ notato nello schema di progetto originale (~90%).
 """
 
 # Comando e classifica (NF-27): cogs/utility/invites.py.
-#   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 

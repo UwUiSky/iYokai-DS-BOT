@@ -142,11 +142,22 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             channel = member.guild.get_channel(config.welcome_channel_id)
             if isinstance(channel, discord.TextChannel):
                 # Durante un raid solo testo: disegnare un'immagine per ogni ingresso è lavoro sprecato.
-                allegato = None if raid_in_corso(member.guild.id) else await _file_benvenuto(config, member)
+                puo_allegare = channel.permissions_for(member.guild.me).attach_files
+                allegato = (
+                    None
+                    if raid_in_corso(member.guild.id) or not puo_allegare
+                    else await _file_benvenuto(config, member)
+                )
                 try:
-                    if allegato is not None:
-                        await channel.send(testo, file=allegato, allowed_mentions=menzioni)
-                    else:
+                    try:
+                        if allegato is not None:
+                            await channel.send(testo, file=allegato, allowed_mentions=menzioni)
+                        else:
+                            await channel.send(testo, allowed_mentions=menzioni)
+                    except discord.HTTPException:
+                        if allegato is None:
+                            raise
+                        # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
                         await channel.send(testo, allowed_mentions=menzioni)
                 except discord.HTTPException:
                     logger.warning(

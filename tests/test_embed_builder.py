@@ -26,7 +26,7 @@ from core.embed_builder_logic import (
     valida,
 )
 from core.repositories.saved_embed_repo import SavedEmbedRepository
-from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_message, fake_text_channel
+from tests.support.discord_fakes import fake_guild, fake_interaction, fake_text_channel
 from tests.support.percorsi import comando_nel_gruppo
 
 

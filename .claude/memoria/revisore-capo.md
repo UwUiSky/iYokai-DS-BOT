@@ -45,6 +45,7 @@
 
 - Thread privati: `Thread.permissions_for` eredita dal padre, non basta per «pubblico». Finti che condividono `member.roles` vivo non provano un'istantanea vecchia dell'interazione: servono copie congelate.
 - Harness mutazioni: script con `str.replace` contato + `git checkout` finale; lanciare con timeout 595000 sul tool (non `pkill -f` col nome dello script: uccide la propria shell).
+- Con lavoro non committato NON ripristinare le mutazioni con `git checkout -- file` (perde le correzioni): fare `git stash` + `stash apply` prima, o copia del file.
 
 ## Aperto
 - giro-mod sopravvissute: vedi quaderno di quel ramo. Altri rami attendono le righe elencate. `fix/f1-135` attende `remove_member`.

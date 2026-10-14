@@ -16,12 +16,12 @@ from discord.ext import commands
 
 import cogs.utility.custom_commands as modulo
 from cogs.utility.custom_commands import CustomCommandsCog
+from core.nome_logic import normalizza_nome
 from core.custom_command_logic import (
     MAX_TAG,
     azione_ruolo,
     costruisci_risposta,
     nome_da_messaggio,
-    normalizza_nome,
     pausa_residua,
     valida_prefisso,
 )
@@ -338,3 +338,54 @@ async def test_il_tag_prenota_la_risposta_prima_di_toccare_i_ruoli(scena):
     utente.add_roles = AsyncMock(side_effect=lambda *a, **k: ordine.append("ruolo"))
     await scena.tag.callback(scena, i, "regole", "")
     assert ordine[:2] == ["defer", "ruolo"]
+
+
+@pytest.mark.asyncio
+async def test_search_names_tratta_percento_e_trattino_basso_come_testo(repo):
+    for nome in ("a_b", "axb", "100%", "cento"):
+        assert await _crea(repo, nome=nome) == "ok"
+    assert await repo.search_names(1, "_") == ["a_b"]
+    assert await repo.search_names(1, "%") == ["100%"]
+    assert sorted(await repo.search_names(1, "")) == ["100%", "a_b", "axb", "cento"]
+
+
+def test_il_prefisso_seguito_da_uno_spazio_non_e_un_comando():
+    assert nome_da_messaggio("! regole", "!") is None
+    assert nome_da_messaggio("!", "!") is None
+    assert nome_da_messaggio("!regole uno due", "!") == ("regole", "uno due")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("permessi,atteso", [
+    (discord.Permissions(mention_everyone=True), True),
+    (discord.Permissions(manage_guild=True), False),
+])
+async def test_crea_salva_il_ping_dei_ruoli_solo_se_chi_crea_puo(scena, permessi, atteso):
+    i, server, utente = _interazione()
+    utente.guild_permissions = permessi
+    await scena.crea.callback(scena, i, "ok", "x", False, None, "nessuna", 0)
+    assert scena.repo.create_tag.await_args.kwargs["ping_ruoli"] is atteso
+
+
+@pytest.mark.asyncio
+async def test_modifica_del_solo_embed_non_tocca_il_ping_dei_ruoli(scena):
+    i, server, utente = _interazione()
+    utente.guild_permissions = discord.Permissions(administrator=True)
+    await scena.modifica.callback(scena, i, "regole", None, True, None, None, None)
+    assert scena.repo.update_tag.await_args.kwargs == {"use_embed": True}
+    i2, _, u2 = _interazione()
+    u2.guild_permissions = discord.Permissions(administrator=True)
+    await scena.modifica.callback(scena, i2, "regole", "nuovo testo", None, None, None, None)
+    assert scena.repo.update_tag.await_args.kwargs["ping_ruoli"] is True
+
+
+@pytest.mark.asyncio
+async def test_risposta_vuota_dopo_i_segnaposto_ha_un_testo_di_ripiego(scena):
+    scena.repo.get_tag.return_value = _tag(response="{args}")
+    i, *_ = _interazione()
+    await scena.tag.callback(scena, i, "regole", "")
+    assert i.followup.send.await_args.args[0] == modulo.TESTO_VUOTO
+    scena.repo.get_tag.return_value = _tag(response="{args}", use_embed=True)
+    i2, *_ = _interazione()
+    await scena.tag.callback(scena, i2, "regole", "")
+    assert i2.followup.send.await_args.kwargs["embed"].description == modulo.TESTO_VUOTO

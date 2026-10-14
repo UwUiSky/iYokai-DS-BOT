@@ -8,11 +8,11 @@ Funzioni coperte: SPEC §22 (NF-09)
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 
 import discord
 
+from core.nome_logic import NOME_RE
 from core.template_renderer import render_template
 
 MAX_TAG = 50  # per server (gratis)
@@ -22,16 +22,9 @@ MAX_ARGOMENTI = 200
 MAX_PAUSA = 3600
 AZIONI_RUOLO = ("nessuna", "dai", "togli", "alterna")
 
-_NOME_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
 # Il prefisso: da 1 a 3 simboli, mai lettere o cifre, mai caratteri che Discord legge come
 # comando o menzione.
 _PREFISSO_VIETATI = set("/@#<>*_`~|\\")
-
-
-def normalizza_nome(grezzo: str) -> str | None:
-    """Il nome in minuscolo se valido (lettere a-z, cifre, - e _; 1-32), altrimenti None."""
-    nome = grezzo.strip().lower()
-    return nome if _NOME_RE.match(nome) else None
 
 
 def valida_prefisso(prefisso: str) -> str | None:
@@ -55,7 +48,7 @@ def nome_da_messaggio(contenuto: str, prefisso: str | None) -> tuple[str, str] |
         return None
     nome, _, argomenti = resto.partition(" ")
     nome = nome.strip().lower()
-    if not _NOME_RE.match(nome):
+    if not NOME_RE.match(nome):
         return None
     return nome, argomenti.strip()
 

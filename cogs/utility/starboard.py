@@ -85,6 +85,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
         bacheca = guild.get_channel(config.channel_id)
         if canale is None or not isinstance(bacheca, discord.TextChannel):
             return
+        if isinstance(canale, discord.Thread) and (canale.is_private() or canale.parent is None):
+            return  # i thread privati ereditano i permessi del padre: non si sa chi li vede
         if canale.is_nsfw() and not config.allow_nsfw:
             return
         pubblico = canale.permissions_for(guild.default_role)
@@ -99,12 +101,12 @@ class StarboardCog(CogConGruppi, commands.Cog):
             if messaggio.author.bot and messaggio.author.id == guild.me.id:
                 return  # non si mette in bacheca il bot stesso
             stelle = await self._conta(messaggio, config)
-            esistente = await starboard_repo.get_post(message_id)
+            esistente = await starboard_repo.get_post(guild_id, message_id)
 
             if esistente is not None:
                 if esistente.board_message_id is None:
                     return  # lo sta pubblicando un altro processo
-                await self._aggiorna_post(bacheca, esistente.board_message_id, config, stelle, canale.id, message_id)
+                await self._aggiorna_post(guild_id, bacheca, esistente.board_message_id, config, stelle, canale.id, message_id)
                 return
             if stelle < config.threshold:
                 return
@@ -118,12 +120,12 @@ class StarboardCog(CogConGruppi, commands.Cog):
                 )
             except discord.HTTPException as errore:
                 logger.warning("Bacheca %s: invio fallito: %s", config.channel_id, errore)
-                await starboard_repo.release_post(message_id)
+                await starboard_repo.release_post(guild_id, message_id)
                 return
             except BaseException:
-                await starboard_repo.release_post(message_id)  # errore imprevisto: il posto non resta bloccato
+                await starboard_repo.release_post(guild_id, message_id)  # errore imprevisto: il posto non resta bloccato
                 raise
-            await starboard_repo.set_board_message(message_id, inviato.id, stelle)
+            await starboard_repo.set_board_message(guild_id, message_id, inviato.id, stelle)
 
     async def _conta(self, messaggio: discord.Message, config) -> int:
         for reazione in messaggio.reactions:
@@ -132,7 +134,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
                 return conta_stelle(utenti, messaggio.author.id, config.self_star)
         return 0
 
-    async def _aggiorna_post(self, bacheca, board_id, config, stelle, channel_id, message_id) -> None:
+    async def _aggiorna_post(self, guild_id, bacheca, board_id, config, stelle, channel_id, message_id) -> None:
         try:
             post = await bacheca.fetch_message(board_id)
             await post.edit(content=contenuto_bacheca(config.emoji, stelle, channel_id), allowed_mentions=_NESSUNA_MENZIONE)
@@ -141,7 +143,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as errore:
             logger.warning("Bacheca %s: aggiornamento fallito: %s", bacheca.id, errore)
             return
-        await starboard_repo.set_board_message(message_id, board_id, stelle)
+        await starboard_repo.set_board_message(guild_id, message_id, board_id, stelle)
 
     @staticmethod
     def _embed(messaggio: discord.Message) -> discord.Embed:
@@ -190,6 +192,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
         canale="Il canale dove finiscono i messaggi più votati",
         soglia="Quante stelle servono (predefinito 3)",
         emoji="L'emoji da contare (predefinita ⭐)",
+        nsfw="Includere anche i canali vietati ai minori? (non cambia se vuoto)",
+        voto_autore="Conta anche la stella dell'autore? (non cambia se vuoto)",
     )
     async def imposta(
         self,
@@ -197,6 +201,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
         canale: discord.TextChannel,
         soglia: app_commands.Range[int, SOGLIA_MIN, SOGLIA_MAX] = SOGLIA_PREDEFINITA,
         emoji: app_commands.Range[str, 1, 64] = EMOJI_PREDEFINITA,
+        nsfw: bool | None = None,
+        voto_autore: bool | None = None,
     ) -> None:
         if not await self._modulo_attivo(interaction):
             return
@@ -213,10 +219,13 @@ class StarboardCog(CogConGruppi, commands.Cog):
                 allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
-        await starboard_repo.set_config(interaction.guild.id, canale.id, soglia, emoji)
+        await starboard_repo.set_config(
+            interaction.guild.id, canale.id, soglia, emoji, allow_nsfw=nsfw, self_star=voto_autore
+        )
+        salvata = await starboard_repo.get_config(interaction.guild.id)
         await interaction.response.send_message(
             f"Bacheca attiva in {canale.mention}: servono {soglia} {emoji}. "
-            "I canali vietati ai minori sono esclusi.",
+            + ("I canali vietati ai minori sono inclusi." if salvata.allow_nsfw else "I canali vietati ai minori sono esclusi."),
             ephemeral=True,
             allowed_mentions=_NESSUNA_MENZIONE,
         )

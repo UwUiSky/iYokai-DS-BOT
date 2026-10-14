@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageOps
 
 from core.leveling_logic import colore_valido
-from core.rank_card_image import _font, senza_quadrati
+from core.rank_card_image import carica_font, senza_quadrati, taglia_al_largo
 from core.safe_image import safe_open_image
 
 LARGHEZZA = 1024
@@ -109,14 +109,6 @@ def _avatar(avatar_bytes: bytes | None, forma: str) -> Image.Image:
     return finale
 
 
-def _taglia_al_largo(draw: ImageDraw.ImageDraw, testo: str, font, larghezza_max: int) -> str:
-    if draw.textlength(testo, font=font) <= larghezza_max:
-        return testo
-    while testo and draw.textlength(testo + "…", font=font) > larghezza_max:
-        testo = testo[:-1]
-    return testo + "…"
-
-
 def render_welcome_image(dati: DatiBenvenuto, avatar_bytes: bytes | None, sfondo_bytes: bytes | None) -> bytes:
     """L'immagine di benvenuto come PNG di LARGHEZZA x ALTEZZA. Non solleva per avatar, sfondo o testi strani."""
     colore = colore_valido(dati.colore_testo) or COLORE_TESTO_DI_BASE
@@ -135,9 +127,9 @@ def render_welcome_image(dati: DatiBenvenuto, avatar_bytes: bytes | None, sfondo
 
     x = 60 + LATO_AVATAR + 50
     larghezza = LARGHEZZA - x - 50
-    f_titolo, f_nome, f_numero = _font(44), _font(56), _font(30)
-    titolo = _taglia_al_largo(draw, senza_quadrati(dati.titolo[:MAX_TITOLO], f_titolo), f_titolo, larghezza)
-    nome = _taglia_al_largo(draw, senza_quadrati(dati.nome[:MAX_NOME], f_nome), f_nome, larghezza)
+    f_titolo, f_nome, f_numero = carica_font(44), carica_font(56), carica_font(30)
+    titolo = taglia_al_largo(draw, senza_quadrati(dati.titolo[:MAX_TITOLO], f_titolo), f_titolo, larghezza)
+    nome = taglia_al_largo(draw, senza_quadrati(dati.nome[:MAX_NOME], f_nome), f_nome, larghezza)
     numero = f"Membro n. {dati.numero:,}".replace(",", ".")
     draw.text((x, 100), titolo, font=f_titolo, fill=rgb)
     draw.text((x, 170), nome, font=f_nome, fill=rgb)

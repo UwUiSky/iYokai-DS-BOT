@@ -73,6 +73,16 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             return
         await membro.remove_roles(ruolo, reason="Compleanno finito")
 
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """Chi esce dal server perde il compleanno registrato (dato personale, NF-04)."""
+        if member.bot:
+            return
+        try:
+            await birthday_repo.remove_birthday(member.guild.id, member.id)
+        except Exception:
+            logger.exception("Errore nel cancellare il compleanno di %s", member.id)
+
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(

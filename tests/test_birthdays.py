@@ -310,3 +310,31 @@ async def test_reimpostare_la_stessa_data_non_riapre_gli_auguri_dell_anno(repo):
     assert await repo.claim_due(1, date(2026, 3, 14)) == []
     await repo.set_birthday(1, 5, 15, 3)  # data cambiata: si riparte
     assert await repo.claim_due(1, date(2026, 3, 15)) == [5]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("permessi,atteso", [
+    (discord.Permissions(mention_everyone=True), True),
+    (discord.Permissions(manage_guild=True), False),
+])
+async def test_canale_salva_il_ping_dei_ruoli_solo_se_chi_configura_puo(cog, permessi, atteso):
+    i = fake_interaction(user=fake_member(5))
+    i.user.guild_permissions = permessi
+    canale = fake_text_channel(50)
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=True, send_messages=True))
+    await cog.canale.callback(cog, i, canale, "Auguri {users}")
+    assert cog.repo.set_channel.await_args.args[3] is atteso
+
+
+@pytest.mark.asyncio
+async def test_chi_esce_dal_server_perde_il_compleanno(cog):
+    server = fake_guild()
+    uscito = fake_member(9)
+    uscito.guild = server
+    await cog.on_member_remove(uscito)
+    cog.repo.remove_birthday.assert_awaited_once_with(server.id, 9)
+    cog.repo.remove_birthday.reset_mock()
+    bot = fake_member(10, bot=True)
+    bot.guild = server
+    await cog.on_member_remove(bot)
+    cog.repo.remove_birthday.assert_not_awaited()

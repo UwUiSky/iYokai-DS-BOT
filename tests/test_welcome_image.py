@@ -141,6 +141,15 @@ async def test_sfondo_salvato_letto_e_tolto(repo):
     assert (await repo.get_config(1)).welcome_image_has_background is False
 
 
+@pytest.mark.parametrize("lungo", ["x" * 200, "😀" * 40 + "y" * 100, "W" * 32])
+def test_il_testo_lungo_non_esce_dal_margine_destro(lungo):
+    """Il nome si accorcia con «…» per stare nella larghezza: la fascia di margine a destra resta pulita."""
+    box = (LARGHEZZA - 45, 150, LARGHEZZA, 250)
+    corto = _apri(render_welcome_image(_dati(nome="Mario"), None, None)).crop(box)
+    lunga = _apri(render_welcome_image(_dati(nome=lungo, titolo="T" * 40), None, None)).crop(box)
+    assert lunga.tobytes() == corto.tobytes()
+
+
 # -------------------------------------------------------------------- cog
 class _Scena:
     def __init__(self, monkeypatch, *, immagine=True, raid=False):
@@ -194,6 +203,34 @@ async def test_durante_un_raid_solo_testo(monkeypatch):
     await s.cog.on_member_join(s.membro)
     assert "file" not in s.canale.send.await_args.kwargs
     s.canale.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_senza_permesso_di_allegare_parte_il_solo_testo(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, attach_files=False))
+    disegna = MagicMock()
+    monkeypatch.setattr(modulo, "render_welcome_image", disegna)
+    await s.cog.on_member_join(s.membro)
+    s.canale.send.assert_awaited_once()
+    assert "file" not in s.canale.send.await_args.kwargs
+    disegna.assert_not_called()  # niente lavoro Pillow sprecato
+
+
+@pytest.mark.asyncio
+async def test_se_l_invio_con_il_file_fallisce_il_testo_parte_lo_stesso(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, attach_files=True))
+
+    async def invio(testo, **kw):
+        if "file" in kw:
+            raise discord.Forbidden(MagicMock(status=403, reason="x"), "Missing Permissions")
+
+    s.canale.send = AsyncMock(side_effect=invio)
+    await s.cog.on_member_join(s.membro)
+    assert s.canale.send.await_count == 2
+    assert "file" in s.canale.send.await_args_list[0].kwargs
+    assert "file" not in s.canale.send.await_args_list[1].kwargs
 
 
 @pytest.mark.asyncio
