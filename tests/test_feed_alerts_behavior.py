@@ -407,6 +407,15 @@ async def test_add_youtube_live_list_e_remove_ciclo_completo(monkeypatch):
         from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
         from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 
+        from core.repositories.alert_options_repo import AlertOptionsRepository
+        from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+
+        monkeypatch.setattr(
+            feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        monkeypatch.setattr(
+            feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
+        )
         monkeypatch.setattr(feed_alerts_module, "db", database)
         youtube_repo = YoutubeSubscriptionRepository(pool_provider=lambda: database.pool)
         monkeypatch.setattr(feed_alerts_module, "youtube_subscription_repo", youtube_repo)
