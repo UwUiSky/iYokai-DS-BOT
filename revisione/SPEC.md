@@ -1843,8 +1843,19 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   salvate (NF-19, fase F9)
 - `[x]` 23.2 Canali contatore (NF-16)
   → **Stato 13/10:** `/moduli contatori crea|elimina|elenco` (0087), aggiornamento ogni 10 minuti, massimo 5 per server.
-- `[ ]` 23.3 Statistiche di attività per canale e per membro, ruoli per
+- `[x]` 23.3 Statistiche di attività per canale e per membro, ruoli per
   attività (NF-25)
+  → **Stato 14/10 (r5):** messaggi e minuti in vocale come somme per giorno
+  (canale, membro, ora), scritte a lotti ogni minuto in 3 tabelle (0120),
+  90 giorni di conservazione, dati personali nel registro dati. `/utility
+  serverstats` ha le viste crescita, ingressi, uscite, canali, membri (anche
+  per ruolo), ore, giorni della settimana, membro, con bottoni 7/30/90 giorni
+  e Aggiorna. `/moduli statistiche impostazioni|ruolo-aggiungi|ruolo-elimina|
+  elenco|diagnosi`: esclusioni di canali e ruoli, fino a 10 regole "ruolo a
+  chi è attivo" (controllo ogni 30 minuti, al massimo 25 cambi per regola e
+  giro). `activity_stats_repo.member_total` è il punto da usare per il
+  requisito messaggi dei giveaway (oggi `giveaway_message_counts`, in
+  `cogs/leveling`, non toccato qui).
 - `[x]` 23.4 Compleanni (NF-26)
   → **Stato 13/10:** `/level compleanno imposta|rimuovi|mostra`, `/moduli compleanni canale|ruolo` (0088): solo giorno e mese.
 - `[x]` 23.5 Inviti: comando personale e classifica (NF-27)

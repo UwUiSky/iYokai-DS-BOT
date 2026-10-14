@@ -4,12 +4,13 @@
 14/10/2026 · ramo feat/r5-fun (base main a5f4e30) · lavoro per FILE: #71, #131, #96, #130, #103, #129
 
 ## In corso
-- Previsione r5: 5 gruppi. G1 #71+#131 fun (fatto); G2 NF-25 #96 + #130 (0120); G3 NF-32 #103 Kick/ruolo live/guida social (0121); G4 #129 voci feed; poi COMMAND_LIST+SPEC+push+rapporto.
+- Previsione r5: 5 gruppi. G1 #71+#131 fun (fatto); G2 NF-25 #96 + #130 (0120, fatto); G3 NF-32 #103 Kick/ruolo live/guida social (0121); G4 #129 voci feed; poi COMMAND_LIST+SPEC+push+rapporto.
 - Migrazioni da 0120. Registro dati (core/data_registry.py) per ogni tabella nuova.
 
 ## Fatto
 - r4: G1-G10 (autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli): vedi git log.
 - r5 G1: #71 (15.1/15.2 già in main) + #131 voci piccole: cogs/fun/fun_extra.py (/fun scegli|numero|testo|casuale|scherzo|effetto), dice formula, joke tema, fact animale, 8ball/meme con Range e senza menzioni.
+- r5 G2: NF-25 attività (0120): activity_stats.py (raccolta+ruoli, /moduli statistiche …), server_stats.py (viste, bottoni), repo+logic; member_total per giveaway.
 
 ## Cose imparate
 - Role menu: `_applica(guild, member, decisione, motivo)` e `decidi_azione/decidi_selezione` (core/role_menu_logic) sono l'unico punto che da/toglie ruoli; pass guild esplicito (i fake non hanno member.guild).
@@ -37,6 +38,7 @@
 - Fun/Pixabay: la cache è in memoria (si perde al riavvio); `Range[...]` in get_type_hints è un oggetto con min_value/max_value; ComandoDiGruppo: usare `.callback`.
 
 ## Aperto
+- Condivisione macchina: NON usare /tmp/claude-0/env.sh (lo riscrivono altri agenti): uso env_r5fun.sh. Giveaway: passare il requisito messaggi a activity_stats_repo.member_total (cogs/leveling non mio).
 - - Menu dei ruoli: nessun comando per elencare gli ID dei menu (menu-aggiungi chiede `menu_id` a mano); un elenco richiederebbe un sottocomando in `/gestione ruoli` (controllare il tetto 25).
 - Fasi future saltate: 10.8 (F9), 10.11 (F8, già fatto come cerca-comando), 10.14, 10.15, 10.17 (F9).
 - Scheletri (counters, forms, starboard, birthdays, autoroles, invites, activity_stats, autoresponder, custom_commands, embed_builder): F9/F13.

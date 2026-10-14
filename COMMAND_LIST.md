@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:09 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:20 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 350 comandi in 17 categorie.**
+**Totale: 355 comandi in 17 categorie.**
 
 ## Admin
 
@@ -284,6 +284,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/moduli starboard disattiva`** — Spegni la bacheca.
 - **`/moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
+- **`/moduli statistiche diagnosi`** — Perché le statistiche non si contano?
+- **`/moduli statistiche elenco`** — Mostra regole ed esclusioni delle statistiche.
+- **`/moduli statistiche impostazioni`** — Escludi canali o ruoli dalle statistiche.
+- **`/moduli statistiche ruolo-aggiungi`** — Dai un ruolo a chi è attivo e toglilo a chi smette.
+- **`/moduli statistiche ruolo-elimina`** — Elimina una regola dei ruoli per attività.
 
 ## Musica
 
@@ -386,7 +391,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/utility reminder set`** — Imposta un promemoria.
 - **`/utility report`** — Segnala un utente allo staff del server.
 - **`/utility richiedi-comando`** — Proponi un nuovo comando per il bot.
-- **`/utility serverstats`** — Mostra le statistiche del server, con grafico di crescita.
+- **`/utility serverstats`** — Statistiche del server: crescita, attività dei canali e dei membri.
 - **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.
 - **`/utility tag`** — Usa un comando personalizzato di questo server.
