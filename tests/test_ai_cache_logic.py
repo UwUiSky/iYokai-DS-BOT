@@ -41,3 +41,13 @@ def test_tetto_delle_voci():
     for i in range(3):
         c.metti(0, "chat", "", f"d{i}", "r", ora=0)
     assert len(c) == 2
+
+
+def test_traduzioni_e_giudizi_solo_uguali():
+    """Una parola in più ('non') cambia il senso: per traduzioni e giudizi vale solo il testo uguale."""
+    cache = CacheAI()
+    base = "domani alle cinque andiamo tutti insieme alla riunione del gruppo"
+    for tipo in ("traduzione", "giudizio"):
+        cache.metti(1, tipo, "i", base, "vecchia", ora=0)
+        assert cache.trova(1, tipo, "i", base.replace("andiamo", "non andiamo"), ora=1) is None
+        assert cache.trova(1, tipo, "i", base, ora=1) == "vecchia"

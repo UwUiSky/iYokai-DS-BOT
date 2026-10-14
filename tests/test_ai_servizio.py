@@ -150,3 +150,94 @@ async def test_memoria_corta_con_scadenza(repo):
 async def test_dm_senza_server_solo_gratuiti(repo):
     servizio, _ = servizio_finto(repo)
     assert (await servizio.richiedi(_r(guild_id=None))).testo == "risposta di alfa"
+
+
+# ---------------------------------------------------------------- correzioni del giro di controllo
+
+
+async def test_immagini_in_parallelo_non_superano_quota_e_crediti(repo):
+    """Tre immagini insieme con la quota finita e un solo credito: ne parte una sola."""
+    import asyncio
+
+    class Lento(TrasportoFinto):
+        async def immagine(self, f, prompt):
+            await asyncio.sleep(0.05)
+            return await super().immagine(f, prompt)
+
+    img = fornitore("img", tipi=("immagine",))
+    servizio, trasporto = servizio_finto(repo, fornitori=[img], trasporto=Lento())
+    await repo.registra_consenso(G, U, True)
+    await repo.imposta(G, quota_immagini_settimana=1)
+    await servizio.richiedi(_r(tipo="immagine", funzione="immagina", testo="un gatto"))
+    await repo.crediti_aggiungi(G, U, 1)
+    esiti = await asyncio.gather(
+        *(servizio.richiedi(_r(tipo="immagine", funzione="immagina", testo=f"cane {i}")) for i in range(3)),
+        return_exceptions=True,
+    )
+    riuscite = [e for e in esiti if not isinstance(e, Exception)]
+    assert len(riuscite) == 1
+    assert all(e.motivo == "quota_immagini" for e in esiti if isinstance(e, AINonDisponibile))
+    assert len(trasporto.chiamate) == 2
+
+
+async def test_richiesta_di_servizio_non_consuma_la_quota_della_persona(repo):
+    """Moderazione e traduzione automatica: non contano sulla persona né sul suo limite al minuto."""
+    servizio, trasporto = servizio_finto(repo)
+    await repo.registra_consenso(G, U, True)
+    await repo.imposta(G, quota_utente_giorno=1)
+    for i in range(8):
+        await servizio.richiedi(_r(funzione="moderazione", tipo="giudizio", testo=f"messaggio {i}", conta_utente=False))
+    assert len(trasporto.chiamate) == 8
+    uso = await repo.uso(G, U, "chiedi")
+    assert uso.utente_oggi == 0
+    assert (await servizio.richiedi(_r())).testo == "risposta di alfa"
+
+
+async def test_traduzione_non_va_nella_libreria_comune(repo):
+    """La traduzione contiene il testo della persona: resta nel server, mai nella libreria comune."""
+    servizio, trasporto = servizio_finto(repo)
+    await repo.registra_consenso(G, U, True)
+    await repo.registra_consenso(999, U, True)
+    await servizio.richiedi(_r(tipo="traduzione", funzione="traduci", testo="la mia password è gatto"))
+    seconda = await servizio.richiedi(
+        _r(guild_id=999, tipo="traduzione", funzione="traduci", testo="la mia password è gatto")
+    )
+    assert not seconda.da_cache and len(trasporto.chiamate) == 2
+
+
+async def test_istruzioni_senza_dati_personali(repo):
+    """Base di conoscenza e personaggi finiscono nelle istruzioni: anche lì via e-mail, ID e inviti."""
+    servizio, trasporto = servizio_finto(repo)
+    await repo.registra_consenso(G, U, True)
+    await repo.imposta(G, lore_testo="scrivi a capo@gilda.it")
+    await servizio.richiedi(_r(istruzioni="Info: admin <@123456789012345678>, discord.gg/abcdef"))
+    sistema = trasporto.chiamate[0][1][0]["content"]
+    assert "123456789012345678" not in sistema and "abcdef" not in sistema and "capo@gilda.it" not in sistema
+
+
+async def test_errore_imprevisto_del_trasporto_passa_al_successivo(repo):
+    trasporto = TrasportoFinto(errori={"a": ValueError("json rotto")})
+    servizio, _ = servizio_finto(repo, fornitori=[fornitore("a"), fornitore("b")], trasporto=trasporto)
+    await repo.registra_consenso(G, U, True)
+    assert (await servizio.richiedi(_r())).fornitore == "b"
+
+
+async def test_blocco_per_persona_resta_finche_qualcuno_aspetta(repo):
+    """Quattro richieste insieme: mai due chiamate della stessa persona sovrapposte, e il blocco poi sparisce."""
+    import asyncio
+
+    dentro, massimo = 0, 0
+
+    class Conta(TrasportoFinto):
+        async def completa(self, f, messaggi, max_token):
+            nonlocal dentro, massimo
+            dentro += 1
+            massimo = max(massimo, dentro)
+            await asyncio.sleep(0.02)
+            dentro -= 1
+            return await super().completa(f, messaggi, max_token)
+
+    servizio, _ = servizio_finto(repo, trasporto=Conta())
+    await repo.registra_consenso(G, U, True)
+    await asyncio.gather(*(servizio.richiedi(_r(testo=f"domanda {i}", riusa=False)) for i in range(4)))
+    assert massimo == 1 and servizio._blocchi == {}

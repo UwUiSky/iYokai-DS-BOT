@@ -24,6 +24,9 @@ logger = logging.getLogger("iyokai.ai_router")
 SOGLIA_QUOTA = 0.85
 PAUSA_BASE_SECONDI = 60
 PAUSA_MAX_SECONDI = 3600
+# Errori dovuti al testo della richiesta, non al fornitore: si passa oltre senza pausa,
+# altrimenti una persona metterebbe fuori uso un fornitore per tutti i server.
+ERRORI_DELLA_RICHIESTA = frozenset({400, 413, 422})
 _FINESTRE = {"minuto": 60, "giorno": 86400}
 
 
@@ -139,7 +142,7 @@ def scegli_fornitori(
             continue
         if f.a_pagamento and not usa_pagamento:
             continue
-        if solo_gratuiti and f.costo_cent_milione > 0:
+        if solo_gratuiti and (f.costo_cent_milione > 0 or f.a_pagamento):
             continue
         if stato.in_pausa(f.nome, ora):
             continue
@@ -181,8 +184,15 @@ class MotoreAI:
                 else:
                     esito = await self.trasporto.completa(f, messaggi or [], max_token)
             except ErroreFornitore as exc:
+                if exc.stato in ERRORI_DELLA_RICHIESTA:
+                    logger.info("Fornitore AI %s ha rifiutato la richiesta (errore %s).", f.nome, exc.stato)
+                    continue
                 durata = self.stato.metti_in_pausa(f.nome, exc.retry_after)
                 logger.warning("Fornitore AI %s in pausa per %.0f s (errore %s).", f.nome, durata, exc.stato)
+                continue
+            except Exception as exc:  # risposta illeggibile o errore imprevisto: mai fermare la funzione
+                durata = self.stato.metti_in_pausa(f.nome, None)
+                logger.warning("Fornitore AI %s in pausa per %.0f s (%s).", f.nome, durata, type(exc).__name__)
                 continue
             token_in = esito.token_in or stima_token(" ".join(str(m.get("content", "")) for m in messaggi or []) + prompt)
             token_out = esito.token_out or (stima_token(esito.testo) if esito.testo else 0)

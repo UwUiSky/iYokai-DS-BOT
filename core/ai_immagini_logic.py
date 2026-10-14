@@ -25,16 +25,17 @@ class ImmagineNonValida(ValueError):
 
 def ingrandisci(dati: bytes, fattore: int = 2) -> tuple[bytes, str]:
     """
-    (byte, estensione). Ingrandisce di `fattore` (senza superare MAX_LATO per lato),
+    (byte, estensione). Lavoro pesante per la CPU: dai cog si chiama in un thread. Ingrandisce di `fattore` (senza superare MAX_LATO per lato),
     toglie il rumore leggero e rende più nitidi i bordi. PNG se entra, altrimenti JPEG.
     """
     try:
         img = Image.open(io.BytesIO(dati))
+        # Le misure si leggono senza decodificare: prima il controllo, poi il lavoro vero.
+        if img.width * img.height > MAX_PIXEL_INGRESSO:
+            raise ImmagineNonValida("Immagine troppo grande da ingrandire.")
         img.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise ImmagineNonValida("Il file non è un'immagine leggibile.") from exc
-    if img.width * img.height > MAX_PIXEL_INGRESSO:
-        raise ImmagineNonValida("Immagine troppo grande da ingrandire.")
     img = img.convert("RGBA" if "A" in img.getbands() else "RGB")
     scala = max(1.0, min(fattore, MAX_LATO / img.width, MAX_LATO / img.height))
     nuova = img.resize((round(img.width * scala), round(img.height * scala)), Image.LANCZOS)

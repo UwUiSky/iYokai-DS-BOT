@@ -16,12 +16,13 @@ core/ai_cost_logic.py, core/repositories/ai_repo.py
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from collections import OrderedDict, deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from core.ai_cache_logic import CacheAI, ambito, chiave
+from core.ai_cache_logic import LIBRERIA_COMUNE, CacheAI, ambito, chiave
 from core.ai_cost_logic import LimitatoreUtente, quota_superata, tetto_raggiunto, usa_credito_immagine
 from core.ai_guardrail_logic import componi_messaggi, pulisci_dati_personali, pulisci_uscita, richiesta_vietata
 from core.ai_providers import TrasportoHTTP, leggi_fornitori, usa_chiavi_a_pagamento
@@ -75,6 +76,9 @@ class RichiestaAI:
     riusa: bool = True
     conversazione: tuple | None = None  # chiave della memoria corta (None = senza memoria)
     max_token: int | None = None
+    # False per i lavori che il server fa da solo (moderazione, traduzione automatica):
+    # non contano sulla quota della persona né sul suo limite al minuto.
+    conta_utente: bool = True
 
 
 @dataclass(frozen=True)
@@ -124,6 +128,7 @@ class ServizioAI:
         self.cache = CacheAI()
         self.memoria = MemoriaCorta()
         self.limitatore = LimitatoreUtente()
+        self._blocchi: dict[tuple[int, int], list] = {}  # (server, persona) -> [Lock, quanti lo usano]
 
     @property
     def configurato(self) -> bool:
@@ -148,14 +153,18 @@ class ServizioAI:
             raise AINonDisponibile("privacy")
         if richiesta_vietata(r.testo, cfg.parole_vietate if cfg else ()):
             raise AINonDisponibile("vietata")
-        if not self.limitatore.consenti(r.user_id):
+        if r.conta_utente and not self.limitatore.consenti(r.user_id):
             raise AINonDisponibile("troppe")
 
         testo = pulisci_dati_personali(r.testo)
-        lore = testo_lore(cfg.lore_tema, cfg.lore_testo) if cfg else ""
-        istruzioni = r.istruzioni + (f"\n[lore] {lore}" if lore else "")
-        amb = ambito(r.guild_id, r.messaggi_utenti)
+        lore = pulisci_dati_personali(testo_lore(cfg.lore_tema, cfg.lore_testo)) if cfg else ""
+        istruzioni_pulite = pulisci_dati_personali(r.istruzioni)
+        istruzioni = istruzioni_pulite + (f"\n[lore] {lore}" if lore else "")
+        # La traduzione contiene il testo della persona: resta nel server, mai nella libreria comune.
+        amb = ambito(r.guild_id, r.messaggi_utenti or r.tipo == "traduzione")
         usa_cache = r.riusa and r.conversazione is None and r.tipo != "immagine"
+        if r.tipo == "traduzione" and amb == LIBRERIA_COMUNE:
+            usa_cache = False
         if usa_cache:
             salvata = self.cache.trova(amb, r.tipo, istruzioni + r.lingua, testo)
             if salvata is None:
@@ -166,9 +175,36 @@ class ServizioAI:
                 return RispostaAI(testo=salvata, da_cache=True)
 
         guild_conti = r.guild_id or 0
-        uso = await self.repo.uso(guild_conti, r.user_id, r.funzione)
+        utente_conti = r.user_id if r.conta_utente else 0
+        # Controllo delle quote, chiamata e conti in fila per persona: due richieste insieme
+        # non passano entrambe l'ultimo posto della quota (né usano lo stesso credito).
+        if r.conta_utente:
+            k_blocco = (guild_conti, utente_conti)
+            voce = self._blocchi.setdefault(k_blocco, [asyncio.Lock(), 0])
+            voce[1] += 1
+            try:
+                async with voce[0]:
+                    esito, risposta = await self._chiama(r, cfg, testo, lore, istruzioni_pulite, guild_conti, utente_conti)
+            finally:
+                voce[1] -= 1
+                if voce[1] == 0:
+                    self._blocchi.pop(k_blocco, None)
+        else:
+            esito, risposta = await self._chiama(r, cfg, testo, lore, istruzioni_pulite, guild_conti, utente_conti)
+
+        if usa_cache and risposta:
+            k = self.cache.metti(amb, r.tipo, istruzioni + r.lingua, testo, risposta)
+            await self.repo.cache_metti(amb, k, r.tipo, risposta)
+        if r.conversazione and risposta:
+            self.memoria.aggiungi(r.conversazione, testo, risposta)
+        return RispostaAI(testo=risposta, immagine=esito.immagine, fornitore=esito.fornitore)
+
+    async def _chiama(self, r: RichiestaAI, cfg, testo, lore, istruzioni, guild_conti, utente_conti):
+        uso = await self.repo.uso(guild_conti, utente_conti, r.funzione)
         quote = cfg.quote() if cfg else None
         if quote is not None:
+            if not r.conta_utente:
+                quote = replace(quote, utente_giorno=0, utente_30_giorni=0)
             motivo = quota_superata(quote, uso, immagine=r.tipo == "immagine")
             if motivo:
                 raise AINonDisponibile(motivo)
@@ -176,7 +212,7 @@ class ServizioAI:
 
         minuti = cfg.conservazione_minuti if cfg else 10
         storia = self.memoria.leggi(r.conversazione, minuti) if r.conversazione else []
-        messaggi = componi_messaggi(r.istruzioni, testo, lore=lore, lingua=r.lingua, storia=storia)
+        messaggi = componi_messaggi(istruzioni, testo, lore=lore, lingua=r.lingua, storia=storia)
         max_token = r.max_token or TOKEN_PER_LUNGHEZZA.get(cfg.lunghezza if cfg else "media", 600)
         try:
             esito = await self.motore.esegui(
@@ -187,17 +223,12 @@ class ServizioAI:
 
         risposta = pulisci_uscita(esito.testo, 4000) if esito.testo else ""
         await self.repo.registra_uso(
-            guild_conti, r.user_id, r.funzione, esito.fornitore, immagine=r.tipo == "immagine",
+            guild_conti, utente_conti, r.funzione, esito.fornitore, immagine=r.tipo == "immagine",
             token_in=esito.token_in, token_out=esito.token_out, costo_millesimi=esito.costo_millesimi,
         )
         if r.tipo == "immagine" and quote is not None and usa_credito_immagine(quote, uso):
-            await self.repo.crediti_usa(guild_conti, r.user_id)
-        if usa_cache and risposta:
-            k = self.cache.metti(amb, r.tipo, istruzioni + r.lingua, testo, risposta)
-            await self.repo.cache_metti(amb, k, r.tipo, risposta)
-        if r.conversazione and risposta:
-            self.memoria.aggiungi(r.conversazione, testo, risposta)
-        return RispostaAI(testo=risposta, immagine=esito.immagine, fornitore=esito.fornitore)
+            await self.repo.crediti_usa(guild_conti, utente_conti)
+        return esito, risposta
 
 
 _servizio: ServizioAI | None = None

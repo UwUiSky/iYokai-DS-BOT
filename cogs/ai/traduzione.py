@@ -71,10 +71,14 @@ class AiTraduzioneCog(CogConGruppi, commands.Cog):
         self._fatti[(message_id, lingua)] = ora
         return False
 
-    async def _traduci(self, user_id: int, guild_id: int, channel_id: int, testo: str, lingua: str, funzione: str):
+    async def _traduci(
+        self, user_id: int, guild_id: int, channel_id: int, testo: str, lingua: str, funzione: str,
+        *, conta_utente: bool = True,
+    ):
         return await chiedi(RichiestaAI(
             user_id=user_id, funzione=funzione, tipo="traduzione", testo=testo[:3000], guild_id=guild_id,
             channel_id=channel_id, istruzioni=istruzioni_traduzione(lingua), messaggi_utenti=True,
+            conta_utente=conta_utente,
         ))
 
     # ------------------------------------------------------------ comando
@@ -110,7 +114,8 @@ class AiTraduzioneCog(CogConGruppi, commands.Cog):
         if not serve_tradurre(message.content, lingua) or not servizio_ai().configurato:
             return
         risposta, _ = await self._traduci(
-            message.author.id, message.guild.id, message.channel.id, message.content, lingua, "traduzione_auto"
+            message.author.id, message.guild.id, message.channel.id, message.content, lingua, "traduzione_auto",
+            conta_utente=False,  # la chiede il server, non chi scrive
         )
         if risposta is None or not risposta.testo:
             return

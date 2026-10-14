@@ -17,6 +17,8 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 LIBRERIA_COMUNE = 0  # ambito dei contenuti senza messaggi di utenti
+# Lavori dove una parola cambia tutto ("non"): si riusa solo la risposta al testo uguale.
+TIPI_SOLO_UGUALI = frozenset({"traduzione", "giudizio", "codice", "confronto"})
 SOGLIA_SIMILE = 0.85
 MAX_VOCI = 2000
 DURATA_SECONDI = 7 * 24 * 3600
@@ -81,13 +83,18 @@ class CacheAI:
     def trova(
         self, amb: int, tipo: str, istruzioni: str, testo: str, ora: float | None = None, soglia: float = SOGLIA_SIMILE
     ) -> str | None:
-        """Risposta per la stessa domanda o per una molto simile (stesse istruzioni, stesso tipo)."""
+        """
+        Risposta per la stessa domanda o per una molto simile (stesse istruzioni, stesso tipo).
+        Per i tipi di `TIPI_SOLO_UGUALI` solo la stessa domanda.
+        """
         ora = time.monotonic() if ora is None else ora
         k = chiave(tipo, istruzioni, testo)
         voce = self._voci.get((amb, k))
         if voce is not None and voce.scade > ora:
             self._voci.move_to_end((amb, k))
             return voce.risposta
+        if tipo in TIPI_SOLO_UGUALI:
+            return None
         istr = normalizza(istruzioni)
         migliore, punteggio = None, soglia
         for (a, _), v in reversed(self._voci.items()):

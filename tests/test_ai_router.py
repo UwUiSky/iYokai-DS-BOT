@@ -105,3 +105,17 @@ def test_avviso_chiavi_solo_quando_cambia():
     assert avviso_chiavi({"a": True, "b": False}, ["a"], segnalati)[0] is None
     testo, segnalati = avviso_chiavi({"a": True, "b": True}, [], segnalati)
     assert testo is None and segnalati == frozenset()
+
+
+def test_solo_gratuiti_esclude_le_chiavi_a_pagamento_senza_costo():
+    """Tetto raggiunto: una chiave a pagamento senza AI_COSTO non passa per gratuita (D13)."""
+    pag = fornitore("pag", a_pagamento=True)
+    assert scegli_fornitori([pag], "chat", "bassa", StatoFornitori(), usa_pagamento=True, solo_gratuiti=True) == []
+
+
+async def test_richiesta_rifiutata_non_mette_in_pausa():
+    """Un 400 dipende dal testo della persona: si passa oltre, ma il fornitore resta libero per gli altri."""
+    a, b = fornitore("a"), fornitore("b")
+    motore = MotoreAI([a, b], TrasportoFinto(errori={"a": ErroreFornitore(400)}))
+    assert (await motore.esegui("chat", "bassa", messaggi=[])).fornitore == "b"
+    assert not motore.stato.in_pausa("a")

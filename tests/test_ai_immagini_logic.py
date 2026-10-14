@@ -34,3 +34,16 @@ def test_trasparenza_e_lato_massimo():
 def test_file_non_valido():
     with pytest.raises(ImmagineNonValida):
         ingrandisci(b"non sono un'immagine")
+
+
+def test_dimensioni_enormi_rifiutate_prima_di_decodificare(monkeypatch):
+    """Un PNG piccolo su disco ma enorme in pixel non si decodifica (memoria e CPU del bot)."""
+    buf = io.BytesIO()
+    Image.new("1", (5000, 5000)).save(buf, format="PNG")
+
+    def vietato(self):
+        raise AssertionError("load() chiamato su un'immagine troppo grande")
+
+    monkeypatch.setattr(Image.Image, "load", vietato)
+    with pytest.raises(ImmagineNonValida):
+        ingrandisci(buf.getvalue())

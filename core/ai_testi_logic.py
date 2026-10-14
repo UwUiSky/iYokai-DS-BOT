@@ -152,6 +152,13 @@ class PropostaServer:
         return sum(len(c) for _, c in self.categorie)
 
 
+def _lista(valore) -> list:
+    """Il valore come elenco: un testo solo diventa un elenco di uno, il resto (numeri, oggetti) niente."""
+    if isinstance(valore, list):
+        return valore
+    return [valore] if isinstance(valore, str) else []
+
+
 _NOME_CANALE = re.compile(r"[^a-z0-9\-_àèéìòù]+")
 
 
@@ -160,15 +167,15 @@ def leggi_proposta_server(testo: str) -> PropostaServer | None:
     dati = estrai_json(testo)
     if not dati:
         return None
-    ruoli = tuple(str(r).strip()[:100] for r in (dati.get("ruoli") or []) if str(r).strip())[:10]
+    ruoli = tuple(str(r).strip()[:100] for r in _lista(dati.get("ruoli")) if str(r).strip())[:10]
     categorie = []
     totale = 0
-    for cat in (dati.get("categorie") or [])[:6]:
+    for cat in _lista(dati.get("categorie"))[:6]:
         if not isinstance(cat, dict):
             continue
         nome_cat = str(cat.get("nome") or "").strip()[:100]
         canali = []
-        for ch in cat.get("canali") or []:
+        for ch in _lista(cat.get("canali")):
             if totale >= 25 or not isinstance(ch, dict):
                 break
             nome = _NOME_CANALE.sub("-", str(ch.get("nome") or "").lower()).strip("-")[:100]
@@ -198,4 +205,7 @@ def leggi_giudizio(testo: str) -> Giudizio | None:
         gravita = max(1, min(5, int(dati.get("gravita") or 1)))
     except (TypeError, ValueError):
         gravita = 1
-    return Giudizio(bool(dati["violazione"]), str(dati.get("motivo") or "")[:300], gravita)
+    violazione = dati["violazione"]
+    if isinstance(violazione, str):
+        violazione = violazione.strip().lower() in ("true", "si", "sì", "yes", "1")
+    return Giudizio(bool(violazione), str(dati.get("motivo") or "")[:300], gravita)

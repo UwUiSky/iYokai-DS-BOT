@@ -194,23 +194,26 @@ class TrasportoHTTP:
             async with sessione.post(f"{f.url}{percorso}", json=corpo, headers=self._intestazioni(f)) as r:
                 if r.status >= 400:
                     raise ErroreFornitore(r.status, _retry_after(r.headers))
-                return await r.json(content_type=None), dict(r.headers)
+                dati = await r.json(content_type=None)
+                if not isinstance(dati, dict):
+                    raise ErroreFornitore(502)
+                return dati, dict(r.headers)
         except (aiohttp.ClientError, TimeoutError) as exc:
             raise ErroreFornitore(0) from exc
+        except ValueError as exc:  # corpo che non è JSON
+            raise ErroreFornitore(502) from exc
 
     async def completa(self, f: Fornitore, messaggi: list[dict], max_token: int) -> EsitoChiamata:
         dati, intestazioni = await self._post(
             f, "/chat/completions", {"model": f.modello, "messages": messaggi, "max_tokens": max_token}
         )
         try:
-            testo = dati["choices"][0]["message"]["content"] or ""
-        except (KeyError, IndexError, TypeError) as exc:
+            testo = str(dati["choices"][0]["message"]["content"] or "")
+            uso = dati.get("usage") or {}
+            token_in, token_out = int(uso.get("prompt_tokens") or 0), int(uso.get("completion_tokens") or 0)
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
             raise ErroreFornitore(502) from exc
-        uso = dati.get("usage") or {}
-        return EsitoChiamata(
-            testo=testo, token_in=int(uso.get("prompt_tokens") or 0),
-            token_out=int(uso.get("completion_tokens") or 0), intestazioni=intestazioni,
-        )
+        return EsitoChiamata(testo=testo, token_in=token_in, token_out=token_out, intestazioni=intestazioni)
 
     async def immagine(self, f: Fornitore, prompt: str) -> EsitoChiamata:
         dati, intestazioni = await self._post(

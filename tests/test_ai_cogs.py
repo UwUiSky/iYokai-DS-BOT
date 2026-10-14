@@ -215,3 +215,40 @@ async def test_chiedi_con_assistente_ai_e_ritorno_alla_ricerca(repo, monkeypatch
     monkeypatch.setattr(cog, "_ricerca", ricerca)
     await cog.chiedi.callback(cog, _inter(), "timeout")
     assert ricerche == ["timeout"]
+
+
+def test_risposte_ai_strane_non_rompono_i_cog():
+    """JSON con tipi sbagliati: niente eccezioni, niente campi oltre 1024 caratteri, 'false' è falso."""
+    assert leggi_proposta_server('{"ruoli": "admin", "categorie": {"a": 1}}').ruoli == ("admin",)
+    assert leggi_proposta_server('{"categorie": [{"nome": "x", "canali": 5}]}') is not None
+    assert not leggi_giudizio('{"violazione": "false", "gravita": 3}').violazione
+    assert leggi_giudizio('{"violazione": "true", "gravita": 3}').violazione
+    lungo = ticket_ai.testo_smistamento({"categoria": "a", "urgenza": "9" * 3000, "ruolo": "r" * 3000})
+    assert len(lungo) <= 1024
+
+
+async def test_chiedi_con_motore_in_errore_torna_alla_ricerca(repo, monkeypatch):
+    """Errore imprevisto dopo il defer (es. database): -chiedi risponde con la ricerca per parole."""
+    from cogs.utility import command_search
+
+    cog = command_search.CommandSearchCog(bot=None)
+
+    async def accessibili(interaction):
+        return []
+
+    monkeypatch.setattr(cog, "_comandi_accessibili", accessibili)
+    _usa(repo)
+    await repo.registra_consenso(G, U, True)
+
+    async def rotto(*a, **kw):
+        raise RuntimeError("database giù")
+
+    monkeypatch.setattr(repo, "uso", rotto)
+    ricerche = []
+
+    async def ricerca(interaction, query, nota=None, *, gia_differita=False):
+        ricerche.append((query, gia_differita))
+
+    monkeypatch.setattr(cog, "_ricerca", ricerca)
+    await cog.chiedi.callback(cog, _inter(), "come si banna")
+    assert ricerche == [("come si banna", True)]

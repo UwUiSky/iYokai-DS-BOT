@@ -13,6 +13,7 @@ funziona anche con l'AI ferma.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 
@@ -63,7 +64,7 @@ class _ImmagineView(BaseView):
 
 async def _manda_ingrandita(interaction: discord.Interaction, dati: bytes) -> None:
     try:
-        grande, estensione = ingrandisci(dati)
+        grande, estensione = await asyncio.to_thread(ingrandisci, dati)
     except ImmagineNonValida as exc:
         await interaction.followup.send(str(exc), ephemeral=True)
         return

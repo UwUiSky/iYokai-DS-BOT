@@ -9,12 +9,16 @@ Funzioni coperte: SPEC §25 (NF-24)
 
 from __future__ import annotations
 
+import logging
+
 import discord
 from discord import app_commands
 
 from core.ai_servizio import AINonDisponibile, RichiestaAI, RispostaAI, servizio_ai
 from core.ai_testi_logic import LINGUE
 from core.premium import PremiumModule, registry
+
+logger = logging.getLogger("iyokai.ai_comune")
 
 MODULO_AI = "ai"
 SOTTO_AI = ("ai", "Funzioni con l'intelligenza artificiale")
@@ -47,6 +51,9 @@ async def chiedi(richiesta: RichiestaAI) -> tuple[RispostaAI | None, str | None]
         return await servizio_ai().richiedi(richiesta), None
     except AINonDisponibile as exc:
         return None, exc.testo
+    except Exception:  # database o motore in errore: la funzione risponde comunque, senza AI
+        logger.warning("Richiesta AI %s non riuscita.", richiesta.funzione, exc_info=True)
+        return None, AINonDisponibile("fornitori_fermi").testo
 
 
 def taglia(testo: str, limite: int = 4000) -> str:

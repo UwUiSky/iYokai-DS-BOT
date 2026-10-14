@@ -31,8 +31,9 @@ def testo_smistamento(dati: dict | None) -> str:
     if not dati:
         return "Smistamento non riuscito."
     return (
-        f"Categoria: {taglia(str(dati.get('categoria') or '-'), 80)} · urgenza {dati.get('urgenza') or '?'}/5 · "
-        f"chiamare: {dati.get('ruolo') or 'staff'}"
+        f"Categoria: {taglia(str(dati.get('categoria') or '-'), 80)} · "
+        f"urgenza {taglia(str(dati.get('urgenza') or '?'), 5)}/5 · "
+        f"chiamare: {taglia(str(dati.get('ruolo') or 'staff'), 80)}"
     )
 
 

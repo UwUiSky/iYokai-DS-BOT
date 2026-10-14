@@ -70,7 +70,7 @@ class AiModerazioneCog(commands.Cog):
             risposta = await servizio_ai().richiedi(RichiestaAI(
                 user_id=message.author.id, funzione="moderazione", tipo="giudizio", testo=message.content[:2000],
                 guild_id=message.guild.id, channel_id=message.channel.id, fascia="media",
-                istruzioni=ISTRUZIONI["moderazione"], messaggi_utenti=True,
+                istruzioni=ISTRUZIONI["moderazione"], messaggi_utenti=True, conta_utente=False,
             ))
         except AINonDisponibile:
             return
