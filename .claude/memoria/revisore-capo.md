@@ -1,9 +1,10 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-13/10/2026 · ramo `feat/r3-mus` (2851f89) #64/#47/#48/#45/#126: DA SISTEMARE (8 righe nel quaderno)
+14/10/2026 · ramo `feat/r4-uti` (66055f9) #66,#78-#82,#85,#87,#88,#97,#98,#105: DA SISTEMARE (21 righe nel quaderno)
 
 ## In corso
+- `feat/r4-uti` (66055f9): DA SISTEMARE. Media: benvenuto perso se manca Allegare file (`greetings.py:145`), starboard e thread privati (`starboard.py:90`), role menu senza defer, `allow_nsfw`/`self_star` senza comando, trigger autoresponder vuoto, retention di inviti/compleanni/starboard, 5 gruppi di test che non falliscono senza il fix. Alla riconsegna controllare solo quelle. Smoke 610 verdi; 66 mutazioni, 12 sopravvissute (scratchpad/d/mut.py). `/gestione` 6738 car.: all'unione con liv+tkt supera 8000.
 - #64 `feat/r3-mus` (2851f89): DA SISTEMARE. Alta: 4 chiavi `music_*` (KEY_*) fuori da SETTINGS_SCHEMA (export le perde); avviso nodo locale mai emesso con nodo morto (gather infinito); `/music remove` contro SPEC 9.4 (serve ok owner). Media: SSRF URL a Lavalink (`url_e_sicuro`), `skipto`/`previous` senza defer, ~10 mutazioni sopravvissute. Alla riconsegna controllare solo quelle. Smoke 430 + 305 test musica verdi; 70 mutazioni (scratchpad/rm64). Migrazione 0060 libera, provata 2 volte su DB vecchio; unione con r3-bak: solo documenti.
 - #68 `feat/r3-bak` (abf27fb): DA SISTEMARE. Alta: copia dei messaggi D8 non fatta (testo di `collega` falso, SPEC 11.2 `[x]`). Media: worker `main_guild None` senza `_fallisci`; test cog `collega` senza utente_id/puo_collegare; chiave vecchia seconda; collegamenti paralleli + UniqueViolation. Alla riconsegna controllare solo quelle. 387 test del ramo verdi; 53 mutazioni (scratchpad/rv2/mut.py, copia r3).
 - `feat/giro-mod` (47c7fc6): DA SISTEMARE, 12 righe nel quaderno (settings fuori da SETTINGS_SCHEMA = test rosso, /ban su isolato + /unban non sbanna, rientro senza invito banna lo stesso, appello bloccato se il caso non è attivo, OAuth di #138 non fatto, registry dati all'unione con giro-core, test mancanti). Alla riconsegna: controllare solo quelle. Smoke 58 verdi + 133 test del ramo verdi.
@@ -41,6 +42,10 @@
 - Task che riprovano per sempre bloccano chi fa `gather`: provare con gestore vero e nodo morto.
 - Mutazioni: il processo ucciso lascia il file mutato; `diff -rq` con la copia pulita prima di ogni giro; `pkill -f` col testo del comando uccide la propria shell.
 - Testo all'utente che promette una funzione (es. «copia messaggi») va confrontato con ciò che il codice fa davvero.
+
+- Thread privati: `Thread.permissions_for` eredita dal padre, non basta per «pubblico». Finti che condividono `member.roles` vivo non provano un'istantanea vecchia dell'interazione: servono copie congelate.
+- Harness mutazioni: script con `str.replace` contato + `git checkout` finale; lanciare con timeout 595000 sul tool (non `pkill -f` col nome dello script: uccide la propria shell).
+- Con lavoro non committato NON ripristinare le mutazioni con `git checkout -- file` (perde le correzioni): fare `git stash` + `stash apply` prima, o copia del file.
 
 ## Aperto
 - giro-mod sopravvissute: vedi quaderno di quel ramo. Altri rami attendono le righe elencate. `fix/f1-135` attende `remove_member`.

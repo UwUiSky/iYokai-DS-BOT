@@ -67,7 +67,7 @@ def _rgb(colore: str) -> tuple[int, int, int]:
     return tuple(int(esadecimale[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
 
 
-def _font(dimensione: int) -> ImageFont.ImageFont:
+def carica_font(dimensione: int) -> ImageFont.ImageFont:
     for candidato in _FONT_CANDIDATI:
         try:
             return ImageFont.truetype(candidato, dimensione)
@@ -107,8 +107,8 @@ def _compatto(numero: int) -> str:
     return str(numero)
 
 
-def _taglia_al_largo(draw: ImageDraw.ImageDraw, testo: str, font, larghezza_max: int) -> str:
-    testo = testo[:MAX_CARATTERI_NOME]
+def taglia_al_largo(draw: ImageDraw.ImageDraw, testo: str, font, larghezza_max: int) -> str:
+    """Il testo accorciato con «…» finché sta nella larghezza."""
     if draw.textlength(testo, font=font) <= larghezza_max:
         return testo
     while testo and draw.textlength(testo + "…", font=font) > larghezza_max:
@@ -154,7 +154,7 @@ def render_rank_card(dati: DatiRankCard, avatar_bytes: bytes | None) -> bytes:
     x_fine = LARGHEZZA - 44
 
     # Livello e posizione a destra, in alto.
-    f_grande, f_medio, f_piccolo = _font(40), _font(28), _font(22)
+    f_grande, f_medio, f_piccolo = carica_font(40), carica_font(28), carica_font(22)
     livello = f"LIV {_compatto(dati.livello)}"
     draw.text((x_fine, 44), livello, font=f_grande, fill=accento, anchor="ra")
     larghezza_livello = draw.textlength(livello, font=f_grande)
@@ -167,7 +167,7 @@ def render_rank_card(dati: DatiRankCard, avatar_bytes: bytes | None) -> bytes:
         larghezza_livello += draw.textlength(posizione, font=f_medio) + 24
 
     # Nome a sinistra, nello spazio che resta.
-    nome = _taglia_al_largo(draw, senza_quadrati(dati.nome, f_grande), f_grande, int(x_fine - x_testo - larghezza_livello - 24))
+    nome = taglia_al_largo(draw, senza_quadrati(dati.nome[:MAX_CARATTERI_NOME], f_grande), f_grande, int(x_fine - x_testo - larghezza_livello - 24))
     draw.text((x_testo, 44), nome, font=f_grande, fill=tema.testo)
 
     # Barra dell'XP.

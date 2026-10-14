@@ -1,36 +1,57 @@
 """
 core/birthday_logic.py
 ======================
-Chi compie gli anni oggi, per fuso orario del server.
+Date e testo degli auguri (NF-26, SPEC §23.4). Solo giorno e mese; tutto in UTC.
+Funzioni pure.
 Funzioni coperte: SPEC §23 (NF-26)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #97).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #97, fase F13
-# Funzione: NF-26, Compleanni.
-#
-# Cosa deve fare la funzione: Ogni utente registra il suo compleanno. Il
-#   giorno giusto il bot fa gli auguri in un canale e può dare un ruolo
-#   per 24 ore.
-# Questo file: Chi compie gli anni oggi, per fuso orario del server.
-# Comandi previsti: /level compleanno imposta|rimuovi, /admin compleanni
-#   canale|ruolo.
-# File collegati: cogs/utility/birthdays.py, core/birthday_worker.py,
-#   core/repositories/birthday_repo.py.
-# Test da scrivere per primi: tests/test_birthdays.py.
-# Migrazione: core/migrations/NNNN_birthdays.sql. (prossimo numero
-#   libero in core/migrations/).
-# Limiti da rispettare: Solo giorno e mese (niente anno: meno dati
-#   personali); dato cancellabile dall'utente.
-# Da chi prendere spunto: MEE6, Maki, Lawliet.
-# Dipende da: NF-04 (dato personale).
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+import calendar
+from datetime import date
+
+MAX_MESSAGGIO = 500
+MESSAGGIO_DI_BASE = "🎂 Buon compleanno {users}!"
+_MAX_DISCORD = 2000
+_GIORNI_DEL_MESE = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)  # febbraio con il 29
+
+
+def data_valida(giorno: int, mese: int) -> bool:
+    if not 1 <= mese <= 12:
+        return False
+    return 1 <= giorno <= _GIORNI_DEL_MESE[mese - 1]
+
+
+def festeggia_oggi(giorno: int, mese: int, oggi: date) -> bool:
+    """Il 29 febbraio si festeggia il 28 negli anni non bisestili."""
+    if giorno == 29 and mese == 2 and not calendar.isleap(oggi.year):
+        return oggi.month == 2 and oggi.day == 28
+    return oggi.day == giorno and oggi.month == mese
+
+
+def dividi_auguri(modello: str, menzioni: list[str]) -> list[tuple[str, int]]:
+    """
+    I messaggi di auguri come (testo, quanti festeggiati contiene): il modello con `{users}`
+    sostituito dai festeggiati, in più messaggi se sono tanti. Mai oltre 2000 caratteri, e mai
+    una menzione tagliata a metà: se `{users}` compare più volte nel modello, lo spazio per i
+    nomi si divide tra le occorrenze.
+    """
+    if "{users}" not in modello:
+        modello = f"{modello} {{users}}"
+    ripetizioni = modello.count("{users}")
+    base = len(modello.replace("{users}", ""))
+    spazio = max((_MAX_DISCORD - base) // ripetizioni, 30)
+    messaggi: list[tuple[str, int]] = []
+    corrente: list[str] = []
+    lunghezza = 0
+    for menzione in menzioni:
+        costo = len(menzione) + (2 if corrente else 0)
+        if corrente and lunghezza + costo > spazio:
+            messaggi.append((modello.replace("{users}", ", ".join(corrente)), len(corrente)))
+            corrente, lunghezza, costo = [], 0, len(menzione)
+        corrente.append(menzione)
+        lunghezza += costo
+    if corrente:
+        messaggi.append((modello.replace("{users}", ", ".join(corrente)), len(corrente)))
+    return messaggi

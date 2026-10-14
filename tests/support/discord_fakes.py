@@ -119,6 +119,7 @@ def fake_member(
     membro = _autospec_instance(discord.Member)
     membro.id = user_id
     membro.name = name
+    membro.display_name = name
     membro.mention = f"<@{user_id}>"
     membro.bot = bot
     membro.roles = roles if roles is not None else []

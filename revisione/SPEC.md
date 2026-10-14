@@ -1755,14 +1755,21 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 ## §22 FUNZIONI NUOVE, PRIMO GRUPPO — da fare (fase F9)
 
-- `[ ]` 22.1 Ruolo automatico all'ingresso (NF-07)
-- `[ ]` 22.2 Ruoli ridati a chi rientra entro 30 giorni (NF-07)
-- `[ ]` 22.3 Ruoli dati dopo un ritardo (NF-07)
-- `[ ]` 22.4 Starboard (NF-08)
-- `[ ]` 22.5 Comandi personalizzati creati dal server: testo o embed,
+- `[x]` 22.1 Ruolo automatico all'ingresso (NF-07)
+  → **Stato 13/10:** `/gestione ruoli auto-aggiungi|auto-rimuovi|auto-elenco` (0080); salta i bot, aspetta schermata di verifica e ruolo Verify, in pausa durante un raid. Da provare live.
+- `[x]` 22.2 Ruoli ridati a chi rientra entro 30 giorni (NF-07)
+  → **Stato 13/10:** `/gestione ruoli auto-ricorda`: ruoli ricordati al massimo 30 giorni (0080).
+- `[x]` 22.3 Ruoli dati dopo un ritardo (NF-07)
+  → **Stato 13/10:** ritardo configurabile per regola, via scheduler (0080).
+- `[x]` 22.4 Starboard (NF-08)
+  → **Stato 13/10:** `/moduli starboard imposta|soglia|disattiva` (0081): un post per messaggio, canali vietati ai minori esclusi. Da provare live.
+- `[x]` 22.5 Comandi personalizzati creati dal server: testo o embed,
   ruolo, pausa; prefisso facoltativo solo per questi (NF-09)
-- `[ ]` 22.6 Costruttore di embed con anteprima e modifica (NF-17)
-- `[ ]` 22.7 Immagine di benvenuto con avatar, nome e sfondo (NF-11)
+  → **Stato 13/10:** `/moduli comandi crea|modifica|elimina|elenco|prefisso`, `/utility tag` (0082); massimo 50 per server, menzioni neutralizzate. Resta lo scripting avanzato (condizioni, variabili, cron).
+- `[x]` 22.6 Costruttore di embed con anteprima e modifica (NF-17)
+  → **Stato 13/10:** `/moduli embed crea|modifica|pubblica|elenco|elimina` (0086), limiti Discord controllati al salvataggio.
+- `[x]` 22.7 Immagine di benvenuto con avatar, nome e sfondo (NF-11)
+  → **Stato 13/10:** `/gestione benvenuto immagine` (0084): 4 modelli e sfondo proprio. L'editor completo resta al pannello web (NF-20).
 - `[x]` 22.8 Rank card come immagine (NF-12)
   → **Stato 11/10:** `/level rank` disegna la card (avatar, livello, barra, posizione, coin);
   colore e tema (scuro, chiaro, notte) salvati per utente (migrazione 0031).
@@ -1773,8 +1780,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 22.11 Ticket: chiusura automatica per inattività o utente
   uscito (NF-13)
 - `[ ]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
-- `[ ]` 22.13 Modalità dei reaction roles: unique, verify, drop,
+- `[x]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
+  → **Stato 13/10:** `/gestione ruoli menu-crea|menu-modifica|menu-accesso|menu-elenco` (0085). Da provare live.
 - `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
   del level-up, premi "accumula" o "togli i precedenti", valori
   configurabili (NF-15)
@@ -1792,11 +1800,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[ ]` 23.1 Canale richieste musicali con player e bottoni; playlist
   salvate (NF-19, fase F9)
-- `[ ]` 23.2 Canali contatore (NF-16)
+- `[x]` 23.2 Canali contatore (NF-16)
+  → **Stato 13/10:** `/moduli contatori crea|elimina|elenco` (0087), aggiornamento ogni 10 minuti, massimo 5 per server.
 - `[ ]` 23.3 Statistiche di attività per canale e per membro, ruoli per
   attività (NF-25)
-- `[ ]` 23.4 Compleanni (NF-26)
-- `[ ]` 23.5 Inviti: comando personale e classifica (NF-27)
+- `[x]` 23.4 Compleanni (NF-26)
+  → **Stato 13/10:** `/level compleanno imposta|rimuovi|mostra`, `/moduli compleanni canale|ruolo` (0088): solo giorno e mese.
+- `[x]` 23.5 Inviti: comando personale e classifica (NF-27)
+  → **Stato 13/10:** `/level inviti utente|classifica` (0089), con avviso sull'attribuzione (LC-6). Da provare live.
 - `[ ]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
 - `[ ]` 23.7 Blocco totale del server e "panic mode" (NF-29)
@@ -1806,7 +1817,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.10 Blocco dei link di phishing (NF-31)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[ ]` 23.12 Ticket via messaggio privato (NF-33)
-- `[ ]` 23.13 Moduli e candidature (NF-34)
+- `[x]` 23.13 Moduli e candidature (NF-34)
+  → **Stato 13/10:** `/moduli candidature crea|elimina|elenco`, `/utility modulo` (0096): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
 - `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)
 - `[ ]` 23.16 Profili, collezioni e giochi con le monete, senza soldi

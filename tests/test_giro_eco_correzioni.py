@@ -339,7 +339,7 @@ async def test_testo_e_vocale_su_utenti_nuovi_si_sommano_sempre(clean_db):
 # 8. Rank card: emoji, errori dell'avatar, Pillow
 # ----------------------------------------------------------------------
 def _font():
-    from core.rank_card_image import _font as f
+    from core.rank_card_image import carica_font as f
 
     return f(40)
 

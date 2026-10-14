@@ -6,11 +6,11 @@ gratuito — stessa assunzione dichiarata di role_menus.py: lo schema
 non specifica esplicitamente Free/Premium per questa voce di §14.
 """
 
-# DA FARE (issue #82, fase F9): NF-11, Immagine di benvenuto. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
+# L'immagine di benvenuto (NF-11) si disegna in core/welcome_image.py.
 
 from __future__ import annotations
 
+import io
 import logging
 
 import discord
@@ -24,10 +24,21 @@ from core.admin_mentions_logic import (
     taglia_messaggio,
     utente_puo_pingare_ruoli,
 )
+from core.leveling_logic import colore_valido
 from core.greetings_logic import MAX_MESSAGE_LENGTH, lunghezza_dopo_segnaposto, render_template
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
+from core.safe_image import ImmagineTroppoGrande, run_image_task
 from core.security_raid_state import raid_in_corso
+from core.welcome_image import (
+    FORME,
+    MAX_SFONDO_BYTE,
+    MAX_TITOLO,
+    MODELLI,
+    DatiBenvenuto,
+    prepara_sfondo,
+    render_welcome_image,
+)
 
 logger = logging.getLogger("iyokai.greetings")
 
@@ -38,10 +49,42 @@ def _render_for_member(template: str, member: discord.Member) -> str:
     return render_template(
         template,
         user_mention=member.mention,
-        username=member.name,
-        server_name=member.guild.name,
+        username=discord.utils.escape_mentions(member.name),
+        server_name=discord.utils.escape_mentions(member.guild.name),
         member_count=member.guild.member_count or 0,
+        user_id=member.id,
+        display_name=discord.utils.escape_mentions(member.display_name),
+        server_id=member.guild.id,
     )
+
+
+async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
+    """NF-11: l'immagine di benvenuto, o None se spenta o non disegnabile (il testo parte lo stesso)."""
+    if not config.welcome_image_enabled:
+        return None
+    try:
+        try:
+            avatar = await member.display_avatar.replace(size=256, format="png").read()
+        except (discord.HTTPException, AttributeError):
+            avatar = None
+        sfondo = (
+            await greetings_repo.get_welcome_background(member.guild.id)
+            if config.welcome_image_has_background
+            else None
+        )
+        dati = DatiBenvenuto(
+            nome=member.display_name,
+            numero=member.guild.member_count or 0,
+            titolo=config.welcome_image_title,
+            modello=config.welcome_image_template,
+            forma=config.welcome_image_shape,
+            colore_testo=config.welcome_image_color,
+        )
+        png = await run_image_task(render_welcome_image, dati, avatar, sfondo)
+    except Exception:
+        logger.exception("Immagine di benvenuto non disegnata nel server %s.", member.guild.id)
+        return None
+    return discord.File(io.BytesIO(png), filename="benvenuto.png")
 
 
 # L'opzione accetta il testo grezzo: il limite vero (2000) si controlla
@@ -98,8 +141,24 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
             if isinstance(channel, discord.TextChannel):
+                # Durante un raid solo testo: disegnare un'immagine per ogni ingresso è lavoro sprecato.
+                puo_allegare = channel.permissions_for(member.guild.me).attach_files
+                allegato = (
+                    None
+                    if raid_in_corso(member.guild.id) or not puo_allegare
+                    else await _file_benvenuto(config, member)
+                )
                 try:
-                    await channel.send(testo, allowed_mentions=menzioni)
+                    try:
+                        if allegato is not None:
+                            await channel.send(testo, file=allegato, allowed_mentions=menzioni)
+                        else:
+                            await channel.send(testo, allowed_mentions=menzioni)
+                    except discord.HTTPException:
+                        if allegato is None:
+                            raise
+                        # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
+                        await channel.send(testo, allowed_mentions=menzioni)
                 except discord.HTTPException:
                     logger.warning(
                         "Impossibile inviare il welcome message nel server %s.",
@@ -343,6 +402,95 @@ class GreetingsCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "gestione",
+        nome="immagine",
+        descrizione="Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.",
+        sottogruppo=_SG_BENVENUTO,
+    )
+    @app_commands.describe(
+        attiva="Attiva o disattiva l'immagine",
+        modello="Il modello pronto da usare",
+        sfondo="Uno sfondo tuo (immagine sotto 3 MB); sostituisce il modello",
+        forma_avatar="Avatar tondo o quadrato",
+        colore_testo="Colore del testo, per esempio #FFFFFF",
+        titolo="La scritta in alto (massimo 40 caratteri)",
+        togli_sfondo="Torna al modello pronto cancellando lo sfondo caricato",
+    )
+    @app_commands.choices(
+        modello=[app_commands.Choice(name=nome, value=nome) for nome in MODELLI],
+        forma_avatar=[app_commands.Choice(name=forma, value=forma) for forma in FORME],
+    )
+    async def immagine(
+        self,
+        interaction: discord.Interaction,
+        attiva: bool,
+        modello: str | None = None,
+        sfondo: discord.Attachment | None = None,
+        forma_avatar: str | None = None,
+        colore_testo: app_commands.Range[str, 4, 7] | None = None,
+        titolo: app_commands.Range[str, 1, MAX_TITOLO] | None = None,
+        togli_sfondo: bool = False,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        colore = None
+        if colore_testo is not None:
+            colore = colore_valido(colore_testo)
+            if colore is None:
+                await interaction.response.send_message(
+                    "Il colore va scritto come #RRGGBB, per esempio #FFFFFF.", ephemeral=True
+                )
+                return
+        if sfondo is not None:
+            if sfondo.size > MAX_SFONDO_BYTE:
+                await interaction.response.send_message(
+                    "Lo sfondo pesa troppo: il limite è 3 MB.", ephemeral=True
+                )
+                return
+            if not (sfondo.content_type or "").startswith("image/"):
+                await interaction.response.send_message("Lo sfondo deve essere un'immagine.", ephemeral=True)
+                return
+        # Il lavoro con l'immagine può durare qualche secondo.
+        await interaction.response.defer(ephemeral=True)
+        pronto = None
+        if sfondo is not None:
+            try:
+                pronto = await run_image_task(prepara_sfondo, await sfondo.read())
+            except ImmagineTroppoGrande:
+                await interaction.followup.send(
+                    "Lo sfondo ha troppi pixel: il limite è 16 megapixel (circa 4000×4000).", ephemeral=True
+                )
+                return
+            except Exception:
+                await interaction.followup.send(
+                    "Non riesco ad aprire lo sfondo: usa un PNG, JPEG o WebP.", ephemeral=True
+                )
+                return
+        attuale = await greetings_repo.get_config(guild.id)
+        await greetings_repo.set_welcome_image(
+            guild.id,
+            enabled=attiva,
+            template=modello or attuale.welcome_image_template,
+            shape=forma_avatar or attuale.welcome_image_shape,
+            color=colore or attuale.welcome_image_color,
+            title=titolo or attuale.welcome_image_title,
+        )
+        if pronto is not None:
+            await greetings_repo.set_welcome_background(guild.id, pronto)
+        elif togli_sfondo:
+            await greetings_repo.clear_welcome_background(guild.id)
+        avviso = ""
+        if attiva and not attuale.welcome_enabled:
+            avviso = " Il benvenuto però è spento: attivalo con `/gestione benvenuto benvenuto`."
+        await interaction.followup.send(
+            f"Immagine di benvenuto {'attivata' if attiva else 'disattivata'}.{avviso}", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "gestione",
         nome="anteprima",
         descrizione="Mostra un'anteprima di come apparirebbe un messaggio.",
         sottogruppo=_SG_BENVENUTO,
@@ -378,6 +526,16 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             logger.exception("Anteprima del messaggio non riuscita nel server %s.", guild.id)
             await interaction.response.send_message(
                 "Non riesco a mostrare l'anteprima di questo messaggio.", ephemeral=True
+            )
+            return
+        if kind.value == "welcome" and config.welcome_image_enabled:
+            await interaction.response.defer(ephemeral=True)
+            allegato = await _file_benvenuto(config, interaction.user)
+            await interaction.followup.send(
+                taglia_messaggio(f"Anteprima:\n\n{testo}"),
+                ephemeral=True,
+                allowed_mentions=menzioni_ammesse(False),
+                **({"file": allegato} if allegato is not None else {}),
             )
             return
         await interaction.response.send_message(

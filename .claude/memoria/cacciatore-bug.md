@@ -1,7 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
-12/10/2026 · ultimo giro: `feat/r3-bak` (backup D8, restore OAuth, cifratura v2)
+13/10/2026 · ultimo giro: `feat/r4-uti` (ruoli auto, starboard, tag, benvenuto immagine, role menu, embed, contatori, compleanni, inviti, moduli)
 
 ## In corso
 - Niente a metà. Giro eco chiuso. Prove: scratchpad/cbeco (p1 decadimento, p2 corse, p3 deadlock, p6 card, p7 migrazioni, test_prove_eco*.py).
@@ -23,6 +23,8 @@
 - feat/r3-bak: 2 alti (get_token None su riga illeggibile = bannito riinvitato; Creator senza permessi/Forbidden su ruoli). Medi: collega senza controlli sul server, 2 codici=2 job, finalize salta blacklist, 429 sul rinnovo, restore senza blocco, tabelle 0070 fuori dal registro. Prove: scratchpad/cbbak (env.sh, p1-p5).
 
 - feat/r3-mus (musica F2): 3 alti (nodo sano scartato perche' ancora CONNECTING; worker assegnato due volte; `//percorso` grezzo a Lavalink), medi: `play` stesso canale rilascia la sessione viva, `previous` avanti-indietro, `inactive_channel_tokens=None` su tutto il nodo locale. Prove: scratchpad/cbmus (fake_lavalink.py riusabile).
+
+- feat/r4-uti: 2 alti di unione (migrazione 0091 doppia con r4-liv; `/gestione` 8400 e `/admin` 8293 > 8000 con liv+tkt). Medi: `{displayname}` non scappato (ping ruolo), starboard da canali privati, TOCTOU unique/binding, compleanno rifatto a ogni `imposta`, memoria ruoli (pending/raid/ruoli a tempo), `_join_results` stantio al rientro. Prove: scratchpad/cbuti (p1-p4, mm = unione di prova).
 
 ## Cose imparate
 - wavelink: `Pool.connect` torna con status CONNECTING (CONNECTED col messaggio `ready`); i test con `connetti` finto non lo vedono. Prova con un finto Lavalink aiohttp (/v4/websocket manda ready, /v4/info).
@@ -53,3 +55,5 @@
 - Giro a fine F1 sulle aree toccate il 05/10 (sicurezza, moderazione, log, ticket, vocali, livelli, clan).
 - Rilievi senza fix: issue #133–#137 e nuovi di 11/10 (vedi `rapporti/bug.md`).
 - Giro mod: i comandi di sanzione devono salvare lo stato PRIMA dell'azione irreversibile; UPSERT di stato da membro gia' in stato = perdita dati. Prove: `Scena` di test_moderation_tempban_modi riusabile.
+- Unire i rami r4 in una copia di prova (`git clone` + merge, docs `--ours`): numeri di migrazione doppi e caratteri per gruppo (`albero.py`) si vedono solo cosi'. Ogni ramo nuovo: confrontare numeri 00xx con gli altri rami aperti.
+- Sostituzioni a catena (`str.replace`) e segnaposto nuovi: ogni valore scelto da un utente (nome visualizzato) va scappato con `escape_mentions` se `roles=True`.

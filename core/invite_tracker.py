@@ -57,8 +57,7 @@ Affidabilità pratica: alta ma non totale, coerente con quanto già
 notato nello schema di progetto originale (~90%).
 """
 
-# DA FARE (issue #98, fase F13): NF-27, Inviti: comando e classifica.
-#   Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+# Comando e classifica (NF-27): cogs/utility/invites.py.
 
 from __future__ import annotations
 
@@ -233,6 +232,11 @@ class InviteTracker:
             if not in_corso:
                 self._in_corso.pop(guild.id, None)
                 self._guild_locks.pop(guild.id, None)
+
+    def forget_member(self, guild_id: int, member_id: int) -> None:
+        """Dimentica il risultato di un ingresso (da chiamare quando il membro esce): se rientra
+        con un altro invito, `resolve_join_invite` deve rifare il calcolo, non ridare il vecchio."""
+        self._join_results.delete((guild_id, member_id))
 
     def _usi_in_sospeso(self, guild_id: int) -> tuple[str, int] | None:
         sospeso = self._in_sospeso.get(guild_id)

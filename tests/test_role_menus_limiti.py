@@ -222,6 +222,7 @@ async def test_bottone_con_toggle_spento_non_toglie_il_ruolo(clean_db, monkeypat
     await s.aggiungi(1000)
     ruolo = s.ruoli[1000]
     membro = fake_member(user_id=3, roles=[ruolo])
+    s.guild.fetch_member = AsyncMock(return_value=membro)
     interazione = fake_interaction(guild=s.guild, user=membro)
 
     await s.cog._handle_button_click(interazione, s.menu_id, 1000)
@@ -236,6 +237,7 @@ async def test_bottone_con_toggle_acceso_toglie_il_ruolo(clean_db, monkeypatch):
     await s.menu()
     await s.aggiungi(1000)
     membro = fake_member(user_id=3, roles=[s.ruoli[1000]])
+    s.guild.fetch_member = AsyncMock(return_value=membro)
 
     await s.cog._handle_button_click(fake_interaction(guild=s.guild, user=membro), s.menu_id, 1000)
 
@@ -248,6 +250,7 @@ async def test_errore_http_generico_nel_bottone_e_spiegato(clean_db, monkeypatch
     await s.menu()
     await s.aggiungi(1000)
     membro = fake_member(user_id=3)
+    s.guild.fetch_member = AsyncMock(return_value=membro)
     membro.add_roles.side_effect = discord.HTTPException(MagicMock(status=500, reason="x"), "boom")
     interazione = fake_interaction(guild=s.guild, user=membro)
 
@@ -376,6 +379,7 @@ async def test_errori_http_nella_tendina_e_nelle_reazioni(clean_db, monkeypatch)
     await s.menu()
     await s.aggiungi(1000, emoji=None)
     membro = fake_member(user_id=3)
+    s.guild.fetch_member = AsyncMock(return_value=membro)
     membro.add_roles.side_effect = _http(500)
     interazione = fake_interaction(guild=s.guild, user=membro)
     select = MagicMock()

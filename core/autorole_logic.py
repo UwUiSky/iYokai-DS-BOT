@@ -1,40 +1,78 @@
 """
 core/autorole_logic.py
 ======================
-Decide quali ruoli dare e quando.
+Decide quali ruoli dare e quando (NF-07, SPEC §22.1-22.3). Funzioni
+semplici, provabili senza Discord.
 Funzioni coperte: SPEC §22 (NF-07)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #78).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #78, fase F9
-# Funzione: NF-07, Ruolo automatico all'ingresso, ruoli ridati a chi
-#   rientra, ruoli a tempo.
-#
-# Cosa deve fare la funzione: Chi entra riceve uno o più ruoli. Chi esce
-#   e rientra entro 30 giorni riprende i ruoli che aveva. Un ruolo può
-#   essere dato dopo un ritardo.
-# Questo file: Decide quali ruoli dare e quando.
-# Comandi previsti: /admin ruoli auto aggiungi|rimuovi|elenco, /admin
-#   ruoli ricorda.
-# File collegati: cogs/utility/autoroles.py,
-#   core/repositories/autorole_repo.py.
-# Test da scrivere per primi: tests/test_autoroles.py.
-# Migrazione: core/migrations/NNNN_autoroles.sql. (prossimo numero
-#   libero in core/migrations/).
-# Limiti da rispettare: 250 ruoli; check_role_assignable alla
-#   configurazione e all'assegnazione; niente ruoli ai bot; pausa
-#   durante un raid.
-# Da chi prendere spunto: Carl-bot (autorole, ruoli ridati entro 30
-#   giorni, ruoli a tempo), Arcane.
-# Dipende da: Nessuna. Va d'accordo con Verify: se la verifica è attiva,
-#   il ruolo arriva dopo.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Iterable
+
+# Quante regole di ruolo automatico per server (il tetto dei ruoli di Discord è 250:
+# qui basta molto meno e il comando resta leggibile).
+MAX_REGOLE = 20
+# Un ruolo può essere dato al massimo dopo 7 giorni.
+MAX_RITARDO_SECONDI = 7 * 24 * 3600
+# I ruoli di chi esce si tengono al massimo 30 giorni (dato personale, NF-04).
+MAX_GIORNI_MEMORIA = 30
+GIORNI_MEMORIA_PREDEFINITI = 30
+
+
+@dataclass(frozen=True)
+class RegolaAutoruolo:
+    role_id: int
+    delay_seconds: int = 0
+
+
+def piano_ingresso(
+    regole: Iterable[RegolaAutoruolo],
+    *,
+    is_bot: bool,
+    ruoli_posseduti: set[int],
+) -> tuple[list[int], list[tuple[int, int]]]:
+    """
+    Per chi è appena entrato: (ruoli da dare subito, [(ruolo, secondi di attesa)]).
+    Niente ai bot; niente per i ruoli che il membro ha già.
+    """
+    if is_bot:
+        return [], []
+    subito: list[int] = []
+    dopo: list[tuple[int, int]] = []
+    for regola in regole:
+        if regola.role_id in ruoli_posseduti:
+            continue
+        if regola.delay_seconds > 0:
+            dopo.append((regola.role_id, regola.delay_seconds))
+        else:
+            subito.append(regola.role_id)
+    return subito, dopo
+
+
+def ruoli_da_ricordare(ruoli_membro: Iterable) -> list[int]:
+    """Gli ID dei ruoli di chi esce che valgono la pena: niente @everyone né ruoli gestiti da integrazioni."""
+    return [r.id for r in ruoli_membro if not r.is_default() and not r.managed]
+
+
+def ruoli_da_ridare(
+    ruoli_ricordati: list[int], uscito_il: datetime, ora: datetime, giorni: int
+) -> list[int]:
+    """I ruoli ricordati, se il rientro è entro `giorni` (mai oltre 30); altrimenti niente."""
+    finestra = min(max(giorni, 1), MAX_GIORNI_MEMORIA)
+    if ora - uscito_il > timedelta(days=finestra):
+        return []
+    return list(ruoli_ricordati)
+
+
+def membro_in_attesa(in_attesa_discord: bool, verifica_attiva: bool, ha_ruolo_verificato: bool) -> bool:
+    """
+    Il ruolo automatico aspetta se il membro non ha ancora accettato le regole
+    di Discord (Membership Screening) o se la verifica del server è attiva e
+    il ruolo di verificato non è ancora arrivato.
+    """
+    if in_attesa_discord:
+        return True
+    return verifica_attiva and not ha_ruolo_verificato

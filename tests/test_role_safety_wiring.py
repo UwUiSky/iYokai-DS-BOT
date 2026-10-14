@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from unittest.mock import create_autospec
+from unittest.mock import AsyncMock, create_autospec
 
 import discord
 import pytest
@@ -243,6 +243,7 @@ class _Scena:
         return membro
 
     def interazione_di(self, membro):
+        self.server.fetch_member = AsyncMock(return_value=membro)  # il menu rilegge i ruoli di chi clicca
         interazione = fake_interaction(guild=self.server, user=membro, channel=self.canale)
         interazione.client = self.bot
         return interazione
@@ -347,6 +348,7 @@ class _RoleMenuReazione(_RoleMenu):
         evento.member = membro
         evento.message_id = ID_MESSAGGIO_MENU
         evento.emoji = EMOJI
+        scena.server.fetch_member = AsyncMock(return_value=membro)
         await self.cog.on_raw_reaction_add(evento)
 
 
