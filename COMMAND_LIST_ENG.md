@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:43 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 18:19 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 416 commands in 19 categories.**
+**Total: 432 commands in 20 categories.**
 
 ## Admin
 
@@ -61,18 +61,37 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 
 ## Antinuke
 
-- **`/antinuke canale-allarmi`** — Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).
-- **`/antinuke cases`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
-- **`/antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
-- **`/antinuke guards`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
-- **`/antinuke limits`** — Configura la soglia di rilevamento per una categoria.
-- **`/antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
-- **`/antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
-- **`/antinuke release`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
-- **`/antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
-- **`/antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
-- **`/antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
-- **`/antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
+- **`/antinuke canale-allarmi`** — Choose where Anti-Nuke alarms are sent (channel or forum).
+- **`/antinuke cases`** — Log of stopped attacks: list or detail of a case.
+- **`/antinuke enable`** — Turns Anti-Nuke on or off.
+- **`/antinuke guards`** — Guards on single actions: role permissions, roles to members, links, bots.
+- **`/antinuke limits`** — Sets the detection threshold for a category.
+- **`/antinuke punish-action`** — What to do to the author of a mass destructive action.
+- **`/antinuke recovery`** — Turns automatic re-creation of channels/roles deleted during an attack on or off.
+- **`/antinuke release`** — Lifts the quarantine of a case's author and gives their roles back.
+- **`/antinuke status`** — Shows the current Anti-Nuke setup.
+- **`/antinuke trusted-add`** — Exempts a user, bot or webhook from Anti-Nuke checks.
+- **`/antinuke trusted-list`** — Lists who is exempt from Anti-Nuke checks and with which limits.
+- **`/antinuke trusted-remove`** — Removes a user, bot or webhook from the Anti-Nuke trusted list.
+
+## Antiraid
+
+- **`/antiraid account-age`** — Minimum account age to not be considered suspicious.
+- **`/antiraid alert-channel`** — Channel for security alerts (Anti-Raid + Anti-Nuke).
+- **`/antiraid avatar-check`** — Turns missing-avatar detection on or off.
+- **`/antiraid banned-names`** — Words or patterns (with *) banned in the names of new members.
+- **`/antiraid enable`** — Turns Anti-Raid on or off.
+- **`/antiraid join-filter`** — Action for a join filter (works outside a raid too).
+- **`/antiraid join-rate`** — Sets the join limit in a time window.
+- **`/antiraid list`** — File with every raid account from the last hours.
+- **`/antiraid lockdown-action`** — What to do when a raid is detected.
+- **`/antiraid ping-roles`** — Staff roles pinged on the first raid alert (empty: none).
+- **`/antiraid quarantine-hold`** — Stops untrusted people from lifting quarantine by hand.
+- **`/antiraid release`** — Lifts a member's quarantine (the right way, with the lock on).
+- **`/antiraid report`** — Report an undetected raid to the bot team.
+- **`/antiraid signals`** — Raid signals on the latest joins and action on earlier joiners.
+- **`/antiraid status`** — Shows the current Anti-Raid setup.
+- **`/antiraid username-check`** — Turns suspicious username pattern detection on or off.
 
 ## AutoMod
 
@@ -90,9 +109,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/automod filters anti-spam-messages`** — Configures message anti-spam (too many messages in a short time).
 - **`/automod filters anti-spam-sticker`** — Configures sticker anti-spam (too many stickers in a short time).
 - **`/automod filters anti-zalgo`** — Turns anti-zalgo on or off (text with abnormal diacritics).
-- **`/automod filters forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
+- **`/automod filters content`** — Embeds and forwards checked by filters; banned file types.
 - **`/automod filters invites`** — Turns the automatic Discord invite block on or off.
-- **`/automod filters phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
+- **`/automod filters media-channel`** — Media-only channel, no attachments or normal.
+- **`/automod filters messages`** — Repeated, too short, links and mentions counted over time (0 = off).
+- **`/automod filters phishing`** — Turn the phishing link block on or off (fake gifts, fake logins).
+- **`/automod filters text-shape`** — Limits on message shape: line breaks, length, spoilers (0 = off).
 - **`/automod log-channel`** — Sets the channel for the advanced AutoMod action log.
 - **`/automod mute-duration`** — Sets the timeout length used by the AutoMod 'mute' action.
 - **`/automod status`** — Shows the current advanced AutoMod filter setup.
@@ -141,28 +163,28 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/fun 8ball`** — Ask the magic 8-ball a question.
 - **`/fun animal`** — Shows a random animal picture.
 - **`/fun blur`** — Blurs an image.
-- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
+- **`/fun choose`** — I pick at random among the options you write.
 - **`/fun coinflip`** — Flips a coin: heads or tails.
 - **`/fun counting`** — Counting game: pick the channel where people count 1, 2, 3... in turn.
 - **`/fun dice`** — Rolls a die.
-- **`/fun effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
+- **`/fun effect`** — Avatar effect: rainbow, R.I.P., wanted, triggered.
 - **`/fun fact`** — Shows a random fun fact.
 - **`/fun grayscale`** — Turns an image to grayscale.
 - **`/fun invert`** — Inverts an image's colors.
 - **`/fun joke`** — Tells a random joke.
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun meme`** — Makes a meme with top/bottom text.
-- **`/fun numero`** — Un numero a caso in un intervallo.
+- **`/fun number`** — A random number in a range.
 - **`/fun pixelate`** — Pixelates an image.
 - **`/fun play`** — Play your coins: coin flip, dice or slots.
+- **`/fun prank`** — A harmless prank on a user.
 - **`/fun quote`** — Shows a random quote.
+- **`/fun random`** — Would you rather, topic, advice, magic item.
 - **`/fun rate`** — Rates something from 0 to 10.
 - **`/fun rps`** — Rock, paper, scissors against the bot.
-- **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
-- **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
 - **`/fun search-image`** — Searches a SFW image on Pixabay.
 - **`/fun ship`** — Computes the compatibility between two users.
-- **`/fun testo`** — Scrivi un testo in uno stile speciale.
+- **`/fun text`** — Write a text in a special style.
 
 ## Management
 
@@ -242,8 +264,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 
 ## Moderation
 
-- **`/mod blocco enable`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
-- **`/mod blocco remove`** — Riapre il server com'era prima del blocco.
+- **`/mod bulk timeout`** — Times out several members at once (max 28 days).
+- **`/mod bulk warn`** — Warns several members at once.
 - **`/mod case delete`** — Deletes a case (needs "Manage Server").
 - **`/mod case history`** — Shows a member's case history.
 - **`/mod case reason`** — Changes the reason of an already logged case.
@@ -251,6 +273,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/mod case view`** — Shows the details of a single case.
 - **`/mod clear`** — Deletes a number of messages, with optional filters.
 - **`/mod lock`** — Blocks the ability to write in a channel.
+- **`/mod lockdown enable`** — Lock all channels, invites and joins of the server.
+- **`/mod lockdown remove`** — Reopen the server as it was before the lockdown.
 - **`/mod mute`** — Mutes a member with a dedicated role (alternative to timeout).
 - **`/mod note add`** — Adds a note on a user.
 - **`/mod note clear`** — Deletes all of a member's notes (needs "Manage Server").
@@ -272,6 +296,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/modban appeals channel`** — Picks the staff channel for appeals (empty to turn them off).
 - **`/modban appeals list`** — Shows the server's latest appeals.
 - **`/modban ban`** — Permanently bans a member.
+- **`/modban bulk ban`** — Bans several users at once, even outside the server (IDs or mentions).
+- **`/modban bulk kick`** — Kicks several members at once (IDs or mentions).
+- **`/modban bulk unban`** — Unbans several users at once (IDs).
 - **`/modban kick`** — Kicks a member from the server.
 - **`/modban softban`** — Bans and unbans a member right away, to delete their recent messages.
 - **`/modban tempban`** — Bans a member for a set time.
@@ -280,12 +307,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 ## Modules
 
 - **`/modules alert feed`** — Follows an RSS/Atom feed (YouTube, Reddit, or any other).
-- **`/modules alert guida-social`** — Avvisi per TikTok, Instagram e X.
-- **`/modules alert kick`** — Avvisa quando un canale Kick va in diretta.
+- **`/modules alert kick`** — Notify when a Kick channel goes live.
 - **`/modules alert list`** — Shows the feeds followed by this server.
-- **`/modules alert options`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
+- **`/modules alert live-role`** — Role given to members who are live.
+- **`/modules alert options`** — Alert options: role, end of stream, button.
 - **`/modules alert remove`** — Removes a feed or Twitch subscription, or a webhook.
-- **`/modules alert ruolo-live`** — Ruolo dato a chi è in diretta.
+- **`/modules alert social-guide`** — Alerts for TikTok, Instagram and X.
 - **`/modules alert twitch`** — Notifies when a Twitch streamer goes live/offline.
 - **`/modules alert webhook`** — Creates a custom webhook: third-party services can post in a channel.
 - **`/modules alert youtube-live`** — Notifies when a YouTube channel goes live (needs YOUTUBE_API_KEY on the bot).
@@ -313,11 +340,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/modules starboard disattiva`** — Turns the board off.
 - **`/modules starboard set`** — Picks the board channel and the star threshold.
 - **`/modules starboard threshold`** — Changes how many stars are needed to reach the board.
-- **`/modules statistics diagnosis`** — Perché le statistiche non si contano?
-- **`/modules statistics list`** — Mostra regole ed esclusioni delle statistiche.
-- **`/modules statistics ruolo-aggiungi`** — Dai un ruolo a chi è attivo e toglilo a chi smette.
-- **`/modules statistics ruolo-elimina`** — Elimina una regola dei ruoli per attività.
-- **`/modules statistics settings`** — Escludi canali o ruoli dalle statistiche.
+- **`/modules statistics diagnosis`** — Why are the statistics not counting?
+- **`/modules statistics list`** — Show the statistics rules and exclusions.
+- **`/modules statistics ruolo-aggiungi`** — Give a role to active members and remove it when they stop.
+- **`/modules statistics ruolo-elimina`** — Delete an activity role rule.
+- **`/modules statistics settings`** — Exclude channels or roles from the statistics.
 
 ## Music
 
@@ -383,16 +410,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 
 ## Security
 
-- **`/security antiraid account-age`** — Minimum account age to not be considered suspicious.
-- **`/security antiraid alert-channel`** — Channel for security alerts (Anti-Raid + Anti-Nuke).
-- **`/security antiraid avatar-check`** — Turns missing-avatar detection on or off.
-- **`/security antiraid enable`** — Turns Anti-Raid on or off.
-- **`/security antiraid join-rate`** — Sets the join limit in a time window.
-- **`/security antiraid lockdown-action`** — What to do when a raid is detected.
-- **`/security antiraid quarantine-hold`** — Stops untrusted people from lifting quarantine by hand.
-- **`/security antiraid release`** — Lifts a member's quarantine (the right way, with the lock on).
-- **`/security antiraid status`** — Shows the current Anti-Raid setup.
-- **`/security antiraid username-check`** — Turns suspicious username pattern detection on or off.
 - **`/security escalation disable`** — Turns the escalation ladder off.
 - **`/security escalation enable`** — Turns the escalation ladder on.
 - **`/security escalation remove-step`** — Removes a step from the custom ladder.
@@ -405,10 +422,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/security globalban enable`** — Joins the global ban network (send and receive).
 - **`/security globalban status`** — Shows the global ban status and recent history.
 - **`/security heatmap`** — Shows which roles have critical permissions and who holds them.
-- **`/security panico configura`** — Scelte del panico: ruoli avvisati, categorie escluse, sblocco, regole.
-- **`/security panico enable`** — Accende il panico: blocco totale con le regole d'emergenza.
-- **`/security panico remove`** — Spegne il panico e riapre il server com'era.
-- **`/security panico status`** — Mostra se il server e' bloccato e le scelte del panico.
+- **`/security panic configura`** — Panic settings: notified roles, excluded categories, unlock, rules.
+- **`/security panic enable`** — Turn panic on: full lockdown with the emergency rules.
+- **`/security panic remove`** — Turn panic off and reopen the server as it was.
+- **`/security panic status`** — Show whether the server is locked and the panic settings.
 - **`/security score`** — Computes the server security score with advice.
 - **`/security spamtrap`** — Sets up the Spam Trap trap and log channels.
 - **`/security verify attempts`** — A user's verification attempts.
@@ -419,6 +436,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/security verify panel`** — Publishes the verification panel.
 - **`/security verify setup`** — Sets up Verify.
 - **`/security verify statistics`** — Successful and failed verifications.
+- **`/security verify timing`** — Reminder, time limit, action on failures, verification only for suspicious accounts.
 - **`/security verify whitelist-add`** — Adds a user to the whitelist.
 - **`/security verify whitelist-remove`** — Removes a user from the whitelist.
 
@@ -462,6 +480,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 16:4
 - **`/utility snipe`** — Shows the last deleted message in this channel.
 - **`/utility suggest`** — Suggest an idea for this server.
 - **`/utility tag`** — Uses a custom command of this server.
+- **`/utility verify`** — Verify yourself in this server (same as the panel button).
 
 ## Voice
 
