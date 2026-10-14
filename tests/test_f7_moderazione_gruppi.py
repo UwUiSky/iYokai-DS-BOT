@@ -44,28 +44,32 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod", "avvisi"): {"togli", "azzera", "classifica"},
     ("mod", "blocco"): {"attiva", "togli"},
+    ("mod", "massa"): {"timeout", "warn"},
     ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
     ("modban", "appelli"): {"canale", "elenco"},
+    ("modban", "massa"): {"ban", "unban", "kick"},
     ("security", None): {"heatmap", "score", "spamtrap"},
     ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("antinuke", None): {
         "enable", "limits", "trusted-add", "trusted-remove", "trusted-list", "punish-action", "recovery", "status",
         "guardie", "casi", "rilascia", "canale-allarmi",
     },
-    ("security", "antiraid"): {
+    ("antiraid", None): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
         "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
+        "filtro-ingresso", "nomi-vietati", "segnali", "ping-ruoli", "elenco", "segnala",
     },
     ("security", "panico"): {"attiva", "togli", "configura", "stato"},
     ("security", "globalban"): {"enable", "disable", "status", "controlla"},
     ("security", "verify"): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",
-        "opzioni", "manuale", "tentativi", "statistiche",
+        "opzioni", "manuale", "tentativi", "statistiche", "tempi",
     },
     ("automod", None): {"sync", "mute-duration", "log-channel", "status"},
     ("automod", "filtri"): {
         "invites", "anti-link-mode", "anti-link-domain", "anti-spam-messages", "anti-spam-emoji",
         "anti-spam-sticker", "anti-caps", "anti-zalgo", "phishing", "forma-testo", "anti-mention", "anti-attachment", "actions-set",
+        "messaggi", "contenuto", "canale-media",
     },
     ("automod", "parole"): {"add", "remove", "list"},
     ("automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},
@@ -78,6 +82,7 @@ LIVELLI = {
     "modban": Livello.MODBAN,
     "security": Livello.SECURITY,
     "antinuke": Livello.SECURITY,
+    "antiraid": Livello.SECURITY,
     "automod": Livello.ADMIN,
     "log": Livello.LOG,
 }
@@ -126,7 +131,8 @@ async def test_il_gruppo_ha_il_livello_giusto(bot, gruppo):
 async def test_i_vecchi_nomi_di_primo_livello_sono_spariti(bot):
     presenti = {c.name for c in bot.tree.get_commands()}
     assert presenti.isdisjoint(VECCHI_NOMI)
-    assert presenti == set(LIVELLI)
+    # Il Verify mette anche /utility verifica (VER-010), il comando per i membri.
+    assert presenti == set(LIVELLI) | {"utility"}
 
 
 async def test_nessun_prefisso_admin_e_nessun_check_di_permesso_locale(bot):

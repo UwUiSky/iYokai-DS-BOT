@@ -17,7 +17,9 @@ tra quelli in cui si trova LUI STESSO, contengono anche questo
 utente — non tutti i server dell'utente in assoluto (Discord non
 espone quel dato a un bot). È un segnale debole, non una prova.
 Già annotato così nello schema di progetto originale.
-Funzioni coperte: SPEC §4.1, §4.4-§4.6
+Promemoria, tempo massimo, azione su chi fallisce e verifica solo per gli
+account sospetti (VER-008, 011, 012, 013): le regole sono qui sotto.
+Funzioni coperte: SPEC §4.1, §4.4-§4.6 (VER-008, 011, 012, 013)
 """
 
 from __future__ import annotations
@@ -89,6 +91,44 @@ def decide_verify_outcome(
         return VerifyOutcome(False, "Account does not share enough mutual servers.")
 
     if not captcha_ok:
-        return VerifyOutcome(False, "Captcha verification failed.")
+        return VerifyOutcome(False, MOTIVO_CAPTCHA)
 
     return VerifyOutcome(True, "All checks passed.")
+
+
+# ---------------------------------------------------------------- VER-008…013
+AZIONI_FALLITA = ("niente", "quarantena", "kick", "ban")
+AZIONI_SCADENZA = ("kick", "ban")
+GIORNI_ACCOUNT_SOSPETTO = 7
+# Captcha sbagliato: si agisce solo dopo questi fallimenti di fila (un errore di battitura capita).
+FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE = 3
+# I fallimenti contano solo se fatti in questa finestra: errori di giorni
+# prima non si sommano a quello di oggi.
+FINESTRA_FALLIMENTI_CAPTCHA = timedelta(hours=24)
+
+
+def esiti_nella_finestra(tentativi: list[tuple], adesso: datetime) -> list[bool]:
+    """Esiti (dal più recente) dei tentativi `(ok, motivo, quando)` dentro FINESTRA_FALLIMENTI_CAPTCHA."""
+    return [ok for ok, _, quando in tentativi if adesso - quando <= FINESTRA_FALLIMENTI_CAPTCHA]
+MOTIVO_CAPTCHA = "Captcha verification failed."
+
+
+def account_sospetto(account_created_at: datetime, has_avatar: bool, now: datetime | None = None) -> bool:
+    """VER-013: sospetto = account con meno di GIORNI_ACCOUNT_SOSPETTO giorni o senza avatar."""
+    adesso = now or datetime.now(timezone.utc)
+    return not has_avatar or adesso - account_created_at < timedelta(days=GIORNI_ACCOUNT_SOSPETTO)
+
+
+def azione_dopo_fallimento(azione: str, motivo: str, ultimi_esiti: list[bool]) -> str:
+    """
+    VER-012: l'azione da fare dopo un tentativo fallito. Per il captcha
+    sbagliato si aspetta FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE fallimenti di
+    fila (`ultimi_esiti`: dal più recente, quello appena fatto compreso).
+    """
+    if azione not in AZIONI_FALLITA or azione == "niente":
+        return "niente"
+    if motivo == MOTIVO_CAPTCHA:
+        n = FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE
+        if len(ultimi_esiti) < n or any(ultimi_esiti[:n]):
+            return "niente"
+    return azione

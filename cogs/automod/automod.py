@@ -24,7 +24,15 @@ AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
 messaggio modificato più volte vale un solo warn per violazione.
 Il blocco del phishing (NF-31, `/automod filtri phishing`) usa la lista di
 core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021), §23 (NF-31)
+Due categorie hanno un interruttore proprio (SIC-042): accorciatori di link
+e inviti a server per adulti (il server dell'invito lo chiede a Discord).
+Filtri in più: messaggi ripetuti, troppo corti, link e menzioni contati nel
+tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed (solo
+per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
+inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
+contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
+filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 019–024, 041), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -41,6 +49,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import channel_router as router
 from core.phishing_list_fetcher import lista_phishing
+from core.phishing_logic import codici_invito, server_per_adulti
 from core.repositories.output_channel_repo import output_channel_repo
 
 from core.automod_sync import (
@@ -72,6 +81,18 @@ from core.automod_advanced_logic import (
     VIOLATION_A_CAPO,
     VIOLATION_LUNGHEZZA,
     VIOLATION_SPOILER,
+    VIOLATION_ACCORCIATORI,
+    VIOLATION_INVITI_ADULTI,
+    VIOLATION_RIPETUTI,
+    VIOLATION_CORTO,
+    VIOLATION_LINK_TEMPO,
+    VIOLATION_MENZIONI_TEMPO,
+    VIOLATION_ESTENSIONI,
+    VIOLATION_SOLO_MEDIA,
+    VIOLATION_SENZA_ALLEGATI,
+    MAX_ESTENSIONI,
+    extract_domains,
+    pulisci_estensioni,
     AZIONI_DI_PARTENZA,
     AZIONI_DI_PARTENZA_GENERALI,
     evaluate_message_violations,
@@ -109,6 +130,13 @@ MAX_LUNGHEZZA_DOMINIO = 253
 # memoria tiene un valore per ogni evento dentro la finestra.
 MAX_FINESTRA_SECONDI = 300
 
+# AMD-006/007: link e menzioni contati al massimo per questo numero in un messaggio
+# (la coda in memoria di ogni utente non cresce oltre il tetto per messaggio).
+MAX_EVENTI_PER_MESSAGGIO = 50
+
+# AMD-023/024: canali solo media e canali senza allegati, per tipo.
+MAX_CANALI_MEDIA = 25
+
 # Regex di riconoscimento emoji per §6.5 (anti-spam emoji): emoji
 # custom di Discord (`<a?:nome:id>`) + un intervallo unicode ampio
 # che copre la stragrande maggioranza delle emoji standard. Non usa
@@ -134,7 +162,101 @@ _VIOLATION_LABELS = {
     VIOLATION_A_CAPO: "Troppi a-capo",
     VIOLATION_LUNGHEZZA: "Messaggio troppo lungo",
     VIOLATION_SPOILER: "Troppi spoiler",
+    VIOLATION_ACCORCIATORI: "Accorciatori di link",
+    VIOLATION_INVITI_ADULTI: "Inviti a server per adulti",
+    VIOLATION_RIPETUTI: "Messaggi ripetuti",
+    VIOLATION_CORTO: "Messaggio troppo corto",
+    VIOLATION_LINK_TEMPO: "Troppi link nel tempo",
+    VIOLATION_MENZIONI_TEMPO: "Troppe menzioni nel tempo",
+    VIOLATION_ESTENSIONI: "Tipo di file vietato",
+    VIOLATION_SOLO_MEDIA: "Canale solo media",
+    VIOLATION_SENZA_ALLEGATI: "Canale senza allegati",
 }
+
+# AMD-001: ultimo testo e quante volte di fila, per (server, utente). Tetto in memoria.
+MAX_TESTI_IN_MEMORIA = 20_000
+_ultimi_testi: "OrderedDict[tuple[int, int], tuple[str, int]]" = OrderedDict()
+
+
+def _conta_ripetuti(guild_id: int, user_id: int, testo: str) -> int:
+    """Quante volte di fila (questa compresa) l'utente ha mandato lo stesso testo."""
+    chiave = (guild_id, user_id)
+    pulito = " ".join(testo.lower().split())
+    if not pulito:
+        _ultimi_testi.pop(chiave, None)
+        return 1
+    prima, volte = _ultimi_testi.get(chiave, ("", 0))
+    volte = volte + 1 if prima == pulito else 1
+    _ultimi_testi[chiave] = (pulito, volte)
+    _ultimi_testi.move_to_end(chiave)
+    while len(_ultimi_testi) > MAX_TESTI_IN_MEMORIA:
+        _ultimi_testi.popitem(last=False)
+    return volte
+
+
+def _testo_embed(embeds) -> str:
+    """Titolo, descrizione e campi degli embed, uniti (AMD-019)."""
+    pezzi = []
+    for embed in embeds or []:
+        pezzi += [embed.title or "", embed.description or ""]
+        pezzi += [f"{campo.name} {campo.value}" for campo in embed.fields]
+    return "\n".join(p for p in pezzi if p)
+
+
+def _testo_da_controllare(message: discord.Message, config: AutomodAdvancedConfig) -> tuple[str, str]:
+    """
+    (testo, testo degli embed). Il testo comprende gli inoltri (AMD-020) se
+    scelti; gli embed (AMD-019) restano a parte: valgono solo per i link.
+    """
+    pezzi = [message.content or ""]
+    embed = [_testo_embed(message.embeds)] if config.controlla_embed else []
+    if config.controlla_inoltrati:
+        for snap in getattr(message, "message_snapshots", None) or []:
+            pezzi.append(getattr(snap, "content", "") or "")
+            if config.controlla_embed:
+                embed.append(_testo_embed(getattr(snap, "embeds", None)))
+    return "\n".join(p for p in pezzi if p), "\n".join(p for p in embed if p)
+
+
+def _media_inoltrati(message: discord.Message) -> int:
+    """Allegati ed embed dentro gli inoltri: un'immagine inoltrata conta come media (AMD-023)."""
+    return sum(
+        len(getattr(snap, "attachments", None) or []) + len(getattr(snap, "embeds", None) or [])
+        for snap in getattr(message, "message_snapshots", None) or []
+    )
+
+# Le violazioni della famiglia phishing: canale di log suo e link non cliccabile.
+_VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI})
+# AMD-019: le sole violazioni che il testo di un embed può far scattare.
+_VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI})
+
+# SIC-042: esito degli inviti gia' chiesti a Discord (codice -> per adulti?). Tetto in memoria.
+MAX_INVITI_IN_MEMORIA = 2000
+_inviti_adulti: "OrderedDict[str, bool]" = OrderedDict()
+
+
+async def _invito_per_adulti(bot, codice: str, guild_id: int) -> bool:
+    """Chiede a Discord il server dell'invito (una volta per codice). Invito non valido o del server stesso: no."""
+    if codice in _inviti_adulti:
+        _inviti_adulti.move_to_end(codice)
+        return _inviti_adulti[codice]
+    try:
+        invito = await bot.fetch_invite(codice, with_counts=False)
+    except (discord.NotFound, discord.Forbidden):
+        esito = False
+    except discord.HTTPException:
+        return False  # errore passeggero: non si ricorda
+    else:
+        server = getattr(invito, "guild", None)
+        esito = (
+            server is not None
+            and getattr(server, "id", None) != guild_id
+            and server_per_adulti(getattr(getattr(server, "nsfw_level", None), "name", ""), getattr(server, "name", ""))
+        )
+    _inviti_adulti[codice] = esito
+    while len(_inviti_adulti) > MAX_INVITI_IN_MEMORIA:
+        _inviti_adulti.popitem(last=False)
+    return esito
 
 
 def _count_emoji(content: str) -> int:
@@ -156,7 +278,8 @@ def _finestra(filtro: RateFilterConfig) -> int:
 
 
 def build_message_signals(
-    message: discord.Message, config: AutomodAdvancedConfig, conta_nel_tempo: bool = True
+    message: discord.Message, config: AutomodAdvancedConfig, conta_nel_tempo: bool = True,
+    solo_embed: bool = False,
 ) -> MessageSignals:
     """
     Estrae dal messaggio REALE tutto quello che serve alla logica
@@ -164,16 +287,25 @@ def build_message_signals(
     (rate) passano dal tracker in memoria, mai persistiti (vedi
     core/automod_rate_tracker.py). Ogni conteggio usa la finestra in
     secondi salvata dall'admin per quel filtro.
+
+    `solo_embed`: modifica che aggiunge solo embed (anteprima di un link
+    arrivata dopo): si guarda solo il testo degli embed.
     """
     now = discord.utils.utcnow()
     guild_id = message.guild.id
     user_id = message.author.id
+    testo, testo_embed = _testo_da_controllare(message, config)
+    if solo_embed:
+        return MessageSignals(content="", testo_embed=testo_embed, channel_id=message.channel.id)
+    nomi_allegati = tuple(getattr(a, "filename", "") or "" for a in message.attachments)
 
     if not conta_nel_tempo:
         # Messaggio modificato (AMD-021): vale per il testo, non ai conteggi
         # nel tempo. Una modifica non è un messaggio in più.
         return MessageSignals(
-            content=message.content or "",
+            content=testo,
+            testo_embed=testo_embed,
+            media_inoltrati=_media_inoltrati(message),
             mention_count=_mention_count(message),
             emoji_count=_count_emoji(message.content or ""),
             attachment_count=len(message.attachments),
@@ -181,6 +313,8 @@ def build_message_signals(
             recent_message_count=0,
             recent_attachment_count=0,
             recent_sticker_count=0,
+            nomi_allegati=nomi_allegati,
+            channel_id=message.channel.id,
         )
 
     recent_messages = rate_tracker.record_and_count(
@@ -199,15 +333,37 @@ def build_message_signals(
             window_seconds=_finestra(config.anti_spam_sticker),
         )
 
+    ripetuti = _conta_ripetuti(guild_id, user_id, message.content or "") if config.max_ripetuti else 1
+    recent_links = 0
+    if config.link_nel_tempo.enabled:
+        for _ in extract_domains(f"{testo}\n{testo_embed}")[:MAX_EVENTI_PER_MESSAGGIO]:  # tetto come per le menzioni
+            recent_links = rate_tracker.record_and_count(
+                guild_id, user_id, "links", now, window_seconds=_finestra(config.link_nel_tempo)
+            )
+    menzioni = _mention_count(message)
+    recent_mentions = 0
+    if config.menzioni_nel_tempo.enabled:
+        for _ in range(min(menzioni, MAX_EVENTI_PER_MESSAGGIO)):  # @everyone vale 999: tetto al conteggio
+            recent_mentions = rate_tracker.record_and_count(
+                guild_id, user_id, "mentions", now, window_seconds=_finestra(config.menzioni_nel_tempo)
+            )
+
     return MessageSignals(
-        content=message.content or "",
-        mention_count=_mention_count(message),
+        content=testo,
+        testo_embed=testo_embed,
+        media_inoltrati=_media_inoltrati(message),
+        mention_count=menzioni,
         emoji_count=_count_emoji(message.content or ""),
         attachment_count=len(message.attachments),
         sticker_count=len(message.stickers),
         recent_message_count=recent_messages,
         recent_attachment_count=recent_attachments,
         recent_sticker_count=recent_stickers,
+        ripetuti=ripetuti,
+        recent_link_count=recent_links,
+        recent_mention_count=recent_mentions,
+        nomi_allegati=nomi_allegati,
+        channel_id=message.channel.id,
     )
 
 
@@ -282,7 +438,7 @@ async def _execute_actions(
                 pass
             continue
 
-        if protetto and azione in ("mute", "ban"):
+        if protetto and azione in ("mute", "kick", "ban"):
             continue
 
         if azione == "warn":
@@ -317,6 +473,19 @@ async def _execute_actions(
             except (discord.Forbidden, discord.HTTPException):
                 pass
 
+        elif azione == "kick":
+            # AMD-041: il DM con il motivo parte prima (dopo il kick non arriverebbe).
+            await try_dm(member, discord.Embed(
+                title="Espulso dall'AutoMod",
+                description=f"{message.guild.name}: {_VIOLATION_LABELS.get(violation, violation)}",
+                color=discord.Color.orange(),
+            ))
+            try:
+                await member.kick(reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}")
+                eseguite.append("kick")
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
         elif azione == "ban":
             try:
                 await member.ban(
@@ -341,7 +510,7 @@ async def _log_violation(
         message.guild.id, message.author.id, message.channel.id, violation, actions_taken, contenuto
     )
 
-    if violation == VIOLATION_PHISHING:
+    if violation in _VIOLAZIONI_PHISHING:
         # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
         canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
     else:
@@ -360,9 +529,9 @@ async def _log_violation(
     embed.add_field(name="Azioni eseguite", value=", ".join(actions_taken) or "nessuna", inline=True)
     if contenuto:
         # Nel log di phishing il link non deve restare cliccabile.
-        valore = f"`{contenuto.replace('`', '')}`" if violation == VIOLATION_PHISHING else contenuto
+        valore = f"`{contenuto.replace('`', '')}`" if violation in _VIOLAZIONI_PHISHING else contenuto
         embed.add_field(name="Contenuto", value=valore, inline=False)
-    if violation == VIOLATION_PHISHING:
+    if violation in _VIOLAZIONI_PHISHING:
         await router.invia_a(canale, message.guild, router.TIPO_PHISHING, embed=embed)
         return
     try:
@@ -875,23 +1044,36 @@ class AutomodCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         enabled="Attiva/disattiva",
         canale_log="Canale o forum dove scrivere ogni link bloccato (vuoto: il log dell'AutoMod)",
+        accorciatori="Blocca anche gli accorciatori di link (bit.ly, tinyurl...); vuoto: non cambia",
+        inviti_adulti="Blocca anche gli inviti a server per adulti; vuoto: non cambia",
     )
     async def anti_phishing(
         self,
         interaction: discord.Interaction,
         enabled: bool,
         canale_log: discord.TextChannel | discord.ForumChannel | None = None,
+        accorciatori: bool | None = None,
+        inviti_adulti: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
         if canale_log is not None:
             await output_channel_repo.imposta(interaction.guild.id, router.TIPO_PHISHING, canale_log.id)
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
-        await automod_advanced_repo.save_settings(_replace_settings(settings, anti_phishing_enabled=enabled))
+        cambi = {"anti_phishing_enabled": enabled}
+        if accorciatori is not None:
+            cambi["phishing_accorciatori"] = accorciatori
+        if inviti_adulti is not None:
+            cambi["phishing_inviti_adulti"] = inviti_adulti
+        nuova = _replace_settings(settings, **cambi)
+        await automod_advanced_repo.save_settings(nuova)
         if enabled:
             lista_phishing.aggiorna_se_serve()
+        c = nuova.config
         await interaction.response.send_message(
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
+            f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
+            f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
             "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
@@ -928,6 +1110,139 @@ class AutomodCog(CogConGruppi, commands.Cog):
         nomi = {"max_a_capo": "a-capo", "max_lunghezza": "caratteri", "max_spoiler": "spoiler"}
         righe = [f"{nomi[k]}: {v if v else 'spento'}" for k, v in nuovi.items()]
         await interaction.response.send_message("Limiti salvati. " + "; ".join(righe) + ".", ephemeral=True)
+
+    @comando_di_gruppo(
+        "automod",
+        nome="messaggi",
+        descrizione="Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
+    @app_commands.describe(
+        max_ripetuti="Stesso testo mandato più di N volte di fila",
+        min_caratteri="Messaggi di testo più corti di N caratteri",
+        max_link="Più di N link nella finestra",
+        finestra_link="Finestra dei link, in secondi",
+        max_menzioni="Più di N menzioni nella finestra, su più messaggi",
+        finestra_menzioni="Finestra delle menzioni, in secondi",
+    )
+    async def messaggi(
+        self,
+        interaction: discord.Interaction,
+        max_ripetuti: app_commands.Range[int, 0, 20] | None = None,
+        min_caratteri: app_commands.Range[int, 0, 2000] | None = None,
+        max_link: app_commands.Range[int, 0, 50] | None = None,
+        finestra_link: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] | None = None,
+        max_menzioni: app_commands.Range[int, 0, 100] | None = None,
+        finestra_menzioni: app_commands.Range[int, 1, MAX_FINESTRA_SECONDI] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        settings = await automod_advanced_repo.get_settings(interaction.guild.id)
+        c = settings.config
+        cambi = {}
+        if max_ripetuti is not None:
+            cambi["max_ripetuti"] = max_ripetuti
+        if min_caratteri is not None:
+            cambi["min_caratteri"] = min_caratteri
+        if max_link is not None or finestra_link is not None:
+            massimo = c.link_nel_tempo.max_count if max_link is None else max_link
+            cambi["link_nel_tempo"] = RateFilterConfig(
+                enabled=massimo > 0 if max_link is not None else c.link_nel_tempo.enabled,
+                max_count=massimo or c.link_nel_tempo.max_count,
+                window_seconds=finestra_link or c.link_nel_tempo.window_seconds,
+            )
+        if max_menzioni is not None or finestra_menzioni is not None:
+            massimo = c.menzioni_nel_tempo.max_count if max_menzioni is None else max_menzioni
+            cambi["menzioni_nel_tempo"] = RateFilterConfig(
+                enabled=massimo > 0 if max_menzioni is not None else c.menzioni_nel_tempo.enabled,
+                max_count=massimo or c.menzioni_nel_tempo.max_count,
+                window_seconds=finestra_menzioni or c.menzioni_nel_tempo.window_seconds,
+            )
+        nuova = _replace_settings(settings, **cambi).config
+        await automod_advanced_repo.save_settings(_replace_settings(settings, **cambi))
+        link = nuova.link_nel_tempo
+        menz = nuova.menzioni_nel_tempo
+        await interaction.response.send_message(
+            f"Ripetuti: {nuova.max_ripetuti or 'spento'}. Minimo caratteri: {nuova.min_caratteri or 'spento'}. "
+            f"Link: {f'più di {link.max_count} in {link.window_seconds}s' if link.enabled else 'spento'}. "
+            f"Menzioni: {f'più di {menz.max_count} in {menz.window_seconds}s' if menz.enabled else 'spento'}.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "automod",
+        nome="contenuto",
+        descrizione="Embed e inoltri controllati dai filtri; tipi di file vietati.",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
+    @app_commands.describe(
+        embed="I filtri dei link leggono anche gli embed del messaggio",
+        inoltrati="I filtri di testo leggono anche i messaggi inoltrati",
+        estensioni_vietate="Estensioni separate da spazi (es. exe bat scr); «-» svuota la lista",
+    )
+    async def contenuto(
+        self,
+        interaction: discord.Interaction,
+        embed: bool | None = None,
+        inoltrati: bool | None = None,
+        estensioni_vietate: app_commands.Range[str, 1, 400] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        settings = await automod_advanced_repo.get_settings(interaction.guild.id)
+        cambi = {}
+        if embed is not None:
+            cambi["controlla_embed"] = embed
+        if inoltrati is not None:
+            cambi["controlla_inoltrati"] = inoltrati
+        if estensioni_vietate is not None:
+            cambi["estensioni_vietate"] = () if estensioni_vietate.strip() == "-" else pulisci_estensioni(estensioni_vietate)
+        nuova = _replace_settings(settings, **cambi)
+        await automod_advanced_repo.save_settings(nuova)
+        c = nuova.config
+        await interaction.response.send_message(
+            f"Embed: {'controllati' if c.controlla_embed else 'ignorati'}. "
+            f"Inoltri: {'controllati' if c.controlla_inoltrati else 'ignorati'}. "
+            f"Estensioni vietate ({len(c.estensioni_vietate)}/{MAX_ESTENSIONI}): "
+            f"{', '.join(c.estensioni_vietate) or 'nessuna'}.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "automod",
+        nome="canale-media",
+        descrizione="Canale solo media, senza allegati o normale.",
+        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
+    )
+    @app_commands.describe(canale="Il canale", modo="Cosa vale nel canale")
+    @app_commands.choices(
+        modo=[
+            app_commands.Choice(name="Solo media: senza immagine, file o link si cancella", value="solo_media"),
+            app_commands.Choice(name="Senza allegati: solo testo", value="senza_allegati"),
+            app_commands.Choice(name="Normale", value="normale"),
+        ]
+    )
+    async def canale_media(
+        self, interaction: discord.Interaction, canale: discord.TextChannel, modo: app_commands.Choice[str]
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        settings = await automod_advanced_repo.get_settings(interaction.guild.id)
+        media = [i for i in settings.config.canali_solo_media if i != canale.id]
+        testo = [i for i in settings.config.canali_senza_allegati if i != canale.id]
+        if modo.value == "solo_media":
+            media.append(canale.id)
+        elif modo.value == "senza_allegati":
+            testo.append(canale.id)
+        if len(media) > MAX_CANALI_MEDIA or len(testo) > MAX_CANALI_MEDIA:
+            await interaction.response.send_message(
+                f"Al massimo {MAX_CANALI_MEDIA} canali per tipo.", ephemeral=True
+            )
+            return
+        await automod_advanced_repo.save_settings(
+            _replace_settings(settings, canali_solo_media=tuple(media), canali_senza_allegati=tuple(testo))
+        )
+        await interaction.response.send_message(f"{canale.mention}: {modo.name.lower()}.", ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1055,6 +1370,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         violation="Quale filtro", delete="Cancella il messaggio", warn="Assegna un warn",
         mute="Timeout temporaneo (durata: /automod mute-duration)", ban="Banna l'utente",
+        kick="Espelle l'utente",
     )
     @app_commands.choices(
         violation=[app_commands.Choice(name=label, value=key) for key, label in _VIOLATION_LABELS.items()]
@@ -1067,11 +1383,14 @@ class AutomodCog(CogConGruppi, commands.Cog):
         warn: bool = False,
         mute: bool = False,
         ban: bool = False,
+        kick: bool = False,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
         scelte = tuple(
-            nome for nome, attiva in (("delete", delete), ("warn", warn), ("mute", mute), ("ban", ban)) if attiva
+            nome
+            for nome, attiva in (("delete", delete), ("warn", warn), ("mute", mute), ("kick", kick), ("ban", ban))
+            if attiva
         )
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
         nuove_azioni = dict(settings.actions)
@@ -1130,11 +1449,18 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"**Anti-Spam Sticker**: {'ON' if c.anti_spam_sticker.enabled else 'OFF'} (max {c.anti_spam_sticker.max_count}/{c.anti_spam_sticker.window_seconds}s)",
             f"**Anti-Caps**: {'ON' if c.anti_caps.enabled else 'OFF'} (soglia {c.anti_caps.threshold_percent}%)",
             f"**Anti-Zalgo**: {'ON' if c.anti_zalgo_enabled else 'OFF'}",
-            f"**Anti-Phishing**: {'ON' if c.anti_phishing_enabled else 'OFF'}",
+            f"**Anti-Phishing**: {'ON' if c.anti_phishing_enabled else 'OFF'} (accorciatori "
+            f"{'ON' if c.phishing_accorciatori else 'OFF'}, inviti per adulti {'ON' if c.phishing_inviti_adulti else 'OFF'})",
             f"**Forma del testo**: a-capo {c.max_a_capo or 'spento'}, caratteri {c.max_lunghezza or 'spento'}, "
             f"spoiler {c.max_spoiler or 'spento'}",
             f"**Anti-Mass-Mention**: {'ON' if c.anti_mass_mention.enabled else 'OFF'} (max {c.anti_mass_mention.max_count})",
             f"**Anti-Attachment-Spam**: {'ON' if c.anti_attachment_spam.enabled else 'OFF'} (max {c.anti_attachment_spam.max_count}/{c.anti_attachment_spam.window_seconds}s)",
+            f"**Ripetuti**: {c.max_ripetuti or 'spento'} · **Minimo caratteri**: {c.min_caratteri or 'spento'}",
+            f"**Link nel tempo**: {'ON' if c.link_nel_tempo.enabled else 'OFF'} (max {c.link_nel_tempo.max_count}/{c.link_nel_tempo.window_seconds}s) · "
+            f"**Menzioni nel tempo**: {'ON' if c.menzioni_nel_tempo.enabled else 'OFF'} (max {c.menzioni_nel_tempo.max_count}/{c.menzioni_nel_tempo.window_seconds}s)",
+            f"**Embed**: {'sì' if c.controlla_embed else 'no'} · **Inoltrati**: {'sì' if c.controlla_inoltrati else 'no'} · "
+            f"**Estensioni vietate**: {', '.join(c.estensioni_vietate) or 'nessuna'}",
+            f"**Canali solo media**: {len(c.canali_solo_media)} · **Canali senza allegati**: {len(c.canali_senza_allegati)}",
             f"**Canali esenti**: {len(settings.exempt_channel_ids)}",
             f"**Ruoli esenti**: {len(settings.exempt_role_ids)}",
             f"**Canale di log**: {'<#' + str(settings.log_channel_id) + '>' if settings.log_channel_id else 'non impostato'}",
@@ -1156,13 +1482,18 @@ class AutomodCog(CogConGruppi, commands.Cog):
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
         """
         AMD-021: chi modifica un messaggio per far passare ciò che era
-        bloccato viene controllato di nuovo. Solo se il testo è cambiato.
+        bloccato viene controllato di nuovo. Se il testo è uguale ma sono
+        arrivati embed nuovi (l'anteprima di un link arriva così), si
+        controllano solo gli embed (AMD-019).
         """
-        if before.content == after.content:
-            return
-        await self._controlla(after, modificato=True)
+        if before.content != after.content:
+            await self._controlla(after, modificato=True)
+        elif (nuovi := _testo_embed(getattr(after, "embeds", None))) and nuovi != _testo_embed(
+            getattr(before, "embeds", None)
+        ):
+            await self._controlla(after, modificato=True, solo_embed=True)
 
-    async def _controlla(self, message: discord.Message, modificato: bool) -> None:
+    async def _controlla(self, message: discord.Message, modificato: bool, solo_embed: bool = False) -> None:
         if message.guild is None or message.author.bot:
             return
         if not isinstance(message.author, discord.Member):
@@ -1175,10 +1506,22 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if is_member_exempt(message.author, settings, message.channel.id):
             return
 
-        segnali = build_message_signals(message, settings.config, conta_nel_tempo=not modificato)
+        if solo_embed and not settings.config.controlla_embed:
+            return
+        segnali = build_message_signals(
+            message, settings.config, conta_nel_tempo=not modificato, solo_embed=solo_embed
+        )
         if settings.config.anti_phishing_enabled:
             lista_phishing.aggiorna_se_serve()
         violazioni = evaluate_message_violations(segnali, settings.config, lista_phishing.domini)
+        if solo_embed:
+            # Il testo è già stato controllato: dagli embed contano solo i link.
+            violazioni = tuple(v for v in violazioni if v in _VIOLAZIONI_LINK)
+        elif settings.config.phishing_inviti_adulti and self.bot is not None:
+            for codice in codici_invito(message.content):
+                if await _invito_per_adulti(self.bot, codice, message.guild.id):
+                    violazioni = (*violazioni, VIOLATION_INVITI_ADULTI)
+                    break
         if not violazioni:
             return
 

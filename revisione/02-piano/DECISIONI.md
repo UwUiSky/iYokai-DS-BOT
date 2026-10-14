@@ -432,3 +432,8 @@ Toglierlo o lasciarlo uguale no (non apre nulla). La regola sta in un punto solo
 `core.command_access.errore_ruolo_admin`, usato da `imposta_ruolo` (pannello web),
 `/admin config import` e `/admin config rollback`. `/setup` non tocca questo valore.
 Ruoli mod e ban: invariati (bastano i permessi di `/admin`).
+**Terzo caso (14/10/2026): `/antiraid`.** Con i filtri all'ingresso e i segnali di raid
+(#117, SIC-023…038) e `/security verify tempi` (#118) `/security` arrivava a 7.126 caratteri.
+Si sposta il blocco intero `/security antiraid *` in un gruppo di primo livello `/antiraid`
+(16 comandi, stesso permesso `administrator` e livello sicurezza). `/security` resta con
+panico, verifica, ban globale, escalation, heatmap, score, spam-trap.

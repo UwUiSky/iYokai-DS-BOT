@@ -19,17 +19,29 @@ blocco (salvata nel database, controllata ogni minuto).
 Quarantena: il ruolo "Quarantined" (core/security_quarantine.py) si crea
 quando si attiva il modulo, non durante il raid. Con il "blocco della
 quarantena" attivo chi non è fidato non può liberare un membro a mano né
-dargli altri ruoli (si usa /security antiraid rilascia, che è la stessa
+dargli altri ruoli (si usa /antiraid rilascia, che è la stessa
 funzione dell'anti-nuke). Le impostazioni che indeboliscono la difesa
 (blocco, rilascio col blocco attivo) le cambia solo chi gestisce:
 proprietario ed extra owner.
 
-Funzioni coperte: SPEC §7.1
+Filtri all'ingresso (SIC-023…028): età dell'account, bot non verificati,
+nomi pubblicitari, nomi vietati; ognuno con la sua azione (quarantena,
+timeout, kick, ban) e attivi anche fuori da un raid. Il bio del profilo non è
+leggibile dai bot: il filtro pubblicitario guarda nome utente e nome
+visualizzato. Segnali di raid in più: account creati vicini e nomi simili
+tra gli ultimi ingressi (SIC-030/031), soglia contata solo sui sospetti
+(SIC-029). Al raid: kick o ban (SIC-032), anche di chi è entrato poco prima
+(SIC-033), ping dei ruoli dello staff (SIC-034), elenco completo con
+/antiraid elenco (SIC-035), segnale di rete tra server (SIC-037) e
+segnalazione a chi gestisce il bot con /antiraid segnala (SIC-038).
+
+Funzioni coperte: SPEC §7.1 (SIC-023…035, 037, 038)
 """
 
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 from collections import deque
 from dataclasses import dataclass, field
@@ -48,12 +60,42 @@ from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
 from core.security_access import premium_sbloccato, solo_chi_gestisce
 from core.security_audit import resolve_voce
+from core.invio_file import invia_file_su_interazione
+from core.security_join_logic import (
+    AZIONE_NIENTE,
+    FILTRO_BOT_NON_VERIFICATO,
+    FILTRO_ETA,
+    FILTRO_NOME_PUBBLICITARIO,
+    FILTRO_NOME_VIETATO,
+    MAX_MESSAGGIO_DM,
+    MAX_NOMI_VIETATI,
+    MAX_SCHEMA,
+    SERVER_RETE_MINIMI,
+    Ingresso,
+    account_vicini,
+    azione_piu_forte,
+    elenco_testo,
+    ingresso_in_rete,
+    nome_pubblicitario,
+    nome_vietato,
+    nomi_simili,
+    pulisci_schema,
+    registra_ingresso,
+    riga_elenco,
+    ultimi_ingressi,
+)
 from core.security_logic import (
+    JOIN_VIOLATION_ACCOUNT_AGE,
+    JOIN_VIOLATION_ACCOUNT_VICINI,
+    JOIN_VIOLATION_AVATAR,
+    JOIN_VIOLATION_NOMI_SIMILI,
+    JOIN_VIOLATION_USERNAME,
     NUKE_ACTION_QUARANTINE_HOLD,
     AntiRaidConfig,
     JoinSignals,
     actor_is_trusted,
     evaluate_join,
+    is_account_too_new,
     is_raid,
 )
 from core.security_quarantine import (
@@ -62,7 +104,7 @@ from core.security_quarantine import (
     rilascia_utente,
     ruolo_quarantena,
 )
-from core.security_raid_state import DURATA_RAID_SECONDI, azzera, segna_raid
+from core.security_raid_state import DURATA_RAID_SECONDI, azzera, raid_in_corso, segna_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
 
@@ -84,6 +126,28 @@ DURATA_BLOCCO_SECONDI = DURATA_RAID_SECONDI
 MAX_INGRESSI_ELENCATI = 15
 MAX_NOME_ELENCATO = 80
 
+# Timeout dato da un filtro all'ingresso o dal raid.
+DURATA_TIMEOUT_FILTRO = timedelta(days=1)
+# Pausa tra un'azione e l'altra sugli ingressi già fatti (SIC-033).
+PAUSA_AZIONI_SECONDI = 0.3
+# Ban al raid: si cancellano i messaggi dell'ultima ora.
+SECONDI_MESSAGGI_BAN = 3600
+MAX_RUOLI_PING = 3
+_SOSPETTI = frozenset({JOIN_VIOLATION_ACCOUNT_AGE, JOIN_VIOLATION_USERNAME, JOIN_VIOLATION_AVATAR})
+_SCELTE_AZIONE_FILTRO = [
+    app_commands.Choice(name="Niente (filtro spento)", value="niente"),
+    app_commands.Choice(name="Quarantena", value="quarantena"),
+    app_commands.Choice(name="Timeout di un giorno", value="timeout"),
+    app_commands.Choice(name="Kick", value="kick"),
+    app_commands.Choice(name="Ban", value="ban"),
+]
+_CAMPO_FILTRO = {
+    FILTRO_ETA: "azione_eta",
+    FILTRO_BOT_NON_VERIFICATO: "azione_bot_non_verificato",
+    FILTRO_NOME_PUBBLICITARIO: "azione_nome_pubblicitario",
+    FILTRO_NOME_VIETATO: "azione_nome_vietato",
+}
+
 
 @dataclass
 class _Avviso:
@@ -97,11 +161,21 @@ class _Avviso:
 
 def _embed_avviso(avviso: _Avviso) -> discord.Embed:
     righe = "\n".join(f"• {voce}" for voce in avviso.recenti)
-    return discord.Embed(
+    embed = discord.Embed(
         title=f"🚨 Anti-Raid — {avviso.conteggio} join sospetti",
         description=f"Ultimi ingressi (dal più vecchio):\n{righe}"[:4096],
         color=discord.Color.red(),
     )
+    embed.set_footer(text="Elenco completo: /antiraid elenco")
+    return embed
+
+
+def guild_nome(member: discord.Member) -> str:
+    return getattr(member.guild, "name", "server")
+
+
+def _nomi(member: discord.Member) -> tuple:
+    return (member.name, getattr(member, "global_name", None), member.display_name)
 
 
 def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
@@ -165,10 +239,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="enable",
         descrizione="Attiva o disattiva l'Anti-Raid.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def enable(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -196,14 +269,20 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             await interaction.followup.send("⚠️ " + "\n⚠️ ".join(avvisi), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="join-rate",
         descrizione="Configura il limite di join in un intervallo di tempo.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(
         max_joins="Numero massimo di join consentiti nella finestra (da 1 a 1000)",
         seconds="Finestra in secondi (da 1 a 3600)",
+        conta="Quali ingressi contare (vuoto: non cambia)",
+    )
+    @app_commands.choices(
+        conta=[
+            app_commands.Choice(name="Tutti gli ingressi", value="tutti"),
+            app_commands.Choice(name="Solo gli account sospetti", value="sospetti"),
+        ]
     )
     @requires_module(MODULE_ANTI_RAID)
     async def join_rate(
@@ -211,20 +290,25 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         max_joins: app_commands.Range[int, 1, 1000],
         seconds: app_commands.Range[int, 1, 3600],
+        conta: app_commands.Choice[str] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
-        await security_repo.save_settings(
-            _replace(settings, join_rate_max=max_joins, join_rate_window_seconds=seconds)
+        cambi = {"join_rate_max": max_joins, "join_rate_window_seconds": seconds}
+        if conta is not None:
+            cambi["conta_solo_sospetti"] = conta.value == "sospetti"
+        nuove = _replace(settings, **cambi)
+        await security_repo.save_settings(nuove)
+        chi = "account sospetti" if nuove.anti_raid.conta_solo_sospetti else "ingressi"
+        await interaction.response.send_message(
+            f"Raid se entrano più di {max_joins} {chi} ogni {seconds}s.", ephemeral=True
         )
-        await interaction.response.send_message(f"Join rate limit impostato a {max_joins} ogni {seconds}s.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="account-age",
         descrizione="Età minima dell'account per non essere considerato sospetto.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(seconds="Età minima in secondi (es. 86400 = 1 giorno; 0 = nessun minimo; massimo 1 anno)")
     @requires_module(MODULE_ANTI_RAID)
@@ -238,10 +322,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Età minima account impostata a {seconds} secondi.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="username-check",
         descrizione="Attiva/disattiva il rilevamento pattern username sospetti.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def username_check(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -252,10 +335,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Rilevamento pattern username {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="avatar-check",
         descrizione="Attiva/disattiva il rilevamento avatar assente.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def avatar_check(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -266,16 +348,17 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Rilevamento avatar assente {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="lockdown-action",
         descrizione="Cosa fare quando un raid viene rilevato.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.choices(
         action=[
             app_commands.Choice(name="Quarantena (ruolo dedicato)", value="quarantine"),
             app_commands.Choice(name="Innalza il livello di verifica del server", value="verification"),
             app_commands.Choice(name="Entrambe", value="both"),
+            app_commands.Choice(name="Kick degli account del raid", value="kick"),
+            app_commands.Choice(name="Ban degli account del raid", value="ban"),
         ]
     )
     @requires_module(MODULE_ANTI_RAID)
@@ -287,10 +370,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Azione di lockdown impostata su **{action.name}**.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="alert-channel",
         descrizione="Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def alert_channel(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
@@ -301,10 +383,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Canale di alert impostato su {channel.mention}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="status",
         descrizione="Mostra la configurazione attuale dell'Anti-Raid.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def status(self, interaction: discord.Interaction) -> None:
@@ -320,6 +401,14 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             f"**Controllo avatar**: {'sì' if r.check_avatar_pattern else 'no'}",
             f"**Azione di lockdown**: {r.lockdown_action}",
             f"**Blocco della quarantena**: {'sì' if r.quarantine_hold else 'no'}",
+            f"**Filtri all'ingresso**: età {r.azione_eta}, bot non verificati {r.azione_bot_non_verificato}, "
+            f"nomi pubblicitari {r.azione_nome_pubblicitario}, nomi vietati {r.azione_nome_vietato} "
+            f"({len(r.nomi_vietati)} schemi)",
+            f"**Soglia contata su**: {'solo account sospetti' if r.conta_solo_sospetti else 'tutti gli ingressi'}",
+            f"**Account creati vicini**: {r.account_vicini_minimo or 'spento'} "
+            f"(margine {r.account_vicini_margine_secondi // 60} min) · **Nomi simili**: {r.nomi_simili_minimo or 'spento'}",
+            f"**Azione anche su chi è entrato prima**: {'sì' if r.retroattivo else 'no'}",
+            f"**Ruoli avvisati**: {' '.join(f'<@&{i}>' for i in r.ruoli_ping) or 'nessuno'}",
             f"**Canale degli allarmi**: {f'<#{settings.alert_channel_id}>' if settings.alert_channel_id else 'nessuno (solo DM al proprietario)'}",
             f"**Ruolo di quarantena**: {f'<@&{settings.quarantine_role_id}>' if settings.quarantine_role_id else 'non ancora creato'}",
         ]
@@ -328,13 +417,12 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="quarantine-hold",
         descrizione="Impedisce a chi non è fidato di togliere la quarantena a mano.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(
-        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /security antiraid rilascia"
+        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /antiraid rilascia"
     )
     @requires_module(MODULE_ANTI_RAID)
     async def quarantine_hold(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -349,10 +437,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="rilascia",
         descrizione="Toglie la quarantena a un membro (il modo giusto, col blocco attivo).",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(membro="Il membro da liberare dalla quarantena")
     @requires_module(MODULE_ANTI_RAID)
@@ -395,6 +482,231 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             testo = f"{membro.mention} è fuori dalla quarantena."
         await interaction.followup.send(
             testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    # ================================================================
+    # Filtri all'ingresso e segnali di raid (SIC-023…035, 038)
+    # ================================================================
+    @comando_di_gruppo(
+        "antiraid",
+        nome="filtro-ingresso",
+        descrizione="Azione per un filtro all'ingresso (vale anche fuori da un raid).",
+    )
+    @app_commands.describe(
+        filtro="Il filtro da regolare",
+        azione="Cosa fare a chi non lo passa",
+        messaggio_dm="Solo età: messaggio privato che spiega il requisito, mandato prima dell'azione",
+    )
+    @app_commands.choices(
+        filtro=[
+            app_commands.Choice(name="Account troppo giovane", value=FILTRO_ETA),
+            app_commands.Choice(name="Bot non verificato da Discord", value=FILTRO_BOT_NON_VERIFICATO),
+            app_commands.Choice(name="Invito Discord nel nome", value=FILTRO_NOME_PUBBLICITARIO),
+            app_commands.Choice(name="Nome nella lista dei vietati", value=FILTRO_NOME_VIETATO),
+        ],
+        azione=_SCELTE_AZIONE_FILTRO,
+    )
+    @requires_module(MODULE_ANTI_RAID)
+    async def filtro_ingresso(
+        self,
+        interaction: discord.Interaction,
+        filtro: app_commands.Choice[str],
+        azione: app_commands.Choice[str],
+        messaggio_dm: app_commands.Range[str, 0, MAX_MESSAGGIO_DM] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        cambi = {_CAMPO_FILTRO[filtro.value]: azione.value}
+        if messaggio_dm is not None and filtro.value == FILTRO_ETA:
+            cambi["messaggio_eta"] = messaggio_dm.strip()
+        await security_repo.save_settings(_replace(settings, **cambi))
+        testo = f"Filtro **{filtro.name}**: {azione.name.lower()}."
+        if filtro.value == FILTRO_NOME_VIETATO and not settings.anti_raid.nomi_vietati:
+            testo += " La lista è vuota: aggiungi gli schemi con /antiraid nomi-vietati."
+        if filtro.value == FILTRO_ETA:
+            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/antiraid account-age)."
+        await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "antiraid",
+        nome="nomi-vietati",
+        descrizione="Lista di parole o schemi (con *) vietati nei nomi di chi entra.",
+    )
+    @app_commands.describe(operazione="Cosa fare sulla lista", schema="Parola o schema con * (es. *free*nitro*)")
+    @app_commands.choices(
+        operazione=[
+            app_commands.Choice(name="Aggiungi", value="aggiungi"),
+            app_commands.Choice(name="Togli", value="togli"),
+            app_commands.Choice(name="Mostra", value="mostra"),
+            app_commands.Choice(name="Svuota", value="svuota"),
+        ]
+    )
+    @requires_module(MODULE_ANTI_RAID)
+    async def nomi_vietati(
+        self,
+        interaction: discord.Interaction,
+        operazione: app_commands.Choice[str],
+        schema: app_commands.Range[str, 1, MAX_SCHEMA] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        lista = list(settings.anti_raid.nomi_vietati)
+        voce = pulisci_schema(schema or "")
+        if operazione.value == "mostra":
+            testo = ", ".join(f"`{v}`" for v in lista) or "La lista è vuota."
+            await interaction.response.send_message(testo[:1900], ephemeral=True)
+            return
+        if operazione.value == "svuota":
+            lista = []
+        elif not voce:
+            await interaction.response.send_message("Scrivi lo schema.", ephemeral=True)
+            return
+        elif operazione.value == "aggiungi":
+            if voce in lista:
+                await interaction.response.send_message(f"`{voce}` è già nella lista.", ephemeral=True)
+                return
+            if len(lista) >= MAX_NOMI_VIETATI:
+                await interaction.response.send_message(
+                    f"La lista è piena ({MAX_NOMI_VIETATI} schemi): togline uno.", ephemeral=True
+                )
+                return
+            lista.append(voce)
+        elif voce in lista:
+            lista.remove(voce)
+        else:
+            await interaction.response.send_message(f"`{voce}` non è nella lista.", ephemeral=True)
+            return
+        await security_repo.save_settings(_replace(settings, nomi_vietati=tuple(lista)))
+        await interaction.response.send_message(f"Lista aggiornata: {len(lista)} schemi.", ephemeral=True)
+
+    @comando_di_gruppo(
+        "antiraid",
+        nome="segnali",
+        descrizione="Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.",
+    )
+    @app_commands.describe(
+        account_vicini="Raid se tanti account nella finestra sono creati vicini (0 = spento)",
+        margine_minuti="Quanto vicini, in minuti, devono essere creati gli account",
+        nomi_simili="Raid se tanti ingressi nella finestra hanno nomi simili (0 = spento)",
+        retroattivo="Al raid agisce anche su chi è entrato nella finestra prima della soglia",
+    )
+    @requires_module(MODULE_ANTI_RAID)
+    async def segnali(
+        self,
+        interaction: discord.Interaction,
+        account_vicini: app_commands.Range[int, 0, 50] | None = None,
+        margine_minuti: app_commands.Range[int, 1, 1440] | None = None,
+        nomi_simili: app_commands.Range[int, 0, 50] | None = None,
+        retroattivo: bool | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        cambi = {}
+        if account_vicini is not None:
+            cambi["account_vicini_minimo"] = 0 if account_vicini == 1 else account_vicini
+        if margine_minuti is not None:
+            cambi["account_vicini_margine_secondi"] = margine_minuti * 60
+        if nomi_simili is not None:
+            cambi["nomi_simili_minimo"] = 0 if nomi_simili == 1 else nomi_simili
+        if retroattivo is not None:
+            cambi["retroattivo"] = retroattivo
+        r = _replace(settings, **cambi).anti_raid
+        await security_repo.save_settings(_replace(settings, **cambi))
+        await interaction.response.send_message(
+            f"Account creati vicini: {r.account_vicini_minimo or 'spento'} "
+            f"(entro {r.account_vicini_margine_secondi // 60} minuti). "
+            f"Nomi simili: {r.nomi_simili_minimo or 'spento'}. "
+            f"Azione su chi è entrato prima: {'sì' if r.retroattivo else 'no'}.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "antiraid",
+        nome="ping-ruoli",
+        descrizione="Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).",
+    )
+    @app_commands.describe(ruolo_1="Primo ruolo", ruolo_2="Secondo ruolo", ruolo_3="Terzo ruolo")
+    @requires_module(MODULE_ANTI_RAID)
+    async def ping_ruoli(
+        self,
+        interaction: discord.Interaction,
+        ruolo_1: discord.Role | None = None,
+        ruolo_2: discord.Role | None = None,
+        ruolo_3: discord.Role | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        ruoli = tuple(dict.fromkeys(r.id for r in (ruolo_1, ruolo_2, ruolo_3) if r is not None))
+        settings = await security_repo.get_settings(interaction.guild.id)
+        await security_repo.save_settings(_replace(settings, ruoli_ping=ruoli[:MAX_RUOLI_PING]))
+        testo = " ".join(f"<@&{i}>" for i in ruoli) or "nessuno"
+        await interaction.response.send_message(
+            f"Ruoli avvisati al raid: {testo}.", ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo(
+        "antiraid",
+        nome="elenco",
+        descrizione="File con tutti gli account dei raid nelle ultime ore.",
+    )
+    @app_commands.describe(ore="Quante ore indietro guardare (da 1 a 168)")
+    @requires_module(MODULE_ANTI_RAID)
+    async def elenco(self, interaction: discord.Interaction, ore: app_commands.Range[int, 1, 168] = 24) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        dal = discord.utils.utcnow() - timedelta(hours=ore)
+        righe = [
+            f"{r['actor_id']}\t{r['created_at']:%Y-%m-%d %H:%M:%S} UTC\t{r['detail'] or ''}"
+            for r in await security_repo.raid_joins(interaction.guild.id, dal)
+        ]
+        if not righe:
+            await interaction.response.send_message(f"Nessun account di raid nelle ultime {ore} ore.", ephemeral=True)
+            return
+        await invia_file_su_interazione(
+            interaction,
+            elenco_testo(righe).encode(),
+            f"raid-{interaction.guild.id}.txt",
+            contenuto=f"{len(righe)} account di raid nelle ultime {ore} ore.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "antiraid",
+        nome="segnala",
+        descrizione="Segnala a chi gestisce il bot un raid che non è stato riconosciuto.",
+    )
+    @app_commands.describe(nota="Cosa è successo (facoltativo)")
+    @requires_module(MODULE_ANTI_RAID)
+    async def segnala(
+        self, interaction: discord.Interaction, nota: app_commands.Range[str, 0, 500] | None = None
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        from core.config import config
+
+        await interaction.response.defer(ephemeral=True)
+        ingressi = ultimi_ingressi(interaction.guild.id)
+        righe = [riga_elenco(i.member_id, i.nome, i.creato, i.entrato) for i in ingressi]
+        testo = (
+            f"Raid segnalato dal server {interaction.guild.name} ({interaction.guild.id}) "
+            f"da {interaction.user} ({interaction.user.id}). {len(righe)} ingressi recenti in memoria."
+            + (f"\nNota: {nota}" if nota else "")
+        )
+        try:
+            gestore = await self.bot.fetch_user(config.OWNER_ID)
+            await gestore.send(
+                testo[:2000],
+                file=discord.File(io.BytesIO(elenco_testo(righe).encode()), filename=f"segnalazione-{interaction.guild.id}.txt"),
+            )
+        except discord.HTTPException:
+            await interaction.followup.send("Non sono riuscito a mandare la segnalazione: riprova più tardi.", ephemeral=True)
+            return
+        await security_repo.log_action(interaction.guild.id, "raid_segnalato", interaction.user.id, (nota or "")[:500])
+        await interaction.followup.send(
+            f"Segnalazione mandata con {len(righe)} ingressi recenti. Grazie!", ephemeral=True
         )
 
     @commands.Cog.listener()
@@ -468,7 +780,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         embed = discord.Embed(
             title="🛡️ Anti-Raid — quarantena", description=dettaglio[:4096], color=discord.Color.orange()
         )
-        embed.set_footer(text="Per liberare un membro: /security antiraid rilascia")
+        embed.set_footer(text="Per liberare un membro: /antiraid rilascia")
         await _alert_staff(guild, settings, embed)
 
     @commands.Cog.listener()
@@ -486,52 +798,65 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        # Un bot entra solo se un amministratore lo invita: non è un
-        # ingresso da contare né da mettere in quarantena.
-        if member.bot:
-            return
         guild = member.guild
         if not await self._modulo_utilizzabile(guild.id):
             return
 
         settings = await security_repo.get_settings(guild.id)
-        if not settings.anti_raid.enabled:
+        r = settings.anti_raid
+        if not r.enabled:
             return
 
         now = discord.utils.utcnow()
-        conteggio = security_rate_tracker.record_and_count(
-            guild.id, GUILD_WIDE_KEY, "joins", now, settings.anti_raid.join_rate_window_seconds
-        )
+        # SIC-023: i filtri all'ingresso valgono anche fuori da un raid (e per i bot, SIC-026).
+        if await self._filtri_ingresso(member, settings, now):
+            return
+        # Un bot entra solo se un amministratore lo invita: non è un
+        # ingresso da contare né da mettere in quarantena.
+        if member.bot:
+            return
 
-        segnali = JoinSignals(
+        # SIC-037: lo stesso account entra in molti server in pochi minuti.
+        if ingresso_in_rete(member.id, guild.id, now) == SERVER_RETE_MINIMI:
+            await self._avviso_rete(guild, settings, member)
+
+        base = JoinSignals(
             account_created_at=member.created_at,
             has_avatar=member.avatar is not None,
             username=member.name,
-            recent_join_count=conteggio,
+            recent_join_count=0,
         )
-        violazioni = evaluate_join(segnali, settings.anti_raid, now)
-        # Il blocco scatta solo sulla soglia di ingressi: un singolo
+        sospetto = bool(_SOSPETTI & set(evaluate_join(base, r, now)))
+        finestra = r.join_rate_window_seconds
+        if r.conta_solo_sospetti and not sospetto:
+            conteggio = 0  # SIC-029: un ingresso normale non conta per la soglia
+        else:
+            categoria = "joins_sospetti" if r.conta_solo_sospetti else "joins"
+            conteggio = security_rate_tracker.record_and_count(guild.id, GUILD_WIDE_KEY, categoria, now, finestra)
+
+        registra_ingresso(guild.id, Ingresso(member.id, member.name, member.created_at, now, sospetto))
+        recenti = ultimi_ingressi(guild.id, dal=now - timedelta(seconds=finestra))
+        violazioni = list(evaluate_join(
+            JoinSignals(member.created_at, member.avatar is not None, member.name, conteggio), r, now
+        ))
+        if r.account_vicini_minimo >= 2 and account_vicini(
+            recenti, member.created_at, r.account_vicini_margine_secondi
+        ) >= r.account_vicini_minimo:
+            violazioni.append(JOIN_VIOLATION_ACCOUNT_VICINI)
+        if r.nomi_simili_minimo >= 2 and nomi_simili(recenti, member.name) >= r.nomi_simili_minimo:
+            violazioni.append(JOIN_VIOLATION_NOMI_SIMILI)
+        # Il blocco scatta solo sui segnali di gruppo: un singolo
         # ingresso "sospetto" (senza avatar, account nuovo) è normale.
-        if not is_raid(violazioni):
+        if not is_raid(tuple(violazioni)):
             return
 
+        primo_del_raid = not raid_in_corso(guild.id, now)
         # Chi manda messaggi ai nuovi arrivati (benvenuto privato) sta
         # zitto finché dura il raid.
         segna_raid(guild.id, now)
 
-        azione = settings.anti_raid.lockdown_action
-        non_in_quarantena = False
-        if azione in ("quarantine", "both"):
-            ruolo = await self._ruolo_quarantena(guild)
-            if ruolo is None:
-                non_in_quarantena = True
-            else:
-                try:
-                    await member.add_roles(ruolo, reason="Anti-Raid: join sospetto")
-                except discord.HTTPException:
-                    # Il raid c'è comunque: si dice nell'avviso che la quarantena non è partita.
-                    logger.warning("Quarantena non assegnata a %s (server %s).", member.id, guild.id)
-                    non_in_quarantena = True
+        azione = r.lockdown_action
+        riuscita = await self._azione_raid(guild, member, azione)
 
         if azione in ("verification", "both"):
             await self._alza_verifica(guild, now)
@@ -540,9 +865,118 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await security_repo.log_action(guild.id, "raid_join", member.id, dettaglio)
 
         voce = f"{member.name} ({member.id})"[:MAX_NOME_ELENCATO - 20]
-        if non_in_quarantena:
-            voce += " ⚠ senza quarantena"
+        if not riuscita:
+            voce += " ⚠ senza quarantena" if azione in ("quarantine", "both") else f" ⚠ {azione} non riuscito"
         await self._avvisa(guild, settings, voce, now)
+
+        # SIC-033: al primo ingresso del raid, la stessa azione su chi è entrato nella finestra.
+        if primo_del_raid and r.retroattivo:
+            for ingresso in recenti:
+                if ingresso.member_id == member.id:
+                    continue
+                if r.conta_solo_sospetti and not ingresso.sospetto:
+                    continue  # SIC-029: chi non è sospetto non è contato nel raid, e non si tocca
+                prima = guild.get_member(ingresso.member_id)
+                if prima is None and azione != "ban":
+                    continue
+                await asyncio.sleep(PAUSA_AZIONI_SECONDI)
+                await self._azione_raid(guild, prima or discord.Object(id=ingresso.member_id), azione)
+                await security_repo.log_action(
+                    guild.id, "raid_join", ingresso.member_id, f"{ingresso.nome} — entrato prima della soglia"
+                )
+                await self._avvisa(guild, settings, f"{ingresso.nome} ({ingresso.member_id}) ↩", now)
+
+    async def _azione_raid(self, guild: discord.Guild, bersaglio, azione: str) -> bool:
+        """Azione del raid su un account (SIC-032). True se riuscita o se non c'è niente da fare."""
+        if azione in ("quarantine", "both"):
+            return await self._esegui(guild, bersaglio, "quarantena", "Anti-Raid: join sospetto")
+        if azione in ("kick", "ban"):
+            return await self._esegui(guild, bersaglio, azione, "Anti-Raid: account del raid")
+        return True
+
+    async def _esegui(self, guild: discord.Guild, bersaglio, azione: str, motivo: str) -> bool:
+        """Quarantena, timeout, kick o ban su un account appena entrato. False se Discord rifiuta."""
+        try:
+            if azione == "quarantena":
+                ruolo = await self._ruolo_quarantena(guild)
+                if ruolo is None or not isinstance(bersaglio, discord.Member):
+                    return False
+                await bersaglio.add_roles(ruolo, reason=motivo)
+            elif azione == "timeout" and isinstance(bersaglio, discord.Member):
+                await bersaglio.timeout(DURATA_TIMEOUT_FILTRO, reason=motivo)
+            elif azione == "kick" and isinstance(bersaglio, discord.Member):
+                await bersaglio.kick(reason=motivo)
+            elif azione == "ban":
+                await guild.ban(bersaglio, reason=motivo, delete_message_seconds=SECONDI_MESSAGGI_BAN)
+            else:
+                return False
+        except discord.HTTPException:
+            logger.warning("Anti-Raid: %s non riuscito su %s (server %s).", azione, bersaglio.id, guild.id)
+            return False
+        return True
+
+    async def _filtri_ingresso(self, member: discord.Member, settings: SecuritySettings, now: datetime) -> bool:
+        """
+        Filtri all'ingresso (SIC-023…028). Se ne scattano più, vale l'azione
+        più forte. True se l'account è stato cacciato (kick o ban riusciti).
+        """
+        r = settings.anti_raid
+        scattati: list[tuple[str, str]] = []
+        if r.azione_eta != AZIONE_NIENTE and not member.bot and is_account_too_new(
+            member.created_at, now, r.min_account_age_seconds
+        ):
+            scattati.append((FILTRO_ETA, r.azione_eta))
+        if r.azione_bot_non_verificato != AZIONE_NIENTE and member.bot and not member.public_flags.verified_bot:
+            scattati.append((FILTRO_BOT_NON_VERIFICATO, r.azione_bot_non_verificato))
+        if r.azione_nome_pubblicitario != AZIONE_NIENTE and nome_pubblicitario(_nomi(member)):
+            scattati.append((FILTRO_NOME_PUBBLICITARIO, r.azione_nome_pubblicitario))
+        if r.azione_nome_vietato != AZIONE_NIENTE and nome_vietato(_nomi(member), r.nomi_vietati):
+            scattati.append((FILTRO_NOME_VIETATO, r.azione_nome_vietato))
+        if not scattati:
+            return False
+
+        azione = azione_piu_forte(a for _, a in scattati)
+        filtri = ", ".join(f for f, _ in scattati)
+        # SIC-024: il DM che spiega il requisito parte PRIMA dell'azione (dopo un kick non arriva più).
+        if r.messaggio_eta and any(f == FILTRO_ETA for f, _ in scattati):
+            embed = discord.Embed(
+                title=f"Ingresso in {guild_nome(member)}", description=r.messaggio_eta[:MAX_MESSAGGIO_DM]
+            )
+            await try_dm(member, embed)
+        riuscita = await self._esegui(member.guild, member, azione, f"Anti-Raid: filtro all'ingresso ({filtri})")
+        await security_repo.log_action(
+            member.guild.id, "filtro_ingresso", member.id, f"{member} — {filtri}: {azione}{'' if riuscita else ' (non riuscito)'}"
+        )
+        if not raid_in_corso(member.guild.id, now):
+            embed = discord.Embed(
+                title="🛂 Anti-Raid — filtro all'ingresso",
+                description=f"{member.mention} ({member.id})\nFiltri: {filtri}\nAzione: {azione}"
+                + ("" if riuscita else " ⚠ non riuscita"),
+                color=discord.Color.orange(),
+            )
+            await self._al_canale(member.guild, settings, embed)
+        return riuscita and azione in ("kick", "ban")
+
+    async def _al_canale(self, guild: discord.Guild, settings: SecuritySettings, embed: discord.Embed) -> None:
+        canale = guild.get_channel(settings.alert_channel_id) if settings.alert_channel_id is not None else None
+        if isinstance(canale, discord.TextChannel):
+            try:
+                await canale.send(embed=embed)
+            except discord.HTTPException:
+                pass
+
+    async def _avviso_rete(self, guild: discord.Guild, settings: SecuritySettings, member: discord.Member) -> None:
+        """SIC-037: solo un avviso allo staff, nessuna azione e nessun punteggio."""
+        await security_repo.log_action(guild.id, "raid_rete", member.id, f"{member} in {SERVER_RETE_MINIMI}+ server")
+        embed = discord.Embed(
+            title="🌐 Anti-Raid — ingresso in molti server",
+            description=(
+                f"{member.mention} ({member.id}) è entrato in almeno {SERVER_RETE_MINIMI} server "
+                "che usano iYokai negli ultimi minuti. Può essere un account da raid: controllalo."
+            ),
+            color=discord.Color.gold(),
+        )
+        await self._al_canale(guild, settings, embed)
 
     async def _ruolo_quarantena(self, guild: discord.Guild) -> discord.Role | None:
         """
@@ -621,8 +1055,14 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
                     return
                 except discord.HTTPException:
                     avviso.messaggio = None  # cancellato: se ne manda uno nuovo
+            # SIC-034: i ruoli dello staff si pingano solo nel primo messaggio dell'episodio.
+            ping = " ".join(f"<@&{i}>" for i in settings.anti_raid.ruoli_ping) if not episodio_in_corso else ""
             try:
-                avviso.messaggio = await canale.send(embed=embed)
+                avviso.messaggio = await canale.send(
+                    content=ping or None,
+                    embed=embed,
+                    allowed_mentions=discord.AllowedMentions(roles=True, users=False, everyone=False),
+                )
             except discord.HTTPException:
                 pass
 

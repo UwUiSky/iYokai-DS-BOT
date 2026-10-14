@@ -45,6 +45,9 @@ async def test_automod_cog_si_carica_correttamente():
         "anti-mention",
         "anti-attachment",
         "actions-set",
+        "messaggi",
+        "contenuto",
+        "canale-media",
     }
     assert {c.name for c in esenzioni.commands} == {
         "channel-add",

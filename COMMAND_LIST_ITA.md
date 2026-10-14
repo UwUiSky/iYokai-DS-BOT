@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:55 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:22 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 442 comandi in 20 categorie.**
+**Totale: 458 comandi in 21 categorie.**
 
 ## Admin
 
@@ -92,6 +92,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 - **`/antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
 - **`/antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
 
+## Antiraid
+
+- **`/antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
+- **`/antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
+- **`/antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
+- **`/antiraid elenco`** — File con tutti gli account dei raid nelle ultime ore.
+- **`/antiraid enable`** — Attiva o disattiva l'Anti-Raid.
+- **`/antiraid filtro-ingresso`** — Azione per un filtro all'ingresso (vale anche fuori da un raid).
+- **`/antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
+- **`/antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
+- **`/antiraid nomi-vietati`** — Lista di parole o schemi (con *) vietati nei nomi di chi entra.
+- **`/antiraid ping-ruoli`** — Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).
+- **`/antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
+- **`/antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
+- **`/antiraid segnala`** — Segnala a chi gestisce il bot un raid che non è stato riconosciuto.
+- **`/antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
+- **`/antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
+- **`/antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+
 ## AutoMod
 
 - **`/automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
@@ -108,8 +127,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 - **`/automod filtri anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
 - **`/automod filtri anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
 - **`/automod filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
+- **`/automod filtri canale-media`** — Canale solo media, senza allegati o normale.
+- **`/automod filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
 - **`/automod filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
 - **`/automod filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
+- **`/automod filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
 - **`/automod filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
 - **`/automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
 - **`/automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
@@ -272,6 +294,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 - **`/mod caso vedi`** — Mostra i dettagli di un singolo caso.
 - **`/mod clear`** — Cancella un numero di messaggi, con filtri opzionali.
 - **`/mod lock`** — Blocca la possibilità di scrivere in un canale.
+- **`/mod massa timeout`** — Mette in timeout più membri insieme (max 28 giorni).
+- **`/mod massa warn`** — Assegna un warn a più membri insieme.
 - **`/mod mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
 - **`/mod nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod nota elenca`** — Elenca le note su un utente.
@@ -291,6 +315,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 - **`/modban appelli elenco`** — Mostra gli ultimi appelli del server.
 - **`/modban ban`** — Banna permanentemente un membro.
 - **`/modban kick`** — Espelle un membro dal server.
+- **`/modban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
+- **`/modban massa kick`** — Espelle più membri insieme (ID o menzioni).
+- **`/modban massa unban`** — Toglie il ban a più utenti insieme (ID).
 - **`/modban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.
 - **`/modban tempban`** — Banna un membro per una durata definita.
 - **`/modban unban`** — Rimuove il ban da un utente.
@@ -401,16 +428,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 
 ## Sicurezza
 
-- **`/security antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
-- **`/security antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
-- **`/security antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
-- **`/security antiraid enable`** — Attiva o disattiva l'Anti-Raid.
-- **`/security antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
-- **`/security antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
-- **`/security antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
-- **`/security antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
-- **`/security antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
-- **`/security antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
 - **`/security escalation disable`** — Disattiva l'escalation ladder.
 - **`/security escalation enable`** — Attiva l'escalation ladder.
 - **`/security escalation remove-step`** — Rimuove un livello dalla scala personalizzata.
@@ -436,6 +453,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 - **`/security verify panel`** — Pubblica il pannello di verifica.
 - **`/security verify setup`** — Configura il Verify.
 - **`/security verify statistiche`** — Verifiche riuscite e fallite.
+- **`/security verify tempi`** — Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.
 - **`/security verify tentativi`** — Tentativi di verifica di un utente.
 - **`/security verify whitelist-add`** — Aggiungi un utente alla whitelist.
 - **`/security verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
@@ -491,6 +509,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:
 - **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.
 - **`/utility tag`** — Usa un comando personalizzato di questo server.
+- **`/utility verifica`** — Verificati in questo server (come il bottone del pannello).
 
 ## Vocali
 

@@ -71,6 +71,11 @@ SETTINGS_SCHEMA = {
     "verify_extra_role_ids": "lista_id",
     "verify_captcha_tipo": "captcha_tipo",
     "verify_log_compatto": "bool",
+    "verify_promemoria_minuti": "int_0_1440",
+    "verify_scadenza_minuti": "int_0_1440",
+    "verify_azione_scadenza": "azione_verifica",
+    "verify_azione_fallita": "azione_verifica",
+    "verify_solo_sospetti": "bool",
     "mute_role_id": "id",
     "admin_role_id": "id",
     "mod_role_id": "id",
@@ -143,6 +148,9 @@ CONTROLLI_PER_TIPO = {
         "una modalità di restore valida",
     ),
     "captcha_tipo": (lambda valore: valore in ("testo", "immagine"), "«testo» oppure «immagine»"),
+    "azione_verifica": (
+        lambda valore: valore in ("niente", "quarantena", "kick", "ban"), "niente, quarantena, kick oppure ban"
+    ),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),

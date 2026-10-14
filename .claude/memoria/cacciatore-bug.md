@@ -3,6 +3,7 @@
 ## Aggiornata
 14/10/2026 · ultimo giro: `feat/r6ai` (motore AI, /ai, -chiedi, menzione, traduzioni, immagini, ticket) con fix 9516f7c
 14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
+14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
 13/10/2026 · ultimo giro: `feat/r4-uti` (ruoli auto, starboard, tag, benvenuto immagine, role menu, embed, contatori, compleanni, inviti, moduli)
 13/10/2026 · ultimo giro: `feat/r4-liv` (livelli, economia, giveaway, giochi, profili)
 13/10/2026 · ultimo giro: `feat/r4-tkt` (ticket, ModMail, standard/sollecito, log, /voice)
@@ -27,6 +28,11 @@
 ## Cose imparate
 - AI: ogni lavoro automatico (moderazione, traduzione) che conta sulla persona = aggirabile; cache per somiglianza mai su traduzioni/giudizi.
 - Web: `Referrer-Policy: no-referrer` fa mandare `Origin: null` ai POST dei moduli (Fetch spec): rompe il controllo d'origine. `del_cookie` di aiohttp senza `secure=` non cancella i cookie `__Host-`.
+- feat/r6mod: corretti 5 (tetto usi/ora ban-kick massa, bulk_ban senza manage_guild, retroattivo solo-sospetti, rientro verify, tetto link/messaggio); 4 plausibili in `rapporti/bug.md`.
+
+## Cose imparate
+- Azioni fatte DAL bot (massa, automod) non le vede l'anti-nuke (attore = bot): serve un tetto proprio.
+- Lavori nello scheduler legati all'ingresso: cancellarli al rientro (`scheduler.cancel_for_user`).
 - wavelink: `Pool.connect` torna con status CONNECTING (CONNECTED col messaggio `ready`); i test con `connetti` finto non lo vedono. Prova con un finto Lavalink aiohttp (/v4/websocket manda ready, /v4/info).
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
 - Controllare sempre l'ordine di avvio (il worker backup non partiva mai), non solo la logica.

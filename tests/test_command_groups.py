@@ -16,18 +16,18 @@ from core import command_groups as cg
 from core.command_access import Livello
 
 ATTESI = [
-    "owner", "admin", "gestione", "economia", "moduli", "security", "antinuke", "ai", "automod", "mod", "modban",
+    "owner", "admin", "gestione", "economia", "moduli", "security", "antinuke", "ai", "antiraid", "automod", "mod", "modban",
     "log", "ticket", "voice", "music", "level", "clan", "fun", "utility",
 ]
 PERMESSI = {
-    "admin": "manage_guild", "gestione": "manage_guild", "economia": "manage_guild", "moduli": "manage_guild", "antinuke": "administrator", "ai": "manage_guild",
+    "admin": "manage_guild", "gestione": "manage_guild", "economia": "manage_guild", "moduli": "manage_guild", "antinuke": "administrator", "antiraid": "administrator", "ai": "manage_guild",
     "automod": "manage_guild", "log": "manage_guild",
     "security": "administrator", "owner": "administrator",
     "mod": "moderate_members", "modban": "ban_members",
 }
 LIVELLI = {
     "owner": Livello.OWNER, "admin": Livello.ADMIN, "gestione": Livello.ADMIN, "economia": Livello.ADMIN,
-    "moduli": Livello.ADMIN, "automod": Livello.ADMIN, "security": Livello.SECURITY, "antinuke": Livello.SECURITY, "ai": Livello.ADMIN,
+    "moduli": Livello.ADMIN, "automod": Livello.ADMIN, "security": Livello.SECURITY, "antinuke": Livello.SECURITY, "antiraid": Livello.SECURITY, "ai": Livello.ADMIN,
     "mod": Livello.MOD, "modban": Livello.MODBAN, "log": Livello.LOG,
 }
 

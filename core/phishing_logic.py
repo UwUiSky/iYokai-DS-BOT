@@ -4,7 +4,8 @@ core/phishing_logic.py
 Riconosce i link di phishing: confronto dei domini con la lista e con alcuni
 segni tipici dei siti truffa (nome di una marca con parole da regalo, nomi
 scritti quasi come quelli veri). Senza Discord e senza rete.
-Funzioni coperte: SPEC §23 (NF-31)
+Funzioni coperte: SPEC §23 (NF-31, SIC-042: accorciatori di link e inviti a
+server per adulti, ognuno con un suo interruttore)
 
 Un dominio ufficiale non e' mai segnalato. L'euristica puo' sbagliare: per
 questo il server puo' mettere un dominio in whitelist (anti-link) e lo
@@ -139,3 +140,52 @@ def e_phishing(domini, lista: frozenset[str], consentiti=()) -> bool:
         if sembra_phishing(dominio):
             return True
     return False
+
+
+# SIC-042: accorciatori di link. Nascondono la meta vera del link: chi li accende li blocca tutti.
+ACCORCIATORI = frozenset({
+    "bit.ly", "bitly.com", "tinyurl.com", "goo.gl", "is.gd", "v.gd", "ow.ly", "buff.ly", "cutt.ly",
+    "rebrand.ly", "shorturl.at", "tiny.cc", "rb.gy", "bit.do", "t.ly", "s.id", "adf.ly", "shorte.st",
+    "t.co", "lnkd.in", "tiny.one", "shorturl.gg", "u.to", "clck.ru", "qr.ae", "soo.gd", "x.gd",
+    "urlz.fr", "2no.co", "grabify.link", "iplogger.org", "iplogger.com", "blasze.com", "linktr.ee",
+})
+
+
+def e_accorciatore(domini, consentiti=()) -> bool:
+    """True se almeno un dominio (o un suo dominio padre) e' un accorciatore non in whitelist."""
+    consentiti_n = {normalize_domain(d) for d in consentiti} - {""}
+    for dominio in domini:
+        parti = normalize_domain(dominio).split(".")
+        catena = {".".join(parti[i:]) for i in range(len(parti))}
+        if catena & consentiti_n:
+            continue
+        if catena & ACCORCIATORI:
+            return True
+    return False
+
+
+# SIC-042: inviti a server per adulti. Il codice si legge dal testo; il server lo dice Discord.
+MAX_INVITI_PER_MESSAGGIO = 3  # ogni invito costa una chiamata a Discord
+_INVITO = re.compile(r"(?:discord(?:app)?\.com/invite|discord\.gg)/([A-Za-z0-9-]{2,32})", re.IGNORECASE)
+# Parole nel nome del server che lo dicono per adulti anche se il livello NSFW non e' impostato.
+PAROLE_ADULTI = ("nsfw", "18+", "porn", "hentai", "onlyfans", "xxx", "nude", "nudes", "sexy", "e-girl", "egirl")
+LIVELLI_NSFW_ADULTI = frozenset({"explicit", "age_restricted"})
+
+
+def codici_invito(testo: str) -> tuple[str, ...]:
+    """I codici d'invito Discord nel testo, senza doppioni, al massimo MAX_INVITI_PER_MESSAGGIO."""
+    visti: list[str] = []
+    for codice in _INVITO.findall(testo or ""):
+        if codice not in visti:
+            visti.append(codice)
+        if len(visti) >= MAX_INVITI_PER_MESSAGGIO:
+            break
+    return tuple(visti)
+
+
+def server_per_adulti(livello_nsfw: str, nome: str) -> bool:
+    """True se Discord segna il server come esplicito/vietato ai minori o se il nome lo dichiara."""
+    if (livello_nsfw or "").lower() in LIVELLI_NSFW_ADULTI:
+        return True
+    nome = (nome or "").lower()
+    return any(parola in nome for parola in PAROLE_ADULTI)

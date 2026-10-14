@@ -209,3 +209,12 @@
 - 14/10/2026 · `core/web_panel_server.py` del_cookie dei `__Host-` senza Secure: il browser ignora la cancellazione (uscita, state) · bassa · corretto
 - 14/10/2026 · `core/panel_bridge.py:applica_ruolo` chi ha solo «Gestisci server» sceglie il ruolo admin del bot (che vale anche per Livello.SECURITY = Amministratore): scalata, come già `/admin config import` · media · aperto (scelta di progetto)
 - 14/10/2026 · `core/web_panel_server.py:_server` ogni GET su un server dove l'utente non è in cache chiama `fetch_member` (120/min per IP) · bassa · aperto
+| 14/10 | `actions.py` `_prepara_massa` | Ban/kick in massa senza tetto di usi all'ora (catalogo MOD-002): 50 ban a comando, illimitati, invisibili all'anti-nuke (attore = bot) | alta | corretto r6mod (2/ora per azione, owner esente) |
+| 14/10 | `actions.py` `ban_massa` | `bulk_ban` vuole anche «Gestisci server»: senza, Forbidden e tutti «Discord ha rifiutato» | media | corretto r6mod (ban singoli) |
+| 14/10 | `anti_raid.py:873` | Retroattivo con soglia solo-sospetti agisce anche sui membri normali entrati nella finestra | alta | corretto r6mod |
+| 14/10 | `verify.py` `on_member_join` | Rientro: le scadenze dell'ingresso precedente restano e cacciano prima del tempo | media | corretto r6mod |
+| 14/10 | `automod.py` link nel tempo | Un evento per link senza tetto: 300 link = 300 voci in coda | bassa | corretto r6mod (50 per messaggio) |
+| 14/10 | `automod.py` `_testo_da_controllare` | Embed dell'anteprima link arrivano per modifica (contenuto uguale = ignorata): AMD-019 quasi mai attivo; quando c'è, caps/lunghezza/parole sul titolo dell'anteprima = falso positivo | media | corretto r6mod (revisore) |
+| 14/10 | `automod_advanced_logic.py` solo-media | Sticker o inoltro di un'immagine in canale solo media = violazione | bassa | corretto r6mod (revisore) |
+| 14/10 | `actions.py` `_non_moderabile` | Membro non in cache = nessun controllo di gerarchia sul ban (cache piena con chunk all'avvio) | bassa | corretto r6mod (revisore) |
+| 14/10 | `verify_logic.azione_dopo_fallimento` | 3 errori di captcha contati senza limite di tempo (anche di giorni prima) | bassa | corretto r6mod (revisore) |

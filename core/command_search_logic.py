@@ -195,8 +195,8 @@ def menzione(percorso: str, ids: Mapping[str, int]) -> str:
 
 def menziona_percorsi(testo: str, percorsi: Iterable[str], ids: Mapping[str, int]) -> str:
     """
-    Ogni `/percorso` citato nel testo diventa una menzione cliccabile, solo a confine di
-    parola: `/mod ban` non tocca `/mod banlist` né `/mod ban-lista`. Un solo passaggio, dal
+    Ogni percorso di comando citato nel testo (barra + nome) diventa una menzione cliccabile,
+    solo a confine di parola: il percorso «ban» non tocca «banlist» né «ban-lista». Un solo passaggio, dal
     percorso più lungo, così una menzione già messa non si ritocca; i backtick intorno si tolgono.
     """
     nomi = sorted({p for p in percorsi if p}, key=len, reverse=True)

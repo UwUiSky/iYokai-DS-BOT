@@ -57,8 +57,26 @@ class AntiRaidConfig:
     check_avatar_pattern: bool = True
     lockdown_action: str = "quarantine"  # "quarantine" | "verification" | "both"
     # SIC-003: chi non è fidato non può togliere la quarantena a mano (usa
-    # /security antiraid rilascia) né dare altri ruoli a chi ci sta dentro.
+    # /antiraid rilascia) né dare altri ruoli a chi ci sta dentro.
     quarantine_hold: bool = False
+    # SIC-023/024/026/027/028: filtri all'ingresso, ognuno con la sua azione
+    # (core/security_join_logic.AZIONI_FILTRO). Lavorano anche fuori da un raid.
+    azione_eta: str = "niente"
+    azione_bot_non_verificato: str = "niente"
+    azione_nome_pubblicitario: str = "niente"
+    azione_nome_vietato: str = "niente"
+    messaggio_eta: str = ""
+    nomi_vietati: tuple[str, ...] = ()
+    # SIC-029: la soglia di ingressi conta solo gli account sospetti.
+    conta_solo_sospetti: bool = False
+    # SIC-030/031: segnali di raid sugli ultimi ingressi (0 = spento).
+    account_vicini_minimo: int = 0
+    account_vicini_margine_secondi: int = 3600
+    nomi_simili_minimo: int = 0
+    # SIC-033: al raid, azione anche su chi è entrato nella finestra prima della soglia.
+    retroattivo: bool = False
+    # SIC-034: ruoli pingati nel primo allarme dell'episodio.
+    ruoli_ping: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -73,6 +91,8 @@ JOIN_VIOLATION_RATE = "join_rate"
 JOIN_VIOLATION_ACCOUNT_AGE = "account_age"
 JOIN_VIOLATION_USERNAME = "username_pattern"
 JOIN_VIOLATION_AVATAR = "avatar_pattern"
+JOIN_VIOLATION_ACCOUNT_VICINI = "account_vicini"
+JOIN_VIOLATION_NOMI_SIMILI = "nomi_simili"
 
 ALL_JOIN_VIOLATIONS = (
     JOIN_VIOLATION_RATE,
@@ -100,11 +120,12 @@ def evaluate_join(signals: JoinSignals, config: AntiRaidConfig, now: datetime) -
 
 def is_raid(violations: tuple[str, ...]) -> bool:
     """
-    Il blocco del server scatta solo quando gli ingressi superano la
-    soglia. Gli altri segnali (account nuovo, nome sospetto, nessun
-    avatar) da soli non bastano: descrivono chi entra durante un raid.
+    Il blocco del server scatta quando gli ingressi superano la soglia o
+    quando gli ultimi ingressi si somigliano (account creati vicini, nomi
+    simili: SIC-030/031). Gli altri segnali (account nuovo, nome sospetto,
+    nessun avatar) da soli non bastano: descrivono chi entra durante un raid.
     """
-    return JOIN_VIOLATION_RATE in violations
+    return bool({JOIN_VIOLATION_RATE, JOIN_VIOLATION_ACCOUNT_VICINI, JOIN_VIOLATION_NOMI_SIMILI} & set(violations))
 
 
 # ================================================================
@@ -456,7 +477,7 @@ def compute_security_score(signals: ServerSecuritySignals) -> tuple[int, tuple[s
 
     if not signals.anti_raid_enabled:
         punteggio -= 15
-        consigli.append("Attiva l'Anti-Raid con /security antiraid enable.")
+        consigli.append("Attiva l'Anti-Raid con /antiraid enable.")
 
     if not signals.anti_nuke_enabled:
         punteggio -= 15

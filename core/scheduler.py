@@ -164,6 +164,18 @@ class Scheduler:
             action_id,
         )
 
+    async def cancel_for_user(self, guild_id: int, user_id: int, action_type: str) -> None:
+        """Annulla le azioni di un tipo ancora in attesa per un utente di un server."""
+        from core.database import db
+
+        await db.pool.execute(
+            "DELETE FROM scheduled_actions WHERE guild_id = $1 AND user_id = $2 "
+            "AND action_type = $3 AND executed = FALSE",
+            guild_id,
+            user_id,
+            action_type,
+        )
+
     async def list_pending_for_user(
         self, user_id: int, action_type: str, limit: int = 25
     ) -> list[dict]:

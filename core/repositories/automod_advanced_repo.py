@@ -34,7 +34,7 @@ from core.automod_advanced_logic import (
 # insieme: "delete" va sempre prima (altrimenti mute/ban su un utente
 # che se ne va per il ban lascerebbe comunque il messaggio incriminato
 # visibile per una frazione di secondo in più del necessario).
-VALID_ACTIONS = ("delete", "warn", "mute", "ban")
+VALID_ACTIONS = ("delete", "warn", "mute", "kick", "ban")
 
 DEFAULT_MUTE_DURATION_SECONDS = 600  # 10 minuti — valore di default per inferenza, configurabile
 
@@ -94,6 +94,8 @@ def _to_json(settings: AutomodAdvancedSettings) -> str:
             },
             "anti_zalgo_enabled": config.anti_zalgo_enabled,
             "anti_phishing_enabled": config.anti_phishing_enabled,
+            "phishing_accorciatori": config.phishing_accorciatori,
+            "phishing_inviti_adulti": config.phishing_inviti_adulti,
             "max_a_capo": config.max_a_capo,
             "max_lunghezza": config.max_lunghezza,
             "max_spoiler": config.max_spoiler,
@@ -106,6 +108,23 @@ def _to_json(settings: AutomodAdvancedSettings) -> str:
                 "max_count": config.anti_attachment_spam.max_count,
                 "window_seconds": config.anti_attachment_spam.window_seconds,
             },
+            "max_ripetuti": config.max_ripetuti,
+            "min_caratteri": config.min_caratteri,
+            "link_nel_tempo": {
+                "enabled": config.link_nel_tempo.enabled,
+                "max_count": config.link_nel_tempo.max_count,
+                "window_seconds": config.link_nel_tempo.window_seconds,
+            },
+            "menzioni_nel_tempo": {
+                "enabled": config.menzioni_nel_tempo.enabled,
+                "max_count": config.menzioni_nel_tempo.max_count,
+                "window_seconds": config.menzioni_nel_tempo.window_seconds,
+            },
+            "controlla_embed": config.controlla_embed,
+            "controlla_inoltrati": config.controlla_inoltrati,
+            "estensioni_vietate": list(config.estensioni_vietate),
+            "canali_solo_media": list(config.canali_solo_media),
+            "canali_senza_allegati": list(config.canali_senza_allegati),
             "exempt_channel_ids": list(settings.exempt_channel_ids),
             "exempt_role_ids": list(settings.exempt_role_ids),
             "actions": {k: list(v) for k, v in settings.actions.items()},
@@ -124,6 +143,8 @@ def _from_json(guild_id: int, raw: str) -> AutomodAdvancedSettings:
     caps = data.get("anti_caps", {})
     mention = data.get("anti_mass_mention", {})
     attach = data.get("anti_attachment_spam", {})
+    link_t = data.get("link_nel_tempo", {})
+    menz_t = data.get("menzioni_nel_tempo", {})
 
     config = AutomodAdvancedConfig(
         anti_link=AntiLinkConfig(
@@ -152,6 +173,8 @@ def _from_json(guild_id: int, raw: str) -> AutomodAdvancedSettings:
         ),
         anti_zalgo_enabled=data.get("anti_zalgo_enabled", False),
         anti_phishing_enabled=data.get("anti_phishing_enabled", False),
+        phishing_accorciatori=data.get("phishing_accorciatori", False),
+        phishing_inviti_adulti=data.get("phishing_inviti_adulti", False),
         max_a_capo=data.get("max_a_capo", 0),
         max_lunghezza=data.get("max_lunghezza", 0),
         max_spoiler=data.get("max_spoiler", 0),
@@ -164,6 +187,23 @@ def _from_json(guild_id: int, raw: str) -> AutomodAdvancedSettings:
             max_count=attach.get("max_count", 5),
             window_seconds=attach.get("window_seconds", 30),
         ),
+        max_ripetuti=data.get("max_ripetuti", 0),
+        min_caratteri=data.get("min_caratteri", 0),
+        link_nel_tempo=RateFilterConfig(
+            enabled=link_t.get("enabled", False),
+            max_count=link_t.get("max_count", 5),
+            window_seconds=link_t.get("window_seconds", 30),
+        ),
+        menzioni_nel_tempo=RateFilterConfig(
+            enabled=menz_t.get("enabled", False),
+            max_count=menz_t.get("max_count", 10),
+            window_seconds=menz_t.get("window_seconds", 30),
+        ),
+        controlla_embed=data.get("controlla_embed", False),
+        controlla_inoltrati=data.get("controlla_inoltrati", False),
+        estensioni_vietate=tuple(data.get("estensioni_vietate", [])),
+        canali_solo_media=tuple(data.get("canali_solo_media", [])),
+        canali_senza_allegati=tuple(data.get("canali_senza_allegati", [])),
     )
 
     return AutomodAdvancedSettings(

@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:55 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:22 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 442 commands in 20 categories.**
+**Total: 458 commands in 21 categories.**
 
 ## Admin
 
@@ -92,6 +92,25 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 - **`/antinuke trusted-list`** — Lists who is exempt from Anti-Nuke checks and with which limits.
 - **`/antinuke trusted-remove`** — Removes a user, bot or webhook from the Anti-Nuke trusted list.
 
+## Antiraid
+
+- **`/antiraid account-age`** — Minimum account age to not be considered suspicious.
+- **`/antiraid alert-channel`** — Channel for security alerts (Anti-Raid + Anti-Nuke).
+- **`/antiraid avatar-check`** — Turns missing-avatar detection on or off.
+- **`/antiraid banned-names`** — Words or patterns (with *) banned in the names of new members.
+- **`/antiraid enable`** — Turns Anti-Raid on or off.
+- **`/antiraid join-filter`** — Action for a join filter (works outside a raid too).
+- **`/antiraid join-rate`** — Sets the join limit in a time window.
+- **`/antiraid list`** — File with every raid account from the last hours.
+- **`/antiraid lockdown-action`** — What to do when a raid is detected.
+- **`/antiraid ping-roles`** — Staff roles pinged on the first raid alert (empty: none).
+- **`/antiraid quarantine-hold`** — Stops untrusted people from lifting quarantine by hand.
+- **`/antiraid release`** — Lifts a member's quarantine (the right way, with the lock on).
+- **`/antiraid report`** — Report an undetected raid to the bot team.
+- **`/antiraid signals`** — Raid signals on the latest joins and action on earlier joiners.
+- **`/antiraid status`** — Shows the current Anti-Raid setup.
+- **`/antiraid username-check`** — Turns suspicious username pattern detection on or off.
+
 ## AutoMod
 
 - **`/automod exemptions channel-add`** — Exempts a channel from all advanced AutoMod filters.
@@ -108,7 +127,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 - **`/automod filters anti-spam-messages`** — Configures message anti-spam (too many messages in a short time).
 - **`/automod filters anti-spam-sticker`** — Configures sticker anti-spam (too many stickers in a short time).
 - **`/automod filters anti-zalgo`** — Turns anti-zalgo on or off (text with abnormal diacritics).
+- **`/automod filters content`** — Embeds and forwards checked by filters; banned file types.
 - **`/automod filters invites`** — Turns the automatic Discord invite block on or off.
+- **`/automod filters media-channel`** — Media-only channel, no attachments or normal.
+- **`/automod filters messages`** — Repeated, too short, links and mentions counted over time (0 = off).
 - **`/automod filters phishing`** — Turn the phishing link block on or off (fake gifts, fake logins).
 - **`/automod filters text-shape`** — Limits on message shape: line breaks, length, spoilers (0 = off).
 - **`/automod log-channel`** — Sets the channel for the advanced AutoMod action log.
@@ -260,6 +282,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 
 ## Moderation
 
+- **`/mod bulk timeout`** — Times out several members at once (max 28 days).
+- **`/mod bulk warn`** — Warns several members at once.
 - **`/mod case delete`** — Deletes a case (needs "Manage Server").
 - **`/mod case history`** — Shows a member's case history.
 - **`/mod case reason`** — Changes the reason of an already logged case.
@@ -290,6 +314,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 - **`/modban appeals channel`** — Picks the staff channel for appeals (empty to turn them off).
 - **`/modban appeals list`** — Shows the server's latest appeals.
 - **`/modban ban`** — Permanently bans a member.
+- **`/modban bulk ban`** — Bans several users at once, even outside the server (IDs or mentions).
+- **`/modban bulk kick`** — Kicks several members at once (IDs or mentions).
+- **`/modban bulk unban`** — Unbans several users at once (IDs).
 - **`/modban kick`** — Kicks a member from the server.
 - **`/modban softban`** — Bans and unbans a member right away, to delete their recent messages.
 - **`/modban tempban`** — Bans a member for a set time.
@@ -401,16 +428,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 
 ## Security
 
-- **`/security antiraid account-age`** — Minimum account age to not be considered suspicious.
-- **`/security antiraid alert-channel`** — Channel for security alerts (Anti-Raid + Anti-Nuke).
-- **`/security antiraid avatar-check`** — Turns missing-avatar detection on or off.
-- **`/security antiraid enable`** — Turns Anti-Raid on or off.
-- **`/security antiraid join-rate`** — Sets the join limit in a time window.
-- **`/security antiraid lockdown-action`** — What to do when a raid is detected.
-- **`/security antiraid quarantine-hold`** — Stops untrusted people from lifting quarantine by hand.
-- **`/security antiraid release`** — Lifts a member's quarantine (the right way, with the lock on).
-- **`/security antiraid status`** — Shows the current Anti-Raid setup.
-- **`/security antiraid username-check`** — Turns suspicious username pattern detection on or off.
 - **`/security escalation disable`** — Turns the escalation ladder off.
 - **`/security escalation enable`** — Turns the escalation ladder on.
 - **`/security escalation remove-step`** — Removes a step from the custom ladder.
@@ -437,6 +454,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 - **`/security verify panel`** — Publishes the verification panel.
 - **`/security verify setup`** — Sets up Verify.
 - **`/security verify statistics`** — Successful and failed verifications.
+- **`/security verify timing`** — Reminder, time limit, action on failures, verification only for suspicious accounts.
 - **`/security verify whitelist-add`** — Adds a user to the whitelist.
 - **`/security verify whitelist-remove`** — Removes a user from the whitelist.
 
@@ -491,6 +509,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 17:5
 - **`/utility snipe`** — Shows the last deleted message in this channel.
 - **`/utility suggest`** — Suggest an idea for this server.
 - **`/utility tag`** — Uses a custom command of this server.
+- **`/utility verify`** — Verify yourself in this server (same as the panel button).
 
 ## Voice
 

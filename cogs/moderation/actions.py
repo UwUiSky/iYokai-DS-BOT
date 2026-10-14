@@ -22,12 +22,18 @@ asyncio.sleep). Tre modi (#138): fuori, fuori con rientro (invito mandato
 prima del ban, ruoli ridati al ritorno), isolamento (resta nel server,
 vede un solo canale). Lo stato (ruoli veri) si salva prima dell'azione; ogni nuovo
 caso cancella la scadenza del precedente. Funzioni coperte anche: SPEC §5.11, §5.12.
+
+Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
+server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
+caso per utente, un solo riepilogo nel log. Chi non si può moderare viene
+saltato con il motivo.
 """
 
 from __future__ import annotations
 
 import datetime
 import logging
+import time
 
 import discord
 from discord import app_commands
@@ -61,9 +67,14 @@ from cogs.moderation._shared import (
     format_duration,
     validate_reason,
     Reason,
+    actor_from_member,
     post_to_mod_log,
 )
 from core.premium import PremiumModule, registry
+from core.moderation_bulk_logic import (
+    MAX_TESTO_UTENTI, MAX_USI_ORA, MAX_UTENTI_MASSA, leggi_utenti, prenota_uso, riepilogo,
+)
+from core.permissions import can_moderate
 from cogs.security.global_ban import revoca_ban_propagati
 
 logger = logging.getLogger("iyokai.moderation.actions")
@@ -141,6 +152,34 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await tempban_modes.cancella_invito_per_codice(self.bot, stato["invito_codice"])
         if stato["case_number"] is not None:
             await moderation_repo.revoke_case(guild.id, stato["case_number"], moderatore_id)
+
+    async def _dopo_unban(self, client, guild_id: int, uid: int, moderatore_id: int, stato) -> None:
+        """Pulizia dopo uno sban riuscito: casi, scadenze, stato del tempban, appelli."""
+        # Revoca l'ultimo caso attivo di tipo ban O tempban per
+        # questo utente, qualunque dei due sia: get_latest_active_case
+        # richiede un action_type preciso, quindi controlliamo
+        # entrambi in ordine.
+        for action_type in ("ban", TEMPBAN_ACTION_TYPE):
+            case = await moderation_repo.get_latest_active_case(guild_id, uid, action_type)
+            if case is not None:
+                await moderation_repo.revoke_case(guild_id, case.case_number, moderatore_id)
+                break
+
+        # La scadenza automatica non serve più (e non deve toccare un caso nuovo).
+        await moderation_repo.cancel_tempban_jobs(guild_id, uid)
+
+        # Tempban con rientro sbannato a mano: al ritorno riprende i ruoli.
+        if stato is not None:
+            await moderation_repo.mark_tempban_state_expired(guild_id, uid)
+            await tempban_modes.cancella_invito_per_codice(client, stato["invito_codice"])
+        await moderation_repo.close_open_appeals(guild_id, uid, moderatore_id)
+
+        # BUG-24: anche i ban scattati dallo spam-trap. Tutti quelli
+        # attivi, non solo l'ultimo: se restassero, l'utente
+        # risulterebbe ancora bannato per l'appello in DM.
+        await moderation_repo.revoke_active_cases_for_user(
+            guild_id, uid, SPAM_TRAP_BAN_ACTION_TYPE, moderatore_id
+        )
 
     # ================================================================
     # /warn
@@ -719,35 +758,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # Revoca l'ultimo caso attivo di tipo ban O tempban per
-        # questo utente, qualunque dei due sia: get_latest_active_case
-        # richiede un action_type preciso, quindi controlliamo
-        # entrambi in ordine.
-        for action_type in ("ban", TEMPBAN_ACTION_TYPE):
-            case = await moderation_repo.get_latest_active_case(
-                interaction.guild.id, uid, action_type
-            )
-            if case is not None:
-                await moderation_repo.revoke_case(
-                    interaction.guild.id, case.case_number, interaction.user.id
-                )
-                break
-
-        # La scadenza automatica non serve più (e non deve toccare un caso nuovo).
-        await moderation_repo.cancel_tempban_jobs(interaction.guild.id, uid)
-
-        # Tempban con rientro sbannato a mano: al ritorno riprende i ruoli.
-        if stato is not None:
-            await moderation_repo.mark_tempban_state_expired(interaction.guild.id, uid)
-            await tempban_modes.cancella_invito_per_codice(interaction.client, stato["invito_codice"])
-        await moderation_repo.close_open_appeals(interaction.guild.id, uid, interaction.user.id)
-
-        # BUG-24: anche i ban scattati dallo spam-trap. Tutti quelli
-        # attivi, non solo l'ultimo: se restassero, l'utente
-        # risulterebbe ancora bannato per l'appello in DM.
-        await moderation_repo.revoke_active_cases_for_user(
-            interaction.guild.id, uid, SPAM_TRAP_BAN_ACTION_TYPE, interaction.user.id
-        )
+        await self._dopo_unban(interaction.client, interaction.guild.id, uid, interaction.user.id, stato)
 
         await interaction.response.send_message(f"Utente `{uid}` sbannato.")
         log_embed = discord.Embed(title="🔓 Unban", color=discord.Color.green())
@@ -880,6 +891,347 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         log_embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
         log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
         await post_to_mod_log(interaction.guild, log_embed)
+
+    # ================================================================
+    # Azioni su più utenti insieme (MOD-002…006)
+    # ================================================================
+    async def _prepara_massa(
+        self, interaction: discord.Interaction, utenti: str, reason: str, limite: str | None = None
+    ) -> list[int] | None:
+        """Controlli comuni: modulo, motivo, elenco. Dopo, l'interazione è in attesa (defer)."""
+        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return None
+        if not await validate_reason(interaction, reason):
+            return None
+        ids, tagliato = leggi_utenti(utenti)
+        if not ids:
+            await interaction.response.send_message(
+                "Non ho trovato utenti: scrivi ID o menzioni separati da spazi.", ephemeral=True
+            )
+            return None
+        if (
+            limite is not None
+            and interaction.user.id != interaction.guild.owner_id
+            and not prenota_uso(interaction.guild.id, interaction.user.id, limite, time.monotonic())
+        ):
+            # MOD-002: tetto di usi all'ora, perché un account rubato non svuoti il server.
+            await interaction.response.send_message(
+                f"Hai già usato questo comando {MAX_USI_ORA} volte nell'ultima ora: riprova più tardi.",
+                ephemeral=True,
+            )
+            return None
+        await interaction.response.defer()
+        if tagliato:
+            await interaction.followup.send(
+                f"Elenco troppo lungo: agisco sui primi {MAX_UTENTI_MASSA}.", ephemeral=True
+            )
+        return ids
+
+    async def _cerca_membro(self, guild: discord.Guild, uid: int) -> tuple[discord.Member | None, str | None]:
+        """
+        (membro, errore). Fuori dalla cache si chiede a Discord: senza il
+        membro non si può controllare la gerarchia dei ruoli.
+        """
+        membro = guild.get_member(uid)
+        if membro is not None:
+            return membro, None
+        try:
+            return await guild.fetch_member(uid), None
+        except discord.NotFound:
+            return None, None
+        except discord.HTTPException:
+            return None, "non riesco a leggere il membro da Discord"
+
+    def _non_moderabile(self, interaction: discord.Interaction, uid: int, membro) -> str | None:
+        """Il motivo per cui `uid` va saltato, o None. Stesse regole di check_can_moderate."""
+        guild = interaction.guild
+        if uid == interaction.user.id:
+            return "sei tu"
+        if guild.me is not None and uid == guild.me.id:
+            return "sono io"
+        if uid == guild.owner_id:
+            return "proprietario del server"
+        if membro is None:
+            return None
+        moderatore = guild.get_member(interaction.user.id)
+        if moderatore is None:
+            return "non riesco a verificare i tuoi permessi"
+        consentito, motivo = can_moderate(
+            actor_from_member(moderatore), actor_from_member(membro),
+            bot_top_role_position=guild.me.top_role.position,
+        )
+        return None if consentito else motivo
+
+    async def _ban_uno_alla_volta(
+        self, guild: discord.Guild, ids: list[int], reason: str, giorni: int
+    ) -> set[int]:
+        """Ban singoli al posto del ban in blocco. Gli ID bannati davvero."""
+        bannati: set[int] = set()
+        for uid in ids:
+            try:
+                await guild.ban(
+                    discord.Object(id=uid), reason=audit_reason(f"Ban in massa: {reason}"),
+                    delete_message_seconds=giorni * 86400,
+                )
+            except discord.HTTPException:
+                continue
+            bannati.add(uid)
+        return bannati
+
+    async def _chiudi_massa(
+        self, interaction: discord.Interaction, titolo: str, colore: discord.Color,
+        reason: str, fatti: list[str], saltati: list[str],
+    ) -> None:
+        embed = discord.Embed(title=titolo, color=colore, description=riepilogo(fatti, saltati))
+        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        embed.add_field(name="Motivo", value=reason, inline=False)
+        await post_to_mod_log(interaction.guild, embed)
+        await interaction.followup.send(embed=embed)
+
+    @comando_di_gruppo(
+        "modban",
+        nome="ban",
+        descrizione="Banna più utenti insieme, anche fuori dal server (ID o menzioni).",
+        sottogruppo=("massa", "Azioni su più utenti insieme."),
+    )
+    @app_commands.describe(
+        utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})",
+        reason="Motivo del ban",
+        delete_message_days="Giorni di messaggi da cancellare (0-7, default 0)",
+    )
+    async def ban_massa(
+        self,
+        interaction: discord.Interaction,
+        utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI],
+        reason: Reason,
+        delete_message_days: app_commands.Range[int, 0, 7] = 0,
+    ) -> None:
+        ids = await self._prepara_massa(interaction, utenti, reason, limite="ban")
+        if ids is None:
+            return
+        guild = interaction.guild
+        saltati: list[str] = []
+        bersagli: list[tuple[int, discord.Message | None]] = []
+        for uid in ids:
+            membro, errore = await self._cerca_membro(guild, uid)
+            motivo = errore or self._non_moderabile(interaction, uid, membro)
+            if motivo:
+                saltati.append(f"`{uid}`: {motivo}")
+                continue
+            dm = None
+            if membro is not None:
+                # Il DM parte prima del ban: dopo non c'è più un server in comune.
+                dm = await try_dm_message(
+                    membro,
+                    _case_embed("🔨 Ban", discord.Color.red(), membro, interaction.user, reason, None),
+                    view=await vista_appello(guild.id),
+                )
+            bersagli.append((uid, dm))
+        bannati: set[int] = set()
+        if bersagli:
+            try:
+                esito = await guild.bulk_ban(
+                    [discord.Object(id=uid) for uid, _ in bersagli],
+                    reason=audit_reason(f"Ban in massa: {reason}"),
+                    delete_message_seconds=delete_message_days * 86400,
+                )
+                bannati = {u.id for u in esito.banned}
+            except discord.Forbidden:
+                # Il ban in blocco vuole anche «Gestisci server»: senza, uno alla volta.
+                bannati = await self._ban_uno_alla_volta(guild, [uid for uid, _ in bersagli], reason, delete_message_days)
+            except discord.HTTPException:
+                bannati = set()
+        fatti: list[str] = []
+        for uid, dm in bersagli:
+            if uid not in bannati:
+                await delete_dm(dm)
+                saltati.append(f"`{uid}`: Discord ha rifiutato")
+                continue
+            numero = await moderation_repo.create_case(
+                guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id, action_type="ban", reason=reason
+            )
+            await self._chiudi_sanzioni_a_tempo(guild, uid, interaction.user.id)
+            fatti.append(f"<@{uid}> (`{uid}`) caso #{numero}")
+        await self._chiudi_massa(interaction, "🔨 Ban in massa", discord.Color.red(), reason, fatti, saltati)
+
+    @comando_di_gruppo(
+        "modban",
+        nome="unban",
+        descrizione="Toglie il ban a più utenti insieme (ID).",
+        sottogruppo=("massa", "Azioni su più utenti insieme."),
+    )
+    @app_commands.describe(
+        utenti=f"ID separati da spazi (al massimo {MAX_UTENTI_MASSA})", reason="Motivo dello sblocco"
+    )
+    async def unban_massa(
+        self, interaction: discord.Interaction, utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI], reason: Reason
+    ) -> None:
+        ids = await self._prepara_massa(interaction, utenti, reason)
+        if ids is None:
+            return
+        guild = interaction.guild
+        fatti: list[str] = []
+        saltati: list[str] = []
+        for uid in ids:
+            stato = await moderation_repo.get_tempban_state(guild.id, uid)
+            if stato is not None and stato["modo"] == MODO_ISOLAMENTO:
+                saltati.append(f"`{uid}`: in isolamento, usa /modban unban")
+                continue
+            try:
+                await guild.unban(discord.Object(id=uid), reason=audit_reason(reason))
+            except discord.NotFound:
+                saltati.append(f"`{uid}`: non è bannato")
+                continue
+            except discord.HTTPException:
+                saltati.append(f"`{uid}`: Discord ha rifiutato")
+                continue
+            await self._dopo_unban(interaction.client, guild.id, uid, interaction.user.id, stato)
+            fatti.append(f"<@{uid}> (`{uid}`)")
+            try:
+                await revoca_ban_propagati(interaction.client, guild.id, uid)
+            except Exception:
+                logger.exception("Revoca dei ban propagati fallita (server %s).", guild.id)
+        await self._chiudi_massa(interaction, "🔓 Unban in massa", discord.Color.green(), reason, fatti, saltati)
+
+    @comando_di_gruppo(
+        "modban",
+        nome="kick",
+        descrizione="Espelle più membri insieme (ID o menzioni).",
+        sottogruppo=("massa", "Azioni su più utenti insieme."),
+    )
+    @app_commands.describe(
+        utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})", reason="Motivo dell'espulsione"
+    )
+    async def kick_massa(
+        self, interaction: discord.Interaction, utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI], reason: Reason
+    ) -> None:
+        ids = await self._prepara_massa(interaction, utenti, reason, limite="kick")
+        if ids is None:
+            return
+        guild = interaction.guild
+        fatti: list[str] = []
+        saltati: list[str] = []
+        for uid in ids:
+            membro, errore = await self._cerca_membro(guild, uid)
+            if membro is None:
+                saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
+                continue
+            motivo = self._non_moderabile(interaction, uid, membro)
+            if motivo:
+                saltati.append(f"`{uid}`: {motivo}")
+                continue
+            dm = await try_dm_message(
+                membro, _case_embed("👢 Kick", discord.Color.orange(), membro, interaction.user, reason, None)
+            )
+            try:
+                await membro.kick(reason=audit_reason(reason))
+            except discord.HTTPException:
+                await delete_dm(dm)
+                saltati.append(f"`{uid}`: Discord ha rifiutato")
+                continue
+            numero = await moderation_repo.create_case(
+                guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id, action_type="kick", reason=reason
+            )
+            await self._chiudi_sanzioni_a_tempo(guild, uid, interaction.user.id)
+            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
+        await self._chiudi_massa(interaction, "👢 Kick in massa", discord.Color.orange(), reason, fatti, saltati)
+
+    @comando_di_gruppo(
+        "mod",
+        nome="timeout",
+        descrizione="Mette in timeout più membri insieme (max 28 giorni).",
+        sottogruppo=("massa", "Azioni su più membri insieme."),
+    )
+    @app_commands.describe(
+        utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})",
+        duration="Durata, es. 10m, 2h, 1d (max 28d)",
+        reason="Motivo del timeout",
+    )
+    async def timeout_massa(
+        self,
+        interaction: discord.Interaction,
+        utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI],
+        duration: app_commands.Range[str, 1, 20],
+        reason: Reason,
+    ) -> None:
+        try:
+            secondi = parse_duration(duration)
+        except ValueError as exc:
+            await interaction.response.send_message(str(exc), ephemeral=True)
+            return
+        if secondi > MAX_TIMEOUT_SECONDS:
+            await interaction.response.send_message(
+                "Il timeout nativo di Discord non può superare i 28 giorni.", ephemeral=True
+            )
+            return
+        ids = await self._prepara_massa(interaction, utenti, reason)
+        if ids is None:
+            return
+        guild = interaction.guild
+        fatti: list[str] = []
+        saltati: list[str] = []
+        for uid in ids:
+            membro, errore = await self._cerca_membro(guild, uid)
+            if membro is None:
+                saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
+                continue
+            motivo = self._non_moderabile(interaction, uid, membro)
+            if motivo:
+                saltati.append(f"`{uid}`: {motivo}")
+                continue
+            try:
+                await membro.timeout(datetime.timedelta(seconds=secondi), reason=audit_reason(reason))
+            except discord.HTTPException:
+                saltati.append(f"`{uid}`: Discord ha rifiutato")
+                continue
+            numero = await moderation_repo.create_case(
+                guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id,
+                action_type="timeout", reason=reason, duration_seconds=secondi,
+            )
+            embed = _case_embed(
+                "🔇 Timeout", discord.Color.dark_orange(), membro, interaction.user, reason, numero,
+                extra_field=("Durata", format_duration(secondi)),
+            )
+            await try_dm(membro, embed)
+            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
+        await self._chiudi_massa(
+            interaction, f"🔇 Timeout in massa ({format_duration(secondi)})", discord.Color.dark_orange(),
+            reason, fatti, saltati,
+        )
+
+    @comando_di_gruppo(
+        "mod",
+        nome="warn",
+        descrizione="Assegna un warn a più membri insieme.",
+        sottogruppo=("massa", "Azioni su più membri insieme."),
+    )
+    @app_commands.describe(
+        utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})", reason="Motivo del warn"
+    )
+    async def warn_massa(
+        self, interaction: discord.Interaction, utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI], reason: Reason
+    ) -> None:
+        ids = await self._prepara_massa(interaction, utenti, reason)
+        if ids is None:
+            return
+        guild = interaction.guild
+        fatti: list[str] = []
+        saltati: list[str] = []
+        for uid in ids:
+            membro, errore = await self._cerca_membro(guild, uid)
+            if membro is None:
+                saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
+                continue
+            motivo = self._non_moderabile(interaction, uid, membro)
+            if motivo:
+                saltati.append(f"`{uid}`: {motivo}")
+                continue
+            numero = await moderation_repo.create_case(
+                guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id, action_type="warn", reason=reason
+            )
+            await try_dm(membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero))
+            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
+        await self._chiudi_massa(interaction, "⚠️ Warn in massa", discord.Color.yellow(), reason, fatti, saltati)
 
 
 async def setup(bot: commands.Bot) -> None:
