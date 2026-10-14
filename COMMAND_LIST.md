@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:05 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 344 comandi in 17 categorie.**
+**Totale: 353 comandi in 18 categorie.**
 
 ## Admin
 
@@ -53,6 +53,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 - **`/-cerca-comando`** — Cerca un comando per descrizione.
 - **`/-chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
 
+## Antinuke
+
+- **`/antinuke canale-allarmi`** — Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).
+- **`/antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
+- **`/antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
+- **`/antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
+- **`/antinuke limits`** — Configura la soglia di rilevamento per una categoria.
+- **`/antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
+- **`/antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
+- **`/antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
+- **`/antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
+- **`/antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
+- **`/antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
+- **`/antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
+
 ## AutoMod
 
 - **`/automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
@@ -69,7 +84,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 - **`/automod filtri anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
 - **`/automod filtri anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
 - **`/automod filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
+- **`/automod filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
 - **`/automod filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
+- **`/automod filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
 - **`/automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
 - **`/automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
 - **`/automod parole add`** — Aggiunge una parola vietata.
@@ -216,6 +233,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 - **`/mod avvisi azzera`** — Toglie tutti i warn attivi di un membro (serve «Gestire il server»).
 - **`/mod avvisi classifica`** — I membri con più warn attivi.
 - **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
+- **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
+- **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
 - **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
 - **`/mod caso motivo`** — Cambia il motivo di un caso già registrato.
@@ -305,17 +324,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 
 ## Sicurezza
 
-- **`/security antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
-- **`/security antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
-- **`/security antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
-- **`/security antinuke limits`** — Configura la soglia di rilevamento per una categoria.
-- **`/security antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
-- **`/security antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
-- **`/security antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
-- **`/security antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
-- **`/security antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
-- **`/security antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
-- **`/security antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
 - **`/security antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
 - **`/security antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
 - **`/security antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
@@ -338,6 +346,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 - **`/security globalban enable`** — Aderisci alla rete di ban globali (propaga e ricevi).
 - **`/security globalban status`** — Mostra lo stato e la storia recente del ban globale.
 - **`/security heatmap`** — Mostra quali ruoli hanno permessi critici e chi li possiede.
+- **`/security panico attiva`** — Accende il panico: blocco totale con le regole d'emergenza.
+- **`/security panico configura`** — Scelte del panico: ruoli avvisati, categorie escluse, sblocco, regole.
+- **`/security panico stato`** — Mostra se il server e' bloccato e le scelte del panico.
+- **`/security panico togli`** — Spegne il panico e riapre il server com'era.
 - **`/security score`** — Calcola il punteggio di sicurezza del server con consigli.
 - **`/security spamtrap`** — Configura i canali trappola e log dello Spam Trap.
 - **`/security verify blacklist-add`** — Aggiungi un utente alla blacklist.

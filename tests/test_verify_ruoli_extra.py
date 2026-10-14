@@ -213,3 +213,44 @@ async def test_verifica_a_mano_senza_configurazione_non_fa_niente(scenario):
 
     scenario.utente.add_roles.assert_not_awaited()
     assert "Configura" in inter.response.send_message.call_args.args[0]
+
+
+def canale_finto(canale_id):
+    from unittest.mock import MagicMock
+
+    import discord
+
+    canale = MagicMock(spec=discord.TextChannel)
+    canale.id = canale_id
+    return canale
+
+
+async def test_log_compatto_si_salva_dalle_opzioni_e_cambia_la_scheda(scenario):
+    """VER-029: una riga sola (description) invece dei campi Utente e Motivo."""
+    from unittest.mock import create_autospec
+
+    import discord
+    from discord import app_commands
+
+    from cogs.security.verify import SETTING_LOG_COMPATTO
+
+    canale = create_autospec(discord.TextChannel, instance=True)
+    scenario.server.get_channel.side_effect = lambda i: canale if i == 77 else None
+    admin = fake_member(user_id=1, name="owner")
+    await scenario.cog.setup_cmd.callback(
+        scenario.cog, fake_interaction(guild=scenario.server, user=admin),
+        app_commands.Choice(name="Button", value="button"), scenario.ruolo, 0, 0, False, canale_finto(77),
+    )
+
+    await scenario.cog.run_checks_and_finalize(scenario.server, scenario.utente, True)
+    completa = canale.send.call_args.kwargs["embed"]
+    assert len(completa.fields) == 2 and not completa.description
+
+    scenario.utente.roles = []
+    interazione = fake_interaction(guild=scenario.server, user=admin)
+    await scenario.cog.options_cmd.callback(scenario.cog, interazione, log_compatto=True)
+    assert await db.get_guild_setting(GUILD_ID, SETTING_LOG_COMPATTO) is True
+
+    await scenario.cog.run_checks_and_finalize(scenario.server, scenario.utente, True)
+    compatta = canale.send.call_args.kwargs["embed"]
+    assert not compatta.fields and str(UTENTE_ID) in compatta.description

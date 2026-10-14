@@ -93,6 +93,9 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #54 | /config rollback non ripristina import/reset – change_type gestito come setting sing | Risolto: il rollback di import e reset ripristina davvero o risponde con un errore; la conferma e `/config history` restano nei limiti di Discord (commit `071504a`, `c2a9582`). Resta l'etichetta… |
 | #55 | music_sessions non vengono svuotate all’avvio – worker “occupati” fantasma dopo cras | Risolto: `music_sessions` viene svuotata una volta all'avvio, prima che i bot partano (commit `376ff6b`). Resta l'etichetta `verifica-live`: i passi di prova sono in… |
 | #56 | Scheduler: action_type senza handler restano forever in coda e possono saturare LIMI | Risolto: lo scheduler non si ferma più; un'azione senza handler o che fallisce viene riprovata con attesa crescente e solo dopo 8 tentativi diventa `failed`; una transazione per azione (commit… |
+| #100 | NF-29 blocco totale e panico | `/mod blocco`, `/security panico` (0110): stato salvato prima, ripristino solo di ciò che il blocco ha negato, panico automatico dopo anti-nuke e anti-raid | ramo feat/r5-mod | 14/10 |
+| #102 | NF-31 blocco dei link di phishing | `/automod filtri phishing`: lista locale in `data/`, download opzionale, segni da sito truffa, domini ufficiali esenti | ramo feat/r5-mod | 14/10 |
+| #89 | NF-18 captcha a immagine | `captcha_tipo: immagine` in `/security verify setup`; 3 minuti, 3 tentativi | ramo feat/r5-mod | 14/10 |
 
 ## Parziali (issue ancora aperte, voci già fatte)
 
@@ -103,3 +106,5 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 
 - #147: pannello di `-cerca-comando`, ricerca, `-chiedi`, `command_usage` (0022). Mancano `scripts/genera_wiki.py` (F10) e l'AI (F12).
 - #67: voci 11.1–11.10 (Twitch, YouTube, feed, rete). Mancano 11.11 (F5) e 11.12 (F13).
+- #59 (sicurezza, r5): 3.5 e 3.18 chiuse (vedi `AUDIT_SICUREZZA.md`, «Completamenti del 14/10»). Resta aperta la decisione sul ripiego kick/ban della quarantena.
+- #115–#118 (catalogo, r5): AMD-002/003/005 (`/automod filtri forma-testo`), VER-029 (log compatto in `/security verify opzioni`). Il resto del catalogo resta aperto.

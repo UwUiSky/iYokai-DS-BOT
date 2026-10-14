@@ -74,8 +74,8 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §19 DATI, PRIVACY E GDPR | 0 | 0 | 9 | 0 |
 | §20 NUOVA STRUTTURA DEI COMANDI | 0 | 0 | 7 | 0 |
 | §21 LINGUE E RICERCA DEI COMANDI | 0 | 0 | 6 | 0 |
-| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 2 | 0 | 15 | 0 |
-| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
+| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 3 | 0 | 14 | 0 |
+| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 2 | 0 | 15 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
 | §25 MOTORE AI | 0 | 0 | 105 | 0 |
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
@@ -1820,7 +1820,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `esecutore` a `_grant_level_rewards`, che non dà né toglie ruoli sopra il ruolo più alto di chi
   ha lanciato il comando (il proprietario del server è escluso dal limite); il minimo del lavoro
   non supera il massimo per vincolo del database (migrazione 0099).
-- `[ ]` 22.15 Captcha a immagine nella verifica (NF-18)
+- `[x]` 22.15 Captcha a immagine nella verifica (NF-18)
 - `[ ]` 22.16 Wizard di primo avvio per categoria, con creazione dei
   canali
 - `[ ]` 22.17 Soglie sui warn dati a mano
@@ -1852,11 +1852,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   motivo (migrazione 0098) e `/economia giveaway-programmati` lo elenca o lo annulla; «Partecipa» è rifiutato dopo
   `ends_at`; i messaggi si contano con l'attesa dell'XP e non nei canali esclusi; l'elenco dei modelli sta in 2000
   caratteri; il blocco dei salvataggi usa una chiave propria (non quella di `security_repo`).
-- `[ ]` 23.7 Blocco totale del server e "panic mode" (NF-29)
+- `[x]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
 - `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
-- `[ ]` 23.10 Blocco dei link di phishing (NF-31)
+- `[x]` 23.10 Blocco dei link di phishing (NF-31)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)
   → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima

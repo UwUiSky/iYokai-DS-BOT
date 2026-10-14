@@ -1,8 +1,8 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-14, ramo feat/r5-mod (base main a5f4e30), worktree /home/claude/wt/r5mod, DB iyokai_wr5mod, migrazioni da 0110. Giro "per file" richiesto dall'owner.
+2026-10-14, ramo feat/r5-mod, worktree /home/claude/wt/r5mod, DB iyokai_wr5mod. Giro "per file": chiuso (NF-29, NF-31, NF-18, 3 voci catalogo). Migrazione usata: 0110.
 ## In corso
-Ordine: 3.18 (fatto) > NF-29 lockdown/panico (core/lockdown_logic, repo, cogs/security/lockdown.py, migr. 0110) > NF-31 phishing (liste locali in data/) > NF-18 captcha Pillow > catalogo #115-118. Annotare in AUDIT_SICUREZZA.md sezione "Completamenti del 14/10". Previsione: 4-5 gruppi.
+Niente di aperto. Prossimo: catalogo #115-118 (voci grosse), ripiego kick/ban della quarantena (decisione owner), SIC-023..038.
 ## Fatto
 - G1 #138: /modban tempban modo (fuori|rientro|isolamento), core/tempban_logic.py, cogs/moderation/_tempban_modes.py, migrazione 0040 tempban_stato, unban libera l'isolamento
 - G2 #57: M 1.8 (log lock/unlock/slowmode/clear/untimeout/unmute/scadenza), caso (motivo/elimina/classifica-staff/storico per tipo), nota (rimuovi/modifica/svuota), avvisi (togli/azzera/classifica), clear con 12 filtri (core/clear_filter_logic.py)
@@ -13,6 +13,7 @@ Ordine: 3.18 (fatto) > NF-29 lockdown/panico (core/lockdown_logic, repo, cogs/se
 - G6 bug-hunt: isolamento/tempban su gia isolato (ruoli veri tenuti, mai ruolo iso), stato PRIMA dell'azione + ripristino se fallisce, cancel_tempban_jobs (tempban/unban/appello) + guardia case_number nel job, invito al mod se DM chiuso, appello: unban poi 'accettato', solo il caso dell'appello, 24 h atomico (advisory lock), clear channel con permessi utente, verify non-verificato/ruolo sopra bot, Range INT4 su caso/nota, get_member->fetch, warn automod non ripetuto, set_permissions in parallelo (8)
 - G7 revisore: ban/kick su isolato puliscono stato/job/caso/invito; unban isolato solo se membro presente; rientro senza invito ne OAuth = niente ban; canali non nascosti contati; appello su caso non attivo chiuso 'accettato' senza unban; unban chiude appelli aperti; rientro OAuth (migrazione 0042 oauth_rientro, join_user_via_oauth); ban_appelli/tempban_stato in data_registry (365 g decisi / 30 g dopo la fine); inviti cancellati (client.delete_invite); 5 chiavi in SETTINGS_SCHEMA; test per le mutazioni
 - R5-1 #59 3.18: canale allarmi anti-nuke via router (TIPO_ALLARMI/TIPO_PHISHING in channel_router, fuori da TIPI_LOG); D25: /security antinuke -> gruppo /antinuke (security era a 6824)
+- R5-2: NF-29 lockdown/panico (0110, lockdown_service, panico_riservato in ensure_module_enabled), NF-31 phishing (data/phishing_domains.txt, PHISHING_LIST_URL), NF-18 captcha immagine (captcha_tipo, sfide in memoria), AMD-002/003/005 forma-testo, VER-029 log compatto
 ## Cose imparate
 - Tabelle sicurezza in security_repo.run_migrations; le nuove di moderazione in core/migrations/NNNN (clean_db le svuota da information_schema)
 - Smoke oltre 2 min: lanciarlo con nohup su log; mai due pytest sullo stesso DB
@@ -26,8 +27,10 @@ Ordine: 3.18 (fatto) > NF-29 lockdown/panico (core/lockdown_logic, repo, cogs/se
 - Fake messaggi AutoMod ora hanno id
 - Smoke ~6 min: nohup su log in scratchpad; /security oltre 6800 = D25 (nuovo gruppo, aggiorna test_command_groups, test_f7_moderazione_gruppi, tests/support/command_policy.py)
 - Chi usa il router negli anti-nuke: i test devono patchare output_channel_repo._pool_provider
+- Docstring e messaggi: mai "/mod e /modban" in prosa (test_riferimenti_comandi li legge come comandi). Metodo di repo solo nei test = test_repository_callers fallisce
+- git stash dopo git add perde l'indice: non farlo prima di un commit
 ## Aperto
 - M 1.10 soglie sui warn manuali (F9). OAuth: il token deve durare fino alla fine del ban (niente refresh): oltre ~7 giorni resta l'invito. Inviti di stati scaduti senza rientro restano fino a unban
-- Appelli: bottone nel DM di un bannato da provare live; spam-trap ha un suo sistema (non toccato). alt_detection, lockdown (#100)
+- Appelli: bottone nel DM di un bannato da provare live; spam-trap ha un suo sistema (non toccato). alt_detection (#92)
 - AutoMod #116: restano quasi tutte (nuovi filtri chiedono colonne in automod_advanced_repo; violazioni per regola non persistite)
 - Catalogo #115 ancora aperto per il resto (bulk, voce, nickname, DM personalizzati, motivi pronti)

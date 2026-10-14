@@ -67,6 +67,7 @@ MODULE_VERIFY = "verify"
 # Impostazioni dei ruoli extra (guild_config.settings).
 SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
 SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
+SETTING_LOG_COMPATTO = "verify_log_compatto"  # VER-029: True = una riga, False = scheda completa
 SETTING_CAPTCHA_TIPO = "verify_captcha_tipo"  # captcha_image.TIPO_TESTO | TIPO_IMMAGINE
 MAX_RUOLI_EXTRA = 3
 
@@ -377,14 +378,18 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if config.log_channel_id is not None:
             log_channel = guild.get_channel(config.log_channel_id)
             if isinstance(log_channel, discord.TextChannel):
+                compatto = await db.get_guild_setting(guild.id, SETTING_LOG_COMPATTO, False)
                 embed = discord.Embed(
                     title="Verify succeeded" if outcome.success else "Verify failed",
                     color=discord.Color.green() if outcome.success else discord.Color.red(),
                 )
-                embed.add_field(
-                    name="User", value=f"{member.mention} ({member.id})", inline=False
-                )
-                embed.add_field(name="Reason", value=outcome.reason, inline=False)
+                if compatto:
+                    embed.description = f"{member.mention} ({member.id}): {outcome.reason}"[:400]
+                else:
+                    embed.add_field(
+                        name="User", value=f"{member.mention} ({member.id})", inline=False
+                    )
+                    embed.add_field(name="Reason", value=outcome.reason, inline=False)
                 try:
                     await log_channel.send(embed=embed)
                 except discord.HTTPException:
@@ -589,6 +594,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_2="Altro ruolo extra",
         extra_3="Altro ruolo extra",
         azzera="Togli questi ruoli",
+        log_compatto="Nel log una riga sola per tentativo, invece della scheda completa",
     )
     async def options_cmd(
         self,
@@ -598,10 +604,13 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_2: discord.Role | None = None,
         extra_3: discord.Role | None = None,
         azzera: bool = False,
+        log_compatto: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         guild = interaction.guild
+        if log_compatto is not None:
+            await db.set_guild_setting(guild.id, SETTING_LOG_COMPATTO, log_compatto, changed_by=interaction.user.id)
         if azzera:
             await db.set_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO, None)
             await db.set_guild_setting(guild.id, SETTING_RUOLI_EXTRA, None)

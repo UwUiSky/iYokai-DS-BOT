@@ -47,6 +47,7 @@ SETTINGS_VALIDE = {
     "verify_unverified_role_id": 141414141414141414,
     "verify_extra_role_ids": [151515151515151515],
     "verify_captcha_tipo": "immagine",
+    "verify_log_compatto": True,
     "mute_role_id": 123123123123123123,
     "admin_role_id": 234234234234234234,
     "mod_role_id": 345345345345345345,

@@ -53,6 +53,7 @@ SETTINGS_SCHEMA = {
     "verify_unverified_role_id": "id",
     "verify_extra_role_ids": "lista_id",
     "verify_captcha_tipo": "captcha_tipo",
+    "verify_log_compatto": "bool",
     "mute_role_id": "id",
     "admin_role_id": "id",
     "mod_role_id": "id",

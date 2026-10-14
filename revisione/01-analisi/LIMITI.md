@@ -216,6 +216,10 @@ Stato di iYokai (misurato): 97 comandi di primo livello su 100;
 
 ---
 
+### Lista dei domini di phishing (NF-31)
+
+La lista parte dal file locale `data/phishing_domains.txt`. Una fonte esterna si usa solo se chi gestisce il bot imposta `PHISHING_LIST_URL` (https): il bot la scarica al massimo ogni 6 ore, con attesa di 10 secondi e risposta fino a 2 MB, e tiene in memoria. Le condizioni d'uso della fonte le legge e le accetta chi sceglie l'indirizzo; il repository non ne contiene nessuna. Se la fonte non risponde resta la lista di prima.
+
 ## Parte 3 — Dove il codice supera o ignora un limite
 
 Stato: 🔴 da sistemare · 🟢 già protetto.
