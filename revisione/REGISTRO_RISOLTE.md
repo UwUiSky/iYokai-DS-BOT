@@ -14,6 +14,23 @@ Le prove ancora da fare su Discord restano in `03-verifica/VERIFICA_LIVE.md`.
 | #144 | `/voice kick` senza controllo di gerarchia; unlock azzerava Connetti | Controllo di gerarchia nel kick; unlock ripristina Connetti; memoria del valore con tetto di 5.000 canali | c0e0a0d | 06/10 |
 | #146 | Boost clan: un solo tipo, acquisti sovrapposti | Tre tipi (exp, coin, super), niente acquisti sovrapposti dello stesso beneficio (D23, migrazione 0020) | aaf4ea2 | 07/10 |
 | #76, #3, #24, #31, #40 | Struttura dei comandi: limite di 100 comandi di primo livello | F7 (D24): 16 gruppi + `-cerca-comando` e `-chiedi`, accesso per ruolo, `/owner` solo nel server owner, sync con hash | d477200 | 11/10 |
+| #78 | NF-07 ruolo automatico, ruoli a chi rientra, ruoli a tempo | `/gestione ruoli auto-*`, migrazione 0080; non ridà ruoli a chi è in attesa o durante un raid | 32b8345 | 14/10 |
+| #79 | NF-08 starboard | `/moduli starboard` (0081): soglia, emoji, canale, NSFW, voto dell'autore; solo canali pubblici, niente thread privati | 32b8345 | 14/10 |
+| #80 | NF-09 comandi personalizzati (tag) | `/moduli comandi` e `/utility tag` (0082); scripting avanzato (condizioni, variabili, cron) rimandato | 32b8345 | 14/10 |
+| #81 | NF-10 risposte automatiche | `/moduli comandi risposta-*` (0083), tetto per server atomico | 32b8345 | 14/10 |
+| #85 | NF-14 modalità dei reaction roles | unique, verify, drop, binding e ruoli a tempo (0085), un blocco per membro | 32b8345 | 14/10 |
+| #86 | NF-15 impostazioni dei livelli | `/level impostazioni xp`: coin di daily e work, livello massimo (0090) | 32b8345 | 14/10 |
+| #87 | NF-16 canali contatore | `/moduli contatori` (0087), rinomina con il limite di Discord (2 ogni 10 minuti) | 32b8345 | 14/10 |
+| #88 | NF-17 costruttore di embed | `/moduli embed` (0086) con limiti controllati al salvataggio | 32b8345 | 14/10 |
+| #97 | NF-26 compleanni | `/level compleanno`, `/moduli compleanni` (0088): solo giorno e mese, cancellati all'uscita | 32b8345 | 14/10 |
+| #98 | NF-27 inviti | `/level inviti utente|classifica` (0089), con avviso sull'attribuzione | 32b8345 | 14/10 |
+| #99 | NF-28 giveaway avanzati | `/economia giveaway`, modelli e programmati (0091, 0097-0098) | 32b8345 | 14/10 |
+| #105 | NF-34 moduli e candidature | `/moduli candidature`, `/utility modulo` (0096) | 32b8345 | 14/10 |
+| #84 | NF-13 ticket: modulo, più pannelli, chiusura automatica, voto | pannelli con modulo, chiusura automatica, voto a stelle, limite per utente (0100, 0102, 0106) | 32b8345 | 14/10 |
+| #104 | NF-33 ticket via messaggio privato (ModMail) | `cogs/tickets/modmail.py` (0101): DM, conferma con un solo server, blocco utenti, transcript solo al log | 32b8345 | 14/10 |
+| #72 | NF-01 router dei canali e log su forum | fatto nel giro log di r4 e F6 | 32b8345 | 14/10 |
+| #73 | NF-02 log dei messaggi cancellati e modificati | fatto nel giro log di r4 | 32b8345 | 14/10 |
+| #74 | NF-03 snipe ed editsnipe | fatto nel giro log di r4 | 32b8345 | 14/10 |
 
 ## Issue dell'Advisor Bot (#2–#56)
 
