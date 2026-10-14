@@ -465,6 +465,21 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("main_radio_tracks", "Tracce della radio principale", colonne_attore=("added_by",), server="conserva"),
     _t("music_sessions", "Worker musicale assegnato a un server", colonna_server="guild_id"),
     _t("command_sync_state", "Impronta dell'ultima sincronizzazione dei comandi", server="conserva"),
+    # ---------------------------------------------------------------- motore AI (NF-24, D19)
+    _t("ai_config", "Scelte AI del server (consenso, quote, lore, privacy)", colonne_attore=("consenso_da",),
+       colonna_server="guild_id"),
+    _t("ai_uso", "Conti dell'uso dell'AI (solo numeri, mai il testo)", colonne_utente=("user_id",),
+       colonna_server="guild_id", utente="anonimizza", anonimizza=(("user_id", "0"),), esporta=True,
+       scadenza=Scadenza("creato_il", 400), nota="i numeri restano per i conti del server, senza la persona"),
+    _t("ai_cache", "Risposte AI salvate (guild_id 0: libreria comune senza messaggi di utenti)",
+       colonna_server="guild_id", scadenza=Scadenza("creato_il", 90, solo_se="guild_id <> 0"),
+       nota="le risposte nate dai messaggi di un server restano lì e scadono"),
+    _t("ai_conoscenza", "Base di conoscenza caricata dall'admin", colonne_attore=("creato_da",), colonna_server="guild_id"),
+    _t("ai_personaggi", "Personaggi AI creati dagli utenti", colonne_utente=("autore_id",), colonna_server="guild_id",
+       utente="cancella", esporta=True),
+    _t("ai_traduzione_canali", "Canali con traduzione automatica", colonna_server="guild_id"),
+    _t("ai_crediti", "Immagini AI comprate con le monete del server", colonne_utente=("user_id",),
+       colonna_server="guild_id", utente="cancella", esporta=True),
 )
 # fmt: on
 

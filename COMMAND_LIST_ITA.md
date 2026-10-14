@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:43 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 17:55 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 416 comandi in 19 categorie.**
+**Totale: 442 comandi in 20 categorie.**
 
 ## Admin
 
@@ -53,6 +53,24 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 - **`/admin ticket sollecito`** — Sollecito dopo N minuti senza staff (0 = spento).
 - **`/admin ticket standard`** — Risposte standard imparate dallo staff.
 - **`/admin ticket voto`** — Voto a stelle in DM alla chiusura.
+
+## Ai
+
+- **`/ai attiva`** — Accende o spegne l'AI nel server (serve il consenso).
+- **`/ai canale`** — Spegne o riaccende l'AI in un canale.
+- **`/ai conoscenza aggiungi`** — Aggiunge una voce alla base di conoscenza.
+- **`/ai conoscenza elenco`** — Le voci della base di conoscenza.
+- **`/ai conoscenza togli`** — Toglie una voce dalla base di conoscenza.
+- **`/ai costruisci`** — L'AI propone ruoli e canali da una descrizione; tu confermi.
+- **`/ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
+- **`/ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
+- **`/ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
+- **`/ai moderazione`** — L'AI segnala allo staff i messaggi sospetti di un canale.
+- **`/ai personaggio`** — Installa, toglie o cancella un personaggio AI del server.
+- **`/ai privacy`** — Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.
+- **`/ai stato`** — Stato dell'AI nel server: fornitori, scelte e uso del mese.
+- **`/ai traduzione`** — Traduce da solo ogni messaggio di un canale in una lingua.
+- **`/ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
 
 ## Aiuto (primo livello)
 
@@ -425,6 +443,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 ## Ticket
 
 - **`/ticket add`** — Aggiungi un utente o un ruolo a questo ticket.
+- **`/ticket assistente`** — Risposta dell'assistente AI (per lo staff: bozza e smistamento).
 - **`/ticket claim`** — Prendi in carico questo ticket.
 - **`/ticket close`** — Chiudi questo ticket.
 - **`/ticket dm-chiudi`** — Chiudi questa conversazione ModMail.
@@ -439,6 +458,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 
 ## Utility
 
+- **`/utility ai crea-personaggio`** — Crea un personaggio AI con cui chattare.
+- **`/utility ai immagina`** — Genera un'immagine da una descrizione.
+- **`/utility ai ingrandisci`** — Ingrandisce e ripulisce un'immagine che carichi.
+- **`/utility ai lore`** — Scheda di lore su un nome, un luogo o uno yokai.
+- **`/utility ai pacchetto`** — Compra 5 immagini AI in più con le monete del server.
+- **`/utility ai personaggio`** — Parla con un personaggio AI del server.
+- **`/utility ai riassumi`** — Riassunto degli ultimi messaggi di un canale.
+- **`/utility ai spiega`** — Spiega in parole semplici un messaggio (dal suo link).
+- **`/utility ai stile`** — Un messaggio nuovo scritto come scrivi tu.
+- **`/utility ai traduci`** — Traduce un testo nella lingua che scegli.
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).

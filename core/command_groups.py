@@ -1,7 +1,7 @@
 """
 core/command_groups.py
 ======================
-I 16 gruppi di primo livello della mappa F7, definiti una volta sola e
+I gruppi di primo livello della mappa F7 (più quelli nati con D25 e D26), definiti una volta sola e
 usati da tutti i cog. Nomi e descrizioni italiani, `guild_only`,
 permessi predefiniti e livello di accesso (core/command_access.py).
 In più il MODO UNICO per mettere il comando di un cog in un gruppo:
@@ -59,6 +59,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "moduli": ("Moduli del server: alert, starboard, contatori, compleanni", "manage_guild", Livello.ADMIN),
     "security": ("Sicurezza: anti-raid, panico, verifica, ban globale", "administrator", Livello.SECURITY),
     "antinuke": ("Anti-nuke: soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
+    "ai": ("Intelligenza artificiale: consenso, limiti, lore, conoscenza, funzioni", "manage_guild", Livello.ADMIN),
     "automod": ("Moderazione automatica: filtri, parole vietate, esenzioni", "manage_guild", Livello.ADMIN),
     "mod": ("Moderazione: avvisi, timeout, silenzio, pulizia, blocco canali", "moderate_members", Livello.MOD),
     "modban": ("Moderazione dura: ban, kick, softban e sban", "ban_members", Livello.MODBAN),

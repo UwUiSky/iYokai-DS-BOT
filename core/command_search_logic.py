@@ -193,6 +193,19 @@ def menzione(percorso: str, ids: Mapping[str, int]) -> str:
     return f"</{percorso}:{id_comando}>"
 
 
+def menziona_percorsi(testo: str, percorsi: Iterable[str], ids: Mapping[str, int]) -> str:
+    """
+    Ogni `/percorso` citato nel testo diventa una menzione cliccabile, solo a confine di
+    parola: `/mod ban` non tocca `/mod banlist` né `/mod ban-lista`. Un solo passaggio, dal
+    percorso più lungo, così una menzione già messa non si ritocca; i backtick intorno si tolgono.
+    """
+    nomi = sorted({p for p in percorsi if p}, key=len, reverse=True)
+    if not nomi:
+        return testo
+    schema = re.compile(r"(?<![\w/])(`?)/(" + "|".join(re.escape(n) for n in nomi) + r")(?![\w-])\1")
+    return schema.sub(lambda m: menzione(m.group(2), ids), testo)
+
+
 def pagina(elementi: Sequence, indice: int, per_pagina: int) -> tuple[list, int, int]:
     """(elementi della pagina, indice corretto, numero di pagine). Mai meno di una pagina."""
     totale = max(1, -(-len(elementi) // per_pagina))
