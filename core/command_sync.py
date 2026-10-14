@@ -40,6 +40,24 @@ def impronta_albero(comandi: Sequence[Any], tree: app_commands.CommandTree) -> s
     return hashlib.sha256(testo.encode("utf-8")).hexdigest()
 
 
+async def impronta_albero_tradotto(comandi: Sequence[Any], tree: app_commands.CommandTree) -> str:
+    """
+    Come `impronta_albero`, ma con le traduzioni dei comandi (NF-06): senza, cambiare un testo in
+    locales/comandi.en.json non farebbe risincronizzare. Senza traduttore, o se la traduzione
+    fallisce, ricade sull'impronta semplice.
+    """
+    traduttore = getattr(tree, "translator", None)
+    if traduttore is None:
+        return impronta_albero(comandi, tree)
+    try:
+        ordinati = sorted(comandi, key=lambda c: c.name)
+        payload = [await c.get_translated_payload(tree, traduttore) for c in ordinati]
+    except Exception as exc:
+        logger.warning("Impronta con traduzioni non calcolabile (%s): uso quella semplice.", type(exc).__name__)
+        return impronta_albero(comandi, tree)
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
 class StatoSync(Protocol):
     async def leggi(self, scope: str) -> str | None: ...
 
@@ -78,7 +96,7 @@ async def sincronizza_se_cambiato(
     (o manca). Restituisce SALTATA, SINCRONIZZATA o ERRORE. Mai eccezioni:
     un errore di Discord o del database non deve fermare l'avvio del bot.
     """
-    impronta = impronta_albero(comandi, tree)
+    impronta = await impronta_albero_tradotto(comandi, tree)
     try:
         salvata = await stato.leggi(scope)
     except Exception as exc:
