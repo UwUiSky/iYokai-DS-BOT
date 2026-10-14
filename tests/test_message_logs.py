@@ -284,3 +284,14 @@ async def test_gli_ignorati_si_tengono_in_memoria_e_si_rileggono_dopo_una_scritt
     await repo.rimuovi(GUILD, "utente", "9")
     assert (await repo.carica(GUILD)).utenti == frozenset()
     assert len(letture) == 3
+
+
+async def test_modifica_il_cui_testo_di_prima_va_ignorato_non_si_scrive(ambiente):
+    """Cacciatore-bug: 'password: hunter2' -> 'ok' mostrava il testo da ignorare nel campo Prima."""
+    cog, canale_log, ignora, _, server = ambiente
+    ignora.carica.return_value = Ignorati(regex=("password",))
+    prima, dopo = _messaggio("password: hunter2"), _messaggio("ok")
+    prima.guild = dopo.guild = server
+    prima.channel = dopo.channel = fake_text_channel(channel_id=CANALE)
+    await cog.on_message_edit(prima, dopo)
+    canale_log.send.assert_not_awaited()

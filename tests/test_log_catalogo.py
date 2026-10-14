@@ -55,13 +55,14 @@ def test_l_espressione_guarda_solo_i_primi_500_caratteri():
 
 @pytest.mark.parametrize(
     "schema",
-    ["(a+)+$", "(a|aa)+", "a*a*a*b", r"(\w)\1", "x" * 101, "([", "", "(?=x)", "(x){3}", r"\\*\\*\\*\\*x"],
+    ["(a+)+$", "(a|aa)+", "a*a*a*b", r"(\w)\1", "x" * 101, "([", "", "(?=x)", "(x){3}", r"\\*\\*\\*\\*x",
+     "a?" * 24 + "a" * 24 + "c", "a{0,99}" * 8 + "c", "(a|b)?c", "(a|aa)*", "a.*b.*c", ".*.*z$", "x{2,5}y"],
 )
 def test_espressioni_pericolose_o_rotte_rifiutate(schema):
     assert logica.regex_non_valida(schema) is not None
 
 
-@pytest.mark.parametrize("schema", ["spam|truffa", r"^!ban\b", r"https?://\S+", "a.*b.*c", "(ab)?c", "[a*+]+x"])
+@pytest.mark.parametrize("schema", ["spam|truffa", r"^!ban\b", r"https?://\S+", "a.*b", "ab?c", "[a*+]+x", "a{3}b"])
 def test_espressioni_semplici_accettate(schema):
     assert logica.regex_non_valida(schema) is None
 
@@ -273,3 +274,38 @@ async def test_palco_non_cambiato_o_log_avanzato_spento_non_scrive(avanzati, mon
 def test_gli_eventi_dei_palchi_vanno_nel_tipo_voce():
     assert advanced.EVENT_TITLES["voice_stage_create"]
     assert "voice_stage_delete".startswith("voice_")  # send_event_embed li manda nel tipo «voce»
+
+
+def test_cinque_espressioni_ammesse_costano_poco_su_un_messaggio_lungo():
+    """Il caso del cacciatore-bug: 5 schemi `.*.*z$` costavano 0,6 s a messaggio. Ora non passano; quelli ammessi sì."""
+    import time
+
+    ammessi = [s for s in ("[a-z ]*z$", ".*z$", "a.*z", "(a|b)+" "x", "x*z") if logica.regex_non_valida(s) is None]
+    assert len(ammessi) >= 4
+    assert logica.regex_non_valida(".*.*z$") is not None
+    testo = "a" * 500
+    inizio = time.perf_counter()
+    for _ in range(20):
+        logica.corrisponde_regex(tuple(ammessi) * 1, testo)
+    assert (time.perf_counter() - inizio) / 20 < 0.02
+
+
+def test_uno_schema_lento_viene_disattivato(monkeypatch):
+    import re as _re
+
+    class Lenta:
+        def search(self, _t):
+            import time as _t
+
+            _t.sleep(0.08)
+            return None
+
+    logica._REGEX_DISATTIVATE.clear()
+    monkeypatch.setattr(logica, "_compilata", lambda s: Lenta())
+    logica.corrisponde_regex(("lenta",), "x")
+    assert "lenta" in logica._REGEX_DISATTIVATE
+    chiamate = []
+    monkeypatch.setattr(logica, "_compilata", lambda s: chiamate.append(s))
+    logica.corrisponde_regex(("lenta",), "x")
+    assert chiamate == []
+    logica._REGEX_DISATTIVATE.clear()

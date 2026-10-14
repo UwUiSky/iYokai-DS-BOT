@@ -10,11 +10,15 @@ Funzioni coperte: SPEC §8.16 (NF-02)
 from __future__ import annotations
 
 import functools
+import logging
 import re
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from core.testo_limiti import CAMPO_MAX, tronca
+
+logger = logging.getLogger(__name__)
 
 # LIM-55: un allegato deve restare sotto i 10 MiB. Si lascia margine.
 FILE_MAX_BYTE = 8 * 1024 * 1024
@@ -29,7 +33,9 @@ IGNORATI_MAX_PER_SERVER = 200
 REGEX_MAX_LUNGHEZZA = 100
 REGEX_MAX_PER_SERVER = 5
 REGEX_TESTO_MAX = 500
-REGEX_MAX_RIPETIZIONI_ILLIMITATE = 2
+REGEX_MAX_RIPETIZIONI_ILLIMITATE = 1
+REGEX_MAX_OPZIONALI = 4
+REGEX_TEMPO_MAX_SECONDI = 0.05
 
 
 def senza_accento_grave(testo: str) -> str:
@@ -46,10 +52,15 @@ class Ignorati:
     regex: tuple[str, ...] = ()
 
 
-def _scansiona_schema(schema: str) -> tuple[int, bool]:
-    """(ripetizioni senza limite, c'è un gruppo ripetuto) contando solo i simboli veri: né escape né dentro [ ]."""
+def _scansiona_schema(schema: str) -> tuple[int, bool, int, bool]:
+    """
+    (ripetizioni senza limite, gruppo ripetuto, `?` e simili, intervallo {n,m}), contando solo
+    i simboli veri: né escape né dentro [ ]. `(?:` non conta.
+    """
     illimitate = 0
+    opzionali = 0
     gruppo_ripetuto = False
+    intervallo = False
     i = 0
     in_classe = False
     while i < len(schema):
@@ -63,27 +74,37 @@ def _scansiona_schema(schema: str) -> tuple[int, bool]:
             in_classe = True
         elif c in "*+":
             illimitate += 1
-        elif c == "{" and re.match(r"\{\d+,\}", schema[i:]):
-            illimitate += 1
-        if not in_classe and c == ")" and i + 1 < len(schema) and schema[i + 1] in "*+{":
+        elif c == "?" and not (i > 0 and schema[i - 1] == "("):
+            opzionali += 1
+        elif c == "{":
+            resto = schema[i:]
+            if re.match(r"\{\d+,\}", resto):
+                illimitate += 1
+            elif re.match(r"\{\d*,\d+\}", resto):
+                intervallo = True
+        if not in_classe and c == ")" and i + 1 < len(schema) and schema[i + 1] in "*+{?":
             gruppo_ripetuto = True
         i += 1
-    return illimitate, gruppo_ripetuto
+    return illimitate, gruppo_ripetuto, opzionali, intervallo
 
 
 def regex_non_valida(schema: str) -> str | None:
     """
     None se lo schema si può usare nel log, altrimenti il motivo (per chi lo ha scritto).
     Niente gruppi ripetuti, riferimenti all'indietro, lookaround; al massimo due
-    ripetizioni senza limite (`*`, `+`, `{n,}`): il costo resta quadratico su 500 caratteri.
+    ripetizioni senza limite (`*`, `+`, `{n,}`): il costo resta lineare-quadratico su 500 caratteri.
     """
     if not schema or len(schema) > REGEX_MAX_LUNGHEZZA:
         return f"L'espressione deve avere da 1 a {REGEX_MAX_LUNGHEZZA} caratteri."
     if re.search(r"\\[1-9]|\(\?P=|\(\?[=!<]", schema):
         return "Riferimenti all'indietro e lookaround non sono ammessi."
-    illimitate, gruppo_ripetuto = _scansiona_schema(schema)
+    illimitate, gruppo_ripetuto, opzionali, intervallo = _scansiona_schema(schema)
     if gruppo_ripetuto:
-        return "Un gruppo non può essere ripetuto con *, + o {}: rallenterebbe il bot."
+        return "Un gruppo non può essere ripetuto con *, +, ? o {}: rallenterebbe il bot."
+    if intervallo:
+        return "Gli intervalli {n,m} non sono ammessi: l'espressione sarebbe troppo costosa."
+    if opzionali > REGEX_MAX_OPZIONALI:
+        return f"Al massimo {REGEX_MAX_OPZIONALI} parti opzionali (?): l'espressione è troppo costosa."
     if illimitate > REGEX_MAX_RIPETIZIONI_ILLIMITATE:
         return f"Al massimo {REGEX_MAX_RIPETIZIONI_ILLIMITATE} ripetizioni senza limite (*, +): l'espressione è troppo costosa."
     try:
@@ -101,12 +122,28 @@ def _compilata(schema: str):
         return None
 
 
+_REGEX_DISATTIVATE: set[str] = set()
+
+
 def corrisponde_regex(schemi: tuple[str, ...], testo: str) -> bool:
-    """True se il testo (tagliato a 500 caratteri) corrisponde a uno degli schemi."""
+    """
+    True se il testo (tagliato a 500 caratteri) corrisponde a uno degli schemi. Uno schema che
+    impiega più di 50 ms su un messaggio viene disattivato fino al riavvio (rete di sicurezza:
+    la validazione in `regex_non_valida` è la difesa vera, `re` non si può interrompere).
+    """
     taglio = testo[:REGEX_TESTO_MAX]
     for schema in schemi:
+        if schema in _REGEX_DISATTIVATE:
+            continue
         compilata = _compilata(schema)
-        if compilata is not None and compilata.search(taglio):
+        if compilata is None:
+            continue
+        inizio = time.perf_counter()
+        trovata = compilata.search(taglio)
+        if time.perf_counter() - inizio > REGEX_TEMPO_MAX_SECONDI:
+            _REGEX_DISATTIVATE.add(schema)
+            logger.warning("Espressione del log disattivata: troppo lenta (%s)", schema[:40])
+        if trovata:
             return True
     return False
 

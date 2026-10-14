@@ -159,7 +159,10 @@ class MessageLogsCog(commands.Cog):
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         ignorati = await log_ignora_repo.carica(after.guild.id)
-        if _scartato(ignorati, after.channel, after, after.channel.id):
+        # Il campo "Prima" mostra il testo vecchio: se è lui a dover restare fuori dal log, la modifica non si scrive.
+        if _scartato(ignorati, after.channel, after, after.channel.id) or _scartato(
+            ignorati, after.channel, before, after.channel.id
+        ):
             return
 
         await event_log_repo.log_event(

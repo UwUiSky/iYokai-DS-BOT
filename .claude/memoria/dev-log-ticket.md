@@ -61,3 +61,4 @@
 - ticket catalogo #120 committato, smoke ok; ora voce #127
 - voce #127 fatta (claim/permit/deny/bitrate/nascondi), da committare+smoke; poi push e rapporto
 - MERGE main fatto; ora fix dal rapporto cacciatore-bug (bug.md righe 147-17x). Migrazioni da 0105
+- fatto: voce nascondi+claim atomico (commit). Prossimi: regex, modmail/spam_trap, standard user_id, MEDI, BASSI
