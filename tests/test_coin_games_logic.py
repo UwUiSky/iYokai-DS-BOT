@@ -103,6 +103,23 @@ def test_la_misura_e_stabile_nello_stesso_giorno_e_cambia_con_il_tema():
         ("disabilità", False),
         ("", False),
         ("   ", False),
+        # parole intere: nessun falso allarme dentro altre parole
+        ("voglia di celebrare", True),
+        ("quanto sei ateniese", True),
+        ("la tua transizione al lunedì", True),
+        ("quanto sei stratosferico", True),
+        ("fame di marzapane", True),
+        # varianti e imbrogli
+        ("quanto sei g a y", False),
+        ("quanto sei g.a.y", False),
+        ("quanto sei gаy", False),   # la "а" è cirillica
+        ("quanto sei ｇａｙ", False),  # lettere a larghezza intera
+        ("quanto sei ga\u200by", False),  # carattere invisibile in mezzo
+        ("quanto sei MUSULMANO", False),
+        ("la tua  razza", False),
+        ("quanto sei ebreo", False),
+        ("quanto sei cristiаno", False),  # "а" cirillica
+        ("quanto sei ateo", False),
     ],
 )
 def test_il_tema_libero_non_misura_caratteristiche_protette(tema, atteso):
