@@ -13,6 +13,8 @@ interaction_check() richiede di SOTTOCLASSARE CommandTree e passare
 tree_cls=... a commands.Bot(), non basta assegnare una funzione
 all'istanza — l'implementazione di default in discord.py è pensata
 per essere sovrascritta via ereditarietà.
+Dopo la blacklist si applica la politica dei comandi del server
+(core/command_policy.py: comando spento, canale non permesso, ruoli e utenti ignorati).
 """
 
 from __future__ import annotations

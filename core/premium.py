@@ -28,9 +28,6 @@ Nessuna parte di questo file, da sola, fa pagare qualcuno. Serve solo
 a predisporre l'interruttore, che oggi resta spento ovunque.
 """
 
-# DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-
 from __future__ import annotations
 
 import logging
