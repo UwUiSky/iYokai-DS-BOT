@@ -8,7 +8,6 @@ bottoni, ingrandimento, pacchetti, ticket, costruzione del server, e le
 funzioni pure dei cog.
 """
 
-import io
 
 import discord
 import pytest
@@ -243,7 +242,7 @@ async def test_chiedi_con_motore_in_errore_torna_alla_ricerca(repo, monkeypatch)
     async def rotto(*a, **kw):
         raise RuntimeError("database giù")
 
-    monkeypatch.setattr(repo, "uso", rotto)
+    monkeypatch.setattr(repo, "prenota", rotto)
     ricerche = []
 
     async def ricerca(interaction, query, nota=None, *, gia_differita=False):
@@ -252,3 +251,70 @@ async def test_chiedi_con_motore_in_errore_torna_alla_ricerca(repo, monkeypatch)
     monkeypatch.setattr(cog, "_ricerca", ricerca)
     await cog.chiedi.callback(cog, _inter(), "come si banna")
     assert ricerche == [("come si banna", True)]
+
+
+async def _quota_persona_finita(repo):
+    """La persona U ha già usato l'unica richiesta del giorno."""
+    from core.ai_servizio import RichiestaAI, servizio_ai
+
+    await repo.registra_consenso(G, U, True)
+    await repo.imposta(G, quota_utente_giorno=1)
+    await servizio_ai().richiedi(RichiestaAI(user_id=U, funzione="chiedi", tipo="chat", testo="prima", guild_id=G))
+
+
+def _messaggio(testo, canale_id=4242):
+    from tests.support.discord_fakes import fake_message
+
+    autore = fake_member(U)
+    autore.bot = False
+    return fake_message(author=autore, channel=fake_text_channel(canale_id), guild=fake_guild(G), content=testo)
+
+
+async def test_moderazione_ai_non_usa_la_quota_di_chi_scrive(repo):
+    """Il controllo lo chiede il server: parte anche se l'autore ha finito le sue richieste, e non gliele conta."""
+    from cogs.ai import moderazione
+
+    trasporto = _usa(repo, fornitori=[fornitore("alfa", fascia="media")], risposte={"alfa": '{"violazione": false}'})
+    await _quota_persona_finita(repo)
+    await repo.imposta(G, moderazione_canali=[4242])
+    cog = moderazione.AiModerazioneCog(bot=None)
+    await cog.on_message(_messaggio("messaggio da controllare"))
+    assert len(trasporto.chiamate) == 2
+    assert (await repo.uso(G, U, "moderazione")).utente_oggi == 1
+
+
+async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo):
+    trasporto = _usa(repo, risposte={"alfa": "the cat is with you"})
+    await _quota_persona_finita(repo)
+    cog = traduzione.AiTraduzioneCog(bot=None)
+    cog.canali = {4242: "en"}
+    messaggio = _messaggio("il gatto è con te")
+    await cog.on_message(messaggio)
+    assert len(trasporto.chiamate) == 2
+    assert "the cat is with you" in messaggio.reply.call_args.args[0]
+    assert (await repo.uso(G, U, "traduzione_auto")).utente_oggi == 1
+
+
+async def test_spiega_non_svela_un_thread_privato(repo):
+    """Il thread privato eredita i permessi dal padre: senza iscrizione il messaggio non si legge."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    trasporto = _usa(repo)
+    await repo.registra_consenso(G, U, True)
+    thread = MagicMock(spec=discord.Thread)
+    thread.is_private.return_value = True
+    thread.permissions_for.return_value = discord.Permissions(view_channel=True, read_message_history=True)
+    thread.fetch_member = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "no"))
+    thread.fetch_message = AsyncMock(return_value=MagicMock(content="segreto del thread"))
+    i = _inter()
+    i.guild.get_channel_or_thread = MagicMock(return_value=thread)
+    cog = summaries.AiRiassuntiCog(bot=None)
+    await cog.spiega.callback(cog, i, f"https://discord.com/channels/{G}/1/2")
+    assert i.followup.send.call_args.args[0] == "Non puoi leggere quel messaggio."
+    assert trasporto.chiamate == [] and not thread.fetch_message.await_count
+
+    thread.fetch_member = AsyncMock(return_value=MagicMock())
+    i2 = _inter()
+    i2.guild.get_channel_or_thread = MagicMock(return_value=thread)
+    await cog.spiega.callback(cog, i2, f"https://discord.com/channels/{G}/1/2")
+    assert len(trasporto.chiamate) == 1

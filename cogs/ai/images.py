@@ -13,7 +13,6 @@ funziona anche con l'AI ferma.
 
 from __future__ import annotations
 
-import asyncio
 import io
 import logging
 
@@ -22,9 +21,10 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.ai._comune import MODULO_AI, SOTTO_AI, chiedi, registra_modulo_ai, richiesta_da
-from core.ai_immagini_logic import MAX_BYTES, ImmagineNonValida, ingrandisci
+from core.ai_immagini_logic import ImmagineNonValida, ingrandisci
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium import requires_module
+from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 from core.repositories.ai_repo import ai_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.ui_base import BaseView
@@ -64,7 +64,7 @@ class _ImmagineView(BaseView):
 
 async def _manda_ingrandita(interaction: discord.Interaction, dati: bytes) -> None:
     try:
-        grande, estensione = await asyncio.to_thread(ingrandisci, dati)
+        grande, estensione = await run_image_task(ingrandisci, dati)
     except ImmagineNonValida as exc:
         await interaction.followup.send(str(exc), ephemeral=True)
         return
@@ -99,10 +99,10 @@ class AiImmaginiCog(CogConGruppi, commands.Cog):
         await genera(interaction, descrizione)
 
     @comando_di_gruppo("utility", nome="ingrandisci", descrizione="Ingrandisce e ripulisce un'immagine che carichi.", sottogruppo=SOTTO_AI)
-    @app_commands.describe(immagine="PNG, JPEG, WEBP o GIF (fino a 10 MiB)")
+    @app_commands.describe(immagine="PNG, JPEG, WEBP o GIF (fino a 8 MB)")
     async def ingrandisci(self, interaction: discord.Interaction, immagine: discord.Attachment) -> None:
-        if (immagine.content_type or "").split(";")[0] not in _TIPI_IMMAGINE or immagine.size > MAX_BYTES:
-            await interaction.response.send_message("Serve un'immagine PNG, JPEG, WEBP o GIF fino a 10 MiB.", ephemeral=True)
+        if (immagine.content_type or "").split(";")[0] not in _TIPI_IMMAGINE or immagine.size > MAX_IMAGE_BYTES:
+            await interaction.response.send_message("Serve un'immagine PNG, JPEG, WEBP o GIF fino a 8 MB.", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
         try:

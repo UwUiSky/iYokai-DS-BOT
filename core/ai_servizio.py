@@ -5,7 +5,7 @@ La sola porta dei moduli verso l'AI. Ogni funzione dice tipo di lavoro,
 fascia e se il testo contiene messaggi di utenti; qui si fanno, in ordine:
 AI configurata e accesa nel server (consenso dell'admin), canale non
 spento, privacy, richieste vietate, limite al minuto, cache e libreria,
-quote e tetto di spesa, lore, dati personali tolti, chiamata, pulizia
+quote e tetto di spesa (posto prenotato nel database), lore, dati personali tolti, chiamata, pulizia
 della risposta, conti. Se l'AI non può rispondere, `AINonDisponibile`
 porta il motivo e il testo da mostrare: ogni funzione ha la sua risposta
 locale.
@@ -16,14 +16,13 @@ core/ai_cost_logic.py, core/repositories/ai_repo.py
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass, replace
 
 from core.ai_cache_logic import LIBRERIA_COMUNE, CacheAI, ambito, chiave
-from core.ai_cost_logic import LimitatoreUtente, quota_superata, tetto_raggiunto, usa_credito_immagine
+from core.ai_cost_logic import LimitatoreUtente, stima_token
 from core.ai_guardrail_logic import componi_messaggi, pulisci_dati_personali, pulisci_uscita, richiesta_vietata
 from core.ai_providers import TrasportoHTTP, leggi_fornitori, usa_chiavi_a_pagamento
 from core.ai_router import MotoreAI, NessunFornitore
@@ -37,6 +36,7 @@ MAX_STORIA = 6
 MESSAGGI_LOCALI: dict[str, str] = {
     "non_configurata": "L'AI non è configurata su questo bot: il proprietario deve aggiungere almeno un "
     "fornitore nel file `.env`. Nel frattempo rispondo senza AI.",
+    "premium": "L'AI è una funzione premium: questo server non l'ha sbloccata.",
     "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/ai attiva`.",
     "canale": "L'AI è spenta in questo canale.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
@@ -49,6 +49,15 @@ MESSAGGI_LOCALI: dict[str, str] = {
     "quota_immagini": "Hai finito le immagini della settimana.",
     "fornitori_fermi": "I servizi AI sono occupati o fermi in questo momento. Riprova più tardi.",
 }
+
+
+async def _modulo_sbloccato(guild_id: int) -> bool:
+    """Modulo `ai` reso premium dall'owner (D13): vale anche per -chiedi, menzione e funzioni automatiche."""
+    from core.premium import guild_has_premium_access, registry
+
+    if not registry.is_module_premium("ai"):
+        return True
+    return await guild_has_premium_access(guild_id, "ai")
 
 
 class AINonDisponibile(Exception):
@@ -128,7 +137,6 @@ class ServizioAI:
         self.cache = CacheAI()
         self.memoria = MemoriaCorta()
         self.limitatore = LimitatoreUtente()
-        self._blocchi: dict[tuple[int, int], list] = {}  # (server, persona) -> [Lock, quanti lo usano]
 
     @property
     def configurato(self) -> bool:
@@ -143,6 +151,8 @@ class ServizioAI:
         cfg = await self.repo.get_config(guild_id)
         if not cfg.attivo:
             raise AINonDisponibile("spenta")
+        if not await _modulo_sbloccato(guild_id):
+            raise AINonDisponibile("premium")
         if channel_id is not None and channel_id in cfg.canali_spenti:
             raise AINonDisponibile("canale")
         return cfg
@@ -176,21 +186,7 @@ class ServizioAI:
 
         guild_conti = r.guild_id or 0
         utente_conti = r.user_id if r.conta_utente else 0
-        # Controllo delle quote, chiamata e conti in fila per persona: due richieste insieme
-        # non passano entrambe l'ultimo posto della quota (né usano lo stesso credito).
-        if r.conta_utente:
-            k_blocco = (guild_conti, utente_conti)
-            voce = self._blocchi.setdefault(k_blocco, [asyncio.Lock(), 0])
-            voce[1] += 1
-            try:
-                async with voce[0]:
-                    esito, risposta = await self._chiama(r, cfg, testo, lore, istruzioni_pulite, guild_conti, utente_conti)
-            finally:
-                voce[1] -= 1
-                if voce[1] == 0:
-                    self._blocchi.pop(k_blocco, None)
-        else:
-            esito, risposta = await self._chiama(r, cfg, testo, lore, istruzioni_pulite, guild_conti, utente_conti)
+        esito, risposta = await self._chiama(r, cfg, testo, lore, istruzioni_pulite, guild_conti, utente_conti)
 
         if usa_cache and risposta:
             k = self.cache.metti(amb, r.tipo, istruzioni + r.lingua, testo, risposta)
@@ -200,34 +196,37 @@ class ServizioAI:
         return RispostaAI(testo=risposta, immagine=esito.immagine, fornitore=esito.fornitore)
 
     async def _chiama(self, r: RichiestaAI, cfg, testo, lore, istruzioni, guild_conti, utente_conti):
-        uso = await self.repo.uso(guild_conti, utente_conti, r.funzione)
         quote = cfg.quote() if cfg else None
-        if quote is not None:
-            if not r.conta_utente:
-                quote = replace(quote, utente_giorno=0, utente_30_giorni=0)
-            motivo = quota_superata(quote, uso, immagine=r.tipo == "immagine")
-            if motivo:
-                raise AINonDisponibile(motivo)
-        solo_gratuiti = quote is None or tetto_raggiunto(quote, uso)
-
+        if quote is not None and not r.conta_utente:
+            quote = replace(quote, utente_giorno=0, utente_30_giorni=0)
         minuti = cfg.conservazione_minuti if cfg else 10
         storia = self.memoria.leggi(r.conversazione, minuti) if r.conversazione else []
         messaggi = componi_messaggi(istruzioni, testo, lore=lore, lingua=r.lingua, storia=storia)
         max_token = r.max_token or TOKEN_PER_LUNGHEZZA.get(cfg.lunghezza if cfg else "media", 600)
+
+        # Quote e tetto: posto prenotato nel database prima della chiamata (atomico tra persone
+        # e processi), poi confermato con i numeri veri o annullato se la chiamata non va.
+        token_previsti = stima_token(" ".join(str(m.get("content", "")) for m in messaggi)) + max_token
+        p = await self.repo.prenota(
+            guild_conti, utente_conti, r.funzione, quote=quote, immagine=r.tipo == "immagine",
+            costo_stimato=self.motore.costo_massimo(r.tipo, token_previsti),
+        )
+        if p.motivo:
+            raise AINonDisponibile(p.motivo)
         try:
             esito = await self.motore.esegui(
-                r.tipo, r.fascia, messaggi=messaggi, prompt=testo, max_token=max_token, solo_gratuiti=solo_gratuiti
+                r.tipo, r.fascia, messaggi=messaggi, prompt=testo, max_token=max_token, solo_gratuiti=p.solo_gratuiti
             )
-        except NessunFornitore:
-            raise AINonDisponibile("fornitori_fermi") from None
+        except BaseException as exc:
+            await self.repo.annulla(p)
+            if isinstance(exc, NessunFornitore):
+                raise AINonDisponibile("fornitori_fermi") from None
+            raise
 
         risposta = pulisci_uscita(esito.testo, 4000) if esito.testo else ""
-        await self.repo.registra_uso(
-            guild_conti, utente_conti, r.funzione, esito.fornitore, immagine=r.tipo == "immagine",
-            token_in=esito.token_in, token_out=esito.token_out, costo_millesimi=esito.costo_millesimi,
+        await self.repo.conferma(
+            p, esito.fornitore, token_in=esito.token_in, token_out=esito.token_out, costo_millesimi=esito.costo_millesimi
         )
-        if r.tipo == "immagine" and quote is not None and usa_credito_immagine(quote, uso):
-            await self.repo.crediti_usa(guild_conti, utente_conti)
         return esito, risposta
 
 

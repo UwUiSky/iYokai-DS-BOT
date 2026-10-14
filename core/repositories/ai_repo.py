@@ -14,7 +14,7 @@ from dataclasses import dataclass, fields
 
 import asyncpg
 
-from core.ai_cost_logic import Quote, Uso
+from core.ai_cost_logic import Quote, Uso, quota_superata, tetto_raggiunto, usa_credito_immagine
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,18 @@ class ConfigAI:
 
 _CAMPI = {f.name for f in fields(ConfigAI)} - {"guild_id", "consenso_da"}
 _TUPLE = {"canali_spenti", "parole_vietate", "moderazione_canali"}
+
+
+@dataclass(frozen=True)
+class Prenotazione:
+    """Un posto nei conti preso prima della chiamata (`motivo`: perché non si può partire)."""
+
+    id: int
+    guild_id: int
+    user_id: int
+    solo_gratuiti: bool = True
+    credito: bool = False
+    motivo: str | None = None
 
 
 @dataclass(frozen=True)
@@ -117,18 +129,8 @@ class AiRepository:
         return _config(r)
 
     # ------------------------------------------------------------ uso (solo numeri)
-    async def registra_uso(
-        self, guild_id: int, user_id: int, funzione: str, fornitore: str, *,
-        immagine: bool, token_in: int, token_out: int, costo_millesimi: int,
-    ) -> None:
-        await self._pool.execute(
-            "INSERT INTO ai_uso (guild_id, user_id, funzione, fornitore, immagine, token_in, token_out, costo_millesimi) "
-            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-            guild_id, user_id, funzione, fornitore[:40], immagine, token_in, token_out, costo_millesimi,
-        )
-
-    async def uso(self, guild_id: int, user_id: int, funzione: str) -> Uso:
-        r = await self._pool.fetchrow(
+    async def _uso(self, conn, guild_id: int, user_id: int, funzione: str) -> Uso:
+        r = await conn.fetchrow(
             """
             SELECT
               COALESCE(SUM(costo_millesimi) FILTER (WHERE creato_il >= date_trunc('month', now())), 0) AS spesa,
@@ -140,7 +142,7 @@ class AiRepository:
             """,
             guild_id, user_id, funzione,
         )
-        extra = await self._pool.fetchval(
+        extra = await conn.fetchval(
             "SELECT immagini_extra FROM ai_crediti WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
         )
         return Uso(
@@ -148,12 +150,68 @@ class AiRepository:
             funzione_oggi=r["funzione_oggi"], immagini_settimana=r["immagini"], immagini_extra=extra or 0,
         )
 
+    async def uso(self, guild_id: int, user_id: int, funzione: str) -> Uso:
+        async with self._pool.acquire() as conn:
+            return await self._uso(conn, guild_id, user_id, funzione)
+
+    async def prenota(
+        self, guild_id: int, user_id: int, funzione: str, *, quote: Quote | None, immagine: bool, costo_stimato: int,
+    ) -> Prenotazione:
+        """
+        Controllo delle quote e posto nei conti in un colpo solo, sotto un blocco del server
+        nel database: due richieste insieme (anche di persone o processi diversi) non passano
+        entrambe l'ultimo posto, il credito si consuma qui, e la spesa prevista conta subito
+        sul tetto. `quote` None: nessun controllo (messaggi privati), solo fornitori gratuiti.
+        """
+        async with self._pool.acquire() as conn, conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended('ai_uso:' || $1::bigint::text, 0))", guild_id)
+            solo_gratuiti, credito = True, False
+            if quote is not None:
+                uso = await self._uso(conn, guild_id, user_id, funzione)
+                motivo = quota_superata(quote, uso, immagine=immagine)
+                if motivo:
+                    return Prenotazione(0, guild_id, user_id, motivo=motivo)
+                solo_gratuiti = tetto_raggiunto(quote, uso)
+                credito = immagine and usa_credito_immagine(quote, uso)
+            if credito:
+                await conn.execute(
+                    "UPDATE ai_crediti SET immagini_extra = immagini_extra - 1 "
+                    "WHERE guild_id = $1 AND user_id = $2 AND immagini_extra > 0",
+                    guild_id, user_id,
+                )
+            id_riga = await conn.fetchval(
+                "INSERT INTO ai_uso (guild_id, user_id, funzione, fornitore, immagine, costo_millesimi) "
+                "VALUES ($1, $2, $3, '', $4, $5) RETURNING id",
+                guild_id, user_id, funzione, immagine, 0 if solo_gratuiti else max(0, costo_stimato),
+            )
+        return Prenotazione(id_riga, guild_id, user_id, solo_gratuiti=solo_gratuiti, credito=credito)
+
+    async def conferma(
+        self, p: Prenotazione, fornitore: str, *, token_in: int, token_out: int, costo_millesimi: int,
+    ) -> None:
+        """La chiamata è andata: i conti prendono fornitore, token e costo veri."""
+        await self._pool.execute(
+            "UPDATE ai_uso SET fornitore = $3, token_in = $4, token_out = $5, costo_millesimi = $6 "
+            "WHERE id = $1 AND guild_id = $2",
+            p.id, p.guild_id, fornitore[:40] or "?", token_in, token_out, costo_millesimi,
+        )
+
+    async def annulla(self, p: Prenotazione) -> None:
+        """La chiamata non è andata: il posto si libera e il credito torna."""
+        async with self._pool.acquire() as conn, conn.transaction():
+            await conn.execute("DELETE FROM ai_uso WHERE id = $1 AND guild_id = $2", p.id, p.guild_id)
+            if p.credito:
+                await conn.execute(
+                    "UPDATE ai_crediti SET immagini_extra = immagini_extra + 1 WHERE guild_id = $1 AND user_id = $2",
+                    p.guild_id, p.user_id,
+                )
+
     async def riepilogo_mese(self, guild_id: int | None = None) -> list[asyncpg.Record]:
         """Richieste, token e spesa del mese per fornitore: di un server, o di tutti (owner)."""
         return await self._pool.fetch(
             "SELECT fornitore, COUNT(*) AS richieste, SUM(token_in + token_out) AS token, "
             "SUM(costo_millesimi) AS spesa FROM ai_uso "
-            "WHERE creato_il >= date_trunc('month', now()) AND ($1::bigint IS NULL OR guild_id = $1) "
+            "WHERE creato_il >= date_trunc('month', now()) AND fornitore <> '' AND ($1::bigint IS NULL OR guild_id = $1) "
             "GROUP BY fornitore ORDER BY richieste DESC LIMIT 25",
             guild_id,
         )
@@ -253,14 +311,6 @@ class AiRepository:
             "RETURNING immagini_extra",
             guild_id, user_id, quante,
         )
-
-    async def crediti_usa(self, guild_id: int, user_id: int) -> bool:
-        esito = await self._pool.execute(
-            "UPDATE ai_crediti SET immagini_extra = immagini_extra - 1 "
-            "WHERE guild_id = $1 AND user_id = $2 AND immagini_extra > 0",
-            guild_id, user_id,
-        )
-        return esito.endswith(" 1")
 
 
 def _get_pool() -> asyncpg.Pool:

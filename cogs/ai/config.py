@@ -189,8 +189,9 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         righe = await ai_repo.riepilogo_mese(interaction.guild_id)
         embed.add_field(
             name="Uso del mese",
-            value="\n".join(f"{r['fornitore']}: {r['richieste']} richieste, {r['token'] or 0} token, {_euro(r['spesa'])}" for r in righe)
-            or "nessuna richiesta",
+            value=taglia("\n".join(
+                f"{r['fornitore']}: {r['richieste']} richieste, {r['token'] or 0} token, {_euro(r['spesa'])}" for r in righe
+            ) or "nessuna richiesta", 1000),
             inline=False,
         )
         if interaction.user.id == config.OWNER_ID:

@@ -76,3 +76,19 @@ class TestCerca:
 
         punteggi = [_punteggio("membro server", r) for r in cerca("membro server", INFO, soglia=0.0, limite=10)]
         assert punteggi == sorted(punteggi, reverse=True)
+
+
+def test_menziona_percorsi_solo_a_confine_di_parola():
+    """Risposta dell'AI di -chiedi: `/mod ban` diventa cliccabile, `/mod banlist` resta com'è."""
+    from core.command_search_logic import menziona_percorsi
+
+    ids = {"mod": 42}
+    testo = "Usa `/mod ban`, poi /mod banlist o /mod ban-lista; anche /mod ban utente:Mario. x/mod ban no."
+    fatto = menziona_percorsi(testo, ["mod ban"], ids)
+    assert fatto.count("</mod ban:42>") == 2
+    assert "/mod banlist" in fatto and "/mod ban-lista" in fatto and "x/mod ban no" in fatto
+    assert "`" not in fatto
+    # Il percorso più lungo vince e la menzione messa non si ritocca.
+    assert menziona_percorsi("/mod ban lista", ["mod ban", "mod ban lista"], ids) == "</mod ban lista:42>"
+    assert menziona_percorsi("/mod ban", ["mod ban"], {}) == "`/mod ban`"
+    assert menziona_percorsi("niente", [], ids) == "niente"

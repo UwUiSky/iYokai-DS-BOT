@@ -170,6 +170,14 @@ class MotoreAI:
     def sa_fare(self, tipo: str) -> bool:
         return any(tipo in f.tipi and (self.usa_pagamento or not f.a_pagamento) for f in self.fornitori)
 
+    def costo_massimo(self, tipo: str, token: int) -> int:
+        """Il costo più alto (millesimi di centesimo) che una chiamata di `token` può avere: si prenota sul tetto."""
+        return max(
+            (costo_millesimi(f.costo_cent_milione, token) for f in self.fornitori
+             if tipo in f.tipi and (self.usa_pagamento or not f.a_pagamento)),
+            default=0,
+        )
+
     async def esegui(
         self, tipo: str, fascia: str, *, messaggi: list[dict] | None = None, prompt: str = "",
         max_token: int = 600, solo_gratuiti: bool = False,

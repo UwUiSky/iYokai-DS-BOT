@@ -39,6 +39,22 @@ def numeri_del_canale(autori: list[str]) -> str:
     return f"{len(autori)} messaggi da {len(conta)} persone. Più attive: {piu}."
 
 
+async def _vede_thread_privato(canale, membro) -> bool:
+    """
+    I permessi di un thread vengono dal canale padre: per un thread privato servono
+    l'iscrizione al thread o "Gestisci thread", altrimenti il link ne svelerebbe il testo.
+    """
+    if not isinstance(canale, discord.Thread) or not canale.is_private():
+        return True
+    if canale.permissions_for(membro).manage_threads:
+        return True
+    try:
+        await canale.fetch_member(membro.id)
+    except discord.HTTPException:
+        return False
+    return True
+
+
 class AiRiassuntiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -90,6 +106,9 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("Non puoi leggere quel messaggio.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
+        if not await _vede_thread_privato(canale, interaction.user):
+            await interaction.followup.send("Non puoi leggere quel messaggio.", ephemeral=True)
+            return
         try:
             messaggio = await canale.fetch_message(int(trovato.group(3)))
         except discord.HTTPException:

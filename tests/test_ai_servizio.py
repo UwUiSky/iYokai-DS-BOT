@@ -13,6 +13,7 @@ import pytest
 from core.ai_providers import ErroreFornitore
 from core.ai_servizio import AINonDisponibile, MemoriaCorta, RichiestaAI
 from core.repositories.ai_repo import AiRepository
+from tests.support.concorrenza import apri_connessioni
 from tests.support.ai_finto import TrasportoFinto, fornitore, servizio_finto
 
 G, U = 111, 222
@@ -222,22 +223,91 @@ async def test_errore_imprevisto_del_trasporto_passa_al_successivo(repo):
     assert (await servizio.richiedi(_r())).fornitore == "b"
 
 
-async def test_blocco_per_persona_resta_finche_qualcuno_aspetta(repo):
-    """Quattro richieste insieme: mai due chiamate della stessa persona sovrapposte, e il blocco poi sparisce."""
+def _lettura_lenta(repo, monkeypatch):
+    """Allarga la finestra tra lettura dei conti e prenotazione: senza blocco tutte leggono 0."""
     import asyncio
 
-    dentro, massimo = 0, 0
+    originale = repo._uso
 
-    class Conta(TrasportoFinto):
-        async def completa(self, f, messaggi, max_token):
-            nonlocal dentro, massimo
-            dentro += 1
-            massimo = max(massimo, dentro)
-            await asyncio.sleep(0.02)
-            dentro -= 1
-            return await super().completa(f, messaggi, max_token)
+    async def lenta(*a):
+        uso = await originale(*a)
+        await asyncio.sleep(0.05)
+        return uso
 
-    servizio, _ = servizio_finto(repo, trasporto=Conta())
+    monkeypatch.setattr(repo, "_uso", lenta)
+
+
+class _Lento(TrasportoFinto):
+    async def completa(self, f, messaggi, max_token):
+        import asyncio
+
+        await asyncio.sleep(0.05)
+        return await super().completa(f, messaggi, max_token)
+
+
+async def test_quota_funzione_tra_persone_diverse_insieme(repo, monkeypatch):
+    """Quattro persone insieme sull'ultimo posto della funzione: ne parte una sola (blocco nel database)."""
+    import asyncio
+
+    servizio, trasporto = servizio_finto(repo, trasporto=_Lento())
     await repo.registra_consenso(G, U, True)
-    await asyncio.gather(*(servizio.richiedi(_r(testo=f"domanda {i}", riusa=False)) for i in range(4)))
-    assert massimo == 1 and servizio._blocchi == {}
+    await repo.imposta(G, quota_funzione_giorno=1)
+    await apri_connessioni(repo._pool, 3)
+    _lettura_lenta(repo, monkeypatch)
+    esiti = await asyncio.gather(
+        *(servizio.richiedi(_r(user_id=U + i, testo=f"domanda {i}", riusa=False)) for i in range(4)),
+        return_exceptions=True,
+    )
+    assert len(trasporto.chiamate) == 1
+    assert sorted(getattr(e, "motivo", "ok") for e in esiti) == ["ok"] + ["quota_funzione"] * 3
+
+
+async def test_tetto_di_spesa_tra_persone_diverse_insieme(repo, monkeypatch):
+    """Tre persone insieme con un fornitore caro: la spesa prevista conta subito, ne parte una sola."""
+    import asyncio
+
+    caro = fornitore("caro", costo_cent_milione=10_000_000)
+    servizio, trasporto = servizio_finto(repo, fornitori=[caro], trasporto=_Lento())
+    await repo.registra_consenso(G, U, True)
+    await repo.imposta(G, tetto_mensile_cent=1)
+    await apri_connessioni(repo._pool, 3)
+    _lettura_lenta(repo, monkeypatch)
+    esiti = await asyncio.gather(
+        *(servizio.richiedi(_r(user_id=U + i, testo=f"domanda {i}", riusa=False)) for i in range(3)),
+        return_exceptions=True,
+    )
+    assert len(trasporto.chiamate) == 1
+    assert sorted(getattr(e, "motivo", "ok") for e in esiti) == ["fornitori_fermi", "fornitori_fermi", "ok"]
+    # Dopo la chiamata resta il costo vero (15 token), non quello previsto.
+    assert (await repo.uso(G, U, "chiedi")).spesa_mese_millesimi == 150_000
+
+
+async def test_chiamata_fallita_libera_il_posto_e_rende_il_credito(repo):
+    img = fornitore("img", tipi=("immagine",))
+    servizio, _ = servizio_finto(repo, fornitori=[img], trasporto=TrasportoFinto(errori={"img": ErroreFornitore(503)}))
+    await repo.registra_consenso(G, U, True)
+    cfg = await repo.imposta(G, quota_immagini_settimana=1)
+    fatta = await repo.prenota(G, U, "immagina", quote=cfg.quote(), immagine=True, costo_stimato=0)
+    await repo.conferma(fatta, "img", token_in=1, token_out=0, costo_millesimi=0)
+    await repo.crediti_aggiungi(G, U, 1)
+    assert await _motivo(servizio, _r(tipo="immagine", funzione="immagina", testo="un gatto")) == "fornitori_fermi"
+    uso = await repo.uso(G, U, "immagina")
+    assert (uso.funzione_oggi, uso.immagini_settimana, uso.immagini_extra) == (1, 1, 1)
+
+
+async def test_modulo_premium_non_sbloccato_ferma_anche_le_funzioni_automatiche(repo, monkeypatch):
+    """D13: se l'owner rende premium il modulo ai, la porta unica rifiuta anche -chiedi e i listener."""
+    from core import premium
+
+    servizio, trasporto = servizio_finto(repo)
+    await repo.registra_consenso(G, U, True)
+    monkeypatch.setattr(premium.registry, "is_module_premium", lambda nome: nome == "ai")
+
+    async def sbloccato(guild_id, nome, bot=None):
+        return guild_id == 999
+
+    monkeypatch.setattr(premium, "guild_has_premium_access", sbloccato)
+    assert await _motivo(servizio, _r(conta_utente=False)) == "premium"
+    await repo.registra_consenso(999, U, True)
+    assert (await servizio.richiedi(_r(guild_id=999))).testo == "risposta di alfa"
+    assert len(trasporto.chiamate) == 1

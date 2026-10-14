@@ -14,9 +14,10 @@ import io
 
 from PIL import Image, ImageFilter, UnidentifiedImageError
 
+from core.safe_image import ImmagineTroppoGrande, safe_open_image
+
 MAX_BYTES = 10 * 1024 * 1024
 MAX_LATO = 4096
-MAX_PIXEL_INGRESSO = 4096 * 4096
 
 
 class ImmagineNonValida(ValueError):
@@ -29,11 +30,10 @@ def ingrandisci(dati: bytes, fattore: int = 2) -> tuple[bytes, str]:
     toglie il rumore leggero e rende più nitidi i bordi. PNG se entra, altrimenti JPEG.
     """
     try:
-        img = Image.open(io.BytesIO(dati))
-        # Le misure si leggono senza decodificare: prima il controllo, poi il lavoro vero.
-        if img.width * img.height > MAX_PIXEL_INGRESSO:
-            raise ImmagineNonValida("Immagine troppo grande da ingrandire.")
-        img.load()
+        # Punto unico (core/safe_image.py): formati ammessi, pixel controllati prima di decodificare.
+        img = safe_open_image(dati, max_side=MAX_LATO)
+    except ImmagineTroppoGrande as exc:
+        raise ImmagineNonValida("Immagine troppo grande da ingrandire.") from exc
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise ImmagineNonValida("Il file non è un'immagine leggibile.") from exc
     img = img.convert("RGBA" if "A" in img.getbands() else "RGB")

@@ -265,8 +265,7 @@ class CommandSearchCog(commands.Cog):
         if testo is None:
             return False  # già differita: la ricerca per parole risponde con followup
         ids = await self._ids(interaction, serve={c.gruppo for c in citati})
-        for c in citati:
-            testo = testo.replace(f"/{c.percorso}", logica.menzione(c.percorso, ids))
+        testo = logica.menziona_percorsi(testo, [c.percorso for c in citati], ids)
         embed = discord.Embed(title="Assistente", description=testo[:4000], color=discord.Color.blurple())
         embed.set_footer(text="Risposta dell'AI: controlla prima di usarla")
         view = RisultatiView(config.WIKI_BASE_URL, citati[0].percorso) if citati else None
