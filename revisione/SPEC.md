@@ -77,12 +77,12 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §22 FUNZIONI NUOVE, PRIMO GRUPPO | 3 | 0 | 14 | 0 |
 | §23 FUNZIONI NUOVE, SECONDO GRUPPO | 2 | 1 | 14 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 1 | 6 | 0 |
-| §25 MOTORE AI | 0 | 0 | 105 | 0 |
+| §25 MOTORE AI | 45 | 15 | 45 | 0 |
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
 | D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
 | E APPLICAZIONI DEL PROGETTO | 0 | 3 | 5 | 0 |
-| **Totale** | **99** | **145** | **244** | **6** |
+| **Totale** | **144** | **160** | **184** | **6** |
 
 Totale voci: **494**.
 
@@ -1954,7 +1954,10 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
   pagamento esterno registrato dall'owner (NF-22)
   → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Manca solo la pagina del pannello web. Da provare live (serve l'app verificata).
 
-## §25 MOTORE AI — da fare (fase F12, issue #50)
+## §25 MOTORE AI — in corso (fase F12, issue #95, #50, #132)
+
+Stato 14/10 (r6): motore in `core/ai_*.py` (porta unica `core/ai_servizio.py`), fornitori dal `.env`
+(D26), comandi `/ai`, `/utility ai`, `-chiedi`, `/ticket assistente`; migrazione 0140.
 
 Prerequisiti: privacy policy pubblicata con l'elenco dei fornitori;
 consenso dell'admin per server; tetto di spesa (D13). Vietato usare i
@@ -1967,73 +1970,82 @@ quelle di prima. Da 25.10 in poi ci sono le funzioni discusse che non
 erano in questa lista: una voce per funzione, nell'ordine dei gruppi
 di quel file.
 
-- `[ ]` 25.1 Router con più fornitori in cascata e risposta locale di
+- `[x]` 25.1 Router con più fornitori in cascata e risposta locale di
   riserva (NF-24; AI-R-001, AI-R-002, AI-R-007)
-- `[ ]` 25.2 Cache delle risposte a domande uguali o molto simili
+- `[x]` 25.2 Cache delle risposte a domande uguali o molto simili
   (AI-R-004)
-- `[ ]` 25.3 Filtri di sicurezza in ingresso e in uscita; dati personali
+- `[x]` 25.3 Filtri di sicurezza in ingresso e in uscita; dati personali
   tolti prima dell'invio (AI-R-013)
-- `[ ]` 25.4 Conteggio dell'uso e tetto di spesa per server (AI-R-009,
+- `[x]` 25.4 Conteggio dell'uso e tetto di spesa per server (AI-R-009,
   AI-R-010)
-- `[ ]` 25.5 Helpdesk: risposte sui comandi e sul server (AI-R-024,
+- `[x]` 25.5 Helpdesk: risposte sui comandi e sul server (AI-R-024,
   AI-R-033)
-- `[ ]` 25.6 Riassunti di canali e ticket (AI-R-043, AI-R-075)
-- `[ ]` 25.7 Lore: tono e ambientazione scelti dal server (tabella e
+- `[x]` 25.6 Riassunti di canali e ticket (AI-R-043, AI-R-075)
+- `[x]` 25.7 Lore: tono e ambientazione scelti dal server (tabella e
   comando possono nascere prima del motore, vedi `BACKLOG.md` §8;
   AI-R-049, AI-R-051)
-- `[ ]` 25.8 Generazione di immagini (AI-R-065)
-- `[ ]` 25.9 Interruttore per server e per canale (AI-R-017, AI-R-019)
+- `[x]` 25.8 Generazione di immagini (AI-R-065)
+- `[x]` 25.9 Interruttore per server e per canale (AI-R-017, AI-R-019)
 
 **Motore e infrastruttura**
 
-- `[ ]` 25.10 Pausa automatica del fornitore che dà errori (AI-R-003)
-- `[ ]` 25.11 Libreria dei contenuti generati, che cresce da sola
+- `[x]` 25.10 Pausa automatica del fornitore che dà errori (AI-R-003)
+- `[x]` 25.11 Libreria dei contenuti generati, che cresce da sola
   (AI-R-005)
-- `[ ]` 25.12 Smistamento delle domande: prima regole e database, AI
+- `[~]` 25.12 Smistamento delle domande: prima regole e database, AI
   solo se serve (AI-R-006)
-- `[ ]` 25.13 Passaggio alle chiavi a pagamento con un interruttore
+  → **Stato 14/10 (r6):** cache e libreria comune prima dell'AI; `-chiedi` torna alla ricerca per parole. Manca uno smistamento a regole per tutte le funzioni.
+- `[x]` 25.13 Passaggio alle chiavi a pagamento con un interruttore
   (AI-R-008)
-- `[ ]` 25.14 Quota per utente (AI-R-011; catalogo AI-002)
-- `[ ]` 25.15 Quota per funzione (AI-R-012)
-- `[ ]` 25.16 Lista delle richieste vietate e limite di richieste per
+- `[x]` 25.14 Quota per utente (AI-R-011; catalogo AI-002)
+- `[x]` 25.15 Quota per funzione (AI-R-012)
+- `[x]` 25.16 Lista delle richieste vietate e limite di richieste per
   utente (AI-R-014)
-- `[ ]` 25.17 Regola "l'AI propone, una persona conferma" (AI-R-015)
-- `[ ]` 25.18 Livelli di privacy dell'AI per server (AI-R-016)
-- `[ ]` 25.19 Tempo di conservazione del contesto dell'AI (AI-R-018)
-- `[ ]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
+- `[x]` 25.17 Regola "l'AI propone, una persona conferma" (AI-R-015)
+- `[x]` 25.18 Livelli di privacy dell'AI per server (AI-R-016)
+- `[x]` 25.19 Tempo di conservazione del contesto dell'AI (AI-R-018)
+- `[~]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
   fermare il resto (AI-R-020)
+  → **Stato 14/10 (r6):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. Manca un interruttore "manutenzione" globale per l'owner.
 - `[ ]` 25.21 AI in un processo separato (AI-R-021)
-- `[ ]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
-- `[ ]` 25.23 AI come diritto premium a parte, con periodo di prova
+- `[~]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
+  → **Stato 14/10 (r6):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Manca una coda vera.
+- `[~]` 25.23 AI come diritto premium a parte, con periodo di prova
   (AI-R-023)
+  → **Stato 14/10 (r6):** modulo `ai` registrato: l'owner lo rende premium. Manca il periodo di prova.
 
 **Assistente e helpdesk**
 
-- `[ ]` 25.24 Base di conoscenza caricata dall'admin (AI-R-025)
-- `[ ]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
-- `[ ]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
-- `[ ]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
+- `[x]` 25.24 Base di conoscenza caricata dall'admin (AI-R-025)
+- `[~]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
+  → **Stato 14/10 (r6):** `-chiedi` risponde con l'AI nella lingua della domanda; `-cerca-comando` resta per parole.
+- `[x]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
+- `[~]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
   configurazione (AI-R-028)
+  → **Stato 14/10 (r6):** al massimo 3 comandi, cliccabili. Mancano i bottoni che aprono la configurazione.
 - `[ ]` 25.28 Stato del comando nella risposta (AI-R-029)
 - `[ ]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
   manca (AI-R-030)
 - `[ ]` 25.30 Richiesta composta: più comandi in fila e "Configura
   tutto" (AI-R-031)
-- `[ ]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
-- `[ ]` 25.32 Il bot risponde in chat quando viene menzionato (AI-R-034;
+- `[~]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
+  → **Stato 14/10 (r6):** `-chiedi` risponde anche a "cosa posso fare qui?" con l'elenco dei comandi che la persona può usare.
+- `[x]` 25.32 Il bot risponde in chat quando viene menzionato (AI-R-034;
   catalogo AI-009)
-- `[ ]` 25.33 Memoria corta della conversazione (AI-R-035; catalogo
+- `[x]` 25.33 Memoria corta della conversazione (AI-R-035; catalogo
   AI-011)
-- `[ ]` 25.34 Chiedere a parole di eseguire un comando (AI-R-036;
+- `[~]` 25.34 Chiedere a parole di eseguire un comando (AI-R-036;
   catalogo AI-013)
-- `[ ]` 25.35 Costruzione del server con l'AI (AI-R-037; catalogo
+  → **Stato 14/10 (r6):** un bot non può lanciare un comando slash per l'utente né precompilarlo: l'AI indica il comando cliccabile e i valori da mettere; la persona lo lancia.
+- `[x]` 25.35 Costruzione del server con l'AI (AI-R-037; catalogo
   AI-025)
-- `[ ]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
+- `[~]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
   AI-024)
+  → **Stato 14/10 (r6):** `/utility ai stile` usa solo i messaggi di chi lo chiede: imitare un'altra persona senza consenso non si fa (privacy).
 
 **Moderazione e sicurezza con AI**
 
-- `[ ]` 25.37 Aiuto alla moderazione: l'AI segnala, lo staff decide
+- `[x]` 25.37 Aiuto alla moderazione: l'AI segnala, lo staff decide
   (AI-R-039; catalogo AI-018)
 - `[ ]` 25.38 Classificazione delle segnalazioni degli utenti (AI-R-040)
 - `[ ]` 25.39 Riassunto di un incidente (AI-R-041)
@@ -2052,9 +2064,9 @@ di quel file.
 
 **Lore, giochi e narrazione**
 
-- `[ ]` 25.46 Temi pronti (AI-R-050)
+- `[x]` 25.46 Temi pronti (AI-R-050)
 - `[ ]` 25.47 La lore viene chiesta durante il setup (AI-R-052)
-- `[ ]` 25.48 La lore entra in ogni testo dell'AI del server (AI-R-053)
+- `[x]` 25.48 La lore entra in ogni testo dell'AI del server (AI-R-053)
 - `[ ]` 25.49 World Boss: evento di gruppo contro un mostro (AI-R-054)
 - `[ ]` 25.50 World Boss: comparsa a orario e avvio a mano (AI-R-055)
 - `[ ]` 25.51 World Boss: mostro creato dall'AI secondo la lore
@@ -2067,31 +2079,32 @@ di quel file.
   (AI-R-060)
 - `[ ]` 25.56 Misteri: frammenti di storia nascosti dall'admin
   (AI-R-061)
-- `[ ]` 25.57 Personaggi AI creati dagli utenti (AI-R-062; catalogo
+- `[x]` 25.57 Personaggi AI creati dagli utenti (AI-R-062; catalogo
   AI-014)
-- `[ ]` 25.58 Installare e togliere personaggi dal server (AI-R-063;
+- `[x]` 25.58 Installare e togliere personaggi dal server (AI-R-063;
   catalogo AI-015)
 - `[ ]` 25.59 Boss ed eventi di gioco uguali in più server (AI-R-064)
 
 **Immagini, voce e media**
 
-- `[ ]` 25.60 Variazioni di un'immagine appena generata (AI-R-066;
+- `[x]` 25.60 Variazioni di un'immagine appena generata (AI-R-066;
   catalogo AI-005)
-- `[ ]` 25.61 Ingrandimento dell'immagine generata (AI-R-067; catalogo
+- `[x]` 25.61 Ingrandimento dell'immagine generata (AI-R-067; catalogo
   AI-006)
-- `[ ]` 25.62 Ingrandire e ripulire un'immagine caricata (AI-R-068;
+- `[x]` 25.62 Ingrandire e ripulire un'immagine caricata (AI-R-068;
   catalogo AI-007)
-- `[ ]` 25.63 Quota di immagini e pacchetti in più (AI-R-069; catalogo
+- `[x]` 25.63 Quota di immagini e pacchetti in più (AI-R-069; catalogo
   AI-008)
 - `[ ]` 25.64 Immagine del boss nell'annuncio (AI-R-070)
 
 **Ticket e staff**
 
-- `[ ]` 25.65 Bottone "Chiedi all'assistente" dentro il ticket
+- `[~]` 25.65 Bottone "Chiedi all'assistente" dentro il ticket
   (AI-R-071)
+  → **Stato 14/10 (r6):** `/ticket assistente` al posto del bottone (il messaggio di apertura è dei file dei ticket).
 - `[ ]` 25.66 Prima risposta automatica nei ticket (AI-R-072)
-- `[ ]` 25.67 Bozza di risposta per lo staff (AI-R-073)
-- `[ ]` 25.68 Smistamento dei ticket (AI-R-074)
+- `[x]` 25.67 Bozza di risposta per lo staff (AI-R-073)
+- `[x]` 25.68 Smistamento dei ticket (AI-R-074)
 
 **Livelli, economia e community**
 
@@ -2104,25 +2117,26 @@ di quel file.
 
 **Traduzione e lingue**
 
-- `[ ]` 25.74 Traduci un messaggio o un testo (AI-R-081; vedi B.2)
-- `[ ]` 25.75 Traduzione automatica dei messaggi di un canale (AI-R-082;
+- `[x]` 25.74 Traduci un messaggio o un testo (AI-R-081; vedi B.2)
+- `[x]` 25.75 Traduzione automatica dei messaggi di un canale (AI-R-082;
   catalogo AI-020)
-- `[ ]` 25.76 Traduzione reagendo con una bandiera (AI-R-083; catalogo
+- `[x]` 25.76 Traduzione reagendo con una bandiera (AI-R-083; catalogo
   AI-021)
 - `[ ]` 25.77 Traduzione che raccoglie i messaggi successivi dello
   stesso autore (AI-R-084; catalogo AI-022; NF-36)
-- `[ ]` 25.78 Elenco delle lingue per la traduzione (AI-R-085; catalogo
+- `[x]` 25.78 Elenco delle lingue per la traduzione (AI-R-085; catalogo
   AI-023; NF-36)
-- `[ ]` 25.79 Riconoscere la lingua della domanda (AI-R-086)
-- `[ ]` 25.80 Cache delle traduzioni (AI-R-087)
-- `[ ]` 25.81 L'AI risponde nella lingua giusta (AI-R-088; catalogo
+- `[x]` 25.79 Riconoscere la lingua della domanda (AI-R-086)
+- `[x]` 25.80 Cache delle traduzioni (AI-R-087)
+- `[x]` 25.81 L'AI risponde nella lingua giusta (AI-R-088; catalogo
   AI-016)
 
 **Owner e analisi**
 
-- `[ ]` 25.82 Scelta del modello e della lunghezza delle risposte
+- `[~]` 25.82 Scelta del modello e della lunghezza delle risposte
   (AI-R-089; catalogo AI-012)
-- `[ ]` 25.83 Spesa e uso visti dall'owner (AI-R-090)
+  → **Stato 14/10 (r6):** lunghezza delle risposte per server (`/ai privacy`); i modelli si scelgono nel `.env` per fornitore.
+- `[x]` 25.83 Spesa e uso visti dall'owner (AI-R-090)
 - `[ ]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
   (AI-R-091)
 
@@ -2133,8 +2147,9 @@ di quel file.
 - `[ ]` 25.86 Assistente AI personale (AI-R-093)
 - `[ ]` 25.87 Preferenza personale: assistente acceso o spento
   (AI-R-094)
-- `[ ]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
-- `[ ]` 25.89 "Spiega questo Yokai": scheda di lore a richiesta
+- `[~]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
+  → **Stato 14/10 (r6):** `/utility ai spiega` con il link del messaggio; il menu sul messaggio arriva con l'app utente (B.2).
+- `[x]` 25.89 "Spiega questo Yokai": scheda di lore a richiesta
   (AI-R-096)
 - `[ ]` 25.90 Desktop: traduzione rapida (AI-R-097; vedi D.8)
 
@@ -2146,12 +2161,13 @@ di quel file.
 
 **Richieste dell'owner del 05/10/2026** (D19)
 
-- `[ ]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
+- `[~]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
   chat semplice, testo, giudizio, codice, traduzione, confronto,
   immagini, audio, musica, video (AI-R-101)
-- `[ ]` 25.95 Quote di ogni servizio contate in anticipo, con cambio
+  → **Stato 14/10 (r6):** tipi chat, testo, giudizio, codice, traduzione, confronto, immagine; audio, musica e video sono accettati nella configurazione ma non hanno ancora un trasporto.
+- `[x]` 25.95 Quote di ogni servizio contate in anticipo, con cambio
   di servizio prima di finirle (AI-R-102)
-- `[ ]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
+- `[x]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
   (AI-R-103)
 - `[~]` 25.97 Risposte standard imparate dalle risposte dello staff
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
