@@ -671,16 +671,21 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         vecchio_id: int | None,
     ) -> bool:
         """Passa la proprietà a `member`. False (dopo aver risposto) se Discord rifiuta."""
-        # Prima i permessi su Discord, poi il database: se Discord
-        # rifiuta, la proprietà non cambia.
+        # Prima il database, in modo atomico (due richieste insieme: vince una sola),
+        # poi i permessi su Discord; se Discord rifiuta la proprietà torna com'era.
+        if not await voice_temp_repo.cambia_proprietario(channel.id, vecchio_id, member.id):
+            await interaction.response.send_message(
+                "Il canale ha già cambiato proprietario: riprova.", ephemeral=True
+            )
+            return False
         try:
             await channel.set_permissions(
                 member, reason="Nuovo proprietario del vocale temporaneo", **OWNER_PERMISSIONS
             )
         except discord.HTTPException:
+            await voice_temp_repo.cambia_proprietario(channel.id, member.id, vecchio_id)
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return False
-        await voice_temp_repo.set_owner(channel.id, member.id)
 
         # Al vecchio proprietario i permessi vanno tolti. Se è uscito
         # dal server non c'è più niente da togliere.
@@ -803,6 +808,14 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         if channel is None:
             return
         try:
+            if nascosto:
+                # Chi deve continuare a vedere il canale riceve un permesso esplicito PRIMA
+                # che @everyone lo perda: proprietario, chi è dentro e il bot (che deve poterlo eliminare).
+                proprietario = interaction.guild.get_member(await voice_temp_repo.get_owner(channel.id) or 0)
+                for chi in {m.id: m for m in [*channel.members, proprietario, interaction.guild.me] if m}.values():
+                    ow = channel.overwrites_for(chi)
+                    ow.update(view_channel=True, connect=True)
+                    await channel.set_permissions(chi, overwrite=ow, reason="Vocale nascosto")
             overwrite = channel.overwrites_for(interaction.guild.default_role)
             overwrite.update(view_channel=False if nascosto else None)
             await channel.set_permissions(
