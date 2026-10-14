@@ -383,3 +383,9 @@ quando un gruppo supera i 6.800 caratteri; si sposta un blocco intero, non
 singoli comandi. Primo caso: `/economia` (da `/gestione economia`: XP, monete,
 negozio, giveaway per lo staff). `/admin comandi` e `/admin messaggi` vanno in
 `/moduli`. Il gruppo nasce con permesso `manage_guild` e livello admin.
+
+**Secondo caso (14/10/2026): `/antinuke`.** `/security` arrivava a 6.824 caratteri con
+`canale-allarmi` (#59 3.18) e doveva ancora ricevere `/security panico` (NF-29). Si sposta
+il blocco intero `/security antinuke *` in un gruppo di primo livello `/antinuke` (stessi
+12 comandi più `canale-allarmi`, stesso permesso `administrator` e livello sicurezza).
+`/security` resta con anti-raid, panico, verifica, ban globale, heatmap, score, spam-trap.

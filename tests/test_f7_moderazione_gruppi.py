@@ -46,9 +46,9 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("modban", "appelli"): {"canale", "elenco"},
     ("security", None): {"heatmap", "score", "spamtrap"},
     ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
-    ("security", "antinuke"): {
+    ("antinuke", None): {
         "enable", "limits", "trusted-add", "trusted-remove", "trusted-list", "punish-action", "recovery", "status",
-        "guardie", "casi", "rilascia",
+        "guardie", "casi", "rilascia", "canale-allarmi",
     },
     ("security", "antiraid"): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
@@ -74,6 +74,7 @@ LIVELLI = {
     "mod": Livello.MOD,
     "modban": Livello.MODBAN,
     "security": Livello.SECURITY,
+    "antinuke": Livello.SECURITY,
     "automod": Livello.ADMIN,
     "log": Livello.LOG,
 }

@@ -25,6 +25,7 @@ import cogs.security.anti_nuke as modulo
 import core.security_audit as audit
 from core.automod_rate_tracker import AutomodRateTracker
 from core.database import Database
+from core.repositories.output_channel_repo import output_channel_repo
 from core.repositories.security_repo import security_repo
 from core.security_logic import NUKE_CATEGORY_CHANNEL
 from tests.support.discord_fakes import (
@@ -49,6 +50,8 @@ def db_finto(clean_db, monkeypatch):
     monkeypatch.setattr(modulo_shared, "db", finto)
     monkeypatch.setattr(modulo, "db", finto)
     monkeypatch.setattr(security_repo, "_pool_provider", lambda: clean_db)
+    # Gli allarmi passano dal router dei canali (#59 3.18).
+    monkeypatch.setattr(output_channel_repo, "_pool_provider", lambda: clean_db)
     monkeypatch.setattr(modulo, "security_rate_tracker", AutomodRateTracker())
     return finto
 

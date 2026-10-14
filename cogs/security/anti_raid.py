@@ -388,7 +388,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             altri = ", ".join(f"#{n}" for n in esito.altri_casi)
             testo = (
                 f"{membro.mention} resta in quarantena: ha casi anti-nuke attivi ({altri}). "
-                "Si rilasciano con /security antinuke rilascia."
+                "Si rilasciano con /antinuke rilascia."
             )
         else:
             testo = f"{membro.mention} è fuori dalla quarantena."
