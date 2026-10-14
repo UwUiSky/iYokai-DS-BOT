@@ -182,6 +182,91 @@ async def test_senza_togli_superiori_nulla_viene_tolto(scena_ruoli):
     membro.remove_roles.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_lo_staff_non_tocca_ruoli_premio_sopra_il_suo(scena_ruoli):
+    cog, guild, membro, ruoli = scena_ruoli
+    ruoli[50].position = 5
+    ruoli[100].position = 30
+    staff = fake_member(user_id=1, roles=[fake_role(role_id=7, name="staff", position=10)])
+
+    await cog._grant_level_rewards(
+        membro, guild, 0, "accumula", togli_superiori=True, esecutore=staff
+    )
+
+    # Il ruolo a posizione 30 supera quello dello staff (10): resta al membro.
+    assert membro.remove_roles.await_args.args == (ruoli[50],)
+
+
+@pytest.mark.asyncio
+async def test_lo_staff_non_assegna_ruoli_premio_sopra_il_suo(scena_ruoli):
+    cog, guild, membro, ruoli = scena_ruoli
+    membro.roles = []
+    ruoli[50].position = 5
+    ruoli[100].position = 30
+    staff = fake_member(user_id=1, roles=[fake_role(role_id=7, name="staff", position=10)])
+
+    await cog._grant_level_rewards(membro, guild, 20, "accumula", esecutore=staff)
+
+    assert membro.add_roles.await_args.args == (ruoli[50],)
+
+
+@pytest.mark.asyncio
+async def test_il_proprietario_non_ha_il_limite_di_gerarchia(scena_ruoli):
+    cog, guild, membro, ruoli = scena_ruoli
+    ruoli[100].position = 30
+    guild.owner_id = 1
+    owner = fake_member(user_id=1, roles=[fake_role(role_id=7, name="staff", position=10)])
+
+    await cog._grant_level_rewards(
+        membro, guild, 0, "accumula", togli_superiori=True, esecutore=owner
+    )
+
+    assert set(membro.remove_roles.await_args.args) == {ruoli[50], ruoli[100]}
+
+
+def test_level_for_xp_non_cicla_e_coincide_con_la_definizione():
+    import time
+
+    for xp in (0, 1, 54, 55, 56, 10_000, xp_for_level(777), xp_for_level(777) - 1):
+        liv = level_for_xp(xp)
+        assert xp_for_level(liv) <= xp < xp_for_level(liv + 1)
+    inizio = time.perf_counter()
+    assert level_for_xp(5 * 10**15) > 10**7
+    assert level_for_xp(5 * 10**15, max_level=40) == 40
+    assert time.perf_counter() - inizio < 0.5
+
+
+def test_il_livello_impostato_a_mano_ha_un_tetto_assoluto():
+    from core.leveling_logic import LIVELLO_MASSIMO
+
+    assert xp_dopo_modifica(0, "livello", 10_000_000) == xp_for_level(LIVELLO_MASSIMO)
+
+
+@pytest.mark.asyncio
+async def test_comando_xp_rifiuta_livelli_oltre_il_massimo(cog_comandi):
+    cog, comandi, repo, _ = cog_comandi
+    interazione = _interazione()
+
+    await comandi["economia xp"].callback(
+        cog, interazione, azione=_scelta("livello"), membro=fake_member(user_id=9), valore=5000
+    )
+
+    assert (await repo.get_totals(GUILD, 9)).xp_total == 0
+    assert "massimo" in interazione.response.send_message.await_args.args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_comando_xp_passa_lesecutore_ai_ruoli(cog_comandi):
+    cog, comandi, repo, sincronizza = cog_comandi
+    interazione = _interazione()
+
+    await comandi["economia xp"].callback(
+        cog, interazione, azione=_scelta("livello"), membro=fake_member(user_id=9), valore=3
+    )
+
+    assert sincronizza.await_args.kwargs.get("esecutore") is interazione.user
+
+
 # ----------------------------------------------------------------------
 # Comandi
 # ----------------------------------------------------------------------

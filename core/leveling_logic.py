@@ -23,6 +23,7 @@ un nuovo period_key senza righe, non uno stato da azzerare.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -192,18 +193,26 @@ def xp_for_level(level: int) -> int:
     return 5 * level * level + 50 * level
 
 
+LIVELLO_MASSIMO = 1000  # tetto assoluto dei livelli impostabili a mano
+
+
 def level_for_xp(total_xp: int, max_level: int = 0) -> int:
     """
     Livello corrispondente a un totale di XP (`max_level` > 0 è il tetto
-    del server, LIV-005; 0 = nessun tetto). Cerca linearmente dal
-    basso: per i volumi di XP in gioco qui (mai milioni) è più che
-    sufficiente e resta banale da verificare per correttezza — non
-    serve la formula chiusa (che richiederebbe risolvere l'equazione
-    di secondo grado con arrotondamenti da verificare comunque).
+    del server, LIV-005; 0 = nessun tetto). Formula chiusa: dalla
+    5L^2 + 50L <= xp si ricava L con la radice intera, poi si corregge di
+    un passo per sicurezza. Nessun ciclo sul numero di livelli, quindi
+    costa lo stesso con 1.000 XP o con 10^15.
     """
-    level = 0
-    while xp_for_level(level + 1) <= total_xp and not (max_level and level >= max_level):
+    if total_xp <= 0:
+        return 0
+    level = max(0, (math.isqrt(2500 + 20 * total_xp) - 50) // 10)
+    while level > 0 and xp_for_level(level) > total_xp:
+        level -= 1
+    while xp_for_level(level + 1) <= total_xp:
         level += 1
+    if max_level:
+        level = min(level, max_level)
     return level
 
 
@@ -256,7 +265,8 @@ def xp_dopo_modifica(xp_attuale: int, azione: str, valore: int, max_level: int =
     if azione == "togli":
         return max(0, xp_attuale - valore)
     if azione == "livello":
-        return xp_for_level(min(valore, max_level) if max_level else valore)
+        tetto = min(valore, LIVELLO_MASSIMO)
+        return xp_for_level(min(tetto, max_level) if max_level else tetto)
     if azione == "xp_nel_livello":
         livello = level_for_xp(xp_attuale, max_level)
         base = xp_for_level(livello)

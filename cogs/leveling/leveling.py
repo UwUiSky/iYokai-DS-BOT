@@ -110,6 +110,7 @@ from core.guild_clan_boost_logic import (
 from core.leveling_logic import (
     ConfigLivelli,
     DAILY_COOLDOWN_SECONDS,
+    LIVELLO_MASSIMO,
     FATTORE_MASSIMO,
     FATTORE_MINIMO,
     LIMITI_IMPOSTAZIONI,
@@ -591,6 +592,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         new_level: int,
         modo: str = "accumula",
         togli_superiori: bool = False,
+        esecutore: discord.Member | None = None,
     ) -> None:
         """
         Condiviso tra XP testuale e vocale (SPEC.md §15.13) — un
@@ -607,7 +609,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
         quindi ogni ruolo viene ricontrollato con check_role_assignable
         prima di assegnarlo — il ruolo può aver preso permessi
         pericolosi dopo la configurazione del ruolo-premio.
+
+        `esecutore` (modifica a mano dello staff): chi ha lanciato il comando
+        non può far dare o togliere ruoli più in alto del suo (a meno che
+        non sia il proprietario del server): vale per assegnare e togliere.
         """
+        def fuori_gerarchia(ruolo: discord.Role) -> bool:
+            return (
+                esecutore is not None
+                and esecutore.id != guild.owner_id
+                and ruolo.position >= esecutore.top_role.position
+            )
+
         ricompense = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
         non_piu_raggiunti = []
         if togli_superiori:
@@ -630,6 +643,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 continue
             if check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
                 continue
+            if fuori_gerarchia(ruolo):
+                continue
             da_assegnare.append(ruolo)
 
         da_togliere = []
@@ -640,12 +655,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # Si tolgono solo i ruoli che il bot può gestire (gerarchia).
             if ruolo is None or ruolo.managed or ruolo.position >= guild.me.top_role.position:
                 continue
+            if fuori_gerarchia(ruolo):
+                continue
             da_togliere.append(ruolo)
 
         da_togliere_sempre = []
         for role_id in non_piu_raggiunti:
             ruolo = guild.get_role(role_id) if role_id in id_ruoli_posseduti else None
             if ruolo is None or ruolo.managed or ruolo.position >= guild.me.top_role.position:
+                continue
+            if fuori_gerarchia(ruolo):
                 continue
             da_togliere_sempre.append(ruolo)
 
@@ -1798,6 +1817,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 "Indica quanti XP (almeno 1).", ephemeral=True
             )
             return
+        if azione.value == "livello" and valore > LIVELLO_MASSIMO:
+            await interaction.response.send_message(
+                f"Il livello massimo impostabile è {LIVELLO_MASSIMO}.", ephemeral=True
+            )
+            return
         # Dopo la scrittura si toccano i ruoli su Discord: si risponde con defer.
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
@@ -1808,7 +1832,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         await self._grant_level_rewards(
             membro, guild, esito.livello_dopo, config.impostazioni.reward_mode,
-            togli_superiori=True,
+            togli_superiori=True, esecutore=interaction.user,
         )
         logger.info(
             "XP modificati dallo staff: server %s, staff %s, membro %s, %s %s (%s -> %s).",
