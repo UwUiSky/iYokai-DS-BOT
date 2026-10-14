@@ -390,7 +390,7 @@ il blocco intero `/security antinuke *` in un gruppo di primo livello `/antinuke
 12 comandi più `canale-allarmi`, stesso permesso `administrator` e livello sicurezza).
 `/security` resta con anti-raid, panico, verifica, ban globale, heatmap, score, spam-trap.
 
-## D26 — Il pannello web nasce dentro il bot (14/10/2026)
+## D27 — Il pannello web nasce dentro il bot (14/10/2026)
 
 L'issue #91 diceva «repository separato e privato». Scelta consigliata, presa ora: il pannello
 gira **nello stesso processo** del bot (`core/web_panel_server.py`, aiohttp come gli altri
@@ -400,7 +400,7 @@ nessun token di Discord salvato (solo `identify`). Se l'owner vuole il sito in u
 parte, si sposta la cartella `pannello_web/` e il pannello parla col bot da `core/panel_bridge.py`.
 Da confermare con l'owner.
 
-## D27 — Il ruolo admin del bot lo sceglie solo chi ha «Amministratore» (14/10/2026)
+## D28 — Il ruolo admin del bot lo sceglie solo chi ha «Amministratore» (14/10/2026)
 
 Il ruolo admin del bot vale anche per i comandi di livello SECURITY, che senza il ruolo
 chiedono «Amministratore». Chi ha solo «Gestisci server» poteva scegliere come ruolo admin

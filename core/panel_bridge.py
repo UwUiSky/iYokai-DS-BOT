@@ -194,7 +194,7 @@ async def applica_lingua(guild: discord.Guild, codice: str, user_id: int) -> str
 async def applica_ruolo(guild: discord.Guild, tipo_nome: str, ruolo_id: int | None, user_id: int) -> None:
     """
     `tipo_nome`: admin, mod o modban. `ruolo_id` None toglie il ruolo.
-    Il ruolo admin nuovo richiede «Amministratore» o il proprietario (D27).
+    Il ruolo admin nuovo richiede «Amministratore» o il proprietario (D28).
     """
     try:
         tipo = TipoRuolo[tipo_nome.upper()]

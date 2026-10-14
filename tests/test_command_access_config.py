@@ -103,7 +103,7 @@ async def test_rollback_normale_funziona_ancora():
     assert (await db.get_full_config(GUILD))["settings"]["report_channel_id"] == 5
 
 
-# ---- D27: il ruolo admin del bot lo sceglie solo chi ha «Amministratore» ----
+# ---- D28: il ruolo admin del bot lo sceglie solo chi ha «Amministratore» ----
 def _ix_non_proprietario(permessi: discord.Permissions):
     from tests.support.discord_fakes import fake_member
 

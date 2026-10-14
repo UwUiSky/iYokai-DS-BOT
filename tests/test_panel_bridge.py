@@ -57,7 +57,7 @@ async def test_serve_gestisci_server_o_ruolo_admin(pool):
     assert not await panel_bridge.puo_gestire(guild, UTENTE)
     assert not await panel_bridge.puo_gestire(guild, 999)  # non è nel server
 
-    # D27: con solo «Gestisci server» il ruolo admin (che apre anche SECURITY) non si sceglie.
+    # D28: con solo «Gestisci server» il ruolo admin (che apre anche SECURITY) non si sceglie.
     with pytest.raises(RuoloAdminNegato):
         await panel_bridge.applica_ruolo(guild, "admin", 500, ADMIN)
     assert await leggi_ruolo(GUILD, TipoRuolo.ADMIN) is None

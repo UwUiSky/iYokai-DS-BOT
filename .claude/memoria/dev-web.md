@@ -13,7 +13,7 @@
   setup.py e /admin lingua set lo usano.
 - r6 (2) 7b27a1f, 0d94f23: pannello `core/web_panel_server.py` + `web_panel_logic.py` +
   `panel_bridge.py`, pagine in `pannello_web/`, sessioni 0150, wiki
-  `/wiki`, pagina premium (#93); D26 (pannello nel processo del bot).
+  `/wiki`, pagina premium (#93); D27 (pannello nel processo del bot).
 
 ## Cose imparate
 - I test di setup sostituiscono `setup_module.db`: ora anche

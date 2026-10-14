@@ -315,7 +315,7 @@ async def test_cookie_host_cancellati_con_secure(clean_db):
 
 @pytest.mark.asyncio
 async def test_ruolo_admin_dal_pannello_serve_amministratore(ambiente):
-    """D27: il ruolo admin apre anche i comandi di sicurezza («Amministratore»)."""
+    """D28: il ruolo admin apre anche i comandi di sicurezza («Amministratore»)."""
     ruolo = fake_role(role_id=500, name="Staff")
     ambiente.bot.get_guild(GUILD).get_role = MagicMock(side_effect=lambda rid: ruolo if rid == 500 else None)
     client = await _client(ambiente.app)

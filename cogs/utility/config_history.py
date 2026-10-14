@@ -189,7 +189,7 @@ def errore_ruoli_del_bot(guild: discord.Guild, settings: dict) -> str | None:
 
 
 async def errore_cambio_ruolo_admin(guild: discord.Guild, autore, settings: dict) -> str | None:
-    """D27: un ruolo admin del bot nuovo lo sceglie solo chi ha «Amministratore» o il proprietario."""
+    """D28: un ruolo admin del bot nuovo lo sceglie solo chi ha «Amministratore» o il proprietario."""
     nuovo = settings.get(SETTING_ADMIN_ROLE)
     if nuovo is None:
         return None  # nessun ruolo admin nel file: si toglie, e toglierlo non apre nulla
@@ -334,7 +334,7 @@ class RollbackConfirmView(BaseView):
     async def _errore_ruoli_da_ripristinare(self, guild, autore) -> str | None:
         """
         Il rollback non deve rimettere un ruolo del bot non valido (vedi
-        errore_ruoli_del_bot), né un ruolo admin scelto da chi non può (D27).
+        errore_ruoli_del_bot), né un ruolo admin scelto da chi non può (D28).
         """
         entry = await db.get_config_history_entry(self.entry_id)
         if entry is None or guild is None:

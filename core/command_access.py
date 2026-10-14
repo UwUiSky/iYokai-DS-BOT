@@ -167,7 +167,7 @@ MESSAGGIO_RUOLO_ADMIN = (
 
 
 class RuoloAdminNegato(ValueError):
-    """Chi scrive non può scegliere il ruolo admin del bot (D27)."""
+    """Chi scrive non può scegliere il ruolo admin del bot (D28)."""
 
     def __init__(self) -> None:
         super().__init__(MESSAGGIO_RUOLO_ADMIN)
@@ -177,7 +177,7 @@ def errore_ruolo_admin(
     guild: discord.Guild, autore: discord.Member | None, vecchio: int | None, nuovo
 ) -> str | None:
     """
-    D27: il ruolo admin del bot vale anche per il livello SECURITY
+    D28: il ruolo admin del bot vale anche per il livello SECURITY
     («Amministratore»). Metterne uno nuovo (diverso da quello attuale)
     richiede «Amministratore» o la proprietà del server; toglierlo no.
     Restituisce il motivo del rifiuto, o None. Punto unico per pannello,
@@ -201,7 +201,7 @@ async def imposta_ruolo(
     """
     Salva il ruolo (None lo toglie). Rifiuta @everyone e ruoli di altri
     server. Il ruolo admin nuovo lo sceglie solo `autore` con
-    «Amministratore» o proprietario (`RuoloAdminNegato`, D27).
+    «Amministratore» o proprietario (`RuoloAdminNegato`, D28).
     """
     if ruolo is not None:
         if ruolo.id == guild.id:

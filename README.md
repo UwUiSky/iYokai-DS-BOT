@@ -115,7 +115,7 @@ di frequenza di Discord e isola i problemi.
 | **iYokai Music** ×5 | Riproduzione musicale, un canale vocale ciascuno | da correggere (F2) |
 | **iYokai NSFW** | Contenuti per adulti, isolati dal resto | da fare (F11) |
 | **iYokai App** | Comandi installati sull'utente, usabili in ogni server | da fare (F13) |
-| **iYokai Panel** | Pannello web (dentro il processo del bot, D26) | in corso (F10) |
+| **iYokai Panel** | Pannello web (dentro il processo del bot, D27) | in corso (F10) |
 | **iYokai Desktop** | Programma per PC: stato personalizzato, notifiche, storico delle menzioni | da fare (F13) |
 
 ---

@@ -1,10 +1,10 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r6web` (#91 pannello web): lasciato di sicurezza corretto su ordine dell'orchestratore (D27, proxy fidato, cache membri), commit f1829fc
+14/10/2026 · ramo `feat/r6web` (#91 pannello web): lasciato di sicurezza corretto su ordine dell'orchestratore (D28, proxy fidato, cache membri), commit f1829fc
 
 ## In corso
-- `feat/r6web`: corretti D27 (ruolo admin solo con «Amministratore», punto unico `errore_ruolo_admin`), `WEB_PANEL_TRUSTED_PROXY`, cache `fetch_member` 30 s, guida README. 7 mutazioni tutte uccise. Esito smoke nel rapporto.
+- `feat/r6web`: corretti D28 (ruolo admin solo con «Amministratore», punto unico `errore_ruolo_admin`), `WEB_PANEL_TRUSTED_PROXY`, cache `fetch_member` 30 s, guida README. 7 mutazioni tutte uccise. Esito smoke nel rapporto.
 - Rami in attesa di riconsegna (righe nel quaderno di ciascun ramo): `feat/r4-tkt` 23, `feat/r4-uti` 21, `feat/r4-liv` 9 (corrette, da riapprovare), `feat/r3-mus` 8, `feat/r3-bak` 8, `giro-mod` 12, `giro-logt` 11, #66 12, #67 8, #147 6, #76 5+7, #59/#117 2, #146, #134, #135/#136 (`remove_member` deadlock). `f7-quadro`: APPROVATO, manca l'unione. Alla riconsegna: controllare solo le righe aperte.
 
 ## Fatto
@@ -23,7 +23,7 @@
 - Mutanti equivalenti: tetto già garantito a monte.
 - Suite completa >10 min: non lanciarla. `pkill -f` col testo del comando uccide la propria shell.
 - Con lavoro non committato NON ripristinare con `git checkout -- file`: copia del file o stash.
-- Ruoli che aprono un livello più alto (admin -> SECURITY): chi li sceglie deve avere il permesso del livello più alto (D27).
+- Ruoli che aprono un livello più alto (admin -> SECURITY): chi li sceglie deve avere il permesso del livello più alto (D28).
 
 ## Aperto
-- Domanda all'owner: SPEC 23.16 (sfondo solo colore) accettato o `[~]`? D26 (pannello nel processo del bot) da confermare.
+- Domanda all'owner: SPEC 23.16 (sfondo solo colore) accettato o `[~]`? D27 (pannello nel processo del bot) da confermare.

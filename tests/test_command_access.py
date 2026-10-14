@@ -334,7 +334,7 @@ async def test_il_contatore_errori_non_cresce_sul_rifiuto_e_cresce_sugli_altri(f
     assert error_counter.count_in_window() == prima + 1
 
 
-# ---- D27: il ruolo admin del bot (vale anche per SECURITY) ----
+# ---- D28: il ruolo admin del bot (vale anche per SECURITY) ----
 def test_errore_ruolo_admin():
     guild = fake_guild(guild_id=77, owner_id=1)
     gestore = fake_member(5, guild_permissions=discord.Permissions(manage_guild=True))
