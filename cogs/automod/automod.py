@@ -24,7 +24,9 @@ AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
 messaggio modificato più volte vale un solo warn per violazione.
 Il blocco del phishing (NF-31, `/automod filtri phishing`) usa la lista di
 core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021), §23 (NF-31)
+Due categorie hanno un interruttore proprio (SIC-042): accorciatori di link
+e inviti a server per adulti (il server dell'invito lo chiede a Discord).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-021), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -41,6 +43,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import channel_router as router
 from core.phishing_list_fetcher import lista_phishing
+from core.phishing_logic import codici_invito, server_per_adulti
 from core.repositories.output_channel_repo import output_channel_repo
 
 from core.automod_sync import (
@@ -72,6 +75,8 @@ from core.automod_advanced_logic import (
     VIOLATION_A_CAPO,
     VIOLATION_LUNGHEZZA,
     VIOLATION_SPOILER,
+    VIOLATION_ACCORCIATORI,
+    VIOLATION_INVITI_ADULTI,
     AZIONI_DI_PARTENZA,
     AZIONI_DI_PARTENZA_GENERALI,
     evaluate_message_violations,
@@ -134,7 +139,40 @@ _VIOLATION_LABELS = {
     VIOLATION_A_CAPO: "Troppi a-capo",
     VIOLATION_LUNGHEZZA: "Messaggio troppo lungo",
     VIOLATION_SPOILER: "Troppi spoiler",
+    VIOLATION_ACCORCIATORI: "Accorciatori di link",
+    VIOLATION_INVITI_ADULTI: "Inviti a server per adulti",
 }
+
+# Le violazioni della famiglia phishing: canale di log suo e link non cliccabile.
+_VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI})
+
+# SIC-042: esito degli inviti gia' chiesti a Discord (codice -> per adulti?). Tetto in memoria.
+MAX_INVITI_IN_MEMORIA = 2000
+_inviti_adulti: "OrderedDict[str, bool]" = OrderedDict()
+
+
+async def _invito_per_adulti(bot, codice: str, guild_id: int) -> bool:
+    """Chiede a Discord il server dell'invito (una volta per codice). Invito non valido o del server stesso: no."""
+    if codice in _inviti_adulti:
+        _inviti_adulti.move_to_end(codice)
+        return _inviti_adulti[codice]
+    try:
+        invito = await bot.fetch_invite(codice, with_counts=False)
+    except (discord.NotFound, discord.Forbidden):
+        esito = False
+    except discord.HTTPException:
+        return False  # errore passeggero: non si ricorda
+    else:
+        server = getattr(invito, "guild", None)
+        esito = (
+            server is not None
+            and getattr(server, "id", None) != guild_id
+            and server_per_adulti(getattr(getattr(server, "nsfw_level", None), "name", ""), getattr(server, "name", ""))
+        )
+    _inviti_adulti[codice] = esito
+    while len(_inviti_adulti) > MAX_INVITI_IN_MEMORIA:
+        _inviti_adulti.popitem(last=False)
+    return esito
 
 
 def _count_emoji(content: str) -> int:
@@ -341,7 +379,7 @@ async def _log_violation(
         message.guild.id, message.author.id, message.channel.id, violation, actions_taken, contenuto
     )
 
-    if violation == VIOLATION_PHISHING:
+    if violation in _VIOLAZIONI_PHISHING:
         # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
         canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
     else:
@@ -360,9 +398,9 @@ async def _log_violation(
     embed.add_field(name="Azioni eseguite", value=", ".join(actions_taken) or "nessuna", inline=True)
     if contenuto:
         # Nel log di phishing il link non deve restare cliccabile.
-        valore = f"`{contenuto.replace('`', '')}`" if violation == VIOLATION_PHISHING else contenuto
+        valore = f"`{contenuto.replace('`', '')}`" if violation in _VIOLAZIONI_PHISHING else contenuto
         embed.add_field(name="Contenuto", value=valore, inline=False)
-    if violation == VIOLATION_PHISHING:
+    if violation in _VIOLAZIONI_PHISHING:
         await router.invia_a(canale, message.guild, router.TIPO_PHISHING, embed=embed)
         return
     try:
@@ -875,23 +913,36 @@ class AutomodCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         enabled="Attiva/disattiva",
         canale_log="Canale o forum dove scrivere ogni link bloccato (vuoto: il log dell'AutoMod)",
+        accorciatori="Blocca anche gli accorciatori di link (bit.ly, tinyurl...); vuoto: non cambia",
+        inviti_adulti="Blocca anche gli inviti a server per adulti; vuoto: non cambia",
     )
     async def anti_phishing(
         self,
         interaction: discord.Interaction,
         enabled: bool,
         canale_log: discord.TextChannel | discord.ForumChannel | None = None,
+        accorciatori: bool | None = None,
+        inviti_adulti: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
         if canale_log is not None:
             await output_channel_repo.imposta(interaction.guild.id, router.TIPO_PHISHING, canale_log.id)
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
-        await automod_advanced_repo.save_settings(_replace_settings(settings, anti_phishing_enabled=enabled))
+        cambi = {"anti_phishing_enabled": enabled}
+        if accorciatori is not None:
+            cambi["phishing_accorciatori"] = accorciatori
+        if inviti_adulti is not None:
+            cambi["phishing_inviti_adulti"] = inviti_adulti
+        nuova = _replace_settings(settings, **cambi)
+        await automod_advanced_repo.save_settings(nuova)
         if enabled:
             lista_phishing.aggiorna_se_serve()
+        c = nuova.config
         await interaction.response.send_message(
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
+            f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
+            f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
             "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
@@ -1130,7 +1181,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"**Anti-Spam Sticker**: {'ON' if c.anti_spam_sticker.enabled else 'OFF'} (max {c.anti_spam_sticker.max_count}/{c.anti_spam_sticker.window_seconds}s)",
             f"**Anti-Caps**: {'ON' if c.anti_caps.enabled else 'OFF'} (soglia {c.anti_caps.threshold_percent}%)",
             f"**Anti-Zalgo**: {'ON' if c.anti_zalgo_enabled else 'OFF'}",
-            f"**Anti-Phishing**: {'ON' if c.anti_phishing_enabled else 'OFF'}",
+            f"**Anti-Phishing**: {'ON' if c.anti_phishing_enabled else 'OFF'} (accorciatori "
+            f"{'ON' if c.phishing_accorciatori else 'OFF'}, inviti per adulti {'ON' if c.phishing_inviti_adulti else 'OFF'})",
             f"**Forma del testo**: a-capo {c.max_a_capo or 'spento'}, caratteri {c.max_lunghezza or 'spento'}, "
             f"spoiler {c.max_spoiler or 'spento'}",
             f"**Anti-Mass-Mention**: {'ON' if c.anti_mass_mention.enabled else 'OFF'} (max {c.anti_mass_mention.max_count})",
@@ -1179,6 +1231,11 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if settings.config.anti_phishing_enabled:
             lista_phishing.aggiorna_se_serve()
         violazioni = evaluate_message_violations(segnali, settings.config, lista_phishing.domini)
+        if settings.config.phishing_inviti_adulti and self.bot is not None:
+            for codice in codici_invito(message.content):
+                if await _invito_per_adulti(self.bot, codice, message.guild.id):
+                    violazioni = (*violazioni, VIOLATION_INVITI_ADULTI)
+                    break
         if not violazioni:
             return
 

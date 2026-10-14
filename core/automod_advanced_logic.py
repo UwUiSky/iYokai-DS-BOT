@@ -213,6 +213,9 @@ class AutomodAdvancedConfig:
     anti_caps: CapsFilterConfig = field(default_factory=CapsFilterConfig)
     anti_zalgo_enabled: bool = False
     anti_phishing_enabled: bool = False
+    # SIC-042: categorie del phishing con interruttore proprio.
+    phishing_accorciatori: bool = False
+    phishing_inviti_adulti: bool = False
     # AMD-002/003/005: 0 = filtro spento.
     max_a_capo: int = 0
     max_lunghezza: int = 0
@@ -236,6 +239,8 @@ VIOLATION_PHISHING = "anti_phishing"
 VIOLATION_A_CAPO = "anti_a_capo"
 VIOLATION_LUNGHEZZA = "anti_lunghezza"
 VIOLATION_SPOILER = "anti_spoiler"
+VIOLATION_ACCORCIATORI = "anti_accorciatori"
+VIOLATION_INVITI_ADULTI = "anti_inviti_adulti"
 
 ALL_VIOLATIONS = (
     VIOLATION_ANTI_LINK,
@@ -250,6 +255,8 @@ ALL_VIOLATIONS = (
     VIOLATION_A_CAPO,
     VIOLATION_LUNGHEZZA,
     VIOLATION_SPOILER,
+    VIOLATION_ACCORCIATORI,
+    VIOLATION_INVITI_ADULTI,
 )
 
 # Azioni di partenza quando il server non ha scelto: il phishing viene di solito da un account rubato,
@@ -267,7 +274,7 @@ def evaluate_message_violations(
     violare più filtri insieme (es. tutto maiuscolo E con un link
     non in whitelist), il chiamante decide come combinare le azioni.
     """
-    from core.phishing_logic import domini_nel_testo, e_phishing  # qui, perche' phishing_logic importa questo file
+    from core.phishing_logic import domini_nel_testo, e_accorciatore, e_phishing  # qui, perche' phishing_logic importa questo file
 
     violazioni = []
 
@@ -279,6 +286,11 @@ def evaluate_message_violations(
         domini_nel_testo(signals.content), lista_phishing, consentiti=config.anti_link.whitelist
     ):
         violazioni.append(VIOLATION_PHISHING)
+
+    if config.phishing_accorciatori and e_accorciatore(
+        domini_nel_testo(signals.content), consentiti=config.anti_link.whitelist
+    ):
+        violazioni.append(VIOLATION_ACCORCIATORI)
 
     if is_text_shape_violation(signals.content.count("\n"), config.max_a_capo):
         violazioni.append(VIOLATION_A_CAPO)
