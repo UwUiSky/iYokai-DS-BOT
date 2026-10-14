@@ -485,6 +485,10 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
 _SG_BOOST = ("boost", "Boost XP/coin del Sistema Gilde/Clan.")
 
 
+# Gli ID dello shop sono interi a 32 bit nel database: oltre darebbe un errore di Postgres.
+IdOggetto = app_commands.Range[int, 1, 2_147_483_647]
+
+
 class ConfermaAcquistoView(BaseView):
     """
     «Confermi?» prima di un acquisto nel negozio (ECO-069). Solo chi ha dato il
@@ -492,11 +496,14 @@ class ConfermaAcquistoView(BaseView):
     stesso codice di /level shop buy, quindi resta una scrittura atomica.
     """
 
-    def __init__(self, cog, interazione_comando: discord.Interaction, item_id: int) -> None:
+    def __init__(
+        self, cog, interazione_comando: discord.Interaction, item_id: int, prezzo: int
+    ) -> None:
         super().__init__(timeout=60)
         self.cog = cog
         self.interazione_comando = interazione_comando
         self.item_id = item_id
+        self.prezzo = prezzo  # quello mostrato a chi conferma
         self.autore_id = interazione_comando.user.id
         self._usata = False
 
@@ -521,7 +528,7 @@ class ConfermaAcquistoView(BaseView):
             await self.interazione_comando.edit_original_response(content="Acquisto in corso…", view=None)
         except discord.HTTPException:
             pass
-        await self.cog._acquista(interaction, self.item_id)
+        await self.cog._acquista(interaction, self.item_id, prezzo_atteso=self.prezzo)
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
     async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -1391,7 +1398,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sottogruppo=_SG_SHOP,
     )
     @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
-    async def shop_buy(self, interaction: discord.Interaction, item_id: int) -> None:
+    async def shop_buy(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
         if await _comando_rifiutato(interaction):
             return
         if interaction.guild is not None and (
@@ -1403,13 +1410,19 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message(
                     f"Vuoi comprare **{nome}** per **{oggetto.price}** coin?",
                     ephemeral=True,
-                    view=ConfermaAcquistoView(self, interaction, item_id),
+                    view=ConfermaAcquistoView(self, interaction, item_id, oggetto.price),
                 )
                 return
         await self._acquista(interaction, item_id)
 
-    async def _acquista(self, interaction: discord.Interaction, item_id: int) -> None:
-        """L'acquisto vero e proprio; chi lo chiama ha già controllato il modulo."""
+    async def _acquista(
+        self, interaction: discord.Interaction, item_id: int, prezzo_atteso: int | None = None
+    ) -> None:
+        """
+        L'acquisto vero e proprio; chi lo chiama ha già controllato il modulo.
+        `prezzo_atteso` è il prezzo che l'utente ha visto e confermato: se nel
+        frattempo è cambiato, non si compra e gli si dice il prezzo nuovo.
+        """
         guild = interaction.guild
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
@@ -1452,7 +1465,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
                 return
 
-        acquisto = await shop_repo.buy_item(guild.id, interaction.user.id, oggetto)
+        acquisto = await shop_repo.buy_item(
+            guild.id, interaction.user.id, oggetto, prezzo_atteso=prezzo_atteso
+        )
+        if acquisto.esito == EsitoAcquisto.PREZZO_CAMBIATO:
+            await interaction.response.send_message(
+                f"Il prezzo è cambiato mentre confermavi (era **{prezzo_atteso}** coin): "
+                "nessun acquisto. Rilancia il comando per vedere il prezzo nuovo.",
+                ephemeral=True,
+            )
+            return
         if acquisto.esito == EsitoAcquisto.GIA_ACQUISTATO:
             await interaction.response.send_message(
                 "Hai già acquistato questo oggetto.", ephemeral=True
@@ -1527,6 +1549,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
+        name = name.strip()
+        if not name:
+            await interaction.response.send_message(
+                "Il nome dell'oggetto non può essere vuoto.", ephemeral=True
+            )
+            return
 
         if role is not None and isinstance(interaction.user, discord.Member):
             motivo_rifiuto = check_role_assignable(guild, role, interaction.user, self_service=True)
@@ -1561,7 +1589,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     async def shop_edit_item(
         self,
         interaction: discord.Interaction,
-        item_id: int,
+        item_id: IdOggetto,
         name: app_commands.Range[str, 1, MAX_NOME_OGGETTO] | None = None,
         price: app_commands.Range[int, 1, 1000000] | None = None,
         scorte: app_commands.Range[int, 0, 1_000_000] | None = None,
@@ -1574,7 +1602,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         campi = {}
         if name is not None:
-            campi["name"] = name
+            if not name.strip():
+                await interaction.response.send_message(
+                    "Il nome dell'oggetto non può essere vuoto.", ephemeral=True
+                )
+                return
+            campi["name"] = name.strip()
         if price is not None:
             campi["price"] = price
         if scorte_illimitate:
@@ -1608,7 +1641,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Rimuove un oggetto dallo shop.",
     )
     @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
-    async def shop_remove_item(self, interaction: discord.Interaction, item_id: int) -> None:
+    async def shop_remove_item(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return

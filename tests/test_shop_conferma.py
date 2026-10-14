@@ -145,3 +145,32 @@ async def test_comando_negozio_accende_e_spegne(scena):
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.shop_confirm is True
     await comando.callback(scena.cog, _interazione(), conferma=False)
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.shop_confirm is False
+
+
+@pytest.mark.asyncio
+async def test_prezzo_cambiato_dopo_la_finestra_rifiuta_e_non_addebita(scena):
+    await scena.impostazioni.set_options(GUILD, shop_confirm=True)
+    comando = _interazione()
+    await scena.comandi["level shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
+    vista = comando.response.send_message.await_args.kwargs["view"]
+    conferma = [b for b in vista.children if b.label == "Conferma"][0]
+
+    await scena.negozio.update_item(scena.item_id, GUILD, price=400)  # lo staff rialza il prezzo
+    click = _interazione()
+    await conferma.callback(click)
+
+    assert await _saldo(scena) == 500
+    assert "prezzo è cambiato" in click.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_il_repo_rifiuta_il_prezzo_diverso_da_quello_atteso(scena):
+    from core.repositories.shop_repo import EsitoAcquisto
+
+    oggetto = await scena.negozio.get_item(scena.item_id, GUILD)
+    esito = await scena.negozio.buy_item(GUILD, 1, oggetto, prezzo_atteso=99)
+    assert esito.esito is EsitoAcquisto.PREZZO_CAMBIATO
+    assert await _saldo(scena) == 500
+    esito = await scena.negozio.buy_item(GUILD, 1, oggetto, prezzo_atteso=100)
+    assert esito.esito is EsitoAcquisto.RIUSCITO
+    assert await _saldo(scena) == 400

@@ -238,3 +238,37 @@ async def test_la_lista_mostra_scorte_e_ruolo_richiesto(scena):
     await scena.comandi["level shop list"].callback(scena.cog, interazione)
     testo = interazione.response.send_message.await_args.kwargs["embed"].description
     assert "3" in testo and "<@&42>" in testo
+
+
+@pytest.mark.asyncio
+async def test_il_nome_di_soli_spazi_e_rifiutato(scena):
+    interazione = _interazione()
+    await scena.comandi["economia shop-add"].callback(
+        scena.cog, interazione, name="     ", price=50, role=None, description=None,
+        scorte=None, ruolo_richiesto=None,
+    )
+    assert "vuoto" in _testo(interazione)
+    assert await scena.negozio.list_items(GUILD) == []
+
+    item_id = await scena.negozio.add_item(GUILD, name="Ok", price=10)
+    interazione = _interazione()
+    await scena.comandi["economia shop-edit"].callback(
+        scena.cog, interazione, item_id=item_id, name="   ", price=None, scorte=None,
+        scorte_illimitate=None, description=None, ruolo_richiesto=None,
+    )
+    assert "vuoto" in _testo(interazione)
+    assert (await scena.negozio.get_item(item_id, GUILD)).name == "Ok"
+    with pytest.raises(ValueError):
+        await scena.negozio.add_item(GUILD, name="  ", price=10)
+    with pytest.raises(ValueError):
+        await scena.negozio.update_item(item_id, GUILD, name="  ")
+
+
+@pytest.mark.asyncio
+async def test_item_id_ha_il_tetto_di_32_bit(scena):
+    for nome in ("level shop buy", "economia shop-edit", "economia shop-remove"):
+        parametro = [p for p in scena.comandi[nome].parameters if p.name == "item_id"][0]
+        assert (parametro.min_value, parametro.max_value) == (1, 2_147_483_647), nome
+    assert await scena.negozio.get_item(2**40, GUILD) is None
+    assert await scena.negozio.remove_item(2**40, GUILD) is False
+    assert await scena.negozio.update_item(2**40, GUILD, price=5) is None

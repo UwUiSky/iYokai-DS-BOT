@@ -116,6 +116,25 @@ async def test_senza_righe_valgono_i_valori_di_prima(repo):
 
 
 @pytest.mark.asyncio
+async def test_minimo_e_massimo_del_lavoro_insieme_restano_in_ordine(repo, clean_db):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    await apri_connessioni(clean_db, 6)
+    # Di base 20-80: ognuna da sola è valida, ma insieme darebbero minimo 70 e massimo 30.
+    esiti = await asyncio.gather(
+        repo.set_options(GUILD, work_min=70),
+        repo.set_options(GUILD, work_max=30),
+        return_exceptions=True,
+    )
+
+    assert sum(isinstance(e, ValueError) for e in esiti) == 1
+    attuale = (await repo.get_config(GUILD)).impostazioni
+    assert attuale.work_min <= attuale.work_max
+
+
+@pytest.mark.asyncio
 async def test_set_options_cambia_solo_i_campi_dati(repo):
     await repo.set_options(GUILD, text_xp=30)
     await repo.set_options(GUILD, levelup_mode="dm", levelup_every=5)
