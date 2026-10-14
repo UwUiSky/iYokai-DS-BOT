@@ -69,14 +69,14 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 4 | 0 |
 | §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE | 14 | 20 | 0 | 0 |
 | §16 FUN & IMMAGINI | 6 | 2 | 7 | 0 |
-| §17 OWNER / GLOBAL ADMIN | 7 | 3 | 1 | 0 |
+| §17 OWNER / GLOBAL ADMIN | 8 | 3 | 0 | 0 |
 | §18 ROUTER DEI CANALI E LOG SU FORUM | 0 | 0 | 7 | 0 |
 | §19 DATI, PRIVACY E GDPR | 0 | 0 | 9 | 0 |
 | §20 NUOVA STRUTTURA DEI COMANDI | 0 | 0 | 7 | 0 |
 | §21 LINGUE E RICERCA DEI COMANDI | 0 | 0 | 6 | 0 |
 | §22 FUNZIONI NUOVE, PRIMO GRUPPO | 2 | 0 | 15 | 0 |
-| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 0 | 17 | 0 |
-| §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 0 | 7 | 0 |
+| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 0 | 1 | 16 | 0 |
+| §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 1 | 6 | 0 |
 | §25 MOTORE AI | 0 | 0 | 105 | 0 |
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
@@ -1669,11 +1669,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   + conferma, `premium_toggle_history` (append-only, distinta dallo
   stato più recente)
   → **Stato 04/10:** nessun controllo a 25 moduli (LIM-22).
-- `[ ]` 17.11 **Aggiornamento a caldo** — l'owner aggiorna il bot da
+- `[x]` 17.11 **Aggiornamento a caldo** — l'owner aggiorna il bot da
   Discord senza entrare nel server: il bot prende il codice rivisto da
   GitHub (oppure un file allegato dall'owner), controlla che sia
   valido, tiene una copia del vecchio, ricarica il cog e torna indietro
   da solo se il caricamento fallisce (D21, issue #141, fase F9)
+  → **Stato 14/10:** `/owner cog reload` con le opzioni `commit` (solo `main`), `file` (.py o .zip) e `registro`; `core/hot_patch.py`, registro `hot_patch_log` (0134). Spento senza `ENABLE_HOT_PATCH=1`; i file di `core/` chiedono il riavvio. Da provare live.
 
 ## §18 ROUTER DEI CANALI E LOG SU FORUM — fatto per i log (fase F6)
 
@@ -1882,7 +1883,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.13 Moduli e candidature (NF-34)
   → **Stato 13/10:** `/moduli candidature crea|elimina|elenco`, `/utility modulo` (0096): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
-- `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)
+- `[~]` 23.15 Bot con marchio proprio per i server premium (NF-38)
+  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
 - `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
   → **Aperto (D18):** lo sfondo del profilo è solo un colore; lo sfondo con immagine e il profilo come immagine restano da fare (serve il disegno della card e il controllo delle immagini).
@@ -1913,8 +1915,9 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 - `[ ]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
   moduli dei ticket
 - `[ ]` 24.6 Pagine legali: privacy policy e termini
-- `[ ]` 24.7 Pagamento del premium: abbonamento dentro Discord e
+- `[~]` 24.7 Pagamento del premium: abbonamento dentro Discord e
   pagamento esterno registrato dall'owner (NF-22)
+  → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Manca solo la pagina del pannello web. Da provare live (serve l'app verificata).
 
 ## §25 MOTORE AI — da fare (fase F12, issue #50)
 

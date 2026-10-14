@@ -483,7 +483,7 @@
   "owner blacklist utente-remove": "Removes a user from the global blacklist.",
   "owner cog": "Load, unload and reload extensions",
   "owner cog load": "Loads an extension (e.g. cogs.moderation.actions).",
-  "owner cog reload": "Reloads an already loaded extension.",
+  "owner cog reload": "Reloads an extension, optionally updating it from GitHub or a file.",
   "owner cog unload": "Unloads an extension.",
   "owner premium": "Premium: modules, subscriptions and whitelist",
   "owner premium grant": "Grants premium to a server, or creates a code to redeem.",

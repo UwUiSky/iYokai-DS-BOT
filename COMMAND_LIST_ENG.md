@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:48 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:53 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 392 commands in 18 categories.**
 
@@ -318,7 +318,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:4
 - **`/owner blacklist utente-list`** — Shows the globally blocked users.
 - **`/owner blacklist utente-remove`** — Removes a user from the global blacklist.
 - **`/owner cog load`** — Loads an extension (e.g. cogs.moderation.actions).
-- **`/owner cog reload`** — Reloads an already loaded extension.
+- **`/owner cog reload`** — Reloads an extension, optionally updating it from GitHub or a file.
 - **`/owner cog unload`** — Unloads an extension.
 - **`/owner premium grant`** — Grants premium to a server, or creates a code to redeem.
 - **`/owner premium list`** — Shows the premium status of all modules.

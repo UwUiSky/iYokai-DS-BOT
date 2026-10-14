@@ -32,6 +32,19 @@ def versione_codice() -> str:
     return testo if uscita.returncode == 0 and testo else "sconosciuta"
 
 
+@functools.cache
+def commit_completo() -> str | None:
+    """Lo SHA intero del commit in uso, o None se la cartella non è un repository git."""
+    try:
+        uscita = subprocess.run(
+            ["git", "-C", str(RADICE), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    testo = uscita.stdout.strip()
+    return testo if uscita.returncode == 0 and len(testo) == 40 else None
+
+
 def url_invito(application_id: int | None, guild_id: int | None = None) -> str | None:
     """
     Il link per aggiungere il bot a un server, o None se l'ID dell'applicazione non c'è ancora.

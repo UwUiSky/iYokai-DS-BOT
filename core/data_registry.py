@@ -262,6 +262,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("eval_shell_log", "Registro di eval e shell del proprietario",
        colonne_attore=("executor_id",), utente="conserva", server="conserva",
        nota="registro di controllo del proprietario"),
+    _t("hot_patch_log", "Registro degli aggiornamenti a caldo del proprietario",
+       colonne_attore=("applied_by",), utente="conserva", server="conserva",
+       nota="registro di controllo del proprietario"),
     # ---------------------------------------------------------------- livelli e economia
     _t("leveling_totals", "XP, monete e livello",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),

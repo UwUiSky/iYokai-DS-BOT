@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:48 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:53 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 392 comandi in 18 categorie.**
 
@@ -318,7 +318,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/owner blacklist utente-list`** — Mostra gli utenti bloccati globalmente.
 - **`/owner blacklist utente-remove`** — Rimuove un utente dalla blacklist globale.
 - **`/owner cog load`** — Carica un'estensione (es. cogs.moderation.actions).
-- **`/owner cog reload`** — Ricarica un'estensione già caricata.
+- **`/owner cog reload`** — Ricarica un'estensione, anche aggiornandola da GitHub o da un file.
 - **`/owner cog unload`** — Scarica un'estensione.
 - **`/owner premium grant`** — Concede il premium a un server, o crea un codice da riscattare.
 - **`/owner premium list`** — Mostra lo stato premium di tutti i moduli.
