@@ -27,12 +27,12 @@ async def test_minuti_vocale_non_perdono_i_secondi_di_ogni_giorno(clean_db):
 
 
 # --- ruolo per attività: gerarchia di chi lo configura ---------------------
-async def test_regola_attivita_rifiuta_ruolo_sopra_chi_la_crea(clean_db):
+async def test_regola_attivita_rifiuta_ruolo_sopra_chi_la_crea(clean_db, monkeypatch):
     cog = ActivityStatsCog(MagicMock(), repo=ActivityStatsRepository(lambda: clean_db))
     from core.database import db
     import core.database as dm
 
-    dm.db._pool = clean_db
+    monkeypatch.setattr(dm.db, "_pool", clean_db)
     await db.set_module_active_for_guild(G, "server_stats", True)
     guild = fake_guild(G, owner_id=1)
     guild.me.top_role = fake_role(9, position=50)
@@ -50,11 +50,11 @@ async def test_regola_attivita_rifiuta_ruolo_sopra_chi_la_crea(clean_db):
 
 
 # --- vocale ripresa al riavvio: rispetta esclusioni e modulo ----------------
-async def test_riprendi_vocali_salta_canali_e_ruoli_esclusi(clean_db):
+async def test_riprendi_vocali_salta_canali_e_ruoli_esclusi(clean_db, monkeypatch):
     import core.database as dm
     from core.database import db
 
-    dm.db._pool = clean_db
+    monkeypatch.setattr(dm.db, "_pool", clean_db)
     dm.db._modules_cache.clear()
     await db.set_module_active_for_guild(G, "server_stats", True)
     repo = ActivityStatsRepository(lambda: clean_db)
