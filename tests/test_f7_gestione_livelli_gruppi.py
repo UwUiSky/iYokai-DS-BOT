@@ -30,8 +30,8 @@ CLAN_ATTESI = {
     "boost individuale", "boost gilda",
 }
 ECONOMIA_ATTESI = {
-    "economia shop-add", "economia shop-remove", "economia cassa-premium", "economia assegna-lobby",
-    "economia assegna-winner", "economia giveaway", "economia vincitori-set", "economia vincitori-off",
+    "shop-add", "shop-remove", "cassa-premium", "assegna-lobby",
+    "assegna-winner", "giveaway", "vincitori-set", "vincitori-off",
 }
 RUOLI_ATTESI = {
     "ruoli livello-add", "ruoli livello-remove", "ruoli livello-list",
@@ -77,7 +77,8 @@ async def test_comandi_nei_gruppi_giusti(clean_db):
         assert LEVEL_ATTESI <= percorsi_del_gruppo("level")
         assert CLAN_ATTESI <= percorsi_del_gruppo("clan")
         gestione = percorsi_del_gruppo("gestione")
-        assert ECONOMIA_ATTESI <= gestione
+        assert ECONOMIA_ATTESI <= percorsi_del_gruppo("economia")
+        assert not {p for p in gestione if p.startswith(("economia", "xp", "monete", "shop-", "giveaway"))}
         assert RUOLI_ATTESI <= gestione
         assert BENVENUTO_ATTESI <= gestione
         assert not VECCHI_TOP & {c.name for c in bot.tree.get_commands()}
@@ -104,7 +105,7 @@ async def test_livelli_di_accesso(clean_db):
 async def test_tetti_e_descrizioni(clean_db):
     bot = await _carica(clean_db)
     try:
-        for nome in ("level", "clan", "gestione"):
+        for nome in ("level", "clan", "gestione", "economia"):
             gruppo = GRUPPI[nome]
             assert len(gruppo.commands) <= 25
             for figlio in gruppo.commands:
@@ -115,7 +116,7 @@ async def test_tetti_e_descrizioni(clean_db):
             for comando in _comandi(GRUPPI[nome]):
                 assert not comando.description.startswith("["), comando.qualified_name
                 assert len(comando.name) <= 32
-        for comando in _comandi(GRUPPI["gestione"]):
+        for comando in (*_comandi(GRUPPI["gestione"]), *_comandi(GRUPPI["economia"])):
             assert not comando.description.startswith("[Admin]"), comando.qualified_name
             assert not comando.checks, f"{comando.qualified_name}: il permesso lo dà il gruppo"
     finally:

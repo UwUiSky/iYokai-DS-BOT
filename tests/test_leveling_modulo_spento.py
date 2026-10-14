@@ -49,9 +49,9 @@ async def _lancia(cog: LevelingCog, nome: str, interazione) -> None:
 def test_l_elenco_copre_tutte_le_famiglie_di_comandi():
     nomi = _nomi_dei_comandi()
     assert len(nomi) >= 35
-    for atteso in ("level daily", "level shop buy", "level cassa", "gestione economia assegna-lobby",
-                   "clan crea", "clan tesoreria dona", "clan boost gilda", "gestione economia giveaway",
-                   "gestione ruoli livello-add", "gestione economia cassa-premium"):
+    for atteso in ("level daily", "level shop buy", "level cassa", "economia assegna-lobby",
+                   "clan crea", "clan tesoreria dona", "clan boost gilda", "economia giveaway",
+                   "gestione ruoli livello-add", "economia cassa-premium"):
         assert atteso in nomi
 
 

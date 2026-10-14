@@ -38,11 +38,10 @@ async def test_leveling_cog_si_carica_correttamente():
     assert {"livello-add", "livello-remove", "livello-list"} <= {
         p.split()[-1] for p in percorsi_del_gruppo("gestione") if p.startswith("ruoli ")
     }
-    gestione = percorsi_del_gruppo("gestione")
     assert {
-        "economia vincitori-set", "economia vincitori-off", "economia shop-add", "economia shop-remove",
-        "economia cassa-premium", "economia assegna-lobby", "economia assegna-winner", "economia giveaway",
-    } <= gestione
+        "vincitori-set", "vincitori-off", "shop-add", "shop-remove",
+        "cassa-premium", "assegna-lobby", "assegna-winner", "giveaway", "xp", "monete",
+    } <= percorsi_del_gruppo("economia")
     assert {"bacheca set", "bacheca disable", "tesoreria dona", "boost individuale", "boost gilda"} <= percorsi_del_gruppo("clan")
 
     # Il task periodico deve essere avviato (non sollevare eccezioni

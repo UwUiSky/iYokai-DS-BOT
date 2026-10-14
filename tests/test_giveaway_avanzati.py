@@ -4,7 +4,7 @@ tests/test_giveaway_avanzati.py
 NF-28 (#99): giveaway avanzati. Ingressi extra per ruolo, requisito sul numero
 di messaggi (contati dall'inizio del giveaway), ruoli che saltano i requisiti,
 modelli riusabili e giveaway programmati. Logica pura, archivio su PostgreSQL
-vero, worker e comandi sotto `/gestione economia`.
+vero, worker e comandi sotto `/economia`.
 Funzioni coperte: SPEC §23.6
 """
 
@@ -299,7 +299,7 @@ async def test_giveaway_con_opzioni_avanzate(cog_comandi):
     bypass, extra = fake_role(role_id=8), fake_role(role_id=9)
     interazione = _interazione()
 
-    await comandi["gestione economia giveaway"].callback(
+    await comandi["economia giveaway"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=20, ruolo_bypass=bypass, ruolo_extra=extra,
         ingressi_extra=3, inizia_tra=None,
@@ -318,7 +318,7 @@ async def test_giveaway_programmato_non_posta_subito(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     interazione = _interazione()
 
-    await comandi["gestione economia giveaway"].callback(
+    await comandi["economia giveaway"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
         ingressi_extra=0, inizia_tra=30,
@@ -336,7 +336,7 @@ async def test_extra_senza_ruolo_e_rifiutato(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     interazione = _interazione()
 
-    await comandi["gestione economia giveaway"].callback(
+    await comandi["economia giveaway"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
         ingressi_extra=3, inizia_tra=None,
@@ -349,7 +349,7 @@ async def test_extra_senza_ruolo_e_rifiutato(cog_comandi):
 @pytest.mark.asyncio
 async def test_modello_salva_elenca_avvia_elimina(cog_comandi):
     cog, comandi, giveaway = cog_comandi
-    comando = comandi["gestione economia giveaway-modello"]
+    comando = comandi["economia giveaway-modello"]
     base = dict(
         nome="classico", premio="Nitro", vincitori=2, durata_minuti=90, min_livello=0,
         ruolo_richiesto=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
@@ -377,7 +377,7 @@ async def test_modello_salva_elenca_avvia_elimina(cog_comandi):
 async def test_modello_inesistente_non_avvia_nulla(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     interazione = _interazione()
-    await comandi["gestione economia giveaway-modello"].callback(
+    await comandi["economia giveaway-modello"].callback(
         cog, interazione, azione=_scelta("avvia"), nome="boh", premio=None, vincitori=None,
         durata_minuti=None, min_livello=None, ruolo_richiesto=None, min_messaggi=None,
         ruolo_bypass=None, ruolo_extra=None, ingressi_extra=None, inizia_tra=None,

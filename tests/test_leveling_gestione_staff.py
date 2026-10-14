@@ -4,7 +4,7 @@ tests/test_leveling_gestione_staff.py
 LIV-064..067 (XP a mano: aggiungi, togli, livello, XP nel livello, azzera),
 LIV-041 (ruolo-premio tolto a chi scende), ECO-009 e ECO-011 (monete a mano,
 azzera saldo). Archivio su PostgreSQL vero; i comandi stanno sotto
-`/gestione economia`.
+`/economia`.
 Funzioni coperte: SPEC §15 (catalogo #124 e #125)
 """
 
@@ -215,10 +215,10 @@ def _scelta(valore):
 
 
 @pytest.mark.asyncio
-async def test_i_comandi_stanno_sotto_gestione_economia(cog_comandi):
+async def test_i_comandi_stanno_sotto_economia(cog_comandi):
     _, comandi, _, _ = cog_comandi
-    assert "gestione economia xp" in comandi
-    assert "gestione economia monete" in comandi
+    assert "economia xp" in comandi
+    assert "economia monete" in comandi
 
 
 @pytest.mark.asyncio
@@ -227,7 +227,7 @@ async def test_comando_xp_risponde_dopo_defer_e_allinea_i_ruoli(cog_comandi):
     interazione = _interazione()
     membro = fake_member(user_id=9)
 
-    await comandi["gestione economia xp"].callback(
+    await comandi["economia xp"].callback(
         cog, interazione, azione=_scelta("livello"), membro=membro, valore=6
     )
 
@@ -245,7 +245,7 @@ async def test_comando_xp_rifiuta_i_bot(cog_comandi):
     interazione = _interazione()
     bot = fake_member(user_id=9, bot=True)
 
-    await comandi["gestione economia xp"].callback(
+    await comandi["economia xp"].callback(
         cog, interazione, azione=_scelta("aggiungi"), membro=bot, valore=10
     )
 
@@ -257,13 +257,13 @@ async def test_comando_monete_aggiunge_e_azzera(cog_comandi):
     cog, comandi, repo, _ = cog_comandi
     membro = fake_member(user_id=9)
 
-    await comandi["gestione economia monete"].callback(
+    await comandi["economia monete"].callback(
         cog, _interazione(), azione=_scelta("aggiungi"), membro=membro, importo=250
     )
     assert (await repo.get_totals(GUILD, 9)).coins_total == 250
 
     interazione = _interazione()
-    await comandi["gestione economia monete"].callback(
+    await comandi["economia monete"].callback(
         cog, interazione, azione=_scelta("azzera"), membro=membro, importo=None
     )
     assert (await repo.get_totals(GUILD, 9)).coins_total == 0
@@ -275,7 +275,7 @@ async def test_comando_monete_senza_importo_non_scrive(cog_comandi):
     cog, comandi, repo, _ = cog_comandi
     interazione = _interazione()
 
-    await comandi["gestione economia monete"].callback(
+    await comandi["economia monete"].callback(
         cog, interazione, azione=_scelta("aggiungi"), membro=fake_member(user_id=9), importo=None
     )
 

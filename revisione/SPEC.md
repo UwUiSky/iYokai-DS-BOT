@@ -1275,7 +1275,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   con prezzo e un ruolo opzionale da concedere all'acquisto
   → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).
   → **Stato 13/10:** sistemati (9.2, 9.12). Aggiunti scorte limitate, ruolo richiesto per comprare,
-  `/gestione economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
+  `/economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
   migrazioni 0094 e 0095. Resta fuori: ruolo comprato che scade, categorie, ordine, oggetti «a elenco» (ECO-063, 065..068).
 - `[~]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
   pulsante persistente "Partecipa" (sopravvive a un riavvio del bot,
@@ -1805,8 +1805,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.5 Inviti: comando personale e classifica (NF-27)
 - `[x]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
-  → **Stato 13/10:** `/gestione economia giveaway` (min_messaggi, ruolo_bypass, ruolo_extra +
-  ingressi_extra, inizia_tra) e `/gestione economia giveaway-modello` (salva, elenco, elimina, avvia;
+  → **Stato 13/10:** `/economia giveaway` (min_messaggi, ruolo_bypass, ruolo_extra +
+  ingressi_extra, inizia_tra) e `/economia giveaway-modello` (salva, elenco, elimina, avvia;
   25 modelli per server); migrazione 0091. I messaggi si contano **dall'inizio del giveaway** (non lo storico):
   il conteggio storico per canale e membro arriva con NF-25. Il worker fa partire i programmati.
   Avviso ai vincitori in thread e forum: già fatto (M 9.15).

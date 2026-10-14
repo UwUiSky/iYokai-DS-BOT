@@ -168,7 +168,7 @@ def _testo(interazione):
 async def test_shop_add_con_scorte_e_ruolo_richiesto(scena):
     richiesto = fake_role(role_id=42)
     interazione = _interazione()
-    await scena.comandi["gestione economia shop-add"].callback(
+    await scena.comandi["economia shop-add"].callback(
         scena.cog, interazione, name="Raro", price=50, role=None, description=None,
         scorte=3, ruolo_richiesto=richiesto,
     )
@@ -180,7 +180,7 @@ async def test_shop_add_con_scorte_e_ruolo_richiesto(scena):
 async def test_shop_edit_modifica_e_rifiuta_un_id_sbagliato(scena):
     item_id = await scena.negozio.add_item(GUILD, name="Vecchio", price=10, stock=2)
     interazione = _interazione()
-    await scena.comandi["gestione economia shop-edit"].callback(
+    await scena.comandi["economia shop-edit"].callback(
         scena.cog, interazione, item_id=item_id, name="Nuovo", price=30, scorte=None,
         scorte_illimitate=True, description=None, ruolo_richiesto=None,
     )
@@ -188,7 +188,7 @@ async def test_shop_edit_modifica_e_rifiuta_un_id_sbagliato(scena):
     assert (oggetto.name, oggetto.price, oggetto.stock) == ("Nuovo", 30, None)
 
     interazione = _interazione()
-    await scena.comandi["gestione economia shop-edit"].callback(
+    await scena.comandi["economia shop-edit"].callback(
         scena.cog, interazione, item_id=item_id + 50, name="Boh", price=None, scorte=None,
         scorte_illimitate=None, description=None, ruolo_richiesto=None,
     )
@@ -199,7 +199,7 @@ async def test_shop_edit_modifica_e_rifiuta_un_id_sbagliato(scena):
 async def test_shop_edit_senza_nessun_valore_non_scrive(scena):
     item_id = await scena.negozio.add_item(GUILD, name="X", price=10)
     interazione = _interazione()
-    await scena.comandi["gestione economia shop-edit"].callback(
+    await scena.comandi["economia shop-edit"].callback(
         scena.cog, interazione, item_id=item_id, name=None, price=None, scorte=None,
         scorte_illimitate=None, description=None, ruolo_richiesto=None,
     )

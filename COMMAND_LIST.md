@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 03:56 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 276 comandi in 16 categorie.**
+**Totale: 276 comandi in 17 categorie.**
 
 ## Admin
 
@@ -80,6 +80,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:
 - **`/clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
 - **`/clan tesoreria trasferisci`** — Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
 
+## Economia
+
+- **`/economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
+- **`/economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
+- **`/economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
+- **`/economia giveaway`** — Avvia un giveaway.
+- **`/economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
+- **`/economia monete`** — Modifica il saldo di un membro.
+- **`/economia shop-add`** — Aggiunge un oggetto allo shop.
+- **`/economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
+- **`/economia shop-remove`** — Rimuove un oggetto dallo shop.
+- **`/economia vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
+- **`/economia vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
+- **`/economia xp`** — Modifica XP e livello di un membro.
+
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
@@ -108,18 +123,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-13 13:
 - **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
 - **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
 - **`/gestione benvenuto boost`** — Configura il messaggio di boost.
-- **`/gestione economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
-- **`/gestione economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
-- **`/gestione economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
-- **`/gestione economia giveaway`** — Avvia un giveaway.
-- **`/gestione economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
-- **`/gestione economia monete`** — Modifica il saldo di un membro.
-- **`/gestione economia shop-add`** — Aggiunge un oggetto allo shop.
-- **`/gestione economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
-- **`/gestione economia shop-remove`** — Rimuove un oggetto dallo shop.
-- **`/gestione economia vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
-- **`/gestione economia vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
-- **`/gestione economia xp`** — Modifica XP e livello di un membro.
 - **`/gestione ruoli livello-add`** — Assegna un ruolo a chi raggiunge un livello.
 - **`/gestione ruoli livello-list`** — Mostra i ruoli-premio configurati su questo server.
 - **`/gestione ruoli livello-remove`** — Rimuove un ruolo-premio configurato.

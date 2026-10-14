@@ -373,7 +373,6 @@ class BottoneInvitoClan(
             await sync_member_clan_role(guild, categoria, interaction.user, ROLE_MEMBER)
 
 
-_SG_ECONOMIA = ("economia", "Economia: negozio, cassa, premi, giveaway e vincitori del mese")
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 _SG_SHOP = ("shop", "Negozio: spendi i tuoi coin su oggetti o ruoli.")
 _SG_BACHECA = ("bacheca", "Annuncio automatico della top 3 gilde a fine mese.")
@@ -1282,10 +1281,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="vincitori-set",
         descrizione="Imposta il canale dove annunciare i vincitori del mese.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(channel="Canale dell'annuncio")
     async def monthly_winners_set(
@@ -1305,10 +1303,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="vincitori-off",
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
-        sottogruppo=_SG_ECONOMIA,
     )
     async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -1478,10 +1475,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(conferma)
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="shop-add",
         descrizione="Aggiunge un oggetto allo shop.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         name="Nome dell'oggetto",
@@ -1521,10 +1517,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="shop-edit",
         descrizione="Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         item_id="ID dell'oggetto (vedi /level shop list)",
@@ -1581,10 +1576,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="shop-remove",
         descrizione="Rimuove un oggetto dallo shop.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
     async def shop_remove_item(self, interaction: discord.Interaction, item_id: int) -> None:
@@ -1635,10 +1629,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="cassa-premium",
         descrizione="Sblocca un mese di bot premium spendendo dalla cassa.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         tier="Quale mese sbloccare: 1° (dopo 6 mesi), 2° (dopo 1 anno) o 3° (dopo 2 anni)"
@@ -1682,10 +1675,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="assegna-lobby",
         descrizione="Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(importo="Quante coin assegnare a CIASCUNO dei presenti in vocale")
     async def assegna_lobby(
@@ -1738,10 +1730,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="assegna-winner",
         descrizione="Premio vincitore: assegna coin a un membro, dalla cassa del server.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(membro="Il membro da premiare", importo="Quante coin assegnare")
     async def assegna_winner(
@@ -1761,7 +1752,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # Addebito e accredito nella stessa transazione, come /gestione economia assegna-lobby.
+        # Addebito e accredito nella stessa transazione, come /economia assegna-lobby.
         riuscito = await guild_chest_repo.pay_members(
             guild.id, [membro.id], importo, reason=REASON_EVENT_WINNER_PRIZE
         )
@@ -1778,10 +1769,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="xp",
         descrizione="Modifica XP e livello di un membro.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         azione="Cosa fare",
@@ -1833,10 +1823,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="monete",
         descrizione="Modifica il saldo di un membro.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         azione="Cosa fare", membro="Il membro", importo="Quante coin (non serve per azzerare)"
@@ -3190,10 +3179,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="giveaway",
         descrizione="Avvia un giveaway.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         prize="Cosa si vince",
@@ -3237,10 +3225,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="giveaway-modello",
         descrizione="Modelli di giveaway: salva, elenca, elimina, avvia.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         azione="Cosa fare",
