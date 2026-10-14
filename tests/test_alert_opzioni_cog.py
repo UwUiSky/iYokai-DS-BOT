@@ -12,7 +12,8 @@ import pytest
 import pytest_asyncio
 
 import cogs.utility.feed_alerts as modulo
-from cogs.utility.feed_alerts import MODULE_FEED_ALERTS, FeedAlertsCog, _slug_kick
+from core.kick_api_logic import normalizza_slug
+from cogs.utility.feed_alerts import MODULE_FEED_ALERTS, FeedAlertsCog
 from core.alert_options_logic import leggi_id_avviso
 from core.database import Database
 from core.repositories.alert_options_repo import AlertOptionsRepository
@@ -65,9 +66,9 @@ def _testo(interazione) -> str:
 
 
 def test_slug_e_id():
-    assert _slug_kick("https://kick.com/Nome_1/") == "Nome_1"
-    assert _slug_kick("kick.com/abc") == "abc"
-    assert _slug_kick("non valido!") is None
+    assert normalizza_slug("https://kick.com/Nome_1/") == "nome_1"
+    assert normalizza_slug("kick.com/abc") == "abc"
+    assert normalizza_slug("non valido!") is None
     assert leggi_id_avviso("kk-4") == ("KK", 4)
     assert leggi_id_avviso("WH-1") is None
     assert leggi_id_avviso("TW-x") is None

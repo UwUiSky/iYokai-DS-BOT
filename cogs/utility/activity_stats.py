@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -49,6 +49,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         self._impostazioni: dict[int, tuple[float, ActivitySettings]] = {}
         self._ultimo_flush: datetime | None = None
         self._ultimo_errore: str | None = None
+        self._giro_ruoli = 0
 
         @tasks.loop(seconds=60)
         async def _scrivi() -> None:
@@ -165,6 +166,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------- ruoli per attività
     async def aggiorna_ruoli(self) -> None:
+        self._giro_ruoli += 1
         for guild_id in await self._repo.guilds_with_rules():
             guild = self.bot.get_guild(guild_id)
             if guild is None or not await self._conta(guild):
@@ -181,7 +183,9 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         eleggibili = await self._repo.members_over(guild.id, da, regola.metric, regola.threshold)
         eleggibili = {u for u in eleggibili if (m := guild.get_member(u)) is not None and not m.bot}
         possessori = {m.id for m in ruolo.members}
-        dare, togliere = ruoli_da_aggiornare(eleggibili, possessori, regola.remove_when_below)
+        dare, togliere = ruoli_da_aggiornare(
+            eleggibili, possessori, regola.remove_when_below, giro=self._giro_ruoli
+        )
         motivo = f"Ruolo per attività ({_NOMI_METRICA[regola.metric]} >= {regola.threshold} in {regola.period_days} giorni)"
         for uid in dare | togliere:
             membro = guild.get_member(uid)

@@ -11,7 +11,6 @@ sottoscrizioni e le loro opzioni.
 from __future__ import annotations
 
 import os
-import re
 
 import discord
 from discord import app_commands
@@ -23,6 +22,7 @@ from core.config import config
 from core.custom_webhook_logic import build_webhook_url
 from core.database import db
 from core.feed_alert_gate import MODULE_FEED_ALERTS
+from core.kick_api_logic import normalizza_slug
 from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
@@ -37,7 +37,6 @@ from core.safe_http import url_e_sicuro
 MAX_FEED_PER_SERVER = 25
 # Tetto per server anche per Twitch, YouTube e Kick (LIM-46: quota delle API).
 MAX_LIVE_PER_SERVER = 25
-SLUG_KICK = re.compile(r"^[A-Za-z0-9_-]{1,25}$")
 SOTTOGRUPPO = ("alert", "Avvisi: feed, Twitch, YouTube, Kick")
 # Un embed accetta 4096 caratteri nella descrizione; si lascia margine per la riga finale.
 MAX_CARATTERI_ELENCO = 3900
@@ -50,13 +49,6 @@ async def _tetto_raggiunto(interaction: discord.Interaction, servizio: str) -> N
         "Rimuovine uno con /moduli alert rimuovi prima di aggiungerne un altro.",
         ephemeral=True,
     )
-
-
-def _slug_kick(testo: str) -> str | None:
-    """Accetta il nome del canale o il link https://kick.com/nome; None se non valido."""
-    testo = testo.strip().rstrip("/")
-    testo = re.sub(r"^(https?://)?(www\.)?kick\.com/", "", testo, flags=re.IGNORECASE)
-    return testo if SLUG_KICK.match(testo) else None
 
 
 def _elenco_tagliato(righe: list[str]) -> str:
@@ -430,7 +422,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-        slug = _slug_kick(kick)
+        slug = normalizza_slug(kick)
         if slug is None:
             await interaction.response.send_message(
                 "Nome del canale Kick non valido: usa solo lettere, numeri, `_` e `-` "

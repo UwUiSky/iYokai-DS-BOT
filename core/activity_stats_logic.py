@@ -103,12 +103,24 @@ def escluso(canale_id: int, ruoli_utente, canali_ignorati, ruoli_ignorati) -> bo
     return canale_id in set(canali_ignorati) or bool(set(ruoli_utente) & set(ruoli_ignorati))
 
 
+def _finestra(ordinati: list[int], limite: int, giro: int) -> list[int]:
+    """`limite` elementi a partire da una posizione che avanza a ogni giro (e ricomincia da capo)."""
+    if len(ordinati) <= limite:
+        return ordinati
+    inizio = (giro * limite) % len(ordinati)
+    return (ordinati + ordinati)[inizio : inizio + limite]
+
+
 def ruoli_da_aggiornare(
-    eleggibili: set[int], possessori: set[int], rimuovi: bool, limite: int = MAX_CAMBI_PER_GIRO
+    eleggibili: set[int], possessori: set[int], rimuovi: bool, limite: int = MAX_CAMBI_PER_GIRO, giro: int = 0
 ) -> tuple[set[int], set[int]]:
-    """(chi riceve il ruolo, a chi si toglie): al massimo `limite` per parte, ordine stabile."""
-    dare = sorted(eleggibili - possessori)[:limite]
-    togliere = sorted(possessori - eleggibili)[:limite] if rimuovi else []
+    """(chi riceve il ruolo, a chi si toglie): al massimo `limite` per parte.
+
+    `giro` fa ruotare la finestra: chi non si riesce a cambiare (gerarchia, errore di Discord)
+    non occupa per sempre i primi posti e non blocca gli altri.
+    """
+    dare = _finestra(sorted(eleggibili - possessori), limite, giro)
+    togliere = _finestra(sorted(possessori - eleggibili), limite, giro) if rimuovi else []
     return set(dare), set(togliere)
 
 

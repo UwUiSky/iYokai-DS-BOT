@@ -172,6 +172,9 @@ async def test_invio_fallito_ritenta_al_giro_dopo(ambiente):
         await servizio.tick(bot)
         assert (await repo.list_subscriptions(100))[0].last_known_live is False
         canale.send = originale
+        from core import live_alert_flow
+
+        live_alert_flow._FALLITI.clear()  # passata l'attesa dopo il fallimento
         await servizio.tick(bot)
         assert len(canale.sent_messages) == 1
         assert (await repo.list_subscriptions(100))[0].last_known_live is True

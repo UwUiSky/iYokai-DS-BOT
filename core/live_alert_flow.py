@@ -11,6 +11,7 @@ dopo). Funzioni coperte: SPEC §10.1, §10.2, §10.4, §10.13
 from __future__ import annotations
 
 import logging
+import time
 
 import discord
 
@@ -19,6 +20,25 @@ from core.live_role_logic import aggiorna_ruolo_live
 from core.repositories.alert_options_repo import alert_options_repo
 
 logger = logging.getLogger("iyokai.live_alert_flow")
+
+ATTESA_BASE_SECONDI = 120
+ATTESA_MASSIMA_SECONDI = 3600
+# (kind, id) -> (fallimenti di fila, istante prima del quale non si riprova)
+_FALLITI: dict[tuple, tuple[int, float]] = {}
+
+
+def _in_attesa(chiave: tuple) -> bool:
+    voce = _FALLITI.get(chiave)
+    return voce is not None and time.monotonic() < voce[1]
+
+
+def _segna_fallito(chiave: tuple) -> bool:
+    """Allunga l'attesa (raddoppia, fino a un'ora). True solo al primo fallimento: si logga una volta."""
+    prima = chiave not in _FALLITI
+    n = _FALLITI.get(chiave, (0, 0.0))[0] + 1
+    attesa = min(ATTESA_BASE_SECONDI * 2 ** (n - 1), ATTESA_MASSIMA_SECONDI)
+    _FALLITI[chiave] = (n, time.monotonic() + attesa)
+    return prima
 
 
 async def carica_contesto(kind: str, sottoscrizioni: list) -> tuple[dict[int, AlertOptions], dict[int, int]]:
@@ -42,6 +62,8 @@ async def pubblica_cambio_live(
     avvisi,
     nome: str,
 ) -> None:
+    if _in_attesa((kind, sub.id)):
+        return
     guild = bot.get_guild(sub.guild_id)
     canale = guild.get_channel(sub.channel_id) if guild else None
     if not isinstance(canale, discord.TextChannel):
@@ -60,10 +82,13 @@ async def pubblica_cambio_live(
             await avviso_fine(canale, testo, opz)
             id_messaggio = None
     except discord.HTTPException:
-        logger.warning(
-            "Impossibile pubblicare l'alert %s nel canale %s (server %s).", nome, sub.channel_id, sub.guild_id
-        )
+        if _segna_fallito((kind, sub.id)):
+            logger.warning(
+                "Impossibile pubblicare l'alert %s nel canale %s (server %s): riprovo con attese sempre più lunghe.",
+                nome, sub.channel_id, sub.guild_id,
+            )
         return
+    _FALLITI.pop((kind, sub.id), None)
 
     # P3: lo stato avanza solo dopo un invio riuscito.
     await repo_stato.update_last_known_live(sub.id, in_diretta)

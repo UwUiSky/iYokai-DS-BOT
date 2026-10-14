@@ -3,7 +3,6 @@ from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
-import pytest
 
 from cogs.utility.activity_stats import ActivityStatsCog
 from core.alert_options_logic import AlertOptions
@@ -146,3 +145,109 @@ async def test_ultimo_messaggio_non_ricrea_le_opzioni_di_un_avviso_rimosso(clean
     await repo.set_fields("TW", 8, G, delete_on_end=True)
     await repo.set_last_message("TW", 8, G, 123)
     assert (await repo.get("TW", 8)).last_message_id == 123
+
+
+# --- revisore-capo: ruoli per attività, a rotazione ---------------------------
+def test_ruoli_da_aggiornare_ruota_la_finestra():
+    from core.activity_stats_logic import ruoli_da_aggiornare
+
+    eleggibili = set(range(1, 61))
+    visti: set[int] = set()
+    for giro in range(3):
+        dare, _ = ruoli_da_aggiornare(eleggibili, set(), True, limite=25, giro=giro)
+        assert len(dare) == 25
+        visti |= dare
+    assert visti == eleggibili  # senza rotazione sarebbero sempre gli stessi 25
+    # sotto il limite si prende tutto, qualunque sia il giro
+    assert ruoli_da_aggiornare({1, 2}, set(), True, limite=25, giro=7)[0] == {1, 2}
+
+
+async def test_aggiorna_ruoli_non_resta_bloccato_sui_primi_25():
+    guild = fake_guild(G)
+    ruolo = fake_role(10, position=1)
+    guild.me.top_role = fake_role(99, position=50)
+    guild.me.guild_permissions = discord.Permissions(manage_roles=True)
+    guild.get_role = MagicMock(return_value=ruolo)
+    ruolo.members = []
+    membri = {u: MagicMock(id=u, bot=False, add_roles=AsyncMock(), remove_roles=AsyncMock()) for u in range(1, 61)}
+    guild.get_member = MagicMock(side_effect=membri.get)
+    repo = MagicMock()
+    repo.members_over = AsyncMock(return_value=set(membri))
+    regola = MagicMock(role_id=10, period_days=7, metric="messages", threshold=1, remove_when_below=True)
+    cog = ActivityStatsCog(MagicMock(), repo=repo)
+    import asyncio
+    from unittest.mock import patch
+
+    with patch.object(asyncio, "sleep", AsyncMock()):
+        for _ in range(3):
+            cog._giro_ruoli += 1
+            await cog._applica_regola(guild, regola)
+    # i ruoli non risultano mai posseduti (finto): ogni giro ne prova 25 diversi
+    chiamati = {u for u, m in membri.items() if m.add_roles.await_count}
+    assert len(chiamati) == 60
+
+
+# --- revisore-capo: invio fallito = un solo warning e attese crescenti ------------
+async def _cambio_con_invio_fallito(monkeypatch, sub_id=4):
+    import core.live_alert_flow as f
+
+    repo_opz = MagicMock(other_live_for_member=AsyncMock(return_value=False), set_last_message=AsyncMock())
+    monkeypatch.setattr(f, "alert_options_repo", repo_opz)
+    monkeypatch.setattr(f, "aggiorna_ruolo_live", AsyncMock())
+    avviso = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500, reason="x"), "x"))
+    monkeypatch.setattr(f, "avviso_live", avviso)
+    canale = fake_text_channel(1)
+    canale.__class__ = discord.TextChannel
+    guild = MagicMock()
+    guild.get_channel.return_value = canale
+    bot = MagicMock()
+    bot.get_guild.return_value = guild
+    sub = MagicMock(id=sub_id, guild_id=G, channel_id=1)
+    repo_stato = MagicMock(update_last_known_live=AsyncMock())
+
+    async def giro():
+        await pubblica_cambio_live(
+            bot, sub, "TW", in_diretta=True, testo="x", url=None, opz=AlertOptions(),
+            ruolo_live_id=None, repo_stato=repo_stato, avvisi=MagicMock(), nome="Twitch",
+        )
+
+    return giro, avviso, repo_stato
+
+
+async def test_invio_fallito_logga_una_volta_e_aspetta(monkeypatch, caplog):
+    import core.live_alert_flow as f
+
+    giro, avviso, repo_stato = await _cambio_con_invio_fallito(monkeypatch)
+    ora = [1000.0]
+    monkeypatch.setattr(f.time, "monotonic", lambda: ora[0])
+    with caplog.at_level("WARNING", logger="iyokai.live_alert_flow"):
+        await giro()
+        assert avviso.await_count == 1
+        await giro()  # ancora in attesa: nemmeno un tentativo
+        assert avviso.await_count == 1
+        ora[0] += f.ATTESA_BASE_SECONDI + 1
+        await giro()
+        assert avviso.await_count == 2
+        ora[0] += f.ATTESA_BASE_SECONDI + 1  # l'attesa è raddoppiata: troppo presto
+        await giro()
+        assert avviso.await_count == 2
+        ora[0] += 10 * f.ATTESA_MASSIMA_SECONDI
+        await giro()
+        assert avviso.await_count == 3
+    assert len([r for r in caplog.records if "Impossibile pubblicare" in r.message]) == 1
+    repo_stato.update_last_known_live.assert_not_awaited()
+
+
+async def test_invio_riuscito_azzera_l_attesa(monkeypatch):
+    import core.live_alert_flow as f
+
+    giro, avviso, repo_stato = await _cambio_con_invio_fallito(monkeypatch, sub_id=5)
+    ora = [1000.0]
+    monkeypatch.setattr(f.time, "monotonic", lambda: ora[0])
+    await giro()
+    avviso.side_effect = None
+    avviso.return_value = 77
+    ora[0] += f.ATTESA_BASE_SECONDI + 1
+    await giro()
+    repo_stato.update_last_known_live.assert_awaited_once()
+    assert ("TW", 5) not in f._FALLITI
