@@ -52,6 +52,7 @@ class Giveaway:
     starts_at: datetime | None = None
     started: bool = True
     duration_seconds: int | None = None
+    errore: str | None = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,7 @@ class GiveawayRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
         self._cache_conteggio: BoundedCache[int, tuple[float, bool]] = BoundedCache(max_size=5_000)
+        self._ultimo_conteggio: BoundedCache[tuple[int, int], float] = BoundedCache(max_size=20_000)
 
     @property
     def _pool(self) -> asyncpg.Pool:
@@ -127,6 +129,7 @@ class GiveawayRepository:
             starts_at=row["starts_at"],
             started=row["started"],
             duration_seconds=row["duration_seconds"],
+            errore=row["errore"],
         )
 
     async def create_giveaway(
@@ -196,8 +199,44 @@ class GiveawayRepository:
         )
         return [self._row_to_giveaway(r) for r in rows]
 
-    async def mark_ended(self, giveaway_id: int) -> None:
-        await self._pool.execute("UPDATE giveaways SET ended = true WHERE id = $1", giveaway_id)
+    async def mark_ended(self, giveaway_id: int) -> bool:
+        """
+        Conclude il giveaway. Vero solo per chi lo conclude davvero: se due giri
+        del worker arrivano insieme, uno solo riceve True (e annuncia i vincitori).
+        """
+        result = await self._pool.execute(
+            "UPDATE giveaways SET ended = true WHERE id = $1 AND ended = false", giveaway_id
+        )
+        return result.endswith(" 1")
+
+    async def segna_errore(self, giveaway_id: int, errore: str) -> None:
+        """
+        Un programmato che non riesce a partire torna "da partire" ma con il
+        motivo scritto: il worker lo salta, lo staff lo vede e può annullarlo.
+        """
+        await self._pool.execute(
+            "UPDATE giveaways SET started = false, errore = $2 WHERE id = $1 AND ended = false",
+            giveaway_id,
+            errore[:300],
+        )
+
+    async def list_scheduled(self, guild_id: int) -> list[Giveaway]:
+        """I giveaway programmati del server non ancora partiti (anche quelli in errore)."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM giveaways WHERE guild_id = $1 AND started = false AND ended = false "
+            "ORDER BY starts_at, id",
+            guild_id,
+        )
+        return [self._row_to_giveaway(r) for r in rows]
+
+    async def cancel_scheduled(self, guild_id: int, giveaway_id: int) -> bool:
+        """Annulla un programmato del server prima che parta. Falso se non c'è (o è già partito)."""
+        result = await self._pool.execute(
+            "DELETE FROM giveaways WHERE id = $1 AND guild_id = $2 AND started = false AND ended = false",
+            giveaway_id,
+            guild_id,
+        )
+        return result.endswith(" 1")
 
     async def add_entry(self, giveaway_id: int, user_id: int, tickets: int = 1) -> bool:
         """Restituisce True se la partecipazione è nuova, False se
@@ -233,7 +272,8 @@ class GiveawayRepository:
     async def get_giveaways_to_start(self, now: datetime) -> list[Giveaway]:
         """Giveaway programmati la cui ora di partenza è arrivata."""
         rows = await self._pool.fetch(
-            "SELECT * FROM giveaways WHERE started = false AND ended = false AND starts_at <= $1",
+            "SELECT * FROM giveaways WHERE started = false AND ended = false AND errore IS NULL "
+            "AND starts_at <= $1",
             now,
         )
         return [self._row_to_giveaway(r) for r in rows]
@@ -271,14 +311,24 @@ class GiveawayRepository:
         self._cache_conteggio.set(guild_id, (time.monotonic(), bool(presente)))
         return bool(presente)
 
-    async def count_message(self, guild_id: int, user_id: int) -> None:
+    async def count_message(
+        self, guild_id: int, user_id: int, cooldown_seconds: float = 0
+    ) -> None:
         """
         Un messaggio in più per ogni giveaway aperto del server che chiede un
         numero di messaggi. Se il server non ne ha, non scrive nulla (la
-        risposta resta in memoria per un minuto).
+        risposta resta in memoria per un minuto). Con `cooldown_seconds` un
+        messaggio conta solo se è passato quel tempo dall'ultimo contato di
+        quell'utente (lo stesso attesa dell'XP: niente conteggio a raffica).
         """
         if not await self._server_conta_messaggi(guild_id):
             return
+        if cooldown_seconds > 0:
+            adesso = time.monotonic()
+            ultimo = self._ultimo_conteggio.get((guild_id, user_id))
+            if ultimo is not None and adesso - ultimo < cooldown_seconds:
+                return
+            self._ultimo_conteggio.set((guild_id, user_id), adesso)
         await self._pool.execute(
             """
             INSERT INTO giveaway_message_counts (giveaway_id, user_id, n)
@@ -320,7 +370,10 @@ class GiveawayRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 # Il blocco sul server evita che due salvataggi insieme superino il tetto.
-                await conn.execute("SELECT pg_advisory_xact_lock($1)", guild_id)
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext('giveaway_templates'), $1)",
+                    guild_id % 2**31,
+                )
                 esiste = await conn.fetchval(
                     "SELECT 1 FROM giveaway_templates WHERE guild_id = $1 AND name = $2",
                     guild_id, name,

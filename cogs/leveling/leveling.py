@@ -43,7 +43,7 @@ from core.monthly_winners_logic import MEDALS, previous_period_key
 # un bottone "dinamico" non passa dalla BaseView, quindi il controllo
 # blacklist e la risposta agli errori vanno chiamati a mano.
 from core.ui_base import BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
-from cogs.leveling._pagine import invia_lista, taglia
+from cogs.leveling._pagine import elenco_entro_2000, invia_lista, taglia
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
@@ -392,6 +392,11 @@ _SCELTE_AZIONE_MONETE = [
     app_commands.Choice(name="Togli coin", value="togli"),
     app_commands.Choice(name="Imposta il saldo", value="imposta"),
     app_commands.Choice(name="Azzera il saldo", value="azzera"),
+]
+
+_SCELTE_AZIONE_PROGRAMMATI = [
+    app_commands.Choice(name="Elenca", value="elenco"),
+    app_commands.Choice(name="Annulla", value="annulla"),
 ]
 
 _SCELTE_AZIONE_MODELLO = [
@@ -777,18 +782,21 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_LEVELING):
             return
 
-        # NF-28: i messaggi contano per i giveaway che chiedono un minimo.
-        try:
-            await giveaway_repo.count_message(message.guild.id, message.author.id)
-        except Exception:
-            logger.warning("Messaggi dei giveaway non contati nel server %s.", message.guild.id)
-
         config = await self._config(message.guild.id)
         id_ruoli = [r.id for r in getattr(message.author, "roles", [])]
         # NF-15: canali e ruoli senza XP. Il drop sotto resta indipendente.
         # Un thread o un post di forum vale come il suo canale di origine.
         id_canale = id_canali_per_le_regole(message.channel)
         if not config.e_escluso(id_canale, id_ruoli):
+            # NF-28: i messaggi contano per i giveaway che chiedono un minimo,
+            # con le stesse esclusioni e la stessa attesa dell'XP testuale.
+            try:
+                await giveaway_repo.count_message(
+                    message.guild.id, message.author.id,
+                    config.impostazioni.text_cooldown_seconds,
+                )
+            except Exception:
+                logger.warning("Messaggi dei giveaway non contati nel server %s.", message.guild.id)
             await self._xp_testuale(message, config, id_ruoli, id_canale)
 
         if should_trigger_drop(random.random()):
@@ -2864,7 +2872,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             self, interaction: discord.Interaction, button: discord.ui.Button
         ) -> None:
             giveaway = await giveaway_repo.get_giveaway(self.giveaway_id)
-            if giveaway is None or giveaway.ended:
+            if (
+                giveaway is None
+                or giveaway.ended
+                or not giveaway.started
+                or giveaway.ends_at <= datetime.now(timezone.utc)
+            ):
                 await interaction.response.send_message(
                     "Questo giveaway non è più attivo.", ephemeral=True
                 )
@@ -3300,10 +3313,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message("Nessun modello salvato.", ephemeral=True)
                 return
             righe = [
-                taglia(f"• **{m.name}** — {m.prize}, {m.winners_count} vincitori, {m.duration_minutes} min", 120)
+                taglia(f"• **{m.name}** — {m.prize}, {m.winners_count} vincitori, {m.duration_minutes} min", 76)
                 for m in modelli
             ]
-            await interaction.response.send_message("\n".join(righe), ephemeral=True)
+            await interaction.response.send_message(elenco_entro_2000(righe), ephemeral=True)
             return
 
         if nome is None:
@@ -3357,6 +3370,57 @@ class LevelingCog(CogConGruppi, commands.Cog):
             bypass_role_id=modello.bypass_role_id, bonus_role_id=modello.bonus_role_id,
             ingressi_extra=modello.bonus_entries, inizia_tra=inizia_tra,
         )
+
+    @comando_di_gruppo(
+        "economia",
+        nome="giveaway-programmati",
+        descrizione="Giveaway programmati: elenca (anche quelli in errore) o annulla.",
+    )
+    @app_commands.describe(azione="Cosa fare", numero="Numero del giveaway (solo annulla)")
+    @app_commands.choices(azione=_SCELTE_AZIONE_PROGRAMMATI)
+    async def giveaway_programmati(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        numero: app_commands.Range[int, 1, 2_147_483_647] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        guild_id = interaction.guild.id
+        if azione.value == "annulla":
+            if numero is None:
+                await interaction.response.send_message(
+                    "Indica il numero del giveaway da annullare (lo vedi nell'elenco).",
+                    ephemeral=True,
+                )
+                return
+            tolto = await giveaway_repo.cancel_scheduled(guild_id, numero)
+            await interaction.response.send_message(
+                f"✅ Giveaway {numero} annullato." if tolto
+                else "Nessun giveaway programmato con questo numero (o è già partito).",
+                ephemeral=True,
+            )
+            return
+        programmati = await giveaway_repo.list_scheduled(guild_id)
+        if not programmati:
+            await interaction.response.send_message("Nessun giveaway programmato.", ephemeral=True)
+            return
+        righe = []
+        for g in programmati:
+            quando = f"<t:{int(g.starts_at.timestamp())}:R>" if g.starts_at else "?"
+            stato = f" ⚠️ non partito: {g.errore}" if g.errore else ""
+            righe.append(taglia(f"• **{g.id}** — {g.prize} in <#{g.channel_id}> {quando}{stato}", 160))
+        await interaction.response.send_message(
+            elenco_entro_2000(righe),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(

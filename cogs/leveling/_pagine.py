@@ -28,6 +28,26 @@ def taglia(testo: str, limite: int) -> str:
     return testo[: limite - 1] + "…"
 
 
+def elenco_entro_2000(righe: list[str]) -> str:
+    """
+    Le righe in un solo messaggio normale (limite 2000 caratteri): si
+    prendono finché ci stanno, poi una riga "… e altri N".
+    """
+    fuori = 0
+    usate: list[str] = []
+    lunghezza = 0
+    for i, riga in enumerate(righe):
+        riga = taglia(riga, 1900)
+        if lunghezza + len(riga) + 1 > 1940:
+            fuori = len(righe) - i
+            break
+        usate.append(riga)
+        lunghezza += len(riga) + 1
+    if fuori:
+        usate.append(f"… e altri {fuori}")
+    return "\n".join(usate)
+
+
 def dividi_in_pagine(righe: list[str], per_pagina: int = RIGHE_PER_PAGINA) -> list[str]:
     """
     Raggruppa le righe in pagine di testo: al massimo `per_pagina` righe

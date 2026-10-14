@@ -248,7 +248,7 @@ async def test_il_worker_fa_partire_il_programmato_e_dopo_lo_chiude(worker_in_sc
 
 
 @pytest.mark.asyncio
-async def test_canale_sparito_il_programmato_si_chiude(monkeypatch, repo):
+async def test_canale_sparito_il_programmato_va_in_errore_e_non_in_finito(monkeypatch, repo):
     import core.giveaway_worker as w
 
     monkeypatch.setattr(w, "giveaway_repo", repo)
@@ -258,8 +258,102 @@ async def test_canale_sparito_il_programmato_si_chiude(monkeypatch, repo):
 
     monkeypatch.setattr(w, "_canale_del_giveaway", nessuno)
     gid = await _crea(repo, starts_at=ORA - timedelta(seconds=1), duration_seconds=600)
-    await GiveawayWorker().tick(SimpleNamespace(get_guild=lambda g: object()), ORA)
-    assert (await repo.get_giveaway(gid)).ended is True
+    bot = SimpleNamespace(get_guild=lambda g: object())
+    await GiveawayWorker().tick(bot, ORA)
+
+    g = await repo.get_giveaway(gid)
+    assert (g.ended, g.started) == (False, False)
+    assert "non raggiungibile" in g.errore
+    # Non viene ritentato a ogni giro, e resta in elenco per lo staff.
+    assert await repo.get_giveaways_to_start(ORA) == []
+    assert [x.id for x in await repo.list_scheduled(GUILD)] == [gid]
+
+
+@pytest.mark.asyncio
+async def test_invio_fallito_il_programmato_non_si_chiude_come_finito(worker_in_scena, repo):
+    import discord
+
+    worker, bot, canale = worker_in_scena
+
+    async def rotto(*a, **k):
+        raise discord.HTTPException(SimpleNamespace(status=500, reason="x"), "boom")
+
+    canale.send = rotto
+    gid = await _crea(repo, starts_at=ORA - timedelta(seconds=1), duration_seconds=600)
+
+    await worker.tick(bot, ORA)
+
+    g = await repo.get_giveaway(gid)
+    assert (g.ended, g.started) == (False, False)
+    assert g.errore and "500" in g.errore
+
+
+@pytest.mark.asyncio
+async def test_bot_senza_permessi_nel_canale_il_programmato_va_in_errore(worker_in_scena, repo):
+    worker, bot, canale = worker_in_scena
+    canale.permissions_for = lambda me: SimpleNamespace(
+        view_channel=True, send_messages=False, embed_links=True
+    )
+    bot.get_guild = lambda gid: SimpleNamespace(me=object())
+    gid = await _crea(repo, starts_at=ORA - timedelta(seconds=1), duration_seconds=600)
+
+    await worker.tick(bot, ORA)
+
+    assert canale.inviati == []
+    g = await repo.get_giveaway(gid)
+    assert (g.ended, g.started) == (False, False)
+    assert "permessi" in g.errore or "scrivere" in g.errore
+
+
+@pytest.mark.asyncio
+async def test_due_giri_insieme_annunciano_una_volta_sola(worker_in_scena, repo, clean_db):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    worker, bot, canale = worker_in_scena
+    await repo.create_giveaway(GUILD, 500, "Nitro", 1, 0, None, ORA - timedelta(seconds=5), 1)
+    await apri_connessioni(clean_db, 6)
+
+    await asyncio.gather(*(worker.tick(bot, ORA) for _ in range(4)))
+
+    assert len(canale.inviati) == 1
+
+
+@pytest.mark.asyncio
+async def test_mark_ended_vale_per_uno_solo(repo, clean_db):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    gid = await _crea(repo)
+    await apri_connessioni(clean_db, 6)
+    esiti = await asyncio.gather(*(repo.mark_ended(gid) for _ in range(5)))
+    assert sorted(esiti) == [False] * 4 + [True]
+
+
+@pytest.mark.asyncio
+async def test_annulla_programmato_solo_del_proprio_server_e_prima_della_partenza(repo):
+    gid = await _crea(repo, starts_at=ORA + timedelta(hours=1), duration_seconds=600)
+    assert await repo.cancel_scheduled(GUILD + 1, gid) is False
+    assert await repo.cancel_scheduled(GUILD, gid) is True
+    assert await repo.list_scheduled(GUILD) == []
+    partito = await _crea(repo)  # già attivo
+    assert await repo.cancel_scheduled(GUILD, partito) is False
+
+
+@pytest.mark.asyncio
+async def test_il_blocco_dei_modelli_non_si_incrocia_con_quello_di_altri_repo(repo, clean_db):
+    import asyncio
+
+    # Un altro repo (security_repo, log_ignora_repo) tiene il blocco con la chiave "guild_id" nuda.
+    async with clean_db.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock($1)", GUILD)
+            await asyncio.wait_for(
+                repo.save_template(GUILD, "x", prize="p", winners_count=1, duration_minutes=5),
+                timeout=3,
+            )
 
 
 # ----------------------------------------------------------------------
@@ -440,6 +534,102 @@ async def test_on_message_conta_i_messaggi_per_i_giveaway(cog_comandi, monkeypat
     msg.guild = fake_guild(GUILD)
 
     await cog.on_message(msg)
+    giveaway._ultimo_conteggio.clear()  # l'attesa tra due conteggi ha un suo test
     await cog.on_message(msg)
 
     assert await giveaway.message_count(gid, 5) == 2
+
+
+@pytest.mark.asyncio
+async def test_on_message_rispetta_lattesa_tra_i_conteggi(cog_comandi, monkeypatch):
+    import discord
+
+    from tests.support.discord_fakes import fake_message, fake_text_channel
+
+    cog, _, giveaway = cog_comandi
+    gid = await _crea(giveaway, min_messages=5)
+    monkeypatch.setattr(modulo, "should_trigger_drop", lambda v: False)
+    msg = fake_message(author=fake_member(user_id=5), channel=fake_text_channel(channel_id=111))
+    msg.type = discord.MessageType.default
+    msg.guild = fake_guild(GUILD)
+
+    for _ in range(5):
+        await cog.on_message(msg)
+
+    assert await giveaway.message_count(gid, 5) == 1
+
+
+@pytest.mark.asyncio
+async def test_on_message_non_conta_nei_canali_esclusi(cog_comandi, monkeypatch):
+    import discord
+
+    from tests.support.discord_fakes import fake_message, fake_text_channel
+
+    cog, _, giveaway = cog_comandi
+    gid = await _crea(giveaway, min_messages=5)
+    monkeypatch.setattr(modulo, "should_trigger_drop", lambda v: False)
+    config = SimpleNamespace(
+        e_escluso=lambda canali, ruoli: True,
+        impostazioni=SimpleNamespace(text_cooldown_seconds=0),
+    )
+    monkeypatch.setattr(cog, "_config", AsyncMock(return_value=config))
+    msg = fake_message(author=fake_member(user_id=5), channel=fake_text_channel(channel_id=111))
+    msg.type = discord.MessageType.default
+    msg.guild = fake_guild(GUILD)
+
+    await cog.on_message(msg)
+
+    assert await giveaway.message_count(gid, 5) == 0
+
+
+@pytest.mark.asyncio
+async def test_bottone_dopo_la_scadenza_non_registra(cog_comandi):
+    cog, _, giveaway = cog_comandi
+    gid = await giveaway.create_giveaway(
+        GUILD, 500, "Nitro", 1, 0, None, datetime.now(timezone.utc) - timedelta(seconds=30), 1
+    )  # scaduto ma il worker non l'ha ancora concluso
+    click = _Click(fake_member(user_id=5))
+
+    await cog.GiveawayEnterView(gid).children[0].callback(click)
+
+    assert "non è più attivo" in click.response.send_message.await_args.args[0]
+    assert await giveaway.has_entered(gid, 5) is False
+
+
+@pytest.mark.asyncio
+async def test_elenco_modelli_sta_nei_2000_caratteri(cog_comandi):
+    cog, comandi, giveaway = cog_comandi
+    for i in range(25):
+        await giveaway.save_template(
+            GUILD, f"modello-{i:02d}-" + "n" * 17, prize="P" * 200, winners_count=50,
+            duration_minutes=43200,
+        )
+    interazione = _interazione()
+
+    await comandi["economia giveaway-modello"].callback(
+        cog, interazione, azione=_scelta("elenco"), nome=None, premio=None, vincitori=None,
+        durata_minuti=None, min_livello=None, ruolo_richiesto=None, min_messaggi=None,
+        ruolo_bypass=None, ruolo_extra=None, ingressi_extra=None, inizia_tra=None,
+    )
+
+    testo = interazione.response.send_message.await_args.args[0]
+    assert len(testo) <= 2000
+    assert "modello-00" in testo
+
+
+@pytest.mark.asyncio
+async def test_programmati_elenca_con_errore_e_annulla(cog_comandi):
+    cog, comandi, giveaway = cog_comandi
+    gid = await _crea(giveaway, starts_at=ORA + timedelta(hours=1), duration_seconds=600)
+    await giveaway.segna_errore(gid, "canale 500 non raggiungibile")
+    comando = comandi["economia giveaway-programmati"]
+
+    interazione = _interazione()
+    await comando.callback(cog, interazione, azione=_scelta("elenco"), numero=None)
+    testo = interazione.response.send_message.await_args.args[0]
+    assert str(gid) in testo and "non raggiungibile" in testo
+
+    interazione = _interazione()
+    await comando.callback(cog, interazione, azione=_scelta("annulla"), numero=gid)
+    assert "annullato" in interazione.response.send_message.await_args.args[0]
+    assert await giveaway.list_scheduled(GUILD) == []

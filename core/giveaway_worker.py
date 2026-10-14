@@ -69,8 +69,10 @@ class GiveawayWorker:
             # Segnato concluso SUBITO, prima di qualunque operazione
             # che potrebbe fallire (canale sparito, ecc.) — un
             # giveaway scaduto non deve restare "dovuto" per sempre
-            # e essere ritentato ad ogni tick.
-            await giveaway_repo.mark_ended(giveaway.id)
+            # e essere ritentato ad ogni tick. Chi non riesce a segnarlo
+            # (un altro giro l'ha già fatto) non annuncia: un solo annuncio.
+            if not await giveaway_repo.mark_ended(giveaway.id):
+                continue
 
             partecipanti = await giveaway_repo.get_weighted_entries(giveaway.id)
             vincitori = pick_winners_pesati(partecipanti, giveaway.winners_count, random.Random())
@@ -104,19 +106,33 @@ class GiveawayWorker:
         """
         Pubblica un giveaway programmato. Prima lo si reclama (una scrittura
         sola: due giri insieme non lo mandano due volte), poi si scrive nel
-        canale. Se il canale non c'è più il giveaway si chiude: niente
-        tentativi all'infinito.
+        canale. Se il canale non c'è più, il bot non ha i permessi o l'invio
+        fallisce, il giveaway resta programmato con il motivo dell'errore
+        (lo staff lo vede in /economia giveaway-programmati): niente tentativi
+        all'infinito e niente giveaway "finito" mai partito.
         """
         from cogs.leveling.leveling import LevelingCog  # qui dentro: il cog importa questo modulo
 
         giveaway = await giveaway_repo.claim_start(giveaway_id, adesso)
         if giveaway is None:
             return
-        canale = await _canale_del_giveaway(bot.get_guild(giveaway.guild_id), giveaway.channel_id)
+        guild = bot.get_guild(giveaway.guild_id)
+        canale = await _canale_del_giveaway(guild, giveaway.channel_id)
         if canale is None:
-            logger.warning("Canale %s non raggiungibile: giveaway %s chiuso.", giveaway.channel_id, giveaway.id)
-            await giveaway_repo.mark_ended(giveaway.id)
+            await self._errore_di_partenza(
+                giveaway, f"canale {giveaway.channel_id} non raggiungibile"
+            )
             return
+        io = getattr(guild, "me", None)
+        if io is not None:
+            permessi = canale.permissions_for(io) if hasattr(canale, "permissions_for") else None
+            if permessi is not None and not (
+                permessi.view_channel and permessi.send_messages and permessi.embed_links
+            ):
+                await self._errore_di_partenza(
+                    giveaway, "il bot non può vedere o scrivere con gli embed in quel canale"
+                )
+                return
         embed = discord.Embed(
             title=titolo_giveaway(giveaway.prize),
             description=descrizione_giveaway(giveaway),
@@ -124,11 +140,15 @@ class GiveawayWorker:
         )
         try:
             messaggio = await canale.send(embed=embed, view=LevelingCog.GiveawayEnterView(giveaway.id))
-        except discord.HTTPException:
-            logger.warning("Giveaway %s non pubblicato nel canale %s.", giveaway.id, giveaway.channel_id)
-            await giveaway_repo.mark_ended(giveaway.id)
+        except discord.HTTPException as errore:
+            await self._errore_di_partenza(giveaway, f"invio non riuscito ({errore.status})")
             return
         await giveaway_repo.set_message_id(giveaway.id, messaggio.id)
+
+    async def _errore_di_partenza(self, giveaway, motivo: str) -> None:
+        """Il programmato non è partito: non si chiude come finito, si segna l'errore."""
+        logger.warning("Giveaway programmato %s non partito: %s.", giveaway.id, motivo)
+        await giveaway_repo.segna_errore(giveaway.id, motivo)
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:
