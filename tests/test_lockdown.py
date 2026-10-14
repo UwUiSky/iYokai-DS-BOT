@@ -418,3 +418,29 @@ def test_i_parametri_hanno_i_limiti_di_discord():
     firma = typing.get_type_hints(cmd.callback, include_extras=True)
     assert "Range" in repr(firma["sblocco_minuti"])
     assert "Range" in repr(typing.get_type_hints(cog_modulo.LockdownCog.blocco_attiva.callback, include_extras=True)["motivo"])
+
+
+# ================================================================== giro cacciatore-bug r5
+async def test_togli_con_overwrite_gia_tolto_a_mano_chiude_il_blocco():
+    testo = _canale(discord.TextChannel, 1)
+    server = _server([testo])
+    await servizio.attiva(server, tipo=logica.TIPO_BLOCCO, avviato_da=1, motivo="prova")
+    testo.ow = discord.PermissionOverwrite()  # lo staff ha cancellato l'overwrite a mano
+    testo.chiamate = 0
+
+    async def _cancella(*a, **k):  # Discord: cancellare un overwrite che non c'e' = 404
+        raise discord.NotFound(MagicMock(status=404, reason="x"), "Unknown Overwrite")
+
+    testo.set_permissions = _cancella
+    esito = await servizio.togli(server)
+    assert esito.ok and await lockdown_repo.get_stato(GUILD_ID) is None
+
+
+async def test_report_resta_aperto_ai_membri_durante_il_panico(monkeypatch):
+    server = _server([_canale(discord.TextChannel, 1)])
+    db_finto = MagicMock()
+    db_finto.is_module_active_for_guild = AsyncMock(return_value=True)
+    monkeypatch.setattr(shared, "db", db_finto)
+    await servizio.attiva(server, tipo=logica.TIPO_PANICO, avviato_da=1, motivo="attacco")
+    membro = fake_interaction(guild=server, user=fake_member(user_id=7))
+    assert await shared.ensure_module_enabled(membro, shared.MODULE_REPORT) is True

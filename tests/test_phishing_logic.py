@@ -187,3 +187,48 @@ async def test_il_link_normale_passa_e_il_filtro_spento_non_agisce(contesto):
     spento = _FakeMessage(guild, autore, canale, content="https://dlscord.gift/xyz")
     await AutomodCog(bot=None).on_message(spento)
     assert spento.deleted is False
+
+
+def test_dominio_vero_usato_come_prefisso_e_phishing():
+    from core.phishing_logic import sembra_phishing
+    assert sembra_phishing("steampowered.com.evil.io")
+    assert sembra_phishing("discord.com.login-check.xyz")
+    assert not sembra_phishing("support.discord.com")
+
+
+def test_discard_non_e_una_marca_storta():
+    from core.phishing_logic import sembra_phishing
+    assert not sembra_phishing("discard.com")
+    assert sembra_phishing("dlscord.com")
+
+
+async def test_il_download_legge_tutto_il_corpo_non_solo_il_primo_pezzo(monkeypatch):
+    from core import phishing_list_fetcher as f
+
+    righe = [f"truffa{i}.xyz\n".encode() for i in range(20000)]  # > 64 KB, arriva a pezzi
+
+    class _Flusso:
+        async def iter_chunked(self, n):
+            for i in range(0, len(righe), 1000):
+                yield b"".join(righe[i:i + 1000])
+
+        async def read(self, n):  # il vecchio codice: solo il primo pezzo
+            return b"".join(righe[:1000])
+
+    class _Risposta:
+        status = 200
+        content = _Flusso()
+
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+
+    class _Sessione:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        def get(self, url): return _Risposta()
+
+    monkeypatch.setattr(f.aiohttp, "ClientSession", _Sessione)
+    lista = f.ListaPhishing()
+    assert await lista.scarica("https://esempio.test/l.txt") is True
+    assert len(lista._scaricata) == 20000

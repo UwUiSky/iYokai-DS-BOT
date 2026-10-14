@@ -214,9 +214,12 @@ async def togli(guild: discord.Guild, *, riepilogo_in: discord.abc.Messageable |
                     return "saltato"
                 overwrite = canale.overwrites_for(everyone)
                 prima_coppia = overwrite.pair()
+                era_vuoto = overwrite.is_empty()  # niente da togliere: cancellarlo darebbe 404 e il blocco non si chiuderebbe mai
                 nuovo = ripristina(overwrite, riga.prima)
                 try:
-                    if (nuovo.pair() if nuovo is not None else None) != prima_coppia:
+                    if nuovo is None and era_vuoto:
+                        pass
+                    elif (nuovo.pair() if nuovo is not None else None) != prima_coppia:
                         await canale.set_permissions(everyone, overwrite=nuovo, reason=razon)
                 except discord.HTTPException as errore:
                     logger.warning("Canale %s non riaperto (server %s): %s", riga.channel_id, guild.id, errore)

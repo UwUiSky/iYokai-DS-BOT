@@ -45,7 +45,8 @@ def normalizza_risposta(testo: str) -> str:
 
 
 def risposta_giusta(atteso: str, data: str) -> bool:
-    return secrets.compare_digest(normalizza_risposta(data), atteso.upper())
+    # compare_digest su str accetta solo ASCII: una «e» accentata nella risposta darebbe TypeError.
+    return secrets.compare_digest(normalizza_risposta(data).encode("utf-8"), atteso.upper().encode("utf-8"))
 
 
 def disegna_immagine(codice: str, rng: random.Random | None = None) -> bytes:

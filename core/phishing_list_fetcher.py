@@ -67,7 +67,15 @@ class ListaPhishing:
                     if risposta.status != 200:
                         logger.warning("Lista phishing: risposta %s.", risposta.status)
                         return False
-                    corpo = await risposta.content.read(MAX_BYTE + 1)
+                    # read(n) puo' tornare solo il primo pezzo arrivato: si legge fino alla fine (o al tetto).
+                    pezzi: list[bytes] = []
+                    letti = 0
+                    async for pezzo in risposta.content.iter_chunked(65536):
+                        pezzi.append(pezzo)
+                        letti += len(pezzo)
+                        if letti > MAX_BYTE:
+                            break
+                    corpo = b"".join(pezzi)
         except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as errore:
             logger.warning("Lista phishing non scaricata: %s", type(errore).__name__)
             return False

@@ -180,3 +180,9 @@ async def test_captcha_testo_resta_il_default(scenario):
     interazione = scenario.clic()
     await VerifyPanelView().verify_click.callback(interazione)
     assert isinstance(interazione.response.send_modal.call_args.args[0], CaptchaModal)
+
+
+def test_risposta_con_caratteri_non_ascii_e_sbagliata_senza_errori():
+    assert captcha_image.risposta_giusta("ABCDE", "àbcde") is False
+    assert captcha_image.risposta_giusta("ABCDE", "ab céd") is False
+    assert captcha_image.risposta_giusta("ABCDE", "ab cde") is True

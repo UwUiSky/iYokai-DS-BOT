@@ -37,6 +37,8 @@ PAROLE_SOSPETTE = (
 # Marche scritte quasi giuste: l'etichetta del dominio e' a una lettera di distanza.
 MARCHE_SCRITTE_STORTE = ("discord", "steamcommunity", "steampowered")
 
+PAROLE_VERE = frozenset({"discard"})  # parole comuni a una lettera da «discord»: non sono typosquatting
+
 _TOKEN_DOMINIO = re.compile(r"(?<![\w@.-])((?:[a-z0-9-]{1,63}\.)+[a-z]{2,24})(?![\w-])", re.IGNORECASE)
 _DUE_PARTI_SPECIALI = {"co", "com", "org", "net", "gov", "ac"}
 
@@ -100,6 +102,12 @@ def sembra_phishing(dominio: str) -> bool:
     dominio = normalize_domain(dominio)
     if not dominio or _ufficiale(dominio):
         return False
+    # Un dominio vero usato come prefisso di un altro («steampowered.com.evil.io»).
+    parti = dominio.split(".")
+    for i in range(len(parti) - 1):
+        for j in range(i + 2, len(parti)):
+            if ".".join(parti[i:j]) in DOMINI_UFFICIALI and j < len(parti) and i + 1 < j:
+                return True
     nome = _registrabile(dominio).rsplit(".", 1)[0].replace(".", "-")
     parole = [parola for parola in PAROLE_SOSPETTE if parola in nome]
     if any(marca in nome for marca in MARCHE) and parole:
@@ -108,7 +116,7 @@ def sembra_phishing(dominio: str) -> bool:
         return True
     # La marca scritta storta: per ogni pezzo del nome («dlscord-app» -> «dlscord», «app»).
     for pezzo in re.split(r"[-_.]", nome):
-        if any(_distanza_al_massimo_uno(pezzo, marca) for marca in MARCHE_SCRITTE_STORTE):
+        if pezzo not in PAROLE_VERE and any(_distanza_al_massimo_uno(pezzo, marca) for marca in MARCHE_SCRITTE_STORTE):
             return True
     return False
 
