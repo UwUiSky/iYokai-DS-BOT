@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:18 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 302 comandi in 16 categorie.**
+**Totale: 277 comandi in 17 categorie.**
 
 ## Admin
 
@@ -80,18 +80,37 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:
 - **`/clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
 - **`/clan tesoreria trasferisci`** — Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
 
+## Economia
+
+- **`/economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
+- **`/economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
+- **`/economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
+- **`/economia giveaway`** — Avvia un giveaway.
+- **`/economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
+- **`/economia giveaway-programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
+- **`/economia monete`** — Modifica il saldo di un membro.
+- **`/economia shop-add`** — Aggiunge un oggetto allo shop.
+- **`/economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
+- **`/economia shop-remove`** — Rimuove un oggetto dallo shop.
+- **`/economia vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
+- **`/economia vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
+- **`/economia xp`** — Modifica XP e livello di un membro.
+
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun animal`** — Mostra un'immagine casuale di un animale.
 - **`/fun blur`** — Applica una sfocatura a un'immagine.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
+- **`/fun conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
+- **`/fun gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/fun grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/fun invert`** — Inverte i colori di un'immagine.
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun meme`** — Genera un meme con testo sopra/sotto.
+- **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun pixelate`** — Pixela un'immagine.
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
@@ -105,28 +124,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:
 - **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
 - **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
 - **`/gestione benvenuto boost`** — Configura il messaggio di boost.
-- **`/gestione benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
-- **`/gestione economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
-- **`/gestione economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
-- **`/gestione economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
-- **`/gestione economia giveaway`** — Avvia un giveaway.
-- **`/gestione economia shop-add`** — Aggiunge un oggetto allo shop.
-- **`/gestione economia shop-remove`** — Rimuove un oggetto dallo shop.
-- **`/gestione economia vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
-- **`/gestione economia vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
-- **`/gestione ruoli auto-aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
-- **`/gestione ruoli auto-elenco`** — Mostra i ruoli automatici del server.
-- **`/gestione ruoli auto-ricorda`** — Ridai i ruoli a chi esce e rientra entro un certo tempo.
-- **`/gestione ruoli auto-rimuovi`** — Togli un ruolo dato in automatico a chi entra.
 - **`/gestione ruoli livello-add`** — Assegna un ruolo a chi raggiunge un livello.
 - **`/gestione ruoli livello-list`** — Mostra i ruoli-premio configurati su questo server.
 - **`/gestione ruoli livello-remove`** — Rimuove un ruolo-premio configurato.
-- **`/gestione ruoli menu-accesso`** — Limita un menu a certi ruoli o escludine altri.
 - **`/gestione ruoli menu-aggiungi`** — Aggiungi un'opzione a un role menu.
 - **`/gestione ruoli menu-crea`** — Crea un nuovo role menu.
-- **`/gestione ruoli menu-elenco`** — Mostra i menu di ruoli del server, con gli ID.
 - **`/gestione ruoli menu-elimina`** — Elimina un role menu.
-- **`/gestione ruoli menu-modifica`** — Cambia titolo, descrizione o comportamento di un menu già pubblicato.
 - **`/gestione ruoli menu-togli`** — Rimuovi un'opzione da un role menu.
 - **`/gestione ticket categoria-add`** — Aggiungi (o aggiorna) una categoria di ticket.
 - **`/gestione ticket categoria-list`** — Elenca le categorie di ticket configurate.
@@ -145,21 +148,22 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:
 ## Livelli
 
 - **`/level balance`** — Mostra i tuoi coin.
+- **`/level calcola`** — Quanti messaggi o minuti in vocale mancano per arrivare a un livello.
 - **`/level cassa`** — Mostra il saldo della cassa del server.
-- **`/level compleanno imposta`** — Registra il tuo compleanno (solo giorno e mese).
-- **`/level compleanno mostra`** — Mostra il compleanno che hai registrato.
-- **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
+- **`/level collezione compra`** — Compra un badge o uno sfondo con le tue coin.
+- **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
+- **`/level collezione negozio`** — Mostra badge e sfondi in vendita e quelli che hai.
 - **`/level daily`** — Riscuoti la ricompensa giornaliera.
 - **`/level impostazioni annuncio`** — Dove e quando annunciare i level-up.
 - **`/level impostazioni escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
 - **`/level impostazioni moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/level impostazioni mostra`** — Mostra le impostazioni dei livelli di questo server.
+- **`/level impostazioni negozio`** — Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).
 - **`/level impostazioni premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
-- **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
-- **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level pay`** — Trasferisci coin a un altro utente.
+- **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.
@@ -219,30 +223,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:
 - **`/moduli alert twitch`** — Notifica quando uno streamer Twitch va live/offline.
 - **`/moduli alert webhook`** — Crea un webhook custom: servizi terzi possono pubblicare in un canale.
 - **`/moduli alert youtube-live`** — Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).
-- **`/moduli candidature crea`** — Crea un modulo o una candidatura.
-- **`/moduli candidature elenco`** — I moduli di questo server.
-- **`/moduli candidature elimina`** — Elimina un modulo e le sue risposte.
-- **`/moduli comandi crea`** — Crea un comando personalizzato.
-- **`/moduli comandi elenco`** — Mostra i comandi personalizzati del server.
-- **`/moduli comandi elimina`** — Elimina un comando personalizzato.
-- **`/moduli comandi modifica`** — Cambia un comando personalizzato.
-- **`/moduli comandi prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
-- **`/moduli comandi risposta-crea`** — Crea una risposta automatica.
-- **`/moduli comandi risposta-elimina`** — Elimina una risposta automatica.
-- **`/moduli comandi risposte`** — Mostra le risposte automatiche del server.
-- **`/moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
-- **`/moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
-- **`/moduli contatori crea`** — Crea un canale che mostra un numero.
-- **`/moduli contatori elenco`** — Mostra i contatori del server.
-- **`/moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
-- **`/moduli embed crea`** — Crea un embed e guarda l'anteprima.
-- **`/moduli embed elenco`** — Mostra gli embed salvati.
-- **`/moduli embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
-- **`/moduli embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
-- **`/moduli embed pubblica`** — Manda un embed salvato in un canale.
-- **`/moduli starboard disattiva`** — Spegni la bacheca.
-- **`/moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
-- **`/moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
 
 ## Musica
 
@@ -329,7 +309,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:
 ## Utility
 
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
-- **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility poll`** — Crea un sondaggio (fino a 10 opzioni).
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
@@ -343,7 +322,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 05:
 - **`/utility serverstats`** — Mostra le statistiche del server, con grafico di crescita.
 - **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.
-- **`/utility tag`** — Usa un comando personalizzato di questo server.
 
 ## Vocali
 

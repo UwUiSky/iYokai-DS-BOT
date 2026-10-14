@@ -28,6 +28,7 @@ MIXED = "mixed"
 
 AUDIENCE: dict[str, str] = {
     # AutoMod e sicurezza
+    "economia": STAFF,  # gruppo condiviso (core/command_groups.py)
     "automod": STAFF,
     "security": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Moderazione

@@ -70,12 +70,12 @@ async def test_has_entered(repo):
 
 
 @pytest.mark.asyncio
-async def test_get_entries_e_count(repo):
+async def test_get_weighted_entries_e_count(repo):
     giveaway_id = await _crea(repo)
     await repo.add_entry(giveaway_id, user_id=1)
     await repo.add_entry(giveaway_id, user_id=2)
 
-    assert set(await repo.get_entries(giveaway_id)) == {1, 2}
+    assert {u for u, _ in await repo.get_weighted_entries(giveaway_id)} == {1, 2}
     assert await repo.count_entries(giveaway_id) == 2
 
 

@@ -3,24 +3,17 @@ cogs/leveling/leveling.py
 ============================
 XP testuale (on_message) e vocale (task periodico ogni 60s), livelli,
 economia (daily/work/pay/balance, shop, drop, giveaway), cassa del
-server, gilde/clan, classifiche mensili e di sempre. Modulo sempre
-gratuito.
-Funzioni coperte: SPEC §15
+server, gilde/clan, classifiche mensili e di sempre, impostazioni dei
+livelli. Modulo sempre gratuito.
+Funzioni coperte: SPEC §15, §22.14, §23.6
 
-Message Content Intent: è attivo (vedi main.py), ma questo modulo non
-legge mai message.content: gli basta sapere CHE un messaggio è stato
-inviato, non cosa dice.
+Message Content Intent: è attivo (vedi main.py). L'XP però non guarda
+mai il testo: gli basta sapere CHE un messaggio è stato inviato.
 
 L'XP vocale usa un task periodico (tasks.loop) e non l'evento
 on_voice_state_update: l'XP si accumula minuto per minuto per tutta
 la permanenza in vocale, non solo quando si entra o si esce.
 """
-
-# DA FARE (issue #65, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §9 (Livelli, economia,
-#   clan).
-# DA FARE (issue #99, fase F13): NF-28, Giveaway avanzati. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -50,7 +43,7 @@ from core.monthly_winners_logic import MEDALS, previous_period_key
 # un bottone "dinamico" non passa dalla BaseView, quindi il controllo
 # blacklist e la risposta agli errori vanno chiamati a mano.
 from core.ui_base import BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
-from cogs.leveling._pagine import invia_lista, taglia
+from cogs.leveling._pagine import elenco_entro_2000, invia_lista, taglia
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
@@ -58,8 +51,17 @@ from core.repositories.shop_repo import EsitoAcquisto, shop_repo
 from core.rank_card_image import COLORE_DI_BASE, TEMA_DI_BASE, DatiRankCard, render_rank_card
 from core.safe_image import run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
-from core.giveaway_logic import is_eligible, pick_winners
-from core.repositories.giveaway_repo import giveaway_repo
+from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
+from core.giveaway_logic import (
+    MAX_INGRESSI_EXTRA,
+    MAX_MESSAGGI_RICHIESTI,
+    MAX_PREMIO_GIVEAWAY,
+    biglietti_di,
+    descrizione_giveaway,
+    requisiti_mancanti,
+    titolo_giveaway,
+)
+from core.repositories.giveaway_repo import ModelloPieno, giveaway_repo
 from core.premium_pricing_logic import TIER_MONTHS_REQUIRED
 from core.premium_purchase_service import PurchaseOutcome, purchase_premium_tier
 from core.repositories.guild_chest_repo import (
@@ -109,6 +111,7 @@ from core.guild_clan_boost_logic import (
 from core.leveling_logic import (
     ConfigLivelli,
     DAILY_COOLDOWN_SECONDS,
+    LIVELLO_MASSIMO,
     FATTORE_MASSIMO,
     FATTORE_MINIMO,
     LIMITI_IMPOSTAZIONI,
@@ -119,13 +122,11 @@ from core.leveling_logic import (
     deve_annunciare,
     scegli_premi,
     xp_con_moltiplicatore,
-    DAILY_REWARD_COINS,
     WORK_COOLDOWN_SECONDS,
-    WORK_REWARD_MAX,
-    WORK_REWARD_MIN,
     is_eligible_for_voice_xp,
     period_key,
     seconds_until_next_claim,
+    stima_per_livello,
     xp_for_level,
 )
 from core.premium import PremiumModule, registry
@@ -148,7 +149,6 @@ RUOLI_UFFICIALI = (ROLE_OWNER, ROLE_CO_OWNER, ROLE_ADMIN)
 MAX_NOME_CLAN = 64
 MAX_NOME_OGGETTO = 80
 MAX_DESCRIZIONE_OGGETTO = 200
-MAX_PREMIO_GIVEAWAY = 200
 MAX_NOME_CANALE = 100
 LIMITE_TITOLO_EMBED = 256
 LIMITE_RIGA_NEGOZIO = 380
@@ -375,12 +375,37 @@ class BottoneInvitoClan(
             await sync_member_clan_role(guild, categoria, interaction.user, ROLE_MEMBER)
 
 
-_SG_ECONOMIA = ("economia", "Economia: negozio, cassa, premi, giveaway e vincitori del mese")
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 _SG_SHOP = ("shop", "Negozio: spendi i tuoi coin su oggetti o ruoli.")
 _SG_BACHECA = ("bacheca", "Annuncio automatico della top 3 gilde a fine mese.")
 _SG_TESORERIA = ("tesoreria", "Tesoreria della tua gilda.")
 _SG_IMPOSTAZIONI = ("impostazioni", "Impostazioni dei livelli: XP, annunci, ruoli-premio, esclusioni.")
+
+_SCELTE_AZIONE_XP = [
+    app_commands.Choice(name="Aggiungi XP", value="aggiungi"),
+    app_commands.Choice(name="Togli XP", value="togli"),
+    app_commands.Choice(name="Imposta il livello", value="livello"),
+    app_commands.Choice(name="Imposta gli XP dentro il livello", value="xp_nel_livello"),
+    app_commands.Choice(name="Azzera XP e livello", value="azzera"),
+]
+_SCELTE_AZIONE_MONETE = [
+    app_commands.Choice(name="Aggiungi coin", value="aggiungi"),
+    app_commands.Choice(name="Togli coin", value="togli"),
+    app_commands.Choice(name="Imposta il saldo", value="imposta"),
+    app_commands.Choice(name="Azzera il saldo", value="azzera"),
+]
+
+_SCELTE_AZIONE_PROGRAMMATI = [
+    app_commands.Choice(name="Elenca", value="elenco"),
+    app_commands.Choice(name="Annulla", value="annulla"),
+]
+
+_SCELTE_AZIONE_MODELLO = [
+    app_commands.Choice(name="Salva (o aggiorna)", value="salva"),
+    app_commands.Choice(name="Elenca", value="elenco"),
+    app_commands.Choice(name="Elimina", value="elimina"),
+    app_commands.Choice(name="Avvia un giveaway dal modello", value="avvia"),
+]
 
 _SCELTE_ANNUNCIO = [
     app_commands.Choice(name="Spento", value="spento"),
@@ -424,7 +449,10 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
         name="XP e coin",
         value=(
             f"Messaggio: **{i.text_xp}** XP, ogni **{i.text_cooldown_seconds}** s\n"
-            f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto"
+            f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto\n"
+            f"Daily: **{i.daily_coins}** coin · Work: **{i.work_min}-{i.work_max}** coin\n"
+            f"Livello massimo: **{i.max_level or 'nessun tetto'}**\n"
+            f"Conferma negli acquisti: **{'sì' if i.shop_confirm else 'no'}**"
         ),
         inline=False,
     )
@@ -456,6 +484,58 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
     )
     return embed
 _SG_BOOST = ("boost", "Boost XP/coin del Sistema Gilde/Clan.")
+
+
+# Gli ID dello shop sono interi a 32 bit nel database: oltre darebbe un errore di Postgres.
+IdOggetto = app_commands.Range[int, 1, 2_147_483_647]
+
+
+class ConfermaAcquistoView(BaseView):
+    """
+    «Confermi?» prima di un acquisto nel negozio (ECO-069). Solo chi ha dato il
+    comando può premere; il bottone vale una volta sola. L'acquisto passa dallo
+    stesso codice di /level shop buy, quindi resta una scrittura atomica.
+    """
+
+    def __init__(
+        self, cog, interazione_comando: discord.Interaction, item_id: int, prezzo: int
+    ) -> None:
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.interazione_comando = interazione_comando
+        self.item_id = item_id
+        self.prezzo = prezzo  # quello mostrato a chi conferma
+        self.autore_id = interazione_comando.user.id
+        self._usata = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        if interaction.user.id != self.autore_id:
+            await interaction.response.send_message(
+                "Solo chi ha usato il comando può confermare.", ephemeral=True
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="Conferma", style=discord.ButtonStyle.success)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if self._usata:  # nessun await tra controllo e segno: due clic non passano insieme
+            await interaction.response.send_message("Già fatto.", ephemeral=True)
+            return
+        self._usata = True
+        self.stop()
+        try:
+            await self.interazione_comando.edit_original_response(content="Acquisto in corso…", view=None)
+        except discord.HTTPException:
+            pass
+        await self.cog._acquista(interaction, self.item_id, prezzo_atteso=self.prezzo)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self._usata = True
+        self.stop()
+        await interaction.response.edit_message(content="Acquisto annullato.", view=None)
 
 
 class LevelingCog(CogConGruppi, commands.Cog):
@@ -524,8 +604,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guild: discord.Guild,
         new_level: int,
         modo: str = "accumula",
-    ) -> None:
+        togli_superiori: bool = False,
+        esecutore: discord.Member | None = None,
+    ) -> bool:
         """
+        Vero se i ruoli sono a posto, falso se Discord ha rifiutato la modifica.
         Condiviso tra XP testuale e vocale (SPEC.md §15.13) — un
         solo punto che assegna i ruoli-premio, non due copie della
         stessa logica. Salta i ruoli che il membro ha già (un
@@ -540,10 +623,28 @@ class LevelingCog(CogConGruppi, commands.Cog):
         quindi ogni ruolo viene ricontrollato con check_role_assignable
         prima di assegnarlo — il ruolo può aver preso permessi
         pericolosi dopo la configurazione del ruolo-premio.
+
+        `esecutore` (modifica a mano dello staff): chi ha lanciato il comando
+        non può far dare o togliere ruoli più in alto del suo (a meno che
+        non sia il proprietario del server): vale per assegnare e togliere.
         """
+        def fuori_gerarchia(ruolo: discord.Role) -> bool:
+            return (
+                esecutore is not None
+                and esecutore.id != guild.owner_id
+                and ruolo.position >= esecutore.top_role.position
+            )
+
         ricompense = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
-        if not ricompense:
-            return
+        non_piu_raggiunti = []
+        if togli_superiori:
+            non_piu_raggiunti = [
+                r.role_id
+                for r in await level_reward_repo.list_rewards(guild.id)
+                if r.level_threshold > new_level
+            ]
+        if not ricompense and not non_piu_raggiunti:
+            return True
 
         id_da_dare, id_da_togliere = scegli_premi(ricompense, modo)
         id_ruoli_posseduti = {ruolo.id for ruolo in member.roles}
@@ -556,6 +657,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 continue
             if check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
                 continue
+            if fuori_gerarchia(ruolo):
+                continue
             da_assegnare.append(ruolo)
 
         da_togliere = []
@@ -566,7 +669,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # Si tolgono solo i ruoli che il bot può gestire (gerarchia).
             if ruolo is None or ruolo.managed or ruolo.position >= guild.me.top_role.position:
                 continue
+            if fuori_gerarchia(ruolo):
+                continue
             da_togliere.append(ruolo)
+
+        da_togliere_sempre = []
+        for role_id in non_piu_raggiunti:
+            ruolo = guild.get_role(role_id) if role_id in id_ruoli_posseduti else None
+            if ruolo is None or ruolo.managed or ruolo.position >= guild.me.top_role.position:
+                continue
+            if fuori_gerarchia(ruolo):
+                continue
+            da_togliere_sempre.append(ruolo)
 
         # "Sostituisci": i vecchi ruoli si tolgono SOLO se il nuovo è arrivato
         # (o c'era già). Un ruolo nuovo non assegnabile non lascia il membro
@@ -583,10 +697,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await member.remove_roles(
                     *da_togliere, reason=f"Ruolo-premio sostituito al livello {new_level}"
                 )
+            if da_togliere_sempre:
+                await member.remove_roles(
+                    *da_togliere_sempre,
+                    reason=f"Livello sceso a {new_level}: ruolo-premio non più raggiunto",
+                )
         except discord.HTTPException:
             logger.warning(
                 "Impossibile aggiornare i ruoli-premio di %s nel server %s.", member.id, guild.id
             )
+            return False
+        return True
 
     class DropClaimView(BaseView):
         """
@@ -644,6 +765,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             message.author.id,
             amount=importo,
             cooldown_seconds=impostazioni.text_cooldown_seconds,
+            max_level=impostazioni.max_level,
         )
         if risultato.granted and risultato.leveled_up:
             await self._annuncia_level_up(
@@ -677,6 +799,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # Un thread o un post di forum vale come il suo canale di origine.
         id_canale = id_canali_per_le_regole(message.channel)
         if not config.e_escluso(id_canale, id_ruoli):
+            # NF-28: i messaggi contano per i giveaway che chiedono un minimo,
+            # con le stesse esclusioni e la stessa attesa dell'XP testuale.
+            try:
+                await giveaway_repo.count_message(
+                    message.guild.id, message.author.id,
+                    config.impostazioni.text_cooldown_seconds,
+                )
+            except Exception:
+                logger.warning("Messaggi dei giveaway non contati nel server %s.", message.guild.id)
             await self._xp_testuale(message, config, id_ruoli, id_canale)
 
         if should_trigger_drop(random.random()):
@@ -836,6 +967,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         xp_prossimo_livello = xp_for_level(totali.level + 1)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
+        tetto = (await self._config(interaction.guild.id)).impostazioni.max_level
+        if tetto and totali.level >= tetto:
+            progresso, richiesti = 0, 0  # al livello massimo non c'è un prossimo livello
 
         try:
             avatar = await target.display_avatar.read()
@@ -865,7 +999,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
             embed.add_field(
                 name="Progresso al prossimo livello",
-                value=f"{progresso}/{richiesti} XP",
+                value=f"{progresso}/{richiesti} XP" if richiesti else "Livello massimo",
                 inline=False,
             )
             await interaction.followup.send(nota, embed=embed)
@@ -887,8 +1021,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         target = member or interaction.user
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
+        posizione = await leveling_repo.get_coins_position(interaction.guild.id, target.id)
+        in_classifica = f" (#{posizione} in classifica)" if posizione else ""
         await interaction.response.send_message(
-            f"{target.mention} ha **{totali.coins_total}** coin."
+            f"{target.mention} ha **{totali.coins_total}** coin{in_classifica}."
         )
 
     @comando_di_gruppo(
@@ -901,9 +1037,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         adesso = datetime.now(timezone.utc)
+        importo = (await self._config(interaction.guild.id)).impostazioni.daily_coins
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
-            DAILY_REWARD_COINS, DAILY_COOLDOWN_SECONDS, adesso,
+            importo, DAILY_COOLDOWN_SECONDS, adesso,
         )
         if not riscosso:
             totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
@@ -915,7 +1052,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.send_message(
-            f"Hai riscosso **{DAILY_REWARD_COINS}** coin! Torna domani per altri."
+            f"Hai riscosso **{importo}** coin! Torna domani per altri."
         )
 
     @comando_di_gruppo(
@@ -928,7 +1065,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         adesso = datetime.now(timezone.utc)
-        guadagno = random.randint(WORK_REWARD_MIN, WORK_REWARD_MAX)
+        impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, WORK_COOLDOWN_SECONDS, adesso,
@@ -990,7 +1128,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="leaderboard",
         descrizione="Mostra la classifica del server.",
     )
-    @app_commands.describe(metric="XP o coin", period="Questo mese o di sempre")
+    @app_commands.describe(
+        metric="XP o coin",
+        period="Questo mese o di sempre",
+        posizioni="Quante posizioni mostrare, da 10 a 100 (a pagine)",
+    )
     @app_commands.choices(
         metric=[
             app_commands.Choice(name="XP", value="xp"),
@@ -1006,18 +1148,19 @@ class LevelingCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         metric: app_commands.Choice[str],
         period: app_commands.Choice[str],
+        posizioni: app_commands.Range[int, 10, 100] = 10,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
 
         if metric.value == "xp" and period.value == "alltime":
-            voci = await leveling_repo.top_xp_alltime(interaction.guild.id)
+            voci = await leveling_repo.top_xp_alltime(interaction.guild.id, posizioni)
         elif metric.value == "xp":
-            voci = await leveling_repo.top_xp_period(interaction.guild.id)
+            voci = await leveling_repo.top_xp_period(interaction.guild.id, posizioni)
         elif metric.value == "coins" and period.value == "alltime":
-            voci = await leveling_repo.top_coins_alltime(interaction.guild.id)
+            voci = await leveling_repo.top_coins_alltime(interaction.guild.id, posizioni)
         else:
-            voci = await leveling_repo.top_coins_period(interaction.guild.id)
+            voci = await leveling_repo.top_coins_period(interaction.guild.id, posizioni)
 
         if not voci:
             await interaction.response.send_message(
@@ -1031,12 +1174,66 @@ class LevelingCog(CogConGruppi, commands.Cog):
             unita = "XP" if metric.value == "xp" else "coin"
             righe.append(f"{prefisso} <@{voce.user_id}> — **{voce.amount}** {unita}")
 
+        titolo = f"Classifica {metric.name} — {period.name}"
+        if posizioni > 10:
+            await invia_lista(
+                interaction, titolo, righe, discord.Color.gold(), per_pagina=10
+            )
+            return
         embed = discord.Embed(
-            title=f"Classifica {metric.name} — {period.name}",
+            title=titolo,
             description="\n".join(righe),
             color=discord.Color.gold(),
         )
         await interaction.response.send_message(embed=embed)
+
+    @comando_di_gruppo(
+        "level",
+        nome="calcola",
+        descrizione="Quanti messaggi o minuti in vocale mancano per arrivare a un livello.",
+    )
+    @app_commands.describe(
+        livello="Il livello che vuoi raggiungere", member="Di chi fare il calcolo (facoltativo)"
+    )
+    async def calcola(
+        self,
+        interaction: discord.Interaction,
+        livello: app_commands.Range[int, 1, 1000],
+        member: discord.Member | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        if impostazioni.max_level and livello > impostazioni.max_level:
+            await interaction.response.send_message(
+                f"Il livello massimo di questo server è {impostazioni.max_level}.", ephemeral=True
+            )
+            return
+        target = member or interaction.user
+        totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
+        stima = stima_per_livello(
+            totali.xp_total, livello, impostazioni.text_xp, impostazioni.text_cooldown_seconds,
+            impostazioni.voice_xp_per_minute,
+        )
+        if stima.xp_mancanti == 0:
+            testo = f"{target.mention} ha già gli XP del livello **{livello}**."
+        else:
+            vocale = (
+                f"**{stima.minuti_vocale}** minuti in vocale"
+                if stima.minuti_vocale is not None
+                else "in vocale qui non si guadagnano XP"
+            )
+            testo = (
+                f"Per {target.mention} al livello **{livello}** mancano **{stima.xp_mancanti}** XP:\n"
+                f"• **{stima.messaggi}** messaggi (almeno {_format_seconds(stima.secondi_minimi_testo)}, "
+                f"un messaggio ogni {impostazioni.text_cooldown_seconds} s)\n"
+                f"• oppure {vocale}\n"
+                "*Senza moltiplicatori.*"
+            )
+        embed = discord.Embed(
+            title=f"Verso il livello {livello}", description=testo, color=discord.Color.blurple()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ================================================================
     # Ruoli-premio (SPEC.md §15.13)
@@ -1122,10 +1319,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="vincitori-set",
         descrizione="Imposta il canale dove annunciare i vincitori del mese.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(channel="Canale dell'annuncio")
     async def monthly_winners_set(
@@ -1145,10 +1341,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="vincitori-off",
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
-        sottogruppo=_SG_ECONOMIA,
     )
     async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -1190,6 +1385,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             riga = f"`{oggetto.id}` **{nome}** — {oggetto.price} coin"
             if oggetto.role_id is not None:
                 riga += f" (ruolo <@&{oggetto.role_id}>)"
+            if oggetto.stock is not None:
+                riga += f" — rimasti {oggetto.stock}" if oggetto.stock > 0 else " — esaurito"
+            if oggetto.required_role_id is not None:
+                riga += f" · serve <@&{oggetto.required_role_id}>"
             if oggetto.description:
                 riga += f"\n> {taglia(oggetto.description, MAX_DESCRIZIONE_OGGETTO)}"
             righe.append(taglia(riga, LIMITE_RIGA_NEGOZIO))
@@ -1203,10 +1402,32 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sottogruppo=_SG_SHOP,
     )
     @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
-    async def shop_buy(self, interaction: discord.Interaction, item_id: int) -> None:
-        guild = interaction.guild
+    async def shop_buy(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
         if await _comando_rifiutato(interaction):
             return
+        if interaction.guild is not None and (
+            await self._config(interaction.guild.id)
+        ).impostazioni.shop_confirm:
+            oggetto = await shop_repo.get_item(item_id, interaction.guild.id)
+            if oggetto is not None:
+                nome = taglia(oggetto.name, MAX_NOME_OGGETTO)
+                await interaction.response.send_message(
+                    f"Vuoi comprare **{nome}** per **{oggetto.price}** coin?",
+                    ephemeral=True,
+                    view=ConfermaAcquistoView(self, interaction, item_id, oggetto.price),
+                )
+                return
+        await self._acquista(interaction, item_id)
+
+    async def _acquista(
+        self, interaction: discord.Interaction, item_id: int, prezzo_atteso: int | None = None
+    ) -> None:
+        """
+        L'acquisto vero e proprio; chi lo chiama ha già controllato il modulo.
+        `prezzo_atteso` è il prezzo che l'utente ha visto e confermato: se nel
+        frattempo è cambiato, non si compra e gli si dice il prezzo nuovo.
+        """
+        guild = interaction.guild
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -1217,6 +1438,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if oggetto is None:
             await interaction.response.send_message(
                 "Nessun oggetto trovato con questo ID.", ephemeral=True
+            )
+            return
+
+        if oggetto.required_role_id is not None and not any(
+            r.id == oggetto.required_role_id for r in interaction.user.roles
+        ):
+            await interaction.response.send_message(
+                f"Per comprarlo serve il ruolo <@&{oggetto.required_role_id}>.", ephemeral=True
             )
             return
 
@@ -1240,10 +1469,26 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
                 return
 
-        acquisto = await shop_repo.buy_item(guild.id, interaction.user.id, oggetto)
+        # Senza conferma vale il prezzo appena letto: addebito, messaggio e rimborso coincidono.
+        acquisto = await shop_repo.buy_item(
+            guild.id, interaction.user.id, oggetto,
+            prezzo_atteso=prezzo_atteso if prezzo_atteso is not None else oggetto.price,
+        )
+        if acquisto.esito == EsitoAcquisto.PREZZO_CAMBIATO:
+            await interaction.response.send_message(
+                f"Il prezzo è cambiato mentre confermavi (era **{prezzo_atteso}** coin): "
+                "nessun acquisto. Rilancia il comando per vedere il prezzo nuovo.",
+                ephemeral=True,
+            )
+            return
         if acquisto.esito == EsitoAcquisto.GIA_ACQUISTATO:
             await interaction.response.send_message(
                 "Hai già acquistato questo oggetto.", ephemeral=True
+            )
+            return
+        if acquisto.esito == EsitoAcquisto.ESAURITO:
+            await interaction.response.send_message(
+                "Questo oggetto è esaurito.", ephemeral=True
             )
             return
         if acquisto.esito == EsitoAcquisto.SALDO_INSUFFICIENTE:
@@ -1285,16 +1530,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(conferma)
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="shop-add",
         descrizione="Aggiunge un oggetto allo shop.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         name="Nome dell'oggetto",
         price="Prezzo in coin",
         role="Ruolo da assegnare all'acquisto (facoltativo)",
         description="Descrizione (facoltativa)",
+        scorte="Quanti pezzi in vendita (vuoto = illimitati)",
+        ruolo_richiesto="Chi non ha questo ruolo non può comprare (facoltativo)",
     )
     async def shop_add_item(
         self,
@@ -1303,9 +1549,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
         price: app_commands.Range[int, 1, 1000000],
         role: discord.Role | None = None,
         description: app_commands.Range[str, 1, MAX_DESCRIZIONE_OGGETTO] | None = None,
+        scorte: app_commands.Range[int, 1, 1_000_000] | None = None,
+        ruolo_richiesto: discord.Role | None = None,
     ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
+            return
+        name = name.strip()
+        if not name:
+            await interaction.response.send_message(
+                "Il nome dell'oggetto non può essere vuoto.", ephemeral=True
+            )
             return
 
         if role is not None and isinstance(interaction.user, discord.Member):
@@ -1317,19 +1571,83 @@ class LevelingCog(CogConGruppi, commands.Cog):
         item_id = await shop_repo.add_item(
             guild.id, name=name, price=price,
             role_id=role.id if role else None, description=description,
+            stock=scorte, required_role_id=ruolo_richiesto.id if ruolo_richiesto else None,
         )
         await interaction.response.send_message(
             f"✅ Aggiunto **{name}** allo shop (ID `{item_id}`).", ephemeral=True
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
+        nome="shop-edit",
+        descrizione="Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).",
+    )
+    @app_commands.describe(
+        item_id="ID dell'oggetto (vedi /level shop list)",
+        name="Nuovo nome",
+        price="Nuovo prezzo",
+        scorte="Nuove scorte (0 = esaurito)",
+        scorte_illimitate="Togli il limite alle scorte",
+        description="Nuova descrizione",
+        ruolo_richiesto="Nuovo ruolo richiesto",
+        senza_ruolo_richiesto="Togli il ruolo richiesto",
+    )
+    async def shop_edit_item(
+        self,
+        interaction: discord.Interaction,
+        item_id: IdOggetto,
+        name: app_commands.Range[str, 1, MAX_NOME_OGGETTO] | None = None,
+        price: app_commands.Range[int, 1, 1000000] | None = None,
+        scorte: app_commands.Range[int, 0, 1_000_000] | None = None,
+        scorte_illimitate: bool | None = None,
+        description: app_commands.Range[str, 1, MAX_DESCRIZIONE_OGGETTO] | None = None,
+        ruolo_richiesto: discord.Role | None = None,
+        senza_ruolo_richiesto: bool | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        campi = {}
+        if name is not None:
+            if not name.strip():
+                await interaction.response.send_message(
+                    "Il nome dell'oggetto non può essere vuoto.", ephemeral=True
+                )
+                return
+            campi["name"] = name.strip()
+        if price is not None:
+            campi["price"] = price
+        if scorte_illimitate:
+            campi["stock"] = None
+        elif scorte is not None:
+            campi["stock"] = scorte
+        if description is not None:
+            campi["description"] = description
+        if senza_ruolo_richiesto:
+            campi["required_role_id"] = None
+        elif ruolo_richiesto is not None:
+            campi["required_role_id"] = ruolo_richiesto.id
+        if not campi:
+            await interaction.response.send_message(
+                "Scegli almeno un valore da cambiare.", ephemeral=True
+            )
+            return
+        oggetto = await shop_repo.update_item(item_id, interaction.guild.id, **campi)
+        if oggetto is None:
+            await interaction.response.send_message(
+                "Nessun oggetto trovato con questo ID.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            f"✅ **{taglia(oggetto.name, MAX_NOME_OGGETTO)}** aggiornato.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "economia",
         nome="shop-remove",
         descrizione="Rimuove un oggetto dallo shop.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
-    async def shop_remove_item(self, interaction: discord.Interaction, item_id: int) -> None:
+    async def shop_remove_item(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
@@ -1377,10 +1695,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="cassa-premium",
         descrizione="Sblocca un mese di bot premium spendendo dalla cassa.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         tier="Quale mese sbloccare: 1° (dopo 6 mesi), 2° (dopo 1 anno) o 3° (dopo 2 anni)"
@@ -1424,10 +1741,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="assegna-lobby",
         descrizione="Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(importo="Quante coin assegnare a CIASCUNO dei presenti in vocale")
     async def assegna_lobby(
@@ -1480,10 +1796,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="assegna-winner",
         descrizione="Premio vincitore: assegna coin a un membro, dalla cassa del server.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(membro="Il membro da premiare", importo="Quante coin assegnare")
     async def assegna_winner(
@@ -1503,7 +1818,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # Addebito e accredito nella stessa transazione, come /gestione economia assegna-lobby.
+        # Addebito e accredito nella stessa transazione, come /economia assegna-lobby.
         riuscito = await guild_chest_repo.pay_members(
             guild.id, [membro.id], importo, reason=REASON_EVENT_WINNER_PRIZE
         )
@@ -1517,6 +1832,111 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         await interaction.response.send_message(
             f"🏆 {membro.mention} ha vinto **{importo}** coin dalla cassa del server!"
+        )
+
+    @comando_di_gruppo(
+        "economia",
+        nome="xp",
+        descrizione="Modifica XP e livello di un membro.",
+    )
+    @app_commands.describe(
+        azione="Cosa fare",
+        membro="Il membro",
+        valore="XP o livello (non serve per azzerare)",
+    )
+    @app_commands.choices(azione=_SCELTE_AZIONE_XP)
+    async def gestione_xp(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        membro: discord.Member,
+        valore: app_commands.Range[int, 0, 10_000_000] = 0,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if membro.bot:
+            await interaction.response.send_message(
+                "I bot non hanno XP.", ephemeral=True
+            )
+            return
+        if azione.value != "azzera" and valore == 0 and azione.value in ("aggiungi", "togli"):
+            await interaction.response.send_message(
+                "Indica quanti XP (almeno 1).", ephemeral=True
+            )
+            return
+        if azione.value == "livello" and valore > LIVELLO_MASSIMO:
+            await interaction.response.send_message(
+                f"Il livello massimo impostabile è {LIVELLO_MASSIMO}.", ephemeral=True
+            )
+            return
+        # Dopo la scrittura si toccano i ruoli su Discord: si risponde con defer.
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        config = await self._config(guild.id)
+        tetto = config.impostazioni.max_level
+        esito = await leveling_repo.modifica_xp(
+            guild.id, membro.id, azione.value, valore, tetto
+        )
+        ruoli_a_posto = await self._grant_level_rewards(
+            membro, guild, esito.livello_dopo, config.impostazioni.reward_mode,
+            togli_superiori=True, esecutore=interaction.user,
+        )
+        logger.info(
+            "XP modificati dallo staff: server %s, staff %s, membro %s, %s %s (%s -> %s).",
+            guild.id, interaction.user.id, membro.id, azione.value, valore,
+            esito.xp_prima, esito.xp_dopo,
+        )
+        await interaction.followup.send(
+            f"✅ {membro.mention}: livello **{esito.livello_prima} → {esito.livello_dopo}**, "
+            f"XP **{esito.xp_prima} → {esito.xp_dopo}**."
+            + (
+                ""
+                if ruoli_a_posto is not False
+                else "\n⚠️ I ruoli-premio non si sono aggiornati: controlla i permessi del bot."
+            ),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "economia",
+        nome="monete",
+        descrizione="Modifica il saldo di un membro.",
+    )
+    @app_commands.describe(
+        azione="Cosa fare", membro="Il membro", importo="Quante coin (non serve per azzerare)"
+    )
+    @app_commands.choices(azione=_SCELTE_AZIONE_MONETE)
+    async def gestione_monete(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        membro: discord.Member,
+        importo: app_commands.Range[int, 0, 1_000_000_000] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if membro.bot:
+            await interaction.response.send_message("I bot non hanno coin.", ephemeral=True)
+            return
+        if azione.value != "azzera" and not importo and not (azione.value == "imposta" and importo == 0):
+            await interaction.response.send_message(
+                "Indica l'importo.", ephemeral=True
+            )
+            return
+        guild = interaction.guild
+        esito = await leveling_repo.modifica_monete(
+            guild.id, membro.id, azione.value, importo or 0
+        )
+        logger.info(
+            "Coin modificate dallo staff: server %s, staff %s, membro %s, %s %s (%s -> %s).",
+            guild.id, interaction.user.id, membro.id, azione.value, importo,
+            esito.prima, esito.dopo,
+        )
+        await interaction.response.send_message(
+            f"✅ {membro.mention}: saldo **{esito.prima} → {esito.dopo}** coin.",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     # ================================================================
@@ -2496,7 +2916,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             self, interaction: discord.Interaction, button: discord.ui.Button
         ) -> None:
             giveaway = await giveaway_repo.get_giveaway(self.giveaway_id)
-            if giveaway is None or giveaway.ended:
+            if (
+                giveaway is None
+                or giveaway.ended
+                or not giveaway.started
+                or giveaway.ends_at <= datetime.now(timezone.utc)
+            ):
                 await interaction.response.send_message(
                     "Questo giveaway non è più attivo.", ephemeral=True
                 )
@@ -2504,24 +2929,29 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
             totali = await leveling_repo.get_totals(giveaway.guild_id, interaction.user.id)
             ruoli_utente = {r.id for r in interaction.user.roles}
-            if not is_eligible(
-                totali.level, ruoli_utente, giveaway.min_level, giveaway.required_role_id
-            ):
-                requisiti = []
-                if giveaway.min_level > 0:
-                    requisiti.append(f"livello {giveaway.min_level}")
-                if giveaway.required_role_id is not None:
-                    requisiti.append(f"il ruolo <@&{giveaway.required_role_id}>")
+            messaggi = (
+                await giveaway_repo.message_count(self.giveaway_id, interaction.user.id)
+                if giveaway.min_messages > 0
+                else 0
+            )
+            salto = {giveaway.bypass_role_id} if giveaway.bypass_role_id is not None else set()
+            mancanti = requisiti_mancanti(
+                totali.level, ruoli_utente, giveaway.min_level, giveaway.required_role_id,
+                messaggi, giveaway.min_messages, salto,
+            )
+            if mancanti:
                 await interaction.response.send_message(
-                    f"Non soddisfi i requisiti per partecipare (richiesto: {', '.join(requisiti)}).",
+                    f"Non soddisfi i requisiti per partecipare (richiesto: {', '.join(mancanti)}).",
                     ephemeral=True,
                 )
                 return
 
-            nuova = await giveaway_repo.add_entry(self.giveaway_id, interaction.user.id)
+            biglietti = biglietti_di(ruoli_utente, giveaway.bonus_role_id, giveaway.bonus_entries)
+            nuova = await giveaway_repo.add_entry(self.giveaway_id, interaction.user.id, biglietti)
             if nuova:
+                extra = f" Hai {biglietti} ingressi." if biglietti > 1 else ""
                 await interaction.response.send_message(
-                    "✅ Partecipazione registrata, in bocca al lupo!", ephemeral=True
+                    f"✅ Partecipazione registrata, in bocca al lupo!{extra}", ephemeral=True
                 )
             else:
                 await interaction.response.send_message(
@@ -2613,6 +3043,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         voce_xp="XP per ogni minuto in vocale (0-50)",
         voce_coin="Coin per ogni minuto in vocale (0-50)",
         moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
+        daily="Coin di /level daily (0-10000)",
+        lavoro_min="Coin minimi di /level work (0-10000)",
+        lavoro_max="Coin massimi di /level work (0-10000)",
+        livello_massimo="Livello massimo raggiungibile (0 = nessun tetto)",
     )
     @app_commands.choices(moltiplicatori=_SCELTE_MOLTIPLICATORI)
     @richiedi(Livello.ADMIN)
@@ -2624,6 +3058,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         voce_xp: app_commands.Range[int, 0, 50] | None = None,
         voce_coin: app_commands.Range[int, 0, 50] | None = None,
         moltiplicatori: app_commands.Choice[str] | None = None,
+        daily: app_commands.Range[int, 0, 10000] | None = None,
+        lavoro_min: app_commands.Range[int, 0, 10000] | None = None,
+        lavoro_max: app_commands.Range[int, 0, 10000] | None = None,
+        livello_massimo: app_commands.Range[int, 0, 1000] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -2638,7 +3076,28 @@ class LevelingCog(CogConGruppi, commands.Cog):
             campi["voice_coins_per_minute"] = voce_coin
         if moltiplicatori is not None:
             campi["multiplier_mode"] = moltiplicatori.value
+        for nome, valore in (
+            ("daily_coins", daily), ("work_min", lavoro_min),
+            ("work_max", lavoro_max), ("max_level", livello_massimo),
+        ):
+            if valore is not None:
+                campi[nome] = valore
         await self._salva_impostazioni(interaction, campi)
+
+    @comando_di_gruppo(
+        "level",
+        nome="negozio",
+        descrizione="Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(conferma="Sì = chiede «Confermi?» prima di comprare; No = compra subito")
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_negozio(
+        self, interaction: discord.Interaction, conferma: bool
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        await self._salva_impostazioni(interaction, {"shop_confirm": conferma})
 
     async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:
         if not campi:
@@ -2747,11 +3206,72 @@ class LevelingCog(CogConGruppi, commands.Cog):
             testo = f"✅ XP ×{fattore:g} su {bersaglio.mention}."
         await interaction.response.send_message(testo, ephemeral=True)
 
+    async def _avvia_giveaway(
+        self,
+        interaction: discord.Interaction,
+        *,
+        prize: str,
+        durata_minuti: int,
+        winners: int,
+        min_level: int,
+        required_role_id: int | None,
+        min_messaggi: int,
+        bypass_role_id: int | None,
+        bonus_role_id: int | None,
+        ingressi_extra: int,
+        inizia_tra: int | None,
+    ) -> None:
+        """Crea il giveaway (subito o programmato) e risponde. Condiviso da /giveaway e dai modelli."""
+        guild = interaction.guild
+        if ingressi_extra > 0 and bonus_role_id is None:
+            await interaction.response.send_message(
+                "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
+            )
+            return
+        programmato = inizia_tra is not None
+        if programmato:
+            motivo = motivo_se_il_bot_non_puo(
+                interaction.channel, guild.me, PERMESSI_DI_SCRITTURA
+            )
+            if motivo is not None:
+                await interaction.response.send_message(
+                    f"Non posso far partire qui il giveaway: {motivo}.", ephemeral=True
+                )
+                return
+        adesso = datetime.now(timezone.utc)
+        inizio = adesso + timedelta(minutes=inizia_tra) if programmato else adesso
+        scadenza = inizio + timedelta(minutes=durata_minuti)
+
+        giveaway_id = await giveaway_repo.create_giveaway(
+            guild.id, interaction.channel.id, prize, winners, min_level,
+            required_role_id, scadenza, interaction.user.id,
+            min_messages=min_messaggi, bypass_role_id=bypass_role_id,
+            bonus_role_id=bonus_role_id, bonus_entries=ingressi_extra,
+            starts_at=inizio if programmato else None,
+            duration_seconds=durata_minuti * 60 if programmato else None,
+        )
+        if programmato:
+            await interaction.response.send_message(
+                f"🗓️ Giveaway programmato: parte <t:{int(inizio.timestamp())}:R> in questo canale "
+                f"e dura {durata_minuti} minuti.",
+                ephemeral=True,
+            )
+            return
+
+        embed = discord.Embed(
+            title=titolo_giveaway(prize),
+            description=descrizione_giveaway(await giveaway_repo.get_giveaway(giveaway_id)),
+            color=discord.Color.blurple(),
+        )
+        view = self.GiveawayEnterView(giveaway_id)
+        await interaction.response.send_message(embed=embed, view=view)
+        messaggio = await interaction.original_response()
+        await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
+
     @comando_di_gruppo(
-        "gestione",
+        "economia",
         nome="giveaway",
         descrizione="Avvia un giveaway.",
-        sottogruppo=_SG_ECONOMIA,
     )
     @app_commands.describe(
         prize="Cosa si vince",
@@ -2759,6 +3279,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         winners="Numero di vincitori (default 1)",
         min_level="Livello minimo richiesto (facoltativo)",
         required_role="Ruolo richiesto per partecipare (facoltativo)",
+        min_messaggi="Messaggi da scrivere dopo la partenza (facoltativo)",
+        ruolo_bypass="Chi ha questo ruolo salta i requisiti",
+        ruolo_extra="Ruolo con più ingressi",
+        ingressi_extra="Ingressi in più per il ruolo extra",
+        inizia_tra="Parte tra tanti minuti (facoltativo)",
     )
     async def giveaway(
         self,
@@ -2768,43 +3293,187 @@ class LevelingCog(CogConGruppi, commands.Cog):
         winners: app_commands.Range[int, 1, 50] = 1,
         min_level: app_commands.Range[int, 0, 1000] = 0,
         required_role: discord.Role | None = None,
+        min_messaggi: app_commands.Range[int, 0, MAX_MESSAGGI_RICHIESTI] = 0,
+        ruolo_bypass: discord.Role | None = None,
+        ruolo_extra: discord.Role | None = None,
+        ingressi_extra: app_commands.Range[int, 0, MAX_INGRESSI_EXTRA] = 0,
+        inizia_tra: app_commands.Range[int, 1, 43200] | None = None,
     ) -> None:
-        guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
-        if guild is None or interaction.channel is None:
+        if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
             )
             return
-
-        scadenza = datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
-
-        giveaway_id = await giveaway_repo.create_giveaway(
-            guild.id, interaction.channel.id, prize, winners, min_level,
-            required_role.id if required_role else None, scadenza, interaction.user.id,
+        await self._avvia_giveaway(
+            interaction, prize=prize, durata_minuti=duration_minutes, winners=winners,
+            min_level=min_level, required_role_id=required_role.id if required_role else None,
+            min_messaggi=min_messaggi, bypass_role_id=ruolo_bypass.id if ruolo_bypass else None,
+            bonus_role_id=ruolo_extra.id if ruolo_extra else None,
+            ingressi_extra=ingressi_extra, inizia_tra=inizia_tra,
         )
 
-        requisiti = []
-        if min_level > 0:
-            requisiti.append(f"livello **{min_level}**")
-        if required_role is not None:
-            requisiti.append(f"ruolo {required_role.mention}")
-        riga_requisiti = f"\nRequisiti: {', '.join(requisiti)}" if requisiti else ""
+    @comando_di_gruppo(
+        "economia",
+        nome="giveaway-modello",
+        descrizione="Modelli di giveaway: salva, elenca, elimina, avvia.",
+    )
+    @app_commands.describe(
+        azione="Cosa fare",
+        nome="Nome del modello",
+        premio="Cosa si vince",
+        vincitori="Numero di vincitori",
+        durata_minuti="Durata in minuti",
+        min_livello="Livello minimo",
+        ruolo_richiesto="Ruolo richiesto",
+        min_messaggi="Messaggi richiesti dopo la partenza",
+        ruolo_bypass="Ruolo che salta i requisiti",
+        ruolo_extra="Ruolo con più ingressi",
+        ingressi_extra="Ingressi in più per il ruolo extra",
+        inizia_tra="Parte tra tanti minuti (solo avvia)",
+    )
+    @app_commands.choices(azione=_SCELTE_AZIONE_MODELLO)
+    async def giveaway_modello(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        nome: app_commands.Range[str, 1, 32] | None = None,
+        premio: app_commands.Range[str, 1, MAX_PREMIO_GIVEAWAY] | None = None,
+        vincitori: app_commands.Range[int, 1, 50] | None = None,
+        durata_minuti: app_commands.Range[int, 1, 43200] | None = None,
+        min_livello: app_commands.Range[int, 0, 1000] | None = None,
+        ruolo_richiesto: discord.Role | None = None,
+        min_messaggi: app_commands.Range[int, 0, MAX_MESSAGGI_RICHIESTI] | None = None,
+        ruolo_bypass: discord.Role | None = None,
+        ruolo_extra: discord.Role | None = None,
+        ingressi_extra: app_commands.Range[int, 0, MAX_INGRESSI_EXTRA] | None = None,
+        inizia_tra: app_commands.Range[int, 1, 43200] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if interaction.guild is None or interaction.channel is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        guild_id = interaction.guild.id
+        cosa = azione.value
 
-        embed = discord.Embed(
-            title=taglia(f"🎉 Giveaway: {prize}", LIMITE_TITOLO_EMBED),
-            description=(
-                f"Vincitori: **{winners}**\n"
-                f"Termina: <t:{int(scadenza.timestamp())}:R>{riga_requisiti}"
-            ),
-            color=discord.Color.blurple(),
+        if cosa == "elenco":
+            modelli = await giveaway_repo.list_templates(guild_id)
+            if not modelli:
+                await interaction.response.send_message("Nessun modello salvato.", ephemeral=True)
+                return
+            righe = [
+                taglia(f"• **{m.name}** — {m.prize}, {m.winners_count} vincitori, {m.duration_minutes} min", 76)
+                for m in modelli
+            ]
+            await interaction.response.send_message(elenco_entro_2000(righe), ephemeral=True)
+            return
+
+        if nome is None:
+            await interaction.response.send_message("Indica il nome del modello.", ephemeral=True)
+            return
+
+        if cosa == "elimina":
+            tolto = await giveaway_repo.delete_template(guild_id, nome)
+            await interaction.response.send_message(
+                "✅ Modello eliminato." if tolto else "Questo modello non esiste.", ephemeral=True
+            )
+            return
+
+        if cosa == "salva":
+            if premio is None or durata_minuti is None:
+                await interaction.response.send_message(
+                    "Per salvare servono almeno il premio e la durata.", ephemeral=True
+                )
+                return
+            if ingressi_extra and ruolo_extra is None:
+                await interaction.response.send_message(
+                    "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
+                )
+                return
+            try:
+                await giveaway_repo.save_template(
+                    guild_id, nome, prize=premio, winners_count=vincitori or 1,
+                    duration_minutes=durata_minuti, min_level=min_livello or 0,
+                    required_role_id=ruolo_richiesto.id if ruolo_richiesto else None,
+                    min_messages=min_messaggi or 0,
+                    bypass_role_id=ruolo_bypass.id if ruolo_bypass else None,
+                    bonus_role_id=ruolo_extra.id if ruolo_extra else None,
+                    bonus_entries=ingressi_extra or 0,
+                )
+            except ModelloPieno:
+                await interaction.response.send_message(
+                    "Ci sono già 25 modelli: eliminane uno prima.", ephemeral=True
+                )
+                return
+            await interaction.response.send_message(f"✅ Modello **{nome}** salvato.", ephemeral=True)
+            return
+
+        modello = await giveaway_repo.get_template(guild_id, nome)  # cosa == "avvia"
+        if modello is None:
+            await interaction.response.send_message("Questo modello non esiste.", ephemeral=True)
+            return
+        await self._avvia_giveaway(
+            interaction, prize=modello.prize, durata_minuti=modello.duration_minutes,
+            winners=modello.winners_count, min_level=modello.min_level,
+            required_role_id=modello.required_role_id, min_messaggi=modello.min_messages,
+            bypass_role_id=modello.bypass_role_id, bonus_role_id=modello.bonus_role_id,
+            ingressi_extra=modello.bonus_entries, inizia_tra=inizia_tra,
         )
 
-        view = self.GiveawayEnterView(giveaway_id)
-        await interaction.response.send_message(embed=embed, view=view)
-        messaggio = await interaction.original_response()
-        await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
+    @comando_di_gruppo(
+        "economia",
+        nome="giveaway-programmati",
+        descrizione="Giveaway programmati: elenca (anche quelli in errore) o annulla.",
+    )
+    @app_commands.describe(azione="Cosa fare", numero="Numero del giveaway (solo annulla)")
+    @app_commands.choices(azione=_SCELTE_AZIONE_PROGRAMMATI)
+    async def giveaway_programmati(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        numero: app_commands.Range[int, 1, 2_147_483_647] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        guild_id = interaction.guild.id
+        if azione.value == "annulla":
+            if numero is None:
+                await interaction.response.send_message(
+                    "Indica il numero del giveaway da annullare (lo vedi nell'elenco).",
+                    ephemeral=True,
+                )
+                return
+            tolto = await giveaway_repo.cancel_scheduled(guild_id, numero)
+            await interaction.response.send_message(
+                f"✅ Giveaway {numero} annullato." if tolto
+                else "Nessun giveaway programmato con questo numero (o è già partito).",
+                ephemeral=True,
+            )
+            return
+        programmati = await giveaway_repo.list_scheduled(guild_id)
+        if not programmati:
+            await interaction.response.send_message("Nessun giveaway programmato.", ephemeral=True)
+            return
+        righe = []
+        for g in programmati:
+            quando = f"<t:{int(g.starts_at.timestamp())}:R>" if g.starts_at else "?"
+            stato = f" ⚠️ non partito: {g.errore}" if g.errore else ""
+            righe.append(taglia(f"• **{g.id}** — {g.prize} in <#{g.channel_id}> {quando}{stato}", 160))
+        await interaction.response.send_message(
+            elenco_entro_2000(righe),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(

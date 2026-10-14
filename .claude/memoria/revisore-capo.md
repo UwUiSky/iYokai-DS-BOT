@@ -20,32 +20,33 @@
 ## In corso
 - #68 `feat/r3-bak` (abf27fb): DA SISTEMARE. Alta: testo di `/admin backup collega` dice «struttura e messaggi» ma i messaggi non si copiano (D8, SPEC 11.2 `[x]`). Media: `collega_atomico` due main sullo stesso backup = UniqueViolation non presa; worker `main_guild None` senza `_fallisci`; test cog `collega` senza utente_id/puo_collegare; 2ª chiave del formato vecchio. Basso: overwrite oltre i permessi del Creator (da provare live), 5 F401. Alla riconsegna controllare solo quelle. Smoke 486 + 375 test backup/restore/registro verdi; 53 mutazioni (13 sopravvissute, nel quaderno).
 - Altri rami (`feat/r3-mus` 8 righe, `giro-mod` 12, `giro-logt` 11, #66 12, #67 8, #147 6, #76 5+7, #59/#117 2, #146, #134, #135/#136): invariati, vedi quaderno `.claude/rapporti/revisione.md` sul ramo di ciascuno.
+14/10/2026 · ramo `feat/r4-liv`: 9 righe corrette dal dev su richiesta del coordinatore, smoke 886 verde; da riapprovare
+
+## In corso
+- `feat/r4-liv` (40e6b5e): DA SISTEMARE. Media: `_acquista` senza `prezzo_atteso` (addebito al prezzo nuovo, rimborso al vecchio: leveling.py:1468, shop_repo.py:249); `save_template` senza test del blocco (30 insieme = 26-27 modelli); SPEC 23.16 `[x]` con sfondo solo colore (D18). Basse: test `fuori_gerarchia` in `da_togliere`, codice morto (AZIONI_*, GIOCHI, pick_winners, is_eligible), `allowed_mentions` annuncio vincitori, bio tagliata in silenzio, ruoli non aggiornati non detti, `/fun conteggio` senza permessi. Alla riconsegna controllare solo quelle. Smoke 876 verdi; 50 mutazioni (scratchpad/rv/mut.py, copia scratchpad/rv/copia).
+- Rami precedenti ancora in attesa (vedi quaderno di ciascuno): `feat/r3-mus` 8 righe, `feat/r3-bak` 8, `giro-mod` 12, `giro-logt` 11, #66 12, #67 8, #147 6, #76 decoratore 5+7, #59/#117 2, #146, #134, #135/#136 (`remove_member` deadlock). `feat/f7-quadro` APPROVATO, manca l'unione.
 
 ## Fatto
-- F1 del 05/10 unito (`7722b71`, `3758f2a`, `9db9e8a`); giro-mod letto per intero (83 mutazioni); r3-bak letto per intero (2596 righe di codice, 53 mutazioni).
+- F1 del 05/10 unito (`7722b71`, `3758f2a`, `9db9e8a`); giro-mod (83 mutazioni), r3-bak (53), r3-mus (70), r4-liv (50, 5400 righe di diff) letti per intero.
 
 ## Cose imparate
-- Cambio "giusto" può peggiorare un'altra area: controllare il contenuto di ogni commit, non il messaggio.
-- DB per processo (wrevisore, wrevisore2) per non avere fallimenti a caso. `python3 -m pytest`. Il DB vuole `postgres:testpass@127.0.0.1`.
+- Cambio "giusto" può peggiorare un'altra area: controllare il contenuto di ogni commit, non il messaggio. Testo all'utente che promette una funzione va confrontato con ciò che il codice fa.
+- DB per processo (`iyokai_wrevisore2`), `python3 -m pytest`, `postgres:testpass@127.0.0.1`. Senza `DATABASE_URL` i test usano `iyokai_test` (condiviso, `clean_db` lo svuota): esportarlo SEMPRE, anche per prove al volo. Mai fare `cd` dentro lo script env: i file finiscono nel ramo.
 - Funzioni private `db._…` usate da un cog = manca una funzione pubblica. Più blocchi: controllare TUTTI i punti che bloccano le stesse tabelle.
-- Chiavi `SETTING_X`/`KEY_*` nuove vanno in `SETTINGS_SCHEMA` (config_history.py); lo smoke non sceglie quel test se non si tocca il file.
-- Tabelle nuove: voce in `core/data_registry.py`; provare con clone scratch + merge dell'altro ramo.
-- Stato su più comandi (isolamento): provare la sequenza A→B→C con un test temporaneo.
-- Mutazione `WHERE guild_id = $1` → `$1::bigint IS NOT NULL`; `str.replace(..,1)` colpisce la prima occorrenza: contare.
+- Chiavi `SETTING_X`/`KEY_*` nuove vanno in `SETTINGS_SCHEMA` (config_history.py); lo smoke non sceglie quel test se non si tocca il file. Tabelle nuove: voce in `core/data_registry.py`.
+- Stato su più comandi: provare la sequenza A->B->C con un test temporaneo. Task che riprovano per sempre bloccano chi fa `gather`: provare con gestore vero.
+- Mutazioni: `WHERE guild_id = $1` -> `$1::bigint IS NOT NULL` (togliere il parametro dà InterfaceError, non conta come uccisa); contare le occorrenze prima di `replace`; lavorare su una COPIA e fare `diff -rq` a fine giro.
 - `Permissions(view_channel=False)` ha anche manage_messages=False: fissare l'altro permesso a True.
-- Doppio clic / blocchi: serve `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; un test in serie non prova il blocco. Un blocco per chiave A non protegge un vincolo unico su chiave B (r3-bak: due main, stesso backup).
-- Suite completa >10 min: non lanciarla. Voci già a posto sul base: `git show base:file`.
-- Prove #76: GRUPPI globale condiviso tra test; guarda se il lookbehind esclude i backtick; `autocomplete_protetto` con wraps resta valido.
-- Chiavi impostazione chiamate `KEY_*` (non `SETTING_*`) sfuggono al test invariante ma servono lo stesso in SETTINGS_SCHEMA: l'export le scarta, l'import le rifiuta.
-- Task di collegamento che riprovano per sempre: chi fa `gather` su di loro non finisce mai. Provare con gestore vero e nodo morto, non con lista vuota.
-- Mutazioni: se il processo viene ucciso a metà il file resta mutato e falsa le prove dopo: `diff -rq` con la copia pulita prima di ogni giro. `pkill -f` col testo del comando uccide la propria shell; lanciare a blocchi in primo piano (timeout 590).
-- Task che riprovano per sempre bloccano chi fa `gather`: provare con gestore vero e nodo morto.
-- Mutazioni: il processo ucciso lascia il file mutato; `diff -rq` con la copia pulita prima di ogni giro; `pkill -f` col testo del comando uccide la propria shell.
-- Testo all'utente che promette una funzione (es. «copia messaggi») va confrontato con ciò che il codice fa davvero.
+- Doppio clic / blocchi: serve `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; un blocco per chiave A non protegge un vincolo su chiave B. Un blocco advisory tolto che non fa fallire nessun test = test mancante (provare con 30 chiamate insieme).
+- Prezzo/importo: se il DB decide il valore, anche messaggio e rimborso devono usare QUEL valore (o rifiutare se diverso dal letto).
+- Mutanti equivalenti da riconoscere: tetto già garantito a monte (`[:256]` con premio max 200; elenco 25x76 < 2000).
+- Suite completa >10 min: non lanciarla. Voci già a posto sul base: `git show base:file`. `pkill -f` col testo del comando uccide la propria shell.
+- Prove #76: GRUPPI globale condiviso tra test; il lookbehind dei riferimenti esclude i backtick; chiavi `KEY_*` sfuggono al test invariante.
+- Migrazioni: confrontare i numeri di TUTTI i rami (`git diff main...ramo --name-only -- core/migrations`) + prova due volte su DB con i dati di main (`git archive main`).
 
 - Thread privati: `Thread.permissions_for` eredita dal padre, non basta per «pubblico». Finti che condividono `member.roles` vivo non provano un'istantanea vecchia dell'interazione: servono copie congelate.
 - Harness mutazioni: script con `str.replace` contato + `git checkout` finale; lanciare con timeout 595000 sul tool (non `pkill -f` col nome dello script: uccide la propria shell).
 - Con lavoro non committato NON ripristinare le mutazioni con `git checkout -- file` (perde le correzioni): fare `git stash` + `stash apply` prima, o copia del file.
 
 ## Aperto
-- giro-mod sopravvissute: vedi quaderno di quel ramo. Altri rami attendono le righe elencate. `fix/f1-135` attende `remove_member`.
+- Rami elencati in "In corso" attendono le riconsegne. Domanda all'owner: SPEC 23.16 (sfondo solo colore) accettato o `[~]`?

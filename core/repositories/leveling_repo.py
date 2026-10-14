@@ -26,6 +26,8 @@ from core.leveling_logic import (
     can_earn_text_xp,
     compute_voice_minute,
     did_level_up,
+    monete_dopo_modifica,
+    xp_dopo_modifica,
     level_for_xp,
     period_key,
     TEXT_XP_AMOUNT,
@@ -68,6 +70,20 @@ class UserTotals:
 class LeaderboardEntry:
     user_id: int
     amount: int
+
+
+@dataclass(frozen=True)
+class ModificaXp:
+    xp_prima: int
+    livello_prima: int
+    xp_dopo: int
+    livello_dopo: int
+
+
+@dataclass(frozen=True)
+class ModificaMonete:
+    prima: int
+    dopo: int
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -305,6 +321,7 @@ class LevelingRepository:
         user_id: int,
         amount: int = TEXT_XP_AMOUNT,
         cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS,
+        max_level: int = 0,
     ) -> TextXpResult:
         """
         Assegna `amount` XP testuale se l'attesa (`cooldown_seconds`, per
@@ -339,11 +356,11 @@ class LevelingRepository:
                 if amount <= 0 or not can_earn_text_xp(last_xp_at, now, cooldown_seconds):
                     return TextXpResult(
                         granted=False, new_xp_total=xp_before, leveled_up=False,
-                        new_level=level_for_xp(xp_before),
+                        new_level=level_for_xp(xp_before, max_level),
                     )
 
                 xp_after = xp_before + amount
-                leveled_up, new_level = did_level_up(xp_before, xp_after)
+                leveled_up, new_level = did_level_up(xp_before, xp_after, max_level)
 
                 await conn.execute(
                     """
@@ -362,7 +379,7 @@ class LevelingRepository:
 
                 return TextXpResult(
                     granted=True, new_xp_total=xp_after, leveled_up=leveled_up,
-                    new_level=new_level, previous_level=level_for_xp(xp_before),
+                    new_level=new_level, previous_level=level_for_xp(xp_before, max_level),
                 )
 
     async def add_voice_minutes(
@@ -388,6 +405,7 @@ class LevelingRepository:
         """
         impostazioni = impostazioni or LevelingSettings()
         moltiplicatori = moltiplicatori or {}
+        tetto = impostazioni.max_level
         if not presenze:
             return {}
         # Giorno in UTC, non nell'ora locale della macchina: il tetto
@@ -435,7 +453,7 @@ class LevelingRepository:
                     if not idoneo:
                         risultati[user_id] = None
                         scritture.append(
-                            (guild_id, user_id, xp_before, level_for_xp(xp_before), 0,
+                            (guild_id, user_id, xp_before, level_for_xp(xp_before, tetto), 0,
                              canale, stored_consecutive, minutes_today)
                         )
                         continue
@@ -451,7 +469,7 @@ class LevelingRepository:
                             coins_granted=impostazioni.voice_coins_per_minute,
                         )
                     xp_after = xp_before + result.xp_granted
-                    leveled_up, new_level = did_level_up(xp_before, xp_after)
+                    leveled_up, new_level = did_level_up(xp_before, xp_after, tetto)
                     scritture.append(
                         (guild_id, user_id, xp_after, new_level, result.coins_granted,
                          canale, result.new_consecutive_minutes, result.new_minutes_today)
@@ -461,7 +479,7 @@ class LevelingRepository:
                         coins_granted=result.coins_granted,
                         leveled_up=leveled_up,
                         new_level=new_level,
-                        previous_level=level_for_xp(xp_before),
+                        previous_level=level_for_xp(xp_before, tetto),
                     )
 
                 await conn.executemany(
@@ -489,6 +507,61 @@ class LevelingRepository:
                         )
         return risultati
 
+    async def _riga_bloccata(self, conn, guild_id: int, user_id: int, colonna: str) -> int:
+        """Il valore di `colonna` con la riga bloccata (creata vuota se manca)."""
+        sql = f"SELECT {colonna} FROM leveling_totals WHERE guild_id = $1 AND user_id = $2 FOR UPDATE"
+        valore = await conn.fetchval(sql, guild_id, user_id)
+        if valore is None:
+            await conn.execute(
+                "INSERT INTO leveling_totals (guild_id, user_id) VALUES ($1, $2) "
+                "ON CONFLICT DO NOTHING",
+                guild_id,
+                user_id,
+            )
+            valore = await conn.fetchval(sql, guild_id, user_id)
+        return valore
+
+    async def modifica_xp(
+        self, guild_id: int, user_id: int, azione: str, valore: int, max_level: int = 0
+    ) -> ModificaXp:
+        """
+        Modifica fatta dallo staff (LIV-064..067): una lettura bloccante e una
+        scrittura nella stessa transazione. Non conta come attività del mese.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                xp_prima = await self._riga_bloccata(conn, guild_id, user_id, "xp_total")
+                xp_dopo = xp_dopo_modifica(xp_prima, azione, valore, max_level)
+                livello_dopo = level_for_xp(xp_dopo, max_level)
+                await conn.execute(
+                    "UPDATE leveling_totals SET xp_total = $3, level = $4 "
+                    "WHERE guild_id = $1 AND user_id = $2",
+                    guild_id,
+                    user_id,
+                    xp_dopo,
+                    livello_dopo,
+                )
+        return ModificaXp(xp_prima, level_for_xp(xp_prima, max_level), xp_dopo, livello_dopo)
+
+    async def modifica_monete(
+        self, guild_id: int, user_id: int, azione: str, valore: int
+    ) -> ModificaMonete:
+        """
+        Modifica del saldo fatta dallo staff (ECO-009, ECO-011): mai sotto zero,
+        una sola transazione con la riga bloccata. Non conta nella classifica del mese.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                prima = await self._riga_bloccata(conn, guild_id, user_id, "coins_total")
+                dopo = monete_dopo_modifica(prima, azione, valore)
+                await conn.execute(
+                    "UPDATE leveling_totals SET coins_total = $3 WHERE guild_id = $1 AND user_id = $2",
+                    guild_id,
+                    user_id,
+                    dopo,
+                )
+        return ModificaMonete(prima, dopo)
+
     async def get_xp_position(self, guild_id: int, user_id: int) -> int | None:
         """
         Posizione in classifica XP di sempre (1 = primo). A pari XP la
@@ -499,6 +572,20 @@ class LevelingRepository:
             SELECT 1 + (
                 SELECT count(*) FROM leveling_totals
                 WHERE guild_id = $1 AND xp_total > t.xp_total
+            )
+            FROM leveling_totals AS t WHERE t.guild_id = $1 AND t.user_id = $2
+            """,
+            guild_id,
+            user_id,
+        )
+
+    async def get_coins_position(self, guild_id: int, user_id: int) -> int | None:
+        """Posizione per coin (1 = più ricco); a pari coin la stessa. None se non ha nessuna riga."""
+        return await self._pool.fetchval(
+            """
+            SELECT 1 + (
+                SELECT count(*) FROM leveling_totals
+                WHERE guild_id = $1 AND coins_total > t.coins_total
             )
             FROM leveling_totals AS t WHERE t.guild_id = $1 AND t.user_id = $2
             """,
@@ -544,6 +631,56 @@ class LevelingRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 return await add_coins_in(conn, guild_id, user_id, amount)
+
+    async def gioca(
+        self,
+        guild_id: int,
+        user_id: int,
+        puntata: int,
+        restituzione: int,
+        attesa_secondi: int = 0,
+    ) -> int | None:
+        """
+        Chiude una partita con le monete (NF-40): toglie la puntata e dà la
+        restituzione in UNA scrittura, solo se il saldo copre la puntata e
+        se è passata l'attesa dall'ultima partita (`attesa_secondi`, decisa
+        qui nella stessa UPDATE: due partite insieme non passano entrambe).
+        Restituisce il nuovo saldo, o None (senza scrivere) se non si può.
+        Le vincite dei giochi non contano nella classifica del mese.
+        """
+        if puntata <= 0 or restituzione < 0 or attesa_secondi < 0:
+            raise ValueError("Puntata, restituzione o attesa non valide.")
+        return await self._pool.fetchval(
+            """
+            UPDATE leveling_totals
+            SET coins_total = coins_total - $3 + $4, ultima_partita_at = NOW()
+            WHERE guild_id = $1 AND user_id = $2 AND coins_total >= $3
+              AND (ultima_partita_at IS NULL
+                   OR ultima_partita_at <= NOW() - make_interval(secs => $5))
+            RETURNING coins_total
+            """,
+            guild_id,
+            user_id,
+            puntata,
+            restituzione,
+            float(attesa_secondi),
+        )
+
+    async def attesa_partita_rimasta(
+        self, guild_id: int, user_id: int, attesa_secondi: int
+    ) -> int:
+        """Secondi che mancano alla prossima partita (0 se si può giocare)."""
+        resto = await self._pool.fetchval(
+            """
+            SELECT CEIL(EXTRACT(EPOCH FROM
+                ultima_partita_at + make_interval(secs => $3) - NOW()))
+            FROM leveling_totals WHERE guild_id = $1 AND user_id = $2
+            """,
+            guild_id,
+            user_id,
+            float(attesa_secondi),
+        )
+        return max(0, int(resto or 0))
 
     async def transfer_coins(
         self, guild_id: int, from_user_id: int, to_user_id: int, amount: int

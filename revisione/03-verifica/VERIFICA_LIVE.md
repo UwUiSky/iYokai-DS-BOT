@@ -813,3 +813,54 @@ Servono: un server di prova con iYokai, un account admin, due account senza perm
 - [ ] NF-34 (#105) — moduli e candidature. Passi: attiva «Moduli e candidature»; `/moduli candidature crea nome:staff titolo:"Candidatura staff" canale:#candidature domande:"Nome|+Perché vuoi entrare?" ruolo:@Staff`; con un secondo account `/utility modulo nome:staff` (l'autocompletamento propone `staff`), compila, invia; riprova subito. Con un account staff clicca Accetta; riavvia il bot e ripeti con una seconda candidatura cliccando Rifiuta. Risultato atteso: la finestra ha 2 campi (il secondo lungo); in #candidature arriva un embed con le risposte e i bottoni, senza ping; la seconda candidatura in attesa è rifiutata; Accetta dà @Staff, scrive in privato al candidato (se ha i DM chiusi nessun errore) e toglie i bottoni; un secondo clic dice «già decisa»; i bottoni funzionano anche dopo il riavvio; chi non ha «Gestire il server» riceve il rifiuto. Con 6 domande, o una da 46 caratteri, `crea` rifiuta; dopo 10 moduli rifiuta. Togliendo al bot il permesso di scrivere in #candidature l'utente vede l'errore e può riprovare. `elimina` toglie anche le risposte.
 - [ ] Utilità, correzioni del giro bug (`feat/r4-uti`): (1) starboard: un messaggio in un canale che @everyone non vede (staff, ticket) non va in bacheca; (2) menu di ruoli `unique`/`binding`: due clic rapidissimi su due bottoni danno un solo ruolo; ruolo `temp` ripreso prima della scadenza dura per tutta la nuova durata; (3) `/utility tag` con ruolo: la risposta compare anche se Discord è lento (defer); (4) `/moduli contatori crea` su un canale che l'admin non può gestire è rifiutato; (5) un ruolo a tempo (menu o compleanno) non torna permanente dopo uscita e rientro con «ricorda ruoli»; un rientro con schermata di verifica ancora da accettare, o durante un raid, riceve i ruoli solo dopo; (6) chi esce e rientra con un altro invito è contato sul nuovo invito in `/level inviti`.
 - [ ] Utilità, correzioni della revisione capo (`feat/r4-uti`): (1) starboard: un messaggio in un thread privato non va in bacheca; `/moduli starboard imposta` ha ora `nsfw` e `voto_autore`; (2) immagine di benvenuto: senza «Allega file» il testo esce lo stesso; (3) clic su un menu di ruoli con Discord lento risponde (defer); (4) `/utility tag` e risposte automatiche rifiutano parola o risposta fatte di soli spazi; (5) chi lascia il server perde il compleanno registrato.
+## Livelli, economia e giochi — passaggio `feat/r4-liv` (#65, #86, #99, #111, #124, #125)
+
+- [ ] `NF-15` ter (#86, LIV-005) — passi:
+  1. `/level impostazioni xp daily:300 lavoro_min:10 lavoro_max:20 livello_massimo:3`.
+  2. `/level daily` e `/level work`; poi fai salire un membro oltre il livello 3.
+  3. `/level rank` di quel membro.
+  Risultato atteso: daily dà 300 coin, work da 10 a 20; il membro si ferma al livello 3 senza altri annunci e la card dice «Livello massimo».
+- [ ] `LIV-064..067 / LIV-041` (#124) — con due ruoli-premio (livello 5 e livello 10) e un membro al livello 10 con entrambi i ruoli:
+  1. `/economia xp azione:Imposta il livello membro:@x valore:6`.
+  2. `/economia xp azione:Azzera XP e livello membro:@x`.
+  Risultato atteso: al passo 1 perde il ruolo del livello 10 e tiene quello del 5; al passo 2 li perde tutti. La risposta dice livello e XP prima e dopo, senza menzioni che notificano.
+- [ ] `ECO-009 / ECO-011` (#125) — `/economia monete azione:Togli coin membro:@x importo:99999` su un membro con pochi coin, poi `azione:Azzera il saldo`. Risultato atteso: il saldo arriva a 0, mai negativo; `/level balance` di @x lo conferma.
+- [ ] `NF-28` (#99) — passi:
+  1. `/economia giveaway prize:Test duration_minutes:3 min_messaggi:3 ruolo_extra:@vip ingressi_extra:2 ruolo_bypass:@staff`.
+  2. Con un account senza ruoli premi «Partecipa» subito: rifiutato (mancano i messaggi). Scrivi 3 messaggi in qualunque canale e riprova: entra.
+  3. Con un account @vip: entra e il bot dice «Hai 3 ingressi». Con un account @staff: entra senza messaggi.
+  4. `/economia giveaway-modello azione:Salva nome:prova premio:Test durata_minuti:2`, poi `azione:Avvia nome:prova inizia_tra:1`.
+  Risultato atteso: l'annuncio elenca requisiti, ruolo che salta e ingressi extra; il programmato appare da solo dopo circa 1 minuto (al massimo 30 secondi di ritardo) con il bottone che funziona; alla fine i vincitori sono avvisati nello stesso canale (anche se è un thread o un post di forum).
+- [ ] `NF-40` giochi (#111) — passi:
+  1. `/fun gioca gioco:Monetina puntata:50 scelta:Testa` più volte (aspetta 5 secondi tra una e l'altra), poi `gioco:Slot puntata:10` e `gioco:Dadi`.
+  2. Con meno coin della puntata; poi due volte di fila senza aspettare.
+  3. `/fun misura tema:coraggio`, ripetilo (stesso numero); `/fun misura tema:<un tema sulla religione>`.
+  Risultato atteso: il saldo mostrato dopo ogni partita coincide con `/level balance`; con coin insufficienti rifiuta senza togliere nulla; la seconda partita immediata dice di aspettare; la misura è stabile nel giorno; il tema vietato è rifiutato in privato.
+- [ ] `NF-40` conteggio (#111) — passi:
+  1. `/fun conteggio azione:Scegli il canale canale:#conta`.
+  2. Con due account scrivete a turno 1, 2, 3; poi lo stesso account scrive due numeri di fila; poi un numero sbagliato; poi una frase qualsiasi.
+  Risultato atteso: ✅ sui numeri giusti; ❌ e messaggio «ha rovinato tutto» sul doppio turno e sul numero sbagliato, con ripartenza da 1; le frasi non fanno nulla. `/fun conteggio azione:Stato` mostra ultimo numero e record. Dopo `Spegni` i numeri non contano più (fino a 60 secondi).
+- [ ] `NF-40` profilo (#111) — passi:
+  1. `/level collezione negozio`, poi `/level collezione compra oggetto:Stella` con coin sufficienti e con coin insufficienti.
+  2. `/level collezione equipaggia tipo:Badge oggetto:Stella`, poi uno sfondo comprato.
+  3. `/level profilo presentazione:Ciao a tutti`, poi `/level profilo membro:@altro`.
+  Risultato atteso: le coin scendono del prezzo una sola volta (doppio clic rapido sul comando non paga due volte); il profilo mostra badge nel titolo, colore dello sfondo, presentazione, livello, posizione, coin e collezione; la presentazione di un altro non si può cambiare.
+- [ ] `ECO-062 / ECO-064 / ECO-061 / ECO-069` (#125) — passi:
+  1. `/economia shop-add name:Raro price:50 scorte:2 ruolo_richiesto:@vip`, poi `/level shop list`.
+  2. Con un account senza @vip: `/level shop buy`. Con due account @vip: compra il primo, il secondo; un terzo account @vip prova dopo.
+  3. `/economia shop-edit item_id:<id> price:80 scorte_illimitate:True`, poi un nuovo acquisto.
+  4. `/level impostazioni negozio conferma:True`, poi `/level shop buy`: premi «Annulla», ripeti e premi «Conferma» (anche due volte di fila).
+  Risultato atteso: la lista mostra «rimasti 2» e il ruolo richiesto; senza @vip rifiuta senza togliere coin; dopo due acquisti dice «esaurito» senza addebito; dopo l'edit il prezzo nuovo vale solo per gli acquisti successivi; con la conferma attiva non si paga finché non premi «Conferma», e il secondo clic dice «Già fatto». Se il ruolo-premio non si può dare, scorte e coin tornano indietro.
+- [ ] `LIV-063 / LIV-074 / ECO-016` (#124, #125) — passi:
+  1. `/level leaderboard metric:XP period:Di sempre posizioni:50` in un server con più di 10 membri con XP.
+  2. `/level calcola livello:10`, poi `/level calcola livello:10 member:@altro`.
+  3. `/level balance`.
+  Risultato atteso: la classifica ha le pagine con ◀ ▶ (10 per pagina) e solo chi l'ha aperta le sfoglia; il calcolo dà XP, messaggi e minuti in vocale coerenti con `/level impostazioni mostra`; il saldo dice anche la posizione («#N in classifica»).
+- [ ] `giro correzioni feat/r4-liv` (14/10) — passi:
+  1. `/economia xp azione:Imposta il livello membro:@x valore:5000`: deve rifiutare (massimo 1000). Con `valore:1000` il bot risponde subito.
+  2. Con un account staff che ha Gestisci server ma un ruolo basso: `/economia xp azione:Imposta il livello membro:@x valore:10` con un ruolo-premio più alto del suo: il ruolo NON arriva a @x.
+  3. `/economia giveaway prize:Test duration_minutes:3 inizia_tra:1` in un canale dove il bot non può scrivere (o che poi elimini): dopo circa 1 minuto `/economia giveaway-programmati azione:Elenca` lo mostra con ⚠️ e il motivo; `azione:Annulla numero:<n>` lo toglie.
+  4. `/economia giveaway-modello azione:Elenca` con molti modelli salvati: una sola risposta, mai un errore.
+  5. `/fun gioca` premuto due volte in fretta: una sola partita, l'altra dice di aspettare. Con il modulo Livelli spento: rifiuta.
+  6. `/level impostazioni negozio conferma:True`, `/level shop buy`, poi (altro account staff) `/economia shop-edit item_id:<id> price:<altro>`, poi «Conferma»: «Il prezzo è cambiato», nessun addebito.
+  Risultato atteso: come descritto in ogni passo; nessun errore imprevisto nei log.

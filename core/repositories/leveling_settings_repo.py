@@ -103,6 +103,13 @@ class LevelingSettingsRepository:
             if nome in _MODI and valore not in _MODI[nome]:
                 raise ValueError(f"Valore non valido per {nome}: {valore}")
 
+        if "work_min" in campi or "work_max" in campi:
+            attuale = (await self.get_config(guild_id)).impostazioni
+            minimo = campi.get("work_min", attuale.work_min)
+            massimo = campi.get("work_max", attuale.work_max)
+            if minimo > massimo:
+                raise ValueError("Il minimo del lavoro non può superare il massimo.")
+
         if campi.get("levelup_mode") == "canale_scelto" and not campi.get("levelup_channel_id"):
             attuale = (await self.get_config(guild_id)).impostazioni.levelup_channel_id
             if attuale is None:
@@ -113,13 +120,19 @@ class LevelingSettingsRepository:
             nomi = list(campi)
             segnaposto = ", ".join(f"${i + 2}" for i in range(len(nomi)))
             aggiornamenti = ", ".join(f"{n} = EXCLUDED.{n}" for n in nomi)
-            await self._pool.execute(
-                f"INSERT INTO leveling_settings (guild_id, {', '.join(nomi)}) "
-                f"VALUES ($1, {segnaposto}) "
-                f"ON CONFLICT (guild_id) DO UPDATE SET {aggiornamenti}",
-                guild_id,
-                *campi.values(),
-            )
+            try:
+                await self._pool.execute(
+                    f"INSERT INTO leveling_settings (guild_id, {', '.join(nomi)}) "
+                    f"VALUES ($1, {segnaposto}) "
+                    f"ON CONFLICT (guild_id) DO UPDATE SET {aggiornamenti}",
+                    guild_id,
+                    *campi.values(),
+                )
+            except asyncpg.CheckViolationError as errore:
+                # Ultima parola al database: due modifiche insieme non rompono min <= max.
+                if "work_ordine" in str(errore):
+                    raise ValueError("Il minimo del lavoro non può superare il massimo.") from errore
+                raise
             self._invalida(guild_id)
         return (await self.get_config(guild_id)).impostazioni
 

@@ -27,6 +27,8 @@ class ShopItem:
     price: int
     role_id: int | None
     description: str | None
+    stock: int | None = None  # None = scorte illimitate
+    required_role_id: int | None = None  # chi non ce l'ha non compra
 
 
 @dataclass(frozen=True)
@@ -42,6 +44,8 @@ class EsitoAcquisto(str, Enum):
     RIUSCITO = "riuscito"
     GIA_ACQUISTATO = "gia_acquistato"
     SALDO_INSUFFICIENTE = "saldo_insufficiente"
+    ESAURITO = "esaurito"
+    PREZZO_CAMBIATO = "prezzo_cambiato"
 
 
 @dataclass(frozen=True)
@@ -52,6 +56,20 @@ class Acquisto:
 
 class _SaldoInsufficiente(Exception):
     """Interna a buy_item: annulla la transazione dell'acquisto."""
+
+
+class _Esaurito(Exception):
+    """Interna a buy_item: le scorte sono finite, annulla la transazione."""
+
+
+class _PrezzoCambiato(Exception):
+    """Interna a buy_item: il prezzo non è più quello che l'utente ha confermato."""
+
+
+_CAMPI_MODIFICABILI = ("name", "price", "description", "stock", "required_role_id")
+MAX_NOME = 80
+MAX_PREZZO = 1_000_000
+MAX_ID_OGGETTO = 2_147_483_647  # SERIAL di Postgres
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -97,6 +115,8 @@ class ShopRepository:
             price=row["price"],
             role_id=row["role_id"],
             description=row["description"],
+            stock=row["stock"],
+            required_role_id=row["required_role_id"],
         )
 
     async def add_item(
@@ -106,11 +126,16 @@ class ShopRepository:
         price: int,
         role_id: int | None = None,
         description: str | None = None,
+        stock: int | None = None,
+        required_role_id: int | None = None,
     ) -> int:
+        name = name.strip()
+        if not name:
+            raise ValueError("Il nome non può essere vuoto né di soli spazi.")
         row = await self._pool.fetchrow(
             """
-            INSERT INTO shop_items (guild_id, name, price, role_id, description)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO shop_items (guild_id, name, price, role_id, description, stock, required_role_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id
             """,
             guild_id,
@@ -118,10 +143,46 @@ class ShopRepository:
             price,
             role_id,
             description,
+            stock,
+            required_role_id,
         )
         return row["id"]
 
+    async def update_item(self, item_id: int, guild_id: int, **campi) -> ShopItem | None:
+        """
+        Cambia solo i campi dati (name, price, description, stock,
+        required_role_id; `None` toglie descrizione, scorte o ruolo). I
+        prezzi nuovi valgono per gli acquisti futuri. None se l'oggetto non
+        esiste in quel server; ValueError per campi o valori non validi.
+        """
+        for nome, valore in campi.items():
+            if nome not in _CAMPI_MODIFICABILI:
+                raise ValueError(f"Campo non modificabile: {nome}")
+            if nome == "name":
+                valore = valore.strip() if valore else ""
+                if not (valore and len(valore) <= MAX_NOME):
+                    raise ValueError(f"Il nome deve avere da 1 a {MAX_NOME} caratteri (non solo spazi).")
+                campi[nome] = valore
+            if nome == "price" and not (1 <= valore <= MAX_PREZZO):
+                raise ValueError(f"Il prezzo deve stare tra 1 e {MAX_PREZZO}.")
+            if nome == "stock" and valore is not None and valore < 0:
+                raise ValueError("Le scorte non possono essere negative.")
+        if not campi:
+            return await self.get_item(item_id, guild_id)
+        if not 1 <= item_id <= MAX_ID_OGGETTO:
+            return None
+        assegnazioni = ", ".join(f"{nome} = ${i + 3}" for i, nome in enumerate(campi))
+        riga = await self._pool.fetchrow(
+            f"UPDATE shop_items SET {assegnazioni} WHERE id = $1 AND guild_id = $2 RETURNING *",
+            item_id,
+            guild_id,
+            *campi.values(),
+        )
+        return self._row_to_item(riga) if riga is not None else None
+
     async def remove_item(self, item_id: int, guild_id: int) -> bool:
+        if not 1 <= item_id <= MAX_ID_OGGETTO:
+            return False
         result = await self._pool.execute(
             "DELETE FROM shop_items WHERE id = $1 AND guild_id = $2", item_id, guild_id
         )
@@ -134,13 +195,19 @@ class ShopRepository:
         return [self._row_to_item(r) for r in rows]
 
     async def get_item(self, item_id: int, guild_id: int) -> ShopItem | None:
+        if not 1 <= item_id <= MAX_ID_OGGETTO:
+            return None
         row = await self._pool.fetchrow(
             "SELECT * FROM shop_items WHERE id = $1 AND guild_id = $2", item_id, guild_id
         )
         return self._row_to_item(row) if row is not None else None
 
-    async def buy_item(self, guild_id: int, user_id: int, item: ShopItem) -> Acquisto:
+    async def buy_item(
+        self, guild_id: int, user_id: int, item: ShopItem, prezzo_atteso: int | None = None
+    ) -> Acquisto:
         """
+        `prezzo_atteso` (acquisto confermato): se il prezzo di oggi, letto nella
+        transazione, è diverso da quello che l'utente ha visto, non si compra.
         Registra l'acquisto e toglie i coin in UNA transazione (BUG-14).
         Un oggetto a ruolo già comprato non si ricompra: lo decide
         l'indice unico, non una lettura fatta prima. Se il saldo non
@@ -164,9 +231,28 @@ class ShopRepository:
                     )
                     if purchase_id is None:
                         return Acquisto(EsitoAcquisto.GIA_ACQUISTATO)
-                    if not await spend_coins_in(conn, guild_id, user_id, item.price):
+                    # Scorte: scendono qui, nella stessa transazione, prima dei coin
+                    # (stesso ordine del rimborso: nessuno stallo). Senza scorte
+                    # (stock NULL) la riga si lascia com'è.
+                    # RETURNING price: il prezzo di adesso, con la riga bloccata fino
+                    # alla fine della transazione (una modifica del prezzo aspetta).
+                    prezzo = await conn.fetchval(
+                        "UPDATE shop_items SET stock = CASE WHEN stock IS NULL THEN NULL ELSE stock - 1 END "
+                        "WHERE id = $1 AND guild_id = $2 AND (stock IS NULL OR stock > 0) RETURNING price",
+                        item.id,
+                        guild_id,
+                    )
+                    if prezzo is None:
+                        raise _Esaurito
+                    if prezzo_atteso is not None and prezzo != prezzo_atteso:
+                        raise _PrezzoCambiato
+                    if not await spend_coins_in(conn, guild_id, user_id, prezzo):
                         raise _SaldoInsufficiente
                     return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id)
+        except _Esaurito:
+            return Acquisto(EsitoAcquisto.ESAURITO)
+        except _PrezzoCambiato:
+            return Acquisto(EsitoAcquisto.PREZZO_CAMBIATO)
         except _SaldoInsufficiente:
             return Acquisto(EsitoAcquisto.SALDO_INSUFFICIENTE)
 
@@ -180,11 +266,16 @@ class ShopRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                cancellato = await conn.fetchval(
-                    "DELETE FROM shop_purchases WHERE id = $1 RETURNING id", purchase_id
+                cancellato = await conn.fetchrow(
+                    "DELETE FROM shop_purchases WHERE id = $1 RETURNING id, item_id", purchase_id
                 )
                 if cancellato is None:
                     return False
+                # Prima le scorte, poi i coin: lo stesso ordine dell'acquisto.
+                await conn.execute(
+                    "UPDATE shop_items SET stock = stock + 1 WHERE id = $1 AND stock IS NOT NULL",
+                    cancellato["item_id"],
+                )
                 await refund_coins_in(conn, guild_id, user_id, price)
                 return True
 

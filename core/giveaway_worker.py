@@ -1,8 +1,8 @@
 """
 core/giveaway_worker.py
 ===========================
-Servizio periodico che estrae i vincitori dei giveaway scaduti
-(SPEC.md §15.5) — stesso pattern di core/feed_watcher.py e core/
+Servizio periodico che fa partire i giveaway programmati e estrae i
+vincitori di quelli scaduti, con i biglietti extra (SPEC.md §15.5, §23.6) — stesso pattern di core/feed_watcher.py e core/
 monthly_winners_announcer.py: tasks.loop avviato una volta da
 main.py, non un Cog.
 
@@ -11,7 +11,7 @@ Tick ogni 30 secondi: abbastanza reattivo perché un giveaway di
 prima dell'estrazione, senza sovraccaricare inutilmente per giveaway
 che durano ore o giorni. L'annuncio va dove il giveaway è stato
 lanciato: canale di testo, thread, post di un forum o chat vocale.
-Funzioni coperte: SPEC §15.5
+Funzioni coperte: SPEC §15.5, §23.6 (NF-28)
 """
 
 from __future__ import annotations
@@ -24,7 +24,8 @@ import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
-from core.giveaway_logic import pick_winners
+from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
+from core.giveaway_logic import descrizione_giveaway, pick_winners_pesati, titolo_giveaway
 from core.repositories.giveaway_repo import giveaway_repo
 
 logger = logging.getLogger("iyokai.giveaway_worker")
@@ -59,15 +60,23 @@ class GiveawayWorker:
     async def tick(self, bot: commands.Bot, now: datetime | None = None) -> None:
         adesso = now or datetime.now(timezone.utc)
 
+        for programmato in await giveaway_repo.get_giveaways_to_start(adesso):
+            try:
+                await self._avvia(bot, programmato.id, adesso)
+            except Exception:
+                logger.exception("Giveaway %s non partito", programmato.id)
+
         for giveaway in await giveaway_repo.get_due_giveaways(adesso):
             # Segnato concluso SUBITO, prima di qualunque operazione
             # che potrebbe fallire (canale sparito, ecc.) — un
             # giveaway scaduto non deve restare "dovuto" per sempre
-            # e essere ritentato ad ogni tick.
-            await giveaway_repo.mark_ended(giveaway.id)
+            # e essere ritentato ad ogni tick. Chi non riesce a segnarlo
+            # (un altro giro l'ha già fatto) non annuncia: un solo annuncio.
+            if not await giveaway_repo.mark_ended(giveaway.id):
+                continue
 
-            partecipanti = await giveaway_repo.get_entries(giveaway.id)
-            vincitori = pick_winners(partecipanti, giveaway.winners_count, random.Random())
+            partecipanti = await giveaway_repo.get_weighted_entries(giveaway.id)
+            vincitori = pick_winners_pesati(partecipanti, giveaway.winners_count, random.Random())
 
             guild = bot.get_guild(giveaway.guild_id)
             canale = await _canale_del_giveaway(guild, giveaway.channel_id)
@@ -86,13 +95,65 @@ class GiveawayWorker:
                 testo = f"🎉 Congratulazioni {menzioni}! Avete vinto **{giveaway.prize}**!"
 
             try:
-                await canale.send(testo)
+                # Si avvisano solo i vincitori: il premio è testo libero (@everyone, ruoli).
+                await canale.send(
+                    testo,
+                    allowed_mentions=discord.AllowedMentions(
+                        users=[discord.Object(id=uid) for uid in vincitori],
+                        roles=False,
+                        everyone=False,
+                    ),
+                )
             except discord.HTTPException:
                 logger.warning(
                     "Impossibile annunciare la fine del giveaway %s nel canale %s.",
                     giveaway.id,
                     giveaway.channel_id,
                 )
+
+    async def _avvia(self, bot: commands.Bot, giveaway_id: int, adesso: datetime) -> None:
+        """
+        Pubblica un giveaway programmato. Prima lo si reclama (una scrittura
+        sola: due giri insieme non lo mandano due volte), poi si scrive nel
+        canale. Se il canale non c'è più, il bot non ha i permessi o l'invio
+        fallisce, il giveaway resta programmato con il motivo dell'errore
+        (lo staff lo vede in /economia giveaway-programmati): niente tentativi
+        all'infinito e niente giveaway "finito" mai partito.
+        """
+        from cogs.leveling.leveling import LevelingCog  # qui dentro: il cog importa questo modulo
+
+        giveaway = await giveaway_repo.claim_start(giveaway_id, adesso)
+        if giveaway is None:
+            return
+        guild = bot.get_guild(giveaway.guild_id)
+        canale = await _canale_del_giveaway(guild, giveaway.channel_id)
+        if canale is None:
+            await self._errore_di_partenza(
+                giveaway, f"canale {giveaway.channel_id} non raggiungibile"
+            )
+            return
+        motivo = motivo_se_il_bot_non_puo(
+            canale, getattr(guild, "me", None), PERMESSI_DI_SCRITTURA
+        )
+        if motivo is not None:
+            await self._errore_di_partenza(giveaway, motivo)
+            return
+        embed = discord.Embed(
+            title=titolo_giveaway(giveaway.prize),
+            description=descrizione_giveaway(giveaway),
+            color=discord.Color.blurple(),
+        )
+        try:
+            messaggio = await canale.send(embed=embed, view=LevelingCog.GiveawayEnterView(giveaway.id))
+        except discord.HTTPException as errore:
+            await self._errore_di_partenza(giveaway, f"invio non riuscito ({errore.status})")
+            return
+        await giveaway_repo.set_message_id(giveaway.id, messaggio.id)
+
+    async def _errore_di_partenza(self, giveaway, motivo: str) -> None:
+        """Il programmato non è partito: non si chiude come finito, si segna l'errore."""
+        logger.warning("Giveaway programmato %s non partito: %s.", giveaway.id, motivo)
+        await giveaway_repo.segna_errore(giveaway.id, motivo)
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:

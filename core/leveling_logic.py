@@ -23,6 +23,7 @@ un nuovo period_key senza righe, non uno stato da azzerare.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -192,30 +193,97 @@ def xp_for_level(level: int) -> int:
     return 5 * level * level + 50 * level
 
 
-def level_for_xp(total_xp: int) -> int:
+LIVELLO_MASSIMO = 1000  # tetto assoluto dei livelli impostabili a mano
+
+
+def level_for_xp(total_xp: int, max_level: int = 0) -> int:
     """
-    Livello corrispondente a un totale di XP. Cerca linearmente dal
-    basso: per i volumi di XP in gioco qui (mai milioni) è più che
-    sufficiente e resta banale da verificare per correttezza — non
-    serve la formula chiusa (che richiederebbe risolvere l'equazione
-    di secondo grado con arrotondamenti da verificare comunque).
+    Livello corrispondente a un totale di XP (`max_level` > 0 è il tetto
+    del server, LIV-005; 0 = nessun tetto). Formula chiusa: dalla
+    5L^2 + 50L <= xp si ricava L con la radice intera, poi si corregge di
+    un passo per sicurezza. Nessun ciclo sul numero di livelli, quindi
+    costa lo stesso con 1.000 XP o con 10^15.
     """
-    level = 0
+    if total_xp <= 0:
+        return 0
+    level = max(0, (math.isqrt(2500 + 20 * total_xp) - 50) // 10)
+    while level > 0 and xp_for_level(level) > total_xp:
+        level -= 1
     while xp_for_level(level + 1) <= total_xp:
         level += 1
+    if max_level:
+        level = min(level, max_level)
     return level
 
 
-def did_level_up(xp_before: int, xp_after: int) -> tuple[bool, int]:
+def did_level_up(xp_before: int, xp_after: int, max_level: int = 0) -> tuple[bool, int]:
     """
     Restituisce (è salito di livello, nuovo livello). Un singolo
     guadagno di XP potrebbe in teoria far salire più di un livello
     in un colpo solo (raro con gli importi in gioco, ma possibile con
     bonus grandi) — level_for_xp gestisce comunque il caso corretto.
     """
-    level_before = level_for_xp(xp_before)
-    level_after = level_for_xp(xp_after)
+    level_before = level_for_xp(xp_before, max_level)
+    level_after = level_for_xp(xp_after, max_level)
     return (level_after > level_before), level_after
+
+
+@dataclass(frozen=True)
+class StimaLivello:
+    xp_mancanti: int
+    messaggi: int
+    minuti_vocale: int | None  # None se in vocale non si guadagnano XP
+    secondi_minimi_testo: int  # con un messaggio a ogni attesa, senza moltiplicatori
+
+
+def stima_per_livello(
+    xp_attuale: int,
+    livello_obiettivo: int,
+    xp_per_messaggio: int,
+    attesa_secondi: int,
+    xp_voce_minuto: int,
+) -> StimaLivello:
+    """Quanto manca a un livello (LIV-074): XP, messaggi e minuti in vocale, senza moltiplicatori."""
+    mancanti = max(0, xp_for_level(livello_obiettivo) - xp_attuale)
+    messaggi = -(-mancanti // xp_per_messaggio) if xp_per_messaggio > 0 else 0
+    minuti = -(-mancanti // xp_voce_minuto) if xp_voce_minuto > 0 else None
+    return StimaLivello(mancanti, messaggi, minuti, messaggi * attesa_secondi)
+
+
+def xp_dopo_modifica(xp_attuale: int, azione: str, valore: int, max_level: int = 0) -> int:
+    """
+    Gli XP totali dopo una modifica dello staff (LIV-064..067). Mai sotto
+    zero. "livello" porta all'inizio del livello (con il tetto del server);
+    "xp_nel_livello" tiene il livello attuale e cambia solo gli XP al suo interno.
+    """
+    if azione == "aggiungi":
+        return xp_attuale + valore
+    if azione == "togli":
+        return max(0, xp_attuale - valore)
+    if azione == "livello":
+        tetto = min(valore, LIVELLO_MASSIMO)
+        return xp_for_level(min(tetto, max_level) if max_level else tetto)
+    if azione == "xp_nel_livello":
+        livello = level_for_xp(xp_attuale, max_level)
+        base = xp_for_level(livello)
+        ampiezza = xp_for_level(livello + 1) - base
+        return base + min(valore, ampiezza - 1)
+    if azione == "azzera":
+        return 0
+    raise ValueError(f"Azione sugli XP sconosciuta: {azione}")
+
+
+def monete_dopo_modifica(saldo: int, azione: str, valore: int) -> int:
+    """Il saldo dopo una modifica dello staff (ECO-009, ECO-011). Mai negativo."""
+    if azione == "aggiungi":
+        return saldo + valore
+    if azione == "togli":
+        return max(0, saldo - valore)
+    if azione == "imposta":
+        return max(0, valore)
+    if azione == "azzera":
+        return 0
+    raise ValueError(f"Azione sulle monete sconosciuta: {azione}")
 
 
 # ======================================================================
@@ -304,6 +372,10 @@ LIMITI_IMPOSTAZIONI = {
     "voice_coins_per_minute": (0, 50),
     "levelup_min_level": (0, 1000),
     "levelup_every": (1, 100),
+    "daily_coins": (0, 10_000),
+    "work_min": (0, 10_000),
+    "work_max": (0, 10_000),
+    "max_level": (0, 1000),  # 0 = nessun tetto
 }
 FATTORE_MINIMO = 0.1
 FATTORE_MASSIMO = 10.0
@@ -328,6 +400,11 @@ class LevelingSettings:
     levelup_only_rewards: bool = False
     reward_mode: str = "accumula"
     multiplier_mode: str = "somma"
+    daily_coins: int = DAILY_REWARD_COINS
+    work_min: int = WORK_REWARD_MIN
+    work_max: int = WORK_REWARD_MAX
+    max_level: int = 0
+    shop_confirm: bool = False  # ECO-069: chiede conferma prima di comprare
 
 
 @dataclass(frozen=True)
