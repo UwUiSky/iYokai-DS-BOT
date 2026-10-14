@@ -69,4 +69,8 @@ async def pubblica_cambio_live(
     await repo_stato.update_last_known_live(sub.id, in_diretta)
     if opz.delete_on_end and (in_diretta or opz.last_message_id):
         await alert_options_repo.set_last_message(kind, sub.id, sub.guild_id, id_messaggio)
+    if not in_diretta and opz.live_member_id and await alert_options_repo.other_live_for_member(
+        sub.guild_id, opz.live_member_id, kind, sub.id
+    ):
+        return  # è ancora in diretta su un altro avviso: il ruolo resta
     await aggiorna_ruolo_live(guild, opz.live_member_id, ruolo_live_id, in_diretta)

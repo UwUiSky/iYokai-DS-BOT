@@ -57,7 +57,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         @_scrivi.before_loop
         async def _prima_scrivi() -> None:
             await self.bot.wait_until_ready()
-            self._riprendi_vocali()
+            await self._riprendi_vocali()
 
         @tasks.loop(minutes=30)
         async def _ruoli() -> None:
@@ -84,14 +84,18 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     # ------------------------------------------------------------ raccolta
-    def _riprendi_vocali(self) -> None:
+    async def _riprendi_vocali(self) -> None:
         ora = datetime.now(timezone.utc)
         for guild in self.bot.guilds:
+            if not await self._conta(guild):
+                continue
+            imp = await self._impostazioni_di(guild.id)
             for canale in guild.voice_channels:
                 if canale == guild.afk_channel:
                     continue
                 for m in canale.members:
-                    if not m.bot:
+                    ruoli = {r.id for r in m.roles}
+                    if not m.bot and not escluso(canale.id, ruoli, imp.ignored_channels, imp.ignored_roles):
                         self._voce.entra(guild.id, canale.id, m.id, ora)
 
     async def _impostazioni_di(self, guild_id: int) -> ActivitySettings:
@@ -260,6 +264,11 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if ruolo.is_default() or ruolo.managed:
             await interaction.response.send_message("Questo ruolo non si può assegnare.", ephemeral=True)
+            return
+        if interaction.user.id != guild.owner_id and ruolo >= interaction.user.top_role:
+            await interaction.response.send_message(
+                "Non puoi scegliere un ruolo uguale o superiore al tuo.", ephemeral=True
+            )
             return
         if guild.me is not None and ruolo >= guild.me.top_role:
             await interaction.response.send_message(

@@ -18,9 +18,10 @@ from core.activity_stats_logic import MAX_REGOLE_PER_SERVER
 _COLONNA = {"messages": "messages", "voice_minutes": "voice_seconds"}
 
 
-def _valore(metrica: str) -> str:
-    """Espressione SQL (intero) della metrica: i minuti si ricavano dai secondi."""
-    return "messages" if metrica == "messages" else "(voice_seconds / 60)"
+def _somma(metrica: str) -> str:
+    """Espressione SQL della somma della metrica: i minuti si ricavano dalla somma dei secondi
+    (dividere ogni giorno per 60 prima di sommare perderebbe fino a 59 secondi al giorno)."""
+    return "sum(messages)" if metrica == "messages" else "(sum(voice_seconds) / 60)"
 
 
 @dataclass(frozen=True)
@@ -77,8 +78,8 @@ class ActivityStatsRepository:
     async def top_channels(self, guild_id: int, since: date, metrica: str, limite: int) -> list[tuple[int, int]]:
         righe = await self._pool.fetch(
             f"""
-            SELECT channel_id, sum({_valore(metrica)})::bigint AS n FROM activity_channel_daily
-            WHERE guild_id = $1 AND day >= $2 GROUP BY channel_id HAVING sum({_valore(metrica)}) > 0
+            SELECT channel_id, {_somma(metrica)}::bigint AS n FROM activity_channel_daily
+            WHERE guild_id = $1 AND day >= $2 GROUP BY channel_id HAVING {_somma(metrica)} > 0
             ORDER BY n DESC, channel_id LIMIT $3
             """,
             guild_id, since, limite,
@@ -92,9 +93,9 @@ class ActivityStatsRepository:
         args = [guild_id, since, limite] + ([sorted(solo_utenti)] if solo_utenti is not None else [])
         righe = await self._pool.fetch(
             f"""
-            SELECT user_id, sum({_valore(metrica)})::bigint AS n FROM activity_member_daily
+            SELECT user_id, {_somma(metrica)}::bigint AS n FROM activity_member_daily
             WHERE guild_id = $1 AND day >= $2 {filtro} GROUP BY user_id
-            HAVING sum({_valore(metrica)}) > 0 ORDER BY n DESC, user_id LIMIT $3
+            HAVING {_somma(metrica)} > 0 ORDER BY n DESC, user_id LIMIT $3
             """,
             *args,
         )
@@ -104,7 +105,7 @@ class ActivityStatsRepository:
         """Totale di un membro dal giorno `since` (anche per il requisito messaggi dei giveaway)."""
         return int(
             await self._pool.fetchval(
-                f"SELECT COALESCE(sum({_valore(metrica)}), 0) FROM activity_member_daily "
+                f"SELECT COALESCE({_somma(metrica)}, 0) FROM activity_member_daily "
                 "WHERE guild_id = $1 AND user_id = $2 AND day >= $3",
                 guild_id, user_id, since,
             )
@@ -114,7 +115,7 @@ class ActivityStatsRepository:
         righe = await self._pool.fetch(
             f"""
             SELECT user_id FROM activity_member_daily WHERE guild_id = $1 AND day >= $2
-            GROUP BY user_id HAVING sum({_valore(metrica)}) >= $3
+            GROUP BY user_id HAVING {_somma(metrica)} >= $3
             """,
             guild_id, since, soglia,
         )
@@ -122,7 +123,7 @@ class ActivityStatsRepository:
 
     async def by_hour(self, guild_id: int, since: date, metrica: str = "messages") -> list[int]:
         righe = await self._pool.fetch(
-            f"SELECT hour, sum({_valore(metrica)})::bigint AS n FROM activity_hour_daily "
+            f"SELECT hour, {_somma(metrica)}::bigint AS n FROM activity_hour_daily "
             "WHERE guild_id = $1 AND day >= $2 GROUP BY hour",
             guild_id, since,
         )
@@ -133,7 +134,7 @@ class ActivityStatsRepository:
 
     async def by_day(self, guild_id: int, since: date, metrica: str = "messages") -> dict[date, int]:
         righe = await self._pool.fetch(
-            f"SELECT day, sum({_valore(metrica)})::bigint AS n FROM activity_hour_daily "
+            f"SELECT day, {_somma(metrica)}::bigint AS n FROM activity_hour_daily "
             "WHERE guild_id = $1 AND day >= $2 GROUP BY day",
             guild_id, since,
         )

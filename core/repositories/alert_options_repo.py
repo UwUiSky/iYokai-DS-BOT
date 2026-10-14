@@ -59,7 +59,30 @@ class AlertOptionsRepository:
         )
 
     async def set_last_message(self, kind: str, sub_id: int, guild_id: int, message_id: int | None) -> None:
-        await self.set_fields(kind, sub_id, guild_id, last_message_id=message_id)
+        """Solo UPDATE: se la sottoscrizione è stata rimossa nel frattempo non si ricrea la riga delle opzioni."""
+        await self._pool.execute(
+            "UPDATE alert_options SET last_message_id = $4 WHERE kind = $1 AND sub_id = $2 AND guild_id = $3",
+            kind, sub_id, guild_id, message_id,
+        )
+
+    async def other_live_for_member(self, guild_id: int, member_id: int, kind: str, sub_id: int) -> bool:
+        """True se il membro è collegato a un altro avviso (Twitch, YouTube, Kick) ancora in diretta."""
+        return bool(
+            await self._pool.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM alert_options o
+                    WHERE o.guild_id = $1 AND o.live_member_id = $2 AND NOT (o.kind = $3 AND o.sub_id = $4)
+                      AND CASE o.kind
+                        WHEN 'TW' THEN EXISTS (SELECT 1 FROM twitch_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
+                        WHEN 'YT' THEN EXISTS (SELECT 1 FROM youtube_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
+                        WHEN 'KK' THEN EXISTS (SELECT 1 FROM kick_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
+                        ELSE false END
+                )
+                """,
+                guild_id, member_id, kind, sub_id,
+            )
+        )
 
     async def delete(self, kind: str, sub_id: int, guild_id: int) -> None:
         await self._pool.execute(

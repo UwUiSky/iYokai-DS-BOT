@@ -26,6 +26,9 @@ class RepoOpzioniFinto:
     async def get_live_roles(self, guild_ids):
         return {g: r for g, r in self.ruoli.items() if g in guild_ids}
 
+    async def other_live_for_member(self, guild_id, member_id, kind, sub_id):
+        return False
+
     async def set_last_message(self, kind, sub_id, guild_id, message_id):
         self.ultimi_messaggi[(kind, sub_id)] = message_id
 

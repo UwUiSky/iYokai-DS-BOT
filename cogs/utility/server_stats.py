@@ -48,6 +48,11 @@ PERIODI_BOTTONI = (7, 30, 90)
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 
 
+def _canale_visibile(guild: discord.Guild, canale_id: int, membro: discord.Member) -> bool:
+    canale = guild.get_channel(canale_id)
+    return canale is None or canale.permissions_for(membro).view_channel
+
+
 async def _eventi_giornalieri(guild_id: int, since: datetime, tipo: str) -> dict:
     eventi = await event_log_repo.get_events_by_type_since(guild_id, tipo, since)
     conteggi: dict = {}
@@ -63,6 +68,7 @@ async def costruisci_statistiche(
     metrica: str = "messages",
     ruolo: discord.Role | None = None,
     utente: discord.Member | None = None,
+    visti_da: discord.Member | None = None,
 ) -> tuple[discord.Embed, discord.File | None]:
     """Embed (e grafico) di /utility serverstats per la vista scelta."""
     adesso = datetime.now(timezone.utc)
@@ -105,7 +111,10 @@ async def costruisci_statistiche(
         if guild.icon is not None:
             embed.set_thumbnail(url=guild.icon.url)
     elif vista == "canali":
-        top = await activity_stats_repo.top_channels(guild.id, dal, metrica, RIGHE_CLASSIFICA)
+        top = await activity_stats_repo.top_channels(guild.id, dal, metrica, RIGHE_CLASSIFICA * 5)
+        if visti_da is not None:  # chi guarda non vede nomi e numeri dei canali che non può aprire
+            top = [(c, n) for c, n in top if _canale_visibile(guild, c, visti_da)]
+        top = top[:RIGHE_CLASSIFICA]
         embed.description = "\n".join(f"{i}. <#{c}> — **{n}** {unita}" for i, (c, n) in enumerate(top, 1)) or "Ancora nessun dato."
     elif vista == "membri":
         solo = {m.id for m in ruolo.members} if ruolo is not None else None
@@ -138,9 +147,10 @@ async def costruisci_statistiche(
 class _PeriodoView(BaseView):
     """Bottoni sotto la risposta: cambia periodo o aggiorna. Li usa solo chi ha lanciato il comando."""
 
-    def __init__(self, autore_id: int, guild, vista, giorni, metrica, ruolo, utente) -> None:
+    def __init__(self, autore_id: int, guild, vista, giorni, metrica, ruolo, utente, visti_da=None) -> None:
         super().__init__(timeout=300)
         self._autore_id = autore_id
+        self._visti_da = visti_da
         self._args = [guild, vista, metrica, ruolo, utente]
         self.giorni = giorni
         for periodo in PERIODI_BOTTONI:
@@ -162,8 +172,8 @@ class _PeriodoView(BaseView):
             await interaction.response.defer()
             giorni = periodo or self.giorni
             guild, vista, metrica, ruolo, utente = self._args
-            embed, file = await costruisci_statistiche(guild, vista, giorni, metrica, ruolo, utente)
-            nuova = _PeriodoView(self._autore_id, guild, vista, giorni, metrica, ruolo, utente)
+            embed, file = await costruisci_statistiche(guild, vista, giorni, metrica, ruolo, utente, self._visti_da)
+            nuova = _PeriodoView(self._autore_id, guild, vista, giorni, metrica, ruolo, utente, self._visti_da)
             await interaction.edit_original_response(
                 embed=embed, attachments=[file] if file else [], view=nuova, allowed_mentions=_NESSUNA_MENZIONE
             )
@@ -221,8 +231,8 @@ class ServerStatsCog(CogConGruppi, commands.Cog):
         await interaction.response.defer()
         chiave = vista.value if vista is not None else "crescita"
         misura = metrica.value if metrica is not None else "messages"
-        embed, file = await costruisci_statistiche(guild, chiave, days, misura, ruolo, utente)
-        view = _PeriodoView(interaction.user.id, guild, chiave, days, misura, ruolo, utente)
+        embed, file = await costruisci_statistiche(guild, chiave, days, misura, ruolo, utente, interaction.user)
+        view = _PeriodoView(interaction.user.id, guild, chiave, days, misura, ruolo, utente, interaction.user)
         kwargs = {"embed": embed, "view": view, "allowed_mentions": _NESSUNA_MENZIONE}
         if file is not None:
             kwargs["file"] = file
