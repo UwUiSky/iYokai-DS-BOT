@@ -35,8 +35,9 @@ costruzione pura del testo.
 Limiti di Discord rispettati qui: menu delle categorie (25 voci,
 etichetta 100), nome del canale (100), 2 rinomine ogni 10 minuti (il
 canale nasce già con il numero giusto; /ticket rename passa da
-core/channel_rename.py), un solo ticket aperto per utente (indice
-unico nel database).
+core/channel_rename.py), ticket aperti per utente (predefinito 1,
+fino a 5 con /gestione ticket limite, impostazione `ticket_max_per_utente`;
+il controllo è sotto blocco in ticket_repo.create_ticket).
 
 /ticket close: l'eliminazione del canale dopo l'attesa passa dallo
 scheduler persistente (core/scheduler.py, azione
@@ -44,19 +45,21 @@ scheduler persistente (core/scheduler.py, azione
 ricarica del cog; gli errori temporanei di Discord vengono riprovati
 dallo scheduler. /ticket forceclose elimina subito e funziona anche su
 un ticket già chiuso il cui canale è rimasto.
-Funzioni coperte: SPEC §13.2, §13.8–§13.13
+Funzioni coperte: SPEC §13.2, §13.8–§13.13, §22.9–§22.12 (pannelli, modulo, chiusura
+automatica, voto, limite per utente), §8.18 (risposte standard, in risposte.py)
 """
 
-# DA FARE (issue #62, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §6 (Ticket).
-# DA FARE (issue #84, fase F9): NF-13, Ticket: modulo, più pannelli,
-#   chiusura automatica, voto. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
+# NF-13 (#84): pannelli multipli con modulo di domande, chiusura automatica
+# per inattività (scheduler, azione `ticket_autoclose`) e voto a stelle in DM.
+# Le regole pure stanno in core/ticket_form_logic.py, i dati in
+# core/repositories/ticket_form_repo.py. I bottoni dei pannelli e del voto sono
+# DynamicItem: rispondono anche dopo un riavvio (bot.add_dynamic_items in setup).
 
 from __future__ import annotations
 
 import io
 import logging
+import time
 from datetime import datetime, timezone
 
 import discord
@@ -69,8 +72,18 @@ from core.channel_rename import (
     rename_limit_message,
     rename_tracker,
 )
+from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.repositories.ticket_form_repo import (
+    DomandaModulo,
+    PannelloGiaEsistente,
+    PannelloTicket,
+    TroppeDomande,
+    TroppiPannelli,
+    ticket_form_repo,
+)
+from core import ticket_form_logic as form
 from core.repositories.ticket_repo import (
     VALID_PRIORITIES,
     TicketAlreadyOpenError,
@@ -92,7 +105,7 @@ from core.ticket_logic import (
 )
 from core.premium import PremiumModule, registry
 from core.scheduler import in_seconds, scheduler
-from core.ui_base import BaseView
+from core.ui_base import BaseModal, BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
 from cogs.moderation._shared import ensure_module_enabled
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 from core import channel_router as router
@@ -104,10 +117,14 @@ MODULE_TICKETS = "tickets"
 
 # Sotto-gruppo di /gestione con i comandi degli admin.
 GESTIONE_TICKET = ("ticket", "Ticket: configurazione, pannello, categorie, ruoli di supporto, statistiche")
+# Sotto-gruppo di /admin con i ticket avanzati (NF-13, NF-33, #139): /gestione ha poco spazio (8000 caratteri per gruppo).
+ADMIN_TICKET = ("ticket", "Ticket avanzati: pannelli, modulo, chiusura, DM, risposte")
 
 SETTING_CATEGORY = "ticket_category_id"
 SETTING_SUPPORT_ROLE = "ticket_support_role_id"
 SETTING_SUPPORT_ROLES = "ticket_support_role_ids"
+SETTING_MAX_PER_UTENTE = "ticket_max_per_utente"
+LIMITE_PER_UTENTE_MAX = 5
 
 # custom_id fisso: è quello che permette a discord.py di rilegare
 # un click su un bottone di un messaggio VECCHIO (creato prima
@@ -121,8 +138,21 @@ RITARDO_ELIMINAZIONE_SECONDI = 10
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
+# TKT-056: motivo di chiusura salvato col ticket (compare anche nel transcript).
+MAX_MOTIVO_CHIUSURA = 500
+# TKT-058: quanti ticket chiude in una volta /admin ticket chiudi-tutti (ognuno ha il suo transcript).
+MAX_CHIUSURA_DI_MASSA = 25
+
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
 MAX_CHANNEL_NAME_LENGTH = 100
+
+# NF-13: chiusura automatica per inattività (scheduler persistente).
+TICKET_AUTOCLOSE_ACTION_TYPE = "ticket_autoclose"
+# #139: sollecito se nessuno dello staff risponde entro N minuti (gestito da cogs/tickets/risposte.py).
+TICKET_SOLLECITO_ACTION_TYPE = "ticket_sollecito"
+# L'attività si scrive nel database al più una volta al minuto per canale.
+_ATTIVITA_MAX_VOCI = 500
+_ATTIVITA_OGNI_SECONDI = 60
 
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
@@ -136,6 +166,24 @@ _aperture_in_corso: set[tuple[int, int]] = set()
 MESSAGGIO_TICKET_GIA_APERTO = (
     "Hai già un ticket aperto su questo server. Chiudilo prima di aprirne uno nuovo."
 )
+
+
+def _messaggio_limite(limite: int) -> str:
+    if limite <= 1:
+        return MESSAGGIO_TICKET_GIA_APERTO
+    return (
+        f"Hai già {limite} ticket aperti su questo server, il massimo consentito. "
+        "Chiudine uno prima di aprirne un altro."
+    )
+
+
+async def _limite_per_utente(guild_id: int) -> int:
+    """NF-13: quanti ticket aperti può avere un utente (default 1, /gestione ticket limite)."""
+    valore = await db.get_guild_setting(guild_id, SETTING_MAX_PER_UTENTE, default=1)
+    try:
+        return min(max(int(valore), 1), LIMITE_PER_UTENTE_MAX)
+    except (TypeError, ValueError):
+        return 1
 
 
 async def _support_role_ids(guild_id: int) -> list[int]:
@@ -168,6 +216,9 @@ async def _open_ticket_channel(
     guild: discord.Guild,
     category: discord.CategoryChannel,
     category_label: str | None,
+    *,
+    panel: PannelloTicket | None = None,
+    campi: list[tuple[str, str]] | None = None,
 ) -> None:
     """
     Logica di apertura di un ticket condivisa dal bottone unico
@@ -183,7 +234,7 @@ async def _open_ticket_channel(
         return
     _aperture_in_corso.add(chiave)
     try:
-        await _crea_ticket(interaction, guild, category, category_label)
+        await _crea_ticket(interaction, guild, category, category_label, panel=panel, campi=campi)
     finally:
         _aperture_in_corso.discard(chiave)
 
@@ -193,12 +244,16 @@ async def _crea_ticket(
     guild: discord.Guild,
     category: discord.CategoryChannel,
     category_label: str | None,
+    *,
+    panel: PannelloTicket | None = None,
+    campi: list[tuple[str, str]] | None = None,
 ) -> None:
+    limite = await _limite_per_utente(guild.id)
     already_open = await ticket_repo.count_open_tickets_for_user(
         guild.id, interaction.user.id
     )
-    if already_open > 0:
-        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+    if already_open >= limite:
+        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
         return
 
     overwrites = {
@@ -254,6 +309,8 @@ async def _crea_ticket(
             channel.id,
             category_label=category_label,
             ticket_number=ticket_number,
+            panel_id=panel.id if panel is not None else None,
+            max_aperti=limite,
         )
     except TicketAlreadyOpenError:
         # Un altro ticket dello stesso utente è nato nel frattempo: il
@@ -262,24 +319,59 @@ async def _crea_ticket(
             await channel.delete(reason="Ticket doppio: l'utente ne ha già uno aperto")
         except discord.HTTPException:
             logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
-        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
         return
 
-    embed = discord.Embed(
-        title=f"Ticket #{ticket_number:04d}",
-        description=(
+    if panel is not None and panel.welcome_text:
+        descrizione = panel.welcome_text.replace("{utente}", interaction.user.mention)[:4000]
+    else:
+        descrizione = (
             f"Ciao {interaction.user.mention}, grazie per averci "
             f"contattato. Descrivi il tuo problema e lo staff ti "
             f"risponderà a breve."
-        ),
+        )
+    embed = discord.Embed(
+        title=f"Ticket #{ticket_number:04d}",
+        description=descrizione,
         color=discord.Color.blurple(),
     )
     if category_label is not None:
         embed.add_field(name="Categoria", value=truncate_label(category_label))
+    for nome_campo, valore_campo in campi or []:
+        embed.add_field(name=nome_campo, value=valore_campo, inline=False)
+    # Discord rifiuta un embed oltre 6000 caratteri: senza benvenuto il ticket nascerebbe vuoto e
+    # le risposte del modulo andrebbero perse. Si accorcia il testo di benvenuto, mai le risposte.
+    eccesso = len(embed) - 6000
+    if eccesso > 0:
+        embed.description = descrizione[: max(0, len(descrizione) - eccesso - 1)] + "…"
     try:
         await channel.send(content=interaction.user.mention, embed=embed)
     except discord.HTTPException:
         logger.warning("Messaggio di benvenuto non inviato nel ticket %s.", channel.id)
+
+    if panel is not None and panel.autoclose_minutes:
+        try:
+            await scheduler.schedule(
+                guild.id,
+                interaction.user.id,
+                TICKET_AUTOCLOSE_ACTION_TYPE,
+                in_seconds(panel.autoclose_minutes * 60),
+                {"channel_id": channel.id},
+            )
+        except Exception:  # noqa: BLE001 - il ticket esiste già: la chiusura automatica non lo blocca
+            logger.exception("Chiusura automatica del ticket %s non pianificata.", channel.id)
+
+    if panel is not None and panel.sollecito_minuti:
+        try:
+            await scheduler.schedule(
+                guild.id,
+                interaction.user.id,
+                TICKET_SOLLECITO_ACTION_TYPE,
+                in_seconds(panel.sollecito_minuti * 60),
+                {"channel_id": channel.id},
+            )
+        except Exception:  # noqa: BLE001 - il ticket esiste già: il sollecito non lo blocca
+            logger.exception("Sollecito del ticket %s non pianificato.", channel.id)
 
     await interaction.followup.send(
         f"Ticket creato: {channel.mention}", ephemeral=True
@@ -436,12 +528,201 @@ class TicketPanelView(BaseView):
         await _open_ticket_channel(interaction, guild, category, category_label=None)
 
 
+# ====================================================================
+# NF-13 — pannelli con modulo, bottoni persistenti
+# ====================================================================
+class ModuloTicket(BaseModal):
+    """Finestra con le domande del pannello (al massimo 5, limite di Discord)."""
+
+    def __init__(self, panel: PannelloTicket, domande: list[DomandaModulo]) -> None:
+        super().__init__(title=form.titolo_modulo(panel.name), timeout=600)
+        self._panel = panel
+        self._domande = domande
+        for domanda in domande[: form.MAX_DOMANDE]:
+            self.add_item(
+                discord.ui.TextInput(
+                    label=domanda.label[: form.MAX_ETICHETTA_DOMANDA],
+                    placeholder=domanda.placeholder,
+                    required=domanda.required,
+                    style=discord.TextStyle.paragraph if domanda.long_answer else discord.TextStyle.short,
+                    max_length=form.lunghezza_massima_risposta(domanda.long_answer),
+                    custom_id=f"d{domanda.position}",
+                )
+            )
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        risposte = [item.value for item in self.children]
+        mancanti = form.risposte_mancanti(self._domande, risposte)
+        if mancanti:
+            await interaction.response.send_message(
+                "Rispondi a tutte le domande obbligatorie: " + ", ".join(mancanti), ephemeral=True
+            )
+            return
+        # Il pannello può essere cambiato mentre l'utente scriveva: si rilegge.
+        panel = await ticket_form_repo.pannello_per_id(self._panel.id)
+        if panel is None:
+            await interaction.response.send_message(
+                "Questo pannello non esiste più.", ephemeral=True
+            )
+            return
+        category = guild.get_channel(panel.category_id)
+        if not isinstance(category, discord.CategoryChannel):
+            await interaction.response.send_message(
+                "La categoria Discord del pannello non esiste più. Un amministratore deve riconfigurarla.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _open_ticket_channel(
+            interaction,
+            guild,
+            category,
+            panel.name,
+            panel=panel,
+            campi=form.campi_risposte(self._domande, risposte),
+        )
+
+
+async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> None:
+    """Clic sul bottone di un pannello: controlli veloci, poi finestra o apertura diretta."""
+    guild = interaction.guild
+    if guild is None:
+        return
+    if not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
+        await interaction.response.send_message(
+            "Il sistema di ticket non è attivo su questo server.", ephemeral=True
+        )
+        return
+    panel = await ticket_form_repo.pannello_per_id(panel_id)
+    if panel is None or panel.guild_id != guild.id:
+        await interaction.response.send_message(
+            "Questo pannello non è più disponibile.", ephemeral=True
+        )
+        return
+    limite = await _limite_per_utente(guild.id)
+    if await ticket_repo.count_open_tickets_for_user(guild.id, interaction.user.id) >= limite:
+        await interaction.response.send_message(_messaggio_limite(limite), ephemeral=True)
+        return
+    category = guild.get_channel(panel.category_id)
+    if not isinstance(category, discord.CategoryChannel):
+        await interaction.response.send_message(
+            "La categoria Discord del pannello non esiste più. Un amministratore deve riconfigurarla.",
+            ephemeral=True,
+        )
+        return
+    domande = await ticket_form_repo.elenca_domande(panel.id)
+    if domande:
+        # La finestra deve essere la PRIMA risposta all'interazione.
+        await interaction.response.send_modal(ModuloTicket(panel, domande))
+        return
+    await interaction.response.defer(ephemeral=True)
+    await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel)
+
+
+class BottonePannello(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"tkt:pan:(?P<id>[0-9]+)"
+):
+    """Bottone di un pannello: l'id del pannello sta nel custom_id, nessuna view da registrare per messaggio."""
+
+    def __init__(self, panel_id: int, etichetta: str = "Apri ticket", emoji: str | None = None) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label=form.etichetta_bottone(etichetta),
+                emoji=emoji if emoji and looks_like_emoji(emoji) else None,
+                style=discord.ButtonStyle.primary,
+                custom_id=form.custom_id_pannello(panel_id),
+            )
+        )
+        self.panel_id = panel_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["id"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra: la blacklist si controlla qui.
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.exception("Errore in un bottone dei ticket: %s", error)
+        await _rispondi_con_errore(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await apri_da_pannello(interaction, self.panel_id)
+
+
+class BottoneVoto(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"tkt:voto:(?P<t>[0-9]+):(?P<s>[1-5])"
+):
+    """Stella di valutazione nel DM di chiusura. Vale una volta sola, solo per chi ha aperto il ticket."""
+
+    def __init__(self, ticket_id: int, stelle: int) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label=str(stelle),
+                emoji="⭐",
+                style=discord.ButtonStyle.secondary,
+                custom_id=form.custom_id_voto(ticket_id, stelle),
+            )
+        )
+        self.ticket_id = ticket_id
+        self.stelle = stelle
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["t"]), int(match["s"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra: la blacklist si controlla qui.
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.exception("Errore in un bottone dei ticket: %s", error)
+        await _rispondi_con_errore(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        registrato = await ticket_repo.set_rating(self.ticket_id, interaction.user.id, self.stelle)
+        if not registrato:
+            await interaction.response.send_message(
+                "Hai già votato questo ticket, oppure non è tuo.", ephemeral=True
+            )
+            return
+        await interaction.response.edit_message(
+            content=f"Grazie per il voto: {form.testo_stelle(self.stelle)}", view=None
+        )
+
+
+def vista_pannelli(pannelli: list[PannelloTicket]) -> discord.ui.View:
+    """Un messaggio con i bottoni di più pannelli (al massimo 25: 5 righe da 5)."""
+    form.righe_di_bottoni(len(pannelli))  # solleva oltre il limite
+    vista = BaseView(timeout=None)
+    for p in pannelli:
+        vista.add_item(BottonePannello(p.id, p.button_label, p.button_emoji))
+    return vista
+
+
+def vista_voto(ticket_id: int) -> discord.ui.View:
+    vista = BaseView(timeout=None)
+    for stelle in range(form.STELLE_MIN, form.STELLE_MAX + 1):
+        vista.add_item(BottoneVoto(ticket_id, stelle))
+    return vista
+
+
 class TicketsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Canali di cui si sta ancora leggendo la history per il
         # transcript: lo scheduler non li elimina finché non ha finito.
         self._transcript_in_corso: set[int] = set()
+        # canale -> ultimo istante (monotonic) in cui l'attività è finita nel database
+        self._attivita_scritta: dict[int, float] = {}
 
     @comando_di_gruppo(
         "gestione",
@@ -479,6 +760,29 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "gestione",
+        nome="limite",
+        descrizione="Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).",
+        sottogruppo=GESTIONE_TICKET,
+    )
+    @app_commands.describe(massimo="Da 1 a 5 ticket aperti per utente")
+    async def ticket_limite(
+        self,
+        interaction: discord.Interaction,
+        massimo: app_commands.Range[int, 1, LIMITE_PER_UTENTE_MAX],
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        await db.set_guild_setting(interaction.guild.id, SETTING_MAX_PER_UTENTE, int(massimo))
+        await interaction.response.send_message(
+            f"Ogni utente potrà avere al massimo **{massimo}** ticket aperti alla volta.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "gestione",
         nome="panel",
         descrizione="Pubblica il pannello per l'apertura dei ticket in questo canale.",
         sottogruppo=GESTIONE_TICKET,
@@ -493,6 +797,331 @@ class TicketsCog(CogConGruppi, commands.Cog):
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, view=TicketPanelView())
+
+    # ================================================================
+    # NF-13 — pannelli, modulo, chiusura automatica, voto
+    # ================================================================
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _completa_pannelli(self, interaction: discord.Interaction, corrente: str):
+        """Nomi dei pannelli; in un elenco separato da virgole completa l'ultimo nome."""
+        if interaction.guild is None:
+            return []
+        pannelli = await ticket_form_repo.elenca_pannelli(interaction.guild.id)
+        prefisso, _, ultimo = corrente.rpartition(",")
+        gia = {n.casefold() for n in form.nomi_da_elenco(prefisso)}
+        risultati = []
+        for p in pannelli:
+            if p.name.casefold() in gia or ultimo.strip().casefold() not in p.name.casefold():
+                continue
+            valore = (prefisso + ", " if prefisso else "") + p.name
+            risultati.append(app_commands.Choice(name=p.name[:100], value=valore[:100]))
+        return risultati[:25]
+
+    async def _pannello_o_risposta(self, interaction: discord.Interaction, nome: str):
+        if interaction.guild is None:
+            return None
+        panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome.strip())
+        if panel is None:
+            await interaction.response.send_message(
+                f"Nessun pannello chiamato **{nome.strip()[:100]}**. Vedi `/admin ticket pannello-lista`.",
+                ephemeral=True,
+            )
+        return panel
+
+    @comando_di_gruppo(
+        "admin",
+        nome="pannello-crea",
+        descrizione="Crea un pannello di ticket.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(
+        nome="Nome del pannello",
+        categoria="Categoria dei canali",
+        etichetta="Testo del bottone",
+        emoji="Emoji del bottone",
+        benvenuto="Benvenuto ({utente} = menzione)",
+    )
+    async def pannello_crea(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        categoria: discord.CategoryChannel,
+        etichetta: app_commands.Range[str, 1, form.MAX_ETICHETTA_BOTTONE] | None = None,
+        emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
+        benvenuto: app_commands.Range[str, 1, form.MAX_TESTO_BENVENUTO] | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            return
+        try:
+            nome_pulito = form.nome_pannello_valido(nome)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        if emoji is not None and not looks_like_emoji(emoji):
+            await interaction.response.send_message(
+                "Quella non sembra un'emoji valida: usa un'emoji normale o una personalizzata del server.",
+                ephemeral=True,
+            )
+            return
+        try:
+            panel = await ticket_form_repo.crea_pannello(
+                interaction.guild.id,
+                nome_pulito,
+                categoria.id,
+                form.etichetta_bottone(etichetta or nome_pulito),
+                emoji,
+                benvenuto,
+            )
+        except PannelloGiaEsistente:
+            await interaction.response.send_message(
+                f"Esiste già un pannello chiamato **{nome_pulito}**.", ephemeral=True
+            )
+            return
+        except TroppiPannelli:
+            await interaction.response.send_message(
+                f"Un server può avere al massimo {form.MAX_PANNELLI_PER_SERVER} pannelli.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.send_message(
+            f"Pannello **{panel.name}** creato. Aggiungi le domande con `/admin ticket modulo-aggiungi` "
+            "e pubblicalo con `/admin ticket pannello-pubblica`.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "admin",
+        nome="pannello-rimuovi",
+        descrizione="Elimina un pannello e il suo modulo.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(nome="Il pannello da eliminare")
+    @app_commands.autocomplete(nome=_completa_pannelli)
+    async def pannello_rimuovi(
+        self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO]
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, nome)
+        if panel is None:
+            return
+        await ticket_form_repo.rimuovi_pannello(interaction.guild.id, panel.name)
+        await interaction.response.send_message(
+            f"Pannello **{panel.name}** eliminato, con il suo modulo e le risposte standard "
+            "imparate da questo pannello. I messaggi già pubblicati mostreranno "
+            "«pannello non più disponibile».",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "admin",
+        nome="pannello-lista",
+        descrizione="Elenca i pannelli di ticket del server.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    async def pannello_lista(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            return
+        pannelli = await ticket_form_repo.elenca_pannelli(interaction.guild.id)
+        if not pannelli:
+            await interaction.response.send_message(
+                "Nessun pannello. Creane uno con `/admin ticket pannello-crea`.", ephemeral=True
+            )
+            return
+        righe = []
+        for p in pannelli:
+            domande = await ticket_form_repo.elenca_domande(p.id)
+            righe.append(
+                f"**{p.name[:60]}** · {len(domande)} domande · "
+                f"chiusura auto: {str(p.autoclose_minutes) + ' min' if p.autoclose_minutes else 'no'} · "
+                f"voto: {'sì' if p.rating_enabled else 'no'}"
+            )
+        testo = "\n".join(righe)
+        await interaction.response.send_message(testo[:1900], ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin",
+        nome="pannello-pubblica",
+        descrizione="Pubblica qui i bottoni di uno o più pannelli.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(
+        pannelli="Nomi separati da virgola",
+        titolo="Titolo del messaggio",
+        testo="Testo del messaggio",
+    )
+    @app_commands.autocomplete(pannelli=_completa_pannelli)
+    async def pannello_pubblica(
+        self,
+        interaction: discord.Interaction,
+        pannelli: app_commands.Range[str, 1, 500],
+        titolo: app_commands.Range[str, 1, 256] = "🎫 Supporto",
+        testo: app_commands.Range[str, 1, 2000] = "Premi un bottone per aprire un ticket privato con lo staff.",
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_TICKETS):
+            return
+        trovati: list[PannelloTicket] = []
+        for nome in form.nomi_da_elenco(pannelli):
+            panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome)
+            if panel is None:
+                await interaction.response.send_message(f"Nessun pannello chiamato **{nome[:100]}**.", ephemeral=True)
+                return
+            trovati.append(panel)
+        if not trovati:
+            await interaction.response.send_message("Indica almeno un pannello.", ephemeral=True)
+            return
+        try:
+            vista = vista_pannelli(trovati)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        embed = discord.Embed(title=titolo, description=testo, color=discord.Color.blurple())
+        await interaction.response.send_message(embed=embed, view=vista)
+
+    @comando_di_gruppo(
+        "admin",
+        nome="modulo-aggiungi",
+        descrizione="Aggiungi una domanda al modulo (max 5).",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(
+        pannello="Il pannello",
+        domanda="La domanda (max 45 caratteri)",
+        suggerimento="Testo grigio nel campo",
+        obbligatoria="Risposta obbligatoria",
+        lunga="Risposta su più righe",
+    )
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def modulo_aggiungi(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        domanda: app_commands.Range[str, 1, form.MAX_ETICHETTA_DOMANDA],
+        suggerimento: app_commands.Range[str, 1, form.MAX_SEGNAPOSTO] | None = None,
+        obbligatoria: bool = True,
+        lunga: bool = False,
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        try:
+            etichetta, segnaposto = form.domanda_valida(domanda, suggerimento)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        try:
+            nuova = await ticket_form_repo.aggiungi_domanda(panel.id, etichetta, segnaposto, obbligatoria, lunga)
+        except TroppeDomande:
+            await interaction.response.send_message(
+                f"Il modulo ha già {form.MAX_DOMANDE} domande: è il massimo di Discord. "
+                "Togline una con `/admin ticket modulo-rimuovi`.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.send_message(
+            f"Domanda {nuova.position} aggiunta al pannello **{panel.name}**.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "admin",
+        nome="modulo-rimuovi",
+        descrizione="Togli una domanda dal modulo.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(pannello="Il pannello", numero="Numero della domanda")
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def modulo_rimuovi(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        numero: app_commands.Range[int, 1, form.MAX_DOMANDE],
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        if await ticket_form_repo.rimuovi_domanda(panel.id, numero):
+            await interaction.response.send_message(f"Domanda {numero} tolta.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"Non c'è una domanda {numero}.", ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin",
+        nome="modulo-mostra",
+        descrizione="Mostra le domande del modulo di un pannello.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(pannello="Il pannello")
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def modulo_mostra(
+        self, interaction: discord.Interaction, pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO]
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        domande = await ticket_form_repo.elenca_domande(panel.id)
+        if not domande:
+            await interaction.response.send_message(
+                f"Il pannello **{panel.name}** non ha domande: il ticket si apre subito.", ephemeral=True
+            )
+            return
+        righe = [
+            f"{d.position}. {d.label} ({'obbligatoria' if d.required else 'facoltativa'}"
+            f"{', lunga' if d.long_answer else ''})"
+            for d in domande
+        ]
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin",
+        nome="chiusura-auto",
+        descrizione="Chiudi i ticket fermi da N minuti (0 = spenta).",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(pannello="Il pannello", minuti="Minuti senza messaggi (5-43200)")
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def chiusura_auto(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        minuti: app_commands.Range[int, 0, form.MAX_MINUTI_CHIUSURA],
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        try:
+            valore = form.minuti_chiusura_validi(minuti)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        await ticket_form_repo.imposta_chiusura_automatica(panel.id, valore)
+        if valore is None:
+            testo = f"Chiusura automatica spenta per **{panel.name}**."
+        else:
+            testo = (
+                f"I ticket di **{panel.name}** senza messaggi da {valore} minuti si chiudono da soli "
+                "(vale per i ticket aperti da ora in poi)."
+            )
+        await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin",
+        nome="voto",
+        descrizione="Voto a stelle in DM alla chiusura.",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(pannello="Il pannello", attivo="Chiedi il voto")
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def voto(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        attivo: bool,
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        await ticket_form_repo.imposta_voto(panel.id, attivo)
+        await interaction.response.send_message(
+            f"Voto {'acceso' if attivo else 'spento'} per **{panel.name}**.", ephemeral=True
+        )
 
     # ================================================================
     # SPEC.md §13.2 — categorie ticket configurabili
@@ -722,6 +1351,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 name="Tempo medio di prima risposta",
                 value=format_duration_seconds(stats.avg_response_seconds),
             )
+            media, voti = await ticket_repo.get_rating_summary(interaction.guild.id)
+            embed.add_field(name="Voto medio", value=form.Media(media, voti).testo())
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -757,41 +1388,140 @@ class TicketsCog(CogConGruppi, commands.Cog):
             f"Ticket preso in carico da {interaction.user.mention}."
         )
 
-    @comando_di_gruppo("ticket", nome="add", descrizione="Aggiungi un utente a questo ticket.")
-    @app_commands.describe(member="L'utente da aggiungere")
-    async def add(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    @staticmethod
+    async def _bersaglio_o_risposta(interaction: discord.Interaction, member, ruolo):
+        """TKT-047: un utente oppure un ruolo intero (mai @everyone). None dopo aver risposto."""
+        if (member is None) == (ruolo is None):
+            await interaction.response.send_message("Scegli un utente oppure un ruolo.", ephemeral=True)
+            return None
+        bersaglio = member or ruolo
+        if ruolo is not None and ruolo.id == interaction.guild.id:
+            await interaction.response.send_message(
+                "@everyone non si può aggiungere o togliere: aprirebbe il ticket a tutti.", ephemeral=True
+            )
+            return None
+        return bersaglio
+
+    @comando_di_gruppo("ticket", nome="add", descrizione="Aggiungi un utente o un ruolo a questo ticket.")
+    @app_commands.describe(member="L'utente da aggiungere", ruolo="Oppure un ruolo intero")
+    async def add(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member | None = None,
+        ruolo: discord.Role | None = None,
+    ) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
+            return
+        bersaglio = await self._bersaglio_o_risposta(interaction, member, ruolo)
+        if bersaglio is None:
             return
 
         try:
             await interaction.channel.set_permissions(
-                member, view_channel=True, send_messages=True, read_message_history=True
+                bersaglio, view_channel=True, send_messages=True, read_message_history=True
             )
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito ad aggiungere l'utente: controlla i miei permessi sul canale.",
+                "Non sono riuscito ad aggiungere il destinatario: controlla i miei permessi sul canale.",
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message(f"{member.mention} aggiunto al ticket.")
+        await interaction.response.send_message(
+            f"{bersaglio.mention} aggiunto al ticket.", allowed_mentions=discord.AllowedMentions.none()
+        )
 
-    @comando_di_gruppo("ticket", nome="remove", descrizione="Rimuovi un utente da questo ticket.")
-    @app_commands.describe(member="L'utente da rimuovere")
-    async def remove(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    @comando_di_gruppo("ticket", nome="remove", descrizione="Rimuovi un utente o un ruolo da questo ticket.")
+    @app_commands.describe(member="L'utente da rimuovere", ruolo="Oppure un ruolo intero")
+    async def remove(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member | None = None,
+        ruolo: discord.Role | None = None,
+    ) -> None:
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
-
-        try:
-            await interaction.channel.set_permissions(member, overwrite=None)
-        except discord.HTTPException:
+        bersaglio = await self._bersaglio_o_risposta(interaction, member, ruolo)
+        if bersaglio is None:
+            return
+        if ruolo is not None and (
+            ruolo.managed
+            or ruolo in getattr(interaction.guild.me, "roles", [])
+            or ruolo.id in await _support_role_ids(interaction.guild.id)
+        ):
             await interaction.response.send_message(
-                "Non sono riuscito a rimuovere l'utente: controlla i miei permessi sul canale.",
+                "Questo ruolo è dello staff dei ticket o del bot: toglierlo bloccherebbe chi deve rispondere.",
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message(f"{member.mention} rimosso dal ticket.")
+
+        try:
+            await interaction.channel.set_permissions(bersaglio, overwrite=None)
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non sono riuscito a rimuovere il destinatario: controlla i miei permessi sul canale.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.send_message(
+            f"{bersaglio.mention} rimosso dal ticket.", allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo("ticket", nome="rilascia", descrizione="Lascia la presa in carico di questo ticket.")
+    async def rilascia(self, interaction: discord.Interaction) -> None:
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        if ticket.claimed_by is None:
+            await interaction.response.send_message("Nessuno ha preso in carico questo ticket.", ephemeral=True)
+            return
+        if ticket.claimed_by != interaction.user.id and not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message(
+                "Solo chi lo ha preso in carico (o chi ha Manage Server) può rilasciarlo.", ephemeral=True
+            )
+            return
+        await ticket_repo.release_ticket(interaction.channel.id)
+        await interaction.response.send_message(
+            f"{interaction.user.mention} ha lasciato il ticket: può prenderlo un altro con `/ticket claim`.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo("ticket", nome="passa", descrizione="Passa la presa in carico a un collega.")
+    @app_commands.describe(collega="Il collega dello staff")
+    async def passa(self, interaction: discord.Interaction, collega: discord.Member) -> None:
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        ruoli_supporto = set(await _support_role_ids(interaction.guild.id))
+        e_staff = collega.guild_permissions.manage_guild or bool(ruoli_supporto & {r.id for r in collega.roles})
+        if collega.bot or not e_staff:
+            await interaction.response.send_message(
+                f"{collega.mention} non fa parte dello staff dei ticket.",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await ticket_repo.claim_ticket(interaction.channel.id, collega.id)
+        await interaction.response.send_message(f"Ticket passato a {collega.mention}.")
+
+    @comando_di_gruppo("ticket", nome="transcript", descrizione="Ricevi il transcript senza chiudere il ticket.")
+    async def transcript(self, interaction: discord.Interaction) -> None:
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            testo = await self._build_transcript_text(interaction.channel, ticket)
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non riesco a leggere i messaggi del canale: controlla i miei permessi.", ephemeral=True
+            )
+            return
+        for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+            await interaction.followup.send(
+                file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
+            )
 
     @comando_di_gruppo("ticket", nome="rename", descrizione="Rinomina questo ticket.")
     @app_commands.describe(name="Il nuovo nome del canale")
@@ -868,6 +1598,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
             f"Priorità: {ticket.priority}",
             f"Preso in carico da: {ticket.claimed_by or 'nessuno'}",
         ]
+        if ticket.close_reason:
+            header.append(f"Motivo di chiusura: {ticket.close_reason}")
         if not self.bot.intents.message_content:
             header.append(MESSAGE_CONTENT_WARNING)
         righe = []
@@ -941,6 +1673,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await self._deliver_transcript(guild, channel, ticket)
         except Exception:
             logger.exception("Transcript del ticket %s non riuscito", channel.id)
+        try:
+            # #139: dopo la chiusura il bot propone allo staff di salvare la risposta come standard.
+            risposte = self._cog_risposte()
+            if risposte is not None:
+                await risposte.proponi_da_ticket(guild, channel, ticket)
+        except Exception:
+            logger.exception("Proposta di risposta standard del ticket %s non riuscita", channel.id)
         finally:
             self._transcript_in_corso.discard(channel.id)
 
@@ -962,13 +1701,199 @@ class TicketsCog(CogConGruppi, commands.Cog):
         self, interaction: discord.Interaction, motivo: str, ritardo: int
     ) -> None:
         """BUG-30: nello scheduler persistente, non in un task in memoria."""
+        await self._pianifica_eliminazione_canale(
+            interaction.guild.id, interaction.user.id, interaction.channel.id, motivo, ritardo
+        )
+
+    async def _pianifica_eliminazione_canale(
+        self, guild_id: int, user_id: int, channel_id: int, motivo: str, ritardo: int
+    ) -> None:
         await scheduler.schedule(
-            interaction.guild.id,
-            interaction.user.id,
+            guild_id,
+            user_id,
             TICKET_DELETE_ACTION_TYPE,
             in_seconds(ritardo),
-            {"channel_id": interaction.channel.id, "reason": motivo},
+            {"channel_id": channel_id, "reason": motivo},
         )
+
+    # ================================================================
+    # NF-13 — voto alla chiusura e chiusura automatica
+    # ================================================================
+    async def _richiedi_voto(self, guild: discord.Guild, ticket) -> None:
+        """Se il pannello del ticket ha il voto acceso, manda le 5 stelle in DM a chi lo ha aperto."""
+        if ticket.panel_id is None:
+            return
+        try:
+            panel = await ticket_form_repo.pannello_per_id(ticket.panel_id)
+            if panel is None or not panel.rating_enabled:
+                return
+            utente = guild.get_member(ticket.user_id) or await self.bot.fetch_user(ticket.user_id)
+            await utente.send(
+                f"Com'è andato il tuo ticket #{ticket.ticket_number:04d} su **{guild.name}**? "
+                "Dai un voto da 1 a 5 stelle.",
+                view=vista_voto(ticket.id),
+            )
+        except discord.HTTPException:
+            logger.info("Richiesta di voto non consegnata all'utente %s (DM chiusi?)", ticket.user_id)
+        except Exception:  # noqa: BLE001 - il voto non deve mai bloccare una chiusura
+            logger.exception("Richiesta di voto del ticket %s non riuscita", ticket.id)
+
+    async def handle_ticket_autoclose(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """
+        Handler dello scheduler: chiude il ticket se è fermo da almeno N minuti, altrimenti
+        riprogramma il controllo per il momento in cui scadrebbe. Se solleva, lo scheduler riprova.
+        """
+        channel_id = payload["channel_id"]
+        ticket = await ticket_repo.get_ticket_by_channel(channel_id)
+        if ticket is None or ticket.status != "open" or ticket.panel_id is None:
+            return
+        panel = await ticket_form_repo.pannello_per_id(ticket.panel_id)
+        if panel is None or not panel.autoclose_minutes:
+            return
+        ultima = ticket.last_activity_at or ticket.created_at
+        prossimo = form.prossimo_controllo(ultima, datetime.now(timezone.utc), panel.autoclose_minutes)
+        if prossimo is not None:
+            await scheduler.schedule(guild_id, user_id, TICKET_AUTOCLOSE_ACTION_TYPE, prossimo, payload)
+            return
+        channel = self.bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await self.bot.fetch_channel(channel_id)
+            except discord.NotFound:
+                await ticket_repo.close_ticket_of_deleted_channel(channel_id)
+                return
+        await self._chiudi_da_sistema(
+            channel.guild,
+            channel,
+            ticket,
+            motivo="Ticket chiuso per inattività",
+            avviso=(
+                f"Ticket chiuso automaticamente: nessun messaggio da {panel.autoclose_minutes} minuti. "
+                "Questo canale verrà eliminato a breve."
+            ),
+            chiedi_voto=True,
+            ragione="Chiuso per inattività",
+        )
+
+    async def _chiudi_e_pianifica(
+        self, guild_id: int, channel_id: int, chiuso_da: int, ragione: str | None, user_id: int, motivo_log: str
+    ) -> bool:
+        """
+        Chiude il ticket e pianifica l'eliminazione del canale come un passo solo: se la
+        pianificazione fallisce, il ticket torna aperto e chi riprova (scheduler, utente) trova
+        tutto com'era. False se era già chiuso (due chiusure insieme: ne vince una).
+        """
+        if not await ticket_repo.close_ticket(channel_id, chiuso_da, reason=ragione):
+            return False
+        try:
+            await self._pianifica_eliminazione_canale(
+                guild_id, user_id, channel_id, motivo_log, RITARDO_ELIMINAZIONE_SECONDI
+            )
+        except Exception:
+            await ticket_repo.riapri_dopo_errore(channel_id)
+            raise
+        return True
+
+    async def _chiudi_da_sistema(
+        self,
+        guild: discord.Guild,
+        channel,
+        ticket,
+        *,
+        motivo: str,
+        avviso: str,
+        chiedi_voto: bool,
+        chiuso_da: int | None = None,
+        ragione: str | None = None,
+    ) -> bool:
+        """
+        Chiusura fatta dal bot (inattività, utente uscito) o per conto dello staff (chiusura di
+        massa): stesso ordine di /ticket close. `ragione` è il motivo salvato col ticket.
+        """
+        if not await self._chiudi_e_pianifica(
+            guild.id, channel.id, chiuso_da or guild.me.id, ragione, ticket.user_id, motivo
+        ):
+            return False
+        ticket = await ticket_repo.get_ticket_by_channel(channel.id) or ticket
+        try:
+            await channel.send(avviso, allowed_mentions=discord.AllowedMentions.none())
+        except discord.HTTPException:
+            logger.warning("Avviso di chiusura non inviato nel ticket %s.", channel.id)
+        await self._transcript_senza_bloccare(guild, channel, ticket)
+        if chiedi_voto:
+            await self._richiedi_voto(guild, ticket)
+        return True
+
+    @comando_di_gruppo(
+        "admin",
+        nome="chiudi-tutti",
+        descrizione="Chiudi i ticket aperti (fino a 25 alla volta).",
+        sottogruppo=ADMIN_TICKET,
+    )
+    @app_commands.describe(motivo="Il motivo, salvato in ogni ticket")
+    async def chiudi_tutti(
+        self,
+        interaction: discord.Interaction,
+        motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        chiusi = 0
+        falliti = 0
+        for ticket in await ticket_repo.list_open_tickets(guild.id, MAX_CHIUSURA_DI_MASSA):
+            channel = guild.get_channel(ticket.channel_id)
+            if channel is None:
+                await ticket_repo.close_ticket_of_deleted_channel(ticket.channel_id)
+                continue
+            try:
+                fatto = await self._chiudi_da_sistema(
+                    guild,
+                    channel,
+                    ticket,
+                    motivo=f"Chiusura di massa di {interaction.user}",
+                    avviso=f"Ticket chiuso da {interaction.user.mention} (chiusura di tutti i ticket)."
+                    + (f"\nMotivo: {motivo}" if motivo else "")
+                    + " Questo canale verrà eliminato a breve.",
+                    chiedi_voto=True,
+                    chiuso_da=interaction.user.id,
+                    ragione=motivo or "Chiusura di massa",
+                )
+            except Exception:
+                # Un ticket che non si chiude (scheduler giù, transcript) non ferma gli altri.
+                logger.exception("Chiusura di massa: il ticket %s non si è chiuso.", ticket.channel_id)
+                falliti += 1
+                continue
+            if fatto:
+                chiusi += 1
+                if chiusi % 5 == 0:
+                    # Ogni transcript richiede tempo: un messaggio ogni 5 tiene informato chi ha lanciato il comando.
+                    await interaction.followup.send(f"Chiusi finora {chiusi} ticket...", ephemeral=True)
+        restanti = await ticket_repo.count_open_tickets(guild.id)
+        testo = f"Chiusi {chiusi} ticket."
+        if falliti:
+            testo += f" {falliti} non si sono chiusi (errore nei log): restano aperti."
+        if restanti:
+            testo += f" Ne restano {restanti} aperti: rilancia il comando."
+        await interaction.followup.send(testo, ephemeral=True)
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """NF-13: chi esce dal server non può più rispondere: il suo ticket aperto si chiude."""
+        for ticket in await ticket_repo.list_open_tickets_for_user(member.guild.id, member.id):
+            channel = member.guild.get_channel(ticket.channel_id)
+            if channel is None:
+                continue
+            await self._chiudi_da_sistema(
+                member.guild,
+                channel,
+                ticket,
+                motivo="Ticket chiuso: l'utente ha lasciato il server",
+                avviso=f"{member} ha lasciato il server: ticket chiuso. Questo canale verrà eliminato a breve.",
+                chiedi_voto=False,
+                ragione="L'utente ha lasciato il server",
+            )
 
     async def handle_ticket_delete_channel(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Handler dello scheduler. Se solleva, lo scheduler riprova più tardi."""
@@ -986,26 +1911,40 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await self._elimina_canale(channel_id, payload.get("reason"))
 
     @comando_di_gruppo("ticket", nome="close", descrizione="Chiudi questo ticket.")
-    async def close(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(motivo="Perché lo chiudi (si salva col ticket)")
+    async def close(
+        self,
+        interaction: discord.Interaction,
+        motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
+    ) -> None:
         ticket = await self._get_ticket_or_reply(interaction)
         if ticket is None:
             return
 
-        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id)
-        # Prima di tutto il resto: da qui in poi un riavvio o un errore
-        # nel transcript non lasciano più il canale per sempre.
-        await self._pianifica_eliminazione(
-            interaction, f"Ticket chiuso da {interaction.user}", RITARDO_ELIMINAZIONE_SECONDI
-        )
+        if not await self._chiudi_e_pianifica(
+            interaction.guild.id, interaction.channel.id, interaction.user.id, motivo, ticket.user_id,
+            f"Ticket chiuso da {interaction.user}",
+        ):
+            await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
+            return
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
         await interaction.response.send_message(
             "Ticket chiuso. Questo canale verrà eliminato entro un minuto."
+            + (f"\nMotivo: {motivo}" if motivo else ""),
+            allowed_mentions=discord.AllowedMentions.none(),
         )
         await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
+        await self._richiedi_voto(interaction.guild, ticket)
 
     @comando_di_gruppo(
         "ticket", nome="forceclose", descrizione="Chiudi immediatamente questo ticket, senza attesa."
     )
-    async def forceclose(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(motivo="Perché lo chiudi (si salva col ticket)")
+    async def forceclose(
+        self,
+        interaction: discord.Interaction,
+        motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
+    ) -> None:
         """
         SPEC.md §13.9: a differenza di /ticket close (aperto a
         chiunque abbia accesso al canale, incluso chi ha aperto il
@@ -1030,11 +1969,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         # Su un ticket già chiuso non cambia nulla nel database.
-        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, force=True)
-        await interaction.response.send_message(
-            f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale."
+        appena_chiuso = await ticket_repo.close_ticket(
+            interaction.channel.id, interaction.user.id, force=True, reason=motivo
         )
-        await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
+        await interaction.response.send_message(
+            f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        if appena_chiuso:
+            # Su un ticket già chiuso (BUG-30) transcript e voto li ha già fatti chi lo ha chiuso.
+            await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
+            await self._richiedi_voto(interaction.guild, ticket)
 
         motivo = f"Ticket forzatamente chiuso da {interaction.user}"
         try:
@@ -1057,6 +2003,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket aperto" per sempre. Dopo /ticket close o forceclose il
         ticket è già chiuso e qui non cambia nulla.
         """
+        self._attivita_scritta.pop(channel.id, None)
         if await ticket_repo.close_ticket_of_deleted_channel(channel.id):
             logger.info(
                 "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id
@@ -1071,13 +2018,44 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         ticket = await ticket_repo.get_ticket_by_channel(message.channel.id)
-        if ticket is None or ticket.status != "open" or ticket.first_response_at is not None:
+        if ticket is None or ticket.status != "open":
+            return
+
+        # NF-13: l'ultimo messaggio di una persona tiene vivo il ticket (chiusura automatica).
+        if not message.author.bot and ticket.panel_id is not None:
+            await self._segna_attivita(message.channel.id)
+
+        # #139: risposta standard e sollecito (cog a parte, senza AI).
+        if message.author.id == ticket.user_id and not message.author.bot:
+            risposte = self._cog_risposte()
+            if risposte is not None:
+                await risposte.su_messaggio_dell_utente(message, ticket)
+
+        if ticket.first_response_at is not None:
             return
 
         if not is_first_response(message.author.id, ticket.user_id, message.author.bot):
             return
 
         await ticket_repo.record_first_response(message.channel.id, datetime.now(timezone.utc))
+
+    def _cog_risposte(self):
+        """Il cog delle risposte standard (#139), se caricato."""
+        return self.bot.get_cog("RisposteStandardCog") if self.bot is not None else None
+
+    async def _segna_attivita(self, channel_id: int) -> None:
+        """Scrive l'attività nel database al più una volta al minuto per canale."""
+        adesso = time.monotonic()
+        ultima = self._attivita_scritta.get(channel_id)
+        if ultima is not None and adesso - ultima < _ATTIVITA_OGNI_SECONDI:
+            return
+        if len(self._attivita_scritta) >= _ATTIVITA_MAX_VOCI:
+            # Tiene solo i canali scritti da meno di un minuto: gli altri verrebbero riscritti comunque.
+            self._attivita_scritta = {
+                c: t for c, t in self._attivita_scritta.items() if adesso - t < _ATTIVITA_OGNI_SECONDI
+            }
+        self._attivita_scritta[channel_id] = adesso
+        await ticket_repo.touch_activity(channel_id, datetime.now(timezone.utc))
 
 
 async def setup(bot: commands.Bot) -> None:
@@ -1093,6 +2071,7 @@ async def setup(bot: commands.Bot) -> None:
     cog = TicketsCog(bot)
     await bot.add_cog(cog)
     scheduler.register_handler(TICKET_DELETE_ACTION_TYPE, cog.handle_ticket_delete_channel)
+    scheduler.register_handler(TICKET_AUTOCLOSE_ACTION_TYPE, cog.handle_ticket_autoclose)
 
     # Registrazione della view persistente: DEVE avvenire ad ogni
     # avvio del bot, non solo quando il pannello viene pubblicato per
@@ -1100,3 +2079,4 @@ async def setup(bot: commands.Bot) -> None:
     # già esistenti nei server (pubblicati prima di un riavvio) di
     # continuare a funzionare.
     bot.add_view(TicketPanelView())
+    bot.add_dynamic_items(BottonePannello, BottoneVoto)

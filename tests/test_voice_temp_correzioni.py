@@ -780,3 +780,238 @@ async def test_unlock_dopo_due_lock_ripristina_il_valore_originale():
     await cog.unlock.callback(cog, scena.interazione(proprietario))
 
     assert _overwrite_finale(canale, scena.guild.default_role).connect is True
+
+
+# ====================================================================
+# #127 — catalogo vocali temporanei: claim, permit, deny, bitrate, nascondi
+# ====================================================================
+async def test_claim_con_proprietario_assente_passa_la_proprieta():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.members.remove(proprietario)  # il proprietario e' uscito
+    ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    cog = VoiceTempCog(bot=None)
+
+    await cog.claim.callback(cog, scena.interazione(ospite))
+
+    assert await voice_temp_repo.get_owner(canale.id) == ID_OSPITE
+    canale.set_permissions.assert_any_await(
+        ospite, reason="Nuovo proprietario del vocale temporaneo", **modulo.OWNER_PERMISSIONS
+    )
+
+
+async def test_claim_con_proprietario_presente_e_rifiutato():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(ospite)
+
+    await cog.claim.callback(cog, interazione)
+
+    assert await voice_temp_repo.get_owner(canale.id) == ID_PROPRIETARIO
+    assert "ancora nel canale" in _testo(interazione.response.send_message.call_args)
+
+
+async def test_permit_apre_il_canale_a_un_utente_senza_toccare_gli_altri_permessi():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.membro(ID_OSPITE)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(speak=False)
+    cog = VoiceTempCog(bot=None)
+
+    await cog.permit.callback(cog, scena.interazione(proprietario), ospite)
+
+    finale = _overwrite_finale(canale, ospite)
+    assert finale.connect is True and finale.speak is False
+
+
+async def test_deny_chiude_l_accesso_ed_espelle_chi_e_dentro():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite()
+    cog = VoiceTempCog(bot=None)
+
+    await cog.deny.callback(cog, scena.interazione(proprietario), ospite)
+
+    assert _overwrite_finale(canale, ospite).connect is False
+    ospite.move_to.assert_awaited_once()
+
+
+async def test_deny_rispetta_la_gerarchia_e_non_colpisce_il_proprietario():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    superiore = _con_ruolo(scena.membro(ID_OSPITE), 9)
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
+    cog = VoiceTempCog(bot=None)
+
+    interazione = scena.interazione(proprietario)
+    await cog.deny.callback(cog, interazione, superiore)
+    canale.set_permissions.assert_not_awaited()
+
+    interazione = scena.interazione(proprietario)
+    await cog.deny.callback(cog, interazione, proprietario)
+    canale.set_permissions.assert_not_awaited()
+
+
+async def test_bitrate_oltre_il_limite_del_server_e_rifiutato():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    scena.guild.bitrate_limit = 96000
+    cog = VoiceTempCog(bot=None)
+
+    interazione = scena.interazione(proprietario)
+    await cog.bitrate.callback(cog, interazione, 128)
+    canale.edit.assert_not_awaited()
+    assert "96" in _testo(interazione.response.send_message.call_args)
+
+    await cog.bitrate.callback(cog, scena.interazione(proprietario), 64)
+    canale.edit.assert_awaited_once_with(bitrate=64000)
+
+
+def _permessi_veri(canale, iniziali=None):
+    """Il canale tiene davvero gli override: overwrites_for ne restituisce una copia, set_permissions li salva."""
+    stato = dict(iniziali or {})
+
+    def leggi(chi):
+        return discord.PermissionOverwrite(**dict(stato.get(chi, discord.PermissionOverwrite())))
+
+    async def scrivi(chi, *, overwrite=None, reason=None, **kw):
+        if overwrite is None and kw:
+            overwrite = discord.PermissionOverwrite(**kw)
+        if overwrite is None or overwrite.is_empty():
+            stato.pop(chi, None)
+        else:
+            stato[chi] = overwrite
+
+    canale.overwrites_for.side_effect = leggi
+    canale.set_permissions.side_effect = scrivi
+    return stato
+
+
+async def test_nascondi_dopo_il_comando_proprietario_ospiti_e_bot_vedono_ancora_il_canale():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    stato = _permessi_veri(canale, {scena.guild.default_role: discord.PermissionOverwrite(connect=False)})
+    cog = VoiceTempCog(bot=None)
+
+    await cog.nascondi.callback(cog, scena.interazione(proprietario), True)
+
+    assert stato[scena.guild.default_role].view_channel is False
+    assert stato[scena.guild.default_role].connect is False  # il resto di @everyone non cambia
+    for chi in (proprietario, ospite, scena.guild.me):
+        assert stato[chi].view_channel is True and stato[chi].connect is True
+
+
+async def test_nascondi_non_perde_i_permessi_di_gestione_del_proprietario():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    stato = _permessi_veri(canale, {proprietario: discord.PermissionOverwrite(**modulo.OWNER_PERMISSIONS)})
+    cog = VoiceTempCog(bot=None)
+
+    await cog.nascondi.callback(cog, scena.interazione(proprietario), True)
+
+    assert stato[proprietario].manage_channels is True and stato[proprietario].view_channel is True
+
+
+async def test_mostrare_di_nuovo_toglie_solo_il_nascondi_di_everyone():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    stato = _permessi_veri(canale, {scena.guild.default_role: discord.PermissionOverwrite(view_channel=False)})
+    cog = VoiceTempCog(bot=None)
+
+    await cog.nascondi.callback(cog, scena.interazione(proprietario), False)
+
+    assert scena.guild.default_role not in stato
+
+
+async def test_due_claim_insieme_ne_vince_uno_solo():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.members.remove(proprietario)
+    a = scena.entra(scena.membro(ID_OSPITE), canale)
+    b = scena.entra(scena.membro(ID_OSPITE + 1), canale)
+    cog = VoiceTempCog(bot=None)
+    ia, ib = scena.interazione(a), scena.interazione(b)
+
+    await asyncio.gather(cog.claim.callback(cog, ia), cog.claim.callback(cog, ib))
+
+    vincitore = await voice_temp_repo.get_owner(canale.id)
+    assert vincitore in (ID_OSPITE, ID_OSPITE + 1)
+    perdente = ib if vincitore == ID_OSPITE else ia
+    dati = [c for c in canale.set_permissions.await_args_list if c.kwargs.get("manage_channels")]
+    assert len(dati) == 1  # i permessi di gestione li ha preso uno solo
+    assert perdente.response.send_message.call_args.kwargs["ephemeral"] is True
+
+
+async def test_i_comandi_nuovi_sono_riservati_al_proprietario():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.entra(scena.membro(ID_OSPITE), canale)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(ospite)
+
+    await cog.nascondi.callback(cog, interazione, True)
+
+    canale.set_permissions.assert_not_awaited()
+    assert "Solo il proprietario" in _testo(interazione.response.send_message.call_args)
+
+
+# ====================================================================
+# Giro del capo: defer per primo, risposta al proprietario su deny, trasferimento preciso
+# ====================================================================
+async def test_nascondi_risponde_con_defer_e_poi_followup():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    _permessi_veri(canale, {scena.guild.default_role: discord.PermissionOverwrite()})
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.nascondi.callback(cog, interazione, True)
+
+    interazione.response.defer.assert_awaited_once()
+    interazione.followup.send.assert_awaited_once()
+    interazione.response.send_message.assert_not_awaited()
+
+
+async def test_deny_sul_proprietario_dice_perche_non_si_puo():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.deny.callback(cog, interazione, proprietario)
+
+    canale.set_permissions.assert_not_awaited()
+    interazione.response.send_message.assert_awaited_once()
+    assert _testo(interazione.response.send_message.call_args).strip() != ""
+
+
+async def test_transfer_toglie_i_permessi_al_vecchio_e_li_da_solo_al_nuovo():
+    scena = Scena()
+    vecchio = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(vecchio)
+    nuovo = scena.entra(scena.membro(ID_OSPITE), canale)
+
+    await _trasferisci(scena, vecchio, nuovo)
+
+    permessi = _permessi_dati(canale)
+    assert set(permessi) == {ID_PROPRIETARIO, ID_OSPITE}
+    assert permessi[ID_PROPRIETARIO] is None

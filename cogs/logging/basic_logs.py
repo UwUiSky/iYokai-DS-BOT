@@ -6,7 +6,7 @@ ruoli, cambi di ruolo e nickname sui membri. Modulo SEMPRE GRATUITO
 (MODULE_LOGGING). Comandi /log canale (anche per messaggi, voce e server,
 con canale di testo o forum) e /log stato. Dove scrive lo decide
 core/channel_router.py.
-Funzioni coperte: SPEC §8.1-§8.5, §8.17, §18
+Funzioni coperte: SPEC §8.1-§8.5, §8.17, §8.18 (catalogo log: regex RE2, canali per tipo), §18
 
 Ogni evento, oltre a mandare l'embed live nel canale configurato
 (come sempre), viene ora anche salvato nel log eventi unificato
@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from datetime import datetime
 
 import discord
 from discord import app_commands
@@ -77,6 +78,40 @@ def nickname_changed(before_nick: str | None, after_nick: str | None) -> bool:
     comunque un cambiamento — non va confuso con "nessun cambiamento".
     """
     return before_nick != after_nick
+
+
+def timeout_cambio(prima, dopo, adesso) -> tuple[str, object] | None:
+    """
+    LOG-009: cosa è successo al timeout di un membro, comunque sia stato dato (comando del bot
+    o menu di Discord). ("dato" | "tolto" | "cambiato", fino a quando) oppure None.
+    Un timeout scaduto da solo non manda nessun evento e qui non conta come attivo.
+    """
+    attivo_prima = isinstance(prima, datetime) and prima > adesso
+    attivo_dopo = isinstance(dopo, datetime) and dopo > adesso
+    if not attivo_prima and attivo_dopo:
+        return "dato", dopo
+    if attivo_prima and not attivo_dopo:
+        return "tolto", None
+    if attivo_prima and attivo_dopo and prima != dopo:
+        return "cambiato", dopo
+    return None
+
+
+def cambi_utente(prima, dopo) -> list[tuple[str, str | None, str | None]]:
+    """
+    LOG-007 e LOG-008: cambi del profilo di un utente (non del server): nome utente, nome visualizzato,
+    avatar. [(tipo, prima, dopo)]; per l'avatar i valori sono None (l'immagine nuova si mostra a parte).
+    """
+    cambi: list[tuple[str, str | None, str | None]] = []
+    if prima.name != dopo.name:
+        cambi.append(("username", prima.name, dopo.name))
+    if getattr(prima, "global_name", None) != getattr(dopo, "global_name", None):
+        cambi.append(("display_name", getattr(prima, "global_name", None), getattr(dopo, "global_name", None)))
+    chiave_prima = prima.avatar.key if getattr(prima, "avatar", None) else None
+    chiave_dopo = dopo.avatar.key if getattr(dopo, "avatar", None) else None
+    if chiave_prima != chiave_dopo:
+        cambi.append(("avatar", None, None))
+    return cambi
 
 
 def elenco_ruoli(role_ids: Iterable[int]) -> str:
@@ -354,8 +389,13 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         added_ids, removed_ids = diff_roles(before_role_ids, after_role_ids)
         roles_changed = bool(added_ids or removed_ids)
         nick_changed = nickname_changed(before.nick, after.nick)
+        timeout = timeout_cambio(
+            getattr(before, "timed_out_until", None),
+            getattr(after, "timed_out_until", None),
+            discord.utils.utcnow(),
+        )
 
-        if not roles_changed and not nick_changed:
+        if not roles_changed and not nick_changed and timeout is None:
             return
 
         if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING):
@@ -378,9 +418,30 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
                 details={"before": before.nick, "after": after.nick},
             )
 
+        if timeout is not None:
+            await event_log_repo.log_event(
+                after.guild.id,
+                "timeout_update",
+                target_user_id=after.id,
+                details={"azione": timeout[0], "fino_a": timeout[1].isoformat() if timeout[1] else None},
+            )
+
         channel = await _get_log_channel(after.guild)
         if channel is None:
             return
+
+        if timeout is not None:
+            azione, fino_a = timeout
+            titoli = {"dato": "⏳ Timeout dato", "tolto": "✅ Timeout tolto", "cambiato": "⏳ Timeout modificato"}
+            embed = discord.Embed(
+                title=titoli[azione],
+                color=discord.Color.green() if azione == "tolto" else discord.Color.orange(),
+                timestamp=discord.utils.utcnow(),
+            )
+            embed.add_field(name="Utente", value=f"{after.mention} ({after.id})", inline=False)
+            if fino_a is not None:
+                embed.add_field(name="Fino a", value=discord.utils.format_dt(fino_a, "f"), inline=False)
+            await _send_log(channel, embed)
 
         if roles_changed:
             embed = discord.Embed(
@@ -421,6 +482,40 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
                 name="Dopo", value=after.nick or "*(nessuno)*", inline=True
             )
             await _send_log(channel, embed)
+
+    @commands.Cog.listener()
+    async def on_user_update(self, before: discord.User, after: discord.User) -> None:
+        """LOG-007 e LOG-008: nome utente, nome visualizzato e avatar, in ogni server in cui è presente."""
+        cambi = cambi_utente(before, after)
+        if not cambi:
+            return
+        titoli = {
+            "username": "🧾 Nome utente cambiato",
+            "display_name": "🏷️ Nome visualizzato cambiato",
+            "avatar": "🖼️ Avatar cambiato",
+        }
+        for guild in getattr(after, "mutual_guilds", None) or []:
+            if not await db.is_module_active_for_guild(guild.id, MODULE_LOGGING):
+                continue
+            for tipo, prima, dopo in cambi:
+                await event_log_repo.log_event(
+                    guild.id,
+                    f"{tipo}_update",
+                    target_user_id=after.id,
+                    details={"before": prima, "after": dopo},
+                )
+            channel = await _get_log_channel(guild)
+            if channel is None:
+                continue
+            for tipo, prima, dopo in cambi:
+                embed = discord.Embed(title=titoli[tipo], color=discord.Color.blurple(), timestamp=discord.utils.utcnow())
+                embed.add_field(name="Utente", value=f"<@{after.id}> ({after.id})", inline=False)
+                if tipo == "avatar":
+                    embed.set_thumbnail(url=after.display_avatar.url)
+                else:
+                    embed.add_field(name="Prima", value=(prima or "*(nessuno)*")[:1024], inline=True)
+                    embed.add_field(name="Dopo", value=(dopo or "*(nessuno)*")[:1024], inline=True)
+                await _send_log(channel, embed)
 
     # ================================================================
     # Ruoli del server (creazione/eliminazione, non assegnazione)

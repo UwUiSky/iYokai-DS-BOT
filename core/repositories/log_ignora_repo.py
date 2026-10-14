@@ -1,7 +1,7 @@
 """
 core/repositories/log_ignora_repo.py
 ====================================
-Cosa il log dei messaggi ignora (canali, utenti, prefissi) per ogni server.
+Cosa il log dei messaggi ignora (canali, utenti, ruoli, prefissi, espressioni) per ogni server.
 Funzioni coperte: SPEC §8.16 (NF-02)
 """
 
@@ -11,7 +11,7 @@ import time
 
 import asyncpg
 
-from core.message_log_logic import GENERI_IGNORA, Ignorati
+from core.message_log_logic import GENERI_IGNORA, REGEX_MAX_PER_SERVER, Ignorati
 
 
 # Ogni cancellazione o modifica di messaggio chiede l'elenco: si tiene in memoria
@@ -47,6 +47,13 @@ class LogIgnoraRepository:
                 )
                 if totale >= massimo:
                     return False
+                if genere == "regex":
+                    # Ogni espressione gira su ogni messaggio: poche, e non tra le 200 voci generiche.
+                    espressioni = await conn.fetchval(
+                        "SELECT count(*) FROM log_ignora WHERE guild_id=$1 AND genere='regex'", guild_id
+                    )
+                    if espressioni >= REGEX_MAX_PER_SERVER:
+                        return False
                 await conn.execute(
                     "INSERT INTO log_ignora (guild_id, genere, valore) VALUES ($1,$2,$3)",
                     guild_id, genere, valore,
@@ -81,6 +88,8 @@ class LogIgnoraRepository:
             canali=frozenset(int(r["valore"]) for r in righe if r["genere"] == "canale"),
             utenti=frozenset(int(r["valore"]) for r in righe if r["genere"] == "utente"),
             prefissi=tuple(r["valore"] for r in righe if r["genere"] == "prefisso"),
+            ruoli=frozenset(int(r["valore"]) for r in righe if r["genere"] == "ruolo"),
+            regex=tuple(r["valore"] for r in righe if r["genere"] == "regex"),
         )
 
 

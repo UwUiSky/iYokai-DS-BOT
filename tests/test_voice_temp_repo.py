@@ -60,17 +60,24 @@ async def test_register_due_volte_sullo_stesso_canale_aggiorna_owner(repo):
 
 
 @pytest.mark.asyncio
-async def test_set_owner_trasferisce_proprieta(repo):
+async def test_cambia_proprietario_trasferisce_proprieta(repo):
     await repo.register_channel(5001, 100, owner_id=42)
-    trasferito = await repo.set_owner(5001, new_owner_id=99)
+    trasferito = await repo.cambia_proprietario(5001, 42, 99)
     assert trasferito is True
     assert await repo.get_owner(5001) == 99
 
 
 @pytest.mark.asyncio
-async def test_set_owner_su_canale_non_tracciato_restituisce_false(repo):
-    trasferito = await repo.set_owner(999999, new_owner_id=99)
+async def test_cambia_proprietario_su_canale_non_tracciato_restituisce_false(repo):
+    trasferito = await repo.cambia_proprietario(999999, 42, 99)
     assert trasferito is False
+
+
+@pytest.mark.asyncio
+async def test_cambia_proprietario_con_vecchio_sbagliato_non_fa_nulla(repo):
+    await repo.register_channel(5001, 100, owner_id=42)
+    assert await repo.cambia_proprietario(5001, 7, 99) is False
+    assert await repo.get_owner(5001) == 42
 
 
 @pytest.mark.asyncio

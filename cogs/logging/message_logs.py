@@ -38,7 +38,7 @@ logger = logging.getLogger("iyokai.logging.messaggi")
 
 
 def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int) -> bool:
-    """Canale/utente/prefisso ignorati e messaggi dei bot."""
+    """Canale, utente, ruolo, prefisso ed espressione ignorati; messaggi dei bot."""
     if message is not None and message.author.bot:
         return True
     return da_ignorare(
@@ -48,6 +48,7 @@ def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int
         testo=message.content if message is not None else None,
         category_id=getattr(canale, "category_id", None),
         thread_parent_id=getattr(canale, "parent_id", None),
+        ruoli_autore=[r.id for r in getattr(message.author, "roles", [])] if message is not None else (),
     )
 
 
@@ -158,7 +159,10 @@ class MessageLogsCog(commands.Cog):
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         ignorati = await log_ignora_repo.carica(after.guild.id)
-        if _scartato(ignorati, after.channel, after, after.channel.id):
+        # Il campo "Prima" mostra il testo vecchio: se è lui a dover restare fuori dal log, la modifica non si scrive.
+        if _scartato(ignorati, after.channel, after, after.channel.id) or _scartato(
+            ignorati, after.channel, before, after.channel.id
+        ):
             return
 
         await event_log_repo.log_event(

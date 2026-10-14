@@ -707,10 +707,16 @@ Totale voci: **494**.
   (NF-02, issue #73): embed con autore, canale e testo (campi 1024,
   descrizione 4096); cancellazione in blocco = un riepilogo con un
   file `.txt` sotto i 10 MiB; messaggi dei bot, canali, utenti e
-  prefissi ignorabili con `/log ignora`. Fa parte del Logging
+  prefissi, ruoli ed espressioni regolari (al massimo 5, solo schemi a
+  basso costo: una sola ripetizione senza limite, niente `{n,m}`, al massimo 4 `?`; uno schema che supera 50 ms si disattiva) ignorabili con `/log ignora` (LOG-022, LOG-024, migrazione
+  0103); una modifica non si scrive se il testo di prima va ignorato; categorie, thread e bot già ignorati (LOG-021, LOG-023). Fa parte del Logging
   Avanzato (premium). Un messaggio fuori dalla cache di discord.py si
   segnala senza contenuto; la modifica di un messaggio fuori cache non
   si vede
+- `[x]` 8.18 Catalogo log (#119): timeout dati e tolti anche dal menu di Discord (`basic_logs.py`,
+  LOG-009); cambio di nome utente, nome visualizzato e avatar (`on_user_update`, LOG-007, LOG-008);
+  palchi aperti, modificati, chiusi nel tipo «voce» (`advanced_logs.py`, LOG-013).
+  Restano: LOG-005, 006, 012, 017, 027, 029, 030.
 - `[~]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
@@ -1125,7 +1131,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   notifica 12.4 se il server ha configurato almeno un ruolo
   piattaforma (`/voicetemp-platform-setup`)
   → **Stato 04/10:** i bottoni muoiono dopo 5 minuti (LIM-26).
-- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer
+- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer, claim (proprietario assente), permit, deny, bitrate, nascondi (#127)
   → **Stato 04/10:** rinomina senza limiti (LIM-3); `transfer` accetta chiunque (BUG-18).
 - `[~]` 12.7 Eliminazione automatica a canale vuoto
   → **Stato 04/10:** canali orfani dopo un riavvio (REVIEW §4).
@@ -1781,11 +1787,20 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   colore e tema (scuro, chiaro, notte) salvati per utente (migrazione 0031).
   Resta lo sfondo con immagine propria (premium, da fare con `dev-core`).
   `rank_card_prefs` è per utente (senza server): va nel registro dei dati NF-04 (F5) per esportazione e cancellazione.
-- `[ ]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
-- `[ ]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
-- `[ ]` 22.11 Ticket: chiusura automatica per inattività o utente
+- `[x]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
+  → **Stato 13/10:** fino a 5 domande per pannello (`/admin ticket modulo-aggiungi|modulo-rimuovi|modulo-mostra`), finestra
+  Discord, risposte nell'embed del ticket (migrazione 0100). Pannello con 0 domande: il ticket si apre subito.
+- `[x]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
+  → **Stato 13/10:** fino a 25 pannelli per server (`pannello-crea|rimuovi|lista|pubblica`); un messaggio porta fino a 25 bottoni
+  persistenti (`DynamicItem`, custom_id `tkt:pan:<id>`). Il pannello storico (`/gestione ticket panel`) resta com'è.
+- `[x]` 22.11 Ticket: chiusura automatica per inattività o utente
   uscito (NF-13)
-- `[ ]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
+  → **Stato 13/10:** per inattività (`/admin ticket chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
+  vale per i ticket nati da un pannello) e quando l'utente lascia il server.
+- `[x]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
+  → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/admin ticket voto`), una volta sola, media in `/gestione ticket stats`.
+  Limite di ticket aperti per utente configurabile da 1 a 5, predefinito 1 (`/gestione ticket limite`, impostazione
+  `ticket_max_per_utente`, migrazione 0106 che sostituisce l'indice unico con un controllo sotto blocco in `ticket_repo.create_ticket`).
 - `[x]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
   → **Stato 13/10:** `/gestione ruoli menu-crea|menu-modifica|menu-accesso|menu-elenco` (0085). Da provare live.
@@ -1843,7 +1858,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
 - `[ ]` 23.10 Blocco dei link di phishing (NF-31)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
-- `[ ]` 23.12 Ticket via messaggio privato (NF-33)
+- `[x]` 23.12 Ticket via messaggio privato (NF-33)
+  → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima
+  (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/admin ticket dm-blocca`),
+  menu se l'utente è in più server (migrazione 0101). Il testo dei messaggi non è salvato nel database.
+  Con un solo server il primo DM chiede conferma con un bottone prima di creare il canale; il menu e la conferma scadono
+  e liberano l'utente. Il blocco (`modmail_blocks`) è conservato come l'elenco della verifica.
 - `[x]` 23.13 Moduli e candidature (NF-34)
   → **Stato 13/10:** `/moduli candidature crea|elimina|elenco`, `/utility modulo` (0096): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
@@ -2080,11 +2100,21 @@ di quel file.
   di servizio prima di finirle (AI-R-102)
 - `[ ]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
   (AI-R-103)
-- `[ ]` 25.97 Risposte standard imparate dalle risposte dello staff
+- `[~]` 25.97 Risposte standard imparate dalle risposte dello staff
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
-- `[ ]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
+  → **Stato 13/10 (parte senza AI):** alla chiusura il bot propone nel canale dei log la prima risposta dello staff (allegati
+  ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
+  accese per pannello (`/admin ticket standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
+  parole chiave, riconoscimento del tema oltre le parole, archivio durevole dei file (oggi: link nel canale dei log).
+  **Dati personali (giro 14/10, migrazione 0105):** la riga ricorda `user_id` di chi aveva scritto (esportazione e cancellazione
+  dati nel registro); titolo, parole e corpo non tengono menzioni, e-mail, link, numeri lunghi né il nome dell'utente
+  (`{utente}` nel corpo, sostituito al momento dell'uso); se dopo la risposta pronta l'utente scrive ancora, lo staff è chiamato.
+- `[~]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)
+  → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/admin ticket sollecito`), domanda in
+  italiano, risposta standard se c'è, altrimenti chiama il ruolo scelto per il pannello (o i ruoli di supporto). Resta con
+  l'AI: lingua dell'utente e scelta tra moderatore e amministratore secondo il caso.
 - `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i
   finali, salvate e riusate in ogni server con lo stesso tema
   (AI-R-106)

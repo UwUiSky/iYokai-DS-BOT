@@ -39,6 +39,15 @@ class Ticket:
     category_label: str | None = None
     first_response_at: datetime | None = None
     force_closed: bool = False
+    panel_id: int | None = None
+    last_activity_at: datetime | None = None
+    rating: int | None = None
+    rated_at: datetime | None = None
+    utente_scritto_at: datetime | None = None
+    sollecito_at: datetime | None = None
+    escalato_at: datetime | None = None
+    standard_reply_id: int | None = None
+    close_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -76,7 +85,7 @@ ONE_OPEN_TICKET_INDEX = "uq_tickets_un_aperto_per_utente"
 
 
 class TicketAlreadyOpenError(Exception):
-    """L'utente ha già un ticket aperto in questo server."""
+    """L'utente ha già raggiunto il limite di ticket aperti in questo server."""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -179,30 +188,49 @@ class TicketRepository:
         channel_id: int,
         category_label: str | None = None,
         ticket_number: int | None = None,
+        panel_id: int | None = None,
+        max_aperti: int = 1,
     ) -> int:
         """
         Registra un nuovo ticket e restituisce il suo numero: quello
         già riservato con reserve_ticket_number, oppure uno nuovo preso
         qui nella stessa transazione. Solleva TicketAlreadyOpenError se
-        l'utente ha già un ticket aperto in questo server (in quel caso
-        non viene consumato nessun numero).
+        l'utente ha già `max_aperti` ticket aperti in questo server (in
+        quel caso non viene consumato nessun numero). Il conteggio e
+        l'inserimento stanno sotto un blocco per (server, utente): due
+        aperture insieme non superano il limite.
         """
         try:
             async with self._pool.acquire() as conn:
                 async with conn.transaction():
+                    if user_id != 0:  # 0 = utente anonimizzato: più persone, nessun limite
+                        await conn.execute(
+                            "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+                            f"ticket:{guild_id}:{user_id}",
+                        )
+                        aperti = await conn.fetchval(
+                            "SELECT count(*) FROM tickets"
+                            " WHERE guild_id = $1 AND user_id = $2 AND status = 'open'",
+                            guild_id,
+                            user_id,
+                        )
+                        if aperti >= max_aperti:
+                            raise TicketAlreadyOpenError()
                     if ticket_number is None:
                         ticket_number = await self.reserve_ticket_number(guild_id, conn)
                     await conn.execute(
                         """
                         INSERT INTO tickets
-                            (guild_id, ticket_number, channel_id, user_id, category_label)
-                        VALUES ($1, $2, $3, $4, $5)
+                            (guild_id, ticket_number, channel_id, user_id, category_label,
+                             panel_id, last_activity_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, now())
                         """,
                         guild_id,
                         ticket_number,
                         channel_id,
                         user_id,
                         category_label,
+                        panel_id,
                     )
         except asyncpg.UniqueViolationError as errore:
             if errore.constraint_name == ONE_OPEN_TICKET_INDEX:
@@ -227,7 +255,9 @@ class TicketRepository:
         )
         return result.endswith(" 1")
 
-    async def close_ticket(self, channel_id: int, closed_by: int, force: bool = False) -> bool:
+    async def close_ticket(
+        self, channel_id: int, closed_by: int, force: bool = False, reason: str | None = None
+    ) -> bool:
         """
         SPEC.md §13.9: `force` distingue una force-close (staff, che
         bypassa i controlli di appartenenza fatti nel cog) da una
@@ -237,14 +267,49 @@ class TicketRepository:
         result = await self._pool.execute(
             """
             UPDATE tickets
-            SET status = 'closed', closed_at = now(), closed_by = $2, force_closed = $3
+            SET status = 'closed', closed_at = now(), closed_by = $2, force_closed = $3,
+                close_reason = $4
             WHERE channel_id = $1 AND status = 'open'
             """,
             channel_id,
             closed_by,
             force,
+            reason,
         )
         return result.endswith(" 1")
+
+    async def riapri_dopo_errore(self, channel_id: int) -> bool:
+        """Annulla una chiusura appena fatta quando non si è riusciti a pianificare l'eliminazione del canale."""
+        esito = await self._pool.execute(
+            """
+            UPDATE tickets SET status = 'open', closed_at = NULL, closed_by = NULL, close_reason = NULL
+            WHERE channel_id = $1 AND status = 'closed'
+            """,
+            channel_id,
+        )
+        return esito.endswith(" 1")
+
+    async def release_ticket(self, channel_id: int) -> bool:
+        """TKT-048: toglie la presa in carico (False se nessuno l'aveva)."""
+        esito = await self._pool.execute(
+            "UPDATE tickets SET claimed_by = NULL WHERE channel_id = $1 AND status = 'open' AND claimed_by IS NOT NULL",
+            channel_id,
+        )
+        return esito.endswith(" 1")
+
+    async def list_open_tickets(self, guild_id: int, limit: int = 25) -> list[Ticket]:
+        """TKT-058: i ticket aperti di un server, i più vecchi prima."""
+        righe = await self._pool.fetch(
+            "SELECT * FROM tickets WHERE guild_id = $1 AND status = 'open' ORDER BY id LIMIT $2",
+            guild_id,
+            limit,
+        )
+        return [_row_to_ticket(r) for r in righe]
+
+    async def count_open_tickets(self, guild_id: int) -> int:
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM tickets WHERE guild_id = $1 AND status = 'open'", guild_id
+        )
 
     async def close_ticket_of_deleted_channel(self, channel_id: int) -> bool:
         """
@@ -279,6 +344,80 @@ class TicketRepository:
             at,
         )
         return result.endswith(" 1")
+
+    async def touch_activity(self, channel_id: int, at: datetime) -> bool:
+        """NF-13: ultimo messaggio nel ticket aperto (serve alla chiusura automatica)."""
+        esito = await self._pool.execute(
+            """
+            UPDATE tickets SET last_activity_at = $2
+            WHERE channel_id = $1 AND status = 'open'
+              AND (last_activity_at IS NULL OR last_activity_at < $2)
+            """,
+            channel_id,
+            at,
+        )
+        return esito.endswith(" 1")
+
+    async def _segna_una_volta(self, channel_id: int, colonna: str, valore_sql: str = "now()", *args) -> bool:
+        """UPDATE ... SET colonna = valore WHERE colonna IS NULL: True solo alla prima volta (due eventi insieme: uno solo vince)."""
+        assert colonna in {"utente_scritto_at", "sollecito_at", "escalato_at", "standard_reply_id"}
+        esito = await self._pool.execute(
+            f"UPDATE tickets SET {colonna} = {valore_sql} "
+            f"WHERE channel_id = $1 AND status = 'open' AND {colonna} IS NULL",
+            channel_id,
+            *args,
+        )
+        return esito.endswith(" 1")
+
+    async def mark_user_wrote(self, channel_id: int) -> bool:
+        """#139: la prima volta che chi ha aperto il ticket scrive."""
+        return await self._segna_una_volta(channel_id, "utente_scritto_at")
+
+    async def mark_sollecito(self, channel_id: int) -> bool:
+        """#139: il bot ha chiesto «di cosa hai bisogno?» (una volta sola)."""
+        return await self._segna_una_volta(channel_id, "sollecito_at")
+
+    async def mark_escalation(self, channel_id: int) -> bool:
+        """#139: lo staff è stato chiamato (una volta sola)."""
+        return await self._segna_una_volta(channel_id, "escalato_at")
+
+    async def mark_standard_reply(self, channel_id: int, reply_id: int) -> bool:
+        """#139: al ticket è già stata data una risposta standard (una sola)."""
+        return await self._segna_una_volta(channel_id, "standard_reply_id", "$2", reply_id)
+
+    async def list_open_tickets_for_user(self, guild_id: int, user_id: int) -> list[Ticket]:
+        """Tutti i ticket aperti di un utente (più di uno se il limite del server è alto)."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM tickets WHERE guild_id = $1 AND user_id = $2 AND status = 'open'"
+            " ORDER BY id",
+            guild_id,
+            user_id,
+        )
+        return [_row_to_ticket(r) for r in rows]
+
+    async def set_rating(self, ticket_id: int, user_id: int, stars: int) -> bool:
+        """
+        NF-13: voto di chi ha aperto il ticket, dato una volta sola e solo a
+        ticket chiuso. False se il ticket non è suo, è ancora aperto o ha già un voto.
+        """
+        esito = await self._pool.execute(
+            """
+            UPDATE tickets SET rating = $3, rated_at = now()
+            WHERE id = $1 AND user_id = $2 AND status = 'closed' AND rating IS NULL
+            """,
+            ticket_id,
+            user_id,
+            stars,
+        )
+        return esito.endswith(" 1")
+
+    async def get_rating_summary(self, guild_id: int) -> tuple[float | None, int]:
+        """Media e numero dei voti del server."""
+        riga = await self._pool.fetchrow(
+            "SELECT avg(rating)::float AS media, count(rating) AS voti FROM tickets WHERE guild_id = $1",
+            guild_id,
+        )
+        return riga["media"], riga["voti"]
 
     async def set_priority(self, channel_id: int, priority: str) -> bool:
         if priority not in VALID_PRIORITIES:
@@ -404,6 +543,15 @@ def _row_to_ticket(row) -> Ticket:
         category_label=row["category_label"],
         first_response_at=row["first_response_at"],
         force_closed=row["force_closed"],
+        panel_id=row["panel_id"],
+        last_activity_at=row["last_activity_at"],
+        rating=row["rating"],
+        rated_at=row["rated_at"],
+        utente_scritto_at=row["utente_scritto_at"],
+        sollecito_at=row["sollecito_at"],
+        escalato_at=row["escalato_at"],
+        standard_reply_id=row["standard_reply_id"],
+        close_reason=row["close_reason"],
     )
 
 

@@ -89,6 +89,9 @@ _WEBHOOK_ACTIONS = {
 }
 
 EVENT_TITLES = {
+    "voice_stage_create": ("🎙️ Palco aperto", discord.Color.green()),
+    "voice_stage_update": ("🎙️ Palco modificato", discord.Color.blurple()),
+    "voice_stage_delete": ("🎙️ Palco chiuso", discord.Color.red()),
     "role_edit": ("🎨 Ruolo modificato", discord.Color.blurple()),
     "channel_create": ("➕ Canale creato", discord.Color.green()),
     "channel_delete": ("➖ Canale eliminato", discord.Color.red()),
@@ -572,6 +575,34 @@ class AdvancedLogsCog(commands.Cog):
             after.guild.id, "thread_update", channel_id=after.id, details=changes
         )
         await send_event_embed(after.guild, "thread_update", f"`{after.name}`\n" + ", ".join(changes.keys()))
+
+    # ================================================================
+    # LOG-013 Palchi (stage): apertura, modifica, chiusura. Tipo «voce».
+    # ================================================================
+    @commands.Cog.listener()
+    async def on_stage_instance_create(self, stage: discord.StageInstance) -> None:
+        await self._log_stage(stage, "voice_stage_create", f"`{stage.topic}` in <#{stage.channel_id}>")
+
+    @commands.Cog.listener()
+    async def on_stage_instance_delete(self, stage: discord.StageInstance) -> None:
+        await self._log_stage(stage, "voice_stage_delete", f"`{stage.topic}` in <#{stage.channel_id}>")
+
+    @commands.Cog.listener()
+    async def on_stage_instance_update(self, before: discord.StageInstance, after: discord.StageInstance) -> None:
+        if before.topic == after.topic and before.privacy_level == after.privacy_level:
+            return
+        await self._log_stage(
+            after, "voice_stage_update", f"<#{after.channel_id}>\n`{before.topic}` → `{after.topic}`"
+        )
+
+    async def _log_stage(self, stage: discord.StageInstance, event_type: str, descrizione: str) -> None:
+        guild = stage.guild
+        if guild is None or not await logging_avanzato_attivo(guild.id, self.bot):
+            return
+        await event_log_repo.log_event(
+            guild.id, event_type, channel_id=stage.channel_id, details={"topic": stage.topic}
+        )
+        await send_event_embed(guild, event_type, descrizione)
 
     # ================================================================
     # 8.15 Server (impostazioni guild)

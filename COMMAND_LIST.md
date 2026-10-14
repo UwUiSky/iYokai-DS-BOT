@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:05 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 277 comandi in 17 categorie.**
+**Totale: 344 comandi in 17 categorie.**
 
 ## Admin
 
@@ -30,6 +30,23 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin setup wizard`** — Configura passo-passo i moduli principali del bot.
+- **`/admin ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
+- **`/admin ticket chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
+- **`/admin ticket dm`** — Accendi o spegni il ModMail (ticket in DM).
+- **`/admin ticket dm-blocca`** — Blocca o sblocca un utente dal ModMail.
+- **`/admin ticket modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
+- **`/admin ticket modulo-mostra`** — Mostra le domande del modulo di un pannello.
+- **`/admin ticket modulo-rimuovi`** — Togli una domanda dal modulo.
+- **`/admin ticket pannello-crea`** — Crea un pannello di ticket.
+- **`/admin ticket pannello-lista`** — Elenca i pannelli di ticket del server.
+- **`/admin ticket pannello-pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
+- **`/admin ticket pannello-rimuovi`** — Elimina un pannello e il suo modulo.
+- **`/admin ticket risposta-elimina`** — Elimina una risposta standard.
+- **`/admin ticket risposta-modifica`** — Correggi una risposta standard.
+- **`/admin ticket risposte-lista`** — Elenca le risposte standard del server.
+- **`/admin ticket sollecito`** — Sollecito dopo N minuti senza staff (0 = spento).
+- **`/admin ticket standard`** — Risposte standard imparate dallo staff.
+- **`/admin ticket voto`** — Voto a stelle in DM alla chiusura.
 
 ## Aiuto (primo livello)
 
@@ -124,16 +141,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
 - **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
 - **`/gestione benvenuto boost`** — Configura il messaggio di boost.
+- **`/gestione benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
+- **`/gestione ruoli auto-aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
+- **`/gestione ruoli auto-elenco`** — Mostra i ruoli automatici del server.
+- **`/gestione ruoli auto-ricorda`** — Ridai i ruoli a chi esce e rientra entro un certo tempo.
+- **`/gestione ruoli auto-rimuovi`** — Togli un ruolo dato in automatico a chi entra.
 - **`/gestione ruoli livello-add`** — Assegna un ruolo a chi raggiunge un livello.
 - **`/gestione ruoli livello-list`** — Mostra i ruoli-premio configurati su questo server.
 - **`/gestione ruoli livello-remove`** — Rimuove un ruolo-premio configurato.
+- **`/gestione ruoli menu-accesso`** — Limita un menu a certi ruoli o escludine altri.
 - **`/gestione ruoli menu-aggiungi`** — Aggiungi un'opzione a un role menu.
 - **`/gestione ruoli menu-crea`** — Crea un nuovo role menu.
+- **`/gestione ruoli menu-elenco`** — Mostra i menu di ruoli del server, con gli ID.
 - **`/gestione ruoli menu-elimina`** — Elimina un role menu.
+- **`/gestione ruoli menu-modifica`** — Cambia titolo, descrizione o comportamento di un menu già pubblicato.
 - **`/gestione ruoli menu-togli`** — Rimuovi un'opzione da un role menu.
 - **`/gestione ticket categoria-add`** — Aggiungi (o aggiorna) una categoria di ticket.
 - **`/gestione ticket categoria-list`** — Elenca le categorie di ticket configurate.
 - **`/gestione ticket categoria-remove`** — Rimuovi una categoria di ticket.
+- **`/gestione ticket limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
 - **`/gestione ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
 - **`/gestione ticket ruolo-add`** — Aggiungi un ruolo di supporto.
 - **`/gestione ticket ruolo-list`** — Elenca i ruoli di supporto configurati.
@@ -153,6 +179,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/level collezione compra`** — Compra un badge o uno sfondo con le tue coin.
 - **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
 - **`/level collezione negozio`** — Mostra badge e sfondi in vendita e quelli che hai.
+- **`/level compleanno imposta`** — Registra il tuo compleanno (solo giorno e mese).
+- **`/level compleanno mostra`** — Mostra il compleanno che hai registrato.
+- **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level daily`** — Riscuoti la ricompensa giornaliera.
 - **`/level impostazioni annuncio`** — Dove e quando annunciare i level-up.
 - **`/level impostazioni escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
@@ -161,6 +190,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/level impostazioni negozio`** — Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).
 - **`/level impostazioni premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
+- **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
+- **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level pay`** — Trasferisci coin a un altro utente.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
@@ -177,7 +208,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/log crea-canali`** — Crea una categoria privata con un canale per ogni tipo di log.
 - **`/log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
 - **`/log esporta`** — Esporta lo storico eventi completo del server come file JSON.
-- **`/log ignora`** — Sceglie cosa il log dei messaggi non registra (canali, utenti, prefissi).
+- **`/log ignora`** — Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).
 - **`/log stato`** — Mostra dove vanno i log del server.
 
 ## Moderazione
@@ -223,6 +254,30 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/moduli alert twitch`** — Notifica quando uno streamer Twitch va live/offline.
 - **`/moduli alert webhook`** — Crea un webhook custom: servizi terzi possono pubblicare in un canale.
 - **`/moduli alert youtube-live`** — Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).
+- **`/moduli candidature crea`** — Crea un modulo o una candidatura.
+- **`/moduli candidature elenco`** — I moduli di questo server.
+- **`/moduli candidature elimina`** — Elimina un modulo e le sue risposte.
+- **`/moduli comandi crea`** — Crea un comando personalizzato.
+- **`/moduli comandi elenco`** — Mostra i comandi personalizzati del server.
+- **`/moduli comandi elimina`** — Elimina un comando personalizzato.
+- **`/moduli comandi modifica`** — Cambia un comando personalizzato.
+- **`/moduli comandi prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+- **`/moduli comandi risposta-crea`** — Crea una risposta automatica.
+- **`/moduli comandi risposta-elimina`** — Elimina una risposta automatica.
+- **`/moduli comandi risposte`** — Mostra le risposte automatiche del server.
+- **`/moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
+- **`/moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
+- **`/moduli contatori crea`** — Crea un canale che mostra un numero.
+- **`/moduli contatori elenco`** — Mostra i contatori del server.
+- **`/moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
+- **`/moduli embed crea`** — Crea un embed e guarda l'anteprima.
+- **`/moduli embed elenco`** — Mostra gli embed salvati.
+- **`/moduli embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
+- **`/moduli embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
+- **`/moduli embed pubblica`** — Manda un embed salvato in un canale.
+- **`/moduli starboard disattiva`** — Spegni la bacheca.
+- **`/moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
+- **`/moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
 
 ## Musica
 
@@ -298,17 +353,23 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 
 ## Ticket
 
-- **`/ticket add`** — Aggiungi un utente a questo ticket.
+- **`/ticket add`** — Aggiungi un utente o un ruolo a questo ticket.
 - **`/ticket claim`** — Prendi in carico questo ticket.
 - **`/ticket close`** — Chiudi questo ticket.
+- **`/ticket dm-chiudi`** — Chiudi questa conversazione ModMail.
 - **`/ticket forceclose`** — Chiudi immediatamente questo ticket, senza attesa.
+- **`/ticket passa`** — Passa la presa in carico a un collega.
 - **`/ticket priority`** — Imposta la priorità di questo ticket.
-- **`/ticket remove`** — Rimuovi un utente da questo ticket.
+- **`/ticket remove`** — Rimuovi un utente o un ruolo da questo ticket.
 - **`/ticket rename`** — Rinomina questo ticket.
+- **`/ticket rilascia`** — Lascia la presa in carico di questo ticket.
+- **`/ticket rispondi`** — Rispondi all'utente di questa conversazione ModMail.
+- **`/ticket transcript`** — Ricevi il transcript senza chiudere il ticket.
 
 ## Utility
 
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
+- **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility poll`** — Crea un sondaggio (fino a 10 opzioni).
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
@@ -322,12 +383,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/utility serverstats`** — Mostra le statistiche del server, con grafico di crescita.
 - **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.
+- **`/utility tag`** — Usa un comando personalizzato di questo server.
 
 ## Vocali
 
+- **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
+- **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
+- **`/voice deny`** — Vieta a un utente di entrare nel canale.
 - **`/voice kick`** — Espelli un utente dal tuo canale.
 - **`/voice limit`** — Imposta il limite di utenti del canale.
 - **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
+- **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
+- **`/voice permit`** — Permetti a un utente di entrare anche se il canale è bloccato.
 - **`/voice rename`** — Rinomina il tuo canale vocale.
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.

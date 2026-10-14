@@ -57,7 +57,7 @@ async def test_transfer_a_un_bot_viene_rifiutato(repo_finto, canale, interazione
 
     await _trasferisci(interazione, destinatario)
 
-    repo_finto.set_owner.assert_not_awaited()
+    repo_finto.cambia_proprietario.assert_not_awaited()
     risposta = interazione.response.send_message.call_args
     assert "bot" in risposta.args[0]
     assert risposta.kwargs["ephemeral"] is True
@@ -68,7 +68,7 @@ async def test_transfer_a_chi_non_e_in_vocale_viene_rifiutato(repo_finto, intera
 
     await _trasferisci(interazione, destinatario)
 
-    repo_finto.set_owner.assert_not_awaited()
+    repo_finto.cambia_proprietario.assert_not_awaited()
     risposta = interazione.response.send_message.call_args
     assert "non è nel canale" in risposta.args[0]
     assert risposta.kwargs["ephemeral"] is True
@@ -79,7 +79,7 @@ async def test_transfer_a_chi_e_in_un_altro_vocale_viene_rifiutato(repo_finto, i
 
     await _trasferisci(interazione, destinatario)
 
-    repo_finto.set_owner.assert_not_awaited()
+    repo_finto.cambia_proprietario.assert_not_awaited()
 
 
 async def test_transfer_a_una_persona_nel_canale_riesce(repo_finto, canale, interazione):
@@ -87,4 +87,4 @@ async def test_transfer_a_una_persona_nel_canale_riesce(repo_finto, canale, inte
 
     await _trasferisci(interazione, destinatario)
 
-    repo_finto.set_owner.assert_awaited_once_with(222, 20)
+    assert repo_finto.cambia_proprietario.await_args.args[2] == 20

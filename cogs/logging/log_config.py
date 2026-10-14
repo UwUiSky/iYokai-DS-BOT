@@ -25,6 +25,8 @@ from core.message_log_logic import (
     GENERI_IGNORA,
     IGNORATI_MAX_PER_SERVER,
     PREFISSO_MAX,
+    REGEX_MAX_LUNGHEZZA,
+    REGEX_MAX_PER_SERVER,
     scegli_bersaglio,
     testo_elenco_ignorati,
 )
@@ -160,13 +162,15 @@ class LogConfigCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "log", nome="ignora",
-        descrizione="Sceglie cosa il log dei messaggi non registra (canali, utenti, prefissi).",
+        descrizione="Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).",
     )
     @app_commands.describe(
         azione="Aggiungere, togliere o vedere l'elenco",
         canale="Canale o categoria da ignorare",
         utente="Utente da ignorare",
         prefisso=f"Messaggi che iniziano così (fino a {PREFISSO_MAX} caratteri)",
+        ruolo="Chi ha questo ruolo",
+        espressione=f"Espressione regolare (fino a {REGEX_MAX_LUNGHEZZA} caratteri, al massimo {REGEX_MAX_PER_SERVER})",
     )
     @app_commands.choices(
         azione=[
@@ -182,6 +186,8 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         canale: discord.abc.GuildChannel | None = None,
         utente: discord.User | None = None,
         prefisso: app_commands.Range[str, 1, PREFISSO_MAX] | None = None,
+        ruolo: discord.Role | None = None,
+        espressione: app_commands.Range[str, 1, REGEX_MAX_LUNGHEZZA] | None = None,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
@@ -192,7 +198,8 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(testo_elenco_ignorati(ig), ephemeral=True)
             return
         scelta = scegli_bersaglio(
-            canale.id if canale else None, utente.id if utente else None, prefisso
+            canale.id if canale else None, utente.id if utente else None, prefisso,
+            ruolo.id if ruolo else None, espressione,
         )
         if isinstance(scelta, str):
             await interaction.response.send_message(scelta, ephemeral=True)
@@ -201,9 +208,12 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         assert genere in GENERI_IGNORA
         if azione == "aggiungi":
             if not await log_ignora_repo.aggiungi(guild_id, genere, valore, IGNORATI_MAX_PER_SERVER):
-                await interaction.response.send_message(
-                    f"Hai già {IGNORATI_MAX_PER_SERVER} voci: toglierne qualcuna prima.", ephemeral=True
+                limite = (
+                    f"Hai già {REGEX_MAX_PER_SERVER} espressioni: toglierne una prima."
+                    if genere == "regex"
+                    else f"Hai già {IGNORATI_MAX_PER_SERVER} voci: toglierne qualcuna prima."
                 )
+                await interaction.response.send_message(limite, ephemeral=True)
                 return
             testo = "Ora il log dei messaggi lo ignora."
         else:

@@ -9,7 +9,11 @@ Funzioni coperte: SPEC §8.16 (NF-02)
 
 from __future__ import annotations
 
+import functools
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+
+import re2
 
 from core.testo_limiti import CAMPO_MAX, tronca
 
@@ -17,9 +21,15 @@ from core.testo_limiti import CAMPO_MAX, tronca
 FILE_MAX_BYTE = 8 * 1024 * 1024
 RIGA_BLOCCO_MAX = 500
 
-GENERI_IGNORA = ("canale", "utente", "prefisso")
+GENERI_IGNORA = ("canale", "utente", "prefisso", "ruolo", "regex")
 PREFISSO_MAX = 20
 IGNORATI_MAX_PER_SERVER = 200
+
+# LOG-024: un'espressione regolare scritta da un amministratore gira su OGNI messaggio.
+# Si usa RE2 (google-re2): tempo lineare, nessun backtracking.
+REGEX_MAX_LUNGHEZZA = 100
+REGEX_MAX_PER_SERVER = 5
+REGEX_TESTO_MAX = 500
 
 
 def senza_accento_grave(testo: str) -> str:
@@ -32,6 +42,42 @@ class Ignorati:
     canali: frozenset[int] = field(default_factory=frozenset)
     utenti: frozenset[int] = field(default_factory=frozenset)
     prefissi: tuple[str, ...] = ()
+    ruoli: frozenset[int] = field(default_factory=frozenset)
+    regex: tuple[str, ...] = ()
+
+
+def regex_non_valida(schema: str) -> str | None:
+    """
+    None se lo schema si può usare nel log, altrimenti il motivo (per chi lo ha scritto).
+    Il motore è RE2 (tempo lineare, nessun backtracking): riferimenti all'indietro e
+    lookaround non esistono e uno schema non può rallentare il bot, qualunque sia.
+    """
+    if not schema or len(schema) > REGEX_MAX_LUNGHEZZA:
+        return f"L'espressione deve avere da 1 a {REGEX_MAX_LUNGHEZZA} caratteri."
+    try:
+        _compila(schema)
+    except Exception as errore:  # noqa: BLE001 - re2.error non è una classe esportata in modo stabile
+        dettaglio = str(errore).strip("b'\" ")
+        return f"Espressione non ammessa (niente riferimenti all'indietro né lookaround): {dettaglio[:80]}"
+    return None
+
+
+@functools.lru_cache(maxsize=256)
+def _compila(schema: str):
+    return re2.compile("(?i)" + schema)
+
+
+def corrisponde_regex(schemi: tuple[str, ...], testo: str) -> bool:
+    """True se il testo (tagliato a 500 caratteri) corrisponde a uno degli schemi."""
+    taglio = testo[:REGEX_TESTO_MAX]
+    for schema in schemi:
+        try:
+            compilata = _compila(schema)
+        except Exception:  # noqa: BLE001 - riga vecchia o rovinata: si salta
+            continue
+        if compilata.search(taglio):
+            return True
+    return False
 
 
 def da_ignorare(
@@ -42,8 +88,9 @@ def da_ignorare(
     testo: str | None,
     category_id: int | None = None,
     thread_parent_id: int | None = None,
+    ruoli_autore: Iterable[int] = (),
 ) -> bool:
-    """True se il messaggio non va nel log (canale, categoria, thread di un canale, utente, prefisso)."""
+    """True se il messaggio non va nel log (canale, categoria, thread, utente, ruolo, prefisso, regex)."""
     if channel_id in ignorati.canali:
         return True
     if category_id is not None and category_id in ignorati.canali:
@@ -52,7 +99,11 @@ def da_ignorare(
         return True
     if author_id is not None and author_id in ignorati.utenti:
         return True
+    if ignorati.ruoli and not ignorati.ruoli.isdisjoint(ruoli_autore):
+        return True
     if testo and any(testo.startswith(p) for p in ignorati.prefissi):
+        return True
+    if testo and ignorati.regex and corrisponde_regex(ignorati.regex, testo):
         return True
     return False
 
@@ -117,19 +168,28 @@ def riepilogo_blocco(totale: int, in_memoria: int, channel_id: int) -> str:
 
 
 def scegli_bersaglio(
-    channel_id: int | None, user_id: int | None, prefisso: str | None
+    channel_id: int | None,
+    user_id: int | None,
+    prefisso: str | None,
+    role_id: int | None = None,
+    regex: str | None = None,
 ) -> tuple[str, str] | str:
     """
     Da cosa ha scelto chi usa /log ignora ricava (genere, valore). Se la scelta
     non va bene restituisce il messaggio da mostrare.
     """
-    scelti = [x for x in (channel_id, user_id, prefisso) if x is not None]
+    scelti = [x for x in (channel_id, user_id, prefisso, role_id, regex) if x is not None]
     if len(scelti) != 1:
-        return "Scegli una sola cosa: un canale, un utente oppure un prefisso."
+        return "Scegli una sola cosa: un canale, un utente, un ruolo, un prefisso oppure un'espressione."
     if channel_id is not None:
         return ("canale", str(channel_id))
     if user_id is not None:
         return ("utente", str(user_id))
+    if role_id is not None:
+        return ("ruolo", str(role_id))
+    if regex is not None:
+        motivo = regex_non_valida(regex)
+        return motivo if motivo else ("regex", regex)
     pulito = normalizza_prefisso(prefisso or "")
     if pulito is None:
         return f"Il prefisso deve avere da 1 a {PREFISSO_MAX} caratteri."
@@ -137,13 +197,17 @@ def scegli_bersaglio(
 
 
 def testo_elenco_ignorati(ig: Ignorati) -> str:
-    if not (ig.canali or ig.utenti or ig.prefissi):
+    if not (ig.canali or ig.utenti or ig.prefissi or ig.ruoli or ig.regex):
         return "Il log dei messaggi non ignora niente."
     righe = []
     if ig.canali:
         righe.append("**Canali**: " + ", ".join(f"<#{c}>" for c in sorted(ig.canali)))
     if ig.utenti:
         righe.append("**Utenti**: " + ", ".join(f"<@{u}>" for u in sorted(ig.utenti)))
+    if ig.ruoli:
+        righe.append("**Ruoli**: " + ", ".join(f"<@&{r}>" for r in sorted(ig.ruoli)))
+    if ig.regex:
+        righe.append("**Espressioni**: " + ", ".join(f"`{x.replace('`', chr(39))}`" for x in ig.regex))
     if ig.prefissi:
         righe.append("**Prefissi**: " + ", ".join(f"`{p.replace('`', chr(39))}`" for p in ig.prefissi))
     return tronca("\n".join(righe), 1900)

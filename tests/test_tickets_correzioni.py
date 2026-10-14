@@ -9,7 +9,8 @@ codice di produzione (`_open_ticket_channel`, lo stesso del bottone
 tests/support/discord_fakes.py.
 """
 
-from unittest.mock import MagicMock, create_autospec
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import discord
 import pytest
@@ -556,10 +557,10 @@ async def test_la_migrazione_chiude_i_doppioni_gia_presenti(clean_db):
         Path(modulo.__file__).parents[2]
         / "core/migrations/0010_tickets_un_solo_aperto_per_utente.sql"
     )
-    await clean_db.execute("DROP INDEX uq_tickets_un_aperto_per_utente")
+    await clean_db.execute("DROP INDEX IF EXISTS uq_tickets_un_aperto_per_utente")
     try:
         for canale in (1, 2, 3):
-            await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, canale)
+            await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, canale, max_aperti=3)
         await ticket_repo.create_ticket(ID_SERVER, 999, 4)
 
         await clean_db.execute(migrazione.read_text(encoding="utf-8"))
@@ -572,10 +573,8 @@ async def test_la_migrazione_chiude_i_doppioni_gia_presenti(clean_db):
         chiusi = await clean_db.fetch("SELECT closed_at FROM tickets WHERE status = 'closed'")
         assert len(chiusi) == 2 and all(r["closed_at"] is not None for r in chiusi)
     finally:
-        # Il database dei test è condiviso: l'indice torna come lo lascia la 0050 (senza user_id = 0).
-        ultima = (Path(modulo.__file__).parents[2] / "core/migrations/0050_privacy_secondo_giro.sql").read_text(encoding="utf-8")
+        # Dalla 0106 il limite è nel codice (configurabile): l'indice unico non deve restare.
         await clean_db.execute("DROP INDEX IF EXISTS uq_tickets_un_aperto_per_utente")
-        await clean_db.execute(ultima[ultima.index("CREATE UNIQUE INDEX"):])
 
 
 # ====================================================================
@@ -667,3 +666,55 @@ async def test_il_nome_nella_risposta_non_puo_menzionare_nessuno(_rinomine_azzer
 
     menzioni = interazione.followup.send.call_args.kwargs["allowed_mentions"]
     assert menzioni.to_dict() == discord.AllowedMentions.none().to_dict()
+
+
+# ====================================================================
+# NF-13 — limite di ticket aperti per utente, configurabile (default 1)
+# ====================================================================
+async def test_il_limite_per_utente_e_configurabile_nel_repository():
+    from core.repositories.ticket_repo import TicketAlreadyOpenError
+
+    await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 11, max_aperti=2)
+    await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 12, max_aperti=2)
+    with pytest.raises(TicketAlreadyOpenError):
+        await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 13, max_aperti=2)
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 2
+
+
+async def test_il_limite_regge_con_aperture_in_parallelo():
+    import asyncio
+
+    from core.repositories.ticket_repo import TicketAlreadyOpenError
+
+    esiti = await asyncio.gather(
+        *(ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 20 + n, max_aperti=2) for n in range(6)),
+        return_exceptions=True,
+    )
+    assert sum(isinstance(e, TicketAlreadyOpenError) for e in esiti) == 4
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 2
+
+
+async def test_con_limite_due_il_cog_lascia_aprire_il_secondo_ticket():
+    await db.set_guild_setting(ID_SERVER, "ticket_max_per_utente", 2)
+    server = Server()
+    await server.apri_ticket()
+    await server.apri_ticket()
+    terza = server.interazione()
+    await _open_ticket_channel(terza, server.guild, server.categoria, None)
+    assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 2
+    assert "2 ticket aperti" in _testo(terza.followup.send.call_args)
+
+
+async def test_comando_limite_salva_il_valore_e_rifiuta_fuori_scala():
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    cog = TicketsCog(bot)
+    await bot.add_cog(cog)
+    i = SimpleNamespace(
+        guild=SimpleNamespace(id=ID_SERVER),
+        response=SimpleNamespace(send_message=AsyncMock()),
+    )
+    await cog.ticket_limite.callback(cog, i, 3)
+    assert await db.get_guild_setting(ID_SERVER, "ticket_max_per_utente") == 3
+    comando = bot.tree.get_command("gestione").get_command("ticket").get_command("limite")
+    opzione = comando.to_dict(bot.tree)["options"][0]
+    assert (opzione["min_value"], opzione["max_value"]) == (1, 5)

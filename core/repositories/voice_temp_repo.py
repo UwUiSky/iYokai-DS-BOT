@@ -166,11 +166,13 @@ class VoiceTempRepository:
             channel_id,
         )
 
-    async def set_owner(self, channel_id: int, new_owner_id: int) -> bool:
+    async def cambia_proprietario(self, channel_id: int, vecchio_id: int | None, nuovo_id: int) -> bool:
+        """Passa la proprietà solo se è ancora di `vecchio_id`: due richieste insieme, vince una sola."""
         result = await self._pool.execute(
-            "UPDATE voice_temp_channels SET owner_id = $2 WHERE channel_id = $1",
+            "UPDATE voice_temp_channels SET owner_id = $3 WHERE channel_id = $1 AND owner_id IS NOT DISTINCT FROM $2",
             channel_id,
-            new_owner_id,
+            vecchio_id,
+            nuovo_id,
         )
         return result.endswith(" 1")
 
