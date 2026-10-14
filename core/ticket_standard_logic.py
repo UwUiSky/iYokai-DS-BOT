@@ -22,7 +22,7 @@ MAX_PAROLE_TESTO = 300
 MAX_PAROLE = 20
 MAX_ALLEGATI = 5
 MAX_BYTE_ALLEGATO = 8 * 1024 * 1024
-MAX_BYTE_TOTALI = 20 * 1024 * 1024
+MAX_BYTE_TOTALI = 10 * 1024 * 1024  # LIM-55: tutto il messaggio sotto i 10 MiB
 MAX_RISPOSTE_PER_SERVER = 200
 
 MIN_MINUTI_SOLLECITO = 1
@@ -187,7 +187,7 @@ def taglia(testo: str, massimo: int) -> str:
 
 
 def allegati_da_scaricare(dimensioni: list[int]) -> list[int]:
-    """Indici degli allegati da copiare: al massimo 5, ognuno sotto 8 MiB, in tutto sotto 20 MiB."""
+    """Indici degli allegati da copiare: al massimo 5, ognuno sotto 8 MiB, in tutto sotto 10 MiB."""
     scelti: list[int] = []
     totale = 0
     for i, peso in enumerate(dimensioni):
@@ -222,7 +222,10 @@ SEGNAPOSTO_UTENTE = "{utente}"
 _MENZIONE_UTENTE = re.compile(r"<@!?\d+>")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _LINK = re.compile(r"https?://\S+")
-_NUMERO_LUNGO = re.compile(r"\d{6,}")
+# Telefoni, carte, codici: almeno 6 cifre, anche separate da UNO spazio, punto, trattino o parentesi.
+_NUMERO_LUNGO = re.compile(r"\+?\d(?:[\s.\-()]?\d){5,}")
+# IBAN: due lettere, due cifre, poi gruppi da 3-4 caratteri (con o senza spazi).
+_IBAN = re.compile(r"\b[A-Za-z]{2}\d{2}(?:\s?[A-Za-z0-9]{3,4}){3,8}\b")
 
 
 def senza_dati_personali(testo: str, nomi: tuple[str, ...] = ()) -> str:
@@ -230,6 +233,7 @@ def senza_dati_personali(testo: str, nomi: tuple[str, ...] = ()) -> str:
     testo = _MENZIONE_UTENTE.sub(" ", testo)
     testo = _EMAIL.sub(" ", testo)
     testo = _LINK.sub(" ", testo)
+    testo = _IBAN.sub(" ", testo)
     testo = _NUMERO_LUNGO.sub(" ", testo)
     for nome in nomi:
         if len(nome) >= 3:
@@ -241,6 +245,7 @@ def corpo_con_segnaposto(testo: str, nomi: tuple[str, ...] = ()) -> str:
     """Il corpo scritto dallo staff: la menzione e il nome dell'utente diventano {utente}, le e-mail spariscono."""
     testo = _MENZIONE_UTENTE.sub(SEGNAPOSTO_UTENTE, testo)
     testo = _EMAIL.sub("[email]", testo)
+    testo = _IBAN.sub("[codice]", testo)
     testo = _NUMERO_LUNGO.sub("[numero]", testo)
     for nome in nomi:
         if len(nome) >= 3:

@@ -249,8 +249,11 @@ async def test_pannello_di_un_altro_server_o_cancellato_non_si_apre(scheduler_di
     s = Server()
     i = s.interazione()
     i.guild = fake_guild(ID_SERVER + 5)
+    # Il modulo è acceso anche nell'altro server: a fermare l'apertura è il pannello, non il modulo spento.
+    await db.set_module_active_for_guild(ID_SERVER + 5, modulo.MODULE_TICKETS, True)
     await modulo.apri_da_pannello(i, p.id)
     assert s.canali == []
+    assert "non è più disponibile" in i.response.send_message.await_args.args[0]
     await modulo.apri_da_pannello(s.interazione(), p.id + 999)
     assert s.canali == []
 

@@ -91,6 +91,21 @@ class ModmailRepository:
         )
         return esito.endswith(" 1")
 
+    async def riapri_dopo_errore(self, channel_id: int) -> bool:
+        """Annulla una chiusura appena fatta (eliminazione non pianificabile). False se non si può più riaprire."""
+        try:
+            esito = await self._pool.execute(
+                """
+                UPDATE modmail_threads
+                SET status = 'open', closed_at = NULL, closed_by = NULL, close_reason = NULL
+                WHERE channel_id = $1 AND status = 'closed'
+                """,
+                channel_id,
+            )
+        except asyncpg.UniqueViolationError:
+            return False  # nel frattempo l'utente ha già un'altra conversazione aperta
+        return esito.endswith(" 1")
+
     async def categoria(self, guild_id: int) -> int | None:
         """La categoria dei canali dello staff; None = ModMail spento."""
         return await self._pool.fetchval(

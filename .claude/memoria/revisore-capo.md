@@ -27,3 +27,4 @@
 
 ## Aperto
 - giro-mod sopravvissute: vedi quaderno di quel ramo. `fix/f1-135` attende `remove_member`. r4-tkt: domande all'owner su D18 (limite ticket per utente) e su conferma del primo DM ModMail.
+- 14/10 giro di correzioni su feat/r4-tkt (richiesto dal coordinatore): ricordare che le setting nuove vanno in `cogs/utility/config_history.py` (SETTINGS_SCHEMA) e in `tests/test_config_import_validation.py`; metodi di repo senza chiamanti rompono `test_repository_callers.py`; `AllowedMentions(roles=...)` ha `everyone=True` di default: passare `everyone=False`; `monkeypatch.undo()` toglie anche il pool del DB (usare `patch.object`).

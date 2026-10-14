@@ -53,24 +53,38 @@ def test_l_espressione_guarda_solo_i_primi_500_caratteri():
     assert not logica.da_ignorare(ig, channel_id=1, author_id=2, testo="a" * 600 + "segreto")
 
 
-@pytest.mark.parametrize(
-    "schema",
-    ["(a+)+$", "(a|aa)+", "a*a*a*b", r"(\w)\1", "x" * 101, "([", "", "(?=x)", "(x){3}", r"\\*\\*\\*\\*x",
-     "a?" * 24 + "a" * 24 + "c", "a{0,99}" * 8 + "c", "(a|b)?c", "(a|aa)*", "a.*b.*c", ".*.*z$", "x{2,5}y"],
-)
-def test_espressioni_pericolose_o_rotte_rifiutate(schema):
+@pytest.mark.parametrize("schema", [r"(\w)\1", "x" * 101, "([", "", "(?=x)", "(?!x)", "(?<=x)y"])
+def test_espressioni_rotte_o_con_riferimenti_rifiutate(schema):
     assert logica.regex_non_valida(schema) is not None
 
 
-@pytest.mark.parametrize("schema", ["spam|truffa", r"^!ban\b", r"https?://\S+", "a.*b", "ab?c", "[a*+]+x", "a{3}b"])
-def test_espressioni_semplici_accettate(schema):
+@pytest.mark.parametrize(
+    "schema",
+    ["spam|truffa", r"^!ban\b", r"https?://\S+", "a.*b", "ab?c", "[a*+]+x", "a{3}b", "(a+)+$", "(a|aa)+",
+     "a*a?a?a?a?a{50}b", ".*.*z$", "(.*)*x"],
+)
+def test_espressioni_valide_accettate_anche_quelle_che_con_re_esploderebbero(schema):
     assert logica.regex_non_valida(schema) is None
+
+
+@pytest.mark.parametrize(
+    "schema",
+    ["(a+)+$", "(a|aa)+$", "a*a?a?a?a?a{50}b", r"\w*a?a?a?a?a{40}b", ".*.*.*z$", "(.*)*x", "(a|a)*b",
+     "(x+x+)+y", r"(\w+\s?)*$"],
+)
+@pytest.mark.parametrize("testo", ["a" * 500, "ab" * 250, "a b " * 125, "a" * 499 + "!"])
+def test_schemi_avversari_costano_pochi_millisecondi_su_500_caratteri(schema, testo):
+    import time
+
+    inizio = time.perf_counter()
+    logica.corrisponde_regex((schema,), testo)
+    assert time.perf_counter() - inizio < 0.05
 
 
 def test_scelta_di_ruolo_ed_espressione():
     assert logica.scegli_bersaglio(None, None, None, role_id=5) == ("ruolo", "5")
     assert logica.scegli_bersaglio(None, None, None, regex="spam|truffa") == ("regex", "spam|truffa")
-    assert "troppo costosa" in logica.scegli_bersaglio(None, None, None, regex="a*a*a*b")
+    assert "non ammessa" in logica.scegli_bersaglio(None, None, None, regex="(?=x)")
     assert "una sola" in logica.scegli_bersaglio(None, None, None, role_id=5, regex="x")
 
 
@@ -129,8 +143,8 @@ async def test_comando_ignora_con_ruolo_ed_espressione(repo):
     assert ig.ruoli == frozenset({7}) and ig.regex == ("spam|truffa",)
 
     ix2 = fake_interaction(guild=fake_guild(guild_id=SERVER))
-    await cog.ignora.callback(cog, ix2, "aggiungi", None, None, None, None, "(a+)+$")
-    assert "rallenterebbe" in ix2.response.send_message.call_args.args[0]
+    await cog.ignora.callback(cog, ix2, "aggiungi", None, None, None, None, "(?=x)")
+    assert "non ammessa" in ix2.response.send_message.call_args.args[0]
     assert (await repo.carica(SERVER)).regex == ("spam|truffa",)
 
     await cog.ignora.callback(cog, ix, "rimuovi", None, None, None, ruolo, None)
@@ -271,41 +285,16 @@ async def test_palco_non_cambiato_o_log_avanzato_spento_non_scrive(avanzati, mon
     invio.assert_not_awaited()
 
 
-def test_gli_eventi_dei_palchi_vanno_nel_tipo_voce():
-    assert advanced.EVENT_TITLES["voice_stage_create"]
-    assert "voice_stage_delete".startswith("voice_")  # send_event_embed li manda nel tipo «voce»
+async def test_gli_eventi_dei_palchi_vanno_nel_tipo_voce(monkeypatch):
+    from core.channel_router import TIPO_VOCE
 
+    tipi = []
 
-def test_cinque_espressioni_ammesse_costano_poco_su_un_messaggio_lungo():
-    """Il caso del cacciatore-bug: 5 schemi `.*.*z$` costavano 0,6 s a messaggio. Ora non passano; quelli ammessi sì."""
-    import time
+    async def canale(guild, tipo):
+        tipi.append(tipo)
+        return None
 
-    ammessi = [s for s in ("[a-z ]*z$", ".*z$", "a.*z", "(a|b)+" "x", "x*z") if logica.regex_non_valida(s) is None]
-    assert len(ammessi) >= 4
-    assert logica.regex_non_valida(".*.*z$") is not None
-    testo = "a" * 500
-    inizio = time.perf_counter()
-    for _ in range(20):
-        logica.corrisponde_regex(tuple(ammessi) * 1, testo)
-    assert (time.perf_counter() - inizio) / 20 < 0.02
-
-
-def test_uno_schema_lento_viene_disattivato(monkeypatch):
-    import re as _re
-
-    class Lenta:
-        def search(self, _t):
-            import time as _t
-
-            _t.sleep(0.08)
-            return None
-
-    logica._REGEX_DISATTIVATE.clear()
-    monkeypatch.setattr(logica, "_compilata", lambda s: Lenta())
-    logica.corrisponde_regex(("lenta",), "x")
-    assert "lenta" in logica._REGEX_DISATTIVATE
-    chiamate = []
-    monkeypatch.setattr(logica, "_compilata", lambda s: chiamate.append(s))
-    logica.corrisponde_regex(("lenta",), "x")
-    assert chiamate == []
-    logica._REGEX_DISATTIVATE.clear()
+    monkeypatch.setattr(advanced, "advanced_log_channel", canale)
+    for nome in ("voice_stage_create", "voice_stage_update", "voice_stage_delete"):
+        await advanced.send_event_embed(fake_guild(guild_id=SERVER), nome, "x")
+    assert tipi == [TIPO_VOCE] * 3

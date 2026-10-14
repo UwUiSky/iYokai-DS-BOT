@@ -29,7 +29,7 @@ Gestione del canale (/voice …): la rinomina rispetta il limite di
 Discord di 2 ogni 10 minuti (core/channel_rename.py); /voice transfer
 sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
-Funzioni coperte: SPEC §12
+Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi: comandi /voice del catalogo #127)
 
 SPEC.md §12.8: il cap per categoria (/gestione voice cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
@@ -807,6 +807,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
+        await interaction.response.defer()  # un set_permissions per ogni presente: più di 3 secondi
         try:
             if nascosto:
                 # Chi deve continuare a vedere il canale riceve un permesso esplicito PRIMA
@@ -823,9 +824,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                 overwrite=None if overwrite.is_empty() else overwrite,
             )
         except discord.HTTPException:
-            await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            await interaction.followup.send(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        await interaction.response.send_message("Canale nascosto." if nascosto else "Canale di nuovo visibile.")
+        await interaction.followup.send("Canale nascosto." if nascosto else "Canale di nuovo visibile.")
 
     @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")

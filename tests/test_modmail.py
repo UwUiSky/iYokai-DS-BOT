@@ -128,6 +128,17 @@ class Scena:
         self.log = fake_text_channel(777, "log")
         monkeypatch.setattr(router, "destinazione", AsyncMock(return_value=self.log))
         self.cog = modulo.ModMailCog(self.bot)
+        self.auto_conferma = True
+        originale = self.cog.on_message
+
+        async def on_message(m):
+            await originale(m)
+            # Con un solo server il primo DM chiede conferma: qui si preme «Invia allo staff».
+            vista = (m.channel.send.await_args.kwargs.get("view") if m.channel.send.await_args else None)
+            if self.auto_conferma and isinstance(vista, modulo.ConfermaInvioView):
+                await vista.invia.callback(fake_interaction(user=self.utente))
+
+        self.cog.on_message = on_message
 
     @staticmethod
     def _server(gid, nome):
@@ -294,7 +305,7 @@ async def test_risposta_anonima_non_mostra_il_nome_dello_staff(scena):
     embed = scena.utente.send.await_args.kwargs["embed"]
     assert embed.author.name == "Staff di Server uno"
     assert "Giulia" not in str(embed.to_dict())
-    i.response.send_message.assert_awaited_once()  # l'eco per lo staff
+    i.followup.send.assert_awaited_once()  # l'eco per lo staff
 
 
 async def test_risposta_con_nome(scena):
@@ -320,7 +331,7 @@ async def test_utente_con_dm_chiusi_errore_chiaro(scena):
     scena.utente.send.side_effect = discord.Forbidden(SimpleNamespace(status=403, reason="x"), "x")
     i = scena.staff(canale)
     await scena.cog.rispondi.callback(scena.cog, i, "ciao", False)
-    assert "messaggi privati chiusi" in i.response.send_message.await_args.args[0]
+    assert "messaggi privati chiusi" in i.followup.send.await_args.args[0]
 
 
 # ---------------------------------------------------------------- chiusura
@@ -379,7 +390,7 @@ async def test_dm_dopo_canale_sparito_senza_evento_chiude_e_non_perde_l_utente(s
 
 
 async def test_utente_che_lascia_il_server_chiude_la_conversazione(scena):
-    canale = await _con_conversazione(scena)
+    await _con_conversazione(scena)
     scena.utente.guild = scena.guild
     await scena.cog.on_member_remove(scena.utente)
     assert await modmail_repo.aperta_dell_utente(ID_UTENTE) is None

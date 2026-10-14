@@ -88,14 +88,62 @@ class SceltaServerView(BaseView):
         select.callback = self._scelto
         self.add_item(select)
 
+    async def on_timeout(self) -> None:
+        # Senza questo l'utente resterebbe "in attesa del menu" fino al riavvio del bot.
+        self._cog._menu_aperti.discard(self._utente.id)
+
     async def _scelto(self, interaction: discord.Interaction) -> None:
         guild = self._server.get(interaction.data["values"][0])
         if guild is None or interaction.user.id != self._utente.id:
             await interaction.response.send_message("Scelta non valida.", ephemeral=True)
             return
-        await interaction.response.edit_message(content=f"Ok: **{guild.name}**. Un attimo...", view=None)
         self.stop()
+        try:
+            await interaction.response.edit_message(content=f"Ok: **{guild.name}**. Un attimo...", view=None)
+        except discord.HTTPException:
+            self._cog._menu_aperti.discard(self._utente.id)
+            raise
         await self._cog.apri_da_menu(guild, self._utente, self._messaggio)
+
+
+class ConfermaInvioView(BaseView):
+    """Con un solo server: il primo messaggio parte solo se l'utente lo conferma. Vive 2 minuti."""
+
+    def __init__(self, cog: "ModMailCog", utente: discord.abc.User, messaggio: discord.Message, guild: discord.Guild) -> None:
+        super().__init__(timeout=120)
+        self._cog = cog
+        self._utente = utente
+        self._messaggio = messaggio
+        self._guild = guild
+
+    async def on_timeout(self) -> None:
+        self._cog._menu_aperti.discard(self._utente.id)
+
+    async def _solo_lui(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self._utente.id:
+            await interaction.response.send_message("Scelta non valida.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Invia allo staff", style=discord.ButtonStyle.success)
+    async def invia(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+        if not await self._solo_lui(interaction):
+            return
+        self.stop()
+        try:
+            await interaction.response.edit_message(content=f"Ok: invio a **{self._guild.name}**. Un attimo...", view=None)
+        except discord.HTTPException:
+            self._cog._menu_aperti.discard(self._utente.id)
+            raise
+        await self._cog.apri_da_menu(self._guild, self._utente, self._messaggio)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, _button: discord.ui.Button) -> None:
+        if not await self._solo_lui(interaction):
+            return
+        self.stop()
+        self._cog._menu_aperti.discard(self._utente.id)
+        await interaction.response.edit_message(content="Annullato: il messaggio non è stato inviato.", view=None)
 
 
 class ModMailCog(CogConGruppi, commands.Cog):
@@ -111,7 +159,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
 
     def _serratura(self, user_id: int) -> asyncio.Lock:
         if len(self._serrature) > 2000:  # memoria limitata: si scartano solo le serrature libere
-            self._serrature = {u: l for u, l in self._serrature.items() if l.locked()}
+            self._serrature = {u: s for u, s in self._serrature.items() if s.locked()}
         return self._serrature.setdefault(user_id, asyncio.Lock())
 
     # ================================================================
@@ -162,14 +210,24 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 await self._dm_in_arrivo(message, secondo_giro=True)
             return
         if utente.id in self._menu_aperti:
-            await self._rispondi_dm(message, "Scegli prima il server dal menu qui sopra: poi scrivimi di nuovo.")
+            await self._rispondi_dm(message, "Rispondi prima alla domanda qui sopra (scegli o conferma): poi scrivimi di nuovo.")
             return
         candidati = await self._server_candidati(utente)
         decisione = logica.decidi_server([g.id for g in candidati])
         if decisione.esito is logica.Esito.NESSUN_SERVER:
             return
         if decisione.esito is logica.Esito.UN_SERVER:
-            await self._apri_se_ancora_possibile(candidati[0], utente, message)
+            # Il primo messaggio va a persone vere solo se l'utente lo vuole: chi scrive al bot può non saperlo.
+            guild = candidati[0]
+            try:
+                await message.channel.send(
+                    f"Vuoi inviare questo messaggio allo staff di **{guild.name}**? "
+                    "Lo leggeranno persone e ti risponderanno qui.",
+                    view=ConfermaInvioView(self, utente, message, guild),
+                )
+                self._menu_aperti.add(utente.id)
+            except discord.HTTPException:
+                logger.info("Conferma non consegnata all'utente %s", utente.id)
             return
         scelta = [g for g in candidati if g.id in decisione.guild_ids]
         try:
@@ -377,10 +435,16 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if not await modmail_repo.chiudi(thread.channel_id, chiuso_da, motivo):
             return False
         # Prima l'eliminazione nello scheduler (come i ticket): un riavvio non lascia il canale.
-        await scheduler.schedule(
-            guild.id, thread.user_id, MODMAIL_DELETE_ACTION_TYPE, in_seconds(RITARDO_ELIMINAZIONE_SECONDI),
-            {"channel_id": thread.channel_id, "reason": "ModMail chiuso"},
-        )
+        try:
+            await scheduler.schedule(
+                guild.id, thread.user_id, MODMAIL_DELETE_ACTION_TYPE, in_seconds(RITARDO_ELIMINAZIONE_SECONDI),
+                {"channel_id": thread.channel_id, "reason": "ModMail chiuso"},
+            )
+        except Exception:
+            # Come per i ticket: chiusura e pianificazione sono un passo solo. Chi riprova trova tutto com'era.
+            if not await modmail_repo.riapri_dopo_errore(thread.channel_id):
+                logger.error("ModMail %s chiuso ma eliminazione non pianificata: canale da togliere a mano.", thread.channel_id)
+            raise
         if avvisa_utente:
             try:
                 utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
@@ -518,6 +582,8 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if thread is None:
             return
         guild = interaction.guild
+        # fetch_user + invio del DM + risposta: più di una chiamata a Discord, quindi defer per primo.
+        await interaction.response.defer()
         firma = logica.etichetta_firma(anonimo, interaction.user.display_name, guild.name)
         embed = discord.Embed(description=testo, color=COLORE_STAFF, timestamp=datetime.now(timezone.utc))
         embed.set_author(name=firma)
@@ -530,17 +596,17 @@ class ModMailCog(CogConGruppi, commands.Cog):
             utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
             await utente.send(embed=embed)
         except discord.NotFound:
-            await interaction.response.send_message("Questo utente non esiste più.", ephemeral=True)
+            await interaction.followup.send("Questo utente non esiste più.", ephemeral=True)
             return
         except discord.HTTPException:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non riesco a scrivere all'utente: ha i messaggi privati chiusi o ha bloccato il bot.",
                 ephemeral=True,
             )
             return
         eco = discord.Embed(description=testo, color=COLORE_STAFF)
         eco.set_author(name=f"{interaction.user.display_name} → utente" + (" (anonimo)" if anonimo else ""))
-        await interaction.response.send_message(embed=eco, allowed_mentions=SENZA_MENZIONI)
+        await interaction.followup.send(embed=eco, allowed_mentions=SENZA_MENZIONI)
 
     @comando_di_gruppo("ticket", nome="dm-chiudi", descrizione="Chiudi questa conversazione ModMail.")
     @app_commands.describe(motivo="Il motivo (l'utente lo legge)")

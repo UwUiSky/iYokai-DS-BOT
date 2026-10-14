@@ -60,6 +60,7 @@ SETTINGS_SCHEMA = {
     "backup_auto_invite_on_join": "bool",
     "logging_soundboard_watermark": "data_iso",
     "music_max_volume": "int_0_200",
+    "ticket_max_per_utente": "int_1_5",
     "music_max_track_minutes": "int_0_1440",
     "music_stay_when_queue_ends": "bool",
     "music_allowed_voice_channel_id": "id",
@@ -112,6 +113,7 @@ CONTROLLI_PER_TIPO = {
     ),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
+    "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
     "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
 }
 

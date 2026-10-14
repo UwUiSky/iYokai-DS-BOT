@@ -5,6 +5,7 @@ tests/test_ticket_catalogo.py
 add/remove di un ruolo, chiusura di massa. Database vero; Discord finto.
 """
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -16,6 +17,7 @@ import cogs.tickets.tickets as modulo
 from cogs.tickets.tickets import TICKET_DELETE_ACTION_TYPE
 from core.repositories.ticket_repo import ticket_repo
 from core.scheduler import Scheduler
+from tests.support.concorrenza import apri_connessioni
 from tests.support.discord_fakes import (
     fake_guild,
     fake_interaction,
@@ -223,9 +225,6 @@ async def test_chiudi_tutti_ne_chiude_al_massimo_25_e_dice_quanti_restano(cog, m
 # ====================================================================
 # Cacciatore-bug: chiusura idempotente, atomicita', uscita, embed, ruoli, chiudi-tutti
 # ====================================================================
-import asyncio
-
-from tests.support.concorrenza import apri_connessioni
 
 
 async def test_due_close_insieme_fanno_un_solo_transcript_voto_ed_eliminazione(cog, clean_db):
@@ -320,3 +319,55 @@ async def test_chiudi_tutti_non_pinga_nessuno_e_manda_avvisi_di_avanzamento(cog)
     messaggi = [str(c) for c in inter.followup.send.call_args_list]
     assert any("Chiusi finora 5" in m for m in messaggi)
     assert "Chiusi 6" in messaggi[-1]
+
+
+# ====================================================================
+# Giro del capo: chiudi-tutti prosegue, uscita con più ticket, mappa dell'attività
+# ====================================================================
+async def test_chiudi_tutti_prosegue_oltre_il_ticket_che_solleva_e_lo_dice(cog):
+    guild = fake_guild(GUILD_ID)
+    guild.me = fake_member(999, bot=True)
+    canali = {}
+    for n in range(4):
+        await _ticket(canale=1000 + n, numero=n + 1, utente=500 + n)
+        canali[1000 + n] = fake_text_channel(1000 + n)
+    guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    vera = cog._chiudi_da_sistema
+
+    async def _a_volte_solleva(guild_, channel, ticket, **kw):
+        if channel.id == 1001:
+            raise RuntimeError("scheduler giù")
+        return await vera(guild_, channel, ticket, **kw)
+
+    cog._chiudi_da_sistema = _a_volte_solleva
+    inter = fake_interaction(guild=guild, user=_manager(), channel=fake_text_channel(1))
+    await cog.chiudi_tutti.callback(cog, inter, None)
+
+    chiusi = await ticket_repo._pool.fetchval("SELECT count(*) FROM tickets WHERE status = 'closed'")
+    assert chiusi == 3
+    ultimo = str(inter.followup.send.call_args)
+    assert "Chiusi 3" in ultimo and "1 non" in ultimo
+
+
+async def test_chi_esce_dal_server_con_piu_ticket_aperti_li_vede_chiusi_tutti(cog):
+    guild = fake_guild(GUILD_ID)
+    guild.me = fake_member(999, bot=True)
+    canali = {}
+    for n in range(2):
+        await ticket_repo.create_ticket(GUILD_ID, 500, 1000 + n, ticket_number=n + 1, max_aperti=2)
+        canali[1000 + n] = fake_text_channel(1000 + n)
+    guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    membro = fake_member(500)
+    membro.guild = guild
+    await cog.on_member_remove(membro)
+    assert await ticket_repo.count_open_tickets_for_user(GUILD_ID, 500) == 0
+
+
+async def test_la_mappa_dell_attivita_non_cresce_all_infinito(cog, monkeypatch):
+    for canale in range(modulo._ATTIVITA_MAX_VOCI + 50):
+        cog._attivita_scritta[canale] = -10_000.0  # scritta molto tempo fa
+    monkeypatch.setattr(ticket_repo, "touch_activity", AsyncMock())
+    await cog._segna_attivita(9_999_999)
+    assert len(cog._attivita_scritta) <= 2
+    await cog.on_guild_channel_delete(fake_text_channel(9_999_999))
+    assert 9_999_999 not in cog._attivita_scritta

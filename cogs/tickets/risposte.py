@@ -201,7 +201,11 @@ class BottoneRispostaStandard(
                     "È già approvata: per toglierla usa `/admin ticket risposta-elimina`.", ephemeral=True
                 )
                 return
-            await ticket_standard_repo.elimina(r.guild_id, r.id)
+            if not await ticket_standard_repo.scarta(r.guild_id, r.id):
+                await interaction.response.send_message(
+                    "Era già stata decisa: se è approvata usa `/admin ticket risposta-elimina`.", ephemeral=True
+                )
+                return
             await interaction.response.edit_message(embed=embed_proposta(r, "scartata"), view=None)
             return
         if not await ticket_standard_repo.approva(r.id, interaction.user.id):
@@ -264,8 +268,14 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         if coppia is None:
             return
         risposta_staff = storia[coppia.indice_risposta]
+        # I nomi si leggono dagli autori dei messaggi di chi ha aperto il ticket: se è uscito dal server
+        # (il ticket si chiude proprio per questo) il membro non è più in cache.
         membro = guild.get_member(ticket.user_id)
-        nomi = logica.nomi_dell_utente(getattr(membro, "name", None), getattr(membro, "display_name", None))
+        sue = [m.author for m in storia if m.author.id == ticket.user_id]
+        nomi = logica.nomi_dell_utente(
+            getattr(membro, "name", None), getattr(membro, "display_name", None),
+            *[getattr(a, attr, None) for a in sue[:1] for attr in ("name", "display_name", "global_name")],
+        )
         # Né il titolo, né le parole, né il corpo conservano dati di chi ha scritto.
         richiesta_pulita = logica.senza_dati_personali(coppia.richiesta, nomi)
         testo_richiesta = richiesta_pulita + " " + (ticket.category_label or "")
@@ -355,13 +365,19 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
     async def _chiama_lo_staff(self, channel, ticket, panel: PannelloTicket, *, dopo_standard: bool = False) -> None:
         if not await ticket_repo.mark_escalation(channel.id):
             return
-        ruoli = [panel.ruolo_escalation] if panel.ruolo_escalation else (await _support_role_ids(ticket.guild_id))[:MENZIONI_MASSIME]
+        guild = getattr(channel, "guild", None)
+        scelto = panel.ruolo_escalation
+        # Mai @everyone e mai un ruolo cancellato: in quel caso si chiamano i ruoli di supporto.
+        if scelto and (scelto == ticket.guild_id or (guild is not None and guild.get_role(scelto) is None)):
+            scelto = None
+        ruoli = [scelto] if scelto else (await _support_role_ids(ticket.guild_id))[:MENZIONI_MASSIME]
+        ruoli = [r for r in ruoli if r != ticket.guild_id]
         menzioni = " ".join(f"<@&{r}>" for r in ruoli)
         testo = f"{menzioni} <@{ticket.user_id}> aspetta una risposta" if menzioni else f"<@{ticket.user_id}> aspetta una risposta"
         try:
             await channel.send(
                 testo + (" e la risposta pronta non è bastata." if dopo_standard else " e per questa richiesta non c'è una risposta pronta."),
-                allowed_mentions=discord.AllowedMentions(roles=[discord.Object(id=r) for r in ruoli], users=False),
+                allowed_mentions=discord.AllowedMentions(everyone=False, roles=[discord.Object(id=r) for r in ruoli], users=False),
             )
         except discord.HTTPException:
             logger.warning("Chiamata allo staff non inviata nel ticket %s", channel.id)
@@ -456,6 +472,11 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
     ) -> None:
         panel = await self._pannello(interaction, pannello)
         if panel is None:
+            return
+        if ruolo is not None and ruolo.id == interaction.guild.id:
+            await interaction.response.send_message(
+                "@everyone non si può chiamare: scegli un ruolo dello staff.", ephemeral=True
+            )
             return
         try:
             valore = logica.minuti_sollecito_validi(minuti)

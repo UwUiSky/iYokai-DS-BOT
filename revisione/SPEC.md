@@ -1784,9 +1784,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   uscito (NF-13)
   → **Stato 13/10:** per inattività (`/admin ticket chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
   vale per i ticket nati da un pannello) e quando l'utente lascia il server.
-- `[~]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
+- `[x]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
   → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/admin ticket voto`), una volta sola, media in `/gestione ticket stats`.
-  Il limite per utente resta 1 (indice unico, migrazione 0010/0050): un limite più alto non è previsto.
+  Limite di ticket aperti per utente configurabile da 1 a 5, predefinito 1 (`/gestione ticket limite`, impostazione
+  `ticket_max_per_utente`, migrazione 0106 che sostituisce l'indice unico con un controllo sotto blocco in `ticket_repo.create_ticket`).
 - `[ ]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
 - `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
@@ -1823,6 +1824,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima
   (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/admin ticket dm-blocca`),
   menu se l'utente è in più server (migrazione 0101). Il testo dei messaggi non è salvato nel database.
+  Con un solo server il primo DM chiede conferma con un bottone prima di creare il canale; il menu e la conferma scadono
+  e liberano l'utente. Il blocco (`modmail_blocks`) è conservato come l'elenco della verifica.
 - `[ ]` 23.13 Moduli e candidature (NF-34)
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
 - `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)

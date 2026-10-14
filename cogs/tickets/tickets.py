@@ -35,8 +35,9 @@ costruzione pura del testo.
 Limiti di Discord rispettati qui: menu delle categorie (25 voci,
 etichetta 100), nome del canale (100), 2 rinomine ogni 10 minuti (il
 canale nasce già con il numero giusto; /ticket rename passa da
-core/channel_rename.py), un solo ticket aperto per utente (indice
-unico nel database).
+core/channel_rename.py), ticket aperti per utente (predefinito 1,
+fino a 5 con /gestione ticket limite, impostazione `ticket_max_per_utente`;
+il controllo è sotto blocco in ticket_repo.create_ticket).
 
 /ticket close: l'eliminazione del canale dopo l'attesa passa dallo
 scheduler persistente (core/scheduler.py, azione
@@ -44,7 +45,8 @@ scheduler persistente (core/scheduler.py, azione
 ricarica del cog; gli errori temporanei di Discord vengono riprovati
 dallo scheduler. /ticket forceclose elimina subito e funziona anche su
 un ticket già chiuso il cui canale è rimasto.
-Funzioni coperte: SPEC §13.2, §13.8–§13.13
+Funzioni coperte: SPEC §13.2, §13.8–§13.13, §22.9–§22.12 (pannelli, modulo, chiusura
+automatica, voto, limite per utente), §8.18 (risposte standard, in risposte.py)
 """
 
 # NF-13 (#84): pannelli multipli con modulo di domande, chiusura automatica
@@ -121,6 +123,8 @@ ADMIN_TICKET = ("ticket", "Ticket avanzati: pannelli, modulo, chiusura, DM, risp
 SETTING_CATEGORY = "ticket_category_id"
 SETTING_SUPPORT_ROLE = "ticket_support_role_id"
 SETTING_SUPPORT_ROLES = "ticket_support_role_ids"
+SETTING_MAX_PER_UTENTE = "ticket_max_per_utente"
+LIMITE_PER_UTENTE_MAX = 5
 
 # custom_id fisso: è quello che permette a discord.py di rilegare
 # un click su un bottone di un messaggio VECCHIO (creato prima
@@ -147,6 +151,7 @@ TICKET_AUTOCLOSE_ACTION_TYPE = "ticket_autoclose"
 # #139: sollecito se nessuno dello staff risponde entro N minuti (gestito da cogs/tickets/risposte.py).
 TICKET_SOLLECITO_ACTION_TYPE = "ticket_sollecito"
 # L'attività si scrive nel database al più una volta al minuto per canale.
+_ATTIVITA_MAX_VOCI = 500
 _ATTIVITA_OGNI_SECONDI = 60
 
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
@@ -161,6 +166,24 @@ _aperture_in_corso: set[tuple[int, int]] = set()
 MESSAGGIO_TICKET_GIA_APERTO = (
     "Hai già un ticket aperto su questo server. Chiudilo prima di aprirne uno nuovo."
 )
+
+
+def _messaggio_limite(limite: int) -> str:
+    if limite <= 1:
+        return MESSAGGIO_TICKET_GIA_APERTO
+    return (
+        f"Hai già {limite} ticket aperti su questo server, il massimo consentito. "
+        "Chiudine uno prima di aprirne un altro."
+    )
+
+
+async def _limite_per_utente(guild_id: int) -> int:
+    """NF-13: quanti ticket aperti può avere un utente (default 1, /gestione ticket limite)."""
+    valore = await db.get_guild_setting(guild_id, SETTING_MAX_PER_UTENTE, default=1)
+    try:
+        return min(max(int(valore), 1), LIMITE_PER_UTENTE_MAX)
+    except (TypeError, ValueError):
+        return 1
 
 
 async def _support_role_ids(guild_id: int) -> list[int]:
@@ -225,11 +248,12 @@ async def _crea_ticket(
     panel: PannelloTicket | None = None,
     campi: list[tuple[str, str]] | None = None,
 ) -> None:
+    limite = await _limite_per_utente(guild.id)
     already_open = await ticket_repo.count_open_tickets_for_user(
         guild.id, interaction.user.id
     )
-    if already_open > 0:
-        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+    if already_open >= limite:
+        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
         return
 
     overwrites = {
@@ -286,6 +310,7 @@ async def _crea_ticket(
             category_label=category_label,
             ticket_number=ticket_number,
             panel_id=panel.id if panel is not None else None,
+            max_aperti=limite,
         )
     except TicketAlreadyOpenError:
         # Un altro ticket dello stesso utente è nato nel frattempo: il
@@ -294,7 +319,7 @@ async def _crea_ticket(
             await channel.delete(reason="Ticket doppio: l'utente ne ha già uno aperto")
         except discord.HTTPException:
             logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
-        await interaction.followup.send(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
         return
 
     if panel is not None and panel.welcome_text:
@@ -577,8 +602,9 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
             "Questo pannello non è più disponibile.", ephemeral=True
         )
         return
-    if await ticket_repo.count_open_tickets_for_user(guild.id, interaction.user.id) > 0:
-        await interaction.response.send_message(MESSAGGIO_TICKET_GIA_APERTO, ephemeral=True)
+    limite = await _limite_per_utente(guild.id)
+    if await ticket_repo.count_open_tickets_for_user(guild.id, interaction.user.id) >= limite:
+        await interaction.response.send_message(_messaggio_limite(limite), ephemeral=True)
         return
     category = guild.get_channel(panel.category_id)
     if not isinstance(category, discord.CategoryChannel):
@@ -734,6 +760,29 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "gestione",
+        nome="limite",
+        descrizione="Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).",
+        sottogruppo=GESTIONE_TICKET,
+    )
+    @app_commands.describe(massimo="Da 1 a 5 ticket aperti per utente")
+    async def ticket_limite(
+        self,
+        interaction: discord.Interaction,
+        massimo: app_commands.Range[int, 1, LIMITE_PER_UTENTE_MAX],
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        await db.set_guild_setting(interaction.guild.id, SETTING_MAX_PER_UTENTE, int(massimo))
+        await interaction.response.send_message(
+            f"Ogni utente potrà avere al massimo **{massimo}** ticket aperti alla volta.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "gestione",
         nome="panel",
         descrizione="Pubblica il pannello per l'apertura dei ticket in questo canale.",
         sottogruppo=GESTIONE_TICKET,
@@ -856,7 +905,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         await ticket_form_repo.rimuovi_pannello(interaction.guild.id, panel.name)
         await interaction.response.send_message(
-            f"Pannello **{panel.name}** eliminato. I messaggi già pubblicati mostreranno "
+            f"Pannello **{panel.name}** eliminato, con il suo modulo e le risposte standard "
+            "imparate da questo pannello. I messaggi già pubblicati mostreranno "
             "«pannello non più disponibile».",
             ephemeral=True,
         )
@@ -1791,23 +1841,30 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         chiusi = 0
+        falliti = 0
         for ticket in await ticket_repo.list_open_tickets(guild.id, MAX_CHIUSURA_DI_MASSA):
             channel = guild.get_channel(ticket.channel_id)
             if channel is None:
                 await ticket_repo.close_ticket_of_deleted_channel(ticket.channel_id)
                 continue
-            fatto = await self._chiudi_da_sistema(
-                guild,
-                channel,
-                ticket,
-                motivo=f"Chiusura di massa di {interaction.user}",
-                avviso=f"Ticket chiuso da {interaction.user.mention} (chiusura di tutti i ticket)."
-                + (f"\nMotivo: {motivo}" if motivo else "")
-                + " Questo canale verrà eliminato a breve.",
-                chiedi_voto=True,
-                chiuso_da=interaction.user.id,
-                ragione=motivo or "Chiusura di massa",
-            )
+            try:
+                fatto = await self._chiudi_da_sistema(
+                    guild,
+                    channel,
+                    ticket,
+                    motivo=f"Chiusura di massa di {interaction.user}",
+                    avviso=f"Ticket chiuso da {interaction.user.mention} (chiusura di tutti i ticket)."
+                    + (f"\nMotivo: {motivo}" if motivo else "")
+                    + " Questo canale verrà eliminato a breve.",
+                    chiedi_voto=True,
+                    chiuso_da=interaction.user.id,
+                    ragione=motivo or "Chiusura di massa",
+                )
+            except Exception:
+                # Un ticket che non si chiude (scheduler giù, transcript) non ferma gli altri.
+                logger.exception("Chiusura di massa: il ticket %s non si è chiuso.", ticket.channel_id)
+                falliti += 1
+                continue
             if fatto:
                 chiusi += 1
                 if chiusi % 5 == 0:
@@ -1815,6 +1872,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
                     await interaction.followup.send(f"Chiusi finora {chiusi} ticket...", ephemeral=True)
         restanti = await ticket_repo.count_open_tickets(guild.id)
         testo = f"Chiusi {chiusi} ticket."
+        if falliti:
+            testo += f" {falliti} non si sono chiusi (errore nei log): restano aperti."
         if restanti:
             testo += f" Ne restano {restanti} aperti: rilancia il comando."
         await interaction.followup.send(testo, ephemeral=True)
@@ -1822,21 +1881,19 @@ class TicketsCog(CogConGruppi, commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
         """NF-13: chi esce dal server non può più rispondere: il suo ticket aperto si chiude."""
-        ticket = await ticket_repo.get_open_ticket_for_user(member.guild.id, member.id)
-        if ticket is None:
-            return
-        channel = member.guild.get_channel(ticket.channel_id)
-        if channel is None:
-            return
-        await self._chiudi_da_sistema(
-            member.guild,
-            channel,
-            ticket,
-            motivo="Ticket chiuso: l'utente ha lasciato il server",
-            avviso=f"{member} ha lasciato il server: ticket chiuso. Questo canale verrà eliminato a breve.",
-            chiedi_voto=False,
-            ragione="L'utente ha lasciato il server",
-        )
+        for ticket in await ticket_repo.list_open_tickets_for_user(member.guild.id, member.id):
+            channel = member.guild.get_channel(ticket.channel_id)
+            if channel is None:
+                continue
+            await self._chiudi_da_sistema(
+                member.guild,
+                channel,
+                ticket,
+                motivo="Ticket chiuso: l'utente ha lasciato il server",
+                avviso=f"{member} ha lasciato il server: ticket chiuso. Questo canale verrà eliminato a breve.",
+                chiedi_voto=False,
+                ragione="L'utente ha lasciato il server",
+            )
 
     async def handle_ticket_delete_channel(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Handler dello scheduler. Se solleva, lo scheduler riprova più tardi."""
@@ -1946,6 +2003,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket aperto" per sempre. Dopo /ticket close o forceclose il
         ticket è già chiuso e qui non cambia nulla.
         """
+        self._attivita_scritta.pop(channel.id, None)
         if await ticket_repo.close_ticket_of_deleted_channel(channel.id):
             logger.info(
                 "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id
@@ -1991,6 +2049,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ultima = self._attivita_scritta.get(channel_id)
         if ultima is not None and adesso - ultima < _ATTIVITA_OGNI_SECONDI:
             return
+        if len(self._attivita_scritta) >= _ATTIVITA_MAX_VOCI:
+            # Tiene solo i canali scritti da meno di un minuto: gli altri verrebbero riscritti comunque.
+            self._attivita_scritta = {
+                c: t for c, t in self._attivita_scritta.items() if adesso - t < _ATTIVITA_OGNI_SECONDI
+            }
         self._attivita_scritta[channel_id] = adesso
         await ticket_repo.touch_activity(channel_id, datetime.now(timezone.utc))
 

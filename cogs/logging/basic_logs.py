@@ -6,7 +6,7 @@ ruoli, cambi di ruolo e nickname sui membri. Modulo SEMPRE GRATUITO
 (MODULE_LOGGING). Comandi /log canale (anche per messaggi, voce e server,
 con canale di testo o forum) e /log stato. Dove scrive lo decide
 core/channel_router.py.
-Funzioni coperte: SPEC §8.1-§8.5, §8.17, §18
+Funzioni coperte: SPEC §8.1-§8.5, §8.17, §8.18 (catalogo log: regex RE2, canali per tipo), §18
 
 Ogni evento, oltre a mandare l'embed live nel canale configurato
 (come sempre), viene ora anche salvato nel log eventi unificato

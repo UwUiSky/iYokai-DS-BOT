@@ -7,7 +7,7 @@ Regole pure, repository veri (clean_db), cog di produzione; Discord finto.
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 import pytest
@@ -81,7 +81,7 @@ def test_allegati_da_copiare_entro_i_limiti():
     mb = 1024 * 1024
     assert logica.allegati_da_scaricare([1 * mb] * 7) == [0, 1, 2, 3, 4]  # al massimo 5
     assert logica.allegati_da_scaricare([9 * mb, 2 * mb]) == [1]  # uno oltre 8 MiB è saltato
-    assert logica.allegati_da_scaricare([8 * mb, 8 * mb, 8 * mb]) == [0, 1]  # in tutto sotto 20 MiB
+    assert logica.allegati_da_scaricare([8 * mb, 8 * mb, 8 * mb]) == [0]  # in tutto sotto 10 MiB (LIM-55)
 
 
 def test_minuti_del_sollecito():
@@ -428,9 +428,8 @@ async def test_se_l_utente_aveva_gia_scritto_senza_risposta_pronta_il_sollecito_
 async def test_senza_ruolo_scelto_si_chiamano_i_ruoli_di_supporto(cog, monkeypatch):
     await db.set_guild_setting(GUILD, "ticket_support_role_ids", [801, 802])
     p = await _pannello(standard=False, sollecito=10)
-    t = await _ticket(p)
+    await _ticket(p)
     await ticket_repo.mark_user_wrote(CANALE)
-    t = await ticket_repo.get_ticket_by_channel(CANALE)
     canale = _canale_bot(cog, monkeypatch)
     await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
     testo = canale.send.await_args.args[0]
@@ -551,7 +550,9 @@ async def test_esportazione_e_oblio_toccano_le_risposte_nate_dalle_richieste_del
     await ticket_standard_repo.crea_proposta(GUILD, p.id, "altro", "parole", "corpo", 8, 999)
     dati = await esporta_utente(clean_db, UTENTE)
     assert "ticket_standard_replies" in str(dati)
-    assert "corpo" not in str(dati.get("ticket_standard_replies", ""))
+    righe = dati["tabelle"]["ticket_standard_replies"]["righe"]
+    assert righe and "body" not in righe[0] or righe[0]["body"] in (None, "")
+    assert "corpo" not in str(righe)
     await dimentica_utente(clean_db, UTENTE)
     rimaste = await ticket_standard_repo.elenca(GUILD)
     assert [r.user_id for r in rimaste] == [999]
@@ -565,3 +566,103 @@ async def test_il_sollecito_non_segna_se_il_canale_non_si_legge(cog, monkeypatch
     with pytest.raises(discord.HTTPException):
         await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).sollecito_at is None
+
+
+# ====================================================================
+# Giro del capo
+# ====================================================================
+async def _chiusura_con_utente_uscito(cog, monkeypatch, richiesta, risposta, autore_nome="Mariorossi92"):
+    p = await _pannello()
+    await _ticket(p)
+    await ticket_repo.record_first_response(CANALE, datetime.now(timezone.utc))
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    _log(monkeypatch)
+    utente = _msg(UTENTE, richiesta)
+    utente.author.name = autore_nome
+    utente.author.display_name = autore_nome
+    canale = _canale_con_storia([utente, _msg(STAFF, risposta)])
+    guild = fake_guild(GUILD)
+    guild.get_member.side_effect = lambda uid: None  # è uscito dal server: il ticket si chiude per questo
+    await cog.proponi_da_ticket(guild, canale, t)
+    (proposta,) = await ticket_standard_repo.elenca(GUILD)
+    return proposta
+
+
+async def test_utente_uscito_i_nomi_si_tolgono_lo_stesso_dagli_autori_dei_messaggi(cog, monkeypatch):
+    pr = await _chiusura_con_utente_uscito(
+        cog, monkeypatch,
+        "Sono Mariorossi92, requisiti affiliazione Twitch?", "Ciao Mariorossi92, servono 50 follower e 3 stream.",
+    )
+    for campo in (pr.title, pr.keywords, pr.body):
+        assert "mariorossi" not in campo.lower() and "marior" not in campo.lower()
+    assert pr.body.startswith("Ciao {utente}")
+
+
+async def test_telefoni_iban_e_carte_con_spazi_o_trattini_non_restano(cog, monkeypatch):
+    pr = await _chiusura_con_utente_uscito(
+        cog, monkeypatch,
+        "Requisiti affiliazione Twitch? chiamatemi al 333 123 4567 o +39 02-1234-5678, IBAN IT60 X054 2811 1010 0000 0123 456, carta 4111 1111 1111 1111",
+        "Servono 50 follower. Chiama il 333 123 4567, IBAN IT60 X054 2811 1010 0000 0123 456.",
+    )
+    for campo in (pr.title, pr.keywords, pr.body):
+        for pezzo in ("333", "4567", "1234", "IT60", "X054", "4111", "0123"):
+            assert pezzo not in campo
+    assert "50 follower" in pr.body
+
+
+def test_pulizia_numeri_non_tocca_i_numeri_piccoli():
+    assert logica.senza_dati_personali("servono 50 follower e 3 stream il 14/10") == "servono 50 follower e 3 stream il 14/10"
+
+
+async def test_scarta_dopo_che_un_altro_ha_approvato_non_cancella_l_approvata(monkeypatch):
+    p = await _pannello()
+    r = await _proposta(p)
+    vecchia = await ticket_standard_repo.per_id(r.id)  # lo staff A ha letto «proposta»
+    await ticket_standard_repo.approva(r.id, STAFF)    # lo staff B approva in mezzo
+    b, i = _clic("no", r.id)
+    with patch.object(ticket_standard_repo, "per_id", AsyncMock(return_value=vecchia)):
+        await b.callback(i)
+    assert (await ticket_standard_repo.per_id(r.id)).status == "approved"
+    i.response.send_message.assert_awaited_once()
+
+
+async def test_sollecito_rifiuta_everyone(cog):
+    p = await _pannello(standard=False)
+    i = _admin()
+    await cog.sollecito.callback(cog, i, "Supporto", 10, SimpleNamespace(id=GUILD, mention="@everyone"))
+    assert "everyone" in i.response.send_message.await_args.args[0]
+    assert (await ticket_form_repo.pannello_per_id(p.id)).sollecito_minuti is None
+
+
+async def test_chiamata_staff_mai_everyone_e_ruolo_cancellato_ripiega_sul_supporto(cog, monkeypatch):
+    await db.set_guild_setting(GUILD, "ticket_support_role_ids", [801])
+    p = await _pannello(standard=False, sollecito=10, ruolo=GUILD)  # scritto a mano nel database
+    await _ticket(p)
+    await ticket_repo.mark_user_wrote(CANALE)
+    canale = _canale_bot(cog, monkeypatch)
+    canale.guild.get_role = MagicMock(return_value=None)
+    await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
+    testo = canale.send.await_args.args[0]
+    assert f"<@&{GUILD}>" not in testo and "<@&801>" in testo
+
+
+async def test_la_chiamata_allo_staff_ping_solo_i_ruoli_e_una_volta_sola(cog, monkeypatch):
+    p = await _pannello(standard=True, sollecito=10, ruolo=555)
+    await _ticket(p)
+    canale = _canale_bot(cog, monkeypatch)
+    canale.guild.get_role = MagicMock(return_value=SimpleNamespace(id=555))
+    await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
+    canale.send.reset_mock()
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    m, canale_m = _messaggio_utente("Voglio parlare di una cosa mai vista")
+    canale_m.guild = canale.guild
+    await cog.su_messaggio_dell_utente(m, t)
+    permessi = canale_m.send.await_args.kwargs["allowed_mentions"]
+    assert permessi.everyone is False and permessi.users is False
+    assert [r.id for r in permessi.roles] == [555]
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).escalato_at is not None
+    # con escalato_at già scritto, un altro messaggio non chiama più nessuno
+    canale_m.send.reset_mock()
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    await cog.su_messaggio_dell_utente(m, t)
+    canale_m.send.assert_not_awaited()

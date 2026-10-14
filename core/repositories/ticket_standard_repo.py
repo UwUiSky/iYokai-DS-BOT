@@ -134,6 +134,14 @@ class TicketStandardRepository:
         )
         return esito.endswith(" 1")
 
+    async def scarta(self, guild_id: int, reply_id: int) -> bool:
+        """Toglie una PROPOSTA (mai una approvata: se nel frattempo un altro staff ha approvato, resta)."""
+        esito = await self._pool.execute(
+            "DELETE FROM ticket_standard_replies WHERE id = $1 AND guild_id = $2 AND status = 'proposed'",
+            reply_id, guild_id,
+        )
+        return esito.endswith(" 1")
+
     async def usata(self, reply_id: int) -> None:
         await self._pool.execute(
             "UPDATE ticket_standard_replies SET use_count = use_count + 1 WHERE id = $1", reply_id

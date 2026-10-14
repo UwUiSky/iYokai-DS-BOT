@@ -969,3 +969,49 @@ async def test_i_comandi_nuovi_sono_riservati_al_proprietario():
 
     canale.set_permissions.assert_not_awaited()
     assert "Solo il proprietario" in _testo(interazione.response.send_message.call_args)
+
+
+# ====================================================================
+# Giro del capo: defer per primo, risposta al proprietario su deny, trasferimento preciso
+# ====================================================================
+async def test_nascondi_risponde_con_defer_e_poi_followup():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    _permessi_veri(canale, {scena.guild.default_role: discord.PermissionOverwrite()})
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.nascondi.callback(cog, interazione, True)
+
+    interazione.response.defer.assert_awaited_once()
+    interazione.followup.send.assert_awaited_once()
+    interazione.response.send_message.assert_not_awaited()
+
+
+async def test_deny_sul_proprietario_dice_perche_non_si_puo():
+    scena = Scena()
+    proprietario = _con_ruolo(scena.membro(ID_PROPRIETARIO), 5)
+    canale = await scena.crea_canale_di(proprietario)
+    scena.guild.me.top_role = fake_role(role_id=900, name="bot", position=50)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.deny.callback(cog, interazione, proprietario)
+
+    canale.set_permissions.assert_not_awaited()
+    interazione.response.send_message.assert_awaited_once()
+    assert _testo(interazione.response.send_message.call_args).strip() != ""
+
+
+async def test_transfer_toglie_i_permessi_al_vecchio_e_li_da_solo_al_nuovo():
+    scena = Scena()
+    vecchio = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(vecchio)
+    nuovo = scena.entra(scena.membro(ID_OSPITE), canale)
+
+    await _trasferisci(scena, vecchio, nuovo)
+
+    permessi = _permessi_dati(canale)
+    assert set(permessi) == {ID_PROPRIETARIO, ID_OSPITE}
+    assert permessi[ID_PROPRIETARIO] is None

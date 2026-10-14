@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:26 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 290 comandi in 16 categorie.**
+**Totale: 291 comandi in 16 categorie.**
 
 ## Admin
 
@@ -140,6 +140,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 04:
 - **`/gestione ticket categoria-add`** — Aggiungi (o aggiorna) una categoria di ticket.
 - **`/gestione ticket categoria-list`** — Elenca le categorie di ticket configurate.
 - **`/gestione ticket categoria-remove`** — Rimuovi una categoria di ticket.
+- **`/gestione ticket limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
 - **`/gestione ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
 - **`/gestione ticket ruolo-add`** — Aggiungi un ruolo di supporto.
 - **`/gestione ticket ruolo-list`** — Elenca i ruoli di supporto configurati.

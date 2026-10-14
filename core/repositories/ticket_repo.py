@@ -85,7 +85,7 @@ ONE_OPEN_TICKET_INDEX = "uq_tickets_un_aperto_per_utente"
 
 
 class TicketAlreadyOpenError(Exception):
-    """L'utente ha già un ticket aperto in questo server."""
+    """L'utente ha già raggiunto il limite di ticket aperti in questo server."""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -189,17 +189,33 @@ class TicketRepository:
         category_label: str | None = None,
         ticket_number: int | None = None,
         panel_id: int | None = None,
+        max_aperti: int = 1,
     ) -> int:
         """
         Registra un nuovo ticket e restituisce il suo numero: quello
         già riservato con reserve_ticket_number, oppure uno nuovo preso
         qui nella stessa transazione. Solleva TicketAlreadyOpenError se
-        l'utente ha già un ticket aperto in questo server (in quel caso
-        non viene consumato nessun numero).
+        l'utente ha già `max_aperti` ticket aperti in questo server (in
+        quel caso non viene consumato nessun numero). Il conteggio e
+        l'inserimento stanno sotto un blocco per (server, utente): due
+        aperture insieme non superano il limite.
         """
         try:
             async with self._pool.acquire() as conn:
                 async with conn.transaction():
+                    if user_id != 0:  # 0 = utente anonimizzato: più persone, nessun limite
+                        await conn.execute(
+                            "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+                            f"ticket:{guild_id}:{user_id}",
+                        )
+                        aperti = await conn.fetchval(
+                            "SELECT count(*) FROM tickets"
+                            " WHERE guild_id = $1 AND user_id = $2 AND status = 'open'",
+                            guild_id,
+                            user_id,
+                        )
+                        if aperti >= max_aperti:
+                            raise TicketAlreadyOpenError()
                     if ticket_number is None:
                         ticket_number = await self.reserve_ticket_number(guild_id, conn)
                     await conn.execute(
@@ -369,14 +385,15 @@ class TicketRepository:
         """#139: al ticket è già stata data una risposta standard (una sola)."""
         return await self._segna_una_volta(channel_id, "standard_reply_id", "$2", reply_id)
 
-    async def get_open_ticket_for_user(self, guild_id: int, user_id: int) -> Ticket | None:
-        """Il ticket aperto di un utente (al massimo uno: indice unico)."""
-        row = await self._pool.fetchrow(
-            "SELECT * FROM tickets WHERE guild_id = $1 AND user_id = $2 AND status = 'open'",
+    async def list_open_tickets_for_user(self, guild_id: int, user_id: int) -> list[Ticket]:
+        """Tutti i ticket aperti di un utente (più di uno se il limite del server è alto)."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM tickets WHERE guild_id = $1 AND user_id = $2 AND status = 'open'"
+            " ORDER BY id",
             guild_id,
             user_id,
         )
-        return _row_to_ticket(row) if row else None
+        return [_row_to_ticket(r) for r in rows]
 
     async def set_rating(self, ticket_id: int, user_id: int, stars: int) -> bool:
         """
