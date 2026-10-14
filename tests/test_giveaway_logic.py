@@ -6,7 +6,16 @@ Test di core/giveaway_logic.py — logica pura.
 
 import random
 
-from core.giveaway_logic import is_eligible, pick_winners
+from core.giveaway_logic import pick_winners_pesati, requisiti_mancanti
+
+
+def pick_winners(entries, winners_count, rng):
+    """Un biglietto a testa: l'estrazione di prima, ora con quella pesata."""
+    return pick_winners_pesati([(uid, 1) for uid in entries], winners_count, rng)
+
+
+def is_eligible(**kw):
+    return not requisiti_mancanti(**kw)
 
 
 class TestPickWinners:

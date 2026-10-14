@@ -28,6 +28,7 @@ from core.coin_games_logic import (
     gioca_slot,
     numero_del_messaggio,
 )
+from core.channel_access import PERMESSI_DI_REAZIONE, motivo_se_il_bot_non_puo
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
@@ -227,6 +228,14 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         if azione.value == "imposta":
             if canale is None:
                 await interaction.response.send_message("Indica il canale.", ephemeral=True)
+                return
+            motivo = motivo_se_il_bot_non_puo(
+                canale, interaction.guild.me, PERMESSI_DI_REAZIONE
+            )
+            if motivo is not None:
+                await interaction.response.send_message(
+                    f"Non posso far giocare in {canale.mention}: {motivo}.", ephemeral=True
+                )
                 return
             await counting_game_repo.set_channel(guild_id, canale.id)
             await interaction.response.send_message(

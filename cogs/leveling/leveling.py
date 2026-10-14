@@ -51,6 +51,7 @@ from core.repositories.shop_repo import EsitoAcquisto, shop_repo
 from core.rank_card_image import COLORE_DI_BASE, TEMA_DI_BASE, DatiRankCard, render_rank_card
 from core.safe_image import run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
+from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
 from core.giveaway_logic import (
     MAX_INGRESSI_EXTRA,
     MAX_MESSAGGI_RICHIESTI,
@@ -605,8 +606,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         modo: str = "accumula",
         togli_superiori: bool = False,
         esecutore: discord.Member | None = None,
-    ) -> None:
+    ) -> bool:
         """
+        Vero se i ruoli sono a posto, falso se Discord ha rifiutato la modifica.
         Condiviso tra XP testuale e vocale (SPEC.md §15.13) — un
         solo punto che assegna i ruoli-premio, non due copie della
         stessa logica. Salta i ruoli che il membro ha già (un
@@ -642,7 +644,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 if r.level_threshold > new_level
             ]
         if not ricompense and not non_piu_raggiunti:
-            return
+            return True
 
         id_da_dare, id_da_togliere = scegli_premi(ricompense, modo)
         id_ruoli_posseduti = {ruolo.id for ruolo in member.roles}
@@ -704,6 +706,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
             logger.warning(
                 "Impossibile aggiornare i ruoli-premio di %s nel server %s.", member.id, guild.id
             )
+            return False
+        return True
 
     class DropClaimView(BaseView):
         """
@@ -1465,8 +1469,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
                 return
 
+        # Senza conferma vale il prezzo appena letto: addebito, messaggio e rimborso coincidono.
         acquisto = await shop_repo.buy_item(
-            guild.id, interaction.user.id, oggetto, prezzo_atteso=prezzo_atteso
+            guild.id, interaction.user.id, oggetto,
+            prezzo_atteso=prezzo_atteso if prezzo_atteso is not None else oggetto.price,
         )
         if acquisto.esito == EsitoAcquisto.PREZZO_CAMBIATO:
             await interaction.response.send_message(
@@ -1871,7 +1877,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         esito = await leveling_repo.modifica_xp(
             guild.id, membro.id, azione.value, valore, tetto
         )
-        await self._grant_level_rewards(
+        ruoli_a_posto = await self._grant_level_rewards(
             membro, guild, esito.livello_dopo, config.impostazioni.reward_mode,
             togli_superiori=True, esecutore=interaction.user,
         )
@@ -1882,7 +1888,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         await interaction.followup.send(
             f"✅ {membro.mention}: livello **{esito.livello_prima} → {esito.livello_dopo}**, "
-            f"XP **{esito.xp_prima} → {esito.xp_dopo}**.",
+            f"XP **{esito.xp_prima} → {esito.xp_dopo}**."
+            + (
+                ""
+                if ruoli_a_posto is not False
+                else "\n⚠️ I ruoli-premio non si sono aggiornati: controlla i permessi del bot."
+            ),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -3217,8 +3228,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
             )
             return
-        adesso = datetime.now(timezone.utc)
         programmato = inizia_tra is not None
+        if programmato:
+            motivo = motivo_se_il_bot_non_puo(
+                interaction.channel, guild.me, PERMESSI_DI_SCRITTURA
+            )
+            if motivo is not None:
+                await interaction.response.send_message(
+                    f"Non posso far partire qui il giveaway: {motivo}.", ephemeral=True
+                )
+                return
+        adesso = datetime.now(timezone.utc)
         inizio = adesso + timedelta(minutes=inizia_tra) if programmato else adesso
         scadenza = inizio + timedelta(minutes=durata_minuti)
 

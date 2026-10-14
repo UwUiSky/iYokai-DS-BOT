@@ -277,3 +277,11 @@ async def test_con_il_modulo_spento_nessun_comando_del_profilo_gira(scena):
         interazione = _interazione()
         await scena.comandi[nome].callback(scena.cog, interazione, **args)
         assert "non è attivo" in _testo(interazione)
+
+
+@pytest.mark.asyncio
+async def test_la_presentazione_non_accetta_piu_di_quanto_si_salva(scena):
+    from core.profile_logic import MAX_BIO
+
+    opzione = next(p for p in scena.comandi["level profilo"].parameters if p.name == "presentazione")
+    assert opzione.max_value == MAX_BIO

@@ -232,6 +232,22 @@ async def test_conteggio_imposta_stato_e_spegni(scena):
     assert await scena.conteggio.get(GUILD) is None
 
 
+@pytest.mark.asyncio
+async def test_conteggio_non_si_imposta_dove_il_bot_non_puo_reagire(scena):
+    canale = fake_text_channel(channel_id=555)
+    canale.permissions_for = lambda me: SimpleNamespace(
+        view_channel=True, send_messages=True, add_reactions=False, read_message_history=True
+    )
+    interazione = _interazione()
+
+    await scena.comandi["fun conteggio"].callback(
+        scena.cog, interazione, azione=_scelta("imposta"), canale=canale
+    )
+
+    assert "Aggiungere reazioni" in _testo(interazione)
+    assert await scena.conteggio.get(GUILD) is None
+
+
 def _messaggio(testo, user_id, canale_id=555):
     canale = fake_text_channel(channel_id=canale_id)
     canale.send = AsyncMock()

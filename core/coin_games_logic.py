@@ -14,7 +14,6 @@ import random
 from dataclasses import dataclass
 from itertools import product
 
-GIOCHI = ("monetina", "dadi", "slot")
 LATI_MONETINA = ("testa", "croce")
 SIMBOLI_SLOT = ("🍒", "🍋", "🔔", "⭐", "💎", "7️⃣")
 

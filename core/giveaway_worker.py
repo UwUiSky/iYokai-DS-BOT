@@ -24,6 +24,7 @@ import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
+from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
 from core.giveaway_logic import descrizione_giveaway, pick_winners_pesati, titolo_giveaway
 from core.repositories.giveaway_repo import giveaway_repo
 
@@ -94,7 +95,15 @@ class GiveawayWorker:
                 testo = f"🎉 Congratulazioni {menzioni}! Avete vinto **{giveaway.prize}**!"
 
             try:
-                await canale.send(testo)
+                # Si avvisano solo i vincitori: il premio è testo libero (@everyone, ruoli).
+                await canale.send(
+                    testo,
+                    allowed_mentions=discord.AllowedMentions(
+                        users=[discord.Object(id=uid) for uid in vincitori],
+                        roles=False,
+                        everyone=False,
+                    ),
+                )
             except discord.HTTPException:
                 logger.warning(
                     "Impossibile annunciare la fine del giveaway %s nel canale %s.",
@@ -123,16 +132,12 @@ class GiveawayWorker:
                 giveaway, f"canale {giveaway.channel_id} non raggiungibile"
             )
             return
-        io = getattr(guild, "me", None)
-        if io is not None:
-            permessi = canale.permissions_for(io) if hasattr(canale, "permissions_for") else None
-            if permessi is not None and not (
-                permessi.view_channel and permessi.send_messages and permessi.embed_links
-            ):
-                await self._errore_di_partenza(
-                    giveaway, "il bot non può vedere o scrivere con gli embed in quel canale"
-                )
-                return
+        motivo = motivo_se_il_bot_non_puo(
+            canale, getattr(guild, "me", None), PERMESSI_DI_SCRITTURA
+        )
+        if motivo is not None:
+            await self._errore_di_partenza(giveaway, motivo)
+            return
         embed = discord.Embed(
             title=titolo_giveaway(giveaway.prize),
             description=descrizione_giveaway(giveaway),

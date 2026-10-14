@@ -174,3 +174,20 @@ async def test_il_repo_rifiuta_il_prezzo_diverso_da_quello_atteso(scena):
     esito = await scena.negozio.buy_item(GUILD, 1, oggetto, prezzo_atteso=100)
     assert esito.esito is EsitoAcquisto.RIUSCITO
     assert await _saldo(scena) == 400
+
+
+@pytest.mark.asyncio
+async def test_senza_conferma_il_prezzo_cambiato_tra_lettura_e_acquisto_non_addebita(scena, monkeypatch):
+    """Conferma spenta: addebito, messaggio e rimborso devono coincidere con il prezzo letto."""
+    originale = scena.negozio.buy_item
+
+    async def buy_dopo_modifica(guild_id, user_id, item, **kw):
+        await scena.negozio.update_item(scena.item_id, GUILD, price=400)  # staff, dopo la lettura
+        return await originale(guild_id, user_id, item, **kw)
+
+    monkeypatch.setattr(scena.negozio, "buy_item", buy_dopo_modifica)
+    interazione = _interazione()
+    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
+
+    assert await _saldo(scena) == 500
+    assert "prezzo è cambiato" in interazione.response.send_message.await_args.args[0]

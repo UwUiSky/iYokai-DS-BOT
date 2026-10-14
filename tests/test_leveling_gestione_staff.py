@@ -9,8 +9,10 @@ Funzioni coperte: SPEC §15 (catalogo #124 e #125)
 """
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import discord
 import pytest
 
 import cogs.leveling.leveling as modulo
@@ -198,6 +200,37 @@ async def test_lo_staff_non_tocca_ruoli_premio_sopra_il_suo(scena_ruoli):
 
 
 @pytest.mark.asyncio
+async def test_sostituisci_lo_staff_non_toglie_il_ruolo_vecchio_sopra_il_suo(scena_ruoli):
+    cog, guild, membro, ruoli = scena_ruoli
+    ruoli[50].position = 30  # il vecchio premio (livello 5) sta sopra lo staff
+    ruoli[100].position = 5  # il nuovo (livello 10) il membro ce l'ha già
+    staff = fake_member(user_id=1, roles=[fake_role(role_id=7, name="staff", position=10)])
+
+    await cog._grant_level_rewards(membro, guild, 10, "sostituisci", esecutore=staff)
+
+    membro.remove_roles.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sostituisci_senza_esecutore_toglie_il_ruolo_vecchio(scena_ruoli):
+    cog, guild, membro, ruoli = scena_ruoli
+
+    await cog._grant_level_rewards(membro, guild, 10, "sostituisci")
+
+    assert membro.remove_roles.await_args.args == (ruoli[50],)
+
+
+@pytest.mark.asyncio
+async def test_ruoli_non_aggiornati_il_risultato_lo_dice(scena_ruoli):
+    cog, guild, membro, ruoli = scena_ruoli
+    membro.remove_roles.side_effect = discord.Forbidden(SimpleNamespace(status=403, reason="x"), "no")
+
+    assert await cog._grant_level_rewards(membro, guild, 0, "accumula", togli_superiori=True) is False
+    membro.remove_roles.side_effect = None
+    assert await cog._grant_level_rewards(membro, guild, 0, "accumula", togli_superiori=True) is True
+
+
+@pytest.mark.asyncio
 async def test_lo_staff_non_assegna_ruoli_premio_sopra_il_suo(scena_ruoli):
     cog, guild, membro, ruoli = scena_ruoli
     membro.roles = []
@@ -322,6 +355,21 @@ async def test_comando_xp_risponde_dopo_defer_e_allinea_i_ruoli(cog_comandi):
     assert sincronizza.await_args.kwargs.get("togli_superiori") is True
     assert sincronizza.await_args.args[2] == 6
     assert "livello" in interazione.followup.send.await_args.args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_comando_xp_avvisa_se_i_ruoli_non_si_aggiornano(cog_comandi):
+    cog, comandi, repo, sincronizza = cog_comandi
+    sincronizza.return_value = False
+    interazione = _interazione()
+
+    await comandi["economia xp"].callback(
+        cog, interazione, azione=_scelta("livello"), membro=fake_member(user_id=9), valore=6
+    )
+
+    testo = interazione.followup.send.await_args.args[0].lower()
+    assert "ruoli" in testo and "non" in testo
+    assert (await repo.get_totals(GUILD, 9)).level == 6  # gli XP sono cambiati lo stesso
 
 
 @pytest.mark.asyncio

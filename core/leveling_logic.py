@@ -250,10 +250,6 @@ def stima_per_livello(
     return StimaLivello(mancanti, messaggi, minuti, messaggi * attesa_secondi)
 
 
-AZIONI_XP = ("aggiungi", "togli", "livello", "xp_nel_livello", "azzera")
-AZIONI_MONETE = ("aggiungi", "togli", "imposta", "azzera")
-
-
 def xp_dopo_modifica(xp_attuale: int, azione: str, valore: int, max_level: int = 0) -> int:
     """
     Gli XP totali dopo una modifica dello staff (LIV-064..067). Mai sotto

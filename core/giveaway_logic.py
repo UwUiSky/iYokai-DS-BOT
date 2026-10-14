@@ -18,24 +18,11 @@ MAX_MESSAGGI_RICHIESTI = 100_000
 MAX_MODELLI_PER_SERVER = 25
 
 
-def pick_winners(entries: list[int], winners_count: int, rng: random.Random) -> list[int]:
-    """
-    Estrae fino a winners_count vincitori SENZA ripetizioni tra gli
-    ID già partecipanti. Se ci sono meno partecipanti dei vincitori
-    richiesti, li vincono tutti (non ha senso "estrarre" più
-    partecipanti di quanti ce ne siano).
-    """
-    if not entries:
-        return []
-    quanti = min(winners_count, len(entries))
-    return rng.sample(entries, quanti)
-
-
 def pick_winners_pesati(
     entries: list[tuple[int, int]], winners_count: int, rng: random.Random
 ) -> list[int]:
     """
-    Come pick_winners, ma ogni partecipante ha tanti biglietti quanti ne dice
+    Estrae i vincitori: ogni partecipante ha tanti biglietti quanti ne dice
     la coppia (utente, biglietti). Un utente vince una volta sola: dopo ogni
     estrazione i suoi biglietti escono dall'urna.
     """
@@ -52,26 +39,6 @@ def biglietti_di(user_role_ids: set[int], bonus_role_id: int | None, bonus_entri
     if bonus_role_id is not None and bonus_role_id in user_role_ids:
         return 1 + max(0, bonus_entries)
     return 1
-
-
-def is_eligible(
-    user_level: int,
-    user_role_ids: set[int],
-    min_level: int,
-    required_role_id: int | None,
-    messages: int = 0,
-    min_messages: int = 0,
-    bypass_role_ids: set[int] | frozenset[int] = frozenset(),
-) -> bool:
-    """
-    Vero se l'utente soddisfa i requisiti per partecipare: TUTTI quelli
-    configurati (livello, ruolo, messaggi), non uno a scelta. Chi ha un ruolo
-    "che salta i requisiti" entra sempre.
-    """
-    return not requisiti_mancanti(
-        user_level, user_role_ids, min_level, required_role_id, messages, min_messages,
-        bypass_role_ids,
-    )
 
 
 def requisiti_mancanti(

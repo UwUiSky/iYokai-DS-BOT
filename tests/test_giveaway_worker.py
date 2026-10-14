@@ -22,7 +22,7 @@ class _FakeChannel(discord.TextChannel):
         self.sent_texts: list[str] = []
         self._fallisce = fallisce
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         if self._fallisce:
             raise discord.HTTPException(response=_FakeHttpResponse(), message="errore finto")
         self.sent_texts.append(content)

@@ -18,7 +18,6 @@ import pytest
 import cogs.leveling.leveling as modulo
 from core.giveaway_logic import (
     biglietti_di,
-    is_eligible,
     pick_winners_pesati,
     requisiti_mancanti,
 )
@@ -32,6 +31,10 @@ GUILD = 100
 ORA = datetime.now(timezone.utc)
 
 
+def _ok(*args, **kw):
+    return not requisiti_mancanti(*args, **kw)
+
+
 # ----------------------------------------------------------------------
 # Logica pura
 # ----------------------------------------------------------------------
@@ -42,15 +45,15 @@ def test_biglietti_extra_solo_con_il_ruolo():
 
 
 def test_il_ruolo_bypass_salta_tutti_i_requisiti():
-    assert not is_eligible(0, set(), 10, 5, messages=0, min_messages=50)
-    assert is_eligible(0, {9}, 10, 5, messages=0, min_messages=50, bypass_role_ids={9})
+    assert not _ok(0, set(), 10, 5, messages=0, min_messages=50)
+    assert _ok(0, {9}, 10, 5, messages=0, min_messages=50, bypass_role_ids={9})
 
 
 def test_requisito_sui_messaggi():
-    assert not is_eligible(0, set(), 0, None, messages=4, min_messages=5)
-    assert is_eligible(0, set(), 0, None, messages=5, min_messages=5)
+    assert not _ok(0, set(), 0, None, messages=4, min_messages=5)
+    assert _ok(0, set(), 0, None, messages=5, min_messages=5)
     # Senza i nuovi argomenti vale come prima.
-    assert is_eligible(3, {5}, 3, 5)
+    assert _ok(3, {5}, 3, 5)
 
 
 def test_requisiti_mancanti_dice_cosa_manca():
@@ -174,6 +177,26 @@ async def test_massimo_25_modelli_per_server(repo):
     with pytest.raises(ModelloPieno):
         await repo.save_template(GUILD, "uno-di-troppo", prize="x", winners_count=1, duration_minutes=5)
     await repo.save_template(GUILD, "m3", prize="y", winners_count=1, duration_minutes=5)  # aggiornare si può
+
+
+@pytest.mark.asyncio
+async def test_trenta_salvataggi_insieme_non_superano_il_tetto_di_25(repo, clean_db):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    await apri_connessioni(clean_db, 3)
+    # Più server di fila: senza il blocco basta una gara fortunata per superare 25.
+    for guild in range(GUILD, GUILD + 8):
+        esiti = await asyncio.gather(
+            *(
+                repo.save_template(guild, f"m{i}", prize="x", winners_count=1, duration_minutes=5)
+                for i in range(30)
+            ),
+            return_exceptions=True,
+        )
+        assert len(await repo.list_templates(guild)) == 25
+        assert sum(isinstance(e, ModelloPieno) for e in esiti) == 5
 
 
 # ----------------------------------------------------------------------
@@ -633,3 +656,37 @@ async def test_programmati_elenca_con_errore_e_annulla(cog_comandi):
     await comando.callback(cog, interazione, azione=_scelta("annulla"), numero=gid)
     assert "annullato" in interazione.response.send_message.await_args.args[0]
     assert await giveaway.list_scheduled(GUILD) == []
+
+
+@pytest.mark.asyncio
+async def test_programmato_in_un_canale_dove_il_bot_non_scrive_e_rifiutato(cog_comandi):
+    cog, comandi, giveaway = cog_comandi
+    interazione = _interazione()
+    interazione.channel = SimpleNamespace(
+        id=500,
+        permissions_for=lambda me: SimpleNamespace(
+            view_channel=True, send_messages=False, embed_links=True
+        ),
+    )
+
+    await comandi["economia giveaway"].callback(
+        cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
+        required_role=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
+        ingressi_extra=0, inizia_tra=30,
+    )
+
+    assert "Inviare messaggi" in interazione.response.send_message.await_args.args[0]
+    assert await giveaway.list_scheduled(GUILD) == []
+
+
+@pytest.mark.asyncio
+async def test_il_worker_annuncia_i_vincitori_senza_avvisare_tutti(worker_in_scena, repo):
+    worker, bot, canale = worker_in_scena
+    gid = await repo.create_giveaway(GUILD, 500, "@everyone", 1, 0, None, ORA - timedelta(seconds=5), 1)
+    await repo.add_entry(gid, 42)
+
+    await worker.tick(bot, ORA)
+
+    menzioni = canale.inviati[0][1]["allowed_mentions"]
+    assert menzioni.everyone is False and menzioni.roles is False
+    assert [u.id for u in menzioni.users] == [42]

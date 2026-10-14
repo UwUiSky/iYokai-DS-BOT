@@ -62,7 +62,7 @@ class ProfilesCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         membro: discord.Member | None = None,
-        presentazione: app_commands.Range[str, 1, 400] | None = None,
+        presentazione: app_commands.Range[str, 1, MAX_BIO] | None = None,
         cancella_presentazione: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):

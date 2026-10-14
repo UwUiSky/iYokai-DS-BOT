@@ -1,7 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r4-liv` (40e6b5e) #65/#86/#99/#111/#124/#125: DA SISTEMARE (9 righe nel quaderno, nessuna alta)
+14/10/2026 · ramo `feat/r4-liv`: 9 righe corrette dal dev su richiesta del coordinatore, smoke 886 verde; da riapprovare
 
 ## In corso
 - `feat/r4-liv` (40e6b5e): DA SISTEMARE. Media: `_acquista` senza `prezzo_atteso` (addebito al prezzo nuovo, rimborso al vecchio: leveling.py:1468, shop_repo.py:249); `save_template` senza test del blocco (30 insieme = 26-27 modelli); SPEC 23.16 `[x]` con sfondo solo colore (D18). Basse: test `fuori_gerarchia` in `da_togliere`, codice morto (AZIONI_*, GIOCHI, pick_winners, is_eligible), `allowed_mentions` annuncio vincitori, bio tagliata in silenzio, ruoli non aggiornati non detti, `/fun conteggio` senza permessi. Alla riconsegna controllare solo quelle. Smoke 876 verdi; 50 mutazioni (scratchpad/rv/mut.py, copia scratchpad/rv/copia).

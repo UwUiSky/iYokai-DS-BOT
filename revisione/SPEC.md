@@ -1813,11 +1813,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.5 Inviti: comando personale e classifica (NF-27)
 - `[x]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
+  → **Nota:** il requisito sui messaggi conta dall'inizio del giveaway, non dallo storico (che arriva con NF-25): da far accettare all'owner.
   → **Stato 13/10:** `/economia giveaway` (min_messaggi, ruolo_bypass, ruolo_extra +
   ingressi_extra, inizia_tra) e `/economia giveaway-modello` (salva, elenco, elimina, avvia;
   25 modelli per server); migrazione 0091. I messaggi si contano **dall'inizio del giveaway** (non lo storico):
   il conteggio storico per canale e membro arriva con NF-25. Il worker fa partire i programmati.
   Avviso ai vincitori in thread e forum: già fatto (M 9.15).
+  → **Stato 14/10 (revisione):** senza conferma l'acquisto nello shop vale per il prezzo letto (se cambia, nessun addebito); `/economia xp` avvisa se i ruoli-premio non si aggiornano; `/fun conteggio` e i giveaway programmati controllano i permessi del bot nel canale; l'annuncio dei vincitori avvisa solo i vincitori.
   → **Stato 14/10 (giro correzioni):** i comandi staff stanno nel gruppo `/economia` (D25), non più in `/gestione`.
   Il worker conclude un giveaway con una scrittura condizionata (`mark_ended` vero a uno solo: un annuncio solo);
   un programmato che non parte (canale sparito, bot senza permessi, invio rifiutato) non si chiude: resta con il
@@ -1834,8 +1836,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.13 Moduli e candidature (NF-34)
 - `[ ]` 23.14 Effetti sonori in vocale (NF-35)
 - `[ ]` 23.15 Bot con marchio proprio per i server premium (NF-38)
-- `[x]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
+- `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
+  → **Aperto (D18):** lo sfondo del profilo è solo un colore; lo sfondo con immagine e il profilo come immagine restano da fare (serve il disegno della card e il controllo delle immagini).
   → **Stato 13/10:** `/fun gioca` (monetina, dadi, slot; puntata 1-10000, una sola scrittura sul saldo, pausa di 5 s),
   `/fun misura` (tema libero, stabile per il giorno, rifiuta temi su caratteristiche protette),
   `/fun conteggio` (canale, spegni, stato; a turno, record) con `core/repositories/counting_game_repo.py` (migrazione 0092);
