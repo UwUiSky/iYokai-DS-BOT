@@ -69,6 +69,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("automod", "filtri"): {
         "invites", "anti-link-mode", "anti-link-domain", "anti-spam-messages", "anti-spam-emoji",
         "anti-spam-sticker", "anti-caps", "anti-zalgo", "phishing", "forma-testo", "anti-mention", "anti-attachment", "actions-set",
+        "messaggi", "contenuto", "canale-media",
     },
     ("automod", "parole"): {"add", "remove", "list"},
     ("automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},

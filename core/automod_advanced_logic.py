@@ -168,6 +168,12 @@ class MessageSignals:
     recent_message_count: int = 1
     recent_attachment_count: int = 0
     recent_sticker_count: int = 0
+    # AMD-001/006/007/022/023/024
+    ripetuti: int = 1
+    recent_link_count: int = 0
+    recent_mention_count: int = 0
+    nomi_allegati: tuple[str, ...] = ()
+    channel_id: int = 0
 
 
 # Quanti domini al massimo in ciascuna lista link (whitelist, blacklist):
@@ -222,6 +228,21 @@ class AutomodAdvancedConfig:
     max_spoiler: int = 0
     anti_mass_mention: ThresholdFilterConfig = field(default_factory=ThresholdFilterConfig)
     anti_attachment_spam: RateFilterConfig = field(default_factory=RateFilterConfig)
+    # AMD-001: stesso testo mandato più di N volte di fila (0 = spento).
+    max_ripetuti: int = 0
+    # AMD-004: messaggio di testo più corto di N caratteri (0 = spento).
+    min_caratteri: int = 0
+    # AMD-006/007: link e menzioni contati nel tempo, su più messaggi.
+    link_nel_tempo: RateFilterConfig = field(default_factory=RateFilterConfig)
+    menzioni_nel_tempo: RateFilterConfig = field(default_factory=RateFilterConfig)
+    # AMD-019/020: i filtri di testo leggono anche embed e messaggi inoltrati.
+    controlla_embed: bool = False
+    controlla_inoltrati: bool = False
+    # AMD-022: estensioni di file vietate (senza punto, minuscole).
+    estensioni_vietate: tuple[str, ...] = ()
+    # AMD-023/024: canali solo media e canali senza allegati.
+    canali_solo_media: tuple[int, ...] = ()
+    canali_senza_allegati: tuple[int, ...] = ()
 
 
 # Nomi delle violazioni possibili — usati come chiave sia per
@@ -241,6 +262,13 @@ VIOLATION_LUNGHEZZA = "anti_lunghezza"
 VIOLATION_SPOILER = "anti_spoiler"
 VIOLATION_ACCORCIATORI = "anti_accorciatori"
 VIOLATION_INVITI_ADULTI = "anti_inviti_adulti"
+VIOLATION_RIPETUTI = "anti_ripetuti"
+VIOLATION_CORTO = "anti_corto"
+VIOLATION_LINK_TEMPO = "anti_link_tempo"
+VIOLATION_MENZIONI_TEMPO = "anti_menzioni_tempo"
+VIOLATION_ESTENSIONI = "anti_estensioni"
+VIOLATION_SOLO_MEDIA = "solo_media"
+VIOLATION_SENZA_ALLEGATI = "senza_allegati"
 
 ALL_VIOLATIONS = (
     VIOLATION_ANTI_LINK,
@@ -257,7 +285,32 @@ ALL_VIOLATIONS = (
     VIOLATION_SPOILER,
     VIOLATION_ACCORCIATORI,
     VIOLATION_INVITI_ADULTI,
+    VIOLATION_RIPETUTI,
+    VIOLATION_CORTO,
+    VIOLATION_LINK_TEMPO,
+    VIOLATION_MENZIONI_TEMPO,
+    VIOLATION_ESTENSIONI,
+    VIOLATION_SOLO_MEDIA,
+    VIOLATION_SENZA_ALLEGATI,
 )
+
+MAX_ESTENSIONI = 50
+
+
+def estensione(nome_file: str) -> str:
+    """L'estensione di un file, minuscola e senza punto ('' se non c'è)."""
+    nome = (nome_file or "").rsplit("/", 1)[-1]
+    return nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
+
+
+def pulisci_estensioni(testo: str) -> tuple[str, ...]:
+    """Elenco di estensioni scritto dall'admin («exe, .bat scr») -> tupla pulita, senza doppioni, con tetto."""
+    visti: list[str] = []
+    for pezzo in testo.replace(",", " ").split():
+        voce = pezzo.strip().lstrip(".").lower()[:16]
+        if voce and voce.isalnum() and voce not in visti:
+            visti.append(voce)
+    return tuple(visti[:MAX_ESTENSIONI])
 
 # Azioni di partenza quando il server non ha scelto: il phishing viene di solito da un account rubato,
 # quindi oltre a cancellare il messaggio si ferma l'account (timeout).
@@ -333,5 +386,33 @@ def evaluate_message_violations(
         signals.recent_attachment_count, config.anti_attachment_spam.max_count
     ):
         violazioni.append(VIOLATION_ATTACHMENT_SPAM)
+
+    if config.max_ripetuti and signals.ripetuti > config.max_ripetuti:
+        violazioni.append(VIOLATION_RIPETUTI)
+
+    testo = signals.content.strip()
+    if config.min_caratteri and testo and signals.attachment_count == 0 and len(testo) < config.min_caratteri:
+        violazioni.append(VIOLATION_CORTO)
+
+    if config.link_nel_tempo.enabled and domini and is_rate_violation(
+        signals.recent_link_count, config.link_nel_tempo.max_count
+    ):
+        violazioni.append(VIOLATION_LINK_TEMPO)
+
+    if config.menzioni_nel_tempo.enabled and signals.mention_count and is_rate_violation(
+        signals.recent_mention_count, config.menzioni_nel_tempo.max_count
+    ):
+        violazioni.append(VIOLATION_MENZIONI_TEMPO)
+
+    if config.estensioni_vietate and any(
+        estensione(nome) in config.estensioni_vietate for nome in signals.nomi_allegati
+    ):
+        violazioni.append(VIOLATION_ESTENSIONI)
+
+    if signals.channel_id in config.canali_solo_media and signals.attachment_count == 0 and not domini:
+        violazioni.append(VIOLATION_SOLO_MEDIA)
+
+    if signals.channel_id in config.canali_senza_allegati and signals.attachment_count > 0:
+        violazioni.append(VIOLATION_SENZA_ALLEGATI)
 
     return tuple(violazioni)

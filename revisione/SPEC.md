@@ -268,6 +268,7 @@ Totale voci: **494**.
     pattern di ticket/vocali temporanei)
     → **Stato 11/10:** `defer` o modulo come prima risposta (LIM-9) — fatto.
     Aggiunti (#118): `/security verify opzioni` (ruolo «non verificato» all'ingresso, fino a 3 ruoli extra), `manuale`, `tentativi`, `statistiche` (VER-014, 015, 016, 030, 031).
+    → **Stato 14/10 (r6, #118):** `/security verify tempi` (promemoria in DM con avviso di 15 s nel canale se i DM sono chiusi, tempo massimo con kick o ban, azione su chi non passa, verifica solo per account sospetti: VER-008, 009, 011, 012, 013); `/utility verifica` per il membro (VER-010).
   - `[x]` Reaction verify — `on_raw_reaction_add`. **Non supporta il
     captcha**: una reazione non è un'Interaction, non può aprire un
     Modal — combinazione rifiutata esplicitamente a `/verify setup`
@@ -312,6 +313,7 @@ Totale voci: **494**.
 
 - `[~]` 5.1 Warn, Kick, Ban, Tempban, Timeout, Unban, Untimeout
   → **Stato 04/10:** nessun controllo dei permessi (SEC-1); motivo senza massimo e caso creato prima dell'azione (LIM-8).
+  → **Stato 14/10 (r6, #115):** azioni in massa `/modban massa ban|unban|kick`, `/mod massa timeout|warn` (fino a 50 utenti; ban anche per ID fuori dal server: MOD-001…006).
 - `[~]` 5.1 **Softban** (ban+unban immediato per cancellare i messaggi)
   → **Stato 04/10:** SEC-1, LIM-8.
 - `[~]` 5.1 **Mute via ruolo** — ruolo "Muted" auto-creato con
@@ -422,6 +424,7 @@ Totale voci: **494**.
   violazione (`automod_action_log`) + embed opzionale in un canale
   dedicato, `/automod log-channel` + `/automod status` (riepilogo
   configurazione)
+- `[x]` 6.16 Filtri in più (#116, r6): messaggi ripetuti, troppo corti, link e menzioni nel tempo (`/automod filtri messaggi`, AMD-001, 004, 006, 007), embed e inoltri letti dai filtri e tipi di file vietati (`contenuto`, AMD-019, 020, 022), canali solo media o senza allegati (`canale-media`, AMD-023, 024), azione kick in `actions-set` (AMD-041)
 - `[~]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
   di severità crescente **nel tempo** in base a quante volte un
   utente ha già triggerato l'AutoMod nativo, con reset dopo un
@@ -439,6 +442,7 @@ Totale voci: **494**.
   persistita — stesso principio di `core/automod_rate_tracker.py`).
   Comandi: `/antiraid enable|join-rate|account-age|username-check|
   avatar-check|lockdown-action|alert-channel|status|quarantine-hold|rilascia`
+  → **Stato 14/10 (r6, #117):** gruppo di primo livello `/antiraid` (D25). Filtri all'ingresso con azione propria anche fuori dal raid (`filtro-ingresso`, `nomi-vietati`: SIC-023, 024, 026, 027, 028; il bio del profilo non è leggibile dai bot, si guardano nome e nome visualizzato), soglia sui soli sospetti, account creati vicini e nomi simili (`join-rate conta`, `segnali`: SIC-029, 030, 031), kick o ban al raid anche su chi è entrato prima (SIC-032, 033), `ping-ruoli` (SIC-034), `elenco` (SIC-035), segnale di rete (SIC-037), `segnala` (SIC-038). Resta SIC-036.
   → **Stato 04/10:** BUG-12.
   → **Stato 11/10 (#59, #117, ramo `feat/sicurezza-audit`):** un avviso
   solo per episodio; ruolo "Quarantined" preparato all'attivazione e
@@ -1907,7 +1911,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
 - `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
-- `[x]` 23.10 Blocco dei link di phishing (NF-31)
+- `[x]` 23.10 Blocco dei link di phishing (NF-31); accorciatori di link e inviti a server per adulti con interruttore proprio (SIC-042, r6)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)
   → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima
