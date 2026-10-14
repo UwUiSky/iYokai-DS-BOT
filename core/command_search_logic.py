@@ -23,6 +23,8 @@ from discord import app_commands
 
 import re
 
+from core.i18n import t
+
 logger = logging.getLogger("iyokai.command_search")
 
 
@@ -39,9 +41,20 @@ STOPWORD_ITALIANE = frozenset(
 )
 
 
+# NF-06: la ricerca capisce anche l'inglese (parole vuote comuni di una richiesta in inglese).
+STOPWORD_INGLESI = frozenset(
+    {
+        "the", "an", "of", "to", "for", "and", "or", "with", "my", "me", "is", "are", "it",
+        "how", "can", "do", "does", "want", "wanna", "need", "please", "i", "you", "someone",
+        "something", "somebody", "this", "that", "some", "any", "what", "where",
+    }
+)
+_STOPWORD = STOPWORD_ITALIANE | STOPWORD_INGLESI
+
+
 def _tokenizza(testo: str) -> set[str]:
     parole = set(re.findall(r"[a-zàèéìòù0-9]+", testo.lower()))
-    return parole - STOPWORD_ITALIANE
+    return parole - _STOPWORD
 
 
 def _condividono_radice(parola_a: str, parola_b: str, prefisso_minimo: int = 4) -> bool:
@@ -116,6 +129,31 @@ class ComandoInfo:
     # Livelli richiesti per usarlo: quelli dei gruppi sopra di lui (`GruppoYokai.livello`)
     # e quelli dei suoi `@richiedi`.
     livelli: tuple = ()
+    # NF-06: lo stesso comando in inglese (come lo vede chi ha Discord in inglese) e i moduli
+    # del server da cui dipende (vuoto = nessun modulo da accendere).
+    percorso_en: str = ""
+    descrizione_en: str = ""
+    moduli: tuple = ()
+
+
+def moduli_del_comando(cmd) -> tuple[str, ...]:
+    """
+    I moduli del server che servono a un comando: i nomi `MODULE_*` (stringhe) del file che lo definisce
+    e che sono registrati come moduli. Euristica per file: un comando appare se ALMENO UNO è acceso.
+    """
+    import sys
+
+    from core.premium import registry
+
+    modulo = sys.modules.get(getattr(cmd, "module", None) or "")
+    if modulo is None:
+        return ()
+    nomi = {
+        valore
+        for chiave, valore in vars(modulo).items()
+        if chiave.startswith("MODULE_") and isinstance(valore, str) and registry.get(valore) is not None
+    }
+    return tuple(sorted(nomi))
 
 
 def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ()) -> list[ComandoInfo]:
@@ -132,10 +170,16 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
             Opzione(p.name, str(p.description or ""), bool(p.required))
             for p in getattr(cmd, "parameters", ())
         )
+        from core.command_translator import descrizione_inglese, nome_inglese
+
+        percorso_en = " ".join(nome_inglese(s) or s for s in percorso.split(" "))
         risultati.append(
             ComandoInfo(
                 percorso, cmd.description or "(nessuna descrizione)", percorso.split(" ")[0], opzioni,
                 livelli + dei_check,
+                percorso_en=percorso_en,
+                descrizione_en=descrizione_inglese(cmd.qualified_name) or "",
+                moduli=moduli_del_comando(cmd),
             )
         )
     return risultati
@@ -176,6 +220,28 @@ SINONIMI: tuple[tuple[str, ...], ...] = (
     ("ruolo", "ruoli", "grado"),
     ("benvenuto", "saluto", "accoglienza"),
     ("suggerimento", "proposta", "idea", "suggerisci"),
+    # Inglese (NF-06): stesse idee, con le parole che un utente inglese scrive davvero.
+    ("ban", "kick", "expel", "remove", "throw"),
+    ("silence", "mute", "timeout", "shush", "gag"),
+    ("warn", "warning", "strike", "caution"),
+    ("delete", "clear", "purge", "clean", "wipe"),
+    ("poll", "vote", "survey"),
+    ("remind", "reminder", "alarm"),
+    ("music", "song", "play", "track", "tune"),
+    ("rank", "level", "leaderboard", "xp", "experience", "points"),
+    ("coins", "money", "economy", "shop", "store", "cash"),
+    ("giveaway", "raffle", "draw", "prize"),
+    ("report", "flag", "complaint"),
+    ("help", "guide", "support", "instructions"),
+    ("channel", "room", "chat"),
+    ("role", "roles", "rank"),
+    ("welcome", "greeting", "greet"),
+    ("suggestion", "suggest", "idea", "proposal"),
+    ("language", "lingua", "idioma", "locale"),
+    ("privacy", "data", "gdpr", "dati", "erase", "forget"),
+    ("ticket", "support", "assistance", "modmail"),
+    ("backup", "restore", "ripristino", "copy"),
+    ("premium", "pro", "subscription", "abbonamento", "upgrade"),
 )
 
 
@@ -183,7 +249,7 @@ def _varianti(query: str) -> list[str]:
     parole = re.findall(r"[a-zàèéìòù0-9]+", query.lower())
     varianti = []
     for i, parola in enumerate(parole):
-        if parola in STOPWORD_ITALIANE:
+        if parola in _STOPWORD:
             continue
         for gruppo in SINONIMI:
             if any(_condividono_radice(parola, m) for m in gruppo):
@@ -199,9 +265,17 @@ def _punteggio(query: str, info: ComandoInfo) -> float:
         return 0.0
     if pulita == info.percorso.lower():
         return 10.0
-    migliore = score_command(pulita, info.percorso, info.descrizione)
-    for variante in _varianti(pulita):
-        migliore = max(migliore, 0.9 * score_command(variante, info.percorso, info.descrizione, bonus_sottostringa=False))
+    if info.percorso_en and pulita == info.percorso_en.lower():
+        return 10.0
+    testi = [(info.percorso, info.descrizione)]
+    if info.percorso_en:
+        testi.append((info.percorso_en, info.descrizione_en))
+    migliore = 0.0
+    varianti = _varianti(pulita)
+    for nome, descrizione in testi:
+        migliore = max(migliore, score_command(pulita, nome, descrizione))
+        for variante in varianti:
+            migliore = max(migliore, 0.9 * score_command(variante, nome, descrizione, bonus_sottostringa=False))
     return migliore
 
 
@@ -214,7 +288,16 @@ def cerca(
     return [c for _, c in punti[:limite]]
 
 
-def suggerimenti(query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_SUGGERIMENTI) -> list[tuple[str, str]]:
+def mostra(c: ComandoInfo, lingua: str) -> tuple[str, str]:
+    """(percorso, descrizione) da far vedere: in inglese se la lingua lo chiede e la traduzione c'è."""
+    if lingua == "en" and c.percorso_en and c.descrizione_en:
+        return c.percorso_en, c.descrizione_en
+    return c.percorso, c.descrizione
+
+
+def suggerimenti(
+    query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_SUGGERIMENTI, lingua: str = "it"
+) -> list[tuple[str, str]]:
     """(etichetta, valore) per il completamento: al massimo 25, etichetta e valore fino a 100 caratteri."""
     pulita = query.strip().lstrip("/").strip().lower()
     if pulita:
@@ -236,7 +319,8 @@ def suggerimenti(query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_S
     for c in scelti:
         if len(c.percorso) > 100:
             continue
-        risultato.append((f"/{c.percorso} — {c.descrizione}"[:100], c.percorso))
+        percorso_mostrato, descrizione = mostra(c, lingua)
+        risultato.append((f"/{percorso_mostrato} — {descrizione}"[:100], c.percorso))
         if len(risultato) >= limite:
             break
     return risultato
@@ -253,6 +337,24 @@ async def filtra_per_livelli(
             if livello not in memo:
                 memo[livello] = bool(await puo(livello))
         if all(memo[liv] for liv in c.livelli):
+            visibili.append(c)
+    return visibili
+
+
+async def filtra_per_moduli(
+    comandi: Iterable[ComandoInfo], attivo: Callable[[str], Awaitable[bool]]
+) -> list[ComandoInfo]:
+    """Toglie i comandi i cui moduli sono TUTTI spenti nel server. Senza moduli dichiarati il comando resta."""
+    memo: dict[str, bool] = {}
+    visibili = []
+    for c in comandi:
+        if not c.moduli:
+            visibili.append(c)
+            continue
+        for nome in c.moduli:
+            if nome not in memo:
+                memo[nome] = bool(await attivo(nome))
+        if any(memo[nome] for nome in c.moduli):
             visibili.append(c)
     return visibili
 
@@ -274,51 +376,54 @@ def _taglia(testo: str, massimo: int, compatta: bool = True) -> str:
     return testo if len(testo) <= massimo else testo[: massimo - 1] + "…"
 
 
-def _testo_opzioni(opzioni: Sequence[Opzione]) -> str:
+def _testo_opzioni(opzioni: Sequence[Opzione], lingua: str = "it") -> str:
     if not opzioni:
-        return "Nessuna opzione."
+        return t("cerca_opzioni_nessuna", lingua)
     righe = []
     for o in opzioni[:MAX_OPZIONI_MOSTRATE]:
-        sigla = "obbligatoria" if o.obbligatoria else "facoltativa"
+        sigla = t("cerca_obbligatoria" if o.obbligatoria else "cerca_facoltativa", lingua)
         righe.append(f"• `{o.nome}` ({sigla}) {_taglia(o.descrizione, 60)}".rstrip())
     if len(opzioni) > MAX_OPZIONI_MOSTRATE:
-        righe.append(f"…e altre {len(opzioni) - MAX_OPZIONI_MOSTRATE}.")
+        righe.append(t("cerca_opzioni_altre", lingua, n=len(opzioni) - MAX_OPZIONI_MOSTRATE))
     return "\n".join(righe)
 
 
-def embed_risultati(risultati: Sequence[ComandoInfo], ids: Mapping[str, int], query: str) -> discord.Embed:
+def embed_risultati(
+    risultati: Sequence[ComandoInfo], ids: Mapping[str, int], query: str, lingua: str = "it"
+) -> discord.Embed:
     embed = discord.Embed(
-        title=_taglia(f"🔍 Risultati per «{query}»", 256), color=discord.Color.blurple()
+        title=_taglia(t("cerca_titolo", lingua, query=query), 256), color=discord.Color.blurple()
     )
     for c in risultati[:MAX_RISULTATI]:
-        valore = f"{menzione(c.percorso, ids)}\n{_taglia(c.descrizione, 150)}\n{_testo_opzioni(c.opzioni)}"
-        embed.add_field(name=_taglia(f"/{c.percorso}", 256), value=_taglia(valore, 1024, False), inline=False)
+        percorso_mostrato, descrizione = mostra(c, lingua)
+        valore = f"{menzione(c.percorso, ids)}\n{_taglia(descrizione, 150)}\n{_testo_opzioni(c.opzioni, lingua)}"
+        embed.add_field(name=_taglia(f"/{percorso_mostrato}", 256), value=_taglia(valore, 1024, False), inline=False)
     return embed
 
 
-def embed_pannello(ultimo: str | None, ids: Mapping[str, int], *, in_dm: bool) -> discord.Embed:
+def embed_pannello(ultimo: str | None, ids: Mapping[str, int], *, in_dm: bool, lingua: str = "it") -> discord.Embed:
     righe = []
     if ultimo:
-        righe.append(f"**Ultimo comando usato:** {menzione(ultimo, ids)}")
+        righe.append(t("cerca_ultimo", lingua, comando=menzione(ultimo, ids)))
     else:
-        righe.append("Non hai ancora usato nessun comando qui.")
-    righe.append("Scegli una categoria con i bottoni, oppure scrivi cosa vuoi fare nel campo `query`.")
+        righe.append(t("cerca_nessun_uso", lingua))
+    righe.append(t("cerca_scegli", lingua))
     if in_dm:
-        righe.append("In privato puoi solo cercare: i comandi si usano nei server.")
-    return discord.Embed(title="🔍 Cerca un comando", description="\n\n".join(righe), color=discord.Color.blurple())
+        righe.append(t("cerca_in_dm", lingua))
+    return discord.Embed(title=t("cerca_pannello_titolo", lingua), description="\n\n".join(righe), color=discord.Color.blurple())
 
 
 def embed_categoria(
-    gruppo: str, comandi: Sequence[ComandoInfo], ids: Mapping[str, int], indice: int
+    gruppo: str, comandi: Sequence[ComandoInfo], ids: Mapping[str, int], indice: int, lingua: str = "it"
 ) -> tuple[discord.Embed, int, int]:
     pezzo, indice, totale = pagina(comandi, indice, COMANDI_PER_PAGINA)
-    righe = [f"{menzione(c.percorso, ids)} — {_taglia(c.descrizione, 100)}" for c in pezzo]
+    righe = [f"{menzione(c.percorso, ids)} — {_taglia(mostra(c, lingua)[1], 100)}" for c in pezzo]
     embed = discord.Embed(
         title=_taglia(f"📂 {gruppo}", 256),
-        description=_taglia("\n".join(righe) or "Nessun comando.", 4096, False),
+        description=_taglia("\n".join(righe) or t("cerca_nessun_comando", lingua), 4096, False),
         color=discord.Color.blurple(),
     )
-    embed.set_footer(text=f"Pagina {indice + 1}/{totale}")
+    embed.set_footer(text=t("cerca_pagina", lingua, i=indice + 1, n=totale))
     return embed, indice, totale
 
 
