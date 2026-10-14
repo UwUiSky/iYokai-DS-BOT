@@ -22,6 +22,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
+from core.config_schema import imposta_lingua_server
 from core.config_history_logic import (
     MAX_RIGHE_CSV,
     TIPI_MODIFICA,
@@ -720,7 +721,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             return
-        await db.set_guild_language(interaction.guild.id, language.value, changed_by=interaction.user.id)
+        await imposta_lingua_server(interaction.guild.id, language.value, interaction.user.id)
         await interaction.response.send_message(
             tr("lingua_server_impostata", language.value, lingua=language.value), ephemeral=True
         )

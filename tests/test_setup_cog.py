@@ -17,12 +17,23 @@ Due livelli di verifica:
 """
 
 import discord
+import pytest
 from discord.ext import commands
 
 from core.database import Database
 from core.premium import PremiumModule
 from cogs.utility.setup import SetupView, setup as setup_cog_setup
 from tests.support.percorsi import percorsi_del_gruppo
+import core.config_schema as config_schema_module
+
+
+@pytest.fixture(autouse=True)
+def _moduli_registrati(reset_premium_registry):
+    """`imposta_modulo` (D16) accetta solo moduli registrati: qui quelli finti del test."""
+    from core.premium import registry
+
+    for nome in ("test_modulo_a", "test_modulo_b", "test_modulo_c", "test_invariato_a", "test_cambiato_b", "test_modulo_x", "test_evento_a", "test_evento_b"):
+        registry.register(PremiumModule(category="utility", name=nome, display_name=nome, description=nome))
 
 
 async def test_setup_cog_si_carica_correttamente():
@@ -109,7 +120,7 @@ async def test_salvataggio_persiste_esattamente_la_selezione():
 
         import cogs.utility.setup as setup_module
         original_db = setup_module.db
-        setup_module.db = database  # setup.py usa "from core.database import db" a livello di modulo
+        setup_module.db = config_schema_module.db = database  # setup.py usa "from core.database import db" a livello di modulo
 
         try:
             modules_with_state = [
@@ -146,7 +157,7 @@ async def test_salvataggio_persiste_esattamente_la_selezione():
             # Il messaggio di conferma riporta il conteggio corretto.
             assert "2/3" in fake_interaction.response.edited_content
         finally:
-            setup_module.db = original_db
+            setup_module.db = config_schema_module.db = original_db
     finally:
         await database.pool.execute(
             "DELETE FROM guild_config WHERE guild_id = 555555555"
@@ -191,7 +202,7 @@ async def test_salvataggio_non_registra_storico_per_moduli_invariati():
 
         import cogs.utility.setup as setup_module
         original_db = setup_module.db
-        setup_module.db = database
+        setup_module.db = config_schema_module.db = database
 
         try:
             modules_with_state = [(modulo_a, True), (modulo_b, False)]
@@ -208,7 +219,7 @@ async def test_salvataggio_non_registra_storico_per_moduli_invariati():
             assert len(storico) == 1
             assert storico[0].key_name == "test_cambiato_b"
         finally:
-            setup_module.db = original_db
+            setup_module.db = config_schema_module.db = original_db
     finally:
         await database.pool.execute(
             "DELETE FROM guild_config WHERE guild_id = 555555556"
@@ -233,7 +244,7 @@ async def test_annulla_non_scrive_nulla_sul_database():
 
         import cogs.utility.setup as setup_module
         original_db = setup_module.db
-        setup_module.db = database
+        setup_module.db = config_schema_module.db = database
 
         try:
             modulo_x = PremiumModule(
@@ -254,7 +265,7 @@ async def test_annulla_non_scrive_nulla_sul_database():
             ) is True
             assert "annullata" in fake_interaction.response.edited_content.lower()
         finally:
-            setup_module.db = original_db
+            setup_module.db = config_schema_module.db = original_db
     finally:
         await database.pool.execute(
             "DELETE FROM guild_config WHERE guild_id = 444444444"
@@ -292,7 +303,7 @@ async def test_salvataggio_emette_modules_updated_solo_per_i_cambiati():
 
         import cogs.utility.setup as setup_module
         original_db = setup_module.db
-        setup_module.db = database
+        setup_module.db = config_schema_module.db = database
 
         try:
             modules_with_state = [(modulo_a, True), (modulo_b, False)]
@@ -311,7 +322,7 @@ async def test_salvataggio_emette_modules_updated_solo_per_i_cambiati():
                 ("modules_updated", guild_id, "test_evento_b", True, 999)
             ]
         finally:
-            setup_module.db = original_db
+            setup_module.db = config_schema_module.db = original_db
     finally:
         await database.pool.execute(
             "DELETE FROM guild_config WHERE guild_id = 555555557"
