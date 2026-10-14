@@ -23,6 +23,7 @@ Funzioni coperte: SPEC §23 (NF-33)
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import time
@@ -47,6 +48,9 @@ from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.repositories.blacklist_repo import blacklist_repo
+from core.repositories.moderation_repo import moderation_repo
+from core.spam_trap_logic import BAN_ACTION_TYPE
 from core.repositories.modmail_repo import ConversazioneGiaAperta, ModmailThread, modmail_repo
 from core.scheduler import in_seconds, scheduler
 from core.ticket_logic import build_transcript_text, format_transcript_line, split_text_by_size
@@ -59,6 +63,13 @@ MODMAIL_DELETE_ACTION_TYPE = "modmail_delete_channel"
 SENZA_MENZIONI = discord.AllowedMentions.none()
 COLORE_UTENTE = discord.Color.green()
 COLORE_STAFF = discord.Color.blurple()
+
+
+def _autore_riga(m: discord.Message) -> str:
+    """Nel canale ModMail chi scrive è sempre il bot: il nome vero sta nell'autore dell'embed."""
+    if getattr(m.author, "bot", False) and m.embeds and m.embeds[0].author and m.embeds[0].author.name:
+        return str(m.embeds[0].author.name)
+    return str(m.author)
 
 
 class SceltaServerView(BaseView):
@@ -84,15 +95,24 @@ class SceltaServerView(BaseView):
             return
         await interaction.response.edit_message(content=f"Ok: **{guild.name}**. Un attimo...", view=None)
         self.stop()
-        await self._cog.apri_conversazione(guild, self._utente, self._messaggio)
+        await self._cog.apri_da_menu(guild, self._utente, self._messaggio)
 
 
 class ModMailCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._limitatore = logica.LimitatoreDM()
-        # utenti per cui sto già aprendo una conversazione (due messaggi insieme)
-        self._aperture_in_corso: set[int] = set()
+        # un DM alla volta per utente: due messaggi insieme si inoltrano in ordine, senza perderne
+        self._serrature: dict[int, asyncio.Lock] = {}
+        # utenti con un menu dei server ancora aperto (il loro messaggio aspetta la scelta)
+        self._menu_aperti: set[int] = set()
+        # canali ModMail di cui si sta leggendo la history per il transcript
+        self._transcript_in_corso: set[int] = set()
+
+    def _serratura(self, user_id: int) -> asyncio.Lock:
+        if len(self._serrature) > 2000:  # memoria limitata: si scartano solo le serrature libere
+            self._serrature = {u: l for u, l in self._serrature.items() if l.locked()}
+        return self._serrature.setdefault(user_id, asyncio.Lock())
 
     # ================================================================
     # DM in arrivo
@@ -105,36 +125,51 @@ class ModMailCog(CogConGruppi, commands.Cog):
             return
         if not self._limitatore.consenti(message.author.id, time.monotonic()):
             return
-        await self._dm_in_arrivo(message)
+        # La serratura FIFO prima dei controlli: i messaggi si inoltrano nell'ordine di arrivo.
+        async with self._serratura(message.author.id):
+            # Un solo gestore per DM: chi ha un ban dello Spam Trap sta scrivendo un appello e lo
+            # gestisce quel cog (risposta e destinazione sue); il ModMail non deve mai vederlo.
+            if await self._ha_appello_aperto(message.author.id):
+                return
+            # Come per ogni altra funzione del bot, un utente in blacklist non apre canali.
+            if await blacklist_repo.is_user_blacklisted(message.author.id):
+                return
+            await self._dm_in_arrivo(message)
+
+    async def _ha_appello_aperto(self, user_id: int) -> bool:
+        casi = await moderation_repo.get_active_cases_for_user_across_guilds(user_id, BAN_ACTION_TYPE)
+        return any(self.bot.get_guild(c.guild_id) is not None for c in casi)
+
+    async def _server_ok(self, guild: discord.Guild, utente: discord.abc.User) -> bool:
+        """Il server accetta ModMail da questo utente adesso (modulo acceso, categoria, nessun blocco)."""
+        if guild.get_member(utente.id) is None:
+            return False
+        if not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
+            return False
+        if await modmail_repo.categoria(guild.id) is None:
+            return False
+        return not await modmail_repo.bloccato(guild.id, utente.id)
 
     async def _server_candidati(self, utente: discord.abc.User) -> list[discord.Guild]:
-        candidati = []
-        for guild in self.bot.guilds:
-            if guild.get_member(utente.id) is None:
-                continue
-            if not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
-                continue
-            if await modmail_repo.categoria(guild.id) is None:
-                continue
-            if await modmail_repo.bloccato(guild.id, utente.id):
-                continue
-            candidati.append(guild)
-        return candidati
+        return [g for g in self.bot.guilds if await self._server_ok(g, utente)]
 
-    async def _dm_in_arrivo(self, message: discord.Message) -> None:
+    async def _dm_in_arrivo(self, message: discord.Message, *, secondo_giro: bool = False) -> None:
         utente = message.author
         thread = await modmail_repo.aperta_dell_utente(utente.id)
         if thread is not None:
-            await self._inoltra_allo_staff(thread, message)
+            if not await self._inoltra_allo_staff(thread, message) and not secondo_giro:
+                # il canale era sparito: la conversazione è chiusa, il messaggio riparte da capo
+                await self._dm_in_arrivo(message, secondo_giro=True)
             return
-        if utente.id in self._aperture_in_corso:
+        if utente.id in self._menu_aperti:
+            await self._rispondi_dm(message, "Scegli prima il server dal menu qui sopra: poi scrivimi di nuovo.")
             return
         candidati = await self._server_candidati(utente)
         decisione = logica.decidi_server([g.id for g in candidati])
         if decisione.esito is logica.Esito.NESSUN_SERVER:
             return
         if decisione.esito is logica.Esito.UN_SERVER:
-            await self.apri_conversazione(candidati[0], utente, message)
+            await self._apri_se_ancora_possibile(candidati[0], utente, message)
             return
         scelta = [g for g in candidati if g.id in decisione.guild_ids]
         try:
@@ -142,28 +177,40 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 "In quale server vuoi scrivere allo staff?",
                 view=SceltaServerView(self, utente, message, scelta),
             )
+            self._menu_aperti.add(utente.id)
         except discord.HTTPException:
             logger.info("Menu dei server non consegnato all'utente %s", utente.id)
+
+    async def apri_da_menu(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
+        """Scelta dal menu: in coda dietro ai DM in corso e con tutti i controlli rifatti."""
+        self._menu_aperti.discard(utente.id)
+        async with self._serratura(utente.id):
+            thread = await modmail_repo.aperta_dell_utente(utente.id)
+            if thread is not None:
+                await self._inoltra_allo_staff(thread, primo)
+                return
+            if await self._ha_appello_aperto(utente.id) or await blacklist_repo.is_user_blacklisted(utente.id):
+                return
+            await self._apri_se_ancora_possibile(guild, utente, primo)
+
+    async def _apri_se_ancora_possibile(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
+        if not await self._server_ok(guild, utente):
+            await self._rispondi_dm(primo, "Questo server non accetta messaggi dal ModMail adesso.")
+            return
+        await self._apri(guild, utente, primo)
 
     # ================================================================
     # Apertura e inoltro
     # ================================================================
-    async def apri_conversazione(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
-        if utente.id in self._aperture_in_corso:
-            return
-        self._aperture_in_corso.add(utente.id)
-        try:
-            await self._apri(guild, utente, primo)
-        finally:
-            self._aperture_in_corso.discard(utente.id)
-
     async def _apri(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
         categoria_id = await modmail_repo.categoria(guild.id)
         categoria = guild.get_channel(categoria_id) if categoria_id else None
         if not isinstance(categoria, discord.CategoryChannel):
             await self._rispondi_dm(primo, "Il ModMail di questo server non è configurato: riprova più tardi.")
             return
-        if await modmail_repo.aperta_dell_utente(utente.id) is not None:
+        esistente = await modmail_repo.aperta_dell_utente(utente.id)
+        if esistente is not None:
+            await self._inoltra_allo_staff(esistente, primo)
             return
 
         sovrascritture = {
@@ -195,6 +242,9 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 await canale.delete(reason="ModMail doppio")
             except discord.HTTPException:
                 logger.warning("Canale ModMail doppio %s non eliminato.", canale.id)
+            esistente = await modmail_repo.aperta_dell_utente(utente.id)
+            if esistente is not None:
+                await self._inoltra_allo_staff(esistente, primo)
             return
 
         intestazione = discord.Embed(
@@ -225,14 +275,15 @@ class ModMailCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.info("DM di servizio non consegnato (utente %s)", messaggio.author.id)
 
-    async def _inoltra_allo_staff(self, thread: ModmailThread, message: discord.Message, canale=None) -> None:
+    async def _inoltra_allo_staff(self, thread: ModmailThread, message: discord.Message, canale=None) -> bool:
+        """True se il messaggio è stato gestito; False se il canale non c'è più (thread chiuso, da riaprire)."""
         canale = canale or self.bot.get_channel(thread.channel_id)
         if canale is None:
             try:
                 canale = await self.bot.fetch_channel(thread.channel_id)
             except discord.NotFound:
                 await self._canale_sparito(thread)
-                return
+                return False
         embed = discord.Embed(
             description=logica.testo_inoltrato(message.content) or None,
             color=COLORE_UTENTE,
@@ -249,15 +300,16 @@ class ModMailCog(CogConGruppi, commands.Cog):
             await canale.send(embed=embed, allowed_mentions=SENZA_MENZIONI)
         except discord.NotFound:
             await self._canale_sparito(thread)
-            return
+            return False
         except discord.HTTPException:
             logger.warning("Inoltro ModMail non riuscito in %s", thread.channel_id)
             await self._rispondi_dm(message, "Non sono riuscito a consegnare il messaggio allo staff: riprova.")
-            return
+            return True
         try:
             await message.add_reaction("✅")
         except discord.HTTPException:
             pass
+        return True
 
     async def _canale_sparito(self, thread: ModmailThread) -> None:
         """Il canale è stato cancellato a mano: la conversazione si chiude e l'utente può riscrivere."""
@@ -283,7 +335,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Chiusura
     # ================================================================
-    async def _transcript_al_log(self, guild: discord.Guild, canale, thread: ModmailThread) -> None:
+    async def _transcript_al_log(self, guild: discord.Guild, canale, thread: ModmailThread) -> bool:
         """Solo nel canale dei log: contiene anche le note interne dello staff."""
         try:
             righe = []
@@ -291,7 +343,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 righe.append(
                     format_transcript_line(
                         m.created_at.strftime("%Y-%m-%d %H:%M"),
-                        str(m.author),
+                        _autore_riga(m),
                         m.content or " / ".join(e.description or "" for e in m.embeds),
                         [a.filename for a in m.attachments],
                     )
@@ -303,7 +355,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
             predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
             destinazione = await router.destinazione(guild, TIPO_EVENTI, predefinito)
             if destinazione is None:
-                return
+                return False
             parti = split_text_by_size(testo, MAX_TRANSCRIPT_FILE_BYTES)
             for numero, parte in enumerate(parti, start=1):
                 nome = f"modmail-{thread.id}" + (f"-parte-{numero}" if len(parti) > 1 else "") + ".txt"
@@ -312,13 +364,15 @@ class ModMailCog(CogConGruppi, commands.Cog):
                     content=f"Transcript ModMail #{thread.id}",
                     file=discord.File(io.BytesIO(parte.encode("utf-8")), filename=nome),
                 )
+            return True
         except discord.HTTPException:
             logger.warning("Transcript ModMail %s non consegnato.", thread.id)
         except Exception:  # noqa: BLE001 - mai bloccare la chiusura
             logger.exception("Transcript ModMail %s non riuscito", thread.id)
+        return False
 
     async def _chiudi(
-        self, guild: discord.Guild, canale, thread: ModmailThread, chiuso_da: int, motivo: str | None, *, avvisa_utente: bool
+        self, guild: discord.Guild, canale, thread: ModmailThread, chiuso_da: int, motivo: str | None, *, avvisa_utente: bool, esito: dict | None = None
     ) -> bool:
         if not await modmail_repo.chiudi(thread.channel_id, chiuso_da, motivo):
             return False
@@ -336,11 +390,23 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 await utente.send(testo)
             except discord.HTTPException:
                 logger.info("Avviso di chiusura ModMail non consegnato all'utente %s", thread.user_id)
-        await self._transcript_al_log(guild, canale, thread)
+        self._transcript_in_corso.add(thread.channel_id)
+        try:
+            consegnato = await self._transcript_al_log(guild, canale, thread)
+        finally:
+            self._transcript_in_corso.discard(thread.channel_id)
+        if esito is not None:
+            esito["transcript"] = consegnato
         return True
 
     async def handle_modmail_delete_channel(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Handler dello scheduler. 404 = già eliminato; gli altri errori escono e lo scheduler riprova."""
+        if payload["channel_id"] in self._transcript_in_corso:
+            # il transcript sta ancora leggendo la history: si ripassa dopo
+            await scheduler.schedule(
+                guild_id, user_id, MODMAIL_DELETE_ACTION_TYPE, in_seconds(RITARDO_ELIMINAZIONE_SECONDI), payload
+            )
+            return
         try:
             canale = self.bot.get_channel(payload["channel_id"]) or await self.bot.fetch_channel(payload["channel_id"])
             await canale.delete(reason=payload.get("reason"))
@@ -488,8 +554,16 @@ class ModMailCog(CogConGruppi, commands.Cog):
             return
         # Il transcript può richiedere più di 3 secondi: si risponde subito.
         await interaction.response.defer()
-        await self._chiudi(interaction.guild, interaction.channel, thread, interaction.user.id, motivo, avvisa_utente=True)
-        await interaction.followup.send("Conversazione chiusa. Questo canale verrà eliminato a breve.")
+        esito: dict = {}
+        if not await self._chiudi(
+            interaction.guild, interaction.channel, thread, interaction.user.id, motivo, avvisa_utente=True, esito=esito
+        ):
+            await interaction.followup.send("Questa conversazione era già stata chiusa.", ephemeral=True)
+            return
+        testo = "Conversazione chiusa. Questo canale verrà eliminato a breve."
+        if not esito.get("transcript"):
+            testo += "\nAttenzione: il transcript non è stato salvato (nessun canale dei log raggiungibile)."
+        await interaction.followup.send(testo)
 
 
 async def setup(bot: commands.Bot) -> None:

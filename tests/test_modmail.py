@@ -373,7 +373,9 @@ async def test_dm_dopo_canale_sparito_senza_evento_chiude_e_non_perde_l_utente(s
     scena.bot.get_channel = lambda cid: None
     scena.bot.fetch_channel = AsyncMock(side_effect=discord.NotFound(SimpleNamespace(status=404, reason="x"), "x"))
     await scena.cog.on_message(scena.dm("ci sei?"))
-    assert await modmail_repo.aperta_dell_utente(ID_UTENTE) is None
+    # il vecchio canale è chiuso e il messaggio non si perde: apre una conversazione nuova
+    nuovo = await modmail_repo.aperta_dell_utente(ID_UTENTE)
+    assert nuovo is not None and nuovo.channel_id != canale.id
 
 
 async def test_utente_che_lascia_il_server_chiude_la_conversazione(scena):
