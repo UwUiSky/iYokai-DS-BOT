@@ -188,7 +188,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_COUNTERS,
             display_name="Contatori",
-            category="utility",
+            category="community",
             description="Canali il cui nome mostra membri, online, boost o un obiettivo.",
             premium_capable=False,
         )

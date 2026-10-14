@@ -74,6 +74,7 @@ CATEGORIE_MODULI = (
     "automod",
     "logging",
     "utility",
+    "community",
     "tickets",
     "voice",
     "music",

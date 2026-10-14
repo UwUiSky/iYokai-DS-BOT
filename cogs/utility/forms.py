@@ -303,7 +303,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_FORMS,
             display_name="Moduli e candidature",
-            category="utility",
+            category="community",
             description="Moduli con domande, risposte allo staff con Accetta e Rifiuta.",
             premium_capable=False,
         )

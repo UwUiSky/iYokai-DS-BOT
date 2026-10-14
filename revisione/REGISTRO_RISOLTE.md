@@ -79,6 +79,8 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 
 ## Parziali (issue ancora aperte, voci già fatte)
 
+- Giro r4 (14/10), suite 5.408 verdi: **utility** (#66, NF-07…NF-11, NF-14, NF-16, NF-17, NF-26, NF-27, NF-34), **livelli ed economia** (#65, NF-15, NF-28, NF-40, `/economia`, D25), **ticket, ModMail, log, vocali** (#62, #61, #145, NF-13, NF-33, #139 senza AI, #119, #120, #127). Rimane da fare: NF-12 sfondo rank card con immagine, NF-25 statistiche, parti AI, catalogo (voci grosse non toccate), #144 blocco di /voice lock dopo il riavvio. Le prove su Discord sono in `VERIFICA_LIVE.md`.
+
 - #64 (musica, F2, 13/10): un nodo wavelink per bot, sessioni per canale, radio e brani locali, Lavalink proprio in `deploy/lavalink`, impostazioni del server, voci piccole della coda. Mancano canale richieste e playlist (#90) ed effetti sonori (#106).
 - #68 (backup, 13/10): collegamento con codice, clonazione su server da modello, restore con rinnovo token e chiave ruotabile, copia degli ultimi 50 messaggi. Mancano 12.12/12.14 (consenso al DM nella verifica), #121, NF-39.
 

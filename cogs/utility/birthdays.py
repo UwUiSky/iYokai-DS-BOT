@@ -193,7 +193,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_BIRTHDAYS,
             display_name="Compleanni",
-            category="utility",
+            category="community",
             description="Auguri nel canale il giorno del compleanno e ruolo per 24 ore.",
             premium_capable=False,
         )

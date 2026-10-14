@@ -112,7 +112,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_INVITES,
             display_name="Inviti",
-            category="utility",
+            category="community",
             description="Chi ha invitato chi e classifica degli inviti.",
             premium_capable=False,
         )

@@ -3221,7 +3221,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ingressi_extra: int,
         inizia_tra: int | None,
     ) -> None:
-        """Crea il giveaway (subito o programmato) e risponde. Condiviso da /giveaway e dai modelli."""
+        """Crea il giveaway (subito o programmato) e risponde. Condiviso dal comando giveaway e dai modelli."""
         guild = interaction.guild
         if ingressi_extra > 0 and bonus_role_id is None:
             await interaction.response.send_message(

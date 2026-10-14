@@ -57,6 +57,7 @@ ETICHETTE_CATEGORIE = {
     "automod": "AutoMod",
     "logging": "Log",
     "utility": "Utility",
+    "community": "Community",
     "tickets": "Ticket",
     "voice": "Vocali",
     "music": "Musica",

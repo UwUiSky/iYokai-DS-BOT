@@ -2,8 +2,8 @@
 cogs/utility/autoroles.py
 =========================
 Ruoli automatici all'ingresso, ruoli ridati a chi rientra entro 30 giorni,
-ruoli dati dopo un ritardo (NF-07, SPEC §22.1-22.3). Comandi in
-`/gestione ruoli auto-*`; la logica è in core/autorole_logic.py.
+ruoli dati dopo un ritardo (NF-07, SPEC §22.1-22.3). Comandi:
+i comandi `auto-...` di `/gestione ruoli`; la logica è in core/autorole_logic.py.
 Funzioni coperte: SPEC §22 (NF-07)
 """
 

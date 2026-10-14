@@ -268,7 +268,7 @@ async def setup(bot: commands.Bot) -> None:
         PremiumModule(
             name=MODULE_STARBOARD,
             display_name="Starboard",
-            category="utility",
+            category="community",
             description="Bacheca dei messaggi che ricevono abbastanza stelle.",
             premium_capable=False,
         )
