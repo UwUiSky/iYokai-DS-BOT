@@ -7,7 +7,7 @@ log; chi non si può moderare è saltato con il motivo; DM prima di kick e ban,
 cancellato se l'azione fallisce.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
@@ -53,6 +53,7 @@ def _scena(membri_ids=(A, B)):
         membri[uid] = m
     tutti = {MOD: moderatore, **membri}
     server.get_member.side_effect = tutti.get
+    server.fetch_member = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404, reason="x"), "Unknown Member"))
     interazione = fake_interaction(guild=server, user=moderatore)
     return server, membri, interazione, log
 
@@ -92,6 +93,21 @@ async def test_ban_in_massa_anche_fuori_dal_server_e_salta_chi_non_si_tocca():
     testo = interazione.followup.send.call_args.kwargs["embed"].description
     assert "2 fatti" in testo and "sei tu" in testo
     log.send.assert_awaited_once()
+
+
+async def test_membro_fuori_dalla_cache_controllato_con_discord():
+    # Senza il membro in cache la gerarchia si controlla chiedendolo a Discord.
+    server, membri, interazione, _ = _scena(membri_ids=(A,))
+    capo = fake_member(B, roles=[fake_role(role_id=9, position=45)])  # sopra il moderatore
+    server.fetch_member = AsyncMock(return_value=capo)
+    server.bulk_ban.side_effect = lambda utenti, **k: discord.guild.BulkBanResult(banned=list(utenti), failed=[])
+    await _cog().ban_massa.callback(_cog(), interazione, str(B), "raid di spam", 0)
+    server.bulk_ban.assert_not_called()
+    assert await _casi(B) == []
+
+    server.fetch_member = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500, reason="x"), "errore"))
+    await _cog().kick_massa.callback(_cog(), interazione, str(C), "raid di spam")
+    assert "non riesco a leggere il membro" in interazione.followup.send.call_args.kwargs["embed"].description
 
 
 async def test_ban_rifiutato_cancella_il_dm_e_non_crea_il_caso():

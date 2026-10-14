@@ -102,6 +102,14 @@ AZIONI_SCADENZA = ("kick", "ban")
 GIORNI_ACCOUNT_SOSPETTO = 7
 # Captcha sbagliato: si agisce solo dopo questi fallimenti di fila (un errore di battitura capita).
 FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE = 3
+# I fallimenti contano solo se fatti in questa finestra: errori di giorni
+# prima non si sommano a quello di oggi.
+FINESTRA_FALLIMENTI_CAPTCHA = timedelta(hours=24)
+
+
+def esiti_nella_finestra(tentativi: list[tuple], adesso: datetime) -> list[bool]:
+    """Esiti (dal più recente) dei tentativi `(ok, motivo, quando)` dentro FINESTRA_FALLIMENTI_CAPTCHA."""
+    return [ok for ok, _, quando in tentativi if adesso - quando <= FINESTRA_FALLIMENTI_CAPTCHA]
 MOTIVO_CAPTCHA = "Captcha verification failed."
 
 

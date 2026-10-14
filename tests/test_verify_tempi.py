@@ -18,7 +18,7 @@ from cogs.security import verify as modulo
 from core import security_raid_state
 from core.database import db
 from core.repositories.verify_repo import verify_repo
-from core.verify_logic import MOTIVO_CAPTCHA, account_sospetto, azione_dopo_fallimento
+from core.verify_logic import MOTIVO_CAPTCHA, account_sospetto, azione_dopo_fallimento, esiti_nella_finestra
 from tests.support.discord_fakes import fake_interaction, fake_member, fake_text_channel
 from tests.test_verify_risposta_subito import GUILD_ID, UTENTE_ID, Scenario, scenario  # noqa: F401
 
@@ -59,6 +59,8 @@ def test_regole_pure():
     assert azione_dopo_fallimento("ban", MOTIVO_CAPTCHA, [False, False, False]) == "ban"
     assert azione_dopo_fallimento("ban", MOTIVO_CAPTCHA, [False, True, False]) == "niente"
     assert azione_dopo_fallimento("niente", "x", [False]) == "niente"
+    vecchio, recente = adesso - timedelta(hours=25), adesso - timedelta(hours=1)
+    assert esiti_nella_finestra([(False, "", recente), (True, "", vecchio)], adesso) == [False]
 
 
 async def test_ingresso_pianifica_promemoria_e_scadenza(scenario, clean_db):
@@ -127,6 +129,21 @@ async def test_chi_non_passa_il_captcha_tre_volte_viene_espulso(scenario):
     scenario.utente.kick.assert_not_awaited()
     await scenario.cog.run_checks_and_finalize(scenario.server, scenario.utente, False)
     scenario.utente.kick.assert_awaited_once()
+
+
+async def test_errori_di_captcha_vecchi_non_contano(scenario, clean_db):
+    # Due errori di due giorni fa e uno oggi non sono «3 di fila».
+    await scenario.configura(captcha=True)
+    await _tempi(scenario, azione_fallita=_scelta("kick"))
+    scenario.utente.roles = []
+    for _ in range(2):
+        await clean_db.execute(
+            "INSERT INTO verify_attempts (guild_id, user_id, success, reason, attempted_at) "
+            "VALUES ($1, $2, FALSE, $3, now() - interval '2 days')",
+            GUILD_ID, UTENTE_ID, MOTIVO_CAPTCHA,
+        )
+    await scenario.cog.run_checks_and_finalize(scenario.server, scenario.utente, False)
+    scenario.utente.kick.assert_not_awaited()
 
 
 async def test_solo_sospetti_gli_altri_entrano_subito(scenario):

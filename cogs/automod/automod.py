@@ -27,10 +27,11 @@ core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
 Due categorie hanno un interruttore proprio (SIC-042): accorciatori di link
 e inviti a server per adulti (il server dell'invito lo chiede a Discord).
 Filtri in più: messaggi ripetuti, troppo corti, link e menzioni contati nel
-tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed e
+tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed (solo
+per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
 inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
-filtri canale-media`), azione kick (AMD-041).
+filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041).
 Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 019–024, 041), §23 (NF-31, SIC-042)
 """
 
@@ -193,25 +194,41 @@ def _conta_ripetuti(guild_id: int, user_id: int, testo: str) -> int:
     return volte
 
 
-def _testo_da_controllare(message: discord.Message, config: AutomodAdvancedConfig) -> str:
-    """Il testo del messaggio, più quello degli embed (AMD-019) e degli inoltri (AMD-020) se scelti."""
+def _testo_embed(embeds) -> str:
+    """Titolo, descrizione e campi degli embed, uniti (AMD-019)."""
+    pezzi = []
+    for embed in embeds or []:
+        pezzi += [embed.title or "", embed.description or ""]
+        pezzi += [f"{campo.name} {campo.value}" for campo in embed.fields]
+    return "\n".join(p for p in pezzi if p)
+
+
+def _testo_da_controllare(message: discord.Message, config: AutomodAdvancedConfig) -> tuple[str, str]:
+    """
+    (testo, testo degli embed). Il testo comprende gli inoltri (AMD-020) se
+    scelti; gli embed (AMD-019) restano a parte: valgono solo per i link.
+    """
     pezzi = [message.content or ""]
-    sorgenti = []
-    if config.controlla_embed:
-        sorgenti.append(message.embeds)
+    embed = [_testo_embed(message.embeds)] if config.controlla_embed else []
     if config.controlla_inoltrati:
         for snap in getattr(message, "message_snapshots", None) or []:
             pezzi.append(getattr(snap, "content", "") or "")
             if config.controlla_embed:
-                sorgenti.append(getattr(snap, "embeds", None) or [])
-    for embeds in sorgenti:
-        for embed in embeds:
-            pezzi += [embed.title or "", embed.description or ""]
-            pezzi += [f"{campo.name} {campo.value}" for campo in embed.fields]
-    return "\n".join(p for p in pezzi if p)
+                embed.append(_testo_embed(getattr(snap, "embeds", None)))
+    return "\n".join(p for p in pezzi if p), "\n".join(p for p in embed if p)
+
+
+def _media_inoltrati(message: discord.Message) -> int:
+    """Allegati ed embed dentro gli inoltri: un'immagine inoltrata conta come media (AMD-023)."""
+    return sum(
+        len(getattr(snap, "attachments", None) or []) + len(getattr(snap, "embeds", None) or [])
+        for snap in getattr(message, "message_snapshots", None) or []
+    )
 
 # Le violazioni della famiglia phishing: canale di log suo e link non cliccabile.
 _VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI})
+# AMD-019: le sole violazioni che il testo di un embed può far scattare.
+_VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI})
 
 # SIC-042: esito degli inviti gia' chiesti a Discord (codice -> per adulti?). Tetto in memoria.
 MAX_INVITI_IN_MEMORIA = 2000
@@ -261,7 +278,8 @@ def _finestra(filtro: RateFilterConfig) -> int:
 
 
 def build_message_signals(
-    message: discord.Message, config: AutomodAdvancedConfig, conta_nel_tempo: bool = True
+    message: discord.Message, config: AutomodAdvancedConfig, conta_nel_tempo: bool = True,
+    solo_embed: bool = False,
 ) -> MessageSignals:
     """
     Estrae dal messaggio REALE tutto quello che serve alla logica
@@ -269,11 +287,16 @@ def build_message_signals(
     (rate) passano dal tracker in memoria, mai persistiti (vedi
     core/automod_rate_tracker.py). Ogni conteggio usa la finestra in
     secondi salvata dall'admin per quel filtro.
+
+    `solo_embed`: modifica che aggiunge solo embed (anteprima di un link
+    arrivata dopo): si guarda solo il testo degli embed.
     """
     now = discord.utils.utcnow()
     guild_id = message.guild.id
     user_id = message.author.id
-    testo = _testo_da_controllare(message, config)
+    testo, testo_embed = _testo_da_controllare(message, config)
+    if solo_embed:
+        return MessageSignals(content="", testo_embed=testo_embed, channel_id=message.channel.id)
     nomi_allegati = tuple(getattr(a, "filename", "") or "" for a in message.attachments)
 
     if not conta_nel_tempo:
@@ -281,6 +304,8 @@ def build_message_signals(
         # nel tempo. Una modifica non è un messaggio in più.
         return MessageSignals(
             content=testo,
+            testo_embed=testo_embed,
+            media_inoltrati=_media_inoltrati(message),
             mention_count=_mention_count(message),
             emoji_count=_count_emoji(message.content or ""),
             attachment_count=len(message.attachments),
@@ -311,7 +336,7 @@ def build_message_signals(
     ripetuti = _conta_ripetuti(guild_id, user_id, message.content or "") if config.max_ripetuti else 1
     recent_links = 0
     if config.link_nel_tempo.enabled:
-        for _ in extract_domains(testo)[:MAX_EVENTI_PER_MESSAGGIO]:  # tetto come per le menzioni
+        for _ in extract_domains(f"{testo}\n{testo_embed}")[:MAX_EVENTI_PER_MESSAGGIO]:  # tetto come per le menzioni
             recent_links = rate_tracker.record_and_count(
                 guild_id, user_id, "links", now, window_seconds=_finestra(config.link_nel_tempo)
             )
@@ -325,6 +350,8 @@ def build_message_signals(
 
     return MessageSignals(
         content=testo,
+        testo_embed=testo_embed,
+        media_inoltrati=_media_inoltrati(message),
         mention_count=menzioni,
         emoji_count=_count_emoji(message.content or ""),
         attachment_count=len(message.attachments),
@@ -1149,7 +1176,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
-        embed="I filtri di testo leggono anche gli embed del messaggio",
+        embed="I filtri dei link leggono anche gli embed del messaggio",
         inoltrati="I filtri di testo leggono anche i messaggi inoltrati",
         estensioni_vietate="Estensioni separate da spazi (es. exe bat scr); «-» svuota la lista",
     )
@@ -1455,13 +1482,18 @@ class AutomodCog(CogConGruppi, commands.Cog):
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
         """
         AMD-021: chi modifica un messaggio per far passare ciò che era
-        bloccato viene controllato di nuovo. Solo se il testo è cambiato.
+        bloccato viene controllato di nuovo. Se il testo è uguale ma sono
+        arrivati embed nuovi (l'anteprima di un link arriva così), si
+        controllano solo gli embed (AMD-019).
         """
-        if before.content == after.content:
-            return
-        await self._controlla(after, modificato=True)
+        if before.content != after.content:
+            await self._controlla(after, modificato=True)
+        elif (nuovi := _testo_embed(getattr(after, "embeds", None))) and nuovi != _testo_embed(
+            getattr(before, "embeds", None)
+        ):
+            await self._controlla(after, modificato=True, solo_embed=True)
 
-    async def _controlla(self, message: discord.Message, modificato: bool) -> None:
+    async def _controlla(self, message: discord.Message, modificato: bool, solo_embed: bool = False) -> None:
         if message.guild is None or message.author.bot:
             return
         if not isinstance(message.author, discord.Member):
@@ -1474,11 +1506,18 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if is_member_exempt(message.author, settings, message.channel.id):
             return
 
-        segnali = build_message_signals(message, settings.config, conta_nel_tempo=not modificato)
+        if solo_embed and not settings.config.controlla_embed:
+            return
+        segnali = build_message_signals(
+            message, settings.config, conta_nel_tempo=not modificato, solo_embed=solo_embed
+        )
         if settings.config.anti_phishing_enabled:
             lista_phishing.aggiorna_se_serve()
         violazioni = evaluate_message_violations(segnali, settings.config, lista_phishing.domini)
-        if settings.config.phishing_inviti_adulti and self.bot is not None:
+        if solo_embed:
+            # Il testo è già stato controllato: dagli embed contano solo i link.
+            violazioni = tuple(v for v in violazioni if v in _VIOLAZIONI_LINK)
+        elif settings.config.phishing_inviti_adulti and self.bot is not None:
             for codice in codici_invito(message.content):
                 if await _invito_per_adulti(self.bot, codice, message.guild.id):
                     violazioni = (*violazioni, VIOLATION_INVITI_ADULTI)

@@ -191,3 +191,43 @@ async def test_azione_kick_con_dm_prima(contesto):
     messaggio = _FakeMessage(guild, autore, _FakeTextChannel(1), content="ok")
     await AutomodCog(bot=None).on_message(messaggio)
     assert messaggio.deleted and ordine == ["dm", "kick"]
+
+
+@pytest.mark.asyncio
+async def test_anteprima_arrivata_con_modifica_controllata_solo_per_i_link(contesto):
+    # L'anteprima di un link arriva con una modifica a testo invariato (AMD-019).
+    guild, autore, canale = _scena()
+    cog = AutomodCog(bot=None)
+
+    def _coppia(embed):
+        prima = _FakeMessage(guild, autore, canale, content="guarda")
+        dopo = _FakeMessage(guild, autore, canale, content="guarda")
+        prima.embeds, dopo.embeds = [], [embed]
+        return prima, dopo
+
+    await _salva_config(contesto, config=AutomodAdvancedConfig(anti_link=_NERA, controlla_embed=True))
+    prima, dopo = _coppia(discord.Embed(title="x", description="https://vietato.example/a"))
+    await cog.on_message_edit(prima, dopo)
+    assert dopo.deleted is True
+
+    # Il titolo dell'anteprima in maiuscolo o lungo non è dell'utente: niente caps né lunghezza.
+    await _salva_config(contesto, config=AutomodAdvancedConfig(
+        controlla_embed=True, max_lunghezza=10,
+        anti_caps=automod_module.CapsFilterConfig(enabled=True, threshold_percent=50, min_length=3),
+    ))
+    titolo = discord.Embed(title="OFFERTA INCREDIBILE SOLO OGGI", description="testo lunghissimo " * 5)
+    prima, dopo = _coppia(titolo)
+    await cog.on_message_edit(prima, dopo)
+    assert dopo.deleted is False
+    nuovo = _FakeMessage(guild, autore, canale, content="guarda")
+    nuovo.embeds, nuovo.message_snapshots = [titolo], []
+    await cog.on_message(nuovo)
+    assert nuovo.deleted is False
+
+
+def test_solo_media_accetta_sticker_e_inoltri_con_immagine():
+    cfg = AutomodAdvancedConfig(canali_solo_media=(5,))
+    assert evaluate_message_violations(MessageSignals(content="", sticker_count=1, channel_id=5), cfg) == ()
+    assert evaluate_message_violations(MessageSignals(content="", media_inoltrati=1, channel_id=5), cfg) == ()
+    m = SimpleNamespace(message_snapshots=[SimpleNamespace(attachments=[object()], embeds=[])])
+    assert automod_module._media_inoltrati(m) == 1

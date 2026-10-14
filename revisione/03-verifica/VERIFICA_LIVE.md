@@ -936,3 +936,11 @@ Servono: modulo avvisi acceso, `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET` (e per Tw
 - [ ] `VER-010` — da membro non verificato `/utility verifica`: stesso percorso del bottone (modulo del captcha o ruoli subito); funziona anche con il panico attivo.
 - [ ] `AMD-001…041` — `/automod filtri messaggi max_ripetuti:2 min_caratteri:3 max_link:3 finestra_link:30 max_menzioni:5 finestra_menzioni:30`: il terzo messaggio uguale, un «ok», il quarto link in 30 s e la sesta menzione su più messaggi vengono cancellati. `contenuto embed:Sì inoltrati:Sì estensioni_vietate:"exe bat"`: un inoltro con un link di phishing e un allegato `.exe` cancellati. `canale-media canale:#foto modo:Solo media`: un messaggio di solo testo sparisce. `actions-set violation:Messaggio troppo corto kick:Sì`: DM e kick.
 
+
+### Dopo la revisione (cacciatore e revisore) — stesso ramo (r6)
+
+- [ ] Tetto delle azioni in massa — **limite noto**: `/modban massa ban` e `massa kick` si possono usare 2 volte all'ora per server (l'owner del server è esente). Il conteggio vive **in memoria**: un riavvio del bot lo azzera. Passi: come moderatore (non owner) tre `massa ban` di fila: il terzo è rifiutato; come owner passa.
+- [ ] `AMD-019` anteprima — `contenuto embed:Sì` e `anti-link-domain` in lista nera con un sito che ha l'anteprima: scrivi solo il link coperto (`<https://…>` no, va lasciato visibile) di un sito permesso la cui anteprima contiene il dominio vietato; l'anteprima arriva un attimo dopo e il messaggio viene cancellato. Con anti-caps e `max_lunghezza:20` attivi, un link a una pagina con titolo lungo e in maiuscolo **resta**.
+- [ ] `AMD-023` solo media — in un canale `canale-media modo:Solo media` uno sticker e l'inoltro di un messaggio con un'immagine restano; un testo semplice viene cancellato.
+- [ ] `VER-012` finestra — `azione_fallita:Kick`: due captcha sbagliati, poi aspetta 24 ore (o sposta l'orologio del DB di prova) e sbagliane uno: **nessun** kick. Tre errori nella stessa giornata: kick.
+- [ ] Massa e gerarchia — riavvia il bot senza scaricare i membri (o usa un membro mai visto dal bot): `/modban massa ban` su un membro con un ruolo sopra il tuo viene **saltato** («sopra di te»), non bannato.

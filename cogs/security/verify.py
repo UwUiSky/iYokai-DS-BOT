@@ -69,9 +69,11 @@ from core.security_quarantine import ruolo_quarantena
 from core.security_raid_state import raid_in_corso
 from core.verify_logic import (
     AZIONI_FALLITA,
+    FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE,
     VerifyOutcome,
     account_sospetto,
     azione_dopo_fallimento,
+    esiti_nella_finestra,
     decide_verify_outcome,
     meets_account_age,
     meets_mutual_servers,
@@ -497,7 +499,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
             # VER-012: azione scelta dal server su chi non passa.
             azione = await db.get_guild_setting(guild.id, SETTING_AZIONE_FALLITA, "niente") or "niente"
             if azione != "niente":
-                ultimi = [ok for ok, _, _ in await verify_repo.get_recent_attempts(guild.id, member.id, 3)]
+                tentativi = await verify_repo.get_recent_attempts(
+                    guild.id, member.id, FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE
+                )
+                ultimi = esiti_nella_finestra(tentativi, discord.utils.utcnow())
                 azione = azione_dopo_fallimento(azione, outcome.reason, ultimi)
                 if azione != "niente":
                     await self._punisci(guild, member, azione, "iYokai Verify: verifica non superata")

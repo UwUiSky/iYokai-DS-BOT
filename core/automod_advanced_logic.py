@@ -174,6 +174,12 @@ class MessageSignals:
     recent_mention_count: int = 0
     nomi_allegati: tuple[str, ...] = ()
     channel_id: int = 0
+    # AMD-019: testo degli embed (anteprime dei link). Conta solo per i filtri
+    # dei link, mai per forma, maiuscole o lunghezza: il titolo di un'anteprima
+    # non l'ha scritto l'utente.
+    testo_embed: str = ""
+    # AMD-023: allegati o embed dentro un inoltro (un'immagine inoltrata è media).
+    media_inoltrati: int = 0
 
 
 # Quanti domini al massimo in ciascuna lista link (whitelist, blacklist):
@@ -331,17 +337,18 @@ def evaluate_message_violations(
 
     violazioni = []
 
-    domini = extract_domains(signals.content)
+    testo_link = f"{signals.content}\n{signals.testo_embed}" if signals.testo_embed else signals.content
+    domini = extract_domains(testo_link)
     if is_link_violation(domini, config.anti_link.mode, config.anti_link.whitelist, config.anti_link.blacklist):
         violazioni.append(VIOLATION_ANTI_LINK)
 
     if config.anti_phishing_enabled and e_phishing(
-        domini_nel_testo(signals.content), lista_phishing, consentiti=config.anti_link.whitelist
+        domini_nel_testo(testo_link), lista_phishing, consentiti=config.anti_link.whitelist
     ):
         violazioni.append(VIOLATION_PHISHING)
 
     if config.phishing_accorciatori and e_accorciatore(
-        domini_nel_testo(signals.content), consentiti=config.anti_link.whitelist
+        domini_nel_testo(testo_link), consentiti=config.anti_link.whitelist
     ):
         violazioni.append(VIOLATION_ACCORCIATORI)
 
@@ -409,7 +416,8 @@ def evaluate_message_violations(
     ):
         violazioni.append(VIOLATION_ESTENSIONI)
 
-    if signals.channel_id in config.canali_solo_media and signals.attachment_count == 0 and not domini:
+    e_media = signals.attachment_count or signals.sticker_count or signals.media_inoltrati or domini
+    if signals.channel_id in config.canali_solo_media and not e_media:
         violazioni.append(VIOLATION_SOLO_MEDIA)
 
     if signals.channel_id in config.canali_senza_allegati and signals.attachment_count > 0:

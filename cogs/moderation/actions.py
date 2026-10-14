@@ -927,6 +927,21 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             )
         return ids
 
+    async def _cerca_membro(self, guild: discord.Guild, uid: int) -> tuple[discord.Member | None, str | None]:
+        """
+        (membro, errore). Fuori dalla cache si chiede a Discord: senza il
+        membro non si può controllare la gerarchia dei ruoli.
+        """
+        membro = guild.get_member(uid)
+        if membro is not None:
+            return membro, None
+        try:
+            return await guild.fetch_member(uid), None
+        except discord.NotFound:
+            return None, None
+        except discord.HTTPException:
+            return None, "non riesco a leggere il membro da Discord"
+
     def _non_moderabile(self, interaction: discord.Interaction, uid: int, membro) -> str | None:
         """Il motivo per cui `uid` va saltato, o None. Stesse regole di check_can_moderate."""
         guild = interaction.guild
@@ -998,8 +1013,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         saltati: list[str] = []
         bersagli: list[tuple[int, discord.Message | None]] = []
         for uid in ids:
-            membro = guild.get_member(uid)
-            motivo = self._non_moderabile(interaction, uid, membro)
+            membro, errore = await self._cerca_membro(guild, uid)
+            motivo = errore or self._non_moderabile(interaction, uid, membro)
             if motivo:
                 saltati.append(f"`{uid}`: {motivo}")
                 continue
@@ -1097,9 +1112,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         fatti: list[str] = []
         saltati: list[str] = []
         for uid in ids:
-            membro = guild.get_member(uid)
+            membro, errore = await self._cerca_membro(guild, uid)
             if membro is None:
-                saltati.append(f"`{uid}`: non è nel server")
+                saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
                 continue
             motivo = self._non_moderabile(interaction, uid, membro)
             if motivo:
@@ -1156,9 +1171,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         fatti: list[str] = []
         saltati: list[str] = []
         for uid in ids:
-            membro = guild.get_member(uid)
+            membro, errore = await self._cerca_membro(guild, uid)
             if membro is None:
-                saltati.append(f"`{uid}`: non è nel server")
+                saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
                 continue
             motivo = self._non_moderabile(interaction, uid, membro)
             if motivo:
@@ -1203,9 +1218,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         fatti: list[str] = []
         saltati: list[str] = []
         for uid in ids:
-            membro = guild.get_member(uid)
+            membro, errore = await self._cerca_membro(guild, uid)
             if membro is None:
-                saltati.append(f"`{uid}`: non è nel server")
+                saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
                 continue
             motivo = self._non_moderabile(interaction, uid, membro)
             if motivo:

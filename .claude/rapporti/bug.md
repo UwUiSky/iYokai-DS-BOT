@@ -198,7 +198,7 @@
 | 14/10 | `anti_raid.py:873` | Retroattivo con soglia solo-sospetti agisce anche sui membri normali entrati nella finestra | alta | corretto r6mod |
 | 14/10 | `verify.py` `on_member_join` | Rientro: le scadenze dell'ingresso precedente restano e cacciano prima del tempo | media | corretto r6mod |
 | 14/10 | `automod.py` link nel tempo | Un evento per link senza tetto: 300 link = 300 voci in coda | bassa | corretto r6mod (50 per messaggio) |
-| 14/10 | `automod.py` `_testo_da_controllare` | Embed dell'anteprima link arrivano per modifica (contenuto uguale = ignorata): AMD-019 quasi mai attivo; quando c'è, caps/lunghezza/parole sul titolo dell'anteprima = falso positivo | media | plausibile |
-| 14/10 | `automod_advanced_logic.py` solo-media | Sticker o inoltro di un'immagine in canale solo media = violazione | bassa | plausibile |
-| 14/10 | `actions.py` `_non_moderabile` | Membro non in cache = nessun controllo di gerarchia sul ban (cache piena con chunk all'avvio) | bassa | plausibile |
-| 14/10 | `verify_logic.azione_dopo_fallimento` | 3 errori di captcha contati senza limite di tempo (anche di giorni prima) | bassa | plausibile |
+| 14/10 | `automod.py` `_testo_da_controllare` | Embed dell'anteprima link arrivano per modifica (contenuto uguale = ignorata): AMD-019 quasi mai attivo; quando c'è, caps/lunghezza/parole sul titolo dell'anteprima = falso positivo | media | corretto r6mod (revisore) |
+| 14/10 | `automod_advanced_logic.py` solo-media | Sticker o inoltro di un'immagine in canale solo media = violazione | bassa | corretto r6mod (revisore) |
+| 14/10 | `actions.py` `_non_moderabile` | Membro non in cache = nessun controllo di gerarchia sul ban (cache piena con chunk all'avvio) | bassa | corretto r6mod (revisore) |
+| 14/10 | `verify_logic.azione_dopo_fallimento` | 3 errori di captcha contati senza limite di tempo (anche di giorni prima) | bassa | corretto r6mod (revisore) |
