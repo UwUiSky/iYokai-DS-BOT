@@ -38,6 +38,7 @@ import discord
 from discord.ext import commands
 
 from core.command_groups import registra_owner
+from core.command_translator import TraduttoreYokai
 from core.command_sync import StatoSyncDatabase, sincronizza_all_avvio
 from core.config import config
 from core.repositories.music_session_repo import music_session_repo
@@ -233,6 +234,9 @@ class iYokaiBot(commands.AutoShardedBot):
         slash command.
         """
         await load_all_cogs(self)
+
+        # NF-06: nomi e descrizioni dei comandi in inglese per chi ha Discord in inglese.
+        await self.tree.set_translator(TraduttoreYokai())
 
         # Ricarica lo stato premium per-modulo dal DB (SPEC.md §3.3):
         # va fatto SOLO dopo load_all_cogs(), perché ogni modulo deve

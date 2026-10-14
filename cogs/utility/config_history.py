@@ -1,13 +1,13 @@
 """
 cogs/utility/config_history.py
 ==================================
-Comandi /admin config: storico e rollback delle modifiche, reset, esporta/
-importa (con controllo dello schema prima di scrivere) e lingua del
-server. È solo l'interfaccia comandi: legge e scrive con i metodi di
+Comandi /admin config: storico (con filtri, vista prima/dopo e CSV) e rollback
+delle modifiche, reset, esporta/importa (con controllo dello schema prima di
+scrivere) e lingua del server. È solo l'interfaccia comandi: legge e scrive con i metodi di
 core/database.py. Nessun controllo "modulo attivo": deve funzionare
 anche prima che qualunque modulo sia acceso, come /admin setup attiva.
 Funzioni coperte: SPEC §2.1, §2.3 (solo infrastruttura), §2.5, §2.6,
-§2.7; REVIEW.md BUG-6, BUG-31, BUG-32.
+§2.7; REVIEW.md BUG-6, BUG-31, BUG-32; catalogo #122 (CFG-004, CFG-005).
 """
 
 from __future__ import annotations
@@ -22,13 +22,22 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
+from core.config_history_logic import (
+    MAX_RIGHE_CSV,
+    TIPI_MODIFICA,
+    csv_storico,
+    dettaglio_prima_dopo,
+    fine_giornata,
+    leggi_data,
+)
+from core.i18n import LINGUE, lingua_interazione, t as tr
 from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.premium import registry
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
 
-SUPPORTED_LANGUAGES = ("it", "en")
+SUPPORTED_LANGUAGES = LINGUE
 
 
 # Un export reale pesa pochi KB: oltre questo limite il file non è nostro.
@@ -66,6 +75,12 @@ SETTINGS_SCHEMA = {
     "music_max_track_minutes": "int_0_1440",
     "music_stay_when_queue_ends": "bool",
     "music_allowed_voice_channel_id": "id",
+    # Politica dei comandi (core/command_policy.py)
+    "policy_comandi_off": "lista_comandi",
+    "policy_canali_ok": "lista_id",
+    "policy_canali_no": "lista_id",
+    "policy_ignora_ruoli": "lista_id",
+    "policy_ignora_utenti": "lista_id",
 }
 
 
@@ -108,6 +123,12 @@ def _intero_tra(minimo: int, massimo: int):
 CONTROLLI_PER_TIPO = {
     "id": (_e_un_id, "un ID numerico"),
     "lista_id": (_e_una_lista_di_id, "un elenco di ID numerici"),
+    "lista_comandi": (
+        lambda valore: isinstance(valore, list)
+        and len(valore) <= MAX_ID_IN_LISTA
+        and all(isinstance(v, str) and 0 < len(v) <= 100 for v in valore),
+        "un elenco di percorsi di comandi",
+    ),
     "bool": (lambda valore: isinstance(valore, bool), "true oppure false"),
     "modalita_restore": (
         lambda valore: valore in (MODE_VERIFY_OAUTH, MODE_ON_DEMAND_OAUTH, MODE_CLASSIC_INVITE),
@@ -430,11 +451,26 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         descrizione="Mostra le ultime modifiche alla configurazione.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.describe(limit="Quante voci mostrare (default 10, massimo 25)")
+    @app_commands.describe(
+        limit="Quante voci mostrare (default 10, massimo 25)",
+        chi="Solo le modifiche fatte da questa persona",
+        tipo="Solo questo tipo di modifica",
+        dal="Dal giorno (es. 2026-10-01 o 01/10/2026)",
+        al="Fino al giorno compreso (stesso formato)",
+        voce="Numero di una voce: mostra il valore prima e dopo",
+        come_csv="Scarica le voci trovate (fino a 5000) come file CSV",
+    )
+    @app_commands.choices(tipo=[app_commands.Choice(name=n, value=n) for n in TIPI_MODIFICA])
     async def history(
         self,
         interaction: discord.Interaction,
         limit: app_commands.Range[int, 1, 25] = 10,
+        chi: discord.Member | None = None,
+        tipo: app_commands.Choice[str] | None = None,
+        dal: app_commands.Range[str, 1, 20] | None = None,
+        al: app_commands.Range[str, 1, 20] | None = None,
+        voce: app_commands.Range[int, 1, 2**53 - 1] | None = None,
+        come_csv: bool = False,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -443,11 +479,48 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             )
             return
 
-        voci = await db.get_config_history(guild.id, limit=limit)
+        if voce is not None:
+            entry = await db.get_config_history_entry(voce)
+            if entry is None or entry.guild_id != guild.id:  # mai la voce di un altro server
+                await interaction.response.send_message("Voce non trovata in questo server.", ephemeral=True)
+                return
+            await interaction.response.send_message(dettaglio_prima_dopo(entry), ephemeral=True)
+            return
+
+        data_dal, data_al = leggi_data(dal), leggi_data(al)
+        if (dal and data_dal is None) or (al and data_al is None):
+            await interaction.response.send_message(
+                "Data non valida: scrivila come 2026-10-01 oppure 01/10/2026.", ephemeral=True
+            )
+            return
+        voci = await db.get_config_history_filtrato(
+            guild.id,
+            limit=MAX_RIGHE_CSV if come_csv else limit,
+            changed_by=chi.id if chi else None,
+            change_type=tipo.value if tipo else None,
+            dal=data_dal,
+            prima_del=fine_giornata(data_al) if data_al else None,
+        )
         if not voci:
             await interaction.response.send_message(
-                "Nessuna modifica registrata finora.", ephemeral=True
+                "Nessuna modifica registrata con questi filtri.", ephemeral=True
             )
+            return
+
+        if come_csv:
+            try:
+                await invia_file_su_interazione(
+                    interaction,
+                    csv_storico(voci),
+                    f"iyokai-storico-{guild.id}.csv",
+                    contenuto=f"{len(voci)} modifiche.",
+                    dividi=True,
+                    ephemeral=True,
+                )
+            except FileTroppoGrande:
+                await interaction.response.send_message(
+                    "Il file è troppo grande per Discord: restringi i filtri.", ephemeral=True
+                )
             return
 
         embed = discord.Embed(
@@ -455,7 +528,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             description=righe_storico(voci),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text="Usa /admin config rollback <id> per annullare una voce specifica.")
+        embed.set_footer(text="/admin config rollback <id> annulla una voce; voce:<id> mostra prima e dopo.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
@@ -629,7 +702,8 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         if interaction.guild is None:
             return
         lingua = await db.get_guild_language(interaction.guild.id)
-        await interaction.response.send_message(f"Lingua attuale: `{lingua}`.", ephemeral=True)
+        mia = await lingua_interazione(interaction)
+        await interaction.response.send_message(tr("lingua_attuale_server", mia, lingua=lingua), ephemeral=True)
 
     @comando_di_gruppo(
         "admin",
@@ -639,7 +713,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(language="Codice lingua")
     @app_commands.choices(
-        language=[app_commands.Choice(name=l, value=l) for l in SUPPORTED_LANGUAGES]
+        language=[app_commands.Choice(name=n, value=v) for n, v in (("Italiano", "it"), ("English", "en"))]
     )
     async def language_set(
         self, interaction: discord.Interaction, language: app_commands.Choice[str]
@@ -648,9 +722,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             return
         await db.set_guild_language(interaction.guild.id, language.value, changed_by=interaction.user.id)
         await interaction.response.send_message(
-            f"Lingua impostata su `{language.value}`. Nota: solo una parte "
-            f"limitata dei messaggi del bot usa questa impostazione per ora.",
-            ephemeral=True,
+            tr("lingua_server_impostata", language.value, lingua=language.value), ephemeral=True
         )
 
 

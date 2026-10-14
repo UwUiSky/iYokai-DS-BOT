@@ -1,18 +1,12 @@
 """
 cogs/utility/owner_premium.py
-================================
-Comando riservato al proprietario del bot per accendere/spegnere
-la natura Premium di ogni modulo, e per gestire la whitelist.
-
-Questo è l'unico punto del progetto che può TRASFORMARE un modulo
-gratuito in premium — e lo fa per tutti i server contemporaneamente
-(eccetto quelli whitelistati). Per questo il controllo di identità
-è il primo controllo di OGNI funzione qui dentro, prima di qualsiasi
-altra logica.
+=============================
+Comandi riservati al proprietario del bot: premium dei moduli (accendere, spegnere, whitelist, abbonamenti e codici),
+blacklist, eval e shell, memoria, annunci, estensioni (carica, scarica, ricarica e aggiornamento a caldo da GitHub o da
+file, #141). Il controllo di identità è il primo di ogni comando.
+Funzioni coperte: SPEC §3 (NF-22), §17 (§17.11 aggiornamento a caldo)
+Dipende da: core/premium_code_service.py, core/hot_patch.py
 """
-
-# DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -25,19 +19,23 @@ import subprocess
 import sys
 import traceback
 
+import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
+from core import bot_info, hot_patch
 from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.eval_shell_logic import truncate_output
 from core.premium import PremiumModule, get_guild_premium_breakdown, registry
+from core.premium_code_service import GIORNI_PERMANENTE, TUTTI_I_MODULI, applica_sblocco, crea_codice
 from core.premium_status_logic import format_guild_status_line, format_whitelist_entry
 from core.repositories.eval_shell_log_repo import eval_shell_log_repo
+from core.repositories.hot_patch_log_repo import hot_patch_log_repo
 from core.repositories.module_subscription_repo import module_subscription_repo
 from core.ui_base import BaseView
 
@@ -46,7 +44,7 @@ from core.ui_base import BaseView
 # integrato (vedi module_subscription_repo.py): il pagamento avviene
 # fuori dal bot, l'owner concede l'abbonamento a mano dopo averlo
 # incassato.
-SUBSCRIPTION_DURATION_DAYS = {"monthly": 30, "yearly": 365}
+SUBSCRIPTION_DURATION_DAYS = {"monthly": 30, "yearly": 365, "permanent": GIORNI_PERMANENTE}
 
 
 def _is_owner(interaction: discord.Interaction) -> bool:
@@ -520,55 +518,68 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="grant",
-        descrizione="Concede un abbonamento mensile/annuale a un modulo per un server.",
+        descrizione="Concede il premium a un server, o crea un codice da riscattare.",
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
-        guild_id="ID del server",
-        module_name="Nome tecnico del modulo (vedi /owner premium list)",
-        duration="Mensile (30 giorni) o annuale (365 giorni)",
+        module_name="Nome tecnico del modulo (vedi /owner premium list) o «tutti»",
+        duration="Mensile (30 giorni), annuale (365 giorni) o permanente",
+        guild_id="ID del server; vuoto = crea un codice che il server riscatta con /admin premium riscatta",
     )
     @app_commands.choices(
         duration=[
             app_commands.Choice(name="Mensile (30 giorni)", value="monthly"),
             app_commands.Choice(name="Annuale (365 giorni)", value="yearly"),
+            app_commands.Choice(name="Permanente", value="permanent"),
         ]
     )
     async def premium_grant(
         self,
         interaction: discord.Interaction,
-        guild_id: app_commands.Range[str, 1, 25],
         module_name: app_commands.Range[str, 1, 100],
         duration: app_commands.Choice[str],
+        guild_id: app_commands.Range[str, 1, 25] | None = None,
     ) -> None:
-        try:
-            gid = int(guild_id)
-        except ValueError:
-            await interaction.response.send_message("ID server non valido.", ephemeral=True)
-            return
+        gid = None
+        if guild_id is not None:
+            try:
+                gid = int(guild_id)
+            except ValueError:
+                await interaction.response.send_message("ID server non valido.", ephemeral=True)
+                return
 
-        module = registry.get(module_name)
-        if module is None:
-            await interaction.response.send_message(
-                f"Modulo `{module_name}` non trovato. "
-                f"Usa /owner premium list per la lista esatta.",
-                ephemeral=True,
-            )
-            return
-        if not module.premium_capable:
-            await interaction.response.send_message(
-                f"`{module_name}` è marcato come sempre-gratuito "
-                f"e non può avere un abbonamento.",
-                ephemeral=True,
-            )
-            return
+        tutti = module_name.strip().lower() == TUTTI_I_MODULI
+        if not tutti:
+            module = registry.get(module_name)
+            if module is None:
+                await interaction.response.send_message(
+                    f"Modulo `{module_name}` non trovato. "
+                    f"Usa /owner premium list per la lista esatta.",
+                    ephemeral=True,
+                )
+                return
+            if not module.premium_capable:
+                await interaction.response.send_message(
+                    f"`{module_name}` è marcato come sempre-gratuito "
+                    f"e non può avere un abbonamento.",
+                    ephemeral=True,
+                )
+                return
 
         giorni = SUBSCRIPTION_DURATION_DAYS[duration.value]
-        scadenza = await module_subscription_repo.grant(
-            gid, module_name, duration_days=giorni, granted_by=interaction.user.id
-        )
+        modulo_scelto = None if tutti else module_name
+        cosa = "tutti i moduli premium" if tutti else f"`{module_name}`"
+        if gid is None:
+            codice = await crea_codice(modulo_scelto, giorni, interaction.user.id)
+            await interaction.response.send_message(
+                f"Codice creato per {cosa} ({duration.name}): `{codice}`\n"
+                f"Si vede solo adesso: copialo. Vale una volta sola.",
+                ephemeral=True,
+            )
+            return
+        scadenza = await applica_sblocco(gid, modulo_scelto, giorni, interaction.user.id)
         await interaction.response.send_message(
-            f"✅ Abbonamento **{duration.name}** concesso per `{module_name}` "
+            f"✅ Premium **{duration.name}** concesso per {cosa} "
             f"al server `{gid}` — valido fino al `{scadenza.date().isoformat()}`.",
             ephemeral=True,
         )
@@ -655,6 +666,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
                     boosts_main_guild=dettaglio["boosts_main_guild"],
                     cassa_active=dettaglio["cassa_active"],
                     subscription_count=dettaglio["subscription_count"],
+                    discord_attivo=dettaglio.get("discord_attivo", False),
                 )
             )
 
@@ -1174,11 +1186,32 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="reload",
-        descrizione="Ricarica un'estensione già caricata.",
+        descrizione="Ricarica un'estensione, anche aggiornandola da GitHub o da un file.",
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
-    @app_commands.describe(extension="Percorso completo del modulo")
-    async def owner_cog_reload(self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100]) -> None:
+    @app_commands.describe(
+        extension="Percorso completo del modulo (con un file allegato è obbligatorio)",
+        commit="Aggiorna da GitHub: «main» o lo SHA di un commit di main",
+        file="Aggiorna da file: un .py per il modulo indicato, oppure uno .zip con cogs/ e core/",
+        registro="Sì = mostra gli ultimi aggiornamenti a caldo",
+    )
+    async def owner_cog_reload(
+        self,
+        interaction: discord.Interaction,
+        extension: app_commands.Range[str, 1, 100] | None = None,
+        commit: app_commands.Range[str, 4, 40] | None = None,
+        file: discord.Attachment | None = None,
+        registro: bool = False,
+    ) -> None:
+        if registro:
+            await self._mostra_registro_aggiornamenti(interaction)
+            return
+        if commit is not None or file is not None:
+            await self._aggiorna_a_caldo(interaction, extension, commit, file)
+            return
+        if extension is None:
+            await interaction.response.send_message("Indica il modulo da ricaricare.", ephemeral=True)
+            return
         try:
             await self.bot.reload_extension(extension)
         except commands.ExtensionError as exc:
@@ -1194,6 +1227,92 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.send_message(f"Ricaricato `{extension}`.", ephemeral=True)
+
+    async def _mostra_registro_aggiornamenti(self, interaction: discord.Interaction) -> None:
+        voci = await hot_patch_log_repo.ultimi(10)
+        if not voci:
+            await interaction.response.send_message("Nessun aggiornamento a caldo registrato.", ephemeral=True)
+            return
+        righe = [
+            f"`#{v.id}` <t:{int(v.created_at.timestamp())}:f> <@{v.applied_by}> {v.source}"
+            f"{f' `{v.commit_sha[:7]}`' if v.commit_sha else ''} → **{v.outcome}**"
+            f"{' (serve il riavvio)' if v.restart_needed else ''}: {', '.join(v.files)[:150]}"
+            for v in voci
+        ]
+        await invia_a_pagine(interaction, "Aggiornamenti a caldo", righe)
+
+    async def _aggiorna_a_caldo(
+        self,
+        interaction: discord.Interaction,
+        extension: str | None,
+        commit: str | None,
+        file: discord.Attachment | None,
+    ) -> None:
+        """#141: aggiorna da GitHub o da file. Spento senza ENABLE_HOT_PATCH=1; solo OWNER_ID."""
+        if interaction.user.id != config.OWNER_ID:
+            await interaction.response.send_message("Solo il proprietario del bot può farlo.", ephemeral=True)
+            return
+        if not config.ENABLE_HOT_PATCH:
+            await interaction.response.send_message(
+                "L'aggiornamento a caldo è spento: nel `.env` manca `ENABLE_HOT_PATCH=1`.", ephemeral=True
+            )
+            return
+        if commit is not None and file is not None:
+            await interaction.response.send_message("Scegli una sola sorgente: GitHub oppure un file.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            if file is not None:
+                pacchetto, sorgente, sha, nota = await self._pacchetto_da_allegato(extension, file), "allegato", None, ""
+            else:
+                pacchetto, sha, ignorati = await self._pacchetto_da_github(commit, extension)
+                sorgente = "github"
+                nota = f" ({ignorati} file fuori da cogs/ e core/ ignorati)" if ignorati else ""
+        except hot_patch.PatchRifiutata as exc:
+            await hot_patch_log_repo.registra(
+                interaction.user.id, "github" if file is None else "allegato", None, [], "rifiutato", False, str(exc)
+            )
+            await interaction.followup.send(f"Aggiornamento rifiutato: {exc}", ephemeral=True)
+            return
+        esito = await hot_patch.applica_patch(
+            self.bot, pacchetto, sorgente=sorgente, applicato_da=interaction.user.id, commit=sha
+        )
+        await interaction.followup.send(testo_esito_aggiornamento(esito, sha) + nota, ephemeral=True)
+
+    async def _pacchetto_da_allegato(self, extension: str | None, file: discord.Attachment) -> dict[str, bytes]:
+        if file.size > hot_patch.MAX_BYTE_ZIP_DECOMPRESSO:
+            raise hot_patch.PatchRifiutata("L'allegato è troppo grande.")
+        nome = file.filename.lower()
+        if not nome.endswith((".py", ".zip")):
+            raise hot_patch.PatchRifiutata("Allega un file .py (con il modulo indicato) oppure uno .zip.")
+        dati = await file.read()
+        if nome.endswith(".zip"):
+            return hot_patch.pacchetto_da_zip(dati)
+        if extension is None:
+            raise hot_patch.PatchRifiutata("Con un file .py indica anche il modulo (es. cogs.utility.ping).")
+        return hot_patch.pacchetto_da_file(extension, dati)
+
+    async def _pacchetto_da_github(self, commit: str | None, extension: str | None):
+        async with aiohttp.ClientSession() as sessione:
+            cliente = hot_patch.ClienteGitHub(sessione, config.HOT_PATCH_REPO, config.HOT_PATCH_GITHUB_TOKEN)
+            solo = hot_patch.modulo_a_percorso(extension) if extension else None
+            return await hot_patch.pacchetto_da_github(cliente, commit, bot_info.commit_completo(), solo)
+
+
+def testo_esito_aggiornamento(esito, sha: str | None) -> str:
+    """Il messaggio per l'owner dopo un aggiornamento a caldo."""
+    elenco = ", ".join(f"`{f}`" for f in esito.file)[:900]
+    if esito.esito == "rifiutato":
+        return f"Aggiornamento rifiutato: {esito.nota}"
+    if esito.esito == "ripristinato":
+        errori = "\n".join(f"- `{m}`: {e}" for m, e in esito.errori.items())[:900]
+        return f"{esito.nota}\n{errori}"
+    testo = f"Aggiornati {len(esito.file)} file{f' dal commit `{sha[:7]}`' if sha else ''}: {elenco}."
+    if esito.ricaricati:
+        testo += f"\nCog ricaricati: {', '.join(f'`{m}`' for m in esito.ricaricati)[:600]}."
+    if esito.riavvio_necessario:
+        testo += "\n**Serve il riavvio**: i file di `core/` si caricano solo ripartendo."
+    return testo
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -95,6 +95,10 @@ class AccessoNegato(app_commands.CheckFailure):
 
     def __init__(self, livello: Livello | None = None, messaggio: str | None = None) -> None:
         self.livello = livello
+        # Chiave del catalogo delle lingue (locales/): il gestore errori traduce con questa.
+        self.chiave = "accesso_solo_server" if messaggio == MESSAGGIO_SOLO_SERVER else (
+            f"accesso_{livello.value}" if livello is not None and messaggio is None else None
+        )
         self.messaggio = messaggio or _MESSAGGI.get(livello, "Non puoi usare questo comando.")
         super().__init__(self.messaggio)
 

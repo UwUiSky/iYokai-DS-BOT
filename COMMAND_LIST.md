@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:42 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:43 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 368 comandi in 18 categorie.**
+**Totale: 416 comandi in 19 categorie.**
 
 ## Admin
 
@@ -17,8 +17,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 - **`/admin config export`** — Esporta la configurazione di questo server in un file.
 - **`/admin config history`** — Mostra le ultime modifiche alla configurazione.
 - **`/admin config import`** — Importa una configurazione da un file esportato con /admin config export.
+- **`/admin config nickname-bot`** — Cambia il nome del bot in questo server.
+- **`/admin config pulizia`** — Toglie dalla configurazione canali e ruoli che non esistono più.
 - **`/admin config reset`** — Azzera la configurazione di questo server.
 - **`/admin config rollback`** — Ripristina il valore precedente di una modifica.
+- **`/admin config sincronizza`** — Riscrive i permessi dei comandi di questo server.
 - **`/admin lingua set`** — Imposta la lingua di questo server.
 - **`/admin lingua show`** — Mostra la lingua impostata per questo server.
 - **`/admin messaggi annulla`** — Annulla un messaggio programmato.
@@ -28,6 +31,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 - **`/admin messaggi sticky-togli`** — Rimuove lo sticky message di un canale.
 - **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
+- **`/admin premium riscatta`** — Riscatta un codice premium per questo server.
+- **`/admin premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin setup wizard`** — Configura passo-passo i moduli principali del bot.
 - **`/admin ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
@@ -337,6 +343,44 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 - **`/music volume set`** — Imposta il volume a un valore specifico (0-200).
 - **`/music volume up`** — Aumenta il volume.
 
+## Owner
+
+- **`/owner blacklist server-add`** — Blocca globalmente un server (il bot ne uscirà se già presente).
+- **`/owner blacklist server-list`** — Mostra i server bloccati globalmente.
+- **`/owner blacklist server-remove`** — Rimuove un server dalla blacklist globale.
+- **`/owner blacklist utente-add`** — Blocca globalmente un utente dall'uso del bot.
+- **`/owner blacklist utente-list`** — Mostra gli utenti bloccati globalmente.
+- **`/owner blacklist utente-remove`** — Rimuove un utente dalla blacklist globale.
+- **`/owner cog load`** — Carica un'estensione (es. cogs.moderation.actions).
+- **`/owner cog reload`** — Ricarica un'estensione, anche aggiornandola da GitHub o da un file.
+- **`/owner cog unload`** — Scarica un'estensione.
+- **`/owner premium grant`** — Concede il premium a un server, o crea un codice da riscattare.
+- **`/owner premium list`** — Mostra lo stato premium di tutti i moduli.
+- **`/owner premium panel`** — Pannello interattivo per attivare/disattivare i moduli premium.
+- **`/owner premium revoke`** — Revoca l'abbonamento di un modulo per un server.
+- **`/owner premium status-all`** — Mostra lo stato premium di TUTTI i server in cui è presente il bot.
+- **`/owner premium subscriptions`** — Mostra gli abbonamenti per modulo attivi su un server.
+- **`/owner premium toggle`** — Accende o spegne la natura premium di un modulo.
+- **`/owner premium whitelist-add`** — Aggiunge un server alla whitelist premium.
+- **`/owner premium whitelist-list`** — Elenca i server nella whitelist premium.
+- **`/owner premium whitelist-remove`** — Rimuove un server dalla whitelist premium.
+- **`/owner privacy approva`** — Esegue una richiesta di cancellazione e avvisa l'utente.
+- **`/owner privacy richieste`** — Elenca le richieste di cancellazione dei dati in attesa.
+- **`/owner privacy rifiuta`** — Rifiuta una richiesta di cancellazione e dì all'utente perché.
+- **`/owner radio add-local`** — Aggiunge un file dalla cartella inediti alla playlist della radio.
+- **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
+- **`/owner radio list-tracks`** — Mostra la playlist della radio.
+- **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
+- **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
+- **`/owner radio stop`** — Esce dalla radio su questo server.
+- **`/owner system announce`** — Manda un annuncio a tutti i server.
+- **`/owner system eval`** — Esegue codice Python (con conferma).
+- **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
+- **`/owner system memory-status`** — Mostra il consumo di RAM attuale del processo.
+- **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
+- **`/owner system shell`** — Esegue un comando shell (con conferma).
+- **`/owner system stats`** — Statistiche globali del bot.
+
 ## Sicurezza
 
 - **`/security antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
@@ -396,8 +440,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:
 ## Utility
 
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
+- **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
+- **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
 - **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
+- **`/utility politica canali`** — Dove il bot risponde ai comandi.
+- **`/utility politica comando`** — Spegne o riaccende un singolo comando.
+- **`/utility politica diagnosi`** — Scopre perché un comando non funziona qui.
+- **`/utility politica elenco`** — Mostra la politica dei comandi e, se vuoi, azzera un elenco.
+- **`/utility politica ignora`** — Il bot ignora un ruolo o un utente.
 - **`/utility poll`** — Crea un sondaggio (fino a 10 opzioni).
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.

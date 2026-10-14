@@ -31,6 +31,8 @@ from core import command_search_logic as logica
 from core.command_access import puo_usare
 from core.command_groups import GRUPPI, NOME_CERCA_COMANDO, NOME_CHIEDI
 from core.config import config
+from core.database import db
+from core.i18n import lingua_interazione, t
 from core.repositories.command_usage_repo import command_usage_repo
 from core.ui_base import BaseView
 
@@ -100,7 +102,19 @@ class CommandSearchCog(commands.Cog):
         async def puo(livello):
             return await puo_usare(interaction, livello)
 
-        return await logica.filtra_per_livelli(logica.raccogli_comandi(self.bot.tree.get_commands()), puo)
+        visibili = await logica.filtra_per_livelli(logica.raccogli_comandi(self.bot.tree.get_commands()), puo)
+        if interaction.guild_id is None:
+            return visibili
+
+        async def attivo(modulo: str) -> bool:
+            return await db.is_module_active_for_guild(interaction.guild_id, modulo)
+
+        try:
+            # NF-06 (21.5): un comando il cui modulo è spento nel server non si propone.
+            return await logica.filtra_per_moduli(visibili, attivo)
+        except Exception:
+            logger.warning("Moduli del server non letti: mostro tutti i comandi.", exc_info=True)
+            return visibili
 
     def _categorie(self, comandi: list[logica.ComandoInfo]) -> tuple[list[str], dict[str, list[logica.ComandoInfo]]]:
         gruppi_albero = {c.name for c in self.bot.tree.get_commands() if isinstance(c, app_commands.Group)}
@@ -121,6 +135,7 @@ class CommandSearchCog(commands.Cog):
         guild_id = interaction.guild_id
         comandi = await self._comandi_accessibili(interaction)
         categorie, per_categoria = self._categorie(comandi)
+        lingua = await lingua_interazione(interaction)
         try:
             ultimo = await self.repo.ultimo(guild_id, interaction.user.id)
         except Exception:
@@ -134,15 +149,15 @@ class CommandSearchCog(commands.Cog):
             ultimo=ultimo,
             in_dm=guild_id is None,
             wiki_base=config.WIKI_BASE_URL,
+            lingua=lingua,
         )
         view = PannelloView(dati)
         await interaction.followup.send(embed=view.embed, view=view, ephemeral=True)
 
     async def _ricerca(self, interaction: discord.Interaction, query: str, nota: str | None = None) -> None:
+        lingua = await lingua_interazione(interaction)
         if not query.strip():
-            await interaction.response.send_message(
-                "Scrivi almeno una parola per cercare, oppure lascia vuoto per il pannello.", ephemeral=True
-            )
+            await interaction.response.send_message(t("cerca_serve_testo", lingua), ephemeral=True)
             return
         query = query.strip()
         await interaction.response.defer(ephemeral=True)
@@ -152,9 +167,9 @@ class CommandSearchCog(commands.Cog):
 
         if risultati:
             ids = await self._ids(interaction, serve={r.gruppo for r in risultati})
-            embed = logica.embed_risultati(risultati, ids, query)
+            embed = logica.embed_risultati(risultati, ids, query, lingua)
             if in_dm:
-                embed.set_footer(text="In privato puoi solo cercare: i comandi si usano nei server.")
+                embed.set_footer(text=t("cerca_in_dm", lingua))
             extra = {}
             view = RisultatiView(config.WIKI_BASE_URL, risultati[0].percorso)
             if view.children:
@@ -165,11 +180,8 @@ class CommandSearchCog(commands.Cog):
             return
 
         embed = discord.Embed(
-            title="Nessun comando trovato",
-            description=(
-                f'Non ho trovato un comando che corrisponda a "{query}". '
-                f"Vuoi proporre questa funzione allo sviluppatore?"
-            ),
+            title=t("cerca_nulla_titolo", lingua),
+            description=t("cerca_nulla_testo", lingua, query=query),
             color=discord.Color.orange(),
         )
         extra = {"content": nota} if nota else {}
@@ -198,7 +210,7 @@ class CommandSearchCog(commands.Cog):
         comandi = await self._comandi_accessibili(interaction)
         return [
             app_commands.Choice(name=nome, value=valore)
-            for nome, valore in logica.suggerimenti(current, comandi)
+            for nome, valore in logica.suggerimenti(current, comandi, lingua=await lingua_interazione(interaction))
         ]
 
     # `-chiedi` (primo livello): per ora mostra lo stesso pannello; la risposta AI arriva in F12.
@@ -217,7 +229,7 @@ class CommandSearchCog(commands.Cog):
         nota = None
         if len(pulita) > 100:
             # Fino all'AI (F12) la domanda si tratta come una ricerca da 100 caratteri al massimo.
-            nota = "La domanda era lunga: ho cercato solo con i primi 100 caratteri."
+            nota = t("cerca_domanda_lunga", await lingua_interazione(interaction))
             pulita = pulita[:100]
         await self._ricerca(interaction, pulita, nota)
 

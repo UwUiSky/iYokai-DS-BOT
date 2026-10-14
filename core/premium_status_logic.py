@@ -34,6 +34,7 @@ def format_guild_status_line(
     boosts_main_guild: bool,
     cassa_active: bool,
     subscription_count: int,
+    discord_attivo: bool = False,
 ) -> str:
     """
     Una riga per /owner premium status-all: elenca OGNI meccanismo di
@@ -50,6 +51,8 @@ def format_guild_status_line(
         meccanismi.append("premium via cassa")
     if subscription_count > 0:
         meccanismi.append(f"{subscription_count} abbonamento/i per modulo")
+    if discord_attivo:
+        meccanismi.append("abbonamento Discord")
 
     if meccanismi:
         dettaglio = ", ".join(meccanismi)
@@ -57,3 +60,23 @@ def format_guild_status_line(
         dettaglio = "nessuno sblocco proprio"
 
     return f"`{guild_id}` ({guild_name}) — {dettaglio}"
+
+
+def righe_stato_server(dettaglio: dict, scadenze: list[str]) -> list[str]:
+    """
+    Le righe di `/admin premium stato`: un sblocco per riga, scritto in modo che lo capisca anche chi non è
+    tecnico. `dettaglio` viene da `core.premium.get_guild_premium_breakdown`; `scadenze` sono le date degli
+    abbonamenti per modulo, già formattate.
+    """
+    righe = []
+    if dettaglio.get("whitelisted"):
+        righe.append("Whitelist del bot: tutti i moduli premium sono sbloccati.")
+    if dettaglio.get("discord_attivo"):
+        righe.append("Abbonamento Discord attivo: tutti i moduli premium sono sbloccati.")
+    if dettaglio.get("cassa_active"):
+        righe.append("Premium comprato con la cassa del server: tutti i moduli sono sbloccati.")
+    if dettaglio.get("boosts_main_guild"):
+        righe.append("Il proprietario del server sostiene il server principale: tutti i moduli sono sbloccati.")
+    for scadenza in scadenze:
+        righe.append(f"Abbonamento per modulo: {scadenza}")
+    return righe

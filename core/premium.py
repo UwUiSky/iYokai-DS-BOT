@@ -28,9 +28,6 @@ Nessuna parte di questo file, da sola, fa pagare qualcuno. Serve solo
 a predisporre l'interruttore, che oggi resta spento ovunque.
 """
 
-# DA FARE (issue #93, fase F10): NF-22, Pagamento vero del premium. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-
 from __future__ import annotations
 
 import logging
@@ -46,6 +43,7 @@ from discord.ext import commands
 from core.config import config
 from core.bot_stats import error_counter
 from core.command_access import AccessoNegato
+from core.i18n import lingua_interazione, t
 from core.premium_cache import invalida_cache_premium
 
 logger = logging.getLogger("iyokai.premium")
@@ -298,9 +296,12 @@ async def guild_has_premium_access(
       `_guild_owner_boosts_main_guild`), richiede `bot`
     - pagamento mensile/annuale PER MODULO (`module_subscription_
       repo`) — sblocca SOLO il modulo `module_name` richiesto, non
-      gli altri: nessun gateway di pagamento reale, l'owner concede
-      l'abbonamento a mano con `/owner premium grant` dopo averlo
-      incassato fuori dal bot (vedi il file del repository)
+      gli altri: l'owner concede l'abbonamento a mano con
+      `/owner premium grant` dopo averlo incassato fuori dal bot
+      (vedi il file del repository)
+    - abbonamento Discord (app premium, NF-22,
+      `core/premium_entitlement_service.py`) — sblocca TUTTI i moduli
+      finché dura
     """
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
         return True
@@ -321,7 +322,12 @@ async def guild_has_premium_access(
     if await _guild_owner_boosts_main_guild(guild_id, bot):
         return True
 
-    return await module_subscription_repo.is_active(guild_id, module_name)
+    if await module_subscription_repo.is_active(guild_id, module_name):
+        return True
+
+    from core.premium_entitlement_service import server_ha_abbonamento
+
+    return await server_ha_abbonamento(guild_id)
 
 
 async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
@@ -345,7 +351,10 @@ async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:
     cassa_active = cassa_status.is_active(datetime.now(timezone.utc))
     abbonamenti = await module_subscription_repo.list_for_guild(guild_id)
 
+    from core.premium_entitlement_service import server_ha_abbonamento
+
     return {
+        "discord_attivo": await server_ha_abbonamento(guild_id),
         "whitelisted": whitelisted,
         "boosts_main_guild": boosts_main_guild,
         "cassa_active": cassa_active,
@@ -480,30 +489,28 @@ async def handle_app_command_error(
     if not rifiuto or isinstance(error, PremiumCheckFailure):
         error_counter.record()  # SPEC.md §17.8, usato da /owner stats
 
+    # NF-06: la risposta è effimera, quindi vale la lingua personale di chi ha lanciato il comando
+    # (poi quella del server). Se il database non risponde: italiano.
+    lingua = await lingua_interazione(interaction)
     if isinstance(error, ModuleNotUnlockedError):
-        message = (
-            f"**{error.display_name}** è una funzione Premium non ancora "
-            f"sbloccata su questo server.\n"
-            f"Contatta lo staff del server o consulta il pannello di "
-            f"gestione per maggiori informazioni."
-        )
+        message = t("err_modulo_premium", lingua, modulo=error.display_name)
     elif isinstance(error, AccessoNegato):
-        message = error.messaggio
+        message = t(error.chiave, lingua) if error.chiave else error.messaggio
     elif isinstance(error, (PremiumCheckOutsideGuildError, app_commands.NoPrivateMessage)):
-        message = "Questo comando è disponibile solo dentro un server."
+        message = t("guild_only_command", lingua)
     elif isinstance(error, app_commands.MissingPermissions):
-        message = "Non hai i permessi per usare questo comando."
+        message = t("err_permessi_utente", lingua)
     elif isinstance(error, app_commands.BotMissingPermissions):
-        message = "Al bot mancano dei permessi per eseguire questo comando."
+        message = t("err_permessi_bot", lingua)
     elif isinstance(error, app_commands.CommandOnCooldown):  # è un CheckFailure: va prima del ramo generico
-        message = f"Attendi {max(1, math.ceil(error.retry_after))} secondi prima di rilanciare questo comando."
+        message = t("err_attesa", lingua, secondi=max(1, math.ceil(error.retry_after)))
     elif isinstance(error, app_commands.CheckFailure):
-        message = "Non puoi usare questo comando qui."
+        message = t("err_non_consentito", lingua)
     else:
         logger.error(
             "Errore non gestito in un comando slash: %s", error, exc_info=error
         )
-        message = "Si è verificato un errore imprevisto eseguendo il comando."
+        message = t("err_imprevisto", lingua)
 
     if rifiuto and not isinstance(error, PremiumCheckFailure):
         # M 14.2 (BUG-13): un rifiuto per permessi o controlli non è un

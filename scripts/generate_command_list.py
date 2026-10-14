@@ -62,27 +62,52 @@ async def main() -> None:
         # non uno alla volta: alcuni gruppi (es. /owner) ricevono
         # sottocomandi da più metodi nello stesso file, serve
         # l'albero completo.
-        comandi_top_level = bot.tree.get_commands()
+        from core.command_groups import GRUPPI
+        from core.command_translator import carica_traduzioni
+
+        carica_traduzioni(forza=True)
+        # `/owner` vive solo nel server dell'owner: non è nell'albero globale ma va nell'elenco.
+        comandi_top_level = list(bot.tree.get_commands())
+        if GRUPPI["owner"].commands:
+            comandi_top_level.append(GRUPPI["owner"])
 
         # La categoria è il gruppo di primo livello (D24); i comandi
         # singoli di primo livello (-cerca-comando, -chiedi) vanno in "aiuto".
+        per_lingua = {"it": defaultdict(list), "en": defaultdict(list)}
         for cmd in comandi_top_level:
-            if isinstance(cmd, app_commands.Group):
-                sotto = walk_commands(cmd.commands, prefix=cmd.name)
-                categoria = cmd.name
-            else:
-                sotto = [(cmd.name, cmd.description or "(nessuna descrizione)")]
-                categoria = "aiuto"
-            per_categoria[categoria].extend(sotto)
+            categoria = cmd.name if isinstance(cmd, app_commands.Group) else "aiuto"
+            for lingua in ("it", "en"):
+                per_lingua[lingua][categoria].extend(_foglie(cmd, lingua))
 
-        _scrivi_markdown(per_categoria)
-        print(f"Scritto COMMAND_LIST.md con {sum(len(v) for v in per_categoria.values())} comandi "
-              f"in {len(per_categoria)} categorie.")
+        _scrivi_markdown(per_lingua["it"], "COMMAND_LIST.md", "it")
+        _scrivi_markdown(per_lingua["it"], "COMMAND_LIST_ITA.md", "it")
+        _scrivi_markdown(per_lingua["en"], "COMMAND_LIST_ENG.md", "en")
+        print(f"Scritti COMMAND_LIST.md, _ITA e _ENG con {sum(len(v) for v in per_lingua['it'].values())} comandi "
+              f"in {len(per_lingua['it'])} categorie.")
     finally:
         await db.close()
 
 
-def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]]) -> None:
+def _foglie(nodo, lingua: str, prefisso: str = "") -> list[tuple[str, str]]:
+    """(percorso, descrizione) di ogni comando sotto `nodo`, in italiano (base) o in inglese (traduzione di Discord)."""
+    from core.command_translator import descrizione_inglese, nome_inglese
+
+    nome = (nome_inglese(nodo.name) or nodo.name) if lingua == "en" else nodo.name
+    mostrato = f"{prefisso} {nome}".strip() if prefisso else nome
+    if isinstance(nodo, app_commands.Group):
+        figli: list[tuple[str, str]] = []
+        for c in nodo.commands:
+            figli.extend(_foglie(c, lingua, mostrato))
+        return figli
+    # `percorso` per la traduzione è sempre quello italiano (chiave del file); qui lo ricostruiamo
+    # dal nodo vero.
+    descrizione = nodo.description or "(nessuna descrizione)"
+    if lingua == "en":
+        descrizione = descrizione_inglese(nodo.qualified_name) or descrizione
+    return [(mostrato, descrizione)]
+
+
+def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome: str = "COMMAND_LIST.md", lingua: str = "it") -> None:
     etichette_categoria = {
         "aiuto": "Aiuto (primo livello)",
         "admin": "Admin",
@@ -103,17 +128,35 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]]) -> None:
         "voice": "Vocali",
     }
 
+    if lingua == "en":
+        etichette_categoria = {
+            "aiuto": "Help (top level)", "admin": "Admin", "automod": "AutoMod", "clan": "Clan",
+            "fun": "Fun", "gestione": "Management", "level": "Levels", "log": "Log",
+            "mod": "Moderation", "modban": "Bans (modban)", "moduli": "Modules", "music": "Music",
+            "owner": "Owner", "security": "Security", "ticket": "Tickets", "utility": "Utility",
+            "voice": "Voice", "economia": "Economy",
+        }
+    etichette_categoria.setdefault("economia", "Economia")
     righe = [
-        "# Elenco comandi — iYokai",
+        "# Command list (English) — iYokai" if lingua == "en" else "# Elenco comandi — iYokai",
         "",
-        f"Generato automaticamente da `scripts/generate_command_list.py` il "
-        f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}, "
-        f"interrogando l'albero comandi VERO del bot dopo aver caricato ogni "
-        f"cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit "
-        f"che aggiunge, rimuove o rinomina un comando.",
+        (
+            f"Generated automatically by `scripts/generate_command_list.py` on "
+            f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} from the REAL command tree. "
+            f"English names and descriptions are the ones Discord shows to users with the client in English "
+            f"(`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every "
+            f"commit that adds, removes or renames a command."
+            if lingua == "en"
+            else f"Generato automaticamente da `scripts/generate_command_list.py` il "
+            f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}, "
+            f"interrogando l'albero comandi VERO del bot dopo aver caricato ogni "
+            f"cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit "
+            f"che aggiunge, rimuove o rinomina un comando."
+        ),
         "",
-        f"**Totale: {sum(len(v) for v in per_categoria.values())} comandi in "
-        f"{len(per_categoria)} categorie.**",
+        f"**{'Total' if lingua == 'en' else 'Totale'}: {sum(len(v) for v in per_categoria.values())} "
+        f"{'commands' if lingua == 'en' else 'comandi'} in "
+        f"{len(per_categoria)} {'categories' if lingua == 'en' else 'categorie'}.**",
         "",
     ]
 
@@ -127,7 +170,7 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]]) -> None:
         righe.append("")
 
     percorso = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "COMMAND_LIST.md"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), file_nome
     )
     with open(percorso, "w", encoding="utf-8") as f:
         f.write("\n".join(righe))

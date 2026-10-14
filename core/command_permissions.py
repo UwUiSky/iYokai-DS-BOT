@@ -508,3 +508,21 @@ async def sincronizza_dal_bot(bot, guild, tipo: TipoRuolo, ruolo_vecchio: int | 
     if esito.stato != STATO_OK:
         logger.warning("Permessi dei comandi nel server %s: %s (errori: %s)", guild.id, esito.stato, esito.errori)
     return esito
+
+
+async def risincronizza_server(bot, guild) -> dict[str, EsitoPermessi | None]:
+    """
+    Risincronizzazione a mano per un server (CFG-020, #122). I comandi slash sono globali e si sincronizzano una volta
+    per tutti all'avvio; per un singolo server si riscrivono i permessi dei gruppi legati ai ruoli admin, mod e ban
+    (utile se qualcuno li ha cambiati dalle impostazioni di Discord). {tipo di ruolo: esito}, `None` se il server non ha
+    autorizzato il bot o l'OAuth2 non è configurato. I tipi senza ruolo scelto non compaiono.
+    """
+    from core.command_access import leggi_ruolo
+
+    esiti: dict[str, EsitoPermessi | None] = {}
+    for tipo in TipoRuolo:
+        ruolo = await leggi_ruolo(guild.id, tipo)
+        if ruolo is None:
+            continue
+        esiti[tipo.value] = await sincronizza_dal_bot(bot, guild, tipo, ruolo, ruolo)
+    return esiti

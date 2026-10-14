@@ -134,6 +134,8 @@ async def test_albero_vero_nessun_comando_con_livello_negato_e_visibile(monkeypa
             return consenti
 
         monkeypatch.setattr(modulo, "puo_usare", puo)
+        # NF-06: qui contano i livelli; i moduli del server hanno il loro test (test_command_search_bilingue).
+        monkeypatch.setattr(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True))
         tutti = L.raccogli_comandi(bot.tree.get_commands())
         visibili = await cog._comandi_accessibili(fake_interaction())
         con_livello = [c for c in tutti if c.livelli]

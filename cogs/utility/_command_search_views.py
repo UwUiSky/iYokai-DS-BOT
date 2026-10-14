@@ -32,10 +32,11 @@ class DatiPannello:
     ultimo: str | None
     in_dm: bool
     wiki_base: str | None = None
+    lingua: str = "it"
     extra: dict = field(default_factory=dict)
 
     def embed(self) -> discord.Embed:
-        return logica.embed_pannello(self.ultimo, self.ids, in_dm=self.in_dm)
+        return logica.embed_pannello(self.ultimo, self.ids, in_dm=self.in_dm, lingua=self.lingua)
 
 
 def bottone_wiki(wiki_base: str | None, percorso: str | None = None) -> discord.ui.Button | None:
@@ -99,7 +100,7 @@ class CategoriaView(BaseView):
     def __init__(self, dati: DatiPannello, nome: str, indice: int) -> None:
         super().__init__(timeout=TIMEOUT)
         comandi = dati.comandi.get(nome, [])
-        self.embed, indice, totale = logica.embed_categoria(nome, comandi, dati.ids, indice)
+        self.embed, indice, totale = logica.embed_categoria(nome, comandi, dati.ids, indice, dati.lingua)
         if totale > 1:
             costruisci = lambda n: CategoriaView(dati, nome, n)  # noqa: E731
             for etichetta, dest, ok in (("◀", indice - 1, indice > 0), ("▶", indice + 1, indice < totale - 1)):

@@ -59,6 +59,11 @@ SETTINGS_VALIDE = {
     "music_max_track_minutes": 0,
     "music_stay_when_queue_ends": False,
     "music_allowed_voice_channel_id": 161616161616161616,
+    "policy_comandi_off": ["fun meme"],
+    "policy_canali_ok": [171717171717171717],
+    "policy_canali_no": [181818181818181818],
+    "policy_ignora_ruoli": [191919191919191919],
+    "policy_ignora_utenti": [202020202020202020],
 }
 
 
@@ -134,6 +139,9 @@ class TestErroreSchemaImport:
             {"music_max_track_minutes": 1.5},
             {"music_stay_when_queue_ends": 1},
             {"music_allowed_voice_channel_id": 0},
+            {"policy_comandi_off": [""]},
+            {"policy_comandi_off": [5]},
+            {"policy_canali_ok": ["1"]},
         ],
     )
     def test_valore_di_tipo_sbagliato_viene_rifiutato(self, settings):

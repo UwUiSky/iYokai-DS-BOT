@@ -53,3 +53,4 @@ htmlcov/
 # Lavalink proprio (deploy/lavalink): plugin scaricati e cartella degli inediti
 deploy/lavalink/plugins/
 deploy/lavalink/radio-local/
+data/hot_patch/

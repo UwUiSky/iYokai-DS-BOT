@@ -1,35 +1,27 @@
 # Memoria di dev-core
 
 ## Aggiornata
-12/10/2026 · ramo `feat/giro-core` (main unito) · correzioni del cacciatore-bug (NF-04, #148, #145)
+14/10/2026 · ramo `feat/r5-cor` (base main) · giro r5: per FILE
 
 ## In corso
-- Correzioni 1-10 e basse del cacciatore fatte (commit sul ramo). Resta: smoke, push, rapporto.
-- Se si riprende: #148 manca solo il bottone con il link nel setup + scelta dei ruoli (nessuno chiama `imposta_ruolo`).
+- Giro r5 chiuso (7 gruppi): lingue, traduttore, ricerca, #122 piccole, NF-22, NF-38, #141. Resta il rapporto all'orchestratore.
+- Prossimo passo: far rispondere ai comandi il bot del marchio (NF-38, serve un disegno: oggi il client del marchio non ha comandi);
+  poi CFG-011/013/014/016/024/025/026/030/033/039/043/044 di #122; 14.1 nei cog altrui; #140 (serve #95 + token GitHub).
 
 ## Fatto
-- Giri precedenti: R1-bis, smoke, F7 quadro e passo 4 (gruppi, accesso, sync comandi).
-- #145 `core/premium_cache.py` (db whitelist, abbonamenti, acquisto cassa, flag modulo).
-- M 14.2/14.3 gestore errori. M 14.4 scheduler con `claimed_at` (0033). M 14.6 pool 2/5 in sviluppo.
-- M 14.7 `core/invio_file.py`. M 14.9 coda `bot_stats` con tetto, cache moduli senza gara.
-- M 14.10 cache impostazioni (`db._settings_cache`, TTL 60 s). M 14.1 cricchetto `KNOWN_SENZA_MAX_LENGTH`
-  (27 rimasti, 16 owner sistemati). M 14.11 `event_log.id` BIGINT + indici (0037). M 14.12 chiavi esterne clan/giveaway (0038).
-- M 13.2 `core/blacklist_exit.py` (escono i worker musicali).
-- NF-04: `data_registry` (87 tabelle), `forget_user_service`, `retention_worker`, repo presenza/richieste, cog `privacy`,
-  migrazioni 0034-0036, `on_guild_remove`. #19/#37/#46 chiusi dallo stesso codice.
-- #148 parte senza token: `core/command_permissions.py`, tabella `command_permission_tokens` (0039), hook `imposta_ruolo`.
-- Giro 12/10 bis (revisore-capo): Range privacy 2**53-1 + test limiti interi, cancellazione tiene solo lo sban programmato,
-  ramo CommandOnCooldown, `esci_dettaglio` (falliti detti all'owner), token OAuth cancellato in on_guild_remove,
-  bottone-link in `/admin setup attiva`, `invia_file_su_interazione` (config export, parole vietate), test mutazione.
-- Giro 12/10: contatore casi ricostruito dopo la purga (`dopo_purga_server`), `sincronizza`/`segna_uscito` ripristinano
-  `purged_at`, purga ricontrolla `left_at` con FOR UPDATE, sban programmato trattenuto (`conserva_server_se`),
-  esportazione solo dell'utente + ORDER BY pk + `troncate`, titolare clan trasferito/sciolto, migrazione 0050
-  (retain_for_security con automod_escalation e mute_role; indice ticket senza user_id=0), rinnovo OAuth (solo
-  invalid_grant cancella, lock per server), state monouso + callback `/oauth/callback` condivisa (`gestisci_callback`),
-  scheduler libera `claimed_at` se cancellato, cache log avanzati con numero di versione.
-- Gia fatte: 13.1 (sotto-gruppi owner), 13.3, 14.5, 14.8, 14.15.
+- Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
+  M 14.1-14.12, 14.15): vedi `git log` e il registro delle risolte. Giro 12/10 bis e 12/10: revisioni su privacy, scheduler, OAuth.
+- r5 g1-3 (6d0e6f6, 4379e18, 5add20b): `locales/it|en.json`, `core/i18n.py`, `user_language` 0130, `/utility lingua`;
+  `core/command_translator.py` + `locales/comandi.en.json`; ricerca bilingue + `filtra_per_moduli`.
+- r5 g4-7 (0ecc8ff, 8a38d4e, c5033ef, 0c08903): `core/command_policy.py` + `/utility politica`; `config_history` filtri/CSV;
+  `/admin config pulizia|sincronizza|nickname-bot`, `/utility info`; NF-22 `premium_entitlements` 0131 + `/admin premium stato`;
+  codici 0132 (`/owner premium grant` senza server crea il codice, `/admin premium riscatta`); NF-38 0133 `whitelabel_bots` +
+  `/admin premium marchio`; #141 `core/hot_patch.py` 0134 (`/owner cog reload commit|file|registro`, `ENABLE_HOT_PATCH`).
 
 ## Cose imparate
+- Discord conta per il limite 8000 solo la traduzione PIU LUNGA per campo (base compresa). Base del codice resta italiano (scarto da D1).
+- discord.py mette locale_str automatico su nomi/descrizioni: il traduttore riceve `context.data` (nodo) e risponde per percorso.
+- Il DB di prova puo essere usato anche da altre copie: tabelle estranee (es. activity_*) fanno fallire test_data_registry; riprovare.
 - La suite completa dura circa 9 minuti. `config` e un dataclass congelato: nei test si sostituisce `ca.config`.
 - Rifiuto di accesso = `AccessoNegato` (CheckFailure) risposto da `handle_app_command_error`.
 - Il defer pubblico lascia un messaggio con flag `loading`: va cancellato prima del followup effimero.
@@ -42,9 +34,14 @@
 - Un test che esegue una migrazione a mano su `clean_db` sporca il DB condiviso (es. 0010 rimette l'indice vecchio): ripristinare nel finally.
 - Esportazione: mai `colonne_attore`; i campi con id di staff escono None. Nuova colonna di stato in un cog che scrive casi: aggiornare 0050-style e il test AST degli action_type.
 - Numeri migrazione: mod usa 0040-0041; core ha preso 0050 (verificare la scheda prima della prossima).
+- Colonna con id di un bot (non persona) non si chiama `*_user_id`: il test del registro dati la vuole dichiarata (usa `bot_account_id`).
+- Comando staff dentro un gruppo pubblico (`utility`): `@richiedi(Livello.ADMIN)` su ogni comando + `@autocomplete_protetto`.
+- Migrazione applicata e poi rinominata: `delete from schema_migrations where version=N` e drop della tabella nel DB di prova.
+- `monkeypatch.undo()` in un test con `clean_db` annulla anche il pool: ripristinare il singolo attributo.
 - Il token OAuth, gli state e i corpi delle risposte Discord non vanno mai in log o messaggi.
 
 ## Aperto
+- Conteggio caratteri: `admin` 6.4xx su 6.800 (soglia): il prossimo comando admin richiede un nuovo gruppo (D25) o va in un gruppo piu leggero.
 - #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.
 - #148: manca solo il picker dei ruoli che chiama `imposta_ruolo` (il link e la callback ci sono).
