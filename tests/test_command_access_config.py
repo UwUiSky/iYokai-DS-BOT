@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
+import discord
 import pytest
 
 from cogs.utility.config_history import ConfigHistoryCog, RollbackConfirmView
@@ -100,3 +101,52 @@ async def test_rollback_normale_funziona_ancora():
     ix.user.id = 9
     await RollbackConfirmView(voce.id, 9).confirm.callback(ix)
     assert (await db.get_full_config(GUILD))["settings"]["report_channel_id"] == 5
+
+
+# ---- D27: il ruolo admin del bot lo sceglie solo chi ha «Amministratore» ----
+def _ix_non_proprietario(permessi: discord.Permissions):
+    from tests.support.discord_fakes import fake_member
+
+    return fake_interaction(guild=_guild(), user=fake_member(user_id=9, guild_permissions=permessi))
+
+
+async def _importa_come(permessi: discord.Permissions, settings: dict) -> str:
+    cog = ConfigHistoryCog(bot=None)
+    ix = _ix_non_proprietario(permessi)
+    dati = {"modules": {}, "settings": settings, "language": "it"}
+    await cog.import_config.callback(cog, ix, _File(json.dumps(dati).encode()))
+    return ix.response.send_message.call_args.args[0]
+
+
+async def test_import_ruolo_admin_con_solo_gestisci_server_rifiutato():
+    msg = await _importa_come(discord.Permissions(manage_guild=True), {"admin_role_id": RUOLO})
+    assert "✅" not in msg and "Amministratore" in msg
+    assert (await db.get_full_config(GUILD))["settings"] == {}
+
+
+async def test_import_ruolo_admin_con_amministratore_accettato():
+    msg = await _importa_come(discord.Permissions(administrator=True), {"admin_role_id": RUOLO})
+    assert "✅" in msg
+    assert (await db.get_full_config(GUILD))["settings"] == {"admin_role_id": RUOLO}
+
+
+async def test_import_con_lo_stesso_ruolo_admin_di_adesso_accettato():
+    await db.set_guild_setting(GUILD, "admin_role_id", RUOLO)
+    msg = await _importa_come(discord.Permissions(manage_guild=True), {"admin_role_id": RUOLO, "mod_role_id": RUOLO})
+    assert "✅" in msg
+
+
+async def test_rollback_che_rimette_il_ruolo_admin_serve_amministratore():
+    await db.set_guild_setting(GUILD, "admin_role_id", RUOLO)
+    await db.set_guild_setting(GUILD, "admin_role_id", None)
+    voce = (await db.get_config_history(GUILD, limit=1))[0]
+
+    ix = _ix_non_proprietario(discord.Permissions(manage_guild=True))
+    await RollbackConfirmView(voce.id, 9).confirm.callback(ix)
+    testo = ix.response.edit_message.call_args.kwargs["content"]
+    assert "✅" not in testo and "Amministratore" in testo
+    assert await ca.leggi_ruolo(GUILD, ca.TipoRuolo.ADMIN) is None
+
+    ix = _ix_non_proprietario(discord.Permissions(administrator=True))
+    await RollbackConfirmView(voce.id, 9).confirm.callback(ix)
+    assert await ca.leggi_ruolo(GUILD, ca.TipoRuolo.ADMIN) == RUOLO

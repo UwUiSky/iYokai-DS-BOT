@@ -14,6 +14,7 @@
 </form>
 
 <h2>Ruoli del bot</h2>
+<p>Il ruolo admin apre anche i comandi di sicurezza: per sceglierlo serve il permesso «Amministratore» (o essere il proprietario del server).</p>
 {% for r in stato.ruoli_bot %}
 <form class="carta riga" method="post" action="/server/{{ guild.id }}/ruolo">
   <input type="hidden" name="csrf" value="{{ csrf }}">

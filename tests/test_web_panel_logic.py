@@ -61,9 +61,14 @@ def test_limite_frequenza():
     assert len(limite._colpi) == 3
 
 
-def test_ip_cliente_si_fida_del_proxy_solo_in_locale():
-    assert regole.ip_cliente("127.0.0.1", "1.2.3.4, 5.6.7.8") == "5.6.7.8"
-    assert regole.ip_cliente("9.9.9.9", "1.2.3.4") == "9.9.9.9"
+def test_ip_cliente_si_fida_solo_dei_proxy_scelti():
+    fidati = regole.proxy_fidati(" 127.0.0.1, ::1 ,")
+    assert fidati == {"127.0.0.1", "::1"}
+    assert regole.ip_cliente("127.0.0.1", "1.2.3.4, 5.6.7.8", fidati) == "5.6.7.8"
+    assert regole.ip_cliente("9.9.9.9", "1.2.3.4", fidati) == "9.9.9.9"
+    # Senza proxy configurato vale l'IP del socket, anche da 127.0.0.1.
+    assert regole.ip_cliente("127.0.0.1", "1.2.3.4") == "127.0.0.1"
+    assert regole.proxy_fidati("") == frozenset()
 
 
 def test_intestazioni_sicurezza():

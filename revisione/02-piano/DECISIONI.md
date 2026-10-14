@@ -400,3 +400,13 @@ nessun token di Discord salvato (solo `identify`). Se l'owner vuole il sito in u
 parte, si sposta la cartella `pannello_web/` e il pannello parla col bot da `core/panel_bridge.py`.
 Da confermare con l'owner.
 
+## D27 — Il ruolo admin del bot lo sceglie solo chi ha «Amministratore» (14/10/2026)
+
+Il ruolo admin del bot vale anche per i comandi di livello SECURITY, che senza il ruolo
+chiedono «Amministratore». Chi ha solo «Gestisci server» poteva scegliere come ruolo admin
+un ruolo suo e prendersi i comandi di sicurezza. Scelta: **mettere un ruolo admin nuovo**
+(diverso da quello attuale) richiede «Amministratore» o essere il proprietario del server.
+Toglierlo o lasciarlo uguale no (non apre nulla). La regola sta in un punto solo,
+`core.command_access.errore_ruolo_admin`, usato da `imposta_ruolo` (pannello web),
+`/admin config import` e `/admin config rollback`. `/setup` non tocca questo valore.
+Ruoli mod e ban: invariati (bastano i permessi di `/admin`).

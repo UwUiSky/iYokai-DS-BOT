@@ -25,6 +25,7 @@ import jinja2
 from aiohttp import web
 
 from core import panel_bridge, web_panel_logic as regole
+from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida
@@ -48,6 +49,11 @@ ESITI = {
     "salvato": ("Salvato. Il bot usa già la nuova impostazione.", False),
     "invariato": ("Nessun cambiamento: era già così.", False),
     "non_valido": ("Valore non valido: niente è stato salvato.", True),
+    "serve_amministratore": (
+        "Per scegliere il ruolo admin del bot serve il permesso «Amministratore» "
+        "(o essere il proprietario del server): niente è stato salvato.",
+        True,
+    ),
 }
 
 
@@ -60,12 +66,14 @@ def build_app(
     client_secret: str,
     url_pubblico: str,
     chiave: str,
+    proxy_fidati: frozenset[str] = frozenset(),
     ponte=panel_bridge,
 ) -> web.Application:
     """
     `sessioni`: `WebPanelSessionRepository`. `oauth`: oggetto con
     `exchange_code_for_token(client_id=, client_secret=, redirect_uri=, code=)`
     e `fetch_current_user(access_token)` (in produzione `restore_orchestrator`).
+    `proxy_fidati`: IP dei reverse proxy di cui si legge `X-Forwarded-For`.
     """
     https = regole.cookie_sicuro(url_pubblico)
     prefisso = "__Host-" if https else ""
@@ -108,7 +116,7 @@ def build_app(
         return _pagina(request, "errore.html", codice_http, titolo=titolo, testo=testo)
 
     def _ip(request: web.Request) -> str:
-        return regole.ip_cliente(request.remote, request.headers.get("X-Forwarded-For"))
+        return regole.ip_cliente(request.remote, request.headers.get("X-Forwarded-For"), proxy_fidati)
 
     async def _server(request: web.Request):
         """Il server della richiesta, se l'utente lo può gestire ADESSO. Altrimenti una risposta d'errore."""
@@ -267,6 +275,8 @@ def build_app(
             return _torna(guild.id, "non_valido")
         try:
             await ponte.applica_ruolo(guild, str(form.get("tipo", "")), int(testo) if testo else None, request[CHIAVE_UTENTE])
+        except RuoloAdminNegato:
+            return _torna(guild.id, "serve_amministratore")
         except ImpostazioneNonValida:
             return _torna(guild.id, "non_valido")
         return _torna(guild.id, "salvato")

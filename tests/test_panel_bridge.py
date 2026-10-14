@@ -12,7 +12,7 @@ import pytest
 
 import core.database as database_module
 from core import panel_bridge
-from core.command_access import TipoRuolo, leggi_ruolo
+from core.command_access import RuoloAdminNegato, TipoRuolo, leggi_ruolo
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -30,6 +30,13 @@ def _server(*, membri, ruoli=()):
     guild.get_role = MagicMock(side_effect=lambda rid: next((r for r in ruoli if r.id == rid), None))
     guild.fetch_member = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "no"))
     return guild
+
+
+@pytest.fixture(autouse=True)
+def _cache_membri_vuota():
+    panel_bridge._cache_membri.clear()
+    yield
+    panel_bridge._cache_membri.clear()
 
 
 @pytest.fixture
@@ -50,8 +57,47 @@ async def test_serve_gestisci_server_o_ruolo_admin(pool):
     assert not await panel_bridge.puo_gestire(guild, UTENTE)
     assert not await panel_bridge.puo_gestire(guild, 999)  # non è nel server
 
+    # D27: con solo «Gestisci server» il ruolo admin (che apre anche SECURITY) non si sceglie.
+    with pytest.raises(RuoloAdminNegato):
+        await panel_bridge.applica_ruolo(guild, "admin", 500, ADMIN)
+    assert await leggi_ruolo(GUILD, TipoRuolo.ADMIN) is None
+    await panel_bridge.applica_ruolo(guild, "mod", 500, ADMIN)  # gli altri ruoli sì
+
+    con_permesso.guild_permissions = discord.Permissions(administrator=True)
     await panel_bridge.applica_ruolo(guild, "admin", 500, ADMIN)
     assert await panel_bridge.puo_gestire(guild, UTENTE)
+    await panel_bridge.applica_ruolo(guild, "admin", None, UTENTE)  # toglierlo non apre nulla
+    assert await leggi_ruolo(GUILD, TipoRuolo.ADMIN) is None
+
+
+@pytest.mark.asyncio
+async def test_membro_chiesto_a_discord_tenuto_poco(pool, monkeypatch):
+    lontano = fake_member(UTENTE, guild_permissions=discord.Permissions(manage_guild=True))
+    guild = _server(membri={})
+    guild.fetch_member = AsyncMock(return_value=lontano)
+    adesso = [1000.0]
+    monkeypatch.setattr(panel_bridge.time, "monotonic", lambda: adesso[0])
+
+    for _ in range(5):
+        assert await panel_bridge.puo_gestire(guild, UTENTE)
+    assert guild.fetch_member.await_count == 1
+
+    adesso[0] += panel_bridge.DURATA_CACHE_MEMBRI + 1
+    guild.fetch_member = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "no"))
+    assert not await panel_bridge.puo_gestire(guild, UTENTE)  # scaduta: si richiede
+    assert not await panel_bridge.puo_gestire(guild, UTENTE)
+    assert guild.fetch_member.await_count == 1  # anche il «non c'è» resta in memoria
+
+
+def test_cache_dei_membri_ha_un_tetto(monkeypatch):
+    monkeypatch.setattr(panel_bridge, "MAX_CACHE_MEMBRI", 3)
+    guild = _server(membri={})
+    guild.fetch_member = AsyncMock(return_value=None)
+    import asyncio
+
+    for uid in range(10):
+        asyncio.run(panel_bridge._membro(guild, uid, chiedi_a_discord=True))
+    assert list(panel_bridge._cache_membri) == [(GUILD, 7), (GUILD, 8), (GUILD, 9)]
 
 
 @pytest.mark.asyncio

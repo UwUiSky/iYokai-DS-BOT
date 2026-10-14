@@ -259,6 +259,9 @@ class Config:
     WEB_PANEL_PUBLIC_URL: str = field(default="")
     # Porta locale del pannello (indirizzo: WEB_BIND_HOST).
     WEB_PANEL_PORT: int = field(default=8422)
+    # IP dei reverse proxy fidati, separati da virgola: solo da questi si legge
+    # X-Forwarded-For (limite di frequenza per IP). Vuoto = IP del socket.
+    WEB_PANEL_TRUSTED_PROXY: str = field(default="")
 
     # --- Restore utenti via OAuth2 (SPEC.md §11.11) ---------------------
     # Chiave di cifratura (AES-256-GCM) dei token OAuth altrui salvati
@@ -395,6 +398,7 @@ def _load_config() -> Config:
         WEB_PANEL_SECRET_KEY=_optional("WEB_PANEL_SECRET_KEY"),
         WEB_PANEL_PUBLIC_URL=_optional("WEB_PANEL_PUBLIC_URL", ""),
         WEB_PANEL_PORT=_optional_int("WEB_PANEL_PORT", 8422),
+        WEB_PANEL_TRUSTED_PROXY=_optional("WEB_PANEL_TRUSTED_PROXY", ""),
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),

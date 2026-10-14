@@ -85,7 +85,7 @@ from core.restore_web_server import build_app as restore_web_build_app
 from core.restore_web_server import start_server as restore_web_start_server
 from core.custom_webhook_server import build_app as custom_webhook_build_app
 from core.custom_webhook_server import start_server as custom_webhook_start_server
-from core.web_panel_logic import pannello_configurato
+from core.web_panel_logic import pannello_configurato, proxy_fidati
 from core.web_panel_server import build_app as web_panel_build_app
 from core.web_panel_server import start_server as web_panel_start_server
 from core.repositories.web_panel_session_repo import web_panel_session_repo
@@ -778,6 +778,7 @@ async def main() -> None:
             client_secret=config.OAUTH2_CLIENT_SECRET,
             url_pubblico=config.WEB_PANEL_PUBLIC_URL,
             chiave=config.WEB_PANEL_SECRET_KEY,
+            proxy_fidati=proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY),
         )
         web_panel_runner = await web_panel_start_server(web_panel_app, config.WEB_BIND_HOST, config.WEB_PANEL_PORT)
     else:

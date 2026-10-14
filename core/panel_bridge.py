@@ -14,10 +14,18 @@ from __future__ import annotations
 
 import logging
 import time
+from collections import OrderedDict
 
 import discord
 
-from core.command_access import Livello, TipoRuolo, decidi_accesso, imposta_ruolo, leggi_ruolo
+from core.command_access import (
+    Livello,
+    RuoloAdminNegato,
+    TipoRuolo,
+    decidi_accesso,
+    imposta_ruolo,
+    leggi_ruolo,
+)
 from core.command_search_logic import ComandoInfo, raccogli_comandi
 from core.config import config
 from core.config_history_logic import TIPI_MODIFICA
@@ -30,6 +38,11 @@ logger = logging.getLogger("iyokai.panel_bridge")
 MAX_RUOLI_MOSTRATI = 250
 MAX_STORICO = 100
 _DURATA_CACHE_COMANDI = 300.0
+# Membri chiesti a Discord (non nella memoria del bot): tenuti poco, così ogni
+# clic non diventa una chiamata all'API, ma un permesso tolto vale entro 30 secondi.
+DURATA_CACHE_MEMBRI = 30.0
+MAX_CACHE_MEMBRI = 1000
+_cache_membri: OrderedDict[tuple[int, int], tuple[float, discord.Member | None]] = OrderedDict()
 
 ETICHETTE_RUOLI = {
     TipoRuolo.ADMIN: "Ruolo admin del bot",
@@ -43,10 +56,20 @@ async def _membro(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool)
     membro = guild.get_member(user_id)
     if membro is not None or not chiedi_a_discord:
         return membro
+    chiave = (guild.id, user_id)
+    adesso = time.monotonic()
+    salvato = _cache_membri.get(chiave)
+    if salvato is not None and salvato[0] > adesso:
+        return salvato[1]
     try:
-        return await guild.fetch_member(user_id)
+        membro = await guild.fetch_member(user_id)
     except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-        return None
+        membro = None
+    _cache_membri.pop(chiave, None)
+    _cache_membri[chiave] = (adesso + DURATA_CACHE_MEMBRI, membro)
+    while len(_cache_membri) > MAX_CACHE_MEMBRI:
+        _cache_membri.popitem(last=False)
+    return membro
 
 
 async def puo_gestire(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool = True) -> bool:
@@ -169,7 +192,10 @@ async def applica_lingua(guild: discord.Guild, codice: str, user_id: int) -> str
 
 
 async def applica_ruolo(guild: discord.Guild, tipo_nome: str, ruolo_id: int | None, user_id: int) -> None:
-    """`tipo_nome`: admin, mod o modban. `ruolo_id` None toglie il ruolo."""
+    """
+    `tipo_nome`: admin, mod o modban. `ruolo_id` None toglie il ruolo.
+    Il ruolo admin nuovo richiede «Amministratore» o il proprietario (D27).
+    """
     try:
         tipo = TipoRuolo[tipo_nome.upper()]
     except KeyError:
@@ -180,6 +206,10 @@ async def applica_ruolo(guild: discord.Guild, tipo_nome: str, ruolo_id: int | No
         if ruolo is None or ruolo.managed:
             raise ImpostazioneNonValida("Questo ruolo non esiste in questo server.")
     try:
-        await imposta_ruolo(guild, tipo, ruolo, changed_by=user_id)
+        await imposta_ruolo(
+            guild, tipo, ruolo, changed_by=user_id, autore=await _membro(guild, user_id, chiedi_a_discord=True)
+        )
+    except RuoloAdminNegato:
+        raise
     except ValueError as errore:
         raise ImpostazioneNonValida(str(errore)) from None

@@ -20,7 +20,14 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
-from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
+from core.command_access import (
+    CHIAVI_RUOLI,
+    SETTING_ADMIN_ROLE,
+    TipoRuolo,
+    errore_ruolo_admin,
+    leggi_ruolo,
+    ruolo_valido_per_server,
+)
 from core.database import db
 from core.config_schema import imposta_lingua_server
 from core.config_history_logic import (
@@ -181,6 +188,14 @@ def errore_ruoli_del_bot(guild: discord.Guild, settings: dict) -> str | None:
     return None
 
 
+async def errore_cambio_ruolo_admin(guild: discord.Guild, autore, settings: dict) -> str | None:
+    """D27: un ruolo admin del bot nuovo lo sceglie solo chi ha «Amministratore» o il proprietario."""
+    nuovo = settings.get(SETTING_ADMIN_ROLE)
+    if nuovo is None:
+        return None  # nessun ruolo admin nel file: si toglie, e toglierlo non apre nulla
+    return errore_ruolo_admin(guild, autore, await leggi_ruolo(guild.id, TipoRuolo.ADMIN), nuovo)
+
+
 def errore_schema_import(dati) -> str | None:
     """
     Controlla lo schema di un file per /admin config import PRIMA di scrivere.
@@ -316,8 +331,11 @@ class RollbackConfirmView(BaseView):
         self.entry_id = entry_id
         self.requested_by_id = requested_by_id
 
-    async def _errore_ruoli_da_ripristinare(self, guild) -> str | None:
-        """Il rollback non deve rimettere un ruolo del bot non valido (vedi errore_ruoli_del_bot)."""
+    async def _errore_ruoli_da_ripristinare(self, guild, autore) -> str | None:
+        """
+        Il rollback non deve rimettere un ruolo del bot non valido (vedi
+        errore_ruoli_del_bot), né un ruolo admin scelto da chi non può (D27).
+        """
         entry = await db.get_config_history_entry(self.entry_id)
         if entry is None or guild is None:
             return None
@@ -328,7 +346,9 @@ class RollbackConfirmView(BaseView):
             da_ripristinare = impostazioni if isinstance(impostazioni, dict) else {}
         else:
             return None
-        return errore_ruoli_del_bot(guild, da_ripristinare)
+        return errore_ruoli_del_bot(guild, da_ripristinare) or await errore_cambio_ruolo_admin(
+            guild, autore, da_ripristinare
+        )
 
     @discord.ui.button(label="Conferma rollback", style=discord.ButtonStyle.danger)
     async def confirm(
@@ -340,7 +360,7 @@ class RollbackConfirmView(BaseView):
             )
             return
 
-        errore = await self._errore_ruoli_da_ripristinare(interaction.guild)
+        errore = await self._errore_ruoli_da_ripristinare(interaction.guild, interaction.user)
         if errore is not None:
             for child in self.children:
                 child.disabled = True
@@ -666,7 +686,9 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return
 
-        errore = errore_ruoli_del_bot(guild, dati["settings"])
+        errore = errore_ruoli_del_bot(guild, dati["settings"]) or await errore_cambio_ruolo_admin(
+            guild, interaction.user, dati["settings"]
+        )
         if errore is not None:
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return

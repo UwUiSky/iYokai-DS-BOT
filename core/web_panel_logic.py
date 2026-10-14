@@ -134,13 +134,18 @@ class LimiteFrequenza:
         return True
 
 
-def ip_cliente(remoto: str | None, inoltrato: str | None) -> str:
+def proxy_fidati(testo: str) -> frozenset[str]:
+    """`WEB_PANEL_TRUSTED_PROXY`: indirizzi IP separati da virgola (vuoto = nessuno)."""
+    return frozenset(parte.strip() for parte in (testo or "").split(",") if parte.strip())
+
+
+def ip_cliente(remoto: str | None, inoltrato: str | None, fidati: frozenset[str] = frozenset()) -> str:
     """
-    L'IP di chi chiama. `X-Forwarded-For` vale solo se la richiesta arriva
-    dal reverse proxy sulla stessa macchina; si prende l'ultimo valore,
-    quello scritto dal proxy.
+    L'IP di chi chiama. `X-Forwarded-For` vale solo se la connessione
+    arriva da un proxy fidato (`WEB_PANEL_TRUSTED_PROXY`); si prende
+    l'ultimo valore, quello scritto dal proxy. Altrimenti l'IP del socket.
     """
-    if remoto in ("127.0.0.1", "::1") and inoltrato:
+    if remoto is not None and remoto in fidati and inoltrato:
         return inoltrato.split(",")[-1].strip() or remoto
     return remoto or "?"
 

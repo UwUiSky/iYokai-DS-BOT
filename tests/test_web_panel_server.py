@@ -8,6 +8,7 @@ origine, limite di frequenza, escape dell'HTML, wiki dei comandi.
 
 import re
 import secrets
+from collections import OrderedDict
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs, urlparse
@@ -19,12 +20,13 @@ from aiohttp.test_utils import TestClient, TestServer
 from discord import app_commands
 
 import core.database as database_module
-from core import web_panel_logic as regole
+from core import panel_bridge, web_panel_logic as regole
+from core.command_access import TipoRuolo, leggi_ruolo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.web_panel_session_repo import WebPanelSessionRepository
 from core.web_panel_server import build_app
-from tests.support.discord_fakes import fake_guild, fake_member
+from tests.support.discord_fakes import fake_guild, fake_member, fake_role
 
 GUILD = 8800
 ADMIN = 31
@@ -72,6 +74,7 @@ def _bot(membri):
 @pytest.fixture
 def ambiente(monkeypatch, clean_db, reset_premium_registry):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    monkeypatch.setattr(panel_bridge, "_cache_membri", OrderedDict())
     registry.register(PremiumModule("modulo_web", "Modulo web", "Prova del pannello", category="utility"))
     membri = {ADMIN: fake_member(ADMIN, guild_permissions=discord.Permissions(manage_guild=True))}
     bot = _bot(membri)
@@ -306,5 +309,49 @@ async def test_cookie_host_cancellati_con_secure(clean_db):
         errore = await client.get("/callback?code=x&state=y", allow_redirects=False)
         cookie = errore.headers["Set-Cookie"]
         assert cookie.startswith("__Host-iyokai_state=") and "Secure" in cookie
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_ruolo_admin_dal_pannello_serve_amministratore(ambiente):
+    """D27: il ruolo admin apre anche i comandi di sicurezza («Amministratore»)."""
+    ruolo = fake_role(role_id=500, name="Staff")
+    ambiente.bot.get_guild(GUILD).get_role = MagicMock(side_effect=lambda rid: ruolo if rid == 500 else None)
+    client = await _client(ambiente.app)
+    try:
+        await _entra(client)
+        csrf = await _csrf(client, f"/server/{GUILD}")
+        dati = {"csrf": csrf, "tipo": "admin", "ruolo_id": "500"}
+        negato = await client.post(f"/server/{GUILD}/ruolo", data=dati, allow_redirects=False)
+        assert negato.headers["Location"].endswith("esito=serve_amministratore")
+        assert await leggi_ruolo(GUILD, TipoRuolo.ADMIN) is None
+        assert "Amministratore" in await (await client.get(negato.headers["Location"])).text()
+
+        # Come Member.guild_permissions vero: con «Amministratore» ci sono tutti i permessi.
+        ambiente.membri[ADMIN].guild_permissions = discord.Permissions.all()
+        ok = await client.post(f"/server/{GUILD}/ruolo", data=dati, allow_redirects=False)
+        assert ok.headers["Location"].endswith("esito=salvato")
+        assert await leggi_ruolo(GUILD, TipoRuolo.ADMIN) == 500
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fidati, bloccato", [(frozenset(), True), (frozenset({"127.0.0.1"}), False)])
+async def test_x_forwarded_for_solo_dal_proxy_fidato(clean_db, fidati, bloccato):
+    """Senza proxy fidato un X-Forwarded-For inventato non aggira il limite per IP."""
+    app = build_app(
+        bot=_bot({}), sessioni=WebPanelSessionRepository(pool_provider=lambda: clean_db), oauth=_OAuthFinto(),
+        client_id="1", client_secret="s" * 8, url_pubblico=URL, chiave=secrets.token_urlsafe(48),
+        proxy_fidati=fidati,
+    )
+    client = await _client(app)
+    try:
+        stati = [
+            (await client.get("/accedi", allow_redirects=False, headers={"X-Forwarded-For": f"10.0.0.{i}"})).status
+            for i in range(11)
+        ]
+        assert (stati[10] == 429) is bloccato
     finally:
         await client.close()

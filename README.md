@@ -115,7 +115,7 @@ di frequenza di Discord e isola i problemi.
 | **iYokai Music** ×5 | Riproduzione musicale, un canale vocale ciascuno | da correggere (F2) |
 | **iYokai NSFW** | Contenuti per adulti, isolati dal resto | da fare (F11) |
 | **iYokai App** | Comandi installati sull'utente, usabili in ogni server | da fare (F13) |
-| **iYokai Panel** | Pannello web | da fare (F10) |
+| **iYokai Panel** | Pannello web (dentro il processo del bot, D26) | in corso (F10) |
 | **iYokai Desktop** | Programma per PC: stato personalizzato, notifiche, storico delle menzioni | da fare (F13) |
 
 ---
@@ -161,6 +161,7 @@ modello commentato è [`.env.example`](.env.example).
 | Musica | `LAVALINK_HOST`, `LAVALINK_PORT`, `LAVALINK_PASSWORD`, `LAVALINK_NODES`, `MAIN_RADIO_LOCAL_FOLDER` |
 | Servizi esterni | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`, `YOUTUBE_API_KEY`, `PIXABAY_API_KEY` |
 | Web e OAuth2 | `WEB_BIND_HOST`, `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`, `OAUTH2_REDIRECT_URI`, `OAUTH_ENCRYPTION_KEY`, `RESTORE_WEB_PORT`, `ALERTS_WEBHOOK_PORT`, `ALERTS_WEBHOOK_PUBLIC_BASE_URL` |
+| Pannello web | `WEB_PANEL_SECRET_KEY`, `WEB_PANEL_PUBLIC_URL`, `WEB_PANEL_PORT`, `WEB_PANEL_TRUSTED_PROXY` (più `OAUTH2_CLIENT_ID`/`SECRET`) |
 | Interruttori | `PREMIUM_ALPHA_UNLOCK_ALL`, `ENABLE_EVAL` (spenti di default in produzione) |
 
 **Nel Developer Portal di Discord**, pagina *Bot* del bot principale,
@@ -168,6 +169,25 @@ vanno accesi **Server Members Intent** e **Message Content Intent**: il
 codice li chiede entrambi e senza non si collega. Sotto i 10.000 utenti
 basta l'interruttore; oltre serve una domanda a Discord, da rifare ogni
 anno. Per entrare in più di 100 server serve la verifica dell'app.
+
+### Pannello web
+
+Il pannello (`core/web_panel_server.py`) parte con il bot, ma **solo**
+se nel `.env` ci sono `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`,
+`WEB_PANEL_SECRET_KEY` (almeno 32 caratteri casuali) e
+`WEB_PANEL_PUBLIC_URL`. Altrimenti il log dice «Pannello web spento».
+
+1. Genera la chiave: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`.
+2. Nel Developer Portal, pagina *OAuth2*, aggiungi il redirect
+   `WEB_PANEL_PUBLIC_URL` + `/callback`.
+3. Metti davanti un reverse proxy con https (es. nginx) che punta a
+   `WEB_BIND_HOST:WEB_PANEL_PORT` (di base `127.0.0.1:8422`).
+4. Se il proxy è sulla stessa macchina, `WEB_PANEL_TRUSTED_PROXY=127.0.0.1`:
+   solo così il limite di frequenza vede l'IP vero di chi visita.
+5. Riavvia il bot e apri `WEB_PANEL_PUBLIC_URL`.
+
+Prove da fare su Discord: `revisione/03-verifica/VERIFICA_LIVE.md`,
+sezione «Pannello web».
 
 ---
 
