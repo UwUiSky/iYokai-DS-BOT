@@ -389,3 +389,14 @@ negozio, giveaway per lo staff). `/admin comandi` e `/admin messaggi` vanno in
 il blocco intero `/security antinuke *` in un gruppo di primo livello `/antinuke` (stessi
 12 comandi più `canale-allarmi`, stesso permesso `administrator` e livello sicurezza).
 `/security` resta con anti-raid, panico, verifica, ban globale, heatmap, score, spam-trap.
+
+## D26 — Il pannello web nasce dentro il bot (14/10/2026)
+
+L'issue #91 diceva «repository separato e privato». Scelta consigliata, presa ora: il pannello
+gira **nello stesso processo** del bot (`core/web_panel_server.py`, aiohttp come gli altri
+server web), spento finché mancano le variabili del `.env`. Motivi: chiama davvero gli stessi
+punti unici dei comandi (D16) senza un'API da tenere allineata, il bot vede i cambi subito,
+nessun token di Discord salvato (solo `identify`). Se l'owner vuole il sito in un repository a
+parte, si sposta la cartella `pannello_web/` e il pannello parla col bot da `core/panel_bridge.py`.
+Da confermare con l'owner.
+

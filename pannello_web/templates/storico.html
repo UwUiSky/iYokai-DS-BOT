@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titolo %}Storico · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Storico delle modifiche · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Torna al server</a></p>
+<form class="riga" method="get">
+  <select name="tipo" aria-label="Tipo"><option value="">Tutti i tipi</option>
+  {% for t in tipi %}<option value="{{ t }}" {{ 'selected' if t == tipo }}>{{ t }}</option>{% endfor %}</select>
+  <button type="submit">Filtra</button>
+</form>
+<p class="tenue">Le stesse voci di <code>/admin config storico</code>: comandi e pannello scrivono nello stesso storico. Ultime {{ voci|length }}.</p>
+<table>
+<tr><th>#</th><th>Quando (UTC)</th><th>Chi</th><th>Tipo</th><th>Chiave</th><th>Prima</th><th>Dopo</th></tr>
+{% for v in voci %}
+<tr><td>{{ v.id }}</td><td>{{ v.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ v.changed_by or '—' }}</td>
+<td>{{ v.change_type }}</td><td><code>{{ v.key_name }}</code></td><td><code>{{ v.old_value|tojson }}</code></td><td><code>{{ v.new_value|tojson }}</code></td></tr>
+{% endfor %}
+</table>
+{% endblock %}

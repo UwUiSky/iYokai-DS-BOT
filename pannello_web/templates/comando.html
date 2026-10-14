@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titolo %}/{{ c.percorso }} · iYokai{% endblock %}
+{% block corpo %}
+<p><a href="/wiki">Tutti i comandi</a></p>
+<h1><code>/{{ c.percorso }}</code></h1>
+<p>{{ c.descrizione }}</p>
+{% if c.percorso_en and c.percorso_en != c.percorso %}<p class="tenue">In inglese: <code>/{{ c.percorso_en }}</code>{% if c.descrizione_en %} — {{ c.descrizione_en }}{% endif %}</p>{% endif %}
+{% if c.livelli %}<p>Chi può usarlo: {% for l in c.livelli %}<span class="etichetta">{{ l.value }}</span> {% endfor %}</p>{% endif %}
+{% if c.moduli %}<p>Modulo da accendere: {% for m in c.moduli %}<code>{{ m }}</code> {% endfor %}</p>{% endif %}
+{% if c.opzioni %}
+<h2>Opzioni</h2>
+<table>{% for o in c.opzioni %}<tr><td><code>{{ o.nome }}</code>{% if o.obbligatoria %} *{% endif %}</td><td>{{ o.descrizione }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% endblock %}

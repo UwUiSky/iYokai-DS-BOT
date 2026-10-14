@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titolo %}Comandi · iYokai{% endblock %}
+{% block corpo %}
+<h1>Comandi di iYokai</h1>
+<form class="riga" method="get" action="/wiki">
+  <input type="search" name="q" value="{{ q }}" maxlength="100" placeholder="Cerca: ban, musica, benvenuto…" aria-label="Cerca">
+  <button type="submit">Cerca</button>
+</form>
+<p class="tenue">{{ comandi|length }} comandi{% if q %} per «{{ q }}»{% endif %}. Generata dall'albero dei comandi del bot: è sempre aggiornata.</p>
+<table>
+{% for c in comandi %}
+<tr><td><a href="/wiki/{{ c.percorso|replace(' ', '/') }}"><code>/{{ c.percorso }}</code></a></td><td>{{ c.descrizione }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

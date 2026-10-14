@@ -34,6 +34,10 @@ frozenlist==1.8.0
     #   aiosignal
 idna==3.20
     # via yarl
+jinja2==3.1.6
+    # via -r requirements.txt
+markupsafe==3.0.3
+    # via jinja2
 multidict==6.9.1
     # via
     #   aiohttp

@@ -465,6 +465,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("main_radio_tracks", "Tracce della radio principale", colonne_attore=("added_by",), server="conserva"),
     _t("music_sessions", "Worker musicale assegnato a un server", colonna_server="guild_id"),
     _t("command_sync_state", "Impronta dell'ultima sincronizzazione dei comandi", server="conserva"),
+    _t("web_panel_sessions", "Sessioni di accesso al pannello web (solo l'impronta del cookie)",
+       colonne_utente=("user_id",), utente="cancella", server="conserva", scadenza=Scadenza("expires_at", 0),
+       nota="nessun token di Discord"),
 )
 # fmt: on
 

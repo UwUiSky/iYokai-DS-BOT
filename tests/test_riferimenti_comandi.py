@@ -35,6 +35,11 @@ ECCEZIONI: frozenset[str] = frozenset(
         # segnaposto del modulo "richiedi comando": il nome che l'utente vorrebbe, non un comando vero
         "/esempio",
         "/esempio parametro",
+        # percorsi delle pagine del pannello web (core/web_panel_server.py), non comandi
+        "/accedi",
+        "/callback",
+        "/esci",
+        "/wiki",
     }
 )
 

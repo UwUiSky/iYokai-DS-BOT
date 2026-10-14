@@ -102,6 +102,7 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 
 ## Parziali (issue ancora aperte, voci già fatte)
 
+- #91 (pannello web, 14/10, ramo `feat/r6web`): fatti accesso con Discord, scelta del server, interruttori dei moduli, ruoli del bot, lingua, storico, pagina premium (#93) e wiki dei comandi (`/wiki`, ricerca con la stessa logica del bot); punto unico `core/config_schema.py` (D16). Restano: impostazioni interne dei moduli, editor visuali (24.5), pagine legali (24.6), pagine dell'owner (C.4), verify avanzato (C.1–C.3).
 - #129 (alert social, 14/10): fatte ALR-025, 026, 027, 028 (`/moduli alert opzioni`), 045 e 047 in parte (ruolo «in diretta», `membro`), 021 in parte (segnaposto `{game}`), 048 no. Mancano le altre (Facebook, Bluesky, podcast, filtri per gioco o titolo, pausa, sposta, controllo a mano, frequenza).
 - #130 (statistiche, 14/10): fatte con NF-25 (e486167) le viste di `/utility serverstats` (ingressi/uscite, canali, membri, ore, giorni, ruoli, canali per tipo, emoji, bottoni periodo) e la diagnosi. Restano i contatori speciali (social, gioco, ticket, orologio), retention e provenienza, esportazioni CSV, schede di inviti ed emoji, menu tasto destro.
 - #131 (divertimento, 14/10): fatte le voci piccole SFW di 2bc7483 (scegli, numero, dadi, testo, scherzo, effetto). Restano i giochi di gruppo, le immagini da servizi esterni e gli effetti sugli avatar.

@@ -254,6 +254,11 @@ class Config:
     OAUTH2_CLIENT_SECRET: str = field(default="", repr=False)
     OAUTH2_REDIRECT_URI: str = field(default="")
     WEB_PANEL_SECRET_KEY: str = field(default="", repr=False)
+    # Indirizzo pubblico del pannello (https, dietro un reverse proxy), senza barra
+    # finale. Il redirect OAuth2 del pannello è questo + "/callback".
+    WEB_PANEL_PUBLIC_URL: str = field(default="")
+    # Porta locale del pannello (indirizzo: WEB_BIND_HOST).
+    WEB_PANEL_PORT: int = field(default=8422)
 
     # --- Restore utenti via OAuth2 (SPEC.md §11.11) ---------------------
     # Chiave di cifratura (AES-256-GCM) dei token OAuth altrui salvati
@@ -388,6 +393,8 @@ def _load_config() -> Config:
         OAUTH2_CLIENT_SECRET=_optional("OAUTH2_CLIENT_SECRET"),
         OAUTH2_REDIRECT_URI=_optional("OAUTH2_REDIRECT_URI"),
         WEB_PANEL_SECRET_KEY=_optional("WEB_PANEL_SECRET_KEY"),
+        WEB_PANEL_PUBLIC_URL=_optional("WEB_PANEL_PUBLIC_URL", ""),
+        WEB_PANEL_PORT=_optional_int("WEB_PANEL_PORT", 8422),
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),

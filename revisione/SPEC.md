@@ -76,7 +76,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §21 LINGUE E RICERCA DEI COMANDI | 0 | 0 | 6 | 0 |
 | §22 FUNZIONI NUOVE, PRIMO GRUPPO | 3 | 0 | 14 | 0 |
 | §23 FUNZIONI NUOVE, SECONDO GRUPPO | 2 | 1 | 14 | 0 |
-| §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 1 | 6 | 0 |
+| §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 5 | 2 | 0 |
 | §25 MOTORE AI | 0 | 0 | 105 | 0 |
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
@@ -1942,17 +1942,21 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 Completa la parte C più sotto (pagine di verifica e dell'owner).
 
-- `[ ]` 24.1 Accesso con Discord e scelta del server (NF-20)
-- `[ ]` 24.2 Una pagina per modulo, con interruttore e impostazioni
-- `[ ]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
+- `[~]` 24.1 Accesso con Discord e scelta del server (NF-20)
+  → **Stato 14/10:** `core/web_panel_server.py` (aiohttp, nello stesso processo del bot, porta `WEB_PANEL_PORT`): OAuth2 `identify` con `state` legato al browser, sessioni nel database (0150, solo l'impronta), cookie HttpOnly/SameSite=Lax (`Secure` e `__Host-` su https), CSRF, controllo dell'origine, limite di frequenza, CSP. Permessi come `/admin` controllati a **ogni** richiesta (`core/panel_bridge.py`). Spento senza le variabili del `.env`. Da provare live.
+- `[~]` 24.2 Una pagina per modulo, con interruttore e impostazioni
+  → **Stato 14/10:** una pagina per server: interruttore di ogni modulo (per categoria), ruoli del bot, lingua, storico, premium. Mancano le impostazioni interne di ogni modulo (canali, testi, soglie).
+- `[~]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
   con gli stessi controlli (`core/config_schema.py`)
-- `[ ]` 24.4 Il bot vede un cambio fatto dal pannello senza riavvio
+  → **Stato 14/10:** moduli e lingua da `core/config_schema.py` (usato anche da `/admin setup attiva`, configurazione guidata, `/admin lingua set`), ruoli da `core.command_access.imposta_ruolo`. Ogni nuova impostazione del pannello va prima portata in un punto unico.
+- `[~]` 24.4 Il bot vede un cambio fatto dal pannello senza riavvio
+  → **Stato 14/10:** il pannello gira nel processo del bot e scrive dagli stessi metodi del database, che svuotano le cache; parte anche `modules_updated`.
 - `[ ]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
   moduli dei ticket
 - `[ ]` 24.6 Pagine legali: privacy policy e termini
 - `[~]` 24.7 Pagamento del premium: abbonamento dentro Discord e
   pagamento esterno registrato dall'owner (NF-22)
-  → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Manca solo la pagina del pannello web. Da provare live (serve l'app verificata).
+  → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Pagina del pannello `/server/<id>/premium` fatta (stesse righe di `/admin premium stato` e link al negozio). Da provare live (serve l'app verificata).
 
 ## §25 MOTORE AI — da fare (fase F12, issue #50)
 
