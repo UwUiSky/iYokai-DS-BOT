@@ -12,12 +12,17 @@ from core.ai_providers import ErroreFornitore, EsitoChiamata, Fornitore, LimitiF
 from core.ai_router import MotoreAI
 from core.ai_servizio import ServizioAI
 
-# Un PNG 1x1 valido.
-PNG_1X1 = bytes.fromhex(
-    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
-    "1f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a4"
-    "0000000049454e44ae426082"
-)
+def _png_1x1() -> bytes:
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1, 1), (255, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+PNG_1X1 = _png_1x1()
 
 
 def chiave_finta(nome: str) -> str:

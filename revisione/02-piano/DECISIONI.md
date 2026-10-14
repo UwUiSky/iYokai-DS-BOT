@@ -389,3 +389,26 @@ negozio, giveaway per lo staff). `/admin comandi` e `/admin messaggi` vanno in
 il blocco intero `/security antinuke *` in un gruppo di primo livello `/antinuke` (stessi
 12 comandi più `canale-allarmi`, stesso permesso `administrator` e livello sicurezza).
 `/security` resta con anti-raid, panico, verifica, ban globale, heatmap, score, spam-trap.
+
+## D26 — Motore AI: gruppo `/ai`, fornitori dal `.env`, chi addestra non entra (14/10/2026)
+
+**Gruppo.** La configurazione dell'AI (consenso, canali, limiti, privacy, lore, parole
+vietate, funzioni automatiche, moderazione, traduzione, personaggi, base di conoscenza,
+costruzione del server: 13 comandi, ~2.500 caratteri) doveva stare in `/admin ai`, ma
+`/admin` è a 6.432 caratteri: con il blocco AI supera i 6.800. Per D25 il blocco intero
+diventa un gruppo di primo livello **`/ai`** (permesso `manage_guild`, livello admin). Le
+funzioni per tutti stanno nel sotto-gruppo **`/utility ai`**; `-chiedi` resta dov'è e usa
+l'AI quando è accesa; nei ticket `/ticket assistente`.
+
+**Fornitori.** L'owner non ha ancora dato l'elenco: il motore li legge dal `.env`
+(`AI_FORNITORI` e una serie `AI_*_<NOME>` per ciascuno), tutti nel formato compatibile
+OpenAI, quindi si aggiungono senza toccare il codice. Senza fornitori il bot parte e ogni
+comando AI dà la sua risposta senza AI.
+
+**Addestramento (più stretto di D19).** Un fornitore entra solo se nel `.env` c'è
+`AI_ADDESTRA_<NOME>=no`: chi addestra sui dati ricevuti non si usa per niente, nemmeno per
+i testi senza messaggi degli utenti. Così non serve la doppia lista "può ricevere messaggi".
+
+**Spesa.** Tetto mensile per server in centesimi; 0 (il valore iniziale) vuol dire solo
+fornitori gratuiti (D13). Le chiavi a pagamento si usano solo con
+`AI_USA_CHIAVI_PAGAMENTO=si`. Il modulo `ai` si può rendere premium dall'owner.

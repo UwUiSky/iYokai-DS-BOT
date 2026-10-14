@@ -39,7 +39,6 @@ class ConfigAI:
     bandiere: bool = False
     moderazione_canali: tuple[int, ...] = ()
 
-    @property
     def quote(self) -> Quote:
         return Quote(
             tetto_mensile_cent=self.tetto_mensile_cent, utente_giorno=self.quota_utente_giorno,

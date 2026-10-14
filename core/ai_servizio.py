@@ -167,7 +167,7 @@ class ServizioAI:
 
         guild_conti = r.guild_id or 0
         uso = await self.repo.uso(guild_conti, r.user_id, r.funzione)
-        quote = cfg.quote if cfg else None
+        quote = cfg.quote() if cfg else None
         if quote is not None:
             motivo = quota_superata(quote, uso, immagine=r.tipo == "immagine")
             if motivo:

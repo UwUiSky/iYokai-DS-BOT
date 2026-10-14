@@ -206,3 +206,20 @@ class MotoreAI:
 
     def quote_in_esaurimento(self) -> list[str]:
         return [f.nome for f in self.fornitori if self.stato.uso(f) >= SOGLIA_QUOTA]
+
+
+def avviso_chiavi(
+    esiti: dict[str, bool], esaurite: list[str], gia_segnalati: frozenset[str]
+) -> tuple[str | None, frozenset[str]]:
+    """
+    Testo del messaggio privato all'owner dopo il controllo orario (AI-R-103), solo quando
+    qualcosa cambia: chiavi che non rispondono e quote oltre l'85 %. Mai la chiave.
+    """
+    problemi = frozenset({f"chiave:{n}" for n, ok in esiti.items() if not ok} | {f"quota:{n}" for n in esaurite})
+    nuovi = problemi - gia_segnalati
+    if not nuovi:
+        return None, problemi
+    righe = ["Controllo dei fornitori AI:"]
+    righe += [f"- {p.split(':', 1)[1]}: la chiave non risponde (scaduta o sbagliata?)" for p in sorted(nuovi) if p.startswith("chiave:")]
+    righe += [f"- {p.split(':', 1)[1]}: quota oltre l'85 %, lo salto fino al rinnovo" for p in sorted(nuovi) if p.startswith("quota:")]
+    return "\n".join(righe), problemi

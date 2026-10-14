@@ -229,7 +229,7 @@ class TrasportoHTTP:
         """Chiave valida? Chiede l'elenco dei modelli: non consuma token."""
         sessione = await self._http()
         try:
-            async with sessione.get(f"{f.url}/models", headers=self._intestazioni(f)) as r:
+            async with sessione.get("/".join((f.url, "models")), headers=self._intestazioni(f)) as r:
                 return r.status < 400
         except (aiohttp.ClientError, TimeoutError):
             return False

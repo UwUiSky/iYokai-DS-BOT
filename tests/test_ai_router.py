@@ -95,3 +95,13 @@ async def test_controllo_chiavi():
     trasporto.chiavi_valide["b"] = False
     motore = MotoreAI([fornitore("a"), fornitore("b")], trasporto)
     assert await motore.controlla_chiavi() == {"a": True, "b": False}
+
+
+def test_avviso_chiavi_solo_quando_cambia():
+    from core.ai_router import avviso_chiavi
+
+    testo, segnalati = avviso_chiavi({"a": True, "b": False}, ["a"], frozenset())
+    assert "b: la chiave non risponde" in testo and "a: quota" in testo
+    assert avviso_chiavi({"a": True, "b": False}, ["a"], segnalati)[0] is None
+    testo, segnalati = avviso_chiavi({"a": True, "b": True}, [], segnalati)
+    assert testo is None and segnalati == frozenset()

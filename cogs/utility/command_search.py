@@ -11,7 +11,8 @@ cogs/utility/command_search.py
   (ID da `fetch_commands`: cache che si ricarica per scadenza o quando manca un ID).
 - Nessun risultato: propone di aprire una richiesta allo sviluppatore, riusando il modal
   di cogs/utility/custom_command_requests.py.
-- -chiedi mostra lo stesso pannello (la risposta AI arriverà in F12).
+- -chiedi: con l'AI accesa nel server risponde l'assistente (cogs/ai/helpdesk.py) con al
+  massimo 3 comandi cliccabili; senza AI, o se l'AI non risponde, la ricerca per parole.
 - Bottone "Apri nella wiki" se WIKI_BASE_URL è impostato.
 
 Nessun gate is_module_active_for_guild: è uno strumento di scoperta rivolto a chiunque.
@@ -154,13 +155,16 @@ class CommandSearchCog(commands.Cog):
         view = PannelloView(dati)
         await interaction.followup.send(embed=view.embed, view=view, ephemeral=True)
 
-    async def _ricerca(self, interaction: discord.Interaction, query: str, nota: str | None = None) -> None:
+    async def _ricerca(
+        self, interaction: discord.Interaction, query: str, nota: str | None = None, *, gia_differita: bool = False
+    ) -> None:
         lingua = await lingua_interazione(interaction)
         if not query.strip():
             await interaction.response.send_message(t("cerca_serve_testo", lingua), ephemeral=True)
             return
         query = query.strip()
-        await interaction.response.defer(ephemeral=True)
+        if not gia_differita:
+            await interaction.response.defer(ephemeral=True)
         in_dm = interaction.guild_id is None
         comandi = await self._comandi_accessibili(interaction)
         risultati = logica.cerca(query, comandi)
@@ -213,7 +217,7 @@ class CommandSearchCog(commands.Cog):
             for nome, valore in logica.suggerimenti(current, comandi, lingua=await lingua_interazione(interaction))
         ]
 
-    # `-chiedi` (primo livello): per ora mostra lo stesso pannello; la risposta AI arriva in F12.
+    # `-chiedi` (primo livello): senza testo il pannello; con testo l'assistente AI o la ricerca.
     @app_commands.command(name=NOME_CHIEDI, description="Chiedi aiuto: ti mostro i comandi giusti.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(domanda="Cosa vuoi fare? (vuoto: pannello dei comandi)")
@@ -226,12 +230,49 @@ class CommandSearchCog(commands.Cog):
             await self._mostra_pannello(interaction)
             return
         pulita = domanda.strip()
+        esito_ai = await self._risposta_ai(interaction, pulita)
+        if esito_ai is True:
+            return
         nota = None
         if len(pulita) > 100:
-            # Fino all'AI (F12) la domanda si tratta come una ricerca da 100 caratteri al massimo.
+            # Senza AI la domanda si tratta come una ricerca da 100 caratteri al massimo.
             nota = t("cerca_domanda_lunga", await lingua_interazione(interaction))
             pulita = pulita[:100]
-        await self._ricerca(interaction, pulita, nota)
+        if esito_ai is False:
+            await self._ricerca(interaction, pulita, nota, gia_differita=True)
+        else:
+            await self._ricerca(interaction, pulita, nota)
+
+    async def _risposta_ai(self, interaction: discord.Interaction, domanda: str) -> bool | None:
+        """
+        Risposta dell'AI (§25.5). True: risposta mandata. False: risposta già differita ma l'AI
+        non ha risposto. None: AI non disponibile, niente toccato. Negli ultimi due casi si
+        torna alla ricerca per parole.
+        """
+        from cogs.ai.helpdesk import risposta_ai_chiedi
+        from core.ai_servizio import AINonDisponibile, servizio_ai
+
+        try:
+            await servizio_ai().controlla_accesso(interaction.guild_id, interaction.channel_id)
+        except AINonDisponibile:
+            return None
+        except Exception:
+            logger.warning("Accesso all'AI non controllato.", exc_info=True)
+            return None
+        await interaction.response.defer(ephemeral=True)
+        comandi = await self._comandi_accessibili(interaction)
+        testo, citati, _locale = await risposta_ai_chiedi(interaction, domanda, comandi)
+        if testo is None:
+            return False  # già differita: la ricerca per parole risponde con followup
+        ids = await self._ids(interaction, serve={c.gruppo for c in citati})
+        for c in citati:
+            testo = testo.replace(f"/{c.percorso}", logica.menzione(c.percorso, ids))
+        embed = discord.Embed(title="Assistente", description=testo[:4000], color=discord.Color.blurple())
+        embed.set_footer(text="Risposta dell'AI: controlla prima di usarla")
+        view = RisultatiView(config.WIKI_BASE_URL, citati[0].percorso) if citati else None
+        extra = {"view": view} if view is not None and view.children else {}
+        await interaction.followup.send(embed=embed, ephemeral=True, **extra)
+        return True
 
     # ------------------------------------------------------------------
     # Ultimo comando usato
