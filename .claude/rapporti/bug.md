@@ -193,3 +193,7 @@
 | 13/10 | `tickets.py:1785` (`on_member_remove`) | Chiude solo i ticket con `panel_id`: quelli dal pannello classico restano aperti se l'utente esce; i chiusi per uscita/inattivita' non salvano il motivo | bassa | confermato (cbtkt/p1) |
 | 13/10 | `tickets.py:1712-1725`, `risposte.py:362-372` | `close_ticket` riuscito e poi pianificazione eliminazione che fallisce: al retry ticket gia' chiuso, canale mai eliminato. Sollecito: `mark_sollecito` prima di leggere il canale, al retry non riparte | bassa | confermato (cbtkt/p1, p3) |
 | 13/10 | `tickets.py:1750-1775`, `:1340-1420` | `chiudi-tutti`: 25 transcript in serie con un solo followup finale (token a 15 min); motivo libero nell'avviso con menzioni utente attive. `remove ruolo` accetta il ruolo di supporto o del bot (blocca lo staff) | bassa | plausibile |
+- 14/10/2026 · `core/web_panel_logic.py` Referrer-Policy no-referrer → i browser mandano `Origin: null` sui POST, il pannello rifiuta ogni salvataggio (403) · alta · corretto (same-origin)
+- 14/10/2026 · `core/web_panel_server.py` del_cookie dei `__Host-` senza Secure: il browser ignora la cancellazione (uscita, state) · bassa · corretto
+- 14/10/2026 · `core/panel_bridge.py:applica_ruolo` chi ha solo «Gestisci server» sceglie il ruolo admin del bot (che vale anche per Livello.SECURITY = Amministratore): scalata, come già `/admin config import` · media · aperto (scelta di progetto)
+- 14/10/2026 · `core/web_panel_server.py:_server` ogni GET su un server dove l'utente non è in cache chiama `fetch_member` (120/min per IP) · bassa · aperto

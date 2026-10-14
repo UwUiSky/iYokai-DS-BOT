@@ -88,6 +88,10 @@ def build_app(
             nome, valore, max_age=durata, path="/", httponly=True, secure=https, samesite="Lax"
         )
 
+    def _cancella_cookie(risposta: web.StreamResponse, nome: str) -> None:
+        # Stessi attributi della creazione: un `__Host-` senza Secure il browser lo ignora.
+        risposta.del_cookie(nome, path="/", secure=https, httponly=True, samesite="Lax")
+
     def _pagina(request: web.Request, modello: str, codice_http: int = 200, **dati) -> web.Response:
         esito = ESITI.get(request.query.get("esito", ""))
         contesto = {
@@ -191,7 +195,7 @@ def build_app(
         code = request.query.get("code")
         if not state_ok or not code or len(code) > 256:
             risposta = _errore(request, 400, "Accesso non riuscito", "Link scaduto o non valido: riprova da «Accedi».")
-            risposta.del_cookie(cookie_state, path="/")
+            _cancella_cookie(risposta, cookie_state)
             return risposta
         token = await oauth.exchange_code_for_token(
             client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, code=code
@@ -209,7 +213,7 @@ def build_app(
         logger.info("Accesso al pannello web dell'utente %s.", utente_id)
         risposta = _vai("/")
         _cookie(risposta, cookie_sessione, nuovo, regole.DURATA_SESSIONE_SECONDI)
-        risposta.del_cookie(cookie_state, path="/")
+        _cancella_cookie(risposta, cookie_state)
         return risposta
 
     async def esci(request: web.Request) -> web.StreamResponse:
@@ -218,7 +222,7 @@ def build_app(
         if token and regole.csrf_valido(chiave, token, form.get("csrf")):
             await sessioni.elimina(regole.impronta(token))
         risposta = _vai("/")
-        risposta.del_cookie(cookie_sessione, path="/")
+        _cancella_cookie(risposta, cookie_sessione)
         return risposta
 
     # ------------------------------------------------------------ server

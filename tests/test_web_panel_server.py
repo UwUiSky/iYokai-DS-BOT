@@ -270,3 +270,41 @@ async def test_cookie_secure_su_https(clean_db):
         assert "Strict-Transport-Security" in risposta.headers
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_post_con_la_politica_referrer_del_pannello_passa(ambiente):
+    """Il browser segue la Referrer-Policy della pagina: con "no-referrer" l'Origin del POST è "null"."""
+    client = await _client(ambiente.app)
+    try:
+        await _entra(client)
+        pagina = await client.get(f"/server/{GUILD}")
+        politica = pagina.headers["Referrer-Policy"]
+        csrf = re.search(r'name="csrf" value="([^"]+)"', await pagina.text()).group(1)
+        origine = "null" if politica == "no-referrer" else URL
+        risposta = await client.post(
+            f"/server/{GUILD}/modulo", data={"csrf": csrf, "nome": "modulo_web", "attivo": "1"},
+            headers={"Origin": origine}, allow_redirects=False,
+        )
+        assert risposta.status == 302 and "esito=salvato" in risposta.headers["Location"]
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_cookie_host_cancellati_con_secure(clean_db):
+    """Un cookie `__Host-` senza Secure è scartato dal browser: anche la cancellazione deve averlo."""
+    app = build_app(
+        bot=_bot({}), sessioni=WebPanelSessionRepository(lambda: clean_db), oauth=_OAuthFinto(),
+        client_id="1", client_secret="s", url_pubblico="https://pannello.example", chiave=secrets.token_urlsafe(48),
+    )
+    client = await _client(app)
+    try:
+        uscita = await client.post("/esci", allow_redirects=False)
+        cookie = uscita.headers["Set-Cookie"]
+        assert cookie.startswith("__Host-iyokai_sessione=") and "Secure" in cookie
+        errore = await client.get("/callback?code=x&state=y", allow_redirects=False)
+        cookie = errore.headers["Set-Cookie"]
+        assert cookie.startswith("__Host-iyokai_state=") and "Secure" in cookie
+    finally:
+        await client.close()

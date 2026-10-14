@@ -157,7 +157,9 @@ def intestazioni_sicurezza(https: bool) -> dict[str, str]:
         "Content-Security-Policy": CSP,
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
-        "Referrer-Policy": "no-referrer",
+        # Non "no-referrer": con quella i browser mandano `Origin: null` sui POST
+        # dei moduli e il controllo dell'origine li rifiuterebbe tutti.
+        "Referrer-Policy": "same-origin",
         "Cache-Control": "no-store",
         "Cross-Origin-Opener-Policy": "same-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",

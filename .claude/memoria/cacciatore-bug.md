@@ -1,6 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
 13/10/2026 · ultimo giro: `feat/r4-uti` (ruoli auto, starboard, tag, benvenuto immagine, role menu, embed, contatori, compleanni, inviti, moduli)
 13/10/2026 · ultimo giro: `feat/r4-liv` (livelli, economia, giveaway, giochi, profili)
 13/10/2026 · ultimo giro: `feat/r4-tkt` (ticket, ModMail, standard/sollecito, log, /voice)
@@ -21,6 +22,7 @@
 - feat/r4-liv: 1 alto (`/gestione xp livello` 10M = loop fermo, level_for_xp lineare), medi: gerarchia attore su ruoli-premio, cooldown /fun gioca aggirato, mark_ended non e' claim, elenco modelli >2000, programmato muto senza permessi, migrazione 0091 doppia con r4-uti. Monete (shop, profilo, gioca, pay, modifica): 120 operazioni insieme, mai negativo, scorte esatte. Prove: scratchpad/cbliv (h.py, p1-p3, test_prove_liv.py).
 
 ## Cose imparate
+- Web: `Referrer-Policy: no-referrer` fa mandare `Origin: null` ai POST dei moduli (Fetch spec): rompe il controllo d'origine. `del_cookie` di aiohttp senza `secure=` non cancella i cookie `__Host-`.
 - wavelink: `Pool.connect` torna con status CONNECTING (CONNECTED col messaggio `ready`); i test con `connetti` finto non lo vedono. Prova con un finto Lavalink aiohttp (/v4/websocket manda ready, /v4/info).
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
 - Controllare sempre l'ordine di avvio (il worker backup non partiva mai), non solo la logica.

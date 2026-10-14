@@ -70,6 +70,9 @@ def test_intestazioni_sicurezza():
     h = regole.intestazioni_sicurezza(https=True)
     assert "default-src 'none'" in h["Content-Security-Policy"]
     assert "frame-ancestors 'none'" in h["Content-Security-Policy"]
-    assert h["X-Content-Type-Options"] == "nosniff" and h["Referrer-Policy"] == "no-referrer"
+    assert h["X-Content-Type-Options"] == "nosniff"
+    # Con "no-referrer" i browser mandano `Origin: null` sui POST dei moduli
+    # (Fetch, "append a request Origin header") e il pannello li rifiuterebbe tutti.
+    assert h["Referrer-Policy"] == "same-origin"
     assert "Strict-Transport-Security" in h
     assert "Strict-Transport-Security" not in regole.intestazioni_sicurezza(https=False)
