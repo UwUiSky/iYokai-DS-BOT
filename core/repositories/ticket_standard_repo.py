@@ -31,6 +31,7 @@ class RispostaStandard:
     proposal_message_id: int | None
     use_count: int
     created_at: datetime
+    user_id: int | None = None
 
 
 def _risposta(r) -> RispostaStandard:
@@ -42,7 +43,7 @@ def _risposta(r) -> RispostaStandard:
         keywords=r["keywords"], body=r["body"], attachments=list(allegati or []),
         status=r["status"], source_ticket_number=r["source_ticket_number"],
         approved_by=r["approved_by"], proposal_message_id=r["proposal_message_id"],
-        use_count=r["use_count"], created_at=r["created_at"],
+        use_count=r["use_count"], created_at=r["created_at"], user_id=r["user_id"],
     )
 
 
@@ -61,15 +62,15 @@ class TicketStandardRepository:
 
     async def crea_proposta(
         self, guild_id: int, panel_id: int, title: str, keywords: str, body: str,
-        source_ticket_number: int | None,
+        source_ticket_number: int | None, user_id: int | None = None,
     ) -> RispostaStandard:
         riga = await self._pool.fetchrow(
             """
             INSERT INTO ticket_standard_replies
-                (guild_id, panel_id, title, keywords, body, source_ticket_number)
-            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+                (guild_id, panel_id, title, keywords, body, source_ticket_number, user_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
             """,
-            guild_id, panel_id, title, keywords, body, source_ticket_number,
+            guild_id, panel_id, title, keywords, body, source_ticket_number, user_id,
         )
         return _risposta(riga)
 

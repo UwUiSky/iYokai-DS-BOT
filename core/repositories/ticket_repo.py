@@ -262,6 +262,17 @@ class TicketRepository:
         )
         return result.endswith(" 1")
 
+    async def riapri_dopo_errore(self, channel_id: int) -> bool:
+        """Annulla una chiusura appena fatta quando non si è riusciti a pianificare l'eliminazione del canale."""
+        esito = await self._pool.execute(
+            """
+            UPDATE tickets SET status = 'open', closed_at = NULL, closed_by = NULL, close_reason = NULL
+            WHERE channel_id = $1 AND status = 'closed'
+            """,
+            channel_id,
+        )
+        return esito.endswith(" 1")
+
     async def release_ticket(self, channel_id: int) -> bool:
         """TKT-048: toglie la presa in carico (False se nessuno l'aveva)."""
         esito = await self._pool.execute(

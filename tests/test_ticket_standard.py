@@ -318,10 +318,15 @@ async def test_la_richiesta_ricorrente_riceve_subito_la_risposta_approvata(cog):
     assert canale.send.await_args.kwargs["embed"].description == RISPOSTA
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).standard_reply_id == r.id
     assert (await ticket_standard_repo.per_id(r.id)).use_count == 1
-    # un secondo messaggio non ripete la risposta
+    # un secondo messaggio non ripete la risposta: se lo staff non c'è, lo chiama (una volta sola)
     t = await ticket_repo.get_ticket_by_channel(CANALE)
     await cog.su_messaggio_dell_utente(m, t)
-    canale.send.assert_awaited_once()
+    assert canale.send.await_count == 2
+    assert "non è bastata" in canale.send.await_args.args[0]
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).escalato_at is not None
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    await cog.su_messaggio_dell_utente(m, t)
+    assert canale.send.await_count == 2
 
 
 async def test_una_proposta_non_approvata_o_un_altro_tema_non_scatta(cog):
@@ -500,3 +505,63 @@ async def test_setup_registra_bottoni_handler_e_comandi_nei_limiti():
     finally:
         for c in list(bot.cogs):
             await bot.remove_cog(c)
+
+
+# ====================================================================
+# Cacciatore-bug: dati personali, esportazione, oblio, escalation, sollecito
+# ====================================================================
+async def test_la_proposta_non_conserva_dati_personali_e_ricorda_di_chi_era_la_richiesta(cog, monkeypatch):
+    p = await _pannello()
+    await _ticket(p)
+    await ticket_repo.record_first_response(CANALE, datetime.now(timezone.utc))
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    _log(monkeypatch)
+    richiesta = "Sono Mario Rossi mario.rossi@example.com, <@20>: requisiti affiliazione Twitch? ordine 123456789"
+    risposta = f"Ciao <@{UTENTE}>, scrivimi a staff@example.com. Servono 50 follower e 3 stream alla settimana."
+    canale = _canale_con_storia([_msg(UTENTE, richiesta), _msg(STAFF, risposta)])
+    guild = fake_guild(GUILD)
+    guild.get_member.side_effect = lambda uid: fake_member(UTENTE, "Mario Rossi") if uid == UTENTE else None
+    await cog.proponi_da_ticket(guild, canale, t)
+
+    (proposta,) = await ticket_standard_repo.elenca(GUILD)
+    assert proposta.user_id == UTENTE
+    for campo in (proposta.title, proposta.keywords, proposta.body):
+        assert "<@" not in campo and "example.com" not in campo and "123456789" not in campo
+    assert "mario" not in proposta.keywords.lower() and "mario" not in proposta.title.lower()
+    assert proposta.body.startswith("Ciao {utente}")
+    assert "[email]" in proposta.body
+
+
+async def test_usata_la_risposta_menziona_chi_ha_aperto_il_ticket_non_il_primo_utente(cog):
+    p = await _pannello()
+    r = await _approvata(p)
+    await ticket_standard_repo.aggiorna(r.id, r.title, r.keywords, "Ciao {utente}, " + RISPOSTA)
+    from cogs.tickets.risposte import embed_risposta_automatica
+
+    corrente = await ticket_standard_repo.per_id(r.id)
+    testo = embed_risposta_automatica(corrente, 555).description
+    assert "<@555>" in testo and f"<@{UTENTE}>" not in testo
+
+
+async def test_esportazione_e_oblio_toccano_le_risposte_nate_dalle_richieste_dell_utente(clean_db):
+    from core.forget_user_service import dimentica_utente, esporta_utente
+
+    p = await _pannello()
+    await ticket_standard_repo.crea_proposta(GUILD, p.id, "titolo", "parole", "corpo", 7, UTENTE)
+    await ticket_standard_repo.crea_proposta(GUILD, p.id, "altro", "parole", "corpo", 8, 999)
+    dati = await esporta_utente(clean_db, UTENTE)
+    assert "ticket_standard_replies" in str(dati)
+    assert "corpo" not in str(dati.get("ticket_standard_replies", ""))
+    await dimentica_utente(clean_db, UTENTE)
+    rimaste = await ticket_standard_repo.elenca(GUILD)
+    assert [r.user_id for r in rimaste] == [999]
+
+
+async def test_il_sollecito_non_segna_se_il_canale_non_si_legge(cog, monkeypatch):
+    p = await _pannello(standard=False, sollecito=5)
+    await _ticket(p)
+    cog.bot.get_channel = lambda cid: None
+    cog.bot.fetch_channel = AsyncMock(side_effect=discord.HTTPException(SimpleNamespace(status=500, reason="x"), "x"))
+    with pytest.raises(discord.HTTPException):
+        await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).sollecito_at is None

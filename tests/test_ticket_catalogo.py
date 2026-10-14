@@ -218,3 +218,105 @@ async def test_chiudi_tutti_ne_chiude_al_massimo_25_e_dice_quanti_restano(cog, m
     )
     assert len(azioni) == modulo.MAX_CHIUSURA_DI_MASSA
     assert "ne restano 3" in str(inter.followup.send.call_args).lower()
+
+
+# ====================================================================
+# Cacciatore-bug: chiusura idempotente, atomicita', uscita, embed, ruoli, chiudi-tutti
+# ====================================================================
+import asyncio
+
+from tests.support.concorrenza import apri_connessioni
+
+
+async def test_due_close_insieme_fanno_un_solo_transcript_voto_ed_eliminazione(cog, clean_db):
+    await apri_connessioni(clean_db, 4)
+    await _ticket()
+    i1, i2 = _inter(fake_member(UTENTE)), _inter(fake_member(UTENTE))
+    await asyncio.gather(cog.close.callback(cog, i1, None), cog.close.callback(cog, i2, None))
+    assert cog._transcript_senza_bloccare.await_count == 1
+    assert cog._richiedi_voto.await_count == 1
+    azioni = await clean_db.fetch("SELECT 1 FROM scheduled_actions WHERE action_type = $1", TICKET_DELETE_ACTION_TYPE)
+    assert len(azioni) == 1
+    risposte = [str(i.response.send_message.call_args) for i in (i1, i2)]
+    assert sum("già stato chiuso" in r for r in risposte) == 1
+
+
+async def test_se_la_pianificazione_fallisce_il_ticket_resta_aperto(cog, monkeypatch):
+    await _ticket()
+    monkeypatch.setattr(modulo.scheduler, "schedule", AsyncMock(side_effect=RuntimeError("db giù")))
+    with pytest.raises(RuntimeError):
+        await cog.close.callback(cog, _inter(fake_member(UTENTE)), "motivo")
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    assert t.status == "open" and t.close_reason is None
+
+
+async def test_forceclose_su_ticket_gia_chiuso_non_ripete_transcript_e_voto(cog):
+    await _ticket()
+    await ticket_repo.close_ticket(CANALE, 1)
+    cog._elimina_canale = AsyncMock()
+    await cog.forceclose.callback(cog, _inter(_manager()), None)
+    cog._transcript_senza_bloccare.assert_not_awaited()
+    cog._richiedi_voto.assert_not_awaited()
+    cog._elimina_canale.assert_awaited_once()
+
+
+async def test_chi_esce_chiude_anche_il_ticket_senza_pannello_e_il_motivo_si_salva(cog):
+    await _ticket()  # ticket classico: nessun panel_id
+    guild = fake_guild(GUILD_ID)
+    guild.me = fake_member(999, bot=True)
+    canale = fake_text_channel(CANALE)
+    guild.get_channel = MagicMock(return_value=canale)
+    uscito = fake_member(UTENTE)
+    uscito.guild = guild
+    await cog.on_member_remove(uscito)
+    t = await ticket_repo.get_ticket_by_channel(CANALE)
+    assert t.status == "closed" and "lasciato il server" in t.close_reason
+
+
+async def test_il_benvenuto_con_cinque_risposte_lunghe_resta_sotto_6000_e_il_ticket_nasce(cog):
+    from core import ticket_form_logic as form
+    from core.repositories.ticket_form_repo import ticket_form_repo
+
+    p = await ticket_form_repo.crea_pannello(GUILD_ID, "Supporto", 1, "Supporto")
+    p = SimpleNamespace(**{**p.__dict__, "welcome_text": "B" * 1000, "autoclose_minutes": None, "sollecito_minuti": None})
+    domande = [SimpleNamespace(label="D" * 256, required=True) for _ in range(5)]
+    campi = form.campi_risposte(domande, ["R" * 5000] * 5)
+
+    guild = fake_guild(GUILD_ID)
+    guild.default_role = fake_role(role_id=GUILD_ID, name="@everyone", position=0)
+    canale = fake_text_channel(CANALE)
+    categoria = MagicMock(spec=discord.CategoryChannel)
+    categoria.create_text_channel = AsyncMock(return_value=canale)
+    i = fake_interaction(guild=guild, user=fake_member(UTENTE))
+    await modulo._open_ticket_channel(i, guild, categoria, "C" * 100, panel=p, campi=campi)
+    embed = canale.send.await_args.kwargs["embed"]
+    assert len(embed) <= 6000
+    assert len(embed.fields) == len(campi) + 1  # tutte le risposte + la categoria
+
+
+async def test_remove_rifiuta_il_ruolo_di_supporto_e_quello_del_bot(cog, monkeypatch):
+    await _ticket()
+    monkeypatch.setattr(modulo, "_support_role_ids", AsyncMock(return_value=[7]))
+    for ruolo in (fake_role(role_id=7), fake_role(role_id=8, managed=True)):
+        inter = _inter(_manager())
+        inter.channel.set_permissions = AsyncMock()
+        await cog.remove.callback(cog, inter, None, ruolo)
+        inter.channel.set_permissions.assert_not_called()
+        assert "bloccherebbe" in _testo(inter)
+
+
+async def test_chiudi_tutti_non_pinga_nessuno_e_manda_avvisi_di_avanzamento(cog):
+    guild = fake_guild(GUILD_ID)
+    guild.me = fake_member(999, bot=True)
+    canali = {}
+    for n in range(6):
+        await _ticket(canale=1000 + n, numero=n + 1, utente=500 + n)
+        canali[1000 + n] = fake_text_channel(1000 + n)
+    guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    inter = fake_interaction(guild=guild, user=_manager(), channel=fake_text_channel(1))
+    await cog.chiudi_tutti.callback(cog, inter, "<@123> fine")
+    for c in canali.values():
+        assert c.send.await_args.kwargs["allowed_mentions"].users is False
+    messaggi = [str(c) for c in inter.followup.send.call_args_list]
+    assert any("Chiusi finora 5" in m for m in messaggi)
+    assert "Chiusi 6" in messaggi[-1]

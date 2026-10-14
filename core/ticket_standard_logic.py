@@ -213,3 +213,53 @@ def minuti_sollecito_validi(minuti: int) -> int | None:
 
 def custom_id_bottone(azione: str, reply_id: int) -> str:
     return f"tkt:std:{azione}:{reply_id}"
+
+
+# ----------------------------------------------------------------------
+# Dati personali: né nel titolo, né nelle parole, né nel corpo approvato
+# ----------------------------------------------------------------------
+SEGNAPOSTO_UTENTE = "{utente}"
+_MENZIONE_UTENTE = re.compile(r"<@!?\d+>")
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_LINK = re.compile(r"https?://\S+")
+_NUMERO_LUNGO = re.compile(r"\d{6,}")
+
+
+def senza_dati_personali(testo: str, nomi: tuple[str, ...] = ()) -> str:
+    """Il testo di una richiesta senza menzioni, e-mail, link, numeri lunghi e nomi dell'utente."""
+    testo = _MENZIONE_UTENTE.sub(" ", testo)
+    testo = _EMAIL.sub(" ", testo)
+    testo = _LINK.sub(" ", testo)
+    testo = _NUMERO_LUNGO.sub(" ", testo)
+    for nome in nomi:
+        if len(nome) >= 3:
+            testo = re.sub(re.escape(nome), " ", testo, flags=re.IGNORECASE)
+    return " ".join(testo.split())
+
+
+def corpo_con_segnaposto(testo: str, nomi: tuple[str, ...] = ()) -> str:
+    """Il corpo scritto dallo staff: la menzione e il nome dell'utente diventano {utente}, le e-mail spariscono."""
+    testo = _MENZIONE_UTENTE.sub(SEGNAPOSTO_UTENTE, testo)
+    testo = _EMAIL.sub("[email]", testo)
+    testo = _NUMERO_LUNGO.sub("[numero]", testo)
+    for nome in nomi:
+        if len(nome) >= 3:
+            testo = re.sub(re.escape(nome), SEGNAPOSTO_UTENTE, testo, flags=re.IGNORECASE)
+    return testo
+
+
+def corpo_per_utente(corpo: str, user_id: int) -> str:
+    """Al momento dell'uso: {utente} diventa la menzione di chi ha aperto il ticket."""
+    return corpo.replace(SEGNAPOSTO_UTENTE, f"<@{user_id}>")
+
+
+def nomi_dell_utente(*nomi) -> tuple[str, ...]:
+    """Il nome intero e ogni sua parola (da 3 lettere in su): da togliere da titolo, parole e corpo."""
+    trovati: dict[str, None] = {}
+    for nome in nomi:
+        if not isinstance(nome, str):
+            continue
+        trovati.setdefault(nome.strip(), None)
+        for parte in re.split(r"[\s_.\-]+", nome):
+            trovati.setdefault(parte, None)
+    return tuple(n for n in trovati if len(n) >= 3)

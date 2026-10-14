@@ -708,8 +708,8 @@ Totale voci: **494**.
   descrizione 4096); cancellazione in blocco = un riepilogo con un
   file `.txt` sotto i 10 MiB; messaggi dei bot, canali, utenti e
   prefissi, ruoli ed espressioni regolari (al massimo 5, solo schemi a
-  basso costo) ignorabili con `/log ignora` (LOG-022, LOG-024, migrazione
-  0103); categorie, thread e bot già ignorati (LOG-021, LOG-023). Fa parte del Logging
+  basso costo: una sola ripetizione senza limite, niente `{n,m}`, al massimo 4 `?`; uno schema che supera 50 ms si disattiva) ignorabili con `/log ignora` (LOG-022, LOG-024, migrazione
+  0103); una modifica non si scrive se il testo di prima va ignorato; categorie, thread e bot già ignorati (LOG-021, LOG-023). Fa parte del Logging
   Avanzato (premium). Un messaggio fuori dalla cache di discord.py si
   segnala senza contenuto; la modifica di un messaggio fuori cache non
   si vede
@@ -2052,6 +2052,9 @@ di quel file.
   ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
   accese per pannello (`/admin ticket standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
   parole chiave, riconoscimento del tema oltre le parole, archivio durevole dei file (oggi: link nel canale dei log).
+  **Dati personali (giro 14/10, migrazione 0105):** la riga ricorda `user_id` di chi aveva scritto (esportazione e cancellazione
+  dati nel registro); titolo, parole e corpo non tengono menzioni, e-mail, link, numeri lunghi né il nome dell'utente
+  (`{utente}` nel corpo, sostituito al momento dell'uso); se dopo la risposta pronta l'utente scrive ancora, lo staff è chiamato.
 - `[~]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)

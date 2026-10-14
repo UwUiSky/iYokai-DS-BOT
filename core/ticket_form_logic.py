@@ -36,8 +36,9 @@ MAX_MINUTI_CHIUSURA = 43200  # 30 giorni
 STELLE_MIN = 1
 STELLE_MAX = 5
 
-# Limite di Discord per i campi di un embed: 25 campi, 6000 caratteri in tutto.
-_MAX_CARATTERI_EMBED = 5500
+# Discord: 6000 caratteri in tutto per embed. Alle risposte ne spettano 4800: il resto è del
+# titolo, della categoria e del testo di benvenuto (che comunque si accorcia se serve).
+_MAX_CARATTERI_EMBED = 4800
 
 
 class ErroreConfigurazione(ValueError):
@@ -111,19 +112,18 @@ def campi_risposte(domande, risposte: list[str]) -> list[tuple[str, str]]:
     vuote di domande facoltative si saltano; ogni testo è tagliato ai limiti di un
     campo (256/1024) e il totale resta sotto il limite dell'embed.
     """
-    campi: list[tuple[str, str]] = []
-    totale = 0
+    coppie: list[tuple[str, str]] = []
     for domanda, risposta in zip(domande, risposte):
         risposta = (risposta or "").strip()
-        if not risposta:
-            continue
-        nome = _taglia(domanda.label, 256)
-        valore = _taglia(risposta, 1024)
-        if totale + len(nome) + len(valore) > _MAX_CARATTERI_EMBED:
-            break
-        totale += len(nome) + len(valore)
-        campi.append((nome, valore))
-    return campi
+        if risposta:
+            coppie.append((_taglia(domanda.label, 256), _taglia(risposta, 1024)))
+    if not coppie:
+        return []
+    # Se non stanno tutte nel budget, ogni risposta si accorcia in parti uguali: nessuna va persa.
+    if sum(len(n) + len(v) for n, v in coppie) > _MAX_CARATTERI_EMBED:
+        per_valore = max(50, (_MAX_CARATTERI_EMBED - sum(len(n) for n, _ in coppie)) // len(coppie))
+        coppie = [(n, _taglia(v, per_valore)) for n, v in coppie]
+    return coppie
 
 
 def risposte_mancanti(domande, risposte: list[str]) -> list[str]:

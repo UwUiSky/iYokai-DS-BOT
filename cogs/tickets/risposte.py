@@ -80,10 +80,13 @@ def embed_proposta(r: RispostaStandard, stato: str = "proposta") -> discord.Embe
     return embed
 
 
-def embed_risposta_automatica(r: RispostaStandard) -> discord.Embed:
+def embed_risposta_automatica(r: RispostaStandard, user_id: int | None = None) -> discord.Embed:
     embed = discord.Embed(
         title="Forse ti serve questo",
-        description=logica.taglia(r.body, 3800),
+        description=logica.taglia(
+            logica.corpo_per_utente(r.body, user_id) if user_id is not None else r.body.replace(logica.SEGNAPOSTO_UTENTE, "te"),
+            3800,
+        ),
         color=discord.Color.blurple(),
     )
     immagine = next((a for a in r.attachments if a["filename"].lower().endswith(_ESTENSIONI_IMMAGINE)), None)
@@ -96,7 +99,7 @@ def embed_risposta_automatica(r: RispostaStandard) -> discord.Embed:
             value=logica.taglia("\n".join(f"[{a['filename'][:60]}]({a['url']})" for a in altri), 1000),
             inline=False,
         )
-    embed.set_footer(text="Risposta preparata dallo staff. Se non basta, aspetta: arriva una persona.")
+    embed.set_footer(text="Risposta preparata dallo staff. Se non basta, scrivi ancora qui: avviso una persona.")
     return embed
 
 
@@ -261,7 +264,11 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         if coppia is None:
             return
         risposta_staff = storia[coppia.indice_risposta]
-        testo_richiesta = coppia.richiesta + " " + (ticket.category_label or "")
+        membro = guild.get_member(ticket.user_id)
+        nomi = logica.nomi_dell_utente(getattr(membro, "name", None), getattr(membro, "display_name", None))
+        # Né il titolo, né le parole, né il corpo conservano dati di chi ha scritto.
+        richiesta_pulita = logica.senza_dati_personali(coppia.richiesta, nomi)
+        testo_richiesta = richiesta_pulita + " " + (ticket.category_label or "")
         parole = logica.parole_chiave(testo_richiesta)
         if len(parole) < logica.MIN_PAROLE_CONDIVISE:
             return
@@ -274,10 +281,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         if dest is None:
             return  # nessun posto dove chiedere allo staff
 
-        corpo = logica.taglia(risposta_staff.content or "(solo allegati)", logica.MAX_CORPO)
+        corpo = logica.taglia(
+            logica.corpo_con_segnaposto(risposta_staff.content or "(solo allegati)", nomi), logica.MAX_CORPO
+        )
         proposta = await ticket_standard_repo.crea_proposta(
-            guild.id, panel.id, logica.titolo_da(coppia.richiesta), logica.parole_come_testo(parole), corpo,
-            ticket.ticket_number,
+            guild.id, panel.id, logica.titolo_da(richiesta_pulita), logica.parole_come_testo(parole), corpo,
+            ticket.ticket_number, ticket.user_id,
         )
         files = await self._copie_allegati(risposta_staff)
         try:
@@ -316,10 +325,14 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         """Chiamato da TicketsCog per i messaggi di chi ha aperto un ticket ancora senza risposta dello staff."""
         if ticket.first_response_at is not None or ticket.panel_id is None:
             return
-        if ticket.standard_reply_id is not None or ticket.escalato_at is not None:
+        if ticket.escalato_at is not None:
             return
         panel = await ticket_form_repo.pannello_per_id(ticket.panel_id)
         if panel is None or not (panel.standard_attive or panel.sollecito_minuti):
+            return
+        if ticket.standard_reply_id is not None:
+            # Ha scritto ancora dopo la risposta pronta e nessuno dello staff è intervenuto: non bastava.
+            await self._chiama_lo_staff(message.channel, ticket, panel, dopo_standard=True)
             return
         await ticket_repo.mark_user_wrote(message.channel.id)
         if panel.standard_attive:
@@ -330,7 +343,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 await ticket_standard_repo.usata(risposta.id)
                 try:
                     await message.channel.send(
-                        embed=embed_risposta_automatica(risposta), reference=message,
+                        embed=embed_risposta_automatica(risposta, ticket.user_id), reference=message,
                         allowed_mentions=discord.AllowedMentions.none(),
                     )
                 except discord.HTTPException:
@@ -339,7 +352,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         if ticket.sollecito_at is not None:
             await self._chiama_lo_staff(message.channel, ticket, panel)
 
-    async def _chiama_lo_staff(self, channel, ticket, panel: PannelloTicket) -> None:
+    async def _chiama_lo_staff(self, channel, ticket, panel: PannelloTicket, *, dopo_standard: bool = False) -> None:
         if not await ticket_repo.mark_escalation(channel.id):
             return
         ruoli = [panel.ruolo_escalation] if panel.ruolo_escalation else (await _support_role_ids(ticket.guild_id))[:MENZIONI_MASSIME]
@@ -347,7 +360,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         testo = f"{menzioni} <@{ticket.user_id}> aspetta una risposta" if menzioni else f"<@{ticket.user_id}> aspetta una risposta"
         try:
             await channel.send(
-                testo + " e per questa richiesta non c'è una risposta pronta.",
+                testo + (" e la risposta pronta non è bastata." if dopo_standard else " e per questa richiesta non c'è una risposta pronta."),
                 allowed_mentions=discord.AllowedMentions(roles=[discord.Object(id=r) for r in ruoli], users=False),
             )
         except discord.HTTPException:
@@ -368,14 +381,15 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         panel = await ticket_form_repo.pannello_per_id(ticket.panel_id)
         if panel is None or not panel.sollecito_minuti:
             return
-        if not await ticket_repo.mark_sollecito(channel_id):
-            return
         channel = self.bot.get_channel(channel_id)
         if channel is None:
             try:
                 channel = await self.bot.fetch_channel(channel_id)
             except discord.NotFound:
                 return
+        # Il segno «sollecitato» solo dopo aver raggiunto il canale: se la lettura fallisce, lo scheduler riprova.
+        if not await ticket_repo.mark_sollecito(channel_id):
+            return
         if ticket.utente_scritto_at is not None:
             # Ha già scritto e nessuna risposta pronta ha scattato: serve una persona.
             await self._chiama_lo_staff(channel, ticket, panel)

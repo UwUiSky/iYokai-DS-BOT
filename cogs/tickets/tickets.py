@@ -314,6 +314,11 @@ async def _crea_ticket(
         embed.add_field(name="Categoria", value=truncate_label(category_label))
     for nome_campo, valore_campo in campi or []:
         embed.add_field(name=nome_campo, value=valore_campo, inline=False)
+    # Discord rifiuta un embed oltre 6000 caratteri: senza benvenuto il ticket nascerebbe vuoto e
+    # le risposte del modulo andrebbero perse. Si accorcia il testo di benvenuto, mai le risposte.
+    eccesso = len(embed) - 6000
+    if eccesso > 0:
+        embed.description = descrizione[: max(0, len(descrizione) - eccesso - 1)] + "…"
     try:
         await channel.send(content=interaction.user.mention, embed=embed)
     except discord.HTTPException:
@@ -1390,6 +1395,16 @@ class TicketsCog(CogConGruppi, commands.Cog):
         bersaglio = await self._bersaglio_o_risposta(interaction, member, ruolo)
         if bersaglio is None:
             return
+        if ruolo is not None and (
+            ruolo.managed
+            or ruolo in getattr(interaction.guild.me, "roles", [])
+            or ruolo.id in await _support_role_ids(interaction.guild.id)
+        ):
+            await interaction.response.send_message(
+                "Questo ruolo è dello staff dei ticket o del bot: toglierlo bloccherebbe chi deve rispondere.",
+                ephemeral=True,
+            )
+            return
 
         try:
             await interaction.channel.set_permissions(bersaglio, overwrite=None)
@@ -1707,7 +1722,27 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 "Questo canale verrà eliminato a breve."
             ),
             chiedi_voto=True,
+            ragione="Chiuso per inattività",
         )
+
+    async def _chiudi_e_pianifica(
+        self, guild_id: int, channel_id: int, chiuso_da: int, ragione: str | None, user_id: int, motivo_log: str
+    ) -> bool:
+        """
+        Chiude il ticket e pianifica l'eliminazione del canale come un passo solo: se la
+        pianificazione fallisce, il ticket torna aperto e chi riprova (scheduler, utente) trova
+        tutto com'era. False se era già chiuso (due chiusure insieme: ne vince una).
+        """
+        if not await ticket_repo.close_ticket(channel_id, chiuso_da, reason=ragione):
+            return False
+        try:
+            await self._pianifica_eliminazione_canale(
+                guild_id, user_id, channel_id, motivo_log, RITARDO_ELIMINAZIONE_SECONDI
+            )
+        except Exception:
+            await ticket_repo.riapri_dopo_errore(channel_id)
+            raise
+        return True
 
     async def _chiudi_da_sistema(
         self,
@@ -1725,14 +1760,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
         Chiusura fatta dal bot (inattività, utente uscito) o per conto dello staff (chiusura di
         massa): stesso ordine di /ticket close. `ragione` è il motivo salvato col ticket.
         """
-        if not await ticket_repo.close_ticket(channel.id, chiuso_da or guild.me.id, reason=ragione):
+        if not await self._chiudi_e_pianifica(
+            guild.id, channel.id, chiuso_da or guild.me.id, ragione, ticket.user_id, motivo
+        ):
             return False
         ticket = await ticket_repo.get_ticket_by_channel(channel.id) or ticket
-        await self._pianifica_eliminazione_canale(
-            guild.id, ticket.user_id, channel.id, motivo, RITARDO_ELIMINAZIONE_SECONDI
-        )
         try:
-            await channel.send(avviso)
+            await channel.send(avviso, allowed_mentions=discord.AllowedMentions.none())
         except discord.HTTPException:
             logger.warning("Avviso di chiusura non inviato nel ticket %s.", channel.id)
         await self._transcript_senza_bloccare(guild, channel, ticket)
@@ -1772,9 +1806,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 + " Questo canale verrà eliminato a breve.",
                 chiedi_voto=True,
                 chiuso_da=interaction.user.id,
-                ragione=motivo,
+                ragione=motivo or "Chiusura di massa",
             )
-            chiusi += 1 if fatto else 0
+            if fatto:
+                chiusi += 1
+                if chiusi % 5 == 0:
+                    # Ogni transcript richiede tempo: un messaggio ogni 5 tiene informato chi ha lanciato il comando.
+                    await interaction.followup.send(f"Chiusi finora {chiusi} ticket...", ephemeral=True)
         restanti = await ticket_repo.count_open_tickets(guild.id)
         testo = f"Chiusi {chiusi} ticket."
         if restanti:
@@ -1785,7 +1823,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
     async def on_member_remove(self, member: discord.Member) -> None:
         """NF-13: chi esce dal server non può più rispondere: il suo ticket aperto si chiude."""
         ticket = await ticket_repo.get_open_ticket_for_user(member.guild.id, member.id)
-        if ticket is None or ticket.panel_id is None:
+        if ticket is None:
             return
         channel = member.guild.get_channel(ticket.channel_id)
         if channel is None:
@@ -1797,6 +1835,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             motivo="Ticket chiuso: l'utente ha lasciato il server",
             avviso=f"{member} ha lasciato il server: ticket chiuso. Questo canale verrà eliminato a breve.",
             chiedi_voto=False,
+            ragione="L'utente ha lasciato il server",
         )
 
     async def handle_ticket_delete_channel(self, guild_id: int, user_id: int, payload: dict) -> None:
@@ -1825,13 +1864,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if ticket is None:
             return
 
-        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, reason=motivo)
+        if not await self._chiudi_e_pianifica(
+            interaction.guild.id, interaction.channel.id, interaction.user.id, motivo, ticket.user_id,
+            f"Ticket chiuso da {interaction.user}",
+        ):
+            await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
+            return
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
-        # Prima di tutto il resto: da qui in poi un riavvio o un errore
-        # nel transcript non lasciano più il canale per sempre.
-        await self._pianifica_eliminazione(
-            interaction, f"Ticket chiuso da {interaction.user}", RITARDO_ELIMINAZIONE_SECONDI
-        )
         await interaction.response.send_message(
             "Ticket chiuso. Questo canale verrà eliminato entro un minuto."
             + (f"\nMotivo: {motivo}" if motivo else ""),
@@ -1873,14 +1912,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         # Su un ticket già chiuso non cambia nulla nel database.
-        await ticket_repo.close_ticket(interaction.channel.id, interaction.user.id, force=True, reason=motivo)
+        appena_chiuso = await ticket_repo.close_ticket(
+            interaction.channel.id, interaction.user.id, force=True, reason=motivo
+        )
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
         await interaction.response.send_message(
             f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale.",
             allowed_mentions=discord.AllowedMentions.none(),
         )
-        await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
-        await self._richiedi_voto(interaction.guild, ticket)
+        if appena_chiuso:
+            # Su un ticket già chiuso (BUG-30) transcript e voto li ha già fatti chi lo ha chiuso.
+            await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
+            await self._richiedi_voto(interaction.guild, ticket)
 
         motivo = f"Ticket forzatamente chiuso da {interaction.user}"
         try:

@@ -63,3 +63,5 @@
 - MERGE main fatto; ora fix dal rapporto cacciatore-bug (bug.md righe 147-17x). Migrazioni da 0105
 - fatto: voce nascondi+claim atomico (commit). Prossimi: regex, modmail/spam_trap, standard user_id, MEDI, BASSI
 - fatto: regex stretta + on_message_edit before (commit). Prossimo: modmail/spam_trap
+- fatto: modmail (coordinamento, lock, blacklist, transcript). Prossimo: standard replies user_id/registro/segnaposto + escalato; close idempotente; BASSI
+- fatto tutti i fix cacciatore-bug (voice, regex, modmail, standard, ticket). Rimane: smoke, commit, push, rapporto <=15 righe. Migrazione libera da 0106
