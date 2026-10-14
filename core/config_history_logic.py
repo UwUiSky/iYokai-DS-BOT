@@ -65,7 +65,7 @@ def csv_storico(voci) -> bytes:
     return b"\xef\xbb\xbf" + uscita.getvalue().encode("utf-8")
 
 
-def dettaglio_prima_dopo(voce, massimo: int = 900) -> str:
+def dettaglio_prima_dopo(voce, massimo: int = 840) -> str:
     """La vista «prima / dopo» di una voce, in due blocchi di codice sotto il limite di Discord."""
 
     def blocco(valore: object) -> str:

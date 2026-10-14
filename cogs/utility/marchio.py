@@ -85,6 +85,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
         except TokenRifiutato as exc:
             await interaction.followup.send(await testo_per(interaction, exc.motivo), ephemeral=True)
             return
+        await self.gestore.ferma(guild.id)  # un token nuovo: il client col token vecchio non deve restare acceso
         await self.gestore.avvia(guild.id)
         invito = link_invito(marchio)
         testo = await testo_per(interaction, "mar_collegato", nome=marchio.bot_name)

@@ -17,11 +17,15 @@ Dipende da: core/repositories/hot_patch_log_repo.py, core/migrations/0134_regist
 
 from __future__ import annotations
 
+import ast
+import asyncio
+import importlib
 import io
 import logging
 import os
 import re
 import shutil
+import sys
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -63,7 +67,8 @@ def valida_percorso(percorso: str) -> str:
         or any(p in ("", ".", "..") for p in parti)
     ):
         raise PatchRifiutata(f"Percorso non ammesso: `{pulito[:80]}` (solo file .py in cogs/ e core/).")
-    if not all(_SEGMENTO.match(p[:-3] if i == len(parti) - 1 else p) for i, p in enumerate(parti)):
+    # fullmatch: con `match` e `$` un «\n» in coda al nome passerebbe.
+    if not all(_SEGMENTO.fullmatch(p[:-3] if i == len(parti) - 1 else p) for i, p in enumerate(parti)):
         raise PatchRifiutata(f"Percorso non ammesso: `{pulito[:80]}` (nomi non validi).")
     if pulito in FILE_VIETATI:
         raise PatchRifiutata(f"`{pulito}` non si aggiorna a caldo.")
@@ -182,6 +187,35 @@ class EsitoPatch:
     nota: str = ""
 
 
+# Due aggiornamenti insieme si scambierebbero le copie: la seconda copia sarebbe già il file nuovo.
+_blocco = asyncio.Lock()
+
+
+def e_estensione(dati: bytes) -> bool:
+    """True se il file ha `setup` al livello più alto (un cog); gli altri file di `cogs/` sono moduli d'appoggio."""
+    try:
+        albero = ast.parse(dati)
+    except (SyntaxError, ValueError):
+        return False
+    return any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "setup" for n in albero.body)
+
+
+def _dipendenti(bot, modulo: str, scartati: set[str], radice: Path) -> list[str]:
+    """I cog caricati che nominano un modulo d'appoggio (sono da ricaricare, sennò tengono il codice vecchio)."""
+    ultimo = modulo.rsplit(".", 1)[-1]
+    trovati = []
+    for nome in sorted(bot.extensions):
+        if nome in scartati or not nome.startswith("cogs."):
+            continue
+        try:
+            testo = (radice / (nome.replace(".", "/") + ".py")).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if modulo in testo or re.search(rf"\b{re.escape(ultimo)}\b", testo):
+            trovati.append(nome)
+    return trovati
+
+
 async def _ricarica(bot, modulo: str) -> None:
     if modulo in bot.extensions:
         await bot.reload_extension(modulo)
@@ -189,7 +223,13 @@ async def _ricarica(bot, modulo: str) -> None:
         await bot.load_extension(modulo)
 
 
-async def applica_patch(
+async def applica_patch(bot, pacchetto: dict[str, bytes], **kw) -> "EsitoPatch":
+    """Un aggiornamento alla volta (vedi `_applica`)."""
+    async with _blocco:
+        return await _applica(bot, pacchetto, **kw)
+
+
+async def _applica(
     bot,
     pacchetto: dict[str, bytes],
     *,
@@ -216,7 +256,13 @@ async def applica_patch(
 
     cartella = cartella_copie or radice / "data" / "hot_patch" / datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     copie = scrivi_con_copia(pacchetto, radice, cartella)
-    moduli = sorted(percorso_a_modulo(p) for p in pacchetto if p.startswith("cogs/"))
+    tutti = sorted(percorso_a_modulo(p) for p in pacchetto if p.startswith("cogs/"))
+    # Un file di `cogs/` senza `setup` (viste, logica) non è un cog: caricarlo farebbe fallire tutto l'aggiornamento.
+    appoggio = [m for m in tutti if m not in bot.extensions and not e_estensione(pacchetto[m.replace(".", "/") + ".py"])]
+    for m in appoggio:
+        sys.modules.pop(m, None)
+        importlib.invalidate_caches()
+    moduli = sorted({m for m in tutti if m not in appoggio} | {d for m in appoggio for d in _dipendenti(bot, m, set(tutti), radice)})
     riavvio = any(p.startswith("core/") for p in pacchetto)
     caricati_prima = {m for m in moduli if m in bot.extensions}
 

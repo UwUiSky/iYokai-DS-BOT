@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+from datetime import datetime, timezone
 
 from core.repositories.entitlement_repo import Entitlement, entitlement_repo
 
@@ -61,16 +62,18 @@ async def allinea_con_discord(bot) -> int:
     """
     from core.config import config
 
+    inizio = datetime.now(timezone.utc)
     trovati: list[Entitlement] = []
     ids_visti: set[int] = set()
-    async for diritto in bot.entitlements(exclude_ended=True):
+    async for diritto in bot.entitlements(limit=None, exclude_ended=True):  # senza tetto: il default è 100
         ids_visti.add(diritto.id)  # anche quelli di SKU diverso: non vanno chiusi da noi
         voce = da_discord(diritto, config.PREMIUM_SKU_ID)
         if voce is not None:
             trovati.append(voce)
     for voce in trovati:
         await entitlement_repo.salva(voce)
-    await entitlement_repo.chiudi_non_piu_attivi(ids_visti)
+    # Gli eventi arrivati durante la lettura (updated_at dopo `inizio`) non si chiudono.
+    await entitlement_repo.chiudi_non_piu_attivi(ids_visti, aggiornati_prima_di=inizio)
     return len(trovati)
 
 

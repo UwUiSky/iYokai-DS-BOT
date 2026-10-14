@@ -159,7 +159,7 @@ async def test_un_file_di_core_chiede_il_riavvio_e_non_ricarica_niente(radice):
 
 async def test_cog_nuovo_viene_caricato(radice):
     bot, registro = _BotFinto(), _Registro()
-    esito = await _applica(bot, {"cogs/utility/nuovo.py": b"X = 1\n"}, radice, registro)
+    esito = await _applica(bot, {"cogs/utility/nuovo.py": b"async def setup(bot):\n    pass\n"}, radice, registro)
     assert esito.ricaricati == ["cogs.utility.nuovo"] and ("load", "cogs.utility.nuovo") in bot.chiamate
 
 

@@ -120,6 +120,8 @@ class GestoreMarchio:
         self.bot = bot
         self._client: dict[int, _ClientMarchio] = {}
         self._task: dict[int, asyncio.Task] = {}
+        # Due `avvia` insieme (giro di allineamento e collegamento) non devono aprire due client con lo stesso token.
+        self._blocco_avvio = asyncio.Lock()
 
     def in_esecuzione(self, guild_id: int) -> bool:
         task = self._task.get(guild_id)
@@ -127,11 +129,20 @@ class GestoreMarchio:
 
     async def avvia(self, guild_id: int) -> bool:
         """Avvia il client del server. False se non c'è un marchio, è spento o il server non è premium."""
+        async with self._blocco_avvio:
+            return await self._avvia(guild_id)
+
+    async def _avvia(self, guild_id: int) -> bool:
         from core.premium import guild_has_premium_access
 
         if self.in_esecuzione(guild_id):
             return True
-        letto = await whitelabel_repo.get_con_token(guild_id)
+        try:
+            letto = await whitelabel_repo.get_con_token(guild_id)
+        except Exception as exc:  # noqa: BLE001 - token illeggibile (chiave cambiata, riga rovinata): solo questo marchio
+            logger.warning("Marchio del server %s: token non leggibile (%s).", guild_id, type(exc).__name__)
+            await whitelabel_repo.imposta_stato(guild_id, STATO_ERRORE, type(exc).__name__)
+            return False
         if letto is None or not letto[0].enabled:
             return False
         marchio, token = letto
@@ -195,7 +206,10 @@ class GestoreMarchio:
                 await self.ferma(guild_id, STATO_SENZA_PREMIUM)
         for guild_id in abilitati:
             if not self.in_esecuzione(guild_id) and self.bot.get_guild(guild_id) is not None:
-                await self.avvia(guild_id)
+                try:
+                    await self.avvia(guild_id)
+                except Exception:  # noqa: BLE001 - un marchio rotto non blocca gli altri
+                    logger.warning("Marchio del server %s non avviato.", guild_id, exc_info=True)
 
     async def ferma_tutti(self) -> None:
         for guild_id in list(self._task):

@@ -65,7 +65,7 @@ class EntitlementRepository:
         )
         invalida_cache_premium(voce.guild_id)
 
-    async def chiudi_non_piu_attivi(self, ids_attivi: set[int]) -> list[int]:
+    async def chiudi_non_piu_attivi(self, ids_attivi: set[int], aggiornati_prima_di: datetime | None = None) -> list[int]:
         """
         Dopo aver letto da Discord TUTTI i diritti attivi: segna eliminati quelli nostri che Discord non elenca più
         (persi mentre il bot era spento). Restituisce i server toccati.
@@ -74,9 +74,11 @@ class EntitlementRepository:
             """
             UPDATE premium_entitlements SET deleted = TRUE, updated_at = now()
             WHERE NOT deleted AND (ends_at IS NULL OR ends_at > now()) AND NOT (entitlement_id = ANY($1::bigint[]))
+              AND ($2::timestamptz IS NULL OR updated_at < $2)
             RETURNING guild_id
             """,
             list(ids_attivi),
+            aggiornati_prima_di,
         )
         server = sorted({r["guild_id"] for r in righe})
         for guild_id in server:
