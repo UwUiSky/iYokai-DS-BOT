@@ -30,6 +30,12 @@ from tests.support.discord_fakes import fake_member
 def _router_su_db(clean_db, monkeypatch):
     monkeypatch.setattr(output_channel_repo, "_pool_provider", lambda: clean_db)
     router._avvisati.clear()
+    # Il panico vive anche in memoria: se resta acceso, i test dopo (stesso server finto) trovano la moderazione riservata.
+    from core import lockdown_service
+
+    lockdown_service._panico.clear()
+    yield
+    lockdown_service._panico.clear()
 
 
 async def test_allarme_con_solo_l_anti_nuke_attivo_va_nel_canale_scelto(cog):

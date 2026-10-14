@@ -88,7 +88,9 @@ def db(clean_db, monkeypatch):
     servizio._panico.clear()
     servizio._da_fermare.clear()
     router._avvisati.clear()
-    return clean_db
+    yield clean_db
+    servizio._panico.clear()  # lo stato in memoria non deve passare ai test degli altri file
+    servizio._da_fermare.clear()
 
 
 def _tre_canali():
