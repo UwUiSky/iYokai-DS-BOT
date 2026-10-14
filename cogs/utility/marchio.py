@@ -21,6 +21,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.i18n import testo_per
 from core.premium import guild_has_premium_access
+from core.ui_base import BaseModal
 from core.repositories.whitelabel_repo import whitelabel_repo
 from core.whitelabel_bot import (
     MAX_TESTO_STATO,
@@ -35,7 +36,7 @@ logger = logging.getLogger("iyokai.whitelabel")
 INTERVALLO_MINUTI = 30
 
 
-class TokenModal(discord.ui.Modal):
+class TokenModal(BaseModal):
     """La finestra dove si incolla il token del bot. Il testo non esce mai da qui."""
 
     def __init__(self, cog: "MarchioCog", titolo: str, etichetta: str) -> None:
