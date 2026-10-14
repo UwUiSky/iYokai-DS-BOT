@@ -80,6 +80,18 @@ def _to_json(settings: SecuritySettings) -> str:
                 "check_avatar_pattern": r.check_avatar_pattern,
                 "lockdown_action": r.lockdown_action,
                 "quarantine_hold": r.quarantine_hold,
+                "azione_eta": r.azione_eta,
+                "azione_bot_non_verificato": r.azione_bot_non_verificato,
+                "azione_nome_pubblicitario": r.azione_nome_pubblicitario,
+                "azione_nome_vietato": r.azione_nome_vietato,
+                "messaggio_eta": r.messaggio_eta,
+                "nomi_vietati": list(r.nomi_vietati),
+                "conta_solo_sospetti": r.conta_solo_sospetti,
+                "account_vicini_minimo": r.account_vicini_minimo,
+                "account_vicini_margine_secondi": r.account_vicini_margine_secondi,
+                "nomi_simili_minimo": r.nomi_simili_minimo,
+                "retroattivo": r.retroattivo,
+                "ruoli_ping": list(r.ruoli_ping),
             },
             "anti_nuke": {
                 "enabled": n.enabled,
@@ -139,6 +151,18 @@ def _from_json(guild_id: int, raw: str) -> SecuritySettings:
         check_avatar_pattern=r.get("check_avatar_pattern", True),
         lockdown_action=r.get("lockdown_action", "quarantine"),
         quarantine_hold=r.get("quarantine_hold", False),
+        azione_eta=r.get("azione_eta", "niente"),
+        azione_bot_non_verificato=r.get("azione_bot_non_verificato", "niente"),
+        azione_nome_pubblicitario=r.get("azione_nome_pubblicitario", "niente"),
+        azione_nome_vietato=r.get("azione_nome_vietato", "niente"),
+        messaggio_eta=r.get("messaggio_eta", ""),
+        nomi_vietati=tuple(r.get("nomi_vietati", ())),
+        conta_solo_sospetti=r.get("conta_solo_sospetti", False),
+        account_vicini_minimo=r.get("account_vicini_minimo", 0),
+        account_vicini_margine_secondi=r.get("account_vicini_margine_secondi", 3600),
+        nomi_simili_minimo=r.get("nomi_simili_minimo", 0),
+        retroattivo=r.get("retroattivo", False),
+        ruoli_ping=tuple(r.get("ruoli_ping", ())),
     )
     anti_nuke = AntiNukeConfig(
         enabled=n.get("enabled", False),
@@ -286,6 +310,20 @@ class SecurityRepository:
             actor_id,
             detail,
         )
+
+    async def raid_joins(self, guild_id: int, dal: datetime, limite: int = 5000) -> list[dict]:
+        """Gli ingressi di raid registrati da `dal` in poi, dal più vecchio (SIC-035)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT actor_id, detail, created_at FROM security_action_log
+            WHERE guild_id = $1 AND category = 'raid_join' AND created_at >= $2
+            ORDER BY created_at ASC LIMIT $3
+            """,
+            guild_id,
+            dal,
+            limite,
+        )
+        return [dict(r) for r in rows]
 
     async def get_recent_actions(self, guild_id: int, limit: int = 20) -> list[dict]:
         rows = await self._pool.fetch(
