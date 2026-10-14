@@ -22,13 +22,14 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.command_access import CHIAVI_RUOLI, ruolo_valido_per_server
 from core.database import db
+from core.i18n import LINGUE, lingua_interazione, t as tr
 from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.premium import registry
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
 
-SUPPORTED_LANGUAGES = ("it", "en")
+SUPPORTED_LANGUAGES = LINGUE
 
 
 # Un export reale pesa pochi KB: oltre questo limite il file non è nostro.
@@ -626,7 +627,8 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         if interaction.guild is None:
             return
         lingua = await db.get_guild_language(interaction.guild.id)
-        await interaction.response.send_message(f"Lingua attuale: `{lingua}`.", ephemeral=True)
+        mia = await lingua_interazione(interaction)
+        await interaction.response.send_message(tr("lingua_attuale_server", mia, lingua=lingua), ephemeral=True)
 
     @comando_di_gruppo(
         "admin",
@@ -636,7 +638,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(language="Codice lingua")
     @app_commands.choices(
-        language=[app_commands.Choice(name=l, value=l) for l in SUPPORTED_LANGUAGES]
+        language=[app_commands.Choice(name=n, value=v) for n, v in (("Italiano", "it"), ("English", "en"))]
     )
     async def language_set(
         self, interaction: discord.Interaction, language: app_commands.Choice[str]
@@ -645,9 +647,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             return
         await db.set_guild_language(interaction.guild.id, language.value, changed_by=interaction.user.id)
         await interaction.response.send_message(
-            f"Lingua impostata su `{language.value}`. Nota: solo una parte "
-            f"limitata dei messaggi del bot usa questa impostazione per ora.",
-            ephemeral=True,
+            tr("lingua_server_impostata", language.value, lingua=language.value), ephemeral=True
         )
 
 

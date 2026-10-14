@@ -270,6 +270,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("leveling_settings", "Impostazioni dei livelli", colonna_server="guild_id"),
     _t("leveling_xp_rules", "Regole dei moltiplicatori XP", colonna_server="guild_id"),
     _t("level_reward_roles", "Ruoli premio per livello", colonna_server="guild_id"),
+    _t("user_language", "Lingua personale (italiano o inglese)",
+       colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("rank_card_prefs", "Colore e tema della rank card",
        colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("shop_purchases", "Acquisti nel negozio",
