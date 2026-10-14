@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 16:42 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 353 comandi in 18 categorie.**
+**Totale: 368 comandi in 18 categorie.**
 
 ## Admin
 
@@ -135,9 +135,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun animal`** — Mostra un'immagine casuale di un animale.
 - **`/fun blur`** — Applica una sfocatura a un'immagine.
+- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
 - **`/fun dice`** — Tira un dado.
+- **`/fun effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
 - **`/fun fact`** — Mostra una curiosità a caso.
 - **`/fun gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/fun grayscale`** — Trasforma un'immagine in scala di grigi.
@@ -145,12 +147,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun meme`** — Genera un meme con testo sopra/sotto.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
+- **`/fun numero`** — Un numero a caso in un intervallo.
 - **`/fun pixelate`** — Pixela un'immagine.
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun rps`** — Carta, forbici, sasso contro il bot.
+- **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
+- **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
 - **`/fun search-image`** — Cerca un'immagine SFW su Pixabay.
 - **`/fun ship`** — Calcola la compatibilità tra due utenti.
+- **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
 ## Gestione
 
@@ -267,12 +273,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 
 ## Moduli
 
-- **`/moduli alert elenco`** — Mostra i feed seguiti da questo server.
-- **`/moduli alert feed`** — Segui un feed RSS/Atom (YouTube, Reddit, o qualsiasi altro).
-- **`/moduli alert rimuovi`** — Rimuove una sottoscrizione feed, Twitch o un webhook.
-- **`/moduli alert twitch`** — Notifica quando uno streamer Twitch va live/offline.
-- **`/moduli alert webhook`** — Crea un webhook custom: servizi terzi possono pubblicare in un canale.
-- **`/moduli alert youtube-live`** — Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).
+- **`/moduli alert elenco`** — Elenca gli avvisi del server.
+- **`/moduli alert feed`** — Segui un feed RSS/Atom.
+- **`/moduli alert guida-social`** — Avvisi per TikTok, Instagram e X.
+- **`/moduli alert kick`** — Avvisa quando un canale Kick va in diretta.
+- **`/moduli alert opzioni`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
+- **`/moduli alert rimuovi`** — Rimuove un avviso o un webhook.
+- **`/moduli alert ruolo-live`** — Ruolo dato a chi è in diretta.
+- **`/moduli alert twitch`** — Avvisa quando uno streamer Twitch va live.
+- **`/moduli alert webhook`** — Crea un webhook per pubblicare da servizi esterni.
+- **`/moduli alert youtube-live`** — Avvisa quando un canale YouTube va live.
 - **`/moduli candidature crea`** — Crea un modulo o una candidatura.
 - **`/moduli candidature elenco`** — I moduli di questo server.
 - **`/moduli candidature elimina`** — Elimina un modulo e le sue risposte.
@@ -297,6 +307,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/moduli starboard disattiva`** — Spegni la bacheca.
 - **`/moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
+- **`/moduli statistiche diagnosi`** — Perché le statistiche non si contano?
+- **`/moduli statistiche elenco`** — Mostra regole ed esclusioni delle statistiche.
+- **`/moduli statistiche impostazioni`** — Escludi canali o ruoli dalle statistiche.
+- **`/moduli statistiche ruolo-aggiungi`** — Dai un ruolo a chi è attivo e toglilo a chi smette.
+- **`/moduli statistiche ruolo-elimina`** — Elimina una regola dei ruoli per attività.
 
 ## Musica
 
@@ -392,7 +407,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/utility reminder set`** — Imposta un promemoria.
 - **`/utility report`** — Segnala un utente allo staff del server.
 - **`/utility richiedi-comando`** — Proponi un nuovo comando per il bot.
-- **`/utility serverstats`** — Mostra le statistiche del server, con grafico di crescita.
+- **`/utility serverstats`** — Statistiche del server: crescita, attività dei canali e dei membri.
 - **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.
 - **`/utility tag`** — Usa un comando personalizzato di questo server.

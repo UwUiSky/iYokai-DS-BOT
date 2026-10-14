@@ -123,6 +123,16 @@ _ClientSession_init_originale = aiohttp.ClientSession.__init__
 
 
 @pytest.fixture(autouse=True)
+def _alert_live_senza_attese_residue():
+    """Le attese dopo un invio fallito (core/live_alert_flow.py) non passano da un test all'altro."""
+    from core import live_alert_flow
+
+    live_alert_flow._FALLITI.clear()
+    yield
+    live_alert_flow._FALLITI.clear()
+
+
+@pytest.fixture(autouse=True)
 async def _rt3_igiene_risorse(request):
     """
     Traccia le ClientSession aperte durante il singolo test e installa

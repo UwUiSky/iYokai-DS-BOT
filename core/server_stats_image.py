@@ -95,3 +95,26 @@ def render_growth_chart(daily_counts: dict[date, int], title: str = "Crescita me
     output = io.BytesIO()
     img.save(output, format="PNG")
     return output.getvalue()
+
+
+def render_bar_chart(etichette: list[str], valori: list[int], title: str = "") -> bytes:
+    """Barre verticali (ore del giorno, giorni della settimana). PNG."""
+    n = max(1, len(valori))
+    larghezza = max(400, MARGIN * 2 + 30 * n)
+    img = Image.new("RGB", (larghezza, CHART_HEIGHT), COLOR_BACKGROUND)
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    draw.text((MARGIN, 10), title, fill=COLOR_TEXT, font=font)
+    massimo = max(valori, default=0) or 1
+    base = CHART_HEIGHT - MARGIN
+    altezza_utile = CHART_HEIGHT - 2 * MARGIN - 10
+    for i, (etichetta, valore) in enumerate(zip(etichette, valori)):
+        x = MARGIN + 30 * i
+        top = base - altezza_utile * valore / massimo
+        draw.rectangle([x + 3, top, x + 24, base], fill=COLOR_POSITIVE if valore else COLOR_ZERO)
+        draw.text((x + 3, base + 6), str(etichetta)[:4], fill=COLOR_TEXT, font=font)
+        if valore:
+            draw.text((x + 3, top - 12), str(valore), fill=COLOR_TEXT, font=font)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    return buffer.getvalue()

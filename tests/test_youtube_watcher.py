@@ -16,6 +16,7 @@ from aiohttp.test_utils import TestServer
 import core.youtube_watcher as modulo
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 from core.youtube_watcher import YoutubeWatcherService
+from tests.support.alert_finti import repo_opzioni_finto  # noqa: F401  (autouse)
 
 
 class _Canale(discord.TextChannel):
@@ -23,7 +24,7 @@ class _Canale(discord.TextChannel):
         self.id = channel_id
         self.sent_messages: list[str] = []
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         self.sent_messages.append(content)
 
 
@@ -163,7 +164,7 @@ async def test_invio_fallito_ritenta_al_giro_dopo(ambiente):
     stato["live"].add("UCa_v0")
     originale = canale.send
 
-    async def rotto(content):
+    async def rotto(content, **kwargs):
         raise discord.Forbidden(type("R", (), {"status": 403, "reason": "x"})(), "no")
 
     canale.send = rotto
@@ -171,6 +172,9 @@ async def test_invio_fallito_ritenta_al_giro_dopo(ambiente):
         await servizio.tick(bot)
         assert (await repo.list_subscriptions(100))[0].last_known_live is False
         canale.send = originale
+        from core import live_alert_flow
+
+        live_alert_flow._FALLITI.clear()  # passata l'attesa dopo il fallimento
         await servizio.tick(bot)
         assert len(canale.sent_messages) == 1
         assert (await repo.list_subscriptions(100))[0].last_known_live is True

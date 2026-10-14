@@ -14,6 +14,8 @@ import cogs.utility.feed_alerts as modulo
 from core.database import Database
 from core.repositories.custom_webhook_repo import CustomWebhookRepository
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+from core.repositories.alert_options_repo import AlertOptionsRepository
+from core.repositories.kick_subscription_repo import KickSubscriptionRepository
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 from tests.support.discord_fakes import fake_interaction, fake_text_channel
@@ -34,13 +36,15 @@ def repo(monkeypatch):
         ("feed_subscription_repo", FeedSubscriptionRepository),
         ("twitch_subscription_repo", TwitchSubscriptionRepository),
         ("youtube_subscription_repo", YoutubeSubscriptionRepository),
+        ("kick_subscription_repo", KickSubscriptionRepository),
+        ("alert_options_repo", AlertOptionsRepository),
         ("custom_webhook_repo", CustomWebhookRepository),
     ):
         finto = create_autospec(classe, instance=True)
         if hasattr(classe, "add_subscription"):
             finto.add_subscription.return_value = 3
             finto.list_subscriptions.return_value = []
-        else:
+        elif hasattr(classe, "list_webhooks"):
             finto.list_webhooks.return_value = []
         monkeypatch.setattr(modulo, nome, finto)
         finti[nome] = finto

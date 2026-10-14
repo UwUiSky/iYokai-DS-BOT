@@ -19,12 +19,13 @@ import logging
 import time
 
 import aiohttp
-import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.config import config
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
+from core.alert_options_logic import AlertOptions
+from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.template_renderer import render_template
 from core.twitch_api_logic import parse_app_access_token_response, parse_get_streams_response
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
@@ -175,6 +176,7 @@ class TwitchWatcherService:
             for stato in parse_get_streams_response(payload, blocco):
                 stato_per_login[stato.login] = stato
 
+        opzioni, ruoli = await carica_contesto("TW", sottoscrizioni)
         for sottoscrizione in sottoscrizioni:
             stato = stato_per_login.get(sottoscrizione.twitch_login.lower())
             if stato is None:
@@ -186,19 +188,6 @@ class TwitchWatcherService:
             if not (appena_andato_live or appena_andato_offline):
                 continue
 
-            guild = bot.get_guild(sottoscrizione.guild_id)
-            canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
-            if not isinstance(canale, discord.TextChannel):
-                if self._avvisi.prima_volta(("tw", sottoscrizione.id)):
-                    logger.warning(
-                        "Canale %s non raggiungibile per la sottoscrizione Twitch #%s (server %s).",
-                        sottoscrizione.channel_id,
-                        sottoscrizione.id,
-                        sottoscrizione.guild_id,
-                    )
-                continue
-            self._avvisi.riarma(("tw", sottoscrizione.id))
-
             if appena_andato_live:
                 messaggio = render_template(
                     sottoscrizione.live_message_template,
@@ -206,6 +195,7 @@ class TwitchWatcherService:
                         "label": sottoscrizione.label,
                         "title": stato.title or "",
                         "login": sottoscrizione.twitch_login,
+                        "game": stato.game_name or "",
                     },
                 )
             else:
@@ -214,19 +204,15 @@ class TwitchWatcherService:
                     {"label": sottoscrizione.label, "login": sottoscrizione.twitch_login},
                 )
 
-            try:
-                await canale.send(messaggio)
-                # P3: lo stato avanza solo dopo un invio riuscito: se
-                # fallisce, al giro dopo si ritenta invece di perdere l'avviso.
-                await twitch_subscription_repo.update_last_known_live(
-                    sottoscrizione.id, stato.is_live
-                )
-            except discord.HTTPException:
-                logger.warning(
-                    "Impossibile pubblicare l'alert Twitch nel canale %s (server %s).",
-                    sottoscrizione.channel_id,
-                    sottoscrizione.guild_id,
-                )
+            await pubblica_cambio_live(
+                bot, sottoscrizione, "TW",
+                in_diretta=stato.is_live, testo=messaggio,
+                url=f"https://twitch.tv/{sottoscrizione.twitch_login}",
+                opz=opzioni.get(sottoscrizione.id, AlertOptions()),
+                ruolo_live_id=ruoli.get(sottoscrizione.guild_id),
+                repo_stato=twitch_subscription_repo,
+                avvisi=self._avvisi, nome="Twitch",
+            )
 
     async def close(self) -> None:
         if self._http_session is not None:

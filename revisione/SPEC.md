@@ -945,6 +945,18 @@ sessione perché non richiesto esplicitamente.
 - `[ ]` 10.6 Instagram — nessuna API permette di monitorare account
   di terzi. Scartato, vedi audit di fattibilità
   → **Stato 04/10:** alternativa pianificata (D14, NF-32).
+  → **Stato 14/10 (NF-32, #103):** fatto con le alternative regolari.
+  `/moduli alert guida-social` spiega TikTok, Instagram e X (feed
+  «ponte» RSS e webhook in ingresso, chiave a pagamento facoltativa).
+  `/moduli alert kick` (`KK-<id>`, 0121, tetto 25 per server come
+  Twitch e YouTube) con `core/kick_watcher.py` (API pubblica,
+  `KICK_CLIENT_ID/SECRET`). `/moduli alert ruolo-live` + campo
+  `membro` di `/moduli alert opzioni`: il ruolo «in diretta» si dà a
+  inizio diretta e si toglie alla fine (Twitch, YouTube, Kick).
+  `/moduli alert opzioni` (#129): ruolo da avvisare (solo se
+  menzionabile o se chi configura può pingare), bottone «Guarda»,
+  messaggio di fine sì/no, avviso cancellato a fine diretta,
+  pubblicazione nei canali annunci; segnaposto `{game}` per Twitch e Kick.
 - `[~]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
   → **Stato 04/10:** LC-7; REVIEW §4 (ripubblica tutto).
@@ -1620,6 +1632,18 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   image_search_logic.py`, logica pura testata senza rete). Sotto-
   comando del gruppo `/fun` esistente, nessun nuovo slot top-level
   → **Stato 04/10:** nessun `defer` (LIM-24); condizioni d'uso di Pixabay non rispettate (LIM-48).
+- `[x]` 16.11 Voci piccole SFW (#131, r5) — `cogs/fun/fun_extra.py`:
+  `/fun scegli`, `numero`, `testo` (largo, corsivo, grassetto corsivo,
+  gotico, gotico grassetto, doppio tratto, maiuscoletto, emoji, applauso,
+  separato, owo), `casuale` (preferiresti, argomento, consiglio, oggetto
+  magico), `scherzo` (lancia, presa in giro, Google), `effetto`
+  (arcobaleno, R.I.P., ricercato, triggered). In più `/fun dice formula`
+  (3d6+2), `/fun joke tema`, `/fun fact animale`; `8ball` e `meme` con
+  massimo di lunghezza e senza menzioni. Logica in
+  `core/fun_extra_logic.py` e `core/image_effects_logic.py`. Restano
+  fuori (servono API/chiavi o spazio nel gruppo): FUN-049..057, 066..073,
+  GIF di reazione/azione (FUN-081..139), giochi di gruppo (FUN-007..021),
+  telefono (FUN-079).
 - `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
   → **Stato 04/10:** in piano: NF-23, fase F11.
   - `[ ]` Solo canali con flag NSFW, verificato a runtime a ogni post
@@ -1831,8 +1855,19 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   salvate (NF-19, fase F9)
 - `[x]` 23.2 Canali contatore (NF-16)
   → **Stato 13/10:** `/moduli contatori crea|elimina|elenco` (0087), aggiornamento ogni 10 minuti, massimo 5 per server.
-- `[ ]` 23.3 Statistiche di attività per canale e per membro, ruoli per
+- `[x]` 23.3 Statistiche di attività per canale e per membro, ruoli per
   attività (NF-25)
+  → **Stato 14/10 (r5):** messaggi e minuti in vocale come somme per giorno
+  (canale, membro, ora), scritte a lotti ogni minuto in 3 tabelle (0120),
+  90 giorni di conservazione, dati personali nel registro dati. `/utility
+  serverstats` ha le viste crescita, ingressi, uscite, canali, membri (anche
+  per ruolo), ore, giorni della settimana, membro, con bottoni 7/30/90 giorni
+  e Aggiorna. `/moduli statistiche impostazioni|ruolo-aggiungi|ruolo-elimina|
+  elenco|diagnosi`: esclusioni di canali e ruoli, fino a 10 regole "ruolo a
+  chi è attivo" (controllo ogni 30 minuti, al massimo 25 cambi per regola e
+  giro). `activity_stats_repo.member_total` è il punto da usare per il
+  requisito messaggi dei giveaway (oggi `giveaway_message_counts`, in
+  `cogs/leveling`, non toccato qui).
 - `[x]` 23.4 Compleanni (NF-26)
   → **Stato 13/10:** `/level compleanno imposta|rimuovi|mostra`, `/moduli compleanni canale|ruolo` (0088): solo giorno e mese.
 - `[x]` 23.5 Inviti: comando personale e classifica (NF-27)

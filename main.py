@@ -59,6 +59,7 @@ from core.event_log_retention import event_log_retention
 from core.retention_worker import retention_worker
 from core.repositories.guild_presence_repo import guild_presence_repo
 from core.feed_watcher import feed_watcher
+from core.kick_watcher import kick_watcher
 from core.twitch_watcher import twitch_watcher
 from core.youtube_watcher import youtube_watcher
 from core.monthly_winners_announcer import monthly_winners_announcer
@@ -278,6 +279,9 @@ class iYokaiBot(commands.AutoShardedBot):
         # Twitch live/offline (SPEC.md §10.1/10.2): resta inattivo
         # finché TWITCH_CLIENT_ID/SECRET non sono configurati.
         twitch_watcher.start(self)
+
+        # Kick (SPEC.md §10.13, NF-32): inattivo senza KICK_CLIENT_ID/KICK_CLIENT_SECRET.
+        kick_watcher.start(self)
 
         # YouTube live (SPEC.md §10.4): resta inattivo finché
         # YOUTUBE_API_KEY non è configurata (quota a consumo).
@@ -556,6 +560,7 @@ def _servizi_periodici() -> list:
         retention_worker,
         feed_watcher,
         twitch_watcher,
+        kick_watcher,
         youtube_watcher,
         monthly_winners_announcer,
         giveaway_worker,
@@ -789,6 +794,7 @@ async def main() -> None:
                 animal_fetcher.close,
                 youtube_watcher.close,
                 twitch_watcher.close,
+                kick_watcher.close,
                 feed_watcher.close,
                 restore_orchestrator.close,
             ],

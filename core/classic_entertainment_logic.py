@@ -47,6 +47,40 @@ FACTS = (
 )
 
 
+JOKES_TEMATICHE = {
+    "papà": (
+        "Come si chiama un cinghiale che fa la dieta? Un cinghialetto light.",
+        "Cosa fa un orologio in una stanza buia? Fa tic tac al buio.",
+        "Perché il pomodoro non riesce a dormire? Perché ha la salsa che gli gira in testa.",
+        "Sai qual è il colmo per un elettricista? Non fare mai una scintilla di simpatia.",
+        "Qual è il formaggio più dispettoso? Il dispetto-lino... ehm, il groviera che ti fa i buchi.",
+    ),
+    "videogiochi": (
+        "Perché il giocatore ha portato una scala? Per raggiungere il livello successivo.",
+        "Il boss finale ha chiesto un incontro: voleva solo parlare dei vostri ultimi 40 tentativi.",
+        "Ho provato a nascondermi nel gioco, ma il minimap mi ha tradito.",
+        "Quanti giocatori servono per cambiare una lampadina? Nessuno, la skill è in cooldown.",
+        "Ho salvato il mondo cinquanta volte. Il mio frigo, però, è ancora vuoto.",
+    ),
+    "informatica": JOKES,
+}
+
+FACTS_ANIMALI = {
+    "gatti": (
+        "I gatti dormono in media dalle 12 alle 16 ore al giorno.",
+        "Il fusare di un gatto vibra a una frequenza che si pensa favorisca il rilassamento.",
+        "I gatti non sentono il sapore dolce: manca loro il recettore.",
+        "Ogni naso di gatto ha un disegno unico, come un'impronta digitale.",
+    ),
+    "cani": (
+        "L'olfatto di un cane è decine di migliaia di volte più sensibile di quello umano.",
+        "Anche i cani, come noi, hanno impronte uniche: quella del naso.",
+        "I cuccioli nascono sordi e aprono gli occhi dopo circa due settimane.",
+        "Il Basenji è chiamato \"cane che non abbaia\": emette suoni simili a una risata.",
+    ),
+}
+
+
 def random_joke(rng: random.Random) -> str:
     return rng.choice(JOKES)
 

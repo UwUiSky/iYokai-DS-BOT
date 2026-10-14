@@ -19,7 +19,6 @@ from __future__ import annotations
 import logging
 
 import aiohttp
-import discord
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
@@ -28,6 +27,8 @@ from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.feed_parsing_logic import parse_feed
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.safe_http import chiudi_sessione_condivisa, safe_get
+from core.alert_options_logic import AlertOptions
+from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.template_renderer import render_template
 from core.youtube_api_logic import (
     VIDEO_PER_CANALE,
@@ -137,6 +138,7 @@ class YoutubeWatcherService:
             if all(i in gruppi_riusciti for i in ids):  # risposta completa per questo canale
                 stati[channel_id] = stato_live_del_canale(channel_id, ids, info)
 
+        opzioni, ruoli = await carica_contesto("YT", sottoscrizioni)
         for sottoscrizione in sottoscrizioni:
             stato = stati.get(sottoscrizione.youtube_channel_id)
             if stato is None:
@@ -147,19 +149,6 @@ class YoutubeWatcherService:
 
             if not (appena_andato_live or appena_andato_offline):
                 continue
-
-            guild = bot.get_guild(sottoscrizione.guild_id)
-            canale = guild.get_channel(sottoscrizione.channel_id) if guild else None
-            if not isinstance(canale, discord.TextChannel):
-                if self._avvisi.prima_volta(("yt", sottoscrizione.id)):
-                    logger.warning(
-                        "Canale %s non raggiungibile per la sottoscrizione YouTube #%s (server %s).",
-                        sottoscrizione.channel_id,
-                        sottoscrizione.id,
-                        sottoscrizione.guild_id,
-                    )
-                continue
-            self._avvisi.riarma(("yt", sottoscrizione.id))
 
             if appena_andato_live:
                 messaggio = render_template(
@@ -176,19 +165,15 @@ class YoutubeWatcherService:
                     {"label": sottoscrizione.label},
                 )
 
-            try:
-                await canale.send(messaggio)
-                # P3: lo stato avanza solo dopo un invio riuscito: se
-                # fallisce, al giro dopo si ritenta invece di perdere l'avviso.
-                await youtube_subscription_repo.update_last_known_live(
-                    sottoscrizione.id, stato.is_live
-                )
-            except discord.HTTPException:
-                logger.warning(
-                    "Impossibile pubblicare l'alert YouTube nel canale %s (server %s).",
-                    sottoscrizione.channel_id,
-                    sottoscrizione.guild_id,
-                )
+            await pubblica_cambio_live(
+                bot, sottoscrizione, "YT",
+                in_diretta=stato.is_live, testo=messaggio,
+                url=f"https://www.youtube.com/watch?v={stato.video_id}" if stato.video_id else None,
+                opz=opzioni.get(sottoscrizione.id, AlertOptions()),
+                ruolo_live_id=ruoli.get(sottoscrizione.guild_id),
+                repo_stato=youtube_subscription_repo,
+                avvisi=self._avvisi, nome="YouTube",
+            )
 
     async def close(self) -> None:
         if self._http_session is not None:

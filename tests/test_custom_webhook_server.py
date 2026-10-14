@@ -56,7 +56,7 @@ class _FakeChannel:
     def __init__(self):
         self.sent_messages: list[str] = []
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         self.sent_messages.append(content)
 
 

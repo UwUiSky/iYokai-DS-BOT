@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import replace
 
 import discord
 from discord.ext import commands, tasks
 
+from core.alert_options_logic import invia_alert
 from core.bot_ready import attendi_bot_pronto
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.feed_parsing_logic import (
@@ -30,6 +32,7 @@ from core.feed_parsing_logic import (
     parse_feed,
     render_alert_message,
 )
+from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.safe_http import Scaricamento, chiudi_sessione_condivisa, safe_get_con_etag
 
@@ -155,6 +158,8 @@ class FeedWatcherService:
             return False
         self._avvisi.riarma(("rss", sottoscrizione.id))
 
+        opz = replace(await alert_options_repo.get("RSS", sottoscrizione.id), watch_button=False)
+
         # Dal più vecchio al più recente delle nuove voci — così
         # nel canale appaiono in ordine cronologico, non al
         # contrario.
@@ -166,7 +171,7 @@ class FeedWatcherService:
                 link=voce.link,
             )
             try:
-                await canale.send(messaggio)
+                await invia_alert(canale, messaggio, opz)
             except discord.HTTPException:
                 # P3: invio fallito = niente avanzamento; la voce (e le
                 # successive, per mantenere l'ordine) si ritenta al giro dopo.
