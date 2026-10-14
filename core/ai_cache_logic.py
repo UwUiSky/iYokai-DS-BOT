@@ -1,45 +1,104 @@
 """
 core/ai_cache_logic.py
 ======================
-Riusa le risposte a domande uguali o molto simili.
-Funzioni coperte: SPEC §25 (NF-24)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #95).
+Memoria delle risposte già date: chiave per domande uguali, somiglianza
+per domande molto simili, scadenza. Ciò che nasce dai messaggi di un
+server resta in quel server; ciò che l'AI scrive da zero va nella
+libreria comune (ambito 0) e si riusa ovunque (D19).
+Funzioni coperte: SPEC §25.2, §25.11, §25.80 (AI-R-004, AI-R-005, AI-R-087)
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #95, fase F12
-# Funzione: NF-24, Motore AI.
-#
-# Cosa deve fare la funzione: Un motore unico con più fornitori in
-#   cascata e una risposta locale di riserva. Sopra ci stanno: aiuto sui
-#   comandi (helpdesk), riassunti di canali e ticket, "lore" del server
-#   (tono e ambientazione scelti dall'admin), generazione di immagini.
-#   Con memoria delle risposte già date, filtri di sicurezza e tetto di
-#   spesa.
-# Questo file: Riusa le risposte a domande uguali o molto simili.
-# Comandi previsti: /admin ai … (configurazione), /utility chiedi,
-#   /utility riassumi, /fun immagina.
-# File collegati: core/ai_router.py, core/ai_guardrail_logic.py,
-#   core/ai_cost_logic.py, core/repositories/ai_repo.py,
-#   cogs/ai/__init__.py, cogs/ai/helpdesk.py, cogs/ai/summaries.py,
-#   cogs/ai/lore.py, cogs/ai/images.py.
-# Test da scrivere per primi: tests/test_ai_router.py,
-#   tests/test_ai_guardrail_logic.py, tests/test_ai_cost_logic.py.
-# Migrazione: core/migrations/NNNN_ai.sql. (prossimo numero libero in
-#   core/migrations/).
-# Limiti da rispettare: Vietato usare i messaggi per addestrare modelli;
-#   risposta entro 3 secondi con defer(); testo 2000/4096; tetto di
-#   spesa (D13).
-# Da chi prendere spunto: MEE6 (AI venduta a parte), Maki (AI nei piani
-#   a pagamento).
-# Dipende da: Privacy policy pubblicata con l'elenco dei fornitori.
-#   Consenso dell'admin per server. message_content. D13.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+import hashlib
+import re
+import time
+from collections import OrderedDict
+from dataclasses import dataclass
+
+LIBRERIA_COMUNE = 0  # ambito dei contenuti senza messaggi di utenti
+SOGLIA_SIMILE = 0.85
+MAX_VOCI = 2000
+DURATA_SECONDI = 7 * 24 * 3600
+
+_NON_PAROLA = re.compile(r"[^\w]+", re.UNICODE)
+
+
+def normalizza(testo: str) -> str:
+    """Minuscole, senza punteggiatura, spazi singoli: 'Ciao, come va?' == 'ciao come va'."""
+    return " ".join(_NON_PAROLA.sub(" ", testo.lower()).split())
+
+
+def chiave(tipo: str, istruzioni: str, testo: str) -> str:
+    grezzo = f"{tipo}\x1f{normalizza(istruzioni)}\x1f{normalizza(testo)}"
+    return hashlib.sha256(grezzo.encode("utf-8")).hexdigest()
+
+
+def somiglianza(a: str, b: str) -> float:
+    """Parole in comune su parole totali (0–1), sul testo normalizzato."""
+    pa, pb = set(normalizza(a).split()), set(normalizza(b).split())
+    if not pa or not pb:
+        return 0.0
+    return len(pa & pb) / len(pa | pb)
+
+
+def ambito(guild_id: int | None, messaggi_utenti: bool) -> int:
+    """Dove vale una risposta: nel server se viene da messaggi di utenti, altrimenti ovunque."""
+    if messaggi_utenti and guild_id:
+        return guild_id
+    return LIBRERIA_COMUNE
+
+
+@dataclass
+class _Voce:
+    tipo: str
+    istruzioni: str
+    testo: str
+    risposta: str
+    scade: float
+
+
+class CacheAI:
+    """Cache in memoria (LRU con scadenza). Il database tiene la copia durevole."""
+
+    def __init__(self, max_voci: int = MAX_VOCI, durata: float = DURATA_SECONDI) -> None:
+        self._voci: OrderedDict[tuple[int, str], _Voce] = OrderedDict()
+        self._max = max_voci
+        self._durata = durata
+
+    def __len__(self) -> int:
+        return len(self._voci)
+
+    def metti(self, amb: int, tipo: str, istruzioni: str, testo: str, risposta: str, ora: float | None = None) -> str:
+        ora = time.monotonic() if ora is None else ora
+        k = chiave(tipo, istruzioni, testo)
+        self._voci[(amb, k)] = _Voce(tipo, normalizza(istruzioni), normalizza(testo), risposta, ora + self._durata)
+        self._voci.move_to_end((amb, k))
+        while len(self._voci) > self._max:
+            self._voci.popitem(last=False)
+        return k
+
+    def trova(
+        self, amb: int, tipo: str, istruzioni: str, testo: str, ora: float | None = None, soglia: float = SOGLIA_SIMILE
+    ) -> str | None:
+        """Risposta per la stessa domanda o per una molto simile (stesse istruzioni, stesso tipo)."""
+        ora = time.monotonic() if ora is None else ora
+        k = chiave(tipo, istruzioni, testo)
+        voce = self._voci.get((amb, k))
+        if voce is not None and voce.scade > ora:
+            self._voci.move_to_end((amb, k))
+            return voce.risposta
+        istr = normalizza(istruzioni)
+        migliore, punteggio = None, soglia
+        for (a, _), v in reversed(self._voci.items()):
+            if a != amb or v.tipo != tipo or v.istruzioni != istr or v.scade <= ora:
+                continue
+            s = somiglianza(v.testo, testo)
+            if s >= punteggio:
+                migliore, punteggio = v.risposta, s
+        return migliore
+
+    def svuota_ambito(self, amb: int) -> None:
+        """Tolto un server (cancellazione dei dati): via anche le sue risposte in memoria."""
+        for k in [k for k in self._voci if k[0] == amb]:
+            del self._voci[k]
