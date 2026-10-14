@@ -874,6 +874,8 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             for ingresso in recenti:
                 if ingresso.member_id == member.id:
                     continue
+                if r.conta_solo_sospetti and not ingresso.sospetto:
+                    continue  # SIC-029: chi non è sospetto non è contato nel raid, e non si tocca
                 prima = guild.get_member(ingresso.member_id)
                 if prima is None and azione != "ban":
                     continue

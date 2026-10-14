@@ -218,6 +218,20 @@ async def test_ban_al_raid_anche_su_chi_e_entrato_prima(cog, server):
     assert (await _categorie()).count("raid_join") == 4
 
 
+async def test_azione_su_chi_e_entrato_prima_salta_i_non_sospetti(cog, server):
+    # Soglia contata solo sui sospetti: i membri normali entrati nella finestra non si toccano.
+    await cog.join_rate.callback(cog, _interazione(), 2, 60, _scelta("sospetti"))
+    await cog.segnali.callback(cog, _interazione(), None, None, None, True)
+    await _azione(cog, "kick")
+    normali = [_ingresso(server, 600 + i) for i in range(2)]
+    sospetti = [_ingresso(server, 700 + i, avatar=False) for i in range(3)]
+    server.get_member.side_effect = {m.id: m for m in normali + sospetti}.get
+    for m in normali + sospetti:
+        await cog.on_member_join(m)
+    assert all(m.kick.await_count == 1 for m in sospetti)
+    assert not any(m.kick.await_count for m in normali)
+
+
 async def test_primo_allarme_pinga_i_ruoli_gli_aggiornamenti_no(cog, server):
     canale = fake_text_channel(channel_id=88)
     canale.send.return_value = MagicMock(edit=AsyncMock())

@@ -193,3 +193,12 @@
 | 13/10 | `tickets.py:1785` (`on_member_remove`) | Chiude solo i ticket con `panel_id`: quelli dal pannello classico restano aperti se l'utente esce; i chiusi per uscita/inattivita' non salvano il motivo | bassa | confermato (cbtkt/p1) |
 | 13/10 | `tickets.py:1712-1725`, `risposte.py:362-372` | `close_ticket` riuscito e poi pianificazione eliminazione che fallisce: al retry ticket gia' chiuso, canale mai eliminato. Sollecito: `mark_sollecito` prima di leggere il canale, al retry non riparte | bassa | confermato (cbtkt/p1, p3) |
 | 13/10 | `tickets.py:1750-1775`, `:1340-1420` | `chiudi-tutti`: 25 transcript in serie con un solo followup finale (token a 15 min); motivo libero nell'avviso con menzioni utente attive. `remove ruolo` accetta il ruolo di supporto o del bot (blocca lo staff) | bassa | plausibile |
+| 14/10 | `actions.py` `_prepara_massa` | Ban/kick in massa senza tetto di usi all'ora (catalogo MOD-002): 50 ban a comando, illimitati, invisibili all'anti-nuke (attore = bot) | alta | corretto r6mod (2/ora per azione, owner esente) |
+| 14/10 | `actions.py` `ban_massa` | `bulk_ban` vuole anche «Gestisci server»: senza, Forbidden e tutti «Discord ha rifiutato» | media | corretto r6mod (ban singoli) |
+| 14/10 | `anti_raid.py:873` | Retroattivo con soglia solo-sospetti agisce anche sui membri normali entrati nella finestra | alta | corretto r6mod |
+| 14/10 | `verify.py` `on_member_join` | Rientro: le scadenze dell'ingresso precedente restano e cacciano prima del tempo | media | corretto r6mod |
+| 14/10 | `automod.py` link nel tempo | Un evento per link senza tetto: 300 link = 300 voci in coda | bassa | corretto r6mod (50 per messaggio) |
+| 14/10 | `automod.py` `_testo_da_controllare` | Embed dell'anteprima link arrivano per modifica (contenuto uguale = ignorata): AMD-019 quasi mai attivo; quando c'è, caps/lunghezza/parole sul titolo dell'anteprima = falso positivo | media | plausibile |
+| 14/10 | `automod_advanced_logic.py` solo-media | Sticker o inoltro di un'immagine in canale solo media = violazione | bassa | plausibile |
+| 14/10 | `actions.py` `_non_moderabile` | Membro non in cache = nessun controllo di gerarchia sul ban (cache piena con chunk all'avvio) | bassa | plausibile |
+| 14/10 | `verify_logic.azione_dopo_fallimento` | 3 errori di captcha contati senza limite di tempo (anche di giorni prima) | bassa | plausibile |

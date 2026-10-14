@@ -119,6 +119,17 @@ async def test_link_contati_su_piu_messaggi(contesto):
 
 
 @pytest.mark.asyncio
+async def test_link_contati_con_un_tetto_per_messaggio(contesto):
+    # Un messaggio con centinaia di link non deve riempire la coda in memoria.
+    await _salva_config(contesto, config=AutomodAdvancedConfig(link_nel_tempo=RateFilterConfig(True, 500, 60)))
+    guild, autore, canale = _scena()
+    testo = " ".join(f"https://a{i}.it" for i in range(300))
+    await AutomodCog(bot=None).on_message(_FakeMessage(guild, autore, canale, content=testo))
+    coda = automod_module.rate_tracker._data.get((guild.id, autore.id, "links"))
+    assert len(coda) == automod_module.MAX_EVENTI_PER_MESSAGGIO
+
+
+@pytest.mark.asyncio
 async def test_menzioni_contate_su_piu_messaggi(contesto):
     await _salva_config(contesto, config=AutomodAdvancedConfig(menzioni_nel_tempo=RateFilterConfig(True, 3, 60)))
     guild, autore, canale = _scena()

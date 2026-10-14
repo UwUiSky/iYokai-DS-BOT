@@ -15,7 +15,7 @@ import pytest
 from cogs.moderation._shared import MODULE_ACTIONS, SETTING_MOD_LOG_CHANNEL
 from cogs.moderation.actions import ModerationActionsCog
 from core.database import db
-from core.moderation_bulk_logic import MAX_UTENTI_MASSA, leggi_utenti, riepilogo
+from core.moderation_bulk_logic import MAX_USI_ORA, MAX_UTENTI_MASSA, azzera_usi, leggi_utenti, riepilogo
 from core.repositories.moderation_repo import moderation_repo
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role, fake_text_channel
 
@@ -31,6 +31,7 @@ async def _ambiente(monkeypatch, clean_db):
 
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
+    azzera_usi()
     await db.set_module_active_for_guild(SERVER, MODULE_ACTIONS, True)
     await db.set_guild_setting(SERVER, SETTING_MOD_LOG_CHANNEL, LOG)
     yield
@@ -105,6 +106,31 @@ async def test_ban_rifiutato_cancella_il_dm_e_non_crea_il_caso():
     await _cog().ban_massa.callback(_cog(), interazione, str(A), "motivo valido", 0)
     dm.delete.assert_awaited_once()
     assert await _casi(A) == []
+
+
+async def test_ban_senza_gestisci_server_passa_ai_ban_singoli():
+    # Il ban in blocco di Discord vuole anche «Gestisci server»: senza, Forbidden.
+    server, membri, interazione, _ = _scena(membri_ids=(A,))
+    server.bulk_ban.side_effect = discord.Forbidden(MagicMock(status=403, reason="x"), "Missing Permissions")
+    await _cog().ban_massa.callback(_cog(), interazione, f"{A} {C}", "raid di spam", 0)
+    assert sorted(c.args[0].id for c in server.ban.await_args_list) == [A, C]
+    assert await _casi(A) == ["ban"] and await _casi(C) == ["ban"]
+
+
+async def test_ban_e_kick_in_massa_hanno_un_tetto_di_usi_all_ora():
+    cog = _cog()
+    for _ in range(MAX_USI_ORA):
+        server, membri, interazione, _ = _scena()
+        await cog.kick_massa.callback(cog, interazione, f"{A}", "pulizia")
+        membri[A].kick.assert_awaited_once()
+    server, membri, interazione, _ = _scena()
+    await cog.kick_massa.callback(cog, interazione, f"{A}", "pulizia")
+    membri[A].kick.assert_not_awaited()
+    assert "nell'ultima ora" in interazione.response.send_message.call_args.args[0]
+    # Il proprietario del server non ha tetto.
+    server.owner_id = MOD
+    await cog.kick_massa.callback(cog, interazione, f"{A}", "pulizia")
+    membri[A].kick.assert_awaited_once()
 
 
 async def test_kick_timeout_warn_in_massa():

@@ -374,6 +374,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
             return
         guild = member.guild
         config = await verify_repo.get_config(guild.id)
+        # Un rientro riparte da zero: le scadenze dell'ingresso di prima non valgono più.
+        for tipo in (VERIFY_PROMEMORIA, VERIFY_SCADENZA):
+            await scheduler.cancel_for_user(guild.id, member.id, tipo)
         if (
             config.verified_role_id is not None
             and await db.get_guild_setting(guild.id, SETTING_SOLO_SOSPETTI, False)

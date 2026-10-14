@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import time
 
 import discord
 from discord import app_commands
@@ -70,7 +71,9 @@ from cogs.moderation._shared import (
     post_to_mod_log,
 )
 from core.premium import PremiumModule, registry
-from core.moderation_bulk_logic import MAX_TESTO_UTENTI, MAX_UTENTI_MASSA, leggi_utenti, riepilogo
+from core.moderation_bulk_logic import (
+    MAX_TESTO_UTENTI, MAX_USI_ORA, MAX_UTENTI_MASSA, leggi_utenti, prenota_uso, riepilogo,
+)
 from core.permissions import can_moderate
 from cogs.security.global_ban import revoca_ban_propagati
 
@@ -893,7 +896,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # Azioni su più utenti insieme (MOD-002…006)
     # ================================================================
     async def _prepara_massa(
-        self, interaction: discord.Interaction, utenti: str, reason: str
+        self, interaction: discord.Interaction, utenti: str, reason: str, limite: str | None = None
     ) -> list[int] | None:
         """Controlli comuni: modulo, motivo, elenco. Dopo, l'interazione è in attesa (defer)."""
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
@@ -904,6 +907,17 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         if not ids:
             await interaction.response.send_message(
                 "Non ho trovato utenti: scrivi ID o menzioni separati da spazi.", ephemeral=True
+            )
+            return None
+        if (
+            limite is not None
+            and interaction.user.id != interaction.guild.owner_id
+            and not prenota_uso(interaction.guild.id, interaction.user.id, limite, time.monotonic())
+        ):
+            # MOD-002: tetto di usi all'ora, perché un account rubato non svuoti il server.
+            await interaction.response.send_message(
+                f"Hai già usato questo comando {MAX_USI_ORA} volte nell'ultima ora: riprova più tardi.",
+                ephemeral=True,
             )
             return None
         await interaction.response.defer()
@@ -933,6 +947,22 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         )
         return None if consentito else motivo
 
+    async def _ban_uno_alla_volta(
+        self, guild: discord.Guild, ids: list[int], reason: str, giorni: int
+    ) -> set[int]:
+        """Ban singoli al posto del ban in blocco. Gli ID bannati davvero."""
+        bannati: set[int] = set()
+        for uid in ids:
+            try:
+                await guild.ban(
+                    discord.Object(id=uid), reason=audit_reason(f"Ban in massa: {reason}"),
+                    delete_message_seconds=giorni * 86400,
+                )
+            except discord.HTTPException:
+                continue
+            bannati.add(uid)
+        return bannati
+
     async def _chiudi_massa(
         self, interaction: discord.Interaction, titolo: str, colore: discord.Color,
         reason: str, fatti: list[str], saltati: list[str],
@@ -961,7 +991,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         reason: Reason,
         delete_message_days: app_commands.Range[int, 0, 7] = 0,
     ) -> None:
-        ids = await self._prepara_massa(interaction, utenti, reason)
+        ids = await self._prepara_massa(interaction, utenti, reason, limite="ban")
         if ids is None:
             return
         guild = interaction.guild
@@ -991,6 +1021,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                     delete_message_seconds=delete_message_days * 86400,
                 )
                 bannati = {u.id for u in esito.banned}
+            except discord.Forbidden:
+                # Il ban in blocco vuole anche «Gestisci server»: senza, uno alla volta.
+                bannati = await self._ban_uno_alla_volta(guild, [uid for uid, _ in bersagli], reason, delete_message_days)
             except discord.HTTPException:
                 bannati = set()
         fatti: list[str] = []
@@ -1057,7 +1090,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     async def kick_massa(
         self, interaction: discord.Interaction, utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI], reason: Reason
     ) -> None:
-        ids = await self._prepara_massa(interaction, utenti, reason)
+        ids = await self._prepara_massa(interaction, utenti, reason, limite="kick")
         if ids is None:
             return
         guild = interaction.guild

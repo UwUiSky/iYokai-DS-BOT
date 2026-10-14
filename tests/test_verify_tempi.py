@@ -69,6 +69,16 @@ async def test_ingresso_pianifica_promemoria_e_scadenza(scenario, clean_db):
     assert await _lavori(clean_db) == [(modulo.VERIFY_PROMEMORIA, UTENTE_ID), (modulo.VERIFY_SCADENZA, UTENTE_ID)]
 
 
+async def test_rientro_cancella_le_scadenze_dell_ingresso_di_prima(scenario, clean_db):
+    # Entra, esce e rientra: la scadenza vecchia lo caccerebbe prima del tempo.
+    await scenario.configura(captcha=False)
+    await _tempi(scenario, promemoria_minuti=10, scadenza_minuti=30)
+    scenario.utente.guild = scenario.server
+    await scenario.cog.on_member_join(scenario.utente)
+    await scenario.cog.on_member_join(scenario.utente)
+    assert await _lavori(clean_db) == [(modulo.VERIFY_PROMEMORIA, UTENTE_ID), (modulo.VERIFY_SCADENZA, UTENTE_ID)]
+
+
 async def test_promemoria_in_dm_e_avviso_nel_canale_se_chiusi(scenario):
     await scenario.configura(captcha=False)
     scenario.utente.roles = []

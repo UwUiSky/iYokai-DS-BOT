@@ -1,6 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
 13/10/2026 · ultimo giro: `feat/r4-uti` (ruoli auto, starboard, tag, benvenuto immagine, role menu, embed, contatori, compleanni, inviti, moduli)
 13/10/2026 · ultimo giro: `feat/r4-liv` (livelli, economia, giveaway, giochi, profili)
 13/10/2026 · ultimo giro: `feat/r4-tkt` (ticket, ModMail, standard/sollecito, log, /voice)
@@ -20,7 +21,11 @@
 - feat/r4-uti: 2 alti di unione (migrazione 0091 doppia con r4-liv; `/gestione` 8400 e `/admin` 8293 > 8000 con liv+tkt). Medi: `{displayname}` non scappato (ping ruolo), starboard da canali privati, TOCTOU unique/binding, compleanno rifatto a ogni `imposta`, memoria ruoli (pending/raid/ruoli a tempo), `_join_results` stantio al rientro. Prove: scratchpad/cbuti (p1-p4, mm = unione di prova).
 - feat/r4-liv: 1 alto (`/gestione xp livello` 10M = loop fermo, level_for_xp lineare), medi: gerarchia attore su ruoli-premio, cooldown /fun gioca aggirato, mark_ended non e' claim, elenco modelli >2000, programmato muto senza permessi, migrazione 0091 doppia con r4-uti. Monete (shop, profilo, gioca, pay, modifica): 120 operazioni insieme, mai negativo, scorte esatte. Prove: scratchpad/cbliv (h.py, p1-p3, test_prove_liv.py).
 
+- feat/r6mod: corretti 5 (tetto usi/ora ban-kick massa, bulk_ban senza manage_guild, retroattivo solo-sospetti, rientro verify, tetto link/messaggio); 4 plausibili in `rapporti/bug.md`.
+
 ## Cose imparate
+- Azioni fatte DAL bot (massa, automod) non le vede l'anti-nuke (attore = bot): serve un tetto proprio.
+- Lavori nello scheduler legati all'ingresso: cancellarli al rientro (`scheduler.cancel_for_user`).
 - wavelink: `Pool.connect` torna con status CONNECTING (CONNECTED col messaggio `ready`); i test con `connetti` finto non lo vedono. Prova con un finto Lavalink aiohttp (/v4/websocket manda ready, /v4/info).
 - Ordine blocchi clan: riga membro, `leveling_totals`, poi `clans`. Si prova con due cicli in parallelo e si confronta con la base (`git archive`).
 - Controllare sempre l'ordine di avvio (il worker backup non partiva mai), non solo la logica.

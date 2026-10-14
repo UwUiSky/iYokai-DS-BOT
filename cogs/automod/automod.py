@@ -129,6 +129,10 @@ MAX_LUNGHEZZA_DOMINIO = 253
 # memoria tiene un valore per ogni evento dentro la finestra.
 MAX_FINESTRA_SECONDI = 300
 
+# AMD-006/007: link e menzioni contati al massimo per questo numero in un messaggio
+# (la coda in memoria di ogni utente non cresce oltre il tetto per messaggio).
+MAX_EVENTI_PER_MESSAGGIO = 50
+
 # AMD-023/024: canali solo media e canali senza allegati, per tipo.
 MAX_CANALI_MEDIA = 25
 
@@ -307,14 +311,14 @@ def build_message_signals(
     ripetuti = _conta_ripetuti(guild_id, user_id, message.content or "") if config.max_ripetuti else 1
     recent_links = 0
     if config.link_nel_tempo.enabled:
-        for _ in extract_domains(testo):
+        for _ in extract_domains(testo)[:MAX_EVENTI_PER_MESSAGGIO]:  # tetto come per le menzioni
             recent_links = rate_tracker.record_and_count(
                 guild_id, user_id, "links", now, window_seconds=_finestra(config.link_nel_tempo)
             )
     menzioni = _mention_count(message)
     recent_mentions = 0
     if config.menzioni_nel_tempo.enabled:
-        for _ in range(min(menzioni, 50)):  # @everyone vale 999: tetto al conteggio
+        for _ in range(min(menzioni, MAX_EVENTI_PER_MESSAGGIO)):  # @everyone vale 999: tetto al conteggio
             recent_mentions = rate_tracker.record_and_count(
                 guild_id, user_id, "mentions", now, window_seconds=_finestra(config.menzioni_nel_tempo)
             )
