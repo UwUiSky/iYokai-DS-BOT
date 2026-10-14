@@ -373,3 +373,13 @@ i comandi per ruolo con un controllo su database non è possibile: il
 controllo parte dopo che il comando è stato lanciato. La strada vera è
 l'OAuth dell'admin con permessi per ruolo (issue #148); per ora valgono
 `default_permissions` e il controllo interno.
+
+## D25 — Nuovi gruppi di primo livello quando uno supera i 6.800 caratteri (13/10/2026)
+
+Discord conta 8.000 caratteri per comando di primo livello, figli compresi.
+Con le funzioni nuove `/gestione` e `/admin` superavano il limite. Scelta:
+si può aggiungere un **gruppo** di primo livello (restano 100 posti, siamo a 17)
+quando un gruppo supera i 6.800 caratteri; si sposta un blocco intero, non
+singoli comandi. Primo caso: `/economia` (da `/gestione economia`: XP, monete,
+negozio, giveaway per lo staff). `/admin comandi` e `/admin messaggi` vanno in
+`/moduli`. Il gruppo nasce con permesso `manage_guild` e livello admin.
