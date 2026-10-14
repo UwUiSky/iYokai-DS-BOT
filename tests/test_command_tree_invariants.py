@@ -320,9 +320,6 @@ async def test_primo_livello_entro_100_comandi():
 KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     {
     "admin messaggi programma:duration",
-    "fun 8ball:domanda",
-    "fun meme:bottom_text",
-    "fun meme:top_text",
     "fun rate:thing",
     "mod timeout:duration",
     "modban tempban:duration",

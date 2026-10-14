@@ -42,7 +42,14 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.animal_fetcher import animal_fetcher
-from core.classic_entertainment_logic import random_fact, random_joke, random_quote
+from core.classic_entertainment_logic import (
+    FACTS_ANIMALI,
+    JOKES_TEMATICHE,
+    random_fact,
+    random_joke,
+    random_quote,
+)
+from core.fun_extra_logic import tira_formula
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -166,9 +173,30 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"🪙 **{risultato.upper()}**!")
 
     @comando_di_gruppo("fun", nome="dice", descrizione="Tira un dado.")
-    @app_commands.describe(sides="Numero di facce del dado (default 6, minimo 2, massimo 1000)")
-    async def dice(self, interaction: discord.Interaction, sides: int = 6) -> None:
+    @app_commands.describe(
+        sides="Numero di facce del dado (default 6, minimo 2, massimo 1000)",
+        formula="Formula da gioco di ruolo, per esempio 3d6+2 (al posto delle facce)",
+    )
+    async def dice(
+        self,
+        interaction: discord.Interaction,
+        sides: int = 6,
+        formula: app_commands.Range[str, 2, 20] | None = None,
+    ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+
+        if formula:
+            esito = tira_formula(formula, self._rng)
+            if esito.errore:
+                await interaction.response.send_message(esito.errore, ephemeral=True)
+                return
+            dettaglio = " + ".join(str(t) for t in esito.tiri)
+            if esito.modificatore:
+                dettaglio += f" {'+' if esito.modificatore > 0 else '-'} {abs(esito.modificatore)}"
+            await interaction.response.send_message(
+                f"🎲 `{formula.strip()}`: {dettaglio} = **{esito.totale}**"
+            )
             return
 
         if sides < 2 or sides > 1000:
@@ -208,8 +236,10 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("fun", nome="8ball", descrizione="Fai una domanda alla palla magica 8.")
-    @app_commands.describe(domanda="La tua domanda")
-    async def eight_ball(self, interaction: discord.Interaction, domanda: str) -> None:
+    @app_commands.describe(domanda="La tua domanda (massimo 300 caratteri)")
+    async def eight_ball(
+        self, interaction: discord.Interaction, domanda: app_commands.Range[str, 1, 300]
+    ) -> None:
         if not await self._modulo_attivo(interaction):
             return
 
@@ -219,11 +249,22 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             description=f"**Domanda:** {domanda}\n**Risposta:** {risposta}",
             color=discord.Color.dark_purple(),
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(
+            embed=embed, allowed_mentions=discord.AllowedMentions.none()
+        )
 
     @comando_di_gruppo("fun", nome="joke", descrizione="Racconta una barzelletta a caso.")
-    async def joke(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(tema="Un tema (facoltativo)")
+    @app_commands.choices(
+        tema=[app_commands.Choice(name=n.capitalize(), value=n) for n in JOKES_TEMATICHE]
+    )
+    async def joke(
+        self, interaction: discord.Interaction, tema: app_commands.Choice[str] | None = None
+    ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+        if tema is not None:
+            await interaction.response.send_message(f"😄 {self._rng.choice(JOKES_TEMATICHE[tema.value])}")
             return
         await interaction.response.send_message(f"😄 {random_joke(self._rng)}")
 
@@ -234,8 +275,17 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"💬 {random_quote(self._rng)}")
 
     @comando_di_gruppo("fun", nome="fact", descrizione="Mostra una curiosità a caso.")
-    async def fact(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(animale="Curiosità su gatti o cani (facoltativo)")
+    @app_commands.choices(
+        animale=[app_commands.Choice(name=n.capitalize(), value=n) for n in FACTS_ANIMALI]
+    )
+    async def fact(
+        self, interaction: discord.Interaction, animale: app_commands.Choice[str] | None = None
+    ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+        if animale is not None:
+            await interaction.response.send_message(f"🧠 {self._rng.choice(FACTS_ANIMALI[animale.value])}")
             return
         await interaction.response.send_message(f"🧠 {random_fact(self._rng)}")
 
@@ -325,8 +375,8 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
     async def meme(
         self,
         interaction: discord.Interaction,
-        top_text: str = "",
-        bottom_text: str = "",
+        top_text: app_commands.Range[str, 0, 100] = "",
+        bottom_text: app_commands.Range[str, 0, 100] = "",
         image: discord.Attachment | None = None,
         utente: discord.Member | None = None,
     ) -> None:

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:05 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:09 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 344 comandi in 17 categorie.**
+**Totale: 350 comandi in 17 categorie.**
 
 ## Admin
 
@@ -118,9 +118,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun animal`** — Mostra un'immagine casuale di un animale.
 - **`/fun blur`** — Applica una sfocatura a un'immagine.
+- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
 - **`/fun dice`** — Tira un dado.
+- **`/fun effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
 - **`/fun fact`** — Mostra una curiosità a caso.
 - **`/fun gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/fun grayscale`** — Trasforma un'immagine in scala di grigi.
@@ -128,12 +130,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 06:
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun meme`** — Genera un meme con testo sopra/sotto.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
+- **`/fun numero`** — Un numero a caso in un intervallo.
 - **`/fun pixelate`** — Pixela un'immagine.
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun rps`** — Carta, forbici, sasso contro il bot.
+- **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
+- **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
 - **`/fun search-image`** — Cerca un'immagine SFW su Pixabay.
 - **`/fun ship`** — Calcola la compatibilità tra due utenti.
+- **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
 ## Gestione
 

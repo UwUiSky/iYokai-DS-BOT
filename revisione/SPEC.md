@@ -1620,6 +1620,18 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   image_search_logic.py`, logica pura testata senza rete). Sotto-
   comando del gruppo `/fun` esistente, nessun nuovo slot top-level
   → **Stato 04/10:** nessun `defer` (LIM-24); condizioni d'uso di Pixabay non rispettate (LIM-48).
+- `[x]` 16.11 Voci piccole SFW (#131, r5) — `cogs/fun/fun_extra.py`:
+  `/fun scegli`, `numero`, `testo` (largo, corsivo, grassetto corsivo,
+  gotico, gotico grassetto, doppio tratto, maiuscoletto, emoji, applauso,
+  separato, owo), `casuale` (preferiresti, argomento, consiglio, oggetto
+  magico), `scherzo` (lancia, presa in giro, Google), `effetto`
+  (arcobaleno, R.I.P., ricercato, triggered). In più `/fun dice formula`
+  (3d6+2), `/fun joke tema`, `/fun fact animale`; `8ball` e `meme` con
+  massimo di lunghezza e senza menzioni. Logica in
+  `core/fun_extra_logic.py` e `core/image_effects_logic.py`. Restano
+  fuori (servono API/chiavi o spazio nel gruppo): FUN-049..057, 066..073,
+  GIF di reazione/azione (FUN-081..139), giochi di gruppo (FUN-007..021),
+  telefono (FUN-079).
 - `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
   → **Stato 04/10:** in piano: NF-23, fase F11.
   - `[ ]` Solo canali con flag NSFW, verificato a runtime a ogni post

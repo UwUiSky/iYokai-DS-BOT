@@ -18,7 +18,7 @@ class _FakeResponse:
         self.sent_messages: list[str] = []
         self.sent_embeds: list = []
 
-    async def send_message(self, content: str = None, embed=None, ephemeral: bool = False) -> None:
+    async def send_message(self, content: str = None, embed=None, ephemeral: bool = False, **kwargs) -> None:
         if content is not None:
             self.sent_messages.append(content)
         if embed is not None:
