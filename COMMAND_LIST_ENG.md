@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:43 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:48 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 391 commands in 18 categories.**
+**Total: 392 commands in 18 categories.**
 
 ## Admin
 
@@ -31,6 +31,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 10:4
 - **`/admin messages sticky-togli`** — Removes a channel's sticky message.
 - **`/admin music settings`** — Changes the server's music settings.
 - **`/admin music summary`** — Shows all the server's music settings.
+- **`/admin premium branding`** — Use a bot with your own name and avatar (premium).
 - **`/admin premium redeem`** — Redeems a premium code for this server.
 - **`/admin premium status`** — Shows how premium is unlocked in this server.
 - **`/admin setup enable`** — Turns the bot's modules on or off, by category.

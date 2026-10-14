@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:43 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:48 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 391 comandi in 18 categorie.**
+**Totale: 392 comandi in 18 categorie.**
 
 ## Admin
 
@@ -31,6 +31,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 - **`/admin messaggi sticky-togli`** — Rimuove lo sticky message di un canale.
 - **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
 - **`/admin premium riscatta`** — Riscatta un codice premium per questo server.
 - **`/admin premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.

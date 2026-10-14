@@ -32,10 +32,14 @@ def versione_codice() -> str:
     return testo if uscita.returncode == 0 and testo else "sconosciuta"
 
 
-def url_invito(application_id: int | None) -> str | None:
-    """Il link per aggiungere il bot a un server, o None se l'ID dell'applicazione non c'è ancora."""
+def url_invito(application_id: int | None, guild_id: int | None = None) -> str | None:
+    """
+    Il link per aggiungere il bot a un server, o None se l'ID dell'applicazione non c'è ancora.
+    Con `guild_id` il server è già scelto nella pagina di invito.
+    """
     if not application_id:
         return None
+    extra = {"guild": discord.Object(id=guild_id)} if guild_id else {}
     return discord.utils.oauth_url(
-        application_id, permissions=PERMESSI_INVITO, scopes=("bot", "applications.commands")
+        application_id, permissions=PERMESSI_INVITO, scopes=("bot", "applications.commands"), **extra
     )
