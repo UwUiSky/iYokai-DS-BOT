@@ -900,3 +900,5 @@ Servono: un server di prova con il modulo `tickets` acceso, un account staff (Ma
 - [ ] `AMD-002/003/005` (#116) — `/automod filtri forma-testo max_a_capo:3 max_lunghezza:200 max_spoiler:1`: un messaggio con 6 righe, uno da 300 caratteri e uno con due `||spoiler||` vengono cancellati; `0` spegne il limite.
 - [ ] `VER-029` (#118) — `/security verify opzioni log_compatto:True`: nel canale log ogni tentativo è una riga sola.
 
+- [ ] `SIC-043` (#102) — log del phishing. Passi: `/automod filtri phishing enabled:True canale_log:#phishing`, scrivi `https://discord-nitro.xyz/ritira` con un account di prova. Risultato atteso: il messaggio sparisce e nel canale scelto compare la scheda con il link dentro il codice (non cliccabile); con un forum come canale nasce un post.
+- [ ] `NF-29` (#100) — sblocco automatico a metà. Passi: `/security panico configura sblocco_minuti:1`, `/security panico attiva`; togli al bot il permesso «Gestire i canali» su un canale prima dello scadere. Risultato atteso: un solo avviso di fallimento negli allarmi; dopo aver ridato il permesso, entro un minuto il blocco si chiude da solo con un avviso di riuscita.

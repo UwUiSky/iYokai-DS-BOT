@@ -85,3 +85,42 @@ async def test_il_messaggio_corto_passa(contesto):
     await AutomodCog(bot=None).on_message(messaggio)
 
     assert messaggio.deleted is False
+
+
+# ================================================================== SIC-043: log del phishing (giro revisore-capo)
+async def test_il_log_del_phishing_va_nel_canale_scelto_e_non_e_cliccabile(clean_db, monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import discord
+
+    import cogs.automod.automod as modulo
+    from core import channel_router as router
+    from core.repositories.output_channel_repo import output_channel_repo
+    from tests.support.discord_fakes import fake_guild, fake_member, fake_message, fake_text_channel
+
+    for repo in (output_channel_repo, automod_advanced_repo):
+        monkeypatch.setattr(repo, "_pool_provider", lambda: clean_db)
+    log_phishing, log_automod = fake_text_channel(channel_id=51), fake_text_channel(channel_id=52)
+    for c in (log_phishing, log_automod):
+        c.__class__ = discord.TextChannel  # isinstance dell'router e del log
+        c.send = AsyncMock()
+    guild = fake_guild(guild_id=GUILD_ID)
+    guild.get_channel = lambda i: {51: log_phishing, 52: log_automod}.get(i)
+    msg = fake_message(author=fake_member(user_id=9), guild=guild, content="regalo https://dlscord.gift/x")
+    impostazioni = await automod_advanced_repo.get_settings(GUILD_ID)
+    from dataclasses import replace
+
+    impostazioni = replace(impostazioni, log_channel_id=52)
+    monkeypatch.setattr(automod_advanced_repo, "log_action", AsyncMock())
+    await output_channel_repo.imposta(GUILD_ID, router.TIPO_PHISHING, 51)
+
+    await modulo._log_violation(msg, modulo.VIOLATION_PHISHING, ("delete",), impostazioni)
+    log_automod.send.assert_not_awaited()
+    campo = log_phishing.send.await_args.kwargs["embed"].fields
+    assert any(f.value.startswith("`") and f.value.endswith("`") for f in campo)  # link dentro il codice
+
+    # Senza scelta, il phishing cade nel log dell'AutoMod; un'altra violazione non va mai nel canale del phishing.
+    log_phishing.send.reset_mock()
+    await modulo._log_violation(msg, modulo.VIOLATION_ZALGO, ("delete",), impostazioni)
+    log_automod.send.assert_awaited_once()
+    log_phishing.send.assert_not_awaited()

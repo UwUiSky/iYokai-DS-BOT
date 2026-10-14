@@ -39,7 +39,9 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import channel_router as router
 from core.phishing_list_fetcher import lista_phishing
+from core.repositories.output_channel_repo import output_channel_repo
 
 from core.automod_sync import (
     MAX_KEYWORD_LENGTH,
@@ -339,10 +341,14 @@ async def _log_violation(
         message.guild.id, message.author.id, message.channel.id, violation, actions_taken, contenuto
     )
 
-    if settings.log_channel_id is None:
-        return
-    canale = message.guild.get_channel(settings.log_channel_id)
-    if not isinstance(canale, discord.TextChannel):
+    if violation == VIOLATION_PHISHING:
+        # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
+        canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
+    else:
+        canale = message.guild.get_channel(settings.log_channel_id) if settings.log_channel_id else None
+        if not isinstance(canale, discord.TextChannel):
+            canale = None
+    if canale is None:
         return
 
     embed = discord.Embed(
@@ -353,7 +359,12 @@ async def _log_violation(
     embed.add_field(name="Canale", value=message.channel.mention, inline=True)
     embed.add_field(name="Azioni eseguite", value=", ".join(actions_taken) or "nessuna", inline=True)
     if contenuto:
-        embed.add_field(name="Contenuto", value=contenuto, inline=False)
+        # Nel log di phishing il link non deve restare cliccabile.
+        valore = f"`{contenuto.replace('`', '')}`" if violation == VIOLATION_PHISHING else contenuto
+        embed.add_field(name="Contenuto", value=valore, inline=False)
+    if violation == VIOLATION_PHISHING:
+        await router.invia_a(canale, message.guild, router.TIPO_PHISHING, embed=embed)
+        return
     try:
         await canale.send(embed=embed)
     except discord.HTTPException:
@@ -861,17 +872,28 @@ class AutomodCog(CogConGruppi, commands.Cog):
         descrizione="Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).",
         sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
-    @app_commands.describe(enabled="Attiva/disattiva")
-    async def anti_phishing(self, interaction: discord.Interaction, enabled: bool) -> None:
+    @app_commands.describe(
+        enabled="Attiva/disattiva",
+        canale_log="Canale o forum dove scrivere ogni link bloccato (vuoto: il log dell'AutoMod)",
+    )
+    async def anti_phishing(
+        self,
+        interaction: discord.Interaction,
+        enabled: bool,
+        canale_log: discord.TextChannel | discord.ForumChannel | None = None,
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
+        if canale_log is not None:
+            await output_channel_repo.imposta(interaction.guild.id, router.TIPO_PHISHING, canale_log.id)
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
         await automod_advanced_repo.save_settings(_replace_settings(settings, anti_phishing_enabled=enabled))
         if enabled:
             lista_phishing.aggiorna_se_serve()
         await interaction.response.send_message(
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
-            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`.",
+            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`."
+            + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
         )
 
