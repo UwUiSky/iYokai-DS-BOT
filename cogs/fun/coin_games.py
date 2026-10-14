@@ -12,14 +12,12 @@ from __future__ import annotations
 
 import logging
 import random
-import time
 from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.bounded_cache import BoundedCache
 from core.coin_games_logic import (
     ATTESA_TRA_PARTITE_SECONDI,
     LATI_MONETINA,
@@ -40,6 +38,7 @@ from core.repositories.leveling_repo import leveling_repo
 logger = logging.getLogger("iyokai.coin_games")
 
 MODULE_FUN = "fun"
+MODULE_LEVELING = "leveling"  # le monete stanno nel modulo livelli
 
 _SCELTE_GIOCO = [
     app_commands.Choice(name="Monetina (testa o croce, vinci il doppio)", value="monetina"),
@@ -68,8 +67,6 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._rng = random.Random()
-        # Ultima partita di ciascuno (server, utente): ferma chi preme a raffica.
-        self._ultima_partita: BoundedCache[tuple[int, int], float] = BoundedCache(max_size=10_000)
 
     async def _modulo_spento(self, interaction: discord.Interaction) -> bool:
         """Vero (dopo aver risposto) se il comando non può girare: fuori da un server o modulo spento."""
@@ -110,19 +107,16 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
     ) -> None:
         if await self._modulo_spento(interaction):
             return
+        if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_LEVELING):
+            await interaction.response.send_message(
+                "Le coin vivono nel modulo Livelli, che qui non è attivo: "
+                "un amministratore può attivarlo con /admin setup attiva.",
+                ephemeral=True,
+            )
+            return
         if gioco.value == "monetina" and (scelta is None or scelta.value not in LATI_MONETINA):
             await interaction.response.send_message(
                 "Per la monetina scegli testa o croce.", ephemeral=True
-            )
-            return
-
-        chiave = (interaction.guild.id, interaction.user.id)
-        adesso = time.monotonic()
-        ultima = self._ultima_partita.get(chiave)
-        if ultima is not None and adesso - ultima < ATTESA_TRA_PARTITE_SECONDI:
-            resto = ATTESA_TRA_PARTITE_SECONDI - int(adesso - ultima)
-            await interaction.response.send_message(
-                f"Piano! Aspetta ancora {resto} secondi tra una partita e l'altra.", ephemeral=True
             )
             return
 
@@ -133,19 +127,30 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         else:
             esito = gioca_slot(puntata, self._rng)
 
-        # Puntata tolta e vincita data in una scrittura sola, solo se il saldo basta.
+        # Puntata tolta, vincita data e attesa controllata in una scrittura sola.
         saldo = await leveling_repo.gioca(
-            interaction.guild.id, interaction.user.id, puntata, esito.restituzione
+            interaction.guild.id,
+            interaction.user.id,
+            puntata,
+            esito.restituzione,
+            ATTESA_TRA_PARTITE_SECONDI,
         )
         if saldo is None:
+            resto = await leveling_repo.attesa_partita_rimasta(
+                interaction.guild.id, interaction.user.id, ATTESA_TRA_PARTITE_SECONDI
+            )
+            if resto > 0:
+                await interaction.response.send_message(
+                    f"Piano! Aspetta ancora {resto} secondi tra una partita e l'altra.",
+                    ephemeral=True,
+                )
+                return
             totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
             await interaction.response.send_message(
                 f"Non hai abbastanza coin: ne hai **{totali.coins_total}**, ne servono **{puntata}**.",
                 ephemeral=True,
             )
             return
-        self._ultima_partita.set(chiave, adesso)
-
         if esito.vinto:
             verdetto, colore = f"🎉 Hai vinto **{esito.guadagno}** coin!", discord.Color.green()
         elif esito.pari:

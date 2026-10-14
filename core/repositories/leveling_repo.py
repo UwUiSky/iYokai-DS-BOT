@@ -633,27 +633,54 @@ class LevelingRepository:
                 return await add_coins_in(conn, guild_id, user_id, amount)
 
     async def gioca(
-        self, guild_id: int, user_id: int, puntata: int, restituzione: int
+        self,
+        guild_id: int,
+        user_id: int,
+        puntata: int,
+        restituzione: int,
+        attesa_secondi: int = 0,
     ) -> int | None:
         """
         Chiude una partita con le monete (NF-40): toglie la puntata e dà la
-        restituzione in UNA scrittura, solo se il saldo copre la puntata.
-        Restituisce il nuovo saldo, o None (senza scrivere) se non basta.
+        restituzione in UNA scrittura, solo se il saldo copre la puntata e
+        se è passata l'attesa dall'ultima partita (`attesa_secondi`, decisa
+        qui nella stessa UPDATE: due partite insieme non passano entrambe).
+        Restituisce il nuovo saldo, o None (senza scrivere) se non si può.
         Le vincite dei giochi non contano nella classifica del mese.
         """
-        if puntata <= 0 or restituzione < 0:
-            raise ValueError("Puntata e restituzione non valide.")
+        if puntata <= 0 or restituzione < 0 or attesa_secondi < 0:
+            raise ValueError("Puntata, restituzione o attesa non valide.")
         return await self._pool.fetchval(
             """
-            UPDATE leveling_totals SET coins_total = coins_total - $3 + $4
+            UPDATE leveling_totals
+            SET coins_total = coins_total - $3 + $4, ultima_partita_at = NOW()
             WHERE guild_id = $1 AND user_id = $2 AND coins_total >= $3
+              AND (ultima_partita_at IS NULL
+                   OR ultima_partita_at <= NOW() - make_interval(secs => $5))
             RETURNING coins_total
             """,
             guild_id,
             user_id,
             puntata,
             restituzione,
+            float(attesa_secondi),
         )
+
+    async def attesa_partita_rimasta(
+        self, guild_id: int, user_id: int, attesa_secondi: int
+    ) -> int:
+        """Secondi che mancano alla prossima partita (0 se si può giocare)."""
+        resto = await self._pool.fetchval(
+            """
+            SELECT CEIL(EXTRACT(EPOCH FROM
+                ultima_partita_at + make_interval(secs => $3) - NOW()))
+            FROM leveling_totals WHERE guild_id = $1 AND user_id = $2
+            """,
+            guild_id,
+            user_id,
+            float(attesa_secondi),
+        )
+        return max(0, int(resto or 0))
 
     async def transfer_coins(
         self, guild_id: int, from_user_id: int, to_user_id: int, amount: int

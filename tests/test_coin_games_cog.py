@@ -74,9 +74,51 @@ class _Rng:
         return seq[self._valori.pop(0)]
 
 
+async def _libera_attesa(scena):
+    await scena.monete._pool.execute("UPDATE leveling_totals SET ultima_partita_at = NULL")
+
+
 # ----------------------------------------------------------------------
 # /fun gioca
 # ----------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_due_partite_insieme_ne_passa_una_sola(scena):
+    from tests.support.concorrenza import apri_connessioni
+    import asyncio
+
+    await scena.monete.add_coins(GUILD, 1, 1000)
+    await apri_connessioni(scena.monete._pool, 6)
+    scena.cog._rng = _Rng(*([1] * 10))  # croce: ogni partita persa costa la puntata
+    interazioni = [_interazione() for _ in range(5)]
+
+    await asyncio.gather(*(
+        scena.comandi["fun gioca"].callback(
+            scena.cog, i, gioco=_scelta("monetina"), puntata=10, scelta=_scelta("testa")
+        )
+        for i in interazioni
+    ))
+
+    assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 990
+    messaggi = [_testo(i) for i in interazioni]
+    assert sum("Piano" in m for m in messaggi) == 4
+
+
+@pytest.mark.asyncio
+async def test_gioca_richiede_anche_il_modulo_livelli(scena):
+    import core.database as database_module
+
+    await scena.monete.add_coins(GUILD, 1, 100)
+    await database_module.db.set_module_active_for_guild(GUILD, "leveling", False)
+    interazione = _interazione()
+
+    await scena.comandi["fun gioca"].callback(
+        scena.cog, interazione, gioco=_scelta("dadi"), puntata=10, scelta=None
+    )
+
+    assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 100
+    assert "Livelli" in _testo(interazione)
+
+
 @pytest.mark.asyncio
 async def test_i_comandi_sono_sotto_fun(scena):
     for nome in ("fun gioca", "fun misura", "fun conteggio"):
@@ -92,7 +134,7 @@ async def test_vincita_e_perdita_cambiano_il_saldo(scena):
     )
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 140
 
-    scena.cog._ultima_partita.clear()
+    await _libera_attesa(scena)
     scena.cog._rng = _Rng(1)  # esce croce
     interazione = _interazione()
     await scena.comandi["fun gioca"].callback(
