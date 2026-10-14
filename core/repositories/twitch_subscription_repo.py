@@ -86,15 +86,17 @@ class TwitchSubscriptionRepository:
         created_by: int,
         live_message_template: str | None = None,
         offline_message_template: str | None = None,
-    ) -> int:
-        row = await self._pool.fetchrow(
-            """
+        max_per_guild: int | None = None,
+    ) -> int | None:
+        """None = tetto per server raggiunto (conteggio e scrittura atomici)."""
+        sql = """
             INSERT INTO twitch_subscriptions
                 (guild_id, channel_id, twitch_login, label,
                  live_message_template, offline_message_template, created_by)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id
-            """,
+            """
+        args = (
             guild_id,
             channel_id,
             twitch_login.lower(),
@@ -103,7 +105,19 @@ class TwitchSubscriptionRepository:
             offline_message_template or DEFAULT_OFFLINE_MESSAGE_TEMPLATE,
             created_by,
         )
-        return row["id"]
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                if max_per_guild is not None:
+                    await conn.execute(
+                        "SELECT pg_advisory_xact_lock(hashtext('twitch_subscriptions'), $1)",
+                        guild_id % 2_147_483_647,
+                    )
+                    presenti = await conn.fetchval(
+                        "SELECT count(*) FROM twitch_subscriptions WHERE guild_id = $1", guild_id
+                    )
+                    if presenti >= max_per_guild:
+                        return None
+                return (await conn.fetchrow(sql, *args))["id"]
 
     async def remove_subscription(self, subscription_id: int, guild_id: int) -> bool:
         result = await self._pool.execute(

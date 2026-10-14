@@ -392,6 +392,11 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("feed_subscriptions", "Feed RSS", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("twitch_subscriptions", "Avvisi Twitch", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("youtube_subscriptions", "Avvisi YouTube", colonne_attore=("created_by",), colonna_server="guild_id"),
+    _t("kick_subscriptions", "Avvisi Kick", colonne_attore=("created_by",), colonna_server="guild_id"),
+    _t("alert_options", "Opzioni degli avvisi (ruolo da avvisare, fine diretta, bottone)",
+       colonne_utente=("live_member_id",), colonna_server="guild_id", utente="anonimizza",
+       anonimizza=(("live_member_id", "NULL"),)),
+    _t("live_role_settings", "Ruolo «in diretta»", colonna_server="guild_id"),
     _t("custom_webhooks", "Webhook personalizzati", colonne_attore=("created_by",), colonna_server="guild_id"),
     # ---------------------------------------------------------------- backup e ripristino
     _t("backup_user_snapshots", "Nome e avatar degli utenti nel backup",

@@ -14,6 +14,7 @@ from aiohttp.test_utils import TestServer
 
 from core.feed_watcher import FeedWatcherService
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+from tests.support.alert_finti import repo_opzioni_finto  # noqa: F401  (autouse)
 
 RSS_DI_ESEMPIO = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -46,7 +47,7 @@ class _FakeChannel(discord.TextChannel):
         self.id = channel_id
         self.sent_messages: list[str] = []
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         self.sent_messages.append(content)
 
 

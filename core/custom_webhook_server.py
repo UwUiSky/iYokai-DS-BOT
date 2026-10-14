@@ -142,7 +142,7 @@ def build_app(*, webhook_repo, get_channel) -> web.Application:
             )
 
         try:
-            await canale.send(messaggio)
+            await canale.send(messaggio, allowed_mentions=discord.AllowedMentions.none())
         except discord.HTTPException as exc:
             # Forbidden (il bot non può scrivere nel canale) o un
             # rifiuto di Discord: risposta JSON pulita, mai un 500.

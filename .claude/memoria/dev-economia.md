@@ -1,7 +1,7 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-13/10/2026 · ramo `feat/r4-liv` (da main `793656c`), DB `iyokai_wliv`, migrazioni da 0090. Lavoro PER FILE (richiesta owner).
+14/10/2026 · ramo `feat/r5-fun`, DB `iyokai_wr5fun`, migrazioni da 0120 (usate 0120 NF-25, 0121 Kick/opzioni). Lavoro PER FILE.
 
 ## In corso
 - Previsione giro: 5 gruppi (A importi+tetto, B staff XP/monete, C NF-28 giveaway, D NF-40, E voci catalogo). Ordine fisso.
@@ -10,6 +10,7 @@
   Poi: rapporto finale (<=30 righe). Non fatto: LIV-004..009/013/017.. (XP per tipo di messaggio, servono contenuto/reazioni), ECO-004 banca, ECO-006 registro, servizi esterni (voto bot), NF-12 sfondo premium.
 
 ## Fatto
+- r5 fun: NF-25 (0120), voci piccole /fun, NF-32 Kick + ruolo-live + guida-social + `/moduli alert opzioni` (0121, #103/#129). Gruppo `moduli` a ~6430 caratteri (soglia 6800): poco margine.
 - F1 livelli+economia+clan unito (`9db9e8a`); giro eco: 9.18, NF-15 (0031), NF-12 (0032) in main.
 - Giro r4: A+B `1ecd983` (0090); C giveaway `203a3af` (0091); D NF-40 `0319d95` (0092/0093); E shop+F classifiche (0094/0095, commit del giro finale).
 
@@ -45,6 +46,7 @@
 - `id_canali_per_le_regole`: canale, origine del thread, categoria. Esclusioni valgono anche per XP clan (testo e vocale).
 
 ## Aperto
+- Alert: `core/live_alert_flow.py` è il passo comune di Twitch/YouTube/Kick; le opzioni stanno in `alert_options` (kind RSS/TW/YT/KK). Mancano pausa, sposta, filtri per gioco/titolo, controllo a mano (#129).
 - Giro correzioni 14/10: i comandi staff di xp, monete, shop, giveaway, cassa, vincitori stanno ora in `/economia` (D25, nessun sottogruppo, `"economia": STAFF` in command_policy). `/gestione` non li ha più.
 - Migrazioni mie: 0090-0095, 0097 (ultima_partita_at), 0098 (giveaway.errore), 0099 (CHECK work_min<=work_max). NON usare 0096 (di uti, forms).
 - `mark_ended` ritorna bool (rivendicazione); programmato che non parte: `segna_errore` (started=false, errore=testo), il worker lo salta; `/economia giveaway-programmati` elenca/annulla.

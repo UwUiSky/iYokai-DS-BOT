@@ -15,6 +15,8 @@ import pytest
 import cogs.utility.feed_alerts as modulo
 from core.database import Database
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+from core.repositories.alert_options_repo import AlertOptionsRepository
+from core.repositories.kick_subscription_repo import KickSubscriptionRepository
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 from tests.support.discord_fakes import fake_interaction, fake_text_channel
@@ -36,12 +38,14 @@ def repo(monkeypatch):
         ("feed_subscription_repo", FeedSubscriptionRepository),
         ("twitch_subscription_repo", TwitchSubscriptionRepository),
         ("youtube_subscription_repo", YoutubeSubscriptionRepository),
+        ("kick_subscription_repo", KickSubscriptionRepository),
     ):
         finto = create_autospec(classe, instance=True)
         finto.add_subscription.return_value = 3
         finto.remove_subscription.return_value = True
         monkeypatch.setattr(modulo, nome, finto)
         finti[nome] = finto
+    monkeypatch.setattr(modulo, "alert_options_repo", create_autospec(AlertOptionsRepository, instance=True))
     return finti
 
 

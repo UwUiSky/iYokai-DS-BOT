@@ -16,6 +16,7 @@ from aiohttp.test_utils import TestServer
 
 from core.twitch_watcher import TwitchWatcherService
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
+from tests.support.alert_finti import repo_opzioni_finto  # noqa: F401  (autouse)
 
 
 @pytest.fixture(autouse=True)
@@ -31,7 +32,7 @@ class _FakeChannel(discord.TextChannel):
         self.id = channel_id
         self.sent_messages: list[str] = []
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         self.sent_messages.append(content)
 
 

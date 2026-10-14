@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:20 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:34 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 355 comandi in 17 categorie.**
+**Totale: 359 comandi in 17 categorie.**
 
 ## Admin
 
@@ -254,12 +254,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 10:
 
 ## Moduli
 
-- **`/moduli alert elenco`** — Mostra i feed seguiti da questo server.
-- **`/moduli alert feed`** — Segui un feed RSS/Atom (YouTube, Reddit, o qualsiasi altro).
-- **`/moduli alert rimuovi`** — Rimuove una sottoscrizione feed, Twitch o un webhook.
-- **`/moduli alert twitch`** — Notifica quando uno streamer Twitch va live/offline.
-- **`/moduli alert webhook`** — Crea un webhook custom: servizi terzi possono pubblicare in un canale.
-- **`/moduli alert youtube-live`** — Notifica quando un canale YouTube va live (richiede YOUTUBE_API_KEY sul bot).
+- **`/moduli alert elenco`** — Elenca gli avvisi del server.
+- **`/moduli alert feed`** — Segui un feed RSS/Atom.
+- **`/moduli alert guida-social`** — Avvisi per TikTok, Instagram e X.
+- **`/moduli alert kick`** — Avvisa quando un canale Kick va in diretta.
+- **`/moduli alert opzioni`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
+- **`/moduli alert rimuovi`** — Rimuove un avviso o un webhook.
+- **`/moduli alert ruolo-live`** — Ruolo dato a chi è in diretta.
+- **`/moduli alert twitch`** — Avvisa quando uno streamer Twitch va live.
+- **`/moduli alert webhook`** — Crea un webhook per pubblicare da servizi esterni.
+- **`/moduli alert youtube-live`** — Avvisa quando un canale YouTube va live.
 - **`/moduli candidature crea`** — Crea un modulo o una candidatura.
 - **`/moduli candidature elenco`** — I moduli di questo server.
 - **`/moduli candidature elimina`** — Elimina un modulo e le sue risposte.

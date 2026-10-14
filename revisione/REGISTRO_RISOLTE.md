@@ -93,8 +93,15 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #54 | /config rollback non ripristina import/reset – change_type gestito come setting sing | Risolto: il rollback di import e reset ripristina davvero o risponde con un errore; la conferma e `/config history` restano nei limiti di Discord (commit `071504a`, `c2a9582`). Resta l'etichetta… |
 | #55 | music_sessions non vengono svuotate all’avvio – worker “occupati” fantasma dopo cras | Risolto: `music_sessions` viene svuotata una volta all'avvio, prima che i bot partano (commit `376ff6b`). Resta l'etichetta `verifica-live`: i passi di prova sono in… |
 | #56 | Scheduler: action_type senza handler restano forever in coda e possono saturare LIMI | Risolto: lo scheduler non si ferma più; un'azione senza handler o che fallisce viene riprovata con attesa crescente e solo dopo 8 tentativi diventa `failed`; una transazione per azione (commit… |
+| #96 | NF-25 statistiche di attività e ruoli per attività | somme per giorno (canale, membro, ora), 90 giorni di conservazione, ruoli per attività e esclusioni in `/moduli statistiche`, viste di `/utility serverstats` (0120) | e486167 | 14/10 |
+| #103 | NF-32 alert Kick, ruolo «in diretta», TikTok/Instagram/X | `/moduli alert kick`, `ruolo-live`, `guida-social`, `KK-<id>` (0121); watcher Kick con stesso flusso di Twitch e YouTube; ruolo dato e tolto con controllo di gerarchia | vedi git log | 14/10 |
+| #71 | Fun: correzioni e limiti (15.1, 15.2) | `defer` e `Range` su animal e search-image; Pixabay con cache di 24 ore, immagine allegata, credito | 2bc7483 | 14/10 |
 
 ## Parziali (issue ancora aperte, voci già fatte)
+
+- #129 (alert social, 14/10): fatte ALR-025, 026, 027, 028 (`/moduli alert opzioni`), 045 e 047 in parte (ruolo «in diretta», `membro`), 021 in parte (segnaposto `{game}`), 048 no. Mancano le altre (Facebook, Bluesky, podcast, filtri per gioco o titolo, pausa, sposta, controllo a mano, frequenza).
+- #130 (statistiche, 14/10): fatte con NF-25 (e486167) le viste di `/utility serverstats` (ingressi/uscite, canali, membri, ore, giorni, ruoli, canali per tipo, emoji, bottoni periodo) e la diagnosi. Restano i contatori speciali (social, gioco, ticket, orologio), retention e provenienza, esportazioni CSV, schede di inviti ed emoji, menu tasto destro.
+- #131 (divertimento, 14/10): fatte le voci piccole SFW di 2bc7483 (scegli, numero, dadi, testo, scherzo, effetto). Restano i giochi di gruppo, le immagini da servizi esterni e gli effetti sugli avatar.
 
 - Giro r4 (14/10), suite 5.408 verdi: **utility** (#66, NF-07…NF-11, NF-14, NF-16, NF-17, NF-26, NF-27, NF-34), **livelli ed economia** (#65, NF-15, NF-28, NF-40, `/economia`, D25), **ticket, ModMail, log, vocali** (#62, #61, #145, NF-13, NF-33, #139 senza AI, #119, #120, #127). Rimane da fare: NF-12 sfondo rank card con immagine, NF-25 statistiche, parti AI, catalogo (voci grosse non toccate), #144 blocco di /voice lock dopo il riavvio. Le prove su Discord sono in `VERIFICA_LIVE.md`.
 

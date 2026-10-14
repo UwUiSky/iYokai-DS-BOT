@@ -134,6 +134,14 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
             "youtube_subscription_repo",
             YoutubeSubscriptionRepository(pool_provider=lambda: database.pool),
         )
+        from core.repositories.alert_options_repo import AlertOptionsRepository
+        from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+        monkeypatch.setattr(
+            feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        monkeypatch.setattr(
+            feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
+        )
         monkeypatch.setattr(
             feed_alerts_module,
             "custom_webhook_repo",
@@ -243,6 +251,14 @@ async def test_add_twitch_e_list_mostra_entrambi_i_tipi_con_prefissi(monkeypatch
             "youtube_subscription_repo",
             YoutubeSubscriptionRepository(pool_provider=lambda: database.pool),
         )
+        from core.repositories.alert_options_repo import AlertOptionsRepository
+        from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+        monkeypatch.setattr(
+            feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        monkeypatch.setattr(
+            feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
+        )
         monkeypatch.setattr(
             feed_alerts_module,
             "custom_webhook_repo",
@@ -305,6 +321,15 @@ async def test_add_youtube_live_senza_chiave_avvisa_ma_crea_comunque(monkeypatch
         monkeypatch.setattr(feed_alerts_module, "db", database)
         youtube_repo = YoutubeSubscriptionRepository(pool_provider=lambda: database.pool)
         monkeypatch.setattr(feed_alerts_module, "youtube_subscription_repo", youtube_repo)
+        from core.repositories.alert_options_repo import AlertOptionsRepository
+        from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+
+        monkeypatch.setattr(
+            feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        monkeypatch.setattr(
+            feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
+        )
 
         class _ConfigSenzaChiave:
             YOUTUBE_API_KEY = ""
@@ -573,6 +598,14 @@ async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
             feed_alerts_module,
             "youtube_subscription_repo",
             YoutubeSubscriptionRepository(pool_provider=lambda: database.pool),
+        )
+        from core.repositories.alert_options_repo import AlertOptionsRepository
+        from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+        monkeypatch.setattr(
+            feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        monkeypatch.setattr(
+            feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
         )
 
         cog = FeedAlertsCog(bot=None)

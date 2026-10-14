@@ -945,6 +945,18 @@ sessione perché non richiesto esplicitamente.
 - `[ ]` 10.6 Instagram — nessuna API permette di monitorare account
   di terzi. Scartato, vedi audit di fattibilità
   → **Stato 04/10:** alternativa pianificata (D14, NF-32).
+  → **Stato 14/10 (NF-32, #103):** fatto con le alternative regolari.
+  `/moduli alert guida-social` spiega TikTok, Instagram e X (feed
+  «ponte» RSS e webhook in ingresso, chiave a pagamento facoltativa).
+  `/moduli alert kick` (`KK-<id>`, 0121, tetto 25 per server come
+  Twitch e YouTube) con `core/kick_watcher.py` (API pubblica,
+  `KICK_CLIENT_ID/SECRET`). `/moduli alert ruolo-live` + campo
+  `membro` di `/moduli alert opzioni`: il ruolo «in diretta» si dà a
+  inizio diretta e si toglie alla fine (Twitch, YouTube, Kick).
+  `/moduli alert opzioni` (#129): ruolo da avvisare (solo se
+  menzionabile o se chi configura può pingare), bottone «Guarda»,
+  messaggio di fine sì/no, avviso cancellato a fine diretta,
+  pubblicazione nei canali annunci; segnaposto `{game}` per Twitch e Kick.
 - `[~]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
   → **Stato 04/10:** LC-7; REVIEW §4 (ripubblica tutto).
