@@ -136,3 +136,15 @@ async def test_solo_sospetti_gli_altri_entrano_subito(scenario):
     await scenario.cog.on_member_join(giovane)
     giovane.add_roles.assert_not_awaited()
     assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_SOLO_SOSPETTI) is True
+
+
+async def test_comando_verifica_per_il_membro_anche_durante_il_panico(scenario, monkeypatch):
+    from core import lockdown_service
+
+    await scenario.configura(captcha=False)
+    monkeypatch.setattr(lockdown_service, "panico_riservato", lambda _gid: True)
+    scenario.utente.roles = []
+    interazione = scenario.clic()
+    await scenario.cog.verifica_cmd.callback(scenario.cog, interazione)
+    assert "ruolo" in scenario.ordine
+    assert interazione.followup.send.await_args.args[0] == "All checks passed."

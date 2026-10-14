@@ -170,6 +170,7 @@
   "trasferisci": "transfer",
   "utente": "user",
   "vedi": "view",
+  "verifica": "verify",
   "vincitori-off": "winners-off",
   "vincitori-set": "winners-set",
   "voto": "vote"
@@ -665,6 +666,7 @@
   "utility snipe": "Shows the last deleted message in this channel.",
   "utility suggest": "Suggest an idea for this server.",
   "utility tag": "Uses a custom command of this server.",
+  "utility verifica": "Verify yourself in this server (same as the panel button).",
   "voice": "Manage your temporary voice channel",
   "voice bitrate": "Sets the channel's audio quality (kbps).",
   "voice claim": "Takes the channel if the owner is gone.",

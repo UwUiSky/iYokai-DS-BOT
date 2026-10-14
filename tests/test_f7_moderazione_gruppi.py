@@ -130,7 +130,8 @@ async def test_il_gruppo_ha_il_livello_giusto(bot, gruppo):
 async def test_i_vecchi_nomi_di_primo_livello_sono_spariti(bot):
     presenti = {c.name for c in bot.tree.get_commands()}
     assert presenti.isdisjoint(VECCHI_NOMI)
-    assert presenti == set(LIVELLI)
+    # Il Verify mette anche /utility verifica (VER-010), il comando per i membri.
+    assert presenti == set(LIVELLI) | {"utility"}
 
 
 async def test_nessun_prefisso_admin_e_nessun_check_di_permesso_locale(bot):

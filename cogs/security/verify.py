@@ -25,6 +25,9 @@ somma scritta nel modulo; «immagine» (NF-18) manda un'immagine con lettere
 storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
 3 tentativi (core/captcha_image.py).
 
+Il membro può verificarsi anche con /utility verifica (VER-010), lo stesso
+percorso del bottone del pannello.
+
 Tempi e azioni (`/security verify tempi`): promemoria in DM dopo X minuti
 (VER-008; con i DM chiusi un avviso nel canale del pannello che sparisce dopo
 pochi secondi, VER-009), tempo massimo con kick o ban alla scadenza
@@ -36,7 +39,7 @@ gli altri ricevono subito i ruoli).
 Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
 e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
 costruito — non tentati qui.
-Funzioni coperte: SPEC §4.1, §4.4-§4.6
+Funzioni coperte: SPEC §4.1, §4.4-§4.6 (VER-008…016, 029–031)
 """
 
 from __future__ import annotations
@@ -223,53 +226,62 @@ class VerifyPanelView(BaseView):
     async def verify_click(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
-        guild = interaction.guild
-        if guild is None or not isinstance(interaction.user, discord.Member):
-            # Un clic senza risposta resta "interazione non riuscita".
-            await interaction.response.send_message(
-                "Questo pulsante funziona solo dentro un server.", ephemeral=True
-            )
-            return
+        await avvia_verifica(interaction)
 
-        if not await db.is_module_active_for_guild(guild.id, MODULE_VERIFY):
-            await interaction.response.send_message(
-                "Verify non è attivo su questo server.", ephemeral=True
-            )
-            return
 
-        cog = interaction.client.get_cog("VerifyCog")
-        if cog is None:
-            await interaction.response.send_message(
-                "La verifica non è disponibile in questo momento. Riprova tra poco.", ephemeral=True
-            )
-            return
+async def avvia_verifica(interaction: discord.Interaction) -> None:
+    """
+    Il percorso di verifica di un membro: lo usano il bottone del pannello e
+    il comando /utility verifica (VER-010). Nessun controllo del panico: è
+    una funzione per i membri, non per lo staff.
+    """
+    guild = interaction.guild
+    if guild is None or not isinstance(interaction.user, discord.Member):
+        # Un clic senza risposta resta "interazione non riuscita".
+        await interaction.response.send_message(
+            "La verifica funziona solo dentro un server.", ephemeral=True
+        )
+        return
 
-        # Una sola lettura prima di rispondere: serve a sapere se va
-        # aperto il modulo del captcha, che può essere solo la PRIMA
-        # risposta (dopo un defer non si può più aprire).
-        config = await verify_repo.get_config(guild.id)
-        # Chi ha già il ruolo non deve risolvere un captcha per sentirsi dire che è già verificato.
-        if config.verified_role_id is not None and any(
-            r.id == config.verified_role_id for r in interaction.user.roles
-        ):
-            await interaction.response.send_message("You are already verified.", ephemeral=True)
-            return
-        if config.captcha_enabled and await db.get_guild_setting(
-            guild.id, SETTING_CAPTCHA_TIPO, captcha_image.TIPO_TESTO
-        ) == captcha_image.TIPO_IMMAGINE:
-            await cog.manda_captcha_immagine(interaction, guild.id)
-            return
-        if config.captcha_enabled:
-            await interaction.response.send_modal(
-                CaptchaModal(cog, guild.id, interaction.user.id)
-            )
-            return
+    if not await db.is_module_active_for_guild(guild.id, MODULE_VERIFY):
+        await interaction.response.send_message(
+            "Verify non è attivo su questo server.", ephemeral=True
+        )
+        return
 
-        # Senza captcha: risposta subito (3 secondi), poi controlli,
-        # ruolo e log.
-        await interaction.response.defer(ephemeral=True)
-        outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True)
-        await interaction.followup.send(outcome.reason, ephemeral=True)
+    cog = interaction.client.get_cog("VerifyCog")
+    if cog is None:
+        await interaction.response.send_message(
+            "La verifica non è disponibile in questo momento. Riprova tra poco.", ephemeral=True
+        )
+        return
+
+    # Una sola lettura prima di rispondere: serve a sapere se va
+    # aperto il modulo del captcha, che può essere solo la PRIMA
+    # risposta (dopo un defer non si può più aprire).
+    config = await verify_repo.get_config(guild.id)
+    # Chi ha già il ruolo non deve risolvere un captcha per sentirsi dire che è già verificato.
+    if config.verified_role_id is not None and any(
+        r.id == config.verified_role_id for r in interaction.user.roles
+    ):
+        await interaction.response.send_message("You are already verified.", ephemeral=True)
+        return
+    if config.captcha_enabled and await db.get_guild_setting(
+        guild.id, SETTING_CAPTCHA_TIPO, captcha_image.TIPO_TESTO
+    ) == captcha_image.TIPO_IMMAGINE:
+        await cog.manda_captcha_immagine(interaction, guild.id)
+        return
+    if config.captcha_enabled:
+        await interaction.response.send_modal(
+            CaptchaModal(cog, guild.id, interaction.user.id)
+        )
+        return
+
+    # Senza captcha: risposta subito (3 secondi), poi controlli,
+    # ruolo e log.
+    await interaction.response.defer(ephemeral=True)
+    outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True)
+    await interaction.followup.send(outcome.reason, ephemeral=True)
 
 
 class VerifyCog(CogConGruppi, commands.Cog):
@@ -752,6 +764,15 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 changed_by=interaction.user.id,
             )
         await interaction.response.send_message("Opzioni della verifica salvate.", ephemeral=True)
+
+    @comando_di_gruppo(
+        "utility",
+        nome="verifica",
+        descrizione="Verificati in questo server (come il bottone del pannello).",
+    )
+    async def verifica_cmd(self, interaction: discord.Interaction) -> None:
+        """VER-010: lo stesso percorso del bottone, per chi non trova il pannello."""
+        await avvia_verifica(interaction)
 
     @comando_di_gruppo(
         "security",

@@ -1,36 +1,26 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-14, ramo feat/r5-mod, worktree /home/claude/wt/r5mod, DB iyokai_wr5mod. Giro "per file": chiuso (NF-29, NF-31, NF-18, 3 voci catalogo). Migrazione usata: 0110.
+2026-10-14, ramo feat/r6mod, worktree /home/claude/wt/r6mod. DB scheda iyokai_wr6mod (usato anche da r6ai!): io uso iyokai_wr6mod_b. Migrazioni r6: nessuna (tutto in JSON o guild settings).
 ## In corso
-Niente di aperto. Prossimo: catalogo #115-118 (voci grosse), ripiego kick/ban della quarantena (decisione owner), SIC-023..038.
+Giro r6 catalogo #115-118. Fatte: SIC-042, SIC-023…035/037/038, MOD-001…006, VER-008/009/011/012/013. Prossimo: VER-010 (/utility verifica per membri, ensure_module_enabled per_membri), AutoMod (AMD-001/004/006), poi registro/SPEC/VERIFICA_LIVE, COMMAND_LIST rigenerato, smoke.
 ## Fatto
-- G1 #138: /modban tempban modo (fuori|rientro|isolamento), core/tempban_logic.py, cogs/moderation/_tempban_modes.py, migrazione 0040 tempban_stato, unban libera l'isolamento
-- G2 #57: M 1.8 (log lock/unlock/slowmode/clear/untimeout/unmute/scadenza), caso (motivo/elimina/classifica-staff/storico per tipo), nota (rimuovi/modifica/svuota), avvisi (togli/azzera/classifica), clear con 12 filtri (core/clear_filter_logic.py)
-- G3 #101: appelli ban manuali (ban_appeal.py, ban_appeal_logic.py, migrazione 0041 ban_appelli, /modban appelli canale|elenco, DM con bottone)
-- G4 #118/#60: verify opzioni (non verificato, 3 ruoli extra via guild settings), manuale, tentativi, statistiche (verify_repo.attempt_stats)
-- G5 #116: AMD-021 messaggi modificati ricontrollati (on_message_edit, build_message_signals conta_nel_tempo)
-- Gia fatte prima del giro: M 1.1-1.7, 1.9 (test_moderation_*), #60 4.1 (test_verify_risposta_subito)
-- G6 bug-hunt: isolamento/tempban su gia isolato (ruoli veri tenuti, mai ruolo iso), stato PRIMA dell'azione + ripristino se fallisce, cancel_tempban_jobs (tempban/unban/appello) + guardia case_number nel job, invito al mod se DM chiuso, appello: unban poi 'accettato', solo il caso dell'appello, 24 h atomico (advisory lock), clear channel con permessi utente, verify non-verificato/ruolo sopra bot, Range INT4 su caso/nota, get_member->fetch, warn automod non ripetuto, set_permissions in parallelo (8)
-- G7 revisore: ban/kick su isolato puliscono stato/job/caso/invito; unban isolato solo se membro presente; rientro senza invito ne OAuth = niente ban; canali non nascosti contati; appello su caso non attivo chiuso 'accettato' senza unban; unban chiude appelli aperti; rientro OAuth (migrazione 0042 oauth_rientro, join_user_via_oauth); ban_appelli/tempban_stato in data_registry (365 g decisi / 30 g dopo la fine); inviti cancellati (client.delete_invite); 5 chiavi in SETTINGS_SCHEMA; test per le mutazioni
-- R5-1 #59 3.18: canale allarmi anti-nuke via router (TIPO_ALLARMI/TIPO_PHISHING in channel_router, fuori da TIPI_LOG); D25: /security antinuke -> gruppo /antinuke (security era a 6824)
-- R5-2: NF-29 lockdown/panico (0110, lockdown_service, panico_riservato in ensure_module_enabled), NF-31 phishing (data/phishing_domains.txt, PHISHING_LIST_URL), NF-18 captcha immagine (captcha_tipo, sfide in memoria), AMD-002/003/005 forma-testo, VER-029 log compatto
+- Giri G1-G7, R5 (vedi git log): tempban modi, appelli, clear filtri, verify opzioni, lockdown/panico NF-29, phishing NF-31, captcha immagine NF-18, AMD-002/003/005/021, VER-029
+- R6-1 49cee20 SIC-042: /automod filtri phishing accorciatori|inviti_adulti (fetch_invite, cache _inviti_adulti con tetto)
+- R6-2 d63f5c2 anti-raid: core/security_join_logic.py; filtro-ingresso, nomi-vietati, segnali, ping-ruoli, elenco, segnala; lockdown kick/ban; retroattivo; rete
+- R6-3 da5164c /modban massa ban|unban|kick, /mod massa timeout|warn (core/moderation_bulk_logic.py, bulk_ban); _dopo_unban condiviso
+- R6-4 5b94357 /security verify tempi (VER-008/009/011/012/013); D25 terzo caso: /antiraid primo livello
 ## Cose imparate
-- Tabelle sicurezza in security_repo.run_migrations; le nuove di moderazione in core/migrations/NNNN (clean_db le svuota da information_schema)
-- Smoke oltre 2 min: lanciarlo con nohup su log; mai due pytest sullo stesso DB
-- Gruppo /mod: 11 figli diretti + sottogruppi caso(5), nota(5), avvisi(3); tetto 25. test_f7_moderazione_gruppi.py ATTESI va aggiornato a ogni comando nuovo
-- Il bot non puo scrivere a un bannato: DM e invito prima del ban; ban fallito = cancellare DM e invito
-- Isolamento: member.edit(roles=...) una sola chiamata; ruoli gestiti o sopra il bot restano; salvati solo i tolti
-- Moduli in cogs/moderation non iniziano per _ = cog: gli aiuti si chiamano _nome.py. Funzioni che iniziano per test_ nei moduli importati dai test vengono raccolte da pytest
-- Comandi distruttivi (elimina caso, svuota note, azzera warn) controllano manage_guild nel codice
-- Stato su DB PRIMA dell'azione irreversibile; UPSERT di stato da membro gia in stato = perdita dati. Job di scadenza: cancellare a ogni cambio di caso e proteggere l'handler con case_number
-- Test di corsa: apri_connessioni, poi mutazione con git stash push -- cogs core
-- Fake messaggi AutoMod ora hanno id
-- Smoke ~6 min: nohup su log in scratchpad; /security oltre 6800 = D25 (nuovo gruppo, aggiorna test_command_groups, test_f7_moderazione_gruppi, tests/support/command_policy.py)
-- Chi usa il router negli anti-nuke: i test devono patchare output_channel_repo._pool_provider
-- Docstring e messaggi: mai "/mod e /modban" in prosa (test_riferimenti_comandi li legge come comandi). Metodo di repo solo nei test = test_repository_callers fallisce
-- git stash dopo git add perde l'indice: non farlo prima di un commit
+- Tabelle sicurezza in security_repo.run_migrations; config anti-raid/automod in JSON: campi nuovi senza migrazione (_to_json/_from_json)
+- Smoke e suite oltre 2 min: nohup su log in scratchpad/r6mod (la scratchpad e' condivisa: file fuori dalla mia cartella spariscono)
+- Gruppi: /mod 13 figli+massa, /modban 6+massa, /antiraid 16, /security ~5100 dopo lo spostamento. ATTESI in test_f7_moderazione_gruppi, test_command_groups, tests/support/command_policy.py, locales/comandi.en.json (script locale.py)
+- Il bot non puo scrivere a un bannato: DM e invito prima del ban; ban fallito = cancellare DM
+- Stato su DB PRIMA dell'azione irreversibile; job di scadenza protetti con controllo nell'handler
+- Moduli in cogs/moderation non iniziano per _ = cog. Funzioni test_* nei moduli importati vengono raccolte
+- Docstring: mai "/mod e /modban" in prosa. Metodo di repo solo nei test = test_repository_callers fallisce
+- Stato in memoria da azzerare nei test: security_raid_state._ultimo_ingresso, security_join_logic.azzera_ingressi, automod._inviti_adulti
+- fake_member e' autospec: display_name/global_name vanno letti solo se servono (i _FakeMember dell'automod non hanno nick)
+- Nuove chiavi guild settings: SETTINGS_SCHEMA in cogs/utility/config_history.py + valori in tests/test_config_import_validation.py
 ## Aperto
-- M 1.10 soglie sui warn manuali (F9). OAuth: il token deve durare fino alla fine del ban (niente refresh): oltre ~7 giorni resta l'invito. Inviti di stati scaduti senza rientro restano fino a unban
-- Appelli: bottone nel DM di un bannato da provare live; spam-trap ha un suo sistema (non toccato). alt_detection (#92)
-- AutoMod #116: restano quasi tutte (nuovi filtri chiedono colonne in automod_advanced_repo; violazioni per regola non persistite)
-- Catalogo #115 ancora aperto per il resto (bulk, voce, nickname, DM personalizzati, motivi pronti)
+- M 1.10 soglie sui warn manuali (F9). OAuth rientro oltre 7 giorni. alt_detection (#92)
+- SIC-036 livelli di allerta (dipende da AMD-067), SIC-003…022 resto, SIC-039/040/044/046
+- AutoMod #116: quasi tutte aperte; #115: resto (voce, nickname, DM personalizzati, motivi pronti)
