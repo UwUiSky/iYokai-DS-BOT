@@ -1,7 +1,7 @@
 # Memoria dell'orchestratore
 
 ## Aggiornata
-11/10/2026 · ramo `main` · F7 unita
+14/10/2026 · ramo `main` · r2–r5 unite (r5 in verifica suite)
 
 ## Dove siamo
 - Il bot è in **zero server**. Nessuna prova live fatta: tutte le voci
@@ -47,6 +47,11 @@
   protetto fallisce: usare `GruppoYokai`.
 
 - 11/10: uniti #147 (pannello) e #67 (voci 11.1–11.10); suite 3565 verdi. Registro delle issue chiuse: `revisione/REGISTRO_RISOLTE.md` (aggiornarlo a ogni chiusura).
+
+- 14/10: uniti r2 (backup, musica F2), r3, r4 (utilità, economia, ticket/ModMail/log/voce) e r5 (moderazione: lockdown 0110, phishing, captcha; alert Kick + statistiche 0120–0121; core: premium/marchio/hot patch/politica comandi 0131–0134). D25: gruppi top-level 17 (`/economia`). Pesi: `moduli` ~6429, `admin` ~6432 su 6800 (limite alto: il prossimo comando va in un gruppo leggero).
+- Prossimi intervalli migrazioni: mod ≥0140, fun ≥0150, cor ≥0160. Worktree da pulire: bak, caccia_core, core, mod, mus, sec2, util, r5*.
+- Trappole: `ensure_module_enabled` è condiviso con `/report` (esentare); `bot.entitlements(limit=None)`; test non assegnano `db._pool` (monkeypatch); in `cogs/` solo `BaseModal`/`BaseView`; azzerare stato in memoria dei servizi nei test.
+- Lasciati r5: #59 ripiego kick/ban in quarantena (decide owner), SIC-042 parziale (inviti adulti/accorciatori), #115–#118 resto, #129/#130/#131 resto, NF-38 comandi del bot marchio, #122 resto, #140.
 
 ## Coda (in ordine)
 1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
