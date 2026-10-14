@@ -194,8 +194,8 @@ async def test_interrotto_a_meta_lo_sblocco_riapre_lo_stesso():
     testo, esplicito, vocale = _tre_canali()
     server = _server([testo, esplicito, vocale])
     prima = {c.id: c.pair() for c in server.channels}
-    vocale.errore = RuntimeError("il bot si e' fermato")  # non e' un errore di Discord: l'attivazione muore
-    with pytest.raises(RuntimeError):
+    vocale.errore = asyncio.CancelledError()  # il bot si ferma (chiusura, riavvio): l'attivazione muore a meta'
+    with pytest.raises(asyncio.CancelledError):
         await servizio.attiva(server, tipo=logica.TIPO_BLOCCO, avviato_da=1, motivo="prova")
     assert (await lockdown_repo.get_stato(GUILD_ID)).stato == logica.STATO_IN_CORSO
     assert vocale.ow.connect is None  # mai toccato, ma la riga di prima c'e' gia'
@@ -444,3 +444,63 @@ async def test_report_resta_aperto_ai_membri_durante_il_panico(monkeypatch):
     await servizio.attiva(server, tipo=logica.TIPO_PANICO, avviato_da=1, motivo="attacco")
     membro = fake_interaction(guild=server, user=fake_member(user_id=7))
     assert await shared.ensure_module_enabled(membro, shared.MODULE_REPORT) is True
+
+
+# ================================================================== giro revisore-capo r5
+async def _blocco_con_un_canale_che_non_si_riapre():
+    testo, altro = _canale(discord.TextChannel, 1), _canale(discord.TextChannel, 2)
+    allarmi = _canale(discord.TextChannel, 808)
+    server = _server([testo, altro, allarmi])
+    await output_channel_repo.imposta(GUILD_ID, router.TIPO_ALLARMI, 808)
+    await lockdown_repo.save_config(GUILD_ID, ConfigBlocco(sblocco_auto_minuti=30))
+    await servizio.attiva(server, tipo=logica.TIPO_PANICO, avviato_da=1, motivo="x")
+    allarmi.send.reset_mock()
+    testo.errore = discord.Forbidden(MagicMock(status=403, reason="x"), "Missing Permissions")
+    return server, testo, allarmi
+
+
+async def test_riapertura_a_meta_e_ripresa_dallo_sblocco_automatico(cog):
+    server, testo, allarmi = await _blocco_con_un_canale_che_non_si_riapre()
+    esito = await servizio.togli(server)
+    assert not esito.ok
+    assert (await lockdown_repo.get_stato(GUILD_ID)).stato == logica.STATO_IN_RIAPERTURA
+    allarmi.send.assert_awaited_once()  # il fallimento e' annunciato una volta
+    fine = datetime.now(timezone.utc) + timedelta(minutes=31)
+    assert await lockdown_repo.scaduti(fine) == [GUILD_ID]  # prima restava per sempre a meta'
+
+    cog.bot.get_guild = lambda i: server
+    allarmi.send.reset_mock()
+    await cog._sblocco_automatico.coro(cog)  # ancora fallito: niente nuovo annuncio
+    allarmi.send.assert_not_awaited()
+    assert await lockdown_repo.get_stato(GUILD_ID) is not None
+
+    testo.errore = None  # il bot ora ha il permesso
+    await lockdown_repo.salva_server(GUILD_ID, verifica_prima=None, inviti_chiusi_da_noi=False)
+    await servizio.togli(server, ritenta=True)
+    assert await lockdown_repo.get_stato(GUILD_ID) is None
+    allarmi.send.assert_awaited_once()  # la riuscita si annuncia
+
+
+async def test_errore_imprevisto_su_un_canale_non_ferma_gli_altri(monkeypatch):
+    uno, due = _canale(discord.TextChannel, 1), _canale(discord.TextChannel, 2)
+    server = _server([uno, due])
+
+    async def _rotto(*a, **k):
+        raise RuntimeError("guasto")
+
+    uno.set_permissions = _rotto
+    uno.overwrites_for = lambda target: (_ for _ in ()).throw(RuntimeError("guasto"))
+    esito = await servizio.attiva(server, tipo=logica.TIPO_BLOCCO, avviato_da=1, motivo="x")
+    assert esito.ok and esito.bloccati == 1 and esito.falliti == 1
+
+
+async def test_comando_risponde_anche_se_il_servizio_solleva(cog, monkeypatch):
+    server = _server([_canale(discord.TextChannel, 1)])
+    monkeypatch.setattr(servizio, "attiva", AsyncMock(side_effect=RuntimeError("db")))
+    i = _comando(server)
+    await cog.blocco_attiva.callback(cog, i, None)
+    assert "togli" in i.followup.send.await_args.args[0]
+    monkeypatch.setattr(servizio, "togli", AsyncMock(side_effect=RuntimeError("db")))
+    i = _comando(server)
+    await cog.blocco_togli.callback(cog, i)
+    assert "Rilancia" in i.followup.send.await_args.args[0]

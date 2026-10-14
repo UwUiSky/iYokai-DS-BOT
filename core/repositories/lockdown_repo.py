@@ -120,7 +120,7 @@ class LockdownRepository:
     async def scaduti(self, adesso: datetime) -> list[int]:
         righe = await self._pool.fetch(
             "SELECT guild_id FROM lockdown_stato WHERE finisce_il IS NOT NULL AND finisce_il <= $1 "
-            "AND stato = 'attivo'",
+            "AND stato IN ('attivo', 'in_riapertura')",
             adesso,
         )
         return [r["guild_id"] for r in righe]

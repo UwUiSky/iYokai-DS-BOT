@@ -135,12 +135,21 @@ async def _blocca_canale(guild: discord.Guild, canale, permessi: tuple[str, ...]
     return "bloccato"
 
 
+async def _senza_eccezioni(lavoro, canale_id: int) -> str:
+    """Un errore imprevisto su un canale (database, bug) e' un canale «fallito»: gli altri proseguono."""
+    try:
+        return await lavoro
+    except Exception:
+        logger.exception("Errore imprevisto sul canale %s", canale_id)
+        return "fallito"
+
+
 async def _in_gruppi(elementi: list, lavoro) -> list[str]:
-    """Esegue `lavoro(elemento)` a gruppi, con pausa; si ferma se arriva «togli»."""
+    """Esegue `lavoro(elemento)` a gruppi, con pausa."""
     esiti: list[str] = []
     for inizio in range(0, len(elementi), GRANDEZZA_GRUPPO):
         gruppo = elementi[inizio : inizio + GRANDEZZA_GRUPPO]
-        esiti += await asyncio.gather(*(lavoro(e) for e in gruppo))
+        esiti += await asyncio.gather(*(_senza_eccezioni(lavoro(e), e.channel_id) for e in gruppo))
         if inizio + GRANDEZZA_GRUPPO < len(elementi):
             await asyncio.sleep(PAUSA_TRA_GRUPPI)
     return esiti
@@ -178,7 +187,9 @@ async def attiva(
             if guild.id in _da_fermare:
                 break
             gruppo = piano[inizio : inizio + GRANDEZZA_GRUPPO]
-            esiti += await asyncio.gather(*(_blocca_canale(guild, c, p, razon) for c, p in gruppo))
+            esiti += await asyncio.gather(
+                *(_senza_eccezioni(_blocca_canale(guild, c, p, razon), c.id) for c, p in gruppo)
+            )
             await asyncio.sleep(PAUSA_TRA_GRUPPI)
         if guild.id in _da_fermare:
             return Esito(False, "Blocco interrotto da «togli»: i canali gia' toccati si riaprono adesso.",
@@ -194,8 +205,14 @@ async def attiva(
     return Esito(True, testo, bloccati=bloccati, saltati=saltati, falliti=falliti)
 
 
-async def togli(guild: discord.Guild, *, riepilogo_in: discord.abc.Messageable | None = None) -> Esito:
-    """Riapre tutto com'era. Si puo' richiamare finche' restano canali da riaprire."""
+async def togli(
+    guild: discord.Guild, *, riepilogo_in: discord.abc.Messageable | None = None, ritenta: bool = False
+) -> Esito:
+    """
+    Riapre tutto com'era. Si puo' richiamare finche' restano canali da riaprire.
+    Con `ritenta` (sblocco automatico che riprova ogni minuto) l'annuncio nel canale
+    degli allarmi arriva solo a riapertura riuscita: il fallimento era gia' stato annunciato.
+    """
     _da_fermare.add(guild.id)
     try:
         async with _blocco(guild.id):
@@ -242,8 +259,10 @@ async def togli(guild: discord.Guild, *, riepilogo_in: discord.abc.Messageable |
             )
     finally:
         _da_fermare.discard(guild.id)
-    await _annuncia(guild, testo, (), riepilogo_in, titolo_ping=False)
-    return Esito(falliti == 0 and server_ok, testo, bloccati=esiti.count("riaperto"), falliti=falliti)
+    riuscito = falliti == 0 and server_ok
+    if riuscito or not ritenta:
+        await _annuncia(guild, testo, (), riepilogo_in, titolo_ping=False)
+    return Esito(riuscito, testo, bloccati=esiti.count("riaperto"), falliti=falliti)
 
 
 async def _riapri_ingressi(guild: discord.Guild, stato, motivo: str) -> bool:

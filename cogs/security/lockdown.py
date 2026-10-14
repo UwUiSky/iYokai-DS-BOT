@@ -32,6 +32,7 @@ from core.lockdown_logic import (
     MAX_MOTIVO,
     MAX_RUOLI_AVVISO,
     MAX_SBLOCCO_MINUTI,
+    STATO_IN_RIAPERTURA,
     TIPO_BLOCCO,
     TIPO_PANICO,
     puo_agire_in_panico,
@@ -89,15 +90,32 @@ class LockdownCog(CogConGruppi, commands.Cog):
     # ------------------------------------------------------------ lavoro comune
     async def _attiva(self, interaction: discord.Interaction, tipo: str, motivo: str | None) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # 500 canali: ben oltre i 3 secondi
-        esito = await servizio.attiva(
-            interaction.guild, tipo=tipo, avviato_da=interaction.user.id,
-            motivo=motivo or "nessun motivo indicato", riepilogo_in=interaction.channel,
-        )
+        try:
+            esito = await servizio.attiva(
+                interaction.guild, tipo=tipo, avviato_da=interaction.user.id,
+                motivo=motivo or "nessun motivo indicato", riepilogo_in=interaction.channel,
+            )
+        except Exception:
+            logger.exception("Blocco non riuscito (server %s)", interaction.guild.id)
+            await interaction.followup.send(
+                "Errore imprevisto: il blocco potrebbe essere rimasto a meta'. "
+                "Usa «togli» per riaprire tutto com'era.",
+                ephemeral=True,
+            )
+            return
         await interaction.followup.send(esito.messaggio[:2000], ephemeral=True)
 
     async def _togli(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
-        esito = await servizio.togli(interaction.guild, riepilogo_in=interaction.channel)
+        try:
+            esito = await servizio.togli(interaction.guild, riepilogo_in=interaction.channel)
+        except Exception:
+            logger.exception("Sblocco non riuscito (server %s)", interaction.guild.id)
+            await interaction.followup.send(
+                "Errore imprevisto durante la riapertura. Rilancia «togli»: riprende da dove si e' fermato.",
+                ephemeral=True,
+            )
+            return
         await interaction.followup.send(esito.messaggio[:2000], ephemeral=True)
 
     # ------------------------------------------------------------ /mod blocco
@@ -252,12 +270,21 @@ class LockdownCog(CogConGruppi, commands.Cog):
     @tasks.loop(seconds=60)
     async def _sblocco_automatico(self) -> None:
         try:
-            for guild_id in await lockdown_repo.scaduti(datetime.now(timezone.utc)):
-                guild = self.bot.get_guild(guild_id)
-                if guild is not None:
-                    await servizio.togli(guild)
+            scaduti = await lockdown_repo.scaduti(datetime.now(timezone.utc))
         except Exception:
             logger.exception("Errore nello sblocco automatico del panico")
+            return
+        for guild_id in scaduti:
+            guild = self.bot.get_guild(guild_id)
+            if guild is None:
+                continue
+            try:
+                stato = await lockdown_repo.get_stato(guild_id)
+                # Una riapertura rimasta a meta' si riprova ogni minuto, senza ripetere l'annuncio del fallimento.
+                ritenta = stato is not None and stato.stato == STATO_IN_RIAPERTURA
+                await servizio.togli(guild, ritenta=ritenta)
+            except Exception:
+                logger.exception("Errore nello sblocco automatico del panico (server %s)", guild_id)
 
     @_sblocco_automatico.before_loop
     async def _prima_dello_sblocco(self) -> None:
