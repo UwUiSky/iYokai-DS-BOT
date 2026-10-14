@@ -8,10 +8,22 @@ un'Interaction finta, verifica del salvataggio reale sul database.
 
 from unittest.mock import MagicMock
 
+import pytest
+
 
 from core.database import Database
 from core.premium import PremiumModule
 from cogs.utility.setup import SetupWizardView
+import core.config_schema as config_schema_module
+
+
+@pytest.fixture(autouse=True)
+def _moduli_registrati(reset_premium_registry):
+    """`imposta_modulo` (D16) accetta solo moduli registrati: qui quelli finti del test."""
+    from core.premium import registry
+
+    for nome in ("wiz_a", "wiz_b"):
+        registry.register(PremiumModule(category="utility", name=nome, display_name=nome, description=nome))
 
 
 class _FakeResponse:
@@ -92,7 +104,7 @@ async def test_salvataggio_persiste_solo_i_moduli_effettivamente_cambiati():
 
         import cogs.utility.setup as setup_module
         original_db = setup_module.db
-        setup_module.db = database
+        setup_module.db = config_schema_module.db = database
         try:
             view = SetupWizardView(guild_id, _modules_with_state())
             # Step 0 ("wiz_a"): disattiva. Poi avanti, step 1 ("wiz_b"): attiva. Poi Salva.
@@ -104,7 +116,7 @@ async def test_salvataggio_persiste_solo_i_moduli_effettivamente_cambiati():
             assert await database.is_module_active_for_guild(guild_id, "wiz_a") is False
             assert await database.is_module_active_for_guild(guild_id, "wiz_b") is True
         finally:
-            setup_module.db = original_db
+            setup_module.db = config_schema_module.db = original_db
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 555555560")
         await database.pool.execute(

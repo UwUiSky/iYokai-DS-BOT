@@ -160,13 +160,49 @@ def registra_dopo_imposta_ruolo(callback) -> None:
     _dopo_imposta_ruolo = callback
 
 
+MESSAGGIO_RUOLO_ADMIN = (
+    "Per scegliere il ruolo admin del bot serve il permesso «Amministratore» "
+    "(o essere il proprietario del server): quel ruolo apre anche i comandi di sicurezza."
+)
+
+
+class RuoloAdminNegato(ValueError):
+    """Chi scrive non può scegliere il ruolo admin del bot (D28)."""
+
+    def __init__(self) -> None:
+        super().__init__(MESSAGGIO_RUOLO_ADMIN)
+
+
+def errore_ruolo_admin(
+    guild: discord.Guild, autore: discord.Member | None, vecchio: int | None, nuovo
+) -> str | None:
+    """
+    D28: il ruolo admin del bot vale anche per il livello SECURITY
+    («Amministratore»). Metterne uno nuovo (diverso da quello attuale)
+    richiede «Amministratore» o la proprietà del server; toglierlo no.
+    Restituisce il motivo del rifiuto, o None. Punto unico per pannello,
+    `/admin config import` e `/admin config rollback`.
+    """
+    if nuovo is None or nuovo == vecchio:
+        return None
+    if autore is not None and (autore.id == guild.owner_id or autore.guild_permissions.administrator):
+        return None
+    return MESSAGGIO_RUOLO_ADMIN
+
+
 async def imposta_ruolo(
     guild: discord.Guild,
     tipo: TipoRuolo,
     ruolo: discord.Role | None,
     changed_by: int | None = None,
+    *,
+    autore: discord.Member | None = None,
 ) -> None:
-    """Salva il ruolo (None lo toglie). Rifiuta @everyone e ruoli di altri server."""
+    """
+    Salva il ruolo (None lo toglie). Rifiuta @everyone e ruoli di altri
+    server. Il ruolo admin nuovo lo sceglie solo `autore` con
+    «Amministratore» o proprietario (`RuoloAdminNegato`, D28).
+    """
     if ruolo is not None:
         if ruolo.id == guild.id:
             raise ValueError("Non puoi usare @everyone come ruolo del bot.")
@@ -174,6 +210,8 @@ async def imposta_ruolo(
             raise ValueError("Questo ruolo non esiste in questo server.")
     vecchio = await leggi_ruolo(guild.id, tipo)
     nuovo = ruolo.id if ruolo is not None else None
+    if tipo is TipoRuolo.ADMIN and errore_ruolo_admin(guild, autore, vecchio, nuovo) is not None:
+        raise RuoloAdminNegato()
     await db.set_guild_setting(guild.id, tipo.value, nuovo, changed_by)
     if _dopo_imposta_ruolo is not None:
         try:

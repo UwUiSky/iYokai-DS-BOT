@@ -24,6 +24,10 @@ wavelink>=3.5.1
 # CVE-2025-69226 (path traversal nei file statici) già risolte.
 aiohttp>=3.13.3
 
+# Pagine del pannello web (core/web_panel_server.py): template con escape automatico
+# dell'HTML. >=3.1.6 per le correzioni di sicurezza della sandbox (CVE-2025-27516).
+jinja2>=3.1.6
+
 # Cifratura AES-256-GCM dei token OAuth altrui (restore utenti, SPEC.md §11.11)
 cryptography>=42.0.0
 

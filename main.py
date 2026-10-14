@@ -85,6 +85,10 @@ from core.restore_web_server import build_app as restore_web_build_app
 from core.restore_web_server import start_server as restore_web_start_server
 from core.custom_webhook_server import build_app as custom_webhook_build_app
 from core.custom_webhook_server import start_server as custom_webhook_start_server
+from core.web_panel_logic import pannello_configurato, proxy_fidati
+from core.web_panel_server import build_app as web_panel_build_app
+from core.web_panel_server import start_server as web_panel_start_server
+from core.repositories.web_panel_session_repo import web_panel_session_repo
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.music_worker_bot import MusicWorkerBot
 from core.blacklist_exit import esci_da_server_in_blacklist
@@ -761,6 +765,28 @@ async def main() -> None:
         )
     bot.custom_webhook_server_running = custom_webhook_runner is not None
 
+    # Pannello web (SPEC §24, #91): spento finché mancano le variabili del .env.
+    web_panel_runner = None
+    if pannello_configurato(
+        config.OAUTH2_CLIENT_ID, config.OAUTH2_CLIENT_SECRET, config.WEB_PANEL_SECRET_KEY, config.WEB_PANEL_PUBLIC_URL
+    ):
+        web_panel_app = web_panel_build_app(
+            bot=bot,
+            sessioni=web_panel_session_repo,
+            oauth=restore_orchestrator,
+            client_id=config.OAUTH2_CLIENT_ID,
+            client_secret=config.OAUTH2_CLIENT_SECRET,
+            url_pubblico=config.WEB_PANEL_PUBLIC_URL,
+            chiave=config.WEB_PANEL_SECRET_KEY,
+            proxy_fidati=proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY),
+        )
+        web_panel_runner = await web_panel_start_server(web_panel_app, config.WEB_BIND_HOST, config.WEB_PANEL_PORT)
+    else:
+        logger.info(
+            "Pannello web spento: servono OAUTH2_CLIENT_ID, OAUTH2_CLIENT_SECRET, "
+            "WEB_PANEL_SECRET_KEY (32+ caratteri) e WEB_PANEL_PUBLIC_URL."
+        )
+
     async def _avvisa_owner(messaggio: str) -> None:
         owner = await bot.fetch_user(config.OWNER_ID)
         await owner.send(messaggio)
@@ -791,6 +817,8 @@ async def main() -> None:
             await restore_web_runner.cleanup()
         if custom_webhook_runner is not None:
             await custom_webhook_runner.cleanup()
+        if web_panel_runner is not None:
+            await web_panel_runner.cleanup()
         await spegni_ordinatamente(
             [bot, creator, *worker_bots],
             [

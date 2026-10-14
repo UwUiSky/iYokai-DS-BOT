@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titolo %}iYokai Panel{% endblock %}</title>
+<link rel="stylesheet" href="/static/pannello.css">
+</head>
+<body>
+<header>
+  <strong><a href="/">iYokai Panel</a></strong>
+  <nav>
+    <a href="/wiki">Comandi</a>
+    {% if utente_id %}
+    <form method="post" action="/esci"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondario" type="submit">Esci</button></form>
+    {% else %}
+    <a class="bottone" href="/accedi">Accedi con Discord</a>
+    {% endif %}
+  </nav>
+</header>
+<main>
+{% if messaggio %}<p class="avviso {{ 'errore' if errore else 'ok' }}">{{ messaggio }}</p>{% endif %}
+{% block corpo %}{% endblock %}
+</main>
+</body>
+</html>

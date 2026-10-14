@@ -480,6 +480,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("ai_traduzione_canali", "Canali con traduzione automatica", colonna_server="guild_id"),
     _t("ai_crediti", "Immagini AI comprate con le monete del server", colonne_utente=("user_id",),
        colonna_server="guild_id", utente="cancella", esporta=True),
+    _t("web_panel_sessions", "Sessioni di accesso al pannello web (solo l'impronta del cookie)",
+       colonne_utente=("user_id",), utente="cancella", server="conserva", scadenza=Scadenza("expires_at", 0),
+       nota="nessun token di Discord"),
 )
 # fmt: on
 

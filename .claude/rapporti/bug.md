@@ -205,3 +205,7 @@
 - core/ai_immagini_logic.py · PNG 5000x5000 decodificato prima del controllo, Pillow sul loop · confermato · media · corretto
 - core/ai_testi_logic.py · "violazione": "false" = violazione; categorie non lista = TypeError · confermato · bassa · corretto
 - Lasciati: tetto e quota funzione in gara tra persone diverse (sforo di poche chiamate); command_search replace di /percorso anche dentro percorsi più lunghi.
+- 14/10/2026 · `core/web_panel_logic.py` Referrer-Policy no-referrer → i browser mandano `Origin: null` sui POST, il pannello rifiuta ogni salvataggio (403) · alta · corretto (same-origin)
+- 14/10/2026 · `core/web_panel_server.py` del_cookie dei `__Host-` senza Secure: il browser ignora la cancellazione (uscita, state) · bassa · corretto
+- 14/10/2026 · `core/panel_bridge.py:applica_ruolo` chi ha solo «Gestisci server» sceglie il ruolo admin del bot (che vale anche per Livello.SECURITY = Amministratore): scalata, come già `/admin config import` · media · aperto (scelta di progetto)
+- 14/10/2026 · `core/web_panel_server.py:_server` ogni GET su un server dove l'utente non è in cache chiama `fetch_member` (120/min per IP) · bassa · aperto

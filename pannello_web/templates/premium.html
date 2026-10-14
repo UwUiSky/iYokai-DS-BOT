@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titolo %}Premium · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Premium · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Torna al server</a></p>
+<div class="carta">
+{% if premium.righe %}<ul>{% for r in premium.righe %}<li>{{ r }}</li>{% endfor %}</ul>
+{% else %}<p>Nessuno sblocco premium attivo in questo server.</p>{% endif %}
+{% if premium.alpha %}<p class="tenue">Fase alpha: per ora tutti i moduli premium sono sbloccati per tutti.</p>{% endif %}
+</div>
+<h2>Come sbloccarlo</h2>
+<ul>
+  <li>Abbonamento dentro Discord{% if premium.negozio %}: <a href="{{ premium.negozio }}" rel="noopener noreferrer">apri il negozio</a>{% else %} (il negozio non è ancora disponibile){% endif %}.</li>
+  <li>Un codice premium: <code>/admin premium riscatta</code>.</li>
+  <li>Le monete o la cassa del server, dai comandi del bot.</li>
+</ul>
+{% endblock %}

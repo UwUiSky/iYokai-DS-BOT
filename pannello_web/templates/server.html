@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titolo %}{{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>{{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a> · <a href="/server/{{ guild.id }}/premium">Premium</a></p>
+
+<h2>Lingua del server</h2>
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/lingua">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <select name="lingua" aria-label="Lingua">
+    {% for codice, nome in lingue %}<option value="{{ codice }}" {{ 'selected' if codice == stato.lingua }}>{{ nome }}</option>{% endfor %}
+  </select>
+  <button type="submit">Salva</button>
+</form>
+
+<h2>Ruoli del bot</h2>
+<p>Il ruolo admin apre anche i comandi di sicurezza: per sceglierlo serve il permesso «Amministratore» (o essere il proprietario del server).</p>
+{% for r in stato.ruoli_bot %}
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/ruolo">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="tipo" value="{{ r.tipo }}">
+  <label>{{ r.etichetta }}</label>
+  <select name="ruolo_id" aria-label="{{ r.etichetta }}">
+    <option value="">— nessuno (bastano i permessi di Discord) —</option>
+    {% for ruolo in stato.ruoli_server %}<option value="{{ ruolo.id }}" {{ 'selected' if ruolo.id == r.attuale }}>{{ ruolo.nome }}</option>{% endfor %}
+  </select>
+  <button type="submit">Salva</button>
+</form>
+{% endfor %}
+
+<h2>Moduli</h2>
+{% for categoria, moduli in categorie %}
+<h3>{{ categoria }}</h3>
+<div class="griglia">
+{% for m in moduli %}
+  <form class="carta" method="post" action="/server/{{ guild.id }}/modulo">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="nome" value="{{ m.nome }}">
+    <input type="hidden" name="attivo" value="{{ '0' if m.attivo else '1' }}">
+    <div class="riga"><strong>{{ m.titolo }}</strong>
+      {% if m.premium %}<span class="etichetta">premium</span>{% endif %}
+      <span class="etichetta">{{ 'acceso' if m.attivo else 'spento' }}</span></div>
+    <p class="tenue">{{ m.descrizione }}</p>
+    <button type="submit" class="{{ 'secondario' if m.attivo }}">{{ 'Spegni' if m.attivo else 'Accendi' }}</button>
+  </form>
+{% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

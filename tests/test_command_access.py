@@ -332,3 +332,33 @@ async def test_il_contatore_errori_non_cresce_sul_rifiuto_e_cresce_sugli_altri(f
     assert error_counter.count_in_window() == prima
     await handle_app_command_error(_interazione(), app_commands.AppCommandError("boom"))
     assert error_counter.count_in_window() == prima + 1
+
+
+# ---- D28: il ruolo admin del bot (vale anche per SECURITY) ----
+def test_errore_ruolo_admin():
+    guild = fake_guild(guild_id=77, owner_id=1)
+    gestore = fake_member(5, guild_permissions=discord.Permissions(manage_guild=True))
+    amministratore = fake_member(6, guild_permissions=discord.Permissions(administrator=True))
+    proprietario = fake_member(1)
+    assert ca.errore_ruolo_admin(guild, gestore, None, RUOLO) == ca.MESSAGGIO_RUOLO_ADMIN
+    assert ca.errore_ruolo_admin(guild, None, None, RUOLO) == ca.MESSAGGIO_RUOLO_ADMIN
+    assert ca.errore_ruolo_admin(guild, gestore, RUOLO, RUOLO) is None  # invariato
+    assert ca.errore_ruolo_admin(guild, gestore, RUOLO, None) is None  # toglierlo non apre nulla
+    assert ca.errore_ruolo_admin(guild, amministratore, None, RUOLO) is None
+    assert ca.errore_ruolo_admin(guild, proprietario, None, RUOLO) is None
+
+
+async def test_imposta_ruolo_admin_senza_amministratore_rifiutato(finto_db):
+    guild = fake_guild(guild_id=77, owner_id=1)
+    ruolo = fake_role(role_id=RUOLO)
+    guild.get_role.side_effect = lambda rid: ruolo if rid == RUOLO else None
+    gestore = fake_member(5, guild_permissions=discord.Permissions(manage_guild=True))
+    with pytest.raises(ca.RuoloAdminNegato):
+        await ca.imposta_ruolo(guild, ca.TipoRuolo.ADMIN, ruolo, changed_by=5, autore=gestore)
+    with pytest.raises(ca.RuoloAdminNegato):
+        await ca.imposta_ruolo(guild, ca.TipoRuolo.ADMIN, ruolo, changed_by=5)
+    assert finto_db.scritti == []
+    await ca.imposta_ruolo(guild, ca.TipoRuolo.MOD, ruolo, changed_by=5, autore=gestore)  # solo l'admin
+    amministratore = fake_member(6, guild_permissions=discord.Permissions(administrator=True))
+    await ca.imposta_ruolo(guild, ca.TipoRuolo.ADMIN, ruolo, changed_by=6, autore=amministratore)
+    assert await ca.leggi_ruolo(77, ca.TipoRuolo.ADMIN) == RUOLO

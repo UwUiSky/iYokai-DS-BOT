@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block corpo %}
+{% if not utente_id %}
+<h1>Configura iYokai dal browser</h1>
+<p>Entra con Discord: vedrai i server dove puoi usare i comandi di <code>/admin</code>
+(permesso «Gestisci server», ruolo admin del bot o proprietario del server).</p>
+<p><a class="bottone" href="/accedi">Accedi con Discord</a></p>
+<p class="tenue">Il pannello chiede a Discord solo chi sei (<code>identify</code>). Non legge i tuoi server, non salva token.</p>
+{% else %}
+<h1>I tuoi server</h1>
+{% if server %}
+<div class="griglia">
+{% for g in server %}
+  <a class="carta" href="/server/{{ g.id }}"><strong>{{ g.name }}</strong><br><span class="tenue">{{ g.id }}</span></a>
+{% endfor %}
+</div>
+{% else %}
+<p>Nessun server da gestire: il bot deve essere nel server e tu devi avere il permesso «Gestisci server» o il ruolo admin del bot.</p>
+{% endif %}
+{% endif %}
+{% endblock %}

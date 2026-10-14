@@ -332,10 +332,15 @@ async def test_imposta_ruolo_avvisa_chi_si_e_registrato_con_vecchio_e_nuovo(clea
 
     ca.registra_dopo_imposta_ruolo(callback)
     try:
-        await ca.imposta_ruolo(guild, TipoRuolo.ADMIN, ruolo)
+        import discord
+
+        from tests.support.discord_fakes import fake_member
+
+        autore = fake_member(5, guild_permissions=discord.Permissions(administrator=True))
+        await ca.imposta_ruolo(guild, TipoRuolo.ADMIN, ruolo, autore=autore)
         nuovo_ruolo = MagicMock()
         nuovo_ruolo.id = 44
-        await ca.imposta_ruolo(guild, TipoRuolo.ADMIN, nuovo_ruolo)
+        await ca.imposta_ruolo(guild, TipoRuolo.ADMIN, nuovo_ruolo, autore=autore)
         await ca.imposta_ruolo(guild, TipoRuolo.ADMIN, None)
     finally:
         ca.registra_dopo_imposta_ruolo(None)

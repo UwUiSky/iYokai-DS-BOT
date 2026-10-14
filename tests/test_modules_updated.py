@@ -13,6 +13,7 @@ import pytest
 
 import cogs.utility.config_history as ch
 import cogs.utility.setup as modulo_setup
+import core.config_schema as config_schema_module
 from cogs.utility.config_history import ConfigHistoryCog, ResetConfirmView, RollbackConfirmView
 from cogs.utility.setup import SetupWizardView
 from core.database import Database
@@ -39,6 +40,7 @@ async def database(monkeypatch):
     await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD)
     monkeypatch.setattr(ch, "db", database)
     monkeypatch.setattr(modulo_setup, "db", database)
+    monkeypatch.setattr(config_schema_module, "db", database)
     yield database
     await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD)
     await database.close()
@@ -110,9 +112,13 @@ async def test_import_emette_solo_per_i_cambiati(database, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_wizard_emette_per_i_moduli_cambiati(database):
+async def test_wizard_emette_per_i_moduli_cambiati(database, reset_premium_registry):
+    from core.premium import registry
+
     a = PremiumModule(category="utility", name="wiz_a", display_name="A", description="A")
     b = PremiumModule(category="utility", name="wiz_b", display_name="B", description="B")
+    registry.register(a)
+    registry.register(b)  # imposta_modulo (D16) accetta solo moduli registrati
     await database.set_module_active_for_guild(GUILD, "wiz_a", True)
     await database.set_module_active_for_guild(GUILD, "wiz_b", False)
     vista = SetupWizardView(GUILD, [(a, True), (b, False)])

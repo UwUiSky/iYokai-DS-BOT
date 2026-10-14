@@ -39,6 +39,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.config_schema import imposta_modulo
 from core.database import db
 from core.premium import registry, PremiumModule
 from core.setup_wizard_logic import is_last_step, next_step, previous_step
@@ -138,22 +139,8 @@ class SetupView(BaseView):
             active = module_name in self.selected_values
             if active == era_attivo:
                 continue  # nessun cambiamento reale: non scrivere né loggare nulla
-            await db.set_module_active_for_guild(
-                self.guild_id, module_name, active, changed_by=interaction.user.id
-            )
-            # SPEC.md §1.2: emesso SOLO per un cambiamento REALE (mai
-            # per un modulo lasciato invariato), stesso identico
-            # criterio usato sopra per lo storico Config Diff &
-            # Rollback — così i due si allineano sempre. Passa da
-            # interaction.client (il Bot vero a runtime) invece di
-            # tenere un riferimento al bot sulla view: nessun
-            # consumatore lo ascolta ancora (infrastruttura pronta,
-            # come invite_tracker prima di Spam Trap — vedi
-            # PROGRESS.md), un futuro listener si registra con
-            # @commands.Cog.listener() su "on_modules_updated".
-            interaction.client.dispatch(
-                "modules_updated", self.guild_id, module_name, active, interaction.user.id
-            )
+            # D16: stesso punto unico del pannello web (storico + evento `modules_updated`).
+            await imposta_modulo(interaction.client, self.guild_id, module_name, active, interaction.user.id)
 
         self.stop()
         await interaction.response.edit_message(
@@ -276,13 +263,9 @@ class SetupWizardView(BaseView):
             for module, was_enabled in self.modules_with_state:
                 now_enabled = self.selected[module.name]
                 if now_enabled != was_enabled:
-                    await db.set_module_active_for_guild(
-                        self.guild_id, module.name, now_enabled, changed_by=interaction.user.id
-                    )
-                    # M 10.13: stesso evento del salvataggio di /admin setup attiva.
-                    interaction.client.dispatch(
-                        "modules_updated", self.guild_id, module.name, now_enabled,
-                        interaction.user.id,
+                    # M 10.13 e D16: stesso punto unico di /admin setup attiva e del pannello.
+                    await imposta_modulo(
+                        interaction.client, self.guild_id, module.name, now_enabled, interaction.user.id
                     )
             for child in self.children:
                 child.disabled = True

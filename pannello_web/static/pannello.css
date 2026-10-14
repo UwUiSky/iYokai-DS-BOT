@@ -1,0 +1,23 @@
+/* Pannello web di iYokai: un solo foglio di stile, niente script. */
+:root{--sfondo:#f6f6f8;--carta:#fff;--testo:#1d1d24;--tenue:#5d5d6b;--bordo:#dedee6;--accento:#5b4bdb;--ok:#1f8a4c;--errore:#b42318}
+@media (prefers-color-scheme:dark){:root{--sfondo:#15151b;--carta:#1f1f28;--testo:#ececf2;--tenue:#a0a0b0;--bordo:#33333f;--accento:#9a8cff;--ok:#5bd28f;--errore:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sfondo);color:var(--testo);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accento)}
+header{display:flex;gap:1rem;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid var(--bordo);background:var(--carta)}
+header nav{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+main{max-width:960px;margin:0 auto;padding:1rem}
+h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:2rem}
+.carta{background:var(--carta);border:1px solid var(--bordo);border-radius:10px;padding:1rem;margin:.75rem 0}
+.griglia{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem}
+.riga{display:flex;gap:.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.tenue{color:var(--tenue);font-size:.9rem}
+.avviso{padding:.6rem .8rem;border-radius:8px;border:1px solid var(--bordo)}
+.avviso.ok{border-color:var(--ok);color:var(--ok)}.avviso.errore{border-color:var(--errore);color:var(--errore)}
+button,.bottone{font:inherit;padding:.4rem .9rem;border-radius:8px;border:1px solid var(--accento);background:var(--accento);color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
+button.secondario{background:transparent;color:var(--accento)}
+select,input[type=search]{font:inherit;padding:.35rem .5rem;border-radius:8px;border:1px solid var(--bordo);background:var(--carta);color:var(--testo);max-width:100%}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+td,th{text-align:left;padding:.4rem;border-bottom:1px solid var(--bordo);vertical-align:top;word-break:break-word}
+code{font-size:.9em}
+.etichetta{font-size:.75rem;border:1px solid var(--bordo);border-radius:999px;padding:0 .5rem}
