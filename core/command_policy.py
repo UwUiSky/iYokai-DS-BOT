@@ -20,6 +20,7 @@ queste funzioni, sia per il comando sia per il futuro pannello (D16). Il control
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -35,6 +36,14 @@ MAX_VOCI = 250
 MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
 PREFISSI_SEMPRE_APERTI = ("admin", "owner", "utility politica")
+
+_blocchi_elenco: dict[int, asyncio.Lock] = {}
+
+
+def _blocco_elenco(guild_id: int) -> asyncio.Lock:
+    """Un solo cambio alla volta agli elenchi di un server: leggi-modifica-scrivi non si perde aggiunte."""
+    return _blocchi_elenco.setdefault(guild_id, asyncio.Lock())
+
 
 MOTIVO_COMANDO_OFF = "pol_comando_spento"
 MOTIVO_UTENTE_IGNORATO = "pol_ignorato"
@@ -123,23 +132,24 @@ async def modifica_elenco(guild_id: int, chiave: str, valore, *, aggiungi: bool,
             raise VoceNonValida(str(valore)[:MAX_LUNGHEZZA_PERCORSO])
     elif not isinstance(valore, int) or isinstance(valore, bool) or valore <= 0:
         raise VoceNonValida(str(valore))
-    attuale = await db.get_guild_setting(guild_id, chiave, [])
-    attuale = list(attuale) if isinstance(attuale, list) else []
-    if aggiungi:
-        if valore in attuale:
-            return False
-        if len(attuale) >= MAX_VOCI:
-            raise ElencoPieno(chiave)
-        attuale.append(valore)
-    else:
-        if valore not in attuale:
-            return False
-        attuale.remove(valore)
-    if attuale:
-        await db.set_guild_setting(guild_id, chiave, attuale, changed_by=changed_by)
-    else:
-        await db.remove_guild_setting(guild_id, chiave, changed_by=changed_by)
-    return True
+    async with _blocco_elenco(guild_id):
+        attuale = await db.get_guild_setting(guild_id, chiave, [])
+        attuale = list(attuale) if isinstance(attuale, list) else []
+        if aggiungi:
+            if valore in attuale:
+                return False
+            if len(attuale) >= MAX_VOCI:
+                raise ElencoPieno(chiave)
+            attuale.append(valore)
+        else:
+            if valore not in attuale:
+                return False
+            attuale.remove(valore)
+        if attuale:
+            await db.set_guild_setting(guild_id, chiave, attuale, changed_by=changed_by)
+        else:
+            await db.remove_guild_setting(guild_id, chiave, changed_by=changed_by)
+        return True
 
 
 async def azzera_elenco(guild_id: int, chiave: str, *, changed_by: int | None) -> bool:

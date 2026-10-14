@@ -60,6 +60,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._ultima_sync: dict[int, float] = {}
+        self._sync_in_corso: set[int] = set()
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
@@ -99,10 +100,18 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-        self._ultima_sync[guild.id] = adesso
-        await interaction.response.defer(ephemeral=True)
-        esiti = await risincronizza_server(self.bot, guild)
+        if guild.id in self._sync_in_corso:
+            await interaction.response.send_message(await testo_per(interaction, "cfg_sync_in_corso"), ephemeral=True)
+            return
+        self._sync_in_corso.add(guild.id)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            esiti = await risincronizza_server(self.bot, guild)
+        finally:
+            self._sync_in_corso.discard(guild.id)
         chiave, valori = riassumi_esiti(esiti)
+        if chiave == "cfg_sync_ok":  # l'attesa scatta solo se è riuscita: chi ha sbagliato può riprovare subito
+            self._ultima_sync[guild.id] = time.monotonic()
         await interaction.followup.send(await testo_per(interaction, chiave, **valori), ephemeral=True)
 
     # ------------------------------------------------------------------
@@ -119,6 +128,9 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
             await interaction.guild.me.edit(nick=nuovo or None, reason=f"Richiesto da {interaction.user.id}")
         except discord.Forbidden:
             await interaction.response.send_message(await testo_per(interaction, "cfg_nick_permesso"), ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message(await testo_per(interaction, "cfg_nick_errore"), ephemeral=True)
             return
         testo = await testo_per(interaction, "cfg_nick_ok", nome=nuovo) if nuovo else await testo_per(interaction, "cfg_nick_azzerato")
         await interaction.response.send_message(testo, ephemeral=True)

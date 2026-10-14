@@ -217,3 +217,13 @@ async def test_diagnosi_dice_il_motivo(cog, db_pronto):
     i = _interazione(permessi=discord.Permissions(manage_guild=True))
     await cog.diagnosi.callback(cog, i, "fun meme")
     assert "Nessun problema" in i.followup.send.call_args.kwargs["embed"].description
+
+
+async def test_modifica_elenco_insieme_non_perde_voci(db_pronto):
+    """Venti aggiunte in parallelo: tutte devono restare nell'elenco."""
+    import asyncio
+
+    await asyncio.gather(
+        *(pol.modifica_elenco(700, pol.CHIAVE_CANALI_NO, 1000 + n, aggiungi=True, changed_by=1) for n in range(20))
+    )
+    assert len((await pol.leggi_politica(700)).canali_no) == 20

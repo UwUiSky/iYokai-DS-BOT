@@ -9,11 +9,15 @@ Dipende da: core/database.py (`get_full_config`, `set_guild_setting`, `remove_gu
 Regole: si guardano solo le chiavi note (che nome portano: canale, categoria o ruolo). Una voce si toglie solo se
 Discord conferma che non c'è: se il server non è in memoria (guild None) non si tocca niente. Ogni modifica
 finisce nello storico, quindi `/admin config rollback` la annulla.
+Un canale non in memoria può essere un thread archiviato: prima di toglierlo lo si chiede a Discord
+(`fetch_channel`). Solo «non trovato» lo condanna; qualsiasi altro errore lo lascia dov'è.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+import discord
 
 TIPO_CANALE = "canale"
 TIPO_RUOLO = "ruolo"
@@ -75,6 +79,19 @@ def trova_orfani(settings: dict, *, canale_esiste, ruolo_esiste) -> list[VocePul
     return voci
 
 
+async def _canali_morti_per_discord(guild, sospetti) -> set[int]:
+    """Tra i canali che il server non ha in memoria, quelli che Discord conferma inesistenti."""
+    morti: set[int] = set()
+    for canale_id in sospetti:
+        try:
+            await guild.fetch_channel(canale_id)
+        except (discord.NotFound, discord.InvalidData):
+            morti.add(canale_id)
+        except discord.HTTPException:
+            pass  # non si sa: la voce resta
+    return morti
+
+
 async def pulisci_configurazione(guild, *, applica: bool, changed_by: int | None) -> EsitoPulizia:
     """
     Anteprima (`applica=False`) o pulizia vera della configurazione di `guild` (un `discord.Guild`).
@@ -85,10 +102,17 @@ async def pulisci_configurazione(guild, *, applica: bool, changed_by: int | None
     if guild is None or not guild.roles:
         return EsitoPulizia()
     config = await db.get_full_config(guild.id)
+    in_memoria = lambda i: guild.get_channel_or_thread(i) is not None  # noqa: E731
+    ruolo_esiste = lambda i: guild.get_role(i) is not None  # noqa: E731
+    sospetti = {
+        i for v in trova_orfani(config["settings"], canale_esiste=in_memoria, ruolo_esiste=ruolo_esiste)
+        if v.tipo == TIPO_CANALE for i in v.morti
+    }
+    morti = await _canali_morti_per_discord(guild, sospetti)
     voci = trova_orfani(
         config["settings"],
-        canale_esiste=lambda i: guild.get_channel_or_thread(i) is not None,
-        ruolo_esiste=lambda i: guild.get_role(i) is not None,
+        canale_esiste=lambda i: i not in morti,
+        ruolo_esiste=ruolo_esiste,
     )
     if applica:
         for voce in voci:

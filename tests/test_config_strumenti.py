@@ -69,6 +69,7 @@ async def test_pulisci_configurazione_anteprima_e_applica(db_pronto):
     guild.roles = [fake_role(role_id=5)]
     guild.get_role = lambda i: guild.roles[0] if i == 5 else None
     guild.get_channel_or_thread = lambda i: object() if i == 111 else None
+    guild.fetch_channel = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "no"))
 
     anteprima = await pulizia.pulisci_configurazione(guild, applica=False, changed_by=9)
     assert anteprima.totale == 2 and not anteprima.applicata
@@ -81,6 +82,30 @@ async def test_pulisci_configurazione_anteprima_e_applica(db_pronto):
     assert await db.get_guild_setting(800, "log_channel_id") == 111
     storico = await db.get_config_history_filtrato(800, changed_by=9)
     assert {v.key_name for v in storico} == {"mod_log_channel_id", "ticket_support_role_ids"}  # annullabile
+
+
+async def test_thread_archiviato_o_errore_di_discord_non_si_toglie(db_pronto):
+    """Un thread archiviato non è in memoria: si chiede a Discord. Solo «non trovato» lo toglie."""
+    db = db_pronto
+    await db.set_guild_setting(800, "log_channel_id", 111, changed_by=1)  # thread archiviato, esiste
+    await db.set_guild_setting(800, "mod_log_channel_id", 222, changed_by=1)  # cancellato
+    await db.set_guild_setting(800, "welcome_channel_id", 333, changed_by=1)  # Discord non risponde
+    guild = fake_guild(800)
+    guild.roles = [fake_role(role_id=5)]
+    guild.get_channel_or_thread = lambda i: None
+
+    async def fetch(i):
+        if i == 111:
+            return object()
+        if i == 222:
+            raise discord.NotFound(MagicMock(status=404), "no")
+        raise discord.HTTPException(MagicMock(status=500), "giù")
+
+    guild.fetch_channel = fetch
+    await pulizia.pulisci_configurazione(guild, applica=True, changed_by=9)
+    assert await db.get_guild_setting(800, "log_channel_id") == 111
+    assert await db.get_guild_setting(800, "mod_log_channel_id") is None
+    assert await db.get_guild_setting(800, "welcome_channel_id") == 333
 
 
 async def test_server_non_caricato_non_si_tocca(db_pronto):
@@ -111,7 +136,7 @@ def _cog():
 
 async def test_sincronizza_ha_un_tempo_di_attesa(db_pronto, monkeypatch):
     cog = _cog()
-    chiamate = AsyncMock(return_value={})
+    chiamate = AsyncMock(return_value={"admin_role_id": EsitoPermessi(STATO_OK)})
     monkeypatch.setattr(modulo, "risincronizza_server", chiamate)
     i = fake_interaction(guild=fake_guild(800))
     await cog.sincronizza.callback(cog, i)
@@ -120,6 +145,47 @@ async def test_sincronizza_ha_un_tempo_di_attesa(db_pronto, monkeypatch):
     await cog.sincronizza.callback(cog, i2)
     assert chiamate.await_count == 1  # la seconda è respinta
     assert "riprova" in i2.response.send_message.call_args.args[0].lower()
+
+
+async def test_sincronizza_fallita_non_fa_scattare_l_attesa(db_pronto, monkeypatch):
+    cog = _cog()
+    chiamate = AsyncMock(return_value={"admin_role_id": EsitoPermessi(STATO_DA_RIPROVARE, errori={"log": 500})})
+    monkeypatch.setattr(modulo, "risincronizza_server", chiamate)
+    for _ in range(2):
+        await cog.sincronizza.callback(cog, fake_interaction(guild=fake_guild(800)))
+    assert chiamate.await_count == 2  # chi ha sbagliato riprova subito
+
+
+async def test_sincronizza_due_insieme_ne_parte_una(db_pronto, monkeypatch):
+    import asyncio
+
+    cog = _cog()
+    via = asyncio.Event()
+
+    async def lenta(bot, guild):
+        await via.wait()
+        return {"admin_role_id": EsitoPermessi(STATO_OK)}
+
+    chiamate = AsyncMock(side_effect=lenta)
+    monkeypatch.setattr(modulo, "risincronizza_server", chiamate)
+    prima = asyncio.create_task(cog.sincronizza.callback(cog, fake_interaction(guild=fake_guild(800))))
+    await asyncio.sleep(0)
+    seconda = fake_interaction(guild=fake_guild(800))
+    await cog.sincronizza.callback(cog, seconda)
+    assert "in corso" in seconda.response.send_message.call_args.args[0]
+    via.set()
+    await prima
+    assert chiamate.await_count == 1
+
+
+async def test_nickname_bot_errore_di_discord_e_detto(db_pronto):
+    cog = _cog()
+    guild = fake_guild(800)
+    guild.me = MagicMock()
+    guild.me.edit = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500), "giù"))
+    i = fake_interaction(guild=guild)
+    await cog.nickname_bot.callback(cog, i, "X")
+    assert "rifiutato" in i.response.send_message.call_args.args[0]
 
 
 async def test_nickname_bot_cambia_azzera_e_dice_se_manca_il_permesso(db_pronto):

@@ -126,7 +126,7 @@ def controlla_pacchetto(pacchetto: dict[str, bytes]) -> None:
             raise PatchRifiutata(f"`{percorso}` è troppo grande (massimo {MAX_BYTE_FILE // 1024} KiB).")
         try:
             compile(dati, percorso, "exec")
-        except (SyntaxError, ValueError) as exc:
+        except (SyntaxError, ValueError, RecursionError, MemoryError) as exc:
             riga = getattr(exc, "lineno", None)
             raise PatchRifiutata(f"`{percorso}` non compila{f' (riga {riga})' if riga else ''}: nessun file è stato toccato.") from exc
 
@@ -342,7 +342,7 @@ class ClienteGitHub:
 
     async def risolvi(self, riferimento: str) -> str:
         """Lo SHA completo di `main` o di un commit."""
-        if not _RIFERIMENTO.match(riferimento):
+        if not _RIFERIMENTO.fullmatch(riferimento):
             raise PatchRifiutata("Scrivi `main` oppure lo SHA del commit (da 7 a 40 caratteri).")
         dati = await self._get(f"commits/{riferimento}")
         sha = dati.get("sha", "") if isinstance(dati, dict) else ""

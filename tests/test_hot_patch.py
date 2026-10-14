@@ -86,6 +86,8 @@ def test_il_codice_deve_compilare():
         hp.controlla_pacchetto({})
     with pytest.raises(hp.PatchRifiutata):
         hp.controlla_pacchetto({"cogs/a/x.py": b"\x00 = 1"})  # byte nullo
+    with pytest.raises(hp.PatchRifiutata):  # annidamento troppo profondo: niente eccezioni non gestite
+        hp.controlla_pacchetto({"cogs/a/x.py": b"x = " + b"(" * 5000 + b"1" + b")" * 5000})
 
 
 # ----------------------------------------------------------------------
@@ -278,7 +280,7 @@ async def test_da_github_un_commit_fuori_da_main_si_rifiuta():
 
 async def test_da_github_riferimenti_e_errori():
     cliente, _ = _github()
-    for cattivo in ("develop", "../x", "abc", "main; rm -rf /"):
+    for cattivo in ("develop", "../x", "abc", "main; rm -rf /", "main\n"):
         with pytest.raises(hp.PatchRifiutata):
             await hp.pacchetto_da_github(cliente, cattivo, BASE)
     with pytest.raises(hp.PatchRifiutata, match="quale commit"):
