@@ -1,0 +1,17 @@
+# Domini di phishing noti, uno per riga (iYokai, NF-31). Righe con # sono commenti.
+# Serve da lista di partenza, valida anche senza rete. Se e' impostata
+# PHISHING_LIST_URL il bot la integra con una lista scaricata (vedi core/phishing_list_fetcher.py).
+discord-nitro.gift
+discordgift.site
+discord-gifts.com
+discordnitro.gift
+dlscord.gift
+dlscord-app.com
+discorcl.com
+discord-app.xyz
+steamcommunlty.com
+steamcommunity-gift.com
+steam-nitro.com
+nitro-discord.xyz
+free-nitro.xyz
+discord-airdrop.com

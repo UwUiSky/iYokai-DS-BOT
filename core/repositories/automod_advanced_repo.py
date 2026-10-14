@@ -93,6 +93,10 @@ def _to_json(settings: AutomodAdvancedSettings) -> str:
                 "min_length": config.anti_caps.min_length,
             },
             "anti_zalgo_enabled": config.anti_zalgo_enabled,
+            "anti_phishing_enabled": config.anti_phishing_enabled,
+            "max_a_capo": config.max_a_capo,
+            "max_lunghezza": config.max_lunghezza,
+            "max_spoiler": config.max_spoiler,
             "anti_mass_mention": {
                 "enabled": config.anti_mass_mention.enabled,
                 "max_count": config.anti_mass_mention.max_count,
@@ -147,6 +151,10 @@ def _from_json(guild_id: int, raw: str) -> AutomodAdvancedSettings:
             min_length=caps.get("min_length", 10),
         ),
         anti_zalgo_enabled=data.get("anti_zalgo_enabled", False),
+        anti_phishing_enabled=data.get("anti_phishing_enabled", False),
+        max_a_capo=data.get("max_a_capo", 0),
+        max_lunghezza=data.get("max_lunghezza", 0),
+        max_spoiler=data.get("max_spoiler", 0),
         anti_mass_mention=ThresholdFilterConfig(
             enabled=mention.get("enabled", False),
             max_count=mention.get("max_count", 5),

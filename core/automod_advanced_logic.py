@@ -122,6 +122,16 @@ def is_caps_violation(text: str, threshold_percent: int, min_length: int) -> boo
     return (maiuscole / len(lettere)) * 100 >= threshold_percent
 
 
+def conta_spoiler(text: str) -> int:
+    """Quanti pezzi nascosti con ||testo|| ci sono (un'apertura e una chiusura fanno uno)."""
+    return text.count("||") // 2
+
+
+def is_text_shape_violation(valore: int, massimo: int) -> bool:
+    """AMD-002/003/005: massimo 0 = filtro spento; si viola solo oltre il massimo."""
+    return massimo > 0 and valore > massimo
+
+
 def is_zalgo_violation(text: str) -> bool:
     combinanti = sum(1 for c in text if unicodedata.combining(c) != 0)
     return combinanti >= ZALGO_COMBINING_THRESHOLD
@@ -202,6 +212,11 @@ class AutomodAdvancedConfig:
     anti_spam_sticker: RateFilterConfig = field(default_factory=RateFilterConfig)
     anti_caps: CapsFilterConfig = field(default_factory=CapsFilterConfig)
     anti_zalgo_enabled: bool = False
+    anti_phishing_enabled: bool = False
+    # AMD-002/003/005: 0 = filtro spento.
+    max_a_capo: int = 0
+    max_lunghezza: int = 0
+    max_spoiler: int = 0
     anti_mass_mention: ThresholdFilterConfig = field(default_factory=ThresholdFilterConfig)
     anti_attachment_spam: RateFilterConfig = field(default_factory=RateFilterConfig)
 
@@ -217,6 +232,10 @@ VIOLATION_CAPS = "anti_caps"
 VIOLATION_ZALGO = "anti_zalgo"
 VIOLATION_MASS_MENTION = "anti_mass_mention"
 VIOLATION_ATTACHMENT_SPAM = "anti_attachment_spam"
+VIOLATION_PHISHING = "anti_phishing"
+VIOLATION_A_CAPO = "anti_a_capo"
+VIOLATION_LUNGHEZZA = "anti_lunghezza"
+VIOLATION_SPOILER = "anti_spoiler"
 
 ALL_VIOLATIONS = (
     VIOLATION_ANTI_LINK,
@@ -227,11 +246,20 @@ ALL_VIOLATIONS = (
     VIOLATION_ZALGO,
     VIOLATION_MASS_MENTION,
     VIOLATION_ATTACHMENT_SPAM,
+    VIOLATION_PHISHING,
+    VIOLATION_A_CAPO,
+    VIOLATION_LUNGHEZZA,
+    VIOLATION_SPOILER,
 )
+
+# Azioni di partenza quando il server non ha scelto: il phishing viene di solito da un account rubato,
+# quindi oltre a cancellare il messaggio si ferma l'account (timeout).
+AZIONI_DI_PARTENZA = {VIOLATION_PHISHING: ("delete", "mute")}
+AZIONI_DI_PARTENZA_GENERALI = ("delete",)
 
 
 def evaluate_message_violations(
-    signals: MessageSignals, config: AutomodAdvancedConfig
+    signals: MessageSignals, config: AutomodAdvancedConfig, lista_phishing: frozenset[str] = frozenset()
 ) -> tuple[str, ...]:
     """
     Valuta TUTTI i filtri e restituisce le violazioni scattate, in
@@ -239,11 +267,27 @@ def evaluate_message_violations(
     violare più filtri insieme (es. tutto maiuscolo E con un link
     non in whitelist), il chiamante decide come combinare le azioni.
     """
+    from core.phishing_logic import domini_nel_testo, e_phishing  # qui, perche' phishing_logic importa questo file
+
     violazioni = []
 
     domini = extract_domains(signals.content)
     if is_link_violation(domini, config.anti_link.mode, config.anti_link.whitelist, config.anti_link.blacklist):
         violazioni.append(VIOLATION_ANTI_LINK)
+
+    if config.anti_phishing_enabled and e_phishing(
+        domini_nel_testo(signals.content), lista_phishing, consentiti=config.anti_link.whitelist
+    ):
+        violazioni.append(VIOLATION_PHISHING)
+
+    if is_text_shape_violation(signals.content.count("\n"), config.max_a_capo):
+        violazioni.append(VIOLATION_A_CAPO)
+
+    if is_text_shape_violation(len(signals.content), config.max_lunghezza):
+        violazioni.append(VIOLATION_LUNGHEZZA)
+
+    if is_text_shape_violation(conta_spoiler(signals.content), config.max_spoiler):
+        violazioni.append(VIOLATION_SPOILER)
 
     if config.anti_spam_messages.enabled and is_rate_violation(
         signals.recent_message_count, config.anti_spam_messages.max_count
