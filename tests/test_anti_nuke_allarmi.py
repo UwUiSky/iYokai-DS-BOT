@@ -67,3 +67,35 @@ async def test_solo_chi_gestisce_cambia_il_canale_allarmi(cog):
     altro.user = fake_member(user_id=31337)
     await cog.canale_allarmi.callback(cog, altro, canale)
     assert await output_channel_repo.ottieni(GUILD_ID, router.TIPO_ALLARMI) is None
+
+
+async def test_un_attacco_accende_il_panico_se_il_server_l_ha_scelto(cog):
+    """SIC-011: l'anti-nuke chiama il blocco del server (solo con «automatico» acceso)."""
+    import asyncio
+
+    from core import lockdown_service
+    from core.repositories.lockdown_repo import ConfigBlocco, lockdown_repo
+    from tests.test_anti_nuke_f1 import AUTORE_ID, _canale_cancellato
+    from core.security_logic import NUKE_CATEGORY_CHANNEL
+
+    autore = fake_member(user_id=AUTORE_ID)
+    server = _server(autore, [[]])
+    server.channels = []
+    server.me = fake_member(user_id=999)
+
+    await cog._handle_event(server, NUKE_CATEGORY_CHANNEL, AUTORE_ID, "azione")
+    assert await lockdown_repo.get_stato(GUILD_ID) is None  # spento: nessun panico
+
+    # Un altro autore, un altro episodio, con «automatico» acceso.
+    await lockdown_repo.save_config(GUILD_ID, ConfigBlocco(automatico=True))
+    altro = fake_member(user_id=AUTORE_ID + 1)
+    server2 = _server(altro, [[]])
+    server2.channels = []
+    server2.me = fake_member(user_id=999)
+    server2.verification_level = discord.VerificationLevel.low
+    server2.features = []
+    server2.edit = AsyncMock()
+    await cog._handle_event(server2, NUKE_CATEGORY_CHANNEL, AUTORE_ID + 1, "azione")
+    await asyncio.gather(*list(lockdown_service._lavori))
+    stato = await lockdown_repo.get_stato(GUILD_ID)
+    assert stato is not None and stato.tipo == "panico"

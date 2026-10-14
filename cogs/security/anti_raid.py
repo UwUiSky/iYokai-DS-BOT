@@ -43,6 +43,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bot_ready import attendi_bot_pronto
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.lockdown_service import panico_automatico
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
 from core.security_access import premium_sbloccato, solo_chi_gestisce
@@ -599,6 +600,10 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             avviso.recenti.append(voce)
             self._avvisi.set(guild.id, avviso)
             embed = _embed_avviso(avviso)
+
+            if not episodio_in_corso:
+                # SIC-011: se il server l'ha scelto, il raid accende il panico (una volta per episodio).
+                await panico_automatico(guild, "Anti-Raid: ondata di ingressi sospetti")
 
             if not episodio_in_corso and guild.owner is not None:
                 await try_dm(guild.owner, embed)

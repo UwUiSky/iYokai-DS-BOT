@@ -26,6 +26,7 @@ MODULI = (
     "cogs.security.anti_nuke",
     "cogs.security.anti_raid",
     "cogs.security.global_ban",
+    "cogs.security.lockdown",
     "cogs.security.verify",
     "cogs.security.permission_heatmap",
     "cogs.security.security_score",
@@ -42,6 +43,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff"},
     ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod", "avvisi"): {"togli", "azzera", "classifica"},
+    ("mod", "blocco"): {"attiva", "togli"},
     ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
     ("modban", "appelli"): {"canale", "elenco"},
     ("security", None): {"heatmap", "score", "spamtrap"},
@@ -54,6 +56,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
         "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
     },
+    ("security", "panico"): {"attiva", "togli", "configura", "stato"},
     ("security", "globalban"): {"enable", "disable", "status", "controlla"},
     ("security", "verify"): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",

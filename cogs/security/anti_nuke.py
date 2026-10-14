@@ -45,6 +45,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.lockdown_service import panico_automatico
 from core.permission_risk_logic import critical_permissions_of
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.output_channel_repo import output_channel_repo
@@ -964,6 +965,8 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if tolti:
             embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /antinuke rilascia caso:{numero}")
         await _alert_staff(guild, settings, embed)
+        # SIC-011: se il server l'ha scelto, un attacco riconosciuto accende il panico.
+        await panico_automatico(guild, f"Anti-Nuke: {category}")
 
     async def _punizione_in_vigore(
         self, guild: discord.Guild, actor_id: int, config: AntiNukeConfig
