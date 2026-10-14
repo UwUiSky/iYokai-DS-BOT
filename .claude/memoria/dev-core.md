@@ -1,11 +1,13 @@
 # Memoria di dev-core
 
 ## Aggiornata
-12/10/2026 · ramo `feat/giro-core` (main unito) · correzioni del cacciatore-bug (NF-04, #148, #145)
+14/10/2026 · ramo `feat/r5-cor` (base main) · giro r5: per FILE
 
 ## In corso
-- Correzioni 1-10 e basse del cacciatore fatte (commit sul ramo). Resta: smoke, push, rapporto.
-- Se si riprende: #148 manca solo il bottone con il link nel setup + scelta dei ruoli (nessuno chiama `imposta_ruolo`).
+- Giro r5 (7 gruppi): FATTI 1-3 (lingue, traduttore comandi, ricerca bilingue). Restano: (4) #122 piccole, (5) NF-22 diritti astratti,
+  (6) NF-38 marchio, (7) #141 stato/controllo/riavvio in `/owner system`. Poi registro #19/#37/#46/#138, push, rapporto.
+- Prossimo passo: gruppo 4 (CFG-004/005 storico filtri+CSV in config_history, CFG-019/020/021/046, CFG-038 codici premium).
+- Non faccio: #140 (serve snodo AI #95 + token GitHub), 14.1 (restano cogs altrui), 21.6 (cogs altrui).
 
 ## Fatto
 - Giri precedenti: R1-bis, smoke, F7 quadro e passo 4 (gruppi, accesso, sync comandi).
@@ -29,7 +31,14 @@
   scheduler libera `claimed_at` se cancellato, cache log avanzati con numero di versione.
 - Gia fatte: 13.1 (sotto-gruppi owner), 13.3, 14.5, 14.8, 14.15.
 
+- r5 g1-3 (6d0e6f6, 4379e18, 5add20b): `locales/it|en.json`, `core/i18n.py` (lingua_risposta/interazione), `user_language` 0130,
+  `/utility lingua`; `core/command_translator.py` + `locales/comandi.en.json` (447 nodi), sync con impronta tradotta, COMMAND_LIST_ITA/ENG;
+  ricerca bilingue + `filtra_per_moduli`.
+
 ## Cose imparate
+- Discord conta per il limite 8000 solo la traduzione PIU LUNGA per campo (base compresa). Base del codice resta italiano (scarto da D1).
+- discord.py mette locale_str automatico su nomi/descrizioni: il traduttore riceve `context.data` (nodo) e risponde per percorso.
+- Il DB di prova puo essere usato anche da altre copie: tabelle estranee (es. activity_*) fanno fallire test_data_registry; riprovare.
 - La suite completa dura circa 9 minuti. `config` e un dataclass congelato: nei test si sostituisce `ca.config`.
 - Rifiuto di accesso = `AccessoNegato` (CheckFailure) risposto da `handle_app_command_error`.
 - Il defer pubblico lascia un messaggio con flag `loading`: va cancellato prima del followup effimero.
