@@ -22,6 +22,7 @@ import core.safe_http as safe_http
 from core.feed_watcher import FeedWatcherService
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
 from tests.test_feed_parsing_logic import RSS_CON_DATE
+from tests.support.alert_finti import repo_opzioni_finto  # noqa: F401  (autouse)
 
 
 class _Risposta:
@@ -35,7 +36,7 @@ class _Canale(discord.TextChannel):
         self.sent_messages: list[str] = []
         self.fallisci = False
 
-    async def send(self, content: str) -> None:
+    async def send(self, content: str, **kwargs) -> None:
         if self.fallisci:
             raise discord.Forbidden(_Risposta(), "Missing Permissions")
         self.sent_messages.append(content)
