@@ -44,8 +44,10 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod", "avvisi"): {"togli", "azzera", "classifica"},
     ("mod", "blocco"): {"attiva", "togli"},
+    ("mod", "massa"): {"timeout", "warn"},
     ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
     ("modban", "appelli"): {"canale", "elenco"},
+    ("modban", "massa"): {"ban", "unban", "kick"},
     ("security", None): {"heatmap", "score", "spamtrap"},
     ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("antinuke", None): {
@@ -55,6 +57,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("security", "antiraid"): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
         "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
+        "filtro-ingresso", "nomi-vietati", "segnali", "ping-ruoli", "elenco", "segnala",
     },
     ("security", "panico"): {"attiva", "togli", "configura", "stato"},
     ("security", "globalban"): {"enable", "disable", "status", "controlla"},
