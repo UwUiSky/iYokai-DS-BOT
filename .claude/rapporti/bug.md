@@ -193,3 +193,15 @@
 | 13/10 | `tickets.py:1785` (`on_member_remove`) | Chiude solo i ticket con `panel_id`: quelli dal pannello classico restano aperti se l'utente esce; i chiusi per uscita/inattivita' non salvano il motivo | bassa | confermato (cbtkt/p1) |
 | 13/10 | `tickets.py:1712-1725`, `risposte.py:362-372` | `close_ticket` riuscito e poi pianificazione eliminazione che fallisce: al retry ticket gia' chiuso, canale mai eliminato. Sollecito: `mark_sollecito` prima di leggere il canale, al retry non riparte | bassa | confermato (cbtkt/p1, p3) |
 | 13/10 | `tickets.py:1750-1775`, `:1340-1420` | `chiudi-tutti`: 25 transcript in serie con un solo followup finale (token a 15 min); motivo libero nell'avviso con menzioni utente attive. `remove ruolo` accetta il ruolo di supporto o del bot (blocca lo staff) | bassa | plausibile |
+
+## 14/10/2026 · feat/r6ai (motore AI) — corretti in 9516f7c
+- core/ai_servizio.py richiedi · quote/crediti letti poi scritti dopo la chiamata: 3 immagini insieme con 1 credito → 3 immagini · confermato · media · corretto
+- cogs/ai/moderazione.py · moderazione conta sulla quota/limite dell'autore: 6 msg/min o 20/giorno → niente più controlli · confermato · alta · corretto
+- core/ai_cache_logic.py trova · somiglianza 0,85 su traduzioni e giudizi: "non" aggiunto → risposta dell'altro testo · confermato · alta · corretto
+- core/ai_servizio.py · /utility ai traduci in libreria comune (testo utente per sempre, tra server) · confermato · media · corretto
+- core/ai_router.py scegli_fornitori · solo_gratuiti accetta chiave a pagamento con costo 0 (D13) · confermato · media · corretto
+- core/ai_router.py esegui · 400 di una richiesta mette in pausa il fornitore per tutti; ValueError non preso · confermato · media · corretto
+- cogs/ai/_comune.py chiedi · eccezione non-AI dopo defer: -chiedi resta senza risposta · confermato · media · corretto
+- core/ai_immagini_logic.py · PNG 5000x5000 decodificato prima del controllo, Pillow sul loop · confermato · media · corretto
+- core/ai_testi_logic.py · "violazione": "false" = violazione; categorie non lista = TypeError · confermato · bassa · corretto
+- Lasciati: tetto e quota funzione in gara tra persone diverse (sforo di poche chiamate); command_search replace di /percorso anche dentro percorsi più lunghi.
