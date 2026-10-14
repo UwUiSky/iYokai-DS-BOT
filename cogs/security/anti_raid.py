@@ -19,7 +19,7 @@ blocco (salvata nel database, controllata ogni minuto).
 Quarantena: il ruolo "Quarantined" (core/security_quarantine.py) si crea
 quando si attiva il modulo, non durante il raid. Con il "blocco della
 quarantena" attivo chi non è fidato non può liberare un membro a mano né
-dargli altri ruoli (si usa /security antiraid rilascia, che è la stessa
+dargli altri ruoli (si usa /antiraid rilascia, che è la stessa
 funzione dell'anti-nuke). Le impostazioni che indeboliscono la difesa
 (blocco, rilascio col blocco attivo) le cambia solo chi gestisce:
 proprietario ed extra owner.
@@ -32,8 +32,8 @@ visualizzato. Segnali di raid in più: account creati vicini e nomi simili
 tra gli ultimi ingressi (SIC-030/031), soglia contata solo sui sospetti
 (SIC-029). Al raid: kick o ban (SIC-032), anche di chi è entrato poco prima
 (SIC-033), ping dei ruoli dello staff (SIC-034), elenco completo con
-/security antiraid elenco (SIC-035), segnale di rete tra server (SIC-037) e
-segnalazione a chi gestisce il bot con /security antiraid segnala (SIC-038).
+/antiraid elenco (SIC-035), segnale di rete tra server (SIC-037) e
+segnalazione a chi gestisce il bot con /antiraid segnala (SIC-038).
 
 Funzioni coperte: SPEC §7.1 (SIC-023…035, 037, 038)
 """
@@ -166,7 +166,7 @@ def _embed_avviso(avviso: _Avviso) -> discord.Embed:
         description=f"Ultimi ingressi (dal più vecchio):\n{righe}"[:4096],
         color=discord.Color.red(),
     )
-    embed.set_footer(text="Elenco completo: /security antiraid elenco")
+    embed.set_footer(text="Elenco completo: /antiraid elenco")
     return embed
 
 
@@ -239,10 +239,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="enable",
         descrizione="Attiva o disattiva l'Anti-Raid.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def enable(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -270,10 +269,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             await interaction.followup.send("⚠️ " + "\n⚠️ ".join(avvisi), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="join-rate",
         descrizione="Configura il limite di join in un intervallo di tempo.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(
         max_joins="Numero massimo di join consentiti nella finestra (da 1 a 1000)",
@@ -308,10 +306,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="account-age",
         descrizione="Età minima dell'account per non essere considerato sospetto.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(seconds="Età minima in secondi (es. 86400 = 1 giorno; 0 = nessun minimo; massimo 1 anno)")
     @requires_module(MODULE_ANTI_RAID)
@@ -325,10 +322,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Età minima account impostata a {seconds} secondi.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="username-check",
         descrizione="Attiva/disattiva il rilevamento pattern username sospetti.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def username_check(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -339,10 +335,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Rilevamento pattern username {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="avatar-check",
         descrizione="Attiva/disattiva il rilevamento avatar assente.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def avatar_check(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -353,10 +348,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Rilevamento avatar assente {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="lockdown-action",
         descrizione="Cosa fare quando un raid viene rilevato.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.choices(
         action=[
@@ -376,10 +370,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Azione di lockdown impostata su **{action.name}**.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="alert-channel",
         descrizione="Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def alert_channel(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
@@ -390,10 +383,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Canale di alert impostato su {channel.mention}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="status",
         descrizione="Mostra la configurazione attuale dell'Anti-Raid.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @requires_module(MODULE_ANTI_RAID)
     async def status(self, interaction: discord.Interaction) -> None:
@@ -425,13 +417,12 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="quarantine-hold",
         descrizione="Impedisce a chi non è fidato di togliere la quarantena a mano.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(
-        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /security antiraid rilascia"
+        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /antiraid rilascia"
     )
     @requires_module(MODULE_ANTI_RAID)
     async def quarantine_hold(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -446,10 +437,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="rilascia",
         descrizione="Toglie la quarantena a un membro (il modo giusto, col blocco attivo).",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(membro="Il membro da liberare dalla quarantena")
     @requires_module(MODULE_ANTI_RAID)
@@ -498,10 +488,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
     # Filtri all'ingresso e segnali di raid (SIC-023…035, 038)
     # ================================================================
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="filtro-ingresso",
         descrizione="Azione per un filtro all'ingresso (vale anche fuori da un raid).",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(
         filtro="Il filtro da regolare",
@@ -534,16 +523,15 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await security_repo.save_settings(_replace(settings, **cambi))
         testo = f"Filtro **{filtro.name}**: {azione.name.lower()}."
         if filtro.value == FILTRO_NOME_VIETATO and not settings.anti_raid.nomi_vietati:
-            testo += " La lista è vuota: aggiungi gli schemi con /security antiraid nomi-vietati."
+            testo += " La lista è vuota: aggiungi gli schemi con /antiraid nomi-vietati."
         if filtro.value == FILTRO_ETA:
-            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/security antiraid account-age)."
+            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/antiraid account-age)."
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="nomi-vietati",
         descrizione="Lista di parole o schemi (con *) vietati nei nomi di chi entra.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(operazione="Cosa fare sulla lista", schema="Parola o schema con * (es. *free*nitro*)")
     @app_commands.choices(
@@ -594,10 +582,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Lista aggiornata: {len(lista)} schemi.", ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="segnali",
         descrizione="Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(
         account_vicini="Raid se tanti account nella finestra sono creati vicini (0 = spento)",
@@ -637,10 +624,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="ping-ruoli",
         descrizione="Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(ruolo_1="Primo ruolo", ruolo_2="Secondo ruolo", ruolo_3="Terzo ruolo")
     @requires_module(MODULE_ANTI_RAID)
@@ -662,10 +648,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="elenco",
         descrizione="File con tutti gli account dei raid nelle ultime ore.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(ore="Quante ore indietro guardare (da 1 a 168)")
     @requires_module(MODULE_ANTI_RAID)
@@ -689,10 +674,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "antiraid",
         nome="segnala",
         descrizione="Segnala a chi gestisce il bot un raid che non è stato riconosciuto.",
-        sottogruppo=("antiraid", "Protezione anti-raid del server."),
     )
     @app_commands.describe(nota="Cosa è successo (facoltativo)")
     @requires_module(MODULE_ANTI_RAID)
@@ -796,7 +780,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         embed = discord.Embed(
             title="🛡️ Anti-Raid — quarantena", description=dettaglio[:4096], color=discord.Color.orange()
         )
-        embed.set_footer(text="Per liberare un membro: /security antiraid rilascia")
+        embed.set_footer(text="Per liberare un membro: /antiraid rilascia")
         await _alert_staff(guild, settings, embed)
 
     @commands.Cog.listener()

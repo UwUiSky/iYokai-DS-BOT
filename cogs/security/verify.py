@@ -25,6 +25,14 @@ somma scritta nel modulo; «immagine» (NF-18) manda un'immagine con lettere
 storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
 3 tentativi (core/captcha_image.py).
 
+Tempi e azioni (`/security verify tempi`): promemoria in DM dopo X minuti
+(VER-008; con i DM chiusi un avviso nel canale del pannello che sparisce dopo
+pochi secondi, VER-009), tempo massimo con kick o ban alla scadenza
+(VER-011, scadenze nello scheduler: reggono un riavvio), azione su chi non
+passa (VER-012: quarantena, kick, ban o niente; per il captcha sbagliato solo
+dopo 3 fallimenti di fila) e verifica solo per gli account sospetti (VER-013:
+gli altri ricevono subito i ruoli).
+
 Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
 e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
 costruito — non tentati qui.
@@ -53,8 +61,14 @@ from core.repositories.verify_repo import verify_repo
 from cogs.moderation._shared import ensure_module_enabled
 from core.role_safety import check_role_assignable
 from core.ui_base import BaseModal, BaseView
+from core.scheduler import in_seconds, scheduler
+from core.security_quarantine import ruolo_quarantena
+from core.security_raid_state import raid_in_corso
 from core.verify_logic import (
+    AZIONI_FALLITA,
     VerifyOutcome,
+    account_sospetto,
+    azione_dopo_fallimento,
     decide_verify_outcome,
     meets_account_age,
     meets_mutual_servers,
@@ -69,7 +83,17 @@ SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
 SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
 SETTING_LOG_COMPATTO = "verify_log_compatto"  # VER-029: True = una riga, False = scheda completa
 SETTING_CAPTCHA_TIPO = "verify_captcha_tipo"  # captcha_image.TIPO_TESTO | TIPO_IMMAGINE
+SETTING_PROMEMORIA_MINUTI = "verify_promemoria_minuti"  # VER-008: 0 = spento
+SETTING_SCADENZA_MINUTI = "verify_scadenza_minuti"  # VER-011: 0 = spento
+SETTING_AZIONE_SCADENZA = "verify_azione_scadenza"  # VER-011: kick | ban
+SETTING_AZIONE_FALLITA = "verify_azione_fallita"  # VER-012: niente | quarantena | kick | ban
+SETTING_SOLO_SOSPETTI = "verify_solo_sospetti"  # VER-013
 MAX_RUOLI_EXTRA = 3
+
+VERIFY_PROMEMORIA = "verify_promemoria"
+VERIFY_SCADENZA = "verify_scadenza"
+# VER-009: l'avviso nel canale del pannello sparisce dopo questi secondi.
+SECONDI_AVVISO_CANALE = 15
 
 VERIFY_BUTTON_CUSTOM_ID = "iyokai_verify_button"
 VERIFY_REACTION_EMOJI = "✅"
@@ -330,19 +354,106 @@ class VerifyCog(CogConGruppi, commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        """Il ruolo «non verificato» parte all'ingresso (VER-014)."""
+        """
+        All'ingresso: verifica saltata per chi non è sospetto (VER-013), ruolo
+        «non verificato» (VER-014), promemoria e scadenza nello scheduler (VER-008/011).
+        """
         if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_VERIFY):
             return
-        ruolo_id = await db.get_guild_setting(member.guild.id, SETTING_RUOLO_NON_VERIFICATO)
-        ruolo = member.guild.get_role(ruolo_id) if ruolo_id else None
-        if ruolo is None or check_role_assignable(
-            member.guild, ruolo, member.guild.me, self_service=True
-        ) is not None:
+        guild = member.guild
+        config = await verify_repo.get_config(guild.id)
+        if (
+            config.verified_role_id is not None
+            and await db.get_guild_setting(guild.id, SETTING_SOLO_SOSPETTI, False)
+            and not account_sospetto(member.created_at, member.avatar is not None)
+        ):
+            if await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
+                await verify_repo.log_attempt(guild.id, member.id, True, "Account non sospetto: verifica saltata")
+                return
+        ruolo_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO)
+        ruolo = guild.get_role(ruolo_id) if ruolo_id else None
+        if ruolo is not None and check_role_assignable(guild, ruolo, guild.me, self_service=True) is None:
+            try:
+                await member.add_roles(ruolo, reason="iYokai Verify: in attesa di verifica")
+            except discord.HTTPException:
+                logger.warning("Ruolo non verificato non dato a %s (server %s).", member.id, guild.id)
+        if config.verified_role_id is None:
             return
+        for chiave, tipo in ((SETTING_PROMEMORIA_MINUTI, VERIFY_PROMEMORIA), (SETTING_SCADENZA_MINUTI, VERIFY_SCADENZA)):
+            minuti = await db.get_guild_setting(guild.id, chiave, 0) or 0
+            if minuti > 0:
+                await scheduler.schedule(guild.id, member.id, tipo, in_seconds(minuti * 60))
+
+    async def _da_verificare(self, guild_id: int, user_id: int):
+        """Il membro ancora senza il ruolo di verifica, con il server e la configurazione; altrimenti None."""
+        guild = self.bot.get_guild(guild_id)
+        if guild is None or not await db.is_module_active_for_guild(guild_id, MODULE_VERIFY):
+            return None
+        member = guild.get_member(user_id)
+        config = await verify_repo.get_config(guild_id)
+        if member is None or config.verified_role_id is None:
+            return None
+        if any(r.id == config.verified_role_id for r in member.roles):
+            return None
+        return guild, member, config
+
+    async def handle_promemoria(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """VER-008/009: promemoria in DM; con i DM chiusi un avviso breve nel canale del pannello."""
+        trovato = await self._da_verificare(guild_id, user_id)
+        if trovato is None or raid_in_corso(guild_id):
+            return  # durante un raid niente messaggi ai nuovi arrivati
+        guild, member, config = trovato
+        dove = f" in <#{config.panel_channel_id}>" if config.panel_channel_id else ""
+        testo = f"Promemoria: per entrare in **{guild.name}** devi ancora completare la verifica{dove}."
         try:
-            await member.add_roles(ruolo, reason="iYokai Verify: in attesa di verifica")
+            await member.send(testo)
+            return
         except discord.HTTPException:
-            logger.warning("Ruolo non verificato non dato a %s (server %s).", member.id, member.guild.id)
+            pass
+        canale = guild.get_channel(config.panel_channel_id) if config.panel_channel_id else None
+        if isinstance(canale, discord.TextChannel):
+            try:
+                await canale.send(
+                    f"{member.mention} hai i messaggi privati chiusi: completa la verifica qui.",
+                    delete_after=SECONDI_AVVISO_CANALE,
+                    allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False),
+                )
+            except discord.HTTPException:
+                pass
+
+    async def handle_scadenza(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """VER-011: tempo scaduto senza verifica: kick o ban."""
+        trovato = await self._da_verificare(guild_id, user_id)
+        if trovato is None:
+            return
+        guild, member, _ = trovato
+        azione = await db.get_guild_setting(guild_id, SETTING_AZIONE_SCADENZA, "kick") or "kick"
+        await verify_repo.log_attempt(guild_id, user_id, False, f"Tempo per la verifica scaduto: {azione}")
+        await self._punisci(guild, member, azione, "iYokai Verify: tempo per la verifica scaduto")
+
+    async def _punisci(self, guild: discord.Guild, member: discord.Member, azione: str, motivo: str) -> bool:
+        """Quarantena, kick o ban di chi non passa la verifica. Il DM parte prima di kick e ban."""
+        try:
+            if azione == "quarantena":
+                ruolo = await ruolo_quarantena(guild, allinea=False)
+                if ruolo is None:
+                    return False
+                await member.add_roles(ruolo, reason=motivo)
+            elif azione in ("kick", "ban"):
+                try:
+                    await member.send(f"{guild.name}: {motivo.split(': ', 1)[-1]}.")
+                except discord.HTTPException:
+                    pass
+                if azione == "kick":
+                    await member.kick(reason=motivo)
+                else:
+                    await guild.ban(member, reason=motivo, delete_message_seconds=0)
+            else:
+                return False
+        except discord.HTTPException:
+            logger.warning("Verify: %s non riuscito su %s (server %s).", azione, member.id, guild.id)
+            return False
+        return True
 
     async def run_checks_and_finalize(
         self, guild: discord.Guild, member: discord.Member, captcha_ok: bool
@@ -366,6 +477,15 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
 
         await verify_repo.log_attempt(guild.id, member.id, outcome.success, outcome.reason)
+
+        if not outcome.success:
+            # VER-012: azione scelta dal server su chi non passa.
+            azione = await db.get_guild_setting(guild.id, SETTING_AZIONE_FALLITA, "niente") or "niente"
+            if azione != "niente":
+                ultimi = [ok for ok, _, _ in await verify_repo.get_recent_attempts(guild.id, member.id, 3)]
+                azione = azione_dopo_fallimento(azione, outcome.reason, ultimi)
+                if azione != "niente":
+                    await self._punisci(guild, member, azione, "iYokai Verify: verifica non superata")
 
         if outcome.success and config.verified_role_id is not None:
             if not await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
@@ -635,6 +755,58 @@ class VerifyCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "security",
+        nome="tempi",
+        descrizione="Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
+    @app_commands.describe(
+        promemoria_minuti="DM di promemoria dopo questi minuti (0 = spento)",
+        scadenza_minuti="Tempo massimo per verificarsi, in minuti (0 = nessun limite)",
+        azione_scadenza="Cosa fare a chi non si verifica in tempo",
+        azione_fallita="Cosa fare a chi non passa la verifica",
+        solo_sospetti="Verifica solo account giovani (meno di 7 giorni) o senza avatar",
+    )
+    @app_commands.choices(
+        azione_scadenza=[
+            app_commands.Choice(name="Kick", value="kick"),
+            app_commands.Choice(name="Ban", value="ban"),
+        ],
+        azione_fallita=[app_commands.Choice(name=a.capitalize(), value=a) for a in AZIONI_FALLITA],
+    )
+    async def tempi_cmd(
+        self,
+        interaction: discord.Interaction,
+        promemoria_minuti: app_commands.Range[int, 0, 1440] | None = None,
+        scadenza_minuti: app_commands.Range[int, 0, 1440] | None = None,
+        azione_scadenza: app_commands.Choice[str] | None = None,
+        azione_fallita: app_commands.Choice[str] | None = None,
+        solo_sospetti: bool | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
+            return
+        gid, chi = interaction.guild.id, interaction.user.id
+        for chiave, valore in (
+            (SETTING_PROMEMORIA_MINUTI, promemoria_minuti),
+            (SETTING_SCADENZA_MINUTI, scadenza_minuti),
+            (SETTING_AZIONE_SCADENZA, azione_scadenza.value if azione_scadenza else None),
+            (SETTING_AZIONE_FALLITA, azione_fallita.value if azione_fallita else None),
+            (SETTING_SOLO_SOSPETTI, solo_sospetti),
+        ):
+            if valore is not None:
+                await db.set_guild_setting(gid, chiave, valore, changed_by=chi)
+        promemoria = await db.get_guild_setting(gid, SETTING_PROMEMORIA_MINUTI, 0) or 0
+        scadenza = await db.get_guild_setting(gid, SETTING_SCADENZA_MINUTI, 0) or 0
+        await interaction.response.send_message(
+            f"Promemoria: {f'dopo {promemoria} minuti' if promemoria else 'spento'}. "
+            f"Tempo massimo: {f'{scadenza} minuti, poi ' + (await db.get_guild_setting(gid, SETTING_AZIONE_SCADENZA, 'kick') or 'kick') if scadenza else 'nessuno'}. "
+            f"Chi non passa: {await db.get_guild_setting(gid, SETTING_AZIONE_FALLITA, 'niente') or 'niente'}. "
+            f"Solo account sospetti: {'sì' if await db.get_guild_setting(gid, SETTING_SOLO_SOSPETTI, False) else 'no'}. "
+            "Valgono per chi entra da adesso.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "security",
         nome="manuale",
         descrizione="Verifica a mano un membro, senza controlli.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -749,3 +921,5 @@ async def setup(bot: commands.Bot) -> None:
     cog = VerifyCog(bot)
     await bot.add_cog(cog)
     bot.add_view(VerifyPanelView())
+    scheduler.register_handler(VERIFY_PROMEMORIA, cog.handle_promemoria)
+    scheduler.register_handler(VERIFY_SCADENZA, cog.handle_scadenza)

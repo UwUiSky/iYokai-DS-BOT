@@ -57,7 +57,7 @@ class AntiRaidConfig:
     check_avatar_pattern: bool = True
     lockdown_action: str = "quarantine"  # "quarantine" | "verification" | "both"
     # SIC-003: chi non è fidato non può togliere la quarantena a mano (usa
-    # /security antiraid rilascia) né dare altri ruoli a chi ci sta dentro.
+    # /antiraid rilascia) né dare altri ruoli a chi ci sta dentro.
     quarantine_hold: bool = False
     # SIC-023/024/026/027/028: filtri all'ingresso, ognuno con la sua azione
     # (core/security_join_logic.AZIONI_FILTRO). Lavorano anche fuori da un raid.
@@ -477,7 +477,7 @@ def compute_security_score(signals: ServerSecuritySignals) -> tuple[int, tuple[s
 
     if not signals.anti_raid_enabled:
         punteggio -= 15
-        consigli.append("Attiva l'Anti-Raid con /security antiraid enable.")
+        consigli.append("Attiva l'Anti-Raid con /antiraid enable.")
 
     if not signals.anti_nuke_enabled:
         punteggio -= 15

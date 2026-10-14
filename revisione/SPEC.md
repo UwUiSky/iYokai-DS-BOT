@@ -437,7 +437,7 @@ Totale voci: **494**.
   `core/security_logic.py` (`evaluate_join`), finestra mobile in
   memoria per il join rate (`core/security_rate_tracker.py`, mai
   persistita — stesso principio di `core/automod_rate_tracker.py`).
-  Comandi: `/security antiraid enable|join-rate|account-age|username-check|
+  Comandi: `/antiraid enable|join-rate|account-age|username-check|
   avatar-check|lockdown-action|alert-channel|status|quarantine-hold|rilascia`
   → **Stato 04/10:** BUG-12.
   → **Stato 11/10 (#59, #117, ramo `feat/sicurezza-audit`):** un avviso
