@@ -23,6 +23,14 @@ from core.message_log_logic import Ignorati
 from core.repositories.log_ignora_repo import LogIgnoraRepository
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role, fake_text_channel
 
+
+@pytest.fixture(autouse=True)
+def _eventi_accesi(monkeypatch):
+    """LOG-017: senza database tutti gli eventi sono accesi."""
+    from tests.support.router_fakes import nessun_evento_spento
+
+    nessun_evento_spento(monkeypatch)
+
 SERVER = 600
 
 

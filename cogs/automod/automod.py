@@ -517,9 +517,7 @@ async def _log_violation(
         # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
         canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
     else:
-        canale = message.guild.get_channel(settings.log_channel_id) if settings.log_channel_id else None
-        if not isinstance(canale, discord.TextChannel):
-            canale = None
+        canale = await router.destinazione(message.guild, router.TIPO_AUTOMOD, settings.log_channel_id)
     if canale is None:
         return
 
@@ -534,13 +532,8 @@ async def _log_violation(
         # Nel log di phishing il link non deve restare cliccabile.
         valore = f"`{contenuto.replace('`', '')}`" if violation in _VIOLAZIONI_PHISHING else contenuto
         embed.add_field(name="Contenuto", value=valore, inline=False)
-    if violation in _VIOLAZIONI_PHISHING:
-        await router.invia_a(canale, message.guild, router.TIPO_PHISHING, embed=embed)
-        return
-    try:
-        await bot_roles.scrivi(canale, embed=embed)
-    except discord.HTTPException:
-        pass
+    tipo = router.TIPO_PHISHING if violation in _VIOLAZIONI_PHISHING else router.TIPO_AUTOMOD
+    await router.invia_a(canale, message.guild, tipo, embed=embed)
 
 # Nomi delle regole che iYokai gestisce, sempre con il prefisso
 # convenzionale (vedi core/automod_sync.py) così non vengono mai

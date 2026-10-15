@@ -113,13 +113,20 @@ async def test_post_to_mod_log_canale_configurato_invia_embed(clean_db, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_post_to_mod_log_canale_non_testuale_non_fa_nulla(clean_db, monkeypatch):
+async def test_post_to_mod_log_canale_sparito_avvisa_il_proprietario_una_volta(clean_db, monkeypatch):
+    """§18.1: il mod-log passa dal router; canale eliminato = un solo DM al proprietario."""
     _collega_pool_di_test(monkeypatch, clean_db)
+    from core import channel_router
     from core.database import db
+    from tests.support.discord_fakes import fake_guild, fake_member
 
+    channel_router._avvisati.clear()
     await db.set_guild_setting(100, SETTING_MOD_LOG_CHANNEL, 555)
-    # get_channel restituisce None (es. canale eliminato).
-    guild = _FakeGuildForModLog(100, channel=None)
+    proprietario = fake_member(user_id=1)
+    guild = fake_guild(guild_id=100, owner_id=1)
+    guild.get_member.return_value = proprietario  # get_channel resta None: canale eliminato
 
     embed = discord.Embed(title="Test")
-    await post_to_mod_log(guild, embed)  # non deve sollevare eccezioni
+    await post_to_mod_log(guild, embed)
+    await post_to_mod_log(guild, embed)
+    proprietario.send.assert_awaited_once()

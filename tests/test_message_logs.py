@@ -197,6 +197,14 @@ from core import message_log_logic as logica
 from core.message_log_logic import riga_blocco, senza_accento_grave
 
 
+@pytest.fixture(autouse=True)
+def _eventi_accesi(monkeypatch):
+    """LOG-017: senza database tutti gli eventi sono accesi."""
+    from tests.support.router_fakes import nessun_evento_spento
+
+    nessun_evento_spento(monkeypatch)
+
+
 async def test_senza_logging_avanzato_modifica_e_blocco_non_scrivono(ambiente, monkeypatch):
     cog, canale_log, _, _, server = ambiente
     monkeypatch.setattr(modulo, "logging_avanzato_attivo", AsyncMock(return_value=False))

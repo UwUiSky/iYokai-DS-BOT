@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:40 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 466 commands in 21 categories.**
+**Total: 468 commands in 21 categories.**
 
 ## Admin
 
@@ -273,8 +273,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:4
 ## Log
 
 - **`/log channel`** — Sets the server log channel (or forum).
+- **`/log channel-archive`** — Download the latest messages of a channel in a file, including just-deleted ones.
 - **`/log create-channels`** — Creates a private category with one channel for each log type.
 - **`/log create-forum`** — Creates a private forum for logs: one post for each type.
+- **`/log events`** — Turn each single log event on or off.
 - **`/log export`** — Exports the full server event history as a JSON file.
 - **`/log ignore`** — What the message log does not record (channels, users, roles, texts).
 - **`/log search channel`** — Shows a channel's event history.

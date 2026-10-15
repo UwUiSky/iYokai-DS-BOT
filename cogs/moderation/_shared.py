@@ -11,7 +11,7 @@ Qui vivono le costanti dei nomi modulo (usate sia per il controllo
 limiti di Discord che valgono per tutta la moderazione (motivo 512,
 campo 1024, elenchi entro 4000) e le funzioni che altrimenti si
 ripeterebbero identiche in ogni singolo file di comandi.
-Funzioni coperte: SPEC §5
+Funzioni coperte: SPEC §5, §18.1 (mod-log dal router)
 """
 
 # DA FARE (issue #57, fase F1): correzioni aperte per questo file in
@@ -22,7 +22,8 @@ from __future__ import annotations
 import discord
 from discord import app_commands
 
-from core import bot_roles, lockdown_service
+from core import channel_router as router
+from core import lockdown_service
 from core.database import db
 from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
@@ -131,13 +132,10 @@ async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
     channel_id = await db.get_guild_setting(guild.id, SETTING_MOD_LOG_CHANNEL)
     if channel_id is None:
         return
-    channel = guild.get_channel(channel_id)
-    if not isinstance(channel, discord.TextChannel):
-        return
-    try:
-        await bot_roles.scrivi(channel, embed=embed)
-    except discord.HTTPException:
-        pass
+    # §18.1: passa dal router (forum, un solo avviso al proprietario, iYokai Mod).
+    dest = await router.destinazione(guild, router.TIPO_MODERAZIONE, channel_id)
+    if dest is not None:
+        await router.invia_a(dest, guild, router.TIPO_MODERAZIONE, embed=embed)
 
 
 async def ensure_module_enabled(

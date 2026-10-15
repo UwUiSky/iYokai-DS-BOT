@@ -1001,3 +1001,14 @@ Serve: l'applicazione «iYokai Mod» nel Developer Portal (nessun intent privile
 - [ ] riserva — togli a iYokai Mod il permesso «Bannare membri» (o mettilo sotto il ruolo del bersaglio): il ban dell'AutoMod lo fa il principale, una volta sola. Spegni Mod (kick dal server): tutto torna al principale senza riavvio. Togli a Mod «Inviare messaggi» nel canale log: i log li scrive il principale.
 - [ ] anti-nuke — Mod non viene espulso quando entra (guardia «bot aggiunti» accesa) e i ban fatti da Mod non contano come attacco.
 - [ ] `guild.me` di Mod con il solo intent «server»: nei log di avvio nessun errore e `/utility info` dice «Attivo» (se non lo dice, Mod non vede se stesso nel server: segnalarlo).
+
+## Catalogo log — giro r7 (#119)
+
+Serve: Logging Avanzato acceso, un canale log, il bot con «Visualizzare il registro» e «Leggere la cronologia».
+
+- [ ] `LOG-005` — scrivi `discord.gg/qualcosa` in un canale: nel log «messaggi» compare «Invito scritto in un messaggio» con autore, canale e link al messaggio. Un canale in `/log ignora` non lo registra.
+- [ ] `LOG-006` — fissa e togli dai fissati un messaggio: due righe con chi l'ha fatto, il canale e l'autore del messaggio.
+- [ ] `LOG-012` — da moderatore scollega un membro da un vocale e spostane un altro: «Scollegato da un moderatore» e «Spostato da un moderatore» con il tuo nome. Un secondo spostamento subito dopo non fa una riga nuova (Discord unisce le voci): limite noto.
+- [ ] `LOG-017` — `/log eventi`: il menu mostra 24 eventi tutti accesi. Togli «Ingressi nel server» e conferma: un ingresso non compare più nel canale (ma resta in `/log cerca utente`). «Predefinito» spegne solo «Microfono e audio spenti da soli»; «Niente» spegne tutto; «Tutto» riaccende. Un altro moderatore non può usare il menu aperto da te.
+- [ ] `LOG-027/030` — cancella due messaggi in #generale, poi `/log archivio-canale canale:#generale messaggi:500`: arriva un file `.txt` con i messaggi in ordine di tempo e i due cancellati segnati `[cancellato]`. Con un account che non vede #generale il comando dice «Non puoi leggere la cronologia». Con 20.000 messaggi arrivano più file, ognuno sotto i 10 MiB.
+- [ ] `§18.1` — `/log canale` non cambia il mod-log: un warn scrive il caso nel mod-log di sempre; cancella il canale del mod-log e dai un altro warn: il proprietario riceve **un** DM di avviso, non uno per caso. Stesso per il canale dei log dell'AutoMod.

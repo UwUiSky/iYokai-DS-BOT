@@ -16,7 +16,9 @@ di posizione arrivano in un solo messaggio; i canali offuscati
 `___hidden___` sono ignorati), 8.8 Invite create/delete/use, 8.9 Voice
 state (mute e sordità proprie distinte da quelle del server), 8.10
 Webhook, 8.11 Emoji, 8.12 Sticker, 8.13 Soundboard (eventi gateway di
-discord.py), 8.14 Thread, 8.15 Server update. Ogni evento viene anche
+discord.py), 8.14 Thread, 8.15 Server update, 8.18 messaggi fissati e
+chi scollega o sposta a forza in vocale (LOG-006, LOG-012, dal registro
+di controllo). Ogni evento si può spegnere (LOG-017). Ogni evento viene anche
 salvato nel log eventi unificato (core/repositories/event_log_repo.py).
 I messaggi cancellati e modificati (8.16) stanno in
 `cogs/logging/message_logs.py`.
@@ -37,7 +39,7 @@ import discord
 from discord.ext import commands
 
 from core import channel_router as router
-from core.channel_router import SETTING_LOG_CHANNEL, TIPO_SERVER, TIPO_VOCE
+from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI, TIPO_SERVER, TIPO_VOCE
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.premium_cache import registra_invalidatore
@@ -54,6 +56,7 @@ from core.logging_advanced_logic import (
 from core.testo_limiti import DESCRIZIONE_MAX, tronca
 from core.premium import registry
 from core.repositories.event_log_repo import event_log_repo
+from core.repositories.log_eventi_repo import log_eventi_repo
 from core.security_access import premium_sbloccato
 
 logger = logging.getLogger("iyokai.advanced_logs")
@@ -124,10 +127,22 @@ EVENT_TITLES = {
     "voice_self_deafen": ("🎧 Si è assordato da solo", discord.Color.light_grey()),
     "voice_self_undeafen": ("🎧 Ha riattivato l'audio", discord.Color.light_grey()),
     "channel_move": ("↕️ Canali spostati", discord.Color.blurple()),
+    "message_pin": ("📌 Messaggio fissato", discord.Color.blurple()),
+    "message_unpin": ("📌 Messaggio tolto dai fissati", discord.Color.light_grey()),
+    "voice_force_move": ("🔀 Spostato da un moderatore", discord.Color.orange()),
+    "voice_force_disconnect": ("⏏️ Scollegato da un moderatore", discord.Color.orange()),
     "soundboard_sound_create": ("🔔 Suono soundboard creato", discord.Color.green()),
     "soundboard_sound_update": ("🔔 Suono soundboard modificato", discord.Color.blurple()),
     "soundboard_sound_delete": ("🔔 Suono soundboard eliminato", discord.Color.red()),
 }
+
+_EVENTI_REGISTRO = {
+    discord.AuditLogAction.message_pin: "message_pin",
+    discord.AuditLogAction.message_unpin: "message_unpin",
+    discord.AuditLogAction.member_move: "voice_force_move",
+    discord.AuditLogAction.member_disconnect: "voice_force_disconnect",
+}
+
 
 def _role_snapshot(role: discord.Role) -> dict:
     return {
@@ -238,9 +253,12 @@ async def advanced_log_channel(guild: discord.Guild, tipo: str = TIPO_SERVER):
 
 
 async def send_event_embed(
-    guild: discord.Guild, event_type: str, description: str
+    guild: discord.Guild, event_type: str, description: str, tipo: str | None = None
 ) -> None:
-    tipo = TIPO_VOCE if event_type.startswith("voice_") else TIPO_SERVER
+    if not await log_eventi_repo.evento_acceso(guild.id, event_type):
+        return
+    if tipo is None:
+        tipo = TIPO_VOCE if event_type.startswith("voice_") else TIPO_SERVER
     channel = await advanced_log_channel(guild, tipo)
     if channel is None:
         return
@@ -603,6 +621,41 @@ class AdvancedLogsCog(commands.Cog):
             guild.id, event_type, channel_id=stage.channel_id, details={"topic": stage.topic}
         )
         await send_event_embed(guild, event_type, descrizione)
+
+    # ================================================================
+    # LOG-006 messaggi fissati e tolti; LOG-012 chi scollega o sposta a forza
+    # in vocale. Dal registro di controllo (serve «Visualizzare il registro»).
+    # Discord unisce gli spostamenti ripetuti dello stesso moderatore in una
+    # voce sola: si scrive solo la prima.
+    # ================================================================
+    @commands.Cog.listener()
+    async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry) -> None:
+        evento = _EVENTI_REGISTRO.get(entry.action)
+        if evento is None or not await logging_avanzato_attivo(entry.guild.id, self.bot):
+            return
+        canale = getattr(entry.extra, "channel", None)
+        if canale is not None and router.canale_nascosto(canale):
+            return
+        canale_id = getattr(canale, "id", None)
+        autore = f"<@{entry.user_id}>" if entry.user_id else "qualcuno"
+        bersaglio = getattr(entry.target, "id", None)
+        if evento in ("message_pin", "message_unpin"):
+            descrizione = (
+                f"{autore} in <#{canale_id}>: messaggio `{getattr(entry.extra, 'message_id', '?')}`"
+                + (f" di <@{bersaglio}>" if bersaglio else "")
+            )
+            tipo = TIPO_MESSAGGI
+        elif evento == "voice_force_move":
+            descrizione = f"{autore} ha spostato un membro in <#{canale_id}>"
+            tipo = TIPO_VOCE
+        else:
+            descrizione = f"{autore} ha scollegato un membro da un canale vocale"
+            tipo = TIPO_VOCE
+        await event_log_repo.log_event(
+            entry.guild.id, evento, actor_id=entry.user_id, target_user_id=bersaglio, channel_id=canale_id,
+            details={"message_id": getattr(entry.extra, "message_id", None)},
+        )
+        await send_event_embed(entry.guild, evento, descrizione, tipo=tipo)
 
     # ================================================================
     # 8.15 Server (impostazioni guild)

@@ -5,6 +5,9 @@ Interfaccia comandi sul log eventi unificato (BACKLOG.md §3):
 /log cerca utente, /log cerca canale, /log esporta. Nessuna logica propria
 oltre alla formattazione — legge tramite core/repositories/
 event_log_repo.py, scritto da cogs/logging/basic_logs.py.
+/log archivio-canale scarica gli ultimi messaggi di un canale in un file,
+con quelli cancellati nell'ultima ora (LOG-027, LOG-030).
+Funzioni coperte: SPEC §8.17, §8.18 (LOG-027, LOG-030)
 
 Nessun gate is_module_active_for_guild qui: se il modulo è
 disattivato, semplicemente non c'è nulla da mostrare (la tabella
@@ -16,9 +19,6 @@ Limiti: ogni voce è tagliata e l'elenco si ferma a 4000 caratteri
 sotto i 10 MiB.
 """
 
-# DA FARE (issue #61, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §5 (Log).
-
 from __future__ import annotations
 
 import io
@@ -29,8 +29,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.logging import message_logs
+from core import channel_router as router
 from core.command_groups import CogConGruppi, comando_di_gruppo
-
+from core.message_log_logic import ARCHIVIO_MESSAGGI_MAX, file_archivio
 from core.repositories.event_log_repo import EventLogEntry, event_log_repo
 
 
@@ -236,6 +238,57 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
                 "Non sono riuscito a inviare il file dell'export. Riprova tra poco.",
                 ephemeral=True,
             )
+
+
+    @comando_di_gruppo(
+        "log",
+        nome="archivio-canale",
+        descrizione="Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.",
+    )
+    @app_commands.describe(
+        canale="Il canale da archiviare",
+        messaggi=f"Quanti messaggi, dai più recenti (default 200, massimo {ARCHIVIO_MESSAGGI_MAX})",
+    )
+    async def archivio_canale(
+        self,
+        interaction: discord.Interaction,
+        canale: discord.TextChannel,
+        messaggi: app_commands.Range[int, 1, ARCHIVIO_MESSAGGI_MAX] = 200,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            return
+        tuoi = canale.permissions_for(interaction.user)
+        if not (tuoi.view_channel and tuoi.read_message_history):
+            await interaction.response.send_message("Non puoi leggere la cronologia di quel canale.", ephemeral=True)
+            return
+        miei = canale.permissions_for(interaction.guild.me)
+        if router.canale_nascosto(canale) or not (miei.view_channel and miei.read_message_history):
+            await interaction.response.send_message(
+                "Non posso leggere la cronologia di quel canale (mi serve «Leggere la cronologia»).", ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        letti = []
+        try:
+            async for m in canale.history(limit=messaggi):
+                letti.append(message_logs.archiviato(m))
+        except discord.HTTPException as errore:
+            logger.warning("Archivio del canale %s interrotto: %s", canale.id, errore)
+        cancellati = message_logs.cancellati_recenti.di(canale.id)
+        parti = file_archivio(canale.name, letti, cancellati, MAX_EXPORT_FILE_BYTES)
+        try:
+            for numero, parte in enumerate(parti, start=1):
+                nome = f"archivio_{canale.name}.txt" if len(parti) == 1 else f"archivio_{canale.name}_{numero}.txt"
+                await interaction.followup.send(
+                    f"Archivio di {canale.mention}: {len(letti)} messaggi, {len(cancellati)} cancellati di recente."
+                    + (f" File {numero} di {len(parti)}." if len(parti) > 1 else ""),
+                    file=discord.File(io.BytesIO(parte), filename=nome),
+                    ephemeral=True,
+                )
+        except discord.HTTPException as errore:
+            logger.warning("Archivio del canale %s non inviato: %s", canale.id, errore)
+            await interaction.followup.send("Non sono riuscito a mandare il file. Riprova tra poco.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

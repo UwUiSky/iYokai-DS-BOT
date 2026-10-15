@@ -17,6 +17,14 @@ from core.logging_advanced_logic import classify_voice_state_change
 from tests.support.discord_fakes import fake_guild, fake_member, fake_text_channel
 
 
+@pytest.fixture(autouse=True)
+def _eventi_accesi(monkeypatch):
+    """LOG-017: senza database tutti gli eventi sono accesi."""
+    from tests.support.router_fakes import nessun_evento_spento
+
+    nessun_evento_spento(monkeypatch)
+
+
 @pytest.fixture
 def cog(monkeypatch):
     monkeypatch.setattr(modulo, "logging_avanzato_attivo", AsyncMock(return_value=True))

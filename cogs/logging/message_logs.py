@@ -1,19 +1,23 @@
 """
 cogs/logging/message_logs.py
 ============================
-Log dei messaggi cancellati, modificati e cancellati in blocco. Scrive
-nella destinazione «messaggi» del router (canale di testo o forum) e,
-per ogni evento, una riga nel log eventi senza il testo. Serve il
-Message Content Intent; un messaggio uscito dalla memoria di
-discord.py si segnala senza contenuto. Fa parte del Logging Avanzato.
-Funzioni coperte: SPEC §8.16 (NF-02)
-Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py
+Log dei messaggi cancellati, modificati e cancellati in blocco, e degli
+inviti Discord scritti nei messaggi. Scrive nella destinazione «messaggi»
+del router (canale di testo o forum) e, per ogni evento, una riga nel log
+eventi senza il testo. Serve il Message Content Intent; un messaggio
+uscito dalla memoria di discord.py si segnala senza contenuto. I messaggi
+cancellati restano in memoria un'ora per l'archivio di un canale. Fa parte
+del Logging Avanzato. Ogni evento si può spegnere (LOG-017).
+Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027)
+Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
+core/repositories/log_eventi_repo.py
 """
 
 from __future__ import annotations
 
 import io
 import logging
+import time
 
 import discord
 from discord.ext import commands
@@ -23,6 +27,7 @@ from core import channel_router as router
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
 from core.message_log_logic import (
+    CancellatiRecenti,
     MessaggioArchiviato,
     da_ignorare,
     file_blocco,
@@ -31,10 +36,26 @@ from core.message_log_logic import (
     testo_allegati,
 )
 from core.repositories.event_log_repo import event_log_repo
+from core.phishing_logic import codici_invito
+from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
 from core.testo_limiti import CAMPO_MAX, DESCRIZIONE_MAX, tronca
 
 logger = logging.getLogger("iyokai.logging.messaggi")
+
+# LOG-027: messaggi cancellati di recente, per l'archivio di un canale (solo in memoria).
+cancellati_recenti = CancellatiRecenti(time.monotonic)
+
+
+def archiviato(m: discord.Message) -> MessaggioArchiviato:
+    allegati = testo_allegati([a.filename for a in m.attachments])
+    return MessaggioArchiviato(
+        message_id=m.id,
+        author_id=m.author.id,
+        author_nome=str(m.author),
+        testo=m.content + (f" 📎 {allegati}" if allegati else ""),
+        quando=m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+    )
 
 
 def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int) -> bool:
@@ -56,7 +77,9 @@ class MessageLogsCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    async def _scrivi(self, guild: discord.Guild, **contenuto) -> None:
+    async def _scrivi(self, guild: discord.Guild, evento: str, **contenuto) -> None:
+        if not await log_eventi_repo.evento_acceso(guild.id, evento):
+            return
         predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
         dest = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
         if dest is not None:
@@ -79,6 +102,8 @@ class MessageLogsCog(commands.Cog):
         if _scartato(ignorati, canale, messaggio, payload.channel_id):
             return
 
+        if messaggio is not None:
+            cancellati_recenti.aggiungi(payload.channel_id, archiviato(messaggio))
         await event_log_repo.log_event(
             guild.id,
             "message_delete",
@@ -106,7 +131,7 @@ class MessageLogsCog(commands.Cog):
             allegati = testo_allegati([a.filename for a in messaggio.attachments])
             if allegati:
                 embed.add_field(name="Allegati", value=allegati, inline=False)
-        await self._scrivi(guild, embed=embed)
+        await self._scrivi(guild, "message_delete", embed=embed)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent) -> None:
@@ -124,16 +149,10 @@ class MessageLogsCog(commands.Cog):
 
         totale = len(payload.message_ids)
         archiviati = [
-            MessaggioArchiviato(
-                message_id=m.id,
-                author_id=m.author.id,
-                author_nome=str(m.author),
-                testo=m.content,
-                quando=m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            )
-            for m in payload.cached_messages
-            if not _scartato(ignorati, canale, m, payload.channel_id)
+            archiviato(m) for m in payload.cached_messages if not _scartato(ignorati, canale, m, payload.channel_id)
         ]
+        for m in archiviati:
+            cancellati_recenti.aggiungi(payload.channel_id, m)
         await event_log_repo.log_event(
             guild.id,
             "message_bulk_delete",
@@ -150,7 +169,7 @@ class MessageLogsCog(commands.Cog):
         if archiviati:
             dati = file_blocco(archiviati, totale - len(archiviati))
             contenuto["file"] = discord.File(io.BytesIO(dati), filename="messaggi_cancellati.txt")
-        await self._scrivi(guild, **contenuto)
+        await self._scrivi(guild, "message_bulk_delete", **contenuto)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:
@@ -186,7 +205,40 @@ class MessageLogsCog(commands.Cog):
         embed.add_field(
             name="Dopo", value=tronca(senza_accento_grave(after.content), CAMPO_MAX) or "*(vuoto)*", inline=False
         )
-        await self._scrivi(after.guild, embed=embed)
+        await self._scrivi(after.guild, "message_edit", embed=embed)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        """LOG-005: inviti Discord scritti in un messaggio."""
+        if message.guild is None or message.author.bot:
+            return
+        codici = codici_invito(message.content)
+        if not codici:
+            return
+        if not await logging_avanzato_attivo(message.guild.id, self.bot):
+            return
+        ignorati = await log_ignora_repo.carica(message.guild.id)
+        if _scartato(ignorati, message.channel, message, message.channel.id):
+            return
+        await event_log_repo.log_event(
+            message.guild.id,
+            "invite_posted",
+            target_user_id=message.author.id,
+            channel_id=message.channel.id,
+            details={"message_id": message.id, "codici": list(codici)},
+        )
+        embed = discord.Embed(
+            title="🔗 Invito scritto in un messaggio",
+            description=f"[Vai al messaggio]({message.jump_url})",
+            color=discord.Color.blurple(),
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.add_field(name="Autore", value=f"{message.author.mention} ({message.author.id})", inline=True)
+        embed.add_field(name="Canale", value=f"<#{message.channel.id}>", inline=True)
+        embed.add_field(
+            name="Inviti", value=tronca(" ".join(f"`discord.gg/{c}`" for c in codici), CAMPO_MAX), inline=False
+        )
+        await self._scrivi(message.guild, "invite_posted", embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

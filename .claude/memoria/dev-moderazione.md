@@ -3,9 +3,10 @@
 2026-10-15, ramo feat/r7mod, worktree /home/claude/wt/r7mod, DB iyokai_wr7mod. Migrazioni r7: 0180–0189.
 ## In corso
 Giro r7 (previsione 3 voci): #113 iYokai Mod (fatto) → #119 catalogo log + residui #61 → #101 NF-30 appello ban. Mi fermo dopo #101.
-Prossimo passo: #119, leggere revisione/01-analisi/catalogo/05-log.md solo per LOG-005/006/012/017/027/029/030.
+Prossimo passo: #101 NF-30, partire da cogs/moderation/ban_appeal.py (esiste gia') e core/ban_appeal_logic.py.
 ## Fatto
 - Giri G1-G7, R5, R6 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli spam-trap, verify, lockdown, phishing, captcha, anti-raid r6, massa, automod filtri
+- R7-2 #119 LOG-005/006/012/017/027/030 (/log eventi, /log archivio-canale, migr. 0180); mod-log e log AutoMod dal router (§18.1); tolti DA FARE #61
 - R7-1 #113 iYokai Mod: core/bot_roles.py (unico punto), core/mod_bot.py, router, mod-log, automod, escalation, anti-raid, anti-nuke, spam-trap, scadenza tempban; invito in /utility info
 ## Cose imparate
 - D15: Mod non ha listener; eventi solo dal principale → niente doppioni. Azioni nuove di sicurezza: passare da bot_roles.banna/espelli/isola/... o bot_roles.scrivi (log). Messaggi con view: sempre il principale
@@ -23,6 +24,7 @@ Prossimo passo: #119, leggere revisione/01-analisi/catalogo/05-log.md solo per L
 - Nuove chiavi guild settings: SETTINGS_SCHEMA in cogs/utility/config_history.py + tests/test_config_import_validation.py
 - Test lenti (CPU condivisa): 700 test d'area ~10 min
 ## Aperto
+- #119 LOG-029 (archivio utente 3 giorni): serve testo dei messaggi su disco, decisione di privacy
 - #113: canali di log via webhook non fatti (Mod ha limiti suoi); /setup non mostra l'invito (sta in /utility info); Mod da solo in un server senza principale non fa nulla
 - M 1.10 soglie sui warn manuali (F9). OAuth rientro oltre 7 giorni. alt_detection (#92)
 - SIC-036 livelli di allerta (con AMD-067), SIC-003…022, SIC-039/040/044/046; #116 e #115 resto
