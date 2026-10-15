@@ -18,6 +18,7 @@ MAX_BRANI_PER_PLAYLIST = 200
 NOME_MAX = 50
 FILE_MAX_BYTE = 256 * 1024  # file di importazione (LIM: 10 MiB, qui molto meno)
 FORMATO_FILE = "iyokai-playlist-1"
+DURATA_MAX_MS = 24 * 3600 * 1000  # una durata letta da un file non supera un giorno
 
 _NOME_VALIDO = re.compile(r"^[\w .,'!?()&+-]{1,50}$")
 
@@ -68,8 +69,10 @@ def brani_da_coda(corrente, coda) -> tuple[list[BranoSalvato], int]:
 def brani_da_json(valore) -> list[BranoSalvato]:
     """Dal JSON del database (o del file) ai brani. Le voci rotte si saltano."""
     dati = json.loads(valore) if isinstance(valore, (str, bytes)) else valore
+    if not isinstance(dati, list):
+        return []
     brani: list[BranoSalvato] = []
-    for voce in dati or []:
+    for voce in dati:
         if not isinstance(voce, dict):
             continue
         encoded = voce.get("encoded")
@@ -77,8 +80,8 @@ def brani_da_json(valore) -> list[BranoSalvato]:
             continue
         uri = voce.get("uri")
         try:
-            durata = max(0, int(voce.get("length") or 0))
-        except (TypeError, ValueError):
+            durata = min(DURATA_MAX_MS, max(0, int(voce.get("length") or 0)))
+        except (TypeError, ValueError, OverflowError):  # Infinity, NaN, testo
             durata = 0
         brani.append(
             BranoSalvato(
@@ -112,7 +115,7 @@ def leggi_file_importazione(contenuto: bytes) -> tuple[list[BranoSalvato], str |
         return [], f"Il file supera {FILE_MAX_BYTE // 1024} KB."
     try:
         dati = json.loads(contenuto.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+    except (UnicodeDecodeError, ValueError, RecursionError):  # RecursionError: "[[[[…" annidato
         return [], "Il file non è un JSON valido."
     if not isinstance(dati, dict) or dati.get("formato") != FORMATO_FILE:
         return [], "Il file non è una playlist esportata da iYokai."
@@ -120,6 +123,36 @@ def leggi_file_importazione(contenuto: bytes) -> tuple[list[BranoSalvato], str |
     if not brani:
         return [], "Il file non contiene brani validi."
     return brani, None
+
+
+_SORGENTI_VIETATE = {"local"}
+
+
+def riferimenti_traccia(info) -> list[str] | None:
+    """
+    Una traccia decodificata da Lavalink (`info` di /v4/decodetracks) può
+    essere suonata? Il brano salvato arriva anche da un file dell'utente: il
+    suo `encoded` può nascondere un file locale del nodo o un URL interno
+    (SSRF). None = rifiutata; se no, gli URL http(s) che il chiamante deve
+    ancora controllare con `url_e_sicuro` (identificatore e uri).
+    """
+    if not isinstance(info, dict):
+        return None
+    if str(info.get("sourceName") or "").strip().lower() in _SORGENTI_VIETATE:
+        return None
+    da_controllare: list[str] = []
+    for valore in (info.get("identifier"), info.get("uri")):
+        if not isinstance(valore, str) or not valore:
+            continue
+        testo = valore.strip()
+        basso = testo.lower()
+        if basso.startswith(("http://", "https://")):
+            da_controllare.append(testo)
+        elif "://" in testo or basso.startswith(("/", "\\", "~", "file:", "local:")) or (
+            len(testo) > 1 and testo[1] == ":" and testo[0].isalpha()
+        ):
+            return None  # altri schemi, percorsi di file
+    return da_controllare
 
 
 def dati_playlist_wavelink(nome: str, tracce: list) -> dict:

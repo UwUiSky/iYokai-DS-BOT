@@ -31,9 +31,11 @@ from core.music_playlist_logic import (
     file_esportazione,
     leggi_file_importazione,
     nome_valido,
+    riferimenti_traccia,
     riga_elenco,
 )
 from core.repositories.music_playlist_repo import LimitePlaylistRaggiunto, music_playlist_repo
+from core.safe_http import url_e_sicuro
 
 logger = logging.getLogger("iyokai.music.playlist")
 
@@ -51,9 +53,27 @@ async def decodifica_brani(nodo: wavelink.Node, nome: str, brani) -> wavelink.Pl
     except (wavelink.exceptions.WavelinkException, OSError):
         logger.warning("Decodifica della playlist non riuscita sul nodo %s.", nodo.identifier)
         return None
-    if not tracce:
+    if not isinstance(tracce, list):
         return None
-    return wavelink.Playlist(dati_playlist_wavelink(nome, tracce))
+    # Un `encoded` arriva anche da un file importato: si suona solo cio' che
+    # Lavalink puo' leggere in sicurezza (niente file locali, niente URL interni).
+    controllati: dict[str, bool] = {}
+    ammesse = []
+    for traccia in tracce:
+        riferimenti = riferimenti_traccia(traccia.get("info") if isinstance(traccia, dict) else None)
+        if riferimenti is None:
+            continue
+        for url in riferimenti:
+            if url not in controllati:
+                controllati[url] = await url_e_sicuro(url)
+        if all(controllati[url] for url in riferimenti):
+            ammesse.append(traccia)
+    if len(ammesse) < len(tracce):
+        logger.info("Playlist %r: %d brani rifiutati (file locali o URL non pubblici).",
+                    nome, len(tracce) - len(ammesse))
+    if not ammesse:
+        return None
+    return wavelink.Playlist(dati_playlist_wavelink(nome, ammesse))
 
 
 class MusicPlaylistCog(CogConGruppi, commands.Cog):

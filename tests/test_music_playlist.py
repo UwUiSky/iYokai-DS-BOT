@@ -16,6 +16,7 @@ import wavelink
 import cogs.music.playlist as modulo
 from cogs.music.playlist import MusicPlaylistCog, decodifica_brani
 from core.music_playlist_logic import (
+    DURATA_MAX_MS,
     FORMATO_FILE,
     MAX_BRANI_PER_PLAYLIST,
     MAX_PLAYLIST_PER_UTENTE,
@@ -25,6 +26,7 @@ from core.music_playlist_logic import (
     file_esportazione,
     leggi_file_importazione,
     nome_valido,
+    riferimenti_traccia,
 )
 from core.repositories.music_playlist_repo import (
     LimitePlaylistRaggiunto,
@@ -264,3 +266,86 @@ async def test_esporta_e_importa_dai_comandi(repo, monkeypatch):
     await cog.importa.callback(cog, interazione2, file=allegato, nome="Copia")
     assert "importata" in risposte2.testi[-1]
     assert [b.encoded for b in await repo.get(2, "Copia")] == ["QAAA1"]
+
+
+# ------------------------------------------------- file malevoli (cacciatore r6)
+@pytest.mark.parametrize(
+    "contenuto",
+    [
+        b"[" * 100_000,  # annidamento: RecursionError
+        json.dumps({"formato": FORMATO_FILE, "brani": 5}).encode(),  # brani non e' un elenco
+        b'{"formato": "iyokai-playlist-1", "brani": [{"encoded": "x", "length": Infinity}]}',
+    ],
+    ids=["annidato", "brani-numero", "infinity"],
+)
+def test_file_malevoli_non_fanno_cadere_l_importazione(contenuto):
+    brani, errore = leggi_file_importazione(contenuto)
+    assert errore is not None or all(b.durata_ms >= 0 for b in brani)
+
+
+def test_durata_enorme_viene_limitata():
+    dati = {"formato": FORMATO_FILE, "brani": [{"encoded": "x", "length": 10**30}]}
+    brani, errore = leggi_file_importazione(json.dumps(dati).encode())
+    assert errore is None and brani[0].durata_ms == DURATA_MAX_MS
+
+
+@pytest.mark.asyncio
+async def test_durata_enorme_non_rompe_l_elenco(repo):
+    dati = {"formato": FORMATO_FILE, "brani": [{"encoded": "x", "length": 10**30}] * 200}
+    brani, _ = leggi_file_importazione(json.dumps(dati).encode())
+    await repo.save(1, "Lunga", brani)
+    [riassunto] = await repo.list_for_user(1)
+    assert riassunto.numero_brani == 200
+
+
+def _info(sorgente, identificatore, uri=None):
+    return {"sourceName": sorgente, "identifier": identificatore, "uri": uri}
+
+
+def test_riferimenti_traccia():
+    assert riferimenti_traccia(_info("youtube", "dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")) == [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    ]
+    assert riferimenti_traccia(_info("local", "/audio/a.mp3")) is None
+    assert riferimenti_traccia(_info("http", "/etc/passwd")) is None
+    assert riferimenti_traccia(_info("http", "file:///etc/passwd")) is None
+    assert riferimenti_traccia(_info("http", "ftp://interno/x")) is None
+    assert riferimenti_traccia(_info("http", "C:\\segreti.mp3")) is None
+    assert riferimenti_traccia("rotto") is None
+
+
+@pytest.mark.asyncio
+async def test_decodifica_scarta_file_locali_e_url_interni(monkeypatch):
+    """Un `encoded` di un file importato non fa leggere al nodo file locali o URL interni (SSRF)."""
+    pubblico = "https://cdn.esempio.org/a.mp3"
+
+    async def _sicuro(url):
+        return url == pubblico
+
+    monkeypatch.setattr(modulo, "url_e_sicuro", _sicuro)
+
+    def _p(i, sorgente, identificatore):
+        dato = _payload_traccia(i)
+        dato["info"].update(sourceName=sorgente, identifier=identificatore, uri=identificatore)
+        return dato
+
+    class _Nodo:
+        identifier = "n"
+
+        async def send(self, metodo, *, path, data=None):
+            return [
+                _p(1, "local", "/opt/lavalink/application.yml"),
+                _p(2, "http", "http://169.254.169.254/latest/meta-data/"),
+                _p(3, "http", "http://127.0.0.1:2333/v4/info"),
+                _p(4, "http", pubblico),
+            ]
+
+    brani = [BranoSalvato(f"B{i}", None, 1, f"QAAA{i}") for i in range(1, 5)]
+    playlist = await decodifica_brani(_Nodo(), "Furba", brani)
+    assert [t.uri for t in playlist] == [pubblico]
+
+    class _NodoSoloInterni(_Nodo):
+        async def send(self, metodo, *, path, data=None):
+            return [_p(1, "local", "/etc/passwd")]
+
+    assert await decodifica_brani(_NodoSoloInterni(), "Furba", brani[:1]) is None
