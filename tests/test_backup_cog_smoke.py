@@ -1,7 +1,7 @@
 """
 tests/test_backup_cog_smoke.py
 ==================================
-Smoke test del cog Backup (/admin backup main|crea|promuovi).
+Smoke test del cog Backup (/backup main|crea|promuovi).
 """
 
 import discord
@@ -17,4 +17,4 @@ async def test_backup_cog_si_carica_correttamente():
 
     assert bot.get_cog("BackupCog") is not None
 
-    assert {"backup main", "backup crea", "backup promuovi"} <= percorsi_del_gruppo("admin")
+    assert {"main", "crea", "promuovi"} <= percorsi_del_gruppo("backup")

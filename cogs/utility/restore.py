@@ -2,11 +2,11 @@
 cogs/utility/restore.py
 ===========================
 Restore massivo utenti via OAuth2 (SPEC.md §11.11/§11.12) — comandi
-/admin backup restore-modo e /admin backup restore-utenti, più i listener che tengono
+/backup restore-modo e /backup restore-utenti, più i listener che tengono
 aggiornata la retention dei token salvati (uscita spontanea/kick/
 ban, come concordato esplicitamente con l'utente).
 
-Tre modalità per server (impostate con /admin backup restore-modo),
+Tre modalità per server (impostate con /backup restore-modo),
 esattamente come discusso: server NUOVI raccolgono il consenso al
 momento della verifica (verify_oauth, non gestito qui — vedi
 cogs/security/verify.py per il pannello che offre il link);
@@ -14,11 +14,13 @@ server ESISTENTI grandi usano la modalità on-demand (default:
 raccoglie il consenso solo se/quando serve un restore, riusando i
 token già raccolti da restore precedenti); in alternativa, invito
 classico senza alcun token.
-"""
 
-# DA FARE (issue #68, fase F3): restano M 12.12 (DM solo con consenso) e
-#   M 12.14 (link di consenso a fine verifica): servono dati e codice del
-#   flusso di verifica (cogs/security/verify.py).
+A fine verifica (cogs/security/verify.py) il membro di un server con backup
+riceve la proposta di consenso: un bottone per accettare i DM di ripristino
+(M 12.12) e, in modalità «OAuth alla verifica», anche il link OAuth (M 12.14).
+Il restore manda DM solo a chi ha accettato o ha dato il consenso OAuth.
+Funzioni coperte: SPEC §11.11, §11.12, M 12.10–12.14
+"""
 
 from __future__ import annotations
 
@@ -56,7 +58,9 @@ from core.restore_oauth_logic import (
 )
 from core.restore_orchestrator import LimiteDiFrequenza, restore_orchestrator
 from core.restore_retention_logic import was_recently_kicked
+from core.restore_web_server import CONSENT_ONLY_TARGET
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.restore")
 
@@ -75,6 +79,69 @@ SETTING_AUTO_INVITE_ON_JOIN = "backup_auto_invite_on_join"
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
 
 
+class ConsensoRestoreView(BaseView):
+    """M 12.12: il membro sceglie se ricevere un DM quando il server va ripristinato."""
+
+    def __init__(self, guild_id: int, user_id: int) -> None:
+        super().__init__(timeout=900)
+        self.guild_id = guild_id
+        self.user_id = user_id
+
+    @discord.ui.button(label="Sì, avvisami", style=discord.ButtonStyle.success)
+    async def accetta(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await restore_oauth_repo.salva_consenso(self.guild_id, self.user_id)
+        await interaction.response.edit_message(
+            content="✅ Se il server dovrà essere ripristinato riceverai un DM con il link per rientrare.",
+            view=None,
+        )
+
+    @discord.ui.button(label="No, grazie", style=discord.ButtonStyle.secondary)
+    async def rifiuta(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await restore_oauth_repo.ritira_consenso(self.guild_id, self.user_id)
+        await interaction.response.edit_message(
+            content="Va bene: in caso di ripristino non riceverai DM da questo server.", view=None
+        )
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id and await super().interaction_check(interaction)
+
+
+async def proposta_consenso_restore(
+    guild_id: int, user_id: int
+) -> tuple[str, ConsensoRestoreView] | None:
+    """
+    M 12.12/12.14: testo e bottoni da mostrare a fine verifica. None se il server
+    non usa il backup, è in modalità «solo invito classico» senza coppia, o se
+    l'utente ha già dato il consenso.
+    """
+    modalita = await db.get_guild_setting(guild_id, SETTING_RESTORE_MODE, DEFAULT_RESTORE_MODE)
+    if modalita != MODE_VERIFY_OAUTH and await backup_repo.get_pair(guild_id) is None:
+        return None
+    if await restore_oauth_repo.ha_consenso(guild_id, user_id):
+        return None
+    testo = (
+        "📦 Questo server ha un backup. Se un giorno dovrà essere ripristinato, "
+        "vuoi ricevere un DM con il link per rientrare?"
+    )
+    if modalita == MODE_VERIFY_OAUTH:
+        try:
+            url = build_authorize_url(
+                client_id=config.OAUTH2_CLIENT_ID,
+                redirect_uri=config.OAUTH2_REDIRECT_URI,
+                source_guild_id=guild_id,
+                target_guild_id=CONSENT_ONLY_TARGET,
+                user_id=user_id,
+                signing_key_b64=config.OAUTH_ENCRYPTION_KEY,
+            )
+            testo += (
+                f"\nOppure [autorizza il rientro automatico]({url}): in caso di ripristino "
+                "sarai aggiunto da solo, senza DM."
+            )
+        except RestoreStateSigningError:
+            logger.warning("Link OAuth di fine verifica non creato: OAUTH_ENCRYPTION_KEY non configurata.")
+    return testo, ConsensoRestoreView(guild_id, user_id)
+
+
 class RestoreCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -83,10 +150,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
     # Configurazione
     # ------------------------------------------------------------
     @comando_di_gruppo(
-        "admin",
+        "backup",
         nome="restore-modo",
         descrizione="Scegli come questo server gestisce il restore utenti via OAuth2.",
-        sottogruppo=("backup", "Backup e ripristino del server"),
     )
     @app_commands.describe(
         modalita="Come raccogliere il consenso per il restore automatico",
@@ -123,13 +189,12 @@ class RestoreCog(CogConGruppi, commands.Cog):
         )
 
     # ------------------------------------------------------------
-    # /admin backup restore-utenti
+    # /backup restore-utenti
     # ------------------------------------------------------------
     @comando_di_gruppo(
-        "admin",
+        "backup",
         nome="restore-utenti",
         descrizione="Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.",
-        sottogruppo=("backup", "Backup e ripristino del server"),
     )
     @app_commands.describe(
         server_di_origine="ID del server (main originale) da cui ripristinare gli utenti"
@@ -161,7 +226,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(
                 "⚠️ Questo server non è registrato come backup di quello indicato. "
                 "Il restore è permesso solo dal server di origine verso il suo "
-                "backup designato (vedi /admin backup main e /admin backup crea).",
+                "backup designato (vedi /backup main e /backup crea).",
                 ephemeral=True,
             )
             return
@@ -204,6 +269,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             "illeggibili": 0,
             "rimandati": 0,
             "gia_contattati": 0,
+            "senza_consenso": 0,
             "ruolo_non_assegnato": 0,
         }
 
@@ -251,6 +317,12 @@ class RestoreCog(CogConGruppi, commands.Cog):
                     )
                     if not assegnato:
                         contatori["ruolo_non_assegnato"] += 1
+                continue
+
+            if azione in (ACTION_REQUEST_CONSENT, ACTION_CLASSIC_INVITE) and not (
+                await restore_oauth_repo.ha_consenso(source_guild_id, entry.user_id)
+            ):
+                contatori["senza_consenso"] += 1  # M 12.12: niente contatti senza permesso
                 continue
 
             if azione in (ACTION_REQUEST_CONSENT, ACTION_CLASSIC_INVITE) and (
@@ -321,7 +393,8 @@ class RestoreCog(CogConGruppi, commands.Cog):
             f"⚠️ Aggiunta non riuscita: {contatori['join_falliti']}\n"
             f"🔒 Token illeggibili (da rifare): {contatori['illeggibili']}\n"
             f"⏱️ Rimandati (limite di frequenza): {contatori['rimandati']}\n"
-            f"🔁 Già contattati di recente: {contatori['gia_contattati']}"
+            f"🔁 Già contattati di recente: {contatori['gia_contattati']}\n"
+            f"🤐 Non contattati (nessun consenso ai DM): {contatori['senza_consenso']}"
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
                 f"/security verify setup): {contatori['ruolo_non_assegnato']}"

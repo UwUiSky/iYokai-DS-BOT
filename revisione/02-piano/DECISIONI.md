@@ -390,6 +390,12 @@ il blocco intero `/security antinuke *` in un gruppo di primo livello `/antinuke
 12 comandi più `canale-allarmi`, stesso permesso `administrator` e livello sicurezza).
 `/security` resta con anti-raid, panico, verifica, ban globale, heatmap, score, spam-trap.
 
+**Terzo caso (15/10/2026): `/backup`.** `/admin` era a 6.577 caratteri e il backup doveva
+ricevere modelli e sincronia (NF-39), copie datate, esportazioni e importazioni (#121, M 12.17).
+Il blocco intero `/admin backup *` (main, crea, collega, promuovi, restore-modo,
+restore-utenti) diventa il gruppo di primo livello `/backup` (permesso `administrator`,
+livello admin), con le funzioni nuove dentro. `/admin` scende sotto i 5.600 caratteri.
+
 ## D26 — Motore AI: gruppo `/ai`, fornitori dal `.env`, chi addestra non entra (14/10/2026)
 
 **Gruppo.** La configurazione dell'AI (consenso, canali, limiti, privacy, lore, parole

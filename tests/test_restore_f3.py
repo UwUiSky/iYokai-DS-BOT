@@ -251,6 +251,8 @@ async def _prepara(monkeypatch, database, utenti):
     await backup.define_main(100)
     await backup.define_backup(100, 200)
     await snap.save_snapshot(100, [(u, f"U{u}", None) for u in utenti])
+    for u in utenti:
+        await oauth.salva_consenso(100, u)  # M 12.12: consenso dato a fine verifica
     return restore_module, snap, oauth, backup, pause
 
 

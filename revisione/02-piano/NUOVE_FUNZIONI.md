@@ -507,7 +507,7 @@ va **dentro** un sotto-gruppo esistente (per esempio dentro `config`).
 - **Fase:** F13 · **SPEC:** §23
 - **Cosa fa:** Una raccolta di strutture pronte da caricare. Ban e ruoli tenuti uguali tra due server dello stesso proprietario.
 - **Da chi prendere spunto:** Xenon (5.731 modelli, sync).
-- **Comandi:** `/admin backup modello …`, `/admin backup sincronia …`.
+- **Comandi:** `/backup modello …`, `/backup sincronia …`.
 - **File nuovi:** `core/server_sync_logic.py`, `tests/test_server_sync_logic.py`.
 - **File esistenti da toccare:** `cogs/utility/backup.py`.
 - **Limiti da rispettare:** Stessi limiti del backup (`LIM-28`, `LIM-38`).

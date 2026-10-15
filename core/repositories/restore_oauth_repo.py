@@ -200,6 +200,32 @@ class RestoreOAuthRepository:
                 if preso:
                     await conn.fetchval("SELECT pg_advisory_unlock($1)", chiave)
 
+    async def salva_consenso(self, guild_id: int, user_id: int) -> None:
+        """M 12.12: l'utente accetta un DM se il server va ripristinato."""
+        await self._pool.execute(
+            "INSERT INTO restore_consensi (guild_id, user_id) VALUES ($1, $2) "
+            "ON CONFLICT (guild_id, user_id) DO UPDATE SET dato_il = now()",
+            guild_id, user_id,
+        )
+
+    async def ritira_consenso(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM restore_consensi WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
+    async def ha_consenso(self, guild_id: int, user_id: int) -> bool:
+        """True se l'utente ha accettato i DM di ripristino o ha già dato il consenso OAuth."""
+        riga = await self._pool.fetchval(
+            """
+            SELECT 1 FROM restore_consensi WHERE guild_id = $1 AND user_id = $2
+            UNION ALL
+            SELECT 1 FROM restore_oauth_tokens WHERE source_guild_id = $1 AND user_id = $2
+            LIMIT 1
+            """,
+            guild_id, user_id,
+        )
+        return riga is not None
+
     async def gia_contattato(
         self, target_guild_id: int, source_guild_id: int, user_id: int, giorni: int = 7
     ) -> bool:

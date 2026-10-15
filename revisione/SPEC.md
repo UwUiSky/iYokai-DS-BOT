@@ -1064,9 +1064,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[ ]` 11.1 Snapshot del server salvato come dati nel database, con
   più copie datate per server (D8, LIM-39)
-- `[x]` 11.2 Collegamento di un server creato a mano: `/admin backup
+- `[x]` 11.2 Collegamento di un server creato a mano: `/backup
   crea` genera il codice (24 ore, monouso, salvato come impronta) e, a
-  richiesta, il link "modello" (`Guild.create_template`); `/admin backup
+  richiesta, il link "modello" (`Guild.create_template`); `/backup
   collega` lo usa nel server nuovo (`core/backup_link_logic.py`); la copia
   gira sul client del Creator; nessuna cessione di proprietà (D8); copia
   anche gli ultimi 50 messaggi per canale con il webhook, uno alla volta
@@ -1110,15 +1110,16 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   429, pausa tra i DM, conteggi dopo l'esito, riepilogo nel canale se la
   risposta è scaduta (LIM-7); coppia storica dopo la promozione (BUG-34);
   chiave ruotabile con prefisso di versione, cifrato legato a server e
-  utente, riga rovinata saltata (LIM-52, SEC-16). Aperti: la modalità
-  "OAuth alla verifica" non fa niente di diverso (12.14, serve
-  `cogs/security/verify.py`); invito in DM solo a chi ha dato il consenso
-  (12.12, manca il dato del consenso)
+  utente, riga rovinata saltata (LIM-52, SEC-16). Fatti il 15/10 (M 12.12,
+  12.14): a fine verifica, in un server con backup, bottoni «Sì, avvisami /
+  No» (tabella `restore_consensi`) e, in modalità "OAuth alla verifica", il
+  link OAuth di solo consenso; il restore manda DM solo a chi ha accettato
+  o ha già un token
 - `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
   `/promuovi-backup`, `/restore-users`, `/configura-restore` —
   esistono; `/define-backup` oggi fallisce perché prova a creare un
   server. In F3 diventano il flusso di 11.1 e 11.2, e in F7 passano
-  sotto `/admin backup` e `/admin restore`
+  sotto `/backup` e `/admin restore`
 - `[~]` 11.13 Promozione del backup a nuovo main — `/promuovi-backup`.
   Dopo la promozione `/restore-users` rifiuta sempre (BUG-34, da
   confermare con un test): la coppia storica va conservata

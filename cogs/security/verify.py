@@ -36,6 +36,9 @@ passa (VER-012: quarantena, kick, ban o niente; per il captcha sbagliato solo
 dopo 3 fallimenti di fila) e verifica solo per gli account sospetti (VER-013:
 gli altri ricevono subito i ruoli).
 
+A verifica riuscita, in un server con backup, la proposta di consenso al
+ripristino (M 12.12/12.14, `proponi_consenso_restore`).
+
 Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
 e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
 costruito — non tentati qui.
@@ -147,6 +150,10 @@ class CaptchaModal(BaseModal, title="Verification"):
 
         outcome = await self.cog.run_checks_and_finalize(guild, member, captcha_ok)
         await interaction.followup.send(outcome.reason, ephemeral=True)
+        await proponi_consenso_restore(
+            lambda t, view: interaction.followup.send(t, view=view, ephemeral=True),
+            guild, member, outcome,
+        )
 
 
 class CaptchaImmagineModal(BaseModal, title="Verifica"):
@@ -184,6 +191,10 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
         outcome = await self.cog.run_checks_and_finalize(guild, member, esito == "ok")
         if esito == "ok":
             await interaction.followup.send(outcome.reason, ephemeral=True)
+            await proponi_consenso_restore(
+                lambda t, view: interaction.followup.send(t, view=view, ephemeral=True),
+                guild, member, outcome,
+            )
         else:
             motivo = "i tentativi sono finiti" if esito == "esaurita" else "il tempo e' scaduto"
             await interaction.followup.send(
@@ -229,6 +240,25 @@ class VerifyPanelView(BaseView):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
         await avvia_verifica(interaction)
+
+
+async def proponi_consenso_restore(invia, guild: discord.Guild, member: discord.Member, outcome) -> None:
+    """
+    M 12.12/12.14: a verifica riuscita, la proposta di consenso per il ripristino
+    (cogs/utility/restore.py). `invia(testo, view=...)` è il followup o il DM.
+    """
+    if not outcome.success:
+        return
+    from cogs.utility.restore import proposta_consenso_restore
+
+    proposta = await proposta_consenso_restore(guild.id, member.id)
+    if proposta is None:
+        return
+    testo, view = proposta
+    try:
+        await invia(testo, view=view)
+    except discord.HTTPException:
+        pass  # DM chiusi: la verifica è comunque riuscita
 
 
 async def avvia_verifica(interaction: discord.Interaction) -> None:
@@ -284,6 +314,10 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
     await interaction.response.defer(ephemeral=True)
     outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True)
     await interaction.followup.send(outcome.reason, ephemeral=True)
+    await proponi_consenso_restore(
+        lambda t, view: interaction.followup.send(t, view=view, ephemeral=True),
+        guild, interaction.user, outcome,
+    )
 
 
 class VerifyCog(CogConGruppi, commands.Cog):
@@ -934,7 +968,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
         try:
             await payload.member.send(outcome.reason)
         except discord.HTTPException:
-            pass  # DM chiusi: l'esito resta comunque nel log
+            return  # DM chiusi: l'esito resta comunque nel log
+        await proponi_consenso_restore(payload.member.send, guild, payload.member, outcome)
 
 
 async def setup(bot: commands.Bot) -> None:

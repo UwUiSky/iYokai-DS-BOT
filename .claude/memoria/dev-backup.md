@@ -4,12 +4,12 @@
 13/10/2026 · ramo `feat/r3-bak` · base `c23a815` · DB `iyokai_wbak` · migrazioni 0070+
 
 ## In corso
-Giro 13/10 chiuso: 8 voci su 8 del revisore-capo (previste 8). Niente a metà. Prossimo giro, in quest'ordine:
-1. 12.12 + 12.14 (restore/verify): servono un dato di consenso al DM scritto dal flusso di verifica e il link
-   di consenso a fine verifica in `cogs/security/verify.py` (file non mio: chiedere all'orchestratore). Non fatti: toccano verify.py.
-2. 11.1/12.17 snapshot come dati con più copie datate (la copia dei messaggi D8 è fatta, ultimi 50 per canale).
-3. #121: BKP-032/033/034/036/037 (export/import JSON/CSV), BKP-009/010 (stato e annullo), BKP-018/019, BKP-024/025.
-4. #110 NF-39 (`core/server_sync_logic.py` esiste già: leggere prima). Guardiano dei limiti per ogni comando nuovo.
+Giro r7 (15/10, ramo `feat/r7bak`, DB `iyokai_wr7bak`, migrazioni 0190–0199). Previste 6 voci, in ordine:
+1. D25 `/backup` (blocco intero da `/admin backup`) + 12.12/12.14 consenso a fine verifica (0190).
+2. Strutture come dati: salva/lista/elimina/carica più copie datate (12.17), esporta/importa JSON-CSV (BKP-032…037, 014, 015).
+3. Caricamento con stato e annullo (BKP-009/010), livelli di permesso (BKP-018), registro 365 giorni (BKP-019).
+4. NF-39 modelli + sincronia ban/ruoli. 5. copia-canale/copia-ruolo (BKP-024/025). 6. chat salva/carica (BKP-026/027, 013, 016).
+Mi fermo dopo la 6 o prima se il contesto si riempie.
 
 ## Fatto
 - Correzioni cacciatore-bug (commit dopo 1083ada): collegamento atomico + indice unico (0071), blocco e registro contatti nel restore, get_stato per i bannati, 429 sul rinnovo (LimiteDiFrequenza), ruoli Forbidden/permessi ridotti, categoria `___hidden___` coi figli, on_guild_join in main.py, data_registry.
