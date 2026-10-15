@@ -5,10 +5,11 @@ Gruppo /backup (D25): coppia main e backup (main, crea, collega, promuovi),
 copie datate della struttura (salva, lista, carica, elimina), stato e annullo
 del caricamento, esportazioni e importazione, livelli di permesso e registro.
 modelli condivisibili con un codice e sincronia di ban e ruoli tra due server
-dello stesso owner (NF-39), livelli di permesso e registro.
+dello stesso owner (NF-39), copia di un canale o di un ruolo, livelli di
+permesso e registro.
 /backup restore-modo e restore-utenti sono in cogs/utility/restore.py.
 Funzioni coperte: SPEC §11.12, §11.13, §11.15, §11.16, M 12.1, M 12.9, M 12.17, NF-39,
-BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-032…037
+BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-024, BKP-025, BKP-032…037
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import backup_struttura_logic as struttura
+from core.backup_copia_logic import copia_canale, copia_ruolo
 from core.backup_permessi_logic import (
     AZIONE_CARICA,
     AZIONE_CREA,
@@ -672,6 +674,63 @@ class BackupCog(CogConGruppi, commands.Cog):
                     await membro.remove_roles(*da_togliere, reason=sync.motivo(dopo.guild.name, None))
             except discord.HTTPException:
                 logger.warning("Sincronia ruoli di %s verso %s non riuscita", dopo.id, altro.id)
+
+    # ------------------------------------------------------------
+    # Copia di un canale o di un ruolo (BKP-024, BKP-025)
+    # ------------------------------------------------------------
+    @comando_di_gruppo("backup", nome="copia-canale", descrizione="Copia un canale con i permessi; una categoria con i suoi canali.")
+    @app_commands.describe(canale="Canale o categoria da copiare", nome="Nome della copia (se vuoto, lo stesso)")
+    async def copia_canale_cmd(
+        self, interaction: discord.Interaction, canale: discord.abc.GuildChannel,
+        nome: app_commands.Range[str, 1, 100] | None = None,
+    ) -> None:
+        if not await self._puo(interaction, AZIONE_CREA):
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            esito = await copia_canale(interaction.guild, canale, nome)
+        except discord.HTTPException:
+            await interaction.followup.send("⚠️ Discord ha rifiutato la copia: controlla i miei permessi.", ephemeral=True)
+            return
+        if esito.errore:
+            await interaction.followup.send(f"⚠️ {esito.errore}", ephemeral=True)
+            return
+        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "copia-canale", canale.name)
+        await interaction.followup.send(
+            f"✅ Copia creata: {esito.nuovo.mention}. Canali copiati: {esito.copiati}"
+            + (f" · saltati: {esito.saltati}" if esito.saltati else "")
+            + (f" · non riusciti: {esito.falliti}" if esito.falliti else ""),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo("backup", nome="copia-ruolo", descrizione="Copia un ruolo con i permessi e, a scelta, i permessi nei canali.")
+    @app_commands.describe(
+        ruolo="Ruolo da copiare", nome="Nome della copia (se vuoto, lo stesso)",
+        permessi_canali="Copia anche i permessi del ruolo nei canali",
+    )
+    async def copia_ruolo_cmd(
+        self, interaction: discord.Interaction, ruolo: discord.Role,
+        nome: app_commands.Range[str, 1, 100] | None = None, permessi_canali: bool = False,
+    ) -> None:
+        if not await self._puo(interaction, AZIONE_CREA):
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            esito = await copia_ruolo(interaction.guild, ruolo, nome, permessi_canali)
+        except discord.HTTPException:
+            await interaction.followup.send("⚠️ Discord ha rifiutato la copia: controlla i miei permessi.", ephemeral=True)
+            return
+        if esito.errore:
+            await interaction.followup.send(f"⚠️ {esito.errore}", ephemeral=True)
+            return
+        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "copia-ruolo", ruolo.name)
+        await interaction.followup.send(
+            f"✅ Copia creata: {esito.nuovo.mention}"
+            + (f" · permessi nei canali: {esito.copiati - 1}" if permessi_canali else "")
+            + (" · alcuni permessi tolti (non li ho)" if esito.saltati else "")
+            + (f" · non riusciti: {esito.falliti}" if esito.falliti else ""),
+            ephemeral=True,
+        )
 
     # ------------------------------------------------------------
     # Esportazioni e importazione (BKP-032…037)
