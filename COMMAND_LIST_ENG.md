@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:22 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:40 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 458 commands in 21 categories.**
+**Total: 466 commands in 21 categories.**
 
 ## Admin
 
@@ -29,6 +29,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:2
 - **`/admin messages scheduled`** — Shows this server's scheduled messages.
 - **`/admin messages sticky-set`** — Sets a channel's sticky message.
 - **`/admin messages sticky-togli`** — Removes a channel's sticky message.
+- **`/admin music request-channel`** — Channel where typing a title queues it, with the player.
 - **`/admin music settings`** — Changes the server's music settings.
 - **`/admin music summary`** — Shows all the server's music settings.
 - **`/admin premium branding`** — Use a bot with your own name and avatar (premium).
@@ -377,12 +378,19 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:2
 - **`/music nowplaying`** — Shows the playing track with a progress bar.
 - **`/music pause`** — Pauses playback.
 - **`/music play`** — Plays a song or playlist.
+- **`/music playlist delete`** — Deletes one of your saved playlists.
+- **`/music playlist export`** — Downloads one of your playlists as a file.
+- **`/music playlist import`** — Saves a playlist from an exported file.
+- **`/music playlist list`** — Your saved playlists.
+- **`/music playlist load`** — Queues one of your saved playlists.
+- **`/music playlist save`** — Saves your channel's queue as a playlist.
 - **`/music previous`** — Goes back to the previous track.
 - **`/music queue`** — Shows the playback queue.
 - **`/music resume`** — Resumes paused playback.
 - **`/music shuffle`** — Shuffles the order of the queued tracks.
 - **`/music skip`** — Skips the track that is playing.
 - **`/music skipto`** — Jumps straight to track number N of the queue.
+- **`/music sound`** — Plays a sound effect in your voice channel.
 - **`/music stop`** — Stops playback and clears the queue.
 - **`/music volume down`** — Lowers the volume.
 - **`/music volume set`** — Sets the volume to a specific value (0-200).

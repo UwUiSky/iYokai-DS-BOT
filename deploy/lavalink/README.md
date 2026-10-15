@@ -53,6 +53,32 @@ Se il bot gira sullo stesso disco di Lavalink **senza Docker**, lascia
   lettura. Non montare altro.
 - Nessun segreto nei file di questa cartella (solo segnaposto).
 
+## Avvio senza Docker (servizio che riparte da solo)
+
+Serve Java 17 o successivo e `Lavalink.jar` (4.2.0 o successivo) dalle
+release ufficiali (https://github.com/lavalink-devs/Lavalink/releases).
+Metti `Lavalink.jar` e `application.yml` nella stessa cartella, ad esempio
+`/opt/lavalink`, e crea `/etc/systemd/system/lavalink.service`:
+
+```ini
+[Unit]
+Description=Lavalink per iYokai
+After=network-online.target
+
+[Service]
+User=lavalink
+WorkingDirectory=/opt/lavalink
+ExecStart=/usr/bin/java -Xmx512M -jar Lavalink.jar
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Poi `systemctl enable --now lavalink`. La password resta solo in
+`application.yml` (permessi 600, proprietario `lavalink`), mai nel repository.
+
 ## Controlli dopo l'avvio
 
 ```bash
@@ -68,7 +94,8 @@ Altro: `docs/music-lavalink.md` (documentazione ufficiale, nodi pubblici).
 
 ## Rete (sorgente `http`)
 
-`sources.http: true` permette i link diretti a un file audio. Il bot rifiuta
+`sources.http: true` permette i link diretti a un file audio e i file allegati
+(a `/music play` o scritti nel canale delle richieste): senza, quelli non suonano. Il bot rifiuta
 prima gli indirizzi interni (127.0.0.1, 10.x, 192.168.x, metadati cloud), ma non
 può vedere dove porta un redirect: sull'host di Lavalink limita anche il traffico
 in uscita verso le reti private e `169.254.169.254`. Se non ti servono i link

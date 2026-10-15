@@ -817,7 +817,7 @@ sessione perché non richiesto esplicitamente.
   Player` (uno per worker/server) ha la propria coda, indipendente
   dalle altre per costruzione
   → **Stato 04/10:** un secondo canale nello stesso server condivide bot e coda (REVIEW §12).
-- `[~]` 9.4 Comandi: play, skip, stop, pause, resume, queue,
+- `[x]` 9.4 Comandi: play, skip, stop, pause, resume, queue,
   clear-queue, shuffle, loop track, loop queue, nowplaying (con
   barra di progresso), volume, disconnect. **Limite playlist**:
   `/play` su un
@@ -839,7 +839,7 @@ sessione perché non richiesto esplicitamente.
   seek, lyrics. (13/10: `/music remove` e `queue cerca` erano stati
   scritti in F2 per errore e sono stati tolti; domanda per l'owner in
   VERIFICA_LIVE.)
-  → **Stato 04/10:** `/stop` e `/skip` da un altro canale (REVIEW §4); nessun `defer` (LIM-25); titolo oltre 256 (LIM-21).
+  → **Stato 14/10:** sistemati canale diverso (M 8.7), `defer` prima di Lavalink (M 8.16), titolo tagliato (M 8.15). `/music play` accetta anche un file allegato (MUS-009); il bot entra "sordo" (MUS-056). Da verificare live.
 - `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — **un nodo wavelink per bot** (D10): il
   bot principale e ogni worker hanno i propri nodi, uno per server in
@@ -901,16 +901,17 @@ sessione perché non richiesto esplicitamente.
   wavelink, nodi pubblici in cascata + nodo locale (vedi PROGRESS.md)
   → **Stato 04/10:** un nodo morto blocca gli altri (LIM-41); versione del nodo non controllata (LIM-54).
 
-- `[ ]` 9.13 Un nodo wavelink per ogni bot per ogni server Lavalink,
+- `[x]` 9.13 Un nodo wavelink per ogni bot per ogni server Lavalink,
   con scelta esplicita del nodo (D10, LIM-40, LIM-42)
-- `[ ]` 9.14 Controllo della versione di Lavalink all'avvio (4.2.0 o
+- `[x]` 9.14 Controllo della versione di Lavalink all'avvio (4.2.0 o
   successiva) e nodi pubblici solo da `.env` (LIM-54)
-- `[ ]` 9.15 Cartella `deploy/lavalink/` con `docker-compose.yml`,
+- `[x]` 9.15 Cartella `deploy/lavalink/` con `docker-compose.yml`,
   `application.yml` e guida (#47, #48)
-- `[ ]` 9.16 Radio che parte da sola quando il bot principale entra in
+- `[x]` 9.16 Radio che parte da sola quando il bot principale entra in
   un canale vocale (#45)
-- `[ ]` 9.17 Canale richieste con messaggio "player" e bottoni, playlist
+- `[x]` 9.17 Canale richieste con messaggio "player" e bottoni, playlist
   salvate degli utenti (§23, NF-19)
+  → **Stato 14/10:** 9.13–9.16 fatte in F2 (#64, #45, #47, #48); 9.17 vedi 23.1. Da verificare live.
 
 ## §10 ALERTS & SOCIAL — presente, con limiti di quota da correggere (fase F1)
 
@@ -1871,8 +1872,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 ## §23 FUNZIONI NUOVE, SECONDO GRUPPO — da fare (fasi F9, F13, F14)
 
-- `[ ]` 23.1 Canale richieste musicali con player e bottoni; playlist
+- `[x]` 23.1 Canale richieste musicali con player e bottoni; playlist
   salvate (NF-19, fase F9)
+  → **Stato 14/10:** `/admin musica canale-richieste` (0170): chi scrive un titolo, un link o allega un file nel canale lo mette in coda; messaggio player con 5 bottoni persistenti, aggiornato al massimo ogni 5 secondi. `/music playlist salva|carica|elenco|elimina|esporta|importa` (0171): 25 playlist per utente, 200 brani, file JSON (MUS-082). Da verificare live.
 - `[x]` 23.2 Canali contatore (NF-16)
   → **Stato 13/10:** `/moduli contatori crea|elimina|elenco` (0087), aggiornamento ogni 10 minuti, massimo 5 per server.
 - `[x]` 23.3 Statistiche di attività per canale e per membro, ruoli per
@@ -1921,7 +1923,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   e liberano l'utente. Il blocco (`modmail_blocks`) è conservato come l'elenco della verifica.
 - `[x]` 23.13 Moduli e candidature (NF-34)
   → **Stato 13/10:** `/moduli candidature crea|elimina|elenco`, `/utility modulo` (0096): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
-- `[ ]` 23.14 Effetti sonori in vocale (NF-35)
+- `[x]` 23.14 Effetti sonori in vocale (NF-35)
+  → **Stato 14/10:** `/music suono` (il gruppo `/fun` ha 25 figli): suono della soundboard del server o di Discord, mandato dal bot musicale del canale (la musica continua) o dal primo libero, che poi esce; pausa di 10 secondi per utente. Da verificare live.
 - `[~]` 23.15 Bot con marchio proprio per i server premium (NF-38)
   → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
 - `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:22 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:40 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 458 comandi in 21 categorie.**
+**Totale: 466 comandi in 21 categorie.**
 
 ## Admin
 
@@ -29,6 +29,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 - **`/admin messaggi programmati`** — Mostra i messaggi programmati di questo server.
 - **`/admin messaggi sticky-set`** — Imposta lo sticky message di un canale.
 - **`/admin messaggi sticky-togli`** — Rimuove lo sticky message di un canale.
+- **`/admin musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
 - **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
 - **`/admin premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
@@ -377,6 +378,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 - **`/music nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/music pause`** — Mette in pausa la riproduzione.
 - **`/music play`** — Riproduce una canzone o playlist.
+- **`/music playlist carica`** — Mette in coda una tua playlist salvata.
+- **`/music playlist elenco`** — Le tue playlist salvate.
+- **`/music playlist elimina`** — Cancella una tua playlist salvata.
+- **`/music playlist esporta`** — Scarica una tua playlist come file.
+- **`/music playlist importa`** — Salva una playlist da un file esportato.
+- **`/music playlist salva`** — Salva la coda del tuo canale come playlist.
 - **`/music previous`** — Torna al brano precedente.
 - **`/music queue`** — Mostra la coda di riproduzione.
 - **`/music resume`** — Riprende la riproduzione in pausa.
@@ -384,6 +391,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 - **`/music skip`** — Salta la traccia in riproduzione.
 - **`/music skipto`** — Salta direttamente al brano numero N della coda.
 - **`/music stop`** — Ferma la riproduzione e svuota la coda.
+- **`/music suono`** — Fa partire un effetto sonoro nel tuo canale vocale.
 - **`/music volume down`** — Diminuisce il volume.
 - **`/music volume set`** — Imposta il volume a un valore specifico (0-200).
 - **`/music volume up`** — Aumenta il volume.

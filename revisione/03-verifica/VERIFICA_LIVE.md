@@ -766,6 +766,19 @@ Prima: Lavalink 4.2.0 o successivo raggiungibile (`deploy/lavalink/README.md`), 
 **Domanda per l'owner:** vuoi `/music remove` (e la ricerca dentro `/music queue`)? Oggi sono TOLTI perché SPEC §9.4 li dichiara permanentemente scoperti per tua richiesta esplicita. Se li vuoi, va cambiata la SPEC e il codice (rimessi in un solo commit: la logica era già scritta e provata).
 
 **Note di rilascio (musica):** la migrazione `0060` cambia la chiave di `music_sessions` in (server, canale). Le righe vecchie si svuotano comunque all'avvio. Nodi pubblici: nel codice non ce ne sono più, vanno messi in `LAVALINK_NODES`. Variabile nuova: `LAVALINK_LOCAL_ROOT`.
+
+### Musica — giro r6 (#90, #106, #64, #126) — ramo `feat/r6mus`
+
+Prima: come sopra (Lavalink 4.2.0+, 5 bot musicali invitati **con il link nuovo**, che aggiunge «Usare la soundboard»), modulo musica attivo, `sources.http: true` nel Lavalink proprio. Migrazioni `0170` e `0171`.
+
+- [ ] `M 8.16` defer (#64) — con un nodo lento (o un nodo pubblico lontano): `/music skip`, `stop`, `pause`, `resume`, `volume set|up|down`, `disconnect`. Risultato atteso: compare «sta pensando…» e poi la risposta; mai «L'applicazione non ha risposto».
+- [ ] `MUS-056` bot sordo (#126) — dopo `/music play` il bot musicale nel canale ha l'icona delle cuffie barrate. La musica si sente normalmente.
+- [ ] `MUS-009` allegato (#126) — `/music play allegato:<un .mp3>` → il file suona. Con un `.png` → «deve essere un file audio o video». Senza titolo né allegato → messaggio che lo chiede.
+- [ ] `NF-19` canale richieste (#90) — `/admin musica canale-richieste canale:#richieste`: nel canale compare il player con 5 bottoni. Da un canale vocale scrivi un titolo in `#richieste`: il tuo messaggio sparisce, compare «➕ Aggiunta…» che sparisce dopo 15 secondi, il player mostra il brano e la coda. Allega un `.mp3`: entra in coda. Fuori dal vocale: «Entra in un canale vocale». Prova i bottoni Pausa (due volte), Salta, Mescola, Ripeti (tre volte: brano, coda, spenta), Stop: ognuno risponde solo a te e il player si aggiorna entro 5 secondi. Da un altro canale vocale i bottoni dicono «devi essere nel suo stesso canale». Riavvia il bot: i bottoni del vecchio messaggio funzionano ancora. Cancella a mano il player: al prossimo brano ne compare uno nuovo. Senza il permesso «Gestisci messaggi» il comando avvisa che i messaggi non saranno cancellati. `disattiva:True` toglie canale e player.
+- [ ] `NF-19` playlist (#90) — con 3 brani in coda: `/music playlist salva nome:Prova` → «3 brani». `/music playlist elenco` la mostra con durata. In un ALTRO server: `/music playlist carica nome:Prova` (autocompletamento) → i 3 brani in coda e suonano. `esporta` → arriva un `.json`; un secondo account fa `importa file:<json> nome:Copia` e poi `carica` → suona. `elimina` la toglie. Con 25 playlist la ventiseiesima è rifiutata.
+- [ ] `NF-35` effetti sonori (#106) — mentre suona la musica: `/music suono nome:` (autocompletamento con i suoni del server e di Discord). Risultato atteso: si sente il suono sopra la musica, la musica non si ferma, il bot torna «sordo» dopo qualche secondo. In un canale senza bot musicale: entra un bot libero, suona ed esce dopo circa 8 secondi (e lo slot si libera: subito dopo `/music play` funziona). Due suoni di fila → «Aspetta ancora…». Bot musicale senza «Usare la soundboard» nel canale → messaggio sul permesso.
+
+**Note di rilascio (musica r6):** re-invitare i 5 bot musicali con il link di `/music play` (istanze esaurite) per dare «Usare la soundboard», oppure aggiungere il permesso a mano al loro ruolo. Il canale delle richieste usa l'intent «Message Content» del bot principale (già acceso).
 ## Backup e restore — passaggio `feat/r3-bak` (#68)
 
 Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOKAI_CREATOR_TOKEN`), un secondo account admin e un account senza permessi. Un bot non può creare server: lo crea l'admin.

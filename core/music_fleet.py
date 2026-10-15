@@ -31,7 +31,10 @@ from core.repositories.music_session_repo import music_session_repo
 # Permessi minimi richiesti a un'istanza worker per unirsi e parlare
 # in un canale vocale — usati per generare il link d'invito quando
 # manca a un server (SPEC.md §9, cap istanze concorrenti).
-WORKER_INVITE_PERMISSIONS = discord.Permissions(view_channel=True, connect=True, speak=True)
+# use_soundboard: gli effetti sonori (NF-35) partono dal bot musicale del canale.
+WORKER_INVITE_PERMISSIONS = discord.Permissions(
+    view_channel=True, connect=True, speak=True, use_soundboard=True
+)
 
 
 logger = logging.getLogger("iyokai.music")

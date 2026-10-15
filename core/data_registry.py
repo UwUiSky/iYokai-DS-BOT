@@ -464,6 +464,10 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("main_radio_state", "Stato della radio principale", server="conserva"),
     _t("main_radio_tracks", "Tracce della radio principale", colonne_attore=("added_by",), server="conserva"),
     _t("music_sessions", "Worker musicale assegnato a un server", colonna_server="guild_id"),
+    _t("music_request_channels", "Canale delle richieste musicali (NF-19)", colonne_attore=("set_by",),
+       colonna_server="guild_id"),
+    _t("music_playlists", "Playlist musicali salvate da un utente (NF-19)", colonne_utente=("user_id",),
+       utente="cancella", esporta=True, server="conserva", nota="dell'utente, valide in ogni server"),
     _t("command_sync_state", "Impronta dell'ultima sincronizzazione dei comandi", server="conserva"),
     # ---------------------------------------------------------------- motore AI (NF-24, D19)
     _t("ai_config", "Scelte AI del server (consenso, quote, lore, privacy)", colonne_attore=("consenso_da",),
