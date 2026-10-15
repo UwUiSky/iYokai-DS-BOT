@@ -39,9 +39,9 @@ routing verso il worker giusto (con bot finti), la logica pura. Il
 resto va verificato una volta distribuito, con le credenziali vere.
 """
 
-# F2 (#64): M 8.1-8.8, 8.11, 8.14, 8.15, 8.17 fatti qui; 8.16 (defer) è di F1.
-# DA FARE (issue #90, fase F9): NF-19, Canale richieste musicali con
-#   player, playlist salvate. Vedi revisione/02-piano/NUOVE_FUNZIONI.md.
+# M 8.1-8.8, 8.11, 8.14-8.17 fatti qui. Canale richieste e playlist (NF-19)
+# in cogs/music/request_channel.py e cogs/music/playlist.py; effetti sonori
+# (NF-35) in cogs/fun/soundboard.py: usano MusicCog.accoda e i controlli comuni.
 
 from __future__ import annotations
 
@@ -97,6 +97,7 @@ from core.music_queue_logic import (
     share_by_user,
 )
 from core.music_radio_view import RadioListView, pagina_embed
+from core.music_request_logic import allegato_audio
 from core.music_settings_logic import (
     channel_not_allowed,
     clamp_volume,
@@ -233,10 +234,11 @@ class MusicCog(CogConGruppi, commands.Cog):
         *,
         auto_assign: bool,
         interaction: discord.Interaction | None = None,
+        membro: discord.Member | None = None,
     ) -> tuple[discord.Guild | None, str | None]:
         """(guild_del_worker, None) o (None, messaggio_errore). Vedi `_get_worker`."""
         _bot, worker_guild, errore = await self._get_worker(
-            guild_id, auto_assign=auto_assign, interaction=interaction
+            guild_id, auto_assign=auto_assign, interaction=interaction, membro=membro
         )
         return worker_guild, errore
 
@@ -246,6 +248,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         *,
         auto_assign: bool,
         interaction: discord.Interaction | None = None,
+        membro: discord.Member | None = None,
     ) -> tuple[commands.Bot | None, discord.Guild | None, str | None]:
         """
         (bot_del_worker, guild_del_worker, None) o (None, None, errore).
@@ -258,10 +261,12 @@ class MusicCog(CogConGruppi, commands.Cog):
         non trova la sessione e viene rifiutato con un messaggio chiaro.
         `interaction` serve sempre: dà il canale dell'utente (e, con
         auto_assign, distingue admin e non admin nel messaggio di
-        istanze esaurite).
+        istanze esaurite). `membro` sostituisce l'utente dell'interazione
+        quando la richiesta arriva da un messaggio (canale richieste, NF-19).
         """
         fleet: MusicFleet = self.bot.music_fleet
-        voce = getattr(getattr(interaction, "user", None), "voice", None)
+        utente = membro if membro is not None else getattr(interaction, "user", None)
+        voce = getattr(utente, "voice", None)
         canale = getattr(voce, "channel", None)
         canale_id = getattr(canale, "id", 0) or 0
 
@@ -269,7 +274,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             assegnazione = await fleet.get_or_assign_worker_for_channel(guild_id, canale_id)
             if assegnazione is None:
                 errore_assenza = await self._messaggio_istanze_esaurite(
-                    fleet, guild_id, interaction
+                    fleet, guild_id, interaction, membro=membro
                 )
                 return None, None, errore_assenza
         else:
@@ -298,6 +303,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         fleet: MusicFleet,
         guild_id: int,
         interaction: discord.Interaction | None,
+        membro: discord.Member | None = None,
     ) -> str:
         """
         Messaggio quando NESSUN worker è assegnabile a questo server
@@ -317,7 +323,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         # getattr con default: alcuni percorsi (es. DM, o oggetti
         # finti nei test) possono non avere permessi calcolabili —
         # trattati semplicemente come non-admin, mai un errore.
-        permessi = getattr(interaction.user, "guild_permissions", None) if interaction else None
+        utente = membro if membro is not None else getattr(interaction, "user", None)
+        permessi = getattr(utente, "guild_permissions", None)
         è_admin = bool(permessi and permessi.manage_guild)
 
         if non_presenti:
@@ -397,7 +404,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         return await wavelink.Pool.fetch_tracks(f"ytmsearch:{query.strip()}", node=nodo)
 
     async def _entra_in_canale(
-        self, canale, nodo: wavelink.Node, volume: int | None = None
+        self, canale, nodo: wavelink.Node, volume: int | None = None, sordo: bool = True
     ) -> tuple[wavelink.Player | None, str | None]:
         """
         Entra in un canale vocale con un player sul nodo scelto. LIM-34:
@@ -417,7 +424,11 @@ class MusicCog(CogConGruppi, commands.Cog):
         if problema:
             return None, problema
         try:
-            player = await canale.connect(cls=functools.partial(wavelink.Player, nodes=[nodo]))
+            # MUS-056: il bot entra "sordo" (non riceve l'audio degli altri);
+            # non per gli effetti sonori (NF-35): un bot sordo non manda suoni.
+            player = await canale.connect(
+                cls=functools.partial(wavelink.Player, nodes=[nodo]), self_deaf=sordo
+            )
         except (asyncio.TimeoutError, wavelink.exceptions.ChannelTimeoutException):
             return None, MSG_TEMPO_SCADUTO
         except discord.Forbidden:
@@ -437,46 +448,82 @@ class MusicCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         query="Nome della canzone, URL, o termine di ricerca",
         in_cima="Metti il brano in cima alla coda, subito dopo quello in corso",
+        allegato="Un file audio o video da suonare al posto della ricerca",
     )
     @app_commands.rename(in_cima="in-cima")
     async def play(
         self,
         interaction: discord.Interaction,
-        query: app_commands.Range[str, 1, 300],
+        query: app_commands.Range[str, 1, 300] | None = None,
         in_cima: bool = False,
+        allegato: discord.Attachment | None = None,
     ) -> None:
         if not await self._controlli_base(interaction):
             return
+        if allegato is not None:  # MUS-009: file allegato al comando
+            if not allegato_audio(allegato.content_type):
+                await interaction.response.send_message(
+                    "L'allegato deve essere un file audio o video.", ephemeral=True
+                )
+                return
+            query = allegato.url
+        if not query:
+            await interaction.response.send_message(
+                "Scrivi un titolo o un link, oppure allega un file audio.", ephemeral=True
+            )
+            return
 
         await interaction.response.defer()
+        await self.accoda(
+            interaction.guild, interaction.user, query, interaction.followup.send,
+            in_cima=in_cima, interaction=interaction,
+        )
 
-        impostazioni = await load_music_settings(db, interaction.guild.id)
-        rifiuto = channel_not_allowed(
-            getattr(getattr(interaction.user.voice, "channel", None), "id", 0), impostazioni
-        )  # MUS-059
+    async def accoda(
+        self,
+        guild: discord.Guild,
+        membro: discord.Member,
+        query: str,
+        rispondi,
+        *,
+        in_cima: bool = False,
+        interaction: discord.Interaction | None = None,
+        cerca=None,
+    ) -> int | None:
+        """
+        Mette in coda `query` nel canale vocale di `membro` (worker assegnato o
+        il primo libero). Usato da /music play, dal canale richieste (NF-19) e
+        dal caricamento di una playlist salvata. `rispondi(testo)` manda la
+        risposta; `cerca(nodo, nodo_locale)` sostituisce la ricerca (playlist
+        salvate). Restituisce il canale vocale se il brano è in coda, se no None.
+        """
+        impostazioni = await load_music_settings(db, guild.id)
+        canale_id = getattr(getattr(membro.voice, "channel", None), "id", 0)
+        rifiuto = channel_not_allowed(canale_id, impostazioni)  # MUS-059
         if rifiuto:
-            await interaction.followup.send(rifiuto)
-            return
+            await rispondi(rifiuto)
+            return None
 
-        if classify_query(query) == QUERY_RIFIUTATA:
-            await interaction.followup.send(MSG_QUERY_RIFIUTATA)
-            return
+        if cerca is None and classify_query(query) == QUERY_RIFIUTATA:
+            await rispondi(MSG_QUERY_RIFIUTATA)
+            return None
 
         worker_bot, worker_guild, errore = await self._get_worker(
-            interaction.guild.id, auto_assign=True, interaction=interaction
+            guild.id, auto_assign=True, interaction=interaction, membro=membro
         )
         if errore:
-            await interaction.followup.send(errore)
-            return
+            await rispondi(errore)
+            return None
 
-        canale_id = interaction.user.voice.channel.id
-        # Due /music play insieme nello stesso canale: uno alla volta, cosi' il
-        # secondo trova il player gia' creato dal primo (niente doppio connect, niente
+        # Due richieste insieme nello stesso canale: una alla volta, cosi' la
+        # seconda trova il player gia' creato dalla prima (niente doppio connect, niente
         # slot rilasciato sotto un bot che suona).
-        async with self._lock_canale(interaction.guild.id, canale_id):
-            await self._play_nel_canale(
-                interaction, query, in_cima, impostazioni, worker_bot, worker_guild, canale_id
+        async with self._lock_canale(guild.id, canale_id):
+            esito = await self._play_nel_canale(
+                guild.id, membro.id, query, in_cima, impostazioni, worker_bot, worker_guild,
+                canale_id, rispondi, cerca,
             )
+        return canale_id if esito else None
 
     def _lock_canale(self, guild_id: int, canale_id: int) -> asyncio.Lock:
         return self._lock_canali.setdefault((guild_id, canale_id), asyncio.Lock())
@@ -487,8 +534,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             await self.bot.music_fleet.release_session(guild_id, canale_id)
 
     async def _play_nel_canale(
-        self, interaction, query, in_cima, impostazioni, worker_bot, worker_guild, canale_id
-    ) -> None:
+        self, guild_id, utente_id, query, in_cima, impostazioni, worker_bot, worker_guild,
+        canale_id, rispondi, cerca=None,
+    ) -> bool:
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         nuova_sessione = player is None
         gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
@@ -497,20 +545,23 @@ class MusicCog(CogConGruppi, commands.Cog):
         # D10: il player vive sul nodo del SUO bot; la ricerca gira sullo stesso.
         nodo = player.node if player is not None else (gestore.node_for(chiave) if gestore else None)
         if nodo is None:
-            await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
-            await interaction.followup.send(MSG_NESSUN_NODO)
-            return
+            await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+            await rispondi(MSG_NESSUN_NODO)
+            return False
 
         nodo_locale = gestore.locale_di(chiave) if (gestore and nuova_sessione) else None
         try:
-            risultati, nodo = await self._cerca(query, nodo, nodo_locale)
+            if cerca is not None:
+                risultati, nodo = await cerca(nodo, nodo_locale)
+            else:
+                risultati, nodo = await self._cerca(query, nodo, nodo_locale)
         except wavelink.exceptions.WavelinkException:
             logger.warning("Ricerca musicale fallita sul nodo %s.", nodo.identifier, exc_info=True)
             risultati = None
         if not risultati:
-            await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
-            await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
-            return
+            await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+            await rispondi("Nessun risultato trovato per questa ricerca.")
+            return False
 
         # MUS-044: i brani oltre la durata massima non entrano in coda.
         scartate_lunghe = 0
@@ -520,54 +571,54 @@ class MusicCog(CogConGruppi, commands.Cog):
             tracce_playlist = [t for t in candidate if not _troppo_lungo(t, impostazioni)]
             scartate_lunghe = len(candidate) - len(tracce_playlist)
             if not tracce_playlist:
-                await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
-                await interaction.followup.send(
+                await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                await rispondi(
                     f"Nessun brano della playlist rispetta la durata massima di "
                     f"{impostazioni.max_track_minutes} minuti."
                 )
-                return
+                return False
         elif _troppo_lungo(risultati[0], impostazioni):
-            await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
-            await interaction.followup.send(
+            await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+            await rispondi(
                 msg_brano_troppo_lungo(risultati[0].title, risultati[0].length, impostazioni)
             )
-            return
+            return False
 
         if player is None:
             canale_worker = worker_guild.get_channel(canale_id)
             if canale_worker is None:
-                await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
-                await interaction.followup.send(
+                await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                await rispondi(
                     "Non riesco a raggiungere il tuo canale vocale dall'istanza assegnata "
                     "— il music bot potrebbe non avere accesso a questo canale."
                 )
-                return
+                return False
             player, errore = await self._entra_in_canale(
                 canale_worker, nodo, volume=min(100, impostazioni.max_volume)
             )
             if errore:
-                await self._rilascia_se_libero(worker_guild, interaction.guild.id, canale_id)
-                await interaction.followup.send(errore)
-                return
+                await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                await rispondi(errore)
+                return False
 
         if isinstance(risultati, wavelink.Playlist):
             tracce_totali = len(risultati)
             tracce_da_aggiungere = tracce_playlist
             for t in tracce_da_aggiungere:
-                t.extras = {"requester_id": interaction.user.id}  # MUS-036/027/030
+                t.extras = {"requester_id": utente_id}  # MUS-036/027/030
             if in_cima:  # MUS-021
                 for t in reversed(tracce_da_aggiungere):
                     player.queue.put_at(0, t)
             else:
                 await player.queue.put_wait(tracce_da_aggiungere)
             if tracce_totali > MAX_PLAYLIST_TRACKS:
-                await interaction.followup.send(
+                await rispondi(
                     f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** — "
                     f"{MAX_PLAYLIST_TRACKS} tracce su {tracce_totali} totali "
                     f"(limite massimo per singola playlist)."
                 )
             else:
-                await interaction.followup.send(
+                await rispondi(
                     f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** ({tracce_totali} tracce) alla coda."
                     + (
                         f" ({scartate_lunghe} oltre la durata massima non aggiunte.)"
@@ -577,12 +628,12 @@ class MusicCog(CogConGruppi, commands.Cog):
                 )
         else:
             traccia = risultati[0]
-            traccia.extras = {"requester_id": interaction.user.id}
+            traccia.extras = {"requester_id": utente_id}
             if in_cima:
                 player.queue.put_at(0, traccia)
             else:
                 await player.queue.put_wait(traccia)
-            await interaction.followup.send(
+            await rispondi(
                 f"➕ Aggiunta **{truncate_title(traccia.title, 200)}** "
                 f"({format_duration(traccia.length)}) alla coda."
             )
@@ -590,6 +641,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         if not player.playing and not player.queue.is_empty:
             prossima = await player.queue.get_wait()
             await player.play(prossima)
+        return True
 
     @comando_di_gruppo("music", nome="skip", descrizione="Salta la traccia in riproduzione.")
     async def skip(self, interaction: discord.Interaction) -> None:
@@ -610,8 +662,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16: Lavalink puo' metterci piu' di 3 secondi
         await player.skip()
-        await interaction.response.send_message("⏭️ Traccia saltata.")
+        await interaction.followup.send("⏭️ Traccia saltata.")
 
     @comando_di_gruppo("music", nome="stop", descrizione="Ferma la riproduzione e svuota la coda.")
     async def stop(self, interaction: discord.Interaction) -> None:
@@ -632,9 +685,10 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         player.queue.clear()
         await player.stop()
-        await interaction.response.send_message("⏹️ Riproduzione fermata, coda svuotata.")
+        await interaction.followup.send("⏹️ Riproduzione fermata, coda svuotata.")
 
     @comando_di_gruppo("music", nome="pause", descrizione="Mette in pausa la riproduzione.")
     async def pause(self, interaction: discord.Interaction) -> None:
@@ -655,8 +709,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         await player.pause(True)
-        await interaction.response.send_message("⏸️ Messo in pausa.")
+        await interaction.followup.send("⏸️ Messo in pausa.")
 
     @comando_di_gruppo("music", nome="resume", descrizione="Riprende la riproduzione in pausa.")
     async def resume(self, interaction: discord.Interaction) -> None:
@@ -677,8 +732,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         await player.pause(False)
-        await interaction.response.send_message("▶️ Ripreso.")
+        await interaction.followup.send("▶️ Ripreso.")
 
     @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
     async def queue_command(self, interaction: discord.Interaction) -> None:
@@ -925,11 +981,12 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         impostazioni = await load_music_settings(db, interaction.guild.id)
         livello = clamp_volume(level, impostazioni)  # MUS-047
         await player.set_volume(livello)
         limite = " (il massimo scelto dal server)" if livello < level else ""
-        await interaction.response.send_message(f"🔊 Volume impostato a {livello}{limite}.")
+        await interaction.followup.send(f"🔊 Volume impostato a {livello}{limite}.")
 
     @comando_di_gruppo(
         "music",
@@ -958,11 +1015,12 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         impostazioni = await load_music_settings(db, interaction.guild.id)
         # MUS-047: mai oltre il massimo, ma "alza" non abbassa mai (volume gia' sopra il massimo)
         nuovo_volume = max(player.volume, clamp_volume(player.volume + amount, impostazioni))
         await player.set_volume(nuovo_volume)
-        await interaction.response.send_message(f"🔊 Volume aumentato a {nuovo_volume}.")
+        await interaction.followup.send(f"🔊 Volume aumentato a {nuovo_volume}.")
 
     @comando_di_gruppo(
         "music",
@@ -991,9 +1049,10 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         nuovo_volume = max(0, player.volume - amount)
         await player.set_volume(nuovo_volume)
-        await interaction.response.send_message(f"🔉 Volume diminuito a {nuovo_volume}.")
+        await interaction.followup.send(f"🔉 Volume diminuito a {nuovo_volume}.")
 
     @comando_di_gruppo("music", nome="disconnect", descrizione="Disconnette il music bot dal canale vocale.")
     async def disconnect(self, interaction: discord.Interaction) -> None:
@@ -1014,13 +1073,14 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await interaction.response.defer()  # M 8.16
         canale_id = player.channel.id if player.channel is not None else 0
         await player.disconnect()
         fleet: MusicFleet = self.bot.music_fleet
         await fleet.release_session(
             interaction.guild.id, canale_id or interaction.user.voice.channel.id
         )
-        await interaction.response.send_message("👋 Disconnesso.")
+        await interaction.followup.send("👋 Disconnesso.")
 
     # ================================================================
     # Catalogo MUS (issue #126): entrare, saltare, togliere, tornare indietro

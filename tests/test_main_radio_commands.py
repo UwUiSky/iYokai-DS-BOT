@@ -104,7 +104,7 @@ class _FakeVoiceChannel:
     def __init__(self, player: _FakePlayer) -> None:
         self._player = player
 
-    async def connect(self, cls) -> _FakePlayer:
+    async def connect(self, cls, **kw) -> _FakePlayer:
         return self._player
 
 
