@@ -301,6 +301,9 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
     async def aggiorna(self, guild_id: int) -> None:
         attesa = self.pausa.attesa(guild_id)
         if attesa <= 0:
+            # Segnato prima di ogni await: due eventi insieme (inizio e fine brano)
+            # non passano entrambi e non mandano due messaggi player nuovi.
+            self.pausa.segna(guild_id)
             await self.aggiorna_ora(guild_id)
             return
         if guild_id in self._in_attesa:

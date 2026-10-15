@@ -321,3 +321,24 @@ async def test_messaggio_player_cancellato_se_ne_manda_uno_nuovo(monkeypatch, re
     await cog.aggiorna_ora(1)
 
     assert (await repo.get(1)).message_id == 999
+
+
+@pytest.mark.asyncio
+async def test_due_aggiornamenti_insieme_non_creano_due_player(monkeypatch, repo):
+    """Inizio e fine brano nello stesso istante, messaggio player sparito: un solo messaggio nuovo."""
+    await repo.set_channel(1, 10, 100, set_by=5)
+    cog = _cog(monkeypatch, repo, _Musica())
+
+    class _Parziale:
+        async def edit(self, **kw):
+            raise discord.NotFound(SimpleNamespace(status=404, reason="x"), "sparito")
+
+    canale = _Canale(10)
+    canale.get_partial_message = lambda mid: _Parziale()
+    cog.bot.get_channel = lambda cid: canale
+
+    await asyncio.gather(cog.aggiorna(1), cog.aggiorna(1))
+    for task in list(cog._in_attesa.values()):
+        task.cancel()
+
+    assert len(canale.inviati) == 1
