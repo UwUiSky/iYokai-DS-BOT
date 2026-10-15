@@ -55,6 +55,7 @@ AUDIENCE: dict[str, str] = {
     "-chiedi": PUBLIC,  # primo livello, mostra il pannello di -cerca-comando (#147)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "admin": STAFF,  # gruppo condiviso
+    "backup": STAFF,  # gruppo condiviso (core/command_groups.py), D25
     "moduli": STAFF,  # gruppo condiviso
     "gestione": STAFF,  # gruppo condiviso
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale

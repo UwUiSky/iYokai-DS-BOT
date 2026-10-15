@@ -26,10 +26,11 @@ ADMIN_ATTESI = {
     "config history", "config rollback", "config reset", "config export", "config import",
     "lingua show", "lingua set",
     "setup attiva", "setup wizard",
-    "backup main", "backup crea", "backup promuovi", "backup restore-utenti", "backup restore-modo",
     "messaggi programma", "messaggi programmati", "messaggi annulla",
     "messaggi sticky-set", "messaggi sticky-togli",
 }
+# D25 (15/10): il blocco backup è il gruppo di primo livello /backup.
+BACKUP_ATTESI = {"main", "crea", "collega", "promuovi", "restore-utenti", "restore-modo"}
 MODULI_ATTESI = {
     "alert feed", "alert webhook", "alert rimuovi", "alert twitch", "alert youtube-live", "alert elenco",
 }
@@ -58,6 +59,8 @@ async def test_admin_e_moduli_hanno_i_comandi_giusti_e_il_livello_giusto():
     bot = await _carica_cog()
     assert ADMIN_ATTESI <= percorsi_del_gruppo("admin")
     assert MODULI_ATTESI <= percorsi_del_gruppo("moduli")
+    assert BACKUP_ATTESI <= percorsi_del_gruppo("backup")
+    assert not {p for p in percorsi_del_gruppo("admin") if p.startswith("backup ")}
     assert GRUPPI["admin"].livello is Livello.ADMIN
     assert GRUPPI["moduli"].livello is Livello.ADMIN
     assert GRUPPI["admin"].default_permissions == discord.Permissions(manage_guild=True)
