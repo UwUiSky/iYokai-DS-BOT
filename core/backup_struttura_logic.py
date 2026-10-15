@@ -6,6 +6,8 @@ permessi, emoji, sticker e, a scelta, ban e membri), si controlla, si esporta in
 JSON o CSV e si ricarica scegliendo le parti. Il caricamento riusa per nome ciò
 che esiste, crea il resto, una chiamata alla volta, e si può fermare tra un
 passo e l'altro (ciò che è già fatto resta).
+Con i messaggi: gli ultimi N di ogni canale di testo, ricaricati via webhook
+nei canali con lo stesso nome ancora vuoti.
 Funzioni coperte: SPEC §11.15, M 12.17, BKP-009, BKP-010, BKP-014, BKP-015,
 BKP-032, BKP-033, BKP-034, BKP-036, BKP-037
 """
@@ -24,6 +26,7 @@ from typing import Awaitable, Callable
 import discord
 
 from core.backup_clone_logic import _overwrite_consentito, _permessi_consentiti
+from core import backup_messages_logic as messaggi_logic
 from core.backup_mirror_logic import NOME_CANALE_OFFUSCATO
 
 logger = logging.getLogger("iyokai.backup_struttura")
@@ -42,7 +45,8 @@ MAX_MOTIVO = 512
 MAX_PERMESSI = 1 << 53
 MOTIVO = "Caricamento backup iYokai"
 
-PARTI = ("impostazioni", "ruoli", "canali", "emoji", "ban", "membri")
+PARTI = ("impostazioni", "ruoli", "canali", "emoji", "messaggi", "ban", "membri")
+MAX_MESSAGGI_PER_CANALE = 100
 
 _TIPI = {
     discord.ChannelType.text: "testo",
@@ -219,6 +223,13 @@ def valida_struttura(dati) -> list[str]:
         if c.get("topic") is not None and not _testo_ok(c["topic"], 1024, vuoto=True):
             errori.append(f"canale «{c['nome']}»: argomento oltre 1024 caratteri")
         _controlla_overwrite(c.get("overwrite", []), f"canale «{c['nome']}»", errori)
+    messaggi = dati.get("messaggi", {})
+    if not isinstance(messaggi, dict) or len(messaggi) > MAX_CANALI or any(
+        not _testo_ok(nome) or not isinstance(elenco, list) or len(elenco) > MAX_MESSAGGI_PER_CANALE
+        or not all(isinstance(m, dict) and _testo_ok(m.get("contenuto", ""), 2000, vuoto=True) for m in elenco)
+        for nome, elenco in messaggi.items()
+    ):
+        errori.append(f"«messaggi»: al massimo {MAX_MESSAGGI_PER_CANALE} per canale, testi entro 2000 caratteri")
     for i, b in enumerate(dati.get("ban", [])):
         if not isinstance(b, dict) or not _int_ok(b.get("user_id"), 1 << 64):
             errori.append(f"ban {i + 1}: ID utente non valido")
@@ -303,7 +314,10 @@ def conta_passi(dati: dict, parti: set[str]) -> int:
     """Quanti passi farà il caricamento (per lo stato, BKP-009)."""
     elenchi = {"ruoli": ("ruoli",), "canali": ("categorie", "canali"), "emoji": ("emoji",),
                "ban": ("ban",), "membri": ("membri",)}
-    return sum(len(dati.get(e, [])) for p in parti for e in elenchi.get(p, ()))
+    passi = sum(len(dati.get(e, [])) for p in parti for e in elenchi.get(p, ()))
+    if "messaggi" in parti:
+        passi += sum(len(m) for m in (dati.get("messaggi") or {}).values())
+    return passi
 
 
 def parti_presenti(dati: dict) -> list[str]:
@@ -312,12 +326,12 @@ def parti_presenti(dati: dict) -> list[str]:
             or p == "ruoli" and (dati.get("ruoli") or "everyone" in dati)
             or p == "canali" and (dati.get("canali") or dati.get("categorie"))
             or p == "emoji" and (dati.get("emoji") or dati.get("sticker"))
-            or p in ("ban", "membri") and dati.get(p)]
+            or p in ("ban", "membri", "messaggi") and dati.get(p)]
 
 
 def senza_dati_personali(dati: dict) -> dict:
     """Un modello (NF-39) si condivide senza ban, membri e permessi dei singoli utenti."""
-    pulito = {k: v for k, v in dati.items() if k not in ("ban", "membri")}
+    pulito = {k: v for k, v in dati.items() if k not in ("ban", "membri", "messaggi")}
     for chiave in ("categorie", "canali"):
         pulito[chiave] = [
             {**c, "overwrite": [o for o in c.get("overwrite", []) if "membro" not in o]}
@@ -351,6 +365,8 @@ class Caricatore:
         self.r = RiepilogoCaricamento()
         self._fatti = 0
         self._per_categoria: dict[int, int] = {}
+        self._canali_creati: dict[str, object] = {}
+        self.scarica_file = scarica_file
         self._totale = conta_passi(dati, parti)
 
     async def _passo(self, nome: str) -> None:
@@ -368,6 +384,8 @@ class Caricatore:
                 await self._impostazioni()
             if "emoji" in self.parti:
                 await self._emoji()
+            if "messaggi" in self.parti:
+                await self._messaggi()
             if "membri" in self.parti:
                 await self._membri()
             if "ban" in self.parti:
@@ -492,7 +510,9 @@ class Caricatore:
                 kw["slowmode_delay"] = dato.get("slowmode") or 0
                 kw["news"] = dato["tipo"] == "annunci"
                 crea = self.guild.create_text_channel
-            await crea(**kw)
+            nuovo = await crea(**kw)
+            if dato["tipo"] in ("testo", "annunci"):
+                self._canali_creati[dato["nome"]] = nuovo
             if categoria is not None:
                 self._per_categoria[categoria.id] = nella_categoria + 1
             esistenti.add(chiave)
@@ -575,6 +595,36 @@ class Caricatore:
                 self.r.creati += 1
             except discord.HTTPException:
                 self.r.falliti += 1
+
+    # messaggi (M 12.17) -----------------------------------------------
+    async def _messaggi(self) -> None:
+        """Gli ultimi messaggi salvati, nei canali di testo con lo stesso nome ancora vuoti."""
+        for nome, elenco in (self.dati.get("messaggi") or {}).items():
+            canale = self._canali_creati.get(nome) or discord.utils.get(
+                getattr(self.guild, "text_channels", []), name=nome
+            )
+            if canale is None or not await messaggi_logic._destinazione_vuota(canale):
+                self.r.saltati += len(elenco)
+                self._fatti += len(elenco)
+                continue
+            try:
+                webhook = await messaggi_logic.webhook_chat(canale)
+            except discord.HTTPException:
+                webhook = None
+            if webhook is None:
+                self.r.saltati += len(elenco)
+                self._fatti += len(elenco)
+                continue
+
+            async def avanza(_passo, _fatti, _totale) -> bool:
+                self._fatti += 1
+                return await self._avanza("messaggi", self._fatti, self._totale)
+
+            esito = await messaggi_logic.ricarica_chat(elenco, webhook, canale, avanza, self.scarica_file)
+            self.r.creati += esito.copiati
+            self.r.falliti += esito.falliti
+            if esito.annullato:
+                raise Annullato
 
     # membri e ban -----------------------------------------------------
     async def _membri(self) -> None:

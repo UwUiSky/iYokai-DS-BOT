@@ -64,10 +64,19 @@ _ETICHETTE_PARTI = {
     "ruoli": "Ruoli e permessi",
     "canali": "Categorie e canali con i permessi",
     "emoji": "Emoji e sticker",
+    "messaggi": "Ultimi messaggi nei canali ancora vuoti",
     "ban": "Lista dei ban",
     "membri": "Nickname e ruoli dei membri presenti",
 }
 _LINK_MESSAGGIO = re.compile(r"(?:channels/\d+/(\d+)/)?(\d{15,21})$")
+
+
+async def registra_uso(guild_id: int, user_id: int, azione: str, dettaglio: str = "") -> None:
+    """BKP-019: una riga nel registro. Se il database non risponde l'azione resta fatta: solo un avviso."""
+    try:
+        await backup_struttura_repo.registra(guild_id, user_id, azione, dettaglio)
+    except Exception:
+        logger.warning("Registro del backup non scritto (%s, %s)", guild_id, azione, exc_info=True)
 
 
 class ScegliPartiView(BaseView):
@@ -166,7 +175,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         async def avanza(passo: str, fatti: int, totale: int) -> bool:
             return await backup_struttura_repo.aggiorna_caricamento(caricamento_id, passo, fatti, totale)
 
-        await backup_struttura_repo.registra(guild.id, interaction.user.id, "carica", f"{fonte}: {dettaglio}")
+        await registra_uso(guild.id, interaction.user.id, "carica", f"{fonte}: {dettaglio}")
         compito = asyncio.create_task(self._esegui(lavoro, avanza, caricamento_id, interaction.channel))
         self._lavori.add(compito)
         compito.add_done_callback(self._lavori.discard)
@@ -204,6 +213,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
 
         await backup_repo.define_main(guild.id)
+        await registra_uso(guild.id, interaction.user.id, "main")
         await interaction.response.send_message(
             "✅ Questo server è ora registrato come 'main' per il Backup System. "
             "Usa /backup crea per collegare un server di backup.",
@@ -262,6 +272,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         codice, scadenza = await crea_codice_collegamento(
             backup_repo, guild.id, creato_da=interaction.user.id
         )
+        await registra_uso(guild.id, interaction.user.id, "crea")
         creator = getattr(self.bot, "backup_creator_client", None)
         link_creator = (
             link_invito(creator.user.id, permessi_invito_creator())
@@ -333,6 +344,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             utente_id=interaction.user.id, puo_collegare=e_admin_del_main,
         )
         if esito.esito == ESITO_OK:
+            await registra_uso(guild.id, interaction.user.id, "collega", f"job #{esito.job_id}")
             await interaction.followup.send(
                 f"✅ Server collegato come backup (job `#{esito.job_id}`). Il Creator copia "
                 "la struttura e gli ultimi 50 messaggi di ogni canale: riceverai un DM quando ha finito, poi lo tiene aggiornato.",
@@ -390,6 +402,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         await backup_repo.promote_backup_to_main(
             old_main_guild_id=coppia.main_guild_id, new_main_guild_id=guild.id
         )
+        await registra_uso(guild.id, interaction.user.id, "promuovi", str(coppia.main_guild_id))
 
         await interaction.response.send_message(
             "👑 Questo server è stato promosso a **main**. Il vecchio main "
@@ -406,10 +419,11 @@ class BackupCog(CogConGruppi, commands.Cog):
         nome="Nome della copia",
         ban="Salva anche la lista dei ban",
         membri="Salva anche nickname e ruoli dei membri",
+        messaggi="Salva anche gli ultimi N messaggi di ogni canale di testo (0-100)",
     )
     async def salva(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 50],
-        ban: bool = False, membri: bool = False,
+        ban: bool = False, membri: bool = False, messaggi: app_commands.Range[int, 0, 100] = 0,
     ) -> None:
         if not await self._puo(interaction, AZIONE_CREA):
             return
@@ -424,8 +438,10 @@ class BackupCog(CogConGruppi, commands.Cog):
                 return
         if membri:
             dati["membri"] = struttura.leggi_membri(guild)
+        if messaggi:
+            dati["messaggi"] = await self._ultimi_messaggi(guild, messaggi)
         if len(struttura.in_json(dati)) > struttura.MAX_FILE_BYTE:
-            await interaction.followup.send("⚠️ La copia supera 10 MiB: salvala senza membri.", ephemeral=True)
+            await interaction.followup.send("⚠️ La copia supera 10 MiB: salvala con meno messaggi o senza membri.", ephemeral=True)
             return
         copia_id = await backup_struttura_repo.salva_struttura(guild.id, nome, interaction.user.id, dati)
         if copia_id is None:
@@ -433,13 +449,28 @@ class BackupCog(CogConGruppi, commands.Cog):
                 f"⚠️ Ci sono già {MAX_COPIE_PER_SERVER} copie: eliminane una con /backup elimina.", ephemeral=True
             )
             return
-        await backup_struttura_repo.registra(guild.id, interaction.user.id, "salva", f"#{copia_id} {nome}")
+        await registra_uso(guild.id, interaction.user.id, "salva", f"#{copia_id} {nome}")
         await interaction.followup.send(
             f"✅ Copia `#{copia_id}` salvata: {len(dati['ruoli'])} ruoli, {len(dati['canali'])} canali"
             + (f", {len(dati['ban'])} ban" if ban else "")
-            + (f", {len(dati['membri'])} membri" if membri else "") + ".",
+            + (f", {len(dati['membri'])} membri" if membri else "")
+            + (f", {sum(len(m) for m in dati['messaggi'].values())} messaggi" if messaggi else "") + ".",
             ephemeral=True,
         )
+
+    async def _ultimi_messaggi(self, guild: discord.Guild, quanti: int) -> dict[str, list]:
+        """M 12.17: gli ultimi messaggi di ogni canale di testo leggibile, per nome (un canale alla volta)."""
+        risultato: dict[str, list] = {}
+        for canale in guild.text_channels:
+            if canale.name == struttura.NOME_CANALE_OFFUSCATO or canale.name in risultato:
+                continue
+            try:
+                righe = await leggi_chat(canale, quanti)
+            except discord.HTTPException:
+                continue  # canale che il bot non legge
+            if righe:
+                risultato[canale.name] = righe
+        return risultato
 
     @comando_di_gruppo("backup", nome="lista", descrizione="Le copie salvate di questo server, con la data.")
     async def lista(self, interaction: discord.Interaction) -> None:
@@ -485,7 +516,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if not await backup_struttura_repo.elimina_struttura(interaction.guild.id, copia):
             await interaction.response.send_message("Copia non trovata.", ephemeral=True)
             return
-        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "elimina", f"#{copia}")
+        await registra_uso(interaction.guild.id, interaction.user.id, "elimina", f"#{copia}")
         await interaction.response.send_message(f"🗑️ Copia `#{copia}` eliminata.", ephemeral=True)
 
     @comando_di_gruppo("backup", nome="stato", descrizione="Avanzamento dell'ultimo caricamento in questo server.")
@@ -512,7 +543,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if not await backup_struttura_repo.chiedi_annullo(interaction.guild.id):
             await interaction.response.send_message("Nessun caricamento in corso.", ephemeral=True)
             return
-        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "annulla")
+        await registra_uso(interaction.guild.id, interaction.user.id, "annulla")
         await interaction.response.send_message("⏹️ Annullo chiesto: si ferma al prossimo passo.", ephemeral=True)
 
     # ------------------------------------------------------------
@@ -565,7 +596,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             nuovo = await backup_struttura_repo.ritira_modello(guild.id, copia)
             testo = "Codice ritirato: il modello non si può più usare." if nuovo else "Quella copia non è un modello."
         if nuovo:
-            await backup_struttura_repo.registra(guild.id, interaction.user.id, f"modello {azione.value}", f"#{copia}")
+            await registra_uso(guild.id, interaction.user.id, f"modello {azione.value}", f"#{copia}")
         await interaction.response.send_message(testo, ephemeral=True)
 
     # ------------------------------------------------------------
@@ -626,7 +657,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if fatto:
             self._sincronie.pop(guild.id, None)
             self._sincronie.pop(altro_id, None)
-            await backup_struttura_repo.registra(guild.id, interaction.user.id, f"sincronia {azione.value}", server)
+            await registra_uso(guild.id, interaction.user.id, f"sincronia {azione.value}", server)
         await interaction.response.send_message(testo, ephemeral=True)
 
     async def _sincronie_di(self, guild_id: int) -> list:
@@ -710,7 +741,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if esito.errore:
             await interaction.followup.send(f"⚠️ {esito.errore}", ephemeral=True)
             return
-        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "copia-canale", canale.name)
+        await registra_uso(interaction.guild.id, interaction.user.id, "copia-canale", canale.name)
         await interaction.followup.send(
             f"✅ Copia creata: {esito.nuovo.mention}. Canali copiati: {esito.copiati}"
             + (f" · saltati: {esito.saltati}" if esito.saltati else "")
@@ -738,7 +769,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if esito.errore:
             await interaction.followup.send(f"⚠️ {esito.errore}", ephemeral=True)
             return
-        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "copia-ruolo", ruolo.name)
+        await registra_uso(interaction.guild.id, interaction.user.id, "copia-ruolo", ruolo.name)
         await interaction.followup.send(
             f"✅ Copia creata: {esito.nuovo.mention}"
             + (f" · permessi nei canali: {esito.copiati - 1}" if permessi_canali else "")
@@ -782,7 +813,7 @@ class BackupCog(CogConGruppi, commands.Cog):
                 f"⚠️ Ci sono già {MAX_COPIE_PER_SERVER} copie: eliminane una con /backup elimina.", ephemeral=True
             )
             return
-        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "chat-salva", f"#{copia_id} {canale.name}")
+        await registra_uso(interaction.guild.id, interaction.user.id, "chat-salva", f"#{copia_id} {canale.name}")
         await interaction.followup.send(
             f"✅ Chat salvata come copia `#{copia_id}`: {len(messaggi)} messaggi. "
             "Gli allegati si ricaricano come file finché il loro link vale (circa un giorno), poi come link.",
@@ -871,7 +902,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if len(contenuto) > struttura.MAX_FILE_BYTE:
             await interaction.followup.send("⚠️ Il file supera 10 MiB.", ephemeral=True)
             return
-        await backup_struttura_repo.registra(guild.id, interaction.user.id, "esporta", tipo)
+        await registra_uso(guild.id, interaction.user.id, "esporta", tipo)
         await interaction.followup.send(
             f"📄 Esportazione «{cosa.name}».",
             file=discord.File(io.BytesIO(contenuto), filename=f"{tipo}-{guild.id}.{estensione}"),
@@ -948,7 +979,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("⛔ Solo l'owner del server sceglie il livello.", ephemeral=True)
             return
         await db.set_guild_setting(guild.id, SETTING_LIVELLO, livello.value)
-        await backup_struttura_repo.registra(guild.id, interaction.user.id, "permessi", livello.value)
+        await registra_uso(guild.id, interaction.user.id, "permessi", livello.value)
         await interaction.response.send_message(f"✅ Backup: «{livello.name}».", ephemeral=True)
 
     @comando_di_gruppo("backup", nome="registro", descrizione="Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).")

@@ -50,6 +50,7 @@ class _FakeGuild:
 class _FakeInteraction:
     def __init__(self, guild_id: int | None) -> None:
         self.guild = _FakeGuild(guild_id) if guild_id is not None else None
+        self.user = _FakeGuild(1)  # basta l'id
         self.response = _FakeResponse()
         self.followup = _FakeFollowup()
         self.channel = _FakeChannel()

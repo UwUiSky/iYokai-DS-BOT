@@ -32,6 +32,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.utility.backup import registra_uso
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -181,6 +182,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
         await db.set_guild_setting(
             interaction.guild.id, SETTING_AUTO_INVITE_ON_JOIN, auto_invito_nuovi_membri
         )
+        await registra_uso(interaction.guild.id, interaction.user.id, "restore-modo", modalita.value)
 
         await interaction.response.send_message(
             f"✅ Modalità restore impostata: **{modalita.name}**"
@@ -250,6 +252,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
                     ephemeral=True,
                 )
                 return
+            await registra_uso(interaction.guild.id, interaction.user.id, "restore-utenti", str(source_guild_id))
             await self._esegui_restore(interaction, source_guild_id, snapshot)
 
     async def _esegui_restore(self, interaction, source_guild_id: int, snapshot) -> None:

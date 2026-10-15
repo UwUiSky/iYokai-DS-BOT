@@ -319,3 +319,40 @@ async def test_registro(repo):
     righe = await repo.leggi_registro(910001)
     assert righe[0]["azione"] == "salva" and len(righe[0]["dettaglio"]) == 200
     json.dumps([str(r) for r in righe])
+
+
+async def test_messaggi_ricaricati_solo_nei_canali_vuoti_con_lo_stesso_nome(monkeypatch):
+    from core import backup_messages_logic as bm
+
+    inviati = []
+
+    class _Hook:
+        async def send(self, **kw):
+            inviati.append(kw["content"])
+            return SimpleNamespace(id=1)
+
+    class _Testo:
+        def __init__(self, nome, pieno):
+            self.name, self.pieno = nome, pieno
+
+    async def vuota(canale):
+        return not canale.pieno
+
+    async def hook(_canale):
+        return _Hook()
+
+    monkeypatch.setattr(bm, "_destinazione_vuota", vuota)
+    monkeypatch.setattr(bm, "webhook_chat", hook)
+    g = _Guild()
+    g.text_channels = [_Testo("generale", False), _Testo("pieno", True)]
+    dati = {"versione": 1, "messaggi": {
+        "generale": [{"autore": "A", "contenuto": "ciao"}],
+        "pieno": [{"autore": "A", "contenuto": "no"}],
+        "sparito": [{"autore": "A", "contenuto": "no"}],
+    }}
+    assert st.valida_struttura(dati) == [] and "messaggi" in st.parti_presenti(dati)
+    assert "messaggi" not in st.senza_dati_personali(dati)
+    r = await st.Caricatore(g, dati, {"messaggi"}).esegui()
+    assert inviati == ["ciao"]
+    assert (r.creati, r.saltati) == (1, 2)
+    assert st.valida_struttura({"versione": 1, "messaggi": {"c": [{}] * 101}})
