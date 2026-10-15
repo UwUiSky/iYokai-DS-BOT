@@ -1,61 +1,35 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r5-fun`, DB `iyokai_wr5fun`, migrazioni da 0120 (usate 0120 NF-25, 0121 Kick/opzioni). Lavoro PER FILE.
+15/10/2026 · giro r7, ramo `feat/r7liv`, DB `iyokai_wr7liv` (env: `/tmp/claude-0/env_r7liv.sh`), migrazioni 0200–0209. Lavoro PER FILE.
 
 ## In corso
-- Previsione giro: 5 gruppi (A importi+tetto, B staff XP/monete, C NF-28 giveaway, D NF-40, E voci catalogo). Ordine fisso.
-- A (NF-15 resto + docstring #65 + LIV-005) e B (`/gestione economia xp|monete`, LIV-064..067/041, ECO-009/011): fatti, smoke verde.
-- E (shop: 0094, 0095) e F (`/level calcola`, classifica a 100, posizione nel saldo) fatti; smoke finale poi commit e push.
-  Poi: rapporto finale (<=30 righe). Non fatto: LIV-004..009/013/017.. (XP per tipo di messaggio, servono contenuto/reazioni), ECO-004 banca, ECO-006 registro, servizi esterni (voto bot), NF-12 sfondo premium.
+- Previsione r7: 4 gruppi, poi stop. A vocali (#144 residuo, #127) FATTO. B NF-12 sfondo immagine rank card (#83) + NF-40 profilo come immagine (#111). C #65 M 9.18 (PERF-4 nel worker vocale delle gilde). D catalogo #124/#125 voci piccole (annunci level-up filtrati LIV-035/036/037, elenco ruoli premio LIV-048, ...).
+- Prossimo passo: B, `core/rank_card_image.py` (sfondo da byte salvati nel DB, migrazione 0202).
 
 ## Fatto
-- r5 fun: NF-25 (0120), voci piccole /fun, NF-32 Kick + ruolo-live + guida-social + `/moduli alert opzioni` (0121, #103/#129). Gruppo `moduli` a ~6430 caratteri (soglia 6800): poco margine.
-- F1 livelli+economia+clan unito (`9db9e8a`); giro eco: 9.18, NF-15 (0031), NF-12 (0032) in main.
-- Giro r4: A+B `1ecd983` (0090); C giveaway `203a3af` (0091); D NF-40 `0319d95` (0092/0093); E shop+F classifiche (0094/0095, commit del giro finale).
+- r7 A: #144 blocco vocale salvato nel DB (0200, `segna_bloccato`/`togli_blocco`); #127 VOC-007 invita, 008 stato, 011/012 nome da modello e numeri, 015 nascono bloccati, 018 registro (`/gestione voice opzioni`, 0201).
+- r5 fun: NF-25 (0120), voci piccole /fun, NF-32 Kick (0121).
+- r4: A+B `1ecd983` (0090); giveaway `203a3af` (0091); NF-40 `0319d95` (0092/0093); shop+classifiche (0094/0095). F1 unito `9db9e8a`.
 
 ## Cose imparate
-- Migrazioni: mai modificare una già applicata al DB di prova (il runner non la rilancia): una nuova per ogni aggiunta.
-- Shop: scorte e coin nella stessa transazione, scorte prima dei coin anche nel rimborso (niente stallo).
-- Giochi con le monete: `leveling_repo.gioca` = una UPDATE (puntata tolta, vincita data, `WHERE coins_total >= puntata`); mai nella classifica del mese.
-- Conteggio: giudizio sotto `FOR UPDATE` della riga del server; un numero uguale arrivato dopo un reset può essere giusto (non è un bug).
-- Giveaway: `get_entries` tolto (test_repository_callers); si usa `get_weighted_entries`. `data_registry` vuole ogni tabella nuova (giveaway_message_counts, giveaway_templates).
-- Modifiche staff (xp/monete) non contano come attività del mese: `modifica_xp/monete` scrivono solo `leveling_totals`.
-- `_grant_level_rewards(..., togli_superiori=True)` toglie anche i ruoli dei livelli non più raggiunti.
-- Ordine dei blocchi: membro -> leveling_totals -> clans; `set_member_role` blocca prima il membro.
-- Saldi condizionati nel database; pagamento + effetto = una transazione con `FOR UPDATE`.
-- Boost D23: `buy_*_boost` restituiscono `EsitoBoost`; mai somma delle durate.
-- `set_member_role(..., max_with_role=)` controlla il tetto sotto blocco; restituisce `EsitoRuolo`.
-- `tests/test_repository_callers.py`: ogni metodo di repo ha un chiamante di produzione (anche
-  interno al repo); tolto il vecchio, si aggiorna il test. `spend_coins_in(conn, ...)` si riusa.
+- Migrazioni: mai modificare una già applicata; una nuova per ogni aggiunta.
+- Soldi: una UPDATE condizionata; pagamento + effetto in una transazione con `FOR UPDATE`; scorte prima dei coin.
+- Giochi con le monete: `leveling_repo.gioca` (una UPDATE), mai nella classifica del mese.
+- Modifiche staff (xp/monete) scrivono solo `leveling_totals`.
+- `tests/test_repository_callers.py`: ogni metodo di repo ha un chiamante di produzione.
 - Test di concorrenza: `apri_connessioni(pool)` prima di `asyncio.gather`.
-- Fixture a generatore: `_get_wrapped_function()()`; test che registrano moduli premium usano `utility`.
-- F7: comandi di `CogConGruppi` non sono `app_commands.Command`: nei test
-  `registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)` (nome "level impostazioni xp").
-  `cog.metodo.callback(cog, ...)` vale. `cog_unload` sincrono; test con `add_cog` finiscono con `remove_cog`.
-- Fixture che crea `LevelingCog(bot=None)` deve essere `async def` (il task parte nel costruttore).
-- SQL `round()` arrotonda il mezzo in su, Python `round()` al pari: il decadimento in SQL usa
-  `2*round(x/20)` se `x%10=5`; il test confronta con la funzione pura su 600 saldi.
-- `leveling_repo` importa la cassa solo dentro il metodo (la cassa importa `add_coins_in`).
-- NF-15: `leveling_settings_repo.get_config` ha cache di 60 s, invalidata da `set_*`/`remove_rule`;
-  il cog usa `_config()` che ricade sui valori di base se il database non risponde. Tetto 25 regole per tipo.
-- Un listener che legge `message.channel.id` rompe i finti senza `id`: i test con `_FakeChannel` lo aggiungono.
-- Rank card: Pillow in `run_image_task`, avatar con `safe_open_image`, ricade sull'embed se il disegno fallisce.
-
-- Blocchi: sempre `ORDER BY user_id` prima di `FOR UPDATE` (batch vocale e decadimento); righe nuove si creano vuote (`ON CONFLICT DO NOTHING`) prima di scrivere.
-- `id_canali_per_le_regole`: canale, origine del thread, categoria. Esclusioni valgono anche per XP clan (testo e vocale).
+- F7: nei test `cog.metodo.callback(cog, ...)`; fixture con `LevelingCog(bot=None)` deve essere `async def`.
+- Blocchi: `ORDER BY user_id` prima di `FOR UPDATE`; righe nuove vuote con `ON CONFLICT DO NOTHING`.
+- Rank card: Pillow in `run_image_task`, avatar con `safe_open_image`, ricade sull'embed.
+- `locales/comandi.en.json`: formato `indent=1`, ordine d'inserimento; "nomi" solo per nomi di comandi (non parametri: il test li rifiuta). Script in scratchpad `eco/tradu.py`.
+- Peso gruppi: script scratchpad `eco/pesi.py <gruppi>` (gestione ~6000, level ~4700, fun 25 figli pieno).
+- Finti dei canali vocali: `overwrites_for` deve restituire un `PermissionOverwrite` vero (il repo lo salva).
+- Output dei test lunghi: `-p no:warnings` e log nella scratchpad; il traceback di birthdays a fine run è rumore.
 
 ## Aperto
-- Alert: `core/live_alert_flow.py` è il passo comune di Twitch/YouTube/Kick; le opzioni stanno in `alert_options` (kind RSS/TW/YT/KK). Mancano pausa, sposta, filtri per gioco/titolo, controllo a mano (#129).
-- Giro correzioni 14/10: i comandi staff di xp, monete, shop, giveaway, cassa, vincitori stanno ora in `/economia` (D25, nessun sottogruppo, `"economia": STAFF` in command_policy). `/gestione` non li ha più.
-- Migrazioni mie: 0090-0095, 0097 (ultima_partita_at), 0098 (giveaway.errore), 0099 (CHECK work_min<=work_max). NON usare 0096 (di uti, forms).
-- `mark_ended` ritorna bool (rivendicazione); programmato che non parte: `segna_errore` (started=false, errore=testo), il worker lo salta; `/economia giveaway-programmati` elenca/annulla.
-- `level_for_xp` in formula chiusa (isqrt); `LIVELLO_MASSIMO`=1000 per l'XP a mano; `_grant_level_rewards(esecutore=...)` applica la gerarchia dello staff.
-- Test di concorrenza: `apri_connessioni` prima di `asyncio.gather`; per provare il blocco advisory a chiave singola tenere `pg_advisory_xact_lock(guild_id)` in una transazione aperta.
-- Scratchpad condiviso con altri agenti: `env.sh` viene sovrascritto; usare `envliv.sh` (DATABASE_URL wliv).
+- Migrazioni mie: 0090-0095, 0097-0099, 0120-0121, 0200-0201. NON usare 0096.
+- `core/guild_clan_voice_worker.py`: ~6 query per utente a ogni tick (PERF-4, M 9.18).
+- `rank_card_prefs` (user_id) non è nel flusso GDPR di cancellazione.
+- #127 restano VOC-006, 010, 013, 014, 016, 017, 021.
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.
-- Senza `DATABASE_URL` esportato i test usano `iyokai_test` (condiviso): esportarlo sempre.
-- `tests/support/command_policy.py`: riga `"gestione"` (se la aggiungono altri, tenerne una).
-- `core/guild_clan_voice_worker.py`: ~6 query per utente a ogni tick (PERF-4 non chiusa lì).
-- `rank_card_prefs` (user_id) non è ancora nel flusso GDPR di cancellazione (non c'è ancora per `leveling_totals`).
-- Rank card: sfondo con immagine propria (premium) non fatto (dev-core).

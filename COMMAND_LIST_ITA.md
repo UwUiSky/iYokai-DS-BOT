@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:40 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-15 03:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 466 comandi in 21 categorie.**
+**Totale: 469 comandi in 21 categorie.**
 
 ## Admin
 
@@ -237,6 +237,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 - **`/gestione ticket setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
 - **`/gestione ticket stats`** — Statistiche del sistema di ticket.
 - **`/gestione voice cap`** — Imposta il numero massimo di vocali temporanei per categoria.
+- **`/gestione voice opzioni`** — Nome dei nuovi canali, canali che nascono bloccati, canale di registro.
 - **`/gestione voice panel`** — Pubblica il pannello per la creazione manuale di un vocale.
 - **`/gestione voice piattaforme`** — Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
 - **`/gestione voice setup`** — Configura il canale generatore e la categoria dei vocali temporanei.
@@ -524,11 +525,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 - **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
 - **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
 - **`/voice deny`** — Vieta a un utente di entrare nel canale.
+- **`/voice invita`** — Manda a un utente un invito al tuo canale.
 - **`/voice kick`** — Espelli un utente dal tuo canale.
 - **`/voice limit`** — Imposta il limite di utenti del canale.
 - **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
 - **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
 - **`/voice permit`** — Permetti a un utente di entrare anche se il canale è bloccato.
 - **`/voice rename`** — Rinomina il tuo canale vocale.
+- **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.

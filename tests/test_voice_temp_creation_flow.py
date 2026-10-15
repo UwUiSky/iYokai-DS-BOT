@@ -23,12 +23,16 @@ class _FakeConfig:
     role_pc_id: int | None = None
     role_console_id: int | None = None
     role_mobile_id: int | None = None
+    nome_modello: str | None = None
+    nasce_bloccato: bool = False
+    canale_registro_id: int | None = None
 
 
 class _FakeSendable:
     def __init__(self, channel_id: int, name: str) -> None:
         self.id = channel_id
         self.name = name
+        self.mention = f"<#{channel_id}>"
         self.members = []
         self.sent = []
 
@@ -71,7 +75,11 @@ def _fake_repo_register(monkeypatch):
     async def _noop(*args, **kwargs) -> None:
         return None
 
+    async def _nessun_numero(*args, **kwargs) -> list[int]:
+        return []
+
     monkeypatch.setattr(repo_module.voice_temp_repo, "register_channel", _noop)
+    monkeypatch.setattr(repo_module.voice_temp_repo, "numeri_usati", _nessun_numero)
 
 
 class TestCreateTempChannelRispettaIlCap:

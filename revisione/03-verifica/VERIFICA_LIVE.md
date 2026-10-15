@@ -527,7 +527,14 @@ chiudere.
 - [ ] Vocali temporanei (#144) — passi:
   1. Da proprietario non staff di un vocale temporaneo, `/voice kick` su un admin e su un moderatore: rifiutato con messaggio chiaro; su un membro normale: espulso.
   2. Imposta a mano `Connetti = consentito` per @everyone su un vocale temporaneo, `/voice lock` poi `/voice unlock`: torna `consentito`, gli altri permessi non cambiano.
+  3. `/voice lock`, riavvia il bot, `/voice unlock`: torna il valore di prima (`consentito`).
   Risultato atteso: nessun permesso perso.
+- [ ] `VOC-007/008/011/012/015/018` (#127) — passi:
+  1. `/gestione voice opzioni nome:Stanza {numero} · {utente} chiusi:True registro:#log-vocali`; entra due volte nel generatore con due account: nascono «Stanza 1 · …» e «Stanza 2 · …», bloccati (il proprietario entra). Nel registro compaiono le creazioni.
+  2. Nel canale, `/voice stato testo:Ranked`: lo stato compare sotto il nome (serve il permesso «Impostare lo stato del canale vocale»); `/voice stato` senza testo lo toglie.
+  3. `/voice invita member:@B`: B riceve in DM un invito monouso e riesce a entrare nonostante il blocco. Con i DM chiusi il link compare a chi invita.
+  4. `/voice unlock`, `/voice kick`, chiusura del canale: ogni azione ha la sua riga nel registro, senza menzioni che suonano.
+  Risultato atteso: numeri riusati quando una stanza si chiude; nessun errore nel log.
 - [ ] Ordine dei comandi (D24) — passi:
   1. Scrivi `/` nel server di prova e guarda l'ordine dei comandi di iYokai (anche aprendo solo l'icona dell'app).
   2. Segna dove stanno `/cerca-comando` e `/chiedi` rispetto agli altri.

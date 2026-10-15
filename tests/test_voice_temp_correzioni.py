@@ -40,7 +40,6 @@ def _ambiente(monkeypatch, clean_db):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
     rinomina.rename_tracker._renames.clear()
-    modulo._connect_prima_del_lock.clear()
     yield
     rinomina.rename_tracker._renames.clear()
     database_module.db._modules_cache.clear()
@@ -68,6 +67,8 @@ class Scena:
     async def _crea_canale(self, name, **kwargs):
         canale = fake_voice_channel(2000 + len(self.canali), name)
         canale.guild = self.guild
+        # Come il vero: un canale nuovo non ha override per @everyone.
+        canale.overwrites_for.return_value = discord.PermissionOverwrite()
         self.canali[canale.id] = canale
         return canale
 
@@ -782,6 +783,39 @@ async def test_unlock_dopo_due_lock_ripristina_il_valore_originale():
     assert _overwrite_finale(canale, scena.guild.default_role).connect is True
 
 
+async def test_unlock_dopo_un_riavvio_ripristina_il_valore_salvato_nel_database():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True)
+    prima = VoiceTempCog(bot=None)
+    await prima.lock.callback(prima, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
+
+    dopo_il_riavvio = VoiceTempCog(bot=None)
+    await dopo_il_riavvio.unlock.callback(dopo_il_riavvio, scena.interazione(proprietario))
+
+    assert _overwrite_finale(canale, scena.guild.default_role).connect is True
+    assert await voice_temp_repo.togli_blocco(canale.id) is None
+
+
+async def test_unlock_fallito_lascia_il_ricordo_per_il_tentativo_dopo():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True)
+    cog = VoiceTempCog(bot=None)
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
+    canale.set_permissions.side_effect = _errore_http()
+
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+    canale.set_permissions.side_effect = None
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    assert _overwrite_finale(canale, scena.guild.default_role).connect is True
+
+
 # ====================================================================
 # #127 — catalogo vocali temporanei: claim, permit, deny, bitrate, nascondi
 # ====================================================================
@@ -1015,3 +1049,148 @@ async def test_transfer_toglie_i_permessi_al_vecchio_e_li_da_solo_al_nuovo():
     permessi = _permessi_dati(canale)
     assert set(permessi) == {ID_PROPRIETARIO, ID_OSPITE}
     assert permessi[ID_PROPRIETARIO] is None
+
+
+# ====================================================================
+# #127 — VOC-007 invita, VOC-008 stato, VOC-011/012 nome da modello,
+# VOC-015 canali che nascono bloccati, VOC-018 registro delle azioni
+# ====================================================================
+from tests.support.discord_fakes import fake_text_channel  # noqa: E402
+
+ID_REGISTRO = 777
+
+
+async def _configura(scena, **opzioni):
+    await voice_temp_repo.set_config(ID_SERVER, 1, scena.categoria.id)
+    config = await voice_temp_repo.get_config(ID_SERVER)
+    await voice_temp_repo.set_opzioni(
+        ID_SERVER,
+        opzioni.get("nome", config.nome_modello),
+        opzioni.get("chiusi", config.nasce_bloccato),
+        opzioni.get("registro"),
+    )
+
+
+async def test_nome_da_modello_e_numeri_in_sequenza():
+    scena = Scena()
+    await _configura(scena, nome="Stanza {numero} di {utente}")
+
+    primo = await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
+    secondo = await scena.crea_canale_di(scena.membro(ID_OSPITE))
+
+    nomi = [c.kwargs["name"] for c in scena.categoria.create_voice_channel.call_args_list]
+    assert nomi == [f"Stanza 1 di utente{ID_PROPRIETARIO}", f"Stanza 2 di utente{ID_OSPITE}"]
+    await voice_temp_repo.unregister_channel(primo.id)
+    await scena.crea_canale_di(scena.membro(30))
+    assert scena.categoria.create_voice_channel.call_args.kwargs["name"].startswith("Stanza 1 ")
+    assert secondo.id != primo.id
+
+
+async def test_canale_che_nasce_bloccato_si_apre_con_unlock():
+    scena = Scena()
+    await _configura(scena, chiusi=True)
+    proprietario = scena.membro(ID_PROPRIETARIO)
+
+    canale = await scena.crea_canale_di(proprietario)
+
+    overwrites = scena.categoria.create_voice_channel.call_args.kwargs["overwrites"]
+    assert overwrites[scena.guild.default_role].connect is False
+    assert overwrites[proprietario].connect is True
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=False)
+    cog = VoiceTempCog(bot=None)
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+    assert _overwrite_finale(canale, scena.guild.default_role) is None
+
+
+async def test_registro_scrive_creazione_e_blocco():
+    scena = Scena()
+    registro = fake_text_channel(ID_REGISTRO, "registro-vocali")
+    scena.canali[ID_REGISTRO] = registro
+    await _configura(scena, registro=ID_REGISTRO)
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    cog = VoiceTempCog(bot=None)
+
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+
+    righe = [c.args[0] for c in registro.send.call_args_list]
+    assert "creato" in righe[0] and "bloccato" in righe[1]
+    assert registro.send.call_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
+    assert canale.id in scena.canali
+
+
+async def test_opzioni_rifiuta_un_modello_con_segnaposto_sconosciuto():
+    scena = Scena()
+    await _configura(scena)
+    staff = scena.membro(ID_PROPRIETARIO, manage_channels=True)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(staff)
+
+    await cog.voicetemp_opzioni.callback(cog, interazione, nome="Stanza {nome}")
+
+    assert interazione.response.send_message.call_args.kwargs["ephemeral"] is True
+    assert (await voice_temp_repo.get_config(ID_SERVER)).nome_modello is None
+
+
+async def test_opzioni_salva_e_predefiniti_azzera():
+    scena = Scena()
+    await _configura(scena)
+    staff = scena.membro(ID_PROPRIETARIO, manage_channels=True)
+    registro = fake_text_channel(ID_REGISTRO, "registro")
+    cog = VoiceTempCog(bot=None)
+
+    await cog.voicetemp_opzioni.callback(
+        cog, scena.interazione(staff), nome="Stanza {numero}", chiusi=True, registro=registro
+    )
+    config = await voice_temp_repo.get_config(ID_SERVER)
+    assert (config.nome_modello, config.nasce_bloccato, config.canale_registro_id) == (
+        "Stanza {numero}", True, ID_REGISTRO,
+    )
+
+    await cog.voicetemp_opzioni.callback(cog, scena.interazione(staff), predefiniti=True)
+    config = await voice_temp_repo.get_config(ID_SERVER)
+    assert (config.nome_modello, config.nasce_bloccato, config.canale_registro_id) == (None, True, None)
+
+
+async def test_invita_ammette_e_manda_l_invito_in_dm():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.membro(ID_OSPITE)
+    invito = MagicMock(url="https://discord.gg/prova")
+    canale.create_invite.return_value = invito
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.invita.callback(cog, interazione, ospite)
+
+    assert canale.create_invite.call_args.kwargs["max_uses"] == 1
+    assert "https://discord.gg/prova" in ospite.send.call_args.args[0]
+    assert canale.set_permissions.call_args.args[0] is ospite
+
+
+async def test_invita_senza_dm_mostra_il_link_a_chi_invita():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    ospite = scena.membro(ID_OSPITE)
+    canale.create_invite.return_value = MagicMock(url="https://discord.gg/prova")
+    ospite.send.side_effect = _errore_http(403)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.invita.callback(cog, interazione, ospite)
+
+    assert "https://discord.gg/prova" in _testo(interazione.followup.send.call_args)
+
+
+async def test_stato_cambia_lo_stato_del_canale_e_vuoto_lo_toglie():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    cog = VoiceTempCog(bot=None)
+
+    await cog.stato.callback(cog, scena.interazione(proprietario), "Ranked")
+    assert canale.edit.call_args.kwargs == {"status": "Ranked"}
+    await cog.stato.callback(cog, scena.interazione(proprietario))
+    assert canale.edit.call_args.kwargs == {"status": None}

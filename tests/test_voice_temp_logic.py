@@ -97,3 +97,32 @@ class TestIsCategoryFull:
     def test_nessun_cap_configurato_usa_il_limite_discord_di_50(self):
         assert is_category_full(current_channel_count=49, configured_cap=None) is False
         assert is_category_full(current_channel_count=50, configured_cap=None) is True
+
+
+# #127 VOC-011/012: nome dei canali da un modello con {utente} e {numero}
+from core.voice_temp_logic import errore_modello_nome, nome_da_modello, primo_numero_libero
+
+
+class TestModelloNome:
+    def test_senza_modello_resta_il_nome_di_sempre(self):
+        assert nome_da_modello(None, "Ada", 3) == "Canale di Ada"
+
+    def test_modello_con_utente_e_numero(self):
+        assert nome_da_modello("Stanza {numero} · {utente}", "Ada", 2) == "Stanza 2 · Ada"
+
+    def test_nome_lungo_tagliato_a_100(self):
+        assert len(nome_da_modello("{utente}", "x" * 300, 1)) == 100
+
+    def test_segnaposto_sconosciuto_e_un_errore(self):
+        assert errore_modello_nome("Stanza {nome}") is not None
+
+    def test_graffa_rotta_e_un_errore(self):
+        assert errore_modello_nome("Stanza {numero") is not None
+
+    def test_modello_valido(self):
+        assert errore_modello_nome("Stanza {numero}") is None
+
+    def test_primo_numero_libero_riempie_i_buchi(self):
+        assert primo_numero_libero([]) == 1
+        assert primo_numero_libero([1, 2, 4]) == 3
+        assert primo_numero_libero([2, 3]) == 1

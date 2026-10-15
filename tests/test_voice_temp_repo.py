@@ -126,3 +126,18 @@ async def test_set_platform_roles(repo):
     assert config.role_pc_id == 1
     assert config.role_console_id == 2
     assert config.role_mobile_id == 3
+
+
+@pytest.mark.asyncio
+async def test_blocco_ricorda_solo_il_primo_valore_e_si_cancella(repo):
+    await repo.register_channel(1, 100, 10)
+    await repo.segna_bloccato(1, True)
+    await repo.segna_bloccato(1, False)  # secondo lock: già bloccato
+
+    assert await repo.togli_blocco(1) is True
+    assert await repo.togli_blocco(1) is None
+
+
+@pytest.mark.asyncio
+async def test_togli_blocco_su_canale_non_tracciato_e_none(repo):
+    assert await repo.togli_blocco(999) is None

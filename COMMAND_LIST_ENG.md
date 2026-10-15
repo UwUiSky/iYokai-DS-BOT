@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:40 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 03:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 466 commands in 21 categories.**
+**Total: 469 commands in 21 categories.**
 
 ## Admin
 
@@ -232,6 +232,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:4
 - **`/management ticket setup`** — Sets the category (and optionally the support role) for tickets.
 - **`/management ticket stats`** — Ticket system statistics.
 - **`/management voice cap`** — Sets the maximum number of temporary voice channels per category.
+- **`/management voice options`** — Name of new channels, channels born locked, log channel.
 - **`/management voice panel`** — Publishes the panel to create a voice channel by hand.
 - **`/management voice platforms`** — Sets the PC/Console/Mobile info roles for temporary voice channels.
 - **`/management voice setup`** — Sets the generator channel and category for temporary voice channels.
@@ -525,10 +526,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-14 21:4
 - **`/voice claim`** — Takes the channel if the owner is gone.
 - **`/voice deny`** — Forbids a user from joining the channel.
 - **`/voice hide`** — Hides or shows the channel to people who are not in it.
+- **`/voice invite`** — Sends a user an invite to your channel.
 - **`/voice kick`** — Kicks a user from your channel.
 - **`/voice limit`** — Sets the channel's user limit.
 - **`/voice lock`** — Locks the channel (no new joins).
 - **`/voice permit`** — Lets a user join even if the channel is locked.
 - **`/voice rename`** — Renames your voice channel.
+- **`/voice status`** — Writes what you are doing in the channel (empty: removes it).
 - **`/voice transfer`** — Transfers the channel's ownership.
 - **`/voice unlock`** — Unlocks the channel.
