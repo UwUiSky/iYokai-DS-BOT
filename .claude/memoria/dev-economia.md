@@ -4,10 +4,11 @@
 15/10/2026 · giro r7, ramo `feat/r7liv`, DB `iyokai_wr7liv` (env: `/tmp/claude-0/env_r7liv.sh`), migrazioni 0200–0209. Lavoro PER FILE.
 
 ## In corso
-- Previsione r7: 4 gruppi, poi stop. A vocali FATTO. B NF-12 sfondo + NF-40 profilo immagine FATTO. C #65 M 9.18 (PERF-4 nel worker vocale delle gilde). D catalogo #124/#125: molte voci già fatte ma non spuntate (LIV-026, 035-037, 041, 063-067, 074; ECO-009, 011, 016, 061-064, 069): segnalarle; farne di nuove piccole.
-- Prossimo passo: C, `core/guild_clan_voice_worker.py` (query per utente a ogni tick -> raggruppate).
+- Previsione r7: 4 gruppi, poi stop. A vocali FATTO. B NF-12 sfondo + NF-40 profilo immagine FATTO. C #65 M 9.18 FATTO. D catalogo #124/#125: molte voci già fatte ma non spuntate (LIV-026, 035-037, 041, 063-067, 074; ECO-009, 011, 016, 061-064, 069): segnalarle; farne di nuove piccole.
+- Prossimo passo: D, voci piccole del catalogo (`cogs/leveling/leveling.py`).
 
 ## Fatto
+- r7 C: #65 M 9.18 tick vocale gilde raggruppato (`apply_ticks`, `clear_activities`, `get_membri_in_gilda`).
 - r7 B: NF-12 sfondo immagine (`rank_card_sfondi`, 0202, `prepara_sfondo`, `/level impostazioni card`), NF-40 profilo come immagine (`render_profile_card`).
 - r7 A: #144 blocco vocale salvato nel DB (0200, `segna_bloccato`/`togli_blocco`); #127 VOC-007 invita, 008 stato, 011/012 nome da modello e numeri, 015 nascono bloccati, 018 registro (`/gestione voice opzioni`, 0201).
 - r5 fun: NF-25 (0120), voci piccole /fun, NF-32 Kick (0121).
@@ -30,6 +31,5 @@
 
 ## Aperto
 - Migrazioni mie: 0090-0095, 0097-0099, 0120-0121, 0200-0202. NON usare 0096.
-- `core/guild_clan_voice_worker.py`: ~6 query per utente a ogni tick (PERF-4, M 9.18).
 - #127 restano VOC-006, 010, 013, 014, 016, 017, 021.
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.

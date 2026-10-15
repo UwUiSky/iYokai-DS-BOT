@@ -426,3 +426,28 @@ async def test_chi_smette_di_essere_idoneo_riparte_da_capo(repos):
     )
 
     assert (clan_id, 1) not in await activity_repo.get_tracked_as_in_voice()
+
+
+@pytest.mark.asyncio
+async def test_query_raggruppate_per_clan_non_per_persona(repos, monkeypatch):
+    """M 9.18 (PERF-4): tre membri dello stesso clan = una scrittura per ore, XP e tesoreria."""
+    clan_repo, _ = repos
+    clan_id = await _crea_clan_ufficializzato(clan_repo, owner_id=1)
+    for user_id in (2, 3):
+        await clan_repo.add_member(clan_id, user_id)
+    chiamate = []
+    for nome in ("add_voice_ticks", "add_xp", "apply_treasury_delta", "get_membri_in_gilda"):
+        vero = getattr(clan_repo, nome)
+
+        async def spia(*args, _vero=vero, _nome=nome, **kwargs):
+            chiamate.append(_nome)
+            return await _vero(*args, **kwargs)
+
+        monkeypatch.setattr(clan_repo, nome, spia)
+    canale = _FakeVoiceChannel(500, members=[_FakeMember(1), _FakeMember(2), _FakeMember(3)])
+
+    await GuildClanVoiceWorker().tick(_FakeBot([_FakeGuild(100, voice_channels=[canale])]), now=ORA)
+
+    assert sorted(chiamate) == ["add_voice_ticks", "add_xp", "apply_treasury_delta", "get_membri_in_gilda"]
+    clan = await clan_repo.get_clan(clan_id)
+    assert (clan.total_voice_ticks, clan.total_xp, clan.treasury_balance) == (3, 30, -15_000 + 12)

@@ -1346,6 +1346,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   non solo il più alto), agganciato sia a XP testuale sia vocale
   → **Stato 04/10:** lista oltre 80 righe (LIM-18).
 - `[~]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
+  → **Stato 15/10:** il tick vocale delle gilde raggruppa letture e scritture per server e per clan (M 9.18, PERF-4): due letture dei clan, una transazione per i tick, tre scritture per clan; una riga del registro di tesoreria per clan a ogni tick invece di una per membro.
   (motore economico di backend calibrato e testato — 10 XP + 4 coin
   a tick/minuto in vocale di gilda (×2 letterale del vocale normale),
   decadimento lineare dopo 3h filate

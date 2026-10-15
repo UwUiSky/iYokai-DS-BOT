@@ -727,6 +727,39 @@ class GuildClanRepository:
         )
         return self._row_to_clan(row) if row is not None else None
 
+    async def get_membri_in_gilda(
+        self, guild_id: int, user_ids: list[int]
+    ) -> dict[int, tuple[Clan, ClanMember]]:
+        """
+        Clan e scheda di membro di ogni utente in `user_ids` che sta in un
+        clan di questo server. Due letture per tutto il server (M 9.18,
+        PERF-4: il worker vocale ne faceva due per ogni persona).
+        """
+        if not user_ids:
+            return {}
+        membri = await self._pool.fetch(
+            """
+            SELECT m.* FROM clan_members m JOIN clans c ON c.id = m.clan_id
+            WHERE c.guild_id = $1 AND m.user_id = ANY($2::bigint[])
+            """,
+            guild_id,
+            user_ids,
+        )
+        if not membri:
+            return {}
+        clan = {
+            r["id"]: self._row_to_clan(r)
+            for r in await self._pool.fetch(
+                "SELECT * FROM clans WHERE id = ANY($1::bigint[])",
+                list({m["clan_id"] for m in membri}),
+            )
+        }
+        return {
+            m["user_id"]: (clan[m["clan_id"]], self._row_to_member(m))
+            for m in membri
+            if m["clan_id"] in clan
+        }
+
     # ----------------------------------------------------------------
     # Tesoreria
     # ----------------------------------------------------------------
