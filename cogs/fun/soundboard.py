@@ -14,6 +14,7 @@ core/music_sound_logic.py.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 
 import discord
@@ -37,16 +38,41 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         self.pausa = PausaUtente()
         self._predefiniti: list = []
         self._task: set[asyncio.Task] = set()
+        # Uscita programmata del bot entrato solo per i suoni, per (server, canale).
+        self._uscite: dict[tuple[int, int], asyncio.Task] = {}
 
     async def cog_unload(self) -> None:
         await super().cog_unload()
         for task in list(self._task):
             task.cancel()
 
-    def _in_background(self, coroutine) -> None:
+    def _in_background(self, coroutine) -> asyncio.Task:
         task = asyncio.create_task(coroutine)
         self._task.add(task)
         task.add_done_callback(self._task.discard)
+        return task
+
+    def _programma_uscita(self, musica, flotta, worker_guild, guild_id: int, canale_id: int) -> None:
+        """
+        Un suono nuovo nel canale del bot temporaneo sposta in avanti la sua
+        uscita: quella vecchia non lo taglia a metà.
+        """
+        chiave = (guild_id, canale_id)
+        vecchia = self._uscite.pop(chiave, None)
+        if vecchia is not None:
+            vecchia.cancel()
+        task = self._in_background(
+            _esci_se_inattivo(
+                flotta, worker_guild, guild_id, canale_id, lock=musica._lock_canale(guild_id, canale_id)
+            )
+        )
+        self._uscite[chiave] = task
+
+        def _togli(t: asyncio.Task) -> None:
+            if self._uscite.get(chiave) is t:
+                self._uscite.pop(chiave, None)
+
+        task.add_done_callback(_togli)
 
     async def _suoni(self, guild: discord.Guild) -> dict[str, tuple[Suono, object]]:
         """Valore -> (Suono, oggetto discord.py). I predefiniti si leggono una volta sola."""
@@ -143,8 +169,8 @@ class SoundboardCog(CogConGruppi, commands.Cog):
             finally:
                 if era_sordo:
                     self._in_background(_torna_sordo(worker_guild, RIPRISTINA_SORDO_DOPO))
-                if temporaneo:
-                    self._in_background(_esci_se_inattivo(flotta, worker_guild, guild_id, canale_id))
+                if temporaneo or (guild_id, canale_id) in self._uscite:
+                    self._programma_uscita(musica, flotta, worker_guild, guild_id, canale_id)
         return "🔊 Suono **{nome}** partito."
 
 
@@ -166,18 +192,24 @@ async def _torna_sordo(worker_guild, attesa: float) -> None:
 
 
 async def _esci_se_inattivo(flotta, worker_guild, guild_id: int, canale_id: int,
-                            attesa: float = ATTESA_USCITA) -> None:
-    """Il bot entrato solo per il suono esce, a meno che nel frattempo qualcuno abbia messo musica."""
+                            attesa: float = ATTESA_USCITA, lock: asyncio.Lock | None = None) -> None:
+    """
+    Il bot entrato solo per il suono esce, a meno che nel frattempo qualcuno
+    abbia messo musica. Il controllo si fa con il lock del canale di
+    MusicCog: un /music play a metà (ricerca in corso) non trova il player
+    scollegato sotto di sé.
+    """
     await asyncio.sleep(attesa)
-    player = worker_guild.voice_client
-    if player is None:
-        return
-    if getattr(player, "playing", False) or not getattr(player.queue, "is_empty", True):
-        return
-    try:
-        await player.disconnect()
-    finally:
-        await flotta.release_session(guild_id, canale_id)
+    async with lock if lock is not None else contextlib.nullcontext():
+        player = worker_guild.voice_client
+        if player is None:
+            return
+        if getattr(player, "playing", False) or not getattr(player.queue, "is_empty", True):
+            return
+        try:
+            await player.disconnect()
+        finally:
+            await flotta.release_session(guild_id, canale_id)
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -159,7 +159,7 @@ async def test_bot_libero_entra_con_audio_acceso_e_poi_esce(monkeypatch):
     cog, _, predefinito = _cog(musica, monkeypatch)
     usciti = []
 
-    async def _esci(flotta, wg, gid, cid, attesa=0):
+    async def _esci(flotta, wg, gid, cid, attesa=0, lock=None):
         usciti.append((gid, cid))
 
     monkeypatch.setattr(modulo, "_esci_se_inattivo", _esci)
@@ -222,3 +222,58 @@ def test_l_invito_dei_bot_musicali_permette_la_soundboard():
 
     assert WORKER_INVITE_PERMISSIONS.use_soundboard
     assert not WORKER_INVITE_PERMISSIONS.administrator
+
+
+@pytest.mark.asyncio
+async def test_uscita_aspetta_un_play_a_meta():
+    """Un /music play sta cercando (lock del canale preso): il bot non esce sotto di lui."""
+    usciti = []
+
+    async def _disconnetti():
+        usciti.append(True)
+
+    player = SimpleNamespace(playing=False, queue=SimpleNamespace(is_empty=True), disconnect=_disconnetti)
+    lock = asyncio.Lock()
+    await lock.acquire()  # il play ha il lock e sta cercando
+    flotta = SimpleNamespace(release_session=_nulla)
+    uscita = asyncio.create_task(
+        _esci_se_inattivo(flotta, SimpleNamespace(voice_client=player), 1, 3, attesa=0, lock=lock)
+    )
+    await asyncio.sleep(0.01)
+    player.playing = True  # il play mette il brano e rilascia il lock
+    lock.release()
+    await uscita
+    assert usciti == []
+
+
+@pytest.mark.asyncio
+async def test_un_secondo_suono_sposta_l_uscita(monkeypatch):
+    """Il bot temporaneo non esce a metà del suono di un altro utente."""
+    worker_guild = _WorkerGuild(player=None)
+    musica = _Musica(worker_guild)
+    cog, _, predefinito = _cog(musica, monkeypatch)
+    cancellate = []
+
+    async def _esci(flotta, wg, gid, cid, attesa=0, lock=None):
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            cancellate.append((gid, cid))
+            raise
+
+    monkeypatch.setattr(modulo, "_esci_se_inattivo", _esci)
+    primo, _ = _interazione([])
+    secondo, _ = _interazione([])
+    secondo.user = SimpleNamespace(id=10, voice=primo.user.voice)
+
+    await cog.suono.callback(cog, primo, nome="Grillo")
+    await asyncio.sleep(0)
+    await cog.suono.callback(cog, secondo, nome="Grillo")
+    await asyncio.sleep(0)
+
+    assert musica.ingressi == [False]  # il secondo usa il bot gia' entrato
+    assert cancellate == [(1, 3)]  # l'uscita del primo e' spostata
+    assert len(cog._uscite) == 1
+    for task in list(cog._task):
+        task.cancel()
+    await asyncio.gather(*cog._task, return_exceptions=True)
