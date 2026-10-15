@@ -111,3 +111,30 @@ async def test_verifica_riuscita_propone_il_consenso(ambiente):
     assert inviati == []
     await proponi_consenso_restore(invia, _Ogg(100), _Ogg(1), _Esito(True))
     assert len(inviati) == 1 and isinstance(inviati[0][1], ConsensoRestoreView)
+
+
+async def test_invito_classico_rifiutato_da_discord_si_spiega(ambiente):
+    """M 12.16 (LIM-36): server a 1000 inviti, nessun DM con un invito che non c'è."""
+    import discord
+
+    database, snap, oauth, backup = ambiente
+    await database.set_guild_setting(200, restore_module.SETTING_RESTORE_MODE, restore_module.MODE_CLASSIC_INVITE)
+    await backup.define_main(100)
+    await backup.define_backup(100, 200)
+    await snap.save_snapshot(100, [(1, "U1", None)])
+    await oauth.salva_consenso(100, 1)
+    utente = _FakeUser(1)
+    cog = RestoreCog(bot=_FakeBot({1: utente}))
+    interaction = _FakeInteraction(guild_id=200)
+
+    class _Pieno:
+        status = 400
+        reason = "Bad Request"
+
+    async def rifiuta(**kw):
+        raise discord.HTTPException(_Pieno(), "Maximum number of invites reached (1000)")
+
+    interaction.channel.create_invite = rifiuta
+    await cog.restore_users.callback(cog, interaction, "100")
+    assert utente.messaggi_ricevuti == []
+    assert "Invito non creato, utenti non contattati: 1" in interaction.followup.sent_messages[0][0]

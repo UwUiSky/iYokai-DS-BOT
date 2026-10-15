@@ -19,7 +19,7 @@ A fine verifica (cogs/security/verify.py) il membro di un server con backup
 riceve la proposta di consenso: un bottone per accettare i DM di ripristino
 (M 12.12) e, in modalità «OAuth alla verifica», anche il link OAuth (M 12.14).
 Il restore manda DM solo a chi ha accettato o ha dato il consenso OAuth.
-Funzioni coperte: SPEC §11.11, §11.12, M 12.10–12.14
+Funzioni coperte: SPEC §11.11, §11.12, M 12.10–12.16
 """
 
 from __future__ import annotations
@@ -273,6 +273,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             "rimandati": 0,
             "gia_contattati": 0,
             "senza_consenso": 0,
+            "invito_mancante": 0,
             "ruolo_non_assegnato": 0,
         }
 
@@ -371,6 +372,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
             if azione == ACTION_CLASSIC_INVITE:
                 if invito_classico_url is None:
                     invito_classico_url = await self._crea_invito_classico(interaction)
+                if not invito_classico_url:
+                    contatori["invito_mancante"] += 1  # M 12.16: niente DM con un invito che non c'è
+                    continue
                 try:
                     utente = await self.bot.fetch_user(entry.user_id)
                     await utente.send(
@@ -398,6 +402,12 @@ class RestoreCog(CogConGruppi, commands.Cog):
             f"⏱️ Rimandati (limite di frequenza): {contatori['rimandati']}\n"
             f"🔁 Già contattati di recente: {contatori['gia_contattati']}\n"
             f"🤐 Non contattati (nessun consenso ai DM): {contatori['senza_consenso']}"
+            + (
+                f"\n⚠️ Invito non creato, utenti non contattati: {contatori['invito_mancante']} "
+                "(Discord rifiuta: troppi inviti nel server o permesso «Crea invito» mancante)"
+                if contatori["invito_mancante"]
+                else ""
+            )
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
                 f"/security verify setup): {contatori['ruolo_non_assegnato']}"
@@ -464,10 +474,15 @@ class RestoreCog(CogConGruppi, commands.Cog):
         )
 
     async def _crea_invito_classico(self, interaction: discord.Interaction) -> str:
+        """L'invito per i DM; stringa vuota se Discord rifiuta (M 12.16: tetto di 1000 inviti, LIM-36)."""
         canale = interaction.channel
-        invito = await canale.create_invite(
-            max_age=7 * 24 * 60 * 60, reason="Restore utenti (SPEC.md §11.11, invito classico)"
-        )
+        try:
+            invito = await canale.create_invite(
+                max_age=7 * 24 * 60 * 60, reason="Restore utenti (SPEC.md §11.11, invito classico)"
+            )
+        except discord.HTTPException:
+            logger.warning("Invito classico non creato nel server %s", interaction.guild.id)
+            return ""
         return invito.url
 
     # ------------------------------------------------------------
