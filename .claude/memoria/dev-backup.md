@@ -4,7 +4,7 @@
 13/10/2026 · ramo `feat/r3-bak` · base `c23a815` · DB `iyokai_wbak` · migrazioni 0070+
 
 ## In corso
-Giro r7 (15/10, ramo `feat/r7bak`, DB `iyokai_wr7bak`, migrazioni 0190–0199). Previste 6 voci, in ordine:
+Giro r7 (15/10, ramo `feat/r7bak`, DB `iyokai_wr7bak`, migrazioni 0190–0199). Previste 6 voci (1–4 fatte), in ordine:
 1. D25 `/backup` (blocco intero da `/admin backup`) + 12.12/12.14 consenso a fine verifica (0190).
 2. Strutture come dati: salva/lista/elimina/carica più copie datate (12.17), esporta/importa JSON-CSV (BKP-032…037, 014, 015).
 3. Caricamento con stato e annullo (BKP-009/010), livelli di permesso (BKP-018), registro 365 giorni (BKP-019).
@@ -12,6 +12,8 @@ Giro r7 (15/10, ramo `feat/r7bak`, DB `iyokai_wr7bak`, migrazioni 0190–0199). 
 Mi fermo dopo la 6 o prima se il contesto si riempie.
 
 ## Fatto
+- r7 (15/10): `/backup` (D25) + 12.12/12.14 consenso (1945d35, 0190); copie datate, carica con stato/annullo,
+  esporta/importa, modelli, permessi, registro (8b63130, 0191); sincronia ban/ruoli (commit dopo 8b63130, 0192).
 - Correzioni cacciatore-bug (commit dopo 1083ada): collegamento atomico + indice unico (0071), blocco e registro contatti nel restore, get_stato per i bannati, 429 sul rinnovo (LimiteDiFrequenza), ruoli Forbidden/permessi ridotti, categoria `___hidden___` coi figli, on_guild_join in main.py, data_registry.
 - 12.3-12.8 clonazione su server da modello (93713e0).
 - 12.1, 12.2, 12.9, 12.13 + test ordine #68 (874b0ed): `crea`/`collega`, worker sul client del Creator,

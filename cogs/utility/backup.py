@@ -4,7 +4,8 @@ cogs/utility/backup.py
 Gruppo /backup (D25): coppia main e backup (main, crea, collega, promuovi),
 copie datate della struttura (salva, lista, carica, elimina), stato e annullo
 del caricamento, esportazioni e importazione, livelli di permesso e registro.
-modelli condivisibili con un codice (NF-39), livelli di permesso e registro.
+modelli condivisibili con un codice e sincronia di ban e ruoli tra due server
+dello stesso owner (NF-39), livelli di permesso e registro.
 /backup restore-modo e restore-utenti sono in cogs/utility/restore.py.
 Funzioni coperte: SPEC §11.12, §11.13, §11.15, §11.16, M 12.1, M 12.9, M 12.17, NF-39,
 BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-032…037
@@ -16,6 +17,7 @@ import asyncio
 import io
 import logging
 import re
+import time
 
 import discord
 from discord import app_commands
@@ -30,7 +32,9 @@ from core.backup_permessi_logic import (
     SETTING_LIVELLO,
     puo,
 )
+from core import server_sync_logic as sync
 from core.database import db
+from core.repositories.backup_sincronia_repo import backup_sincronia_repo
 from core.repositories.backup_struttura_repo import MAX_COPIE_PER_SERVER, backup_struttura_repo
 from core.ui_base import BaseView
 from core.backup_link_logic import (
@@ -108,6 +112,10 @@ class BackupCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._lavori: set[asyncio.Task] = set()
+        # Sincronie lette dal database al più ogni 5 minuti: on_member_update arriva spesso.
+        self._sincronie: dict[int, tuple[float, list]] = {}
+        # Ban e sban fatti dalla sincronia (con l'ora): il loro evento, entro un minuto, non torna indietro.
+        self._eco: dict[tuple[int, int, str], float] = {}
 
     async def _puo(self, interaction: discord.Interaction, azione: str) -> bool:
         """BKP-018: controlla il livello del server e risponde se non si può."""
@@ -542,6 +550,128 @@ class BackupCog(CogConGruppi, commands.Cog):
         if nuovo:
             await backup_struttura_repo.registra(guild.id, interaction.user.id, f"modello {azione.value}", f"#{copia}")
         await interaction.response.send_message(testo, ephemeral=True)
+
+    # ------------------------------------------------------------
+    # Sincronia di ban e ruoli (NF-39)
+    # ------------------------------------------------------------
+    @comando_di_gruppo("backup", nome="sincronia", descrizione="Tieni uguali ban e ruoli con un altro tuo server.")
+    @app_commands.describe(
+        azione="Cosa fare",
+        server="ID dell'altro server (per «attiva» e «disattiva»)",
+        ban="Copia ban e sban",
+        ruoli="Copia i ruoli dati e tolti (per nome)",
+    )
+    @app_commands.choices(
+        azione=[
+            app_commands.Choice(name="Attiva o aggiorna", value="attiva"),
+            app_commands.Choice(name="Disattiva", value="disattiva"),
+            app_commands.Choice(name="Elenco", value="elenco"),
+        ]
+    )
+    async def sincronia(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str],
+        server: app_commands.Range[str, 15, 21] | None = None, ban: bool = True, ruoli: bool = True,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None or interaction.user.id != guild.owner_id:
+            await interaction.response.send_message("⛔ La sincronia la gestisce solo l'owner del server.", ephemeral=True)
+            return
+        if azione.value == "elenco":
+            elenco = await backup_sincronia_repo.sincronie_di(guild.id)
+            righe = [
+                f"`{s.altro}` {discord.utils.escape_markdown(getattr(self.bot.get_guild(s.altro), 'name', '?'))}"
+                f" · ban {'sì' if s.ban else 'no'} · ruoli {'sì' if s.ruoli else 'no'}"
+                for s in elenco
+            ]
+            await interaction.response.send_message("\n".join(righe) or "Nessuna sincronia.", ephemeral=True)
+            return
+        if server is None or not server.isdigit() or int(server) == guild.id:
+            await interaction.response.send_message("Scrivi l'ID dell'altro server nell'opzione «server».", ephemeral=True)
+            return
+        altro_id = int(server)
+        if azione.value == "disattiva":
+            fatto = await backup_sincronia_repo.disattiva(guild.id, altro_id)
+            testo = "Sincronia disattivata." if fatto else "Nessuna sincronia con quel server."
+        else:
+            altro = self.bot.get_guild(altro_id)
+            if altro is None:
+                await interaction.response.send_message("Non sono in quel server: invitami prima.", ephemeral=True)
+                return
+            if not sync.stesso_proprietario(interaction.user.id, guild.owner_id, altro.owner_id):
+                await interaction.response.send_message("⛔ Devi essere l'owner di entrambi i server.", ephemeral=True)
+                return
+            fatto = await backup_sincronia_repo.attiva(guild.id, altro_id, ban, ruoli, interaction.user.id)
+            testo = (
+                f"🔗 Sincronia con **{discord.utils.escape_markdown(altro.name)}**: ban {'sì' if ban else 'no'}, "
+                f"ruoli {'sì' if ruoli else 'no'}. Vale da adesso in poi, nei due sensi."
+                if fatto else f"⚠️ Uno dei due server ha già {sync.MAX_SINCRONIE_PER_SERVER} sincronie."
+            )
+        if fatto:
+            self._sincronie.pop(guild.id, None)
+            self._sincronie.pop(altro_id, None)
+            await backup_struttura_repo.registra(guild.id, interaction.user.id, f"sincronia {azione.value}", server)
+        await interaction.response.send_message(testo, ephemeral=True)
+
+    async def _sincronie_di(self, guild_id: int) -> list:
+        letto = self._sincronie.get(guild_id)
+        if letto is None or time.monotonic() - letto[0] > 300:
+            letto = (time.monotonic(), await backup_sincronia_repo.sincronie_di(guild_id))
+            self._sincronie[guild_id] = letto
+        return letto[1]
+
+    async def _altri_server(self, guild_id: int, campo: str):
+        for s in await self._sincronie_di(guild_id):
+            altro = self.bot.get_guild(s.altro) if getattr(s, campo) else None
+            if altro is not None:
+                yield altro
+
+    async def _ban_sincronizzato(self, guild: discord.Guild, user, banna: bool) -> None:
+        tipo = "ban" if banna else "sban"
+        ora = time.monotonic()
+        self._eco = {k: t for k, t in self._eco.items() if ora - t < 60}
+        if self._eco.pop((guild.id, user.id, tipo), None) is not None:
+            return
+        async for altro in self._altri_server(guild.id, "ban"):
+            self._eco[(altro.id, user.id, tipo)] = ora
+            try:
+                if banna:
+                    await altro.ban(user, reason=sync.motivo(guild.name, None), delete_message_seconds=0)
+                else:
+                    await altro.unban(user, reason=sync.motivo(guild.name, None))
+            except discord.HTTPException:
+                self._eco.pop((altro.id, user.id, tipo), None)  # nessun evento tornerà
+                logger.warning("Sincronia %s di %s da %s a %s non riuscita", tipo, user.id, guild.id, altro.id)
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user) -> None:
+        await self._ban_sincronizzato(guild, user, banna=True)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user) -> None:
+        await self._ban_sincronizzato(guild, user, banna=False)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, prima: discord.Member, dopo: discord.Member) -> None:
+        """Ruoli dati o tolti: lo stesso nell'altro server. Se è già così non si chiama Discord (niente eco)."""
+        aggiunti, tolti = sync.differenza_ruoli(
+            {r.name for r in prima.roles}, {r.name for r in dopo.roles}
+        )
+        if not aggiunti and not tolti:
+            return
+        async for altro in self._altri_server(dopo.guild.id, "ruoli"):
+            membro = altro.get_member(dopo.id)
+            if membro is None or altro.me is None:
+                continue
+            presenti = set(membro.roles)
+            da_dare = [r for r in sync.ruoli_applicabili(aggiunti, altro.roles, altro.me.top_role) if r not in presenti]
+            da_togliere = [r for r in sync.ruoli_applicabili(tolti, altro.roles, altro.me.top_role) if r in presenti]
+            try:
+                if da_dare:
+                    await membro.add_roles(*da_dare, reason=sync.motivo(dopo.guild.name, None))
+                if da_togliere:
+                    await membro.remove_roles(*da_togliere, reason=sync.motivo(dopo.guild.name, None))
+            except discord.HTTPException:
+                logger.warning("Sincronia ruoli di %s verso %s non riuscita", dopo.id, altro.id)
 
     # ------------------------------------------------------------
     # Esportazioni e importazione (BKP-032…037)

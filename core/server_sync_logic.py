@@ -1,31 +1,43 @@
 """
 core/server_sync_logic.py
 =========================
-Cosa copiare tra due server collegati.
-Funzioni coperte: SPEC §23 (NF-39)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #110).
+Sincronia tra due server dello stesso proprietario: cosa copiare quando
+cambiano i ban o i ruoli di un membro. I ruoli passano per nome; quelli gestiti
+da un'integrazione o sopra il ruolo del bot non si toccano.
+Funzioni coperte: SPEC §11.16, §23 (NF-39)
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #110, fase F13
-# Funzione: NF-39, Modelli di server e sincronia tra server.
-#
-# Cosa deve fare la funzione: Una raccolta di strutture pronte da
-#   caricare. Ban e ruoli tenuti uguali tra due server dello stesso
-#   proprietario.
-# Questo file: Cosa copiare tra due server collegati.
-# Comandi previsti: /admin backup modello …, /admin backup sincronia ….
-# File esistenti da toccare: cogs/utility/backup.py.
-# Test da scrivere per primi: tests/test_server_sync_logic.py.
-# Limiti da rispettare: Stessi limiti del backup (LIM-28, LIM-38).
-# Da chi prendere spunto: Xenon (5.731 modelli, sync).
-# Dipende da: F3 finita (D8).
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+MAX_SINCRONIE_PER_SERVER = 5
+MAX_MOTIVO = 512
+
+
+def coppia(a: int, b: int) -> tuple[int, int]:
+    """La coppia in ordine (guild_a < guild_b): una sola riga per due server."""
+    return (a, b) if a < b else (b, a)
+
+
+def stesso_proprietario(utente_id: int, *proprietari: int) -> bool:
+    """Solo chi possiede entrambi i server può legarli."""
+    return all(p == utente_id for p in proprietari)
+
+
+def differenza_ruoli(prima: set[str], dopo: set[str]) -> tuple[set[str], set[str]]:
+    """(aggiunti, tolti), per nome."""
+    return dopo - prima, prima - dopo
+
+
+def ruoli_applicabili(nomi: set[str], ruoli_destinazione, ruolo_alto_del_bot) -> list:
+    """I ruoli della destinazione con quei nomi che il bot può dare o togliere."""
+    return [
+        r for r in ruoli_destinazione
+        if r.name in nomi and not r.is_default() and not r.managed and r < ruolo_alto_del_bot
+    ]
+
+
+def motivo(nome_server: str, motivo_originale: str | None) -> str:
+    testo = f"Sincronia da {nome_server}"
+    if motivo_originale:
+        testo += f": {motivo_originale}"
+    return testo[:MAX_MOTIVO]
