@@ -24,6 +24,9 @@ PAUSA_AGGIORNAMENTO = 5.0
 
 # Testo scritto nel canale: stessa lunghezza massima di una query di play.
 QUERY_MAX = 300
+# Pausa minima tra due richieste scritte dallo stesso utente (ogni richiesta
+# e' una ricerca su Lavalink, una cancellazione e una risposta).
+PAUSA_RICHIESTE = 3.0
 
 MODO_NORMALE = "normale"
 MODO_TRACCIA = "traccia"

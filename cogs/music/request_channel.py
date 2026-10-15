@@ -25,6 +25,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.music_request_logic import (
     MODO_CODA,
+    PAUSA_RICHIESTE,
     MODO_TRACCIA,
     PausaAggiornamenti,
     contenuto_player,
@@ -33,6 +34,7 @@ from core.music_request_logic import (
     query_da_messaggio,
     stato_da_player,
 )
+from core.music_sound_logic import PausaUtente
 from core.repositories.music_request_repo import music_request_repo
 from core.ui_base import BaseView
 
@@ -105,6 +107,7 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         self.bot = bot
         self.canali: dict[int, int] = {}  # server -> canale delle richieste
         self.pausa = PausaAggiornamenti()
+        self.pausa_utenti = PausaUtente(pausa=PAUSA_RICHIESTE)
         self._in_attesa: dict[int, asyncio.Task] = {}
         self._task: set[asyncio.Task] = set()
         self._ascoltatori: list[tuple[commands.Bot, object]] = []
@@ -239,6 +242,10 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         try:
             if query is None:
                 return
+            # Anti spam: le richieste troppo ravvicinate si cancellano e basta.
+            if self.pausa_utenti.resta(message.guild.id, message.author.id) > 0:
+                return
+            self.pausa_utenti.segna(message.guild.id, message.author.id)
             canale = message.channel
 
             async def rispondi(testo: str) -> None:

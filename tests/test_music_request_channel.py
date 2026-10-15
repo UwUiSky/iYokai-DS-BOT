@@ -199,6 +199,10 @@ class _Membro(discord.Member):
     def mention(self):
         return "@utente"
 
+    @property
+    def id(self):
+        return 42
+
 
 class _Messaggio:
     def __init__(self, guild_id, canale, testo, autore):
@@ -342,3 +346,21 @@ async def test_due_aggiornamenti_insieme_non_creano_due_player(monkeypatch, repo
         task.cancel()
 
     assert len(canale.inviati) == 1
+
+
+@pytest.mark.asyncio
+async def test_richieste_a_raffica_dello_stesso_utente(monkeypatch, repo):
+    """Spam nel canale: entro la pausa le richieste si cancellano senza cercare."""
+    musica = _Musica()
+    cog = _cog(monkeypatch, repo, musica)
+
+    async def _aggiorna(gid):
+        pass
+
+    cog.aggiorna = _aggiorna
+    canale = _Canale(10)
+    messaggi = [_messaggio(1, canale, f"brano {i}") for i in range(5)]
+    for m in messaggi:
+        await cog.on_message(m)
+    assert musica.accodate == ["brano 0"]
+    assert all(m.cancellato for m in messaggi)
