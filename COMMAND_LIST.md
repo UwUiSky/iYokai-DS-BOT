@@ -1,17 +1,11 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:40 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-15 03:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 466 comandi in 21 categorie.**
+**Totale: 482 comandi in 22 categorie.**
 
 ## Admin
 
-- **`/admin backup collega`** — Collega QUESTO server come backup, con il codice ricevuto dal server principale.
-- **`/admin backup crea`** — Prepara il backup: codice di collegamento e link per il nuovo server.
-- **`/admin backup main`** — Registra questo server come 'main' per il Backup System.
-- **`/admin backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
-- **`/admin backup restore-modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
-- **`/admin backup restore-utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
 - **`/admin config canale-report`** — Imposta il canale delle segnalazioni.
 - **`/admin config canale-suggerimenti`** — Imposta il canale dei suggerimenti.
 - **`/admin config export`** — Esporta la configurazione di questo server in un file.
@@ -141,6 +135,31 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 - **`/automod parole remove`** — Rimuove una parola vietata.
 - **`/automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
 - **`/automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
+
+## Backup
+
+- **`/backup annulla`** — Ferma il caricamento in corso (ciò che è già fatto resta).
+- **`/backup carica`** — Ricarica in questo server una copia salvata, scegliendo le parti.
+- **`/backup chat-carica`** — Ricarica una chat salvata in un canale, anche diverso.
+- **`/backup chat-salva`** — Salva gli ultimi messaggi di un canale (fino a 1000) per ricaricarli dopo.
+- **`/backup collega`** — Collega QUESTO server come backup, con il codice ricevuto dal server principale.
+- **`/backup copia-canale`** — Copia un canale con i permessi; una categoria con i suoi canali.
+- **`/backup copia-ruolo`** — Copia un ruolo con i permessi e, a scelta, i permessi nei canali.
+- **`/backup crea`** — Prepara il backup: codice di collegamento e link per il nuovo server.
+- **`/backup elimina`** — Elimina una copia salvata.
+- **`/backup esporta`** — Esporta struttura, canali, ruoli, ban o reazioni in un file.
+- **`/backup importa`** — Importa la struttura da un file JSON, scegliendo cosa applicare.
+- **`/backup lista`** — Le copie salvate di questo server, con la data.
+- **`/backup main`** — Registra questo server come 'main' per il Backup System.
+- **`/backup modello`** — Modelli: condividi una copia con un codice o carica quella di un altro server.
+- **`/backup permessi`** — Chi può creare e chi può caricare i backup (solo l'owner).
+- **`/backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
+- **`/backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
+- **`/backup restore-modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
+- **`/backup restore-utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
+- **`/backup salva`** — Salva una copia datata della struttura di questo server.
+- **`/backup sincronia`** — Tieni uguali ban e ruoli con un altro tuo server.
+- **`/backup stato`** — Avanzamento dell'ultimo caricamento in questo server.
 
 ## Clan
 

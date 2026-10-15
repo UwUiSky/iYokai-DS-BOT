@@ -807,6 +807,23 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
 - [ ] Restore (#68) — lancia `/backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
 - [ ] Ingresso (#68) — fai rientrare iYokai in un server di backup in blacklist: esce. Rientro in un backup normale: nessun benvenuto, ma `left_at` azzerato.
 
+## Backup — giro r7 (`feat/r7bak`: #68, #121, #110, #46)
+
+Servono: due server di prova dello **stesso owner** (A e B), iYokai in entrambi, un account admin non owner, un account membro con DM aperti.
+
+- [ ] D25 — Il gruppo `/backup` compare nel menu (`/admin backup` non c'è più). Risultato atteso: un account senza «Amministratore» non lo vede.
+- [ ] `12.12` / `12.14` (#68) — in A (con `/backup main`): `/security verify setup`, verifica col membro. Risultato atteso: dopo l'esito, il messaggio «Questo server ha un backup…» con «Sì, avvisami / No, grazie». Con `/backup restore-modo modalita:OAuth al momento della verifica` compare anche il link OAuth; aprirlo salva il consenso («Autorizzazione salvata»). In modalità reazione la proposta arriva in DM. Poi `/backup restore-utenti` dal backup: chi ha detto «No» o non ha risposto non riceve DM e il riepilogo lo conta in «Non contattati (nessun consenso ai DM)».
+- [ ] `12.16` (#68) — modalità «solo invito classico» in un canale dove il bot non può creare inviti. Risultato atteso: nessun DM, riepilogo con «Invito non creato».
+- [ ] `12.17` / BKP-014/015 — in A: `/backup salva nome:prova ban:True membri:True messaggi:20`, poi `/backup lista`. Risultato atteso: copia con data; al massimo 10 copie (l'undicesima rifiutata).
+- [ ] BKP-018 — come admin non owner: `/backup carica copia:<n>`. Risultato atteso: rifiutato («solo l'owner carica»). Da owner: `/backup permessi livello:Gli admin creano e caricano`, poi l'admin riprova: menu delle parti.
+- [ ] BKP-009/010/037 — in B (server vuoto, copia esportata da A con `/backup esporta cosa:Struttura del server`): `/backup importa file:<json>`, scegli ruoli + canali + messaggi, «Carica»; subito `/backup stato`, poi `/backup annulla`. Risultato atteso: percentuale che sale, poi «annullato» e ciò che era fatto resta; ricaricando, nessun doppione (stesso nome = riusato) e messaggi solo nei canali ancora vuoti; un file modificato a mano con `"versione": 9` rifiutato senza toccare il server.
+- [ ] BKP-033/034/036 — `/backup esporta` con «Tutti i canali» in CSV, «Un ruolo», «Ban con i motivi», «Reazioni a un messaggio» (link). Risultato atteso: file corretti, apribili in un foglio di calcolo.
+- [ ] NF-39 modelli — in A: `/backup modello azione:Pubblica copia:<n>`; in B: `/backup modello azione:Usa codice:<codice>`. Risultato atteso: nel menu non ci sono ban, membri e messaggi; `ritira` rende il codice inutilizzabile.
+- [ ] NF-39 sincronia — owner di A e B: in A `/backup sincronia azione:Attiva server:<id di B>`. Banna un account di prova in A: bannato anche in B, una sola volta. Sbannalo in B: sbannato in A. Dai un ruolo «Vip» (esiste con lo stesso nome in B) a un membro presente in entrambi: lo riceve anche in B. Risultato atteso: nessun ciclo di ban/sban; con un admin non owner il comando è rifiutato.
+- [ ] BKP-024/025 — `/backup copia-canale` su una categoria con 3 canali; `/backup copia-ruolo permessi_canali:True`. Risultato atteso: categoria e canali copiati con i permessi; ruolo nuovo con gli stessi permessi nei canali.
+- [ ] BKP-026/027/013/016 — `/backup chat-salva quanti:30` in un canale con un'immagine e un messaggio fissato; `/backup chat-carica` in un altro canale entro un giorno e poi dopo qualche giorno. Risultato atteso: messaggi in ordine con nome e avatar, immagine come file (il primo giorno) o come link (dopo), il fissato di nuovo fissato. Lo stesso nella copia iniziale del server di backup (`/backup collega`).
+- [ ] BKP-019 — `/backup registro`. Risultato atteso: tutte le azioni sopra, con chi e quando.
+
 ## Utilità — passaggio `feat/r4-uti` (#66, #78–#82, #85, #87, #88, #97, #98, #105)
 
 Servono: un server di prova con iYokai, un account admin, due account senza permessi, un secondo account per entrare e uscire.
