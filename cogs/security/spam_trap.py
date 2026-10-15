@@ -52,6 +52,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from cogs.security.global_ban import propagate_ban, revoca_ban_propagati
@@ -691,7 +692,8 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
 
         # 4. Ban.
         try:
-            await guild.ban(
+            await bot_roles.banna(
+                guild,
                 user,
                 reason="Spam trap triggered",
                 delete_message_seconds=7 * 86400,
@@ -921,8 +923,8 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             for i in range(0, len(ids), 100):
                 chunk = ids[i : i + 100]
                 try:
-                    await channel.delete_messages(
-                        [discord.Object(id=mid) for mid in chunk]
+                    await bot_roles.cancella_messaggi(
+                        channel, [discord.Object(id=mid) for mid in chunk]
                     )
                     deleted_by_channel_name[channel.name] = (
                         deleted_by_channel_name.get(channel.name, 0) + len(chunk)
@@ -941,7 +943,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 continue
             try:
                 msg = await channel.fetch_message(mid)
-                await msg.delete()
+                await bot_roles.cancella_messaggio(msg)
                 deleted_by_channel_name[channel.name] = (
                     deleted_by_channel_name.get(channel.name, 0) + 1
                 )
@@ -1059,7 +1061,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             )
 
         try:
-            await log_channel.send(embed=embed)
+            await bot_roles.scrivi(log_channel, embed=embed)
         except discord.HTTPException:
             logger.warning(
                 "Impossibile scrivere il log del ban (caso %s) nel server %s.",

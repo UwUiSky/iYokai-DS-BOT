@@ -34,6 +34,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core import bot_roles
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.escalation_ladder_logic import get_ladder_action
@@ -120,13 +121,14 @@ class EscalationCog(CogConGruppi, commands.Cog):
         # non resta un caso per una punizione mai data.
         try:
             if step.action_type == "timeout":
-                await member.timeout(
-                    timedelta(seconds=step.duration_seconds or 600), reason=reason
-                )
+                await bot_roles.isola(member, timedelta(seconds=step.duration_seconds or 600), reason=reason)
             elif step.action_type == "kick":
-                await member.kick(reason=reason)
+                await bot_roles.espelli(member, reason=reason)
             elif step.action_type == "ban":
-                await member.ban(reason=reason)
+                await bot_roles.banna(
+                    member.guild, member, reason=reason, delete_message_seconds=86400,
+                    principale=lambda: member.ban(reason=reason),
+                )
         except discord.HTTPException as errore:
             logger.warning(
                 "Azione di escalation '%s' non riuscita sull'utente %s nel server %s: %s",

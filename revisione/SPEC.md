@@ -2299,7 +2299,12 @@ Bot che girano nello stesso processo: principale, Mod, Creator, 5
 musicali, più NSFW quando verrà fatto.
 
 - `[~]` iYokai (principale) — comandi e interfaccia
-- `[ ]` iYokai Mod (log e moderazione) — D15, fase F3
+- `[~]` iYokai Mod (log e moderazione) — D15. Facoltativo (`YOKAI_MOD_TOKEN`), nessun comando e
+  nessun listener: gli eventi li ascolta il principale, `core/bot_roles.py` sceglie per server chi
+  scrive i log (router, mod-log, AutoMod, allarmi) ed esegue AutoMod, escalation, anti-raid,
+  anti-nuke, spam-trap e fine dei tempban. Mod assente, scollegato, senza permesso, sotto il
+  bersaglio o in rate limit lungo (oltre 30 s) → fa il principale, una volta sola. Invito in
+  `/utility info`. Non fatto: canali di log via webhook (Mod ha già limiti suoi)
 - `[~]` iYokai Creator (backup) — resta; non crea più server, porta e
   tiene aggiornato il server di backup (D8, §11)
 - `[~]` iYokai Music #1-5 — vedi §9

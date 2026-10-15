@@ -1,29 +1,28 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-14, ramo feat/r6mod, worktree /home/claude/wt/r6mod. DB scheda iyokai_wr6mod (usato anche da r6ai!): io uso iyokai_wr6mod_b. Migrazioni r6: nessuna (tutto in JSON o guild settings).
+2026-10-15, ramo feat/r7mod, worktree /home/claude/wt/r7mod, DB iyokai_wr7mod. Migrazioni r7: 0180–0189.
 ## In corso
-Giro r6 chiuso (smoke lanciato). Prossimo giro: SIC-036 (livelli di allerta, con AMD-067 gruppi di regole), SIC-039/040 (piu' canali trappola, punizione a scelta), MOD-007/011/013, VER-017/019/020, AMD-026/027/028 (inviti), AMD-058…066 (violazioni persistite: serve migrazione).
+Giro r7 (previsione 3 voci): #113 iYokai Mod (fatto) → #119 catalogo log + residui #61 → #101 NF-30 appello ban. Mi fermo dopo #101.
+Prossimo passo: #119, leggere revisione/01-analisi/catalogo/05-log.md solo per LOG-005/006/012/017/027/029/030.
 ## Fatto
-- Giri G1-G7, R5 (vedi git log): tempban modi, appelli, clear filtri, verify opzioni, lockdown/panico NF-29, phishing NF-31, captcha immagine NF-18, AMD-002/003/005/021, VER-029
-- R6-1 49cee20 SIC-042: /automod filtri phishing accorciatori|inviti_adulti (fetch_invite, cache _inviti_adulti con tetto)
-- R6-2 d63f5c2 anti-raid: core/security_join_logic.py; filtro-ingresso, nomi-vietati, segnali, ping-ruoli, elenco, segnala; lockdown kick/ban; retroattivo; rete
-- R6-3 da5164c /modban massa ban|unban|kick, /mod massa timeout|warn (core/moderation_bulk_logic.py, bulk_ban); _dopo_unban condiviso
-- R6-4 5b94357 /security verify tempi (VER-008/009/011/012/013); D25 terzo caso: /antiraid primo livello
-- R6-5 5483095 /utility verifica (VER-010, avvia_verifica condivisa col bottone, niente controllo panico)
-- R6-6 03ef20a /automod filtri messaggi|contenuto|canale-media, kick (AMD-001/004/006/007/019/020/022/023/024/041); registro, SPEC, VERIFICA_LIVE
+- Giri G1-G7, R5, R6 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli spam-trap, verify, lockdown, phishing, captcha, anti-raid r6, massa, automod filtri
+- R7-1 #113 iYokai Mod: core/bot_roles.py (unico punto), core/mod_bot.py, router, mod-log, automod, escalation, anti-raid, anti-nuke, spam-trap, scadenza tempban; invito in /utility info
 ## Cose imparate
+- D15: Mod non ha listener; eventi solo dal principale → niente doppioni. Azioni nuove di sicurezza: passare da bot_roles.banna/espelli/isola/... o bot_roles.scrivi (log). Messaggi con view: sempre il principale
+- discord.RateLimited NON e' HTTPException: va preso a parte (bot_roles lo fa)
+- Confronti "e' il bot stesso" nella sicurezza: bot_roles.e_un_nostro_bot (conta anche Mod)
 - Tabelle sicurezza in security_repo.run_migrations; config anti-raid/automod in JSON: campi nuovi senza migrazione (_to_json/_from_json)
-- Smoke e suite oltre 2 min: nohup su log in scratchpad/r6mod (la scratchpad e' condivisa: file fuori dalla mia cartella spariscono)
-- Gruppi: /mod 13 figli+massa, /modban 6+massa, /antiraid 16, /security ~5100 dopo lo spostamento. ATTESI in test_f7_moderazione_gruppi, test_command_groups, tests/support/command_policy.py, locales/comandi.en.json (script locale.py)
+- Smoke e suite oltre 2 min: nohup su log in scratchpad/r7mod
+- Gruppi: /mod 13 figli+massa, /modban 6+massa, /antiraid 16, /security ~5100. ATTESI in test_f7_moderazione_gruppi, test_command_groups, tests/support/command_policy.py, locales/comandi.en.json
 - Il bot non puo scrivere a un bannato: DM e invito prima del ban; ban fallito = cancellare DM
 - Stato su DB PRIMA dell'azione irreversibile; job di scadenza protetti con controllo nell'handler
 - Moduli in cogs/moderation non iniziano per _ = cog. Funzioni test_* nei moduli importati vengono raccolte
 - Docstring: mai "/mod e /modban" in prosa. Metodo di repo solo nei test = test_repository_callers fallisce
-- Stato in memoria da azzerare nei test: security_raid_state._ultimo_ingresso, security_join_logic.azzera_ingressi, automod._inviti_adulti
-- fake_member e' autospec: display_name/global_name vanno letti solo se servono (i _FakeMember dell'automod non hanno nick)
-- Nuove chiavi guild settings: SETTINGS_SCHEMA in cogs/utility/config_history.py + valori in tests/test_config_import_validation.py
+- Stato in memoria da azzerare nei test: security_raid_state._ultimo_ingresso, security_join_logic.azzera_ingressi, automod._inviti_adulti, bot_roles.registra_mod(None)
+- fake_member e' autospec: display_name/global_name vanno letti solo se servono
+- Nuove chiavi guild settings: SETTINGS_SCHEMA in cogs/utility/config_history.py + tests/test_config_import_validation.py
+- Test lenti (CPU condivisa): 700 test d'area ~10 min
 ## Aperto
+- #113: canali di log via webhook non fatti (Mod ha limiti suoi); /setup non mostra l'invito (sta in /utility info); Mod da solo in un server senza principale non fa nulla
 - M 1.10 soglie sui warn manuali (F9). OAuth rientro oltre 7 giorni. alt_detection (#92)
-- SIC-036 livelli di allerta (dipende da AMD-067), SIC-003…022 resto, SIC-039/040/044/046
-- AutoMod #116: aperte le altre (liste, regex, eccezioni per filtro, violazioni per regola); #115: resto (voce, nickname, DM personalizzati, motivi pronti)
-- Un altro agente (worktree r6ai) lancia pytest su iyokai_wr6mod: segnalato all'orchestratore
+- SIC-036 livelli di allerta (con AMD-067), SIC-003…022, SIC-039/040/044/046; #116 e #115 resto

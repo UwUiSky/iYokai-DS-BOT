@@ -39,6 +39,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
@@ -638,8 +639,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 await moderation_repo.mark_tempban_state_expired(guild_id, user_id)
         else:
             try:
-                await guild.unban(
-                    discord.Object(id=user_id), reason="Tempban scaduto automaticamente"
+                await bot_roles.sbanna(
+                    guild, discord.Object(id=user_id), reason="Tempban scaduto automaticamente"
                 )
             except discord.NotFound:
                 # L'utente non risultava più bannato (già sbannato a

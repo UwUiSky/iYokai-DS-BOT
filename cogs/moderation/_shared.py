@@ -22,7 +22,7 @@ from __future__ import annotations
 import discord
 from discord import app_commands
 
-from core import lockdown_service
+from core import bot_roles, lockdown_service
 from core.database import db
 from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
@@ -135,7 +135,7 @@ async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
     if not isinstance(channel, discord.TextChannel):
         return
     try:
-        await channel.send(embed=embed)
+        await bot_roles.scrivi(channel, embed=embed)
     except discord.HTTPException:
         pass
 

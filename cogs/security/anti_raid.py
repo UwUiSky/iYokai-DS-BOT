@@ -51,6 +51,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bot_ready import attendi_bot_pronto
 from core.bounded_cache import BoundedCache
@@ -209,7 +210,7 @@ async def _alert_staff(
         canale = guild.get_channel(settings.alert_channel_id)
         if isinstance(canale, discord.TextChannel):
             try:
-                await canale.send(embed=embed)
+                await bot_roles.scrivi(canale, embed=embed)
             except discord.HTTPException:
                 pass
 
@@ -759,7 +760,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         if voce is None:
             return
         autore = voce[0]
-        if autore == self.bot.user.id or autore == guild.owner_id:
+        if bot_roles.e_un_nostro_bot(autore, self.bot) or autore == guild.owner_id:
             return
         if actor_is_trusted(autore, NUKE_ACTION_QUARANTINE_HOLD, settings.anti_nuke):
             return
@@ -901,13 +902,13 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
                 ruolo = await self._ruolo_quarantena(guild)
                 if ruolo is None or not isinstance(bersaglio, discord.Member):
                     return False
-                await bersaglio.add_roles(ruolo, reason=motivo)
+                await bot_roles.aggiungi_ruolo(bersaglio, ruolo, reason=motivo)
             elif azione == "timeout" and isinstance(bersaglio, discord.Member):
-                await bersaglio.timeout(DURATA_TIMEOUT_FILTRO, reason=motivo)
+                await bot_roles.isola(bersaglio, DURATA_TIMEOUT_FILTRO, reason=motivo)
             elif azione == "kick" and isinstance(bersaglio, discord.Member):
-                await bersaglio.kick(reason=motivo)
+                await bot_roles.espelli(bersaglio, reason=motivo)
             elif azione == "ban":
-                await guild.ban(bersaglio, reason=motivo, delete_message_seconds=SECONDI_MESSAGGI_BAN)
+                await bot_roles.banna(guild, bersaglio, reason=motivo, delete_message_seconds=SECONDI_MESSAGGI_BAN)
             else:
                 return False
         except discord.HTTPException:
@@ -961,7 +962,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         canale = guild.get_channel(settings.alert_channel_id) if settings.alert_channel_id is not None else None
         if isinstance(canale, discord.TextChannel):
             try:
-                await canale.send(embed=embed)
+                await bot_roles.scrivi(canale, embed=embed)
             except discord.HTTPException:
                 pass
 

@@ -219,3 +219,34 @@ async def test_info_mostra_versione_e_invito(db_pronto, monkeypatch):
     testo = " ".join(f.value for f in embed.fields)
     assert "client_id=4242" in testo and "discord.gg/xyz" in testo
     assert any("Versione" in f.name for f in embed.fields)
+
+
+async def test_info_dice_di_iyokai_mod_e_da_il_suo_invito(db_pronto, monkeypatch):
+    """D15: senza Mod lo dice; Mod avviato ma non nel server dà il link con il server già scelto."""
+    from core import bot_roles
+
+    cog = _cog()
+    i = fake_interaction(guild=fake_guild(800))
+    i.guild_id = 800
+    i.locale = discord.Locale.italian
+    bot_roles.registra_mod(None)
+    await cog.info.callback(cog, i)
+    campi = {f.name: f.value for f in i.response.send_message.call_args.kwargs["embed"].fields}
+    assert "Non configurato" in campi["iYokai Mod (log e sicurezza)"]
+
+    mod = MagicMock(spec=discord.Client)
+    mod.application_id = 7777
+    mod.is_ready.return_value = True
+    mod.is_closed.return_value = False
+    mod.get_guild.return_value = None
+    bot_roles.registra_mod(mod)
+    try:
+        i = fake_interaction(guild=fake_guild(800))
+        i.guild_id = 800
+        i.locale = discord.Locale.italian
+        await cog.info.callback(cog, i)
+        campi = {f.name: f.value for f in i.response.send_message.call_args.kwargs["embed"].fields}
+        valore = campi["iYokai Mod (log e sicurezza)"]
+        assert "client_id=7777" in valore and "guild_id=800" in valore and "applications.commands" not in valore
+    finally:
+        bot_roles.registra_mod(None)

@@ -989,3 +989,15 @@ Servono: dominio con https e reverse proxy verso `WEB_BIND_HOST:WEB_PANEL_PORT`;
 - [ ] `AMD-023` solo media — in un canale `canale-media modo:Solo media` uno sticker e l'inoltro di un messaggio con un'immagine restano; un testo semplice viene cancellato.
 - [ ] `VER-012` finestra — `azione_fallita:Kick`: due captcha sbagliati, poi aspetta 24 ore (o sposta l'orologio del DB di prova) e sbagliane uno: **nessun** kick. Tre errori nella stessa giornata: kick.
 - [ ] Massa e gerarchia — riavvia il bot senza scaricare i membri (o usa un membro mai visto dal bot): `/modban massa ban` su un membro con un ruolo sopra il tuo viene **saltato** («sopra di te»), non bannato.
+
+## iYokai Mod — giro r7 (#113, D15)
+
+Serve: l'applicazione «iYokai Mod» nel Developer Portal (nessun intent privilegiato), il token in `YOKAI_MOD_TOKEN`, un riavvio. Un server di prova con un canale log, AutoMod e anti-raid accesi.
+
+- [ ] senza token — `YOKAI_MOD_TOKEN` vuoto: il bot parte come prima; `/utility info` dice «iYokai Mod: Non configurato»; log, AutoMod, anti-raid e fine dei tempban li fa il principale.
+- [ ] invito — con il token, `/utility info` in un server senza Mod mostra «Invita iYokai Mod» con il server già scelto e i soli permessi elencati (niente Amministratore, niente comandi). Dopo l'invito `/utility info` dice «Attivo in questo server».
+- [ ] un log solo — con entrambi i bot nel server: entra ed esci con un account, cancella un messaggio, cambia un ruolo. Ogni log compare **una volta**, scritto da iYokai Mod. Un log con bottoni (avviso del raid) lo scrive il principale e i bottoni rispondono.
+- [ ] azioni — una parola vietata dall'AutoMod (azioni delete + mute): il messaggio sparisce e il timeout nel registro di controllo è firmato da iYokai Mod. Un `/modban tempban duration:1m`: alla scadenza lo sban lo firma Mod. Lo spam-trap banna con Mod. Un ban dell'anti-raid lo fa Mod.
+- [ ] riserva — togli a iYokai Mod il permesso «Bannare membri» (o mettilo sotto il ruolo del bersaglio): il ban dell'AutoMod lo fa il principale, una volta sola. Spegni Mod (kick dal server): tutto torna al principale senza riavvio. Togli a Mod «Inviare messaggi» nel canale log: i log li scrive il principale.
+- [ ] anti-nuke — Mod non viene espulso quando entra (guardia «bot aggiunti» accesa) e i ban fatti da Mod non contano come attacco.
+- [ ] `guild.me` di Mod con il solo intent «server»: nei log di avvio nessun errore e `/utility info` dice «Attivo» (se non lo dice, Mod non vede se stesso nel server: segnalarlo).
