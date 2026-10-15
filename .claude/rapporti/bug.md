@@ -218,3 +218,9 @@
 | 14/10 | `automod_advanced_logic.py` solo-media | Sticker o inoltro di un'immagine in canale solo media = violazione | bassa | corretto r6mod (revisore) |
 | 14/10 | `actions.py` `_non_moderabile` | Membro non in cache = nessun controllo di gerarchia sul ban (cache piena con chunk all'avvio) | bassa | corretto r6mod (revisore) |
 | 14/10 | `verify_logic.azione_dopo_fallimento` | 3 errori di captcha contati senza limite di tempo (anche di giorni prima) | bassa | corretto r6mod (revisore) |
+| 15/10 | `playlist.py` `decodifica_brani` | `encoded` di un file importato = traccia `local` o URL interno: il nodo legge file locali / SSRF | alta | corretto r6mus `6b8faaf` |
+| 15/10 | `music_playlist_logic` import | JSON annidato, `brani` numero, `length` Infinity = eccezione; durata enorme rompe l'elenco (bigint) | media | corretto r6mus `6b8faaf` |
+| 15/10 | `request_channel.aggiorna` | Due eventi insieme passano la pausa: due messaggi player nuovi | media | corretto r6mus `8aa3e14` |
+| 15/10 | `request_channel` on_message | Nessuna pausa per utente: spam = ricerche Lavalink + cancellazioni a raffica | media | corretto r6mus `b4a5cd1` |
+| 15/10 | `soundboard._esci_se_inattivo` | Esce senza lock del canale (play a metà) e taglia il suono di un altro | media | corretto r6mus `3d93028` |
+| 15/10 | `soundboard._torna_sordo` | Due suoni entro 6 s: il primo riassorda il bot durante il secondo | bassa | plausibile, aperto |
