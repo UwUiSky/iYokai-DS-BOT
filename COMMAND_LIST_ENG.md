@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 03:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:19 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 469 commands in 21 categories.**
+**Total: 470 commands in 21 categories.**
 
 ## Admin
 
@@ -261,6 +261,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 03:3
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level settings announcement`** — Where and when to announce level-ups.
+- **`/level settings card`** — Shows or hides image backgrounds of cards and profiles in this server.
 - **`/level settings exclude`** — A channel, category or role gives no XP (repeat to undo).
 - **`/level settings multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
 - **`/level settings rewards`** — Reward roles: keep them all or only the highest.

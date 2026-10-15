@@ -1,13 +1,17 @@
 """
 cogs/leveling/profiles.py
 =========================
-Profilo personale (/level profilo) e collezione di badge e sfondi comprati
-con le coin (/level collezione).
+Profilo personale (/level profilo, come immagine con l'eventuale sfondo
+proprio di /level rank) e collezione di badge e sfondi comprati con le coin
+(/level collezione).
 Funzioni coperte: SPEC §23.16 (NF-40)
-Dipende da: core/profile_logic.py, core/repositories/profile_repo.py
+Dipende da: core/profile_logic.py, core/repositories/profile_repo.py, core/rank_card_image.py
 """
 
 from __future__ import annotations
+
+import io
+import logging
 
 import discord
 from discord import app_commands
@@ -26,8 +30,13 @@ from core.profile_logic import (
     pulisci_bio,
     riga_oggetto,
 )
+from core.rank_card_image import TEMA_DI_BASE, DatiProfilo, render_profile_card
 from core.repositories.leveling_repo import leveling_repo
+from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.profile_repo import EsitoAcquisto, profile_repo
+from core.safe_image import run_image_task
+
+logger = logging.getLogger("iyokai.profiles")
 
 _SG_COLLEZIONE = ("collezione", "Collezione: badge e sfondi per il tuo profilo, da comprare con le coin.")
 
@@ -79,6 +88,8 @@ class ProfilesCog(CogConGruppi, commands.Cog):
             await profile_repo.set_bio(guild.id, interaction.user.id, bio)
             nota = "✅ Presentazione salvata." if bio else "✅ Presentazione tolta."
 
+        # Avatar, sfondo e disegno possono superare i 3 secondi.
+        await interaction.response.defer()
         target = membro or interaction.user
         profilo = await profile_repo.get_profile(guild.id, target.id)
         totali = await leveling_repo.get_totals(guild.id, target.id)
@@ -88,6 +99,24 @@ class ProfilesCog(CogConGruppi, commands.Cog):
         sfondo = oggetto(profilo.background_id) if profilo.background_id else None
         simbolo = f"{badge.emoji} " if badge is not None and profilo.badge_id in profilo.posseduti else ""
         colore = sfondo.colore if sfondo is not None and profilo.background_id in profilo.posseduti else COLORE_DI_BASE
+        emoji = [o.emoji for o in CATALOGO if o.id in profilo.posseduti and o.emoji]
+
+        try:
+            png = await self._disegna(guild.id, target, profilo, totali, posizione, colore)
+        except Exception:
+            logger.exception("Profilo non disegnato per %s: mando l'embed.", target.id)
+            png = None
+        if png is not None:
+            # I badge sono emoji: il font della card non le disegna, vanno nel testo.
+            righe = [nota] if nota else []
+            if emoji:
+                righe.append(f"Badge: {simbolo}" + " ".join(e for e in emoji if f"{e} " != simbolo))
+            await interaction.followup.send(
+                "\n".join(righe)[:2000] or None,
+                file=discord.File(io.BytesIO(png), filename="profilo.png"),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
 
         embed = discord.Embed(
             title=taglia(f"{simbolo}{target.display_name}", 256),
@@ -104,11 +133,32 @@ class ProfilesCog(CogConGruppi, commands.Cog):
         embed.add_field(
             name="Collezione", value=f"{len(profilo.posseduti)}/{len(CATALOGO)}", inline=True
         )
-        if profilo.posseduti:
-            emoji = [o.emoji for o in CATALOGO if o.id in profilo.posseduti and o.emoji]
-            if emoji:
-                embed.add_field(name="Badge", value=" ".join(emoji), inline=False)
-        await interaction.response.send_message(nota or None, embed=embed)
+        if emoji:
+            embed.add_field(name="Badge", value=" ".join(emoji), inline=False)
+        await interaction.followup.send(nota or None, embed=embed)
+
+    async def _disegna(self, guild_id, target, profilo, totali, posizione, colore: int) -> bytes:
+        """Il profilo come PNG: tema della rank card, colore dello sfondo comprato, immagine propria."""
+        _, tema = await leveling_repo.get_rank_card_prefs(target.id)
+        config = await leveling_settings_repo.get_config(guild_id)
+        immagine = await leveling_repo.get_sfondo_card(target.id) if config.impostazioni.card_images else None
+        try:
+            avatar = await target.display_avatar.read()
+        except Exception:  # anche errori di rete dopo il defer: il profilo esce senza avatar
+            avatar = None
+        dati = DatiProfilo(
+            nome=target.display_name,
+            presentazione=profilo.bio,
+            livello=totali.level,
+            xp_totale=totali.xp_total,
+            posizione=posizione,
+            coin=totali.coins_total,
+            collezione=len(profilo.posseduti),
+            collezione_totale=len(CATALOGO),
+            colore=f"#{colore:06X}",
+            tema=tema or TEMA_DI_BASE,
+        )
+        return await run_image_task(render_profile_card, dati, avatar, immagine)
 
     # ================================================================
     # /level collezione

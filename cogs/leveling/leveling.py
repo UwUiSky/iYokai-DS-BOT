@@ -48,8 +48,15 @@ from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
 from core.repositories.shop_repo import EsitoAcquisto, shop_repo
-from core.rank_card_image import COLORE_DI_BASE, TEMA_DI_BASE, DatiRankCard, render_rank_card
-from core.safe_image import run_image_task
+from core.rank_card_image import (
+    COLORE_DI_BASE,
+    TEMA_DI_BASE,
+    DatiRankCard,
+    SfondoNonValido,
+    prepara_sfondo,
+    render_rank_card,
+)
+from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
 from core.giveaway_logic import (
@@ -154,6 +161,26 @@ LIMITE_TITOLO_EMBED = 256
 LIMITE_RIGA_NEGOZIO = 380
 RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
+
+
+async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | None:
+    """
+    NF-12: prepara e salva lo sfondo con immagine propria. Restituisce il
+    messaggio d'errore per l'utente, oppure None se è andato bene.
+    """
+    if allegato.size > MAX_IMAGE_BYTES:
+        return "L'immagine è troppo grande: al massimo 8 MB."
+    if not (allegato.content_type or "").startswith("image/"):
+        return "Lo sfondo deve essere un'immagine (PNG, JPEG, WEBP)."
+    try:
+        originale = await allegato.read()
+        pronto = await run_image_task(prepara_sfondo, originale)
+    except SfondoNonValido:
+        return "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo."
+    except discord.HTTPException:
+        return "Non sono riuscito a scaricare l'immagine: riprova."
+    await leveling_repo.set_sfondo_card(user_id, pronto)
+    return None
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -452,7 +479,8 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
             f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto\n"
             f"Daily: **{i.daily_coins}** coin · Work: **{i.work_min}-{i.work_max}** coin\n"
             f"Livello massimo: **{i.max_level or 'nessun tetto'}**\n"
-            f"Conferma negli acquisti: **{'sì' if i.shop_confirm else 'no'}**"
+            f"Conferma negli acquisti: **{'sì' if i.shop_confirm else 'no'}**\n"
+            f"Sfondi con immagine su card e profili: **{'sì' if i.card_images else 'no'}**"
         ),
         inline=False,
     )
@@ -919,7 +947,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         member="Il membro di cui vedere la card (facoltativo)",
         colore="Il tuo colore, es. #FF8800 (resta salvato)",
         tema="Lo sfondo della tua card (resta salvato)",
-        reimposta="Torna al colore e al tema di base",
+        reimposta="Torna al colore, al tema e allo sfondo di base",
+        sfondo="Un'immagine tua come sfondo di card e profilo (PNG, JPEG, WEBP; max 8 MB)",
     )
     @app_commands.choices(tema=_SCELTE_TEMA)
     async def rank(
@@ -929,6 +958,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         colore: app_commands.Range[str, 1, 20] | None = None,
         tema: app_commands.Choice[str] | None = None,
         reimposta: bool | None = None,
+        sfondo: discord.Attachment | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -938,7 +968,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         target = member or interaction.user
         nota = None
-        vuole_cambiare = colore is not None or tema is not None or reimposta
+        vuole_cambiare = colore is not None or tema is not None or reimposta or sfondo is not None
         if vuole_cambiare:
             if target.id != interaction.user.id:
                 nota = "Puoi cambiare solo la tua card: le preferenze di questo membro non sono cambiate."
@@ -955,6 +985,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
                             ephemeral=True,
                         )
                         return
+                if sfondo is not None:
+                    errore = await _salva_sfondo(target.id, sfondo)
+                    if errore:
+                        await interaction.followup.send(errore, ephemeral=True)
+                        return
                 await leveling_repo.set_rank_card_prefs(
                     target.id, colore=esadecimale, tema=tema.value if tema else None
                 )
@@ -967,7 +1002,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         xp_prossimo_livello = xp_for_level(totali.level + 1)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
-        tetto = (await self._config(interaction.guild.id)).impostazioni.max_level
+        impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        tetto = impostazioni.max_level
         if tetto and totali.level >= tetto:
             progresso, richiesti = 0, 0  # al livello massimo non c'è un prossimo livello
 
@@ -986,8 +1022,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             colore=colore_salvato or COLORE_DI_BASE,
             tema=tema_salvato or TEMA_DI_BASE,
         )
+        immagine_sfondo = await leveling_repo.get_sfondo_card(target.id) if impostazioni.card_images else None
         try:
-            png = await run_image_task(render_rank_card, dati, avatar)
+            png = await run_image_task(render_rank_card, dati, avatar, immagine_sfondo)
         except Exception:
             logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
             embed = discord.Embed(
@@ -3098,6 +3135,20 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if await _comando_rifiutato(interaction):
             return
         await self._salva_impostazioni(interaction, {"shop_confirm": conferma})
+
+    @comando_di_gruppo(
+        "level",
+        nome="card",
+        descrizione="Mostra o nascondi in questo server gli sfondi con immagine di card e profili.",
+        sottogruppo=_SG_IMPOSTAZIONI,
+    )
+    @app_commands.describe(sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi")
+    @richiedi(Livello.ADMIN)
+    async def impostazioni_card(self, interaction: discord.Interaction, sfondi: bool) -> None:
+        """NF-12, LIV-057: lo staff spegne gli sfondi con immagine se qualcuno ne usa di non adatti."""
+        if await _comando_rifiutato(interaction):
+            return
+        await self._salva_impostazioni(interaction, {"card_images": sfondi})
 
     async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:
         if not campi:

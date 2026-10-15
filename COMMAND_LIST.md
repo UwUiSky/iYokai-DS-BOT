@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-15 03:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-15 05:19 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 469 comandi in 21 categorie.**
+**Totale: 470 comandi in 21 categorie.**
 
 ## Admin
 
@@ -255,6 +255,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-15 03:
 - **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level daily`** — Riscuoti la ricompensa giornaliera.
 - **`/level impostazioni annuncio`** — Dove e quando annunciare i level-up.
+- **`/level impostazioni card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
 - **`/level impostazioni escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
 - **`/level impostazioni moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/level impostazioni mostra`** — Mostra le impostazioni dei livelli di questo server.

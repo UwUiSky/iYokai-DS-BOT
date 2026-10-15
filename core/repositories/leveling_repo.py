@@ -624,7 +624,31 @@ class LevelingRepository:
         )
 
     async def reset_rank_card_prefs(self, user_id: int) -> None:
-        await self._pool.execute("DELETE FROM rank_card_prefs WHERE user_id = $1", user_id)
+        """Colore, tema e sfondo con immagine tornano quelli di base."""
+        await self._pool.execute(
+            """
+            WITH sfondo AS (DELETE FROM rank_card_sfondi WHERE user_id = $1)
+            DELETE FROM rank_card_prefs WHERE user_id = $1
+            """,
+            user_id,
+        )
+
+    async def get_sfondo_card(self, user_id: int) -> bytes | None:
+        """L'immagine di sfondo (JPEG già pronto) di rank card e profilo, se c'è."""
+        return await self._pool.fetchval(
+            "SELECT immagine FROM rank_card_sfondi WHERE user_id = $1", user_id
+        )
+
+    async def set_sfondo_card(self, user_id: int, immagine: bytes) -> None:
+        """Salva lo sfondo preparato da core.rank_card_image.prepara_sfondo."""
+        await self._pool.execute(
+            """
+            INSERT INTO rank_card_sfondi (user_id, immagine) VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET immagine = $2, aggiornato_at = now()
+            """,
+            user_id,
+            immagine,
+        )
 
     async def add_coins(self, guild_id: int, user_id: int, amount: int) -> int:
         """Aggiunge (o sottrae, con amount negativo) coin. Restituisce il nuovo saldo."""

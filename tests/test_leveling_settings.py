@@ -525,6 +525,7 @@ async def test_i_comandi_stanno_sotto_level_impostazioni(cog_comandi):
     nomi = sorted(n for n in comandi if n.startswith("level impostazioni"))
     assert nomi == [
         "level impostazioni annuncio",
+        "level impostazioni card",
         "level impostazioni escludi",
         "level impostazioni moltiplicatore",
         "level impostazioni mostra",

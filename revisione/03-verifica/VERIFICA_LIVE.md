@@ -666,6 +666,12 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Con `premi modo:Sostituisci`, metti il ruolo-premio del livello alto sopra il ruolo del bot e fai salire un membro.
   Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
 - [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
+- [ ] `NF-12` sfondo (#83) — passi:
+  1. `/level rank sfondo:<una foto grande, anche 4000x3000>`: la card mostra la foto, ritagliata al centro, con il pannello velato sopra; il testo si legge.
+  2. `/level rank sfondo:<un PDF>` e `sfondo:<un'immagine oltre 8 MB>`: messaggio d'errore privato, niente salvato.
+  3. Da admin `/level impostazioni card sfondi:No`, poi `/level rank` e `/level profilo`: solo colore e tema. `sfondi:Sì` per tornare.
+  4. `/level rank reimposta:True`: lo sfondo sparisce da card e profilo.
+  Risultato atteso: risposta sempre entro pochi secondi, nessun errore nel log.
 
 
 ## Moderazione — passaggio `feat/giro-mod` (#138)
@@ -860,6 +866,7 @@ Servono: un server di prova con iYokai, un account admin, due account senza perm
   1. `/fun conteggio azione:Scegli il canale canale:#conta`.
   2. Con due account scrivete a turno 1, 2, 3; poi lo stesso account scrive due numeri di fila; poi un numero sbagliato; poi una frase qualsiasi.
   Risultato atteso: ✅ sui numeri giusti; ❌ e messaggio «ha rovinato tutto» sul doppio turno e sul numero sbagliato, con ripartenza da 1; le frasi non fanno nulla. `/fun conteggio azione:Stato` mostra ultimo numero e record. Dopo `Spegni` i numeri non contano più (fino a 60 secondi).
+- [ ] `NF-40` profilo come immagine (#111) — `/level profilo` con e senza presentazione lunga, con uno sfondo comprato equipaggiato e con lo sfondo con immagine di `/level rank`: esce un'immagine 800x360 leggibile, i badge stanno nel testo sopra l'immagine.
 - [ ] `NF-40` profilo (#111) — passi:
   1. `/level collezione negozio`, poi `/level collezione compra oggetto:Stella` con coin sufficienti e con coin insufficienti.
   2. `/level collezione equipaggia tipo:Badge oggetto:Stella`, poi uno sfondo comprato.

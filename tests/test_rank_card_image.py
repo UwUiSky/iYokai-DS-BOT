@@ -301,3 +301,127 @@ async def test_rank_reimposta_toglie_le_preferenze(cog_rank):
     await cog.rank.callback(cog, interazione, member=None, colore=None, tema=None, reimposta=True)
 
     assert await repo.get_rank_card_prefs(1) == (None, None)
+
+
+# ----------------------------------------------------------------------
+# Sfondo con immagine propria (NF-12, resto di #83)
+# ----------------------------------------------------------------------
+from core.rank_card_image import (  # noqa: E402
+    ALTEZZA_PROFILO,
+    MAX_BYTE_SFONDO,
+    DatiProfilo,
+    SfondoNonValido,
+    prepara_sfondo,
+    render_profile_card,
+)
+
+
+def _immagine(larghezza, altezza, colore=(10, 200, 10), formato="PNG") -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (larghezza, altezza), colore).save(buffer, format=formato)
+    return buffer.getvalue()
+
+
+def test_prepara_sfondo_ritaglia_e_comprime():
+    pronto = prepara_sfondo(_immagine(3000, 500))
+    assert len(pronto) <= MAX_BYTE_SFONDO
+    aperto = _apri(pronto)
+    assert (aperto.format, aperto.size) == ("JPEG", (LARGHEZZA, ALTEZZA_PROFILO))
+
+
+def test_prepara_sfondo_rifiuta_un_file_che_non_e_un_immagine_o_troppo_grande():
+    with pytest.raises(SfondoNonValido):
+        prepara_sfondo(b"non sono un'immagine")
+    enorme = io.BytesIO()
+    Image.new("1", (5000, 5000)).save(enorme, format="PNG")  # 25 MP, oltre il limite di 16
+    with pytest.raises(SfondoNonValido):
+        prepara_sfondo(enorme.getvalue())
+
+
+def test_rumore_casuale_resta_sotto_il_tetto_di_byte():
+    import os
+
+    rumore = Image.frombytes("RGB", (1600, 720), os.urandom(1600 * 720 * 3))
+    buffer = io.BytesIO()
+    rumore.save(buffer, format="PNG")
+    assert len(prepara_sfondo(buffer.getvalue())) <= MAX_BYTE_SFONDO
+
+
+def test_card_con_sfondo_mostra_l_immagine_fuori_dal_pannello():
+    sfondo = prepara_sfondo(_immagine(800, 360))
+    card = _apri(render_rank_card(_dati(), _png(), sfondo)).convert("RGB")
+    assert card.size == (LARGHEZZA, ALTEZZA)
+    assert card.getpixel((4, 4))[1] > 150
+    senza = _apri(render_rank_card(_dati(), _png())).convert("RGB")
+    assert senza.getpixel((4, 4)) == TEMI["scuro"].sfondo
+
+
+def test_sfondo_rotto_non_rompe_la_card():
+    assert _apri(render_rank_card(_dati(), None, b"rotto")).size == (LARGHEZZA, ALTEZZA)
+
+
+def test_profilo_con_presentazione_lunga_e_numeri_enormi():
+    dati = DatiProfilo(
+        nome="N" * 200, presentazione="parola " * 40 + "x" * 300, livello=10**9,
+        xp_totale=10**15, posizione=None, coin=10**12, collezione=3, collezione_totale=14,
+    )
+    assert _apri(render_profile_card(dati, None)).size == (LARGHEZZA, ALTEZZA_PROFILO)
+
+
+@pytest.mark.asyncio
+async def test_sfondo_salvato_e_tolto_con_reimposta(repo):
+    await repo.set_sfondo_card(1, b"jpeg")
+    await repo.set_rank_card_prefs(1, colore="#FF0000")
+    assert await repo.get_sfondo_card(1) == b"jpeg"
+    await repo.reset_rank_card_prefs(1)
+    assert await repo.get_sfondo_card(1) is None
+
+
+def _allegato(dati: bytes, tipo="image/png"):
+    allegato = AsyncMock(spec=discord.Attachment)
+    allegato.size = len(dati)
+    allegato.content_type = tipo
+    allegato.read = AsyncMock(return_value=dati)
+    return allegato
+
+
+@pytest.mark.asyncio
+async def test_rank_con_sfondo_lo_salva_e_lo_usa(cog_rank, monkeypatch):
+    cog, repo = cog_rank
+    usati = []
+    vero = modulo.render_rank_card
+    monkeypatch.setattr(modulo, "render_rank_card", lambda d, a, s=None: usati.append(s) or vero(d, a, s))
+    interazione = fake_interaction(guild=fake_guild(100), user=_bersaglio(1))
+
+    await cog.rank.callback(cog, interazione, sfondo=_allegato(_immagine(900, 400)))
+
+    salvato = await repo.get_sfondo_card(1)
+    assert salvato is not None and usati == [salvato]
+
+
+@pytest.mark.asyncio
+async def test_rank_sfondo_non_immagine_e_rifiutato(cog_rank):
+    cog, repo = cog_rank
+    interazione = fake_interaction(guild=fake_guild(100), user=_bersaglio(1))
+
+    await cog.rank.callback(cog, interazione, sfondo=_allegato(b"%PDF", tipo="application/pdf"))
+
+    assert await repo.get_sfondo_card(1) is None
+    assert interazione.followup.send.await_args.kwargs["ephemeral"] is True
+
+
+@pytest.mark.asyncio
+async def test_server_con_sfondi_spenti_mostra_solo_il_tema(cog_rank, monkeypatch):
+    from core.repositories.leveling_settings_repo import leveling_settings_repo
+
+    cog, repo = cog_rank
+    await repo.set_sfondo_card(1, prepara_sfondo(_immagine(800, 360)))
+    await leveling_settings_repo.set_options(100, card_images=False)
+    usati = []
+    vero = modulo.render_rank_card
+    monkeypatch.setattr(modulo, "render_rank_card", lambda d, a, s=None: usati.append(s) or vero(d, a, s))
+    interazione = fake_interaction(guild=fake_guild(100), user=_bersaglio(1))
+
+    await cog.rank.callback(cog, interazione)
+
+    assert usati == [None]

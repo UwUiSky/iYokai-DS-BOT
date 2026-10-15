@@ -451,6 +451,7 @@
   "level daily": "Claims the daily reward.",
   "level impostazioni": "Level settings: XP, announcements, reward roles, exclusions.",
   "level impostazioni annuncio": "Where and when to announce level-ups.",
+  "level impostazioni card": "Shows or hides image backgrounds of cards and profiles in this server.",
   "level impostazioni escludi": "A channel, category or role gives no XP (repeat to undo).",
   "level impostazioni moltiplicatore": "XP multiplied in a channel or for a role (factor 1 = removes the rule).",
   "level impostazioni mostra": "Shows this server's level settings.",

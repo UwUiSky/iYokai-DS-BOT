@@ -103,6 +103,8 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #106 | NF-35 effetti sonori in vocale | `/music suono` (il gruppo `/fun` è pieno): soundboard del server o di Discord dal bot musicale del canale o dal primo libero, che poi esce; pausa di 10 s per utente; invito dei worker con «Usare la soundboard» | ramo feat/r6mus | 14/10 |
 | #64 | Musica: correzioni M 8.x | ultime voci: 8.16 (`defer` prima di Lavalink in skip, stop, pause, resume, volume, disconnect) e 8.19 (= NF-19, #90); il resto in F2 | ramo feat/r6mus | 14/10 |
 | #144 (residuo) | Dopo un riavvio `/voice unlock` non sapeva più il «Connetti» di prima | Stato del blocco e valore di prima nel database (0200), letti e cancellati in una sola istruzione; se Discord rifiuta l'unlock il ricordo resta | ramo feat/r7liv | 15/10 |
+| #83 | NF-12 rank card: mancava lo sfondo con immagine propria | `/level rank sfondo:` (0202, tabella `rank_card_sfondi`): `safe_open_image` + ritaglio e JPEG ≤ 256 KiB in `run_image_task`; pannello velato; `/level impostazioni card` lo spegne per server | ramo feat/r7liv | 15/10 |
+| #111 (residuo) | NF-40: profilo solo come embed, sfondo solo colore | `/level profilo` disegnato come immagine (`render_profile_card`) con lo sfondo con immagine; embed di riserva | ramo feat/r7liv | 15/10 |
 
 ## Parziali (issue ancora aperte, voci già fatte)
 
