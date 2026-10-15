@@ -40,6 +40,8 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         self._task: set[asyncio.Task] = set()
         # Uscita programmata del bot entrato solo per i suoni, per (server, canale).
         self._uscite: dict[tuple[int, int], asyncio.Task] = {}
+        # Ritorno "sordo" programmato del bot musicale, per (server, canale).
+        self._sordi: dict[tuple[int, int], asyncio.Task] = {}
 
     async def cog_unload(self) -> None:
         await super().cog_unload()
@@ -71,6 +73,20 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         def _togli(t: asyncio.Task) -> None:
             if self._uscite.get(chiave) is t:
                 self._uscite.pop(chiave, None)
+
+        task.add_done_callback(_togli)
+
+    def _programma_sordo(self, worker_guild, chiave: tuple[int, int]) -> None:
+        """
+        Un solo ritorno "sordo" per bot: un suono nuovo lo sposta in avanti,
+        così quello del suono di prima non riassorda il bot a metà del secondo.
+        """
+        task = self._in_background(_torna_sordo(worker_guild, RIPRISTINA_SORDO_DOPO))
+        self._sordi[chiave] = task
+
+        def _togli(t: asyncio.Task) -> None:
+            if self._sordi.get(chiave) is t:
+                self._sordi.pop(chiave, None)
 
         task.add_done_callback(_togli)
 
@@ -156,7 +172,14 @@ class SoundboardCog(CogConGruppi, commands.Cog):
                     return errore
                 temporaneo = True
             canale = player.channel
+            chiave = (guild_id, canale_id)
+            # Un ritorno "sordo" ancora in attesa (suono di poco fa) si annulla
+            # prima di suonare: il bot era sordo e lo ridiventerà dopo QUESTO suono.
+            in_attesa = self._sordi.pop(chiave, None)
+            if in_attesa is not None:
+                in_attesa.cancel()
             era_sordo = bool(getattr(getattr(worker_guild.me, "voice", None), "self_deaf", False))
+            riassorda = era_sordo or in_attesa is not None
             try:
                 if era_sordo:
                     await worker_guild.change_voice_state(channel=canale, self_deaf=False)
@@ -167,8 +190,8 @@ class SoundboardCog(CogConGruppi, commands.Cog):
                 logger.warning("Invio del suono non riuscito nel server %s.", guild_id)
                 return "Non sono riuscito a far partire il suono. Riprova tra poco."
             finally:
-                if era_sordo:
-                    self._in_background(_torna_sordo(worker_guild, RIPRISTINA_SORDO_DOPO))
+                if riassorda:
+                    self._programma_sordo(worker_guild, chiave)
                 if temporaneo or (guild_id, canale_id) in self._uscite:
                     self._programma_uscita(musica, flotta, worker_guild, guild_id, canale_id)
         return "🔊 Suono **{nome}** partito."
@@ -183,7 +206,7 @@ def _nodo_del_bot(bot, worker_bot):
 
 async def _torna_sordo(worker_guild, attesa: float) -> None:
     await asyncio.sleep(attesa)
-    voce = getattr(worker_guild.me, "voice", None)
+    voce = getattr(getattr(worker_guild, "me", None), "voice", None)
     if voce is not None and voce.channel is not None:
         try:
             await worker_guild.change_voice_state(channel=voce.channel, self_deaf=True)
@@ -195,7 +218,7 @@ async def _esci_se_inattivo(flotta, worker_guild, guild_id: int, canale_id: int,
                             attesa: float = ATTESA_USCITA, lock: asyncio.Lock | None = None) -> None:
     """
     Il bot entrato solo per il suono esce, a meno che nel frattempo qualcuno
-    abbia messo musica. Il controllo si fa con il lock del canale di
+    abbia messo musica (allora resta e torna "sordo", come con /music play). Il controllo si fa con il lock del canale di
     MusicCog: un /music play a metà (ricerca in corso) non trova il player
     scollegato sotto di sé.
     """
@@ -205,6 +228,8 @@ async def _esci_se_inattivo(flotta, worker_guild, guild_id: int, canale_id: int,
         if player is None:
             return
         if getattr(player, "playing", False) or not getattr(player.queue, "is_empty", True):
+            # Resta per la musica messa nel frattempo: torna "sordo" (MUS-056).
+            await _torna_sordo(worker_guild, 0)
             return
         try:
             await player.disconnect()

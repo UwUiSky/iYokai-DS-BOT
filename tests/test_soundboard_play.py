@@ -277,3 +277,43 @@ async def test_un_secondo_suono_sposta_l_uscita(monkeypatch):
     for task in list(cog._task):
         task.cancel()
     await asyncio.gather(*cog._task, return_exceptions=True)
+
+
+class _WorkerGuildVoce(_WorkerGuild):
+    """Come Discord: il cambio di stato vocale si vede in `me.voice`."""
+
+    async def change_voice_state(self, **kw):
+        await super().change_voice_state(**kw)
+        self.me.voice.self_deaf = kw["self_deaf"]
+
+
+@pytest.mark.asyncio
+async def test_due_suoni_ravvicinati_il_primo_non_riassorda_il_bot(monkeypatch):
+    """Il ritorno "sordo" del primo suono non taglia il secondo: si sposta dopo il secondo."""
+    monkeypatch.setattr(modulo, "RIPRISTINA_SORDO_DOPO", 0.2)
+    worker_guild = _WorkerGuildVoce(player=SimpleNamespace(channel=_CanaleVoce(), playing=True), sordo=True)
+    cog, suono_server, _ = _cog(_Musica(worker_guild), monkeypatch)
+    primo, _ = _interazione([suono_server])
+    secondo, _ = _interazione([suono_server])
+    secondo.user = SimpleNamespace(id=10, voice=primo.user.voice)
+
+    await cog.suono.callback(cog, primo, nome="s:5")
+    await asyncio.sleep(0.12)
+    await cog.suono.callback(cog, secondo, nome="s:5")
+    await asyncio.sleep(0.12)  # oltre la scadenza del primo, prima di quella del secondo
+
+    assert [c["self_deaf"] for c in worker_guild.cambi_voce] == [False]
+    assert worker_guild.me.voice.self_deaf is False  # il secondo suono sta ancora suonando
+    await asyncio.sleep(0.15)
+    assert [c["self_deaf"] for c in worker_guild.cambi_voce] == [False, True]
+    assert cog._sordi == {}
+
+
+@pytest.mark.asyncio
+async def test_bot_temporaneo_che_resta_per_la_musica_torna_sordo():
+    """Un /music play nel frattempo: il bot entrato col suono resta e torna "sordo" (MUS-056)."""
+    worker_guild = _WorkerGuildVoce(
+        player=SimpleNamespace(playing=True, queue=SimpleNamespace(is_empty=True)), sordo=False
+    )
+    await _esci_se_inattivo(SimpleNamespace(release_session=_nulla), worker_guild, 1, 3, attesa=0)
+    assert worker_guild.cambi_voce == [{"channel": "canale", "self_deaf": True}]
