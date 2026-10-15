@@ -290,6 +290,7 @@ Ogni `LIM-n` è assegnato a una fase in
 | LIM-43 | `cogs/music/player.py:794,867`, `core/music_logic.py` | `ytmsearch:` | `local:` e `spotify:` diventano ricerche su YouTube Music. È BUG-10. | 🔴 |
 | LIM-44 | `core/memory_guard.py:90-97`, `core/music_fleet.py:135` | canale vuoto | La radio 24/7 viene scollegata: dal controllo memoria ogni 60 secondi e dall'evento "inattivo" dopo 3 brani. | 🔴 |
 | LIM-54 | `requirements.txt:15`, `core/music_logic.py:39-45` | wavelink ≥ 3.5.1, Lavalink ≥ 4.2.0 | `wavelink>=3.4.0`. Nessun controllo della versione del nodo. Cinque nodi pubblici scritti nel codice, di versione ignota. | 🔴 |
+| LIM-58 | `cogs/music/player.py` (`url_e_sicuro` prima della ricerca), `cogs/music/playlist.py` (`decodifica_brani`) | DNS rebinding verso Lavalink | Il bot controlla che il nome dell'URL porti a un IP pubblico, poi Lavalink risolve di nuovo lo stesso nome per conto suo: un DNS che cambia risposta tra le due (TTL 0) fa scaricare a Lavalink un indirizzo interno (rete privata, metadati cloud). Lo stesso vale per i redirect. Il bot non può impedirlo: va bloccata la rete in uscita del container di Lavalink (`deploy/lavalink/README.md`, «Rete»), oppure `sources.http: false`. | 🟡 noto |
 
 ### 3.5 Servizi esterni, database, processi
 

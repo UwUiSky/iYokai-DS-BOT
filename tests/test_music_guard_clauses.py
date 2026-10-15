@@ -28,6 +28,19 @@ class _FakeResponse:
         if embed is not None:
             self.sent_embeds.append(embed)
 
+    async def defer(self, **kw) -> None:
+        self.deferred = True
+
+
+class _FakeFollowup:
+    """M 8.16: dopo defer() la risposta passa da followup; finisce nella stessa lista."""
+
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def send(self, content: str | None = None, **kw) -> None:
+        await self._response.send_message(content, embed=kw.get("embed"))
+
 
 class _FakeGuild:
     def __init__(self, guild_id: int, voice_client=None) -> None:
@@ -64,6 +77,7 @@ class _FakeInteraction:
         self.guild = _FakeGuild(guild_id, voice_client) if guild_id is not None else None
         self.user = user
         self.response = _FakeResponse()
+        self.followup = _FakeFollowup(self.response)
 
 
 @pytest.mark.asyncio

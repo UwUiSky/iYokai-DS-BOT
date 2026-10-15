@@ -1,44 +1,90 @@
 """
 core/repositories/music_request_repo.py
 =======================================
-Canale richieste per server.
+Tabella music_request_channels: il canale delle richieste di ogni server,
+il messaggio player e la sessione (canale vocale) che mostra.
 Funzioni coperte: SPEC §23 (NF-19)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #90).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #90, fase F9
-# Funzione: NF-19, Canale richieste musicali con player, playlist
-#   salvate.
-#
-# Cosa deve fare la funzione: Un canale dedicato con un messaggio
-#   "player" sempre aggiornato e bottoni (pausa, salta, stop, mescola,
-#   ripeti). Chi scrive un titolo nel canale lo mette in coda. Ogni
-#   utente può salvare playlist. Nessun ruolo DJ e nessun voto (scelta
-#   dell'owner).
-# Questo file: Canale richieste per server.
-# Comandi previsti: /admin musica canale-richieste, /music playlist
-#   salva|carica|elenco|elimina.
-# File collegati: cogs/music/request_channel.py,
-#   core/music_request_logic.py,
-#   core/repositories/music_playlist_repo.py.
-# File esistenti da toccare: cogs/music/player.py.
-# Test da scrivere per primi: tests/test_music_request_channel.py,
-#   tests/test_music_playlist.py.
-# Migrazione: core/migrations/NNNN_music_request.sql,
-#   core/migrations/NNNN_music_playlist.sql. (prossimo numero libero in
-#   core/migrations/).
-# Limiti da rispettare: View persistente; 5 bottoni per riga; titolo 256
-#   (LIM-21); aggiornamento del messaggio non più di una volta ogni
-#   pochi secondi.
-# Da chi prendere spunto: Hydra (storico), Jockie (raccolte).
-# Dipende da: F2 finita (D10) e provata live. message_content.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import asyncpg
+
+
+@dataclass(frozen=True)
+class CanaleRichieste:
+    guild_id: int
+    channel_id: int
+    message_id: int | None
+    voice_channel_id: int | None
+
+
+def _da_riga(riga) -> CanaleRichieste:
+    return CanaleRichieste(
+        guild_id=riga["guild_id"],
+        channel_id=riga["channel_id"],
+        message_id=riga["message_id"],
+        voice_channel_id=riga["voice_channel_id"],
+    )
+
+
+class MusicRequestRepository:
+    def __init__(self, pool_provider) -> None:
+        self._pool_provider = pool_provider
+
+    @property
+    def _pool(self) -> asyncpg.Pool:
+        return self._pool_provider()
+
+    async def set_channel(self, guild_id: int, channel_id: int, message_id: int, set_by: int) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO music_request_channels (guild_id, channel_id, message_id, set_by)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (guild_id) DO UPDATE
+               SET channel_id = $2, message_id = $3, set_by = $4,
+                   voice_channel_id = NULL, updated_at = now()
+            """,
+            guild_id, channel_id, message_id, set_by,
+        )
+
+    async def get(self, guild_id: int) -> CanaleRichieste | None:
+        riga = await self._pool.fetchrow(
+            "SELECT * FROM music_request_channels WHERE guild_id = $1", guild_id
+        )
+        return _da_riga(riga) if riga else None
+
+    async def list_all(self) -> list[CanaleRichieste]:
+        """Tutti i canali configurati: si leggono una volta all'avvio del cog."""
+        righe = await self._pool.fetch("SELECT * FROM music_request_channels")
+        return [_da_riga(r) for r in righe]
+
+    async def set_voice_channel(self, guild_id: int, voice_channel_id: int) -> None:
+        await self._pool.execute(
+            "UPDATE music_request_channels SET voice_channel_id = $2, updated_at = now() "
+            "WHERE guild_id = $1",
+            guild_id, voice_channel_id,
+        )
+
+    async def set_message(self, guild_id: int, message_id: int) -> None:
+        """Il messaggio player è stato cancellato a mano: se ne è mandato uno nuovo."""
+        await self._pool.execute(
+            "UPDATE music_request_channels SET message_id = $2, updated_at = now() WHERE guild_id = $1",
+            guild_id, message_id,
+        )
+
+    async def remove(self, guild_id: int) -> CanaleRichieste | None:
+        riga = await self._pool.fetchrow(
+            "DELETE FROM music_request_channels WHERE guild_id = $1 RETURNING *", guild_id
+        )
+        return _da_riga(riga) if riga else None
+
+
+def _get_pool():
+    from core.database import db
+    return db.pool
+
+
+music_request_repo = MusicRequestRepository(pool_provider=_get_pool)

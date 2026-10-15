@@ -410,7 +410,7 @@ class _CanaleDelWorker:
         self.id = canale_id
         self.cls = None
 
-    async def connect(self, cls):
+    async def connect(self, cls, **kw):
         self.cls = cls
         player = SimpleNamespace(
             autoplay=None,
@@ -544,7 +544,7 @@ class _Vocale:
     def permissions_for(self, me):
         return self._permessi
 
-    async def connect(self, cls):
+    async def connect(self, cls, **kw):
         if self._errore:
             raise self._errore
         return SimpleNamespace(autoplay=None)
@@ -742,7 +742,7 @@ class _CanaleRadio:
     def __init__(self, player):
         self._player = player
 
-    async def connect(self, cls):
+    async def connect(self, cls, **kw):
         return self._player
 
 
@@ -1006,7 +1006,7 @@ async def test_due_play_insieme_nello_stesso_canale_un_solo_connect_e_nessun_ril
     class _Canale2(_CanaleDelWorker):
         connessioni = 0
 
-        async def connect(self, cls):
+        async def connect(self, cls, **kw):
             _Canale2.connessioni += 1
             await asyncio.sleep(0.05)  # il 2o play arriva mentre il 1o si collega
             player = await super().connect(cls)

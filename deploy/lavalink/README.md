@@ -53,6 +53,32 @@ Se il bot gira sullo stesso disco di Lavalink **senza Docker**, lascia
   lettura. Non montare altro.
 - Nessun segreto nei file di questa cartella (solo segnaposto).
 
+## Avvio senza Docker (servizio che riparte da solo)
+
+Serve Java 17 o successivo e `Lavalink.jar` (4.2.0 o successivo) dalle
+release ufficiali (https://github.com/lavalink-devs/Lavalink/releases).
+Metti `Lavalink.jar` e `application.yml` nella stessa cartella, ad esempio
+`/opt/lavalink`, e crea `/etc/systemd/system/lavalink.service`:
+
+```ini
+[Unit]
+Description=Lavalink per iYokai
+After=network-online.target
+
+[Service]
+User=lavalink
+WorkingDirectory=/opt/lavalink
+ExecStart=/usr/bin/java -Xmx512M -jar Lavalink.jar
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Poi `systemctl enable --now lavalink`. La password resta solo in
+`application.yml` (permessi 600, proprietario `lavalink`), mai nel repository.
+
 ## Controlli dopo l'avvio
 
 ```bash
@@ -68,8 +94,33 @@ Altro: `docs/music-lavalink.md` (documentazione ufficiale, nodi pubblici).
 
 ## Rete (sorgente `http`)
 
-`sources.http: true` permette i link diretti a un file audio. Il bot rifiuta
+`sources.http: true` permette i link diretti a un file audio e i file allegati
+(a `/music play` o scritti nel canale delle richieste): senza, quelli non suonano. Il bot rifiuta
 prima gli indirizzi interni (127.0.0.1, 10.x, 192.168.x, metadati cloud), ma non
 può vedere dove porta un redirect: sull'host di Lavalink limita anche il traffico
 in uscita verso le reti private e `169.254.169.254`. Se non ti servono i link
 diretti, metti `http: false` in `application.yml`.
+
+Il controllo del bot non basta da solo (LIM-58, «DNS rebinding»): il bot
+risolve il nome e trova un IP pubblico, poi Lavalink lo risolve di nuovo e
+può ricevere un IP interno. Per questo il blocco va messo sulla rete del
+container. Con Docker, sull'host (la rete si chiama `<cartella>_default`,
+qui di solito `lavalink_default`):
+
+```bash
+SUBNET=$(docker network inspect lavalink_default -f '{{(index .IPAM.Config 0).Subnet}}')
+for RETE in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10; do
+  iptables -I DOCKER-USER -s "$SUBNET" -d "$RETE" -j DROP
+done
+# Le risposte alle connessioni già aperte (il bot che parla con Lavalink) passano.
+iptables -I DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+# Niente connessioni nuove dal container verso l'host stesso (database, SSH...).
+iptables -I INPUT -s "$SUBNET" -m conntrack --ctstate NEW -j DROP
+```
+
+Rendi le regole permanenti (`iptables-persistent` o il firewall del
+sistema). Con IPv6 attivo fai lo stesso con `ip6tables` per `fc00::/7` e
+`fe80::/10`. Senza Docker (servizio systemd) aggiungi nella sezione
+`[Service]` `IPAddressDeny=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10 fc00::/7 fe80::/10`:
+`127.0.0.1` resta raggiungibile (serve al bot), quindi Docker resta la
+scelta più sicura.
