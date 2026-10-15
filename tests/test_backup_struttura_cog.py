@@ -161,3 +161,19 @@ async def test_modello_si_pubblica_e_si_usa_senza_dati_personali(ambiente):
     i = _interazione(owner=True)
     await cog.modello.callback(cog, i, SimpleNamespace(value="ritira", name="r"), copia, None)
     assert await repo.leggi_modello(codice) is None
+
+
+async def test_chat_e_struttura_non_si_scambiano(ambiente):
+    _db, repo = ambiente
+    chat = await repo.salva_struttura(GUILD, "chat", 1, {"versione": 1, "tipo": "chat", "messaggi": []})
+    copia = await repo.salva_struttura(GUILD, "copia", 1, {"versione": 1, "ruoli": []})
+    assert [c.chat for c in await repo.lista_strutture(GUILD)] == [False, True]
+    assert await repo.pubblica_modello(GUILD, chat) is None  # una chat non diventa un modello
+    cog = BackupCog(bot=None)
+    i = _interazione(owner=True)
+    await cog.carica.callback(cog, i, chat)
+    assert "chat-carica" in i.response.messaggi[0][0]
+    i = _interazione(owner=True)
+    i.channel = SimpleNamespace()
+    await cog.chat_carica.callback(cog, i, copia, None)
+    assert "non trovata" in i.response.messaggi[0][0]

@@ -419,9 +419,10 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("backup_link_codes", "Codici di collegamento del server di backup (solo l'impronta)",
        colonne_attore=("created_by",), colonna_server="main_guild_id",
        scadenza=Scadenza("created_at", 30), nota="il codice vale 24 ore; dopo 30 giorni la riga va via"),
-    _t("backup_strutture", "Copie datate della struttura e modelli con codice (M 12.17, NF-39)",
+    _t("backup_strutture", "Copie datate della struttura, chat salvate e modelli con codice (M 12.17, NF-39, BKP-026)",
        colonne_attore=("created_by",), colonna_server="guild_id",
-       nota="i dati possono contenere ID di utenti (ban e membri, se scelti): vanno via con il server o con la copia; i modelli si pubblicano senza ban e membri"),
+       nota="i dati possono contenere ID di utenti (ban e membri, se scelti) e, nelle chat salvate, nome, avatar e testo "
+            "dei messaggi: vanno via con il server o con la copia; i modelli si pubblicano senza ban e membri, mai le chat"),
     _t("backup_caricamenti", "Stato dei caricamenti di un backup (BKP-009/010)",
        colonne_attore=("created_by",), colonna_server="guild_id",
        scadenza=Scadenza("creato_il", 30), nota="serve solo a seguire e annullare il caricamento"),

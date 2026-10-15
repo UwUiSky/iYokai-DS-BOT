@@ -1,7 +1,7 @@
 """
 core/repositories/backup_struttura_repo.py
 ==========================================
-Copie datate della struttura (al massimo 10 per server), modelli con codice,
+Copie datate della struttura e chat salvate (al massimo 10 per server), modelli con codice,
 stato dei caricamenti con annullo e registro di chi usa il backup (365 giorni).
 Funzioni coperte: SPEC §11.15, §11.16, M 12.17, NF-39, BKP-009, BKP-010, BKP-019
 """
@@ -24,6 +24,7 @@ class CopiaStruttura:
     nome: str
     creato_il: datetime
     codice_modello: str | None
+    chat: bool = False
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,7 @@ class BackupStrutturaRepository:
 
     async def lista_strutture(self, guild_id: int) -> list[CopiaStruttura]:
         righe = await self._pool.fetch(
-            "SELECT id, nome, creato_il, codice_modello FROM backup_strutture "
+            "SELECT id, nome, creato_il, codice_modello, (dati->>'tipo' = 'chat') IS TRUE AS chat FROM backup_strutture "
             "WHERE guild_id = $1 ORDER BY creato_il DESC LIMIT $2",
             guild_id, MAX_COPIE_PER_SERVER,
         )
@@ -81,11 +82,11 @@ class BackupStrutturaRepository:
 
     # modelli (NF-39) --------------------------------------------------
     async def pubblica_modello(self, guild_id: int, copia_id: int) -> str | None:
-        """Dà alla copia un codice condivisibile (lo stesso se lo ha già). None se la copia non c'è."""
+        """Dà alla copia un codice condivisibile (lo stesso se lo ha già). None se non c'è o è una chat."""
         codice = secrets.token_urlsafe(9)
         return await self._pool.fetchval(
             "UPDATE backup_strutture SET codice_modello = COALESCE(codice_modello, $3) "
-            "WHERE guild_id = $1 AND id = $2 RETURNING codice_modello",
+            "WHERE guild_id = $1 AND id = $2 AND (dati->>'tipo') IS DISTINCT FROM 'chat' RETURNING codice_modello",
             guild_id, copia_id, codice,
         )
 

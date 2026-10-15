@@ -633,7 +633,12 @@ def url_immagine_ammesso(url: str) -> bool:
 
 async def scarica_immagine(url: str) -> bytes | None:
     """Emoji o sticker da ricreare (≤ 512 KiB). None se non ammesso o non leggibile."""
-    if not url_immagine_ammesso(url):
+    return await scarica_file(url, MAX_IMMAGINE_BYTE)
+
+
+async def scarica_file(url: str, massimo: int) -> bytes | None:
+    """Un file dalla CDN di Discord (≤ `massimo` byte). None se non ammesso, scaduto o troppo grande."""
+    if not url_immagine_ammesso(url) or massimo <= 0:
         return None
     import aiohttp
 
@@ -642,7 +647,7 @@ async def scarica_immagine(url: str) -> bytes | None:
             async with sessione.get(url, allow_redirects=False) as risposta:
                 if risposta.status != 200:
                     return None
-                dati = await risposta.content.read(MAX_IMMAGINE_BYTE + 1)
-                return dati if len(dati) <= MAX_IMMAGINE_BYTE else None
+                dati = await risposta.content.read(massimo + 1)
+                return dati if len(dati) <= massimo else None
     except (aiohttp.ClientError, asyncio.TimeoutError):
         return None

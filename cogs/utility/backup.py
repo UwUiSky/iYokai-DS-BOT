@@ -3,13 +3,13 @@ cogs/utility/backup.py
 ======================
 Gruppo /backup (D25): coppia main e backup (main, crea, collega, promuovi),
 copie datate della struttura (salva, lista, carica, elimina), stato e annullo
-del caricamento, esportazioni e importazione, livelli di permesso e registro.
+del caricamento, esportazioni e importazione, livelli di permesso e registro; chat salvate (fino a 1000 messaggi) da ricaricare dopo.
 modelli condivisibili con un codice e sincronia di ban e ruoli tra due server
 dello stesso owner (NF-39), copia di un canale o di un ruolo, livelli di
 permesso e registro.
 /backup restore-modo e restore-utenti sono in cogs/utility/restore.py.
 Funzioni coperte: SPEC §11.12, §11.13, §11.15, §11.16, M 12.1, M 12.9, M 12.17, NF-39,
-BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-024, BKP-025, BKP-032…037
+BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-024…027, BKP-032…037
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from discord.ext import commands
 
 from core import backup_struttura_logic as struttura
 from core.backup_copia_logic import copia_canale, copia_ruolo
+from core.backup_messages_logic import leggi_chat, ricarica_chat, webhook_chat
 from core.backup_permessi_logic import (
     AZIONE_CARICA,
     AZIONE_CREA,
@@ -141,32 +142,42 @@ class BackupCog(CogConGruppi, commands.Cog):
     async def avvia_caricamento(
         self, interaction: discord.Interaction, dati: dict, parti: set[str], fonte: str
     ) -> str:
-        """Fa partire il caricamento in sottofondo e restituisce il testo per chi l'ha chiesto."""
+        """Fa partire il caricamento di una struttura e restituisce il testo per chi l'ha chiesto."""
         guild = interaction.guild
-        caricamento_id = await backup_struttura_repo.avvia_caricamento(
-            guild.id, interaction.user.id, fonte, struttura.conta_passi(dati, parti)
+
+        async def lavoro(avanza):
+            caricatore = struttura.Caricatore(guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine)
+            return await caricatore.esegui()
+
+        return await self.avvia_lavoro(
+            interaction, fonte, struttura.conta_passi(dati, parti), ", ".join(sorted(parti)), lavoro
         )
+
+    async def avvia_lavoro(self, interaction: discord.Interaction, fonte: str, totale: int, dettaglio: str, lavoro) -> str:
+        """
+        Un caricamento in sottofondo, uno per server: `lavoro(avanza)` restituisce un
+        riepilogo con `annullato` e `testo()`. Stato e annullo da /backup stato e annulla.
+        """
+        guild = interaction.guild
+        caricamento_id = await backup_struttura_repo.avvia_caricamento(guild.id, interaction.user.id, fonte, totale)
         if caricamento_id is None:
             return "⏳ C'è già un caricamento in corso: guarda /backup stato o fermalo con /backup annulla."
 
         async def avanza(passo: str, fatti: int, totale: int) -> bool:
             return await backup_struttura_repo.aggiorna_caricamento(caricamento_id, passo, fatti, totale)
 
-        caricatore = struttura.Caricatore(guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine)
-        await backup_struttura_repo.registra(
-            guild.id, interaction.user.id, "carica", f"{fonte}: {', '.join(sorted(parti))}"
-        )
-        lavoro = asyncio.create_task(self._esegui(caricatore, caricamento_id, interaction.channel))
-        self._lavori.add(lavoro)
-        lavoro.add_done_callback(self._lavori.discard)
+        await backup_struttura_repo.registra(guild.id, interaction.user.id, "carica", f"{fonte}: {dettaglio}")
+        compito = asyncio.create_task(self._esegui(lavoro, avanza, caricamento_id, interaction.channel))
+        self._lavori.add(compito)
+        compito.add_done_callback(self._lavori.discard)
         return "▶️ Caricamento avviato. Avanzamento: /backup stato · per fermarlo: /backup annulla."
 
-    async def _esegui(self, caricatore, caricamento_id: int, canale) -> None:
+    async def _esegui(self, lavoro, avanza, caricamento_id: int, canale) -> None:
         """Il riepilogo va nel canale: il lavoro può durare più di 15 minuti."""
         stato = "fallito"
         testo = "❌ Caricamento interrotto da un errore: ciò che era già fatto resta."
         try:
-            riepilogo = await caricatore.esegui()
+            riepilogo = await lavoro(avanza)
             stato = "annullato" if riepilogo.annullato else "finito"
             testo = "📦 **Caricamento del backup finito.**\n" + riepilogo.testo()
         except Exception:
@@ -439,7 +450,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("Nessuna copia salvata: usa /backup salva.", ephemeral=True)
             return
         righe = [
-            f"`#{c.id}` **{discord.utils.escape_markdown(c.nome)}** · {discord.utils.format_dt(c.creato_il, 'f')}"
+            f"`#{c.id}` {'💬' if c.chat else '🏗️'} **{discord.utils.escape_markdown(c.nome)}** · "
+            f"{discord.utils.format_dt(c.creato_il, 'f')}"
             + (f" · modello `{c.codice_modello}`" if c.codice_modello else "")
             for c in copie
         ]
@@ -455,6 +467,9 @@ class BackupCog(CogConGruppi, commands.Cog):
         dati = await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia)
         if dati is None:
             await interaction.response.send_message("Copia non trovata: guarda /backup lista.", ephemeral=True)
+            return
+        if dati.get("tipo") == "chat":
+            await interaction.response.send_message("Questa è una chat salvata: usa /backup chat-carica.", ephemeral=True)
             return
         await interaction.response.send_message(
             f"Copia `#{copia}`: scegli cosa caricare. Ciò che esiste già (stesso nome) si riusa.",
@@ -544,7 +559,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             nuovo = await backup_struttura_repo.pubblica_modello(guild.id, copia)
             testo = (
                 f"🧩 Modello pronto: codice `{nuovo}`. Chi lo ha può caricarlo con /backup modello "
-                "(ban, membri e permessi dei singoli non passano)." if nuovo else "Copia non trovata."
+                "(ban, membri e permessi dei singoli non passano)." if nuovo else "Copia non trovata (le chat salvate non diventano modelli)."
             )
         else:
             nuovo = await backup_struttura_repo.ritira_modello(guild.id, copia)
@@ -731,6 +746,83 @@ class BackupCog(CogConGruppi, commands.Cog):
             + (f" · non riusciti: {esito.falliti}" if esito.falliti else ""),
             ephemeral=True,
         )
+
+    # ------------------------------------------------------------
+    # Chat salvate (BKP-026, BKP-027)
+    # ------------------------------------------------------------
+    @comando_di_gruppo("backup", nome="chat-salva", descrizione="Salva gli ultimi messaggi di un canale (fino a 1000) per ricaricarli dopo.")
+    @app_commands.describe(
+        canale="Canale da salvare (se vuoto, questo)", quanti="Quanti messaggi (1-1000)", nome="Nome della copia",
+    )
+    async def chat_salva(
+        self, interaction: discord.Interaction, canale: discord.TextChannel | None = None,
+        quanti: app_commands.Range[int, 1, 1000] = 100, nome: app_commands.Range[str, 1, 50] | None = None,
+    ) -> None:
+        if not await self._puo(interaction, AZIONE_CREA):
+            return
+        canale = canale or interaction.channel
+        if not isinstance(canale, discord.TextChannel):
+            await interaction.response.send_message("Scegli un canale di testo.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            messaggi = await leggi_chat(canale, quanti)
+        except discord.HTTPException:
+            await interaction.followup.send("⚠️ Non riesco a leggere quel canale: controlla i miei permessi.", ephemeral=True)
+            return
+        dati = {"versione": struttura.VERSIONE, "tipo": "chat", "canale": canale.name, "messaggi": messaggi}
+        if len(struttura.in_json(dati)) > struttura.MAX_FILE_BYTE:
+            await interaction.followup.send("⚠️ Troppi dati: salva meno messaggi.", ephemeral=True)
+            return
+        copia_id = await backup_struttura_repo.salva_struttura(
+            interaction.guild.id, nome or f"chat #{canale.name}"[:50], interaction.user.id, dati
+        )
+        if copia_id is None:
+            await interaction.followup.send(
+                f"⚠️ Ci sono già {MAX_COPIE_PER_SERVER} copie: eliminane una con /backup elimina.", ephemeral=True
+            )
+            return
+        await backup_struttura_repo.registra(interaction.guild.id, interaction.user.id, "chat-salva", f"#{copia_id} {canale.name}")
+        await interaction.followup.send(
+            f"✅ Chat salvata come copia `#{copia_id}`: {len(messaggi)} messaggi. "
+            "Gli allegati si ricaricano come file finché il loro link vale (circa un giorno), poi come link.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo("backup", nome="chat-carica", descrizione="Ricarica una chat salvata in un canale, anche diverso.")
+    @app_commands.describe(copia="Numero della chat salvata (da /backup lista)", canale="Canale dove ricaricarla (se vuoto, questo)")
+    async def chat_carica(
+        self, interaction: discord.Interaction, copia: app_commands.Range[int, 1],
+        canale: discord.TextChannel | None = None,
+    ) -> None:
+        if not await self._puo(interaction, AZIONE_CARICA):
+            return
+        canale = canale or interaction.channel
+        dati = await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia)
+        if dati is None or dati.get("tipo") != "chat":
+            await interaction.response.send_message("Chat salvata non trovata: guarda /backup lista.", ephemeral=True)
+            return
+        if not isinstance(canale, discord.TextChannel):
+            await interaction.response.send_message("Scegli un canale di testo.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            webhook = await webhook_chat(canale)
+        except discord.HTTPException:
+            webhook = None
+        if webhook is None:
+            await interaction.followup.send(
+                "⚠️ Non posso usare un webhook in quel canale: serve «Gestisci webhook» e meno di 15 webhook.",
+                ephemeral=True,
+            )
+            return
+        messaggi = dati.get("messaggi", [])
+
+        async def lavoro(avanza):
+            return await ricarica_chat(messaggi, webhook, canale, avanza, struttura.scarica_file)
+
+        testo = await self.avvia_lavoro(interaction, f"chat #{copia}", len(messaggi), canale.name, lavoro)
+        await interaction.followup.send(testo, ephemeral=True)
 
     # ------------------------------------------------------------
     # Esportazioni e importazione (BKP-032…037)
