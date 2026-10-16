@@ -45,6 +45,13 @@ MAX_MOTIVO = 512
 MAX_PERMESSI = 1 << 53
 MOTIVO = "Caricamento backup iYokai"
 
+# Permessi che un caricamento non AGGIUNGE mai a @everyone né a un ruolo che esiste
+# già (e che può avere membri): un file o un modello d'altri non fa admin tutto il server.
+PERMESSI_PERICOLOSI = discord.Permissions(
+    administrator=True, manage_guild=True, manage_roles=True, manage_channels=True, ban_members=True,
+    kick_members=True, moderate_members=True, manage_webhooks=True, mention_everyone=True,
+).value
+
 PARTI = ("impostazioni", "ruoli", "canali", "emoji", "messaggi", "ban", "membri")
 MAX_MESSAGGI_PER_CANALE = 100
 
@@ -172,6 +179,28 @@ def _int_ok(valore, massimo: int = MAX_PERMESSI) -> bool:
     return isinstance(valore, int) and not isinstance(valore, bool) and 0 <= valore < massimo
 
 
+def _testo_o_none(valore, massimo: int = MAX_NOME) -> bool:
+    return valore is None or _testo_ok(valore, massimo, vuoto=True)
+
+
+def _elenco_di_testi(valore) -> bool:
+    return isinstance(valore, list) and len(valore) <= MAX_RUOLI and all(_testo_ok(v) for v in valore)
+
+
+def _messaggio_ok(m) -> bool:
+    """Un messaggio salvato: ogni campo letto da ricarica_chat con il tipo giusto."""
+    if not isinstance(m, dict) or not _testo_ok(m.get("contenuto", ""), 2000, vuoto=True):
+        return False
+    if not _testo_o_none(m.get("autore"), 80) or not _testo_o_none(m.get("avatar"), 2000):
+        return False
+    allegati = m.get("allegati", [])
+    return isinstance(allegati, list) and len(allegati) <= 10 and all(
+        isinstance(a, dict) and _testo_ok(a.get("url"), 2000) and _testo_o_none(a.get("nome"))
+        and (a.get("size") is None or _int_ok(a["size"], 1 << 40))
+        for a in allegati
+    )
+
+
 def _controlla_overwrite(righe, dove: str, errori: list[str]) -> None:
     if not isinstance(righe, list):
         errori.append(f"{dove}: «overwrite» deve essere un elenco")
@@ -207,17 +236,20 @@ def valida_struttura(dati) -> list[str]:
         errori.append("«impostazioni» deve essere un oggetto")
     for i, r in enumerate(dati.get("ruoli", [])):
         if not isinstance(r, dict) or not _testo_ok(r.get("nome")) or not _int_ok(r.get("permessi", 0)) \
-                or not _int_ok(r.get("colore", 0), 1 << 24):
+                or not _int_ok(r.get("colore", 0), 1 << 24) or not _int_ok(r.get("posizione", 0), 1 << 31):
             errori.append(f"ruolo {i + 1}: nome, colore o permessi non validi")
     for i, c in enumerate(dati.get("categorie", [])):
-        if not isinstance(c, dict) or not _testo_ok(c.get("nome")):
-            errori.append(f"categoria {i + 1}: nome non valido")
+        if not isinstance(c, dict) or not _testo_ok(c.get("nome")) or not _int_ok(c.get("posizione", 0), 1 << 31):
+            errori.append(f"categoria {i + 1}: nome o posizione non validi")
         else:
             _controlla_overwrite(c.get("overwrite", []), f"categoria «{c['nome']}»", errori)
     for i, c in enumerate(dati.get("canali", [])):
         if not isinstance(c, dict) or not _testo_ok(c.get("nome")) or c.get("tipo") not in TIPI_CANALE:
             errori.append(f"canale {i + 1}: nome o tipo non validi")
             continue
+        if any(c.get(k) is not None and not _int_ok(c[k], 1 << 31)
+               for k in ("posizione", "slowmode", "bitrate", "user_limit")):
+            errori.append(f"canale «{c['nome']}»: numeri non validi")
         if c.get("categoria") is not None and not _testo_ok(c["categoria"]):
             errori.append(f"canale «{c['nome']}»: categoria non valida")
         if c.get("topic") is not None and not _testo_ok(c["topic"], 1024, vuoto=True):
@@ -226,13 +258,30 @@ def valida_struttura(dati) -> list[str]:
     messaggi = dati.get("messaggi", {})
     if not isinstance(messaggi, dict) or len(messaggi) > MAX_CANALI or any(
         not _testo_ok(nome) or not isinstance(elenco, list) or len(elenco) > MAX_MESSAGGI_PER_CANALE
-        or not all(isinstance(m, dict) and _testo_ok(m.get("contenuto", ""), 2000, vuoto=True) for m in elenco)
+        or not all(_messaggio_ok(m) for m in elenco)
         for nome, elenco in messaggi.items()
     ):
         errori.append(f"«messaggi»: al massimo {MAX_MESSAGGI_PER_CANALE} per canale, testi entro 2000 caratteri")
     for i, b in enumerate(dati.get("ban", [])):
-        if not isinstance(b, dict) or not _int_ok(b.get("user_id"), 1 << 64):
-            errori.append(f"ban {i + 1}: ID utente non valido")
+        if not isinstance(b, dict) or not _int_ok(b.get("user_id"), 1 << 64) \
+                or not _testo_o_none(b.get("motivo"), MAX_MOTIVO * 4):
+            errori.append(f"ban {i + 1}: ID utente o motivo non validi")
+    for i, m in enumerate(dati.get("membri", [])):
+        if not isinstance(m, dict) or not _int_ok(m.get("user_id"), 1 << 64) \
+                or not _testo_o_none(m.get("nick"), 32) or not _elenco_di_testi(m.get("ruoli", [])):
+            errori.append(f"membro {i + 1}: ID, nickname o ruoli non validi")
+    for chiave in ("emoji", "sticker"):
+        for i, e in enumerate(dati.get(chiave, [])):
+            if not isinstance(e, dict) or not _testo_ok(e.get("nome")) or not _testo_ok(e.get("url"), 2000) \
+                    or not _testo_o_none(e.get("emoji"), 100):
+                errori.append(f"{chiave} {i + 1}: nome o indirizzo non validi")
+    if isinstance(imp, dict):
+        for chiave in ("verification_level", "default_notifications", "explicit_content_filter", "afk_timeout"):
+            if chiave in imp and not _int_ok(imp[chiave], 1 << 31):
+                errori.append(f"impostazioni: «{chiave}» non valido")
+        for chiave in ("afk_channel", "system_channel"):
+            if not _testo_o_none(imp.get(chiave)):
+                errori.append(f"impostazioni: «{chiave}» non valido")
     return errori[:20]
 
 
@@ -398,11 +447,24 @@ class Caricatore:
     def _ruolo_per_nome(self, nome: str):
         return discord.utils.get(self.guild.roles, name=nome)
 
+    def _senza_nuovi_pericolosi(self, voluti: discord.Permissions, attuali: discord.Permissions) -> discord.Permissions:
+        """I permessi pericolosi restano solo se il ruolo li aveva già."""
+        tolti = voluti.value & PERMESSI_PERICOLOSI & ~attuali.value
+        if tolti:
+            nota = "permessi pericolosi (admin, gestione, ban…) non aggiunti a @everyone né a ruoli esistenti"
+            if nota not in self.r.note:
+                self.r.note.append(nota)
+        return discord.Permissions(voluti.value & ~tolti)
+
     async def _ruoli(self) -> None:
         if "everyone" in self.dati:
             try:
-                await self.guild.default_role.edit(
-                    permissions=_permessi_consentiti(self.guild, discord.Permissions(self.dati["everyone"])),
+                everyone = self.guild.default_role
+                await everyone.edit(
+                    permissions=self._senza_nuovi_pericolosi(
+                        _permessi_consentiti(self.guild, discord.Permissions(self.dati["everyone"])),
+                        everyone.permissions,
+                    ),
                     reason=MOTIVO,
                 )
             except discord.HTTPException:
@@ -414,6 +476,7 @@ class Caricatore:
             esistente = self._ruolo_per_nome(dato["nome"])
             try:
                 if esistente is not None and not esistente.managed:
+                    permessi = self._senza_nuovi_pericolosi(permessi, esistente.permissions)
                     if esistente.permissions != permessi:
                         await esistente.edit(permissions=permessi, reason=MOTIVO)
                     self.r.riusati += 1
@@ -441,8 +504,10 @@ class Caricatore:
     def _overwrites(self, righe: list[dict]) -> dict:
         risultato = {}
         for ow in righe:
+            allow = ow["allow"]
             if ow.get("everyone"):
                 bersaglio = self.guild.default_role
+                allow &= ~PERMESSI_PERICOLOSI  # @everyone non gestisce canali, webhook o menzioni di massa
             elif "ruolo" in ow:
                 bersaglio = self._ruolo_per_nome(ow["ruolo"])
             else:
@@ -450,7 +515,7 @@ class Caricatore:
             if bersaglio is None:
                 continue
             pieno = discord.PermissionOverwrite.from_pair(
-                discord.Permissions(ow["allow"]), discord.Permissions(ow["deny"])
+                discord.Permissions(allow), discord.Permissions(ow["deny"])
             )
             risultato[bersaglio] = _overwrite_consentito(self.guild, pieno)
         return risultato

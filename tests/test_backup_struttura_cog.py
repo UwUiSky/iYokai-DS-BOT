@@ -177,3 +177,27 @@ async def test_chat_e_struttura_non_si_scambiano(ambiente):
     i.channel = SimpleNamespace()
     await cog.chat_carica.callback(cog, i, copia, None)
     assert "non trovata" in i.response.messaggi[0][0]
+
+
+async def test_file_importato_non_assegna_ruoli_ai_membri(ambiente):
+    """L'esportazione non contiene i membri: un file che li ha non può dare ruoli a ID scelti da altri."""
+    import json
+
+    cog = BackupCog(bot=None)
+    i = _interazione(owner=True)
+    contenuto = json.dumps({
+        "versione": 1, "ruoli": [{"nome": "Admin", "permessi": 8}],
+        "membri": [{"user_id": 666, "nick": None, "ruoli": ["Admin"]}],
+    }).encode()
+
+    class _File:
+        size = len(contenuto)
+        filename = "modello.json"
+
+        async def read(self):
+            return contenuto
+
+    await cog.importa.callback(cog, i, _File())
+    view = i.followup.messaggi[0][1]["view"]
+    assert "membri" not in view.dati
+    assert "membri" not in [o.value for o in view.menu.options]

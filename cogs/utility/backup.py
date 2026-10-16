@@ -966,6 +966,9 @@ class BackupCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
+        # L'esportazione non contiene i membri: un file che li ha viene da fuori e
+        # darebbe ruoli a ID scelti da chi l'ha scritto.
+        dati.pop("membri", None)
         await interaction.followup.send(
             "File valido: scegli cosa caricare. Ciò che esiste già (stesso nome) si riusa.",
             view=ScegliPartiView(self, interaction.user.id, dati, f"file {file.filename[:60]}"),

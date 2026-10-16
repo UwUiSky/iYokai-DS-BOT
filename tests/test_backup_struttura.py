@@ -356,3 +356,51 @@ async def test_messaggi_ricaricati_solo_nei_canali_vuoti_con_lo_stesso_nome(monk
     assert inviati == ["ciao"]
     assert (r.creati, r.saltati) == (1, 2)
     assert st.valida_struttura({"versione": 1, "messaggi": {"c": [{}] * 101}})
+
+
+# ---------------------------------------------------------------- file da fuori
+def test_file_con_tipi_sbagliati_si_rifiuta_prima_di_toccare_il_server():
+    """Ogni campo letto dal Caricatore ha il tipo giusto: niente errori a metà caricamento."""
+    casi = [
+        {"emoji": [{"nome": 1, "url": "https://cdn.discordapp.com/e.png"}]},
+        {"sticker": [{"nome": "s"}]},
+        {"membri": [{"ruoli": "Admin"}]},
+        {"membri": [{"user_id": 7, "ruoli": [1]}]},
+        {"ban": [{"user_id": 7, "motivo": 5}]},
+        {"ruoli": [{"nome": "r", "posizione": "alta"}]},
+        {"canali": [{"nome": "c", "tipo": "vocale", "bitrate": "alto"}]},
+        {"impostazioni": {"verification_level": "x"}},
+        {"messaggi": {"chat": [{"contenuto": "ciao", "allegati": [{"url": 5}]}]}},
+        {"messaggi": {"chat": [{"contenuto": "ciao", "autore": ["x"]}]}},
+    ]
+    for caso in casi:
+        assert st.valida_struttura({"versione": 1, **caso}), caso
+
+
+async def test_permessi_pericolosi_non_si_aggiungono_a_everyone_ne_ai_ruoli_esistenti():
+    """Un modello o un file non fa admin tutto il server: @everyone e i ruoli già dati restano senza admin."""
+    membri = fake_role(5, "Membri", position=1, permissions=discord.Permissions(send_messages=True))
+    g = _Guild(ruoli=[membri])
+    pericolosi = discord.Permissions(administrator=True, send_messages=True).value
+    dati = {
+        "versione": 1, "everyone": pericolosi,
+        "ruoli": [{"nome": "Membri", "permessi": pericolosi}, {"nome": "Nuovo", "permessi": pericolosi}],
+        "canali": [{"nome": "c", "tipo": "testo", "overwrite": [
+            {"everyone": True, "allow": discord.Permissions(manage_webhooks=True, view_channel=True).value, "deny": 0}
+        ]}],
+    }
+    kw_canale = {}
+
+    async def crea_testo(**kw):
+        kw_canale.update(kw)
+        return _Canale(500, kw["name"])
+
+    g.create_text_channel = crea_testo
+    await st.Caricatore(g, dati, {"ruoli", "canali"}).esegui()
+
+    everyone = g.default_role.edit.await_args.kwargs["permissions"]
+    assert not everyone.administrator and everyone.send_messages
+    assert all(not c.kwargs["permissions"].administrator for c in membri.edit.await_args_list)
+    assert [r for r in g.roles if r.name == "Nuovo"][0].permissions.administrator  # nuovo e senza membri: resta
+    ow = kw_canale["overwrites"][g.default_role]
+    assert ow.manage_webhooks is None and ow.view_channel is True
