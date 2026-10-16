@@ -394,6 +394,9 @@ class Caricatore:
     Applica una struttura a un server. `avanza(passo, fatti, totale)` salva lo
     stato (BKP-009) e restituisce True se è stato chiesto di annullare (BKP-010).
     `scarica(url)` legge un'immagine (emoji e sticker); `pausa` tra ban e membri.
+    `tetto`: il ruolo più alto di chi carica (None per l'owner del server). I ruoli
+    da lì in su non si modificano, non si spostano e non si danno: la gerarchia
+    vale per chi lancia il caricamento, non solo per il bot.
     """
 
     def __init__(
@@ -404,6 +407,7 @@ class Caricatore:
         avanza: Avanzamento = _niente,
         scarica: Callable[[str], Awaitable[bytes | None]] | None = None,
         pausa: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        tetto=None,
     ) -> None:
         self.guild = guild
         self.dati = dati
@@ -411,6 +415,7 @@ class Caricatore:
         self._avanza = avanza
         self._scarica = scarica
         self._pausa = pausa
+        self._tetto = tetto
         self.r = RiepilogoCaricamento()
         self._fatti = 0
         self._per_categoria: dict[int, int] = {}
@@ -444,6 +449,13 @@ class Caricatore:
         return self.r
 
     # ruoli ------------------------------------------------------------
+    def _sopra_il_tetto(self, ruolo) -> bool:
+        return self._tetto is not None and ruolo >= self._tetto
+
+    def _nota(self, testo: str) -> None:
+        if testo not in self.r.note:
+            self.r.note.append(testo)
+
     def _ruolo_per_nome(self, nome: str):
         return discord.utils.get(self.guild.roles, name=nome)
 
@@ -451,9 +463,7 @@ class Caricatore:
         """I permessi pericolosi restano solo se il ruolo li aveva già."""
         tolti = voluti.value & PERMESSI_PERICOLOSI & ~attuali.value
         if tolti:
-            nota = "permessi pericolosi (admin, gestione, ban…) non aggiunti a @everyone né a ruoli esistenti"
-            if nota not in self.r.note:
-                self.r.note.append(nota)
+            self._nota("permessi pericolosi (admin, gestione, ban…) non aggiunti a @everyone né a ruoli esistenti")
         return discord.Permissions(voluti.value & ~tolti)
 
     async def _ruoli(self) -> None:
@@ -475,6 +485,10 @@ class Caricatore:
             permessi = _permessi_consentiti(self.guild, discord.Permissions(dato.get("permessi", 0)))
             esistente = self._ruolo_per_nome(dato["nome"])
             try:
+                if esistente is not None and self._sopra_il_tetto(esistente):
+                    self.r.saltati += 1
+                    self._nota("ruoli pari o sopra il tuo ruolo più alto: non toccati")
+                    continue
                 if esistente is not None and not esistente.managed:
                     permessi = self._senza_nuovi_pericolosi(permessi, esistente.permissions)
                     if esistente.permissions != permessi:
@@ -494,6 +508,13 @@ class Caricatore:
                 ordine[nuovo] = indice
             except discord.HTTPException:
                 self.r.falliti += 1
+        if self._tetto is not None:
+            # Nessun ruolo portato all'altezza di chi carica o sopra.
+            alti = [r for r, p in ordine.items() if p >= self._tetto.position]
+            for r in alti:
+                del ordine[r]
+            if alti:
+                self._nota("alcuni ruoli lasciati sotto il tuo ruolo più alto")
         if ordine:
             try:
                 await self.guild.edit_role_positions(ordine, reason=MOTIVO)
@@ -704,11 +725,13 @@ class Caricatore:
             ruoli = [
                 r for r in (self._ruolo_per_nome(n) for n in dato.get("ruoli", []))
                 if r is not None and not r.managed and r < me.top_role and r not in membro.roles
+                and not self._sopra_il_tetto(r)
             ]
+            puo_nick = membro.top_role < me.top_role and not self._sopra_il_tetto(membro.top_role)
             try:
                 if ruoli:
                     await membro.add_roles(*ruoli, reason=MOTIVO)
-                if dato.get("nick") and membro.nick != dato["nick"] and membro.top_role < me.top_role:
+                if dato.get("nick") and membro.nick != dato["nick"] and puo_nick:
                     await membro.edit(nick=dato["nick"][:32], reason=MOTIVO)
                 self.r.riusati += 1
             except discord.HTTPException:

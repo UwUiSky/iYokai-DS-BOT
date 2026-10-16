@@ -1113,7 +1113,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   chiave ruotabile con prefisso di versione, cifrato legato a server e
   utente, riga rovinata saltata (LIM-52, SEC-16). Fatti il 15/10 (M 12.12,
   12.14): a fine verifica, in un server con backup, bottoni «Sì, avvisami /
-  No» (tabella `restore_consensi`) e, in modalità "OAuth alla verifica", il
+  No» (tabella `restore_consensi`; bottoni persistenti, anche nel DM e dopo
+  un riavvio) e, in modalità "OAuth alla verifica", il
   link OAuth di solo consenso; il restore manda DM solo a chi ha accettato
   o ha già un token
 - `[~]` 11.12 Comandi del gruppo `/backup` (D25, 15/10: il blocco intero
@@ -1133,7 +1134,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (al massimo 10 per server; a scelta ban, membri e gli ultimi 0-100
   messaggi di ogni canale), `lista`, `carica` (si scelgono le parti in un
   menu; si riusa per nome, tetti di 250 ruoli, 500 canali, 50 per
-  categoria, bitrate), `elimina`, `stato` e `annulla` (BKP-009/010);
+  categoria, bitrate; chi non è l'owner non modifica, non sposta e non dà
+  ruoli pari o sopra il suo più alto), `elimina`, `stato` e `annulla` (BKP-009/010);
   `esporta` in JSON o CSV di struttura, canali, ruoli, un canale, un
   ruolo, ban, reazioni (BKP-032…036); `importa` controlla il file prima di
   toccare il server (BKP-037); `chat-salva` (fino a 1000 messaggi) e

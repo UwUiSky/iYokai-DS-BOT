@@ -80,31 +80,48 @@ SETTING_AUTO_INVITE_ON_JOIN = "backup_auto_invite_on_join"
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
 
 
-class ConsensoRestoreView(BaseView):
-    """M 12.12: il membro sceglie se ricevere un DM quando il server va ripristinato."""
+class BottoneConsensoRestore(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"restore:consenso:(?P<g>[0-9]+):(?P<s>si|no)"
+):
+    """
+    M 12.12: il membro sceglie se ricevere un DM quando il server va ripristinato.
+    Persistente (custom_id fisso con il server, bot.add_dynamic_items in setup):
+    funziona anche dopo un riavvio e nel DM. Vale per chi clicca.
+    """
 
-    def __init__(self, guild_id: int, user_id: int) -> None:
-        super().__init__(timeout=900)
+    def __init__(self, guild_id: int, accetta: bool) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label="Sì, avvisami" if accetta else "No, grazie",
+                style=discord.ButtonStyle.success if accetta else discord.ButtonStyle.secondary,
+                custom_id=f"restore:consenso:{guild_id}:{'si' if accetta else 'no'}",
+            )
+        )
         self.guild_id = guild_id
-        self.user_id = user_id
+        self.accetta = accetta
 
-    @discord.ui.button(label="Sì, avvisami", style=discord.ButtonStyle.success)
-    async def accetta(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await restore_oauth_repo.salva_consenso(self.guild_id, self.user_id)
-        await interaction.response.edit_message(
-            content="✅ Se il server dovrà essere ripristinato riceverai un DM con il link per rientrare.",
-            view=None,
-        )
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["g"]), match["s"] == "si")
 
-    @discord.ui.button(label="No, grazie", style=discord.ButtonStyle.secondary)
-    async def rifiuta(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await restore_oauth_repo.ritira_consenso(self.guild_id, self.user_id)
-        await interaction.response.edit_message(
-            content="Va bene: in caso di ripristino non riceverai DM da questo server.", view=None
-        )
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if self.accetta:
+            await restore_oauth_repo.salva_consenso(self.guild_id, interaction.user.id)
+            testo = "✅ Se il server dovrà essere ripristinato riceverai un DM con il link per rientrare."
+        else:
+            await restore_oauth_repo.ritira_consenso(self.guild_id, interaction.user.id)
+            testo = "Va bene: in caso di ripristino non riceverai DM da questo server."
+        await interaction.response.edit_message(content=testo, view=None)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.user_id and await super().interaction_check(interaction)
+
+class ConsensoRestoreView(BaseView):
+    """I due bottoni persistenti del consenso (M 12.12)."""
+
+    def __init__(self, guild_id: int) -> None:
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        self.add_item(BottoneConsensoRestore(guild_id, True))
+        self.add_item(BottoneConsensoRestore(guild_id, False))
 
 
 async def proposta_consenso_restore(
@@ -140,7 +157,7 @@ async def proposta_consenso_restore(
             )
         except RestoreStateSigningError:
             logger.warning("Link OAuth di fine verifica non creato: OAUTH_ENCRYPTION_KEY non configurata.")
-    return testo, ConsensoRestoreView(guild_id, user_id)
+    return testo, ConsensoRestoreView(guild_id)
 
 
 class RestoreCog(CogConGruppi, commands.Cog):
@@ -537,4 +554,5 @@ class RestoreCog(CogConGruppi, commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
+    bot.add_dynamic_items(BottoneConsensoRestore)
     await bot.add_cog(RestoreCog(bot))

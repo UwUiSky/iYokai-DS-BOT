@@ -9,7 +9,7 @@ Giro r7 chiuso: 6 voci su 6 previste, più 12.16. Niente a metà. Prossimo giro,
 2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r7 (sincronia, caricamento in sottofondo).
 
 ## Fatto
-- r7 (15/10): `/backup` gruppo di primo livello (D25 terzo caso) + 12.12/12.14 consenso a fine verifica (1945d35, 0190);
+- r7 (15/10): `/backup` gruppo di primo livello (D25 quarto caso) + 12.12/12.14 consenso a fine verifica (1945d35, 0190);
   copie datate, carica con menu delle parti, stato/annullo, esporta/importa, modelli, permessi, registro (8b63130, 0191);
   sincronia ban/ruoli (001a4cb, 0192); copia-canale/ruolo (778ef1b); chat salvate, allegati come file, fissati (3f6f7d5);
   messaggi nella copia datata + registro di tutti i comandi (4310aa8); 12.16 invito rifiutato (1b7db69).

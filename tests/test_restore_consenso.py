@@ -14,7 +14,12 @@ import pytest
 
 import cogs.utility.restore as restore_module
 from cogs.security.verify import proponi_consenso_restore
-from cogs.utility.restore import ConsensoRestoreView, RestoreCog, proposta_consenso_restore
+from cogs.utility.restore import (
+    BottoneConsensoRestore,
+    ConsensoRestoreView,
+    RestoreCog,
+    proposta_consenso_restore,
+)
 from tests.test_restore_cog_behavior import (  # noqa: F401  (fixture database)
     CHIAVE_TEST,
     _FakeBot,
@@ -138,3 +143,35 @@ async def test_invito_classico_rifiutato_da_discord_si_spiega(ambiente):
     await cog.restore_users.callback(cog, interaction, "100")
     assert utente.messaggi_ricevuti == []
     assert "Invito non creato, utenti non contattati: 1" in interaction.followup.sent_messages[0][0]
+
+
+class _Clic:
+    """Interazione finta di un clic, dopo un riavvio: il bot non ha più la view."""
+
+    def __init__(self, user_id: int) -> None:
+        self.user = _Ogg(user_id)
+        self.modifiche = []
+        self.response = self
+
+    async def edit_message(self, **kw):
+        self.modifiche.append(kw)
+
+
+async def test_bottoni_del_consenso_persistenti_dopo_un_riavvio(ambiente):
+    """M 12.12: custom_id fissi con il server, nessun timeout; ricostruiti dal solo custom_id."""
+    _db, _s, oauth, backup = ambiente
+    await backup.define_main(100)
+    _testo, view = await proposta_consenso_restore(100, 1)
+    assert view.timeout is None
+    custom_id = [b.custom_id for b in view.children]
+    assert custom_id == ["restore:consenso:100:si", "restore:consenso:100:no"]
+
+    schema = BottoneConsensoRestore.__discord_ui_compiled_template__
+    clic = _Clic(1)
+    si = await BottoneConsensoRestore.from_custom_id(clic, None, schema.fullmatch(custom_id[0]))
+    await si.callback(clic)
+    assert await oauth.ha_consenso(100, 1)
+    assert clic.modifiche[0]["view"] is None
+    no = await BottoneConsensoRestore.from_custom_id(clic, None, schema.fullmatch(custom_id[1]))
+    await no.callback(clic)
+    assert not await oauth.ha_consenso(100, 1)

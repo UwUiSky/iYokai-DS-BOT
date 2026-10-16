@@ -404,3 +404,54 @@ async def test_permessi_pericolosi_non_si_aggiungono_a_everyone_ne_ai_ruoli_esis
     assert [r for r in g.roles if r.name == "Nuovo"][0].permissions.administrator  # nuovo e senza membri: resta
     ow = kw_canale["overwrites"][g.default_role]
     assert ow.manage_webhooks is None and ow.view_channel is True
+
+
+async def test_admin_non_tocca_ruoli_pari_o_sopra_il_suo():
+    """Livello «admin_tutto»: niente modifiche, spostamenti o assegnazioni dal ruolo di chi carica in su."""
+    mio = fake_role(5, "Mod", position=10)
+    sopra = fake_role(6, "Capo", position=20, permissions=discord.Permissions(send_messages=True))
+    sotto = fake_role(7, "Membri", position=3, permissions=discord.Permissions(send_messages=True))
+    g = _Guild(ruoli=[sotto, mio, sopra])
+    posizioni = {}
+
+    async def edit_role_positions(ordine, **kw):
+        posizioni.update(ordine)
+
+    g.edit_role_positions = edit_role_positions
+    ricevuti, nick = [], []
+
+    class _Membro:
+        roles = []
+
+        def __init__(self, top_role, nick_attuale=None):
+            self.top_role, self.nick = top_role, nick_attuale
+
+        async def add_roles(self, *ruoli, **kw):
+            ricevuti.extend(r.name for r in ruoli)
+
+        async def edit(self, **kw):
+            nick.append(kw["nick"])
+
+    g.membri = {1: _Membro(sotto), 2: _Membro(sopra)}
+    voluti = discord.Permissions(send_messages=True, embed_links=True).value
+    dati = {
+        "versione": 1,
+        "ruoli": [{"nome": f"r{i}", "permessi": 0, "posizione": i} for i in range(1, 13)]
+        + [{"nome": "Capo", "permessi": voluti, "posizione": 13}, {"nome": "Membri", "permessi": voluti, "posizione": 14},
+           {"nome": "Mod", "permessi": voluti, "posizione": 15}],
+        "membri": [{"user_id": 1, "nick": "A", "ruoli": ["Capo", "Mod", "Membri"]}, {"user_id": 2, "nick": "B", "ruoli": []}],
+    }
+    r = await st.Caricatore(g, dati, {"ruoli", "membri"}, pausa=_nessuna_pausa, tetto=mio).esegui()
+
+    sopra.edit.assert_not_awaited()
+    mio.edit.assert_not_awaited()
+    sotto.edit.assert_awaited()
+    assert sopra not in posizioni and mio not in posizioni and sotto not in posizioni
+    assert posizioni and max(posizioni.values()) < mio.position
+    assert ricevuti == ["Membri"] and nick == ["A"]
+    assert r.saltati == 2 and any("sopra il tuo ruolo" in n for n in r.note)
+
+    # Senza tetto (owner del server) gli stessi ruoli si toccano.
+    g2 = _Guild(ruoli=[fake_role(6, "Capo", position=20)])
+    await st.Caricatore(g2, {"versione": 1, "ruoli": [{"nome": "Capo", "permessi": voluti}]}, {"ruoli"}).esegui()
+    g2.roles[1].edit.assert_awaited()

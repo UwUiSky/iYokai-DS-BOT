@@ -117,7 +117,8 @@ async def test_menu_delle_parti_e_caricamento_con_riepilogo_nel_canale(ambiente,
     assert view.scelte == {"ruoli"}  # i ban non partono se non li scegli
 
     class _Caricatore:
-        def __init__(self, guild, dati, parti, avanza, scarica):
+        def __init__(self, guild, dati, parti, avanza, scarica, tetto):
+            assert tetto is None  # l'owner del server non ha tetto
             self.avanza = avanza
 
         async def esegui(self):
@@ -201,3 +202,15 @@ async def test_file_importato_non_assegna_ruoli_ai_membri(ambiente):
     view = i.followup.messaggi[0][1]["view"]
     assert "membri" not in view.dati
     assert "membri" not in [o.value for o in view.menu.options]
+
+
+def test_tetto_e_il_ruolo_piu_alto_di_chi_carica_salvo_l_owner():
+    """Al livello «admin_tutto» l'admin carica, ma non sopra il suo ruolo più alto."""
+    alto = SimpleNamespace(name="Mod")
+    i = _interazione(owner=False)
+    i.user.top_role = alto
+    i.guild.default_role = SimpleNamespace(name="@everyone")
+    assert backup_module.tetto_di(i) is alto
+    del i.user.top_role
+    assert backup_module.tetto_di(i) is i.guild.default_role
+    assert backup_module.tetto_di(_interazione(owner=True)) is None

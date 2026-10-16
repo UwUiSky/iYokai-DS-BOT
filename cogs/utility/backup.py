@@ -3,7 +3,8 @@ cogs/utility/backup.py
 ======================
 Gruppo /backup (D25): coppia main e backup (main, crea, collega, promuovi),
 copie datate della struttura (salva, lista, carica, elimina), stato e annullo
-del caricamento, esportazioni e importazione, livelli di permesso e registro; chat salvate (fino a 1000 messaggi) da ricaricare dopo.
+del caricamento (mai sopra il ruolo più alto di chi carica), esportazioni e
+importazione, chat salvate (fino a 1000 messaggi) da ricaricare dopo,
 modelli condivisibili con un codice e sincronia di ban e ruoli tra due server
 dello stesso owner (NF-39), copia di un canale o di un ruolo, livelli di
 permesso e registro.
@@ -77,6 +78,17 @@ async def registra_uso(guild_id: int, user_id: int, azione: str, dettaglio: str 
         await backup_struttura_repo.registra(guild_id, user_id, azione, dettaglio)
     except Exception:
         logger.warning("Registro del backup non scritto (%s, %s)", guild_id, azione, exc_info=True)
+
+
+def tetto_di(interaction: discord.Interaction):
+    """
+    Il ruolo più alto di chi carica: da lì in su il caricamento non tocca ruoli
+    (per l'owner del server None, nessun tetto). Senza ruoli leggibili, @everyone.
+    """
+    guild = interaction.guild
+    if interaction.user.id == guild.owner_id:
+        return None
+    return getattr(interaction.user, "top_role", None) or guild.default_role
 
 
 class ScegliPartiView(BaseView):
@@ -153,9 +165,12 @@ class BackupCog(CogConGruppi, commands.Cog):
     ) -> str:
         """Fa partire il caricamento di una struttura e restituisce il testo per chi l'ha chiesto."""
         guild = interaction.guild
+        tetto = tetto_di(interaction)
 
         async def lavoro(avanza):
-            caricatore = struttura.Caricatore(guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine)
+            caricatore = struttura.Caricatore(
+                guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine, tetto=tetto
+            )
             return await caricatore.esegui()
 
         return await self.avvia_lavoro(
