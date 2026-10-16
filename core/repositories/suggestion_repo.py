@@ -1,7 +1,8 @@
 """
 core/repositories/suggestion_repo.py
 =======================================
-Persistenza del Suggestion System (SPEC.md §14.14).
+Persistenza del Suggestion System (SPEC.md §14.14). Il motivo della
+decisione è in core/migrations/0232_suggerimenti_esito.sql.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from datetime import datetime
 
 import asyncpg
 
-from core.suggestion_logic import PENDING
+from core.suggestion_logic import APERTI, PENDING
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class Suggestion:
     decided_by: int | None
     decided_at: datetime | None
     created_at: datetime
+    decision_reason: str | None = None
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -70,6 +72,7 @@ class SuggestionRepository:
             decided_by=row["decided_by"],
             decided_at=row["decided_at"],
             created_at=row["created_at"],
+            decision_reason=row["decision_reason"],
         )
 
     async def create_suggestion(
@@ -103,25 +106,32 @@ class SuggestionRepository:
         return self._row_to_suggestion(row) if row is not None else None
 
     async def set_status(
-        self, suggestion_id: int, status: str, decided_by: int, decided_at: datetime
+        self,
+        suggestion_id: int,
+        status: str,
+        decided_by: int,
+        decided_at: datetime,
+        motivo: str | None = None,
     ) -> bool:
         """
-        Decide un suggerimento SOLO se è ancora in attesa (M 10.9): con due
-        membri dello staff che cliccano insieme ne vince uno, l'altro
-        riceve False. Una sola istruzione, nessuna lettura prima.
+        Decide un suggerimento SOLO se è ancora aperto (in attesa o in
+        valutazione, M 10.9): con due membri dello staff che cliccano
+        insieme ne vince uno, l'altro riceve False. Una sola istruzione,
+        nessuna lettura prima.
         """
         riga = await self._pool.fetchrow(
             """
             UPDATE suggestions
-            SET status = $2, decided_by = $3, decided_at = $4
-            WHERE id = $1 AND status = $5
+            SET status = $2, decided_by = $3, decided_at = $4, decision_reason = $6
+            WHERE id = $1 AND status = ANY($5::text[])
             RETURNING id
             """,
             suggestion_id,
             status,
             decided_by,
             decided_at,
-            PENDING,
+            list(APERTI),
+            motivo,
         )
         return riga is not None
 
@@ -131,7 +141,7 @@ class SuggestionRepository:
 
     async def list_pending(self, guild_id: int | None = None) -> list[Suggestion]:
         """
-        Le suggestion ancora in attesa — con guild_id=None, TUTTE
+        Le suggestion ancora aperte (in attesa o in valutazione) — con guild_id=None, TUTTE
         quelle di ogni server (usata all'avvio del bot per
         ricostruire le View persistenti dei bottoni approva/rifiuta,
         stesso principio già usato per i Role Menu: bot.add_view()
@@ -139,14 +149,14 @@ class SuggestionRepository:
         """
         if guild_id is None:
             rows = await self._pool.fetch(
-                "SELECT * FROM suggestions WHERE status = $1 AND message_id IS NOT NULL",
-                PENDING,
+                "SELECT * FROM suggestions WHERE status = ANY($1::text[]) AND message_id IS NOT NULL",
+                list(APERTI),
             )
         else:
             rows = await self._pool.fetch(
-                "SELECT * FROM suggestions WHERE guild_id = $1 AND status = $2",
+                "SELECT * FROM suggestions WHERE guild_id = $1 AND status = ANY($2::text[])",
                 guild_id,
-                PENDING,
+                list(APERTI),
             )
         return [self._row_to_suggestion(r) for r in rows]
 
