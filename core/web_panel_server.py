@@ -5,8 +5,9 @@ Il pannello web (iYokai Panel): accesso con Discord (OAuth2 `identify`,
 `state` legato al browser), sessioni nel database, permessi controllati
 a ogni richiesta, configurazione dei moduli, dei ruoli del bot e della
 lingua dai punti unici dei comandi (D16), storico, premium e wiki dei
-comandi. Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
-Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4 (NF-20, issue #91; NF-22, #93)
+comandi, verifica dei membri dalla pagina web (link firmato, impronte senza IP).
+Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
+Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -16,6 +17,7 @@ OAuth finto e un bot finto, senza rete.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import pathlib
 from datetime import datetime, timedelta, timezone
@@ -24,7 +26,7 @@ from itertools import groupby
 import jinja2
 from aiohttp import web
 
-from core import panel_bridge, web_panel_logic as regole
+from core import alt_detection_logic as verifica, panel_bridge, web_panel_logic as regole
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
@@ -308,6 +310,40 @@ def build_app(
             return rifiuto
         return _pagina(request, "premium.html", guild=guild, premium=await ponte.stato_premium(bot, guild))
 
+    # ------------------------------------------------- verifica (NF-21)
+    def _token_verifica(request: web.Request):
+        token = request.match_info["token"]
+        return token, verifica.leggi_token(chiave, token)
+
+    async def pagina_verifica(request: web.Request) -> web.Response:
+        if not limite_accesso.consenti(_ip(request)):
+            return _errore(request, 429, "Troppi tentativi", "Aspetta un minuto e riprova.")
+        token, chi = _token_verifica(request)
+        if chi is None:
+            return _errore(request, 400, "Link scaduto", "Il link vale 15 minuti: chiedine uno nuovo su Discord.")
+        nome, motivo = await ponte.pagina_verifica(bot, *chi)
+        if nome is None:
+            return _errore(request, 400, "Verifica non disponibile", motivo)
+        return _pagina(
+            request, "verifica.html", server_nome=nome, token=token,
+            campo=verifica.csrf_verifica(chiave, token), giorni=verifica.GIORNI_IMPRONTE,
+        )
+
+    async def conferma_verifica(request: web.Request) -> web.Response:
+        if not limite_accesso.consenti(_ip(request)):
+            return _errore(request, 429, "Troppi tentativi", "Aspetta un minuto e riprova.")
+        token, chi = _token_verifica(request)
+        form = await request.post()
+        if chi is None or not hmac.compare_digest(
+            verifica.csrf_verifica(chiave, token), str(form.get("campo", ""))
+        ):
+            return _errore(request, 400, "Link scaduto", "Il link vale 15 minuti: chiedine uno nuovo su Discord.")
+        riuscita, testo = await ponte.verifica_web(
+            bot, chiave, *chi, _ip(request),
+            request.headers.get("User-Agent"), request.headers.get("Accept-Language"),
+        )
+        return _pagina(request, "verifica_esito.html", riuscita=riuscita, testo=testo)
+
     # -------------------------------------------------------------- wiki
     async def wiki(request: web.Request) -> web.Response:
         q = request.query.get("q", "").strip()[:100]
@@ -335,6 +371,8 @@ def build_app(
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/lingua", salva_lingua)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/storico", pagina_storico)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/premium", pagina_premium)
+    app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)
+    app.router.add_post(r"/verifica/{token:[0-9a-f\-]{1,200}}", conferma_verifica)
     app.router.add_get("/wiki", wiki)
     app.router.add_get(r"/wiki/{percorso:[a-z0-9_\-/]{1,120}}", wiki_comando)
     return app

@@ -7,7 +7,9 @@ permessi a ogni richiesta e scrive SOLO dai punti unici dei comandi
 (D16: `core.config_schema`, `core.command_access.imposta_ruolo`).
 Le cache del database si svuotano a ogni scrittura: il bot vede subito
 il cambio, senza riavvio.
-Funzioni coperte: SPEC §24.1–24.4, §24.7 (NF-20, issue #91; NF-22, #93)
+La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
+stessi controlli e ruoli del bottone di verifica.
+Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92)
 """
 
 from __future__ import annotations
@@ -26,12 +28,15 @@ from core.command_access import (
     imposta_ruolo,
     leggi_ruolo,
 )
+from core import alt_detection_logic as doppi_logica
 from core.command_search_logic import ComandoInfo, raccogli_comandi
 from core.config import config
 from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida, imposta_lingua_server, imposta_modulo
 from core.database import db
 from core.premium import registry
+from core.repositories.fingerprint_repo import fingerprint_repo
+from core.web_panel_logic import pannello_configurato
 
 logger = logging.getLogger("iyokai.panel_bridge")
 
@@ -213,3 +218,68 @@ async def applica_ruolo(guild: discord.Guild, tipo_nome: str, ruolo_id: int | No
         raise
     except ValueError as errore:
         raise ImpostazioneNonValida(str(errore)) from None
+
+
+# ------------------------------------------------------- verifica web (NF-21)
+METODO_WEB = "web"
+MODULO_VERIFY = "verify"
+
+
+def link_verifica_web(guild_id: int, user_id: int) -> str | None:
+    """Il link personale della verifica web, o None se il pannello non è acceso."""
+    if not pannello_configurato(
+        config.OAUTH2_CLIENT_ID, config.OAUTH2_CLIENT_SECRET, config.WEB_PANEL_SECRET_KEY, config.WEB_PANEL_PUBLIC_URL
+    ):
+        return None
+    token = doppi_logica.crea_token(config.WEB_PANEL_SECRET_KEY, guild_id, user_id)
+    return doppi_logica.url_verifica(config.WEB_PANEL_PUBLIC_URL, token)
+
+
+async def _verifica_aperta(bot, guild_id: int, user_id: int):
+    """(server, membro) se il server usa la verifica web e il membro c'è; altrimenti (None, motivo)."""
+    from core.repositories.verify_repo import verify_repo
+
+    guild = bot.get_guild(guild_id)
+    if guild is None:
+        return None, "Il bot non è più in questo server."
+    if not await db.is_module_active_for_guild(guild_id, MODULO_VERIFY):
+        return None, "La verifica non è attiva in questo server."
+    if (await verify_repo.get_config(guild_id)).method != METODO_WEB:
+        return None, "Questo server non usa più la verifica dalla pagina web: torna su Discord."
+    membro = await _membro(guild, user_id, chiedi_a_discord=True)
+    if membro is None:
+        return None, "Non sei (più) in questo server."
+    return (guild, membro), None
+
+
+async def pagina_verifica(bot, guild_id: int, user_id: int) -> tuple[str | None, str | None]:
+    """(nome del server, None) se la verifica si può fare, altrimenti (None, motivo)."""
+    trovato, motivo = await _verifica_aperta(bot, guild_id, user_id)
+    return (trovato[0].name, None) if trovato else (None, motivo)
+
+
+async def verifica_web(
+    bot, chiave: str, guild_id: int, user_id: int, ip: str, user_agent: str | None, lingua: str | None
+) -> tuple[bool, str]:
+    """
+    La verifica dalla pagina: salva le impronte (mai l'IP), cerca i doppi nello
+    stesso server e li segnala allo staff (nessun ban automatico), poi gli
+    stessi controlli e ruoli del bottone di verifica. (riuscita, testo).
+    """
+    trovato, motivo = await _verifica_aperta(bot, guild_id, user_id)
+    if trovato is None:
+        return False, motivo
+    guild, membro = trovato
+    cog = bot.get_cog("VerifyCog")
+    if cog is None:
+        return False, "La verifica non è disponibile in questo momento. Riprova tra poco."
+    impronte = doppi_logica.impronte_richiesta(chiave, guild_id, ip, user_agent, lingua)
+    uguali = await fingerprint_repo.registra(guild_id, user_id, impronte)
+    doppi = doppi_logica.valuta_doppi(uguali, user_id)
+    if doppi:
+        from cogs.security.alt_detection import avvisa_staff
+
+        await fingerprint_repo.salva_doppi(guild_id, user_id, [(d.altro_user_id, d.livello) for d in doppi])
+        await avvisa_staff(guild, membro, doppi)
+    esito = await cog.run_checks_and_finalize(guild, membro, captcha_ok=True)
+    return esito.success, esito.reason

@@ -110,6 +110,7 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #83 | NF-12 rank card: mancava lo sfondo con immagine propria | `/level rank sfondo:` (0202, tabella `rank_card_sfondi`): `safe_open_image` + ritaglio e JPEG ≤ 256 KiB in `run_image_task`; pannello velato; `/level impostazioni card` lo spegne per server | ramo feat/r7liv | 15/10 |
 | #111 (residuo) | NF-40: profilo solo come embed, sfondo solo colore | `/level profilo` disegnato come immagine (`render_profile_card`) con lo sfondo con immagine; embed di riserva | ramo feat/r7liv | 15/10 |
 | #65 | Ultime voci M 9.18 (PERF-4 nel tick vocale delle gilde: ~6 query a persona) e M 9.19 (= NF-12, NF-15) | `get_membri_in_gilda`, `apply_ticks` e `clear_activities` raggruppati; ore, XP e tesoreria sommate per clan; test che conta le scritture | ramo feat/r7liv | 15/10 |
+| #92 | NF-21 verifica su web e account doppi | `/security verify setup method:Pagina web`: link firmato di 15 minuti alla pagina `/verifica/…` del pannello; impronte HMAC con sale e id del server (mai l'IP, 30 giorni, 0210), doppi solo nello stesso server, avviso allo staff senza ban, `/security alt elenco` | ramo feat/r8web | 16/10 |
 
 ## Parziali (issue ancora aperte, voci già fatte)
 

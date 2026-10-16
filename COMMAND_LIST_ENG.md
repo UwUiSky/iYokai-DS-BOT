@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 10:03 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 491 commands in 22 categories.**
+**Total: 492 commands in 22 categories.**
 
 ## Admin
 
@@ -462,6 +462,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 
 ## Security
 
+- **`/security alt list`** — Duplicate accounts found by web verification.
 - **`/security escalation disable`** — Turns the escalation ladder off.
 - **`/security escalation enable`** — Turns the escalation ladder on.
 - **`/security escalation remove-step`** — Removes a step from the custom ladder.

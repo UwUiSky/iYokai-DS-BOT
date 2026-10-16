@@ -287,19 +287,19 @@ Totale voci: **494**.
     (durante lo sviluppo di Spam Trap §7.3, che ne aveva bisogno per
     primo)
     → **Stato 04/10:** attribuzione sbagliata con ingressi simultanei; scarica gli inviti di tutti i server (LC-6).
-- `[ ]` 4.2 Verify Avanzato (richiede Web Panel) — non tentato,
-  dipendenza non costruita
-  → **Stato 04/10:** in piano: NF-21, fase F10.
-  - `[ ]` Raccolta IP / ISP / localizzazione
-  - `[ ]` Browser fingerprint / device fingerprint
-  - `[ ]` OAuth2 scope `identify`
-  - `[ ]` Salvataggio fingerprint (hash, mai IP in chiaro)
-- `[ ]` 4.3 Sistema Anti-Alt — dipende da §4.2, non costruito
-  → **Stato 04/10:** in piano: NF-21, fase F10.
-  - `[ ]` Database fingerprint
-  - `[ ]` Match → segnalazione allo staff (NON ban automatico
-    cross-server; vedi § Decisioni)
-  - `[ ]` Rilevamento pattern sospetti
+- `[~]` 4.2 Verify Avanzato — modalità «Pagina web» di `/security verify setup` (NF-21, #92)
+  → **Stato 16/10 (r8):** fatto. Il bottone dà un link personale firmato (15 minuti) alla pagina
+  `/verifica/…` del pannello; lì gli stessi controlli e ruoli del bottone (`core/panel_bridge.py`).
+  - `[x]` Impronta della rete (IPv4, /64 per IPv6): HMAC con sale segreto e id del server, mai l'IP
+  - `[x]` Impronta del browser (User-Agent e lingua), stesso HMAC
+  - `[~]` OAuth2 `identify`: non serve, il link è legato al membro dal bot (firma)
+  - `[ ]` ISP / localizzazione: non raccolti (privacy, D19)
+  - `[x]` Salvataggio: `verify_impronte` (0210), 30 giorni, nel registro dei dati
+- `[x]` 4.3 Sistema Anti-Alt — NF-21 (#92), solo nello stesso server
+  - `[x]` Database delle impronte e dei doppi (`verify_doppi`, 90 giorni)
+  - `[x]` Match → avviso allo staff nel log della verifica, NESSUN ban automatico;
+    `/security alt elenco`
+  - `[x]` Livello: stessa rete = medio, stessa rete e stesso browser = alto
 - `[x]` 4.4 Whitelist utenti — bypassa tutti i controlli, verificato
   che vinca anche in combinazione con la blacklist (vedi 4.5)
 - `[x]` 4.5 Blacklist utenti — **vince sempre**, anche su un utente

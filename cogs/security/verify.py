@@ -39,10 +39,11 @@ gli altri ricevono subito i ruoli).
 A verifica riuscita, in un server con backup, la proposta di consenso al
 ripristino (M 12.12/12.14, `proponi_consenso_restore`).
 
-Fuori scope, dichiarato: §4.2 (Verify Avanzato, fingerprint IP/ISP)
-e §4.3 (Anti-Alt) dipendono dal Web Panel (SPEC.md §C), non
-costruito — non tentati qui.
-Funzioni coperte: SPEC §4.1, §4.4-§4.6 (VER-008…016, 029–031)
+Modalità «Pagina web» (NF-21, §4.2–4.3): il bottone dà un link personale
+alla pagina di verifica del pannello web; lì il bot salva un'impronta (mai
+l'IP in chiaro) e avvisa lo staff se trova un account doppio
+(`core/panel_bridge.py`, `cogs/security/alt_detection.py`).
+Funzioni coperte: SPEC §4.1–§4.6 (VER-008…016, 029–031; NF-21)
 """
 
 from __future__ import annotations
@@ -58,6 +59,7 @@ from discord.ext import commands
 
 from core import captcha_image
 from core.bounded_cache import BoundedCache
+from core.panel_bridge import METODO_WEB, link_verifica_web
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
@@ -242,6 +244,14 @@ class VerifyPanelView(BaseView):
         await avvia_verifica(interaction)
 
 
+class LinkVerificaView(BaseView):
+    """Un solo bottone-link verso la pagina di verifica (NF-21)."""
+
+    def __init__(self, link: str) -> None:
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(label="Verificami sul sito", url=link, style=discord.ButtonStyle.link))
+
+
 async def proponi_consenso_restore(invia, guild: discord.Guild, member: discord.Member, outcome) -> None:
     """
     M 12.12/12.14: a verifica riuscita, la proposta di consenso per il ripristino
@@ -297,6 +307,21 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
         r.id == config.verified_role_id for r in interaction.user.roles
     ):
         await interaction.response.send_message("You are already verified.", ephemeral=True)
+        return
+    if config.method == METODO_WEB:
+        link = link_verifica_web(guild.id, interaction.user.id)
+        if link is None:
+            await interaction.response.send_message(
+                "La verifica dalla pagina web non è disponibile: il pannello web del bot è spento. "
+                "Avvisa lo staff del server.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.send_message(
+            "Apri il link e premi «Verificami». Il link è solo tuo e vale 15 minuti.",
+            view=LinkVerificaView(link),
+            ephemeral=True,
+        )
         return
     if config.captcha_enabled and await db.get_guild_setting(
         guild.id, SETTING_CAPTCHA_TIPO, captcha_image.TIPO_TESTO
@@ -581,7 +606,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
-        method="Modalità: bottone (supporta captcha) o reazione",
+        method="Modalità: bottone (supporta captcha), reazione o pagina web (riconosce gli account doppi)",
         verified_role="Ruolo da assegnare dopo la verifica",
         min_account_age_days="Età minima dell'account in giorni (0 = disattivato)",
         min_mutual_servers="Server in comune minimi richiesti (0 = disattivato)",
@@ -593,6 +618,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         method=[
             app_commands.Choice(name="Button", value="button"),
             app_commands.Choice(name="Reaction", value="reaction"),
+            app_commands.Choice(name="Pagina web", value=METODO_WEB),
         ],
         captcha_tipo=[
             app_commands.Choice(name="Somma scritta", value=captcha_image.TIPO_TESTO),
@@ -625,6 +651,20 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 "Il captcha non è supportato in modalità reaction: una "
                 "reazione non può aprire una finestra di verifica. Usa la "
                 "modalità Button se vuoi il captcha.",
+                ephemeral=True,
+            )
+            return
+        if method.value == METODO_WEB and captcha_enabled:
+            await interaction.response.send_message(
+                "La pagina web sostituisce il captcha: scegli la pagina web senza captcha, "
+                "oppure il bottone con il captcha.",
+                ephemeral=True,
+            )
+            return
+        if method.value == METODO_WEB and link_verifica_web(interaction.guild.id, interaction.user.id) is None:
+            await interaction.response.send_message(
+                "La verifica dalla pagina web richiede il pannello web del bot acceso: per ora non lo è. "
+                "Scegli il bottone o la reazione.",
                 ephemeral=True,
             )
             return
@@ -681,12 +721,12 @@ class VerifyCog(CogConGruppi, commands.Cog):
         embed = discord.Embed(
             title="✅ Server Verification",
             description="Click the button below to verify and gain access to the server."
-            if config.method == "button"
+            if config.method in ("button", METODO_WEB)
             else f"React with {VERIFY_REACTION_EMOJI} to verify and gain access to the server.",
             color=discord.Color.blurple(),
         )
 
-        if config.method == "button":
+        if config.method in ("button", METODO_WEB):
             await interaction.response.send_message(embed=embed, view=VerifyPanelView())
             sent = await interaction.original_response()
         else:

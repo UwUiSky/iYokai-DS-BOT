@@ -1057,3 +1057,10 @@ Serve: Logging Avanzato acceso, un canale log, il bot con «Visualizzare il regi
 - [ ] `LOG-017` — `/log eventi`: il menu mostra 24 eventi tutti accesi. Togli «Ingressi nel server» e conferma: un ingresso non compare più nel canale (ma resta in `/log cerca utente`). «Predefinito» spegne solo «Microfono e audio spenti da soli»; «Niente» spegne tutto; «Tutto» riaccende. Un altro moderatore non può usare il menu aperto da te.
 - [ ] `LOG-027/030` — cancella due messaggi in #generale, poi `/log archivio-canale canale:#generale messaggi:500`: arriva un file `.txt` con i messaggi in ordine di tempo e i due cancellati segnati `[cancellato]`. Con un account che non vede #generale il comando dice «Non puoi leggere la cronologia». Con 20.000 messaggi arrivano più file, ognuno sotto i 10 MiB.
 - [ ] `§18.1` — `/log canale` non cambia il mod-log: un warn scrive il caso nel mod-log di sempre; cancella il canale del mod-log e dai un altro warn: il proprietario riceve **un** DM di avviso, non uno per caso. Stesso per il canale dei log dell'AutoMod.
+
+## Pannello web e verifica — giro r8 (#92, #148, #109, #122)
+Servono il pannello acceso (vedi giro r6) e due account Discord sulla stessa rete di casa.
+
+- [ ] `NF-21` verifica web — `/security verify setup method:Pagina web verified_role:@Verificato log_channel:#log`; con il pannello spento il comando dice che serve il pannello. `/security verify panel`, poi da un account nuovo «Verify»: arriva un messaggio effimero con «Verificami sul sito». Il link apre la pagina con il nome del server e la nota sulla privacy; «Verificami» dà «Verifica riuscita» e il ruolo. Dopo 15 minuti lo stesso link dice «Link scaduto».
+- [ ] `NF-21` doppi — ripeti con il secondo account dallo stesso browser: in #log arriva «Possibile account doppio» con i due id, livello **alto**, senza ping; nessuno viene bannato. `/security alt elenco` mostra la coppia. Da un telefono su rete mobile nessun avviso.
+- [ ] `NF-21` privacy — in `verify_impronte` ci sono solo impronte esadecimali, nessun IP; `/utility privacy cancella` toglie anche queste righe.

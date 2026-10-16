@@ -682,6 +682,8 @@
   "owner system shell": "Runs a shell command (with confirmation).",
   "owner system stats": "Global bot statistics.",
   "security": "Security: anti-raid, anti-nuke, verification, global ban",
+  "security alt": "Duplicate accounts found by web verification.",
+  "security alt elenco": "Duplicate accounts found by web verification.",
   "security escalation": "Sanction escalation ladder.",
   "security escalation disable": "Turns the escalation ladder off.",
   "security escalation enable": "Turns the escalation ladder on.",

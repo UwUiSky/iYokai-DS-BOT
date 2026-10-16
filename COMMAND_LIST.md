@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 10:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 491 comandi in 22 categorie.**
+**Totale: 492 comandi in 22 categorie.**
 
 ## Admin
 
@@ -462,6 +462,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 
 ## Sicurezza
 
+- **`/security alt elenco`** — Gli account doppi trovati dalla verifica web.
 - **`/security escalation disable`** — Disattiva l'escalation ladder.
 - **`/security escalation enable`** — Attiva l'escalation ladder.
 - **`/security escalation remove-step`** — Rimuove un livello dalla scala personalizzata.
