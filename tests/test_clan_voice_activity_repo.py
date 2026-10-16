@@ -8,10 +8,20 @@ from datetime import date, timedelta
 
 import pytest
 
+from core.guild_clan_logic import compute_tick_reward
 from core.repositories.clan_voice_activity_repo import ClanVoiceActivityRepository
 
 OGGI = date(2026, 9, 23)
 IERI = OGGI - timedelta(days=1)
+
+
+async def _tick(repo, clan_id, user_id, channel_id, today):
+    """Un tick solo, con il metodo raggruppato del worker."""
+    return (await repo.apply_ticks([(clan_id, user_id, channel_id)], today))[0]
+
+
+async def _esci(repo, clan_id, user_id):
+    await repo.clear_activities([(clan_id, user_id)])
 
 
 @pytest.fixture
@@ -21,7 +31,7 @@ def repo(clean_db):
 
 @pytest.mark.asyncio
 async def test_primo_tick_in_assoluto_tasso_pieno(repo):
-    xp, coin = await repo.apply_tick(clan_id=1, user_id=1, channel_id=500, today=OGGI)
+    xp, coin = await _tick(repo, clan_id=1, user_id=1, channel_id=500, today=OGGI)
 
     assert xp == 10
     assert coin == 4
@@ -29,8 +39,8 @@ async def test_primo_tick_in_assoluto_tasso_pieno(repo):
 
 @pytest.mark.asyncio
 async def test_secondo_tick_stesso_canale_stato_persistito(repo):
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
 
     attivita = await repo.get_activity(1, 1)
     assert attivita.current_channel_id == 500
@@ -41,11 +51,11 @@ async def test_secondo_tick_stesso_canale_stato_persistito(repo):
 @pytest.mark.asyncio
 async def test_decadimento_dopo_novanta_tick_nello_stesso_canale(repo):
     for _ in range(90):
-        await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+        await _tick(repo, 1, 1, channel_id=500, today=OGGI)
 
     # Il tick numero 91 legge "90 tick nello stesso canale" prima di
     # questo tick - fattore di decadimento 0.5 (90/180).
-    xp, coin = await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+    xp, coin = await _tick(repo, 1, 1, channel_id=500, today=OGGI)
 
     assert xp == 5  # 10 * 0.5
     assert coin == 2  # 4 * 0.5
@@ -54,11 +64,11 @@ async def test_decadimento_dopo_novanta_tick_nello_stesso_canale(repo):
 @pytest.mark.asyncio
 async def test_cambio_canale_azzera_il_decadimento(repo):
     for _ in range(90):
-        await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+        await _tick(repo, 1, 1, channel_id=500, today=OGGI)
 
     # Cambio canale: il decadimento riparte da zero, tasso pieno,
     # anche se ticks_today continua ad accumularsi.
-    xp, coin = await repo.apply_tick(1, 1, channel_id=999, today=OGGI)
+    xp, coin = await _tick(repo, 1, 1, channel_id=999, today=OGGI)
 
     assert xp == 10
     assert coin == 4
@@ -75,31 +85,31 @@ async def test_tetto_giornaliero_azzera_il_guadagno(repo):
     # l'effetto del tetto giornaliero - 720 tick PIENI (il tetto),
     # il tick numero 721 deve leggere ticks_today_prima=720 e dare zero.
     for i in range(720):
-        await repo.apply_tick(1, 1, channel_id=500 + (i % 2), today=OGGI)
+        await _tick(repo, 1, 1, channel_id=500 + (i % 2), today=OGGI)
 
-    xp, coin = await repo.apply_tick(1, 1, channel_id=999999, today=OGGI)
+    xp, coin = await _tick(repo, 1, 1, channel_id=999999, today=OGGI)
 
     assert (xp, coin) == (0, 0)
 
 
 @pytest.mark.asyncio
 async def test_giorno_diverso_azzera_il_tetto_giornaliero(repo):
-    xp_ieri, coin_ieri = await repo.apply_tick(1, 1, channel_id=500, today=IERI)
+    xp_ieri, coin_ieri = await _tick(repo, 1, 1, channel_id=500, today=IERI)
     assert (xp_ieri, coin_ieri) != (0, 0)  # tasso pieno per il primo tick di ieri
 
     # Oggi è un giorno diverso: ticks_today deve ripartire da zero,
     # tasso pieno indipendentemente da quanto accumulato ieri.
-    xp_oggi, coin_oggi = await repo.apply_tick(1, 1, channel_id=999, today=OGGI)
+    xp_oggi, coin_oggi = await _tick(repo, 1, 1, channel_id=999, today=OGGI)
     assert xp_oggi == 10
     assert coin_oggi == 4
 
 
 @pytest.mark.asyncio
 async def test_clear_activity_azzera_canale_e_decadimento(repo):
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
 
-    await repo.clear_activity(1, 1)
+    await _esci(repo, 1, 1)
 
     attivita = await repo.get_activity(1, 1)
     assert attivita.current_channel_id is None
@@ -108,9 +118,9 @@ async def test_clear_activity_azzera_canale_e_decadimento(repo):
 
 @pytest.mark.asyncio
 async def test_clear_activity_non_tocca_ticks_today(repo):
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
 
-    await repo.clear_activity(1, 1)
+    await _esci(repo, 1, 1)
 
     # Il tetto giornaliero resta valido finché non cambia il giorno -
     # uscire dal vocale non deve "regalare" ticks_today azzerati.
@@ -119,8 +129,8 @@ async def test_clear_activity_non_tocca_ticks_today(repo):
 
 @pytest.mark.asyncio
 async def test_clan_diversi_non_si_influenzano(repo):
-    await repo.apply_tick(clan_id=1, user_id=1, channel_id=500, today=OGGI)
-    await repo.apply_tick(clan_id=2, user_id=1, channel_id=500, today=OGGI)
+    await _tick(repo, clan_id=1, user_id=1, channel_id=500, today=OGGI)
+    await _tick(repo, clan_id=2, user_id=1, channel_id=500, today=OGGI)
 
     attivita_clan1 = await repo.get_activity(1, 1)
     attivita_clan2 = await repo.get_activity(2, 1)
@@ -130,8 +140,8 @@ async def test_clan_diversi_non_si_influenzano(repo):
 
 @pytest.mark.asyncio
 async def test_get_tracked_as_in_voice(repo):
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
-    await repo.apply_tick(2, 5, channel_id=600, today=OGGI)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
+    await _tick(repo, 2, 5, channel_id=600, today=OGGI)
 
     tracciati = await repo.get_tracked_as_in_voice()
 
@@ -140,7 +150,30 @@ async def test_get_tracked_as_in_voice(repo):
 
 @pytest.mark.asyncio
 async def test_get_tracked_as_in_voice_esclude_chi_e_stato_ripulito(repo):
-    await repo.apply_tick(1, 1, channel_id=500, today=OGGI)
-    await repo.clear_activity(1, 1)
+    await _tick(repo, 1, 1, channel_id=500, today=OGGI)
+    await _esci(repo, 1, 1)
 
     assert await repo.get_tracked_as_in_voice() == []
+
+
+@pytest.mark.asyncio
+async def test_tick_raggruppati_uguali_ai_tick_uno_per_uno(repo):
+    """M 9.18: più persone nella stessa transazione, ognuna con il suo stato."""
+    for _ in range(3):
+        await _tick(repo, 1, 1, channel_id=500, today=OGGI)
+    insieme = await repo.apply_ticks([(1, 1, 500), (1, 2, 500), (2, 3, 600)], OGGI)
+
+    assert insieme[0] == compute_tick_reward(ticks_in_same_channel=3, ticks_today=3)
+    assert insieme[1] == insieme[2]  # due persone al primo tick: stessa ricompensa
+    assert (await repo.get_activity(1, 1)).ticks_today == 4
+    assert (await repo.get_activity(1, 2)).ticks_today == 1
+
+
+@pytest.mark.asyncio
+async def test_uscita_raggruppata_ripulisce_solo_le_coppie_date(repo):
+    await repo.apply_ticks([(1, 1, 500), (1, 2, 500), (2, 3, 600)], OGGI)
+
+    await repo.clear_activities([(1, 1), (2, 3)])
+
+    assert await repo.get_tracked_as_in_voice() == [(1, 2)]
+    await repo.clear_activities([])

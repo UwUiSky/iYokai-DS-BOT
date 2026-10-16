@@ -2,7 +2,7 @@
 
 Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 484 commands in 22 categories.**
+**Total: 491 commands in 22 categories.**
 
 ## Admin
 
@@ -251,6 +251,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/management ticket setup`** — Sets the category (and optionally the support role) for tickets.
 - **`/management ticket stats`** — Ticket system statistics.
 - **`/management voice cap`** — Sets the maximum number of temporary voice channels per category.
+- **`/management voice options`** — Name of new channels, channels born locked, log channel.
 - **`/management voice panel`** — Publishes the panel to create a voice channel by hand.
 - **`/management voice platforms`** — Sets the PC/Console/Mobile info roles for temporary voice channels.
 - **`/management voice setup`** — Sets the generator channel and category for temporary voice channels.
@@ -271,6 +272,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).
 - **`/level collection shop`** — Shows badges and backgrounds on sale and the ones you own.
+- **`/level cooldowns`** — When you can use daily and work again.
 - **`/level daily`** — Claims the daily reward.
 - **`/level invites leaderboard`** — The 10 members who invited the most people.
 - **`/level invites user`** — How many people a member invited.
@@ -278,7 +280,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/level pay`** — Transfers coins to another user.
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
+- **`/level recent-levels`** — The last 25 level-ups in the server.
+- **`/level rewards`** — Shows level reward roles and active XP multipliers.
 - **`/level settings announcement`** — Where and when to announce level-ups.
+- **`/level settings card`** — Shows or hides image backgrounds of cards and profiles in this server.
 - **`/level settings exclude`** — A channel, category or role gives no XP (repeat to undo).
 - **`/level settings multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
 - **`/level settings rewards`** — Reward roles: keep them all or only the highest.
@@ -546,10 +551,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/voice claim`** — Takes the channel if the owner is gone.
 - **`/voice deny`** — Forbids a user from joining the channel.
 - **`/voice hide`** — Hides or shows the channel to people who are not in it.
+- **`/voice invite`** — Sends a user an invite to your channel.
 - **`/voice kick`** — Kicks a user from your channel.
 - **`/voice limit`** — Sets the channel's user limit.
 - **`/voice lock`** — Locks the channel (no new joins).
 - **`/voice permit`** — Lets a user join even if the channel is locked.
 - **`/voice rename`** — Renames your voice channel.
+- **`/voice status`** — Writes what you are doing in the channel (empty: removes it).
 - **`/voice transfer`** — Transfers the channel's ownership.
 - **`/voice unlock`** — Unlocks the channel.

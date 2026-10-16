@@ -528,7 +528,14 @@ chiudere.
 - [ ] Vocali temporanei (#144) — passi:
   1. Da proprietario non staff di un vocale temporaneo, `/voice kick` su un admin e su un moderatore: rifiutato con messaggio chiaro; su un membro normale: espulso.
   2. Imposta a mano `Connetti = consentito` per @everyone su un vocale temporaneo, `/voice lock` poi `/voice unlock`: torna `consentito`, gli altri permessi non cambiano.
+  3. `/voice lock`, riavvia il bot, `/voice unlock`: torna il valore di prima (`consentito`).
   Risultato atteso: nessun permesso perso.
+- [ ] `VOC-007/008/011/012/015/018` (#127) — passi:
+  1. `/gestione voice opzioni nome:Stanza {numero} · {utente} chiusi:True registro:#log-vocali`; entra due volte nel generatore con due account: nascono «Stanza 1 · …» e «Stanza 2 · …», bloccati (il proprietario entra). Nel registro compaiono le creazioni.
+  2. Nel canale, `/voice stato testo:Ranked`: lo stato compare sotto il nome (serve il permesso «Impostare lo stato del canale vocale»); `/voice stato` senza testo lo toglie.
+  3. `/voice invita member:@B`: B riceve in DM un invito monouso e riesce a entrare nonostante il blocco. Con i DM chiusi il link compare a chi invita.
+  4. `/voice unlock`, `/voice kick`, chiusura del canale: ogni azione ha la sua riga nel registro, senza menzioni che suonano.
+  Risultato atteso: numeri riusati quando una stanza si chiude; nessun errore nel log.
 - [ ] Ordine dei comandi (D24) — passi:
   1. Scrivi `/` nel server di prova e guarda l'ordine dei comandi di iYokai (anche aprendo solo l'icona dell'app).
   2. Segna dove stanno `/cerca-comando` e `/chiedi` rispetto agli altri.
@@ -660,6 +667,16 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   2. Con `premi modo:Sostituisci`, metti il ruolo-premio del livello alto sopra il ruolo del bot e fai salire un membro.
   Risultato atteso: nella categoria nessun XP (né per la gilda); il membro tiene il ruolo-premio vecchio perché il nuovo non è assegnabile.
 - [ ] `NF-12` bis (#83) — `/level rank` con un nome pieno di emoji: la card mostra il nome senza quadrati vuoti.
+- [ ] `NF-12` sfondo (#83) — passi:
+  1. `/level rank sfondo:<una foto grande, anche 4000x3000>`: la card mostra la foto, ritagliata al centro, con il pannello velato sopra; il testo si legge.
+  2. `/level rank sfondo:<un PDF>` e `sfondo:<un'immagine oltre 8 MB>`: messaggio d'errore privato, niente salvato.
+  3. Da admin `/level impostazioni card sfondi:No`, poi `/level rank` e `/level profilo`: solo colore e tema. `sfondi:Sì` per tornare.
+  4. `/level rank reimposta:True`: lo sfondo sparisce da card e profilo.
+  Risultato atteso: risposta sempre entro pochi secondi, nessun errore nel log.
+- [ ] **Scelta da confermare (owner)** — `NF-12` sfondo con immagine propria per **tutti**, non solo premium (SPEC 22.8 diceva premium).
+  Motivo: un'immagine ridotta (≤ 256 KiB) costa poco; MEE6 la fa pagare. Freno: l'admin la spegne nel suo server con
+  `/level impostazioni card sfondi:No` (al posto della segnalazione LIV-057). Da confermare: va bene per tutti con l'interruttore
+  dell'admin, oppure la si lega al premium del server?
 
 
 ## Moderazione — passaggio `feat/giro-mod` (#138)
@@ -875,6 +892,12 @@ Servono: un server di prova con iYokai, un account admin, due account senza perm
   1. `/fun conteggio azione:Scegli il canale canale:#conta`.
   2. Con due account scrivete a turno 1, 2, 3; poi lo stesso account scrive due numeri di fila; poi un numero sbagliato; poi una frase qualsiasi.
   Risultato atteso: ✅ sui numeri giusti; ❌ e messaggio «ha rovinato tutto» sul doppio turno e sul numero sbagliato, con ripartenza da 1; le frasi non fanno nulla. `/fun conteggio azione:Stato` mostra ultimo numero e record. Dopo `Spegni` i numeri non contano più (fino a 60 secondi).
+- [ ] `LIV-048/027/039`, `ECO-020` (#124, #125) — passi:
+  1. Con due ruoli-premio e un moltiplicatore di canale, un membro normale usa `/level premi`: vede livelli, ruoli e moltiplicatori senza che nessuno venga menzionato.
+  2. Fai salire di livello due account (anche con l'annuncio spento), poi `/level livelli-recenti`: compaiono, il più recente in alto.
+  3. `/level daily`, poi `/level attese`: daily con l'ora in cui torna disponibile, work «disponibile ora».
+  Risultato atteso: nessun errore nel log, nessuna menzione che suona.
+- [ ] `NF-40` profilo come immagine (#111) — `/level profilo` con e senza presentazione lunga, con uno sfondo comprato equipaggiato e con lo sfondo con immagine di `/level rank`: esce un'immagine 800x360 leggibile, i badge stanno nel testo sopra l'immagine.
 - [ ] `NF-40` profilo (#111) — passi:
   1. `/level collezione negozio`, poi `/level collezione compra oggetto:Stella` con coin sufficienti e con coin insufficienti.
   2. `/level collezione equipaggia tipo:Badge oggetto:Stella`, poi uno sfondo comprato.

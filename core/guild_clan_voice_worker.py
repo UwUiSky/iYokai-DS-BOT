@@ -18,6 +18,8 @@ Valgono le stesse regole anti-farm dell'XP vocale normale
 Chi è escluso dall'XP (canale, categoria o ruolo, `/level impostazioni
 escludi`) non matura nulla nemmeno per la gilda: stessa regola dell'XP
 testuale dei clan.
+Le letture e le scritture sono raggruppate per server e per clan
+(M 9.18, PERF-4): il numero di query non cresce con le persone in vocale.
 Funzioni coperte: SPEC §15.14; REVIEW.md LC-8 (errori isolati per server
 nel giro), SEC-21 (gli utenti in blacklist non maturano nulla).
 """
@@ -60,6 +62,7 @@ class GuildClanVoiceWorker:
             except Exception:
                 logger.warning("Impostazioni dei livelli non lette per %s.", guild.id)
                 regole = ConfigLivelli()
+            candidati: list[tuple[object, object]] = []  # (membro, canale)
             for canale in guild.voice_channels:
                 persone = [m for m in canale.members if not m.bot]
                 for membro in persone:
@@ -90,57 +93,9 @@ class GuildClanVoiceWorker:
                         other_members_not_self_muted=altri_non_mutati,
                     ):
                         continue
-
-                    clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id)
-                    if clan is None or not clan.officialized:
-                        # Non ufficializzato = ancora in prova, non
-                        # matura ancora XP/coin di gilda: l'utente
-                        # deve prima colmare il deficit di creazione.
-                        continue
-
-                    trovati_in_vocale.add((clan.id, membro.id))
-
-                    xp, coin = await clan_voice_activity_repo.apply_tick(
-                        clan.id, membro.id, canale.id, oggi
-                    )
-                    # Le ore vocali ACCUMULATE dalla gilda (requisito
-                    # per lo sblocco canali extra, SPEC.md §15.14)
-                    # contano la presenza in sé — a differenza di
-                    # XP/coin non si azzerano per decadimento o tetto
-                    # giornaliero, quindi il conteggio va SEMPRE, non
-                    # solo quando xp/coin > 0.
-                    await guild_clan_repo.add_voice_ticks(clan.id, 1)
-
-                    if xp > 0 or coin > 0:
-                        # I boost (SPEC.md §15.14) moltiplicano solo
-                        # la ricompensa già calcolata — mai le ore
-                        # accumulate sopra, che restano un conteggio
-                        # di presenza indipendente dal guadagno.
-                        membro_clan = await guild_clan_repo.get_member(clan.id, membro.id)
-                        individuali = benefici_attivi(
-                            membro_clan.boost_exp_expires_at if membro_clan else None,
-                            membro_clan.boost_coin_expires_at if membro_clan else None,
-                            adesso,
-                        )
-                        di_gilda = benefici_attivi(
-                            clan.guild_boost_exp_expires_at,
-                            clan.guild_boost_coin_expires_at,
-                            adesso,
-                        )
-                        xp, coin = compute_boosted_reward(
-                            xp, coin,
-                            individuale_exp=Beneficio.EXP in individuali,
-                            individuale_coin=Beneficio.COIN in individuali,
-                            gilda_exp=Beneficio.EXP in di_gilda,
-                            gilda_coin=Beneficio.COIN in di_gilda,
-                        )
-
-                    if xp > 0:
-                        await guild_clan_repo.add_xp(clan.id, xp)
-                    if coin > 0:
-                        await guild_clan_repo.apply_treasury_delta(
-                            clan.id, coin, reason=REASON_VOICE_TICK
-                        )
+                    candidati.append((membro, canale))
+            if candidati:
+                await self._accredita_server(guild.id, candidati, oggi, adesso, trovati_in_vocale)
 
         # LC-8: un server problematico non blocca gli altri.
         falliti = await for_each_guild_safely(
@@ -158,9 +113,63 @@ class GuildClanVoiceWorker:
         # (magari ore dopo) verrebbe trattato come se non avesse mai
         # smesso, con un decadimento già a metà strada invece che da
         # zero.
-        for clan_id, user_id in await clan_voice_activity_repo.get_tracked_as_in_voice():
-            if (clan_id, user_id) not in trovati_in_vocale:
-                await clan_voice_activity_repo.clear_activity(clan_id, user_id)
+        usciti = [
+            coppia
+            for coppia in await clan_voice_activity_repo.get_tracked_as_in_voice()
+            if coppia not in trovati_in_vocale
+        ]
+        await clan_voice_activity_repo.clear_activities(usciti)
+
+    @staticmethod
+    async def _accredita_server(guild_id, candidati, oggi: date, adesso: datetime, trovati: set) -> None:
+        """
+        Tick e guadagni di un server con query raggruppate (M 9.18, PERF-4):
+        una lettura dei clan, una transazione per i tick, poi tre scritture
+        per clan (ore, XP, tesoreria) invece di sei per persona.
+        """
+        membri = await guild_clan_repo.get_membri_in_gilda(guild_id, [m.id for m, _ in candidati])
+        voci, schede = [], []
+        for membro, canale in candidati:
+            clan, scheda = membri.get(membro.id, (None, None))
+            if clan is None or not clan.officialized:
+                # Non ufficializzato = ancora in prova, non matura ancora
+                # XP/coin di gilda: prima va colmato il deficit di creazione.
+                continue
+            trovati.add((clan.id, membro.id))
+            voci.append((clan.id, membro.id, canale.id))
+            schede.append((clan, scheda))
+
+        per_clan: dict[int, list[int]] = {}  # clan_id -> [tick, xp, coin]
+        for (clan, scheda), (xp, coin) in zip(schede, await clan_voice_activity_repo.apply_ticks(voci, oggi)):
+            if xp > 0 or coin > 0:
+                # I boost (SPEC.md §15.14) moltiplicano solo la ricompensa
+                # già calcolata, mai le ore accumulate.
+                individuali = benefici_attivi(
+                    scheda.boost_exp_expires_at, scheda.boost_coin_expires_at, adesso
+                )
+                di_gilda = benefici_attivi(
+                    clan.guild_boost_exp_expires_at, clan.guild_boost_coin_expires_at, adesso
+                )
+                xp, coin = compute_boosted_reward(
+                    xp, coin,
+                    individuale_exp=Beneficio.EXP in individuali,
+                    individuale_coin=Beneficio.COIN in individuali,
+                    gilda_exp=Beneficio.EXP in di_gilda,
+                    gilda_coin=Beneficio.COIN in di_gilda,
+                )
+            somme = per_clan.setdefault(clan.id, [0, 0, 0])
+            somme[0] += 1
+            somme[1] += xp
+            somme[2] += coin
+
+        for clan_id, (tick, xp, coin) in per_clan.items():
+            # Le ore vocali della gilda (sblocco canali extra) contano la
+            # presenza: salgono SEMPRE, anche con XP e coin a zero.
+            await guild_clan_repo.add_voice_ticks(clan_id, tick)
+            if xp > 0:
+                await guild_clan_repo.add_xp(clan_id, xp)
+            if coin > 0:
+                await guild_clan_repo.apply_treasury_delta(clan_id, coin, reason=REASON_VOICE_TICK)
 
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:

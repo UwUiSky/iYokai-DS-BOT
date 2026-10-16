@@ -405,6 +405,7 @@ class LevelingSettings:
     work_max: int = WORK_REWARD_MAX
     max_level: int = 0
     shop_confirm: bool = False  # ECO-069: chiede conferma prima di comprare
+    card_images: bool = True  # NF-12: sfondi con immagine propria su card e profilo
 
 
 @dataclass(frozen=True)

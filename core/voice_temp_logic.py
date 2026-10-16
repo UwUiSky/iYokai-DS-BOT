@@ -97,3 +97,57 @@ def is_category_full(current_channel_count: int, configured_cap: int | None) -> 
     dall'HTTPException che l'API restituirebbe comunque.
     """
     return current_channel_count >= effective_category_cap(configured_cap)
+
+
+# #127 VOC-011/012: nome dei nuovi canali da un modello del server.
+NOME_PREDEFINITO = "Canale di {utente}"
+SEGNAPOSTO_NOME = ("utente", "numero")
+MAX_NOME_CANALE = 100  # limite di Discord (LIM-3)
+MAX_MODELLO_NOME = 90
+
+
+def errore_modello_nome(modello: str) -> str | None:
+    """Messaggio d'errore se il modello non si può usare, altrimenti None."""
+    import string
+
+    try:
+        pezzi = [(campo, spec, conv) for _, campo, spec, conv in string.Formatter().parse(modello) if campo is not None]
+    except ValueError:
+        return "Il modello ha una graffa non chiusa."
+    # Niente specifiche di formato ({numero:>999999}) né conversioni:
+    # una larghezza enorme bloccherebbe il bot per costruire il nome.
+    if any(spec or conv for _, spec, conv in pezzi):
+        return "Nei segnaposto scrivi solo {utente} o {numero}, senza «:» o «!»."
+    campi = [campo for campo, _, _ in pezzi]
+    sconosciuti = sorted({c for c in campi if c not in SEGNAPOSTO_NOME})
+    if sconosciuti:
+        return "Segnaposto non validi: " + ", ".join(sconosciuti) + ". Usa {utente} e {numero}."
+    if not nome_da_modello(modello, "x", 1).strip():
+        return "Il nome risultante è vuoto."
+    return None
+
+
+def nome_da_modello(modello: str | None, utente: str, numero: int) -> str:
+    """Nome del canale: modello con i segnaposto sostituiti, al massimo 100 caratteri."""
+    import string
+
+    valori = {"utente": utente, "numero": str(numero)}
+    parti: list[str] = []
+    # Si sostituisce a mano: str.format applicherebbe le specifiche di
+    # formato (anche annidate, prese dal nome dell'utente).
+    for testo, campo, _, _ in string.Formatter().parse(modello or NOME_PREDEFINITO):
+        parti.append(testo)
+        if campo is not None:
+            parti.append(valori.get(campo, ""))
+        if sum(map(len, parti)) >= MAX_NOME_CANALE:
+            break
+    return "".join(parti)[:MAX_NOME_CANALE]
+
+
+def primo_numero_libero(usati) -> int:
+    """Il numero più piccolo (da 1) non usato dai canali aperti: Stanza 1, 2, 3…"""
+    presi = set(usati)
+    numero = 1
+    while numero in presi:
+        numero += 1
+    return numero

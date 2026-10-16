@@ -3,6 +3,7 @@
 ## Aggiornata
 16/10/2026 · ultimo giro: `feat/r7mod` (iYokai Mod, catalogo log, NF-30 DM), 5 fix; i 2 lasciati li ha chiusi il revisore.
 16/10/2026 · ultimo giro: `feat/r7bak` (/backup D25, copie, modelli, sincronia, chat) con fix 1172556, b70b41f
+16/10/2026 · ultimo giro: `feat/r7liv` (vocali opzioni/invita/stato, sfondi card, tick clan raggruppato, /level premi|pause|livelli-recenti) con fix 635507f
 14/10/2026 · ultimo giro: `feat/r6ai` (motore AI, /ai, -chiedi, menzione, traduzioni, immagini, ticket) con fix 9516f7c
 14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
 14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
@@ -36,6 +37,8 @@
 - Ogni `on_message` con `guild is None` (ModMail, appelli) vede lo STESSO DM: cercare i coordinamenti.
 - Ambiente: DB di prova condiviso (`pgrep pytest` prima di fidarsi); prove nei `tests/` con file temporanei poi spostati in scratchpad; cog con `registra_comandi_del_cog(...)`; permessi veri con `discord.Guild/Member(data=..., state=ConnectionState(...))`.
 - Sincronie tra server: ricontrollare proprietà all'evento; ruoli per NOME = escalation (confrontare permessi). Caricamenti da file/modello: mai aggiungere permessi pericolosi a @everyone o a ruoli esistenti.
+- Modelli scritti dagli admin con str.format: vietare spec/conversioni (`{x:>1e9}`, `{x:{y}}`); sostituire a mano.
+- Comandi che fanno creare al bot inviti/link: controllare il permesso di chi chiede.
 - AI: ogni lavoro automatico (moderazione, traduzione) che conta sulla persona = aggirabile; cache per somiglianza mai su traduzioni/giudizi.
 - Web: `Referrer-Policy: no-referrer` fa mandare `Origin: null` ai POST dei moduli (Fetch spec): rompe il controllo d'origine. `del_cookie` di aiohttp senza `secure=` non cancella i cookie `__Host-`.
 - feat/r6mod: corretti 5 (tetto usi/ora ban-kick massa, bulk_ban senza manage_guild, retroattivo solo-sospetti, rientro verify, tetto link/messaggio); 4 plausibili in `rapporti/bug.md`.

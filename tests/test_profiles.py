@@ -7,8 +7,10 @@ Funzioni coperte: SPEC §23.16
 """
 
 import asyncio
+import io
 from types import SimpleNamespace
 
+import discord
 import pytest
 
 import cogs.leveling.profiles as modulo
@@ -149,7 +151,10 @@ async def test_bio_e_server_separati(repo, monete):
 async def scena(monkeypatch, clean_db):
     from core.command_groups import costruisci_gruppi, registra_comandi_del_cog
 
+    from core.repositories.leveling_settings_repo import leveling_settings_repo
+
     await attiva_livelli(monkeypatch, clean_db, GUILD)
+    leveling_settings_repo._cache.clear()
     profili = ProfileRepository(pool_provider=lambda: clean_db)
     monete = LevelingRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(modulo, "profile_repo", profili)
@@ -159,7 +164,7 @@ async def scena(monkeypatch, clean_db):
         c.qualified_name: c
         for c in registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)
     }
-    return SimpleNamespace(cog=cog, comandi=comandi, profili=profili, monete=monete)
+    return SimpleNamespace(cog=cog, comandi=comandi, profili=profili, monete=monete, monkeypatch=monkeypatch)
 
 
 def _interazione(user_id=1):
@@ -168,6 +173,19 @@ def _interazione(user_id=1):
 
 def _scelta(valore, nome=None):
     return SimpleNamespace(value=valore, name=nome or valore)
+
+
+def _spia_del_disegno(scena):
+    """Tiene i dati passati al disegno del profilo (il disegno vero resta)."""
+    disegnati = []
+    vero = modulo.render_profile_card
+
+    def spia(dati, *altri):
+        disegnati.append(dati)
+        return vero(dati, *altri)
+
+    scena.monkeypatch.setattr(modulo, "render_profile_card", spia)
+    return disegnati
 
 
 def _testo(interazione):
@@ -202,14 +220,18 @@ async def test_compra_equipaggia_e_il_profilo_li_mostra(scena):
         scena.cog, _interazione(), tipo=_scelta("sfondo"), oggetto_scelto=_scelta("notte")
     )
     interazione = _interazione()
+    disegnati = _spia_del_disegno(scena)
     await scena.comandi["level profilo"].callback(
         scena.cog, interazione, membro=None, presentazione="Ciao   mondo", cancella_presentazione=None
     )
-    embed = interazione.response.send_message.await_args.kwargs["embed"]
-    assert embed.description == "Ciao mondo"
-    assert embed.color.value == PER_ID["notte"].colore
-    assert "Collezione" in [f.name for f in embed.fields]
-    assert "salvata" in _testo(interazione)
+    dati = disegnati[0]
+    assert dati.presentazione == "Ciao mondo"
+    assert dati.colore == f"#{PER_ID['notte'].colore:06X}"
+    posseduti = (await scena.profili.get_profile(GUILD, 1)).posseduti
+    assert (dati.collezione, dati.collezione_totale) == (len(posseduti), len(modulo.CATALOGO))
+    invio = interazione.followup.send.await_args
+    assert invio.kwargs["file"].filename == "profilo.png"
+    assert "salvata" in invio.args[0]
 
 
 @pytest.mark.asyncio
@@ -222,8 +244,7 @@ async def test_il_badge_si_vede_solo_se_posseduto(scena, clean_db):
     await scena.comandi["level profilo"].callback(
         scena.cog, interazione, membro=None, presentazione=None, cancella_presentazione=None
     )
-    embed = interazione.response.send_message.await_args.kwargs["embed"]
-    assert "👑" not in embed.title
+    assert "👑" not in (interazione.followup.send.await_args.args[0] or "")
 
 
 @pytest.mark.asyncio
@@ -285,3 +306,40 @@ async def test_la_presentazione_non_accetta_piu_di_quanto_si_salva(scena):
 
     opzione = next(p for p in scena.comandi["level profilo"].parameters if p.name == "presentazione")
     assert opzione.max_value == MAX_BIO
+
+
+@pytest.mark.asyncio
+async def test_profilo_come_immagine_con_lo_sfondo_proprio(scena):
+    from PIL import Image
+
+    from core.rank_card_image import ALTEZZA_PROFILO, LARGHEZZA, prepara_sfondo
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (1200, 900), (10, 200, 10)).save(buffer, format="PNG")
+    await scena.monete.set_sfondo_card(1, prepara_sfondo(buffer.getvalue()))
+    interazione = _interazione()
+
+    await scena.comandi["level profilo"].callback(
+        scena.cog, interazione, membro=None, presentazione=None, cancella_presentazione=None
+    )
+
+    interazione.response.defer.assert_awaited_once()
+    png = interazione.followup.send.await_args.kwargs["file"].fp.read()
+    immagine = Image.open(io.BytesIO(png)).convert("RGB")
+    assert immagine.size == (LARGHEZZA, ALTEZZA_PROFILO)
+    assert immagine.getpixel((4, 4))[1] > 150  # l'angolo fuori dal pannello mostra lo sfondo verde
+
+
+@pytest.mark.asyncio
+async def test_profilo_se_il_disegno_fallisce_ricade_sull_embed(scena):
+    def rotto(*_):
+        raise RuntimeError("Pillow rotto")
+
+    scena.monkeypatch.setattr(modulo, "render_profile_card", rotto)
+    interazione = _interazione()
+
+    await scena.comandi["level profilo"].callback(
+        scena.cog, interazione, membro=None, presentazione=None, cancella_presentazione=None
+    )
+
+    assert isinstance(interazione.followup.send.await_args.kwargs["embed"], discord.Embed)

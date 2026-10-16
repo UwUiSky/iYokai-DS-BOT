@@ -29,7 +29,8 @@ Gestione del canale (/voice …): la rinomina rispetta il limite di
 Discord di 2 ogni 10 minuti (core/channel_rename.py); /voice transfer
 sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
-Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi: comandi /voice del catalogo #127)
+Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi, invita,
+stato, opzioni di /gestione voice: catalogo #127; blocco salvato nel database, #144)
 
 SPEC.md §12.8: il cap per categoria (/gestione voice cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
@@ -41,6 +42,7 @@ core/voice_temp_logic.py:effective_category_cap/is_category_full.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -54,7 +56,6 @@ from core.channel_rename import (
     rename_tracker,
 )
 from cogs.moderation._shared import actor_from_member
-from core.bounded_cache import BoundedCache
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.permissions import can_moderate
@@ -62,10 +63,14 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
 from core.role_safety import check_role_assignable
 from core.voice_temp_logic import (
+    MAX_MODELLO_NOME,
     can_manage_voice_channel,
+    errore_modello_nome,
     is_category_full,
     is_generator_join,
     is_old_enough_for_startup_cleanup,
+    nome_da_modello,
+    primo_numero_libero,
     should_delete_after_leave,
 )
 from core.premium import PremiumModule, registry
@@ -201,6 +206,26 @@ class PlatformRoleView(BaseView):
         return button
 
 
+async def _registra(guild: discord.Guild, testo: str, config=None) -> None:
+    """VOC-018: una riga nel canale di registro dei vocali, se il server ne ha scelto uno."""
+    if config is None:
+        config = await voice_temp_repo.get_config(guild.id)
+    if config.canale_registro_id is None:
+        return
+    canale = guild.get_channel(config.canale_registro_id)
+    if not isinstance(canale, discord.TextChannel):
+        return
+    try:
+        await canale.send(testo[:2000], allowed_mentions=discord.AllowedMentions.none())
+    except discord.HTTPException:
+        logger.warning("Registro dei vocali non scritto nel canale %s", canale.id)
+
+
+# Un blocco per server: due canali creati insieme non prendono lo stesso
+# numero (scelta del numero, creazione e registrazione in fila).
+_blocchi_numero: dict[int, asyncio.Lock] = {}
+
+
 async def _create_temp_channel(
     guild: discord.Guild,
     owner: discord.Member,
@@ -223,25 +248,33 @@ async def _create_temp_channel(
         )
         return None
 
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(),  # eredita, nessuna restrizione
-        owner: discord.PermissionOverwrite(**OWNER_PERMISSIONS),
-    }
-    try:
-        channel = await category.create_voice_channel(
-            name=f"Canale di {owner.display_name}",
-            overwrites=overwrites,
-            reason=f"Vocale temporaneo per {owner}",
-        )
-    except (discord.Forbidden, discord.HTTPException):
-        logger.warning(
-            "Impossibile creare il vocale temporaneo per %s nel server %s",
-            owner.id,
-            guild.id,
-        )
-        return None
+    # VOC-015: il canale può nascere bloccato (lo apre il proprietario
+    # con /voice unlock); il proprietario entra comunque.
+    everyone = discord.PermissionOverwrite(connect=False) if config.nasce_bloccato else discord.PermissionOverwrite()
+    proprietario = discord.PermissionOverwrite(**OWNER_PERMISSIONS)
+    if config.nasce_bloccato:
+        proprietario.update(connect=True)
+    overwrites = {guild.default_role: everyone, owner: proprietario}
+    async with _blocchi_numero.setdefault(guild.id, asyncio.Lock()):
+        numero = primo_numero_libero(await voice_temp_repo.numeri_usati(guild.id))
+        try:
+            channel = await category.create_voice_channel(
+                name=nome_da_modello(config.nome_modello, owner.display_name, numero),
+                overwrites=overwrites,
+                reason=f"Vocale temporaneo per {owner}",
+            )
+        except (discord.Forbidden, discord.HTTPException):
+            logger.warning(
+                "Impossibile creare il vocale temporaneo per %s nel server %s",
+                owner.id,
+                guild.id,
+            )
+            return None
 
-    await voice_temp_repo.register_channel(channel.id, guild.id, owner.id)
+        await voice_temp_repo.register_channel(channel.id, guild.id, owner.id, numero)
+    if config.nasce_bloccato:
+        # Prima del blocco «Connetti» era ereditato: unlock lo rimette così.
+        await voice_temp_repo.segna_bloccato(channel.id, None)
 
     # SPEC.md §12.4: notifica personale alla creazione del canale —
     # richiesta esplicitamente perché la modalità automatica sposta
@@ -264,6 +297,7 @@ async def _create_temp_channel(
     # questa, legata al singolo messaggio, si ferma subito, altrimenti
     # ne resterebbe una in memoria per ogni canale creato.
     view.stop()
+    await _registra(guild, f"🔊 {owner.mention} ha creato {channel.mention}.", config)
 
     return channel
 
@@ -329,11 +363,6 @@ class CreateVoiceView(BaseView):
             f"Canale creato: {channel.mention}. Entra quando vuoi.",
             ephemeral=True,
         )
-
-
-# Valore di "Connetti" di @everyone prima di /voice lock, per canale.
-# In memoria: i vocali vivono poco; senza dato, unlock rimette None.
-_connect_prima_del_lock: BoundedCache[int, bool | None] = BoundedCache(5_000)
 
 
 class VoiceTempCog(CogConGruppi, commands.Cog):
@@ -481,6 +510,53 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
+    @comando_di_gruppo(
+        "gestione",
+        nome="opzioni",
+        descrizione="Nome dei nuovi canali, canali che nascono bloccati, canale di registro.",
+        sottogruppo=GESTIONE_VOICE,
+    )
+    @app_commands.describe(
+        nome="Modello del nome: {utente} e {numero} (es. Stanza {numero}). Vuoto: com'è ora",
+        chiusi="I nuovi canali nascono bloccati: li apre il proprietario con /voice unlock",
+        registro="Canale dove scrivere le azioni sui vocali (creazione, blocco, espulsioni…)",
+        predefiniti="Torna al nome «Canale di {utente}» e toglie il canale di registro",
+    )
+    async def voicetemp_opzioni(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, MAX_MODELLO_NOME] | None = None,
+        chiusi: bool | None = None,
+        registro: discord.TextChannel | None = None,
+        predefiniti: bool = False,
+    ) -> None:
+        """#127 VOC-011, 012, 015, 018."""
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        config = await voice_temp_repo.get_config(interaction.guild.id)
+        if config.category_id is None:
+            await interaction.response.send_message(
+                "Configura prima generatore e categoria con /gestione voice setup.",
+                ephemeral=True,
+            )
+            return
+        if nome is not None and (errore := errore_modello_nome(nome)):
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        modello = None if predefiniti else (nome or config.nome_modello)
+        canale_registro = None if predefiniti else (registro.id if registro else config.canale_registro_id)
+        bloccati = config.nasce_bloccato if chiusi is None else chiusi
+        await voice_temp_repo.set_opzioni(interaction.guild.id, modello, bloccati, canale_registro)
+        await interaction.response.send_message(
+            f"Nome dei nuovi canali: **{discord.utils.escape_markdown(modello or 'Canale di {utente}')}**\n"
+            f"Nascono bloccati: **{'sì' if bloccati else 'no'}**\n"
+            f"Registro: {f'<#{canale_registro}>' if canale_registro else 'nessuno'}",
+            ephemeral=True,
+        )
+
     # ================================================================
     # Gestione del proprio canale
     # ================================================================
@@ -582,10 +658,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             # Si cambia solo "Connetti": gli altri permessi di @everyone
             # su questo canale restano com'erano.
             overwrite = channel.overwrites_for(interaction.guild.default_role)
-            # Si ricorda il valore di prima, ma solo al primo lock: un
-            # secondo lock vedrebbe già False e perderebbe l'originale.
-            if channel.id not in _connect_prima_del_lock:
-                _connect_prima_del_lock.set(channel.id, overwrite.connect)
+            # Il valore di prima va nel database (solo al primo lock):
+            # unlock lo ripristina anche dopo un riavvio del bot.
+            await voice_temp_repo.segna_bloccato(channel.id, overwrite.connect)
             overwrite.update(connect=False)
             await channel.set_permissions(
                 interaction.guild.default_role, overwrite=overwrite
@@ -594,6 +669,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
         await interaction.response.send_message("Canale bloccato.")
+        await _registra(interaction.guild, f"🔒 {interaction.user.mention} ha bloccato {channel.mention}.")
 
     @comando_di_gruppo("voice", nome="unlock", descrizione="Sblocca il canale.")
     async def unlock(self, interaction: discord.Interaction) -> None:
@@ -602,17 +678,22 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         try:
             overwrite = channel.overwrites_for(interaction.guild.default_role)
-            # Senza memoria (riavvio del bot dopo il lock) resta None.
-            overwrite.update(connect=_connect_prima_del_lock.get(channel.id))
+            era_bloccato, prima = await voice_temp_repo.togli_blocco(channel.id)
+            overwrite.update(connect=prima)
             await channel.set_permissions(
                 interaction.guild.default_role,
                 overwrite=None if overwrite.is_empty() else overwrite,
             )
         except discord.HTTPException:
+            # Il canale resta com'era: se era bloccato si rimette il
+            # ricordo di prima; se non lo era, non lo si segna bloccato
+            # (un lock dopo deve salvare il valore vero).
+            if era_bloccato:
+                await voice_temp_repo.segna_bloccato(channel.id, prima)
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        _connect_prima_del_lock.delete(channel.id)
         await interaction.response.send_message("Canale sbloccato.")
+        await _registra(interaction.guild, f"🔓 {interaction.user.mention} ha sbloccato {channel.mention}.")
 
     @staticmethod
     def _puo_espellere(
@@ -662,6 +743,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
         await interaction.response.send_message(f"{member.mention} espulso dal canale.")
+        await _registra(
+            interaction.guild, f"👢 {interaction.user.mention} ha espulso {member.mention} da {channel.mention}."
+        )
 
     async def _assegna_proprieta(
         self,
@@ -734,6 +818,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             f"{interaction.user.mention} è il nuovo proprietario del canale.",
             allowed_mentions=discord.AllowedMentions.none(),
         )
+        await _registra(interaction.guild, f"👑 {interaction.user.mention} ha preso {channel.mention}.")
 
     @comando_di_gruppo("voice", nome="permit", descrizione="Permetti a un utente di entrare anche se il canale è bloccato.")
     @app_commands.describe(member="L'utente da ammettere")
@@ -778,6 +863,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(
             f"{member.mention} non può più entrare nel canale.", allowed_mentions=discord.AllowedMentions.none()
+        )
+        await _registra(
+            interaction.guild, f"⛔ {interaction.user.mention} ha escluso {member.mention} da {channel.mention}."
         )
 
     @comando_di_gruppo("voice", nome="bitrate", descrizione="Imposta la qualità audio del canale (kbps).")
@@ -828,6 +916,76 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send("Canale nascosto." if nascosto else "Canale di nuovo visibile.")
 
+    @comando_di_gruppo("voice", nome="invita", descrizione="Manda a un utente un invito al tuo canale.")
+    @app_commands.describe(member="L'utente da invitare (può entrare anche se il canale è bloccato)")
+    async def invita(self, interaction: discord.Interaction, member: discord.Member) -> None:
+        """VOC-007: invito monouso di un giorno, in DM; ammette anche l'utente come /voice permit."""
+        channel = await self._get_managed_channel_or_reply(interaction)
+        if channel is None:
+            return
+        if member.bot:
+            await interaction.response.send_message("Non puoi invitare un bot.", ephemeral=True)
+            return
+        # L'invito vale per il server: il bot lo crea solo per chi potrebbe
+        # crearlo da sé, altrimenti aggirerebbe il permesso «Crea invito».
+        if not channel.permissions_for(interaction.user).create_instant_invite:
+            await interaction.response.send_message(
+                "Non hai il permesso di creare inviti su questo canale: usa /voice permit.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)  # permesso, invito e DM: tre chiamate
+        try:
+            overwrite = channel.overwrites_for(member)
+            overwrite.update(connect=True, view_channel=True)
+            await channel.set_permissions(member, overwrite=overwrite, reason="Invitato dal proprietario del vocale")
+            invito = await channel.create_invite(
+                max_age=86_400, max_uses=1, unique=True, reason="Invito al vocale temporaneo"
+            )
+        except discord.HTTPException:
+            await interaction.followup.send(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
+        try:
+            await member.send(
+                f"{interaction.user.display_name} ti invita nel canale vocale "
+                f"**{channel.name}** di **{interaction.guild.name}**: {invito.url}"[:2000]
+            )
+        except discord.HTTPException:
+            await interaction.followup.send(
+                f"{member.mention} non riceve DM: mandagli tu questo invito (vale un giorno, "
+                f"un solo uso): {invito.url}",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await interaction.followup.send(
+            f"Invito mandato in DM a {member.mention}.",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo("voice", nome="stato", descrizione="Scrivi cosa state facendo nel canale (vuoto: toglie).")
+    @app_commands.describe(testo="Lo stato del canale, fino a 500 caratteri")
+    async def stato(
+        self,
+        interaction: discord.Interaction,
+        testo: app_commands.Range[str, 1, 500] | None = None,
+    ) -> None:
+        """VOC-008: lo stato del canale vocale di Discord (sotto il nome)."""
+        channel = await self._get_managed_channel_or_reply(interaction)
+        if channel is None:
+            return
+        try:
+            await channel.edit(status=testo)
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "Non sono riuscito a cambiare lo stato: mi serve il permesso "
+                "«Impostare lo stato del canale vocale».",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.send_message("Stato aggiornato." if testo else "Stato tolto.", ephemeral=True)
+
     @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")
     async def transfer(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -858,6 +1016,10 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
 
         await interaction.response.send_message(
             f"Proprietà del canale trasferita a {member.mention}."
+        )
+        await _registra(
+            interaction.guild,
+            f"👑 {interaction.user.mention} ha passato {channel.mention} a {member.mention}.",
         )
 
     # ================================================================
@@ -965,6 +1127,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                     )
                     return
                 await voice_temp_repo.unregister_channel(before_channel_id)
+                await _registra(guild, f"🗑️ Vocale **{before.channel.name}** eliminato: era vuoto.")
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -2,7 +2,7 @@
 
 Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 484 comandi in 22 categorie.**
+**Totale: 491 comandi in 22 categorie.**
 
 ## Admin
 
@@ -256,12 +256,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 - **`/gestione ticket setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
 - **`/gestione ticket stats`** — Statistiche del sistema di ticket.
 - **`/gestione voice cap`** — Imposta il numero massimo di vocali temporanei per categoria.
+- **`/gestione voice opzioni`** — Nome dei nuovi canali, canali che nascono bloccati, canale di registro.
 - **`/gestione voice panel`** — Pubblica il pannello per la creazione manuale di un vocale.
 - **`/gestione voice piattaforme`** — Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
 - **`/gestione voice setup`** — Configura il canale generatore e la categoria dei vocali temporanei.
 
 ## Livelli
 
+- **`/level attese`** — Quando potrai di nuovo usare daily e work.
 - **`/level balance`** — Mostra i tuoi coin.
 - **`/level calcola`** — Quanti messaggi o minuti in vocale mancano per arrivare a un livello.
 - **`/level cassa`** — Mostra il saldo della cassa del server.
@@ -273,6 +275,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 - **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level daily`** — Riscuoti la ricompensa giornaliera.
 - **`/level impostazioni annuncio`** — Dove e quando annunciare i level-up.
+- **`/level impostazioni card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
 - **`/level impostazioni escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
 - **`/level impostazioni moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/level impostazioni mostra`** — Mostra le impostazioni dei livelli di questo server.
@@ -282,7 +285,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
+- **`/level livelli-recenti`** — Gli ultimi 25 level-up del server.
 - **`/level pay`** — Trasferisci coin a un altro utente.
+- **`/level premi`** — Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
@@ -545,11 +550,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 - **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
 - **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
 - **`/voice deny`** — Vieta a un utente di entrare nel canale.
+- **`/voice invita`** — Manda a un utente un invito al tuo canale.
 - **`/voice kick`** — Espelli un utente dal tuo canale.
 - **`/voice limit`** — Imposta il limite di utenti del canale.
 - **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
 - **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
 - **`/voice permit`** — Permetti a un utente di entrare anche se il canale è bloccato.
 - **`/voice rename`** — Rinomina il tuo canale vocale.
+- **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.

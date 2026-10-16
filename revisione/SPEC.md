@@ -1177,7 +1177,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   notifica 12.4 se il server ha configurato almeno un ruolo
   piattaforma (`/voicetemp-platform-setup`)
   → **Stato 04/10:** i bottoni muoiono dopo 5 minuti (LIM-26).
-- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer, claim (proprietario assente), permit, deny, bitrate, nascondi (#127)
+- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer, claim (proprietario assente), permit, deny, bitrate, nascondi, invita, stato (#127); il blocco resta dopo un riavvio (#144); `/gestione voice opzioni`: nome da modello `{utente}`/`{numero}`, canali che nascono bloccati, canale di registro (#127)
   → **Stato 04/10:** rinomina senza limiti (LIM-3); `transfer` accetta chiunque (BUG-18).
 - `[~]` 12.7 Eliminazione automatica a canale vuoto
   → **Stato 04/10:** canali orfani dopo un riavvio (REVIEW §4).
@@ -1375,6 +1375,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   non solo il più alto), agganciato sia a XP testuale sia vocale
   → **Stato 04/10:** lista oltre 80 righe (LIM-18).
 - `[~]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
+  → **Stato 15/10:** il tick vocale delle gilde raggruppa letture e scritture per server e per clan (M 9.18, PERF-4): due letture dei clan, una transazione per i tick, tre scritture per clan; una riga del registro di tesoreria per clan a ogni tick invece di una per membro.
   (motore economico di backend calibrato e testato — 10 XP + 4 coin
   a tick/minuto in vocale di gilda (×2 letterale del vocale normale),
   decadimento lineare dopo 3h filate
@@ -1860,8 +1861,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 22.8 Rank card come immagine (NF-12)
   → **Stato 11/10:** `/level rank` disegna la card (avatar, livello, barra, posizione, coin);
   colore e tema (scuro, chiaro, notte) salvati per utente (migrazione 0031).
-  Resta lo sfondo con immagine propria (premium, da fare con `dev-core`).
-  `rank_card_prefs` è per utente (senza server): va nel registro dei dati NF-04 (F5) per esportazione e cancellazione.
+  → **Stato 15/10:** sfondo con immagine propria (`/level rank sfondo:<immagine>`, 0202): ritagliata e ricompressa
+  (JPEG 800x360, al massimo 256 KiB) con `safe_open_image` in un thread; vale anche per il profilo; `reimposta` la toglie.
+  Per tutti (scelta: MEE6 la fa pagare, qui niente premium per un'immagine); lo staff la spegne nel suo server con
+  `/level impostazioni card sfondi:No` (alternativa a LIV-057). `rank_card_prefs` e `rank_card_sfondi` sono nel registro dei dati.
 - `[x]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
   → **Stato 13/10:** fino a 5 domande per pannello (`/admin ticket modulo-aggiungi|modulo-rimuovi|modulo-mostra`), finestra
   Discord, risposte nell'embed del ticket (migrazione 0100). Pannello con 0 domande: il ticket si apre subito.
@@ -1882,6 +1885,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
   del level-up, premi "accumula" o "togli i precedenti", valori
   configurabili (NF-15)
+  → **Stato 15/10 (catalogo #124/#125):** `/level premi` elenco pubblico di ruoli-premio e moltiplicatori (LIV-048, LIV-027);
+  `/level attese` con le pause di daily e work (ECO-020); `/level livelli-recenti` con gli ultimi 25 level-up (LIV-039, 0203, anche ad annuncio spento).
   → **Stato 11/10:** `/level impostazioni` (mostra, annuncio, premi, xp,
   escludi, moltiplicatore); migrazione 0030; `core/repositories/leveling_settings_repo.py`.
   Annuncio: spento, canale corrente, DM, canale scelto, livello minimo, ogni N,
@@ -1959,7 +1964,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
 - `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
-  → **Aperto (D18):** lo sfondo del profilo è solo un colore; lo sfondo con immagine e il profilo come immagine restano da fare (serve il disegno della card e il controllo delle immagini).
+  → **Stato 15/10:** `/level profilo` è un'immagine (avatar, nome, presentazione, livello, XP, posizione, coin, collezione),
+  con il colore dello sfondo comprato, il tema della rank card e lo sfondo con immagine propria; i badge (emoji) nel testo; se il disegno fallisce, l'embed di prima.
   → **Stato 13/10:** `/fun gioca` (monetina, dadi, slot; puntata 1-10000, una sola scrittura sul saldo, pausa di 5 s),
   `/fun misura` (tema libero, stabile per il giorno, rifiuta temi su caratteristiche protette),
   `/fun conteggio` (canale, spegni, stato; a turno, record) con `core/repositories/counting_game_repo.py` (migrazione 0092);
