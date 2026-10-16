@@ -12,6 +12,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+import discord
 
 import cogs.utility.backup as backup_module
 from cogs.utility.backup import BackupCog
@@ -157,3 +158,40 @@ async def test_ruoli_per_nome_e_niente_chiamate_se_gia_uguale(repos):
     assert len(chiamate) == 1
     await cog.on_member_ban(a, SimpleNamespace(id=5))  # ban non sincronizzati qui
     assert b.bannati == []
+
+
+async def test_owner_cambiato_dopo_l_attivazione_niente_sincronia(repos):
+    """La proprietà si controlla quando arriva l'evento, non solo all'attivazione."""
+    a, b = _Server(A), _Server(B)
+    cog = BackupCog(_Bot(a, b))
+    i = _interazione(a)
+    await cog.sincronia.callback(cog, i, SimpleNamespace(value="attiva"), str(B), True, True)
+    b.owner_id = 2  # B ceduto a un altro
+    await cog.on_member_ban(b, SimpleNamespace(id=77))  # il nuovo owner di B banna
+    assert a.bannati == []
+    await cog.on_member_ban(a, SimpleNamespace(id=78))
+    assert b.bannati == []
+
+
+async def test_ruolo_omonimo_con_piu_permessi_non_si_da(repos):
+    """Chi crea in A un ruolo «Admin» senza permessi non ottiene l'«Admin» vero di B."""
+    a, b = _Server(A), _Server(B)
+    admin_b = fake_role(B * 10 + 2, "Admin", position=3, permissions=discord.Permissions(administrator=True))
+    b.roles.append(admin_b)
+    admin_a = fake_role(A * 10 + 2, "Admin", position=1)
+    cog = BackupCog(_Bot(a, b))
+    i = _interazione(a)
+    await cog.sincronia.callback(cog, i, SimpleNamespace(value="attiva"), str(B), False, True)
+    dati = []
+
+    class _Membro:
+        roles: list = []
+
+        async def add_roles(self, *r, **kw):
+            dati.extend(x.name for x in r)
+
+    b.membri[77] = _Membro()
+    await cog.on_member_update(
+        SimpleNamespace(id=77, roles=[], guild=a), SimpleNamespace(id=77, roles=[admin_a, a.roles[0]], guild=a)
+    )
+    assert dati == ["Vip"]

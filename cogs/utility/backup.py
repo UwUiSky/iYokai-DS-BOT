@@ -667,10 +667,11 @@ class BackupCog(CogConGruppi, commands.Cog):
             self._sincronie[guild_id] = letto
         return letto[1]
 
-    async def _altri_server(self, guild_id: int, campo: str):
-        for s in await self._sincronie_di(guild_id):
+    async def _altri_server(self, guild: discord.Guild, campo: str):
+        """Gli altri server in sincronia; la proprietà si ricontrolla ora (un server può essere stato ceduto)."""
+        for s in await self._sincronie_di(guild.id):
             altro = self.bot.get_guild(s.altro) if getattr(s, campo) else None
-            if altro is not None:
+            if altro is not None and altro.owner_id == guild.owner_id:
                 yield altro
 
     async def _ban_sincronizzato(self, guild: discord.Guild, user, banna: bool) -> None:
@@ -679,7 +680,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         self._eco = {k: t for k, t in self._eco.items() if ora - t < 60}
         if self._eco.pop((guild.id, user.id, tipo), None) is not None:
             return
-        async for altro in self._altri_server(guild.id, "ban"):
+        async for altro in self._altri_server(guild, "ban"):
             self._eco[(altro.id, user.id, tipo)] = ora
             try:
                 if banna:
@@ -706,12 +707,16 @@ class BackupCog(CogConGruppi, commands.Cog):
         )
         if not aggiunti and not tolti:
             return
-        async for altro in self._altri_server(dopo.guild.id, "ruoli"):
+        permessi_sorgente = {r.name: r.permissions.value for r in dopo.roles}
+        async for altro in self._altri_server(dopo.guild, "ruoli"):
             membro = altro.get_member(dopo.id)
             if membro is None or altro.me is None:
                 continue
             presenti = set(membro.roles)
-            da_dare = [r for r in sync.ruoli_applicabili(aggiunti, altro.roles, altro.me.top_role) if r not in presenti]
+            da_dare = [
+                r for r in sync.ruoli_applicabili(aggiunti, altro.roles, altro.me.top_role, permessi_sorgente)
+                if r not in presenti
+            ]
             da_togliere = [r for r in sync.ruoli_applicabili(tolti, altro.roles, altro.me.top_role) if r in presenti]
             try:
                 if da_dare:
