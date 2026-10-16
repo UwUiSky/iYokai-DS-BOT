@@ -467,3 +467,29 @@ async def test_dm_con_modmail_aperto_niente_bottone(amb, monkeypatch):
     dm.send = AsyncMock()
     assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
     dm.send.assert_not_awaited()
+
+
+# ------------------------------------------------- sban fatto fuori dal bot
+async def test_sban_da_discord_chiude_il_caso_e_niente_bottone(amb):
+    """Sbannato a mano da Discord: il caso si chiude e il DM non offre più l'appello."""
+    server, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="tempban", reason="y")
+    server.fetch_ban = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "no"))
+    await ban_appeal_module.chiudi_casi_dopo_sban(server, fake_member(UTENTE), 999)
+    for tipo in ("ban", "tempban"):
+        assert await moderation_repo.get_latest_active_case(G, UTENTE, tipo) is None
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+
+
+async def test_sban_seguito_da_un_nuovo_ban_non_chiude_il_caso(amb):
+    """Se il ban c'è di nuovo (o non si può controllare) il caso resta attivo."""
+    server, _, _ = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    server.fetch_ban = AsyncMock(return_value=MagicMock())
+    await ban_appeal_module.chiudi_casi_dopo_sban(server, fake_member(UTENTE), 999)
+    server.fetch_ban = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403), "no"))
+    await ban_appeal_module.chiudi_casi_dopo_sban(server, fake_member(UTENTE), 999)
+    assert await moderation_repo.get_latest_active_case(G, UTENTE, "ban") is not None

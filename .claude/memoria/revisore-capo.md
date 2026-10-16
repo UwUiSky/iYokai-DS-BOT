@@ -1,15 +1,16 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-15/10/2026 · ramo `feat/r6mus` (#64, #90, #106, #126, doc #45/#47/#48): corretti dal revisore suoni ravvicinati + LIM-58 (e339198). Esito smoke nel rapporto.
+16/10/2026 · ramo `feat/r7mod` (#113 D15, #119, #101): corretti dal revisore sban da Discord (NF-30), cancellati in memoria (LOG-027/NF-04), fine isolamento via Mod. Esito smoke nel rapporto.
 
 ## In corso
+- `feat/r7mod`: aperti noti in SPEC/REGISTRO (log via webhook, invito in /setup, LOG-029). `_shared.py:192` non riconosce Mod come «il bot stesso» (bassa).
 - `feat/r6mus`: aperta 1 riga bassa (nome playlist non normalizzato in carica/elimina/esporta) per dev-musica.
 - Rami in attesa di riconsegna (righe nel quaderno di ciascuno): `feat/r4-tkt` 23, `feat/r4-uti` 21, `feat/r4-liv` 9 (corrette, da riapprovare), `feat/r3-mus` 8, `feat/r3-bak` 8, `giro-mod` 12, `giro-logt` 11, #66 12, #67 8, #147 6, #76 5+7, #59/#117 2, #146, #134, #135/#136 (`remove_member` deadlock). `f7-quadro`: APPROVATO, manca l'unione. Alla riconsegna: solo le righe aperte.
 - Aperti bassi: r6ai (ticket staff, pacchetto, riassumi doppio, vietate) per dev-ai; r6mod `/antiraid segnala` senza tetto.
 
 ## Fatto
-- F1 del 05/10 unito. Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai (9f323ca), r6mod (e420745), r6web (f1829fc), r6mus (e339198).
+- F1 del 05/10 unito. Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai (9f323ca), r6mod (e420745), r6web (f1829fc), r6mus (e339198), r7mod.
 
 ## Cose imparate
 - Controllare il contenuto di ogni commit, non il messaggio. Testo all'utente che promette una funzione va confrontato col codice.
@@ -25,6 +26,7 @@
 - Stato in memoria: chi lo ripulisce, cosa succede al riavvio; se limite accettato -> VERIFICA_LIVE.
 - `AllowedMentions(roles=...)` ha `everyone=True` di default. `monkeypatch.undo()` toglie anche il pool del DB.
 - URL controllati dal bot e scaricati da un altro (Lavalink): DNS rebinding e redirect restano (LIM-58), si blocca la rete dell'altro.
+- Bot secondario (D15): cercare OGNI azione della sua area ancora chiamata sul principale (anche dentro funzioni di aiuto, es. fine isolamento).
 - Ruoli che aprono un livello più alto: chi li sceglie deve avere il permesso di quel livello (D28).
 
 ## Aperto

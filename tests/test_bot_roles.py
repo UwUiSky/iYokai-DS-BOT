@@ -38,7 +38,7 @@ def _mod(permessi: discord.Permissions | None = None, posizione: int = 10, pront
     client.get_guild.side_effect = lambda gid: server if gid == GUILD_ID else None
     client.user = io
     client.http = MagicMock()
-    for nome in ("ban", "unban", "kick", "edit_member", "add_role", "delete_message", "delete_messages"):
+    for nome in ("ban", "unban", "kick", "edit_member", "add_role", "remove_role", "delete_message", "delete_messages"):
         setattr(client.http, nome, AsyncMock())
     bot_roles.registra_mod(client)
     return client, server
@@ -259,3 +259,30 @@ async def test_forum_il_post_di_mod_non_lo_usa_il_principale(monkeypatch):
 
     post_principale.send.assert_awaited_once_with(content="b")
     post_mod.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_fine_isolamento_del_tempban_la_fa_mod(monkeypatch):
+    """D15: anche la fine di un tempban in modo isolamento (ruoli) passa da Mod."""
+    import cogs.moderation.actions as azioni
+
+    client, _ = _mod()
+    guild = _principale()
+    isolamento, vecchio = fake_role(role_id=301, position=2), fake_role(role_id=302, position=3)
+    guild.get_role.side_effect = {301: isolamento}.get
+    membro = fake_member(user_id=5, roles=[isolamento])
+    membro.guild = guild
+    db_finto = MagicMock()
+    db_finto.get_guild_setting = AsyncMock(return_value=301)
+    monkeypatch.setattr(azioni, "db", db_finto)
+    monkeypatch.setattr(azioni.tempban_modes, "ruoli_da_riprendere", lambda _g, _ids: [vecchio])
+    repo = MagicMock()
+    repo.delete_tempban_state = AsyncMock()
+    monkeypatch.setattr(azioni, "moderation_repo", repo)
+    cog = azioni.ModerationActionsCog(MagicMock())
+    await cog._rilascia_isolamento(guild, membro, {"ruoli": [302]}, "scaduto")
+    client.http.remove_role.assert_awaited_once_with(GUILD_ID, 5, 301, reason="scaduto")
+    client.http.add_role.assert_awaited_once_with(GUILD_ID, 5, 302, reason="scaduto")
+    membro.remove_roles.assert_not_awaited()
+    membro.add_roles.assert_not_awaited()
+    repo.delete_tempban_state.assert_awaited_once()

@@ -21,7 +21,7 @@ bot (vedi quel file per il perché serve, non un semplice
 asyncio.sleep). Tre modi (#138): fuori, fuori con rientro (invito mandato
 prima del ban, ruoli ridati al ritorno), isolamento (resta nel server,
 vede un solo canale). Lo stato (ruoli veri) si salva prima dell'azione; ogni nuovo
-caso cancella la scadenza del precedente. Funzioni coperte anche: SPEC §5.11, §5.12.
+caso cancella la scadenza del precedente. Funzioni coperte anche: SPEC §5.11, §5.12, parte E (D15: scadenze via iYokai Mod).
 
 Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
 server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
@@ -575,11 +575,11 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         """Toglie il ruolo di isolamento e ridà i ruoli salvati."""
         ruolo_id = await db.get_guild_setting(guild.id, tempban_modes.SETTING_ISOLAMENTO_RUOLO)
         ruolo = guild.get_role(ruolo_id) if ruolo_id else None
+        # D15: la fine dell'isolamento la fa iYokai Mod, se c'è e può.
         if ruolo is not None and ruolo in member.roles:
-            await member.remove_roles(ruolo, reason=motivo)
-        ruoli = tempban_modes.ruoli_da_riprendere(guild, list(stato["ruoli"]))
-        if ruoli:
-            await member.add_roles(*ruoli, reason=motivo)
+            await bot_roles.togli_ruolo(member, ruolo, reason=motivo)
+        for vecchio in tempban_modes.ruoli_da_riprendere(guild, list(stato["ruoli"])):
+            await bot_roles.aggiungi_ruolo(member, vecchio, reason=motivo)
         await moderation_repo.delete_tempban_state(guild.id, member.id)
 
     async def handle_tempban_expire(

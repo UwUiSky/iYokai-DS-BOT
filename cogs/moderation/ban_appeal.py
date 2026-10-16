@@ -10,7 +10,8 @@ e avvisa l'utente; se il ban non si toglie l'appello resta aperto.
 Solo chi può bannare decide. I bottoni sono persistenti (DynamicItem).
 Chi ha perso il messaggio (o aveva i DM chiusi) scrive al bot in privato:
 come per lo spam-trap, riceve un bottone «Fai appello» per ogni server
-dove ha un ban manuale attivo e gli appelli sono accesi.
+dove ha un ban manuale attivo e gli appelli sono accesi. Uno sban fatto
+fuori dal bot (da Discord) chiude i casi e gli appelli aperti.
 Funzioni coperte: SPEC §23 (NF-30, issue #101)
 Dipende da: core/ban_appeal_logic.py
 """
@@ -216,6 +217,25 @@ async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, can
     return True
 
 
+async def chiudi_casi_dopo_sban(guild: discord.Guild, utente: discord.abc.User, bot_id: int) -> None:
+    """
+    Sban fatto da Discord o da un altro bot: i casi ban/tempban attivi si
+    chiudono, così il DM non offre più un appello per un ban che non c'è.
+    Prima si controlla che il ban manchi davvero (un nuovo ban subito dopo
+    resta); se non si può controllare non si tocca niente.
+    """
+    try:
+        await guild.fetch_ban(discord.Object(id=utente.id))
+        return
+    except discord.NotFound:
+        pass
+    except discord.HTTPException:
+        return
+    for tipo in CASI_CON_APPELLO:
+        await moderation_repo.revoke_active_cases_for_user(guild.id, utente.id, tipo, bot_id)
+    await moderation_repo.close_open_appeals(guild.id, utente.id, bot_id)
+
+
 # Appelli che qualcuno sta decidendo in questo momento (due clic insieme).
 _APPELLI_IN_CORSO: set[int] = set()
 
@@ -322,6 +342,10 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
 class ModerationBanAppealCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.User) -> None:
+        await chiudi_casi_dopo_sban(guild, user, self.bot.user.id)
 
     @comando_di_gruppo(
         "modban",

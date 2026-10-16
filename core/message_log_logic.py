@@ -4,13 +4,15 @@ core/message_log_logic.py
 Prepara il testo dei log dei messaggi: tagli ai limiti di Discord,
 regole su cosa ignorare, riepilogo di una cancellazione in blocco,
 archivio di un canale in file sotto i 10 MiB con i messaggi cancellati
-di recente (tenuti solo in memoria). Solo stringhe e numeri, niente discord.py.
+di recente (tenuti solo in memoria, svuotati per autore dalla richiesta
+privacy NF-04). Solo stringhe e numeri, niente discord.py.
 Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-027, LOG-030)
 """
 
 from __future__ import annotations
 
 import functools
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -248,6 +250,20 @@ class CancellatiRecenti:
         else:
             self._canali.pop(channel_id, None)
         return [m for _, m in voci]
+
+    def dimentica_autore(self, user_id: int) -> None:
+        """Toglie i messaggi dell'utente da ogni canale (richiesta privacy, NF-04)."""
+        for channel_id in list(self._canali):
+            voci = [(t, m) for t, m in self._canali[channel_id] if m.author_id != user_id]
+            if voci:
+                self._canali[channel_id] = voci
+            else:
+                del self._canali[channel_id]
+
+
+# L'unica memoria dei cancellati del processo: la scrive il log dei messaggi,
+# la legge /log archivio-canale, la svuota core/forget_user_service.py.
+cancellati_recenti = CancellatiRecenti(time.monotonic)
 
 
 def file_archivio(

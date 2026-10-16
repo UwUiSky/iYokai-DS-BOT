@@ -681,6 +681,7 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   4. Nel canale staff usa «Rifiuta» (nessun ban tolto) su un secondo appello, poi «Accetta» su un terzo; prova anche con un account senza «Bannare membri».
   Risultato atteso: il modulo si apre anche da un account bannato (se Discord lo impedisce, annotarlo); Accetta toglie il ban e scrive all'utente; il bottone dopo un riavvio del bot funziona ancora. `/modban appelli elenco` mostra gli stati.
   5. (giro r7) Cancella il DM del ban, poi scrivi al bot in privato «ciao»: risponde con «Fai appello» per quel server; con ban in due server dà due bottoni «Appello: <nome>». Un account senza ban o con gli appelli spenti non riceve risposta.
+  6. (giro r7) Togli il ban dall'interfaccia di Discord (Impostazioni server → Ban), non dal bot: un nuovo DM al bot non offre più l'appello e `/modban appelli elenco` mostra chiuso l'appello aperto.
 - [ ] `VER-014/015/016` (#118) — passi:
   1. `/security verify opzioni non_verificato:@Nuovo extra_1:@Membro`, poi fai entrare un account di prova.
   2. L'account riceve @Nuovo; clicca il pannello di verifica.
@@ -999,7 +1000,7 @@ Serve: l'applicazione «iYokai Mod» nel Developer Portal (nessun intent privile
 - [ ] senza token — `YOKAI_MOD_TOKEN` vuoto: il bot parte come prima; `/utility info` dice «iYokai Mod: Non configurato»; log, AutoMod, anti-raid e fine dei tempban li fa il principale.
 - [ ] invito — con il token, `/utility info` in un server senza Mod mostra «Invita iYokai Mod» con il server già scelto e i soli permessi elencati (niente Amministratore, niente comandi). Dopo l'invito `/utility info` dice «Attivo in questo server».
 - [ ] un log solo — con entrambi i bot nel server: entra ed esci con un account, cancella un messaggio, cambia un ruolo. Ogni log compare **una volta**, scritto da iYokai Mod. Un log con bottoni (avviso del raid) lo scrive il principale e i bottoni rispondono.
-- [ ] azioni — una parola vietata dall'AutoMod (azioni delete + mute): il messaggio sparisce e il timeout nel registro di controllo è firmato da iYokai Mod. Un `/modban tempban duration:1m`: alla scadenza lo sban lo firma Mod. Lo spam-trap banna con Mod. Un ban dell'anti-raid lo fa Mod.
+- [ ] azioni — una parola vietata dall'AutoMod (azioni delete + mute): il messaggio sparisce e il timeout nel registro di controllo è firmato da iYokai Mod. Un `/modban tempban duration:1m`: alla scadenza lo sban lo firma Mod. Lo spam-trap banna con Mod. Un ban dell'anti-raid lo fa Mod. Un tempban in modo isolamento: alla scadenza ruolo tolto e ruoli ridati li firma Mod.
 - [ ] riserva — togli a iYokai Mod il permesso «Bannare membri» (o mettilo sotto il ruolo del bersaglio): il ban dell'AutoMod lo fa il principale, una volta sola. Spegni Mod (kick dal server): tutto torna al principale senza riavvio. Togli a Mod «Inviare messaggi» nel canale log: i log li scrive il principale.
 - [ ] anti-nuke — Mod non viene espulso quando entra (guardia «bot aggiunti» accesa) e i ban fatti da Mod non contano come attacco.
 - [ ] `guild.me` di Mod con il solo intent «server»: nei log di avvio nessun errore e `/utility info` dice «Attivo» (se non lo dice, Mod non vede se stesso nel server: segnalarlo).

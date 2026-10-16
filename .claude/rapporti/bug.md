@@ -229,5 +229,5 @@
 | 16/10 | `logs_query.archivio_canale` | 20.000 msg da 4000 car. fino a ~360 MB, più archivi insieme: memoria del bot di tutti | alta | corretto r7mod `52bd743` |
 | 16/10 | `ban_appeal.offri_appello_in_dm` | Bottone a quasi ogni DM (limite 30 s), anche durante una conversazione ModMail (doppia risposta) | media | corretto r7mod `0258d64` |
 | 16/10 | `log_eventi_repo.spenti` | Leggi-poi-set: lettura lenta rimette in cache gli interruttori vecchi dopo `imposta` | bassa | corretto r7mod |
-| 16/10 | `ban_appeal` NF-30 | Caso attivo resta dopo uno sban dall'interfaccia di Discord: offerta e appello su un ban che non c'è (preesistente) | bassa | plausibile, aperto |
-| 16/10 | `message_logs.cancellati_recenti` | Cancellati tenuti in memoria anche con l'evento «messaggi cancellati» spento (LOG-017) e dopo una richiesta privacy | bassa | plausibile, aperto |
+| 16/10 | `ban_appeal` NF-30 | Caso attivo resta dopo uno sban dall'interfaccia di Discord: offerta e appello su un ban che non c'è (preesistente) | bassa | corretto r7mod dal revisore (`on_member_unban`) |
+| 16/10 | `message_logs.cancellati_recenti` | Cancellati tenuti in memoria anche con l'evento «messaggi cancellati» spento (LOG-017) e dopo una richiesta privacy | bassa | corretto r7mod dal revisore (NF-04) |

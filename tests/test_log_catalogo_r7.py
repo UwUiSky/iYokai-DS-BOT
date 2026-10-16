@@ -38,6 +38,12 @@ def _spenti(monkeypatch, *chiavi):
     monkeypatch.setattr(log_eventi_repo, "spenti", finto)
 
 
+@pytest.fixture(autouse=True)
+def _tutti_accesi(monkeypatch):
+    """Senza database tutti gli eventi sono accesi; i test che spengono usano _spenti."""
+    _spenti(monkeypatch)
+
+
 # ====================================================================
 # LOG-017 — interruttori
 # ====================================================================
@@ -263,6 +269,7 @@ def test_archivio_in_ordine_con_i_cancellati_e_diviso_sotto_il_massimo():
 
 @pytest.mark.asyncio
 async def test_archivio_canale_manda_il_file_e_controlla_i_permessi(monkeypatch):
+    _spenti(monkeypatch)
     cog = query.LogsQueryCog(MagicMock())
     canale = fake_text_channel(channel_id=31, name="generale")
     canale.permissions_for.return_value = discord.Permissions(view_channel=True, read_message_history=True)
@@ -282,6 +289,14 @@ async def test_archivio_canale_manda_il_file_e_controlla_i_permessi(monkeypatch)
     file = i.followup.send.await_args.kwargs["file"]
     testo = file.fp.read().decode()
     assert "primo" in testo and "[cancellato]" in testo and "sparito" in testo
+
+    # Evento «messaggi cancellati» spento dopo: quelli in memoria non escono.
+    _spenti(monkeypatch, "messaggi_cancellati")
+    i = fake_interaction(guild=fake_guild(guild_id=SERVER))
+    await cog.archivio_canale.callback(cog, i, canale, 50)
+    testo = i.followup.send.await_args.kwargs["file"].fp.read().decode()
+    assert "primo" in testo and "sparito" not in testo
+    _spenti(monkeypatch)
 
     canale.permissions_for.return_value = discord.Permissions.none()
     i = fake_interaction(guild=fake_guild(guild_id=SERVER))

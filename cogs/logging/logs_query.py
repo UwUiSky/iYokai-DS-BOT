@@ -34,6 +34,7 @@ from core import channel_router as router
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.message_log_logic import ARCHIVIO_BYTE_MAX, ARCHIVIO_MESSAGGI_MAX, file_archivio
 from core.repositories.event_log_repo import EventLogEntry, event_log_repo
+from core.repositories.log_eventi_repo import log_eventi_repo
 
 
 logger = logging.getLogger("iyokai.logging.query")
@@ -297,7 +298,12 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
                 letti.append(voce)
         except discord.HTTPException as errore:
             logger.warning("Archivio del canale %s interrotto: %s", canale.id, errore)
-        cancellati = message_logs.cancellati_recenti.di(canale.id)
+        # Evento spento dopo la cancellazione: i messaggi in memoria non escono.
+        cancellati = (
+            message_logs.cancellati_recenti.di(canale.id)
+            if await log_eventi_repo.evento_acceso(canale.guild.id, "message_delete")
+            else []
+        )
         parti = file_archivio(canale.name, letti, cancellati, MAX_EXPORT_FILE_BYTES)
         if troncato:
             limite = ARCHIVIO_BYTE_MAX // (1024 * 1024)

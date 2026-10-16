@@ -222,6 +222,16 @@ async def aggiungi_ruolo(membro: discord.Member, ruolo: discord.Role, *, reason:
     )
 
 
+async def togli_ruolo(membro: discord.Member, ruolo: discord.Role, *, reason: str | None):
+    return await esegui(
+        membro.guild,
+        "manage_roles",
+        lambda: membro.remove_roles(ruolo, reason=reason),
+        lambda c: c.http.remove_role(membro.guild.id, membro.id, ruolo.id, reason=reason),
+        sopra=ruolo,
+    )
+
+
 async def imposta_ruoli(membro: discord.Member, ruoli: list, *, reason: str | None):
     """Sostituisce i ruoli del membro (come member.edit(roles=...))."""
     return await esegui(

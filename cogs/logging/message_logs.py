@@ -6,7 +6,8 @@ inviti Discord scritti nei messaggi. Scrive nella destinazione «messaggi»
 del router (canale di testo o forum) e, per ogni evento, una riga nel log
 eventi senza il testo. Serve il Message Content Intent; un messaggio
 uscito dalla memoria di discord.py si segnala senza contenuto. I messaggi
-cancellati restano in memoria un'ora per l'archivio di un canale. Fa parte
+cancellati restano in memoria un'ora per l'archivio di un canale, solo se
+l'evento «messaggi cancellati» è acceso. Fa parte
 del Logging Avanzato. Ogni evento si può spegnere (LOG-017).
 Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
@@ -17,7 +18,6 @@ from __future__ import annotations
 
 import io
 import logging
-import time
 
 import discord
 from discord.ext import commands
@@ -27,7 +27,7 @@ from core import channel_router as router
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
 from core.message_log_logic import (
-    CancellatiRecenti,
+    cancellati_recenti,
     MessaggioArchiviato,
     da_ignorare,
     file_blocco,
@@ -42,10 +42,6 @@ from core.repositories.log_ignora_repo import log_ignora_repo
 from core.testo_limiti import CAMPO_MAX, DESCRIZIONE_MAX, tronca
 
 logger = logging.getLogger("iyokai.logging.messaggi")
-
-# LOG-027: messaggi cancellati di recente, per l'archivio di un canale (solo in memoria).
-cancellati_recenti = CancellatiRecenti(time.monotonic)
-
 
 def archiviato(m: discord.Message) -> MessaggioArchiviato:
     allegati = testo_allegati([a.filename for a in m.attachments])
@@ -102,7 +98,8 @@ class MessageLogsCog(commands.Cog):
         if _scartato(ignorati, canale, messaggio, payload.channel_id):
             return
 
-        if messaggio is not None:
+        # LOG-027: in memoria solo se l'evento è acceso (spento = il server non li vuole).
+        if messaggio is not None and await log_eventi_repo.evento_acceso(guild.id, "message_delete"):
             cancellati_recenti.aggiungi(payload.channel_id, archiviato(messaggio))
         await event_log_repo.log_event(
             guild.id,
@@ -151,8 +148,9 @@ class MessageLogsCog(commands.Cog):
         archiviati = [
             archiviato(m) for m in payload.cached_messages if not _scartato(ignorati, canale, m, payload.channel_id)
         ]
-        for m in archiviati:
-            cancellati_recenti.aggiungi(payload.channel_id, m)
+        if await log_eventi_repo.evento_acceso(guild.id, "message_bulk_delete"):
+            for m in archiviati:
+                cancellati_recenti.aggiungi(payload.channel_id, m)
         await event_log_repo.log_event(
             guild.id,
             "message_bulk_delete",
