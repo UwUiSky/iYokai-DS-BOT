@@ -58,6 +58,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "gestione": ("Gestione del server: ticket, vocali, ruoli, benvenuto", "manage_guild", Livello.ADMIN),
     "economia": ("Economia del server: XP, monete, negozio e giveaway (staff)", "manage_guild", Livello.ADMIN),
     "moduli": ("Moduli del server: alert, starboard, contatori, compleanni", "manage_guild", Livello.ADMIN),
+    "ruoli": ("Ruoli del server: dai e togli, a tempo, in massa, crea, modifica, diagnosi", "manage_roles", Livello.ADMIN),
     "security": ("Sicurezza: panico, verifica, ban globale, spam-trap", "administrator", Livello.SECURITY),
     "antinuke": ("Anti-nuke: soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
     "ai": ("Intelligenza artificiale: consenso, limiti, lore, conoscenza, funzioni", "manage_guild", Livello.ADMIN),

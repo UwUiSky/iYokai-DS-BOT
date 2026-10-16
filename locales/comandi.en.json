@@ -210,7 +210,10 @@
   "vietate": "banned-words",
   "vincitori-off": "winners-off",
   "vincitori-set": "winners-set",
-  "voto": "vote"
+  "voto": "vote",
+  "dai": "give",
+  "massa-ferma": "bulk-stop",
+  "scelta": "self-roles"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -781,7 +784,18 @@
   "voice rename": "Renames your voice channel.",
   "voice stato": "Writes what you are doing in the channel (empty: removes it).",
   "voice transfer": "Transfers the channel's ownership.",
-  "voice unlock": "Unlocks the channel."
+  "voice unlock": "Unlocks the channel.",
+  "ruoli": "Server roles: give and remove, timed, in bulk, create, edit, diagnose",
+  "ruoli dai": "Give one or more roles to a member, also for a time.",
+  "ruoli togli": "Remove one or more roles from a member, also for a time.",
+  "ruoli azzera": "Remove all roles from a member, with confirmation.",
+  "ruoli massa": "Give or remove a role to many members at once, with filters.",
+  "ruoli massa-ferma": "Stop the bulk operation in progress.",
+  "ruoli crea": "Create a new role.",
+  "ruoli modifica": "Change name, color and options of a role.",
+  "ruoli diagnosi": "Find out why the bot cannot give a role.",
+  "ruoli scelta": "Roles members take by themselves with /utility role.",
+  "utility ruolo": "Take or leave the server's self-assignable roles."
  },
  "parametri": {}
 }

@@ -1,11 +1,11 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-14/10/2026 · ramo feat/r5-fun (base main a5f4e30) · lavoro per FILE: #71, #131, #96, #130, #103, #129
+16/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
 
 ## In corso
-- Previsione r5: 5 gruppi. G1 #71+#131 fun (fatto); G2 NF-25 #96 + #130 (0120, fatto); G3 NF-32 #103 Kick/ruolo live/guida social (0121); G4 #129 voci feed; poi COMMAND_LIST+SPEC+push+rapporto.
-- Migrazioni da 0120. Registro dati (core/data_registry.py) per ogni tabella nuova.
+- Previsione r8: 4 gruppi. G1 nuovo gruppo `/ruoli` (D25, /gestione a 6122) con dai/togli/temporaneo, azzera, massa, massa-ferma, crea, modifica, diagnosi, scelta (RUO-042/043/092/094-109/113; 0231 self_roles). G2 `/utility ruolo` (RUO-090/091/093) + `/utility scheda` (UTL-195/197-200/202, RUO-110-112). G3 condizioni ruoli automatici RUO-034/035/036/038 (0230). G4 se resta: suggerimenti UTL-135..138. Poi COMMAND_LIST, SPEC, VERIFICA_LIVE, REGISTRO, rapporto.
+- Migrazioni riservate 0230-0239. Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
 
 ## Fatto
 - r4: G1-G10 (autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli): vedi git log.
