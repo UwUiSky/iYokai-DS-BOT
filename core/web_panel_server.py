@@ -3,8 +3,8 @@ core/web_panel_server.py
 ========================
 Il pannello web (iYokai Panel): accesso con Discord (OAuth2 `identify`,
 `state` legato al browser), sessioni nel database, permessi controllati
-a ogni richiesta, configurazione dei moduli, dei ruoli del bot e della
-lingua dai punti unici dei comandi (D16), storico, premium e wiki dei
+a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di comandi nascosti
+per ruolo (#148) e della lingua dai punti unici dei comandi (D16), storico, premium e wiki dei
 comandi, verifica dei membri dalla pagina web (link firmato, impronte senza IP).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
 Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92)
@@ -56,6 +56,12 @@ ESITI = {
         "(o essere il proprietario del server): niente è stato salvato.",
         True,
     ),
+    "permessi_ok": ("Permessi dei gruppi di comandi riscritti su Discord.", False),
+    "permessi_nessun_ruolo": ("Nessun ruolo del bot scelto: non c'è niente da scrivere.", True),
+    "permessi_non_autorizzato": ("Il bot non è autorizzato (o l'autorizzazione è scaduta): premi «Autorizza».", True),
+    "permessi_parziale": ("Discord ha rifiutato una parte dei permessi: riprova tra poco.", True),
+    "permessi_attendi": ("Una risincronizzazione al minuto per server: aspetta e riprova.", True),
+    "permessi_revocati": ("Autorizzazione tolta: il bot non scrive più i permessi dei comandi.", False),
 }
 
 
@@ -87,6 +93,7 @@ def build_app(
     limite_generale = regole.LimiteFrequenza(120, 60)
     limite_accesso = regole.LimiteFrequenza(10, 60)
     limite_scritture = regole.LimiteFrequenza(30, 60)
+    limite_sincronia = regole.LimiteFrequenza(1, 60)  # ogni sincronia sono più chiamate a Discord
     ambiente = jinja2.Environment(
         loader=jinja2.FileSystemLoader(CARTELLA / "templates"), autoescape=True, enable_async=False
     )
@@ -246,7 +253,10 @@ def build_app(
             (ETICHETTE_CATEGORIE.get(nome, nome or "Altro"), list(moduli))
             for nome, moduli in groupby(ordinati, key=lambda m: m["categoria"])
         ]
-        return _pagina(request, "server.html", guild=guild, stato=stato, categorie=categorie, lingue=LINGUE)
+        permessi = await ponte.stato_permessi_comandi(guild, request[CHIAVE_UTENTE])
+        return _pagina(
+            request, "server.html", guild=guild, stato=stato, categorie=categorie, lingue=LINGUE, permessi=permessi
+        )
 
     async def salva_modulo(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await _server(request)
@@ -295,6 +305,23 @@ def build_app(
         except ImpostazioneNonValida:
             return _torna(guild.id, "non_valido")
         return _torna(guild.id, "salvato")
+
+    async def salva_permessi(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        azione = form.get("azione")
+        if azione == "revoca":
+            await ponte.revoca_permessi_comandi(guild, request[CHIAVE_UTENTE])
+            return _torna(guild.id, "permessi_revocati")
+        if azione != "sincronizza":
+            return _torna(guild.id, "non_valido")
+        if not limite_sincronia.consenti(f"g:{guild.id}"):
+            return _torna(guild.id, "permessi_attendi")
+        return _torna(guild.id, await ponte.risincronizza_permessi(bot, guild))
 
     async def pagina_storico(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await _server(request)
@@ -369,6 +396,7 @@ def build_app(
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/modulo", salva_modulo)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/ruolo", salva_ruolo)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/lingua", salva_lingua)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/permessi", salva_permessi)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/storico", pagina_storico)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/premium", pagina_premium)
     app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)

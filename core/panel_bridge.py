@@ -7,9 +7,11 @@ permessi a ogni richiesta e scrive SOLO dai punti unici dei comandi
 (D16: `core.config_schema`, `core.command_access.imposta_ruolo`).
 Le cache del database si svuotano a ogni scrittura: il bot vede subito
 il cambio, senza riavvio.
-La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
+Anche i permessi dei gruppi di comandi per ruolo (#148): stato, link di
+autorizzazione, risincronizzazione e revoca, dalle funzioni di
+`core/command_permissions.py`. La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
 stessi controlli e ruoli del bottone di verifica.
-Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92)
+Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148)
 """
 
 from __future__ import annotations
@@ -283,3 +285,49 @@ async def verifica_web(
         await avvisa_staff(guild, membro, doppi)
     esito = await cog.run_checks_and_finalize(guild, membro, captcha_ok=True)
     return esito.success, esito.reason
+
+
+# ------------------------------------------- comandi nascosti per ruolo (#148)
+async def stato_permessi_comandi(guild: discord.Guild, user_id: int) -> dict:
+    """
+    Se il server ha autorizzato il bot a scrivere i permessi dei gruppi di comandi
+    (OAuth2 di un admin, `core/command_permissions.py`) e il link per farlo.
+    Mai il token: solo chi l'ha dato e fino a quando vale.
+    """
+    from core.command_permissions import link_per_admin
+    from core.repositories.command_permission_token_repo import command_permission_token_repo
+
+    try:
+        link = link_per_admin(guild.id, user_id)
+        token = await command_permission_token_repo.get(guild.id) if link else None
+    except Exception:  # chiave di cifratura non valida: il pannello resta usabile
+        logger.warning("Stato dei permessi dei comandi non leggibile nel server %s.", guild.id, exc_info=True)
+        link, token = None, None
+    return {
+        "link": link,
+        "autorizzato": token is not None,
+        "da": token.user_id if token else None,
+        "scade": token.scade_il.date().isoformat() if token else None,
+    }
+
+
+async def risincronizza_permessi(bot, guild: discord.Guild) -> str:
+    """Riscrive i permessi dei gruppi dai ruoli del bot; il codice dell'esito per la pagina."""
+    from cogs.utility.config_strumenti import riassumi_esiti
+    from core.command_permissions import risincronizza_server
+
+    chiave, _ = riassumi_esiti(await risincronizza_server(bot, guild))
+    return {
+        "cfg_sync_ok": "permessi_ok",
+        "cfg_sync_nessun_ruolo": "permessi_nessun_ruolo",
+        "cfg_sync_non_autorizzato": "permessi_non_autorizzato",
+        "cfg_sync_token_non_valido": "permessi_non_autorizzato",
+    }.get(chiave, "permessi_parziale")
+
+
+async def revoca_permessi_comandi(guild: discord.Guild, user_id: int) -> None:
+    """Cancella l'autorizzazione: il bot non scrive più i permessi (quelli già scritti restano su Discord)."""
+    from core.repositories.command_permission_token_repo import command_permission_token_repo
+
+    await command_permission_token_repo.cancella(guild.id)
+    logger.info("Autorizzazione dei permessi dei comandi revocata dal pannello nel server %s da %s.", guild.id, user_id)

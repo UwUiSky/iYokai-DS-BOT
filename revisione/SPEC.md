@@ -1809,9 +1809,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   all'uscita del bot), aggancio a `imposta_ruolo`. **Fatto il 12/10:** l'indirizzo di ritorno (stessa
   `/oauth/callback` del restore, `gestisci_callback`) e il bottone-link «Nascondi i comandi…» sotto
   `/admin setup attiva` senza categoria (solo con OAuth2 configurato), nessun comando nuovo.
-  **Resta aperta (`[~]`):** nessun comando o finestra chiama ancora `imposta_ruolo` (scelta dei ruoli
-  admin/mod/modban da interfaccia): finché non c'è, il token si salva ma i permessi non si scrivono;
-  prova live. Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
+  **Stato 16/10 (r8):** il pannello web sceglie i ruoli con `imposta_ruolo` (i permessi si scrivono) e ha
+  la sezione «Comandi nascosti»: stato (chi ha autorizzato e fino a quando, mai il token), link
+  «Autorizza con Discord», «Riscrivi adesso» (una volta al minuto per server) e revoca.
+  **Resta (`[~]`):** prova live. Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 

@@ -6,8 +6,8 @@
 ## In corso
 - Previsione r8: 5 voci, mi fermo dopo la 5.
   1. NF-21 #92 verifica web + doppi (migr. 0210) — fatto
-  2. #148 nel pannello: stato, link di autorizzazione, risincronizza — in corso
-  3. NF-38 #109 pagina del marchio nel pannello
+  2. #148 nel pannello: stato, link, risincronizza, revoca — fatto
+  3. NF-38 #109 pagina del marchio nel pannello — in corso
   4. #122 CFG-030/021 aspetto del bot per server (pannello + bot)
   5. #46 parte OAuth: controllo di ciò che resta
 - Migrazioni riservate: 0210–0219.
