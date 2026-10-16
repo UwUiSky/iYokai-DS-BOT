@@ -2,13 +2,16 @@
 cogs/utility/autoroles.py
 =========================
 Ruoli automatici all'ingresso, ruoli ridati a chi rientra entro 30 giorni,
-ruoli dati dopo un ritardo (NF-07, SPEC §22.1-22.3). Comandi:
-i comandi `auto-...` di `/gestione ruoli`; la logica è in core/autorole_logic.py.
+ruoli dati dopo un ritardo (NF-07, SPEC §22.1-22.3); condizioni su altri
+ruoli, ruolo ridato se tolto, sincronizzazione dei membri già presenti
+(catalogo #123, RUO-034..038). Comandi: i comandi `auto-...` di
+`/gestione ruoli`; la logica è in core/autorole_logic.py.
 Funzioni coperte: SPEC §22 (NF-07)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -22,8 +25,11 @@ from core.autorole_logic import (
     MAX_RITARDO_SECONDI,
     membro_in_attesa,
     piano_ingresso,
+    regola_vale_per,
     ruoli_da_ricordare,
     ruoli_da_ridare,
+    ruoli_da_ridare_se_tolti,
+    ruoli_da_sincronizzare,
 )
 from cogs.utility.role_menus import ROLEMENU_TEMP_ACTION_TYPE
 from core.birthday_worker import BIRTHDAY_ROLE_ACTION_TYPE
@@ -33,6 +39,7 @@ from core.premium import PremiumModule, registry
 from core.repositories.autorole_repo import autorole_repo
 from core.repositories.verify_repo import verify_repo
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
+from core.ruoli_strumenti_logic import PAUSA_MASSA_SECONDI, RUOLI_TEMPORANEI_ACTION_TYPE
 from core.scheduler import in_seconds, scheduler
 from core.security_raid_state import DURATA_RAID_SECONDI, raid_in_corso
 
@@ -42,9 +49,26 @@ MODULE_AUTOROLES = "autoroles"
 MODULE_VERIFY = "verify"
 AUTOROLE_ACTION_TYPE = "autorole_give"
 # Azioni dello scheduler che tolgono un ruolo dopo un po': quei ruoli non vanno ricordati.
-TIPI_RUOLO_A_TEMPO = (ROLEMENU_TEMP_ACTION_TYPE, BIRTHDAY_ROLE_ACTION_TYPE)
+TIPI_RUOLO_A_TEMPO = (ROLEMENU_TEMP_ACTION_TYPE, BIRTHDAY_ROLE_ACTION_TYPE, RUOLI_TEMPORANEI_ACTION_TYPE)
 
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
+
+
+def _riga_regola(regola) -> str:
+    riga = f"<@&{regola.role_id}> — {_testo_ritardo(regola.delay_seconds)}"
+    if regola.richiesti:
+        riga += " — solo con " + " ".join(f"<@&{r}>" for r in regola.richiesti)
+    if regola.esclusi:
+        riga += " — non con " + " ".join(f"<@&{r}>" for r in regola.esclusi)
+    if regola.ridai:
+        riga += " — ridato se tolto"
+    return riga
+
+
+def _ruoli_a_tempo(azione: dict) -> set:
+    """Gli ID dei ruoli che un'azione a tempo toglierà (un ruolo o la lista `dati`)."""
+    payload = azione["payload"]
+    return {payload.get("role_id"), *payload.get("dati", [])}
 
 
 def _testo_ritardo(secondi: int) -> str:
@@ -60,6 +84,7 @@ def _testo_ritardo(secondi: int) -> str:
 class AutorolesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self.sincronie: set[int] = set()
 
     # ================================================================
     # Assegnazione
@@ -132,8 +157,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         member = guild.get_member(user_id)
         if member is None:
             return
-        if not payload.get("ricordato") and not await autorole_repo.has_rule(guild_id, role_id):
-            return
+        if not payload.get("ricordato"):
+            regola = next((r for r in await autorole_repo.list_rules(guild_id) if r.role_id == role_id), None)
+            if regola is None or not regola_vale_per(regola, {r.id for r in member.roles}):
+                return
         if member.pending:
             return  # non ha ancora accettato le regole: i ruoli arrivano da on_member_update
         if raid_in_corso(guild_id):
@@ -170,6 +197,8 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         ruoli_dopo = {r.id for r in after.roles}
         ha_accettato = before.pending and not after.pending
         verificato_ora = False
+        if ruoli_prima - ruoli_dopo and not after.pending:
+            await self._ridai_se_tolti(after, ruoli_prima, ruoli_dopo)
         if not ha_accettato:
             # Solo il passaggio al ruolo "verificato" interessa: controllo economico prima.
             nuovi = ruoli_dopo - ruoli_prima
@@ -197,15 +226,61 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             return
         # I ruoli a tempo (menu di ruoli, compleanno) non si ricordano: al rientro diventerebbero permanenti.
         a_tempo = {
-            a["payload"].get("role_id")
+            role_id
             for tipo in TIPI_RUOLO_A_TEMPO
             for a in await scheduler.list_pending_for_user(member.id, tipo, 100)
             if a["guild_id"] == member.guild.id
+            for role_id in _ruoli_a_tempo(a)
         }
         ruoli = [r for r in ruoli_da_ricordare(member.roles) if r not in a_tempo]
         if not ruoli:
             return
         await autorole_repo.save_memory(member.guild.id, member.id, ruoli, datetime.now(timezone.utc))
+
+    async def _ridai_se_tolti(self, member: discord.Member, prima: set[int], dopo: set[int]) -> None:
+        """RUO-036: il ruolo automatico con «ridai se tolto» torna a chi ne ha ancora diritto."""
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_AUTOROLES):
+            return
+        da_ridare = ruoli_da_ridare_se_tolti(await autorole_repo.list_rules(member.guild.id), prima, dopo)
+        if da_ridare:
+            await self._assegna(member, da_ridare)
+
+    async def sincronizza(self, guild: discord.Guild, canale) -> tuple[int, int]:
+        """
+        RUO-038: dà i ruoli automatici mancanti ai membri già presenti (non bot, non in attesa),
+        con una pausa per membro. Restituisce (membri cambiati, errori) e scrive l'esito nel canale.
+        """
+        cambiati = errori = 0
+        try:
+            if not guild.chunked:
+                await guild.chunk()
+            regole = await autorole_repo.list_rules(guild.id)
+            for member in list(guild.members):
+                if member.bot or member.pending:
+                    continue
+                mancanti = ruoli_da_sincronizzare(regole, {r.id for r in member.roles})
+                ruoli = [
+                    guild.get_role(rid) for rid in mancanti
+                    if motivo_ruolo_automatico_non_assegnabile(guild, rid) is None
+                ]
+                if not ruoli:
+                    continue
+                try:
+                    await member.add_roles(*ruoli, reason="Sincronizzazione dei ruoli automatici")
+                    cambiati += 1
+                except discord.HTTPException:
+                    errori += 1
+                await asyncio.sleep(PAUSA_MASSA_SECONDI)
+        finally:
+            self.sincronie.discard(guild.id)
+        try:
+            await canale.send(
+                f"Sincronizzazione dei ruoli automatici finita: {cambiati} membri aggiornati, {errori} errori.",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            logger.warning("Esito della sincronizzazione non inviato nel server %s", guild.id)
+        return cambiati, errori
 
     # ================================================================
     # Comandi
@@ -234,12 +309,18 @@ class AutorolesCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         ruolo="Il ruolo da dare a chi entra",
         ritardo_minuti="Attesa prima di darlo (0 = subito, al massimo 7 giorni)",
+        solo_con="Dallo solo a chi ha già questo ruolo",
+        non_con="Non darlo a chi ha questo ruolo",
+        ridai_se_tolto="Se qualcuno lo toglie, il bot lo ridà",
     )
     async def auto_aggiungi(
         self,
         interaction: discord.Interaction,
         ruolo: discord.Role,
         ritardo_minuti: app_commands.Range[int, 0, MAX_RITARDO_SECONDI // 60] = 0,
+        solo_con: discord.Role | None = None,
+        non_con: discord.Role | None = None,
+        ridai_se_tolto: bool = False,
     ) -> None:
         if not await self._modulo_attivo(interaction):
             return
@@ -248,7 +329,13 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(motivo, ephemeral=True)
             return
         ok = await autorole_repo.add_rule(
-            interaction.guild.id, ruolo.id, ritardo_minuti * 60, created_by=interaction.user.id
+            interaction.guild.id,
+            ruolo.id,
+            ritardo_minuti * 60,
+            created_by=interaction.user.id,
+            richiesti=[solo_con.id] if solo_con else [],
+            esclusi=[non_con.id] if non_con else [],
+            ridai=ridai_se_tolto,
         )
         if not ok:
             await interaction.response.send_message(
@@ -292,7 +379,7 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             return
         regole = await autorole_repo.list_rules(interaction.guild.id)
         config = await autorole_repo.get_config(interaction.guild.id)
-        righe = [f"<@&{r.role_id}> — {_testo_ritardo(r.delay_seconds)}" for r in regole] or [
+        righe = [_riga_regola(r) for r in regole] or [
             "Nessun ruolo automatico."
         ]
         ricorda = (
@@ -332,6 +419,28 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             else "Ruoli di chi esce non più ricordati; quelli già salvati sono stati cancellati."
         )
         await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="auto-sincronizza",
+        descrizione="Dai i ruoli automatici anche ai membri già nel server.",
+        sottogruppo=_SG_RUOLI,
+    )
+    async def auto_sincronizza(self, interaction: discord.Interaction) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        guild = interaction.guild
+        if guild.id in self.sincronie:
+            await interaction.response.send_message("Una sincronizzazione è già in corso.", ephemeral=True)
+            return
+        if not await autorole_repo.list_rules(guild.id):
+            await interaction.response.send_message("Non ci sono ruoli automatici da dare.", ephemeral=True)
+            return
+        self.sincronie.add(guild.id)
+        asyncio.create_task(self.sincronizza(guild, interaction.channel))
+        await interaction.response.send_message(
+            "Sincronizzazione avviata: un membro al secondo. L'esito arriva in questo canale.", ephemeral=True
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

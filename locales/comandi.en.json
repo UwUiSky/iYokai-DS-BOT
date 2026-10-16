@@ -215,7 +215,8 @@
   "massa-ferma": "bulk-stop",
   "scelta": "self-roles",
   "scheda": "lookup",
-  "anzianita": "seniority"
+  "anzianita": "seniority",
+  "auto-sincronizza": "auto-sync"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -806,7 +807,8 @@
   "utility scheda ruoli": "All roles with ID, members and color.",
   "utility scheda membri": "Members who have a role.",
   "utility scheda anzianita": "Oldest or newest accounts, first or last to join.",
-  "utility scheda permessi": "Permissions of a member or the bot in a channel."
+  "utility scheda permessi": "Permissions of a member or the bot in a channel.",
+  "gestione ruoli auto-sincronizza": "Give the automatic roles to members already in the server too."
  },
  "parametri": {}
 }

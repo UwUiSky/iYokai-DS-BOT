@@ -1,8 +1,9 @@
 """
 core/autorole_logic.py
 ======================
-Decide quali ruoli dare e quando (NF-07, SPEC §22.1-22.3). Funzioni
-semplici, provabili senza Discord.
+Decide quali ruoli dare e quando (NF-07, SPEC §22.1-22.3), con le
+condizioni su altri ruoli e il ruolo ridato se tolto (catalogo #123,
+RUO-034..038). Funzioni semplici, provabili senza Discord.
 Funzioni coperte: SPEC §22 (NF-07)
 """
 
@@ -26,6 +27,31 @@ GIORNI_MEMORIA_PREDEFINITI = 30
 class RegolaAutoruolo:
     role_id: int
     delay_seconds: int = 0
+    richiesti: tuple[int, ...] = ()
+    esclusi: tuple[int, ...] = ()
+    ridai: bool = False
+
+
+def regola_vale_per(regola: RegolaAutoruolo, ruoli_posseduti: set[int]) -> bool:
+    """La regola vale se il membro ha almeno uno dei ruoli richiesti (se ce ne sono) e nessun escluso."""
+    if regola.richiesti and not ruoli_posseduti.intersection(regola.richiesti):
+        return False
+    return not ruoli_posseduti.intersection(regola.esclusi)
+
+
+def ruoli_da_ridare_se_tolti(
+    regole: Iterable[RegolaAutoruolo], prima: set[int], dopo: set[int]
+) -> list[int]:
+    """I ruoli automatici con `ridai` appena tolti a un membro che ne ha ancora diritto."""
+    tolti = prima - dopo
+    return [r.role_id for r in regole if r.ridai and r.role_id in tolti and regola_vale_per(r, dopo)]
+
+
+def ruoli_da_sincronizzare(regole: Iterable[RegolaAutoruolo], ruoli_posseduti: set[int]) -> list[int]:
+    """Per un membro già nel server: i ruoli automatici che gli mancano (senza ritardo)."""
+    return [
+        r.role_id for r in regole if r.role_id not in ruoli_posseduti and regola_vale_per(r, ruoli_posseduti)
+    ]
 
 
 def piano_ingresso(
@@ -45,6 +71,8 @@ def piano_ingresso(
     for regola in regole:
         if regola.role_id in ruoli_posseduti:
             continue
+        if regola.delay_seconds == 0 and not regola_vale_per(regola, ruoli_posseduti):
+            continue  # con un ritardo la condizione si controlla allo scatto
         if regola.delay_seconds > 0:
             dopo.append((regola.role_id, regola.delay_seconds))
         else:
