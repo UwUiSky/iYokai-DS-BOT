@@ -422,6 +422,9 @@ async def test_server_con_sfondi_spenti_mostra_solo_il_tema(cog_rank, monkeypatc
     monkeypatch.setattr(modulo, "render_rank_card", lambda d, a, s=None: usati.append(s) or vero(d, a, s))
     interazione = fake_interaction(guild=fake_guild(100), user=_bersaglio(1))
 
-    await cog.rank.callback(cog, interazione)
+    try:
+        await cog.rank.callback(cog, interazione)
+    finally:
+        leveling_settings_repo._cache.clear()  # la cache di 60 s non deve passare ad altri test
 
     assert usati == [None]

@@ -603,6 +603,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         è successo, DM, canale scelto). Un errore di Discord non ferma mai
         l'assegnazione dei ruoli.
         """
+        try:
+            await leveling_repo.registra_level_up(guild.id, member.id, new_level)  # LIV-039
+        except Exception:
+            logger.warning("Level-up di %s non registrato nel server %s.", member.id, guild.id)
         ha_premio = False
         if impostazioni.levelup_only_rewards:
             premi = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
@@ -1043,6 +1047,82 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.followup.send(nota, file=discord.File(io.BytesIO(png), filename="rank.png"))
+
+    @comando_di_gruppo(
+        "level",
+        nome="premi",
+        descrizione="Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.",
+    )
+    async def premi(self, interaction: discord.Interaction) -> None:
+        """LIV-048 e LIV-027: elenco pubblico di ruoli-premio e moltiplicatori."""
+        if await _comando_rifiutato(interaction):
+            return
+        guild = interaction.guild
+        ricompense = await level_reward_repo.list_rewards(guild.id)
+        config = await self._config(guild.id)
+        righe = [f"Livello **{r.level_threshold}** → <@&{r.role_id}>" for r in ricompense]
+        moltiplicatori = [f"×{f:g} in <#{c}>" for c, f in sorted(config.mult_canali.items())]
+        moltiplicatori += [f"×{f:g} con <@&{r}>" for r, f in sorted(config.mult_ruoli.items())]
+        if moltiplicatori:
+            modo = _NOMI_MOLTIPLICATORI[config.impostazioni.multiplier_mode]
+            righe += ["", f"**Moltiplicatori di XP** ({modo})", *moltiplicatori]
+        if not righe:
+            await interaction.response.send_message(
+                "Questo server non ha ruoli-premio né moltiplicatori di XP.", ephemeral=True
+            )
+            return
+        await invia_lista(
+            interaction, "🏅 Premi dei livelli", righe, discord.Color.gold(),
+            ephemeral=False, per_pagina=RUOLI_PREMIO_PER_PAGINA,
+        )
+
+    @comando_di_gruppo(
+        "level",
+        nome="pause",
+        descrizione="Quando potrai di nuovo usare daily e work.",
+    )
+    async def pause(self, interaction: discord.Interaction) -> None:
+        """ECO-020: tutte le proprie pause attive in un colpo."""
+        if await _comando_rifiutato(interaction):
+            return
+        totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
+        adesso = datetime.now(timezone.utc)
+        righe = []
+        for nome, ultima, pausa in (
+            ("Daily", totali.last_daily_at, DAILY_COOLDOWN_SECONDS),
+            ("Work", totali.last_work_at, WORK_COOLDOWN_SECONDS),
+        ):
+            attesa = seconds_until_next_claim(ultima, pausa, adesso)
+            if attesa <= 0:
+                righe.append(f"**{nome}**: disponibile ora")
+            else:
+                pronto = int(adesso.timestamp() + attesa)
+                righe.append(f"**{nome}**: tra {_format_seconds(attesa)} (<t:{pronto}:t>)")
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @comando_di_gruppo(
+        "level",
+        nome="livelli-recenti",
+        descrizione="Gli ultimi 25 level-up del server.",
+    )
+    async def livelli_recenti(self, interaction: discord.Interaction) -> None:
+        """LIV-039: registro degli ultimi level-up (si riempie da solo)."""
+        if await _comando_rifiutato(interaction):
+            return
+        ultimi = await leveling_repo.ultimi_level_up(interaction.guild.id)
+        if not ultimi:
+            await interaction.response.send_message(
+                "Nessun level-up registrato finora su questo server.", ephemeral=True
+            )
+            return
+        righe = [
+            f"<@{utente}> → livello **{livello}** · <t:{int(quando.timestamp())}:R>"
+            for utente, livello, quando in ultimi
+        ]
+        embed = discord.Embed(
+            title="📈 Livelli recenti", description="\n".join(righe), color=discord.Color.blurple()
+        )
+        await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
         "level",

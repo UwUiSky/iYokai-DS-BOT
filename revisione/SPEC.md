@@ -1855,6 +1855,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
   del level-up, premi "accumula" o "togli i precedenti", valori
   configurabili (NF-15)
+  → **Stato 15/10 (catalogo #124/#125):** `/level premi` elenco pubblico di ruoli-premio e moltiplicatori (LIV-048, LIV-027);
+  `/level pause` con le pause di daily e work (ECO-020); `/level livelli-recenti` con gli ultimi 25 level-up (LIV-039, 0203, anche ad annuncio spento).
   → **Stato 11/10:** `/level impostazioni` (mostra, annuncio, premi, xp,
   escludi, moltiplicatore); migrazione 0030; `core/repositories/leveling_settings_repo.py`.
   Annuncio: spento, canale corrente, DM, canale scelto, livello minimo, ogni N,

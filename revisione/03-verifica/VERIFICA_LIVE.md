@@ -866,6 +866,11 @@ Servono: un server di prova con iYokai, un account admin, due account senza perm
   1. `/fun conteggio azione:Scegli il canale canale:#conta`.
   2. Con due account scrivete a turno 1, 2, 3; poi lo stesso account scrive due numeri di fila; poi un numero sbagliato; poi una frase qualsiasi.
   Risultato atteso: ✅ sui numeri giusti; ❌ e messaggio «ha rovinato tutto» sul doppio turno e sul numero sbagliato, con ripartenza da 1; le frasi non fanno nulla. `/fun conteggio azione:Stato` mostra ultimo numero e record. Dopo `Spegni` i numeri non contano più (fino a 60 secondi).
+- [ ] `LIV-048/027/039`, `ECO-020` (#124, #125) — passi:
+  1. Con due ruoli-premio e un moltiplicatore di canale, un membro normale usa `/level premi`: vede livelli, ruoli e moltiplicatori senza che nessuno venga menzionato.
+  2. Fai salire di livello due account (anche con l'annuncio spento), poi `/level livelli-recenti`: compaiono, il più recente in alto.
+  3. `/level daily`, poi `/level pause`: daily con l'ora in cui torna disponibile, work «disponibile ora».
+  Risultato atteso: nessun errore nel log, nessuna menzione che suona.
 - [ ] `NF-40` profilo come immagine (#111) — `/level profilo` con e senza presentazione lunga, con uno sfondo comprato equipaggiato e con lo sfondo con immagine di `/level rank`: esce un'immagine 800x360 leggibile, i badge stanno nel testo sopra l'immagine.
 - [ ] `NF-40` profilo (#111) — passi:
   1. `/level collezione negozio`, poi `/level collezione compra oggetto:Stella` con coin sufficienti e con coin insufficienti.

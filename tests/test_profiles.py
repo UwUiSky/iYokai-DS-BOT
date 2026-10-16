@@ -151,7 +151,10 @@ async def test_bio_e_server_separati(repo, monete):
 async def scena(monkeypatch, clean_db):
     from core.command_groups import costruisci_gruppi, registra_comandi_del_cog
 
+    from core.repositories.leveling_settings_repo import leveling_settings_repo
+
     await attiva_livelli(monkeypatch, clean_db, GUILD)
+    leveling_settings_repo._cache.clear()
     profili = ProfileRepository(pool_provider=lambda: clean_db)
     monete = LevelingRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(modulo, "profile_repo", profili)

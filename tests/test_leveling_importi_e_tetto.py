@@ -133,7 +133,7 @@ async def test_la_rank_card_al_livello_massimo_non_ha_un_prossimo_livello(cog_e_
     await repo.add_text_xp(GUILD, 1, amount=xp_for_level(3) + 700, cooldown_seconds=10, max_level=3)
     visti = []
 
-    async def finta(funzione, dati, avatar):
+    async def finta(funzione, dati, avatar, sfondo=None):
         visti.append(dati)
         return b"png"
 

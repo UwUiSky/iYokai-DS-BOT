@@ -136,6 +136,9 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
     )
 
 
+# LIV-039: quanti level-up per server tiene il registro.
+MAX_LEVEL_UP_REGISTRATI = 25
+
 # Utenti con saldo > 1 non ancora decaduti nel periodo $1. Equivale a
 # "last_weekly_decay_period IS DISTINCT FROM $1", ma scritta con IS NULL,
 # < e > perché solo così Postgres può cercare nell'indice parziale
@@ -632,6 +635,36 @@ class LevelingRepository:
             """,
             user_id,
         )
+
+    async def registra_level_up(self, guild_id: int, user_id: int, livello: int) -> None:
+        """LIV-039: aggiunge un level-up e tiene solo i 25 più recenti del server."""
+        await self._pool.execute(
+            """
+            WITH nuovo AS (
+                INSERT INTO leveling_levelup_log (guild_id, user_id, livello) VALUES ($1, $2, $3)
+            )
+            DELETE FROM leveling_levelup_log
+            WHERE guild_id = $1 AND id NOT IN (
+                SELECT id FROM leveling_levelup_log WHERE guild_id = $1 ORDER BY id DESC LIMIT $4
+            )
+            """,
+            guild_id,
+            user_id,
+            livello,
+            MAX_LEVEL_UP_REGISTRATI - 1,  # la riga nuova non si vede ancora qui dentro
+        )
+
+    async def ultimi_level_up(self, guild_id: int) -> list[tuple[int, int, datetime]]:
+        """(utente, livello, quando) degli ultimi level-up del server, dal più recente."""
+        righe = await self._pool.fetch(
+            """
+            SELECT user_id, livello, created_at FROM leveling_levelup_log
+            WHERE guild_id = $1 ORDER BY id DESC LIMIT $2
+            """,
+            guild_id,
+            MAX_LEVEL_UP_REGISTRATI,
+        )
+        return [(r["user_id"], r["livello"], r["created_at"]) for r in righe]
 
     async def get_sfondo_card(self, user_id: int) -> bytes | None:
         """L'immagine di sfondo (JPEG già pronto) di rank card e profilo, se c'è."""

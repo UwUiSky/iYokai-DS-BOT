@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:19 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 08:55 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 470 commands in 21 categories.**
+**Total: 473 commands in 21 categories.**
 
 ## Admin
 
@@ -253,6 +253,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:1
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).
 - **`/level collection shop`** — Shows badges and backgrounds on sale and the ones you own.
+- **`/level cooldowns`** — When you can use daily and work again.
 - **`/level daily`** — Claims the daily reward.
 - **`/level invites leaderboard`** — The 10 members who invited the most people.
 - **`/level invites user`** — How many people a member invited.
@@ -260,6 +261,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:1
 - **`/level pay`** — Transfers coins to another user.
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
+- **`/level recent-levels`** — The last 25 level-ups in the server.
+- **`/level rewards`** — Shows level reward roles and active XP multipliers.
 - **`/level settings announcement`** — Where and when to announce level-ups.
 - **`/level settings card`** — Shows or hides image backgrounds of cards and profiles in this server.
 - **`/level settings exclude`** — A channel, category or role gives no XP (repeat to undo).
@@ -370,6 +373,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:1
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
+- **`/music cooldowns`** — Pauses playback.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
 - **`/music history`** — Shows the latest tracks already played.
 - **`/music join`** — Makes the music bot join your channel without playing.
@@ -378,7 +382,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:1
 - **`/music nonstop off`** — Turns off the continuous loop.
 - **`/music nonstop on`** — Turns on the continuous loop on the current queue.
 - **`/music nowplaying`** — Shows the playing track with a progress bar.
-- **`/music pause`** — Pauses playback.
 - **`/music play`** — Plays a song or playlist.
 - **`/music playlist delete`** — Deletes one of your saved playlists.
 - **`/music playlist export`** — Downloads one of your playlists as a file.
