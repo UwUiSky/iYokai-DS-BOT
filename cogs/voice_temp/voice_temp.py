@@ -678,15 +678,18 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         try:
             overwrite = channel.overwrites_for(interaction.guild.default_role)
-            prima = await voice_temp_repo.togli_blocco(channel.id)
+            era_bloccato, prima = await voice_temp_repo.togli_blocco(channel.id)
             overwrite.update(connect=prima)
             await channel.set_permissions(
                 interaction.guild.default_role,
                 overwrite=None if overwrite.is_empty() else overwrite,
             )
         except discord.HTTPException:
-            # Il canale resta bloccato: si rimette il ricordo di prima.
-            await voice_temp_repo.segna_bloccato(channel.id, prima)
+            # Il canale resta com'era: se era bloccato si rimette il
+            # ricordo di prima; se non lo era, non lo si segna bloccato
+            # (un lock dopo deve salvare il valore vero).
+            if era_bloccato:
+                await voice_temp_repo.segna_bloccato(channel.id, prima)
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
         await interaction.response.send_message("Canale sbloccato.")

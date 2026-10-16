@@ -210,3 +210,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 15/10 | `feat/r6mus` | `cogs/fun/soundboard.py:suona` | Due suoni entro 6 s: il `_torna_sordo` del primo riassordava il bot durante il secondo; bot temporaneo rimasto per la musica non tornava sordo | media | chiuso 15/10 (e339198) |
 | 15/10 | `feat/r6mus` | `cogs/music/playlist.py` `carica/elimina/esporta` | Il nome non passa da `nome_valido` (spazi doppi scritti a mano non trovano la playlist salvata «pulita») | bassa | aperto |
 | 15/10 | `feat/r6mus` | Lavalink, sorgente `http` | DNS rebinding: LIM-58 limite noto, regole di rete nella guida del deploy | — | annotato (e339198) |
+| 16/10 | `feat/r7liv` | `locales/comandi.en.json` `"pause"` | La mappa dei nomi è globale: «pause» → «cooldowns» rinominava anche `/music pause`. Comando di /level rinominato `attese` | alta | chiuso 16/10 |
+| 16/10 | `feat/r7liv` | `voice_temp.unlock` | Unlock fallito su canale mai bloccato lo segnava bloccato senza il valore vero (dal cacciatore) | bassa | chiuso 16/10 |
+| 16/10 | `feat/r7liv` | `voice_temp.invita` | Se `create_invite` fallisce dopo `set_permissions`, il membro resta ammesso ma il messaggio dice solo errore | bassa | aperto |
+| 16/10 | `feat/r7liv` | `leveling.rank` sfondo | Sfondo caricato in un server con `card_images` spento: salvato, nessun avviso che lì non si vede | bassa | aperto |
+| 16/10 | `feat/r7liv` | `/gestione voice opzioni registro` | Non controlla che il bot possa scrivere nel canale scelto (`motivo_se_il_bot_non_puo`): il registro tace con solo un warning | bassa | aperto |

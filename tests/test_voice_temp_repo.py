@@ -134,10 +134,10 @@ async def test_blocco_ricorda_solo_il_primo_valore_e_si_cancella(repo):
     await repo.segna_bloccato(1, True)
     await repo.segna_bloccato(1, False)  # secondo lock: già bloccato
 
-    assert await repo.togli_blocco(1) is True
-    assert await repo.togli_blocco(1) is None
+    assert await repo.togli_blocco(1) == (True, True)
+    assert await repo.togli_blocco(1) == (False, None)
 
 
 @pytest.mark.asyncio
-async def test_togli_blocco_su_canale_non_tracciato_e_none(repo):
-    assert await repo.togli_blocco(999) is None
+async def test_togli_blocco_su_canale_non_tracciato_non_era_bloccato(repo):
+    assert await repo.togli_blocco(999) == (False, None)

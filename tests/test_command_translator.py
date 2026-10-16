@@ -118,3 +118,15 @@ async def test_l_impronta_della_sync_cambia_se_cambia_una_traduzione(monkeypatch
 
 async def test_parametri_tradotti_non_scendono_sotto_il_minimo():
     assert len(tr.carica_traduzioni(forza=True)["parametri"]) >= MINIMO_PARAMETRI_TRADOTTI
+
+
+async def test_un_nome_tradotto_non_cambia_un_altro_comando_con_lo_stesso_nome():
+    # La mappa dei nomi vale per ogni comando con quel nome: «pause» →
+    # «cooldowns» (pensato per /level) rinominava anche /music pause.
+    creato_qui, bot = await _albero_vero()
+    try:
+        nomi = {_percorso(n): _nome_en(n) for n in _tutti_i_nodi(_radici(bot))}
+        assert nomi["music pause"] == "pause"
+        assert nomi["level attese"] == "cooldowns"
+    finally:
+        await _chiudi(creato_qui, bot)

@@ -1078,10 +1078,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "level",
-        nome="pause",
+        nome="attese",
         descrizione="Quando potrai di nuovo usare daily e work.",
     )
-    async def pause(self, interaction: discord.Interaction) -> None:
+    async def attese(self, interaction: discord.Interaction) -> None:
         """ECO-020: tutte le proprie pause attive in un colpo."""
         if await _comando_rifiutato(interaction):
             return

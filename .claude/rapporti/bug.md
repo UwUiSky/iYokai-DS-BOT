@@ -227,4 +227,4 @@
 | 16/10 | `voice_temp_logic.nome_da_modello` | `{numero:>999999999}` o `{numero:{utente}}` passano la validazione: str.format alloca GB / nome utente come formato | alta | corretto r7liv |
 | 16/10 | `voice_temp._create_temp_channel` | Due canali creati insieme prendono lo stesso {numero} | media | corretto r7liv |
 | 16/10 | `voice_temp.invita` | Il bot crea inviti al server per chi non ha «Crea invito» (link nel fallback DM) | media | corretto r7liv |
-| 16/10 | `voice_temp.unlock` | Unlock fallito su canale mai bloccato lo segna bloccato con None: il lock dopo perde il valore vero | bassa | plausibile, aperto |
+| 16/10 | `voice_temp.unlock` | Unlock fallito su canale mai bloccato lo segna bloccato con None: il lock dopo perde il valore vero | bassa | corretto r7liv (revisore) |

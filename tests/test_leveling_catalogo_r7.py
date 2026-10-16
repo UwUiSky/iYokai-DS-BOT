@@ -103,13 +103,13 @@ async def test_premi_senza_nulla_lo_dice(scena):
 
 # ---------------------------------------------------------------- ECO-020
 @pytest.mark.asyncio
-async def test_pause_mostra_daily_in_attesa_e_work_disponibile(scena):
+async def test_attese_mostra_daily_in_attesa_e_work_disponibile(scena):
     cog, repo = scena
     adesso = datetime.now(timezone.utc)
     await repo.claim_daily(GUILD, 1, 10, modulo.DAILY_COOLDOWN_SECONDS, adesso - timedelta(hours=1))
     interazione = _interazione()
 
-    await cog.pause.callback(cog, interazione)
+    await cog.attese.callback(cog, interazione)
 
     testo = interazione.response.send_message.await_args.args[0]
     righe = testo.splitlines()

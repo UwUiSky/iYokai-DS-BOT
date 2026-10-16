@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 08:55 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:12 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 473 commands in 21 categories.**
 
@@ -373,7 +373,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 08:5
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
-- **`/music cooldowns`** — Pauses playback.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
 - **`/music history`** — Shows the latest tracks already played.
 - **`/music join`** — Makes the music bot join your channel without playing.
@@ -382,6 +381,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 08:5
 - **`/music nonstop off`** — Turns off the continuous loop.
 - **`/music nonstop on`** — Turns on the continuous loop on the current queue.
 - **`/music nowplaying`** — Shows the playing track with a progress bar.
+- **`/music pause`** — Pauses playback.
 - **`/music play`** — Plays a song or playlist.
 - **`/music playlist delete`** — Deletes one of your saved playlists.
 - **`/music playlist export`** — Downloads one of your playlists as a file.

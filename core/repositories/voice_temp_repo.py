@@ -233,13 +233,13 @@ class VoiceTempRepository:
             connect_prima,
         )
 
-    async def togli_blocco(self, channel_id: int) -> bool | None:
+    async def togli_blocco(self, channel_id: int) -> tuple[bool, bool | None]:
         """
-        /voice unlock: restituisce il valore di «Connetti» salvato dal
-        lock (None se non c'era o se il canale non era bloccato) e
-        cancella il ricordo, in una sola istruzione.
+        /voice unlock: restituisce (era bloccato, valore di «Connetti»
+        salvato dal lock) e cancella il ricordo, in una sola istruzione.
+        Canale non bloccato o non tracciato: (False, None).
         """
-        return await self._pool.fetchval(
+        riga = await self._pool.fetchrow(
             """
             UPDATE voice_temp_channels AS c
             SET bloccato = false, connect_prima = NULL
@@ -252,6 +252,7 @@ class VoiceTempRepository:
             """,
             channel_id,
         )
+        return (False, None) if riga is None else (True, riga["connect_prima"])
 
     async def list_channels(self) -> list[TrackedVoiceChannel]:
         """

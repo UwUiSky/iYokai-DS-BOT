@@ -672,6 +672,10 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. Da admin `/level impostazioni card sfondi:No`, poi `/level rank` e `/level profilo`: solo colore e tema. `sfondi:Sì` per tornare.
   4. `/level rank reimposta:True`: lo sfondo sparisce da card e profilo.
   Risultato atteso: risposta sempre entro pochi secondi, nessun errore nel log.
+- [ ] **Scelta da confermare (owner)** — `NF-12` sfondo con immagine propria per **tutti**, non solo premium (SPEC 22.8 diceva premium).
+  Motivo: un'immagine ridotta (≤ 256 KiB) costa poco; MEE6 la fa pagare. Freno: l'admin la spegne nel suo server con
+  `/level impostazioni card sfondi:No` (al posto della segnalazione LIV-057). Da confermare: va bene per tutti con l'interruttore
+  dell'admin, oppure la si lega al premium del server?
 
 
 ## Moderazione — passaggio `feat/giro-mod` (#138)
@@ -869,7 +873,7 @@ Servono: un server di prova con iYokai, un account admin, due account senza perm
 - [ ] `LIV-048/027/039`, `ECO-020` (#124, #125) — passi:
   1. Con due ruoli-premio e un moltiplicatore di canale, un membro normale usa `/level premi`: vede livelli, ruoli e moltiplicatori senza che nessuno venga menzionato.
   2. Fai salire di livello due account (anche con l'annuncio spento), poi `/level livelli-recenti`: compaiono, il più recente in alto.
-  3. `/level daily`, poi `/level pause`: daily con l'ora in cui torna disponibile, work «disponibile ora».
+  3. `/level daily`, poi `/level attese`: daily con l'ora in cui torna disponibile, work «disponibile ora».
   Risultato atteso: nessun errore nel log, nessuna menzione che suona.
 - [ ] `NF-40` profilo come immagine (#111) — `/level profilo` con e senza presentazione lunga, con uno sfondo comprato equipaggiato e con lo sfondo con immagine di `/level rank`: esce un'immagine 800x360 leggibile, i badge stanno nel testo sopra l'immagine.
 - [ ] `NF-40` profilo (#111) — passi:

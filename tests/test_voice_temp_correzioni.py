@@ -796,7 +796,7 @@ async def test_unlock_dopo_un_riavvio_ripristina_il_valore_salvato_nel_database(
     await dopo_il_riavvio.unlock.callback(dopo_il_riavvio, scena.interazione(proprietario))
 
     assert _overwrite_finale(canale, scena.guild.default_role).connect is True
-    assert await voice_temp_repo.togli_blocco(canale.id) is None
+    assert await voice_temp_repo.togli_blocco(canale.id) == (False, None)
 
 
 async def test_unlock_fallito_lascia_il_ricordo_per_il_tentativo_dopo():
@@ -811,6 +811,25 @@ async def test_unlock_fallito_lascia_il_ricordo_per_il_tentativo_dopo():
 
     await cog.unlock.callback(cog, scena.interazione(proprietario))
     canale.set_permissions.side_effect = None
+    await cog.unlock.callback(cog, scena.interazione(proprietario))
+
+    assert _overwrite_finale(canale, scena.guild.default_role).connect is True
+
+
+async def test_unlock_fallito_su_canale_mai_bloccato_non_lo_segna_bloccato():
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True)
+    cog = VoiceTempCog(bot=None)
+    canale.set_permissions.side_effect = _errore_http()
+    await cog.unlock.callback(cog, scena.interazione(proprietario))  # mai bloccato
+    canale.set_permissions.side_effect = None
+    # La chiamata fallita non ha cambiato nulla su Discord.
+    canale.overwrites_for.return_value = discord.PermissionOverwrite(connect=True)
+
+    await cog.lock.callback(cog, scena.interazione(proprietario))
+    canale.overwrites_for.return_value = _overwrite_finale(canale, scena.guild.default_role)
     await cog.unlock.callback(cog, scena.interazione(proprietario))
 
     assert _overwrite_finale(canale, scena.guild.default_role).connect is True
