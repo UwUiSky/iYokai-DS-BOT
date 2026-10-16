@@ -764,7 +764,7 @@
   "utility privacy esporta": "Get a copy of the data the bot keeps about you.",
   "utility reactionsnipe": "Shows the last removed reaction in this channel.",
   "utility reminder": "Personal reminders",
-  "utility reminder cancel": "Cancels a reminder.",
+  "utility reminder cancel": "Cancel a reminder, or all of yours.",
   "utility reminder list": "Shows your pending reminders.",
   "utility reminder set": "Sets a reminder.",
   "utility report": "Reports a user to the server staff.",
@@ -808,7 +808,8 @@
   "utility scheda membri": "Members who have a role.",
   "utility scheda anzianita": "Oldest or newest accounts, first or last to join.",
   "utility scheda permessi": "Permissions of a member or the bot in a channel.",
-  "gestione ruoli auto-sincronizza": "Give the automatic roles to members already in the server too."
+  "gestione ruoli auto-sincronizza": "Give the automatic roles to members already in the server too.",
+  "utility reminder server": "For staff: the reminders set in this server."
  },
  "parametri": {}
 }

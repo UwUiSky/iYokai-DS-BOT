@@ -12,6 +12,7 @@
 - r8 G2 417817c: /utility scheda (cogs/utility/schede.py, core/schede_logic.py).
 - r8 G3: ruoli automatici con solo_con/non_con/ridai_se_tolto e auto-sincronizza (0230); ruoli a tempo di /ruoli non ricordati.
 - r8 G4: suggerimenti con in valutazione/realizzato, motivo in finestra, DM, canale dei decisi (0232).
+- r8 G5: promemoria ripetuti, nel canale, annulla tutti, elenco del server per admin (/utility reminder server).
 - r4: G1-G10 (autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli): vedi git log.
 - r5 G1: #71 (15.1/15.2 già in main) + #131 voci piccole: cogs/fun/fun_extra.py (/fun scegli|numero|testo|casuale|scherzo|effetto), dice formula, joke tema, fact animale, 8ball/meme con Range e senza menzioni.
 - r5 G2: NF-25 attività (0120): activity_stats.py (raccolta+ruoli, /moduli statistiche …), server_stats.py (viste, bottoni), repo+logic; member_total per giveaway.

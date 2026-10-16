@@ -1,17 +1,17 @@
 """
 cogs/utility/reminders.py
 ============================
-Reminder personali (SPEC.md §14.16). Riusa lo scheduler generico già
-esistente (core/scheduler.py, che aveva già "in futuro anche
-promemoria" nel proprio docstring) — nessuna tabella nuova, nessun
-timer in-processo che sparirebbe a un riavvio del bot.
+Reminder personali (SPEC.md §14.16). Riusa lo scheduler generico
+(core/scheduler.py): nessuna tabella nuova, nessun timer in memoria
+che sparirebbe a un riavvio del bot.
 
-Consegna: DM all'utente. Se i DM sono chiusi, fallback nel canale
-dove il promemoria è stato impostato (menzionando l'utente) — solo
-se quel canale esiste ancora ed è raggiungibile, altrimenti il
-promemoria resta semplicemente non consegnato (loggato, non perso
-silenziosamente: resta comunque marcato come eseguito, non viene
-ritentato all'infinito per un canale sparito).
+Consegna: DM all'utente, oppure nel canale se lo chiede. Se i DM sono
+chiusi, ripiego nel canale dove il promemoria è stato impostato
+(menzionando l'utente), se esiste ancora; altrimenti resta non
+consegnato (scritto nel log, non ritentato all'infinito).
+Catalogo #128: promemoria che si ripete (UTL-098), nel canale invece
+che in DM (UTL-099), annullare tutti i propri (UTL-102), lo staff vede
+e annulla quelli del server (UTL-103).
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_access import Livello, puo_usare
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
@@ -38,6 +39,9 @@ REMINDER_ACTION_TYPE = "reminder_fire"
 # LIM-13: il testo finale ("⏰ Promemoria: " + testo, più la menzione nel canale
 # di ripiego) deve stare in 2000 caratteri.
 TestoPromemoria = app_commands.Range[str, 1, 1800]
+# Un promemoria che si ripete non scatta più spesso di così.
+MIN_RIPETIZIONE_SECONDI = 30 * 60
+SOTTOGRUPPO = ("reminder", "Promemoria personali")
 
 
 class RemindersCog(CogConGruppi, commands.Cog):
@@ -50,20 +54,28 @@ class RemindersCog(CogConGruppi, commands.Cog):
         """Handler chiamato dallo scheduler quando un reminder scade."""
         testo_promemoria = payload.get("message", "(nessun testo)")
         testo = f"⏰ **Promemoria:** {testo_promemoria}"
+        ripeti = payload.get("ripeti")
+        if ripeti:
+            # Si riprogramma prima di consegnare: un errore di consegna non ferma la serie.
+            await scheduler.schedule(
+                guild_id, user_id, REMINDER_ACTION_TYPE,
+                datetime.now(timezone.utc) + timedelta(seconds=int(ripeti)), payload,
+            )
 
-        user = self.bot.get_user(user_id)
-        if user is None:
-            try:
-                user = await self.bot.fetch_user(user_id)
-            except discord.HTTPException:
-                user = None
+        if not payload.get("nel_canale"):
+            user = self.bot.get_user(user_id)
+            if user is None:
+                try:
+                    user = await self.bot.fetch_user(user_id)
+                except discord.HTTPException:
+                    user = None
 
-        if user is not None:
-            try:
-                await user.send(testo)
-                return
-            except discord.HTTPException:
-                pass  # DM chiusi: proviamo il canale di fallback sotto
+            if user is not None:
+                try:
+                    await user.send(testo)
+                    return
+                except discord.HTTPException:
+                    pass  # DM chiusi: proviamo il canale di fallback sotto
 
         channel_id = payload.get("channel_id")
         if channel_id is not None:
@@ -97,14 +109,21 @@ class RemindersCog(CogConGruppi, commands.Cog):
         "utility",
         nome="set",
         descrizione="Imposta un promemoria.",
-        sottogruppo=("reminder", "Promemoria personali"),
+        sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(
         duration="Tra quanto tempo, es. 30m, 2h, 7d",
         message="Il testo del promemoria",
+        ripeti="Ripeti ogni..., es. 1d o 1w (minimo 30m)",
+        nel_canale="Scrivilo in questo canale invece che in privato",
     )
     async def set_reminder(
-        self, interaction: discord.Interaction, duration: str, message: TestoPromemoria
+        self,
+        interaction: discord.Interaction,
+        duration: app_commands.Range[str, 2, 10],
+        message: TestoPromemoria,
+        ripeti: app_commands.Range[str, 2, 10] | None = None,
+        nel_canale: bool = False,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -123,30 +142,41 @@ class RemindersCog(CogConGruppi, commands.Cog):
 
         try:
             duration_seconds = parse_duration(duration)
+            ripeti_secondi = parse_duration(ripeti) if ripeti else None
         except ValueError as exc:
             await interaction.response.send_message(str(exc), ephemeral=True)
             return
+        if ripeti_secondi is not None and ripeti_secondi < MIN_RIPETIZIONE_SECONDI:
+            await interaction.response.send_message(
+                "Un promemoria si può ripetere al massimo ogni 30 minuti.", ephemeral=True
+            )
+            return
 
+        payload = {"message": message, "channel_id": interaction.channel.id}
+        if ripeti_secondi is not None:
+            payload["ripeti"] = ripeti_secondi
+        if nel_canale:
+            payload["nel_canale"] = True
         execute_at = datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)
         action_id = await scheduler.schedule(
             guild_id=guild.id,
             user_id=interaction.user.id,
             action_type=REMINDER_ACTION_TYPE,
             execute_at=execute_at,
-            payload={"message": message, "channel_id": interaction.channel.id},
+            payload=payload,
         )
 
-        await interaction.response.send_message(
-            f"⏰ Promemoria impostato tra **{format_duration(duration_seconds)}** "
-            f"(ID `{action_id}`, usa `/utility reminder cancel` per annullarlo).",
-            ephemeral=True,
-        )
+        testo = f"⏰ Promemoria impostato tra **{format_duration(duration_seconds)}**"
+        if ripeti_secondi is not None:
+            testo += f", poi ogni **{format_duration(ripeti_secondi)}**"
+        testo += f" (ID `{action_id}`, usa `/utility reminder cancel` per annullarlo)."
+        await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
         "utility",
         nome="list",
         descrizione="Mostra i tuoi promemoria in sospeso.",
-        sottogruppo=("reminder", "Promemoria personali"),
+        sottogruppo=SOTTOGRUPPO,
     )
     async def list_reminders(self, interaction: discord.Interaction) -> None:
         azioni = await scheduler.list_pending_for_user(
@@ -175,13 +205,28 @@ class RemindersCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "utility",
         nome="cancel",
-        descrizione="Annulla un promemoria.",
-        sottogruppo=("reminder", "Promemoria personali"),
+        descrizione="Annulla un promemoria, o tutti i tuoi.",
+        sottogruppo=SOTTOGRUPPO,
     )
-    @app_commands.describe(reminder_id="ID del promemoria (mostrato da /utility reminder list)")
+    @app_commands.describe(
+        reminder_id="ID del promemoria (mostrato da /utility reminder list)",
+        tutti="Annulla tutti i tuoi promemoria",
+    )
     async def cancel_reminder(
-        self, interaction: discord.Interaction, reminder_id: int
+        self, interaction: discord.Interaction, reminder_id: int | None = None, tutti: bool = False
     ) -> None:
+        if tutti:
+            azioni = await scheduler.list_pending_for_user(interaction.user.id, REMINDER_ACTION_TYPE, 100)
+            for azione in azioni:
+                await scheduler.cancel(azione["id"])
+            await interaction.response.send_message(f"Annullati {len(azioni)} promemoria.", ephemeral=True)
+            return
+        if reminder_id is None:
+            await interaction.response.send_message(
+                "Indica l'ID del promemoria oppure scegli «tutti».", ephemeral=True
+            )
+            return
+
         azione = await scheduler.get_pending_action(reminder_id)
         if (
             azione is None
@@ -193,7 +238,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
             )
             return
 
-        if azione["user_id"] != interaction.user.id:
+        if azione["user_id"] != interaction.user.id and not await self._staff_del_server(interaction, azione):
             await interaction.response.send_message(
                 "Puoi annullare solo i tuoi promemoria.", ephemeral=True
             )
@@ -201,6 +246,37 @@ class RemindersCog(CogConGruppi, commands.Cog):
 
         await scheduler.cancel(reminder_id)
         await interaction.response.send_message("Promemoria annullato.", ephemeral=True)
+
+    @staticmethod
+    async def _staff_del_server(interaction: discord.Interaction, azione: dict) -> bool:
+        """UTL-103: un admin del server può annullare i promemoria impostati nel suo server."""
+        guild = interaction.guild
+        return guild is not None and azione["guild_id"] == guild.id and await puo_usare(interaction, Livello.ADMIN)
+
+    @comando_di_gruppo(
+        "utility",
+        nome="server",
+        descrizione="Per lo staff: i promemoria impostati in questo server.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    async def server_reminders(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None or not await puo_usare(interaction, Livello.ADMIN):
+            await interaction.response.send_message("Solo gli admin del server vedono questo elenco.", ephemeral=True)
+            return
+        azioni = await scheduler.list_pending_for_guild(guild.id, REMINDER_ACTION_TYPE, 100)
+        if not azioni:
+            await interaction.response.send_message("Nessun promemoria in sospeso in questo server.", ephemeral=True)
+            return
+        righe = [
+            f"`#{a['id']}` <@{a['user_id']}> {discord.utils.format_dt(a['execute_at'], style='R')} — "
+            f"{str(a['payload'].get('message', ''))[:80]}"
+            for a in azioni
+        ]
+        descrizione, _ = righe_entro_limite(righe, 4000)
+        embed = discord.Embed(title="⏰ Promemoria del server", description=descrizione, color=discord.Color.blurple())
+        embed.set_footer(text="Per annullarne uno: /utility reminder cancel con l'ID.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
