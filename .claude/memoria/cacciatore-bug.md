@@ -1,6 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+16/10/2026 · ultimo giro: `feat/r7mod` (iYokai Mod, catalogo log, NF-30 DM) con 5 fix
 14/10/2026 · ultimo giro: `feat/r6ai` (motore AI, /ai, -chiedi, menzione, traduzioni, immagini, ticket) con fix 9516f7c
 14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
 14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
@@ -9,7 +10,7 @@
 13/10/2026 · ultimo giro: `feat/r4-tkt` (ticket, ModMail, standard/sollecito, log, /voice)
 
 ## In corso
-- Niente a meta'. Giro r4-tkt chiuso e pushato. Prossimo: riprova dei fix con cbtkt/test_p*.py dalla copia `wt/tkt`.
+- Niente a meta'. Giro r7mod chiuso (non pushato).
 
 ## Fatto
 - Revisione correzioni 28/09–01/10 (BUG-19…34, SEC-18…22): tutti risolti in R1-bis, tranne 26/28/29 superati (D8).
@@ -25,7 +26,10 @@
 
 - feat/r6ai: corretti (9516f7c) quote/crediti in gara, moderazione aggirabile via quota autore, cache simile su traduzioni/giudizi, tetto con chiavi a pagamento senza costo, 400 = pausa globale, eccezioni fuori da chiedi, PNG enorme decodificato sul loop. Lasciati: tetto/quota funzione in gara tra persone, testo -chiedi sostituisce prefissi di percorso.
 
+- feat/r7mod: corretti forum-cache con client di Mod, blocco di 1 msg via Mod, archivio 20k senza tetto, bottone NF-30 ripetuto/ModMail, cache LOG-017 leggi-poi-set.
+
 ## Cose imparate
+- Due client (Mod/principale): ogni oggetto in cache (thread, canale) porta il SUO client; cache condivise vanno separate per bot. http.* via Mod salta i casi speciali di discord.py (1 messaggio, ecc.).
 - AI: ogni lavoro automatico (moderazione, traduzione) che conta sulla persona = aggirabile; cache per somiglianza mai su traduzioni/giudizi.
 - Web: `Referrer-Policy: no-referrer` fa mandare `Origin: null` ai POST dei moduli (Fetch spec): rompe il controllo d'origine. `del_cookie` di aiohttp senza `secure=` non cancella i cookie `__Host-`.
 - feat/r6mod: corretti 5 (tetto usi/ora ban-kick massa, bulk_ban senza manage_guild, retroattivo solo-sospetti, rientro verify, tetto link/messaggio); 4 plausibili in `rapporti/bug.md`.

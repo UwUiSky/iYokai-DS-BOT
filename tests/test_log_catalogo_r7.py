@@ -74,6 +74,31 @@ async def test_repository_salva_e_rilegge(clean_db):
 
 
 @pytest.mark.asyncio
+async def test_lettura_lenta_non_rimette_in_cache_gli_interruttori_vecchi(clean_db):
+    """Un evento legge (vecchio), l'admin spegne, la lettura finisce: la cache non torna indietro."""
+    via = asyncio.Event()
+    letto = asyncio.Event()
+
+    class PoolLento:
+        async def fetch(self, *args):
+            righe = await clean_db.fetch(*args)
+            letto.set()
+            await via.wait()
+            return righe
+
+        def acquire(self):
+            return clean_db.acquire()
+
+    repo = LogEventiRepository(pool_provider=PoolLento)
+    lettura = asyncio.create_task(repo.spenti(SERVER))
+    await letto.wait()
+    await repo.imposta(SERVER, frozenset({"ingressi"}))
+    via.set()
+    assert await lettura == frozenset()
+    assert not await repo.evento_acceso(SERVER, "member_join")
+
+
+@pytest.mark.asyncio
 async def test_evento_spento_non_arriva_nel_canale(monkeypatch):
     _spenti(monkeypatch, "ingressi")
     invio = AsyncMock()

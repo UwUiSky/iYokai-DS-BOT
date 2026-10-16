@@ -19,6 +19,8 @@ class LogEventiRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
         self._cache: BoundedCache[int, frozenset[str]] = BoundedCache(5000)
+        # Cresce a ogni modifica: una lettura partita prima non rimette in cache il vecchio.
+        self._versione = 0
 
     @property
     def _pool(self) -> asyncpg.Pool:
@@ -28,11 +30,13 @@ class LogEventiRepository:
         noti = self._cache.get(guild_id)
         if noti is not None:
             return noti
+        versione = self._versione
         righe = await self._pool.fetch(
             "SELECT interruttore FROM log_eventi_spenti WHERE guild_id=$1", guild_id
         )
         noti = frozenset(r["interruttore"] for r in righe if r["interruttore"] in INTERRUTTORI)
-        self._cache.set(guild_id, noti)
+        if versione == self._versione:
+            self._cache.set(guild_id, noti)
         return noti
 
     async def evento_acceso(self, guild_id: int, evento: str) -> bool:
@@ -48,6 +52,7 @@ class LogEventiRepository:
                     "INSERT INTO log_eventi_spenti (guild_id, interruttore) VALUES ($1, $2)",
                     [(guild_id, chiave) for chiave in sorted(spenti)],
                 )
+        self._versione += 1
         self._cache.delete(guild_id)
 
 
