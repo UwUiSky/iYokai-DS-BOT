@@ -50,6 +50,7 @@ class _FakeGuild:
 class _FakeInteraction:
     def __init__(self, guild_id: int | None) -> None:
         self.guild = _FakeGuild(guild_id) if guild_id is not None else None
+        self.user = _FakeGuild(1)  # basta l'id
         self.response = _FakeResponse()
         self.followup = _FakeFollowup()
         self.channel = _FakeChannel()
@@ -104,12 +105,20 @@ async def database():
     await db_instance.pool.execute("DELETE FROM backup_user_snapshots")
     await db_instance.pool.execute("DELETE FROM restore_oauth_tokens")
     await db_instance.pool.execute("DELETE FROM restore_contacts")
+    await db_instance.pool.execute("DELETE FROM restore_consensi")
     await db_instance.pool.execute("DELETE FROM backup_pair_history")
     await db_instance.pool.execute("DELETE FROM guild_config")
     await db_instance.pool.execute("DELETE FROM guild_config_history")
     await db_instance.pool.execute("DELETE FROM verify_config")
     await db_instance.pool.execute("DELETE FROM backup_pairs")
     await db_instance.close()
+
+
+async def _consenso(database, guild_id: int, utenti) -> None:
+    """M 12.12: gli utenti hanno accettato i DM di ripristino a fine verifica."""
+    repo = RestoreOAuthRepository(pool_provider=lambda: database.pool, encryption_key_provider=lambda: CHIAVE_TEST)
+    for u in utenti:
+        await repo.salva_consenso(guild_id, u)
 
 
 def _patch_repos(monkeypatch, database):
@@ -179,6 +188,7 @@ async def test_restore_users_senza_coppia_backup_rifiuta(database, monkeypatch):
 
     monkeypatch.setattr(restore_module, "db", database)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
 
     cog = RestoreCog(bot=None)
     interaction = _FakeInteraction(guild_id=200)
@@ -196,6 +206,7 @@ async def test_restore_users_con_coppia_verso_un_terzo_server_rifiuta(database, 
 
     monkeypatch.setattr(restore_module, "db", database)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 777)  # backup designato è un altro server
 
@@ -217,6 +228,8 @@ async def test_restore_users_con_token_attivo_fa_auto_join(database, monkeypatch
     await backup_repo_test.define_backup(100, 200)
 
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
     await oauth_repo.save_token(100, 1, "access-vero", "refresh", datetime.now(timezone.utc) + timedelta(days=7))
 
     chiamate_join = []
@@ -262,6 +275,7 @@ async def test_restore_users_senza_token_manda_dm_di_autorizzazione(database, mo
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
 
     utente_finto = _FakeUser(1)
     cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
@@ -285,6 +299,7 @@ async def test_restore_users_senza_chiave_di_firma_conta_come_dm_fallito(databas
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
 
     utente_finto = _FakeUser(1)
     cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
@@ -305,6 +320,7 @@ async def test_restore_users_dm_bloccato_viene_contato(database, monkeypatch):
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
 
     utente_finto = _FakeUser(1, disponibile=False)
     cog = RestoreCog(bot=_FakeBot({1: utente_finto}))
@@ -324,6 +340,7 @@ async def test_restore_users_modalita_classica_usa_invito_e_non_token(database, 
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
     await database.set_guild_setting(200, "backup_restore_mode", "classic_invite")
 
     utente_finto = _FakeUser(1)
@@ -346,6 +363,7 @@ async def test_restore_users_bannato_viene_saltato(database, monkeypatch):
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
     await oauth_repo.save_token(100, 1, "a", "r", datetime.now(timezone.utc) + timedelta(days=7))
     await oauth_repo.mark_banned(100, 1)
 
@@ -389,6 +407,7 @@ async def test_il_link_di_autorizzazione_in_dm_e_legato_al_destinatario(database
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None), (2, "Utente2", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None), (2, "Utente2", None)]])
 
     utenti = {1: _FakeUser(1), 2: _FakeUser(2)}
     cog = RestoreCog(bot=_FakeBot(utenti))
@@ -434,6 +453,7 @@ async def _restore_con_ruolo_verificato(database, monkeypatch, ruolo):
     await backup_repo_test.define_main(100)
     await backup_repo_test.define_backup(100, 200)
     await snapshot_repo.save_snapshot(100, [(1, "Utente1", None)])
+    await _consenso(database, 100, [u for u, _n, _a in [(1, "Utente1", None)]])
     await oauth_repo.save_token(100, 1, "access", "refresh", datetime.now(timezone.utc) + timedelta(days=7))
     await verify_repo_test.set_config(200, "button", ruolo.id, 0, 0, False, None)
 

@@ -2,11 +2,11 @@
 cogs/utility/restore.py
 ===========================
 Restore massivo utenti via OAuth2 (SPEC.md §11.11/§11.12) — comandi
-/admin backup restore-modo e /admin backup restore-utenti, più i listener che tengono
+/backup restore-modo e /backup restore-utenti, più i listener che tengono
 aggiornata la retention dei token salvati (uscita spontanea/kick/
 ban, come concordato esplicitamente con l'utente).
 
-Tre modalità per server (impostate con /admin backup restore-modo),
+Tre modalità per server (impostate con /backup restore-modo),
 esattamente come discusso: server NUOVI raccolgono il consenso al
 momento della verifica (verify_oauth, non gestito qui — vedi
 cogs/security/verify.py per il pannello che offre il link);
@@ -14,11 +14,13 @@ server ESISTENTI grandi usano la modalità on-demand (default:
 raccoglie il consenso solo se/quando serve un restore, riusando i
 token già raccolti da restore precedenti); in alternativa, invito
 classico senza alcun token.
-"""
 
-# DA FARE (issue #68, fase F3): restano M 12.12 (DM solo con consenso) e
-#   M 12.14 (link di consenso a fine verifica): servono dati e codice del
-#   flusso di verifica (cogs/security/verify.py).
+A fine verifica (cogs/security/verify.py) il membro di un server con backup
+riceve la proposta di consenso: un bottone per accettare i DM di ripristino
+(M 12.12) e, in modalità «OAuth alla verifica», anche il link OAuth (M 12.14).
+Il restore manda DM solo a chi ha accettato o ha dato il consenso OAuth.
+Funzioni coperte: SPEC §11.11, §11.12, M 12.10–12.16
+"""
 
 from __future__ import annotations
 
@@ -30,6 +32,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.utility.backup import registra_uso
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -56,7 +59,9 @@ from core.restore_oauth_logic import (
 )
 from core.restore_orchestrator import LimiteDiFrequenza, restore_orchestrator
 from core.restore_retention_logic import was_recently_kicked
+from core.restore_web_server import CONSENT_ONLY_TARGET
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.restore")
 
@@ -75,6 +80,86 @@ SETTING_AUTO_INVITE_ON_JOIN = "backup_auto_invite_on_join"
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
 
 
+class BottoneConsensoRestore(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"restore:consenso:(?P<g>[0-9]+):(?P<s>si|no)"
+):
+    """
+    M 12.12: il membro sceglie se ricevere un DM quando il server va ripristinato.
+    Persistente (custom_id fisso con il server, bot.add_dynamic_items in setup):
+    funziona anche dopo un riavvio e nel DM. Vale per chi clicca.
+    """
+
+    def __init__(self, guild_id: int, accetta: bool) -> None:
+        super().__init__(
+            discord.ui.Button(
+                label="Sì, avvisami" if accetta else "No, grazie",
+                style=discord.ButtonStyle.success if accetta else discord.ButtonStyle.secondary,
+                custom_id=f"restore:consenso:{guild_id}:{'si' if accetta else 'no'}",
+            )
+        )
+        self.guild_id = guild_id
+        self.accetta = accetta
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["g"]), match["s"] == "si")
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if self.accetta:
+            await restore_oauth_repo.salva_consenso(self.guild_id, interaction.user.id)
+            testo = "✅ Se il server dovrà essere ripristinato riceverai un DM con il link per rientrare."
+        else:
+            await restore_oauth_repo.ritira_consenso(self.guild_id, interaction.user.id)
+            testo = "Va bene: in caso di ripristino non riceverai DM da questo server."
+        await interaction.response.edit_message(content=testo, view=None)
+
+
+class ConsensoRestoreView(BaseView):
+    """I due bottoni persistenti del consenso (M 12.12)."""
+
+    def __init__(self, guild_id: int) -> None:
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        self.add_item(BottoneConsensoRestore(guild_id, True))
+        self.add_item(BottoneConsensoRestore(guild_id, False))
+
+
+async def proposta_consenso_restore(
+    guild_id: int, user_id: int
+) -> tuple[str, ConsensoRestoreView] | None:
+    """
+    M 12.12/12.14: testo e bottoni da mostrare a fine verifica. None se il server
+    non usa il backup, è in modalità «solo invito classico» senza coppia, o se
+    l'utente ha già dato il consenso.
+    """
+    modalita = await db.get_guild_setting(guild_id, SETTING_RESTORE_MODE, DEFAULT_RESTORE_MODE)
+    if modalita != MODE_VERIFY_OAUTH and await backup_repo.get_pair(guild_id) is None:
+        return None
+    if await restore_oauth_repo.ha_consenso(guild_id, user_id):
+        return None
+    testo = (
+        "📦 Questo server ha un backup. Se un giorno dovrà essere ripristinato, "
+        "vuoi ricevere un DM con il link per rientrare?"
+    )
+    if modalita == MODE_VERIFY_OAUTH:
+        try:
+            url = build_authorize_url(
+                client_id=config.OAUTH2_CLIENT_ID,
+                redirect_uri=config.OAUTH2_REDIRECT_URI,
+                source_guild_id=guild_id,
+                target_guild_id=CONSENT_ONLY_TARGET,
+                user_id=user_id,
+                signing_key_b64=config.OAUTH_ENCRYPTION_KEY,
+            )
+            testo += (
+                f"\nOppure [autorizza il rientro automatico]({url}): in caso di ripristino "
+                "sarai aggiunto da solo, senza DM."
+            )
+        except RestoreStateSigningError:
+            logger.warning("Link OAuth di fine verifica non creato: OAUTH_ENCRYPTION_KEY non configurata.")
+    return testo, ConsensoRestoreView(guild_id)
+
+
 class RestoreCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -83,10 +168,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
     # Configurazione
     # ------------------------------------------------------------
     @comando_di_gruppo(
-        "admin",
+        "backup",
         nome="restore-modo",
         descrizione="Scegli come questo server gestisce il restore utenti via OAuth2.",
-        sottogruppo=("backup", "Backup e ripristino del server"),
     )
     @app_commands.describe(
         modalita="Come raccogliere il consenso per il restore automatico",
@@ -115,6 +199,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
         await db.set_guild_setting(
             interaction.guild.id, SETTING_AUTO_INVITE_ON_JOIN, auto_invito_nuovi_membri
         )
+        await registra_uso(interaction.guild.id, interaction.user.id, "restore-modo", modalita.value)
 
         await interaction.response.send_message(
             f"✅ Modalità restore impostata: **{modalita.name}**"
@@ -123,13 +208,12 @@ class RestoreCog(CogConGruppi, commands.Cog):
         )
 
     # ------------------------------------------------------------
-    # /admin backup restore-utenti
+    # /backup restore-utenti
     # ------------------------------------------------------------
     @comando_di_gruppo(
-        "admin",
+        "backup",
         nome="restore-utenti",
         descrizione="Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.",
-        sottogruppo=("backup", "Backup e ripristino del server"),
     )
     @app_commands.describe(
         server_di_origine="ID del server (main originale) da cui ripristinare gli utenti"
@@ -161,7 +245,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(
                 "⚠️ Questo server non è registrato come backup di quello indicato. "
                 "Il restore è permesso solo dal server di origine verso il suo "
-                "backup designato (vedi /admin backup main e /admin backup crea).",
+                "backup designato (vedi /backup main e /backup crea).",
                 ephemeral=True,
             )
             return
@@ -185,6 +269,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
                     ephemeral=True,
                 )
                 return
+            await registra_uso(interaction.guild.id, interaction.user.id, "restore-utenti", str(source_guild_id))
             await self._esegui_restore(interaction, source_guild_id, snapshot)
 
     async def _esegui_restore(self, interaction, source_guild_id: int, snapshot) -> None:
@@ -204,6 +289,8 @@ class RestoreCog(CogConGruppi, commands.Cog):
             "illeggibili": 0,
             "rimandati": 0,
             "gia_contattati": 0,
+            "senza_consenso": 0,
+            "invito_mancante": 0,
             "ruolo_non_assegnato": 0,
         }
 
@@ -253,6 +340,12 @@ class RestoreCog(CogConGruppi, commands.Cog):
                         contatori["ruolo_non_assegnato"] += 1
                 continue
 
+            if azione in (ACTION_REQUEST_CONSENT, ACTION_CLASSIC_INVITE) and not (
+                await restore_oauth_repo.ha_consenso(source_guild_id, entry.user_id)
+            ):
+                contatori["senza_consenso"] += 1  # M 12.12: niente contatti senza permesso
+                continue
+
             if azione in (ACTION_REQUEST_CONSENT, ACTION_CLASSIC_INVITE) and (
                 await restore_oauth_repo.gia_contattato(
                     interaction.guild.id, source_guild_id, entry.user_id
@@ -296,6 +389,9 @@ class RestoreCog(CogConGruppi, commands.Cog):
             if azione == ACTION_CLASSIC_INVITE:
                 if invito_classico_url is None:
                     invito_classico_url = await self._crea_invito_classico(interaction)
+                if not invito_classico_url:
+                    contatori["invito_mancante"] += 1  # M 12.16: niente DM con un invito che non c'è
+                    continue
                 try:
                     utente = await self.bot.fetch_user(entry.user_id)
                     await utente.send(
@@ -321,7 +417,14 @@ class RestoreCog(CogConGruppi, commands.Cog):
             f"⚠️ Aggiunta non riuscita: {contatori['join_falliti']}\n"
             f"🔒 Token illeggibili (da rifare): {contatori['illeggibili']}\n"
             f"⏱️ Rimandati (limite di frequenza): {contatori['rimandati']}\n"
-            f"🔁 Già contattati di recente: {contatori['gia_contattati']}"
+            f"🔁 Già contattati di recente: {contatori['gia_contattati']}\n"
+            f"🤐 Non contattati (nessun consenso ai DM): {contatori['senza_consenso']}"
+            + (
+                f"\n⚠️ Invito non creato, utenti non contattati: {contatori['invito_mancante']} "
+                "(Discord rifiuta: troppi inviti nel server o permesso «Crea invito» mancante)"
+                if contatori["invito_mancante"]
+                else ""
+            )
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
                 f"/security verify setup): {contatori['ruolo_non_assegnato']}"
@@ -388,10 +491,15 @@ class RestoreCog(CogConGruppi, commands.Cog):
         )
 
     async def _crea_invito_classico(self, interaction: discord.Interaction) -> str:
+        """L'invito per i DM; stringa vuota se Discord rifiuta (M 12.16: tetto di 1000 inviti, LIM-36)."""
         canale = interaction.channel
-        invito = await canale.create_invite(
-            max_age=7 * 24 * 60 * 60, reason="Restore utenti (SPEC.md §11.11, invito classico)"
-        )
+        try:
+            invito = await canale.create_invite(
+                max_age=7 * 24 * 60 * 60, reason="Restore utenti (SPEC.md §11.11, invito classico)"
+            )
+        except discord.HTTPException:
+            logger.warning("Invito classico non creato nel server %s", interaction.guild.id)
+            return ""
         return invito.url
 
     # ------------------------------------------------------------
@@ -446,4 +554,5 @@ class RestoreCog(CogConGruppi, commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
+    bot.add_dynamic_items(BottoneConsensoRestore)
     await bot.add_cog(RestoreCog(bot))

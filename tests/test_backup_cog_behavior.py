@@ -161,7 +161,7 @@ async def test_crea_dopo_main_da_il_codice_e_i_link_degli_inviti(monkeypatch):
         await cog.define_backup.callback(cog, interaction)
 
         testo = interaction.response.sent_messages[0]
-        assert "/admin backup collega" in testo
+        assert "/backup collega" in testo
         assert "client_id=999" in testo and "client_id=888" in testo
         assert await database.pool.fetchval(
             "SELECT count(*) FROM backup_link_codes WHERE main_guild_id = 100"
@@ -320,7 +320,7 @@ async def test_promuovi_backup_promuove_senza_accodare_copie_orfane(monkeypatch)
 
         messaggio = interaction.response.sent_messages[0]
         assert "promosso a" in messaggio and "100" in messaggio
-        assert "/admin backup crea" in messaggio
+        assert "/backup crea" in messaggio
         assert await repo.get_next_pending_job() is None  # un job senza server non servirebbe
         assert await repo.is_backup_of(100, 200)  # coppia storica (BUG-34)
     finally:
@@ -357,7 +357,7 @@ class _BotMain(_FakeBot):
 
 
 async def _collega_con(monkeypatch, creato_da, main_finto):
-    """Esegue /admin backup collega dal server 200 (utente 42, admin lì). Restituisce (messaggio, coppia)."""
+    """Esegue /backup collega dal server 200 (utente 42, admin lì). Restituisce (messaggio, coppia)."""
     from core.backup_link_logic import crea_codice_collegamento
 
     database = Database()

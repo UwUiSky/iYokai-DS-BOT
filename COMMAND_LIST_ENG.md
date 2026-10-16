@@ -1,17 +1,11 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 468 commands in 21 categories.**
+**Total: 484 commands in 22 categories.**
 
 ## Admin
 
-- **`/admin backup create`** — Prepares the backup: link code and link for the new server.
-- **`/admin backup link`** — Links THIS server as backup, with the code received from the main server.
-- **`/admin backup main`** — Registers this server as 'main' for the Backup System.
-- **`/admin backup promote`** — Promotes THIS server (so far a backup) to new main, if the original main is lost.
-- **`/admin backup restore-modo`** — Picks how this server handles user restore via OAuth2.
-- **`/admin backup restore-utenti`** — Restores into THIS server the users of another server's latest snapshot.
 - **`/admin config bot-nickname`** — Changes the bot's name in this server.
 - **`/admin config cleanup`** — Removes channels and roles that no longer exist from the settings.
 - **`/admin config export`** — Exports this server's configuration to a file.
@@ -141,6 +135,31 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-15 05:2
 - **`/automod words add`** — Adds a banned word.
 - **`/automod words list`** — Shows the configured banned words.
 - **`/automod words remove`** — Removes a banned word.
+
+## Backup
+
+- **`/backup cancel`** — Stops the running load (what is done stays).
+- **`/backup chat-load`** — Loads a saved chat into a channel, even a different one.
+- **`/backup chat-save`** — Saves the latest messages of a channel (up to 1000) to load them later.
+- **`/backup copy-channel`** — Copies a channel with its permissions; a category with its channels.
+- **`/backup copy-role`** — Copies a role with its permissions and, optionally, its channel permissions.
+- **`/backup create`** — Prepares the backup: link code and link for the new server.
+- **`/backup delete`** — Deletes a saved copy.
+- **`/backup export`** — Exports structure, channels, roles, bans or reactions to a file.
+- **`/backup import`** — Imports the structure from a JSON file, picking what to apply.
+- **`/backup link`** — Links THIS server as backup, with the code received from the main server.
+- **`/backup list`** — The saved copies of this server, with their date.
+- **`/backup load`** — Loads a saved copy into this server, picking the parts.
+- **`/backup log`** — Who used backups, templates and syncs (last 20, 365 days).
+- **`/backup main`** — Registers this server as 'main' for the Backup System.
+- **`/backup permissions`** — Who can create and who can load backups (owner only).
+- **`/backup promote`** — Promotes THIS server (so far a backup) to new main, if the original main is lost.
+- **`/backup restore-modo`** — Picks how this server handles user restore via OAuth2.
+- **`/backup restore-utenti`** — Restores into THIS server the users of another server's latest snapshot.
+- **`/backup save`** — Saves a dated copy of this server structure.
+- **`/backup status`** — Progress of the latest load in this server.
+- **`/backup sync`** — Keeps bans and roles equal with another server of yours.
+- **`/backup template`** — Templates: share a copy with a code or load another server one.
 
 ## Clan
 

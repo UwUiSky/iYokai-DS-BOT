@@ -110,7 +110,7 @@ Gemini dentro gli elenchi approvati tutti insieme (Gemini r.494).
 
 | ID | Funzione | Cosa fa | Chi l'ha chiesta o proposta | Vecchio verdetto | Come farla | Fase |
 |---|---|---|---|---|---|---|
-| OM-020 | Verifica di un backup | Un comando controlla che un backup sia leggibile e completo: ruoli, canali, riferimenti. | Proposta: ChatGPT r.5769–5796 | Nessun verdetto: non era stata valutata | Comando dentro `/admin backup`; rilegge lo snapshot e prova a ricostruirlo a vuoto | F3 |
+| OM-020 | Verifica di un backup | Un comando controlla che un backup sia leggibile e completo: ruoli, canali, riferimenti. | Proposta: ChatGPT r.5769–5796 | Nessun verdetto: non era stata valutata | Comando dentro `/backup`; rilegge lo snapshot e prova a ricostruirlo a vuoto | F3 |
 | OM-021 | Anteprima del ripristino | Prima di ripristinare il bot mostra cosa creerà, cosa cambierà e dove c'è un conflitto. Poi chiede conferma. | Proposta: ChatGPT r.3205–3223 | Nessun verdetto: non era stata valutata | Confronto tra snapshot e stato attuale (lo stesso che serve al Creator per "tenere aggiornato", D8) | F3 |
 | OM-022 | Piano di ripristino guidato | Dopo un disastro il bot guida passo per passo: permessi, backup valido, ruoli, canali, verifica finale, avviso allo staff. | Proposta: ChatGPT r.5797–5814 | Nessun verdetto: non era stata valutata | Sequenza di passi con bottoni dentro `/admin restore` | F3 |
 

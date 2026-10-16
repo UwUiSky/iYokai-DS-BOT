@@ -735,7 +735,7 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
 
 **Note di rilascio (core):** la migrazione `0037` riscrive `event_log` (id a BIGINT): su una tabella con milioni di righe blocca la tabella all'avvio. Applicarla fuori orario o con il bot spento. La `0050` rifà la colonna calcolata `retain_for_security` di `moderation_cases` e l'indice dei ticket.
 
-- [ ] `5.11` OAuth (#138) — con un account che ha autorizzato il ripristino utenti (`/admin backup restore-utenti`, token valido): `/modban tempban ... duration:2m modo:Fuori, con invito e ruoli al rientro`. Risultato atteso: alla scadenza l'account rientra da solo (nessun invito usato) con i ruoli di prima; riga di log «Rientro: Automatico». Senza autorizzazione e senza «Creare invito» il comando si ferma prima del ban.
+- [ ] `5.11` OAuth (#138) — con un account che ha autorizzato il ripristino utenti (`/backup restore-utenti`, token valido): `/modban tempban ... duration:2m modo:Fuori, con invito e ruoli al rientro`. Risultato atteso: alla scadenza l'account rientra da solo (nessun invito usato) con i ruoli di prima; riga di log «Rientro: Automatico». Senza autorizzazione e senza «Creare invito» il comando si ferma prima del ban.
 - [ ] `5.12` ter (#138) — `/modban ban` su un account isolato, poi `/modban unban`: l'account risulta sbannato davvero. Se Discord rifiuta di nascondere qualche canale, il moderatore legge quanti.
 - [ ] Dati (NF-04, F5) — quando il registro esisterà: `rank_card_prefs` deve comparire in esportazione e cancellazione.
 - [ ] `M 15.1` + `M 15.2` (#71) — passi (serve `PIXABAY_API_KEY` nel `.env`):
@@ -787,9 +787,9 @@ Prima: come sopra (Lavalink 4.2.0+, 5 bot musicali invitati **con il link nuovo*
 Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOKAI_CREATOR_TOKEN`), un secondo account admin e un account senza permessi. Un bot non può creare server: lo crea l'admin.
 
 - [ ] `12.1` / `12.2` / `12.9` (#68) — collegamento e copia vera. Passi:
-  1. Nel server principale: `/admin backup main`, poi `/admin backup crea modello:True`.
+  1. Nel server principale: `/backup main`, poi `/backup crea modello:True`.
   2. Crea a mano un server nuovo (anche dal link modello). Invita iYokai e iYokai Creator con i due link. Controlla nel selettore dei permessi che compaia «Creare espressioni».
-  3. Nel server nuovo: `/admin backup collega codice:<codice>`. Prima prova un codice sbagliato, poi uno già usato, poi (dopo 24 ore o con la data cambiata nel database) uno scaduto.
+  3. Nel server nuovo: `/backup collega codice:<codice>`. Prima prova un codice sbagliato, poi uno già usato, poi (dopo 24 ore o con la data cambiata nel database) uno scaduto.
   4. Aspetta il DM «Backup pronto» al proprietario del server principale.
   Risultato atteso: struttura, ruoli e permessi uguali; nessun doppione se si è partiti dal modello; il Creator **resta** nel server di backup; codice sbagliato/usato/scaduto rifiutati con un messaggio; un account senza «Amministratore» rifiutato; il Creator assente nel server nuovo dà il messaggio che spiega come invitarlo.
 - [ ] `12.4` (#68) — gerarchia dei ruoli. Passi: confronta l'ordine dei ruoli nei due server (il ruolo del Creator deve stare **in alto**). Risultato atteso: ordine identico; se il Creator è in basso, il riepilogo dice «Ordine dei ruoli non impostato».
@@ -797,18 +797,37 @@ Servono: il server principale di prova, **iYokai**, **iYokai Creator** (con `YOK
 - [ ] `12.6` (#68) — un canale con 15 webhook. Risultato atteso: nel backup 14 webhook copiati + «iYokai Mirror»; il riepilogo cita 1 webhook oltre il limite; il mirror funziona in quel canale. Rilancia la copia: nessun secondo «iYokai Mirror».
 - [ ] `12.7` (#68) — un account con nome «Discord Fan» scrive nel principale. Risultato atteso: il messaggio compare nel backup con il nome «disc0rd Fan».
 - [ ] `12.8` (#68) — un canale chiamato `___hidden___` (o che il bot non vede). Risultato atteso: saltato; il riepilogo dice quanti e di dare al bot il permesso di vedere tutti i canali.
-- [ ] `12.13` (#68, BUG-34) — nel server di backup collegato: `/admin backup promuovi`, poi `/admin backup restore-utenti server_di_origine:<id del vecchio main>`. Risultato atteso: il restore parte (prima rifiutava); un terzo server resta rifiutato.
-- [ ] `12.10` (#68) — token OAuth salvato con scadenza nel passato (database di prova, solo la data) e refresh token vero. `/admin backup restore-utenti`. Risultato atteso: l'utente viene aggiunto con il token rinnovato; con refresh token revocato riceve il DM di consenso.
+- [ ] `12.13` (#68, BUG-34) — nel server di backup collegato: `/backup promuovi`, poi `/backup restore-utenti server_di_origine:<id del vecchio main>`. Risultato atteso: il restore parte (prima rifiutava); un terzo server resta rifiutato.
+- [ ] `12.10` (#68) — token OAuth salvato con scadenza nel passato (database di prova, solo la data) e refresh token vero. `/backup restore-utenti`. Risultato atteso: l'utente viene aggiunto con il token rinnovato; con refresh token revocato riceve il DM di consenso.
 - [ ] `12.11` (#68) — restore con molti utenti (30+ in snapshot, DM aperti). Risultato atteso: pausa visibile tra un DM e l'altro, nessun errore 429 non gestito, conteggi che contano solo gli esiti riusciti, un solo riepilogo finale (anche oltre i 15 minuti: finisce nel canale).
 - [ ] `12.15` (#68) — metti in `OAUTH_ENCRYPTION_KEY` due chiavi separate da virgola (nuova, vecchia). Risultato atteso: i token vecchi si leggono ancora, i nuovi si scrivono con la prima; una riga rovinata a mano nel database non ferma il restore (avviso nel log, richiesta di nuovo consenso).
-- [ ] `#46 D / #15` (#46) — da un terzo server: `/admin backup restore-utenti` con l'ID di un main che non ti ha come backup. Risultato atteso: rifiutato.
+- [ ] `#46 D / #15` (#46) — da un terzo server: `/backup restore-utenti` con l'ID di un main che non ti ha come backup. Risultato atteso: rifiutato.
 
 ### Correzioni del cacciatore-bug — stesso ramo (#68)
 
-- [ ] Permessi del Creator (#68) — nel server principale un ruolo «Mod» con «Espellere membri» e un ruolo sopra il Creator. Invita il Creator col link di `/admin backup crea` (senza Amministratore) e collega. Risultato atteso: copia finita; il riepilogo dice «Ruoli con permessi che il Creator non ha» e «Ruoli sopra quello del Creator, non aggiornati»; con Amministratore al Creator, nessuna delle due righe e permessi identici. (Non provabile senza Discord: se Discord rifiuta ancora, annotare quale permesso.)
+- [ ] Permessi del Creator (#68) — nel server principale un ruolo «Mod» con «Espellere membri» e un ruolo sopra il Creator. Invita il Creator col link di `/backup crea` (senza Amministratore) e collega. Risultato atteso: copia finita; il riepilogo dice «Ruoli con permessi che il Creator non ha» e «Ruoli sopra quello del Creator, non aggiornati»; con Amministratore al Creator, nessuna delle due righe e permessi identici. (Non provabile senza Discord: se Discord rifiuta ancora, annotare quale permesso.)
 - [ ] Collegamento (#68) — un secondo admin prova a usare il codice di un altro: rifiutato. Un server già backup di un altro main, o un main che ha già un backup: rifiutato. Due codici insieme: il secondo rifiuta finché la copia è in corso.
-- [ ] Restore (#68) — lancia `/admin backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
+- [ ] Restore (#68) — lancia `/backup restore-utenti` due volte insieme: il secondo dice «ripristino in corso». Rilancialo dopo la fine: chi ha già ricevuto il DM (ultimi 7 giorni) è contato in «Già contattati di recente», nessun DM doppio. Un utente bannato con riga rovinata a mano non riceve nulla.
 - [ ] Ingresso (#68) — fai rientrare iYokai in un server di backup in blacklist: esce. Rientro in un backup normale: nessun benvenuto, ma `left_at` azzerato.
+
+## Backup — giro r7 (`feat/r7bak`: #68, #121, #110, #46)
+
+Servono: due server di prova dello **stesso owner** (A e B), iYokai in entrambi, un account admin non owner, un account membro con DM aperti.
+
+- [ ] D25 — Il gruppo `/backup` compare nel menu (`/admin backup` non c'è più). Risultato atteso: un account senza «Amministratore» non lo vede.
+- [ ] `12.12` / `12.14` (#68) — in A (con `/backup main`): `/security verify setup`, verifica col membro. Risultato atteso: dopo l'esito, il messaggio «Questo server ha un backup…» con «Sì, avvisami / No, grazie». Con `/backup restore-modo modalita:OAuth al momento della verifica` compare anche il link OAuth; aprirlo salva il consenso («Autorizzazione salvata»). In modalità reazione la proposta arriva in DM. Poi `/backup restore-utenti` dal backup: chi ha detto «No» o non ha risposto non riceve DM e il riepilogo lo conta in «Non contattati (nessun consenso ai DM)».
+- [ ] `12.12` persistenza — ricevi la proposta (anche in DM, modalità reazione), riavvia il bot, poi clicca «Sì, avvisami». Risultato atteso: il clic funziona e il messaggio diventa «✅ Se il server dovrà essere ripristinato…».
+- [ ] `12.16` (#68) — modalità «solo invito classico» in un canale dove il bot non può creare inviti. Risultato atteso: nessun DM, riepilogo con «Invito non creato».
+- [ ] `12.17` / BKP-014/015 — in A: `/backup salva nome:prova ban:True membri:True messaggi:20`, poi `/backup lista`. Risultato atteso: copia con data; al massimo 10 copie (l'undicesima rifiutata).
+- [ ] BKP-018 — come admin non owner: `/backup carica copia:<n>`. Risultato atteso: rifiutato («solo l'owner carica»). Da owner: `/backup permessi livello:Gli admin creano e caricano`, poi l'admin riprova: menu delle parti.
+- [ ] BKP-018 gerarchia — livello «Gli admin creano e caricano»; l'admin non owner ha come ruolo più alto «Mod». Carica una copia con ruoli e membri che comprende «Mod» e un ruolo sopra «Mod». Risultato atteso: quei ruoli non cambiano permessi né posizione e non vengono dati a nessuno; nessun ruolo nuovo finisce sopra «Mod»; il riepilogo lo dice. Lo stesso caricamento fatto dall'owner li tocca.
+- [ ] BKP-009/010/037 — in B (server vuoto, copia esportata da A con `/backup esporta cosa:Struttura del server`): `/backup importa file:<json>`, scegli ruoli + canali + messaggi, «Carica»; subito `/backup stato`, poi `/backup annulla`. Risultato atteso: percentuale che sale, poi «annullato» e ciò che era fatto resta; ricaricando, nessun doppione (stesso nome = riusato) e messaggi solo nei canali ancora vuoti; un file modificato a mano con `"versione": 9` rifiutato senza toccare il server.
+- [ ] BKP-033/034/036 — `/backup esporta` con «Tutti i canali» in CSV, «Un ruolo», «Ban con i motivi», «Reazioni a un messaggio» (link). Risultato atteso: file corretti, apribili in un foglio di calcolo.
+- [ ] NF-39 modelli — in A: `/backup modello azione:Pubblica copia:<n>`; in B: `/backup modello azione:Usa codice:<codice>`. Risultato atteso: nel menu non ci sono ban, membri e messaggi; `ritira` rende il codice inutilizzabile.
+- [ ] NF-39 sincronia — owner di A e B: in A `/backup sincronia azione:Attiva server:<id di B>`. Banna un account di prova in A: bannato anche in B, una sola volta. Sbannalo in B: sbannato in A. Dai un ruolo «Vip» (esiste con lo stesso nome in B) a un membro presente in entrambi: lo riceve anche in B. Risultato atteso: nessun ciclo di ban/sban; con un admin non owner il comando è rifiutato.
+- [ ] BKP-024/025 — `/backup copia-canale` su una categoria con 3 canali; `/backup copia-ruolo permessi_canali:True`. Risultato atteso: categoria e canali copiati con i permessi; ruolo nuovo con gli stessi permessi nei canali.
+- [ ] BKP-026/027/013/016 — `/backup chat-salva quanti:30` in un canale con un'immagine e un messaggio fissato; `/backup chat-carica` in un altro canale entro un giorno e poi dopo qualche giorno. Risultato atteso: messaggi in ordine con nome e avatar, immagine come file (il primo giorno) o come link (dopo), il fissato di nuovo fissato. Lo stesso nella copia iniziale del server di backup (`/backup collega`).
+- [ ] BKP-019 — `/backup registro`. Risultato atteso: tutte le azioni sopra, con chi e quando.
 
 ## Utilità — passaggio `feat/r4-uti` (#66, #78–#82, #85, #87, #88, #97, #98, #105)
 

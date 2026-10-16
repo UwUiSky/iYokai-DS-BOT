@@ -2,6 +2,7 @@
 
 ## Aggiornata
 16/10/2026 · ramo `feat/r7mod` (#113 D15, #119, #101): corretti dal revisore sban da Discord (NF-30), cancellati in memoria (LOG-027/NF-04), fine isolamento via Mod. Esito smoke nel rapporto.
+16/10/2026 · ramo `feat/r7bak` (/backup D25, #68, #110, #121): corretti dal revisore consenso persistente, gerarchia al caricamento, D25 quarto caso (3be8a40). Smoke --base main: 1071 verdi.
 
 ## In corso
 - `feat/r7mod`: aperti noti in SPEC/REGISTRO (log via webhook, invito in /setup, LOG-029). `_shared.py:192` non riconosce Mod come «il bot stesso» (bassa).
@@ -11,6 +12,7 @@
 
 ## Fatto
 - F1 del 05/10 unito. Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai (9f323ca), r6mod (e420745), r6web (f1829fc), r6mus (e339198), r7mod.
+- F1 del 05/10 unito. Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai (9f323ca), r6mod (e420745), r6web (f1829fc), r6mus (e339198), r7bak (3be8a40).
 
 ## Cose imparate
 - Controllare il contenuto di ogni commit, non il messaggio. Testo all'utente che promette una funzione va confrontato col codice.
@@ -28,6 +30,8 @@
 - URL controllati dal bot e scaricati da un altro (Lavalink): DNS rebinding e redirect restano (LIM-58), si blocca la rete dell'altro.
 - Bot secondario (D15): cercare OGNI azione della sua area ancora chiamata sul principale (anche dentro funzioni di aiuto, es. fine isolamento).
 - Ruoli che aprono un livello più alto: chi li sceglie deve avere il permesso di quel livello (D28).
+- Ruoli che aprono un livello più alto: chi li sceglie deve avere il permesso di quel livello (D28). Caricamenti/ripristini fatti dal bot: tetto = ruolo più alto di chi lancia (salvo owner).
+- DECISIONI: i «casi» di D25 aggiunti da rami diversi vanno numerati contro `git show main:`; paragrafi finiti fuori sezione si riportano dentro.
 
 ## Aperto
 - Domande all'owner: SPEC 23.16 (sfondo solo colore), D18 limite ticket per utente, conferma primo DM ModMail, D27.

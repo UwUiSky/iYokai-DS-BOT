@@ -231,3 +231,10 @@
 | 16/10 | `log_eventi_repo.spenti` | Leggi-poi-set: lettura lenta rimette in cache gli interruttori vecchi dopo `imposta` | bassa | corretto r7mod |
 | 16/10 | `ban_appeal` NF-30 | Caso attivo resta dopo uno sban dall'interfaccia di Discord: offerta e appello su un ban che non c'è (preesistente) | bassa | corretto r7mod dal revisore (`on_member_unban`) |
 | 16/10 | `message_logs.cancellati_recenti` | Cancellati tenuti in memoria anche con l'evento «messaggi cancellati» spento (LOG-017) e dopo una richiesta privacy | bassa | corretto r7mod dal revisore (NF-04) |
+| 16/10 | `cogs/utility/backup.py` `_altri_server` | Sincronia: proprietà controllata solo all'attivazione; server ceduto banna nell'altro | alta | corretto 1172556 |
+| 16/10 | `core/server_sync_logic.py` `ruoli_applicabili` | Ruolo omonimo senza permessi in A dà l'«Admin» vero di B | alta | corretto 1172556 |
+| 16/10 | `core/backup_struttura_logic.py` `Caricatore._ruoli/_overwrites` | File/modello dà admin a @everyone o a ruoli esistenti (con membri) | alta | corretto b70b41f |
+| 16/10 | `cogs/utility/backup.py` `importa` | File importato con «membri» dà ruoli a ID scelti da chi l'ha scritto | media | corretto b70b41f |
+| 16/10 | `core/backup_struttura_logic.py` `valida_struttura` | Emoji, sticker, membri, ban, posizioni, allegati non controllati: errore a metà caricamento | media | corretto b70b41f |
+| 16/10 | `cogs/utility/restore.py` `ConsensoRestoreView` | Bottoni del consenso non persistenti (timeout 900, morti al riavvio, anche nel DM) | bassa | corretto dal revisore 3be8a40 |
+| 16/10 | `core/backup_struttura_logic.py` `_membri`/`_ruoli` | Al livello «admin_tutto» un admin dà/modifica ruoli sopra il suo (gerarchia solo del bot) | bassa | corretto dal revisore 3be8a40 |

@@ -111,11 +111,11 @@ l'opzione `tipo`). Le frecce `a→b` sono i nomi che cambiano.
 | `/setup-wizard` | `/admin setup wizard` | |
 | `/config` history, rollback, reset, export, import | `/admin config` | |
 | `/config language` show, set | `/admin lingua` | |
-| `/define-main` | `/admin backup main` | |
-| `/define-backup` | `/admin backup crea` | |
-| `/promuovi-backup` | `/admin backup promuovi` | |
-| `/restore-users` | `/admin backup restore-utenti` | |
-| `/configura-restore` | `/admin backup restore-modo` | |
+| `/define-main` | `/backup main` | |
+| `/define-backup` | `/backup crea` | |
+| `/promuovi-backup` | `/backup promuovi` | |
+| `/restore-users` | `/backup restore-utenti` | |
+| `/configura-restore` | `/backup restore-modo` | |
 | `/schedule-message` set→programma, list→programmati, cancel→annulla | `/admin messaggi` | |
 | `/sticky` set→sticky-set, remove→sticky-togli | `/admin messaggi` | |
 

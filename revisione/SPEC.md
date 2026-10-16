@@ -63,7 +63,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §8 LOGGING | 11 | 7 | 1 | 0 |
 | §9 MUSIC | 1 | 8 | 5 | 3 |
 | §10 ALERTS & SOCIAL | 0 | 7 | 3 | 0 |
-| §11 BACKUP SYSTEM | 0 | 11 | 6 | 0 |
+| §11 BACKUP SYSTEM | 2 | 14 | 1 | 0 |
 | §12 TEMPORARY VOICE CHANNELS | 5 | 3 | 0 | 0 |
 | §13 TICKET SYSTEM | 5 | 8 | 0 | 0 |
 | §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 4 | 0 |
@@ -1072,11 +1072,12 @@ posti", la pulizia dei server orfani (già disattivata il 04/10 in
 `fba882e`). I bug BUG-26, BUG-28 e BUG-29 riguardavano quel flusso:
 superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
-- `[ ]` 11.1 Snapshot del server salvato come dati nel database, con
-  più copie datate per server (D8, LIM-39)
-- `[x]` 11.2 Collegamento di un server creato a mano: `/admin backup
+- `[~]` 11.1 Snapshot del server salvato come dati nel database, con
+  più copie datate per server (D8, LIM-39): `/backup salva` e `lista`,
+  tabella `backup_strutture` (0191), vedi 11.15
+- `[x]` 11.2 Collegamento di un server creato a mano: `/backup
   crea` genera il codice (24 ore, monouso, salvato come impronta) e, a
-  richiesta, il link "modello" (`Guild.create_template`); `/admin backup
+  richiesta, il link "modello" (`Guild.create_template`); `/backup
   collega` lo usa nel server nuovo (`core/backup_link_logic.py`); la copia
   gira sul client del Creator; nessuna cessione di proprietà (D8); copia
   anche gli ultimi 50 messaggi per canale con il webhook, uno alla volta
@@ -1120,27 +1121,45 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   429, pausa tra i DM, conteggi dopo l'esito, riepilogo nel canale se la
   risposta è scaduta (LIM-7); coppia storica dopo la promozione (BUG-34);
   chiave ruotabile con prefisso di versione, cifrato legato a server e
-  utente, riga rovinata saltata (LIM-52, SEC-16). Aperti: la modalità
-  "OAuth alla verifica" non fa niente di diverso (12.14, serve
-  `cogs/security/verify.py`); invito in DM solo a chi ha dato il consenso
-  (12.12, manca il dato del consenso)
-- `[~]` 11.12 Comandi `/define-main`, `/define-backup`,
-  `/promuovi-backup`, `/restore-users`, `/configura-restore` —
-  esistono; `/define-backup` oggi fallisce perché prova a creare un
-  server. In F3 diventano il flusso di 11.1 e 11.2, e in F7 passano
-  sotto `/admin backup` e `/admin restore`
-- `[~]` 11.13 Promozione del backup a nuovo main — `/promuovi-backup`.
-  Dopo la promozione `/restore-users` rifiuta sempre (BUG-34, da
-  confermare con un test): la coppia storica va conservata
-- `[ ]` 11.14 Il Creator smette di creare, cedere e cancellare server:
-  entra nel server creato dall'admin e lo porta allo stato corrente,
-  messaggi in ordine cronologico compresi (D8)
+  utente, riga rovinata saltata (LIM-52, SEC-16). Fatti il 15/10 (M 12.12,
+  12.14): a fine verifica, in un server con backup, bottoni «Sì, avvisami /
+  No» (tabella `restore_consensi`; bottoni persistenti, anche nel DM e dopo
+  un riavvio) e, in modalità "OAuth alla verifica", il
+  link OAuth di solo consenso; il restore manda DM solo a chi ha accettato
+  o ha già un token
+- `[~]` 11.12 Comandi del gruppo `/backup` (D25, 15/10: il blocco intero
+  esce da `/admin`): `main`, `crea`, `collega`, `promuovi`, `restore-modo`,
+  `restore-utenti`. Ogni uso finisce nel registro (`/backup registro`,
+  365 giorni, BKP-019); `/backup permessi` sceglie fra tre livelli chi crea
+  e chi carica (BKP-018, predefinito: gli admin creano, solo l'owner carica)
+- `[~]` 11.13 Promozione del backup a nuovo main — `/backup promuovi`; la
+  coppia storica resta per `/backup restore-utenti` (BUG-34, M 12.13)
+- `[~]` 11.14 Il Creator non crea, non cede e non cancella server: entra nel
+  server creato dall'admin e lo porta allo stato corrente, messaggi in
+  ordine compresi (D8, M 12.1/12.2). Gli allegati tornano come file entro
+  10 MiB per messaggio e i fissati si rifissano (BKP-013/016, 15/10)
 - `[ ]` 11.17 Aggiornamento continuo del server di backup: controllo
   periodico delle differenze di ruoli, canali e permessi (D8)
-- `[ ]` 11.15 Salvataggio degli ultimi N messaggi per canale nello
-  snapshot (modello Xenon), oltre al mirror in tempo reale
-- `[ ]` 11.16 Modelli di server e sincronia di ban e ruoli tra server
-  dello stesso proprietario (§23, NF-39)
+- `[~]` 11.15 Copie datate della struttura (M 12.17, 15/10): `/backup salva`
+  (al massimo 10 per server; a scelta ban, membri e gli ultimi 0-100
+  messaggi di ogni canale), `lista`, `carica` (si scelgono le parti in un
+  menu; si riusa per nome, tetti di 250 ruoli, 500 canali, 50 per
+  categoria, bitrate; chi non è l'owner non modifica, non sposta e non dà
+  ruoli pari o sopra il suo più alto), `elimina`, `stato` e `annulla` (BKP-009/010);
+  `esporta` in JSON o CSV di struttura, canali, ruoli, un canale, un
+  ruolo, ban, reazioni (BKP-032…036); `importa` controlla il file prima di
+  toccare il server (BKP-037); `chat-salva` (fino a 1000 messaggi) e
+  `chat-carica` anche in un altro canale (BKP-026/027); `copia-canale` e
+  `copia-ruolo` (BKP-024/025). Logica in `core/backup_struttura_logic.py`,
+  `core/backup_messages_logic.py`, `core/backup_copia_logic.py`
+- `[~]` 11.16 Modelli e sincronia (§23, NF-39, 15/10): `/backup modello`
+  pubblica una copia con un codice (senza ban, membri, messaggi e permessi
+  dei singoli; mai una chat) e la carica in un altro server;
+  `/backup sincronia` tiene uguali ban e ruoli (per nome) tra due server
+  dello stesso owner, al massimo 5 per server, senza eco
+  (`core/server_sync_logic.py`). Il ban fra tutti i server resta il ban
+  globale (`cogs/security/global_ban.py`, stesso ID utente): il restore
+  OAuth non ripristina chi è bannato (#46)
 
 ## §12 TEMPORARY VOICE CHANNELS
 
