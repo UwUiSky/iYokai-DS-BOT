@@ -1923,7 +1923,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
-- `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
+- `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live); chi scrive al bot in privato con un ban manuale attivo riceve il bottone (stesso ingresso dei DM dello spam-trap, un bottone per server, al massimo 25)
 - `[x]` 23.10 Blocco dei link di phishing (NF-31); accorciatori di link e inviti a server per adulti con interruttore proprio (SIC-042, r6)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)

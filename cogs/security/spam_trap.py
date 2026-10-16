@@ -34,7 +34,7 @@ I bottoni dell'appello (Unban, Reject, Reply) sono persistenti: il
 loro custom_id porta server, caso e utente, e setup() li registra con
 `bot.add_dynamic_items`. Rispondono anche dopo un riavvio del bot.
 
-Funzioni coperte: SPEC §7.3
+Funzioni coperte: SPEC §7.3, §23 (NF-30: un DM di chi ha un ban manuale riceve il bottone di appello)
 """
 
 # DA FARE (issue #101, fase F13): NF-30, Appello per i ban normali. Vedi
@@ -52,6 +52,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.moderation.ban_appeal import offri_appello_in_dm
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
@@ -1106,7 +1107,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 candidati.append((guild, case))
 
         if not candidati:
-            return  # non è un DM legato a un ban dello Spam Trap: ignorato silenziosamente
+            # NF-30: forse è un ban manuale con gli appelli accesi; altrimenti il DM si ignora.
+            await offri_appello_in_dm(self.bot, user, message.channel)
+            return
 
         if len(candidati) > 1:
             corrispondenti = [

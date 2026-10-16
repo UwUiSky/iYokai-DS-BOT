@@ -8,6 +8,9 @@ testo in un modulo (un appello ogni 24 ore), lo staff lo trova nel canale
 con i bottoni Accetta e Rifiuta. Accettare toglie il ban (prima di segnare «accettato», solo quello contestato)
 e avvisa l'utente; se il ban non si toglie l'appello resta aperto.
 Solo chi può bannare decide. I bottoni sono persistenti (DynamicItem).
+Chi ha perso il messaggio (o aveva i DM chiusi) scrive al bot in privato:
+come per lo spam-trap, riceve un bottone «Fai appello» per ogni server
+dove ha un ban manuale attivo e gli appelli sono accesi.
 Funzioni coperte: SPEC §23 (NF-30, issue #101)
 Dipende da: core/ban_appeal_logic.py
 """
@@ -122,10 +125,10 @@ async def invia_appello(
 class BottoneApriAppello(
     discord.ui.DynamicItem[discord.ui.Button], template=r"appello:apri:(?P<g>[0-9]+)"
 ):
-    def __init__(self, guild_id: int) -> None:
+    def __init__(self, guild_id: int, etichetta: str = "Fai appello") -> None:
         super().__init__(
             discord.ui.Button(
-                label="Fai appello", style=discord.ButtonStyle.primary, custom_id=f"appello:apri:{guild_id}"
+                label=etichetta[:80], style=discord.ButtonStyle.primary, custom_id=f"appello:apri:{guild_id}"
             )
         )
         self.guild_id = guild_id
@@ -159,6 +162,44 @@ class BottoneEsitoAppello(
 
     async def callback(self, interaction: discord.Interaction) -> None:
         await decidi_appello(interaction, self.appello_id, self.accetta)
+
+
+# Un messaggio tiene 25 bottoni (5 righe da 5).
+MAX_SERVER_IN_DM = 25
+
+
+async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, canale_dm) -> bool:
+    """
+    Chi scrive al bot in privato e ha un ban manuale attivo riceve un bottone
+    «Fai appello» per ogni server con gli appelli accesi. True se ha risposto.
+    Il limite di un appello ogni 24 ore resta quello del modulo.
+    """
+    casi = []
+    for tipo in CASI_CON_APPELLO:
+        casi += await moderation_repo.get_active_cases_for_user_across_guilds(utente.id, tipo)
+    server: list[discord.Guild] = []
+    for guild_id in dict.fromkeys(c.guild_id for c in casi):
+        guild = bot.get_guild(guild_id)
+        if guild is None or await db.get_guild_setting(guild_id, SETTING_CANALE_APPELLI) is None:
+            continue
+        server.append(guild)
+        if len(server) == MAX_SERVER_IN_DM:
+            break
+    if not server:
+        return False
+    vista = BaseView(timeout=None)
+    for guild in server:
+        vista.add_item(BottoneApriAppello(guild.id, f"Appello: {guild.name}" if len(server) > 1 else "Fai appello"))
+    nomi = ", ".join(f"**{g.name}**" for g in server)
+    try:
+        await canale_dm.send(
+            truncate_text(f"Risulta un ban attivo a tuo nome su {nomi}.", 1800)
+            + "\nPremi il bottone per fare appello (uno ogni 24 ore per server).",
+            view=vista,
+        )
+    except discord.HTTPException:
+        return False
+    return True
 
 
 # Appelli che qualcuno sta decidendo in questo momento (due clic insieme).

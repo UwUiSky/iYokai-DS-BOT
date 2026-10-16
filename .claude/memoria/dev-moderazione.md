@@ -3,9 +3,10 @@
 2026-10-15, ramo feat/r7mod, worktree /home/claude/wt/r7mod, DB iyokai_wr7mod. Migrazioni r7: 0180–0189.
 ## In corso
 Giro r7 (previsione 3 voci): #113 iYokai Mod (fatto) → #119 catalogo log + residui #61 → #101 NF-30 appello ban. Mi fermo dopo #101.
-Prossimo passo: #101 NF-30, partire da cogs/moderation/ban_appeal.py (esiste gia') e core/ban_appeal_logic.py.
+Giro r7 chiuso. Prossimo giro: LOG-029, webhook dei log (#113), SIC-036.
 ## Fatto
 - Giri G1-G7, R5, R6 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli spam-trap, verify, lockdown, phishing, captcha, anti-raid r6, massa, automod filtri
+- R7-3 #101 NF-30: era gia' fatto; aggiunto il bottone di appello a chi scrive al bot in DM (offri_appello_in_dm, chiamato dallo spam-trap)
 - R7-2 #119 LOG-005/006/012/017/027/030 (/log eventi, /log archivio-canale, migr. 0180); mod-log e log AutoMod dal router (§18.1); tolti DA FARE #61
 - R7-1 #113 iYokai Mod: core/bot_roles.py (unico punto), core/mod_bot.py, router, mod-log, automod, escalation, anti-raid, anti-nuke, spam-trap, scadenza tempban; invito in /utility info
 ## Cose imparate

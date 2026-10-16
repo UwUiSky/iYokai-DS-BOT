@@ -102,6 +102,7 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #90 | NF-19 canale richieste musicali e playlist salvate | `/admin musica canale-richieste` (0170): titolo, link o file scritto nel canale va in coda, player con 5 bottoni persistenti aggiornato al massimo ogni 5 s; `/music playlist salva|carica|elenco|elimina|esporta|importa` (0171, MUS-082) | ramo feat/r6mus | 14/10 |
 | #106 | NF-35 effetti sonori in vocale | `/music suono` (il gruppo `/fun` è pieno): soundboard del server o di Discord dal bot musicale del canale o dal primo libero, che poi esce; pausa di 10 s per utente; invito dei worker con «Usare la soundboard» | ramo feat/r6mus | 14/10 |
 | #64 | Musica: correzioni M 8.x | ultime voci: 8.16 (`defer` prima di Lavalink in skip, stop, pause, resume, volume, disconnect) e 8.19 (= NF-19, #90); il resto in F2 | ramo feat/r6mus | 14/10 |
+| #101 | NF-30 appello per i ban dati a mano | `/modban appelli canale|elenco`, bottone nel DM di ban, tempban e massa ban (1fec987 e revisioni); giro r7: chi scrive al bot in privato con un ban manuale attivo riceve il bottone, dallo stesso ingresso dei DM dello spam-trap | ramo feat/r7mod | 16/10 |
 
 ## Parziali (issue ancora aperte, voci già fatte)
 

@@ -155,9 +155,10 @@ chiudere.
      funzionare (rifiutato dal cooldown di 24h sull'appello vero e
      proprio, che è un limite diverso e resta invariato).
   4. Con un account bannato con un `/ban` normale (non dallo
-     spam-trap) in un server di prova, manda un DM al bot: non deve
-     succedere nulla (non è un ban dello spam-trap, non deve aprire
-     un appello).
+     spam-trap) in un server di prova, manda un DM al bot: non si apre
+     un thread dello spam-trap. Se il server ha gli appelli accesi
+     (`/modban appelli canale`) il bot risponde con il bottone «Fai
+     appello» (NF-30, giro r7); senza, non succede nulla.
   Risultato atteso: il flusso di appello funziona come prima per chi
   è davvero bannato dalla trappola, ma un DM ripetuto o un ban non
   legato alla trappola non fanno più lavoro — solo la prova su
@@ -679,6 +680,7 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. Clicca il bottone dal DM (l'account è fuori dal server), scrivi il testo, invia. Riprova subito: deve dire di attendere 24 ore.
   4. Nel canale staff usa «Rifiuta» (nessun ban tolto) su un secondo appello, poi «Accetta» su un terzo; prova anche con un account senza «Bannare membri».
   Risultato atteso: il modulo si apre anche da un account bannato (se Discord lo impedisce, annotarlo); Accetta toglie il ban e scrive all'utente; il bottone dopo un riavvio del bot funziona ancora. `/modban appelli elenco` mostra gli stati.
+  5. (giro r7) Cancella il DM del ban, poi scrivi al bot in privato «ciao»: risponde con «Fai appello» per quel server; con ban in due server dà due bottoni «Appello: <nome>». Un account senza ban o con gli appelli spenti non riceve risposta.
 - [ ] `VER-014/015/016` (#118) — passi:
   1. `/security verify opzioni non_verificato:@Nuovo extra_1:@Membro`, poi fai entrare un account di prova.
   2. L'account riceve @Nuovo; clicca il pannello di verifica.
