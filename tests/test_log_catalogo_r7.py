@@ -7,6 +7,7 @@ evento acceso o spento (LOG-017), archivio di un canale con i messaggi
 appena cancellati (LOG-027, LOG-030); mod-log e AutoMod dal router (§18.1).
 """
 
+import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -280,3 +281,52 @@ def test_canali_riservati_visibili_anche_a_mod():
         bot_roles.registra_mod(None)
     assert regole[membro_mod].send_messages and regole[membro_mod].view_channel
     assert membro_mod not in config._riservato(guild)
+
+
+def _canale_con_storia(lunghezza: int, letti: list, attesa: asyncio.Event | None = None):
+    canale = fake_text_channel(channel_id=32, name="lungo")
+    canale.permissions_for.return_value = discord.Permissions(view_channel=True, read_message_history=True)
+
+    async def storia(limit):
+        if attesa is not None:
+            await attesa.wait()
+        for n in range(limit):
+            m = fake_message(message_id=1000 + n, content="x" * lunghezza)
+            m.created_at = datetime(2026, 10, 15, tzinfo=timezone.utc)
+            m.attachments = []
+            letti.append(n)
+            yield m
+
+    canale.history = storia
+    return canale
+
+
+@pytest.mark.asyncio
+async def test_archivio_si_ferma_oltre_il_tetto_di_testo(monkeypatch):
+    """20.000 messaggi da 4000 caratteri non restano tutti in memoria."""
+    monkeypatch.setattr(query, "ARCHIVIO_BYTE_MAX", 20_000)
+    cog = query.LogsQueryCog(MagicMock())
+    letti: list = []
+    canale = _canale_con_storia(4000, letti)
+    i = fake_interaction(guild=fake_guild(guild_id=SERVER))
+    await cog.archivio_canale.callback(cog, i, canale, 500)
+    assert len(letti) < 10
+    testi = [c.args[0] for c in i.followup.send.await_args_list if c.args]
+    assert any("Mi sono fermato" in t for t in testi)
+
+
+@pytest.mark.asyncio
+async def test_archivio_uno_alla_volta_per_server():
+    cog = query.LogsQueryCog(MagicMock())
+    via = asyncio.Event()
+    canale = _canale_con_storia(10, [], via)
+    primo = fake_interaction(guild=fake_guild(guild_id=SERVER))
+    secondo = fake_interaction(guild=fake_guild(guild_id=SERVER))
+    lavoro = asyncio.create_task(cog.archivio_canale.callback(cog, primo, canale, 5))
+    await asyncio.sleep(0)
+    await asyncio.wait_for(cog.archivio_canale.callback(cog, secondo, canale, 5), 1)
+    assert "già" in secondo.response.send_message.await_args.args[0]
+    secondo.response.defer.assert_not_awaited()
+    via.set()
+    await lavoro
+    primo.followup.send.assert_awaited()

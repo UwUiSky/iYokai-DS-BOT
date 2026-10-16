@@ -32,7 +32,7 @@ from discord.ext import commands
 from cogs.logging import message_logs
 from core import channel_router as router
 from core.command_groups import CogConGruppi, comando_di_gruppo
-from core.message_log_logic import ARCHIVIO_MESSAGGI_MAX, file_archivio
+from core.message_log_logic import ARCHIVIO_BYTE_MAX, ARCHIVIO_MESSAGGI_MAX, file_archivio
 from core.repositories.event_log_repo import EventLogEntry, event_log_repo
 
 
@@ -47,6 +47,8 @@ MAX_LIST_LENGTH = 4000
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_EXPORT_FILE_BYTES = 8 * 1024 * 1024
+# Server con un /log archivio-canale in corso (uno alla volta per server).
+_archivi_in_corso: set[int] = set()
 
 
 def _format_entry(entry: EventLogEntry) -> str:
@@ -268,15 +270,41 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
                 "Non posso leggere la cronologia di quel canale (mi serve «Leggere la cronologia»).", ephemeral=True
             )
             return
+        # Un archivio alla volta per server: 20.000 messaggi pesano su memoria e rate limit.
+        if interaction.guild.id in _archivi_in_corso:
+            await interaction.response.send_message(
+                "Sto già preparando un archivio per questo server. Riprova quando è pronto.", ephemeral=True
+            )
+            return
+        _archivi_in_corso.add(interaction.guild.id)
+        try:
+            await self._archivio(interaction, canale, messaggi)
+        finally:
+            _archivi_in_corso.discard(interaction.guild.id)
+
+    async def _archivio(self, interaction: discord.Interaction, canale: discord.TextChannel, messaggi: int) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         letti = []
+        peso = 0
+        troncato = False
         try:
             async for m in canale.history(limit=messaggi):
-                letti.append(message_logs.archiviato(m))
+                voce = message_logs.archiviato(m)
+                peso += len(voce.testo.encode("utf-8")) + len(voce.author_nome.encode("utf-8")) + 64
+                if peso > ARCHIVIO_BYTE_MAX:
+                    troncato = True
+                    break
+                letti.append(voce)
         except discord.HTTPException as errore:
             logger.warning("Archivio del canale %s interrotto: %s", canale.id, errore)
         cancellati = message_logs.cancellati_recenti.di(canale.id)
         parti = file_archivio(canale.name, letti, cancellati, MAX_EXPORT_FILE_BYTES)
+        if troncato:
+            limite = ARCHIVIO_BYTE_MAX // (1024 * 1024)
+            await interaction.followup.send(
+                f"Mi sono fermato a {len(letti)} messaggi: oltre {limite} MiB di testo l'archivio non si fa.",
+                ephemeral=True,
+            )
         try:
             for numero, parte in enumerate(parti, start=1):
                 nome = f"archivio_{canale.name}.txt" if len(parti) == 1 else f"archivio_{canale.name}_{numero}.txt"

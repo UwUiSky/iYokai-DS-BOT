@@ -221,6 +221,9 @@ CANCELLATI_SECONDI = 3600
 CANCELLATI_CANALI_MAX = 2000
 ARCHIVIO_MESSAGGI_MAX = 20_000
 RIGA_ARCHIVIO_MAX = 4500  # un messaggio arriva a 4000 caratteri, più gli allegati
+# Tetto di testo letto per un archivio: 20.000 messaggi lunghi (fino a ~360 MB)
+# terrebbero occupata la memoria del bot di tutti i server. Oltre ci si ferma.
+ARCHIVIO_BYTE_MAX = 24 * 1024 * 1024
 
 
 class CancellatiRecenti:
