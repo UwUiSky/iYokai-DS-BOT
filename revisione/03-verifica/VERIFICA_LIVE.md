@@ -155,9 +155,10 @@ chiudere.
      funzionare (rifiutato dal cooldown di 24h sull'appello vero e
      proprio, che è un limite diverso e resta invariato).
   4. Con un account bannato con un `/ban` normale (non dallo
-     spam-trap) in un server di prova, manda un DM al bot: non deve
-     succedere nulla (non è un ban dello spam-trap, non deve aprire
-     un appello).
+     spam-trap) in un server di prova, manda un DM al bot: non si apre
+     un thread dello spam-trap. Se il server ha gli appelli accesi
+     (`/modban appelli canale`) il bot risponde con il bottone «Fai
+     appello» (NF-30, giro r7); senza, non succede nulla.
   Risultato atteso: il flusso di appello funziona come prima per chi
   è davvero bannato dalla trappola, ma un DM ripetuto o un ban non
   legato alla trappola non fanno più lavoro — solo la prova su
@@ -679,6 +680,8 @@ Prima: server di test con il bot (premium acceso per anti-nuke, anti-raid, heatm
   3. Clicca il bottone dal DM (l'account è fuori dal server), scrivi il testo, invia. Riprova subito: deve dire di attendere 24 ore.
   4. Nel canale staff usa «Rifiuta» (nessun ban tolto) su un secondo appello, poi «Accetta» su un terzo; prova anche con un account senza «Bannare membri».
   Risultato atteso: il modulo si apre anche da un account bannato (se Discord lo impedisce, annotarlo); Accetta toglie il ban e scrive all'utente; il bottone dopo un riavvio del bot funziona ancora. `/modban appelli elenco` mostra gli stati.
+  5. (giro r7) Cancella il DM del ban, poi scrivi al bot in privato «ciao»: risponde con «Fai appello» per quel server; con ban in due server dà due bottoni «Appello: <nome>». Un account senza ban o con gli appelli spenti non riceve risposta.
+  6. (giro r7) Togli il ban dall'interfaccia di Discord (Impostazioni server → Ban), non dal bot: un nuovo DM al bot non offre più l'appello e `/modban appelli elenco` mostra chiuso l'appello aperto.
 - [ ] `VER-014/015/016` (#118) — passi:
   1. `/security verify opzioni non_verificato:@Nuovo extra_1:@Membro`, poi fai entrare un account di prova.
   2. L'account riceve @Nuovo; clicca il pannello di verifica.
@@ -989,3 +992,26 @@ Servono: dominio con https e reverse proxy verso `WEB_BIND_HOST:WEB_PANEL_PORT`;
 - [ ] `AMD-023` solo media — in un canale `canale-media modo:Solo media` uno sticker e l'inoltro di un messaggio con un'immagine restano; un testo semplice viene cancellato.
 - [ ] `VER-012` finestra — `azione_fallita:Kick`: due captcha sbagliati, poi aspetta 24 ore (o sposta l'orologio del DB di prova) e sbagliane uno: **nessun** kick. Tre errori nella stessa giornata: kick.
 - [ ] Massa e gerarchia — riavvia il bot senza scaricare i membri (o usa un membro mai visto dal bot): `/modban massa ban` su un membro con un ruolo sopra il tuo viene **saltato** («sopra di te»), non bannato.
+
+## iYokai Mod — giro r7 (#113, D15)
+
+Serve: l'applicazione «iYokai Mod» nel Developer Portal (nessun intent privilegiato), il token in `YOKAI_MOD_TOKEN`, un riavvio. Un server di prova con un canale log, AutoMod e anti-raid accesi.
+
+- [ ] senza token — `YOKAI_MOD_TOKEN` vuoto: il bot parte come prima; `/utility info` dice «iYokai Mod: Non configurato»; log, AutoMod, anti-raid e fine dei tempban li fa il principale.
+- [ ] invito — con il token, `/utility info` in un server senza Mod mostra «Invita iYokai Mod» con il server già scelto e i soli permessi elencati (niente Amministratore, niente comandi). Dopo l'invito `/utility info` dice «Attivo in questo server».
+- [ ] un log solo — con entrambi i bot nel server: entra ed esci con un account, cancella un messaggio, cambia un ruolo. Ogni log compare **una volta**, scritto da iYokai Mod. Un log con bottoni (avviso del raid) lo scrive il principale e i bottoni rispondono.
+- [ ] azioni — una parola vietata dall'AutoMod (azioni delete + mute): il messaggio sparisce e il timeout nel registro di controllo è firmato da iYokai Mod. Un `/modban tempban duration:1m`: alla scadenza lo sban lo firma Mod. Lo spam-trap banna con Mod. Un ban dell'anti-raid lo fa Mod. Un tempban in modo isolamento: alla scadenza ruolo tolto e ruoli ridati li firma Mod.
+- [ ] riserva — togli a iYokai Mod il permesso «Bannare membri» (o mettilo sotto il ruolo del bersaglio): il ban dell'AutoMod lo fa il principale, una volta sola. Spegni Mod (kick dal server): tutto torna al principale senza riavvio. Togli a Mod «Inviare messaggi» nel canale log: i log li scrive il principale.
+- [ ] anti-nuke — Mod non viene espulso quando entra (guardia «bot aggiunti» accesa) e i ban fatti da Mod non contano come attacco.
+- [ ] `guild.me` di Mod con il solo intent «server»: nei log di avvio nessun errore e `/utility info` dice «Attivo» (se non lo dice, Mod non vede se stesso nel server: segnalarlo).
+
+## Catalogo log — giro r7 (#119)
+
+Serve: Logging Avanzato acceso, un canale log, il bot con «Visualizzare il registro» e «Leggere la cronologia».
+
+- [ ] `LOG-005` — scrivi `discord.gg/qualcosa` in un canale: nel log «messaggi» compare «Invito scritto in un messaggio» con autore, canale e link al messaggio. Un canale in `/log ignora` non lo registra.
+- [ ] `LOG-006` — fissa e togli dai fissati un messaggio: due righe con chi l'ha fatto, il canale e l'autore del messaggio.
+- [ ] `LOG-012` — da moderatore scollega un membro da un vocale e spostane un altro: «Scollegato da un moderatore» e «Spostato da un moderatore» con il tuo nome. Un secondo spostamento subito dopo non fa una riga nuova (Discord unisce le voci): limite noto.
+- [ ] `LOG-017` — `/log eventi`: il menu mostra 24 eventi tutti accesi. Togli «Ingressi nel server» e conferma: un ingresso non compare più nel canale (ma resta in `/log cerca utente`). «Predefinito» spegne solo «Microfono e audio spenti da soli»; «Niente» spegne tutto; «Tutto» riaccende. Un altro moderatore non può usare il menu aperto da te.
+- [ ] `LOG-027/030` — cancella due messaggi in #generale, poi `/log archivio-canale canale:#generale messaggi:500`: arriva un file `.txt` con i messaggi in ordine di tempo e i due cancellati segnati `[cancellato]`. Con un account che non vede #generale il comando dice «Non puoi leggere la cronologia». Con 20.000 messaggi arrivano più file, ognuno sotto i 10 MiB.
+- [ ] `§18.1` — `/log canale` non cambia il mod-log: un warn scrive il caso nel mod-log di sempre; cancella il canale del mod-log e dai un altro warn: il proprietario riceve **un** DM di avviso, non uno per caso. Stesso per il canale dei log dell'AutoMod.

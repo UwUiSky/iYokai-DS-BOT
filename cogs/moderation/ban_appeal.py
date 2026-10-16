@@ -8,6 +8,10 @@ testo in un modulo (un appello ogni 24 ore), lo staff lo trova nel canale
 con i bottoni Accetta e Rifiuta. Accettare toglie il ban (prima di segnare «accettato», solo quello contestato)
 e avvisa l'utente; se il ban non si toglie l'appello resta aperto.
 Solo chi può bannare decide. I bottoni sono persistenti (DynamicItem).
+Chi ha perso il messaggio (o aveva i DM chiusi) scrive al bot in privato:
+come per lo spam-trap, riceve un bottone «Fai appello» per ogni server
+dove ha un ban manuale attivo e gli appelli sono accesi. Uno sban fatto
+fuori dal bot (da Discord) chiude i casi e gli appelli aperti.
 Funzioni coperte: SPEC §23 (NF-30, issue #101)
 Dipende da: core/ban_appeal_logic.py
 """
@@ -15,6 +19,7 @@ Dipende da: core/ban_appeal_logic.py
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 
 import discord
@@ -34,7 +39,9 @@ from core.ban_appeal_logic import (
     lunghezza_valida,
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.bounded_cache import BoundedCache
 from core.database import db
+from core.repositories.modmail_repo import modmail_repo
 from core.ui_base import BaseModal, BaseView
 from core.repositories.moderation_repo import moderation_repo
 from cogs.moderation._tempban_modes import cancella_invito_per_codice
@@ -122,10 +129,10 @@ async def invia_appello(
 class BottoneApriAppello(
     discord.ui.DynamicItem[discord.ui.Button], template=r"appello:apri:(?P<g>[0-9]+)"
 ):
-    def __init__(self, guild_id: int) -> None:
+    def __init__(self, guild_id: int, etichetta: str = "Fai appello") -> None:
         super().__init__(
             discord.ui.Button(
-                label="Fai appello", style=discord.ButtonStyle.primary, custom_id=f"appello:apri:{guild_id}"
+                label=etichetta[:80], style=discord.ButtonStyle.primary, custom_id=f"appello:apri:{guild_id}"
             )
         )
         self.guild_id = guild_id
@@ -159,6 +166,74 @@ class BottoneEsitoAppello(
 
     async def callback(self, interaction: discord.Interaction) -> None:
         await decidi_appello(interaction, self.appello_id, self.accetta)
+
+
+# Un messaggio tiene 25 bottoni (5 righe da 5).
+MAX_SERVER_IN_DM = 25
+# Il bottone in DM si offre al massimo una volta ogni 10 minuti per persona:
+# il limite dei DM dello spam-trap (30 s) farebbe rispondere a quasi ogni messaggio.
+OFFERTA_DM_OGNI_SECONDI = 600
+_offerte_dm: BoundedCache[int, float] = BoundedCache(50_000)
+
+
+async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, canale_dm) -> bool:
+    """
+    Chi scrive al bot in privato e ha un ban manuale attivo riceve un bottone
+    «Fai appello» per ogni server con gli appelli accesi. True se ha risposto.
+    Il limite di un appello ogni 24 ore resta quello del modulo.
+    """
+    ultima = _offerte_dm.get(utente.id)
+    if ultima is not None and time.monotonic() - ultima < OFFERTA_DM_OGNI_SECONDI:
+        return False
+    # Chi ha una conversazione ModMail aperta scrive allo staff: il DM è del ModMail.
+    if await modmail_repo.aperta_dell_utente(utente.id) is not None:
+        return False
+    casi = []
+    for tipo in CASI_CON_APPELLO:
+        casi += await moderation_repo.get_active_cases_for_user_across_guilds(utente.id, tipo)
+    server: list[discord.Guild] = []
+    for guild_id in dict.fromkeys(c.guild_id for c in casi):
+        guild = bot.get_guild(guild_id)
+        if guild is None or await db.get_guild_setting(guild_id, SETTING_CANALE_APPELLI) is None:
+            continue
+        server.append(guild)
+        if len(server) == MAX_SERVER_IN_DM:
+            break
+    if not server:
+        return False
+    vista = BaseView(timeout=None)
+    for guild in server:
+        vista.add_item(BottoneApriAppello(guild.id, f"Appello: {guild.name}" if len(server) > 1 else "Fai appello"))
+    nomi = ", ".join(f"**{g.name}**" for g in server)
+    try:
+        await canale_dm.send(
+            truncate_text(f"Risulta un ban attivo a tuo nome su {nomi}.", 1800)
+            + "\nPremi il bottone per fare appello (uno ogni 24 ore per server).",
+            view=vista,
+        )
+    except discord.HTTPException:
+        return False
+    _offerte_dm.set(utente.id, time.monotonic())
+    return True
+
+
+async def chiudi_casi_dopo_sban(guild: discord.Guild, utente: discord.abc.User, bot_id: int) -> None:
+    """
+    Sban fatto da Discord o da un altro bot: i casi ban/tempban attivi si
+    chiudono, così il DM non offre più un appello per un ban che non c'è.
+    Prima si controlla che il ban manchi davvero (un nuovo ban subito dopo
+    resta); se non si può controllare non si tocca niente.
+    """
+    try:
+        await guild.fetch_ban(discord.Object(id=utente.id))
+        return
+    except discord.NotFound:
+        pass
+    except discord.HTTPException:
+        return
+    for tipo in CASI_CON_APPELLO:
+        await moderation_repo.revoke_active_cases_for_user(guild.id, utente.id, tipo, bot_id)
+    await moderation_repo.close_open_appeals(guild.id, utente.id, bot_id)
 
 
 # Appelli che qualcuno sta decidendo in questo momento (due clic insieme).
@@ -267,6 +342,10 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
 class ModerationBanAppealCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.User) -> None:
+        await chiudi_casi_dopo_sban(guild, user, self.bot.user.id)
 
     @comando_di_gruppo(
         "modban",

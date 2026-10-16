@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:40 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-15 05:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 466 comandi in 21 categorie.**
+**Totale: 468 comandi in 21 categorie.**
 
 ## Admin
 
@@ -272,12 +272,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-14 21:
 
 ## Log
 
+- **`/log archivio-canale`** — Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.
 - **`/log canale`** — Imposta il canale (o il forum) dei log del server.
 - **`/log cerca canale`** — Mostra lo storico eventi di un canale.
 - **`/log cerca utente`** — Mostra lo storico eventi di un utente.
 - **`/log crea-canali`** — Crea una categoria privata con un canale per ogni tipo di log.
 - **`/log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
 - **`/log esporta`** — Esporta lo storico eventi completo del server come file JSON.
+- **`/log eventi`** — Accendi o spegni ogni singolo evento dei log.
 - **`/log ignora`** — Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).
 - **`/log stato`** — Mostra dove vanno i log del server.
 

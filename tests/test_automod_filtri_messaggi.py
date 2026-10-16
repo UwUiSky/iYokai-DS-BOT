@@ -22,6 +22,7 @@ import cogs.moderation._shared as modulo_shared
 from core.automod_rate_tracker import AutomodRateTracker
 from core.database import Database
 from core.repositories.automod_advanced_repo import automod_advanced_repo
+from tests.support.router_fakes import router_senza_scelte
 from tests.support.discord_fakes import (
     fake_guild,
     fake_interaction,
@@ -43,6 +44,8 @@ def cog(clean_db, monkeypatch):
     monkeypatch.setattr(modulo_automod, "db", db_finto)
 
     monkeypatch.setattr(automod_advanced_repo, "_pool_provider", lambda: clean_db)
+    # §18.1: il log dell'AutoMod passa dal router.
+    router_senza_scelte(monkeypatch)
     # Contatore nuovo per ogni test: quello vero è condiviso da tutto il processo.
     monkeypatch.setattr(modulo_automod, "rate_tracker", AutomodRateTracker())
     return modulo_automod.AutomodCog(bot=None)

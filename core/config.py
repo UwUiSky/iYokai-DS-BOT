@@ -193,6 +193,10 @@ class Config:
     # quindi sta dopo i campi obbligatori.
     NSFW_TOKEN: str = field(default="", repr=False)
 
+    # Token di iYokai Mod (D15): facoltativo. Vuoto = log e sicurezza
+    # restano sul bot principale, come prima.
+    YOKAI_MOD_TOKEN: str = field(default="", repr=False)
+
     # Twitch (SPEC.md §10.1/10.2) — opzionali: vuoti finché l'utente
     # non registra un'app su dev.twitch.tv. Il watcher (core/twitch_
     # watcher.py) resta semplicemente inattivo finché non sono
@@ -372,6 +376,7 @@ def _load_config() -> Config:
         YOKAI_CREATOR_TOKEN=_require("YOKAI_CREATOR_TOKEN"),
         MUSIC_TOKENS=music_tokens,
         NSFW_TOKEN=_optional("NSFW_TOKEN", ""),
+        YOKAI_MOD_TOKEN=_optional("YOKAI_MOD_TOKEN", ""),
         OWNER_ID=_require_int("OWNER_ID"),
         MAIN_GUILD_ID=_require_int("MAIN_GUILD_ID"),
         DATABASE_URL=_require("DATABASE_URL"),

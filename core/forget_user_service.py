@@ -8,7 +8,7 @@ Funzioni coperte: SPEC §19 (NF-04, GDPR-2, #37)
 Che cosa NON si cancella (e si dice all'utente): ban e kick (`retain_for_security`),
 registri di sicurezza e ban globali, sban programmati. Il titolare di un clan
 non resta: il clan passa al co-titolare (o al membro più anziano), da solo si scioglie.
-Il resto sì.
+Il resto sì, anche ciò che sta solo in memoria (messaggi cancellati di recente).
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 import asyncpg
 
 from core.data_registry import REGISTRO, TabellaDati, tabelle_esportabili
+from core.message_log_logic import cancellati_recenti
 
 logger = logging.getLogger("iyokai.privacy")
 
@@ -121,7 +122,9 @@ async def dimentica_utente(pool: asyncpg.Pool, user_id: int, conn=None) -> dict[
     Cancella o anonimizza i dati di `user_id` in tutte le tabelle del registro.
     Restituisce {tabella: {cancellate, anonimizzate, conservate}} solo per le
     tabelle dove è successo qualcosa. Con `conn` entra nella transazione di chi chiama.
+    Svuota anche ciò che il bot tiene solo in memoria (messaggi cancellati, LOG-027).
     """
+    cancellati_recenti.dimentica_autore(user_id)
     if conn is not None:
         return await _dimentica_in(conn, user_id)
     async with pool.acquire() as propria:

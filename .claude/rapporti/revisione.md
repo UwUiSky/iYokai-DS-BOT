@@ -210,3 +210,4 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 15/10 | `feat/r6mus` | `cogs/fun/soundboard.py:suona` | Due suoni entro 6 s: il `_torna_sordo` del primo riassordava il bot durante il secondo; bot temporaneo rimasto per la musica non tornava sordo | media | chiuso 15/10 (e339198) |
 | 15/10 | `feat/r6mus` | `cogs/music/playlist.py` `carica/elimina/esporta` | Il nome non passa da `nome_valido` (spazi doppi scritti a mano non trovano la playlist salvata «pulita») | bassa | aperto |
 | 15/10 | `feat/r6mus` | Lavalink, sorgente `http` | DNS rebinding: LIM-58 limite noto, regole di rete nella guida del deploy | — | annotato (e339198) |
+| 16/10 | `cogs/moderation/_shared.py:192` | `is_bot_itself` non riconosce iYokai Mod: un moderatore può sanzionare Mod | bassa | aperto (r7mod, dev-moderazione) |

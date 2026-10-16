@@ -3,10 +3,13 @@ cogs/logging/log_config.py
 ==========================
 Comandi di /log per scegliere o creare i canali dei log: /log crea-canali
 (una categoria privata con un canale per tipo), /log crea-forum (un forum,
-un post per tipo) e /log ignora (cosa il log dei messaggi non registra).
+un post per tipo), /log ignora (cosa il log dei messaggi non registra) e
+/log eventi (accendere o spegnere ogni evento). I canali creati sono
+visibili anche a iYokai Mod, se è nel server.
 /log canale e /log stato stanno in basic_logs.py.
-Funzioni coperte: SPEC §18 (NF-01), §8.16 (NF-02)
-Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py
+Funzioni coperte: SPEC §18 (NF-01), §8.16 (NF-02), §8.19 (LOG-017), parte E (D15)
+Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
+core/repositories/log_eventi_repo.py
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import bot_roles
 from core import channel_router as router
 from core.channel_router import DESCRIZIONE_TIPO, SETTING_LOG_CHANNEL, TIPI_LOG, TIPO_EVENTI
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -30,7 +34,10 @@ from core.message_log_logic import (
     scegli_bersaglio,
     testo_elenco_ignorati,
 )
+from core.log_eventi_logic import INTERRUTTORI, spenti_da_scelta
+from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.logging.config")
 
@@ -43,15 +50,68 @@ AZIONI = ("aggiungi", "rimuovi", "elenco")
 
 
 def _riservato(guild: discord.Guild) -> dict:
-    """Canali visibili solo al bot (e a chi ha permessi di amministratore)."""
-    return {
-        guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        guild.me: discord.PermissionOverwrite(
-            view_channel=True, send_messages=True, embed_links=True,
-            attach_files=True, read_message_history=True, create_public_threads=True,
-            send_messages_in_threads=True,
-        ),
-    }
+    """Canali visibili solo ai bot iYokai (e a chi ha permessi di amministratore)."""
+    permessi = discord.PermissionOverwrite(
+        view_channel=True, send_messages=True, embed_links=True,
+        attach_files=True, read_message_history=True, create_public_threads=True,
+        send_messages_in_threads=True,
+    )
+    regole = {guild.default_role: discord.PermissionOverwrite(view_channel=False), guild.me: permessi}
+    mod = bot_roles.client_mod()
+    membro_mod = guild.get_member(mod.user.id) if mod is not None and mod.user is not None else None
+    if membro_mod is not None:
+        regole[membro_mod] = permessi  # D15: i log li scrive iYokai Mod
+    return regole
+
+
+class VistaEventi(BaseView):
+    """LOG-017: un menu con gli interruttori (24, entrano in uno) e le scelte rapide."""
+
+    def __init__(self, autore_id: int, guild_id: int, spenti: frozenset[str]) -> None:
+        super().__init__(timeout=300)
+        self.autore_id = autore_id
+        self.guild_id = guild_id
+        self.menu = discord.ui.Select(
+            placeholder="Eventi accesi",
+            min_values=0,
+            max_values=len(INTERRUTTORI),
+            options=[
+                discord.SelectOption(label=etichetta[:100], value=chiave, default=chiave not in spenti)
+                for chiave, (etichetta, _) in INTERRUTTORI.items()
+            ],
+        )
+        self.menu.callback = self._scelti
+        self.add_item(self.menu)
+        for etichetta, scelta in (("Tutto", "tutto"), ("Niente", "niente"), ("Predefinito", "predefinito")):
+            bottone = discord.ui.Button(label=etichetta, style=discord.ButtonStyle.secondary)
+            bottone.callback = self._rapida(scelta)
+            self.add_item(bottone)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        return interaction.user.id == self.autore_id
+
+    async def _salva(self, interaction: discord.Interaction, spenti: frozenset[str]) -> None:
+        await log_eventi_repo.imposta(self.guild_id, spenti)
+        await interaction.response.edit_message(
+            content=testo_eventi(spenti), view=VistaEventi(self.autore_id, self.guild_id, spenti)
+        )
+
+    async def _scelti(self, interaction: discord.Interaction) -> None:
+        await self._salva(interaction, spenti_da_scelta("elenco", list(self.menu.values)))
+
+    def _rapida(self, scelta: str):
+        async def callback(interaction: discord.Interaction) -> None:
+            await self._salva(interaction, spenti_da_scelta(scelta))
+        return callback
+
+
+def testo_eventi(spenti: frozenset[str]) -> str:
+    if not spenti:
+        return "Tutti gli eventi dei log sono accesi. Scegli nel menu quelli da tenere."
+    nomi = ", ".join(INTERRUTTORI[c][0] for c in INTERRUTTORI if c in spenti)
+    return f"Eventi spenti ({len(spenti)}): {nomi}."[:2000]
 
 
 PERMESSI_CANALI = ("manage_channels", "view_channel", "send_messages", "embed_links",
@@ -223,6 +283,20 @@ class LogConfigCog(CogConGruppi, commands.Cog):
                 else "Non era nell'elenco."
             )
         await interaction.response.send_message(testo, ephemeral=True)
+
+
+    @comando_di_gruppo(
+        "log", nome="eventi",
+        descrizione="Accendi o spegni ogni singolo evento dei log.",
+    )
+    async def eventi(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            return
+        spenti = await log_eventi_repo.spenti(interaction.guild.id)
+        await interaction.response.send_message(
+            testo_eventi(spenti), view=VistaEventi(interaction.user.id, interaction.guild.id, spenti), ephemeral=True
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

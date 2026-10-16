@@ -154,7 +154,7 @@ modello commentato è [`.env.example`](.env.example).
 
 | Gruppo | Variabili |
 |---|---|
-| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` (facoltativo finché l'istanza NSFW non esiste) |
+| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` (facoltativo finché l'istanza NSFW non esiste), `YOKAI_MOD_TOKEN` (facoltativo, vedi sotto) |
 | Identità | `OWNER_ID`, `MAIN_GUILD_ID` |
 | Ambiente | `ENVIRONMENT` (`development` o `production`, obbligatoria), `LOG_LEVEL` |
 | Database | `DATABASE_URL`, `DB_POOL_MIN`, `DB_POOL_MAX` |
@@ -163,6 +163,15 @@ modello commentato è [`.env.example`](.env.example).
 | Web e OAuth2 | `WEB_BIND_HOST`, `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`, `OAUTH2_REDIRECT_URI`, `OAUTH_ENCRYPTION_KEY`, `RESTORE_WEB_PORT`, `ALERTS_WEBHOOK_PORT`, `ALERTS_WEBHOOK_PUBLIC_BASE_URL` |
 | Pannello web | `WEB_PANEL_SECRET_KEY`, `WEB_PANEL_PUBLIC_URL`, `WEB_PANEL_PORT`, `WEB_PANEL_TRUSTED_PROXY` (più `OAUTH2_CLIENT_ID`/`SECRET`) |
 | Interruttori | `PREMIUM_ALPHA_UNLOCK_ALL`, `ENABLE_EVAL` (spenti di default in produzione) |
+
+**iYokai Mod (facoltativo, D15).** Un secondo bot che scrive i log ed
+esegue AutoMod, anti-raid, anti-nuke, spam-trap e la fine dei tempban,
+così un rate limit del principale non ferma la sicurezza. Per usarlo:
+crea l'applicazione "iYokai Mod" nel Developer Portal, metti il token in
+`YOKAI_MOD_TOKEN`, riavvia e invitalo con il link di `/utility info`.
+Non servono intent privilegiati. Senza token, o in un server dove Mod
+non c'è, non è collegato o non ha il permesso, fa tutto il principale.
+Gli eventi li ascolta solo il principale: nessun log esce doppio.
 
 **Nel Developer Portal di Discord**, pagina *Bot* del bot principale,
 vanno accesi **Server Members Intent** e **Message Content Intent**: il

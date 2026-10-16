@@ -42,6 +42,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core import bot_roles
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
 from core.database import db
@@ -163,7 +164,10 @@ async def _punish_actor(
 
     if config.punish_action == "ban":
         try:
-            await member.ban(reason=reason, delete_message_seconds=0)
+            await bot_roles.banna(
+                guild, member, reason=reason, delete_message_seconds=0,
+                principale=lambda: member.ban(reason=reason, delete_message_seconds=0),
+            )
             return f"{member} bannato", []
         except discord.HTTPException:
             return f"tentativo di ban di {member} fallito (permessi insufficienti?)", []
@@ -172,7 +176,7 @@ async def _punish_actor(
         # Il ruolo di un bot è gestito da Discord e non si può
         # togliere: un bot che fa danni va tolto dal server.
         try:
-            await member.kick(reason=reason)
+            await bot_roles.espelli(member, reason=reason)
             return f"bot {member} espulso", []
         except discord.HTTPException:
             return f"tentativo di espellere il bot {member} fallito (permessi insufficienti?)", []
@@ -194,7 +198,7 @@ async def _punish_actor(
     ruoli_gestiti = [ruolo for ruolo in member.roles if ruolo.managed]
     tolti = [ruolo.id for ruolo in member.roles if not ruolo.managed and not ruolo.is_default()]
     try:
-        await member.edit(roles=ruoli_gestiti, reason=reason)
+        await bot_roles.imposta_ruoli(member, ruoli_gestiti, reason=reason)
         return f"tutti i ruoli rimossi da {member}", tolti
     except discord.HTTPException:
         return f"tentativo di rimuovere i ruoli di {member} fallito (permessi insufficienti?)", []
@@ -801,7 +805,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             if voce is not None:
                 actor_id, oggetto_id = voce
                 break
-        if cancellato is not None and actor_id is not None and actor_id != self.bot.user.id:
+        if cancellato is not None and actor_id is not None and not bot_roles.e_un_nostro_bot(actor_id, self.bot):
             chiave = (guild.id, actor_id)
             in_attesa = self._in_attesa.get(chiave) or []
             adesso = discord.utils.utcnow()
@@ -866,7 +870,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
     ) -> SecuritySettings | None:
         # Le azioni del bot stesso (recovery, ticket, canali temporanei)
         # non si contano: il bot non deve mai punire se stesso.
-        if actor_id is None or actor_id == self.bot.user.id:
+        if actor_id is None or bot_roles.e_un_nostro_bot(actor_id, self.bot):
             return None
         # Il proprietario non si ferma: non c'è nessuno sopra di lui.
         if actor_id == guild.owner_id:
@@ -1171,7 +1175,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if voce is None:
             return None
         autore = voce[0]
-        if autore == self.bot.user.id or autore == guild.owner_id:
+        if bot_roles.e_un_nostro_bot(autore, self.bot) or autore == guild.owner_id:
             return None
         if actor_is_trusted(autore, azione_fiducia, settings.anti_nuke):
             return None
@@ -1324,7 +1328,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
         """SIC-025: un bot aggiunto da chi non è autorizzato viene espulso."""
-        if not member.bot or member.id == self.bot.user.id:
+        if not member.bot or bot_roles.e_un_nostro_bot(member.id, self.bot):
             return
         guild = member.guild
         settings = await self._impostazioni_attive(guild)
@@ -1336,7 +1340,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if autore is None:
             return
         try:
-            await member.kick(reason=f"Anti-Nuke: bot aggiunto da {autore}, che non è autorizzato"[:MAX_MOTIVO])
+            await bot_roles.espelli(member, reason=f"Anti-Nuke: bot aggiunto da {autore}, che non è autorizzato"[:MAX_MOTIVO])
             esito = "bot espulso"
         except discord.HTTPException:
             esito = "tentativo di espellere il bot fallito (il mio ruolo è più in basso?)"

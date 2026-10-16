@@ -2,14 +2,17 @@
 core/message_log_logic.py
 =========================
 Prepara il testo dei log dei messaggi: tagli ai limiti di Discord,
-regole su cosa ignorare, riepilogo di una cancellazione in blocco.
-Solo stringhe e numeri, niente discord.py.
-Funzioni coperte: SPEC §8.16 (NF-02)
+regole su cosa ignorare, riepilogo di una cancellazione in blocco,
+archivio di un canale in file sotto i 10 MiB con i messaggi cancellati
+di recente (tenuti solo in memoria, svuotati per autore dalla richiesta
+privacy NF-04). Solo stringhe e numeri, niente discord.py.
+Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-027, LOG-030)
 """
 
 from __future__ import annotations
 
 import functools
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -133,8 +136,8 @@ class MessaggioArchiviato:
     quando: str  # già formattato (UTC ISO breve)
 
 
-def riga_blocco(m: MessaggioArchiviato) -> str:
-    testo = tronca(m.testo.replace("\n", " ⏎ "), RIGA_BLOCCO_MAX) or "(senza testo)"
+def riga_blocco(m: MessaggioArchiviato, massimo: int = RIGA_BLOCCO_MAX) -> str:
+    testo = tronca(m.testo.replace("\n", " ⏎ "), massimo) or "(senza testo)"
     autore = f"{m.author_nome} ({m.author_id})" if m.author_id else "autore sconosciuto"
     return f"[{m.quando}] {autore} #{m.message_id}: {testo}"
 
@@ -211,3 +214,84 @@ def testo_elenco_ignorati(ig: Ignorati) -> str:
     if ig.prefissi:
         righe.append("**Prefissi**: " + ", ".join(f"`{p.replace('`', chr(39))}`" for p in ig.prefissi))
     return tronca("\n".join(righe), 1900)
+
+
+# LOG-027: i messaggi cancellati di recente restano in memoria (mai su disco)
+# per poterli mettere nell'archivio di un canale.
+CANCELLATI_PER_CANALE = 100
+CANCELLATI_SECONDI = 3600
+CANCELLATI_CANALI_MAX = 2000
+ARCHIVIO_MESSAGGI_MAX = 20_000
+RIGA_ARCHIVIO_MAX = 4500  # un messaggio arriva a 4000 caratteri, più gli allegati
+# Tetto di testo letto per un archivio: 20.000 messaggi lunghi (fino a ~360 MB)
+# terrebbero occupata la memoria del bot di tutti i server. Oltre ci si ferma.
+ARCHIVIO_BYTE_MAX = 24 * 1024 * 1024
+
+
+class CancellatiRecenti:
+    """Per ogni canale gli ultimi messaggi cancellati, al massimo un'ora e 100 per canale."""
+
+    def __init__(self, orologio) -> None:
+        self._orologio = orologio
+        self._canali: dict[int, list[tuple[float, MessaggioArchiviato]]] = {}
+
+    def aggiungi(self, channel_id: int, messaggio: MessaggioArchiviato) -> None:
+        voci = self._canali.pop(channel_id, [])
+        voci.append((self._orologio(), messaggio))
+        self._canali[channel_id] = voci[-CANCELLATI_PER_CANALE:]
+        while len(self._canali) > CANCELLATI_CANALI_MAX:
+            self._canali.pop(next(iter(self._canali)))
+
+    def di(self, channel_id: int) -> list[MessaggioArchiviato]:
+        limite = self._orologio() - CANCELLATI_SECONDI
+        voci = [(t, m) for t, m in self._canali.get(channel_id, []) if t >= limite]
+        if voci:
+            self._canali[channel_id] = voci
+        else:
+            self._canali.pop(channel_id, None)
+        return [m for _, m in voci]
+
+    def dimentica_autore(self, user_id: int) -> None:
+        """Toglie i messaggi dell'utente da ogni canale (richiesta privacy, NF-04)."""
+        for channel_id in list(self._canali):
+            voci = [(t, m) for t, m in self._canali[channel_id] if m.author_id != user_id]
+            if voci:
+                self._canali[channel_id] = voci
+            else:
+                del self._canali[channel_id]
+
+
+# L'unica memoria dei cancellati del processo: la scrive il log dei messaggi,
+# la legge /log archivio-canale, la svuota core/forget_user_service.py.
+cancellati_recenti = CancellatiRecenti(time.monotonic)
+
+
+def file_archivio(
+    nome_canale: str, messaggi: list[MessaggioArchiviato], cancellati: list[MessaggioArchiviato],
+    massimo: int = FILE_MAX_BYTE,
+) -> list[bytes]:
+    """
+    Archivio di un canale (LOG-030) in più file sotto `massimo` byte, in ordine
+    di tempo; i cancellati di recente (LOG-027) sono segnati con [cancellato].
+    """
+    righe = [(m.message_id, riga_blocco(m, RIGA_ARCHIVIO_MAX)) for m in messaggi]
+    righe += [(m.message_id, "[cancellato] " + riga_blocco(m, RIGA_ARCHIVIO_MAX)) for m in cancellati]
+    righe.sort(key=lambda r: r[0])
+    intestazione = (
+        f"Archivio di #{nome_canale}: {len(messaggi)} messaggi"
+        + (f", più {len(cancellati)} cancellati di recente" if cancellati else "")
+        + "\n\n"
+    )
+    parti: list[bytes] = []
+    corrente = [intestazione]
+    usati = len(intestazione.encode("utf-8"))
+    for _, riga in righe:
+        dati = riga + "\n"
+        peso = len(dati.encode("utf-8"))
+        if usati + peso > massimo and len(corrente) > 1:
+            parti.append("".join(corrente).encode("utf-8"))
+            corrente, usati = [], 0
+        corrente.append(dati)
+        usati += peso
+    parti.append("".join(corrente).encode("utf-8"))
+    return parti

@@ -1,8 +1,9 @@
 """
 core/bot_info.py
 ================
-Informazioni sul bot per `/utility info` (CFG-046, #122): versione del codice e link di invito.
-Funzioni coperte: SPEC §20 (NF-05), catalogo #122
+Informazioni sul bot per `/utility info` (CFG-046, #122): versione del codice e link di
+invito, anche di iYokai Mod (D15).
+Funzioni coperte: SPEC §20 (NF-05), catalogo #122, parte E (D15)
 """
 
 from __future__ import annotations
@@ -16,6 +17,12 @@ import discord
 RADICE = Path(__file__).resolve().parent.parent
 # Permessi chiesti nell'invito: il bot ha moduli di sicurezza e moderazione, che ne richiedono molti.
 PERMESSI_INVITO = discord.Permissions(administrator=True)
+# iYokai Mod: solo ciò che serve a log, AutoMod, anti-raid, anti-nuke e spam-trap.
+PERMESSI_MOD = discord.Permissions(
+    view_channel=True, send_messages=True, send_messages_in_threads=True, create_public_threads=True,
+    embed_links=True, attach_files=True, read_message_history=True, manage_messages=True,
+    kick_members=True, ban_members=True, moderate_members=True, manage_roles=True,
+)
 
 
 @functools.cache
@@ -56,3 +63,11 @@ def url_invito(application_id: int | None, guild_id: int | None = None) -> str |
     return discord.utils.oauth_url(
         application_id, permissions=PERMESSI_INVITO, scopes=("bot", "applications.commands"), **extra
     )
+
+
+def url_invito_mod(application_id: int | None, guild_id: int | None = None) -> str | None:
+    """Il link per aggiungere iYokai Mod (niente comandi propri, solo lo scope `bot`)."""
+    if not application_id:
+        return None
+    extra = {"guild": discord.Object(id=guild_id)} if guild_id else {}
+    return discord.utils.oauth_url(application_id, permissions=PERMESSI_MOD, scopes=("bot",), **extra)

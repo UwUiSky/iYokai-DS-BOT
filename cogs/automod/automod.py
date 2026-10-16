@@ -47,6 +47,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import bot_roles
 from core import channel_router as router
 from core.phishing_list_fetcher import lista_phishing
 from core.phishing_logic import codici_invito, server_per_adulti
@@ -432,7 +433,7 @@ async def _execute_actions(
 
         if azione == "delete":
             try:
-                await message.delete()
+                await bot_roles.cancella_messaggio(message)
                 eseguite.append("delete")
             except (discord.NotFound, discord.Forbidden):
                 pass
@@ -465,7 +466,8 @@ async def _execute_actions(
 
         elif azione == "mute":
             try:
-                await member.timeout(
+                await bot_roles.isola(
+                    member,
                     timedelta(seconds=settings.mute_duration_seconds),
                     reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}",
                 )
@@ -481,16 +483,17 @@ async def _execute_actions(
                 color=discord.Color.orange(),
             ))
             try:
-                await member.kick(reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}")
+                await bot_roles.espelli(member, reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}")
                 eseguite.append("kick")
             except (discord.Forbidden, discord.HTTPException):
                 pass
 
         elif azione == "ban":
             try:
-                await member.ban(
-                    reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}",
-                    delete_message_seconds=0,
+                motivo = f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}"
+                await bot_roles.banna(
+                    message.guild, member, reason=motivo, delete_message_seconds=0,
+                    principale=lambda: member.ban(reason=motivo, delete_message_seconds=0),
                 )
                 eseguite.append("ban")
             except (discord.Forbidden, discord.HTTPException):
@@ -514,9 +517,7 @@ async def _log_violation(
         # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
         canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
     else:
-        canale = message.guild.get_channel(settings.log_channel_id) if settings.log_channel_id else None
-        if not isinstance(canale, discord.TextChannel):
-            canale = None
+        canale = await router.destinazione(message.guild, router.TIPO_AUTOMOD, settings.log_channel_id)
     if canale is None:
         return
 
@@ -531,13 +532,8 @@ async def _log_violation(
         # Nel log di phishing il link non deve restare cliccabile.
         valore = f"`{contenuto.replace('`', '')}`" if violation in _VIOLAZIONI_PHISHING else contenuto
         embed.add_field(name="Contenuto", value=valore, inline=False)
-    if violation in _VIOLAZIONI_PHISHING:
-        await router.invia_a(canale, message.guild, router.TIPO_PHISHING, embed=embed)
-        return
-    try:
-        await canale.send(embed=embed)
-    except discord.HTTPException:
-        pass
+    tipo = router.TIPO_PHISHING if violation in _VIOLAZIONI_PHISHING else router.TIPO_AUTOMOD
+    await router.invia_a(canale, message.guild, tipo, embed=embed)
 
 # Nomi delle regole che iYokai gestisce, sempre con il prefisso
 # convenzionale (vedi core/automod_sync.py) così non vengono mai

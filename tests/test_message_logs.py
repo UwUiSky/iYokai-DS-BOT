@@ -197,6 +197,14 @@ from core import message_log_logic as logica
 from core.message_log_logic import riga_blocco, senza_accento_grave
 
 
+@pytest.fixture(autouse=True)
+def _eventi_accesi(monkeypatch):
+    """LOG-017: senza database tutti gli eventi sono accesi."""
+    from tests.support.router_fakes import nessun_evento_spento
+
+    nessun_evento_spento(monkeypatch)
+
+
 async def test_senza_logging_avanzato_modifica_e_blocco_non_scrivono(ambiente, monkeypatch):
     cog, canale_log, _, _, server = ambiente
     monkeypatch.setattr(modulo, "logging_avanzato_attivo", AsyncMock(return_value=False))
@@ -295,3 +303,40 @@ async def test_modifica_il_cui_testo_di_prima_va_ignorato_non_si_scrive(ambiente
     prima.channel = dopo.channel = fake_text_channel(channel_id=CANALE)
     await cog.on_message_edit(prima, dopo)
     canale_log.send.assert_not_awaited()
+
+
+# ------------------------------------- LOG-027: memoria dei cancellati e privacy
+def _spegni_cancellati(monkeypatch):
+    from core.repositories.log_eventi_repo import log_eventi_repo
+
+    async def spenti(_guild_id):
+        return frozenset({"messaggi_cancellati"})
+
+    monkeypatch.setattr(log_eventi_repo, "spenti", spenti)
+
+
+async def test_evento_cancellati_spento_non_tiene_i_messaggi_in_memoria(ambiente, monkeypatch):
+    cog, canale_log, *_ = ambiente
+    modulo.cancellati_recenti.dimentica_autore(42)
+    _spegni_cancellati(monkeypatch)
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("segreto")))
+    m = _messaggio("blocco")
+    m.id, m.created_at = 71, discord.utils.utcnow()
+    p = MagicMock()
+    p.guild_id, p.channel_id, p.message_ids, p.cached_messages = GUILD, CANALE, {71}, [m]
+    await cog.on_raw_bulk_message_delete(p)
+    assert modulo.cancellati_recenti.di(CANALE) == []
+    canale_log.send.assert_not_awaited()
+
+
+async def test_richiesta_privacy_svuota_i_cancellati_dell_utente(ambiente, clean_db):
+    from core import forget_user_service
+
+    cog, *_ = ambiente
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("mio")))
+    altro = logica.MessaggioArchiviato(72, 43, "altro", "suo", "2026-10-15 10:00:00")
+    modulo.cancellati_recenti.aggiungi(CANALE, altro)
+    assert any(m.author_id == 42 for m in modulo.cancellati_recenti.di(CANALE))
+    await forget_user_service.dimentica_utente(clean_db, 42)
+    assert modulo.cancellati_recenti.di(CANALE) == [altro]
+    modulo.cancellati_recenti.dimentica_autore(43)

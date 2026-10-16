@@ -60,7 +60,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | §5 MODERATION | 0 | 12 | 2 | 0 |
 | §6 AUTOMOD | 5 | 10 | 0 | 0 |
 | §7 SECURITY SUITE | 6 | 27 | 1 | 0 |
-| §8 LOGGING | 10 | 7 | 1 | 0 |
+| §8 LOGGING | 11 | 7 | 1 | 0 |
 | §9 MUSIC | 1 | 8 | 5 | 3 |
 | §10 ALERTS & SOCIAL | 0 | 7 | 3 | 0 |
 | §11 BACKUP SYSTEM | 0 | 11 | 6 | 0 |
@@ -81,7 +81,7 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 | B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
 | D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
-| E APPLICAZIONI DEL PROGETTO | 0 | 3 | 5 | 0 |
+| E APPLICAZIONI DEL PROGETTO | 0 | 4 | 4 | 0 |
 | **Totale** | **144** | **160** | **184** | **6** |
 
 Totale voci: **494**.
@@ -720,7 +720,17 @@ Totale voci: **494**.
 - `[x]` 8.18 Catalogo log (#119): timeout dati e tolti anche dal menu di Discord (`basic_logs.py`,
   LOG-009); cambio di nome utente, nome visualizzato e avatar (`on_user_update`, LOG-007, LOG-008);
   palchi aperti, modificati, chiusi nel tipo «voce» (`advanced_logs.py`, LOG-013).
-  Restano: LOG-005, 006, 012, 017, 027, 029, 030.
+  Giro r7: inviti Discord scritti nei messaggi (`message_logs.py`, LOG-005); messaggi fissati e
+  tolti, chi scollega o sposta a forza in vocale (`on_audit_log_entry_create`, serve «Visualizzare
+  il registro»; Discord unisce gli spostamenti ripetuti dello stesso moderatore e si scrive solo il
+  primo; il registro non dice chi è stato spostato, lo dice il log della voce) (LOG-006, LOG-012);
+  `/log archivio-canale canale: messaggi:` (fino a 20.000, file sotto i 10 MiB, con i cancellati
+  dell'ultima ora tenuti solo in memoria, 100 per canale; serve poter leggere il canale) (LOG-027,
+  LOG-030). Resta: LOG-029 (archivio di un utente su 3 giorni a ogni sanzione: servirebbe tenere
+  su disco il testo di tutti i messaggi, scelta di privacy da fare)
+- `[x]` 8.19 Ogni evento acceso o spento (LOG-017): `/log eventi`, un menu con 24 interruttori
+  e le scelte rapide «Tutto», «Niente», «Predefinito» (tutto tranne microfono e audio spenti da
+  soli); senza scelte tutto acceso come prima. Migrazione 0180 (`log_eventi_spenti`)
 - `[~]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
@@ -1709,8 +1719,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[~]` 18.1 Un canale per **tipo** di uscita (NF-01, `core/channel_router.py`,
   migrazione 0028). Fatti i tipi di log: eventi, messaggi, voce, server
-  (`/log canale tipo:…`, `/log stato`). Restano con il loro canale
-  proprio moderazione (sanzioni), automod, allarmi e benvenuto
+  (`/log canale tipo:…`, `/log stato`). Mod-log (casi), log dell'AutoMod,
+  phishing e allarmi passano dal router con il loro canale di sempre come
+  predefinito (forum e un solo avviso al proprietario). Resta fuori il benvenuto
 - `[x]` 18.2 Canale di testo oppure forum; nel forum un post per tipo
   di log (D3). Il post nasce al primo log e, se cancellato, si ricrea
 - `[x]` 18.3 `/log crea-canali` (categoria privata + un canale per tipo)
@@ -1912,7 +1923,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
-- `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live)
+- `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live); chi scrive al bot in privato con un ban manuale attivo riceve il bottone (stesso ingresso dei DM dello spam-trap, un bottone per server, al massimo 25)
 - `[x]` 23.10 Blocco dei link di phishing (NF-31); accorciatori di link e inviti a server per adulti con interruttore proprio (SIC-042, r6)
 - `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)
@@ -2299,7 +2310,12 @@ Bot che girano nello stesso processo: principale, Mod, Creator, 5
 musicali, più NSFW quando verrà fatto.
 
 - `[~]` iYokai (principale) — comandi e interfaccia
-- `[ ]` iYokai Mod (log e moderazione) — D15, fase F3
+- `[~]` iYokai Mod (log e moderazione) — D15. Facoltativo (`YOKAI_MOD_TOKEN`), nessun comando e
+  nessun listener: gli eventi li ascolta il principale, `core/bot_roles.py` sceglie per server chi
+  scrive i log (router, mod-log, AutoMod, allarmi) ed esegue AutoMod, escalation, anti-raid,
+  anti-nuke, spam-trap e fine dei tempban. Mod assente, scollegato, senza permesso, sotto il
+  bersaglio o in rate limit lungo (oltre 30 s) → fa il principale, una volta sola. Invito in
+  `/utility info`. Non fatto: canali di log via webhook (Mod ha già limiti suoi)
 - `[~]` iYokai Creator (backup) — resta; non crea più server, porta e
   tiene aggiornato il server di backup (D8, §11)
 - `[~]` iYokai Music #1-5 — vedi §9

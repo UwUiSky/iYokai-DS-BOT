@@ -15,8 +15,10 @@ from cogs.moderation.ban_appeal import (
     SETTING_CANALE_APPELLI,
     decidi_appello,
     invia_appello,
+    offri_appello_in_dm,
     vista_appello,
 )
+import cogs.moderation.ban_appeal as ban_appeal_module
 from core.ban_appeal_logic import attesa_rimasta, lunghezza_valida
 from core.database import db
 from core.repositories.moderation_repo import moderation_repo
@@ -39,6 +41,7 @@ async def amb(monkeypatch, clean_db):
 
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
+    ban_appeal_module._offerte_dm.clear()
     await db.set_module_active_for_guild(G, MODULE_ACTIONS, True)
     await db.set_guild_setting(G, SETTING_CANALE_APPELLI, 5000)
     server = fake_guild(G)
@@ -394,3 +397,99 @@ async def test_modulo_appello_risponde_con_l_esito(amb):
 
     assert "inviato" in inter.followup.send.call_args.args[0].lower()
     canale.send.assert_awaited_once()
+
+
+
+# ------------------------------------------------- DM al bot (come lo spam-trap)
+async def test_dm_di_chi_ha_un_ban_manuale_riceve_il_bottone(amb):
+    server, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    vista = dm.send.await_args.kwargs["view"]
+    assert [b.custom_id for b in vista.children] == [f"appello:apri:{G}"]
+    assert vista.timeout is None and "Server" in dm.send.await_args.args[0]
+
+
+async def test_dm_senza_ban_o_con_appelli_spenti_non_risponde(amb):
+    _, _, bot = amb
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="tempban", reason="x")
+    await db.set_guild_setting(G, SETTING_CANALE_APPELLI, None)
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    dm.send.assert_not_awaited()
+
+
+async def test_lo_spam_trap_passa_il_dm_agli_appelli_dei_ban_manuali(monkeypatch):
+    import cogs.security.spam_trap as spam_trap_module
+    from core.spam_trap_rate_tracker import limite_dm_appello
+
+    limite_dm_appello.dimentica(UTENTE)
+    repo = AsyncMock()
+    repo.get_active_cases_for_user_across_guilds.return_value = []
+    monkeypatch.setattr(spam_trap_module, "moderation_repo", repo)
+    offri = AsyncMock(return_value=True)
+    monkeypatch.setattr(spam_trap_module, "offri_appello_in_dm", offri)
+    cog = spam_trap_module.SpamTrapCog(bot=MagicMock())
+    messaggio = MagicMock()
+    messaggio.author = fake_member(UTENTE)
+    await cog._handle_possible_appeal(messaggio)
+    offri.assert_awaited_once_with(cog.bot, messaggio.author, messaggio.channel)
+    limite_dm_appello.dimentica(UTENTE)
+
+
+async def test_dm_il_bottone_non_si_ripete_a_ogni_messaggio(amb):
+    """Chi scrive ogni 30 s non riceve il bottone a ogni DM: una volta ogni 10 minuti."""
+    _, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    dm.send.assert_awaited_once()
+
+
+async def test_dm_con_modmail_aperto_niente_bottone(amb, monkeypatch):
+    """Chi parla con lo staff via ModMail non riceve il bottone a ogni messaggio."""
+    _, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+
+    async def aperta(user_id):
+        return MagicMock() if user_id == UTENTE else None
+
+    from core.repositories.modmail_repo import modmail_repo
+
+    monkeypatch.setattr(modmail_repo, "aperta_dell_utente", aperta)
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    dm.send.assert_not_awaited()
+
+
+# ------------------------------------------------- sban fatto fuori dal bot
+async def test_sban_da_discord_chiude_il_caso_e_niente_bottone(amb):
+    """Sbannato a mano da Discord: il caso si chiude e il DM non offre più l'appello."""
+    server, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="tempban", reason="y")
+    server.fetch_ban = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "no"))
+    await ban_appeal_module.chiudi_casi_dopo_sban(server, fake_member(UTENTE), 999)
+    for tipo in ("ban", "tempban"):
+        assert await moderation_repo.get_latest_active_case(G, UTENTE, tipo) is None
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+
+
+async def test_sban_seguito_da_un_nuovo_ban_non_chiude_il_caso(amb):
+    """Se il ban c'è di nuovo (o non si può controllare) il caso resta attivo."""
+    server, _, _ = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    server.fetch_ban = AsyncMock(return_value=MagicMock())
+    await ban_appeal_module.chiudi_casi_dopo_sban(server, fake_member(UTENTE), 999)
+    server.fetch_ban = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403), "no"))
+    await ban_appeal_module.chiudi_casi_dopo_sban(server, fake_member(UTENTE), 999)
+    assert await moderation_repo.get_latest_active_case(G, UTENTE, "ban") is not None

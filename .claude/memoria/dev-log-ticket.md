@@ -44,6 +44,8 @@
 - Il proprietario si trova con `guild.get_member(guild.owner_id)`, non con `guild.owner`.
 
 - Un nome `test*` importato in un file di test viene raccolto da pytest: importare il modulo, non la funzione.
+- r7 (dev-moderazione): ogni log passa da un interruttore (LOG-017, core/log_eventi_logic.py): `_send_log(..., evento)`, `send_event_embed`, `_scrivi(guild, evento)`. Evento nuovo = aggiungerlo a INTERRUTTORI. Test senza DB: `router_fakes.nessun_evento_spento`.
+- D15: chi scrive lo decide core/bot_roles.py (router gia' collegato); messaggi con view restano al principale.
 
 ## Aperto
 - #145: serve che chi cambia whitelist/cassa/abbonamenti (core/premium.py, dev-core) chiami `advanced_logs.invalida_verdetto_premium(guild_id)`.

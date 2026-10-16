@@ -76,6 +76,8 @@ from core.music_fleet import MusicFleet, handle_inactive_player
 from core.backup_orchestrator import finalize_backup_job
 from core.repositories.backup_repo import backup_repo
 from core.backup_creator_bot import BackupCreatorBot
+from core import bot_roles
+from core.mod_bot import ModBot
 from core.backup_queue_worker import backup_queue_worker
 from core.backup_snapshot_worker import backup_snapshot_worker
 from core.repositories.restore_oauth_repo import restore_oauth_repo
@@ -676,6 +678,11 @@ async def main() -> None:
     creator = BackupCreatorBot()
     bot.backup_creator_client = creator
 
+    # iYokai Mod (D15): facoltativo. Registrato prima dell'avvio; finché
+    # non è collegato, core/bot_roles.py fa lavorare il principale.
+    mod = ModBot() if config.YOKAI_MOD_TOKEN else None
+    bot_roles.registra_mod(mod)
+
     # #36 (parte R0): un intent privileged (members, message_content)
     # va abilitato anche nel Developer Portal di Discord, non solo nel
     # codice — un log ben visibile all'avvio aiuta a notare subito un
@@ -798,6 +805,7 @@ async def main() -> None:
     voci = [
         VoceBot("iYokai Main", lambda: bot.start(config.YOKAI_BOT_TOKEN), critico=True),
         VoceBot("iYokai Creator", lambda: creator.start(config.YOKAI_CREATOR_TOKEN)),
+        *([VoceBot("iYokai Mod", lambda: mod.start(config.YOKAI_MOD_TOKEN))] if mod else []),
         *[
             VoceBot(f"Music worker {worker.worker_index}", lambda w=worker, t=token: w.start(t))
             for worker, token in zip(worker_bots, config.MUSIC_TOKENS)
@@ -820,7 +828,7 @@ async def main() -> None:
         if web_panel_runner is not None:
             await web_panel_runner.cleanup()
         await spegni_ordinatamente(
-            [bot, creator, *worker_bots],
+            [bot, creator, *([mod] if mod else []), *worker_bots],
             [
                 image_search_fetcher.close,
                 animal_fetcher.close,

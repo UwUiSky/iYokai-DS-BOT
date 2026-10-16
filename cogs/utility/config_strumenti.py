@@ -3,8 +3,8 @@ cogs/utility/config_strumenti.py
 ================================
 Strumenti di configurazione del server e informazioni sul bot (#122): `/admin config pulizia` (CFG-019),
 `/admin config sincronizza` (CFG-020), `/admin config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
-Funzioni coperte: SPEC §20 (NF-05), catalogo #122
-Dipende da: core/config_cleanup_logic.py, core/command_permissions.py, core/bot_info.py
+Funzioni coperte: SPEC §20 (NF-05), catalogo #122, parte E (D15)
+Dipende da: core/config_cleanup_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import bot_info
+from core import bot_info, bot_roles
 from core.command_permissions import (
     STATO_DA_RIPROVARE,
     STATO_SENZA_AUTORIZZAZIONE,
@@ -157,7 +157,18 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
             collegamenti.append(f"[{t('info_supporto', lingua)}]({config.SUPPORT_SERVER_URL})")
         if collegamenti:
             embed.add_field(name="​", value=" · ".join(collegamenti), inline=False)
+        embed.add_field(name=t("info_mod", lingua), value=_stato_mod(interaction.guild_id, lingua), inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+def _stato_mod(guild_id: int | None, lingua: str) -> str:
+    """Se iYokai Mod lavora in questo server; se manca, il link per invitarlo (D15)."""
+    mod = bot_roles.client_mod()
+    if mod is None or mod.application_id is None:
+        return t("info_mod_spento", lingua)
+    if guild_id is not None and bot_roles.server_mod(guild_id) is not None:
+        return t("info_mod_attivo", lingua)
+    return t("info_mod_assente", lingua, url=bot_info.url_invito_mod(mod.application_id, guild_id))
 
 
 async def setup(bot: commands.Bot) -> None:

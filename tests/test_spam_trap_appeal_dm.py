@@ -109,6 +109,8 @@ def cog_con_repo_finto(monkeypatch):
 
     spam_trap_repo_finto = AsyncMock()
     monkeypatch.setattr(spam_trap_module, "spam_trap_repo", spam_trap_repo_finto)
+    # NF-30: senza ban della trappola si guarda ai ban manuali (provato in test_moderation_appelli).
+    monkeypatch.setattr(spam_trap_module, "offri_appello_in_dm", AsyncMock(return_value=False))
 
     guild = _FakeGuild(100)
     bot = _FakeBot([guild])
@@ -251,6 +253,7 @@ class TestRateLimitDM:
         # Niente altro deve partire dopo la domanda: fermiamo qui il
         # flusso dell'appello vero, che non è l'oggetto di questo test.
         monkeypatch.setattr(spam_trap_module, "latest_case_per_guild", lambda casi: [])
+        monkeypatch.setattr(spam_trap_module, "offri_appello_in_dm", AsyncMock(return_value=False))
         orologio.istante = ISTANTE_ZERO + timedelta(seconds=5)
         await cog._handle_possible_appeal(_FakeMessage(utente, "Alpha"))
 
