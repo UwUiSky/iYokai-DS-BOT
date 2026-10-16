@@ -338,7 +338,6 @@ KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     "owner radio add-local:label",
     "owner radio add-track:label",
     "owner radio add-track:query",
-    "utility reminder set:duration",
     }
 )
 
