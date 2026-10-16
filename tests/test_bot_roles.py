@@ -220,3 +220,42 @@ async def test_scrivi_usa_mod_e_ripiega_sul_principale():
     bot_roles.registra_mod(bot_roles.client_mod())  # azzera il fermo
     await bot_roles.scrivi(canale, content="b")
     canale.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cancellazione_di_un_solo_messaggio_con_mod_non_usa_il_blocco():
+    """Discord rifiuta il blocco con meno di 2 messaggi: con uno solo si cancella quello."""
+    client, server_mod = _mod()
+    _, canale, _ = _canali_principale_e_mod(server_mod)
+    await bot_roles.cancella_messaggi(canale, [discord.Object(id=7)])
+    client.http.delete_message.assert_awaited_once_with(50, 7)
+    client.http.delete_messages.assert_not_awaited()
+    canale.delete_messages.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_forum_il_post_di_mod_non_lo_usa_il_principale(monkeypatch):
+    """Il thread in cache porta il client: con Mod fermo scrive il thread del principale."""
+    from tests.support.discord_fakes import fake_forum_channel
+
+    repo = router_senza_scelte(monkeypatch)
+    _, server_mod = _mod()
+    principale = _principale()
+    forum = fake_forum_channel(8)
+    forum.guild = principale
+    suo_forum = fake_forum_channel(8)
+    suo_forum.guild = server_mod
+    post_mod = MagicMock(id=600, parent_id=8)
+    post_mod.send = AsyncMock()
+    suo_forum.create_thread = AsyncMock(return_value=MagicMock(thread=post_mod, message=MagicMock()))
+    post_principale = MagicMock(id=600, parent_id=8)
+    post_principale.send = AsyncMock()
+    principale.get_thread.side_effect = {600: post_principale}.get
+
+    await router.PostForum(suo_forum, router.TIPO_MESSAGGI, None).send(content="a")
+    repo.ottieni.return_value = MagicMock(channel_id=8, post_id=600)
+    bot_roles.segna_fermo(60)
+    await router.PostForum(forum, router.TIPO_MESSAGGI, 600).send(content="b")
+
+    post_principale.send.assert_awaited_once_with(content="b")
+    post_mod.send.assert_not_awaited()

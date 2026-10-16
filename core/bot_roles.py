@@ -249,5 +249,14 @@ async def cancella_messaggi(canale_msg, messaggi: list):
         canale_msg.guild,
         "manage_messages",
         lambda: canale_msg.delete_messages(messaggi),
-        lambda c: c.http.delete_messages(canale_msg.id, [m.id for m in messaggi]),
+        lambda c: _cancella_via_mod(c, canale_msg.id, [m.id for m in messaggi]),
     )
+
+
+async def _cancella_via_mod(client: discord.Client, channel_id: int, ids: list[int]):
+    """Come TextChannel.delete_messages: Discord rifiuta il blocco con meno di 2 messaggi."""
+    if not ids:
+        return None
+    if len(ids) == 1:
+        return await client.http.delete_message(channel_id, ids[0])
+    return await client.http.delete_messages(channel_id, ids)

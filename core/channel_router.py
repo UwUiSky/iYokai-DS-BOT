@@ -71,7 +71,9 @@ _avvisati: set[tuple[int, str]] = set()
 _avvisando: set[tuple[int, str]] = set()
 # Un blocco per (server, tipo): due invii insieme in un forum creano un solo post.
 _blocchi: BoundedCache[tuple[int, str], asyncio.Lock] = BoundedCache(10_000)
-_post_noti: BoundedCache[tuple[int, str], discord.Thread] = BoundedCache(10_000)
+# (guild_id, tipo, di_mod): il post visto da ciascun bot. Un thread porta con sé il
+# client che lo ha in cache: quello di Mod non va usato quando scrive il principale.
+_post_noti: BoundedCache[tuple[int, str, bool], discord.Thread] = BoundedCache(10_000)
 
 
 def _blocco(chiave: tuple[int, str]) -> asyncio.Lock:
@@ -103,9 +105,12 @@ class PostForum:
         self.id = forum.id
         self.guild = forum.guild
 
+    def _chiave_post(self) -> tuple[int, str, bool]:
+        return (self.guild.id, self.tipo, bot_roles.e_di_mod(self.forum))
+
     async def _trova_post(self):
         """Il post del tipo, anche se archiviato (non è in cache): None se non c'è più."""
-        chiave = (self.guild.id, self.tipo)
+        chiave = self._chiave_post()
         noto = _post_noti.get(chiave)
         if noto is not None:
             if getattr(noto, "parent_id", None) == self.forum.id:
@@ -124,8 +129,9 @@ class PostForum:
         return post
 
     async def send(self, **kw):
-        chiave = (self.guild.id, self.tipo)
-        async with _blocco(chiave):
+        # Il blocco è per (server, tipo), comune ai due bot: un solo post anche se scrivono insieme.
+        chiave = self._chiave_post()
+        async with _blocco((self.guild.id, self.tipo)):
             post = await self._trova_post()
             if post is not None:
                 try:
@@ -138,6 +144,7 @@ class PostForum:
             creato = await self.forum.create_thread(name=NOME_POST[self.tipo], **kw)
             self.post_id = creato.thread.id
             _post_noti.set(chiave, creato.thread)
+            _post_noti.delete((*chiave[:2], not chiave[2]))  # l'altro bot ritrova il post nuovo dal database
             await output_channel_repo.salva_post(
                 self.guild.id, self.tipo, self.forum.id, self.post_id
             )
