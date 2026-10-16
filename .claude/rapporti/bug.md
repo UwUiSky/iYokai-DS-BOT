@@ -224,3 +224,10 @@
 | 15/10 | `request_channel` on_message | Nessuna pausa per utente: spam = ricerche Lavalink + cancellazioni a raffica | media | corretto r6mus `b4a5cd1` |
 | 15/10 | `soundboard._esci_se_inattivo` | Esce senza lock del canale (play a metà) e taglia il suono di un altro | media | corretto r6mus `3d93028` |
 | 15/10 | `soundboard._torna_sordo` | Due suoni entro 6 s: il primo riassorda il bot durante il secondo | bassa | plausibile, aperto |
+| 16/10 | `cogs/utility/backup.py` `_altri_server` | Sincronia: proprietà controllata solo all'attivazione; server ceduto banna nell'altro | alta | corretto 1172556 |
+| 16/10 | `core/server_sync_logic.py` `ruoli_applicabili` | Ruolo omonimo senza permessi in A dà l'«Admin» vero di B | alta | corretto 1172556 |
+| 16/10 | `core/backup_struttura_logic.py` `Caricatore._ruoli/_overwrites` | File/modello dà admin a @everyone o a ruoli esistenti (con membri) | alta | corretto b70b41f |
+| 16/10 | `cogs/utility/backup.py` `importa` | File importato con «membri» dà ruoli a ID scelti da chi l'ha scritto | media | corretto b70b41f |
+| 16/10 | `core/backup_struttura_logic.py` `valida_struttura` | Emoji, sticker, membri, ban, posizioni, allegati non controllati: errore a metà caricamento | media | corretto b70b41f |
+| 16/10 | `cogs/utility/restore.py` `ConsensoRestoreView` | Bottoni del consenso non persistenti (timeout 900, morti al riavvio, anche nel DM) | bassa | plausibile |
+| 16/10 | `core/backup_struttura_logic.py` `_membri`/`_ruoli` | Al livello «admin_tutto» un admin dà/modifica ruoli sopra il suo (gerarchia solo del bot) | bassa | plausibile |

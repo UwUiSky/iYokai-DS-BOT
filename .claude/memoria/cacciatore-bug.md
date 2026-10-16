@@ -1,6 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+16/10/2026 · ultimo giro: `feat/r7bak` (/backup D25, copie, modelli, sincronia, chat) con fix 1172556, b70b41f
 14/10/2026 · ultimo giro: `feat/r6ai` (motore AI, /ai, -chiedi, menzione, traduzioni, immagini, ticket) con fix 9516f7c
 14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
 14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
@@ -26,6 +27,7 @@
 - feat/r6ai: corretti (9516f7c) quote/crediti in gara, moderazione aggirabile via quota autore, cache simile su traduzioni/giudizi, tetto con chiavi a pagamento senza costo, 400 = pausa globale, eccezioni fuori da chiedi, PNG enorme decodificato sul loop. Lasciati: tetto/quota funzione in gara tra persone, testo -chiedi sostituisce prefissi di percorso.
 
 ## Cose imparate
+- Sincronie tra server: ricontrollare proprietà all'evento; ruoli per NOME = escalation (confrontare permessi). Caricamenti da file/modello: mai aggiungere permessi pericolosi a @everyone o a ruoli esistenti.
 - AI: ogni lavoro automatico (moderazione, traduzione) che conta sulla persona = aggirabile; cache per somiglianza mai su traduzioni/giudizi.
 - Web: `Referrer-Policy: no-referrer` fa mandare `Origin: null` ai POST dei moduli (Fetch spec): rompe il controllo d'origine. `del_cookie` di aiohttp senza `secure=` non cancella i cookie `__Host-`.
 - feat/r6mod: corretti 5 (tetto usi/ora ban-kick massa, bulk_ban senza manage_guild, retroattivo solo-sospetti, rientro verify, tetto link/messaggio); 4 plausibili in `rapporti/bug.md`.
