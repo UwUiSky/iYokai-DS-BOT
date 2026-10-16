@@ -111,9 +111,14 @@ def errore_modello_nome(modello: str) -> str | None:
     import string
 
     try:
-        campi = [campo for _, campo, _, _ in string.Formatter().parse(modello) if campo is not None]
+        pezzi = [(campo, spec, conv) for _, campo, spec, conv in string.Formatter().parse(modello) if campo is not None]
     except ValueError:
         return "Il modello ha una graffa non chiusa."
+    # Niente specifiche di formato ({numero:>999999}) né conversioni:
+    # una larghezza enorme bloccherebbe il bot per costruire il nome.
+    if any(spec or conv for _, spec, conv in pezzi):
+        return "Nei segnaposto scrivi solo {utente} o {numero}, senza «:» o «!»."
+    campi = [campo for campo, _, _ in pezzi]
     sconosciuti = sorted({c for c in campi if c not in SEGNAPOSTO_NOME})
     if sconosciuti:
         return "Segnaposto non validi: " + ", ".join(sconosciuti) + ". Usa {utente} e {numero}."
@@ -124,8 +129,19 @@ def errore_modello_nome(modello: str) -> str | None:
 
 def nome_da_modello(modello: str | None, utente: str, numero: int) -> str:
     """Nome del canale: modello con i segnaposto sostituiti, al massimo 100 caratteri."""
-    nome = (modello or NOME_PREDEFINITO).format(utente=utente, numero=numero)
-    return nome[:MAX_NOME_CANALE]
+    import string
+
+    valori = {"utente": utente, "numero": str(numero)}
+    parti: list[str] = []
+    # Si sostituisce a mano: str.format applicherebbe le specifiche di
+    # formato (anche annidate, prese dal nome dell'utente).
+    for testo, campo, _, _ in string.Formatter().parse(modello or NOME_PREDEFINITO):
+        parti.append(testo)
+        if campo is not None:
+            parti.append(valori.get(campo, ""))
+        if sum(map(len, parti)) >= MAX_NOME_CANALE:
+            break
+    return "".join(parti)[:MAX_NOME_CANALE]
 
 
 def primo_numero_libero(usati) -> int:

@@ -224,3 +224,7 @@
 | 15/10 | `request_channel` on_message | Nessuna pausa per utente: spam = ricerche Lavalink + cancellazioni a raffica | media | corretto r6mus `b4a5cd1` |
 | 15/10 | `soundboard._esci_se_inattivo` | Esce senza lock del canale (play a metà) e taglia il suono di un altro | media | corretto r6mus `3d93028` |
 | 15/10 | `soundboard._torna_sordo` | Due suoni entro 6 s: il primo riassorda il bot durante il secondo | bassa | plausibile, aperto |
+| 16/10 | `voice_temp_logic.nome_da_modello` | `{numero:>999999999}` o `{numero:{utente}}` passano la validazione: str.format alloca GB / nome utente come formato | alta | corretto r7liv |
+| 16/10 | `voice_temp._create_temp_channel` | Due canali creati insieme prendono lo stesso {numero} | media | corretto r7liv |
+| 16/10 | `voice_temp.invita` | Il bot crea inviti al server per chi non ha «Crea invito» (link nel fallback DM) | media | corretto r7liv |
+| 16/10 | `voice_temp.unlock` | Unlock fallito su canale mai bloccato lo segna bloccato con None: il lock dopo perde il valore vero | bassa | plausibile, aperto |

@@ -5,6 +5,8 @@ Test di core/voice_temp_logic.py — logica pura, nessuna dipendenza
 da Discord.
 """
 
+import pytest
+
 from core.voice_temp_logic import (
     can_manage_voice_channel,
     effective_category_cap,
@@ -126,3 +128,20 @@ class TestModelloNome:
         assert primo_numero_libero([]) == 1
         assert primo_numero_libero([1, 2, 4]) == 3
         assert primo_numero_libero([2, 3]) == 1
+
+
+# Cacciatore-bug r7liv: il modello non deve poter usare specifiche di formato.
+@pytest.mark.parametrize("modello", ["Stanza {numero:>500}", "{utente!r}", "{numero:{utente}}", "{numero:d}x"])
+def test_modello_con_specifiche_di_formato_rifiutato(modello):
+    from core.voice_temp_logic import errore_modello_nome
+
+    assert errore_modello_nome(modello) is not None
+
+
+def test_nome_da_modello_non_usa_il_nome_utente_come_formato():
+    from core.voice_temp_logic import nome_da_modello
+
+    # Un modello già salvato non può far esplodere la creazione del canale.
+    assert nome_da_modello("{numero:{utente}}", "999999999", 3) == "3"
+    assert nome_da_modello("Stanza {numero} di {utente}", "{numero}", 2) == "Stanza 2 di {numero}"
+    assert nome_da_modello("{{x}} {numero}", "u", 1) == "{x} 1"

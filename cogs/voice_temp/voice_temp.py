@@ -42,6 +42,7 @@ core/voice_temp_logic.py:effective_category_cap/is_category_full.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -220,6 +221,11 @@ async def _registra(guild: discord.Guild, testo: str, config=None) -> None:
         logger.warning("Registro dei vocali non scritto nel canale %s", canale.id)
 
 
+# Un blocco per server: due canali creati insieme non prendono lo stesso
+# numero (scelta del numero, creazione e registrazione in fila).
+_blocchi_numero: dict[int, asyncio.Lock] = {}
+
+
 async def _create_temp_channel(
     guild: discord.Guild,
     owner: discord.Member,
@@ -249,22 +255,23 @@ async def _create_temp_channel(
     if config.nasce_bloccato:
         proprietario.update(connect=True)
     overwrites = {guild.default_role: everyone, owner: proprietario}
-    numero = primo_numero_libero(await voice_temp_repo.numeri_usati(guild.id))
-    try:
-        channel = await category.create_voice_channel(
-            name=nome_da_modello(config.nome_modello, owner.display_name, numero),
-            overwrites=overwrites,
-            reason=f"Vocale temporaneo per {owner}",
-        )
-    except (discord.Forbidden, discord.HTTPException):
-        logger.warning(
-            "Impossibile creare il vocale temporaneo per %s nel server %s",
-            owner.id,
-            guild.id,
-        )
-        return None
+    async with _blocchi_numero.setdefault(guild.id, asyncio.Lock()):
+        numero = primo_numero_libero(await voice_temp_repo.numeri_usati(guild.id))
+        try:
+            channel = await category.create_voice_channel(
+                name=nome_da_modello(config.nome_modello, owner.display_name, numero),
+                overwrites=overwrites,
+                reason=f"Vocale temporaneo per {owner}",
+            )
+        except (discord.Forbidden, discord.HTTPException):
+            logger.warning(
+                "Impossibile creare il vocale temporaneo per %s nel server %s",
+                owner.id,
+                guild.id,
+            )
+            return None
 
-    await voice_temp_repo.register_channel(channel.id, guild.id, owner.id, numero)
+        await voice_temp_repo.register_channel(channel.id, guild.id, owner.id, numero)
     if config.nasce_bloccato:
         # Prima del blocco «Connetti» era ereditato: unlock lo rimette così.
         await voice_temp_repo.segna_bloccato(channel.id, None)
@@ -915,6 +922,14 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         if member.bot:
             await interaction.response.send_message("Non puoi invitare un bot.", ephemeral=True)
+            return
+        # L'invito vale per il server: il bot lo crea solo per chi potrebbe
+        # crearlo da sé, altrimenti aggirerebbe il permesso «Crea invito».
+        if not channel.permissions_for(interaction.user).create_instant_invite:
+            await interaction.response.send_message(
+                "Non hai il permesso di creare inviti su questo canale: usa /voice permit.",
+                ephemeral=True,
+            )
             return
         await interaction.response.defer(ephemeral=True)  # permesso, invito e DM: tre chiamate
         try:

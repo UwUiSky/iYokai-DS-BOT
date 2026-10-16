@@ -1194,3 +1194,38 @@ async def test_stato_cambia_lo_stato_del_canale_e_vuoto_lo_toglie():
     assert canale.edit.call_args.kwargs == {"status": "Ranked"}
     await cog.stato.callback(cog, scena.interazione(proprietario))
     assert canale.edit.call_args.kwargs == {"status": None}
+
+
+async def test_due_canali_creati_insieme_non_prendono_lo_stesso_numero():
+    scena = Scena()
+    await _configura(scena, nome="Stanza {numero}")
+    originale = scena._crea_canale
+
+    async def lento(name, **kwargs):
+        await asyncio.sleep(0.05)  # Discord risponde dopo un po'
+        return await originale(name, **kwargs)
+
+    scena.categoria.create_voice_channel.side_effect = lento
+    config = await voice_temp_repo.get_config(ID_SERVER)
+    await asyncio.gather(
+        _create_temp_channel(scena.guild, scena.membro(ID_PROPRIETARIO), scena.categoria, config),
+        _create_temp_channel(scena.guild, scena.membro(ID_OSPITE), scena.categoria, config),
+    )
+
+    nomi = sorted(c.kwargs["name"] for c in scena.categoria.create_voice_channel.call_args_list)
+    assert nomi == ["Stanza 1", "Stanza 2"]
+
+
+async def test_invita_senza_permesso_di_creare_inviti_non_crea_il_link():
+    """Il bot non deve creare inviti al server per chi non potrebbe crearli da sé."""
+    scena = Scena()
+    proprietario = scena.membro(ID_PROPRIETARIO)
+    canale = await scena.crea_canale_di(proprietario)
+    canale.permissions_for.return_value = discord.Permissions(connect=True, view_channel=True)
+    cog = VoiceTempCog(bot=None)
+    interazione = scena.interazione(proprietario)
+
+    await cog.invita.callback(cog, interazione, scena.membro(ID_OSPITE))
+
+    canale.create_invite.assert_not_called()
+    assert "invit" in _testo(interazione.response.send_message.call_args).lower()
