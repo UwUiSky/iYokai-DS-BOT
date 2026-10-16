@@ -213,7 +213,9 @@
   "voto": "vote",
   "dai": "give",
   "massa-ferma": "bulk-stop",
-  "scelta": "self-roles"
+  "scelta": "self-roles",
+  "scheda": "lookup",
+  "anzianita": "seniority"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -795,7 +797,16 @@
   "ruoli modifica": "Change name, color and options of a role.",
   "ruoli diagnosi": "Find out why the bot cannot give a role.",
   "ruoli scelta": "Roles members take by themselves with /utility role.",
-  "utility ruolo": "Take or leave the server's self-assignable roles."
+  "utility ruolo": "Take or leave the server's self-assignable roles.",
+  "utility scheda": "Info cards for users, server, channels and roles",
+  "utility scheda utente": "Member card: ID, dates and roles.",
+  "utility scheda server": "Server card: owner, date, numbers, boosts.",
+  "utility scheda canale": "Channel card.",
+  "utility scheda ruolo": "Role card: members, color, date, permissions.",
+  "utility scheda ruoli": "All roles with ID, members and color.",
+  "utility scheda membri": "Members who have a role.",
+  "utility scheda anzianita": "Oldest or newest accounts, first or last to join.",
+  "utility scheda permessi": "Permissions of a member or the bot in a channel."
  },
  "parametri": {}
 }

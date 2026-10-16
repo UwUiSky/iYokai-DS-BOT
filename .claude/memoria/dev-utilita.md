@@ -8,11 +8,15 @@
 - Migrazioni riservate 0230-0239. Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
 
 ## Fatto
+- r8 G1 c265011: /ruoli (D25 quinto caso) cogs/utility/ruoli_strumenti.py + core/ruoli_strumenti_logic.py + self_role_repo (0231); /utility ruolo.
+- r8 G2: /utility scheda (cogs/utility/schede.py, core/schede_logic.py).
 - r4: G1-G10 (autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli): vedi git log.
 - r5 G1: #71 (15.1/15.2 già in main) + #131 voci piccole: cogs/fun/fun_extra.py (/fun scegli|numero|testo|casuale|scherzo|effetto), dice formula, joke tema, fact animale, 8ball/meme con Range e senza menzioni.
 - r5 G2: NF-25 attività (0120): activity_stats.py (raccolta+ruoli, /moduli statistiche …), server_stats.py (viste, bottoni), repo+logic; member_total per giveaway.
 
 ## Cose imparate
+- Scratchpad condivisa con altri agenti: file con prefisso `uti_`. Pesi gruppi: scratchpad/uti_pesi.py. Traduzioni: scratchpad/tradu.py (tiene il formato indent=1 del json).
+- pytest raccoglie le funzioni importate che iniziano per `test`: niente nomi `testo_*`/`test*` nelle funzioni di logica importate dai test.
 - Role menu: `_applica(guild, member, decisione, motivo)` e `decidi_azione/decidi_selezione` (core/role_menu_logic) sono l'unico punto che da/toglie ruoli; pass guild esplicito (i fake non hanno member.guild).
 - smoke --base main diventa lento (2-3 min) con più gruppi: lanciarlo con timeout 600000.
 - Tabelle nuove: .sql in core/migrations + voce in core/data_registry.py (Scadenza per i dati a tempo). Comandi: `@comando_di_gruppo("gestione"/"moduli"/"admin", sottogruppo=(nome, descr))`; autocomplete admin = `autocomplete_protetto(Livello.ADMIN)`; test albero: `await modulo.setup(Bot)` poi `comando_nel_gruppo("gruppo", "sotto cmd")`.

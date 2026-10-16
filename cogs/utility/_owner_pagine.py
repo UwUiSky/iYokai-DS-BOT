@@ -1,10 +1,10 @@
 """
 cogs/utility/_owner_pagine.py
 =================================
-Risposte a pagine per i comandi dell'owner (M 10.12, LIM-22): un elenco
-che cresce non deve superare i limiti di Discord. Riusa le pagine e i
+Risposte effimere a pagine per gli elenchi che crescono (M 10.12, LIM-22):
+comandi dell'owner e schede di `/utility scheda`. Riusa le pagine e i
 bottoni di `cogs/leveling/_pagine.py` (sfoglia solo chi ha lanciato il
-comando, cioè l'owner). Il nome comincia con "_": non è un cog.
+comando). Il nome comincia con "_": non è un cog.
 """
 
 from __future__ import annotations
