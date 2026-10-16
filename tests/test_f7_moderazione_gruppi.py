@@ -73,7 +73,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     },
     ("automod", "parole"): {"add", "remove", "list"},
     ("automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},
-    ("log", None): {"canale", "stato", "esporta"},
+    ("log", None): {"canale", "stato", "esporta", "archivio-canale"},
     ("log", "cerca"): {"utente", "canale"},
 }
 
