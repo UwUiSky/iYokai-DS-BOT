@@ -18,6 +18,7 @@ Dipende da: core/ban_appeal_logic.py
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 
 import discord
@@ -37,7 +38,9 @@ from core.ban_appeal_logic import (
     lunghezza_valida,
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.bounded_cache import BoundedCache
 from core.database import db
+from core.repositories.modmail_repo import modmail_repo
 from core.ui_base import BaseModal, BaseView
 from core.repositories.moderation_repo import moderation_repo
 from cogs.moderation._tempban_modes import cancella_invito_per_codice
@@ -166,6 +169,10 @@ class BottoneEsitoAppello(
 
 # Un messaggio tiene 25 bottoni (5 righe da 5).
 MAX_SERVER_IN_DM = 25
+# Il bottone in DM si offre al massimo una volta ogni 10 minuti per persona:
+# il limite dei DM dello spam-trap (30 s) farebbe rispondere a quasi ogni messaggio.
+OFFERTA_DM_OGNI_SECONDI = 600
+_offerte_dm: BoundedCache[int, float] = BoundedCache(50_000)
 
 
 async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, canale_dm) -> bool:
@@ -174,6 +181,12 @@ async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, can
     «Fai appello» per ogni server con gli appelli accesi. True se ha risposto.
     Il limite di un appello ogni 24 ore resta quello del modulo.
     """
+    ultima = _offerte_dm.get(utente.id)
+    if ultima is not None and time.monotonic() - ultima < OFFERTA_DM_OGNI_SECONDI:
+        return False
+    # Chi ha una conversazione ModMail aperta scrive allo staff: il DM è del ModMail.
+    if await modmail_repo.aperta_dell_utente(utente.id) is not None:
+        return False
     casi = []
     for tipo in CASI_CON_APPELLO:
         casi += await moderation_repo.get_active_cases_for_user_across_guilds(utente.id, tipo)
@@ -199,6 +212,7 @@ async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, can
         )
     except discord.HTTPException:
         return False
+    _offerte_dm.set(utente.id, time.monotonic())
     return True
 
 

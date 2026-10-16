@@ -18,6 +18,7 @@ from cogs.moderation.ban_appeal import (
     offri_appello_in_dm,
     vista_appello,
 )
+import cogs.moderation.ban_appeal as ban_appeal_module
 from core.ban_appeal_logic import attesa_rimasta, lunghezza_valida
 from core.database import db
 from core.repositories.moderation_repo import moderation_repo
@@ -40,6 +41,7 @@ async def amb(monkeypatch, clean_db):
 
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
+    ban_appeal_module._offerte_dm.clear()
     await db.set_module_active_for_guild(G, MODULE_ACTIONS, True)
     await db.set_guild_setting(G, SETTING_CANALE_APPELLI, 5000)
     server = fake_guild(G)
@@ -437,3 +439,31 @@ async def test_lo_spam_trap_passa_il_dm_agli_appelli_dei_ban_manuali(monkeypatch
     await cog._handle_possible_appeal(messaggio)
     offri.assert_awaited_once_with(cog.bot, messaggio.author, messaggio.channel)
     limite_dm_appello.dimentica(UTENTE)
+
+
+async def test_dm_il_bottone_non_si_ripete_a_ogni_messaggio(amb):
+    """Chi scrive ogni 30 s non riceve il bottone a ogni DM: una volta ogni 10 minuti."""
+    _, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    dm.send.assert_awaited_once()
+
+
+async def test_dm_con_modmail_aperto_niente_bottone(amb, monkeypatch):
+    """Chi parla con lo staff via ModMail non riceve il bottone a ogni messaggio."""
+    _, _, bot = amb
+    await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")
+
+    async def aperta(user_id):
+        return MagicMock() if user_id == UTENTE else None
+
+    from core.repositories.modmail_repo import modmail_repo
+
+    monkeypatch.setattr(modmail_repo, "aperta_dell_utente", aperta)
+    dm = fake_text_channel(1)
+    dm.send = AsyncMock()
+    assert not await offri_appello_in_dm(bot, fake_member(UTENTE), dm)
+    dm.send.assert_not_awaited()
