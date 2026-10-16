@@ -1,7 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-15/10/2026 · ramo `feat/r6mus` (#64, #90, #106, #126, doc #45/#47/#48): corretti dal revisore suoni ravvicinati + LIM-58 (e339198). Esito smoke nel rapporto.
+16/10/2026 · ramo `feat/r7bak` (/backup D25, #68, #110, #121): corretti dal revisore consenso persistente, gerarchia al caricamento, D25 quarto caso (3be8a40). Smoke --base main: 1071 verdi.
 
 ## In corso
 - `feat/r6mus`: aperta 1 riga bassa (nome playlist non normalizzato in carica/elimina/esporta) per dev-musica.
@@ -9,7 +9,7 @@
 - Aperti bassi: r6ai (ticket staff, pacchetto, riassumi doppio, vietate) per dev-ai; r6mod `/antiraid segnala` senza tetto.
 
 ## Fatto
-- F1 del 05/10 unito. Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai (9f323ca), r6mod (e420745), r6web (f1829fc), r6mus (e339198).
+- F1 del 05/10 unito. Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai (9f323ca), r6mod (e420745), r6web (f1829fc), r6mus (e339198), r7bak (3be8a40).
 
 ## Cose imparate
 - Controllare il contenuto di ogni commit, non il messaggio. Testo all'utente che promette una funzione va confrontato col codice.
@@ -25,7 +25,8 @@
 - Stato in memoria: chi lo ripulisce, cosa succede al riavvio; se limite accettato -> VERIFICA_LIVE.
 - `AllowedMentions(roles=...)` ha `everyone=True` di default. `monkeypatch.undo()` toglie anche il pool del DB.
 - URL controllati dal bot e scaricati da un altro (Lavalink): DNS rebinding e redirect restano (LIM-58), si blocca la rete dell'altro.
-- Ruoli che aprono un livello più alto: chi li sceglie deve avere il permesso di quel livello (D28).
+- Ruoli che aprono un livello più alto: chi li sceglie deve avere il permesso di quel livello (D28). Caricamenti/ripristini fatti dal bot: tetto = ruolo più alto di chi lancia (salvo owner).
+- DECISIONI: i «casi» di D25 aggiunti da rami diversi vanno numerati contro `git show main:`; paragrafi finiti fuori sezione si riportano dentro.
 
 ## Aperto
 - Domande all'owner: SPEC 23.16 (sfondo solo colore), D18 limite ticket per utente, conferma primo DM ModMail, D27.

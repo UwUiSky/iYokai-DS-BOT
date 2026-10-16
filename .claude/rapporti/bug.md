@@ -229,5 +229,5 @@
 | 16/10 | `core/backup_struttura_logic.py` `Caricatore._ruoli/_overwrites` | File/modello dà admin a @everyone o a ruoli esistenti (con membri) | alta | corretto b70b41f |
 | 16/10 | `cogs/utility/backup.py` `importa` | File importato con «membri» dà ruoli a ID scelti da chi l'ha scritto | media | corretto b70b41f |
 | 16/10 | `core/backup_struttura_logic.py` `valida_struttura` | Emoji, sticker, membri, ban, posizioni, allegati non controllati: errore a metà caricamento | media | corretto b70b41f |
-| 16/10 | `cogs/utility/restore.py` `ConsensoRestoreView` | Bottoni del consenso non persistenti (timeout 900, morti al riavvio, anche nel DM) | bassa | plausibile |
-| 16/10 | `core/backup_struttura_logic.py` `_membri`/`_ruoli` | Al livello «admin_tutto» un admin dà/modifica ruoli sopra il suo (gerarchia solo del bot) | bassa | plausibile |
+| 16/10 | `cogs/utility/restore.py` `ConsensoRestoreView` | Bottoni del consenso non persistenti (timeout 900, morti al riavvio, anche nel DM) | bassa | corretto dal revisore 3be8a40 |
+| 16/10 | `core/backup_struttura_logic.py` `_membri`/`_ruoli` | Al livello «admin_tutto» un admin dà/modifica ruoli sopra il suo (gerarchia solo del bot) | bassa | corretto dal revisore 3be8a40 |
