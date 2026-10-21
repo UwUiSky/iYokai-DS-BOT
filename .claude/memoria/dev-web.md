@@ -8,8 +8,9 @@
   1. NF-21 #92 verifica web + doppi (migr. 0210) — fatto
   2. #148 nel pannello: stato, link, risincronizza, revoca — fatto
   3. NF-38 #109 pagina del marchio nel pannello — fatto
-  4. #122 CFG-030/021 aspetto del bot per server (pannello + bot) — prossimo:
-     `gh api .../issues/122` per CFG-030/021, cerca `nickname-bot` in cogs/ e core/
+  4. #122 CFG-030/021 aspetto — comando fatto (`core/bot_aspetto.py`, `/admin premium
+     aspetto` in cogs/utility/marchio.py). Prossimo: pagina `/server/{id}/aspetto` nel
+     pannello (nick, bio, upload multipart letto a parti: client_max_size è 8 KB)
   5. #46 parte OAuth: controllo di ciò che resta
 - Migrazioni riservate: 0210–0219.
 

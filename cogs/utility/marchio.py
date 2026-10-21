@@ -2,10 +2,11 @@
 cogs/utility/marchio.py
 =======================
 `/admin premium marchio` (NF-38, #109): un server premium collega un bot suo, con nome e avatar suoi.
+`/admin premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
 Il token si scrive in una finestra (mai come opzione del comando), si prova con Discord e si salva cifrato.
 Le azioni passano da `core/whitelabel_bot.py`, le stesse del pannello web (D16).
-Funzioni coperte: SPEC §23 (NF-38)
-Dipende da: core/whitelabel_bot.py, cogs/utility/premium_server.py (stesso sotto-gruppo)
+Funzioni coperte: SPEC §23 (NF-38), catalogo #122 (CFG-030)
+Dipende da: core/whitelabel_bot.py, core/bot_aspetto.py, cogs/utility/premium_server.py (stesso sotto-gruppo)
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.utility.premium_server import SOTTOGRUPPO_PREMIUM
+from core.bot_aspetto import MAX_BIO, MAX_IMMAGINE, applica_aspetto
 from core.bot_ready import attendi_bot_pronto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
@@ -156,6 +158,51 @@ class MarchioCog(CogConGruppi, commands.Cog):
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+    # ------------------------------------------------------------------
+    @comando_di_gruppo(
+        "admin", nome="aspetto", descrizione="Avatar, banner e descrizione del bot in questo server (premium).",
+        sottogruppo=SOTTOGRUPPO_PREMIUM,
+    )
+    @app_commands.describe(
+        avatar="Immagine PNG, JPEG, GIF o WEBP (massimo 8 MB)",
+        banner="Immagine PNG, JPEG, GIF o WEBP (massimo 8 MB)",
+        descrizione="La descrizione del profilo del bot in questo server",
+        togli="Cosa togliere e riportare come nel resto di Discord",
+    )
+    @app_commands.choices(
+        togli=[
+            app_commands.Choice(name="avatar", value="avatar"),
+            app_commands.Choice(name="banner", value="banner"),
+            app_commands.Choice(name="descrizione", value="bio"),
+            app_commands.Choice(name="tutto", value="tutto"),
+        ]
+    )
+    async def aspetto(
+        self,
+        interaction: discord.Interaction,
+        avatar: discord.Attachment | None = None,
+        banner: discord.Attachment | None = None,
+        descrizione: app_commands.Range[str, 1, MAX_BIO] | None = None,
+        togli: app_commands.Choice[str] | None = None,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        campi: dict = {}
+        if togli is not None:
+            nomi = ("avatar", "banner", "bio") if togli.value == "tutto" else (togli.value,)
+            campi = dict.fromkeys(nomi)
+        if descrizione:
+            campi["bio"] = descrizione
+        for nome, allegato in (("avatar", avatar), ("banner", banner)):
+            if allegato is None:
+                continue
+            if allegato.size > MAX_IMMAGINE:
+                await interaction.followup.send(await testo_per(interaction, "asp_immagine_grande"), ephemeral=True)
+                return
+            campi[nome] = await allegato.read()
+        chiave = await applica_aspetto(self.bot, interaction.guild, interaction.user.id, **campi)
+        await interaction.followup.send(await testo_per(interaction, chiave), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
