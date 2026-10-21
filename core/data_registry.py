@@ -518,8 +518,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        nota="servono a riconoscere gli account doppi nello stesso server; 30 giorni"),
     _t("verify_doppi", "Account doppi trovati dalla verifica web, per lo staff",
        colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
-       esporta=True, scadenza=Scadenza("trovato_il", 90),
-       nota="un avviso allo staff, mai un ban automatico; 90 giorni"),
+       esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),
+       nota="un avviso allo staff, mai un ban automatico; 90 giorni; la copia non dice chi è l'altro account"),
 )
 # fmt: on
 

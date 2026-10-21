@@ -88,6 +88,19 @@ async def test_repo_trova_i_doppi_solo_nello_stesso_server(clean_db):
     assert [(r["user_id"], r["altro_user_id"], r["livello"]) for r in righe] == [(MEMBRO, ALT, "alto")]
 
 
+@pytest.mark.asyncio
+async def test_copia_dei_dati_senza_l_id_dell_altro_account(clean_db):
+    """«I miei dati» di uno dei due non deve dire chi è l'altro (stessa casa, stessa rete: dato di un terzo)."""
+    from core.forget_user_service import esporta_utente
+
+    repo = FingerprintRepository(pool_provider=lambda: clean_db)
+    await repo.salva_doppi(GUILD, MEMBRO, [(ALT, "medio")])
+    for chi, altro in ((ALT, MEMBRO), (MEMBRO, ALT)):
+        dati = await esporta_utente(clean_db, chi)
+        assert "verify_doppi" in dati["tabelle"]
+        assert str(altro) not in str(dati["tabelle"]["verify_doppi"]), chi
+
+
 # --------------------------------------------------- pannello e ponte
 def _bot(membri, cog):
     guild = fake_guild(guild_id=GUILD, name="Server <i>prova</i>", owner_id=1)
