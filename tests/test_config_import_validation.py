@@ -16,6 +16,7 @@ import pytest
 from cogs.utility.config_history import (
     MAX_IMPORT_BYTES,
     SETTINGS_SCHEMA,
+    SETTINGS_SOLO_OWNER,
     ConfigHistoryCog,
     errore_schema_import,
 )
@@ -36,6 +37,7 @@ SETTINGS_VALIDE = {
     "report_channel_id": 333333333333333333,
     "custom_command_requests_channel_id": 444444444444444444,
     "suggestions_channel_id": 555555555555555555,
+    "suggestions_decided_channel_id": 555555555555555556,
     "ticket_category_id": 666666666666666666,
     "ticket_support_role_id": 777777777777777777,
     "ticket_support_role_ids": [888888888888888888, 999999999999999999],
@@ -181,7 +183,16 @@ def test_ogni_setting_usata_nel_codice_e_nello_schema():
                 )
             )
     assert len(chiavi) >= 13
-    assert chiavi <= set(SETTINGS_SCHEMA), chiavi - set(SETTINGS_SCHEMA)
+    conosciute = set(SETTINGS_SCHEMA) | SETTINGS_SOLO_OWNER
+    assert chiavi <= conosciute, chiavi - conosciute
+
+
+@pytest.mark.usefixtures("modulo_tickets")
+def test_le_impostazioni_dell_owner_non_si_importano():
+    """BKP-018: il livello dei permessi del backup lo sceglie solo l'owner, mai un file importato."""
+    assert not SETTINGS_SOLO_OWNER & set(SETTINGS_SCHEMA)
+    errore = errore_schema_import({**VALIDO, "settings": {"backup_livello_permessi": "admin_tutto"}})
+    assert errore is not None and "backup_livello_permessi" in errore
 
 
 class _FakeFile:

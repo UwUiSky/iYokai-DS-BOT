@@ -51,15 +51,20 @@ SUPPORTED_LANGUAGES = LINGUE
 # Un export reale pesa pochi KB: oltre questo limite il file non è nostro.
 MAX_IMPORT_BYTES = 256 * 1024
 
+# Impostazioni che solo il proprietario del server sceglie: non si esportano
+# e non si importano, altrimenti un admin le cambierebbe con un file.
+SETTINGS_SOLO_OWNER = frozenset({"backup_livello_permessi"})
+
 # Tipo atteso per ogni chiave di `guild_config.settings` (le chiavi sono
-# le costanti SETTING_* dei cog). Una chiave nuova va aggiunta qui: un
-# test controlla che non ne manchi nessuna.
+# le costanti SETTING_* dei cog). Una chiave nuova va aggiunta qui (o in
+# SETTINGS_SOLO_OWNER): un test controlla che non ne manchi nessuna.
 SETTINGS_SCHEMA = {
     "log_channel_id": "id",
     "mod_log_channel_id": "id",
     "report_channel_id": "id",
     "custom_command_requests_channel_id": "id",
     "suggestions_channel_id": "id",
+    "suggestions_decided_channel_id": "id",
     "ticket_category_id": "id",
     "ticket_support_role_id": "id",
     "ticket_support_role_ids": "lista_id",
