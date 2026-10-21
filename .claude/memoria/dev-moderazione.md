@@ -2,7 +2,7 @@
 ## Aggiornata
 2026-10-21, ramo feat/r9mod, worktree /home/claude/wt/r9mod. Migrazioni r9: 0250 usata (0251–0259 libere). Log in scratchpad/r9mod.
 ## In corso
-Giro r9 chiuso (5 voci su 5). Resta solo lo smoke (`python3 scripts/smoke.py --base main`).
+Giro r9 chiuso (5 voci su 5). Smoke --base main: 1079 verdi.
 Prossimo giro, in ordine di valore: SIC-039 (piu' trappole), VER-017/019/020, SIC-036 livelli di allerta (con AMD-067), MOD-014/015 (mute a tempo, hardmute), MOD-046/047 (casi a mano e da azioni esterne), AMD-013/026/027/070.
 ## Fatto
 - Giri G1-G7, R5-R7 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log
