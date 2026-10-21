@@ -150,3 +150,21 @@ async def test_rollback_che_rimette_il_ruolo_admin_serve_amministratore():
     ix = _ix_non_proprietario(discord.Permissions(administrator=True))
     await RollbackConfirmView(voce.id, 9).confirm.callback(ix)
     assert await ca.leggi_ruolo(GUILD, ca.TipoRuolo.ADMIN) == RUOLO
+
+
+# ---- Livello dei permessi di backup: lo cambia solo il proprietario ----
+async def test_import_livello_backup_da_admin_rifiutato():
+    msg = await _importa_come(discord.Permissions(administrator=True), {"backup_livello_permessi": "admin_tutto"})
+    assert "✅" not in msg and "proprietario" in msg
+    assert (await db.get_full_config(GUILD))["settings"] == {}
+
+
+async def test_import_livello_backup_uguale_a_adesso_accettato():
+    await db.set_guild_setting(GUILD, "backup_livello_permessi", "admin_crea")
+    msg = await _importa_come(discord.Permissions(administrator=True), {"backup_livello_permessi": "admin_crea"})
+    assert "✅" in msg
+
+
+async def test_import_livello_backup_non_valido_rifiutato():
+    msg = await _importa_come(discord.Permissions(administrator=True), {"backup_livello_permessi": "tutti"})
+    assert "✅" not in msg and "solo_owner" in msg
