@@ -39,19 +39,42 @@ def regola_vale_per(regola: RegolaAutoruolo, ruoli_posseduti: set[int]) -> bool:
     return not ruoli_posseduti.intersection(regola.esclusi)
 
 
+def scegli_in_ordine(regole: Iterable[RegolaAutoruolo], ruoli_posseduti: set[int]) -> list[int]:
+    """
+    I ruoli delle regole che valgono, valutate una alla volta come se i ruoli già
+    scelti fossero dati: due regole che si escludono a vicenda non danno entrambi i
+    ruoli, una regola che ne richiede un'altra la segue. Un ruolo non si sceglie se
+    toglierebbe il diritto a uno già scelto. Si ripete finché cambia qualcosa
+    (ogni giro aggiunge un ruolo: finisce sempre).
+    """
+    regole = list(regole)
+    attuali = set(ruoli_posseduti)
+    scelte: list[RegolaAutoruolo] = []
+    cambiato = True
+    while cambiato:
+        cambiato = False
+        for regola in regole:
+            if regola.role_id in attuali or not regola_vale_per(regola, attuali):
+                continue
+            if any(regola.role_id in scelta.esclusi for scelta in scelte):
+                continue
+            scelte.append(regola)
+            attuali.add(regola.role_id)
+            cambiato = True
+    return [r.role_id for r in scelte]
+
+
 def ruoli_da_ridare_se_tolti(
     regole: Iterable[RegolaAutoruolo], prima: set[int], dopo: set[int]
 ) -> list[int]:
     """I ruoli automatici con `ridai` appena tolti a un membro che ne ha ancora diritto."""
     tolti = prima - dopo
-    return [r.role_id for r in regole if r.ridai and r.role_id in tolti and regola_vale_per(r, dopo)]
+    return scegli_in_ordine([r for r in regole if r.ridai and r.role_id in tolti], dopo)
 
 
 def ruoli_da_sincronizzare(regole: Iterable[RegolaAutoruolo], ruoli_posseduti: set[int]) -> list[int]:
     """Per un membro già nel server: i ruoli automatici che gli mancano (senza ritardo)."""
-    return [
-        r.role_id for r in regole if r.role_id not in ruoli_posseduti and regola_vale_per(r, ruoli_posseduti)
-    ]
+    return scegli_in_ordine(regole, ruoli_posseduti)
 
 
 def piano_ingresso(
@@ -66,17 +89,12 @@ def piano_ingresso(
     """
     if is_bot:
         return [], []
-    subito: list[int] = []
-    dopo: list[tuple[int, int]] = []
-    for regola in regole:
-        if regola.role_id in ruoli_posseduti:
-            continue
-        if regola.delay_seconds == 0 and not regola_vale_per(regola, ruoli_posseduti):
-            continue  # con un ritardo la condizione si controlla allo scatto
-        if regola.delay_seconds > 0:
-            dopo.append((regola.role_id, regola.delay_seconds))
-        else:
-            subito.append(regola.role_id)
+    regole = list(regole)
+    # Con un ritardo la condizione si controlla allo scatto.
+    dopo = [
+        (r.role_id, r.delay_seconds) for r in regole if r.delay_seconds > 0 and r.role_id not in ruoli_posseduti
+    ]
+    subito = scegli_in_ordine([r for r in regole if r.delay_seconds == 0], ruoli_posseduti)
     return subito, dopo
 
 

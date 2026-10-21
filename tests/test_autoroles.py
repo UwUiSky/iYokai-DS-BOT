@@ -528,3 +528,45 @@ async def test_i_ruoli_dati_a_tempo_non_si_ricordano(cog):
     membro.guild = server
     await cog.on_member_remove(membro)
     assert cog.repo.save_memory.await_args.args[2] == [5]
+
+
+# ------------------------------------------- condizioni che si escludono a vicenda
+def test_due_regole_che_si_escludono_non_danno_entrambi_i_ruoli():
+    """A «non con B» e B «non con A»: chi non ha nessuno dei due ne riceve uno solo."""
+    regole = [RegolaAutoruolo(10, esclusi=(11,)), RegolaAutoruolo(11, esclusi=(10,))]
+    subito, _ = piano_ingresso(regole, is_bot=False, ruoli_posseduti=set())
+    assert subito == [10]
+    assert ruoli_da_sincronizzare(regole, set()) == [10]
+
+
+def test_regola_esclusa_da_un_ruolo_appena_dato():
+    """A «non con B», B senza condizioni: dare B toglierebbe il diritto ad A, quindi B non si dà."""
+    regole = [RegolaAutoruolo(10, esclusi=(11,)), RegolaAutoruolo(11)]
+    assert ruoli_da_sincronizzare(regole, set()) == [10]
+
+
+def test_regola_che_richiede_un_ruolo_dato_nello_stesso_giro():
+    regole = [RegolaAutoruolo(10, richiesti=(11,)), RegolaAutoruolo(11)]
+    subito, _ = piano_ingresso(regole, is_bot=False, ruoli_posseduti=set())
+    assert sorted(subito) == [10, 11]
+
+
+def test_ridai_due_ruoli_che_si_escludono_ne_ridà_uno():
+    regole = [RegolaAutoruolo(10, ridai=True, esclusi=(11,)), RegolaAutoruolo(11, ridai=True, esclusi=(10,))]
+    assert ruoli_da_ridare_se_tolti(regole, prima={10, 11}, dopo=set()) == [10]
+
+
+@pytest.mark.asyncio
+async def test_ridai_se_tolto_non_fa_ping_pong_all_infinito(cog):
+    """Un altro bot che toglie sempre il ruolo: il nostro lo ridà poche volte, poi smette."""
+    server, ruoli = _server_con_ruoli(10)
+    cog.repo.list_rules.return_value = [RegolaAutoruolo(10, ridai=True)]
+    dopo = fake_member(50, roles=[])
+    dopo.guild = server
+    dopo.pending = False
+    dopo.add_roles = AsyncMock()
+    for _ in range(20):
+        prima = fake_member(50, roles=[ruoli[10]])
+        prima.pending = False
+        await cog.on_member_update(prima, dopo)
+    assert 1 <= dopo.add_roles.await_count <= 3

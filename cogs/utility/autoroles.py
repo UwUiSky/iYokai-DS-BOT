@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 
 import discord
@@ -51,6 +52,11 @@ AUTOROLE_ACTION_TYPE = "autorole_give"
 # Azioni dello scheduler che tolgono un ruolo dopo un po': quei ruoli non vanno ricordati.
 TIPI_RUOLO_A_TEMPO = (ROLEMENU_TEMP_ACTION_TYPE, BIRTHDAY_ROLE_ACTION_TYPE, RUOLI_TEMPORANEI_ACTION_TYPE)
 
+# «Ridai se tolto»: al massimo tante volte per membro e ruolo in una finestra. Contro un
+# altro bot (o un'altra funzione) che lo toglie sempre: senza tetto il botta e risposta è infinito.
+MAX_RIDAI_PER_FINESTRA = 3
+FINESTRA_RIDAI_SECONDI = 600
+
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 
 
@@ -85,6 +91,8 @@ class AutorolesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.sincronie: set[int] = set()
+        # (server, membro, ruolo) -> istanti in cui il ruolo è stato ridato
+        self._ridati: dict[tuple[int, int, int], list[float]] = {}
 
     # ================================================================
     # Assegnazione
@@ -242,8 +250,24 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(member.guild.id, MODULE_AUTOROLES):
             return
         da_ridare = ruoli_da_ridare_se_tolti(await autorole_repo.list_rules(member.guild.id), prima, dopo)
+        da_ridare = [rid for rid in da_ridare if self._puo_ridare(member.guild.id, member.id, rid)]
         if da_ridare:
             await self._assegna(member, da_ridare)
+
+    def _puo_ridare(self, guild_id: int, user_id: int, role_id: int) -> bool:
+        """Tetto di MAX_RIDAI_PER_FINESTRA ridati per membro e ruolo ogni FINESTRA_RIDAI_SECONDI."""
+        ora = time.monotonic()
+        if len(self._ridati) > 5000:
+            self._ridati = {k: v for k, v in self._ridati.items() if v and ora - v[-1] < FINESTRA_RIDAI_SECONDI}
+        chiave = (guild_id, user_id, role_id)
+        recenti = [t for t in self._ridati.get(chiave, []) if ora - t < FINESTRA_RIDAI_SECONDI]
+        if len(recenti) >= MAX_RIDAI_PER_FINESTRA:
+            self._ridati[chiave] = recenti
+            logger.warning("Ruolo %s tolto di continuo a %s nel server %s: smetto di ridarlo.", role_id, user_id, guild_id)
+            return False
+        recenti.append(ora)
+        self._ridati[chiave] = recenti
+        return True
 
     async def sincronizza(self, guild: discord.Guild, canale) -> tuple[int, int]:
         """
