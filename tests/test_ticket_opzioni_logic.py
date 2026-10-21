@@ -138,3 +138,20 @@ def test_permessi_e_liste():
 def test_categoria_con_posto():
     assert L.prima_con_posto([(1, 50), (2, 49)]) == 2
     assert L.prima_con_posto([(1, 50)]) is None
+
+
+def test_link_del_messaggio():
+    g, c, m = 123456789012345678, 223456789012345678, 323456789012345678
+    assert L.leggi_link_messaggio(f"https://discord.com/channels/{g}/{c}/{m}") == (g, c, m)
+    assert L.leggi_link_messaggio(f"https://ptb.discordapp.com/channels/{g}/{c}/{m}") == (g, c, m)
+    assert L.leggi_link_messaggio("https://example.com/channels/1/2/3") is None
+    assert L.leggi_link_messaggio(None) is None
+
+
+def test_il_riassunto_sta_in_un_embed():
+    lunghe = tuple(range(10**17, 10**17 + L.MAX_RUOLI_LISTA))
+    o = L.Opzioni(ruoli_esenti=lunghe, ruoli_osservatori=lunghe, ruoli_durante=lunghe, ruoli_staff=lunghe,
+                       ping_ruoli=lunghe, categorie_riserva=lunghe, orari="lun-ven 09:00-18:00")
+    campi = L.riassunto(o)
+    assert len(campi) <= 25 and all(len(v) <= 1024 and len(n) <= 256 for n, v in campi)
+    assert sum(len(n) + len(v) for n, v in campi) < 6000

@@ -210,7 +210,16 @@
   "vietate": "banned-words",
   "vincitori-off": "winners-off",
   "vincitori-set": "winners-set",
-  "voto": "vote"
+  "voto": "vote",
+  "orari": "hours",
+  "accesso": "access",
+  "presa": "claiming",
+  "chiusura": "closing",
+  "lista-nera": "blacklist",
+  "sospendi": "suspend",
+  "azzera-pausa": "reset-cooldown",
+  "reperibile": "on-call",
+  "apri": "open"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -781,7 +790,23 @@
   "voice rename": "Renames your voice channel.",
   "voice stato": "Writes what you are doing in the channel (empty: removes it).",
   "voice transfer": "Transfers the channel's ownership.",
-  "voice unlock": "Unlocks the channel."
+  "voice unlock": "Unlocks the channel.",
+  "ticket opzioni": "Ticket panel options (admin)",
+  "ticket opzioni limiti": "Open-ticket cap, cooldown and exempt roles.",
+  "ticket opzioni orari": "Opening hours and what happens outside them.",
+  "ticket opzioni accesso": "Who can open: per-role rules, read from the top.",
+  "ticket opzioni canale": "Channel name and fallback categories.",
+  "ticket opzioni avvisi": "Who to ping on opening and pinned first message.",
+  "ticket opzioni messaggi": "DMs to the user and claim/release texts.",
+  "ticket opzioni permessi": "User permissions, observers, roles while open, staff team.",
+  "ticket opzioni presa": "Claiming: category, exclusivity, auto-assignment.",
+  "ticket opzioni chiusura": "Confirmation before closing and who can close.",
+  "ticket opzioni mostra": "All the options of a panel.",
+  "ticket lista-nera": "Users and roles that cannot open tickets.",
+  "ticket sospendi": "Suspend ticket opening (no reason: resume).",
+  "ticket azzera-pausa": "Remove a user's cooldown between tickets.",
+  "ticket reperibile": "Join or leave the staff notified on every new ticket.",
+  "ticket apri": "Open a ticket (staff also for a user or from a message)."
  },
  "parametri": {}
 }

@@ -8,10 +8,11 @@
   (025, 030, 033, 037-044), C presa e chiusura (028, 034, 050, 052-055, 057, 075), D #139 AI, E #62 residui.
 - Comandi nuovi in `/ticket` (peso 1149/6800, 13 figli) con `@richiedi(Livello.ADMIN)` per le opzioni;
   `/admin` è a 5502 (non toccarlo: lo usano anche gli altri agenti).
-- Base A committata (0220, ticket_opzioni_logic/repo, apertura in tickets.py). Metodi repo ancora senza chiamante:
-  imposta, regole_accesso, imposta_regola, blocca/sblocca/lista_nera, sospendi/riprendi, azzera_pausa, cambia_reperibile,
-  richiedi_chiusura, annulla_richiesta_chiusura, imposta_note_thread.
-- Prossimo passo: cogs/tickets/opzioni.py (comandi /ticket ...) che li chiama; poi C (presa/chiusura) in tickets.py.
+- A fatto: cogs/tickets/opzioni.py (/ticket opzioni 10 comandi, lista-nera, sospendi, azzera-pausa, reperibile, apri);
+  /ticket = 19 figli, 4329/6800. TKT-009 come `/ticket apri messaggio:<link>` (nessun menu contestuale nel bot).
+- Prossimo passo: gruppo C in tickets.py: claim/rilascia/passa (028, 050, 053), on_message (052), close (054, 057),
+  _transcript_senza_bloccare (039 DM chiusura, 043 togli ruoli_dati, 075), `/ticket note` (034, imposta_note_thread),
+  `/ticket chiedi-chiusura` (055: richiedi_chiusura/annulla, DynamicItem tkt:chc, azione scheduler). Test: tests/test_ticket_presa_chiusura.py.
 
 ## Fatto
 - Giri F1–r4: router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145, NF-13 (0100), NF-33 ModMail (0101),

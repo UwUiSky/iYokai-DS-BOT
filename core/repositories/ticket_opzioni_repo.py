@@ -72,12 +72,6 @@ class TicketOpzioniRepository:
         return _opzioni(r)
 
     # ------------------------------------------------------------ TKT-020 regole di accesso
-    async def regole_accesso(self, panel_id: int) -> list[tuple[int, bool]]:
-        righe = await self._pool.fetch(
-            "SELECT role_id, permetti FROM ticket_panel_accesso WHERE panel_id = $1 ORDER BY posizione", panel_id
-        )
-        return [(r["role_id"], r["permetti"]) for r in righe]
-
     async def imposta_regola(self, panel_id: int, role_id: int, permetti: bool | None) -> list[tuple[int, bool]]:
         """Una regola nuova va in fondo; una esistente cambia sul posto; None la toglie. Le posizioni restano 1..N."""
         async with self._pool.acquire() as conn:

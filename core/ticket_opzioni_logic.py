@@ -356,3 +356,51 @@ def decidi_apertura(r: Richiedente, s: Situazione, adesso: datetime) -> Esito:
         if attesa:
             return Esito(False, f"Hai aperto un ticket da poco: riprova tra {durata_leggibile(attesa)}.")
     return Esito(True, fuori_orario=fuori)
+
+
+# ----------------------------------------------------------------------
+# TKT-009 — ticket da un messaggio: il link del messaggio
+# ----------------------------------------------------------------------
+_LINK = re.compile(r"https?://(?:(?:ptb|canary)\.)?discord(?:app)?\.com/channels/(\d{1,20})/(\d{1,20})/(\d{1,20})")
+
+
+def leggi_link_messaggio(testo: str | None) -> tuple[int, int, int] | None:
+    """(server, canale, messaggio) da un link "Copia link del messaggio"; None se non è un link valido."""
+    m = _LINK.search(testo or "")
+    return (int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+# ----------------------------------------------------------------------
+# Riassunto per /ticket opzioni mostra (campi entro 1024 caratteri)
+# ----------------------------------------------------------------------
+def _ruoli(ids: tuple[int, ...]) -> str:
+    return " ".join(f"<@&{r}>" for r in ids) or "nessuno"
+
+
+def _si(valore: bool) -> str:
+    return "sì" if valore else "no"
+
+
+def riassunto(o: Opzioni) -> list[tuple[str, str]]:
+    """Le opzioni in campi (nome, valore) pronti per un embed: al massimo 8 campi."""
+    pausa = durata_leggibile(o.pausa_secondi) if o.pausa_secondi else "nessuna"
+    righe = [
+        ("Limiti", f"Aperti nel pannello: {o.max_aperti or 'senza tetto'} · pausa: {pausa}\n"
+                   f"Esenti: {_ruoli(o.ruoli_esenti)}"),
+        ("Orari", f"{orari_come_testo(o.orari, o.fuso)} · fuori orario: "
+                  f"{'si apre con avviso' if o.fuori_orario_apri else 'non si apre'}"),
+        ("Canale", f"Nome: {o.nome_modello or 'ticket-{numero}'} · riserva: "
+                   + (" ".join(f"<#{c}>" for c in o.categorie_riserva) or "nessuna")),
+        ("Avvisi", f"Ping: {_ruoli(o.ping_ruoli)}{' + @here' if o.ping_here else ''} · cancellato: "
+                   f"{_si(o.ping_cancella)} · primo messaggio fissato: {_si(o.fissa_primo)}"),
+        ("Messaggi", f"DM apertura: {_si(bool(o.dm_apertura))} · DM chiusura: {_si(bool(o.dm_chiusura))} · "
+                     f"transcript in DM: {_si(o.transcript_dm)} · testo presa: {_si(bool(o.testo_presa))} · "
+                     f"testo rilascio: {_si(bool(o.testo_rilascio))}"),
+        ("Permessi", f"Tolti all'utente: {', '.join(o.permessi_negati) or 'nessuno'}\n"
+                     f"Osservatori: {_ruoli(o.ruoli_osservatori)}\nRuoli durante: {_ruoli(o.ruoli_durante)}\n"
+                     f"Squadra: {_ruoli(o.ruoli_staff) if o.ruoli_staff else 'i ruoli di supporto'}"),
+        ("Presa in carico", f"Categoria: {f'<#{o.categoria_presi}>' if o.categoria_presi else 'la stessa'} · "
+                            f"esclusiva: {o.claim_esclusivo} · al primo che risponde: {_si(o.assegna_auto)}"),
+        ("Chiusura", f"Conferma: {_si(o.conferma_chiusura)} · l'utente può chiudere: {_si(o.utente_chiude)}"),
+    ]
+    return [(nome, valore[:1024]) for nome, valore in righe]

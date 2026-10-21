@@ -712,10 +712,14 @@ class TicketPanelView(BaseView):
 class ModuloTicket(BaseModal):
     """Finestra con le domande del pannello (al massimo 5, limite di Discord)."""
 
-    def __init__(self, panel: PannelloTicket, domande: list[DomandaModulo]) -> None:
+    def __init__(
+        self, panel: PannelloTicket, domande: list[DomandaModulo], *, comando: dict | None = None
+    ) -> None:
         super().__init__(title=form.titolo_modulo(panel.name), timeout=600)
         self._panel = panel
         self._domande = domande
+        # TKT-007/009: da /ticket apri arrivano anche motivo e link del messaggio.
+        self._comando = comando or {}
         for domanda in domande[: form.MAX_DOMANDE]:
             self.add_item(
                 discord.ui.TextInput(
@@ -754,14 +758,11 @@ class ModuloTicket(BaseModal):
             )
             return
         await interaction.response.defer(ephemeral=True)
-        await _open_ticket_channel(
-            interaction,
-            guild,
-            category,
-            panel.name,
-            panel=panel,
-            campi=form.campi_risposte(self._domande, risposte),
-        )
+        campi = form.campi_risposte(self._domande, risposte)
+        if self._comando:
+            await apri_da_comando(interaction, guild, category, panel, campi=campi, **self._comando)
+            return
+        await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel, campi=campi)
 
 
 async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> None:
@@ -803,6 +804,53 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
         return
     await interaction.response.defer(ephemeral=True)
     await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel)
+
+
+async def _messaggio_citato(interaction: discord.Interaction, link: str | None):
+    """TKT-009: il messaggio del link, se è di questo server e chi apre può leggerlo. (messaggio, errore)."""
+    if not link:
+        return None, None
+    parti = opz_logic.leggi_link_messaggio(link)
+    if parti is None or parti[0] != interaction.guild.id:
+        return None, "Il link non è di un messaggio di questo server (usa «Copia link del messaggio»)."
+    canale = interaction.guild.get_channel_or_thread(parti[1])
+    if canale is None or not canale.permissions_for(interaction.user).read_message_history:
+        return None, "Non trovo quel canale, oppure non puoi leggerlo."
+    try:
+        return await canale.fetch_message(parti[2]), None
+    except discord.HTTPException:
+        return None, "Non trovo quel messaggio: forse è stato cancellato."
+
+
+async def apri_da_comando(
+    interaction: discord.Interaction,
+    guild: discord.Guild,
+    category: discord.CategoryChannel,
+    panel: PannelloTicket | None,
+    *,
+    motivo: str | None = None,
+    link: str | None = None,
+    utente: discord.Member | None = None,
+    aggiungi_autore: bool = False,
+    campi: list[tuple[str, str]] | None = None,
+) -> None:
+    """TKT-007/008/009: apertura da /ticket apri (interazione già deferred)."""
+    citato, errore = await _messaggio_citato(interaction, link)
+    if errore:
+        await interaction.followup.send(errore, ephemeral=True)
+        return
+    channel = await _open_ticket_channel(
+        interaction, guild, category, panel.name if panel else None,
+        panel=panel, campi=campi, utente=utente, motivo=motivo, citato=citato,
+    )
+    autore = getattr(citato, "author", None)
+    titolare = utente or interaction.user
+    if channel is None or not aggiungi_autore or not isinstance(autore, discord.Member) or autore.id == titolare.id:
+        return
+    try:
+        await channel.set_permissions(autore, view_channel=True, send_messages=True, read_message_history=True)
+    except discord.HTTPException:
+        logger.warning("Autore del messaggio citato non aggiunto al ticket %s.", channel.id)
 
 
 class BottonePannello(
