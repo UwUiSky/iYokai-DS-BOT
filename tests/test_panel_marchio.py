@@ -75,6 +75,9 @@ async def test_collega_testo_spegni_e_scollega(marchio):
 
         assert await _invia(client, {"azione": "rimuovi"}) == "mar_rimosso"
         assert await marchio.repo.get(GUILD) is None
+        # Discord non revoca i token dei bot via API: la pagina dice di rigenerarlo nel Developer Portal.
+        pagina = await (await client.get(PAGINA + "?esito=mar_rimosso")).text()
+        assert "rigeneralo nel Developer Portal" in pagina
         assert await _invia(client, {"azione": "avvia"}) == "mar_nessun_marchio"
     finally:
         await client.close()

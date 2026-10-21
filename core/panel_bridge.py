@@ -280,7 +280,7 @@ async def verifica_web(
         return False, "La verifica non è disponibile in questo momento. Riprova tra poco."
     impronte = doppi_logica.impronte_richiesta(chiave, guild_id, ip, user_agent, lingua)
     uguali = await fingerprint_repo.registra(guild_id, user_id, impronte)
-    doppi = doppi_logica.valuta_doppi(uguali, user_id)
+    doppi = doppi_logica.valuta_doppi(uguali, user_id, ipv4=doppi_logica.e_ipv4(ip))
     if doppi:
         from cogs.security.alt_detection import avvisa_staff
 

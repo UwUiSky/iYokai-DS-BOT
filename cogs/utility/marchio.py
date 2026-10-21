@@ -200,7 +200,11 @@ class MarchioCog(CogConGruppi, commands.Cog):
             if allegato.size > MAX_IMMAGINE:
                 await interaction.followup.send(await testo_per(interaction, "asp_immagine_grande"), ephemeral=True)
                 return
-            campi[nome] = await allegato.read()
+            try:
+                campi[nome] = await allegato.read()
+            except discord.HTTPException:  # allegato scaduto o Discord non risponde
+                await interaction.followup.send(await testo_per(interaction, "asp_allegato_errore"), ephemeral=True)
+                return
         chiave = await applica_aspetto(self.bot, interaction.guild, interaction.user.id, **campi)
         await interaction.followup.send(await testo_per(interaction, chiave), ephemeral=True)
 

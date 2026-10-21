@@ -248,7 +248,7 @@
 | 21/10 | `data_registry` `verify_doppi` | La copia dei dati dava l'id dell'altro account (terzo: familiare, stessa rete) | media | corretto r8web 951cf86 |
 | 21/10 | `panel_bridge.verifica_web` | Link riusabile 15 min: ogni invio riavvisa lo staff (anche da già verificato) | media | corretto r8web db91e8c |
 | 21/10 | `web_panel_server.pagina_dati` | `?richiesta=²`: isdigit vero, int() no → 500 | bassa | corretto r8web 6de5e0f |
-| 21/10 | `web_panel_server` limite_accesso | Verifica, accedi e callback dividono 10/min per IP: dietro CGNAT o proxy non dichiarato un raid blocca tutti | bassa | plausibile |
-| 21/10 | `alt_detection_logic.valuta_doppi` | IPv4 uguale = doppio «medio»: CGNAT mobile, scuole, famiglie fanno falsi avvisi | bassa | plausibile (scelta di disegno) |
-| 21/10 | `whitelabel_bot.token_di_sistema` | Manca `YOKAI_MOD_TOKEN` (preesistente; serve conoscere il token) | bassa | plausibile |
-| 21/10 | `panel_bridge.revoca_permessi_comandi` | Revoca cancella il token cifrato ma non lo revoca su Discord (vale ~7 giorni) | bassa | plausibile |
+| 21/10 | `web_panel_server` limite_accesso | Verifica, accedi e callback dividono 10/min per IP: dietro CGNAT o proxy non dichiarato un raid blocca tutti | bassa | corretto r8web (revisore) |
+| 21/10 | `alt_detection_logic.valuta_doppi` | IPv4 uguale = doppio «medio»: CGNAT mobile, scuole, famiglie fanno falsi avvisi | bassa | corretto r8web (revisore) |
+| 21/10 | `whitelabel_bot.token_di_sistema` | Manca `YOKAI_MOD_TOKEN` (preesistente; serve conoscere il token) | bassa | corretto r8web (revisore) |
+| 21/10 | `panel_bridge.revoca_permessi_comandi` | Revoca cancella il token cifrato ma non lo revoca su Discord (vale ~7 giorni) | bassa | corretto r8web (revisore): l'esito dice di toglierla da «App autorizzate»; il marchio dice di rigenerare il token nel Developer Portal |

@@ -68,6 +68,11 @@ def test_ip_di_un_proxy_o_di_una_rete_interna_non_fa_impronta():
 def test_solo_la_stessa_rete_fa_un_doppio():
     doppi = logica.valuta_doppi([(7, "browser"), (8, "ip"), (9, "ip"), (9, "browser"), (MEMBRO, "ip")], MEMBRO)
     assert doppi == [logica.Doppio(9, logica.LIVELLO_ALTO), logica.Doppio(8, logica.LIVELLO_MEDIO)]
+    # Lo stesso IPv4 da solo (CGNAT, scuola, famiglia) non supera «basso»; con il browser resta alto.
+    doppi = logica.valuta_doppi([(8, "ip"), (9, "ip"), (9, "browser")], MEMBRO, ipv4=True)
+    assert doppi == [logica.Doppio(9, logica.LIVELLO_ALTO), logica.Doppio(8, logica.LIVELLO_BASSO)]
+    assert logica.e_ipv4("198.51.100.9") and logica.e_ipv4("::ffff:198.51.100.9")
+    assert not logica.e_ipv4("2001:db8::1") and not logica.e_ipv4("10.0.0.1") and not logica.e_ipv4("x")
     testo = logica.testo_avviso("<@41>", MEMBRO, doppi)
     assert "Nessuna azione automatica" in testo and "`9`" in testo
 
@@ -98,7 +103,10 @@ async def test_copia_dei_dati_senza_l_id_dell_altro_account(clean_db):
     for chi, altro in ((ALT, MEMBRO), (MEMBRO, ALT)):
         dati = await esporta_utente(clean_db, chi)
         assert "verify_doppi" in dati["tabelle"]
-        assert str(altro) not in str(dati["tabelle"]["verify_doppi"]), chi
+        righe = dati["tabelle"]["verify_doppi"]["righe"]
+        # Confronto per valore, non sul testo: «41» può stare nei secondi di `trovato_il` (falliva a caso).
+        assert righe and all(altro not in riga.values() for riga in righe), chi
+        assert all("altro_user_id" not in riga and "user_id" not in riga for riga in righe), chi
 
 
 # --------------------------------------------------- pannello e ponte
@@ -192,7 +200,9 @@ async def test_lo_stesso_doppio_non_si_riavvisa_a_ogni_invio(ambiente, monkeypat
     assert avvisi == [[logica.Doppio(ALT, logica.LIVELLO_ALTO)]]
     # Un livello che cambia (browser diverso) è una notizia: si avvisa.
     await _verifica(ambiente.client, MEMBRO, ua="Chrome")
-    assert avvisi[-1] == [logica.Doppio(ALT, logica.LIVELLO_MEDIO)] and len(avvisi) == 2
+    # Stesso IPv4 (198.51.100.9) e browser diverso: solo «basso», e si salva (CHECK della migrazione).
+    assert avvisi[-1] == [logica.Doppio(ALT, logica.LIVELLO_BASSO)] and len(avvisi) == 2
+    assert [r["livello"] for r in await ambiente.repo.elenco_doppi(GUILD)] == ["basso"]
 
 
 @pytest.mark.asyncio
@@ -271,3 +281,17 @@ async def test_avviso_allo_staff_senza_menzioni(monkeypatch):
     kwargs = canale.send.await_args.kwargs
     assert kwargs["allowed_mentions"].users is False
     assert str(ALT) in kwargs["embed"].description
+
+
+@pytest.mark.asyncio
+async def test_verifica_e_accesso_hanno_limiti_separati(ambiente):
+    """Tanti membri sulla verifica dallo stesso IP (raid, CGNAT) non bloccano /accedi, né il contrario."""
+    token = logica.crea_token(CHIAVE, GUILD, MEMBRO)
+    ip = {"X-Forwarded-For": "198.51.100.20"}
+    for _ in range(12):
+        assert (await ambiente.client.get(f"/verifica/{token}", headers=ip)).status == 200
+    assert (await ambiente.client.get("/accedi", headers=ip, allow_redirects=False)).status == 302
+    for _ in range(10):
+        await ambiente.client.get("/accedi", headers=ip, allow_redirects=False)
+    assert (await ambiente.client.get("/accedi", headers=ip, allow_redirects=False)).status == 429
+    assert (await ambiente.client.get(f"/verifica/{token}", headers=ip)).status == 200

@@ -68,7 +68,11 @@ ESITI = {
     "permessi_non_autorizzato": ("Il bot non è autorizzato (o l'autorizzazione è scaduta): premi «Autorizza».", True),
     "permessi_parziale": ("Discord ha rifiutato una parte dei permessi: riprova tra poco.", True),
     "permessi_attendi": ("Una risincronizzazione al minuto per server: aspetta e riprova.", True),
-    "permessi_revocati": ("Autorizzazione tolta: il bot non scrive più i permessi dei comandi.", False),
+    "permessi_revocati": (
+        "Autorizzazione tolta: il bot non scrive più i permessi dei comandi. Per annullarla anche su "
+        "Discord, chi l'ha data la toglie da Impostazioni utente → App autorizzate.",
+        False,
+    ),
     "marchio_collegato": ("Bot collegato. Se non è ancora nel server, usa il link d'invito qui sotto.", False),
     "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
     "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
@@ -111,7 +115,10 @@ def build_app(
     origine_ammessa = regole.origine(url_pubblico)
     intestazioni = regole.intestazioni_sicurezza(https)
     limite_generale = regole.LimiteFrequenza(120, 60)
-    limite_accesso = regole.LimiteFrequenza(10, 60)
+    limite_accesso = regole.LimiteFrequenza(10, 60)  # /accedi e /callback
+    # La pagina di verifica ha il suo conto: un raid sulla verifica (o tanti membri dietro lo stesso
+    # CGNAT) non deve bloccare l'accesso degli admin al pannello, né il contrario.
+    limite_verifica = regole.LimiteFrequenza(30, 60)
     limite_scritture = regole.LimiteFrequenza(30, 60)
     limite_sincronia = regole.LimiteFrequenza(1, 60)  # ogni sincronia sono più chiamate a Discord
     limite_marchio = regole.LimiteFrequenza(3, 60)  # ogni collegamento prova il token con Discord
@@ -485,7 +492,7 @@ def build_app(
         return token, verifica.leggi_token(chiave, token)
 
     async def pagina_verifica(request: web.Request) -> web.Response:
-        if not limite_accesso.consenti(_ip(request)):
+        if not limite_verifica.consenti(_ip(request)):
             return _errore(request, 429, "Troppi tentativi", "Aspetta un minuto e riprova.")
         token, chi = _token_verifica(request)
         if chi is None:
@@ -499,7 +506,7 @@ def build_app(
         )
 
     async def conferma_verifica(request: web.Request) -> web.Response:
-        if not limite_accesso.consenti(_ip(request)):
+        if not limite_verifica.consenti(_ip(request)):
             return _errore(request, 429, "Troppi tentativi", "Aspetta un minuto e riprova.")
         token, chi = _token_verifica(request)
         form = await request.post()

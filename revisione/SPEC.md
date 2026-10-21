@@ -299,7 +299,8 @@ Totale voci: **494**.
   - `[x]` Database delle impronte e dei doppi (`verify_doppi`, 90 giorni)
   - `[x]` Match → avviso allo staff nel log della verifica, NESSUN ban automatico;
     `/security alt elenco`
-  - `[x]` Livello: stessa rete = medio, stessa rete e stesso browser = alto
+  - `[x]` Livello: stessa rete e stesso browser = alto; stesso /64 IPv6 = medio; stesso IPv4 da solo = basso
+    (CGNAT, scuole, famiglie: da solo non dice che è la stessa persona; 0211)
 - `[x]` 4.4 Whitelist utenti — bypassa tutti i controlli, verificato
   che vinca anche in combinazione con la blacklist (vedi 4.5)
 - `[x]` 4.5 Blacklist utenti — **vince sempre**, anche su un utente

@@ -219,3 +219,5 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 16/10 | `feat/r7liv` | `voice_temp.invita` | Se `create_invite` fallisce dopo `set_permissions`, il membro resta ammesso ma il messaggio dice solo errore | bassa | aperto |
 | 16/10 | `feat/r7liv` | `leveling.rank` sfondo | Sfondo caricato in un server con `card_images` spento: salvato, nessun avviso che lì non si vede | bassa | aperto |
 | 16/10 | `feat/r7liv` | `/gestione voice opzioni registro` | Non controlla che il bot possa scrivere nel canale scelto (`motivo_se_il_bot_non_puo`): il registro tace con solo un warning | bassa | aperto |
+| 21/10 | `feat/r8web` | `tests/test_alt_detection.py` copia dei dati | `str(41) in str(righe)` falliva a caso (secondi di `trovato_il`): confronto per valore | bassa | chiuso 21/10 |
+| 21/10 | `feat/r8web` | `marchio.aspetto` | `allegato.read()` senza HTTPException: allegato scaduto = errore non gestito | bassa | chiuso 21/10 |

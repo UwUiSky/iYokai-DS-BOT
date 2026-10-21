@@ -43,7 +43,10 @@ async def repo(clean_db, monkeypatch):
 
 
 def _config(**kw):
-    base = dict(YOKAI_BOT_TOKEN="principale", YOKAI_CREATOR_TOKEN="creatore", NSFW_TOKEN="", MUSIC_TOKENS=["m1", "m2"])
+    base = dict(
+        YOKAI_BOT_TOKEN="principale", YOKAI_CREATOR_TOKEN="creatore", YOKAI_MOD_TOKEN="mod", NSFW_TOKEN="",
+        MUSIC_TOKENS=["m1", "m2"],
+    )
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -59,7 +62,7 @@ async def _finto_verifica(monkeypatch, bot_user_id=4242, nome="Mio Bot"):
 
 
 def test_token_di_sistema_non_si_collegano():
-    assert wl.token_di_sistema(_config()) == {"principale", "creatore", "m1", "m2"}
+    assert wl.token_di_sistema(_config()) == {"principale", "creatore", "mod", "m1", "m2"}
 
 
 async def test_il_token_si_salva_cifrato_e_si_rilegge(repo, monkeypatch, clean_db):

@@ -32,7 +32,9 @@ TIPO_IP = "ip"
 TIPO_BROWSER = "browser"
 
 LIVELLO_ALTO = "alto"  # stessa rete e stesso browser
-LIVELLO_MEDIO = "medio"  # stessa rete, browser diverso
+LIVELLO_MEDIO = "medio"  # stessa rete IPv6 (/64), browser diverso
+LIVELLO_BASSO = "basso"  # stesso IPv4, browser diverso
+_ORDINE_LIVELLI = {LIVELLO_ALTO: 0, LIVELLO_MEDIO: 1, LIVELLO_BASSO: 2}
 
 
 def _firma(chiave: str, testo: str) -> str:
@@ -103,6 +105,12 @@ def rete(ip: str) -> str | None:
     return str(indirizzo)
 
 
+def e_ipv4(ip: str) -> bool:
+    """La rete dell'IP è un IPv4 intero (anche scritto come IPv6 «::ffff:»)."""
+    parte_rete = rete(ip)
+    return parte_rete is not None and "/" not in parte_rete
+
+
 def impronta(chiave: str, guild_id: int, tipo: str, valore: str) -> str:
     """HMAC con il sale del bot e il server: mai reversibile, mai uguale tra due server."""
     return _firma(chiave, f"impronta:{guild_id}:{tipo}:{valore}")
@@ -129,22 +137,29 @@ class Doppio:
     livello: str
 
 
-def valuta_doppi(uguali: list[tuple[int, str]], user_id: int) -> list[Doppio]:
+def valuta_doppi(uguali: list[tuple[int, str]], user_id: int, *, ipv4: bool = False) -> list[Doppio]:
     """
     `uguali`: (altro membro, tipo di impronta uguale). Solo la stessa rete fa
     un doppio: il browser da solo è troppo comune (stesso telefono, stessa
     versione). Stessa rete + stesso browser = livello alto.
+
+    Scelta (r8): lo stesso IPv4 da solo resta «basso». Un IPv4 è spesso di
+    molte persone insieme (CGNAT dei telefoni, scuole, uffici, famiglie):
+    da solo non dice che è la stessa persona. Un /64 IPv6 è di norma una sola
+    casa, quindi da solo vale «medio». `ipv4`: la rete di chi si verifica
+    adesso è un IPv4 (`e_ipv4`), quindi anche quella uguale lo è.
     """
     tipi: dict[int, set[str]] = {}
     for altro, tipo in uguali:
         if altro != user_id:
             tipi.setdefault(altro, set()).add(tipo)
+    solo_rete = LIVELLO_BASSO if ipv4 else LIVELLO_MEDIO
     doppi = [
-        Doppio(altro, LIVELLO_ALTO if TIPO_BROWSER in trovati else LIVELLO_MEDIO)
+        Doppio(altro, LIVELLO_ALTO if TIPO_BROWSER in trovati else solo_rete)
         for altro, trovati in tipi.items()
         if TIPO_IP in trovati
     ]
-    return sorted(doppi, key=lambda d: (d.livello != LIVELLO_ALTO, d.altro_user_id))
+    return sorted(doppi, key=lambda d: (_ORDINE_LIVELLI[d.livello], d.altro_user_id))
 
 
 def testo_avviso(member_mention: str, member_id: int, doppi: list[Doppio], limite: int = 10) -> str:

@@ -129,3 +129,11 @@ async def test_comando_aspetto():
     await cog.aspetto.callback(cog, i, None, grande, None, None)
     assert "8 MB" in i.followup.send.call_args.args[0]
     grande.read.assert_not_awaited()
+
+    # L'allegato non si scarica (scaduto, Discord giù): un messaggio, niente eccezione, niente modifica.
+    g.me.edit.reset_mock()
+    rotto = SimpleNamespace(size=100, read=AsyncMock(side_effect=discord.HTTPException(MagicMock(status=503), "giù")))
+    i = nuova()
+    await cog.aspetto.callback(cog, i, rotto, None, None, None)
+    assert "scaricare l'immagine" in i.followup.send.call_args.args[0]
+    g.me.edit.assert_not_awaited()
