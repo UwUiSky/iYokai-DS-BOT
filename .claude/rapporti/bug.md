@@ -252,3 +252,22 @@
 | 21/10 | `tickets.note` | Thread delle note archiviato non è in cache (`get_thread`): se ne crea uno nuovo, note sparse | bassa | plausibile, aperto |
 | 21/10 | `tickets.apri_da_pannello`, `opzioni.apri` | 6-8 query prima della prima risposta (send_modal non si rimanda): rischio 3 s sotto carico | bassa | plausibile, aperto |
 | 21/10 | `risposte._ruolo_secondo_ai` | Prompt injection: l'utente può forzare «amministratore» al posto del moderatore (solo la scelta del ruolo) | bassa | accettato |
+| 21/10 | `core/web_panel_server.py` `_leggi_caricamento` | aiohttp 3.14 applica `client_max_size` (8 KB) a ogni parte di `request.multipart()`: ogni avatar/banner vero dava 413 | alta | corretto r8web ec769c2 |
+| 21/10 | `core/redacted_access_log.py` | `/verifica/<server>-<membro>-…` nel log accanto all'IP: IP in chiaro di un membro (D19) | media | corretto r8web 0e8943c |
+| 21/10 | `core/alt_detection_logic.rete` | Proxy non dichiarato o Docker: tutti da 127.0.0.1/172.17.0.1, ogni membro «doppio» di ogni altro | alta | corretto r8web 87f72f9 |
+| 21/10 | `data_registry` `verify_doppi` | La copia dei dati dava l'id dell'altro account (terzo: familiare, stessa rete) | media | corretto r8web 951cf86 |
+| 21/10 | `panel_bridge.verifica_web` | Link riusabile 15 min: ogni invio riavvisa lo staff (anche da già verificato) | media | corretto r8web db91e8c |
+| 21/10 | `web_panel_server.pagina_dati` | `?richiesta=²`: isdigit vero, int() no → 500 | bassa | corretto r8web 6de5e0f |
+| 21/10 | `web_panel_server` limite_accesso | Verifica, accedi e callback dividono 10/min per IP: dietro CGNAT o proxy non dichiarato un raid blocca tutti | bassa | corretto r8web (revisore) |
+| 21/10 | `alt_detection_logic.valuta_doppi` | IPv4 uguale = doppio «medio»: CGNAT mobile, scuole, famiglie fanno falsi avvisi | bassa | corretto r8web (revisore) |
+| 21/10 | `whitelabel_bot.token_di_sistema` | Manca `YOKAI_MOD_TOKEN` (preesistente; serve conoscere il token) | bassa | corretto r8web (revisore) |
+| 21/10 | `panel_bridge.revoca_permessi_comandi` | Revoca cancella il token cifrato ma non lo revoca su Discord (vale ~7 giorni) | bassa | corretto r8web (revisore): l'esito dice di toglierla da «App autorizzate»; il marchio dice di rigenerare il token nel Developer Portal |
+| 21/10 | `ruoli_strumenti._ruoli_a_scelta` | Ruolo a scelta reso «forte» dopo l'aggiunta (administrator) si prende ancora con /utility ruolo | alta | corretto r8uti c2af58d |
+| 21/10 | `ruoli_strumenti.massa` | Controllo «già in corso» e prenotazione con defer/chunk in mezzo: due massa insieme, la prima non si ferma | media | corretto r8uti c2af58d |
+| 21/10 | `autorole_logic.piano_ingresso`/sincronizza/ridai | Regole A «non con B» e B «non con A» danno entrambi i ruoli | media | corretto r8uti 3d722cc |
+| 21/10 | `autoroles._ridai_se_tolti` | Botta e risposta infinito con un altro bot che toglie il ruolo | media | corretto r8uti 3d722cc (3 ogni 10 min) |
+| 21/10 | `reminders.set_reminder` | Nessun tetto per persona sui ripetuti; «nel canale» scrive dove la persona non può; ripetuti continuano dopo l'uscita | media | corretto r8uti 416859f |
+| 21/10 | `ruoli_strumenti.ConfermaAzzera.conferma` | Gerarchia del bersaglio controllata solo al comando, non al click (15 min) | bassa | corretto r8uti (revisore) |
+| 21/10 | `autoroles.auto_sincronizza` | Task senza riferimento, senza tetto di membri, non si ferma (né con cog_unload) | bassa | corretto r8uti (revisore) |
+| 21/10 | `ruoli_strumenti.massa` | Nessun tetto orario per server (anti-nuke non vede il bot): massa togli ripetute | bassa | corretto r8uti (revisore) |
+| 21/10 | `poll.discussione` | Il bot apre il thread anche per chi non può creare thread nel canale | bassa | corretto r8uti (revisore) |

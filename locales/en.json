@@ -85,7 +85,7 @@
   "mar_nota_comandi": "Commands stay iYokai's; your bot shows its name, avatar and status.",
   "mar_richiede_premium": "The branded bot is a premium feature and this server has not unlocked it (see /admin premium stato).",
   "mar_riga_stato": "**Bot:** {nome}\n**Status:** {stato}\n**Status text:** {testo}\n**Switched on:** {acceso}",
-  "mar_rimosso": "Branded bot unlinked: the token has been deleted.",
+  "mar_rimosso": "Branded bot unlinked: the bot has deleted the token. Discord doesn't allow revoking it from here: if someone else may have seen the token, regenerate it in the Developer Portal (your application → Bot → Reset Token).",
   "mar_si": "yes",
   "mar_stato_attivo": "online",
   "mar_stato_errore": "stopped because of an error",
@@ -133,5 +133,14 @@
   "prem_stato_acquista_senza_negozio": "To unlock premium: use the server's cashbox, or ask the bot owner.",
   "prem_stato_alpha": "For now premium is unlocked for every server (trial phase).",
   "prem_stato_nessuno": "This server has no premium unlock.",
-  "prem_stato_titolo": "Premium for this server"
+  "prem_stato_titolo": "Premium for this server",
+  "asp_ok": "Done: the bot's look in this server has changed (Discord may take a few minutes to show it).",
+  "asp_niente": "You didn't choose anything to change.",
+  "asp_richiede_premium": "A per-server avatar, banner and description for the bot is a premium feature: this server hasn't unlocked it (see /admin premium stato).",
+  "asp_attendi": "Discord limits image changes: at most four every ten minutes per server. Try again later.",
+  "asp_errore": "Discord refused the change. Try again shortly.",
+  "asp_allegato_errore": "I can't download the image from Discord: attach it again and retry.",
+  "asp_immagine_grande": "The image is too big: 8 MB at most.",
+  "asp_immagine_non_valida": "This image can't be used: pick a PNG, JPEG, GIF or WEBP file.",
+  "asp_testo_lungo": "The text is too long: 32 characters at most for the name and 190 for the description."
 }

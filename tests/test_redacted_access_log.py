@@ -19,6 +19,10 @@ class TestRedactPath:
     def test_percorso_webhook_viene_redatto(self):
         assert redact_path("/webhook/segreto-molto-lungo-12345") == "/webhook/***"
 
+    def test_link_della_verifica_web_viene_redatto(self):
+        # Il link porta server e membro: con l'IP della riga di log sarebbe l'IP in chiaro di una persona (NF-21).
+        assert redact_path("/verifica/123-456-1790000000-abcdef") == "/verifica/***"
+
     def test_percorso_non_sensibile_resta_invariato(self):
         assert redact_path("/oauth/callback") == "/oauth/callback"
         assert redact_path("/") == "/"

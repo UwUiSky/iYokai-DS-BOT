@@ -2,9 +2,11 @@
 cogs/utility/marchio.py
 =======================
 `/admin premium marchio` (NF-38, #109): un server premium collega un bot suo, con nome e avatar suoi.
+`/admin premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
 Il token si scrive in una finestra (mai come opzione del comando), si prova con Discord e si salva cifrato.
-Funzioni coperte: SPEC §23 (NF-38)
-Dipende da: core/whitelabel_bot.py, cogs/utility/premium_server.py (stesso sotto-gruppo)
+Le azioni passano da `core/whitelabel_bot.py`, le stesse del pannello web (D16).
+Funzioni coperte: SPEC §23 (NF-38), catalogo #122 (CFG-030)
+Dipende da: core/whitelabel_bot.py, core/bot_aspetto.py, cogs/utility/premium_server.py (stesso sotto-gruppo)
 """
 
 from __future__ import annotations
@@ -16,19 +18,20 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.utility.premium_server import SOTTOGRUPPO_PREMIUM
+from core.bot_aspetto import MAX_BIO, MAX_IMMAGINE, applica_aspetto
 from core.bot_ready import attendi_bot_pronto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.i18n import testo_per
-from core.premium import guild_has_premium_access
 from core.ui_base import BaseModal
 from core.repositories.whitelabel_repo import whitelabel_repo
 from core.whitelabel_bot import (
     MAX_TESTO_STATO,
-    MODULO_MARCHIO,
     GestoreMarchio,
     TokenRifiutato,
-    collega_marchio,
+    applica_azione,
+    collega_e_avvia,
+    ha_premium,
     link_invito,
 )
 
@@ -82,12 +85,10 @@ class MarchioCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         try:
-            marchio = await collega_marchio(guild, token, interaction.user.id, config=config)
+            marchio = await collega_e_avvia(self.gestore, self.bot, guild, token, interaction.user.id, config=config)
         except TokenRifiutato as exc:
             await interaction.followup.send(await testo_per(interaction, exc.motivo), ephemeral=True)
             return
-        await self.gestore.ferma(guild.id)  # un token nuovo: il client col token vecchio non deve restare acceso
-        await self.gestore.avvia(guild.id)
         invito = link_invito(marchio)
         testo = await testo_per(interaction, "mar_collegato", nome=marchio.bot_name)
         if invito:
@@ -132,47 +133,80 @@ class MarchioCog(CogConGruppi, commands.Cog):
         testo: app_commands.Range[str, 1, MAX_TESTO_STATO] | None = None,
     ) -> None:
         guild = interaction.guild
-        attuale = await whitelabel_repo.get(guild.id)
-        if azione.value in ("imposta", "avvia", "testo") and not await guild_has_premium_access(
-            guild.id, MODULO_MARCHIO, bot=self.bot
-        ):
-            await interaction.response.send_message(await testo_per(interaction, "mar_richiede_premium"), ephemeral=True)
-            return
         if azione.value == "imposta":
+            if not await ha_premium(self.bot, guild.id):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "mar_richiede_premium"), ephemeral=True
+                )
+                return
             modal = TokenModal(
                 self, await testo_per(interaction, "mar_modal_titolo"), await testo_per(interaction, "mar_modal_token")
             )
             await interaction.response.send_modal(modal)
             return
-        if attuale is None:
-            chiave = "mar_nessuno" if azione.value == "stato" else "mar_nessun_marchio"
+        if azione.value != "stato":
+            chiave = await applica_azione(self.gestore, self.bot, guild.id, azione.value, testo)
             await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
-        if azione.value == "stato":
-            embed = discord.Embed(
-                title=await testo_per(interaction, "mar_titolo"),
-                description=(await self._descrizione(interaction, attuale))[:3900],
-                color=discord.Color.blurple(),
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        elif azione.value == "testo":
-            await whitelabel_repo.imposta_testo_stato(guild.id, testo)
-            await self.gestore.aggiorna_testo(guild.id, testo)
-            chiave = "mar_testo_ok" if testo else "mar_testo_azzerato"
-            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
-        elif azione.value == "avvia":
-            await whitelabel_repo.imposta_abilitato(guild.id, True)
-            partito = await self.gestore.avvia(guild.id)
-            chiave = "mar_avviato" if partito else "mar_non_avviato"
-            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
-        elif azione.value == "ferma":
-            await whitelabel_repo.imposta_abilitato(guild.id, False)
-            await self.gestore.ferma(guild.id)
-            await interaction.response.send_message(await testo_per(interaction, "mar_fermato"), ephemeral=True)
-        else:  # rimuovi
-            await self.gestore.ferma(guild.id)
-            await whitelabel_repo.elimina(guild.id)
-            await interaction.response.send_message(await testo_per(interaction, "mar_rimosso"), ephemeral=True)
+        attuale = await whitelabel_repo.get(guild.id)
+        if attuale is None:
+            await interaction.response.send_message(await testo_per(interaction, "mar_nessuno"), ephemeral=True)
+            return
+        embed = discord.Embed(
+            title=await testo_per(interaction, "mar_titolo"),
+            description=(await self._descrizione(interaction, attuale))[:3900],
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+    # ------------------------------------------------------------------
+    @comando_di_gruppo(
+        "admin", nome="aspetto", descrizione="Avatar, banner e descrizione del bot in questo server (premium).",
+        sottogruppo=SOTTOGRUPPO_PREMIUM,
+    )
+    @app_commands.describe(
+        avatar="Immagine PNG, JPEG, GIF o WEBP (massimo 8 MB)",
+        banner="Immagine PNG, JPEG, GIF o WEBP (massimo 8 MB)",
+        descrizione="La descrizione del profilo del bot in questo server",
+        togli="Cosa togliere e riportare come nel resto di Discord",
+    )
+    @app_commands.choices(
+        togli=[
+            app_commands.Choice(name="avatar", value="avatar"),
+            app_commands.Choice(name="banner", value="banner"),
+            app_commands.Choice(name="descrizione", value="bio"),
+            app_commands.Choice(name="tutto", value="tutto"),
+        ]
+    )
+    async def aspetto(
+        self,
+        interaction: discord.Interaction,
+        avatar: discord.Attachment | None = None,
+        banner: discord.Attachment | None = None,
+        descrizione: app_commands.Range[str, 1, MAX_BIO] | None = None,
+        togli: app_commands.Choice[str] | None = None,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        campi: dict = {}
+        if togli is not None:
+            nomi = ("avatar", "banner", "bio") if togli.value == "tutto" else (togli.value,)
+            campi = dict.fromkeys(nomi)
+        if descrizione:
+            campi["bio"] = descrizione
+        for nome, allegato in (("avatar", avatar), ("banner", banner)):
+            if allegato is None:
+                continue
+            if allegato.size > MAX_IMMAGINE:
+                await interaction.followup.send(await testo_per(interaction, "asp_immagine_grande"), ephemeral=True)
+                return
+            try:
+                campi[nome] = await allegato.read()
+            except discord.HTTPException:  # allegato scaduto o Discord non risponde
+                await interaction.followup.send(await testo_per(interaction, "asp_allegato_errore"), ephemeral=True)
+                return
+        chiave = await applica_aspetto(self.bot, interaction.guild, interaction.user.id, **campi)
+        await interaction.followup.send(await testo_per(interaction, chiave), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

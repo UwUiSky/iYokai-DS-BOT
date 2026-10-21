@@ -2,7 +2,7 @@
 {% block titolo %}{{ guild.name }} · iYokai Panel{% endblock %}
 {% block corpo %}
 <h1>{{ guild.name }}</h1>
-<p><a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a> · <a href="/server/{{ guild.id }}/premium">Premium</a></p>
+<p><a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a> · <a href="/server/{{ guild.id }}/premium">Premium</a> · <a href="/server/{{ guild.id }}/marchio">Bot con marchio</a> · <a href="/server/{{ guild.id }}/aspetto">Aspetto del bot</a></p>
 
 <h2>Lingua del server</h2>
 <form class="carta riga" method="post" action="/server/{{ guild.id }}/lingua">
@@ -27,6 +27,28 @@
   <button type="submit">Salva</button>
 </form>
 {% endfor %}
+
+<h2>Comandi nascosti a chi non può usarli</h2>
+<div class="carta">
+<p>Discord mostra un gruppo di comandi solo a chi ha il ruolo del bot giusto: ruolo admin per
+<code>admin</code>, <code>gestione</code>, <code>moduli</code>, <code>security</code>, <code>automod</code>, <code>log</code>;
+ruolo mod per <code>mod</code>; ruolo ban per <code>modban</code>. Per scrivere queste regole Discord vuole
+l'autorizzazione di un admin del server (vale circa 7 giorni e si rinnova da sola). Senza, i comandi si vedono
+ma il bot li blocca lo stesso.</p>
+{% if permessi.autorizzato %}
+<p class="avviso ok">Autorizzato da <code>{{ permessi.da }}</code>, valido fino al {{ permessi.scade }}.</p>
+{% else %}
+<p class="avviso errore">Non autorizzato.</p>
+{% endif %}
+<div class="riga">
+{% if permessi.link %}<a class="bottone" href="{{ permessi.link }}" rel="noopener noreferrer">Autorizza con Discord</a>
+{% else %}<span class="tenue">Il proprietario del bot non ha configurato questa funzione.</span>{% endif %}
+{% if permessi.autorizzato %}
+<form method="post" action="/server/{{ guild.id }}/permessi"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="sincronizza"><button type="submit">Riscrivi adesso</button></form>
+<form method="post" action="/server/{{ guild.id }}/permessi"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="revoca"><button class="secondario" type="submit">Togli l'autorizzazione</button></form>
+{% endif %}
+</div>
+</div>
 
 <h2>Moduli</h2>
 {% for categoria, moduli in categorie %}

@@ -287,19 +287,20 @@ Totale voci: **494**.
     (durante lo sviluppo di Spam Trap §7.3, che ne aveva bisogno per
     primo)
     → **Stato 04/10:** attribuzione sbagliata con ingressi simultanei; scarica gli inviti di tutti i server (LC-6).
-- `[ ]` 4.2 Verify Avanzato (richiede Web Panel) — non tentato,
-  dipendenza non costruita
-  → **Stato 04/10:** in piano: NF-21, fase F10.
-  - `[ ]` Raccolta IP / ISP / localizzazione
-  - `[ ]` Browser fingerprint / device fingerprint
-  - `[ ]` OAuth2 scope `identify`
-  - `[ ]` Salvataggio fingerprint (hash, mai IP in chiaro)
-- `[ ]` 4.3 Sistema Anti-Alt — dipende da §4.2, non costruito
-  → **Stato 04/10:** in piano: NF-21, fase F10.
-  - `[ ]` Database fingerprint
-  - `[ ]` Match → segnalazione allo staff (NON ban automatico
-    cross-server; vedi § Decisioni)
-  - `[ ]` Rilevamento pattern sospetti
+- `[~]` 4.2 Verify Avanzato — modalità «Pagina web» di `/security verify setup` (NF-21, #92)
+  → **Stato 16/10 (r8):** fatto. Il bottone dà un link personale firmato (15 minuti) alla pagina
+  `/verifica/…` del pannello; lì gli stessi controlli e ruoli del bottone (`core/panel_bridge.py`).
+  - `[x]` Impronta della rete (IPv4, /64 per IPv6): HMAC con sale segreto e id del server, mai l'IP
+  - `[x]` Impronta del browser (User-Agent e lingua), stesso HMAC
+  - `[~]` OAuth2 `identify`: non serve, il link è legato al membro dal bot (firma)
+  - `[ ]` ISP / localizzazione: non raccolti (privacy, D19)
+  - `[x]` Salvataggio: `verify_impronte` (0210), 30 giorni, nel registro dei dati
+- `[x]` 4.3 Sistema Anti-Alt — NF-21 (#92), solo nello stesso server
+  - `[x]` Database delle impronte e dei doppi (`verify_doppi`, 90 giorni)
+  - `[x]` Match → avviso allo staff nel log della verifica, NESSUN ban automatico;
+    `/security alt elenco`
+  - `[x]` Livello: stessa rete e stesso browser = alto; stesso /64 IPv6 = medio; stesso IPv4 da solo = basso
+    (CGNAT, scuole, famiglie: da solo non dice che è la stessa persona; 0211)
 - `[x]` 4.4 Whitelist utenti — bypassa tutti i controlli, verificato
   che vinca anche in combinazione con la blacklist (vedi 4.5)
 - `[x]` 4.5 Blacklist utenti — **vince sempre**, anche su un utente
@@ -1310,14 +1311,21 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   14.8) — `/suggestion-setup`, `/suggest`, bottoni persistenti
   approva/rifiuta + reazioni native 👍👎 per il voto
   → **Stato 04/10:** nessun `defer` (LIM-25); due staff decidono insieme (REVIEW §5).
+  → **Stato 21/10 (catalogo #128, giro r8):** stati «in valutazione» e «realizzato», motivo dello staff in una finestra
+  (512, colonna `decision_reason`, migrazione 0232), DM all'autore, canale dei suggerimenti decisi (UTL-135…138).
 - `[~]` 14.15 Poll — Poll nativo di Discord (`discord.Poll`), fino a
   5 opzioni, nessuna logica propria: voto/conteggio/chiusura gestiti
   interamente da Discord
   → **Stato 04/10:** risposta oltre 55 caratteri: errore (LIM-2).
+  → **Stato 21/10 (catalogo #128, giro r8):** 10 opzioni; senza opzioni è un sì/no rapido (UTL-087, con il Poll nativo
+  invece delle reazioni); `discussione:` apre un thread sul sondaggio (UTL-095).
 - `[~]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
   scheduler generico esistente (nessuna tabella nuova). Consegna via
   DM, fallback nel canale se i DM sono chiusi
   → **Stato 04/10:** promemoria lunghi persi in silenzio (LIM-13).
+  → **Stato 21/10 (catalogo #128, giro r8):** promemoria ripetuti (minimo 30 minuti, riprogrammati prima della consegna),
+  pubblicati in un canale, «annulla tutti», elenco e annullamento del server per lo staff (`/utility reminder server`)
+  (UTL-098, 099, 102, 103).
 - `[~]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
   riusa lo stesso scheduler dei Reminder (nessuna tabella nuova).
   Diversamente dal Reminder (personale, via DM), pubblica in un
@@ -1327,6 +1335,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   server + grafico a barre della crescita giornaliera (disegnato con
   Pillow, non matplotlib — nessuna nuova dipendenza pesante)
   → **Stato 04/10:** Correzione al testo: il grafico dipende dal modulo logging (REVIEW §12).
+- `[x]` 14.20 Schede informative — `/utility scheda` con utente, server, canale, ruolo, ruoli, membri di un ruolo,
+  anzianità e permessi; elenchi lunghi a pagine, membri scaricati dopo `defer` (UTL-195, 197–200, 202; RUO-110…112;
+  giro r8, 21/10)
+- `[x]` 14.21 Strumenti sui ruoli — gruppo `/ruoli` (D25, quinto caso): dai, togli, a tempo (ripristino dallo
+  scheduler), azzera, operazioni di massa (una per server, stima, stop, arresto dopo 10 errori di fila), crea, modifica,
+  diagnosi, ruoli a scelta (tetto 25, migrazione 0231) presi dai membri con `/utility ruolo` (RUO-042, 043, 090–109, 113;
+  giro r8, 21/10)
 - `[ ]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
   messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
   ogni vocale un messaggio con due bottoni: "Trascrivi" e "Nella mia
@@ -1829,9 +1844,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   all'uscita del bot), aggancio a `imposta_ruolo`. **Fatto il 12/10:** l'indirizzo di ritorno (stessa
   `/oauth/callback` del restore, `gestisci_callback`) e il bottone-link «Nascondi i comandi…» sotto
   `/admin setup attiva` senza categoria (solo con OAuth2 configurato), nessun comando nuovo.
-  **Resta aperta (`[~]`):** nessun comando o finestra chiama ancora `imposta_ruolo` (scelta dei ruoli
-  admin/mod/modban da interfaccia): finché non c'è, il token si salva ma i permessi non si scrivono;
-  prova live. Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
+  **Stato 16/10 (r8):** il pannello web sceglie i ruoli con `imposta_ruolo` (i permessi si scrivono) e ha
+  la sezione «Comandi nascosti»: stato (chi ha autorizzato e fino a quando, mai il token), link
+  «Autorizza con Discord», «Riscrivi adesso» (una volta al minuto per server) e revoca.
+  **Resta (`[~]`):** prova live. Senza autorizzazione resta la base (permessi di Discord + controllo nel codice).
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 
@@ -1869,6 +1885,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `/gestione ruoli auto-ricorda`: ruoli ricordati al massimo 30 giorni (0080).
 - `[x]` 22.3 Ruoli dati dopo un ritardo (NF-07)
   → **Stato 13/10:** ritardo configurabile per regola, via scheduler (0080).
+  → **Stato 21/10 (catalogo #123, giro r8):** condizioni «solo con» e «non con» altri ruoli (ricontrollate allo
+  scatto dei ritardati), ruoli ridati se tolti a mano, sincronizzazione dei membri già presenti (RUO-034, 035, 036, 038;
+  migrazione 0230). I ruoli a tempo dati da `/ruoli` non si ricordano all'uscita.
 - `[x]` 22.4 Starboard (NF-08)
   → **Stato 13/10:** `/moduli starboard imposta|soglia|disattiva` (0081): un post per messaggio, canali vietati ai minori esclusi. Da provare live.
 - `[x]` 22.5 Comandi personalizzati creati dal server: testo o embed,
@@ -1981,7 +2000,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.14 Effetti sonori in vocale (NF-35)
   → **Stato 14/10:** `/music suono` (il gruppo `/fun` ha 25 figli): suono della soundboard del server o di Discord, mandato dal bot musicale del canale (la musica continua) o dal primo libero, che poi esce; pausa di 10 secondi per utente. Da verificare live.
 - `[~]` 23.15 Bot con marchio proprio per i server premium (NF-38)
-  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
+  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Stato 16/10 (r8):** anche dal pannello, pagina «Bot con marchio» del server (stato senza token, collega, testo di stato, accendi/spegni, scollega), dalle stesse funzioni di `core/whitelabel_bot.py`. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
 - `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
   → **Stato 15/10:** `/level profilo` è un'immagine (avatar, nome, presentazione, livello, XP, posizione, coin, collezione),

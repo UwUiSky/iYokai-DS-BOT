@@ -85,7 +85,7 @@
   "mar_nota_comandi": "I comandi restano quelli di iYokai; il tuo bot mostra nome, avatar e stato.",
   "mar_richiede_premium": "Il bot con marchio proprio è una funzione premium: questo server non l'ha sbloccata (vedi /admin premium stato).",
   "mar_riga_stato": "**Bot:** {nome}\n**Stato:** {stato}\n**Testo di stato:** {testo}\n**Acceso:** {acceso}",
-  "mar_rimosso": "Bot con marchio scollegato: il token è stato cancellato.",
+  "mar_rimosso": "Bot con marchio scollegato: il token è stato cancellato dal bot. Discord non permette di revocarlo da qui: se il token potrebbe essere stato visto da altri, rigeneralo nel Developer Portal (la tua applicazione → Bot → Reset Token).",
   "mar_si": "sì",
   "mar_stato_attivo": "online",
   "mar_stato_errore": "fermo per un errore",
@@ -133,5 +133,14 @@
   "prem_stato_acquista_senza_negozio": "Per sbloccare il premium: cassa del server, oppure chiedi al proprietario del bot.",
   "prem_stato_alpha": "Per ora il premium è sbloccato per tutti i server (fase di prova).",
   "prem_stato_nessuno": "Questo server non ha nessuno sblocco premium.",
-  "prem_stato_titolo": "Premium di questo server"
+  "prem_stato_titolo": "Premium di questo server",
+  "asp_ok": "Fatto: l'aspetto del bot in questo server è cambiato (Discord può metterci qualche minuto a mostrarlo).",
+  "asp_niente": "Non hai scelto niente da cambiare.",
+  "asp_richiede_premium": "Avatar, banner e descrizione del bot per server sono una funzione premium: questo server non l'ha sbloccata (vedi /admin premium stato).",
+  "asp_attendi": "Discord limita i cambi di immagine: al massimo quattro ogni dieci minuti per server. Riprova più tardi.",
+  "asp_errore": "Discord ha rifiutato il cambio. Riprova tra poco.",
+  "asp_allegato_errore": "Non riesco a scaricare l'immagine da Discord: allegala di nuovo e riprova.",
+  "asp_immagine_grande": "L'immagine è troppo grande: al massimo 8 MB.",
+  "asp_immagine_non_valida": "Questa immagine non va bene: usa un file PNG, JPEG, GIF o WEBP.",
+  "asp_testo_lungo": "Il testo è troppo lungo: al massimo 32 caratteri per il nome e 190 per la descrizione."
 }

@@ -411,6 +411,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("birthday_config", "Impostazioni dei compleanni", colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),
+    _t("self_roles", "Ruoli che i membri possono prendersi da soli", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_memory", "Ruoli ricordati di chi è uscito", colonne_utente=("user_id",),
        colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("left_at", 30), nota="NF-07: servono solo per 30 giorni dopo l'uscita"),
@@ -525,6 +526,14 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("web_panel_sessions", "Sessioni di accesso al pannello web (solo l'impronta del cookie)",
        colonne_utente=("user_id",), utente="cancella", server="conserva", scadenza=Scadenza("expires_at", 0),
        nota="nessun token di Discord"),
+    _t("verify_impronte", "Impronte della verifica web (HMAC con sale, mai l'IP in chiaro)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
+       escludi_dall_esportazione=("impronta",), scadenza=Scadenza("creato_il", 30),
+       nota="servono a riconoscere gli account doppi nello stesso server; 30 giorni"),
+    _t("verify_doppi", "Account doppi trovati dalla verifica web, per lo staff",
+       colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
+       esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),
+       nota="un avviso allo staff, mai un ban automatico; 90 giorni; la copia non dice chi è l'altro account"),
 )
 # fmt: on
 

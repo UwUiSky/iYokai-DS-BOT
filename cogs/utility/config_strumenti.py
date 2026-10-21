@@ -4,7 +4,7 @@ cogs/utility/config_strumenti.py
 Strumenti di configurazione del server e informazioni sul bot (#122): `/admin config pulizia` (CFG-019),
 `/admin config sincronizza` (CFG-020), `/admin config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122, parte E (D15)
-Dipende da: core/config_cleanup_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
+Dipende da: core/bot_aspetto.py, core/config_cleanup_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import bot_info, bot_roles
+from core.bot_aspetto import applica_aspetto
 from core.command_permissions import (
     STATO_DA_RIPROVARE,
     STATO_SENZA_AUTORIZZAZIONE,
@@ -124,13 +125,10 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 32] | None = None
     ) -> None:
         nuovo = nome.strip() if nome else None
-        try:
-            await interaction.guild.me.edit(nick=nuovo or None, reason=f"Richiesto da {interaction.user.id}")
-        except discord.Forbidden:
-            await interaction.response.send_message(await testo_per(interaction, "cfg_nick_permesso"), ephemeral=True)
-            return
-        except discord.HTTPException:
-            await interaction.response.send_message(await testo_per(interaction, "cfg_nick_errore"), ephemeral=True)
+        chiave = await applica_aspetto(self.bot, interaction.guild, interaction.user.id, nick=nuovo)
+        if chiave != "asp_ok":
+            chiave = "cfg_nick_errore" if chiave == "asp_errore" else chiave
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
         testo = await testo_per(interaction, "cfg_nick_ok", nome=nuovo) if nuovo else await testo_per(interaction, "cfg_nick_azzerato")
         await interaction.response.send_message(testo, ephemeral=True)

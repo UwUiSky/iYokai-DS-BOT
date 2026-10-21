@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titolo %}Bot con marchio · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Bot con marchio · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Torna al server</a></p>
+<p class="tenue">Un bot tuo, con il tuo nome e il tuo avatar, online in questo server. I comandi restano quelli di iYokai.</p>
+{% if not marchio.disponibile %}<p class="avviso errore">Il bot con marchio non è attivo su questo bot: avvisa il proprietario.</p>{% endif %}
+{% if not marchio.premium %}<p class="avviso errore">È una funzione premium: questo server non l'ha sbloccata (<a href="/server/{{ guild.id }}/premium">come sbloccarla</a>).</p>{% endif %}
+{% set m = marchio.marchio %}
+{% if m %}
+<div class="carta">
+  <p><strong>Bot:</strong> {{ m.nome }}</p>
+  <p><strong>Stato:</strong> {{ m.stato }}</p>
+  <p><strong>Acceso:</strong> {{ 'sì' if m.acceso else 'no' }}</p>
+  <p><strong>Testo di stato:</strong> {{ m.testo or 'nessuno' }}</p>
+  {% if m.invito %}<p><a class="bottone" href="{{ m.invito }}" rel="noopener noreferrer">Invita il bot nel server</a></p>{% endif %}
+</div>
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/marchio">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="azione" value="testo">
+  <label>Testo di stato <input type="text" name="testo" maxlength="{{ marchio.max_testo }}" value="{{ m.testo or '' }}"></label>
+  <button type="submit">Salva</button>
+</form>
+<div class="carta riga">
+  <form method="post" action="/server/{{ guild.id }}/marchio"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="azione" value="{{ 'ferma' if m.acceso else 'avvia' }}">
+    <button type="submit">{{ 'Spegni' if m.acceso else 'Accendi' }}</button></form>
+  <form method="post" action="/server/{{ guild.id }}/marchio"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="azione" value="rimuovi">
+    <button class="secondario" type="submit">Scollega e cancella il token</button></form>
+</div>
+<p class="tenue">Scollegare cancella il token dal bot, ma Discord non permette di revocarlo da qui: se pensi che altri
+l'abbiano visto, rigeneralo nel <a href="https://discord.com/developers/applications" rel="noopener noreferrer">Developer Portal</a>
+(la tua applicazione → Bot → Reset Token).</p>
+{% else %}
+<p>Nessun bot con marchio collegato.</p>
+{% endif %}
+<h2>{{ 'Cambia bot' if m else 'Collega il tuo bot' }}</h2>
+<ol>
+  <li>Crea un'applicazione su <a href="https://discord.com/developers/applications" rel="noopener noreferrer">discord.com/developers</a> e scegli nome e avatar.</li>
+  <li>Nella sezione «Bot» copia il token (non l'ID) e incollalo qui. Il token si salva cifrato e non si mostra più.</li>
+</ol>
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/marchio" autocomplete="off">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="azione" value="collega">
+  <label>Token del bot <input type="password" name="token" minlength="20" maxlength="120" required autocomplete="off"></label>
+  <button type="submit">Collega</button>
+</form>
+{% endblock %}

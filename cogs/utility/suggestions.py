@@ -7,7 +7,9 @@ membro propone, il server vota con reazioni native 👍👎, lo staff
 decide con bottoni persistenti (approva/rifiuta) — stesso pattern di
 View dinamica per-messaggio già collaudato per i Role Menu
 (bot.add_view(view, message_id=...), ricostruita ad ogni avvio per
-ogni suggestion ancora in sospeso).
+ogni suggestion ancora aperta). Catalogo #128: stati "in valutazione" e
+"realizzato", motivo scritto dallo staff in una finestra, DM con l'esito
+a chi ha proposto, copia dei suggerimenti decisi in un canale a parte.
 """
 
 from __future__ import annotations
@@ -23,35 +25,85 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.suggestion_repo import Suggestion, suggestion_repo
-from core.suggestion_logic import APPROVED, PENDING, REJECTED, can_decide
-from core.ui_base import BaseView
+from core.suggestion_logic import (
+    APPROVED,
+    CONSIDERING,
+    IMPLEMENTED,
+    MAX_MOTIVO,
+    PENDING,
+    REJECTED,
+    can_decide,
+    e_finale,
+)
+from core.ui_base import BaseModal, BaseView
 
 logger = logging.getLogger("iyokai.suggestions")
 
 MODULE_SUGGESTIONS = "suggestions"
 SETTING_SUGGESTIONS_CHANNEL = "suggestions_channel_id"
+SETTING_SUGGESTIONS_DECIDED_CHANNEL = "suggestions_decided_channel_id"
 
 BUTTON_CUSTOM_ID_PREFIX = "iyokai_suggestion"
+
+
+# (stato, etichetta del bottone, stile, parte del custom_id)
+BOTTONI = (
+    (APPROVED, "Approva", discord.ButtonStyle.success, "approve"),
+    (REJECTED, "Rifiuta", discord.ButtonStyle.danger, "reject"),
+    (CONSIDERING, "In valutazione", discord.ButtonStyle.secondary, "consider"),
+    (IMPLEMENTED, "Realizzato", discord.ButtonStyle.primary, "implement"),
+)
+ETICHETTE = {
+    PENDING: "In attesa",
+    CONSIDERING: "🔎 In valutazione",
+    APPROVED: "✅ Approvata",
+    REJECTED: "❌ Rifiutata",
+    IMPLEMENTED: "🚀 Realizzata",
+}
 
 
 def _build_embed(suggestion: Suggestion) -> discord.Embed:
     colori = {
         PENDING: discord.Color.blurple(),
+        CONSIDERING: discord.Color.gold(),
         APPROVED: discord.Color.green(),
         REJECTED: discord.Color.red(),
+        IMPLEMENTED: discord.Color.purple(),
     }
-    etichette = {PENDING: "In attesa", APPROVED: "✅ Approvata", REJECTED: "❌ Rifiutata"}
 
     embed = discord.Embed(
         title=f"💡 Suggerimento #{suggestion.id}",
         description=suggestion.suggestion_text,
-        color=colori[suggestion.status],
+        color=colori.get(suggestion.status, discord.Color.blurple()),
     )
     embed.add_field(name="Proposto da", value=f"<@{suggestion.user_id}>", inline=True)
-    embed.add_field(name="Stato", value=etichette[suggestion.status], inline=True)
+    embed.add_field(name="Stato", value=ETICHETTE.get(suggestion.status, suggestion.status), inline=True)
     if suggestion.decided_by is not None:
         embed.add_field(name="Deciso da", value=f"<@{suggestion.decided_by}>", inline=True)
+    if suggestion.decision_reason:
+        embed.add_field(name="Motivo", value=suggestion.decision_reason[:1024], inline=False)
     return embed
+
+
+class MotivoModal(BaseModal, title="Decisione sul suggerimento"):
+    """Finestra con il motivo (facoltativo) prima di cambiare lo stato."""
+
+    motivo = discord.ui.TextInput(
+        label="Motivo (facoltativo)",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=MAX_MOTIVO,
+    )
+
+    def __init__(self, cog: "SuggestionsCog", suggestion_id: int, stato: str) -> None:
+        super().__init__()
+        self.cog = cog
+        self.suggestion_id = suggestion_id
+        self.stato = stato
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        testo = (self.motivo.value or "").strip() or None
+        await self.cog._handle_decision(interaction, self.suggestion_id, self.stato, testo)
 
 
 class SuggestionsCog(CogConGruppi, commands.Cog):
@@ -60,38 +112,39 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
 
     def _build_decision_view(self, suggestion_id: int) -> discord.ui.View:
         view = BaseView(timeout=None)
-
-        approve_button: discord.ui.Button = discord.ui.Button(
-            label="Approva",
-            style=discord.ButtonStyle.success,
-            custom_id=f"{BUTTON_CUSTOM_ID_PREFIX}:approve:{suggestion_id}",
-        )
-        approve_button.callback = self._make_decision_callback(suggestion_id, APPROVED)
-        view.add_item(approve_button)
-
-        reject_button: discord.ui.Button = discord.ui.Button(
-            label="Rifiuta",
-            style=discord.ButtonStyle.danger,
-            custom_id=f"{BUTTON_CUSTOM_ID_PREFIX}:reject:{suggestion_id}",
-        )
-        reject_button.callback = self._make_decision_callback(suggestion_id, REJECTED)
-        view.add_item(reject_button)
-
+        for stato, etichetta, stile, chiave in BOTTONI:
+            bottone: discord.ui.Button = discord.ui.Button(
+                label=etichetta,
+                style=stile,
+                custom_id=f"{BUTTON_CUSTOM_ID_PREFIX}:{chiave}:{suggestion_id}",
+            )
+            bottone.callback = self._make_decision_callback(suggestion_id, stato)
+            view.add_item(bottone)
         return view
+
+    @staticmethod
+    def _e_staff(interaction: discord.Interaction) -> bool:
+        return isinstance(interaction.user, discord.Member) and interaction.user.guild_permissions.manage_guild
 
     def _make_decision_callback(self, suggestion_id: int, new_status: str):
         async def callback(interaction: discord.Interaction) -> None:
-            await self._handle_decision(interaction, suggestion_id, new_status)
+            if not self._e_staff(interaction):
+                await interaction.response.send_message(
+                    "Solo lo staff può decidere sui suggerimenti.", ephemeral=True
+                )
+                return
+            await interaction.response.send_modal(MotivoModal(self, suggestion_id, new_status))
 
         return callback
 
     async def _handle_decision(
-        self, interaction: discord.Interaction, suggestion_id: int, new_status: str
+        self,
+        interaction: discord.Interaction,
+        suggestion_id: int,
+        new_status: str,
+        motivo: str | None = None,
     ) -> None:
-        if (
-            not isinstance(interaction.user, discord.Member)
-            or not interaction.user.guild_permissions.manage_guild
-        ):
+        if not self._e_staff(interaction):
             await interaction.response.send_message(
                 "Solo lo staff può decidere sui suggerimenti.", ephemeral=True
             )
@@ -104,7 +157,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
             )
             return
 
-        if not can_decide(suggestion.status):
+        if not can_decide(suggestion.status) or suggestion.status == new_status:
             await interaction.response.send_message(
                 "Questo suggerimento è già stato deciso.", ephemeral=True
             )
@@ -117,6 +170,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
             new_status,
             decided_by=interaction.user.id,
             decided_at=datetime.now(timezone.utc),
+            motivo=motivo,
         )
         if not deciso:
             await interaction.response.send_message(
@@ -127,10 +181,43 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         suggestion_aggiornata = await suggestion_repo.get_suggestion(suggestion_id)
         embed = _build_embed(suggestion_aggiornata)
 
-        # View vuota: una decisione presa non deve poter essere
-        # ri-cliccata (approva/rifiuta due volte, o cambiare idea).
-        view_disabilitata = BaseView(timeout=None)
-        await interaction.response.edit_message(embed=embed, view=view_disabilitata)
+        # Decisione finale: View vuota, non si può più cambiare idea.
+        # In valutazione: i bottoni restano per la decisione vera.
+        if e_finale(new_status):
+            view = BaseView(timeout=None)
+        else:
+            view = self._build_decision_view(suggestion_id)
+        await interaction.response.edit_message(embed=embed, view=view)
+        await self._avvisa_autore(interaction.guild, suggestion_aggiornata)
+        if e_finale(new_status):
+            await self._copia_nei_decisi(interaction.guild, suggestion_aggiornata)
+
+    async def _avvisa_autore(self, guild: discord.Guild, suggestion: Suggestion) -> None:
+        """UTL-137: DM a chi ha proposto, con lo stato e il motivo. Se i DM sono chiusi, pazienza."""
+        membro = guild.get_member(suggestion.user_id)
+        if membro is None:
+            return
+        testo = (
+            f"Il tuo suggerimento #{suggestion.id} in **{guild.name}** è ora: "
+            f"{ETICHETTE.get(suggestion.status, suggestion.status)}."
+        )
+        if suggestion.decision_reason:
+            testo += f"\nMotivo: {suggestion.decision_reason}"
+        try:
+            await membro.send(testo[:2000], allowed_mentions=discord.AllowedMentions.none())
+        except discord.HTTPException:
+            pass
+
+    async def _copia_nei_decisi(self, guild: discord.Guild, suggestion: Suggestion) -> None:
+        """UTL-138: copia del suggerimento deciso nel canale dei decisi, se impostato."""
+        canale_id = await db.get_guild_setting(guild.id, SETTING_SUGGESTIONS_DECIDED_CHANNEL)
+        canale = guild.get_channel(canale_id) if canale_id else None
+        if not isinstance(canale, discord.TextChannel):
+            return
+        try:
+            await canale.send(embed=_build_embed(suggestion), allowed_mentions=discord.AllowedMentions.none())
+        except discord.HTTPException:
+            logger.warning("Suggerimento %s non copiato nel canale dei decisi.", suggestion.id)
 
     # ================================================================
     # Comandi
@@ -141,17 +228,25 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         descrizione="Imposta il canale dei suggerimenti.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.describe(channel="Il canale dove pubblicare i suggerimenti")
+    @app_commands.describe(
+        channel="Il canale dove pubblicare i suggerimenti",
+        decisi="Dove copiare i suggerimenti decisi (facoltativo)",
+    )
     async def suggestion_setup(
-        self, interaction: discord.Interaction, channel: discord.TextChannel
+        self,
+        interaction: discord.Interaction,
+        channel: discord.TextChannel,
+        decisi: discord.TextChannel | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
             return
         await db.set_guild_setting(guild.id, SETTING_SUGGESTIONS_CHANNEL, channel.id)
-        await interaction.response.send_message(
-            f"I suggerimenti verranno pubblicati in {channel.mention}.", ephemeral=True
-        )
+        testo = f"I suggerimenti verranno pubblicati in {channel.mention}."
+        if decisi is not None:
+            await db.set_guild_setting(guild.id, SETTING_SUGGESTIONS_DECIDED_CHANNEL, decisi.id)
+            testo += f" Quelli decisi saranno copiati in {decisi.mention}."
+        await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
         "utility",

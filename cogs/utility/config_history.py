@@ -41,6 +41,7 @@ from core.config_history_logic import (
 from core.i18n import LINGUE, lingua_interazione, t as tr
 from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
+from core.backup_permessi_logic import LIVELLI as LIVELLI_BACKUP, SETTING_LIVELLO as SETTING_LIVELLO_BACKUP
 from core.premium import registry
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
@@ -52,14 +53,16 @@ SUPPORTED_LANGUAGES = LINGUE
 MAX_IMPORT_BYTES = 256 * 1024
 
 # Tipo atteso per ogni chiave di `guild_config.settings` (le chiavi sono
-# le costanti SETTING_* dei cog). Una chiave nuova va aggiunta qui: un
-# test controlla che non ne manchi nessuna.
+# le costanti SETTING_* dei cog). Una chiave nuova va aggiunta qui: un test
+# controlla che non ne manchi nessuna. Le chiavi che decidono chi può fare cosa
+# vanno anche in CHIAVI_SOLO_PROPRIETARIO.
 SETTINGS_SCHEMA = {
     "log_channel_id": "id",
     "mod_log_channel_id": "id",
     "report_channel_id": "id",
     "custom_command_requests_channel_id": "id",
     "suggestions_channel_id": "id",
+    "suggestions_decided_channel_id": "id",
     "ticket_category_id": "id",
     "ticket_support_role_id": "id",
     "ticket_support_role_ids": "lista_id",
@@ -82,6 +85,7 @@ SETTINGS_SCHEMA = {
     "modban_role_id": "id",
     "backup_restore_mode": "modalita_restore",
     "backup_auto_invite_on_join": "bool",
+    "backup_livello_permessi": "livello_backup",
     "logging_soundboard_watermark": "data_iso",
     "music_max_volume": "int_0_200",
     "ticket_max_per_utente": "int_1_5",
@@ -147,6 +151,7 @@ CONTROLLI_PER_TIPO = {
         lambda valore: valore in (MODE_VERIFY_OAUTH, MODE_ON_DEMAND_OAUTH, MODE_CLASSIC_INVITE),
         "una modalità di restore valida",
     ),
+    "livello_backup": (lambda valore: valore in LIVELLI_BACKUP, "admin_tutto, admin_crea oppure solo_owner"),
     "captcha_tipo": (lambda valore: valore in ("testo", "immagine"), "«testo» oppure «immagine»"),
     "azione_verifica": (
         lambda valore: valore in ("niente", "quarantena", "kick", "ban"), "niente, quarantena, kick oppure ban"
@@ -202,6 +207,21 @@ async def errore_cambio_ruolo_admin(guild: discord.Guild, autore, settings: dict
     if nuovo is None:
         return None  # nessun ruolo admin nel file: si toglie, e toglierlo non apre nulla
     return errore_ruolo_admin(guild, autore, await leggi_ruolo(guild.id, TipoRuolo.ADMIN), nuovo)
+
+
+# Chiavi che decidono chi può fare cosa: le cambia solo il proprietario del server,
+# altrimenti un admin potrebbe alzarsi i permessi con un import o un rollback.
+CHIAVI_SOLO_PROPRIETARIO = (SETTING_LIVELLO_BACKUP,)
+
+
+async def errore_chiavi_solo_proprietario(guild: discord.Guild, autore, settings: dict) -> str | None:
+    """Rifiuta il cambio di una chiave riservata al proprietario se chi lo chiede non lo è."""
+    if getattr(autore, "id", None) == guild.owner_id:
+        return None
+    for chiave in CHIAVI_SOLO_PROPRIETARIO:
+        if chiave in settings and settings[chiave] != await db.get_guild_setting(guild.id, chiave):
+            return f"`{chiave}` lo può cambiare solo il proprietario del server."
+    return None
 
 
 def errore_schema_import(dati) -> str | None:
@@ -354,8 +374,10 @@ class RollbackConfirmView(BaseView):
             da_ripristinare = impostazioni if isinstance(impostazioni, dict) else {}
         else:
             return None
-        return errore_ruoli_del_bot(guild, da_ripristinare) or await errore_cambio_ruolo_admin(
-            guild, autore, da_ripristinare
+        return (
+            errore_ruoli_del_bot(guild, da_ripristinare)
+            or await errore_cambio_ruolo_admin(guild, autore, da_ripristinare)
+            or await errore_chiavi_solo_proprietario(guild, autore, da_ripristinare)
         )
 
     @discord.ui.button(label="Conferma rollback", style=discord.ButtonStyle.danger)
@@ -694,8 +716,10 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return
 
-        errore = errore_ruoli_del_bot(guild, dati["settings"]) or await errore_cambio_ruolo_admin(
-            guild, interaction.user, dati["settings"]
+        errore = (
+            errore_ruoli_del_bot(guild, dati["settings"])
+            or await errore_cambio_ruolo_admin(guild, interaction.user, dati["settings"])
+            or await errore_chiavi_solo_proprietario(guild, interaction.user, dati["settings"])
         )
         if errore is not None:
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)

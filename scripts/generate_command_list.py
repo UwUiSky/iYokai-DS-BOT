@@ -134,7 +134,7 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
             "fun": "Fun", "gestione": "Management", "level": "Levels", "log": "Log",
             "mod": "Moderation", "modban": "Bans (modban)", "moduli": "Modules", "music": "Music",
             "owner": "Owner", "security": "Security", "ticket": "Tickets", "utility": "Utility",
-            "voice": "Voice", "economia": "Economy",
+            "voice": "Voice", "economia": "Economy", "ruoli": "Roles",
         }
     etichette_categoria.setdefault("economia", "Economia")
     righe = [
