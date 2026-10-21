@@ -282,7 +282,7 @@ async def test_apri_da_un_messaggio_lo_cita_e_aggiunge_l_autore():
     await db.set_guild_setting(ID_SERVER, modulo.SETTING_CATEGORY, ID_CATEGORIA)
     autore = s.membro(UTENTE + 5)
     origine = fake_text_channel(777)
-    origine.permissions_for = MagicMock(return_value=discord.Permissions(read_message_history=True))
+    origine.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=True, read_message_history=True))
     citato = MagicMock(content="messaggio offensivo", author=autore,
                        jump_url="https://discord.com/channels/100/777/888")
     origine.fetch_message = AsyncMock(return_value=citato)
@@ -305,3 +305,45 @@ async def test_apri_con_un_link_di_un_altro_server_non_apre():
     await _cog().apri.callback(_cog(), inter, None, None, None, link, False)
     assert "non è di un messaggio di questo server" in str(inter.followup.send.call_args)
     assert s.canali == []
+
+
+async def test_apri_per_conto_con_un_messaggio_che_l_utente_non_vede_non_apre():
+    """Fuga di contenuto: lo staff cita un messaggio di un canale dello staff nel ticket di un utente."""
+    s = Server()
+    await db.set_guild_setting(ID_SERVER, modulo.SETTING_CATEGORY, ID_CATEGORIA)
+    utente = s.membro(UTENTE)
+    staff = s.membro(STAFF, admin=True)
+    origine = fake_text_channel(777)
+    origine.permissions_for = MagicMock(
+        side_effect=lambda m: discord.Permissions(view_channel=True, read_message_history=True)
+        if m is staff else discord.Permissions.none()
+    )
+    origine.fetch_message = AsyncMock(return_value=MagicMock(content="segreto dello staff", author=staff))
+    s.guild.get_channel_or_thread = MagicMock(return_value=origine)
+    inter = s.inter(staff)
+    link = f"https://discord.com/channels/{ID_SERVER}/777/888"
+    await _cog().apri.callback(_cog(), inter, None, None, utente, link, False)
+    assert s.canali == []
+    assert "non puoi leggerlo" in str(inter.followup.send.call_args)
+
+
+async def test_apri_con_un_messaggio_di_un_thread_privato_di_cui_non_si_e_membri_non_apre():
+    """I thread privati (come le note dello staff) non hanno permessi propri: conta l'essere membri."""
+    s = Server()
+    await db.set_guild_setting(ID_SERVER, modulo.SETTING_CATEGORY, ID_CATEGORIA)
+    utente = s.membro(UTENTE)
+    thread = create_autospec(discord.Thread, instance=True)
+    thread.id = 777
+    thread.type = discord.ChannelType.private_thread
+    thread.permissions_for = MagicMock(
+        return_value=discord.Permissions(view_channel=True, read_message_history=True)
+    )
+    risposta = MagicMock(status=404, reason="Not Found")
+    thread.fetch_member = AsyncMock(side_effect=discord.NotFound(risposta, "Unknown Member"))
+    thread.fetch_message = AsyncMock(return_value=MagicMock(content="nota dello staff", author=s.membro(STAFF)))
+    s.guild.get_channel_or_thread = MagicMock(return_value=thread)
+    inter = s.inter(utente)
+    link = f"https://discord.com/channels/{ID_SERVER}/777/888"
+    await _cog().apri.callback(_cog(), inter, None, None, None, link, False)
+    assert s.canali == []
+    thread.fetch_message.assert_not_awaited()

@@ -811,16 +811,35 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
     await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel)
 
 
-async def _messaggio_citato(interaction: discord.Interaction, link: str | None):
-    """TKT-009: il messaggio del link, se è di questo server e chi apre può leggerlo. (messaggio, errore)."""
+async def _puo_leggere(canale, membro) -> bool:
+    """
+    Chi apre e chi riceve il ticket devono poter leggere il messaggio citato, se no il ticket
+    lo mostra a chi non lo vedeva. Un thread privato non ha permessi propri (discord.py li
+    prende dal canale padre): conta essere membri del thread, o gestire i thread.
+    """
+    permessi = canale.permissions_for(membro)
+    if not (permessi.view_channel and permessi.read_message_history):
+        return False
+    if getattr(canale, "type", None) != discord.ChannelType.private_thread or permessi.manage_threads:
+        return True
+    try:
+        await canale.fetch_member(membro.id)
+    except discord.HTTPException:
+        return False
+    return True
+
+
+async def _messaggio_citato(interaction: discord.Interaction, link: str | None, titolare=None):
+    """TKT-009: il messaggio del link, se è di questo server e chi apre (e chi riceve il ticket) può leggerlo."""
     if not link:
         return None, None
     parti = opz_logic.leggi_link_messaggio(link)
     if parti is None or parti[0] != interaction.guild.id:
         return None, "Il link non è di un messaggio di questo server (usa «Copia link del messaggio»)."
     canale = interaction.guild.get_channel_or_thread(parti[1])
-    if canale is None or not canale.permissions_for(interaction.user).read_message_history:
-        return None, "Non trovo quel canale, oppure non puoi leggerlo."
+    lettori = [interaction.user] + ([titolare] if titolare is not None and titolare.id != interaction.user.id else [])
+    if canale is None or not all([await _puo_leggere(canale, m) for m in lettori]):
+        return None, "Non trovo quel canale, oppure non puoi leggerlo (tu o chi riceve il ticket)."
     try:
         return await canale.fetch_message(parti[2]), None
     except discord.HTTPException:
@@ -840,7 +859,7 @@ async def apri_da_comando(
     campi: list[tuple[str, str]] | None = None,
 ) -> None:
     """TKT-007/008/009: apertura da /ticket apri (interazione già deferred)."""
-    citato, errore = await _messaggio_citato(interaction, link)
+    citato, errore = await _messaggio_citato(interaction, link, utente)
     if errore:
         await interaction.followup.send(errore, ephemeral=True)
         return
