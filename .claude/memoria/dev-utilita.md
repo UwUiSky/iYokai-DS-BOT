@@ -1,10 +1,10 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-16/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
+21/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
 
 ## In corso
-- Previsione r8: 4 gruppi. G1 nuovo gruppo `/ruoli` (D25, /gestione a 6122) con dai/togli/temporaneo, azzera, massa, massa-ferma, crea, modifica, diagnosi, scelta (RUO-042/043/092/094-109/113; 0231 self_roles). G2 `/utility ruolo` (RUO-090/091/093) + `/utility scheda` (UTL-195/197-200/202, RUO-110-112). G3 condizioni ruoli automatici RUO-034/035/036/038 (0230). G4 se resta: suggerimenti UTL-135..138. Poi COMMAND_LIST, SPEC, VERIFICA_LIVE, REGISTRO, rapporto.
+- r8 dopo G6 (sondaggio): prossimo passo = documenti: COMMAND_LIST (scripts/generate_command_list.py), SPEC, VERIFICA_LIVE, REGISTRO_RISOLTE (Parziali #123/#128), poi invarianti + smoke --base main (log scratchpad/uti_smoke_r8.log), rapporto.
 - Migrazioni riservate 0230-0239. Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
 
 ## Fatto
@@ -12,6 +12,7 @@
 - r8 G2 417817c: /utility scheda (cogs/utility/schede.py, core/schede_logic.py).
 - r8 G3: ruoli automatici con solo_con/non_con/ridai_se_tolto e auto-sincronizza (0230); ruoli a tempo di /ruoli non ricordati.
 - r8 G4: suggerimenti con in valutazione/realizzato, motivo in finestra, DM, canale dei decisi (0232).
+- r8 G6: /utility poll sì/no senza opzioni (UTL-087) e thread di discussione (UTL-095).
 - r8 G5: promemoria ripetuti, nel canale, annulla tutti, elenco del server per admin (/utility reminder server).
 - r4: G1-G10 (autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli): vedi git log.
 - r5 G1: #71 (15.1/15.2 già in main) + #131 voci piccole: cogs/fun/fun_extra.py (/fun scegli|numero|testo|casuale|scherzo|effetto), dice formula, joke tema, fact animale, 8ball/meme con Range e senza menzioni.
