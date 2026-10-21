@@ -41,6 +41,8 @@ REMINDER_ACTION_TYPE = "reminder_fire"
 TestoPromemoria = app_commands.Range[str, 1, 1800]
 # Un promemoria che si ripete non scatta più spesso di così.
 MIN_RIPETIZIONE_SECONDI = 30 * 60
+# Promemoria in sospeso per persona: senza tetto i ripetuti nel canale diventano spam.
+MAX_PROMEMORIA_PER_UTENTE = 25
 SOTTOGRUPPO = ("reminder", "Promemoria personali")
 
 
@@ -55,6 +57,12 @@ class RemindersCog(CogConGruppi, commands.Cog):
         testo_promemoria = payload.get("message", "(nessun testo)")
         testo = f"⏰ **Promemoria:** {testo_promemoria}"
         ripeti = payload.get("ripeti")
+        if ripeti or payload.get("nel_canale"):
+            # Chi è uscito dal server non riceve più ripetuti né messaggi nel canale.
+            server = self.bot.get_guild(guild_id)
+            if server is None or server.get_member(user_id) is None:
+                logger.info("Promemoria di %s fermato: non è più nel server %s.", user_id, guild_id)
+                return
         if ripeti:
             # Si riprogramma prima di consegnare: un errore di consegna non ferma la serie.
             await scheduler.schedule(
@@ -149,6 +157,22 @@ class RemindersCog(CogConGruppi, commands.Cog):
         if ripeti_secondi is not None and ripeti_secondi < MIN_RIPETIZIONE_SECONDI:
             await interaction.response.send_message(
                 "Un promemoria si può ripetere al massimo ogni 30 minuti.", ephemeral=True
+            )
+            return
+        if nel_canale and not interaction.channel.permissions_for(interaction.user).send_messages:
+            await interaction.response.send_message(
+                "Non puoi scrivere in questo canale: il promemoria nel canale non si può impostare qui.",
+                ephemeral=True,
+            )
+            return
+        in_sospeso = await scheduler.list_pending_for_user(
+            interaction.user.id, REMINDER_ACTION_TYPE, MAX_PROMEMORIA_PER_UTENTE
+        )
+        if len(in_sospeso) >= MAX_PROMEMORIA_PER_UTENTE:
+            await interaction.response.send_message(
+                f"Puoi avere al massimo {MAX_PROMEMORIA_PER_UTENTE} promemoria in sospeso: "
+                "annullane qualcuno con /utility reminder cancel.",
+                ephemeral=True,
             )
             return
 

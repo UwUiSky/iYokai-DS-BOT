@@ -55,6 +55,7 @@ async def test_allo_scatto_si_riprogramma_e_scrive_nel_canale(sched):
     canale.send = AsyncMock()
     server = fake_guild(guild_id=100)
     server.get_channel = MagicMock(return_value=canale)
+    server.get_member = MagicMock(return_value=fake_member(7))
     bot = MagicMock()
     bot.get_guild = MagicMock(return_value=server)
     cog = RemindersCog(bot)
@@ -119,3 +120,40 @@ async def test_comando_server_nel_sottogruppo():
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     assert comando_nel_gruppo("utility", "reminder server") is not None
+
+
+@pytest.mark.asyncio
+async def test_tetto_dei_promemoria_per_persona(sched):
+    """Senza tetto un membro qualunque programma promemoria ripetuti all'infinito (spam nel canale)."""
+    sched.list_pending_for_user.return_value = [{"id": i} for i in range(modulo.MAX_PROMEMORIA_PER_UTENTE)]
+    cog = RemindersCog(MagicMock())
+    it = fake_interaction()
+    await cog.set_reminder.callback(cog, it, "1h", "bevi", "1d", False)
+    sched.schedule.assert_not_awaited()
+    assert "al massimo" in it.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_nel_canale_solo_dove_puoi_scrivere(sched):
+    """In un canale di soli annunci il membro non scrive: non può farci scrivere il bot al posto suo."""
+    cog = RemindersCog(MagicMock())
+    it = fake_interaction()
+    it.channel.permissions_for = MagicMock(return_value=discord.Permissions.none())
+    await cog.set_reminder.callback(cog, it, "1h", "bevi", "1d", True)
+    sched.schedule.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ripetuto_si_ferma_se_la_persona_e_uscita(sched):
+    canale = fake_text_channel(500)
+    canale.send = AsyncMock()
+    server = fake_guild(guild_id=100)
+    server.get_channel = MagicMock(return_value=canale)
+    server.get_member = MagicMock(return_value=None)
+    bot = MagicMock()
+    bot.get_guild = MagicMock(return_value=server)
+    cog = RemindersCog(bot)
+    payload = {"message": "bevi", "channel_id": 500, "ripeti": 3600, "nel_canale": True}
+    await cog.handle_reminder_fire(100, 7, payload)
+    sched.schedule.assert_not_awaited()
+    canale.send.assert_not_awaited()
