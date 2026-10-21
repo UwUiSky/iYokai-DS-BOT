@@ -1,7 +1,7 @@
 # Memoria di dev-web
 
 ## Aggiornata
-16/10/2026 · ramo `feat/r8web` · giro r8
+21/10/2026 · ramo `feat/r8web` · giro r8 chiuso (smoke 291 verdi)
 
 ## In corso
 - Previsione r8: 5 voci, mi fermo dopo la 5.
@@ -9,11 +9,14 @@
   2. #148 nel pannello: stato, link, risincronizza, revoca — fatto
   3. NF-38 #109 pagina del marchio nel pannello — fatto
   4. #122 CFG-030/021 aspetto (comando + pagina `/server/{id}/aspetto`) — fatto
-  5. #46 parte web: pagina `/miei-dati` (copia e richiesta) — fatto. Poi: smoke e rapporto
+  5. #46 parte web: pagina `/miei-dati` (copia e richiesta) — fatto
+- Giro chiuso: attendo l'orchestratore (controlli e merge).
   5. #46 parte OAuth: controllo di ciò che resta
 - Migrazioni riservate: 0210–0219.
 
 ## Fatto
+- r8 59f6215 NF-21, dede8e2 #148, d3cbd81 marchio nel pannello, 3b57822 + 8b8decc
+  aspetto (CFG-030/021), 0d8fbe9 «I miei dati» (#46). Nessuna migrazione dopo 0210.
 - r6 650d4a2, 7b27a1f, 0d94f23: punto unico `core/config_schema.py`; pannello
   `core/web_panel_server.py` + `web_panel_logic.py` + `panel_bridge.py`,
   pagine in `pannello_web/`, sessioni 0150, wiki, premium (#93); D27.
