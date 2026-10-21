@@ -367,3 +367,53 @@ async def test_i_comandi_stanno_nei_gruppi():
     for nome in ("dai", "togli", "azzera", "massa", "massa-ferma", "crea", "modifica", "diagnosi", "scelta"):
         assert comando_nel_gruppo("ruoli", nome) is not None
     assert comando_nel_gruppo("utility", "ruolo") is not None
+
+
+@pytest.mark.asyncio
+async def test_utility_ruolo_non_da_un_ruolo_diventato_forte(ambiente):
+    """Un ruolo a scelta a cui poi si danno permessi forti non si prende più da soli."""
+    a = ambiente
+    a.ruoli[10].permissions = discord.Permissions(administrator=True)
+    membro = fake_member(50, "tizio")
+    membro.guild = a.server
+    it = _interazione(a, user=membro)
+    await a.cog.ruolo_a_scelta.callback(a.cog, it, "10")
+    membro.add_roles.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_due_massa_insieme_ne_parte_una_sola(ambiente, monkeypatch):
+    """Due /ruoli massa lanciati insieme: il controllo e la prenotazione non hanno await in mezzo."""
+    import asyncio
+
+    a = ambiente
+    monkeypatch.setattr(modulo.asyncio, "sleep", AsyncMock())
+    a.server.members = [fake_member(51, "u"), fake_member(52, "v")]
+    a.server.chunked = False
+
+    async def cedi():
+        # asyncio.sleep è finto in questo test: si cede il turno con un future.
+        futuro = asyncio.get_running_loop().create_future()
+        asyncio.get_running_loop().call_soon(futuro.set_result, None)
+        await futuro
+
+    async def chunk():
+        await cedi()
+        await cedi()
+
+    a.server.chunk = chunk
+    canale = MagicMock(send=AsyncMock(), mention="#log")
+    it1, it2 = _interazione(a), _interazione(a)
+    await asyncio.gather(
+        a.cog.massa.callback(a.cog, it1, AZIONE_DAI, a.ruoli[10], CHI_UMANI, None, None, None, None, canale),
+        a.cog.massa.callback(a.cog, it2, AZIONE_DAI, a.ruoli[10], CHI_UMANI, None, None, None, None, canale),
+    )
+    for _ in range(20):
+        if not a.cog.operazioni:
+            break
+        await cedi()
+    assert a.server.id not in a.cog.operazioni
+    assert [m.add_roles.await_count for m in a.server.members] == [1, 1]
+    risposte = [it.followup.send.await_args.args[0] if it.followup.send.await_count else
+                it.response.send_message.await_args.args[0] for it in (it1, it2)]
+    assert sum("Avviata" in r for r in risposte) == 1

@@ -395,22 +395,30 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         if problema is not None:
             await self._rifiuta(interaction, problema)
             return
-        await interaction.response.defer(ephemeral=True)
-        if not guild.chunked:
-            await guild.chunk()
-        membri = membri_da_toccare(guild.members, filtro, ruolo.id, azione)
-        if not membri:
-            await interaction.followup.send("Nessun membro da cambiare con questi filtri.", ephemeral=True)
-            return
-        if len(membri) > MAX_MEMBRI_MASSA:
-            await interaction.followup.send(
-                f"Sono {len(membri)} membri: il massimo per un'operazione è {MAX_MEMBRI_MASSA}. Usa i filtri per dividerla.",
-                ephemeral=True,
-            )
-            return
-        canale = canale_avviso or interaction.channel
-        operazione = OperazioneMassa(azione, ruolo.id, len(membri), interaction.user.id)
+        # Il posto si prenota prima del primo await: due comandi insieme non partono entrambi.
+        operazione = OperazioneMassa(azione, ruolo.id, 0, interaction.user.id)
         self.operazioni[guild.id] = operazione
+        try:
+            await interaction.response.defer(ephemeral=True)
+            if not guild.chunked:
+                await guild.chunk()
+            membri = membri_da_toccare(guild.members, filtro, ruolo.id, azione)
+            if not membri:
+                self.operazioni.pop(guild.id, None)
+                await interaction.followup.send("Nessun membro da cambiare con questi filtri.", ephemeral=True)
+                return
+            if len(membri) > MAX_MEMBRI_MASSA:
+                self.operazioni.pop(guild.id, None)
+                await interaction.followup.send(
+                    f"Sono {len(membri)} membri: il massimo per un'operazione è {MAX_MEMBRI_MASSA}. Usa i filtri per dividerla.",
+                    ephemeral=True,
+                )
+                return
+        except BaseException:
+            self.operazioni.pop(guild.id, None)
+            raise
+        canale = canale_avviso or interaction.channel
+        operazione.totale = len(membri)
         operazione.task = asyncio.create_task(
             self._esegui_massa(guild, ruolo, membri, operazione, canale, motivo_audit(interaction.user, "Operazione di massa"))
         )
@@ -624,9 +632,13 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo[:1900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     async def _ruoli_a_scelta(self, guild: discord.Guild) -> list[discord.Role]:
-        """I ruoli a scelta che esistono ancora e che il bot può dare."""
+        """I ruoli a scelta che esistono ancora e che il bot può dare.
+        I permessi si ricontrollano qui: un ruolo diventato «forte» dopo l'aggiunta non si prende più."""
         ruoli = [guild.get_role(i) for i in await self_role_repo.list_ids(guild.id)]
-        return [r for r in ruoli if gestibile_dal_bot(guild, r)]
+        return [
+            r for r in ruoli
+            if r is not None and check_role_assignable(guild, r, guild.me, self_service=True) is None
+        ]
 
     async def applica_scelta(self, membro: discord.Member, da_avere: set[int], da_lasciare: set[int]) -> str:
         """Dà i ruoli scelti che mancano e toglie quelli lasciati; solo tra i ruoli a scelta."""
