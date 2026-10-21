@@ -3,7 +3,8 @@ core/moderation_bulk_logic.py
 =============================
 Azioni di moderazione su più utenti insieme: lettura dell'elenco (ID o
 menzioni), riepilogo dell'esito e tetto di usi all'ora per ban e kick in
-massa (il bot agisce al posto del moderatore: l'anti-nuke non lo conta).
+massa e per `/ruoli massa` (il bot agisce al posto dello staff: l'anti-nuke
+non lo conta).
 Senza Discord. Il tetto vive in memoria: un riavvio lo azzera.
 Funzioni coperte: SPEC §5.1 (MOD-002…006)
 """
@@ -51,7 +52,10 @@ def riepilogo(fatti: list[str], saltati: list[str], limite: int = 3900) -> str:
 
 
 def prenota_uso(guild_id: int, user_id: int, azione: str, adesso: float) -> bool:
-    """Segna un uso se c'è posto (MAX_USI_ORA nella finestra); False se il tetto è raggiunto."""
+    """
+    Segna un uso se c'è posto (MAX_USI_ORA nella finestra); False se il tetto è raggiunto.
+    Con `user_id` 0 il tetto vale per tutto il server (`/ruoli massa`).
+    """
     chiave = (guild_id, user_id, azione)
     usi = [t for t in (_usi.get(chiave) or []) if adesso - t < FINESTRA_USI_SECONDI]
     libero = len(usi) < MAX_USI_ORA

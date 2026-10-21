@@ -90,9 +90,16 @@ def _testo_ritardo(secondi: int) -> str:
 class AutorolesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.sincronie: set[int] = set()
+        # Un task di sincronizzazione per server: il riferimento lo tiene vivo e permette di fermarlo.
+        self.sincronie: dict[int, asyncio.Task] = {}
         # (server, membro, ruolo) -> istanti in cui il ruolo è stato ridato
         self._ridati: dict[tuple[int, int, int], list[float]] = {}
+
+    async def cog_unload(self) -> None:
+        for task in self.sincronie.values():
+            task.cancel()
+        self.sincronie.clear()
+        await super().cog_unload()
 
     # ================================================================
     # Assegnazione
@@ -296,7 +303,7 @@ class AutorolesCog(CogConGruppi, commands.Cog):
                     errori += 1
                 await asyncio.sleep(PAUSA_MASSA_SECONDI)
         finally:
-            self.sincronie.discard(guild.id)
+            self.sincronie.pop(guild.id, None)
         try:
             await canale.send(
                 f"Sincronizzazione dei ruoli automatici finita: {cambiati} membri aggiornati, {errori} errori.",
@@ -460,8 +467,7 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         if not await autorole_repo.list_rules(guild.id):
             await interaction.response.send_message("Non ci sono ruoli automatici da dare.", ephemeral=True)
             return
-        self.sincronie.add(guild.id)
-        asyncio.create_task(self.sincronizza(guild, interaction.channel))
+        self.sincronie[guild.id] = asyncio.create_task(self.sincronizza(guild, interaction.channel))
         await interaction.response.send_message(
             "Sincronizzazione avviata: un membro al secondo. L'esito arriva in questo canale.", ephemeral=True
         )

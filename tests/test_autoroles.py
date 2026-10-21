@@ -507,7 +507,7 @@ async def test_sincronizza_i_membri_presenti(cog, monkeypatch):
         m.pending = False
     server.members = [senza, con, robot]
     canale = MagicMock(send=AsyncMock())
-    cog.sincronie.add(server.id)
+    cog.sincronie[server.id] = MagicMock()
     assert await cog.sincronizza(server, canale) == (1, 0)
     assert senza.add_roles.await_args.args == (ruoli[10],)
     con.add_roles.assert_not_awaited()
@@ -570,3 +570,41 @@ async def test_ridai_se_tolto_non_fa_ping_pong_all_infinito(cog):
         prima.pending = False
         await cog.on_member_update(prima, dopo)
     assert 1 <= dopo.add_roles.await_count <= 3
+
+
+# ------------------------------------------------ lasciati del cacciatore (revisore)
+@pytest.mark.asyncio
+async def test_auto_sincronizza_un_task_per_server_fermato_allo_scarico(cog, monkeypatch):
+    """Il task ha un riferimento, ce n'è uno per server e cog_unload lo ferma."""
+    import asyncio
+
+    server, ruoli = _server_con_ruoli(10)
+    server.chunked = True
+    membro = fake_member(50)
+    membro.pending = False
+    server.members = [membro]
+    cog.repo.list_rules.return_value = [RegolaAutoruolo(10)]
+    bloccato = asyncio.Event()
+
+    async def attesa(_secondi):
+        await bloccato.wait()
+
+    monkeypatch.setattr(modulo.asyncio, "sleep", attesa)
+    it1 = fake_interaction(guild=server, channel=MagicMock(send=AsyncMock()))
+    await cog.auto_sincronizza.callback(cog, it1)
+    task = cog.sincronie[server.id]
+    assert isinstance(task, asyncio.Task)
+    loop = asyncio.get_running_loop()
+    for _ in range(5):  # cede il turno senza asyncio.sleep (qui è sostituito)
+        turno = loop.create_future()
+        loop.call_soon(turno.set_result, None)
+        await turno
+    membro.add_roles.assert_awaited_once()  # il task è partito ed è fermo nella pausa
+    it2 = fake_interaction(guild=server)
+    await cog.auto_sincronizza.callback(cog, it2)
+    assert "già in corso" in it2.response.send_message.await_args.args[0]
+    assert cog.sincronie[server.id] is task
+    await cog.cog_unload()
+    assert cog.sincronie == {}
+    await asyncio.wait({task}, timeout=2)  # senza cancel il task resterebbe fermo per sempre
+    assert task.cancelled()

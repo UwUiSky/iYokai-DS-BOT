@@ -402,7 +402,7 @@ Il blocco intero `/admin backup *` (main, crea, collega, promuovi, restore-modo,
 restore-utenti) diventa il gruppo di primo livello `/backup` (permesso `administrator`,
 livello admin), con le funzioni nuove dentro. `/admin` scende sotto i 5.600 caratteri.
 
-**Quinto caso (16/10/2026): `/ruoli`.** `/gestione` è a 6.325 caratteri (con le condizioni
+**Quinto caso (21/10/2026): `/ruoli`.** `/gestione` è a 6.325 caratteri (con le condizioni
 dei ruoli automatici) e gli strumenti sui ruoli del catalogo #123 (dare e togliere, a tempo,
 azzerare, operazioni di massa, creare, modificare, diagnosi, ruoli a scelta) pesano 1.840
 caratteri: insieme arriverebbero a 8.165, oltre il limite di 8.000. Il blocco nuovo nasce già come gruppo di primo livello `/ruoli` (permesso

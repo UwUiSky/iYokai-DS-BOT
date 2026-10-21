@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 
 import discord
@@ -23,6 +24,7 @@ from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.duration_logic import format_duration, parse_duration
 from core.lista_limiti_logic import righe_entro_limite
+from core.moderation_bulk_logic import MAX_USI_ORA, prenota_uso
 from core.repositories.self_role_repo import self_role_repo
 from core.role_safety import check_role_assignable
 from core.ruoli_strumenti_logic import (
@@ -72,6 +74,11 @@ def gestibile_dal_bot(guild: discord.Guild, ruolo) -> bool:
     return ruolo is not None and not ruolo.is_default() and not ruolo.managed and ruolo < guild.me.top_role
 
 
+def pari_o_sopra(guild: discord.Guild, autore, membro) -> bool:
+    """True se il membro è pari o sopra chi agisce (il proprietario del server passa sempre)."""
+    return autore.id != guild.owner_id and membro.top_role >= autore.top_role
+
+
 @dataclass
 class OperazioneMassa:
     azione: str
@@ -104,7 +111,18 @@ class ConfermaAzzera(BaseView):
     @discord.ui.button(label="Togli tutti i ruoli", style=discord.ButtonStyle.danger)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         guild = interaction.guild
-        ruoli = ruoli_da_azzerare(self.membro.roles, guild.me.top_role)
+        # La gerarchia si ricontrolla al click: in 15 minuti i ruoli di entrambi possono cambiare.
+        membro = guild.get_member(self.membro.id)
+        if membro is None:
+            await interaction.response.edit_message(content="Il membro non è più nel server.", view=None)
+            return
+        if pari_o_sopra(guild, interaction.user, membro):
+            await interaction.response.edit_message(
+                content="Questo membro ora è pari o sopra di te: non puoi togliergli i ruoli.", view=None
+            )
+            return
+        self.membro = membro
+        ruoli = ruoli_da_azzerare(membro.roles, guild.me.top_role)
         if not ruoli:
             await interaction.response.edit_message(content="Non c'è nessun ruolo che il bot possa togliere.", view=None)
             return
@@ -125,6 +143,11 @@ class ConfermaAzzera(BaseView):
     @discord.ui.button(label="Ridai i ruoli", style=discord.ButtonStyle.secondary, disabled=True)
     async def ridai(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         guild = interaction.guild
+        if pari_o_sopra(guild, interaction.user, self.membro):
+            await interaction.response.edit_message(
+                content="Questo membro ora è pari o sopra di te: non puoi ridargli i ruoli.", view=None
+            )
+            return
         ruoli = [r for r in self.tolti if gestibile_dal_bot(guild, guild.get_role(r.id))]
         try:
             if ruoli:
@@ -329,7 +352,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         motivo: app_commands.Range[str, 1, 400] | None = None,
     ) -> None:
         guild = interaction.guild
-        if interaction.user.id != guild.owner_id and membro.top_role >= interaction.user.top_role:
+        if pari_o_sopra(guild, interaction.user, membro):
             await self._rifiuta(interaction, "Questo membro è pari o sopra di te: non puoi togliergli i ruoli.")
             return
         ruoli = ruoli_da_azzerare(membro.roles, guild.me.top_role)
@@ -411,6 +434,15 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
                 self.operazioni.pop(guild.id, None)
                 await interaction.followup.send(
                     f"Sono {len(membri)} membri: il massimo per un'operazione è {MAX_MEMBRI_MASSA}. Usa i filtri per dividerla.",
+                    ephemeral=True,
+                )
+                return
+            # Tetto per server (MOD-002): il bot agisce al posto dello staff e l'anti-nuke non lo conta.
+            # Si consuma solo per un'operazione che parte davvero.
+            if interaction.user.id != guild.owner_id and not prenota_uso(guild.id, 0, "ruoli_massa", time.monotonic()):
+                self.operazioni.pop(guild.id, None)
+                await interaction.followup.send(
+                    f"In questo server sono già partite {MAX_USI_ORA} operazioni di massa nell'ultima ora: riprova più tardi.",
                     ephemeral=True,
                 )
                 return

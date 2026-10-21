@@ -247,7 +247,7 @@
 | 21/10 | `autorole_logic.piano_ingresso`/sincronizza/ridai | Regole A «non con B» e B «non con A» danno entrambi i ruoli | media | corretto r8uti 3d722cc |
 | 21/10 | `autoroles._ridai_se_tolti` | Botta e risposta infinito con un altro bot che toglie il ruolo | media | corretto r8uti 3d722cc (3 ogni 10 min) |
 | 21/10 | `reminders.set_reminder` | Nessun tetto per persona sui ripetuti; «nel canale» scrive dove la persona non può; ripetuti continuano dopo l'uscita | media | corretto r8uti 416859f |
-| 21/10 | `ruoli_strumenti.ConfermaAzzera.conferma` | Gerarchia del bersaglio controllata solo al comando, non al click (15 min) | bassa | plausibile, lasciato |
-| 21/10 | `autoroles.auto_sincronizza` | Task senza riferimento, senza tetto di membri, non si ferma (né con cog_unload) | bassa | plausibile, lasciato |
-| 21/10 | `ruoli_strumenti.massa` | Nessun tetto orario per server (anti-nuke non vede il bot): massa togli ripetute | bassa | plausibile, lasciato |
-| 21/10 | `poll.discussione` | Il bot apre il thread anche per chi non può creare thread nel canale | bassa | plausibile, lasciato |
+| 21/10 | `ruoli_strumenti.ConfermaAzzera.conferma` | Gerarchia del bersaglio controllata solo al comando, non al click (15 min) | bassa | corretto r8uti (revisore) |
+| 21/10 | `autoroles.auto_sincronizza` | Task senza riferimento, senza tetto di membri, non si ferma (né con cog_unload) | bassa | corretto r8uti (revisore) |
+| 21/10 | `ruoli_strumenti.massa` | Nessun tetto orario per server (anti-nuke non vede il bot): massa togli ripetute | bassa | corretto r8uti (revisore) |
+| 21/10 | `poll.discussione` | Il bot apre il thread anche per chi non può creare thread nel canale | bassa | corretto r8uti (revisore) |

@@ -99,3 +99,21 @@ async def test_sondaggio_con_una_sola_opzione_rifiutato(monkeypatch):
     it = fake_interaction()
     await cog.poll.callback(cog, it, "Domanda", "solo una")
     assert "almeno due" in it.response.send_message.await_args.args[0]
+
+
+async def test_sondaggio_thread_solo_se_l_autore_puo_creare_thread(monkeypatch):
+    """Il bot non apre il thread per chi nel canale non potrebbe aprirlo da solo."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import cogs.utility.poll as modulo_poll
+
+    monkeypatch.setattr(modulo_poll.db, "is_module_active_for_guild", AsyncMock(return_value=True))
+    cog = modulo_poll.PollCog(MagicMock())
+    it = fake_interaction()
+    it.channel.permissions_for.return_value = discord.Permissions(send_messages=True)
+    messaggio = MagicMock(create_thread=AsyncMock())
+    it.original_response = AsyncMock(return_value=messaggio)
+    await cog.poll.callback(cog, it, "Pizza stasera?", discussione=True)
+    assert it.response.send_message.await_args.kwargs["poll"] is not None
+    messaggio.create_thread.assert_not_awaited()
+    assert "thread pubblici" in it.followup.send.await_args.args[0]

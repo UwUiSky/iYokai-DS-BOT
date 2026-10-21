@@ -219,3 +219,11 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 16/10 | `feat/r7liv` | `voice_temp.invita` | Se `create_invite` fallisce dopo `set_permissions`, il membro resta ammesso ma il messaggio dice solo errore | bassa | aperto |
 | 16/10 | `feat/r7liv` | `leveling.rank` sfondo | Sfondo caricato in un server con `card_images` spento: salvato, nessun avviso che lì non si vede | bassa | aperto |
 | 16/10 | `feat/r7liv` | `/gestione voice opzioni registro` | Non controlla che il bot possa scrivere nel canale scelto (`motivo_se_il_bot_non_puo`): il registro tace con solo un warning | bassa | aperto |
+| 21/10 | `feat/r8uti` | `config_history.SETTINGS_SCHEMA` | `suggestions_decided_channel_id` mancante: `test_ogni_setting_usata_nel_codice_e_nello_schema` rosso | media | chiuso 21/10 |
+| 21/10 | `main` (r7bak) | `backup_permessi_logic.SETTING_LIVELLO` | Chiave fuori schema (stesso test rosso su main). Solo owner: messa in `SETTINGS_SOLO_OWNER`, non importabile | media | chiuso 21/10 |
+| 21/10 | `feat/r8uti` | `ruoli_strumenti.ConfermaAzzera` | Gerarchia solo al comando (dal cacciatore); ricontrollata a conferma e a «ridai» | bassa | chiuso 21/10 |
+| 21/10 | `feat/r8uti` | `autoroles.auto_sincronizza` | Task senza riferimento, non fermato allo scarico (dal cacciatore) | bassa | chiuso 21/10 |
+| 21/10 | `feat/r8uti` | `ruoli_strumenti.massa` | Nessun tetto orario per server (dal cacciatore): `prenota_uso` di MOD-002 con utente 0 | bassa | chiuso 21/10 |
+| 21/10 | `feat/r8uti` | `poll.discussione` | Thread aperto per chi non può creare thread (dal cacciatore) | bassa | chiuso 21/10 |
+| 21/10 | `feat/r8uti` | `schede.canale`/`permessi` | Nessun controllo che chi chiede veda il canale scelto (argomento di un canale privato). Da verificare se Discord lo impedisce già | bassa | aperto |
+| 21/10 | `feat/r8uti` | `scripts/generate_command_list.py` | Categoria «Ruoli» non tradotta nell'elenco inglese | bassa | chiuso 21/10 |

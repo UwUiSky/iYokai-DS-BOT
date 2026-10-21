@@ -137,6 +137,9 @@ async def test_tetto_dei_ruoli_a_scelta(repo):
 # --------------------------------------------------------------------- cog
 @pytest.fixture
 def ambiente(monkeypatch):
+    from core.moderation_bulk_logic import azzera_usi
+
+    azzera_usi()  # il tetto orario delle operazioni di massa vive in memoria
     bot_top = fake_role(100, "Bot", position=50)
     me = fake_member(999, "Yokai", roles=[bot_top], bot=True)
     me.guild_permissions = discord.Permissions(manage_roles=True)
@@ -417,3 +420,59 @@ async def test_due_massa_insieme_ne_parte_una_sola(ambiente, monkeypatch):
     risposte = [it.followup.send.await_args.args[0] if it.followup.send.await_count else
                 it.response.send_message.await_args.args[0] for it in (it1, it2)]
     assert sum("Avviata" in r for r in risposte) == 1
+
+
+# ------------------------------------------------ lasciati del cacciatore (revisore)
+@pytest.mark.asyncio
+async def test_azzera_ricontrolla_la_gerarchia_al_click(ambiente):
+    """In 15 minuti il bersaglio può salire sopra lo staff: il click non deve togliergli i ruoli."""
+    a = ambiente
+    membro = fake_member(50, "tizio", roles=[a.ruoli[10]])
+    a.server.get_member = MagicMock(return_value=membro)
+    vista = modulo.ConfermaAzzera(a.cog, a.staff.id, membro, None)
+    # Ora il membro ha un ruolo sopra quello dello staff (Admin, posizione 40).
+    membro.roles = [a.ruoli[10], fake_role(45, "Capo", position=45)]
+    membro.top_role = membro.roles[-1]
+    it = _interazione(a)
+    await vista.conferma.callback(it)
+    membro.remove_roles.assert_not_awaited()
+    assert "pari o sopra" in it.response.edit_message.await_args.kwargs["content"]
+
+
+@pytest.mark.asyncio
+async def test_azzera_al_click_membro_uscito(ambiente):
+    a = ambiente
+    membro = fake_member(50, "tizio", roles=[a.ruoli[10]])
+    vista = modulo.ConfermaAzzera(a.cog, a.staff.id, membro, None)
+    it = _interazione(a)
+    await vista.conferma.callback(it)
+    membro.remove_roles.assert_not_awaited()
+    assert "non è più nel server" in it.response.edit_message.await_args.kwargs["content"]
+
+
+@pytest.mark.asyncio
+async def test_massa_tetto_orario_per_server(ambiente, monkeypatch):
+    """Il bot agisce al posto dello staff e l'anti-nuke non lo vede: poche massa all'ora per server."""
+    from core.moderation_bulk_logic import MAX_USI_ORA
+
+    a = ambiente
+    monkeypatch.setattr(modulo.asyncio, "sleep", AsyncMock())
+    a.server.members = [fake_member(51, "u", roles=[a.ruoli[10]])]
+    a.server.chunked = True
+    canale = MagicMock(send=AsyncMock(), mention="#log")
+    for numero in range(MAX_USI_ORA + 1):
+        # Staff diversi: il tetto è del server, non della persona.
+        staff = fake_member(70 + numero, "staff", roles=[fake_role(800, "Admin", position=40)])
+        it = _interazione(a, staff)
+        await a.cog.massa.callback(a.cog, it, AZIONE_TOGLI, a.ruoli[10], "tutti", None, None, None, None, canale)
+        if a.server.id in a.cog.operazioni:
+            await a.cog.operazioni[a.server.id].task
+    assert "nell'ultima ora" in it.followup.send.await_args.args[0]
+    assert a.server.members[0].remove_roles.await_count == MAX_USI_ORA
+    assert a.server.id not in a.cog.operazioni
+    # Il proprietario del server non ha tetto.
+    proprietario = fake_member(1, "owner", roles=[fake_role(801, "Owner", position=49)])
+    it = _interazione(a, proprietario)
+    await a.cog.massa.callback(a.cog, it, AZIONE_TOGLI, a.ruoli[10], "tutti", None, None, None, None, canale)
+    await a.cog.operazioni[a.server.id].task
+    assert a.server.members[0].remove_roles.await_count == MAX_USI_ORA + 1

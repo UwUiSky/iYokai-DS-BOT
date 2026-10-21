@@ -115,7 +115,13 @@ class PollCog(CogConGruppi, commands.Cog):
             sondaggio.add_answer(text=opzione)
 
         await interaction.response.send_message(poll=sondaggio)
-        if discussione:
+        if discussione and not interaction.channel.permissions_for(interaction.user).create_public_threads:
+            # Il thread lo apre il bot: non lo fa per chi nel canale non potrebbe aprirlo da solo.
+            await interaction.followup.send(
+                "Sondaggio pubblicato, ma niente thread: in questo canale non puoi creare thread pubblici.",
+                ephemeral=True,
+            )
+        elif discussione:
             try:
                 messaggio = await interaction.original_response()
                 await messaggio.create_thread(name=question[:100], auto_archive_duration=1440)

@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 00:52 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:17 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 511 commands in 23 categories.**
 
@@ -461,7 +461,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 00:5
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
 
-## Ruoli
+## Roles
 
 - **`/roles bulk`** — Give or remove a role to many members at once, with filters.
 - **`/roles bulk-stop`** — Stop the bulk operation in progress.
