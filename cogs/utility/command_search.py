@@ -30,7 +30,7 @@ from discord.ext import commands
 
 from cogs.utility._command_search_views import DatiPannello, PannelloView, RisultatiView
 from core import command_search_logic as logica
-from core.command_access import puo_usare
+from core.command_access import Livello, puo_usare
 from core.command_groups import GRUPPI, NOME_CERCA_COMANDO, NOME_CHIEDI
 from core.config import config
 from core.database import db
@@ -101,11 +101,17 @@ class CommandSearchCog(commands.Cog):
     async def _comandi_accessibili(self, interaction: discord.Interaction) -> list[logica.ComandoInfo]:
         """I comandi che l'utente può usare: livello dei gruppi e `@richiedi` di ogni comando (albero vero)."""
 
+        guild_id = _server_del_bot(interaction)
+        fuori_dal_bot = guild_id is None and interaction.guild_id is not None
+
         async def puo(livello):
+            # App installata sull'utente in un server senza il bot: là i permessi dello staff non
+            # valgono (come in DM); conta solo l'owner del bot.
+            if fuori_dal_bot and livello is not Livello.OWNER:
+                return False
             return await puo_usare(interaction, livello)
 
         visibili = await logica.filtra_per_livelli(logica.raccogli_comandi(self.bot.tree.get_commands()), puo)
-        guild_id = _server_del_bot(interaction)
         if guild_id is None:
             return visibili
 
@@ -266,7 +272,9 @@ class CommandSearchCog(commands.Cog):
             return None
         await interaction.response.defer(ephemeral=True)
         comandi = await self._comandi_accessibili(interaction)
-        testo, citati, _locale = await risposta_ai_chiedi(interaction, domanda, comandi)
+        testo, citati, _locale = await risposta_ai_chiedi(
+            interaction, domanda, comandi, guild_id=_server_del_bot(interaction)
+        )
         if testo is None:
             return False  # già differita: la ricerca per parole risponde con followup
         ids = await self._ids(interaction, serve={c.gruppo for c in citati})

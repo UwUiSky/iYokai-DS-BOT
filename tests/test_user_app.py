@@ -188,3 +188,46 @@ def test_server_senza_il_bot_vale_come_dm():
     assert _server_del_bot(_i(5, False)) is None  # app installata solo sull'utente
     assert _server_del_bot(_i(5, True)) == 5
     assert _server_del_bot(_i(None, False)) is None
+
+
+# ---------------------------------------------------------------- rilievi del cacciatore-bug (r9nsfw)
+def _in_server_senza_il_bot():
+    from tests.support.discord_fakes import fake_interaction
+
+    i = fake_interaction()
+    i.guild_id = 5
+    i.is_guild_integration = lambda: False
+    return i
+
+
+async def test_installata_dall_utente_non_mostra_i_comandi_dello_staff_di_un_altro_server(monkeypatch):
+    """Admin in un server dove il bot non c'è: là i comandi dello staff non valgono, come in DM."""
+    from cogs.utility import command_search as modulo
+    from tests.test_command_search_bug147 import _albero_con_richiedi
+
+    monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
+    cog = modulo.CommandSearchCog(_albero_con_richiedi())
+    visibili = {c.percorso for c in await cog._comandi_accessibili(_in_server_senza_il_bot())}
+    assert "solo-mod" not in visibili and "fun aperto" in visibili
+
+
+async def test_chiedi_installata_dall_utente_non_legge_la_conoscenza_di_quel_server(monkeypatch):
+    import cogs.ai.helpdesk as helpdesk
+    import core.ai_servizio as ai_servizio
+    from cogs.utility import command_search as modulo
+    from tests.test_command_search_bug147 import _albero_con_richiedi
+
+    monkeypatch.setattr(ai_servizio, "servizio_ai", lambda: SimpleNamespace(controlla_accesso=AsyncMock()))
+    letti = []
+
+    async def conoscenza(guild_id):
+        letti.append(guild_id)
+        return ""
+
+    monkeypatch.setattr(helpdesk, "conoscenza_del_server", conoscenza)
+    monkeypatch.setattr(helpdesk, "chiedi", AsyncMock(return_value=(None, "locale")))
+    monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=False))
+    cog = modulo.CommandSearchCog(_albero_con_richiedi())
+    assert await cog._risposta_ai(_in_server_senza_il_bot(), "come faccio?") is False
+    assert letti == [None]
+    assert helpdesk.chiedi.call_args.args[0].guild_id is None
