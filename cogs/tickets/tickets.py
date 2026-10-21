@@ -2553,6 +2553,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if not message.author.bot and ticket.panel_id is not None:
             await self._segna_attivita(message.channel.id)
 
+        # TKT-055: l'utente che scrive ha risposto alla richiesta di chiusura: il timer non chiude più.
+        if ticket.chiusura_richiesta_at is not None and message.author.id == ticket.user_id and not message.author.bot:
+            await ticket_repo.annulla_richiesta_chiusura(message.channel.id)
+
         # #139: risposta standard e sollecito (cog a parte, senza AI).
         if message.author.id == ticket.user_id and not message.author.bot:
             risposte = self._cog_risposte()

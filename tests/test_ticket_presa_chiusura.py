@@ -212,3 +212,19 @@ async def test_accetta_la_chiusura_solo_chi_ha_aperto():
     inter.client.get_cog = MagicMock(return_value=cog)
     await bottone.callback(inter)
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).status == "closed"
+
+
+async def test_se_l_utente_scrive_nel_ticket_la_richiesta_di_chiusura_decade():
+    """«Se non rispondi entro N ore»: scrivere «no, non va ancora» è una risposta, il ticket non si chiude."""
+    s, canale = await _scena()
+    cog = _cog()
+    await cog.chiedi_chiusura.callback(cog, _inter(s, s.membro(STAFF, admin=True), canale), 2)
+    ticket = await ticket_repo.get_ticket_by_channel(CANALE)
+    payload = {"channel_id": CANALE, "richiesta": ticket.chiusura_richiesta_at.isoformat()}
+    messaggio = MagicMock(guild=s.guild, channel=canale, author=s.membro(UTENTE), content="non funziona ancora")
+    messaggio.author.bot = False
+    await cog.on_message(messaggio)
+    cog.bot = MagicMock(get_channel=MagicMock(return_value=canale))
+    cog._chiudi_da_sistema = AsyncMock()
+    await cog.handle_richiesta_chiusura(ID_SERVER, UTENTE, payload)
+    cog._chiudi_da_sistema.assert_not_awaited()
