@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 08:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 08:33 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 516 comandi in 23 categorie.**
+**Totale: 517 comandi in 23 categorie.**
 
 ## Admin
 
@@ -316,6 +316,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 08:
 - **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
+- **`/mod caso attive`** — Sanzioni a tempo ancora in corso: tempban, timeout, lock a tempo.
 - **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
 - **`/mod caso motivo`** — Cambia il motivo di un caso già registrato.

@@ -2,11 +2,12 @@
 ## Aggiornata
 2026-10-21, ramo feat/r9mod, worktree /home/claude/wt/r9mod. Migrazioni r9: 0250–0259. Log in scratchpad/r9mod.
 ## In corso
-Giro r9 (previsione 5 voci; prossima: 4): 1) #59 ripiego kick/ban se la quarantena non riesce (AntiNukeConfig, /antinuke punish-action) → 2) M 1.10 warn manuali nella scala (escalation) → 3) /mod opzioni (MOD-010, 017, 057, 065, 068) → 4) MOD-013 sanzioni a tempo attive + MOD-090 lock a tempo → 5) SIC-040 punizione del canale trappola. Mi fermo dopo la 5.
+Giro r9 (previsione 5 voci; prossima: 5): 1) #59 ripiego kick/ban se la quarantena non riesce (AntiNukeConfig, /antinuke punish-action) → 2) M 1.10 warn manuali nella scala (escalation) → 3) /mod opzioni (MOD-010, 017, 057, 065, 068) → 4) MOD-013 sanzioni a tempo attive + MOD-090 lock a tempo → 5) SIC-040 punizione del canale trappola. Mi fermo dopo la 5.
 Residui gia' fatti in codice (verificati r9): M 1.1–1.9, 2.1–2.7, 3.1–3.18 (tranne ripiego), 4.1–4.3.
 Pesi r9 (script scratchpad/r9mod/tools/pesi.py): antinuke 2674/12, antiraid 2756/16, automod 5015/7, mod 3953/14, modban 1683/7, security 4536/8.
 ## Fatto
 - R9-1 #59 ripiego kick/ban (be45348): AntiNukeConfig.ripiego_quarantena, opzione ripiego di /antinuke punish-action
+- R9-4 MOD-090 /mod lock durata: (scheduler channel_unlock, user_id=ID canale) + MOD-013 /mod caso attive
 - R9-3 /mod opzioni imposta|dm|immuni (MOD-010/017/057/068): core/moderation_opzioni.py, chiavi mod_* in SETTINGS_SCHEMA, mod_ruoli_immuni solo proprietario
 - R9-2 M 1.10 (1988cd6): escalation.scala_per_warn_manuale, /security escalation enable warn_manuali, migr. 0250
 - Giri G1-G7, R5, R6 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli spam-trap, verify, lockdown, phishing, captcha, anti-raid r6, massa, automod filtri

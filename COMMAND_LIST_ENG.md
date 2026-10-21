@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:28 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:33 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 516 commands in 23 categories.**
+**Total: 517 commands in 23 categories.**
 
 ## Admin
 
@@ -313,6 +313,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:2
 
 - **`/mod bulk timeout`** — Times out several members at once (max 28 days).
 - **`/mod bulk warn`** — Warns several members at once.
+- **`/mod case active`** — Timed sanctions still running: tempbans, timeouts, timed locks.
 - **`/mod case delete`** — Deletes a case (needs "Manage Server").
 - **`/mod case history`** — Shows a member's case history.
 - **`/mod case reason`** — Changes the reason of an already logged case.

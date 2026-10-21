@@ -324,12 +324,14 @@ Totale voci: **494**.
 - `[~]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
   → **Stato 11/10:** ordine azione→caso→log→DM e liste entro 4000 fatti. Aggiunti: storico per tipo, `/mod caso motivo|elimina|classifica-staff` (MOD-037, 039, 041, 042, 044).
+  → **Stato 21/10 (r9):** `/mod caso attive` (MOD-013): tempban, timeout e lock a tempo in corso, dal primo che scade.
 - `[~]` 5.3 Note utente
   → **Stato 11/10:** `/mod nota rimuovi|modifica|svuota` (MOD-054..056); l'elenco mostra il numero. Warn: `/mod avvisi togli|azzera|classifica` (MOD-028, 029, 031).
 - `[~]` 5.4 Report system
   → **Stato 04/10:** motivo oltre 1024 caratteri: segnalazione persa (LIM-4).
 - `[~]` 5.5 Lock / Unlock canale
   → **Stato 11/10:** ora scrive nel log di moderazione; motivo al massimo 512 caratteri.
+  → **Stato 21/10 (r9):** `/mod lock durata:` (MOD-090, max 30 giorni): sblocco dallo scheduler, anche dopo un riavvio, con il permesso di prima; `unlock` o un nuovo lock annullano l'attesa.
 - `[~]` 5.6 Slowmode
   → **Stato 11/10:** ora scrive nel log di moderazione.
 - `[~]` 5.7 Clear avanzato con filtri
