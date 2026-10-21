@@ -6,6 +6,7 @@ Le prove ancora da fare su Discord restano in `03-verifica/VERIFICA_LIVE.md`.
 
 | Issue | Problema | Come è stato sistemato | Commit | Data |
 |---|---|---|---|---|
+| #145 | Il verdetto premium dei log avanzati restava 60 s dopo sblocco o revoca | Punto unico `core/premium_cache.invalida_cache_premium`, chiamato da whitelist, cassa, abbonamenti per modulo, codici, abbonamenti Discord, flag del modulo e pulizia dei server; test per ogni via (`tests/test_premium_invalidazione.py`) | fac29e1, 3ce8626, r9 | 21/10 |
 | #137 | Il messaggio privato di kick/ban partiva dopo l'azione e non arrivava | Il DM parte prima di kick, ban, tempban, softban (`try_dm_message`); se non arriva lo dice nella risposta | f0e2056 | 06/10 |
 | #133 | Problemi di sicurezza del giro del 05/10 | Correzioni in anti-raid, anti-nuke, verifica (cache a versione); benvenuto privato sospeso durante un raid | f045c97 | 06/10 |
 | #135 | Scritture non sicure su clan e premium | Operazioni atomiche in `guild_clan_repo` (ordine dei blocchi membro → monete → clan) | 1bc7ab1 | 06/10 |
