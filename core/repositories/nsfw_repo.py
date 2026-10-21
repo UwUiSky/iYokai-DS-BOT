@@ -1,41 +1,173 @@
 """
 core/repositories/nsfw_repo.py
 ==============================
-Configurazione e registro degli hash.
+Dati dell'istanza NSFW: scelte del server, pubblicazione automatica,
+registro con l'impronta di ogni immagine e contenuti bloccati.
+Tabelle: core/migrations/0240_nsfw.sql.
 Funzioni coperte: SPEC §16.10 (NF-23)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #94).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #94, fase F11
-# Funzione: NF-23, Istanza NSFW.
-#
-# Cosa deve fare la funzione: Un bot a parte (stesso codice, token
-#   NSFW_TOKEN). Funziona solo nei canali segnati NSFW. Ricerca e
-#   pubblicazione automatica, con due filtri obbligatori: lista permessa
-#   scelta dal server e lista vietata fissa nel codice.
-# Questo file: Configurazione e registro degli hash.
-# Comandi previsti: Comandi propri dell'istanza NSFW (non contano nei
-#   100 del bot principale).
-# File collegati: core/nsfw_bot.py, cogs/nsfw/__init__.py,
-#   cogs/nsfw/ricerca.py, core/nsfw_filter_logic.py,
-#   core/nsfw_autopost_worker.py.
-# Test da scrivere per primi: tests/test_nsfw_filter_logic.py,
-#   tests/test_nsfw_canale.py.
-# Migrazione: core/migrations/NNNN_nsfw.sql. (prossimo numero libero in
-#   core/migrations/).
-# Limiti da rispettare: Controllo del canale NSFW a ogni invio; registro
-#   con hash di ogni immagine; contenuti vietati dalla legge bloccati
-#   sempre.
-# Da chi prendere spunto: Lawliet.
-# Dipende da: NF-05, NF-06. Verifica dell'identità sul pannello (NF-20)
-#   per l'invito.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+import asyncpg
+
+
+@dataclass(frozen=True)
+class NsfwConfig:
+    guild_id: int
+    attivo: bool
+    tag_permessi: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NsfwAutopost:
+    guild_id: int
+    channel_id: int
+    tag: str
+    intervallo_minuti: int
+    prossimo_il: datetime
+    errori: int
+
+
+@dataclass(frozen=True)
+class NsfwInvio:
+    guild_id: int
+    channel_id: int
+    message_id: int | None
+    fonte: str
+    id_fonte: str
+    impronta: str
+
+
+class NsfwRepository:
+    def __init__(self, pool_provider) -> None:
+        self._pool_provider = pool_provider
+
+    @property
+    def _pool(self) -> asyncpg.Pool:
+        return self._pool_provider()
+
+    # ---- scelte del server ----
+    async def get_config(self, guild_id: int) -> NsfwConfig | None:
+        r = await self._pool.fetchrow(
+            "SELECT guild_id, attivo, tag_permessi FROM nsfw_config WHERE guild_id = $1", guild_id
+        )
+        return None if r is None else NsfwConfig(r["guild_id"], r["attivo"], tuple(r["tag_permessi"]))
+
+    async def imposta_attivo(self, guild_id: int, attivo: bool, da: int) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO nsfw_config (guild_id, attivo, attivato_da) VALUES ($1, $2, $3)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET attivo = EXCLUDED.attivo, attivato_da = EXCLUDED.attivato_da, aggiornato_il = now()
+            """,
+            guild_id, attivo, da,
+        )
+
+    async def imposta_tag(self, guild_id: int, tag: list[str]) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO nsfw_config (guild_id, tag_permessi) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET tag_permessi = EXCLUDED.tag_permessi, aggiornato_il = now()
+            """,
+            guild_id, tag,
+        )
+
+    # ---- pubblicazione automatica ----
+    async def salva_autopost(self, guild_id: int, channel_id: int, tag: str, intervallo_minuti: int, da: int) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO nsfw_autopost (guild_id, channel_id, tag, intervallo_minuti, creato_da)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id, channel_id) DO UPDATE
+                SET tag = EXCLUDED.tag, intervallo_minuti = EXCLUDED.intervallo_minuti,
+                    creato_da = EXCLUDED.creato_da, errori = 0, prossimo_il = now()
+            """,
+            guild_id, channel_id, tag, intervallo_minuti, da,
+        )
+
+    async def togli_autopost(self, guild_id: int, channel_id: int | None = None) -> int:
+        """Toglie una pubblicazione (o tutte, senza canale). Restituisce quante."""
+        esito = await self._pool.execute(
+            "DELETE FROM nsfw_autopost WHERE guild_id = $1 AND ($2::bigint IS NULL OR channel_id = $2)",
+            guild_id, channel_id,
+        )
+        return int(esito.split()[-1])
+
+    async def elenco_autopost(self, guild_id: int) -> list[NsfwAutopost]:
+        righe = await self._pool.fetch(
+            "SELECT guild_id, channel_id, tag, intervallo_minuti, prossimo_il, errori FROM nsfw_autopost "
+            "WHERE guild_id = $1 ORDER BY channel_id",
+            guild_id,
+        )
+        return [NsfwAutopost(**dict(r)) for r in righe]
+
+    async def autopost_scaduti(self, limite: int) -> list[NsfwAutopost]:
+        righe = await self._pool.fetch(
+            "SELECT guild_id, channel_id, tag, intervallo_minuti, prossimo_il, errori FROM nsfw_autopost "
+            "WHERE prossimo_il <= now() ORDER BY prossimo_il LIMIT $1",
+            limite,
+        )
+        return [NsfwAutopost(**dict(r)) for r in righe]
+
+    async def rimanda_autopost(self, guild_id: int, channel_id: int, prossimo_il: datetime, errori: int) -> None:
+        await self._pool.execute(
+            "UPDATE nsfw_autopost SET prossimo_il = $3, errori = $4 WHERE guild_id = $1 AND channel_id = $2",
+            guild_id, channel_id, prossimo_il, errori,
+        )
+
+    # ---- registro e blocchi ----
+    async def registra_invio(
+        self, guild_id: int, channel_id: int, message_id: int | None, fonte: str, id_fonte: str, impronta: str
+    ) -> None:
+        await self._pool.execute(
+            "INSERT INTO nsfw_registro (guild_id, channel_id, message_id, fonte, id_fonte, impronta) "
+            "VALUES ($1, $2, $3, $4, $5, $6)",
+            guild_id, channel_id, message_id, fonte, id_fonte, impronta,
+        )
+
+    async def gia_inviato(self, guild_id: int, impronta: str) -> bool:
+        return bool(
+            await self._pool.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM nsfw_registro WHERE guild_id = $1 AND impronta = $2)", guild_id, impronta
+            )
+        )
+
+    async def invio_del_messaggio(self, message_id: int) -> NsfwInvio | None:
+        r = await self._pool.fetchrow(
+            "SELECT guild_id, channel_id, message_id, fonte, id_fonte, impronta FROM nsfw_registro "
+            "WHERE message_id = $1",
+            message_id,
+        )
+        return None if r is None else NsfwInvio(**dict(r))
+
+    async def blocca(
+        self, impronta: str, fonte: str, id_fonte: str, motivo: str, guild_id: int | None, da: int | None
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO nsfw_bloccati (impronta, fonte, id_fonte, motivo, guild_id, segnalato_da)
+            VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (impronta) DO NOTHING
+            """,
+            impronta, fonte, id_fonte, motivo[:500], guild_id, da,
+        )
+
+    async def e_bloccato(self, fonte: str, id_fonte: str, impronta: str | None = None) -> bool:
+        return bool(
+            await self._pool.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM nsfw_bloccati WHERE (fonte = $1 AND id_fonte = $2) OR impronta = $3)",
+                fonte, id_fonte, impronta,
+            )
+        )
+
+
+def _get_pool() -> asyncpg.Pool:
+    from core.database import db
+
+    return db.pool
+
+
+nsfw_repo = NsfwRepository(pool_provider=_get_pool)

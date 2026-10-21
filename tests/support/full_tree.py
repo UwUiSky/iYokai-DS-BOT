@@ -51,3 +51,13 @@ async def connect_db_if_needed() -> bool:
     await db.connect()
     await db.run_migrations()
     return True
+
+
+async def build_separate_trees() -> list[commands.Bot]:
+    """I client con un albero proprio (istanza NSFW): comandi che non contano nei 100 del principale."""
+    from core.nsfw_bot import NsfwBot
+
+    bots = [NsfwBot()]
+    for b in bots:
+        await b.carica_cog()
+    return bots

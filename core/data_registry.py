@@ -521,6 +521,16 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
        esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),
        nota="un avviso allo staff, mai un ban automatico; 90 giorni; la copia non dice chi è l'altro account"),
+    # ---------------------------------------------------------------- istanza NSFW (NF-23)
+    _t("nsfw_config", "Scelte del server per l'istanza NSFW (attiva, lista permessa)", colonne_attore=("attivato_da",),
+       colonna_server="guild_id"),
+    _t("nsfw_autopost", "Pubblicazione automatica NSFW per canale", colonne_attore=("creato_da",),
+       colonna_server="guild_id"),
+    _t("nsfw_registro", "Registro dei contenuti NSFW pubblicati, con l'impronta dell'immagine",
+       colonna_server="guild_id", scadenza=Scadenza("inviato_il", 90), nota="nessuna persona; 90 giorni"),
+    _t("nsfw_bloccati", "Contenuti NSFW bloccati in tutti i server (impronta e id della fonte)",
+       colonne_attore=("segnalato_da",), colonna_server="guild_id", server="conserva",
+       nota="blocco di sicurezza comune: resta anche quando il server se ne va"),
 )
 # fmt: on
 

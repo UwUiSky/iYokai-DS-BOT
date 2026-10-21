@@ -188,9 +188,9 @@ class Config:
     # cartella del bot (MAIN_RADIO_LOCAL_FOLDER).
     LAVALINK_LOCAL_ROOT: str = field(default="")
 
-    # Token dell'istanza NSFW: facoltativo finché quell'istanza non
-    # esiste (nessuna parte del bot lo usa ancora). Ha un default,
-    # quindi sta dopo i campi obbligatori.
+    # Token dell'istanza NSFW (NF-23, core/nsfw_bot.py): facoltativo.
+    # Vuoto = l'istanza non parte. Ha un default, quindi sta dopo i
+    # campi obbligatori.
     NSFW_TOKEN: str = field(default="", repr=False)
 
     # Token di iYokai Mod (D15): facoltativo. Vuoto = log e sicurezza

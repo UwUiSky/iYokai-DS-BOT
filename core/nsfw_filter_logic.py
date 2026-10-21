@@ -153,7 +153,7 @@ class ElementoFonte:
     url_anteprima: str
 
 
-def _dominio_della_fonte(url: str, fonte: Fonte) -> bool:
+def dominio_della_fonte(url: str, fonte: Fonte) -> bool:
     parti = urlparse(url)
     host = (parti.hostname or "").lower()
     return parti.scheme == "https" and any(host == d or host.endswith("." + d) for d in fonte.domini)
@@ -166,7 +166,7 @@ def motivo_scarto(elemento: ElementoFonte, tag_permessi: frozenset[str] | set[st
         return "fonte non ammessa"
     if not elemento.verificato:
         return "la fonte non dichiara età e consenso per questo contenuto"
-    if not (_dominio_della_fonte(elemento.url_pagina, fonte) and _dominio_della_fonte(elemento.url_anteprima, fonte)):
+    if not (dominio_della_fonte(elemento.url_pagina, fonte) and dominio_della_fonte(elemento.url_anteprima, fonte)):
         return "indirizzo fuori dalla fonte"
     motivo = motivo_vietato(*elemento.tag, elemento.testo, elemento.autore)
     if motivo is not None:
