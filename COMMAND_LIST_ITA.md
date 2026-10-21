@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:18 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 491 comandi in 22 categorie.**
+**Totale: 508 comandi in 22 categorie.**
 
 ## Admin
 
@@ -495,17 +495,34 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 ## Ticket
 
 - **`/ticket add`** — Aggiungi un utente o un ruolo a questo ticket.
+- **`/ticket apri`** — Apri un ticket (lo staff anche per un utente o da un messaggio).
 - **`/ticket assistente`** — Risposta dell'assistente AI (per lo staff: bozza e smistamento).
+- **`/ticket azzera-pausa`** — Togli la pausa tra due ticket a un utente.
+- **`/ticket chiedi-chiusura`** — Chiedi all'utente se il ticket si può chiudere.
 - **`/ticket claim`** — Prendi in carico questo ticket.
 - **`/ticket close`** — Chiudi questo ticket.
 - **`/ticket dm-chiudi`** — Chiudi questa conversazione ModMail.
 - **`/ticket forceclose`** — Chiudi immediatamente questo ticket, senza attesa.
+- **`/ticket lista-nera`** — Utenti e ruoli che non possono aprire ticket.
+- **`/ticket note`** — Thread privato dello staff per parlare del ticket.
+- **`/ticket opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
+- **`/ticket opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
+- **`/ticket opzioni canale`** — Nome del canale e categorie di riserva.
+- **`/ticket opzioni chiusura`** — Conferma prima di chiudere e chi può chiudere.
+- **`/ticket opzioni limiti`** — Tetto di ticket aperti, pausa e ruoli esenti.
+- **`/ticket opzioni messaggi`** — DM all'utente e testi di presa e rilascio.
+- **`/ticket opzioni mostra`** — Tutte le opzioni di un pannello.
+- **`/ticket opzioni orari`** — Orari di apertura e cosa succede fuori orario.
+- **`/ticket opzioni permessi`** — Permessi dell'utente, osservatori, ruoli durante, squadra.
+- **`/ticket opzioni presa`** — Presa in carico: categoria, esclusiva, assegnazione automatica.
 - **`/ticket passa`** — Passa la presa in carico a un collega.
 - **`/ticket priority`** — Imposta la priorità di questo ticket.
 - **`/ticket remove`** — Rimuovi un utente o un ruolo da questo ticket.
 - **`/ticket rename`** — Rinomina questo ticket.
+- **`/ticket reperibile`** — Entra o esci dallo staff avvisato a ogni nuovo ticket.
 - **`/ticket rilascia`** — Lascia la presa in carico di questo ticket.
 - **`/ticket rispondi`** — Rispondi all'utente di questa conversazione ModMail.
+- **`/ticket sospendi`** — Sospendi l'apertura dei ticket (senza motivo: riprendi).
 - **`/ticket transcript`** — Ricevi il transcript senza chiudere il ticket.
 
 ## Utility

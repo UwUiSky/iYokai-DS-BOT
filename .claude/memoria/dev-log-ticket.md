@@ -14,8 +14,8 @@
   /ticket chiedi-chiusura (055, azione `ticket_richiesta_chiusura`), «Torna all'inizio» (040). /ticket = 21 figli.
 - D fatto: #139 AI in risposte.py + core/ticket_ai_logic.py (sollecito tradotto, scelta tra approvate, ruolo mod/admin);
   AI ferma = strada per parole. Test tests/test_ticket_ai.py.
-- Prossimo passo: E #62 residui (leggi issue 62, MODIFICHE_ESISTENTE «M 6.»), poi documenti
-  (SPEC §13.14–20 e §25.97/98, VERIFICA_LIVE, REGISTRO_RISOLTE, COMMAND_LIST) e smoke.
+- E: #62 già completa nel codice (M 6.1–6.9 con test): solo registro e SPEC. Documenti fatti.
+- Prossimo passo: smoke `python3 scripts/smoke.py --base main` (log in scratchpad), poi #142 se resta tempo.
 
 ## Fatto
 - Giri F1–r4: router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145, NF-13 (0100), NF-33 ModMail (0101),

@@ -45,7 +45,10 @@ scheduler persistente (core/scheduler.py, azione
 ricarica del cog; gli errori temporanei di Discord vengono riprovati
 dallo scheduler. /ticket forceclose elimina subito e funziona anche su
 un ticket già chiuso il cui canale è rimasto.
-Funzioni coperte: SPEC §13.2, §13.8–§13.13, §22.9–§22.12 (pannelli, modulo, chiusura
+Catalogo #120: le opzioni dei pannelli (core/ticket_opzioni_logic.py, comandi in
+opzioni.py) decidono apertura, nome, permessi, avvisi, presa in carico e chiusura;
+qui anche `/ticket note` e `/ticket chiedi-chiusura` (azione `ticket_richiesta_chiusura`).
+Funzioni coperte: SPEC §13.2–§13.20, §22.9–§22.12 (pannelli, modulo, chiusura
 automatica, voto, limite per utente), §8.18 (risposte standard, in risposte.py)
 """
 

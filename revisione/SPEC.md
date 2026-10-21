@@ -1192,16 +1192,16 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   select menu invece del bottone unico; retrocompatibile (nessuna
   categoria configurata -> bottone unico storico)
   → **Stato 04/10:** oltre 25 categorie, o con un'etichetta o un'emoji non valida, il menu si rompe per tutti (LIM-6).
-- `[~]` 13.3 Creazione canale privato
-  → **Stato 04/10:** doppio clic apre due ticket (REVIEW §4); la creazione spende una rinomina (LIM-3).
-- `[~]` 13.4 Claim
-  → **Stato 04/10:** nessun controllo staff (REVIEW §4).
-- `[~]` 13.5 Add / Remove utente
-  → **Stato 04/10:** nessun controllo staff (REVIEW §4).
-- `[~]` 13.6 Rename
-  → **Stato 04/10:** LIM-3.
-- `[~]` 13.7 Priorità
-  → **Stato 04/10:** nessun controllo staff (REVIEW §4).
+- `[x]` 13.3 Creazione canale privato
+  → **Stato 21/10:** corretto con #62 (M 6.3 canale nato col numero, M 6.4 un solo ticket aperto sotto blocco).
+- `[x]` 13.4 Claim
+  → **Stato 21/10:** solo staff (M 6.6); con le opzioni del pannello sposta, rende esclusiva e scrive il testo (§13.19).
+- `[x]` 13.5 Add / Remove utente
+  → **Stato 21/10:** solo staff (M 6.6), anche un ruolo intero (TKT-047).
+- `[x]` 13.6 Rename
+  → **Stato 21/10:** nome fino a 100 e limite delle rinomine (M 6.2, M 6.3).
+- `[x]` 13.7 Priorità
+  → **Stato 21/10:** solo staff (M 6.6).
 - `[x]` 13.8 Close
   → **Stato 04/10:** BUG-1 e BUG-30 corretti (`6c724d3`, `10d16f1`). (da verificare live)
 - `[x]` 13.9 Force close (`/ticket forceclose`, riservato allo staff
@@ -1214,6 +1214,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   permesso Read Message History) — stessa verifica già fatta per lo
   Spam Trap in `core/spam_trap_logic.py`
   → **Stato 04/10:** Correzione al testo: senza l'intent anche la lettura REST dà messaggi vuoti (REVIEW L8). L'intent ora è acceso: da riprovare (BUG-5).
+  → **Stato 21/10:** M 6.8 (transcript con testo, file sotto 10 MiB); il DM all'utente si può spegnere per pannello (TKT-075). (da verificare live)
 - `[x]` 13.11 Invio transcript nel canale log configurato (riusa
   `SETTING_LOG_CHANNEL` di §8) + DM all'utente che ha aperto il
   ticket (silenzioso se i DM sono chiusi)
@@ -1221,10 +1222,29 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 13.12 Statistiche ticket (`/ticket-stats [operatore]`) — prese
   in carico, chiuse, tempo medio di prima risposta (per operatore o
   per l'intero server)
-- `[~]` 13.13 Configurazione ruoli di supporto multipli
-  (`/ticket-support-role add|remove|list`) — combinati con il ruolo
+- `[x]` 13.13 Configurazione ruoli di supporto multipli
+  (`/gestione ticket ruolo-add|ruolo-remove|ruolo-list`) — combinati con il ruolo
   legacy singolo per retrocompatibilità, nessuna migrazione richiesta
-  → **Stato 04/10:** `remove` non toglie il ruolo storico (REVIEW §4).
+  → **Stato 21/10:** `remove` toglie anche il ruolo storico (M 6.7).
+- `[x]` 13.14 Apertura da comando (`/ticket apri`): pannello o motivo, lo staff anche per conto di un
+  utente, con il link di un messaggio citato e, a scelta, il suo autore (TKT-007/008/009; il menu col
+  tasto destro sarebbe un comando di primo livello in più: si usa il link). (da verificare live)
+- `[x]` 13.15 Regole di apertura per pannello e per server: tetto di ticket aperti, ruoli esenti, pausa
+  tra due aperture con azzeramento, regole di accesso per ruolo, lista nera, orari con fuso e
+  comportamento fuori orario, sospensione con motivo (TKT-017…024; `/ticket opzioni limiti|orari|accesso`,
+  `/ticket lista-nera`, `/ticket sospendi`, `/ticket azzera-pausa`; migrazione 0220). (da verificare live)
+- `[x]` 13.16 Canale: nome da modello (`{numero}` `{num}` `{utente}` `{nickname}`), categorie di riserva
+  sopra i 50 canali (TKT-025, 030; `/ticket opzioni canale`).
+- `[x]` 13.17 Avvisi all'apertura: ruoli, `@here`, staff reperibile (`/ticket reperibile`), ping cancellato,
+  primo messaggio fissato, DM di apertura e di chiusura (TKT-033, 037, 038, 039; `/ticket opzioni avvisi|messaggi`). (da verificare live)
+- `[x]` 13.18 Permessi: permessi tolti all'utente, ruoli osservatori, ruoli dati durante il ticket e tolti
+  alla chiusura, squadra di staff per pannello (TKT-041…044; `/ticket opzioni permessi`).
+- `[x]` 13.19 Presa in carico: categoria dei presi, esclusiva (gli altri non scrivono o non vedono),
+  al primo dello staff che risponde, testi di presa e rilascio, thread privato delle note
+  (`/ticket note`), bottone «Torna all'inizio» (TKT-028, 034, 040, 050, 052, 053; `/ticket opzioni presa`). (da verificare live)
+- `[x]` 13.20 Chiusura: conferma, chi può chiudere, richiesta all'utente con Accetta/Rifiuta e chiusura
+  dopo N ore (`/ticket chiedi-chiusura`, azione `ticket_richiesta_chiusura`), transcript in DM a scelta
+  (TKT-054, 055, 057, 075; `/ticket opzioni chiusura|messaggi`). (da verificare live)
 
 ## §14 UTILITY & SERVER MANAGEMENT
 
@@ -2225,12 +2245,18 @@ di quel file.
   **Dati personali (giro 14/10, migrazione 0105):** la riga ricorda `user_id` di chi aveva scritto (esportazione e cancellazione
   dati nel registro); titolo, parole e corpo non tengono menzioni, e-mail, link, numeri lunghi né il nome dell'utente
   (`{utente}` nel corpo, sostituito al momento dell'uso); se dopo la risposta pronta l'utente scrive ancora, lo staff è chiamato.
-- `[~]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
+  → **Stato 21/10 (parte con l'AI):** se le parole non bastano e l'AI è accesa nel server, l'AI sceglie tra le sole risposte
+  approvate (`core/ticket_ai_logic.py`, porta `core/ai_servizio.py`); non scrive testo libero. Restano: parole chiave proposte
+  dall'AI e archivio durevole dei file.
+- `[x]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)
   → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/admin ticket sollecito`), domanda in
   italiano, risposta standard se c'è, altrimenti chiama il ruolo scelto per il pannello (o i ruoli di supporto). Resta con
   l'AI: lingua dell'utente e scelta tra moderatore e amministratore secondo il caso.
+  → **Stato 21/10 (parte con l'AI):** sollecito tradotto nella lingua dell'utente (senza AI: italiano o italiano e inglese);
+  se il pannello non ha un ruolo scelto, l'AI dice se chiamare il ruolo moderatore o amministratore del bot (senza AI:
+  i ruoli di supporto). (da verificare live)
 - `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i
   finali, salvate e riusate in ogni server con lo stesso tema
   (AI-R-106)
