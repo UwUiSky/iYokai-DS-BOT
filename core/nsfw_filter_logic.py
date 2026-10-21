@@ -85,7 +85,7 @@ _ESATTE: dict[str, frozenset[str]] = {
     "minori": frozenset({"cp", "pthc", "ptsc", "kdv", "jb", "kid", "kids", "yo", "lil", "boy", "boys", "minore"}),
     "animali": frozenset({"zoo", "dog", "dogs", "cane"}),
     "disegnati o generati (età non dichiarabile)": frozenset({"ai", "3d", "cgi", "sfm", "futa", "toons"}),
-    "violenza o consenso": frozenset({"mom", "dad", "mamma", "papa", "kill"}),
+    "violenza o consenso": frozenset({"mom", "dad", "mamma", "papa", "kill", "cnc"}),
 }
 # Cercate anche a lettere unite, per chi scrive "l.o.l.i" o "s c h o o l g i r l".
 _COMPATTE = (
@@ -95,11 +95,57 @@ _COMPATTE = (
 # "16yo", "15 anni", "17 years": età sotto i 18 scritte in cifre.
 _ETA_MINORE = re.compile(r"(?<!\d)(?:[1-9]|1[0-7])\s*(?:y\s*o|yrs?|years?|anni|anno|ans|age|eta)\b")
 _LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"})
+# Lettere latine che NFKD non scompone.
+_LATINE = str.maketrans({"ß": "ss", "æ": "ae", "œ": "oe", "ø": "o", "ł": "l", "đ": "d", "ð": "d", "þ": "th", "ı": "i"})
+# Cercate DENTRO ogni parola, per i tag composti ("hotteen", "highschool"). Sbagliano per eccesso
+# ("canteen"): va bene così.
+_INFISSI: dict[str, tuple[str, ...]] = {
+    "minori": (
+        "teen", "loli", "shota", "child", "underag", "jailbait", "pedo", "paedo", "school", "kiddo", "kiddi",
+        "nymphet", "pubescen", "minorenn", "bambin", "ragazzin", "liceal", "colegial", "jovencit", "babysit",
+        "cheerlead", "daughter", "young", "youth", "virgin", "innocen", "barely", "petite", "ageplay",
+        "littlespace", "ddlg", "abdl", "sedicenn", "diciassettenn", "quindicenn", "quattordicenn", "tredicenn",
+        "dodicenn", "undicenn",
+    ),
+    "violenza o consenso": (
+        "rape", "rapist", "noncon", "stupr", "incest", "snuff", "necro", "tortur", "kidnap", "drugged",
+        "unconscious", "passedout", "stepsis", "stepbro", "stepdau", "stepson", "stepmom", "stepdad",
+    ),
+    "persone reali senza consenso": (
+        "spycam", "hiddencam", "voyeur", "upskirt", "downblouse", "deepfake", "faceswap", "nudify", "revenge",
+    ),
+    "animali": ("bestial", "zoophil"),
+    "disegnati o generati (età non dichiarabile)": (
+        "hentai", "cartoon", "doujin", "futanari", "aigenerat", "stablediffus", "midjourney",
+    ),
+}
+ILLEGGIBILE = "testo non controllabile (lettere o cifre non latine)"
 
 
 def _senza_accenti(testo: str) -> str:
+    """NFKD, senza accenti né caratteri invisibili (larghezza zero, trattino morbido), minuscolo."""
     decomposto = unicodedata.normalize("NFKD", testo)
-    return "".join(c for c in decomposto if not unicodedata.combining(c)).lower()
+    tenuti = "".join(c for c in decomposto if unicodedata.category(c) not in ("Mn", "Me", "Cf"))
+    return tenuti.lower().translate(_LATINE)
+
+
+def _illeggibile(testo: str) -> bool:
+    """Lettere o cifre non latine (cirillico, greco, cifre arabe…): la lista non le può giudicare."""
+    return any(not c.isascii() and unicodedata.category(c)[0] in "LN" for c in testo)
+
+
+def _con_lettere_unite(parole: list[str]) -> list[str]:
+    """Le parole, più le sequenze di lettere singole unite ("t e e n" -> "teen")."""
+    uscita = list(parole)
+    corsa: list[str] = []
+    for p in [*parole, ""]:
+        if len(p) == 1:
+            corsa.append(p)
+            continue
+        if len(corsa) > 1:
+            uscita.append("".join(corsa))
+        corsa = []
+    return uscita
 
 
 def normalizza(testo: str) -> str:
@@ -113,16 +159,23 @@ def motivo_vietato(*testi: str) -> str | None:
     for testo in testi:
         if not testo:
             continue
-        grezze = re.sub(r"[^a-z0-9]+", " ", _senza_accenti(testo)).split()
+        pulito = _senza_accenti(testo)
+        if _illeggibile(pulito):
+            return ILLEGGIBILE
+        grezze = re.sub(r"[^a-z0-9]+", " ", pulito).split()
         if _ETA_MINORE.search(" ".join(grezze)):
             return "minori"
-        parole = normalizza(testo).split()
-        compatto = "".join(parole)
+        parole = _con_lettere_unite(normalizza(testo).split())
+        grezze = _con_lettere_unite(grezze)
+        compatto = "".join(normalizza(testo).split())
         for categoria, prefissi in _PREFISSI.items():
             if any(p.startswith(pref) for p in parole for pref in prefissi):
                 return categoria
         for categoria, esatte in _ESATTE.items():
             if any(p in esatte for p in (*parole, *grezze)):
+                return categoria
+        for categoria, infissi in _INFISSI.items():
+            if any(i in p for p in (*parole, *grezze) for i in infissi):
                 return categoria
         if any(c in compatto for c in _COMPATTE):
             return "minori"
@@ -135,7 +188,7 @@ def valida_tag(testo: str) -> tuple[str | None, str | None]:
     minimo, massimo = LUNGHEZZA_TAG
     if not (minimo <= len(tag) <= massimo) or not _TAG_VALIDO.match(tag):
         return None, f"Il tag deve avere da {minimo} a {massimo} caratteri: lettere, cifre e spazi."
-    motivo = motivo_vietato(tag)
+    motivo = motivo_vietato(testo, tag)
     if motivo is not None:
         return None, f"Questo tag è nella lista vietata fissa ({motivo}) e non si può permettere."
     return tag, None

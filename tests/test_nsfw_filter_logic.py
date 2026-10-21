@@ -143,3 +143,38 @@ def test_leggi_redgifs():
     assert elementi[0].verificato and not elementi[1].verificato
     assert elementi[0].url_pagina == "https://www.redgifs.com/watch/verdeacqua"
     assert f.leggi_redgifs({"gifs": None}) == [] and f.leggi_redgifs([]) == []
+
+
+# Rilievi del cacciatore-bug (r9nsfw): la lista vietata si aggirava.
+@pytest.mark.parametrize(
+    "testo",
+    [
+        "lоli",  # "o" cirillica
+        "schоolgirl",
+        "te​en",  # spazio a larghezza zero
+        "t­een",  # trattino morbido
+        "hotteen",  # tag composti
+        "amateurteen",
+        "highschool",
+        "t-e-e-n",
+        "t_e_e_n",
+        "kiddo",
+        "nymphet",
+        "prepubescent",
+        "sixteen",
+        "sedicenne",
+        "١٦yo",  # cifre arabe
+    ],
+)
+def test_lista_vietata_non_si_aggira(testo):
+    assert f.motivo_vietato(testo) is not None
+
+
+@pytest.mark.parametrize("testo", ["rapist", "cnc"])
+def test_sinonimi_di_violenza(testo):
+    assert f.motivo_vietato(testo) == "violenza o consenso"
+
+
+def test_tag_permesso_con_caratteri_nascosti_rifiutato():
+    assert f.valida_tag("te​en")[0] is None
+    assert f.valida_tag("lоli")[0] is None
