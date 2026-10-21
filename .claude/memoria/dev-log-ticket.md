@@ -12,8 +12,10 @@
   /ticket = 19 figli, 4329/6800. TKT-009 come `/ticket apri messaggio:<link>` (nessun menu contestuale nel bot).
 - C fatto: presa (028/050/052/053), chiusura (054/057), fine ticket (039/043/075), /ticket note (034),
   /ticket chiedi-chiusura (055, azione `ticket_richiesta_chiusura`), «Torna all'inizio» (040). /ticket = 21 figli.
-- Prossimo passo: D = #139 parte AI (core/ai_servizio.py; leggi issue 139), poi E #62 residui, poi documenti
-  (SPEC §13.14–20, VERIFICA_LIVE, REGISTRO_RISOLTE, COMMAND_LIST) e smoke.
+- D fatto: #139 AI in risposte.py + core/ticket_ai_logic.py (sollecito tradotto, scelta tra approvate, ruolo mod/admin);
+  AI ferma = strada per parole. Test tests/test_ticket_ai.py.
+- Prossimo passo: E #62 residui (leggi issue 62, MODIFICHE_ESISTENTE «M 6.»), poi documenti
+  (SPEC §13.14–20 e §25.97/98, VERIFICA_LIVE, REGISTRO_RISOLTE, COMMAND_LIST) e smoke.
 
 ## Fatto
 - Giri F1–r4: router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145, NF-13 (0100), NF-33 ModMail (0101),

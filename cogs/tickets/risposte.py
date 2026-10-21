@@ -12,9 +12,11 @@ Parte senza AI di #139 (AI-R-104, AI-R-105), accesa per pannello:
    cosa ha bisogno; se la richiesta non ha una risposta standard, chiama il ruolo scelto
    per il pannello (o i ruoli di supporto).
 
-Funziona anche con l'AI ferma: la ricerca è per parole (core/ticket_standard_logic.py).
-La parte con l'AI (lingua dell'utente, scelta migliore, ruolo «giusto» secondo il caso)
-si aggancia dopo (dev-ai). Il timer passa dallo scheduler (azione `ticket_sollecito`).
+Con l'AI accesa nel server (core/ai_servizio.py, la porta unica): sollecito nella lingua
+dell'utente, scelta tra le risposte approvate quando le parole non bastano, ruolo da
+chiamare (moderatore o amministratore). L'AI non scrive mai testo libero all'utente
+(core/ticket_ai_logic.py). Con l'AI ferma resta tutto per parole
+(core/ticket_standard_logic.py). Il timer passa dallo scheduler (azione `ticket_sollecito`).
 Comandi: `/admin ticket standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`.
 Funzioni coperte: SPEC §25.97, §25.98
 """
@@ -36,7 +38,10 @@ from cogs.tickets.tickets import (
     _support_role_ids,
 )
 from core import channel_router as router
+from core import ticket_ai_logic as ai_logica
 from core import ticket_standard_logic as logica
+from core.ai_servizio import AINonDisponibile, RichiestaAI, servizio_ai
+from core.command_access import SETTING_ADMIN_ROLE, SETTING_MOD_ROLE
 from core.channel_router import TIPO_EVENTI
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -359,8 +364,90 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 except discord.HTTPException:
                     logger.warning("Risposta standard non inviata nel ticket %s", message.channel.id)
                 return
+            # Le parole non bastano: l'AI (se accesa nel server) sceglie tra le risposte approvate.
+            risposta = await self._scelta_ai(message, approvate) if approvate else None
+            if risposta is not None and await ticket_repo.mark_standard_reply(message.channel.id, risposta.id):
+                await ticket_standard_repo.usata(risposta.id)
+                try:
+                    await message.channel.send(
+                        embed=embed_risposta_automatica(risposta, ticket.user_id), reference=message,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                except discord.HTTPException:
+                    logger.warning("Risposta standard non inviata nel ticket %s", message.channel.id)
+                return
         if ticket.sollecito_at is not None:
             await self._chiama_lo_staff(message.channel, ticket, panel)
+
+    # ---------------------------------------------------------------- parte con l'AI (#139)
+    @staticmethod
+    async def _chiedi_ai(richiesta: RichiestaAI) -> str | None:
+        """Il testo dell'AI, o None se è ferma, spenta nel server o in errore: chi chiama va avanti senza."""
+        try:
+            return (await servizio_ai().richiedi(richiesta)).testo
+        except AINonDisponibile:
+            return None
+        except Exception:  # noqa: BLE001 - un errore dell'AI non ferma mai un ticket
+            logger.warning("Richiesta AI %s non riuscita.", richiesta.funzione, exc_info=True)
+            return None
+
+    async def _scelta_ai(self, message: discord.Message, approvate: list[RispostaStandard]) -> RispostaStandard | None:
+        elenco = ai_logica.elenco_per_scelta([(r.id, r.title, r.keywords) for r in approvate])
+        testo = await self._chiedi_ai(RichiestaAI(
+            user_id=message.author.id, funzione="ticket_standard", tipo="giudizio",
+            testo=(message.content or "")[: ai_logica.MAX_CARATTERI_RICHIESTA],
+            guild_id=message.guild.id, channel_id=message.channel.id,
+            istruzioni=ai_logica.ISTRUZIONI_SCEGLI.format(elenco=elenco),
+            messaggi_utenti=True, riusa=False, conta_utente=False,
+        ))
+        numero = ai_logica.leggi_scelta(testo, {r.id for r in approvate})
+        return next((r for r in approvate if r.id == numero), None)
+
+    @staticmethod
+    async def _testi_utente(channel, user_id: int, limite: int = 20) -> list[str]:
+        """I messaggi dell'utente e le risposte del modulo (campi del benvenuto) nel ticket."""
+        testi: list[str] = []
+        try:
+            async for m in channel.history(limit=limite, oldest_first=True):
+                if m.author.id == user_id and m.content:
+                    testi.append(m.content)
+                elif m.author.bot and m.embeds:
+                    testi.extend(f.value for f in m.embeds[0].fields if f.value)
+        except discord.HTTPException:
+            return []
+        return testi
+
+    async def _ruolo_secondo_ai(self, channel, ticket) -> int | None:
+        """Moderatore o amministratore secondo la richiesta; None se l'AI non decide (si chiama il supporto)."""
+        testi = [t for t in await self._testi_utente(channel, ticket.user_id) if t]
+        if not testi:
+            return None
+        esito = ai_logica.leggi_ruolo(await self._chiedi_ai(RichiestaAI(
+            user_id=ticket.user_id, funzione="ticket_ruolo", tipo="giudizio",
+            testo="\n".join(testi)[: ai_logica.MAX_CARATTERI_RICHIESTA],
+            guild_id=ticket.guild_id, channel_id=channel.id, istruzioni=ai_logica.ISTRUZIONI_RUOLO,
+            messaggi_utenti=True, riusa=False, conta_utente=False,
+        )))
+        if esito is None:
+            return None
+        role_id = await db.get_guild_setting(ticket.guild_id, SETTING_ADMIN_ROLE if esito == "admin" else SETTING_MOD_ROLE)
+        guild = getattr(channel, "guild", None)
+        return int(role_id) if role_id and guild is not None and guild.get_role(int(role_id)) is not None else None
+
+    async def _testo_sollecito(self, channel, ticket) -> str:
+        """AI-R-105: il sollecito nella lingua dell'utente; senza AI in italiano o inglese."""
+        guild = getattr(channel, "guild", None)
+        predefinita = str(getattr(guild, "preferred_locale", "") or "it")[:2]
+        lingua = ai_logica.lingua_utente(await self._testi_utente(channel, ticket.user_id), predefinita)
+        modello = ai_logica.SOLLECITO_LOCALE.get(lingua)
+        if modello is None:
+            originale = ai_logica.SOLLECITO_LOCALE["it"]
+            modello = ai_logica.traduzione_valida(originale, await self._chiedi_ai(RichiestaAI(
+                user_id=ticket.user_id, funzione="ticket_sollecito", tipo="traduzione", testo=originale,
+                guild_id=ticket.guild_id, channel_id=channel.id,
+                istruzioni=ai_logica.istruzioni_traduzione(lingua), lingua=lingua, conta_utente=False,
+            ))) or ai_logica.sollecito_locale(lingua)
+        return modello.replace("{utente}", f"<@{ticket.user_id}>")[:2000]
 
     async def _chiama_lo_staff(self, channel, ticket, panel: PannelloTicket, *, dopo_standard: bool = False) -> None:
         if not await ticket_repo.mark_escalation(channel.id):
@@ -370,6 +457,9 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         # Mai @everyone e mai un ruolo cancellato: in quel caso si chiamano i ruoli di supporto.
         if scelto and (scelto == ticket.guild_id or (guild is not None and guild.get_role(scelto) is None)):
             scelto = None
+        if not scelto:
+            # Nessun ruolo scelto dall'admin: l'AI dice se serve un moderatore o un amministratore.
+            scelto = await self._ruolo_secondo_ai(channel, ticket)
         ruoli = [scelto] if scelto else (await _support_role_ids(ticket.guild_id))[:MENZIONI_MASSIME]
         ruoli = [r for r in ruoli if r != ticket.guild_id]
         menzioni = " ".join(f"<@&{r}>" for r in ruoli)
@@ -412,8 +502,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             return
         try:
             await channel.send(
-                f"<@{ticket.user_id}> nessuno dello staff ha ancora risposto. "
-                "Di cosa hai bisogno? Scrivilo qui: cerco una risposta già pronta, altrimenti avviso lo staff.",
+                await self._testo_sollecito(channel, ticket),
                 allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=ticket.user_id)]),
             )
         except discord.HTTPException:
