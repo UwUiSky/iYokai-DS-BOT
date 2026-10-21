@@ -29,6 +29,17 @@ from datetime import datetime, timedelta, timezone
 # Sta qui (e non nel cog) perché serve anche a /unban.
 BAN_ACTION_TYPE = "spam_trap_ban"
 
+# SIC-040: cosa fa la trappola a chi ci scrive. "ban" (di base) è la
+# sequenza completa; le altre cancellano il messaggio e fanno solo quello
+# che dicono. "staff": il caso va nel canale dei log con i bottoni Ban e Kick.
+SETTING_PUNIZIONE = "spam_trap_punizione"
+PUNIZIONI = ("ban", "kick", "timeout", "cancella", "staff")
+PUNIZIONE_PREDEFINITA = "ban"
+# Timeout dato dalla trappola (punizione "timeout").
+TIMEOUT_TRAPPOLA_SECONDI = 86400
+KICK_ACTION_TYPE = "spam_trap_kick"
+TIMEOUT_ACTION_TYPE = "spam_trap_timeout"
+
 # Un utente può fare appello al ban al massimo una volta ogni 24 ore,
 # per evitare che qualcuno spammi il bot in DM cercando di forzare
 # l'attenzione dello staff.

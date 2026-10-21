@@ -44,6 +44,7 @@ from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.backup_permessi_logic import LIVELLI as LIVELLI_BACKUP, SETTING_LIVELLO as SETTING_LIVELLO_BACKUP
 from core.premium import registry
 from core.moderation_opzioni import AZIONI_CON_DM, MAX_TIMEOUT, MIN_TIMEOUT, SETTING_RUOLI_IMMUNI
+from core.spam_trap_logic import PUNIZIONI as PUNIZIONI_TRAPPOLA
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
 
@@ -104,6 +105,7 @@ SETTINGS_SCHEMA = {
     "mod_timeout_predefinito": "durata_timeout",
     "mod_dm_spenti": "azioni_dm",
     "mod_ruoli_immuni": "lista_id",
+    "spam_trap_punizione": "punizione_trappola",
 }
 
 
@@ -167,6 +169,7 @@ CONTROLLI_PER_TIPO = {
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
     "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),
+    "punizione_trappola": (lambda valore: valore in PUNIZIONI_TRAPPOLA, ", ".join(PUNIZIONI_TRAPPOLA)),
     "durata_timeout": (_intero_tra(MIN_TIMEOUT, MAX_TIMEOUT), "secondi tra 60 e 2419200 (28 giorni)"),
     "azioni_dm": (
         lambda valore: isinstance(valore, list) and all(v in AZIONI_CON_DM for v in valore),

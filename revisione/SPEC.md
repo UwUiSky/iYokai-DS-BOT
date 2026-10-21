@@ -549,6 +549,10 @@ Totale voci: **494**.
   avvisi su Bannare membri, thread e lettura; transcript con tetto di 40
   messaggi; un appello accolto toglie anche i ban propagati; se la sequenza
   salta la propagazione non resta orfana.
+  → **Stato 21/10 (SIC-040, r9):** `/security spamtrap punizione:` ban (di base,
+  sequenza completa), kick (DM prima), timeout di un giorno, solo cancellazione,
+  o «decide lo staff» (log con bottoni Ban e Kick persistenti, permesso e
+  gerarchia controllati, caso a nome di chi preme).
   - `[x]` `/setup` con selezione canale trappola e canale log — via
     parametri `discord.TextChannel` opzionali (rendono nativamente
     come selettore canale di Discord, non un menù a tendina

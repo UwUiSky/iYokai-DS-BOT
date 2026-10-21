@@ -34,11 +34,14 @@ I bottoni dell'appello (Unban, Reject, Reply) sono persistenti: il
 loro custom_id porta server, caso e utente, e setup() li registra con
 `bot.add_dynamic_items`. Rispondono anche dopo un riavvio del bot.
 
+Punizione a scelta (SIC-040, `/security spamtrap punizione:`): il ban è
+la sequenza qui sopra; kick, timeout, solo cancellazione o «decide lo
+staff» cancellano il messaggio e fanno solo quello, senza ban globale né
+purge. Con «decide lo staff» il caso va nei log con i bottoni Ban e Kick,
+persistenti come quelli dell'appello.
+
 Funzioni coperte: SPEC §7.3, §23 (NF-30: un DM di chi ha un ban manuale riceve il bottone di appello)
 """
-
-# DA FARE (issue #101, fase F13): NF-30, Appello per i ban normali. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -46,7 +49,7 @@ import asyncio
 import io
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -71,8 +74,16 @@ from core.premium import PremiumModule, registry, requires_module
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
 from core.security_access import SETTING_STAFF_ROLES, is_staff_exempt, premium_sbloccato
+from core.permissions import can_moderate
+from cogs.moderation._shared import actor_from_member, delete_dm, try_dm_message
 from core.spam_trap_logic import (
     BAN_ACTION_TYPE,
+    KICK_ACTION_TYPE,
+    PUNIZIONE_PREDEFINITA,
+    PUNIZIONI,
+    SETTING_PUNIZIONE,
+    TIMEOUT_ACTION_TYPE,
+    TIMEOUT_TRAPPOLA_SECONDI,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
     can_appeal,
     format_deleted_channels,
@@ -245,6 +256,104 @@ class AppealButton(discord.ui.DynamicItem[discord.ui.Button], template=MODELLO_I
             await getattr(vista, self.azione)(interaction)
         except Exception as errore:
             await vista.on_error(interaction, errore, self)
+
+
+# SIC-040, punizione «decide lo staff»: bottoni Ban e Kick nel canale dei log.
+MODELLO_ID_STAFF = r"spamtrap_staff:(?P<azione>ban|kick):(?P<guild_id>\d+):(?P<user_id>\d+)"
+_BOTTONI_STAFF = {
+    "ban": ("Ban", discord.ButtonStyle.danger, "ban_members"),
+    "kick": ("Kick", discord.ButtonStyle.secondary, "kick_members"),
+}
+MOTIVO_STAFF = "Spam trap: decisione dello staff"
+
+
+class StaffDecisionButton(discord.ui.DynamicItem[discord.ui.Button], template=MODELLO_ID_STAFF):
+    """Bottone Ban o Kick sul caso di chi ha scritto nella trappola. Vive oltre il riavvio."""
+
+    def __init__(self, azione: str, guild_id: int, user_id: int, *, disabled: bool = False) -> None:
+        etichetta, stile, _ = _BOTTONI_STAFF[azione]
+        super().__init__(
+            discord.ui.Button(
+                label=etichetta, style=stile, disabled=disabled,
+                custom_id=f"spamtrap_staff:{azione}:{guild_id}:{user_id}",
+            )
+        )
+        self.azione = azione
+        self.guild_id = guild_id
+        self.user_id = user_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match):
+        return cls(match["azione"], int(match["guild_id"]), int(match["user_id"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        return await StaffDecisionView(self.guild_id, self.user_id).interaction_check(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await StaffDecisionView(self.guild_id, self.user_id).decidi(interaction, self.azione)
+
+
+class StaffDecisionView(BaseView):
+    """I due bottoni della decisione. Persistente (timeout=None, custom_id fissi)."""
+
+    def __init__(self, guild_id: int, user_id: int, *, disabled: bool = False) -> None:
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        self.user_id = user_id
+        for azione in _BOTTONI_STAFF:
+            self.add_item(StaffDecisionButton(azione, guild_id, user_id, disabled=disabled))
+
+    async def decidi(self, interaction: discord.Interaction, azione: str) -> None:
+        guild = interaction.guild
+        permesso = _BOTTONI_STAFF[azione][2]
+        if not isinstance(interaction.user, discord.Member) or not getattr(
+            interaction.user.guild_permissions, permesso
+        ):
+            await interaction.response.send_message(
+                "Non hai il permesso per questa azione.", ephemeral=True
+            )
+            return
+        await interaction.response.defer()
+        membro = guild.get_member(self.user_id)
+        if membro is not None:
+            consentito, motivo = can_moderate(
+                actor_from_member(interaction.user), actor_from_member(membro),
+                bot_top_role_position=guild.me.top_role.position,
+            )
+            if not consentito:
+                await interaction.followup.send(motivo, ephemeral=True)
+                return
+        elif azione == "kick":
+            await interaction.followup.send("L'utente non è più nel server.", ephemeral=True)
+            return
+        try:
+            if azione == "ban":
+                await bot_roles.banna(
+                    guild, membro or discord.Object(id=self.user_id),
+                    reason=MOTIVO_STAFF, delete_message_seconds=86400,
+                )
+            else:
+                await bot_roles.espelli(membro, reason=MOTIVO_STAFF)
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Non ci sono riuscito: controlla i miei permessi e la posizione del mio ruolo.",
+                ephemeral=True,
+            )
+            return
+        numero = await moderation_repo.create_case(
+            guild_id=guild.id, user_id=self.user_id, moderator_id=interaction.user.id,
+            action_type=azione, reason=MOTIVO_STAFF,
+        )
+        try:
+            await interaction.edit_original_response(
+                content=f"Deciso da {interaction.user.mention}: **{azione}** (caso #{numero}).",
+                view=StaffDecisionView(self.guild_id, self.user_id, disabled=True),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            pass
 
 
 class AppealActionsView(BaseView):
@@ -420,6 +529,16 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         log_channel="Canale dei log (se non scelto: quello già configurato, o uno nuovo)",
         staff_role_add="SEC-8b: ruolo da esentare dal ban della trappola (aggiunto alla lista)",
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
+        punizione="Cosa fare a chi scrive nella trappola (vuoto: resta com'è; di base ban)",
+    )
+    @app_commands.choices(
+        punizione=[
+            app_commands.Choice(name="Ban (sequenza completa)", value="ban"),
+            app_commands.Choice(name="Kick", value="kick"),
+            app_commands.Choice(name="Timeout di un giorno", value="timeout"),
+            app_commands.Choice(name="Solo cancellare il messaggio", value="cancella"),
+            app_commands.Choice(name="Decide lo staff (bottoni nei log)", value="staff"),
+        ]
     )
     @requires_module(MODULE_SPAM_TRAP)
     async def spamtrap_setup(
@@ -429,6 +548,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         log_channel: discord.TextChannel | None = None,
         staff_role_add: discord.Role | None = None,
         staff_role_remove: discord.Role | None = None,
+        punizione: app_commands.Choice[str] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -516,9 +636,14 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 guild.id, SETTING_STAFF_ROLES, ruoli_staff, changed_by=interaction.user.id
             )
 
+        if punizione is not None:
+            await db.set_guild_setting(
+                guild.id, SETTING_PUNIZIONE, punizione.value, changed_by=interaction.user.id
+            )
+        scelta = await self._punizione(guild.id)
         messaggio = (
             f"Spam Trap configurato: trappola in {trap_channel.mention}, "
-            f"log in {log_channel.mention}."
+            f"log in {log_channel.mention}. Punizione: **{scelta}**."
         )
         for avviso in _permessi_mancanti(guild, trap_channel, log_channel):
             messaggio += f"\n⚠️ {avviso}"
@@ -623,6 +748,10 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
     async def _staff_role_ids(self, guild_id: int) -> list[int]:
         return await db.get_guild_setting(guild_id, SETTING_STAFF_ROLES, default=[])
 
+    async def _punizione(self, guild_id: int) -> str:
+        valore = await db.get_guild_setting(guild_id, SETTING_PUNIZIONE, PUNIZIONE_PREDEFINITA)
+        return valore if valore in PUNIZIONI else PUNIZIONE_PREDEFINITA
+
     async def _handle_trigger(self, message: discord.Message) -> None:
         """
         Un solo giro per utente: chi scrive cinque messaggi di fila nella
@@ -635,6 +764,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         if chiave in self._in_corso or (
             recente is not None and (adesso - recente).total_seconds() < SECONDI_IGNORA_STESSO_UTENTE
         ):
+            # Chi resta nel server e riscrive: il messaggio sparisce, senza un secondo caso.
+            if await self._punizione(message.guild.id) in ("cancella", "staff"):
+                await self._cancella_trigger(message)
             return
         self._in_corso.add(chiave)
         try:
@@ -659,6 +791,11 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                     user.id,
                 )
                 return
+
+        punizione = await self._punizione(guild.id)
+        if punizione != "ban" and isinstance(user, discord.Member):
+            await self._punizione_leggera(message, punizione)
+            return
 
         now = datetime.now(timezone.utc)
 
@@ -775,6 +912,77 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             joined_at=joined_at,
             banned_at=banned_at,
         )
+
+    async def _cancella_trigger(self, message: discord.Message) -> None:
+        try:
+            await bot_roles.cancella_messaggio(message)
+        except discord.HTTPException:
+            logger.warning("Spam Trap: non riesco a cancellare il messaggio %s.", message.id)
+
+    async def _punizione_leggera(self, message: discord.Message, punizione: str) -> None:
+        """
+        SIC-040: kick, timeout, solo cancellazione o decisione dello staff.
+        Il testo si legge prima di cancellare; il DM del kick parte prima
+        del kick e si cancella se il kick fallisce.
+        """
+        guild, membro = message.guild, message.author
+        testo = message.content or ""
+        await self._cancella_trigger(message)
+        numero = None
+        try:
+            if punizione == "kick":
+                dm = await try_dm_message(
+                    membro,
+                    discord.Embed(
+                        description=f"You have been kicked from **{guild.name}** for writing in a "
+                        "restricted security channel.",
+                        color=discord.Color.orange(),
+                    ),
+                )
+                try:
+                    await bot_roles.espelli(membro, reason="Spam trap triggered")
+                except discord.HTTPException:
+                    await delete_dm(dm)
+                    raise
+            elif punizione == "timeout":
+                await bot_roles.isola(
+                    membro, timedelta(seconds=TIMEOUT_TRAPPOLA_SECONDI), reason="Spam trap triggered"
+                )
+        except discord.HTTPException:
+            logger.warning("Spam Trap: %s di %s non riuscito nel server %s.", punizione, membro.id, guild.id)
+            punizione = f"{punizione} non riuscito (permessi?)"
+        else:
+            if punizione in ("kick", "timeout"):
+                numero = await moderation_repo.create_case(
+                    guild_id=guild.id, user_id=membro.id, moderator_id=self.bot.user.id,
+                    action_type=KICK_ACTION_TYPE if punizione == "kick" else TIMEOUT_ACTION_TYPE,
+                    reason="Triggered the spam trap channel",
+                    duration_seconds=TIMEOUT_TRAPPOLA_SECONDI if punizione == "timeout" else None,
+                )
+        self._banditi_da_poco.set((guild.id, membro.id), datetime.now(timezone.utc))
+        await self._send_light_log(guild, membro, punizione, testo, numero)
+
+    async def _send_light_log(
+        self, guild: discord.Guild, user: discord.abc.User, punizione: str, testo: str, numero: int | None
+    ) -> None:
+        config = await spam_trap_repo.get_config(guild.id)
+        canale = guild.get_channel(config.log_channel_id) if config.log_channel_id else None
+        if not isinstance(canale, discord.TextChannel):
+            return
+        embed = discord.Embed(title="🚨 Spam Trap Triggered", color=discord.Color.orange())
+        embed.add_field(name="User", value=f"{user.mention} ({user.id})", inline=False)
+        embed.add_field(name="Action", value=punizione[:1024], inline=True)
+        if numero is not None:
+            embed.add_field(name="Case", value=f"#{numero}", inline=True)
+        embed.add_field(name="Message", value=(testo or "(no text)")[:1024], inline=False)
+        vista = StaffDecisionView(guild.id, user.id) if punizione == "staff" else None
+        try:
+            if vista is not None:
+                await canale.send(embed=embed, view=vista, allowed_mentions=discord.AllowedMentions.none())
+            else:
+                await canale.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        except discord.HTTPException:
+            logger.warning("Spam Trap: log non inviato nel server %s.", guild.id)
 
     async def _send_ban_dm(self, guild: discord.Guild, user: discord.abc.User) -> bool:
         embed = discord.Embed(
@@ -1228,4 +1436,4 @@ async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(SpamTrapCog(bot))
     # I bottoni degli appelli già aperti devono rispondere anche dopo
     # un riavvio: va registrato a ogni avvio.
-    bot.add_dynamic_items(AppealButton)
+    bot.add_dynamic_items(AppealButton, StaffDecisionButton)
