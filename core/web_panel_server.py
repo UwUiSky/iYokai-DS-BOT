@@ -4,10 +4,10 @@ core/web_panel_server.py
 Il pannello web (iYokai Panel): accesso con Discord (OAuth2 `identify`,
 `state` legato al browser), sessioni nel database, permessi controllati
 a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di comandi nascosti
-per ruolo (#148) e della lingua dai punti unici dei comandi (D16), storico, premium e wiki dei
-comandi, verifica dei membri dalla pagina web (link firmato, impronte senza IP).
+per ruolo (#148), del bot con marchio proprio (NF-38) e della lingua dai punti unici dei comandi (D16),
+storico, premium e wiki dei comandi, verifica dei membri dalla pagina web (link firmato, impronte senza IP).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
-Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92)
+Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -31,6 +31,7 @@ from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida
+from core.i18n import t
 from core.redacted_access_log import RedactedAccessLogger
 
 logger = logging.getLogger("iyokai.web_panel")
@@ -62,7 +63,19 @@ ESITI = {
     "permessi_parziale": ("Discord ha rifiutato una parte dei permessi: riprova tra poco.", True),
     "permessi_attendi": ("Una risincronizzazione al minuto per server: aspetta e riprova.", True),
     "permessi_revocati": ("Autorizzazione tolta: il bot non scrive più i permessi dei comandi.", False),
+    "marchio_collegato": ("Bot collegato. Se non è ancora nel server, usa il link d'invito qui sotto.", False),
+    "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
+    "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
 }
+
+
+def _esito(codice: str) -> tuple[str, bool] | None:
+    """Il messaggio di un codice d'esito: quelli del pannello o i testi del marchio (gli stessi del comando)."""
+    if codice in ESITI:
+        return ESITI[codice]
+    if codice in panel_bridge.ESITI_MARCHIO:
+        return t(codice, "it"), codice not in panel_bridge.ESITI_MARCHIO_OK
+    return None
 
 
 def build_app(
@@ -94,6 +107,7 @@ def build_app(
     limite_accesso = regole.LimiteFrequenza(10, 60)
     limite_scritture = regole.LimiteFrequenza(30, 60)
     limite_sincronia = regole.LimiteFrequenza(1, 60)  # ogni sincronia sono più chiamate a Discord
+    limite_marchio = regole.LimiteFrequenza(3, 60)  # ogni collegamento prova il token con Discord
     ambiente = jinja2.Environment(
         loader=jinja2.FileSystemLoader(CARTELLA / "templates"), autoescape=True, enable_async=False
     )
@@ -110,7 +124,7 @@ def build_app(
         risposta.del_cookie(nome, path="/", secure=https, httponly=True, samesite="Lax")
 
     def _pagina(request: web.Request, modello: str, codice_http: int = 200, **dati) -> web.Response:
-        esito = ESITI.get(request.query.get("esito", ""))
+        esito = _esito(request.query.get("esito", ""))
         contesto = {
             "utente_id": request.get(CHIAVE_UTENTE),
             "csrf": regole.csrf_per(chiave, request[CHIAVE_TOKEN]) if request.get(CHIAVE_TOKEN) else "",
@@ -337,6 +351,32 @@ def build_app(
             return rifiuto
         return _pagina(request, "premium.html", guild=guild, premium=await ponte.stato_premium(bot, guild))
 
+    # ------------------------------------------------- marchio (NF-38)
+    async def pagina_marchio(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        return _pagina(request, "marchio.html", guild=guild, marchio=await ponte.stato_marchio(bot, guild))
+
+    async def salva_marchio(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        indietro = f"/server/{guild.id}/marchio?esito="
+        azione = str(form.get("azione", ""))
+        if azione == "collega":
+            token = str(form.get("token", "")).strip()
+            if not 20 <= len(token) <= 120:
+                return _vai(indietro + "non_valido")
+            if not limite_marchio.consenti(f"g:{guild.id}"):
+                return _vai(indietro + "marchio_attendi")
+            return _vai(indietro + await ponte.collega_marchio_web(bot, guild, token, request[CHIAVE_UTENTE]))
+        testo = str(form.get("testo", "")) if azione == "testo" else None
+        return _vai(indietro + await ponte.applica_marchio(bot, guild, azione, testo, request[CHIAVE_UTENTE]))
+
     # ------------------------------------------------- verifica (NF-21)
     def _token_verifica(request: web.Request):
         token = request.match_info["token"]
@@ -399,6 +439,8 @@ def build_app(
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/permessi", salva_permessi)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/storico", pagina_storico)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/premium", pagina_premium)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/marchio", pagina_marchio)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/marchio", salva_marchio)
     app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)
     app.router.add_post(r"/verifica/{token:[0-9a-f\-]{1,200}}", conferma_verifica)
     app.router.add_get("/wiki", wiki)

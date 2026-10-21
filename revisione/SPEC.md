@@ -1962,7 +1962,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.14 Effetti sonori in vocale (NF-35)
   → **Stato 14/10:** `/music suono` (il gruppo `/fun` ha 25 figli): suono della soundboard del server o di Discord, mandato dal bot musicale del canale (la musica continua) o dal primo libero, che poi esce; pausa di 10 secondi per utente. Da verificare live.
 - `[~]` 23.15 Bot con marchio proprio per i server premium (NF-38)
-  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
+  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Stato 16/10 (r8):** anche dal pannello, pagina «Bot con marchio» del server (stato senza token, collega, testo di stato, accendi/spegni, scollega), dalle stesse funzioni di `core/whitelabel_bot.py`. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
 - `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
   → **Stato 15/10:** `/level profilo` è un'immagine (avatar, nome, presentazione, livello, XP, posizione, coin, collezione),

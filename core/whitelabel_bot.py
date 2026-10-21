@@ -245,3 +245,64 @@ async def collega_marchio(guild, token: str, user_id: int, *, config) -> Marchio
 def link_invito(marchio: Marchio) -> str | None:
     """Il link per far entrare il bot del marchio nel suo server."""
     return url_invito(marchio.application_id, marchio.guild_id)
+
+
+# ---------------------------------------------- punto unico (D16): comando e pannello
+AZIONI = ("testo", "avvia", "ferma", "rimuovi")
+AZIONI_CON_PREMIUM = frozenset({"imposta", "avvia", "testo"})
+
+
+async def ha_premium(bot, guild_id: int) -> bool:
+    """Il server ha sbloccato il marchio (premium o fase alpha)."""
+    from core.premium import guild_has_premium_access
+
+    return await guild_has_premium_access(guild_id, MODULO_MARCHIO, bot=bot)
+
+
+def pulisci_testo(testo: str | None) -> str | None:
+    """Il testo di stato: spazi tolti, vuoto = nessuno. ValueError se supera `MAX_TESTO_STATO`."""
+    testo = (testo or "").strip()
+    if len(testo) > MAX_TESTO_STATO:
+        raise ValueError("Testo di stato troppo lungo.")
+    return testo or None
+
+
+async def collega_e_avvia(gestore: GestoreMarchio, bot, guild, token: str, user_id: int, *, config) -> Marchio:
+    """
+    Collega un token nuovo e riaccende il client (quello col token vecchio si ferma prima).
+    Solleva `TokenRifiutato` con la chiave del messaggio, anche senza premium.
+    """
+    if not await ha_premium(bot, guild.id):
+        raise TokenRifiutato("mar_richiede_premium")
+    marchio = await collega_marchio(guild, token, user_id, config=config)
+    await gestore.ferma(guild.id)
+    await gestore.avvia(guild.id)
+    return marchio
+
+
+async def applica_azione(gestore: GestoreMarchio, bot, guild_id: int, azione: str, testo: str | None = None) -> str:
+    """
+    Una delle `AZIONI` su un marchio già collegato. Restituisce la chiave del messaggio per l'utente.
+    ValueError per un'azione sconosciuta o un testo troppo lungo.
+    """
+    if azione not in AZIONI:
+        raise ValueError("Azione del marchio sconosciuta.")
+    testo = pulisci_testo(testo) if azione == "testo" else None
+    if azione in AZIONI_CON_PREMIUM and not await ha_premium(bot, guild_id):
+        return "mar_richiede_premium"
+    if await whitelabel_repo.get(guild_id) is None:
+        return "mar_nessun_marchio"
+    if azione == "testo":
+        await whitelabel_repo.imposta_testo_stato(guild_id, testo)
+        await gestore.aggiorna_testo(guild_id, testo)
+        return "mar_testo_ok" if testo else "mar_testo_azzerato"
+    if azione == "avvia":
+        await whitelabel_repo.imposta_abilitato(guild_id, True)
+        return "mar_avviato" if await gestore.avvia(guild_id) else "mar_non_avviato"
+    if azione == "ferma":
+        await whitelabel_repo.imposta_abilitato(guild_id, False)
+        await gestore.ferma(guild_id)
+        return "mar_fermato"
+    await gestore.ferma(guild_id)
+    await whitelabel_repo.elimina(guild_id)
+    return "mar_rimosso"

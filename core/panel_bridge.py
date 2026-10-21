@@ -10,8 +10,9 @@ il cambio, senza riavvio.
 Anche i permessi dei gruppi di comandi per ruolo (#148): stato, link di
 autorizzazione, risincronizzazione e revoca, dalle funzioni di
 `core/command_permissions.py`. La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
-stessi controlli e ruoli del bottone di verifica.
-Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148)
+stessi controlli e ruoli del bottone di verifica. Il bot con marchio proprio (NF-38) passa dalle
+stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`.
+Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109)
 """
 
 from __future__ import annotations
@@ -331,3 +332,68 @@ async def revoca_permessi_comandi(guild: discord.Guild, user_id: int) -> None:
 
     await command_permission_token_repo.cancella(guild.id)
     logger.info("Autorizzazione dei permessi dei comandi revocata dal pannello nel server %s da %s.", guild.id, user_id)
+
+
+# ------------------------------------------------ marchio proprio (NF-38, #109)
+ESITI_MARCHIO_OK = frozenset({"mar_testo_ok", "mar_testo_azzerato", "mar_avviato", "mar_fermato", "mar_rimosso"})
+# I soli testi del marchio che la pagina mostra da un codice nell'URL (nessuno ha segnaposto).
+ESITI_MARCHIO = ESITI_MARCHIO_OK | {
+    "mar_richiede_premium", "mar_nessun_marchio", "mar_non_avviato", "mar_token_non_valido",
+    "mar_discord_non_risponde", "mar_chiave_mancante", "mar_gia_usato",
+}
+
+
+def _gestore_marchio(bot):
+    """Il gestore dei client del marchio, dal cog acceso. None se il cog non è caricato."""
+    return getattr(bot.get_cog("MarchioCog"), "gestore", None)
+
+
+async def stato_marchio(bot, guild: discord.Guild) -> dict:
+    """Cosa mostra la pagina del marchio. Mai il token: solo nome, stato, testo e link d'invito."""
+    from core import whitelabel_bot as wl
+    from core.i18n import t
+    from core.repositories.whitelabel_repo import whitelabel_repo
+
+    marchio = await whitelabel_repo.get(guild.id)
+    return {
+        "disponibile": _gestore_marchio(bot) is not None,
+        "premium": await wl.ha_premium(bot, guild.id),
+        "max_testo": wl.MAX_TESTO_STATO,
+        "marchio": None if marchio is None else {
+            "nome": marchio.bot_name,
+            "stato": t(f"mar_stato_{marchio.last_state}", "it"),
+            "acceso": marchio.enabled,
+            "testo": marchio.status_text,
+            "invito": wl.link_invito(marchio),
+        },
+    }
+
+
+async def collega_marchio_web(bot, guild: discord.Guild, token: str, user_id: int) -> str:
+    """Collega il token dal pannello (stessa funzione del comando). Il codice dell'esito per la pagina."""
+    from core import whitelabel_bot as wl
+
+    gestore = _gestore_marchio(bot)
+    if gestore is None:
+        return "marchio_non_disponibile"
+    try:
+        await wl.collega_e_avvia(gestore, bot, guild, token, user_id, config=config)
+    except wl.TokenRifiutato as exc:
+        return exc.motivo
+    logger.info("Marchio collegato dal pannello nel server %s da %s.", guild.id, user_id)
+    return "marchio_collegato"
+
+
+async def applica_marchio(bot, guild: discord.Guild, azione: str, testo: str | None, user_id: int) -> str:
+    """Testo di stato, accendi, spegni o scollega dal pannello (stessa funzione del comando)."""
+    from core import whitelabel_bot as wl
+
+    gestore = _gestore_marchio(bot)
+    if gestore is None:
+        return "marchio_non_disponibile"
+    try:
+        esito = await wl.applica_azione(gestore, bot, guild.id, azione, testo)
+    except ValueError:
+        return "non_valido"
+    logger.info("Marchio del server %s: «%s» dal pannello da %s.", guild.id, azione, user_id)
+    return esito
