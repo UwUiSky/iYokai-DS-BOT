@@ -451,7 +451,7 @@ def build_app(
             return _vai("/accedi")
         numero = request.query.get("richiesta", "")
         testo = None
-        if numero.isdigit() and len(numero) <= 9:  # sta in un INTEGER
+        if numero.isascii() and numero.isdigit() and len(numero) <= 9:  # sta in un INTEGER
             testo = await ponte.testo_richiesta(request[CHIAVE_UTENTE], int(numero))
         return _pagina(request, "dati.html", motivo_max=MOTIVO_MAX, testo_richiesta=testo)
 

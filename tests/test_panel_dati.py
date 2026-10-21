@@ -67,5 +67,7 @@ async def test_richiesta_di_cancellazione(ambiente):  # noqa: F811
         pagina = await (await client.get(f"{PAGINA}?richiesta={altra}")).text()
         assert "Richiesta ricevuta" not in pagina
         assert (await client.get(f"{PAGINA}?richiesta=99999999999")).status == 200
+        # "²".isdigit() è vero ma int("²") no: niente errore 500.
+        assert (await client.get(f"{PAGINA}?richiesta=%C2%B2")).status == 200
     finally:
         await client.close()
