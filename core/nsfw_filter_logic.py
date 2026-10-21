@@ -262,7 +262,8 @@ def leggi_redgifs(payload: object) -> list[ElementoFonte]:
         anteprima = str(urls.get("poster") or urls.get("thumbnail") or "")
         if not re.fullmatch(r"[a-z0-9]{3,64}", id_fonte) or not anteprima:
             continue
-        tag = tuple(str(t) for t in (voce.get("tags") or []) + (voce.get("niches") or []) if isinstance(t, str))
+        liste = [v for v in (voce.get("tags"), voce.get("niches")) if isinstance(v, list)]
+        tag = tuple(t for lista in liste for t in lista if isinstance(t, str))
         elementi.append(
             ElementoFonte(
                 fonte="redgifs",

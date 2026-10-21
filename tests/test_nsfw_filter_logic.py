@@ -178,3 +178,10 @@ def test_sinonimi_di_violenza(testo):
 def test_tag_permesso_con_caratteri_nascosti_rifiutato():
     assert f.valida_tag("te​en")[0] is None
     assert f.valida_tag("lоli")[0] is None
+
+
+def test_leggi_redgifs_tag_non_in_lista_non_rompe():
+    payload = {"gifs": [{"id": "abc", "tags": "teen", "niches": {"x": 1}, "verified": True,
+                         "urls": {"poster": "https://media.redgifs.com/a.jpg"}}]}
+    [elemento] = f.leggi_redgifs(payload)
+    assert elemento.tag == ()
