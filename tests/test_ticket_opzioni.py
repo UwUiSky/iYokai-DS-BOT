@@ -347,3 +347,29 @@ async def test_apri_con_un_messaggio_di_un_thread_privato_di_cui_non_si_e_membri
     await _cog().apri.callback(_cog(), inter, None, None, None, link, False)
     assert s.canali == []
     thread.fetch_message.assert_not_awaited()
+
+
+async def test_ruoli_durante_non_accetta_ruoli_sopra_chi_configura_ne_ruoli_pericolosi():
+    """Chi apre un ticket li prende da solo: un admin non deve poter dare a tutti un ruolo sopra il suo, o forte."""
+    s = Server()
+    p = await _pannello()
+    forte = 444444444444444444
+    s.ruoli[forte] = fake_role(role_id=forte, position=1, permissions=discord.Permissions(ban_members=True))
+    admin = s.membro(STAFF, admin=True)
+    admin.top_role = fake_role(role_id=555, position=3)
+    for ruolo in (RUOLO_VIP, forte):  # VIP sta a 5, sopra l'admin; "forte" ha ban_members
+        inter = s.inter(admin)
+        await _cog().permessi.callback(_cog(), inter, p.name, None, None, str(ruolo), None)
+        assert "Opzioni salvate" not in _risposta(inter), ruolo
+    assert (await ticket_opzioni_repo.opzioni(p.id)).ruoli_durante == ()
+
+
+async def test_ruolo_durante_diventato_pericoloso_non_si_da_all_apertura():
+    s = Server()
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, ruoli_durante=(RUOLO_VIP,))
+    s.ruoli[RUOLO_VIP].permissions = discord.Permissions(administrator=True)
+    utente = s.membro(UTENTE)
+    panel = await ticket_form_repo.pannello_per_id(p.id)
+    await modulo._open_ticket_channel(s.inter(utente), s.guild, s.categoria, panel.name, panel=panel)
+    utente.add_roles.assert_not_awaited()

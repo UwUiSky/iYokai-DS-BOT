@@ -36,6 +36,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_opzioni_repo import TroppeRegole, ticket_opzioni_repo
+from core.role_safety import check_role_assignable
 
 logger = logging.getLogger("iyokai.tickets.opzioni")
 
@@ -332,9 +333,11 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
                 if testo is not None:
                     valori[chiave] = _ruoli_del_server(guild, testo)
             if durante is not None:
-                sopra = [r for r in valori["ruoli_durante"] if guild.get_role(r) >= guild.me.top_role or guild.get_role(r).managed]
-                if sopra:
-                    raise ValueError(f"Non posso dare <@&{sopra[0]}>: è gestito da un'integrazione o sta sopra il mio ruolo.")
+                # Chi apre un ticket prende questi ruoli da solo: stesse regole dei ruoli auto-assegnabili.
+                for r in valori["ruoli_durante"]:
+                    motivo = check_role_assignable(guild, guild.get_role(r), interaction.user, self_service=True)
+                    if motivo:
+                        raise ValueError(f"<@&{r}>: {motivo}")
             return valori
 
         await self._salva(interaction, pannello, prepara)

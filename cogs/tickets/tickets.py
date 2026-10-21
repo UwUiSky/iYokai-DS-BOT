@@ -110,6 +110,7 @@ from core.ticket_logic import (
     truncate_label,
 )
 from core.premium import PremiumModule, registry
+from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 from core.scheduler import in_seconds, scheduler
 from core.ui_base import BaseModal, BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
 from cogs.moderation._shared import ensure_module_enabled
@@ -334,10 +335,10 @@ async def _dai_ruoli_durante(guild: discord.Guild, utente, channel_id: int, opzi
     """TKT-043: ruoli dati all'apertura e salvati col ticket, per toglierli alla chiusura."""
     ruoli = []
     for role_id in opzioni.ruoli_durante:
-        role = guild.get_role(role_id)
-        if role is None or role.is_default() or role.managed or role >= guild.me.top_role:
+        # Rivisto a ogni apertura: il ruolo può aver preso permessi forti dopo la configurazione.
+        if motivo_ruolo_automatico_non_assegnabile(guild, role_id):
             continue
-        ruoli.append(role)
+        ruoli.append(guild.get_role(role_id))
     if not ruoli or not isinstance(utente, discord.Member):
         return
     try:
