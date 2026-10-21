@@ -4,8 +4,8 @@
 21/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
 
 ## In corso
-- r8 dopo G6 (sondaggio): prossimo passo = documenti: COMMAND_LIST (scripts/generate_command_list.py), SPEC, VERIFICA_LIVE, REGISTRO_RISOLTE (Parziali #123/#128), poi invarianti + smoke --base main (log scratchpad/uti_smoke_r8.log), rapporto.
-- Migrazioni riservate 0230-0239. Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
+- r8: codice e documenti fatti (COMMAND_LIST, SPEC §14.14-14.16/14.20/14.21/22.3, VERIFICA_LIVE «Ruoli e utility — giro r8», REGISTRO Parziali). Prossimo passo: smoke --base main (log scratchpad/uti_smoke_r8.log), poi rapporto.
+- Migrazioni riservate 0230-0239 (usate 0230-0232). Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
 
 ## Fatto
 - r8 G1 c265011: /ruoli (D25 quinto caso) cogs/utility/ruoli_strumenti.py + core/ruoli_strumenti_logic.py + self_role_repo (0231); /utility ruolo.
@@ -48,7 +48,7 @@
 ## Aperto
 - Condivisione macchina: NON usare /tmp/claude-0/env.sh (lo riscrivono altri agenti): uso env_r5fun.sh. Giveaway: passare il requisito messaggi a activity_stats_repo.member_total (cogs/leveling non mio).
 - - Menu dei ruoli: nessun comando per elencare gli ID dei menu (menu-aggiungi chiede `menu_id` a mano); un elenco richiederebbe un sottocomando in `/gestione ruoli` (controllare il tetto 25).
-- Fasi future saltate: 10.8 (F9), 10.11 (F8, già fatto come cerca-comando), 10.14, 10.15, 10.17 (F9).
+- #66: resta solo 10.14 (wizard per categoria in setup.py, non mio, F9).
 - Scheletri (counters, forms, starboard, birthdays, autoroles, invites, activity_stats, autoresponder, custom_commands, embed_builder): F9/F13.
 - Registro dati personali (F5): aggiungere `command_usage`. Menzioni di `/owner` non mostrate nel pannello.
 

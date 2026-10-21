@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 00:52 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 491 commands in 22 categories.**
+**Total: 511 commands in 23 categories.**
 
 ## Admin
 
@@ -230,6 +230,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/management roles auto-list`** — Shows the server's automatic roles.
 - **`/management roles auto-remember`** — Gives roles back to people who leave and rejoin within a set time.
 - **`/management roles auto-remove`** — Removes a role given automatically to new members.
+- **`/management roles auto-sync`** — Give the automatic roles to members already in the server too.
 - **`/management roles level-add`** — Gives a role to whoever reaches a level.
 - **`/management roles level-list`** — Shows the reward roles configured on this server.
 - **`/management roles level-remove`** — Removes a configured reward role.
@@ -460,6 +461,18 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
 
+## Ruoli
+
+- **`/roles bulk`** — Give or remove a role to many members at once, with filters.
+- **`/roles bulk-stop`** — Stop the bulk operation in progress.
+- **`/roles create`** — Create a new role.
+- **`/roles diagnosis`** — Find out why the bot cannot give a role.
+- **`/roles edit`** — Change name, color and options of a role.
+- **`/roles give`** — Give one or more roles to a member, also for a time.
+- **`/roles remove`** — Remove one or more roles from a member, also for a time.
+- **`/roles reset`** — Remove all roles from a member, with confirmation.
+- **`/roles self-roles`** — Roles members take by themselves with /utility role.
+
 ## Security
 
 - **`/security escalation disable`** — Turns the escalation ladder off.
@@ -524,6 +537,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/utility form`** — Fills in a form or application of this server.
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
+- **`/utility lookup channel`** — Channel card.
+- **`/utility lookup members`** — Members who have a role.
+- **`/utility lookup permissions`** — Permissions of a member or the bot in a channel.
+- **`/utility lookup role`** — Role card: members, color, date, permissions.
+- **`/utility lookup roles`** — All roles with ID, members and color.
+- **`/utility lookup seniority`** — Oldest or newest accounts, first or last to join.
+- **`/utility lookup server`** — Server card: owner, date, numbers, boosts.
+- **`/utility lookup user`** — Member card: ID, dates and roles.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
 - **`/utility policy channels`** — Where the bot answers commands.
 - **`/utility policy comando`** — Turns a single command off or on again.
@@ -534,11 +555,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/utility privacy cancella`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
 - **`/utility reactionsnipe`** — Shows the last removed reaction in this channel.
-- **`/utility reminder cancel`** — Cancels a reminder.
+- **`/utility reminder cancel`** — Cancel a reminder, or all of yours.
 - **`/utility reminder list`** — Shows your pending reminders.
+- **`/utility reminder server`** — For staff: the reminders set in this server.
 - **`/utility reminder set`** — Sets a reminder.
 - **`/utility report`** — Reports a user to the server staff.
 - **`/utility request-command`** — Suggests a new command for the bot.
+- **`/utility role`** — Take or leave the server's self-assignable roles.
 - **`/utility serverstats`** — Shows the server statistics, with a growth chart.
 - **`/utility snipe`** — Shows the last deleted message in this channel.
 - **`/utility suggest`** — Suggest an idea for this server.
