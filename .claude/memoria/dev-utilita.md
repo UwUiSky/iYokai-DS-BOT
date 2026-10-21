@@ -4,7 +4,7 @@
 21/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
 
 ## In corso
-- r8: codice e documenti fatti (COMMAND_LIST, SPEC §14.14-14.16/14.20/14.21/22.3, VERIFICA_LIVE «Ruoli e utility — giro r8», REGISTRO Parziali). Prossimo passo: smoke --base main (log scratchpad/uti_smoke_r8.log), poi rapporto.
+- r8: codice e documenti fatti (COMMAND_LIST, SPEC §14.14-14.16/14.20/14.21/22.3, VERIFICA_LIVE «Ruoli e utility — giro r8», REGISTRO Parziali). Smoke --base main 865 verdi (scratchpad/uti_smoke_r8.log). Giro chiuso: aspetta revisione dell'orchestratore.
 - Migrazioni riservate 0230-0239 (usate 0230-0232). Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
 
 ## Fatto
