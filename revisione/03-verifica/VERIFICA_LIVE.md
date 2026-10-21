@@ -1090,4 +1090,4 @@ Serve: un server di prova con il bot sopra i ruoli di prova, un secondo account,
 Serve: un server di prova, un secondo account A con un ruolo Amministratore, il bot che si può spostare sopra o sotto quel ruolo.
 
 - [ ] Ripiego della quarantena (#59) — passi: ruolo del bot **sotto** quello di A; `/antinuke punish-action action:Quarantena ripiego:Espelli`; come A cancella 4 canali. Risultato atteso: il bot non toglie i ruoli e quindi **espelle** A; caso e avviso dicono «ruoli NON tolti … ripiego: espulso». Con il ruolo del bot sotto anche per l'espulsione: «ripiego (kick) fallito anche lui». `punish-action action:Rimuovi ruoli` senza `ripiego:` tiene il ripiego scelto prima.
-
+- [ ] Warn manuali nella scala (M 1.10) — passi: `/security escalation enable warn_manuali:True`; tre volte `/mod warn member:@A reason:prova`. Risultato atteso: al primo solo il warn; al secondo A va in timeout 10 minuti, al terzo 1 ora; ogni volta il moderatore riceve un messaggio privato «La scala ha applicato …». `/security escalation status` dice «Warn dati a mano: contano». Senza `warn_manuali` (o con False) i warn non toccano la scala.

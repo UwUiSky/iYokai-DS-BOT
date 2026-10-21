@@ -433,6 +433,9 @@ Totale voci: **494**.
   da 6.13 (che è più azioni insieme su UN trigger, non su trigger
   ripetuti nel tempo) — voce nuova, non una ridefinizione di 6.13
   → **Stato 04/10:** una violazione conta più volte (LIM-32).
+  → **Stato 21/10 (M 1.10, r9):** conteggio corretto (M 2.7); con
+  `/security escalation enable warn_manuali:True` anche i warn dati a mano
+  (`/mod warn`, anche in massa) salgono la scala (migrazione 0250).
 
 ## §7 SECURITY SUITE — presente, con bug aperti su anti-raid, anti-nuke e spam-trap (fase F1)
 

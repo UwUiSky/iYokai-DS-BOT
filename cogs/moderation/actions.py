@@ -23,6 +23,9 @@ prima del ban, ruoli ridati al ritorno), isolamento (resta nel server,
 vede un solo canale). Lo stato (ruoli veri) si salva prima dell'azione; ogni nuovo
 caso cancella la scadenza del precedente. Funzioni coperte anche: SPEC §5.11, §5.12, parte E (D15: scadenze via iYokai Mod).
 
+Un warn dato a mano sale la scala di escalation, se il server l'ha
+scelto (M 1.10).
+
 Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
 server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
 caso per utente, un solo riepilogo nel log. Chi non si può moderare viene
@@ -55,6 +58,7 @@ from core.tempban_logic import (
 )
 from cogs.moderation import _tempban_modes as tempban_modes
 from cogs.moderation.ban_appeal import vista_appello
+from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
@@ -218,6 +222,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed)
         await try_dm(member, embed)
         await post_to_mod_log(interaction.guild, embed)
+        # M 1.10: se il server l'ha scelto, il warn sale la scala di escalation.
+        esito_scala = await scala_per_warn_manuale(self.bot, member, case_number)
+        if esito_scala:
+            await interaction.followup.send(esito_scala, ephemeral=True)
 
     # ================================================================
     # /kick
@@ -1231,7 +1239,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id, action_type="warn", reason=reason
             )
             await try_dm(membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero))
-            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
+            esito_scala = await scala_per_warn_manuale(self.bot, membro, numero)
+            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}" + (f" — {esito_scala}" if esito_scala else ""))
         await self._chiudi_massa(interaction, "⚠️ Warn in massa", discord.Color.yellow(), reason, fatti, saltati)
 
 
