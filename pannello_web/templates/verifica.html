@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titolo %}Verifica · {{ server_nome }}{% endblock %}
+{% block corpo %}
+<h1>Verifica · {{ server_nome }}</h1>
+<div class="carta">
+<p>Premi il bottone per completare la verifica e ricevere l'accesso al server.</p>
+<form method="post" action="/verifica/{{ token }}">
+  <input type="hidden" name="campo" value="{{ campo }}">
+  <button type="submit">Verificami</button>
+</form>
+</div>
+<h2>Che cosa salviamo</h2>
+<p class="tenue">Per riconoscere gli account doppi salviamo per {{ giorni }} giorni due impronte cifrate
+(HMAC con una chiave segreta) della tua connessione e del tuo browser. Il tuo indirizzo IP non viene mai salvato
+e le impronte non si possono confrontare tra server diversi. Se il tuo account somiglia a un altro dello stesso
+server, il bot avvisa lo staff: nessuna punizione automatica. Puoi chiedere la cancellazione dei tuoi dati con
+i comandi privacy del bot.</p>
+{% endblock %}

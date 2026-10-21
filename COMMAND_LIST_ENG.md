@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:00 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 491 commands in 22 categories.**
+**Total: 493 commands in 22 categories.**
 
 ## Admin
 
@@ -26,6 +26,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 - **`/admin music request-channel`** — Channel where typing a title queues it, with the player.
 - **`/admin music settings`** — Changes the server's music settings.
 - **`/admin music summary`** — Shows all the server's music settings.
+- **`/admin premium appearance`** — The bot's avatar, banner and description in this server (premium).
 - **`/admin premium branding`** — Use a bot with your own name and avatar (premium).
 - **`/admin premium redeem`** — Redeems a premium code for this server.
 - **`/admin premium status`** — Shows how premium is unlocked in this server.
@@ -462,6 +463,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-16 09:4
 
 ## Security
 
+- **`/security alt list`** — Duplicate accounts found by web verification.
 - **`/security escalation disable`** — Turns the escalation ladder off.
 - **`/security escalation enable`** — Turns the escalation ladder on.
 - **`/security escalation remove-step`** — Removes a step from the custom ladder.

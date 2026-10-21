@@ -40,6 +40,9 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/callback",
         "/esci",
         "/wiki",
+        "/marchio",
+        "/aspetto",
+        "/miei-dati",
     }
 )
 

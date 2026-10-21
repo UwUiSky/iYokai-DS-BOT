@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block titolo %}Verifica{% endblock %}
+{% block corpo %}
+<h1>{{ 'Verifica riuscita' if riuscita else 'Verifica non riuscita' }}</h1>
+<p class="avviso {{ 'ok' if riuscita else 'errore' }}">{{ testo }}</p>
+<p>Puoi chiudere questa pagina e tornare su Discord.</p>
+{% endblock %}

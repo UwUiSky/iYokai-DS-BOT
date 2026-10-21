@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 491 comandi in 22 categorie.**
+**Totale: 493 comandi in 22 categorie.**
 
 ## Admin
 
@@ -26,6 +26,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 - **`/admin musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
 - **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin premium aspetto`** — Avatar, banner e descrizione del bot in questo server (premium).
 - **`/admin premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
 - **`/admin premium riscatta`** — Riscatta un codice premium per questo server.
 - **`/admin premium stato`** — Mostra come è sbloccato il premium in questo server.
@@ -462,6 +463,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-16 09:
 
 ## Sicurezza
 
+- **`/security alt elenco`** — Gli account doppi trovati dalla verifica web.
 - **`/security escalation disable`** — Disattiva l'escalation ladder.
 - **`/security escalation enable`** — Attiva l'escalation ladder.
 - **`/security escalation remove-step`** — Rimuove un livello dalla scala personalizzata.
