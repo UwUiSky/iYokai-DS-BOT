@@ -2442,6 +2442,14 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if ticket is None:
             return
         opzioni = await _opzioni_pannello(ticket.panel_id)
+        osservatore = bool(set(opzioni.ruoli_osservatori) & {r.id for r in getattr(interaction.user, "roles", [])})
+        if (
+            osservatore and interaction.user.id != ticket.user_id
+            and not await _is_ticket_staff(interaction, ticket)
+        ):
+            # TKT-042: gli osservatori vedono e non scrivono; non chiudono il ticket degli altri.
+            await interaction.response.send_message("Chi osserva il ticket non può chiuderlo.", ephemeral=True)
+            return
         if not opzioni.utente_chiude and interaction.user.id == ticket.user_id and not await _is_ticket_staff(interaction, ticket):
             await interaction.response.send_message(
                 "In questo pannello i ticket li chiude lo staff: scrivi qui se hai finito.", ephemeral=True

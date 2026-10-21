@@ -228,3 +228,15 @@ async def test_se_l_utente_scrive_nel_ticket_la_richiesta_di_chiusura_decade():
     cog._chiudi_da_sistema = AsyncMock()
     await cog.handle_richiesta_chiusura(ID_SERVER, UTENTE, payload)
     cog._chiudi_da_sistema.assert_not_awaited()
+
+
+async def test_un_osservatore_non_chiude_il_ticket():
+    """Gli osservatori vedono e non scrivono: /ticket close resta per chi ha aperto e per lo staff."""
+    from tests.test_ticket_opzioni import RUOLO_OSS
+
+    s, canale = await _scena(ruoli_osservatori=(RUOLO_OSS,))
+    cog = _cog()
+    cog._transcript_senza_bloccare = AsyncMock()
+    inter = _inter(s, s.membro(UTENTE + 3, ruoli=(RUOLO_OSS,)), canale)
+    await cog.close.callback(cog, inter, None)
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).status == "open"
