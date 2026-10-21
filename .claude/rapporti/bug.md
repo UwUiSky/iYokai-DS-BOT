@@ -242,3 +242,13 @@
 | 16/10 | `voice_temp._create_temp_channel` | Due canali creati insieme prendono lo stesso {numero} | media | corretto r7liv |
 | 16/10 | `voice_temp.invita` | Il bot crea inviti al server per chi non ha «Crea invito» (link nel fallback DM) | media | corretto r7liv |
 | 16/10 | `voice_temp.unlock` | Unlock fallito su canale mai bloccato lo segna bloccato con None: il lock dopo perde il valore vero | bassa | corretto r7liv (revisore) |
+| 21/10 | `tickets._messaggio_citato` | `/ticket apri messaggio:` controllava solo chi apre: staff per conto cita un canale staff nel ticket dell'utente; thread privati (note) letti da non membri (Thread.permissions_for = padre) | alta | corretto r8tkt 92633fa |
+| 21/10 | `opzioni.permessi` + `_dai_ruoli_durante` | Ruoli durante = auto-assegnati: admin sceglie ruolo sopra il suo o con ban/admin e lo prende aprendo un ticket | alta | corretto r8tkt 36ec056 |
+| 21/10 | `risposte._scelta_ai` | `conta_utente=False` su ogni messaggio dell'utente: uno svuota la quota AI del server | media | corretto r8tkt 88ec2ac |
+| 21/10 | `tickets.on_message` | Richiesta di chiusura: l'utente che scrive «non va ancora» viene chiuso lo stesso dal timer | media | corretto r8tkt 3e45449 |
+| 21/10 | `ticket_repo.create_ticket` | Tetto `max_aperti` del pannello letto fuori blocco: due utenti insieme lo superano | media | corretto r8tkt 738a816 |
+| 21/10 | `tickets.close` | Ruoli osservatori (sola lettura) potevano chiudere i ticket | media | corretto r8tkt f8c87c8 |
+| 21/10 | `tickets.claim` | Con presa esclusiva un altro dello staff fa /ticket claim e la ruba; l'overwrite del primo resta | bassa | plausibile, aperto |
+| 21/10 | `tickets.note` | Thread delle note archiviato non è in cache (`get_thread`): se ne crea uno nuovo, note sparse | bassa | plausibile, aperto |
+| 21/10 | `tickets.apri_da_pannello`, `opzioni.apri` | 6-8 query prima della prima risposta (send_modal non si rimanda): rischio 3 s sotto carico | bassa | plausibile, aperto |
+| 21/10 | `risposte._ruolo_secondo_ai` | Prompt injection: l'utente può forzare «amministratore» al posto del moderatore (solo la scelta del ruolo) | bassa | accettato |

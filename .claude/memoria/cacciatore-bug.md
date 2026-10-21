@@ -1,6 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+21/10/2026 · ultimo giro: `feat/r8tkt` (opzioni ticket #120, AI #139), 6 fix 92633fa…f8c87c8; 3 plausibili in `rapporti/bug.md`.
 16/10/2026 · ultimo giro: `feat/r7mod` (iYokai Mod, catalogo log, NF-30 DM), 5 fix; i 2 lasciati li ha chiusi il revisore.
 16/10/2026 · ultimo giro: `feat/r7bak` (/backup D25, copie, modelli, sincronia, chat) con fix 1172556, b70b41f
 16/10/2026 · ultimo giro: `feat/r7liv` (vocali opzioni/invita/stato, sfondi card, tick clan raggruppato, /level premi|pause|livelli-recenti) con fix 635507f
@@ -18,9 +19,12 @@
 - Giri 28/09–11/10 (BUG-19…34, SEC-18…22, F1, boost-146, f7, sicurezza-audit, 147, 66, giro-logt/eco/mod): dettagli in `rapporti/bug.md`.
 - giro-core, r3-bak, r3-mus, r4-tkt, r4-uti, r4-liv: alti e medi in `rapporti/bug.md` (13/10). Prove in scratchpad/cb{core,bak,mus,tkt,uti,liv}.
 - r6mod (5 fix), r6ai (9516f7c; lasciati: tetto/quota funzione in gara tra persone, prefissi in -chiedi), r6web.
+- r8tkt: link citato (titolare + thread privati), ruoli durante = self-service, AI scelta conta_utente, richiesta chiusura annullata se l'utente scrive, tetto pannello sotto blocco, osservatori non chiudono.
 - r7mod: forum-cache col client di Mod, blocco di 1 msg via Mod, archivio 20k senza tetto, bottone NF-30 ripetuto/ModMail, cache LOG-017 leggi-poi-set.
 
 ## Cose imparate
+- discord.py `Thread.permissions_for` = permessi del padre: per i thread privati serve `fetch_member` o manage_threads. Ogni contenuto citato/copiato: controllare chi lo RICEVE, non solo chi lo chiede.
+- AI con `conta_utente=False` partita da un messaggio della persona = quota del server svuotabile.
 - Due client (Mod/principale): ogni oggetto in cache porta il SUO client; cache condivise separate per bot. `http.*` via Mod salta i casi speciali di discord.py (1 messaggio…).
 - Stato solo in memoria: chi lo svuota (evento spento, richiesta privacy NF-04, riavvio).
 - Azioni fatte DAL bot non le vede l'anti-nuke (attore = bot): serve un tetto proprio.
