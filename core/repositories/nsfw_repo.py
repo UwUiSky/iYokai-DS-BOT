@@ -183,6 +183,54 @@ class NsfwRepository:
         )
 
 
+    # ---- presenza del bot NSFW (D6) ----
+    async def segna_presenza(self, guild_id: int, presente: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO nsfw_presenza (guild_id, uscito_il) VALUES ($1, CASE WHEN $2 THEN NULL ELSE now() END)
+            ON CONFLICT (guild_id) DO UPDATE SET uscito_il =
+                CASE WHEN $2 THEN NULL ELSE COALESCE(nsfw_presenza.uscito_il, now()) END
+            """,
+            guild_id, presente,
+        )
+
+    async def sincronizza_presenza(self, guild_ids: set[int]) -> None:
+        """I server visti ora sono presenti; quelli con dati NSFW e non visti sono usciti (partono i 90 giorni)."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO nsfw_presenza (guild_id) SELECT unnest($1::bigint[])
+                    ON CONFLICT (guild_id) DO UPDATE SET uscito_il = NULL
+                    """,
+                    list(guild_ids),
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO nsfw_presenza (guild_id, uscito_il)
+                    SELECT guild_id, now() FROM nsfw_config WHERE NOT (guild_id = ANY($1::bigint[]))
+                    UNION SELECT guild_id, now() FROM nsfw_registro WHERE NOT (guild_id = ANY($1::bigint[]))
+                    ON CONFLICT (guild_id) DO UPDATE SET uscito_il = COALESCE(nsfw_presenza.uscito_il, now())
+                    """,
+                    list(guild_ids),
+                )
+
+    async def cancella_usciti(self, giorni: int) -> list[int]:
+        """Dati NSFW dei server da cui il bot NSFW è uscito da più di `giorni` (i blocchi restano)."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                righe = await conn.fetch(
+                    "SELECT guild_id FROM nsfw_presenza WHERE uscito_il < now() - make_interval(days => $1) "
+                    "FOR UPDATE",
+                    giorni,
+                )
+                ids = [r["guild_id"] for r in righe]
+                if ids:
+                    for tabella in ("nsfw_autopost", "nsfw_registro", "nsfw_config", "nsfw_presenza"):
+                        await conn.execute(f"DELETE FROM {tabella} WHERE guild_id = ANY($1::bigint[])", ids)
+        return ids
+
+
 def _get_pool() -> asyncpg.Pool:
     from core.database import db
 

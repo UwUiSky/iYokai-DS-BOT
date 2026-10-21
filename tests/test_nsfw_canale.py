@@ -276,3 +276,67 @@ async def test_segnala_non_svuota_la_fonte_per_tutti(repo, fonti, monkeypatch):
     await servizio.imposta_attivo(GUILD + 1, True, 1)
     await servizio.aggiungi_tag(GUILD + 1, "amateur")
     assert not isinstance(await servizio.scegli(GUILD + 1, "amateur"), str)
+
+
+# ---------------------------------------------------------------- rilievi del cacciatore-bug (r9nsfw)
+async def test_autopost_si_toglie_subito_se_il_bot_non_e_piu_nel_server(repo, fonti):
+    await _attiva()
+    canale = _canale()
+    await servizio.imposta_autopost(GUILD, canale, "amateur", 60, 1)
+    bot = MagicMock()
+    bot.get_guild.return_value = None
+    bot.get_channel.return_value = canale
+    [voce] = await repo.autopost_scaduti(10)
+    assert await worker.esegui_uno(bot, voce, lambda: None, datetime.now(timezone.utc)) == "tolto"
+    assert fonti.scaricati == [] and await servizio.elenco_autopost(GUILD) == []
+
+
+async def test_autopost_non_scarica_se_il_canale_non_e_ammesso(repo, fonti):
+    await _attiva()
+    canale = _canale()
+    await servizio.imposta_autopost(GUILD, canale, "amateur", 60, 1)
+    canale.is_nsfw.return_value = False
+    bot = MagicMock()
+    bot.get_channel.return_value = canale
+    [voce] = await repo.autopost_scaduti(10)
+    await worker.esegui_uno(bot, voce, lambda: None, datetime.now(timezone.utc))
+    assert fonti.scaricati == []
+    canale.send.assert_not_awaited()
+
+
+async def test_uscita_del_bot_nsfw_ferma_l_autopost(repo, monkeypatch):
+    import core.repositories.nsfw_repo as modulo
+
+    monkeypatch.setattr(modulo, "nsfw_repo", repo)
+    await _attiva()
+    await servizio.imposta_autopost(GUILD, _canale(), "amateur", 60, 1)
+    await NsfwBot.on_guild_remove(MagicMock(), SimpleNamespace(id=GUILD))
+    assert await servizio.elenco_autopost(GUILD) == []
+
+
+async def test_dati_nsfw_cancellati_90_giorni_dopo_l_uscita_del_solo_bot_nsfw(repo, clean_db):
+    """D6: il bot NSFW è uscito (il principale qui non c'è mai stato); i blocchi restano."""
+    await _attiva()
+    await servizio.imposta_attivo(GUILD + 1, True, 1)
+    await servizio.pubblica(_canale(), _scelta_finta(), None)
+    await repo.blocca("hx", "redgifs", "x", "segnalato", GUILD, 42)
+    bot = SimpleNamespace(guilds=[SimpleNamespace(id=GUILD + 1)])
+    await worker.nsfw_autopost_worker.pulizia(bot)
+    assert (await servizio.leggi(GUILD)).attivo  # appena uscito: niente si cancella
+    await clean_db.execute("UPDATE nsfw_presenza SET uscito_il = now() - interval '91 days' WHERE guild_id = $1", GUILD)
+    assert await worker.nsfw_autopost_worker.pulizia(bot) == [GUILD]
+    assert await repo.get_config(GUILD) is None
+    assert await clean_db.fetchval("SELECT count(*) FROM nsfw_registro WHERE guild_id = $1", GUILD) == 0
+    assert await repo.e_bloccato("redgifs", "x")
+    assert (await servizio.leggi(GUILD + 1)).attivo  # il server dove il bot NSFW c'è resta
+
+
+def _scelta_finta():
+    return servizio.Scelta(_el("buono"), impronta(b"x"), b"x")
+
+
+async def test_l_uscita_del_bot_principale_non_cancella_i_dati_nsfw():
+    from core.data_registry import tabella
+
+    for nome in ("nsfw_config", "nsfw_autopost", "nsfw_registro", "nsfw_bloccati", "nsfw_presenza"):
+        assert tabella(nome).sql_cancella_server() is None

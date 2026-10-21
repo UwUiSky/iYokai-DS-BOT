@@ -68,3 +68,21 @@ class NsfwBot(commands.Bot):
             SCOPE_SYNC, self.tree.get_commands(), self.tree, self.tree.sync, StatoSyncDatabase(db.pool)
         )
         nsfw_autopost_worker.start(self, vista_pubblicazione)
+
+    async def on_guild_join(self, guild: discord.Guild) -> None:
+        from core.repositories.nsfw_repo import nsfw_repo
+
+        try:
+            await nsfw_repo.segna_presenza(guild.id, True)
+        except Exception:
+            logger.exception("Presenza NSFW non segnata (server %s)", guild.id)
+
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        """Uscito: la pubblicazione automatica si ferma subito e partono i 90 giorni (D6)."""
+        from core.repositories.nsfw_repo import nsfw_repo
+
+        try:
+            await nsfw_repo.togli_autopost(guild.id)
+            await nsfw_repo.segna_presenza(guild.id, False)
+        except Exception:
+            logger.exception("Uscita NSFW non registrata (server %s)", guild.id)
