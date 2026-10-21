@@ -242,3 +242,13 @@
 | 16/10 | `voice_temp._create_temp_channel` | Due canali creati insieme prendono lo stesso {numero} | media | corretto r7liv |
 | 16/10 | `voice_temp.invita` | Il bot crea inviti al server per chi non ha «Crea invito» (link nel fallback DM) | media | corretto r7liv |
 | 16/10 | `voice_temp.unlock` | Unlock fallito su canale mai bloccato lo segna bloccato con None: il lock dopo perde il valore vero | bassa | corretto r7liv (revisore) |
+| 21/10 | `core/web_panel_server.py` `_leggi_caricamento` | aiohttp 3.14 applica `client_max_size` (8 KB) a ogni parte di `request.multipart()`: ogni avatar/banner vero dava 413 | alta | corretto r8web ec769c2 |
+| 21/10 | `core/redacted_access_log.py` | `/verifica/<server>-<membro>-…` nel log accanto all'IP: IP in chiaro di un membro (D19) | media | corretto r8web 0e8943c |
+| 21/10 | `core/alt_detection_logic.rete` | Proxy non dichiarato o Docker: tutti da 127.0.0.1/172.17.0.1, ogni membro «doppio» di ogni altro | alta | corretto r8web 87f72f9 |
+| 21/10 | `data_registry` `verify_doppi` | La copia dei dati dava l'id dell'altro account (terzo: familiare, stessa rete) | media | corretto r8web 951cf86 |
+| 21/10 | `panel_bridge.verifica_web` | Link riusabile 15 min: ogni invio riavvisa lo staff (anche da già verificato) | media | corretto r8web db91e8c |
+| 21/10 | `web_panel_server.pagina_dati` | `?richiesta=²`: isdigit vero, int() no → 500 | bassa | corretto r8web 6de5e0f |
+| 21/10 | `web_panel_server` limite_accesso | Verifica, accedi e callback dividono 10/min per IP: dietro CGNAT o proxy non dichiarato un raid blocca tutti | bassa | plausibile |
+| 21/10 | `alt_detection_logic.valuta_doppi` | IPv4 uguale = doppio «medio»: CGNAT mobile, scuole, famiglie fanno falsi avvisi | bassa | plausibile (scelta di disegno) |
+| 21/10 | `whitelabel_bot.token_di_sistema` | Manca `YOKAI_MOD_TOKEN` (preesistente; serve conoscere il token) | bassa | plausibile |
+| 21/10 | `panel_bridge.revoca_permessi_comandi` | Revoca cancella il token cifrato ma non lo revoca su Discord (vale ~7 giorni) | bassa | plausibile |
