@@ -284,8 +284,9 @@ async def verifica_web(
     if doppi:
         from cogs.security.alt_detection import avvisa_staff
 
-        await fingerprint_repo.salva_doppi(guild_id, user_id, [(d.altro_user_id, d.livello) for d in doppi])
-        await avvisa_staff(guild, membro, doppi)
+        nuovi = await fingerprint_repo.salva_doppi(guild_id, user_id, [(d.altro_user_id, d.livello) for d in doppi])
+        if nuovi:
+            await avvisa_staff(guild, membro, [d for d in doppi if d.altro_user_id in nuovi])
     esito = await cog.run_checks_and_finalize(guild, membro, captcha_ok=True)
     return esito.success, esito.reason
 

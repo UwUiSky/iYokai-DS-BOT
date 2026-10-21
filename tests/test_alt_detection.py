@@ -175,6 +175,27 @@ async def test_pagina_verifica_e_doppio_segnalato(ambiente, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_lo_stesso_doppio_non_si_riavvisa_a_ogni_invio(ambiente, monkeypatch):
+    """Il link vale 15 minuti e si può inviare di nuovo: lo staff riceve l'avviso una volta, non a ogni invio."""
+    avvisi = []
+
+    async def _avvisa(guild, membro, doppi):
+        avvisi.append(doppi)
+        return True
+
+    import cogs.security.alt_detection as cog_alt
+
+    monkeypatch.setattr(cog_alt, "avvisa_staff", _avvisa)
+    await _verifica(ambiente.client, ALT)
+    for _ in range(3):
+        await _verifica(ambiente.client, MEMBRO)
+    assert avvisi == [[logica.Doppio(ALT, logica.LIVELLO_ALTO)]]
+    # Un livello che cambia (browser diverso) è una notizia: si avvisa.
+    await _verifica(ambiente.client, MEMBRO, ua="Chrome")
+    assert avvisi[-1] == [logica.Doppio(ALT, logica.LIVELLO_MEDIO)] and len(avvisi) == 2
+
+
+@pytest.mark.asyncio
 async def test_proxy_non_dichiarato_nessun_doppio(ambiente, monkeypatch):
     """Due persone diverse dietro lo stesso proxy locale non dichiarato: nessun avviso allo staff."""
     avvisi = []
