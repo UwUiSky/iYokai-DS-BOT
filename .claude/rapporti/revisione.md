@@ -229,3 +229,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 21/10 | `feat/r8uti` | `poll.discussione` | Thread aperto per chi non può creare thread (dal cacciatore) | bassa | chiuso 21/10 |
 | 21/10 | `feat/r8uti` | `schede.canale`/`permessi` | Nessun controllo che chi chiede veda il canale scelto (argomento di un canale privato). Da verificare se Discord lo impedisce già | bassa | aperto |
 | 21/10 | `feat/r8uti` | `scripts/generate_command_list.py` | Categoria «Ruoli» non tradotta nell'elenco inglese | bassa | chiuso 21/10 |
+| 21/10 | `feat/r8tkt` | `tickets.claim`/`passa`/`rilascia` | Presa esclusiva rubabile, precedente con permessi personali (dal cacciatore) | media | chiuso 21/10 (bd26b6d) |
+| 21/10 | `feat/r8tkt` | `tickets.note` | Thread archiviato non ritrovato (dal cacciatore) | bassa | chiuso 21/10 (bd26b6d) |
+| 21/10 | `feat/r8tkt` | `tickets.close` | Due letture: test instabile dei due close insieme | bassa | chiuso 21/10 (bd26b6d) |
+| 21/10 | `feat/r8tkt` | `ticket_opzioni_repo.situazione` | 7 query prima di send_modal: cache 30 s + 2 query | bassa | chiuso 21/10 (ad83893) |
+| 21/10 | `feat/r8tkt` | `tickets._crea_ticket` | Reperibile non più staff entrava nei ticket nuovi | media | chiuso 21/10 |
+| 21/10 | `feat/r8tkt` | `risposte._ruolo_secondo_ai` | L'utente può spingere l'AI a chiamare «amministratore» invece di «moderatore»: solo un ping diverso | bassa | accettato |

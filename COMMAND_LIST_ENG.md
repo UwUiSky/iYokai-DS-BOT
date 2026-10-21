@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:42 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 513 commands in 23 categories.**
+**Total: 530 commands in 23 categories.**
 
 ## Admin
 
@@ -510,17 +510,34 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:3
 ## Tickets
 
 - **`/ticket add`** — Adds a user or role to this ticket.
+- **`/ticket ask-close`** — Ask the user whether the ticket can be closed.
 - **`/ticket assistant`** — AI assistant answer (for staff: draft and triage).
+- **`/ticket blacklist`** — Users and roles that cannot open tickets.
 - **`/ticket claim`** — Takes charge of this ticket.
 - **`/ticket close`** — Closes this ticket.
 - **`/ticket dm-close`** — Closes this ModMail conversation.
 - **`/ticket forceclose`** — Closes this ticket immediately, with no wait.
+- **`/ticket notes`** — Private staff thread to discuss the ticket.
+- **`/ticket on-call`** — Join or leave the staff notified on every new ticket.
+- **`/ticket open`** — Open a ticket (staff also for a user or from a message).
+- **`/ticket options access`** — Who can open: per-role rules, read from the top.
+- **`/ticket options channel`** — Channel name and fallback categories.
+- **`/ticket options claiming`** — Claiming: category, exclusivity, auto-assignment.
+- **`/ticket options closing`** — Confirmation before closing and who can close.
+- **`/ticket options hours`** — Opening hours and what happens outside them.
+- **`/ticket options limits`** — Open-ticket cap, cooldown and exempt roles.
+- **`/ticket options messages`** — DMs to the user and claim/release texts.
+- **`/ticket options permissions`** — User permissions, observers, roles while open, staff team.
+- **`/ticket options show`** — All the options of a panel.
+- **`/ticket options warnings`** — Who to ping on opening and pinned first message.
 - **`/ticket pass`** — Hands the ticket over to a colleague.
 - **`/ticket priority`** — Sets this ticket's priority.
 - **`/ticket release`** — Gives up taking charge of this ticket.
 - **`/ticket remove`** — Removes a user or role from this ticket.
 - **`/ticket rename`** — Renames this ticket.
 - **`/ticket reply`** — Replies to the user of this ModMail conversation.
+- **`/ticket reset-cooldown`** — Remove a user's cooldown between tickets.
+- **`/ticket suspend`** — Suspend ticket opening (no reason: resume).
 - **`/ticket transcript`** — Get the transcript without closing the ticket.
 
 ## Utility

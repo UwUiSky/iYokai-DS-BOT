@@ -14,12 +14,6 @@ transcript lo dice in testa (MESSAGE_CONTENT_WARNING).
 Funzioni coperte: SPEC §13.2, §13.10, §13.11, §13.12, §13.13
 """
 
-# DA FARE (issue #62, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §6 (Ticket).
-# DA FARE (issue #84, fase F9): NF-13, Ticket: modulo, più pannelli,
-#   chiusura automatica, voto. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
-
 from __future__ import annotations
 
 import re

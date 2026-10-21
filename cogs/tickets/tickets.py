@@ -45,7 +45,10 @@ scheduler persistente (core/scheduler.py, azione
 ricarica del cog; gli errori temporanei di Discord vengono riprovati
 dallo scheduler. /ticket forceclose elimina subito e funziona anche su
 un ticket già chiuso il cui canale è rimasto.
-Funzioni coperte: SPEC §13.2, §13.8–§13.13, §22.9–§22.12 (pannelli, modulo, chiusura
+Catalogo #120: le opzioni dei pannelli (core/ticket_opzioni_logic.py, comandi in
+opzioni.py) decidono apertura, nome, permessi, avvisi, presa in carico e chiusura;
+qui anche `/ticket note` e `/ticket chiedi-chiusura` (azione `ticket_richiesta_chiusura`).
+Funzioni coperte: SPEC §13.2–§13.20, §22.9–§22.12 (pannelli, modulo, chiusura
 automatica, voto, limite per utente), §8.18 (risposte standard, in risposte.py)
 """
 
@@ -84,8 +87,12 @@ from core.repositories.ticket_form_repo import (
     ticket_form_repo,
 )
 from core import ticket_form_logic as form
+from core import ticket_opzioni_logic as opz_logic
+from core.repositories.ticket_opzioni_repo import ticket_opzioni_repo
+from core.ticket_opzioni_logic import Opzioni
 from core.repositories.ticket_repo import (
     VALID_PRIORITIES,
+    PannelloPienoError,
     TicketAlreadyOpenError,
     ticket_repo,
 )
@@ -104,6 +111,7 @@ from core.ticket_logic import (
     truncate_label,
 )
 from core.premium import PremiumModule, registry
+from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 from core.scheduler import in_seconds, scheduler
 from core.ui_base import BaseModal, BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
 from cogs.moderation._shared import ensure_module_enabled
@@ -150,6 +158,8 @@ MAX_CHANNEL_NAME_LENGTH = 100
 TICKET_AUTOCLOSE_ACTION_TYPE = "ticket_autoclose"
 # #139: sollecito se nessuno dello staff risponde entro N minuti (gestito da cogs/tickets/risposte.py).
 TICKET_SOLLECITO_ACTION_TYPE = "ticket_sollecito"
+# TKT-055: chiusura dopo N ore senza risposta alla richiesta di chiusura.
+TICKET_RICHIESTA_CHIUSURA_ACTION_TYPE = "ticket_richiesta_chiusura"
 # L'attività si scrive nel database al più una volta al minuto per canale.
 _ATTIVITA_MAX_VOCI = 500
 _ATTIVITA_OGNI_SECONDI = 60
@@ -160,7 +170,7 @@ MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
 # Ferma il doppio clic prima che nasca un secondo canale. La garanzia
-# vera resta l'indice unico nel database (migrazione 0010).
+# vera resta il controllo sotto blocco in ticket_repo.create_ticket.
 _aperture_in_corso: set[tuple[int, int]] = set()
 
 MESSAGGIO_TICKET_GIA_APERTO = (
@@ -193,22 +203,53 @@ async def _support_role_ids(guild_id: int) -> list[int]:
     return merge_support_role_ids(legacy, extra)
 
 
-async def _is_ticket_staff(interaction: discord.Interaction) -> bool:
+async def _opzioni_pannello(panel_id: int | None) -> Opzioni:
+    """Le opzioni del pannello (#120); un ticket senza pannello usa i valori predefiniti."""
+    if panel_id is None:
+        return Opzioni()
+    return await ticket_opzioni_repo.opzioni(panel_id)
+
+
+async def _ruoli_staff(guild_id: int, panel_id: int | None = None) -> list[int]:
+    """TKT-044: la squadra del pannello, se ne ha una; altrimenti i ruoli di supporto del server."""
+    opzioni = await _opzioni_pannello(panel_id)
+    if opzioni.ruoli_staff:
+        return list(opzioni.ruoli_staff)
+    return await _support_role_ids(guild_id)
+
+
+async def _membro_staff(member, guild_id: int, panel_id: int | None = None) -> bool:
+    if not isinstance(member, discord.Member) or getattr(member, "bot", False) is True:
+        return False
+    if member.guild_permissions.manage_guild:
+        return True
+    return bool(set(await _ruoli_staff(guild_id, panel_id)) & {r.id for r in member.roles})
+
+
+async def _is_ticket_staff(interaction: discord.Interaction, ticket=None) -> bool:
     """
     SPEC.md §13.9: chi fa parte dello staff dei ticket — chi ha il
     permesso Discord Manage Server, oppure chi ha almeno uno dei
-    ruoli di supporto configurati (§13.13). Allo staff sono riservati
-    forceclose, claim, priority, add e remove; /ticket close resta
-    aperto a chiunque abbia accesso al canale, incluso chi ha aperto
-    il ticket.
+    ruoli di supporto configurati (§13.13), o della squadra del pannello
+    del ticket (TKT-044). Allo staff sono riservati forceclose, claim,
+    priority, add e remove; /ticket close resta aperto a chi ha aperto
+    il ticket, se il pannello lo permette (TKT-057).
     """
-    if not isinstance(interaction.user, discord.Member) or interaction.guild is None:
+    if interaction.guild is None:
         return False
-    if interaction.user.guild_permissions.manage_guild:
-        return True
-    ruoli_supporto = set(await _support_role_ids(interaction.guild.id))
-    ruoli_utente = {r.id for r in interaction.user.roles}
-    return bool(ruoli_supporto & ruoli_utente)
+    return await _membro_staff(
+        interaction.user, interaction.guild.id, getattr(ticket, "panel_id", None)
+    )
+
+
+async def esito_apertura(guild: discord.Guild, member, panel_id: int | None) -> opz_logic.Esito:
+    """TKT-017…024: lista nera, sospensione, regole, orari, tetto del pannello e pausa."""
+    ruoli = [r.id for r in getattr(member, "roles", [])]
+    staff = await _membro_staff(member, guild.id, panel_id)
+    situazione = await ticket_opzioni_repo.situazione(guild.id, member.id, ruoli, panel_id)
+    return opz_logic.decidi_apertura(
+        opz_logic.Richiedente(member.id, frozenset(ruoli), staff), situazione, datetime.now(timezone.utc)
+    )
 
 
 async def _open_ticket_channel(
@@ -219,24 +260,126 @@ async def _open_ticket_channel(
     *,
     panel: PannelloTicket | None = None,
     campi: list[tuple[str, str]] | None = None,
-) -> None:
+    utente: discord.Member | None = None,
+    motivo: str | None = None,
+    citato: discord.Message | None = None,
+):
     """
     Logica di apertura di un ticket condivisa dal bottone unico
-    (nessuna categoria configurata) e dal select menu categorie
-    (SPEC.md §13.2) — l'interazione arriva già deferred, quindi qui
-    si usa sempre .followup.
+    (nessuna categoria configurata), dal select menu categorie
+    (SPEC.md §13.2), dai pannelli, da `/ticket apri` e dal menu sul
+    messaggio — l'interazione arriva già deferred, quindi qui si usa
+    sempre .followup. `utente` è per chi si apre il ticket (TKT-008:
+    lo staff a nome di un utente). Restituisce il canale, o None.
     """
-    chiave = (guild.id, interaction.user.id)
+    utente = utente or interaction.user
+    chiave = (guild.id, utente.id)
     if chiave in _aperture_in_corso:
         await interaction.followup.send(
             "Sto già aprendo il tuo ticket, un attimo.", ephemeral=True
         )
-        return
+        return None
     _aperture_in_corso.add(chiave)
     try:
-        await _crea_ticket(interaction, guild, category, category_label, panel=panel, campi=campi)
+        return await _crea_ticket(
+            interaction, guild, category, category_label, panel=panel, campi=campi,
+            utente=utente, motivo=motivo, citato=citato,
+        )
     finally:
         _aperture_in_corso.discard(chiave)
+
+
+def _categoria_con_posto(
+    guild: discord.Guild, category: discord.CategoryChannel, opzioni: Opzioni
+) -> discord.CategoryChannel | None:
+    """TKT-030: la categoria principale, o la prima di riserva sotto i 50 canali."""
+    candidate = [category]
+    for categoria_id in opzioni.categorie_riserva:
+        riserva = guild.get_channel(categoria_id)
+        if isinstance(riserva, discord.CategoryChannel):
+            candidate.append(riserva)
+    scelta = opz_logic.prima_con_posto([(c.id, len(c.channels)) for c in candidate])
+    return next((c for c in candidate if c.id == scelta), None)
+
+
+def _overwrites_del_ticket(
+    guild: discord.Guild, utente, opzioni: Opzioni, ruoli_staff: list[int], reperibili: list
+) -> dict:
+    """Chi vede il canale: l'utente (con i permessi scelti, TKT-041), lo staff, gli osservatori (TKT-042), i reperibili."""
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        utente: discord.PermissionOverwrite(**opz_logic.permessi_utente(opzioni.permessi_negati)),
+        guild.me: discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, manage_channels=True
+        ),
+    }
+    for role_id in opzioni.ruoli_osservatori:
+        role = guild.get_role(role_id)
+        if role is not None and role_id != guild.id:
+            overwrites[role] = discord.PermissionOverwrite(
+                view_channel=True, read_message_history=True, send_messages=False, add_reactions=False
+            )
+    for role_id in ruoli_staff:
+        role = guild.get_role(role_id)
+        if role is not None and role_id != guild.id:
+            overwrites[role] = discord.PermissionOverwrite(
+                view_channel=True, send_messages=True, read_message_history=True
+            )
+    for membro in reperibili:
+        overwrites[membro] = discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, read_message_history=True
+        )
+    return overwrites
+
+
+async def _dai_ruoli_durante(guild: discord.Guild, utente, channel_id: int, opzioni: Opzioni) -> None:
+    """TKT-043: ruoli dati all'apertura e salvati col ticket, per toglierli alla chiusura."""
+    ruoli = []
+    for role_id in opzioni.ruoli_durante:
+        # Rivisto a ogni apertura: il ruolo può aver preso permessi forti dopo la configurazione.
+        if motivo_ruolo_automatico_non_assegnabile(guild, role_id):
+            continue
+        ruoli.append(guild.get_role(role_id))
+    if not ruoli or not isinstance(utente, discord.Member):
+        return
+    try:
+        await utente.add_roles(*ruoli, reason="Ticket aperto")
+    except discord.HTTPException:
+        logger.warning("Ruoli del ticket non dati a %s nel server %s.", utente.id, guild.id)
+        return
+    await ticket_repo.set_ruoli_dati(channel_id, [r.id for r in ruoli])
+
+
+async def _avvisi_di_apertura(
+    channel, guild: discord.Guild, utente, opzioni: Opzioni, reperibili: list, numero: int
+) -> None:
+    """TKT-037 ping (ruoli, @here, reperibili; poi cancellati se scelto) e TKT-039 DM all'utente."""
+    ruoli = [r for r in opzioni.ping_ruoli if r != guild.id and guild.get_role(r) is not None]
+    parti = [f"<@&{r}>" for r in ruoli] + [m.mention for m in reperibili]
+    if opzioni.ping_here:
+        parti.insert(0, "@here")
+    if parti:
+        try:
+            ping = await channel.send(
+                " ".join(parti)[:2000],
+                allowed_mentions=discord.AllowedMentions(
+                    everyone=opzioni.ping_here,
+                    roles=[discord.Object(id=r) for r in ruoli],
+                    users=[discord.Object(id=m.id) for m in reperibili],
+                ),
+            )
+            if opzioni.ping_cancella:
+                await ping.delete()
+        except discord.HTTPException:
+            logger.warning("Avviso di apertura non inviato nel ticket %s.", channel.id)
+    if opzioni.dm_apertura:
+        testo = opz_logic.riempi(
+            opzioni.dm_apertura, utente=utente.mention, server=guild.name, numero=numero
+        )
+        try:
+            await utente.send(f"{testo}\n{channel.jump_url}"[:2000])
+        except discord.HTTPException:
+            logger.info("DM di apertura non consegnato a %s (DM chiusi?).", utente.id)
 
 
 async def _crea_ticket(
@@ -247,36 +390,56 @@ async def _crea_ticket(
     *,
     panel: PannelloTicket | None = None,
     campi: list[tuple[str, str]] | None = None,
-) -> None:
+    utente: discord.Member | None = None,
+    motivo: str | None = None,
+    citato: discord.Message | None = None,
+):
+    utente = utente or interaction.user
+    per_conto = utente.id != interaction.user.id
+    panel_id = panel.id if panel is not None else None
+    fuori_orario = False
+    tetto_pannello = None
+    if not per_conto:
+        # TKT-017…024 (per lo staff che apre a nome di un utente decide lo staff).
+        esito = await esito_apertura(guild, utente, panel_id)
+        if not esito.permesso:
+            await interaction.followup.send(esito.messaggio[:2000], ephemeral=True)
+            return None
+        fuori_orario = esito.fuori_orario
+        tetto_pannello = esito.tetto_pannello
+    opzioni = await _opzioni_pannello(panel_id)
+
     limite = await _limite_per_utente(guild.id)
-    already_open = await ticket_repo.count_open_tickets_for_user(
-        guild.id, interaction.user.id
-    )
+    already_open = await ticket_repo.count_open_tickets_for_user(guild.id, utente.id)
     if already_open >= limite:
-        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
-        return
+        await interaction.followup.send(
+            _messaggio_limite(limite) if not per_conto else f"{utente.mention} ha già il massimo di ticket aperti.",
+            ephemeral=True,
+        )
+        return None
 
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        interaction.user: discord.PermissionOverwrite(
-            view_channel=True, send_messages=True, read_message_history=True
-        ),
-        guild.me: discord.PermissionOverwrite(
-            view_channel=True, send_messages=True, manage_channels=True
-        ),
-    }
-
-    for role_id in await _support_role_ids(guild.id):
-        role = guild.get_role(role_id)
-        if role is not None:
-            overwrites[role] = discord.PermissionOverwrite(
-                view_channel=True, send_messages=True, read_message_history=True
-            )
+    category = _categoria_con_posto(guild, category, opzioni)
+    if category is None:
+        await interaction.followup.send(
+            "Le categorie dei ticket sono piene (50 canali ciascuna): avvisa lo staff.", ephemeral=True
+        )
+        return None
+    ruoli_staff = await _ruoli_staff(guild.id, panel_id)
+    # Si ricontrolla a ogni apertura: chi ha perso il ruolo dello staff non vede più i ticket nuovi.
+    reperibili = [
+        m for m in (guild.get_member(uid) for uid in await ticket_opzioni_repo.reperibili(guild.id))
+        if m is not None and m.id != utente.id and not m.bot
+        and (m.guild_permissions.manage_guild or set(ruoli_staff) & {r.id for r in m.roles})
+    ]
+    overwrites = _overwrites_del_ticket(guild, utente, opzioni, ruoli_staff, reperibili)
 
     # Il numero si riserva prima, così il canale nasce già con il nome
     # giusto: rinominarlo dopo spenderebbe una delle 2 rinomine che
     # Discord concede ogni 10 minuti (LIM-3).
     ticket_number = await ticket_repo.reserve_ticket_number(guild.id)
+    nome = opz_logic.nome_canale(
+        opzioni.nome_modello, ticket_number, str(utente.name), str(getattr(utente, "display_name", "") or "")
+    )
 
     # Il canale si crea PRIMA di registrare il ticket nel DB, così
     # se la creazione fallisce (permessi mancanti, categoria
@@ -284,49 +447,56 @@ async def _crea_ticket(
     # un ticket "fantasma" senza canale reale.
     try:
         channel = await category.create_text_channel(
-            name=f"ticket-{ticket_number:04d}",
+            name=nome,
             overwrites=overwrites,
-            reason=f"Ticket aperto da {interaction.user}",
+            reason=f"Ticket aperto da {interaction.user}"[:512],
         )
     except discord.Forbidden:
         await interaction.followup.send(
             "Non ho i permessi per creare un canale in quella categoria.",
             ephemeral=True,
         )
-        return
+        return None
     except discord.HTTPException:
         await interaction.followup.send(
             "Impossibile creare il canale del ticket (la categoria "
             "potrebbe aver raggiunto il limite di 50 canali).",
             ephemeral=True,
         )
-        return
+        return None
 
     try:
         await ticket_repo.create_ticket(
             guild.id,
-            interaction.user.id,
+            utente.id,
             channel.id,
             category_label=category_label,
             ticket_number=ticket_number,
-            panel_id=panel.id if panel is not None else None,
+            panel_id=panel_id,
             max_aperti=limite,
+            max_nel_pannello=tetto_pannello,
         )
-    except TicketAlreadyOpenError:
+    except TicketAlreadyOpenError as errore:
         # Un altro ticket dello stesso utente è nato nel frattempo: il
         # canale appena creato non deve restare orfano.
         try:
             await channel.delete(reason="Ticket doppio: l'utente ne ha già uno aperto")
         except discord.HTTPException:
             logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
-        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
-        return
+        pieno = isinstance(errore, PannelloPienoError)
+        await interaction.followup.send(
+            "Questo pannello ha già il massimo di ticket aperti: riprova più tardi." if pieno else _messaggio_limite(limite),
+            ephemeral=True,
+        )
+        return None
+
+    await _dai_ruoli_durante(guild, utente, channel.id, opzioni)
 
     if panel is not None and panel.welcome_text:
-        descrizione = panel.welcome_text.replace("{utente}", interaction.user.mention)[:4000]
+        descrizione = panel.welcome_text.replace("{utente}", utente.mention)[:4000]
     else:
         descrizione = (
-            f"Ciao {interaction.user.mention}, grazie per averci "
+            f"Ciao {utente.mention}, grazie per averci "
             f"contattato. Descrivi il tuo problema e lo staff ti "
             f"risponderà a breve."
         )
@@ -337,7 +507,25 @@ async def _crea_ticket(
     )
     if category_label is not None:
         embed.add_field(name="Categoria", value=truncate_label(category_label))
-    for nome_campo, valore_campo in campi or []:
+    if per_conto:
+        embed.add_field(name="Aperto dallo staff", value=interaction.user.mention)
+    if motivo:
+        embed.add_field(name="Motivo", value=motivo[:1024], inline=False)
+    if citato is not None:
+        testo_citato = (citato.content or "(senza testo)")[:900]
+        embed.add_field(
+            name=f"Messaggio di {citato.author}"[:256],
+            value=f"{testo_citato}\n[Vai al messaggio]({citato.jump_url})"[:1024],
+            inline=False,
+        )
+    if fuori_orario:
+        embed.add_field(
+            name="Fuori orario",
+            value=(opzioni.fuori_orario_testo or "Lo staff risponde negli orari di apertura: "
+                   + opz_logic.orari_come_testo(opzioni.orari, opzioni.fuso))[:1024],
+            inline=False,
+        )
+    for nome_campo, valore_campo in (campi or [])[: 25 - len(embed.fields)]:
         embed.add_field(name=nome_campo, value=valore_campo, inline=False)
     # Discord rifiuta un embed oltre 6000 caratteri: senza benvenuto il ticket nascerebbe vuoto e
     # le risposte del modulo andrebbero perse. Si accorcia il testo di benvenuto, mai le risposte.
@@ -345,15 +533,19 @@ async def _crea_ticket(
     if eccesso > 0:
         embed.description = descrizione[: max(0, len(descrizione) - eccesso - 1)] + "…"
     try:
-        await channel.send(content=interaction.user.mention, embed=embed)
+        primo = await channel.send(content=utente.mention, embed=embed)
+        if opzioni.fissa_primo:
+            await primo.pin(reason="Primo messaggio del ticket")
     except discord.HTTPException:
-        logger.warning("Messaggio di benvenuto non inviato nel ticket %s.", channel.id)
+        logger.warning("Messaggio di benvenuto non inviato (o non fissato) nel ticket %s.", channel.id)
+
+    await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
 
     if panel is not None and panel.autoclose_minutes:
         try:
             await scheduler.schedule(
                 guild.id,
-                interaction.user.id,
+                utente.id,
                 TICKET_AUTOCLOSE_ACTION_TYPE,
                 in_seconds(panel.autoclose_minutes * 60),
                 {"channel_id": channel.id},
@@ -365,7 +557,7 @@ async def _crea_ticket(
         try:
             await scheduler.schedule(
                 guild.id,
-                interaction.user.id,
+                utente.id,
                 TICKET_SOLLECITO_ACTION_TYPE,
                 in_seconds(panel.sollecito_minuti * 60),
                 {"channel_id": channel.id},
@@ -376,6 +568,7 @@ async def _crea_ticket(
     await interaction.followup.send(
         f"Ticket creato: {channel.mention}", ephemeral=True
     )
+    return channel
 
 
 def _category_options(categorie, with_emoji: bool = True) -> list[discord.SelectOption]:
@@ -534,10 +727,14 @@ class TicketPanelView(BaseView):
 class ModuloTicket(BaseModal):
     """Finestra con le domande del pannello (al massimo 5, limite di Discord)."""
 
-    def __init__(self, panel: PannelloTicket, domande: list[DomandaModulo]) -> None:
+    def __init__(
+        self, panel: PannelloTicket, domande: list[DomandaModulo], *, comando: dict | None = None
+    ) -> None:
         super().__init__(title=form.titolo_modulo(panel.name), timeout=600)
         self._panel = panel
         self._domande = domande
+        # TKT-007/009: da /ticket apri arrivano anche motivo e link del messaggio.
+        self._comando = comando or {}
         for domanda in domande[: form.MAX_DOMANDE]:
             self.add_item(
                 discord.ui.TextInput(
@@ -576,14 +773,11 @@ class ModuloTicket(BaseModal):
             )
             return
         await interaction.response.defer(ephemeral=True)
-        await _open_ticket_channel(
-            interaction,
-            guild,
-            category,
-            panel.name,
-            panel=panel,
-            campi=form.campi_risposte(self._domande, risposte),
-        )
+        campi = form.campi_risposte(self._domande, risposte)
+        if self._comando:
+            await apri_da_comando(interaction, guild, category, panel, campi=campi, **self._comando)
+            return
+        await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel, campi=campi)
 
 
 async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> None:
@@ -606,6 +800,11 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
     if await ticket_repo.count_open_tickets_for_user(guild.id, interaction.user.id) >= limite:
         await interaction.response.send_message(_messaggio_limite(limite), ephemeral=True)
         return
+    # Prima della finestra: chi non può aprire non deve riempire il modulo per niente.
+    esito = await esito_apertura(guild, interaction.user, panel.id)
+    if not esito.permesso:
+        await interaction.response.send_message(esito.messaggio[:2000], ephemeral=True)
+        return
     category = guild.get_channel(panel.category_id)
     if not isinstance(category, discord.CategoryChannel):
         await interaction.response.send_message(
@@ -620,6 +819,72 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
         return
     await interaction.response.defer(ephemeral=True)
     await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel)
+
+
+async def _puo_leggere(canale, membro) -> bool:
+    """
+    Chi apre e chi riceve il ticket devono poter leggere il messaggio citato, se no il ticket
+    lo mostra a chi non lo vedeva. Un thread privato non ha permessi propri (discord.py li
+    prende dal canale padre): conta essere membri del thread, o gestire i thread.
+    """
+    permessi = canale.permissions_for(membro)
+    if not (permessi.view_channel and permessi.read_message_history):
+        return False
+    if getattr(canale, "type", None) != discord.ChannelType.private_thread or permessi.manage_threads:
+        return True
+    try:
+        await canale.fetch_member(membro.id)
+    except discord.HTTPException:
+        return False
+    return True
+
+
+async def _messaggio_citato(interaction: discord.Interaction, link: str | None, titolare=None):
+    """TKT-009: il messaggio del link, se è di questo server e chi apre (e chi riceve il ticket) può leggerlo."""
+    if not link:
+        return None, None
+    parti = opz_logic.leggi_link_messaggio(link)
+    if parti is None or parti[0] != interaction.guild.id:
+        return None, "Il link non è di un messaggio di questo server (usa «Copia link del messaggio»)."
+    canale = interaction.guild.get_channel_or_thread(parti[1])
+    lettori = [interaction.user] + ([titolare] if titolare is not None and titolare.id != interaction.user.id else [])
+    if canale is None or not all([await _puo_leggere(canale, m) for m in lettori]):
+        return None, "Non trovo quel canale, oppure non puoi leggerlo (tu o chi riceve il ticket)."
+    try:
+        return await canale.fetch_message(parti[2]), None
+    except discord.HTTPException:
+        return None, "Non trovo quel messaggio: forse è stato cancellato."
+
+
+async def apri_da_comando(
+    interaction: discord.Interaction,
+    guild: discord.Guild,
+    category: discord.CategoryChannel,
+    panel: PannelloTicket | None,
+    *,
+    motivo: str | None = None,
+    link: str | None = None,
+    utente: discord.Member | None = None,
+    aggiungi_autore: bool = False,
+    campi: list[tuple[str, str]] | None = None,
+) -> None:
+    """TKT-007/008/009: apertura da /ticket apri (interazione già deferred)."""
+    citato, errore = await _messaggio_citato(interaction, link, utente)
+    if errore:
+        await interaction.followup.send(errore, ephemeral=True)
+        return
+    channel = await _open_ticket_channel(
+        interaction, guild, category, panel.name if panel else None,
+        panel=panel, campi=campi, utente=utente, motivo=motivo, citato=citato,
+    )
+    autore = getattr(citato, "author", None)
+    titolare = utente or interaction.user
+    if channel is None or not aggiungi_autore or not isinstance(autore, discord.Member) or autore.id == titolare.id:
+        return
+    try:
+        await channel.set_permissions(autore, view_channel=True, send_messages=True, read_message_history=True)
+    except discord.HTTPException:
+        logger.warning("Autore del messaggio citato non aggiunto al ticket %s.", channel.id)
 
 
 class BottonePannello(
@@ -705,6 +970,98 @@ def vista_pannelli(pannelli: list[PannelloTicket]) -> discord.ui.View:
     vista = BaseView(timeout=None)
     for p in pannelli:
         vista.add_item(BottonePannello(p.id, p.button_label, p.button_emoji))
+    return vista
+
+
+class BottoneRichiestaChiusura(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"tkt:chc:(?P<t>[0-9]+):(?P<s>[ar])"
+):
+    """TKT-055: Accetta (chiude) o Rifiuta (resta aperto). Solo chi ha aperto il ticket."""
+
+    def __init__(self, ticket_id: int, scelta: str) -> None:
+        accetta = scelta == "a"
+        super().__init__(
+            discord.ui.Button(
+                label="Sì, chiudi" if accetta else "No, ho ancora bisogno",
+                style=discord.ButtonStyle.success if accetta else discord.ButtonStyle.secondary,
+                custom_id=f"tkt:chc:{ticket_id}:{scelta}",
+            )
+        )
+        self.ticket_id = ticket_id
+        self.scelta = scelta
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["t"]), match["s"])
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra: la blacklist si controlla qui.
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.exception("Errore in un bottone dei ticket: %s", error)
+        await _rispondi_con_errore(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
+        if ticket is None or ticket.id != self.ticket_id or ticket.status != "open" or ticket.chiusura_richiesta_at is None:
+            await interaction.response.send_message("Questa richiesta non vale più.", ephemeral=True)
+            return
+        if interaction.user.id != ticket.user_id:
+            await interaction.response.send_message("Risponde solo chi ha aperto il ticket.", ephemeral=True)
+            return
+        if self.scelta == "r":
+            await ticket_repo.annulla_richiesta_chiusura(interaction.channel.id)
+            await interaction.response.edit_message(
+                content="L'utente ha ancora bisogno di aiuto: il ticket resta aperto.", view=None
+            )
+            return
+        cog = interaction.client.get_cog("TicketsCog")
+        if cog is None:
+            await interaction.response.send_message("I ticket non sono disponibili ora: riprova tra poco.", ephemeral=True)
+            return
+        await cog.esegui_close(interaction, ticket, "Chiusura accettata dall'utente")
+
+
+class ConfermaChiusura(BaseView):
+    """TKT-054: conferma prima di chiudere (solo chi ha lanciato /ticket close, un minuto)."""
+
+    def __init__(self, cog, user_id: int, motivo: str | None) -> None:
+        super().__init__(timeout=60)
+        self._cog = cog
+        self._user_id = user_id
+        self._motivo = motivo
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return await super().interaction_check(interaction) and interaction.user.id == self._user_id
+
+    @discord.ui.button(label="Chiudi il ticket", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
+        if ticket is None or ticket.status != "open":
+            await interaction.response.edit_message(content="Questo ticket è già stato chiuso.", view=None)
+            return
+        self.stop()
+        await self._cog.esegui_close(interaction, ticket, self._motivo)
+
+
+def _puo_scavalcare(member) -> bool:
+    """TKT-050: con la presa esclusiva solo chi ha Manage Server prende o passa il ticket di un altro."""
+    permessi = getattr(member, "guild_permissions", None)
+    return bool(permessi and permessi.manage_guild)
+
+
+def link_inizio(channel) -> str:
+    """TKT-040: un link a un id pari a quello del canale porta Discord al primo messaggio."""
+    return f"https://discord.com/channels/{channel.guild.id}/{channel.id}/{channel.id}"
+
+
+def vista_inizio(channel, vista: discord.ui.View | None = None) -> discord.ui.View:
+    """TKT-040: aggiunge il bottone «Torna all'inizio» (link, nessun clic da gestire)."""
+    vista = vista or BaseView(timeout=None)
+    vista.add_item(discord.ui.Button(label="Torna all'inizio", style=discord.ButtonStyle.link, url=link_inizio(channel)))
     return vista
 
 
@@ -1367,8 +1724,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         return ticket
 
     async def _get_ticket_for_staff_or_reply(self, interaction: discord.Interaction):
-        """Come _get_ticket_or_reply, ma solo per lo staff dei ticket."""
-        if not await _is_ticket_staff(interaction):
+        """Come _get_ticket_or_reply, ma solo per lo staff dei ticket (anche la squadra del pannello, TKT-044)."""
+        if not await _is_ticket_staff(interaction, await ticket_repo.get_ticket_by_channel(interaction.channel.id)):
             await interaction.response.send_message(
                 "Solo lo staff (permesso Manage Server o un ruolo di "
                 "supporto configurato) può usare questo comando.",
@@ -1383,10 +1740,88 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if ticket is None:
             return
 
-        await ticket_repo.claim_ticket(interaction.channel.id, interaction.user.id)
-        await interaction.response.send_message(
-            f"Ticket preso in carico da {interaction.user.mention}."
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        esclusiva = opzioni.claim_esclusivo != "no"
+        if esclusiva and ticket.claimed_by not in (None, interaction.user.id) and not _puo_scavalcare(interaction.user):
+            await interaction.response.send_message(
+                f"Il ticket è già di <@{ticket.claimed_by}>: deve lasciarlo con `/ticket rilascia` "
+                "(o passartelo con `/ticket passa`) prima che tu lo prenda.",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await interaction.response.defer()
+        # Con l'esclusiva vince uno solo anche se due lo prendono insieme (chi scavalca no).
+        solo_se_libero = esclusiva and ticket.claimed_by is None
+        if not await ticket_repo.claim_ticket(interaction.channel.id, interaction.user.id, solo_se_libero=solo_se_libero):
+            await interaction.followup.send("Un altro dello staff ha appena preso questo ticket.", ephemeral=True)
+            return
+        testo = await self._dopo_presa(
+            interaction.guild, interaction.channel, ticket, interaction.user, precedente=ticket.claimed_by
         )
+        await interaction.followup.send(testo, view=vista_inizio(interaction.channel))
+
+    async def _dopo_presa(self, guild: discord.Guild, channel, ticket, staff, *, precedente: int | None = None) -> str:
+        """
+        TKT-028 categoria dei presi, TKT-050 esclusiva, TKT-053 testo. Restituisce il messaggio da
+        mostrare. `precedente` è chi aveva il ticket prima: con l'esclusiva perde i suoi permessi.
+        """
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        if opzioni.categoria_presi:
+            categoria = guild.get_channel(opzioni.categoria_presi)
+            if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
+                try:
+                    await channel.edit(category=categoria, sync_permissions=False, reason="Ticket preso in carico")
+                except discord.HTTPException:
+                    logger.warning("Ticket %s non spostato nella categoria dei presi.", channel.id)
+        if opzioni.claim_esclusivo != "no":
+            await self._permessi_staff(guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff)
+            if precedente is not None and precedente not in (staff.id, ticket.user_id):
+                await self._togli_permessi_personali(guild, channel, precedente)
+        if opzioni.testo_presa:
+            return opz_logic.riempi(
+                opzioni.testo_presa, utente=f"<@{ticket.user_id}>", server=guild.name,
+                numero=ticket.ticket_number or 0, staff=staff.mention,
+            )
+        return f"Ticket preso in carico da {staff.mention}."
+
+    @staticmethod
+    async def _togli_permessi_personali(guild: discord.Guild, channel, user_id: int) -> None:
+        """TKT-050: chi lascia (o perde) il ticket esclusivo torna ai permessi del suo ruolo."""
+        membro = guild.get_member(user_id) or discord.Object(id=user_id)
+        try:
+            await channel.set_permissions(membro, overwrite=None, reason="Presa in carico passata ad altri")
+        except discord.HTTPException:
+            logger.warning("Permessi di %s non tolti dal ticket %s.", user_id, channel.id)
+
+    async def _permessi_staff(self, guild: discord.Guild, channel, panel_id, *, esclusiva: str, titolare=None) -> None:
+        """
+        TKT-050: con la presa esclusiva i ruoli dello staff non scrivono ("scrivere") o non vedono
+        ("vedere"); chi ha il ticket scrive sempre. esclusiva="no" rimette i ruoli come all'apertura.
+        Si cambia un permesso solo: overwrites_for + update + overwrite=.
+        """
+        for role_id in await _ruoli_staff(guild.id, panel_id):
+            role = guild.get_role(role_id)
+            if role is None or role_id == guild.id:
+                continue
+            ow = channel.overwrites_for(role)
+            if esclusiva == "vedere":
+                ow.update(view_channel=False)
+            elif esclusiva == "scrivere":
+                ow.update(view_channel=True, send_messages=False)
+            else:
+                ow.update(view_channel=True, send_messages=True, read_message_history=True)
+            try:
+                await channel.set_permissions(role, overwrite=ow, reason="Presa in carico del ticket"[:512])
+            except discord.HTTPException:
+                logger.warning("Permessi dello staff non cambiati nel ticket %s.", channel.id)
+        if titolare is not None:
+            ow = channel.overwrites_for(titolare)
+            ow.update(view_channel=True, send_messages=True, read_message_history=True)
+            try:
+                await channel.set_permissions(titolare, overwrite=ow)
+            except discord.HTTPException:
+                logger.warning("Permessi di chi ha il ticket %s non dati.", channel.id)
 
     @staticmethod
     async def _bersaglio_o_risposta(interaction: discord.Interaction, member, ruolo):
@@ -1481,11 +1916,22 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 "Solo chi lo ha preso in carico (o chi ha Manage Server) può rilasciarlo.", ephemeral=True
             )
             return
+        await interaction.response.defer()
         await ticket_repo.release_ticket(interaction.channel.id)
-        await interaction.response.send_message(
-            f"{interaction.user.mention} ha lasciato il ticket: può prenderlo un altro con `/ticket claim`.",
-            allowed_mentions=discord.AllowedMentions.none(),
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        if opzioni.claim_esclusivo != "no":
+            await self._permessi_staff(interaction.guild, interaction.channel, ticket.panel_id, esclusiva="no")
+            if ticket.claimed_by != ticket.user_id:
+                await self._togli_permessi_personali(interaction.guild, interaction.channel, ticket.claimed_by)
+        testo = (
+            opz_logic.riempi(
+                opzioni.testo_rilascio, utente=f"<@{ticket.user_id}>", server=interaction.guild.name,
+                numero=ticket.ticket_number or 0, staff=interaction.user.mention,
+            )
+            if opzioni.testo_rilascio
+            else f"{interaction.user.mention} ha lasciato il ticket: può prenderlo un altro con `/ticket claim`."
         )
+        await interaction.followup.send(testo, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo("ticket", nome="passa", descrizione="Passa la presa in carico a un collega.")
     @app_commands.describe(collega="Il collega dello staff")
@@ -1493,17 +1939,133 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return
-        ruoli_supporto = set(await _support_role_ids(interaction.guild.id))
-        e_staff = collega.guild_permissions.manage_guild or bool(ruoli_supporto & {r.id for r in collega.roles})
-        if collega.bot or not e_staff:
+        if collega.bot or not await _membro_staff(collega, interaction.guild.id, ticket.panel_id):
             await interaction.response.send_message(
                 f"{collega.mention} non fa parte dello staff dei ticket.",
                 ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             return
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        if (
+            opzioni.claim_esclusivo != "no" and ticket.claimed_by not in (None, interaction.user.id)
+            and not _puo_scavalcare(interaction.user)
+        ):
+            await interaction.response.send_message(
+                f"Il ticket è di <@{ticket.claimed_by}>: lo passa solo lui (o chi ha Manage Server).",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await interaction.response.defer()
         await ticket_repo.claim_ticket(interaction.channel.id, collega.id)
-        await interaction.response.send_message(f"Ticket passato a {collega.mention}.")
+        testo = await self._dopo_presa(
+            interaction.guild, interaction.channel, ticket, collega, precedente=ticket.claimed_by
+        )
+        await interaction.followup.send(f"Ticket passato a {collega.mention}.\n{testo}"[:2000])
+
+    @comando_di_gruppo("ticket", nome="note", descrizione="Thread privato dello staff per parlare del ticket.")
+    async def note(self, interaction: discord.Interaction) -> None:
+        """TKT-034: un thread privato attaccato al ticket; l'utente non lo vede."""
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        thread = await self._thread_delle_note(interaction.guild, ticket.note_thread_id)
+        if thread is None:
+            try:
+                thread = await interaction.channel.create_thread(
+                    name=f"note-{ticket.ticket_number or 0:04d}",
+                    type=discord.ChannelType.private_thread,
+                    invitable=False,
+                    reason=f"Note dello staff, ticket {ticket.ticket_number or 0}"[:512],
+                )
+            except discord.HTTPException:
+                await interaction.followup.send(
+                    "Non riesco a creare il thread: mi serve il permesso «Crea thread privati».", ephemeral=True
+                )
+                return
+            await ticket_repo.imposta_note_thread(interaction.channel.id, thread.id)
+        try:
+            await thread.add_user(interaction.user)
+        except discord.HTTPException:
+            logger.warning("Staff %s non aggiunto al thread delle note %s.", interaction.user.id, thread.id)
+        await interaction.followup.send(f"Note dello staff: {thread.mention}", ephemeral=True)
+
+    async def _thread_delle_note(self, guild: discord.Guild, thread_id: int | None):
+        """
+        TKT-034: il thread delle note già creato. Uno archiviato non sta nella cache
+        (`get_thread`): si chiede a Discord e lo si riapre, invece di crearne un altro.
+        """
+        if not thread_id:
+            return None
+        thread = guild.get_thread(thread_id)
+        if thread is None:
+            try:
+                thread = await guild.fetch_channel(thread_id)
+            except discord.HTTPException:
+                return None  # cancellato (o non più leggibile): se ne crea uno nuovo
+        if not isinstance(thread, discord.Thread):
+            return None
+        if thread.archived:
+            try:
+                await thread.edit(archived=False)
+            except discord.HTTPException:
+                logger.warning("Thread delle note %s non riaperto.", thread_id)
+        return thread
+
+    @comando_di_gruppo("ticket", nome="chiedi-chiusura", descrizione="Chiedi all'utente se il ticket si può chiudere.")
+    @app_commands.describe(ore="Senza risposta il ticket si chiude dopo queste ore")
+    async def chiedi_chiusura(
+        self,
+        interaction: discord.Interaction,
+        ore: app_commands.Range[int, 1, opz_logic.MAX_ORE_RICHIESTA_CHIUSURA] = 24,
+    ) -> None:
+        """TKT-055: Accetta chiude, Rifiuta annulla; senza risposta lo scheduler chiude."""
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        await interaction.response.defer()
+        richiesta = await ticket_repo.richiedi_chiusura(interaction.channel.id)
+        if richiesta is None:
+            await interaction.followup.send("Questo ticket non è più aperto.", ephemeral=True)
+            return
+        await scheduler.schedule(
+            interaction.guild.id, ticket.user_id, TICKET_RICHIESTA_CHIUSURA_ACTION_TYPE, in_seconds(ore * 3600),
+            {"channel_id": interaction.channel.id, "richiesta": richiesta.isoformat()},
+        )
+        vista = BaseView(timeout=None)
+        vista.add_item(BottoneRichiestaChiusura(ticket.id, "a"))
+        vista.add_item(BottoneRichiestaChiusura(ticket.id, "r"))
+        await interaction.followup.send(
+            f"<@{ticket.user_id}>, {interaction.user.mention} chiede se il tuo problema è risolto. "
+            f"Se non rispondi entro {ore} ore il ticket si chiude da solo.",
+            view=vista_inizio(interaction.channel, vista),
+            allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=ticket.user_id)]),
+        )
+
+    async def handle_richiesta_chiusura(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Handler dello scheduler: chiude se la stessa richiesta è ancora senza risposta."""
+        channel_id = payload["channel_id"]
+        ticket = await ticket_repo.get_ticket_by_channel(channel_id)
+        if ticket is None or ticket.status != "open" or ticket.chiusura_richiesta_at is None:
+            return
+        if ticket.chiusura_richiesta_at.isoformat() != payload.get("richiesta"):
+            return  # c'è stata una richiesta più nuova: decide il suo timer
+        channel = self.bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await self.bot.fetch_channel(channel_id)
+            except discord.NotFound:
+                await ticket_repo.close_ticket_of_deleted_channel(channel_id)
+                return
+        await self._chiudi_da_sistema(
+            channel.guild, channel, ticket,
+            motivo="Nessuna risposta alla richiesta di chiusura",
+            avviso="Nessuna risposta alla richiesta di chiusura: ticket chiuso. Il canale verrà eliminato a breve.",
+            chiedi_voto=True,
+            ragione="Nessuna risposta alla richiesta di chiusura",
+        )
 
     @comando_di_gruppo("ticket", nome="transcript", descrizione="Ricevi il transcript senza chiudere il ticket.")
     async def transcript(self, interaction: discord.Interaction) -> None:
@@ -1630,9 +2192,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ]
 
     async def _deliver_transcript(
-        self, guild: discord.Guild, channel: discord.TextChannel, ticket
+        self, guild: discord.Guild, channel: discord.TextChannel, ticket, *, dm: bool = True
     ) -> None:
-        """SPEC.md §13.11: invio nel canale log configurato + DM all'utente."""
+        """SPEC.md §13.11: invio nel canale log configurato + DM all'utente (se il pannello lo vuole, TKT-075)."""
         try:
             testo = await self._build_transcript_text(channel, ticket)
         except discord.HTTPException:
@@ -1654,6 +2216,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
                     file=discord.File(io.BytesIO(contenuto), filename=nome_file),
                 )
 
+        if not dm:
+            return
         try:
             utente = guild.get_member(ticket.user_id) or await self.bot.fetch_user(ticket.user_id)
             for nome_file, contenuto in file_del_transcript:
@@ -1669,10 +2233,16 @@ class TicketsCog(CogConGruppi, commands.Cog):
     ) -> None:
         """Un transcript che fallisce non deve mai impedire l'eliminazione del canale."""
         self._transcript_in_corso.add(channel.id)
+        opzioni = Opzioni()
         try:
-            await self._deliver_transcript(guild, channel, ticket)
+            opzioni = await _opzioni_pannello(ticket.panel_id)
+            await self._deliver_transcript(guild, channel, ticket, dm=opzioni.transcript_dm)
         except Exception:
             logger.exception("Transcript del ticket %s non riuscito", channel.id)
+        try:
+            await self._fine_ticket(guild, ticket, opzioni)
+        except Exception:
+            logger.exception("Ruoli o DM di chiusura del ticket %s non riusciti", channel.id)
         try:
             # #139: dopo la chiusura il bot propone allo staff di salvare la risposta come standard.
             risposte = self._cog_risposte()
@@ -1682,6 +2252,26 @@ class TicketsCog(CogConGruppi, commands.Cog):
             logger.exception("Proposta di risposta standard del ticket %s non riuscita", channel.id)
         finally:
             self._transcript_in_corso.discard(channel.id)
+
+    async def _fine_ticket(self, guild: discord.Guild, ticket, opzioni: Opzioni) -> None:
+        """TKT-043: toglie i ruoli dati all'apertura; TKT-039: DM di chiusura scelto dal server."""
+        membro = guild.get_member(ticket.user_id)
+        if membro is None:
+            return
+        ruoli = [r for r in (guild.get_role(i) for i in ticket.ruoli_dati) if r is not None and r in membro.roles]
+        if ruoli:
+            try:
+                await membro.remove_roles(*ruoli, reason="Ticket chiuso")
+            except discord.HTTPException:
+                logger.warning("Ruoli del ticket non tolti a %s nel server %s.", membro.id, guild.id)
+        if opzioni.dm_chiusura:
+            testo = opz_logic.riempi(
+                opzioni.dm_chiusura, utente=membro.mention, server=guild.name, numero=ticket.ticket_number or 0
+            )
+            try:
+                await membro.send(testo[:2000])
+            except discord.HTTPException:
+                logger.info("DM di chiusura non consegnato a %s (DM chiusi?).", membro.id)
 
     async def _elimina_canale(self, channel_id: int, motivo: str | None) -> None:
         """
@@ -1917,10 +2507,42 @@ class TicketsCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
     ) -> None:
-        ticket = await self._get_ticket_or_reply(interaction)
-        if ticket is None:
+        # Una sola lettura: con due letture il ticket poteva chiudersi in mezzo e il secondo
+        # /ticket close rispondeva «non è un ticket» invece di «già chiuso».
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
+        if ticket is not None and ticket.status != "open":
+            # Due /ticket close quasi insieme: il secondo trova il ticket già chiuso.
+            await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
             return
+        if ticket is None:
+            await interaction.response.send_message(
+                "Questo comando funziona solo dentro un canale ticket aperto.", ephemeral=True
+            )
+            return
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        osservatore = bool(set(opzioni.ruoli_osservatori) & {r.id for r in getattr(interaction.user, "roles", [])})
+        if (
+            osservatore and interaction.user.id != ticket.user_id
+            and not await _is_ticket_staff(interaction, ticket)
+        ):
+            # TKT-042: gli osservatori vedono e non scrivono; non chiudono il ticket degli altri.
+            await interaction.response.send_message("Chi osserva il ticket non può chiuderlo.", ephemeral=True)
+            return
+        if not opzioni.utente_chiude and interaction.user.id == ticket.user_id and not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message(
+                "In questo pannello i ticket li chiude lo staff: scrivi qui se hai finito.", ephemeral=True
+            )
+            return
+        if opzioni.conferma_chiusura:
+            await interaction.response.send_message(
+                "Vuoi davvero chiudere questo ticket?", view=ConfermaChiusura(self, interaction.user.id, motivo),
+                ephemeral=True,
+            )
+            return
+        await self.esegui_close(interaction, ticket, motivo)
 
+    async def esegui_close(self, interaction: discord.Interaction, ticket, motivo: str | None) -> None:
+        """La chiusura vera di /ticket close (dopo l'eventuale conferma, TKT-054, o la richiesta accettata, TKT-055)."""
         if not await self._chiudi_e_pianifica(
             interaction.guild.id, interaction.channel.id, interaction.user.id, motivo, ticket.user_id,
             f"Ticket chiuso da {interaction.user}",
@@ -2025,11 +2647,21 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if not message.author.bot and ticket.panel_id is not None:
             await self._segna_attivita(message.channel.id)
 
+        # TKT-055: l'utente che scrive ha risposto alla richiesta di chiusura: il timer non chiude più.
+        if ticket.chiusura_richiesta_at is not None and message.author.id == ticket.user_id and not message.author.bot:
+            await ticket_repo.annulla_richiesta_chiusura(message.channel.id)
+
         # #139: risposta standard e sollecito (cog a parte, senza AI).
         if message.author.id == ticket.user_id and not message.author.bot:
             risposte = self._cog_risposte()
             if risposte is not None:
                 await risposte.su_messaggio_dell_utente(message, ticket)
+
+        if (
+            ticket.claimed_by is None and ticket.panel_id is not None
+            and not message.author.bot and message.author.id != ticket.user_id
+        ):
+            await self._assegna_al_primo(message, ticket)
 
         if ticket.first_response_at is not None:
             return
@@ -2038,6 +2670,19 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         await ticket_repo.record_first_response(message.channel.id, datetime.now(timezone.utc))
+
+    async def _assegna_al_primo(self, message: discord.Message, ticket) -> None:
+        """TKT-052: il primo dello staff che scrive prende in carico il ticket (vince uno solo)."""
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        if not opzioni.assegna_auto or not await _membro_staff(message.author, message.guild.id, ticket.panel_id):
+            return
+        if not await ticket_repo.claim_ticket(message.channel.id, message.author.id, solo_se_libero=True):
+            return
+        testo = await self._dopo_presa(message.guild, message.channel, ticket, message.author)
+        try:
+            await message.channel.send(testo, view=vista_inizio(message.channel))
+        except discord.HTTPException:
+            logger.warning("Avviso di presa automatica non inviato nel ticket %s.", message.channel.id)
 
     def _cog_risposte(self):
         """Il cog delle risposte standard (#139), se caricato."""
@@ -2072,6 +2717,7 @@ async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(cog)
     scheduler.register_handler(TICKET_DELETE_ACTION_TYPE, cog.handle_ticket_delete_channel)
     scheduler.register_handler(TICKET_AUTOCLOSE_ACTION_TYPE, cog.handle_ticket_autoclose)
+    scheduler.register_handler(TICKET_RICHIESTA_CHIUSURA_ACTION_TYPE, cog.handle_richiesta_chiusura)
 
     # Registrazione della view persistente: DEVE avvenire ad ogni
     # avvio del bot, non solo quando il pannello viene pubblicato per
@@ -2079,4 +2725,4 @@ async def setup(bot: commands.Bot) -> None:
     # già esistenti nei server (pubblicati prima di un riavvio) di
     # continuare a funzionare.
     bot.add_view(TicketPanelView())
-    bot.add_dynamic_items(BottonePannello, BottoneVoto)
+    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura)

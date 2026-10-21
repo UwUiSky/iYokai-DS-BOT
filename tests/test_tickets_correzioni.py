@@ -145,7 +145,9 @@ async def test_lo_staff_puo_usare_i_comandi(nome):
 
     await COMANDI_STAFF[nome](cog, interazione, server.utente(77))
 
-    assert "Solo lo staff" not in _testo(interazione.response.send_message.call_args)
+    # claim risponde dopo defer() (può spostare il canale): si guardano entrambe le risposte.
+    risposte = str(interazione.response.send_message.call_args) + str(interazione.followup.send.call_args)
+    assert "Solo lo staff" not in risposte
     ticket = await ticket_repo.get_ticket_by_channel(canale.id)
     if nome == "claim":
         assert ticket.claimed_by == ID_STAFF

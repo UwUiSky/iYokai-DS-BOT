@@ -4,16 +4,11 @@ core/repositories/ticket_repo.py
 Persistenza dei ticket di supporto: numerazione atomica per-server
 (stesso schema di moderation_repo.py — contatore con UPSERT in
 transazione), stato (aperto/chiuso), chi lo ha preso in carico,
-priorità. Un utente può avere un solo ticket aperto per server: lo
-garantisce l'indice unico della migrazione 0010.
+priorità, richiesta di chiusura, ruoli dati durante il ticket. Il tetto di
+ticket aperti per utente lo controlla create_ticket sotto un blocco per
+(server, utente) (migrazione 0106).
 Funzioni coperte: SPEC §13
 """
-
-# DA FARE (issue #62, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §6 (Ticket).
-# DA FARE (issue #84, fase F9): NF-13, Ticket: modulo, più pannelli,
-#   chiusura automatica, voto. Vedi
-#   revisione/02-piano/NUOVE_FUNZIONI.md.
 
 from __future__ import annotations
 
@@ -48,6 +43,9 @@ class Ticket:
     escalato_at: datetime | None = None
     standard_reply_id: int | None = None
     close_reason: str | None = None
+    chiusura_richiesta_at: datetime | None = None
+    ruoli_dati: tuple[int, ...] = ()
+    note_thread_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -86,6 +84,10 @@ ONE_OPEN_TICKET_INDEX = "uq_tickets_un_aperto_per_utente"
 
 class TicketAlreadyOpenError(Exception):
     """L'utente ha già raggiunto il limite di ticket aperti in questo server."""
+
+
+class PannelloPienoError(TicketAlreadyOpenError):
+    """Il pannello ha già il massimo di ticket aperti (TKT-017)."""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -190,6 +192,7 @@ class TicketRepository:
         ticket_number: int | None = None,
         panel_id: int | None = None,
         max_aperti: int = 1,
+        max_nel_pannello: int | None = None,
     ) -> int:
         """
         Registra un nuovo ticket e restituisce il suo numero: quello
@@ -216,6 +219,16 @@ class TicketRepository:
                         )
                         if aperti >= max_aperti:
                             raise TicketAlreadyOpenError()
+                    if max_nel_pannello is not None and panel_id is not None:
+                        # TKT-017: tetto del pannello, sotto un blocco per pannello (dopo quello per utente).
+                        await conn.execute(
+                            "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", f"ticket-pan:{panel_id}"
+                        )
+                        nel_pannello = await conn.fetchval(
+                            "SELECT count(*) FROM tickets WHERE panel_id = $1 AND status = 'open'", panel_id
+                        )
+                        if nel_pannello >= max_nel_pannello:
+                            raise PannelloPienoError()
                     if ticket_number is None:
                         ticket_number = await self.reserve_ticket_number(guild_id, conn)
                     await conn.execute(
@@ -244,14 +257,16 @@ class TicketRepository:
         )
         return _row_to_ticket(row) if row else None
 
-    async def claim_ticket(self, channel_id: int, staff_id: int) -> bool:
+    async def claim_ticket(self, channel_id: int, staff_id: int, *, solo_se_libero: bool = False) -> bool:
+        """Presa in carico; con `solo_se_libero` (TKT-052) vince solo il primo."""
         result = await self._pool.execute(
             """
             UPDATE tickets SET claimed_by = $2
-            WHERE channel_id = $1 AND status = 'open'
+            WHERE channel_id = $1 AND status = 'open' AND (NOT $3 OR claimed_by IS NULL)
             """,
             channel_id,
             staff_id,
+            solo_se_libero,
         )
         return result.endswith(" 1")
 
@@ -296,6 +311,30 @@ class TicketRepository:
             channel_id,
         )
         return esito.endswith(" 1")
+
+    async def set_ruoli_dati(self, channel_id: int, role_ids: list[int]) -> None:
+        """TKT-043: i ruoli dati all'utente all'apertura, da togliere alla chiusura."""
+        await self._pool.execute("UPDATE tickets SET ruoli_dati = $2 WHERE channel_id = $1", channel_id, role_ids)
+
+    async def richiedi_chiusura(self, channel_id: int) -> datetime | None:
+        """TKT-055: segna la richiesta di chiusura all'utente; None se il ticket non è aperto."""
+        return await self._pool.fetchval(
+            "UPDATE tickets SET chiusura_richiesta_at = now() WHERE channel_id = $1 AND status = 'open'"
+            " RETURNING chiusura_richiesta_at",
+            channel_id,
+        )
+
+    async def annulla_richiesta_chiusura(self, channel_id: int) -> bool:
+        esito = await self._pool.execute(
+            "UPDATE tickets SET chiusura_richiesta_at = NULL"
+            " WHERE channel_id = $1 AND status = 'open' AND chiusura_richiesta_at IS NOT NULL",
+            channel_id,
+        )
+        return esito.endswith(" 1")
+
+    async def imposta_note_thread(self, channel_id: int, thread_id: int) -> None:
+        """TKT-034: il thread privato dello staff attaccato al ticket."""
+        await self._pool.execute("UPDATE tickets SET note_thread_id = $2 WHERE channel_id = $1", channel_id, thread_id)
 
     async def list_open_tickets(self, guild_id: int, limit: int = 25) -> list[Ticket]:
         """TKT-058: i ticket aperti di un server, i più vecchi prima."""
@@ -552,6 +591,9 @@ def _row_to_ticket(row) -> Ticket:
         escalato_at=row["escalato_at"],
         standard_reply_id=row["standard_reply_id"],
         close_reason=row["close_reason"],
+        chiusura_richiesta_at=row["chiusura_richiesta_at"],
+        ruoli_dati=tuple(row["ruoli_dati"] or ()),
+        note_thread_id=row["note_thread_id"],
     )
 
 
