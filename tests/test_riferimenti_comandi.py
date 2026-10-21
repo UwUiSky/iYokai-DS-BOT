@@ -42,6 +42,7 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/wiki",
         "/marchio",
         "/aspetto",
+        "/miei-dati",
     }
 )
 

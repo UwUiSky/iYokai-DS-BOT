@@ -12,8 +12,9 @@ autorizzazione, risincronizzazione e revoca, dalle funzioni di
 `core/command_permissions.py`. La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
 stessi controlli e ruoli del bottone di verifica. Il bot con marchio proprio (NF-38) passa dalle
 stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`; l'aspetto del bot per
-server (CFG-030) da `core/bot_aspetto.py`.
-Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122)
+server (CFG-030) da `core/bot_aspetto.py`. La pagina «I miei dati» (#46) usa le funzioni di
+`/utility privacy esporta|cancella`.
+Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122; #46)
 """
 
 from __future__ import annotations
@@ -428,3 +429,34 @@ async def applica_aspetto(bot, guild: discord.Guild, user_id: int, **campi) -> s
     from core import bot_aspetto
 
     return await bot_aspetto.applica_aspetto(bot, guild, user_id, **campi)
+
+
+# ------------------------------------------------ i miei dati (GDPR, #46 parte web)
+async def esporta_dati(user_id: int) -> tuple[bytes, list[str], list[str]]:
+    """La copia dei dati dell'utente, la stessa di `/utility privacy esporta`: file, tabelle accorciate e troncate."""
+    from core import forget_user_service as servizio
+
+    dati = await servizio.esporta_utente(db.pool, user_id)
+    contenuto, accorciate = servizio.serializza_esportazione(dati)
+    return contenuto, accorciate, list(dati.get("troncate") or [])
+
+
+async def chiedi_cancellazione(user_id: int, motivo: str | None) -> tuple[int, bool]:
+    """La richiesta di cancellazione, come `/utility privacy cancella`: numero e se è nuova."""
+    from core.repositories.data_deletion_request_repo import data_deletion_request_repo
+
+    numero, nuova = await data_deletion_request_repo.crea(user_id, motivo)
+    if nuova:
+        logger.info("Richiesta di cancellazione %s dal pannello.", numero)
+    return numero, nuova
+
+
+async def testo_richiesta(user_id: int, numero: int) -> str | None:
+    """Cosa succede e cosa resta (lo stesso testo del comando), solo per una richiesta dell'utente stesso."""
+    from cogs.utility.privacy import TESTO_CANCELLA
+    from core.repositories.data_deletion_request_repo import data_deletion_request_repo
+
+    richiesta = await data_deletion_request_repo.get(numero)
+    if richiesta is None or richiesta["user_id"] != user_id:
+        return None
+    return TESTO_CANCELLA.format(numero=numero)

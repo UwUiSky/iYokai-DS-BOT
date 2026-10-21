@@ -5,10 +5,11 @@ Il pannello web (iYokai Panel): accesso con Discord (OAuth2 `identify`,
 `state` legato al browser), sessioni nel database, permessi controllati
 a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di comandi nascosti
 per ruolo (#148), del bot con marchio proprio (NF-38), dell'aspetto del bot (CFG-030) e della
-lingua dai punti unici dei comandi (D16),
-storico, premium e wiki dei comandi, verifica dei membri dalla pagina web (link firmato, impronte senza IP).
+lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, «I miei dati»
+(copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
+impronte senza IP).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
-Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122)
+Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -35,6 +36,7 @@ from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida
 from core.i18n import t
 from core.redacted_access_log import RedactedAccessLogger
+from core.repositories.data_deletion_request_repo import MOTIVO_MAX
 
 logger = logging.getLogger("iyokai.web_panel")
 
@@ -70,6 +72,7 @@ ESITI = {
     "marchio_collegato": ("Bot collegato. Se non è ancora nel server, usa il link d'invito qui sotto.", False),
     "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
     "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
+    "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
 
@@ -112,6 +115,7 @@ def build_app(
     limite_scritture = regole.LimiteFrequenza(30, 60)
     limite_sincronia = regole.LimiteFrequenza(1, 60)  # ogni sincronia sono più chiamate a Discord
     limite_marchio = regole.LimiteFrequenza(3, 60)  # ogni collegamento prova il token con Discord
+    limite_esporta = regole.LimiteFrequenza(1, 60)  # come il comando: una copia al minuto per utente
     ambiente = jinja2.Environment(
         loader=jinja2.FileSystemLoader(CARTELLA / "templates"), autoescape=True, enable_async=False
     )
@@ -436,6 +440,40 @@ def build_app(
         esito = await ponte.applica_aspetto(bot, guild, request[CHIAVE_UTENTE], **{tipo: dati})
         return _vai(f"/server/{guild.id}/aspetto?esito={esito}")
 
+    # ------------------------------------------------ i miei dati (#46)
+    async def pagina_dati(request: web.Request) -> web.StreamResponse:
+        if request.get(CHIAVE_UTENTE) is None:
+            return _vai("/accedi")
+        numero = request.query.get("richiesta", "")
+        testo = None
+        if numero.isdigit() and len(numero) <= 9:  # sta in un INTEGER
+            testo = await ponte.testo_richiesta(request[CHIAVE_UTENTE], int(numero))
+        return _pagina(request, "dati.html", motivo_max=MOTIVO_MAX, testo_richiesta=testo)
+
+    async def azione_dati(request: web.Request) -> web.StreamResponse:
+        if request.get(CHIAVE_UTENTE) is None:
+            return _vai("/accedi")
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        utente_id = request[CHIAVE_UTENTE]
+        if form.get("azione") == "esporta":
+            if not limite_esporta.consenti(f"u:{utente_id}"):
+                return _vai("/miei-dati?esito=dati_attendi")
+            contenuto, _, _ = await ponte.esporta_dati(utente_id)
+            return web.Response(
+                body=contenuto, content_type="application/json",
+                headers={
+                    "Content-Disposition": f'attachment; filename="iyokai-dati-{utente_id}.json"',
+                    "Cache-Control": "no-store",
+                },
+            )
+        if form.get("azione") != "cancella":
+            return _vai("/miei-dati?esito=non_valido")
+        motivo = str(form.get("motivo", "")).strip()[:MOTIVO_MAX] or None
+        numero, _ = await ponte.chiedi_cancellazione(utente_id, motivo)
+        return _vai(f"/miei-dati?richiesta={numero}")
+
     # ------------------------------------------------- verifica (NF-21)
     def _token_verifica(request: web.Request):
         token = request.match_info["token"]
@@ -503,6 +541,8 @@ def build_app(
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/aspetto", pagina_aspetto)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/aspetto", salva_aspetto)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/aspetto/immagine", carica_immagine)
+    app.router.add_get("/miei-dati", pagina_dati)
+    app.router.add_post("/miei-dati", azione_dati)
     app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)
     app.router.add_post(r"/verifica/{token:[0-9a-f\-]{1,200}}", conferma_verifica)
     app.router.add_get("/wiki", wiki)

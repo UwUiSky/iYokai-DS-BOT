@@ -9,7 +9,7 @@
   2. #148 nel pannello: stato, link, risincronizza, revoca — fatto
   3. NF-38 #109 pagina del marchio nel pannello — fatto
   4. #122 CFG-030/021 aspetto (comando + pagina `/server/{id}/aspetto`) — fatto
-  5. #46 parte OAuth: prossimo `gh api .../issues/46`, cerca cosa resta lato web
+  5. #46 parte web: pagina `/miei-dati` (copia e richiesta) — fatto. Poi: smoke e rapporto
   5. #46 parte OAuth: controllo di ciò che resta
 - Migrazioni riservate: 0210–0219.
 
