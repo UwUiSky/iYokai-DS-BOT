@@ -219,7 +219,9 @@
   "sospendi": "suspend",
   "azzera-pausa": "reset-cooldown",
   "reperibile": "on-call",
-  "apri": "open"
+  "apri": "open",
+  "note": "notes",
+  "chiedi-chiusura": "ask-close"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -806,7 +808,9 @@
   "ticket sospendi": "Suspend ticket opening (no reason: resume).",
   "ticket azzera-pausa": "Remove a user's cooldown between tickets.",
   "ticket reperibile": "Join or leave the staff notified on every new ticket.",
-  "ticket apri": "Open a ticket (staff also for a user or from a message)."
+  "ticket apri": "Open a ticket (staff also for a user or from a message).",
+  "ticket note": "Private staff thread to discuss the ticket.",
+  "ticket chiedi-chiusura": "Ask the user whether the ticket can be closed."
  },
  "parametri": {}
 }

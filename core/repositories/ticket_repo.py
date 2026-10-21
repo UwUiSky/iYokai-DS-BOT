@@ -242,14 +242,16 @@ class TicketRepository:
         )
         return _row_to_ticket(row) if row else None
 
-    async def claim_ticket(self, channel_id: int, staff_id: int) -> bool:
+    async def claim_ticket(self, channel_id: int, staff_id: int, *, solo_se_libero: bool = False) -> bool:
+        """Presa in carico; con `solo_se_libero` (TKT-052) vince solo il primo."""
         result = await self._pool.execute(
             """
             UPDATE tickets SET claimed_by = $2
-            WHERE channel_id = $1 AND status = 'open'
+            WHERE channel_id = $1 AND status = 'open' AND (NOT $3 OR claimed_by IS NULL)
             """,
             channel_id,
             staff_id,
+            solo_se_libero,
         )
         return result.endswith(" 1")
 

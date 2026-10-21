@@ -10,9 +10,10 @@
   `/admin` è a 5502 (non toccarlo: lo usano anche gli altri agenti).
 - A fatto: cogs/tickets/opzioni.py (/ticket opzioni 10 comandi, lista-nera, sospendi, azzera-pausa, reperibile, apri);
   /ticket = 19 figli, 4329/6800. TKT-009 come `/ticket apri messaggio:<link>` (nessun menu contestuale nel bot).
-- Prossimo passo: gruppo C in tickets.py: claim/rilascia/passa (028, 050, 053), on_message (052), close (054, 057),
-  _transcript_senza_bloccare (039 DM chiusura, 043 togli ruoli_dati, 075), `/ticket note` (034, imposta_note_thread),
-  `/ticket chiedi-chiusura` (055: richiedi_chiusura/annulla, DynamicItem tkt:chc, azione scheduler). Test: tests/test_ticket_presa_chiusura.py.
+- C fatto: presa (028/050/052/053), chiusura (054/057), fine ticket (039/043/075), /ticket note (034),
+  /ticket chiedi-chiusura (055, azione `ticket_richiesta_chiusura`), «Torna all'inizio» (040). /ticket = 21 figli.
+- Prossimo passo: D = #139 parte AI (core/ai_servizio.py; leggi issue 139), poi E #62 residui, poi documenti
+  (SPEC §13.14–20, VERIFICA_LIVE, REGISTRO_RISOLTE, COMMAND_LIST) e smoke.
 
 ## Fatto
 - Giri F1–r4: router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.8, #145, NF-13 (0100), NF-33 ModMail (0101),
