@@ -87,8 +87,8 @@ async def imposta_autopost(guild_id: int, canale: object, tag: str, minuti: int,
         return False, "L'istanza NSFW non è attiva in questo server."
     if not canale_ammesso(canale):
         return False, CANALE_NON_AMMESSO
-    tag = " ".join(tag.lower().split())
-    if tag not in config.tag_permessi:
+    tag = " ".join((tag or "").lower().split())
+    if tag and tag not in config.tag_permessi:
         return False, "Il tag deve essere nella lista permessa del server."
     minimo, massimo = MINUTI_AUTOPOST
     if not minimo <= minuti <= massimo:
@@ -97,7 +97,8 @@ async def imposta_autopost(guild_id: int, canale: object, tag: str, minuti: int,
     if len(esistenti) >= MAX_AUTOPOST_PER_SERVER and all(a.channel_id != canale.id for a in esistenti):
         return False, f"Al massimo {MAX_AUTOPOST_PER_SERVER} canali con la pubblicazione automatica."
     await nsfw_repo.salva_autopost(guild_id, canale.id, tag, minuti, da)
-    return True, f"Pubblicazione automatica in {canale.mention}: `{tag}` ogni {minuti} minuti."
+    cosa = f"`{tag}`" if tag else "un tag a caso della lista permessa"
+    return True, f"Pubblicazione automatica in {canale.mention}: {cosa} ogni {minuti} minuti."
 
 
 async def ferma_autopost(guild_id: int, channel_id: int | None) -> int:
@@ -110,18 +111,24 @@ async def elenco_autopost(guild_id: int) -> list[NsfwAutopost]:
 
 # ---- scelta, pubblicazione, segnalazione ----
 async def scegli(guild_id: int, tag: str, rng: random.Random | None = None) -> Scelta | str:
-    """Un contenuto che passa tutti i filtri e non è mai uscito nel server; altrimenti il motivo."""
+    """
+    Un contenuto che passa tutti i filtri e non è mai uscito nel server; altrimenti il motivo.
+    `tag` vuoto: un tag a caso della lista permessa.
+    """
+    rng = rng or random.Random()
     config = await leggi(guild_id)
     if not config.attivo:
         return "L'istanza NSFW non è attiva in questo server: un admin la accende con /nsfw-admin attiva."
     tag = " ".join(tag.lower().split())
+    if not tag and config.tag_permessi:
+        tag = rng.choice(config.tag_permessi)
     if tag not in config.tag_permessi or motivo_vietato(tag) is not None:
         return "Questo tag non è nella lista permessa del server."
     elementi = await fonti_nsfw.cerca(tag)
     if elementi is None:
         return "La fonte non risponde: riprova tra qualche minuto."
     candidati = filtra(elementi, set(config.tag_permessi))
-    (rng or random).shuffle(candidati)
+    rng.shuffle(candidati)
     for elemento in candidati[:MAX_TENTATIVI]:
         if await nsfw_repo.e_bloccato(elemento.fonte, elemento.id_fonte):
             continue

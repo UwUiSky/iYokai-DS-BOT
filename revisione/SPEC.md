@@ -1694,16 +1694,18 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   fuori (servono API/chiavi o spazio nel gruppo): FUN-049..057, 066..073,
   GIF di reazione/azione (FUN-081..139), giochi di gruppo (FUN-007..021),
   telefono (FUN-079).
-- `[ ]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
-  → **Stato 04/10:** in piano: NF-23, fase F11.
-  - `[ ]` Solo canali con flag NSFW, verificato a runtime a ogni post
-  - `[ ]` Comando ricerca: `r34 <termine>` → immagine casuale
-  - `[ ]` Auto-post configurabile: intervallo (numero + minuti/ore),
-    sottocategorie scelte o random
-  - `[ ]` **Filtro a due strati obbligatori**: allowlist decisa dal
-    server + blocklist hardcoded non modificabile, su ricerca manuale
-    E auto-post
-  - `[ ]` Log con hash di ogni immagine pubblicata
+- `[~]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
+  → **Stato 21/10 (r9):** fatto, da provare live (`NSFW_TOKEN`; senza token non parte). Alternativa (D18):
+  niente Rule 34 né altri siti «booru» (non dichiarano età e consenso, e hanno disegni di personaggi minorenni):
+  la fonte è RedGifs, solo elementi di creatori **verificati**; disegni, AI e cosplay bloccati.
+  - `[x]` Solo canali con flag NSFW, verificato a runtime a ogni post; comandi con il segno `nsfw` di Discord
+  - `[x]` Comando ricerca: `/nsfw cerca tag` → contenuto a caso (tag della lista permessa)
+  - `[x]` Auto-post configurabile: `/nsfw-admin autopost` ogni 30–1440 minuti, tag scelto o a caso
+  - `[x]` **Filtro a due strati obbligatori**: `/nsfw-admin tag-aggiungi|tag-togli` + lista vietata fissa
+    (`core/nsfw_filter_logic.py`), su ricerca manuale E auto-post
+  - `[x]` Log con hash (SHA-256 dell'anteprima) di ogni immagine pubblicata; bottone «Segnala» che blocca in
+    tutti i server
+  - `[ ]` Invito solo dopo la verifica dell'identità sul pannello (NF-20): da fare con il pannello
 
 ## §17 OWNER / GLOBAL ADMIN
 
@@ -2268,21 +2270,26 @@ di quel file.
 
 ---
 
-# B. iYOKAI APPLICATION (user-installable) — da fare (NF-36, fase F13)
+# B. iYOKAI APPLICATION (user-installable) — in corso (NF-36, fase F13)
+
+**Stato 21/10 (r9):** applicazione separata (`YOKAI_APP_TOKEN`, `core/user_app_bot.py`, albero suo):
+`/promemoria crea|elenco|annulla` (DM), `/profilo`, menu «Profilo» e «Testo pulito». Sul bot principale
+`-cerca-comando` e `-chiedi` sono installabili dall'utente (dove il bot non c'è valgono come in DM). I comandi
+installati sull'utente contano negli stessi 100 dell'app (`LIMITI.md` §1.3).
 
 Comandi che l'utente installa **su di sé** e usa ovunque: in qualsiasi
 server (anche dove il bot non c'è), nei DM e nei gruppi. L'elenco
 completo, con limiti e motivi, è in
 `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.
 
-- `[ ]` B.1 Applicazione separata con installazione sull'utente
+- `[x]` B.1 Applicazione separata con installazione sull'utente
   (`USER_INSTALL`) e i tre contesti (server, DM con il bot, DM e gruppi)
 - `[ ]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
   Ricordamelo, Citazione come immagine, Meme da questa immagine,
   Controlla i link, Segnala alla rete iYokai, Spiega/riassumi (AI)
-- `[ ]` B.3 Menu sull'utente: Profilo iYokai, Stato nella rete di
+- `[~]` B.3 Menu sull'utente: Profilo iYokai (fatto: scheda Discord; mancano livello e clan), Stato nella rete di
   sicurezza (solo per chi lo chiede, risposta privata)
-- `[ ]` B.4 Utility personali: promemoria, note, liste, fusi orari,
+- `[~]` B.4 Utility personali: promemoria (fatto), note, liste, fusi orari,
   conversioni, calcolatrice, QR, colori
 - `[ ]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
   testi ed embed richiamabili ovunque
@@ -2364,8 +2371,8 @@ musicali, più NSFW quando verrà fatto.
   tiene aggiornato il server di backup (D8, §11)
 - `[~]` iYokai Music #1-5 — vedi §9
   → **Stato 04/10:** il codice c'è; l'audio dei worker va corretto (LIM-40, D10).
-- `[ ]` iYokai NSFW — vedi §16.10
-- `[ ]` iYokai App (installabile dall'utente) — vedi B
+- `[~]` iYokai NSFW — vedi §16.10 (fatto r9, da provare live)
+- `[~]` iYokai App (installabile dall'utente) — vedi B (prima parte r9)
 - `[ ]` iYokai Desktop — vedi D
 - `[ ]` iYokai Panel (sito) — vedi C e §24
 

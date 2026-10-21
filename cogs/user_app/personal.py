@@ -1,37 +1,179 @@
 """
 cogs/user_app/personal.py
 =========================
-Comandi personali.
+Comandi di iYokai App (NF-36), installabile dall'utente e usabile in ogni
+server, in DM e nei gruppi: `/promemoria crea|elenco|annulla` (consegna in
+DM), `/profilo`, e nel menu «App» del tasto destro «Profilo» (su un utente)
+e «Testo pulito» (su un messaggio). Ogni comando risponde una volta sola,
+in privato: niente risposte successive (dove l'app non è nel server Discord
+ne ammette al massimo 5). Si carica solo sul client dell'app
+(core/user_app_bot.py): sul bot principale `setup` non fa nulla.
 Funzioni coperte: SPEC §B (NF-36)
-
-STATO: scheletro. Il codice non è ancora scritto (issue #107).
 """
 
-# ----------------------------------------------------------------------
-# NOTA PER CHI SCRIVE QUESTO FILE — issue #107, fase F13
-# Funzione: NF-36, Applicazione installabile dall'utente.
-#
-# Cosa deve fare la funzione: Comandi personali che l'utente porta con
-#   sé in qualsiasi server e in DM: promemoria, profilo, utilità.
-# Questo file: Comandi personali.
-# Comandi previsti: Comandi dell'applicazione utente (albero separato).
-# File collegati: cogs/user_app/__init__.py.
-# Test da scrivere per primi: tests/test_user_app.py.
-# Limiti da rispettare: 5 risposte successive per interazione dove l'app
-#   non è installata nel server.
-# Da chi prendere spunto: Nighty (solo l'idea lecita: comandi ovunque).
-# Dipende da: NF-05.
-#
-# Prima di iniziare: lista di controllo di
-#   revisione/01-analisi/LIMITI.md (Parte 4); ogni impostazione passa da
-#   un solo punto del codice, usato anche dal pannello web (decisione
-#   D16); prima il test che fallisce, poi il codice.
-# Dettaglio: revisione/02-piano/NUOVE_FUNZIONI.md e il catalogo in
-#   revisione/01-analisi/catalogo/.
-# ----------------------------------------------------------------------
+from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta, timezone
+
+import discord
+from discord import app_commands
 from discord.ext import commands
+
+from core.duration_logic import format_duration, parse_duration
+from core.scheduler import scheduler
+from core.user_app_bot import e_istanza_app
+from core.user_app_logic import MAX_PROMEMORIA, errore_durata, testo_pulito
+
+logger = logging.getLogger("iyokai.user_app")
+
+AZIONE_PROMEMORIA = "app_promemoria"
+# I promemoria dell'app non appartengono a un server.
+SENZA_SERVER = 0
+INSTALLAZIONE = app_commands.AppInstallationType(guild=False, user=True)
+OVUNQUE = app_commands.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
+
+
+def _embed_profilo(utente: discord.User) -> discord.Embed:
+    embed = discord.Embed(title=utente.display_name[:256], color=utente.accent_color or discord.Color.blurple())
+    embed.add_field(name="Nome utente", value=utente.name[:1024])
+    embed.add_field(name="ID", value=str(utente.id))
+    embed.add_field(name="Account creato", value=discord.utils.format_dt(utente.created_at, "R"))
+    embed.set_thumbnail(url=utente.display_avatar.url)
+    if utente.banner is not None:
+        embed.set_image(url=utente.banner.url)
+    if utente.bot:
+        embed.set_footer(text="È un bot.")
+    return embed
+
+
+class PersonaleCog(commands.Cog):
+    promemoria = app_commands.Group(
+        name="promemoria",
+        description="I tuoi promemoria, in ogni server e in DM.",
+        allowed_installs=INSTALLAZIONE,
+        allowed_contexts=OVUNQUE,
+    )
+
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
+        self._menu = [
+            app_commands.ContextMenu(
+                name="Profilo", callback=self.menu_profilo, allowed_installs=INSTALLAZIONE, allowed_contexts=OVUNQUE
+            ),
+            app_commands.ContextMenu(
+                name="Testo pulito", callback=self.menu_testo_pulito, allowed_installs=INSTALLAZIONE,
+                allowed_contexts=OVUNQUE,
+            ),
+        ]
+        for menu in self._menu:
+            bot.tree.add_command(menu)
+
+    async def cog_unload(self) -> None:
+        for menu in self._menu:
+            self.bot.tree.remove_command(menu.name, type=menu.type)
+
+    # ---------------------------------------------------------------- consegna
+    async def consegna(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Handler dello scheduler: DM dall'app, se non va dal bot principale. Se nessuno dei due può, resta nel log."""
+        testo = f"⏰ **Promemoria:** {payload.get('message', '(nessun testo)')}"[:2000]
+        for client in (self.bot, getattr(self.bot, "bot_principale", None)):
+            if client is None:
+                continue
+            try:
+                utente = await client.fetch_user(user_id)
+                await utente.send(testo, allowed_mentions=discord.AllowedMentions.none())
+                return
+            except discord.HTTPException:
+                continue
+        logger.warning("Promemoria dell'app per %s non consegnato: DM chiusi.", user_id)
+
+    # ---------------------------------------------------------------- promemoria
+    @promemoria.command(name="crea", description="Ti scrivo in DM tra il tempo che scegli.")
+    @app_commands.describe(durata="Tra quanto, es. 30m, 2h, 7d", testo="Cosa ricordarti")
+    async def crea(
+        self,
+        interaction: discord.Interaction,
+        durata: app_commands.Range[str, 2, 10],
+        testo: app_commands.Range[str, 1, 1500],
+    ) -> None:
+        try:
+            secondi = parse_duration(durata)
+        except ValueError as exc:
+            await interaction.response.send_message(str(exc), ephemeral=True)
+            return
+        errore = errore_durata(secondi)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        in_sospeso = await scheduler.list_pending_for_user(interaction.user.id, AZIONE_PROMEMORIA, MAX_PROMEMORIA)
+        if len(in_sospeso) >= MAX_PROMEMORIA:
+            await interaction.response.send_message(
+                f"Hai già {MAX_PROMEMORIA} promemoria: annullane uno con /promemoria annulla.", ephemeral=True
+            )
+            return
+        quando = datetime.now(timezone.utc) + timedelta(seconds=secondi)
+        numero = await scheduler.schedule(SENZA_SERVER, interaction.user.id, AZIONE_PROMEMORIA, quando, {"message": testo})
+        await interaction.response.send_message(
+            f"⏰ Ti scrivo in DM tra **{format_duration(secondi)}** (numero `{numero}`). "
+            "Tieni aperti i messaggi diretti dall'app.",
+            ephemeral=True,
+        )
+
+    @promemoria.command(name="elenco", description="Mostra i tuoi promemoria in sospeso.")
+    async def elenco(self, interaction: discord.Interaction) -> None:
+        azioni = await scheduler.list_pending_for_user(interaction.user.id, AZIONE_PROMEMORIA, MAX_PROMEMORIA)
+        if not azioni:
+            await interaction.response.send_message("Nessun promemoria in sospeso.", ephemeral=True)
+            return
+        righe = [
+            f"`{a['id']}` · {discord.utils.format_dt(a['execute_at'], 'R')} · {a['payload'].get('message', '')[:60]}"
+            for a in azioni
+        ]
+        embed = discord.Embed(title="I tuoi promemoria", description="\n".join(righe)[:4000], color=discord.Color.blurple())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @promemoria.command(name="annulla", description="Annulla un tuo promemoria.")
+    @app_commands.describe(numero="Il numero del promemoria (da /promemoria elenco)")
+    async def annulla(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_147_483_647]) -> None:
+        azione = await scheduler.get_pending_action(numero)
+        if azione is None or azione["executed"] or azione["user_id"] != interaction.user.id \
+                or azione["action_type"] != AZIONE_PROMEMORIA:
+            await interaction.response.send_message("Non trovo un tuo promemoria con questo numero.", ephemeral=True)
+            return
+        await scheduler.cancel(numero)
+        await interaction.response.send_message(f"Promemoria `{numero}` annullato.", ephemeral=True)
+
+    # ---------------------------------------------------------------- profilo
+    @app_commands.command(name="profilo", description="La scheda di un utente: nome, ID, età dell'account, avatar.")
+    @app_commands.allowed_installs(guilds=False, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    @app_commands.describe(utente="Di chi (vuoto: tu)")
+    async def profilo(self, interaction: discord.Interaction, utente: discord.User | None = None) -> None:
+        await self._mostra_profilo(interaction, utente or interaction.user)
+
+    async def menu_profilo(self, interaction: discord.Interaction, utente: discord.User) -> None:
+        await self._mostra_profilo(interaction, utente)
+
+    async def _mostra_profilo(self, interaction: discord.Interaction, utente: discord.abc.User) -> None:
+        await interaction.response.defer(ephemeral=True)
+        try:
+            completo = await self.bot.fetch_user(utente.id)  # serve per il banner
+        except discord.HTTPException:
+            completo = utente
+        await interaction.followup.send(embed=_embed_profilo(completo), ephemeral=True)
+
+    async def menu_testo_pulito(self, interaction: discord.Interaction, messaggio: discord.Message) -> None:
+        pulito = testo_pulito(messaggio.content)
+        await interaction.response.send_message(
+            pulito or "Il messaggio non ha testo.", ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Scheletro: non registra nessun comando finché la funzione non viene scritta."""
+    """Solo sul client dell'app: il bot principale non riceve questi comandi."""
+    if not e_istanza_app(bot):
+        return
+    cog = PersonaleCog(bot)
+    await bot.add_cog(cog)
+    scheduler.register_handler(AZIONE_PROMEMORIA, cog.consegna)

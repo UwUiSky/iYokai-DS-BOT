@@ -1084,3 +1084,34 @@ Serve: un server di prova con il bot sopra i ruoli di prova, un secondo account,
 - [ ] suggerimenti (UTL-135…138) — `/admin config canale-suggerimenti channel:#idee decisi:#decisi`; `/utility suggest` da B; lo staff preme «In valutazione», poi «Approva»: ogni bottone apre una finestra con il motivo; B riceve un DM con l'esito e il motivo; il suggerimento è copiato in #decisi. Due staff che premono insieme: una sola decisione.
 - [ ] promemoria (UTL-098…103) — `/utility reminder set duration:30m message:acqua ripeti:1d nel_canale:True`: arriva nel canale e si ripete; `ripeti:10m` rifiutato (minimo 30m). `/utility reminder cancel tutti:True` li toglie tutti. Da admin `/utility reminder server` mostra quelli del server e ne annulla uno di B.
 - [ ] sondaggio (UTL-087, 095) — `/utility poll question:Pizza?` senza opzioni: sondaggio nativo con «Sì» e «No». Con una sola opzione: rifiutato. `discussione:True`: sotto il sondaggio si apre un thread con il nome della domanda; senza il permesso «Creare thread pubblici» il sondaggio esce lo stesso e arriva un avviso privato.
+
+## Istanza NSFW e iYokai App — giro r9 (#94, #107)
+
+Serve: due applicazioni nuove nel Developer Portal (iYokai NSFW e iYokai App), i token in `NSFW_TOKEN` e
+`YOKAI_APP_TOKEN`, un server di prova con un canale **vietato ai minori** e uno normale, un account maggiorenne.
+
+- [ ] `NF-23` avvio — senza `NSFW_TOKEN` il bot parte come prima (nessun log «iYokai NSFW»). Con il token: nel log
+  «Sync comandi [nsfw:global]». Nel Portal dell'app NSFW «App Discovery» resta **spento**.
+- [ ] `NF-23` canali — nel canale normale `/nsfw` non compare (segno nsfw di Discord). Nel canale vietato ai minori
+  `/nsfw cerca tag:amateur` dice che l'istanza non è attiva.
+- [ ] `NF-23` attiva — `/nsfw-admin attiva accesa:True` senza conferma mostra l'avviso; con `conferma:True` si
+  accende. Un membro senza «Gestisci server» riceve il rifiuto.
+- [ ] `NF-23` liste — `/nsfw-admin tag-aggiungi tag:teen` (o `loli`, `hentai`, `16yo`): rifiutato con la categoria
+  vietata. `tag:amateur`: aggiunto. `/nsfw-admin stato` mostra la lista (x/25).
+- [ ] `NF-23` cerca — `/nsfw cerca tag:amateur` pubblica un messaggio con anteprima sotto spoiler, link «Apri su
+  RedGifs» e il bottone «Segnala». `tag:redhead` (non in lista): rifiutato. Controlla `nsfw_registro`: c'è l'impronta.
+- [ ] `NF-23` segnala — «Segnala» toglie il messaggio, risponde in privato con il link per segnalare a Discord e
+  l'owner riceve un DM (se possibile). In un secondo server lo stesso contenuto non esce più (`nsfw_bloccati`).
+- [ ] `NF-23` autopost — `/nsfw-admin autopost canale:#vietato minuti:30` (senza tag: a caso). Entro 5 minuti esce il
+  primo contenuto. Togli il segno «vietato ai minori» dal canale: non esce più niente e dopo 5 giri la
+  pubblicazione sparisce da `/nsfw-admin stato`. `/nsfw-admin attiva accesa:False` ferma tutto.
+- [ ] `NF-23` fonte — la risposta di RedGifs ha ancora `verified`, `tags`, `niches`, `urls.poster` (scritta a memoria,
+  rete del giro senza accesso). Se manca `verified` non esce niente: è voluto.
+- [ ] `NF-36` installazione — nel Portal di iYokai App, «Installation»: solo «User Install». Installa l'app sul tuo
+  account. In un server **senza** iYokai: `/promemoria crea durata:2m testo:acqua` risponde in privato; dopo 2
+  minuti arriva il DM dall'app (se non arriva: annotare, il codice ripiega sul bot principale se condividete un server).
+- [ ] `NF-36` menu — tasto destro su un utente → App → «Profilo»: scheda privata con avatar e banner. Su un messaggio
+  con grassetto e un link con `?utm_source=…` → «Testo pulito»: testo senza formattazione e senza `utm_`.
+- [ ] `NF-36` principale — nel Portal del bot principale attiva anche «User Install». Installa iYokai sul tuo account;
+  in un server senza il bot `-cerca-comando` e `-chiedi` funzionano come in DM (solo comandi per tutti).
+- [ ] `NF-36` risposte pubbliche — in un server dove non hai «Usa app esterne» le risposte restano private.

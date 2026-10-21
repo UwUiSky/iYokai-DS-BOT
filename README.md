@@ -114,7 +114,7 @@ di frequenza di Discord e isola i problemi.
 | **iYokai Creator** | Porta e tiene aggiornato il server di backup | da rifare (F3) |
 | **iYokai Music** ×5 | Riproduzione musicale, un canale vocale ciascuno | da correggere (F2) |
 | **iYokai NSFW** | Contenuti per adulti solo nei canali vietati ai minori, con filtri fissi (`NSFW_TOKEN`) | fatto, da provare live (F11) |
-| **iYokai App** | Comandi installati sull'utente, usabili in ogni server | da fare (F13) |
+| **iYokai App** | Comandi installati sull'utente, usabili in ogni server (`YOKAI_APP_TOKEN`) | prima parte fatta, da provare live (F13) |
 | **iYokai Panel** | Pannello web (dentro il processo del bot, D27) | in corso (F10) |
 | **iYokai Desktop** | Programma per PC: stato personalizzato, notifiche, storico delle menzioni | da fare (F13) |
 
@@ -154,7 +154,7 @@ modello commentato è [`.env.example`](.env.example).
 
 | Gruppo | Variabili |
 |---|---|
-| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` (facoltativo: vuoto = niente istanza NSFW), `YOKAI_MOD_TOKEN` (facoltativo, vedi sotto) |
+| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` (facoltativo: vuoto = niente istanza NSFW), `YOKAI_APP_TOKEN` (facoltativo: vuoto = niente iYokai App), `YOKAI_MOD_TOKEN` (facoltativo, vedi sotto) |
 | Identità | `OWNER_ID`, `MAIN_GUILD_ID` |
 | Ambiente | `ENVIRONMENT` (`development` o `production`, obbligatoria), `LOG_LEVEL` |
 | Database | `DATABASE_URL`, `DB_POOL_MIN`, `DB_POOL_MAX` |

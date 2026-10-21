@@ -94,6 +94,12 @@ async def test_lista_permessa_rifiuta_tag_vietati_e_tiene_il_tetto(repo):
     assert (await servizio.leggi(GUILD)).tag_permessi == ()
 
 
+async def test_tag_vuoto_sceglie_a_caso_nella_lista_permessa(repo, fonti):
+    await _attiva()
+    scelta = await servizio.scegli(GUILD, "")
+    assert not isinstance(scelta, str) and scelta.elemento.id_fonte == "buono"
+
+
 async def test_tag_fuori_lista_permessa_rifiutato(repo, fonti):
     await _attiva()
     esito = await servizio.scegli(GUILD, "redhead")
@@ -156,7 +162,8 @@ async def test_autopost_solo_in_canale_nsfw_e_con_tag_permesso(repo):
     assert not (await servizio.imposta_autopost(GUILD, _canale(), "redhead", 60, 1))[0]
     assert not (await servizio.imposta_autopost(GUILD, _canale(), "amateur", 10, 1))[0]
     assert (await servizio.imposta_autopost(GUILD, _canale(), "amateur", 60, 1))[0]
-    assert len(await servizio.elenco_autopost(GUILD)) == 1
+    assert (await servizio.imposta_autopost(GUILD, _canale(channel_id=56), None, 60, 1))[0]
+    assert [a.tag for a in await servizio.elenco_autopost(GUILD)] == ["amateur", ""]
     # Spegnere l'istanza ferma anche le pubblicazioni automatiche.
     await servizio.imposta_attivo(GUILD, False, 1)
     assert await servizio.elenco_autopost(GUILD) == []

@@ -3,7 +3,7 @@ tests/test_riferimenti_comandi.py
 =================================
 Ogni `/comando sotto...` citato in una stringa o docstring di main.py,
 cogs/ e core/ deve esistere nell'albero vero (tests/support/full_tree.py), o in quello
-di un'istanza separata (NSFW).
+di un'istanza separata (NSFW, App).
 Così un comando spostato non lascia messaggi con il nome vecchio.
 Funzioni coperte: SPEC §20 (NF-05), F7 passo 4
 """
@@ -103,7 +103,7 @@ async def test_ogni_comando_citato_nei_messaggi_esiste_nell_albero():
         radici = {c.name: c for c in bot.tree.get_commands()}
         radici.setdefault("owner", GRUPPI["owner"])
         separati = await build_separate_trees()
-        for altro in separati:  # istanze con un albero proprio (NSFW)
+        for altro in separati:  # istanze con un albero proprio (NSFW, App)
             radici.update({c.name: c for c in altro.tree.get_commands()})
             await altro.close()
         errori = []

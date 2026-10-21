@@ -220,7 +220,8 @@
   "auto-sincronizza": "auto-sync",
   "tag-aggiungi": "tag-add",
   "tag-togli": "tag-remove",
-  "autopost-ferma": "autopost-stop"
+  "autopost-ferma": "autopost-stop",
+  "promemoria": "reminders"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -825,7 +826,12 @@
   "nsfw-admin tag-togli": "Removes a tag from the server allowlist.",
   "nsfw-admin autopost": "Posts automatically in an age-restricted channel.",
   "nsfw-admin autopost-ferma": "Stops automatic posting (empty: all of them).",
-  "nsfw-admin stato": "Shows the NSFW settings of this server."
+  "nsfw-admin stato": "Shows the NSFW settings of this server.",
+  "promemoria": "Your reminders, in every server and in DMs.",
+  "promemoria crea": "I will DM you after the time you choose.",
+  "promemoria elenco": "Shows your pending reminders.",
+  "promemoria annulla": "Cancels one of your reminders.",
+  "profilo": "A user's card: name, ID, account age, avatar."
  },
  "parametri": {}
 }

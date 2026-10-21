@@ -2,11 +2,12 @@
 tests/test_command_translator.py
 ================================
 NF-06 (#77, D1): nomi e descrizioni dei comandi in inglese, controllati sull'albero VERO
-(owner compreso) e sugli alberi delle istanze separate (NSFW). Senza locales/comandi.en.json o con una voce ripetuta il test fallisce.
+(owner compreso) e sugli alberi delle istanze separate (NSFW, App). Senza locales/comandi.en.json o con una voce ripetuta il test fallisce.
 """
 
 import collections
 
+import discord
 import pytest
 from discord import app_commands
 
@@ -38,10 +39,10 @@ async def test_ogni_comando_e_gruppo_ha_la_descrizione_inglese():
 
 
 async def _nodi_separati() -> list:
-    """I nodi degli alberi propri delle istanze separate (NSFW)."""
+    """I nodi slash degli alberi propri delle istanze separate (NSFW, App); i menu non hanno descrizione."""
     nodi = []
     for altro in await build_separate_trees():
-        nodi += list(_tutti_i_nodi(altro.tree.get_commands()))
+        nodi += list(_tutti_i_nodi(altro.tree.get_commands(type=discord.AppCommandType.chat_input)))
         await altro.close()
     return nodi
 

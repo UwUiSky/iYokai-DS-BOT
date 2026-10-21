@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 08:34 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 513 comandi in 23 categorie.**
+**Totale: 526 comandi in 25 categorie.**
 
 ## Admin
 
@@ -106,6 +106,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:
 - **`/antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
 - **`/antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
 - **`/antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+
+## iYokai App (app separata, installata sull'utente)
+
+- **`/Profilo`** — Menu «App» (tasto destro)
+- **`/Testo pulito`** — Menu «App» (tasto destro)
+- **`/profilo`** — La scheda di un utente: nome, ID, età dell'account, avatar.
+- **`/promemoria annulla`** — Annulla un tuo promemoria.
+- **`/promemoria crea`** — Ti scrivo in DM tra il tempo che scegli.
+- **`/promemoria elenco`** — Mostra i tuoi promemoria in sospeso.
+
+## iYokai NSFW (app separata, solo canali vietati ai minori)
+
+- **`/nsfw cerca`** — Pubblica qui un contenuto con un tag permesso dal server.
+- **`/nsfw-admin attiva`** — Accende o spegne l'istanza NSFW in questo server.
+- **`/nsfw-admin autopost`** — Pubblica da solo in un canale vietato ai minori.
+- **`/nsfw-admin autopost-ferma`** — Ferma la pubblicazione automatica (vuoto: tutte).
+- **`/nsfw-admin stato`** — Mostra le impostazioni NSFW del server.
+- **`/nsfw-admin tag-aggiungi`** — Aggiunge un tag alla lista permessa del server.
+- **`/nsfw-admin tag-togli`** — Toglie un tag dalla lista permessa del server.
 
 ## AutoMod
 

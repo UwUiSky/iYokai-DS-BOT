@@ -4,8 +4,9 @@
 21/10/2026 · ramo `feat/r9nsfw` (base main) · giro r9: per FILE
 
 ## In corso
-- Giro r9 (feat/r9nsfw, base main, migrazioni 0240-0249). Previsione: 3 voci (#94 NSFW, #107 app utente, poi #145/#141).
-- Prossimo passo: #94 - core/nsfw_filter_logic.py + tests/test_nsfw_filter_logic.py, poi 0240_nsfw.sql, repo, bot, cog, worker.
+- Giro r9 (feat/r9nsfw, base main, migrazioni 0240-0249; usata 0240). #94 e #107 fatti (parziali in REGISTRO).
+- Prossimo passo: #145 (premium_cache 60 s dei log avanzati: invalidare allo sblocco/revoca), poi #141 residui;
+  in fondo invarianti + `python3 scripts/smoke.py --base main` (log in scratchpad) e rapporto.
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -17,7 +18,12 @@
   codici 0132 (`/owner premium grant` senza server crea il codice, `/admin premium riscatta`); NF-38 0133 `whitelabel_bots` +
   `/admin premium marchio`; #141 `core/hot_patch.py` 0134 (`/owner cog reload commit|file|registro`, `ENABLE_HOT_PATCH`).
 
+- r9 #94 NSFW: `core/nsfw_*` (filtro, fonti RedGifs, servizio D16, worker, bot), cogs/nsfw/ricerca.py, 0240, test_nsfw_*.
+  #107: `core/user_app_bot.py`, `core/user_app_logic.py`, cogs/user_app/personal.py; -cerca-comando/-chiedi user-install.
+
 ## Cose imparate
+- Alberi separati (NSFW, App): `tests/support/full_tree.build_separate_trees`; cogs con setup no-op se non e la loro istanza.
+- Server senza il bot (app utente): `interaction.is_guild_integration()` falso; `guild` None anche per cache mancante (#147).
 - Discord conta per il limite 8000 solo la traduzione PIU LUNGA per campo (base compresa). Base del codice resta italiano (scarto da D1).
 - discord.py mette locale_str automatico su nomi/descrizioni: il traduttore riceve `context.data` (nodo) e risponde per percorso.
 - Il DB di prova puo essere usato anche da altre copie: tabelle estranee (es. activity_*) fanno fallire test_data_registry; riprovare.

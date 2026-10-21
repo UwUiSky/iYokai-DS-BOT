@@ -84,6 +84,16 @@ Parole usate:
 | Testo libero di un'opzione, senza `max_length` | fino a 6000 caratteri | Application Commands |
 | Creazioni di comandi al giorno per server | 200 | Application Commands |
 | `default_permissions` | vale solo sul comando o gruppo di primo livello | discord.py `app_commands/commands.py` (REVIEW L9) |
+| Comandi installabili dall'utente (`integration_types` = utente) | **nessun tetto a parte**: i tetti sono per tipo (100 slash, 15 utente, 15 messaggio) e contano tutti i comandi globali dell'app, installati sul server o sull'utente. `integration_types` è solo un campo del comando. Verificato il 21/10/2026 | [Application Commands](https://docs.discord.com/developers/interactions/application-commands) |
+| `integration_types` e `contexts` | solo sui comandi globali e solo al primo livello; un sotto-comando li eredita dal gruppo | Application Commands; discord.py `allowed_installs` |
+| Comando `nsfw` | visibile solo a chi ha 18 anni, in un canale vietato ai minori (o in DM con l'opzione 18+ attiva); un'app con **App Discovery** attivo non può avere comandi o contenuti `nsfw` | Application Commands |
+
+Applicazioni separate, ognuna con i suoi tetti: **iYokai NSFW** (`/nsfw`, `/nsfw-admin`, segno `nsfw`
+su entrambi) e **iYokai App** (installata solo sull'utente: `/promemoria`, `/profilo`, 2 menu su 15+15).
+Sul principale `-cerca-comando` e `-chiedi` sono installabili anche dall'utente: non aggiungono posti,
+sono gli stessi comandi. Un comando nuovo solo-utente sul principale toglierebbe un posto ai suoi 100.
+Dove l'app non è nel server: una risposta e al massimo 5 messaggi dopo, per 15 minuti; i comandi
+dell'app rispondono una volta sola.
 
 Stato di iYokai (misurato): 97 comandi di primo livello su 100;
 `/owner` 25 su 25; `/automod` 22 su 25; peso massimo 2943 caratteri su
@@ -191,6 +201,8 @@ Stato di iYokai (misurato): 97 comandi di primo livello su 100;
 | Pixabay | immagini | vietato il collegamento diretto permanente; l'indirizzo vale 24 ore | Pixabay API |
 | Pixabay | ricerca | testo fino a 100 caratteri; 100 richieste ogni 60 secondi | Pixabay API |
 | RSS | cortesia | nessun limite scritto: usare `User-Agent` e `ETag` | buona pratica |
+| RedGifs (istanza NSFW) | API | gettone temporaneo (`/v2/auth/temporary`), ricerca `/v2/gifs/search`; quota non pubblicata. Nostro uso: cache 10 minuti per tag (200 tag), gettone tenuto 12 ore, 6 anteprime al massimo per pubblicazione, 8 MB per anteprima | **a memoria**, da ricontrollare (rete del giro senza accesso) |
+| RedGifs | condizioni d'uso | solo elementi con `verified` (creatore con età e consenso controllati); link alla pagina della fonte, anteprima come allegato con spoiler | da ricontrollare con le condizioni della fonte |
 | RSS (nostro) | dimensione e tempo | 2 MB, 15 secondi, 3 redirect | `core/safe_http.py` |
 | asyncpg | pool | 5–10 connessioni; tempo massimo 30 s per comando | `core/config.py:325-326`, `core/database.py:81-82` |
 | Aiven gratuito | connessioni | 20 in tutto, nessun pooler, si spegne se inattivo | [Aiven free](https://aiven.io/docs/products/postgresql/concepts/pg-free-tier) |

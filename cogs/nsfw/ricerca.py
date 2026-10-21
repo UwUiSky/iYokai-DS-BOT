@@ -153,12 +153,14 @@ class NsfwCog(commands.Cog):
     tag_togli.autocomplete("tag")(_tag_permessi)
 
     @admin.command(name="autopost", description="Pubblica da solo in un canale vietato ai minori.")
-    @app_commands.describe(canale="Canale vietato ai minori", tag="Tag della lista permessa", minuti="Ogni quanti minuti")
+    @app_commands.describe(
+        canale="Canale vietato ai minori", tag="Tag della lista permessa (vuoto: uno a caso)", minuti="Ogni quanti minuti"
+    )
     async def autopost(
         self,
         interaction: discord.Interaction,
         canale: discord.TextChannel,
-        tag: app_commands.Range[str, 2, 32],
+        tag: app_commands.Range[str, 2, 32] | None = None,
         minuti: app_commands.Range[int, 30, 1440] = 120,
     ) -> None:
         if not await self._solo_staff(interaction):
@@ -188,7 +190,7 @@ class NsfwCog(commands.Cog):
         embed.add_field(
             name=f"Lista permessa ({len(config_server.tag_permessi)}/{MAX_TAG_PERMESSI})", value=tag[:1024], inline=False
         )
-        righe = [f"<#{a.channel_id}>: `{a.tag}` ogni {a.intervallo_minuti} min" for a in autopost]
+        righe = [f"<#{a.channel_id}>: `{a.tag or 'a caso'}` ogni {a.intervallo_minuti} min" for a in autopost]
         embed.add_field(name="Pubblicazione automatica", value="\n".join(righe)[:1024] or "nessuna", inline=False)
         embed.set_footer(text="La lista vietata è fissa nel codice e vale sempre.")
         await interaction.response.send_message(embed=embed, ephemeral=True)

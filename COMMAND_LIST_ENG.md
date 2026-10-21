@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:34 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 513 commands in 23 categories.**
+**Total: 526 commands in 25 categories.**
 
 ## Admin
 
@@ -106,6 +106,25 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:3
 - **`/antiraid signals`** — Raid signals on the latest joins and action on earlier joiners.
 - **`/antiraid status`** — Shows the current Anti-Raid setup.
 - **`/antiraid username-check`** — Turns suspicious username pattern detection on or off.
+
+## iYokai App (separate app, installed on the user)
+
+- **`/Profilo`** — “Apps” menu (right click)
+- **`/Testo pulito`** — “Apps” menu (right click)
+- **`/profile`** — A user's card: name, ID, account age, avatar.
+- **`/reminders cancel`** — Cancels one of your reminders.
+- **`/reminders create`** — I will DM you after the time you choose.
+- **`/reminders list`** — Shows your pending reminders.
+
+## iYokai NSFW (separate app, age-restricted channels only)
+
+- **`/nsfw search`** — Posts here a piece of content with a tag allowed by the server.
+- **`/nsfw-admin autopost`** — Posts automatically in an age-restricted channel.
+- **`/nsfw-admin autopost-stop`** — Stops automatic posting (empty: all of them).
+- **`/nsfw-admin enable`** — Turns the NSFW instance on or off in this server.
+- **`/nsfw-admin status`** — Shows the NSFW settings of this server.
+- **`/nsfw-admin tag-add`** — Adds a tag to the server allowlist.
+- **`/nsfw-admin tag-remove`** — Removes a tag from the server allowlist.
 
 ## AutoMod
 
