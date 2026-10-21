@@ -231,7 +231,7 @@ async def test_timeout_e_mute_errore_http_gestito_senza_caso(nome):
     if nome == "timeout":
         scena.bersaglio.timeout.side_effect = _errore_http(400)
         cog = ModerationActionsCog(bot=None)
-        await cog.timeout.callback(cog, scena.interazione, scena.bersaglio, "10m", "Spam ripetuto")
+        await cog.timeout.callback(cog, scena.interazione, scena.bersaglio, "Spam ripetuto", "10m")
         risposta = scena.interazione.response.send_message.call_args
     else:
         scena.server.get_role.return_value = fake_role(role_id=88, name="Muted")

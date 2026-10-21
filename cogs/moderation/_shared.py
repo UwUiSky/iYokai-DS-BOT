@@ -14,9 +14,6 @@ ripeterebbero identiche in ogni singolo file di comandi.
 Funzioni coperte: SPEC §5, §18.1 (mod-log dal router)
 """
 
-# DA FARE (issue #57, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §1 (Moderazione).
-
 from __future__ import annotations
 
 import discord
@@ -29,6 +26,7 @@ from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
 from core.moderation_validation_logic import is_valid_reason
+from core import moderation_opzioni
 from core.permissions import ModerationActor, can_moderate
 
 # Nomi dei tre moduli premium-differenziabili di moderazione, come
@@ -225,19 +223,43 @@ async def check_can_moderate(
     if not allowed:
         await interaction.response.send_message(reason, ephemeral=True)
         return False
+    immune = await motivo_immune(guild, moderator, target)
+    if immune:
+        await interaction.response.send_message(immune, ephemeral=True)
+        return False
     return True
 
 
+async def motivo_immune(guild: discord.Guild, moderatore: discord.Member, target) -> str | None:
+    """MOD-068: il motivo se `target` ha un ruolo immune (`/mod opzioni immuni`), altrimenti None."""
+    if not isinstance(target, discord.Member):
+        return None
+    opzioni = await moderation_opzioni.leggi(guild.id)
+    return moderation_opzioni.motivo_immune(
+        opzioni.ruoli_immuni,
+        [r.id for r in target.roles],
+        attore_proprietario=moderatore.id == guild.owner_id,
+    )
+
+
 async def try_dm_message(
-    user: discord.abc.Snowflake, embed: discord.Embed, view: discord.ui.View | None = None
+    user: discord.abc.Snowflake,
+    embed: discord.Embed,
+    view: discord.ui.View | None = None,
+    *,
+    azione: str | None = None,
+    guild_id: int | None = None,
 ) -> discord.Message | None:
     """
     Prova a mandare un DM e restituisce il messaggio inviato, o None se
     non è partito (DM chiusi o nessun server in comune). Serve a kick e
     ban: il messaggio parte PRIMA dell'azione, perché dopo non c'è più un
     server in comune e Discord lo rifiuta. Se l'azione fallisce il
-    messaggio si cancella con `delete_dm`.
+    messaggio si cancella con `delete_dm`. Con `azione` e `guild_id` il
+    DM non parte se il server l'ha spento per quell'azione (MOD-057).
     """
+    if azione is not None and guild_id is not None and not await moderation_opzioni.dm_attivo(guild_id, azione):
+        return None
     try:
         # user qui è sempre un discord.Member/discord.User vero
         # (Snowflake nel type hint solo per generalità); .send()
@@ -259,11 +281,13 @@ async def delete_dm(message: discord.Message | None) -> None:
         pass
 
 
-async def try_dm(user: discord.abc.Snowflake, embed: discord.Embed) -> bool:
+async def try_dm(
+    user: discord.abc.Snowflake, embed: discord.Embed, *, azione: str | None = None, guild_id: int | None = None
+) -> bool:
     """
     Prova a mandare un DM. Restituisce True/False invece di
     sollevare un'eccezione: un utente con i DM chiusi non deve far
     fallire l'intero comando di moderazione, solo far sapere al
     moderatore che la notifica non è arrivata.
     """
-    return await try_dm_message(user, embed) is not None
+    return await try_dm_message(user, embed, azione=azione, guild_id=guild_id) is not None

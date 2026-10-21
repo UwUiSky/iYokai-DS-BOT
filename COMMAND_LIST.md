@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 08:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 513 comandi in 23 categorie.**
+**Totale: 516 comandi in 23 categorie.**
 
 ## Admin
 
@@ -331,6 +331,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:
 - **`/mod nota modifica`** — Cambia il testo di una nota.
 - **`/mod nota rimuovi`** — Toglie una nota (il numero è nell'elenco delle note).
 - **`/mod nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
+- **`/mod opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
+- **`/mod opzioni immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
+- **`/mod opzioni imposta`** — Giorni di messaggi cancellati al ban e durata del timeout. Vuoto: mostra le opzioni.
 - **`/mod slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.

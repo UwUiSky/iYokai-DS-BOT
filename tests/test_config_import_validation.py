@@ -71,6 +71,10 @@ SETTINGS_VALIDE = {
     "policy_canali_no": [181818181818181818],
     "policy_ignora_ruoli": [191919191919191919],
     "policy_ignora_utenti": [202020202020202020],
+    "mod_ban_giorni_messaggi": 1,
+    "mod_timeout_predefinito": 600,
+    "mod_dm_spenti": ["warn", "ban"],
+    "mod_ruoli_immuni": [212121212121212121],
 }
 
 

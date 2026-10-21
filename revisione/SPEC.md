@@ -361,6 +361,12 @@ Totale voci: **494**.
   scadenza riprende i ruoli di prima (issue #138, fase F9)
   → **Fatto:** `/modban tempban modo:Isolamento` (ruolo e canale «isolamento», canali
   nuovi nascosti, uscita e rientro non liberano, `/modban unban` libera prima).
+- `[x]` 5.13 **Opzioni di moderazione** (MOD-010, 017, 057, 068) — `/mod opzioni
+  imposta|dm|immuni`, un solo punto in `core/moderation_opzioni.py`: giorni di
+  messaggi cancellati quando il ban non li dice; durata del timeout quando non
+  la si scrive; DM spento per tipo di azione; ruoli immuni alla moderazione
+  manuale (al massimo 25; li sceglie solo il proprietario, che resta libero di
+  agire; anche nell'import della configurazione).
 
 ## §6 AUTOMOD
 

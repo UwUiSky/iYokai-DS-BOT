@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:28 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 513 commands in 23 categories.**
+**Total: 516 commands in 23 categories.**
 
 ## Admin
 
@@ -328,6 +328,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 01:3
 - **`/mod note edit`** — Changes a note's text.
 - **`/mod note list`** — Lists the notes on a user.
 - **`/mod note remove`** — Removes a note (the number is in the notes list).
+- **`/mod options dm`** — Choose whether the user gets a DM for a type of action.
+- **`/mod options immune`** — Roles manual moderation can't touch (owner only).
+- **`/mod options set`** — Messages deleted on ban and default timeout length. Empty: shows the options.
 - **`/mod slowmode`** — Sets slowmode on a channel.
 - **`/mod timeout`** — Times out a member (max 28 days).
 - **`/mod unlock`** — Unblocks the ability to write in a channel.

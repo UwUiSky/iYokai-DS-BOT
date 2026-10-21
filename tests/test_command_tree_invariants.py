@@ -321,7 +321,6 @@ KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     {
     "admin messaggi programma:duration",
     "fun rate:thing",
-    "mod timeout:duration",
     "modban tempban:duration",
     "modban unban:user_id",
     "moduli alert feed:feed_url",
