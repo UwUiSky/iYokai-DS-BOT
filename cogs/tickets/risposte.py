@@ -398,7 +398,8 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             testo=(message.content or "")[: ai_logica.MAX_CARATTERI_RICHIESTA],
             guild_id=message.guild.id, channel_id=message.channel.id,
             istruzioni=ai_logica.ISTRUZIONI_SCEGLI.format(elenco=elenco),
-            messaggi_utenti=True, riusa=False, conta_utente=False,
+            # Parte da ogni messaggio dell'utente: conta sul suo limite, se no uno solo svuota la quota del server.
+            messaggi_utenti=True, riusa=False, conta_utente=True,
         ))
         numero = ai_logica.leggi_scelta(testo, {r.id for r in approvate})
         return next((r for r in approvate if r.id == numero), None)

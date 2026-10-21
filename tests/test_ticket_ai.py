@@ -120,3 +120,17 @@ async def test_l_ai_chiama_l_amministratore_se_serve(repo):
     assert await modulo.RisposteStandardCog(bot=None)._ruolo_secondo_ai(canale, _ticket()) == RUOLO_ADMIN
     await _ai(repo, "risposta strana")
     assert await modulo.RisposteStandardCog(bot=None)._ruolo_secondo_ai(canale, _ticket()) is None
+
+
+async def test_chi_scrive_tanti_messaggi_nel_ticket_non_consuma_l_ai_senza_limiti(repo):
+    """La scelta parte da ogni messaggio dell'utente: deve contare sul suo limite, non solo sul server."""
+    from core.ai_cost_logic import RICHIESTE_AL_MINUTO_UTENTE
+
+    trasporto = await _ai(repo, '{"numero": 0}')
+    approvate = [SimpleNamespace(id=11, title="Rimborso", keywords="rimborso pagamento")]
+    messaggio = SimpleNamespace(author=SimpleNamespace(id=UTENTE), content="aiuto",
+                                guild=SimpleNamespace(id=G), channel=SimpleNamespace(id=300))
+    cog = modulo.RisposteStandardCog(bot=None)
+    for _ in range(RICHIESTE_AL_MINUTO_UTENTE + 10):
+        assert await cog._scelta_ai(messaggio, approvate) is None
+    assert len(trasporto.chiamate) <= RICHIESTE_AL_MINUTO_UTENTE
