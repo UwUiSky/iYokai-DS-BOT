@@ -73,18 +73,32 @@ def csrf_verifica(chiave: str, token: str) -> str:
 
 
 # -------------------------------------------------------------- impronte
+# Un IP interno è quello di un proxy non dichiarato (WEB_PANEL_TRUSTED_PROXY) o di Docker:
+# uguale per tutti, farebbe di ogni membro il «doppio» di ogni altro. Non fa impronta.
+_RETI_INTERNE = tuple(
+    ipaddress.ip_network(r)
+    for r in (
+        "0.0.0.0/8", "10.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16",
+        "::/128", "::1/128", "fc00::/7", "fe80::/10",
+    )
+)
+
+
 def rete(ip: str) -> str | None:
     """
     La parte dell'IP che identifica la connessione: l'IPv4 intero, il /64
-    per l'IPv6 (la stessa casa cambia spesso la seconda metà). None se non è un IP.
+    per l'IPv6 (la stessa casa cambia spesso la seconda metà). None se non è
+    un IP o se è un IP interno (proxy o rete locale).
     """
     try:
         indirizzo = ipaddress.ip_address(ip.strip())
     except ValueError:
         return None
+    if isinstance(indirizzo, ipaddress.IPv6Address) and indirizzo.ipv4_mapped is not None:
+        indirizzo = indirizzo.ipv4_mapped
+    if any(indirizzo in r for r in _RETI_INTERNE if r.version == indirizzo.version):
+        return None
     if isinstance(indirizzo, ipaddress.IPv6Address):
-        if indirizzo.ipv4_mapped is not None:
-            return str(indirizzo.ipv4_mapped)
         return str(ipaddress.IPv6Network(f"{indirizzo}/64", strict=False).network_address) + "/64"
     return str(indirizzo)
 

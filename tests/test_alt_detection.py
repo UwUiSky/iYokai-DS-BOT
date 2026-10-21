@@ -57,6 +57,14 @@ def test_impronte_senza_ip_e_diverse_tra_server():
     assert logica.impronte_richiesta(CHIAVE, GUILD, "?", None, None) == {}
 
 
+def test_ip_di_un_proxy_o_di_una_rete_interna_non_fa_impronta():
+    # Pannello dietro un proxy non dichiarato (WEB_PANEL_TRUSTED_PROXY vuoto) o in Docker: tutti
+    # arrivano dallo stesso IP interno e sarebbero tutti «doppi» di tutti.
+    for ip in ("127.0.0.1", "10.0.0.5", "172.17.0.1", "192.168.1.10", "::1", "fd00::5", "::ffff:127.0.0.1"):
+        assert logica.TIPO_IP not in logica.impronte_richiesta(CHIAVE, GUILD, ip, "Firefox", "it"), ip
+    assert logica.TIPO_IP in logica.impronte_richiesta(CHIAVE, GUILD, "198.51.100.9", None, None)
+
+
 def test_solo_la_stessa_rete_fa_un_doppio():
     doppi = logica.valuta_doppi([(7, "browser"), (8, "ip"), (9, "ip"), (9, "browser"), (MEMBRO, "ip")], MEMBRO)
     assert doppi == [logica.Doppio(9, logica.LIVELLO_ALTO), logica.Doppio(8, logica.LIVELLO_MEDIO)]
@@ -110,6 +118,7 @@ async def ambiente(monkeypatch, clean_db):
     app = build_app(
         bot=bot, sessioni=WebPanelSessionRepository(pool_provider=lambda: clean_db), oauth=MagicMock(),
         client_id="1", client_secret="s" * 8, url_pubblico="http://pannello.test", chiave=CHIAVE,
+        proxy_fidati=frozenset({"127.0.0.1"}),
     )
     client = TestClient(TestServer(app), cookie_jar=aiohttp.CookieJar(unsafe=True))
     await client.start_server()
@@ -119,12 +128,13 @@ async def ambiente(monkeypatch, clean_db):
 
 async def _verifica(client, user_id, ua="Firefox"):
     token = logica.crea_token(CHIAVE, GUILD, user_id)
-    pagina = await client.get(f"/verifica/{token}", headers={"User-Agent": ua})
+    intestazioni = {"User-Agent": ua, "X-Forwarded-For": "198.51.100.9"}  # dal proxy fidato
+    pagina = await client.get(f"/verifica/{token}", headers=intestazioni)
     assert pagina.status == 200
     testo = await pagina.text()
     assert "Server &lt;i&gt;prova&lt;/i&gt;" in testo and "IP non viene mai salvato" in testo
     campo = re.search(r'name="campo" value="([^"]+)"', testo).group(1)
-    return await client.post(f"/verifica/{token}", data={"campo": campo}, headers={"User-Agent": ua})
+    return await client.post(f"/verifica/{token}", data={"campo": campo}, headers=intestazioni)
 
 
 @pytest.mark.asyncio
@@ -148,7 +158,29 @@ async def test_pagina_verifica_e_doppio_segnalato(ambiente, monkeypatch):
     righe = await ambiente.repo.elenco_doppi(GUILD)
     assert [(r["user_id"], r["altro_user_id"]) for r in righe] == [(MEMBRO, ALT)]
     async with database_module.db.pool.acquire() as conn:
-        assert "127.0.0.1" not in str(await conn.fetch("SELECT * FROM verify_impronte"))
+        assert "198.51.100.9" not in str(await conn.fetch("SELECT * FROM verify_impronte"))
+
+
+@pytest.mark.asyncio
+async def test_proxy_non_dichiarato_nessun_doppio(ambiente, monkeypatch):
+    """Due persone diverse dietro lo stesso proxy locale non dichiarato: nessun avviso allo staff."""
+    avvisi = []
+
+    async def _avvisa(guild, membro, doppi):
+        avvisi.append(membro.id)
+        return True
+
+    import cogs.security.alt_detection as cog_alt
+
+    monkeypatch.setattr(cog_alt, "avvisa_staff", _avvisa)
+    for user_id in (ALT, MEMBRO):
+        token = logica.crea_token(CHIAVE, GUILD, user_id)
+        testo = await (await ambiente.client.get(f"/verifica/{token}")).text()
+        campo = re.search(r'name="campo" value="([^"]+)"', testo).group(1)
+        # Senza X-Forwarded-For l'IP è quello del proxy (127.0.0.1) per tutti.
+        await ambiente.client.post(f"/verifica/{token}", data={"campo": campo}, headers={"User-Agent": f"UA-{user_id}"})
+    assert avvisi == []
+    assert await ambiente.repo.elenco_doppi(GUILD) == []
 
 
 @pytest.mark.asyncio
