@@ -1,9 +1,10 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-15, ramo feat/r7mod, worktree /home/claude/wt/r7mod, DB iyokai_wr7mod. Migrazioni r7: 0180–0189.
+2026-10-21, ramo feat/r9mod, worktree /home/claude/wt/r9mod. Migrazioni r9: 0250–0259. Log in scratchpad/r9mod.
 ## In corso
-Giro r7 (previsione 3 voci): #113 iYokai Mod (fatto) → #119 catalogo log + residui #61 → #101 NF-30 appello ban. Mi fermo dopo #101.
-Giro r7 chiuso. Prossimo giro: LOG-029, webhook dei log (#113), SIC-036.
+Giro r9 (previsione 5 voci): 1) #59 ripiego kick/ban se la quarantena non riesce (AntiNukeConfig, /antinuke punish-action) → 2) M 1.10 warn manuali nella scala (escalation) → 3) /mod opzioni (MOD-010, 017, 057, 065, 068) → 4) MOD-013 sanzioni a tempo attive + MOD-090 lock a tempo → 5) SIC-040 punizione del canale trappola. Mi fermo dopo la 5.
+Residui gia' fatti in codice (verificati r9): M 1.1–1.9, 2.1–2.7, 3.1–3.18 (tranne ripiego), 4.1–4.3.
+Pesi r9 (script scratchpad/r9mod/tools/pesi.py): antinuke 2674/12, antiraid 2756/16, automod 5015/7, mod 3953/14, modban 1683/7, security 4536/8.
 ## Fatto
 - Giri G1-G7, R5, R6 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli spam-trap, verify, lockdown, phishing, captcha, anti-raid r6, massa, automod filtri
 - R7-3 #101 NF-30: era gia' fatto; aggiunto il bottone di appello a chi scrive al bot in DM (offri_appello_in_dm, chiamato dallo spam-trap)
