@@ -108,6 +108,26 @@ async def test_caricamento_immagine(aspetto):
 
 
 @pytest.mark.asyncio
+async def test_caricamento_di_un_avatar_vero_oltre_8_kb(aspetto):
+    """aiohttp applica `client_max_size` (8 KB) anche a ogni parte del multipart: un avatar vero passa."""
+    import os
+
+    buffer = io.BytesIO()
+    Image.frombytes("RGB", (256, 256), os.urandom(256 * 256 * 3)).save(buffer, format="PNG")
+    vero = buffer.getvalue()
+    assert len(vero) > 100_000
+    client = await _client(aspetto.ambiente.app)
+    try:
+        await _entra(client)
+        csrf = await _csrf(client, PAGINA)
+        r = await client.post(PAGINA + "/immagine", data=_modulo(csrf, dati=vero), allow_redirects=False)
+        assert _esito(r) == "asp_ok"
+        assert aspetto.me.edit.call_args.kwargs["avatar"] == vero
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_il_resto_del_pannello_resta_a_8_kb(aspetto):
     client = await _client(aspetto.ambiente.app)
     try:

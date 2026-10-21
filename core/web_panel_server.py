@@ -26,7 +26,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import groupby
 
 import jinja2
-from aiohttp import BodyPartReader, web
+from aiohttp import BodyPartReader, MultipartReader, web
 
 from core import alt_detection_logic as verifica, panel_bridge, web_panel_logic as regole
 from core.bot_aspetto import MAX_IMMAGINE
@@ -413,7 +413,12 @@ def build_app(
     async def _leggi_caricamento(request: web.Request) -> dict:
         """Le parti del modulo di caricamento. La dimensione totale è già controllata dal chiamante."""
         campi: dict = {}
-        async for parte in await request.multipart():
+        # Non `request.multipart()`: aiohttp applicherebbe a ogni parte `client_max_size` (8 KB).
+        lettore = MultipartReader(
+            request.headers, request.content,
+            client_max_size=DIMENSIONE_MASSIMA_CARICAMENTO, max_size_error_cls=web.HTTPRequestEntityTooLarge,
+        )
+        async for parte in lettore:
             if not isinstance(parte, BodyPartReader) or parte.name not in ("csrf", "tipo", "immagine"):
                 raise ValueError("Parte inattesa.")
             dati = await parte.read()
