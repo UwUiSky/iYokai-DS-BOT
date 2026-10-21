@@ -1,18 +1,9 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+21/10/2026 · ultimo giro: `feat/r9nsfw` (bot NSFW, App utente), 5 fix: 644985d, a5dc0b2, c93a382, b4a0667, 9aaf9dd.
 21/10/2026 · ultimo giro: `feat/r8web` (verifica web NF-21, #148, marchio, aspetto, «I miei dati»), 6 fix: ec769c2, 0e8943c, 87f72f9, 951cf86, db91e8c, 6de5e0f.
 16/10/2026 · r7mod, r7bak, r7liv (fix in `rapporti/bug.md`).
-21/10/2026 · ultimo giro: `feat/r8uti` (/ruoli D25, scheda, ruoli auto condizioni, suggerimenti, promemoria, sondaggio) con fix c2af58d, 3d722cc, 416859f
-16/10/2026 · ultimo giro: `feat/r7mod` (iYokai Mod, catalogo log, NF-30 DM), 5 fix; i 2 lasciati li ha chiusi il revisore.
-16/10/2026 · ultimo giro: `feat/r7bak` (/backup D25, copie, modelli, sincronia, chat) con fix 1172556, b70b41f
-16/10/2026 · ultimo giro: `feat/r7liv` (vocali opzioni/invita/stato, sfondi card, tick clan raggruppato, /level premi|pause|livelli-recenti) con fix 635507f
-14/10/2026 · ultimo giro: `feat/r6ai` (motore AI, /ai, -chiedi, menzione, traduzioni, immagini, ticket) con fix 9516f7c
-14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
-14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
-13/10/2026 · ultimo giro: `feat/r4-uti` (ruoli auto, starboard, tag, benvenuto immagine, role menu, embed, contatori, compleanni, inviti, moduli)
-13/10/2026 · ultimo giro: `feat/r4-liv` (livelli, economia, giveaway, giochi, profili)
-13/10/2026 · ultimo giro: `feat/r4-tkt` (ticket, ModMail, standard/sollecito, log, /voice)
 
 ## In corso
 - Niente a metà.
@@ -20,6 +11,7 @@
 ## Fatto
 - Giri 28/09–14/10 (BUG-19…34, SEC-18…22, F1, giro-core, r3, r4-*, r6*): dettagli in `rapporti/bug.md`.
 - r7mod, r7bak (1172556, b70b41f), r7liv (635507f).
+- r9nsfw: filtro Unicode/composti, tetto Segnala, D6 bot NSFW, App fuori server = DM.
 - r8web: caricamento 8 KB, log /verifica, IP interni = doppi, export verify_doppi, avvisi ripetuti, cifre Unicode.
 
 ## Cose imparate
@@ -54,6 +46,7 @@
 - Sincronie tra server: ricontrollare proprietà all'evento; ruoli per NOME = escalation. Caricamenti da file: mai permessi pericolosi a @everyone.
 - Comandi che fanno creare al bot inviti/link: controllare il permesso di chi chiede.
 - Web: `Referrer-Policy: no-referrer` → `Origin: null` nei POST; `del_cookie` senza `secure=` non cancella `__Host-`. aiohttp ≥3.12: `request.multipart()` limita OGNI parte a `client_max_size`: per i caricamenti un `MultipartReader` proprio. Access log: ogni percorso con id di persona va redatto (c'è l'IP accanto). `str.isdigit()` accetta "²".
+- Filtri di parole: NFKD non basta (cirillico, Cf invisibili); cercare dentro le parole (tag composti) e a lettere unite. Bot separati: D6 sulla presenza di QUEL bot. App utente: `is_guild_integration()` falso = server senza bot, trattare come DM.
 - Impronte/IP: dietro proxy non dichiarato tutti hanno lo stesso IP interno → doppi falsi e limiti per IP condivisi. Un link/modulo riusabile che avvisa lo staff: deduplicare l'avviso.
 
 ## Aperto
