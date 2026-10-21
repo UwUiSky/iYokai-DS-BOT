@@ -424,13 +424,14 @@ async def _crea_ticket(
             "Le categorie dei ticket sono piene (50 canali ciascuna): avvisa lo staff.", ephemeral=True
         )
         return None
+    ruoli_staff = await _ruoli_staff(guild.id, panel_id)
+    # Si ricontrolla a ogni apertura: chi ha perso il ruolo dello staff non vede più i ticket nuovi.
     reperibili = [
         m for m in (guild.get_member(uid) for uid in await ticket_opzioni_repo.reperibili(guild.id))
-        if m is not None and m.id != utente.id
+        if m is not None and m.id != utente.id and not m.bot
+        and (m.guild_permissions.manage_guild or set(ruoli_staff) & {r.id for r in m.roles})
     ]
-    overwrites = _overwrites_del_ticket(
-        guild, utente, opzioni, await _ruoli_staff(guild.id, panel_id), reperibili
-    )
+    overwrites = _overwrites_del_ticket(guild, utente, opzioni, ruoli_staff, reperibili)
 
     # Il numero si riserva prima, così il canale nasce già con il nome
     # giusto: rinominarlo dopo spenderebbe una delle 2 rinomine che

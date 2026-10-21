@@ -231,6 +231,18 @@ async def test_l_apertura_usa_nome_permessi_osservatori_squadra_reperibili_e_ruo
     assert "Ciao" in utente.send.call_args.args[0]
 
 
+async def test_un_reperibile_che_non_e_piu_staff_non_entra_nei_ticket_nuovi():
+    s = Server()
+    p = await _pannello()
+    ex = s.membro(STAFF + 1, admin=True)
+    await ticket_opzioni_repo.cambia_reperibile(ID_SERVER, ex.id)
+    ex.guild_permissions = discord.Permissions.none()  # ha perso il ruolo dopo essersi segnato
+    panel = await ticket_form_repo.pannello_per_id(p.id)
+    await modulo._open_ticket_channel(s.inter(s.membro(UTENTE)), s.guild, s.categoria, panel.name, panel=panel)
+    _, kwargs = s.canali[-1]
+    assert ex not in kwargs["overwrites"]
+
+
 async def test_categoria_piena_passa_alla_riserva():
     s = Server()
     s.categoria.channels = [object()] * 50
