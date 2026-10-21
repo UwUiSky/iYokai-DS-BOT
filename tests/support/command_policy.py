@@ -58,6 +58,7 @@ AUDIENCE: dict[str, str] = {
     "backup": STAFF,  # gruppo condiviso (core/command_groups.py), D25
     "moduli": STAFF,  # gruppo condiviso
     "gestione": STAFF,  # gruppo condiviso
+    "ruoli": STAFF,  # gruppo condiviso (core/command_groups.py), D25
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
 

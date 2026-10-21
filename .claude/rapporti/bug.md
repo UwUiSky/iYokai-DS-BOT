@@ -252,3 +252,12 @@
 | 21/10 | `alt_detection_logic.valuta_doppi` | IPv4 uguale = doppio «medio»: CGNAT mobile, scuole, famiglie fanno falsi avvisi | bassa | corretto r8web (revisore) |
 | 21/10 | `whitelabel_bot.token_di_sistema` | Manca `YOKAI_MOD_TOKEN` (preesistente; serve conoscere il token) | bassa | corretto r8web (revisore) |
 | 21/10 | `panel_bridge.revoca_permessi_comandi` | Revoca cancella il token cifrato ma non lo revoca su Discord (vale ~7 giorni) | bassa | corretto r8web (revisore): l'esito dice di toglierla da «App autorizzate»; il marchio dice di rigenerare il token nel Developer Portal |
+| 21/10 | `ruoli_strumenti._ruoli_a_scelta` | Ruolo a scelta reso «forte» dopo l'aggiunta (administrator) si prende ancora con /utility ruolo | alta | corretto r8uti c2af58d |
+| 21/10 | `ruoli_strumenti.massa` | Controllo «già in corso» e prenotazione con defer/chunk in mezzo: due massa insieme, la prima non si ferma | media | corretto r8uti c2af58d |
+| 21/10 | `autorole_logic.piano_ingresso`/sincronizza/ridai | Regole A «non con B» e B «non con A» danno entrambi i ruoli | media | corretto r8uti 3d722cc |
+| 21/10 | `autoroles._ridai_se_tolti` | Botta e risposta infinito con un altro bot che toglie il ruolo | media | corretto r8uti 3d722cc (3 ogni 10 min) |
+| 21/10 | `reminders.set_reminder` | Nessun tetto per persona sui ripetuti; «nel canale» scrive dove la persona non può; ripetuti continuano dopo l'uscita | media | corretto r8uti 416859f |
+| 21/10 | `ruoli_strumenti.ConfermaAzzera.conferma` | Gerarchia del bersaglio controllata solo al comando, non al click (15 min) | bassa | corretto r8uti (revisore) |
+| 21/10 | `autoroles.auto_sincronizza` | Task senza riferimento, senza tetto di membri, non si ferma (né con cog_unload) | bassa | corretto r8uti (revisore) |
+| 21/10 | `ruoli_strumenti.massa` | Nessun tetto orario per server (anti-nuke non vede il bot): massa togli ripetute | bassa | corretto r8uti (revisore) |
+| 21/10 | `poll.discussione` | Il bot apre il thread anche per chi non può creare thread nel canale | bassa | corretto r8uti (revisore) |

@@ -3,6 +3,16 @@
 ## Aggiornata
 21/10/2026 · ultimo giro: `feat/r8web` (verifica web NF-21, #148, marchio, aspetto, «I miei dati»), 6 fix: ec769c2, 0e8943c, 87f72f9, 951cf86, db91e8c, 6de5e0f.
 16/10/2026 · r7mod, r7bak, r7liv (fix in `rapporti/bug.md`).
+21/10/2026 · ultimo giro: `feat/r8uti` (/ruoli D25, scheda, ruoli auto condizioni, suggerimenti, promemoria, sondaggio) con fix c2af58d, 3d722cc, 416859f
+16/10/2026 · ultimo giro: `feat/r7mod` (iYokai Mod, catalogo log, NF-30 DM), 5 fix; i 2 lasciati li ha chiusi il revisore.
+16/10/2026 · ultimo giro: `feat/r7bak` (/backup D25, copie, modelli, sincronia, chat) con fix 1172556, b70b41f
+16/10/2026 · ultimo giro: `feat/r7liv` (vocali opzioni/invita/stato, sfondi card, tick clan raggruppato, /level premi|pause|livelli-recenti) con fix 635507f
+14/10/2026 · ultimo giro: `feat/r6ai` (motore AI, /ai, -chiedi, menzione, traduzioni, immagini, ticket) con fix 9516f7c
+14/10/2026 · ultimo giro: `feat/r6web` (pannello web, D16)
+14/10/2026 · ultimo giro: `feat/r6mod` (massa, verifica tempi, /antiraid, AutoMod r6) con fix
+13/10/2026 · ultimo giro: `feat/r4-uti` (ruoli auto, starboard, tag, benvenuto immagine, role menu, embed, contatori, compleanni, inviti, moduli)
+13/10/2026 · ultimo giro: `feat/r4-liv` (livelli, economia, giveaway, giochi, profili)
+13/10/2026 · ultimo giro: `feat/r4-tkt` (ticket, ModMail, standard/sollecito, log, /voice)
 
 ## In corso
 - Niente a metà.
@@ -17,6 +27,23 @@
 - Stato solo in memoria: chi lo svuota (evento spento, privacy NF-04, riavvio). Cache "leggi, poi set" con await: serve una versione.
 - Azioni fatte DAL bot non le vede l'anti-nuke: serve un tetto proprio. Lavori nello scheduler legati all'ingresso: cancellarli al rientro.
 - Test di corsa: `tests/support/concorrenza.apri_connessioni`, sempre provati togliendo il fix (mutazione, copia in scratchpad). `AsyncMock(side_effect=lambda: asyncio.sleep())` NON aspetta.
+- Giri 28/09–11/10 (BUG-19…34, SEC-18…22, F1, boost-146, f7, sicurezza-audit, 147, 66, giro-logt/eco/mod): dettagli in `rapporti/bug.md`.
+- giro-core, r3-bak, r3-mus, r4-tkt, r4-uti, r4-liv: alti e medi in `rapporti/bug.md` (13/10). Prove in scratchpad/cb{core,bak,mus,tkt,uti,liv}.
+- r6mod (5 fix), r6ai (9516f7c; lasciati: tetto/quota funzione in gara tra persone, prefissi in -chiedi), r6web.
+- r8uti: ruoli a scelta ricontrollo permessi, lock massa, condizioni autoruoli in ordine + tetto ridai, tetto promemoria/nel canale.
+- r7mod: forum-cache col client di Mod, blocco di 1 msg via Mod, archivio 20k senza tetto, bottone NF-30 ripetuto/ModMail, cache LOG-017 leggi-poi-set.
+
+## Cose imparate
+- Regole con condizioni (richiesti/esclusi): valutarle in ordine contando i ruoli già scelti; «ridai se tolto» = ping-pong senza tetto. Self-service: ricontrollare i permessi al momento della presa, non solo all'aggiunta.
+- `monkeypatch.setattr(modulo.asyncio, "sleep", ...)` cambia asyncio.sleep per TUTTI: per cedere il turno usare un future con call_soon.
+- Due client (Mod/principale): ogni oggetto in cache porta il SUO client; cache condivise separate per bot. `http.*` via Mod salta i casi speciali di discord.py (1 messaggio…).
+- Stato solo in memoria: chi lo svuota (evento spento, richiesta privacy NF-04, riavvio).
+- Azioni fatte DAL bot non le vede l'anti-nuke (attore = bot): serve un tetto proprio.
+- Difetti frequenti: leggi-poi-scrivi su saldi/contatori; cache "leggi, poi set" con await in mezzo (serve una versione); risposte oltre i limiti; azioni fallite riportate come riuscite.
+- Test di corsa: `tests/support/concorrenza.apri_connessioni`, sempre provati togliendo il fix (mutazione in scratchpad). Fake `AsyncMock(side_effect=lambda: asyncio.sleep())` NON aspetta: serve `async def`.
+- AI: lavoro automatico che conta sulla persona = aggirabile; niente cache per somiglianza su traduzioni/giudizi.
+- Web: `Referrer-Policy: no-referrer` manda `Origin: null` nei POST; `del_cookie` senza `secure=` non cancella `__Host-`.
+- Lavori nello scheduler legati all'ingresso: cancellarli al rientro. Controllare anche l'ordine di avvio.
 - wavelink: `Pool.connect` torna CONNECTING; provare con un finto Lavalink aiohttp.
 - Ordine blocchi (clan, batch FOR UPDATE ORDER BY): due cicli in parallelo, righe in ordine inverso. `schema_migrations` è per NUMERO: confrontare i numeri con gli altri rami aperti.
 - Router: un UPSERT dal ripiego rende permanente la riga.

@@ -1,8 +1,9 @@
 """
 core/repositories/autorole_repo.py
 ==================================
-Ruoli automatici e ruoli ricordati di chi esce (NF-07, SPEC §22).
-Le tabelle sono create da core/migrations/0080_autoroles.sql.
+Ruoli automatici (con condizioni e "ridai se tolto") e ruoli ricordati di
+chi esce (NF-07, SPEC §22; catalogo #123). Tabelle:
+core/migrations/0080_autoroles.sql, 0230_autorole_condizioni.sql.
 Funzioni coperte: SPEC §22 (NF-07)
 """
 
@@ -43,22 +44,38 @@ class AutoroleRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    async def add_rule(self, guild_id: int, role_id: int, delay_seconds: int, created_by: int) -> bool:
+    async def add_rule(
+        self,
+        guild_id: int,
+        role_id: int,
+        delay_seconds: int,
+        created_by: int,
+        *,
+        richiesti: list[int] | None = None,
+        esclusi: list[int] | None = None,
+        ridai: bool = False,
+    ) -> bool:
         """
-        Aggiunge (o aggiorna il ritardo di) una regola. False se il server ha già
+        Aggiunge (o aggiorna) una regola. False se il server ha già
         MAX_REGOLE regole e questo ruolo è nuovo. Controllo e scrittura in un'unica query.
         """
         async with tetto_per_server(self._pool, "autorole_rules", guild_id) as conn:
             riga = await conn.fetchrow(
                 """
-                INSERT INTO autorole_rules (guild_id, role_id, delay_seconds, created_by)
-                SELECT $1, $2, $3, $4
+                INSERT INTO autorole_rules
+                    (guild_id, role_id, delay_seconds, created_by, required_role_ids, excluded_role_ids, reapply)
+                SELECT $1, $2, $3, $4, $6, $7, $8
                 WHERE EXISTS (SELECT 1 FROM autorole_rules WHERE guild_id = $1 AND role_id = $2)
                    OR (SELECT count(*) FROM autorole_rules WHERE guild_id = $1) < $5
-                ON CONFLICT (guild_id, role_id) DO UPDATE SET delay_seconds = EXCLUDED.delay_seconds
+                ON CONFLICT (guild_id, role_id) DO UPDATE SET
+                    delay_seconds = EXCLUDED.delay_seconds,
+                    required_role_ids = EXCLUDED.required_role_ids,
+                    excluded_role_ids = EXCLUDED.excluded_role_ids,
+                    reapply = EXCLUDED.reapply
                 RETURNING role_id
                 """,
                 guild_id, role_id, delay_seconds, created_by, MAX_REGOLE,
+                list(richiesti or []), list(esclusi or []), ridai,
             )
             return riga is not None
 
@@ -70,17 +87,18 @@ class AutoroleRepository:
 
     async def list_rules(self, guild_id: int) -> list[RegolaAutoruolo]:
         righe = await self._pool.fetch(
-            "SELECT role_id, delay_seconds FROM autorole_rules WHERE guild_id = $1 ORDER BY created_at, role_id",
+            """
+            SELECT role_id, delay_seconds, required_role_ids, excluded_role_ids, reapply
+            FROM autorole_rules WHERE guild_id = $1 ORDER BY created_at, role_id
+            """,
             guild_id,
         )
-        return [RegolaAutoruolo(r["role_id"], r["delay_seconds"]) for r in righe]
-
-    async def has_rule(self, guild_id: int, role_id: int) -> bool:
-        return bool(
-            await self._pool.fetchval(
-                "SELECT 1 FROM autorole_rules WHERE guild_id = $1 AND role_id = $2", guild_id, role_id
+        return [
+            RegolaAutoruolo(
+                r["role_id"], r["delay_seconds"], tuple(r["required_role_ids"]), tuple(r["excluded_role_ids"]), r["reapply"]
             )
-        )
+            for r in righe
+        ]
 
     async def get_config(self, guild_id: int) -> AutoroleConfig:
         riga = await self._pool.fetchrow(

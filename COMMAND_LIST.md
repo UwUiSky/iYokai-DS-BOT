@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:00 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 493 comandi in 22 categorie.**
+**Totale: 513 comandi in 23 categorie.**
 
 ## Admin
 
@@ -236,6 +236,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:
 - **`/gestione ruoli auto-elenco`** — Mostra i ruoli automatici del server.
 - **`/gestione ruoli auto-ricorda`** — Ridai i ruoli a chi esce e rientra entro un certo tempo.
 - **`/gestione ruoli auto-rimuovi`** — Togli un ruolo dato in automatico a chi entra.
+- **`/gestione ruoli auto-sincronizza`** — Dai i ruoli automatici anche ai membri già nel server.
 - **`/gestione ruoli livello-add`** — Assegna un ruolo a chi raggiunge un livello.
 - **`/gestione ruoli livello-list`** — Mostra i ruoli-premio configurati su questo server.
 - **`/gestione ruoli livello-remove`** — Rimuove un ruolo-premio configurato.
@@ -461,6 +462,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
 
+## Ruoli
+
+- **`/ruoli azzera`** — Togli tutti i ruoli a un membro, con conferma.
+- **`/ruoli crea`** — Crea un ruolo nuovo.
+- **`/ruoli dai`** — Dai uno o più ruoli a un membro, anche per un tempo.
+- **`/ruoli diagnosi`** — Scopri perché il bot non riesce a dare un ruolo.
+- **`/ruoli massa`** — Dai o togli un ruolo a molti membri insieme, con filtri.
+- **`/ruoli massa-ferma`** — Ferma l'operazione di massa in corso.
+- **`/ruoli modifica`** — Cambia nome, colore e opzioni di un ruolo.
+- **`/ruoli scelta`** — Ruoli che i membri si prendono da soli con /utility ruolo.
+- **`/ruoli togli`** — Togli uno o più ruoli a un membro, anche per un tempo.
+
 ## Sicurezza
 
 - **`/security alt elenco`** — Gli account doppi trovati dalla verifica web.
@@ -536,11 +549,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-21 01:
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.
 - **`/utility reactionsnipe`** — Mostra l'ultima reazione rimossa in questo canale.
-- **`/utility reminder cancel`** — Annulla un promemoria.
+- **`/utility reminder cancel`** — Annulla un promemoria, o tutti i tuoi.
 - **`/utility reminder list`** — Mostra i tuoi promemoria in sospeso.
+- **`/utility reminder server`** — Per lo staff: i promemoria impostati in questo server.
 - **`/utility reminder set`** — Imposta un promemoria.
 - **`/utility report`** — Segnala un utente allo staff del server.
 - **`/utility richiedi-comando`** — Proponi un nuovo comando per il bot.
+- **`/utility ruolo`** — Prendi o lascia i ruoli a scelta del server.
+- **`/utility scheda anzianita`** — Account più vecchi o nuovi, primi o ultimi entrati.
+- **`/utility scheda canale`** — Scheda di un canale.
+- **`/utility scheda membri`** — I membri che hanno un ruolo.
+- **`/utility scheda permessi`** — Permessi di un membro o del bot in un canale.
+- **`/utility scheda ruoli`** — Tutti i ruoli con ID, membri e colore.
+- **`/utility scheda ruolo`** — Scheda di un ruolo: membri, colore, data, permessi.
+- **`/utility scheda server`** — Scheda del server: proprietario, data, numeri, boost.
+- **`/utility scheda utente`** — Scheda di un membro: ID, date e ruoli.
 - **`/utility serverstats`** — Statistiche del server: crescita, attività dei canali e dei membri.
 - **`/utility snipe`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility suggest`** — Proponi un'idea per questo server.

@@ -36,6 +36,7 @@ SETTINGS_VALIDE = {
     "report_channel_id": 333333333333333333,
     "custom_command_requests_channel_id": 444444444444444444,
     "suggestions_channel_id": 555555555555555555,
+    "suggestions_decided_channel_id": 555555555555555556,
     "ticket_category_id": 666666666666666666,
     "ticket_support_role_id": 777777777777777777,
     "ticket_support_role_ids": [888888888888888888, 999999999999999999],

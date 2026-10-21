@@ -6,6 +6,9 @@ indicato dallo schema stesso). Nessuna logica propria da estrarre:
 voto, conteggio, chiusura automatica e visualizzazione dei risultati
 sono TUTTI gestiti da Discord — questo cog è solo un'interfaccia
 comando sopra discord.Poll, niente storage, niente stato nostro.
+Senza opzioni diventa un sì/no rapido; a richiesta apre un thread di
+discussione sul sondaggio.
+Funzioni coperte: SPEC §14.15; catalogo UTL-087, UTL-095.
 """
 
 from __future__ import annotations
@@ -40,7 +43,7 @@ class PollCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         question="La domanda del sondaggio (massimo 300 caratteri)",
-        option1="Prima opzione (massimo 55 caratteri)",
+        option1="Prima opzione (vuota con la seconda = sì/no)",
         option2="Seconda opzione (massimo 55 caratteri)",
         option3="Terza opzione (facoltativa)",
         option4="Quarta opzione (facoltativa)",
@@ -52,13 +55,14 @@ class PollCog(CogConGruppi, commands.Cog):
         option10="Decima opzione (facoltativa)",
         duration_hours="Durata in ore (default 24, massimo 768 = 32 giorni)",
         multiple="Permetti di votare più di un'opzione",
+        discussione="Apri un thread per discutere il sondaggio",
     )
     async def poll(
         self,
         interaction: discord.Interaction,
         question: TestoDomanda,
-        option1: TestoRisposta,
-        option2: TestoRisposta,
+        option1: TestoRisposta | None = None,
+        option2: TestoRisposta | None = None,
         option3: TestoRisposta | None = None,
         option4: TestoRisposta | None = None,
         option5: TestoRisposta | None = None,
@@ -69,6 +73,7 @@ class PollCog(CogConGruppi, commands.Cog):
         option10: TestoRisposta | None = None,
         duration_hours: app_commands.Range[int, 1, 768] = 24,
         multiple: bool = False,
+        discussione: bool = False,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -93,6 +98,13 @@ class PollCog(CogConGruppi, commands.Cog):
             )
             if o is not None
         ]
+        if not opzioni:
+            opzioni = ["Sì", "No"]
+        elif len(opzioni) == 1:
+            await interaction.response.send_message(
+                "Servono almeno due opzioni (oppure nessuna, per un sì/no).", ephemeral=True
+            )
+            return
 
         sondaggio = discord.Poll(
             question=question,
@@ -103,6 +115,20 @@ class PollCog(CogConGruppi, commands.Cog):
             sondaggio.add_answer(text=opzione)
 
         await interaction.response.send_message(poll=sondaggio)
+        if discussione and not interaction.channel.permissions_for(interaction.user).create_public_threads:
+            # Il thread lo apre il bot: non lo fa per chi nel canale non potrebbe aprirlo da solo.
+            await interaction.followup.send(
+                "Sondaggio pubblicato, ma niente thread: in questo canale non puoi creare thread pubblici.",
+                ephemeral=True,
+            )
+        elif discussione:
+            try:
+                messaggio = await interaction.original_response()
+                await messaggio.create_thread(name=question[:100], auto_archive_duration=1440)
+            except discord.HTTPException:
+                await interaction.followup.send(
+                    "Sondaggio pubblicato, ma non ho potuto aprire il thread (permessi?).", ephemeral=True
+                )
 
 
 async def setup(bot: commands.Bot) -> None:

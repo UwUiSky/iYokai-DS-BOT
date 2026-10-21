@@ -398,6 +398,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("birthday_config", "Impostazioni dei compleanni", colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),
+    _t("self_roles", "Ruoli che i membri possono prendersi da soli", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_memory", "Ruoli ricordati di chi è uscito", colonne_utente=("user_id",),
        colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("left_at", 30), nota="NF-07: servono solo per 30 giorni dopo l'uscita"),
