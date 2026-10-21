@@ -392,3 +392,26 @@ async def test_tetto_del_pannello_tiene_con_due_utenti_insieme(clean_db):
     ))
     aperti = await clean_db.fetchval("SELECT count(*) FROM tickets WHERE panel_id = $1 AND status = 'open'", p.id)
     assert aperti == 1
+
+
+async def test_cache_delle_opzioni_si_svuota_a_ogni_modifica_e_risparmia_le_query(monkeypatch):
+    p = await _pannello()
+    assert (await ticket_opzioni_repo.opzioni(p.id)).max_aperti is None  # ora in cache
+    await ticket_opzioni_repo.imposta(p.id, max_aperti=3)
+    assert (await ticket_opzioni_repo.opzioni(p.id)).max_aperti == 3
+    await ticket_opzioni_repo.imposta_regola(p.id, 555, False)
+    s = await ticket_opzioni_repo.situazione(ID_SERVER, UTENTE, [], p.id)
+    assert s.regole_accesso == [(555, False)] and s.opzioni.max_aperti == 3
+
+    # Dentro la cache: nessuna lettura delle opzioni per il secondo clic.
+    letture = []
+    pool = db.pool
+
+    class Contatore:
+        async def fetchrow(self, query, *args):
+            letture.append(query)
+            return await pool.fetchrow(query, *args)
+
+    monkeypatch.setattr(ticket_opzioni_repo, "_pool_provider", Contatore)
+    await ticket_opzioni_repo.situazione(ID_SERVER, UTENTE, [], p.id)
+    assert len(letture) == 2 and not any("ticket_panel_opzioni" in q for q in letture)
