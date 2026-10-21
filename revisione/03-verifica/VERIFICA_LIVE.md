@@ -1084,3 +1084,10 @@ Serve: un server di prova con il bot sopra i ruoli di prova, un secondo account,
 - [ ] suggerimenti (UTL-135…138) — `/admin config canale-suggerimenti channel:#idee decisi:#decisi`; `/utility suggest` da B; lo staff preme «In valutazione», poi «Approva»: ogni bottone apre una finestra con il motivo; B riceve un DM con l'esito e il motivo; il suggerimento è copiato in #decisi. Due staff che premono insieme: una sola decisione.
 - [ ] promemoria (UTL-098…103) — `/utility reminder set duration:30m message:acqua ripeti:1d nel_canale:True`: arriva nel canale e si ripete; `ripeti:10m` rifiutato (minimo 30m). `/utility reminder cancel tutti:True` li toglie tutti. Da admin `/utility reminder server` mostra quelli del server e ne annulla uno di B.
 - [ ] sondaggio (UTL-087, 095) — `/utility poll question:Pizza?` senza opzioni: sondaggio nativo con «Sì» e «No». Con una sola opzione: rifiutato. `discussione:True`: sotto il sondaggio si apre un thread con il nome della domanda; senza il permesso «Creare thread pubblici» il sondaggio esce lo stesso e arriva un avviso privato.
+
+## Moderazione e sicurezza — giro r9 (#57, #59, #115–#118)
+
+Serve: un server di prova, un secondo account A con un ruolo Amministratore, il bot che si può spostare sopra o sotto quel ruolo.
+
+- [ ] Ripiego della quarantena (#59) — passi: ruolo del bot **sotto** quello di A; `/antinuke punish-action action:Quarantena ripiego:Espelli`; come A cancella 4 canali. Risultato atteso: il bot non toglie i ruoli e quindi **espelle** A; caso e avviso dicono «ruoli NON tolti … ripiego: espulso». Con il ruolo del bot sotto anche per l'espulsione: «ripiego (kick) fallito anche lui». `punish-action action:Rimuovi ruoli` senza `ripiego:` tiene il ripiego scelto prima.
+

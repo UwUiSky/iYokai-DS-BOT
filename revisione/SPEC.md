@@ -489,6 +489,8 @@ Totale voci: **494**.
   `/security antinuke enable|limits|trusted-add|trusted-remove|
   trusted-list|punish-action|recovery|status|guardie|casi|rilascia`
   → **Stato 04/10:** può punire il bot stesso (BUG-11).
+  → **Stato 21/10 (#59, r9):** `punish-action ripiego:` espelle o banna chi
+  quarantena o ruoli tolti non hanno fermato (spento di base).
   → **Stato 11/10 (#59 riga 3.5, #117):** due soglie per categoria (breve
   e oraria, SIC-001); punizione di default la quarantena (SIC-002); una
   sola punizione per attacco, con un caso numerato (`casi`, SIC-017); fiducia
