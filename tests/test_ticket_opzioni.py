@@ -373,3 +373,22 @@ async def test_ruolo_durante_diventato_pericoloso_non_si_da_all_apertura():
     panel = await ticket_form_repo.pannello_per_id(p.id)
     await modulo._open_ticket_channel(s.inter(utente), s.guild, s.categoria, panel.name, panel=panel)
     utente.add_roles.assert_not_awaited()
+
+
+async def test_tetto_del_pannello_tiene_con_due_utenti_insieme(clean_db):
+    """Il tetto si legge in esito_apertura: due persone insieme passavano entrambe il controllo."""
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    s = Server()
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, max_aperti=1)
+    panel = await ticket_form_repo.pannello_per_id(p.id)
+    a, b = s.membro(UTENTE), s.membro(UTENTE + 1)
+    await apri_connessioni(clean_db, 4)
+    await asyncio.gather(*(
+        modulo._open_ticket_channel(s.inter(m), s.guild, s.categoria, panel.name, panel=panel) for m in (a, b)
+    ))
+    aperti = await clean_db.fetchval("SELECT count(*) FROM tickets WHERE panel_id = $1 AND status = 'open'", p.id)
+    assert aperti == 1

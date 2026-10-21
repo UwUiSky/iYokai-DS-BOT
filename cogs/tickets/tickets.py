@@ -92,6 +92,7 @@ from core.repositories.ticket_opzioni_repo import ticket_opzioni_repo
 from core.ticket_opzioni_logic import Opzioni
 from core.repositories.ticket_repo import (
     VALID_PRIORITIES,
+    PannelloPienoError,
     TicketAlreadyOpenError,
     ticket_repo,
 )
@@ -397,6 +398,7 @@ async def _crea_ticket(
     per_conto = utente.id != interaction.user.id
     panel_id = panel.id if panel is not None else None
     fuori_orario = False
+    tetto_pannello = None
     if not per_conto:
         # TKT-017…024 (per lo staff che apre a nome di un utente decide lo staff).
         esito = await esito_apertura(guild, utente, panel_id)
@@ -404,6 +406,7 @@ async def _crea_ticket(
             await interaction.followup.send(esito.messaggio[:2000], ephemeral=True)
             return None
         fuori_orario = esito.fuori_orario
+        tetto_pannello = esito.tetto_pannello
     opzioni = await _opzioni_pannello(panel_id)
 
     limite = await _limite_per_utente(guild.id)
@@ -470,15 +473,20 @@ async def _crea_ticket(
             ticket_number=ticket_number,
             panel_id=panel_id,
             max_aperti=limite,
+            max_nel_pannello=tetto_pannello,
         )
-    except TicketAlreadyOpenError:
+    except TicketAlreadyOpenError as errore:
         # Un altro ticket dello stesso utente è nato nel frattempo: il
         # canale appena creato non deve restare orfano.
         try:
             await channel.delete(reason="Ticket doppio: l'utente ne ha già uno aperto")
         except discord.HTTPException:
             logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
-        await interaction.followup.send(_messaggio_limite(limite), ephemeral=True)
+        pieno = isinstance(errore, PannelloPienoError)
+        await interaction.followup.send(
+            "Questo pannello ha già il massimo di ticket aperti: riprova più tardi." if pieno else _messaggio_limite(limite),
+            ephemeral=True,
+        )
         return None
 
     await _dai_ruoli_durante(guild, utente, channel.id, opzioni)

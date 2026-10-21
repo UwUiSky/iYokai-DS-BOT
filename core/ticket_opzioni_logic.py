@@ -329,6 +329,7 @@ class Esito:
     permesso: bool
     messaggio: str | None = None
     fuori_orario: bool = False  # TKT-023: aperto lo stesso, con l'avviso nel ticket
+    tetto_pannello: int | None = None  # TKT-017: da ricontrollare sotto blocco quando si registra il ticket
 
 
 def decidi_apertura(r: Richiedente, s: Situazione, adesso: datetime) -> Esito:
@@ -355,7 +356,7 @@ def decidi_apertura(r: Richiedente, s: Situazione, adesso: datetime) -> Esito:
         attesa = secondi_di_pausa(s.ultima_apertura, s.azzerata_at, o.pausa_secondi, adesso)
         if attesa:
             return Esito(False, f"Hai aperto un ticket da poco: riprova tra {durata_leggibile(attesa)}.")
-    return Esito(True, fuori_orario=fuori)
+    return Esito(True, fuori_orario=fuori, tetto_pannello=None if esente else o.max_aperti)
 
 
 # ----------------------------------------------------------------------

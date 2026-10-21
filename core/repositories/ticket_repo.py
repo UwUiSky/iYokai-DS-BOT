@@ -86,6 +86,10 @@ class TicketAlreadyOpenError(Exception):
     """L'utente ha già raggiunto il limite di ticket aperti in questo server."""
 
 
+class PannelloPienoError(TicketAlreadyOpenError):
+    """Il pannello ha già il massimo di ticket aperti (TKT-017)."""
+
+
 async def run_migrations(pool: asyncpg.Pool) -> None:
     await pool.execute(
         """
@@ -188,6 +192,7 @@ class TicketRepository:
         ticket_number: int | None = None,
         panel_id: int | None = None,
         max_aperti: int = 1,
+        max_nel_pannello: int | None = None,
     ) -> int:
         """
         Registra un nuovo ticket e restituisce il suo numero: quello
@@ -214,6 +219,16 @@ class TicketRepository:
                         )
                         if aperti >= max_aperti:
                             raise TicketAlreadyOpenError()
+                    if max_nel_pannello is not None and panel_id is not None:
+                        # TKT-017: tetto del pannello, sotto un blocco per pannello (dopo quello per utente).
+                        await conn.execute(
+                            "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))", f"ticket-pan:{panel_id}"
+                        )
+                        nel_pannello = await conn.fetchval(
+                            "SELECT count(*) FROM tickets WHERE panel_id = $1 AND status = 'open'", panel_id
+                        )
+                        if nel_pannello >= max_nel_pannello:
+                            raise PannelloPienoError()
                     if ticket_number is None:
                         ticket_number = await self.reserve_ticket_number(guild_id, conn)
                     await conn.execute(
