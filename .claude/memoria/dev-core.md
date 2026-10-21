@@ -1,12 +1,11 @@
 # Memoria di dev-core
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r5-cor` (base main) · giro r5: per FILE
+21/10/2026 · ramo `feat/r9nsfw` (base main) · giro r9: per FILE
 
 ## In corso
-- Giro r5 chiuso (7 gruppi): lingue, traduttore, ricerca, #122 piccole, NF-22, NF-38, #141. Resta il rapporto all'orchestratore.
-- Prossimo passo: far rispondere ai comandi il bot del marchio (NF-38, serve un disegno: oggi il client del marchio non ha comandi);
-  poi CFG-011/013/014/016/024/025/026/030/033/039/043/044 di #122; 14.1 nei cog altrui; #140 (serve #95 + token GitHub).
+- Giro r9 (feat/r9nsfw, base main, migrazioni 0240-0249). Previsione: 3 voci (#94 NSFW, #107 app utente, poi #145/#141).
+- Prossimo passo: #94 - core/nsfw_filter_logic.py + tests/test_nsfw_filter_logic.py, poi 0240_nsfw.sql, repo, bot, cog, worker.
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
