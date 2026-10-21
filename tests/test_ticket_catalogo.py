@@ -240,6 +240,26 @@ async def test_due_close_insieme_fanno_un_solo_transcript_voto_ed_eliminazione(c
     assert sum("già stato chiuso" in r for r in risposte) == 1
 
 
+async def test_close_se_il_ticket_si_chiude_dopo_la_lettura_dice_gia_chiuso(cog, monkeypatch):
+    # Causa dell'instabilità del test sopra: l'altro close chiudeva il ticket tra due letture.
+    await _ticket()
+    vera = ticket_repo.get_ticket_by_channel
+    letture = []
+
+    async def lettura_poi_chiusura(channel_id):
+        t = await vera(channel_id)
+        letture.append(t)
+        if len(letture) == 1:
+            await ticket_repo.close_ticket(channel_id, MANAGER)
+        return t
+
+    monkeypatch.setattr(modulo.ticket_repo, "get_ticket_by_channel", lettura_poi_chiusura)
+    i = _inter(fake_member(UTENTE))
+    await cog.close.callback(cog, i, None)
+    assert "già stato chiuso" in _testo(i)
+    cog._transcript_senza_bloccare.assert_not_awaited()
+
+
 async def test_se_la_pianificazione_fallisce_il_ticket_resta_aperto(cog, monkeypatch):
     await _ticket()
     monkeypatch.setattr(modulo.scheduler, "schedule", AsyncMock(side_effect=RuntimeError("db giù")))

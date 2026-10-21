@@ -81,6 +81,51 @@ async def test_presa_sposta_il_ticket_chiude_la_scrittura_allo_staff_e_usa_il_te
     assert f"<@{UTENTE}>" in inter.followup.send.call_args.args[0]
 
 
+async def test_con_l_esclusiva_un_altro_dello_staff_non_ruba_il_ticket():
+    s, canale = await _scena(claim_esclusivo="scrivere", ruoli_staff=(RUOLO_SQUADRA,))
+    await ticket_repo.claim_ticket(CANALE, STAFF)
+    inter = _inter(s, s.membro(STAFF + 1, ruoli=(RUOLO_SQUADRA,)), canale)
+    await _cog().claim.callback(_cog(), inter)
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).claimed_by == STAFF
+    assert "rilascia" in _testi(inter)
+    canale.set_permissions.assert_not_awaited()
+
+
+async def test_con_l_esclusiva_chi_ha_manage_server_prende_e_il_precedente_perde_i_permessi():
+    s, canale = await _scena(claim_esclusivo="scrivere", ruoli_staff=(RUOLO_SQUADRA,))
+    precedente = s.membro(STAFF, ruoli=(RUOLO_SQUADRA,))
+    await ticket_repo.claim_ticket(CANALE, STAFF)
+    capo = s.membro(STAFF + 2, admin=True)
+    await _cog().claim.callback(_cog(), _inter(s, capo, canale))
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).claimed_by == STAFF + 2
+    tolti = [c for c in canale.set_permissions.await_args_list if c.args[0] is precedente]
+    assert tolti and tolti[-1].kwargs["overwrite"] is None
+
+
+async def test_passa_con_l_esclusiva_toglie_i_permessi_al_precedente():
+    s, canale = await _scena(claim_esclusivo="vedere", ruoli_staff=(RUOLO_SQUADRA,))
+    titolare = s.membro(STAFF, ruoli=(RUOLO_SQUADRA,))
+    collega = s.membro(STAFF + 1, ruoli=(RUOLO_SQUADRA,))
+    await ticket_repo.claim_ticket(CANALE, STAFF)
+    await _cog().passa.callback(_cog(), _inter(s, titolare, canale), collega)
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).claimed_by == STAFF + 1
+    per_chi = {c.args[0]: c.kwargs["overwrite"] for c in canale.set_permissions.await_args_list}
+    assert per_chi[titolare] is None and per_chi[collega].send_messages is True
+    # Un terzo della squadra non può passare il ticket di un altro.
+    terzo = _inter(s, s.membro(STAFF + 3, ruoli=(RUOLO_SQUADRA,)), canale)
+    await _cog().passa.callback(_cog(), terzo, titolare)
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).claimed_by == STAFF + 1
+
+
+async def test_rilascio_con_l_esclusiva_toglie_i_permessi_personali():
+    s, canale = await _scena(claim_esclusivo="scrivere", ruoli_staff=(RUOLO_SQUADRA,))
+    titolare = s.membro(STAFF, ruoli=(RUOLO_SQUADRA,))
+    await ticket_repo.claim_ticket(CANALE, STAFF)
+    await _cog().rilascia.callback(_cog(), _inter(s, titolare, canale))
+    per_chi = {c.args[0]: c.kwargs["overwrite"] for c in canale.set_permissions.await_args_list}
+    assert per_chi[titolare] is None
+
+
 async def test_rilascio_rimette_lo_staff_e_usa_il_testo():
     s, canale = await _scena(claim_esclusivo="vedere", ruoli_staff=(RUOLO_SQUADRA,), testo_rilascio="Libero!")
     squadra = s.membro(STAFF, ruoli=(RUOLO_SQUADRA,))
@@ -88,7 +133,7 @@ async def test_rilascio_rimette_lo_staff_e_usa_il_testo():
     inter = _inter(s, squadra, canale)
     await _cog().rilascia.callback(_cog(), inter)
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).claimed_by is None
-    ow = canale.set_permissions.await_args_list[-1].kwargs["overwrite"]
+    ow = {c.args[0]: c.kwargs["overwrite"] for c in canale.set_permissions.await_args_list}[s.ruoli[RUOLO_SQUADRA]]
     assert ow.view_channel is True and ow.send_messages is True
     assert inter.followup.send.call_args.args[0] == "Libero!"
 
@@ -159,7 +204,7 @@ async def test_alla_chiusura_ruoli_tolti_dm_scelto_e_transcript_senza_dm():
 # ---------------------------------------------------------------- note e richiesta di chiusura
 async def test_note_crea_il_thread_una_volta_sola():
     s, canale = await _scena()
-    thread = MagicMock(id=4242, mention="<#4242>", add_user=AsyncMock())
+    thread = _thread(4242)
     canale.create_thread = AsyncMock(return_value=thread)
     s.guild.get_thread = MagicMock(side_effect=lambda i: thread if i == 4242 else None)
     staff = s.membro(STAFF, admin=True)
@@ -168,6 +213,39 @@ async def test_note_crea_il_thread_una_volta_sola():
     canale.create_thread.assert_awaited_once()
     assert canale.create_thread.call_args.kwargs["type"] is discord.ChannelType.private_thread
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).note_thread_id == 4242
+
+
+def _thread(tid, archiviato=False):
+    thread = create_autospec(discord.Thread, instance=True)
+    thread.id, thread.mention, thread.archived = tid, f"<#{tid}>", archiviato
+    return thread
+
+
+async def test_note_ritrova_il_thread_archiviato_invece_di_crearne_un_altro():
+    s, canale = await _scena()
+    await ticket_repo.imposta_note_thread(CANALE, 4343)
+    archiviato = _thread(4343, archiviato=True)
+    canale.create_thread = AsyncMock()
+    s.guild.get_thread = MagicMock(return_value=None)  # archiviato: non sta nella cache
+    s.guild.fetch_channel = AsyncMock(return_value=archiviato)
+    inter = _inter(s, s.membro(STAFF, admin=True), canale)
+    await _cog().note.callback(_cog(), inter)
+    canale.create_thread.assert_not_awaited()
+    archiviato.edit.assert_awaited_once_with(archived=False)
+    assert "<#4343>" in inter.followup.send.call_args.args[0]
+
+
+async def test_note_con_il_thread_cancellato_ne_crea_uno_nuovo():
+    s, canale = await _scena()
+    await ticket_repo.imposta_note_thread(CANALE, 4343)
+    nuovo = _thread(4444)
+    canale.create_thread = AsyncMock(return_value=nuovo)
+    s.guild.get_thread = MagicMock(return_value=None)
+    risposta = MagicMock(status=404, reason="Not Found")
+    s.guild.fetch_channel = AsyncMock(side_effect=discord.NotFound(risposta, "Unknown Channel"))
+    await _cog().note.callback(_cog(), _inter(s, s.membro(STAFF, admin=True), canale))
+    canale.create_thread.assert_awaited_once()
+    assert (await ticket_repo.get_ticket_by_channel(CANALE)).note_thread_id == 4444
 
 
 async def test_richiesta_di_chiusura_rifiutata_poi_scaduta_non_chiude():

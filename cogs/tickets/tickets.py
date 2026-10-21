@@ -1046,6 +1046,12 @@ class ConfermaChiusura(BaseView):
         await self._cog.esegui_close(interaction, ticket, self._motivo)
 
 
+def _puo_scavalcare(member) -> bool:
+    """TKT-050: con la presa esclusiva solo chi ha Manage Server prende o passa il ticket di un altro."""
+    permessi = getattr(member, "guild_permissions", None)
+    return bool(permessi and permessi.manage_guild)
+
+
 def link_inizio(channel) -> str:
     """TKT-040: un link a un id pari a quello del canale porta Discord al primo messaggio."""
     return f"https://discord.com/channels/{channel.guild.id}/{channel.id}/{channel.id}"
@@ -1733,13 +1739,32 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if ticket is None:
             return
 
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        esclusiva = opzioni.claim_esclusivo != "no"
+        if esclusiva and ticket.claimed_by not in (None, interaction.user.id) and not _puo_scavalcare(interaction.user):
+            await interaction.response.send_message(
+                f"Il ticket è già di <@{ticket.claimed_by}>: deve lasciarlo con `/ticket rilascia` "
+                "(o passartelo con `/ticket passa`) prima che tu lo prenda.",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
         await interaction.response.defer()
-        await ticket_repo.claim_ticket(interaction.channel.id, interaction.user.id)
-        testo = await self._dopo_presa(interaction.guild, interaction.channel, ticket, interaction.user)
+        # Con l'esclusiva vince uno solo anche se due lo prendono insieme (chi scavalca no).
+        solo_se_libero = esclusiva and ticket.claimed_by is None
+        if not await ticket_repo.claim_ticket(interaction.channel.id, interaction.user.id, solo_se_libero=solo_se_libero):
+            await interaction.followup.send("Un altro dello staff ha appena preso questo ticket.", ephemeral=True)
+            return
+        testo = await self._dopo_presa(
+            interaction.guild, interaction.channel, ticket, interaction.user, precedente=ticket.claimed_by
+        )
         await interaction.followup.send(testo, view=vista_inizio(interaction.channel))
 
-    async def _dopo_presa(self, guild: discord.Guild, channel, ticket, staff) -> str:
-        """TKT-028 categoria dei presi, TKT-050 esclusiva, TKT-053 testo. Restituisce il messaggio da mostrare."""
+    async def _dopo_presa(self, guild: discord.Guild, channel, ticket, staff, *, precedente: int | None = None) -> str:
+        """
+        TKT-028 categoria dei presi, TKT-050 esclusiva, TKT-053 testo. Restituisce il messaggio da
+        mostrare. `precedente` è chi aveva il ticket prima: con l'esclusiva perde i suoi permessi.
+        """
         opzioni = await _opzioni_pannello(ticket.panel_id)
         if opzioni.categoria_presi:
             categoria = guild.get_channel(opzioni.categoria_presi)
@@ -1750,12 +1775,23 @@ class TicketsCog(CogConGruppi, commands.Cog):
                     logger.warning("Ticket %s non spostato nella categoria dei presi.", channel.id)
         if opzioni.claim_esclusivo != "no":
             await self._permessi_staff(guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff)
+            if precedente is not None and precedente not in (staff.id, ticket.user_id):
+                await self._togli_permessi_personali(guild, channel, precedente)
         if opzioni.testo_presa:
             return opz_logic.riempi(
                 opzioni.testo_presa, utente=f"<@{ticket.user_id}>", server=guild.name,
                 numero=ticket.ticket_number or 0, staff=staff.mention,
             )
         return f"Ticket preso in carico da {staff.mention}."
+
+    @staticmethod
+    async def _togli_permessi_personali(guild: discord.Guild, channel, user_id: int) -> None:
+        """TKT-050: chi lascia (o perde) il ticket esclusivo torna ai permessi del suo ruolo."""
+        membro = guild.get_member(user_id) or discord.Object(id=user_id)
+        try:
+            await channel.set_permissions(membro, overwrite=None, reason="Presa in carico passata ad altri")
+        except discord.HTTPException:
+            logger.warning("Permessi di %s non tolti dal ticket %s.", user_id, channel.id)
 
     async def _permessi_staff(self, guild: discord.Guild, channel, panel_id, *, esclusiva: str, titolare=None) -> None:
         """
@@ -1884,6 +1920,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         opzioni = await _opzioni_pannello(ticket.panel_id)
         if opzioni.claim_esclusivo != "no":
             await self._permessi_staff(interaction.guild, interaction.channel, ticket.panel_id, esclusiva="no")
+            if ticket.claimed_by != ticket.user_id:
+                await self._togli_permessi_personali(interaction.guild, interaction.channel, ticket.claimed_by)
         testo = (
             opz_logic.riempi(
                 opzioni.testo_rilascio, utente=f"<@{ticket.user_id}>", server=interaction.guild.name,
@@ -1907,9 +1945,22 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             return
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        if (
+            opzioni.claim_esclusivo != "no" and ticket.claimed_by not in (None, interaction.user.id)
+            and not _puo_scavalcare(interaction.user)
+        ):
+            await interaction.response.send_message(
+                f"Il ticket è di <@{ticket.claimed_by}>: lo passa solo lui (o chi ha Manage Server).",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
         await interaction.response.defer()
         await ticket_repo.claim_ticket(interaction.channel.id, collega.id)
-        testo = await self._dopo_presa(interaction.guild, interaction.channel, ticket, collega)
+        testo = await self._dopo_presa(
+            interaction.guild, interaction.channel, ticket, collega, precedente=ticket.claimed_by
+        )
         await interaction.followup.send(f"Ticket passato a {collega.mention}.\n{testo}"[:2000])
 
     @comando_di_gruppo("ticket", nome="note", descrizione="Thread privato dello staff per parlare del ticket.")
@@ -1919,7 +1970,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if ticket is None:
             return
         await interaction.response.defer(ephemeral=True)
-        thread = interaction.guild.get_thread(ticket.note_thread_id) if ticket.note_thread_id else None
+        thread = await self._thread_delle_note(interaction.guild, ticket.note_thread_id)
         if thread is None:
             try:
                 thread = await interaction.channel.create_thread(
@@ -1939,6 +1990,28 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Staff %s non aggiunto al thread delle note %s.", interaction.user.id, thread.id)
         await interaction.followup.send(f"Note dello staff: {thread.mention}", ephemeral=True)
+
+    async def _thread_delle_note(self, guild: discord.Guild, thread_id: int | None):
+        """
+        TKT-034: il thread delle note già creato. Uno archiviato non sta nella cache
+        (`get_thread`): si chiede a Discord e lo si riapre, invece di crearne un altro.
+        """
+        if not thread_id:
+            return None
+        thread = guild.get_thread(thread_id)
+        if thread is None:
+            try:
+                thread = await guild.fetch_channel(thread_id)
+            except discord.HTTPException:
+                return None  # cancellato (o non più leggibile): se ne crea uno nuovo
+        if not isinstance(thread, discord.Thread):
+            return None
+        if thread.archived:
+            try:
+                await thread.edit(archived=False)
+            except discord.HTTPException:
+                logger.warning("Thread delle note %s non riaperto.", thread_id)
+        return thread
 
     @comando_di_gruppo("ticket", nome="chiedi-chiusura", descrizione="Chiedi all'utente se il ticket si può chiudere.")
     @app_commands.describe(ore="Senza risposta il ticket si chiude dopo queste ore")
@@ -2433,13 +2506,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         motivo: app_commands.Range[str, 1, MAX_MOTIVO_CHIUSURA] | None = None,
     ) -> None:
+        # Una sola lettura: con due letture il ticket poteva chiudersi in mezzo e il secondo
+        # /ticket close rispondeva «non è un ticket» invece di «già chiuso».
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is not None and ticket.status != "open":
             # Due /ticket close quasi insieme: il secondo trova il ticket già chiuso.
             await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
             return
-        ticket = await self._get_ticket_or_reply(interaction)
         if ticket is None:
+            await interaction.response.send_message(
+                "Questo comando funziona solo dentro un canale ticket aperto.", ephemeral=True
+            )
             return
         opzioni = await _opzioni_pannello(ticket.panel_id)
         osservatore = bool(set(opzioni.ruoli_osservatori) & {r.id for r in getattr(interaction.user, "roles", [])})
