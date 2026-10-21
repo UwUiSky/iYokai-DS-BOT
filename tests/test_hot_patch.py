@@ -424,3 +424,11 @@ def test_testo_dell_esito():
     assert "Tornato." in t and "cogs.a" in t
     t = testo_esito_aggiornamento(hp.EsitoPatch("ok", ["core/c.py"], [], True), SHA)
     assert SHA[:7] in t and "riavvio" in t
+
+
+async def test_i_cog_dei_client_separati_chiedono_il_riavvio(radice):
+    (radice / "cogs" / "nsfw").mkdir()
+    (radice / "cogs" / "nsfw" / "ricerca.py").write_text("async def setup(bot):\n    pass\n")
+    bot, registro = _BotFinto(caricati=["cogs.nsfw.ricerca"]), _Registro()
+    esito = await _applica(bot, {"cogs/nsfw/ricerca.py": b"async def setup(bot):\n    return None\n"}, radice, registro)
+    assert esito.esito == "ok" and esito.riavvio_necessario and esito.ricaricati == [] and bot.chiamate == []
