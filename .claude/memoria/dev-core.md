@@ -4,9 +4,8 @@
 21/10/2026 · ramo `feat/r9nsfw` (base main) · giro r9: per FILE
 
 ## In corso
-- Giro r9 (feat/r9nsfw, base main, migrazioni 0240-0249; usata 0240). #94 e #107 fatti (parziali in REGISTRO).
-- Prossimo passo: #145 (premium_cache 60 s dei log avanzati: invalidare allo sblocco/revoca), poi #141 residui;
-  in fondo invarianti + `python3 scripts/smoke.py --base main` (log in scratchpad) e rapporto.
+- Giro r9 chiuso: #94, #107, #145 (test mancanti), #141 (cog dei bot separati = riavvio). Resta il rapporto.
+- Prossimo passo: verifica live (VERIFICA_LIVE «giro r9»); NF-20 per l'invito NSFW; altre voci SPEC B (traduci, segnalibri, note).
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -46,6 +45,9 @@
 - Il token OAuth, gli state e i corpi delle risposte Discord non vanno mai in log o messaggi.
 
 ## Aperto
+- NSFW: risposta RedGifs scritta a memoria (verified/tags/niches/urls.poster), da controllare live. nsfw_* si puliscono
+  solo se il server ha `guild_presence` del principale: un server con solo il bot NSFW non scade mai.
+- `tests/test_premium_invalidazione.py` (vecchio) assegna `db._pool` in un test: da togliere.
 - Conteggio caratteri: `admin` 6.4xx su 6.800 (soglia): il prossimo comando admin richiede un nuovo gruppo (D25) o va in un gruppo piu leggero.
 - #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.

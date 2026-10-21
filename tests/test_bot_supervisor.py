@@ -320,7 +320,9 @@ async def test_main_con_due_sigterm_chiude_tutti_i_bot_i_loop_e_il_database(
 
     await asyncio.wait_for(compito, timeout=15)  # nessun CancelledError
 
-    assert len(chiusi) == 7  # principale, Creator, 5 worker musicali
+    # principale, Creator, 5 worker musicali, più Mod, NSFW e App se c'è il loro token
+    facoltativi = (main_module.config.YOKAI_MOD_TOKEN, main_module.config.NSFW_TOKEN, main_module.config.YOKAI_APP_TOKEN)
+    assert len(chiusi) == 7 + sum(1 for t in facoltativi if t)
     assert all(t.done() for t in loop_del_backup)
     assert main_module.backup_queue_worker._loop_task is None
     assert db._pool is None  # il pool è stato chiuso davvero
