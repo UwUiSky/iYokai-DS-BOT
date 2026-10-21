@@ -37,6 +37,8 @@ MAX_AUTOPOST_PER_SERVER = 5
 MINUTI_AUTOPOST = (30, 24 * 60)
 # Quanti candidati si scaricano al massimo per una pubblicazione.
 MAX_TENTATIVI = 6
+# Blocchi in tutti i server che un server può causare in 24 ore («Segnala» usato come arma).
+MAX_BLOCCHI_SERVER_GIORNO = 10
 CANALE_NON_AMMESSO = "Questo canale non è segnato come vietato ai minori (NSFW): qui non pubblico nulla."
 
 
@@ -171,11 +173,22 @@ async def pubblica(canale: object, scelta: Scelta, vista: discord.ui.View | None
     return messaggio
 
 
-async def segnala(message_id: int, da: int) -> NsfwInvio | None:
-    """Blocca in tutti i server il contenuto di questo messaggio. None se il messaggio non è nel registro."""
+async def segnala(message_id: int, da: int) -> tuple[NsfwInvio, bool] | None:
+    """
+    Blocca in tutti i server il contenuto di questo messaggio: (invio, bloccato ovunque).
+    Oltre MAX_BLOCCHI_SERVER_GIORNO blocchi in 24 ore dallo stesso server il blocco resta solo
+    lì (il registro non lo ripubblica): un server non può svuotare la fonte per tutti.
+    None se il messaggio non è nel registro.
+    """
     invio = await nsfw_repo.invio_del_messaggio(message_id)
     if invio is None:
         return None
-    await nsfw_repo.blocca(invio.impronta, invio.fonte, invio.id_fonte, "segnalato da un utente", invio.guild_id, da)
-    logger.warning("Contenuto NSFW segnalato e bloccato: %s/%s.", invio.fonte, invio.id_fonte)
-    return invio
+    ovunque = await nsfw_repo.blocca(
+        invio.impronta, invio.fonte, invio.id_fonte, "segnalato da un utente", invio.guild_id, da,
+        tetto_server=MAX_BLOCCHI_SERVER_GIORNO,
+    )
+    if ovunque:
+        logger.warning("Contenuto NSFW segnalato e bloccato: %s/%s.", invio.fonte, invio.id_fonte)
+    else:
+        logger.warning("Server %s oltre il tetto delle segnalazioni NSFW: blocco solo locale.", invio.guild_id)
+    return invio, ovunque

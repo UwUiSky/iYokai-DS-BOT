@@ -145,15 +145,34 @@ class NsfwRepository:
         return None if r is None else NsfwInvio(**dict(r))
 
     async def blocca(
-        self, impronta: str, fonte: str, id_fonte: str, motivo: str, guild_id: int | None, da: int | None
-    ) -> None:
-        await self._pool.execute(
-            """
-            INSERT INTO nsfw_bloccati (impronta, fonte, id_fonte, motivo, guild_id, segnalato_da)
-            VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (impronta) DO NOTHING
-            """,
-            impronta, fonte, id_fonte, motivo[:500], guild_id, da,
-        )
+        self, impronta: str, fonte: str, id_fonte: str, motivo: str, guild_id: int | None, da: int | None,
+        tetto_server: int | None = None,
+    ) -> bool:
+        """
+        Blocca in tutti i server. Con `tetto_server`: solo se quel server ha fatto meno di
+        `tetto_server` blocchi nelle ultime 24 ore (un server non svuota la fonte per tutti).
+        True se il contenuto ora è bloccato (anche se lo era già).
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                if tetto_server is not None and guild_id is not None:
+                    await conn.execute("SELECT pg_advisory_xact_lock(hashtext('nsfw_blocca'), $1::int)", guild_id % 2**31)
+                    fatti = await conn.fetchval(
+                        "SELECT count(*) FROM nsfw_bloccati WHERE guild_id = $1 AND creato_il > now() - interval '1 day'",
+                        guild_id,
+                    )
+                    if fatti >= tetto_server:
+                        return bool(await conn.fetchval(
+                            "SELECT EXISTS (SELECT 1 FROM nsfw_bloccati WHERE impronta = $1)", impronta
+                        ))
+                await conn.execute(
+                    """
+                    INSERT INTO nsfw_bloccati (impronta, fonte, id_fonte, motivo, guild_id, segnalato_da)
+                    VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (impronta) DO NOTHING
+                    """,
+                    impronta, fonte, id_fonte, motivo[:500], guild_id, da,
+                )
+        return True
 
     async def e_bloccato(self, fonte: str, id_fonte: str, impronta: str | None = None) -> bool:
         return bool(

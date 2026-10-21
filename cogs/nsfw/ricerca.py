@@ -42,20 +42,25 @@ class VistaSegnala(BaseView):
     @discord.ui.button(label="Segnala", style=discord.ButtonStyle.danger, custom_id=ID_SEGNALA)
     async def segnala(self, interaction: discord.Interaction, _bottone: discord.ui.Button) -> None:
         messaggio = interaction.message
-        invio = await servizio.segnala(messaggio.id, interaction.user.id) if messaggio else None
-        if invio is None:
+        esito = await servizio.segnala(messaggio.id, interaction.user.id) if messaggio else None
+        if esito is None:
             await interaction.response.send_message("Questo contenuto non è nel registro.", ephemeral=True)
             return
         try:
             await messaggio.delete()
         except discord.HTTPException:
             pass
+        invio, ovunque = esito
+        dove = "in tutti i server" if ovunque else "in questo server"
         await interaction.response.send_message(
-            "Contenuto tolto e bloccato in tutti i server. Se pensi che sia illegale, segnalalo anche a Discord: "
+            f"Contenuto tolto e bloccato {dove}. Se pensi che sia illegale, segnalalo anche a Discord: "
             "https://dis.gd/request",
             ephemeral=True,
         )
-        await _avvisa_owner(interaction.client, f"Contenuto NSFW segnalato e bloccato: {invio.fonte}/{invio.id_fonte}.")
+        if ovunque:  # oltre il tetto niente DM all'owner: il bottone non diventa un modo per riempirgli i DM
+            await _avvisa_owner(
+                interaction.client, f"Contenuto NSFW segnalato e bloccato: {invio.fonte}/{invio.id_fonte}."
+            )
 
 
 def vista_pubblicazione() -> discord.ui.View:

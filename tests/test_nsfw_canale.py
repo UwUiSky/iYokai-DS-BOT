@@ -143,8 +143,8 @@ async def test_segnala_blocca_in_tutti_i_server(repo, fonti):
     await _attiva()
     scelta = await servizio.scegli(GUILD, "amateur")
     await servizio.pubblica(_canale(), scelta, None)
-    invio = await servizio.segnala(9055, da=42)
-    assert invio.id_fonte == "buono"
+    invio, ovunque = await servizio.segnala(9055, da=42)
+    assert invio.id_fonte == "buono" and ovunque
     assert await repo.e_bloccato("redgifs", "buono")
     # In un altro server il contenuto bloccato non si scarica più.
     await servizio.imposta_attivo(GUILD + 1, True, 1)
@@ -258,3 +258,21 @@ async def test_segnala_dal_bottone_toglie_il_messaggio(repo, fonti, monkeypatch)
     await vista.segnala.callback(interazione)
     interazione.message.delete.assert_awaited_once()
     assert await repo.e_bloccato("redgifs", "buono")
+
+
+async def test_segnala_non_svuota_la_fonte_per_tutti(repo, fonti, monkeypatch):
+    """Un server oltre il tetto di 24 ore blocca solo per sé: il contenuto resta negli altri server."""
+    monkeypatch.setattr(servizio, "MAX_BLOCCHI_SERVER_GIORNO", 2)
+    for i in range(2):
+        await repo.blocca(f"h{i}", "redgifs", f"altro{i}", "segnalato", GUILD, 42)
+    await _attiva()
+    scelta = await servizio.scegli(GUILD, "amateur")
+    await servizio.pubblica(_canale(), scelta, None)
+    invio, ovunque = await servizio.segnala(9055, da=42)
+    assert not ovunque
+    assert not await repo.e_bloccato("redgifs", "buono")
+    # Nel server che ha segnalato non torna (registro), negli altri sì.
+    assert isinstance(await servizio.scegli(GUILD, "amateur"), str)
+    await servizio.imposta_attivo(GUILD + 1, True, 1)
+    await servizio.aggiungi_tag(GUILD + 1, "amateur")
+    assert not isinstance(await servizio.scegli(GUILD + 1, "amateur"), str)
