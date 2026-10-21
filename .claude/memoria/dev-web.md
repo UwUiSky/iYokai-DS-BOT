@@ -8,9 +8,8 @@
   1. NF-21 #92 verifica web + doppi (migr. 0210) — fatto
   2. #148 nel pannello: stato, link, risincronizza, revoca — fatto
   3. NF-38 #109 pagina del marchio nel pannello — fatto
-  4. #122 CFG-030/021 aspetto — comando fatto (`core/bot_aspetto.py`, `/admin premium
-     aspetto` in cogs/utility/marchio.py). Prossimo: pagina `/server/{id}/aspetto` nel
-     pannello (nick, bio, upload multipart letto a parti: client_max_size è 8 KB)
+  4. #122 CFG-030/021 aspetto (comando + pagina `/server/{id}/aspetto`) — fatto
+  5. #46 parte OAuth: prossimo `gh api .../issues/46`, cerca cosa resta lato web
   5. #46 parte OAuth: controllo di ciò che resta
 - Migrazioni riservate: 0210–0219.
 
@@ -31,6 +30,8 @@
 - TestClient su 127.0.0.1: `aiohttp.CookieJar(unsafe=True)`.
 - Marchio: azioni in `core/whitelabel_bot.py` (`applica_azione`, `collega_e_avvia`),
   gestore dal cog `MarchioCog`; esiti `mar_*` solo da `ESITI_MARCHIO` del ponte.
+- Caricamenti nel pannello: `request.multipart()` (non `post()`, che ha il tetto di
+  8 KB), Content-Length controllato prima; esiti dei testi del bot in `ESITI_TESTI`.
 - #148 (permessi dei comandi) sta in `core/command_permissions.py` (dev-core):
   callback sul server del restore; il pannello lo chiama soltanto.
 

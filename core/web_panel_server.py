@@ -4,10 +4,11 @@ core/web_panel_server.py
 Il pannello web (iYokai Panel): accesso con Discord (OAuth2 `identify`,
 `state` legato al browser), sessioni nel database, permessi controllati
 a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di comandi nascosti
-per ruolo (#148), del bot con marchio proprio (NF-38) e della lingua dai punti unici dei comandi (D16),
+per ruolo (#148), del bot con marchio proprio (NF-38), dell'aspetto del bot (CFG-030) e della
+lingua dai punti unici dei comandi (D16),
 storico, premium e wiki dei comandi, verifica dei membri dalla pagina web (link firmato, impronte senza IP).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
-Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109)
+Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -24,9 +25,10 @@ from datetime import datetime, timedelta, timezone
 from itertools import groupby
 
 import jinja2
-from aiohttp import web
+from aiohttp import BodyPartReader, web
 
 from core import alt_detection_logic as verifica, panel_bridge, web_panel_logic as regole
+from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
@@ -38,6 +40,8 @@ logger = logging.getLogger("iyokai.web_panel")
 
 CARTELLA = pathlib.Path(__file__).resolve().parent.parent / "pannello_web"
 DIMENSIONE_MASSIMA_RICHIESTA = 8 * 1024
+# Solo il caricamento di un'immagine del profilo: letto a parti, mai con `post()`.
+DIMENSIONE_MASSIMA_CARICAMENTO = MAX_IMMAGINE + 64 * 1024
 MAX_RISULTATI_WIKI = 50
 CHIAVE_UTENTE = web.RequestKey("utente_id", int)
 CHIAVE_TOKEN = web.RequestKey("token", str)
@@ -70,11 +74,11 @@ ESITI = {
 
 
 def _esito(codice: str) -> tuple[str, bool] | None:
-    """Il messaggio di un codice d'esito: quelli del pannello o i testi del marchio (gli stessi del comando)."""
+    """Il messaggio di un codice d'esito: quelli del pannello o i testi del bot (gli stessi dei comandi)."""
     if codice in ESITI:
         return ESITI[codice]
-    if codice in panel_bridge.ESITI_MARCHIO:
-        return t(codice, "it"), codice not in panel_bridge.ESITI_MARCHIO_OK
+    if codice in panel_bridge.ESITI_TESTI:
+        return t(codice, "it"), codice not in panel_bridge.ESITI_TESTI_OK
     return None
 
 
@@ -377,6 +381,61 @@ def build_app(
         testo = str(form.get("testo", "")) if azione == "testo" else None
         return _vai(indietro + await ponte.applica_marchio(bot, guild, azione, testo, request[CHIAVE_UTENTE]))
 
+    # ------------------------------------------- aspetto del bot (CFG-030)
+    async def pagina_aspetto(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        return _pagina(request, "aspetto.html", guild=guild, aspetto=await ponte.stato_aspetto(bot, guild))
+
+    async def salva_aspetto(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        campi = {
+            "nick": {"nick": str(form.get("valore", ""))},
+            "bio": {"bio": str(form.get("valore", ""))},
+            "togli_avatar": {"avatar": None},
+            "togli_banner": {"banner": None},
+        }.get(str(form.get("azione", "")))
+        if campi is None:
+            return _vai(f"/server/{guild.id}/aspetto?esito=non_valido")
+        esito = await ponte.applica_aspetto(bot, guild, request[CHIAVE_UTENTE], **campi)
+        return _vai(f"/server/{guild.id}/aspetto?esito={esito}")
+
+    async def _leggi_caricamento(request: web.Request) -> dict:
+        """Le parti del modulo di caricamento. La dimensione totale è già controllata dal chiamante."""
+        campi: dict = {}
+        async for parte in await request.multipart():
+            if not isinstance(parte, BodyPartReader) or parte.name not in ("csrf", "tipo", "immagine"):
+                raise ValueError("Parte inattesa.")
+            dati = await parte.read()
+            campi[parte.name] = dati if parte.name == "immagine" else dati[:256].decode("utf-8", "replace")
+        return campi
+
+    async def carica_immagine(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        if request.content_length is None or request.content_length > DIMENSIONE_MASSIMA_CARICAMENTO:
+            return _errore(request, 413, "File troppo grande", "L'immagine può essere al massimo di 8 MB.")
+        try:
+            campi = await _leggi_caricamento(request)
+        except (ValueError, AssertionError, KeyError):
+            return _errore(request, 400, "Richiesta non valida", "Il modulo non è valido: ricarica la pagina.")
+        if not regole.csrf_valido(chiave, request.get(CHIAVE_TOKEN) or "", campi.get("csrf")):
+            return _errore(request, 403, "Richiesta rifiutata", "Il modulo è scaduto: ricarica la pagina.")
+        if not limite_scritture.consenti(f"u:{request[CHIAVE_UTENTE]}"):
+            return _errore(request, 429, "Troppe modifiche", "Aspetta un minuto e riprova.")
+        tipo, dati = campi.get("tipo"), campi.get("immagine")
+        if tipo not in ("avatar", "banner") or not dati:
+            return _vai(f"/server/{guild.id}/aspetto?esito=non_valido")
+        esito = await ponte.applica_aspetto(bot, guild, request[CHIAVE_UTENTE], **{tipo: dati})
+        return _vai(f"/server/{guild.id}/aspetto?esito={esito}")
+
     # ------------------------------------------------- verifica (NF-21)
     def _token_verifica(request: web.Request):
         token = request.match_info["token"]
@@ -441,6 +500,9 @@ def build_app(
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/premium", pagina_premium)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/marchio", pagina_marchio)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/marchio", salva_marchio)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/aspetto", pagina_aspetto)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/aspetto", salva_aspetto)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/aspetto/immagine", carica_immagine)
     app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)
     app.router.add_post(r"/verifica/{token:[0-9a-f\-]{1,200}}", conferma_verifica)
     app.router.add_get("/wiki", wiki)

@@ -11,8 +11,9 @@ Anche i permessi dei gruppi di comandi per ruolo (#148): stato, link di
 autorizzazione, risincronizzazione e revoca, dalle funzioni di
 `core/command_permissions.py`. La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
 stessi controlli e ruoli del bottone di verifica. Il bot con marchio proprio (NF-38) passa dalle
-stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`.
-Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109)
+stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`; l'aspetto del bot per
+server (CFG-030) da `core/bot_aspetto.py`.
+Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122)
 """
 
 from __future__ import annotations
@@ -397,3 +398,33 @@ async def applica_marchio(bot, guild: discord.Guild, azione: str, testo: str | N
         return "non_valido"
     logger.info("Marchio del server %s: «%s» dal pannello da %s.", guild.id, azione, user_id)
     return esito
+
+
+# --------------------------------------------- aspetto del bot per server (CFG-030, #122)
+ESITI_ASPETTO = frozenset({
+    "asp_ok", "asp_niente", "asp_richiede_premium", "asp_attendi", "asp_errore",
+    "asp_immagine_grande", "asp_immagine_non_valida", "asp_testo_lungo", "cfg_nick_permesso",
+})
+# I testi del bot che la pagina mostra da un codice nell'URL, e quali sono buone notizie.
+ESITI_TESTI = ESITI_MARCHIO | ESITI_ASPETTO
+ESITI_TESTI_OK = ESITI_MARCHIO_OK | {"asp_ok"}
+
+
+async def stato_aspetto(bot, guild: discord.Guild) -> dict:
+    """Nickname, avatar e banner del bot in questo server, e se il premium c'è."""
+    from core import bot_aspetto
+    from core.premium import guild_has_premium_access
+
+    return {
+        **bot_aspetto.stato_aspetto(guild),
+        "premium": await guild_has_premium_access(guild.id, bot_aspetto.MODULO_ASPETTO, bot=bot),
+        "max_nick": bot_aspetto.MAX_NICK,
+        "max_bio": bot_aspetto.MAX_BIO,
+    }
+
+
+async def applica_aspetto(bot, guild: discord.Guild, user_id: int, **campi) -> str:
+    """Cambia l'aspetto dal pannello con la stessa funzione dei comandi. Il codice dell'esito."""
+    from core import bot_aspetto
+
+    return await bot_aspetto.applica_aspetto(bot, guild, user_id, **campi)

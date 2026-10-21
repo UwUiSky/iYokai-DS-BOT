@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titolo %}Aspetto del bot · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Aspetto del bot · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Torna al server</a></p>
+<p class="tenue">Nome, avatar, banner e descrizione di iYokai solo in questo server. Negli altri server resta com'è.</p>
+{% if not aspetto.premium %}<p class="avviso errore">Avatar, banner e descrizione sono premium: questo server non li ha sbloccati (<a href="/server/{{ guild.id }}/premium">come sbloccarli</a>). Il nome si cambia anche senza.</p>{% endif %}
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/aspetto">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="azione" value="nick">
+  <label>Nome nel server <input type="text" name="valore" maxlength="{{ aspetto.max_nick }}" value="{{ aspetto.nick or '' }}"></label>
+  <button type="submit">Salva</button>
+</form>
+<p class="tenue">Vuoto = il bot torna al suo nome.</p>
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/aspetto">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="azione" value="bio">
+  <label>Descrizione <textarea name="valore" maxlength="{{ aspetto.max_bio }}" rows="3"></textarea></label>
+  <button type="submit">Salva</button>
+</form>
+<p class="tenue">Discord non dice qual è la descrizione attuale: scrivi quella nuova. Vuoto = la toglie.</p>
+{% for tipo, titolo, url in (("avatar", "Avatar", aspetto.avatar), ("banner", "Banner", aspetto.banner)) %}
+<h2>{{ titolo }}</h2>
+<div class="carta">
+  {% if url %}<p><img src="{{ url }}" alt="{{ titolo }} attuale" width="128"></p>{% else %}<p>Quello normale del bot.</p>{% endif %}
+  <form class="riga" method="post" action="/server/{{ guild.id }}/aspetto/immagine" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="tipo" value="{{ tipo }}">
+    <input type="file" name="immagine" accept="image/png,image/jpeg,image/gif,image/webp" required>
+    <button type="submit">Carica</button>
+  </form>
+  {% if url %}<form method="post" action="/server/{{ guild.id }}/aspetto"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="togli_{{ tipo }}"><button class="secondario" type="submit">Togli</button></form>{% endif %}
+</div>
+{% endfor %}
+<p class="tenue">PNG, JPEG, GIF o WEBP, al massimo 8 MB. Quattro immagini ogni dieci minuti per server.</p>
+{% endblock %}
