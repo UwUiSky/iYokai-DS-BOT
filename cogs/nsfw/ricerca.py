@@ -41,10 +41,12 @@ class VistaSegnala(BaseView):
 
     @discord.ui.button(label="Segnala", style=discord.ButtonStyle.danger, custom_id=ID_SEGNALA)
     async def segnala(self, interaction: discord.Interaction, _bottone: discord.ui.Button) -> None:
+        # Database e cancellazione possono passare i 3 secondi di Discord: prima si risponde.
+        await interaction.response.defer(ephemeral=True, thinking=True)
         messaggio = interaction.message
         esito = await servizio.segnala(messaggio.id, interaction.user.id) if messaggio else None
         if esito is None:
-            await interaction.response.send_message("Questo contenuto non è nel registro.", ephemeral=True)
+            await interaction.followup.send("Questo contenuto non è nel registro.", ephemeral=True)
             return
         try:
             await messaggio.delete()
@@ -52,7 +54,7 @@ class VistaSegnala(BaseView):
             pass
         invio, ovunque = esito
         dove = "in tutti i server" if ovunque else "in questo server"
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"Contenuto tolto e bloccato {dove}. Se pensi che sia illegale, segnalalo anche a Discord: "
             "https://dis.gd/request",
             ephemeral=True,

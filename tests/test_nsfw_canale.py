@@ -260,6 +260,24 @@ async def test_segnala_dal_bottone_toglie_il_messaggio(repo, fonti, monkeypatch)
     assert await repo.e_bloccato("redgifs", "buono")
 
 
+async def test_segnala_risponde_a_discord_prima_del_database(monkeypatch):
+    """Database e cancellazione possono superare i 3 secondi: il bottone differisce subito."""
+    import cogs.nsfw.ricerca as ricerca
+
+    interazione = fake_interaction()
+    interazione.message = MagicMock(spec=discord.Message)
+    interazione.message.id = 1
+
+    async def segnala_lento(_id, _da):
+        interazione.response.defer.assert_awaited_once()
+        return None
+
+    monkeypatch.setattr(ricerca.servizio, "segnala", segnala_lento)
+    await ricerca.VistaSegnala().segnala.callback(interazione)
+    interazione.followup.send.assert_awaited_once()
+    interazione.response.send_message.assert_not_awaited()
+
+
 async def test_segnala_non_svuota_la_fonte_per_tutti(repo, fonti, monkeypatch):
     """Un server oltre il tetto di 24 ore blocca solo per sé: il contenuto resta negli altri server."""
     monkeypatch.setattr(servizio, "MAX_BLOCCHI_SERVER_GIORNO", 2)
