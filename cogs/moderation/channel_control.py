@@ -196,8 +196,10 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         # esplicitamente "può scrivere" (che potrebbe sovrascrivere
         # una restrizione voluta a un livello superiore). Se c'era un
         # lock a tempo, si rimette il permesso di prima.
+        # Un «no» esplicito di prima non si rimette: unlock deve sbloccare.
         attesa = await _sblocco_in_attesa(interaction.guild.id, target.id)
-        overwrite.send_messages = attesa["payload"].get("prima") if attesa else None
+        prima = attesa["payload"].get("prima") if attesa else None
+        overwrite.send_messages = True if prima is True else None
 
         try:
             await target.set_permissions(

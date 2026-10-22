@@ -463,7 +463,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        conserva_server_se="action_type = 'moderation_tempban_expire' AND NOT (executed OR failed_reason IS NOT NULL)",
        esporta=True,
        scadenza=Scadenza("COALESCE(executed_at, created_at)", 30, "executed OR failed_reason IS NOT NULL"),
-       nota="resta solo lo sban programmato (tempban): promemoria e messaggi programmati hanno testo libero e vanno via"),
+       nota="resta solo lo sban programmato (tempban): promemoria e messaggi programmati hanno testo libero e vanno via; "
+            "nelle righe 'channel_unlock' (lock a tempo, MOD-090) user_id contiene l'ID del CANALE, non di una persona"),
     _t("guild_config", "Configurazione del server", colonna_server="guild_id"),
     _t("guild_presence", "Quando il bot è entrato e uscito da ogni server", server="conserva",
        nota="serve a contare i 90 giorni"),

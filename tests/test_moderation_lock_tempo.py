@@ -133,3 +133,14 @@ async def test_sanzioni_attive():
     interazione = fake_interaction(guild=server)
     await cog.active.callback(cog, interazione)
     assert "Tempban" in interazione.followup.send.call_args.kwargs["embed"].description
+
+
+async def test_unlock_sblocca_anche_se_prima_del_lock_a_tempo_era_gia_chiuso():
+    """Lock permanente, poi lock a tempo (prima=False): /mod unlock deve sbloccare davvero."""
+    server, canale, permessi, interazione = _scena(prima=None)
+    cog = _cog(server)
+    await cog.lock.callback(cog, interazione, canale, None, None)
+    await cog.lock.callback(cog, interazione, canale, None, "1h")
+    await cog.unlock.callback(cog, interazione, canale)
+    assert permessi.send_messages is None
+    assert await _attese() == []
