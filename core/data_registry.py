@@ -252,7 +252,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        anonimizza=(("target_user_id", "CASE WHEN target_user_id = $1 THEN NULL ELSE target_user_id END"),
                    ("actor_id", "CASE WHEN actor_id = $1 THEN NULL ELSE actor_id END"),
                    ("details", "'{}'::jsonb")),
-       conserva_se="event_type IN ('ban', 'tempban', 'softban', 'kick', 'spam_trap_ban')",
+       conserva_se="event_type IN ('ban', 'tempban', 'softban', 'kick', 'spam_trap_ban', 'spam_trap_kick', 'isolamento')",
        filtro_esportazione=("target_user_id = $1 OR (actor_id = $1 AND "
                             "(target_user_id IS NULL OR target_user_id = actor_id))"),
        escludi_dall_esportazione=("details",),

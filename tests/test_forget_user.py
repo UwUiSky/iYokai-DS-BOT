@@ -332,9 +332,12 @@ def test_ogni_action_type_dei_cog_e_dichiarato():
     import importlib
     from pathlib import Path
 
-    # trattenuti: lo dice la migrazione 0050; "non trattenuti": scelta consapevole
-    trattenuti = {"ban", "tempban", "softban", "kick", "spam_trap_ban", "automod_escalation", "mute_role"}
-    non_trattenuti = {"warn", "timeout"}
+    # trattenuti: lo dicono le migrazioni 0050 e 0260; "non trattenuti": scelta consapevole
+    trattenuti = {
+        "ban", "tempban", "softban", "kick", "spam_trap_ban", "spam_trap_kick", "isolamento",
+        "automod_escalation", "mute_role",
+    }
+    non_trattenuti = {"warn", "timeout", "spam_trap_timeout"}
     trovati = set()
     for percorso in Path("cogs").rglob("*.py"):
         albero = ast.parse(percorso.read_text())
@@ -349,25 +352,36 @@ def test_ogni_action_type_dei_cog_e_dichiarato():
                 for kw in nodo.keywords:
                     if kw.arg != "action_type":
                         continue
-                    if isinstance(kw.value, ast.Constant):
-                        trovati.add(kw.value.value)
-                    elif isinstance(kw.value, ast.Name) and kw.value.id in costanti:
-                        trovati.add(costanti[kw.value.id])
-                    elif isinstance(kw.value, ast.Name):  # importata da un altro modulo
-                        modulo = importlib.import_module(str(percorso.with_suffix("")).replace("/", "."))
-                        trovati.add(getattr(modulo, kw.value.id))
+                    # `a if c else b` vale per tutte e due le parti
+                    valori = [kw.value.body, kw.value.orelse] if isinstance(kw.value, ast.IfExp) else [kw.value]
+                    for valore in valori:
+                        if isinstance(valore, ast.Constant):
+                            trovati.add(valore.value)
+                        elif isinstance(valore, ast.Name) and valore.id in costanti:
+                            trovati.add(costanti[valore.id])
+                        elif isinstance(valore, ast.Name):  # importata da un altro modulo
+                            modulo = importlib.import_module(str(percorso.with_suffix("")).replace("/", "."))
+                            assert hasattr(modulo, valore.id), (
+                                f"{percorso}: action_type da una variabile locale ({valore.id}): usa una costante"
+                            )
+                            trovati.add(getattr(modulo, valore.id))
+                        else:
+                            raise AssertionError(f"{percorso}: action_type non leggibile dal test: {ast.dump(valore)}")
     assert trovati, "nessun create_case trovato: il test non guarda niente"
     assert trovati <= trattenuti | non_trattenuti, f"action_type non dichiarati: {trovati - trattenuti - non_trattenuti}"
 
 
 @pytest.mark.asyncio
 async def test_la_colonna_retain_for_security_segue_l_elenco(clean_db):
-    for i, azione in enumerate(("ban", "tempban", "softban", "kick", "spam_trap_ban", "automod_escalation", "mute_role", "warn", "timeout")):
+    for i, azione in enumerate((
+        "ban", "tempban", "softban", "kick", "spam_trap_ban", "spam_trap_kick", "isolamento",
+        "automod_escalation", "mute_role", "warn", "timeout", "spam_trap_timeout",
+    )):
         await clean_db.execute(
             "INSERT INTO moderation_cases (guild_id,case_number,user_id,moderator_id,action_type) VALUES ($1,$2,1,2,$3)", G, i + 1, azione
         )
     righe = {r["action_type"]: r["retain_for_security"] for r in await clean_db.fetch("SELECT action_type, retain_for_security FROM moderation_cases")}
-    assert [a for a, v in righe.items() if not v] == ["warn", "timeout"] or set(a for a, v in righe.items() if not v) == {"warn", "timeout"}
+    assert {a for a, v in righe.items() if not v} == {"warn", "timeout", "spam_trap_timeout"}
 
 
 @pytest.mark.asyncio

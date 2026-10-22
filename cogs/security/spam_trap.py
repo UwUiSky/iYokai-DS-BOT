@@ -391,7 +391,7 @@ class StaffDecisionView(BaseView):
             return
         numero = await moderation_repo.create_case(
             guild_id=guild.id, user_id=self.user_id, moderator_id=interaction.user.id,
-            action_type=azione, reason=MOTIVO_STAFF,
+            action_type="ban" if azione == "ban" else "kick", reason=MOTIVO_STAFF,
         )
         try:
             await interaction.edit_original_response(
