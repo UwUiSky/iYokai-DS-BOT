@@ -20,7 +20,9 @@ nome/permessi/posizione senza dover mantenere uno snapshot separato.
 I canali vengono ricreati dello stesso tipo (testuale, annunci,
 vocale, palco, categoria, forum).
 
-Punizione (quarantena, ruoli tolti o ban): una sola per attacco. Un
+Punizione (quarantena, ruoli tolti o ban): una sola per attacco. Se
+quarantena o ruoli tolti non tolgono il potere, ripiego facoltativo
+(espulsione o ban, spento di base). Un
 attacco e' un caso numerato (/antinuke casi), un DM al
 proprietario, un avviso; gli eventi che arrivano dopo la punizione non ne
 creano altri finche' la punizione tiene. Impostazioni che cambiano chi e'
@@ -125,6 +127,8 @@ MAX_IN_ATTESA = 100
 # nome finto (LIMITI.md, Parte 2).
 NOME_CANALE_NASCOSTO = "___hidden___"
 
+_NOMI_RIPIEGO = {"off": "solo l'avviso", "kick": "espulsione", "ban": "ban"}
+
 
 def _replace(settings: SecuritySettings, **overrides) -> SecuritySettings:
     dati = {
@@ -187,9 +191,10 @@ async def _punish_actor(
             return f"{member} messo in quarantena (ruoli tolti: {len(esito.ruoli_tolti)})", esito.ruoli_tolti
         if esito.in_quarantena:
             # Il ruolo c'e' ma i poteri no: non e' una quarantena, e chi legge lo deve sapere.
-            return (
+            return await _ripiego(
+                member, config, reason,
                 f"⚠️ {member} ha il ruolo di quarantena ma i suoi ruoli NON sono stati tolti: "
-                "l'autore è ancora potente (il mio ruolo è sotto il suo?)"
+                "l'autore è ancora potente (il mio ruolo è sotto il suo?)",
             ), []
         # Senza ruolo di quarantena (permesso mancante) si toglie comunque il potere.
 
@@ -201,7 +206,33 @@ async def _punish_actor(
         await bot_roles.imposta_ruoli(member, ruoli_gestiti, reason=reason)
         return f"tutti i ruoli rimossi da {member}", tolti
     except discord.HTTPException:
-        return f"tentativo di rimuovere i ruoli di {member} fallito (permessi insufficienti?)", []
+        return await _ripiego(
+            member, config, reason,
+            f"tentativo di rimuovere i ruoli di {member} fallito (permessi insufficienti?): "
+            "l'autore è ancora potente",
+        ), []
+
+
+async def _ripiego(member: discord.Member, config: AntiNukeConfig, reason: str, fallimento: str) -> str:
+    """
+    Quarantena o ruoli tolti non hanno tolto il potere: se il server l'ha
+    scelto (`/antinuke punish-action ripiego:`) si espelle o si banna.
+    Restituisce cosa è successo davvero, per il caso e l'avviso.
+    """
+    scelta = config.ripiego_quarantena
+    if scelta not in ("kick", "ban"):
+        return fallimento
+    try:
+        if scelta == "ban":
+            await bot_roles.banna(
+                member.guild, member, reason=reason, delete_message_seconds=0,
+                principale=lambda: member.ban(reason=reason, delete_message_seconds=0),
+            )
+            return f"{fallimento} — ripiego: {member} bannato"
+        await bot_roles.espelli(member, reason=reason)
+        return f"{fallimento} — ripiego: {member} espulso"
+    except discord.HTTPException:
+        return f"{fallimento} — ripiego ({scelta}) fallito anche lui"
 
 
 def _finestra_recupero(categoria: str, config: AntiNukeConfig) -> int:
@@ -498,15 +529,35 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Banna", value="ban"),
         ]
     )
+    @app_commands.describe(ripiego="Se quarantena o ruoli tolti non bastano (ruolo sopra il mio). Vuoto: resta com'è")
+    @app_commands.choices(
+        ripiego=[
+            app_commands.Choice(name="Nessuno: solo l'avviso allo staff", value="off"),
+            app_commands.Choice(name="Espelli", value="kick"),
+            app_commands.Choice(name="Banna", value="ban"),
+        ]
+    )
     @requires_module(MODULE_ANTI_NUKE)
-    async def punish_action(self, interaction: discord.Interaction, action: app_commands.Choice[str]) -> None:
+    async def punish_action(
+        self,
+        interaction: discord.Interaction,
+        action: app_commands.Choice[str],
+        ripiego: app_commands.Choice[str] | None = None,
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ANTI_NUKE):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         if not await self._solo_chi_gestisce(interaction, settings):
             return
-        await security_repo.save_settings(_replace(settings, punish_action=action.value))
-        await interaction.response.send_message(f"Azione punitiva impostata su **{action.name}**.", ephemeral=True)
+        modifiche = {"punish_action": action.value}
+        if ripiego is not None:
+            modifiche["ripiego_quarantena"] = ripiego.value
+        await security_repo.save_settings(_replace(settings, **modifiche))
+        scelto = modifiche.get("ripiego_quarantena", settings.anti_nuke.ripiego_quarantena)
+        testo = f"Azione punitiva impostata su **{action.name}**."
+        if action.value != "ban":
+            testo += f" Se non toglie il potere: **{_NOMI_RIPIEGO.get(scelto, scelto)}**."
+        await interaction.response.send_message(testo, ephemeral=True)
         if action.value == "quarantine" and settings.anti_nuke.enabled:
             await self._prepara_quarantena(interaction)
 

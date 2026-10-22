@@ -21,7 +21,8 @@ eliminazione di un caso, classifica dello staff (/mod caso), note da
 togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
 e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
-Funzioni coperte: SPEC §5.2, §5.3 (MOD-027..031, 037, 039, 041, 042, 044, 054..056)
+Sanzioni a tempo ancora attive (MOD-013): tempban, timeout e lock a tempo.
+Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 027..031, 037, 039, 041, 042, 044, 054..056)
 """
 
 from __future__ import annotations
@@ -34,6 +35,9 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
+from core.scheduler import scheduler
+from cogs.moderation.actions import SCHEDULED_TEMPBAN_EXPIRE
+from cogs.moderation.channel_control import SCHEDULED_CHANNEL_UNLOCK
 from cogs.moderation._shared import (
     MAX_FIELD_LENGTH,
     MAX_LINE_TEXT_LENGTH,
@@ -116,9 +120,61 @@ def _format_case_line(case: ModerationCase) -> str:
     return f"{icon} **#{case.case_number}** — {case.action_type} — {data}{stato}\n> {motivo}"
 
 
+# Quante sanzioni a tempo si leggono per tipo (poi l'embed si ferma a 4000 caratteri).
+MAX_ATTIVE_PER_TIPO = 100
+
+
+async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
+    """MOD-013: tempban, timeout e lock a tempo ancora in corso, dal primo che scade."""
+    righe: list[str] = []
+    for azione in await scheduler.list_pending_for_guild(guild.id, SCHEDULED_TEMPBAN_EXPIRE, MAX_ATTIVE_PER_TIPO):
+        caso = azione["payload"].get("case_number")
+        righe.append(
+            f"⏳ **Tempban** <@{azione['user_id']}> (`{azione['user_id']}`) — fine "
+            f"{discord.utils.format_dt(azione['execute_at'], 'R')}" + (f" — caso #{caso}" if caso else "")
+        )
+    adesso = discord.utils.utcnow()
+    in_timeout = sorted(
+        (m for m in guild.members if m.timed_out_until is not None and m.timed_out_until > adesso),
+        key=lambda m: m.timed_out_until,
+    )[:MAX_ATTIVE_PER_TIPO]
+    for membro in in_timeout:
+        righe.append(
+            f"🔇 **Timeout** {membro.mention} (`{membro.id}`) — fine "
+            f"{discord.utils.format_dt(membro.timed_out_until, 'R')}"
+        )
+    for azione in await scheduler.list_pending_for_guild(guild.id, SCHEDULED_CHANNEL_UNLOCK, MAX_ATTIVE_PER_TIPO):
+        righe.append(
+            f"🔒 **Lock** <#{azione['user_id']}> — si sblocca "
+            f"{discord.utils.format_dt(azione['execute_at'], 'R')}"
+        )
+    return righe
+
+
 class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @comando_di_gruppo(
+        "mod",
+        nome="attive",
+        descrizione="Sanzioni a tempo ancora in corso: tempban, timeout, lock a tempo.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def active(self, interaction: discord.Interaction) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        await interaction.response.defer(ephemeral=True)
+        righe = await righe_sanzioni_attive(interaction.guild)
+        embed = discord.Embed(
+            title="Sanzioni a tempo in corso",
+            color=discord.Color.blurple(),
+            description=join_within_limit(righe, "…e altre {n}.") if righe else "Nessuna.",
+        )
+        await interaction.followup.send(
+            embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
 
     @comando_di_gruppo(
         "mod",

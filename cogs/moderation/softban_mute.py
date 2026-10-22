@@ -211,6 +211,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             _case_embed(
                 "🧹 Softban", discord.Color.dark_orange(), member, interaction.user, reason, None
             ),
+            azione="softban", guild_id=interaction.guild.id,
         )
         try:
             await member.ban(
@@ -312,7 +313,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             "🔇 Mute (ruolo)", discord.Color.dark_grey(), member, interaction.user, reason, case_number
         )
         await post_to_mod_log(interaction.guild, embed)
-        await try_dm(member, embed)
+        await try_dm(member, embed, azione="mute", guild_id=interaction.guild.id)
         await interaction.followup.send(embed=embed)
 
     @comando_di_gruppo(

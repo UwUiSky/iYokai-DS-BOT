@@ -115,6 +115,7 @@ def _to_json(settings: SecuritySettings) -> str:
                 "channel_perms_hour_max": n.channel_perms_hour_max,
                 "trusted_ids": list(n.trusted_ids),
                 "punish_action": n.punish_action,
+                "ripiego_quarantena": n.ripiego_quarantena,
                 "recovery_enabled": n.recovery_enabled,
                 "trust_entries": [
                     {
@@ -187,6 +188,7 @@ def _from_json(guild_id: int, raw: str) -> SecuritySettings:
         trusted_ids=tuple(n.get("trusted_ids", [])),
         # Una riga vecchia che non dice la punizione resta com'era: toglie i ruoli.
         punish_action=n.get("punish_action", "strip_roles"),
+        ripiego_quarantena=n.get("ripiego_quarantena", "off"),
         recovery_enabled=n.get("recovery_enabled", True),
         trust_entries=tuple(
             TrustEntry(

@@ -9,6 +9,12 @@ via via più severa in base a quante volte l'utente ha già triggerato
 una regola, invece della stessa identica azione ogni volta (quello
 che l'AutoMod nativo farebbe da solo).
 
+Se il server lo sceglie, anche un warn dato a mano conta
+un'infrazione (M 1.10, `scala_per_warn_manuale`). In quel caso la scala fa
+solo ciò che il moderatore potrebbe fare da sé (permessi e gerarchia), e
+dai warn in massa non partono mai kick e ban (D29). Un gradino di timeout
+non accorcia mai un timeout più lungo già in corso.
+
 Un messaggio conta una sola infrazione anche se la regola ha più
 azioni (Discord manda un evento per azione). Il conteggio è una sola
 istruzione nel database (core/repositories/escalation_repo.py).
@@ -19,9 +25,6 @@ che genera i trigger) E l'escalation deve essere esplicitamente
 abilitata (EscalationConfig.enabled) — un admin potrebbe volere solo
 il filtro nativo senza la scala di severità crescente.
 """
-
-# DA FARE (issue #58, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §2 (AutoMod).
 
 from __future__ import annotations
 
@@ -41,6 +44,8 @@ from core.escalation_ladder_logic import get_ladder_action
 from core.repositories.escalation_repo import escalation_repo
 from core.repositories.moderation_repo import moderation_repo
 from cogs.automod.automod import MODULE_AUTOMOD
+from cogs.moderation._shared import actor_from_member
+from core.permissions import can_moderate
 
 logger = logging.getLogger("iyokai.automod.escalation")
 
@@ -57,6 +62,117 @@ MAX_MOTIVO = 512
 
 def _adesso() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# D29: il permesso di Discord che serve al moderatore per ogni gradino.
+_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members"}
+
+
+def _timeout_piu_lungo_in_corso(member: discord.Member, step) -> bool:
+    """True se il gradino è un timeout e quello già in corso finisce dopo."""
+    if step.action_type != "timeout":
+        return False
+    fine = getattr(member, "timed_out_until", None)
+    if not isinstance(fine, datetime):
+        return False
+    return fine >= _adesso() + timedelta(seconds=step.duration_seconds or 600)
+
+
+def _motivo_non_permesso(moderatore: discord.Member, member: discord.Member, step) -> str | None:
+    """D29: il gradino parte solo se il moderatore del warn potrebbe farlo da sé."""
+    if moderatore.id != member.guild.owner_id:
+        if not getattr(moderatore.guild_permissions, _PERMESSO_GRADINO[step.action_type]):
+            return "non hai il permesso di Discord per farlo"
+    consentito, motivo = can_moderate(
+        actor_from_member(moderatore), actor_from_member(member),
+        bot_top_role_position=member.guild.me.top_role.position,
+    )
+    return None if consentito else motivo.rstrip(".").lower()
+
+
+async def _applica_passo(
+    bot: commands.Bot, guild_id: int, member: discord.Member, step, reason: str
+) -> int | None:
+    """
+    Esegue un gradino della scala e apre il caso. Restituisce il numero del
+    caso, oppure None se l'azione su Discord non è riuscita.
+    """
+    # Prima l'azione su Discord, poi il caso: se l'azione fallisce
+    # non resta un caso per una punizione mai data.
+    try:
+        if step.action_type == "timeout":
+            await bot_roles.isola(member, timedelta(seconds=step.duration_seconds or 600), reason=reason)
+        elif step.action_type == "kick":
+            await bot_roles.espelli(member, reason=reason)
+        elif step.action_type == "ban":
+            await bot_roles.banna(
+                member.guild, member, reason=reason, delete_message_seconds=86400,
+                principale=lambda: member.ban(reason=reason),
+            )
+    except discord.HTTPException as errore:
+        logger.warning(
+            "Azione di escalation '%s' non riuscita sull'utente %s nel server %s: %s",
+            step.action_type, member.id, guild_id, errore,
+        )
+        return None
+
+    case_number = await moderation_repo.create_case(
+        guild_id=guild_id,
+        user_id=member.id,
+        moderator_id=bot.user.id,
+        action_type=ESCALATION_ACTION_TYPE,
+        reason=reason,
+        duration_seconds=step.duration_seconds if step.action_type == "timeout" else None,
+    )
+    if step.action_type == "warn":
+        try:
+            await member.send(f"⚠️ {reason} (caso #{case_number})")
+        except discord.HTTPException:
+            pass
+    return case_number
+
+
+async def scala_per_warn_manuale(
+    bot: commands.Bot,
+    member: discord.Member,
+    caso_warn: int,
+    *,
+    moderatore: discord.Member,
+    in_massa: bool = False,
+) -> str | None:
+    """
+    M 1.10: un warn dato a mano conta un'infrazione, se il server l'ha
+    scelto (`/security escalation enable warn_manuali:`). Restituisce cosa
+    ha fatto la scala, da dire al moderatore, o None. Il gradino «warn»
+    non aggiunge un secondo warn: l'utente l'ha appena ricevuto.
+    D29: il gradino parte solo se `moderatore` potrebbe farlo da sé; con
+    `in_massa` kick e ban non partono mai. L'infrazione resta contata.
+    """
+    if member.bot:
+        return None
+    config = await escalation_repo.get_config(member.guild.id)
+    if not (config.enabled and config.conta_warn_manuali):
+        return None
+    conteggio = await escalation_repo.record_violation(
+        member.guild.id, member.id, _adesso(), config.reset_after_days
+    )
+    step = get_ladder_action(conteggio, config.ladder)
+    if step is None or step.action_type == "warn":
+        return None
+    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    richiesta = f"La scala chiedeva **{azione}** (infrazione #{conteggio}), ma"
+    if in_massa and step.action_type in ("kick", "ban"):
+        return f"{richiesta} dai warn in massa kick e ban non partono: decidi tu."
+    non_permesso = _motivo_non_permesso(moderatore, member, step)
+    if non_permesso:
+        return f"{richiesta} non l'ho applicato: {non_permesso}."
+    if _timeout_piu_lungo_in_corso(member, step):
+        return f"{richiesta} c'è già un timeout più lungo: resta quello."
+    reason = f"Scala dei warn — infrazione #{conteggio} (warn manuale, caso #{caso_warn})"[:MAX_MOTIVO]
+    caso = await _applica_passo(bot, member.guild.id, member, step, reason)
+    if caso is None:
+        return f"{richiesta} non ci sono riuscito: controlla i miei permessi."
+    return f"La scala ha applicato **{azione}** (infrazione #{conteggio}, caso #{caso})."
 
 
 class EscalationCog(CogConGruppi, commands.Cog):
@@ -108,7 +224,6 @@ class EscalationCog(CogConGruppi, commands.Cog):
             execution.guild_id, member.id, now, config.reset_after_days
         )
         step = get_ladder_action(nuovo_conteggio, config.ladder)
-
         if step is None:
             return  # scala non configurata: solo il conteggio viene tenuto
 
@@ -116,43 +231,9 @@ class EscalationCog(CogConGruppi, commands.Cog):
             f"AutoMod Escalation — infrazione #{nuovo_conteggio} "
             f"(regola: {execution.matched_keyword or 'trigger AutoMod'})"
         )[:MAX_MOTIVO]
-
-        # Prima l'azione su Discord, poi il caso: se l'azione fallisce
-        # non resta un caso per una punizione mai data.
-        try:
-            if step.action_type == "timeout":
-                await bot_roles.isola(member, timedelta(seconds=step.duration_seconds or 600), reason=reason)
-            elif step.action_type == "kick":
-                await bot_roles.espelli(member, reason=reason)
-            elif step.action_type == "ban":
-                await bot_roles.banna(
-                    member.guild, member, reason=reason, delete_message_seconds=86400,
-                    principale=lambda: member.ban(reason=reason),
-                )
-        except discord.HTTPException as errore:
-            logger.warning(
-                "Azione di escalation '%s' non riuscita sull'utente %s nel server %s: %s",
-                step.action_type,
-                member.id,
-                execution.guild_id,
-                errore,
-            )
-            return
-
-        case_number = await moderation_repo.create_case(
-            guild_id=execution.guild_id,
-            user_id=member.id,
-            moderator_id=self.bot.user.id,
-            action_type=ESCALATION_ACTION_TYPE,
-            reason=reason,
-            duration_seconds=step.duration_seconds if step.action_type == "timeout" else None,
-        )
-
-        if step.action_type == "warn":
-            try:
-                await member.send(f"⚠️ {reason} (caso #{case_number})")
-            except discord.HTTPException:
-                pass
+        if _timeout_piu_lungo_in_corso(member, step):
+            return  # non si accorcia un timeout più lungo già in corso
+        await _applica_passo(self.bot, execution.guild_id, member, step, reason)
 
     # ================================================================
     # Comandi
@@ -163,11 +244,19 @@ class EscalationCog(CogConGruppi, commands.Cog):
         descrizione="Attiva l'escalation ladder.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
-    async def enable(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(warn_manuali="Conta anche i warn dati a mano con /mod warn. Vuoto: resta com'è")
+    async def enable(self, interaction: discord.Interaction, warn_manuali: bool | None = None) -> None:
         if interaction.guild is None:
             return
         await escalation_repo.set_enabled(interaction.guild.id, True)
-        await interaction.response.send_message("Escalation ladder attivata.", ephemeral=True)
+        if warn_manuali is not None:
+            await escalation_repo.set_conta_warn_manuali(interaction.guild.id, warn_manuali)
+        config = await escalation_repo.get_config(interaction.guild.id)
+        await interaction.response.send_message(
+            "Escalation ladder attivata. Warn dati a mano: "
+            + ("contano." if config.conta_warn_manuali else "non contano."),
+            ephemeral=True,
+        )
 
     @comando_di_gruppo(
         "security",
@@ -297,7 +386,8 @@ class EscalationCog(CogConGruppi, commands.Cog):
             title="🪜 Escalation Ladder",
             description=(
                 f"Stato: {'attiva' if config.enabled else 'disattivata'}\n"
-                f"Reset dopo: {config.reset_after_days} giorni di buona condotta\n\n"
+                f"Reset dopo: {config.reset_after_days} giorni di buona condotta\n"
+                f"Warn dati a mano: {'contano' if config.conta_warn_manuali else 'non contano'}\n\n"
                 + "\n".join(righe)
             ),
             color=discord.Color.blurple(),

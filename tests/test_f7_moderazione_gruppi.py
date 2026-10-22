@@ -23,6 +23,7 @@ MODULI = (
     "cogs.moderation.channel_control",
     "cogs.moderation.clear",
     "cogs.moderation.softban_mute",
+    "cogs.moderation.opzioni",
     "cogs.security.anti_nuke",
     "cogs.security.anti_raid",
     "cogs.security.global_ban",
@@ -40,10 +41,11 @@ MODULI = (
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod", None): {"warn", "timeout", "untimeout", "clear", "lock", "unlock", "slowmode", "mute", "unmute"},
-    ("mod", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff"},
+    ("mod", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive"},
     ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod", "avvisi"): {"togli", "azzera", "classifica"},
     ("mod", "blocco"): {"attiva", "togli"},
+    ("mod", "opzioni"): {"imposta", "dm", "immuni"},
     ("mod", "massa"): {"timeout", "warn"},
     ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
     ("modban", "appelli"): {"canale", "elenco"},

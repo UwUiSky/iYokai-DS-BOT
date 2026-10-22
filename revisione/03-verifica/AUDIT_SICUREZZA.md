@@ -77,7 +77,7 @@ Difetti trovati dopo il passaggio, tutti con test scritto prima (rossi senza la 
 
 Test aggiunti dove le mutazioni sopravvivevano: owner esente, ruoli gestiti/cancellati/sopra al bot nel rilascio, fallback `add_roles`, ruolo di quarantena sopra al bot, avvisi in `status` dell'anti-raid, i tre avvisi dei permessi della spam-trap (+ thread e caso senza avvisi), `whitelist`/`blacklist` a modulo spento, `revoked_at` fuori dal conteggio della rete, escape dei nomi nella mappa dei permessi, `Range` veri.
 
-**Decisione aperta (da proporre all'owner):** ripiego su kick/ban quando la quarantena non riesce a togliere i ruoli. Oggi la punizione configurata è "quarantena", che non lo prevede; con `punish-action Banna` il ban parte già e un bot si espelle già. Finché l'owner non decide, l'esito parziale è solo dichiarato nell'avviso e nel caso.
+**Ripiego (giro r9):** quando quarantena o ruoli tolti non tolgono il potere, `/antinuke punish-action ripiego:Espelli|Banna` espelle o banna l'autore. Spento di base (`ripiego_quarantena = "off"`): senza scelta l'esito parziale resta solo dichiarato nell'avviso e nel caso. Lo cambia solo chi gestisce (`solo_chi_gestisce`), come la punizione. Test: `tests/test_anti_nuke_ripiego.py`.
 
 
 ## Completamenti del 14/10
@@ -92,4 +92,13 @@ Giro r5 (ramo `feat/r5-mod`). Che cosa l'Advisor aveva lasciato a metà e come �
 | **SIC-041…043 / NF-31 / #102** (phishing) | Non fatta | `/automod filtri phishing`: lista locale `data/phishing_domains.txt`, download opzionale (`PHISHING_LIST_URL`, https, 6 ore, 2 MB, 10 s, la lista di prima resta se fallisce), segni da sito truffa (marca + parola da regalo, marca scritta storta), domini ufficiali mai segnalati, whitelist anti-link che sblocca. Di partenza: cancella e timeout (SIC-041). Log dedicato (SIC-043): opzione `canale_log` di `/automod filtri phishing`, via router (`TIPO_PHISHING`, anche forum), link dentro il codice per non essere cliccabile. **SIC-042 solo in parte**: finti siti Steam sì; inviti a server per adulti e accorciatori di link con interruttore proprio NON fatti (da decidere con l'owner, D18) | `test_phishing_logic.py` |
 | **NF-18 / #89** (captcha a immagine) | Solo la somma scritta | Opzione `captcha_tipo` in `/security verify setup`: immagine PNG 200x80 con lettere storte, bottone che apre il modulo (etichetta sotto 45 caratteri), 3 minuti e 3 tentativi, un codice per utente in memoria con tetto | `test_captcha_image.py` |
 
-Resta fuori: SIC-016 (backup), SIC-021 (chiave di soccorso), SIC-023…038 (ampliamenti dell'anti-raid), SIC-039/040, SIC-045, SIC-026. Il ripiego su kick/ban quando la quarantena non toglie i ruoli aspetta ancora la scelta dell'owner.
+Resta fuori: SIC-016 (backup), SIC-021 (chiave di soccorso), SIC-023…038 (ampliamenti dell'anti-raid), SIC-039 (SIC-040 fatta nel giro r9), SIC-045, SIC-026. Il ripiego su kick/ban è fatto nel giro r9 (facoltativo, spento di base).
+
+## Giro r9 (21/10)
+
+| Voce | Cosa | Controlli di sicurezza | Test |
+|---|---|---|---|
+| #59 ripiego | `/antinuke punish-action ripiego:Espelli\|Banna`, spento di base | Lo cambia solo chi gestisce; l'esito dice anche il ripiego fallito | `test_anti_nuke_ripiego.py` |
+| MOD-068 ruoli immuni | `/mod opzioni immuni` | Solo il proprietario (anche nell'import: `CHIAVI_SOLO_PROPRIETARIO`); il proprietario resta libero di agire; vale anche per le azioni in massa | `test_moderation_opzioni.py` |
+| SIC-040 punizione della trappola | `/security spamtrap punizione:` | Esenzione dello staff prima di tutto, come per il ban; bottoni «decide lo staff» con permesso (Bannare/Espellere) e gerarchia di chi preme | `test_spam_trap_punizione.py` |
+

@@ -324,12 +324,14 @@ Totale voci: **494**.
 - `[~]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
   → **Stato 11/10:** ordine azione→caso→log→DM e liste entro 4000 fatti. Aggiunti: storico per tipo, `/mod caso motivo|elimina|classifica-staff` (MOD-037, 039, 041, 042, 044).
+  → **Stato 21/10 (r9):** `/mod caso attive` (MOD-013): tempban, timeout e lock a tempo in corso, dal primo che scade.
 - `[~]` 5.3 Note utente
   → **Stato 11/10:** `/mod nota rimuovi|modifica|svuota` (MOD-054..056); l'elenco mostra il numero. Warn: `/mod avvisi togli|azzera|classifica` (MOD-028, 029, 031).
 - `[~]` 5.4 Report system
   → **Stato 04/10:** motivo oltre 1024 caratteri: segnalazione persa (LIM-4).
 - `[~]` 5.5 Lock / Unlock canale
   → **Stato 11/10:** ora scrive nel log di moderazione; motivo al massimo 512 caratteri.
+  → **Stato 21/10 (r9):** `/mod lock durata:` (MOD-090, max 30 giorni): sblocco dallo scheduler, anche dopo un riavvio, con il permesso di prima; `unlock` o un nuovo lock annullano l'attesa.
 - `[~]` 5.6 Slowmode
   → **Stato 11/10:** ora scrive nel log di moderazione.
 - `[~]` 5.7 Clear avanzato con filtri
@@ -361,6 +363,12 @@ Totale voci: **494**.
   scadenza riprende i ruoli di prima (issue #138, fase F9)
   → **Fatto:** `/modban tempban modo:Isolamento` (ruolo e canale «isolamento», canali
   nuovi nascosti, uscita e rientro non liberano, `/modban unban` libera prima).
+- `[x]` 5.13 **Opzioni di moderazione** (MOD-010, 017, 057, 068) — `/mod opzioni
+  imposta|dm|immuni`, un solo punto in `core/moderation_opzioni.py`: giorni di
+  messaggi cancellati quando il ban non li dice; durata del timeout quando non
+  la si scrive; DM spento per tipo di azione; ruoli immuni alla moderazione
+  manuale (al massimo 25; li sceglie solo il proprietario, che resta libero di
+  agire; anche nell'import della configurazione).
 
 ## §6 AUTOMOD
 
@@ -433,6 +441,10 @@ Totale voci: **494**.
   da 6.13 (che è più azioni insieme su UN trigger, non su trigger
   ripetuti nel tempo) — voce nuova, non una ridefinizione di 6.13
   → **Stato 04/10:** una violazione conta più volte (LIM-32).
+  → **Stato 21/10 (M 1.10, r9):** conteggio corretto (M 2.7); con
+  `/security escalation enable warn_manuali:True` anche i warn dati a mano
+  (`/mod warn`, anche in massa) salgono la scala (migrazione 0250); solo con
+  azioni che il moderatore può fare da sé, mai kick o ban dai warn in massa (D29).
 
 ## §7 SECURITY SUITE — presente, con bug aperti su anti-raid, anti-nuke e spam-trap (fase F1)
 
@@ -489,6 +501,8 @@ Totale voci: **494**.
   `/security antinuke enable|limits|trusted-add|trusted-remove|
   trusted-list|punish-action|recovery|status|guardie|casi|rilascia`
   → **Stato 04/10:** può punire il bot stesso (BUG-11).
+  → **Stato 21/10 (#59, r9):** `punish-action ripiego:` espelle o banna chi
+  quarantena o ruoli tolti non hanno fermato (spento di base).
   → **Stato 11/10 (#59 riga 3.5, #117):** due soglie per categoria (breve
   e oraria, SIC-001); punizione di default la quarantena (SIC-002); una
   sola punizione per attacco, con un caso numerato (`casi`, SIC-017); fiducia
@@ -536,6 +550,10 @@ Totale voci: **494**.
   avvisi su Bannare membri, thread e lettura; transcript con tetto di 40
   messaggi; un appello accolto toglie anche i ban propagati; se la sequenza
   salta la propagazione non resta orfana.
+  → **Stato 21/10 (SIC-040, r9):** `/security spamtrap punizione:` ban (di base,
+  sequenza completa), kick (DM prima), timeout di un giorno, solo cancellazione,
+  o «decide lo staff» (log con bottoni Ban e Kick persistenti, permesso e
+  gerarchia controllati, caso a nome di chi preme).
   - `[x]` `/setup` con selezione canale trappola e canale log — via
     parametri `discord.TextChannel` opzionali (rendono nativamente
     come selettore canale di Discord, non un menù a tendina

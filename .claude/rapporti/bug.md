@@ -277,3 +277,8 @@
 | 21/10 | `core/nsfw_filter_logic.py:leggi_redgifs` (r9nsfw) | `tags` non lista = TypeError fino al comando | bassa | corretto b4a0667 |
 | 21/10 | `cogs/utility/command_search.py`, `cogs/ai/helpdesk.py` (r9nsfw) | App utente in server senza bot: comandi staff da permessi di quel server, base di conoscenza e quote AI di quel server | media | corretto 9aaf9dd |
 | 21/10 | `core/blacklist_tree.py` → `valuta_interazione` (r9nsfw) | iYokai App applica la politica comandi del server (scritta per il principale) anche dove l'app non è installata | bassa | plausibile, lasciato |
+- 22/10 · cogs/security/spam_trap.py StaffDecisionView.decidi · doppio clic/clic dopo caso chiuso = doppia azione e caso; ruoli immuni ignorati · media · risolto d2d077a
+- 22/10 · cogs/moderation/channel_control.py unlock · lock fisso + lock a tempo: unlock rimette send_messages=False e dice «sbloccato» · media · risolto 90ed830
+- 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
+- 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
+- 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)

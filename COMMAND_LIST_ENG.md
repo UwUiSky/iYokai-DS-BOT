@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:03 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 543 commands in 25 categories.**
+**Total: 547 commands in 25 categories.**
 
 ## Admin
 
@@ -332,6 +332,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 
 - **`/mod bulk timeout`** — Times out several members at once (max 28 days).
 - **`/mod bulk warn`** — Warns several members at once.
+- **`/mod case active`** — Timed sanctions still running: tempbans, timeouts, timed locks.
 - **`/mod case delete`** — Deletes a case (needs "Manage Server").
 - **`/mod case history`** — Shows a member's case history.
 - **`/mod case reason`** — Changes the reason of an already logged case.
@@ -347,6 +348,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/mod note edit`** — Changes a note's text.
 - **`/mod note list`** — Lists the notes on a user.
 - **`/mod note remove`** — Removes a note (the number is in the notes list).
+- **`/mod options dm`** — Choose whether the user gets a DM for a type of action.
+- **`/mod options immune`** — Roles manual moderation can't touch (owner only).
+- **`/mod options set`** — Messages deleted on ban and default timeout length. Empty: shows the options.
 - **`/mod slowmode`** — Sets slowmode on a channel.
 - **`/mod timeout`** — Times out a member (max 28 days).
 - **`/mod unlock`** — Unblocks the ability to write in a channel.

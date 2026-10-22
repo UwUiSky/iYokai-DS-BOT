@@ -23,6 +23,10 @@ prima del ban, ruoli ridati al ritorno), isolamento (resta nel server,
 vede un solo canale). Lo stato (ruoli veri) si salva prima dell'azione; ogni nuovo
 caso cancella la scadenza del precedente. Funzioni coperte anche: SPEC §5.11, §5.12, parte E (D15: scadenze via iYokai Mod).
 
+Un warn dato a mano sale la scala di escalation, se il server l'ha
+scelto (M 1.10), solo con azioni che il moderatore potrebbe fare da sé;
+dai warn in massa non partono mai kick e ban (D29).
+
 Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
 server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
 caso per utente, un solo riepilogo nel log. Chi non si può moderare viene
@@ -42,6 +46,7 @@ from discord.ext import commands
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core import moderation_opzioni
 from core.database import db
 from core.repositories.moderation_repo import moderation_repo
 from core.scheduler import scheduler, in_seconds
@@ -55,6 +60,7 @@ from core.tempban_logic import (
 )
 from cogs.moderation import _tempban_modes as tempban_modes
 from cogs.moderation.ban_appeal import vista_appello
+from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
@@ -69,6 +75,7 @@ from cogs.moderation._shared import (
     validate_reason,
     Reason,
     actor_from_member,
+    motivo_immune,
     post_to_mod_log,
 )
 from core.premium import PremiumModule, registry
@@ -216,8 +223,12 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             "⚠️ Warn", discord.Color.yellow(), member, interaction.user, reason, case_number
         )
         await interaction.response.send_message(embed=embed)
-        await try_dm(member, embed)
+        await try_dm(member, embed, azione="warn", guild_id=interaction.guild.id)
         await post_to_mod_log(interaction.guild, embed)
+        # M 1.10: se il server l'ha scelto, il warn sale la scala di escalation.
+        esito_scala = await scala_per_warn_manuale(self.bot, member, case_number, moderatore=interaction.user)
+        if esito_scala:
+            await interaction.followup.send(esito_scala, ephemeral=True)
 
     # ================================================================
     # /kick
@@ -248,6 +259,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         dm = await try_dm_message(
             member,
             _case_embed("👢 Kick", discord.Color.orange(), member, interaction.user, reason, None),
+            azione="kick", guild_id=interaction.guild.id,
         )
         try:
             await member.kick(reason=reason)
@@ -284,14 +296,14 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         member="Il membro da bannare",
         reason="Motivo del ban",
-        delete_message_days="Giorni di messaggi da cancellare (0-7, default 0)",
+        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod opzioni",
     )
     async def ban(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
         reason: Reason,
-        delete_message_days: app_commands.Range[int, 0, 7] = 0,
+        delete_message_days: app_commands.Range[int, 0, 7] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -301,11 +313,14 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.defer()
+        if delete_message_days is None:  # MOD-010: valore del server
+            delete_message_days = (await moderation_opzioni.leggi(interaction.guild.id)).giorni_ban
 
         dm = await try_dm_message(
             member,
             _case_embed("🔨 Ban", discord.Color.red(), member, interaction.user, reason, None),
             view=await vista_appello(interaction.guild.id),
+            azione="ban", guild_id=interaction.guild.id,
         )
         try:
             await member.ban(
@@ -426,6 +441,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         dm = await try_dm_message(
             member, _embed(None, True),
             view=None if modo != MODO_FUORI else await vista_appello(guild.id),
+            azione="tempban", guild_id=guild.id,
         )
 
         # Ruoli veri da salvare: mai il ruolo di isolamento. Se l'utente è già
@@ -791,15 +807,15 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         member="Il membro da mettere in timeout",
-        duration="Durata, es. 10m, 1h, 7d (massimo 28 giorni)",
+        duration="Durata, es. 10m, 1h, 7d (max 28 giorni). Vuoto: quella di /mod opzioni",
         reason="Motivo del timeout",
     )
     async def timeout(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        duration: str,
         reason: Reason,
+        duration: app_commands.Range[str, 1, 20] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -808,11 +824,22 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         if not await check_can_moderate(interaction, member):
             return
 
-        try:
-            duration_seconds = parse_duration(duration)
-        except ValueError as exc:
-            await interaction.response.send_message(str(exc), ephemeral=True)
-            return
+        if duration is None:
+            # MOD-017: durata predefinita del server.
+            predefinita = (await moderation_opzioni.leggi(interaction.guild.id)).durata_timeout
+            if predefinita is None:
+                await interaction.response.send_message(
+                    "Scrivi una durata, oppure impostane una predefinita con `/mod opzioni imposta durata_timeout:`.",
+                    ephemeral=True,
+                )
+                return
+            duration_seconds = predefinita
+        else:
+            try:
+                duration_seconds = parse_duration(duration)
+            except ValueError as exc:
+                await interaction.response.send_message(str(exc), ephemeral=True)
+                return
 
         if duration_seconds > MAX_TIMEOUT_SECONDS:
             await interaction.response.send_message(
@@ -854,7 +881,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             extra_field=("Durata", format_duration(duration_seconds)),
         )
         await interaction.response.send_message(embed=embed)
-        await try_dm(member, embed)
+        await try_dm(member, embed, azione="timeout", guild_id=interaction.guild.id)
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
@@ -943,7 +970,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             return None, "non riesco a leggere il membro da Discord"
 
-    def _non_moderabile(self, interaction: discord.Interaction, uid: int, membro) -> str | None:
+    async def _non_moderabile(self, interaction: discord.Interaction, uid: int, membro) -> str | None:
         """Il motivo per cui `uid` va saltato, o None. Stesse regole di check_can_moderate."""
         guild = interaction.guild
         if uid == interaction.user.id:
@@ -961,7 +988,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             actor_from_member(moderatore), actor_from_member(membro),
             bot_top_role_position=guild.me.top_role.position,
         )
-        return None if consentito else motivo
+        if not consentito:
+            return motivo
+        immune = await motivo_immune(guild, moderatore, membro)
+        return immune.rstrip(".").lower() if immune else None
 
     async def _ban_uno_alla_volta(
         self, guild: discord.Guild, ids: list[int], reason: str, giorni: int
@@ -998,24 +1028,26 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})",
         reason="Motivo del ban",
-        delete_message_days="Giorni di messaggi da cancellare (0-7, default 0)",
+        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod opzioni",
     )
     async def ban_massa(
         self,
         interaction: discord.Interaction,
         utenti: app_commands.Range[str, 1, MAX_TESTO_UTENTI],
         reason: Reason,
-        delete_message_days: app_commands.Range[int, 0, 7] = 0,
+        delete_message_days: app_commands.Range[int, 0, 7] | None = None,
     ) -> None:
         ids = await self._prepara_massa(interaction, utenti, reason, limite="ban")
         if ids is None:
             return
         guild = interaction.guild
+        if delete_message_days is None:  # MOD-010: valore del server
+            delete_message_days = (await moderation_opzioni.leggi(guild.id)).giorni_ban
         saltati: list[str] = []
         bersagli: list[tuple[int, discord.Message | None]] = []
         for uid in ids:
             membro, errore = await self._cerca_membro(guild, uid)
-            motivo = errore or self._non_moderabile(interaction, uid, membro)
+            motivo = errore or await self._non_moderabile(interaction, uid, membro)
             if motivo:
                 saltati.append(f"`{uid}`: {motivo}")
                 continue
@@ -1026,6 +1058,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                     membro,
                     _case_embed("🔨 Ban", discord.Color.red(), membro, interaction.user, reason, None),
                     view=await vista_appello(guild.id),
+                    azione="ban", guild_id=guild.id,
                 )
             bersagli.append((uid, dm))
         bannati: set[int] = set()
@@ -1117,12 +1150,13 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             if membro is None:
                 saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
                 continue
-            motivo = self._non_moderabile(interaction, uid, membro)
+            motivo = await self._non_moderabile(interaction, uid, membro)
             if motivo:
                 saltati.append(f"`{uid}`: {motivo}")
                 continue
             dm = await try_dm_message(
-                membro, _case_embed("👢 Kick", discord.Color.orange(), membro, interaction.user, reason, None)
+                membro, _case_embed("👢 Kick", discord.Color.orange(), membro, interaction.user, reason, None),
+                azione="kick", guild_id=guild.id,
             )
             try:
                 await membro.kick(reason=audit_reason(reason))
@@ -1176,7 +1210,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             if membro is None:
                 saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
                 continue
-            motivo = self._non_moderabile(interaction, uid, membro)
+            motivo = await self._non_moderabile(interaction, uid, membro)
             if motivo:
                 saltati.append(f"`{uid}`: {motivo}")
                 continue
@@ -1193,7 +1227,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 "🔇 Timeout", discord.Color.dark_orange(), membro, interaction.user, reason, numero,
                 extra_field=("Durata", format_duration(secondi)),
             )
-            await try_dm(membro, embed)
+            await try_dm(membro, embed, azione="timeout", guild_id=guild.id)
             fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
         await self._chiudi_massa(
             interaction, f"🔇 Timeout in massa ({format_duration(secondi)})", discord.Color.dark_orange(),
@@ -1223,15 +1257,21 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             if membro is None:
                 saltati.append(f"`{uid}`: {errore or 'non è nel server'}")
                 continue
-            motivo = self._non_moderabile(interaction, uid, membro)
+            motivo = await self._non_moderabile(interaction, uid, membro)
             if motivo:
                 saltati.append(f"`{uid}`: {motivo}")
                 continue
             numero = await moderation_repo.create_case(
                 guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id, action_type="warn", reason=reason
             )
-            await try_dm(membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero))
-            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
+            await try_dm(
+                membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero),
+                azione="warn", guild_id=guild.id,
+            )
+            esito_scala = await scala_per_warn_manuale(
+                self.bot, membro, numero, moderatore=guild.get_member(interaction.user.id), in_massa=True
+            )
+            fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}" + (f" — {esito_scala}" if esito_scala else ""))
         await self._chiudi_massa(interaction, "⚠️ Warn in massa", discord.Color.yellow(), reason, fatti, saltati)
 
 

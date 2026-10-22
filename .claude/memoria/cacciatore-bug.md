@@ -4,6 +4,7 @@
 21/10/2026 · ultimi giri: `feat/r8tkt` (opzioni ticket #120, AI #139; 6 fix 92633fa…f8c87c8, i 4 lasciati li ha chiusi il revisore), `feat/r8web` (6 fix ec769c2…6de5e0f), `feat/r8uti` (c2af58d, 3d722cc, 416859f).
 16/10/2026 · r7mod, r7bak (1172556, b70b41f), r7liv (635507f). 14/10 r6ai (9516f7c), r6web, r6mod. 13/10 r4-tkt/uti/liv.
 21/10/2026 · ultimo giro: `feat/r9nsfw` (bot NSFW, App utente), 5 fix: 644985d, a5dc0b2, c93a382, b4a0667, 9aaf9dd.
+22/10/2026 · ultimo giro: `feat/r9mod` (ripiego anti-nuke, warn→scala, /mod opzioni, lock a tempo, spamtrap punizione), fix d2d077a, 90ed830.
 21/10/2026 · ultimo giro: `feat/r8web` (verifica web NF-21, #148, marchio, aspetto, «I miei dati»), 6 fix: ec769c2, 0e8943c, 87f72f9, 951cf86, db91e8c, 6de5e0f.
 16/10/2026 · r7mod, r7bak, r7liv (fix in `rapporti/bug.md`).
 
@@ -16,6 +17,7 @@
 - Giri 28/09–14/10 (BUG-19…34, SEC-18…22, F1, giro-core, r3, r4-*, r6*): dettagli in `rapporti/bug.md`.
 - r7mod, r7bak (1172556, b70b41f), r7liv (635507f).
 - r9nsfw: filtro Unicode/composti, tetto Segnala, D6 bot NSFW, App fuori server = DM.
+- r9mod: bottoni staff spam trap (doppia azione, immuni), unlock dopo lock a tempo con prima=False.
 - r8web: caricamento 8 KB, log /verifica, IP interni = doppi, export verify_doppi, avvisi ripetuti, cifre Unicode.
 - r8uti: ruoli a scelta ricontrollo permessi, lock massa, condizioni autoruoli in ordine + tetto ridai, tetto promemoria/nel canale.
 
@@ -59,6 +61,7 @@
 - Impronte/IP: dietro proxy non dichiarato tutti hanno lo stesso IP interno → doppi falsi e limiti per IP condivisi. Un link/modulo riusabile che avvisa lo staff: deduplicare l'avviso.
 
 ## Aperto
+- r9mod: scala da warn manuale accorcia un timeout più lungo; warn in massa + scala kick/ban aggira il tetto MOD-002 (da decidere).
 - r4-tkt: rilievi senza fix in `rapporti/bug.md` (13/10).
 - Giro mod: lo stato si salva PRIMA dell'azione irreversibile.
 - r8tkt plausibile: prompt injection su `_ruolo_secondo_ai`.

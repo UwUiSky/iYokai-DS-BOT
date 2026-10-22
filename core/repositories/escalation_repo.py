@@ -3,7 +3,7 @@ core/repositories/escalation_repo.py
 =======================================
 Persistenza della Smart AutoMod Escalation Ladder: conteggio
 infrazioni per utente (con reset dopo buona condotta) e la scala di
-azioni configurata per server.
+azioni configurata per server (anche per i warn dati a mano, M 1.10).
 """
 
 from __future__ import annotations
@@ -33,6 +33,8 @@ class EscalationConfig:
     enabled: bool
     reset_after_days: int
     ladder: list[LadderStep]
+    # M 1.10: anche i warn dati a mano (/mod warn) salgono la scala.
+    conta_warn_manuali: bool = False
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -77,11 +79,13 @@ class EscalationRepository:
     # ================================================================
     async def get_config(self, guild_id: int) -> EscalationConfig:
         row = await self._pool.fetchrow(
-            "SELECT enabled, reset_after_days FROM automod_escalation_config WHERE guild_id = $1",
+            "SELECT enabled, reset_after_days, conta_warn_manuali "
+            "FROM automod_escalation_config WHERE guild_id = $1",
             guild_id,
         )
         enabled = row["enabled"] if row else False
         reset_after_days = row["reset_after_days"] if row else DEFAULT_RESET_AFTER_DAYS
+        conta_warn_manuali = row["conta_warn_manuali"] if row else False
 
         step_rows = await self._pool.fetch(
             "SELECT level, action_type, duration_seconds FROM automod_escalation_steps "
@@ -101,7 +105,7 @@ class EscalationRepository:
             # nessuna azione".
             ladder = DEFAULT_LADDER
 
-        return EscalationConfig(guild_id, enabled, reset_after_days, ladder)
+        return EscalationConfig(guild_id, enabled, reset_after_days, ladder, conta_warn_manuali)
 
     async def set_enabled(self, guild_id: int, enabled: bool) -> None:
         await self._pool.execute(
@@ -112,6 +116,17 @@ class EscalationRepository:
             """,
             guild_id,
             enabled,
+        )
+
+    async def set_conta_warn_manuali(self, guild_id: int, attivo: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO automod_escalation_config (guild_id, conta_warn_manuali)
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET conta_warn_manuali = EXCLUDED.conta_warn_manuali
+            """,
+            guild_id,
+            attivo,
         )
 
     async def set_reset_after_days(self, guild_id: int, days: int) -> None:

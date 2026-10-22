@@ -212,6 +212,8 @@ class AntiNukeConfig:
     channel_perms_hour_max: int = 20
     trusted_ids: tuple[int, ...] = ()
     punish_action: str = "quarantine"  # "quarantine" | "strip_roles" | "ban"
+    # Se quarantena o ruoli tolti non tolgono il potere: "off" | "kick" | "ban" (#59).
+    ripiego_quarantena: str = "off"
     recovery_enabled: bool = True
     trust_entries: tuple[TrustEntry, ...] = ()
     # Guardie su azioni singole (SIC-005/006, 008, 009, 025). Spente di default.

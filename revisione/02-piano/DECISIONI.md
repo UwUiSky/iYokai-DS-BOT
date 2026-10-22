@@ -452,3 +452,18 @@ Toglierlo o lasciarlo uguale no (non apre nulla). La regola sta in un punto solo
 `core.command_access.errore_ruolo_admin`, usato da `imposta_ruolo` (pannello web),
 `/admin config import` e `/admin config rollback`. `/setup` non tocca questo valore.
 Ruoli mod e ban: invariati (bastano i permessi di `/admin`).
+
+## D29 — La scala dei warn manuali fa solo ciò che il moderatore può fare (22/10/2026)
+
+Con `/security escalation enable warn_manuali:True` un `/mod warn` sale la scala di
+escalation (M 1.10). La scala la esegue il bot: senza regole, un moderatore con il solo
+permesso di dare timeout potrebbe far espellere o bannare qualcuno a forza di warn, e
+`/mod massa warn` farebbe fino a 50 kick o ban senza il tetto delle azioni in massa.
+Scelta: **il gradino parte solo se il moderatore che ha dato il warn potrebbe farlo da sé**
+(permesso di Discord: «Metti in timeout», «Espelli», «Banna»; e la gerarchia dei ruoli,
+ricontrollata al momento). **Dai warn in massa kick e ban non partono mai.** In tutti e due
+i casi il warn resta registrato con il suo caso, l'infrazione resta contata, e l'esito dice
+al moderatore cosa chiedeva la scala e perché non è partito. Vale per tutti i gradini: un
+gradino di timeout non accorcia mai un timeout più lungo già in corso (anche per l'AutoMod).
+La regola sta in un punto solo, `cogs/automod/escalation.py` (`scala_per_warn_manuale`).
+
