@@ -1,12 +1,11 @@
 # Memoria di dev-core
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r5-cor` (base main) · giro r5: per FILE
+21/10/2026 · ramo `feat/r9nsfw` (base main) · giro r9: per FILE
 
 ## In corso
-- Giro r5 chiuso (7 gruppi): lingue, traduttore, ricerca, #122 piccole, NF-22, NF-38, #141. Resta il rapporto all'orchestratore.
-- Prossimo passo: far rispondere ai comandi il bot del marchio (NF-38, serve un disegno: oggi il client del marchio non ha comandi);
-  poi CFG-011/013/014/016/024/025/026/030/033/039/043/044 di #122; 14.1 nei cog altrui; #140 (serve #95 + token GitHub).
+- Giro r9 chiuso: #94, #107, #145 (test mancanti), #141 (cog dei bot separati = riavvio). Resta il rapporto.
+- Prossimo passo: verifica live (VERIFICA_LIVE «giro r9»); NF-20 per l'invito NSFW; altre voci SPEC B (traduci, segnalibri, note).
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -18,7 +17,12 @@
   codici 0132 (`/owner premium grant` senza server crea il codice, `/admin premium riscatta`); NF-38 0133 `whitelabel_bots` +
   `/admin premium marchio`; #141 `core/hot_patch.py` 0134 (`/owner cog reload commit|file|registro`, `ENABLE_HOT_PATCH`).
 
+- r9 #94 NSFW: `core/nsfw_*` (filtro, fonti RedGifs, servizio D16, worker, bot), cogs/nsfw/ricerca.py, 0240, test_nsfw_*.
+  #107: `core/user_app_bot.py`, `core/user_app_logic.py`, cogs/user_app/personal.py; -cerca-comando/-chiedi user-install.
+
 ## Cose imparate
+- Alberi separati (NSFW, App): `tests/support/full_tree.build_separate_trees`; cogs con setup no-op se non e la loro istanza.
+- Server senza il bot (app utente): `interaction.is_guild_integration()` falso; `guild` None anche per cache mancante (#147).
 - Discord conta per il limite 8000 solo la traduzione PIU LUNGA per campo (base compresa). Base del codice resta italiano (scarto da D1).
 - discord.py mette locale_str automatico su nomi/descrizioni: il traduttore riceve `context.data` (nodo) e risponde per percorso.
 - Il DB di prova puo essere usato anche da altre copie: tabelle estranee (es. activity_*) fanno fallire test_data_registry; riprovare.
@@ -41,6 +45,9 @@
 - Il token OAuth, gli state e i corpi delle risposte Discord non vanno mai in log o messaggi.
 
 ## Aperto
+- NSFW: risposta RedGifs scritta a memoria (verified/tags/niches/urls.poster), da controllare live. nsfw_* si puliscono
+  solo se il server ha `guild_presence` del principale: un server con solo il bot NSFW non scade mai.
+- `tests/test_premium_invalidazione.py` (vecchio) assegna `db._pool` in un test: da togliere.
 - Conteggio caratteri: `admin` 6.4xx su 6.800 (soglia): il prossimo comando admin richiede un nuovo gruppo (D25) o va in un gruppo piu leggero.
 - #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.

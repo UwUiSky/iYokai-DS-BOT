@@ -1311,7 +1311,7 @@ def testo_esito_aggiornamento(esito, sha: str | None) -> str:
     if esito.ricaricati:
         testo += f"\nCog ricaricati: {', '.join(f'`{m}`' for m in esito.ricaricati)[:600]}."
     if esito.riavvio_necessario:
-        testo += "\n**Serve il riavvio**: i file di `core/` si caricano solo ripartendo."
+        testo += "\n**Serve il riavvio**: i file di `core/` e dei bot separati (NSFW, App) si caricano solo ripartendo."
     return testo
 
 

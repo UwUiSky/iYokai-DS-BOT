@@ -4,9 +4,9 @@ main.py
 Punto di avvio di iYokai Main — include anche le 5 istanze Music
 worker (SPEC.md §9.1), avviate come task concorrenti nello STESSO
 processo (non 6 processi separati — vedi la nota nel corpo di
-main() per il perché). Restano fuori da qui il Creator e l'NSFW,
-applicazioni Discord del tutto scollegate dal resto, con il proprio
-entry point separato.
+main() per il perché). Nello stesso processo girano anche il Creator,
+iYokai Mod e, se ci sono i loro token, l'istanza NSFW (NF-23) e iYokai App
+(NF-36).
 
 Ordine di avvio, e perché è in questo ordine:
   1. Logging — così anche gli errori dei passi successivi si vedono
@@ -78,6 +78,10 @@ from core.repositories.backup_repo import backup_repo
 from core.backup_creator_bot import BackupCreatorBot
 from core import bot_roles
 from core.mod_bot import ModBot
+from core.nsfw_autopost_worker import nsfw_autopost_worker
+from core.nsfw_bot import NsfwBot
+from core.nsfw_fonti import fonti_nsfw
+from core.user_app_bot import UserAppBot
 from core.backup_queue_worker import backup_queue_worker
 from core.backup_snapshot_worker import backup_snapshot_worker
 from core.repositories.restore_oauth_repo import restore_oauth_repo
@@ -581,6 +585,7 @@ def _servizi_periodici() -> list:
         clan_leaderboard_announcer,
         backup_queue_worker,
         backup_snapshot_worker,
+        nsfw_autopost_worker,
     ]
 
 
@@ -682,6 +687,11 @@ async def main() -> None:
     # non è collegato, core/bot_roles.py fa lavorare il principale.
     mod = ModBot() if config.YOKAI_MOD_TOKEN else None
     bot_roles.registra_mod(mod)
+
+    # iYokai NSFW (NF-23): facoltativo. Senza NSFW_TOKEN non esiste e nulla cambia.
+    nsfw = NsfwBot() if config.NSFW_TOKEN else None
+    # iYokai App (NF-36): facoltativa. Senza YOKAI_APP_TOKEN non esiste e nulla cambia.
+    app = UserAppBot(bot_principale=bot) if config.YOKAI_APP_TOKEN else None
 
     # #36 (parte R0): un intent privileged (members, message_content)
     # va abilitato anche nel Developer Portal di Discord, non solo nel
@@ -806,6 +816,8 @@ async def main() -> None:
         VoceBot("iYokai Main", lambda: bot.start(config.YOKAI_BOT_TOKEN), critico=True),
         VoceBot("iYokai Creator", lambda: creator.start(config.YOKAI_CREATOR_TOKEN)),
         *([VoceBot("iYokai Mod", lambda: mod.start(config.YOKAI_MOD_TOKEN))] if mod else []),
+        *([VoceBot("iYokai NSFW", lambda: nsfw.start(config.NSFW_TOKEN))] if nsfw else []),
+        *([VoceBot("iYokai App", lambda: app.start(config.YOKAI_APP_TOKEN))] if app else []),
         *[
             VoceBot(f"Music worker {worker.worker_index}", lambda w=worker, t=token: w.start(t))
             for worker, token in zip(worker_bots, config.MUSIC_TOKENS)
@@ -828,7 +840,7 @@ async def main() -> None:
         if web_panel_runner is not None:
             await web_panel_runner.cleanup()
         await spegni_ordinatamente(
-            [bot, creator, *([mod] if mod else []), *worker_bots],
+            [bot, creator, *([mod] if mod else []), *([nsfw] if nsfw else []), *([app] if app else []), *worker_bots],
             [
                 image_search_fetcher.close,
                 animal_fetcher.close,
@@ -837,6 +849,7 @@ async def main() -> None:
                 kick_watcher.close,
                 feed_watcher.close,
                 restore_orchestrator.close,
+                fonti_nsfw.close,
             ],
             db.close,
             servizi=_servizi_periodici(),

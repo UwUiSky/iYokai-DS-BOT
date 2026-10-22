@@ -106,3 +106,22 @@ def test_i_log_avanzati_si_registrano_come_invalidatore():
     modulo._premium_cache.set(7, (10**12, True))
     cache.invalida_cache_premium(7)
     assert modulo._premium_cache.get(7) is None
+
+
+async def test_codice_per_tutti_i_moduli_invalida(chiamate, clean_db):
+    from datetime import datetime, timezone
+
+    from core.repositories.guild_premium_repo import GuildPremiumRepository
+
+    repo = GuildPremiumRepository(pool_provider=lambda: clean_db)
+    await repo.estendi(42, 7, datetime.now(timezone.utc))
+    assert chiamate == [42]
+
+
+async def test_abbonamento_discord_nuovo_e_perso_invalidano(chiamate, clean_db):
+    from core.repositories.entitlement_repo import Entitlement, EntitlementRepository
+
+    repo = EntitlementRepository(pool_provider=lambda: clean_db)
+    await repo.salva(Entitlement(9001, 42, 7, 5, None, None, False))
+    assert await repo.chiudi_non_piu_attivi(set()) == [42]
+    assert chiamate == [42, 42]

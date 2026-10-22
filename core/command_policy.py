@@ -13,6 +13,7 @@ Regole di sicurezza (così nessuno si chiude fuori):
 - l'owner del bot, il proprietario del server e chi ha «Gestisci server» non sono mai bloccati da canali o da
   ruoli/utenti ignorati (un comando spento invece vale per tutti, tranne i gruppi qui sopra);
 - un canale vale anche se è il thread o la categoria sotto cui sta.
+- non vale per iYokai App installata solo sull'utente in un server dove l'app non c'è (NF-36).
 Le impostazioni stanno in `guild_config.settings` (chiavi `policy_*`, nello schema di import/export) e passano da
 queste funzioni, sia per il comando sia per il futuro pannello (D16). Il controllo gira in
 `BlacklistAwareCommandTree.interaction_check`, prima di ogni comando.
@@ -207,6 +208,10 @@ async def valuta_interazione(interaction) -> str | None:
 
     try:
         if interaction.guild is None or interaction.type is not discord.InteractionType.application_command:
+            return None
+        # App installata solo sull'utente (NF-36) in un server senza di lei: la politica di quel
+        # server vale per i bot installati lì, non per lei (come in DM).
+        if not interaction.is_guild_integration():
             return None
         comando = interaction.command
         if comando is None:

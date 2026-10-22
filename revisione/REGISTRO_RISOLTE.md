@@ -6,6 +6,7 @@ Le prove ancora da fare su Discord restano in `03-verifica/VERIFICA_LIVE.md`.
 
 | Issue | Problema | Come è stato sistemato | Commit | Data |
 |---|---|---|---|---|
+| #145 | Il verdetto premium dei log avanzati restava 60 s dopo sblocco o revoca | Punto unico `core/premium_cache.invalida_cache_premium`, chiamato da whitelist, cassa, abbonamenti per modulo, codici, abbonamenti Discord, flag del modulo e pulizia dei server; test per ogni via (`tests/test_premium_invalidazione.py`) | fac29e1, 3ce8626, d933659 | 21/10 |
 | #137 | Il messaggio privato di kick/ban partiva dopo l'azione e non arrivava | Il DM parte prima di kick, ban, tempban, softban (`try_dm_message`); se non arriva lo dice nella risposta | f0e2056 | 06/10 |
 | #133 | Problemi di sicurezza del giro del 05/10 | Correzioni in anti-raid, anti-nuke, verifica (cache a versione); benvenuto privato sospeso durante un raid | f045c97 | 06/10 |
 | #135 | Scritture non sicure su clan e premium | Operazioni atomiche in `guild_clan_repo` (ordine dei blocchi membro → monete → clan) | 1bc7ab1 | 06/10 |
@@ -116,6 +117,8 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 
 ## Parziali (issue ancora aperte, voci già fatte)
 
+- #94 (NF-23, r9, ramo `feat/r9nsfw`): istanza NSFW su client separato (`NSFW_TOKEN`, `core/nsfw_bot.py`): `/nsfw cerca`, `/nsfw-admin attiva|tag-aggiungi|tag-togli|autopost|autopost-ferma|stato`, canale NSFW ricontrollato a ogni invio, lista vietata fissa e lista permessa, fonte con creatori verificati (RedGifs; niente Rule 34, D18), registro con SHA-256, «Segnala» che blocca ovunque (al massimo 10 blocchi comuni al giorno per server), D6 sulla presenza del solo bot NSFW, migrazioni 0240–0241. Manca: invito solo dopo la verifica dell'identità sul pannello (NF-20); prova live.
+- #107 (NF-36, r9, ramo `feat/r9nsfw`): iYokai App separata (`YOKAI_APP_TOKEN`, `core/user_app_bot.py`): `/promemoria crea|elenco|annulla` (DM, ripiego sul principale), `/profilo`, menu «Profilo» e «Testo pulito»; `-cerca-comando` e `-chiedi` installabili dall'utente; dove l'app non è nel server valgono come in DM e la politica dei comandi del server non si applica. Limiti in `LIMITI.md` §1.3. Restano le altre voci di SPEC B (traduci, segnalibri, note, risposte salvate, profilo iYokai).
 - #91 (pannello web, 14/10, ramo `feat/r6web`): fatti accesso con Discord, scelta del server, interruttori dei moduli, ruoli del bot, lingua, storico, pagina premium (#93) e wiki dei comandi (`/wiki`, ricerca con la stessa logica del bot); punto unico `core/config_schema.py` (D16). Restano: impostazioni interne dei moduli, editor visuali (24.5), pagine legali (24.6), pagine dell'owner (C.4), verify avanzato (C.1–C.3).
 - #129 (alert social, 14/10): fatte ALR-025, 026, 027, 028 (`/moduli alert opzioni`), 045 e 047 in parte (ruolo «in diretta», `membro`), 021 in parte (segnaposto `{game}`), 048 no. Mancano le altre (Facebook, Bluesky, podcast, filtri per gioco o titolo, pausa, sposta, controllo a mano, frequenza).
 - #130 (statistiche, 14/10): fatte con NF-25 (e486167) le viste di `/utility serverstats` (ingressi/uscite, canali, membri, ore, giorni, ruoli, canali per tipo, emoji, bottoni periodo) e la diagnosi. Restano i contatori speciali (social, gioco, ticket, orologio), retention e provenienza, esportazioni CSV, schede di inviti ed emoji, menu tasto destro.

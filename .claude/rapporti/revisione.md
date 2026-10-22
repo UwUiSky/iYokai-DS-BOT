@@ -235,3 +235,7 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 21/10 | `feat/r8tkt` | `ticket_opzioni_repo.situazione` | 7 query prima di send_modal: cache 30 s + 2 query | bassa | chiuso 21/10 (ad83893) |
 | 21/10 | `feat/r8tkt` | `tickets._crea_ticket` | Reperibile non più staff entrava nei ticket nuovi | media | chiuso 21/10 |
 | 21/10 | `feat/r8tkt` | `risposte._ruolo_secondo_ai` | L'utente può spingere l'AI a chiamare «amministratore» invece di «moderatore»: solo un ping diverso | bassa | accettato |
+| 22/10 | `feat/r9nsfw` | `core/command_policy.py:valuta_interazione` | Politica del server applicata a iYokai App dove l'app non è nel server (dal cacciatore) | bassa | chiuso 229f086 |
+| 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
+| 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
+| 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |

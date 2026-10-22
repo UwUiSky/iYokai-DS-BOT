@@ -39,19 +39,28 @@ async def conoscenza_del_server(guild_id: int | None) -> str:
     return testo[:MAX_CONOSCENZA_CARATTERI]
 
 
-async def risposta_ai_chiedi(interaction: discord.Interaction, domanda: str, comandi: list) -> tuple[str | None, list, str | None]:
+_DALL_INTERAZIONE = object()
+
+
+async def risposta_ai_chiedi(
+    interaction: discord.Interaction, domanda: str, comandi: list, guild_id: int | None | object = _DALL_INTERAZIONE
+) -> tuple[str | None, list, str | None]:
     """
     (testo, comandi citati, None) se l'AI ha risposto; (None, [], testo locale) se no.
     `comandi`: i comandi che la persona può usare (oggetti con `percorso` e `descrizione`).
+    `guild_id`: il server per conoscenza e quote; None = come in DM (app installata
+    sull'utente in un server senza il bot). Assente: quello dell'interazione.
     """
-    conoscenza = await conoscenza_del_server(interaction.guild_id)
+    if guild_id is _DALL_INTERAZIONE:
+        guild_id = interaction.guild_id
+    conoscenza = await conoscenza_del_server(guild_id)
     istruzioni = ISTRUZIONI["chiedi"] + "\n\nComandi:\n" + elenco_comandi_per_ai(comandi)
     if conoscenza:
         istruzioni += "\n\nInformazioni sul server:\n" + conoscenza
     risposta, locale = await chiedi(
         RichiestaAI(
             user_id=interaction.user.id, funzione="chiedi", tipo="chat", testo=domanda,
-            guild_id=interaction.guild_id, channel_id=interaction.channel_id,
+            guild_id=guild_id, channel_id=interaction.channel_id,
             istruzioni=istruzioni, lingua=riconosci_lingua(domanda),
         )
     )

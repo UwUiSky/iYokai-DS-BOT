@@ -49,12 +49,12 @@ class InfoApplicazione:
 
 
 def token_di_sistema(config) -> set[str]:
-    """I token del bot stesso (principale, creatore, Mod, musica, NSFW): non si possono collegare come marchio."""
+    """I token del bot stesso (principale, creatore, Mod, musica, NSFW, App): non si possono collegare come marchio."""
     return {
         t
         for t in (
             config.YOKAI_BOT_TOKEN, config.YOKAI_CREATOR_TOKEN, config.YOKAI_MOD_TOKEN, config.NSFW_TOKEN,
-            *config.MUSIC_TOKENS,
+            getattr(config, "YOKAI_APP_TOKEN", ""), *config.MUSIC_TOKENS,
         )
         if t
     }

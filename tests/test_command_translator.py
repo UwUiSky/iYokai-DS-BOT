@@ -2,15 +2,17 @@
 tests/test_command_translator.py
 ================================
 NF-06 (#77, D1): nomi e descrizioni dei comandi in inglese, controllati sull'albero VERO
-(owner compreso). Senza locales/comandi.en.json o con una voce ripetuta il test fallisce.
+(owner compreso) e sugli alberi delle istanze separate (NSFW, App). Senza locales/comandi.en.json o con una voce ripetuta il test fallisce.
 """
 
 import collections
 
+import discord
 import pytest
 from discord import app_commands
 
 from core import command_translator as tr
+from tests.support.full_tree import build_separate_trees
 from tests.test_command_tree_invariants import _albero_vero, _chiudi, _radici, _tutti_i_nodi
 
 pytestmark = pytest.mark.asyncio
@@ -36,10 +38,44 @@ async def test_ogni_comando_e_gruppo_ha_la_descrizione_inglese():
         await _chiudi(creato_qui, bot)
 
 
+async def _nodi_separati() -> list:
+    """I nodi slash degli alberi propri delle istanze separate (NSFW, App); i menu non hanno descrizione."""
+    nodi = []
+    for altro in await build_separate_trees():
+        nodi += list(_tutti_i_nodi(altro.tree.get_commands(type=discord.AppCommandType.chat_input)))
+        await altro.close()
+    return nodi
+
+
+async def test_gli_alberi_separati_sono_tradotti_con_nomi_validi():
+    nodi = await _nodi_separati()
+    assert nodi
+    assert [_percorso(n) for n in nodi if tr.descrizione_inglese(_percorso(n)) is None] == []
+    for n in nodi:
+        inglese = tr.carica_traduzioni()["nomi"].get(n.name)
+        assert inglese is None or (tr.nome_valido(inglese) and len(inglese) <= tr.MAX_NOME)
+
+
+async def test_i_menu_delle_app_separate_hanno_il_nome_inglese():
+    """I menu del tasto destro (nomi con maiuscole e spazi) si traducono dalla sezione `menu`."""
+    menu = []
+    for altro in await build_separate_trees():
+        for tipo in (discord.AppCommandType.user, discord.AppCommandType.message):
+            menu += altro.tree.get_commands(type=tipo)
+        await altro.close()
+    assert menu
+    L = app_commands.TranslationContextLocation
+    for m in menu:
+        contesto = app_commands.TranslationContext(location=L.command_name, data=m)
+        inglese = tr.tradotto_per(contesto, "en")
+        assert inglese and inglese != m.name and len(inglese) <= tr.MAX_NOME, m.name
+    assert sorted(set(tr.carica_traduzioni(forza=True)["menu"]) - {m.name for m in menu}) == []
+
+
 async def test_nessuna_voce_inglese_resta_senza_comando():
     creato_qui, bot = await _albero_vero()
     try:
-        nodi = list(_tutti_i_nodi(_radici(bot)))
+        nodi = list(_tutti_i_nodi(_radici(bot))) + await _nodi_separati()
         percorsi = {_percorso(n) for n in nodi}
         segmenti = {n.name for n in nodi}
         dati = tr.carica_traduzioni(forza=True)

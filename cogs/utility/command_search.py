@@ -1,7 +1,8 @@
 """
 cogs/utility/command_search.py
 ==================================
--cerca-comando e -chiedi (issue #147), comandi di primo livello usabili anche in DM.
+-cerca-comando e -chiedi (issue #147), comandi di primo livello usabili anche in DM e
+installabili dall'utente (NF-36, #107): dove il bot non c'è valgono come in DM.
 
 - Senza testo: pannello effimero con l'ultimo comando usato (tabella `command_usage`,
   scritta dall'evento `app_command_completion`) e i bottoni delle categorie, filtrate
@@ -29,7 +30,7 @@ from discord.ext import commands
 
 from cogs.utility._command_search_views import DatiPannello, PannelloView, RisultatiView
 from core import command_search_logic as logica
-from core.command_access import puo_usare
+from core.command_access import Livello, puo_usare
 from core.command_groups import GRUPPI, NOME_CERCA_COMANDO, NOME_CHIEDI
 from core.config import config
 from core.database import db
@@ -87,7 +88,7 @@ class CommandSearchCog(commands.Cog):
     # ------------------------------------------------------------------
     async def _ids(self, interaction: discord.Interaction, serve=()) -> dict[str, int]:
         """ID dei comandi da Discord (`fetch_commands`). Nel server dell'owner contano anche i comandi del server."""
-        guild_id = interaction.guild_id
+        guild_id = _server_del_bot(interaction)
         if guild_id is not None and guild_id == config.MAIN_GUILD_ID:
             async def fetch():
                 globali = await self.bot.tree.fetch_commands()
@@ -100,15 +101,22 @@ class CommandSearchCog(commands.Cog):
     async def _comandi_accessibili(self, interaction: discord.Interaction) -> list[logica.ComandoInfo]:
         """I comandi che l'utente può usare: livello dei gruppi e `@richiedi` di ogni comando (albero vero)."""
 
+        guild_id = _server_del_bot(interaction)
+        fuori_dal_bot = guild_id is None and interaction.guild_id is not None
+
         async def puo(livello):
+            # App installata sull'utente in un server senza il bot: là i permessi dello staff non
+            # valgono (come in DM); conta solo l'owner del bot.
+            if fuori_dal_bot and livello is not Livello.OWNER:
+                return False
             return await puo_usare(interaction, livello)
 
         visibili = await logica.filtra_per_livelli(logica.raccogli_comandi(self.bot.tree.get_commands()), puo)
-        if interaction.guild_id is None:
+        if guild_id is None:
             return visibili
 
         async def attivo(modulo: str) -> bool:
-            return await db.is_module_active_for_guild(interaction.guild_id, modulo)
+            return await db.is_module_active_for_guild(guild_id, modulo)
 
         try:
             # NF-06 (21.5): un comando il cui modulo è spento nel server non si propone.
@@ -133,7 +141,7 @@ class CommandSearchCog(commands.Cog):
     async def _mostra_pannello(self, interaction: discord.Interaction) -> None:
         # Le chiamate a database e a Discord possono superare i 3 secondi: si risponde subito.
         await interaction.response.defer(ephemeral=True)
-        guild_id = interaction.guild_id
+        guild_id = _server_del_bot(interaction)
         comandi = await self._comandi_accessibili(interaction)
         categorie, per_categoria = self._categorie(comandi)
         lingua = await lingua_interazione(interaction)
@@ -165,7 +173,7 @@ class CommandSearchCog(commands.Cog):
         query = query.strip()
         if not gia_differita:
             await interaction.response.defer(ephemeral=True)
-        in_dm = interaction.guild_id is None
+        in_dm = _server_del_bot(interaction) is None
         comandi = await self._comandi_accessibili(interaction)
         risultati = logica.cerca(query, comandi)
 
@@ -194,9 +202,11 @@ class CommandSearchCog(commands.Cog):
     # ------------------------------------------------------------------
     # Comandi
     # ------------------------------------------------------------------
-    # Comando di PRIMO livello (non in /utility); usabile anche in DM (D24, 11/10/2026).
+    # Comando di PRIMO livello (non in /utility); usabile anche in DM (D24, 11/10/2026) e installabile
+    # dall'utente (NF-36): nei server senza il bot vale come un DM.
     @app_commands.command(name=NOME_CERCA_COMANDO, description="Cerca un comando per descrizione.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno' (vuoto: pannello)")
     async def search(
         self,
@@ -220,6 +230,7 @@ class CommandSearchCog(commands.Cog):
     # `-chiedi` (primo livello): senza testo il pannello; con testo l'assistente AI o la ricerca.
     @app_commands.command(name=NOME_CHIEDI, description="Chiedi aiuto: ti mostro i comandi giusti.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.describe(domanda="Cosa vuoi fare? (vuoto: pannello dei comandi)")
     async def chiedi(
         self,
@@ -253,7 +264,7 @@ class CommandSearchCog(commands.Cog):
         from core.ai_servizio import AINonDisponibile, servizio_ai
 
         try:
-            await servizio_ai().controlla_accesso(interaction.guild_id, interaction.channel_id)
+            await servizio_ai().controlla_accesso(_server_del_bot(interaction), interaction.channel_id)
         except AINonDisponibile:
             return None
         except Exception:
@@ -261,7 +272,9 @@ class CommandSearchCog(commands.Cog):
             return None
         await interaction.response.defer(ephemeral=True)
         comandi = await self._comandi_accessibili(interaction)
-        testo, citati, _locale = await risposta_ai_chiedi(interaction, domanda, comandi)
+        testo, citati, _locale = await risposta_ai_chiedi(
+            interaction, domanda, comandi, guild_id=_server_del_bot(interaction)
+        )
         if testo is None:
             return False  # già differita: la ricerca per parole risponde con followup
         ids = await self._ids(interaction, serve={c.gruppo for c in citati})
@@ -284,9 +297,20 @@ class CommandSearchCog(commands.Cog):
         if percorso in (NOME_CERCA_COMANDO, NOME_CHIEDI):
             return
         try:
-            await self.repo.registra(interaction.guild_id, interaction.user.id, percorso)
+            await self.repo.registra(_server_del_bot(interaction), interaction.user.id, percorso)
         except Exception:
             logger.warning("Ultimo comando non salvato.", exc_info=True)
+
+
+def _server_del_bot(interaction: discord.Interaction) -> int | None:
+    """
+    Il server dove il bot è installato, o None. Con l'app installata solo sull'utente (NF-36) in un
+    server senza il bot `guild_id` c'è, ma l'interazione non è autorizzata dal server: vale come un DM
+    (niente moduli, niente staff). Un server installato ma non in cache resta un server (#147).
+    """
+    if interaction.guild_id is None or not interaction.is_guild_integration():
+        return None
+    return interaction.guild_id
 
 
 async def setup(bot: commands.Bot) -> None:

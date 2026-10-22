@@ -228,7 +228,11 @@
   "scelta": "self-roles",
   "scheda": "lookup",
   "anzianita": "seniority",
-  "auto-sincronizza": "auto-sync"
+  "auto-sincronizza": "auto-sync",
+  "tag-aggiungi": "tag-add",
+  "tag-togli": "tag-remove",
+  "autopost-ferma": "autopost-stop",
+  "promemoria": "reminders"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -842,7 +846,25 @@
   "utility scheda anzianita": "Oldest or newest accounts, first or last to join.",
   "utility scheda permessi": "Permissions of a member or the bot in a channel.",
   "gestione ruoli auto-sincronizza": "Give the automatic roles to members already in the server too.",
-  "utility reminder server": "For staff: the reminders set in this server."
+  "utility reminder server": "For staff: the reminders set in this server.",
+  "nsfw": "Adult content, only in age-restricted channels.",
+  "nsfw cerca": "Posts here a piece of content with a tag allowed by the server.",
+  "nsfw-admin": "NSFW instance settings for this server.",
+  "nsfw-admin attiva": "Turns the NSFW instance on or off in this server.",
+  "nsfw-admin tag-aggiungi": "Adds a tag to the server allowlist.",
+  "nsfw-admin tag-togli": "Removes a tag from the server allowlist.",
+  "nsfw-admin autopost": "Posts automatically in an age-restricted channel.",
+  "nsfw-admin autopost-ferma": "Stops automatic posting (empty: all of them).",
+  "nsfw-admin stato": "Shows the NSFW settings of this server.",
+  "promemoria": "Your reminders, in every server and in DMs.",
+  "promemoria crea": "I will DM you after the time you choose.",
+  "promemoria elenco": "Shows your pending reminders.",
+  "promemoria annulla": "Cancels one of your reminders.",
+  "profilo": "A user's card: name, ID, account age, avatar."
  },
- "parametri": {}
+ "parametri": {},
+ "menu": {
+  "Profilo": "Profile",
+  "Testo pulito": "Clean text"
+ }
 }

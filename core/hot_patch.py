@@ -9,7 +9,8 @@ Regole di sicurezza:
 - ogni file sostituito ha la sua copia in `data/hot_patch/<data>/`; se un cog non si ricarica si rimettono tutte
   le copie e si ricaricano i cog di prima;
 - ogni tentativo finisce nel registro (`hot_patch_log`): chi, quando, quali file, quale commit;
-- un cambio a `core/` non si carica a caldo: il bot dice che serve il riavvio.
+- un cambio a `core/` non si carica a caldo: il bot dice che serve il riavvio. Lo stesso per i cog delle
+  applicazioni separate (istanza NSFW, iYokai App): girano su un altro client, non su quello che ricarica.
 Da GitHub si prende solo un commit che sta nella storia di `main`.
 Funzioni coperte: SPEC §17.11
 Dipende da: core/repositories/hot_patch_log_repo.py, core/migrations/0134_registro_aggiornamenti.sql
@@ -36,6 +37,8 @@ import aiohttp
 logger = logging.getLogger("iyokai.hot_patch")
 
 RADICE = Path(__file__).resolve().parent.parent
+# Cog caricati dai client separati (core/nsfw_bot.py, core/user_app_bot.py): si aggiornano solo con il riavvio.
+COG_DI_ALTRI_CLIENT = ("cogs/nsfw/", "cogs/user_app/")
 CARTELLE_AMMESSE = ("cogs", "core")
 # Il file che fa l'aggiornamento non si aggiorna da solo.
 FILE_VIETATI = frozenset({"core/hot_patch.py"})
@@ -256,14 +259,16 @@ async def _applica(
 
     cartella = cartella_copie or radice / "data" / "hot_patch" / datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     copie = scrivi_con_copia(pacchetto, radice, cartella)
-    tutti = sorted(percorso_a_modulo(p) for p in pacchetto if p.startswith("cogs/"))
+    tutti = sorted(
+        percorso_a_modulo(p) for p in pacchetto if p.startswith("cogs/") and not p.startswith(COG_DI_ALTRI_CLIENT)
+    )
     # Un file di `cogs/` senza `setup` (viste, logica) non è un cog: caricarlo farebbe fallire tutto l'aggiornamento.
     appoggio = [m for m in tutti if m not in bot.extensions and not e_estensione(pacchetto[m.replace(".", "/") + ".py"])]
     for m in appoggio:
         sys.modules.pop(m, None)
         importlib.invalidate_caches()
     moduli = sorted({m for m in tutti if m not in appoggio} | {d for m in appoggio for d in _dipendenti(bot, m, set(tutti), radice)})
-    riavvio = any(p.startswith("core/") for p in pacchetto)
+    riavvio = any(p.startswith(("core/", *COG_DI_ALTRI_CLIENT)) for p in pacchetto)
     caricati_prima = {m for m in moduli if m in bot.extensions}
 
     ricaricati: list[str] = []

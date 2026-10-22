@@ -120,6 +120,17 @@ async def test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effim
     assert await pol.valuta_interazione(staff) is None
 
 
+async def test_app_installata_sull_utente_in_un_server_senza_il_bot_ignora_la_politica(db_pronto):
+    """La politica è del server per il bot installato lì: l'app sull'utente (NF-36) fuori dal server non la subisce."""
+    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
+    installata = _interazione()
+    installata.is_guild_integration = lambda: True
+    assert await pol.valuta_interazione(installata) == pol.MOTIVO_COMANDO_OFF
+    fuori = _interazione()
+    fuori.is_guild_integration = lambda: False
+    assert await pol.valuta_interazione(fuori) is None
+
+
 async def test_una_politica_rotta_non_blocca_il_bot(monkeypatch):
     async def rotta(_):
         raise RuntimeError("database giù")

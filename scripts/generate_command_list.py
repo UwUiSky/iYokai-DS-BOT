@@ -70,12 +70,21 @@ async def main() -> None:
         comandi_top_level = list(bot.tree.get_commands())
         if GRUPPI["owner"].commands:
             comandi_top_level.append(GRUPPI["owner"])
+        # Le applicazioni separate (istanza NSFW, iYokai App) hanno un albero proprio: categorie a parte.
+        from tests.support.full_tree import build_separate_trees
+
+        per_app: dict[str, str] = {}
+        for altro in await build_separate_trees():
+            for c in altro.tree.get_commands():
+                comandi_top_level.append(c)
+                per_app[c.name] = f"app:{altro.istanza}"
+            await altro.close()
 
         # La categoria è il gruppo di primo livello (D24); i comandi
         # singoli di primo livello (-cerca-comando, -chiedi) vanno in "aiuto".
         per_lingua = {"it": defaultdict(list), "en": defaultdict(list)}
         for cmd in comandi_top_level:
-            categoria = cmd.name if isinstance(cmd, app_commands.Group) else "aiuto"
+            categoria = per_app.get(cmd.name) or (cmd.name if isinstance(cmd, app_commands.Group) else "aiuto")
             for lingua in ("it", "en"):
                 per_lingua[lingua][categoria].extend(_foglie(cmd, lingua))
 
@@ -90,10 +99,13 @@ async def main() -> None:
 
 def _foglie(nodo, lingua: str, prefisso: str = "") -> list[tuple[str, str]]:
     """(percorso, descrizione) di ogni comando sotto `nodo`, in italiano (base) o in inglese (traduzione di Discord)."""
-    from core.command_translator import descrizione_inglese, nome_inglese
+    from core.command_translator import descrizione_inglese, menu_inglese, nome_inglese
 
     nome = (nome_inglese(nodo.name) or nodo.name) if lingua == "en" else nodo.name
     mostrato = f"{prefisso} {nome}".strip() if prefisso else nome
+    if isinstance(nodo, app_commands.ContextMenu):
+        mostrato = (menu_inglese(nodo.name) or nodo.name) if lingua == "en" else nodo.name
+        return [(mostrato, "Menu «App» (tasto destro)" if lingua != "en" else "“Apps” menu (right click)")]
     if isinstance(nodo, app_commands.Group):
         figli: list[tuple[str, str]] = []
         for c in nodo.commands:
@@ -126,6 +138,8 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
         "ticket": "Ticket",
         "utility": "Utility",
         "voice": "Vocali",
+        "app:nsfw": "iYokai NSFW (app separata, solo canali vietati ai minori)",
+        "app:app": "iYokai App (app separata, installata sull'utente)",
     }
 
     if lingua == "en":
@@ -135,6 +149,8 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
             "mod": "Moderation", "modban": "Bans (modban)", "moduli": "Modules", "music": "Music",
             "owner": "Owner", "security": "Security", "ticket": "Tickets", "utility": "Utility",
             "voice": "Voice", "economia": "Economy", "ruoli": "Roles",
+            "app:nsfw": "iYokai NSFW (separate app, age-restricted channels only)",
+            "app:app": "iYokai App (separate app, installed on the user)",
         }
     etichette_categoria.setdefault("economia", "Economia")
     righe = [

@@ -271,3 +271,9 @@
 | 21/10 | `autoroles.auto_sincronizza` | Task senza riferimento, senza tetto di membri, non si ferma (né con cog_unload) | bassa | corretto r8uti (revisore) |
 | 21/10 | `ruoli_strumenti.massa` | Nessun tetto orario per server (anti-nuke non vede il bot): massa togli ripetute | bassa | corretto r8uti (revisore) |
 | 21/10 | `poll.discussione` | Il bot apre il thread anche per chi non può creare thread nel canale | bassa | corretto r8uti (revisore) |
+| 21/10 | `core/nsfw_filter_logic.py` (r9nsfw) | Lista vietata aggirata: cirillico, larghezza zero, trattino morbido, tag composti (`hotteen`, `highschool`), `t-e-e-n`, `kiddo`, `nymphet`, `sixteen`, `rapist`, `cnc` | alta | corretto 644985d |
+| 21/10 | `core/nsfw_servizio.py:segnala` (r9nsfw) | Un server poteva bloccare in tutti i server senza tetto (svuotare la fonte) e riempire i DM dell'owner | media | corretto a5dc0b2 (10 blocchi globali/24h per server) |
+| 21/10 | `core/data_registry.py`, `nsfw_autopost_worker.py` (r9nsfw) | Dati NSFW mai cancellati dove c'è solo il bot NSFW; cancellati se esce il principale; autopost avanti dopo l'uscita | media | corretto c93a382 (0241 `nsfw_presenza`) |
+| 21/10 | `core/nsfw_filter_logic.py:leggi_redgifs` (r9nsfw) | `tags` non lista = TypeError fino al comando | bassa | corretto b4a0667 |
+| 21/10 | `cogs/utility/command_search.py`, `cogs/ai/helpdesk.py` (r9nsfw) | App utente in server senza bot: comandi staff da permessi di quel server, base di conoscenza e quote AI di quel server | media | corretto 9aaf9dd |
+| 21/10 | `core/blacklist_tree.py` → `valuta_interazione` (r9nsfw) | iYokai App applica la politica comandi del server (scritta per il principale) anche dove l'app non è installata | bassa | plausibile, lasciato |

@@ -19,6 +19,7 @@ def test_repr_di_config_non_contiene_nessun_segreto(monkeypatch):
     for i in range(1, 6):
         monkeypatch.setenv(f"MUSIC_TOKEN_{i}", f"segreto-music-{i}")
     monkeypatch.setenv("NSFW_TOKEN", "segreto-nsfw")
+    monkeypatch.setenv("YOKAI_APP_TOKEN", "segreto-app")
     monkeypatch.setenv("DATABASE_URL", "postgresql://utente:segreto-db@localhost/db")
     monkeypatch.setenv("LAVALINK_PASSWORD", "segreto-lavalink")
     monkeypatch.setenv("LAVALINK_NODES", "uri1|segreto-nodo-extra")
@@ -37,6 +38,7 @@ def test_repr_di_config_non_contiene_nessun_segreto(monkeypatch):
         "segreto-bot-creator",
         "segreto-music-1",
         "segreto-nsfw",
+        "segreto-app",
         "segreto-db",
         "segreto-lavalink",
         "segreto-nodo-extra",

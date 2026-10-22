@@ -534,6 +534,21 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
        esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),
        nota="un avviso allo staff, mai un ban automatico; 90 giorni; la copia non dice chi è l'altro account"),
+    # ---------------------------------------------------------------- istanza NSFW (NF-23)
+    # Le tabelle del server le cancella l'istanza NSFW 90 giorni dopo la SUA uscita (nsfw_presenza,
+    # core/nsfw_autopost_worker.py): l'uscita del bot principale non le tocca.
+    _t("nsfw_config", "Scelte del server per l'istanza NSFW (attiva, lista permessa)", colonne_attore=("attivato_da",),
+       colonna_server="guild_id", server="conserva", nota="D6 sulla presenza del bot NSFW (nsfw_presenza)"),
+    _t("nsfw_autopost", "Pubblicazione automatica NSFW per canale", colonne_attore=("creato_da",),
+       colonna_server="guild_id", server="conserva", nota="D6 sulla presenza del bot NSFW (nsfw_presenza)"),
+    _t("nsfw_registro", "Registro dei contenuti NSFW pubblicati, con l'impronta dell'immagine",
+       colonna_server="guild_id", server="conserva", scadenza=Scadenza("inviato_il", 90),
+       nota="nessuna persona; 90 giorni; D6 sulla presenza del bot NSFW"),
+    _t("nsfw_presenza", "Quando il bot NSFW è uscito da ogni server", colonna_server="guild_id", server="conserva",
+       nota="nessuna persona; la riga si toglie con la cancellazione dei dati NSFW del server"),
+    _t("nsfw_bloccati", "Contenuti NSFW bloccati in tutti i server (impronta e id della fonte)",
+       colonne_attore=("segnalato_da",), colonna_server="guild_id", server="conserva",
+       nota="blocco di sicurezza comune: resta anche quando il server se ne va"),
 )
 # fmt: on
 
