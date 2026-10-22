@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:34 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 10:26 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 526 commands in 25 categories.**
 
@@ -109,8 +109,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-21 08:3
 
 ## iYokai App (separate app, installed on the user)
 
-- **`/Profilo`** — “Apps” menu (right click)
-- **`/Testo pulito`** — “Apps” menu (right click)
+- **`/Clean text`** — “Apps” menu (right click)
+- **`/Profile`** — “Apps” menu (right click)
 - **`/profile`** — A user's card: name, ID, account age, avatar.
 - **`/reminders cancel`** — Cancels one of your reminders.
 - **`/reminders create`** — I will DM you after the time you choose.

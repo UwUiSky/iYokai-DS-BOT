@@ -99,11 +99,12 @@ async def main() -> None:
 
 def _foglie(nodo, lingua: str, prefisso: str = "") -> list[tuple[str, str]]:
     """(percorso, descrizione) di ogni comando sotto `nodo`, in italiano (base) o in inglese (traduzione di Discord)."""
-    from core.command_translator import descrizione_inglese, nome_inglese
+    from core.command_translator import descrizione_inglese, menu_inglese, nome_inglese
 
     nome = (nome_inglese(nodo.name) or nodo.name) if lingua == "en" else nodo.name
     mostrato = f"{prefisso} {nome}".strip() if prefisso else nome
     if isinstance(nodo, app_commands.ContextMenu):
+        mostrato = (menu_inglese(nodo.name) or nodo.name) if lingua == "en" else nodo.name
         return [(mostrato, "Menu «App» (tasto destro)" if lingua != "en" else "“Apps” menu (right click)")]
     if isinstance(nodo, app_commands.Group):
         figli: list[tuple[str, str]] = []

@@ -833,5 +833,9 @@
   "promemoria annulla": "Cancels one of your reminders.",
   "profilo": "A user's card: name, ID, account age, avatar."
  },
- "parametri": {}
+ "parametri": {},
+ "menu": {
+  "Profilo": "Profile",
+  "Testo pulito": "Clean text"
+ }
 }

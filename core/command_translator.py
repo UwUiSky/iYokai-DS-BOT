@@ -10,7 +10,8 @@ Come funziona
   `TraduttoreYokai` risponde dal file `locales/comandi.en.json`:
     * `nomi`: segmento italiano -> segmento inglese (vale in tutto l'albero);
     * `descrizioni`: percorso del comando ("modban tempban") -> descrizione;
-    * `parametri`: "percorso:parametro" -> descrizione dell'opzione.
+    * `parametri`: "percorso:parametro" -> descrizione dell'opzione;
+    * `menu`: nome di un menu del tasto destro ("Testo pulito") -> nome inglese (maiuscole e spazi ammessi).
 - Per ogni altra lingua (italiano compreso) risponde None: Discord usa la base.
 - Un nome tradotto non valido per Discord (maiuscole, spazi, oltre 32 caratteri) o una
   descrizione oltre 100 caratteri si scartano: meglio la base che far fallire la sync.
@@ -47,7 +48,7 @@ _dati: dict[str, dict[str, str]] = {}
 
 
 def carica_traduzioni(forza: bool = False) -> dict[str, dict[str, str]]:
-    """{'nomi': {...}, 'descrizioni': {...}, 'parametri': {...}}; file mancante o rotto = tutto vuoto."""
+    """{'nomi': {...}, 'descrizioni': {...}, 'parametri': {...}, 'menu': {...}}; file mancante o rotto = tutto vuoto."""
     if _dati and not forza:
         return _dati
     _dati.clear()
@@ -56,7 +57,7 @@ def carica_traduzioni(forza: bool = False) -> dict[str, dict[str, str]]:
         grezzo = json.loads((pathlib.Path(CARTELLA_LOCALES) / FILE_COMANDI_EN).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         logger.error("Traduzioni dei comandi illeggibili: %s", FILE_COMANDI_EN)
-    for sezione in ("nomi", "descrizioni", "parametri"):
+    for sezione in ("nomi", "descrizioni", "parametri", "menu"):
         voce = grezzo.get(sezione)
         _dati[sezione] = (
             {k: v for k, v in voce.items() if isinstance(k, str) and isinstance(v, str)}
@@ -74,6 +75,12 @@ def nome_inglese(segmento: str) -> str | None:
     """Il segmento inglese di un nome italiano, o None se non c'è (o non è valido)."""
     tradotto = carica_traduzioni()["nomi"].get(segmento)
     return tradotto if tradotto and nome_valido(tradotto) else None
+
+
+def menu_inglese(nome: str) -> str | None:
+    """Il nome inglese di un menu del tasto destro (fino a 32 caratteri), o None."""
+    tradotto = carica_traduzioni()["menu"].get(nome)
+    return tradotto if tradotto and len(tradotto) <= MAX_NOME and tradotto.strip() == tradotto else None
 
 
 def descrizione_inglese(percorso: str) -> str | None:
@@ -111,6 +118,8 @@ def tradotto_per(contesto: Any, lingua: str) -> str | None:
     posizione = contesto.location
     dato = contesto.data
     L = app_commands.TranslationContextLocation
+    if posizione is L.command_name and isinstance(dato, app_commands.ContextMenu):
+        return menu_inglese(dato.name)
     if posizione in (L.command_name, L.group_name):
         return nome_inglese(dato.name)
     if posizione in (L.command_description, L.group_description):

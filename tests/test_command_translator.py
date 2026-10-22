@@ -56,6 +56,22 @@ async def test_gli_alberi_separati_sono_tradotti_con_nomi_validi():
         assert inglese is None or (tr.nome_valido(inglese) and len(inglese) <= tr.MAX_NOME)
 
 
+async def test_i_menu_delle_app_separate_hanno_il_nome_inglese():
+    """I menu del tasto destro (nomi con maiuscole e spazi) si traducono dalla sezione `menu`."""
+    menu = []
+    for altro in await build_separate_trees():
+        for tipo in (discord.AppCommandType.user, discord.AppCommandType.message):
+            menu += altro.tree.get_commands(type=tipo)
+        await altro.close()
+    assert menu
+    L = app_commands.TranslationContextLocation
+    for m in menu:
+        contesto = app_commands.TranslationContext(location=L.command_name, data=m)
+        inglese = tr.tradotto_per(contesto, "en")
+        assert inglese and inglese != m.name and len(inglese) <= tr.MAX_NOME, m.name
+    assert sorted(set(tr.carica_traduzioni(forza=True)["menu"]) - {m.name for m in menu}) == []
+
+
 async def test_nessuna_voce_inglese_resta_senza_comando():
     creato_qui, bot = await _albero_vero()
     try:
