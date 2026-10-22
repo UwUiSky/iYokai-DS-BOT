@@ -1114,4 +1114,6 @@ Serve: due applicazioni nuove nel Developer Portal (iYokai NSFW e iYokai App), i
   con grassetto e un link con `?utm_source=…` → «Testo pulito»: testo senza formattazione e senza `utm_`.
 - [ ] `NF-36` principale — nel Portal del bot principale attiva anche «User Install». Installa iYokai sul tuo account;
   in un server senza il bot `-cerca-comando` e `-chiedi` funzionano come in DM (solo comandi per tutti).
+- [ ] `NF-36` politica — in un server con il bot principale ma senza iYokai App, `/utility politica` limita i comandi a un altro canale: `/promemoria elenco` dell'app installata sull'utente risponde lo stesso.
+- [ ] `NF-36` inglese — con Discord in inglese il menu «App» mostra «Profile» e «Clean text».
 - [ ] `NF-36` risposte pubbliche — in un server dove non hai «Usa app esterne» le risposte restano private.
