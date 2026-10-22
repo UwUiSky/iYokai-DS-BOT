@@ -229,3 +229,7 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 21/10 | `feat/r8uti` | `poll.discussione` | Thread aperto per chi non può creare thread (dal cacciatore) | bassa | chiuso 21/10 |
 | 21/10 | `feat/r8uti` | `schede.canale`/`permessi` | Nessun controllo che chi chiede veda il canale scelto (argomento di un canale privato). Da verificare se Discord lo impedisce già | bassa | aperto |
 | 21/10 | `feat/r8uti` | `scripts/generate_command_list.py` | Categoria «Ruoli» non tradotta nell'elenco inglese | bassa | chiuso 21/10 |
+| 22/10 | `feat/r9nsfw` | `core/command_policy.py:valuta_interazione` | Politica del server applicata a iYokai App dove l'app non è nel server (dal cacciatore) | bassa | chiuso 229f086 |
+| 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
+| 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
+| 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
