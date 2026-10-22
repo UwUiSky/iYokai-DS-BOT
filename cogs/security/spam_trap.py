@@ -71,11 +71,11 @@ from core.image_thumbnail_logic import (
 from core.safe_image import run_spam_trap_image_task
 from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry, requires_module
-from core.repositories.moderation_repo import moderation_repo
+from core.repositories.moderation_repo import ModerationCase, moderation_repo
 from core.repositories.spam_trap_repo import spam_trap_repo
 from core.security_access import SETTING_STAFF_ROLES, is_staff_exempt, premium_sbloccato
 from core.permissions import can_moderate
-from cogs.moderation._shared import actor_from_member, delete_dm, try_dm_message
+from cogs.moderation._shared import actor_from_member, delete_dm, motivo_immune, try_dm_message
 from core.spam_trap_logic import (
     BAN_ACTION_TYPE,
     KICK_ACTION_TYPE,
@@ -265,6 +265,11 @@ _BOTTONI_STAFF = {
     "kick": ("Kick", discord.ButtonStyle.secondary, "kick_members"),
 }
 MOTIVO_STAFF = "Spam trap: decisione dello staff"
+# Decisioni in corso (server, utente): due moderatori che premono insieme
+# non fanno due azioni e due casi.
+_DECISIONI_IN_CORSO: set[tuple[int, int]] = set()
+# Azioni che chiudono già il caso della trappola, se arrivano dopo l'avviso.
+_AZIONI_CHE_CHIUDONO = ("ban", "kick", "tempban", "softban", BAN_ACTION_TYPE)
 
 
 class StaffDecisionButton(discord.ui.DynamicItem[discord.ui.Button], template=MODELLO_ID_STAFF):
@@ -308,20 +313,62 @@ class StaffDecisionView(BaseView):
     async def decidi(self, interaction: discord.Interaction, azione: str) -> None:
         guild = interaction.guild
         permesso = _BOTTONI_STAFF[azione][2]
-        if not isinstance(interaction.user, discord.Member) or not getattr(
-            interaction.user.guild_permissions, permesso
+        if (
+            guild is None
+            or guild.id != self.guild_id
+            or not isinstance(interaction.user, discord.Member)
+            or not getattr(interaction.user.guild_permissions, permesso)
         ):
             await interaction.response.send_message(
                 "Non hai il permesso per questa azione.", ephemeral=True
             )
             return
+        chiave = (self.guild_id, self.user_id)
+        if chiave in _DECISIONI_IN_CORSO:
+            await interaction.response.send_message(
+                "Un altro moderatore sta già decidendo per questo utente.", ephemeral=True
+            )
+            return
+        _DECISIONI_IN_CORSO.add(chiave)
+        try:
+            await self._decidi(interaction, guild, azione)
+        finally:
+            _DECISIONI_IN_CORSO.discard(chiave)
+
+    async def _gia_deciso(self, interaction: discord.Interaction) -> ModerationCase | None:
+        """Un ban o kick arrivato dopo l'avviso (da questi bottoni o a mano): il caso è chiuso."""
+        avviso = getattr(interaction.message, "created_at", None)
+        if not isinstance(avviso, datetime):
+            return None
+        for caso in await moderation_repo.list_cases_for_user(self.guild_id, self.user_id, limit=25):
+            if caso.action_type in _AZIONI_CHE_CHIUDONO and caso.created_at >= avviso:
+                return caso
+        return None
+
+    async def _decidi(self, interaction: discord.Interaction, guild: discord.Guild, azione: str) -> None:
         await interaction.response.defer()
+        deciso = await self._gia_deciso(interaction)
+        if deciso is not None:
+            await interaction.followup.send(
+                f"Già deciso: **{deciso.action_type}** (caso #{deciso.case_number}).", ephemeral=True
+            )
+            try:
+                await interaction.edit_original_response(
+                    view=StaffDecisionView(self.guild_id, self.user_id, disabled=True)
+                )
+            except discord.HTTPException:
+                pass
+            return
         membro = guild.get_member(self.user_id)
         if membro is not None:
             consentito, motivo = can_moderate(
                 actor_from_member(interaction.user), actor_from_member(membro),
                 bot_top_role_position=guild.me.top_role.position,
             )
+            if consentito:
+                # MOD-068: anche questa è moderazione a mano.
+                motivo = await motivo_immune(guild, interaction.user, membro)
+                consentito = motivo is None
             if not consentito:
                 await interaction.followup.send(motivo, ephemeral=True)
                 return

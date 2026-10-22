@@ -118,3 +118,73 @@ async def test_il_bottone_si_ricostruisce_dal_custom_id():
     match = re.fullmatch(MODELLO_ID_STAFF, f"spamtrap_staff:kick:{GUILD_ID}:{UTENTE_ID}")
     bottone = await StaffDecisionButton.from_custom_id(MagicMock(), MagicMock(), match)
     assert (bottone.azione, bottone.guild_id, bottone.user_id) == ("kick", GUILD_ID, UTENTE_ID)
+
+
+def _prepara_bottoni(scenario):
+    scenario.server.me.top_role = fake_role(role_id=3, position=50)
+    scenario.server.get_member.side_effect = {UTENTE_ID: scenario.utente}.get
+    scenario.utente.top_role = fake_role(role_id=4, position=1)
+
+
+def _capo(scenario, uid=8):
+    capo = fake_member(
+        uid, roles=[fake_role(role_id=6, position=40)],
+        guild_permissions=discord.Permissions(ban_members=True, kick_members=True),
+    )
+    capo.guild = scenario.server
+    interazione = fake_interaction(guild=scenario.server, user=capo)
+    interazione.message = MagicMock(created_at=discord.utils.utcnow() - __import__("datetime").timedelta(minutes=5))
+    return interazione
+
+
+async def test_bottone_staff_dopo_la_decisione_non_rifa_l_azione(scenario):
+    """Il secondo clic (altro moderatore, o lo stesso dopo un'edit fallita) non banna/espelle di nuovo."""
+    await _con_punizione(scenario, "staff")
+    _prepara_bottoni(scenario)
+    await StaffDecisionView(GUILD_ID, UTENTE_ID).decidi(_capo(scenario), "kick")
+    secondo = _capo(scenario, uid=9)
+    await StaffDecisionView(GUILD_ID, UTENTE_ID).decidi(secondo, "ban")
+
+    scenario.utente.kick.assert_awaited_once()
+    scenario.server.ban.assert_not_awaited()
+    assert await _tipi() == ["kick"]
+    assert "Già deciso" in secondo.followup.send.call_args.args[0]
+
+
+async def test_bottone_staff_due_clic_insieme_una_sola_azione(scenario):
+    import asyncio
+
+    await _con_punizione(scenario, "staff")
+    _prepara_bottoni(scenario)
+    via = asyncio.Event()
+
+    async def _ban_lento(*a, **k):
+        await via.wait()
+
+    scenario.utente.ban = AsyncMock(side_effect=_ban_lento)
+    scenario.server.ban = AsyncMock(side_effect=_ban_lento)
+    primo = asyncio.ensure_future(StaffDecisionView(GUILD_ID, UTENTE_ID).decidi(_capo(scenario), "ban"))
+    for _ in range(20):
+        await asyncio.sleep(0)
+    secondo = asyncio.ensure_future(StaffDecisionView(GUILD_ID, UTENTE_ID).decidi(_capo(scenario, uid=9), "ban"))
+    for _ in range(20):
+        await asyncio.sleep(0)
+    via.set()
+    await asyncio.wait_for(asyncio.gather(primo, secondo), 10)
+    assert await _tipi() == ["ban"]
+
+
+async def test_bottone_staff_rispetta_i_ruoli_immuni(scenario):
+    from core import moderation_opzioni
+
+    await _con_punizione(scenario, "staff")
+    _prepara_bottoni(scenario)
+    immune = fake_role(role_id=77, position=1)
+    scenario.utente.roles = [immune]
+    await moderation_opzioni.cambia_ruolo_immune(GUILD_ID, 77, True, 1)
+    interazione = _capo(scenario)
+    await StaffDecisionView(GUILD_ID, UTENTE_ID).decidi(interazione, "kick")
+
+    scenario.utente.kick.assert_not_awaited()
+    assert await _tipi() == []
+    assert "immune" in interazione.followup.send.call_args.args[0]
