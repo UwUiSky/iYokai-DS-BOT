@@ -49,6 +49,11 @@ async def _log(interaction: discord.Interaction, embed: discord.Embed) -> None:
     await post_to_mod_log(interaction.guild, copia)
 
 
+def _permesso_sbloccato(prima: bool | None) -> bool | None:
+    """Il permesso di scrivere dopo uno sblocco: «sì» se c'era, altrimenti ereditato."""
+    return True if prima is True else None
+
+
 async def _sblocco_in_attesa(guild_id: int, channel_id: int) -> dict | None:
     """Lo sblocco pianificato di questo canale, se c'è."""
     for azione in await scheduler.list_pending_for_guild(guild_id, SCHEDULED_CHANNEL_UNLOCK, 100):
@@ -75,7 +80,9 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         overwrite = canale.overwrites_for(everyone)
         if overwrite.send_messages is not False:
             return
-        overwrite.send_messages = payload.get("prima")
+        # Come unlock: un «no» di prima (lock senza durata, poi lock a tempo)
+        # non si rimette, se no il canale resterebbe bloccato.
+        overwrite.send_messages = _permesso_sbloccato(payload.get("prima"))
         await canale.set_permissions(everyone, overwrite=overwrite, reason="Fine del lock a tempo")
         embed = discord.Embed(
             title="🔓 Canale sbloccato",
@@ -199,7 +206,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         # Un «no» esplicito di prima non si rimette: unlock deve sbloccare.
         attesa = await _sblocco_in_attesa(interaction.guild.id, target.id)
         prima = attesa["payload"].get("prima") if attesa else None
-        overwrite.send_messages = True if prima is True else None
+        overwrite.send_messages = _permesso_sbloccato(prima)
 
         try:
             await target.set_permissions(

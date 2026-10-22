@@ -144,3 +144,14 @@ async def test_unlock_sblocca_anche_se_prima_del_lock_a_tempo_era_gia_chiuso():
     await cog.unlock.callback(cog, interazione, canale)
     assert permessi.send_messages is None
     assert await _attese() == []
+
+
+async def test_lock_senza_durata_poi_lock_a_tempo_alla_scadenza_si_sblocca():
+    """Lock fisso, poi lock a tempo (prima=False): alla scadenza il canale si riapre."""
+    server, canale, permessi, interazione = _scena(prima=None)
+    cog = _cog(server)
+    await cog.lock.callback(cog, interazione, canale, None, None)
+    await cog.lock.callback(cog, interazione, canale, None, "1h")
+    [attesa] = await _attese()
+    await cog.handle_unlock(SERVER, CANALE, attesa["payload"])
+    assert permessi.send_messages is None

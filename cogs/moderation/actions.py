@@ -24,7 +24,8 @@ vede un solo canale). Lo stato (ruoli veri) si salva prima dell'azione; ogni nuo
 caso cancella la scadenza del precedente. Funzioni coperte anche: SPEC §5.11, §5.12, parte E (D15: scadenze via iYokai Mod).
 
 Un warn dato a mano sale la scala di escalation, se il server l'ha
-scelto (M 1.10).
+scelto (M 1.10), solo con azioni che il moderatore potrebbe fare da sé;
+dai warn in massa non partono mai kick e ban (D29).
 
 Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
 server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
@@ -225,7 +226,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await try_dm(member, embed, azione="warn", guild_id=interaction.guild.id)
         await post_to_mod_log(interaction.guild, embed)
         # M 1.10: se il server l'ha scelto, il warn sale la scala di escalation.
-        esito_scala = await scala_per_warn_manuale(self.bot, member, case_number)
+        esito_scala = await scala_per_warn_manuale(self.bot, member, case_number, moderatore=interaction.user)
         if esito_scala:
             await interaction.followup.send(esito_scala, ephemeral=True)
 
@@ -1267,7 +1268,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero),
                 azione="warn", guild_id=guild.id,
             )
-            esito_scala = await scala_per_warn_manuale(self.bot, membro, numero)
+            esito_scala = await scala_per_warn_manuale(
+                self.bot, membro, numero, moderatore=guild.get_member(interaction.user.id), in_massa=True
+            )
             fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}" + (f" — {esito_scala}" if esito_scala else ""))
         await self._chiudi_massa(interaction, "⚠️ Warn in massa", discord.Color.yellow(), reason, fatti, saltati)
 

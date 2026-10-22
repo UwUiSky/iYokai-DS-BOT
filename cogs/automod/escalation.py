@@ -10,7 +10,10 @@ una regola, invece della stessa identica azione ogni volta (quello
 che l'AutoMod nativo farebbe da solo).
 
 Se il server lo sceglie, anche un warn dato a mano conta
-un'infrazione (M 1.10, `scala_per_warn_manuale`).
+un'infrazione (M 1.10, `scala_per_warn_manuale`). In quel caso la scala fa
+solo ciò che il moderatore potrebbe fare da sé (permessi e gerarchia), e
+dai warn in massa non partono mai kick e ban (D29). Un gradino di timeout
+non accorcia mai un timeout più lungo già in corso.
 
 Un messaggio conta una sola infrazione anche se la regola ha più
 azioni (Discord manda un evento per azione). Il conteggio è una sola
@@ -41,6 +44,8 @@ from core.escalation_ladder_logic import get_ladder_action
 from core.repositories.escalation_repo import escalation_repo
 from core.repositories.moderation_repo import moderation_repo
 from cogs.automod.automod import MODULE_AUTOMOD
+from cogs.moderation._shared import actor_from_member
+from core.permissions import can_moderate
 
 logger = logging.getLogger("iyokai.automod.escalation")
 
@@ -57,6 +62,32 @@ MAX_MOTIVO = 512
 
 def _adesso() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# D29: il permesso di Discord che serve al moderatore per ogni gradino.
+_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members"}
+
+
+def _timeout_piu_lungo_in_corso(member: discord.Member, step) -> bool:
+    """True se il gradino è un timeout e quello già in corso finisce dopo."""
+    if step.action_type != "timeout":
+        return False
+    fine = getattr(member, "timed_out_until", None)
+    if not isinstance(fine, datetime):
+        return False
+    return fine >= _adesso() + timedelta(seconds=step.duration_seconds or 600)
+
+
+def _motivo_non_permesso(moderatore: discord.Member, member: discord.Member, step) -> str | None:
+    """D29: il gradino parte solo se il moderatore del warn potrebbe farlo da sé."""
+    if moderatore.id != member.guild.owner_id:
+        if not getattr(moderatore.guild_permissions, _PERMESSO_GRADINO[step.action_type]):
+            return "non hai il permesso di Discord per farlo"
+    consentito, motivo = can_moderate(
+        actor_from_member(moderatore), actor_from_member(member),
+        bot_top_role_position=member.guild.me.top_role.position,
+    )
+    return None if consentito else motivo.rstrip(".").lower()
 
 
 async def _applica_passo(
@@ -101,12 +132,21 @@ async def _applica_passo(
     return case_number
 
 
-async def scala_per_warn_manuale(bot: commands.Bot, member: discord.Member, caso_warn: int) -> str | None:
+async def scala_per_warn_manuale(
+    bot: commands.Bot,
+    member: discord.Member,
+    caso_warn: int,
+    *,
+    moderatore: discord.Member,
+    in_massa: bool = False,
+) -> str | None:
     """
     M 1.10: un warn dato a mano conta un'infrazione, se il server l'ha
     scelto (`/security escalation enable warn_manuali:`). Restituisce cosa
     ha fatto la scala, da dire al moderatore, o None. Il gradino «warn»
     non aggiunge un secondo warn: l'utente l'ha appena ricevuto.
+    D29: il gradino parte solo se `moderatore` potrebbe farlo da sé; con
+    `in_massa` kick e ban non partono mai. L'infrazione resta contata.
     """
     if member.bot:
         return None
@@ -119,11 +159,19 @@ async def scala_per_warn_manuale(bot: commands.Bot, member: discord.Member, caso
     step = get_ladder_action(conteggio, config.ladder)
     if step is None or step.action_type == "warn":
         return None
+    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    richiesta = f"La scala chiedeva **{azione}** (infrazione #{conteggio}), ma"
+    if in_massa and step.action_type in ("kick", "ban"):
+        return f"{richiesta} dai warn in massa kick e ban non partono: decidi tu."
+    non_permesso = _motivo_non_permesso(moderatore, member, step)
+    if non_permesso:
+        return f"{richiesta} non l'ho applicato: {non_permesso}."
+    if _timeout_piu_lungo_in_corso(member, step):
+        return f"{richiesta} c'è già un timeout più lungo: resta quello."
     reason = f"Scala dei warn — infrazione #{conteggio} (warn manuale, caso #{caso_warn})"[:MAX_MOTIVO]
     caso = await _applica_passo(bot, member.guild.id, member, step, reason)
-    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
     if caso is None:
-        return f"La scala chiedeva **{azione}** (infrazione #{conteggio}), ma non ci sono riuscito: controlla i miei permessi."
+        return f"{richiesta} non ci sono riuscito: controlla i miei permessi."
     return f"La scala ha applicato **{azione}** (infrazione #{conteggio}, caso #{caso})."
 
 
@@ -183,6 +231,8 @@ class EscalationCog(CogConGruppi, commands.Cog):
             f"AutoMod Escalation — infrazione #{nuovo_conteggio} "
             f"(regola: {execution.matched_keyword or 'trigger AutoMod'})"
         )[:MAX_MOTIVO]
+        if _timeout_piu_lungo_in_corso(member, step):
+            return  # non si accorcia un timeout più lungo già in corso
         await _applica_passo(self.bot, execution.guild_id, member, step, reason)
 
     # ================================================================
