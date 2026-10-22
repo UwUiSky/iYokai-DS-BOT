@@ -55,36 +55,36 @@ Numeri calcolati contando i simboli nel file (non a occhio).
 |---|---|---|---|---|
 | §1 CORE SYSTEM | 14 | 5 | 0 | 1 |
 | §2 SETUP & DASHBOARD | 6 | 1 | 1 | 0 |
-| §3 PREMIUM SYSTEM | 9 | 2 | 0 | 0 |
-| §4 VERIFY + FINGERPRINT + ANTI-ALT | 7 | 3 | 9 | 0 |
-| §5 MODERATION | 0 | 12 | 2 | 0 |
-| §6 AUTOMOD | 5 | 10 | 0 | 0 |
+| §3 PREMIUM SYSTEM | 10 | 2 | 0 | 0 |
+| §4 VERIFY + FINGERPRINT + ANTI-ALT | 14 | 5 | 1 | 0 |
+| §5 MODERATION | 3 | 12 | 0 | 0 |
+| §6 AUTOMOD | 7 | 10 | 0 | 0 |
 | §7 SECURITY SUITE | 6 | 27 | 1 | 0 |
-| §8 LOGGING | 11 | 7 | 1 | 0 |
-| §9 MUSIC | 1 | 8 | 5 | 3 |
+| §8 LOGGING | 14 | 6 | 0 | 0 |
+| §9 MUSIC | 7 | 7 | 0 | 3 |
 | §10 ALERTS & SOCIAL | 0 | 7 | 3 | 0 |
 | §11 BACKUP SYSTEM | 2 | 14 | 1 | 0 |
 | §12 TEMPORARY VOICE CHANNELS | 5 | 3 | 0 | 0 |
-| §13 TICKET SYSTEM | 5 | 8 | 0 | 0 |
-| §14 UTILITY & SERVER MANAGEMENT | 2 | 13 | 4 | 0 |
-| §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE | 14 | 20 | 0 | 0 |
-| §16 FUN & IMMAGINI | 6 | 2 | 7 | 0 |
-| §17 OWNER / GLOBAL ADMIN | 8 | 3 | 0 | 0 |
-| §18 ROUTER DEI CANALI E LOG SU FORUM | 0 | 0 | 7 | 0 |
-| §19 DATI, PRIVACY E GDPR | 0 | 0 | 9 | 0 |
-| §20 NUOVA STRUTTURA DEI COMANDI | 0 | 0 | 7 | 0 |
-| §21 LINGUE E RICERCA DEI COMANDI | 0 | 0 | 6 | 0 |
-| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 3 | 0 | 14 | 0 |
-| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 2 | 1 | 14 | 0 |
+| §13 TICKET SYSTEM | 18 | 2 | 0 | 0 |
+| §14 UTILITY & SERVER MANAGEMENT | 7 | 12 | 2 | 0 |
+| §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE | 15 | 20 | 0 | 0 |
+| §16 FUN & IMMAGINI | 12 | 3 | 2 | 0 |
+| §17 OWNER / GLOBAL ADMIN | 9 | 2 | 0 | 0 |
+| §18 ROUTER DEI CANALI E LOG SU FORUM | 4 | 2 | 1 | 0 |
+| §19 DATI, PRIVACY E GDPR | 6 | 0 | 3 | 0 |
+| §20 NUOVA STRUTTURA DEI COMANDI | 8 | 0 | 0 | 0 |
+| §21 LINGUE E RICERCA DEI COMANDI | 4 | 1 | 1 | 0 |
+| §22 FUNZIONI NUOVE, PRIMO GRUPPO | 15 | 0 | 2 | 0 |
+| §23 FUNZIONI NUOVE, SECONDO GRUPPO | 12 | 2 | 3 | 0 |
 | §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER | 0 | 5 | 2 | 0 |
-| §25 MOTORE AI | 45 | 15 | 45 | 0 |
-| B iYOKAI APPLICATION (installabile dall'utente) | 0 | 0 | 10 | 0 |
+| §25 MOTORE AI | 46 | 14 | 45 | 0 |
+| B iYOKAI APPLICATION (user-installable) | 1 | 2 | 7 | 0 |
 | C WEB PANEL (iYokai Panel) | 0 | 0 | 5 | 0 |
 | D iYOKAI DESKTOP | 0 | 0 | 11 | 2 |
-| E APPLICAZIONI DEL PROGETTO | 0 | 4 | 4 | 0 |
-| **Totale** | **144** | **160** | **184** | **6** |
+| E APPLICAZIONI DEL PROGETTO | 0 | 6 | 2 | 0 |
+| **Totale** | **245** | **170** | **93** | **6** |
 
-Totale voci: **494**.
+Totale voci: **514**.
 
 ---
 
@@ -1843,19 +1843,19 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[ ]` 19.9 Token dei webhook salvati come hash; chiave dei token
   OAuth ruotabile (SEC-16, LIM-52)
 
-## §20 NUOVA STRUTTURA DEI COMANDI — da fare (fase F7)
+## §20 NUOVA STRUTTURA DEI COMANDI — fatto (fase F7, D24/D25)
 
-- `[ ]` 20.1 13 gruppi: `/owner /admin /mod /modban /security /log
+- `[x]` 20.1 13 gruppi: `/owner /admin /mod /modban /security /log
   /ticket /voice /music /level /clan /fun /utility` (NF-05, D2)
-- `[ ]` 20.2 Ogni gruppo dello staff ha i suoi permessi predefiniti:
+- `[x]` 20.2 Ogni gruppo dello staff ha i suoi permessi predefiniti:
   chi non può usare un comando non lo vede (SEC-1)
-- `[ ]` 20.3 Ogni gruppo funziona solo dentro un server (LC-2)
-- `[ ]` 20.4 `/owner` registrato solo nel server dell'owner
-- `[ ]` 20.5 Nessuna compatibilità con i vecchi nomi (D4)
-- `[ ]` 20.6 Al massimo 25 figli per gruppo e un livello di
+- `[x]` 20.3 Ogni gruppo funziona solo dentro un server (LC-2)
+- `[x]` 20.4 `/owner` registrato solo nel server dell'owner
+- `[x]` 20.5 Nessuna compatibilità con i vecchi nomi (D4)
+- `[x]` 20.6 Al massimo 25 figli per gruppo e un livello di
   sotto-gruppi, controllati da un test (LIM-57)
-- `[ ]` 20.7 `COMMAND_LIST.md` rigenerato dall'albero vero
-- `[~]` 20.8 Gruppi nascosti dalla lista a chi non li può usare, per ruolo scelto dall'admin (#148, OAuth2)
+- `[x]` 20.7 `COMMAND_LIST.md` rigenerato dall'albero vero
+- `[x]` 20.8 Gruppi nascosti dalla lista a chi non li può usare, per ruolo scelto dall'admin (#148, OAuth2)
   → **Stato 12/10:** `core/command_permissions.py`: state firmato di **5 minuti** e **monouso**
   (`consuma_state`/`rilascia_state`), link con scope `applications.commands.permissions.update identify`,
   fusione con le regole già impostate dall'admin (una regola «nega» sul ruolo scelto diventa «consenti»),
