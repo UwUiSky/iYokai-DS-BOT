@@ -1,20 +1,19 @@
 # Memoria di dev-backup
 
 ## Aggiornata
-15/10/2026 · ramo `feat/r7bak` · base `e935178` · DB `iyokai_wr7bak` · migrazioni 0190–0192 usate (0193–0199 libere)
+27/10/2026 · ramo `feat/r10bak` · DB `iyokai_wr10bak` · migrazioni 0190–0192 e 0320 usate (0321–0329 libere)
 
 ## In corso
-Giro r7 chiuso: 6 voci su 6 previste, più 12.16. Niente a metà. Prossimo giro, in quest'ordine:
-1. SPEC 11.17: aggiornamento continuo del server di backup (differenze periodiche di ruoli, canali, permessi; D8).
-2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r7 (sincronia, caricamento in sottofondo).
+Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in quest'ordine:
+1. Prove su Discord (VERIFICA_LIVE «Backup — giro r10» e «giro r7»).
+2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r10.
 
 ## Fatto
-- r7 (15/10): `/backup` gruppo di primo livello (D25 quarto caso) + 12.12/12.14 consenso a fine verifica (1945d35, 0190);
-  copie datate, carica con menu delle parti, stato/annullo, esporta/importa, modelli, permessi, registro (8b63130, 0191);
-  sincronia ban/ruoli (001a4cb, 0192); copia-canale/ruolo (778ef1b); chat salvate, allegati come file, fissati (3f6f7d5);
-  messaggi nella copia datata + registro di tutti i comandi (4310aa8); 12.16 invito rifiutato (1b7db69).
-- Fino al 13/10: #68 12.1–12.11, 12.13, 12.15 (collegamento con codice, clonazione da modello, Creator senza create_guild,
-  rinnovo token, 429, chiave ruotabile), copia messaggi D8, correzioni del cacciatore-bug e del revisore-capo.
+- r10 (27/10): espressioni senza doppioni, permesso, tetto suoni per boost (11.5-7); forum+stage, riuso sui campi diversi,
+  spostamento di categoria (11.4); aggiornamento ogni 6 ore in `backup_queue_worker`, 0320 (11.17); mirror con coda per
+  canale e file (11.9); promuovi al livello di carica e mirror tolto (11.13); webhook con immagine (11.8).
+- r7 (15/10): `/backup` gruppo (D25), copie datate, sincronia, chat salvate, consenso 12.12/12.14, invito rifiutato.
+- Fino al 13/10: #68 12.1–12.15 (codice di collegamento, Creator senza create_guild, rinnovo token, 429, chiave ruotabile).
 
 ## Cose imparate
 - Migrazioni: file `core/migrations/NNNN_*.sql`; repository in `core/repositories/` (non `repositories/`).
@@ -30,8 +29,12 @@ Giro r7 chiuso: 6 voci su 6 previste, più 12.16. Niente a metà. Prossimo giro,
 - Un file importato è dato non fidato: `valida_struttura` prima di tutto; immagini solo da cdn.discordapp.com / media.discordapp.net.
 - Nei fake di discord.py non usare isinstance per i canali: `canale.type` (ChannelType) funziona con oggetti semplici.
 
+- Espressioni: i fake dei test non hanno `me`/`premium_tier`: nel codice `getattr` con valore di ripiego. Il tetto suoni è `tetto_suoni(tier)`.
+- Mirror: `BackupMirrorDispatcher._send` è il punto da sostituire nei test; dopo `handle_message` si fa `await dispatcher.svuota()`.
+- Aggiornamento continuo: `popola_server_backup(..., con_messaggi=False)`; un test del worker con `popola_server_backup` finto deve accettare `con_messaggi`.
+
 ## Aperto
-- 11.17 aggiornamento continuo del backup non fatto. Copia messaggi D8 e tutto il giro r7: da provare live (VERIFICA_LIVE «Backup — giro r7»).
+- Giri r7 e r10 da provare live (VERIFICA_LIVE).
 - La proposta di consenso in DM (verifica a reazione) usa una View non persistente: dopo un riavvio i bottoni non rispondono (15 minuti).
 - Chat salvate: nome, avatar e testo dei messaggi dentro `backup_strutture.dati`: la cancellazione per utente (NF-04) non li tocca, vanno via con la copia o col server (nota nel registro dati).
 - `main.py` on_guild_join: Main entra nel server di backup prima del collegamento e riceve il trattamento "server nuovo" (dev-core).
