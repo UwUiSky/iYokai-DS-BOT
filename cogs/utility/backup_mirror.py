@@ -4,10 +4,8 @@ cogs/utility/backup_mirror.py
 Listener che collega on_message al BackupMirrorDispatcher (SPEC.md
 §11.9) — nessun comando qui, solo il ponte tra gli eventi di
 discord.py e la logica testata in core/backup_mirror_dispatch.py.
+Funzioni coperte: SPEC §11.9
 """
-
-# DA FARE (issue #68, fase F3): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §12 (Backup e restore).
 
 from __future__ import annotations
 
