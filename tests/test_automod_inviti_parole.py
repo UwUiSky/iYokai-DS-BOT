@@ -269,11 +269,11 @@ async def test_violazioni_in_pagine_e_togli_una(cog, clean_db, monkeypatch):
     prima = fake_interaction(guild=server)
     await cog.violazioni.callback(cog, prima, utente, 1)
     testo = prima.response.send_message.call_args.args[0]
-    assert "(12)" in testo and "pagina 1 di 2" in testo and testo.count("anti_caps") == 10
+    assert "(12)" in testo and "pagina 1 di 2" in testo and testo.count("Anti-Caps") == 10
 
     seconda = fake_interaction(guild=server)
     await cog.violazioni.callback(cog, seconda, utente, 2)
-    assert seconda.response.send_message.call_args.args[0].count("anti_caps") == 2
+    assert seconda.response.send_message.call_args.args[0].count("Anti-Caps") == 2
 
     righe, _ = await automod_advanced_repo.get_user_actions(GUILD_ID, 42, 1)
     togli = fake_interaction(guild=server)
@@ -294,3 +294,47 @@ async def test_togli_non_tocca_altri_server_e_numeri_inesistenti(cog, clean_db, 
 
     assert "Non c'è" in risposta.response.send_message.call_args.args[0]
     assert (await automod_advanced_repo.get_user_actions(GUILD_ID + 1, 42, 1))[1] == 1
+
+
+async def test_errore_nel_leggere_gli_inviti_non_toglie_le_eccezioni_proprie(cog, repo):
+    """Un errore di Discord su guild.invites() non deve sbloccare di colpo gli inviti del server."""
+    regola = _regola_finta(
+        modulo_automod.RULE_NAME_INVITES, regex_patterns=list(modulo_automod.INVITE_REGEX_PATTERNS)
+    )
+    server = _server([regola], inviti=["mio1"])
+    await cog.invites.callback(cog, fake_interaction(guild=server), True, "amici", None, True)
+
+    server.invites.side_effect = discord.HTTPException(MagicMock(status=500), "errore")
+    interazione = fake_interaction(guild=server)
+    await cog.badword_add.callback(cog, interazione, "truffa", None)
+
+    assert set(voci_per_codici(("amici", "mio1"))) <= set(regola.trigger.allow_list)
+    assert "inviti del server" in interazione.followup.send.call_args.args[0]
+
+
+async def test_propri_comprende_l_invito_personalizzato(cog, repo):
+    server = _server([], inviti=["mio1"])
+    server.vanity_url_code = "marathon"
+    await cog.invites.callback(cog, fake_interaction(guild=server), True, None, None, True)
+
+    allow = server.create_automod_rule.call_args.kwargs["trigger"].allow_list
+    assert set(voci_per_codici(("marathon", "mio1"))) == set(allow)
+
+
+async def test_violazioni_mostra_il_nome_del_filtro(cog, clean_db, monkeypatch):
+    from core.repositories.automod_advanced_repo import automod_advanced_repo
+    from tests.support.discord_fakes import fake_member
+
+    monkeypatch.setattr(automod_advanced_repo, "_pool_provider", lambda: clean_db)
+    await automod_advanced_repo.log_action(GUILD_ID, 42, 7, "anti_caps", ("delete",), "x")
+    interazione = fake_interaction(guild=fake_guild(guild_id=GUILD_ID))
+    await cog.violazioni.callback(cog, interazione, fake_member(user_id=42), 1)
+
+    assert "Anti-Caps" in interazione.response.send_message.call_args.args[0]
+
+
+async def test_indice_per_le_violazioni_di_un_utente(clean_db):
+    definizioni = await clean_db.fetch(
+        "SELECT indexdef FROM pg_indexes WHERE tablename = 'automod_action_log'"
+    )
+    assert any("guild_id, user_id" in r["indexdef"] for r in definizioni)

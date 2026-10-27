@@ -77,6 +77,11 @@ def voci_per_codici(codici: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(f"{prefisso}{codice}" for codice in codici for prefisso in PREFISSI_INVITO)
 
 
+def codici_da_voci(voci: tuple[str, ...]) -> tuple[str, ...]:
+    """I codici d'invito dalle voci delle eccezioni (l'inverso di voci_per_codici)."""
+    return tuple(v[len(PREFISSI_INVITO[0]) :] for v in voci if v.startswith(PREFISSI_INVITO[0]))
+
+
 def codici_ammessi(
     permessi: tuple[str, ...], propri: tuple[str, ...]
 ) -> tuple[tuple[str, ...], bool]:

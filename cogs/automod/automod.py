@@ -67,6 +67,7 @@ from core.automod_native_logic import (
     MAX_CODICI_INVITO,
     codice_da_testo,
     codici_ammessi,
+    codici_da_voci,
     parola_con_modo,
     voci_per_codici,
 )
@@ -665,13 +666,20 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
     propri: tuple[str, ...] = ()
     avvisi_inviti: list[str] = []
     if config.block_invites and config.invite_own:
+        # L'invito personalizzato (discord.gg/nome) non è in guild.invites().
+        personalizzato = getattr(guild, "vanity_url_code", None)
         try:
             propri = tuple(invito.code for invito in await guild.invites())
         except discord.HTTPException:
+            # Un errore di Discord non deve togliere le eccezioni di prima:
+            # si tengono quelle dell'ultimo sync riuscito.
+            propri = codici_da_voci(last_synced_invite_allow)
             avvisi_inviti.append(
                 "Non riesco a leggere gli inviti del server (serve Gestire server): "
-                "quelli propri non sono stati messi tra le eccezioni."
+                "restano le eccezioni dell'ultimo aggiornamento riuscito."
             )
+        if isinstance(personalizzato, str) and personalizzato:
+            propri = (personalizzato, *propri)
     inviti_ammessi, troppi_inviti = codici_ammessi(config.invite_allowed, propri)
     if troppi_inviti:
         avvisi_inviti.append(
@@ -1551,12 +1559,13 @@ class AutomodCog(CogConGruppi, commands.Cog):
             return
         pagine = -(-totale // VIOLAZIONI_PER_PAGINA)
         elenco = "\n".join(
-            f"`#{r['id']}` {discord.utils.format_dt(r['created_at'], 'f')} · {r['violation']} · "
+            f"`#{r['id']}` {discord.utils.format_dt(r['created_at'], 'f')} · "
+            f"{_VIOLATION_LABELS.get(r['violation'], r['violation'])} · "
             f"<#{r['channel_id']}> · {', '.join(r['actions_taken']) or 'nessuna azione'}"
             for r in righe
         )
         await interaction.response.send_message(
-            f"Violazioni di **{utente}** ({totale}), pagina {pagina} di {pagine}:\n{elenco}\n"
+            f"Violazioni di **{discord.utils.escape_markdown(str(utente))}** ({totale}), pagina {pagina} di {pagine}:\n{elenco}\n"
             f"Per toglierne una: `/automod violazione-togli numero:`",
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
