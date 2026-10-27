@@ -13,9 +13,11 @@ reali.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import asyncpg
+
+from core.automod_native_logic import stessa_parola
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,8 @@ class AutomodConfig:
     guild_id: int
     custom_badwords: tuple[str, ...]
     block_invites: bool
+    invite_allowed: tuple[str, ...] = ()  # codici d'invito da lasciar passare (AMD-026)
+    invite_own: bool = False  # lascia passare gli inviti del server stesso (AMD-027)
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -72,7 +76,8 @@ class AutomodRepository:
         separato da "configurazione vuota".
         """
         row = await self._pool.fetchrow(
-            "SELECT custom_badwords, block_invites FROM automod_config WHERE guild_id = $1",
+            "SELECT custom_badwords, block_invites, invite_allowed, invite_own "
+            "FROM automod_config WHERE guild_id = $1",
             guild_id,
         )
         if row is None:
@@ -83,6 +88,8 @@ class AutomodRepository:
             guild_id=guild_id,
             custom_badwords=tuple(badwords),
             block_invites=row["block_invites"],
+            invite_allowed=tuple(json.loads(row["invite_allowed"])),
+            invite_own=row["invite_own"],
         )
 
     async def add_badword(self, guild_id: int, word: str) -> AutomodConfig:
@@ -103,18 +110,13 @@ class AutomodRepository:
 
         nuove_parole = list(config.custom_badwords) + [normalizzata]
         await self._save_badwords(guild_id, nuove_parole)
-        return AutomodConfig(
-            guild_id=guild_id, custom_badwords=tuple(nuove_parole), block_invites=config.block_invites
-        )
+        return replace(config, custom_badwords=tuple(nuove_parole))
 
     async def remove_badword(self, guild_id: int, word: str) -> AutomodConfig:
         config = await self.get_config(guild_id)
-        normalizzata = word.strip().lower()
-        nuove_parole = [w for w in config.custom_badwords if w.lower() != normalizzata]
+        nuove_parole = [w for w in config.custom_badwords if not stessa_parola(w, word)]
         await self._save_badwords(guild_id, nuove_parole)
-        return AutomodConfig(
-            guild_id=guild_id, custom_badwords=tuple(nuove_parole), block_invites=config.block_invites
-        )
+        return replace(config, custom_badwords=tuple(nuove_parole))
 
     async def _save_badwords(self, guild_id: int, words: list[str]) -> None:
         await self._pool.execute(
@@ -142,6 +144,34 @@ class AutomodRepository:
             block,
         )
 
+    async def set_invite_allowed(self, guild_id: int, codici: tuple[str, ...]) -> None:
+        """Salva i codici d'invito da lasciar passare (AMD-026)."""
+        await self._pool.execute(
+            """
+            INSERT INTO automod_config (guild_id, invite_allowed)
+            VALUES ($1, $2::jsonb)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET invite_allowed = EXCLUDED.invite_allowed,
+                    updated_at = now()
+            """,
+            guild_id,
+            json.dumps(list(codici)),
+        )
+
+    async def set_invite_own(self, guild_id: int, attivo: bool) -> None:
+        """Lascia passare (o no) gli inviti del server stesso (AMD-027)."""
+        await self._pool.execute(
+            """
+            INSERT INTO automod_config (guild_id, invite_own)
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET invite_own = EXCLUDED.invite_own,
+                    updated_at = now()
+            """,
+            guild_id,
+            attivo,
+        )
+
     # ================================================================
     # Ultimo stato sincronizzato — vedi la nota in run_migrations()
     # ================================================================
@@ -167,12 +197,22 @@ class AutomodRepository:
             return (), ()
         return tuple(json.loads(row["keywords"])), tuple(json.loads(row["regex_patterns"]))
 
+    async def get_last_synced_allow(self, guild_id: int, rule_name: str) -> tuple[str, ...]:
+        """Le eccezioni che iYokai aveva scritto nell'ultimo sync (AMD-026)."""
+        valore = await self._pool.fetchval(
+            "SELECT allow_list FROM automod_last_synced WHERE guild_id = $1 AND rule_name = $2",
+            guild_id,
+            rule_name,
+        )
+        return tuple(json.loads(valore)) if valore else ()
+
     async def set_last_synced(
         self,
         guild_id: int,
         rule_name: str,
         keywords: tuple[str, ...],
         regex_patterns: tuple[str, ...],
+        allow_list: tuple[str, ...] = (),
     ) -> None:
         """
         Chiamato dal cog SOLO dopo che una create/update è andata a
@@ -182,17 +222,19 @@ class AutomodRepository:
         """
         await self._pool.execute(
             """
-            INSERT INTO automod_last_synced (guild_id, rule_name, keywords, regex_patterns, synced_at)
-            VALUES ($1, $2, $3::jsonb, $4::jsonb, now())
+            INSERT INTO automod_last_synced (guild_id, rule_name, keywords, regex_patterns, allow_list, synced_at)
+            VALUES ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, now())
             ON CONFLICT (guild_id, rule_name) DO UPDATE
                 SET keywords = EXCLUDED.keywords,
                     regex_patterns = EXCLUDED.regex_patterns,
+                    allow_list = EXCLUDED.allow_list,
                     synced_at = now()
             """,
             guild_id,
             rule_name,
             json.dumps(list(keywords)),
             json.dumps(list(regex_patterns)),
+            json.dumps(list(allow_list)),
         )
 
     async def clear_last_synced(self, guild_id: int, rule_name: str) -> None:

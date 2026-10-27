@@ -32,11 +32,15 @@ per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
 inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
 filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 019–024, 041), §23 (NF-31, SIC-042)
+Regole native: parole con gli asterischi del modo (AMD-013), inviti da lasciar
+passare e quelli del server nelle eccezioni (AMD-026/027). Violazioni di un
+utente a pagine e una sola da togliere (AMD-062/065).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 013, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from collections import OrderedDict
@@ -61,6 +65,14 @@ from core.automod_sync import (
     SyncAction,
     SyncActionType,
     compute_sync_plan,
+)
+from core.automod_native_logic import (
+    MAX_CODICI_INVITO,
+    codice_da_testo,
+    codici_ammessi,
+    codici_da_voci,
+    parola_con_modo,
+    voci_per_codici,
 )
 from core.automod_advanced_logic import (
     AntiLinkConfig,
@@ -119,6 +131,8 @@ MODULE_AUTOMOD = "automod"
 # Oltre questa lunghezza /automod badword-list manda l'elenco come file
 # (un messaggio Discord tiene 2000 caratteri).
 MAX_ELENCO_IN_CHAT = 1900
+VIOLAZIONI_PER_PAGINA = 10
+PAUSA_SYNC_INVITI = 3  # secondi: raggruppa gli inviti creati o tolti insieme
 
 # Discord accetta al massimo 60 caratteri per parola in una regola
 # AutoMod: una parola più lunga farebbe fallire ogni sincronizzazione.
@@ -555,6 +569,8 @@ def _build_desired_rules(
     block_invites: bool,
     last_synced_badwords: tuple[str, ...],
     last_synced_invite_regex: tuple[str, ...],
+    inviti_ammessi: tuple[str, ...] = (),
+    last_synced_invite_allow: tuple[str, ...] = (),
 ) -> list[DesiredRule]:
     """
     Costruisce le regole desiderate SEMPRE, anche quando il
@@ -573,6 +589,8 @@ def _build_desired_rules(
             name=RULE_NAME_INVITES,
             regex_patterns=INVITE_REGEX_PATTERNS if block_invites else (),
             previously_synced_regex=last_synced_invite_regex,
+            allow_list=voci_per_codici(inviti_ammessi) if block_invites else (),
+            previously_synced_allow=last_synced_invite_allow,
         ),
     ]
 
@@ -645,6 +663,32 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
     config = await automod_repo.get_config(guild.id)
     last_synced_badwords, _ = await automod_repo.get_last_synced(guild.id, RULE_NAME_BADWORDS)
     _, last_synced_invite_regex = await automod_repo.get_last_synced(guild.id, RULE_NAME_INVITES)
+    last_synced_invite_allow = await automod_repo.get_last_synced_allow(guild.id, RULE_NAME_INVITES)
+
+    # Inviti da lasciar passare: quelli scelti e, se richiesto, quelli del server.
+    propri: tuple[str, ...] = ()
+    avvisi_inviti: list[str] = []
+    if config.block_invites and config.invite_own:
+        # L'invito personalizzato (discord.gg/nome) non è in guild.invites().
+        personalizzato = getattr(guild, "vanity_url_code", None)
+        try:
+            propri = tuple(invito.code for invito in await guild.invites())
+        except discord.HTTPException:
+            # Un errore di Discord non deve togliere le eccezioni di prima:
+            # si tengono quelle dell'ultimo sync riuscito.
+            propri = codici_da_voci(last_synced_invite_allow)
+            avvisi_inviti.append(
+                "Non riesco a leggere gli inviti del server (serve Gestire server): "
+                "restano le eccezioni dell'ultimo aggiornamento riuscito."
+            )
+        if isinstance(personalizzato, str) and personalizzato:
+            propri = (personalizzato, *propri)
+    inviti_ammessi, troppi_inviti = codici_ammessi(config.invite_allowed, propri)
+    if troppi_inviti:
+        avvisi_inviti.append(
+            f"Gli inviti da lasciar passare sono più di {MAX_CODICI_INVITO}: "
+            f"quelli in più non sono nelle eccezioni."
+        )
 
     # Una parola oltre il limite farebbe rifiutare a Discord tutta la
     # regola: la si lascia fuori e lo si dice.
@@ -656,10 +700,12 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
         config.block_invites,
         last_synced_badwords,
         last_synced_invite_regex,
+        inviti_ammessi,
+        last_synced_invite_allow,
     )
     plan = compute_sync_plan([_regola_esistente(rule) for rule in rules], desired)
 
-    avvisi: list[str] = []
+    avvisi: list[str] = list(avvisi_inviti)
     if parole_troppo_lunghe:
         avvisi.append(
             f"{parole_troppo_lunghe} parole superano i {MAX_KEYWORD_LENGTH} caratteri "
@@ -709,7 +755,7 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
             continue
 
         await automod_repo.set_last_synced(
-            guild.id, action.name, action.own_keywords, action.own_regex
+            guild.id, action.name, action.own_keywords, action.own_regex, action.own_allow_list
         )
 
     return "\n".join(dict.fromkeys(avvisi)) or None
@@ -718,6 +764,7 @@ async def _sync_guild(guild: discord.Guild) -> str | None:
 class AutomodCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._sync_inviti_in_attesa: set[int] = set()
 
     @comando_di_gruppo(
         "automod",
@@ -725,20 +772,38 @@ class AutomodCog(CogConGruppi, commands.Cog):
         descrizione="Aggiunge una parola vietata.",
         sottogruppo=("parole", "Parole vietate."),
     )
-    @app_commands.describe(word="La parola da vietare (massimo 60 caratteri)")
+    @app_commands.describe(
+        word="La parola da vietare (massimo 60 caratteri)",
+        modo="Dove vale: parola intera (predefinito), dentro altre parole, a inizio o a fine parola",
+    )
+    @app_commands.choices(
+        modo=[
+            app_commands.Choice(name="parola intera", value="intera"),
+            app_commands.Choice(name="anche dentro altre parole", value="dentro"),
+            app_commands.Choice(name="a inizio parola", value="inizio"),
+            app_commands.Choice(name="a fine parola", value="fine"),
+        ]
+    )
     async def badword_add(
         self,
         interaction: discord.Interaction,
         word: app_commands.Range[str, 1, MAX_LUNGHEZZA_PAROLA],
+        modo: app_commands.Choice[str] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
 
+        try:
+            voce = parola_con_modo(word, modo.value if modo else "intera")
+        except ValueError as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+
         await interaction.response.defer(ephemeral=True)
-        await automod_repo.add_badword(interaction.guild.id, word)
+        await automod_repo.add_badword(interaction.guild.id, voce)
         avviso = await _sync_guild(interaction.guild)
 
-        messaggio = f"Parola `{word}` aggiunta alla lista vietata."
+        messaggio = f"Parola `{voce}` aggiunta alla lista vietata."
         if avviso:
             messaggio += f"\n⚠️ {avviso}"
         await interaction.followup.send(messaggio, ephemeral=True)
@@ -812,17 +877,75 @@ class AutomodCog(CogConGruppi, commands.Cog):
         descrizione="Attiva o disattiva il blocco automatico degli inviti Discord.",
         sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
-    @app_commands.describe(enabled="True per bloccare gli inviti, False per consentirli")
-    async def invites(self, interaction: discord.Interaction, enabled: bool) -> None:
+    @app_commands.describe(
+        enabled="True per bloccare gli inviti, False per consentirli",
+        permetti="Un invito da lasciar passare (link o codice)",
+        togli="Un invito da non lasciar più passare (link o codice)",
+        propri="True per lasciar passare gli inviti di questo server",
+    )
+    async def invites(
+        self,
+        interaction: discord.Interaction,
+        enabled: bool | None = None,
+        permetti: app_commands.Range[str, 2, 100] | None = None,
+        togli: app_commands.Range[str, 2, 100] | None = None,
+        propri: bool | None = None,
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        if enabled is None and permetti is None and togli is None and propri is None:
+            await interaction.response.send_message(
+                "Scegli almeno un'opzione: enabled, permetti, togli o propri.", ephemeral=True
+            )
+            return
+
+        guild_id = interaction.guild.id
+        config = await automod_repo.get_config(guild_id)
+        codici = list(config.invite_allowed)
+        errori: list[str] = []
+        for testo, aggiungi in ((permetti, True), (togli, False)):
+            if testo is None:
+                continue
+            codice = codice_da_testo(testo)
+            if codice is None:
+                errori.append(f"`{testo[:50]}` non è un invito Discord.")
+            elif aggiungi and codice.lower() not in {c.lower() for c in codici}:
+                if len(codici) >= MAX_CODICI_INVITO:
+                    errori.append(f"Puoi lasciar passare al massimo {MAX_CODICI_INVITO} inviti.")
+                else:
+                    codici.append(codice)
+            elif not aggiungi:
+                codici = [c for c in codici if c.lower() != codice.lower()]
+        if errori and enabled is None and propri is None and tuple(codici) == config.invite_allowed:
+            await interaction.response.send_message("\n".join(errori), ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
-        await automod_repo.set_block_invites(interaction.guild.id, enabled)
+        if tuple(codici) != config.invite_allowed:
+            await automod_repo.set_invite_allowed(guild_id, tuple(codici))
+        if propri is not None:
+            await automod_repo.set_invite_own(guild_id, propri)
+        if enabled is not None:
+            await automod_repo.set_block_invites(guild_id, enabled)
         avviso = await _sync_guild(interaction.guild)
 
-        stato = "attivato" if enabled else "disattivato"
-        messaggio = f"Blocco automatico degli inviti Discord {stato}."
+        parti = []
+        if enabled is not None:
+            parti.append(f"Blocco automatico degli inviti Discord {'attivato' if enabled else 'disattivato'}.")
+        if permetti is not None or togli is not None:
+            parti.append(
+                "Inviti lasciati passare: "
+                + (", ".join(f"`{c}`" for c in codici) if codici else "nessuno")
+                + "."
+            )
+        if propri is not None:
+            parti.append(
+                "Gli inviti di questo server "
+                + ("passano." if propri else "non passano più.")
+            )
+        messaggio = " ".join(parti)
+        if errori:
+            messaggio += "\n" + "\n".join(errori)
         if avviso:
             messaggio += f"\n⚠️ {avviso}"
         await interaction.followup.send(messaggio, ephemeral=True)
@@ -1418,6 +1541,61 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "automod",
+        nome="violazioni",
+        descrizione="Mostra le violazioni AutoMod di un utente, a pagine.",
+    )
+    @app_commands.describe(utente="L'utente", pagina="Numero di pagina (10 violazioni per pagina)")
+    async def violazioni(
+        self,
+        interaction: discord.Interaction,
+        utente: discord.User,
+        pagina: app_commands.Range[int, 1, 1000] = 1,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        righe, totale = await automod_advanced_repo.get_user_actions(
+            interaction.guild.id, utente.id, VIOLAZIONI_PER_PAGINA, (pagina - 1) * VIOLAZIONI_PER_PAGINA
+        )
+        if not righe:
+            testo = "Nessuna violazione registrata." if totale == 0 else f"Non c'è la pagina {pagina}."
+            await interaction.response.send_message(testo, ephemeral=True)
+            return
+        pagine = -(-totale // VIOLAZIONI_PER_PAGINA)
+        elenco = "\n".join(
+            f"`#{r['id']}` {discord.utils.format_dt(r['created_at'], 'f')} · "
+            f"{_VIOLATION_LABELS.get(r['violation'], r['violation'])} · "
+            f"<#{r['channel_id']}> · {', '.join(r['actions_taken']) or 'nessuna azione'}"
+            for r in righe
+        )
+        await interaction.response.send_message(
+            f"Violazioni di **{discord.utils.escape_markdown(str(utente))}** ({totale}), pagina {pagina} di {pagine}:\n{elenco}\n"
+            f"Per toglierne una: `/automod violazione-togli numero:`",
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "automod",
+        nome="violazione-togli",
+        descrizione="Toglie una violazione dal registro AutoMod.",
+    )
+    @app_commands.describe(numero="Il numero della violazione (quello dopo # in /automod violazioni)")
+    async def violazione_togli(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_147_483_647]
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        tolta = await automod_advanced_repo.delete_action(interaction.guild.id, numero)
+        await interaction.response.send_message(
+            f"Violazione #{numero} tolta dal registro. Il conteggio della scala di escalation "
+            f"non cambia: per azzerarlo usa `/security escalation reset`."
+            if tolta
+            else f"Non c'è nessuna violazione #{numero} in questo server.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "automod",
         nome="log-channel",
         descrizione="Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.",
     )
@@ -1462,6 +1640,33 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"**Canale di log**: {'<#' + str(settings.log_channel_id) + '>' if settings.log_channel_id else 'non impostato'}",
         ]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @commands.Cog.listener()
+    async def on_invite_create(self, invite: discord.Invite) -> None:
+        await self._aggiorna_inviti_propri(invite.guild)
+
+    @commands.Cog.listener()
+    async def on_invite_delete(self, invite: discord.Invite) -> None:
+        await self._aggiorna_inviti_propri(invite.guild)
+
+    async def _aggiorna_inviti_propri(self, guild) -> None:
+        """AMD-027: con «propri» acceso, un invito nuovo o tolto cambia le eccezioni."""
+        if not isinstance(guild, discord.Guild):
+            return
+        if not await db.is_module_active_for_guild(guild.id, MODULE_AUTOMOD):
+            return
+        config = await automod_repo.get_config(guild.id)
+        if not (config.block_invites and config.invite_own):
+            return
+        # Più inviti in pochi secondi (o la cancellazione dopo un uso) valgono un solo sync.
+        if guild.id in self._sync_inviti_in_attesa:
+            return
+        self._sync_inviti_in_attesa.add(guild.id)
+        try:
+            await asyncio.sleep(PAUSA_SYNC_INVITI)
+        finally:
+            self._sync_inviti_in_attesa.discard(guild.id)
+        await _sync_guild(guild)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:

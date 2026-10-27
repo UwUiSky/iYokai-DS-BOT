@@ -44,6 +44,10 @@ silenziosamente la sincronizzazione.
   massimo 6 regole a parole chiave: i due numeri sono qui sotto, il
   controllo lo fa il cog.
 
+Anche la lista delle eccezioni segue il merge a tre vie (AMD-026): quelle
+messe a mano dall'admin restano, quelle scritte da iYokai seguono la
+configurazione.
+
 Il piano porta sempre TUTTI i campi del trigger (parole, espressioni
 regolari, lista delle eccezioni): una modifica su Discord sostituisce
 il trigger intero, quindi un campo lasciato fuori verrebbe cancellato.
@@ -59,6 +63,7 @@ DEFAULT_MAX_KEYWORDS = 1000
 DEFAULT_MAX_REGEX = 10
 MAX_KEYWORD_LENGTH = 60
 MAX_KEYWORD_RULES = 6
+MAX_ALLOW_LIST = 100  # voci della lista delle eccezioni di una regola
 
 # Prefisso con cui iYokai marca le regole che gestisce lui stesso.
 # Solo le regole con questo prefisso nel nome vengono mai aggiornate:
@@ -108,6 +113,8 @@ class DesiredRule:
     regex_patterns: tuple[str, ...] = ()
     previously_synced_keywords: tuple[str, ...] = ()
     previously_synced_regex: tuple[str, ...] = ()
+    allow_list: tuple[str, ...] = ()
+    previously_synced_allow: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -126,6 +133,7 @@ class SyncAction:
     final_allow_list: tuple[str, ...] = ()
     own_keywords: tuple[str, ...] = ()
     own_regex: tuple[str, ...] = ()
+    own_allow_list: tuple[str, ...] = ()
 
 
 def _solo_presenti(voluti: tuple[str, ...], finali: tuple[str, ...]) -> tuple[str, ...]:
@@ -196,7 +204,10 @@ def compute_sync_plan(
 
             keywords = list(desired.keywords)
             regex = list(desired.regex_patterns)
-            truncated = len(keywords) > max_keywords or len(regex) > max_regex
+            allow = list(desired.allow_list)
+            truncated = (
+                len(keywords) > max_keywords or len(regex) > max_regex or len(allow) > MAX_ALLOW_LIST
+            )
             actions.append(
                 SyncAction(
                     action=SyncActionType.CREATE,
@@ -206,6 +217,8 @@ def compute_sync_plan(
                     truncated=truncated,
                     own_keywords=tuple(keywords[:max_keywords]),
                     own_regex=tuple(regex[:max_regex]),
+                    final_allow_list=tuple(allow[:MAX_ALLOW_LIST]),
+                    own_allow_list=tuple(allow[:MAX_ALLOW_LIST]),
                 )
             )
             continue
@@ -224,7 +237,17 @@ def compute_sync_plan(
             desired.regex_patterns,
         )
 
-        truncated = len(merged_keywords) > max_keywords or len(merged_regex) > max_regex
+        merged_allow = _merge_preserving_order(
+            _admin_added(existing.allow_list, desired.previously_synced_allow),
+            desired.allow_list,
+        )
+
+        truncated = (
+            len(merged_keywords) > max_keywords
+            or len(merged_regex) > max_regex
+            or len(merged_allow) > MAX_ALLOW_LIST
+        )
+        final_allow = tuple(merged_allow[:MAX_ALLOW_LIST])
         final_keywords = tuple(merged_keywords[:max_keywords])
         final_regex = tuple(merged_regex[:max_regex])
 
@@ -242,7 +265,11 @@ def compute_sync_plan(
                     truncated=False,
                 )
             )
-        elif final_keywords == existing.keywords and final_regex == existing.regex_patterns:
+        elif (
+            final_keywords == existing.keywords
+            and final_regex == existing.regex_patterns
+            and final_allow == existing.allow_list
+        ):
             # Nessuna parola/pattern nuovo da aggiungere: evitiamo
             # una chiamata API inutile.
             actions.append(
@@ -262,9 +289,10 @@ def compute_sync_plan(
                     final_keywords=final_keywords,
                     final_regex=final_regex,
                     truncated=truncated,
-                    final_allow_list=existing.allow_list,
+                    final_allow_list=final_allow,
                     own_keywords=_solo_presenti(desired.keywords, final_keywords),
                     own_regex=_solo_presenti(desired.regex_patterns, final_regex),
+                    own_allow_list=_solo_presenti(desired.allow_list, final_allow),
                 )
             )
 

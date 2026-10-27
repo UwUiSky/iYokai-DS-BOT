@@ -173,22 +173,16 @@ async def contesto(monkeypatch):
     # ri-mockare anche _shared.py.
     from core.database import db as real_db_singleton
 
-    original_pool = real_db_singleton._pool
-    real_db_singleton._pool = database.pool
+    monkeypatch.setattr(real_db_singleton, "_pool", database.pool)
 
     from core.repositories.automod_advanced_repo import automod_advanced_repo
     from core.repositories.moderation_repo import moderation_repo
 
-    original_advanced_provider = automod_advanced_repo._pool_provider
-    original_moderation_provider = moderation_repo._pool_provider
-    automod_advanced_repo._pool_provider = lambda: database.pool
-    moderation_repo._pool_provider = lambda: database.pool
+    monkeypatch.setattr(automod_advanced_repo, "_pool_provider", lambda: database.pool)
+    monkeypatch.setattr(moderation_repo, "_pool_provider", lambda: database.pool)
 
     yield database
 
-    automod_advanced_repo._pool_provider = original_advanced_provider
-    moderation_repo._pool_provider = original_moderation_provider
-    real_db_singleton._pool = original_pool
     await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM automod_advanced_config WHERE guild_id = $1", GUILD_ID)
     await database.pool.execute("DELETE FROM automod_action_log WHERE guild_id = $1", GUILD_ID)

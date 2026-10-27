@@ -1,9 +1,8 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-21, ramo feat/r9mod, worktree /home/claude/wt/r9mod. Migrazioni r9: 0250 usata (0251–0259 libere). Log in scratchpad/r9mod.
+2026-10-27, ramo feat/r10amod, worktree /home/claude/wt/r10amod. Migrazioni r10 (0280–0289): 0280, 0281 usate. Log in scratchpad.
 ## In corso
-Giro r9 chiuso (5 voci su 5). Smoke --base main: 1079 verdi.
-Prossimo giro, in ordine di valore: SIC-039 (piu' trappole), VER-017/019/020, SIC-036 livelli di allerta (con AMD-067), MOD-014/015 (mute a tempo, hardmute), MOD-046/047 (casi a mano e da azioni esterne), AMD-013/026/027/070.
+Giro r10 AutoMod: fatti AMD-013, 026, 027, 062, 065, 070 e SPEC 6.1–6.10, 6.15 a [x]. Prossimo: AMD-014 (normalizzazione, serve filtro parole lato bot), poi smoke --base main.
 ## Fatto
 - Giri G1-G7, R5-R7 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log
 - R9-1 #59 ripiego kick/ban (be45348): AntiNukeConfig.ripiego_quarantena, opzione ripiego di /antinuke punish-action
@@ -12,6 +11,7 @@ Prossimo giro, in ordine di valore: SIC-039 (piu' trappole), VER-017/019/020, SI
 - R9-4 MOD-090 + MOD-013 (7c8887f): /mod lock durata: (scheduler channel_unlock, user_id = ID canale), /mod caso attive
 - R9-5 SIC-040: /security spamtrap punizione: (ban|kick|timeout|cancella|staff), StaffDecisionButton persistente
 - Verificate in codice: M 1.1–1.9, 2.1–2.7, 3.x, 4.x gia' fatte; tolti i DA FARE #57/#58/#101
+- R10 AutoMod: parole add modo (core/automod_native_logic.py), invites permetti/togli/propri + allow_list a tre vie (0280), timeout che cresce (0281)
 ## Cose imparate
 - D15: Mod non ha listener; azioni di sicurezza via bot_roles.banna/espelli/isola/cancella_messaggio; e_un_nostro_bot per "e' il bot"
 - discord.RateLimited NON e' HTTPException: va preso a parte (bot_roles lo fa)
@@ -32,3 +32,4 @@ Prossimo giro, in ordine di valore: SIC-039 (piu' trappole), VER-017/019/020, SI
 - #119 LOG-029 (testo dei messaggi su disco, privacy); #113 log via webhook, invito in /setup
 - MOD-065 (motivo facoltativo) non fatto: cambia la firma di tutti i comandi
 - OAuth rientro oltre 7 giorni; alt_detection (#92)
+- Eccezioni (allow_list) della regola anti-invito: 3 voci per codice (gg, com/invite, discordapp), tetto 25 voci = 8 inviti

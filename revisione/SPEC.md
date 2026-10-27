@@ -372,38 +372,40 @@ Totale voci: **514**.
 
 ## §6 AUTOMOD
 
-- `[~]` 6.1 Anti-badwords (via AutoMod nativo Discord, con merge a tre vie)
+- `[x]` 6.1 Anti-badwords (via AutoMod nativo Discord, con merge a tre vie)
   → **Stato 04/10:** una parola oltre 60 caratteri rompe la sincronizzazione; `edit()` cancella le eccezioni messe a mano (LIM-29).
-- `[~]` 6.2 Anti-invite (via AutoMod nativo, regex)
+  → **Stato 27/10 (r10, #58, #116):** `/automod parole add modo:` (intera, dentro, inizio, fine) mette gli asterischi della regola nativa e rifiuta oltre 60 caratteri (AMD-013); `parole remove` toglie tutte le forme di una parola. Le eccezioni messe a mano restano (LIM-29). Provato con `tests/test_automod_inviti_parole.py`.
+- `[x]` 6.2 Anti-invite (via AutoMod nativo, regex)
   → **Stato 04/10:** LIM-29.
+  → **Stato 27/10 (r10, #58, #116):** `/automod filtri invites permetti:|togli:|propri:` lascia passare inviti scelti (AMD-026) e quelli del server (AMD-027) con la lista delle eccezioni della regola nativa; al massimo 8 inviti (3 voci l'uno, 25 voci); merge a tre vie che conserva le eccezioni dell'admin; `on_invite_create` e `on_invite_delete` aggiornano la regola (migrazione 0280); con «propri» passa anche l'invito personalizzato; se Discord non dà gli inviti restano le eccezioni dell'ultimo sync.
 - `[x]` 6.3b Messaggi modificati controllati di nuovo dai filtri lato bot (AMD-021, #116); la modifica non conta per l'anti-spam
-- `[~]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
+- `[x]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
   non supporta un elenco whitelist/blacklist di domini come trigger
   nativo. Modalità `off`/`whitelist`/`blacklist` per server,
   `/automod anti-link-mode` + `/automod anti-link-domain`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); lista nera aggirabile (REVIEW §4).
-- `[~]` 6.4 Anti-spam messaggi — soglia messaggi/finestra
+- `[x]` 6.4 Anti-spam messaggi — soglia messaggi/finestra
   configurabile, finestra mobile in memoria
   (`core/automod_rate_tracker.py`, mai persistita: stato "caldo" di
   pochi secondi, stesso principio di `core/invite_tracker.py`),
   `/automod anti-spam-messages`
   → **Stato 04/10:** il valore `seconds` viene salvato e ignorato (REVIEW §4).
-- `[~]` 6.5 Anti-spam emoji — soglia per SINGOLO messaggio (non nel
+- `[x]` 6.5 Anti-spam emoji — soglia per SINGOLO messaggio (non nel
   tempo, a differenza di 6.4/6.6/6.10): conta emoji custom Discord +
   un intervallo unicode ampio (nessuna libreria `emoji` aggiunta come
   dipendenza — sotto-conteggio occasionale su emoji unicode rare
   accettato), `/automod anti-spam-emoji`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
-- `[~]` 6.6 Anti-spam sticker — soglia sticker/finestra, stesso motore
+- `[x]` 6.6 Anti-spam sticker — soglia sticker/finestra, stesso motore
   a finestra mobile di 6.4, `/automod anti-spam-sticker`
   → **Stato 04/10:** `seconds` ignorato (REVIEW §4).
-- `[~]` 6.7 Anti-caps — percentuale di lettere maiuscole SUL TOTALE
+- `[x]` 6.7 Anti-caps — percentuale di lettere maiuscole SUL TOTALE
   DELLE LETTERE (non sul totale caratteri: punteggiatura/numeri non
   contano né a favore né contro), soglia + lunghezza minima
   configurabili, `/automod anti-caps`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
-- `[~]` 6.8 Anti-zalgo — conteggio segni diacritici unicode
+- `[x]` 6.8 Anti-zalgo — conteggio segni diacritici unicode
   combinanti (categoria Mn/Me/Mc) oltre una soglia fissa (8, per
   inferenza: il testo normale — accenti italiani compresi — non la
   supera mai), `/automod anti-zalgo`
@@ -412,9 +414,10 @@ Totale voci: **514**.
   messaggio, `@everyone`/`@here` contano sempre come sopra soglia,
   `/automod anti-mention`
   → **Stato 04/10:** (da verificare live)
-- `[~]` 6.10 Anti-attachment-spam — soglia allegati/finestra, stesso
+- `[x]` 6.10 Anti-attachment-spam — soglia allegati/finestra, stesso
   motore a finestra mobile di 6.4/6.6, `/automod anti-attachment`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); `seconds` ignorato.
+  → **Stato 27/10 (r10):** filtri 6.3–6.10 provati con messaggi che hanno testo (`tests/test_automod_filtri_messaggi.py`: link con porta/sottodominio, maiuscole, emoji, zalgo, finestra di 5 s e 30 s, sticker, allegati). `seconds` è usato davvero (M 2.5). (da verificare live)
 - `[x]` 6.11 Filtri personalizzati per canale — **eccezione**
   (bypassa TUTTI i filtri avanzati insieme, non uno specifico per
   canale: altrimenti servirebbero N eccezioni per N filtri, complessità
@@ -433,8 +436,9 @@ Totale voci: **514**.
   violazione (`automod_action_log`) + embed opzionale in un canale
   dedicato, `/automod log-channel` + `/automod status` (riepilogo
   configurazione)
+  → **Stato 27/10 (r10, #116):** `/automod violazioni utente: pagina:` (10 per pagina, AMD-062) e `/automod violazione-togli numero:` (solo del server, AMD-065); indice in migrazione 0282. `tests/test_automod_inviti_parole.py`.
 - `[x]` 6.16 Filtri in più (#116, r6): messaggi ripetuti, troppo corti, link e menzioni nel tempo (`/automod filtri messaggi`, AMD-001, 004, 006, 007), embed e inoltri letti dai filtri e tipi di file vietati (`contenuto`, AMD-019, 020, 022), canali solo media o senza allegati (`canale-media`, AMD-023, 024), azione kick in `actions-set` (AMD-041)
-- `[~]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
+- `[x]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
   di severità crescente **nel tempo** in base a quante volte un
   utente ha già triggerato l'AutoMod nativo, con reset dopo un
   periodo configurabile di buona condotta. Concettualmente diversa
@@ -448,6 +452,7 @@ Totale voci: **514**.
 
 ## §7 SECURITY SUITE — presente, con bug aperti su anti-raid, anti-nuke e spam-trap (fase F1)
 
+  → **Stato 27/10 (r10, AMD-070):** `/security escalation enable moltiplicatore: tetto_strike:` il timeout oltre l'ultimo gradino dura base x moltiplicatore^ricadute, entro 28 giorni (migrazione 0281). `tests/test_escalation_crescita.py`.
 - `[~]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
   PREMIUM (come Spam Trap). Logica di valutazione pura in
   `core/security_logic.py` (`evaluate_join`), finestra mobile in
