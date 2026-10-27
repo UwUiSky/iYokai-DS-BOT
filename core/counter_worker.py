@@ -30,9 +30,14 @@ class _Gruppo:
 
 
 class CounterWorker:
-    def __init__(self, repo, rename=rename_channel, db=None) -> None:
+    def __init__(self, repo, rename=rename_channel, db=None, conta_ticket=None) -> None:
         self._repo = repo
         self._rename = rename
+        if conta_ticket is None:
+            from core.repositories.ticket_repo import ticket_repo
+
+            conta_ticket = lambda guild_id: ticket_repo.count_open_tickets(guild_id)  # noqa: E731
+        self._conta_ticket = conta_ticket
         if db is None:
             from core.database import db as db_globale
 
@@ -63,10 +68,17 @@ class CounterWorker:
                 online = con_conteggi.approximate_presence_count
             except discord.HTTPException:
                 logger.warning("Contatori: conteggio online non letto nel server %s", gruppo.id)
+        ticket = None
+        if any(c.kind == "tickets" for c in gruppo.contatori):
+            ticket = await self._conta_ticket(gruppo.id)
         snap = Istantanea(
             member_count=guild.member_count or 0,
             online_count=online,
             boost_count=guild.premium_subscription_count or 0,
+            ticket_aperti=ticket,
+            ruoli=len(guild.roles),
+            canali=len(guild.channels),
+            emoji=len(guild.emojis),
         )
         for contatore in gruppo.contatori:
             await self._aggiorna_contatore(guild, contatore, snap)
