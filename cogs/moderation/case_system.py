@@ -21,7 +21,7 @@ eliminazione di un caso, classifica dello staff (/mod caso), note da
 togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
 e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
-Sanzioni a tempo ancora attive (MOD-013): tempban, timeout e lock a tempo.
+Sanzioni ancora attive (MOD-013): tempban, timeout, mute con ruolo e lock a tempo.
 Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 027..031, 037, 039, 041, 042, 044, 054..056)
 """
 
@@ -125,7 +125,7 @@ MAX_ATTIVE_PER_TIPO = 100
 
 
 async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
-    """MOD-013: tempban, timeout e lock a tempo ancora in corso, dal primo che scade."""
+    """MOD-013: tempban, timeout, mute e lock a tempo ancora in corso, dal primo che scade."""
     righe: list[str] = []
     for azione in await scheduler.list_pending_for_guild(guild.id, SCHEDULED_TEMPBAN_EXPIRE, MAX_ATTIVE_PER_TIPO):
         caso = azione["payload"].get("case_number")
@@ -143,6 +143,13 @@ async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
             f"🔇 **Timeout** {membro.mention} (`{membro.id}`) — fine "
             f"{discord.utils.format_dt(membro.timed_out_until, 'R')}"
         )
+    for stato in await moderation_repo.list_mute_states(guild.id, MAX_ATTIVE_PER_TIPO):
+        tipo = "Hardmute" if stato["hard"] else "Mute"
+        fine = (
+            f"fine {discord.utils.format_dt(stato['finisce_il'], 'R')}"
+            if stato["finisce_il"] is not None else "senza fine"
+        )
+        righe.append(f"🔇 **{tipo}** <@{stato['user_id']}> (`{stato['user_id']}`) — {fine}")
     for azione in await scheduler.list_pending_for_guild(guild.id, SCHEDULED_CHANNEL_UNLOCK, MAX_ATTIVE_PER_TIPO):
         righe.append(
             f"🔒 **Lock** <#{azione['user_id']}> — si sblocca "
