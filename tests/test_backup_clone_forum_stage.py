@@ -162,3 +162,30 @@ async def test_canale_spostato_di_categoria_non_si_duplica():
     assert mappa[2] == 70
     assert [t for t, _ in dest.create_calls] == []
     assert gia.modifiche and gia.modifiche[0]["category"] is cat_dest_b
+
+
+@pytest.mark.asyncio
+async def test_riallineamento_non_toglie_i_permessi_presenti_solo_nel_backup():
+    """11.17: si aggiunge e si aggiorna, mai si toglie (overwrite solo del backup)."""
+    from tests.test_backup_clone_logic import _FakeRole
+
+    solo_backup = _FakeRole(500, "Staff backup", 3)
+    ow = discord.PermissionOverwrite(view_channel=True)
+    forum = _Forum(1, "idee")
+    gia = _Forum(50, "idee", overwrites={solo_backup: ow})
+    await clone_categories_and_channels(_Sorgente([forum]), _Dest([gia]), {})
+    assert gia.modifiche == []
+
+
+@pytest.mark.asyncio
+async def test_etichette_presenti_restano_con_il_loro_id():
+    """Rimandare le etichette senza id le ricrea: i post perdono le loro. Si aggiungono le nuove."""
+    presente = discord.ForumTag(name="bug")
+    presente.id = 5
+    solo_backup = discord.ForumTag(name="interna")
+    solo_backup.id = 6
+    forum = _Forum(1, "idee", tags=[_Tag("bug"), _Tag("nuova")])
+    gia = _Forum(50, "idee", tags=[presente, solo_backup])
+    await clone_categories_and_channels(_Sorgente([forum]), _Dest([gia]), {})
+    (modifica,) = gia.modifiche
+    assert [(t.name, t.id) for t in modifica["available_tags"]] == [("bug", 5), ("interna", 6), ("nuova", 0)]

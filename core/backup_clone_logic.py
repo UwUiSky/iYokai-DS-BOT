@@ -4,7 +4,9 @@ core/backup_clone_logic.py
 Clonazione del server per il Backup System: ruoli, canali, emoji,
 sticker, suoni e webhook, una chiamata alla volta (mai in parallelo).
 Ruoli e canali già presenti nella destinazione (server da modello) si
-riusano per nome; il resto si crea. Ciò che supera i limiti della
+riusano per nome; il resto si crea. Sui presenti si aggiunge e si aggiorna,
+non si toglie (permessi ed etichette solo del backup restano); i ruoli si
+mettono solo sotto quello del Creator. Ciò che supera i limiti della
 destinazione (emoji, sticker, suoni, webhook, bitrate) viene adattato o
 saltato e contato nel riepilogo, senza far fallire il backup.
 Funzioni coperte: SPEC §11.3–§11.8, M 12.3–M 12.8
@@ -26,6 +28,9 @@ logger = logging.getLogger("iyokai.backup_clone")
 # Suoni della soundboard per livello di boost (0, 1, 2, 3).
 TETTO_SUONI_PER_BOOST = (8, 24, 36, 48)
 MAX_SUONI_SOUNDBOARD = TETTO_SUONI_PER_BOOST[0]
+
+# Un forum ha al massimo 20 etichette.
+MAX_ETICHETTE_FORUM = 20
 
 # LIM-28: un canale ha al massimo 15 webhook; uno resta libero per il mirror.
 MAX_WEBHOOK_PER_CANALE = 15
@@ -116,10 +121,16 @@ async def clone_roles(
         key=lambda r: r.position,
     )
 
+    tetto = _posizione_del_bot(target_guild)
     ordine: dict = {}
     creati_ora = False
     for indice, ruolo in enumerate(ruoli_da_clonare, start=1):
         riusato = esistenti.pop(ruolo.name, None)
+        if riusato is not None and tetto is not None and riusato.position >= tetto:
+            # sopra il ruolo del Creator: Discord rifiuterebbe; si usa com'è
+            riepilogo.ruoli_non_aggiornati += 1
+            mappa_id[ruolo.id] = riusato.id
+            continue
         permessi = _permessi_consentiti(target_guild, ruolo.permissions)
         if permessi != ruolo.permissions:
             riepilogo.permessi_ridotti += 1
@@ -155,7 +166,13 @@ async def clone_roles(
         mappa_id[ruolo.id] = nuovo_ruolo.id
         ordine[nuovo_ruolo] = indice
 
-    # M 12.4: la gerarchia si imposta alla fine, in un'unica chiamata.
+    # M 12.4: la gerarchia si imposta alla fine, in un'unica chiamata. Un ruolo
+    # oltre il ruolo del Creator farebbe rifiutare tutta la chiamata: resta fuori.
+    if tetto is not None:
+        ammessi = {r: posto for r, posto in ordine.items() if posto < tetto}
+        if len(ammessi) < len(ordine):
+            riepilogo.posizioni_ruoli_fallite = True
+        ordine = ammessi
     if ordine and (creati_ora or any(r.position != posto for r, posto in ordine.items())):
         try:
             await target_guild.edit_role_positions(ordine, reason=MOTIVO)
@@ -164,6 +181,15 @@ async def clone_roles(
             riepilogo.posizioni_ruoli_fallite = True
 
     return mappa_id
+
+
+def _posizione_del_bot(target_guild) -> int | None:
+    """Posizione del ruolo più alto del Creator: i ruoli si mettono solo sotto. None se non si sa."""
+    me = getattr(target_guild, "me", None)
+    ruolo = getattr(me, "top_role", None)
+    if ruolo is None or getattr(target_guild, "owner_id", None) == getattr(me, "id", 0):
+        return None
+    return ruolo.position
 
 
 def _overwrite_consentito(
@@ -266,7 +292,7 @@ async def clone_categories_and_channels(
         overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild, riepilogo)
         nuova_categoria = cat_esistenti.pop(categoria.name, None)
         if nuova_categoria is not None:
-            await _allinea(nuova_categoria, {"overwrites": overwrites})
+            await _allinea(nuova_categoria, {"overwrites": _con_presenti(nuova_categoria, overwrites)})
             riepilogo.canali_riusati += 1
         else:
             nuova_categoria = await target_guild.create_category(
@@ -301,8 +327,15 @@ async def clone_categories_and_channels(
         if nuovo_canale is not None:
             # Il canale presente si allinea all'originale: si cambiano solo i campi diversi
             # (anche la categoria: un canale spostato non si duplica).
+            if famiglia == "forum":
+                campi["available_tags"] = _etichette_unite(nuovo_canale, campi["available_tags"])
             await _allinea(
-                nuovo_canale, {**campi, "overwrites": overwrites, "category": categoria_destinazione}
+                nuovo_canale,
+                {
+                    **campi,
+                    "overwrites": _con_presenti(nuovo_canale, overwrites),
+                    "category": categoria_destinazione,
+                },
             )
             riepilogo.canali_riusati += 1
         else:
@@ -335,6 +368,34 @@ def _etichette_forum(canale) -> list:
         emoji = t.emoji if (t.emoji is not None and getattr(t.emoji, "id", None) is None) else None
         etichette.append(discord.ForumTag(name=t.name, emoji=emoji, moderated=t.moderated))
     return etichette
+
+
+def _etichette_unite(presente, volute: list) -> list:
+    """Le etichette già nel forum restano con il loro id (i post le tengono): si aggiorna
+    «moderata» e si aggiungono le mancanti, fino a 20 (limite di Discord)."""
+    per_nome = {t.name: t for t in volute}
+    unite = []
+    for t in getattr(presente, "available_tags", None) or []:
+        voluta = per_nome.pop(t.name, None)
+        if voluta is not None and voluta.moderated != t.moderated:
+            aggiornata = discord.ForumTag(name=t.name, emoji=t.emoji, moderated=voluta.moderated)
+            aggiornata.id = getattr(t, "id", 0)
+            t = aggiornata
+        unite.append(t)
+    for t in per_nome.values():
+        if len(unite) >= MAX_ETICHETTE_FORUM:
+            break
+        unite.append(t)
+    return unite
+
+
+def _con_presenti(canale, voluti: dict) -> dict:
+    """11.17: gli overwrite che ci sono solo nel backup restano; quelli dell'originale si aggiornano."""
+    try:
+        presenti = dict(canale.overwrites)
+    except Exception:
+        presenti = {}
+    return {**presenti, **voluti}
 
 
 def _campi_canale(canale, famiglia: str, target_guild) -> dict:
