@@ -204,3 +204,34 @@ async def test_guida_social_e_tetto(ambiente):
     i = fake_interaction(guild=guild)
     await cog.add_kick.callback(cog, i, "altro", canale, "x")
     assert "massimo consentito" in _testo(i)
+
+
+@pytest.mark.asyncio
+async def test_opzioni_pausa_filtri_e_attesa(ambiente):
+    """#129 ALR-030, 031, 033, 036: pausa, parole, giochi e attesa minima si salvano e si leggono."""
+    cog = FeedAlertsCog(bot=None)
+    canale = fake_text_channel()
+    canale.id, canale.mention = 500, "<#500>"
+    guild = fake_guild()
+    guild.id = GUILD
+    utente = fake_member()
+    utente.guild_permissions = discord.Permissions(mention_everyone=True)
+    i = fake_interaction(guild=guild, user=utente)
+    await cog.add_kick.callback(cog, i, "https://kick.com/Altro", canale, "Altro")
+    kk = int(_testo(i).split("KK-")[1].split("`")[0])
+
+    i2 = fake_interaction(guild=guild, user=utente)
+    await cog.opzioni.callback(
+        cog, i2, f"KK-{kk}", pausa=True, parole="Torneo, -replica", gioco="Valorant", attesa=30
+    )
+    opz = await modulo.alert_options_repo.get("KK", kk)
+    assert opz.paused is True
+    assert opz.title_words == "Torneo, -replica"
+    assert opz.game_filter == "Valorant"
+    assert opz.min_gap_minutes == 30
+    assert "Valorant" in _testo(i2)
+
+    i3 = fake_interaction(guild=guild, user=utente)
+    await cog.opzioni.callback(cog, i3, f"KK-{kk}", parole="", pausa=False)
+    opz = await modulo.alert_options_repo.get("KK", kk)
+    assert opz.title_words == "" and opz.paused is False

@@ -14,7 +14,8 @@ import asyncpg
 from core.alert_options_logic import AlertOptions
 
 _CAMPI = ("mention_role_id", "ping_allowed", "notify_end", "delete_on_end", "watch_button",
-          "crosspost", "live_member_id", "last_message_id")
+          "crosspost", "live_member_id", "last_message_id", "paused", "title_words", "game_filter",
+          "min_gap_minutes", "last_published_at")
 
 
 class AlertOptionsRepository:
@@ -63,6 +64,13 @@ class AlertOptionsRepository:
         await self._pool.execute(
             "UPDATE alert_options SET last_message_id = $4 WHERE kind = $1 AND sub_id = $2 AND guild_id = $3",
             kind, sub_id, guild_id, message_id,
+        )
+
+    async def touch_published(self, kind: str, sub_id: int, guild_id: int) -> None:
+        """Ricorda l'ora dell'ultimo avviso (pausa minima, ALR-033). Solo se esiste la riga delle opzioni."""
+        await self._pool.execute(
+            "UPDATE alert_options SET last_published_at = now() WHERE kind = $1 AND sub_id = $2 AND guild_id = $3",
+            kind, sub_id, guild_id,
         )
 
     async def other_live_for_member(self, guild_id: int, member_id: int, kind: str, sub_id: int) -> bool:

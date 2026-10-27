@@ -1143,3 +1143,15 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 - [ ] Lock a tempo e sanzioni attive (MOD-090, MOD-013) — passi: `/mod lock durata:2m reason:prova` in un canale; B non scrive. Riavvia il bot prima dei 2 minuti. Risultato atteso: alla scadenza il canale si riapre da solo (riga «è finito il lock a tempo» nel log di moderazione). `/mod lock durata:1h` poi `/mod unlock`: nessuno sblocco tardivo dopo un'ora. `/mod lock` senza durata, poi `/mod lock durata:2m`: dopo 2 minuti il canale si riapre davvero. `/mod caso attive` mostra lock a tempo, timeout e tempban in corso con la scadenza relativa, senza ping.
 - [ ] Punizione della trappola (SIC-040) — passi: `/security spamtrap punizione:Kick`; B scrive nella trappola. Risultato atteso: messaggio cancellato, B riceve il DM ed è espulso, nei log «Action: kick» e il caso. Con `Timeout di un giorno`: B in timeout 24 ore. Con `Solo cancellare`: il messaggio sparisce ogni volta, un solo avviso nei log. Con `Decide lo staff`: nei log i bottoni Ban e Kick; un membro senza «Bannare» è rifiutato; un moderatore li preme, l'azione parte, i bottoni si spengono con «Deciso da …»; dopo un riavvio i bottoni rispondono ancora. Lo staff esentato che scrive nella trappola non subisce nulla.
 
+## Musica e alert — giro r10 (#126, #129, #67)
+
+Serve: un server con almeno 2 bot musicali invitati, Lavalink acceso, un canale di avvisi e un canale Twitch o Kick di prova.
+
+- [ ] 9.2/9.3 due canali vocali — A entra nel canale 1 e fa `/music play`, B nel canale 2 dello stesso server: suonano due bot diversi con code separate; `/music skip` in uno non tocca l'altro.
+- [ ] `/music nonstop on` (9.10) — metti un brano, attiva il loop, esci dal canale: dopo più di 5 minuti il bot è ancora lì e suona. `nonstop off`, esci di nuovo: dopo un po' il bot esce.
+- [ ] `/admin musica impostazioni attesa-uscita:1` — a coda finita il bot esce dopo circa 1 minuto invece di 5.
+- [ ] `parole-vietate:xyz` — `/music play` di un brano con «xyz» nel titolo: rifiutato; una playlist con un brano così lo salta e lo dice.
+- [ ] `solo-siti-conosciuti:True` — un link di un sito qualunque è rifiutato; un link YouTube e una ricerca per titolo funzionano.
+- [ ] `/moduli alert opzioni pausa:True` su un avviso Twitch/Kick: la diretta non viene annunciata; `pausa:False` durante la diretta: l'avviso parte al giro dopo. Un avviso RSS in pausa non pubblica ma alla ripresa non arriva la raffica.
+- [ ] `parole:torneo, -replica` — una diretta senza «torneo» nel titolo non viene annunciata; con «replica» nemmeno. `gioco:Valorant` — solo quel gioco. `attesa:30` — due dirette a meno di 30 minuti: un solo avviso.
+

@@ -391,3 +391,29 @@ async def test_shuffle_solo_miei_non_lascia_mai_la_coda_vuota_tra_un_await_e_l_a
         await cog.shuffle.callback(cog, _Interazione(), solo_miei=True)
     assert len(player.queue) == 3
     assert eventi[:2] == ["clear", "put"]
+
+
+# ----------------------------- 24/7 (SPEC 9.10, LIM-44) -----------------------------
+@pytest.mark.asyncio
+async def test_nonstop_on_segna_il_player_e_spegne_il_controllo_canale_vuoto(monkeypatch):
+    player = _player([_t("a")])
+    player.inactive_channel_tokens = 3
+    cog = _cog(player, monkeypatch)
+
+    await cog.nonstop_on.callback(cog, _Interazione())
+
+    assert player.is_nonstop is True
+    assert player.inactive_channel_tokens is None
+
+
+@pytest.mark.asyncio
+async def test_nonstop_off_rimette_il_comportamento_normale(monkeypatch):
+    player = _player([_t("a")])
+    player.inactive_channel_tokens = None
+    player.is_nonstop = True
+    cog = _cog(player, monkeypatch)
+
+    await cog.nonstop_off.callback(cog, _Interazione())
+
+    assert player.is_nonstop is False
+    assert player.inactive_channel_tokens == 3

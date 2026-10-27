@@ -6,12 +6,13 @@ bottone «Guarda», pubblicazione nei canali annunci, fine diretta (messaggio
 sì/no, avviso cancellato). Un solo punto per tutti i watcher, così le
 menzioni sono sempre esplicite (D12): `@everyone` e `@here` mai, un ruolo solo
 se chi ha configurato l'avviso poteva pingare i ruoli.
-Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-025, 026, 027, 028; #103 NF-32)
+Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-025, 026, 027, 028, 030, 031, 032, 033, 036; #103 NF-32)
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from dataclasses import dataclass, replace
 
 import discord
@@ -55,6 +56,46 @@ class AlertOptions:
     crosspost: bool = False
     live_member_id: int | None = None
     last_message_id: int | None = None
+    paused: bool = False
+    title_words: str = ""
+    game_filter: str = ""
+    min_gap_minutes: int = 0
+    last_published_at: datetime | None = None
+
+
+MAX_FILTRO = 200
+MAX_ATTESA_MINUTI = 1440
+
+
+def parse_parole(testo: str) -> list[str]:
+    """«Torneo, -replica» -> ["torneo", "-replica"] (minuscole, senza vuoti)."""
+    return [p.strip().lower() for p in (testo or "").split(",") if p.strip().lstrip("-").strip()]
+
+
+def motivo_silenzio(opz: AlertOptions, titolo: str, gioco: str, adesso: datetime) -> str | None:
+    """Perché un avviso «in diretta» NON va pubblicato: pausa, gioco, titolo, attesa; None se si pubblica.
+
+    Parole del titolo: una parola con «-» davanti esclude (per le repliche, ALR-032); le altre
+    ammettono (basta una). Gioco: uno dei nomi dell'elenco (maiuscole ignorate).
+    """
+    if opz.paused:
+        return "pausa"
+    giochi = parse_parole(opz.game_filter)
+    if giochi and (gioco or "").strip().lower() not in giochi:
+        return "gioco"
+    parole = parse_parole(opz.title_words)
+    titolo_basso = (titolo or "").lower()
+    escluse = [p[1:].strip() for p in parole if p.startswith("-")]
+    ammesse = [p for p in parole if not p.startswith("-")]
+    if any(e and e in titolo_basso for e in escluse):
+        return "titolo"
+    if ammesse and not any(a in titolo_basso for a in ammesse):
+        return "titolo"
+    if opz.min_gap_minutes and opz.last_published_at and adesso - opz.last_published_at < timedelta(
+        minutes=opz.min_gap_minutes
+    ):
+        return "attesa"
+    return None
 
 
 def menzioni_avviso(opz: AlertOptions) -> discord.AllowedMentions:
