@@ -159,7 +159,7 @@ async def test_il_gestore_avvia_e_ferma_il_client(repo, monkeypatch):
     avviati = []
 
     class _ClientFinto:
-        def __init__(self, guild_id, testo):
+        def __init__(self, guild_id, testo, *resto):
             self.guild_id, self.testo_stato, self.chiuso = guild_id, testo, False
 
         async def start(self, token):
@@ -190,7 +190,7 @@ async def test_il_gestore_avvia_e_ferma_il_client(repo, monkeypatch):
 
 async def test_riconcilia_ferma_chi_non_ha_piu_il_server_o_il_marchio(repo, monkeypatch):
     class _ClientFinto:
-        def __init__(self, guild_id, testo):
+        def __init__(self, guild_id, testo, *resto):
             self.guild_id = guild_id
 
         async def start(self, token):

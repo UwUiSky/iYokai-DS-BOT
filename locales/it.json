@@ -82,7 +82,7 @@
   "mar_nessuno": "Nessun bot con marchio collegato. Crea un'applicazione su discord.com/developers, copia il token del suo bot e scegli «collega bot».",
   "mar_no": "no",
   "mar_non_avviato": "Non sono riuscito ad accenderlo: serve il premium e un bot collegato.",
-  "mar_nota_comandi": "I comandi restano quelli di iYokai; il tuo bot mostra nome, avatar e stato.",
+  "mar_nota_comandi": "I comandi sono quelli di iYokai e rispondono con il nome e l'avatar del tuo bot. Se non compaiono, rientra con il link di invito: serve il permesso dei comandi.",
   "mar_richiede_premium": "Il bot con marchio proprio è una funzione premium: questo server non l'ha sbloccata (vedi /admin premium stato).",
   "mar_riga_stato": "**Bot:** {nome}\n**Stato:** {stato}\n**Testo di stato:** {testo}\n**Acceso:** {acceso}",
   "mar_rimosso": "Bot con marchio scollegato: il token è stato cancellato dal bot. Discord non permette di revocarlo da qui: se il token potrebbe essere stato visto da altri, rigeneralo nel Developer Portal (la tua applicazione → Bot → Reset Token).",

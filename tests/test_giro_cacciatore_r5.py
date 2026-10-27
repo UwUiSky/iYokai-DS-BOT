@@ -110,7 +110,7 @@ async def test_un_evento_arrivato_durante_la_lettura_non_si_chiude(db_pronto):
 class _ClientFinto:
     aperti: list = []
 
-    def __init__(self, guild_id, testo):
+    def __init__(self, guild_id, testo, *resto):
         self.guild_id, self.chiuso = guild_id, False
         _ClientFinto.aperti.append(self)
 

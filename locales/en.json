@@ -82,7 +82,7 @@
   "mar_nessuno": "No branded bot is linked. Create an application at discord.com/developers, copy its bot token and choose «collega bot».",
   "mar_no": "no",
   "mar_non_avviato": "I could not switch it on: it needs premium and a linked bot.",
-  "mar_nota_comandi": "Commands stay iYokai's; your bot shows its name, avatar and status.",
+  "mar_nota_comandi": "Commands are iYokai's and are answered with your bot's name and avatar. If they do not appear, re-invite the bot with the invite link: it needs the commands permission.",
   "mar_richiede_premium": "The branded bot is a premium feature and this server has not unlocked it (see /admin premium stato).",
   "mar_riga_stato": "**Bot:** {nome}\n**Status:** {stato}\n**Status text:** {testo}\n**Switched on:** {acceso}",
   "mar_rimosso": "Branded bot unlinked: the bot has deleted the token. Discord doesn't allow revoking it from here: if someone else may have seen the token, regenerate it in the Developer Portal (your application → Bot → Reset Token).",
