@@ -148,5 +148,10 @@
   "prem_sblocca_modulo_sconosciuto": "This module does not exist. Pick one from the list that appears as you type.",
   "prem_sblocca_non_premium": "This module is not premium: no need to unlock it.",
   "prem_sblocca_cassa_insufficiente": "The server treasury does not have enough coins: {costo} needed.",
-  "prem_sblocca_annullato": "Cancelled. No coins spent."
+  "prem_sblocca_annullato": "Cancelled. No coins spent.",
+  "setup_bot_titolo": "The other iYokai bots in this server",
+  "setup_bot_mod_ok": "✅ iYokai Mod is here: it writes the logs and runs AutoMod, anti-raid, anti-nuke and spam-trap.",
+  "setup_bot_mod_manca": "➖ iYokai Mod is not here: the main bot does logs and security, and both stop together if it hits a rate limit. Invite it: {elenco}",
+  "setup_bot_musica_ok": "✅ Music bots: {presenti} of {totale}, all present.",
+  "setup_bot_musica_manca": "➖ Music bots: {presenti} of {totale}. Each missing bot means one less voice channel playing music at the same time. Invite: {elenco}"
 }

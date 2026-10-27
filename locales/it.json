@@ -148,5 +148,10 @@
   "prem_sblocca_modulo_sconosciuto": "Questo modulo non esiste. Scegli dall'elenco che appare mentre scrivi.",
   "prem_sblocca_non_premium": "Questo modulo non è premium: non serve sbloccarlo.",
   "prem_sblocca_cassa_insufficiente": "Nella cassa del server non ci sono abbastanza coin: servono {costo}.",
-  "prem_sblocca_annullato": "Annullato. Nessuna coin spesa."
+  "prem_sblocca_annullato": "Annullato. Nessuna coin spesa.",
+  "setup_bot_titolo": "Gli altri bot di iYokai in questo server",
+  "setup_bot_mod_ok": "✅ iYokai Mod è qui: scrive i log ed esegue AutoMod, anti-raid, anti-nuke e spam-trap.",
+  "setup_bot_mod_manca": "➖ iYokai Mod non è qui: log e sicurezza li fa il bot principale, e se va in rate limit si fermano insieme. Invitalo: {elenco}",
+  "setup_bot_musica_ok": "✅ Bot musicali: {presenti} su {totale}, tutti presenti.",
+  "setup_bot_musica_manca": "➖ Bot musicali: {presenti} su {totale}. Per ogni bot che manca c'è un canale vocale in meno con la musica nello stesso momento. Invita: {elenco}"
 }

@@ -40,7 +40,9 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.bot_inviti import altri_bot
 from core.config_schema import imposta_modulo
+from core.i18n import testo_per
 from core.database import db
 from core.premium import registry, PremiumModule
 from core.command_access import TipoRuolo, leggi_ruolo
@@ -242,6 +244,9 @@ class SetupCog(CogConGruppi, commands.Cog):
             vista = vista_autorizzazione(interaction.guild.id, interaction.user.id)
             if vista is not discord.utils.MISSING:
                 extra["view"] = vista
+            testo = await self._testo_altri_bot(interaction)
+            if testo:
+                extra["content"] = testo
             await interaction.followup.send(embed=embed, ephemeral=True, **extra)
             return
 
@@ -288,6 +293,26 @@ class SetupCog(CogConGruppi, commands.Cog):
             ephemeral=True,
             wait=True,
         )
+
+    async def _testo_altri_bot(self, interaction: discord.Interaction) -> str:
+        """Gli altri bot di iYokai in questo server, con i link di invito e cosa resta ridotto se mancano (#113)."""
+        try:
+            voci = await altri_bot(self.bot, interaction.guild.id)
+        except Exception:  # noqa: BLE001 - un dato in più: se non si legge, il setup funziona lo stesso
+            logger.warning("Elenco degli altri bot non disponibile.", exc_info=True)
+            return ""
+        righe = []
+        for voce in voci:
+            if not voce.mancanti:
+                righe.append(await testo_per(interaction, f"setup_bot_{voce.chiave}_ok", presenti=voce.presenti, totale=voce.totale))
+                continue
+            elenco = ", ".join(f"[{nome}]({url})" for nome, url in voce.mancanti)
+            righe.append(
+                await testo_per(interaction, f"setup_bot_{voce.chiave}_manca", presenti=voce.presenti, totale=voce.totale, elenco=elenco)
+            )
+        if not righe:
+            return ""
+        return ("**" + await testo_per(interaction, "setup_bot_titolo") + "**\n" + "\n".join(righe))[:2000]
 
     async def _embed_stato_moduli(self, guild_id: int) -> discord.Embed:
         """Elenco di sola lettura: stato di tutti i moduli, per categoria."""
