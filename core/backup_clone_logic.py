@@ -238,11 +238,11 @@ async def clone_categories_and_channels(
 
     # Canali già presenti: ognuno si riusa una volta sola.
     cat_esistenti = {c.name: c for c in getattr(target_guild, "categories", [])}
-    canali_esistenti = {
-        (_famiglia(c), c.name, c.category.name if c.category else None): c
-        for c in getattr(target_guild, "channels", [])
-        if not isinstance(c, discord.CategoryChannel)
-    }
+    canali_esistenti: dict[tuple, list] = {}
+    for c in getattr(target_guild, "channels", []):
+        if isinstance(c, discord.CategoryChannel) or _famiglia(c) is None:
+            continue
+        canali_esistenti.setdefault((_famiglia(c), c.name), []).append(c)
 
     offuscate: set[int] = set()
     categorie_ordinate = sorted(source_guild.categories, key=lambda c: c.position)
@@ -254,7 +254,7 @@ async def clone_categories_and_channels(
         overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild, riepilogo)
         nuova_categoria = cat_esistenti.pop(categoria.name, None)
         if nuova_categoria is not None:
-            await nuova_categoria.edit(overwrites=overwrites, reason=MOTIVO)
+            await _allinea(nuova_categoria, {"overwrites": overwrites})
             riepilogo.canali_riusati += 1
         else:
             nuova_categoria = await target_guild.create_category(
@@ -274,54 +274,28 @@ async def clone_categories_and_channels(
             riepilogo.canali_offuscati += 1
             continue
 
+        famiglia = _famiglia(canale)
+        if famiglia is None:
+            continue  # tipi di canale non gestiti (annunci di thread, directory, ecc.)
+
         categoria_destinazione = None
         if canale.category is not None:
             categoria_destinazione = mappa_categorie.get(canale.category.id)
 
         overwrites = remap_permission_overwrites(canale.overwrites, role_id_map, target_guild, riepilogo)
+        campi = _campi_canale(canale, famiglia, target_guild)
 
-        chiave = (_famiglia(canale), canale.name, canale.category.name if canale.category else None)
-        if chiave[0] is None:
-            continue  # tipi di canale non gestiti (forum, stage, ecc.) — fuori scope qui
-
-        nuovo_canale = canali_esistenti.pop(chiave, None)
+        nuovo_canale = _prendi_esistente(canali_esistenti, famiglia, canale.name, categoria_destinazione)
         if nuovo_canale is not None:
-            # M 12.3: il canale del modello si allinea all'originale (non solo i permessi).
-            if isinstance(canale, discord.VoiceChannel):
-                await nuovo_canale.edit(
-                    overwrites=overwrites,
-                    bitrate=min(canale.bitrate, int(target_guild.bitrate_limit)),
-                    user_limit=canale.user_limit,
-                    reason=MOTIVO,
-                )
-            else:
-                await nuovo_canale.edit(
-                    overwrites=overwrites,
-                    topic=canale.topic or "",
-                    nsfw=canale.nsfw,
-                    slowmode_delay=canale.slowmode_delay,
-                    reason=MOTIVO,
-                )
-            riepilogo.canali_riusati += 1
-        elif isinstance(canale, discord.VoiceChannel):
-            nuovo_canale = await target_guild.create_voice_channel(
-                name=canale.name,
-                category=categoria_destinazione,
-                overwrites=overwrites,
-                # LIM-28: il server di backup può avere meno boost dell'originale.
-                bitrate=min(canale.bitrate, int(target_guild.bitrate_limit)),
-                user_limit=canale.user_limit,
-                reason=MOTIVO,
+            # Il canale presente si allinea all'originale: si cambiano solo i campi diversi
+            # (anche la categoria: un canale spostato non si duplica).
+            await _allinea(
+                nuovo_canale, {**campi, "overwrites": overwrites, "category": categoria_destinazione}
             )
+            riepilogo.canali_riusati += 1
         else:
-            nuovo_canale = await target_guild.create_text_channel(
-                name=canale.name,
-                category=categoria_destinazione,
-                overwrites=overwrites,
-                topic=canale.topic or "",
-                nsfw=canale.nsfw,
-                slowmode_delay=canale.slowmode_delay,
-                reason=MOTIVO,
+            nuovo_canale = await _crea_canale(
+                target_guild, famiglia, canale, campi, categoria_destinazione, overwrites
             )
 
         mappa_id[canale.id] = nuovo_canale.id
@@ -330,12 +304,107 @@ async def clone_categories_and_channels(
 
 
 def _famiglia(canale) -> str | None:
-    """'voce' o 'testo' per i canali che sappiamo copiare, altrimenti None."""
+    """'voce', 'stage', 'forum' o 'testo' per i canali che sappiamo copiare, altrimenti None."""
+    if isinstance(canale, discord.StageChannel):
+        return "stage"
     if isinstance(canale, discord.VoiceChannel):
         return "voce"
+    if isinstance(canale, discord.ForumChannel):
+        return "forum"
     if isinstance(canale, discord.TextChannel):
         return "testo"
     return None
+
+
+def _etichette_forum(canale) -> list:
+    """Etichette del forum da ricreare (le emoji personalizzate di un altro server si lasciano)."""
+    etichette = []
+    for t in getattr(canale, "available_tags", None) or []:
+        emoji = t.emoji if (t.emoji is not None and getattr(t.emoji, "id", None) is None) else None
+        etichette.append(discord.ForumTag(name=t.name, emoji=emoji, moderated=t.moderated))
+    return etichette
+
+
+def _campi_canale(canale, famiglia: str, target_guild) -> dict:
+    """Campi propri del tipo di canale, pronti per create_* e per edit."""
+    tetto = int(getattr(target_guild, "bitrate_limit", 96000))
+    if famiglia == "voce":
+        return {"bitrate": min(canale.bitrate, tetto), "user_limit": canale.user_limit}
+    if famiglia == "stage":
+        return {"bitrate": min(canale.bitrate, tetto), "user_limit": canale.user_limit}
+    if famiglia == "forum":
+        return {
+            "topic": canale.topic or "",
+            "nsfw": canale.nsfw,
+            "slowmode_delay": canale.slowmode_delay,
+            "available_tags": _etichette_forum(canale),
+        }
+    return {"topic": canale.topic or "", "nsfw": canale.nsfw, "slowmode_delay": canale.slowmode_delay}
+
+
+def _prendi_esistente(esistenti: dict, famiglia: str, nome: str, categoria):
+    """Toglie e restituisce un canale presente con lo stesso tipo e nome: prima quello nella
+    categoria giusta, poi un altro (che andrà spostato)."""
+    candidati = esistenti.get((famiglia, nome))
+    if not candidati:
+        return None
+    for c in candidati:
+        if getattr(c, "category", None) is categoria or (
+            categoria is not None and getattr(getattr(c, "category", None), "id", None) == categoria.id
+        ):
+            candidati.remove(c)
+            return c
+    return candidati.pop(0)
+
+
+def _valore_attuale(canale, chiave: str):
+    """Valore di un campo del canale presente, già confrontabile; _ASSENTE se non si legge."""
+    try:
+        valore = getattr(canale, chiave)
+    except Exception:
+        return _ASSENTE
+    if chiave == "category":
+        return getattr(valore, "id", None)
+    if chiave == "overwrites":
+        return {k.id: v.pair() for k, v in valore.items()}
+    if chiave == "available_tags":
+        return [(t.name, t.moderated) for t in valore]
+    return valore
+
+
+def _valore_voluto(chiave: str, valore):
+    if chiave == "category":
+        return getattr(valore, "id", None)
+    if chiave == "overwrites":
+        return {k.id: v.pair() for k, v in valore.items()}
+    if chiave == "available_tags":
+        return [(t.name, t.moderated) for t in valore]
+    return valore
+
+
+_ASSENTE = object()
+
+
+async def _allinea(canale, voluti: dict) -> None:
+    """Cambia solo i campi diversi; se niente cambia non chiama Discord."""
+    diversi = {}
+    for chiave, valore in voluti.items():
+        if _valore_attuale(canale, chiave) != _valore_voluto(chiave, valore):
+            diversi[chiave] = valore
+    if diversi:
+        await canale.edit(reason=MOTIVO, **diversi)
+
+
+async def _crea_canale(target_guild, famiglia, canale, campi, categoria, overwrites):
+    comuni = {"name": canale.name, "category": categoria, "overwrites": overwrites, "reason": MOTIVO}
+    if famiglia == "voce":
+        # LIM-28: il server di backup può avere meno boost dell'originale.
+        return await target_guild.create_voice_channel(**comuni, **campi)
+    if famiglia == "stage":
+        return await target_guild.create_stage_channel(**comuni, **campi)
+    if famiglia == "forum":
+        return await target_guild.create_forum(**comuni, **campi)
+    return await target_guild.create_text_channel(**comuni, **campi)
 
 
 def conta_canali_non_visibili(source_guild: discord.Guild) -> int:
