@@ -56,6 +56,7 @@ from core.backup_link_logic import (
 )
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
 
 logger = logging.getLogger("iyokai.backup")
@@ -405,6 +406,9 @@ class BackupCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if not await self._puo(interaction, AZIONE_CARICA):
+            return  # 11.13: promuovere pesa quanto caricare una copia
+
         coppia = await backup_repo.get_pair_by_backup_guild_id(guild.id)
         if coppia is None:
             await interaction.response.send_message(
@@ -417,6 +421,8 @@ class BackupCog(CogConGruppi, commands.Cog):
         await backup_repo.promote_backup_to_main(
             old_main_guild_id=coppia.main_guild_id, new_main_guild_id=guild.id
         )
+        # Il mirror del vecchio main scriveva in questo server: ora non serve più.
+        await backup_mirror_repo.delete_for_main_guild(coppia.main_guild_id)
         await registra_uso(guild.id, interaction.user.id, "promuovi", str(coppia.main_guild_id))
 
         await interaction.response.send_message(
