@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titolo %}Inviti · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Inviti · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Torna al server</a></p>
+{% if not sito_attivo %}<p class="avviso errore">L'indirizzo pubblico del sito non è configurato: i link personali non possono funzionare.</p>{% endif %}
+
+<h2>Modulo e opzioni</h2>
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/modulo">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="nome" value="invites">
+  <input type="hidden" name="attivo" value="{{ '0' if opzioni.attivo else '1' }}">
+  <span>Modulo inviti: <strong>{{ 'acceso' if opzioni.attivo else 'spento' }}</strong></span>
+  <button type="submit">{{ 'Spegni' if opzioni.attivo else 'Accendi' }}</button>
+</form>
+<form class="carta" method="post" action="/server/{{ guild.id }}/inviti">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p><label>Registro (dove scrivere chi entra e con quale link)<br>
+    <select name="canale_id">
+      <option value="">— nessun canale —</option>
+      {% for c in canali %}<option value="{{ c.id }}" {{ 'selected' if c.id == opzioni.canale_log_id }}>#{{ c.name }}</option>{% endfor %}
+    </select></label></p>
+  <p><label>Chi può avere il link personale<br>
+    <select name="ruolo_id">
+      <option value="">— tutti i membri —</option>
+      {% for r in ruoli %}<option value="{{ r.id }}" {{ 'selected' if r.id == opzioni.ruolo_link_id }}>{{ r.name }}</option>{% endfor %}
+    </select></label></p>
+  <button type="submit">Salva</button>
+</form>
+
+<h2>Come sono entrati</h2>
+<div class="carta"><ul>{% for etichetta, n in per_tipo %}<li>{{ etichetta }}: {{ n }}</li>{% endfor %}</ul></div>
+
+<h2>Classifica</h2>
+{% if classifica %}
+<table><tr><th>Membro</th><th>Presenti</th><th>In tutto</th></tr>
+{% for r in classifica %}<tr><td>{{ r.nome }}</td><td>{{ r.presenti }}</td><td>{{ r.totale }}</td></tr>{% endfor %}</table>
+{% else %}<p class="carta">Nessun invito registrato finora.</p>{% endif %}
+
+<h2>Ultimi ingressi</h2>
+{% if ultimi %}
+<table><tr><th>Chi è entrato</th><th>Invitato da</th><th>Link</th><th>Quando</th><th>Uscito</th></tr>
+{% for u in ultimi %}<tr><td>{{ u.chi }}</td><td>{{ u.invitante }}</td><td>{{ u.tipo }}</td><td>{{ u.quando.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ u.uscito.strftime('%d/%m/%Y') if u.uscito else '—' }}</td></tr>{% endfor %}</table>
+{% else %}<p class="carta">Nessun ingresso registrato finora.</p>{% endif %}
+<p class="tenue">L'attribuzione si riconosce con buona affidabilità, non al 100%.</p>
+{% endblock %}

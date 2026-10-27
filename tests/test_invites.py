@@ -12,6 +12,7 @@ import pytest
 from discord.ext import commands
 
 import cogs.utility.invites as modulo
+from core import invite_service
 from cogs.utility.invites import AVVISO_ATTRIBUZIONE, InvitesCog
 from core.repositories.invite_stats_repo import InviteStatsRepository
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
@@ -78,24 +79,31 @@ async def test_ingresso_registrato_e_bot_ignorato():
     umano, bot = _m(21, guild), _m(22, guild, True)
     with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
          patch.object(modulo.invite_tracker, "resolve_join_invite", AsyncMock(return_value=("abc", 5))), \
+         patch.object(invite_service.invite_links_repo, "da_codice", AsyncMock(return_value=None)), \
+         patch.object(modulo.db, "get_guild_setting", AsyncMock(return_value=None)), \
          patch.object(modulo.invite_stats_repo, "record_join", AsyncMock()) as rec:
         await cog.on_member_join(bot)
         rec.assert_not_awaited()
         await cog.on_member_join(umano)
-        rec.assert_awaited_once_with(guild.id, 21, 5, "abc")
+        rec.assert_awaited_once_with(guild.id, 21, 5, "abc", "normale")
 
 
 @pytest.mark.asyncio
-async def test_invito_sconosciuto_o_auto_invito_non_registrati():
+async def test_invito_sconosciuto_o_auto_invito_registrati_senza_invitante():
+    """Lo storico tiene anche chi entra senza invitante noto (tipo «sconosciuto»); nessuno invita se stesso."""
     cog = _cog()
     guild = fake_guild()
     m = _m(21, guild)
     with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+         patch.object(modulo.db, "get_guild_setting", AsyncMock(return_value=None)), \
+         patch.object(invite_service.invite_links_repo, "da_codice", AsyncMock(return_value=None)), \
          patch.object(modulo.invite_stats_repo, "record_join", AsyncMock()) as rec:
         for risposta in (None, ("abc", None), ("abc", 21)):
             with patch.object(modulo.invite_tracker, "resolve_join_invite", AsyncMock(return_value=risposta)):
                 await cog.on_member_join(m)
-        rec.assert_not_awaited()
+    assert [c.args[2:] for c in rec.await_args_list] == [
+        (None, None, "sconosciuto"), (None, "abc", "normale"), (None, "abc", "normale"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -112,9 +120,11 @@ async def test_modulo_spento_non_registra():
 async def test_uscita_segnata():
     cog = _cog()
     guild = fake_guild()
-    with patch.object(modulo.invite_stats_repo, "mark_left", AsyncMock()) as left:
+    with patch.object(modulo.invite_stats_repo, "mark_left", AsyncMock()) as left, \
+         patch.object(modulo.invite_service, "elimina_link_membro", AsyncMock()) as toglie:
         await cog.on_member_remove(_m(21, guild))
         left.assert_awaited_once_with(guild.id, 21)
+        toglie.assert_awaited_once_with(cog.bot, guild.id, 21)
 
 
 @pytest.mark.asyncio
@@ -131,7 +141,7 @@ async def test_i_comandi_avvisano_sull_attribuzione():
 async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("utente", "classifica"):
+    for nome in ("utente", "classifica", "storico", "link", "opzioni"):
         assert comando_nel_gruppo("level", f"inviti {nome}") is not None
 
 

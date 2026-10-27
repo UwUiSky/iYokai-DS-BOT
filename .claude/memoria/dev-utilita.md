@@ -1,11 +1,12 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-21/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
+27/10/2026 · ramo feat/r10inviti (worktree /home/claude/wt/r10inviti, env scratchpad/env_r10inviti.sh, DB iyokai_wr10inviti) · link d'invito personali «finto vanity», migrazioni 0380-0389 (usata 0380)
 
 ## In corso
-- r8: codice e documenti fatti (COMMAND_LIST, SPEC §14.14-14.16/14.20/14.21/22.3, VERIFICA_LIVE «Ruoli e utility — giro r8», REGISTRO Parziali). Smoke --base main 865 verdi (scratchpad/uti_smoke_r8.log). Giro chiuso: aspetta revisione dell'orchestratore.
-- Migrazioni riservate 0230-0239 (usate 0230-0232). Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
+- r10inviti WIP: scritti 0380, core/invite_links_logic.py, invite_service.py, repo invite_links_repo + invite_stats_repo esteso, invite_tracker (vanity, codici, registra_invito), cogs/utility/invites.py (/level inviti link|storico|opzioni), core/web_panel_inviti.py + template inviti_miei/inviti_server (1 riga in web_panel_server), data_registry, SETTINGS_SCHEMA. Test esistenti verdi (60).
+- PROSSIMO PASSO: scrivere test nuovi (tests/test_invite_links_logic.py, test_invite_service.py con DB, test_panel_inviti.py usando fixture di test_web_panel_server: redirect, rate limit, CSRF, permessi, escape; tracker vanity/codici; registro dati), poi invarianti (test_command_tree_invariants, riferimenti_comandi, repository_callers, command_translator -> locales/comandi.en.json per storico/link/opzioni, data_registry, command_groups, ui_base_wiring, config_import_validation), SPEC §23, VERIFICA_LIVE «giro r10 — inviti», REGISTRO_RISOLTE, README/.env.example (nessuna variabile nuova), smoke --base main una volta.
+- Pesi: level 5127 prima di aggiungere 3 comandi (ricontrollare con scratchpad/r10inviti_pesi.py).
 
 ## Fatto
 - r8 G1 c265011: /ruoli (D25 quinto caso) cogs/utility/ruoli_strumenti.py + core/ruoli_strumenti_logic.py + self_role_repo (0231); /utility ruolo.

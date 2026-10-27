@@ -106,6 +106,9 @@ SETTINGS_SCHEMA = {
     "mod_dm_spenti": "azioni_dm",
     "mod_ruoli_immuni": "lista_id",
     "spam_trap_punizione": "punizione_trappola",
+    # Inviti e link personali (core/invite_links_logic.py)
+    "inviti_log_channel_id": "id",
+    "inviti_link_role_id": "id",
 }
 
 

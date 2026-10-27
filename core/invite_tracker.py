@@ -48,8 +48,8 @@ subito dopo. Se gli usi sono meno delle persone, o sono saliti più
 inviti, non si indovina: risultato `None`.
 
 Limiti onesti (già noti, non scoperti a sorpresa):
-- Non funziona con i join tramite vanity URL (non è un invito con
-  un codice tracciabile nello stesso modo)
+- L'indirizzo personalizzato del server (vanity) non è nell'elenco degli inviti: lo si segue a
+  parte (`guild.vanity_invite()`, contatore `uses`) e vale come un invito senza creatore.
 - Richiede il permesso MANAGE_GUILD per leggere guild.invites()
 - Chi entra dal vanity URL entro pochi secondi da un raid può
   risultare entrato con l'invito del raid
@@ -58,6 +58,7 @@ notato nello schema di progetto originale (~90%).
 """
 
 # Comando e classifica (NF-27): cogs/utility/invites.py.
+# Link personali dal sito (r10): core/invite_service.py.
 
 from __future__ import annotations
 
@@ -86,6 +87,20 @@ DEFAULT_MAX_TRACKED_GUILDS = 5000
 # attribuiti (raid: il contatore sale di 5 in un colpo) restano validi
 # per gli ingressi che arrivano subito dopo.
 DURATA_USI_IN_SOSPESO = 10
+
+
+async def _usi_vanity(guild: discord.Guild) -> tuple[str, int] | None:
+    """(codice, usi) dell'indirizzo personalizzato del server, se c'è e il bot lo può leggere."""
+    codice = getattr(guild, "vanity_url_code", None)
+    if not isinstance(codice, str) or not codice:
+        return None
+    try:
+        invito = await guild.vanity_invite()
+    except (discord.Forbidden, discord.HTTPException):
+        return None
+    if invito is None:
+        return None
+    return codice, invito.uses or 0
 
 
 class InviteTracker:
@@ -147,14 +162,31 @@ class InviteTracker:
             )
             return
 
-        self._cache.set(guild.id, {invite.code: invite.uses or 0 for invite in invites})
-        self._inviters.set(
-            guild.id,
-            {
-                invite.code: (invite.inviter.id if invite.inviter else None)
-                for invite in invites
-            },
-        )
+        usi = {invite.code: invite.uses or 0 for invite in invites}
+        creatori = {
+            invite.code: (invite.inviter.id if invite.inviter else None)
+            for invite in invites
+        }
+        vanity = await _usi_vanity(guild)
+        if vanity is not None:
+            usi[vanity[0]], creatori[vanity[0]] = vanity[1], None
+        self._cache.set(guild.id, usi)
+        self._inviters.set(guild.id, creatori)
+
+    def codici(self, guild_id: int) -> set[str] | None:
+        """I codici d'invito noti del server, o None se il server non è ancora tracciato."""
+        usi = self._cache.get(guild_id)
+        return None if usi is None else set(usi)
+
+    def registra_invito(self, guild_id: int, codice: str, creatore_id: int | None, usi: int = 0) -> None:
+        """Un invito appena creato dal bot: così il primo ingresso con quel codice si riconosce
+        anche se l'evento di creazione non è ancora arrivato."""
+        attuali = dict(self._cache.get(guild_id) or {})
+        attuali.setdefault(codice, usi)
+        self._cache.set(guild_id, attuali)
+        creatori = dict(self._inviters.get(guild_id) or {})
+        creatori.setdefault(codice, creatore_id)
+        self._inviters.set(guild_id, creatori)
 
     async def find_used_invite(
         self, guild: discord.Guild
@@ -266,6 +298,9 @@ class InviteTracker:
             invite.code: (invite.inviter.id if invite.inviter else None)
             for invite in invites_attuali
         }
+        vanity = await _usi_vanity(guild)
+        if vanity is not None:
+            dopo[vanity[0]], inviters_dopo[vanity[0]] = vanity[1], None
         self._cache.set(guild.id, dopo)
         self._inviters.set(guild.id, inviters_dopo)
 
