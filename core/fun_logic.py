@@ -98,7 +98,7 @@ _SOMIGLIANTI = str.maketrans(
 )
 
 
-def _normalizza_per_filtro(tema: str) -> str:
+def normalizza_per_filtro(tema: str) -> str:
     """
     Il tema com'è visto dal filtro: senza accenti, maiuscole, caratteri invisibili
     o decorazioni; lettere cirilliche/greche simili a quelle latine rese latine;
@@ -119,7 +119,7 @@ def _normalizza_tema(tema: str) -> str:
 
 def tema_ammesso(tema: str) -> bool:
     """Vero se il tema non è vuoto e non misura una caratteristica protetta."""
-    normale = _normalizza_per_filtro(tema)
+    normale = normalizza_per_filtro(tema)
     if not normale:
         return False
     # Un nome proprio famoso non è una religione.

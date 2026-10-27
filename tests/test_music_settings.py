@@ -337,6 +337,20 @@ def test_parole_vietate_nei_titoli():
     assert not title_blocked("qualsiasi", MusicSettings())
 
 
+def test_parole_vietate_non_si_aggirano_con_accenti_o_caratteri_strani():
+    """MUS-062: maiuscole Unicode, accenti, lettere larghe o cirilliche e punti in mezzo non bastano."""
+    from core.music_settings_logic import title_blocked
+
+    s = MusicSettings(banned_words="parolaccia, Città")
+    assert title_blocked("PARÒLACCIA remix", s)
+    assert title_blocked("ｐａｒｏｌａｃｃｉａ", s)  # lettere larghe
+    assert title_blocked("pаrolaccia", s)  # «а» cirillica
+    assert title_blocked("p.a.r.o.l.a.c.c.i.a", s)
+    assert title_blocked("citta vuota", s)  # parola vietata scritta con l'accento
+    assert not title_blocked("Titolo pulito", s)
+    assert not title_blocked("x", MusicSettings(banned_words=" , - ,"))
+
+
 def test_solo_siti_conosciuti():
     from core.music_settings_logic import site_not_allowed
 

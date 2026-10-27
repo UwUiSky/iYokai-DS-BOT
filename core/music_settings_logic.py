@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from core.fun_logic import normalizza_per_filtro
 from core.music_logic import format_duration, truncate_title
 
 MAX_VOLUME = 200
@@ -52,10 +53,14 @@ class MusicSettings:
 
 
 def title_blocked(titolo: str, settings: MusicSettings) -> bool:
-    """MUS-062: vero se il titolo contiene una parola vietata dal server (maiuscole ignorate)."""
-    parole = [p.strip().lower() for p in settings.banned_words.split(",") if p.strip()]
-    basso = (titolo or "").lower()
-    return any(p in basso for p in parole)
+    """MUS-062: vero se il titolo contiene una parola vietata dal server.
+
+    Titolo e parole passano dallo stesso filtro dei temi (`normalizza_per_filtro`):
+    maiuscole, accenti, lettere larghe o somiglianti e lettere staccate non aggirano il divieto.
+    """
+    parole = [normalizza_per_filtro(p) for p in settings.banned_words.split(",")]
+    normale = normalizza_per_filtro(titolo or "")
+    return any(p and p in normale for p in parole)
 
 
 def site_not_allowed(query: str, settings: MusicSettings) -> str | None:

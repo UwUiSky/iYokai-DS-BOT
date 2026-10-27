@@ -223,7 +223,7 @@
 | 15/10 | `request_channel.aggiorna` | Due eventi insieme passano la pausa: due messaggi player nuovi | media | corretto r6mus `8aa3e14` |
 | 15/10 | `request_channel` on_message | Nessuna pausa per utente: spam = ricerche Lavalink + cancellazioni a raffica | media | corretto r6mus `b4a5cd1` |
 | 15/10 | `soundboard._esci_se_inattivo` | Esce senza lock del canale (play a metà) e taglia il suono di un altro | media | corretto r6mus `3d93028` |
-| 15/10 | `soundboard._torna_sordo` | Due suoni entro 6 s: il primo riassorda il bot durante il secondo | bassa | plausibile, aperto |
+| 15/10 | `soundboard._torna_sordo` | Due suoni entro 6 s: il primo riassorda il bot durante il secondo | bassa | chiuso `e339198` (ricontrollato 27/10: lock del canale + annullo del ritorno in attesa) |
 | 16/10 | `channel_router.PostForum._trova_post` | Thread del forum in cache con il client di Mod: con Mod fermo/senza permesso il principale riscrive via Mod, log forum persi | alta | corretto r7mod `bec8cf6` |
 | 16/10 | `bot_roles.cancella_messaggi` | Via Mod un blocco di 1 messaggio va a `http.delete_messages` (Discord vuole 2–100): spam-trap non cancella | media | corretto r7mod `bec8cf6` |
 | 16/10 | `logs_query.archivio_canale` | 20.000 msg da 4000 car. fino a ~360 MB, più archivi insieme: memoria del bot di tutti | alta | corretto r7mod `52bd743` |
