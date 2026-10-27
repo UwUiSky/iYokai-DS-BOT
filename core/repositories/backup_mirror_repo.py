@@ -62,16 +62,30 @@ class BackupMirrorRepository:
         )
 
     async def save_mapping(
-        self, main_guild_id: int, backup_guild_id: int, channel_webhook_map: dict[int, str]
-    ) -> None:
+        self,
+        main_guild_id: int,
+        backup_guild_id: int,
+        channel_webhook_map: dict[int, str],
+        solo_se_collegata: bool = False,
+    ) -> bool:
         """
         Sostituisce INTERAMENTE la mappa per questo main_guild_id —
         cancella prima le righe vecchie (webhook del backup
         precedente, ormai inutilizzabili) e poi inserisce quelle
-        nuove, nella stessa transazione.
+        nuove, nella stessa transazione. Con ``solo_se_collegata``
+        (aggiornamento continuo, 11.17) non scrive nulla se nel frattempo
+        la coppia non lega più questi due server (promozione, nuovo
+        backup). Restituisce True se ha scritto.
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                if solo_se_collegata and await conn.fetchval(
+                    "SELECT 1 FROM backup_pairs WHERE main_guild_id = $1 AND backup_guild_id = $2 "
+                    "FOR UPDATE",
+                    main_guild_id,
+                    backup_guild_id,
+                ) is None:
+                    return False
                 await conn.execute(
                     "DELETE FROM backup_mirror_webhooks WHERE main_guild_id = $1",
                     main_guild_id,
@@ -88,6 +102,7 @@ class BackupMirrorRepository:
                             for canale_id, url in channel_webhook_map.items()
                         ],
                     )
+        return True
 
     async def get_webhook_url(self, main_channel_id: int) -> str | None:
         row = await self._pool.fetchrow(

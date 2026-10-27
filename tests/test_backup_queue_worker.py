@@ -324,3 +324,23 @@ async def test_coppia_con_job_in_corso_non_si_allinea(database_e_repo, monkeypat
     await repo.define_backup(100, 777)
     await repo.enqueue_linked_job(100, 777)
     assert await repo.prossima_coppia_da_allineare(6) is None
+
+
+@pytest.mark.asyncio
+async def test_promozione_durante_l_allineamento_non_riaccende_il_mirror(database_e_repo, monkeypatch):
+    """Un giro lungo finisce dopo /backup promuovi: la mappa del mirror non torna in vita."""
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+
+    async def _copia(main_guild, backup_guild, con_messaggi=True):
+        await repo.promote_backup_to_main(old_main_guild_id=100, new_main_guild_id=777)
+        await mirror_repo.delete_for_main_guild(100)
+        return {5: "https://discord.com/api/webhooks/1/x"}, RiepilogoCopia()
+
+    _con(worker_module, monkeypatch, repo, mirror_repo, _copia)
+    await repo.define_backup(100, 777)
+    main_bot = _FakeMainBot(_FakeMainGuild(100, _FakeOwner()))
+
+    await BackupQueueWorker().tick(_FakeCreatorClient([777]), main_bot)
+
+    assert await mirror_repo.get_webhook_url(5) is None

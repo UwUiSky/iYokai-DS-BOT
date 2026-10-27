@@ -146,7 +146,8 @@ class BackupQueueWorker:
 
     async def _allinea_una_coppia(self, creator_client: discord.Client, main_bot: commands.Bot) -> None:
         """11.17 (D8): ruoli, canali, permessi, espressioni e webhook del server di backup si
-        riallineano al principale. Non cancella nulla e non ricopia i messaggi."""
+        riallineano al principale. Non cancella nulla e non ricopia i messaggi. Il giro sta
+        nello stesso loop dei job (mai due copie insieme): un job aspetta al massimo un giro."""
         coppia = await backup_repo.prossima_coppia_da_allineare(ALLINEAMENTO_ORE)
         if coppia is None:
             return
@@ -161,15 +162,18 @@ class BackupQueueWorker:
             mappa_webhook, riepilogo = await popola_server_backup(
                 main_guild, backup_guild, con_messaggi=False
             )
-            await backup_mirror_repo.save_mapping(
+            salvata = await backup_mirror_repo.save_mapping(
                 main_guild_id=coppia.main_guild_id,
                 backup_guild_id=backup_guild.id,
                 channel_webhook_map=mappa_webhook,
+                solo_se_collegata=True,
             )
         except Exception as exc:
             logger.exception("Aggiornamento del backup di %s fallito.", coppia.main_guild_id)
             await backup_repo.segna_allineamento(coppia.main_guild_id, f"Errore: {type(exc).__name__}")
             return
+        if not salvata:
+            return  # la coppia è cambiata durante il giro (promozione): niente mirror, niente esito
         note = riassunto_copia(riepilogo)
         await backup_repo.segna_allineamento(
             coppia.main_guild_id, "Allineato." + (f" {note}" if note else "")
