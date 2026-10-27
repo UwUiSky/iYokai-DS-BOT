@@ -52,9 +52,9 @@ async def popola_server_backup(
     mappa_canali = await clone_categories_and_channels(
         main_guild, backup_guild, mappa_ruoli, riepilogo
     )
-    riepilogo.emoji_saltate = await clone_emoji(main_guild, backup_guild)
-    riepilogo.sticker_saltati = await clone_stickers(main_guild, backup_guild)
-    riepilogo.suoni_saltati = await clone_soundboard(main_guild, backup_guild)
+    riepilogo.emoji_saltate = await clone_emoji(main_guild, backup_guild, riepilogo)
+    riepilogo.sticker_saltati = await clone_stickers(main_guild, backup_guild, riepilogo)
+    riepilogo.suoni_saltati = await clone_soundboard(main_guild, backup_guild, riepilogo)
     await clone_webhooks(main_guild, backup_guild, mappa_canali, riepilogo)
     mappa_webhook_mirror = await create_mirror_webhooks(backup_guild, mappa_canali, riepilogo)
 
@@ -109,8 +109,12 @@ def riassunto_copia(riepilogo: RiepilogoCopia) -> str:
         )
     if riepilogo.messaggi_falliti:
         righe.append(f"Messaggi rifiutati da Discord: {riepilogo.messaggi_falliti} messaggi.")
+    if riepilogo.espressioni_senza_permesso:
+        righe.append(
+            "Emoji, sticker e suoni non copiati: al Creator manca il permesso «Creare espressioni»."
+        )
     saltati = riepilogo.emoji_saltate + riepilogo.sticker_saltati + riepilogo.suoni_saltati
-    if saltati:
+    if saltati and not riepilogo.espressioni_senza_permesso:
         righe.append(f"Emoji, sticker e suoni oltre i limiti del server: {saltati}.")
     return "\n".join(righe)
 

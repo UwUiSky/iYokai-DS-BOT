@@ -23,8 +23,9 @@ from core.backup_mirror_logic import NOME_CANALE_OFFUSCATO
 
 logger = logging.getLogger("iyokai.backup_clone")
 
-# Il server di backup può non avere boost: limite base della soundboard.
-MAX_SUONI_SOUNDBOARD = 8
+# Suoni della soundboard per livello di boost (0, 1, 2, 3).
+TETTO_SUONI_PER_BOOST = (8, 24, 36, 48)
+MAX_SUONI_SOUNDBOARD = TETTO_SUONI_PER_BOOST[0]
 
 # LIM-28: un canale ha al massimo 15 webhook; uno resta libero per il mirror.
 MAX_WEBHOOK_PER_CANALE = 15
@@ -55,6 +56,7 @@ class RiepilogoCopia:
     emoji_saltate: int = 0
     sticker_saltati: int = 0
     suoni_saltati: int = 0
+    espressioni_senza_permesso: bool = False
     posizioni_ruoli_fallite: bool = False
     ruoli_non_aggiornati: int = 0
     permessi_ridotti: int = 0
@@ -345,25 +347,56 @@ def conta_canali_non_visibili(source_guild: discord.Guild) -> int:
     return sum(1 for c in source_guild.channels if not c.permissions_for(me).view_channel)
 
 
-async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
+def tetto_suoni(livello_boost: int) -> int:
+    """Suoni della soundboard consentiti dal livello di boost (8, 24, 36, 48)."""
+    return TETTO_SUONI_PER_BOOST[max(0, min(int(livello_boost or 0), 3))]
+
+
+def _puo_creare_espressioni(target_guild) -> bool:
+    """Senza essere proprietario serve il permesso «Creare espressioni» (o Amministratore)."""
+    me = getattr(target_guild, "me", None)
+    if me is None:
+        return True
+    permessi = me.guild_permissions
+    return bool(permessi.administrator or permessi.create_expressions)
+
+
+def _nomi_presenti(target_guild, attributo: str) -> Counter:
+    return Counter(e.name for e in getattr(target_guild, attributo, None) or [])
+
+
+async def clone_emoji(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    riepilogo: RiepilogoCopia | None = None,
+) -> int:
     """
-    Clona le emoji personalizzate (SPEC.md §11.5): scarica ogni
-    immagine e la ricarica nel server di destinazione. Il limite di
-    Discord è separato per emoji statiche e animate: quelle oltre il
-    limite, o rifiutate da Discord, vengono saltate (non fanno fallire
-    il backup). Restituisce quante ne ha saltate.
+    Clona le emoji personalizzate (SPEC.md §11.5). Quelle con un nome già
+    presente non si ripetono. Il limite (separato tra statiche e animate)
+    conta anche le emoji già presenti. Senza il permesso «Creare
+    espressioni» non prova e lo scrive nel riepilogo. Restituisce quante
+    ne ha saltate.
     """
-    saltate = 0
+    riepilogo = riepilogo or RiepilogoCopia()
+    if not _puo_creare_espressioni(target_guild):
+        riepilogo.espressioni_senza_permesso = True
+        return len(source_guild.emojis)
+    presenti = getattr(target_guild, "emojis", None) or []
+    nomi = Counter(e.name for e in presenti)
     creati = {False: 0, True: 0}
+    for e in presenti:
+        creati[bool(e.animated)] += 1
+    saltate = 0
     for emoji in source_guild.emojis:
+        if nomi[emoji.name] > 0:
+            nomi[emoji.name] -= 1
+            continue
         if creati[emoji.animated] >= target_guild.emoji_limit:
             saltate += 1
             continue
         try:
             immagine = await emoji.read()
-            await target_guild.create_custom_emoji(
-                name=emoji.name, image=immagine, reason="Clonazione backup iYokai"
-            )
+            await target_guild.create_custom_emoji(name=emoji.name, image=immagine, reason=MOTIVO)
         except discord.HTTPException:
             logger.warning("Emoji '%s' saltata: Discord l'ha rifiutata.", emoji.name)
             saltate += 1
@@ -372,13 +405,25 @@ async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) 
     return saltate
 
 
-async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
-    """Clona gli sticker personalizzati (SPEC.md §11.6). Quelli oltre il
-    limite del server di destinazione, o rifiutati da Discord, vengono
-    saltati. Restituisce quanti ne ha saltati."""
+async def clone_stickers(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    riepilogo: RiepilogoCopia | None = None,
+) -> int:
+    """Clona gli sticker (SPEC.md §11.6), come le emoji: niente doppioni
+    per nome, limite che conta i presenti, permesso controllato.
+    Restituisce quanti ne ha saltati."""
+    riepilogo = riepilogo or RiepilogoCopia()
+    if not _puo_creare_espressioni(target_guild):
+        riepilogo.espressioni_senza_permesso = True
+        return len(source_guild.stickers)
+    nomi = _nomi_presenti(target_guild, "stickers")
+    creati = len(getattr(target_guild, "stickers", None) or [])
     saltati = 0
-    creati = 0
     for sticker in source_guild.stickers:
+        if nomi[sticker.name] > 0:
+            nomi[sticker.name] -= 1
+            continue
         if creati >= target_guild.sticker_limit:
             saltati += 1
             continue
@@ -390,7 +435,7 @@ async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guil
                 description=sticker.description,
                 emoji=sticker.emoji,
                 file=file_sticker,
-                reason="Clonazione backup iYokai",
+                reason=MOTIVO,
             )
         except discord.HTTPException:
             logger.warning("Sticker '%s' saltato: Discord l'ha rifiutato.", sticker.name)
@@ -400,25 +445,33 @@ async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guil
     return saltati
 
 
-async def clone_soundboard(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
-    """Clona i suoni della soundboard (SPEC.md §11.7). Il server nuovo ha
-    il limite base (MAX_SUONI_SOUNDBOARD): i suoni oltre il limite, o
-    rifiutati da Discord, vengono saltati. Restituisce quanti ne ha
-    saltati."""
+async def clone_soundboard(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    riepilogo: RiepilogoCopia | None = None,
+) -> int:
+    """Clona i suoni della soundboard (SPEC.md §11.7). Il tetto dipende dal
+    boost della destinazione (8, 24, 36, 48) e conta i suoni già presenti;
+    nomi già presenti non si ripetono. Restituisce quanti ne ha saltati."""
+    riepilogo = riepilogo or RiepilogoCopia()
+    if not _puo_creare_espressioni(target_guild):
+        riepilogo.espressioni_senza_permesso = True
+        return len(source_guild.soundboard_sounds)
+    nomi = _nomi_presenti(target_guild, "soundboard_sounds")
+    creati = len(getattr(target_guild, "soundboard_sounds", None) or [])
+    tetto = tetto_suoni(getattr(target_guild, "premium_tier", 0))
     saltati = 0
-    creati = 0
     for suono in source_guild.soundboard_sounds:
-        if creati >= MAX_SUONI_SOUNDBOARD:
+        if nomi[suono.name] > 0:
+            nomi[suono.name] -= 1
+            continue
+        if creati >= tetto:
             saltati += 1
             continue
         try:
             audio = await suono.read()
             await target_guild.create_soundboard_sound(
-                name=suono.name,
-                sound=audio,
-                volume=suono.volume,
-                emoji=suono.emoji,
-                reason="Clonazione backup iYokai",
+                name=suono.name, sound=audio, volume=suono.volume, emoji=suono.emoji, reason=MOTIVO
             )
         except discord.HTTPException:
             logger.warning("Suono '%s' saltato: Discord l'ha rifiutato.", suono.name)
