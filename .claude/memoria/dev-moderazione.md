@@ -2,6 +2,7 @@
 ## Aggiornata
 2026-10-21, ramo feat/r9mod, worktree /home/claude/wt/r9mod. Migrazioni r9: 0250 usata (0251–0259 libere). Log in scratchpad/r9mod.
 ## In corso
+r10 (feat/r10mod): 0270 usata (0271-0279 libere). Fatto: mute a tempo/hardmute/rientro, caso registra, casi esterni, avvisi staff, SPEC 5.1-5.10 [x]. Prossimo: MOD-012/043/045, voce MOD-022..026, MOD-058/059, smoke --base main.
 Giro r9 chiuso (5 voci su 5). Smoke --base main: 1079 verdi.
 Prossimo giro, in ordine di valore: SIC-039 (piu' trappole), VER-017/019/020, SIC-036 livelli di allerta (con AMD-067), MOD-014/015 (mute a tempo, hardmute), MOD-046/047 (casi a mano e da azioni esterne), AMD-013/026/027/070.
 ## Fatto

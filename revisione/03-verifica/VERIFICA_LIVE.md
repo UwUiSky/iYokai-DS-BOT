@@ -1143,3 +1143,12 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 - [ ] Lock a tempo e sanzioni attive (MOD-090, MOD-013) — passi: `/mod lock durata:2m reason:prova` in un canale; B non scrive. Riavvia il bot prima dei 2 minuti. Risultato atteso: alla scadenza il canale si riapre da solo (riga «è finito il lock a tempo» nel log di moderazione). `/mod lock durata:1h` poi `/mod unlock`: nessuno sblocco tardivo dopo un'ora. `/mod lock` senza durata, poi `/mod lock durata:2m`: dopo 2 minuti il canale si riapre davvero. `/mod caso attive` mostra lock a tempo, timeout e tempban in corso con la scadenza relativa, senza ping.
 - [ ] Punizione della trappola (SIC-040) — passi: `/security spamtrap punizione:Kick`; B scrive nella trappola. Risultato atteso: messaggio cancellato, B riceve il DM ed è espulso, nei log «Action: kick» e il caso. Con `Timeout di un giorno`: B in timeout 24 ore. Con `Solo cancellare`: il messaggio sparisce ogni volta, un solo avviso nei log. Con `Decide lo staff`: nei log i bottoni Ban e Kick; un membro senza «Bannare» è rifiutato; un moderatore li preme, l'azione parte, i bottoni si spengono con «Deciso da …»; dopo un riavvio i bottoni rispondono ancora. Lo staff esentato che scrive nella trappola non subisce nulla.
 
+
+## giro r10 — moderazione
+- `/mod mute durata:2m`: il ruolo Muted sparisce da solo; `/mod caso attive` lo elenca prima.
+- `/mod mute hardmute:True`: spariscono gli altri ruoli (non Booster); `/mod unmute` li ridà.
+- Utente silenziato che esce e rientra: ha ancora il ruolo Muted.
+- `/mod opzioni imposta casi_esterni:True`, poi ban/kick/timeout dal menu di Discord: compare un caso e la riga nel log.
+- `/mod opzioni imposta avviso_warn:2`: al terzo warn avviso nel log; `avviso_rientro:True`: rientra un utente con casi, avviso nel log.
+- `/mod caso registra`: caso nello storico, nessuna azione sul server.
+- `/mod clear attachments_only:True` (intent message_content acceso).
