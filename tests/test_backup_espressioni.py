@@ -140,3 +140,21 @@ def test_riassunto_dice_il_permesso_mancante():
     testo = riassunto_copia(r)
     assert "Creare espressioni" in testo
     assert "oltre i limiti" not in testo
+
+
+@pytest.mark.asyncio
+async def test_ruolo_presente_si_allinea_solo_nei_campi_diversi():
+    import discord
+
+    from tests.test_backup_clone_riuso import _DestinazioneRuoli
+    from tests.test_backup_clone_logic import _FakeRole, _FakeSourceGuild as _SorgenteRuoli
+
+    originale = _FakeRole(10, "Mod", 1, colour=discord.Colour(0xFF0000), hoist=True)
+    gia = _FakeRole(80, "Mod", 1, colour=discord.Colour(0xFF0000), hoist=False)
+    dest = _DestinazioneRuoli([gia])
+    from core.backup_clone_logic import clone_roles
+
+    await clone_roles(_SorgenteRuoli([originale]), dest)
+    (chiamata,) = gia.chiamate_edit
+    assert set(chiamata) == {"hoist", "reason"}
+    assert dest.posizioni is None  # già nell'ordine giusto

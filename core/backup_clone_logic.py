@@ -117,21 +117,33 @@ async def clone_roles(
     )
 
     ordine: dict = {}
+    creati_ora = False
     for indice, ruolo in enumerate(ruoli_da_clonare, start=1):
         riusato = esistenti.pop(ruolo.name, None)
         permessi = _permessi_consentiti(target_guild, ruolo.permissions)
         if permessi != ruolo.permissions:
             riepilogo.permessi_ridotti += 1
         if riusato is not None:
+            # Si cambiano solo i campi diversi: permessi, colore, separato, menzionabile.
+            diversi = {}
             if riusato.permissions != permessi:
+                diversi["permissions"] = permessi
+            if riusato.colour != ruolo.colour:
+                diversi["colour"] = ruolo.colour
+            if riusato.hoist != ruolo.hoist:
+                diversi["hoist"] = ruolo.hoist
+            if riusato.mentionable != ruolo.mentionable:
+                diversi["mentionable"] = ruolo.mentionable
+            if diversi:
                 try:
-                    await riusato.edit(permissions=permessi, reason=MOTIVO)
+                    await riusato.edit(reason=MOTIVO, **diversi)
                 except discord.Forbidden:
                     # ruolo sopra quello del Creator: si usa com'è e si va avanti
                     riepilogo.ruoli_non_aggiornati += 1
             nuovo_ruolo = riusato
             riepilogo.ruoli_riusati += 1
         else:
+            creati_ora = True
             nuovo_ruolo = await target_guild.create_role(
                 name=ruolo.name,
                 permissions=permessi,
@@ -144,7 +156,7 @@ async def clone_roles(
         ordine[nuovo_ruolo] = indice
 
     # M 12.4: la gerarchia si imposta alla fine, in un'unica chiamata.
-    if ordine:
+    if ordine and (creati_ora or any(r.position != posto for r, posto in ordine.items())):
         try:
             await target_guild.edit_role_positions(ordine, reason=MOTIVO)
         except discord.HTTPException:

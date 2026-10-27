@@ -214,3 +214,25 @@ def test_tetto_e_il_ruolo_piu_alto_di_chi_carica_salvo_l_owner():
     del i.user.top_role
     assert backup_module.tetto_di(i) is i.guild.default_role
     assert backup_module.tetto_di(_interazione(owner=True)) is None
+
+
+async def test_stato_mostra_ora_ed_esito_dell_aggiornamento_automatico(ambiente):
+    from core.repositories.backup_repo import BackupRepository
+
+    database, _repo = ambiente
+    repo_backup = BackupRepository(pool_provider=lambda: database.pool)
+    backup_module.backup_repo, originale = repo_backup, backup_module.backup_repo
+    try:
+        await repo_backup.define_backup(GUILD, GUILD + 1)
+        cog = BackupCog(bot=None)
+        i = _interazione(admin=True)
+        await cog.stato.callback(cog, i)
+        assert "non ancora eseguito" in i.response.messaggi[0][0]
+
+        await repo_backup.segna_allineamento(GUILD, "Allineato.")
+        i = _interazione(admin=True)
+        await cog.stato.callback(cog, i)
+        assert "Allineato." in i.response.messaggi[0][0]
+    finally:
+        backup_module.backup_repo = originale
+        await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = $1", GUILD)

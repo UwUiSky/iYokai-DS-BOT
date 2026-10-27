@@ -141,3 +141,31 @@ async def test_i_dati_di_un_altro_test_non_cambiano_l_esito(repo):
         assert await finalize_backup_job(_Joined(ALTRO), None, repo) is False
     finally:
         await repo._pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = $1", MAIN + 50)
+
+
+@pytest.mark.asyncio
+async def test_senza_messaggi_l_allineamento_non_ricopia_le_chat(monkeypatch):
+    import core.backup_orchestrator as orch
+
+    chiamate = []
+
+    async def _vuota(*a, **k):
+        return {}
+
+    async def _conta(*a, **k):
+        return 0
+
+    async def _messaggi(*a, **k):
+        chiamate.append("messaggi")
+
+    for nome in ("clone_roles", "clone_categories_and_channels", "clone_webhooks", "create_mirror_webhooks"):
+        monkeypatch.setattr(orch, nome, _vuota)
+    for nome in ("clone_emoji", "clone_stickers", "clone_soundboard"):
+        monkeypatch.setattr(orch, nome, _conta)
+    monkeypatch.setattr(orch, "conta_canali_non_visibili", lambda g: 0)
+    monkeypatch.setattr(orch, "copia_messaggi", _messaggi)
+
+    await orch.popola_server_backup(object(), object(), con_messaggi=False)
+    assert chiamate == []
+    await orch.popola_server_backup(object(), object())
+    assert chiamate == ["messaggi"]

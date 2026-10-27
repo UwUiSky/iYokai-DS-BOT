@@ -31,6 +31,8 @@ class BackupPair:
     main_guild_id: int
     backup_guild_id: int | None
     updated_at: datetime
+    ultimo_allineamento: datetime | None = None
+    esito_allineamento: str | None = None
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,8 @@ class BackupRepository:
             main_guild_id=row["main_guild_id"],
             backup_guild_id=row["backup_guild_id"],
             updated_at=row["updated_at"],
+            ultimo_allineamento=row["ultimo_allineamento"],
+            esito_allineamento=row["esito_allineamento"],
         )
 
     def _row_to_job(self, row) -> BackupJob:
@@ -138,6 +142,34 @@ class BackupRepository:
             "SELECT * FROM backup_pairs WHERE main_guild_id = $1", main_guild_id
         )
         return self._row_to_pair(row) if row is not None else None
+
+    async def prossima_coppia_da_allineare(self, ogni_ore: int) -> BackupPair | None:
+        """11.17: la coppia con backup più in ritardo (mai allineata prima), se è passato
+        l'intervallo e non c'è un job di copia in corso."""
+        row = await self._pool.fetchrow(
+            """
+            SELECT p.* FROM backup_pairs p
+            WHERE p.backup_guild_id IS NOT NULL
+              AND (p.ultimo_allineamento IS NULL
+                   OR p.ultimo_allineamento < now() - make_interval(hours => $1))
+              AND NOT EXISTS (
+                  SELECT 1 FROM backup_jobs j
+                  WHERE j.main_guild_id = p.main_guild_id AND j.status IN ('pending', 'running'))
+            ORDER BY p.ultimo_allineamento ASC NULLS FIRST
+            LIMIT 1
+            """,
+            ogni_ore,
+        )
+        return self._row_to_pair(row) if row is not None else None
+
+    async def segna_allineamento(self, main_guild_id: int, esito: str) -> None:
+        """11.17: ora ed esito dell'ultimo giro, mostrati da /backup stato."""
+        await self._pool.execute(
+            "UPDATE backup_pairs SET ultimo_allineamento = now(), esito_allineamento = $2 "
+            "WHERE main_guild_id = $1",
+            main_guild_id,
+            esito[:500],
+        )
 
     async def get_pair_by_backup_guild_id(self, backup_guild_id: int) -> BackupPair | None:
         """Trova la coppia partendo dal server BACKUP (l'inverso di

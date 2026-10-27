@@ -37,12 +37,14 @@ logger = logging.getLogger("iyokai.backup_orchestrator")
 
 
 async def popola_server_backup(
-    main_guild: discord.Guild, backup_guild: discord.Guild
+    main_guild: discord.Guild, backup_guild: discord.Guild, con_messaggi: bool = True
 ) -> tuple[dict[int, str], RiepilogoCopia]:
     """
     Copia struttura e risorse del server principale in ``backup_guild``,
     che deve essere un oggetto del client del Creator. Una chiamata alla
-    volta, mai in parallelo. Restituisce (mappa canale principale ->
+    volta, mai in parallelo. Con ``con_messaggi=False`` (aggiornamento
+    continuo, 11.17) i messaggi non si ricopiano. Non cancella mai nulla.
+    Restituisce (mappa canale principale ->
     URL del webhook di mirror, riepilogo di ciò che è stato adattato o saltato).
     """
     riepilogo = RiepilogoCopia()
@@ -61,7 +63,8 @@ async def popola_server_backup(
     # D8: gli ultimi messaggi, dopo il mirror (i nuovi li copia lui). Un errore qui
     # non butta via la struttura già copiata: si dice all'admin.
     try:
-        await copia_messaggi(main_guild, backup_guild, mappa_canali, mappa_webhook_mirror, riepilogo)
+        if con_messaggi:
+            await copia_messaggi(main_guild, backup_guild, mappa_canali, mappa_webhook_mirror, riepilogo)
     except Exception:
         logger.exception("Copia dei messaggi interrotta per il server %s.", main_guild.id)
         riepilogo.messaggi_interrotti = True

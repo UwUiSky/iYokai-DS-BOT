@@ -539,17 +539,32 @@ class BackupCog(CogConGruppi, commands.Cog):
         if not await self._puo(interaction, AZIONE_CREA):
             return
         c = await backup_struttura_repo.ultimo_caricamento(interaction.guild.id)
-        if c is None:
+        righe = []
+        if c is not None:
+            nomi = {"in_corso": "⏳ in corso", "finito": "✅ finito", "annullato": "⏹️ annullato", "fallito": "❌ fallito"}
+            percentuale = f" ({c.fatti * 100 // c.totale}%)" if c.totale else ""
+            righe.append(
+                f"Caricamento da {c.fonte}, avviato {discord.utils.format_dt(c.creato_il, 'R')}: "
+                f"**{nomi.get(c.stato, c.stato)}**. Passo: {c.passo or '—'} · {c.fatti}/{c.totale}{percentuale}"
+                + (" · annullo chiesto" if c.annulla and c.stato == "in_corso" else "")
+            )
+        # 11.17: ora ed esito dell'ultimo aggiornamento automatico del server di backup.
+        coppia = await backup_repo.get_pair(interaction.guild.id)
+        if coppia is None or coppia.backup_guild_id is None:
+            coppia = await backup_repo.get_pair_by_backup_guild_id(interaction.guild.id)
+        if coppia is not None and coppia.backup_guild_id is not None:
+            if coppia.ultimo_allineamento is None:
+                righe.append("Aggiornamento automatico del backup: non ancora eseguito (ogni 6 ore).")
+            else:
+                righe.append(
+                    "Aggiornamento automatico del backup: "
+                    f"{discord.utils.format_dt(coppia.ultimo_allineamento, 'R')} · "
+                    f"{coppia.esito_allineamento or '—'}"
+                )
+        if not righe:
             await interaction.response.send_message("Nessun caricamento in questo server.", ephemeral=True)
             return
-        nomi = {"in_corso": "⏳ in corso", "finito": "✅ finito", "annullato": "⏹️ annullato", "fallito": "❌ fallito"}
-        percentuale = f" ({c.fatti * 100 // c.totale}%)" if c.totale else ""
-        await interaction.response.send_message(
-            f"Caricamento da {c.fonte}, avviato {discord.utils.format_dt(c.creato_il, 'R')}: "
-            f"**{nomi.get(c.stato, c.stato)}**. Passo: {c.passo or '—'} · {c.fatti}/{c.totale}{percentuale}"
-            + (" · annullo chiesto" if c.annulla and c.stato == "in_corso" else ""),
-            ephemeral=True,
-        )
+        await interaction.response.send_message("\n".join(righe)[:1900], ephemeral=True)
 
     @comando_di_gruppo("backup", nome="annulla", descrizione="Ferma il caricamento in corso (ciò che è già fatto resta).")
     async def annulla(self, interaction: discord.Interaction) -> None:
