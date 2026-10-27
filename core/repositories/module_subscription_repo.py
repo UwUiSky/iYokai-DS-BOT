@@ -77,6 +77,7 @@ class ModuleSubscriptionRepository:
         duration_days: int,
         granted_by: int | None = None,
         now: datetime | None = None,
+        conn: asyncpg.Connection | None = None,
     ) -> datetime:
         """
         Estende la scadenza di `duration_days` a partire dal MASSIMO
@@ -85,36 +86,54 @@ class ModuleSubscriptionRepository:
         concessi in momenti diversi si accumulano invece di
         accavallarsi (un rinnovo anticipato non spreca i giorni
         restanti). Restituisce la nuova scadenza.
+
+        Con `conn` le scritture entrano nella transazione di chi chiama
+        (l'addebito della cassa e lo sblocco restano insieme); la cache
+        premium la invalida allora chi chiama, a transazione chiusa.
         """
-        from datetime import timedelta
-
         adesso = now or _utcnow()
-
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                scadenza_attuale = await conn.fetchval(
-                    "SELECT expires_at FROM module_subscriptions WHERE guild_id = $1 AND module_name = $2 FOR UPDATE",
-                    guild_id,
-                    module_name,
-                )
-                base = max(scadenza_attuale, adesso) if scadenza_attuale is not None else adesso
-                nuova_scadenza = base + timedelta(days=duration_days)
-
-                await conn.execute(
-                    """
-                    INSERT INTO module_subscriptions (guild_id, module_name, expires_at, granted_by)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (guild_id, module_name) DO UPDATE
-                        SET expires_at = EXCLUDED.expires_at,
-                            granted_by = EXCLUDED.granted_by,
-                            updated_at = now()
-                    """,
-                    guild_id,
-                    module_name,
-                    nuova_scadenza,
-                    granted_by,
+        if conn is not None:
+            return await self._grant(conn, guild_id, module_name, duration_days, granted_by, adesso)
+        async with self._pool.acquire() as conn_nuova:
+            async with conn_nuova.transaction():
+                nuova_scadenza = await self._grant(
+                    conn_nuova, guild_id, module_name, duration_days, granted_by, adesso
                 )
         invalida_cache_premium(guild_id)  # #145: dopo il commit
+        return nuova_scadenza
+
+    async def _grant(
+        self,
+        conn: asyncpg.Connection,
+        guild_id: int,
+        module_name: str,
+        duration_days: int,
+        granted_by: int | None,
+        adesso: datetime,
+    ) -> datetime:
+        from datetime import timedelta
+
+        scadenza_attuale = await conn.fetchval(
+            "SELECT expires_at FROM module_subscriptions WHERE guild_id = $1 AND module_name = $2 FOR UPDATE",
+            guild_id,
+            module_name,
+        )
+        base = max(scadenza_attuale, adesso) if scadenza_attuale is not None else adesso
+        nuova_scadenza = base + timedelta(days=duration_days)
+        await conn.execute(
+            """
+            INSERT INTO module_subscriptions (guild_id, module_name, expires_at, granted_by)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (guild_id, module_name) DO UPDATE
+                SET expires_at = EXCLUDED.expires_at,
+                    granted_by = EXCLUDED.granted_by,
+                    updated_at = now()
+            """,
+            guild_id,
+            module_name,
+            nuova_scadenza,
+            granted_by,
+        )
         return nuova_scadenza
 
     async def revoke(self, guild_id: int, module_name: str) -> bool:

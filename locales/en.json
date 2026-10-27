@@ -142,5 +142,11 @@
   "asp_allegato_errore": "I can't download the image from Discord: attach it again and retry.",
   "asp_immagine_grande": "The image is too big: 8 MB at most.",
   "asp_immagine_non_valida": "This image can't be used: pick a PNG, JPEG, GIF or WEBP file.",
-  "asp_testo_lungo": "The text is too long: 32 characters at most for the name and 190 for the description."
+  "asp_testo_lungo": "The text is too long: 32 characters at most for the name and 190 for the description.",
+  "prem_sblocca_chiedi": "Unlock the `{modulo}` module for {giorni} days? It spends {costo} coins from the server treasury.",
+  "prem_sblocca_ok": "Done. The `{modulo}` module is unlocked until {data}.",
+  "prem_sblocca_modulo_sconosciuto": "This module does not exist. Pick one from the list that appears as you type.",
+  "prem_sblocca_non_premium": "This module is not premium: no need to unlock it.",
+  "prem_sblocca_cassa_insufficiente": "The server treasury does not have enough coins: {costo} needed.",
+  "prem_sblocca_annullato": "Cancelled. No coins spent."
 }

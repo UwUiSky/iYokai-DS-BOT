@@ -142,5 +142,11 @@
   "asp_allegato_errore": "Non riesco a scaricare l'immagine da Discord: allegala di nuovo e riprova.",
   "asp_immagine_grande": "L'immagine è troppo grande: al massimo 8 MB.",
   "asp_immagine_non_valida": "Questa immagine non va bene: usa un file PNG, JPEG, GIF o WEBP.",
-  "asp_testo_lungo": "Il testo è troppo lungo: al massimo 32 caratteri per il nome e 190 per la descrizione."
+  "asp_testo_lungo": "Il testo è troppo lungo: al massimo 32 caratteri per il nome e 190 per la descrizione.",
+  "prem_sblocca_chiedi": "Vuoi sbloccare il modulo `{modulo}` per {giorni} giorni? Spendi {costo} coin dalla cassa del server.",
+  "prem_sblocca_ok": "Fatto. Il modulo `{modulo}` è sbloccato fino al {data}.",
+  "prem_sblocca_modulo_sconosciuto": "Questo modulo non esiste. Scegli dall'elenco che appare mentre scrivi.",
+  "prem_sblocca_non_premium": "Questo modulo non è premium: non serve sbloccarlo.",
+  "prem_sblocca_cassa_insufficiente": "Nella cassa del server non ci sono abbastanza coin: servono {costo}.",
+  "prem_sblocca_annullato": "Annullato. Nessuna coin spesa."
 }

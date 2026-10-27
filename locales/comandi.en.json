@@ -267,6 +267,7 @@
   "admin premium": "Server premium: status, codes and branding",
   "admin premium aspetto": "The bot's avatar, banner and description in this server (premium).",
   "admin premium marchio": "Use a bot with your own name and avatar (premium).",
+  "admin premium sblocca": "Unlocks a premium module for 30 days with coins from the server treasury.",
   "admin premium riscatta": "Redeems a premium code for this server.",
   "admin premium stato": "Shows how premium is unlocked in this server.",
   "admin setup": "Module activation and guided setup",

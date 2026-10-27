@@ -2,7 +2,7 @@
 core/premium_pricing_logic.py
 =================================
 Logica pura per lo sblocco del bot premium via cassa di server
-(SPEC.md §15.15) — nessuna rete, nessun Discord, nessuna query qui
+(SPEC.md §15.15, §3.1) — nessuna rete, nessun Discord, nessuna query qui
 dentro. Regole confermate esplicitamente con l'utente in
 conversazione:
 
@@ -46,6 +46,10 @@ TIER_MONTHS_REQUIRED: dict[int, int] = {
 }
 
 MAX_DEFINED_TIER = 3
+
+# Sblocco di UN modulo con le monete della cassa (SPEC §3.1): costo fisso, durata fissa.
+COSTO_MODULO_IN_COIN = 1_000_000
+GIORNI_MODULO_IN_COIN = 30
 
 
 def months_elapsed(join_at, now) -> int:
