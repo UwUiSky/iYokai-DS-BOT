@@ -116,3 +116,29 @@ async def test_modulo_spento_non_crea_casi():
     await db.set_module_active_for_guild(G, MODULE_CASE_SYSTEM, False)
     await _cog().on_audit_log_entry_create(_voce(discord.AuditLogAction.ban))
     assert await _casi() == []
+
+
+# ------------------------------------------------------- rientro (MOD-064)
+def _membro_rientrato(uid=VITTIMA, bot=False):
+    return SimpleNamespace(id=uid, mention=f"<@{uid}>", bot=bot, guild=fake_guild(G))
+
+
+async def test_rientro_con_casi_avvisa_lo_staff_solo_se_acceso():
+    await moderation_repo.create_case(G, VITTIMA, STAFF, "warn", "insulti")
+    cog = _cog()
+    await cog.on_member_join(_membro_rientrato())
+    case_system.post_to_mod_log.assert_not_awaited()  # spento di default
+
+    await moderation_opzioni.imposta_avviso_rientro(G, True, STAFF)
+    await cog.on_member_join(_membro_rientrato())
+    embed = case_system.post_to_mod_log.await_args.args[1]
+    assert "Rientra" in embed.title and "insulti" in embed.description
+
+
+async def test_rientro_senza_casi_o_di_un_bot_non_avvisa():
+    await moderation_opzioni.imposta_avviso_rientro(G, True, STAFF)
+    cog = _cog()
+    await cog.on_member_join(_membro_rientrato(uid=777))
+    await moderation_repo.create_case(G, 778, STAFF, "warn", "x" * 5)
+    await cog.on_member_join(_membro_rientrato(uid=778, bot=True))
+    case_system.post_to_mod_log.assert_not_awaited()

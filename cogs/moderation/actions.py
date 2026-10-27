@@ -31,6 +31,9 @@ Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
 server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
 caso per utente, un solo riepilogo nel log. Chi non si può moderare viene
 saltato con il motivo.
+
+Con la soglia scelta dal server (MOD-036) chi riceve un warn avendone già troppi
+fa scattare un avviso allo staff nel log di moderazione, senza punire.
 """
 
 from __future__ import annotations
@@ -103,6 +106,22 @@ _BAN_FALLITO = (
     "Non sono riuscito a bannare questo utente: controlla i miei permessi "
     "e la posizione del mio ruolo."
 )
+
+
+async def _avvisa_staff_se_troppi_warn(guild: discord.Guild, member: discord.abc.User) -> None:
+    """MOD-036: avviso nel log di moderazione se i warn attivi superano la soglia del server."""
+    soglia = (await moderation_opzioni.leggi(guild.id)).avviso_warn
+    if not soglia:
+        return
+    totali = await moderation_repo.count_active_cases(guild.id, member.id, "warn")
+    if not moderation_opzioni.avviso_warn_scatta(totali, soglia):
+        return
+    embed = discord.Embed(
+        title="⚠️ Troppi warn",
+        description=f"{member.mention} ({member.id}) ha ora **{totali}** warn attivi (soglia: {soglia}).",
+        color=discord.Color.orange(),
+    )
+    await post_to_mod_log(guild, embed)
 
 
 def _case_embed(
@@ -226,6 +245,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await try_dm(member, embed, azione="warn", guild_id=interaction.guild.id)
         await post_to_mod_log(interaction.guild, embed)
         # M 1.10: se il server l'ha scelto, il warn sale la scala di escalation.
+        await _avvisa_staff_se_troppi_warn(interaction.guild, member)
         esito_scala = await scala_per_warn_manuale(self.bot, member, case_number, moderatore=interaction.user)
         if esito_scala:
             await interaction.followup.send(esito_scala, ephemeral=True)
@@ -1268,6 +1288,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero),
                 azione="warn", guild_id=guild.id,
             )
+            await _avvisa_staff_se_troppi_warn(guild, membro)
             esito_scala = await scala_per_warn_manuale(
                 self.bot, membro, numero, moderatore=guild.get_member(interaction.user.id), in_massa=True
             )

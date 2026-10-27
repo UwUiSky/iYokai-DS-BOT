@@ -22,8 +22,9 @@ togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
 e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
 Casi anche per ban, kick e timeout fatti fuori da iYokai (MOD-047, se acceso).
+Avviso allo staff quando rientra chi ha dei casi (MOD-064, se acceso).
 Sanzioni ancora attive (MOD-013): tempban, timeout, mute con ruolo e lock a tempo.
-Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 047, 049, 027..031, 037, 039, 041, 042, 044, 054..056)
+Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 047, 049, 064, 027..031, 037, 039, 041, 042, 044, 054..056)
 """
 
 from __future__ import annotations
@@ -165,6 +166,24 @@ async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
 class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """MOD-064: se il server lo vuole, lo staff sa quando rientra chi ha già dei casi."""
+        if member.bot or not (await moderation_opzioni.leggi(member.guild.id)).avviso_rientro:
+            return
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_CASE_SYSTEM):
+            return
+        casi = await moderation_repo.list_cases_for_user(member.guild.id, member.id, 5)
+        if not casi:
+            return
+        embed = discord.Embed(
+            title="👀 Rientra un utente con dei casi",
+            description=f"{member.mention} ({member.id}). Ultimi casi:\n"
+            + join_within_limit([_format_case_line(c) for c in casi], "…e altri {n}."),
+            color=discord.Color.orange(),
+        )
+        await post_to_mod_log(member.guild, embed)
 
     @commands.Cog.listener()
     async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry) -> None:

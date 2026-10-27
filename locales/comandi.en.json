@@ -551,7 +551,7 @@
   "mod caso attive": "Sanctions still running: tempbans, timeouts, mutes, timed locks.",
   "mod caso registra": "Logs a case without taking the action (sanction given outside the bot).",
   "mod opzioni": "Server moderation options.",
-  "mod opzioni imposta": "Messages deleted on ban, timeout, external cases. Empty: shows the options.",
+  "mod opzioni imposta": "Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.",
   "mod opzioni dm": "Choose whether the user gets a DM for a type of action.",
   "mod opzioni immuni": "Roles manual moderation can't touch (owner only).",
   "mod caso classifica-staff": "Moderator leaderboard by number of actions, or one moderator's cases.",

@@ -212,6 +212,14 @@ class ModerationRepository:
         )
         return [_row_to_case(row) for row in rows]
 
+    async def count_active_cases(self, guild_id: int, user_id: int, action_type: str) -> int:
+        """Quanti casi attivi di un tipo ha un utente (es. i warn non tolti)."""
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM moderation_cases "
+            "WHERE guild_id = $1 AND user_id = $2 AND action_type = $3 AND active = TRUE",
+            guild_id, user_id, action_type,
+        )
+
     async def list_cases_by_moderator(
         self, guild_id: int, moderator_id: int, limit: int = 25, action_type: str | None = None
     ) -> list[ModerationCase]:
