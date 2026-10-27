@@ -222,7 +222,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "log", nome="ignora",
-        descrizione="Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).",
+        descrizione="Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).",
     )
     @app_commands.describe(
         azione="Aggiungere, togliere o vedere l'elenco",
@@ -275,7 +275,11 @@ class LogConfigCog(CogConGruppi, commands.Cog):
                 )
                 await interaction.response.send_message(limite, ephemeral=True)
                 return
-            testo = "Ora il log dei messaggi lo ignora."
+            testo = (
+                "Ora il log dei messaggi lo ignora."
+                if genere in ("prefisso", "regex")
+                else "Ora i log lo ignorano (messaggi, voce, canali, thread, membri)."
+            )
         else:
             testo = (
                 "Tolto dall'elenco."

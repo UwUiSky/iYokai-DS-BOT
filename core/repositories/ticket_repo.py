@@ -293,6 +293,10 @@ class TicketRepository:
         )
         return result.endswith(" 1")
 
+    async def riapri(self, channel_id: int) -> bool:
+        """TKT-051: porta di nuovo «aperto» un ticket chiuso (il canale è rimasto). False se non era chiuso."""
+        return await self.riapri_dopo_errore(channel_id)
+
     async def riapri_dopo_errore(self, channel_id: int) -> bool:
         """Annulla una chiusura appena fatta quando non si è riusciti a pianificare l'eliminazione del canale."""
         esito = await self._pool.execute(

@@ -46,6 +46,7 @@ from core.channel_router import (
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.log_ignora_filtro import evento_da_ignorare
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.event_log_repo import event_log_repo
 
@@ -403,6 +404,9 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             return
 
         if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING):
+            return
+
+        if await evento_da_ignorare(after.guild, membro=after):
             return
 
         if roles_changed:

@@ -57,6 +57,7 @@ from core.logging_advanced_logic import (
 )
 from core.testo_limiti import DESCRIZIONE_MAX, tronca
 from core.premium import registry
+from core.log_ignora_filtro import evento_da_ignorare
 from core.repositories.event_log_repo import event_log_repo
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.security_access import premium_sbloccato
@@ -366,6 +367,8 @@ class AdvancedLogsCog(commands.Cog):
             return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
+        if await evento_da_ignorare(channel.guild, channel):
+            return
         await event_log_repo.log_event(
             channel.guild.id, "channel_create", channel_id=channel.id, details={"name": channel.name}
         )
@@ -376,6 +379,8 @@ class AdvancedLogsCog(commands.Cog):
         if router.canale_nascosto(channel):
             return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
+            return
+        if await evento_da_ignorare(channel.guild, channel):
             return
         await event_log_repo.log_event(
             channel.guild.id, "channel_delete", channel_id=channel.id, details={"name": channel.name}
@@ -390,6 +395,8 @@ class AdvancedLogsCog(commands.Cog):
         if router.canale_nascosto(before) or router.canale_nascosto(after):
             return
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
+            return
+        if await evento_da_ignorare(after.guild, after):
             return
         changes = diff_attributes(_channel_snapshot(before), _channel_snapshot(after), CHANNEL_TRACKED_KEYS)
         permessi = diff_overwrites(_overwrites_snapshot(before), _overwrites_snapshot(after))
@@ -470,6 +477,8 @@ class AdvancedLogsCog(commands.Cog):
         self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
     ) -> None:
         if not await logging_avanzato_attivo(member.guild.id, self.bot):
+            return
+        if await evento_da_ignorare(member.guild, after.channel, member, (before.channel,)):
             return
         eventi = classify_voice_state_change(_voice_state_snapshot(before), _voice_state_snapshot(after))
         for event_type in eventi:
@@ -584,6 +593,8 @@ class AdvancedLogsCog(commands.Cog):
     async def on_thread_create(self, thread: discord.Thread) -> None:
         if not await logging_avanzato_attivo(thread.guild.id, self.bot):
             return
+        if await evento_da_ignorare(thread.guild, thread):
+            return
         await event_log_repo.log_event(
             thread.guild.id, "thread_create", channel_id=thread.id, details={"name": thread.name}
         )
@@ -593,6 +604,8 @@ class AdvancedLogsCog(commands.Cog):
     async def on_thread_delete(self, thread: discord.Thread) -> None:
         if not await logging_avanzato_attivo(thread.guild.id, self.bot):
             return
+        if await evento_da_ignorare(thread.guild, thread):
+            return
         await event_log_repo.log_event(
             thread.guild.id, "thread_delete", channel_id=thread.id, details={"name": thread.name}
         )
@@ -601,6 +614,8 @@ class AdvancedLogsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_thread_update(self, before: discord.Thread, after: discord.Thread) -> None:
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
+            return
+        if await evento_da_ignorare(after.guild, after):
             return
         changes = diff_attributes(_thread_snapshot(before), _thread_snapshot(after), THREAD_TRACKED_KEYS)
         if not changes:

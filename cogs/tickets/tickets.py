@@ -143,6 +143,7 @@ OPEN_TICKET_CUSTOM_ID = "iyokai_ticket_open"
 # Azione dello scheduler che elimina il canale di un ticket chiuso.
 TICKET_DELETE_ACTION_TYPE = "ticket_delete_channel"
 RITARDO_ELIMINAZIONE_SECONDI = 10
+TESTO_CANALE_RESTA = "Il canale resta qui, chiuso: lo staff può riaprirlo o eliminarlo."
 
 PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
@@ -973,6 +974,57 @@ def vista_pannelli(pannelli: list[PannelloTicket]) -> discord.ui.View:
     return vista
 
 
+class BottoneChiuso(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"tkt:cls:(?P<t>[0-9]+):(?P<a>[rets])"
+):
+    """TKT-051: Riapri, Elimina e Transcript di un ticket chiuso il cui canale è rimasto. Solo staff."""
+
+    _ETICHETTE = {
+        "r": ("Riapri", discord.ButtonStyle.success),
+        "e": ("Elimina", discord.ButtonStyle.danger),
+        "t": ("Transcript", discord.ButtonStyle.secondary),
+    }
+
+    def __init__(self, ticket_id: int, azione: str) -> None:
+        etichetta, stile = self._ETICHETTE.get(azione, ("Riapri", discord.ButtonStyle.success))
+        super().__init__(
+            discord.ui.Button(label=etichetta, style=stile, custom_id=f"tkt:cls:{ticket_id}:{azione}")
+        )
+        self.ticket_id = ticket_id
+        self.azione = azione
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["t"]), match["a"])
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.exception("Errore in un bottone del ticket chiuso: %s", error)
+        await _rispondi_con_errore(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        cog = interaction.client.get_cog("TicketsCog")
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
+        if cog is None or ticket is None or ticket.id != self.ticket_id:
+            await interaction.response.send_message("Questo ticket non c'è più.", ephemeral=True)
+            return
+        if not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message("Solo lo staff dei ticket può usare questi bottoni.", ephemeral=True)
+            return
+        await cog.azione_ticket_chiuso(interaction, ticket, self.azione)
+
+
+def vista_ticket_chiuso(ticket_id: int) -> discord.ui.View:
+    vista = BaseView(timeout=None)
+    for azione in ("r", "t", "e"):
+        vista.add_item(BottoneChiuso(ticket_id, azione))
+    return vista
+
+
 class BottoneRichiestaChiusura(
     discord.ui.DynamicItem[discord.ui.Button], template=r"tkt:chc:(?P<t>[0-9]+):(?P<s>[ar])"
 ):
@@ -1774,6 +1826,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
                     await channel.edit(category=categoria, sync_permissions=False, reason="Ticket preso in carico")
                 except discord.HTTPException:
                     logger.warning("Ticket %s non spostato nella categoria dei presi.", channel.id)
+        if opzioni.prefisso_preso:
+            await self._rinomina_con_prefisso(
+                channel, opzioni.prefisso_preso, (opzioni.prefisso_preso, opzioni.prefisso_chiuso), "Ticket preso in carico"
+            )
         if opzioni.claim_esclusivo != "no":
             await self._permessi_staff(guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff)
             if precedente is not None and precedente not in (staff.id, ticket.user_id):
@@ -2373,12 +2429,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
         pianificazione fallisce, il ticket torna aperto e chi riprova (scheduler, utente) trova
         tutto com'era. False se era già chiuso (due chiusure insieme: ne vince una).
         """
+        prima = await ticket_repo.get_ticket_by_channel(channel_id)
+        opzioni = await _opzioni_pannello(prima.panel_id) if prima is not None else Opzioni()
         if not await ticket_repo.close_ticket(channel_id, chiuso_da, reason=ragione):
             return False
         try:
-            await self._pianifica_eliminazione_canale(
-                guild_id, user_id, channel_id, motivo_log, RITARDO_ELIMINAZIONE_SECONDI
-            )
+            # TKT-051/063: con la chiusura in due passi il canale resta; si elimina dopo N ore, se scelto.
+            ritardo = RITARDO_ELIMINAZIONE_SECONDI
+            if opzioni.chiusura_due_passi:
+                ritardo = opzioni.elimina_dopo_ore * 3600 if opzioni.elimina_dopo_ore else None
+            if ritardo is not None:
+                await self._pianifica_eliminazione_canale(guild_id, user_id, channel_id, motivo_log, ritardo)
         except Exception:
             await ticket_repo.riapri_dopo_errore(channel_id)
             raise
@@ -2405,11 +2466,15 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ):
             return False
         ticket = await ticket_repo.get_ticket_by_channel(channel.id) or ticket
+        due_passi = (await _opzioni_pannello(ticket.panel_id)).chiusura_due_passi
+        if due_passi:
+            avviso = avviso.replace("Questo canale verrà eliminato a breve.", TESTO_CANALE_RESTA)
         try:
             await channel.send(avviso, allowed_mentions=discord.AllowedMentions.none())
         except discord.HTTPException:
             logger.warning("Avviso di chiusura non inviato nel ticket %s.", channel.id)
         await self._transcript_senza_bloccare(guild, channel, ticket)
+        await self._stato_chiuso(guild, channel, ticket)
         if chiedi_voto:
             await self._richiedi_voto(guild, ticket)
         return True
@@ -2485,9 +2550,155 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 ragione="L'utente ha lasciato il server",
             )
 
+    # ================================================================
+    # TKT-051/063/027/026 — chiusura in due passi
+    # ================================================================
+    @staticmethod
+    async def _rinomina_con_prefisso(channel, prefisso: str | None, noti: tuple, motivo: str) -> None:
+        """Prefisso davanti al nome (TKT-026). Il limite delle rinomine (2 ogni 10 minuti) non blocca nulla."""
+        nuovo = opz_logic.nome_con_prefisso(channel.name, prefisso, noti)
+        if nuovo == channel.name:
+            return
+        try:
+            await rename_channel(channel, nuovo, reason=motivo)
+        except RenameRateLimited:
+            logger.info("Nome del ticket %s non cambiato: limite delle rinomine.", channel.id)
+        except discord.HTTPException:
+            logger.warning("Nome del ticket %s non cambiato.", channel.id)
+
+    async def _stato_chiuso(self, guild: discord.Guild, channel, ticket) -> bool:
+        """
+        TKT-051: con la chiusura in due passi il canale resta. L'utente non lo vede più, il canale
+        va nella categoria dei chiusi (TKT-027), cambia nome (TKT-026) e porta Riapri, Transcript
+        ed Elimina. False se il pannello non usa i due passi. Un errore qui non rompe la chiusura.
+        """
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        if not opzioni.chiusura_due_passi:
+            return False
+        try:
+            utente = guild.get_member(ticket.user_id) or discord.Object(id=ticket.user_id, type=discord.Member)
+            ow = channel.overwrites_for(utente)
+            ow.update(view_channel=False, send_messages=False)
+            await channel.set_permissions(utente, overwrite=ow, reason="Ticket chiuso")
+        except discord.HTTPException:
+            logger.warning("Accesso dell'utente %s al ticket chiuso %s non tolto.", ticket.user_id, channel.id)
+        if opzioni.categoria_chiusi:
+            categoria = guild.get_channel(opzioni.categoria_chiusi)
+            if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
+                try:
+                    await channel.edit(category=categoria, sync_permissions=False, reason="Ticket chiuso")
+                except discord.HTTPException:
+                    logger.warning("Ticket %s non spostato nella categoria dei chiusi.", channel.id)
+        if opzioni.prefisso_chiuso:
+            await self._rinomina_con_prefisso(
+                channel, opzioni.prefisso_chiuso, (opzioni.prefisso_preso, opzioni.prefisso_chiuso), "Ticket chiuso"
+            )
+        scadenza = (
+            f" Il canale sparirà da solo tra {opzioni.elimina_dopo_ore} ore." if opzioni.elimina_dopo_ore else ""
+        )
+        try:
+            await channel.send(
+                f"Ticket chiuso: il canale resta, ma chi lo ha aperto non lo vede più.{scadenza}\n"
+                "Lo staff può riaprirlo, avere il transcript o eliminare il canale.",
+                view=vista_ticket_chiuso(ticket.id),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            logger.warning("Bottoni del ticket chiuso non inviati nel canale %s.", channel.id)
+        return True
+
+    async def _riapri(self, guild: discord.Guild, channel, ticket, da) -> str:
+        """TKT-051: riapre un ticket chiuso. Restituisce il messaggio per chi lo ha chiesto."""
+        if ticket.status != "closed":
+            return "Questo ticket è già aperto."
+        limite = await _limite_per_utente(guild.id)
+        if await ticket_repo.count_open_tickets_for_user(guild.id, ticket.user_id) >= limite:
+            return "Chi lo aveva aperto ha già il massimo di ticket aperti: riaprire questo li supererebbe."
+        if not await ticket_repo.riapri(channel.id):
+            return "Questo ticket è già stato riaperto."
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        utente = guild.get_member(ticket.user_id) or discord.Object(id=ticket.user_id, type=discord.Member)
+        try:
+            ow = channel.overwrites_for(utente)
+            ow.update(**opz_logic.permessi_utente(opzioni.permessi_negati))
+            await channel.set_permissions(utente, overwrite=ow, reason=f"Ticket riaperto da {da}"[:512])
+        except discord.HTTPException:
+            logger.warning("Accesso dell'utente %s al ticket %s non ridato.", ticket.user_id, channel.id)
+        if opzioni.categoria_chiusi and channel.category_id == opzioni.categoria_chiusi:
+            pannello = await ticket_form_repo.pannello_per_id(ticket.panel_id) if ticket.panel_id else None
+            categoria = guild.get_channel(pannello.category_id) if pannello is not None else None
+            if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
+                try:
+                    await channel.edit(category=categoria, sync_permissions=False, reason="Ticket riaperto")
+                except discord.HTTPException:
+                    logger.warning("Ticket %s non riportato nella sua categoria.", channel.id)
+        if opzioni.prefisso_chiuso or opzioni.prefisso_preso:
+            await self._rinomina_con_prefisso(
+                channel,
+                opzioni.prefisso_preso if ticket.claimed_by else None,
+                (opzioni.prefisso_preso, opzioni.prefisso_chiuso),
+                "Ticket riaperto",
+            )
+        try:
+            await channel.send(f"Ticket riaperto da {da.mention}. <@{ticket.user_id}>, puoi scrivere di nuovo.")
+        except discord.HTTPException:
+            logger.warning("Avviso di riapertura non inviato nel ticket %s.", channel.id)
+        return "Ticket riaperto."
+
+    async def azione_ticket_chiuso(self, interaction: discord.Interaction, ticket, azione: str) -> None:
+        """I tre bottoni del ticket chiuso (solo staff, già controllato da chi chiama)."""
+        if azione == "t":
+            await interaction.response.defer(ephemeral=True)
+            try:
+                testo = await self._build_transcript_text(interaction.channel, ticket)
+            except discord.HTTPException:
+                await interaction.followup.send("Non riesco a leggere i messaggi del canale.", ephemeral=True)
+                return
+            for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+                await interaction.followup.send(
+                    file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
+                )
+        elif azione == "r":
+            await interaction.response.defer(ephemeral=True)
+            esito = await self._riapri(interaction.guild, interaction.channel, ticket, interaction.user)
+            await interaction.followup.send(esito, ephemeral=True)
+            if esito == "Ticket riaperto." and interaction.message is not None:
+                try:
+                    await interaction.message.edit(view=None)
+                except discord.HTTPException:
+                    pass
+        else:
+            await interaction.response.send_message("Elimino il canale.", ephemeral=True)
+            try:
+                await self._elimina_canale(interaction.channel.id, f"Ticket eliminato da {interaction.user}")
+            except discord.HTTPException:
+                logger.warning("Eliminazione del ticket chiuso %s non riuscita.", interaction.channel.id)
+                await self._pianifica_eliminazione(
+                    interaction, f"Ticket eliminato da {interaction.user}", RITARDO_ELIMINAZIONE_SECONDI
+                )
+
+    @comando_di_gruppo("ticket", nome="riapri", descrizione="Riapri questo ticket chiuso (se il pannello tiene il canale).")
+    async def riapri(self, interaction: discord.Interaction) -> None:
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
+        if ticket is None or ticket.status != "closed":
+            await interaction.response.send_message(
+                "Questo comando funziona solo in un ticket chiuso il cui canale è rimasto.", ephemeral=True
+            )
+            return
+        if not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message("Solo lo staff dei ticket può riaprire un ticket.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send(
+            await self._riapri(interaction.guild, interaction.channel, ticket, interaction.user), ephemeral=True
+        )
+
     async def handle_ticket_delete_channel(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Handler dello scheduler. Se solleva, lo scheduler riprova più tardi."""
         channel_id = payload["channel_id"]
+        ticket = await ticket_repo.get_ticket_by_channel(channel_id)
+        if ticket is not None and ticket.status == "open":
+            return  # riaperto dopo la chiusura (TKT-051): il canale resta
         if channel_id in self._transcript_in_corso:
             # Il transcript sta ancora leggendo i messaggi: si ripassa dopo.
             await scheduler.schedule(
@@ -2550,12 +2761,14 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
             return
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
+        due_passi = (await _opzioni_pannello(ticket.panel_id)).chiusura_due_passi
         await interaction.response.send_message(
-            "Ticket chiuso. Questo canale verrà eliminato entro un minuto."
+            "Ticket chiuso. " + (TESTO_CANALE_RESTA if due_passi else "Questo canale verrà eliminato entro un minuto.")
             + (f"\nMotivo: {motivo}" if motivo else ""),
             allowed_mentions=discord.AllowedMentions.none(),
         )
         await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
+        await self._stato_chiuso(interaction.guild, interaction.channel, ticket)
         await self._richiedi_voto(interaction.guild, ticket)
 
     @comando_di_gruppo(
@@ -2725,4 +2938,4 @@ async def setup(bot: commands.Bot) -> None:
     # già esistenti nei server (pubblicati prima di un riavvio) di
     # continuare a funzionare.
     bot.add_view(TicketPanelView())
-    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura)
+    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura, BottoneChiuso)

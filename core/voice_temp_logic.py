@@ -127,6 +127,26 @@ def errore_modello_nome(modello: str) -> str | None:
     return None
 
 
+MAX_PANNELLO_TITOLO = 256
+MAX_PANNELLO_TESTO = 1000
+
+
+def colore_da_testo(testo: str) -> int | None:
+    """«#5865F2» o «5865F2» come numero; None se non è un colore esadecimale a 6 cifre."""
+    pulito = testo.strip().lstrip("#")
+    if len(pulito) != 6:
+        return None
+    try:
+        return int(pulito, 16)
+    except ValueError:
+        return None
+
+
+def impostazioni_da_generatore(bitrate: int, limite_utenti: int, bitrate_massimo: int) -> dict[str, int]:
+    """Qualità e limite utenti di un canale copiato dal generatore, entro quanto il server permette."""
+    return {"bitrate": max(8000, min(bitrate, bitrate_massimo)), "user_limit": max(0, min(limite_utenti, 99))}
+
+
 def nome_da_modello(modello: str | None, utente: str, numero: int) -> str:
     """Nome del canale: modello con i segnaposto sostituiti, al massimo 100 caratteri."""
     import string

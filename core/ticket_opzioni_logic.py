@@ -70,6 +70,11 @@ class Opzioni:
     conferma_chiusura: bool = False
     utente_chiude: bool = True
     transcript_dm: bool = True
+    chiusura_due_passi: bool = False
+    elimina_dopo_ore: int = 0
+    categoria_chiusi: int | None = None
+    prefisso_chiuso: str | None = None
+    prefisso_preso: str | None = None
 
 
 # ----------------------------------------------------------------------
@@ -217,6 +222,31 @@ def controlla_modello_nome(modello: str) -> str:
     if not modello or len(nome_canale(modello, 9999, "u" * 32, "n" * 32)) == 0:
         raise ValueError("Il modello darebbe un nome vuoto.")
     return modello
+
+
+PREFISSO_MAX = 20
+
+
+def prefisso_valido(prefisso: str) -> bool:
+    """Un prefisso di nome serve se, ripulito, resta almeno una lettera o un numero."""
+    return bool(_pulisci(prefisso))
+
+
+def nome_con_prefisso(nome: str, prefisso: str | None, prefissi_noti: tuple[str | None, ...] = ()) -> str:
+    """
+    Il nome del canale con un prefisso davanti (TKT-026): un prefisso già messo dallo stesso
+    meccanismo (`prefissi_noti`) si toglie prima, non si somma. Senza prefisso restituisce il
+    nome senza i prefissi noti. Al massimo 100 caratteri.
+    """
+    base = nome
+    for noto in prefissi_noti:
+        pulito = _pulisci(noto or "")
+        if pulito and base.startswith(pulito + "-"):
+            base = base[len(pulito) + 1:]
+    nuovo = _pulisci(prefisso or "")
+    if not nuovo:
+        return base
+    return f"{nuovo}-{base}"[:MAX_NOME_CANALE].strip("-")
 
 
 def _pulisci(testo: str) -> str:
@@ -402,6 +432,10 @@ def riassunto(o: Opzioni) -> list[tuple[str, str]]:
                      f"Squadra: {_ruoli(o.ruoli_staff) if o.ruoli_staff else 'i ruoli di supporto'}"),
         ("Presa in carico", f"Categoria: {f'<#{o.categoria_presi}>' if o.categoria_presi else 'la stessa'} · "
                             f"esclusiva: {o.claim_esclusivo} · al primo che risponde: {_si(o.assegna_auto)}"),
-        ("Chiusura", f"Conferma: {_si(o.conferma_chiusura)} · l'utente può chiudere: {_si(o.utente_chiude)}"),
+        ("Chiusura", f"Conferma: {_si(o.conferma_chiusura)} · l'utente può chiudere: {_si(o.utente_chiude)}\n"
+                     f"In due passi: {_si(o.chiusura_due_passi)} · elimina dopo: "
+                     f"{f'{o.elimina_dopo_ore} ore' if o.elimina_dopo_ore else 'mai'} · categoria dei chiusi: "
+                     f"{f'<#{o.categoria_chiusi}>' if o.categoria_chiusi else 'nessuna'}\n"
+                     f"Nome da chiuso: {o.prefisso_chiuso or 'invariato'} · da preso: {o.prefisso_preso or 'invariato'}"),
     ]
     return [(nome, valore[:1024]) for nome, valore in righe]

@@ -191,3 +191,38 @@ async def test_permessi_uguali_non_generano_log(cog):
     c, invio = cog
     await c.on_guild_channel_update(_con_permessi(_canale(5), 9, 0, 1024), _con_permessi(_canale(5), 9, 0, 1024))
     invio.assert_not_awaited()
+
+
+async def test_canale_ignorato_con_log_ignora_non_genera_log_di_voce_e_canali(cog, monkeypatch):
+    from core.message_log_logic import Ignorati
+    import core.log_ignora_filtro as filtro
+
+    c, invio = cog
+    monkeypatch.setattr(filtro.log_ignora_repo, "carica", AsyncMock(return_value=Ignorati(canali=frozenset({50}))))
+    canale = _canale(50)
+    canale.category_id = None
+    await c.on_guild_channel_create(canale)
+    await c.on_guild_channel_update(_canale(50, posizione=1), _canale(50, posizione=2))
+    invio.assert_not_awaited()
+    modulo.event_log_repo.log_event.assert_not_awaited()
+
+    entra = MagicMock()
+    entra.channel = canale
+    esce = MagicMock()
+    esce.channel = None
+    await c.on_voice_state_update(fake_member(9), esce, entra)
+    invio.assert_not_awaited()
+
+
+async def test_utente_ignorato_non_genera_log_di_voce(cog, monkeypatch):
+    from core.message_log_logic import Ignorati
+    import core.log_ignora_filtro as filtro
+
+    c, invio = cog
+    monkeypatch.setattr(filtro.log_ignora_repo, "carica", AsyncMock(return_value=Ignorati(utenti=frozenset({9}))))
+    altro = _canale(60)
+    altro.category_id = None
+    entra, esce = MagicMock(), MagicMock()
+    entra.channel, esce.channel = altro, None
+    await c.on_voice_state_update(fake_member(9), esce, entra)
+    invio.assert_not_awaited()
