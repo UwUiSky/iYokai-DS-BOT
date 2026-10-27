@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+27/10/2026 · IN PAUSA su `feat/r10aiw` (cacciatore+revisione, wt /home/claude/wt/r10aiw). Nessun fix ancora. Letto tutto il diff di core/ e cogs/ e panel_bridge/web_panel_server. Visti a posto: manutenzione in `controlla_accesso` prima della cache (vale per tutte le vie via `richiedi`), coda libera i posti su eccezione/annullamento, consenso ritirato/ridato non riavvia la prova (COALESCE). Prossimo passo esatto: 1) verificare se `requires_module(MODULO_AI)` (core/premium.py:389; usato in cogs/ai/summaries.py:64,98,131 e cogs/ai/config.py:402) blocca i comandi durante la prova gratuita (prova inutile → bug); 2) prova ripetibile dopo la purga a 90 giorni dall'uscita (ai_config server="cancella" in core/data_registry.py) → valutare tabella «conserva» con migrazione 0351; 3) leggere `_server`/`_modulo_scrittura` in core/web_panel_server.py (livello richiesto per /server/<id>/ai, CSRF) e i template (ai, privacy, proprietario, termini); 4) test nuovi con mutazione; 5) smoke `--base main` una volta.
 21/10/2026 · ramo `feat/r8tkt` (#120 opzioni ticket, #139 AI, migrazione 0220): merge di main (991f977); corretti presa esclusiva/passa/rilascia e note archiviate (bd26b6d), cache opzioni (ad83893), reperibili ricontrollati; test instabile dei due close = doppia lettura in `close`. Esito smoke nel rapporto.
 16/10/2026 · r7mod, r7bak (3be8a40), r7liv.
 
