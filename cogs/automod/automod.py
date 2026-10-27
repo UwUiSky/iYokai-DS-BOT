@@ -32,7 +32,10 @@ per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
 inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
 filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 019–024, 041), §23 (NF-31, SIC-042)
+Regole native: parole con gli asterischi del modo (AMD-013), inviti da lasciar
+passare e quelli del server nelle eccezioni (AMD-026/027). Violazioni di un
+utente a pagine e una sola da togliere (AMD-062/065).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 013, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations

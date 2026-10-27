@@ -377,7 +377,7 @@ Totale voci: **514**.
   → **Stato 27/10 (r10, #58, #116):** `/automod parole add modo:` (intera, dentro, inizio, fine) mette gli asterischi della regola nativa e rifiuta oltre 60 caratteri (AMD-013); `parole remove` toglie tutte le forme di una parola. Le eccezioni messe a mano restano (LIM-29). Provato con `tests/test_automod_inviti_parole.py`.
 - `[x]` 6.2 Anti-invite (via AutoMod nativo, regex)
   → **Stato 04/10:** LIM-29.
-  → **Stato 27/10 (r10, #58, #116):** `/automod filtri invites permetti:|togli:|propri:` lascia passare inviti scelti (AMD-026) e quelli del server (AMD-027) con la lista delle eccezioni della regola nativa; al massimo 8 inviti (3 voci l'uno, 25 voci); merge a tre vie che conserva le eccezioni dell'admin; `on_invite_create` e `on_invite_delete` aggiornano la regola (migrazione 0280).
+  → **Stato 27/10 (r10, #58, #116):** `/automod filtri invites permetti:|togli:|propri:` lascia passare inviti scelti (AMD-026) e quelli del server (AMD-027) con la lista delle eccezioni della regola nativa; al massimo 8 inviti (3 voci l'uno, 25 voci); merge a tre vie che conserva le eccezioni dell'admin; `on_invite_create` e `on_invite_delete` aggiornano la regola (migrazione 0280); con «propri» passa anche l'invito personalizzato; se Discord non dà gli inviti restano le eccezioni dell'ultimo sync.
 - `[x]` 6.3b Messaggi modificati controllati di nuovo dai filtri lato bot (AMD-021, #116); la modifica non conta per l'anti-spam
 - `[x]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
@@ -436,6 +436,7 @@ Totale voci: **514**.
   violazione (`automod_action_log`) + embed opzionale in un canale
   dedicato, `/automod log-channel` + `/automod status` (riepilogo
   configurazione)
+  → **Stato 27/10 (r10, #116):** `/automod violazioni utente: pagina:` (10 per pagina, AMD-062) e `/automod violazione-togli numero:` (solo del server, AMD-065); indice in migrazione 0282. `tests/test_automod_inviti_parole.py`.
 - `[x]` 6.16 Filtri in più (#116, r6): messaggi ripetuti, troppo corti, link e menzioni nel tempo (`/automod filtri messaggi`, AMD-001, 004, 006, 007), embed e inoltri letti dai filtri e tipi di file vietati (`contenuto`, AMD-019, 020, 022), canali solo media o senza allegati (`canale-media`, AMD-023, 024), azione kick in `actions-set` (AMD-041)
 - `[x]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
   di severità crescente **nel tempo** in base a quante volte un

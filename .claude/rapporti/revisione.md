@@ -239,3 +239,10 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 27/10 | `feat/r10amod` | `cogs/automod/automod.py:_sync_guild` | Errore di `guild.invites()` toglieva tutte le eccezioni degli inviti del server | media | chiuso 7ac974a |
+| 27/10 | `feat/r10amod` | `cogs/automod/automod.py:_sync_guild` | «propri» non comprendeva l'invito personalizzato (vanity) | media | chiuso 7ac974a |
+| 27/10 | `feat/r10amod` | `core/migrations/0282` | Query violazioni per utente senza indice (guild_id, user_id) | bassa | chiuso 7ac974a |
+| 27/10 | `feat/r10amod` | `cogs/automod/automod.py:violazioni` | Chiave interna del filtro invece del nome; REGISTRO diceva AMD-062/065 non fatte; COMMAND_LIST non rigenerato | bassa | chiuso |
+| 27/10 | `feat/r10amod` | `cogs/automod/automod.py:_aggiorna_inviti_propri` | Oltre 8 inviti propri: passano i primi 8 nell'ordine di Discord, il nuovo può restare fuori (avviso c'è) | bassa | aperto |
+| 27/10 | `feat/r10amod` | `cogs/automod/automod.py:_aggiorna_inviti_propri` | Attesa di 3 s non annullata in `cog_unload` (un sync dopo lo scarico) | bassa | aperto |
+| 27/10 | `feat/r10amod` | `tests/test_phishing_sic042.py:test_invito_a_server_per_adulti_cancellato_una_sola_chiamata_per_codice` | Da solo fallisce (`_FakeGuild` senza `get_member`), verde nello smoke: dipende dall'ordine; non toccato dal ramo | bassa | aperto, per dev-moderazione |
