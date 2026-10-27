@@ -271,7 +271,7 @@
   "admin premium stato": "Shows how premium is unlocked in this server.",
   "admin setup": "Module activation and guided setup",
   "admin setup attiva": "Turns the bot's modules on or off, by category.",
-  "admin setup wizard": "Step-by-step setup of the bot's main modules.",
+  "admin setup wizard": "Step-by-step setup of the bot's roles and modules, one category at a time.",
   "admin ticket": "Advanced tickets: panels, form, closing, DM, replies",
   "admin ticket chiudi-tutti": "Closes the open tickets (up to 25 at a time).",
   "admin ticket chiusura-auto": "Closes tickets idle for N minutes (0 = off).",

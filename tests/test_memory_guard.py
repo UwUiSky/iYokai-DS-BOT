@@ -208,3 +208,15 @@ async def test_tick_livello_emergency_manda_alert_anche_con_cooldown_attivo():
         await guard.tick(bot)
 
     assert len(owner.sent_messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_cleanup_non_disconnette_la_radio_24_7_in_canale_vuoto():
+    """LIM-44 / M 8.5: la radio resta anche senza ascoltatori."""
+    guard = MemoryGuard()
+    vc = _FakeVoiceClient(_FakeVoiceChannel(1, members=[_FakeMember(is_bot=True)]))
+    vc.is_radio = True
+
+    await guard._cleanup_idle_voice_clients(_FakeBotForVoice([vc]))
+
+    assert vc.disconnected is False

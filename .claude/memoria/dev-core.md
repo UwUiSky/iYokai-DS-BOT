@@ -1,11 +1,12 @@
 # Memoria di dev-core
 
 ## Aggiornata
-21/10/2026 · ramo `feat/r9nsfw` (base main) · giro r9: per FILE
+27/10/2026 · ramo `feat/r10core` · giro r10 (chiudere le voci [~]; migrazioni 0360-0369)
 
 ## In corso
-- Giro r9 chiuso: #94, #107, #145 (test mancanti), #141 (cog dei bot separati = riavvio). Resta il rapporto.
-- Prossimo passo: verifica live (VERIFICA_LIVE «giro r9»); NF-20 per l'invito NSFW; altre voci SPEC B (traduci, segnalibri, note).
+- Previsione: 7-8 blocchi. Fatto: (1) test mancanti radio/spam-trap/heatmap, (2) wizard a passi (ruoli + una categoria per passo).
+- Prossimo: SPEC flip 1.1/1.2/1.3/1.6/2.3/3.3/17.8/17.10 (gia fatte in codice); 3.1 monete per modulo (#93);
+  §21.1 catalogo lingue per i miei cog; B.3/B.4 app utente (#107); #109 marchio risponde ai comandi; #113 webhook log.
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -20,7 +21,10 @@
 - r9 #94 NSFW: `core/nsfw_*` (filtro, fonti RedGifs, servizio D16, worker, bot), cogs/nsfw/ricerca.py, 0240, test_nsfw_*.
   #107: `core/user_app_bot.py`, `core/user_app_logic.py`, cogs/user_app/personal.py; -cerca-comando/-chiedi user-install.
 
+- r10 g1: wizard `cogs/utility/_setup_wizard_views.py` + `core/setup_wizard_logic.py` (costruisci_passi): passo ruoli (imposta_ruolo) e una categoria per passo, bottone «Crea i canali dei log» = callback di `/log crea-canali`.
+
 ## Cose imparate
+- `View.clear_items()` stacca i figli: dentro un callback tenere `vista = self.view` prima di ricostruire.
 - Alberi separati (NSFW, App): `tests/support/full_tree.build_separate_trees`; cogs con setup no-op se non e la loro istanza.
 - Server senza il bot (app utente): `interaction.is_guild_integration()` falso; `guild` None anche per cache mancante (#147).
 - Discord conta per il limite 8000 solo la traduzione PIU LUNGA per campo (base compresa). Base del codice resta italiano (scarto da D1).
