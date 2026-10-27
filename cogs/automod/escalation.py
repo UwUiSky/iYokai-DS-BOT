@@ -156,7 +156,7 @@ async def scala_per_warn_manuale(
     conteggio = await escalation_repo.record_violation(
         member.guild.id, member.id, _adesso(), config.reset_after_days
     )
-    step = get_ladder_action(conteggio, config.ladder)
+    step = get_ladder_action(conteggio, config.ladder, config.moltiplicatore, config.tetto_strike)
     if step is None or step.action_type == "warn":
         return None
     azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
@@ -223,7 +223,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         nuovo_conteggio = await escalation_repo.record_violation(
             execution.guild_id, member.id, now, config.reset_after_days
         )
-        step = get_ladder_action(nuovo_conteggio, config.ladder)
+        step = get_ladder_action(nuovo_conteggio, config.ladder, config.moltiplicatore, config.tetto_strike)
         if step is None:
             return  # scala non configurata: solo il conteggio viene tenuto
 
@@ -244,17 +244,40 @@ class EscalationCog(CogConGruppi, commands.Cog):
         descrizione="Attiva l'escalation ladder.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
-    @app_commands.describe(warn_manuali="Conta anche i warn dati a mano con /mod warn. Vuoto: resta com'è")
-    async def enable(self, interaction: discord.Interaction, warn_manuali: bool | None = None) -> None:
+    @app_commands.describe(
+        warn_manuali="Conta anche i warn dati a mano con /mod warn. Vuoto: resta com'è",
+        moltiplicatore="Il timeout oltre l'ultimo gradino dura base x questo numero a ogni ricaduta (1 = fisso)",
+        tetto_strike="Ricadute contate per il moltiplicatore (da 1 a 10). Vuoto: resta com'è",
+    )
+    async def enable(
+        self,
+        interaction: discord.Interaction,
+        warn_manuali: bool | None = None,
+        moltiplicatore: app_commands.Range[float, 1.0, 10.0] | None = None,
+        tetto_strike: app_commands.Range[int, 1, 10] | None = None,
+    ) -> None:
         if interaction.guild is None:
             return
         await escalation_repo.set_enabled(interaction.guild.id, True)
         if warn_manuali is not None:
             await escalation_repo.set_conta_warn_manuali(interaction.guild.id, warn_manuali)
+        if moltiplicatore is not None or tetto_strike is not None:
+            attuale = await escalation_repo.get_config(interaction.guild.id)
+            await escalation_repo.set_crescita(
+                interaction.guild.id,
+                attuale.moltiplicatore if moltiplicatore is None else moltiplicatore,
+                attuale.tetto_strike if tetto_strike is None else tetto_strike,
+            )
         config = await escalation_repo.get_config(interaction.guild.id)
+        crescita = (
+            f" Timeout oltre l'ultimo gradino: x{config.moltiplicatore:g} a ricaduta (fino a {config.tetto_strike})."
+            if config.moltiplicatore > 1
+            else ""
+        )
         await interaction.response.send_message(
             "Escalation ladder attivata. Warn dati a mano: "
-            + ("contano." if config.conta_warn_manuali else "non contano."),
+            + ("contano." if config.conta_warn_manuali else "non contano.")
+            + crescita,
             ephemeral=True,
         )
 
@@ -387,7 +410,13 @@ class EscalationCog(CogConGruppi, commands.Cog):
             description=(
                 f"Stato: {'attiva' if config.enabled else 'disattivata'}\n"
                 f"Reset dopo: {config.reset_after_days} giorni di buona condotta\n"
-                f"Warn dati a mano: {'contano' if config.conta_warn_manuali else 'non contano'}\n\n"
+                f"Warn dati a mano: {'contano' if config.conta_warn_manuali else 'non contano'}\n"
+                + (
+                    f"Timeout che cresce: x{config.moltiplicatore:g} (fino a {config.tetto_strike} ricadute)\n"
+                    if config.moltiplicatore > 1
+                    else ""
+                )
+                + "\n"
                 + "\n".join(righe)
             ),
             color=discord.Color.blurple(),

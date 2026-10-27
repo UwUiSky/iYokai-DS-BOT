@@ -35,6 +35,9 @@ class EscalationConfig:
     ladder: list[LadderStep]
     # M 1.10: anche i warn dati a mano (/mod warn) salgono la scala.
     conta_warn_manuali: bool = False
+    # AMD-070: timeout che cresce a ogni ricaduta oltre l'ultimo gradino (1 = fisso).
+    moltiplicatore: float = 1.0
+    tetto_strike: int = 5
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -79,13 +82,15 @@ class EscalationRepository:
     # ================================================================
     async def get_config(self, guild_id: int) -> EscalationConfig:
         row = await self._pool.fetchrow(
-            "SELECT enabled, reset_after_days, conta_warn_manuali "
+            "SELECT enabled, reset_after_days, conta_warn_manuali, moltiplicatore, tetto_strike "
             "FROM automod_escalation_config WHERE guild_id = $1",
             guild_id,
         )
         enabled = row["enabled"] if row else False
         reset_after_days = row["reset_after_days"] if row else DEFAULT_RESET_AFTER_DAYS
         conta_warn_manuali = row["conta_warn_manuali"] if row else False
+        moltiplicatore = row["moltiplicatore"] if row else 1.0
+        tetto_strike = row["tetto_strike"] if row else 5
 
         step_rows = await self._pool.fetch(
             "SELECT level, action_type, duration_seconds FROM automod_escalation_steps "
@@ -105,7 +110,9 @@ class EscalationRepository:
             # nessuna azione".
             ladder = DEFAULT_LADDER
 
-        return EscalationConfig(guild_id, enabled, reset_after_days, ladder, conta_warn_manuali)
+        return EscalationConfig(
+            guild_id, enabled, reset_after_days, ladder, conta_warn_manuali, moltiplicatore, tetto_strike
+        )
 
     async def set_enabled(self, guild_id: int, enabled: bool) -> None:
         await self._pool.execute(
@@ -127,6 +134,20 @@ class EscalationRepository:
             """,
             guild_id,
             attivo,
+        )
+
+    async def set_crescita(self, guild_id: int, moltiplicatore: float, tetto_strike: int) -> None:
+        """AMD-070: moltiplicatore della durata del timeout e tetto delle ricadute contate."""
+        await self._pool.execute(
+            """
+            INSERT INTO automod_escalation_config (guild_id, moltiplicatore, tetto_strike)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET moltiplicatore = EXCLUDED.moltiplicatore, tetto_strike = EXCLUDED.tetto_strike
+            """,
+            guild_id,
+            float(moltiplicatore),
+            tetto_strike,
         )
 
     async def set_reset_after_days(self, guild_id: int, days: int) -> None:
