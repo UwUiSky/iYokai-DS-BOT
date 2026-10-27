@@ -75,6 +75,7 @@ SETTINGS_VALIDE = {
     "mod_timeout_predefinito": 600,
     "mod_dm_spenti": ["warn", "ban"],
     "mod_ruoli_immuni": [212121212121212121],
+    "mod_casi_esterni": True,
     "spam_trap_punizione": "staff",
 }
 

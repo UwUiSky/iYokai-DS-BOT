@@ -21,8 +21,9 @@ eliminazione di un caso, classifica dello staff (/mod caso), note da
 togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
 e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
+Casi anche per ban, kick e timeout fatti fuori da iYokai (MOD-047, se acceso).
 Sanzioni ancora attive (MOD-013): tempban, timeout, mute con ruolo e lock a tempo.
-Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 049, 027..031, 037, 039, 041, 042, 044, 054..056)
+Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 047, 049, 027..031, 037, 039, 041, 042, 044, 054..056)
 """
 
 from __future__ import annotations
@@ -31,7 +32,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import bot_roles, moderation_opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.database import db
+from core.moderation_casi_esterni_logic import caso_da_voce
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
@@ -161,6 +165,56 @@ async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
 class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry) -> None:
+        """MOD-047: ban, kick e timeout fatti dal menu di Discord o da altri bot diventano casi."""
+        azione = entry.action
+        if azione not in (
+            discord.AuditLogAction.ban,
+            discord.AuditLogAction.kick,
+            discord.AuditLogAction.unban,
+            discord.AuditLogAction.member_update,
+        ):
+            return
+        if entry.user_id is None or entry.target is None:
+            return
+        # Le azioni di iYokai hanno già il loro caso; chi si sanziona da solo non conta.
+        if bot_roles.e_un_nostro_bot(entry.user_id, self.bot) or entry.user_id == entry.target.id:
+            return
+        guild = entry.guild
+        if not (await moderation_opzioni.leggi(guild.id)).casi_esterni:
+            return
+        if not await db.is_module_active_for_guild(guild.id, MODULE_CASE_SYSTEM):
+            return
+        voce = caso_da_voce(
+            azione.name,
+            entry.reason,
+            timeout_fino=getattr(entry.after, "timed_out_until", None),
+            ora=discord.utils.utcnow(),
+        )
+        if voce is None:
+            return
+        if voce.tipo == "unban":
+            for tipo in ("ban", "tempban"):
+                await moderation_repo.revoke_active_cases_for_user(guild.id, entry.target.id, tipo, entry.user_id)
+            return
+        numero = await moderation_repo.create_case(
+            guild_id=guild.id,
+            user_id=entry.target.id,
+            moderator_id=entry.user_id,
+            action_type=voce.tipo,
+            reason=voce.motivo,
+            duration_seconds=voce.durata_secondi,
+        )
+        embed = discord.Embed(
+            title=f"{_ACTION_ICONS.get(voce.tipo, '•')} Caso #{numero} (fatto fuori da iYokai)",
+            color=_ACTION_COLORS.get(voce.tipo, discord.Color.blurple()),
+        )
+        embed.add_field(name="Utente", value=f"<@{entry.target.id}> ({entry.target.id})", inline=False)
+        embed.add_field(name="Moderatore", value=f"<@{entry.user_id}>", inline=True)
+        embed.add_field(name="Motivo", value=truncate_text(voce.motivo, MAX_FIELD_LENGTH), inline=False)
+        await post_to_mod_log(guild, embed)
 
     @comando_di_gruppo(
         "mod",

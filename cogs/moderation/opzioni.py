@@ -3,9 +3,10 @@ cogs/moderation/opzioni.py
 ==========================
 Opzioni di moderazione del server (`/mod opzioni`): giorni di messaggi
 cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
-ruoli immuni alla moderazione manuale. La logica e il salvataggio sono in
+ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
+iYokai. La logica e il salvataggio sono in
 core/moderation_opzioni.py (un solo punto, anche per il pannello web).
-Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068)
+Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068), §5.2 (MOD-047)
 """
 
 from __future__ import annotations
@@ -48,6 +49,11 @@ def _riepilogo(guild: discord.Guild, o: opzioni.OpzioniModerazione) -> discord.E
     )
     embed.add_field(name="DM all'utente per", value=dm[:1024], inline=False)
     embed.add_field(name="Ruoli immuni", value=immuni[:1024], inline=False)
+    embed.add_field(
+        name="Casi per le azioni fatte fuori da iYokai",
+        value="sì (ban, kick, timeout)" if o.casi_esterni else "no",
+        inline=False,
+    )
     return embed
 
 
@@ -68,22 +74,26 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "mod",
         nome="imposta",
-        descrizione="Giorni di messaggi cancellati al ban e durata del timeout. Vuoto: mostra le opzioni.",
+        descrizione="Messaggi cancellati al ban, timeout, casi esterni. Vuoto: mostra le opzioni.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(
         giorni_ban="Giorni di messaggi cancellati quando il ban non li dice (0-7)",
         durata_timeout="Durata del timeout quando non la scrivi, es. 10m, 1h; «no» per toglierla",
+        casi_esterni="Crea un caso anche per ban, kick e timeout fatti dal menu di Discord o da altri bot",
     )
     async def imposta(
         self,
         interaction: discord.Interaction,
         giorni_ban: app_commands.Range[int, 0, 7] | None = None,
         durata_timeout: app_commands.Range[str, 1, 20] | None = None,
+        casi_esterni: bool | None = None,
     ) -> None:
         if not await self._controlli(interaction):
             return
         guild = interaction.guild
+        if casi_esterni is not None:
+            await opzioni.imposta_casi_esterni(guild.id, casi_esterni, interaction.user.id)
         if durata_timeout is not None:
             if durata_timeout.strip().lower() == "no":
                 secondi = None

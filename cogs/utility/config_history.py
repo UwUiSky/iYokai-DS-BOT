@@ -105,6 +105,7 @@ SETTINGS_SCHEMA = {
     "mod_timeout_predefinito": "durata_timeout",
     "mod_dm_spenti": "azioni_dm",
     "mod_ruoli_immuni": "lista_id",
+    "mod_casi_esterni": "bool",
     "spam_trap_punizione": "punizione_trappola",
 }
 
