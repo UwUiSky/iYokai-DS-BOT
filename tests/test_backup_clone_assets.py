@@ -269,3 +269,33 @@ async def test_clone_soundboard_salta_i_suoni_oltre_il_limite():
 
     assert len(target.chiamate_create_soundboard_sound) == MAX_SUONI_SOUNDBOARD
     assert saltati == 2
+
+
+class _Immagine:
+    def __init__(self, dati=b"png", rotta=False):
+        self._dati, self._rotta = dati, rotta
+
+    async def read(self):
+        if self._rotta:
+            import discord
+
+            raise discord.NotFound(type("R", (), {"status": 404, "reason": "x"})(), "sparita")
+        return self._dati
+
+
+@pytest.mark.asyncio
+async def test_clone_webhooks_copia_anche_l_immagine():
+    hook = _FakeWebhook("notizie", 1)
+    hook.avatar = _Immagine(b"immagine")
+    canale = _FakeTargetChannel(50)
+    await clone_webhooks(_FakeSourceGuildAssets(webhooks_list=[hook]), _FakeTargetGuildAssets({50: canale}), {1: 50})
+    assert canale.chiamate_create_webhook[0]["avatar"] == b"immagine"
+
+
+@pytest.mark.asyncio
+async def test_clone_webhooks_immagine_non_scaricabile_crea_senza():
+    hook = _FakeWebhook("notizie", 1)
+    hook.avatar = _Immagine(rotta=True)
+    canale = _FakeTargetChannel(50)
+    await clone_webhooks(_FakeSourceGuildAssets(webhooks_list=[hook]), _FakeTargetGuildAssets({50: canale}), {1: 50})
+    assert canale.chiamate_create_webhook[0]["avatar"] is None

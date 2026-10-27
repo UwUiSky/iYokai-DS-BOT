@@ -562,6 +562,17 @@ async def clone_soundboard(
     return saltati
 
 
+async def _immagine_webhook(webhook) -> bytes | None:
+    """11.8: l'immagine del webhook originale, se c'è e si riesce a scaricare."""
+    avatar = getattr(webhook, "avatar", None)
+    if avatar is None:
+        return None
+    try:
+        return await avatar.read()
+    except (discord.HTTPException, discord.NotFound):
+        return None
+
+
 async def clone_webhooks(
     source_guild: discord.Guild,
     target_guild: discord.Guild,
@@ -569,7 +580,7 @@ async def clone_webhooks(
     riepilogo: RiepilogoCopia | None = None,
 ) -> None:
     """
-    Clona i webhook (SPEC.md §11.8) — solo nome e canale di
+    Clona i webhook (SPEC.md §11.8) — nome, immagine e canale di
     destinazione (rimappato tramite channel_id_map, già prodotta da
     clone_categories_and_channels): l'URL del webhook stesso è
     univoco per ogni webhook creato, non può essere "copiato",
@@ -607,7 +618,14 @@ async def clone_webhooks(
             riepilogo.webhook_saltati += 1
             continue
 
-        await nuovo_canale.create_webhook(name=webhook.name, reason=MOTIVO)
+        immagine = await _immagine_webhook(webhook)
+        try:
+            await nuovo_canale.create_webhook(name=webhook.name, avatar=immagine, reason=MOTIVO)
+        except discord.HTTPException:
+            if immagine is None:
+                raise
+            # l'immagine è stata rifiutata: il webhook si crea comunque, senza
+            await nuovo_canale.create_webhook(name=webhook.name, reason=MOTIVO)
         totale[nuovo_channel_id] += 1
 
 
