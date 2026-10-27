@@ -22,7 +22,7 @@ togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
 e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
 Sanzioni ancora attive (MOD-013): tempban, timeout, mute con ruolo e lock a tempo.
-Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 027..031, 037, 039, 041, 042, 044, 054..056)
+Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 049, 027..031, 037, 039, 041, 042, 044, 054..056)
 """
 
 from __future__ import annotations
@@ -165,7 +165,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "mod",
         nome="attive",
-        descrizione="Sanzioni a tempo ancora in corso: tempban, timeout, lock a tempo.",
+        descrizione="Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
     )
     @requires_module(MODULE_CASE_SYSTEM)
@@ -383,6 +383,58 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Caso #{case_number} eliminato.", ephemeral=True)
         embed = discord.Embed(title=f"🗑️ Caso #{case_number} eliminato", color=discord.Color.dark_grey())
         embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        await post_to_mod_log(interaction.guild, embed)
+
+    @comando_di_gruppo(
+        "mod",
+        nome="registra",
+        descrizione="Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @app_commands.describe(
+        utente="L'utente sanzionato (anche fuori dal server)",
+        tipo="Che sanzione è stata data",
+        reason="Motivo della sanzione",
+        a_nome_di="Il moderatore che l'ha data, se non sei tu (serve «Gestire il server»)",
+    )
+    @app_commands.choices(tipo=SCELTE_TIPO)
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def case_register(
+        self,
+        interaction: discord.Interaction,
+        utente: discord.User,
+        tipo: app_commands.Choice[str],
+        reason: Reason,
+        a_nome_di: discord.Member | None = None,
+    ) -> None:
+        """MOD-046, MOD-049: il caso entra nello storico, ma sul server non cambia nulla."""
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if not await validate_reason(interaction, reason):
+            return
+        if a_nome_di is not None and a_nome_di.id != interaction.user.id:
+            if await _rifiuta_senza_gestione(interaction):
+                return
+        moderatore = a_nome_di or interaction.user
+        numero = await moderation_repo.create_case(
+            guild_id=interaction.guild.id,
+            user_id=utente.id,
+            moderator_id=moderatore.id,
+            action_type=tipo.value,
+            reason=reason,
+        )
+        embed = discord.Embed(
+            title=f"{_ACTION_ICONS.get(tipo.value, '•')} Caso #{numero} registrato a mano",
+            color=_ACTION_COLORS.get(tipo.value, discord.Color.blurple()),
+        )
+        embed.add_field(name="Utente", value=f"<@{utente.id}> ({utente.id})", inline=False)
+        embed.add_field(name="Tipo", value=tipo.name, inline=True)
+        embed.add_field(name="Moderatore", value=moderatore.mention, inline=True)
+        embed.add_field(name="Motivo", value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
+        embed.set_footer(text=f"Registrato da {interaction.user.display_name}. Nessuna azione eseguita.")
+        await interaction.response.send_message(
+            embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(

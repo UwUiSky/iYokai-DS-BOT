@@ -183,3 +183,33 @@ async def test_le_query_del_repo_non_toccano_un_altro_server():
     caso = await moderation_repo.get_case(G, numero)
     assert caso is not None and caso.reason == "uno"
     assert len(await moderation_repo.list_notes_for_user(G, 1)) == 1
+
+
+# ------------------------------------------------------- caso registrato a mano
+async def test_caso_registrato_a_mano_entra_nello_storico_senza_agire():
+    inter, canale_log = _inter()
+    cog = ModerationCaseSystemCog(bot=None)
+    utente = MagicMock(id=555)
+    scelta = MagicMock(value="ban")
+    scelta.name = "Ban"
+
+    await cog.case_register.callback(cog, inter, utente, scelta, "ban dato da un altro bot")
+
+    [caso] = await moderation_repo.list_cases_for_user(G, 555)
+    assert (caso.action_type, caso.moderator_id, caso.active) == ("ban", 10, True)
+    assert "registrato a mano" in inter.response.send_message.call_args.kwargs["embed"].title
+    canale_log.send.assert_awaited_once()
+
+
+async def test_caso_a_nome_di_un_altro_serve_gestire_il_server():
+    inter, _ = _inter(gestione=False)
+    cog = ModerationCaseSystemCog(bot=None)
+    scelta = MagicMock(value="kick")
+    await cog.case_register.callback(cog, inter, MagicMock(id=555), scelta, "kick fuori bot", fake_member(77))
+    assert await moderation_repo.list_cases_for_user(G, 555) == []
+    assert "Gestire il server" in _testo(inter)
+
+    inter, _ = _inter(gestione=True)
+    await cog.case_register.callback(cog, inter, MagicMock(id=555), scelta, "kick fuori bot", fake_member(77))
+    [caso] = await moderation_repo.list_cases_for_user(G, 555)
+    assert caso.moderator_id == 77
