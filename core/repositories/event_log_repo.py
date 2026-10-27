@@ -135,35 +135,38 @@ class EventLogRepository:
         )
         return row["id"]
 
-    async def get_events_by_user(
-        self, guild_id: int, user_id: int, limit: int = 25
+    async def _per_colonna(
+        self, colonna: str, guild_id: int, valore: int, limit: int, since: datetime | None
     ) -> list[EventLogEntry]:
+        # `colonna` arriva solo dai tre metodi qui sotto, mai dall'utente.
         rows = await self._pool.fetch(
-            """
+            f"""
             SELECT * FROM event_log
-            WHERE guild_id = $1 AND target_user_id = $2
+            WHERE guild_id = $1 AND {colonna} = $2
+              AND ($4::timestamptz IS NULL OR created_at >= $4)
             ORDER BY created_at DESC LIMIT $3
             """,
             guild_id,
-            user_id,
+            valore,
             limit,
+            since,
         )
         return [self._row_to_entry(r) for r in rows]
 
-    async def get_events_by_channel(
-        self, guild_id: int, channel_id: int, limit: int = 25
+    async def get_events_by_user(
+        self, guild_id: int, user_id: int, limit: int = 25, since: datetime | None = None
     ) -> list[EventLogEntry]:
-        rows = await self._pool.fetch(
-            """
-            SELECT * FROM event_log
-            WHERE guild_id = $1 AND channel_id = $2
-            ORDER BY created_at DESC LIMIT $3
-            """,
-            guild_id,
-            channel_id,
-            limit,
-        )
-        return [self._row_to_entry(r) for r in rows]
+        return await self._per_colonna("target_user_id", guild_id, user_id, limit, since)
+
+    async def get_events_by_channel(
+        self, guild_id: int, channel_id: int, limit: int = 25, since: datetime | None = None
+    ) -> list[EventLogEntry]:
+        return await self._per_colonna("channel_id", guild_id, channel_id, limit, since)
+
+    async def get_events_by_role(
+        self, guild_id: int, role_id: int, limit: int = 25, since: datetime | None = None
+    ) -> list[EventLogEntry]:
+        return await self._per_colonna("role_id", guild_id, role_id, limit, since)
 
     async def get_recent_events(
         self, guild_id: int, limit: int = 25

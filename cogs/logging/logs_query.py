@@ -2,7 +2,8 @@
 cogs/logging/logs_query.py
 =============================
 Interfaccia comandi sul log eventi unificato (BACKLOG.md §3):
-/log cerca utente, /log cerca canale, /log esporta. Nessuna logica propria
+/log cerca utente, canale e ruolo (con filtro «ultimi N giorni»),
+/log esporta. Nessuna logica propria
 oltre alla formattazione — legge tramite core/repositories/
 event_log_repo.py, scritto da cogs/logging/basic_logs.py.
 /log archivio-canale scarica gli ultimi messaggi di un canale in un file,
@@ -24,6 +25,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -44,6 +46,20 @@ logger = logging.getLogger("iyokai.logging.query")
 # volta non bastasse, l'elenco si ferma a 4000 e dice quante ne mancano.
 MAX_DETAILS_LENGTH = 50
 MAX_LIST_LENGTH = 4000
+
+# Filtro per tempo: da 1 giorno a 180 (la retention più lunga, Premium).
+GIORNI_MAX = 180
+
+
+def _da_quando(giorni: int | None) -> datetime | None:
+    """Inizio della finestra «ultimi N giorni»; None se non c'è filtro."""
+    if giorni is None:
+        return None
+    return datetime.now(timezone.utc) - timedelta(days=giorni)
+
+
+def _etichetta_periodo(giorni: int | None) -> str:
+    return "" if giorni is None else f" negli ultimi {giorni} giorni"
 
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
@@ -125,13 +141,16 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
     )
     @app_commands.describe(
-        member="L'utente da consultare", limit="Quante voci mostrare (default 15, massimo 25)"
+        member="L'utente da consultare",
+        limit="Quante voci mostrare (default 15, massimo 25)",
+        giorni="Solo gli ultimi N giorni (1-180)",
     )
     async def logs_user(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
         limit: app_commands.Range[int, 1, 25] = 15,
+        giorni: app_commands.Range[int, 1, GIORNI_MAX] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -140,10 +159,12 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
             )
             return
 
-        eventi = await event_log_repo.get_events_by_user(guild.id, member.id, limit=limit)
+        eventi = await event_log_repo.get_events_by_user(
+            guild.id, member.id, limit=limit, since=_da_quando(giorni)
+        )
         if not eventi:
             await interaction.response.send_message(
-                f"Nessun evento registrato per {member.mention}.", ephemeral=True
+                f"Nessun evento registrato per {member.mention}{_etichetta_periodo(giorni)}.", ephemeral=True
             )
             return
 
@@ -161,13 +182,16 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
     )
     @app_commands.describe(
-        channel="Il canale da consultare", limit="Quante voci mostrare (default 15, massimo 25)"
+        channel="Il canale da consultare",
+        limit="Quante voci mostrare (default 15, massimo 25)",
+        giorni="Solo gli ultimi N giorni (1-180)",
     )
     async def logs_channel(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
         limit: app_commands.Range[int, 1, 25] = 15,
+        giorni: app_commands.Range[int, 1, GIORNI_MAX] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -176,15 +200,60 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
             )
             return
 
-        eventi = await event_log_repo.get_events_by_channel(guild.id, channel.id, limit=limit)
+        eventi = await event_log_repo.get_events_by_channel(
+            guild.id, channel.id, limit=limit, since=_da_quando(giorni)
+        )
         if not eventi:
             await interaction.response.send_message(
-                f"Nessun evento registrato per {channel.mention}.", ephemeral=True
+                f"Nessun evento registrato per {channel.mention}{_etichetta_periodo(giorni)}.", ephemeral=True
             )
             return
 
         embed = discord.Embed(
             title=f"📜 Storico eventi — #{channel.name}",
+            description=_format_entries(eventi),
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo(
+        "log",
+        nome="ruolo",
+        descrizione="Mostra lo storico eventi di un ruolo.",
+        sottogruppo=("cerca", "Cerca nello storico eventi del server."),
+    )
+    @app_commands.describe(
+        ruolo="Il ruolo da consultare",
+        limit="Quante voci mostrare (default 15, massimo 25)",
+        giorni="Solo gli ultimi N giorni (1-180)",
+    )
+    async def logs_role(
+        self,
+        interaction: discord.Interaction,
+        ruolo: discord.Role,
+        limit: app_commands.Range[int, 1, 25] = 15,
+        giorni: app_commands.Range[int, 1, GIORNI_MAX] | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+
+        eventi = await event_log_repo.get_events_by_role(
+            guild.id, ruolo.id, limit=limit, since=_da_quando(giorni)
+        )
+        if not eventi:
+            await interaction.response.send_message(
+                f"Nessun evento registrato per {ruolo.mention}{_etichetta_periodo(giorni)}.",
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"📜 Storico eventi — @{ruolo.name}"[:256],
             description=_format_entries(eventi),
             color=discord.Color.blurple(),
         )

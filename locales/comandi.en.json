@@ -530,6 +530,7 @@
   "log canale": "Sets the server log channel (or forum).",
   "log cerca": "Searches the server event history.",
   "log cerca canale": "Shows a channel's event history.",
+  "log cerca ruolo": "Shows a role's event history.",
   "log cerca utente": "Shows a user's event history.",
   "log crea-canali": "Creates a private category with one channel for each log type.",
   "log crea-forum": "Creates a private forum for logs: one post for each type.",
