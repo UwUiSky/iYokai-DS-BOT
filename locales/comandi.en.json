@@ -234,7 +234,8 @@
   "tag-aggiungi": "tag-add",
   "tag-togli": "tag-remove",
   "autopost-ferma": "autopost-stop",
-  "promemoria": "reminders"
+  "promemoria": "reminders",
+  "manutenzione": "maintenance"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -867,7 +868,8 @@
   "promemoria crea": "I will DM you after the time you choose.",
   "promemoria elenco": "Shows your pending reminders.",
   "promemoria annulla": "Cancels one of your reminders.",
-  "profilo": "A user's card: name, ID, account age, avatar."
+  "profilo": "A user's card: name, ID, account age, avatar.",
+  "ai manutenzione": "Owner only: puts the AI in maintenance in every server."
  },
  "parametri": {},
  "menu": {

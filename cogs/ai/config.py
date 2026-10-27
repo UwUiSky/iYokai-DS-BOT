@@ -8,7 +8,7 @@ traduzione automatica dei canali, personaggi del server, base di
 conoscenza, costruzione del server da una descrizione, stato e uso.
 In più il controllo orario delle chiavi con avviso privato all'owner e il
 riepilogo giornaliero dell'uso.
-Funzioni coperte: SPEC §25.4, §25.7, §25.9, §25.13–§25.20, §25.24, §25.35, §25.46, §25.58, §25.75, §25.82, §25.83, §25.96
+Funzioni coperte: SPEC §25.4, §25.7, §25.9, §25.13–§25.20, §25.23, §25.24, §25.35, §25.46, §25.58, §25.75, §25.82, §25.83, §25.96
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from discord.ext import commands, tasks
 
 import core.channel_router as router
 from cogs.ai._comune import MODULO_AI, NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiesta_da, taglia
+from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.ai_router import avviso_chiavi
 from core.ai_servizio import servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
@@ -67,7 +68,22 @@ class _ConsensoView(BaseView):
     @discord.ui.button(label="Acconsento e accendo", style=discord.ButtonStyle.success)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await ai_repo.registra_consenso(interaction.guild_id, interaction.user.id, True)
-        await interaction.response.edit_message(content="AI accesa in questo server.", embed=None, view=None)
+        testo = "AI accesa in questo server."
+        if await _serve_la_prova(interaction.guild_id):
+            prima = await ai_repo.get_config(interaction.guild_id)
+            cfg = await ai_repo.avvia_prova(interaction.guild_id)
+            if prima.prova_inizio is None:
+                testo += f" L'AI è premium: parte una prova gratuita di {GIORNI_PROVA} giorni."
+            elif not prova_attiva(cfg.prova_inizio):
+                testo += " La prova gratuita è già finita: per usare l'AI serve il premium."
+        await interaction.response.edit_message(content=testo, embed=None, view=None)
+
+
+async def _serve_la_prova(guild_id: int) -> bool:
+    """L'AI è premium e il server non l'ha sbloccata: vale la prova (una volta sola)."""
+    from core.premium import guild_has_premium_access, registry
+
+    return registry.is_module_premium(MODULO_AI) and not await guild_has_premium_access(guild_id, MODULO_AI)
 
 
 class _ConoscenzaModal(BaseModal, title="Nuova voce della base di conoscenza"):
@@ -175,6 +191,12 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             inline=False,
         )
         embed.add_field(name="Stato", value="accesa" if cfg.attivo else "spenta")
+        if cfg.prova_inizio is not None:
+            fine = int(cfg.prova_inizio.timestamp()) + GIORNI_PROVA * 86400
+            embed.add_field(
+                name="Prova gratuita",
+                value=f"fino a <t:{fine}:D>" if prova_attiva(cfg.prova_inizio) else "finita",
+            )
         embed.add_field(name="Privacy", value=cfg.privacy.replace("_", " "))
         embed.add_field(name="Memoria", value=f"{cfg.conservazione_minuti} min")
         embed.add_field(
@@ -225,6 +247,20 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         if not servizio_ai().configurato:
             embed.add_field(name="Nota", value="Il proprietario del bot non ha ancora configurato fornitori AI.")
         await interaction.response.send_message(embed=embed, view=_ConsensoView(interaction.user.id), ephemeral=True)
+
+    @comando_di_gruppo("ai", nome="manutenzione", descrizione="Solo proprietario: mette l'AI in manutenzione in tutti i server.")
+    @app_commands.describe(acceso="Sì: l'AI si ferma ovunque (il resto del bot no); no: torna in servizio", messaggio="Cosa vedranno gli utenti")
+    async def manutenzione(
+        self, interaction: discord.Interaction, acceso: bool, messaggio: app_commands.Range[str, 1, 300] | None = None
+    ) -> None:
+        if interaction.user.id != config.OWNER_ID:
+            await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
+            return
+        await ai_repo.imposta_manutenzione(acceso, (messaggio or "").strip(), interaction.user.id)
+        servizio_ai().ricarica_manutenzione()
+        await interaction.response.send_message(
+            "AI in manutenzione in tutti i server." if acceso else "AI di nuovo in servizio.", ephemeral=True
+        )
 
     @comando_di_gruppo("ai", nome="canale", descrizione="Spegne o riaccende l'AI in un canale.")
     @app_commands.describe(canale="Il canale", acceso="Sì: l'AI lavora qui; no: spenta qui")

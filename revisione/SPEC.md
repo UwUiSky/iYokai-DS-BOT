@@ -2110,15 +2110,15 @@ di quel file.
 - `[x]` 25.17 Regola "l'AI propone, una persona conferma" (AI-R-015)
 - `[x]` 25.18 Livelli di privacy dell'AI per server (AI-R-016)
 - `[x]` 25.19 Tempo di conservazione del contesto dell'AI (AI-R-018)
-- `[~]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
+- `[x]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
   fermare il resto (AI-R-020)
-  → **Stato 14/10 (r6):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. Manca un interruttore "manutenzione" globale per l'owner.
+  → **Stato 27/10 (r10):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. `/ai manutenzione` (solo owner, migrazione 0350, tabella `ai_globale`) ferma l'AI in tutti i server con un messaggio, anche per le risposte in cache; il resto del bot continua.
 - `[ ]` 25.21 AI in un processo separato (AI-R-021)
-- `[~]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
-  → **Stato 14/10 (r6):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Manca una coda vera.
-- `[~]` 25.23 AI come diritto premium a parte, con periodo di prova
+- `[x]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
+  → **Stato 27/10 (r10):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Coda vera in `core/ai_coda_logic.py`: 4 chiamate insieme, fino a 40 in fila (8 per server), attesa massima 25 secondi; oltre, risposta locale «troppe richieste in fila». Il processo separato (25.21) resta a parte.
+- `[x]` 25.23 AI come diritto premium a parte, con periodo di prova
   (AI-R-023)
-  → **Stato 14/10 (r6):** modulo `ai` registrato: l'owner lo rende premium. Manca il periodo di prova.
+  → **Stato 27/10 (r10):** modulo `ai` registrato: l'owner lo rende premium. Se il server non l'ha sbloccato, il consenso di `/ai attiva` fa partire una prova di 7 giorni (una sola volta, `ai_config.prova_inizio`, 0350); finita la prova la porta unica risponde «prova finita».
 
 **Assistente e helpdesk**
 
