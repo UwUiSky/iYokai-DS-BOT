@@ -239,3 +239,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py:_send` | Invio senza `wait=True` (D8: ordine non garantito); test con finto 204 | alta | chiuso b3d6288 |
+| 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py:_svuota_canale` | Coda per canale che continua a scrivere al vecchio backup dopo la promozione | media | chiuso b3d6288 |
+| 27/10 | `feat/r10bak` | `core/backup_clone_logic.py:_allinea` | Riallineamento toglieva overwrite solo del backup e ricreava le etichette del forum (post senza etichette) | media | chiuso 4efd6df |
+| 27/10 | `feat/r10bak` | `core/backup_clone_logic.py:clone_roles` | Ruoli sopra il Creator in `edit_role_positions`: Discord rifiuta tutto, gerarchia rovesciata | media | chiuso 4efd6df |
+| 27/10 | `feat/r10bak` | `core/backup_queue_worker.py:_allinea_una_coppia` | Giro lungo finito dopo `/backup promuovi` rimetteva il mirror del vecchio main | media | chiuso 278c107 |
+| 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py` | Import di `_TIPI_COPIABILI`/`_file` privati | bassa | chiuso b3d6288 |
