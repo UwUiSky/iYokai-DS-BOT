@@ -197,5 +197,12 @@
   "cfg_export_troppo_grande": "La configurazione è troppo grande per un file di Discord: non riesco a esportarla.",
   "cfg_import_troppo_grande": "Il file è troppo grande per essere una configurazione esportata.",
   "cfg_import_json_non_valido": "Il file non è un JSON valido (probabilmente non prodotto da /admin config export).",
-  "cfg_import_fatto": "✅ Configurazione importata: {moduli} moduli, {impostazioni} impostazioni, lingua `{lingua}`. Annullabile con /admin config rollback."
+  "cfg_import_fatto": "✅ Configurazione importata: {moduli} moduli, {impostazioni} impostazioni, lingua `{lingua}`. Annullabile con /admin config rollback.",
+  "priv_gia_in_attesa": "Hai già una richiesta in attesa (numero {numero}). Aspetta la risposta del proprietario.",
+  "cerca_richieste_non_disponibili": "Il sistema di richieste non è al momento disponibile.",
+  "app_promemoria_troppi": "Hai già {massimo} promemoria: annullane uno con /promemoria annulla.",
+  "app_promemoria_creato": "⏰ Ti scrivo in DM tra **{durata}** (numero `{numero}`). Tieni aperti i messaggi diretti dall'app.",
+  "app_promemoria_nessuno": "Nessun promemoria in sospeso.",
+  "app_promemoria_non_trovato": "Non trovo un tuo promemoria con questo numero.",
+  "app_promemoria_annullato": "Promemoria `{numero}` annullato."
 }

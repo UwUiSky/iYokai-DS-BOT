@@ -197,5 +197,12 @@
   "cfg_export_troppo_grande": "The configuration is too big for a Discord file: I cannot export it.",
   "cfg_import_troppo_grande": "The file is too big to be an exported configuration.",
   "cfg_import_json_non_valido": "The file is not valid JSON (probably not made by /admin config export).",
-  "cfg_import_fatto": "✅ Configuration imported: {moduli} modules, {impostazioni} settings, language `{lingua}`. You can undo it with /admin config rollback."
+  "cfg_import_fatto": "✅ Configuration imported: {moduli} modules, {impostazioni} settings, language `{lingua}`. You can undo it with /admin config rollback.",
+  "priv_gia_in_attesa": "You already have a pending request (number {numero}). Wait for the owner's answer.",
+  "cerca_richieste_non_disponibili": "The request system is not available right now.",
+  "app_promemoria_troppi": "You already have {massimo} reminders: cancel one with /promemoria annulla.",
+  "app_promemoria_creato": "⏰ I will DM you in **{durata}** (number `{numero}`). Keep direct messages from the app open.",
+  "app_promemoria_nessuno": "No pending reminders.",
+  "app_promemoria_non_trovato": "I cannot find a reminder of yours with this number.",
+  "app_promemoria_annullato": "Reminder `{numero}` cancelled."
 }

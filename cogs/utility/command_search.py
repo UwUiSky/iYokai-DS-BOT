@@ -30,6 +30,7 @@ from discord.ext import commands
 
 from cogs.utility._command_search_views import DatiPannello, PannelloView, RisultatiView
 from core import command_search_logic as logica
+from core.i18n import testo_per
 from core.command_access import Livello, puo_usare
 from core.command_groups import GRUPPI, NOME_CERCA_COMANDO, NOME_CHIEDI
 from core.config import config
@@ -57,7 +58,7 @@ class _NoResultsView(BaseView):
         cog_richieste = self.bot.get_cog("CustomCommandRequestsCog")
         if cog_richieste is None:
             await interaction.response.send_message(
-                "Il sistema di richieste non è al momento disponibile.", ephemeral=True
+                await testo_per(interaction, "cerca_richieste_non_disponibili"), ephemeral=True
             )
             return
 

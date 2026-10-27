@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.i18n import testo_per
 from core.duration_logic import format_duration, parse_duration
 from core.scheduler import scheduler
 from core.user_app_bot import e_istanza_app
@@ -109,14 +110,13 @@ class PersonaleCog(commands.Cog):
         in_sospeso = await scheduler.list_pending_for_user(interaction.user.id, AZIONE_PROMEMORIA, MAX_PROMEMORIA)
         if len(in_sospeso) >= MAX_PROMEMORIA:
             await interaction.response.send_message(
-                f"Hai già {MAX_PROMEMORIA} promemoria: annullane uno con /promemoria annulla.", ephemeral=True
+                await testo_per(interaction, "app_promemoria_troppi", massimo=MAX_PROMEMORIA), ephemeral=True
             )
             return
         quando = datetime.now(timezone.utc) + timedelta(seconds=secondi)
         numero = await scheduler.schedule(SENZA_SERVER, interaction.user.id, AZIONE_PROMEMORIA, quando, {"message": testo})
         await interaction.response.send_message(
-            f"⏰ Ti scrivo in DM tra **{format_duration(secondi)}** (numero `{numero}`). "
-            "Tieni aperti i messaggi diretti dall'app.",
+            await testo_per(interaction, "app_promemoria_creato", durata=format_duration(secondi), numero=numero),
             ephemeral=True,
         )
 
@@ -124,7 +124,7 @@ class PersonaleCog(commands.Cog):
     async def elenco(self, interaction: discord.Interaction) -> None:
         azioni = await scheduler.list_pending_for_user(interaction.user.id, AZIONE_PROMEMORIA, MAX_PROMEMORIA)
         if not azioni:
-            await interaction.response.send_message("Nessun promemoria in sospeso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "app_promemoria_nessuno"), ephemeral=True)
             return
         righe = [
             f"`{a['id']}` · {discord.utils.format_dt(a['execute_at'], 'R')} · {a['payload'].get('message', '')[:60]}"
@@ -139,10 +139,10 @@ class PersonaleCog(commands.Cog):
         azione = await scheduler.get_pending_action(numero)
         if azione is None or azione["executed"] or azione["user_id"] != interaction.user.id \
                 or azione["action_type"] != AZIONE_PROMEMORIA:
-            await interaction.response.send_message("Non trovo un tuo promemoria con questo numero.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "app_promemoria_non_trovato"), ephemeral=True)
             return
         await scheduler.cancel(numero)
-        await interaction.response.send_message(f"Promemoria `{numero}` annullato.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "app_promemoria_annullato", numero=numero), ephemeral=True)
 
     # ---------------------------------------------------------------- profilo
     @app_commands.command(name="profilo", description="La scheda di un utente: nome, ID, età dell'account, avatar.")
