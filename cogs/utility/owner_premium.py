@@ -31,6 +31,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.eval_shell_logic import truncate_output
+from core.premium_flags import applica_cambio_premium
 from core.premium import PremiumModule, get_guild_premium_breakdown, registry
 from core.premium_code_service import GIORNI_PERMANENTE, TUTTI_I_MODULI, applica_sblocco, crea_codice
 from core.premium_status_logic import format_guild_status_line, format_whitelist_entry
@@ -367,30 +368,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         — un solo punto che applica il cambio, mai due copie della
         stessa logica che potrebbero divergere.
         """
-        registry.set_module_premium(module_name, active)
-
-        await db.pool.execute(
-            """
-            INSERT INTO premium_module_flags (module_name, is_active, updated_by)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (module_name) DO UPDATE
-                SET is_active = EXCLUDED.is_active,
-                    updated_by = EXCLUDED.updated_by,
-                    updated_at = now()
-            """,
-            module_name,
-            active,
-            changed_by,
-        )
-        await db.pool.execute(
-            """
-            INSERT INTO premium_toggle_history (module_name, new_value, changed_by)
-            VALUES ($1, $2, $3)
-            """,
-            module_name,
-            active,
-            changed_by,
-        )
+        await applica_cambio_premium(module_name, active, changed_by)
 
     @comando_di_gruppo(
         "owner",

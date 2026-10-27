@@ -275,6 +275,13 @@ def servizio_ai() -> ServizioAI:
     return _servizio
 
 
+async def imposta_manutenzione_ai(acceso: bool, messaggio: str, user_id: int | None) -> None:
+    """Il solo punto che mette l'AI in manutenzione (o la rimette in servizio): `/ai manutenzione` e pannello web."""
+    servizio = servizio_ai()
+    await servizio.repo.imposta_manutenzione(acceso, messaggio.strip()[:300], user_id)
+    servizio.ricarica_manutenzione()
+
+
 def imposta_servizio_ai(servizio: ServizioAI | None) -> None:
     """Sostituisce il servizio (test con fornitore finto, ricarica del `.env`)."""
     global _servizio

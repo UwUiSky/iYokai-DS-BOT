@@ -14,7 +14,7 @@ stessi controlli e ruoli del bottone di verifica. Il bot con marchio proprio (NF
 stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`; l'aspetto del bot per
 server (CFG-030) da `core/bot_aspetto.py`. La pagina «I miei dati» (#46) usa le funzioni di
 `/utility privacy esporta|cancella`.
-Funzioni coperte: SPEC §24.1–24.4, §24.7, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122; #46)
+Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.4, C.5, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122; #46)
 """
 
 from __future__ import annotations
@@ -38,10 +38,11 @@ from core.command_search_logic import ComandoInfo, raccogli_comandi
 from core.config import config
 from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida, imposta_lingua_server, imposta_modulo
+from core.data_registry import GIORNI_DOPO_USCITA, REGISTRO
 from core.database import db
 from core.premium import registry
 from core.repositories.fingerprint_repo import fingerprint_repo
-from core.web_panel_logic import pannello_configurato
+from core.web_panel_logic import pannello_configurato, voci_privacy
 
 logger = logging.getLogger("iyokai.panel_bridge")
 
@@ -461,3 +462,71 @@ async def testo_richiesta(user_id: int, numero: int) -> str | None:
     if richiesta is None or richiesta["user_id"] != user_id:
         return None
     return TESTO_CANCELLA.format(numero=numero)
+
+
+# ---------------------------------------------------------------- pagine legali e dell'owner
+def info_legali() -> dict:
+    """Dati per privacy e termini: categorie di dati dal registro, fornitori AI configurati, contatto."""
+    from core.ai_servizio import servizio_ai
+
+    try:
+        fornitori = sorted({f.nome for f in servizio_ai().motore.fornitori})
+    except Exception:  # noqa: BLE001 - una pagina legale non deve cadere per la configurazione AI
+        logger.warning("Fornitori AI non letti per la pagina privacy.", exc_info=True)
+        fornitori = []
+    return {
+        "voci": voci_privacy(REGISTRO, GIORNI_DOPO_USCITA),
+        "giorni_dopo_uscita": GIORNI_DOPO_USCITA,
+        "fornitori_ai": fornitori,
+        "supporto": config.SUPPORT_SERVER_URL,
+    }
+
+
+def e_proprietario(user_id: int | None) -> bool:
+    """Solo il proprietario del bot (`OWNER_ID`), controllato a ogni richiesta."""
+    return user_id is not None and user_id == config.OWNER_ID
+
+
+MAX_SERVER_OWNER = 50
+
+
+async def stato_proprietario(bot) -> dict:
+    """Pagina dell'owner (C.4): moduli premium, server con il loro stato premium, AI in manutenzione."""
+    from core.ai_servizio import servizio_ai
+    from core.premium import get_guild_premium_breakdown
+    from core.premium_status_logic import format_guild_status_line
+    from core.repositories.ai_repo import ai_repo
+
+    moduli = [
+        {"nome": m.name, "titolo": m.display_name, "capace": m.premium_capable, "premium": m.is_premium_active}
+        for m in sorted(registry.all_modules(), key=lambda m: m.name)
+    ]
+    guilds = sorted(bot.guilds, key=lambda g: g.member_count or 0, reverse=True)
+    righe = []
+    for g in guilds[:MAX_SERVER_OWNER]:
+        d = await get_guild_premium_breakdown(g.id, bot=bot)
+        righe.append(format_guild_status_line(
+            g.id, g.name, whitelisted=d["whitelisted"], boosts_main_guild=d["boosts_main_guild"],
+            cassa_active=d["cassa_active"], subscription_count=d["subscription_count"],
+            discord_attivo=d.get("discord_attivo", False),
+        ))
+    return {
+        "moduli": moduli, "server": righe, "n_server": len(guilds), "troncato": len(guilds) > MAX_SERVER_OWNER,
+        "alpha": bool(config.PREMIUM_ALPHA_UNLOCK_ALL),
+        "ai_fornitori": [f.nome for f in servizio_ai().motore.fornitori],
+        "ai_manutenzione": await ai_repo.manutenzione(),
+    }
+
+
+async def applica_premium_modulo(nome: str, attivo: bool, user_id: int) -> None:
+    """Rende premium o gratuito un modulo (stesso punto di `/owner premium toggle`)."""
+    from core.premium_flags import applica_cambio_premium
+
+    await applica_cambio_premium(nome, attivo, user_id)
+
+
+async def applica_manutenzione_ai(acceso: bool, messaggio: str, user_id: int) -> None:
+    """Manutenzione globale dell'AI (stesso punto di `/ai manutenzione`)."""
+    from core.ai_servizio import imposta_manutenzione_ai
+
+    await imposta_manutenzione_ai(acceso, messaggio, user_id)

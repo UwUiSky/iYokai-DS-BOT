@@ -23,7 +23,7 @@ import core.channel_router as router
 from cogs.ai._comune import MODULO_AI, NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiesta_da, taglia
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.ai_router import avviso_chiavi
-from core.ai_servizio import servizio_ai
+from core.ai_servizio import imposta_manutenzione_ai, servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
 from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
@@ -256,8 +256,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         if interaction.user.id != config.OWNER_ID:
             await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
             return
-        await ai_repo.imposta_manutenzione(acceso, (messaggio or "").strip(), interaction.user.id)
-        servizio_ai().ricarica_manutenzione()
+        await imposta_manutenzione_ai(acceso, messaggio or "", interaction.user.id)
         await interaction.response.send_message(
             "AI in manutenzione in tutti i server." if acceso else "AI di nuovo in servizio.", ephemeral=True
         )
