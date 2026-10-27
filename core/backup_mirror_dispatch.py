@@ -6,8 +6,9 @@ per ogni messaggio ricevuto da Main, se va inoltrato al webhook di
 backup e lo inoltra impersonando l'autore originale (nome + avatar).
 Ogni canale ha una sua coda: i messaggi partono nell'ordine in cui sono
 arrivati, uno alla volta (ognuno atteso), al massimo 5 ogni 5 secondi;
-sui picchi si aspetta, non si scarta. Gli allegati vanno come file fino
-a 10 MiB; i messaggi di sistema non si copiano.
+sui picchi si aspetta (oltre 200 in attesa i nuovi si scartano). L'URL si
+rilegge a ogni invio: se il mirror del canale viene tolto la coda si ferma.
+Gli allegati vanno come file fino a 10 MiB; i messaggi di sistema non si copiano.
 
 Separato da un semplice listener nel Cog per essere testabile senza
 una vera connessione a Discord: BackupMirrorDispatcher.handle_message
@@ -26,7 +27,12 @@ from collections import deque
 import aiohttp
 import discord
 
-from core.backup_messages_logic import _TIPI_COPIABILI, _file, allegati_come_file, contenuto_da_copiare
+from core.backup_messages_logic import (
+    TIPI_COPIABILI,
+    allegati_come_file,
+    contenuto_da_copiare,
+    file_degli_allegati,
+)
 from core.backup_mirror_logic import MirrorRateLimiter, nome_sicuro_per_webhook
 
 logger = logging.getLogger("iyokai.backup_mirror")
@@ -52,7 +58,7 @@ class BackupMirrorDispatcher:
         self._mirror_repo = mirror_repo
         self._rate_limiter = rate_limiter or MirrorRateLimiter()
         self._http_session: aiohttp.ClientSession | None = None
-        self._code: dict[int, deque] = {}
+        self._code: dict[int, deque[discord.Message]] = {}
         self._lavoratori: dict[int, asyncio.Task] = {}
 
     def _get_session(self) -> aiohttp.ClientSession:
@@ -91,7 +97,7 @@ class BackupMirrorDispatcher:
         if message.guild is None:
             return False  # DM: nessun canale di backup possibile
 
-        if getattr(message, "type", discord.MessageType.default) not in _TIPI_COPIABILI:
+        if getattr(message, "type", discord.MessageType.default) not in TIPI_COPIABILI:
             return False  # messaggi di sistema (ingressi, boost, ecc.)
 
         webhook_url = await self._mirror_repo.get_webhook_url(message.channel.id)
@@ -105,7 +111,7 @@ class BackupMirrorDispatcher:
         if len(coda) >= MAX_CODA_PER_CANALE:
             logger.warning("Coda del mirror piena nel canale %s: messaggio scartato.", canale)
             return False
-        coda.append((webhook_url, message))
+        coda.append(message)
         if canale not in self._lavoratori:
             self._lavoratori[canale] = asyncio.create_task(self._svuota_canale(canale))
         return True
@@ -117,8 +123,15 @@ class BackupMirrorDispatcher:
             while coda:
                 while not self._rate_limiter.allow(canale, time.monotonic()):
                     await asyncio.sleep(PAUSA_RATE_LIMIT)
-                webhook_url, message = coda.popleft()
+                message = coda.popleft()
                 try:
+                    # L'URL si rilegge a ogni invio: se la coppia è stata scollegata
+                    # (promozione, nuovo backup) la coda si ferma e non scrive più lì.
+                    webhook_url = await self._mirror_repo.get_webhook_url(canale)
+                    if webhook_url is None:
+                        logger.info("Mirror tolto dal canale %s: %d messaggi lasciati.", canale, len(coda))
+                        coda.clear()
+                        break
                     await self._send(webhook_url, message)
                 except Exception:
                     logger.exception("Invio al mirror fallito (canale %s).", canale)
@@ -131,7 +144,7 @@ class BackupMirrorDispatcher:
     async def _send(self, webhook_url: str, message: discord.Message) -> None:
         come_file = allegati_come_file(message.attachments)
         contenuto = contenuto_da_copiare(message, come_file) or ""
-        file = await _file(come_file) if come_file else []
+        file = await file_degli_allegati(come_file) if come_file else []
         if not contenuto and not file:
             contenuto = ZERO_WIDTH_SPACE
         contenuto = contenuto[:MAX_CONTENT_LENGTH]
@@ -148,6 +161,9 @@ class BackupMirrorDispatcher:
                 # scritto nel server principale diventa un ping vero
                 # nel server di backup.
                 allowed_mentions=discord.AllowedMentions.none(),
+                # D8: ogni invio atteso fino alla risposta, così l'ordine resta
+                # quello originale anche quando discord.py aspetta sui 429.
+                wait=True,
                 **kwargs,
             )
         except discord.HTTPException:

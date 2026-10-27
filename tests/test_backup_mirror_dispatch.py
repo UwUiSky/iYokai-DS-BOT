@@ -158,10 +158,39 @@ async def test_coda_piena_scarta_i_nuovi(monkeypatch):
     assert risultati == [True, True, False]
 
 
+@pytest.mark.asyncio
+async def test_coppia_scollegata_ferma_la_coda_del_canale(monkeypatch):
+    """Dopo /backup promuovi (mirror tolto) i messaggi in attesa non vanno più al vecchio backup."""
+    import core.backup_mirror_dispatch as modulo
+
+    monkeypatch.setattr(modulo, "PAUSA_RATE_LIMIT", 0.01)
+    mappa = {10: "https://discord.com/api/webhooks/abc"}
+    limiter = MirrorRateLimiter(max_messages=2, window_seconds=0.2)
+    dispatcher = _DispatcherRegistraChiamate(mirror_repo=_FakeMirrorRepo(mappa), rate_limiter=limiter)
+    for i in range(4):
+        assert await dispatcher.handle_message(_FakeMessage(channel_id=10, content=str(i))) is True
+    await asyncio.sleep(0.05)
+    assert len(dispatcher.chiamate_send) == 2  # gli altri 2 aspettano la finestra
+    mappa.clear()  # la coppia si scollega
+    await asyncio.wait_for(dispatcher.svuota(), timeout=2)
+    assert len(dispatcher.chiamate_send) == 2
+
+
 # ---------------------------------------------------------------------
 # SEC-22: l'invio vero (_send non sostituito) contro un server locale
 # che imita l'endpoint webhook di Discord e registra ciò che riceve.
 # ---------------------------------------------------------------------
+
+
+def _messaggio_inviato(webhook_id: str) -> dict:
+    """La risposta di Discord a un invio con ?wait=true: il messaggio creato."""
+    return {
+        "id": "1", "channel_id": "10", "type": 0, "content": "", "tts": False,
+        "timestamp": "2026-10-27T00:00:00+00:00", "edited_timestamp": None,
+        "mention_everyone": False, "mentions": [], "mention_roles": [], "attachments": [],
+        "embeds": [], "pinned": False, "webhook_id": webhook_id,
+        "author": {"id": webhook_id, "username": "x", "discriminator": "0000", "avatar": None, "bot": True},
+    }
 
 
 @pytest.mark.asyncio
@@ -176,8 +205,10 @@ async def test_il_mirror_non_trasforma_everyone_in_un_ping_vero(monkeypatch):
     ricevuti: list[dict] = []
 
     async def handler(request):
-        ricevuti.append(await request.json())
-        return web.Response(status=204)
+        dati = await request.json()
+        dati["_wait"] = request.query.get("wait")
+        ricevuti.append(dati)
+        return web.json_response(_messaggio_inviato(request.match_info["webhook_id"]))
 
     app = web.Application()
     app.router.add_post("/api/v10/webhooks/{webhook_id}/{token}", handler)
@@ -205,6 +236,8 @@ async def test_il_mirror_non_trasforma_everyone_in_un_ping_vero(monkeypatch):
         await server.close()
 
     assert len(ricevuti) == 1
+    # D8: senza ?wait Discord risponde 204 subito e l'ordine non è garantito.
+    assert ricevuti[0]["_wait"] == "1"
     assert "@everyone" in ricevuti[0]["content"]  # il testo resta, ma...
     # ...nessuna menzione viene risolta: né @everyone/@here, né ruoli, né utenti.
     assert ricevuti[0]["allowed_mentions"] == discord.AllowedMentions.none().to_dict()
@@ -223,8 +256,10 @@ async def test_il_mirror_copia_il_messaggio_di_un_utente_con_discord_nel_nome(mo
     ricevuti: list[dict] = []
 
     async def handler(request):
-        ricevuti.append(await request.json())
-        return web.Response(status=204)
+        dati = await request.json()
+        dati["_wait"] = request.query.get("wait")
+        ricevuti.append(dati)
+        return web.json_response(_messaggio_inviato(request.match_info["webhook_id"]))
 
     app = web.Application()
     app.router.add_post("/api/v10/webhooks/{webhook_id}/{token}", handler)
@@ -280,5 +315,6 @@ async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
     finally:
         await dispatcher.close()
 
+    assert inviati[0]["wait"] is True
     assert [f.filename for f in inviati[0]["files"]] == ["piccolo.png"]
     assert "enorme.zip" in inviati[0]["content"]  # il troppo grande resta come link

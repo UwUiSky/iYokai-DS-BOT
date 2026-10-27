@@ -34,7 +34,7 @@ logger = logging.getLogger("iyokai.backup_messages")
 
 MESSAGGI_PER_CANALE = 50
 MAX_CONTENUTO = 2000
-_TIPI_COPIABILI = (discord.MessageType.default, discord.MessageType.reply)
+TIPI_COPIABILI = (discord.MessageType.default, discord.MessageType.reply)
 
 
 MAX_ALLEGATI_BYTE = 10 * 1024 * 1024  # LIMITI Parte 4, punto 13
@@ -55,7 +55,7 @@ def allegati_come_file(allegati) -> list:
 def contenuto_da_copiare(message, come_file=()) -> str | None:
     """Testo + link degli allegati che non vanno come file, entro 2000 caratteri.
     None se non c'è nulla da copiare (messaggi di sistema, solo embed)."""
-    if message.type not in _TIPI_COPIABILI:
+    if message.type not in TIPI_COPIABILI:
         return None
     contenuto = message.content or ""
     link = "\n".join(a.url for a in message.attachments if a not in come_file)
@@ -89,7 +89,7 @@ async def _destinazione_vuota(canale) -> bool:
     return True
 
 
-async def _file(allegati) -> list[discord.File]:
+async def file_degli_allegati(allegati) -> list[discord.File]:
     file = []
     for a in allegati:
         try:
@@ -106,11 +106,11 @@ async def _copia_canale(sorgente, webhook, limite: int, riepilogo, destinazione=
         riepilogo.canali_messaggi_saltati += 1
         return
     for message in reversed(recenti):  # dal più vecchio al più nuovo
-        if message.type not in _TIPI_COPIABILI:
+        if message.type not in TIPI_COPIABILI:
             riepilogo.messaggi_saltati += 1
             continue
         come_file = allegati_come_file(message.attachments)
-        file = await _file(come_file)
+        file = await file_degli_allegati(come_file)
         contenuto = contenuto_da_copiare(message, come_file)
         if contenuto is None and not file:
             riepilogo.messaggi_saltati += 1
@@ -179,7 +179,7 @@ async def leggi_chat(canale, quanti: int) -> list[dict]:
     """Gli ultimi `quanti` messaggi (≤ 1000), dal più vecchio, come dati."""
     righe = []
     async for m in canale.history(limit=max(1, min(quanti, MAX_CHAT))):
-        if m.type not in _TIPI_COPIABILI:
+        if m.type not in TIPI_COPIABILI:
             continue
         righe.append({
             "autore": m.author.display_name[:80],
