@@ -2,7 +2,7 @@
 ## Aggiornata
 2026-10-27, ramo feat/r10sec (agente r10sec), worktree /home/claude/wt/r10sec. Migrazioni r10: nessuna usata (0290-0299 libere): le tabelle verify nascono in verify_repo.run_migrations. Log in scratchpad/r10sec_*.
 ## In corso
-Giro r10 (voci [~] di §4 e §7, #59 #60 #117 #118): fatte VER-017/019/020/030/031, SIC-036, SIC-039, PERF-3. Prossimo: batch di test finale, smoke --base main, rapporto.
+Giro r10 (voci [~] di §4 e §7, #59 #60 #117 #118): fatte VER-017/019/020/030/031, SIC-036, SIC-039, PERF-3. Tutto committato e pubblicato (d713ea0). Prossimo passo esatto: lanciare UNA volta in background python3 scripts/smoke.py --base main (log scratchpad/r10sec_smoke.log; interrotto a meta' per la pausa), poi rapporto finale. Batch mirato gia' verde (533 + 68 test).
 Resta fuori: SIC-045 (serve /privacy di dev-utilita + scelta owner), SIC-016, SIC-021, AMD-067 (profili automod per i livelli).
 ## Fatto
 - Giri G1-G7, R5-R9 (vedi git log e REGISTRO_RISOLTE): tempban, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log, ripiego anti-nuke, warn manuali, opzioni mod, lock a tempo, punizione trappola
