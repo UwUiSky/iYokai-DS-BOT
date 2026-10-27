@@ -1143,3 +1143,11 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 - [ ] Lock a tempo e sanzioni attive (MOD-090, MOD-013) — passi: `/mod lock durata:2m reason:prova` in un canale; B non scrive. Riavvia il bot prima dei 2 minuti. Risultato atteso: alla scadenza il canale si riapre da solo (riga «è finito il lock a tempo» nel log di moderazione). `/mod lock durata:1h` poi `/mod unlock`: nessuno sblocco tardivo dopo un'ora. `/mod lock` senza durata, poi `/mod lock durata:2m`: dopo 2 minuti il canale si riapre davvero. `/mod caso attive` mostra lock a tempo, timeout e tempban in corso con la scadenza relativa, senza ping.
 - [ ] Punizione della trappola (SIC-040) — passi: `/security spamtrap punizione:Kick`; B scrive nella trappola. Risultato atteso: messaggio cancellato, B riceve il DM ed è espulso, nei log «Action: kick» e il caso. Con `Timeout di un giorno`: B in timeout 24 ore. Con `Solo cancellare`: il messaggio sparisce ogni volta, un solo avviso nei log. Con `Decide lo staff`: nei log i bottoni Ban e Kick; un membro senza «Bannare» è rifiutato; un moderatore li preme, l'azione parte, i bottoni si spengono con «Deciso da …»; dopo un riavvio i bottoni rispondono ancora. Lo staff esentato che scrive nella trappola non subisce nulla.
 
+
+
+## Core — giro r10 (#66, #93, #109, #113)
+
+1. `/admin setup wizard`: passo Ruoli (scegli un ruolo mod: si salva subito; ruolo admin senza «Amministratore»: rifiutato), poi un passo per categoria; nel passo Log il bottone crea i canali; «Salva» all'ultimo passo.
+2. `/admin setup attiva` senza categoria: sotto l'elenco compare «Gli altri bot di iYokai» con i link per Mod e bot musicali mancanti.
+3. `/admin premium sblocca modulo:` con cassa da 1.000.000 coin: conferma, poi il modulo è sbloccato per 30 giorni (`/admin premium stato`); con cassa vuota: messaggio chiaro.
+4. Bot con marchio (server premium): reinvita il bot con il link (serve il permesso dei comandi); i comandi compaiono nell'applicazione del marchio e rispondono con il suo nome e avatar; bottoni e menu funzionano.
