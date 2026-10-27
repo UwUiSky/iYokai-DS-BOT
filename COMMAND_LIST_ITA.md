@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-27 21:52 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 549 comandi in 25 categorie.**
 
 ## Admin
 
@@ -155,6 +155,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/automod parole remove`** — Rimuove una parola vietata.
 - **`/automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
 - **`/automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
+- **`/automod violazione-togli`** — Toglie una violazione dal registro AutoMod.
+- **`/automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
 
 ## Backup
 
