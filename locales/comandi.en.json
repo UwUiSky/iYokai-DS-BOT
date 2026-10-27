@@ -360,6 +360,8 @@
   "automod filtri invites": "Turns the automatic Discord invite block on or off.",
   "automod filtri messaggi": "Repeated, too short, links and mentions counted over time (0 = off).",
   "automod filtri phishing": "Turn the phishing link block on or off (fake gifts, fake logins).",
+  "automod violazione-togli": "Removes one violation from the AutoMod log.",
+  "automod violazioni": "Shows a user's AutoMod violations, in pages.",
   "automod log-channel": "Sets the channel for the advanced AutoMod action log.",
   "automod mute-duration": "Sets the timeout length used by the AutoMod 'mute' action.",
   "automod parole": "Banned words.",

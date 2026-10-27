@@ -298,6 +298,46 @@ class AutomodAdvancedRepository:
             content_excerpt,
         )
 
+    async def get_user_actions(
+        self, guild_id: int, user_id: int, limit: int, offset: int = 0
+    ) -> tuple[list[dict], int]:
+        """AMD-062: le violazioni di un utente, dalla più recente, con il totale."""
+        rows = await self._pool.fetch(
+            """
+            SELECT id, channel_id, violation, actions_taken, created_at
+            FROM automod_action_log
+            WHERE guild_id = $1 AND user_id = $2
+            ORDER BY created_at DESC, id DESC
+            LIMIT $3 OFFSET $4
+            """,
+            guild_id,
+            user_id,
+            limit,
+            offset,
+        )
+        totale = await self._pool.fetchval(
+            "SELECT count(*) FROM automod_action_log WHERE guild_id = $1 AND user_id = $2",
+            guild_id,
+            user_id,
+        )
+        return [
+            {
+                "id": r["id"],
+                "channel_id": r["channel_id"],
+                "violation": r["violation"],
+                "actions_taken": tuple(json.loads(r["actions_taken"])),
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ], totale
+
+    async def delete_action(self, guild_id: int, action_id: int) -> bool:
+        """AMD-065: toglie una riga del registro, solo di questo server. True se c'era."""
+        risultato = await self._pool.execute(
+            "DELETE FROM automod_action_log WHERE guild_id = $1 AND id = $2", guild_id, action_id
+        )
+        return risultato.endswith(" 1")
+
     async def get_recent_actions(self, guild_id: int, limit: int = 20) -> list[dict]:
         """Serve a mostrare l'ultimo storico senza uscire da Discord."""
         rows = await self._pool.fetch(
