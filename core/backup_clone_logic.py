@@ -4,7 +4,9 @@ core/backup_clone_logic.py
 Clonazione del server per il Backup System: ruoli, canali, emoji,
 sticker, suoni e webhook, una chiamata alla volta (mai in parallelo).
 Ruoli e canali già presenti nella destinazione (server da modello) si
-riusano per nome; il resto si crea. Ciò che supera i limiti della
+riusano per nome; il resto si crea. Sui presenti si aggiunge e si aggiorna,
+non si toglie (permessi ed etichette solo del backup restano); i ruoli si
+mettono solo sotto quello del Creator. Ciò che supera i limiti della
 destinazione (emoji, sticker, suoni, webhook, bitrate) viene adattato o
 saltato e contato nel riepilogo, senza far fallire il backup.
 Funzioni coperte: SPEC §11.3–§11.8, M 12.3–M 12.8
@@ -23,8 +25,12 @@ from core.backup_mirror_logic import NOME_CANALE_OFFUSCATO
 
 logger = logging.getLogger("iyokai.backup_clone")
 
-# Il server di backup può non avere boost: limite base della soundboard.
-MAX_SUONI_SOUNDBOARD = 8
+# Suoni della soundboard per livello di boost (0, 1, 2, 3).
+TETTO_SUONI_PER_BOOST = (8, 24, 36, 48)
+MAX_SUONI_SOUNDBOARD = TETTO_SUONI_PER_BOOST[0]
+
+# Un forum ha al massimo 20 etichette.
+MAX_ETICHETTE_FORUM = 20
 
 # LIM-28: un canale ha al massimo 15 webhook; uno resta libero per il mirror.
 MAX_WEBHOOK_PER_CANALE = 15
@@ -55,6 +61,7 @@ class RiepilogoCopia:
     emoji_saltate: int = 0
     sticker_saltati: int = 0
     suoni_saltati: int = 0
+    espressioni_senza_permesso: bool = False
     posizioni_ruoli_fallite: bool = False
     ruoli_non_aggiornati: int = 0
     permessi_ridotti: int = 0
@@ -114,22 +121,40 @@ async def clone_roles(
         key=lambda r: r.position,
     )
 
+    tetto = _posizione_del_bot(target_guild)
     ordine: dict = {}
+    creati_ora = False
     for indice, ruolo in enumerate(ruoli_da_clonare, start=1):
         riusato = esistenti.pop(ruolo.name, None)
+        if riusato is not None and tetto is not None and riusato.position >= tetto:
+            # sopra il ruolo del Creator: Discord rifiuterebbe; si usa com'è
+            riepilogo.ruoli_non_aggiornati += 1
+            mappa_id[ruolo.id] = riusato.id
+            continue
         permessi = _permessi_consentiti(target_guild, ruolo.permissions)
         if permessi != ruolo.permissions:
             riepilogo.permessi_ridotti += 1
         if riusato is not None:
+            # Si cambiano solo i campi diversi: permessi, colore, separato, menzionabile.
+            diversi = {}
             if riusato.permissions != permessi:
+                diversi["permissions"] = permessi
+            if riusato.colour != ruolo.colour:
+                diversi["colour"] = ruolo.colour
+            if riusato.hoist != ruolo.hoist:
+                diversi["hoist"] = ruolo.hoist
+            if riusato.mentionable != ruolo.mentionable:
+                diversi["mentionable"] = ruolo.mentionable
+            if diversi:
                 try:
-                    await riusato.edit(permissions=permessi, reason=MOTIVO)
+                    await riusato.edit(reason=MOTIVO, **diversi)
                 except discord.Forbidden:
                     # ruolo sopra quello del Creator: si usa com'è e si va avanti
                     riepilogo.ruoli_non_aggiornati += 1
             nuovo_ruolo = riusato
             riepilogo.ruoli_riusati += 1
         else:
+            creati_ora = True
             nuovo_ruolo = await target_guild.create_role(
                 name=ruolo.name,
                 permissions=permessi,
@@ -141,8 +166,14 @@ async def clone_roles(
         mappa_id[ruolo.id] = nuovo_ruolo.id
         ordine[nuovo_ruolo] = indice
 
-    # M 12.4: la gerarchia si imposta alla fine, in un'unica chiamata.
-    if ordine:
+    # M 12.4: la gerarchia si imposta alla fine, in un'unica chiamata. Un ruolo
+    # oltre il ruolo del Creator farebbe rifiutare tutta la chiamata: resta fuori.
+    if tetto is not None:
+        ammessi = {r: posto for r, posto in ordine.items() if posto < tetto}
+        if len(ammessi) < len(ordine):
+            riepilogo.posizioni_ruoli_fallite = True
+        ordine = ammessi
+    if ordine and (creati_ora or any(r.position != posto for r, posto in ordine.items())):
         try:
             await target_guild.edit_role_positions(ordine, reason=MOTIVO)
         except discord.HTTPException:
@@ -150,6 +181,15 @@ async def clone_roles(
             riepilogo.posizioni_ruoli_fallite = True
 
     return mappa_id
+
+
+def _posizione_del_bot(target_guild) -> int | None:
+    """Posizione del ruolo più alto del Creator: i ruoli si mettono solo sotto. None se non si sa."""
+    me = getattr(target_guild, "me", None)
+    ruolo = getattr(me, "top_role", None)
+    if ruolo is None or getattr(target_guild, "owner_id", None) == getattr(me, "id", 0):
+        return None
+    return ruolo.position
 
 
 def _overwrite_consentito(
@@ -236,11 +276,11 @@ async def clone_categories_and_channels(
 
     # Canali già presenti: ognuno si riusa una volta sola.
     cat_esistenti = {c.name: c for c in getattr(target_guild, "categories", [])}
-    canali_esistenti = {
-        (_famiglia(c), c.name, c.category.name if c.category else None): c
-        for c in getattr(target_guild, "channels", [])
-        if not isinstance(c, discord.CategoryChannel)
-    }
+    canali_esistenti: dict[tuple, list] = {}
+    for c in getattr(target_guild, "channels", []):
+        if isinstance(c, discord.CategoryChannel) or _famiglia(c) is None:
+            continue
+        canali_esistenti.setdefault((_famiglia(c), c.name), []).append(c)
 
     offuscate: set[int] = set()
     categorie_ordinate = sorted(source_guild.categories, key=lambda c: c.position)
@@ -252,7 +292,7 @@ async def clone_categories_and_channels(
         overwrites = remap_permission_overwrites(categoria.overwrites, role_id_map, target_guild, riepilogo)
         nuova_categoria = cat_esistenti.pop(categoria.name, None)
         if nuova_categoria is not None:
-            await nuova_categoria.edit(overwrites=overwrites, reason=MOTIVO)
+            await _allinea(nuova_categoria, {"overwrites": _con_presenti(nuova_categoria, overwrites)})
             riepilogo.canali_riusati += 1
         else:
             nuova_categoria = await target_guild.create_category(
@@ -272,54 +312,35 @@ async def clone_categories_and_channels(
             riepilogo.canali_offuscati += 1
             continue
 
+        famiglia = _famiglia(canale)
+        if famiglia is None:
+            continue  # tipi di canale non gestiti (annunci di thread, directory, ecc.)
+
         categoria_destinazione = None
         if canale.category is not None:
             categoria_destinazione = mappa_categorie.get(canale.category.id)
 
         overwrites = remap_permission_overwrites(canale.overwrites, role_id_map, target_guild, riepilogo)
+        campi = _campi_canale(canale, famiglia, target_guild)
 
-        chiave = (_famiglia(canale), canale.name, canale.category.name if canale.category else None)
-        if chiave[0] is None:
-            continue  # tipi di canale non gestiti (forum, stage, ecc.) — fuori scope qui
-
-        nuovo_canale = canali_esistenti.pop(chiave, None)
+        nuovo_canale = _prendi_esistente(canali_esistenti, famiglia, canale.name, categoria_destinazione)
         if nuovo_canale is not None:
-            # M 12.3: il canale del modello si allinea all'originale (non solo i permessi).
-            if isinstance(canale, discord.VoiceChannel):
-                await nuovo_canale.edit(
-                    overwrites=overwrites,
-                    bitrate=min(canale.bitrate, int(target_guild.bitrate_limit)),
-                    user_limit=canale.user_limit,
-                    reason=MOTIVO,
-                )
-            else:
-                await nuovo_canale.edit(
-                    overwrites=overwrites,
-                    topic=canale.topic or "",
-                    nsfw=canale.nsfw,
-                    slowmode_delay=canale.slowmode_delay,
-                    reason=MOTIVO,
-                )
-            riepilogo.canali_riusati += 1
-        elif isinstance(canale, discord.VoiceChannel):
-            nuovo_canale = await target_guild.create_voice_channel(
-                name=canale.name,
-                category=categoria_destinazione,
-                overwrites=overwrites,
-                # LIM-28: il server di backup può avere meno boost dell'originale.
-                bitrate=min(canale.bitrate, int(target_guild.bitrate_limit)),
-                user_limit=canale.user_limit,
-                reason=MOTIVO,
+            # Il canale presente si allinea all'originale: si cambiano solo i campi diversi
+            # (anche la categoria: un canale spostato non si duplica).
+            if famiglia == "forum":
+                campi["available_tags"] = _etichette_unite(nuovo_canale, campi["available_tags"])
+            await _allinea(
+                nuovo_canale,
+                {
+                    **campi,
+                    "overwrites": _con_presenti(nuovo_canale, overwrites),
+                    "category": categoria_destinazione,
+                },
             )
+            riepilogo.canali_riusati += 1
         else:
-            nuovo_canale = await target_guild.create_text_channel(
-                name=canale.name,
-                category=categoria_destinazione,
-                overwrites=overwrites,
-                topic=canale.topic or "",
-                nsfw=canale.nsfw,
-                slowmode_delay=canale.slowmode_delay,
-                reason=MOTIVO,
+            nuovo_canale = await _crea_canale(
+                target_guild, famiglia, canale, campi, categoria_destinazione, overwrites
             )
 
         mappa_id[canale.id] = nuovo_canale.id
@@ -328,12 +349,135 @@ async def clone_categories_and_channels(
 
 
 def _famiglia(canale) -> str | None:
-    """'voce' o 'testo' per i canali che sappiamo copiare, altrimenti None."""
+    """'voce', 'stage', 'forum' o 'testo' per i canali che sappiamo copiare, altrimenti None."""
+    if isinstance(canale, discord.StageChannel):
+        return "stage"
     if isinstance(canale, discord.VoiceChannel):
         return "voce"
+    if isinstance(canale, discord.ForumChannel):
+        return "forum"
     if isinstance(canale, discord.TextChannel):
         return "testo"
     return None
+
+
+def _etichette_forum(canale) -> list:
+    """Etichette del forum da ricreare (le emoji personalizzate di un altro server si lasciano)."""
+    etichette = []
+    for t in getattr(canale, "available_tags", None) or []:
+        emoji = t.emoji if (t.emoji is not None and getattr(t.emoji, "id", None) is None) else None
+        etichette.append(discord.ForumTag(name=t.name, emoji=emoji, moderated=t.moderated))
+    return etichette
+
+
+def _etichette_unite(presente, volute: list) -> list:
+    """Le etichette già nel forum restano con il loro id (i post le tengono): si aggiorna
+    «moderata» e si aggiungono le mancanti, fino a 20 (limite di Discord)."""
+    per_nome = {t.name: t for t in volute}
+    unite = []
+    for t in getattr(presente, "available_tags", None) or []:
+        voluta = per_nome.pop(t.name, None)
+        if voluta is not None and voluta.moderated != t.moderated:
+            aggiornata = discord.ForumTag(name=t.name, emoji=t.emoji, moderated=voluta.moderated)
+            aggiornata.id = getattr(t, "id", 0)
+            t = aggiornata
+        unite.append(t)
+    for t in per_nome.values():
+        if len(unite) >= MAX_ETICHETTE_FORUM:
+            break
+        unite.append(t)
+    return unite
+
+
+def _con_presenti(canale, voluti: dict) -> dict:
+    """11.17: gli overwrite che ci sono solo nel backup restano; quelli dell'originale si aggiornano."""
+    try:
+        presenti = dict(canale.overwrites)
+    except Exception:
+        presenti = {}
+    return {**presenti, **voluti}
+
+
+def _campi_canale(canale, famiglia: str, target_guild) -> dict:
+    """Campi propri del tipo di canale, pronti per create_* e per edit."""
+    tetto = int(getattr(target_guild, "bitrate_limit", 96000))
+    if famiglia == "voce":
+        return {"bitrate": min(canale.bitrate, tetto), "user_limit": canale.user_limit}
+    if famiglia == "stage":
+        return {"bitrate": min(canale.bitrate, tetto), "user_limit": canale.user_limit}
+    if famiglia == "forum":
+        return {
+            "topic": canale.topic or "",
+            "nsfw": canale.nsfw,
+            "slowmode_delay": canale.slowmode_delay,
+            "available_tags": _etichette_forum(canale),
+        }
+    return {"topic": canale.topic or "", "nsfw": canale.nsfw, "slowmode_delay": canale.slowmode_delay}
+
+
+def _prendi_esistente(esistenti: dict, famiglia: str, nome: str, categoria):
+    """Toglie e restituisce un canale presente con lo stesso tipo e nome: prima quello nella
+    categoria giusta, poi un altro (che andrà spostato)."""
+    candidati = esistenti.get((famiglia, nome))
+    if not candidati:
+        return None
+    for c in candidati:
+        if getattr(c, "category", None) is categoria or (
+            categoria is not None and getattr(getattr(c, "category", None), "id", None) == categoria.id
+        ):
+            candidati.remove(c)
+            return c
+    return candidati.pop(0)
+
+
+def _valore_attuale(canale, chiave: str):
+    """Valore di un campo del canale presente, già confrontabile; _ASSENTE se non si legge."""
+    try:
+        valore = getattr(canale, chiave)
+    except Exception:
+        return _ASSENTE
+    if chiave == "category":
+        return getattr(valore, "id", None)
+    if chiave == "overwrites":
+        return {k.id: v.pair() for k, v in valore.items()}
+    if chiave == "available_tags":
+        return [(t.name, t.moderated) for t in valore]
+    return valore
+
+
+def _valore_voluto(chiave: str, valore):
+    if chiave == "category":
+        return getattr(valore, "id", None)
+    if chiave == "overwrites":
+        return {k.id: v.pair() for k, v in valore.items()}
+    if chiave == "available_tags":
+        return [(t.name, t.moderated) for t in valore]
+    return valore
+
+
+_ASSENTE = object()
+
+
+async def _allinea(canale, voluti: dict) -> None:
+    """Cambia solo i campi diversi; se niente cambia non chiama Discord."""
+    diversi = {}
+    for chiave, valore in voluti.items():
+        if _valore_attuale(canale, chiave) != _valore_voluto(chiave, valore):
+            diversi[chiave] = valore
+    if diversi:
+        await canale.edit(reason=MOTIVO, **diversi)
+
+
+async def _crea_canale(target_guild, famiglia, canale, campi, categoria, overwrites):
+    comuni = {"name": canale.name, "category": categoria, "overwrites": overwrites, "reason": MOTIVO}
+    if famiglia == "voce":
+        # LIM-28: il server di backup può avere meno boost dell'originale.
+        return await target_guild.create_voice_channel(**comuni, **campi)
+    if famiglia == "stage":
+        return await target_guild.create_stage_channel(**comuni, **campi)
+    if famiglia == "forum":
+        return await target_guild.create_forum(**comuni, **campi)
+    return await target_guild.create_text_channel(**comuni, **campi)
 
 
 def conta_canali_non_visibili(source_guild: discord.Guild) -> int:
@@ -345,25 +489,56 @@ def conta_canali_non_visibili(source_guild: discord.Guild) -> int:
     return sum(1 for c in source_guild.channels if not c.permissions_for(me).view_channel)
 
 
-async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
+def tetto_suoni(livello_boost: int) -> int:
+    """Suoni della soundboard consentiti dal livello di boost (8, 24, 36, 48)."""
+    return TETTO_SUONI_PER_BOOST[max(0, min(int(livello_boost or 0), 3))]
+
+
+def _puo_creare_espressioni(target_guild) -> bool:
+    """Senza essere proprietario serve il permesso «Creare espressioni» (o Amministratore)."""
+    me = getattr(target_guild, "me", None)
+    if me is None:
+        return True
+    permessi = me.guild_permissions
+    return bool(permessi.administrator or permessi.create_expressions)
+
+
+def _nomi_presenti(target_guild, attributo: str) -> Counter:
+    return Counter(e.name for e in getattr(target_guild, attributo, None) or [])
+
+
+async def clone_emoji(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    riepilogo: RiepilogoCopia | None = None,
+) -> int:
     """
-    Clona le emoji personalizzate (SPEC.md §11.5): scarica ogni
-    immagine e la ricarica nel server di destinazione. Il limite di
-    Discord è separato per emoji statiche e animate: quelle oltre il
-    limite, o rifiutate da Discord, vengono saltate (non fanno fallire
-    il backup). Restituisce quante ne ha saltate.
+    Clona le emoji personalizzate (SPEC.md §11.5). Quelle con un nome già
+    presente non si ripetono. Il limite (separato tra statiche e animate)
+    conta anche le emoji già presenti. Senza il permesso «Creare
+    espressioni» non prova e lo scrive nel riepilogo. Restituisce quante
+    ne ha saltate.
     """
-    saltate = 0
+    riepilogo = riepilogo or RiepilogoCopia()
+    if not _puo_creare_espressioni(target_guild):
+        riepilogo.espressioni_senza_permesso = True
+        return len(source_guild.emojis)
+    presenti = getattr(target_guild, "emojis", None) or []
+    nomi = Counter(e.name for e in presenti)
     creati = {False: 0, True: 0}
+    for e in presenti:
+        creati[bool(e.animated)] += 1
+    saltate = 0
     for emoji in source_guild.emojis:
+        if nomi[emoji.name] > 0:
+            nomi[emoji.name] -= 1
+            continue
         if creati[emoji.animated] >= target_guild.emoji_limit:
             saltate += 1
             continue
         try:
             immagine = await emoji.read()
-            await target_guild.create_custom_emoji(
-                name=emoji.name, image=immagine, reason="Clonazione backup iYokai"
-            )
+            await target_guild.create_custom_emoji(name=emoji.name, image=immagine, reason=MOTIVO)
         except discord.HTTPException:
             logger.warning("Emoji '%s' saltata: Discord l'ha rifiutata.", emoji.name)
             saltate += 1
@@ -372,13 +547,25 @@ async def clone_emoji(source_guild: discord.Guild, target_guild: discord.Guild) 
     return saltate
 
 
-async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
-    """Clona gli sticker personalizzati (SPEC.md §11.6). Quelli oltre il
-    limite del server di destinazione, o rifiutati da Discord, vengono
-    saltati. Restituisce quanti ne ha saltati."""
+async def clone_stickers(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    riepilogo: RiepilogoCopia | None = None,
+) -> int:
+    """Clona gli sticker (SPEC.md §11.6), come le emoji: niente doppioni
+    per nome, limite che conta i presenti, permesso controllato.
+    Restituisce quanti ne ha saltati."""
+    riepilogo = riepilogo or RiepilogoCopia()
+    if not _puo_creare_espressioni(target_guild):
+        riepilogo.espressioni_senza_permesso = True
+        return len(source_guild.stickers)
+    nomi = _nomi_presenti(target_guild, "stickers")
+    creati = len(getattr(target_guild, "stickers", None) or [])
     saltati = 0
-    creati = 0
     for sticker in source_guild.stickers:
+        if nomi[sticker.name] > 0:
+            nomi[sticker.name] -= 1
+            continue
         if creati >= target_guild.sticker_limit:
             saltati += 1
             continue
@@ -390,7 +577,7 @@ async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guil
                 description=sticker.description,
                 emoji=sticker.emoji,
                 file=file_sticker,
-                reason="Clonazione backup iYokai",
+                reason=MOTIVO,
             )
         except discord.HTTPException:
             logger.warning("Sticker '%s' saltato: Discord l'ha rifiutato.", sticker.name)
@@ -400,25 +587,33 @@ async def clone_stickers(source_guild: discord.Guild, target_guild: discord.Guil
     return saltati
 
 
-async def clone_soundboard(source_guild: discord.Guild, target_guild: discord.Guild) -> int:
-    """Clona i suoni della soundboard (SPEC.md §11.7). Il server nuovo ha
-    il limite base (MAX_SUONI_SOUNDBOARD): i suoni oltre il limite, o
-    rifiutati da Discord, vengono saltati. Restituisce quanti ne ha
-    saltati."""
+async def clone_soundboard(
+    source_guild: discord.Guild,
+    target_guild: discord.Guild,
+    riepilogo: RiepilogoCopia | None = None,
+) -> int:
+    """Clona i suoni della soundboard (SPEC.md §11.7). Il tetto dipende dal
+    boost della destinazione (8, 24, 36, 48) e conta i suoni già presenti;
+    nomi già presenti non si ripetono. Restituisce quanti ne ha saltati."""
+    riepilogo = riepilogo or RiepilogoCopia()
+    if not _puo_creare_espressioni(target_guild):
+        riepilogo.espressioni_senza_permesso = True
+        return len(source_guild.soundboard_sounds)
+    nomi = _nomi_presenti(target_guild, "soundboard_sounds")
+    creati = len(getattr(target_guild, "soundboard_sounds", None) or [])
+    tetto = tetto_suoni(getattr(target_guild, "premium_tier", 0))
     saltati = 0
-    creati = 0
     for suono in source_guild.soundboard_sounds:
-        if creati >= MAX_SUONI_SOUNDBOARD:
+        if nomi[suono.name] > 0:
+            nomi[suono.name] -= 1
+            continue
+        if creati >= tetto:
             saltati += 1
             continue
         try:
             audio = await suono.read()
             await target_guild.create_soundboard_sound(
-                name=suono.name,
-                sound=audio,
-                volume=suono.volume,
-                emoji=suono.emoji,
-                reason="Clonazione backup iYokai",
+                name=suono.name, sound=audio, volume=suono.volume, emoji=suono.emoji, reason=MOTIVO
             )
         except discord.HTTPException:
             logger.warning("Suono '%s' saltato: Discord l'ha rifiutato.", suono.name)
@@ -428,6 +623,17 @@ async def clone_soundboard(source_guild: discord.Guild, target_guild: discord.Gu
     return saltati
 
 
+async def _immagine_webhook(webhook) -> bytes | None:
+    """11.8: l'immagine del webhook originale, se c'è e si riesce a scaricare."""
+    avatar = getattr(webhook, "avatar", None)
+    if avatar is None:
+        return None
+    try:
+        return await avatar.read()
+    except (discord.HTTPException, discord.NotFound):
+        return None
+
+
 async def clone_webhooks(
     source_guild: discord.Guild,
     target_guild: discord.Guild,
@@ -435,7 +641,7 @@ async def clone_webhooks(
     riepilogo: RiepilogoCopia | None = None,
 ) -> None:
     """
-    Clona i webhook (SPEC.md §11.8) — solo nome e canale di
+    Clona i webhook (SPEC.md §11.8) — nome, immagine e canale di
     destinazione (rimappato tramite channel_id_map, già prodotta da
     clone_categories_and_channels): l'URL del webhook stesso è
     univoco per ogni webhook creato, non può essere "copiato",
@@ -473,7 +679,14 @@ async def clone_webhooks(
             riepilogo.webhook_saltati += 1
             continue
 
-        await nuovo_canale.create_webhook(name=webhook.name, reason=MOTIVO)
+        immagine = await _immagine_webhook(webhook)
+        try:
+            await nuovo_canale.create_webhook(name=webhook.name, avatar=immagine, reason=MOTIVO)
+        except discord.HTTPException:
+            if immagine is None:
+                raise
+            # l'immagine è stata rifiutata: il webhook si crea comunque, senza
+            await nuovo_canale.create_webhook(name=webhook.name, reason=MOTIVO)
         totale[nuovo_channel_id] += 1
 
 

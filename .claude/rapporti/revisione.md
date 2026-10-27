@@ -246,3 +246,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 27/10 | `feat/r10amod` | `cogs/automod/automod.py:_aggiorna_inviti_propri` | Oltre 8 inviti propri: passano i primi 8 nell'ordine di Discord, il nuovo può restare fuori (avviso c'è) | bassa | aperto |
 | 27/10 | `feat/r10amod` | `cogs/automod/automod.py:_aggiorna_inviti_propri` | Attesa di 3 s non annullata in `cog_unload` (un sync dopo lo scarico) | bassa | aperto |
 | 27/10 | `feat/r10amod` | `tests/test_phishing_sic042.py:test_invito_a_server_per_adulti_cancellato_una_sola_chiamata_per_codice` | Da solo fallisce (`_FakeGuild` senza `get_member`), verde nello smoke: dipende dall'ordine; non toccato dal ramo | bassa | aperto, per dev-moderazione |
+| 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py:_send` | Invio senza `wait=True` (D8: ordine non garantito); test con finto 204 | alta | chiuso b3d6288 |
+| 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py:_svuota_canale` | Coda per canale che continua a scrivere al vecchio backup dopo la promozione | media | chiuso b3d6288 |
+| 27/10 | `feat/r10bak` | `core/backup_clone_logic.py:_allinea` | Riallineamento toglieva overwrite solo del backup e ricreava le etichette del forum (post senza etichette) | media | chiuso 4efd6df |
+| 27/10 | `feat/r10bak` | `core/backup_clone_logic.py:clone_roles` | Ruoli sopra il Creator in `edit_role_positions`: Discord rifiuta tutto, gerarchia rovesciata | media | chiuso 4efd6df |
+| 27/10 | `feat/r10bak` | `core/backup_queue_worker.py:_allinea_una_coppia` | Giro lungo finito dopo `/backup promuovi` rimetteva il mirror del vecchio main | media | chiuso 278c107 |
+| 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py` | Import di `_TIPI_COPIABILI`/`_file` privati | bassa | chiuso b3d6288 |

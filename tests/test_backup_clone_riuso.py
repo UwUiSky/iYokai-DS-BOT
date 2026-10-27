@@ -300,3 +300,22 @@ async def test_i_canali_offuscati_si_saltano_e_si_contano():
     assert list(mappa) == [2]
     assert riepilogo.canali_offuscati == 1
     assert [c["name"] for c in dest.create_text_calls] == ["chat"]
+
+
+async def test_posizioni_dei_ruoli_restano_sotto_il_ruolo_del_creator():
+    """Discord rifiuta TUTTO lo spostamento se un ruolo va sopra quello del bot:
+    si spostano solo i ruoli che il Creator può mettere, il resto si segnala."""
+    from types import SimpleNamespace
+
+    ruoli = [_FakeRole(10 + i, f"R{i}", i) for i in range(1, 6)]
+    sopra = _FakeRole(8001, "R5", 9)  # già presente, sopra il Creator
+    dest = _DestinazioneRuoli([sopra])
+    dest.me = SimpleNamespace(
+        top_role=SimpleNamespace(position=4), guild_permissions=discord.Permissions.all()
+    )
+    riepilogo = RiepilogoCopia()
+    await clone_roles(_FakeSourceRoles(ruoli), dest, riepilogo)
+    assert dest.posizioni
+    assert all(posto < 4 for posto in dest.posizioni.values())
+    assert sopra not in dest.posizioni
+    assert riepilogo.posizioni_ruoli_fallite is True

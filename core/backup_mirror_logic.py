@@ -5,13 +5,9 @@ Logica pura (nessun I/O, nessun discord.py) del mirroring in tempo
 reale dei messaggi verso il server di backup (SPEC.md §11.9).
 
 La regola concordata: MAX 5 messaggi ogni 5 secondi, PER CANALE. Chi
-supera il limite non va in coda per essere inviato più tardi — viene
-semplicemente SCARTATO (politica di "scarto in burst"): un mirror in
-ritardo di minuti non serve a nessuno, e mettere in coda rischierebbe
-di accumulare un backlog che non si svuota mai durante un raid/flood
-di messaggi, che è probabilmente il momento in cui il mirror serve
-di più (per non perdere la cronologia se il server principale viene
-cancellato all'improvviso).
+supera il limite aspetta nella coda del canale (core/backup_mirror_dispatch.py)
+e parte quando la finestra si libera: l'ordine dei messaggi resta quello
+originale.
 """
 
 from __future__ import annotations

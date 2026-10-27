@@ -7,6 +7,9 @@ le chiamate; l'invio vero (SEC-22) contro un server aiohttp locale che
 imita l'endpoint webhook di Discord.
 """
 
+import asyncio
+
+import discord
 import pytest
 
 from core.backup_mirror_dispatch import BackupMirrorDispatcher
@@ -30,6 +33,7 @@ class _FakeMessage:
         self.guild = guild
         self.content = content
         self.attachments = []
+        self.type = discord.MessageType.default
 
 
 class _FakeMirrorRepo:
@@ -55,6 +59,7 @@ async def test_messaggio_su_canale_mappato_viene_inoltrato():
     dispatcher = _DispatcherRegistraChiamate(mirror_repo=repo)
 
     inoltrato = await dispatcher.handle_message(_FakeMessage(channel_id=10))
+    await dispatcher.svuota()
 
     assert inoltrato is True
     assert dispatcher.chiamate_send[0][0] == "https://discord.com/api/webhooks/abc"
@@ -94,21 +99,98 @@ async def test_messaggio_in_dm_non_viene_inoltrato():
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_scarta_il_burst_oltre_5_messaggi_in_5s():
+async def test_sui_picchi_si_aspetta_e_si_invia_tutto_in_ordine(monkeypatch):
+    import core.backup_mirror_dispatch as modulo
+
+    monkeypatch.setattr(modulo, "PAUSA_RATE_LIMIT", 0.01)
     repo = _FakeMirrorRepo({10: "https://discord.com/api/webhooks/abc"})
-    limiter = MirrorRateLimiter(max_messages=5, window_seconds=5.0)
+    limiter = MirrorRateLimiter(max_messages=5, window_seconds=0.15)
     dispatcher = _DispatcherRegistraChiamate(mirror_repo=repo, rate_limiter=limiter)
 
-    risultati = [await dispatcher.handle_message(_FakeMessage(channel_id=10)) for _ in range(6)]
+    messaggi = [_FakeMessage(channel_id=10, content=str(i)) for i in range(7)]
+    risultati = [await dispatcher.handle_message(m) for m in messaggi]
+    await asyncio.sleep(0.05)
+    assert len(dispatcher.chiamate_send) == 5  # i primi 5 subito
+    await dispatcher.svuota()
 
-    assert risultati == [True, True, True, True, True, False]
-    assert len(dispatcher.chiamate_send) == 5
+    assert all(risultati)
+    assert [m.content for _, m in dispatcher.chiamate_send] == [str(i) for i in range(7)]
+
+
+@pytest.mark.asyncio
+async def test_un_solo_invio_alla_volta_per_canale():
+    repo = _FakeMirrorRepo({10: "https://discord.com/api/webhooks/abc"})
+    in_volo = {"adesso": 0, "massimo": 0}
+
+    class _Lento(BackupMirrorDispatcher):
+        async def _send(self, url, message):
+            in_volo["adesso"] += 1
+            in_volo["massimo"] = max(in_volo["massimo"], in_volo["adesso"])
+            await asyncio.sleep(0.01)
+            in_volo["adesso"] -= 1
+
+    dispatcher = _Lento(mirror_repo=repo)
+    for _ in range(4):
+        await dispatcher.handle_message(_FakeMessage(channel_id=10))
+    await dispatcher.svuota()
+    assert in_volo["massimo"] == 1
+
+
+@pytest.mark.asyncio
+async def test_messaggi_di_sistema_non_si_copiano():
+    repo = _FakeMirrorRepo({10: "https://discord.com/api/webhooks/abc"})
+    dispatcher = _DispatcherRegistraChiamate(mirror_repo=repo)
+    messaggio = _FakeMessage(channel_id=10)
+    messaggio.type = discord.MessageType.new_member
+    assert await dispatcher.handle_message(messaggio) is False
+    assert dispatcher.chiamate_send == []
+
+
+@pytest.mark.asyncio
+async def test_coda_piena_scarta_i_nuovi(monkeypatch):
+    import core.backup_mirror_dispatch as modulo
+
+    monkeypatch.setattr(modulo, "MAX_CODA_PER_CANALE", 2)
+    repo = _FakeMirrorRepo({10: "https://discord.com/api/webhooks/abc"})
+    dispatcher = _DispatcherRegistraChiamate(mirror_repo=repo)
+    risultati = [await dispatcher.handle_message(_FakeMessage(channel_id=10)) for _ in range(3)]
+    await dispatcher.svuota()
+    assert risultati == [True, True, False]
+
+
+@pytest.mark.asyncio
+async def test_coppia_scollegata_ferma_la_coda_del_canale(monkeypatch):
+    """Dopo /backup promuovi (mirror tolto) i messaggi in attesa non vanno più al vecchio backup."""
+    import core.backup_mirror_dispatch as modulo
+
+    monkeypatch.setattr(modulo, "PAUSA_RATE_LIMIT", 0.01)
+    mappa = {10: "https://discord.com/api/webhooks/abc"}
+    limiter = MirrorRateLimiter(max_messages=2, window_seconds=0.2)
+    dispatcher = _DispatcherRegistraChiamate(mirror_repo=_FakeMirrorRepo(mappa), rate_limiter=limiter)
+    for i in range(4):
+        assert await dispatcher.handle_message(_FakeMessage(channel_id=10, content=str(i))) is True
+    await asyncio.sleep(0.05)
+    assert len(dispatcher.chiamate_send) == 2  # gli altri 2 aspettano la finestra
+    mappa.clear()  # la coppia si scollega
+    await asyncio.wait_for(dispatcher.svuota(), timeout=2)
+    assert len(dispatcher.chiamate_send) == 2
 
 
 # ---------------------------------------------------------------------
 # SEC-22: l'invio vero (_send non sostituito) contro un server locale
 # che imita l'endpoint webhook di Discord e registra ciò che riceve.
 # ---------------------------------------------------------------------
+
+
+def _messaggio_inviato(webhook_id: str) -> dict:
+    """La risposta di Discord a un invio con ?wait=true: il messaggio creato."""
+    return {
+        "id": "1", "channel_id": "10", "type": 0, "content": "", "tts": False,
+        "timestamp": "2026-10-27T00:00:00+00:00", "edited_timestamp": None,
+        "mention_everyone": False, "mentions": [], "mention_roles": [], "attachments": [],
+        "embeds": [], "pinned": False, "webhook_id": webhook_id,
+        "author": {"id": webhook_id, "username": "x", "discriminator": "0000", "avatar": None, "bot": True},
+    }
 
 
 @pytest.mark.asyncio
@@ -123,8 +205,10 @@ async def test_il_mirror_non_trasforma_everyone_in_un_ping_vero(monkeypatch):
     ricevuti: list[dict] = []
 
     async def handler(request):
-        ricevuti.append(await request.json())
-        return web.Response(status=204)
+        dati = await request.json()
+        dati["_wait"] = request.query.get("wait")
+        ricevuti.append(dati)
+        return web.json_response(_messaggio_inviato(request.match_info["webhook_id"]))
 
     app = web.Application()
     app.router.add_post("/api/v10/webhooks/{webhook_id}/{token}", handler)
@@ -139,17 +223,21 @@ async def test_il_mirror_non_trasforma_everyone_in_un_ping_vero(monkeypatch):
     messaggio.author.display_name = "Utente"
     messaggio.author.display_avatar.url = "https://cdn.discordapp.com/embed/avatars/0.png"
     messaggio.attachments = []
+    messaggio.type = discord.MessageType.default
     # discord.py accetta solo token di almeno 60 caratteri: questo è finto.
     url_webhook = "https://discord.com/api/webhooks/123456789012345678/" + "token-finto-" * 6
     repo = _FakeMirrorRepo({10: url_webhook})
     dispatcher = BackupMirrorDispatcher(mirror_repo=repo)
     try:
         assert await dispatcher.handle_message(messaggio) is True
+        await dispatcher.svuota()
     finally:
         await dispatcher.close()
         await server.close()
 
     assert len(ricevuti) == 1
+    # D8: senza ?wait Discord risponde 204 subito e l'ordine non è garantito.
+    assert ricevuti[0]["_wait"] == "1"
     assert "@everyone" in ricevuti[0]["content"]  # il testo resta, ma...
     # ...nessuna menzione viene risolta: né @everyone/@here, né ruoli, né utenti.
     assert ricevuti[0]["allowed_mentions"] == discord.AllowedMentions.none().to_dict()
@@ -168,8 +256,10 @@ async def test_il_mirror_copia_il_messaggio_di_un_utente_con_discord_nel_nome(mo
     ricevuti: list[dict] = []
 
     async def handler(request):
-        ricevuti.append(await request.json())
-        return web.Response(status=204)
+        dati = await request.json()
+        dati["_wait"] = request.query.get("wait")
+        ricevuti.append(dati)
+        return web.json_response(_messaggio_inviato(request.match_info["webhook_id"]))
 
     app = web.Application()
     app.router.add_post("/api/v10/webhooks/{webhook_id}/{token}", handler)
@@ -183,13 +273,48 @@ async def test_il_mirror_copia_il_messaggio_di_un_utente_con_discord_nel_nome(mo
     messaggio.author.display_name = "Discord Fan"
     messaggio.author.display_avatar.url = "https://cdn.discordapp.com/embed/avatars/0.png"
     messaggio.attachments = []
+    messaggio.type = discord.MessageType.default
     url_webhook = "https://discord.com/api/webhooks/123456789012345678/" + "token-finto-" * 6
     dispatcher = BackupMirrorDispatcher(mirror_repo=_FakeMirrorRepo({10: url_webhook}))
     try:
         assert await dispatcher.handle_message(messaggio) is True
+        await dispatcher.svuota()
     finally:
         await dispatcher.close()
         await server.close()
 
     assert len(ricevuti) == 1
     assert "discord" not in ricevuti[0]["username"].lower()
+
+
+@pytest.mark.asyncio
+async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
+    import core.backup_mirror_dispatch as modulo
+
+    class _Allegato:
+        def __init__(self, nome, size):
+            self.filename, self.size, self.url = nome, size, f"https://cdn.discordapp.com/{nome}"
+
+        async def to_file(self):
+            return discord.File(__import__("io").BytesIO(b"x"), filename=self.filename)
+
+    inviati = []
+
+    class _Hook:
+        async def send(self, **kw):
+            inviati.append(kw)
+
+    monkeypatch.setattr(modulo.discord.Webhook, "from_url", staticmethod(lambda url, session: _Hook()))
+    messaggio = _FakeMessage(channel_id=10, content="guarda")
+    messaggio.author.display_avatar = type("_A", (), {"url": "https://cdn.discordapp.com/a.png"})()
+    messaggio.attachments = [_Allegato("piccolo.png", 1000), _Allegato("enorme.zip", 11 * 1024 * 1024)]
+    dispatcher = BackupMirrorDispatcher(mirror_repo=_FakeMirrorRepo({10: "https://x/y"}))
+    try:
+        await dispatcher.handle_message(messaggio)
+        await dispatcher.svuota()
+    finally:
+        await dispatcher.close()
+
+    assert inviati[0]["wait"] is True
+    assert [f.filename for f in inviati[0]["files"]] == ["piccolo.png"]
+    assert "enorme.zip" in inviati[0]["content"]  # il troppo grande resta come link

@@ -1096,7 +1096,7 @@ posti", la pulizia dei server orfani (già disattivata il 04/10 in
 `fba882e`). I bug BUG-26, BUG-28 e BUG-29 riguardavano quel flusso:
 superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
-- `[~]` 11.1 Snapshot del server salvato come dati nel database, con
+- `[x]` 11.1 Snapshot del server salvato come dati nel database, con
   più copie datate per server (D8, LIM-39): `/backup salva` e `lista`,
   tabella `backup_strutture` (0191), vedi 11.15
 - `[x]` 11.2 Collegamento di un server creato a mano: `/backup
@@ -1110,32 +1110,37 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `core/backup_clone_logic.py`: salta @everyone ma ne applica i
   permessi, salta i ruoli "managed", riusa per nome quelli già presenti
   (modello) e imposta le posizioni alla fine (gerarchia: prova live)
-- `[~]` 11.4 Clonazione categorie + canali — `clone_categories_and_
-  channels()`: categorie prima dei canali, permessi rimappati. Riusa per
-  nome canali e categorie già presenti; qualità audio limitata a quella
+- `[x]` 11.4 Clonazione categorie + canali — `clone_categories_and_
+  channels()`: categorie prima dei canali, permessi rimappati. Copia anche
+  forum (con etichette) e stage. Riusa per tipo e nome canali e categorie già
+  presenti, cambiando solo i campi diversi; un canale spostato di categoria si
+  sposta, non si duplica. Qualità audio limitata a quella
   del server di destinazione (LIM-28); canali `___hidden___` saltati e
   contati (LIM-38)
-- `[~]` 11.5 Clonazione emoji — `clone_emoji()`, con controllo dei
+- `[x]` 11.5 Clonazione emoji — `clone_emoji()`, con controllo dei
   limiti del server di destinazione (`e502c1f`). Senza essere
-  proprietario serve il permesso `CREATE_GUILD_EXPRESSIONS`.
-  Raggiungibile solo dopo 11.2
-- `[~]` 11.6 Clonazione sticker — `clone_stickers()`, come 11.5
-- `[~]` 11.7 Clonazione soundboard — `clone_soundboard()`, come 11.5
-- `[~]` 11.8 Clonazione webhook — `clone_webhooks()`: nome e canale
-  rimappato (l'URL non è copiabile). Al massimo 14 per canale: uno dei 15
-  resta per il mirror (LIM-28)
-- `[~]` 11.9 Mirror messaggi in tempo reale via webhook con identità
-  utente (scarto sui picchi, 5 messaggi ogni 5 secondi per canale) —
+  proprietario serve il permesso `CREATE_GUILD_EXPRESSIONS`: senza, non prova e
+  lo dice nel riepilogo. Niente doppioni per nome; il limite conta i presenti
+- `[x]` 11.6 Clonazione sticker — `clone_stickers()`, come 11.5
+- `[x]` 11.7 Clonazione soundboard — `clone_soundboard()`, come 11.5; tetto per
+  boost della destinazione: 8, 24, 36, 48
+- `[x]` 11.8 Clonazione webhook — `clone_webhooks()`: nome e canale
+  rimappato, con l'immagine se si scarica (l'URL non è copiabile). Al massimo 14
+  per canale: uno dei 15 resta per il mirror (LIM-28)
+- `[x]` 11.9 Mirror messaggi in tempo reale via webhook con identità
+  utente (coda per canale in ordine, un invio alla volta, 5 messaggi ogni 5
+  secondi senza scarto, allegati come file fino a 10 MiB, messaggi di sistema
+  esclusi) —
   `core/backup_mirror_logic.py`, `core/backup_mirror_dispatch.py`,
   `cogs/utility/backup_mirror.py`. SEC-22 corretto (`690a5b6`). Da
   riprovare con l'intent acceso (BUG-5); il nome del mittente non
   contiene "discord" né "clyde" (LIM-27); il webhook "iYokai Mirror" si
   riusa se esiste. Raggiungibile dopo 11.2
-- `[~]` 11.10 User backup: snapshot periodico (settimanale) dei
+- `[x]` 11.10 User backup: snapshot periodico (settimanale) dei
   verificati non bannati/kickati — `core/backup_snapshot_logic.py`,
   `core/backup_snapshot_worker.py`. Il worker ora parte (BUG-19,
   `fba882e`), ma non trova coppie finché non c'è 11.2
-- `[~]` 11.11 Restore massivo utenti via OAuth2 `guilds.join` — token
+- `[x]` 11.11 Restore massivo utenti via OAuth2 `guilds.join` — token
   cifrati AES-256-GCM (`core/oauth_crypto.py`), tre modalità per
   server (`/configura-restore`), conservazione diversa per uscita,
   kick e ban. Corretti il 04/10: link valido 7 giorni e legato al
@@ -1151,20 +1156,25 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   un riavvio) e, in modalità "OAuth alla verifica", il
   link OAuth di solo consenso; il restore manda DM solo a chi ha accettato
   o ha già un token
-- `[~]` 11.12 Comandi del gruppo `/backup` (D25, 15/10: il blocco intero
+- `[x]` 11.12 Comandi del gruppo `/backup` (D25, 15/10: il blocco intero
   esce da `/admin`): `main`, `crea`, `collega`, `promuovi`, `restore-modo`,
   `restore-utenti`. Ogni uso finisce nel registro (`/backup registro`,
   365 giorni, BKP-019); `/backup permessi` sceglie fra tre livelli chi crea
   e chi carica (BKP-018, predefinito: gli admin creano, solo l'owner carica)
-- `[~]` 11.13 Promozione del backup a nuovo main — `/backup promuovi`; la
+- `[x]` 11.13 Promozione del backup a nuovo main — `/backup promuovi`, con lo
+  stesso livello di `/backup carica`; il mirror si toglie dal vecchio main; la
   coppia storica resta per `/backup restore-utenti` (BUG-34, M 12.13)
-- `[~]` 11.14 Il Creator non crea, non cede e non cancella server: entra nel
+- `[x]` 11.14 Il Creator non crea, non cede e non cancella server: entra nel
   server creato dall'admin e lo porta allo stato corrente, messaggi in
   ordine compresi (D8, M 12.1/12.2). Gli allegati tornano come file entro
   10 MiB per messaggio e i fissati si rifissano (BKP-013/016, 15/10)
-- `[ ]` 11.17 Aggiornamento continuo del server di backup: controllo
-  periodico delle differenze di ruoli, canali e permessi (D8)
-- `[~]` 11.15 Copie datate della struttura (M 12.17, 15/10): `/backup salva`
+- `[x]` 11.17 Aggiornamento continuo del server di backup (D8): ogni 6 ore il
+  Creator riallinea **una coppia per giro** dentro `backup_queue_worker`
+  (`ALLINEAMENTO_ORE`): ruoli con colore e ordine, canali con permessi,
+  espressioni, webhook, mirror dei canali nuovi. Non cancella mai nulla e non
+  ricopia i messaggi (`popola_server_backup(con_messaggi=False)`). Ora ed esito
+  dell'ultimo giro in `/backup stato` (colonne di `backup_pairs`, 0320)
+- `[x]` 11.15 Copie datate della struttura (M 12.17, 15/10): `/backup salva`
   (al massimo 10 per server; a scelta ban, membri e gli ultimi 0-100
   messaggi di ogni canale), `lista`, `carica` (si scelgono le parti in un
   menu; si riusa per nome, tetti di 250 ruoli, 500 canali, 50 per
@@ -1176,7 +1186,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `chat-carica` anche in un altro canale (BKP-026/027); `copia-canale` e
   `copia-ruolo` (BKP-024/025). Logica in `core/backup_struttura_logic.py`,
   `core/backup_messages_logic.py`, `core/backup_copia_logic.py`
-- `[~]` 11.16 Modelli e sincronia (§23, NF-39, 15/10): `/backup modello`
+- `[x]` 11.16 Modelli e sincronia (§23, NF-39, 15/10): `/backup modello`
   pubblica una copia con un codice (senza ban, membri, messaggi e permessi
   dei singoli; mai una chat) e la carica in un altro server;
   `/backup sincronia` tiene uguali ban e ruoli (per nome) tra due server

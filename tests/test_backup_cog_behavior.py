@@ -32,6 +32,8 @@ class _FakeFollowup:
 
 
 class _FakeGuild:
+    owner_id = 42  # l'utente finto è il proprietario
+
     def __init__(self, guild_id: int) -> None:
         self.id = guild_id
         self.name = "Server"
@@ -294,6 +296,7 @@ async def test_promuovi_backup_su_server_non_backup_avvisa(monkeypatch):
 
         repo = BackupRepository(pool_provider=lambda: database.pool)
         monkeypatch.setattr(backup_module, "backup_repo", repo)
+        monkeypatch.setattr(backup_module, "db", database)
 
         cog = BackupCog(bot=None)
         interaction = _FakeInteraction(guild_id=999)
@@ -312,6 +315,14 @@ async def test_promuovi_backup_promuove_senza_accodare_copie_orfane(monkeypatch)
     try:
         await database.run_migrations()
         repo, cog = await _repo_con_cog(monkeypatch, database)
+        import cogs.utility.backup as backup_module
+
+        from core.repositories.backup_mirror_repo import BackupMirrorRepository
+
+        monkeypatch.setattr(backup_module, "db", database)
+        monkeypatch.setattr(
+            backup_module, "backup_mirror_repo", BackupMirrorRepository(pool_provider=lambda: database.pool)
+        )
         await repo.define_main(100)
         await repo.define_backup(100, 200)
         interaction = _FakeInteraction(guild_id=200)
@@ -326,6 +337,42 @@ async def test_promuovi_backup_promuove_senza_accodare_copie_orfane(monkeypatch)
     finally:
         await database.pool.execute("DELETE FROM backup_pairs")
         await database.pool.execute("DELETE FROM backup_jobs")
+        await database.pool.execute("DELETE FROM backup_pair_history WHERE old_main_guild_id = 100")
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_promuovi_vuole_lo_stesso_livello_di_carica_e_toglie_il_mirror(monkeypatch):
+    database = Database()
+    await database.connect()
+    try:
+        await database.run_migrations()
+        repo, cog = await _repo_con_cog(monkeypatch, database)
+        import cogs.utility.backup as backup_module
+        from core.repositories.backup_mirror_repo import BackupMirrorRepository
+
+        mirror = BackupMirrorRepository(pool_provider=lambda: database.pool)
+        monkeypatch.setattr(backup_module, "db", database)
+        monkeypatch.setattr(backup_module, "backup_mirror_repo", mirror)
+        await repo.define_main(100)
+        await repo.define_backup(100, 200)
+        await mirror.save_mapping(100, 200, {5: "https://discord.com/api/webhooks/1/x"})
+
+        # un admin che non è l'owner: al livello predefinito non può
+        admin = _FakeInteraction(guild_id=200)
+        admin.guild.owner_id = 7
+        await cog.promuovi_backup.callback(cog, admin)
+        assert "⛔" in admin.response.sent_messages[0]
+        assert await mirror.get_webhook_url(5) is not None
+        assert (await repo.get_pair(100)).backup_guild_id == 200
+
+        proprietario = _FakeInteraction(guild_id=200)
+        await cog.promuovi_backup.callback(cog, proprietario)
+        assert "promosso" in proprietario.response.sent_messages[0]
+        assert await mirror.get_webhook_url(5) is None
+    finally:
+        await database.pool.execute("DELETE FROM backup_pairs")
+        await database.pool.execute("DELETE FROM backup_mirror_webhooks")
         await database.pool.execute("DELETE FROM backup_pair_history WHERE old_main_guild_id = 100")
         await database.close()
 

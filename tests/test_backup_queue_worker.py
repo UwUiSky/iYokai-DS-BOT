@@ -236,3 +236,111 @@ async def test_creator_assente_toglie_la_coppia(database_e_repo, monkeypatch):
     await BackupQueueWorker().tick(_FakeCreatorClient(), _FakeMainBot(_FakeMainGuild(100, _FakeOwner())))
 
     assert await repo.get_pair_by_backup_guild_id(777) is None
+
+
+# --- 11.17 aggiornamento continuo -------------------------------------------
+
+@pytest.mark.asyncio
+async def test_senza_job_una_coppia_si_riallinea_senza_messaggi(database_e_repo, monkeypatch):
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+
+    chiamate = []
+
+    async def _copia(main_guild, backup_guild, con_messaggi=True):
+        chiamate.append(con_messaggi)
+        return {5: "https://discord.com/api/webhooks/1/x"}, RiepilogoCopia(canali_offuscati=2)
+
+    _con(worker_module, monkeypatch, repo, mirror_repo, _copia)
+    await repo.define_backup(100, 777)
+    main_bot = _FakeMainBot(_FakeMainGuild(100, _FakeOwner()))
+
+    await BackupQueueWorker().tick(_FakeCreatorClient([777]), main_bot)
+
+    assert chiamate == [False]
+    coppia = await repo.get_pair(100)
+    assert coppia.ultimo_allineamento is not None
+    assert coppia.esito_allineamento.startswith("Allineato.") and "offuscati" in coppia.esito_allineamento
+    assert await mirror_repo.get_webhook_url(5) == "https://discord.com/api/webhooks/1/x"
+
+    # il giro dopo (stesso intervallo) non rifà nulla
+    await BackupQueueWorker().tick(_FakeCreatorClient([777]), main_bot)
+    assert chiamate == [False]
+
+
+@pytest.mark.asyncio
+async def test_una_sola_coppia_per_giro_la_piu_in_ritardo(database_e_repo, monkeypatch):
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+
+    visti = []
+
+    async def _copia(main_guild, backup_guild, con_messaggi=True):
+        visti.append(main_guild.id)
+        return {}, RiepilogoCopia()
+
+    _con(worker_module, monkeypatch, repo, mirror_repo, _copia)
+    await repo.define_backup(100, 777)
+    await repo.define_backup(200, 888)
+    await repo.segna_allineamento(100, "vecchio")
+    await repo._pool.execute(
+        "UPDATE backup_pairs SET ultimo_allineamento = now() - interval '9 hours' WHERE main_guild_id = 100"
+    )
+    await repo._pool.execute(
+        "UPDATE backup_pairs SET ultimo_allineamento = now() - interval '7 hours' WHERE main_guild_id = 200"
+    )
+
+    class _Bot:
+        user = _FakeMainBotUser()
+
+        def get_guild(self, i):
+            return _FakeMainGuild(i, _FakeOwner())
+
+    await BackupQueueWorker().tick(_FakeCreatorClient([777, 888]), _Bot())
+    assert visti == [100]
+
+
+@pytest.mark.asyncio
+async def test_errore_nell_allineamento_si_scrive_nell_esito_senza_sollevare(database_e_repo, monkeypatch):
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+
+    async def _copia(main_guild, backup_guild, con_messaggi=True):
+        raise RuntimeError("token segreto xyz")
+
+    _con(worker_module, monkeypatch, repo, mirror_repo, _copia)
+    await repo.define_backup(100, 777)
+
+    await BackupQueueWorker().tick(_FakeCreatorClient([777]), _FakeMainBot(_FakeMainGuild(100, _FakeOwner())))
+
+    esito = (await repo.get_pair(100)).esito_allineamento
+    assert esito == "Errore: RuntimeError"  # niente testo dell'eccezione
+
+
+@pytest.mark.asyncio
+async def test_coppia_con_job_in_corso_non_si_allinea(database_e_repo, monkeypatch):
+    _database, repo, mirror_repo = database_e_repo
+    assert await repo.prossima_coppia_da_allineare(6) is None
+    await repo.define_backup(100, 777)
+    await repo.enqueue_linked_job(100, 777)
+    assert await repo.prossima_coppia_da_allineare(6) is None
+
+
+@pytest.mark.asyncio
+async def test_promozione_durante_l_allineamento_non_riaccende_il_mirror(database_e_repo, monkeypatch):
+    """Un giro lungo finisce dopo /backup promuovi: la mappa del mirror non torna in vita."""
+    _database, repo, mirror_repo = database_e_repo
+    import core.backup_queue_worker as worker_module
+
+    async def _copia(main_guild, backup_guild, con_messaggi=True):
+        await repo.promote_backup_to_main(old_main_guild_id=100, new_main_guild_id=777)
+        await mirror_repo.delete_for_main_guild(100)
+        return {5: "https://discord.com/api/webhooks/1/x"}, RiepilogoCopia()
+
+    _con(worker_module, monkeypatch, repo, mirror_repo, _copia)
+    await repo.define_backup(100, 777)
+    main_bot = _FakeMainBot(_FakeMainGuild(100, _FakeOwner()))
+
+    await BackupQueueWorker().tick(_FakeCreatorClient([777]), main_bot)
+
+    assert await mirror_repo.get_webhook_url(5) is None

@@ -1,12 +1,12 @@
 """
 core/backup_queue_worker.py
 ===========================
-Coda dei job di backup (SPEC.md §11.2): un loop periodico avviato da main.py.
+Coda dei job di backup (SPEC.md §11.2) e aggiornamento continuo (§11.17): un loop periodico avviato da main.py.
 Un job alla volta. Il job nasce dal collegamento con il codice (D8) già legato
 al server di backup creato da un admin; il Creator lo porta allo stato
 corrente con il suo client e il proprietario del server principale riceve
 un riepilogo. Il giro parte solo quando il bot principale è pronto.
-Funzioni coperte: SPEC §11.2, M 12.1, M 12.2, REVIEW.md BUG-19
+Funzioni coperte: SPEC §11.2, §11.17, M 12.1, M 12.2, REVIEW.md BUG-19
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ from core.repositories.backup_repo import backup_repo
 logger = logging.getLogger("iyokai.backup_queue_worker")
 
 TICK_SECONDS = 60
+# 11.17: ogni coppia si riallinea a questo intervallo, una coppia per giro.
+ALLINEAMENTO_ORE = 6
 
 
 class BackupQueueWorker:
@@ -96,6 +98,7 @@ class BackupQueueWorker:
 
         job = await backup_repo.get_next_pending_job()
         if job is None:
+            await self._allinea_una_coppia(creator_client, main_bot)
             return
 
         await backup_repo.mark_running(job.id)
@@ -134,11 +137,47 @@ class BackupQueueWorker:
                 channel_webhook_map=mappa_webhook_mirror,
             )
             await backup_repo.mark_completed(job.id, backup_guild_id=backup_guild.id)
+            await backup_repo.segna_allineamento(job.main_guild_id, "Copia iniziale completata.")
         except Exception as exc:
             logger.exception("Job di backup #%s fallito dopo la copia.", job.id)
             await self._fallisci(job, str(exc)[:500])
             return
         await self._notifica_amministratore(main_guild, backup_guild, riassunto_copia(riepilogo))
+
+    async def _allinea_una_coppia(self, creator_client: discord.Client, main_bot: commands.Bot) -> None:
+        """11.17 (D8): ruoli, canali, permessi, espressioni e webhook del server di backup si
+        riallineano al principale. Non cancella nulla e non ricopia i messaggi. Il giro sta
+        nello stesso loop dei job (mai due copie insieme): un job aspetta al massimo un giro."""
+        coppia = await backup_repo.prossima_coppia_da_allineare(ALLINEAMENTO_ORE)
+        if coppia is None:
+            return
+        main_guild = main_bot.get_guild(coppia.main_guild_id)
+        backup_guild = creator_client.get_guild(coppia.backup_guild_id)
+        if main_guild is None or backup_guild is None:
+            await backup_repo.segna_allineamento(
+                coppia.main_guild_id, "Saltato: iYokai o il Creator non sono in uno dei due server."
+            )
+            return
+        try:
+            mappa_webhook, riepilogo = await popola_server_backup(
+                main_guild, backup_guild, con_messaggi=False
+            )
+            salvata = await backup_mirror_repo.save_mapping(
+                main_guild_id=coppia.main_guild_id,
+                backup_guild_id=backup_guild.id,
+                channel_webhook_map=mappa_webhook,
+                solo_se_collegata=True,
+            )
+        except Exception as exc:
+            logger.exception("Aggiornamento del backup di %s fallito.", coppia.main_guild_id)
+            await backup_repo.segna_allineamento(coppia.main_guild_id, f"Errore: {type(exc).__name__}")
+            return
+        if not salvata:
+            return  # la coppia è cambiata durante il giro (promozione): niente mirror, niente esito
+        note = riassunto_copia(riepilogo)
+        await backup_repo.segna_allineamento(
+            coppia.main_guild_id, "Allineato." + (f" {note}" if note else "")
+        )
 
     async def _giro(
         self,

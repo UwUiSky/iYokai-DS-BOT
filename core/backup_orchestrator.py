@@ -37,12 +37,14 @@ logger = logging.getLogger("iyokai.backup_orchestrator")
 
 
 async def popola_server_backup(
-    main_guild: discord.Guild, backup_guild: discord.Guild
+    main_guild: discord.Guild, backup_guild: discord.Guild, con_messaggi: bool = True
 ) -> tuple[dict[int, str], RiepilogoCopia]:
     """
     Copia struttura e risorse del server principale in ``backup_guild``,
     che deve essere un oggetto del client del Creator. Una chiamata alla
-    volta, mai in parallelo. Restituisce (mappa canale principale ->
+    volta, mai in parallelo. Con ``con_messaggi=False`` (aggiornamento
+    continuo, 11.17) i messaggi non si ricopiano. Non cancella mai nulla.
+    Restituisce (mappa canale principale ->
     URL del webhook di mirror, riepilogo di ciò che è stato adattato o saltato).
     """
     riepilogo = RiepilogoCopia()
@@ -52,16 +54,17 @@ async def popola_server_backup(
     mappa_canali = await clone_categories_and_channels(
         main_guild, backup_guild, mappa_ruoli, riepilogo
     )
-    riepilogo.emoji_saltate = await clone_emoji(main_guild, backup_guild)
-    riepilogo.sticker_saltati = await clone_stickers(main_guild, backup_guild)
-    riepilogo.suoni_saltati = await clone_soundboard(main_guild, backup_guild)
+    riepilogo.emoji_saltate = await clone_emoji(main_guild, backup_guild, riepilogo)
+    riepilogo.sticker_saltati = await clone_stickers(main_guild, backup_guild, riepilogo)
+    riepilogo.suoni_saltati = await clone_soundboard(main_guild, backup_guild, riepilogo)
     await clone_webhooks(main_guild, backup_guild, mappa_canali, riepilogo)
     mappa_webhook_mirror = await create_mirror_webhooks(backup_guild, mappa_canali, riepilogo)
 
     # D8: gli ultimi messaggi, dopo il mirror (i nuovi li copia lui). Un errore qui
     # non butta via la struttura già copiata: si dice all'admin.
     try:
-        await copia_messaggi(main_guild, backup_guild, mappa_canali, mappa_webhook_mirror, riepilogo)
+        if con_messaggi:
+            await copia_messaggi(main_guild, backup_guild, mappa_canali, mappa_webhook_mirror, riepilogo)
     except Exception:
         logger.exception("Copia dei messaggi interrotta per il server %s.", main_guild.id)
         riepilogo.messaggi_interrotti = True
@@ -109,8 +112,12 @@ def riassunto_copia(riepilogo: RiepilogoCopia) -> str:
         )
     if riepilogo.messaggi_falliti:
         righe.append(f"Messaggi rifiutati da Discord: {riepilogo.messaggi_falliti} messaggi.")
+    if riepilogo.espressioni_senza_permesso:
+        righe.append(
+            "Emoji, sticker e suoni non copiati: al Creator manca il permesso «Creare espressioni»."
+        )
     saltati = riepilogo.emoji_saltate + riepilogo.sticker_saltati + riepilogo.suoni_saltati
-    if saltati:
+    if saltati and not riepilogo.espressioni_senza_permesso:
         righe.append(f"Emoji, sticker e suoni oltre i limiti del server: {saltati}.")
     return "\n".join(righe)
 

@@ -21,10 +21,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 KNOWN_UNCALLED = frozenset(
     {
         "automod_advanced_repo.AutomodAdvancedRepository.get_recent_actions",
-        "backup_mirror_repo.BackupMirrorRepository.delete_for_main_guild",
         "backup_repo.BackupRepository.get_job",
         "backup_user_snapshot_repo.BackupUserSnapshotRepository.get_snapshot_count",
-        "backup_user_snapshot_repo.BackupUserSnapshotRepository.delete_for_main_guild",
         "clan_voice_activity_repo.ClanVoiceActivityRepository.get_activity",
         "eval_shell_log_repo.EvalShellLogRepository.get_recent",
         "event_log_repo.EventLogRepository.get_recent_events",
