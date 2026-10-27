@@ -4,7 +4,7 @@
 27/10/2026 · ramo `feat/r10bak` (#68 backup: espressioni, forum/stage, aggiornamento 6 h 0320, mirror in coda, promuovi, webhook con immagine). Fatto anche il giro del cacciatore. Corretti: mirror con `wait=True` e coda che si ferma se il mirror è tolto (b3d6288), riallineamento che non toglie overwrite/etichette e ruoli solo sotto il Creator (4efd6df), mappa mirror scritta solo se la coppia è ancora legata (278c107), VERIFICA_LIVE (f1a8116).
 
 ## In corso
-- `feat/r10bak`: nessuna riga aperta; esito smoke nel rapporto. Giro di aggiornamento lasciato nel loop dei job apposta (mai due copie insieme).
+- `feat/r10bak`: PAUSA. Fix e test tutti committati e spinti (b04f286). Prossimo passo: leggere lo smoke (`<scratchpad>/revisore/smoke_revisore_r10bak.log`; se incompleto rilanciare UNA volta `python3 scripts/smoke.py --base main`), poi esito APPROVATO se verde. Nessuna riga aperta. Giro di aggiornamento lasciato nel loop dei job apposta (mai due copie insieme).
 - `feat/r9nsfw`: 1 bassa (tetto promemoria letto-poi-scritto). `feat/r8uti`: 1 bassa (schede senza «vede il canale»). `feat/r8web`: «IPv4 da solo = basso» da far confermare all'owner.
 - `feat/r9mod`: D29 da segnalare all'owner. `feat/r7mod`: aperti in SPEC/REGISTRO; `_shared.py:192` Mod non «il bot stesso» (bassa). `feat/r7liv`: 3 basse. `feat/r6mus`: 1 bassa. `feat/r8tkt`: 1 bassa accettata.
 - Rami in attesa di riconsegna (righe nel quaderno): r4-tkt, r4-uti, r4-liv, r3-mus, r3-bak, giro-mod, giro-logt, #66, #67, #147, #76, #146, #134, #135/#136. `f7-quadro` APPROVATO, manca l'unione. Alla riconsegna: solo le righe aperte.
