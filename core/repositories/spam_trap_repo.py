@@ -78,7 +78,7 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         CREATE INDEX IF NOT EXISTS idx_spam_trap_index_user_time
             ON spam_trap_message_index (guild_id, user_id, created_at);
 
-        -- Per la pulizia periodica (prune_old_index): trovare le
+        -- Per la pulizia periodica (lavoro di retention, data_registry): trovare le
         -- righe più vecchie di 30 giorni senza scansionare tutto.
         CREATE INDEX IF NOT EXISTS idx_spam_trap_index_created_at
             ON spam_trap_message_index (created_at);
@@ -256,24 +256,6 @@ class SpamTrapRepository:
             "DELETE FROM spam_trap_message_index WHERE message_id = ANY($1::bigint[])",
             message_ids,
         )
-
-    async def prune_old_index(self, older_than: datetime) -> int:
-        """
-        Cancella le righe di indice più vecchie della soglia data.
-        Chiamata periodicamente (vedi core/scheduler.py) per tenere
-        la tabella limitata invece di crescere all'infinito —
-        serve solo agli ultimi 30 giorni, oltre non ha senso tenerla.
-        Restituisce quante righe sono state eliminate.
-        """
-        result = await self._pool.execute(
-            "DELETE FROM spam_trap_message_index WHERE created_at < $1",
-            older_than,
-        )
-        # asyncpg restituisce una stringa tipo "DELETE 42"
-        try:
-            return int(result.split()[-1])
-        except (ValueError, IndexError):
-            return 0
 
     # ================================================================
     # Invito usato al join (catturato subito, letto molto più tardi)

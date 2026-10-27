@@ -40,6 +40,29 @@ TIMEOUT_TRAPPOLA_SECONDI = 86400
 KICK_ACTION_TYPE = "spam_trap_kick"
 TIMEOUT_ACTION_TYPE = "spam_trap_timeout"
 
+# SIC-039: canali trappola in più, oltre a quello principale (tetto in tutto: 5).
+SETTING_CANALI_EXTRA = "spam_trap_canali_extra"
+MAX_CANALI_TRAPPOLA = 5
+
+
+def canali_trappola(trap_id: int | None, extra: list[int] | tuple[int, ...]) -> frozenset[int]:
+    """Tutti i canali dove scrivere fa cadere nella trappola."""
+    return frozenset(([trap_id] if trap_id else []) + list(extra or ()))
+
+
+def controlla_canale_extra(
+    extra: list[int], nuovo_id: int, trap_id: int | None, log_id: int | None
+) -> str | None:
+    """Il motivo per cui un canale non può diventare trappola in più; None se va bene."""
+    if nuovo_id == trap_id or nuovo_id in extra:
+        return "Quel canale è già una trappola."
+    if nuovo_id == log_id:
+        return "Il canale dei log non può essere anche una trappola: lo staff deve poterci scrivere."
+    if len(canali_trappola(trap_id, extra)) >= MAX_CANALI_TRAPPOLA:
+        return f"Un server può avere al massimo {MAX_CANALI_TRAPPOLA} canali trappola in tutto."
+    return None
+
+
 # Un utente può fare appello al ban al massimo una volta ogni 24 ore,
 # per evitare che qualcuno spammi il bot in DM cercando di forzare
 # l'attenzione dello staff.

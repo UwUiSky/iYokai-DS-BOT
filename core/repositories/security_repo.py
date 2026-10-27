@@ -92,6 +92,10 @@ def _to_json(settings: SecuritySettings) -> str:
                 "nomi_simili_minimo": r.nomi_simili_minimo,
                 "retroattivo": r.retroattivo,
                 "ruoli_ping": list(r.ruoli_ping),
+                "livello": r.livello,
+                "livello_fino": r.livello_fino,
+                "livello_al_raid": r.livello_al_raid,
+                "livello_al_raid_ore": r.livello_al_raid_ore,
             },
             "anti_nuke": {
                 "enabled": n.enabled,
@@ -164,6 +168,10 @@ def _from_json(guild_id: int, raw: str) -> SecuritySettings:
         nomi_simili_minimo=r.get("nomi_simili_minimo", 0),
         retroattivo=r.get("retroattivo", False),
         ruoli_ping=tuple(r.get("ruoli_ping", ())),
+        livello=r.get("livello", "normale"),
+        livello_fino=r.get("livello_fino", 0),
+        livello_al_raid=r.get("livello_al_raid", "niente"),
+        livello_al_raid_ore=r.get("livello_al_raid_ore", 6),
     )
     anti_nuke = AntiNukeConfig(
         enabled=n.get("enabled", False),

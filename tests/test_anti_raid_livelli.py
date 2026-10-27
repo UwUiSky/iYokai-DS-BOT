@@ -91,14 +91,18 @@ async def test_senza_durata_il_livello_dura_fino_al_cambio(cog):
 
 
 async def test_livello_alto_fa_scattare_il_raid_con_meno_ingressi(cog, server, orologio):
-    await cog.join_rate.callback(cog, _interazione(), 10, 60)
-    await cog.livello.callback(cog, _interazione(), _scelta("alto"), None, None)  # soglia 10 -> 5
+    await cog.join_rate.callback(cog, _interazione(), 20, 60)
+    await cog.livello.callback(cog, _interazione(), _scelta("alto"), None, None)  # soglia 20 -> 5
     membri = [_ingresso(server, 200 + n) for n in range(6)]
-    for m in membri:
+    for n, m in enumerate(membri):  # nomi ed età diversi: conta solo la soglia
+        m.name = ["Giulia", "Marco", "xQz", "Lupo", "Ombra", "Tigre"][n]
+        m.created_at = INIZIO - timedelta(days=400 + 90 * n)
+    for m in membri[:5]:
         await cog.on_member_join(m)
+    assert not security_raid_state.raid_in_corso(GUILD_ID)
+    await cog.on_member_join(membri[5])
     assert security_raid_state.raid_in_corso(GUILD_ID)
-    assert any(m.add_roles.await_count for m in membri[5:])
-    assert not any(m.add_roles.await_count for m in membri[:5])
+    membri[5].add_roles.assert_awaited_once()
 
 
 async def test_a_livello_normale_gli_stessi_ingressi_non_sono_un_raid(cog, server):

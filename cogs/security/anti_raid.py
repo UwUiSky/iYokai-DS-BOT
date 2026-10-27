@@ -35,12 +35,15 @@ tra gli ultimi ingressi (SIC-030/031), soglia contata solo sui sospetti
 /antiraid elenco (SIC-035), segnale di rete tra server (SIC-037) e
 segnalazione a chi gestisce il bot con /antiraid segnala (SIC-038).
 
-Funzioni coperte: SPEC §7.1 (SIC-023…035, 037, 038)
+Livelli di allerta con nome (`/antiraid livello`, SIC-036): normale, allerta, alto,
+blocco stringono le regole attive, a mano (con una durata) o da soli all'inizio di un raid.
+Funzioni coperte: SPEC §7.1 (SIC-023…038)
 """
 
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import io
 import logging
 from collections import deque
@@ -93,8 +96,11 @@ from core.security_logic import (
     JOIN_VIOLATION_USERNAME,
     NUKE_ACTION_QUARANTINE_HOLD,
     AntiRaidConfig,
+    LIVELLI_ALLERTA,
     JoinSignals,
     actor_is_trusted,
+    config_con_livello,
+    livello_attivo,
     evaluate_join,
     is_account_too_new,
     is_raid,
@@ -396,6 +402,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         r = settings.anti_raid
         righe = [
             f"**Attivo**: {'sì' if r.enabled else 'no'}",
+            f"**Livello di allerta**: {livello_attivo(r, discord.utils.utcnow().timestamp())}",
             f"**Join rate**: max {r.join_rate_max} ogni {r.join_rate_window_seconds}s",
             f"**Età minima account**: {r.min_account_age_seconds}s",
             f"**Controllo username**: {'sì' if r.check_username_pattern else 'no'}",
@@ -416,6 +423,67 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         problemi = problemi_ruoli_del_bot(interaction.guild, settings.quarantine_role_id)
         righe += [f"⚠️ {p}" for p in problemi]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @staticmethod
+    async def _livello_al_raid(settings: SecuritySettings, livello_in_corso: str, now: datetime) -> None:
+        """SIC-036: all'inizio di un raid scatta il livello scelto dal server, se è più alto di quello in corso."""
+        r = settings.anti_raid
+        if r.livello_al_raid not in LIVELLI_ALLERTA[1:]:
+            return
+        if LIVELLI_ALLERTA.index(r.livello_al_raid) <= LIVELLI_ALLERTA.index(livello_in_corso):
+            return
+        fino = int(now.timestamp()) + r.livello_al_raid_ore * 3600
+        await security_repo.save_settings(_replace(settings, livello=r.livello_al_raid, livello_fino=fino))
+
+    @comando_di_gruppo(
+        "antiraid",
+        nome="livello",
+        descrizione="Livelli di allerta: normale, allerta, alto, blocco.",
+    )
+    @app_commands.describe(
+        nome="Livello da attivare adesso (vuoto: non cambia)",
+        ore="Per quante ore (vuoto: fino al prossimo cambio)",
+        al_raid="Livello che scatta da solo quando comincia un raid (vuoto: non cambia)",
+    )
+    @app_commands.choices(
+        nome=[app_commands.Choice(name=n.capitalize(), value=n) for n in LIVELLI_ALLERTA],
+        al_raid=[app_commands.Choice(name="Nessuno", value="niente")]
+        + [app_commands.Choice(name=n.capitalize(), value=n) for n in LIVELLI_ALLERTA[1:]],
+    )
+    @requires_module(MODULE_ANTI_RAID)
+    async def livello(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Choice[str] | None = None,
+        ore: app_commands.Range[int, 1, 168] | None = None,
+        al_raid: app_commands.Choice[str] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ANTI_RAID):
+            return
+        settings = await security_repo.get_settings(interaction.guild.id)
+        if not await solo_chi_gestisce(interaction, settings.anti_nuke):
+            return
+        cambi: dict = {}
+        if nome is not None:
+            fino = 0
+            if ore is not None and nome.value != "normale":
+                fino = int(discord.utils.utcnow().timestamp()) + ore * 3600
+            cambi.update(livello=nome.value, livello_fino=fino)
+        if al_raid is not None:
+            cambi["livello_al_raid"] = al_raid.value
+            if ore is not None and nome is None:
+                cambi["livello_al_raid_ore"] = ore
+        if cambi:
+            await security_repo.save_settings(_replace(settings, **cambi))
+        r = (await security_repo.get_settings(interaction.guild.id)).anti_raid
+        attivo = livello_attivo(r, discord.utils.utcnow().timestamp())
+        durata = f" fino a <t:{r.livello_fino}:f>" if r.livello_fino and attivo != "normale" else ""
+        automatico = (
+            f"da solo a inizio raid: **{r.livello_al_raid}** per {r.livello_al_raid_ore} ore"
+            if r.livello_al_raid != "niente"
+            else "da solo a inizio raid: nessuno"
+        )
+        await interaction.response.send_message(f"Livello: **{attivo}**{durata}. {automatico.capitalize()}.", ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -809,6 +877,12 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
 
         now = discord.utils.utcnow()
+        # SIC-036: il livello di allerta in vigore stringe le regole di questo ingresso.
+        settings_base = settings
+        livello = livello_attivo(r, now.timestamp())
+        if livello != "normale":
+            r = config_con_livello(r, livello)
+            settings = dataclasses.replace(settings, anti_raid=r)
         # SIC-023: i filtri all'ingresso valgono anche fuori da un raid (e per i bot, SIC-026).
         if await self._filtri_ingresso(member, settings, now):
             return
@@ -852,6 +926,8 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
 
         primo_del_raid = not raid_in_corso(guild.id, now)
+        if primo_del_raid:
+            await self._livello_al_raid(settings_base, livello, now)
         # Chi manda messaggi ai nuovi arrivati (benvenuto privato) sta
         # zitto finché dura il raid.
         segna_raid(guild.id, now)

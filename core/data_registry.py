@@ -234,7 +234,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        utente="conserva", esporta=True, scadenza=Scadenza("joined_at", 180)),
     _t("spam_trap_message_index", "Indice dei messaggi per la trappola spam",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",
-       gestita_da="core/repositories/spam_trap_repo.py (prune_old_index)"),
+       scadenza=Scadenza("created_at", 30), nota="serve solo alla pulizia dei 30 giorni dopo un ban"),
     _t("spam_trap_appeals", "Ricorsi alla trappola spam",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="conserva", esporta=True),
     _t("verify_attempts", "Tentativi di verifica",

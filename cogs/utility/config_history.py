@@ -69,6 +69,7 @@ SETTINGS_SCHEMA = {
     "ticket_support_role_id": "id",
     "ticket_support_role_ids": "lista_id",
     "spam_trap_staff_role_ids": "lista_id",
+    "spam_trap_canali_extra": "lista_id",
     "appelli_channel_id": "id",
     "isolamento_role_id": "id",
     "isolamento_channel_id": "id",
