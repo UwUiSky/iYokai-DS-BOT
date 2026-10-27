@@ -5,8 +5,10 @@ Persistenza di XP, livelli, coin e classifiche.
 - leveling_totals: lo stato per utente (XP e coin di sempre, livello,
   attese di daily/work, conteggio dei minuti vocali, decadimento).
 - leveling_activity: una riga per utente e per mese (period_key) con
-  quanto guadagnato in quel mese. La classifica mensile legge da qui e
-  non serve nessun azzeramento: un mese nuovo è una chiave nuova.
+  quanto guadagnato in quel mese, più una per settimana ISO (es.
+  "2026-W43", LIV-058). Le classifiche leggono da qui e non serve nessun
+  azzeramento: un periodo nuovo è una chiave nuova. Le settimane vecchie
+  di oltre 10 si cancellano al decadimento settimanale.
 Le funzioni *_in lavorano su una connessione di chi chiama, per mettere
 più movimenti di coin nella stessa transazione.
 Funzioni coperte: SPEC §15.1–15.3, §15.15
@@ -30,6 +32,7 @@ from core.leveling_logic import (
     xp_dopo_modifica,
     level_for_xp,
     period_key,
+    week_key,
     TEXT_XP_AMOUNT,
     TEXT_XP_COOLDOWN_SECONDS,
     LevelingSettings,
@@ -237,13 +240,13 @@ async def add_coins_in(
     await conn.execute(
         """
         INSERT INTO leveling_activity (guild_id, user_id, period_key, coins)
-        VALUES ($1, $2, $3, $4)
+        SELECT $1, $2, k, $4 FROM unnest($3::text[]) AS k
         ON CONFLICT (guild_id, user_id, period_key) DO UPDATE
             SET coins = leveling_activity.coins + $4
         """,
         guild_id,
         user_id,
-        period_key(),
+        [period_key(), week_key()],
         amount,
     )
     return saldo
@@ -306,14 +309,14 @@ class LevelingRepository:
         await conn.execute(
             """
             INSERT INTO leveling_activity (guild_id, user_id, period_key, xp, coins)
-            VALUES ($1, $2, $3, $4, $5)
+            SELECT $1, $2, k, $4, $5 FROM unnest($3::text[]) AS k
             ON CONFLICT (guild_id, user_id, period_key) DO UPDATE
                 SET xp = leveling_activity.xp + EXCLUDED.xp,
                     coins = leveling_activity.coins + EXCLUDED.coins
             """,
             guild_id,
             user_id,
-            period_key(),
+            [period_key(), week_key()],
             xp,
             coins,
         )
@@ -740,15 +743,19 @@ class LevelingRepository:
         return max(0, int(resto or 0))
 
     async def transfer_coins(
-        self, guild_id: int, from_user_id: int, to_user_id: int, amount: int
+        self, guild_id: int, from_user_id: int, to_user_id: int, amount: int, tassa: int = 0
     ) -> bool:
         """
         Trasferisce coin da un utente all'altro, atomicamente e solo
         se il mittente ha saldo sufficiente. Restituisce False (senza
         scrivere nulla) se il saldo non basta — mai un saldo negativo.
+        `tassa` (ECO-015): la parte di `amount` che non arriva al
+        destinatario ma va alla cassa del server, nella stessa transazione.
         """
         if amount <= 0:
             raise ValueError("L'importo da trasferire deve essere positivo.")
+        if not 0 <= tassa < amount:
+            raise ValueError("La tassa deve stare tra 0 e l'importo (escluso).")
 
         async with self._pool.acquire() as conn:
             async with conn.transaction():
@@ -793,8 +800,12 @@ class LevelingRepository:
                     """,
                     guild_id,
                     to_user_id,
-                    amount,
+                    amount - tassa,
                 )
+                if tassa:
+                    from core.repositories.guild_chest_repo import REASON_PAY_TAX, deposit_in
+
+                    await deposit_in(conn, guild_id, tassa, REASON_PAY_TAX)
                 return True
 
     async def spend_coins(self, guild_id: int, user_id: int, amount: int) -> bool:
@@ -846,6 +857,13 @@ class LevelingRepository:
                     QUERY_DECADIMENTO_DEL_SERVER, period, created_before, guild_id
                 )
                 utenti, tolti = riga["utenti"], int(riga["tolti"])
+                # LIV-058: le settimane di oltre 10 settimane fa non servono più.
+                await conn.execute(
+                    "DELETE FROM leveling_activity WHERE guild_id = $1 "
+                    "AND period_key LIKE '%-W%' AND period_key < $2",
+                    guild_id,
+                    week_key(datetime.now(timezone.utc) - timedelta(weeks=10)),
+                )
                 if tolti > 0:
                     await deposit_in(conn, guild_id, tolti, REASON_WEEKLY_PERSONAL_DECAY)
                 return utenti, tolti

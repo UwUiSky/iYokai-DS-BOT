@@ -20,6 +20,7 @@ from core.coin_games_logic import (
     ritorno_atteso_slot,
 )
 from core.fun_logic import compute_misura, tema_ammesso
+from core.leveling_logic import period_key
 
 
 # ----------------------------------------------------------------------
@@ -151,7 +152,8 @@ async def test_gioca_toglie_la_puntata_e_da_la_restituzione(repo, clean_db):
     assert await repo.gioca(GUILD, 1, 40, 40) == 100  # pari
     # I giochi non fanno salire la classifica del mese: resta solo il +100 iniziale.
     mese = await clean_db.fetchval(
-        "SELECT coins FROM leveling_activity WHERE guild_id = $1 AND user_id = 1", GUILD
+        "SELECT coins FROM leveling_activity WHERE guild_id = $1 AND user_id = 1 AND period_key = $2",
+        GUILD, period_key(),
     )
     assert mese == 100
 

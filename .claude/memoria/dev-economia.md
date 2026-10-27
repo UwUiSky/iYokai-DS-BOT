@@ -1,12 +1,14 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-15/10/2026 · giro r7, ramo `feat/r7liv`, DB `iyokai_wr7liv` (env: `/tmp/claude-0/env_r7liv.sh`), migrazioni 0200–0209. Lavoro PER FILE.
+27/10/2026 · giro r10, ramo `feat/r10liv`, DB `iyokai_wr10liv`, migrazioni 0340–0349 (usate 0340, 0341). Lavoro PER FILE.
 
 ## In corso
-- Giro r7 chiuso (4 gruppi su 4). Prossimo giro: altre voci di #124/#125 (reputazione LIV-076…088 come gruppo a parte, classifica settimanale LIV-058, ECO-001 nome della moneta) e #127 (VOC-006, 010, 013, 014, 016, 017, 021).
+- Giro r10: le 20 voci `[~]` di SPEC §15 sono chiuse. Fatti shop (0340), classifica settimanale, nome moneta e tassa/tetto su pay (0341).
+- Prossimo giro: reputazione LIV-076…088 (gruppo a parte), #127 (VOC-006, 010, 013, 014, 016, 017, 021), altre voci di #124/#125 (ECO-003 tetto saldo, ECO-007 storico personale, ECO-026 premi settimanale/mensile, LIV-044/045 ruoli per classifica).
 
 ## Fatto
+- r10: SPEC §15 `[~]`→`[x]` con le prove già nei test (erano marcatori vecchi del 04/10); ECO-063/065/066/067/068 shop (`shop_repo`, `togli_ruoli_shop_scaduti` nel cog, 0340); LIV-058 (`week_key` in `leveling_activity`); ECO-001/ECO-015 (0341).
 - r7 D: `/level premi` (LIV-048/027), `/level pause` (ECO-020), `/level livelli-recenti` (LIV-039, 0203).
 - r7 C: #65 M 9.18 tick vocale gilde raggruppato (`apply_ticks`, `clear_activities`, `get_membri_in_gilda`).
 - r7 B: NF-12 sfondo immagine (`rank_card_sfondi`, 0202, `prepara_sfondo`, `/level impostazioni card`), NF-40 profilo come immagine (`render_profile_card`).
@@ -30,7 +32,11 @@
 - `leveling_settings_repo` ha cache di 60 s sul singleton: un test che cambia le impostazioni la svuota alla fine (altrimenti sporca i test dopo).
 - Output dei test lunghi: `-p no:warnings` e log nella scratchpad; il traceback di birthdays a fine run è rumore.
 
+- Marcatori `[~]` con «Stato 04/10» spesso sono vecchi: prima grep dei test, poi il codice, poi si decide.
+- Ruolo dello shop a tempo: alla scadenza `shop_purchases.role_id` va a NULL (l'indice unico dei ruoli lascia ricomprare, lo storico resta).
+- Righe di `leveling_activity`: mese `2026-10` e settimana `2026-W43`; chi cerca «la riga del mese» filtri per `period_key`.
+
 ## Aperto
-- Migrazioni mie: 0090-0095, 0097-0099, 0120-0121, 0200-0203. NON usare 0096.
+- Migrazioni mie: 0090-0095, 0097-0099, 0120-0121, 0200-0203, 0340-0341. NON usare 0096.
 - #127 restano VOC-006, 010, 013, 014, 016, 017, 021.
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.

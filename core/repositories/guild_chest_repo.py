@@ -23,6 +23,7 @@ REASON_MONTHLY_CLAN_DECAY = "monthly_clan_decay"
 REASON_PREMIUM_PURCHASE = "premium_purchase"
 REASON_EVENT_LOBBY_PRIZE = "event_lobby_prize"
 REASON_EVENT_WINNER_PRIZE = "event_winner_prize"
+REASON_PAY_TAX = "pay_tax"  # ECO-015: tassa sui trasferimenti tra utenti
 
 
 @dataclass(frozen=True)
