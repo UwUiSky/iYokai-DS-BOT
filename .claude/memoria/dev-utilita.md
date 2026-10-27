@@ -1,11 +1,10 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-21/10/2026 · ramo feat/r8uti (worktree /home/claude/wt/r8uti, env /tmp/claude-0/env_r8uti.sh, DB iyokai_wr8uti) · #123, #128, #66, #82
 
 ## In corso
-- r8: codice e documenti fatti (COMMAND_LIST, SPEC §14.14-14.16/14.20/14.21/22.3, VERIFICA_LIVE «Ruoli e utility — giro r8», REGISTRO Parziali). Smoke --base main 865 verdi (scratchpad/uti_smoke_r8.log). Giro chiuso: aspetta revisione dell'orchestratore.
-- Migrazioni riservate 0230-0239 (usate 0230-0232). Pesi: moduli 6429 (pieno), gestione 6122, utility 4492 (18 figli).
+- r10 (ramo feat/r10util, DB iyokai_wr10util, migrazioni 0330-0339): previsione 4 voci. Fatto: 15 voci [~]->[x] in SPEC (controllo + 155 test verdi), G1 benvenuto extra (0330, /gestione benvenuto extra: DM suo, varianti, reazioni).
+- Prossimo: G2 contatori (STA-042 numeri abbreviati, STA-043 canale di sola scritta) in core/counter_logic.py; poi REGISTRO/VERIFICA_LIVE «giro r10 — utility», smoke, rapporto. Restano [~]: 16.10 (invito dopo verifica sul pannello, NF-20), 23.15 (bot del marchio non risponde ai comandi: serve audit di interaction.client e prova live).
 
 ## Fatto
 - r8 G1 c265011: /ruoli (D25 quinto caso) cogs/utility/ruoli_strumenti.py + core/ruoli_strumenti_logic.py + self_role_repo (0231); /utility ruolo.

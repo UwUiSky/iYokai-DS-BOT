@@ -25,7 +25,15 @@ from core.admin_mentions_logic import (
     utente_puo_pingare_ruoli,
 )
 from core.leveling_logic import colore_valido
-from core.greetings_logic import MAX_MESSAGE_LENGTH, lunghezza_dopo_segnaposto, render_template
+from core.greetings_logic import (
+    MAX_MESSAGE_LENGTH,
+    analizza_reazioni,
+    analizza_varianti,
+    lunghezza_dopo_segnaposto,
+    render_template,
+    scegli_testo,
+)
+from core.ui_base import BaseModal
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
 from core.safe_image import ImmagineTroppoGrande, run_image_task
@@ -56,6 +64,67 @@ def _render_for_member(template: str, member: discord.Member) -> str:
         display_name=discord.utils.escape_mentions(member.display_name),
         server_id=member.guild.id,
     )
+
+
+async def _metti_reazioni(messaggio: discord.Message, reazioni: list[str]) -> None:
+    """RUO-023/025: le reazioni scelte dall'admin sul benvenuto. Una che fallisce non ferma le altre."""
+    for emoji in reazioni:
+        try:
+            await messaggio.add_reaction(emoji)
+        except discord.HTTPException:
+            logger.info("Reazione %s non messa sul benvenuto.", emoji[:40])
+
+
+class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
+    """RUO-013, 017, 023, 025: tre campi, tutti facoltativi (vuoto = spento)."""
+
+    dm = discord.ui.TextInput(
+        label="Testo del DM (vuoto = come nel canale)",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=MAX_MESSAGE_LENGTH,
+    )
+    varianti = discord.ui.TextInput(
+        label="Altre versioni del testo, una per riga",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=4000,
+    )
+    reazioni = discord.ui.TextInput(
+        label="Reazioni sul benvenuto (max 5, con uno spazio)",
+        required=False,
+        max_length=120,
+    )
+
+    def __init__(self, config) -> None:
+        super().__init__()
+        self.dm.default = config.welcome_dm_message or None
+        self.varianti.default = "\n".join(config.welcome_variants)[:4000] or None
+        self.reazioni.default = " ".join(config.welcome_reactions) or None
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        dm = (self.dm.value or "").strip()
+        varianti, errore = analizza_varianti(self.varianti.value or "")
+        reazioni = []
+        if errore is None:
+            reazioni, errore = analizza_reazioni(self.reazioni.value or "")
+        for testo in ([dm] if dm else []) + varianti:
+            if errore is None and "<@&" in testo and not utente_puo_pingare_ruoli(interaction.user):
+                errore = "Per citare un ruolo serve il permesso «Menziona tutti»."
+            if errore is None:
+                errore = _errore_lunghezza(guild, testo)
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni)
+        await interaction.response.send_message(
+            f"Salvato: DM {'con testo suo' if dm else 'come il canale'}, "
+            f"{len(varianti)} varianti, {len(reazioni)} reazioni.",
+            ephemeral=True,
+        )
 
 
 async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
@@ -135,7 +204,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not config.welcome_enabled:
             return
 
-        testo = taglia_messaggio(_render_for_member(config.welcome_message, member))
+        testo = taglia_messaggio(
+            _render_for_member(scegli_testo(config.welcome_message, config.welcome_variants), member)
+        )
+        testo_dm = (
+            taglia_messaggio(_render_for_member(config.welcome_dm_message, member))
+            if config.welcome_dm_message
+            else testo
+        )
         menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
 
         if config.welcome_channel_id is not None:
@@ -151,14 +227,15 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 try:
                     try:
                         if allegato is not None:
-                            await channel.send(testo, file=allegato, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni)
                         else:
-                            await channel.send(testo, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, allowed_mentions=menzioni)
                     except discord.HTTPException:
                         if allegato is None:
                             raise
                         # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
-                        await channel.send(testo, allowed_mentions=menzioni)
+                        inviato = await channel.send(testo, allowed_mentions=menzioni)
+                    await _metti_reazioni(inviato, config.welcome_reactions)
                 except discord.HTTPException:
                     logger.warning(
                         "Impossibile inviare il welcome message nel server %s.",
@@ -169,7 +246,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         # account entrati nel raid).
         if config.welcome_dm and not raid_in_corso(member.guild.id):
             try:
-                await member.send(testo, allowed_mentions=menzioni_ammesse(False))
+                await member.send(testo_dm, allowed_mentions=menzioni_ammesse(False))
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
 
@@ -291,6 +368,21 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             f"Welcome message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
         )
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="extra",
+        descrizione="Benvenuto: DM, varianti a caso, reazioni.",
+        sottogruppo=_SG_BENVENUTO,
+    )
+    async def welcome_extra(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        config = await greetings_repo.get_config(interaction.guild.id)
+        await interaction.response.send_modal(ExtraBenvenutoModal(config))
 
     @comando_di_gruppo(
         "gestione",

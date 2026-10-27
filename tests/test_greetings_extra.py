@@ -1,0 +1,143 @@
+"""
+tests/test_greetings_extra.py
+=============================
+Benvenuto: DM con testo suo, varianti a caso, reazioni sul messaggio (RUO-013, 017, 023, 025; #123).
+"""
+
+import random
+from unittest.mock import AsyncMock, MagicMock
+
+import discord
+import pytest
+
+from core.greetings_logic import (
+    MAX_REAZIONI,
+    MAX_VARIANTI,
+    analizza_reazioni,
+    analizza_varianti,
+    scegli_testo,
+)
+from core.repositories.greetings_repo import GreetingsRepository
+
+
+def test_varianti_una_per_riga_senza_righe_vuote():
+    varianti, errore = analizza_varianti("Ciao {user}\n\n  Benvenuto!  \n")
+    assert errore is None
+    assert varianti == ["Ciao {user}", "Benvenuto!"]
+
+
+def test_varianti_oltre_il_tetto_rifiutate():
+    righe = "\n".join(f"v{n}" for n in range(MAX_VARIANTI + 1))
+    varianti, errore = analizza_varianti(righe)
+    assert varianti == []
+    assert errore is not None and str(MAX_VARIANTI) in errore
+
+
+def test_variante_oltre_2000_caratteri_rifiutata():
+    _, errore = analizza_varianti("x" * 2001)
+    assert errore is not None
+
+
+def test_reazioni_valide_e_senza_doppioni():
+    reazioni, errore = analizza_reazioni("🎉 👋 🎉 <:ok:123456789012345678>")
+    assert errore is None
+    assert reazioni == ["🎉", "👋", "<:ok:123456789012345678>"]
+
+
+def test_reazione_che_non_e_emoji_rifiutata():
+    reazioni, errore = analizza_reazioni("🎉 ciao")
+    assert reazioni == []
+    assert errore is not None and "ciao" in errore
+
+
+def test_reazioni_oltre_il_tetto_rifiutate():
+    _, errore = analizza_reazioni(" ".join(["🎉", "👋", "😀", "😎", "🔥", "💜"][: MAX_REAZIONI + 1]))
+    assert errore is not None
+
+
+def test_scegli_testo_senza_varianti_da_il_principale():
+    assert scegli_testo("principale", []) == "principale"
+
+
+def test_scegli_testo_prende_tra_principale_e_varianti():
+    visti = {scegli_testo("a", ["b", "c"], random.Random(n)) for n in range(40)}
+    assert visti == {"a", "b", "c"}
+
+
+@pytest.fixture
+def repo(clean_db):
+    return GreetingsRepository(pool_provider=lambda: clean_db)
+
+
+@pytest.mark.asyncio
+async def test_extra_default_e_salvataggio(repo):
+    config = await repo.get_config(7)
+    assert config.welcome_dm_message == ""
+    assert config.welcome_variants == []
+    assert config.welcome_reactions == []
+
+    await repo.set_welcome_extra(7, "Ciao in DM", ["uno", "due"], ["🎉"])
+    config = await repo.get_config(7)
+    assert config.welcome_dm_message == "Ciao in DM"
+    assert config.welcome_variants == ["uno", "due"]
+    assert config.welcome_reactions == ["🎉"]
+    # Il resto della riga non si perde.
+    await repo.set_welcome(7, enabled=True, channel_id=5, message="m", dm=False)
+    assert (await repo.get_config(7)).welcome_variants == ["uno", "due"]
+
+
+# ---- cog -----------------------------------------------------------------
+from unittest.mock import create_autospec  # noqa: E402
+
+import cogs.utility.greetings as modulo  # noqa: E402
+from core.database import Database  # noqa: E402
+from core.repositories.greetings_repo import GreetingsConfig  # noqa: E402
+from tests.support.discord_fakes import fake_guild, fake_member, fake_text_channel  # noqa: E402
+
+
+def _prepara(monkeypatch, **extra):
+    db_finto = create_autospec(Database, instance=True)
+    db_finto.is_module_active_for_guild.return_value = True
+    monkeypatch.setattr(modulo, "db", db_finto)
+    repo = create_autospec(GreetingsRepository, instance=True)
+    repo.get_config.return_value = GreetingsConfig(
+        guild_id=666, welcome_enabled=True, welcome_channel_id=5151,
+        welcome_message="Principale {user}", welcome_dm=True,
+        goodbye_enabled=False, goodbye_channel_id=None, goodbye_message="",
+        boost_enabled=False, boost_channel_id=None, boost_message="", **extra,
+    )
+    monkeypatch.setattr(modulo, "greetings_repo", repo)
+    canale = fake_text_channel(channel_id=5151)
+    messaggio = MagicMock(spec=discord.Message)
+    messaggio.add_reaction = AsyncMock()
+    canale.send.return_value = messaggio
+    server = fake_guild()
+    server.member_count = 10
+    server.get_channel.return_value = canale
+    membro = fake_member(user_id=42, bot=False)
+    membro.guild = server
+    return canale, membro, messaggio
+
+
+async def test_dm_con_testo_suo_e_reazioni_sul_messaggio(monkeypatch):
+    canale, membro, messaggio = _prepara(
+        monkeypatch, welcome_dm_message="Solo per te {username}", welcome_reactions=["🎉", "👋"]
+    )
+    await modulo.GreetingsCog(bot=None).on_member_join(membro)
+    assert membro.send.await_args.args[0].startswith("Solo per te")
+    assert canale.send.await_args.args[0].startswith("Principale")
+    assert [c.args[0] for c in messaggio.add_reaction.await_args_list] == ["🎉", "👋"]
+
+
+async def test_variante_scelta_a_caso(monkeypatch):
+    canale, membro, _ = _prepara(monkeypatch, welcome_variants=["Variante unica"])
+    monkeypatch.setattr(modulo, "scegli_testo", lambda principale, varianti, rng=None: varianti[0])
+    await modulo.GreetingsCog(bot=None).on_member_join(membro)
+    assert canale.send.await_args.args[0] == "Variante unica"
+
+
+async def test_reazione_che_fallisce_non_ferma_il_benvenuto(monkeypatch):
+    canale, membro, messaggio = _prepara(monkeypatch, welcome_reactions=["🎉"])
+    messaggio.add_reaction.side_effect = discord.HTTPException(MagicMock(status=400), "no")
+    await modulo.GreetingsCog(bot=None).on_member_join(membro)
+    membro.send.assert_awaited_once()
