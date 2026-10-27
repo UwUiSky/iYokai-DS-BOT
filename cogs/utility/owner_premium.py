@@ -368,7 +368,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         — un solo punto che applica il cambio, mai due copie della
         stessa logica che potrebbero divergere.
         """
-        await applica_cambio_premium(module_name, active, changed_by)
+        await applica_cambio_premium(module_name, active, changed_by, registro=registry, database=db)
 
     @comando_di_gruppo(
         "owner",
