@@ -1,7 +1,7 @@
 """
 cogs/utility/greetings.py
 ============================
-Welcome / Goodbye / Boost messages (SPEC.md §14.4-14.6). Modulo
+Welcome / Goodbye / Boost / Ban messages (SPEC.md §14.4-14.6). Modulo
 gratuito — stessa assunzione dichiarata di role_menus.py: lo schema
 non specifica esplicitamente Free/Premium per questa voce di §14.
 """
@@ -95,12 +95,19 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         required=False,
         max_length=120,
     )
+    ban = discord.ui.TextInput(
+        label="Messaggio pubblico per un ban (canale dell'addio)",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=MAX_MESSAGE_LENGTH,
+    )
 
     def __init__(self, config) -> None:
         super().__init__()
         self.dm.default = config.welcome_dm_message or None
         self.varianti.default = "\n".join(config.welcome_variants)[:4000] or None
         self.reazioni.default = " ".join(config.welcome_reactions) or None
+        self.ban.default = config.ban_message or None
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -111,7 +118,8 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         reazioni = []
         if errore is None:
             reazioni, errore = analizza_reazioni(self.reazioni.value or "")
-        for testo in ([dm] if dm else []) + varianti:
+        ban = (self.ban.value or "").strip()
+        for testo in ([dm] if dm else []) + varianti + ([ban] if ban else []):
             if errore is None and "<@&" in testo and not utente_puo_pingare_ruoli(interaction.user):
                 errore = "Per citare un ruolo serve il permesso «Menziona tutti»."
             if errore is None:
@@ -119,10 +127,10 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         if errore is not None:
             await interaction.response.send_message(errore, ephemeral=True)
             return
-        await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni)
+        await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni, ban)
         await interaction.response.send_message(
             f"Salvato: DM {'con testo suo' if dm else 'come il canale'}, "
-            f"{len(varianti)} varianti, {len(reazioni)} reazioni.",
+            f"{len(varianti)} varianti, {len(reazioni)} reazioni, ban {'annunciato' if ban else 'non annunciato'}.",
             ephemeral=True,
         )
 
@@ -274,6 +282,34 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             logger.warning(
                 "Impossibile inviare il goodbye message nel server %s.", member.guild.id
             )
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
+        """RUO-016: messaggio pubblico per un ban, nel canale dell'addio (spento se il testo è vuoto)."""
+        if user.bot:
+            return
+        if not await db.is_module_active_for_guild(guild.id, MODULE_GREETINGS):
+            return
+        config = await greetings_repo.get_config(guild.id)
+        if not config.ban_message or not config.goodbye_enabled or config.goodbye_channel_id is None:
+            return
+        channel = guild.get_channel(config.goodbye_channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return
+        testo = render_template(
+            config.ban_message,
+            user_mention=user.mention,
+            username=discord.utils.escape_mentions(user.name),
+            server_name=discord.utils.escape_mentions(guild.name),
+            member_count=guild.member_count or 0,
+            user_id=user.id,
+            display_name=discord.utils.escape_mentions(user.display_name),
+            server_id=guild.id,
+        )
+        try:
+            await channel.send(taglia_messaggio(testo), allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli))
+        except discord.HTTPException:
+            logger.warning("Impossibile inviare il messaggio di ban nel server %s.", guild.id)
 
     @commands.Cog.listener()
     async def on_member_update(

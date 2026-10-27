@@ -76,11 +76,12 @@ async def test_extra_default_e_salvataggio(repo):
     assert config.welcome_variants == []
     assert config.welcome_reactions == []
 
-    await repo.set_welcome_extra(7, "Ciao in DM", ["uno", "due"], ["🎉"])
+    await repo.set_welcome_extra(7, "Ciao in DM", ["uno", "due"], ["🎉"], "Ban di {username}")
     config = await repo.get_config(7)
     assert config.welcome_dm_message == "Ciao in DM"
     assert config.welcome_variants == ["uno", "due"]
     assert config.welcome_reactions == ["🎉"]
+    assert config.ban_message == "Ban di {username}"
     # Il resto della riga non si perde.
     await repo.set_welcome(7, enabled=True, channel_id=5, message="m", dm=False)
     assert (await repo.get_config(7)).welcome_variants == ["uno", "due"]
@@ -141,3 +142,25 @@ async def test_reazione_che_fallisce_non_ferma_il_benvenuto(monkeypatch):
     messaggio.add_reaction.side_effect = discord.HTTPException(MagicMock(status=400), "no")
     await modulo.GreetingsCog(bot=None).on_member_join(membro)
     membro.send.assert_awaited_once()
+
+
+async def test_ban_pubblico_nel_canale_dell_addio(monkeypatch):
+    canale, membro, _ = _prepara(monkeypatch, ban_message="{username} è stato bannato da {server}")
+    repo = modulo.greetings_repo
+    base = repo.get_config.return_value
+    repo.get_config.return_value = GreetingsConfig(
+        **{**base.__dict__, "goodbye_enabled": True, "goodbye_channel_id": 5151}
+    )
+    utente = MagicMock(spec=discord.User)
+    utente.id, utente.name, utente.bot = 42, "Mario", False
+    utente.display_name, utente.mention = "Mario", "<@42>"
+    await modulo.GreetingsCog(bot=None).on_member_ban(membro.guild, utente)
+    assert canale.send.await_args.args[0].startswith("Mario è stato bannato")
+
+
+async def test_ban_spento_senza_testo(monkeypatch):
+    canale, membro, _ = _prepara(monkeypatch)
+    utente = MagicMock(spec=discord.User)
+    utente.bot = False
+    await modulo.GreetingsCog(bot=None).on_member_ban(membro.guild, utente)
+    canale.send.assert_not_awaited()

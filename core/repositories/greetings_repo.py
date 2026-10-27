@@ -49,6 +49,7 @@ class GreetingsConfig:
     welcome_dm_message: str = ""
     welcome_variants: list[str] = field(default_factory=list)
     welcome_reactions: list[str] = field(default_factory=list)
+    ban_message: str = ""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -121,21 +122,23 @@ class GreetingsRepository:
             welcome_dm_message=row["welcome_dm_message"],
             welcome_variants=list(row["welcome_variants"]),
             welcome_reactions=list(row["welcome_reactions"]),
+            ban_message=row["ban_message"],
         )
 
     async def set_welcome_extra(
-        self, guild_id: int, dm_message: str, variants: list[str], reactions: list[str]
+        self, guild_id: int, dm_message: str, variants: list[str], reactions: list[str], ban_message: str = ""
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO greetings_config (guild_id, welcome_dm_message, welcome_variants, welcome_reactions)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO greetings_config (guild_id, welcome_dm_message, welcome_variants, welcome_reactions, ban_message)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id) DO UPDATE
                 SET welcome_dm_message = EXCLUDED.welcome_dm_message,
                     welcome_variants = EXCLUDED.welcome_variants,
-                    welcome_reactions = EXCLUDED.welcome_reactions
+                    welcome_reactions = EXCLUDED.welcome_reactions,
+                    ban_message = EXCLUDED.ban_message
             """,
-            guild_id, dm_message, variants, reactions,
+            guild_id, dm_message, variants, reactions, ban_message,
         )
 
     async def set_welcome_image(
