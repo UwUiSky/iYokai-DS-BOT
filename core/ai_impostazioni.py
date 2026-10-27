@@ -13,6 +13,14 @@ from __future__ import annotations
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.config_schema import ImpostazioneNonValida
 
+TESTO_CONSENSO = (
+    "Accendendo l'AI, i testi delle richieste (e, per riassunti, ticket e moderazione, i messaggi "
+    "degli utenti) vengono mandati ai fornitori AI configurati dal proprietario del bot. Si usano "
+    "solo fornitori che dichiarano di **non addestrare** modelli con ciò che ricevono. Prima "
+    "dell'invio si tolgono menzioni, ID, e-mail e inviti. L'AI propone, una persona decide: "
+    "nessuna punizione parte da sola. Puoi spegnere tutto in ogni momento."
+)
+
 PRIVACY = ("completa", "senza_messaggi")
 LUNGHEZZE = ("corta", "media", "lunga")
 # campo del database -> (minimo, massimo, nome per l'utente)

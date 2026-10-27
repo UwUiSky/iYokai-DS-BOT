@@ -223,3 +223,54 @@ async def test_servizio_con_coda_piena_da_la_risposta_locale(repo):
     assert errore.motivo == "coda_piena" and "in fila" in errore.testo
     assert trasporto.chiamate == []
     assert (await servizio.richiedi(_r())).testo  # posto liberato: riparte
+
+
+# ---------------------------------------------------------------- bottone «Apri nel pannello» (§25.27)
+def test_link_configurazione_porta_alla_pagina_giusta():
+    from core.ai_testi_logic import ComandoNoto, link_configurazione
+
+    c = lambda p: ComandoNoto(p, "x")  # noqa: E731
+    url = "https://pannello.example/"
+    assert link_configurazione(url, 5, [c("ai privacy")]) == "https://pannello.example/server/5/ai"
+    assert link_configurazione(url, 5, [c("admin premium aspetto")]).endswith("/server/5/aspetto")
+    assert link_configurazione(url, 5, [c("admin premium stato")]).endswith("/server/5/premium")
+    assert link_configurazione(url, 5, [c("admin lingua set")]).endswith("/server/5")
+    # il primo comando di configurazione vince; i comandi d'uso non portano al pannello
+    assert link_configurazione(url, 5, [c("mod timeout"), c("ai attiva")]).endswith("/ai")
+    assert link_configurazione(url, 5, [c("mod timeout")]) is None
+    assert link_configurazione("", 5, [c("ai attiva")]) is None
+    assert link_configurazione(url, None, [c("ai attiva")]) is None
+
+
+def test_bottone_configurazione_e_un_link():
+    from cogs.ai.helpdesk import bottone_configurazione
+    from core.ai_testi_logic import ComandoNoto
+
+    b = bottone_configurazione("https://p.example", 9, [ComandoNoto("ai stato", "x")])
+    assert b.url == "https://p.example/server/9/ai" and b.label == "Apri nel pannello"
+    assert bottone_configurazione("https://p.example", 9, [ComandoNoto("mod ban", "x")]) is None
+
+
+async def test_chiedi_aggiunge_il_bottone_del_pannello_per_un_comando_di_configurazione(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import cogs.ai.helpdesk as helpdesk
+    import core.ai_servizio as ai_servizio
+    from cogs.utility import command_search as modulo
+    from tests.test_command_search_bug147 import _albero_con_richiedi
+
+    monkeypatch.setattr(ai_servizio, "servizio_ai", lambda: SimpleNamespace(controlla_accesso=AsyncMock()))
+    citati = [SimpleNamespace(percorso="ai attiva", descrizione="Accende l'AI", gruppo="ai", moduli=(), livelli=())]
+    monkeypatch.setattr(helpdesk, "risposta_ai_chiedi", AsyncMock(return_value=("Usa /ai attiva", citati, None)))
+    finto = SimpleNamespace(WEB_PANEL_PUBLIC_URL="https://p.example", WIKI_BASE_URL="", MAIN_GUILD_ID=1)
+    monkeypatch.setattr(modulo, "config", finto)
+    cog = modulo.CommandSearchCog(_albero_con_richiedi())
+    monkeypatch.setattr(cog, "_comandi_accessibili", AsyncMock(return_value=[]))
+    monkeypatch.setattr(cog, "_ids", AsyncMock(return_value={}))
+    i = fake_interaction(guild=fake_guild(G), user=fake_member(U))
+    i.guild_id = G
+    i.is_guild_integration = lambda: True
+    assert await cog._risposta_ai(i, "come accendo l'AI?") is True
+    view = i.followup.send.call_args.kwargs["view"]
+    assert [b.url for b in view.children if getattr(b, "url", None) and "p.example" in b.url] == [f"https://p.example/server/{G}/ai"]

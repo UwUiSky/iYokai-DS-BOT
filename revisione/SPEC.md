@@ -2047,7 +2047,7 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 - `[x]` 24.1 Accesso con Discord e scelta del server (NF-20)
   → **Stato 14/10:** `core/web_panel_server.py` (aiohttp, nello stesso processo del bot, porta `WEB_PANEL_PORT`): OAuth2 `identify` con `state` legato al browser, sessioni nel database (0150, solo l'impronta), cookie HttpOnly/SameSite=Lax (`Secure` e `__Host-` su https), CSRF, controllo dell'origine, limite di frequenza, CSP. Permessi come `/admin` controllati a **ogni** richiesta (`core/panel_bridge.py`, membri chiesti a Discord tenuti 30 s); il ruolo admin del bot si sceglie solo con «Amministratore» (D28); `X-Forwarded-For` letto solo dai proxy di `WEB_PANEL_TRUSTED_PROXY`. Spento senza le variabili del `.env`. Da provare live.
 - `[~]` 24.2 Una pagina per modulo, con interruttore e impostazioni
-  → **Stato 14/10:** una pagina per server: interruttore di ogni modulo (per categoria), ruoli del bot, lingua, storico, premium. Mancano le impostazioni interne di ogni modulo (canali, testi, soglie).
+  → **Stato 27/10 (r10):** una pagina per server: interruttore di ogni modulo (per categoria), ruoli del bot, lingua, storico, premium, marchio, aspetto e, dal r10, `/server/<id>/ai` (consenso e accensione, privacy, lunghezza, memoria; punto unico `core/ai_impostazioni.py`, lo stesso di `/ai`). Mancano le impostazioni interne degli altri moduli (canali, testi, soglie): ognuna va portata dall'area che la possiede in un punto unico come `core/config_schema.py`, poi aggiunta al pannello.
 - `[x]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
   con gli stessi controlli (`core/config_schema.py`)
   → **Stato 27/10 (r10):** tutte le scritture del pannello passano da un punto unico (moduli, lingua, ruoli, permessi, marchio, aspetto, premium dell'owner `core/premium_flags.py`, manutenzione AI `core/ai_servizio.py`). Prima: moduli e lingua da `core/config_schema.py` (usato anche da `/admin setup attiva`, configurazione guidata, `/admin lingua set`), ruoli da `core.command_access.imposta_ruolo`. Ogni nuova impostazione del pannello va prima portata in un punto unico.
@@ -2127,9 +2127,9 @@ di quel file.
 - `[~]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
   → **Stato 14/10 (r6):** `-chiedi` risponde con l'AI nella lingua della domanda; `-cerca-comando` resta per parole.
 - `[x]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
-- `[~]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
+- `[x]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
   configurazione (AI-R-028)
-  → **Stato 14/10 (r6):** al massimo 3 comandi, cliccabili. Mancano i bottoni che aprono la configurazione.
+  → **Stato 27/10 (r10):** al massimo 3 comandi, cliccabili. Se tra i citati c'è un comando di configurazione (`/ai`, `/admin`, `/moduli`, `/ruoli`) e il pannello è acceso (`WEB_PANEL_PUBLIC_URL`), sotto la risposta c'è il bottone «Apri nel pannello» con la pagina giusta del server (`core/ai_testi_logic.link_configurazione`). Un bot non può aprire un comando slash con un bottone: il link al pannello è l'alternativa più vicina (D18).
 - `[ ]` 25.28 Stato del comando nella risposta (AI-R-029)
 - `[ ]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
   manca (AI-R-030)

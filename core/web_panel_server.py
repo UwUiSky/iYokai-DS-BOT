@@ -78,6 +78,7 @@ ESITI = {
     "marchio_collegato": ("Bot collegato. Se non è ancora nel server, usa il link d'invito qui sotto.", False),
     "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
     "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
+    "ai_consenso": ("Per accendere l'AI devi leggere e accettare il consenso: niente è stato salvato.", True),
     "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
@@ -523,6 +524,38 @@ def build_app(
         )
         return _pagina(request, "verifica_esito.html", riuscita=riuscita, testo=testo)
 
+    async def pagina_ai(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        return _pagina(request, "ai.html", guild=guild, ai=await ponte.stato_ai(guild))
+
+    async def salva_ai(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        azione = form.get("azione")
+        campi: dict = {}
+        if azione == "accendi":
+            if form.get("consenso") != "1":  # il testo del consenso va letto e accettato
+                return _vai(f"/server/{guild.id}/ai?esito=ai_consenso")
+        elif azione == "scelte":
+            try:
+                campi = {"privacy": str(form.get("privacy", "")), "lunghezza": str(form.get("lunghezza", "")),
+                         "conservazione_minuti": int(str(form.get("conservazione_minuti", "")))}
+            except ValueError:
+                return _vai(f"/server/{guild.id}/ai?esito=non_valido")
+        elif azione != "spegni":
+            return _vai(f"/server/{guild.id}/ai?esito=non_valido")
+        try:
+            await ponte.applica_ai(guild, request[CHIAVE_UTENTE], azione, campi)
+        except ImpostazioneNonValida:
+            return _vai(f"/server/{guild.id}/ai?esito=non_valido")
+        return _vai(f"/server/{guild.id}/ai?esito=salvato")
+
     # ------------------------------------------------ pagine legali e dell'owner
     async def privacy(request: web.Request) -> web.Response:
         return _pagina(request, "privacy.html", **ponte.info_legali())
@@ -609,6 +642,8 @@ def build_app(
     app.router.add_post("/miei-dati", azione_dati)
     app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)
     app.router.add_post(r"/verifica/{token:[0-9a-f\-]{1,200}}", conferma_verifica)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/ai", pagina_ai)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/ai", salva_ai)
     app.router.add_get("/privacy", privacy)
     app.router.add_get("/termini", termini)
     app.router.add_get("/proprietario", pagina_proprietario)

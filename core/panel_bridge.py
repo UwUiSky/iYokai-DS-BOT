@@ -14,7 +14,7 @@ stessi controlli e ruoli del bottone di verifica. Il bot con marchio proprio (NF
 stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`; l'aspetto del bot per
 server (CFG-030) da `core/bot_aspetto.py`. La pagina «I miei dati» (#46) usa le funzioni di
 `/utility privacy esporta|cancella`.
-Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.4, C.5, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122; #46)
+Funzioni coperte: SPEC §24.1–24.4, §24.2, §24.6, §24.7, C.4, C.5, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122; #46)
 """
 
 from __future__ import annotations
@@ -530,3 +530,33 @@ async def applica_manutenzione_ai(acceso: bool, messaggio: str, user_id: int) ->
     from core.ai_servizio import imposta_manutenzione_ai
 
     await imposta_manutenzione_ai(acceso, messaggio, user_id)
+
+
+# ---------------------------------------------------------------- AI del server
+async def stato_ai(guild: discord.Guild) -> dict:
+    """Le scelte AI del server (le stesse di `/ai stato`) e il testo del consenso."""
+    from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
+    from core.ai_impostazioni import LUNGHEZZE, PRIVACY, TESTO_CONSENSO
+    from core.ai_servizio import servizio_ai
+    from core.repositories.ai_repo import ai_repo
+
+    cfg = await ai_repo.get_config(guild.id)
+    return {
+        "cfg": cfg, "consenso": TESTO_CONSENSO.replace("**", ""), "privacy": PRIVACY, "lunghezze": LUNGHEZZE,
+        "configurata": servizio_ai().configurato,
+        "prova": None if cfg.prova_inizio is None else (
+            f"attiva, {GIORNI_PROVA} giorni dal primo consenso" if prova_attiva(cfg.prova_inizio) else "finita"
+        ),
+    }
+
+
+async def applica_ai(guild: discord.Guild, user_id: int, azione: str, campi: dict) -> str:
+    """Accende (con il consenso letto), spegne o cambia le scelte AI: stessi punti dei comandi `/ai`."""
+    from core.ai_impostazioni import accendi_ai, imposta_scelte, spegni_ai
+
+    if azione == "accendi":
+        return await accendi_ai(guild.id, user_id)
+    if azione == "spegni":
+        return await spegni_ai(guild.id, user_id)
+    await imposta_scelte(guild.id, **campi)
+    return "Scelte salvate."

@@ -260,7 +260,7 @@ class CommandSearchCog(commands.Cog):
         non ha risposto. None: AI non disponibile, niente toccato. Negli ultimi due casi si
         torna alla ricerca per parole.
         """
-        from cogs.ai.helpdesk import risposta_ai_chiedi
+        from cogs.ai.helpdesk import bottone_configurazione, risposta_ai_chiedi
         from core.ai_servizio import AINonDisponibile, servizio_ai
 
         try:
@@ -282,6 +282,10 @@ class CommandSearchCog(commands.Cog):
         embed = discord.Embed(title="Assistente", description=testo[:4000], color=discord.Color.blurple())
         embed.set_footer(text="Risposta dell'AI: controlla prima di usarla")
         view = RisultatiView(config.WIKI_BASE_URL, citati[0].percorso) if citati else None
+        if view is not None:
+            apri = bottone_configurazione(config.WEB_PANEL_PUBLIC_URL, _server_del_bot(interaction), citati)
+            if apri is not None:
+                view.add_item(apri)
         extra = {"view": view} if view is not None and view.children else {}
         await interaction.followup.send(embed=embed, ephemeral=True, **extra)
         return True

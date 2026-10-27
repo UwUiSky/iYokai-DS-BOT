@@ -22,6 +22,7 @@ from discord.ext import commands, tasks
 import core.channel_router as router
 from cogs.ai._comune import MODULO_AI, NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiesta_da, taglia
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
+from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_scelte, spegni_ai
 from core.ai_router import avviso_chiavi
 from core.ai_servizio import imposta_manutenzione_ai, servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
@@ -41,15 +42,6 @@ MAX_CONOSCENZA = 50
 MAX_PAROLE_VIETATE = 50
 MAX_CANALI_MODERAZIONE = 10
 
-TESTO_CONSENSO = (
-    "Accendendo l'AI, i testi delle richieste (e, per riassunti, ticket e moderazione, i messaggi "
-    "degli utenti) vengono mandati ai fornitori AI configurati dal proprietario del bot. Si usano "
-    "solo fornitori che dichiarano di **non addestrare** modelli con ciò che ricevono. Prima "
-    "dell'invio si tolgono menzioni, ID, e-mail e inviti. L'AI propone, una persona decide: "
-    "nessuna punizione parte da sola. Puoi spegnere tutto in ogni momento."
-)
-
-
 def _euro(millesimi: int | None) -> str:
     return f"{(millesimi or 0) / 100_000:.2f} €"
 
@@ -67,23 +59,8 @@ class _ConsensoView(BaseView):
 
     @discord.ui.button(label="Acconsento e accendo", style=discord.ButtonStyle.success)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await ai_repo.registra_consenso(interaction.guild_id, interaction.user.id, True)
-        testo = "AI accesa in questo server."
-        if await _serve_la_prova(interaction.guild_id):
-            prima = await ai_repo.get_config(interaction.guild_id)
-            cfg = await ai_repo.avvia_prova(interaction.guild_id)
-            if prima.prova_inizio is None:
-                testo += f" L'AI è premium: parte una prova gratuita di {GIORNI_PROVA} giorni."
-            elif not prova_attiva(cfg.prova_inizio):
-                testo += " La prova gratuita è già finita: per usare l'AI serve il premium."
+        testo = await accendi_ai(interaction.guild_id, interaction.user.id)
         await interaction.response.edit_message(content=testo, embed=None, view=None)
-
-
-async def _serve_la_prova(guild_id: int) -> bool:
-    """L'AI è premium e il server non l'ha sbloccata: vale la prova (una volta sola)."""
-    from core.premium import guild_has_premium_access, registry
-
-    return registry.is_module_premium(MODULO_AI) and not await guild_has_premium_access(guild_id, MODULO_AI)
 
 
 class _ConoscenzaModal(BaseModal, title="Nuova voce della base di conoscenza"):
@@ -240,8 +217,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
     @app_commands.describe(acceso="Sì per accendere, no per spegnere")
     async def attiva(self, interaction: discord.Interaction, acceso: bool) -> None:
         if not acceso:
-            await ai_repo.registra_consenso(interaction.guild_id, interaction.user.id, False)
-            await interaction.response.send_message("AI spenta in questo server.", ephemeral=True)
+            await interaction.response.send_message(await spegni_ai(interaction.guild_id, interaction.user.id), ephemeral=True)
             return
         embed = discord.Embed(title="Consenso all'uso dell'AI", description=TESTO_CONSENSO, color=discord.Color.orange())
         if not servizio_ai().configurato:
@@ -300,7 +276,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         if not campi:
             await interaction.response.send_message("Indica almeno un valore. Lo stato attuale è in `/ai stato`.", ephemeral=True)
             return
-        await ai_repo.imposta(interaction.guild_id, **campi)
+        await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Limiti salvati.", ephemeral=True)
 
     @comando_di_gruppo("ai", nome="privacy", descrizione="Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.")
@@ -321,9 +297,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         if not campi:
             await interaction.response.send_message("Indica almeno un valore.", ephemeral=True)
             return
-        await ai_repo.imposta(interaction.guild_id, **campi)
-        if memoria_minuti == 0:
-            servizio_ai().memoria.dimentica(interaction.guild_id)
+        await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Scelte salvate.", ephemeral=True)
 
     @comando_di_gruppo("ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")

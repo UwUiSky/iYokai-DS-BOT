@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titolo %}AI · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Intelligenza artificiale · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Torna al server</a></p>
+{% if not ai.configurata %}<p class="avviso errore">Il proprietario del bot non ha ancora configurato servizi AI: le funzioni rispondono senza AI.</p>{% endif %}
+<div class="carta">
+  <p>Stato: <strong>{{ "accesa" if ai.cfg.attivo else "spenta" }}</strong>{% if ai.prova %} · prova gratuita {{ ai.prova }}{% endif %}</p>
+  {% if ai.cfg.attivo %}
+  <form method="post" action="/server/{{ guild.id }}/ai">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="spegni">
+    <button class="secondario" type="submit">Spegni l'AI</button>
+  </form>
+  {% else %}
+  <form method="post" action="/server/{{ guild.id }}/ai">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="accendi">
+    <p>{{ ai.consenso }}</p>
+    <label><input type="checkbox" name="consenso" value="1"> Ho letto e acconsento</label>
+    <button type="submit">Accendi l'AI</button>
+  </form>
+  {% endif %}
+</div>
+<h2>Scelte</h2>
+<form class="carta" method="post" action="/server/{{ guild.id }}/ai">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="scelte">
+  <label>Messaggi degli utenti all'AI
+    <select name="privacy">{% for p in ai.privacy %}<option value="{{ p }}" {{ "selected" if p == ai.cfg.privacy }}>{{ p|replace("_", " ") }}</option>{% endfor %}</select></label>
+  <label>Lunghezza delle risposte
+    <select name="lunghezza">{% for l in ai.lunghezze %}<option value="{{ l }}" {{ "selected" if l == ai.cfg.lunghezza }}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Memoria della conversazione (minuti, 0 = niente)
+    <input type="number" name="conservazione_minuti" min="0" max="1440" value="{{ ai.cfg.conservazione_minuti }}"></label>
+  <button type="submit">Salva</button>
+</form>
+<p class="tenue">Quote, tetto di spesa, lore, parole vietate e canali restano nei comandi <code>/ai</code>.</p>
+{% endblock %}
