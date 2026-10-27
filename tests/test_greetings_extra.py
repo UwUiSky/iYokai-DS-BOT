@@ -164,3 +164,70 @@ async def test_ban_spento_senza_testo(monkeypatch):
     utente.bot = False
     await modulo.GreetingsCog(bot=None).on_member_ban(membro.guild, utente)
     canale.send.assert_not_awaited()
+
+
+def _config_base(**extra) -> GreetingsConfig:
+    return GreetingsConfig(
+        guild_id=666, welcome_enabled=True, welcome_channel_id=5151,
+        welcome_message="Principale", welcome_dm=True,
+        goodbye_enabled=True, goodbye_channel_id=5151, goodbye_message="",
+        boost_enabled=False, boost_channel_id=None, boost_message="", **extra,
+    )
+
+
+def test_finestra_extra_etichette_entro_45_caratteri():
+    """Discord rifiuta la finestra intera se un'etichetta supera 45 caratteri."""
+    finestra = modulo.ExtraBenvenutoModal(_config_base())
+    assert len(finestra.title) <= 45
+    for campo in finestra.children:
+        assert len(campo.label) <= 45, campo.label
+
+
+async def test_durante_un_raid_niente_reazioni_sul_benvenuto(monkeypatch):
+    canale, membro, messaggio = _prepara(monkeypatch, welcome_reactions=["🎉", "👋"])
+    monkeypatch.setattr(modulo, "raid_in_corso", lambda _g: True)
+    await modulo.GreetingsCog(bot=None).on_member_join(membro)
+    canale.send.assert_awaited_once()
+    messaggio.add_reaction.assert_not_awaited()
+
+
+async def test_durante_un_raid_niente_messaggio_di_ban(monkeypatch):
+    canale, membro, _ = _prepara(monkeypatch)
+    modulo.greetings_repo.get_config.return_value = _config_base(ban_message="{username} bannato")
+    monkeypatch.setattr(modulo, "raid_in_corso", lambda _g: True)
+    utente = MagicMock(spec=discord.User)
+    utente.id, utente.name, utente.bot = 42, "Mario", False
+    utente.display_name, utente.mention = "Mario", "<@42>"
+    await modulo.GreetingsCog(bot=None).on_member_ban(membro.guild, utente)
+    canale.send.assert_not_awaited()
+
+
+async def _invia_finestra(monkeypatch, utente, **valori):
+    repo = create_autospec(GreetingsRepository, instance=True)
+    monkeypatch.setattr(modulo, "greetings_repo", repo)
+    finestra = modulo.ExtraBenvenutoModal(_config_base())
+    for nome in ("dm", "varianti", "reazioni", "ban"):
+        getattr(finestra, nome)._value = valori.get(nome, "")
+    interazione = MagicMock()
+    interazione.guild = fake_guild()
+    interazione.guild.member_count = 10
+    interazione.user = utente
+    interazione.response.send_message = AsyncMock()
+    await finestra.on_submit(interazione)
+    return repo, interazione.response.send_message.await_args
+
+
+async def test_finestra_rifiuta_ruolo_citato_senza_menziona_tutti(monkeypatch):
+    repo, risposta = await _invia_finestra(
+        monkeypatch, fake_member(user_id=1), varianti="Ciao <@&123>", ban="ok"
+    )
+    repo.set_welcome_extra.assert_not_awaited()
+    assert "Menziona tutti" in risposta.args[0]
+
+
+async def test_finestra_salva_i_quattro_campi(monkeypatch):
+    repo, _ = await _invia_finestra(
+        monkeypatch, fake_member(user_id=1), dm=" DM ", varianti="a\nb", reazioni="🎉", ban="Ban {username}"
+    )
+    repo.set_welcome_extra.assert_awaited_once()
+    assert repo.set_welcome_extra.await_args.args[1:] == ("DM", ["a", "b"], ["🎉"], "Ban {username}")

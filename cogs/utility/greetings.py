@@ -91,12 +91,12 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         max_length=4000,
     )
     reazioni = discord.ui.TextInput(
-        label="Reazioni sul benvenuto (max 5, con uno spazio)",
+        label="Reazioni sul benvenuto (max 5, con spazi)",
         required=False,
         max_length=120,
     )
     ban = discord.ui.TextInput(
-        label="Messaggio pubblico per un ban (canale dell'addio)",
+        label="Messaggio per i ban (nel canale addio)",
         style=discord.TextStyle.paragraph,
         required=False,
         max_length=MAX_MESSAGE_LENGTH,
@@ -243,7 +243,8 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                             raise
                         # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
                         inviato = await channel.send(testo, allowed_mentions=menzioni)
-                    await _metti_reazioni(inviato, config.welcome_reactions)
+                    if not raid_in_corso(member.guild.id):  # durante un raid: niente chiamate in più
+                        await _metti_reazioni(inviato, config.welcome_reactions)
                 except discord.HTTPException:
                     logger.warning(
                         "Impossibile inviare il welcome message nel server %s.",
@@ -292,6 +293,8 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             return
         config = await greetings_repo.get_config(guild.id)
         if not config.ban_message or not config.goodbye_enabled or config.goodbye_channel_id is None:
+            return
+        if raid_in_corso(guild.id):  # i ban in massa dell'antiraid non riempiono il canale
             return
         channel = guild.get_channel(config.goodbye_channel_id)
         if not isinstance(channel, discord.TextChannel):
@@ -408,7 +411,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "gestione",
         nome="extra",
-        descrizione="Benvenuto: DM, varianti a caso, reazioni.",
+        descrizione="Benvenuto: DM, varianti, reazioni, messaggio ai ban.",
         sottogruppo=_SG_BENVENUTO,
     )
     async def welcome_extra(self, interaction: discord.Interaction) -> None:

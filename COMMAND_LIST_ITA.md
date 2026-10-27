@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-27 21:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 548 comandi in 25 categorie.**
 
 ## Admin
 
@@ -250,6 +250,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
 - **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
 - **`/gestione benvenuto boost`** — Configura il messaggio di boost.
+- **`/gestione benvenuto extra`** — Benvenuto: DM, varianti, reazioni, messaggio ai ban.
 - **`/gestione benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
 - **`/gestione ruoli auto-aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
 - **`/gestione ruoli auto-elenco`** — Mostra i ruoli automatici del server.
