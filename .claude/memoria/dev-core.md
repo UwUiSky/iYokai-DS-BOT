@@ -5,6 +5,7 @@
 
 ## In corso
 - Giro r10 quasi chiuso. Fatto: wizard, 3.1 monete, #109 marchio, #113 inviti, 21.1 (cog core), SPEC flip.
+- Smoke (`scripts/smoke.py --base main`) NON concluso (timeout 110s): rilanciarlo con timeout largo. Invarianti: 173 verdi.
 - Prossimo: B.3 (livello e clan nel Profilo app), B.4 (note, liste, fusi, conversioni, QR, colori), #113 webhook dei log, owner radio max_length (file musica).
 
 ## Fatto
