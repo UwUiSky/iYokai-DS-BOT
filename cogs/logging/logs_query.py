@@ -61,6 +61,7 @@ def _da_quando(giorni: int | None) -> datetime | None:
 def _etichetta_periodo(giorni: int | None) -> str:
     return "" if giorni is None else f" negli ultimi {giorni} giorni"
 
+
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_EXPORT_FILE_BYTES = 8 * 1024 * 1024

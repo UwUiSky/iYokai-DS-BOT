@@ -120,3 +120,15 @@ class TestClassifyVoiceStateChange:
             {"channel_id": 1, "mute": False, "deaf": False}, {"channel_id": 2, "mute": True, "deaf": False}
         )
         assert eventi == ["voice_move", "voice_mute"]
+
+
+def test_diff_overwrites_aggiunti_rimossi_modificati():
+    from core.logging_advanced_logic import diff_overwrites, menzione_bersaglio
+
+    prima = {"ruolo:1": (0, 0), "utente:2": (8, 0), "ruolo:3": (1, 0)}
+    dopo = {"ruolo:1": (0, 16), "utente:2": (8, 0), "utente:4": (0, 0)}
+    assert diff_overwrites(prima, dopo) == {
+        "aggiunti": ["utente:4"], "rimossi": ["ruolo:3"], "modificati": ["ruolo:1"],
+    }
+    assert diff_overwrites(prima, prima) == {}
+    assert menzione_bersaglio("ruolo:7") == "<@&7>" and menzione_bersaglio("utente:7") == "<@7>"

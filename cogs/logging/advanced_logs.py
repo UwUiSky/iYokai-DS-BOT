@@ -52,6 +52,8 @@ from core.logging_advanced_logic import (
     classify_voice_state_change,
     diff_attributes,
     diff_named_items,
+    diff_overwrites,
+    menzione_bersaglio,
 )
 from core.testo_limiti import DESCRIZIONE_MAX, tronca
 from core.premium import registry
@@ -163,6 +165,16 @@ def _channel_snapshot(channel) -> dict:
         "slowmode_delay": getattr(channel, "slowmode_delay", 0),
         "position": getattr(channel, "position", 0),
     }
+
+
+def _overwrites_snapshot(channel) -> dict[str, tuple[int, int]]:
+    """Permessi del canale per ruolo e utente: {«ruolo:ID»: (concessi, negati)}."""
+    istantanea = {}
+    for bersaglio, sovrascrittura in (getattr(channel, "overwrites", None) or {}).items():
+        concessi, negati = sovrascrittura.pair()
+        genere = "ruolo" if isinstance(bersaglio, discord.Role) else "utente"
+        istantanea[f"{genere}:{bersaglio.id}"] = (concessi.value, negati.value)
+    return istantanea
 
 
 def _guild_snapshot(guild: discord.Guild) -> dict:
@@ -380,6 +392,9 @@ class AdvancedLogsCog(commands.Cog):
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         changes = diff_attributes(_channel_snapshot(before), _channel_snapshot(after), CHANNEL_TRACKED_KEYS)
+        permessi = diff_overwrites(_overwrites_snapshot(before), _overwrites_snapshot(after))
+        if permessi:
+            changes["permessi"] = permessi
         if not changes:
             return
         await event_log_repo.log_event(
@@ -390,9 +405,10 @@ class AdvancedLogsCog(commands.Cog):
                 after.guild, after.id, changes["position"]["before"], changes["position"]["after"]
             )
             return
-        await send_event_embed(
-            after.guild, "channel_update", f"<#{after.id}>\n" + ", ".join(changes.keys())
-        )
+        testo = f"<#{after.id}>\n" + ", ".join(changes.keys())
+        for gruppo, voci in permessi.items():
+            testo += f"\nPermessi {gruppo}: " + ", ".join(menzione_bersaglio(v) for v in voci)
+        await send_event_embed(after.guild, "channel_update", testo)
 
     # ================================================================
     # 8.8 Inviti (create/delete/use — "use" via resolve_join_invite,

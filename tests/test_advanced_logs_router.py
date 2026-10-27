@@ -162,3 +162,32 @@ async def test_due_spostamenti_di_fila_usano_un_solo_invio_e_lo_scarico_si_ferma
         invio.assert_not_awaited()
     finally:
         modulo.SPOSTAMENTI_ATTESA_SECONDI = 0
+
+
+def _con_permessi(canale, ruolo_id, concessi, negati):
+    import discord
+
+    ruolo = MagicMock(spec=discord.Role)
+    ruolo.id = ruolo_id
+    sovrascrittura = discord.PermissionOverwrite.from_pair(
+        discord.Permissions(concessi), discord.Permissions(negati)
+    )
+    canale.overwrites = {ruolo: sovrascrittura}
+    return canale
+
+
+async def test_cambio_dei_permessi_del_canale_e_nel_log(cog):
+    c, invio = cog
+    prima = _con_permessi(_canale(5), 9, 0, 0)
+    dopo = _con_permessi(_canale(5), 9, 0, 1024)
+    await c.on_guild_channel_update(prima, dopo)
+    descrizione = invio.await_args.args[2]
+    assert "permessi" in descrizione and "<@&9>" in descrizione
+    dettagli = modulo.event_log_repo.log_event.await_args.kwargs["details"]
+    assert dettagli["permessi"] == {"modificati": ["ruolo:9"]}
+
+
+async def test_permessi_uguali_non_generano_log(cog):
+    c, invio = cog
+    await c.on_guild_channel_update(_con_permessi(_canale(5), 9, 0, 1024), _con_permessi(_canale(5), 9, 0, 1024))
+    invio.assert_not_awaited()
