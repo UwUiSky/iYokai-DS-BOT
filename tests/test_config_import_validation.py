@@ -54,6 +54,8 @@ SETTINGS_VALIDE = {
     "verify_azione_scadenza": "kick",
     "verify_azione_fallita": "quarantena",
     "verify_solo_sospetti": False,
+    "verify_azione_eta": "kick",
+    "verify_sospesa_fino": 1893456000,
     "mute_role_id": 123123123123123123,
     "admin_role_id": 234234234234234234,
     "mod_role_id": 345345345345345345,

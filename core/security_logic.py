@@ -77,6 +77,55 @@ class AntiRaidConfig:
     retroattivo: bool = False
     # SIC-034: ruoli pingati nel primo allarme dell'episodio.
     ruoli_ping: tuple[int, ...] = ()
+    # SIC-036: livello di allerta in corso (vedi LIVELLI_ALLERTA); `livello_fino` è
+    # l'istante di fine in secondi (0 = fino al prossimo cambio). `livello_al_raid`
+    # è il livello che scatta da solo quando comincia un raid ("niente" = nessuno).
+    livello: str = "normale"
+    livello_fino: int = 0
+    livello_al_raid: str = "niente"
+    livello_al_raid_ore: int = 6
+
+
+LIVELLI_ALLERTA = ("normale", "allerta", "alto", "blocco")
+# Divisore della soglia di ingressi e età minima dell'account (secondi) per livello.
+_PROFILI_LIVELLO = {
+    "allerta": (2, 3 * 86400),
+    "alto": (4, 7 * 86400),
+    "blocco": (None, 14 * 86400),
+}
+SOGLIA_MINIMA_LIVELLO = 2
+
+
+def livello_attivo(config: AntiRaidConfig, adesso_epoch: float) -> str:
+    """Il livello in vigore adesso: uno scaduto o sconosciuto vale «normale»."""
+    if config.livello not in LIVELLI_ALLERTA:
+        return "normale"
+    if config.livello_fino and adesso_epoch >= config.livello_fino:
+        return "normale"
+    return config.livello
+
+
+def config_con_livello(config: AntiRaidConfig, livello: str) -> AntiRaidConfig:
+    """
+    SIC-036: le regole attive a un dato livello. Il livello stringe soltanto:
+    soglia di ingressi più bassa (mai sotto SOGLIA_MINIMA_LIVELLO), età minima più
+    alta, segnali di gruppo accesi e azione anche su chi è entrato prima. Quello che
+    il server ha già scelto di più forte resta.
+    """
+    profilo = _PROFILI_LIVELLO.get(livello)
+    if profilo is None:
+        return config
+    divisore, eta = profilo
+    soglia = SOGLIA_MINIMA_LIVELLO if divisore is None else max(SOGLIA_MINIMA_LIVELLO, config.join_rate_max // divisore)
+    cambi = {
+        "join_rate_max": min(config.join_rate_max, soglia),
+        "min_account_age_seconds": max(config.min_account_age_seconds, eta),
+    }
+    if livello in ("alto", "blocco"):
+        cambi["retroattivo"] = True
+        cambi["account_vicini_minimo"] = config.account_vicini_minimo or 3
+        cambi["nomi_simili_minimo"] = config.nomi_simili_minimo or 3
+    return dataclasses.replace(config, **cambi)
 
 
 @dataclass(frozen=True)
