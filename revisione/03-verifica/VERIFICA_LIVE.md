@@ -1148,7 +1148,7 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 Serve: un server con almeno 2 bot musicali invitati, Lavalink acceso, un canale di avvisi e un canale Twitch o Kick di prova.
 
 - [ ] 9.2/9.3 due canali vocali — A entra nel canale 1 e fa `/music play`, B nel canale 2 dello stesso server: suonano due bot diversi con code separate; `/music skip` in uno non tocca l'altro.
-- [ ] `/music nonstop on` (9.10) — metti un brano, attiva il loop, esci dal canale: dopo più di 5 minuti il bot è ancora lì e suona. `nonstop off`, esci di nuovo: dopo un po' il bot esce.
+- [ ] `/music nonstop on` (9.10, D30) — in un server con premium: metti un brano, attiva il loop, esci dal canale: dopo più di 5 minuti il bot è ancora lì e suona. `nonstop off`, esci di nuovo: dopo un po' il bot esce. In un server senza premium il messaggio dice «premium» e a canale vuoto il bot esce.
 - [ ] `/admin musica impostazioni attesa-uscita:1` — a coda finita il bot esce dopo circa 1 minuto invece di 5.
 - [ ] `parole-vietate:xyz` — `/music play` di un brano con «xyz» nel titolo: rifiutato; una playlist con un brano così lo salta e lo dice.
 - [ ] `solo-siti-conosciuti:True` — un link di un sito qualunque è rifiutato; un link YouTube e una ricerca per titolo funzionano.

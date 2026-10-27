@@ -108,7 +108,7 @@ from core.music_settings_logic import (
     title_blocked,
     track_too_long,
 )
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, guild_has_premium_access, registry
 from core.repositories.main_radio_repo import main_radio_repo
 from core.safe_http import url_e_sicuro
 
@@ -1277,10 +1277,18 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         player.queue.mode = wavelink.QueueMode.loop_all
+        if not await guild_has_premium_access(interaction.guild.id, MODULE_MUSIC, bot=self.bot):
+            # D30: un worker fermo in un canale vuoto è tolto a tutti i server. Senza premium
+            # il loop c'è, ma a canale vuoto il bot esce come sempre.
+            await interaction.response.send_message(
+                "🔁 Loop continuo attivato sulla coda attuale. Se il canale resta vuoto esco "
+                "comunque: restare 24/7 senza ascoltatori è una funzione premium."
+            )
+            return
         # LIM-44: il 24/7 resta anche se il canale si svuota (come la radio).
         player.is_nonstop = True
         player.inactive_channel_tokens = None
-        await interaction.response.send_message("🔁 Loop continuo attivato sulla coda attuale.")
+        await interaction.response.send_message("🔁 Loop continuo 24/7 attivato sulla coda attuale.")
 
     @comando_di_gruppo(
         "music",

@@ -399,6 +399,7 @@ async def test_nonstop_on_segna_il_player_e_spegne_il_controllo_canale_vuoto(mon
     player = _player([_t("a")])
     player.inactive_channel_tokens = 3
     cog = _cog(player, monkeypatch)
+    monkeypatch.setattr(player_module, "guild_has_premium_access", AsyncMock(return_value=True))
 
     await cog.nonstop_on.callback(cog, _Interazione())
 
@@ -417,3 +418,23 @@ async def test_nonstop_off_rimette_il_comportamento_normale(monkeypatch):
 
     assert player.is_nonstop is False
     assert player.inactive_channel_tokens == 3
+
+
+@pytest.mark.asyncio
+async def test_nonstop_senza_premium_fa_il_loop_ma_esce_dal_canale_vuoto(monkeypatch):
+    """D30: il bot fermo in un canale vuoto occupa uno dei 5 worker di tutti: solo con premium."""
+    player = _player([_t("a")])
+    player.inactive_channel_tokens = 3
+    cog = _cog(player, monkeypatch)
+    premium = AsyncMock(return_value=False)
+    monkeypatch.setattr(player_module, "guild_has_premium_access", premium)
+    interazione = _Interazione()
+
+    await cog.nonstop_on.callback(cog, interazione)
+
+    premium.assert_awaited_once()
+    assert premium.await_args.args[:2] == (900, player_module.MODULE_MUSIC)
+    assert player.queue.mode == player_module.wavelink.QueueMode.loop_all
+    assert getattr(player, "is_nonstop", False) is False
+    assert player.inactive_channel_tokens == 3
+    assert "premium" in str(interazione.response.inviati).lower()

@@ -467,3 +467,14 @@ al moderatore cosa chiedeva la scala e perché non è partito. Vale per tutti i 
 gradino di timeout non accorcia mai un timeout più lungo già in corso (anche per l'AutoMod).
 La regola sta in un punto solo, `cogs/automod/escalation.py` (`scala_per_warn_manuale`).
 
+
+## D30 — Il 24/7 in un canale vuoto è premium (27/10/2026)
+
+`/music nonstop on` mette la coda in loop. Un bot musicale che resta in un canale
+vuoto occupa per sempre uno dei 5 bot musicali, che sono gli stessi per tutti i server:
+cinque persone, in cinque server, potrebbero lasciare tutti gli altri senza musica.
+Scelta: **il loop vale per tutti; restare nel canale vuoto (niente uscita per inattività,
+niente pulizia del controllo memoria) solo per i server con premium**
+(`guild_has_premium_access`). Senza premium il comando lo dice e il bot esce come
+sempre quando il canale resta vuoto. La radio del bot principale non cambia.
+Da avvisare l'owner.

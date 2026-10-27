@@ -911,7 +911,7 @@ sessione perché non richiesto esplicitamente.
   (serve un'estensione del limite GLOBALE, indirizzato ad aprire un
   ticket nel server ufficiale iYokai — nessun link fabbricato, il
   server è già raggiungibile pubblicamente)
-  → **Stato 27/10:** `/music nonstop on` segna il player e spegne il controllo del canale vuoto: resta anche se tutti escono (LIM-44, anche per memory guard e `handle_inactive_player`).
+  → **Stato 27/10:** `/music nonstop on` mette il loop; con premium segna il player e spegne il controllo del canale vuoto: resta anche se tutti escono (LIM-44, D30; anche per memory guard e `handle_inactive_player`). Senza premium esce a canale vuoto.
 - `[x]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
   condiviso) — `/nonstop-main add-track|add-local|remove-track|
   list-tracks|start|stop`. "Condiviso" ottenuto con un orologio
