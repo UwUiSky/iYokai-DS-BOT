@@ -42,7 +42,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bot_inviti import altri_bot
 from core.config_schema import imposta_modulo
-from core.i18n import testo_per
+from core.i18n import lingua_interazione, t, testo_per
 from core.database import db
 from core.premium import registry, PremiumModule
 from core.command_access import TipoRuolo, leggi_ruolo
@@ -134,6 +134,7 @@ class SetupView(BaseView):
         # rimasti identici, riempiendo lo storico di rumore.
         self._initial_selected_values: frozenset[str] = frozenset(self.selected_values)
         self.message: discord.Message | discord.InteractionMessage | None = None
+        self.lingua = "it"  # la imposta il comando prima di mandare il pannello
         self.add_item(ModuleSelect(modules_with_state))
 
     @discord.ui.button(label="Salva configurazione", style=discord.ButtonStyle.success, row=1)
@@ -150,9 +151,8 @@ class SetupView(BaseView):
 
         self.stop()
         await interaction.response.edit_message(
-            content=(
-                f"✅ Configurazione salvata. Moduli attivi: "
-                f"{len(self.selected_values)}/{len(self.all_module_names)}."
+            content=await testo_per(
+                interaction, "setup_salvata", attivi=len(self.selected_values), totale=len(self.all_module_names)
             ),
             view=None,
         )
@@ -163,7 +163,7 @@ class SetupView(BaseView):
     ) -> None:
         self.stop()
         await interaction.response.edit_message(
-            content="Operazione annullata. Nessuna modifica salvata.", view=None
+            content=await testo_per(interaction, "setup_annullata"), view=None
         )
 
     async def on_timeout(self) -> None:
@@ -179,7 +179,7 @@ class SetupView(BaseView):
         if self.message is not None:
             try:
                 await self.message.edit(
-                    content="⏱️ Pannello di setup scaduto. Rilancia /admin setup attiva per riprovare.",
+                    content=t("setup_pannello_scaduto", self.lingua),
                     view=self,
                 )
             except discord.HTTPException:
@@ -229,7 +229,7 @@ class SetupCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "accesso_solo_server"),
                 ephemeral=True,
             )
             return
@@ -253,7 +253,7 @@ class SetupCog(CogConGruppi, commands.Cog):
         modules = registry.modules_in_category(categoria)
         if not modules:
             await interaction.followup.send(
-                "Nessun modulo risulta registrato in questa categoria.",
+                await testo_per(interaction, "setup_categoria_vuota"),
                 ephemeral=True,
             )
             return
@@ -269,8 +269,7 @@ class SetupCog(CogConGruppi, commands.Cog):
                 MAX_SELECT_OPTIONS,
             )
             await interaction.followup.send(
-                "Questa categoria ha troppi moduli per una sola schermata. "
-                "Contatta lo sviluppatore.",
+                await testo_per(interaction, "setup_categoria_troppo_grande"),
                 ephemeral=True,
             )
             return
@@ -284,11 +283,9 @@ class SetupCog(CogConGruppi, commands.Cog):
         ]
 
         view = SetupView(interaction.guild.id, modules_with_state)
+        view.lingua = await lingua_interazione(interaction)
         view.message = await interaction.followup.send(
-            f"**Configurazione moduli — {ETICHETTE_CATEGORIE[categoria]}**\n"
-            "Seleziona i moduli da attivare su questo server, poi premi "
-            "**Salva configurazione**. I moduli già attivi sono "
-            "pre-selezionati.",
+            await testo_per(interaction, "setup_intestazione", categoria=ETICHETTE_CATEGORIE[categoria]),
             view=view,
             ephemeral=True,
             wait=True,
@@ -338,7 +335,7 @@ class SetupCog(CogConGruppi, commands.Cog):
     async def setup_wizard(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "accesso_solo_server"),
                 ephemeral=True,
             )
             return
@@ -356,7 +353,7 @@ class SetupCog(CogConGruppi, commands.Cog):
                 stato[modulo.name] = await db.is_module_active_for_guild(guild.id, modulo.name)
         if not moduli:
             await interaction.response.send_message(
-                "Nessun modulo disponibile per il wizard al momento. Usa /admin setup attiva.",
+                await testo_per(interaction, "setup_wizard_vuoto"),
                 ephemeral=True,
             )
             return
@@ -368,6 +365,7 @@ class SetupCog(CogConGruppi, commands.Cog):
             ruoli[tipo] = guild.get_role(ruolo_id) if ruolo_id else None
 
         view = SetupWizardView(guild.id, passi, moduli, stato, ruoli, ETICHETTE_CATEGORIE)
+        view.lingua = await lingua_interazione(interaction)
         await interaction.response.send_message(embed=view.embed(), view=view, ephemeral=True)
         view.message = await interaction.original_response()
 

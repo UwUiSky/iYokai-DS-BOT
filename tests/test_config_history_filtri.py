@@ -121,13 +121,13 @@ async def test_il_comando_mostra_solo_la_voce_del_proprio_server(db_pronto):
     try:
         i = _interazione()
         await cog.history.callback(cog, i, 10, None, None, None, None, altra, False)
-        assert "non trovata" in i.response.send_message.call_args.args[0]
+        assert any(x in i.response.send_message.call_args.args[0] for x in ("non trovata", "not found"))
         i = _interazione()
         await cog.history.callback(cog, i, 10, None, None, None, None, ids[0], False)
         assert "**Prima**" in i.response.send_message.call_args.args[0]
         i = _interazione()
         await cog.history.callback(cog, i, 10, None, None, "ieri", None, None, False)
-        assert "Data non valida" in i.response.send_message.call_args.args[0]
+        assert any(x in i.response.send_message.call_args.args[0] for x in ("Data non valida", "Invalid date"))
         i = _interazione()
         await cog.history.callback(cog, i, 10, None, None, None, None, None, True)
         allegato = i.response.send_message.call_args.kwargs.get("file")

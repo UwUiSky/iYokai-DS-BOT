@@ -19,6 +19,7 @@ import discord
 
 from core.command_access import TipoRuolo, imposta_ruolo
 from core.config_schema import imposta_modulo
+from core.i18n import t, testo_per
 from core.premium import PremiumModule
 from core.setup_wizard_logic import (
     TIPO_RUOLI,
@@ -35,19 +36,19 @@ logger = logging.getLogger("iyokai.setup")
 TIMEOUT = 300
 CATEGORIA_LOG = "logging"
 NOME_COG_LOG = "LogConfigCog"
-ETICHETTE_RUOLI = {
-    TipoRuolo.ADMIN: "Ruolo admin del bot",
-    TipoRuolo.MOD: "Ruolo moderatore del bot",
-    TipoRuolo.MODBAN: "Ruolo ban del bot",
+TESTI_RUOLI = {
+    TipoRuolo.ADMIN: "setup_ruolo_admin",
+    TipoRuolo.MOD: "setup_ruolo_mod",
+    TipoRuolo.MODBAN: "setup_ruolo_modban",
 }
 
 
 class SelezioneRuolo(discord.ui.RoleSelect):
     """Scelta di un ruolo del bot: si salva subito, dallo stesso punto del pannello web."""
 
-    def __init__(self, tipo: TipoRuolo, attuale: discord.Role | None, riga: int) -> None:
+    def __init__(self, tipo: TipoRuolo, attuale: discord.Role | None, riga: int, lingua: str = "it") -> None:
         super().__init__(
-            placeholder=ETICHETTE_RUOLI[tipo],
+            placeholder=t(TESTI_RUOLI[tipo], lingua),
             min_values=0,
             max_values=1,
             default_values=[attuale] if attuale is not None else [],
@@ -78,7 +79,9 @@ class SelezioneRuolo(discord.ui.RoleSelect):
 class SelezioneModuli(discord.ui.Select):
     """I moduli di un passo: la scelta resta nella vista fino a «Salva»."""
 
-    def __init__(self, passo: Passo, moduli: dict[str, PremiumModule], scelti: dict[str, bool]) -> None:
+    def __init__(
+        self, passo: Passo, moduli: dict[str, PremiumModule], scelti: dict[str, bool], lingua: str = "it"
+    ) -> None:
         opzioni = [
             discord.SelectOption(
                 label=moduli[n].display_name[:100],
@@ -89,7 +92,7 @@ class SelezioneModuli(discord.ui.Select):
             for n in passo.nomi
         ]
         super().__init__(
-            placeholder="Scegli i moduli da tenere attivi...",
+            placeholder=t("setup_wizard_scegli_moduli", lingua),
             min_values=0,
             max_values=len(opzioni),
             options=opzioni,
@@ -126,6 +129,7 @@ class SetupWizardView(BaseView):
         self.ruoli = dict(ruoli)
         self.etichette = etichette
         self.step = 0
+        self.lingua = "it"  # la imposta il comando prima di mandare il wizard
         self.message: discord.Message | discord.InteractionMessage | None = None
         self.ricostruisci()
 
@@ -137,26 +141,22 @@ class SetupWizardView(BaseView):
     def titolo(self) -> str:
         passo = self.passo
         if passo.tipo == TIPO_RUOLI:
-            nome = "Ruoli del bot"
+            nome = t("setup_wizard_passo_ruoli", self.lingua)
         else:
             nome = self.etichette.get(passo.categoria, passo.categoria)
             if passo.parti > 1:
                 nome += f" ({passo.parte}/{passo.parti})"
-        return f"Passo {self.step + 1}/{len(self.passi)}: {nome}"
+        return t("setup_wizard_passo", self.lingua, n=self.step + 1, totale=len(self.passi), nome=nome)
 
     def embed(self) -> discord.Embed:
         passo = self.passo
         if passo.tipo == TIPO_RUOLI:
             righe = [
-                f"**{ETICHETTE_RUOLI[t]}**: {self.ruoli[t].mention if self.ruoli.get(t) else 'non scelto'}"
-                for t in ETICHETTE_RUOLI
+                f"**{t(TESTI_RUOLI[tipo], self.lingua)}**: "
+                f"{self.ruoli[tipo].mention if self.ruoli.get(tipo) else t('setup_wizard_non_scelto', self.lingua)}"
+                for tipo in TESTI_RUOLI
             ]
-            testo = (
-                "\n".join(righe)
-                + "\n\nChi ha uno di questi ruoli può usare i comandi del livello giusto anche senza "
-                "i permessi di Discord. Si salvano subito. Il ruolo admin apre anche i comandi di "
-                "sicurezza: lo sceglie solo chi ha «Amministratore»."
-            )
+            testo = "\n".join(righe) + "\n\n" + t("setup_wizard_ruoli_testo", self.lingua)
         else:
             righe = [
                 f"{'✅' if self.scelti[n] else '❌'} **{self.moduli[n].display_name}**"
@@ -165,31 +165,31 @@ class SetupWizardView(BaseView):
             ]
             testo = "\n".join(righe)
         embed = discord.Embed(title=self.titolo()[:256], description=testo[:4000])
-        embed.set_footer(text="I moduli si salvano con «Salva» all'ultimo passo.")
+        embed.set_footer(text=t("setup_wizard_footer", self.lingua))
         return embed
 
     def ricostruisci(self) -> None:
         self.clear_items()
         passo = self.passo
         if passo.tipo == TIPO_RUOLI:
-            for riga, tipo in enumerate(ETICHETTE_RUOLI):
-                self.add_item(SelezioneRuolo(tipo, self.ruoli.get(tipo), riga))
+            for riga, tipo in enumerate(TESTI_RUOLI):
+                self.add_item(SelezioneRuolo(tipo, self.ruoli.get(tipo), riga, self.lingua))
         else:
-            self.add_item(SelezioneModuli(passo, self.moduli, self.scelti))
+            self.add_item(SelezioneModuli(passo, self.moduli, self.scelti, self.lingua))
             if passo.categoria == CATEGORIA_LOG and passo.parte == 1:
                 bottone = discord.ui.Button(
-                    label="Crea i canali dei log", style=discord.ButtonStyle.secondary, row=3
+                    label=t("setup_wizard_crea_log", self.lingua), style=discord.ButtonStyle.secondary, row=3
                 )
                 bottone.callback = self._crea_canali_log
                 self.add_item(bottone)
-        indietro = discord.ui.Button(label="Indietro", row=4, disabled=self.step == 0)
+        indietro = discord.ui.Button(label=t("setup_wizard_indietro", self.lingua), row=4, disabled=self.step == 0)
         indietro.callback = self._indietro
         avanti = discord.ui.Button(
-            label="Salva" if is_last_step(self.step, len(self.passi)) else "Avanti",
+            label=t("setup_wizard_salva" if is_last_step(self.step, len(self.passi)) else "setup_wizard_avanti", self.lingua),
             style=discord.ButtonStyle.success, row=4,
         )
         avanti.callback = self._avanti
-        annulla = discord.ui.Button(label="Annulla", style=discord.ButtonStyle.danger, row=4)
+        annulla = discord.ui.Button(label=t("setup_wizard_annulla", self.lingua), style=discord.ButtonStyle.danger, row=4)
         annulla.callback = self._annulla
         for bottone in (indietro, avanti, annulla):
             self.add_item(bottone)
@@ -212,14 +212,14 @@ class SetupWizardView(BaseView):
             await imposta_modulo(interaction.client, self.guild_id, nome, attivo, interaction.user.id)
         self.stop()
         await interaction.response.edit_message(
-            content=f"✅ Configurazione guidata completata. Moduli cambiati: {len(cambiati)}.",
+            content=await testo_per(interaction, "setup_wizard_fatto", cambiati=len(cambiati)),
             embed=None, view=None,
         )
 
     async def _annulla(self, interaction: discord.Interaction) -> None:
         self.stop()
         await interaction.response.edit_message(
-            content="Operazione annullata. I moduli non sono stati cambiati (i ruoli già scelti restano).",
+            content=await testo_per(interaction, "setup_wizard_annullato"),
             embed=None, view=None,
         )
 
@@ -228,7 +228,7 @@ class SetupWizardView(BaseView):
         cog = interaction.client.get_cog(NOME_COG_LOG)
         if cog is None:
             await interaction.response.send_message(
-                "La creazione dei canali dei log non è disponibile ora. Usa `/log crea-canali`.",
+                await testo_per(interaction, "setup_wizard_log_non_disponibile"),
                 ephemeral=True,
             )
             return
@@ -240,7 +240,7 @@ class SetupWizardView(BaseView):
         if self.message is not None:
             try:
                 await self.message.edit(
-                    content="⏱️ Wizard scaduto senza salvare i moduli. Rilancia /admin setup wizard per riprovare.",
+                    content=t("setup_wizard_scaduto", self.lingua),
                     embed=None, view=None,
                 )
             except discord.HTTPException:
