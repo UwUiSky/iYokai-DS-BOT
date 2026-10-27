@@ -4,9 +4,8 @@
 27/10/2026 · ramo `feat/r10core` · giro r10 (chiudere le voci [~]; migrazioni 0360-0369)
 
 ## In corso
-- Previsione: 7-8 blocchi. Fatto: (1) test mancanti radio/spam-trap/heatmap, (2) wizard a passi (ruoli + una categoria per passo).
-- Prossimo: SPEC flip 1.1/1.2/1.3/1.6/2.3/3.3/17.8/17.10 (gia fatte in codice); 3.1 monete per modulo (#93);
-  §21.1 catalogo lingue per i miei cog; B.3/B.4 app utente (#107); #109 marchio risponde ai comandi; #113 webhook log.
+- Giro r10 quasi chiuso. Fatto: wizard, 3.1 monete, #109 marchio, #113 inviti, 21.1 (cog core), SPEC flip.
+- Prossimo: B.3 (livello e clan nel Profilo app), B.4 (note, liste, fusi, conversioni, QR, colori), #113 webhook dei log, owner radio max_length (file musica).
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -22,6 +21,8 @@
   #107: `core/user_app_bot.py`, `core/user_app_logic.py`, cogs/user_app/personal.py; -cerca-comando/-chiedi user-install.
 
 - r10 g1: wizard `cogs/utility/_setup_wizard_views.py` + `core/setup_wizard_logic.py` (costruisci_passi): passo ruoli (imposta_ruolo) e una categoria per passo, bottone «Crea i canali dei log» = callback di `/log crea-canali`.
+
+- r10: `core/premium_modulo_service.py`, `core/bot_inviti.py`, marchio: `inoltra_interazioni` (parsers INTERACTION_CREATE -> stato del principale).
 
 ## Cose imparate
 - `View.clear_items()` stacca i figli: dentro un callback tenere `vista = self.view` prima di ricostruire.
