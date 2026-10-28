@@ -51,11 +51,16 @@ async def _resta_a_coda_finita(guild_id: int) -> bool:
 
 class MusicFleet:
     def __init__(self, worker_bots: list[commands.Bot]) -> None:
-        if len(worker_bots) != TOTAL_WORKERS:
+        if len(worker_bots) < TOTAL_WORKERS:
             raise ValueError(
-                f"Attesi {TOTAL_WORKERS} bot worker, ricevuti {len(worker_bots)}."
+                f"Attesi almeno {TOTAL_WORKERS} bot worker, ricevuti {len(worker_bots)}."
             )
         self._worker_bots = worker_bots
+
+    @property
+    def total_workers(self) -> int:
+        """Quante istanze ci sono davvero (5 o più, da MUSIC_TOKEN_n)."""
+        return len(self._worker_bots)
 
     @property
     def worker_bots(self) -> list[commands.Bot]:
@@ -104,7 +109,9 @@ class MusicFleet:
             return worker_index, self.get_worker_bot(worker_index)
 
         esclusi = await self.get_missing_worker_indices(guild_id) | self._worker_non_pronti()
-        libero = await music_session_repo.assign_free_worker(guild_id, channel_id, esclusi)
+        libero = await music_session_repo.assign_free_worker(
+            guild_id, channel_id, esclusi, self.total_workers
+        )
         if libero is None:
             return None
         return libero, self.get_worker_bot(libero)
@@ -123,7 +130,7 @@ class MusicFleet:
         """
         return {
             i
-            for i in range(1, TOTAL_WORKERS + 1)
+            for i in range(1, self.total_workers + 1)
             if i not in self._worker_non_pronti()
             and self.get_worker_bot(i).get_guild(guild_id) is None
         }
@@ -135,7 +142,7 @@ class MusicFleet:
         il loro link d'invito (`user` è None).
         """
         return {
-            i for i in range(1, TOTAL_WORKERS + 1) if not self.get_worker_bot(i).is_ready()
+            i for i in range(1, self.total_workers + 1) if not self.get_worker_bot(i).is_ready()
         }
 
     def build_invite_url(self, worker_index: int, guild_id: int) -> str:

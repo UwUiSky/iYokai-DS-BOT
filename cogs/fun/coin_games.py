@@ -34,7 +34,9 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.fun_logic import MAX_TEMA_MISURA, compute_misura, tema_ammesso
 from core.repositories.counting_game_repo import counting_game_repo
+from core.moneta_server import aggiungi_moneta
 from core.repositories.leveling_repo import leveling_repo
+from core.repositories.leveling_settings_repo import leveling_settings_repo
 
 logger = logging.getLogger("iyokai.coin_games")
 
@@ -164,7 +166,11 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             color=colore,
         )
         embed.set_footer(text=_AVVISO)
-        await interaction.response.send_message(embed=embed)
+        try:
+            immagine = await leveling_settings_repo.get_immagine_moneta(interaction.guild.id)
+        except Exception:
+            immagine = None
+        await interaction.response.send_message(embed=embed, file=aggiungi_moneta(embed, immagine))
 
     # ================================================================
     # /fun misura

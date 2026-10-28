@@ -65,6 +65,7 @@ from core.rank_card_image import (
     prepara_sfondo,
     render_rank_card,
 )
+from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
@@ -641,6 +642,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.warning("Impostazioni dei livelli non lette per %s: uso quelle di base.", guild_id)
             return ConfigLivelli()
+
+    async def _con_moneta(self, embed: discord.Embed, guild_id: int) -> discord.File:
+        """D38: miniatura della moneta del server sull'embed; il file va passato a `file=`."""
+        try:
+            immagine = await leveling_settings_repo.get_immagine_moneta(guild_id)
+        except Exception:
+            logger.warning("Immagine della moneta non letta per %s: uso quella di iYokai.", guild_id)
+            immagine = None
+        return aggiungi_moneta(embed, immagine)
 
     async def _moneta(self, guild_id: int) -> str:
         """ECO-001: come questo server chiama la moneta (di base «coin»)."""
@@ -1237,8 +1247,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         posizione = await leveling_repo.get_coins_position(interaction.guild.id, target.id)
         in_classifica = f" (#{posizione} in classifica)" if posizione else ""
         moneta = await self._moneta(interaction.guild.id)
+        embed = discord.Embed(
+            description=f"{target.mention} ha **{totali.coins_total}** {moneta}{in_classifica}.",
+            color=discord.Color.gold(),
+        )
+        file = await self._con_moneta(embed, interaction.guild.id)
         await interaction.response.send_message(
-            f"{target.mention} ha **{totali.coins_total}** {moneta}{in_classifica}."
+            embed=embed, file=file, allowed_mentions=discord.AllowedMentions.none()
         )
 
     @comando_di_gruppo(
@@ -2041,16 +2056,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         embed = discord.Embed(
             title="🏛️ Cassa del server",
-            description=f"Saldo attuale: **{saldo}** coin",
+            description=f"Saldo attuale: **{saldo}** {await self._moneta(guild.id)}",
             color=discord.Color.gold(),
         )
+        file = await self._con_moneta(embed, guild.id)
         if movimenti:
             righe = []
             for m in movimenti:
                 segno = "+" if m.amount > 0 else ""
                 righe.append(f"`{m.created_at:%Y-%m-%d}` {segno}{m.amount} — {m.reason}")
             embed.add_field(name="Ultimi movimenti", value="\n".join(righe), inline=False)
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, file=file)
 
     @comando_di_gruppo(
         "economia",
@@ -2479,7 +2495,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 inline=False,
             )
 
-        await interaction.response.send_message(embed=embed)
+        file = await self._con_moneta(embed, interaction.guild.id)
+        await interaction.response.send_message(embed=embed, file=file)
 
     @comando_di_gruppo(
         "clan",
@@ -3409,6 +3426,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         tassa_pay="Percentuale di /level pay che va alla cassa del server (0-50)",
         massimo_pay="Massimo per ogni /level pay (0 = nessun tetto)",
         minimo_pay="Minimo per ogni /level pay (0 = nessuno)",
+        immagine_moneta="Immagine della moneta, mostrata accanto al saldo (di base: la moneta di iYokai)",
+        senza_immagine="Sì = togli l'immagine e torna alla moneta di iYokai",
     )
     @app_commands.choices(moltiplicatori=_SCELTE_MOLTIPLICATORI)
     @richiedi(Livello.ADMIN)
@@ -3428,6 +3447,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         tassa_pay: app_commands.Range[int, 0, 50] | None = None,
         massimo_pay: app_commands.Range[int, 0, 1_000_000] | None = None,
         minimo_pay: app_commands.Range[int, 0, 1_000_000] | None = None,
+        immagine_moneta: discord.Attachment | None = None,
+        senza_immagine: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -3456,7 +3477,84 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ):
             if valore is not None:
                 campi[nome] = valore
-        await self._salva_impostazioni(interaction, campi)
+        await self._salva_impostazioni_moneta(
+            interaction, campi, immagine_moneta, bool(senza_immagine), nome_moneta is not None
+        )
+
+    async def _salva_impostazioni_moneta(
+        self,
+        interaction: discord.Interaction,
+        campi: dict,
+        allegato: discord.Attachment | None,
+        togli: bool,
+        nome_cambiato: bool,
+    ) -> None:
+        """D38: come _salva_impostazioni, con in più l'immagine della moneta."""
+        guild_id = interaction.guild.id
+        if allegato is not None and togli:
+            await interaction.response.send_message(
+                "Scegli: o carichi un'immagine, o la togli.", ephemeral=True
+            )
+            return
+        immagine = None
+        differita = False
+        if allegato is not None:
+            if allegato.size > MAX_IMAGE_BYTES:
+                await interaction.response.send_message(
+                    "L'immagine è troppo grande: al massimo 8 MB.", ephemeral=True
+                )
+                return
+            if not (allegato.content_type or "").startswith("image/"):
+                await interaction.response.send_message(
+                    "La moneta deve essere un'immagine (PNG, JPEG, WEBP).", ephemeral=True
+                )
+                return
+            await interaction.response.defer(ephemeral=True)
+            differita = True
+            try:
+                immagine = await run_image_task(prepara_moneta, await allegato.read())
+            except MonetaNonValida:
+                await interaction.followup.send(
+                    "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo.",
+                    ephemeral=True,
+                )
+                return
+            except discord.HTTPException:
+                await interaction.followup.send(
+                    "Non sono riuscito a scaricare l'immagine: riprova.", ephemeral=True
+                )
+                return
+        if not campi and immagine is None and not togli:
+            await interaction.response.send_message(
+                "Scegli almeno un valore da cambiare.", ephemeral=True
+            )
+            return
+        try:
+            if campi:
+                await leveling_settings_repo.set_options(guild_id, **campi)
+        except ValueError as errore:
+            testo = f"❌ {errore}"
+            if differita:
+                await interaction.followup.send(testo, ephemeral=True)
+            else:
+                await interaction.response.send_message(testo, ephemeral=True)
+            return
+        if immagine is not None or togli:
+            await leveling_settings_repo.set_immagine_moneta(guild_id, immagine)
+        config = await leveling_settings_repo.get_config(guild_id)
+        nota = "✅ Impostazioni salvate."
+        if nome_cambiato and immagine is None and not togli:
+            if await leveling_settings_repo.get_immagine_moneta(guild_id) is None:
+                nota += (
+                    "\nVuoi anche un'immagine per la moneta? Rifai il comando con `immagine_moneta`. "
+                    "Senza immagine uso la moneta di iYokai."
+                )
+        embed = _embed_impostazioni(config)
+        file = aggiungi_moneta(embed, await leveling_settings_repo.get_immagine_moneta(guild_id))
+        if differita:
+            await interaction.followup.send(nota, embed=embed, file=file, ephemeral=True)
+        else:
+            await interaction.response.send_message(nota, embed=embed, file=file, ephemeral=True)
 
     @comando_di_gruppo(
         "level",

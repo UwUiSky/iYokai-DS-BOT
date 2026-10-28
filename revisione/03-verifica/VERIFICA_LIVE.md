@@ -1278,3 +1278,8 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 
 - [ ] Link personale (D36) — passi: `/level inviti opzioni chi:chi può creare inviti`; un membro senza «Crea invito» chiede `/level inviti link`: rifiutato. Poi `chi:tutti`: riceve il link e funziona. `chi:solo un ruolo ruolo:@X`: solo chi ha @X. `chi:nessuno`: nessun link. Stessa scelta nella pagina del sito `/server/<id>/inviti`.
 - [ ] Ban e addio (D37) — passi: `/gestione benvenuto addio enabled:True channel:#addii`; bandisci A (account di prova): escono prima il martello e poi «Ciao, è stato bello vederti». `/gestione benvenuto extra` → «Ban e addio»: scegli «solo l'addio», carica una gif per l'addio e un link https per il ban; prova ban e uscita normale; «nessuno» non scrive niente. Con raid attivo: nessun messaggio al bannato.
+## Livelli, economia e musica — giro r11 (D38, D30)
+1. `/level impostazioni xp nome_moneta:gemme` con un'emoji nel nome: rifiutato. Con nome valido e senza immagine: la risposta propone `immagine_moneta`.
+2. `/level impostazioni xp immagine_moneta:` con un PNG grande: salvato; `/level balance`, `/level cassa`, una partita di `/fun` e `/clan info` mostrano la stessa miniatura accanto al saldo.
+3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
+4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.

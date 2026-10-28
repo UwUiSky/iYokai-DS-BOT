@@ -582,3 +582,14 @@ Precisa D35. Scelte fatte dove D35 lasciava aperto:
   messaggio si cancella senza contare il richiamo.
 - Il blocco nativo usa solo gli insulti certi della lista di base (non le parole sospette), vicino a una minaccia.
 
+
+## D41 — Immagine della moneta e istanze musicali oltre 5 (28/10/2026)
+
+Precisa D38 e D30. **Moneta:** l'immagine sta in `guild_coin_images` (PNG 128x128, al massimo 64 KiB,
+ridotta con `core/safe_image.py`); compare **sempre come miniatura** dell'embed (file `moneta.png`),
+con un aiuto solo: `core/moneta_server.aggiungi_moneta`. Senza immagine: `assets/moneta_iyokai.png`
+(disegnata da `scripts/genera_moneta_iyokai.py`). Il nome rifiuta emoji, codici `:nome:` e menzioni.
+Si imposta con `/level impostazioni xp immagine_moneta:` (o `senza_immagine:`).
+**Istanze:** `MUSIC_TOKEN_1..5` obbligatori, `MUSIC_TOKEN_6..20` facoltativi (tetto 20, senza buchi).
+La radio del bot principale resta solo di `/owner radio` (un test controlla che i comandi dei server
+usino solo il player dei worker). Da avvisare l'owner.

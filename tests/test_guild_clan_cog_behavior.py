@@ -26,14 +26,17 @@ class _FakeResponse:
         self.sent_messages: list[str] = []
         self.sent_embeds: list = []
         self.sent_views: list = []
+        self.sent_files: list = []
         self.edited_messages: list[dict] = []
         # Ordine delle chiamate: serve a controllare che defer() sia la prima.
         self.chiamate: list[str] = []
 
     async def send_message(
-        self, content: str = None, embed=None, view=None, ephemeral: bool = False
+        self, content: str = None, embed=None, view=None, ephemeral: bool = False, file=None
     ) -> None:
         self.chiamate.append("send_message")
+        if file is not None:
+            self.sent_files.append(file)
         if content is not None:
             self.sent_messages.append(content)
         if embed is not None:
@@ -353,6 +356,9 @@ async def test_info_della_propria_gilda(cog_e_repos):
     embed = interaction.response.sent_embeds[0]
     assert "ABC" in embed.title
     assert "I Cavalieri" in embed.title
+    # D38: la moneta del server come miniatura, con il suo file allegato
+    assert embed.thumbnail.url == "attachment://moneta.png"
+    assert interaction.response.sent_files[0].filename == "moneta.png"
 
 
 @pytest.mark.asyncio

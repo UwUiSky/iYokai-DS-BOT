@@ -1,13 +1,15 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-27/10/2026 · giro r10, ramo `feat/r10liv`, DB `iyokai_wr10liv`, migrazioni 0340–0349 (usate 0340, 0341). Lavoro PER FILE.
+28/10/2026 · giro r11, ramo `feat/r11eco`, migrazioni 0410–0419 (usata 0410). Lavoro PER FILE.
 
 ## In corso
+- r11 finito: D38 (moneta con immagine) e D30 (istanze dinamiche) fatti. Smoke da fare (lo lancia l'orchestratore).
 - Giro r10: le 20 voci `[~]` di SPEC §15 sono chiuse. Fatti shop (0340), classifica settimanale, nome moneta e tassa/tetto su pay (0341).
 - Prossimo giro: reputazione LIV-076…088 (gruppo a parte), #127 (VOC-006, 010, 013, 014, 016, 017, 021), altre voci di #124/#125 (ECO-003 tetto saldo, ECO-007 storico personale, ECO-026 premi settimanale/mensile, LIV-044/045 ruoli per classifica).
 
 ## Fatto
+- r11: D38 `core/moneta_server.py`, `guild_coin_images` (0410), miniatura `moneta.png` in saldo/cassa/giochi/clan info; D30 `MUSIC_TOKEN_6..20`, `MusicFleet.total_workers`, test radio solo owner.
 - r10: SPEC §15 `[~]`→`[x]` con le prove già nei test (erano marcatori vecchi del 04/10); ECO-063/065/066/067/068 shop (`shop_repo`, `togli_ruoli_shop_scaduti` nel cog, 0340); LIV-058 (`week_key` in `leveling_activity`); ECO-001/ECO-015 (0341).
 - r7 D: `/level premi` (LIV-048/027), `/level pause` (ECO-020), `/level livelli-recenti` (LIV-039, 0203).
 - r7 C: #65 M 9.18 tick vocale gilde raggruppato (`apply_ticks`, `clear_activities`, `get_membri_in_gilda`).
@@ -37,6 +39,7 @@
 - Righe di `leveling_activity`: mese `2026-10` e settimana `2026-W43`; chi cerca «la riga del mese» filtri per `period_key`.
 
 ## Aperto
+- Migrazioni r11: 0410. Embed economia non ancora con miniatura: shop, classifiche, daily/work (testo semplice).
 - Migrazioni mie: 0090-0095, 0097-0099, 0120-0121, 0200-0203, 0340-0341. NON usare 0096.
 - #127 restano VOC-006, 010, 013, 014, 016, 017, 021.
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.
