@@ -86,6 +86,22 @@ async def test_note_e_liste_per_utente(cog, note_db):
     assert "latte" in i.response.send_message.await_args.kwargs["embed"].description
 
 
+async def test_elenco_lungo_mostra_righe_intere_e_dice_quante_ne_mancano(cog, note_db):
+    """Il tetto è 100 voci: quelle che non stanno nell'embed non spariscono in silenzio."""
+    import re
+
+    for n in range(30):
+        await user_app_note_repo.aggiungi(7, "", f"voce {n} " + "x" * 290)
+    i = _i(7)
+    await cog.elenco.callback(cog, i, None)
+    corpo = i.response.send_message.await_args.kwargs["embed"].description
+
+    mostrate = re.findall(r"^`\d+` · voce \d+ x+$", corpo, flags=re.M)
+    altre = re.search(r"altre (\d+)", corpo)
+    assert altre is not None and len(mostrate) + int(altre.group(1)) == 30
+    assert len(corpo) <= 4096
+
+
 async def test_rimuovi_solo_le_proprie_voci(cog, note_db):
     altro = await user_app_note_repo.aggiungi(8, "", "di un altro")
     mia = await user_app_note_repo.aggiungi(7, "", "mia")

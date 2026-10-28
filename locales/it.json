@@ -224,6 +224,7 @@
   "app_note_titolo_lista": "Lista {lista}",
   "app_note_nessuna": "Niente qui, per ora.",
   "app_note_liste": "Le tue liste: {elenco}",
+  "app_note_altre": "… e altre {altre}: togline qualcuna con /note rimuovi per vederle.",
   "app_note_rimossa": "Voce `{numero}` tolta.",
   "app_note_non_trovata": "Non trovo una tua voce con il numero {numero}.",
   "app_stato_solo_tuo": "Lo stato nella rete di sicurezza lo puoi vedere solo per te stesso: usa il menu sul tuo profilo.",

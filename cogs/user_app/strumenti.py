@@ -38,6 +38,8 @@ INSTALLAZIONE = app_commands.AppInstallationType(guild=False, user=True)
 OVUNQUE = app_commands.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
 MAX_LISTA = 30
 MAX_VOCE = 500
+MAX_RIGA_ELENCO = 200
+MAX_CORPO_ELENCO = 3300  # 4096 dell'embed, meno l'elenco delle liste
 
 
 async def _completa_zone(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
@@ -46,6 +48,20 @@ async def _completa_zone(interaction: discord.Interaction, current: str) -> list
 
 async def _completa_unita(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=u, value=u) for u in UNITA_ELENCO if current.lower() in u][:25]
+
+
+def _righe_che_stanno(voci, lingua: str) -> str:
+    """Le voci intere che stanno nell'embed; per le altre, quante sono (si vedono togliendone qualcuna)."""
+    righe: list[str] = []
+    usati = 0
+    for v in voci:
+        riga = f"`{v['id']}` · {v['testo'][:MAX_RIGA_ELENCO]}"
+        if usati + len(riga) + 1 > MAX_CORPO_ELENCO:
+            righe.append(t("app_note_altre", lingua, altre=len(voci) - len(righe)))
+            break
+        righe.append(riga)
+        usati += len(riga) + 1
+    return "\n".join(righe)
 
 
 class StrumentiCog(commands.Cog):
@@ -169,11 +185,10 @@ class StrumentiCog(commands.Cog):
     @app_commands.describe(lista="Il nome della lista (vuoto: le note e l'elenco delle liste)")
     async def elenco(self, interaction: discord.Interaction, lista: app_commands.Range[str, 1, MAX_LISTA] | None = None) -> None:
         nome = (lista or "").strip().lower()
-        voci = await user_app_note_repo.elenco(interaction.user.id, nome)
+        voci = await user_app_note_repo.elenco(interaction.user.id, nome, limite=MAX_VOCI_PER_UTENTE)
         lingua = await lingua_interazione(interaction)
-        righe = [f"`{v['id']}` · {v['testo'][:300]}" for v in voci]
         titolo = t("app_note_titolo_lista", lingua, lista=nome) if nome else t("app_note_titolo", lingua)
-        corpo = "\n".join(righe) or t("app_note_nessuna", lingua)
+        corpo = _righe_che_stanno(voci, lingua) or t("app_note_nessuna", lingua)
         if not nome:
             altre = [r["lista"] for r in await user_app_note_repo.liste(interaction.user.id) if r["lista"]]
             if altre:

@@ -224,6 +224,7 @@
   "app_note_titolo_lista": "List {lista}",
   "app_note_nessuna": "Nothing here yet.",
   "app_note_liste": "Your lists: {elenco}",
+  "app_note_altre": "… and {altre} more: remove some with /note rimuovi to see them.",
   "app_note_rimossa": "Entry `{numero}` removed.",
   "app_note_non_trovata": "I cannot find an entry of yours with number {numero}.",
   "app_stato_solo_tuo": "You can only see the security network status for yourself: use the menu on your own profile.",
