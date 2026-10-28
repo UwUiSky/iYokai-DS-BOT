@@ -26,9 +26,12 @@ ATTESA_RAGGRUPPO = 2.0
 MAX_EMBED_PER_MESSAGGIO = 10  # limite di Discord per un messaggio di webhook
 MAX_CARATTERI_MESSAGGIO = 5500  # il limite di Discord è 6000 per messaggio: margine
 _SOLO_EMBED = frozenset({"embed", "embeds"})
+_SOLO_CANALE = ("view", "file", "files")  # bottoni: li gestisce il bot; file: il webhook li chiude anche se fallisce
 
 # (guild_id, channel_id) -> wrapper vivo: tiene la coda e il webhook in cache.
 _vivi: dict[tuple[int, int], "CanaleWebhook"] = {}
+# (guild_id, channel_id) -> blocco: righe insieme su un canale nuovo creano un solo webhook.
+_blocchi: dict[tuple[int, int], asyncio.Lock] = {}
 
 
 class CanaleWebhook:
@@ -51,7 +54,7 @@ class CanaleWebhook:
             for embed in embeds:
                 await self._accoda(embed)
             return None
-        if kw.get("view") is not None:  # i bottoni li ha solo il bot
+        if any(kw.get(nome) for nome in _SOLO_CANALE):
             return await self._canale.send(**kw)
         try:
             return await self._webhook.send(wait=True, **kw)
@@ -140,20 +143,21 @@ async def avvolgi(canale: discord.TextChannel, attivo: bool):
     if not attivo:
         return canale
     chiave = (canale.guild.id, canale.id)
-    vivo = _vivi.get(chiave)
-    if vivo is not None:
-        vivo._canale = canale  # il canale visto dal bot di turno (principale o Mod)
-        return vivo
-    try:
-        webhook = await _crea_o_leggi(canale, _client_di(canale))
-    except Exception:  # noqa: BLE001 - un errore qui non deve fermare il log
-        logger.warning("Webhook dei log non disponibile per il canale %s.", canale.id, exc_info=True)
-        return canale
-    if webhook is None:
-        return canale
-    nuovo = CanaleWebhook(canale, webhook)
-    _vivi[chiave] = nuovo
-    return nuovo
+    async with _blocchi.setdefault(chiave, asyncio.Lock()):
+        vivo = _vivi.get(chiave)
+        if vivo is not None:
+            vivo._canale = canale  # il canale visto dal bot di turno (principale o Mod)
+            return vivo
+        try:
+            webhook = await _crea_o_leggi(canale, _client_di(canale))
+        except Exception:  # noqa: BLE001 - un errore qui non deve fermare il log
+            logger.warning("Webhook dei log non disponibile per il canale %s.", canale.id, exc_info=True)
+            return canale
+        if webhook is None:
+            return canale
+        nuovo = CanaleWebhook(canale, webhook)
+        _vivi[chiave] = nuovo
+        return nuovo
 
 
 async def svuota_tutti() -> None:

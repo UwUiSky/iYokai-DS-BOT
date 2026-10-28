@@ -32,6 +32,7 @@ def _webhook():
 @pytest.fixture(autouse=True)
 def _pulito(monkeypatch):
     lw._vivi.clear()
+    lw._blocchi.clear()  # un blocco resta legato al ciclo di eventi del test che lo ha usato
     monkeypatch.setattr(lw, "ATTESA_RAGGRUPPO", 0.01)
     monkeypatch.setattr(lw.log_webhook_repo, "elimina", AsyncMock())
     yield
@@ -84,10 +85,22 @@ async def test_con_bottoni_scrive_il_canale_non_il_webhook():
     web.send.assert_not_awaited()
 
 
-async def test_un_file_passa_dal_webhook_subito():
+async def test_un_file_lo_scrive_il_canale_non_il_webhook():
+    """Il webhook chiude il file anche quando fallisce: il ripiego sul canale manderebbe un file chiuso
+    (ValueError, non HTTPException) e il transcript del ticket si perderebbe."""
+    canale = _canale()
+    web = _webhook()
+    dest = lw.CanaleWebhook(canale, web)
+    await dest.send(content="ciao", file=MagicMock())
+    await dest.send(content="ciao", files=[MagicMock()])
+    assert canale.send.await_count == 2
+    web.send.assert_not_awaited()
+
+
+async def test_un_testo_senza_file_passa_dal_webhook_subito():
     web = _webhook()
     dest = lw.CanaleWebhook(_canale(), web)
-    await dest.send(content="ciao", file=MagicMock())
+    await dest.send(content="ciao")
     web.send.assert_awaited_once()
     assert web.send.await_args.kwargs["wait"] is True
 
@@ -130,6 +143,26 @@ async def test_avvolgi_crea_il_webhook_una_volta_e_lo_riusa(monkeypatch):
     assert isinstance(primo, lw.CanaleWebhook) and primo is secondo
     canale.create_webhook.assert_awaited_once()
     lw.log_webhook_repo.salva.assert_awaited_once_with(10, 20, 555, "tok")
+
+
+async def test_righe_insieme_su_un_canale_nuovo_creano_un_solo_webhook(monkeypatch):
+    """In un raid arrivano molte righe insieme: un webhook per riga riempirebbe il canale (15 al massimo)."""
+    canale = _canale()
+
+    async def crea(**kw):
+        await asyncio.sleep(0)
+        return MagicMock(id=555, token="tok")
+
+    canale.create_webhook = AsyncMock(side_effect=crea)
+    canale.permissions_for.return_value = discord.Permissions(manage_webhooks=True)
+    monkeypatch.setattr(lw, "_client_di", lambda c: MagicMock())
+    monkeypatch.setattr(lw.log_webhook_repo, "get", AsyncMock(return_value=None))
+    monkeypatch.setattr(lw.log_webhook_repo, "salva", AsyncMock())
+
+    destinazioni = await asyncio.gather(*(lw.avvolgi(canale, True) for _ in range(5)))
+
+    canale.create_webhook.assert_awaited_once()
+    assert all(d is destinazioni[0] for d in destinazioni)
 
 
 async def test_senza_chiave_il_webhook_appena_creato_si_cancella(monkeypatch):
