@@ -239,3 +239,13 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10musa` | `cogs/music/player.py:nonstop_on` | Chiunque teneva un dei 5 worker condivisi in un canale vuoto per sempre | alta | chiuso 20ab14b (D30: solo premium) |
+| 28/10 | `feat/r10musa` | `core/music_settings_logic.py:title_blocked` | Parole vietate aggirabili con accenti, lettere larghe/cirilliche, punti | media | chiuso ffe5cda |
+| 28/10 | `feat/r10musa` | `core/live_alert_flow.py:pubblica_cambio_live` | Diretta dentro la pausa minima annunciata a metà quando la pausa scade | media | chiuso dc12194 |
+| 28/10 | `feat/r10musa` | `core/alert_options_logic.py:motivo_silenzio` | Filtro gioco su YouTube (gioco sconosciuto) zittiva ogni diretta | media | chiuso dc12194 |
+| 28/10 | `feat/r10musa` | `cogs/music/settings.py`, `cogs/utility/feed_alerts.py:opzioni` | Testo vuoto non inviabile da Discord: filtri non svuotabili; gioco «-» zittiva tutto | media | chiuso b3a4d4a |
+| 28/10 | `feat/r10musa` | `core/music_settings_logic.py:SITI_CONOSCIUTI` | Con solo-siti-conosciuti il file allegato a /music play era rifiutato | bassa | chiuso 86b9dcf |
+| 28/10 | `feat/r10musa` | `core/live_alert_flow.py:73` | Avviso in pausa manda comunque «fine diretta» di una diretta annunciata prima | bassa | aperto (dev-utilita) |
+| 28/10 | `feat/r10musa` | `cogs/music/player.py:accoda` (cerca) | Playlist salvate saltano solo-siti-conosciuti (URI vecchi di altri siti) | bassa | aperto (dev-musica) |
+| 28/10 | `feat/r10musa` | `core/alert_options_logic.py:motivo_silenzio` | Parole del titolo degli avvisi solo `.lower()` (accenti non uniti) | bassa | aperto (dev-utilita) |
+| 28/10 | `feat/r10musa` | `core/feed_watcher.py:150` | Feed in pausa con canale irraggiungibile non avanza: raffica alla ripresa | bassa | aperto (dev-utilita) |

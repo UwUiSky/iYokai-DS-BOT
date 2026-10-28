@@ -1,19 +1,14 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-27/10/2026 · `feat/r10musa` (musica 24/7, impostazioni musicali, filtri alert 0310): IN PAUSA per l'orchestratore, nessun fix ancora fatto.
+28/10/2026 · `feat/r10musa`: revisione finita, 5 fix (ffe5cda, 20ab14b, dc12194, 86b9dcf, b3a4d4a), D30 nuova (24/7 in canale vuoto solo premium). APPROVATO; smoke da fare (regola owner: niente smoke dagli agenti).
 
 ## In corso
-- `feat/r10musa`, worktree /home/claude/wt/r10musa, env `scratchpad/env_r10musa.sh`. Letto tutto il diff di cogs/ e core/ (non ancora tests/ e documenti).
-- Prossimo passo esatto: 1) `cogs/fun/soundboard.py` `_programma_sordo` (r.79): non annulla il task in `_sordi` già presente, e un secondo suono partito mentre il primo è in `send_sound` vede `era_sordo` falso e non sposta il ritorno sordo → fix: annullare il vecchio in `_programma_sordo` e nel `finally` riprogrammare anche se `chiave in self._sordi`; test con due suoni in parallelo in `tests/test_soundboard_play.py`.
-- 2) Nonstop (`cogs/music/player.py:1281`): chiunque in vocale tiene un worker per sempre a canale vuoto (memory_guard r.96 e `handle_inactive_player` saltati) → serve tetto (es. uscita dopo N minuti a canale vuoto) o premium/admin; decidere con D nuova.
-- 3) `core/music_settings_logic.py` `title_blocked`: solo `.lower()`, aggirabile con accenti/fullwidth/maiuscole Unicode → usare il normalizzatore del filtro r9nsfw (cercare con Grep «normalizz»).
-- 4) `core/live_alert_flow.py:73`: filtro/pausa senza avanzare stato; controllare chiamanti nei watcher (lavoro per giro, log) e pausa che non blocca «fine diretta». `feed_watcher` pausa: ok a lettura.
-- 5) Poi: `site_not_allowed` con allegati/prefissi, `idle_seconds` solo su player nuovo, voci SPEC passate a [x] (9.1–9.5, 9.11, 9.12, 10.1–10.4, 10.7–10.9) con test, smoke `--base main` una volta.
+- `feat/r10musa`: 4 basse aperte nel quaderno. D30 da segnalare all'owner. `_torna_sordo` già chiuso (e339198).
 - Altri rami: aperti noti in quaderno (r9nsfw 1 bassa, r8web IPv4 da confermare, r8uti 1 bassa, r7mod `_shared.py:192`, r7liv 3 basse, r6mus 1 bassa, r6ai, r6mod). Rami in attesa di riconsegna: righe nel quaderno. `f7-quadro` APPROVATO, manca l'unione.
 
 ## Fatto
-- Letti per intero: giro-mod, r3-*, r4-*, r6*, r7*, r8tkt, r8web, r8uti, r9nsfw, r9mod (dettagli e commit nel quaderno).
+- Letti per intero: giro-mod, r3-*, r4-*, r6*, r7*, r8tkt, r8web, r8uti, r9nsfw, r9mod, r10musa (dettagli e commit nel quaderno).
 
 ## Cose imparate
 - Controllare il contenuto di ogni commit, non il messaggio; testo all'utente che promette una funzione va confrontato col codice.
@@ -30,6 +25,8 @@
 - Suite completa: mai. Smoke in background con ciclo `until`; `pkill -f` col testo del comando uccide la propria shell.
 - `AllowedMentions(roles=...)` ha `everyone=True` di default. `comandi.en.json` "nomi" è per SEGMENTO, globale.
 - Azioni automatiche da un moderatore: tetto = ciò che lui può fare (D28, D29). Ripristini: un «no» salvato come «prima» lascia bloccato.
+- Risorse condivise tra server (5 worker): ogni modo di tenerle senza uso va limitato (tetto o premium).
+- Opzioni testo «vuoto = togli»: Discord non manda testi vuoti, serve «-».
 - Bot secondario (D15) e App utente (`is_guild_integration()` falso = salta tutto ciò che è del server).
 
 ## Aperto
