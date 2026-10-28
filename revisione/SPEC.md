@@ -1788,7 +1788,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   fuori (servono API/chiavi o spazio nel gruppo): FUN-049..057, 066..073,
   GIF di reazione/azione (FUN-081..139), giochi di gruppo (FUN-007..021),
   telefono (FUN-079).
-- `[x]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
+- `[~]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
   → **Stato 21/10 (r9):** fatto, da provare live (`NSFW_TOKEN`; senza token non parte). Da attivare: l'app «iYokai NSFW» nel Developer Portal e `NSFW_TOKEN` nel `.env` (r12). Alternativa (D18):
   niente Rule 34 né altri siti «booru» (non dichiarano età e consenso, e hanno disegni di personaggi minorenni):
   la fonte è RedGifs, solo elementi di creatori **verificati**; disegni, AI e cosplay bloccati.
@@ -1799,7 +1799,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     (`core/nsfw_filter_logic.py`), su ricerca manuale E auto-post
   - `[x]` Log con hash (SHA-256 dell'anteprima) di ogni immagine pubblicata; bottone «Segnala» che blocca in
     tutti i server
-  - `[x]` Invito solo dopo la verifica dell'identità sul pannello (NF-20): alternativa (D18, r12): nessun comando del bot mostra l'invito dell'app NSFW (App Discovery spento, l'invito lo dà solo l'owner); l'app lavora solo dove un admin ha acceso `/nsfw-admin attiva` e solo in canali con il flag età. Da attivare: la pagina d'invito con il login Discord sul pannello (agente del pannello)
+  - `[~]` Invito solo dopo la verifica dell'identità sul pannello (NF-20): si può fare, quindi resta da fare (non è un'alternativa D18). Intanto (r12): nessun comando del bot mostra l'invito dell'app NSFW (App Discovery spento, l'invito lo dà solo l'owner); l'app lavora solo dove un admin ha acceso `/nsfw-admin attiva` e solo in canali con il flag età. Da attivare: la pagina d'invito con il login Discord sul pannello (agente del pannello)
 
 ## §17 OWNER / GLOBAL ADMIN
 
@@ -2110,15 +2110,20 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (non le sottostringhe) e normalizza lettere cirilliche/greche simili, caratteri invisibili, punteggiatura e
   lettere staccate.
   → **Stato 27/10 (r10):** profilo come immagine e sfondo con immagine fatti il 15/10; le vincite dei giochi con le monete restano fuori dalla classifica del mese per scelta (niente premi per il gioco d'azzardo).
-- `[x]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
+- `[~]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)
-  → **Stato 28/10 (r12, D49, D50):** fatte tutte, in forma piccola.
+  → **Stato 28/10 (r12, D49, D50):** fatta la prima forma di ogni voce.
   `/level progressi sezione:` (missioni di oggi, traguardi, serie, stagione, profilo globale) e `/economia progressi attivo:` (spenti
   di base): `core/progressi_logic.py`, `core/progressi_service.py`, `core/repositories/progressi_repo.py`, `cogs/leveling/progressi.py`,
   migrazione 0481; gli eventi arrivano dai punti del livellamento (messaggio con XP, minuto in vocale, `/level daily`).
   `/mod rischio` e `/mod carico` (`core/staff_rischio_logic.py`, `core/repositories/staff_carico_repo.py`, `cogs/moderation/rischio_staff.py`).
   Test: `tests/test_progressi.py`, `tests/test_staff_rischio.py`.
+  → **Restano** (dettagli da non perdere di `revisione/01-analisi/VOCI_OMESSE.md`, D18): missioni della settimana e di tutto il
+  server; serie con protezione comprabile, promemoria dopo 20 ore, azzeramento dopo 36 ore, premi estetici a 7/14/30/60/100
+  giorni; battle pass di 90 giorni e 50 livelli con traccia «premium del server» (boost o monete); traguardi a categorie e
+  nascosti; carico dello staff con tempo di risposta, ticket riaperti, sanzioni annullate in appello, soddisfazione e
+  proposta di turni.
 
 ## §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER — da fare (fase F10)
 
