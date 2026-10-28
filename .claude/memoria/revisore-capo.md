@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+28/10/2026 · `feat/r11util` (D36 modalità link, D37 ban/addio, 0400). Fatto anche il cacciatore. Corretti: martello prima dell'addio, PNG RGBA grandi, «ruolo» senza ruolo (d4d1e0a); COMMAND_LIST (a56ef5e). APPROVATO, 3 basse nel quaderno; smoke da fare. /gestione 6742/6800.
 28/10/2026 · `feat/r10liv` (livelli/economia r10: SPEC §15 a `[x]`, shop 0340, classifica settimanale, moneta e tassa 0341). Fatto anche il cacciatore. Corretti: minimo pay (0342) e tassa per eccesso (b1c1f45); righe shop controllate prima, codice in DM, scadenze solo server del bot (f92d597); registro (485e139). APPROVATO, smoke da fare.
 28/10/2026 · ramo `feat/r10inviti` (link personali, D32, 0380): fatti anche i controlli del cacciatore; fix 8b9426b (permesso del membro, canale pubblico, tetto 500, verifica invito vivo, race tracker), d45c4f2 (COMMAND_LIST). APPROVATO con 4 basse nel quaderno; smoke da fare.
 28/10/2026 · `feat/r10aiw` (#95 AI r10, 0350–0351): APPROVATO dopo i fix: comandi AI aperti in prova (b302da0, `richiede_ai`), prova non ripetibile dopo la purga (0be178a, `ai_prove`), elenco comandi (c2b8c98). Smoke da fare (regola owner: lo lancia l'orchestratore). Aperte 2 basse nei quaderni.
@@ -16,6 +17,8 @@
 - Letti per intero: giro-mod, r3-*, r4-*, r6*, r7*, r8*, r9nsfw, r9mod, r10amod, r10util, r10bak, r10musa, r10liv (commit nel quaderno).
 
 ## Cose imparate
+- Stato globale per (server, utente) in un modulo: nei test va pulito (fixture autouse), altrimenti passa da un test all'altro. Segnali «fatto» si danno DOPO l'invio, non prima.
+- safe_open_image può restituire un'immagine senza `format` (RGBA ridotta): il formato si legge dal file.
 - Controllare il contenuto di ogni commit, non il messaggio. Voci SPEC a `[x]`: confrontare con il catalogo (`revisione/01-analisi/catalogo/`, riga del codice ECO/LIV) se la funzione è completa (D18).
 - Ambiente: `source` dello script env in ogni bash; mai riavviare postgres; database proprio per ramo. Regola owner: niente smoke né suite dagli agenti, solo i test dei file toccati, «smoke da fare» nel rapporto.
 - Merge di main: conflitti nei documenti e in `comandi.en.json` ("nomi" per SEGMENTO, globale; menu in `menu`); `COMMAND_LIST*` con `scripts/generate_command_list.py`.
