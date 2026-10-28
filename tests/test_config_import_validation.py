@@ -62,6 +62,7 @@ SETTINGS_VALIDE = {
     "verify_azione_fallita": "quarantena",
     "verify_solo_sospetti": False,
     "verify_azione_eta": "kick",
+    "inviti_link_mode": "crea_invito",
     "verify_sospesa_fino": 1893456000,
     "mute_role_id": 123123123123123123,
     "admin_role_id": 234234234234234234,

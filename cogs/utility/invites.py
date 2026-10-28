@@ -192,12 +192,19 @@ class InvitesCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("level", nome="opzioni", descrizione="Registro degli inviti e chi può avere il link personale.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("level", nome="opzioni", descrizione="Registro degli inviti e chi ha il link personale.", sottogruppo=_SG_INVITI)
     @app_commands.describe(
         canale="Dove scrivere chi entra e con quale link",
         ruolo="Solo chi ha questo ruolo può avere il link personale",
         togli="Togli il canale del registro o il ruolo (il modulo si accende con /admin setup attiva)",
+        chi="Chi ha il link personale",
     )
+    @app_commands.choices(chi=[
+        app_commands.Choice(name="tutti", value="tutti"),
+        app_commands.Choice(name="chi può creare inviti", value="crea_invito"),
+        app_commands.Choice(name="solo un ruolo", value="ruolo"),
+        app_commands.Choice(name="nessuno", value="spento"),
+    ])
     @app_commands.choices(togli=[
         app_commands.Choice(name="canale del registro", value="canale"),
         app_commands.Choice(name="ruolo richiesto", value="ruolo"),
@@ -209,16 +216,18 @@ class InvitesCog(CogConGruppi, commands.Cog):
         canale: discord.TextChannel | None = None,
         ruolo: discord.Role | None = None,
         togli: app_commands.Choice[str] | None = None,
+        chi: app_commands.Choice[str] | None = None,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message("Questo comando è disponibile solo dentro un server.", ephemeral=True)
             return
         guild = interaction.guild
+        nuova_modalita = chi.value if chi else invite_service.NON_CAMBIARE
         nuovo_canale = None if togli and togli.value == "canale" else (canale.id if canale else invite_service.NON_CAMBIARE)
         nuovo_ruolo = None if togli and togli.value == "ruolo" else (ruolo.id if ruolo else invite_service.NON_CAMBIARE)
         try:
             await invite_service.imposta_opzioni(
-                guild, canale_log=nuovo_canale, ruolo_link=nuovo_ruolo, changed_by=interaction.user.id
+                guild, canale_log=nuovo_canale, ruolo_link=nuovo_ruolo, modalita=nuova_modalita, changed_by=interaction.user.id
             )
         except ImpostazioneNonValida as errore:
             await interaction.response.send_message(str(errore), ephemeral=True)
@@ -227,7 +236,8 @@ class InvitesCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             f"Modulo inviti: {'acceso' if o.attivo else 'spento'}.\n"
             f"Registro: {f'<#{o.canale_log_id}>' if o.canale_log_id else 'nessun canale'}.\n"
-            f"Link personale: {f'<@&{o.ruolo_link_id}>' if o.ruolo_link_id else 'tutti i membri'}.",
+            f"Link personale: {logica.ETICHETTE_MODALITA[o.modalita]}"
+            f"{f' (<@&{o.ruolo_link_id}>)' if o.modalita == 'ruolo' and o.ruolo_link_id else ''}.",
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 

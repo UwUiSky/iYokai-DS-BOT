@@ -124,6 +124,7 @@ SETTINGS_SCHEMA = {
     # Inviti e link personali (core/invite_links_logic.py)
     "inviti_log_channel_id": "id",
     "inviti_link_role_id": "id",
+    "inviti_link_mode": "modalita_link_inviti",
 }
 
 
@@ -173,6 +174,10 @@ CONTROLLI_PER_TIPO = {
         "un elenco di percorsi di comandi",
     ),
     "bool": (lambda valore: isinstance(valore, bool), "true oppure false"),
+    "modalita_link_inviti": (
+        lambda valore: valore in ("tutti", "crea_invito", "ruolo", "spento"),
+        "tutti, crea_invito, ruolo oppure spento",
+    ),
     "modalita_restore": (
         lambda valore: valore in (MODE_VERIFY_OAUTH, MODE_ON_DEMAND_OAUTH, MODE_CLASSIC_INVITE),
         "una modalità di restore valida",

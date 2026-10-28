@@ -20,9 +20,13 @@
       <option value="">— nessun canale —</option>
       {% for c in canali %}<option value="{{ c.id }}" {{ 'selected' if c.id == opzioni.canale_log_id }}>#{{ c.name }}</option>{% endfor %}
     </select></label></p>
-  <p><label>Chi può avere il link personale<br>
+  <p><label>Chi ha il link personale<br>
+    <select name="modalita">
+      {% for valore, nome in modalita_link %}<option value="{{ valore }}" {{ 'selected' if valore == opzioni.modalita }}>{{ nome }}</option>{% endfor %}
+    </select></label></p>
+  <p><label>Il ruolo (serve alla modalità «solo chi ha il ruolo»)<br>
     <select name="ruolo_id">
-      <option value="">— tutti i membri —</option>
+      <option value="">— nessun ruolo —</option>
       {% for r in ruoli %}<option value="{{ r.id }}" {{ 'selected' if r.id == opzioni.ruolo_link_id }}>{{ r.name }}</option>{% endfor %}
     </select></label></p>
   <button type="submit">Salva</button>

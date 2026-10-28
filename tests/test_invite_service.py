@@ -209,6 +209,7 @@ async def test_niente_link_a_chi_non_puo_creare_inviti(servizio):
     o «Crea invito» tolto), né in apertura né alla richiesta del link."""
     await accendi()
     guild, canale = guild_con_canale()
+    await svc.imposta_opzioni(guild, modalita=l.MODO_CREA_INVITO, changed_by=1)
     m = membro(1)
     crea = discord.Permissions(view_channel=True, create_instant_invite=True)
     permessi_per(canale, {guild.me: crea, guild.default_role: crea})
@@ -290,3 +291,60 @@ async def test_redirect_solo_a_un_invito_di_questo_server(servizio):
     bot = MagicMock()
     bot.fetch_invite = AsyncMock(return_value=SimpleNamespace(guild=SimpleNamespace(id=999)))
     assert await svc.invito_discord(bot, guild, link) == (l.OK, "Abc123")
+
+
+@pytest.mark.asyncio
+async def test_le_quattro_modalita_del_link(servizio):
+    """D36: tutti / solo chi ha «Crea invito» / solo un ruolo / spento. Il permesso del membro conta
+    solo nella seconda; il canale scelto resta uno che vede @everyone."""
+    await accendi()
+    guild, canale = guild_con_canale()
+    guild.get_role = MagicMock(return_value=fake_role(55))
+    crea = discord.Permissions(view_channel=True, create_instant_invite=True)
+    vede = discord.Permissions(view_channel=True)
+    m = membro(1)
+    permessi_per(canale, {guild.me: crea, guild.default_role: vede})  # il membro non può creare inviti
+    assert (await svc.leggi_opzioni(G)).modalita == l.MODO_TUTTI
+    # tutti: il link c'è anche senza «Crea invito», e il canale resta visibile a @everyone
+    assert (await svc.ottieni_link(guild, m))[0] == l.OK
+    assert svc.scegli_canale(guild) is canale
+    # solo chi ha «Crea invito»
+    await svc.imposta_opzioni(guild, modalita=l.MODO_CREA_INVITO, changed_by=1)
+    assert (await svc.ottieni_link(guild, m))[0] == l.MEMBRO_SENZA_PERMESSO
+    permessi_per(canale, {guild.me: crea, guild.default_role: vede, m: crea})
+    assert (await svc.ottieni_link(guild, m))[0] == l.OK
+    # solo un ruolo: serve il ruolo scelto, il permesso non conta
+    with pytest.raises(ImpostazioneNonValida):
+        await svc.imposta_opzioni(guild, modalita=l.MODO_RUOLO, changed_by=1)
+    await svc.imposta_opzioni(guild, modalita=l.MODO_RUOLO, ruolo_link=55, changed_by=1)
+    permessi_per(canale, {guild.me: crea, guild.default_role: vede})
+    assert (await svc.ottieni_link(guild, m))[0] == l.RUOLO_MANCANTE
+    m.roles = [SimpleNamespace(id=55)]
+    assert (await svc.ottieni_link(guild, m))[0] == l.OK
+    with pytest.raises(ImpostazioneNonValida):  # togliere il ruolo con la modalità «ruolo» lascerebbe tutti dentro
+        await svc.imposta_opzioni(guild, ruolo_link=None, changed_by=1)
+    # spento: nessuno, nemmeno chi ha il ruolo
+    await svc.imposta_opzioni(guild, modalita=l.MODO_SPENTO, changed_by=1)
+    assert (await svc.ottieni_link(guild, m))[0] == l.LINK_SPENTI
+    with pytest.raises(ImpostazioneNonValida):
+        await svc.imposta_opzioni(guild, modalita="boh", changed_by=1)
+
+
+@pytest.mark.asyncio
+async def test_modalita_tutti_crea_l_invito_senza_il_permesso_del_membro(servizio):
+    await accendi()
+    guild, canale = guild_con_canale()
+    crea = discord.Permissions(view_channel=True, create_instant_invite=True)
+    permessi_per(canale, {guild.me: crea, guild.default_role: crea})
+    m = membro(1)
+    _, link = await svc.ottieni_link(guild, m)
+    bot = MagicMock()
+    bot.get_guild = MagicMock(return_value=guild)
+    guild.get_member = MagicMock(return_value=m)
+    assert await svc.apri_link(bot, link.slug) == (l.OK, "Abc123")
+
+
+def test_modalita_di_prima_di_d36():
+    assert l.modalita_effettiva(None, None) == l.MODO_TUTTI
+    assert l.modalita_effettiva(None, 5) == l.MODO_RUOLO
+    assert l.modalita_effettiva("spento", 5) == l.MODO_SPENTO

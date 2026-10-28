@@ -175,7 +175,7 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
         per_tipo = await invite_stats_repo.per_tipo(guild.id)
         return pagina(
             request, "inviti_server.html", guild=guild, opzioni=opzioni, canali=canali, ruoli=ruoli,
-            classifica=classifica, ultimi=ultimi,
+            classifica=classifica, ultimi=ultimi, modalita_link=list(logica.ETICHETTE_MODALITA.items()),
             per_tipo=[(logica.ETICHETTE_TIPO[t], per_tipo.get(t, 0)) for t in logica.TIPI_INGRESSO],
             sito_attivo=bool(invite_service.url_pubblico()),
         )
@@ -200,7 +200,7 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
         try:
             cambiato = await invite_service.imposta_opzioni(
                 guild, canale_log=leggi_id("canale_id"), ruolo_link=leggi_id("ruolo_id"),
-                changed_by=request[chiave_utente],
+                modalita=str(form.get("modalita", "")) or invite_service.NON_CAMBIARE, changed_by=request[chiave_utente],
             )
         except ImpostazioneNonValida:
             return vai(indietro + "non_valido")
