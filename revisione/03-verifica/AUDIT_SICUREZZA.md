@@ -102,3 +102,19 @@ Resta fuori: SIC-016 (backup), SIC-021 (chiave di soccorso), SIC-023…038 (ampl
 | MOD-068 ruoli immuni | `/mod opzioni immuni` | Solo il proprietario (anche nell'import: `CHIAVI_SOLO_PROPRIETARIO`); il proprietario resta libero di agire; vale anche per le azioni in massa | `test_moderation_opzioni.py` |
 | SIC-040 punizione della trappola | `/security spamtrap punizione:` | Esenzione dello staff prima di tutto, come per il ban; bottoni «decide lo staff» con permesso (Bannare/Espellere) e gerarchia di chi preme | `test_spam_trap_punizione.py` |
 
+
+## Giro r10 (27/10)
+
+| Voce | Cosa | Controlli di sicurezza | Test |
+|---|---|---|---|
+| SIC-036 livelli di allerta | `/antiraid livello`: normale, allerta, alto, blocco; a mano (con ore) o da soli all'inizio del raid | Lo cambia solo chi gestisce (proprietario, extra owner). Il livello stringe soltanto: non abbassa mai una soglia o un'età che il server ha già scelto più dure; scaduto vale «normale»; la regola automatica non abbassa un livello più alto | `test_anti_raid_livelli.py` |
+| SIC-039 più trappole | `canale_extra_aggiungi\|togli` in `/security spamtrap`, 5 canali in tutto | Il canale dei log non può essere trappola; l'esenzione dello staff vale come prima | `test_spam_trap_canali_extra.py` |
+| PERF-3 indice messaggi | `spam_trap_message_index` ora ha la scadenza di 30 giorni nel registro dei dati (lavoro di retention); tolto `prune_old_index`, mai chiamato | Il ban cancella ancora i messaggi dei 30 giorni | `test_spam_trap_canali_extra.py::test_l_indice...` |
+| VER-017 `invia` | DM con il canale del pannello | Solo a chi non è verificato; DM chiusi detto, mai un messaggio nel canale | `test_verify_r10.py` |
+| VER-019 account giovane | Attesa con DM al via libera, oppure kick all'ingresso (DM prima del kick) | La whitelist salta il controllo, la blacklist no; scadenza e promemoria partono dal via libera | `test_verify_r10.py` |
+| VER-020 modalità cieca | Ruolo subito per qualche ora, scritto nel log | Non vale per chi è in blacklist; la fine è un istante, non resta accesa per sempre | `test_verify_r10.py` |
+| VER-030/031 statistiche e CSV | `verify_eventi` (90 giorni nel registro dei dati); CSV di un utente o del server | CSV di tutto il server una volta all'ora, tetto 5000 righe, motivi che iniziano con `= + - @` neutralizzati (niente formule) | `test_verify_r10.py` |
+
+Revisione del giro (28/10): la modalità cieca e «solo sospetti» non danno il ruolo durante un raid (il ruolo di verifica può aprire canali chiusi dalla quarantena); «solo sospetti» non salta più l'età minima; con `azione_eta` «attendi» il clic troppo presto non fa scattare l'azione di chi non passa (prima un ban); un canale trappola extra cancellato libera il suo posto. Test in `test_verify_r10.py` e `test_spam_trap_canali_extra.py`.
+
+Non fatto: **SIC-045** (opt-out dalla «raccolta di rete» nel comando privacy). La voce sta in `/privacy` (file di dev-utilita) e farla com'è permetterebbe a un account di raid di nascondersi dal segnale di rete con un comando: serve una scelta dell'owner (alternativa più vicina: opt-out solo dalla scheda `/security globalban controlla`, i ban restano come da D6). **SIC-016** (backup, D8) e **SIC-021** (chiave di soccorso, flusso `/owner`) restano fuori area.

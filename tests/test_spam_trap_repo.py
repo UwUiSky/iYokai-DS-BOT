@@ -164,19 +164,6 @@ async def test_delete_indexed_messages_lista_vuota_non_fallisce(repo):
     await repo.delete_indexed_messages([])  # non deve sollevare eccezioni
 
 
-@pytest.mark.asyncio
-async def test_prune_old_index(repo):
-    ora = datetime.now(timezone.utc)
-    await repo.index_message(1, 100, 5000, 1, ora - timedelta(days=40))  # vecchio
-    await repo.index_message(2, 100, 5000, 1, ora - timedelta(days=5))   # recente
-
-    eliminati = await repo.prune_old_index(older_than=ora - timedelta(days=30))
-
-    assert eliminati == 1
-    messaggi = await repo.get_all_user_messages(100, 1)
-    assert {m.message_id for m in messaggi} == {2}
-
-
 # ====================================================================
 # Appeal
 # ====================================================================

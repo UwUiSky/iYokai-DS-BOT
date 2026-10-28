@@ -132,3 +132,19 @@ def azione_dopo_fallimento(azione: str, motivo: str, ultimi_esiti: list[bool]) -
         if len(ultimi_esiti) < n or any(ultimi_esiti[:n]):
             return "niente"
     return azione
+
+
+# ---------------------------------------------------------------- VER-019, VER-020
+AZIONI_ETA = ("attendi", "kick")
+
+
+def quando_maggiorenne(account_created_at: datetime, min_age_days: int) -> datetime:
+    """VER-019: il momento da cui l'account ha l'età minima richiesta."""
+    return account_created_at + timedelta(days=min_age_days)
+
+
+def sospesa_adesso(fino_epoch: int | None, adesso: datetime | None = None) -> bool:
+    """VER-020: la verifica è sospesa (modalità cieca) se la fine è nel futuro."""
+    if not fino_epoch:
+        return False
+    return (adesso or datetime.now(timezone.utc)).timestamp() < fino_epoch

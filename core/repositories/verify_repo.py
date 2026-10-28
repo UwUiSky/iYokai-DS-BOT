@@ -62,6 +62,16 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
         CREATE INDEX IF NOT EXISTS idx_verify_attempts_guild_user
             ON verify_attempts (guild_id, user_id, attempted_at DESC);
 
+        CREATE TABLE IF NOT EXISTS verify_eventi (
+            guild_id BIGINT NOT NULL,
+            user_id  BIGINT NOT NULL,
+            tipo     TEXT NOT NULL,
+            at       TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_verify_eventi_guild
+            ON verify_eventi (guild_id, tipo, at DESC);
+
         CREATE TABLE IF NOT EXISTS verify_whitelist (
             guild_id BIGINT NOT NULL,
             user_id  BIGINT NOT NULL,
@@ -283,20 +293,58 @@ class VerifyRepository:
         )
         return [(r["success"], r["reason"], r["attempted_at"]) for r in rows]
 
-    async def attempt_stats(self, guild_id: int, days: int) -> tuple[int, int, int]:
-        """(riusciti, falliti, utenti diversi) negli ultimi `days` giorni (VER-030)."""
-        row = await self._pool.fetchrow(
+    # ================================================================
+    # Eventi e statistiche (VER-030), esportazione (VER-031)
+    # ================================================================
+    async def registra_evento(self, guild_id: int, user_id: int, tipo: str) -> None:
+        """Tipi: ingresso, uscita, captcha_inviato."""
+        await self._pool.execute(
+            "INSERT INTO verify_eventi (guild_id, user_id, tipo) VALUES ($1, $2, $3)",
+            guild_id, user_id, tipo,
+        )
+
+    async def statistiche(self, guild_id: int, days: int) -> dict[str, int]:
+        """Conteggi degli ultimi `days` giorni per la schermata delle statistiche."""
+        eventi = await self._pool.fetch(
             """
-            SELECT COUNT(*) FILTER (WHERE success) AS ok,
-                   COUNT(*) FILTER (WHERE NOT success) AS ko,
-                   COUNT(DISTINCT user_id) AS utenti
+            SELECT tipo, COUNT(*) AS n FROM verify_eventi
+            WHERE guild_id = $1 AND at >= now() - make_interval(days => $2) GROUP BY tipo
+            """,
+            guild_id, days,
+        )
+        per_tipo = {r["tipo"]: r["n"] for r in eventi}
+        riga = await self._pool.fetchrow(
+            """
+            SELECT COUNT(*) FILTER (WHERE success AND reason NOT LIKE 'Account non sospetto%') AS ok,
+                   COUNT(*) FILTER (WHERE NOT success AND reason = 'Captcha verification failed.') AS captcha,
+                   COUNT(*) FILTER (WHERE NOT success AND reason LIKE 'Tempo per la verifica scaduto%') AS scaduti
             FROM verify_attempts
             WHERE guild_id = $1 AND attempted_at >= now() - make_interval(days => $2)
             """,
-            guild_id,
-            days,
+            guild_id, days,
         )
-        return row["ok"], row["ko"], row["utenti"]
+        return {
+            "ingressi": per_tipo.get("ingresso", 0),
+            "uscite": per_tipo.get("uscita", 0),
+            "captcha_inviati": per_tipo.get("captcha_inviato", 0),
+            "captcha_falliti": riga["captcha"],
+            "completate": riga["ok"],
+            "scaduti": riga["scaduti"],
+        }
+
+    async def tentativi_per_csv(
+        self, guild_id: int, user_id: int | None, limit: int = 5000
+    ) -> list[tuple[int, bool, str, datetime]]:
+        """(utente, esito, motivo, data) dal più recente; di un utente o di tutto il server."""
+        rows = await self._pool.fetch(
+            """
+            SELECT user_id, success, reason, attempted_at FROM verify_attempts
+            WHERE guild_id = $1 AND ($2::bigint IS NULL OR user_id = $2)
+            ORDER BY attempted_at DESC LIMIT $3
+            """,
+            guild_id, user_id, limit,
+        )
+        return [(r["user_id"], r["success"], r["reason"], r["attempted_at"]) for r in rows]
 
 
 def _get_pool():

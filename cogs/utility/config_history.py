@@ -69,6 +69,7 @@ SETTINGS_SCHEMA = {
     "ticket_support_role_id": "id",
     "ticket_support_role_ids": "lista_id",
     "spam_trap_staff_role_ids": "lista_id",
+    "spam_trap_canali_extra": "lista_id",
     "appelli_channel_id": "id",
     "isolamento_role_id": "id",
     "isolamento_channel_id": "id",
@@ -81,6 +82,8 @@ SETTINGS_SCHEMA = {
     "verify_azione_scadenza": "azione_verifica",
     "verify_azione_fallita": "azione_verifica",
     "verify_solo_sospetti": "bool",
+    "verify_azione_eta": "azione_eta",
+    "verify_sospesa_fino": "epoch",
     "mute_role_id": "id",
     "admin_role_id": "id",
     "mod_role_id": "id",
@@ -167,6 +170,8 @@ CONTROLLI_PER_TIPO = {
     "azione_verifica": (
         lambda valore: valore in ("niente", "quarantena", "kick", "ban"), "niente, quarantena, kick oppure ban"
     ),
+    "azione_eta": (lambda valore: valore in ("attendi", "kick"), "attendi oppure kick"),
+    "epoch": (_intero_tra(0, 4_102_444_800), "un istante in secondi, tra 0 e il 2100"),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),

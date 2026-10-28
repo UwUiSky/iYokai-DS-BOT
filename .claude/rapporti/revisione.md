@@ -274,3 +274,11 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:shop_list` | Categorie «Armi»/«armi» filtrate insieme ma con due titoli | bassa | aperto (dev-economia) |
 | 28/10 | `feat/r10liv` | `core/leveling_logic.py:nome_moneta_valido` | ECO-001 «testo o emoji»: emoji del server rifiutata (`<>` e oltre 20) | bassa | aperto (owner) |
 | 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:_compra` | `{utente}` nel testo di risposta pubblico: nome visualizzato non ripulito | bassa | plausibile (dev-economia) |
+| 28/10 | `feat/r10sec` | `cogs/security/verify.py:on_member_join` | Modalità cieca e «solo sospetti» davano il ruolo durante un raid (può aprire canali chiusi dalla quarantena) | alta | chiuso a115efd |
+| 28/10 | `feat/r10sec` | `cogs/security/verify.py:on_member_join` | «Solo sospetti» saltava l'età minima (account di 10 giorni con avatar, minimo 30) | media | chiuso a115efd |
+| 28/10 | `feat/r10sec` | `cogs/security/verify.py:run_checks_and_finalize` | `azione_eta` «attendi» + `azione_fallita` ban: il clic troppo presto bannava | media | chiuso a115efd |
+| 28/10 | `feat/r10sec` | `cogs/security/spam_trap.py:_canali_extra` | Canale extra cancellato occupava per sempre uno dei 5 posti | bassa | chiuso a115efd |
+| 28/10 | `feat/r10sec` | `COMMAND_LIST*.md` | Non rigenerati per `/antiraid livello` e `/security verify invia` | bassa | chiuso d396ce3 |
+| 28/10 | `feat/r10sec` | `cogs/utility/config_history.py` | Import di `spam_trap_canali_extra` senza tetto di 5 né controllo sul canale log | bassa | aperto |
+| 28/10 | `feat/r10sec` | `cogs/security/verify.py:_esporta_csv` | Ora del CSV di server consumata anche se la query fallisce; motivi con tab/CR non neutralizzati (motivi tutti del bot) | bassa | aperto |
+| 28/10 | `feat/r10sec` | `cogs/security/anti_raid.py:_livello_al_raid` | Salva l'istantanea letta all'inizio dell'ingresso: un cambio fatto nel frattempo si perde | bassa | aperto |

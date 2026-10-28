@@ -80,14 +80,14 @@ async def test_tentativi_e_statistiche(scenario):
     await verify_repo.log_attempt(GUILD_ID, UTENTE_ID, True, "All checks passed.")
     await verify_repo.log_attempt(GUILD_ID, 77, True, "All checks passed.")
 
-    assert await verify_repo.attempt_stats(GUILD_ID, 7) == (2, 1, 2)
-    assert await verify_repo.attempt_stats(999, 7) == (0, 0, 0)
+    assert (await verify_repo.statistiche(GUILD_ID, 7))["completate"] == 2
+    assert (await verify_repo.statistiche(999, 7))["completate"] == 0
 
     staff = fake_interaction(guild=scenario.server, user=fake_member(1))
-    await scenario.cog.attempts_cmd.callback(scenario.cog, staff, scenario.utente)
+    await scenario.cog.attempts_cmd.callback(scenario.cog, staff, scenario.utente, False)
     assert "Captcha" in staff.response.send_message.call_args.kwargs["embed"].description
     await scenario.cog.stats_cmd.callback(scenario.cog, staff, 7)
-    assert "2" in staff.response.send_message.call_args.args[0]
+    assert "2" in staff.response.send_message.call_args.args[0]  # completate
 
 
 async def test_non_verificato_uguale_al_ruolo_di_verifica_non_viene_tolto(scenario):

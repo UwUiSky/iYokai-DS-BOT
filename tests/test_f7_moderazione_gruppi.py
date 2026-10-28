@@ -59,13 +59,13 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("antiraid", None): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
         "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
-        "filtro-ingresso", "nomi-vietati", "segnali", "ping-ruoli", "elenco", "segnala",
+        "filtro-ingresso", "nomi-vietati", "segnali", "ping-ruoli", "elenco", "segnala", "livello",
     },
     ("security", "panico"): {"attiva", "togli", "configura", "stato"},
     ("security", "globalban"): {"enable", "disable", "status", "controlla"},
     ("security", "verify"): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",
-        "opzioni", "manuale", "tentativi", "statistiche", "tempi",
+        "opzioni", "manuale", "tentativi", "statistiche", "tempi", "invia",
     },
     ("automod", None): {"sync", "mute-duration", "log-channel", "status", "violazioni", "violazione-togli"},
     ("automod", "filtri"): {

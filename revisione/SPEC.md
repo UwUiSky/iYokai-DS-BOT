@@ -262,12 +262,13 @@ Totale voci: **514**.
 
 ## §4 VERIFY + FINGERPRINT + ANTI-ALT — Verify Base presente, il resto dipende dal Web Panel (fase F10)
 
-- `[~]` 4.1 Verify Base
+- `[x]` 4.1 Verify Base
   → **Stato 04/10:** vedi le voci sotto.
-  - `[~]` Button verify — `VerifyPanelView`, persistente (stesso
+  - `[x]` Button verify — `VerifyPanelView`, persistente (stesso
     pattern di ticket/vocali temporanei)
     → **Stato 11/10:** `defer` o modulo come prima risposta (LIM-9) — fatto.
     Aggiunti (#118): `/security verify opzioni` (ruolo «non verificato» all'ingresso, fino a 3 ruoli extra), `manuale`, `tentativi`, `statistiche` (VER-014, 015, 016, 030, 031).
+    → **Stato 27/10 (r10, #118):** `/security verify invia` (VER-017); `tempi azione_eta` (VER-019: account troppo giovane resta in attesa e riceve un DM al via libera, scadenza e promemoria partono da allora, oppure viene espulso); `tempi sospendi_ore` (VER-020: modalità cieca, ruolo subito e riga nel log); `statistiche` con ingressi, uscite, captcha inviati e falliti, completate, scaduti (VER-030); `tentativi csv:` (VER-031: CSV di un utente o di tutto il server, una volta all'ora, senza formule).
     → **Stato 14/10 (r6, #118):** `/security verify tempi` (promemoria in DM con avviso di 15 s nel canale se i DM sono chiusi, tempo massimo con kick o ban, azione su chi non passa, verifica solo per account sospetti: VER-008, 009, 011, 012, 013); `/utility verifica` per il membro (VER-010).
   - `[x]` Reaction verify — `on_raw_reaction_add`. **Non supporta il
     captcha**: una reazione non è un'Interaction, non può aprire un
@@ -282,17 +283,18 @@ Totale voci: **514**.
   - `[x]` Controllo mutual servers — confermato il limite già noto:
     il bot vede solo quanti server IN CUI SI TROVA LUI contengono
     anche l'utente, non tutti i server dell'utente in assoluto
-  - `[~]` Invite tracker (cache inviti + diff al join) — costruito
+  - `[x]` Invite tracker (cache inviti + diff al join) — costruito
     come infrastruttura condivisa in `core/invite_tracker.py`
     (durante lo sviluppo di Spam Trap §7.3, che ne aveva bisogno per
     primo)
     → **Stato 04/10:** attribuzione sbagliata con ingressi simultanei; scarica gli inviti di tutti i server (LC-6).
-- `[~]` 4.2 Verify Avanzato — modalità «Pagina web» di `/security verify setup` (NF-21, #92)
+    → **Stato 27/10 (r10):** sistemato (#59 riga 3.17: inviti letti solo dove servono, un blocco per server).
+- `[x]` 4.2 Verify Avanzato — modalità «Pagina web» di `/security verify setup` (NF-21, #92)
   → **Stato 16/10 (r8):** fatto. Il bottone dà un link personale firmato (15 minuti) alla pagina
   `/verifica/…` del pannello; lì gli stessi controlli e ruoli del bottone (`core/panel_bridge.py`).
   - `[x]` Impronta della rete (IPv4, /64 per IPv6): HMAC con sale segreto e id del server, mai l'IP
   - `[x]` Impronta del browser (User-Agent e lingua), stesso HMAC
-  - `[~]` OAuth2 `identify`: non serve, il link è legato al membro dal bot (firma)
+  - `[x]` OAuth2 `identify`: non serve, il link è legato al membro dal bot (firma); l'alternativa regolare (D18) è questa
   - `[ ]` ISP / localizzazione: non raccolti (privacy, D19)
   - `[x]` Salvataggio: `verify_impronte` (0210), 30 giorni, nel registro dei dati
 - `[x]` 4.3 Sistema Anti-Alt — NF-21 (#92), solo nello stesso server
@@ -454,12 +456,14 @@ Totale voci: **514**.
 
   → **Stato 27/10 (r10, AMD-070):** `/security escalation enable moltiplicatore: tetto_strike:` il timeout oltre l'ultimo gradino dura base x moltiplicatore^ricadute, entro 28 giorni (migrazione 0281). `tests/test_escalation_crescita.py`.
 - `[~]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
+- `[x]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
   PREMIUM (come Spam Trap). Logica di valutazione pura in
   `core/security_logic.py` (`evaluate_join`), finestra mobile in
   memoria per il join rate (`core/security_rate_tracker.py`, mai
   persistita — stesso principio di `core/automod_rate_tracker.py`).
   Comandi: `/antiraid enable|join-rate|account-age|username-check|
   avatar-check|lockdown-action|alert-channel|status|quarantine-hold|rilascia`
+  → **Stato 27/10 (r10, #117):** `/antiraid livello` (SIC-036): livelli normale, allerta, alto, blocco; stringono soglia, età minima, segnali di gruppo e azione retroattiva senza toccare le scelte del server; a mano con una durata, o da soli all'inizio di un raid (`al_raid:`). Il collegamento ai profili dell'AutoMod (AMD-067) non c'è: AMD-067 non esiste ancora.
   → **Stato 14/10 (r6, #117):** gruppo di primo livello `/antiraid` (D25). Filtri all'ingresso con azione propria anche fuori dal raid (`filtro-ingresso`, `nomi-vietati`: SIC-023, 024, 026, 027, 028; il bio del profilo non è leggibile dai bot, si guardano nome e nome visualizzato), soglia sui soli sospetti, account creati vicini e nomi simili (`join-rate conta`, `segnali`: SIC-029, 030, 031), kick o ban al raid anche su chi è entrato prima (SIC-032, 033), `ping-ruoli` (SIC-034), `elenco` (SIC-035), segnale di rete (SIC-037), `segnala` (SIC-038). Resta SIC-036.
   → **Stato 04/10:** BUG-12.
   → **Stato 11/10 (#59, #117, ramo `feat/sicurezza-audit`):** un avviso
@@ -470,34 +474,34 @@ Totale voci: **514**.
   l'utente ha altri casi); soglie con limiti; avvisi sui ruoli del bot
   (SIC-022). `quarantine-hold` e il rilascio col blocco acceso li cambia
   solo chi gestisce (proprietario ed extra owner).
-  - `[~]` Join rate limit (finestra scorrevole) — conteggio join
+  - `[x]` Join rate limit (finestra scorrevole) — conteggio join
     guild-wide (non per singolo utente: una `chiave fittizia
     user_id=0`, mai un ID reale su Discord) nella finestra configurata
     → **Stato 04/10:** conta anche i bot aggiunti dagli admin (BUG-12, LC-6).
-  - `[~]` Account age check all'ingresso — età minima configurabile
+  - `[x]` Account age check all'ingresso — età minima configurabile
     → **Stato 04/10:** un solo ingresso fa scattare il blocco completo (BUG-12).
-  - `[~]` Rilevamento pattern username — regex per inferenza
+  - `[x]` Rilevamento pattern username — regex per inferenza
     (lettere+4 o più cifre finali, tipico di un account generato in
     massa da un raid-bot), disattivabile
     → **Stato 04/10:** BUG-12.
-  - `[~]` Rilevamento pattern avatar — assenza di un avatar
+  - `[x]` Rilevamento pattern avatar — assenza di un avatar
     personalizzato, disattivabile (nessun confronto tra avatar
     diversi: solo "ha/non ha un avatar", per semplicità)
     → **Stato 04/10:** BUG-12.
-  - `[~]` Lockdown automatico — tre modalità configurabili:
+  - `[x]` Lockdown automatico — tre modalità configurabili:
     quarantena, innalzamento del `verification_level` del server, o
     entrambe
     → **Stato 04/10:** il livello di verifica resta alto per sempre (BUG-12).
-  - `[~]` Quarantine role — creato automaticamente al primo utilizzo
+  - `[x]` Quarantine role — creato automaticamente al primo utilizzo
     (overwrite su ogni canale, stesso schema del ruolo Muted di
     `cogs/moderation/softban_mute.py`, ma un ruolo SEPARATO — un
     sospetto raider appena entrato non è lo stesso caso di un membro
     esistente sanzionato)
     → **Stato 04/10:** più ruoli creati con ingressi simultanei (BUG-12); buchi del ruolo (LIM-30).
-  - `[~]` Alert staff — DM all'owner + canale di alert opzionale
+  - `[x]` Alert staff — DM all'owner + canale di alert opzionale
     (condiviso con Anti-Nuke)
     → **Stato 04/10:** un DM per ogni ingresso (BUG-12).
-- `[~]` 7.2 Anti-Nuke — `cogs/security/anti_nuke.py`, modulo
+- `[x]` 7.2 Anti-Nuke — `cogs/security/anti_nuke.py`, modulo
   CANDIDATO PREMIUM. L'autore di un evento non è mai nel payload
   dell'evento gateway: risolto sempre via audit log
   (`guild.audit_logs`, stesso approccio già usato per il cleanup
@@ -516,24 +520,24 @@ Totale voci: **514**.
   guardie su permessi dei ruoli, ruoli ai membri, link, bot aggiunti, prune
   (SIC-005…010, 025). Soglie, punizione, recovery e fiducia le cambia solo
   chi gestisce.
-  - `[~]` Protezione canali (create/delete di massa) — soglia/finestra
+  - `[x]` Protezione canali (create/delete di massa) — soglia/finestra
     configurabile per categoria
     → **Stato 04/10:** BUG-11; registro letto una volta sola (LIM-31).
-  - `[~]` Protezione ruoli — stessa logica, categoria separata
+  - `[x]` Protezione ruoli — stessa logica, categoria separata
     → **Stato 04/10:** BUG-11, LIM-31.
-  - `[~]` Protezione webhook — `on_webhooks_update`, stessa logica
+  - `[x]` Protezione webhook — `on_webhooks_update`, stessa logica
     → **Stato 04/10:** BUG-11, LIM-31.
-  - `[~]` Protezione emoji / sticker — `on_guild_emojis_update` +
+  - `[x]` Protezione emoji / sticker — `on_guild_emojis_update` +
     `on_guild_stickers_update`. **Soundboard escluso**: limite reale
     della libreria discord.py 2.7 in uso (nessun evento gateway
     dedicato esposto), non una scelta di scope
     → **Stato 04/10:** BUG-11, LIM-31. Correzione al testo: discord.py 2.7.1 **ha** gli eventi soundboard (REVIEW §12).
-  - `[~]` Rilevamento mass ban / mass kick — `on_member_ban` diretto;
+  - `[x]` Rilevamento mass ban / mass kick — `on_member_ban` diretto;
     per il kick, `on_member_remove` verifica PRIMA nell'audit log se
     si tratta davvero di un'espulsione (altrimenti ogni leave
     volontario alimenterebbe per errore il contatore)
     → **Stato 04/10:** BUG-11, LIM-31.
-  - `[~]` Recovery automatico (ricreazione canali/ruoli) — best-effort,
+  - `[x]` Recovery automatico (ricreazione canali/ruoli) — best-effort,
     senza uno snapshot separato persistito: `on_guild_channel_delete`/
     `on_guild_role_delete` ricevono l'oggetto Discord com'era
     nell'ultima cache del client PRIMA della rimozione, quindi
@@ -547,9 +551,10 @@ Totale voci: **514**.
     già in AutoMod §6.13, ma invertita: lì è la vittima potenziale ad
     essere protetta, qui l'owner non può mai essere il "nuke" da
     contrastare per errore)
-- `[~]` 7.3 **Spam Trap** — completo (solo il ban globale via
+- `[x]` 7.3 **Spam Trap** — completo (solo il ban globale via
   fingerprint resta escluso, per la dipendenza esplicita da §4 sotto)
   → **Stato 04/10:** vedi le voci sotto. BUG-22, BUG-24, BUG-25 corretti il 04/10.
+  → **Stato 27/10 (r10, #117 SIC-039):** fino a 5 canali trappola in tutto (`canale_extra_aggiungi|togli` di `/security spamtrap`); l'indice dei messaggi si pulisce ogni giorno a 30 giorni dal lavoro di retention (PERF-3: prima la pulizia non partiva mai). Da provare su Discord: sequenza del ban e transcript con l'intent dei messaggi acceso (VERIFICA_LIVE).
   → **Stato 11/10 (#59 righe 3.9–3.13, #117):** un solo giro per utente
   (nessun DM, caso o propagazione doppi); trappola e log su canali diversi;
   avvisi su Bannare membri, thread e lettura; transcript con tetto di 40
@@ -563,37 +568,37 @@ Totale voci: **514**.
     parametri `discord.TextChannel` opzionali (rendono nativamente
     come selettore canale di Discord, non un menù a tendina
     testuale, ma stessa funzione)
-  - `[~]` Creazione automatica `#spam-trap` (visibile a everyone, no
+  - `[x]` Creazione automatica `#spam-trap` (visibile a everyone, no
     inviti, no webhook) se non selezionato
     → **Stato 04/10:** tetto dei canali non gestito (LIM-36).
-  - `[~]` Creazione automatica `#spam-log` (solo administrator) se
+  - `[x]` Creazione automatica `#spam-log` (solo administrator) se
     non selezionato
     → **Stato 04/10:** LIM-36.
   - `[x]` Embed di presidio in `#spam-trap`, rosso, in inglese, con
     header grande "DO NOT WRITE IN THIS CHANNEL"
   - `[x]` Embed informativo in `#spam-log`, colore tenue, in inglese
-  - `[~]` Sequenza fissa: cattura contenuto → **DM PRIMA del ban** →
+  - `[x]` Sequenza fissa: cattura contenuto → **DM PRIMA del ban** →
     ban con `delete_message_seconds` → purge supplementare → cleanup →
     log
     → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
-  - `[~]` Cancellazione messaggi 30 giorni (indicizzazione
+  - `[x]` Cancellazione messaggi 30 giorni (indicizzazione
     `message_id` in DB; nativo copre max 7 giorni, la purge
     supplementare copre 7-30)
     → **Stato 04/10:** la tabella degli indici cresce: la pulizia esiste ma non viene mai chiamata (PERF-3).
-  - `[~]` Log con: tag, user ID, data creazione account, data join,
+  - `[x]` Log con: tag, user ID, data creazione account, data join,
     data ban, codice invito usato, **creatore dell'invito**, contenuto
     che ha fatto scattare la trappola, numero messaggi cancellati per canale
     → **Stato 04/10:** manca la data del ban; la data di ingresso è quasi sempre assente (REVIEW §12); campo oltre 1024 (LIM-20).
   - `[x]` Cleanup webhook creati dall'utente (via audit log)
   - `[x]` Cleanup inviti creati dall'utente (via audit log)
-  - `[~]` Ban appeal: DM → thread privato in `#spam-log`, con bottoni
+  - `[x]` Ban appeal: DM → thread privato in `#spam-log`, con bottoni
     staff (Unban/Reject/Reply), rate limit 1 appello/24h. Bottoni su
     una `View` NON persistente (timeout 7 giorni) — scelta dichiarata,
     non equivalente ai pannelli persistenti di ticket/vocali: un
     appeal è per natura più breve, non vale la complessità di bottoni
     persistenti per-caso dinamici
     → **Stato 04/10:** i bottoni muoiono a ogni riavvio (LC-5).
-  - `[~]` **Transcript HTML** — timestamp, nome+nickname, contenuto
+  - `[x]` **Transcript HTML** — timestamp, nome+nickname, contenuto
     con escaping rigoroso anti-XSS, allegati immagine rigenerati come
     thumbnail WebP (Pillow, `core/image_thumbnail.py`), avatar
     dell'utente mostrato una volta per report nell'intestazione. Le
@@ -610,19 +615,19 @@ Totale voci: **514**.
     comunque raccolto prima, al verify — la stessa dipendenza di
     sempre
     → **Stato 04/10:** in piano con NF-21.
-  - `[~]` **Ban globale via propagazione cross-server** — SPEC.md
+  - `[x]` **Ban globale via propagazione cross-server** — SPEC.md
     §7.6 sotto: NON è il ban globale via fingerprint di cui sopra
     (nessuna euristica su account diversi/alt), ma la propagazione
     reale di un ban Spam Trap sullo STESSO account Discord verso ogni
     altro server aderente. Costruito su richiesta esplicita
     dell'utente, come sostituto concretamente realizzabile oggi
     → **Stato 04/10:** vedi 7.6.
-- `[~]` 7.4 Permission Auditor + alert permessi pericolosi —
+- `[x]` 7.4 Permission Auditor + alert permessi pericolosi —
   `/permission-heatmap` (ruoli con permessi critici + quanti membri
   li possiedono) + DM diretto all'owner quando un membro riceve un
   ruolo con permesso critico
   → **Stato 04/10:** embed oltre 4096 caratteri con molti ruoli (LIM-14).
-- `[~]` 7.5 Security Score / health check configurazione server —
+- `[x]` 7.5 Security Score / health check configurazione server —
   `cogs/security/security_score.py`, comando `/security-score`.
   Modulo SEMPRE GRATUITO (è un check di lettura, non una protezione
   attiva). Punteggio 0-100 (`core.security_logic.
@@ -632,7 +637,7 @@ Totale voci: **514**.
   di membri amministratori, Anti-Raid/Anti-Nuke attivi, AutoMod
   attivo — ognuno con un consiglio azionabile in caso di penalità
   → **Stato 04/10:** la risposta è pubblica nel canale (LC-8).
-- `[~]` 7.6 **Ban globale via propagazione cross-server** —
+- `[x]` 7.6 **Ban globale via propagazione cross-server** —
   `cogs/security/global_ban.py` (`/global-ban enable|disable|status`),
   richiesto esplicitamente dall'utente come soluzione al gap di 7.3
   sopra. Modulo CANDIDATO PREMIUM.

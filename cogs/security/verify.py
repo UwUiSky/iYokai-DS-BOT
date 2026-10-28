@@ -36,6 +36,14 @@ passa (VER-012: quarantena, kick, ban o niente; per il captcha sbagliato solo
 dopo 3 fallimenti di fila) e verifica solo per gli account sospetti (VER-013:
 gli altri ricevono subito i ruoli).
 
+Account troppo giovane (VER-019, `tempi azione_eta`): resta in attesa e riceve
+un DM quando raggiunge l'età (promemoria e scadenza partono da allora), oppure
+viene espulso all'ingresso. Modalità cieca (VER-020, `tempi sospendi_ore`): per
+qualche ora chi entra riceve subito i ruoli e il log lo scrive (mai durante
+un raid, mai saltando l'età minima con «solo sospetti»). Lo staff può
+rimandare l'invito in DM (`invia`, VER-017), vedere le statistiche complete
+(VER-030) ed esportare i tentativi in CSV (`tentativi csv:`, VER-031).
+
 A verifica riuscita, in un server con backup, la proposta di consenso al
 ripristino (M 12.12/12.14, `proponi_consenso_restore`).
 
@@ -43,13 +51,15 @@ Modalità «Pagina web» (NF-21, §4.2–4.3): il bottone dà un link personale
 alla pagina di verifica del pannello web; lì il bot salva un'impronta (mai
 l'IP in chiaro) e avvisa lo staff se trova un account doppio
 (`core/panel_bridge.py`, `cogs/security/alt_detection.py`).
-Funzioni coperte: SPEC §4.1–§4.6 (VER-008…016, 029–031; NF-21)
+Funzioni coperte: SPEC §4.1–§4.6 (VER-008…017, 019, 020, 029–031; NF-21)
 """
 
 from __future__ import annotations
 
 import asyncio
+import csv
 import io
+import time
 import logging
 import random
 
@@ -76,7 +86,10 @@ from core.verify_logic import (
     AZIONI_FALLITA,
     FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE,
     VerifyOutcome,
+    AZIONI_ETA,
     account_sospetto,
+    quando_maggiorenne,
+    sospesa_adesso,
     azione_dopo_fallimento,
     esiti_nella_finestra,
     decide_verify_outcome,
@@ -98,10 +111,16 @@ SETTING_SCADENZA_MINUTI = "verify_scadenza_minuti"  # VER-011: 0 = spento
 SETTING_AZIONE_SCADENZA = "verify_azione_scadenza"  # VER-011: kick | ban
 SETTING_AZIONE_FALLITA = "verify_azione_fallita"  # VER-012: niente | quarantena | kick | ban
 SETTING_SOLO_SOSPETTI = "verify_solo_sospetti"  # VER-013
+SETTING_AZIONE_ETA = "verify_azione_eta"  # VER-019: attendi | kick
+SETTING_SOSPESA_FINO = "verify_sospesa_fino"  # VER-020: epoch di fine della modalità cieca (0 = spenta)
 MAX_RUOLI_EXTRA = 3
 
 VERIFY_PROMEMORIA = "verify_promemoria"
 VERIFY_SCADENZA = "verify_scadenza"
+VERIFY_ETA = "verify_eta"  # VER-019: l'account ha raggiunto l'età minima
+# VER-031: l'esportazione di tutto il server si può chiedere una volta all'ora.
+SECONDI_TRA_CSV = 3600
+_ultimo_csv: BoundedCache = BoundedCache(max_size=10_000)
 # VER-009: l'avviso nel canale del pannello sparisce dopo questi secondi.
 SECONDI_AVVISO_CANALE = 15
 
@@ -327,11 +346,13 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
         guild.id, SETTING_CAPTCHA_TIPO, captcha_image.TIPO_TESTO
     ) == captcha_image.TIPO_IMMAGINE:
         await cog.manda_captcha_immagine(interaction, guild.id)
+        await verify_repo.registra_evento(guild.id, interaction.user.id, "captcha_inviato")
         return
     if config.captcha_enabled:
         await interaction.response.send_modal(
             CaptchaModal(cog, guild.id, interaction.user.id)
         )
+        await verify_repo.registra_evento(guild.id, interaction.user.id, "captcha_inviato")
         return
 
     # Senza captcha: risposta subito (3 secondi), poi controlli,
@@ -434,18 +455,41 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_VERIFY):
             return
         guild = member.guild
+        await verify_repo.registra_evento(guild.id, member.id, "ingresso")
         config = await verify_repo.get_config(guild.id)
         # Un rientro riparte da zero: le scadenze dell'ingresso di prima non valgono più.
-        for tipo in (VERIFY_PROMEMORIA, VERIFY_SCADENZA):
+        for tipo in (VERIFY_PROMEMORIA, VERIFY_SCADENZA, VERIFY_ETA):
             await scheduler.cancel_for_user(guild.id, member.id, tipo)
+        # Durante un raid nessuno riceve il ruolo senza verifica: potrebbe aprire
+        # i canali che la quarantena chiude.
         if (
             config.verified_role_id is not None
-            and await db.get_guild_setting(guild.id, SETTING_SOLO_SOSPETTI, False)
-            and not account_sospetto(member.created_at, member.avatar is not None)
+            and not raid_in_corso(guild.id)
+            and not await verify_repo.is_blacklisted(guild.id, member.id)
         ):
-            if await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
-                await verify_repo.log_attempt(guild.id, member.id, True, "Account non sospetto: verifica saltata")
-                return
+            # VER-020: modalità cieca, il ruolo arriva subito e il log lo dice.
+            if sospesa_adesso(await db.get_guild_setting(guild.id, SETTING_SOSPESA_FINO, 0)):
+                if await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
+                    await verify_repo.log_attempt(guild.id, member.id, True, "Modalità cieca: verifica sospesa")
+                    return
+            elif (
+                await db.get_guild_setting(guild.id, SETTING_SOLO_SOSPETTI, False)
+                and not account_sospetto(member.created_at, member.avatar is not None)
+                and meets_account_age(member.created_at, config.min_account_age_days)
+            ):
+                if await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
+                    await verify_repo.log_attempt(guild.id, member.id, True, "Account non sospetto: verifica saltata")
+                    return
+        attesa = 0
+        if config.min_account_age_days > 0 and not meets_account_age(member.created_at, config.min_account_age_days):
+            if not await verify_repo.is_whitelisted(guild.id, member.id):
+                maggiorenne = quando_maggiorenne(member.created_at, config.min_account_age_days)
+                if (await db.get_guild_setting(guild.id, SETTING_AZIONE_ETA, "attendi") or "attendi") == "kick":
+                    await verify_repo.log_attempt(guild.id, member.id, False, "Account troppo giovane: espulso")
+                    await self._punisci(guild, member, "kick", "iYokai Verify: account troppo giovane")
+                    return
+                attesa = max(0, int((maggiorenne - discord.utils.utcnow()).total_seconds()))
+                await scheduler.schedule(guild.id, member.id, VERIFY_ETA, maggiorenne)
         ruolo_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO)
         ruolo = guild.get_role(ruolo_id) if ruolo_id else None
         if ruolo is not None and check_role_assignable(guild, ruolo, guild.me, self_service=True) is None:
@@ -458,7 +502,14 @@ class VerifyCog(CogConGruppi, commands.Cog):
         for chiave, tipo in ((SETTING_PROMEMORIA_MINUTI, VERIFY_PROMEMORIA), (SETTING_SCADENZA_MINUTI, VERIFY_SCADENZA)):
             minuti = await db.get_guild_setting(guild.id, chiave, 0) or 0
             if minuti > 0:
-                await scheduler.schedule(guild.id, member.id, tipo, in_seconds(minuti * 60))
+                await scheduler.schedule(guild.id, member.id, tipo, in_seconds(attesa + minuti * 60))
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """VER-030: le uscite entrano nelle statistiche."""
+        if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_VERIFY):
+            return
+        await verify_repo.registra_evento(member.guild.id, member.id, "uscita")
 
     async def _da_verificare(self, guild_id: int, user_id: int):
         """Il membro ancora senza il ruolo di verifica, con il server e la configurazione; altrimenti None."""
@@ -479,13 +530,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if trovato is None or raid_in_corso(guild_id):
             return  # durante un raid niente messaggi ai nuovi arrivati
         guild, member, config = trovato
-        dove = f" in <#{config.panel_channel_id}>" if config.panel_channel_id else ""
-        testo = f"Promemoria: per entrare in **{guild.name}** devi ancora completare la verifica{dove}."
-        try:
-            await member.send(testo)
+        if await self._manda_dm(member, self._testo_invito(guild, config, "Promemoria: per entrare in")):
             return
-        except discord.HTTPException:
-            pass
         canale = guild.get_channel(config.panel_channel_id) if config.panel_channel_id else None
         if isinstance(canale, discord.TextChannel):
             try:
@@ -496,6 +542,28 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 )
             except discord.HTTPException:
                 pass
+
+    @staticmethod
+    def _testo_invito(guild: discord.Guild, config, inizio: str) -> str:
+        dove = f" in <#{config.panel_channel_id}>" if config.panel_channel_id else ""
+        return f"{inizio} **{guild.name}** devi ancora completare la verifica{dove}."
+
+    @staticmethod
+    async def _manda_dm(member: discord.Member, testo: str) -> bool:
+        """True se il DM è partito; False se i messaggi privati sono chiusi."""
+        try:
+            await member.send(testo)
+        except discord.HTTPException:
+            return False
+        return True
+
+    async def handle_eta(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """VER-019: l'account ha l'età richiesta, avviso a chi aspettava."""
+        trovato = await self._da_verificare(guild_id, user_id)
+        if trovato is None or raid_in_corso(guild_id):
+            return
+        guild, member, config = trovato
+        await self._manda_dm(member, self._testo_invito(guild, config, "Il tuo account ora ha l'età richiesta: per entrare in"))
 
     async def handle_scadenza(self, guild_id: int, user_id: int, payload: dict) -> None:
         """VER-011: tempo scaduto senza verifica: kick o ban."""
@@ -552,11 +620,20 @@ class VerifyCog(CogConGruppi, commands.Cog):
             is_whitelisted, is_blacklisted, age_ok, mutual_ok, captcha_ok
         )
 
+        if not outcome.success and not age_ok and not is_blacklisted:
+            fino = int(quando_maggiorenne(member.created_at, config.min_account_age_days).timestamp())
+            outcome = VerifyOutcome(False, f"{outcome.reason} You can verify from <t:{fino}:D>.")
+
         await verify_repo.log_attempt(guild.id, member.id, outcome.success, outcome.reason)
 
         if not outcome.success:
             # VER-012: azione scelta dal server su chi non passa.
             azione = await db.get_guild_setting(guild.id, SETTING_AZIONE_FALLITA, "niente") or "niente"
+            # VER-019 «attendi»: chi preme troppo presto aspetta, non viene punito.
+            if not age_ok and not is_whitelisted and not is_blacklisted and (
+                await db.get_guild_setting(guild.id, SETTING_AZIONE_ETA, "attendi") or "attendi"
+            ) == "attendi":
+                azione = "niente"
             if azione != "niente":
                 tentativi = await verify_repo.get_recent_attempts(
                     guild.id, member.id, FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE
@@ -868,6 +945,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
         azione_scadenza="Cosa fare a chi non si verifica in tempo",
         azione_fallita="Cosa fare a chi non passa la verifica",
         solo_sospetti="Verifica solo account giovani (meno di 7 giorni) o senza avatar",
+        azione_eta="Account più giovane dell'età minima: aspetta il via libera o viene espulso",
+        sospendi_ore="Modalità cieca: per queste ore chi entra riceve subito il ruolo (0 = spenta)",
     )
     @app_commands.choices(
         azione_scadenza=[
@@ -875,6 +954,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Ban", value="ban"),
         ],
         azione_fallita=[app_commands.Choice(name=a.capitalize(), value=a) for a in AZIONI_FALLITA],
+        azione_eta=[app_commands.Choice(name=a.capitalize(), value=a) for a in AZIONI_ETA],
     )
     async def tempi_cmd(
         self,
@@ -884,6 +964,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
         azione_scadenza: app_commands.Choice[str] | None = None,
         azione_fallita: app_commands.Choice[str] | None = None,
         solo_sospetti: bool | None = None,
+        azione_eta: app_commands.Choice[str] | None = None,
+        sospendi_ore: app_commands.Range[int, 0, 720] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
@@ -894,6 +976,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
             (SETTING_AZIONE_SCADENZA, azione_scadenza.value if azione_scadenza else None),
             (SETTING_AZIONE_FALLITA, azione_fallita.value if azione_fallita else None),
             (SETTING_SOLO_SOSPETTI, solo_sospetti),
+            (SETTING_AZIONE_ETA, azione_eta.value if azione_eta else None),
+            (SETTING_SOSPESA_FINO, None if sospendi_ore is None else (
+                int(time.time()) + sospendi_ore * 3600 if sospendi_ore else 0)),
         ):
             if valore is not None:
                 await db.set_guild_setting(gid, chiave, valore, changed_by=chi)
@@ -904,6 +989,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
             f"Tempo massimo: {f'{scadenza} minuti, poi ' + (await db.get_guild_setting(gid, SETTING_AZIONE_SCADENZA, 'kick') or 'kick') if scadenza else 'nessuno'}. "
             f"Chi non passa: {await db.get_guild_setting(gid, SETTING_AZIONE_FALLITA, 'niente') or 'niente'}. "
             f"Solo account sospetti: {'sì' if await db.get_guild_setting(gid, SETTING_SOLO_SOSPETTI, False) else 'no'}. "
+            f"Account troppo giovane: {await db.get_guild_setting(gid, SETTING_AZIONE_ETA, 'attendi') or 'attendi'}. "
+            f"Modalità cieca: "
+            f"{'attiva fino a <t:' + str(fino) + ':f>' if sospesa_adesso(fino := await db.get_guild_setting(gid, SETTING_SOSPESA_FINO, 0)) else 'spenta'}. "
             "Valgono per chi entra da adesso.",
             ephemeral=True,
         )
@@ -937,15 +1025,54 @@ class VerifyCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "security",
+        nome="invia",
+        descrizione="Rimanda a un membro il messaggio per verificarsi.",
+        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
+    )
+    @app_commands.describe(membro="Il membro a cui mandare l'invito in DM")
+    async def send_cmd(self, interaction: discord.Interaction, membro: discord.Member) -> None:
+        """VER-017."""
+        if not await ensure_module_enabled(interaction, MODULE_VERIFY):
+            return
+        trovato = await self._da_verificare(interaction.guild.id, membro.id)
+        if trovato is None:
+            await interaction.response.send_message(
+                "Il membro è già verificato, oppure il Verify non è configurato.", ephemeral=True
+            )
+            return
+        guild, _, config = trovato
+        if await self._manda_dm(membro, self._testo_invito(guild, config, "Per entrare in")):
+            await interaction.response.send_message(f"Invito inviato a {membro.mention}.", ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                f"{membro.mention} ha i messaggi privati chiusi: non ho potuto scrivergli.", ephemeral=True
+            )
+
+    @comando_di_gruppo(
+        "security",
         nome="tentativi",
         descrizione="Tentativi di verifica di un utente.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    @app_commands.describe(member="L'utente (anche se non è nel server)")
-    async def attempts_cmd(self, interaction: discord.Interaction, member: discord.User) -> None:
+    @app_commands.describe(
+        member="L'utente (anche se non è nel server)",
+        csv="Esporta in un file CSV (senza utente: tutto il server, una volta all'ora)",
+    )
+    async def attempts_cmd(
+        self, interaction: discord.Interaction, member: discord.User | None = None, csv: bool = False
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
-        tentativi = await verify_repo.get_recent_attempts(interaction.guild.id, member.id, 15)
+        if member is None and not csv:
+            await interaction.response.send_message(
+                "Indica un utente, oppure scegli l'esportazione CSV di tutto il server.", ephemeral=True
+            )
+            return
+        gid = interaction.guild.id
+        if csv:
+            await self._esporta_csv(interaction, gid, member)
+            return
+        tentativi = await verify_repo.get_recent_attempts(gid, member.id, 15)
         if not tentativi:
             await interaction.response.send_message("Nessun tentativo registrato.", ephemeral=True)
             return
@@ -958,10 +1085,35 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @staticmethod
+    async def _esporta_csv(interaction: discord.Interaction, gid: int, member: discord.User | None) -> None:
+        """VER-031: CSV dei tentativi (ultimi 5000). Quello di tutto il server, una volta all'ora."""
+        if member is None:
+            ultimo = _ultimo_csv.get(gid)
+            if ultimo is not None and time.monotonic() - ultimo < SECONDI_TRA_CSV:
+                await interaction.response.send_message(
+                    "L'esportazione di tutto il server si può chiedere una volta all'ora. "
+                    "Riprova più tardi, oppure indica un utente.",
+                    ephemeral=True,
+                )
+                return
+            _ultimo_csv.set(gid, time.monotonic())
+        await interaction.response.defer(ephemeral=True)
+        righe = await verify_repo.tentativi_per_csv(gid, member.id if member else None)
+        buffer = io.StringIO()
+        scrittore = csv.writer(buffer)
+        scrittore.writerow(["utente", "esito", "motivo", "data"])
+        for utente, ok, motivo, quando in righe:
+            # Un motivo che inizia con = + - @ sarebbe una formula in un foglio di calcolo.
+            sicuro = "'" + motivo if motivo[:1] in ("=", "+", "-", "@") else motivo
+            scrittore.writerow([utente, "ok" if ok else "no", sicuro, quando.strftime("%Y-%m-%d %H:%M:%S")])
+        file = discord.File(io.BytesIO(buffer.getvalue().encode("utf-8")), filename="verifica_tentativi.csv")
+        await interaction.followup.send(f"{len(righe)} tentativi esportati.", file=file, ephemeral=True)
+
     @comando_di_gruppo(
         "security",
         nome="statistiche",
-        descrizione="Verifiche riuscite e fallite.",
+        descrizione="Ingressi, uscite, captcha e verifiche.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(giorni="Giorni indietro (default 7)")
@@ -970,10 +1122,13 @@ class VerifyCog(CogConGruppi, commands.Cog):
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
-        riusciti, falliti, utenti = await verify_repo.attempt_stats(interaction.guild.id, giorni)
+        s = await verify_repo.statistiche(interaction.guild.id, giorni)
         await interaction.response.send_message(
-            f"Ultimi {giorni} giorni: **{riusciti}** verifiche riuscite, **{falliti}** fallite, "
-            f"{utenti} utenti diversi.",
+            f"Ultimi {giorni} giorni.\n"
+            f"Ingressi: **{s['ingressi']}**, uscite: **{s['uscite']}**.\n"
+            f"Captcha inviati: **{s['captcha_inviati']}**, falliti: **{s['captcha_falliti']}**.\n"
+            f"Verifiche completate: **{s['completate']}**.\n"
+            f"Espulsi o bannati per tempo scaduto: **{s['scaduti']}**.",
             ephemeral=True,
         )
 
@@ -1027,3 +1182,4 @@ async def setup(bot: commands.Bot) -> None:
     bot.add_view(VerifyPanelView())
     scheduler.register_handler(VERIFY_PROMEMORIA, cog.handle_promemoria)
     scheduler.register_handler(VERIFY_SCADENZA, cog.handle_scadenza)
+    scheduler.register_handler(VERIFY_ETA, cog.handle_eta)

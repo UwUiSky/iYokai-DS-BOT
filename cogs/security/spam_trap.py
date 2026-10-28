@@ -40,7 +40,11 @@ staff» cancellano il messaggio e fanno solo quello, senza ban globale né
 purge. Con «decide lo staff» il caso va nei log con i bottoni Ban e Kick,
 persistenti come quelli dell'appello.
 
-Funzioni coperte: SPEC §7.3, §23 (NF-30: un DM di chi ha un ban manuale riceve il bottone di appello)
+Più canali trappola (SIC-039): oltre a quello principale fino a 4 in più
+(`canale_extra_aggiungi` e `canale_extra_togli` di `/security spamtrap`),
+salvati nelle impostazioni del server. Scrivere in uno qualunque è la trappola.
+
+Funzioni coperte: SPEC §7.3, SIC-039/040, §23 (NF-30: un DM di chi ha un ban manuale riceve il bottone di appello)
 """
 
 from __future__ import annotations
@@ -81,7 +85,10 @@ from core.spam_trap_logic import (
     KICK_ACTION_TYPE,
     PUNIZIONE_PREDEFINITA,
     PUNIZIONI,
+    SETTING_CANALI_EXTRA,
     SETTING_PUNIZIONE,
+    canali_trappola,
+    controlla_canale_extra,
     TIMEOUT_ACTION_TYPE,
     TIMEOUT_TRAPPOLA_SECONDI,
     DM_APPEAL_PROCESSING_COOLDOWN_SECONDS,
@@ -566,6 +573,34 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Setup
     # ================================================================
+    async def _canali_extra(
+        self, guild, trap_channel, log_channel, da_aggiungere, da_togliere, chi: int
+    ) -> str:
+        """SIC-039: aggiunge o toglie un canale trappola in più. Il testo da accodare alla risposta."""
+        salvati = list(await db.get_guild_setting(guild.id, SETTING_CANALI_EXTRA) or [])
+        # Un canale cancellato non si può più togliere a mano: libera il suo posto.
+        extra = [c for c in salvati if guild.get_channel(c) is not None]
+        note = ""
+        if da_togliere is not None and da_togliere.id in extra:
+            extra.remove(da_togliere.id)
+        if da_aggiungere is not None:
+            errore = controlla_canale_extra(extra, da_aggiungere.id, trap_channel.id, log_channel.id)
+            if errore is not None:
+                note += f"\n⚠️ {errore}"
+            else:
+                extra.append(da_aggiungere.id)
+                try:
+                    await self._send_trap_embed(da_aggiungere)
+                except discord.HTTPException:
+                    note += f"\n⚠️ Non sono riuscito a scrivere l'avviso in {da_aggiungere.mention}."
+                for avviso in _permessi_mancanti(guild, da_aggiungere, log_channel):
+                    note += f"\n⚠️ {avviso}"
+        if extra != salvati:
+            await db.set_guild_setting(guild.id, SETTING_CANALI_EXTRA, extra, changed_by=chi)
+        if extra:
+            note += "\nAltre trappole: " + ", ".join(f"<#{c}>" for c in extra) + "."
+        return note
+
     @comando_di_gruppo(
         "security",
         nome="spamtrap",
@@ -577,6 +612,8 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         staff_role_add="SEC-8b: ruolo da esentare dal ban della trappola (aggiunto alla lista)",
         staff_role_remove="SEC-8b: ruolo da togliere dalla lista dei ruoli esentati",
         punizione="Cosa fare a chi scrive nella trappola (vuoto: resta com'è; di base ban)",
+        canale_extra_aggiungi="SIC-039: un altro canale trappola (fino a 5 in tutto)",
+        canale_extra_togli="SIC-039: toglie un canale trappola in più",
     )
     @app_commands.choices(
         punizione=[
@@ -596,6 +633,8 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         staff_role_add: discord.Role | None = None,
         staff_role_remove: discord.Role | None = None,
         punizione: app_commands.Choice[str] | None = None,
+        canale_extra_aggiungi: discord.TextChannel | None = None,
+        canale_extra_togli: discord.TextChannel | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -687,6 +726,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             await db.set_guild_setting(
                 guild.id, SETTING_PUNIZIONE, punizione.value, changed_by=interaction.user.id
             )
+        extra_note = await self._canali_extra(
+            guild, trap_channel, log_channel, canale_extra_aggiungi, canale_extra_togli, interaction.user.id
+        )
         scelta = await self._punizione(guild.id)
         messaggio = (
             f"Spam Trap configurato: trappola in {trap_channel.mention}, "
@@ -694,6 +736,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         )
         for avviso in _permessi_mancanti(guild, trap_channel, log_channel):
             messaggio += f"\n⚠️ {avviso}"
+        messaggio += extra_note
         if ruoli_staff:
             menzioni = ", ".join(f"<@&{role_id}>" for role_id in ruoli_staff)
             messaggio += f"\nRuoli esentati dal ban: {menzioni}."
@@ -773,7 +816,10 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             )
 
         config = await spam_trap_repo.get_config(message.guild.id)
-        if config.trap_channel_id is not None and message.channel.id == config.trap_channel_id:
+        if config.trap_channel_id is None:
+            return
+        extra = await db.get_guild_setting(message.guild.id, SETTING_CANALI_EXTRA) or []
+        if message.channel.id in canali_trappola(config.trap_channel_id, extra):
             await self._handle_trigger(message)
 
     @commands.Cog.listener()
