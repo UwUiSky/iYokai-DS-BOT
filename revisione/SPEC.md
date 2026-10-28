@@ -2003,9 +2003,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   ha lanciato il comando (il proprietario del server è escluso dal limite); il minimo del lavoro
   non supera il massimo per vincolo del database (migrazione 0099).
 - `[x]` 22.15 Captcha a immagine nella verifica (NF-18)
-- `[ ]` 22.16 Wizard di primo avvio per categoria, con creazione dei
+- `[x]` 22.16 Wizard di primo avvio per categoria, con creazione dei
   canali
-- `[ ]` 22.17 Soglie sui warn dati a mano
+  → **Stato 28/10 (r12):** `/admin setup wizard`: un passo per i ruoli del bot, uno per categoria di moduli (`core/setup_wizard_logic.py`).
+  Canali: Log = `/log crea-canali`; Moderazione = canale riservato per i casi (mod-log); Sicurezza = canale riservato per gli
+  allarmi (router `allarmi`); Community = canale `benvenuto` (il modulo si accende nel passo). Stessi punti unici dei comandi (D16),
+  controllo dei permessi e del tetto di 500 canali. Test: `tests/test_setup_wizard.py`, `tests/test_setup_wizard_logic.py`.
+- `[x]` 22.17 Soglie sui warn dati a mano
+  → **Stato 28/10 (r12):** `/security escalation enable warn_manuali:True`: i `/mod warn` salgono la scala di escalation (M 1.10, D29:
+  il gradino parte solo se il moderatore potrebbe farlo da sé; dai warn in massa kick e ban non partono). Test: `tests/test_escalation_warn_manuali.py`.
 
 ## §23 FUNZIONI NUOVE, SECONDO GRUPPO — da fare (fasi F9, F13, F14)
 

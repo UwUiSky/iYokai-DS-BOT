@@ -4,7 +4,7 @@ cogs/utility/_setup_wizard_views.py
 Interfaccia della configurazione guidata (`/admin setup wizard`): un passo per i
 ruoli del bot, poi un passo per ogni categoria di moduli. I ruoli si salvano
 subito (`imposta_ruolo`, punto unico D16); i moduli alla fine (`imposta_modulo`).
-Funzioni coperte: SPEC §2.2, M 10.14 (#66), #148
+Funzioni coperte: SPEC §2.2, 22.16, M 10.14 (#66), #148
 Dipende da: core/setup_wizard_logic.py
 
 Limiti: menu con al massimo 25 opzioni; tre menu dei ruoli (righe 0-2) più la riga
@@ -23,7 +23,9 @@ from core.i18n import t, testo_per
 from core.premium import PremiumModule
 from core.setup_wizard_logic import (
     TIPO_RUOLI,
+    CanaleWizard,
     Passo,
+    canale_per_passo,
     is_last_step,
     moduli_da_scrivere,
     next_step,
@@ -176,6 +178,13 @@ class SetupWizardView(BaseView):
                 self.add_item(SelezioneRuolo(tipo, self.ruoli.get(tipo), riga, self.lingua))
         else:
             self.add_item(SelezioneModuli(passo, self.moduli, self.scelti, self.lingua))
+            if canale_per_passo(passo) is not None:
+                bottone = discord.ui.Button(
+                    label=t("setup_wizard_crea_canale", self.lingua, nome=canale_per_passo(passo).nome),
+                    style=discord.ButtonStyle.secondary, row=3,
+                )
+                bottone.callback = self._crea_canale
+                self.add_item(bottone)
             if passo.categoria == CATEGORIA_LOG and passo.parte == 1:
                 bottone = discord.ui.Button(
                     label=t("setup_wizard_crea_log", self.lingua), style=discord.ButtonStyle.secondary, row=3
@@ -223,6 +232,15 @@ class SetupWizardView(BaseView):
             embed=None, view=None,
         )
 
+    async def _crea_canale(self, interaction: discord.Interaction) -> None:
+        """22.16: crea il canale della categoria e lo collega con lo stesso punto dei comandi."""
+        canale = canale_per_passo(self.passo)
+        if canale is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        testo = await crea_e_collega(interaction, canale)
+        await interaction.followup.send(testo, ephemeral=True)
+
     async def _crea_canali_log(self, interaction: discord.Interaction) -> None:
         """Offre `/log crea-canali`: stessa funzione del comando, niente copia."""
         cog = interaction.client.get_cog(NOME_COG_LOG)
@@ -245,3 +263,44 @@ class SetupWizardView(BaseView):
                 )
             except discord.HTTPException:
                 pass
+
+
+async def crea_e_collega(interaction: discord.Interaction, canale: CanaleWizard) -> str:
+    """
+    Crea il canale di testo e lo imposta dove lo usa la funzione (mod-log, allarmi,
+    benvenuto). Restituisce il testo da dire a chi ha premuto. Non accende i moduli.
+    """
+    # Import qui: i comandi dei log e dei messaggi di benvenuto non sono dipendenze del wizard.
+    from cogs.logging.log_config import MAX_CANALI_SERVER, _riservato, permessi_mancanti
+    from cogs.moderation._shared import SETTING_MOD_LOG_CHANNEL
+    from core import channel_router as router
+    from core.database import db
+    from core.repositories.greetings_repo import greetings_repo
+
+    guild = interaction.guild
+    mancano = permessi_mancanti(guild.me.guild_permissions, ("manage_channels", "view_channel", "send_messages"))
+    if mancano:
+        return await testo_per(interaction, "setup_wizard_canale_permessi", permessi=", ".join(mancano))
+    if len(guild.channels) + 1 > MAX_CANALI_SERVER:
+        return await testo_per(interaction, "setup_wizard_canale_pieno", massimo=MAX_CANALI_SERVER)
+    try:
+        nuovo = await guild.create_text_channel(
+            canale.nome,
+            overwrites=_riservato(guild) if canale.riservato else {},
+            topic=canale.argomento[:1024],
+            reason="/admin setup wizard",
+        )
+    except discord.HTTPException as errore:
+        logger.warning("wizard: canale %s non creato (server %s): %s", canale.chiave, guild.id, errore)
+        return await testo_per(interaction, "setup_wizard_canale_errore")
+    if canale.chiave == "mod-log":
+        await db.set_guild_setting(guild.id, SETTING_MOD_LOG_CHANNEL, nuovo.id)
+    elif canale.chiave == "allarmi":
+        await router.output_channel_repo.imposta(guild.id, router.TIPO_ALLARMI, nuovo.id)
+    else:
+        config = await greetings_repo.get_config(guild.id)
+        await greetings_repo.set_welcome(
+            guild.id, enabled=config.welcome_enabled, channel_id=nuovo.id, message=config.welcome_message,
+            dm=config.welcome_dm, ping_ruoli=config.welcome_ping_ruoli,
+        )
+    return await testo_per(interaction, "setup_wizard_canale_creato", canale=nuovo.mention)
