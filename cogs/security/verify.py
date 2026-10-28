@@ -39,7 +39,8 @@ gli altri ricevono subito i ruoli).
 Account troppo giovane (VER-019, `tempi azione_eta`): resta in attesa e riceve
 un DM quando raggiunge l'età (promemoria e scadenza partono da allora), oppure
 viene espulso all'ingresso. Modalità cieca (VER-020, `tempi sospendi_ore`): per
-qualche ora chi entra riceve subito i ruoli e il log lo scrive. Lo staff può
+qualche ora chi entra riceve subito i ruoli e il log lo scrive (mai durante
+un raid, mai saltando l'età minima con «solo sospetti»). Lo staff può
 rimandare l'invito in DM (`invia`, VER-017), vedere le statistiche complete
 (VER-030) ed esportare i tentativi in CSV (`tentativi csv:`, VER-031).
 
@@ -459,7 +460,13 @@ class VerifyCog(CogConGruppi, commands.Cog):
         # Un rientro riparte da zero: le scadenze dell'ingresso di prima non valgono più.
         for tipo in (VERIFY_PROMEMORIA, VERIFY_SCADENZA, VERIFY_ETA):
             await scheduler.cancel_for_user(guild.id, member.id, tipo)
-        if config.verified_role_id is not None and not await verify_repo.is_blacklisted(guild.id, member.id):
+        # Durante un raid nessuno riceve il ruolo senza verifica: potrebbe aprire
+        # i canali che la quarantena chiude.
+        if (
+            config.verified_role_id is not None
+            and not raid_in_corso(guild.id)
+            and not await verify_repo.is_blacklisted(guild.id, member.id)
+        ):
             # VER-020: modalità cieca, il ruolo arriva subito e il log lo dice.
             if sospesa_adesso(await db.get_guild_setting(guild.id, SETTING_SOSPESA_FINO, 0)):
                 if await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
@@ -468,6 +475,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             elif (
                 await db.get_guild_setting(guild.id, SETTING_SOLO_SOSPETTI, False)
                 and not account_sospetto(member.created_at, member.avatar is not None)
+                and meets_account_age(member.created_at, config.min_account_age_days)
             ):
                 if await self.dai_ruoli_di_verifica(guild, member, config.verified_role_id):
                     await verify_repo.log_attempt(guild.id, member.id, True, "Account non sospetto: verifica saltata")
@@ -621,6 +629,11 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if not outcome.success:
             # VER-012: azione scelta dal server su chi non passa.
             azione = await db.get_guild_setting(guild.id, SETTING_AZIONE_FALLITA, "niente") or "niente"
+            # VER-019 «attendi»: chi preme troppo presto aspetta, non viene punito.
+            if not age_ok and not is_whitelisted and not is_blacklisted and (
+                await db.get_guild_setting(guild.id, SETTING_AZIONE_ETA, "attendi") or "attendi"
+            ) == "attendi":
+                azione = "niente"
             if azione != "niente":
                 tentativi = await verify_repo.get_recent_attempts(
                     guild.id, member.id, FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE

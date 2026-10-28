@@ -577,7 +577,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         self, guild, trap_channel, log_channel, da_aggiungere, da_togliere, chi: int
     ) -> str:
         """SIC-039: aggiunge o toglie un canale trappola in più. Il testo da accodare alla risposta."""
-        extra = list(await db.get_guild_setting(guild.id, SETTING_CANALI_EXTRA) or [])
+        salvati = list(await db.get_guild_setting(guild.id, SETTING_CANALI_EXTRA) or [])
+        # Un canale cancellato non si può più togliere a mano: libera il suo posto.
+        extra = [c for c in salvati if guild.get_channel(c) is not None]
         note = ""
         if da_togliere is not None and da_togliere.id in extra:
             extra.remove(da_togliere.id)
@@ -593,7 +595,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                     note += f"\n⚠️ Non sono riuscito a scrivere l'avviso in {da_aggiungere.mention}."
                 for avviso in _permessi_mancanti(guild, da_aggiungere, log_channel):
                     note += f"\n⚠️ {avviso}"
-        if da_aggiungere is not None or da_togliere is not None:
+        if extra != salvati:
             await db.set_guild_setting(guild.id, SETTING_CANALI_EXTRA, extra, changed_by=chi)
         if extra:
             note += "\nAltre trappole: " + ", ".join(f"<#{c}>" for c in extra) + "."

@@ -93,3 +93,17 @@ def test_l_indice_dei_messaggi_della_trappola_ha_la_pulizia_dei_30_giorni():
     tabella = next(t for t in REGISTRO if t.nome == "spam_trap_message_index")
     assert tabella.scadenza is not None and tabella.scadenza.giorni == 30
     assert tabella.scadenza.colonna == "created_at"
+
+
+async def test_un_canale_extra_cancellato_libera_il_posto(scenario):
+    # Un canale cancellato non si può più scegliere in `canale_extra_togli`:
+    # senza pulizia occuperebbe per sempre uno dei 5 posti.
+    await scenario.configura()
+    canali = [scenario.aggiungi_canale(f"t{n}") for n in range(4)]
+    for canale in canali:
+        await _setup(scenario, canale_extra_aggiungi=canale)
+    del scenario.canali[canali[0].id]
+    nuovo = scenario.aggiungi_canale("t-nuovo")
+    await _setup(scenario, canale_extra_aggiungi=nuovo)
+    salvati = await db.get_guild_setting(GUILD_ID, SETTING_CANALI_EXTRA)
+    assert canali[0].id not in salvati and nuovo.id in salvati

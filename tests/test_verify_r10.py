@@ -249,3 +249,43 @@ async def test_csv_di_tutto_il_server_una_volta_all_ora_e_senza_formule(scenario
     testo = (seconda.followup.send.call_args or seconda.response.send_message.call_args).args[0]
     assert "ora" in testo.lower()
     assert "file" not in (seconda.followup.send.call_args or seconda.response.send_message.call_args).kwargs
+
+
+# ------------------------------------------------------------ revisione r10
+async def test_modalita_cieca_non_vale_durante_un_raid(scenario):
+    # Il ruolo di verifica può aprire canali che la quarantena chiude: durante
+    # un raid nessuno lo riceve senza passare la verifica.
+    await scenario.configura(captcha=True)
+    await _tempi(scenario, sospendi_ore=2)
+    security_raid_state.segna_raid(GUILD_ID)
+    scenario.utente.guild = scenario.server
+    scenario.utente.roles = []
+    await scenario.cog.on_member_join(scenario.utente)
+    scenario.utente.add_roles.assert_not_awaited()
+
+
+async def test_solo_sospetti_non_salta_l_eta_minima(scenario, clean_db):
+    # Account di 10 giorni con avatar: non «sospetto», ma sotto i 30 giorni richiesti.
+    from unittest.mock import MagicMock
+
+    await _setup_con_eta(scenario, 30)
+    await _tempi(scenario, solo_sospetti=True)
+    scenario.utente.created_at = datetime.now(timezone.utc) - timedelta(days=10)
+    scenario.utente.avatar = MagicMock()
+    scenario.utente.guild = scenario.server
+    scenario.utente.roles = []
+    await scenario.cog.on_member_join(scenario.utente)
+    scenario.utente.add_roles.assert_not_awaited()
+    assert (modulo.VERIFY_ETA, UTENTE_ID) in await _lavori(clean_db)
+
+
+async def test_in_attesa_dell_eta_il_clic_non_fa_scattare_l_azione_di_chi_non_passa(scenario):
+    # VER-019 «attendi»: chi preme il bottone troppo presto non viene bannato.
+    await _setup_con_eta(scenario, 10)
+    await _tempi(scenario, azione_fallita=_scelta("ban"))
+    scenario.utente.created_at = datetime.now(timezone.utc) - timedelta(days=4)
+    scenario.utente.roles = []
+    esito = await scenario.cog.run_checks_and_finalize(scenario.server, scenario.utente, captcha_ok=True)
+    assert not esito.success
+    scenario.server.ban.assert_not_awaited()
+    scenario.utente.kick.assert_not_awaited()
