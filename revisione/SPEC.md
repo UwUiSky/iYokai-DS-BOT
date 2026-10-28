@@ -172,10 +172,11 @@ Totale voci: **514**.
   singoli cog — tradurre l'intero bot è un lavoro enormemente più
   grande di questa singola voce, onestamente non dichiarato completo
   → **Stato r10:** la leggono le risposte (§21.2); il resto dei testi è §21.1.
-- `[ ]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
+- `[x]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
   non richiedere il Message Content Intent. **La colonna `prefix` in
   `guild_config` è morta e va rimossa o documentata come deprecata**
   → **Stato 04/10:** il motivo dello scarto non vale più: l'intent `message_content` è acceso. Alternativa pianificata: prefisso scelto dal server **solo per i comandi personalizzati** (§22, NF-09). I comandi del bot restano slash.
+  → **Stato 28/10 (r12):** fatta: prefisso scelto dal server solo per i comandi personalizzati (`/utility moduli comandi prefisso`, colonna `guild_config.prefix`, `cogs/utility/custom_commands.py`, `tests/test_custom_commands.py`). I comandi del bot restano slash.
 - `[x]` 2.5 Esporta configurazione — `/config export`, file `.json`
   con moduli/settings/lingua
   → **Stato 04/10:** esporta solo `guild_config` (REVIEW §12).
@@ -1879,12 +1880,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   90 verifiche, 180 automod e trascrizioni, 365 sicurezza/storico/casse); `event_log.id` BIGINT (0037)
 - `[x]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner —
   `/utility privacy esporta|cancella`, `/owner privacy richieste|approva|rifiuta`. (da verificare live)
-- `[ ]` 19.7 Privacy policy e termini pubblicati (serve anche per la
+- `[x]` 19.7 Privacy policy e termini pubblicati (serve anche per la
   verifica dell'app a 100 server)
-- `[ ]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato
+  → **Stato 28/10 (r12):** pagine `/privacy` e `/termini` del pannello (testo dal registro dei dati). Da attivare: l'owner rilegge la bozza e scrive gli indirizzi pubblici nel Developer Portal (Privacy Policy URL e Terms of Service URL). Vedi VERIFICA_LIVE.
+- `[x]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato
   (serve per la domanda a Discord da 10.000 utenti, D11)
-- `[ ]` 19.9 Token dei webhook salvati come hash; chiave dei token
+  → **Stato 28/10 (r12):** `core/intent_usage.py` (funzioni e file per ogni intent privilegiato, in inglese) e `docs/INTENT_PRIVILEGIATI.md` generato; `tests/test_intent_usage.py` controlla che ogni cog con un ascoltatore di membri o messaggi sia nell'elenco. Presences: mai acceso.
+- `[x]` 19.9 Token dei webhook salvati come hash; chiave dei token
   OAuth ruotabile (SEC-16, LIM-52)
+  → **Stato 28/10 (r12):** token dei webhook ricevuti come impronta SHA-256 (0450, `hash_webhook_token`; il token in chiaro si mostra solo alla creazione; quelli vecchi sono convertiti e funzionano). Chiave OAuth ruotabile: già fatta (M 12.15, più chiavi separate da virgola, `tests/test_oauth_crypto.py`). Test: `tests/test_custom_webhook_repo.py`.
 
 ## §20 NUOVA STRUTTURA DEI COMANDI — fatto (fase F7, D24/D25)
 
@@ -2102,8 +2106,9 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
   → **Stato 14/10:** il pannello gira nel processo del bot e scrive dagli stessi metodi del database, che svuotano le cache; parte anche `modules_updated`.
 - `[ ]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
   moduli dei ticket
-- `[~]` 24.6 Pagine legali: privacy policy e termini
+- `[x]` 24.6 Pagine legali: privacy policy e termini
   → **Stato 27/10 (r10):** `/privacy` e `/termini` fatte (vedi C.5). Manca la rilettura del testo da parte dell'owner.
+  → **Stato 28/10 (r12):** pagine fatte (vedi C.5). Da attivare: l'owner rilegge il testo (bozza) e scrive gli indirizzi nel Developer Portal.
 - `[x]` 24.7 Pagamento del premium: abbonamento dentro Discord e
   pagamento esterno registrato dall'owner (NF-22)
   → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Pagina del pannello `/server/<id>/premium` fatta (stesse righe di `/admin premium stato` e link al negozio). Da provare live (serve l'app verificata): `VERIFICA_LIVE.md`.
@@ -2406,9 +2411,10 @@ completo, con limiti e motivi, è in
   → **Stato 27/10 (r10):** fatto: `core/restore_web_server.py` e `core/restore_oauth_logic.py` (§11.11), flusso e callback separati dal pannello.
 - `[x]` C.4 Dashboard owner: premium list, toggle moduli premium
   → **Stato 27/10 (r10):** pagina `/proprietario` (solo `OWNER_ID`, controllato a ogni richiesta): moduli premium con interruttore (punto unico `core/premium_flags.py`, lo stesso di `/owner premium toggle`), server con stato premium (i 50 più grandi), AI in manutenzione. Le pagine di configurazione dei server sono in §24.
-- `[~]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
+- `[x]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
   legale per C.1, non opzionale)
   → **Stato 27/10 (r10):** pagine pubbliche `/privacy` e `/termini` nel pannello; l'elenco dei dati è generato dal registro dei dati e i fornitori AI da quelli configurati. Manca: che l'owner rilegga il testo (bozza) e inserisca l'indirizzo pubblico nel Developer Portal.
+  → **Stato 28/10 (r12):** pagine `/privacy` e `/termini` complete (registro dei dati, fornitori AI, elenco intent in `docs/INTENT_PRIVILEGIATI.md`). Da attivare: l'owner rilegge la bozza e inserisce l'indirizzo pubblico nel Developer Portal.
 
 ---
 

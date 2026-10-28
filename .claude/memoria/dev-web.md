@@ -1,42 +1,32 @@
 # Memoria di dev-web
 
 ## Aggiornata
-27/10/2026 · ramo `feat/r10aiw` · giro r10 in corso
+28/10/2026 · ramo `feat/r12piatt` · giro r12 (lotto piattaforme, 34 voci; migrazioni 0450-0479, D45-D47)
 
 ## In corso
-- Giro r10 (r10aiw, anche custode-ai): chiuse 25.20, 25.22, 25.23, 25.27, C.1-C.5, 24.1-24.4, 24.6(~), 24.7
-  e pagina AI del server. Manca solo lo smoke finale (`scripts/smoke.py --base main`) e il rapporto.
-- Migrazioni r10: 0350 (ai_globale, ai_config.prova_inizio); 0351-0359 libere.
+- Ordine: A core/privacy [fatto: 2.4, 19.7-19.9, 24.6, C.5] -> B iYokai App (B.2, B.5-B.10) -> D Desktop
+  (`desktop/` + API server `core/desktop_*`) -> 24.2/24.5/#147 genera_wiki -> 21.1/21.6 catalogo it/en.
+- Fine giro: SPEC (simboli), REGISTRO_RISOLTE, VERIFICA_LIVE («giro r12 — piattaforme»), «smoke da fare».
+- Migrazioni usate: 0450 (token webhook come impronta). Prossima libera: 0451.
 
 ## Fatto
+- r12: 0450 webhook hash, `core/intent_usage.py` + `docs/INTENT_PRIVILEGIATI.md`, SPEC 2.4/19.7-19.9/24.6/C.5.
 - r10 9306d42 manutenzione/coda/prova AI; pagine legali, /proprietario; pagina AI e bottone pannello.
-- r8 59f6215 NF-21, dede8e2 #148, d3cbd81 marchio nel pannello, 3b57822 + 8b8decc
-  aspetto (CFG-030/021), 0d8fbe9 «I miei dati» (#46). Nessuna migrazione dopo 0210.
-- r6 650d4a2, 7b27a1f, 0d94f23: punto unico `core/config_schema.py`; pannello
-  `core/web_panel_server.py` + `web_panel_logic.py` + `panel_bridge.py`,
-  pagine in `pannello_web/`, sessioni 0150, wiki, premium (#93); D27.
+- r8 59f6215 NF-21, dede8e2 #148, d3cbd81 marchio, 3b57822 + 8b8decc aspetto, 0d8fbe9 «I miei dati» (#46).
+- r6 650d4a2, 7b27a1f, 0d94f23: punto unico `core/config_schema.py`; pannello `core/web_panel_server.py`,
+  `web_panel_logic.py`, `panel_bridge.py`, pagine in `pannello_web/`, sessioni 0150, wiki, premium (#93); D27.
 
 ## Cose imparate
 - `OWNER_ID` e `config` sono congelati: nei test si sostituisce `panel_bridge.e_proprietario`.
-- Percorsi di pagine (`/privacy`…) vanno in ECCEZIONI di test_riferimenti_comandi; niente stringhe `/parola` nel codice.
-- I test di setup sostituiscono `setup_module.db`: ora anche
-  `config_schema_module.db`, e i moduli finti vanno registrati.
-- `test_riferimenti_comandi` legge ogni stringa di core: i percorsi del
-  pannello (`/accedi`, `/wiki`…) stanno in ECCEZIONI con il motivo.
-- aiohttp: chiavi della richiesta con `web.RequestKey`; redirect come
-  `web.Response(status=302)`, non restituire `HTTPFound`.
-- `_pagina(..., **dati)`: nessun parametro chiamato come una variabile
-  del template (`stato` collideva).
+- Percorsi di pagine (`/privacy`...) vanno in ECCEZIONI di test_riferimenti_comandi; niente stringhe `/parola` nel codice.
+- I test di setup sostituiscono `setup_module.db` e `config_schema_module.db`.
+- aiohttp: chiavi della richiesta con `web.RequestKey`; redirect come `web.Response(status=302)`.
+- `_pagina(..., **dati)`: nessun parametro chiamato come una variabile del template.
 - TestClient su 127.0.0.1: `aiohttp.CookieJar(unsafe=True)`.
-- Marchio: azioni in `core/whitelabel_bot.py` (`applica_azione`, `collega_e_avvia`),
-  gestore dal cog `MarchioCog`; esiti `mar_*` solo da `ESITI_MARCHIO` del ponte.
-- Caricamenti nel pannello: `request.multipart()` (non `post()`, che ha il tetto di
-  8 KB), Content-Length controllato prima; esiti dei testi del bot in `ESITI_TESTI`.
-- #148 (permessi dei comandi) sta in `core/command_permissions.py` (dev-core):
-  callback sul server del restore; il pannello lo chiama soltanto.
+- Caricamenti nel pannello: `request.multipart()`, Content-Length controllato prima.
+- Le migrazioni numerate girano DOPO le `run_migrations` dei repository: il repo crea la tabella, il file numerato la altera.
+- Script di aiuto: `.../scratchpad/spec_set.py ID SIMBOLO "testo"` aggiorna la riga SPEC.
 
 ## Aperto
-- #109: il bot del marchio non risponde ai comandi (servirebbe un secondo albero
-  di comandi per applicazione: lavoro grosso, da decidere con l'orchestratore).
-- Pagine dell'owner (C.4), F13.
+- #109: il bot del marchio non risponde ai comandi (secondo albero per applicazione: da decidere).
 - Elenco server in home: solo dalla cache membri del bot (niente fetch).

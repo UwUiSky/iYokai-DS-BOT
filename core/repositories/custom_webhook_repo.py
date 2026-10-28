@@ -3,19 +3,19 @@ core/repositories/custom_webhook_repo.py
 ============================================
 Persistenza dei webhook custom in RICEZIONE (SPEC.md §10.8, la parte
 "webhook" — la parte RSS/Atom vive già in feed_subscription_repo.py).
-Una riga per webhook creato: un token segreto univoco (l'unica cosa
-che autentica una richiesta esterna in arrivo), il canale Discord di
-destinazione, e un template di messaggio opzionale.
+Una riga per webhook creato: l'impronta del token segreto (il token
+in chiaro si mostra una volta sola, alla creazione), il canale Discord
+di destinazione, e un template di messaggio opzionale.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 import asyncpg
 
-from core.custom_webhook_logic import DEFAULT_MESSAGE_TEMPLATE, generate_webhook_token
+from core.custom_webhook_logic import DEFAULT_MESSAGE_TEMPLATE, generate_webhook_token, hash_webhook_token
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class CustomWebhook:
     id: int
     guild_id: int
     channel_id: int
-    token: str
+    token: str | None  # in chiaro solo nella risposta di `create_webhook`; nel database c'è l'impronta
     label: str
     message_template: str
     created_by: int
@@ -65,7 +65,7 @@ class CustomWebhookRepository:
             id=row["id"],
             guild_id=row["guild_id"],
             channel_id=row["channel_id"],
-            token=row["token"],
+            token=None,
             label=row["label"],
             message_template=row["message_template"],
             created_by=row["created_by"],
@@ -94,24 +94,26 @@ class CustomWebhookRepository:
                 row = await self._pool.fetchrow(
                     """
                     INSERT INTO custom_webhooks
-                        (guild_id, channel_id, token, label, message_template, created_by)
+                        (guild_id, channel_id, token_hash, label, message_template, created_by)
                     VALUES ($1, $2, $3, $4, $5, $6)
                     RETURNING *
                     """,
                     guild_id,
                     channel_id,
-                    token,
+                    hash_webhook_token(token),
                     label,
                     message_template or DEFAULT_MESSAGE_TEMPLATE,
                     created_by,
                 )
-                return self._row_to_webhook(row)
+                return replace(self._row_to_webhook(row), token=token)
             except asyncpg.UniqueViolationError:
                 continue
         raise RuntimeError("Impossibile generare un token webhook univoco dopo 5 tentativi.")
 
     async def get_by_token(self, token: str) -> CustomWebhook | None:
-        row = await self._pool.fetchrow("SELECT * FROM custom_webhooks WHERE token = $1", token)
+        row = await self._pool.fetchrow(
+            "SELECT * FROM custom_webhooks WHERE token_hash = $1", hash_webhook_token(token)
+        )
         return self._row_to_webhook(row) if row is not None else None
 
     async def list_webhooks(self, guild_id: int) -> list[CustomWebhook]:
