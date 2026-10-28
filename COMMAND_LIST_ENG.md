@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 05:17 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 547 commands in 25 categories.**
+**Total: 558 commands in 25 categories.**
 
 ## Admin
 
@@ -29,9 +29,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/admin premium appearance`** — The bot's avatar, banner and description in this server (premium).
 - **`/admin premium branding`** — Use a bot with your own name and avatar (premium).
 - **`/admin premium redeem`** — Redeems a premium code for this server.
+- **`/admin premium sblocca`** — Unlocks a premium module for 30 days with coins from the server treasury.
 - **`/admin premium status`** — Shows how premium is unlocked in this server.
 - **`/admin setup enable`** — Turns the bot's modules on or off, by category.
-- **`/admin setup wizard`** — Step-by-step setup of the bot's main modules.
+- **`/admin setup wizard`** — Step-by-step setup of the bot's roles and modules, one category at a time.
 - **`/admin ticket auto-close`** — Closes tickets idle for N minutes (0 = off).
 - **`/admin ticket close-all`** — Closes the open tickets (up to 25 at a time).
 - **`/admin ticket dm`** — Turns ModMail (tickets in DM) on or off.
@@ -111,10 +112,19 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 
 - **`/Clean text`** — “Apps” menu (right click)
 - **`/Profile`** — “Apps” menu (right click)
-- **`/profile`** — A user's card: name, ID, account age, avatar.
+- **`/iYokai network status`** — “Apps” menu (right click)
+- **`/notes add`** — Adds a note, or an entry to a list.
+- **`/notes list`** — Shows your notes, or a list.
+- **`/notes remove`** — Removes a note or a list entry.
+- **`/profile`** — A user's card: name, ID, account age, level, clan, avatar.
 - **`/reminders cancel`** — Cancels one of your reminders.
 - **`/reminders create`** — I will DM you after the time you choose.
 - **`/reminders list`** — Shows your pending reminders.
+- **`/strumenti calcola`** — Calculates an expression, e.g. (2+3)*4 or sqrt(16).
+- **`/strumenti colore`** — Shows a colour in HEX, RGB and HSL.
+- **`/strumenti converti`** — Converts lengths, weights, volumes, speeds, data and temperatures.
+- **`/strumenti fuso`** — What time it is in another time zone.
+- **`/strumenti qr`** — Makes a QR code from a text or link.
 
 ## iYokai NSFW (separate app, age-restricted channels only)
 
@@ -327,6 +337,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/log search channel`** — Shows a channel's event history.
 - **`/log search user`** — Shows a user's event history.
 - **`/log status`** — Shows where the server logs go.
+- **`/log webhook`** — Sends logs through a channel webhook, grouped, with its own rate limits.
 
 ## Moderation
 
