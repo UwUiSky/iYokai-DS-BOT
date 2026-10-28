@@ -1262,3 +1262,9 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 - [ ] Pagine legali (24.6, C.5) — `/privacy` e `/termini` si aprono senza accedere; l'elenco dei dati e i fornitori AI sono giusti. Da rileggere come testo legale.
 - [ ] Pagina del proprietario (C.4) — `/proprietario` si apre solo con l'account `OWNER_ID` (altri: «Accesso negato»); «Rendi premium/gratuito» cambia `/owner premium list`; manutenzione AI dal sito come dal comando.
 - [ ] Pagina AI del server (24.2) — `/server/<id>/ai`: senza la casella di consenso non si accende; poi privacy, lunghezza e memoria cambiano `/ai stato`.
+
+## Livelli, economia e musica — giro r11 (D38, D30)
+1. `/level impostazioni xp nome_moneta:gemme` con un'emoji nel nome: rifiutato. Con nome valido e senza immagine: la risposta propone `immagine_moneta`.
+2. `/level impostazioni xp immagine_moneta:` con un PNG grande: salvato; `/level balance`, `/level cassa`, una partita di `/fun` e `/clan info` mostrano la stessa miniatura accanto al saldo.
+3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
+4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.

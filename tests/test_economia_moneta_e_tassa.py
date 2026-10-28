@@ -8,6 +8,7 @@ Funzioni coperte: SPEC §15.3 (catalogo #125)
 """
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -34,7 +35,7 @@ def test_tassa_arrotondata_per_eccesso():
 
 def test_nome_moneta_ripulito_e_con_limiti():
     assert nome_moneta_valido("  gemme   blu ") == "gemme blu"
-    for brutto in ("", "   ", "x" * 21, "@everyone", "a\n@b", "**x**", "<@1>"):
+    for brutto in ("", "   ", "x" * 21, "@everyone", "a\n@b", "**x**", "<@1>", "gemme 💎"):
         with pytest.raises(ValueError):
             nome_moneta_valido(brutto)
 
@@ -170,7 +171,7 @@ async def test_saldo_daily_e_classifica_usano_il_nome_scelto(scena):
 
     saldo = _interazione()
     await scena.comandi["level balance"].callback(scena.cog, saldo, member=None)
-    assert "**70** gemme" in _testo(saldo)
+    assert "**70** gemme" in saldo.response.send_message.await_args.kwargs["embed"].description
 
     daily = _interazione(user_id=5)
     await scena.comandi["level daily"].callback(scena.cog, daily)
@@ -226,3 +227,71 @@ async def test_pay_sotto_il_minimo_rifiutato(scena):
     interazione = _interazione()
     await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, minimo_pay=10)
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.pay_min == 10
+
+
+# ---------------------------------------------------------------- D38: immagine della moneta
+def _allegato(png: bytes):
+    a = MagicMock()
+    a.size, a.content_type, a.read = len(png), "image/png", AsyncMock(return_value=png)
+    return a
+
+
+def _png_grande() -> bytes:
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (700, 400), (10, 120, 200)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_comando_salva_l_immagine_ridotta_e_la_mostra(scena):
+    from core.moneta_server import LATO_MONETA
+    from PIL import Image
+    import io
+    interazione = _interazione()
+    await scena.comandi["level impostazioni xp"].callback(
+        scena.cog, interazione, nome_moneta="stelle", immagine_moneta=_allegato(_png_grande())
+    )
+    salvata = await scena.impostazioni.get_immagine_moneta(GUILD)
+    assert Image.open(io.BytesIO(salvata)).size == (LATO_MONETA, LATO_MONETA)
+    invio = interazione.followup.send.await_args
+    assert invio.kwargs["file"].filename == "moneta.png"
+    assert invio.kwargs["embed"].thumbnail.url == "attachment://moneta.png"
+
+
+@pytest.mark.asyncio
+async def test_primo_nome_senza_immagine_chiede_l_immagine(scena):
+    interazione = _interazione()
+    await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, nome_moneta="stelle")
+    assert "immagine_moneta" in _testo(interazione) and "moneta di iYokai" in _testo(interazione)
+    assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
+
+
+@pytest.mark.asyncio
+async def test_immagine_rotta_non_salva_nulla(scena):
+    interazione = _interazione()
+    await scena.comandi["level impostazioni xp"].callback(
+        scena.cog, interazione, nome_moneta="stelle", immagine_moneta=_allegato(b"non immagine")
+    )
+    assert "Non riesco ad aprire" in interazione.followup.send.await_args.args[0]
+    assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
+    assert (await scena.impostazioni.get_config(GUILD)).impostazioni.currency_name == "coin"
+
+
+@pytest.mark.asyncio
+async def test_senza_immagine_toglie_la_moneta_personale(scena):
+    await scena.impostazioni.set_immagine_moneta(GUILD, b"x")
+    interazione = _interazione()
+    await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, senza_immagine=True)
+    assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
+
+
+@pytest.mark.asyncio
+async def test_saldo_e_cassa_mostrano_la_stessa_miniatura(scena):
+    for nome, args in (("level balance", {"member": None}), ("level cassa", {})):
+        interazione = _interazione()
+        await scena.comandi[nome].callback(scena.cog, interazione, **args)
+        kw = interazione.response.send_message.await_args.kwargs
+        assert kw["embed"].thumbnail.url == "attachment://moneta.png", nome
+        assert kw["file"].filename == "moneta.png", nome

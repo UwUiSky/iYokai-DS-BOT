@@ -89,6 +89,26 @@ class LevelingSettingsRepository:
         self._versione[guild_id] = self._versione.get(guild_id, 0) + 1
         self._cache.delete(guild_id)
 
+    async def get_immagine_moneta(self, guild_id: int) -> bytes | None:
+        """D38: l'immagine della moneta del server (PNG pronto), o None = moneta di iYokai."""
+        return await self._pool.fetchval(
+            "SELECT immagine FROM guild_coin_images WHERE guild_id = $1", guild_id
+        )
+
+    async def set_immagine_moneta(self, guild_id: int, immagine: bytes | None) -> None:
+        """Salva l'immagine preparata da core.moneta_server.prepara_moneta; None la toglie."""
+        if immagine is None:
+            await self._pool.execute("DELETE FROM guild_coin_images WHERE guild_id = $1", guild_id)
+            return
+        await self._pool.execute(
+            """
+            INSERT INTO guild_coin_images (guild_id, immagine) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET immagine = $2, aggiornato_at = now()
+            """,
+            guild_id,
+            immagine,
+        )
+
     async def set_options(self, guild_id: int, **campi) -> LevelingSettings:
         """
         Cambia solo i campi dati; gli altri restano come sono. Valori

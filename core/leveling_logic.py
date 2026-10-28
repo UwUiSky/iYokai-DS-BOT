@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -552,6 +553,17 @@ def tassa_su_pagamento(importo: int, percentuale: int) -> int:
     return -(-max(0, importo) * max(0, percentuale) // 100)
 
 
+def contiene_emoji(testo: str) -> bool:
+    """True se nel testo c'è un'emoji (unicode o personalizzata) o un codice :nome:."""
+    for c in testo:
+        cp = ord(c)
+        if cp >= 0x1F000 or 0x2600 <= cp <= 0x27BF or cp in (0xFE0F, 0x200D, 0x20E3):
+            return True
+        if unicodedata.category(c) == "So":
+            return True
+    return ":" in testo
+
+
 def nome_moneta_valido(nome: str) -> str:
     """ECO-001: il nome ripulito, o ValueError. Niente a capo né menzioni: finisce in tanti messaggi."""
     pulito = " ".join(nome.split())
@@ -559,4 +571,6 @@ def nome_moneta_valido(nome: str) -> str:
         raise ValueError(f"Il nome della moneta deve avere da 1 a {MAX_NOME_MONETA} caratteri.")
     if any(c in pulito for c in "@#`*_~|<>[]"):
         raise ValueError("Il nome della moneta non può contenere simboli di formattazione o menzioni.")
+    if contiene_emoji(pulito):
+        raise ValueError("Il nome della moneta è solo testo: niente emoji. L'immagine si carica a parte.")
     return pulito

@@ -926,7 +926,7 @@ sessione perché non richiesto esplicitamente.
   ticket nel server ufficiale iYokai — nessun link fabbricato, il
   server è già raggiungibile pubblicamente)
   → **Stato 27/10:** `/music nonstop on` mette il loop; con premium segna il player e spegne il controllo del canale vuoto: resta anche se tutti escono (LIM-44, D30; anche per memory guard e `handle_inactive_player`). Senza premium esce a canale vuoto.
-- `[x]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
+- `[x]` 9.11 Stream 24/7 con musica di proprietà (D30 confermata 28/10: solo `/owner radio` la governa; istanze oltre 5 con `MUSIC_TOKEN_6..20`, test_music_istanze_dinamiche) (singolo decoder
   condiviso) — `/nonstop-main add-track|add-local|remove-track|
   list-tracks|start|stop`. "Condiviso" ottenuto con un orologio
   logico (`core/main_radio_logic.py`): non un unico decode audio
@@ -1413,7 +1413,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 15.2 Anti-farm XP vocale (self_deaf, soli nel canale, AFK, 2h
   stesso canale, cap giornaliero)
 - `[x]` 15.3 Economy: daily, work, pay, balance
-  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, minimo, tetto e tassa su `/level pay` (ECO-001, ECO-015, 0341, 0342): `/level impostazioni xp nome_moneta|tassa_pay|minimo_pay|massimo_pay`; la tassa (per eccesso, così i pagamenti piccoli non la evitano) va alla cassa nella stessa transazione.
+  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, minimo, tetto e tassa su `/level pay` (ECO-001, ECO-015, 0341, 0342): `/level impostazioni xp nome_moneta|tassa_pay|minimo_pay|massimo_pay`; la tassa (per eccesso, così i pagamenti piccoli non la evitano) va alla cassa nella stessa transazione. **Stato 28/10 (r11, D38/D41):** nome solo testo (niente emoji), immagine della moneta (`guild_coin_images`, 0410, `/level impostazioni xp immagine_moneta`) come miniatura in saldo, cassa, giochi e info gilda; senza immagine la moneta di iYokai.
 - `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
   → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).
