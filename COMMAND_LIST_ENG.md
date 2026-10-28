@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:52 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:34 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 579 commands in 25 categories.**
+**Total: 584 commands in 25 categories.**
 
 ## Admin
 
@@ -231,6 +231,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:5
 - **`/economy giveaway-modello`** — Giveaway templates: save, list, delete, start.
 - **`/economy giveaway-programmati`** — Scheduled giveaways: list (including failed ones) or cancel.
 - **`/economy premium-cashbox`** — Unlocks one month of premium bot by spending from the treasury.
+- **`/economy progress`** — Turns missions, streaks, achievements and season on or off.
 - **`/economy shop-add`** — Adds an item to the shop.
 - **`/economy shop-edit`** — Edits a shop item (price, stock, required role...).
 - **`/economy shop-remove`** — Removes an item from the shop.
@@ -327,6 +328,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:5
 - **`/level leaderboard`** — Shows the server leaderboard.
 - **`/level pay`** — Transfers coins to another user.
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
+- **`/level progress`** — Today's missions, daily streak, achievements, monthly season.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
@@ -350,6 +352,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:5
 - **`/log create-forum`** — Creates a private forum for logs: one post for each type.
 - **`/log events`** — Turn each single log event on or off.
 - **`/log export`** — Exports the full server event history as a JSON file.
+- **`/log forum-view`** — A forum with one post for each channel or case. Without a forum, the view turns off.
 - **`/log ignore`** — What the logs do not record (channels, users, roles; texts only for messages).
 - **`/log search channel`** — Shows a channel's event history.
 - **`/log search role`** — Shows a role's event history.
@@ -381,6 +384,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:5
 - **`/mod options dm`** — Choose whether the user gets a DM for a type of action.
 - **`/mod options immune`** — Roles manual moderation can't touch (owner only).
 - **`/mod options set`** — Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.
+- **`/mod risk`** — A member's risk score, with the reasons. Only an aid to decide.
 - **`/mod slowmode`** — Sets slowmode on a channel.
 - **`/mod timeout`** — Times out a member (max 28 days).
 - **`/mod unlock`** — Unblocks the ability to write in a channel.
@@ -390,6 +394,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:5
 - **`/mod warnings leaderboard`** — Members with the most active warnings.
 - **`/mod warnings remove`** — Removes a single warning (by case number).
 - **`/mod warnings reset`** — Removes all of a member's active warnings (needs "Manage Server").
+- **`/mod workload`** — How much work each staff member has done (cases, appeals, tickets).
 
 ## Bans (modban)
 
