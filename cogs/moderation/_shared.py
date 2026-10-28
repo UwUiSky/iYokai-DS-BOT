@@ -194,6 +194,8 @@ def actor_from_member(member: discord.Member) -> ModerationActor:
 async def check_can_moderate(
     interaction: discord.Interaction,
     target: discord.Member,
+    *,
+    azione_su_discord: bool = True,
 ) -> bool:
     """
     Verifica se chi ha lanciato il comando può moderare `target` in
@@ -202,6 +204,8 @@ async def check_can_moderate(
     ruoli pari o superiori, ecc. — tutta la logica reale è in
     core/permissions.py, qui c'è solo il collegamento con l'oggetto
     Interaction per rispondere all'utente.
+    Con `azione_su_discord=False` (solo un caso registrato) la posizione
+    del bot non conta: valgono gerarchia e ruoli immuni.
     """
     guild = interaction.guild
     assert guild is not None  # già controllato da ensure_module_enabled
@@ -217,9 +221,10 @@ async def check_can_moderate(
     actor = actor_from_member(moderator)
     target_actor = actor_from_member(target)
 
-    allowed, reason = can_moderate(
-        actor, target_actor, bot_top_role_position=guild.me.top_role.position
-    )
+    posizione_bot = guild.me.top_role.position
+    if not azione_su_discord:
+        posizione_bot = max(posizione_bot, target_actor.top_role_position + 1)
+    allowed, reason = can_moderate(actor, target_actor, bot_top_role_position=posizione_bot)
     if not allowed:
         await interaction.response.send_message(reason, ephemeral=True)
         return False

@@ -213,3 +213,31 @@ async def test_caso_a_nome_di_un_altro_serve_gestire_il_server():
     await cog.case_register.callback(cog, inter, MagicMock(id=555), scelta, "kick fuori bot", fake_member(77))
     [caso] = await moderation_repo.list_cases_for_user(G, 555)
     assert caso.moderator_id == 77
+
+
+async def test_caso_registrato_rispetta_gerarchia_e_ruoli_immuni():
+    from core import moderation_opzioni
+    from tests.support.discord_fakes import fake_role
+
+    inter, _ = _inter()
+    server = inter.guild
+    mod = inter.user
+    mod.top_role = fake_role(20, "Mod", position=10)
+    capo = fake_member(556, roles=[fake_role(30, "Admin", position=40)])
+    protetto = fake_member(557, roles=[fake_role(5, "Protetto", position=2)])
+    utente = fake_member(558, roles=[fake_role(6, "Utente", position=1)])
+    membri = {m.id: m for m in (mod, capo, protetto, utente)}
+    server.get_member = MagicMock(side_effect=membri.get)
+    await moderation_opzioni.cambia_ruolo_immune(G, 5, True, 555)
+    cog = ModerationCaseSystemCog(bot=None)
+    scelta = MagicMock(value="warn")
+
+    for bersaglio in (capo, protetto):
+        inter.response.send_message.reset_mock()
+        await cog.case_register.callback(cog, inter, bersaglio, scelta, "warn falso")
+        assert await moderation_repo.list_cases_for_user(G, bersaglio.id) == []
+
+    # Sotto il moderatore e sopra il bot: nessuna azione su Discord, il caso entra.
+    server.me.top_role = fake_role(1, "Yokai", position=0)
+    await cog.case_register.callback(cog, inter, utente, scelta, "warn vero")
+    assert len(await moderation_repo.list_cases_for_user(G, 558)) == 1

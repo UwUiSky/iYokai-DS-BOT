@@ -48,6 +48,7 @@ from cogs.moderation._shared import (
     MAX_LINE_TEXT_LENGTH,
     MODULE_CASE_SYSTEM,
     Reason,
+    check_can_moderate,
     ensure_module_enabled,
     join_within_limit,
     post_to_mod_log,
@@ -488,6 +489,10 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if a_nome_di is not None and a_nome_di.id != interaction.user.id:
             if await _rifiuta_senza_gestione(interaction):
                 return
+        # Gerarchia e ruoli immuni come per le azioni vere (MOD-068); chi non è nel server non ha ruoli.
+        membro = interaction.guild.get_member(utente.id)
+        if membro is not None and not await check_can_moderate(interaction, membro, azione_su_discord=False):
+            return
         moderatore = a_nome_di or interaction.user
         numero = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
