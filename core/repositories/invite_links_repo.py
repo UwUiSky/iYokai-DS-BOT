@@ -20,12 +20,13 @@ class LinkPersonale:
     user_id: int
     discord_code: str | None
     created_at: datetime
+    last_used_at: datetime | None = None
 
 
 def _link(r) -> LinkPersonale | None:
     if r is None:
         return None
-    return LinkPersonale(r["slug"], r["guild_id"], r["user_id"], r["discord_code"], r["created_at"])
+    return LinkPersonale(r["slug"], r["guild_id"], r["user_id"], r["discord_code"], r["created_at"], r["last_used_at"])
 
 
 class InviteLinksRepository:

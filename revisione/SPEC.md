@@ -1988,6 +1988,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `/level compleanno imposta|rimuovi|mostra`, `/moduli compleanni canale|ruolo` (0088): solo giorno e mese.
 - `[x]` 23.5 Inviti: comando personale e classifica (NF-27)
   → **Stato 13/10:** `/level inviti utente|classifica` (0089), con avviso sull'attribuzione (LC-6). Da provare live.
+  → **Stato 28/10 (r10, D32):** link personali «finto vanity» (alternativa D18 al vanity vero, che vuole il boost 3): `/level inviti link`, pagina «I miei inviti» e `/invito/<slug>` sul sito (redirect a un invito Discord dedicato, creato una volta e ricreato se sparisce, limite per IP, nessun nome); storico con tipo di link (personale, normale, vanity, sconosciuto) e uscite (0380); `/level inviti storico` (da chi è stato invitato e ultimi invitati), `utente` dice anche da chi; opzioni (modulo acceso/spento, canale del registro, ruolo che può avere il link) da `core/invite_service.py` con `/level inviti opzioni` e pagina «Inviti» del pannello; tabelle nel registro dati (D6). Il vanity vero si segue con `guild.vanity_invite()`. Da provare live.
 - `[x]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
   → **Nota:** il requisito sui messaggi conta dall'inizio del giveaway, non dallo storico (che arriva con NF-25): da far accettare all'owner.

@@ -4,11 +4,10 @@
 27/10/2026 · ramo feat/r10inviti (worktree /home/claude/wt/r10inviti, env scratchpad/env_r10inviti.sh, DB iyokai_wr10inviti) · link d'invito personali «finto vanity», migrazioni 0380-0389 (usata 0380)
 
 ## In corso
-- r10inviti WIP: scritti 0380, core/invite_links_logic.py, invite_service.py, repo invite_links_repo + invite_stats_repo esteso, invite_tracker (vanity, codici, registra_invito), cogs/utility/invites.py (/level inviti link|storico|opzioni), core/web_panel_inviti.py + template inviti_miei/inviti_server (1 riga in web_panel_server), data_registry, SETTINGS_SCHEMA. Test esistenti verdi (60).
-- PROSSIMO PASSO: scrivere test nuovi (tests/test_invite_links_logic.py, test_invite_service.py con DB, test_panel_inviti.py usando fixture di test_web_panel_server: redirect, rate limit, CSRF, permessi, escape; tracker vanity/codici; registro dati), poi invarianti (test_command_tree_invariants, riferimenti_comandi, repository_callers, command_translator -> locales/comandi.en.json per storico/link/opzioni, data_registry, command_groups, ui_base_wiring, config_import_validation), SPEC §23, VERIFICA_LIVE «giro r10 — inviti», REGISTRO_RISOLTE, README/.env.example (nessuna variabile nuova), smoke --base main una volta.
-- Pesi: level 5127 prima di aggiungere 3 comandi (ricontrollare con scratchpad/r10inviti_pesi.py).
+- r10inviti CHIUSO (D32, 0380): codice, test (test_invite_links_logic, test_invite_service, test_panel_inviti, test_invite_tracker_vanity, test_invite_links_registro, test_invites esteso), invarianti verdi, SPEC 23.5, VERIFICA_LIVE, REGISTRO, DECISIONI D32. Smoke da fare (regola owner: non lanciato). Peso /level 5590.
 
 ## Fatto
+- r10 inviti: link personali dal sito + storico con tipo + opzioni (core/invite_service.py, core/web_panel_inviti.py, /level inviti link|storico|opzioni).
 - r8 G1 c265011: /ruoli (D25 quinto caso) cogs/utility/ruoli_strumenti.py + core/ruoli_strumenti_logic.py + self_role_repo (0231); /utility ruolo.
 - r8 G2 417817c: /utility scheda (cogs/utility/schede.py, core/schede_logic.py).
 - r8 G3: ruoli automatici con solo_con/non_con/ridai_se_tolto e auto-sincronizza (0230); ruoli a tempo di /ruoli non ricordati.
@@ -47,6 +46,7 @@
 - Fun/Pixabay: la cache è in memoria (si perde al riavvio); `Range[...]` in get_type_hints è un oggetto con min_value/max_value; ComandoDiGruppo: usare `.callback`.
 
 ## Aperto
+- Inviti r10: il Discord invite lo crea il bot, quindi spam-trap e log vedono come creatore il bot (l'attribuzione giusta è in invite_joins). `config_history.py` e `test_riferimenti_comandi.py` toccati per le chiavi/eccezioni.
 - Condivisione macchina: NON usare /tmp/claude-0/env.sh (lo riscrivono altri agenti): uso env_r5fun.sh. Giveaway: passare il requisito messaggi a activity_stats_repo.member_total (cogs/leveling non mio).
 - - Menu dei ruoli: nessun comando per elencare gli ID dei menu (menu-aggiungi chiede `menu_id` a mano); un elenco richiederebbe un sottocomando in `/gestione ruoli` (controllare il tetto 25).
 - #66: resta solo 10.14 (wizard per categoria in setup.py, non mio, F9).

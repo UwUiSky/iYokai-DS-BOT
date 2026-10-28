@@ -157,3 +157,97 @@ async def test_chi_esce_e_rientra_con_un_altro_invito_viene_ricalcolato():
     with patch.object(modulo, "invite_tracker", t), patch.object(modulo.invite_stats_repo, "mark_left", AsyncMock()):
         await cog.on_member_remove(_m(7, guild))
     assert (1, 7) not in t._join_results
+
+
+# ------------------------------------------------- link personali (r10)
+from datetime import datetime, timezone
+from types import SimpleNamespace
+
+from core import invite_links_logic as logica
+from core.repositories.invite_links_repo import LinkPersonale
+from core.repositories.invite_stats_repo import IngressoDi, IngressoInvitato, InviteStats
+
+ADESSO = datetime(2026, 10, 1, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_comando_link_da_l_indirizzo_o_il_motivo():
+    cog = _cog()
+    inter = fake_interaction(guild=fake_guild())
+    link = LinkPersonale("srv-anna", 1, 2, None, ADESSO)
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)):
+        with patch.object(modulo.invite_service, "ottieni_link", AsyncMock(return_value=(logica.OK, link))), \
+             patch.object(modulo.invite_service, "url_pubblico", return_value="https://s.test"):
+            await cog.link.callback(cog, inter)
+        assert "https://s.test/invito/srv-anna" in inter.response.send_message.call_args.args[0]
+        with patch.object(modulo.invite_service, "ottieni_link", AsyncMock(return_value=(logica.OK, link))), \
+             patch.object(modulo.invite_service, "url_pubblico", return_value=""):
+            await cog.link.callback(cog, inter)
+        assert "non è attivo" in inter.response.send_message.call_args.args[0]
+        with patch.object(modulo.invite_service, "ottieni_link", AsyncMock(return_value=(logica.SENZA_PERMESSO, None))):
+            await cog.link.callback(cog, inter)
+        assert "Crea invito" in inter.response.send_message.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_comando_storico_e_utente_dicono_da_chi_e_stato_invitato():
+    cog = _cog()
+    guild = fake_guild()
+    inter = fake_interaction(guild=guild)
+    ingresso = IngressoDi(77, "abc", "personale", ADESSO, None)
+    ultimi = [IngressoInvitato(5, ADESSO, None, "normale"), IngressoInvitato(6, ADESSO, ADESSO, "vanity")]
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+         patch.object(modulo.invite_stats_repo, "stats_for", AsyncMock(return_value=InviteStats(2, 1))), \
+         patch.object(modulo.invite_stats_repo, "ingresso_di", AsyncMock(return_value=ingresso)), \
+         patch.object(modulo.invite_stats_repo, "invitati_da", AsyncMock(return_value=ultimi)):
+        await cog.storico.callback(cog, inter)
+        testo = inter.response.send_message.call_args.args[0]
+        assert "Invitato da <@77>" in testo and "link personale dal sito" in testo
+        assert "<@5>" in testo and "è ancora qui" in testo and "<@6>" in testo and "uscito il" in testo
+        assert AVVISO_ATTRIBUZIONE in testo
+        await cog.utente.callback(cog, inter)
+        assert "Invitato da <@77>" in inter.response.send_message.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_comando_opzioni_passa_dal_punto_unico():
+    cog = _cog()
+    guild = fake_guild()
+    inter = fake_interaction(guild=guild)
+    canale = MagicMock(id=42)
+    ruolo = MagicMock(id=55)
+    tolto = SimpleNamespace(value="ruolo")
+    o = invite_service.Opzioni(True, 42, None)
+    with patch.object(modulo.invite_service, "imposta_opzioni", AsyncMock(return_value=True)) as imposta, \
+         patch.object(modulo.invite_service, "leggi_opzioni", AsyncMock(return_value=o)):
+        await cog.opzioni.callback(cog, inter, canale, None, tolto)
+        kw = imposta.await_args.kwargs
+        assert kw["canale_log"] == 42 and kw["ruolo_link"] is None
+        await cog.opzioni.callback(cog, inter, None, ruolo, None)
+        kw = imposta.await_args.kwargs
+        assert kw["ruolo_link"] == 55 and kw["canale_log"] is invite_service.NON_CAMBIARE
+        assert "<#42>" in inter.response.send_message.call_args.args[0]
+    from core.config_schema import ImpostazioneNonValida
+    with patch.object(modulo.invite_service, "imposta_opzioni", AsyncMock(side_effect=ImpostazioneNonValida("No."))):
+        await cog.opzioni.callback(cog, inter, canale, None, None)
+        assert inter.response.send_message.call_args.args[0] == "No."
+
+
+@pytest.mark.asyncio
+async def test_registro_scrive_nel_canale_scelto_senza_menzioni():
+    cog = _cog()
+    guild = fake_guild()
+    m = _m(21, guild)
+    canale = MagicMock(spec=discord.TextChannel)
+    canale.send = AsyncMock()
+    guild.get_channel = MagicMock(return_value=canale)
+    ing = invite_service.Ingresso(logica.TIPO_PERSONALE, 77, "abc")
+    with patch.object(modulo.db, "get_guild_setting", AsyncMock(return_value=42)):
+        await cog._scrivi_nel_registro(m, ing)
+    testo = canale.send.call_args.args[0]
+    assert "<@77>" in testo and "link personale dal sito" in testo
+    assert canale.send.call_args.kwargs["allowed_mentions"].users is False
+    with patch.object(modulo.db, "get_guild_setting", AsyncMock(return_value=None)):
+        canale.send.reset_mock()
+        await cog._scrivi_nel_registro(m, ing)
+        canale.send.assert_not_awaited()

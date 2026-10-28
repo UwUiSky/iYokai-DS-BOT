@@ -1143,3 +1143,14 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 - [ ] Lock a tempo e sanzioni attive (MOD-090, MOD-013) — passi: `/mod lock durata:2m reason:prova` in un canale; B non scrive. Riavvia il bot prima dei 2 minuti. Risultato atteso: alla scadenza il canale si riapre da solo (riga «è finito il lock a tempo» nel log di moderazione). `/mod lock durata:1h` poi `/mod unlock`: nessuno sblocco tardivo dopo un'ora. `/mod lock` senza durata, poi `/mod lock durata:2m`: dopo 2 minuti il canale si riapre davvero. `/mod caso attive` mostra lock a tempo, timeout e tempban in corso con la scadenza relativa, senza ping.
 - [ ] Punizione della trappola (SIC-040) — passi: `/security spamtrap punizione:Kick`; B scrive nella trappola. Risultato atteso: messaggio cancellato, B riceve il DM ed è espulso, nei log «Action: kick» e il caso. Con `Timeout di un giorno`: B in timeout 24 ore. Con `Solo cancellare`: il messaggio sparisce ogni volta, un solo avviso nei log. Con `Decide lo staff`: nei log i bottoni Ban e Kick; un membro senza «Bannare» è rifiutato; un moderatore li preme, l'azione parte, i bottoni si spengono con «Deciso da …»; dopo un riavvio i bottoni rispondono ancora. Lo staff esentato che scrive nella trappola non subisce nulla.
 
+## Inviti e link personali — giro r10 (NF-27, D32)
+
+Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci server» e «Crea invito», un account A (membro) e un account B nuovo per entrare.
+
+- [ ] Link personale — passi: come A `/level inviti link`. Risultato atteso: un indirizzo `…/invito/<server>-<nome>`; richiesto di nuovo, è lo stesso; A cambia nome utente e lo stesso indirizzo vale ancora.
+- [ ] Redirect e ingresso — passi: B apre l'indirizzo, accetta l'invito. Risultato atteso: B entra; `/level inviti storico utente:@B` dice «invitato da A, link personale dal sito»; `/level inviti utente` di A conta 1.
+- [ ] Invito ricreato — passi: cancella a mano l'invito del bot creato per A (Impostazioni server → Inviti); B2 riapre l'indirizzo. Risultato atteso: ne nasce uno nuovo e l'ingresso va ad A.
+- [ ] Uscita — passi: B esce. Risultato atteso: lo storico di A mostra B come uscito; se esce A, il suo indirizzo non funziona più.
+- [ ] Server senza permesso o con inviti in pausa — passi: togli «Crea invito» al bot (poi, in un altro giro, metti in pausa gli inviti). Risultato atteso: la pagina dice perché non funziona, senza nomi.
+- [ ] Opzioni — passi: `/level inviti opzioni canale:#registro ruolo:@Membri`; poi la stessa cosa dalla pagina «Inviti» del pannello. Risultato atteso: stesse impostazioni in entrambi; chi non ha il ruolo non ottiene il link; il registro scrive chi entra e con quale link.
+- [ ] Altri tipi — passi: entra con un invito normale e (se il server ha il vanity) con l'indirizzo personalizzato. Risultato atteso: tipo «invito normale» e «indirizzo personalizzato»; senza «Gestisci server» il tipo è «sconosciuto».

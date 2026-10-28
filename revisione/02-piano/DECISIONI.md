@@ -467,3 +467,20 @@ al moderatore cosa chiedeva la scala e perché non è partito. Vale per tutti i 
 gradino di timeout non accorcia mai un timeout più lungo già in corso (anche per l'AutoMod).
 La regola sta in un punto solo, `cogs/automod/escalation.py` (`scala_per_warn_manuale`).
 
+
+## D32 — Link d'invito personali «finto vanity» dal sito (28/10/2026)
+
+L'indirizzo personalizzato vero di Discord (vanity) vuole il boost di livello 3 e ce n'è uno solo per
+server. Alternativa (D18): ogni membro ha un link `<WEB_PANEL_PUBLIC_URL>/invito/<nome-server>-<nome-utente>`
+che il sito gira a un invito Discord vero, dedicato a lui. Regole:
+- Lo slug è unico in tutto il bot (non contiene l'ID del server), minuscolo, solo a-z 0-9 e trattini;
+  le collisioni si risolvono con `-2`, `-3`… Non cambia mai: chi cambia nome tiene il vecchio indirizzo.
+- L'invito Discord lo crea il bot (senza scadenza né limite d'usi) alla prima apertura e lo riusa;
+  se sparisce lo ricrea. Se Discord non risponde non se ne creano di nuovi a raffica.
+- Modulo, ruolo richiesto e permesso «Crea invito» si ricontrollano a ogni apertura. La pagina
+  pubblica non mostra nomi, ha un limite per IP e dice solo perché non funziona.
+- L'ingresso con un invito del bot si attribuisce al proprietario del link; il tipo (personale,
+  normale, vanity, sconosciuto) sta in `invite_joins.kind`. Il vanity vero si segue a parte.
+- Privacy: il link si cancella con il membro (e quando esce dal server) e dopo 365 giorni senza uso;
+  chi cancella i suoi dati sparisce come invitato e come invitante diventa `0` (D6).
+Codice: `core/invite_service.py`, `core/web_panel_inviti.py`, comandi `/level inviti link|storico|opzioni`.

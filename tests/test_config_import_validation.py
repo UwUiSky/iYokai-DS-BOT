@@ -31,6 +31,8 @@ VALIDO = {"modules": {"tickets": True}, "settings": {"report_channel_id": 5}, "l
 
 # Un valore valido per ogni chiave conosciuta.
 SETTINGS_VALIDE = {
+    "inviti_log_channel_id": 555500000000000001,
+    "inviti_link_role_id": 555500000000000002,
     "log_channel_id": 111111111111111111,
     "mod_log_channel_id": 222222222222222222,
     "report_channel_id": 333333333333333333,
