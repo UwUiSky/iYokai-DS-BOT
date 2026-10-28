@@ -239,3 +239,6 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10aiw` | `cogs/ai/summaries.py`, `cogs/ai/config.py:costruisci` | `requires_module` chiudeva riassumi/spiega/stile/costruisci durante la prova gratuita | media | chiuso b302da0 |
+| 28/10 | `feat/r10aiw` | `core/repositories/ai_repo.py:avvia_prova` | Prova ripartiva dopo la cancellazione dei dati del server (90 giorni) | media | chiuso 0be178a (0351) |
+| 28/10 | `feat/r10aiw` | `core/premium_flags.py:applica_cambio_premium` | Memoria cambiata prima di due scritture senza transazione (ereditato da `/owner premium toggle`) | bassa | aperto |

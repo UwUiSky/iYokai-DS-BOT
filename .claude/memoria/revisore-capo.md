@@ -1,7 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-27/10/2026 · IN PAUSA su `feat/r10aiw` (cacciatore+revisione, wt /home/claude/wt/r10aiw). Nessun fix ancora. Letto tutto il diff di core/ e cogs/ e panel_bridge/web_panel_server. Visti a posto: manutenzione in `controlla_accesso` prima della cache (vale per tutte le vie via `richiedi`), coda libera i posti su eccezione/annullamento, consenso ritirato/ridato non riavvia la prova (COALESCE). Prossimo passo esatto: 1) verificare se `requires_module(MODULO_AI)` (core/premium.py:389; usato in cogs/ai/summaries.py:64,98,131 e cogs/ai/config.py:402) blocca i comandi durante la prova gratuita (prova inutile → bug); 2) prova ripetibile dopo la purga a 90 giorni dall'uscita (ai_config server="cancella" in core/data_registry.py) → valutare tabella «conserva» con migrazione 0351; 3) leggere `_server`/`_modulo_scrittura` in core/web_panel_server.py (livello richiesto per /server/<id>/ai, CSRF) e i template (ai, privacy, proprietario, termini); 4) test nuovi con mutazione; 5) smoke `--base main` una volta.
+28/10/2026 · `feat/r10aiw` (#95 AI r10, 0350–0351): APPROVATO dopo i fix: comandi AI aperti in prova (b302da0, `richiede_ai`), prova non ripetibile dopo la purga (0be178a, `ai_prove`), elenco comandi (c2b8c98). Smoke da fare (regola owner: lo lancia l'orchestratore). Aperte 2 basse nei quaderni.
 21/10/2026 · ramo `feat/r8tkt` (#120 opzioni ticket, #139 AI, migrazione 0220): merge di main (991f977); corretti presa esclusiva/passa/rilascia e note archiviate (bd26b6d), cache opzioni (ad83893), reperibili ricontrollati; test instabile dei due close = doppia lettura in `close`. Esito smoke nel rapporto.
 16/10/2026 · r7mod, r7bak (3be8a40), r7liv.
 
@@ -56,6 +56,7 @@
 - Suite completa >10 min: mai. Smoke in background con `nohup` e poll ≤119 s; `pkill -f` col testo del comando uccide la propria shell.
 - Stato/cache in memoria: chi lo svuota, versione contro leggi-poi-set, cosa succede al riavvio. `AllowedMentions(roles=...)` ha `everyone=True` di default.
 - Bot secondario (D15): cercare OGNI azione della sua area ancora chiamata sul principale.
+- Prove gratuite/sblocchi temporanei: controllare TUTTI i cancelli (decoratori `requires_module` compresi) e cosa sopravvive alla purga del server.
 - `locales/comandi.en.json` "nomi" è per SEGMENTO, globale: una chiave nuova rinomina ogni comando con quel nome.
 - Ruoli che aprono un livello più alto: chi li sceglie deve avere quel livello (D28). Ripristini fatti dal bot: tetto = ruolo più alto di chi lancia.
 - DECISIONI: i «casi» di D25 aggiunti da rami diversi vanno numerati contro `git show main:`.

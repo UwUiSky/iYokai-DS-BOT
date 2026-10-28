@@ -282,3 +282,6 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 28/10 · cogs/ai/summaries.py + config.py costruisci · prova gratuita attiva ma i 4 comandi con requires_module rispondono «modulo non sbloccato» · media · corretto r10aiw b302da0
+- 28/10 · core/repositories/ai_repo.py avvia_prova · purga a 90 giorni cancella ai_config: bot rimesso = prova nuova · media · corretto r10aiw 0be178a
+- 28/10 · core/ai_coda_logic.py posto · su Python 3.11 `wait_for` può scadere dopo aver preso il semaforo: posto perso · bassa · plausibile
