@@ -199,3 +199,11 @@ async def test_avvisi_spenti_di_default():
     assert (await opzioni.leggi(SERVER)).avviso_rientro is False
     with pytest.raises(ValueError):
         await opzioni.imposta_avviso_warn(SERVER, 201, MOD)
+
+
+async def test_durata_sbagliata_non_salva_le_altre_opzioni():
+    cog = OpzioniModerazioneCog(MagicMock())
+    _, interazione = _scena()
+    await cog.imposta.callback(cog, interazione, 3, "boh", True, 4, True)
+    letto = await opzioni.leggi(SERVER)
+    assert (letto.giorni_ban, letto.casi_esterni, letto.avviso_warn, letto.avviso_rientro) == (0, False, 0, False)

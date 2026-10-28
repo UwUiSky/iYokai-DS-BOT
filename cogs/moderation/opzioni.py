@@ -104,12 +104,6 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         if not await self._controlli(interaction):
             return
         guild = interaction.guild
-        if casi_esterni is not None:
-            await opzioni.imposta_casi_esterni(guild.id, casi_esterni, interaction.user.id)
-        if avviso_warn is not None:
-            await opzioni.imposta_avviso_warn(guild.id, avviso_warn, interaction.user.id)
-        if avviso_rientro is not None:
-            await opzioni.imposta_avviso_rientro(guild.id, avviso_rientro, interaction.user.id)
         if durata_timeout is not None:
             if durata_timeout.strip().lower() == "no":
                 secondi = None
@@ -125,8 +119,15 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
                     )
                     return
             await opzioni.imposta_durata_timeout(guild.id, secondi, interaction.user.id)
+        # Si salva solo dopo aver controllato tutto: con un errore non cambia niente.
         if giorni_ban is not None:
             await opzioni.imposta_giorni_ban(guild.id, giorni_ban, interaction.user.id)
+        if casi_esterni is not None:
+            await opzioni.imposta_casi_esterni(guild.id, casi_esterni, interaction.user.id)
+        if avviso_warn is not None:
+            await opzioni.imposta_avviso_warn(guild.id, avviso_warn, interaction.user.id)
+        if avviso_rientro is not None:
+            await opzioni.imposta_avviso_rientro(guild.id, avviso_rientro, interaction.user.id)
         await interaction.response.send_message(
             embed=_riepilogo(guild, await opzioni.leggi(guild.id)),
             ephemeral=True,
