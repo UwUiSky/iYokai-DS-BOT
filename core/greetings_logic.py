@@ -28,7 +28,7 @@ from core.role_menu_logic import valida_emoji
 DEFAULT_WELCOME_TEMPLATE = (
     "Welcome {user} to **{server}**! We're now {membercount} members strong. 🎉"
 )
-DEFAULT_GOODBYE_TEMPLATE = "**{username}** has left {server}. We're now {membercount} members."
+DEFAULT_GOODBYE_TEMPLATE = "Ciao, è stato bello vederti, **{username}**! 👋"
 DEFAULT_BOOST_TEMPLATE = (
     "🚀 {user} just boosted **{server}**! Thank you for the support!"
 )

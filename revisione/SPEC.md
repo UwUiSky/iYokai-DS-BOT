@@ -1313,6 +1313,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 14.5 Goodbye messages
   → **Stato 04/10:** LIM-10.
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+  → **Stato 28/10 (r11, D37):** ban e addio: di base escono tutti e due (prima il «martello», poi «Ciao, è stato bello vederti»); il server sceglie entrambi / solo ban / solo addio / nessuno e la grafica (file o link https) di ciascuno da `/gestione benvenuto extra` → «Ban e addio» (`core/greetings_uscite_logic.py`, migrazione 0400). Durante un raid niente martello e niente addio ai bannati. Nessuna gif di serie (nessuna con licenza libera verificata): solo testo ed emoji. Test: `tests/test_greetings_uscite.py`.
 - `[x]` 14.6 Boost messages — rilevato su `premium_since` che passa
   da `None` a valorizzato, non il caso opposto
   → **Stato 04/10:** LIM-10.
@@ -2031,6 +2032,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.5 Inviti: comando personale e classifica (NF-27)
   → **Stato 13/10:** `/level inviti utente|classifica` (0089), con avviso sull'attribuzione (LC-6). Da provare live.
   → **Stato 28/10 (r10, D32):** link personali «finto vanity» (alternativa D18 al vanity vero, che vuole il boost 3): `/level inviti link`, pagina «I miei inviti» e `/invito/<slug>` sul sito (redirect a un invito Discord dedicato, creato una volta e ricreato se sparisce, limite per IP, nessun nome); storico con tipo di link (personale, normale, vanity, sconosciuto) e uscite (0380); `/level inviti storico` (da chi è stato invitato e ultimi invitati), `utente` dice anche da chi; opzioni (modulo acceso/spento, canale del registro, ruolo che può avere il link) da `core/invite_service.py` con `/level inviti opzioni` e pagina «Inviti» del pannello; tabelle nel registro dati (D6). Il vanity vero si segue con `guild.vanity_invite()`. Da provare live.
+  → **Stato 28/10 (r11, D36):** chi ha il link personale lo decide il server: tutti / solo chi ha «Crea invito» / solo un ruolo / spento (`/level inviti opzioni chi:`, pagina `/server/<id>/inviti`, un solo punto `core/invite_service.py`; chiave `inviti_link_mode`). Il permesso «Crea invito» del membro conta solo nella seconda modalità; il canale resta uno visibile a @everyone. Test: `tests/test_invite_service.py`.
 - `[x]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
   → **Nota:** il requisito sui messaggi conta dall'inizio del giveaway, non dallo storico (che arriva con NF-25): da far accettare all'owner.
