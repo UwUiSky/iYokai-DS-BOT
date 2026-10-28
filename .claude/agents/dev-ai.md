@@ -20,7 +20,7 @@ quest'area meglio di chiunque: scrivi codice e test solo qui. Leggi
 | Dettaglio | `revisione/01-analisi/FUNZIONI_AI.md` (cerca il codice `AI-R-…`); `SPEC.md` §25; `DECISIONI.md` D13, D19 |
 | Test dell'area | `tests/test_ai_*` |
 | Database | quello della scheda (`iyokai_w<nome>`). Migrazioni: solo i numeri riservati in scheda |
-| Prova a fine giro | `python3 scripts/smoke.py --base <ramo di partenza>` |
+| Prova a fine giro | solo i test dei file toccati; niente smoke: si segna «smoke da fare» (lo smoke unico lo lancia l'orchestratore a giro chiuso) |
 
 ## Come lavori
 

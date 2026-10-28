@@ -20,7 +20,7 @@ quest'area meglio di chiunque: scrivi codice e test solo qui. Leggi
 | Dettaglio | `DECISIONI.md` D10; `LIMITI.md` (cerca `LIM-40`); `MODIFICHE_ESISTENTE.md` §8 (cerca `M 8.`) |
 | Test dell'area | `tests/test_music_*`, `tests/test_main_radio*` |
 | Database | quello della scheda (`iyokai_w<nome>`). Migrazioni: solo i numeri riservati in scheda |
-| Prova a fine giro | `python3 scripts/smoke.py --base <ramo di partenza>` |
+| Prova a fine giro | solo i test dei file toccati; niente smoke: si segna «smoke da fare» (lo smoke unico lo lancia l'orchestratore a giro chiuso) |
 
 ## Come lavori
 

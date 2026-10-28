@@ -20,7 +20,7 @@ quest'area meglio di chiunque: scrivi codice e test solo qui. Leggi
 | Dettaglio | `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`; `DECISIONI.md` D16 |
 | Test dell'area | `tests/test_user_app*`, `tests/test_panel_*`, `tests/test_custom_webhook*` |
 | Database | quello della scheda (`iyokai_w<nome>`). Migrazioni: solo i numeri riservati in scheda |
-| Prova a fine giro | `python3 scripts/smoke.py --base <ramo di partenza>` |
+| Prova a fine giro | solo i test dei file toccati; niente smoke: si segna «smoke da fare» (lo smoke unico lo lancia l'orchestratore a giro chiuso) |
 
 ## Come lavori
 

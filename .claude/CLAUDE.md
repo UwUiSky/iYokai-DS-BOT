@@ -43,8 +43,8 @@ memoria compressa, come fermarsi).
 - Ogni agente lavora in una sua copia (`git worktree`) con un suo
   database di test. Mai due agenti sugli stessi file.
 - **Niente arriva su `main` senza i controlli**: `cacciatore-bug`,
-  poi `revisore-capo`, poi smoke test. Per i fix piccoli basta la
-  lettura del diff da parte dell'orchestratore.
+  poi `revisore-capo`. Lo smoke non si fa per ramo (vedi «Test»). Per i
+  fix piccoli basta la lettura del diff da parte dell'orchestratore.
 - **Prima di scrivere un comando o un'interfaccia nuovi** il disegno
   passa dal `guardiano-limiti`.
 - Al massimo 3 agenti insieme (2 CPU, e il limite di sessione).
@@ -52,9 +52,12 @@ memoria compressa, come fermarsi).
 ## Test: smoke mirato, suite completa solo quando serve
 
 - **Mentre si lavora a una voce:** solo i test di quella voce.
-- **A gruppo chiuso o dopo un fix grosso:** smoke test sulle funzioni
-  toccate: `python3 scripts/smoke.py` (sceglie da solo i test legati ai
-  file cambiati, più i controlli sull'albero dei comandi).
+- **Smoke unico a fine giro (regola dell'owner):** nessun agente lancia
+  lo smoke sul suo ramo. Un ramo finito si committa, si pubblica e si
+  segna «smoke da fare». Quando tutti i rami del giro sono finiti e uniti,
+  l'orchestratore lancia **una sola volta** `python3 scripts/smoke.py`
+  (o la suite completa, se il giro tocca migrazioni, `core/database.py`,
+  `main.py` o `tests/conftest.py`), poi si correggono gli errori uno per uno.
 - **Suite completa** (`python3 -m pytest -q`, circa 6 minuti): a fine
   fase, dopo modifiche a `core/database.py`, alle migrazioni, a
   `main.py` o a `tests/conftest.py`, e prima di un rilascio. Non a ogni

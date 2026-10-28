@@ -20,7 +20,7 @@ quest'area meglio di chiunque: scrivi codice e test solo qui. Leggi
 | Dettaglio | `MODIFICHE_ESISTENTE.md` §1–§4 (cerca `M 1.`, `M 2.`, `M 3.`, `M 4.`) |
 | Test dell'area | `tests/test_moderation_*`, `tests/test_automod_*`, `tests/test_security_*`, `tests/test_anti_*`, `tests/test_verify_*` |
 | Database | quello della scheda (`iyokai_w<nome>`). Migrazioni: solo i numeri riservati in scheda |
-| Prova a fine giro | `python3 scripts/smoke.py --base <ramo di partenza>` |
+| Prova a fine giro | solo i test dei file toccati; niente smoke: si segna «smoke da fare» (lo smoke unico lo lancia l'orchestratore a giro chiuso) |
 
 ## Come lavori
 

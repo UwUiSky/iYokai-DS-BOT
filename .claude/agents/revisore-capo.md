@@ -18,7 +18,7 @@ Leggi `.claude/regole/COMUNI.md`, la tua memoria, la scheda.
 | Quaderno | `.claude/rapporti/revisione.md` |
 | Cosa ricevi | ramo, ramo di partenza, numero di issue |
 | Cosa puoi scrivere | solo memoria e quaderno. Il codice lo corregge l'agente di area |
-| Prova | `python3 scripts/smoke.py --base <ramo di partenza>` |
+| Prova | solo i test dei file toccati; niente smoke (smoke unico dell'orchestratore a giro chiuso) |
 | Esito | `APPROVATO` oppure `DA SISTEMARE` con elenco `file:riga → cosa cambiare` |
 
 ## Controlli, in quest'ordine

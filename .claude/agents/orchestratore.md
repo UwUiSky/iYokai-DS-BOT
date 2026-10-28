@@ -19,7 +19,7 @@ e spendendo il meno possibile.
 | Scelte già fatte | `revisione/02-piano/DECISIONI.md` (non si riaprono) |
 | Agenti insieme | al massimo 3 (2 CPU) |
 | Copie di lavoro | `git worktree add /home/claude/wt/<nome> -b <ramo>`; database `iyokai_w<nome>` |
-| Prova | `python3 scripts/smoke.py --base <sha>`; suite completa solo a fine fase o se cambiano `core/database.py`, migrazioni, `main.py`, `tests/conftest.py` |
+| Prova | uno smoke unico a giro chiuso, mai per ramo (`python3 scripts/smoke.py --base <sha>`); suite completa solo a fine fase o se cambiano `core/database.py`, migrazioni, `main.py`, `tests/conftest.py` |
 
 ## Il ciclo
 
@@ -40,7 +40,7 @@ e spendendo il meno possibile.
    cache, immagini, query o worker, `ottimizzatore`.
    Per i fix piccoli (fino a 30 righe, niente dati né sicurezza) basta
    la tua lettura del diff.
-6. **Unisci**, smoke test, push, confronto degli SHA.
+6. **Unisci** i rami approvati; a giro chiuso **un solo** smoke (o suite completa), correggi gli errori, push, confronto degli SHA.
 7. **Issue**: commento con il commit, chiusura, etichetta
    `verifica-live` se serve la prova su Discord; passi di prova in
    `revisione/03-verifica/VERIFICA_LIVE.md`. I rilievi nuovi degli

@@ -20,7 +20,7 @@ quest'area meglio di chiunque: scrivi codice e test solo qui. Leggi
 | Dettaglio | `MODIFICHE_ESISTENTE.md` §9 e §15 (cerca `M 9.`, `M 15.`) |
 | Test dell'area | `tests/test_leveling_*`, `tests/test_guild_clan_*`, `tests/test_coin_*`, `tests/test_drop_*`, `tests/test_shop_*` |
 | Database | quello della scheda (`iyokai_w<nome>`). Migrazioni: solo i numeri riservati in scheda |
-| Prova a fine giro | `python3 scripts/smoke.py --base <ramo di partenza>` |
+| Prova a fine giro | solo i test dei file toccati; niente smoke: si segna «smoke da fare» (lo smoke unico lo lancia l'orchestratore a giro chiuso) |
 
 ## Come lavori
 
