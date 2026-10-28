@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+28/10/2026 · ramo `feat/r10inviti` (link personali, D32, 0380): fatti anche i controlli del cacciatore; fix 8b9426b (permesso del membro, canale pubblico, tetto 500, verifica invito vivo, race tracker), d45c4f2 (COMMAND_LIST). APPROVATO con 4 basse nel quaderno; smoke da fare.
 21/10/2026 · ramo `feat/r8tkt` (#120 opzioni ticket, #139 AI, migrazione 0220): merge di main (991f977); corretti presa esclusiva/passa/rilascia e note archiviate (bd26b6d), cache opzioni (ad83893), reperibili ricontrollati; test instabile dei due close = doppia lettura in `close`. Esito smoke nel rapporto.
 16/10/2026 · r7mod, r7bak (3be8a40), r7liv.
 
@@ -41,6 +42,7 @@
 - Letti per intero: giro-mod, r3-bak, r3-mus, r4-liv, r4-tkt, r4-uti, r6ai, r6mod, r6web, r6mus, r7bak, r7mod, r7liv, r8uti, r8web, r9mod.
 
 ## Cose imparate
+- Inviti creati dal bot per un membro: permesso «Crea invito» DEL MEMBRO nel canale, canale visibile a @everyone, tetto 1000/server; la cache del tracker non sa delle cancellazioni (INVITE_DELETE solo con Gestisci canali).
 - Controllare il contenuto di ogni commit, non il messaggio. Testo all'utente che promette una funzione va confrontato col codice.
 - Ambiente: `source /tmp/claude-0/env_<ramo>.sh` in ogni bash; `python3 -m pytest`; mai `cd` dentro lo script env; mai `cat > $VAR_VUOTA` (aspetta stdin). Postgres giù dopo un riavvio: `service postgresql start` e attendere il recupero (`pg_isready`).
 - Merge di main: conflitti a due lati nei documenti e in `comandi.en.json` (unire, controllare chiavi doppie); `COMMAND_LIST*.md` si rigenerano.

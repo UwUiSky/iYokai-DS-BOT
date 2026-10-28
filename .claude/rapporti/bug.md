@@ -282,3 +282,8 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 28/10 · core/invite_service.py scegli_canale/puo_avere_il_link · membro senza «Crea invito» (o che non vede il canale) ottiene un invito permanente dal bot · alta · corretto 8b9426b
+- 28/10 · core/invite_service.py scegli_canale · invito nel canale aggiornamenti community (solo staff): nome nell'anteprima · media · corretto 8b9426b
+- 28/10 · core/invite_service.py invito_discord · nessun tetto sui 1000 inviti per server (LIM-36): server grande li esaurisce · alta · corretto 8b9426b (500)
+- 28/10 · core/invite_service.py _invito_vivo · cache del tracker creduta «viva» dopo cancellazione manuale: link rotto fino al prossimo ingresso · media · corretto 8b9426b
+- 28/10 · core/invite_tracker.py _risolvi/refresh_guild · invito registrato dal bot durante l'await sovrascritto: primo ingresso senza invitante · bassa · corretto 8b9426b

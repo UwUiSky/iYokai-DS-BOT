@@ -239,3 +239,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/invite_service.py:registra_ingresso` | Invito del bot senza riga di link (cancellazione fallita o dati cancellati) attribuito al bot stesso | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/data_registry.py` invite_personal_links | Cancellazione dati dell'utente lascia vivo l'invito Discord (solo all'uscita dal server si cancella) | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/repositories/invite_stats_repo.py:ultimi_ingressi` | Manca indice (guild_id, joined_at) per server grandi: migrazione nuova (0381) | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/web_panel_inviti.py:pagina_admin` | Canale/ruolo salvato fuori dai primi 250 non selezionato: «Salva» lo toglie | bassa | aperto |
+| 28/10 | `feat/r10inviti` | commit 8b9426b | `Refs #NF-27` invece di `Refs #98` (storia non riscritta) | forma | accettato |
