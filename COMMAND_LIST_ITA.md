@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:27 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 576 comandi in 25 categorie.**
+**Totale: 579 comandi in 25 categorie.**
 
 ## Admin
 
@@ -163,9 +163,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
 - **`/automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
 - **`/automod odio base`** — Accende o spegne la lista di base degli insulti d'odio.
+- **`/automod odio blocco`** — Blocco preventivo delle frasi d'odio.
+- **`/automod odio libreria`** — Solo proprietario del bot: libreria delle parole.
 - **`/automod odio nomi`** — Controlla nickname e nomi visualizzati all'ingresso e al cambio.
 - **`/automod odio parola`** — Aggiunge o toglie una parola propria o una parola lecita.
 - **`/automod odio prova`** — Prova un testo contro le parole vietate, senza agire.
+- **`/automod odio richiami`** — Richiami per parole d'odio prima del timeout.
 - **`/automod odio stato`** — Mostra come sono impostate le parole vietate.
 - **`/automod parole add`** — Aggiunge una parola vietata.
 - **`/automod parole list`** — Mostra le parole vietate configurate.

@@ -154,6 +154,9 @@ Stato di iYokai (misurato): 97 comandi di primo livello su 100;
 | Menzioni massime impostabili | 50 | Auto Moderation |
 | Ruoli esenti / canali esenti | 20 / 50 | Auto Moderation |
 | Messaggio personalizzato del blocco | 150 caratteri | Auto Moderation |
+| Sintassi delle espressioni regolari | solo «Rust flavored»: niente lookaround né riferimenti all'indietro (`\b`, `(?i)`, `{0,40}` vanno) | Auto Moderation (verificato 28/10/2026) |
+| Regole «parole chiave» per server | 6 in tutto, **comprese quelle dell'admin**: il blocco d'odio (D35) ne usa una e prima di crearla conta le altre | Auto Moderation |
+| Timeout come azione nativa | fino a 2.419.200 secondi (28 giorni); serve «Moderare i membri» | Auto Moderation |
 
 ### 1.8 Permessi nuovi dal 23/02/2026
 

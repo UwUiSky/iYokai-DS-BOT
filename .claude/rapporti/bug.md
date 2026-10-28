@@ -311,3 +311,9 @@
 - 28/10 · cogs/ai/summaries.py + config.py costruisci · prova gratuita attiva ma i 4 comandi con requires_module rispondono «modulo non sbloccato» · media · corretto r10aiw b302da0
 - 28/10 · core/repositories/ai_repo.py avvia_prova · purga a 90 giorni cancella ai_config: bot rimesso = prova nuova · media · corretto r10aiw 0be178a
 - 28/10 · core/ai_coda_logic.py posto · su Python 3.11 `wait_for` può scadere dopo aver preso il semaforo: posto perso · bassa · plausibile
+- 28/10 · core/odio_moderazione.py giudica_sospetta · testo tagliato a 500: insulto dopo 500 caratteri di riempitivo, l'AI non lo vede e dice «normale» · alta · corretto r11odio (FIX)
+- 28/10 · core/odio_libreria_repo.py segnala · 3 server dello stesso proprietario (o 3 server vuoti) rendono globale e certa una parola qualsiasi (anche «ciao», via prompt injection) · alta · corretto r11odio (FIX, 0391)
+- 28/10 · core/odio_giudizio_logic.py leggi_risposta · JSON preso in mezzo a testo libero, «normale» con parole offensive accettato · media · corretto r11odio (FIX)
+- 28/10 · core/automod_odio_azioni.py controlla_sospetta · AI ferma = richiamo contato: un cognome porta al timeout · media · corretto r11odio (FIX)
+- 28/10 · cogs/automod/parole_odio.py blocco · tetto 6 o permessi mancanti: impostazione salvata «acceso» e risposta «acceso» · media · corretto r11odio (FIX)
+- 28/10 · core/automod_odio_nativo_logic.py · regola nativa senza varianti (n1gger, terr0ni, f4ggot) · media · corretto r11odio (FIX)

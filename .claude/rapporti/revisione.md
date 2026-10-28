@@ -325,3 +325,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r11util` | `cogs/utility/greetings.py:UsciteModal._grafica` | D16: validazione e scrittura della grafica nel cog, il pannello dovrà ripeterle (stesso schema di ExtraBenvenutoModal) | bassa | aperto |
 | 28/10 | `feat/r11util` | `core/greetings_uscite_logic.py:ATTESA_BAN` | Martello con file da 3 MB lento oltre 3 s: l'addio esce per primo (raro) | bassa | aperto |
 | 28/10 | `feat/r11util` | `core/greetings_uscite_logic.py:valida_link` | Link non controllato nel tipo (Discord lo scarica, nessun SSRF del bot): se non è un'immagine l'embed resta vuoto | bassa | aperto |
+| 28/10 | `feat/r11odio` | `core/automod_odio_nativo_logic.py:_coppia` | Simbolo in fondo alla parola («n1gg@») e lettere ripetute/spaziate non presi dalla regola nativa (li ferma il bot dopo l'invio) | bassa | aperto |
+| 28/10 | `feat/r11odio` | `core/odio_libreria_logic.py:stato_dopo_segnalazione` | Approvata in automatico = parola certa (senza AI) ovunque: 3 proprietari d'accordo bastano ancora. Da far confermare all'owner (D39) | bassa | aperto |
+| 28/10 | `feat/r11odio` | `core/ai_servizio.py:richiedi` | La lore del server entra nelle istruzioni anche del giudizio d'odio: l'admin può spostare il giudizio | bassa | aperto |
+| 28/10 | `feat/r11odio` | `core/automod_odio_azioni.py:sincronizza_blocco` | `nostra.edit` sovrascrive esenzioni messe dall'admin sulla regola; import config non crea la regola | bassa | aperto |
+| 28/10 | `feat/r11odio` | `core/odio_moderazione.py` | Nessun tetto per utente sulle chiamate (verdetto «normale» ripetuto con frasi diverse): limita solo la quota del server | bassa | aperto |

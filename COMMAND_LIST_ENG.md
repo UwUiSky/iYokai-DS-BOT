@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:27 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:50 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 576 commands in 25 categories.**
+**Total: 579 commands in 25 categories.**
 
 ## Admin
 
@@ -163,9 +163,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:2
 - **`/automod log-channel`** — Sets the channel for the advanced AutoMod action log.
 - **`/automod mute-duration`** — Sets the timeout length used by the AutoMod 'mute' action.
 - **`/automod odio base`** — Turns the base list of hate slurs on or off.
+- **`/automod odio libreria`** — Bot owner only: the worldwide library of hate words.
+- **`/automod odio lockdown`** — Preventive block of hateful phrases.
 - **`/automod odio nomi`** — Checks nicknames and display names on join and on change.
 - **`/automod odio parola`** — Adds or removes a custom word or an allowed word.
 - **`/automod odio prova`** — Tests a text against the banned words without acting.
+- **`/automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/automod odio status`** — Shows how the banned words are set up.
 - **`/automod status`** — Shows the current advanced AutoMod filter setup.
 - **`/automod sync`** — Forces a manual sync of the AutoMod rules.

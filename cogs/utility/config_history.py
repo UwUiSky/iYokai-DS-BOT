@@ -121,6 +121,12 @@ SETTINGS_SCHEMA = {
     "automod_parole_nick": "bool",
     "automod_parole_proprie": "lista_parole",
     "automod_parole_lecite": "lista_parole",
+    # Difesa dalle parole d'odio (core/odio_opzioni.py, D35)
+    "odio_blocco_attivo": "bool",
+    "odio_blocco_messaggio": "testo_150",
+    "odio_richiami_soglia": "int_1_20",
+    "odio_richiami_minuti": "int_1_1440",
+    "odio_timeout_minuti": "int_1_40320",
     # Inviti e link personali (core/invite_links_logic.py)
     "inviti_log_channel_id": "id",
     "inviti_link_role_id": "id",
@@ -194,6 +200,10 @@ CONTROLLI_PER_TIPO = {
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
     "int_0_60": (_intero_tra(0, 60), "un intero tra 0 e 60"),
     "testo_300": (lambda valore: isinstance(valore, str) and len(valore) <= 300, "un testo fino a 300 caratteri"),
+    "testo_150": (lambda valore: isinstance(valore, str) and len(valore) <= 150, "un testo fino a 150 caratteri"),
+    "int_1_20": (_intero_tra(1, 20), "un intero tra 1 e 20"),
+    "int_1_1440": (_intero_tra(1, 1440), "un intero tra 1 e 1440"),
+    "int_1_40320": (_intero_tra(1, 40320), "un intero tra 1 e 40320"),
     "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),
     "punizione_trappola": (lambda valore: valore in PUNIZIONI_TRAPPOLA, ", ".join(PUNIZIONI_TRAPPOLA)),
