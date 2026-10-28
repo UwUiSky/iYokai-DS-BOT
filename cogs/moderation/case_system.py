@@ -21,8 +21,10 @@ eliminazione di un caso, classifica dello staff (/mod caso), note da
 togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
 e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
-Sanzioni a tempo ancora attive (MOD-013): tempban, timeout e lock a tempo.
-Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 027..031, 037, 039, 041, 042, 044, 054..056)
+Casi anche per ban, kick e timeout fatti fuori da iYokai (MOD-047, se acceso).
+Avviso allo staff quando rientra chi ha dei casi (MOD-064, se acceso).
+Sanzioni ancora attive (MOD-013): tempban, timeout, mute con ruolo e lock a tempo.
+Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 047, 049, 064, 027..031, 037, 039, 041, 042, 044, 054..056)
 """
 
 from __future__ import annotations
@@ -31,7 +33,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import bot_roles, moderation_opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.database import db
+from core.moderation_casi_esterni_logic import caso_da_voce
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
@@ -43,6 +48,7 @@ from cogs.moderation._shared import (
     MAX_LINE_TEXT_LENGTH,
     MODULE_CASE_SYSTEM,
     Reason,
+    check_can_moderate,
     ensure_module_enabled,
     join_within_limit,
     post_to_mod_log,
@@ -125,7 +131,7 @@ MAX_ATTIVE_PER_TIPO = 100
 
 
 async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
-    """MOD-013: tempban, timeout e lock a tempo ancora in corso, dal primo che scade."""
+    """MOD-013: tempban, timeout, mute e lock a tempo ancora in corso, dal primo che scade."""
     righe: list[str] = []
     for azione in await scheduler.list_pending_for_guild(guild.id, SCHEDULED_TEMPBAN_EXPIRE, MAX_ATTIVE_PER_TIPO):
         caso = azione["payload"].get("case_number")
@@ -143,6 +149,13 @@ async def righe_sanzioni_attive(guild: discord.Guild) -> list[str]:
             f"🔇 **Timeout** {membro.mention} (`{membro.id}`) — fine "
             f"{discord.utils.format_dt(membro.timed_out_until, 'R')}"
         )
+    for stato in await moderation_repo.list_mute_states(guild.id, MAX_ATTIVE_PER_TIPO):
+        tipo = "Hardmute" if stato["hard"] else "Mute"
+        fine = (
+            f"fine {discord.utils.format_dt(stato['finisce_il'], 'R')}"
+            if stato["finisce_il"] is not None else "senza fine"
+        )
+        righe.append(f"🔇 **{tipo}** <@{stato['user_id']}> (`{stato['user_id']}`) — {fine}")
     for azione in await scheduler.list_pending_for_guild(guild.id, SCHEDULED_CHANNEL_UNLOCK, MAX_ATTIVE_PER_TIPO):
         righe.append(
             f"🔒 **Lock** <#{azione['user_id']}> — si sblocca "
@@ -155,10 +168,78 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """MOD-064: se il server lo vuole, lo staff sa quando rientra chi ha già dei casi."""
+        if member.bot or not (await moderation_opzioni.leggi(member.guild.id)).avviso_rientro:
+            return
+        if not await db.is_module_active_for_guild(member.guild.id, MODULE_CASE_SYSTEM):
+            return
+        casi = await moderation_repo.list_cases_for_user(member.guild.id, member.id, 5)
+        if not casi:
+            return
+        embed = discord.Embed(
+            title="👀 Rientra un utente con dei casi",
+            description=f"{member.mention} ({member.id}). Ultimi casi:\n"
+            + join_within_limit([_format_case_line(c) for c in casi], "…e altri {n}."),
+            color=discord.Color.orange(),
+        )
+        await post_to_mod_log(member.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry) -> None:
+        """MOD-047: ban, kick e timeout fatti dal menu di Discord o da altri bot diventano casi."""
+        azione = entry.action
+        if azione not in (
+            discord.AuditLogAction.ban,
+            discord.AuditLogAction.kick,
+            discord.AuditLogAction.unban,
+            discord.AuditLogAction.member_update,
+        ):
+            return
+        if entry.user_id is None or entry.target is None:
+            return
+        # Le azioni di iYokai hanno già il loro caso; chi si sanziona da solo non conta.
+        if bot_roles.e_un_nostro_bot(entry.user_id, self.bot) or entry.user_id == entry.target.id:
+            return
+        guild = entry.guild
+        if not (await moderation_opzioni.leggi(guild.id)).casi_esterni:
+            return
+        if not await db.is_module_active_for_guild(guild.id, MODULE_CASE_SYSTEM):
+            return
+        voce = caso_da_voce(
+            azione.name,
+            entry.reason,
+            timeout_fino=getattr(entry.after, "timed_out_until", None),
+            ora=discord.utils.utcnow(),
+        )
+        if voce is None:
+            return
+        if voce.tipo == "unban":
+            for tipo in ("ban", "tempban"):
+                await moderation_repo.revoke_active_cases_for_user(guild.id, entry.target.id, tipo, entry.user_id)
+            return
+        numero = await moderation_repo.create_case(
+            guild_id=guild.id,
+            user_id=entry.target.id,
+            moderator_id=entry.user_id,
+            action_type=voce.tipo,
+            reason=voce.motivo,
+            duration_seconds=voce.durata_secondi,
+        )
+        embed = discord.Embed(
+            title=f"{_ACTION_ICONS.get(voce.tipo, '•')} Caso #{numero} (fatto fuori da iYokai)",
+            color=_ACTION_COLORS.get(voce.tipo, discord.Color.blurple()),
+        )
+        embed.add_field(name="Utente", value=f"<@{entry.target.id}> ({entry.target.id})", inline=False)
+        embed.add_field(name="Moderatore", value=f"<@{entry.user_id}>", inline=True)
+        embed.add_field(name="Motivo", value=truncate_text(voce.motivo, MAX_FIELD_LENGTH), inline=False)
+        await post_to_mod_log(guild, embed)
+
     @comando_di_gruppo(
         "mod",
         nome="attive",
-        descrizione="Sanzioni a tempo ancora in corso: tempban, timeout, lock a tempo.",
+        descrizione="Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
     )
     @requires_module(MODULE_CASE_SYSTEM)
@@ -376,6 +457,62 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Caso #{case_number} eliminato.", ephemeral=True)
         embed = discord.Embed(title=f"🗑️ Caso #{case_number} eliminato", color=discord.Color.dark_grey())
         embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        await post_to_mod_log(interaction.guild, embed)
+
+    @comando_di_gruppo(
+        "mod",
+        nome="registra",
+        descrizione="Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @app_commands.describe(
+        utente="L'utente sanzionato (anche fuori dal server)",
+        tipo="Che sanzione è stata data",
+        reason="Motivo della sanzione",
+        a_nome_di="Il moderatore che l'ha data, se non sei tu (serve «Gestire il server»)",
+    )
+    @app_commands.choices(tipo=SCELTE_TIPO)
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def case_register(
+        self,
+        interaction: discord.Interaction,
+        utente: discord.User,
+        tipo: app_commands.Choice[str],
+        reason: Reason,
+        a_nome_di: discord.Member | None = None,
+    ) -> None:
+        """MOD-046, MOD-049: il caso entra nello storico, ma sul server non cambia nulla."""
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if not await validate_reason(interaction, reason):
+            return
+        if a_nome_di is not None and a_nome_di.id != interaction.user.id:
+            if await _rifiuta_senza_gestione(interaction):
+                return
+        # Gerarchia e ruoli immuni come per le azioni vere (MOD-068); chi non è nel server non ha ruoli.
+        membro = interaction.guild.get_member(utente.id)
+        if membro is not None and not await check_can_moderate(interaction, membro, azione_su_discord=False):
+            return
+        moderatore = a_nome_di or interaction.user
+        numero = await moderation_repo.create_case(
+            guild_id=interaction.guild.id,
+            user_id=utente.id,
+            moderator_id=moderatore.id,
+            action_type=tipo.value,
+            reason=reason,
+        )
+        embed = discord.Embed(
+            title=f"{_ACTION_ICONS.get(tipo.value, '•')} Caso #{numero} registrato a mano",
+            color=_ACTION_COLORS.get(tipo.value, discord.Color.blurple()),
+        )
+        embed.add_field(name="Utente", value=f"<@{utente.id}> ({utente.id})", inline=False)
+        embed.add_field(name="Tipo", value=tipo.name, inline=True)
+        embed.add_field(name="Moderatore", value=moderatore.mention, inline=True)
+        embed.add_field(name="Motivo", value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
+        embed.set_footer(text=f"Registrato da {interaction.user.display_name}. Nessuna azione eseguita.")
+        await interaction.response.send_message(
+            embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(

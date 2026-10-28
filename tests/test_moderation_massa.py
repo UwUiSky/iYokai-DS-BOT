@@ -164,6 +164,19 @@ async def test_kick_timeout_warn_in_massa():
     assert sorted(await _casi(A)) == ["kick", "timeout", "warn"]
 
 
+async def test_warn_in_massa_avvisa_lo_staff_oltre_la_soglia():
+    """MOD-036 vale anche per /mod massa warn: solo l'avviso, nessuna punizione."""
+    from core import moderation_opzioni
+
+    await moderation_opzioni.imposta_avviso_warn(SERVER, 1, MOD)
+    await moderation_repo.create_case(SERVER, A, MOD, "warn", "primo")
+    server, membri, interazione, log = _scena()
+    await _cog().warn_massa.callback(_cog(), interazione, f"{A} {B}", "linguaggio")
+    titoli = [c.kwargs["embed"].title for c in log.send.await_args_list if c.kwargs.get("embed")]
+    assert titoli.count("⚠️ Troppi warn") == 1  # A ne ha 2, B uno solo
+    membri[A].kick.assert_not_awaited()
+
+
 async def test_timeout_oltre_28_giorni_rifiutato_prima_di_toccare_qualcuno():
     server, membri, interazione, _ = _scena()
     await _cog().timeout_massa.callback(_cog(), interazione, f"{A}", "30d", "troppo")

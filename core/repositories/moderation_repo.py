@@ -212,6 +212,14 @@ class ModerationRepository:
         )
         return [_row_to_case(row) for row in rows]
 
+    async def count_active_cases(self, guild_id: int, user_id: int, action_type: str) -> int:
+        """Quanti casi attivi di un tipo ha un utente (es. i warn non tolti)."""
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM moderation_cases "
+            "WHERE guild_id = $1 AND user_id = $2 AND action_type = $3 AND active = TRUE",
+            guild_id, user_id, action_type,
+        )
+
     async def list_cases_by_moderator(
         self, guild_id: int, moderator_id: int, limit: int = 25, action_type: str | None = None
     ) -> list[ModerationCase]:
@@ -582,6 +590,51 @@ class ModerationRepository:
             "DELETE FROM tempban_stato WHERE guild_id = $1 AND user_id = $2",
             guild_id, user_id,
         )
+
+
+    # ------------------------------------------------------------
+    # Mute con ruolo: a tempo, hardmute, rientro (MOD-014, 015, 021)
+    # ------------------------------------------------------------
+    async def save_mute_state(
+        self,
+        guild_id: int,
+        user_id: int,
+        hard: bool,
+        ruoli: list[int],
+        case_number: int | None,
+        finisce_il: datetime | None,
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO mute_stato (guild_id, user_id, hard, ruoli, case_number, finisce_il)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (guild_id, user_id) DO UPDATE
+                SET hard = $3, ruoli = $4, case_number = $5, finisce_il = $6
+            """,
+            guild_id, user_id, hard, ruoli, case_number, finisce_il,
+        )
+
+    async def get_mute_state(self, guild_id: int, user_id: int) -> dict | None:
+        row = await self._pool.fetchrow(
+            "SELECT * FROM mute_stato WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+        return dict(row) if row else None
+
+    async def delete_mute_state(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM mute_stato WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+
+    async def list_mute_states(self, guild_id: int, limit: int = 25) -> list[dict]:
+        """I mute in corso del server: prima quelli che finiscono prima, poi i senza fine."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM mute_stato WHERE guild_id = $1 "
+            "ORDER BY finisce_il NULLS LAST, user_id LIMIT $2",
+            guild_id, limit,
+        )
+        return [dict(r) for r in rows]
 
 
 def _row_to_case(row) -> ModerationCase:

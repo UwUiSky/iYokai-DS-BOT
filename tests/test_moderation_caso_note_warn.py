@@ -183,3 +183,61 @@ async def test_le_query_del_repo_non_toccano_un_altro_server():
     caso = await moderation_repo.get_case(G, numero)
     assert caso is not None and caso.reason == "uno"
     assert len(await moderation_repo.list_notes_for_user(G, 1)) == 1
+
+
+# ------------------------------------------------------- caso registrato a mano
+async def test_caso_registrato_a_mano_entra_nello_storico_senza_agire():
+    inter, canale_log = _inter()
+    cog = ModerationCaseSystemCog(bot=None)
+    utente = MagicMock(id=555)
+    scelta = MagicMock(value="ban")
+    scelta.name = "Ban"
+
+    await cog.case_register.callback(cog, inter, utente, scelta, "ban dato da un altro bot")
+
+    [caso] = await moderation_repo.list_cases_for_user(G, 555)
+    assert (caso.action_type, caso.moderator_id, caso.active) == ("ban", 10, True)
+    assert "registrato a mano" in inter.response.send_message.call_args.kwargs["embed"].title
+    canale_log.send.assert_awaited_once()
+
+
+async def test_caso_a_nome_di_un_altro_serve_gestire_il_server():
+    inter, _ = _inter(gestione=False)
+    cog = ModerationCaseSystemCog(bot=None)
+    scelta = MagicMock(value="kick")
+    await cog.case_register.callback(cog, inter, MagicMock(id=555), scelta, "kick fuori bot", fake_member(77))
+    assert await moderation_repo.list_cases_for_user(G, 555) == []
+    assert "Gestire il server" in _testo(inter)
+
+    inter, _ = _inter(gestione=True)
+    await cog.case_register.callback(cog, inter, MagicMock(id=555), scelta, "kick fuori bot", fake_member(77))
+    [caso] = await moderation_repo.list_cases_for_user(G, 555)
+    assert caso.moderator_id == 77
+
+
+async def test_caso_registrato_rispetta_gerarchia_e_ruoli_immuni():
+    from core import moderation_opzioni
+    from tests.support.discord_fakes import fake_role
+
+    inter, _ = _inter()
+    server = inter.guild
+    mod = inter.user
+    mod.top_role = fake_role(20, "Mod", position=10)
+    capo = fake_member(556, roles=[fake_role(30, "Admin", position=40)])
+    protetto = fake_member(557, roles=[fake_role(5, "Protetto", position=2)])
+    utente = fake_member(558, roles=[fake_role(6, "Utente", position=1)])
+    membri = {m.id: m for m in (mod, capo, protetto, utente)}
+    server.get_member = MagicMock(side_effect=membri.get)
+    await moderation_opzioni.cambia_ruolo_immune(G, 5, True, 555)
+    cog = ModerationCaseSystemCog(bot=None)
+    scelta = MagicMock(value="warn")
+
+    for bersaglio in (capo, protetto):
+        inter.response.send_message.reset_mock()
+        await cog.case_register.callback(cog, inter, bersaglio, scelta, "warn falso")
+        assert await moderation_repo.list_cases_for_user(G, bersaglio.id) == []
+
+    # Sotto il moderatore e sopra il bot: nessuna azione su Discord, il caso entra.
+    server.me.top_role = fake_role(1, "Yokai", position=0)
+    await cog.case_register.callback(cog, inter, utente, scelta, "warn vero")
+    assert len(await moderation_repo.list_cases_for_user(G, 558)) == 1

@@ -17,13 +17,16 @@ come preferenza di alcuni admin. Il ruolo "Muted" viene creato
 automaticamente al primo utilizzo, con i permessi negati (scrivere,
 anche nei thread, aprire thread, reagire, entrare e parlare in vocale)
 su ogni canale di ogni tipo. I canali creati dopo ricevono lo stesso
-blocco da on_guild_channel_create.
-Funzioni coperte: SPEC §5.1, §5.10
+blocco da on_guild_channel_create. Il mute può avere una fine (lo toglie lo
+scheduler, anche dopo un riavvio), può essere un hardmute (toglie anche gli
+altri ruoli e li ridà alla fine) e resta se l'utente esce e rientra.
+Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 021)
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
@@ -32,6 +35,13 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
+from core.moderation_mute_logic import (
+    MAX_MUTE_SECONDI,
+    mute_finito,
+    ruoli_dopo_nuovo_mute,
+    ruoli_hardmute,
+)
+from core.scheduler import in_seconds, scheduler
 from core.repositories.moderation_repo import moderation_repo
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
@@ -43,12 +53,18 @@ from cogs.moderation._shared import (
     validate_reason,
     Reason,
     audit_reason,
+    format_duration,
+    parse_duration,
     post_to_mod_log,
 )
+from cogs.moderation._tempban_modes import info_ruoli, ruoli_da_riprendere, trova_membro
 
 logger = logging.getLogger("iyokai.moderation.softban_mute")
 
 MUTE_ROLE_ACTION_TYPE = "mute_role"
+# Fine di un mute a tempo. Nella riga dello scheduler `user_id` è l'utente
+# silenziato; il payload porta il numero del caso, per ignorare le attese vecchie.
+SCHEDULED_MUTE_EXPIRE = "moderation_mute_expire"
 
 # Chiave in guild_config.settings per il ruolo mute — stesso
 # meccanismo generico già usato da report.py e dal canale mod-log.
@@ -263,6 +279,84 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed)
 
     # ================================================================
+    # Fine del mute, rientro, ripristino ruoli
+    # ================================================================
+    async def _rilascia_mute(
+        self,
+        guild: discord.Guild,
+        member: discord.Member | None,
+        stato: dict | None,
+        motivo: str,
+        revocato_da: int,
+    ) -> bool:
+        """
+        Toglie il ruolo mute, ridà i ruoli di un hardmute, chiude il caso e cancella
+        lo stato. Se il membro non è nel server lo stato resta (lo chiude il rientro).
+        False se Discord ha rifiutato una modifica dei ruoli.
+        """
+        user_id = member.id if member is not None else (stato or {}).get("user_id")
+        if member is not None:
+            role_id = await db.get_guild_setting(guild.id, SETTING_MUTE_ROLE_ID)
+            ruolo = guild.get_role(role_id) if role_id else None
+            try:
+                if ruolo is not None and ruolo in member.roles:
+                    await member.remove_roles(ruolo, reason=audit_reason(motivo))
+                if stato and stato["hard"]:
+                    ridare = [r for r in ruoli_da_riprendere(guild, list(stato["ruoli"])) if r not in member.roles]
+                    if ridare:
+                        await member.add_roles(*ridare, reason=audit_reason(motivo))
+            except discord.HTTPException:
+                logger.warning("Fine mute: ruoli non sistemati per %s (server %s).", member.id, guild.id)
+                return False
+        if user_id is not None:
+            await scheduler.cancel_for_user(guild.id, user_id, SCHEDULED_MUTE_EXPIRE)
+            await moderation_repo.revoke_active_cases_for_user(
+                guild.id, user_id, MUTE_ROLE_ACTION_TYPE, revocato_da
+            )
+            if member is not None:
+                await moderation_repo.delete_mute_state(guild.id, user_id)
+        return True
+
+    async def handle_mute_expire(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Lo scheduler: il mute a tempo è finito."""
+        stato = await moderation_repo.get_mute_state(guild_id, user_id)
+        if stato is None or stato["case_number"] != payload.get("caso"):
+            return  # tolto prima, oppure sostituito da un mute più nuovo
+        guild = self.bot.get_guild(guild_id)
+        if guild is None:
+            return
+        member = await trova_membro(guild, user_id)  # anche a cache fredda
+        if member is None:
+            # Fuori dal server: il rientro vedrà che è finito e chiuderà tutto.
+            await moderation_repo.revoke_active_cases_for_user(
+                guild_id, user_id, MUTE_ROLE_ACTION_TYPE, self.bot.user.id
+            )
+            return
+        if not await self._rilascia_mute(guild, member, stato, "Mute scaduto", self.bot.user.id):
+            raise RuntimeError("ruoli del mute non sistemati")  # lo scheduler riprova
+        embed = discord.Embed(title="🔊 Mute (ruolo) scaduto", color=discord.Color.green())
+        embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
+        await post_to_mod_log(guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """MOD-021: chi è silenziato e rientra resta silenziato, finché il mute non finisce."""
+        stato = await moderation_repo.get_mute_state(member.guild.id, member.id)
+        if stato is None:
+            return
+        if mute_finito(stato["finisce_il"], datetime.now(timezone.utc)):
+            await self._rilascia_mute(member.guild, member, stato, "Mute scaduto", self.bot.user.id)
+            return
+        role_id = await db.get_guild_setting(member.guild.id, SETTING_MUTE_ROLE_ID)
+        ruolo = member.guild.get_role(role_id) if role_id else None
+        if ruolo is None:
+            return
+        try:
+            await member.add_roles(ruolo, reason="Mute ancora in corso")
+        except discord.HTTPException:
+            logger.warning("Rientro: ruolo mute non rimesso a %s (server %s).", member.id, member.guild.id)
+
+    # ================================================================
     # /mute-role e /unmute-role
     # ================================================================
     @comando_di_gruppo(
@@ -270,9 +364,19 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         nome="mute",
         descrizione="Silenzia un membro con un ruolo dedicato (alternativa al timeout).",
     )
-    @app_commands.describe(member="Il membro da silenziare", reason="Motivo del mute")
+    @app_commands.describe(
+        member="Il membro da silenziare",
+        reason="Motivo del mute",
+        durata="Per quanto tempo (es. 2h, 3d). Vuoto: finché non lo togli (max 1 anno)",
+        hardmute="Toglie anche tutti gli altri ruoli e li ridà alla fine del mute",
+    )
     async def mute_role(
-        self, interaction: discord.Interaction, member: discord.Member, reason: Reason
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        reason: Reason,
+        durata: app_commands.Range[str, 1, 20] | None = None,
+        hardmute: bool = False,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -281,9 +385,24 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         if not await check_can_moderate(interaction, member):
             return
 
-        await interaction.response.defer()
+        secondi = None
+        if durata is not None:
+            try:
+                secondi = parse_duration(durata)
+            except ValueError as exc:
+                await interaction.response.send_message(str(exc), ephemeral=True)
+                return
+            if secondi > MAX_MUTE_SECONDI:
+                await interaction.response.send_message(
+                    "Un mute a tempo dura al massimo un anno. Per un mute senza fine lascia la durata vuota.",
+                    ephemeral=True,
+                )
+                return
 
-        role = await _get_or_create_mute_role(interaction.guild)
+        await interaction.response.defer()
+        guild = interaction.guild
+
+        role = await _get_or_create_mute_role(guild)
         if role is None:
             await interaction.followup.send(
                 "Non sono riuscito a creare il ruolo mute: controlla i miei "
@@ -292,9 +411,37 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             )
             return
 
+        # Lo stato si scrive PRIMA di togliere i ruoli: se il bot si ferma a metà,
+        # i ruoli tolti si ricordano comunque.
+        precedente = await moderation_repo.get_mute_state(guild.id, member.id)
+        ruoli_ora = ruoli_hardmute(info_ruoli(member.roles), guild.me.top_role.position, role.id) if hardmute else []
+        ruoli = ruoli_dopo_nuovo_mute(
+            bool(precedente and precedente["hard"]), list(precedente["ruoli"]) if precedente else [],
+            ruoli_ora, hardmute,
+        )
+        fine = in_seconds(secondi) if secondi is not None else None
+        hard = hardmute or bool(precedente and precedente["hard"])
+        if hard:
+            await moderation_repo.save_mute_state(guild.id, member.id, True, ruoli, None, fine)
+
         try:
-            await member.add_roles(role, reason=reason)
+            if ruoli_ora:
+                da_togliere = [r for r in member.roles if r.id in set(ruoli_ora)]
+                await member.remove_roles(*da_togliere, reason=audit_reason(f"Hardmute: {reason}"))
+            await member.add_roles(role, reason=audit_reason(reason))
         except discord.HTTPException:
+            if ruoli_ora:  # a metà: si rimette quello che si è già tolto
+                try:
+                    await member.add_roles(*ruoli_da_riprendere(guild, ruoli_ora), reason="Hardmute fallito")
+                except discord.HTTPException:
+                    logger.warning("Hardmute fallito a metà per %s (server %s).", member.id, guild.id)
+            if precedente is None:
+                await moderation_repo.delete_mute_state(guild.id, member.id)
+            else:
+                await moderation_repo.save_mute_state(
+                    guild.id, member.id, precedente["hard"], list(precedente["ruoli"]),
+                    precedente["case_number"], precedente["finisce_il"],
+                )
             await interaction.followup.send(
                 "Non sono riuscito ad assegnare il ruolo mute: controlla i "
                 "miei permessi e la posizione del mio ruolo.",
@@ -302,18 +449,42 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             )
             return
 
+        # Un mute nuovo sostituisce quello di prima (e la sua scadenza).
+        await scheduler.cancel_for_user(guild.id, member.id, SCHEDULED_MUTE_EXPIRE)
+        await moderation_repo.revoke_active_cases_for_user(
+            guild.id, member.id, MUTE_ROLE_ACTION_TYPE, interaction.user.id
+        )
         case_number = await moderation_repo.create_case(
-            guild_id=interaction.guild.id,
+            guild_id=guild.id,
             user_id=member.id,
             moderator_id=interaction.user.id,
             action_type=MUTE_ROLE_ACTION_TYPE,
             reason=reason,
+            duration_seconds=secondi,
         )
-        embed = _case_embed(
-            "🔇 Mute (ruolo)", discord.Color.dark_grey(), member, interaction.user, reason, case_number
-        )
-        await post_to_mod_log(interaction.guild, embed)
-        await try_dm(member, embed, azione="mute", guild_id=interaction.guild.id)
+        # Lo stato serve sempre: fa restare il mute al rientro e porta la fine.
+        await moderation_repo.save_mute_state(guild.id, member.id, hard, ruoli, case_number, fine)
+        if fine is not None:
+            await scheduler.schedule(
+                guild_id=guild.id,
+                user_id=member.id,
+                action_type=SCHEDULED_MUTE_EXPIRE,
+                execute_at=fine,
+                payload={"caso": case_number},
+            )
+
+        titolo = "🔇 Hardmute (ruolo)" if hardmute else "🔇 Mute (ruolo)"
+        embed = _case_embed(titolo, discord.Color.dark_grey(), member, interaction.user, reason, case_number)
+        if fine is not None:
+            embed.add_field(
+                name="Fine",
+                value=f"{discord.utils.format_dt(fine, 'R')} ({format_duration(secondi)})",
+                inline=True,
+            )
+        if hardmute:
+            embed.add_field(name="Ruoli tolti", value=str(len(ruoli_ora)), inline=True)
+        await post_to_mod_log(guild, embed)
+        await try_dm(member, embed, azione="mute", guild_id=guild.id)
         await interaction.followup.send(embed=embed)
 
     @comando_di_gruppo(
@@ -338,31 +509,23 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             return
 
         role = interaction.guild.get_role(role_id)
-        if role is None or role not in member.roles:
+        stato = await moderation_repo.get_mute_state(interaction.guild.id, member.id)
+        if (role is None or role not in member.roles) and stato is None:
             await interaction.response.send_message(
                 f"{member.mention} non ha il ruolo mute.", ephemeral=True
             )
             return
 
-        try:
-            await member.remove_roles(role, reason=reason)
-        except discord.HTTPException:
-            await interaction.response.send_message(
-                "Non sono riuscito a rimuovere il ruolo mute: controlla i "
+        await interaction.response.defer()
+        if not await self._rilascia_mute(interaction.guild, member, stato, reason, interaction.user.id):
+            await interaction.followup.send(
+                "Non sono riuscito a sistemare i ruoli: controlla i "
                 "miei permessi e la posizione del mio ruolo.",
                 ephemeral=True,
             )
             return
 
-        case = await moderation_repo.get_latest_active_case(
-            interaction.guild.id, member.id, MUTE_ROLE_ACTION_TYPE
-        )
-        if case is not None:
-            await moderation_repo.revoke_case(
-                interaction.guild.id, case.case_number, interaction.user.id
-            )
-
-        await interaction.response.send_message(f"Ruolo mute rimosso da {member.mention}.")
+        await interaction.followup.send(f"Ruolo mute rimosso da {member.mention}.")
         log_embed = discord.Embed(title="🔊 Mute (ruolo) tolto", color=discord.Color.green())
         log_embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
         log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
@@ -371,4 +534,6 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
-    await bot.add_cog(ModerationSoftbanMuteCog(bot))
+    cog = ModerationSoftbanMuteCog(bot)
+    await bot.add_cog(cog)
+    scheduler.register_handler(SCHEDULED_MUTE_EXPIRE, cog.handle_mute_expire)

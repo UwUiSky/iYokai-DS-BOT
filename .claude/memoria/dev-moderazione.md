@@ -5,6 +5,9 @@
 2026-10-21, ramo feat/r9mod, worktree /home/claude/wt/r9mod. Migrazioni r9: 0250 usata (0251–0259 libere). Log in scratchpad/r9mod.
 ## In corso
 Giro r10 AutoMod: fatti AMD-013, 026, 027, 062, 065, 070 e SPEC 6.1–6.10, 6.15 a [x]. Prossimo: AMD-014 (normalizzazione, serve filtro parole lato bot), poi smoke --base main.
+r10 (feat/r10mod): 0270 usata (0271-0279 libere). Fatto: mute a tempo/hardmute/rientro, caso registra, casi esterni, avvisi staff, SPEC 5.1-5.10 [x]. Prossimo: MOD-012/043/045, voce MOD-022..026, MOD-058/059, smoke --base main.
+Giro r9 chiuso (5 voci su 5). Smoke --base main: 1079 verdi.
+Prossimo giro, in ordine di valore: SIC-039 (piu' trappole), VER-017/019/020, SIC-036 livelli di allerta (con AMD-067), MOD-014/015 (mute a tempo, hardmute), MOD-046/047 (casi a mano e da azioni esterne), AMD-013/026/027/070.
 ## Fatto
 - R10 AMD-014: core/automod_parole_logic.py + automod_parole_opzioni.py + cogs/automod/parole_odio.py (/automod odio ...), hook in automod._controlla (3 righe), evento automod_parole_vietate contato da escalation.py, dati in data/automod_parole_odio.txt
 - Giri G1-G7, R5-R7 (vedi git log e REGISTRO_RISOLTE): tempban modi, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log

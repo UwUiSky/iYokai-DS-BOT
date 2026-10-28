@@ -3,8 +3,10 @@ core/moderation_opzioni.py
 ==========================
 Opzioni di moderazione del server, in un solo punto (D16): giorni di
 messaggi cancellati al ban, durata predefinita del timeout, DM per tipo
-di azione e ruoli immuni alla moderazione manuale.
-Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068)
+di azione, ruoli immuni alla moderazione manuale e casi per le azioni fatte
+fuori da iYokai, avvisi allo staff (troppi warn, rientro di chi ha casi).
+Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068), §5.2 (MOD-047),
+§5.3 (MOD-036, MOD-064)
 """
 
 from __future__ import annotations
@@ -12,16 +14,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from core.database import db
+from core.moderation_casi_esterni_logic import SETTING_CASI_ESTERNI
 
 SETTING_GIORNI_BAN = "mod_ban_giorni_messaggi"
 SETTING_DURATA_TIMEOUT = "mod_timeout_predefinito"
 SETTING_DM_SPENTI = "mod_dm_spenti"
 SETTING_RUOLI_IMMUNI = "mod_ruoli_immuni"
+SETTING_AVVISO_WARN = "mod_avviso_warn_soglia"
+SETTING_AVVISO_RIENTRO = "mod_avviso_rientro"
 
 # Azioni che mandano un DM all'utente; per ognuna il server può spegnerlo.
 AZIONI_CON_DM = ("warn", "kick", "ban", "tempban", "softban", "timeout", "mute")
 
 MAX_RUOLI_IMMUNI = 25
+MAX_SOGLIA_WARN = 200
 # Timeout di Discord: da 1 minuto a 28 giorni.
 MIN_TIMEOUT = 60
 MAX_TIMEOUT = 28 * 86400
@@ -33,6 +39,9 @@ class OpzioniModerazione:
     durata_timeout: int | None = None
     dm_spenti: frozenset[str] = field(default_factory=frozenset)
     ruoli_immuni: tuple[int, ...] = ()
+    casi_esterni: bool = False
+    avviso_warn: int = 0  # 0 = spento
+    avviso_rientro: bool = False
 
 
 async def leggi(guild_id: int) -> OpzioniModerazione:
@@ -40,11 +49,17 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
     durata = await db.get_guild_setting(guild_id, SETTING_DURATA_TIMEOUT)
     spenti = await db.get_guild_setting(guild_id, SETTING_DM_SPENTI, [])
     immuni = await db.get_guild_setting(guild_id, SETTING_RUOLI_IMMUNI, [])
+    esterni = await db.get_guild_setting(guild_id, SETTING_CASI_ESTERNI, False)
+    soglia = await db.get_guild_setting(guild_id, SETTING_AVVISO_WARN, 0)
+    rientro = await db.get_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, False)
     return OpzioniModerazione(
         giorni_ban=int(giorni) if isinstance(giorni, int) and 0 <= giorni <= 7 else 0,
         durata_timeout=durata if isinstance(durata, int) and MIN_TIMEOUT <= durata <= MAX_TIMEOUT else None,
         dm_spenti=frozenset(a for a in spenti if a in AZIONI_CON_DM),
         ruoli_immuni=tuple(r for r in immuni if isinstance(r, int)),
+        casi_esterni=esterni is True,
+        avviso_warn=soglia if isinstance(soglia, int) and 0 <= soglia <= MAX_SOGLIA_WARN else 0,
+        avviso_rientro=rientro is True,
     )
 
 
@@ -72,6 +87,26 @@ async def imposta_dm(guild_id: int, azione: str, attivo: bool, autore_id: int) -
     await db.set_guild_setting(
         guild_id, SETTING_DM_SPENTI, sorted(spenti), changed_by=autore_id
     )
+
+
+async def imposta_casi_esterni(guild_id: int, attivo: bool, autore_id: int) -> None:
+    await db.set_guild_setting(guild_id, SETTING_CASI_ESTERNI, attivo, changed_by=autore_id)
+
+
+async def imposta_avviso_warn(guild_id: int, soglia: int, autore_id: int) -> None:
+    """Con `soglia` warn già dati lo staff riceve un avviso al warn successivo. 0 = spento."""
+    if not 0 <= soglia <= MAX_SOGLIA_WARN:
+        raise ValueError(f"La soglia va da 0 a {MAX_SOGLIA_WARN}.")
+    await db.set_guild_setting(guild_id, SETTING_AVVISO_WARN, soglia, changed_by=autore_id)
+
+
+async def imposta_avviso_rientro(guild_id: int, attivo: bool, autore_id: int) -> None:
+    await db.set_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, attivo, changed_by=autore_id)
+
+
+def avviso_warn_scatta(warn_attivi: int, soglia: int) -> bool:
+    """MOD-036: True se, con questo warn, chi lo riceve ne ha più di `soglia` (cioè ne aveva già `soglia`)."""
+    return soglia > 0 and warn_attivi > soglia
 
 
 async def dm_attivo(guild_id: int, azione: str) -> bool:

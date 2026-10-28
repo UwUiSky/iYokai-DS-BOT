@@ -1237,3 +1237,12 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 4. Bot con marchio (server premium): reinvita il bot con il link (serve il permesso dei comandi); i comandi compaiono nell'applicazione del marchio e rispondono con il suo nome e avatar; bottoni e menu funzionano.
 5. App utente: menu sull'utente «Profilo iYokai» mostra livello e clan; «Stato nella rete» risponde solo a chi lo chiede. Comandi calcolatrice, conversioni, fusi, colori, QR, note e liste rispondono in privato.
 6. `/log webhook attivo:True` (serve «Gestisci webhook» e la chiave di cifratura): nel canale di log compare il webhook; un raid di prova scrive pochi messaggi con più embed. Cancella il webhook a mano: i log tornano al canale. `attivo:False` cancella i webhook.
+
+## giro r10 — moderazione
+- `/mod mute durata:2m`: il ruolo Muted sparisce da solo; `/mod caso attive` lo elenca prima.
+- `/mod mute hardmute:True`: spariscono gli altri ruoli (non Booster); `/mod unmute` li ridà.
+- Utente silenziato che esce e rientra: ha ancora il ruolo Muted.
+- `/mod opzioni imposta casi_esterni:True`, poi ban/kick/timeout dal menu di Discord: compare un caso e la riga nel log.
+- `/mod opzioni imposta avviso_warn:2`: al terzo warn avviso nel log; `avviso_rientro:True`: rientra un utente con casi, avviso nel log.
+- `/mod caso registra`: caso nello storico, nessuna azione sul server.
+- `/mod clear attachments_only:True` (intent message_content acceso).

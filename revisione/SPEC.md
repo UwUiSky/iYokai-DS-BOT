@@ -312,40 +312,46 @@ Totale voci: **514**.
 
 ## §5 MODERATION
 
-- `[~]` 5.1 Warn, Kick, Ban, Tempban, Timeout, Unban, Untimeout
+- `[x]` 5.1 Warn, Kick, Ban, Tempban, Timeout, Unban, Untimeout
   → **Stato 04/10:** nessun controllo dei permessi (SEC-1); motivo senza massimo e caso creato prima dell'azione (LIM-8).
+  → **Fatto (r10):** permessi sui gruppi `/mod` e `/modban` (F7), motivo `Range` 3–512, ordine azione → caso → log → DM, `defer` prima del lavoro lento; controllati in codice e con test.
   → **Stato 14/10 (r6, #115):** azioni in massa `/modban massa ban|unban|kick`, `/mod massa timeout|warn` (fino a 50 utenti; ban anche per ID fuori dal server: MOD-001…006).
-- `[~]` 5.1 **Softban** (ban+unban immediato per cancellare i messaggi)
+- `[x]` 5.1 **Softban** (ban+unban immediato per cancellare i messaggi)
   → **Stato 04/10:** SEC-1, LIM-8.
-- `[~]` 5.1 **Mute via ruolo** — ruolo "Muted" auto-creato con
+  → **Fatto (r10):** come 5.1 (DM prima del ban, annullato se il ban fallisce).
+- `[x]` 5.1 **Mute via ruolo** — ruolo "Muted" auto-creato con
   overwrite su ogni canale esistente al momento della creazione
   (canali creati dopo non ereditano l'overwrite, limite noto)
   → **Stato 04/10:** SEC-1; il ruolo non copre thread, forum e canali nuovi (LIM-30).
-- `[~]` 5.2 Case system — numerazione atomica per server, ricerca per
+  → **Fatto (r10):** il blocco copre thread, forum, vocali, palchi e canali nuovi (`on_guild_channel_create`). **Nuovo (MOD-014, 015, 021):** `/mod mute durata: hardmute:` — fine dallo scheduler (max 1 anno, regge i riavvii), hardmute toglie gli altri ruoli (non quelli gestiti né sopra il bot) e li ridà alla fine; il mute resta se l'utente esce e rientra (`mute_stato`, migrazione 0270); i mute sono in `/mod caso attive`.
+- `[x]` 5.2 Case system — numerazione atomica per server, ricerca per
   numero, storico per utente
   → **Stato 11/10:** ordine azione→caso→log→DM e liste entro 4000 fatti. Aggiunti: storico per tipo, `/mod caso motivo|elimina|classifica-staff` (MOD-037, 039, 041, 042, 044).
   → **Stato 21/10 (r9):** `/mod caso attive` (MOD-013): tempban, timeout e lock a tempo in corso, dal primo che scade.
-- `[~]` 5.3 Note utente
+  → **Fatto (r10):** `/mod caso registra` (MOD-046, 049: caso a mano, anche a nome di un altro moderatore con «Gestire il server»); casi anche per ban, kick e timeout fatti dal menu di Discord o da altri bot (MOD-047, `/mod opzioni imposta casi_esterni:`, dal registro di controllo; un unban esterno chiude il ban attivo); avvisi allo staff per troppi warn (MOD-036) e per il rientro di chi ha casi (MOD-064).
+- `[x]` 5.3 Note utente
   → **Stato 11/10:** `/mod nota rimuovi|modifica|svuota` (MOD-054..056); l'elenco mostra il numero. Warn: `/mod avvisi togli|azzera|classifica` (MOD-028, 029, 031).
-- `[~]` 5.4 Report system
+- `[x]` 5.4 Report system
   → **Stato 04/10:** motivo oltre 1024 caratteri: segnalazione persa (LIM-4).
-- `[~]` 5.5 Lock / Unlock canale
+  → **Fatto (r10):** `Range[str, 3, 1000]` e `HTTPException` gestita (test_report_limiti).
+- `[x]` 5.5 Lock / Unlock canale
   → **Stato 11/10:** ora scrive nel log di moderazione; motivo al massimo 512 caratteri.
   → **Stato 21/10 (r9):** `/mod lock durata:` (MOD-090, max 30 giorni): sblocco dallo scheduler, anche dopo un riavvio, con il permesso di prima; `unlock` o un nuovo lock annullano l'attesa.
-- `[~]` 5.6 Slowmode
+- `[x]` 5.6 Slowmode
   → **Stato 11/10:** ora scrive nel log di moderazione.
-- `[~]` 5.7 Clear avanzato con filtri
+- `[x]` 5.7 Clear avanzato con filtri
   → **Stato 11/10:** filtri nuovi (testo, link, inviti, embed, menzioni, ruolo, persone, fissati), canale a scelta, riga di log (MOD-069, 071, 073-079, 083, 084, 086, 088). Filtro allegati da riprovare con l'intent acceso (BUG-5).
-- `[~]` 5.8 DM all'utente moderato
+  → **Fatto (r10):** l'intent `message_content` è acceso in `main.py`; il filtro allegati ha il suo test. Resta la prova su Discord (VERIFICA_LIVE).
+- `[x]` 5.8 DM all'utente moderato
   → **Stato 04/10:** il DM parte prima dell'azione (LIM-8).
-- `[~]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
+- `[x]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più
   `str | None`) su warn/kick/ban/tempban/unban/timeout/softban/
   mute-role/unmute-role, con validazione minimo 3 caratteri.
   `/untimeout` (revoca, non azione punitiva) e `/lock` (stato del
   canale, non azione su un utente) restano con reason opzionale per
   scelta dichiarata, non nella lista esplicita dello schema
   → **Stato 04/10:** manca il massimo di 512 caratteri (LIM-8). Correzione al testo: `/untimeout` non ha il parametro motivo.
-- `[~]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
+- `[x]` 5.10 Moderation logs su canale dedicato — `/mod-log-setup`,
   ogni azione pubblica una copia del case embed lì, oltre alla
   risposta nel canale del comando
   → **Stato 11/10:** `/lock`, `/unlock`, `/slowmode`, `/clear`, `/untimeout`, `/unmute` e la scadenza dei tempban scrivono nel log (M 1.8).

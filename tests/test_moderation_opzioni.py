@@ -165,3 +165,45 @@ def test_lettura_ignora_valori_sporchi():
     assert opzioni.motivo_immune((5,), [5], attore_proprietario=False)
     assert opzioni.motivo_immune((5,), [5], attore_proprietario=True) is None
     assert opzioni.motivo_immune((), [5], attore_proprietario=False) is None
+
+
+async def test_avviso_warn_logica():
+    assert opzioni.avviso_warn_scatta(4, 3) is True
+    assert opzioni.avviso_warn_scatta(3, 3) is False  # il terzo warn: ne aveva 2
+    assert opzioni.avviso_warn_scatta(10, 0) is False  # spento
+
+
+async def test_avviso_allo_staff_con_troppi_warn(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    import cogs.moderation.actions as azioni
+
+    log = AsyncMock()
+    monkeypatch.setattr(azioni, "post_to_mod_log", log)
+    await opzioni.imposta_avviso_warn(SERVER, 2, MOD)
+    for _ in range(2):
+        membro, interazione = _scena()
+        await _cog().warn.callback(_cog(), interazione, membro, "linguaggio")
+    titoli = [c.args[1].title for c in log.await_args_list if c.args[1].title]
+    assert not any("Troppi warn" in t for t in titoli)  # due warn: ancora sotto
+
+    membro, interazione = _scena()
+    await _cog().warn.callback(_cog(), interazione, membro, "linguaggio")
+    avvisi = [c.args[1] for c in log.await_args_list if c.args[1].title == "⚠️ Troppi warn"]
+    assert len(avvisi) == 1 and "**3**" in avvisi[0].description
+    assert await _tipi() == ["warn", "warn", "warn"]  # nessuna punizione, solo l'avviso
+
+
+async def test_avvisi_spenti_di_default():
+    assert (await opzioni.leggi(SERVER)).avviso_warn == 0
+    assert (await opzioni.leggi(SERVER)).avviso_rientro is False
+    with pytest.raises(ValueError):
+        await opzioni.imposta_avviso_warn(SERVER, 201, MOD)
+
+
+async def test_durata_sbagliata_non_salva_le_altre_opzioni():
+    cog = OpzioniModerazioneCog(MagicMock())
+    _, interazione = _scena()
+    await cog.imposta.callback(cog, interazione, 3, "boh", True, 4, True)
+    letto = await opzioni.leggi(SERVER)
+    assert (letto.giorni_ban, letto.casi_esterni, letto.avviso_warn, letto.avviso_rientro) == (0, False, 0, False)

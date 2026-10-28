@@ -303,3 +303,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10core` | `cogs/user_app/personal.py:_livello_e_clan` | Livello e clan mostrati anche dove il modulo livelli è spento | bassa | aperto |
 | 28/10 | `feat/r10core` | `cogs/utility/premium_server.py:sblocca` | Nessun avviso se il modulo è già compreso nel premium del server: si pagano 1M per niente | bassa | aperto |
 | 28/10 | `feat/r10core` | `core/log_webhook.py:_crea_o_leggi` | Webhook creato e salvataggio fallito per errore DB: webhook orfano nel canale | bassa | aperto |
+| 28/10 | `feat/r10mod` | `softban_mute.handle_mute_expire` | Membro fuori cache: Muted mai tolto (dal cacciatore) | media | chiuso 03c4116 |
+| 28/10 | `feat/r10mod` | `case_system.case_register` | Gerarchia e ruoli immuni non controllati (dal cacciatore) | media | chiuso a1b2092 |
+| 28/10 | `feat/r10mod` | `opzioni.imposta` | Salvataggio parziale con durata sbagliata (dal cacciatore) | bassa | chiuso 4ab5dfc |
+| 28/10 | `feat/r10mod` | `COMMAND_LIST*.md` | Non rigenerati per `/mod caso registra` | bassa | chiuso 9885eba |
+| 28/10 | `feat/r10mod` | `softban_mute.mute_role` | Finestra stato hardmute con caso None (scadenza persa se fallisce) | bassa | aperto |
+| 28/10 | `feat/r10mod` | `case_system.on_audit_log_entry_create` | Manca avviso se il bot non vede il registro di controllo | bassa | aperto |

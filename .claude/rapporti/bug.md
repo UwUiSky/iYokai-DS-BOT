@@ -297,3 +297,9 @@
 - 28/10 · cogs/utility/premium_server.py ConfermaSblocco · doppio clic su «Conferma»: la vista attende la lista nera prima di stop(), la cassa paga 2 volte · alta · corretto c636cb1
 - 28/10 · core/log_webhook.py CanaleWebhook.send · file via webhook: se il webhook fallisce il file è già chiuso, ValueError esce da invia_a, transcript ticket perso · media · corretto 294a604
 - 28/10 · core/log_webhook.py avvolgi · righe insieme su canale nuovo creano un webhook ciascuna (tetto 15 per canale) · media · corretto 294a604
+- 28/10 · cogs/moderation/softban_mute.py handle_mute_expire · membro fuori cache alla scadenza: caso chiuso ma ruolo Muted resta per sempre · media · confermato, corretto r10mod (03c4116)
+- 28/10 · cogs/moderation/case_system.py case_register · caso (anche warn) registrabile su superiori, proprietario e ruoli immuni (MOD-068) · media · confermato, corretto r10mod (a1b2092)
+- 28/10 · cogs/moderation/opzioni.py imposta · casi_esterni/avvisi salvati prima del controllo della durata: errore mostrato ma opzioni cambiate · bassa · confermato, corretto r10mod (4ab5dfc)
+- 28/10 · tests · avviso troppi warn in /mod massa warn senza test (mutazione verde) · bassa · test aggiunto r10mod (a3587dd)
+- 28/10 · softban_mute.py mute_role · stato hardmute riscritto con caso None prima dei ruoli: se la scadenza vecchia scatta in quel momento e poi l'add fallisce, il mute ripristinato non ha più scadenza · bassa · plausibile, aperto
+- 28/10 · case_system.py on_audit_log_entry_create · senza «Visualizzare il registro» nessun evento: casi_esterni acceso non fa nulla e nessuno lo dice · bassa · plausibile, aperto

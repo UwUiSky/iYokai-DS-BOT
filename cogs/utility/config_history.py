@@ -112,6 +112,9 @@ SETTINGS_SCHEMA = {
     "mod_timeout_predefinito": "durata_timeout",
     "mod_dm_spenti": "azioni_dm",
     "mod_ruoli_immuni": "lista_id",
+    "mod_casi_esterni": "bool",
+    "mod_avviso_warn_soglia": "int_0_200",
+    "mod_avviso_rientro": "bool",
     "spam_trap_punizione": "punizione_trappola",
     # Parole vietate dell'AutoMod (core/automod_parole_opzioni.py)
     "automod_parole_base": "bool",
