@@ -406,8 +406,11 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         if not await db.is_module_active_for_guild(after.guild.id, MODULE_LOGGING):
             return
 
-        if await evento_da_ignorare(after.guild, membro=after):
-            return
+        if nick_changed and await evento_da_ignorare(after.guild, membro=after):
+            # D31: di un membro ignorato sparisce solo il soprannome; ruoli e timeout restano.
+            nick_changed = False
+            if not roles_changed and timeout is None:
+                return
 
         if roles_changed:
             await event_log_repo.log_event(

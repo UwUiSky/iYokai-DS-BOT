@@ -278,7 +278,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             testo = (
                 "Ora il log dei messaggi lo ignora."
                 if genere in ("prefisso", "regex")
-                else "Ora i log lo ignorano (messaggi, voce, canali, thread, membri)."
+                else "Ora i log lo ignorano (messaggi, voce, canali, thread, membri). Ruoli, timeout, permessi e canali cancellati restano nel log."
             )
         else:
             testo = (

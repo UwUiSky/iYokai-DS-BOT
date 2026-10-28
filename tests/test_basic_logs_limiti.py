@@ -79,3 +79,21 @@ async def test_pochi_ruoli_vengono_mostrati_tutti(canale_log):
 
     assert campi["Aggiunti"].count("<@&") == 3
     assert "altri" not in campi["Aggiunti"]
+
+
+async def test_log_ignora_non_nasconde_ruoli_e_timeout(canale_log, monkeypatch):
+    # D31: un utente ignorato perde solo il log dei soprannomi; ruoli dati e timeout restano.
+    from core.message_log_logic import Ignorati
+    from core.repositories.log_ignora_repo import log_ignora_repo
+
+    async def ignora_42(_guild_id):
+        return Ignorati(utenti=frozenset({42}))
+
+    monkeypatch.setattr(log_ignora_repo, "carica", ignora_42)
+    server = fake_guild()
+    server.get_channel.return_value = canale_log
+    prima, dopo = _membro(server, []), _membro(server, _ruoli(1))
+    dopo.nick = "nuovo"
+    await modulo.BasicLogsCog(bot=None).on_member_update(prima, dopo)
+    tipi = [c.args[1] for c in modulo.event_log_repo.log_event.await_args_list]
+    assert tipi == ["role_update"]

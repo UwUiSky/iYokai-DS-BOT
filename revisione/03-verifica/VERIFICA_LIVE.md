@@ -1146,7 +1146,7 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 ## giro r10 — log, ticket, vocali
 - `/log cerca ruolo ruolo:@X giorni:3`: solo eventi di quel ruolo, ultimi 3 giorni.
 - Cambia i permessi di un canale (nega un permesso a un ruolo): il log dei canali elenca il ruolo tra «Permessi modificati».
-- `/log ignora` un canale vocale e un utente: entrare e uscire da quel canale non scrive nel log voce; i suoi cambi di nickname o ruoli non vanno nel log.
+- `/log ignora` un canale vocale e un utente: entrare e uscire da quel canale non scrive nel log voce; il suo cambio di soprannome non va nel log; ruoli dati, timeout, permessi del canale, canale cancellato e mute del server ci vanno lo stesso (D31).
 - `/gestione voice opzioni copia_generatore:sì`: un nuovo vocale ha limite, qualità e permessi del generatore. Con titolo, testo e colore del pannello, `/gestione voice panel` li usa.
 - `/gestione voice generatore aggiungi`: entrando nel secondo generatore nasce un vocale nella sua categoria, con il suo nome e limite.
 - `/ticket opzioni chiusura due_passi:sì elimina_dopo_ore:1 categoria_chiusi:… nome_chiuso:chiuso`: chiudendo, il canale resta, l'utente non lo vede, va nella categoria dei chiusi e cambia nome. Riapri (bottone e `/ticket riapri`) lo rimette a posto; Elimina lo toglie; senza azioni sparisce dopo 1 ora.

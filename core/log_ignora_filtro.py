@@ -3,6 +3,8 @@ core/log_ignora_filtro.py
 =========================
 Applica l'elenco di /log ignora (canali, categorie, utenti, ruoli) agli
 eventi dei log che non sono messaggi: voce, canali, thread, membri.
+Non nasconde mai ruoli, timeout, permessi dei canali, canali cancellati e
+mute del server (D31): lo decide chi chiama.
 Funzioni coperte: SPEC §18.6
 """
 

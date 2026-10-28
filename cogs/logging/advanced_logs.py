@@ -168,6 +168,10 @@ def _channel_snapshot(channel) -> dict:
     }
 
 
+# D31: azioni di moderazione in voce che /log ignora non nasconde.
+VOCE_SEMPRE_NEL_LOG = frozenset({"voice_mute", "voice_unmute", "voice_deafen", "voice_undeafen"})
+
+
 def _overwrites_snapshot(channel) -> dict[str, tuple[int, int]]:
     """Permessi del canale per ruolo e utente: {«ruolo:ID»: (concessi, negati)}."""
     istantanea = {}
@@ -380,8 +384,7 @@ class AdvancedLogsCog(commands.Cog):
             return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
-        if await evento_da_ignorare(channel.guild, channel):
-            return
+        # D31: la cancellazione di un canale resta nel log anche se il canale è ignorato.
         await event_log_repo.log_event(
             channel.guild.id, "channel_delete", channel_id=channel.id, details={"name": channel.name}
         )
@@ -396,9 +399,9 @@ class AdvancedLogsCog(commands.Cog):
             return
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
-        if await evento_da_ignorare(after.guild, after):
-            return
         changes = diff_attributes(_channel_snapshot(before), _channel_snapshot(after), CHANNEL_TRACKED_KEYS)
+        if changes and await evento_da_ignorare(after.guild, after):
+            changes = {}  # D31: di un canale ignorato restano solo i permessi
         permessi = diff_overwrites(_overwrites_snapshot(before), _overwrites_snapshot(after))
         if permessi:
             changes["permessi"] = permessi
@@ -478,9 +481,10 @@ class AdvancedLogsCog(commands.Cog):
     ) -> None:
         if not await logging_avanzato_attivo(member.guild.id, self.bot):
             return
-        if await evento_da_ignorare(member.guild, after.channel, member, (before.channel,)):
-            return
         eventi = classify_voice_state_change(_voice_state_snapshot(before), _voice_state_snapshot(after))
+        if eventi and await evento_da_ignorare(member.guild, after.channel, member, (before.channel,)):
+            # D31: mute e deafen dati dal server sono azioni di moderazione, restano.
+            eventi = [e for e in eventi if e in VOCE_SEMPRE_NEL_LOG]
         for event_type in eventi:
             if event_type.startswith("voice_self_") and self._troppo_presto(member, event_type):
                 continue

@@ -226,3 +226,31 @@ async def test_utente_ignorato_non_genera_log_di_voce(cog, monkeypatch):
     entra.channel, esce.channel = altro, None
     await c.on_voice_state_update(fake_member(9), esce, entra)
     invio.assert_not_awaited()
+
+
+async def test_log_ignora_non_nasconde_permessi_eliminazioni_e_mute_del_server(cog, monkeypatch):
+    # D31: in un canale ignorato restano nel log i cambi di permessi, la cancellazione del
+    # canale e il mute dato dal server; spariscono gli altri cambi e gli ingressi.
+    from core.message_log_logic import Ignorati
+    import core.log_ignora_filtro as filtro
+
+    c, invio = cog
+    monkeypatch.setattr(filtro.log_ignora_repo, "carica", AsyncMock(return_value=Ignorati(canali=frozenset({5}))))
+    await c.on_guild_channel_update(_con_permessi(_canale(5, nome="a"), 9, 0, 0), _con_permessi(_canale(5, nome="b"), 9, 0, 1024))
+    dettagli = modulo.event_log_repo.log_event.await_args.kwargs["details"]
+    assert set(dettagli) == {"permessi"}
+    modulo.event_log_repo.log_event.reset_mock()
+
+    await c.on_guild_channel_delete(_canale(5))
+    assert modulo.event_log_repo.log_event.await_args.args[1] == "channel_delete"
+    modulo.event_log_repo.log_event.reset_mock()
+
+    canale = _canale(5)
+    prima, dopo = MagicMock(), MagicMock()
+    prima.channel = dopo.channel = canale
+    for stato in (prima, dopo):
+        stato.self_mute = stato.self_deaf = stato.deaf = stato.self_stream = stato.self_video = False
+        stato.suppress = False
+    prima.mute, dopo.mute = False, True
+    await c.on_voice_state_update(fake_member(9), prima, dopo)
+    assert [ch.args[1] for ch in modulo.event_log_repo.log_event.await_args_list] == ["voice_mute"]
