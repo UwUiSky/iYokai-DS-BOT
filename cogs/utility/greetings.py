@@ -1,9 +1,9 @@
 """
 cogs/utility/greetings.py
 ============================
-Welcome / Goodbye / Boost / Ban messages (SPEC.md §14.4-14.6). Modulo
-gratuito — stessa assunzione dichiarata di role_menus.py: lo schema
-non specifica esplicitamente Free/Premium per questa voce di §14.
+Messaggi di benvenuto, addio, boost e ban (martello più addio, D37). Modulo gratuito.
+Funzioni coperte: SPEC §14.4-14.6
+Dipende da: core/greetings_logic.py, core/greetings_uscite_logic.py
 """
 
 # L'immagine di benvenuto (NF-11) si disegna in core/welcome_image.py.
@@ -33,7 +33,8 @@ from core.greetings_logic import (
     render_template,
     scegli_testo,
 )
-from core.ui_base import BaseModal
+from core import greetings_uscite_logic as uscite
+from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
 from core.safe_image import ImmagineTroppoGrande, run_image_task
@@ -96,7 +97,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         max_length=120,
     )
     ban = discord.ui.TextInput(
-        label="Messaggio per i ban (nel canale addio)",
+        label="Messaggio per i ban (vuoto = quello di base)",
         style=discord.TextStyle.paragraph,
         required=False,
         max_length=MAX_MESSAGE_LENGTH,
@@ -130,9 +131,124 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni, ban)
         await interaction.response.send_message(
             f"Salvato: DM {'con testo suo' if dm else 'come il canale'}, "
-            f"{len(varianti)} varianti, {len(reazioni)} reazioni, ban {'annunciato' if ban else 'non annunciato'}.",
+            f"{len(varianti)} varianti, {len(reazioni)} reazioni, ban {'con testo suo' if ban else 'con il testo di base'}.",
             ephemeral=True,
         )
+
+
+async def _invia_con_grafica(channel, testo, grafica, menzioni, guild_id: int, nome: str) -> None:
+    """D37: testo più grafica (link https o file). Se la grafica non passa, il testo parte lo stesso."""
+    url, immagine, nome_file = grafica if grafica else (None, None, None)
+    try:
+        try:
+            if url:
+                embed = discord.Embed()
+                embed.set_image(url=url)
+                await channel.send(testo, embed=embed, allowed_mentions=menzioni)
+            elif immagine:
+                file = discord.File(io.BytesIO(immagine), filename=nome_file or "grafica.png")
+                await channel.send(testo, file=file, allowed_mentions=menzioni)
+            else:
+                await channel.send(testo, allowed_mentions=menzioni)
+        except discord.HTTPException:
+            if not url and not immagine:
+                raise
+            await channel.send(testo, allowed_mentions=menzioni)
+    except discord.HTTPException:
+        logger.warning("Impossibile inviare il messaggio %s nel server %s.", nome, guild_id)
+
+
+class UsciteModal(BaseModal, title="Ban e addio: cosa esce e la grafica"):
+    """D37: quali messaggi escono e la grafica (file o link https) di ciascuno. Campo vuoto = non cambiare."""
+
+    def __init__(self, config) -> None:
+        super().__init__()
+        self.modo = discord.ui.Select(
+            options=[
+                discord.SelectOption(label=etichetta, value=valore, default=valore == config.leave_mode)
+                for valore, etichetta in uscite.ETICHETTE_MODO.items()
+            ],
+            required=True,
+        )
+        self.file_ban = discord.ui.FileUpload(required=False, min_values=0, max_values=1)
+        self.link_ban = discord.ui.TextInput(required=False, max_length=uscite.MAX_LINK, placeholder="https://… oppure «togli»")
+        self.file_addio = discord.ui.FileUpload(required=False, min_values=0, max_values=1)
+        self.link_addio = discord.ui.TextInput(required=False, max_length=uscite.MAX_LINK, placeholder="https://… oppure «togli»")
+        self.add_item(discord.ui.Label(text="Quali messaggi escono", component=self.modo))
+        self.add_item(discord.ui.Label(text="Grafica ban: file (PNG, JPEG, GIF, WebP)", component=self.file_ban))
+        self.add_item(discord.ui.Label(text="Grafica ban: oppure link https", component=self.link_ban))
+        self.add_item(discord.ui.Label(text="Grafica addio: file (PNG, JPEG, GIF, WebP)", component=self.file_addio))
+        self.add_item(discord.ui.Label(text="Grafica addio: oppure link https", component=self.link_addio))
+
+    async def _grafica(self, tipo, caricati, link: str):
+        """(scrittura da fare, errore): scrittura = ('file', byte, nome) | ('link', url) | ('togli',) | None."""
+        if caricati:
+            allegato = caricati[0]
+            if allegato.size > uscite.MAX_BYTE_GRAFICA:
+                return None, f"Grafica del {tipo}: il file pesa troppo (limite 3 MB)."
+            dati = await allegato.read()
+            estensione, errore = await run_image_task(uscite.valida_file, dati)
+            if errore:
+                return None, f"Grafica del {tipo}: {errore}"
+            return ("file", dati, f"{tipo}.{estensione}"), None
+        link = link.strip()
+        if not link:
+            return None, None
+        if link.lower() == uscite.TOGLI:
+            return ("togli",), None
+        errore = await uscite.valida_link(link)
+        return (("link", link), None) if errore is None else (None, f"Grafica del {tipo}: {errore}")
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        modo = self.modo.values[0] if self.modo.values else ""
+        if not uscite.modo_valido(modo):
+            await interaction.response.send_message("Scelta non valida.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)  # file e link si controllano: può servire qualche secondo
+        azioni = {}
+        for tipo, caricati, link in (
+            (uscite.TIPO_BAN, self.file_ban.values, self.link_ban.value or ""),
+            (uscite.TIPO_ADDIO, self.file_addio.values, self.link_addio.value or ""),
+        ):
+            azione, errore = await self._grafica(tipo, caricati, link)
+            if errore:
+                await interaction.followup.send(errore, ephemeral=True)
+                return
+            azioni[tipo] = azione
+        await greetings_repo.set_leave_mode(guild.id, modo)
+        for tipo, azione in azioni.items():
+            if azione is None:
+                continue
+            if azione[0] == "file":
+                await greetings_repo.set_grafica(guild.id, tipo, image=azione[1], filename=azione[2])
+            elif azione[0] == "link":
+                await greetings_repo.set_grafica(guild.id, tipo, url=azione[1])
+            else:
+                await greetings_repo.clear_grafica(guild.id, tipo)
+        config = await greetings_repo.get_config(guild.id)
+        avviso = ""
+        if modo != uscite.MODO_NESSUNO and (not config.goodbye_enabled or config.goodbye_channel_id is None):
+            avviso = " Il canale dell'addio però non è attivo: configuralo con `/gestione benvenuto addio`."
+        await interaction.followup.send(f"Salvato: escono {uscite.ETICHETTE_MODO[modo]}.{avviso}", ephemeral=True)
+
+
+class ExtraBenvenutoView(BaseView):
+    """`/gestione benvenuto extra`: due finestre, i testi del benvenuto e quella di ban e addio (D37)."""
+
+    def __init__(self, config) -> None:
+        super().__init__(timeout=300)
+        self._config = config
+
+    @discord.ui.button(label="Testi e reazioni", style=discord.ButtonStyle.primary)
+    async def testi(self, interaction: discord.Interaction, _bottone: discord.ui.Button) -> None:
+        await interaction.response.send_modal(ExtraBenvenutoModal(self._config))
+
+    @discord.ui.button(label="Ban e addio", style=discord.ButtonStyle.secondary)
+    async def ban_addio(self, interaction: discord.Interaction, _bottone: discord.ui.Button) -> None:
+        await interaction.response.send_modal(UsciteModal(self._config))
 
 
 async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
@@ -267,40 +383,47 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             return
 
         config = await greetings_repo.get_config(member.guild.id)
-        if not config.goodbye_enabled or config.goodbye_channel_id is None:
+        manda = config.goodbye_enabled and config.goodbye_channel_id is not None and uscite.invia_addio(config.leave_mode)
+        # D37: se l'uscita è un ban, prima il martello e poi l'addio; durante un raid niente addio ai bannati.
+        # Si consuma sempre lo stato del ban, anche quando l'addio è spento.
+        attendi = manda and (config.leave_mode == uscite.MODO_ENTRAMBI or raid_in_corso(member.guild.id))
+        if await uscite.addio_soppresso(member.guild.id, member.id, attendi=attendi) or not manda:
             return
-
         channel = member.guild.get_channel(config.goodbye_channel_id)
         if not isinstance(channel, discord.TextChannel):
             return
-
         testo = taglia_messaggio(_render_for_member(config.goodbye_message, member))
-        try:
-            await channel.send(
-                testo, allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli)
-            )
-        except discord.HTTPException:
-            logger.warning(
-                "Impossibile inviare il goodbye message nel server %s.", member.guild.id
-            )
+        await _invia_con_grafica(
+            channel, testo, await greetings_repo.get_grafica(member.guild.id, uscite.TIPO_ADDIO),
+            menzioni_ammesse(config.goodbye_ping_ruoli), member.guild.id, "goodbye",
+        )
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
-        """RUO-016: messaggio pubblico per un ban, nel canale dell'addio (spento se il testo è vuoto)."""
+        """RUO-016, D37: il «martello» nel canale dell'addio (di base, con testo nostro; il server può cambiarlo o spegnerlo)."""
         if user.bot:
             return
         if not await db.is_module_active_for_guild(guild.id, MODULE_GREETINGS):
             return
         config = await greetings_repo.get_config(guild.id)
-        if not config.ban_message or not config.goodbye_enabled or config.goodbye_channel_id is None:
+        # Durante un raid: niente martello (i ban in massa non riempiono il canale) e niente addio per lui.
+        # L'addio aspetta il segnale, dato solo DOPO l'invio del martello: così esce sempre secondo.
+        in_raid = raid_in_corso(guild.id)
+        try:
+            await self._martello(guild, user, config, in_raid)
+        finally:
+            uscite.segna_ban(guild.id, user.id, soppresso=in_raid)
+
+    async def _martello(self, guild: discord.Guild, user: discord.User, config, in_raid: bool) -> None:
+        if not uscite.invia_ban(config.leave_mode) or not config.goodbye_enabled or config.goodbye_channel_id is None:
             return
-        if raid_in_corso(guild.id):  # i ban in massa dell'antiraid non riempiono il canale
+        if in_raid:
             return
         channel = guild.get_channel(config.goodbye_channel_id)
         if not isinstance(channel, discord.TextChannel):
             return
         testo = render_template(
-            config.ban_message,
+            uscite.testo_ban(config.ban_message),
             user_mention=user.mention,
             username=discord.utils.escape_mentions(user.name),
             server_name=discord.utils.escape_mentions(guild.name),
@@ -309,10 +432,10 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             display_name=discord.utils.escape_mentions(user.display_name),
             server_id=guild.id,
         )
-        try:
-            await channel.send(taglia_messaggio(testo), allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli))
-        except discord.HTTPException:
-            logger.warning("Impossibile inviare il messaggio di ban nel server %s.", guild.id)
+        await _invia_con_grafica(
+            channel, taglia_messaggio(testo), await greetings_repo.get_grafica(guild.id, uscite.TIPO_BAN),
+            menzioni_ammesse(config.goodbye_ping_ruoli), guild.id, "ban",
+        )
 
     @commands.Cog.listener()
     async def on_member_update(
@@ -411,7 +534,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "gestione",
         nome="extra",
-        descrizione="Benvenuto: DM, varianti, reazioni, messaggio ai ban.",
+        descrizione="Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.",
         sottogruppo=_SG_BENVENUTO,
     )
     async def welcome_extra(self, interaction: discord.Interaction) -> None:
@@ -421,7 +544,10 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             )
             return
         config = await greetings_repo.get_config(interaction.guild.id)
-        await interaction.response.send_modal(ExtraBenvenutoModal(config))
+        await interaction.response.send_message(
+            "Cosa vuoi cambiare? Il testo del ban si scrive in «Testi e reazioni» (vuoto = quello di base).",
+            view=ExtraBenvenutoView(config), ephemeral=True,
+        )
 
     @comando_di_gruppo(
         "gestione",

@@ -318,3 +318,10 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10aiw` | `cogs/ai/summaries.py`, `cogs/ai/config.py:costruisci` | `requires_module` chiudeva riassumi/spiega/stile/costruisci durante la prova gratuita | media | chiuso b302da0 |
 | 28/10 | `feat/r10aiw` | `core/repositories/ai_repo.py:avvia_prova` | Prova ripartiva dopo la cancellazione dei dati del server (90 giorni) | media | chiuso 0be178a (0351) |
 | 28/10 | `feat/r10aiw` | `core/premium_flags.py:applica_cambio_premium` | Memoria cambiata prima di due scritture senza transazione (ereditato da `/owner premium toggle`) | bassa | aperto |
+| 28/10 | `feat/r11util` | `cogs/utility/greetings.py:on_member_ban` | Segnale all'addio dato prima dell'invio del martello: l'addio poteva uscire per primo | media | chiuso d4d1e0a |
+| 28/10 | `feat/r11util` | `core/greetings_uscite_logic.py:valida_file` | PNG RGBA oltre 2048 px rifiutato come «formato non ammesso» | media | chiuso d4d1e0a |
+| 28/10 | `feat/r11util` | `core/invite_service.py:puo_avere_il_link` | Modalità «ruolo» senza ruolo (da import) apriva il link a tutti | bassa | chiuso d4d1e0a |
+| 28/10 | `feat/r11util` | `COMMAND_LIST*.md` | Descrizioni cambiate senza rigenerare l'elenco | bassa | chiuso a56ef5e |
+| 28/10 | `feat/r11util` | `cogs/utility/greetings.py:UsciteModal._grafica` | D16: validazione e scrittura della grafica nel cog, il pannello dovrà ripeterle (stesso schema di ExtraBenvenutoModal) | bassa | aperto |
+| 28/10 | `feat/r11util` | `core/greetings_uscite_logic.py:ATTESA_BAN` | Martello con file da 3 MB lento oltre 3 s: l'addio esce per primo (raro) | bassa | aperto |
+| 28/10 | `feat/r11util` | `core/greetings_uscite_logic.py:valida_link` | Link non controllato nel tipo (Discord lo scarica, nessun SSRF del bot): se non è un'immagine l'embed resta vuoto | bassa | aperto |

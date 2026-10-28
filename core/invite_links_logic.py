@@ -26,6 +26,20 @@ ETICHETTE_TIPO = {
 
 SETTING_CANALE_LOG = "inviti_log_channel_id"
 SETTING_RUOLO_LINK = "inviti_link_role_id"
+SETTING_MODALITA_LINK = "inviti_link_mode"
+
+# D36: chi può avere il link personale.
+MODO_TUTTI = "tutti"
+MODO_CREA_INVITO = "crea_invito"
+MODO_RUOLO = "ruolo"
+MODO_SPENTO = "spento"
+MODALITA_LINK = (MODO_TUTTI, MODO_CREA_INVITO, MODO_RUOLO, MODO_SPENTO)
+ETICHETTE_MODALITA = {
+    MODO_TUTTI: "tutti i membri",
+    MODO_CREA_INVITO: "solo chi ha il permesso «Crea invito»",
+    MODO_RUOLO: "solo chi ha il ruolo scelto",
+    MODO_SPENTO: "nessuno (link personali spenti)",
+}
 
 MAX_PARTE = 30  # lettere per il nome del server e per quello dell'utente
 MAX_SLUG = 80
@@ -39,6 +53,7 @@ FORMA_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,78}[a-z0-9])$")
 OK = "ok"
 MODULO_SPENTO = "modulo_spento"
 RUOLO_MANCANTE = "ruolo_mancante"
+LINK_SPENTI = "link_spenti"
 NON_NEL_SERVER = "non_nel_server"
 INVITI_DISABILITATI = "inviti_disabilitati"
 SENZA_PERMESSO = "senza_permesso"
@@ -49,6 +64,7 @@ ERRORE_DISCORD = "errore_discord"
 
 _TESTI_ESITO = {
     MODULO_SPENTO: "Il modulo inviti non è attivo su questo server.",
+    LINK_SPENTI: "Su questo server i link personali sono spenti.",
     RUOLO_MANCANTE: "Su questo server il link personale è riservato a un ruolo che non hai.",
     NON_NEL_SERVER: "Non risulti membro di questo server.",
     INVITI_DISABILITATI: "Questo server ha messo in pausa gli inviti: i link personali non funzionano finché non li riattiva.",
@@ -101,6 +117,13 @@ def tipo_ingresso(codice: str | None, *, codice_vanity: str | None, link_persona
     if codice_vanity and codice == codice_vanity:
         return TIPO_VANITY
     return TIPO_NORMALE
+
+
+def modalita_effettiva(salvata, ruolo_richiesto: int | None) -> str:
+    """La modalità salvata; se manca (server di prima di D36) vale «ruolo» con un ruolo scelto, altrimenti «tutti»."""
+    if salvata in MODALITA_LINK:
+        return salvata
+    return MODO_RUOLO if ruolo_richiesto is not None else MODO_TUTTI
 
 
 def ruolo_ammesso(ruolo_richiesto: int | None, ruoli_membro: set[int]) -> bool:

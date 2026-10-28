@@ -50,6 +50,8 @@ class GreetingsConfig:
     welcome_variants: list[str] = field(default_factory=list)
     welcome_reactions: list[str] = field(default_factory=list)
     ban_message: str = ""
+    # D37: chi esce tra entrambi / solo_ban / solo_addio / nessuno (migrazione 0400).
+    leave_mode: str = "entrambi"
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -123,7 +125,39 @@ class GreetingsRepository:
             welcome_variants=list(row["welcome_variants"]),
             welcome_reactions=list(row["welcome_reactions"]),
             ban_message=row["ban_message"],
+            leave_mode=row["leave_mode"],
         )
+
+    async def set_leave_mode(self, guild_id: int, modo: str) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, leave_mode) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET leave_mode = EXCLUDED.leave_mode
+            """,
+            guild_id, modo,
+        )
+
+    async def get_grafica(self, guild_id: int, tipo: str):
+        """(url, immagine, nome del file) della grafica di ban o addio; None se non c'è."""
+        riga = await self._pool.fetchrow(
+            "SELECT url, image, filename FROM greetings_graphics WHERE guild_id = $1 AND kind = $2", guild_id, tipo
+        )
+        return None if riga is None else (riga["url"], riga["image"], riga["filename"])
+
+    async def set_grafica(
+        self, guild_id: int, tipo: str, *, url: str | None = None, image: bytes | None = None, filename: str | None = None
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_graphics (guild_id, kind, url, image, filename) VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id, kind) DO UPDATE
+                SET url = EXCLUDED.url, image = EXCLUDED.image, filename = EXCLUDED.filename, updated_at = now()
+            """,
+            guild_id, tipo, url, image, filename,
+        )
+
+    async def clear_grafica(self, guild_id: int, tipo: str) -> None:
+        await self._pool.execute("DELETE FROM greetings_graphics WHERE guild_id = $1 AND kind = $2", guild_id, tipo)
 
     async def set_welcome_extra(
         self, guild_id: int, dm_message: str, variants: list[str], reactions: list[str], ban_message: str = ""

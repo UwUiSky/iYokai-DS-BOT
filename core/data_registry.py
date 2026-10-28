@@ -434,6 +434,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("left_at", 30), nota="NF-07: servono solo per 30 giorni dopo l'uscita"),
     _t("greetings_background", "Sfondo dell'immagine di benvenuto", colonna_server="guild_id"),
+    _t("greetings_graphics", "Grafica dei messaggi di ban e di addio", colonna_server="guild_id"),
     _t("greetings_config", "Benvenuto, addio e boost", colonna_server="guild_id"),
     _t("voice_temp_channels", "Canali vocali temporanei",
        colonne_utente=("owner_id",), colonna_server="guild_id", utente="cancella", esporta=True),

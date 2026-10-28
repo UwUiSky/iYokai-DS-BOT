@@ -1262,3 +1262,8 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 - [ ] Pagine legali (24.6, C.5) — `/privacy` e `/termini` si aprono senza accedere; l'elenco dei dati e i fornitori AI sono giusti. Da rileggere come testo legale.
 - [ ] Pagina del proprietario (C.4) — `/proprietario` si apre solo con l'account `OWNER_ID` (altri: «Accesso negato»); «Rendi premium/gratuito» cambia `/owner premium list`; manutenzione AI dal sito come dal comando.
 - [ ] Pagina AI del server (24.2) — `/server/<id>/ai`: senza la casella di consenso non si accende; poi privacy, lunghezza e memoria cambiano `/ai stato`.
+
+## giro r11 — utility (D36, D37)
+
+- [ ] Link personale (D36) — passi: `/level inviti opzioni chi:chi può creare inviti`; un membro senza «Crea invito» chiede `/level inviti link`: rifiutato. Poi `chi:tutti`: riceve il link e funziona. `chi:solo un ruolo ruolo:@X`: solo chi ha @X. `chi:nessuno`: nessun link. Stessa scelta nella pagina del sito `/server/<id>/inviti`.
+- [ ] Ban e addio (D37) — passi: `/gestione benvenuto addio enabled:True channel:#addii`; bandisci A (account di prova): escono prima il martello e poi «Ciao, è stato bello vederti». `/gestione benvenuto extra` → «Ban e addio»: scegli «solo l'addio», carica una gif per l'addio e un link https per il ban; prova ban e uscita normale; «nessuno» non scrive niente. Con raid attivo: nessun messaggio al bannato.

@@ -4,7 +4,7 @@ core/invite_service.py
 Link d'invito personali «finto vanity» e storico degli inviti. Un solo punto per comandi e
 pannello (D16): ottenere il proprio link, aprirlo (invito Discord vero dedicato, creato una
 volta e riusato, ricreato se scade o viene cancellato), registrare chi ha invitato chi, e le
-opzioni dell'admin (canale del registro, ruolo che può avere il link; acceso/spento è il modulo).
+opzioni dell'admin (canale del registro, modalità del link D36 e ruolo; acceso/spento è il modulo).
 Funzioni coperte: SPEC §23 (NF-27, link personali r10)
 Dipende da: core/invite_tracker.py (contatori `uses`), core/invite_links_logic.py,
 core/repositories/invite_links_repo.py, core/repositories/invite_stats_repo.py
@@ -45,6 +45,7 @@ class Opzioni:
     attivo: bool
     canale_log_id: int | None
     ruolo_link_id: int | None
+    modalita: str = logica.MODO_TUTTI
 
 
 @dataclass(frozen=True)
@@ -68,22 +69,39 @@ def indirizzo(link: LinkPersonale) -> str | None:
 
 # ------------------------------------------------------------ opzioni (D16)
 async def leggi_opzioni(guild_id: int) -> Opzioni:
+    ruolo = await db.get_guild_setting(guild_id, logica.SETTING_RUOLO_LINK)
+    salvata = await db.get_guild_setting(guild_id, logica.SETTING_MODALITA_LINK)
     return Opzioni(
         attivo=await db.is_module_active_for_guild(guild_id, MODULO_INVITI),
         canale_log_id=await db.get_guild_setting(guild_id, logica.SETTING_CANALE_LOG),
-        ruolo_link_id=await db.get_guild_setting(guild_id, logica.SETTING_RUOLO_LINK),
+        ruolo_link_id=ruolo,
+        modalita=logica.modalita_effettiva(salvata, ruolo),
     )
 
 
 async def imposta_opzioni(
-    guild: discord.Guild, *, canale_log=NON_CAMBIARE, ruolo_link=NON_CAMBIARE, changed_by: int | None
+    guild: discord.Guild, *, canale_log=NON_CAMBIARE, ruolo_link=NON_CAMBIARE, modalita=NON_CAMBIARE,
+    changed_by: int | None,
 ) -> bool:
     """
-    Cambia canale del registro e/o ruolo del link (id oppure None per toglierlo).
-    Lancia ImpostazioneNonValida se il canale o il ruolo non sono di questo server.
-    Restituisce True se qualcosa è cambiato.
+    Cambia canale del registro, ruolo del link (id oppure None per toglierlo) e/o modalità (D36:
+    tutti / crea_invito / ruolo / spento). Lancia ImpostazioneNonValida se canale, ruolo o modalità
+    non vanno bene; la modalità «ruolo» vuole un ruolo scelto. Restituisce True se qualcosa è cambiato.
     """
-    cambi: list[tuple[str, int | None]] = []
+    cambi: list[tuple[str, int | str | None]] = []
+    if modalita is not NON_CAMBIARE:
+        if modalita not in logica.MODALITA_LINK:
+            raise ImpostazioneNonValida("Modalità non valida: scegli tutti, crea_invito, ruolo o spento.")
+        if modalita == logica.MODO_RUOLO:
+            ruolo_finale = (
+                await db.get_guild_setting(guild.id, logica.SETTING_RUOLO_LINK)
+                if ruolo_link is NON_CAMBIARE else ruolo_link
+            )
+            if ruolo_finale is None:
+                raise ImpostazioneNonValida("Per la modalità «ruolo» scegli anche il ruolo.")
+        cambi.append((logica.SETTING_MODALITA_LINK, modalita))
+    elif ruolo_link is None and await db.get_guild_setting(guild.id, logica.SETTING_MODALITA_LINK) == logica.MODO_RUOLO:
+        raise ImpostazioneNonValida("La modalità «ruolo» ha bisogno di un ruolo: cambia prima la modalità.")
     if canale_log is not NON_CAMBIARE:
         if canale_log is not None:
             canale = guild.get_channel(canale_log)
@@ -149,9 +167,15 @@ async def puo_avere_il_link(guild: discord.Guild, membro) -> str:
     opzioni = await leggi_opzioni(guild.id)
     if not opzioni.attivo:
         return logica.MODULO_SPENTO
-    if not logica.ruolo_ammesso(opzioni.ruolo_link_id, _ruoli_di(membro)):
+    if opzioni.modalita == logica.MODO_SPENTO:
+        return logica.LINK_SPENTI
+    # «ruolo» senza ruolo (per esempio da un import): nessuno, non tutti.
+    if opzioni.modalita == logica.MODO_RUOLO and (
+        opzioni.ruolo_link_id is None or not logica.ruolo_ammesso(opzioni.ruolo_link_id, _ruoli_di(membro))
+    ):
         return logica.RUOLO_MANCANTE
-    return _esito_canale(guild, membro)
+    # Il permesso «Crea invito» del membro conta solo nella modalità che lo chiede (D36).
+    return _esito_canale(guild, membro if opzioni.modalita == logica.MODO_CREA_INVITO else None)
 
 
 # ------------------------------------------------------------ il link
@@ -219,6 +243,8 @@ async def invito_discord(bot, guild: discord.Guild, link: LinkPersonale, membro=
             return logica.NON_NEL_SERVER, None
         if attuale.discord_code and await _invito_vivo(bot, guild, attuale.discord_code):
             return logica.OK, attuale.discord_code
+        if membro is not None and (await leggi_opzioni(guild.id)).modalita != logica.MODO_CREA_INVITO:
+            membro = None
         esito = _esito_canale(guild, membro)
         if esito != logica.OK:
             return esito, None

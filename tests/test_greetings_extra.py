@@ -107,6 +107,7 @@ def _prepara(monkeypatch, **extra):
         goodbye_enabled=False, goodbye_channel_id=None, goodbye_message="",
         boost_enabled=False, boost_channel_id=None, boost_message="", **extra,
     )
+    repo.get_grafica.return_value = None
     monkeypatch.setattr(modulo, "greetings_repo", repo)
     canale = fake_text_channel(channel_id=5151)
     messaggio = MagicMock(spec=discord.Message)
@@ -158,8 +159,11 @@ async def test_ban_pubblico_nel_canale_dell_addio(monkeypatch):
     assert canale.send.await_args.args[0].startswith("Mario è stato bannato")
 
 
-async def test_ban_spento_senza_testo(monkeypatch):
-    canale, membro, _ = _prepara(monkeypatch)
+async def test_ban_spento_se_il_server_sceglie_solo_addio(monkeypatch):
+    canale, membro, _ = _prepara(monkeypatch, ban_message="x", leave_mode="solo_addio")
+    modulo.greetings_repo.get_config.return_value = GreetingsConfig(
+        **{**modulo.greetings_repo.get_config.return_value.__dict__, "goodbye_enabled": True, "goodbye_channel_id": 5151}
+    )
     utente = MagicMock(spec=discord.User)
     utente.bot = False
     await modulo.GreetingsCog(bot=None).on_member_ban(membro.guild, utente)

@@ -3,6 +3,8 @@
 ## Aggiornata
 
 ## In corso
+- r11 (ramo feat/r11util, DB iyokai_wr11util, migrazione 0400 usata): D36 (inviti_link_mode, /level inviti opzioni chi:) e D37 (ban/addio: leave_mode, greetings_graphics, UsciteModal da /gestione benvenuto extra) fatti con test. SMOKE DA FARE (non lanciato). Resta solo il rapporto. /gestione pesa 6735 (65 caratteri liberi: nuove opzioni = modali); /level 6013.
+
 - r10 (ramo feat/r10util, DB iyokai_wr10util, migrazioni 0330-0339): previsione 4 voci. Fatto: 15 voci [~]->[x] in SPEC (controllo + 155 test verdi), G1 benvenuto extra (0330+0331, /gestione benvenuto extra: DM, varianti, reazioni, ban pubblico), G2 contatori (breve, ticket, ruoli, canali, emoji). Documenti fatti (REGISTRO, VERIFICA_LIVE).
 - Prossimo: invarianti, smoke --base main (una volta), rapporto. Restano [~]: 16.10 (invito dopo verifica sul pannello, NF-20), 23.15 (bot del marchio non risponde ai comandi: serve audit di interaction.client e prova live).
 27/10/2026 · ramo feat/r10inviti (worktree /home/claude/wt/r10inviti, env scratchpad/env_r10inviti.sh, DB iyokai_wr10inviti) · link d'invito personali «finto vanity», migrazioni 0380-0389 (usata 0380)
@@ -23,6 +25,7 @@
 - r5 G2: NF-25 attività (0120): activity_stats.py (raccolta+ruoli, /moduli statistiche …), server_stats.py (viste, bottoni), repo+logic; member_total per giveaway.
 
 ## Cose imparate
+- Modali con file: `discord.ui.Label(text<=45, component=Select|FileUpload|TextInput)`, max 5; `FileUpload.values` = allegati. Un evento che ne scatena due (ban = remove + ban): stato condiviso in core/greetings_uscite_logic (segna_ban/addio_soppresso), da consumare sempre.
 - Scratchpad condivisa con altri agenti: file con prefisso `uti_`. Pesi gruppi: scratchpad/uti_pesi.py. Traduzioni: scratchpad/tradu.py (tiene il formato indent=1 del json).
 - pytest raccoglie le funzioni importate che iniziano per `test`: niente nomi `testo_*`/`test*` nelle funzioni di logica importate dai test.
 - Role menu: `_applica(guild, member, decisione, motivo)` e `decidi_azione/decidi_selezione` (core/role_menu_logic) sono l'unico punto che da/toglie ruoli; pass guild esplicito (i fake non hanno member.guild).

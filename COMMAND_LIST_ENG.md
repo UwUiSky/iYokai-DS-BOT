@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 11:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 13:27 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 576 commands in 25 categories.**
 
@@ -297,7 +297,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 11:5
 - **`/management voice platforms`** — Sets the PC/Console/Mobile info roles for temporary voice channels.
 - **`/management voice setup`** — Sets the generator channel and category for temporary voice channels.
 - **`/management welcome boost`** — Sets up the boost message.
-- **`/management welcome extra`** — Welcome: DM text, variants, reactions, ban message.
+- **`/management welcome extra`** — Welcome: DM text, variants, reactions; ban and goodbye messages.
 - **`/management welcome goodbye`** — Sets up the goodbye message.
 - **`/management welcome image`** — Adds to the welcome an image with the member's avatar, name and number.
 - **`/management welcome preview`** — Shows a preview of how a message would look.
@@ -319,7 +319,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 11:5
 - **`/level invites history`** — Who invited a member and the last people they brought in.
 - **`/level invites leaderboard`** — The 10 members who invited the most people.
 - **`/level invites link`** — Your personal invite link, served through the bot's website.
-- **`/level invites options`** — Invite log channel and who can have a personal link.
+- **`/level invites options`** — Invite log channel and who has the personal link.
 - **`/level invites user`** — How many people a member invited.
 - **`/level leaderboard`** — Shows the server leaderboard.
 - **`/level pay`** — Transfers coins to another user.
