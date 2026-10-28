@@ -11,7 +11,7 @@ Persistenza di XP, livelli, coin e classifiche.
   di oltre 10 si cancellano al decadimento settimanale.
 Le funzioni *_in lavorano su una connessione di chi chiama, per mettere
 più movimenti di coin nella stessa transazione.
-Funzioni coperte: SPEC §15.1–15.3, §15.15
+Funzioni coperte: SPEC §15.1–15.3, §15.15; aggancio delle missioni §23.17
 """
 
 from __future__ import annotations
@@ -383,10 +383,15 @@ class LevelingRepository:
                 )
                 await self._add_period_activity(conn, guild_id, user_id, amount, 0)
 
-                return TextXpResult(
+                esito = TextXpResult(
                     granted=True, new_xp_total=xp_after, leveled_up=leveled_up,
                     new_level=new_level, previous_level=level_for_xp(xp_before, max_level),
                 )
+        # §23.17: un messaggio che ha dato XP conta per le missioni (se il server le ha accese).
+        from core import progressi_service
+
+        await progressi_service.registra(guild_id, user_id, "messaggi")
+        return esito
 
     async def add_voice_minutes(
         self,
@@ -511,6 +516,12 @@ class LevelingRepository:
                         await self._add_period_activity(
                             conn, guild_id, user_id, grant.xp_granted, grant.coins_granted
                         )
+        # §23.17: un minuto in vocale che ha dato XP conta per le missioni.
+        from core import progressi_service
+
+        await progressi_service.registra_molti(
+            guild_id, [u for u, g in risultati.items() if g is not None and g.xp_granted > 0], "vocale"
+        )
         return risultati
 
     async def _riga_bloccata(self, conn, guild_id: int, user_id: int, colonna: str) -> int:
@@ -925,7 +936,11 @@ class LevelingRepository:
                 if riga is None:
                     return False
                 await self._add_period_activity(conn, guild_id, user_id, 0, amount)
-                return True
+        # §23.17: la serie di giorni e la missione del giorno.
+        from core import progressi_service
+
+        await progressi_service.dopo_riscossione(guild_id, user_id, colonna)
+        return True
 
     async def top_xp_alltime(self, guild_id: int, limit: int = 10) -> list[LeaderboardEntry]:
         rows = await self._pool.fetch(

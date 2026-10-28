@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:52 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 23:34 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 579 comandi in 25 categorie.**
+**Totale: 584 comandi in 25 categorie.**
 
 ## Admin
 
@@ -231,6 +231,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
 - **`/economia giveaway-programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
 - **`/economia monete`** — Modifica il saldo di un membro.
+- **`/economia progressi`** — Accende o spegne missioni, serie, traguardi e stagione.
 - **`/economia shop-add`** — Aggiunge un oggetto allo shop.
 - **`/economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
 - **`/economia shop-remove`** — Rimuove un oggetto dallo shop.
@@ -337,6 +338,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/level pay`** — Trasferisci coin a un altro utente.
 - **`/level premi`** — Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
+- **`/level progressi`** — Missioni di oggi, serie di giorni, traguardi, stagione del mese.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.
@@ -355,6 +357,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/log eventi`** — Accendi o spegni ogni singolo evento dei log.
 - **`/log ignora`** — Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).
 - **`/log stato`** — Mostra dove vanno i log del server.
+- **`/log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
 - **`/log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
 
 ## Moderazione
@@ -364,6 +367,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
+- **`/mod carico`** — Quanto lavoro ha fatto ogni persona dello staff (casi, appelli, ticket).
 - **`/mod caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
 - **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
@@ -384,6 +388,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/mod opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod opzioni immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
 - **`/mod opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
+- **`/mod rischio`** — Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.
 - **`/mod slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.

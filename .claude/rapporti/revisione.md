@@ -335,3 +335,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r11eco` | `core/config.py:_leggi_token_music` | Doppioni fra MUSIC_TOKEN_1..5 non controllati (conftest usa lo stesso token finto: va cambiato con suite completa) | bassa | aperto |
 | 28/10 | `feat/r11eco` | `cogs/leveling/leveling.py:_salva_impostazioni_moneta` | D16: il comando compone `prepara_moneta` + `set_immagine_moneta`; il pannello deve fare lo stesso (solo il CHECK 64 KiB lo protegge) | bassa | aperto |
 | 28/10 | `feat/r11eco` | `cogs/fun/coin_games.py:166` | `except Exception` sull'immagine della moneta senza log | bassa | aperto |
+| 29/10 | `feat/r12resto` | `revisione/SPEC.md` 23.17, 16.10 | `[x]` non onesti (D18): mancano i dettagli di VOCI_OMESSE (missioni settimana/server, protezione serie, pass 90 g con traccia premium, carico con tempi e appelli); invito NSFW dopo verifica si può fare | media | chiuso 9abe0f3 (`[~]`, serve una issue) |
+| 29/10 | `feat/r12resto` | `COMMAND_LIST*.md` | Cinque comandi nuovi non elencati | bassa | chiuso eb25a2c |
+| 29/10 | `feat/r12resto` | gruppo `/moduli` | 6793/6800: un solo testo in più fa scattare l'allarme D25 | bassa | aperto |
+| 29/10 | `feat/r12resto` | `cogs/moderation/rischio_staff.py` /mod carico | Il carico di ogni membro dello staff lo vede ogni moderatore (gruppo `mod`); VOCI_OMESSE dice «mai classifica pubblica»: valutare livello ADMIN | bassa | aperto (domanda owner) |
+| 29/10 | `feat/r12resto` | commit 9e3b497 | `Refs #8` sbagliato (giusto #109); storia non riscritta | bassa | aperto |

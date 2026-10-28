@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import channel_router as router
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.admin_mentions_logic import (
@@ -340,7 +341,16 @@ class GreetingsCog(CogConGruppi, commands.Cog):
 
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
-            if isinstance(channel, discord.TextChannel):
+            if isinstance(channel, discord.ForumChannel):
+                # Router (§18.1): un forum riceve i benvenuti in un solo post, senza immagine né reazioni.
+                dest = await router.destinazione(member.guild, router.TIPO_BENVENUTO, channel.id)
+                if dest is not None:
+                    await router.invia_a(dest, member.guild, router.TIPO_BENVENUTO, content=testo, allowed_mentions=menzioni)
+            elif channel is None:
+                await router.avvisa_proprietario(
+                    member.guild, router.TIPO_BENVENUTO, config.welcome_channel_id, "il canale non esiste più"
+                )
+            elif isinstance(channel, discord.TextChannel):
                 # Durante un raid solo testo: disegnare un'immagine per ogni ingresso è lavoro sprecato.
                 puo_allegare = channel.permissions_for(member.guild.me).attach_files
                 allegato = (
@@ -490,7 +500,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         enabled: bool,
-        channel: discord.TextChannel | None = None,
+        channel: discord.TextChannel | discord.ForumChannel | None = None,
         message: TestoMessaggio | None = None,
         dm: bool | None = None,
     ) -> None:

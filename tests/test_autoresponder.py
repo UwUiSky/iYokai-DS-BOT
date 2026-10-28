@@ -40,10 +40,46 @@ from tests.support.percorsi import comando_nel_gruppo
         ("ciao", "esatta", "ciao a tutti", False),
         ("c++", "parziale", "uso c++ ogni giorno", True),
         (".*", "parziale", "abc", False),  # nessuna regex: il testo vale com'è
+        ("ciao*", "parziale", "ciaooo a tutti", True),  # jolly: pezzo di parola
+        ("*ciao", "parziale", "un buonciao", True),
+        ("ci*o", "esatta", "ciao", True),
+        ("ci*o", "esatta", "ciao amico", False),
+        ("*", "parziale", "qualsiasi cosa", False),  # un jolly da solo non vale
+        ("a*b*c*d*e*f*g", "parziale", "axbxcxdxexfxg", False),  # troppi jolly
     ],
 )
 def test_trigger_corrisponde(trigger, modo, messaggio, atteso):
     assert trigger_corrisponde(trigger, modo, messaggio) is atteso
+
+
+@pytest.mark.parametrize(
+    "trigger, modo, messaggio, atteso",
+    [
+        ("buon* giorno", "parziale", "ehi buongiornissimo giorno!", True),
+        ("buon* giorno", "parziale", "ehi buon giornata", False),
+        ("buon* giorno", "parziale", "ehi buonissimo giorno!", True),
+        ("a*b*c", "parziale", "axxbyyc", True),
+        ("a*b*c", "parziale", "axxb yyc", False),  # il jolly non passa gli spazi
+        ("a*c", "parziale", "abcd abc", True),  # la seconda parola va bene
+        ("ciao*", "esatta", "ciaone", True),
+        ("*ne", "esatta", "ciao ne", False),
+    ],
+)
+def test_jolly_casi_limite(trigger, modo, messaggio, atteso):
+    assert trigger_corrisponde(trigger, modo, messaggio) is atteso
+
+
+def test_jolly_non_blocca_il_bot_con_un_messaggio_lungo():
+    """Cinque jolly e un messaggio lungo che non corrisponde: deve finire subito (niente ReDoS)."""
+    import time
+
+    inizio = time.monotonic()
+    assert trigger_corrisponde("a*a*a*a*a*a", "parziale", "a" * 120 + "b") is False
+    assert trigger_corrisponde("a*a*a*a*a*a", "esatta", "a" * 120 + "b") is False
+    assert time.monotonic() - inizio < 1.0
+    assert trigger_corrisponde("a*a*a*a*a*a", "parziale", ("a." * 2000) + "b") is True
+    assert trigger_corrisponde("a*a*a*a*a*b", "parziale", ("a" * 4000) + "c") is False
+    assert time.monotonic() - inizio < 1.0
 
 
 def _r(i, trigger, modo="parziale", canale=None, ruolo=None):
@@ -202,6 +238,17 @@ async def test_parola_o_risposta_vuote_dopo_lo_strip_sono_rifiutate(scena, parol
     await scena.risposta_crea.callback(scena, i, parola, risposta, "parziale", None, None)
     scena.repo.create.assert_not_awaited()
     assert "vuote" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_jolly_da_solo_o_troppi_sono_rifiutati_e_uno_giusto_passa(scena):
+    i = fake_interaction(user=fake_member(5))
+    await scena.risposta_crea.callback(scena, i, "***", "Ciao!", "parziale", None, None)
+    scena.repo.create.assert_not_awaited()
+    assert "jolly" in i.response.send_message.await_args.args[0]
+    i2 = fake_interaction(user=fake_member(5))
+    await scena.risposta_crea.callback(scena, i2, "ciao*", "Ciao!", "parziale", None, None)
+    scena.repo.create.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -100,6 +100,28 @@ async def test_tre_warn_manuali_fanno_scattare_il_gradino(monkeypatch):
     assert await _tipi(A) == ["automod_escalation"] * 2 + ["warn"] * 3
 
 
+async def test_ogni_gradino_applicato_lascia_una_riga_nel_log_di_moderazione(monkeypatch):
+    """§18.7: la scala scrive nel log di moderazione; un log che si rompe non ferma la scala."""
+    monkeypatch.setattr(modulo_escalation.bot_roles, "isola", AsyncMock())
+    log = AsyncMock()
+    monkeypatch.setattr(modulo_escalation, "post_to_mod_log", log)
+    await escalation_repo.set_enabled(SERVER, True)
+    await escalation_repo.set_conta_warn_manuali(SERVER, True)
+    cog = _cog()
+    membro, interazione = _scena()
+    for _ in range(2):
+        await _warn(cog, membro, interazione)
+
+    log.assert_awaited_once()
+    embed = log.await_args.args[1]
+    assert embed.title == "⚖️ Scala di escalation"
+    assert {c.name for c in embed.fields} >= {"Utente", "Azione", "Caso", "Motivo"}
+
+    log.side_effect = RuntimeError("log rotto")
+    await _warn(cog, membro, interazione)
+    assert "La scala ha applicato" in interazione.followup.send.await_args.args[0]
+
+
 async def test_azione_fallita_lo_dice_e_non_apre_casi(monkeypatch):
     import discord
 

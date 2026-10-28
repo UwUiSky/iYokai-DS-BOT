@@ -1283,3 +1283,17 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 2. `/level impostazioni xp immagine_moneta:` con un PNG grande: salvato; `/level balance`, `/level cassa`, una partita di `/fun` e `/clan info` mostrano la stessa miniatura accanto al saldo.
 3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
 4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.
+
+## giro r12 — resto (D48, D49, D50)
+
+- [ ] Risposta con jolly (14.7) — passi: `/moduli comandi risposta-crea parola:ciao* risposta:Ciao!`; scrivi «ciaooo a tutti» e «ciao». Risultato atteso: risponde a tutti e due; `parola:***` è rifiutata.
+- [ ] Benvenuto in un forum (18.1) — passi: `/gestione benvenuto benvenuto enabled:Sì channel:#un-forum`; entra un account di prova. Risultato atteso: un post «Benvenuti» nel forum col testo (senza immagine); cancella il forum ed entra un altro account: il proprietario riceve un solo avviso.
+- [ ] Log della scala (18.7) — passi: `/security escalation enable warn_manuali:Sì`, tre `/mod warn` allo stesso membro. Risultato atteso: nel canale del mod-log compare la riga «Scala di escalation» con l'azione e il caso.
+- [ ] Wizard con i canali (22.16) — passi: `/admin setup wizard`; nei passi Moderazione, Sicurezza, Community premi «Crea il canale …». Risultato atteso: nasce il canale (riservato i primi due), il mod-log e gli allarmi lo usano, il benvenuto lo ha come canale (si accende dal passo e «Salva»).
+- [ ] Profilo social nei feed (10.5, 10.6, 10.13) — passi: `/moduli alert feed feed_url:https://www.tiktok.com/@qualcuno`. Risultato atteso: rifiutato con il rimando a `/moduli alert guida-social`; un feed vero (anche di RSSHub) passa.
+- [ ] Vista dei log su forum (8.17, D48) — passi: `/log vista-forum dimensione:Un post per canale forum:#log-forum` e `dimensione:Un post per caso`; cambia un permesso di un canale e dai un warn. Risultato atteso: un post «#nome-canale» e un post «Caso #N» con le righe; senza forum il comando spegne la vista.
+- [ ] Missioni e stagione (23.17, D49) — passi: `/economia progressi attivo:Sì`; scrivi qualche messaggio, `/level daily`, poi `/level progressi`. Risultato atteso: la missione «ricompensa giornaliera» è 🎁; «Riscuoti» paga una sola volta; `sezione:Serie di giorni` mostra la serie; `sezione:Stagione del mese` mostra i gradini. Spenti, il comando lo dice e le monete non cambiano.
+- [ ] Rischio e carico (23.17, D50) — passi: `/mod rischio member:@account-con-warn` e `/mod carico giorni:30`. Risultato atteso: punteggio con i motivi (messaggio privato) e l'elenco dello staff con la quota di lavoro; il bot non compare tra lo staff.
+- [ ] Transcript alla chiusura (13.10) — con l'intent Message Content acceso: apri un ticket, scrivi due messaggi con un allegato, chiudilo. Risultato atteso: il transcript nel canale log ha il testo e l'allegato.
+- [ ] NSFW (16.10) — da attivare: app «iYokai NSFW» nel Developer Portal e `NSFW_TOKEN` nel `.env`; poi `/nsfw-admin attiva` e `/nsfw cerca` in un canale con il flag età.
+- [ ] Kick (23.11) — da attivare: `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET` nel `.env`; poi `/moduli alert kick` e `/moduli alert ruolo-live`.

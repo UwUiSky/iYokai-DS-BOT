@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+29/10/2026 · `feat/r12resto` (D48–D50, 0480–0481): cacciatore + revisione. Corretti ReDoS del jolly (1adb71f), doppioni del wizard (d13b332), eventi spenti nel forum (9e3b497), giorno delle missioni (21dd796); SPEC 23.17/16.10 a `[~]` (9abe0f3); COMMAND_LIST (eb25a2c). APPROVATO; smoke da fare (migrazioni: suite completa). /moduli 6793/6800.
 28/10/2026 · `feat/r11util` (D36 modalità link, D37 ban/addio, 0400). Fatto anche il cacciatore. Corretti: martello prima dell'addio, PNG RGBA grandi, «ruolo» senza ruolo (d4d1e0a); COMMAND_LIST (a56ef5e). APPROVATO, 3 basse nel quaderno; smoke da fare. /gestione 6742/6800.
 28/10/2026 · `feat/r11odio` (D35/D39, 0390+0391): fatto anche il cacciatore. Corretti: regex native con varianti e prefissi comuni, testo intero all'AI e niente AI per testi manipolati, risposta rigida, AI ferma senza richiamo, blocco fallito non resta acceso, libreria a proprietari diversi + parole comuni (vedi commit). APPROVATO, smoke da fare (migrazione 0391: suite completa).
 28/10/2026 · `feat/r10liv` (livelli/economia r10: SPEC §15 a `[x]`, shop 0340, classifica settimanale, moneta e tassa 0341). Fatto anche il cacciatore. Corretti: minimo pay (0342) e tassa per eccesso (b1c1f45); righe shop controllate prima, codice in DM, scadenze solo server del bot (f92d597); registro (485e139). APPROVATO, smoke da fare.
@@ -19,6 +20,7 @@ Giri r10 (liv, inviti, aiw, sec, filtro, logt, core, mod) e r8/r9: tutti APPROVA
 - Letti per intero: giro-mod, r3-*, r4-*, r6*, r7*, r8*, r9*, r10*, r11eco (commit nel quaderno).
 
 ## Cose imparate
+- Jolly/glob in regex (`\S*` ripetuti) = tempo esponenziale: cercare i pezzi da sinistra (lineare). Voci `[x]` di NF-41 e simili: confrontare con «dettagli da non perdere» di VOCI_OMESSE.
 - Stato globale per (server, utente) in un modulo: nei test va pulito (fixture autouse), altrimenti passa da un test all'altro. Segnali «fatto» si danno DOPO l'invio, non prima.
 - safe_open_image può restituire un'immagine senza `format` (RGBA ridotta): il formato si legge dal file.
 - Regex native Discord: 10×260 caratteri; prefissi comuni (albero) e niente `\w*` finale fanno spazio; `\b` non scatta dopo un simbolo in fondo. AI come giudice: niente testo tagliato (insulto in coda), JSON rigido, soglie «N server» = N proprietari.
