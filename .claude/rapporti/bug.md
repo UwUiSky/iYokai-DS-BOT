@@ -288,3 +288,8 @@
 - 28/10 · core/automod_parole_logic.py costruisci · lecita del server = voce di base («n1gg3r», «n i g g e r») spegneva quella voce senza conferma · alta · corretto r10filtro 1669138
 - 28/10 · core/automod_parole_logic.py · passavano: ꓠꓲꓖꓖꓰꓣ, ᏚᏢᎥᏟ, ƒrocio, fr⭕cio, nㅤigger, n*gger, n█gger, nig ger, U+202E «regg in», niqqa, nygger · alta · corretto r10filtro 1669138
 - 28/10 · cogs/automod/automod.py _controlla · «nig» «g» «er» in tre messaggi passavano · media · corretto r10filtro 1669138
+- 28/10 · core/invite_service.py scegli_canale/puo_avere_il_link · membro senza «Crea invito» (o che non vede il canale) ottiene un invito permanente dal bot · alta · corretto 8b9426b
+- 28/10 · core/invite_service.py scegli_canale · invito nel canale aggiornamenti community (solo staff): nome nell'anteprima · media · corretto 8b9426b
+- 28/10 · core/invite_service.py invito_discord · nessun tetto sui 1000 inviti per server (LIM-36): server grande li esaurisce · alta · corretto 8b9426b (500)
+- 28/10 · core/invite_service.py _invito_vivo · cache del tracker creduta «viva» dopo cancellazione manuale: link rotto fino al prossimo ingresso · media · corretto 8b9426b
+- 28/10 · core/invite_tracker.py _risolvi/refresh_guild · invito registrato dal bot durante l'await sovrascritto: primo ingresso senza invitante · bassa · corretto 8b9426b

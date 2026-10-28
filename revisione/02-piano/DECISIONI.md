@@ -487,3 +487,24 @@ del server (né da comando né da import): altrimenti un admin la spegnerebbe se
 Le **frasi** lecite che la contengono restano permesse (es. «rio negro»): così si tolgono i
 falsi positivi senza aprire la parola. Per spegnere tutta la base serve `conferma: true`, e
 via import la cambia solo il proprietario del server (CHIAVI_SOLO_PROPRIETARIO).
+## D32 — Link d'invito personali «finto vanity» dal sito (28/10/2026)
+
+L'indirizzo personalizzato vero di Discord (vanity) vuole il boost di livello 3 e ce n'è uno solo per
+server. Alternativa (D18): ogni membro ha un link `<WEB_PANEL_PUBLIC_URL>/invito/<nome-server>-<nome-utente>`
+che il sito gira a un invito Discord vero, dedicato a lui. Regole:
+- Lo slug è unico in tutto il bot (non contiene l'ID del server), minuscolo, solo a-z 0-9 e trattini;
+  le collisioni si risolvono con `-2`, `-3`… Non cambia mai: chi cambia nome tiene il vecchio indirizzo.
+- L'invito Discord lo crea il bot (senza scadenza né limite d'usi) alla prima apertura e lo riusa;
+  se sparisce lo ricrea. Se Discord non risponde non se ne creano di nuovi a raffica.
+- Modulo, ruolo richiesto e permesso «Crea invito» (del bot **e del membro**, nello stesso canale)
+  si ricontrollano a ogni apertura: il bot non crea per un membro un invito che lui non potrebbe
+  creare. Il canale dell'invito è uno che vede @everyone, se c'è (l'anteprima ne mostra il nome).
+  La pagina pubblica non mostra nomi, ha un limite per IP e dice solo perché non funziona.
+- Al massimo 500 link personali con un invito Discord per server (Discord ne tiene 1000, LIM-36).
+  Un invito si considera vivo per 5 minuti dopo l'ultima verifica (o fino all'evento di cancellazione),
+  e solo se è di quel server: il sito gira solo a `discord.gg/<codice>` creato dal bot.
+- L'ingresso con un invito del bot si attribuisce al proprietario del link; il tipo (personale,
+  normale, vanity, sconosciuto) sta in `invite_joins.kind`. Il vanity vero si segue a parte.
+- Privacy: il link si cancella con il membro (e quando esce dal server) e dopo 365 giorni senza uso;
+  chi cancella i suoi dati sparisce come invitato e come invitante diventa `0` (D6).
+Codice: `core/invite_service.py`, `core/web_panel_inviti.py`, comandi `/level inviti link|storico|opzioni`.

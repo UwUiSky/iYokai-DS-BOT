@@ -1215,3 +1215,15 @@ Serve: un server di prova con AutoMod acceso, un secondo account A senza permess
 - [ ] Liste del server — passi: `/automod odio parola lista:parole proprie azione:aggiungi testo:scemo`; A scrive «sc3m0». Poi `lista:parole lecite` con una parola che contiene una voce della base: A la scrive. Poi `lista:parole lecite` con una voce della base stessa. Risultato atteso: la prima sparisce, la seconda resta, la terza è rifiutata. `/automod odio prova` mostra il testo letto dal filtro.
 - [ ] Spegnere la base — passi: `/automod odio base attiva:False` senza conferma, poi con `conferma:True`. Risultato atteso: il primo è rifiutato, il secondo spegne (e `/automod odio stato` lo dice).
 - [ ] Nomi — passi: A cambia il suo nickname in una voce vietata; poi A rientra nel server con un nome utente vietato. Risultato atteso: il nickname viene azzerato (o diventa «Nome rimosso» se anche il nome di base è vietato) e il log AutoMod lo scrive; `/automod odio nomi attiva:False` spegne il controllo. Il nome cambiato dal bot non fa partire un altro cambio (un log solo).
+## Inviti e link personali — giro r10 (NF-27, D32)
+
+Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci server» e «Crea invito», un account A (membro) e un account B nuovo per entrare.
+
+- [ ] Link personale — passi: come A `/level inviti link`. Risultato atteso: un indirizzo `…/invito/<server>-<nome>`; richiesto di nuovo, è lo stesso; A cambia nome utente e lo stesso indirizzo vale ancora.
+- [ ] Redirect e ingresso — passi: B apre l'indirizzo, accetta l'invito. Risultato atteso: B entra; `/level inviti storico utente:@B` dice «invitato da A, link personale dal sito»; `/level inviti utente` di A conta 1.
+- [ ] Invito ricreato — passi: cancella a mano l'invito del bot creato per A (Impostazioni server → Inviti); B2 riapre l'indirizzo (subito se il bot ha «Gestisci canali», se no dopo 5 minuti). Risultato atteso: ne nasce uno nuovo e l'ingresso va ad A.
+- [ ] Permesso del membro — passi: togli «Crea invito» ad A (o a @everyone) in tutti i canali; B apre il link di A. Risultato atteso: «Link non attivo», nessun invito nuovo; A con `/level inviti link` legge che non ha il permesso. Server con canale degli aggiornamenti della community: l'invito punta a un canale pubblico, non a quello.
+- [ ] Uscita — passi: B esce. Risultato atteso: lo storico di A mostra B come uscito; se esce A, il suo indirizzo non funziona più.
+- [ ] Server senza permesso o con inviti in pausa — passi: togli «Crea invito» al bot (poi, in un altro giro, metti in pausa gli inviti). Risultato atteso: la pagina dice perché non funziona, senza nomi.
+- [ ] Opzioni — passi: `/level inviti opzioni canale:#registro ruolo:@Membri`; poi la stessa cosa dalla pagina «Inviti» del pannello. Risultato atteso: stesse impostazioni in entrambi; chi non ha il ruolo non ottiene il link; il registro scrive chi entra e con quale link.
+- [ ] Altri tipi — passi: entra con un invito normale e (se il server ha il vanity) con l'indirizzo personalizzato. Risultato atteso: tipo «invito normale» e «indirizzo personalizzato»; senza «Gestisci server» il tipo è «sconosciuto».

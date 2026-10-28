@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titolo %}I miei inviti · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>I miei inviti</h1>
+<p class="tenue">Il tuo link personale porta all'invito del server: chi lo apre entra e l'ingresso viene contato come tuo.
+Il link non cambia, nemmeno se cambi nome.</p>
+{% if not sito_attivo %}<p class="avviso errore">L'indirizzo pubblico del sito non è configurato: i link non possono funzionare.</p>{% endif %}
+{% for s in server %}
+<div class="carta">
+  <h2>{{ s.nome }}</h2>
+  {% if s.indirizzo %}
+  <p>Il tuo link: <a href="{{ s.indirizzo }}" rel="noopener noreferrer">{{ s.indirizzo }}</a></p>
+  {% elif s.puo_crearlo %}
+  <form method="post" action="/miei-inviti" class="riga">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="guild_id" value="{{ s.id }}">
+    <span>Non hai ancora un link in questo server.</span>
+    <button type="submit">Crea il mio link</button>
+  </form>
+  {% else %}
+  <p class="tenue">{{ s.motivo }}</p>
+  {% endif %}
+  <p>Hai invitato <strong>{{ s.totale }}</strong> persone: {{ s.presenti }} presenti, {{ s.usciti }} uscite.</p>
+  {% if s.invitato_da %}<p class="tenue">Sei stato invitato da {{ s.invitato_da }}{% if s.tipo %} ({{ s.tipo }}){% endif %}.</p>{% endif %}
+</div>
+{% else %}
+<p class="carta">Nessun server con il modulo inviti attivo, tra quelli dove il bot ti conosce.</p>
+{% endfor %}
+<p class="tenue">L'attribuzione si riconosce con buona affidabilità, non al 100%: con ingressi simultanei può mancare.</p>
+{% endblock %}

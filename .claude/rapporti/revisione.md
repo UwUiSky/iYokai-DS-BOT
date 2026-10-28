@@ -290,3 +290,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10filtro` | `cogs/utility/config_history.py:errore_chiavi_solo_proprietario` | Chiave mai impostata letta come None: import di `automod_parole_base: true` da admin rifiutato senza cambio | bassa | aperto |
 | 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py:_separate` | Già prima: lettere staccate «f a g i o l i» e «fag?ioli» scattano su «fag» | bassa | aperto |
 | 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py` | Non coperti (scelta): greco fonetico, katakana, testo capovolto e al contrario | bassa | accettato |
+| 28/10 | `feat/r10inviti` | `core/invite_service.py:registra_ingresso` | Invito del bot senza riga di link (cancellazione fallita o dati cancellati) attribuito al bot stesso | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/data_registry.py` invite_personal_links | Cancellazione dati dell'utente lascia vivo l'invito Discord (solo all'uscita dal server si cancella) | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/repositories/invite_stats_repo.py:ultimi_ingressi` | Manca indice (guild_id, joined_at) per server grandi: migrazione nuova (0381) | bassa | aperto |
+| 28/10 | `feat/r10inviti` | `core/web_panel_inviti.py:pagina_admin` | Canale/ruolo salvato fuori dai primi 250 non selezionato: «Salva» lo toglie | bassa | aperto |
+| 28/10 | `feat/r10inviti` | commit 8b9426b | `Refs #NF-27` invece di `Refs #98` (storia non riscritta) | forma | accettato |

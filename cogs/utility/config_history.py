@@ -117,6 +117,9 @@ SETTINGS_SCHEMA = {
     "automod_parole_nick": "bool",
     "automod_parole_proprie": "lista_parole",
     "automod_parole_lecite": "lista_parole",
+    # Inviti e link personali (core/invite_links_logic.py)
+    "inviti_log_channel_id": "id",
+    "inviti_link_role_id": "id",
 }
 
 

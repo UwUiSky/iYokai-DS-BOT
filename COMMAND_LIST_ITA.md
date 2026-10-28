@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:31 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 549 comandi in 25 categorie.**
+**Totale: 560 comandi in 25 categorie.**
 
 ## Admin
 
@@ -151,11 +151,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:
 - **`/automod filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
 - **`/automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
 - **`/automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
+- **`/automod odio base`** — Accende o spegne la lista di base degli insulti d'odio.
+- **`/automod odio nomi`** — Controlla nickname e nomi visualizzati all'ingresso e al cambio.
+- **`/automod odio parola`** — Aggiunge o toglie una parola propria o una parola lecita.
+- **`/automod odio prova`** — Prova un testo contro le parole vietate, senza agire.
+- **`/automod odio stato`** — Mostra come sono impostate le parole vietate.
 - **`/automod parole add`** — Aggiunge una parola vietata.
 - **`/automod parole list`** — Mostra le parole vietate configurate.
 - **`/automod parole remove`** — Rimuove una parola vietata.
 - **`/automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
 - **`/automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
+- **`/automod violazione-togli`** — Toglie una violazione dal registro AutoMod.
+- **`/automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
 
 ## Backup
 
@@ -251,6 +258,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:
 - **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
 - **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
 - **`/gestione benvenuto boost`** — Configura il messaggio di boost.
+- **`/gestione benvenuto extra`** — Benvenuto: DM, varianti, reazioni, messaggio ai ban.
 - **`/gestione benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
 - **`/gestione ruoli auto-aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
 - **`/gestione ruoli auto-elenco`** — Mostra i ruoli automatici del server.
@@ -305,6 +313,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:
 - **`/level impostazioni premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
+- **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
+- **`/level inviti opzioni`** — Registro degli inviti e chi può avere il link personale.
+- **`/level inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level livelli-recenti`** — Gli ultimi 25 level-up del server.
