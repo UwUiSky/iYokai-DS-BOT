@@ -240,7 +240,10 @@
   "autopost-ferma": "autopost-stop",
   "promemoria": "reminders",
   "manutenzione": "maintenance",
-  "preferenza": "preference"
+  "preferenza": "preference",
+  "boss": "boss",
+  "avvia": "start",
+  "rete": "network"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -908,7 +911,11 @@
   "note rimuovi": "Removes a note or a list entry.",
   "profilo": "A user's card: name, ID, account age, level, clan, avatar.",
   "ai manutenzione": "Owner only: puts the AI in maintenance in every server.",
-  "utility ai preferenza": "Turn the AI answers on or off for yourself."
+  "utility ai preferenza": "Turn the AI answers on or off for yourself.",
+  "ai boss": "World Boss: group event against a monster",
+  "ai boss imposta": "Channel, days, time and rewards of the World Boss.",
+  "ai boss avvia": "Summons the World Boss right now.",
+  "ai boss rete": "Owner only: publish or close the network boss."
  },
  "parametri": {},
  "menu": {
