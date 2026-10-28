@@ -317,3 +317,8 @@
 - 28/10 · core/automod_odio_azioni.py controlla_sospetta · AI ferma = richiamo contato: un cognome porta al timeout · media · corretto r11odio (FIX)
 - 28/10 · cogs/automod/parole_odio.py blocco · tetto 6 o permessi mancanti: impostazione salvata «acceso» e risposta «acceso» · media · corretto r11odio (FIX)
 - 28/10 · core/automod_odio_nativo_logic.py · regola nativa senza varianti (n1gger, terr0ni, f4ggot) · media · corretto r11odio (FIX)
+- 29/10 · core/autoresponder_logic.py trigger_corrisponde · regex con 5 jolly `\S*`: messaggio di 160 caratteri = 19 s di loop fermo per tutti i server (ReDoS) · alta · corretto 1adb71f
+- 29/10 · cogs/utility/_setup_wizard_views.py crea_e_collega · secondo clic o doppio clic = canale doppio e collegamento spostato · media · corretto d13b332
+- 29/10 · core/log_forum_service.py notifica_evento · eventi spenti con /log eventi finivano nel forum · media · corretto 9e3b497
+- 29/10 · core/progressi_service.py svuota · giorno letto alla scrittura: eventi delle 23:59 nelle missioni del giorno dopo · bassa · corretto 21dd796
+- 29/10 · core/log_forum_service.py scrivi · post chiuso (locked) o forum con tag obbligatori: Forbidden/400 a ogni evento, mai dimenticato · bassa · aperto
