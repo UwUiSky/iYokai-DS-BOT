@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 11:50 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 547 commands in 25 categories.**
+**Total: 548 commands in 25 categories.**
 
 ## Admin
 
@@ -63,6 +63,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/ai knowledge remove`** — Removes an entry from the knowledge base.
 - **`/ai limits`** — Spending cap and quotas: per user, per feature, images.
 - **`/ai lore`** — Server tone and setting used in every AI text.
+- **`/ai maintenance`** — Owner only: puts the AI in maintenance in every server.
 - **`/ai moderation`** — The AI flags suspicious messages of a channel to the staff.
 - **`/ai privacy`** — User messages sent to the AI, memory and answer length.
 - **`/ai status`** — AI status in the server: providers, settings and monthly usage.

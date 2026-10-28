@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 11:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 548 comandi in 25 categorie.**
 
 ## Admin
 
@@ -61,6 +61,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
 - **`/ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
 - **`/ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
+- **`/ai manutenzione`** — Solo proprietario: mette l'AI in manutenzione in tutti i server.
 - **`/ai moderazione`** — L'AI segnala allo staff i messaggi sospetti di un canale.
 - **`/ai personaggio`** — Installa, toglie o cancella un personaggio AI del server.
 - **`/ai privacy`** — Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.
