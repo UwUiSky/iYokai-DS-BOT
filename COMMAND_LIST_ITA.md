@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:53 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 550 comandi in 25 categorie.**
 
 ## Admin
 
@@ -304,6 +304,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/level impostazioni premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
+- **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
+- **`/level inviti opzioni`** — Registro degli inviti e chi può avere il link personale.
+- **`/level inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level livelli-recenti`** — Gli ultimi 25 level-up del server.
