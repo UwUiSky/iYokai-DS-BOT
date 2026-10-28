@@ -430,7 +430,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("odio_parole", "Libreria mondiale delle parole d'odio e delle loro varianti (D35)",
        nota="globale: nessun dato di utenti né di server, solo parole; la scelta dello stato è del proprietario del bot"),
     _t("odio_segnalazioni", "Quali server hanno segnalato una variante (D35)", colonna_server="guild_id",
-       nota="solo l'ID del server: serve a contare i server diversi (soglia 3)"),
+       colonne_attore=("owner_id",), utente="anonimizza", anonimizza=(("owner_id", "0"),),
+       nota="ID del server e del suo proprietario: servono a contare proprietari diversi (soglia 3); "
+            "con la cancellazione il proprietario diventa 0, e la soglia diventa solo più difficile"),
     _t("birthday_config", "Impostazioni dei compleanni", colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),

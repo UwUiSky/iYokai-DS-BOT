@@ -109,6 +109,8 @@ class _FakeFleetTuttiOccupati:
     altrove — nessuna mancante da invitare, quindi il messaggio deve
     guidare verso l'estensione del limite (ticket), non un invito."""
 
+    total_workers = 5
+
     async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return None
 
@@ -133,6 +135,8 @@ class _FakeFleetIstanzeMancanti:
     """Nessun worker libero PERCHÉ questo server non ha ancora
     invitato tutte le 5 istanze (2 mancanti) — scenario diverso dalla
     saturazione globale sopra: qui la soluzione è invitarne altre."""
+
+    total_workers = 5
 
     async def get_or_assign_worker_for_channel(self, guild_id: int, channel_id: int = 0):
         return None
