@@ -1400,7 +1400,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   scheduler), azzera, operazioni di massa (una per server, stima, stop, arresto dopo 10 errori di fila), crea, modifica,
   diagnosi, ruoli a scelta (tetto 25, migrazione 0231) presi dai membri con `/utility ruolo` (RUO-042, 043, 090–109, 113;
   giro r8, 21/10)
-- `[ ]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
+- `[x]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
   messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
   ogni vocale un messaggio con due bottoni: "Trascrivi" e "Nella mia
   lingua" (li vede solo chi preme, nella lingua del suo client). Si usa
@@ -2389,14 +2389,18 @@ di quel file.
 - `[x]` 25.101 Cerca comando: mostra anche le alternative, spiegate
   (AI-R-108; vedi §21)
   → **Stato 29/10 (r12ai):** alternative spiegate.
-- `[ ]` 25.102 Sintesi vocale sul server, con cache dell'audio e toni
+- `[x]` 25.102 Sintesi vocale sul server, con cache dell'audio e toni
   della voce scelti dall'admin (AI-R-109; vedi 14.19)
-- `[ ]` 25.103 Trascrizione e traduzione del vocale nella lingua di chi
+  → **Stato 29/10 (r12ai):** cogs/ai/voce.py, core/voice_*.py (profili e toni, cache, motore Piper Paola via sherpa-onnx dietro MotoreVoce). Si accende da .env (VOCE_MODELLO_DIR); spento il bot manda solo il testo. Da attivare: installare sherpa-onnx e il modello. Test: tests/test_ai_voce.py
+- `[x]` 25.103 Trascrizione e traduzione del vocale nella lingua di chi
   preme il bottone (AI-R-110)
-- `[ ]` 25.104 Trascrivi e traduci i vocali registrati dalle persone,
+  → **Stato 29/10 (r12ai):** VocaleView (aivc:tr, aivc:tl): bottoni persistenti sotto ogni vocale, risposta privata nella lingua del client; testo salvato 90 giorni in ai_vocali (migrazione 0426).
+- `[x]` 25.104 Trascrivi e traduci i vocali registrati dalle persone,
   anche dall'app utente (AI-R-111)
-- `[ ]` 25.105 Saluti a voce: risposta al "buongiorno" con il nome, una
+  → **Stato 29/10 (r12ai):** Menu «Trascrivi vocale» in iYokai App (cogs/user_app/voce_app.py), limite 120 s e 8 MiB. Spento finché manca VOCE_TRASCRIZIONE_URL con VOCE_TRASCRIZIONE_ADDESTRA=no (D19). Da attivare: scegliere il servizio.
+- `[x]` 25.105 Saluti a voce: risposta al "buongiorno" con il nome, una
   sola risposta per più persone (AI-R-112)
+  → **Stato 29/10 (r12ai):** Saluti a voce nei canali scelti con /ai voce imposta: raccolta di 6 s con fino a 3 nomi, pausa di 2 minuti per canale, frasi fisse in cache senza scadenza.
 
 ---
 

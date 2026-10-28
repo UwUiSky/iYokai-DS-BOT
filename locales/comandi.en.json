@@ -254,7 +254,9 @@
   "regola": "rule",
   "cerca-log": "search-log",
   "avviso": "alert",
-  "prima-risposta": "first-answer"
+  "prima-risposta": "first-answer",
+  "voce": "voice",
+  "parla": "speak"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -945,7 +947,11 @@
   "ai riepilogo imposta": "Server digest: channel, hour, frequency and channels to read.",
   "ai riepilogo anteprima": "Shows you the digest as of now, without publishing it.",
   "utility ai avviso": "Follow up to 3 words: I notify you when they are discussed a lot.",
-  "ai staff prima-risposta": "Turns the AI first automatic answer on or off in a ticket panel."
+  "ai staff prima-risposta": "Turns the AI first automatic answer on or off in a ticket panel.",
+  "ai voce": "Yokai's voice: voice messages written by the bot",
+  "ai voce imposta": "Voice: on or off, tone and greeting channels.",
+  "ai voce parla": "Yokai says an announcement out loud in a channel.",
+  "utility ai parla": "Yokai says a phrase out loud in this channel."
  },
  "parametri": {},
  "menu": {

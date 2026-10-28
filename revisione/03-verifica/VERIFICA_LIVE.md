@@ -1294,3 +1294,7 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 7. `/utility report` con e senza `categoria`: il messaggio allo staff ha «Etichetta»; il menu cambia la categoria solo allo staff.
 8. `/ai staff incidente`, `/ai staff regola testo:niente link` (poi Attiva e controlla `/automod status`), `/ai staff cerca-log`.
 9. **Da attivare dall'owner:** ricerca sul web (`RICERCA_WEB_URL`, `RICERCA_WEB_CHIAVE`): poi `-chiedi domanda cerca:Sì`.
+10. `/ai riepilogo imposta` con canale e orario, poi `/ai riepilogo anteprima`: totali veri dei messaggi, canale più vivace; `/utility ai avviso parola:...` avvisa in DM alla parola chiave.
+11. Ticket: bottone «Assistente» nel ticket aperto; prima risposta automatica solo se accesa nel pannello (`/ai staff prima-risposta`); risposte standard con allegato ancora disponibili dopo un riavvio.
+12. **Voce (da attivare dall'owner):** installare `sherpa-onnx`, mettere il modello Piper «paola» in `VOCE_MODELLO_DIR`, riavviare. Poi `/ai voce imposta attiva:Sì tono:scherzosa`, `/ai voce parla testo:Ciao`: arriva un vero vocale con sotto «Trascrivi» e «Nella mia lingua» (risposta privata, lingua del client). `/utility ai parla`. Tono piccante: solo nei canali NSFW. `/ai voce imposta saluti_canale:#generale` e scrivi «buongiorno» in due: un solo saluto a voce con i nomi.
+13. **Trascrizione (da attivare dall'owner):** `VOCE_TRASCRIZIONE_URL` https e `VOCE_TRASCRIZIONE_ADDESTRA=no`; in iYokai App tasto destro su un vocale, «Trascrivi vocale».
