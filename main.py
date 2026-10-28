@@ -657,7 +657,7 @@ async def main() -> None:
     # cura (scripts/load_simulation.py). Restano applicazioni Discord
     # DISTINTE (5 token separati, 5 bot visti come entità diverse
     # dagli utenti) — solo il processo che le ospita è condiviso.
-    worker_bots = [MusicWorkerBot(worker_index=i) for i in range(1, 6)]
+    worker_bots = [MusicWorkerBot(worker_index=i) for i in range(1, len(config.MUSIC_TOKENS) + 1)]
     fleet = MusicFleet(worker_bots)
     bot.music_fleet = fleet
 

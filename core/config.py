@@ -155,7 +155,7 @@ class Config:
     # repr()/str() dell'intero oggetto.
     YOKAI_BOT_TOKEN: str = field(repr=False)
     YOKAI_CREATOR_TOKEN: str = field(repr=False)
-    MUSIC_TOKENS: list[str] = field(repr=False)  # le 5 istanze music, in ordine
+    MUSIC_TOKENS: list[str] = field(repr=False)  # istanze music (da 5 a 20), in ordine
 
     # --- Discord: ID di controllo -----------------------------------
     OWNER_ID: int
@@ -355,6 +355,25 @@ class Config:
         return not self.is_production
 
 
+MUSIC_WORKER_MIN = 5
+MUSIC_WORKER_MAX = 20
+
+
+def _leggi_token_music() -> list[str]:
+    """
+    Token delle istanze music: 1..5 obbligatori, 6..20 facoltativi.
+    Si legge MUSIC_TOKEN_6, 7, ... finché ce n'è uno; al primo vuoto
+    ci si ferma (niente buchi). Tetto: MUSIC_WORKER_MAX.
+    """
+    token = [_require(f"MUSIC_TOKEN_{i}") for i in range(1, MUSIC_WORKER_MIN + 1)]
+    for i in range(MUSIC_WORKER_MIN + 1, MUSIC_WORKER_MAX + 1):
+        valore = os.getenv(f"MUSIC_TOKEN_{i}", "").strip()
+        if not valore:
+            break
+        token.append(valore)
+    return token
+
+
 def _load_config() -> Config:
     """
     Costruisce la configurazione leggendo e validando l'ambiente.
@@ -365,9 +384,7 @@ def _load_config() -> Config:
     # I 5 token music sono tutti obbligatori: se ne manca anche solo
     # uno, meglio saperlo subito che scoprirlo quando la quinta
     # istanza music non parte in un momento a caso.
-    music_tokens = [
-        _require(f"MUSIC_TOKEN_{i}") for i in range(1, 6)
-    ]
+    music_tokens = _leggi_token_music()
 
     # Letto PRIMA del resto: ENABLE_EVAL (SEC-13/D7) e
     # PREMIUM_ALPHA_UNLOCK_ALL (#41) ne calcolano il default — entrambi

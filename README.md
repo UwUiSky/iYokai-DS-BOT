@@ -154,7 +154,7 @@ modello commentato è [`.env.example`](.env.example).
 
 | Gruppo | Variabili |
 |---|---|
-| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5`, `NSFW_TOKEN` (facoltativo: vuoto = niente istanza NSFW), `YOKAI_APP_TOKEN` (facoltativo: vuoto = niente iYokai App), `YOKAI_MOD_TOKEN` (facoltativo, vedi sotto) |
+| Token dei bot | `YOKAI_BOT_TOKEN`, `YOKAI_CREATOR_TOKEN`, `MUSIC_TOKEN_1`…`5` (obbligatori; `MUSIC_TOKEN_6`…`20` facoltativi), `NSFW_TOKEN` (facoltativo: vuoto = niente istanza NSFW), `YOKAI_APP_TOKEN` (facoltativo: vuoto = niente iYokai App), `YOKAI_MOD_TOKEN` (facoltativo, vedi sotto) |
 | Identità | `OWNER_ID`, `MAIN_GUILD_ID` |
 | Ambiente | `ENVIRONMENT` (`development` o `production`, obbligatoria), `LOG_LEVEL` |
 | Database | `DATABASE_URL`, `DB_POOL_MIN`, `DB_POOL_MAX` |

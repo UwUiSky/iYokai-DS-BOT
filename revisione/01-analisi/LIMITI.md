@@ -320,6 +320,7 @@ Ogni `LIM-n` è assegnato a una fase in
 | LIM-55 | `Guild.filesize_limit` di discord.py; transcript e esportazioni | 10 MiB per la libreria | Tutti i file generati vanno tenuti sotto 10 MiB (o divisi). | 🔴 |
 | LIM-56 | `cogs/moderation/clear.py` (docstring), `core/backup_reminder_logic.py:23` | testi superati | Parlano di "intent spento" e di "10 server per i bot". | 🔴 |
 | LIM-57 | albero comandi | 100 comandi; 25 per gruppo | 97 su 100 e `/owner` 25 su 25: il 4° comando nuovo fa sparire in silenzio i comandi dell'ultimo cog caricato. | 🔴 |
+| LIM-58 | `core/config.py` (`MUSIC_WORKER_MAX`), `core/music_fleet.py`, `main.py` | istanze musicali | Le istanze sono 5 (obbligatorie) più `MUSIC_TOKEN_6…20` facoltativi: **tetto 20**, lettura senza buchi (si ferma al primo vuoto). Ogni istanza è un'app Discord e un nodo Lavalink in più nello stesso processo (RAM e CPU della VM). Il messaggio «istanze esaurite» elenca al massimo 8 link d'invito (limite 2000 caratteri). | 🟢 |
 
 ### 3.6 Segnalati dai controlli e già sistemati
 

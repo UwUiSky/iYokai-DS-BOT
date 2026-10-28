@@ -20,7 +20,7 @@ from datetime import datetime
 
 import asyncpg
 
-from core.music_fleet_logic import find_free_worker
+from core.music_fleet_logic import TOTAL_WORKERS, find_free_worker
 
 # Chiave del lock che serializza le assegnazioni di worker (tra processi e task).
 _LOCK_ASSEGNAZIONE = 7_060_001
@@ -57,7 +57,7 @@ class MusicSessionRepository:
         return self._pool_provider()
 
     async def assign_free_worker(
-        self, guild_id: int, channel_id: int, esclusi: set[int]
+        self, guild_id: int, channel_id: int, esclusi: set[int], total_workers: int = TOTAL_WORKERS
     ) -> int | None:
         """
         Assegnazione ATOMICA (M 8.6): sotto un advisory lock di transazione legge i
@@ -77,7 +77,7 @@ class MusicSessionRepository:
                     return esistente
                 righe = await conn.fetch("SELECT DISTINCT worker_index FROM music_sessions")
                 occupati = {r["worker_index"] for r in righe}
-                libero = find_free_worker(occupati | set(esclusi))
+                libero = find_free_worker(occupati | set(esclusi), total_workers)
                 if libero is None:
                     return None
                 await conn.execute(

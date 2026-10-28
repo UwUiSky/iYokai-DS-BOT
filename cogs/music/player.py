@@ -62,7 +62,6 @@ from core.config import config
 from core.database import db
 from core.main_radio_logic import RadioTrackInfo, compute_current_position, next_track_index
 from core.music_fleet import MusicFleet, handle_worker_voice_update
-from core.music_fleet_logic import TOTAL_WORKERS
 from core.music_logic import (
     EMBED_DESCRIPTION_LIMIT,
     MAX_PLAYLIST_TRACKS,
@@ -337,14 +336,14 @@ class MusicCog(CogConGruppi, commands.Cog):
             if è_admin:
                 link = "\n".join(
                     f"- Istanza {i}: {fleet.build_invite_url(i, guild_id)}"
-                    for i in sorted(non_presenti)
+                    for i in sorted(non_presenti)[:8]  # tetto: il messaggio resta sotto i 2000 caratteri
                 )
                 return (
                     "Nessuna istanza musicale libera in questo server in questo "
                     f"momento — questo server non ha ancora invitato tutte le "
-                    f"{TOTAL_WORKERS} istanze disponibili. Puoi invitarne altre:\n"
+                    f"{fleet.total_workers} istanze disponibili. Puoi invitarne altre:\n"
                     f"{link}\n"
-                    "Se in futuro vi servissero più di 5 istanze contemporanee, "
+                    f"Se in futuro vi servissero più di {fleet.total_workers} istanze contemporanee, "
                     "apri un ticket nel server ufficiale iYokai per richiedere "
                     "l'estensione del limite."
                 )
@@ -356,7 +355,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         if è_admin:
             return (
-                f"Tutte le {TOTAL_WORKERS} istanze musicali di questo server sono "
+                f"Tutte le {fleet.total_workers} istanze musicali di questo server sono "
                 "al momento occupate su altri server. Se capita spesso, apri un "
                 "ticket nel server ufficiale iYokai per richiedere un'estensione "
                 "del limite di istanze."

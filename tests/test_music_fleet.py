@@ -150,7 +150,7 @@ def test_get_worker_bot_indice_1_based():
 
 def test_costruttore_rifiuta_un_numero_sbagliato_di_worker():
     with pytest.raises(ValueError):
-        MusicFleet([_FakeWorkerBot(1), _FakeWorkerBot(2)])  # solo 2, ne servono 5
+        MusicFleet([_FakeWorkerBot(1), _FakeWorkerBot(2)])  # solo 2, ne servono almeno 5
 
 
 # ----------------------------------------------------------------------
