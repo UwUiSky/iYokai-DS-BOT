@@ -52,6 +52,36 @@ def test_trigger_corrisponde(trigger, modo, messaggio, atteso):
     assert trigger_corrisponde(trigger, modo, messaggio) is atteso
 
 
+@pytest.mark.parametrize(
+    "trigger, modo, messaggio, atteso",
+    [
+        ("buon* giorno", "parziale", "ehi buongiornissimo giorno!", True),
+        ("buon* giorno", "parziale", "ehi buon giornata", False),
+        ("buon* giorno", "parziale", "ehi buonissimo giorno!", True),
+        ("a*b*c", "parziale", "axxbyyc", True),
+        ("a*b*c", "parziale", "axxb yyc", False),  # il jolly non passa gli spazi
+        ("a*c", "parziale", "abcd abc", True),  # la seconda parola va bene
+        ("ciao*", "esatta", "ciaone", True),
+        ("*ne", "esatta", "ciao ne", False),
+    ],
+)
+def test_jolly_casi_limite(trigger, modo, messaggio, atteso):
+    assert trigger_corrisponde(trigger, modo, messaggio) is atteso
+
+
+def test_jolly_non_blocca_il_bot_con_un_messaggio_lungo():
+    """Cinque jolly e un messaggio lungo che non corrisponde: deve finire subito (niente ReDoS)."""
+    import time
+
+    inizio = time.monotonic()
+    assert trigger_corrisponde("a*a*a*a*a*a", "parziale", "a" * 120 + "b") is False
+    assert trigger_corrisponde("a*a*a*a*a*a", "esatta", "a" * 120 + "b") is False
+    assert time.monotonic() - inizio < 1.0
+    assert trigger_corrisponde("a*a*a*a*a*a", "parziale", ("a." * 2000) + "b") is True
+    assert trigger_corrisponde("a*a*a*a*a*b", "parziale", ("a" * 4000) + "c") is False
+    assert time.monotonic() - inizio < 1.0
+
+
 def _r(i, trigger, modo="parziale", canale=None, ruolo=None):
     return SimpleNamespace(id=i, trigger=trigger, match_mode=modo, channel_id=canale, role_id=ruolo,
                            response="r", ping_ruoli=False)

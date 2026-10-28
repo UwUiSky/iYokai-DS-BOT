@@ -34,10 +34,48 @@ def trigger_corrisponde(trigger: str, modo: str, messaggio: str) -> bool:
         return False
     if not jolly_validi(t):
         return False
-    corpo = r"\S*".join(re.escape(pezzo) for pezzo in t.split("*"))
+    pezzi = t.split("*")
     if modo == "esatta":
-        return re.fullmatch(corpo, m) is not None
-    return re.search(rf"(?<!\w){corpo}(?!\w)", m) is not None
+        return m.startswith(pezzi[0]) and _da_qui(pezzi, m, 0, True)
+    i = m.find(pezzi[0])
+    while i >= 0:
+        if (i == 0 or _PAROLA.match(m, i - 1) is None) and _da_qui(pezzi, m, i, False):
+            return True
+        if i >= len(m):
+            break
+        i = m.find(pezzi[0], i + 1)
+    return False
+
+
+_SPAZIO = re.compile(r"\s")
+_PAROLA = re.compile(r"\w")
+
+
+def _primo_spazio(m: str, da: int) -> int:
+    trovato = _SPAZIO.search(m, da)
+    return trovato.start() if trovato else len(m)
+
+
+def _da_qui(pezzi: list[str], m: str, inizio: int, esatta: bool) -> bool:
+    """
+    I pezzi del trigger dalla posizione `inizio` (il primo c'è già). Ogni jolly è un tratto senza
+    spazi. Si prende sempre il pezzo più a sinistra: niente regex con jolly annidati, che con un
+    messaggio lungo bloccherebbero il bot (tempo esponenziale).
+    """
+    pos = inizio + len(pezzi[0])
+    if len(pezzi) == 1:
+        return pos == len(m) if esatta else (pos == len(m) or _PAROLA.match(m, pos) is None)
+    for pezzo in pezzi[1:-1]:
+        j = m.find(pezzo, pos)
+        if j < 0 or j > _primo_spazio(m, pos):
+            return False
+        pos = j + len(pezzo)
+    ultimo, limite = pezzi[-1], _primo_spazio(m, pos)
+    if esatta:
+        j = len(m) - len(ultimo)
+        return pos <= j <= limite and m.endswith(ultimo)
+    trovato = re.compile(re.escape(ultimo) + r"(?!\w)").search(m, pos)
+    return trovato is not None and trovato.start() <= limite
 
 
 def scegli_risposta(regole: Iterable, messaggio: str, canale_id: int, ruoli_autore: set[int]):
