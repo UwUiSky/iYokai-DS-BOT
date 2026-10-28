@@ -2,7 +2,8 @@
 cogs/moderation/rischio_staff.py
 ================================
 /mod rischio: il punteggio di rischio di un membro (casi, trappola anti-spam, età dell'account,
-doppi della verifica web). /mod carico: quanto lavoro ha fatto ogni persona dello staff.
+doppi della verifica web). /mod carico: quanto lavoro ha fatto ogni persona dello staff, con tempi di risposta, ticket riaperti,
+sanzioni annullate in appello, voto dei ticket e una proposta di turni. Solo per gli amministratori.
 Servono a chi decide: nessuna azione parte da qui. Risposte private.
 Funzioni coperte: SPEC §23.17 (NF-41, D50)
 Dipende da: core/staff_rischio_logic.py, core/repositories/staff_carico_repo.py
@@ -17,10 +18,11 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_CASE_SYSTEM, ensure_module_enabled
+from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium import requires_module
 from core.repositories.staff_carico_repo import staff_carico_repo
-from core.staff_rischio_logic import SegnaliRischio, calcola_rischio, testo_carico, testo_rischio
+from core.staff_rischio_logic import SegnaliRischio, calcola_rischio, proponi_turni, testo_carico, testo_rischio
 
 GIORNI_CARICO_MAX = 90
 
@@ -69,10 +71,11 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "mod",
         nome="carico",
-        descrizione="Quanto lavoro ha fatto ogni persona dello staff (casi, appelli, ticket).",
+        descrizione="Carico dello staff e turni proposti. Solo amministratori, mai pubblico.",
     )
     @app_commands.describe(giorni=f"Quanti giorni guardare, da 1 a {GIORNI_CARICO_MAX} (di base 30)")
     @requires_module(MODULE_CASE_SYSTEM)
+    @richiedi(Livello.ADMIN)
     async def carico(
         self, interaction: discord.Interaction, giorni: app_commands.Range[int, 1, GIORNI_CARICO_MAX] = 30
     ) -> None:
@@ -80,9 +83,12 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
             return
         escludi = (self.bot.user.id,) if self.bot.user is not None else ()
         righe = await staff_carico_repo.carico(interaction.guild.id, giorni, escludi)
+        ore = await staff_carico_repo.ore_attivita(interaction.guild.id, giorni, escludi)
         embed = discord.Embed(
             title="Carico dello staff", description=testo_carico(righe, giorni)[:4000], color=discord.Color.blurple()
         )
+        embed.add_field(name="Turni", value=proponi_turni(ore)[:1000], inline=False)
+        embed.set_footer(text="Lo vedono solo gli amministratori. Non è una classifica.")
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )

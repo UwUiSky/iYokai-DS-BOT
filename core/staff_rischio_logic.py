@@ -84,10 +84,40 @@ class CaricoStaff:
     casi: int
     appelli: int
     ticket: int
+    riaperti: int = 0  # ticket presi in carico da lui e poi riaperti
+    annullati: int = 0  # sanzioni sue accettate in appello (cioè annullate)
+    risposta_sec: float | None = None  # tempo medio alla prima risposta nei suoi ticket
+    voto_medio: float | None = None  # soddisfazione media (1-5) dei suoi ticket votati
 
     @property
     def totale(self) -> int:
         return self.casi + self.appelli + self.ticket
+
+
+def durata_breve(secondi: float) -> str:
+    """«45 s», «12 min», «3 h 20», «2 g»."""
+    s = int(secondi)
+    if s < 60:
+        return f"{s} s"
+    if s < 3600:
+        return f"{s // 60} min"
+    if s < 86400:
+        ore, resto = divmod(s // 60, 60)
+        return f"{ore} h {resto:02d}" if resto else f"{ore} h"
+    return f"{s // 86400} g"
+
+
+def _dettagli_riga(r: CaricoStaff) -> str:
+    pezzi = [f"casi {r.casi}", f"appelli {r.appelli}", f"ticket {r.ticket}"]
+    if r.risposta_sec is not None:
+        pezzi.append(f"risposta {durata_breve(r.risposta_sec)}")
+    if r.riaperti:
+        pezzi.append(f"riaperti {r.riaperti}")
+    if r.annullati:
+        pezzi.append(f"annullate in appello {r.annullati}")
+    if r.voto_medio is not None:
+        pezzi.append(f"voto {r.voto_medio:.1f}/5")
+    return ", ".join(pezzi)
 
 
 def testo_carico(righe: list[CaricoStaff], giorni: int, massimo_righe: int = 20) -> str:
@@ -99,9 +129,35 @@ def testo_carico(righe: list[CaricoStaff], giorni: int, massimo_righe: int = 20)
     testo = [f"Ultimi {giorni} giorni: {totale} attività."]
     for r in ordinate[:massimo_righe]:
         quota = round(100 * r.totale / totale)
-        testo.append(f"<@{r.staff_id}> · {r.totale} ({quota}%) — casi {r.casi}, appelli {r.appelli}, ticket {r.ticket}")
+        testo.append(f"<@{r.staff_id}> · {r.totale} ({quota}%) — {_dettagli_riga(r)}")
     if len(ordinate) > massimo_righe:
         testo.append(f"…e altre {len(ordinate) - massimo_righe} persone.")
     if len(ordinate) >= 3 and 100 * ordinate[0].totale / totale >= 60:
         testo.append("⚠️ Più della metà del lavoro è di una persona sola.")
     return "\n".join(testo)
+
+
+# ---------------------------------------------------------------- proposta di turni
+FASCE_TURNO = ((0, 6), (6, 12), (12, 18), (18, 24))  # ore UTC
+PERSONE_PER_TURNO = 2
+
+
+def proponi_turni(ore_attivita: dict[int, list[int]]) -> str:
+    """
+    Una proposta di turni dalle ore in cui ognuno ha già lavorato: per ogni fascia di 6 ore (UTC) le
+    due persone più attive, e l'avviso se nessuno la copre. `ore_attivita`: staff -> 24 conteggi.
+    È un suggerimento sulle abitudini, non un obbligo.
+    """
+    if not ore_attivita:
+        return "Servono alcuni giorni di attività dello staff per proporre dei turni."
+    righe = ["**Turni proposti** (ore UTC, dalle abitudini di chi c'è già)"]
+    for inizio, fine in FASCE_TURNO:
+        per_persona = {
+            staff: sum(ore[inizio:fine]) for staff, ore in ore_attivita.items() if sum(ore[inizio:fine]) > 0
+        }
+        scelti = sorted(per_persona, key=lambda st: (-per_persona[st], st))[:PERSONE_PER_TURNO]
+        fascia = f"{inizio:02d}-{fine:02d}"
+        righe.append(
+            f"{fascia}: " + (", ".join(f"<@{st}>" for st in scelti) if scelti else "⚠️ scoperta, nessuno ha lavorato a quest'ora")
+        )
+    return "\n".join(righe)

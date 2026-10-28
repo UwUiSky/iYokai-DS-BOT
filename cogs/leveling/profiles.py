@@ -22,6 +22,7 @@ from cogs.leveling.leveling import _comando_rifiutato
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.profile_logic import (
     CATALOGO,
+    IN_VENDITA,
     COLORE_DI_BASE,
     MAX_BIO,
     TIPO_BADGE,
@@ -40,10 +41,13 @@ logger = logging.getLogger("iyokai.profiles")
 
 _SG_COLLEZIONE = ("collezione", "Collezione: badge e sfondi per il tuo profilo, da comprare con le coin.")
 
-_SCELTE_OGGETTO = [
-    app_commands.Choice(name=f"{o.emoji or '🎨'} {o.nome} ({o.prezzo} coin)", value=o.id)
-    for o in CATALOGO
-]
+def _nome_scelta(o) -> str:
+    return f"{o.emoji or '🎨'} {o.nome} ({'premio' if o.premio else f'{o.prezzo} coin'})"
+
+
+# Da mettere: tutto il catalogo. Da comprare: solo ciò che è in vendita (i premi non si comprano).
+_SCELTE_OGGETTO = [app_commands.Choice(name=_nome_scelta(o), value=o.id) for o in CATALOGO]
+_SCELTE_ACQUISTO = [app_commands.Choice(name=_nome_scelta(o), value=o.id) for o in IN_VENDITA]
 _SCELTE_TIPO = [
     app_commands.Choice(name="Badge", value=TIPO_BADGE),
     app_commands.Choice(name="Sfondo", value=TIPO_SFONDO),
@@ -188,7 +192,7 @@ class ProfilesCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(oggetto_scelto="Cosa comprare")
     @app_commands.rename(oggetto_scelto="oggetto")
-    @app_commands.choices(oggetto_scelto=_SCELTE_OGGETTO)
+    @app_commands.choices(oggetto_scelto=_SCELTE_ACQUISTO)
     async def collezione_compra(
         self, interaction: discord.Interaction, oggetto_scelto: app_commands.Choice[str]
     ) -> None:

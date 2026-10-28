@@ -62,6 +62,7 @@ SETTINGS_SCHEMA = {
     "log_channel_id": "id",
     "log_webhook": "bool",
     "progressi_attivi": "bool",
+    "progressi_obiettivo_server": "int_50_100000",
     "mod_log_channel_id": "id",
     "report_channel_id": "id",
     "custom_command_requests_channel_id": "id",
@@ -207,6 +208,7 @@ CONTROLLI_PER_TIPO = {
     "int_1_40320": (_intero_tra(1, 40320), "un intero tra 1 e 40320"),
     "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),
+    "int_50_100000": (_intero_tra(50, 100_000), "un intero tra 50 e 100000"),
     "punizione_trappola": (lambda valore: valore in PUNIZIONI_TRAPPOLA, ", ".join(PUNIZIONI_TRAPPOLA)),
     "durata_timeout": (_intero_tra(MIN_TIMEOUT, MAX_TIMEOUT), "secondi tra 60 e 2419200 (28 giorni)"),
     "lista_parole": (

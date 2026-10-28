@@ -13,6 +13,8 @@ import pytest
 import cogs.moderation.rischio_staff as modulo
 from core.database import db
 from core.repositories.moderation_repo import ModerationRepository
+from core.command_access import Livello
+from core.repositories.ticket_repo import TicketRepository
 from core.repositories.staff_carico_repo import StaffCaricoRepository
 from core.staff_rischio_logic import (
     FASCIA_ALTA,
@@ -21,6 +23,8 @@ from core.staff_rischio_logic import (
     CaricoStaff,
     SegnaliRischio,
     calcola_rischio,
+    durata_breve,
+    proponi_turni,
     testo_carico as scrivi_carico,
     testo_rischio as scrivi_rischio,
 )
@@ -70,6 +74,31 @@ def test_carico_con_quote_e_avviso_se_uno_solo_fa_tutto():
     uguali = scrivi_carico([CaricoStaff(i, 10, 0, 0) for i in range(1, 5)], 7)
     assert "Più della metà" not in uguali
     assert "…e altre 2" in scrivi_carico([CaricoStaff(i, 1, 0, 0) for i in range(1, 6)], 7, massimo_righe=3)
+
+
+def test_la_riga_del_carico_mostra_risposta_riaperti_annullati_e_voto():
+    testo = scrivi_carico([CaricoStaff(1, 2, 0, 3, riaperti=1, annullati=2, risposta_sec=720, voto_medio=4.5)], 30)
+    assert "risposta 12 min" in testo and "riaperti 1" in testo
+    assert "annullate in appello 2" in testo and "voto 4.5/5" in testo
+    semplice = scrivi_carico([CaricoStaff(1, 2, 0, 3)], 30)
+    assert "risposta" not in semplice and "voto" not in semplice  # niente voci vuote
+
+
+def test_durate_brevi():
+    assert [durata_breve(x) for x in (30, 720, 3600, 12000, 200000)] == ["30 s", "12 min", "1 h", "3 h 20", "2 g"]
+
+
+def test_turni_dalle_ore_di_lavoro_con_avviso_sulle_fasce_scoperte():
+    mattina = [0] * 24
+    mattina[7], mattina[8] = 5, 5
+    sera = [0] * 24
+    sera[19] = 4
+    sera[8] = 1
+    testo = proponi_turni({1: mattina, 2: sera})
+    assert "06-12: <@1>, <@2>" in testo  # per attività: prima chi ha fatto di più
+    assert "18-24: <@2>" in testo
+    assert "00-06: ⚠️ scoperta" in testo and "12-18: ⚠️ scoperta" in testo
+    assert "Servono alcuni giorni" in proponi_turni({})
 
 
 # ------------------------------------------------------------------ letture vere
@@ -135,6 +164,48 @@ async def test_carico_conta_casi_appelli_e_ticket_nel_periodo_senza_il_bot(repo,
     assert STAFF_C in {r.staff_id for r in await repo.carico(SERVER, 90, escludi=(BOT,))}
 
 
+@pytest.mark.asyncio
+async def test_carico_dettagliato_risposta_riaperti_annullati_voto_e_ore(repo, casi, clean_db):
+    appello_caso = await casi.create_case(SERVER, UTENTE, STAFF_A, "ban", "x")
+    await casi.create_case(SERVER, UTENTE, STAFF_A, "warn", "y")
+    await clean_db.execute(
+        "INSERT INTO ban_appelli (guild_id, user_id, case_number, testo, stato, deciso_da, deciso_il) "
+        "VALUES ($1, $2, $3, 'x', 'accettato', $4, now()), ($1, $2, $3, 'y', 'rifiutato', $4, now())",
+        SERVER, UTENTE, appello_caso, STAFF_B,
+    )
+    await clean_db.execute(
+        "INSERT INTO tickets (guild_id, ticket_number, channel_id, user_id, claimed_by, created_at,"
+        " first_response_at, rating, riaperto_volte) VALUES"
+        " ($1, 1, 5001, $2, $3, now() - interval '2 hours', now() - interval '1 hour 40 minutes', 5, 1),"
+        " ($1, 2, 5002, $2, $3, now() - interval '2 hours', now() - interval '1 hour 20 minutes', 4, 0),"
+        " ($1, 3, 5003, $2, $3, now(), NULL, NULL, 2)",
+        SERVER, UTENTE, STAFF_A,
+    )
+    righe = {r.staff_id: r for r in await repo.carico(SERVER, 30)}
+    a, b = righe[STAFF_A], righe[STAFF_B]
+    assert a.annullati == 1 and b.annullati == 0  # chi ha dato il ban, non chi ha deciso l'appello
+    assert a.riaperti == 3 and a.voto_medio == 4.5 and b.voto_medio is None
+    assert 29 * 60 < a.risposta_sec < 31 * 60  # media di 20 e 40 minuti
+    ore = await repo.ore_attivita(SERVER, 30)
+    assert sum(ore[STAFF_A]) == 2 + 2 and sum(ore[STAFF_B]) == 2  # casi + prime risposte; appelli decisi
+    assert len(ore[STAFF_A]) == 24
+
+
+@pytest.mark.asyncio
+async def test_riaprire_un_ticket_lo_conta(clean_db):
+    ticket = TicketRepository(pool_provider=lambda: clean_db)
+    await clean_db.execute(
+        "INSERT INTO tickets (guild_id, ticket_number, channel_id, user_id, status) VALUES ($1, 1, 5009, $2, 'closed')",
+        SERVER, UTENTE,
+    )
+    assert await ticket.riapri(5009)
+    assert not await ticket.riapri(5009)  # già aperto: non si conta due volte
+    assert await clean_db.fetchval("SELECT riaperto_volte FROM tickets WHERE channel_id = 5009") == 1
+    await clean_db.execute("UPDATE tickets SET status = 'closed' WHERE channel_id = 5009")
+    assert await ticket.riapri_dopo_errore(5009)  # annullare una chiusura non è una riapertura
+    assert await clean_db.fetchval("SELECT riaperto_volte FROM tickets WHERE channel_id = 5009") == 1
+
+
 # ------------------------------------------------------------------ comandi
 @pytest.fixture
 def cog(monkeypatch, clean_db, repo):
@@ -173,3 +244,24 @@ async def test_il_comando_carico_e_il_modulo_spento(cog, casi):
     i2 = fake_interaction(guild=fake_guild(SERVER, owner_id=1), user=fake_member(STAFF_A))
     await cog.carico.callback(cog, i2, 30)
     assert f"<@{STAFF_A}>" in i2.response.send_message.await_args.kwargs["embed"].description
+
+
+def test_il_carico_e_solo_per_gli_amministratori(cog):
+    def livelli(comando):
+        return [getattr(c, "livello", None) for c in getattr(comando.callback, "__discord_app_commands_checks__", [])]
+
+    assert Livello.ADMIN in livelli(cog.carico)
+    assert Livello.ADMIN not in livelli(cog.rischio)
+
+
+@pytest.mark.asyncio
+async def test_il_carico_risponde_in_privato_con_i_turni_e_senza_classifica(cog, casi):
+    await db.set_module_active_for_guild(SERVER, modulo.MODULE_CASE_SYSTEM, True)
+    await casi.create_case(SERVER, UTENTE, STAFF_A, "warn", "a")
+    i = fake_interaction(guild=fake_guild(SERVER, owner_id=1), user=fake_member(STAFF_A))
+    await cog.carico.callback(cog, i, 30)
+    argomenti = i.response.send_message.await_args.kwargs
+    assert argomenti["ephemeral"] is True
+    embed = argomenti["embed"]
+    assert "Turni" in [f.name for f in embed.fields]
+    assert "classifica" in embed.footer.text and "amministratori" in embed.footer.text
