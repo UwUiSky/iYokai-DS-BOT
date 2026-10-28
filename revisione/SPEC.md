@@ -455,7 +455,6 @@ Totale voci: **514**.
 ## §7 SECURITY SUITE — presente, con bug aperti su anti-raid, anti-nuke e spam-trap (fase F1)
 
   → **Stato 27/10 (r10, AMD-070):** `/security escalation enable moltiplicatore: tetto_strike:` il timeout oltre l'ultimo gradino dura base x moltiplicatore^ricadute, entro 28 giorni (migrazione 0281). `tests/test_escalation_crescita.py`.
-- `[~]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
 - `[x]` 7.1 Anti-Raid — `cogs/security/anti_raid.py`, modulo CANDIDATO
   PREMIUM (come Spam Trap). Logica di valutazione pura in
   `core/security_logic.py` (`evaluate_join`), finestra mobile in
