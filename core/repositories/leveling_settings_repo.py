@@ -28,6 +28,7 @@ from core.leveling_logic import (
     TIPI_REGOLA_CON_FATTORE,
     ConfigLivelli,
     LevelingSettings,
+    nome_moneta_valido,
 )
 
 # Quanto resta in memoria una configurazione letta: il listener dei
@@ -102,6 +103,8 @@ class LevelingSettingsRepository:
                     raise ValueError(f"{nome} deve stare tra {minimo} e {massimo}.")
             if nome in _MODI and valore not in _MODI[nome]:
                 raise ValueError(f"Valore non valido per {nome}: {valore}")
+            if nome == "currency_name":
+                campi[nome] = nome_moneta_valido(valore)
 
         if "work_min" in campi or "work_max" in campi:
             attuale = (await self.get_config(guild_id)).impostazioni
@@ -109,6 +112,13 @@ class LevelingSettingsRepository:
             massimo = campi.get("work_max", attuale.work_max)
             if minimo > massimo:
                 raise ValueError("Il minimo del lavoro non può superare il massimo.")
+
+        if "pay_min" in campi or "pay_max" in campi:
+            attuale = (await self.get_config(guild_id)).impostazioni
+            minimo = campi.get("pay_min", attuale.pay_min)
+            massimo = campi.get("pay_max", attuale.pay_max)
+            if minimo and massimo and minimo > massimo:
+                raise ValueError("Il minimo di /level pay non può superare il massimo.")
 
         if campi.get("levelup_mode") == "canale_scelto" and not campi.get("levelup_channel_id"):
             attuale = (await self.get_config(guild_id)).impostazioni.levelup_channel_id

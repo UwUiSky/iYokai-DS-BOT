@@ -1397,31 +1397,33 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
-- `[~]` 15.1 XP e livelli (testuale + vocale)
-  → **Stato 04/10:** anche i messaggi di sistema danno XP (LC-6).
+- `[x]` 15.1 XP e livelli (testuale + vocale)
+  → **Stato 27/10 (r10):** danno XP solo i messaggi normali e le risposte (`TIPI_DI_MESSAGGIO_CON_XP`); boost, pin e ingressi no. Prova: `tests/test_leveling_messaggi_di_sistema.py`.
 - `[x]` 15.2 Anti-farm XP vocale (self_deaf, soli nel canale, AFK, 2h
   stesso canale, cap giornaliero)
-- `[~]` 15.3 Economy: daily, work, pay, balance
-  → **Stato 04/10:** `/daily` e `/work` riscuotibili due volte (BUG-14).
-- `[~]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
+- `[x]` 15.3 Economy: daily, work, pay, balance
+  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, minimo, tetto e tassa su `/level pay` (ECO-001, ECO-015, 0341, 0342): `/level impostazioni xp nome_moneta|tassa_pay|minimo_pay|massimo_pay`; la tassa (per eccesso, così i pagamenti piccoli non la evitano) va alla cassa nella stessa transazione.
+- `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
   → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).
   → **Stato 13/10:** sistemati (9.2, 9.12). Aggiunti scorte limitate, ruolo richiesto per comprare,
   `/economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
-  migrazioni 0094 e 0095. Resta fuori: ruolo comprato che scade, categorie, ordine, oggetti «a elenco» (ECO-063, 065..068).
+  migrazioni 0094 e 0095.
+  → **Stato 27/10 (r10, 0340):** fatti anche ECO-063 (ruolo che scade: `durata_ruolo_ore`, giro ogni 5 minuti nel cog, dopo la scadenza si può ricomprare), ECO-065 (`posizione`), ECO-066 (`categoria`, filtro in `/level shop list`), ECO-067 (oggetto «a elenco»: file `.txt` con una riga per acquisto, la riga la vede solo chi compra e arriva anche in DM; un file vuoto, con troppe righe o righe troppo lunghe non crea l'oggetto, torna libera se l'acquisto è rimborsato) ed ECO-068 (`risposta` con `{utente}` e `{oggetto}`). Prove: `tests/test_shop_catalogo_r10.py`.
   → **Stato 14/10 (giro correzioni):** la conferma vale per il prezzo mostrato (se cambia, `buy_item` con
   `prezzo_atteso` rifiuta senza addebito; il prezzo si legge con la riga bloccata); `item_id` va da 1 a 2147483647;
   il nome di soli spazi è rifiutato.
-- `[~]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
+- `[x]` 15.5 Giveaway (con requisiti di ruolo/livello) — `/giveaway`,
   pulsante persistente "Partecipa" (sopravvive a un riavvio del bot,
   registrato di nuovo per ogni giveaway ancora attivo), requisiti di
   livello E ruolo verificati insieme al momento dell'iscrizione
-  → **Stato 04/10:** in thread e forum i vincitori non vengono avvisati (REVIEW §4); premio oltre 243 caratteri (LIM-18).
+  → **Stato 27/10 (r10):** vincitori avvisati anche in thread, thread archiviati e chat vocali (`test_giveaway_thread_e_forum.py`); premio al massimo 200 caratteri (`MAX_PREMIO_GIVEAWAY`, `test_leveling_limiti.py`).
 - `[x]` 15.6 Drop messages — piccola probabilità (0.5%) per
   messaggio idoneo, pulsante "primo che clicca vince", coin
   accreditati atomicamente
   → **Stato 04/10:** BUG-17 è un probabile falso allarme: va confermato con un test.
 - `[x]` 15.7 Classifica mensile (via `period_key`, senza reset schedulato)
+  → **Stato 27/10 (r10):** anche la classifica della settimana (`/level leaderboard period:Questa settimana`, LIV-058): una riga per settimana ISO in `leveling_activity` (es. `2026-W43`), le settimane di oltre 10 settimane fa si cancellano al decadimento settimanale.
 - `[x]` 15.8 Classifica totale all-time
 - `[x]` 15.9 Top 3 con medaglie, XP e/o coin a scelta
 - `[x]` 15.10 **Classifica Gilde** (mensile + totale) — `/clan
@@ -1450,11 +1452,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   vocale stesso (i canali vocali moderni hanno la propria chat
   integrata), l'unico posto sensato per un task periodico su più
   server
-- `[~]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
+- `[x]` 15.13 Ruoli-premio per livello raggiunto — `/level-roles
   add|remove|list`, cumulativo (ogni ruolo fino al nuovo livello,
   non solo il più alto), agganciato sia a XP testuale sia vocale
-  → **Stato 04/10:** lista oltre 80 righe (LIM-18).
-- `[~]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
+  → **Stato 27/10 (r10):** la lista si sfoglia a pagine (`test_leveling_limiti.py`).
+- `[x]` **15.14 SISTEMA GILDE / CLAN — intera sottosezione**
   → **Stato 15/10:** il tick vocale delle gilde raggruppa letture e scritture per server e per clan (M 9.18, PERF-4): due letture dei clan, una transazione per i tick, tre scritture per clan; una riga del registro di tesoreria per clan a ogni tick invece di una per membro.
   (motore economico di backend calibrato e testato — 10 XP + 4 coin
   a tick/minuto in vocale di gilda (×2 letterale del vocale normale),
@@ -1471,20 +1473,20 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   gilde dello STESSO owner, ANCHE cross-server — un debito di
   documentazione trovato e chiuso: il repository esisteva già da
   prima, non era mai stato collegato a nessun comando)
-  → **Stato 04/10:** vedi le voci sotto.
-  - `[~]` Creazione gilda + categoria privata dedicata — `/clan crea`
+  → **Stato 27/10 (r10):** tutte le voci sotto sono chiuse e provate.
+  - `[x]` Creazione gilda + categoria privata dedicata — `/clan crea`
     valida il tag, crea la categoria Discord (view negata a
     `@everyone`, concessa al fondatore e al bot) PRIMA di scrivere il
     record (se la categoria fallisce non resta un clan senza spazio
     reale), poi `create_clan` con deficit di creazione e finestra di
     grazia di 24h
-    → **Stato 04/10:** nessun `defer` (LIM-25); nome senza limite (LIM-18).
-  - `[~]` Eliminazione automatica se il deficit non è colmato in
+    → **Stato 27/10 (r10):** `defer()` per primo e categoria tolta se il database rifiuta (`test_clan_defer.py`); nome al massimo 64 caratteri (`test_leveling_limiti.py`).
+  - `[x]` Eliminazione automatica se il deficit non è colmato in
     tempo — `core/guild_clan_expiry_worker.py` (nuovo, tick orario):
     elimina canali + categoria Discord (se esistono ancora) e poi il
     record, per i clan non ufficializzati la cui finestra è scaduta
-    → **Stato 04/10:** cancella anche i clan finanziati con un trasferimento (BUG-15).
-  - `[~]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
+    → **Stato 27/10 (r10):** un trasferimento che copre il deficit rende la gilda ufficiale (`test_clan_finanziato_con_trasferimento.py`).
+  - `[x]` Ruoli Capo Clan / Admin Clan — **pari tra gilde diverse**
     (`core/guild_clan_role_service.py`, nuovo): un ruolo Discord
     condiviso "Capo Clan" e uno "Admin Clan" per TUTTO il server,
     riusati da ogni clan (Discord non permette due ruoli alla stessa
@@ -1495,22 +1497,22 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     (Capo Clan al fondatore), `/clan invita` (accesso base),
     `/clan promuovi` (Admin Clan + overwrite estesi o declassamento),
     `/clan espelli` e `/clan sciogli` (rimozione completa)
-    → **Stato 04/10:** il ruolo Co-Owner non si può assegnare (REVIEW §11). SEC-17 corretto il 04/10.
+    → **Stato 27/10 (r10):** `/clan promuovi` assegna anche Co-Owner, uno per gilda (`test_clan_co_owner.py`). SEC-17 corretto il 04/10.
   - `[x]` Isolamento totale: nessun capo/admin può agire su altre
     gilde — ogni comando di gestione membri recupera SEMPRE la gilda
     del chiamante via `get_member_clan_in_guild` e opera solo sulla
     categoria/membri di quella gilda; un Admin Clan non può espellere
     un altro Admin Clan (serve il Capo), solo il Capo Clan può
     promuovere/retrocedere
-  - `[~]` Comandi di gestione membri: `/clan invita` (Capo/Admin,
+  - `[x]` Comandi di gestione membri: `/clan invita` (Capo/Admin,
     rispetta il tetto `max_members`, rifiuta chi è già in un'altra
     gilda del server), `/clan espelli` (Capo/Admin, il Capo Clan non
     può essere espulso, un Admin non può espellere un altro Admin),
     `/clan promuovi` (solo Capo Clan, ruolo admin/mod/member, rispetta
     i tetti `MAX_ADMINS_PER_CLAN`/`MAX_MODS_PER_CLAN` in
     `guild_clan_logic.py`)
-    → **Stato 04/10:** `/clan invita` aggiunge senza consenso; manca `/clan lascia` (REVIEW §4).
-  - `[~]` Guadagno ×2 XP e coin — vocale: `guild_clan_voice_worker.py`
+    → **Stato 27/10 (r10):** `/clan invita` manda un invito con bottoni, entra solo chi accetta; c'è `/clan lascia` (`test_clan_invito_e_lascia.py`).
+  - `[x]` Guadagno ×2 XP e coin — vocale: `guild_clan_voice_worker.py`
     applica il tick per la presenza vocale (agganciato a
     `clan_voice_activity_repo`), ×2 LETTERALE rispetto al vocale
     normale (`TICK_XP=10`/`TICK_COINS=4` in `core/guild_clan_logic.py`
@@ -1525,8 +1527,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     cooldown 60s, NESSUNA coin (come nel testo normale) e NESSUN
     boost applicato (individuale/di gilda restano scoped al solo tick
     vocale, confermato in Fase 54)
-    → **Stato 04/10:** l'XP vocale di clan non ha anti-farm (REVIEW §4).
-  - `[~]` Tesoreria: **a SENSO UNICO per design** — solo membro ->
+    → **Stato 27/10 (r10):** niente tick da soli, assordati, in AFK o con compagnia tutta muta (`test_guild_clan_voice_worker.py`).
+  - `[x]` Tesoreria: **a SENSO UNICO per design** — solo membro ->
     gilda (`/clan tesoreria dona`, scala il saldo personale e
     accredita la tesoreria, ufficializzando il clan in automatico se
     il deficit viene colmato), MAI gilda -> membro (nessun prelievo
@@ -1539,8 +1541,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     `/assegna-lobby`/`/assegna-winner` — chiarito esplicitamente
     dall'utente in questa sessione, correggendo un fraintendimento di
     una sessione precedente
-    → **Stato 04/10:** lo storico dei movimenti non si legge da nessun comando (REVIEW §12).
-  - `[~]` Trasferimento tesoreria→tesoreria tra due gilde dello
+    → **Stato 27/10 (r10):** `/clan info` mostra gli ultimi cinque movimenti (`test_clan_storico_e_scioglimento.py`).
+  - `[x]` Trasferimento tesoreria→tesoreria tra due gilde dello
     STESSO owner, **ANCHE cross-server** — `core.repositories.
     guild_clan_repo.transfer_between_treasuries` esisteva già da una
     sessione precedente (clan con ID GLOBALE non per server proprio
@@ -1555,8 +1557,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     dall'utente quando il repository fu scritto): senza questo
     comando le coin di una seconda gilda su un altro server
     resterebbero bloccate per sempre lì
-    → **Stato 04/10:** BUG-15; possibile stallo tra due trasferimenti opposti (REVIEW §5).
-  - `[~]` Decadimento mensile 10% sulla tesoreria NON spesa —
+    → **Stato 27/10 (r10):** blocchi sempre nello stesso ordine, nessuno stallo tra trasferimenti opposti (`test_clan_135_scritture_atomiche.py`); vedi anche BUG-15 sopra.
+  - `[x]` Decadimento mensile 10% sulla tesoreria NON spesa —
     `guild_clan_treasury_decay_worker.py`, idempotente per periodo
     (`clans.last_decay_period`), calcolo atomico sotto `FOR UPDATE`,
     deposita il delta nella cassa di server (SPEC.md §15.15). **Bug di
@@ -1570,14 +1572,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     `apply_monthly_decay` ora restituisce `(saldo_prima, saldo_dopo)`,
     entrambi letti sotto lo stesso `FOR UPDATE`, e il worker calcola
     il delta da questa coppia
-    → **Stato 04/10:** scatta entro un'ora dalla creazione (REVIEW §4).
-  - `[~]` Acquisto canali: testuale / vocale / forum — `/clan
+    → **Stato 27/10 (r10):** la gilda decade solo dopo un mese intero (`test_decadimenti_primo_periodo.py`).
+  - `[x]` Acquisto canali: testuale / vocale / forum — `/clan
     compra-canale <tipo> [nome]`, Capo/Admin Clan, crea il canale
     Discord VERO dentro la categoria del clan PRIMA di scalare la
     tesoreria (stesso ordine di `/clan crea` con la categoria — se la
     creazione fallisce non resta una spesa senza contropartita), poi
     `increment_channels_unlocked`
-    → **Stato 04/10:** può dare il canale gratis (BUG-14).
+    → **Stato 27/10 (r10):** costo e sblocco in una sola scrittura condizionata, due comandi insieme addebitano una volta e se Discord non crea il canale la tesoreria torna com'era (`test_doppio_clic_premium_e_canale.py`).
   - `[x]` Costo coin raddoppiato/quadruplo per canale successivo
     (25.000 → 50.000 → 200.000 → 800.000) — applicato da `/clan
     compra-canale` via `next_channel_unlock_cost`
@@ -1613,17 +1615,17 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     scadenza di prima in entrambe (il boost di oggi diventa un super);
     le colonne vecchie restano ma non si usano più. La scheda del clan
     mostra i boost di gilda attivi per tipo.
-  - `[~]` Comandi: `/clan crea|info|membri|classifica|sciogli|
+  - `[x]` Comandi: `/clan crea|info|membri|classifica|sciogli|
     tesoreria dona|tesoreria trasferisci|invita|espelli|promuovi|
     compra-canale|boost individuale|boost gilda` — tutti i comandi
     previsti per §15.14 sono scritti, nessuna voce mancante (la
     tesoreria resta a senso unico per design, vedi sopra)
-    → **Stato 04/10:** manca `/clan lascia`; lo scioglimento lascia i ruoli agli altri admin (REVIEW §12).
-- `[~]` **15.15 Decadimento economico + cassa di server** (scope
+    → **Stato 27/10 (r10):** c'è `/clan lascia`; sciogliere o far scadere la gilda toglie i ruoli a tutti gli ufficiali (`test_clan_storico_e_scioglimento.py`).
+- `[x]` **15.15 Decadimento economico + cassa di server** (scope
   emerso in conversazione con l'utente dopo la stesura iniziale
   dello schema, non presente nell'elenco originale)
-  → **Stato 04/10:** vedi le voci sotto.
-  - `[~]` Decadimento settimanale 10% sui coin PERSONALI di
+  → **Stato 27/10 (r10):** tutte le voci sotto sono chiuse e provate.
+  - `[x]` Decadimento settimanale 10% sui coin PERSONALI di
     QUALUNQUE membro del server (in un clan o no) — logica pura
     (`apply_weekly_personal_decay`, `week_key` in
     `core/leveling_logic.py`: mai negativo, mai sotto 1, sempre
@@ -1633,7 +1635,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     `core/weekly_personal_decay_worker.py`, stesso pattern tick
     orario/idempotente per periodo del worker di tesoreria di clan)
     tutti fatti e testati
-    → **Stato 04/10:** scatta entro un'ora dalla creazione (REVIEW §4).
+    → **Stato 27/10 (r10):** il primo decadimento arriva dopo una settimana intera (`test_decadimenti_primo_periodo.py`).
   - `[x]` Cassa di server: `core/repositories/guild_chest_repo.py`
     (tabelle `guild_chest` + `guild_chest_ledger`), alimentata da
     ENTRAMBI i decadimenti — quello settimanale personale
@@ -1641,7 +1643,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     tesoreria di clan (`guild_clan_treasury_decay_worker`, aggiornato
     per depositare il delta nella cassa del server del clan). Saldo
     e ultimi movimenti consultabili con `/cassa saldo`
-  - `[~]` Uso della cassa: premi per eventi organizzati nel server
+  - `[x]` Uso della cassa: premi per eventi organizzati nel server
     e/o acquisto di mesi di bot premium — lo sblocco premium è
     fatto (`/cassa sblocca-premium`); i premi evento sono fatti con
     due comandi distinti: `/assegna-lobby <importo>` (premio
@@ -1653,8 +1655,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     accredita `importo` coin a un singolo membro scelto), entrambi
     riservati a chi ha `manage_guild` e a spesa dalla cassa di
     server (non dalla tesoreria di un clan)
-    → **Stato 04/10:** `/assegna-lobby` può addebitare due volte (LC-1).
-  - `[~]` Sblocco premium a doppio cancello: **tempo** dal join del
+    → **Stato 27/10 (r10):** `defer()` per primo, addebito e accrediti in una sola transazione (`test_assegna_lobby_tutto_o_niente.py`).
+  - `[x]` Sblocco premium a doppio cancello: **tempo** dal join del
     bot nel server (1° mese dopo 6 mesi, 2° dopo 1 anno, 3° dopo 2
     anni, confermato da `core.premium_pricing_logic.TIER_MONTHS_
     REQUIRED`) **E** costo in coin dalla cassa (500.000/5.000.000/
@@ -1665,7 +1667,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     comprato, saldo) prima di toccare la cassa; `guild_has_premium_
     access` in `core/premium.py` ora controlla anche questo stato
     oltre alla whitelist manuale — comando: `/cassa sblocca-premium`
-    → **Stato 04/10:** doppio clic: doppio addebito (BUG-14).
+    → **Stato 27/10 (r10):** due clic insieme addebitano una volta (`test_doppio_clic_premium_e_canale.py`).
 
 ## §16 FUN & IMMAGINI — SFW presente; NSFW da fare (fase F11)
 

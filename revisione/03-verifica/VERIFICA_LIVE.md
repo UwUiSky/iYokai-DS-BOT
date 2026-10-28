@@ -1181,3 +1181,13 @@ Serve: un server con almeno 2 bot musicali invitati, Lavalink acceso, un canale 
 - [ ] `/moduli alert opzioni pausa:True` su un avviso Twitch/Kick: la diretta non viene annunciata; `pausa:False` durante la diretta: l'avviso parte al giro dopo. Un avviso RSS in pausa non pubblica ma alla ripresa non arriva la raffica.
 - [ ] `parole:torneo, -replica` — una diretta senza «torneo» nel titolo non viene annunciata; con «replica» nemmeno. `gioco:Valorant` — solo quel gioco. `attesa:30` — due dirette a meno di 30 minuti: un solo avviso.
 
+
+## Livelli, economia e gilde — giro r10 (#124, #125, SPEC §15)
+
+Serve: un server di prova con il modulo livelli attivo, un account A (Amministratore) e un account B (membro normale), il bot con un ruolo sopra quello di prova.
+
+- [ ] Shop: oggetti a elenco (ECO-067) — passi: come A prepara un file `codici.txt` con 3 righe; `/economia shop-add name:Chiave price:10 righe:<file>`; come B `/level shop buy`. Risultato atteso: la risposta è privata e mostra una riga, la stessa riga arriva a B in DM; la lista dice «rimasti 2»; dopo tre acquisti dice «esaurito».
+- [ ] Shop: ruolo a tempo (ECO-063) — passi: `/economia shop-add name:Vip price:10 role:@Prova durata_ruolo_ore:1`; B compra. Risultato atteso: B prende il ruolo e il messaggio dice fino a quando dura; con la scadenza portata a un minuto fa nel database, entro 5 minuti il ruolo sparisce e B può ricomprare.
+- [ ] Shop: categorie, ordine e risposta (ECO-065, 066, 068) — passi: due oggetti con `categoria:Armi` e `posizione:2`/`1`, uno senza categoria; `/level shop list` e `/level shop list categoria:armi`; un oggetto con `risposta:Ciao {utente}!`. Risultato atteso: lista raggruppata e ordinata, filtro per categoria, la frase compare dopo l'acquisto.
+- [ ] Classifica della settimana (LIV-058) — passi: scrivi qualche messaggio; `/level leaderboard metric:XP period:Questa settimana`. Risultato atteso: compare chi ha scritto questa settimana.
+- [ ] Nome della moneta, tassa e tetto (ECO-001, ECO-015) — passi: `/level impostazioni xp nome_moneta:gemme tassa_pay:10 massimo_pay:300`; `/level balance`, `/level daily`; B paga 200 ad A con `/level pay`. Risultato atteso: i messaggi parlano di «gemme»; A riceve 180 e `/level cassa` mostra +20 («pay_tax»); un pagamento da 301 è rifiutato. Poi `/level impostazioni xp minimo_pay:50`: un pagamento da 49 è rifiutato; con la tassa al 10% un pagamento da 9 lascia 1 alla cassa.
