@@ -765,7 +765,7 @@ Totale voci: **514**.
 - `[x]` 8.19 Ogni evento acceso o spento (LOG-017): `/log eventi`, un menu con 24 interruttori
   e le scelte rapide «Tutto», «Niente», «Predefinito» (tutto tranne microfono e audio spenti da
   soli); senza scelte tutto acceso come prima. Migrazione 0180 (`log_eventi_spenti`)
-- `[~]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
+- `[x]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
   `/logs user`, `/logs channel`, `/logs export` (JSON completo).
@@ -775,7 +775,11 @@ Totale voci: **514**.
   (BACKLOG.md §3): "membri" è l'unica dimensione ad alta cardinalità
   che avrebbe fatto esplodere i thread durante un raid, "canali" e
   "case" restano un'estensione futura separata
-  → **Stato 27/10:** voci tagliate (LIM-15); `/log cerca utente|canale|ruolo` con filtro «ultimi N giorni». Resta la proiezione su forum per canali e casi (scelta di BACKLOG §3).
+  → **Stato 27/10:** voci tagliate (LIM-15); `/log cerca utente|canale|ruolo` con filtro «ultimi N giorni».
+  → **Stato 28/10 (r12, D48):** fatta la proiezione su forum per canali e casi: `/log vista-forum dimensione:canali|casi forum:#forum`
+  (senza forum la vista si spegne; migrazione 0480). Un post per canale (al massimo 200) o per caso; gli eventi con un canale vanno nel post
+  del canale, i casi aperti o revocati e gli eventi con un caso nel post del caso. Una coda sola e un lavoratore scrivono piano (1 al secondo,
+  500 in coda, oltre si perdono dalla vista ma restano nel database). I membri restano fuori (alta cardinalità). Test: `tests/test_log_forum.py`.
 - `[x]` 8.18 Distinzione log semplificato `[Free]` vs completo
   `[Premium]` — due moduli distinti: `cogs/logging/basic_logs.py`
   (`MODULE_LOGGING`, 8.1-8.5, SEMPRE GRATUITO) e

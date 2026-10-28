@@ -599,3 +599,12 @@ Si imposta con `/level impostazioni xp immagine_moneta:` (o `senza_immagine:`).
 **Istanze:** `MUSIC_TOKEN_1..5` obbligatori, `MUSIC_TOKEN_6..20` facoltativi (tetto 20, senza buchi).
 La radio del bot principale resta solo di `/owner radio` (un test controlla che i comandi dei server
 usino solo il player dei worker). Da avvisare l'owner.
+
+## D48 — Vista dei log su forum: un post per canale o per caso (28/10/2026, scelta di chi sviluppa)
+
+Chiude 8.17. La proiezione su forum scartata in BACKLOG §3 vale solo per i **membri** (troppi post, raid).
+Per **canali** e **casi** di moderazione, che sono pochi, `/log vista-forum` apre un post per ciascuno. Tetto di 200 post
+per vista e per server; scrittura da una coda unica (500 posti, un messaggio al secondo) perché i forum hanno limiti stretti
+e un raid non deve riempire la memoria. Il registro degli eventi e quello dei casi avvisano il servizio dopo la loro scrittura:
+senza una scelta del server non succede niente. I log di sempre (canale di testo o forum per tipo) non cambiano. Cambiare forum
+scorda i post del vecchio; spegnere la vista lascia i post su Discord.

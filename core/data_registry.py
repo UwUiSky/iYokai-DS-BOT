@@ -267,6 +267,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("log_ignora", "Canali, utenti e prefissi ignorati dai log", colonna_server="guild_id"),
     _t("log_eventi_spenti", "Eventi di log spenti dal server", colonna_server="guild_id"),
     _t("output_channels", "Canali di destinazione dei log e degli avvisi", colonna_server="guild_id"),
+    _t("log_forum_viste", "Forum scelto per la vista dei log per canale o per caso", colonna_server="guild_id"),
+    _t("log_forum_post", "Post del forum dei log di ogni canale o caso", colonna_server="guild_id"),
     _t("guild_config_history", "Storico delle modifiche alla configurazione",
        colonne_attore=("changed_by",), colonna_server="guild_id", scadenza=Scadenza("created_at", 365)),
     _t("command_usage", "Ultimo comando usato per server e utente",
