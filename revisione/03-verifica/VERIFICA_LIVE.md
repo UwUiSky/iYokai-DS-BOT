@@ -1283,3 +1283,14 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 2. `/level impostazioni xp immagine_moneta:` con un PNG grande: salvato; `/level balance`, `/level cassa`, una partita di `/fun` e `/clan info` mostrano la stessa miniatura accanto al saldo.
 3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
 4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.
+
+## AI giro r12 (r12ai)
+1. Assistente: `-chiedi cosa posso fare qui` elenca eventi e comandi; `-chiedi attiva la musica` con modulo spento mostra il bottone per l'admin; «Configura tutto» accende i moduli.
+2. `/ai boss imposta` poi `/ai boss avvia`: annuncio con immagine, bottoni di azione, premi a fine evento; con AI spenta il mostro è quello pronto.
+3. `/ai dungeon avvia`: classi, voto a bottoni, finale; `/ai dungeon storie` conta la libreria.
+4. `/ai mistero crea` e `/utility ai mistero` con il codice: premio al server o canale segreto che si richiude.
+5. `/utility ai spirito` e `/utility ai frammenti`; `/utility ai preferenza acceso:No` e poi `-chiedi`: non risponde.
+6. Wizard `/admin setup wizard`: alla fine compare la scelta del tema; `/ai lore tema:pirati nomi_a_tema:Sì` cambia moneta, punti e titoli (`/level` senza immagine).
+7. `/utility report` con e senza `categoria`: il messaggio allo staff ha «Etichetta»; il menu cambia la categoria solo allo staff.
+8. `/ai staff incidente`, `/ai staff regola testo:niente link` (poi Attiva e controlla `/automod status`), `/ai staff cerca-log`.
+9. **Da attivare dall'owner:** ricerca sul web (`RICERCA_WEB_URL`, `RICERCA_WEB_CHIAVE`): poi `-chiedi domanda cerca:Sì`.

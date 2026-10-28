@@ -1,43 +1,25 @@
 # Memoria di dev-ai
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r6ai` · giro r6
+29/10/2026 · ramo `feat/r12ai` · giro r12 (agente r12ai)
 
 ## In corso
-- Giro r6 chiuso (5 voci su 5). Prossimo passo: esito dello smoke
-  (`scripts/smoke.py --base main`), poi le voci rimaste di §25 (vedi Aperto).
+- Giro r12 parziale. Prossimo passo: riepilogo a orario (migrazione 0425 per `ultimo_testo`; tabelle 0422 già pronte:
+  `ai_riepiloghi`, `ai_avvisi_parole`), poi ticket, 25.77, owner, app/pannello, voce (#142), 25.100.
 
 ## Fatto
-- r6 voce 1 (79e28cc): motore `core/ai_providers.py`, `ai_router.py`,
-  `ai_servizio.py`, `ai_cache_logic.py`, `ai_cost_logic.py`,
-  `ai_guardrail_logic.py`, `ai_testi_logic.py`, `ai_immagini_logic.py`;
-  repo `ai_repo.py`; migrazione 0140; registro dati.
-- r6 voci 2–4 (6add30a): gruppo `/ai` (D26), `/utility ai`, `-chiedi` con
-  l'AI, `/ticket assistente`, menzione, traduzioni, moderazione, chiavi.
-- r6 voce 5: SPEC §25 (45 x, 15 ~), COMMAND_LIST, VERIFICA_LIVE, registro.
+- r12: assistente locale/vicini/piano (`core/ai_ricerca_logic.py`, `cogs/ai/_assistente.py`), boss (`cogs/ai/boss.py`),
+  dungeon, misteri, spirito/frammenti, tema al setup + nomi a tema (`core/lore_nomi_logic.py`), etichetta segnalazioni,
+  `/ai staff` (incidente, regola, cerca-log), ricerca web (`core/ricerca_web*.py`). Migrazioni 0420-0422. D42-D44.
 
 ## Cose imparate
-- I moduli chiamano solo `servizio_ai().richiedi(RichiestaAI(...))` o
-  `cogs/ai/_comune.chiedi()`; `AINonDisponibile.testo` è la risposta locale.
-- Fornitori dal `.env` (`AI_FORNITORI`, `AI_*_<NOME>`), formato compatibile
-  OpenAI; senza `AI_ADDESTRA_<NOME>=no` il fornitore si scarta (D26).
-- Tetto di spesa 0 = solo fornitori gratuiti (D13). Fascia: `testo` e
-  `giudizio` partono da "media", serve un fornitore di quella fascia.
-- Autocomplete sotto `@comando_di_gruppo`: funzione definita prima e
-  `@app_commands.autocomplete(nome=funz)`, non `@cmd.autocomplete`.
-- Opzioni str sempre `Range[str, a, b]` (test invarianti); niente "/parola"
-  nei testi (test_riferimenti_comandi: "€/mese", "/models").
-- I metodi dei repo devono avere `.nome(` in produzione: niente @property.
-- Test: `tests/support/ai_finto.py`; cog con `monkeypatch.setattr(ai_repo,
-  "_pool_provider", lambda: clean_db)` e `imposta_servizio_ai(...)`.
-- test_forget_user fallisce a caso con pytest-randomly anche sulla base
-  (ordine dei test): non è dell'AI.
-- Nel worktree esporta l'ambiente e fai `cd` prima di pytest.
+- Helper di cog senza `setup`: nome con `_` iniziale (la scoperta li salta).
+- `CogConGruppi` con `cog_load` proprio: chiamare `super().cog_load()`.
+- Dopo `defer()` le risposte vanno con `followup.send`; i test vecchi vanno adattati.
+- `interaction_check` ridefinito deve chiamare `super()`; i metodi repo con chiamante si tolgono da KNOWN_UNCALLED.
+- Il guardrail scarta testi con "ignora le istruzioni": l'AI non parte, vale la risposta locale.
+- clean_db non svuota tutte le tabelle tra test: usare guild diversi.
+- Pesi: `/ai` ~4000 (17 figli), `/utility` ~6100 (resta poco), `/automod` e `/owner` pieni.
 
 ## Aperto
-- §25 non fatte: World Boss e dungeon (con dev-economia), riepiloghi del
-  server, ricerca nei log, classificazione segnalazioni, AutoMod assistito,
-  prima risposta automatica nei ticket, app utente, pannello, voce,
-  processo separato, coda, prova premium, embedding (`confronto`).
-- Testi AI solo in italiano (non passano da `core/i18n.t`).
-- #139: parte AI delle risposte standard. #140: PR in bozza.
+- Vedi "In corso". Testi AI solo in italiano. `/level` card PNG non usa i nomi a tema (solo l'embed di riserva).

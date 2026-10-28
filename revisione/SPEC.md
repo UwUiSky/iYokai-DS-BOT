@@ -2146,9 +2146,10 @@ di quel file.
 - `[x]` 25.10 Pausa automatica del fornitore che dà errori (AI-R-003)
 - `[x]` 25.11 Libreria dei contenuti generati, che cresce da sola
   (AI-R-005)
-- `[~]` 25.12 Smistamento delle domande: prima regole e database, AI
+- `[x]` 25.12 Smistamento delle domande: prima regole e database, AI
   solo se serve (AI-R-006)
   → **Stato 14/10 (r6):** cache e libreria comune prima dell'AI; `-chiedi` torna alla ricerca per parole. Manca uno smistamento a regole per tutte le funzioni.
+  → **Stato 29/10 (r12ai):** smistamento locale prima dell'AI (`core/ai_ricerca_logic.py`).
 - `[x]` 25.13 Passaggio alle chiavi a pagamento con un interruttore
   (AI-R-008)
 - `[x]` 25.14 Quota per utente (AI-R-011; catalogo AI-002)
@@ -2171,26 +2172,32 @@ di quel file.
 **Assistente e helpdesk**
 
 - `[x]` 25.24 Base di conoscenza caricata dall'admin (AI-R-025)
-- `[~]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
+- `[x]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
   → **Stato 14/10 (r6):** `-chiedi` risponde con l'AI nella lingua della domanda; `-cerca-comando` resta per parole.
+  → **Stato 29/10 (r12ai):** ricerca per parole in ogni lingua, poi AI (`cogs/utility/command_search.py`).
 - `[x]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
 - `[x]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
   configurazione (AI-R-028)
   → **Stato 27/10 (r10):** al massimo 3 comandi, cliccabili. Se tra i citati c'è un comando di configurazione (`/ai`, `/admin`, `/moduli`, `/ruoli`) e il pannello è acceso (`WEB_PANEL_PUBLIC_URL`), sotto la risposta c'è il bottone «Apri nel pannello» con la pagina giusta del server (`core/ai_testi_logic.link_configurazione`). Un bot non può aprire un comando slash con un bottone: il link al pannello è l'alternativa più vicina (D18).
-- `[ ]` 25.28 Stato del comando nella risposta (AI-R-029)
-- `[ ]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
+- `[x]` 25.28 Stato del comando nella risposta (AI-R-029)
+  → **Stato 29/10 (r12ai):** stato del comando (acceso, spento, serve permesso) nella risposta.
+- `[x]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
   manca (AI-R-030)
-- `[ ]` 25.30 Richiesta composta: più comandi in fila e "Configura
+  → **Stato 29/10 (r12ai):** propone di attivare i moduli spenti con bottone per l'admin.
+- `[x]` 25.30 Richiesta composta: più comandi in fila e "Configura
   tutto" (AI-R-031)
-- `[~]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
+  → **Stato 29/10 (r12ai):** piano in più passi e «Configura tutto».
+- `[x]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
   → **Stato 14/10 (r6):** `-chiedi` risponde anche a "cosa posso fare qui?" con l'elenco dei comandi che la persona può usare.
+  → **Stato 29/10 (r12ai):** «cosa posso fare qui?» con eventi in corso e comandi vicini.
 - `[x]` 25.32 Il bot risponde in chat quando viene menzionato (AI-R-034;
   catalogo AI-009)
 - `[x]` 25.33 Memoria corta della conversazione (AI-R-035; catalogo
   AI-011)
-- `[~]` 25.34 Chiedere a parole di eseguire un comando (AI-R-036;
+- `[x]` 25.34 Chiedere a parole di eseguire un comando (AI-R-036;
   catalogo AI-013)
   → **Stato 14/10 (r6):** un bot non può lanciare un comando slash per l'utente né precompilarlo: l'AI indica il comando cliccabile e i valori da mettere; la persona lo lancia.
+  → **Stato 29/10 (r12ai):** **alternativa (D18):** il bot non può eseguire comandi a nome della persona; «Configura tutto» accende i moduli dal punto unico e mostra i passi cliccabili.
 - `[x]` 25.35 Costruzione del server con l'AI (AI-R-037; catalogo
   AI-025)
 - `[~]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
@@ -2201,9 +2208,12 @@ di quel file.
 
 - `[x]` 25.37 Aiuto alla moderazione: l'AI segnala, lo staff decide
   (AI-R-039; catalogo AI-018)
-- `[ ]` 25.38 Classificazione delle segnalazioni degli utenti (AI-R-040)
-- `[ ]` 25.39 Riassunto di un incidente (AI-R-041)
-- `[ ]` 25.40 Assistente per le regole di AutoMod (AI-R-042)
+- `[x]` 25.38 Classificazione delle segnalazioni degli utenti (AI-R-040)
+  → **Stato 29/10 (r12ai):** categoria e urgenza su `/utility report` (scelta della persona, AI o parole); menu staff persistente.
+- `[x]` 25.39 Riassunto di un incidente (AI-R-041)
+  → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff incidente` al posto di `/security panico riassunto` (`/security` e `/automod` sono al limite di peso); elenco in ordine senza AI.
+- `[x]` 25.40 Assistente per le regole di AutoMod (AI-R-042)
+  → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff regola`; bottone «Attiva», nessuna regola parte da sola.
 
 **Riassunti e ricerca**
 
@@ -2212,32 +2222,44 @@ di quel file.
 - `[ ]` 25.42 Contenuto del riepilogo fatto di numeri (AI-R-045)
 - `[ ]` 25.43 Avviso su parole chiave quando una discussione si accende
   (AI-R-046)
-- `[ ]` 25.44 Ricerca nei log con una domanda (AI-R-047)
-- `[ ]` 25.45 Ricerca assistita sul web o su una base di conoscenza
+- `[x]` 25.44 Ricerca nei log con una domanda (AI-R-047)
+  → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff cerca-log` al posto di `/log cerca domanda`; l'AI propone i filtri, cerca il database.
+- `[x]` 25.45 Ricerca assistita sul web o su una base di conoscenza
   (AI-R-048)
+  → **Stato 29/10 (r12ai):** opzione `cerca` di `-chiedi`; **da attivare:** `RICERCA_WEB_URL` e `RICERCA_WEB_CHIAVE` in `.env` (spenta se mancano).
 
 **Lore, giochi e narrazione**
 
 - `[x]` 25.46 Temi pronti (AI-R-050)
-- `[ ]` 25.47 La lore viene chiesta durante il setup (AI-R-052)
+- `[x]` 25.47 La lore viene chiesta durante il setup (AI-R-052)
+  → **Stato 29/10 (r12ai):** passo del tema alla fine del wizard (saltabile) e riga nel benvenuto.
 - `[x]` 25.48 La lore entra in ogni testo dell'AI del server (AI-R-053)
-- `[ ]` 25.49 World Boss: evento di gruppo contro un mostro (AI-R-054)
-- `[ ]` 25.50 World Boss: comparsa a orario e avvio a mano (AI-R-055)
-- `[ ]` 25.51 World Boss: mostro creato dall'AI secondo la lore
+- `[x]` 25.49 World Boss: evento di gruppo contro un mostro (AI-R-054)
+  → **Stato 29/10 (r12ai):** `/ai boss` (`cogs/ai/boss.py`).
+- `[x]` 25.50 World Boss: comparsa a orario e avvio a mano (AI-R-055)
+  → **Stato 29/10 (r12ai):** orario e avvio a mano.
+- `[x]` 25.51 World Boss: mostro creato dall'AI secondo la lore
   (AI-R-056)
-- `[ ]` 25.52 World Boss: danno secondo il livello, vita secondo i
+  → **Stato 29/10 (r12ai):** mostro dalla libreria o scritto dall'AI.
+- `[x]` 25.52 World Boss: danno secondo il livello, vita secondo i
   membri attivi (AI-R-057)
-- `[ ]` 25.53 Dungeon di gruppo con scelte votate (AI-R-058)
-- `[ ]` 25.54 Dungeon: la storia continua scritta dall'AI (AI-R-059)
-- `[ ]` 25.55 Dungeon: esito secondo classi e livelli di chi vota
+  → **Stato 29/10 (r12ai):** danno per livello, vita per attivi.
+- `[x]` 25.53 Dungeon di gruppo con scelte votate (AI-R-058)
+  → **Stato 29/10 (r12ai):** `/ai dungeon` con voto a bottoni.
+- `[x]` 25.54 Dungeon: la storia continua scritta dall'AI (AI-R-059)
+  → **Stato 29/10 (r12ai):** stanze mancanti scritte dall'AI e salvate.
+- `[x]` 25.55 Dungeon: esito secondo classi e livelli di chi vota
   (AI-R-060)
-- `[ ]` 25.56 Misteri: frammenti di storia nascosti dall'admin
+  → **Stato 29/10 (r12ai):** esito per classi e livelli.
+- `[x]` 25.56 Misteri: frammenti di storia nascosti dall'admin
   (AI-R-061)
+  → **Stato 29/10 (r12ai):** **alternativa (D18):** il premio «XP per 24 ore» è un premio XP una tantum; canale segreto riaperto e richiuso dallo scheduler.
 - `[x]` 25.57 Personaggi AI creati dagli utenti (AI-R-062; catalogo
   AI-014)
 - `[x]` 25.58 Installare e togliere personaggi dal server (AI-R-063;
   catalogo AI-015)
-- `[ ]` 25.59 Boss ed eventi di gioco uguali in più server (AI-R-064)
+- `[x]` 25.59 Boss ed eventi di gioco uguali in più server (AI-R-064)
+  → **Stato 29/10 (r12ai):** mostri e storie in libreria comune per tema.
 
 **Immagini, voce e media**
 
@@ -2249,7 +2271,8 @@ di quel file.
   catalogo AI-007)
 - `[x]` 25.63 Quota di immagini e pacchetti in più (AI-R-069; catalogo
   AI-008)
-- `[ ]` 25.64 Immagine del boss nell'annuncio (AI-R-070)
+- `[x]` 25.64 Immagine del boss nell'annuncio (AI-R-070)
+  → **Stato 29/10 (r12ai):** immagine del boss nell'annuncio.
 
 **Ticket e staff**
 
@@ -2262,12 +2285,17 @@ di quel file.
 
 **Livelli, economia e community**
 
-- `[ ]` 25.69 Nomi a tema per moneta, punti e titoli (AI-R-076)
-- `[ ]` 25.70 Premi del World Boss (AI-R-077)
-- `[ ]` 25.71 Frammenti di lore da collezionare (AI-R-078)
-- `[ ]` 25.72 Spirito Yokai: affinità che cresce con l'attività
+- `[x]` 25.69 Nomi a tema per moneta, punti e titoli (AI-R-076)
+  → **Stato 29/10 (r12ai):** nomi a tema (`/ai lore nomi_a_tema`), migrazione 0422.
+- `[x]` 25.70 Premi del World Boss (AI-R-077)
+  → **Stato 29/10 (r12ai):** premi con tetti e ruolo a tempo.
+- `[x]` 25.71 Frammenti di lore da collezionare (AI-R-078)
+  → **Stato 29/10 (r12ai):** `/utility ai frammenti`.
+- `[x]` 25.72 Spirito Yokai: affinità che cresce con l'attività
   (AI-R-079)
-- `[ ]` 25.73 Traguardo "primo comando scoperto con l'AI" (AI-R-080)
+  → **Stato 29/10 (r12ai):** `/utility ai spirito`.
+- `[x]` 25.73 Traguardo "primo comando scoperto con l'AI" (AI-R-080)
+  → **Stato 29/10 (r12ai):** traguardo registrato.
 
 **Traduzione e lingue**
 
@@ -2299,8 +2327,9 @@ di quel file.
 - `[ ]` 25.85 Cerca comando e scoperta delle funzioni dentro l'app
   utente (AI-R-092)
 - `[ ]` 25.86 Assistente AI personale (AI-R-093)
-- `[ ]` 25.87 Preferenza personale: assistente acceso o spento
+- `[x]` 25.87 Preferenza personale: assistente acceso o spento
   (AI-R-094)
+  → **Stato 29/10 (r12ai):** `/utility ai preferenza`.
 - `[~]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
   → **Stato 14/10 (r6):** `/utility ai spiega` con il link del messaggio; il menu sul messaggio arriva con l'app utente (B.2).
 - `[x]` 25.89 "Spiega questo Yokai": scheda di lore a richiesta
@@ -2344,13 +2373,15 @@ di quel file.
   → **Stato 21/10 (parte con l'AI):** sollecito tradotto nella lingua dell'utente (senza AI: italiano o italiano e inglese);
   se il pannello non ha un ruolo scelto, l'AI dice se chiamare il ruolo moderatore o amministratore del bot (senza AI:
   i ruoli di supporto). (da verificare live)
-- `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i
+- `[x]` 25.99 Storie di dungeon intere, con tutte le strade e i
   finali, salvate e riusate in ogni server con lo stesso tema
   (AI-R-106)
+  → **Stato 29/10 (r12ai):** storie intere salvate in libreria.
 - `[ ]` 25.100 Funzione richiesta che non esiste: bozza del codice in
   una pull request per l'owner (AI-R-107)
-- `[ ]` 25.101 Cerca comando: mostra anche le alternative, spiegate
+- `[x]` 25.101 Cerca comando: mostra anche le alternative, spiegate
   (AI-R-108; vedi §21)
+  → **Stato 29/10 (r12ai):** alternative spiegate.
 - `[ ]` 25.102 Sintesi vocale sul server, con cache dell'audio e toni
   della voce scelti dall'admin (AI-R-109; vedi 14.19)
 - `[ ]` 25.103 Trascrizione e traduzione del vocale nella lingua di chi

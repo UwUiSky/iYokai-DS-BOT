@@ -599,3 +599,22 @@ Si imposta con `/level impostazioni xp immagine_moneta:` (o `senza_immagine:`).
 **Istanze:** `MUSIC_TOKEN_1..5` obbligatori, `MUSIC_TOKEN_6..20` facoltativi (tetto 20, senza buchi).
 La radio del bot principale resta solo di `/owner radio` (un test controlla che i comandi dei server
 usino solo il player dei worker). Da avvisare l'owner.
+
+## D42 — Strumenti dello staff con l'AI dentro `/ai staff` (29/10/2026)
+
+Riassunto di un incidente, regola di AutoMod assistita e ricerca nei log stanno in `/ai staff incidente|regola|cerca-log`
+(admin), al posto di `/security panico riassunto`, `/automod proponi` e `/log cerca domanda`: quei gruppi sono al limite
+di peso (D25) o pieni. Stessa funzione, altro percorso. L'AI propone; la regola AutoMod si attiva solo con il bottone;
+la ricerca nei log non mostra il contenuto dei messaggi. Senza AI: elenco in ordine di tempo, parole per scegliere il
+filtro, filtri dai nomi e dagli ID scritti. Da avvisare l'owner.
+
+## D43 — Libreria dei giochi AI e premi (29/10/2026)
+
+Mostri, storie e stanze scritti dall'AI da zero stanno in tabelle senza server (`ai_mostri`, `ai_storie`, `ai_storie_nodi`)
+e valgono in ogni server con lo stesso tema (D19: nessun testo di utenti). «XP per 24 ore» del mistero diventa un premio
+XP una tantum. Il boss di rete lo pubblica solo l'owner. Tutto parte spento e funziona con l'AI ferma (mostri e storie pronti).
+
+## D44 — Voce di Yokai e processo AI separato (29/10/2026)
+
+Il motore di sintesi vocale è un modello aperto scelto da `.env`; resta spento finché l'owner non sceglie la voce (D22).
+Il processo AI separato (25.21) resta rimandato: bastano coda e misure già fatte (25.22); si riapre se le misure lo chiedono.
