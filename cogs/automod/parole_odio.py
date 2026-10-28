@@ -69,7 +69,7 @@ async def controlla_nome(membro: discord.Member) -> str | None:
     if is_member_exempt(membro, impostazioni, 0):
         return None
     cambia, nick = nuovo_nick(membro.nick, membro.global_name or membro.name, filtro)
-    if not cambia:
+    if not cambia or nick == membro.nick:  # stesso nome: niente cambio, niente giro di eventi
         return None
     try:
         await membro.edit(nick=nick, reason="AutoMod: nome con parola vietata")

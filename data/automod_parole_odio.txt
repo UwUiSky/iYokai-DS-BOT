@@ -6,6 +6,7 @@
 #   parola    a confine di parola (cosi' "Scunthorpe" non scatta mai)
 #   *parola   anche dentro una parola piu' lunga: solo per voci lunghe e senza ambiguita'
 #   !parola   parola lecita: non scatta mai, anche se contiene una voce vietata
+#   !due parole   parole normali che unite darebbero una voce ("wet back"): lecite solo cosi' divise
 # Il plurale in -s e' coperto da solo. Le righe con # sono commenti.
 
 # --- Inglese: insulti razziali ---
@@ -15,6 +16,10 @@ niggaz
 niggah
 nigguh
 nigra
+niqqa
+*niqqer
+nygga
+*nygger
 coon
 jigaboo
 darkie
@@ -56,8 +61,11 @@ terroni
 frocio
 froci
 frocione
+frocioni
 ricchione
 ricchioni
+recchione
+recchioni
 culattone
 culattoni
 mongoloide
@@ -85,3 +93,8 @@ mongoloidi
 !retardation
 !fagoting
 !fagots
+!wet back
+!she male
+!rag head
+!towel head
+!zipper head

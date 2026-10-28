@@ -104,8 +104,8 @@ async def test_parola_propria_con_stesse_normalizzazioni(clean_db, monkeypatch, 
 
 
 async def test_parola_lecita_dell_admin_non_scatta(clean_db, monkeypatch, cog):
-    _impostazioni(monkeypatch, automod_parole_lecite=["negro"])
-    messaggio = _messaggio("il fiume rio negro")
+    _impostazioni(monkeypatch, automod_parole_lecite=["xniggerx"])
+    messaggio = _messaggio("la sigla xniggerx")
     await cog.on_message(messaggio)
     messaggio.delete.assert_not_awaited()
 
@@ -175,8 +175,11 @@ async def test_liste_proprie_e_lecite(archivio):
     assert await opz.trova_nel_testo(GUILD_ID, "s c e m o") is not None
     assert await opz.rimuovi_voce(GUILD_ID, opz.LISTA_PROPRIE, "scemo", 1) is True
     assert await opz.trova_nel_testo(GUILD_ID, "s c e m o") is None
-    await opz.aggiungi_voce(GUILD_ID, opz.LISTA_LECITE, "negro", 1)
-    assert await opz.trova_nel_testo(GUILD_ID, "rio negro") is None
+    await opz.aggiungi_voce(GUILD_ID, opz.LISTA_LECITE, "xniggerx", 1)
+    assert await opz.trova_nel_testo(GUILD_ID, "xniggerx") is None
+    with pytest.raises(ValueError):  # una voce di base non diventa lecita: c'e' l'interruttore con conferma
+        await opz.aggiungi_voce(GUILD_ID, opz.LISTA_LECITE, "n1gg3r", 1)
+    assert await opz.trova_nel_testo(GUILD_ID, "nigger") is not None
     with pytest.raises(ValueError):
         await opz.aggiungi_voce(GUILD_ID, opz.LISTA_PROPRIE, "ab", 1)
 
@@ -250,3 +253,79 @@ async def test_nome_vietato_senza_permessi_viene_detto(ambiente_nomi):
     membro = _membro("n1gg3r")
     membro.edit.side_effect = discord.Forbidden(MagicMock(status=403), "no")
     assert "non riuscito" in await modulo_parole.controlla_nome(membro)
+
+
+# --- Parola divisa in piu' messaggi brevi --------------------------------
+def _serie(contenuti):
+    """Messaggi dello stesso autore nello stesso canale, con id diversi."""
+    messaggi = [_messaggio(c) for c in contenuti]
+    canale = messaggi[0].channel
+    parziali = {}
+    for numero, m in enumerate(messaggi, start=500):
+        m.id, m.channel, m.author = numero, canale, messaggi[0].author
+        parziale = create_autospec(discord.PartialMessage, instance=True)
+        parziale.id, parziale.guild, parziale.channel = numero, m.guild, canale
+        parziali[numero] = parziale
+    canale.get_partial_message.side_effect = lambda i: parziali[i]
+    return messaggi, parziali
+
+
+async def test_parola_divisa_in_messaggi_brevi_viene_cancellata_tutta(cog):
+    (primo, secondo, terzo), parziali = _serie(["nig", "g", "er"])
+    for m in (primo, secondo, terzo):
+        await cog.on_message(m)
+    primo.delete.assert_not_awaited()
+    terzo.delete.assert_awaited_once()
+    parziali[500].delete.assert_awaited_once()
+    parziali[501].delete.assert_awaited_once()
+    assert await _violazioni() == ["parole_vietate"]
+
+
+async def test_messaggi_brevi_normali_non_scattano(cog):
+    messaggi, parziali = _serie(["ok", "ci sto", "a dopo"])
+    for m in messaggi:
+        await cog.on_message(m)
+    assert not any(m.delete.await_count for m in messaggi)
+    assert not any(p.delete.await_count for p in parziali.values())
+
+
+async def test_messaggio_lungo_in_mezzo_spezza_la_serie(cog):
+    messaggi, _ = _serie(["nig", "questo e un messaggio normale e lungo", "ger"])
+    for m in messaggi:
+        await cog.on_message(m)
+    assert not any(m.delete.await_count for m in messaggi)
+
+
+async def test_chi_gestisce_il_server_non_entra_nella_scala(escalation, clean_db):
+    messaggio = _messaggio(CAMUFFATA)
+    messaggio.author.guild_permissions = discord.Permissions(manage_guild=True)
+    await escalation.on_automod_parole_vietate(messaggio)
+    proprietario = _messaggio(CAMUFFATA)
+    proprietario.guild.owner_id = AUTORE_ID
+    await escalation.on_automod_parole_vietate(proprietario)
+    assert await _conteggio(clean_db) is None
+
+
+async def test_proprietario_non_viene_rinominato(ambiente_nomi):
+    membro = _membro("n1gg3r")
+    membro.guild.owner_id = AUTORE_ID
+    assert await modulo_parole.controlla_nome(membro) is None
+    membro.edit.assert_not_awaited()
+
+
+async def test_il_cambio_fatto_dal_bot_non_riparte_in_giro(ambiente_nomi):
+    """Il bot cambia il nome: l'evento che ne segue non deve far ripartire un altro cambio."""
+    await opz.aggiungi_voce(GUILD_ID, opz.LISTA_PROPRIE, "rimosso", 1)  # anche il nome neutro e' vietato
+    cog = modulo_parole.ParoleOdioCog(MagicMock())
+    membro = _membro("n1gg3r", nome="n i g g e r")
+
+    async def cambia_nick(nick, reason):
+        prima = _membro(membro.nick, nome=membro.name)
+        membro.nick = nick
+        if membro.edit.await_count < 5:  # tetto del test: un giro infinito si ferma qui
+            await cog.on_member_update(prima, membro)
+
+    membro.edit.side_effect = cambia_nick
+    await cog.on_member_join(membro)
+    assert membro.edit.await_count == 1
+    assert membro.nick == modulo_parole.NOME_SOSTITUTIVO

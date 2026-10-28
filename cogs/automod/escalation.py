@@ -243,12 +243,14 @@ class EscalationCog(CogConGruppi, commands.Cog):
     async def on_automod_parole_vietate(self, message: discord.Message) -> None:
         """
         AMD-014: una parola vietata trovata dal filtro del bot conta
-        un'infrazione, come una regola nativa. Kick, ban e timeout non
-        partono su chi ha «Gestisci server» o «Amministratore», né sul
-        proprietario (come per le altre azioni automatiche dell'AutoMod).
+        un'infrazione, come una regola nativa. Chi ha «Gestisci server» o
+        «Amministratore», e il proprietario, non entrano nella scala: il
+        messaggio viene comunque cancellato dall'AutoMod.
         """
         member = message.author
         if message.guild is None or not isinstance(member, discord.Member) or member.bot:
+            return
+        if _is_safe_from_automated_action(member):
             return
         config = await escalation_repo.get_config(message.guild.id)
         if not config.enabled:
@@ -262,7 +264,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             message.guild.id, member.id, now, config.reset_after_days
         )
         step = get_ladder_action(conteggio, config.ladder)
-        if step is None or (step.action_type != "warn" and _is_safe_from_automated_action(member)):
+        if step is None:
             return
         if _timeout_piu_lungo_in_corso(member, step):
             return

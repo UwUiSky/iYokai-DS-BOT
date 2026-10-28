@@ -9,7 +9,16 @@ import time
 
 import pytest
 
-from core.automod_parole_logic import carica_base, costruisci, normalizza, trova
+from core.automod_parole_logic import (
+    FINESTRA_BREVI,
+    MAX_CHIAVI_BREVI,
+    MAX_SERIE_BREVI,
+    MessaggiBrevi,
+    carica_base,
+    costruisci,
+    normalizza,
+    trova,
+)
 
 F = costruisci(True)
 N = "nigger"
@@ -63,9 +72,9 @@ def test_base_spenta_non_scatta():
 
 
 def test_parole_lecite_dell_admin():
-    f = costruisci(True, (), ("negro",))
-    assert not _trovato("rio negro", f)
-    assert _trovato("negro", F)
+    f = costruisci(True, (), ("xniggerx",))
+    assert not _trovato("xniggerx", f)
+    assert _trovato("xniggerx", F)
 
 
 LECITE = [
@@ -139,3 +148,77 @@ def test_testo_lungo_4000_caratteri_e_veloce():
 def test_file_dati_ha_voci_e_lecite():
     voci, lecite = carica_base()
     assert len(voci) > 40 and "niger" in lecite
+
+
+# Aggiramenti trovati in revisione: ognuno passava prima del fix.
+AGGIRAMENTI_REVISIONE = [
+    "n\u3164igger", "n\uffa0igger", "n\u115figger",  # riempitivi hangul (sembrano spazi vuoti)
+    "ꓠꓲꓖꓖꓰꓣ", "ꓠIGGER",  # lettere lisu identiche alle latine
+    "ꮪꮲꭵꮯ", "ᏚᏢᎥᏟ",  # cherokee
+    "ƒrocio", "ʂpic", "ɗago",  # lettere latine con uncino o barra
+    "fr⭕cio", "fr○cio",  # cerchi al posto della o
+    "n*gger", "n█gger", "f_ggot", "n#gg#r", "fr?cio", "t*rrone",  # lettere censurate
+    "nig ger", "fag got", "fro cio", "terr one", "nig\nger", "`nig` `ger`",  # parola spezzata a metà
+    "\u202eregg in", "ciao \u202eoicorf\u202c amico",  # testo girato con l'override destra-sinistra
+    "frocioni", "recchione", "niqqa", "niqqer", "nygger",  # forme mancanti nella lista
+]
+
+
+@pytest.mark.parametrize("testo", AGGIRAMENTI_REVISIONE)
+def test_aggiramenti_trovati_in_revisione(testo):
+    assert _trovato(testo), normalizza(testo)
+
+
+@pytest.mark.parametrize(
+    "testo",
+    [
+        "C# e F# sono linguaggi", "big ger", "il n*mero 5", "una *bella* giornata", "per*fetto", "FAQ e faqs",
+        "dike", "niger", "con ger e nig", "re*ttangolo", "a_b_c", "file_nome_lungo.txt",
+        "ciao \u202ecarticle\u202c ok", "fra cio", "faggio", "fagiolo",
+        "fra le cose", "co op", "my wet back", "is she male or female", "towel head", "pi*", "**grassetto**", "__sottolineato__", "#canale-generale",
+    ],
+)
+def test_nuove_regole_senza_falsi_positivi(testo):
+    assert not _trovato(testo), normalizza(testo)
+
+
+def test_jolly_e_metà_restano_veloci():
+    for testo in ["n*" * 2000, "a*b " * 1000, ("abcdefghijklmn?pqrstuvwxyz?bcde " * 125), "\u202e" + "ab?cd?ef " * 450, "nig " * 1000, ("x" * 50 + "*") * 78, "\u202e" + "regg in " * 400, "n?ar " * 800, "nxyz?abcr " * 400]:
+        inizio = time.perf_counter()
+        trova(testo, F)
+        assert time.perf_counter() - inizio < 0.5, testo[:20]
+
+
+def test_pezzi_civetta_con_jolly_non_nascondono_la_parola():
+    assert _trovato("a?bc " * 300 + "x?yz " * 300 + "n*gger")
+
+
+def test_lecita_del_server_non_spegne_una_voce_di_base():
+    f = costruisci(True, (), ("nigger", "n1gg3r", "Negroni", "n i g g e r", "nig ger"))
+    assert _trovato("nigger", f) and _trovato("n1gg3r", f)
+    assert _trovato("n i g g e r", f) and _trovato("nig ger", f)
+    assert not _trovato("Negroni", f)
+
+
+def test_messaggi_brevi_consecutivi_uniti():
+    brevi = MessaggiBrevi()
+    chiave = (1, 2, 3)
+    assert brevi.aggiungi(chiave, 0.0, 10, "nig") == [(10, "nig")]
+    assert [m for m, _ in brevi.aggiungi(chiave, 5.0, 11, "ger")] == [10, 11]
+    # un messaggio lungo azzera la serie
+    assert brevi.aggiungi(chiave, 6.0, 12, "questo è un messaggio lungo e normale") == []
+    assert brevi.aggiungi(chiave, 7.0, 13, "ger") == [(13, "ger")]
+    # fuori dalla finestra di tempo il vecchio non conta
+    assert brevi.aggiungi(chiave, 7.0 + FINESTRA_BREVI + 1, 14, "nig") == [(14, "nig")]
+    brevi.svuota(chiave)
+    assert brevi.aggiungi(chiave, 100.0, 15, "x") == [(15, "x")]
+
+
+def test_messaggi_brevi_con_tetto():
+    brevi = MessaggiBrevi()
+    for numero in range(MAX_SERIE_BREVI + 5):
+        serie = brevi.aggiungi((1,), float(numero), numero, "n")
+    assert len(serie) == MAX_SERIE_BREVI
+    for numero in range(MAX_CHIAVI_BREVI + 10):
+        brevi.aggiungi((numero,), 0.0, numero, "n")
+    assert len(brevi) <= MAX_CHIAVI_BREVI
