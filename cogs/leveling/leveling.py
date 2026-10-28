@@ -54,6 +54,7 @@ from core.repositories.shop_repo import (
     MAX_POSIZIONE,
     MAX_RISPOSTA,
     MAX_TENTATIVI_SCADENZA,
+    righe_valide,
     shop_repo,
 )
 from core.rank_card_image import (
@@ -604,6 +605,18 @@ async def _rispondi_shop(
         await interaction.response.send_message(testo, ephemeral=True)
 
 
+async def _codice_in_privato(
+    utente: discord.abc.User, nome: str, server: discord.Guild, riga: str | None
+) -> None:
+    """ECO-067: la riga comprata anche in DM (il messaggio effimero sparisce). DM chiusi: pazienza."""
+    if riga is None:
+        return
+    try:
+        await utente.send(f"Il tuo codice per **{nome}** (server {taglia(server.name, 100)}): `{riga}`")
+    except discord.HTTPException:
+        logger.info("Codice dello shop non mandato in DM a %s: DM chiusi.", utente.id)
+
+
 class LevelingCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -936,7 +949,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         potrà ricomprare). Membro o ruolo spariti: niente da togliere. Se
         Discord rifiuta, si riprova al giro dopo, al massimo 5 volte.
         """
-        for acquisto in await shop_repo.list_expired_roles():
+        for acquisto in await shop_repo.list_expired_roles([g.id for g in self.bot.guilds]):
             guild = self.bot.get_guild(acquisto["guild_id"])
             if guild is None:
                 continue  # bot non pronto per quel server: al prossimo giro
@@ -1756,6 +1769,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             conferma += f"\nEcco il tuo codice: `{acquisto.riga}`"
         if ruolo_shop is None:
             await interaction.response.send_message(conferma, ephemeral=riservato)
+            await _codice_in_privato(interaction.user, nome, guild, acquisto.riga)
             return
 
         # Da qui si parla con Discord: prima il defer, poi il ruolo.
@@ -1783,6 +1797,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.followup.send(conferma, ephemeral=riservato)
+        await _codice_in_privato(interaction.user, nome, guild, acquisto.riga)
 
     @comando_di_gruppo(
         "economia",
@@ -1846,6 +1861,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(errore, ephemeral=True)
                 return
         try:
+            if righe_file is not None:
+                righe_file = righe_valide(righe_file)
             item_id = await shop_repo.add_item(
                 guild.id, name=name, price=price,
                 role_id=role.id if role else None, description=description,
@@ -1955,6 +1972,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 return
         guild_id = interaction.guild.id
         try:
+            if righe_file is not None:
+                righe_file = righe_valide(righe_file)
             if durata_ruolo_ore is not None:
                 attuale = await shop_repo.get_item(item_id, guild_id)
                 if attuale is not None and attuale.role_id is None:

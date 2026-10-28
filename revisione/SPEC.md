@@ -1382,7 +1382,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** sistemati (9.2, 9.12). Aggiunti scorte limitate, ruolo richiesto per comprare,
   `/economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
   migrazioni 0094 e 0095.
-  → **Stato 27/10 (r10, 0340):** fatti anche ECO-063 (ruolo che scade: `durata_ruolo_ore`, giro ogni 5 minuti nel cog, dopo la scadenza si può ricomprare), ECO-065 (`posizione`), ECO-066 (`categoria`, filtro in `/level shop list`), ECO-067 (oggetto «a elenco»: file `.txt` con una riga per acquisto, la riga la vede solo chi compra, torna libera se l'acquisto è rimborsato) ed ECO-068 (`risposta` con `{utente}` e `{oggetto}`). Prove: `tests/test_shop_catalogo_r10.py`.
+  → **Stato 27/10 (r10, 0340):** fatti anche ECO-063 (ruolo che scade: `durata_ruolo_ore`, giro ogni 5 minuti nel cog, dopo la scadenza si può ricomprare), ECO-065 (`posizione`), ECO-066 (`categoria`, filtro in `/level shop list`), ECO-067 (oggetto «a elenco»: file `.txt` con una riga per acquisto, la riga la vede solo chi compra e arriva anche in DM; un file vuoto, con troppe righe o righe troppo lunghe non crea l'oggetto, torna libera se l'acquisto è rimborsato) ed ECO-068 (`risposta` con `{utente}` e `{oggetto}`). Prove: `tests/test_shop_catalogo_r10.py`.
   → **Stato 14/10 (giro correzioni):** la conferma vale per il prezzo mostrato (se cambia, `buy_item` con
   `prezzo_atteso` rifiuta senza addebito; il prezzo si legge con la riga bloccata); `item_id` va da 1 a 2147483647;
   il nome di soli spazi è rifiutato.

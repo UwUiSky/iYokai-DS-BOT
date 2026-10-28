@@ -367,7 +367,7 @@ async def test_acquisto_di_un_ruolo_a_tempo_dice_la_scadenza_e_il_giro_lo_toglie
     server = fake_guild(GUILD)
     server.get_role.side_effect = lambda rid: ruolo if rid == 55 else None
     server.get_member.side_effect = lambda uid: membro if uid == 1 else None
-    scena.cog.bot = SimpleNamespace(get_guild=lambda gid: server if gid == GUILD else None)
+    scena.cog.bot = SimpleNamespace(get_guild=lambda gid: server if gid == GUILD else None, guilds=[server])
 
     await scena.cog.togli_ruoli_shop_scaduti()
     membro.remove_roles.assert_not_awaited()  # non ancora scaduto
@@ -393,7 +393,7 @@ async def test_se_discord_rifiuta_si_riprova_poi_si_lascia_perdere(scena, clean_
     server = fake_guild(GUILD)
     server.get_role.side_effect = lambda rid: ruolo
     server.get_member.side_effect = lambda uid: membro
-    scena.cog.bot = SimpleNamespace(get_guild=lambda gid: server)
+    scena.cog.bot = SimpleNamespace(get_guild=lambda gid: server, guilds=[server])
 
     for _ in range(4):
         await scena.cog.togli_ruoli_shop_scaduti()
@@ -409,6 +409,68 @@ async def test_membro_uscito_o_ruolo_gia_tolto_chiude_senza_errori(scena, clean_
     await scena.negozio.buy_item(GUILD, 1, await scena.negozio.get_item(item_id, GUILD))
     await clean_db.execute("UPDATE shop_purchases SET role_expires_at = now() - interval '1 minute'")
     server = fake_guild(GUILD)  # nessun membro, nessun ruolo
-    scena.cog.bot = SimpleNamespace(get_guild=lambda gid: server)
+    scena.cog.bot = SimpleNamespace(get_guild=lambda gid: server, guilds=[server])
     await scena.cog.togli_ruoli_shop_scaduti()
     assert await scena.negozio.list_expired_roles() == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "testo",
+    ["\n  \n\n", "\n".join(f"c{i}" for i in range(1001)), "x" * 201],
+    ids=["vuoto", "troppe", "lunga"],
+)
+async def test_shop_add_con_righe_non_valide_non_mette_in_vendita_niente(scena, testo):
+    """Prima l'oggetto restava in vendita senza righe: chi lo comprava pagava e non riceveva nulla."""
+    interazione = _interazione()
+    await scena.comandi["economia shop-add"].callback(
+        scena.cog, interazione, name="Chiave", price=5, righe=_allegato(testo),
+    )
+    assert "Aggiunto" not in _testi(interazione)
+    assert await scena.negozio.list_items(GUILD) == []
+
+
+@pytest.mark.asyncio
+async def test_il_codice_arriva_anche_in_privato(scena):
+    """ECO-067: la riga si consegna in DM; il messaggio effimero sparisce."""
+    item_id = await scena.negozio.add_item(GUILD, name="Chiave", price=10)
+    await scena.negozio.add_lines(item_id, GUILD, ["XYZ-123"])
+    await scena.monete.add_coins(GUILD, 1, 100)
+    interazione = _interazione()
+    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=item_id)
+    interazione.user.send.assert_awaited_once()
+    assert "XYZ-123" in str(interazione.user.send.await_args)
+
+    # DM chiusi: l'acquisto resta valido e il codice si vede comunque nella risposta.
+    await scena.negozio.add_lines(item_id, GUILD, ["ABC-9"])
+    chiuso = _interazione()
+    chiuso.user.send.side_effect = discord.Forbidden(SimpleNamespace(status=403, reason="no"), "dm")
+    await scena.comandi["level shop buy"].callback(scena.cog, chiuso, item_id=item_id)
+    assert "ABC-9" in _testi(chiuso)
+
+
+@pytest.mark.asyncio
+async def test_gli_acquisti_di_server_senza_il_bot_non_bloccano_il_giro(scena, clean_db):
+    """Il giro legge 100 scadenze alla volta: quelle di un server lasciato restavano in testa per sempre."""
+    for utente in range(1, 102):
+        await clean_db.execute(
+            "INSERT INTO shop_purchases (guild_id, user_id, item_id, role_id, role_expires_at) "
+            "VALUES (999, $1, 1, 55, now() - interval '1 hour')",
+            utente,
+        )
+    item_id = await scena.negozio.add_item(GUILD, name="Vip", price=10, role_id=55, role_duration_hours=1)
+    await scena.monete.add_coins(GUILD, 1, 100)
+    await scena.negozio.buy_item(GUILD, 1, await scena.negozio.get_item(item_id, GUILD))
+    await clean_db.execute(
+        "UPDATE shop_purchases SET role_expires_at = now() - interval '1 minute' WHERE guild_id = $1", GUILD
+    )
+    ruolo = fake_role(55, "Vip", position=1)
+    membro = fake_member(1, roles=[ruolo])
+    server = fake_guild(GUILD)
+    server.get_role.side_effect = lambda rid: ruolo
+    server.get_member.side_effect = lambda uid: membro
+    scena.cog.bot = SimpleNamespace(
+        get_guild=lambda gid: server if gid == GUILD else None, guilds=[server]
+    )
+    await scena.cog.togli_ruoli_shop_scaduti()
+    membro.remove_roles.assert_awaited_once()

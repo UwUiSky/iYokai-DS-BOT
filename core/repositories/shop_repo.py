@@ -278,9 +278,7 @@ class ShopRepository:
         Righe vuote scartate; al massimo MAX_RIGHE_PER_OGGETTO libere per oggetto.
         Restituisce quante ne ha aggiunte, None se l'oggetto non esiste.
         """
-        pulite = [r.strip() for r in righe if r.strip()]
-        if any(len(r) > MAX_LUNGHEZZA_RIGA for r in pulite):
-            raise ValueError(f"Ogni riga può avere al massimo {MAX_LUNGHEZZA_RIGA} caratteri.")
+        pulite = righe_valide(righe)
         if not 1 <= item_id <= MAX_ID_OGGETTO:
             return None
         async with self._pool.acquire() as conn:
@@ -415,13 +413,21 @@ class ShopRepository:
     # ------------------------------------------------------------------
     # Ruolo a tempo (ECO-063)
     # ------------------------------------------------------------------
-    async def list_expired_roles(self, limite: int = 100) -> list[dict]:
-        """Acquisti con il ruolo scaduto, da togliere (id, guild_id, user_id, role_id, expiry_attempts)."""
+    async def list_expired_roles(
+        self, guild_ids: list[int] | None = None, limite: int = 100
+    ) -> list[dict]:
+        """
+        Acquisti con il ruolo scaduto, da togliere (id, guild_id, user_id, role_id,
+        expiry_attempts). `guild_ids`: solo i server dove c'è il bot, così quelli
+        lasciati non occupano per sempre i primi posti; None = tutti.
+        """
         rows = await self._pool.fetch(
             "SELECT id, guild_id, user_id, role_id, expiry_attempts FROM shop_purchases "
             "WHERE role_expires_at IS NOT NULL AND role_expires_at <= now() AND role_id IS NOT NULL "
+            "AND ($2::bigint[] IS NULL OR guild_id = ANY($2)) "
             "ORDER BY role_expires_at LIMIT $1",
             limite,
+            guild_ids,
         )
         return [dict(r) for r in rows]
 
@@ -439,6 +445,21 @@ class ShopRepository:
             "WHERE id = $1 RETURNING expiry_attempts",
             purchase_id,
         )
+
+
+def righe_valide(righe: list[str]) -> list[str]:
+    """
+    ECO-067: le righe ripulite (vuote scartate), o ValueError se nessuna,
+    troppe o troppo lunghe. Si controlla PRIMA di creare l'oggetto.
+    """
+    pulite = [r.strip() for r in righe if r.strip()]
+    if not pulite:
+        raise ValueError("Il file non ha righe da consegnare.")
+    if len(pulite) > MAX_RIGHE_PER_OGGETTO:
+        raise ValueError(f"Un oggetto può avere al massimo {MAX_RIGHE_PER_OGGETTO} righe da consegnare.")
+    if any(len(r) > MAX_LUNGHEZZA_RIGA for r in pulite):
+        raise ValueError(f"Ogni riga può avere al massimo {MAX_LUNGHEZZA_RIGA} caratteri.")
+    return pulite
 
 
 def _controlla_campi_catalogo(
