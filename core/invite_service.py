@@ -169,7 +169,10 @@ async def puo_avere_il_link(guild: discord.Guild, membro) -> str:
         return logica.MODULO_SPENTO
     if opzioni.modalita == logica.MODO_SPENTO:
         return logica.LINK_SPENTI
-    if opzioni.modalita == logica.MODO_RUOLO and not logica.ruolo_ammesso(opzioni.ruolo_link_id, _ruoli_di(membro)):
+    # «ruolo» senza ruolo (per esempio da un import): nessuno, non tutti.
+    if opzioni.modalita == logica.MODO_RUOLO and (
+        opzioni.ruolo_link_id is None or not logica.ruolo_ammesso(opzioni.ruolo_link_id, _ruoli_di(membro))
+    ):
         return logica.RUOLO_MANCANTE
     # Il permesso «Crea invito» del membro conta solo nella modalità che lo chiede (D36).
     return _esito_canale(guild, membro if opzioni.modalita == logica.MODO_CREA_INVITO else None)

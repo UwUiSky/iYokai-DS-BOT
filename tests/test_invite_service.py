@@ -348,3 +348,14 @@ def test_modalita_di_prima_di_d36():
     assert l.modalita_effettiva(None, None) == l.MODO_TUTTI
     assert l.modalita_effettiva(None, 5) == l.MODO_RUOLO
     assert l.modalita_effettiva("spento", 5) == l.MODO_SPENTO
+
+
+@pytest.mark.asyncio
+async def test_modalita_ruolo_senza_ruolo_non_apre_a_tutti(servizio):
+    """Un import della configurazione può lasciare «ruolo» senza ruolo: allora nessuno, non tutti."""
+    await accendi()
+    guild, canale = guild_con_canale()
+    crea = discord.Permissions(view_channel=True, create_instant_invite=True)
+    permessi_per(canale, {guild.me: crea, guild.default_role: crea})
+    await db.set_guild_setting(G, l.SETTING_MODALITA_LINK, l.MODO_RUOLO)
+    assert (await svc.ottieni_link(guild, membro(1)))[0] == l.RUOLO_MANCANTE

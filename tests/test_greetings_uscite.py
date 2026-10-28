@@ -21,6 +21,14 @@ from core.repositories.greetings_repo import GreetingsConfig, GreetingsRepositor
 from tests.support.discord_fakes import fake_guild, fake_member, fake_text_channel
 
 
+@pytest.fixture(autouse=True)
+def _stati_puliti():
+    """Lo stato dei ban è globale: un test che banna senza uscita non deve passarlo al successivo."""
+    uscite._stati.clear()
+    yield
+    uscite._stati.clear()
+
+
 def _png(formato="PNG", dim=(8, 8)) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", dim, "red").save(buf, format=formato)
@@ -311,3 +319,30 @@ async def test_repo_modo_e_grafica(repo):
     # il resto della riga non si perde
     await repo.set_welcome(9, enabled=True, channel_id=5, message="m", dm=False)
     assert (await repo.get_config(9)).leave_mode == "solo_ban"
+
+
+async def test_martello_prima_dell_addio_anche_se_il_ban_tarda_a_inviare(monkeypatch):
+    """L'addio parte solo dopo che il martello è uscito, non appena il ban è stato visto."""
+    canale, membro, utente, repo = _scenario(monkeypatch)
+
+    async def grafica_lenta(_g, tipo):
+        if tipo == uscite.TIPO_BAN:
+            await asyncio.sleep(0.02)  # lettura dal database: l'addio non deve passare avanti
+        return None
+
+    repo.get_grafica.side_effect = grafica_lenta
+    await _ban_e_uscita(membro, utente, prima_ban=False)
+    testi = _testi(canale)
+    assert "martello" in testi[0] and "bello vederti" in testi[1]
+
+
+def test_png_trasparente_grande_accettato():
+    """safe_open_image riduce e converte le immagini RGBA grandi: il formato va letto dal file."""
+    buf = io.BytesIO()
+    Image.new("RGBA", (3000, 2000)).save(buf, format="PNG")
+    assert uscite.valida_file(buf.getvalue()) == ("png", None)
+
+
+def test_webp_oltre_il_suo_limite_ha_un_messaggio_giusto():
+    estensione, errore = uscite.valida_file(_png("WEBP", (3000, 2000)))
+    assert estensione is None and "16 megapixel" not in errore and "pixel" in errore

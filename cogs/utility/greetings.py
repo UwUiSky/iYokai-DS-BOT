@@ -407,8 +407,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             return
         config = await greetings_repo.get_config(guild.id)
         # Durante un raid: niente martello (i ban in massa non riempiono il canale) e niente addio per lui.
+        # L'addio aspetta il segnale, dato solo DOPO l'invio del martello: così esce sempre secondo.
         in_raid = raid_in_corso(guild.id)
-        uscite.segna_ban(guild.id, user.id, soppresso=in_raid)
+        try:
+            await self._martello(guild, user, config, in_raid)
+        finally:
+            uscite.segna_ban(guild.id, user.id, soppresso=in_raid)
+
+    async def _martello(self, guild: discord.Guild, user: discord.User, config, in_raid: bool) -> None:
         if not uscite.invia_ban(config.leave_mode) or not config.goodbye_enabled or config.goodbye_channel_id is None:
             return
         if in_raid:

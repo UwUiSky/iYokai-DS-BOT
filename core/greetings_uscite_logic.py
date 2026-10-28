@@ -11,6 +11,7 @@ Dipende da: core/safe_http.py (link), core/safe_image.py (file)
 from __future__ import annotations
 
 import asyncio
+import io
 import time
 from dataclasses import dataclass
 
@@ -34,9 +35,8 @@ TIPO_BAN = "ban"
 TIPO_ADDIO = "addio"
 TIPI = (TIPO_BAN, TIPO_ADDIO)
 
-# Testi di base (solo testo ed emoji: nessuna gif di serie, vedi D37).
+# Testo di base del ban (solo testo ed emoji, D37); quello dell'addio è DEFAULT_GOODBYE_TEMPLATE.
 TESTO_BAN_DI_BASE = "🔨 Il martello ha parlato: **{username}** è stato bandito da {server}."
-TESTO_ADDIO_DI_BASE = "Ciao, è stato bello vederti, **{username}**! 👋"
 
 MAX_LINK = 500
 MAX_BYTE_GRAFICA = 3 * 1024 * 1024
@@ -75,19 +75,21 @@ async def valida_link(testo: str) -> str | None:
 
 def valida_file(dati: bytes) -> tuple[str | None, str | None]:
     """(estensione, errore) di un file caricato: formato e pixel controllati da safe_image (16 MP)."""
-    from PIL import UnidentifiedImageError
+    from PIL import Image, UnidentifiedImageError
 
     from core.safe_image import ImmagineTroppoGrande
 
     if len(dati) > MAX_BYTE_GRAFICA:
         return None, "Il file pesa troppo: il limite è 3 MB."
     try:
-        immagine = safe_open_image(dati)
+        # Il formato si legge dal file: l'immagine ridotta da safe_open_image può non averlo più.
+        formato = Image.open(io.BytesIO(dati)).format
+        safe_open_image(dati)
     except ImmagineTroppoGrande:
-        return None, "L'immagine ha troppi pixel: il limite è 16 megapixel."
+        return None, "L'immagine ha troppi pixel: riducila (WebP fino a 4 megapixel, gli altri fino a 16)."
     except (UnidentifiedImageError, OSError):
         return None, "Non riesco ad aprire il file: usa un PNG, JPEG, GIF o WebP."
-    estensione = FORMATI_GRAFICA.get(immagine.format or "")
+    estensione = FORMATI_GRAFICA.get(formato or "")
     if estensione is None:
         return None, "Formato non ammesso: usa PNG, JPEG, GIF o WebP."
     return estensione, None
