@@ -300,7 +300,7 @@ def test_regole_della_libreria():
     assert pulisci_variante("N1GG3R") == "nigger"
     assert pulisci_variante("ab") is None and pulisci_variante("a b c d") is None and pulisci_variante("") is None
     assert stato_dopo_segnalazione("candidata", SOGLIA_SERVER - 1) == "candidata"
-    assert stato_dopo_segnalazione("candidata", SOGLIA_SERVER) == "approvata"
+    assert stato_dopo_segnalazione("candidata", SOGLIA_SERVER) == "condivisa"  # D39: non certa
     assert stato_dopo_segnalazione("rifiutata", 99) == "rifiutata"
 
 
@@ -318,11 +318,16 @@ async def test_una_candidata_non_diventa_globale_con_un_solo_server(repo):
     assert await repo.candidate_del_server(2) == ()  # vale solo dove e' stata segnalata
 
 
-async def test_con_tre_server_diversi_diventa_globale(repo):
+async def test_con_tre_proprietari_diventa_condivisa_e_certa_solo_con_l_owner(repo):
     await repo.segnala("zzorbo", "it", 1, 1 * 10)
     await repo.segnala("zzorbo", "it", 2, 2 * 10)
     assert (await repo.segnala("zzorbo", "it", 2, 2 * 10)).stato == "candidata"
-    assert (await repo.segnala("zzorbo", "it", 3, 3 * 10)).stato == "approvata"
+    assert (await repo.segnala("zzorbo", "it", 3, 3 * 10)).stato == "condivisa"
+    # D39: vale in tutti i server, ma come parola sospetta da far giudicare all'AI, non certa
+    assert await repo.globali() == ()
+    assert await repo.candidate_del_server(99) == ("zzorbo",)
+    # solo l'owner la rende certa
+    assert await repo.imposta_stato("zzorbo", "approvata") is True
     assert await repo.globali() == ("zzorbo",)
 
 
@@ -366,6 +371,14 @@ async def test_le_globali_entrano_nel_filtro_di_tutti_i_server(repo, monkeypatch
     assert trova("voi zzorbo fuori", filtro) is None  # solo candidata: non vale
     for server in (2, 3):
         await repo.segnala("zzorbo", "it", server, server * 10)
+    libreria.svuota()
+    # D39: con 3 proprietari è condivisa: sospetta in ogni server (la giudica l'AI), non certa
+    filtro, _ = await opz_parole.filtro_del_server(GUILD, archivio)
+    assert trova("voi zzorbo fuori", filtro) is None
+    sospette, _ = await opz_parole.filtro_sospette(GUILD, archivio)
+    assert trova("voi zzorbo fuori", sospette) is not None
+    # approvata dall'owner: certa in tutti i server
+    await repo.imposta_stato("zzorbo", "approvata")
     libreria.svuota()
     filtro, _ = await opz_parole.filtro_del_server(GUILD, archivio)
     assert trova("voi zzorbo fuori", filtro) is not None

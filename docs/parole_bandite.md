@@ -45,7 +45,8 @@ Le parole e le varianti (in più lingue) stanno in una tabella globale, con uno 
 |---|---|
 | base | voce messa dal proprietario del bot, vale in tutti i server |
 | candidata | variante nuova trovata dall'AI, vale solo nei server che l'hanno segnalata |
-| approvata | vale in tutti i server |
+| condivisa | segnalata da almeno 3 proprietari diversi: vale in tutti i server, ma ogni messaggio la fa giudicare all'AI |
+| approvata | approvata dal proprietario del bot: certa in tutti i server, si cancella senza chiedere all'AI |
 | rifiutata | non vale mai e non risale con nuove segnalazioni |
 
 Come cresce:
@@ -53,8 +54,9 @@ Come cresce:
 - Quando l'AI giudica un insulto può indicare altre parole offensive del messaggio. Il bot le
   accetta solo se stanno davvero nel testo e se i filtri non le conoscono già: entrano come
   **candidate**.
-- Una candidata diventa **globale** quando la segnalano server di **almeno 3 proprietari diversi**
-  (contano solo i server con almeno 25 membri), oppure quando la approva il proprietario del bot.
+- Una candidata diventa **condivisa** (vale ovunque, sempre giudicata dall'AI) quando la segnalano
+  server di **almeno 3 proprietari diversi** (contano solo i server con almeno 25 membri).
+  Diventa **certa** (approvata) solo quando la approva il proprietario del bot.
   Un server solo, anche se segnala cento volte, conta uno; tre server dello stesso proprietario
   contano uno.
 - Non diventano mai candidate: parole sotto le 4 lettere, solo numeri, parole comuni («ciao»,

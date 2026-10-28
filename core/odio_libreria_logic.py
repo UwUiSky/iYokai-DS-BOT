@@ -16,10 +16,11 @@ from core.automod_parole_logic import MIN_LETTERE_VOCE, carica_base, pezzi
 
 STATO_BASE = "base"
 STATO_CANDIDATA = "candidata"
-STATO_APPROVATA = "approvata"
+STATO_CONDIVISA = "condivisa"  # segnalata da abbastanza proprietari: vale ovunque, ma la giudica l'AI
+STATO_APPROVATA = "approvata"  # approvata dall'owner: certa, si cancella senza chiedere all'AI
 STATO_RIFIUTATA = "rifiutata"
-STATI = (STATO_BASE, STATO_CANDIDATA, STATO_APPROVATA, STATO_RIFIUTATA)
-STATI_GLOBALI = (STATO_BASE, STATO_APPROVATA)
+STATI = (STATO_BASE, STATO_CANDIDATA, STATO_CONDIVISA, STATO_APPROVATA, STATO_RIFIUTATA)
+STATI_GLOBALI = (STATO_BASE, STATO_APPROVATA)  # le parole certe: solo base e approvate dall'owner
 
 SOGLIA_SERVER = 3  # proprietari diversi (uno per server) che devono segnalare la stessa variante
 MIN_MEMBRI_PER_CONTARE = 25  # un server piu' piccolo segnala per se', ma non conta per la soglia
@@ -75,7 +76,11 @@ def pulisci_lingua(lingua: str) -> str:
 
 
 def stato_dopo_segnalazione(stato: str, proprietari_diversi: int) -> str:
-    """Una candidata con abbastanza proprietari diversi diventa approvata; ogni altro stato resta com'è."""
+    """
+    Una candidata con abbastanza proprietari diversi diventa condivisa (vale in tutti i server
+    ma resta al giudizio dell'AI); solo l'owner la rende approvata, cioè certa (D39).
+    Ogni altro stato resta com'è.
+    """
     if stato == STATO_CANDIDATA and proprietari_diversi >= SOGLIA_SERVER:
-        return STATO_APPROVATA
+        return STATO_CONDIVISA
     return stato

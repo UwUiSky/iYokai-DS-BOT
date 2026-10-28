@@ -24,7 +24,15 @@ from core import automod_parole_opzioni as opzioni_parole
 from core import channel_router as router
 from core import odio_opzioni
 from core.config import config
-from core.odio_libreria_logic import STATI, STATO_APPROVATA, STATO_CANDIDATA, STATO_RIFIUTATA, pulisci_lingua, pulisci_variante
+from core.odio_libreria_logic import (
+    STATI,
+    STATO_APPROVATA,
+    STATO_CANDIDATA,
+    STATO_CONDIVISA,
+    STATO_RIFIUTATA,
+    pulisci_lingua,
+    pulisci_variante,
+)
 from core.repositories.odio_libreria_repo import odio_libreria_repo
 from core.odio_libreria_service import libreria_odio
 from core.automod_parole_logic import Filtro, normalizza, trova
@@ -276,9 +284,14 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
     async def _libreria(azione: str, testo: str | None, lingua: str | None) -> str:
         if azione == "elenca":
             conti = await odio_libreria_repo.conta_per_stato()
-            candidate = await odio_libreria_repo.elenca(STATO_CANDIDATA, 25)
+            # Prima le condivise (da approvare per renderle certe), poi le candidate.
+            condivise = await odio_libreria_repo.elenca(STATO_CONDIVISA, 15)
+            candidate = await odio_libreria_repo.elenca(STATO_CANDIDATA, 10)
             righe = [f"{s}: {conti.get(s, 0)}" for s in STATI]
-            righe += [f"`{p.variante.replace(chr(96), '')}` ({p.lingua or '?'}) — {p.server} server" for p in candidate]
+            righe += [
+                f"[{stato}] `{p.variante.replace(chr(96), '')}` ({p.lingua or '?'}) — {p.server} server"
+                for stato, elenco in (("condivisa", condivise), ("candidata", candidate)) for p in elenco
+            ]
             return "\n".join(righe)[:1900]
         variante = pulisci_variante(testo or "")
         if variante is None:
@@ -291,7 +304,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         if not await odio_libreria_repo.imposta_stato(variante, stato):
             return "Questa variante non è in libreria."
         libreria_odio.svuota()
-        return "Approvata: vale in tutti i server." if stato == STATO_APPROVATA else "Rifiutata: non varrà mai in nessun server."
+        return "Approvata: ora è certa in tutti i server (si cancella senza chiedere all'AI)." if stato == STATO_APPROVATA else "Rifiutata: non varrà mai in nessun server."
 
     @comando_di_gruppo(
         "automod", nome="prova", descrizione="Prova un testo contro le parole vietate, senza agire.",

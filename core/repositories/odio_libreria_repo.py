@@ -17,6 +17,7 @@ from core.odio_libreria_logic import (
     STATI_GLOBALI,
     STATO_BASE,
     STATO_CANDIDATA,
+    STATO_CONDIVISA,
     STATO_RIFIUTATA,
     stato_dopo_segnalazione,
 )
@@ -46,7 +47,7 @@ class OdioLibreriaRepository:
     async def segnala(self, variante: str, lingua: str, guild_id: int, owner_id: int | None) -> ParolaOdio | None:
         """
         Un server segnala una variante trovata dall'AI. Nuova: entra come candidata. Con
-        segnalazioni da server di abbastanza proprietari diversi diventa approvata (owner_id
+        segnalazioni da server di abbastanza proprietari diversi diventa condivisa (owner_id
         None = il server non conta per la soglia). Una rifiutata resta rifiutata. None se il
         server ha già troppe candidate.
         """
@@ -92,11 +93,17 @@ class OdioLibreriaRepository:
         return tuple(r["variante"] for r in righe)
 
     async def candidate_del_server(self, guild_id: int) -> tuple[str, ...]:
-        """Le candidate segnalate da questo server (valgono solo lì finché non diventano globali)."""
+        """
+        Le varianti sospette per questo server, da far giudicare all'AI: le sue candidate
+        (valgono solo lì) più le condivise da abbastanza proprietari (valgono ovunque, D39).
+        """
         righe = await self._pool.fetch(
-            "SELECT p.variante FROM odio_parole p JOIN odio_segnalazioni s ON s.parola_id = p.id "
-            "WHERE s.guild_id = $1 AND p.stato = $2 ORDER BY p.id LIMIT $3",
-            guild_id, STATO_CANDIDATA, MAX_CANDIDATE_PER_SERVER,
+            "SELECT variante FROM ("
+            " SELECT p.id, p.variante FROM odio_parole p JOIN odio_segnalazioni s ON s.parola_id = p.id"
+            " WHERE s.guild_id = $1 AND p.stato = $2"
+            " UNION SELECT p.id, p.variante FROM odio_parole p WHERE p.stato = $4"
+            ") v ORDER BY id LIMIT $3",
+            guild_id, STATO_CANDIDATA, MAX_CANDIDATE_PER_SERVER + 500, STATO_CONDIVISA,
         )
         return tuple(r["variante"] for r in righe)
 

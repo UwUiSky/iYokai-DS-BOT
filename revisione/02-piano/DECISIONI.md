@@ -583,6 +583,12 @@ Precisa D35. Scelte fatte dove D35 lasciava aperto:
 - Il blocco nativo usa solo gli insulti certi della lista di base (non le parole sospette), vicino a una minaccia.
 
 
+
+> **Confermata dall'owner (28/10/2026):** con l'AI spenta o senza consenso ogni messaggio con una
+> parola sospetta si cancella, cognomi compresi. Una variante segnalata da 3 proprietari diversi
+> diventa **condivisa** (vale in tutti i server ma la giudica sempre l'AI); diventa **certa**
+> (approvata, cancellata senza AI) solo con l'approvazione dell'owner (migrazione 0392).
+
 ## D41 — Immagine della moneta e istanze musicali oltre 5 (28/10/2026)
 
 Precisa D38 e D30. **Moneta:** l'immagine sta in `guild_coin_images` (PNG 128x128, al massimo 64 KiB,
