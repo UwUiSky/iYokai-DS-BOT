@@ -239,3 +239,11 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py` | Aggiramenti che passavano: lisu, cherokee, latine con uncino, cerchi per o, riempitivi hangul, lettere censurate, parola spezzata a metà, U+202E, voci mancanti | alta | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py:costruisci` | Lecita del server uguale a una voce di base la spegneva senza conferma (anche via import) | alta | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/automod/automod.py:_controlla` | Parola divisa in più messaggi brevi di fila non vista | media | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/automod/escalation.py:on_automod_parole_vietate` | Chi gestisce il server contato e avvisato dalla scala | bassa | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/automod/parole_odio.py:controlla_nome` | Nome neutro vietato da lista propria: secondo cambio inutile dopo l'evento | bassa | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/utility/config_history.py:errore_chiavi_solo_proprietario` | Chiave mai impostata letta come None: import di `automod_parole_base: true` da admin rifiutato senza cambio | bassa | aperto |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py:_separate` | Già prima: lettere staccate «f a g i o l i» e «fag?ioli» scattano su «fag» | bassa | aperto |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py` | Non coperti (scelta): greco fonetico, katakana, testo capovolto e al contrario | bassa | accettato |

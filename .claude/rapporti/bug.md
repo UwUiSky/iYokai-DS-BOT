@@ -282,3 +282,6 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 28/10 · core/automod_parole_logic.py costruisci · lecita del server = voce di base («n1gg3r», «n i g g e r») spegneva quella voce senza conferma · alta · corretto r10filtro 1669138
+- 28/10 · core/automod_parole_logic.py · passavano: ꓠꓲꓖꓖꓰꓣ, ᏚᏢᎥᏟ, ƒrocio, fr⭕cio, nㅤigger, n*gger, n█gger, nig ger, U+202E «regg in», niqqa, nygger · alta · corretto r10filtro 1669138
+- 28/10 · cogs/automod/automod.py _controlla · «nig» «g» «er» in tre messaggi passavano · media · corretto r10filtro 1669138
