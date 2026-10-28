@@ -118,10 +118,16 @@ class AiRepository:
         return _config(r)
 
     async def avvia_prova(self, guild_id: int) -> ConfigAI:
-        """Fa partire il periodo di prova dell'AI, una volta sola per server (AI-R-023)."""
+        """
+        Fa partire il periodo di prova dell'AI, una volta sola per server (AI-R-023). L'inizio
+        resta in `ai_prove` anche dopo la cancellazione dei dati del server: vale il più vecchio.
+        """
         r = await self._pool.fetchrow(
-            "INSERT INTO ai_config (guild_id, prova_inizio) VALUES ($1, now()) "
-            "ON CONFLICT (guild_id) DO UPDATE SET prova_inizio = COALESCE(ai_config.prova_inizio, now()) RETURNING *",
+            "WITH p AS (INSERT INTO ai_prove (guild_id) VALUES ($1) "
+            "ON CONFLICT (guild_id) DO UPDATE SET guild_id = EXCLUDED.guild_id RETURNING inizio) "
+            "INSERT INTO ai_config (guild_id, prova_inizio) SELECT $1, inizio FROM p "
+            "ON CONFLICT (guild_id) DO UPDATE SET prova_inizio = "
+            "LEAST(COALESCE(ai_config.prova_inizio, EXCLUDED.prova_inizio), EXCLUDED.prova_inizio) RETURNING *",
             guild_id,
         )
         return _config(r)

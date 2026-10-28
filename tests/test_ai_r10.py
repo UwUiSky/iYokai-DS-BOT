@@ -304,3 +304,37 @@ async def test_comandi_ai_premium_aperti_durante_la_prova(repo, monkeypatch):
     assert all([await passa(c) for c in comandi])  # prova in corso
     await repo.imposta(G, prova_inizio=datetime.now(timezone.utc) - timedelta(days=GIORNI_PROVA + 1))
     assert not any([await passa(c) for c in comandi])  # prova finita
+
+
+async def test_prova_non_riparte_dopo_la_cancellazione_dei_dati_del_server(repo, clean_db):
+    """Bot tolto e rimesso dopo la pulizia dei dati (90 giorni): la prova non si rifà da capo (§25.23)."""
+    from core.retention_worker import purga_server
+
+    prima = await repo.avvia_prova(G)
+    await clean_db.execute(
+        "INSERT INTO guild_presence (guild_id, left_at) VALUES ($1, now() - interval '200 days')", G
+    )
+    assert await purga_server(clean_db, G) is not None
+    assert (await repo.get_config(G)).prova_inizio is None  # le scelte del server sono cancellate
+    dopo = await repo.avvia_prova(G)
+    assert dopo.prova_inizio == prima.prova_inizio
+    assert not prova_attiva(dopo.prova_inizio, prima.prova_inizio + timedelta(days=GIORNI_PROVA))
+
+
+async def test_riaccendere_dopo_la_cancellazione_dice_che_la_prova_e_finita(repo, clean_db, monkeypatch):
+    from core import premium
+    from core.ai_impostazioni import accendi_ai
+
+    monkeypatch.setattr(ai_repo, "_pool_provider", repo._pool_provider)
+    monkeypatch.setattr(premium.registry, "is_module_premium", lambda nome: nome == "ai")
+
+    async def mai(guild_id, nome, bot=None):
+        return False
+
+    monkeypatch.setattr(premium, "guild_has_premium_access", mai)
+    # stato dopo la pulizia: le scelte del server non ci sono più, l'inizio della prova sì
+    await clean_db.execute("INSERT INTO ai_prove (guild_id, inizio) VALUES ($1, now() - interval '30 days')", G)
+    testo = await accendi_ai(G, U)
+    assert "già finita" in testo and "parte una prova" not in testo
+    servizio, _ = servizio_finto(repo)
+    assert (await _motivo(servizio, _r())).motivo == "prova_finita"

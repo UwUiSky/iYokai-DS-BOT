@@ -89,10 +89,10 @@ async def accendi_ai(guild_id: int, user_id: int) -> str:
     if await _serve_la_prova(guild_id):
         prima = await ai_repo.get_config(guild_id)
         cfg = await ai_repo.avvia_prova(guild_id)
-        if prima.prova_inizio is None:
-            testo += f" L'AI è premium: parte una prova gratuita di {GIORNI_PROVA} giorni."
-        elif not prova_attiva(cfg.prova_inizio):
+        if not prova_attiva(cfg.prova_inizio):
             testo += " La prova gratuita è già finita: per usare l'AI serve il premium."
+        elif prima.prova_inizio is None:
+            testo += f" L'AI è premium: parte una prova gratuita di {GIORNI_PROVA} giorni."
     return testo
 
 

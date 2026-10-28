@@ -512,6 +512,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     # ---------------------------------------------------------------- motore AI (NF-24, D19)
     _t("ai_config", "Scelte AI del server (consenso, quote, lore, privacy)", colonne_attore=("consenso_da",),
        colonna_server="guild_id"),
+    _t("ai_prove", "Inizio della prova gratuita dell'AI per server", colonna_server="guild_id", server="conserva",
+       nota="solo la data: la prova non riparte se il bot viene tolto e rimesso"),
     _t("ai_globale", "Interruttori dell'AI decisi dall'owner (manutenzione)", colonne_attore=("aggiornato_da",),
        server="conserva", nota="impostazione globale del bot, non di un server"),
     _t("ai_uso", "Conti dell'uso dell'AI (solo numeri, mai il testo)", colonne_utente=("user_id",),

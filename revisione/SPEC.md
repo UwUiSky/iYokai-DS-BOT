@@ -2119,7 +2119,7 @@ di quel file.
   → **Stato 27/10 (r10):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Coda vera in `core/ai_coda_logic.py`: 4 chiamate insieme, fino a 40 in fila (8 per server), attesa massima 25 secondi; oltre, risposta locale «troppe richieste in fila». Il processo separato (25.21) resta a parte.
 - `[x]` 25.23 AI come diritto premium a parte, con periodo di prova
   (AI-R-023)
-  → **Stato 27/10 (r10):** modulo `ai` registrato: l'owner lo rende premium. Se il server non l'ha sbloccato, il consenso di `/ai attiva` fa partire una prova di 7 giorni (una sola volta, `ai_config.prova_inizio`, 0350); finita la prova la porta unica risponde «prova finita».
+  → **Stato 27/10 (r10):** modulo `ai` registrato: l'owner lo rende premium. Se il server non l'ha sbloccato, il consenso di `/ai attiva` fa partire una prova di 7 giorni (una sola volta, `ai_config.prova_inizio`, 0350); finita la prova la porta unica risponde «prova finita». La prova vale anche per i comandi del modulo (`richiede_ai`); l'inizio resta in `ai_prove` (0351) anche dopo la cancellazione dei dati del server: togliere e rimettere il bot non la fa ripartire.
 
 **Assistente e helpdesk**
 
