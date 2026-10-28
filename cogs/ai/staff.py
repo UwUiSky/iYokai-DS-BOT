@@ -64,6 +64,8 @@ class RegolaView(BaseView):
         self.proposta = proposta
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
         if interaction.user.id != self.autore_id:
             await interaction.response.send_message("Questa proposta è di chi l'ha chiesta.", ephemeral=True)
             return False

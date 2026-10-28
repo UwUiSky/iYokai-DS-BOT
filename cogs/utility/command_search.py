@@ -237,16 +237,25 @@ class CommandSearchCog(commands.Cog):
     @app_commands.command(name=NOME_CHIEDI, description="Chiedi aiuto: ti mostro i comandi giusti.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.allowed_installs(guilds=True, users=True)
-    @app_commands.describe(domanda="Cosa vuoi fare? (vuoto: pannello dei comandi)")
+    @app_commands.describe(
+        domanda="Cosa vuoi fare? (vuoto: pannello dei comandi)",
+        cerca="Sì: cerca la risposta sul web e ti riassume le fonti",
+    )
     async def chiedi(
         self,
         interaction: discord.Interaction,
         domanda: app_commands.Range[str, 1, 500] | None = None,
+        cerca: bool = False,
     ) -> None:
         if domanda is None:
             await self._mostra_pannello(interaction)
             return
         pulita = domanda.strip()
+        if cerca:
+            from cogs.ai._ricerca_web import risposta_con_ricerca
+
+            await risposta_con_ricerca(interaction, pulita, _server_del_bot(interaction))
+            return
         esito_ai = await self._risposta_ai(interaction, pulita)
         if esito_ai is True:
             return
