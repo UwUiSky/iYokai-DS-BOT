@@ -724,3 +724,47 @@ async def test_add_url_non_valido_viene_rifiutato_e_non_salvato(clean_db, monkey
         assert "URL non valido" in interazione.followup.send.call_args.args[0]
     finally:
         await database.close()
+
+
+@pytest.mark.parametrize(
+    "url, atteso",
+    [
+        ("https://www.tiktok.com/@qualcuno", True),
+        ("https://instagram.com/qualcuno/", True),
+        ("https://x.com/qualcuno", True),
+        ("https://mobile.twitter.com/qualcuno", True),
+        ("https://rsshub.esempio.it/tiktok/user/qualcuno", False),  # feed «ponte» di un servizio esterno
+        ("https://esempio.com/nottiktok.com/feed.rss", False),
+        ("https://eccotiktok.com/feed", False),
+    ],
+)
+def test_profilo_social_senza_feed(url, atteso):
+    from core.alert_options_logic import profilo_social_senza_feed
+
+    assert profilo_social_senza_feed(url) is atteso
+
+
+@pytest.mark.asyncio
+async def test_add_con_la_pagina_di_un_profilo_social_rimanda_alla_guida(clean_db, monkeypatch):
+    import cogs.utility.feed_alerts as feed_alerts_module
+    from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
+
+    database = Database()
+    await database.connect()
+    try:
+        await database.set_module_active_for_guild(900000021, MODULE_FEED_ALERTS, True)
+        repo = FeedSubscriptionRepository(pool_provider=lambda: clean_db)
+        monkeypatch.setattr(feed_alerts_module, "db", database)
+        monkeypatch.setattr(feed_alerts_module, "feed_subscription_repo", repo)
+        interazione = fake_interaction(guild=fake_guild(guild_id=900000021))
+        cog = FeedAlertsCog(bot=None)
+
+        await cog.add.callback(
+            cog, interazione, feed_url="https://www.tiktok.com/@qualcuno", channel=fake_text_channel(500),
+            label="Test", message_template=None,
+        )
+
+        assert await repo.list_subscriptions(900000021) == []
+        assert "guida-social" in interazione.response.send_message.call_args.args[0]
+    finally:
+        await database.close()

@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 from dataclasses import dataclass, replace
+from urllib.parse import urlsplit
 
 import discord
 
@@ -41,6 +42,16 @@ GUIDA_SOCIAL = (
     "**Kick** invece ha un'interfaccia gratuita: `/moduli alert kick`. "
     "Il proprietario del bot imposta `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET`."
 )
+
+SITI_SOCIAL_SENZA_FEED = ("tiktok.com", "instagram.com", "x.com", "twitter.com")
+
+
+def profilo_social_senza_feed(url: str) -> bool:
+    """True se l'indirizzo è una pagina di TikTok, Instagram o X: non è un feed e non si legge."""
+    host = urlsplit(url.strip()).hostname or ""
+    host = host.lower()
+    return any(host == sito or host.endswith("." + sito) for sito in SITI_SOCIAL_SENZA_FEED)
+
 
 MAX_MESSAGGIO = 2000
 MAX_URL_BOTTONE = 512

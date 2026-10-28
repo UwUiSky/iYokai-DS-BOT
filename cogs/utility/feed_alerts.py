@@ -23,6 +23,7 @@ from core.alert_options_logic import (
     SIGLE_DIRETTA,
     AlertOptions,
     GUIDA_SOCIAL,
+    profilo_social_senza_feed,
     leggi_id_avviso,
 )
 from core.config import config
@@ -112,6 +113,16 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(
                 "Questo modulo non è attivo su questo server. "
                 "Un amministratore può attivarlo con /admin setup attiva.",
+                ephemeral=True,
+            )
+            return
+
+        # 10.5, 10.6, 10.13: la pagina di un profilo social non è un feed. Si spiega la strada regolare.
+        if profilo_social_senza_feed(feed_url):
+            await interaction.response.send_message(
+                "Quella è la pagina di un profilo (TikTok, Instagram o X), non un feed: non posso leggerla. "
+                "Serve l'indirizzo di un feed RSS «ponte» di un servizio esterno, oppure un webhook. "
+                "Guarda `/moduli alert guida-social`.",
                 ephemeral=True,
             )
             return

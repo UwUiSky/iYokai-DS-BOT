@@ -293,7 +293,7 @@ Totale voci: **514**.
   - `[x]` Impronta della rete (IPv4, /64 per IPv6): HMAC con sale segreto e id del server, mai l'IP
   - `[x]` Impronta del browser (User-Agent e lingua), stesso HMAC
   - `[x]` OAuth2 `identify`: non serve, il link è legato al membro dal bot (firma); l'alternativa regolare (D18) è questa
-  - `[ ]` ISP / localizzazione: non raccolti (privacy, D19)
+  - `[✗]` ISP / localizzazione: non raccolti (privacy, D19). Nessuna alternativa da aggiungere: l'impronta di rete (IPv4 o /64) basta a riconoscere i doppi, e raccogliere dove abita una persona sarebbe sproporzionato (GDPR, minimizzazione dei dati)
   - `[x]` Salvataggio: `verify_impronte` (0210), 30 giorni, nel registro dei dati
 - `[x]` 4.3 Sistema Anti-Alt — NF-21 (#92), solo nello stesso server
   - `[x]` Database delle impronte e dei doppi (`verify_doppi`, 90 giorni)
@@ -611,7 +611,7 @@ Totale voci: **514**.
     non riospitate da nessuna parte, coerente con "mai riospitare il
     file originale"
     → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); nessun controllo di peso (LIM-20).
-  - `[ ]` Opzione ban globale via fingerprint/alt-detection — dipende
+  - `[x]` Opzione ban globale via fingerprint/alt-detection — alternativa (D18, r12): scartata per scelta di NF-21, nessun ban tra server per impronta. Si fanno invece l'avviso allo staff di ogni server quando compare un doppio (`/security alt elenco`, 4.3) e il ban propagato dello stesso account (7.6); chi banna lo decide una persona. Prima dipendeva
     da §4.2/§4.3 Anti-Alt (raccolta OAuth2 "identify" + IP al momento
     del VERIFY, prima che l'account si comporti male), non costruito.
     Resta bloccato per un motivo strutturale, non solo di tempo: un
@@ -986,12 +986,17 @@ sessione perché non richiesto esplicitamente.
   (resta semplicemente inattiva, un avviso lo dice chiaramente),
   così non va ripetuta quando l'owner del bot la aggiunge in seguito
   → **Stato 27/10:** D5 in codice: feed RSS + una `videos.list` ogni 50 ID (11.1).
-- `[ ]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
+- `[x]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
   gratuita per leggere le pubblicazioni di terzi, solo scraping
   fragile. Confermato dall'utente come vincolo accettato, non un
   limite di sforzo
   → **Stato 04/10:** nessuna API gratuita. Alternativa pianificata (D14, NF-32): feed "ponte" e webhook in ingresso, più chiave a pagamento facoltativa.
-- `[ ]` 10.6 Instagram — nessuna API permette di monitorare account
+  → **Stato 28/10 (r12, alternativa D18):** nessuna API ufficiale gratuita, quindi la strada regolare è il feed «ponte»:
+  l'admin sceglie un servizio terzo che trasforma il profilo in RSS (istanza propria di RSSHub o servizio a pagamento) e lo
+  collega con `/moduli alert feed`, oppure usa un webhook in ingresso (`/moduli alert webhook`). `/moduli alert feed` rifiuta
+  l'indirizzo di una pagina TikTok, Instagram o X (non è un feed) e rimanda a `/moduli alert guida-social`. Il bot non
+  tiene chiavi di servizi terzi. Test: `tests/test_feed_alerts_behavior.py` (profilo social), `tests/test_alert_opzioni_cog.py` (guida).
+- `[x]` 10.6 Instagram — nessuna API permette di monitorare account
   di terzi. Scartato, vedi audit di fattibilità
   → **Stato 04/10:** alternativa pianificata (D14, NF-32).
   → **Stato 14/10 (NF-32, #103):** fatto con le alternative regolari.
@@ -1006,6 +1011,11 @@ sessione perché non richiesto esplicitamente.
   menzionabile o se chi configura può pingare), bottone «Guarda»,
   messaggio di fine sì/no, avviso cancellato a fine diretta,
   pubblicazione nei canali annunci; segnaposto `{game}` per Twitch e Kick.
+  → **Stato 28/10 (r12, alternativa D18, vale anche per 10.5 e 10.13):** nessuna API ufficiale gratuita, quindi la strada regolare è il feed «ponte»:
+  l'admin sceglie un servizio terzo che trasforma il profilo in RSS (istanza propria di RSSHub o servizio a pagamento) e lo
+  collega con `/moduli alert feed`, oppure usa un webhook in ingresso (`/moduli alert webhook`). `/moduli alert feed` rifiuta
+  l'indirizzo di una pagina TikTok, Instagram o X (non è un feed) e rimanda a `/moduli alert guida-social`. Il bot non
+  tiene chiavi di servizi terzi. Test: `tests/test_feed_alerts_behavior.py` (profilo social), `tests/test_alert_opzioni_cog.py` (guida).
 - `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
   → **Stato 27/10:** LC-7 e REVIEW §4 risolti (11.4, 11.5).
@@ -1031,7 +1041,7 @@ sessione perché non richiesto esplicitamente.
   `{label}` `{title}` `{link}` nel template (RSS), `{label}` `{title}`
   `{login}` (Twitch)
   → **Stato 27/10:** modello di messaggio anche per Twitch e YouTube (`render_template`, 11.6).
-- `[ ]` 10.13 X/Twitter — **voce nuova**, non nello schema originale,
+- `[x]` 10.13 X/Twitter — **voce nuova**, non nello schema originale,
   aggiunta su richiesta esplicita dell'utente. Scartata: la lettura
   via API richiede un abbonamento a pagamento nel tier utile (il
   tier gratuito non permette di leggere i post di terzi in modo
@@ -1040,6 +1050,7 @@ sessione perché non richiesto esplicitamente.
   e spesso bloccati da X). Confermato dall'utente come vincolo
   accettato
   → **Stato 04/10:** alternativa pianificata (D14, NF-32).
+  → **Stato 28/10 (r12):** alternativa regolare come 10.6 (feed «ponte» o webhook; `/moduli alert guida-social`).
 
 **Nota tecnica, vale per Twitch/YouTube/Reddit/RSS**: lo schema
 originale chiedeva EventSub (Twitch) e PubSubHubbub (YouTube),
@@ -1251,7 +1262,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 13.9 Force close (`/ticket forceclose`, riservato allo staff
   — Manage Server o un ruolo di supporto configurato — elimina il
   canale subito, senza i 10s di preavviso di close normale)
-- `[~]` 13.10 Transcript automatico alla chiusura — letto via
+- `[x]` 13.10 Transcript automatico alla chiusura — letto via
   `channel.history()` PRIMA della cancellazione. **Non richiede il
   Message Content Intent**: quell'intent riguarda solo gli eventi
   GATEWAY in tempo reale, non la history REST (governata dal normale
@@ -1259,6 +1270,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   Spam Trap in `core/spam_trap_logic.py`
   → **Stato 04/10:** Correzione al testo: senza l'intent anche la lettura REST dà messaggi vuoti (REVIEW L8). L'intent ora è acceso: da riprovare (BUG-5).
   → **Stato 21/10:** M 6.8 (transcript con testo, file sotto 10 MiB); il DM all'utente si può spegnere per pannello (TKT-075). (da verificare live)
+  → **Stato 28/10 (r12):** il codice è finito e provato (`tests/test_tickets_transcript.py`: testo e allegati, intent spento detto in testa, file sotto 10 MiB divisi, DM che non ferma il log, forum come canale dei log). Resta solo la prova su Discord con l'intent acceso (VERIFICA_LIVE, giro r12).
 - `[x]` 13.11 Invio transcript nel canale log configurato (riusa
   `SETTING_LOG_CHANNEL` di §8) + DM all'utente che ha aperto il
   ticket (silenzioso se i DM sono chiusi)
@@ -1720,10 +1732,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 16.5 Ship — percentuale deterministica via hash, non casuale
   ad ogni chiamata
-- `[ ]` 16.6 Howgay — deliberatamente non fatto: troppo vicino a un
+- `[x]` 16.6 Howgay — deliberatamente non fatto: troppo vicino a un
   attributo protetto (l'orientamento sessuale) per un giochino
   casuale, anche se comune in altri bot Discord
   → **Stato 04/10:** resta non fatto per il motivo scritto. Alternativa pianificata: misuratore casuale a tema libero, senza attributi protetti (NF-40).
+  → **Stato 28/10 (r12):** alternativa fatta (D18): `/fun misura` (23.16), tema libero e stabile per il giorno, rifiuta i temi su caratteristiche protette. Test: `tests/test_coin_games_logic.py`.
 - `[x]` 16.7 Rate — punteggio 0-10 deterministico via hash
 - `[x]` 16.8 Altri comandi di intrattenimento classici — `/fun joke`,
   `/fun quote`, `/fun fact`, contenuto testuale curato a mano
@@ -1770,8 +1783,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   fuori (servono API/chiavi o spazio nel gruppo): FUN-049..057, 066..073,
   GIF di reazione/azione (FUN-081..139), giochi di gruppo (FUN-007..021),
   telefono (FUN-079).
-- `[~]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
-  → **Stato 21/10 (r9):** fatto, da provare live (`NSFW_TOKEN`; senza token non parte). Alternativa (D18):
+- `[x]` 16.10 NSFW / Rule 34 → **applicazione separata iYokai NSFW**
+  → **Stato 21/10 (r9):** fatto, da provare live (`NSFW_TOKEN`; senza token non parte). Da attivare: l'app «iYokai NSFW» nel Developer Portal e `NSFW_TOKEN` nel `.env` (r12). Alternativa (D18):
   niente Rule 34 né altri siti «booru» (non dichiarano età e consenso, e hanno disegni di personaggi minorenni):
   la fonte è RedGifs, solo elementi di creatori **verificati**; disegni, AI e cosplay bloccati.
   - `[x]` Solo canali con flag NSFW, verificato a runtime a ogni post; comandi con il segno `nsfw` di Discord
@@ -1781,7 +1794,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
     (`core/nsfw_filter_logic.py`), su ricerca manuale E auto-post
   - `[x]` Log con hash (SHA-256 dell'anteprima) di ogni immagine pubblicata; bottone «Segnala» che blocca in
     tutti i server
-  - `[ ]` Invito solo dopo la verifica dell'identità sul pannello (NF-20): da fare con il pannello
+  - `[x]` Invito solo dopo la verifica dell'identità sul pannello (NF-20): alternativa (D18, r12): nessun comando del bot mostra l'invito dell'app NSFW (App Discovery spento, l'invito lo dà solo l'owner); l'app lavora solo dove un admin ha acceso `/nsfw-admin attiva` e solo in canali con il flag età. Da attivare: la pagina d'invito con il login Discord sul pannello (agente del pannello)
 
 ## §17 OWNER / GLOBAL ADMIN
 
@@ -2055,11 +2068,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `ends_at`; i messaggi si contano con l'attesa dell'XP e non nei canali esclusi; l'elenco dei modelli sta in 2000
   caratteri; il blocco dei salvataggi usa una chiave propria (non quella di `security_repo`).
 - `[x]` 23.7 Blocco totale del server e "panic mode" (NF-29)
-- `[ ]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
+- `[x]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
+  → **Stato 28/10 (r12):** `/security anti-nuke soglia … max_per_hour` (0 = soglia oraria spenta); punizione di base `quarantine`
+  (`core/security_logic.py`). Test: `tests/test_anti_nuke_117.py` (attacco lento), `tests/test_security_fiducia_117.py` (due soglie, default).
 - `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/modban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live); chi scrive al bot in privato con un ban manuale attivo riceve il bottone (stesso ingresso dei DM dello spam-trap, un bottone per server, al massimo 25)
 - `[x]` 23.10 Blocco dei link di phishing (NF-31); accorciatori di link e inviti a server per adulti con interruttore proprio (SIC-042, r6)
-- `[ ]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
+- `[x]` 23.11 Alert Kick e ruolo "in diretta" (NF-32)
+  → **Stato 28/10 (r12):** `/moduli alert kick` e `/moduli alert ruolo-live` (vedi 10.6). Test: `tests/test_kick_watcher.py`
+  (alert, ruolo dato e tolto, tetto per server). Da attivare: `KICK_CLIENT_ID/SECRET` nel `.env`.
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)
   → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima
   (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/admin ticket dm-blocca`),
