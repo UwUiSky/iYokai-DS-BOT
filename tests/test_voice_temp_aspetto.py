@@ -52,6 +52,20 @@ async def test_canale_copiato_dal_generatore_eredita_limite_qualita_e_permessi()
     assert kw["overwrites"][scena.membro(ID_PROPRIETARIO)].manage_channels is True
 
 
+async def test_generatore_privato_copiato_resta_privato_anche_se_nasce_bloccato():
+    # Revisione r10: con «nascono bloccati» il @everyone del generatore (vista negata) va
+    # tenuto e solo «Connetti» negato in più; prima il canale diventava visibile a tutti.
+    scena = Scena()
+    generatore, _ = await _con_generatore(scena, True)
+    generatore.overwrites = {scena.guild.default_role: discord.PermissionOverwrite(view_channel=False)}
+    await voice_temp_repo.set_opzioni(ID_SERVER, None, True, None)
+
+    await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
+
+    tutti = scena.categoria.create_voice_channel.call_args.kwargs["overwrites"][scena.guild.default_role]
+    assert (tutti.view_channel, tutti.connect) == (False, False)
+
+
 async def test_senza_copia_il_canale_nasce_come_prima():
     scena = Scena()
     await _con_generatore(scena, False)

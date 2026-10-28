@@ -268,8 +268,13 @@ async def _create_temp_channel(
         # VOC-013: permessi, limite e qualità del generatore; il blocco e il proprietario
         # restano quelli di sopra.
         overwrites = {**generatore.overwrites, **overwrites}
-        if guild.default_role in generatore.overwrites and not config.nasce_bloccato:
-            overwrites[guild.default_role] = generatore.overwrites[guild.default_role]
+        if guild.default_role in generatore.overwrites:
+            # Il @everyone del generatore resta (un generatore privato dà vocali privati);
+            # se nascono bloccati, in più «Connetti» negato.
+            tutti = discord.PermissionOverwrite.from_pair(*generatore.overwrites[guild.default_role].pair())
+            if config.nasce_bloccato:
+                tutti.update(connect=False)
+            overwrites[guild.default_role] = tutti
         extra = impostazioni_da_generatore(generatore.bitrate, generatore.user_limit, int(guild.bitrate_limit))
     if limite_utenti:
         extra["user_limit"] = limite_utenti
