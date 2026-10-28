@@ -34,6 +34,7 @@ MODULI = (
     "cogs.security.spam_trap",
     "cogs.automod.automod",
     "cogs.automod.escalation",
+    "cogs.automod.parole_odio",
     "cogs.logging.basic_logs",
     "cogs.logging.logs_query",
 )
@@ -74,6 +75,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
         "messaggi", "contenuto", "canale-media",
     },
     ("automod", "parole"): {"add", "remove", "list"},
+    ("automod", "odio"): {"stato", "base", "parola", "nomi", "prova"},
     ("automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},
     ("log", None): {"canale", "stato", "esporta", "archivio-canale"},
     ("log", "cerca"): {"utente", "canale"},

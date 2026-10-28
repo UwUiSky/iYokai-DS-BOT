@@ -1,0 +1,209 @@
+"""
+cogs/automod/parole_odio.py
+===========================
+Parole vietate con varianti (AMD-014): comandi di `/automod odio` per la lista
+di base, le parole proprie e quelle lecite, e controllo dei nomi (nickname e
+nome visualizzato) all'ingresso e al cambio. Il controllo dei messaggi sta in
+cogs/automod/automod.py; il filtro in core/automod_parole_logic.py.
+Funzioni coperte: SPEC §6 (AMD-014)
+"""
+
+from __future__ import annotations
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+from cogs.automod.automod import MODULE_AUTOMOD, is_member_exempt
+from cogs.moderation._shared import ensure_module_enabled
+from core import automod_parole_opzioni as opzioni_parole
+from core import channel_router as router
+from core.automod_parole_logic import Filtro, normalizza, trova
+from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.database import db
+from core.repositories.automod_advanced_repo import automod_advanced_repo
+
+NOME_SOSTITUTIVO = "Nome rimosso"
+MAX_PROVA = 400
+SOTTOGRUPPO = ("odio", "Parole vietate con varianti e insulti d'odio.")
+
+LISTE = [
+    app_commands.Choice(name="parole proprie del server", value=opzioni_parole.LISTA_PROPRIE),
+    app_commands.Choice(name="parole lecite", value=opzioni_parole.LISTA_LECITE),
+]
+AZIONI = [
+    app_commands.Choice(name="aggiungi", value="aggiungi"),
+    app_commands.Choice(name="rimuovi", value="rimuovi"),
+]
+
+
+def nuovo_nick(nick: str | None, nome_base: str, filtro: Filtro) -> tuple[bool, str | None]:
+    """
+    (cambiare?, nickname nuovo). `nome_base` è il nome senza nickname (nome
+    visualizzato o utente). Nickname vietato: via il nickname, e se anche il
+    nome di base è vietato un nome neutro. Nickname assente o pulito: si
+    cambia solo se il nome di base è vietato e non c'è nickname.
+    """
+    base_vietato = trova(nome_base, filtro) is not None
+    if nick:
+        if trova(nick, filtro) is None:
+            return False, None
+        return True, NOME_SOSTITUTIVO if base_vietato else None
+    return (True, NOME_SOSTITUTIVO) if base_vietato else (False, None)
+
+
+async def controlla_nome(membro: discord.Member) -> str | None:
+    """
+    Ripulisce il nome del membro se contiene una parola vietata. Restituisce
+    cosa è stato fatto (per il log) o None. Rispetta moduli ed esenzioni.
+    """
+    guild = membro.guild
+    if membro.bot or guild.owner_id == membro.id:
+        return None
+    if not await db.is_module_active_for_guild(guild.id, MODULE_AUTOMOD):
+        return None
+    filtro, opz = await opzioni_parole.filtro_del_server(guild.id)
+    if not opz.nick or filtro.vuoto():
+        return None
+    impostazioni = await automod_advanced_repo.get_settings(guild.id)
+    if is_member_exempt(membro, impostazioni, 0):
+        return None
+    cambia, nick = nuovo_nick(membro.nick, membro.global_name or membro.name, filtro)
+    if not cambia or nick == membro.nick:  # stesso nome: niente cambio, niente giro di eventi
+        return None
+    try:
+        await membro.edit(nick=nick, reason="AutoMod: nome con parola vietata")
+        esito = "nickname azzerato" if nick is None else f"nickname cambiato in «{nick}»"
+    except (discord.Forbidden, discord.HTTPException):
+        esito = "non riuscito (permessi o gerarchia)"
+    canale = await router.destinazione(guild, router.TIPO_AUTOMOD, impostazioni.log_channel_id)
+    if canale is not None:
+        embed = discord.Embed(title="🛡️ AutoMod — Nome con parola vietata", color=discord.Color.orange())
+        embed.add_field(name="Utente", value=f"{membro.mention} ({membro.id})", inline=False)
+        embed.add_field(name="Azione", value=esito, inline=False)
+        await router.invia_a(canale, guild, router.TIPO_AUTOMOD, embed=embed)
+    return esito
+
+
+class ParoleOdioCog(CogConGruppi, commands.Cog):
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_member_join(self, membro: discord.Member) -> None:
+        await controlla_nome(membro)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, prima: discord.Member, dopo: discord.Member) -> None:
+        if prima.nick != dopo.nick:
+            await controlla_nome(dopo)
+
+    @commands.Cog.listener()
+    async def on_user_update(self, prima: discord.User, dopo: discord.User) -> None:
+        if prima.global_name == dopo.global_name and prima.name == dopo.name:
+            return
+        for guild in dopo.mutual_guilds:
+            membro = guild.get_member(dopo.id)
+            if membro is not None:
+                await controlla_nome(membro)
+
+    # ================================================================
+    # Comandi
+    # ================================================================
+    @comando_di_gruppo(
+        "automod", nome="stato", descrizione="Mostra come sono impostate le parole vietate.", sottogruppo=SOTTOGRUPPO
+    )
+    async def stato(self, interaction: discord.Interaction) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        o = await opzioni_parole.leggi(interaction.guild.id)
+        righe = [
+            f"**Lista di base** (insulti d'odio, italiano e inglese): {'accesa' if o.base else 'SPENTA'}",
+            f"**Parole proprie**: {len(o.proprie)}",
+            f"**Parole lecite**: {len(o.lecite)}",
+            f"**Controllo dei nomi**: {'acceso' if o.nick else 'spento'}",
+        ]
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+
+    @comando_di_gruppo(
+        "automod", nome="base", descrizione="Accende o spegne la lista di base degli insulti d'odio.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(attiva="Accesa o spenta", conferma="Serve per spegnerla: scrivi true")
+    async def base(self, interaction: discord.Interaction, attiva: bool, conferma: bool = False) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        try:
+            await opzioni_parole.imposta_base(interaction.guild.id, attiva, conferma, interaction.user.id)
+        except ValueError as errore:
+            await interaction.response.send_message(f"{errore} Rilancia il comando con `conferma: true`.", ephemeral=True)
+            return
+        await interaction.response.send_message(
+            "Lista di base accesa." if attiva else "Lista di base spenta: gli insulti d'odio non sono più bloccati.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "automod", nome="parola", descrizione="Aggiunge o toglie una parola propria o una parola lecita.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        lista="Quale lista", azione="Aggiungi o rimuovi",
+        testo="La parola (da 3 a 60 caratteri): vale anche con cifre, accenti e lettere separate",
+    )
+    @app_commands.choices(lista=LISTE, azione=AZIONI)
+    async def parola(
+        self,
+        interaction: discord.Interaction,
+        lista: app_commands.Choice[str],
+        azione: app_commands.Choice[str],
+        testo: app_commands.Range[str, 3, opzioni_parole.MAX_LUNGHEZZA_VOCE],
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        guild_id, autore = interaction.guild.id, interaction.user.id
+        try:
+            if azione.value == "aggiungi":
+                fatto = await opzioni_parole.aggiungi_voce(guild_id, lista.value, testo, autore)
+                messaggio = "Parola aggiunta." if fatto else "C'era già."
+            else:
+                fatto = await opzioni_parole.rimuovi_voce(guild_id, lista.value, testo, autore)
+                messaggio = "Parola rimossa." if fatto else "Non c'era in lista."
+        except ValueError as errore:
+            messaggio = str(errore)
+        await interaction.response.send_message(messaggio, ephemeral=True)
+
+    @comando_di_gruppo(
+        "automod", nome="nomi", descrizione="Controlla nickname e nomi visualizzati all'ingresso e al cambio.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(attiva="Acceso o spento")
+    async def nomi(self, interaction: discord.Interaction, attiva: bool) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        await opzioni_parole.imposta_nick(interaction.guild.id, attiva, interaction.user.id)
+        await interaction.response.send_message(
+            "Controllo dei nomi acceso." if attiva else "Controllo dei nomi spento.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "automod", nome="prova", descrizione="Prova un testo contro le parole vietate, senza agire.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(testo="Il testo da provare")
+    async def prova(
+        self, interaction: discord.Interaction, testo: app_commands.Range[str, 1, MAX_PROVA]
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        trovato = await opzioni_parole.trova_nel_testo(interaction.guild.id, testo)
+        letto = normalizza(testo).replace("`", "")[:300]
+        if trovato is None:
+            esito = "Nessuna parola vietata."
+        else:
+            esito = f"Scatterebbe: voce `{trovato.voce.replace('`', '')}` (modo: {trovato.modo})."
+        await interaction.response.send_message(f"{esito}\nTesto letto dal filtro: `{letto}`", ephemeral=True)
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(ParoleOdioCog(bot))

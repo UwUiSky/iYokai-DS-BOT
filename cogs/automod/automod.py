@@ -31,11 +31,13 @@ tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed (solo
 per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
 inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
-filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041).
+filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041),
+parole vietate con varianti (AMD-014, core/automod_parole_logic.py: cancella e conta nella scala;
+anche la parola divisa in piu' messaggi brevi di fila, che vengono cancellati tutti).
 Regole native: parole con gli asterischi del modo (AMD-013), inviti da lasciar
 passare e quelli del server nelle eccezioni (AMD-026/027). Violazioni di un
 utente a pagine e una sola da togliere (AMD-062/065).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 013, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 013, 014, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -43,6 +45,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 from collections import OrderedDict
 from datetime import timedelta
 
@@ -111,6 +114,8 @@ from core.automod_advanced_logic import (
     evaluate_message_violations,
     normalize_domain,
 )
+from core.automod_parole_logic import MessaggiBrevi
+from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
 from core.repositories.automod_repo import automod_repo
 from core.repositories.automod_advanced_repo import (
@@ -186,6 +191,7 @@ _VIOLATION_LABELS = {
     VIOLATION_ESTENSIONI: "Tipo di file vietato",
     VIOLATION_SOLO_MEDIA: "Canale solo media",
     VIOLATION_SENZA_ALLEGATI: "Canale senza allegati",
+    VIOLATION_PAROLE_VIETATE: "Parole vietate",
 }
 
 # AMD-001: ultimo testo e quante volte di fila, per (server, utente). Tetto in memoria.
@@ -765,6 +771,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._sync_inviti_in_attesa: set[int] = set()
+        self._brevi = MessaggiBrevi()  # AMD-014: parola divisa in piu' messaggi
 
     @comando_di_gruppo(
         "automod",
@@ -1694,6 +1701,24 @@ class AutomodCog(CogConGruppi, commands.Cog):
         ):
             await self._controlla(after, modificato=True, solo_embed=True)
 
+    async def _parola_vietata(self, message: discord.Message, testo: str, modificato: bool) -> list[int] | None:
+        """
+        AMD-014: None se non c'e' parola vietata. Altrimenti gli id dei
+        messaggi brevi di prima che insieme a questo la formano ([] se basta
+        questo messaggio). I messaggi modificati non entrano nella serie.
+        """
+        chiave = (message.guild.id, message.channel.id, message.author.id)
+        if await trova_nel_testo(message.guild.id, testo, db) is not None:
+            self._brevi.svuota(chiave)
+            return []
+        if modificato:
+            return None
+        serie = self._brevi.aggiungi(chiave, time.monotonic(), message.id, testo)
+        if len(serie) < 2 or await trova_nel_testo(message.guild.id, "\n".join(t for _, t in serie), db) is None:
+            return None
+        self._brevi.svuota(chiave)
+        return [m for m, _ in serie[:-1]]
+
     async def _controlla(self, message: discord.Message, modificato: bool, solo_embed: bool = False) -> None:
         if message.guild is None or message.author.bot:
             return
@@ -1723,6 +1748,12 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 if await _invito_per_adulti(self.bot, codice, message.guild.id):
                     violazioni = (*violazioni, VIOLATION_INVITI_ADULTI)
                     break
+        frammenti: list[int] = []
+        if not solo_embed:
+            trovata = await self._parola_vietata(message, segnali.content, modificato)
+            if trovata is not None:
+                frammenti = trovata
+                violazioni = (VIOLATION_PAROLE_VIETATE, *violazioni)  # AMD-014
         if not violazioni:
             return
 
@@ -1734,6 +1765,11 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 message, violazione, azioni_configurate, settings, modificato=modificato
             )
             await _log_violation(message, violazione, eseguite, settings)
+            if violazione == VIOLATION_PAROLE_VIETATE:
+                if "delete" in eseguite:
+                    await _cancella_frammenti(message, frammenti)
+                if self.bot is not None:
+                    self.bot.dispatch("automod_parole_vietate", message)  # la scala la conta escalation.py
             # Se il messaggio è stato cancellato dalla prima
             # violazione, le successive (stesso messaggio, altri
             # filtri scattati insieme) non hanno più nulla da
@@ -1741,6 +1777,15 @@ class AutomodCog(CogConGruppi, commands.Cog):
             # sullo stesso contenuto — esce dal ciclo.
             if "delete" in eseguite:
                 break
+
+
+async def _cancella_frammenti(message: discord.Message, frammenti: list[int]) -> None:
+    """Cancella i messaggi brevi di prima che formavano la parola vietata (AMD-014)."""
+    for messaggio_id in frammenti:
+        try:
+            await bot_roles.cancella_messaggio(message.channel.get_partial_message(messaggio_id))
+        except (discord.NotFound, discord.Forbidden):
+            pass  # gia' cancellato o permesso tolto: il log dice gia' cosa e' successo
 
 
 def _replace_settings(settings: AutomodAdvancedSettings, **overrides) -> AutomodAdvancedSettings:

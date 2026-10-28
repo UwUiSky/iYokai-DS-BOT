@@ -24,6 +24,10 @@ attivo (MODULE_AUTOMOD — l'escalation non ha senso senza le regole
 che genera i trigger) E l'escalation deve essere esplicitamente
 abilitata (EscalationConfig.enabled) — un admin potrebbe volere solo
 il filtro nativo senza la scala di severità crescente.
+
+Anche una parola vietata trovata dal filtro del bot conta un'infrazione
+(AMD-014, evento `automod_parole_vietate` mandato da cogs/automod/automod.py).
+Funzioni coperte: SPEC §6 (escalation ladder, M 1.10, AMD-014)
 """
 
 from __future__ import annotations
@@ -43,7 +47,7 @@ from core.database import db
 from core.escalation_ladder_logic import get_ladder_action
 from core.repositories.escalation_repo import escalation_repo
 from core.repositories.moderation_repo import moderation_repo
-from cogs.automod.automod import MODULE_AUTOMOD
+from cogs.automod.automod import MODULE_AUTOMOD, _is_safe_from_automated_action
 from cogs.moderation._shared import actor_from_member
 from core.permissions import can_moderate
 
@@ -234,6 +238,38 @@ class EscalationCog(CogConGruppi, commands.Cog):
         if _timeout_piu_lungo_in_corso(member, step):
             return  # non si accorcia un timeout più lungo già in corso
         await _applica_passo(self.bot, execution.guild_id, member, step, reason)
+
+    @commands.Cog.listener()
+    async def on_automod_parole_vietate(self, message: discord.Message) -> None:
+        """
+        AMD-014: una parola vietata trovata dal filtro del bot conta
+        un'infrazione, come una regola nativa. Chi ha «Gestisci server» o
+        «Amministratore», e il proprietario, non entrano nella scala: il
+        messaggio viene comunque cancellato dall'AutoMod.
+        """
+        member = message.author
+        if message.guild is None or not isinstance(member, discord.Member) or member.bot:
+            return
+        if _is_safe_from_automated_action(member):
+            return
+        config = await escalation_repo.get_config(message.guild.id)
+        if not config.enabled:
+            return
+        now = _adesso()
+        chiave = ("parole", message.guild.id, member.id, message.id)
+        if self._gia_contati.get(chiave) is not None:
+            return
+        self._gia_contati.set(chiave, now)
+        conteggio = await escalation_repo.record_violation(
+            message.guild.id, member.id, now, config.reset_after_days
+        )
+        step = get_ladder_action(conteggio, config.ladder)
+        if step is None:
+            return
+        if _timeout_piu_lungo_in_corso(member, step):
+            return
+        reason = f"AutoMod Escalation — infrazione #{conteggio} (parola vietata)"[:MAX_MOTIVO]
+        await _applica_passo(self.bot, message.guild.id, member, step, reason)
 
     # ================================================================
     # Comandi

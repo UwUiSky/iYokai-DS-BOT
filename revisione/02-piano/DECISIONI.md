@@ -478,3 +478,12 @@ niente pulizia del controllo memoria) solo per i server con premium**
 (`guild_has_premium_access`). Senza premium il comando lo dice e il bot esce come
 sempre quando il canale resta vuoto. La radio del bot principale non cambia.
 Da avvisare l'owner.
+
+## D31 — La lista di base delle parole d'odio non si apre voce per voce (28/10/2026)
+
+La lista di base del filtro delle parole vietate (AMD-014, `data/automod_parole_odio.txt`)
+è accesa con l'AutoMod. Una voce di base **non** si può mettere da sola tra le parole lecite
+del server (né da comando né da import): altrimenti un admin la spegnerebbe senza conferma.
+Le **frasi** lecite che la contengono restano permesse (es. «rio negro»): così si tolgono i
+falsi positivi senza aprire la parola. Per spegnere tutta la base serve `conferma: true`, e
+via import la cambia solo il proprietario del server (CHIAVI_SOLO_PROPRIETARIO).

@@ -285,3 +285,6 @@
 - 27/10 · cogs/utility/greetings.py ExtraBenvenutoModal · etichette di 49 e 46 caratteri (max 45): finestra rifiutata · alta · corretto r10util 666243d (revisore)
 - 27/10 · cogs/utility/greetings.py on_member_ban · ban in massa durante un raid = un messaggio per ban · media · corretto r10util 666243d (revisore)
 - 27/10 · cogs/utility/greetings.py on_member_ban · ban = addio + ban; ban per ID annunciato · bassa · plausibile, aperto
+- 28/10 · core/automod_parole_logic.py costruisci · lecita del server = voce di base («n1gg3r», «n i g g e r») spegneva quella voce senza conferma · alta · corretto r10filtro 1669138
+- 28/10 · core/automod_parole_logic.py · passavano: ꓠꓲꓖꓖꓰꓣ, ᏚᏢᎥᏟ, ƒrocio, fr⭕cio, nㅤigger, n*gger, n█gger, nig ger, U+202E «regg in», niqqa, nygger · alta · corretto r10filtro 1669138
+- 28/10 · cogs/automod/automod.py _controlla · «nig» «g» «er» in tre messaggi passavano · media · corretto r10filtro 1669138

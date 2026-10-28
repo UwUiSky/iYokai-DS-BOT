@@ -1,0 +1,100 @@
+# Insulti d'odio vietati di base dall'AutoMod di iYokai (AMD-014), italiano e inglese.
+# Una voce per riga, scritta in chiaro: il filtro riconosce da solo maiuscole, accenti,
+# cifre al posto delle lettere (3 per e, 1 per i...), lettere simili di altri alfabeti,
+# separatori e lettere ripetute (core/automod_parole_logic.py). Le varianti con una sola
+# lettera diversa vanno scritte qui solo se il filtro non le copre da solo.
+#   parola    a confine di parola (cosi' "Scunthorpe" non scatta mai)
+#   *parola   anche dentro una parola piu' lunga: solo per voci lunghe e senza ambiguita'
+#   !parola   parola lecita: non scatta mai, anche se contiene una voce vietata
+#   !due parole   parole normali che unite darebbero una voce ("wet back"): lecite solo cosi' divise
+# Il plurale in -s e' coperto da solo. Le righe con # sono commenti.
+
+# --- Inglese: insulti razziali ---
+*nigger
+nigga
+niggaz
+niggah
+nigguh
+nigra
+niqqa
+*niqqer
+nygga
+*nygger
+coon
+jigaboo
+darkie
+spic
+spick
+wetback
+beaner
+chink
+gook
+zipperhead
+kike
+kyke
+towelhead
+raghead
+wop
+dago
+
+# --- Inglese: insulti omofobi, transfobici e altri ---
+*faggot
+fagot
+faggit
+faggy
+fag
+dyke
+tranny
+trannie
+shemale
+poofter
+retard
+retarded
+mongoloid
+
+# --- Italiano ---
+negro
+negraccio
+negracci
+terrone
+terroni
+frocio
+froci
+frocione
+frocioni
+ricchione
+ricchioni
+recchione
+recchioni
+culattone
+culattoni
+mongoloide
+mongoloidi
+
+# --- Parole lecite (stile Scunthorpe) ---
+!niger
+!snigger
+!sniggers
+!sniggered
+!sniggering
+!sniggeringly
+!niggard
+!niggards
+!niggardly
+!niggardliness
+!cocoon
+!raccoon
+!raccoons
+!cocoons
+!dagos
+!dagoes
+!retardant
+!retardants
+!retardation
+!fagoting
+!fagots
+!wet back
+!she male
+!rag head
+!towel head
+!zipper head

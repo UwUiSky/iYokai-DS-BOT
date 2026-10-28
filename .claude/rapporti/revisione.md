@@ -282,3 +282,11 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10sec` | `cogs/utility/config_history.py` | Import di `spam_trap_canali_extra` senza tetto di 5 né controllo sul canale log | bassa | aperto |
 | 28/10 | `feat/r10sec` | `cogs/security/verify.py:_esporta_csv` | Ora del CSV di server consumata anche se la query fallisce; motivi con tab/CR non neutralizzati (motivi tutti del bot) | bassa | aperto |
 | 28/10 | `feat/r10sec` | `cogs/security/anti_raid.py:_livello_al_raid` | Salva l'istantanea letta all'inizio dell'ingresso: un cambio fatto nel frattempo si perde | bassa | aperto |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py` | Aggiramenti che passavano: lisu, cherokee, latine con uncino, cerchi per o, riempitivi hangul, lettere censurate, parola spezzata a metà, U+202E, voci mancanti | alta | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py:costruisci` | Lecita del server uguale a una voce di base la spegneva senza conferma (anche via import) | alta | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/automod/automod.py:_controlla` | Parola divisa in più messaggi brevi di fila non vista | media | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/automod/escalation.py:on_automod_parole_vietate` | Chi gestisce il server contato e avvisato dalla scala | bassa | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/automod/parole_odio.py:controlla_nome` | Nome neutro vietato da lista propria: secondo cambio inutile dopo l'evento | bassa | chiuso 1669138 |
+| 28/10 | `feat/r10filtro` | `cogs/utility/config_history.py:errore_chiavi_solo_proprietario` | Chiave mai impostata letta come None: import di `automod_parole_base: true` da admin rifiutato senza cambio | bassa | aperto |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py:_separate` | Già prima: lettere staccate «f a g i o l i» e «fag?ioli» scattano su «fag» | bassa | aperto |
+| 28/10 | `feat/r10filtro` | `core/automod_parole_logic.py` | Non coperti (scelta): greco fonetico, katakana, testo capovolto e al contrario | bassa | accettato |
