@@ -2,14 +2,15 @@
 core/user_app_logic.py
 ======================
 Logica di iYokai App (NF-36), l'applicazione che l'utente installa su di
-sé: testo pulito di un messaggio (A11) e controlli dei promemoria
-personali. Funzioni semplici, senza Discord.
+sé: testo pulito di un messaggio (A11) e promemoria personali.
+Funzioni semplici, senza Discord.
 Funzioni coperte: SPEC §B (NF-36)
 """
 
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 MAX_RISPOSTA = 2000
@@ -63,3 +64,18 @@ def errore_durata(secondi: int) -> str | None:
     if secondi > DURATA_MASSIMA:
         return "Il promemoria può partire al massimo tra un anno."
     return None
+
+
+AZIONE_PROMEMORIA = "app_promemoria"
+SENZA_SERVER = 0  # i promemoria dell'app non appartengono a un server
+
+
+async def programma_promemoria(user_id: int, secondi: int, testo: str, pianificatore=None) -> int | None:
+    """Il numero del promemoria nuovo, o None se la persona ne ha già `MAX_PROMEMORIA` in sospeso."""
+    if pianificatore is None:
+        from core.scheduler import scheduler as pianificatore
+
+    if len(await pianificatore.list_pending_for_user(user_id, AZIONE_PROMEMORIA, MAX_PROMEMORIA)) >= MAX_PROMEMORIA:
+        return None
+    quando = datetime.now(timezone.utc) + timedelta(seconds=secondi)
+    return await pianificatore.schedule(SENZA_SERVER, user_id, AZIONE_PROMEMORIA, quando, {"message": testo[:1500]})

@@ -21,6 +21,7 @@ from core.i18n import lingua_interazione, t, testo_per
 from core.repositories.global_ban_repo import global_ban_repo
 from core.repositories.user_app_note_repo import MAX_VOCI_PER_UTENTE, user_app_note_repo
 from core.user_app_bot import e_istanza_app
+from core.user_app_impostazioni import risposta_privata
 from core.user_app_strumenti import (
     UNITA_ELENCO,
     ErroreStrumento,
@@ -99,7 +100,7 @@ class StrumentiCog(commands.Cog):
             return
         await interaction.response.send_message(
             await testo_per(interaction, "app_calc_risultato", espressione=espressione.replace("`", "'"), risultato=risultato),
-            ephemeral=True,
+            ephemeral=await risposta_privata(interaction.user.id),
         )
 
     @strumenti.command(name="converti", description="Converte lunghezze, pesi, volumi, velocità, dati e temperature.")
@@ -119,7 +120,7 @@ class StrumentiCog(commands.Cog):
                 interaction, "app_conv_risultato", valore=formatta_numero(valore), da=da.lower(),
                 risultato=formatta_numero(risultato), a=a.lower(),
             ),
-            ephemeral=True,
+            ephemeral=await risposta_privata(interaction.user.id),
         )
 
     @strumenti.command(name="fuso", description="Che ora è in un altro fuso orario.")
@@ -141,7 +142,7 @@ class StrumentiCog(commands.Cog):
                 interaction, "app_fuso_risultato", ora_da=origine.strftime("%H:%M"), zona_da=da,
                 ora_a=arrivo.strftime("%H:%M"), zona_a=a, giorno=arrivo.strftime("%d/%m/%Y"),
             ),
-            ephemeral=True,
+            ephemeral=await risposta_privata(interaction.user.id),
         )
 
     @strumenti.command(name="colore", description="Mostra un colore in HEX, RGB e HSL.")
@@ -155,7 +156,8 @@ class StrumentiCog(commands.Cog):
         embed = discord.Embed(title=colore.hex, description=f"{colore.rgb}\n{colore.hsl}", color=colore.intero)
         embed.set_thumbnail(url="attachment://colore.png")
         await interaction.response.send_message(
-            embed=embed, file=discord.File(io.BytesIO(immagine_colore(colore)), "colore.png"), ephemeral=True
+            embed=embed, file=discord.File(io.BytesIO(immagine_colore(colore)), "colore.png"),
+            ephemeral=await risposta_privata(interaction.user.id),
         )
 
     @strumenti.command(name="qr", description="Crea un codice QR da un testo o un link.")
@@ -166,7 +168,9 @@ class StrumentiCog(commands.Cog):
         except ErroreStrumento as errore:
             await self._errore(interaction, errore)
             return
-        await interaction.response.send_message(file=discord.File(io.BytesIO(png), "qr.png"), ephemeral=True)
+        await interaction.response.send_message(
+            file=discord.File(io.BytesIO(png), "qr.png"), ephemeral=await risposta_privata(interaction.user.id)
+        )
 
     # ---------------------------------------------------------------- note e liste
     @note.command(name="aggiungi", description="Aggiunge una nota, o una voce a una lista.")

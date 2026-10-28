@@ -48,9 +48,18 @@ async def test_albero_dell_app_solo_installazione_utente_e_ovunque():
     try:
         tutti = bot.tree.get_commands()
         slash = {c.name for c in bot.tree.get_commands(type=discord.AppCommandType.chat_input)}
-        assert slash == {"promemoria", "profilo", "strumenti", "note"}
+        assert slash == {
+            "promemoria", "profilo", "strumenti", "note", "segnalibri", "supporto", "risposta", "impostazioni", "storico",
+            "divertimento", "playlist", "radio",
+        }
         menu = {c.name for c in tutti if isinstance(c, app_commands.ContextMenu)}
-        assert menu == {"Profilo", "Testo pulito", "Stato rete iYokai"}
+        assert menu == {
+            "Profilo", "Testo pulito", "Stato rete iYokai", "Traduci", "Salva nei segnalibri", "Ricordamelo",
+            "Citazione come immagine", "Meme da questa immagine", "Controlla i link", "Segnala alla rete iYokai",
+            "Spiega o riassumi", "Salva come risposta pronta",
+        }
+        assert sum(1 for c in tutti if isinstance(c, app_commands.ContextMenu) and c.type is discord.AppCommandType.message) <= 15
+        assert sum(1 for c in tutti if isinstance(c, app_commands.ContextMenu) and c.type is discord.AppCommandType.user) <= 15
         for c in tutti:
             assert c.allowed_installs is not None and c.allowed_installs.user and not c.allowed_installs.guild, c.name
             contesti = c.allowed_contexts
@@ -231,3 +240,22 @@ async def test_chiedi_installata_dall_utente_non_legge_la_conoscenza_di_quel_ser
     assert await cog._risposta_ai(_in_server_senza_il_bot(), "come faccio?") is False
     assert letti == [None]
     assert helpdesk.chiedi.call_args.args[0].guild_id is None
+
+
+async def test_l_albero_dell_app_arriva_a_15_menu_per_tipo_e_non_oltre():
+    from core.user_app_bot import LIMITE_MENU_PER_TIPO, AlberoApp
+
+    async def _cb(interaction, messaggio: discord.Message):
+        pass
+
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.none(), tree_cls=AlberoApp)
+    for n in range(LIMITE_MENU_PER_TIPO):
+        bot.tree.add_command(app_commands.ContextMenu(name=f"Menu {n}", callback=_cb))
+    with pytest.raises(app_commands.CommandLimitReached):
+        bot.tree.add_command(app_commands.ContextMenu(name="Uno di troppo", callback=_cb))
+    with pytest.raises(app_commands.CommandAlreadyRegistered):
+        bot.tree.add_command(app_commands.ContextMenu(name="Menu 0", callback=_cb))
+    bot.tree.add_command(app_commands.ContextMenu(name="Menu 0", callback=_cb), override=True)  # sostituire non conta
+    bot.tree.remove_command("Menu 0", type=discord.AppCommandType.message)
+    bot.tree.add_command(app_commands.ContextMenu(name="Posto libero", callback=_cb))
+    await bot.close()

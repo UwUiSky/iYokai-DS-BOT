@@ -83,6 +83,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Backup mirror", "cogs/utility/backup_mirror.py", "Copy messages to the backup server"),
         UsoIntent("Coin games", "cogs/fun/coin_games.py", "Count messages for coin rewards"),
         UsoIntent("Music request channel", "cogs/music/request_channel.py", "Read song requests written in a channel"),
+        UsoIntent("Support threads (iYokai App)", "cogs/user_app/supporto_staff.py", "Forward the staff's replies to the person who asked"),
         UsoIntent("AI help desk", "cogs/ai/helpdesk.py", "Answer questions, only with the server's consent"),
         UsoIntent("AI moderation", "cogs/ai/moderazione.py", "Judge flagged messages, only with the server's consent"),
         UsoIntent("AI translation", "cogs/ai/traduzione.py", "Translate messages, only with the server's consent"),

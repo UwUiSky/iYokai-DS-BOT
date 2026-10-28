@@ -4,12 +4,15 @@
 28/10/2026 · ramo `feat/r12piatt` · giro r12 (lotto piattaforme, 34 voci; migrazioni 0450-0479, D45-D47)
 
 ## In corso
-- Ordine: A core/privacy [fatto: 2.4, 19.7-19.9, 24.6, C.5] -> B iYokai App (B.2, B.5-B.10) -> D Desktop
+- Ordine: A core/privacy [fatto] -> B iYokai App [fatto: B.2, B.5-B.10] -> D Desktop
   (`desktop/` + API server `core/desktop_*`) -> 24.2/24.5/#147 genera_wiki -> 21.1/21.6 catalogo it/en.
 - Fine giro: SPEC (simboli), REGISTRO_RISOLTE, VERIFICA_LIVE («giro r12 — piattaforme»), «smoke da fare».
-- Migrazioni usate: 0450 (token webhook come impronta). Prossima libera: 0451.
+- Migrazioni usate: 0450 (token webhook come impronta), 0451 (tabelle app utente). Prossima libera: 0452.
+- PROSSIMO PASSO: D.1-D.11 in `desktop/` (README + test) e API server con token a impronta (migrazione 0452).
 
 ## Fatto
+- r12 B: `cogs/user_app/` messaggi, supporto, supporto_staff, risposte, impostazioni, divertimento, radio; `core/user_app_*`,
+  `core/support_service.py`, `core/web_panel_attivita.py` (Activity radio), 0451, 6 tabelle in data_registry.
 - r12: 0450 webhook hash, `core/intent_usage.py` + `docs/INTENT_PRIVILEGIATI.md`, SPEC 2.4/19.7-19.9/24.6/C.5.
 - r10 9306d42 manutenzione/coda/prova AI; pagine legali, /proprietario; pagina AI e bottone pannello.
 - r8 59f6215 NF-21, dede8e2 #148, d3cbd81 marchio, 3b57822 + 8b8decc aspetto, 0d8fbe9 «I miei dati» (#46).
@@ -28,5 +31,7 @@
 - Script di aiuto: `.../scratchpad/spec_set.py ID SIMBOLO "testo"` aggiorna la riga SPEC.
 
 ## Aperto
+- Da attivare: Activities nel Portal + URL mapping (B.8), `SUPPORT_CHANNEL_ID` (B.9), `RADIO_STREAM_URL`.
 - #109: il bot del marchio non risponde ai comandi (secondo albero per applicazione: da decidere).
 - Elenco server in home: solo dalla cache membri del bot (niente fetch).
+- discord.py 2.7.1 conta 5 menu per tipo: `AlberoApp` (tree_cls) porta il tetto a 15. Nessun comando d'ingresso Activity in discord.py.

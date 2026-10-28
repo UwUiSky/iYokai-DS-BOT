@@ -48,6 +48,7 @@ Message content is needed by features that read what is written: AutoMod filters
 | Backup mirror | `cogs/utility/backup_mirror.py` | Copy messages to the backup server |
 | Coin games | `cogs/fun/coin_games.py` | Count messages for coin rewards |
 | Music request channel | `cogs/music/request_channel.py` | Read song requests written in a channel |
+| Support threads (iYokai App) | `cogs/user_app/supporto_staff.py` | Forward the staff's replies to the person who asked |
 | AI help desk | `cogs/ai/helpdesk.py` | Answer questions, only with the server's consent |
 | AI moderation | `cogs/ai/moderazione.py` | Judge flagged messages, only with the server's consent |
 | AI translation | `cogs/ai/traduzione.py` | Translate messages, only with the server's consent |

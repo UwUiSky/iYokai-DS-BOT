@@ -2381,23 +2381,30 @@ completo, con limiti e motivi, è in
 
 - `[x]` B.1 Applicazione separata con installazione sull'utente
   (`USER_INSTALL`) e i tre contesti (server, DM con il bot, DM e gruppi)
-- `[ ]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
+- `[x]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
   Ricordamelo, Citazione come immagine, Meme da questa immagine,
   Controlla i link, Segnala alla rete iYokai, Spiega/riassumi (AI)
+  → **Stato 28/10 (r12):** menu Traduci, Segnalibri, Ricordamelo, Citazione come immagine, Meme, Controlla i link, Segnala, Spiega o riassumi, Salva come risposta pronta in `cogs/user_app/`. Discord ammette 15 menu per tipo: `AlberoApp` in `core/user_app_bot.py` alza il tetto locale di discord.py (5). Test: test_user_app, test_user_app_messaggi_cog.
 - `[x]` B.3 Menu sull'utente: Profilo iYokai (scheda Discord, livello e clan), Stato nella rete di
   sicurezza (solo per chi lo chiede, risposta privata). `cogs/user_app/personal.py`, `tests/test_user_app_strumenti.py`
 - `[x]` B.4 Utility personali: promemoria, note, liste, fusi orari,
   conversioni, calcolatrice, QR, colori. `core/user_app_strumenti.py`, `cogs/user_app/strumenti.py`, migrazione 0360
-- `[ ]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
+- `[x]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
   testi ed embed richiamabili ovunque
-- `[ ]` B.6 Profilo globale: livello, clan, medaglie, rank card
-- `[ ]` B.7 Divertimento e immagini ovunque (stessi comandi di `/fun`)
-- `[ ]` B.8 Musica senza bot nel canale: Attività "radio iYokai"
+  → **Stato 28/10 (r12):** comando `risposta` (salva, usa, elenco, rimuovi) e menu «Salva come risposta pronta»; testo o embed, mai a nome della persona. Test: test_user_app_risposte, test_user_app_repo.
+- `[x]` B.6 Profilo globale: livello, clan, medaglie, rank card
+  → **Stato 28/10 (r12):** profilo globale (livello, clan, medaglie) solo se la persona sceglie di mostrarlo, con la carta (opzione `carta`). Test: test_user_app_profilo.
+- `[x]` B.7 Divertimento e immagini ovunque (stessi comandi di `/fun`)
+  → **Stato 28/10 (r12):** gruppo `divertimento` e menu sulle immagini nell'app, stessa logica di `fun` (core/user_app_ai.py: solo provider gratuiti). Test: test_user_app_divertimento.
+- `[x]` B.8 Musica senza bot nel canale: Attività "radio iYokai"
   (ascolto condiviso dentro un'Attività di Discord), testi, playlist
   personali
-- `[ ]` B.9 Assistenza: apri un ticket con il supporto iYokai da ovunque
-- `[ ]` B.10 Storico dei propri comandi e impostazioni personali
+  → **Stato 28/10 (r12):** comandi `playlist` (crea, aggiungi, togli, mostra, elenco, elimina) e `radio ora` con link di ricerca del testo (C17, C18: i testi non si copiano, per i diritti). Activity «radio iYokai»: pagina e stato JSON in `core/web_panel_attivita.py`, SDK MIT in `pannello_web/static/`, riquadro ammesso solo a Discord. Test: test_user_app_playlist, test_web_panel_attivita. **Da attivare:** Activities nel Developer Portal, mappa URL `/` sul dominio del pannello, `RADIO_STREAM_URL` (facoltativo). discord.py 2.7.1 non crea il comando d'ingresso: lo crea il Portal.
+- `[x]` B.9 Assistenza: apri un ticket con il supporto iYokai da ovunque
+  → **Stato 28/10 (r12):** comando `supporto` apre un thread nel canale staff e inoltra le risposte in DM (core/support_service.py, cog supporto e supporto_staff). Test: test_support_service, test_user_app_supporto_cog. **Da attivare:** `SUPPORT_CHANNEL_ID`; senza, l'app rimanda al server di supporto.
+- `[x]` B.10 Storico dei propri comandi e impostazioni personali
   (lingua, risposte private o pubbliche)
+  → **Stato 28/10 (r12):** comandi `storico` (opt-in, azzerabile) e `impostazioni` personali (lingua, risposta privata, storico). Test: test_user_app_impostazioni, test_user_app_repo.
 
 ---
 
