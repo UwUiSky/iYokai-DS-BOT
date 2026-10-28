@@ -21,6 +21,10 @@ con un test dedicato invece di assumerlo.
 
 from __future__ import annotations
 
+import random
+
+from core.role_menu_logic import valida_emoji
+
 DEFAULT_WELCOME_TEMPLATE = (
     "Welcome {user} to **{server}**! We're now {membercount} members strong. 🎉"
 )
@@ -91,3 +95,39 @@ def lunghezza_dopo_segnaposto(template: str, server_name: str, member_count: int
             server_id=10**_LUNGHEZZA_ID - 1,
         )
     )
+
+
+# RUO-013, 017, 023, 025: DM con testo suo, varianti a caso, reazioni sul benvenuto.
+MAX_VARIANTI = 10
+MAX_REAZIONI = 5
+
+
+def analizza_varianti(testo: str) -> tuple[list[str], str | None]:
+    """Una variante per riga, senza righe vuote. Ritorna (varianti, errore)."""
+    varianti = [riga.strip() for riga in testo.splitlines() if riga.strip()]
+    if len(varianti) > MAX_VARIANTI:
+        return [], f"Al massimo {MAX_VARIANTI} varianti: ne hai scritte {len(varianti)}."
+    for riga in varianti:
+        if len(riga) > MAX_MESSAGE_LENGTH:
+            return [], f"Una variante supera {MAX_MESSAGE_LENGTH} caratteri."
+    return varianti, None
+
+
+def analizza_reazioni(testo: str) -> tuple[list[str], str | None]:
+    """Emoji separate da spazi, senza doppioni. Ritorna (reazioni, errore)."""
+    reazioni: list[str] = []
+    for parola in testo.split():
+        if not valida_emoji(parola):
+            return [], f"«{parola[:30]}» non è un'emoji."
+        if parola not in reazioni:
+            reazioni.append(parola)
+    if len(reazioni) > MAX_REAZIONI:
+        return [], f"Al massimo {MAX_REAZIONI} reazioni."
+    return reazioni, None
+
+
+def scegli_testo(principale: str, varianti: list[str], rng: random.Random | None = None) -> str:
+    """Il testo principale o una delle varianti, a caso con la stessa probabilità."""
+    if not varianti:
+        return principale
+    return (rng or random).choice([principale, *varianti])

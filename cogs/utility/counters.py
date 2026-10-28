@@ -1,7 +1,7 @@
 """
 cogs/utility/counters.py
 ========================
-Canali contatore (NF-16, SPEC §23.2): canali vocali il cui nome mostra un numero (membri,
+Canali contatore (NF-16, SPEC §23.2): canali vocali il cui nome mostra un numero (membri, ticket, ruoli, canali, emoji,
 online, boost, obiettivo). Comandi in `/moduli contatori`; il giro che aggiorna i nomi
 sta in core/counter_worker.py ed è ospitato da questo cog (parte con lui, si ferma con lui).
 Funzioni coperte: SPEC §23 (NF-16)
@@ -85,7 +85,7 @@ class CountersCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         tipo="Cosa contare",
         canale="Un canale vocale tuo; se non lo scegli ne creo uno chiuso a tutti",
-        etichetta="Il nome del canale, con {n} al posto del numero (e {target} per l'obiettivo)",
+        etichetta="Nome del canale: {n} numero, {breve} come 1,2K ({target} per l'obiettivo)",
         obiettivo="Il numero da raggiungere (solo per il tipo obiettivo)",
     )
     @app_commands.choices(tipo=[app_commands.Choice(name=NOMI_TIPI[t], value=t) for t in TIPI])

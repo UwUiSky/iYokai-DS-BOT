@@ -252,3 +252,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 27/10 | `feat/r10bak` | `core/backup_clone_logic.py:clone_roles` | Ruoli sopra il Creator in `edit_role_positions`: Discord rifiuta tutto, gerarchia rovesciata | media | chiuso 4efd6df |
 | 27/10 | `feat/r10bak` | `core/backup_queue_worker.py:_allinea_una_coppia` | Giro lungo finito dopo `/backup promuovi` rimetteva il mirror del vecchio main | media | chiuso 278c107 |
 | 27/10 | `feat/r10bak` | `core/backup_mirror_dispatch.py` | Import di `_TIPI_COPIABILI`/`_file` privati | bassa | chiuso b3d6288 |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:ExtraBenvenutoModal` | Due etichette oltre 45 caratteri: Discord rifiuta la finestra, `/gestione benvenuto extra` non si apre | alta | chiuso 666243d |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_ban` | Ban in massa dell'antiraid: un messaggio pubblico per ogni ban | media | chiuso 666243d |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_join` | Durante un raid fino a 5 reazioni per ingresso (chiamate in più) | bassa | chiuso 666243d |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_remove/on_member_ban` | Un ban produce addio + messaggio di ban (due eventi); anche un ban per ID di chi non era nel server viene annunciato | bassa | aperto, in VERIFICA_LIVE da far decidere all'owner |
+| 27/10 | `feat/r10util` | `core/greetings_logic.py:analizza_reazioni` | Emoji di un altro server accettata e poi non messa (solo log): l'admin legge «N reazioni» | bassa | aperto |

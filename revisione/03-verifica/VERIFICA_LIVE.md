@@ -1163,4 +1163,10 @@ Serve: un server principale con emoji, sticker, suoni, un forum con etichette, u
 - [ ] Mirror (11.9) — passi: scrivi 12 messaggi di fila in un canale, uno con un file piccolo e uno con un file da 12 MiB; entra un nuovo membro. Risultato atteso: nel backup arrivano tutti i 12, nello stesso ordine, a gruppi di 5 ogni 5 secondi; il file piccolo come file, quello grande come link; il messaggio di ingresso non compare.
 - [ ] Promozione (11.13) — passi: nel server di backup, come amministratore non proprietario, `/backup promuovi`. Risultato atteso: rifiutato (livello di `/backup permessi`). Come proprietario, mentre nel vecchio main arrivano molti messaggi: promosso; i messaggi in attesa e quelli nuovi del vecchio main non arrivano più qui, neanche dopo il giro di aggiornamento.
 - [ ] Webhook con immagine (11.8) — passi: dopo la copia guarda le integrazioni del backup. Risultato atteso: il webhook ha nome e immagine dell'originale.
+## Utility — giro r10 (#123, #128, #130)
+
+Serve: un server di prova con i moduli Benvenuto e Contatori attivi, un secondo account A.
+
+- [ ] Benvenuto extra (RUO-013, 016, 017, 023, 025) — passi: `/gestione benvenuto benvenuto enabled:True channel:#benvenuto dm:True`; `/gestione benvenuto extra`: DM «Solo per te {username}», varianti due righe, reazioni `🎉 👋`, ban «{username} è stato bannato»; `/gestione benvenuto addio enabled:True channel:#addii`. A entra: nel canale testo a caso tra principale e varianti con le due reazioni, A riceve il DM con il testo suo. Banna A: il messaggio compare in #addii (compare anche l'addio: Discord manda l'uscita e il ban come due eventi; dire all'owner se va bene). Durante un raid (`/antiraid` attivo) niente reazioni e niente messaggi di ban. Con un account senza «Menziona tutti» una variante con `<@&ruolo>` è rifiutata.
+- [ ] Contatori (STA-039, 042, 047) — passi: `/moduli contatori crea tipo:ticket aperti`; `/moduli contatori crea tipo:membri etichetta:Membri {breve}`; apri un ticket. Risultato atteso: entro 10 minuti il nome mostra il numero giusto e «1,2K» con più di mille membri.
 

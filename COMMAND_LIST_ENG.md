@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-27 21:52 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-27 21:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 549 commands in 25 categories.**
+**Total: 548 commands in 25 categories.**
 
 ## Admin
 
@@ -152,8 +152,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-27 21:5
 - **`/automod mute-duration`** — Sets the timeout length used by the AutoMod 'mute' action.
 - **`/automod status`** — Shows the current advanced AutoMod filter setup.
 - **`/automod sync`** — Forces a manual sync of the AutoMod rules.
-- **`/automod violazione-togli`** — Removes one violation from the AutoMod log.
-- **`/automod violazioni`** — Shows a user's AutoMod violations, in pages.
 - **`/automod words add`** — Adds a banned word.
 - **`/automod words list`** — Shows the configured banned words.
 - **`/automod words remove`** — Removes a banned word.
@@ -279,6 +277,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-27 21:5
 - **`/management voice platforms`** — Sets the PC/Console/Mobile info roles for temporary voice channels.
 - **`/management voice setup`** — Sets the generator channel and category for temporary voice channels.
 - **`/management welcome boost`** — Sets up the boost message.
+- **`/management welcome extra`** — Welcome: DM text, variants, reactions, ban message.
 - **`/management welcome goodbye`** — Sets up the goodbye message.
 - **`/management welcome image`** — Adds to the welcome an image with the member's avatar, name and number.
 - **`/management welcome preview`** — Shows a preview of how a message would look.

@@ -1282,24 +1282,30 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 ## §14 UTILITY & SERVER MANAGEMENT
 
-- `[~]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
+- `[x]` 14.1 Reaction Roles — `on_raw_reaction_add`/`remove`
   → **Stato 04/10:** LIM-17.
-- `[~]` 14.2 Button Roles — View dinamica persistente per-messaggio
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.2 Button Roles — View dinamica persistente per-messaggio
   (`bot.add_view(view, message_id=...)`, pattern nuovo rispetto ai
   pannelli "bottone fisso" già in uso altrove)
   → **Stato 04/10:** `toggle=False` ignorato (REVIEW §4); LIM-17.
-- `[~]` 14.3 Select Menu Roles — multi-selezione con sincronizzazione
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.3 Select Menu Roles — multi-selezione con sincronizzazione
   che non tocca mai ruoli del membro estranei al menu (verificato
   esplicitamente con un test dedicato)
   → **Stato 04/10:** menu rotto quando resta senza opzioni (LIM-17).
-- `[~]` 14.4 Welcome messages — canale + DM opzionale, segnaposto
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.4 Welcome messages — canale + DM opzionale, segnaposto
   `{user}`/`{username}`/`{server}`/`{membercount}`
   → **Stato 04/10:** testo accettato e poi rifiutato in silenzio (LIM-10); DM senza pausa durante un raid (LIM-35).
-- `[~]` 14.5 Goodbye messages
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.5 Goodbye messages
   → **Stato 04/10:** LIM-10.
-- `[~]` 14.6 Boost messages — rilevato su `premium_since` che passa
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.6 Boost messages — rilevato su `premium_since` che passa
   da `None` a valorizzato, non il caso opposto
   → **Stato 04/10:** LIM-10.
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[ ]` 14.7 Autoresponder (con wildcards e condizioni) — **rimandato
   deliberatamente, stesso motivo di §8.16**: decidere se una parola
   chiave presente nel testo di un messaggio deve far scattare una
@@ -1311,13 +1317,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   recuperabile in un secondo momento via REST (il messaggio non è
   ancora stato cancellato, ma il gateway lo consegna già vuoto)
   → **Stato 04/10:** l'intent è acceso dal 04/10. In piano: NF-10, fase F9.
-- `[~]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
+- `[x]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
   dettaglio): modal con nome comando + descrizione + esempio → embed
   automatico nel canale `#suggestions` del server principale con nome
   server, ID server, nome utente, **ID utente** (perché il nome può
   cambiare), descrizione, timestamp → bottoni staff approva/rifiuta →
   notifica di ritorno al richiedente
   → **Stato 04/10:** due staff possono decidere insieme (REVIEW §5). I comandi creati dal server sono in §22 (NF-09).
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 14.9 Snipe — `/utility snipe`: l'ultimo messaggio cancellato nel
   canale (testo tagliato a 4096, allegati per nome), ricordato 5
   minuti solo in memoria, solo se il server accende il modulo `snipe`
@@ -1336,34 +1343,39 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   testo del messaggio. Non segnala se il registro di controllo dice che
   l'ha cancellato un moderatore (M 5.9; se il registro non è leggibile
   vale la regola di prima); scrive nella destinazione «messaggi» del router
-- `[~]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
+- `[x]` 14.13 Sticky messages — `/sticky set|remove`, debounce minimo
   (5s) per non cancellare+reinviare ad ogni singolo messaggio in un
   canale attivo
   → **Stato 04/10:** messaggi persi o doppi (REVIEW §4); errore non gestito (LIM-11).
-- `[~]` 14.14 Suggestion system (per i server clienti, distinto da
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.14 Suggestion system (per i server clienti, distinto da
   14.8) — `/suggestion-setup`, `/suggest`, bottoni persistenti
   approva/rifiuta + reazioni native 👍👎 per il voto
   → **Stato 04/10:** nessun `defer` (LIM-25); due staff decidono insieme (REVIEW §5).
   → **Stato 21/10 (catalogo #128, giro r8):** stati «in valutazione» e «realizzato», motivo dello staff in una finestra
   (512, colonna `decision_reason`, migrazione 0232), DM all'autore, canale dei suggerimenti decisi (UTL-135…138).
-- `[~]` 14.15 Poll — Poll nativo di Discord (`discord.Poll`), fino a
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.15 Poll — Poll nativo di Discord (`discord.Poll`), fino a
   5 opzioni, nessuna logica propria: voto/conteggio/chiusura gestiti
   interamente da Discord
   → **Stato 04/10:** risposta oltre 55 caratteri: errore (LIM-2).
   → **Stato 21/10 (catalogo #128, giro r8):** 10 opzioni; senza opzioni è un sì/no rapido (UTL-087, con il Poll nativo
   invece delle reazioni); `discussione:` apre un thread sul sondaggio (UTL-095).
-- `[~]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.16 Reminder — `/reminder set|list|cancel`, riusa lo
   scheduler generico esistente (nessuna tabella nuova). Consegna via
   DM, fallback nel canale se i DM sono chiusi
   → **Stato 04/10:** promemoria lunghi persi in silenzio (LIM-13).
   → **Stato 21/10 (catalogo #128, giro r8):** promemoria ripetuti (minimo 30 minuti, riprogrammati prima della consegna),
   pubblicati in un canale, «annulla tutti», elenco e annullamento del server per lo staff (`/utility reminder server`)
   (UTL-098, 099, 102, 103).
-- `[~]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
+- `[x]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
   riusa lo stesso scheduler dei Reminder (nessuna tabella nuova).
   Diversamente dal Reminder (personale, via DM), pubblica in un
   CANALE del server
   → **Stato 04/10:** messaggi lunghi persi in silenzio (LIM-12); ping di ruolo muti (D12).
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 14.18 Server stats (+ grafici) — `/serverstats`: numeri del
   server + grafico a barre della crescita giornaliera (disegnato con
   Pillow, non matplotlib — nessuna nuova dipendenza pesante)
@@ -1686,7 +1698,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   incorporato nel repository). Richiede almeno uno tra top/bottom
   text, altrimenti messaggio d'errore effimero. Stesso gruppo `/fun`,
   nessun nuovo slot top-level
-- `[~]` 16.4 Comandi animal — `/fun animal <specie>` (cane/gatto/
+- `[x]` 16.4 Comandi animal — `/fun animal <specie>` (cane/gatto/
   volpe), immagine casuale da tre API pubbliche GRATUITE, nessuna
   chiave richiesta: dog.ceo, thecatapi.com, randomfox.ca
   (`core/animal_fetcher.py` interpreta le risposte con `core/animal_
@@ -1696,6 +1708,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   la richiesta fallisce. Sotto-comando del gruppo `/fun` esistente,
   nessun nuovo slot top-level
   → **Stato 04/10:** nessun `defer` (LIM-24).
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 16.5 Ship — percentuale deterministica via hash, non casuale
   ad ogni chiamata
 - `[ ]` 16.6 Howgay — deliberatamente non fatto: troppo vicino a un
@@ -1725,7 +1738,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   di §16 (16.2/16.3/16.4/16.9) andrà sotto questo stesso gruppo o un
   gruppo analogo, non come nuovo comando top-level
   → **Stato 04/10:** Correzione al testo: i comandi di primo livello erano 97, non 96.
-- `[~]` 16.9 Ricerca immagini SFW — `/fun search-image <query>`, via
+- `[x]` 16.9 Ricerca immagini SFW — `/fun search-image <query>`, via
   Pixabay (`PIXABAY_API_KEY`, opzionale come Twitch/YouTube ma —
   a differenza di quelle — il comando non può funzionare affatto
   senza: risponde spiegando come attivare la chiave gratuita invece
@@ -1735,6 +1748,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   image_search_logic.py`, logica pura testata senza rete). Sotto-
   comando del gruppo `/fun` esistente, nessun nuovo slot top-level
   → **Stato 04/10:** nessun `defer` (LIM-24); condizioni d'uso di Pixabay non rispettate (LIM-48).
+  → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 16.11 Voci piccole SFW (#131, r5) — `cogs/fun/fun_extra.py`:
   `/fun scegli`, `numero`, `testo` (largo, corsivo, grassetto corsivo,
   gotico, gotico grassetto, doppio tratto, maiuscoletto, emoji, applauso,
@@ -2036,7 +2050,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 14/10:** `/music suono` (il gruppo `/fun` ha 25 figli): suono della soundboard del server o di Discord, mandato dal bot musicale del canale (la musica continua) o dal primo libero, che poi esce; pausa di 10 secondi per utente. Da verificare live.
 - `[~]` 23.15 Bot con marchio proprio per i server premium (NF-38)
   → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Stato 16/10 (r8):** anche dal pannello, pagina «Bot con marchio» del server (stato senza token, collega, testo di stato, accendi/spegni, scollega), dalle stesse funzioni di `core/whitelabel_bot.py`. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
-- `[~]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
+- `[x]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
   → **Stato 15/10:** `/level profilo` è un'immagine (avatar, nome, presentazione, livello, XP, posizione, coin, collezione),
   con il colore dello sfondo comprato, il tema della rank card e lo sfondo con immagine propria; i badge (emoji) nel testo; se il disegno fallisce, l'embed di prima.
@@ -2051,6 +2065,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   sola; `/fun gioca` richiede anche il modulo Livelli; il filtro di `/fun misura` guarda le parole intere
   (non le sottostringhe) e normalizza lettere cirilliche/greche simili, caratteri invisibili, punteggiatura e
   lettere staccate.
+  → **Stato 27/10 (r10):** profilo come immagine e sfondo con immagine fatti il 15/10; le vincite dei giochi con le monete restano fuori dalla classifica del mese per scelta (niente premi per il gioco d'azzardo).
 - `[ ]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)

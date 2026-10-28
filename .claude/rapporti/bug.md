@@ -282,3 +282,6 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 27/10 · cogs/utility/greetings.py ExtraBenvenutoModal · etichette di 49 e 46 caratteri (max 45): finestra rifiutata · alta · corretto r10util 666243d (revisore)
+- 27/10 · cogs/utility/greetings.py on_member_ban · ban in massa durante un raid = un messaggio per ban · media · corretto r10util 666243d (revisore)
+- 27/10 · cogs/utility/greetings.py on_member_ban · ban = addio + ban; ban per ID annunciato · bassa · plausibile, aperto

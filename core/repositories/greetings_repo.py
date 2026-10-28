@@ -9,7 +9,7 @@ un admin, non serve separarle in tabelle diverse.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import asyncpg
 
@@ -45,6 +45,11 @@ class GreetingsConfig:
     welcome_image_color: str = "#FFFFFF"
     welcome_image_title: str = "Benvenuto"
     welcome_image_has_background: bool = False
+    # RUO-013, 017, 023, 025 (migrazione 0330).
+    welcome_dm_message: str = ""
+    welcome_variants: list[str] = field(default_factory=list)
+    welcome_reactions: list[str] = field(default_factory=list)
+    ban_message: str = ""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -114,6 +119,26 @@ class GreetingsRepository:
             welcome_image_color=row["welcome_image_color"],
             welcome_image_title=row["welcome_image_title"],
             welcome_image_has_background=row["welcome_image_has_background"],
+            welcome_dm_message=row["welcome_dm_message"],
+            welcome_variants=list(row["welcome_variants"]),
+            welcome_reactions=list(row["welcome_reactions"]),
+            ban_message=row["ban_message"],
+        )
+
+    async def set_welcome_extra(
+        self, guild_id: int, dm_message: str, variants: list[str], reactions: list[str], ban_message: str = ""
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, welcome_dm_message, welcome_variants, welcome_reactions, ban_message)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET welcome_dm_message = EXCLUDED.welcome_dm_message,
+                    welcome_variants = EXCLUDED.welcome_variants,
+                    welcome_reactions = EXCLUDED.welcome_reactions,
+                    ban_message = EXCLUDED.ban_message
+            """,
+            guild_id, dm_message, variants, reactions, ban_message,
         )
 
     async def set_welcome_image(

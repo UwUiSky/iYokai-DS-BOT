@@ -458,6 +458,7 @@
   "gestione benvenuto addio": "Sets up the goodbye message.",
   "gestione benvenuto anteprima": "Shows a preview of how a message would look.",
   "gestione benvenuto benvenuto": "Sets up the welcome message.",
+  "gestione benvenuto extra": "Welcome: DM text, variants, reactions, ban message.",
   "gestione benvenuto boost": "Sets up the boost message.",
   "gestione benvenuto immagine": "Adds to the welcome an image with the member's avatar, name and number.",
   "gestione ruoli": "Roles: level reward roles and role menus",

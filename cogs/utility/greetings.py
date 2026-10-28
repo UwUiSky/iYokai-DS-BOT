@@ -1,7 +1,7 @@
 """
 cogs/utility/greetings.py
 ============================
-Welcome / Goodbye / Boost messages (SPEC.md §14.4-14.6). Modulo
+Welcome / Goodbye / Boost / Ban messages (SPEC.md §14.4-14.6). Modulo
 gratuito — stessa assunzione dichiarata di role_menus.py: lo schema
 non specifica esplicitamente Free/Premium per questa voce di §14.
 """
@@ -25,7 +25,15 @@ from core.admin_mentions_logic import (
     utente_puo_pingare_ruoli,
 )
 from core.leveling_logic import colore_valido
-from core.greetings_logic import MAX_MESSAGE_LENGTH, lunghezza_dopo_segnaposto, render_template
+from core.greetings_logic import (
+    MAX_MESSAGE_LENGTH,
+    analizza_reazioni,
+    analizza_varianti,
+    lunghezza_dopo_segnaposto,
+    render_template,
+    scegli_testo,
+)
+from core.ui_base import BaseModal
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
 from core.safe_image import ImmagineTroppoGrande, run_image_task
@@ -56,6 +64,75 @@ def _render_for_member(template: str, member: discord.Member) -> str:
         display_name=discord.utils.escape_mentions(member.display_name),
         server_id=member.guild.id,
     )
+
+
+async def _metti_reazioni(messaggio: discord.Message, reazioni: list[str]) -> None:
+    """RUO-023/025: le reazioni scelte dall'admin sul benvenuto. Una che fallisce non ferma le altre."""
+    for emoji in reazioni:
+        try:
+            await messaggio.add_reaction(emoji)
+        except discord.HTTPException:
+            logger.info("Reazione %s non messa sul benvenuto.", emoji[:40])
+
+
+class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
+    """RUO-013, 017, 023, 025: tre campi, tutti facoltativi (vuoto = spento)."""
+
+    dm = discord.ui.TextInput(
+        label="Testo del DM (vuoto = come nel canale)",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=MAX_MESSAGE_LENGTH,
+    )
+    varianti = discord.ui.TextInput(
+        label="Altre versioni del testo, una per riga",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=4000,
+    )
+    reazioni = discord.ui.TextInput(
+        label="Reazioni sul benvenuto (max 5, con spazi)",
+        required=False,
+        max_length=120,
+    )
+    ban = discord.ui.TextInput(
+        label="Messaggio per i ban (nel canale addio)",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=MAX_MESSAGE_LENGTH,
+    )
+
+    def __init__(self, config) -> None:
+        super().__init__()
+        self.dm.default = config.welcome_dm_message or None
+        self.varianti.default = "\n".join(config.welcome_variants)[:4000] or None
+        self.reazioni.default = " ".join(config.welcome_reactions) or None
+        self.ban.default = config.ban_message or None
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None:
+            return
+        dm = (self.dm.value or "").strip()
+        varianti, errore = analizza_varianti(self.varianti.value or "")
+        reazioni = []
+        if errore is None:
+            reazioni, errore = analizza_reazioni(self.reazioni.value or "")
+        ban = (self.ban.value or "").strip()
+        for testo in ([dm] if dm else []) + varianti + ([ban] if ban else []):
+            if errore is None and "<@&" in testo and not utente_puo_pingare_ruoli(interaction.user):
+                errore = "Per citare un ruolo serve il permesso «Menziona tutti»."
+            if errore is None:
+                errore = _errore_lunghezza(guild, testo)
+        if errore is not None:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni, ban)
+        await interaction.response.send_message(
+            f"Salvato: DM {'con testo suo' if dm else 'come il canale'}, "
+            f"{len(varianti)} varianti, {len(reazioni)} reazioni, ban {'annunciato' if ban else 'non annunciato'}.",
+            ephemeral=True,
+        )
 
 
 async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
@@ -135,7 +212,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not config.welcome_enabled:
             return
 
-        testo = taglia_messaggio(_render_for_member(config.welcome_message, member))
+        testo = taglia_messaggio(
+            _render_for_member(scegli_testo(config.welcome_message, config.welcome_variants), member)
+        )
+        testo_dm = (
+            taglia_messaggio(_render_for_member(config.welcome_dm_message, member))
+            if config.welcome_dm_message
+            else testo
+        )
         menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
 
         if config.welcome_channel_id is not None:
@@ -151,14 +235,16 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 try:
                     try:
                         if allegato is not None:
-                            await channel.send(testo, file=allegato, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni)
                         else:
-                            await channel.send(testo, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, allowed_mentions=menzioni)
                     except discord.HTTPException:
                         if allegato is None:
                             raise
                         # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
-                        await channel.send(testo, allowed_mentions=menzioni)
+                        inviato = await channel.send(testo, allowed_mentions=menzioni)
+                    if not raid_in_corso(member.guild.id):  # durante un raid: niente chiamate in più
+                        await _metti_reazioni(inviato, config.welcome_reactions)
                 except discord.HTTPException:
                     logger.warning(
                         "Impossibile inviare il welcome message nel server %s.",
@@ -169,7 +255,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         # account entrati nel raid).
         if config.welcome_dm and not raid_in_corso(member.guild.id):
             try:
-                await member.send(testo, allowed_mentions=menzioni_ammesse(False))
+                await member.send(testo_dm, allowed_mentions=menzioni_ammesse(False))
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
 
@@ -197,6 +283,36 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             logger.warning(
                 "Impossibile inviare il goodbye message nel server %s.", member.guild.id
             )
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
+        """RUO-016: messaggio pubblico per un ban, nel canale dell'addio (spento se il testo è vuoto)."""
+        if user.bot:
+            return
+        if not await db.is_module_active_for_guild(guild.id, MODULE_GREETINGS):
+            return
+        config = await greetings_repo.get_config(guild.id)
+        if not config.ban_message or not config.goodbye_enabled or config.goodbye_channel_id is None:
+            return
+        if raid_in_corso(guild.id):  # i ban in massa dell'antiraid non riempiono il canale
+            return
+        channel = guild.get_channel(config.goodbye_channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return
+        testo = render_template(
+            config.ban_message,
+            user_mention=user.mention,
+            username=discord.utils.escape_mentions(user.name),
+            server_name=discord.utils.escape_mentions(guild.name),
+            member_count=guild.member_count or 0,
+            user_id=user.id,
+            display_name=discord.utils.escape_mentions(user.display_name),
+            server_id=guild.id,
+        )
+        try:
+            await channel.send(taglia_messaggio(testo), allowed_mentions=menzioni_ammesse(config.goodbye_ping_ruoli))
+        except discord.HTTPException:
+            logger.warning("Impossibile inviare il messaggio di ban nel server %s.", guild.id)
 
     @commands.Cog.listener()
     async def on_member_update(
@@ -291,6 +407,21 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             f"Welcome message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
         )
+
+    @comando_di_gruppo(
+        "gestione",
+        nome="extra",
+        descrizione="Benvenuto: DM, varianti, reazioni, messaggio ai ban.",
+        sottogruppo=_SG_BENVENUTO,
+    )
+    async def welcome_extra(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        config = await greetings_repo.get_config(interaction.guild.id)
+        await interaction.response.send_modal(ExtraBenvenutoModal(config))
 
     @comando_di_gruppo(
         "gestione",
