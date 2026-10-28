@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 11:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:27 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 576 comandi in 25 categorie.**
 
@@ -269,7 +269,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 11:
 - **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
 - **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
 - **`/gestione benvenuto boost`** — Configura il messaggio di boost.
-- **`/gestione benvenuto extra`** — Benvenuto: DM, varianti, reazioni, messaggio ai ban.
+- **`/gestione benvenuto extra`** — Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.
 - **`/gestione benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
 - **`/gestione ruoli auto-aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
 - **`/gestione ruoli auto-elenco`** — Mostra i ruoli automatici del server.
@@ -326,7 +326,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 11:
 - **`/level impostazioni xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
 - **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
-- **`/level inviti opzioni`** — Registro degli inviti e chi può avere il link personale.
+- **`/level inviti opzioni`** — Registro degli inviti e chi ha il link personale.
 - **`/level inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
