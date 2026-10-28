@@ -705,7 +705,7 @@ Totale voci: **514**.
   Cog diversi sullo stesso evento) — riceve la stessa risposta senza
   un secondo fetch/diff. Spam Trap aggiornato per usare lo stesso
   metodo
-  → **Stato 27/10:** un solo avviso se il canale di log non è raggiungibile (router, LC-6).
+  → **Stato 28/10:** ingressi insieme attribuiti bene o «sconosciuto», inviti scaricati solo dove servono (LC-6: `tests/test_invite_tracker.py`, `tests/test_invite_sync_solo_dove_serve.py`).
 - `[x]` 8.9 **Voice state**: join / leave / move / mute / deafen —
   "mute"/"deafen" semplificato allo stato EFFETTIVO (server-mute/
   deafen oppure self-mute/self-deafen), non le quattro variabili
