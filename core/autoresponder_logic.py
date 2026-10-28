@@ -3,7 +3,8 @@ core/autoresponder_logic.py
 ===========================
 Quando un messaggio fa scattare una risposta automatica (NF-10, SPEC §14.7):
 corrispondenza esatta o parziale (parola intera, senza espressioni
-regolari), canale e ruolo come condizioni. Funzioni pure.
+regolari), jolly `*` dentro la parola, canale e ruolo come condizioni.
+Funzioni pure.
 Funzioni coperte: SPEC §14.7 (NF-10)
 """
 
@@ -17,17 +18,26 @@ MAX_TRIGGER = 100
 MAX_RISPOSTA = 2000
 PAUSA_CANALE_SECONDI = 10
 MODI = ("parziale", "esatta")
+MAX_JOLLY = 5  # asterischi per parola
+
+
+def jolly_validi(trigger: str) -> bool:
+    """Il jolly `*` sostituisce un pezzo di parola. Servono lettere vere e al massimo MAX_JOLLY asterischi."""
+    return trigger.count("*") <= MAX_JOLLY and bool(trigger.replace("*", "").strip())
 
 
 def trigger_corrisponde(trigger: str, modo: str, messaggio: str) -> bool:
-    """Senza badare alle maiuscole. "parziale": il trigger è una parola o frase intera nel messaggio."""
+    """Senza badare alle maiuscole. "parziale": il trigger è una parola o frase intera nel messaggio. `*` = pezzo di parola."""
     t = trigger.strip().lower()
     m = messaggio.strip().lower()
     if not t or not m:
         return False
+    if not jolly_validi(t):
+        return False
+    corpo = r"\S*".join(re.escape(pezzo) for pezzo in t.split("*"))
     if modo == "esatta":
-        return m == t
-    return re.search(rf"(?<!\w){re.escape(t)}(?!\w)", m) is not None
+        return re.fullmatch(corpo, m) is not None
+    return re.search(rf"(?<!\w){corpo}(?!\w)", m) is not None
 
 
 def scegli_risposta(regole: Iterable, messaggio: str, canale_id: int, ruoli_autore: set[int]):

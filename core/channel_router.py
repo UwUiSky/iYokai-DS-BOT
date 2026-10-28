@@ -38,6 +38,7 @@ TIPO_PHISHING = "phishing"  # log del filtro phishing (SIC-043)
 TIPO_AI = "ai"  # segnalazioni dell'AI allo staff (§25.37)
 TIPO_MODERAZIONE = "moderazione"  # casi del mod-log (§18.1)
 TIPO_AUTOMOD = "automod"  # violazioni dell'AutoMod (§18.1)
+TIPO_BENVENUTO = "benvenuto"  # messaggio di benvenuto (§18.1)
 
 DESCRIZIONE_TIPO = {
     TIPO_EVENTI: "Eventi dei membri e dei ruoli",
@@ -49,6 +50,7 @@ DESCRIZIONE_TIPO = {
     TIPO_AI: "Messaggi segnalati dall'AI allo staff",
     TIPO_MODERAZIONE: "Casi di moderazione",
     TIPO_AUTOMOD: "Violazioni dell'AutoMod",
+    TIPO_BENVENUTO: "Messaggi di benvenuto",
 }
 NOME_POST = {
     TIPO_EVENTI: "Log eventi",
@@ -60,6 +62,7 @@ NOME_POST = {
     TIPO_AI: "Segnalazioni AI",
     TIPO_MODERAZIONE: "Casi di moderazione",
     TIPO_AUTOMOD: "Log AutoMod",
+    TIPO_BENVENUTO: "Benvenuti",
 }
 
 # LIM-38: dal 16/11/2026 Discord mostra così i canali che il bot non vede.

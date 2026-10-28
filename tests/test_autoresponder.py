@@ -40,6 +40,12 @@ from tests.support.percorsi import comando_nel_gruppo
         ("ciao", "esatta", "ciao a tutti", False),
         ("c++", "parziale", "uso c++ ogni giorno", True),
         (".*", "parziale", "abc", False),  # nessuna regex: il testo vale com'è
+        ("ciao*", "parziale", "ciaooo a tutti", True),  # jolly: pezzo di parola
+        ("*ciao", "parziale", "un buonciao", True),
+        ("ci*o", "esatta", "ciao", True),
+        ("ci*o", "esatta", "ciao amico", False),
+        ("*", "parziale", "qualsiasi cosa", False),  # un jolly da solo non vale
+        ("a*b*c*d*e*f*g", "parziale", "axbxcxdxexfxg", False),  # troppi jolly
     ],
 )
 def test_trigger_corrisponde(trigger, modo, messaggio, atteso):
@@ -202,6 +208,17 @@ async def test_parola_o_risposta_vuote_dopo_lo_strip_sono_rifiutate(scena, parol
     await scena.risposta_crea.callback(scena, i, parola, risposta, "parziale", None, None)
     scena.repo.create.assert_not_awaited()
     assert "vuote" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_jolly_da_solo_o_troppi_sono_rifiutati_e_uno_giusto_passa(scena):
+    i = fake_interaction(user=fake_member(5))
+    await scena.risposta_crea.callback(scena, i, "***", "Ciao!", "parziale", None, None)
+    scena.repo.create.assert_not_awaited()
+    assert "jolly" in i.response.send_message.await_args.args[0]
+    i2 = fake_interaction(user=fake_member(5))
+    await scena.risposta_crea.callback(scena, i2, "ciao*", "Ciao!", "parziale", None, None)
+    scena.repo.create.assert_awaited_once()
 
 
 @pytest.mark.asyncio

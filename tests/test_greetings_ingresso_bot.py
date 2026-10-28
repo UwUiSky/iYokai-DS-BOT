@@ -85,3 +85,36 @@ async def test_durante_un_raid_niente_dm_di_benvenuto_ma_il_canale_si(canale_ben
 
     membro.send.assert_not_awaited()
     canale_benvenuto.send.assert_awaited_once()
+
+
+async def test_benvenuto_in_un_forum_passa_dal_router_senza_immagine(canale_benvenuto, monkeypatch):
+    """§18.1: il benvenuto è un tipo di uscita; un forum lo riceve in un post."""
+    from unittest.mock import AsyncMock
+
+    from tests.support.discord_fakes import fake_forum_channel
+
+    forum = fake_forum_channel(ID_CANALE_BENVENUTO)
+    membro = _membro_appena_entrato(forum, bot=False)
+    destinazione = AsyncMock(return_value="dest")
+    invia = AsyncMock(return_value=True)
+    monkeypatch.setattr(modulo.router, "destinazione", destinazione)
+    monkeypatch.setattr(modulo.router, "invia_a", invia)
+
+    await modulo.GreetingsCog(bot=None).on_member_join(membro)
+
+    destinazione.assert_awaited_once_with(membro.guild, modulo.router.TIPO_BENVENUTO, ID_CANALE_BENVENUTO)
+    assert invia.await_args.args[2] == modulo.router.TIPO_BENVENUTO
+    assert "content" in invia.await_args.kwargs and "file" not in invia.await_args.kwargs
+
+
+async def test_benvenuto_con_canale_sparito_avvisa_il_proprietario(canale_benvenuto, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    membro = _membro_appena_entrato(None, bot=False)
+    avviso = AsyncMock()
+    monkeypatch.setattr(modulo.router, "avvisa_proprietario", avviso)
+
+    await modulo.GreetingsCog(bot=None).on_member_join(membro)
+
+    avviso.assert_awaited_once()
+    assert avviso.await_args.args[1] == modulo.router.TIPO_BENVENUTO

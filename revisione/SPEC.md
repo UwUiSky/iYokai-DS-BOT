@@ -1319,17 +1319,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   da `None` a valorizzato, non il caso opposto
   → **Stato 04/10:** LIM-10.
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
-- `[ ]` 14.7 Autoresponder (con wildcards e condizioni) — **rimandato
-  deliberatamente, stesso motivo di §8.16**: decidere se una parola
-  chiave presente nel testo di un messaggio deve far scattare una
-  risposta richiede di LEGGERE il contenuto del messaggio in tempo
-  reale (`on_message`), che è esattamente il campo azzerato dal
-  Message Content Intent quando non attivo — non c'è modo di
-  aggirarlo con un poller o una cache come fatto per §8.13/§13.10,
-  perché qui il contenuto serve SUBITO, al momento dell'evento, non
-  recuperabile in un secondo momento via REST (il messaggio non è
-  ancora stato cancellato, ma il gateway lo consegna già vuoto)
-  → **Stato 04/10:** l'intent è acceso dal 04/10. In piano: NF-10, fase F9.
+- `[x]` 14.7 Autoresponder (con jolly e condizioni) — NF-10 (#81)
+  → **Stato 28/10 (r12):** fatto. `/moduli comandi risposta-crea|risposta-elimina|risposte`
+  (`core/autoresponder_logic.py`, `cogs/utility/autoresponder.py`, 0083): parola intera o frase uguale, jolly `*` dentro la
+  parola (`ciao*`, al massimo 5), condizioni di canale e ruolo, una risposta per messaggio, pausa per canale, mai ai bot,
+  niente ping veri. Con il Message Content Intent acceso (D9). Test: `tests/test_autoresponder.py`.
 - `[x]` 14.8 **Custom Commands — sistema di RICHIESTA** (progettato in
   dettaglio): modal con nome comando + descrizione + esempio → embed
   automatico nel canale `#suggestions` del server principale con nome
@@ -1836,11 +1830,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 ## §18 ROUTER DEI CANALI E LOG SU FORUM — fatto per i log (fase F6)
 
-- `[~]` 18.1 Un canale per **tipo** di uscita (NF-01, `core/channel_router.py`,
+- `[x]` 18.1 Un canale per **tipo** di uscita (NF-01, `core/channel_router.py`,
   migrazione 0028). Fatti i tipi di log: eventi, messaggi, voce, server
   (`/log canale tipo:…`, `/log stato`). Mod-log (casi), log dell'AutoMod,
   phishing e allarmi passano dal router con il loro canale di sempre come
-  predefinito (forum e un solo avviso al proprietario). Resta fuori il benvenuto
+  predefinito (forum e un solo avviso al proprietario). Anche il benvenuto (r12): un forum scelto con `/gestione benvenuto benvenuto` lo riceve in un solo post (`TIPO_BENVENUTO`, senza immagine né reazioni),
+  un canale sparito avvisa il proprietario una volta (`tests/test_greetings_ingresso_bot.py`).
 - `[x]` 18.2 Canale di testo oppure forum; nel forum un post per tipo
   di log (D3). Il post nasce al primo log e, se cancellato, si ricrea
 - `[x]` 18.3 `/log crea-canali` (categoria privata + un canale per tipo)
