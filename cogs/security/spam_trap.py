@@ -61,6 +61,7 @@ from discord.ext import commands
 
 from cogs.moderation.ban_appeal import offri_appello_in_dm
 from core import bot_roles
+from core.i18n import lingua_risposta, t, testo_per
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from cogs.security.global_ban import propagate_ban, revoca_ban_propagati
@@ -481,12 +482,10 @@ class AppealActionsView(BaseView):
         except discord.NotFound:
             pass  # già sbannato, procediamo comunque
         except discord.Forbidden:
-            await interaction.followup.send("Missing permissions to unban.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "trap_unban_permessi"), ephemeral=True)
             return
         except discord.HTTPException:
-            await interaction.followup.send(
-                "Discord refused the unban. Please try again in a moment.", ephemeral=True
-            )
+            await interaction.followup.send(await testo_per(interaction, "trap_unban_rifiutato"), ephemeral=True)
             return
 
         # BUG-24: tutti i casi spam-trap attivi dell'utente in questo
@@ -504,10 +503,7 @@ class AppealActionsView(BaseView):
 
         try:
             user = await interaction.client.fetch_user(self.user_id)
-            await user.send(
-                f"Your ban appeal for **{guild.name}** was approved. "
-                f"You can rejoin the server."
-            )
+            await user.send(t("trap_appello_approvato", await lingua_risposta(None, self.user_id), server=guild.name))
         except discord.HTTPException:
             pass
 
@@ -519,10 +515,9 @@ class AppealActionsView(BaseView):
         guild = interaction.client.get_guild(self.guild_id)
         try:
             user = await interaction.client.fetch_user(self.user_id)
-            guild_name = guild.name if guild else "the server"
-            await user.send(
-                f"Your ban appeal for **{guild_name}** was reviewed and denied."
-            )
+            lingua = await lingua_risposta(None, self.user_id)
+            guild_name = guild.name if guild else t("trap_il_server", lingua)
+            await user.send(t("trap_appello_respinto", lingua, server=guild_name))
         except discord.HTTPException:
             pass
 
@@ -554,11 +549,9 @@ class StaffReplyModal(BaseModal, title="Reply to user"):
         await interaction.response.defer(ephemeral=True)
         try:
             user = await interaction.client.fetch_user(self.user_id)
-            await user.send(f"**Staff reply:** {self.message_label.component.value}")
+            await user.send(t("trap_risposta_staff", await lingua_risposta(None, self.user_id), testo=self.message_label.component.value))
         except discord.HTTPException:
-            await interaction.followup.send(
-                "Couldn't deliver the message (DMs closed).", ephemeral=True
-            )
+            await interaction.followup.send(await testo_per(interaction, "trap_dm_non_consegnato"), ephemeral=True)
             return
         await interaction.followup.send("Message sent.", ephemeral=True)
 
@@ -1420,10 +1413,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 candidati = corrispondenti
             else:
                 nomi = ", ".join(g.name for g, _ in candidati)
-                await message.channel.send(
-                    f"You have active bans on multiple servers I moderate: {nomi}. "
-                    f"Please mention the server name in your message to continue your appeal."
-                )
+                await message.channel.send(t("trap_appello_server_multipli", await lingua_risposta(None, message.author.id), nomi=nomi))
                 # Il bot ha appena fatto una domanda: la risposta non
                 # deve essere scartata dal limite dei 30 secondi.
                 limite_dm_appello.dimentica(user.id)
@@ -1433,17 +1423,13 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
 
         last_appeal = await spam_trap_repo.get_last_appeal(guild.id, user.id)
         if not can_appeal(last_appeal):
-            await message.channel.send(
-                "You can only submit one appeal every 24 hours. Please wait before trying again."
-            )
+            await message.channel.send(t("trap_appello_limite", await lingua_risposta(None, user.id)))
             return
 
         config = await spam_trap_repo.get_config(guild.id)
         log_channel = guild.get_channel(config.log_channel_id) if config.log_channel_id else None
         if not isinstance(log_channel, discord.TextChannel):
-            await message.channel.send(
-                "I couldn't reach the staff of that server. Please try again later."
-            )
+            await message.channel.send(t("trap_appello_staff_irraggiungibile", await lingua_risposta(None, user.id)))
             return
 
         incident = await spam_trap_repo.get_incident_by_case(guild.id, case.case_number)
@@ -1455,9 +1441,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 reason=f"Ban appeal from {user}"[:512],
             )
         except discord.HTTPException:
-            await message.channel.send(
-                "I couldn't open an appeal thread right now. Please try again later."
-            )
+            await message.channel.send(t("trap_appello_thread", await lingua_risposta(None, user.id)))
             return
 
         testo_appello = (message.content or "(no text)")[:MAX_TESTO_APPELLO]
@@ -1501,19 +1485,14 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 await thread.delete()
             except discord.HTTPException:
                 pass
-            await message.channel.send(
-                "I couldn't deliver your appeal to the staff right now. Please try again later."
-            )
+            await message.channel.send(t("trap_appello_non_consegnato", await lingua_risposta(None, user.id)))
             return
 
         # Solo ora che lo staff ha ricevuto l'appello parte il blocco
         # di 24 ore.
         await spam_trap_repo.set_last_appeal(guild.id, user.id, datetime.now(timezone.utc))
 
-        await message.channel.send(
-            "Your appeal has been submitted to the staff. They will review it "
-            "and may respond here."
-        )
+        await message.channel.send(t("trap_appello_inviato", await lingua_risposta(None, user.id)))
 
 
 async def setup(bot: commands.Bot) -> None:

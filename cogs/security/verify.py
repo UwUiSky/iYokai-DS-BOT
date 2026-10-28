@@ -68,6 +68,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import captcha_image
+from core.i18n import testo_per
 from core.bounded_cache import BoundedCache
 from core.panel_bridge import METODO_WEB, link_verifica_web
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -164,9 +165,7 @@ class CaptchaModal(BaseModal, title="Verification"):
         guild = interaction.client.get_guild(self.guild_id)
         member = guild.get_member(self.user_id) if guild is not None else None
         if member is None:
-            await interaction.followup.send(
-                "Something went wrong, please try again.", ephemeral=True
-            )
+            await interaction.followup.send(await testo_per(interaction, "verify_qualcosa_storto"), ephemeral=True)
             return
 
         outcome = await self.cog.run_checks_and_finalize(guild, member, captcha_ok)
@@ -325,7 +324,7 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
     if config.verified_role_id is not None and any(
         r.id == config.verified_role_id for r in interaction.user.roles
     ):
-        await interaction.response.send_message("You are already verified.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "verify_gia_verificato"), ephemeral=True)
         return
     if config.method == METODO_WEB:
         link = link_verifica_web(guild.id, interaction.user.id)

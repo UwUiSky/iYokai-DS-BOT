@@ -1283,3 +1283,23 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 2. `/level impostazioni xp immagine_moneta:` con un PNG grande: salvato; `/level balance`, `/level cassa`, una partita di `/fun` e `/clan info` mostrano la stessa miniatura accanto al saldo.
 3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
 4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.
+
+## giro r12 — piattaforme (iYokai App, Desktop, pannello)
+
+- [ ] Menu del messaggio (B.2) — installa l'app sul tuo account; col tasto destro su un messaggio compaiono 12 voci in «App» (Discord ne ammette 15). Traduci e Spiega rispondono solo a te.
+- [ ] Risposte salvate (B.5) — `/risposta salva nome:ciao testo:...`, poi `/risposta usa` in un server dove il bot non c'è: esce come messaggio dell'app (serve «Usa app esterne»).
+- [ ] Profilo globale (B.6) — `/profilo carta:sì` mostra livello, clan e medaglie; un altro utente vede i tuoi dati solo se in `/impostazioni` hai acceso il profilo pubblico.
+- [ ] Playlist e radio (B.8) — `/playlist crea`, `aggiungi`, `mostra`, `togli`, `elimina`; `/radio ora` mostra il brano e il bottone «Cerca il testo».
+- [ ] Activity radio (B.8, **da attivare**) — nel Developer Portal: Activities acceso, mappa URL `/` sul dominio del pannello, `RADIO_STREAM_URL` facoltativo. Poi dal selettore delle Activity «radio iYokai» si apre e mostra il brano; fuori da Discord `/attivita/radio` si apre in una scheda.
+- [ ] Assistenza (B.9, **da attivare** `SUPPORT_CHANNEL_ID`) — `/supporto` apre un thread nel canale dello staff; una risposta nel thread arriva in DM; archiviare il thread chiude la richiesta.
+- [ ] Storico (B.10) — `/impostazioni` acceso lo storico: `/storico` elenca gli ultimi comandi; spento lo cancella.
+- [ ] Desktop: collegamento (D.1) — `/desktop collega` mostra il codice una volta; `python -m iyokai_desktop configura --servizio https://… --app-id …`, poi `collega`: «Fatto». `/desktop scollega` e il programma risponde «Codice non valido o revocato».
+- [ ] Desktop: stato (D.2-D.4, **da attivare** ID applicazione e immagini in Art Assets) — `presenza --details "Ciao" --state "Prova"` compare nel profilo Discord; `rotazione a b --ogni 30` cambia da solo; `presenza --ferma` lo toglie. Da provare su Windows, macOS e Linux (socket e pipe diversi).
+- [ ] Desktop: avvisi (D.5, D.6) — `/desktop avvisi acceso:sì` e `/desktop parole`; un amico ti menziona, ti risponde o scrive la parola: `avvisi` mostra la notifica di sistema (Windows e macOS da provare: usano PowerShell e osascript), `menzioni --apri 1` apre il messaggio. In un canale che non vedi non arriva nulla.
+- [ ] Desktop: storico, traduzione, risposte (D.7, D.8) — `storico`; copia un testo e `traduci-appunti --lingua en` lo sostituisce con la traduzione; `incolla ciao` mette la risposta negli appunti. Assegna una scorciatoia del sistema a `traduci-appunti`.
+- [ ] Desktop: server e staff (D.9, D.10) — `server` elenca i server con iYokai e dove sei staff; `staff blocca <server> <canale>` blocca il canale per @everyone, `sblocca` lo riapre, `timeout <server> <utente> 5`, `annuncio`. Da un account senza il permesso: «Non hai il permesso». `staff azioni <server>` elenca cosa è stato fatto.
+- [ ] Desktop: funzioni di Discord (D.11) — `avanzate` elenca notifiche del client e voce come «Da attivare».
+- [ ] Pagina del modulo (24.2) — `/server/<id>` mostra «Impostazioni» sui moduli verify, music, tickets, moderazione, suggerimenti, automod, inviti, spam-trap; cambiare un valore lo scrive come il comando e compare nello storico.
+- [ ] Editor (24.5) — `/server/<id>/editor/embed`: anteprima e salva; `/embed` del bot lo vede tra i salvati. `/server/<id>/editor/benvenuto`: salva e prova con un nuovo ingresso.
+- [ ] Wiki statica (#147) — `python3 scripts/genera_wiki.py cartella` e apri `cartella/wiki/index.html` servita dalla radice.
+- [ ] Lingue (21.6) — con la lingua del server in inglese, il benvenuto di base, i messaggi di role menu, verifica e appello dello spam-trap escono in inglese; in italiano escono in italiano.

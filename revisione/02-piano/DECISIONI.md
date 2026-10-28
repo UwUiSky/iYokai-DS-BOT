@@ -599,3 +599,34 @@ Si imposta con `/level impostazioni xp immagine_moneta:` (o `senza_immagine:`).
 **Istanze:** `MUSIC_TOKEN_1..5` obbligatori, `MUSIC_TOKEN_6..20` facoltativi (tetto 20, senza buchi).
 La radio del bot principale resta solo di `/owner radio` (un test controlla che i comandi dei server
 usino solo il player dei worker). Da avvisare l'owner.
+
+## D45 — iYokai App: dati personali e musica (28/10/2026)
+
+Precisa B.2-B.10 (#107). Il profilo globale (livello, clan, medaglie) lo vede un'altra persona **solo se il
+proprietario lo ha acceso** (`profilo_pubblico`, spento di base); lo storico dei comandi si salva solo se acceso,
+al massimo 100 righe, 90 giorni. Le richieste di assistenza aprono un thread nel canale `SUPPORT_CHANNEL_ID`
+(spento se 0). Menu del messaggio: Discord ne accetta 15 per tipo, discord.py 2.7.1 ne conta 5: l'albero dell'app
+(`AlberoApp`) alza il tetto locale a 15. **Musica (C17, C18):** i testi delle canzoni non si copiano (diritti): si
+dà il link di ricerca. L'Activity «radio iYokai» sta nel pannello (`/attivita/radio`, SDK MIT in
+`pannello_web/static/`); discord.py non crea il comando d'ingresso: lo crea il Portal (Activities, mappa URL).
+Da avvisare l'owner.
+
+## D46 — iYokai Desktop: accesso, avvisi e staff (28/10/2026)
+
+Precisa D.1-D.11 (#108). **Accesso:** un codice personale (`dsk_…`) creato dal comando dell'app e mostrato una
+volta; il servizio salva solo l'impronta SHA-256 (migrazione 0452). Sostituisce l'accesso OAuth2 dal programma
+(nessun segreto nel programma, nessun redirect locale). **Tempo reale:** attesa lunga (fino a 20 s) invece di
+connessione permanente. **Avvisi:** menzioni, risposte e parole chiave si salvano solo per chi li accende, con
+testo breve per 90 giorni (registro dei dati); si mostrano solo se la persona è ancora nel server e vede il canale.
+**Staff:** il programma chiede, agisce il bot con i permessi veri della persona (blocca/sblocca canale, timeout,
+annuncio, mai menzioni); ogni richiesta è registrata. Il programma non usa mai il token dell'account Discord.
+Le funzioni con scope `rpc` restano spente («da attivare») finché Discord non approva l'applicazione.
+
+## D47 — Pannello: pagina per modulo, editor, wiki statica (28/10/2026)
+
+Precisa 24.2, 24.5 e #147. **Pagine per modulo:** `core/config_impostazioni.py` elenca le chiavi di
+`SETTINGS_SCHEMA` che il sito mostra (bool, numeri, testi, scelte, canali e ruoli del server); le chiavi che
+decidono chi può fare cosa e le liste restano ai comandi. Stessi controlli dello schema, stesso storico.
+**Editor:** embed salvati e messaggio di benvenuto con anteprima, con gli stessi controlli e lo stesso archivio dei
+comandi; i ping di ruolo del benvenuto restano spenti dal sito. **Wiki statica:** `scripts/genera_wiki.py` scrive
+un sito dall'albero dei comandi con gli stessi modelli del pannello.

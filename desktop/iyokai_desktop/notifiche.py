@@ -91,10 +91,10 @@ def riga_storico(evento: dict, numero: int, lingua: str = "it") -> str:
     return f"{numero:>3}. {quando}  {titolo_evento(evento, lingua)}" + (f": {testo}" if testo else "")
 
 
-def salta_al_messaggio(evento: dict, apri=webbrowser.open) -> bool:
+def salta_al_messaggio(evento: dict, apri=None) -> bool:
     """Apre il messaggio nel client Discord (il sistema passa il link a Discord). False se non c'è un link valido."""
     link = link_valido(evento.get("link"))
-    return bool(link) and bool(apri(link))
+    return bool(link) and bool((apri or webbrowser.open)(link))
 
 
 def avvisi_in_ascolto(servizio: Servizio, impostazioni, fermati, invia=invia_notifica, passo_errore: float = 30.0) -> None:

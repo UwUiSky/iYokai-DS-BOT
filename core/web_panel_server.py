@@ -31,7 +31,7 @@ from itertools import groupby
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_attivita, web_panel_inviti, web_panel_logic as regole
+from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -305,8 +305,37 @@ def build_app(
         ]
         permessi = await ponte.stato_permessi_comandi(guild, request[CHIAVE_UTENTE])
         return _pagina(
-            request, "server.html", guild=guild, stato=stato, categorie=categorie, lingue=LINGUE, permessi=permessi
+            request, "server.html", guild=guild, stato=stato, categorie=categorie, lingue=LINGUE, permessi=permessi,
+            con_impostazioni=ponte.moduli_con_impostazioni(),
         )
+
+    async def pagina_modulo(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        nome = request.match_info["nome"]
+        modulo = next((m for m in (await ponte.stato_server(guild))["moduli"] if m["nome"] == nome), None)
+        if modulo is None or nome not in ponte.moduli_con_impostazioni():
+            return _errore(request, 404, "Modulo non trovato", "Questo modulo non ha impostazioni da qui.")
+        return _pagina(request, "modulo.html", guild=guild, m=modulo, campi=await ponte.stato_modulo(guild, nome))
+
+    async def salva_impostazione(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        nome = request.match_info["nome"]
+        esito = "non_valido"
+        try:
+            cambiato = await ponte.applica_impostazione(
+                guild, nome, str(form.get("chiave", "")), str(form.get("valore", ""))[:400], request[CHIAVE_UTENTE]
+            )
+            esito = "salvato" if cambiato else "invariato"
+        except ImpostazioneNonValida:
+            pass
+        return _vai(f"/server/{guild.id}/modulo/{nome}?esito={esito}")
 
     async def salva_modulo(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await _server(request)
@@ -649,6 +678,8 @@ def build_app(
     app.router.add_post("/esci", esci)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}", pagina_server)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/modulo", salva_modulo)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/modulo/{nome:[a-z0-9_]{1,60}}", pagina_modulo)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/modulo/{nome:[a-z0-9_]{1,60}}", salva_impostazione)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/ruolo", salva_ruolo)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/lingua", salva_lingua)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/permessi", salva_permessi)
@@ -672,6 +703,7 @@ def build_app(
     app.router.add_post("/proprietario/ai", salva_ai_proprietario)
     app.router.add_get("/wiki", wiki)
     app.router.add_get(r"/wiki/{percorso:[a-z0-9_\-/]{1,120}}", wiki_comando)
+    web_panel_editor.registra_rotte(app, pagina=_pagina, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE)
     desktop_api.registra_rotte(app, bot=bot, ip=_ip, url_pannello=url_pubblico.rstrip("/"), ponte=ponte)
     web_panel_inviti.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, ip=_ip,

@@ -55,8 +55,9 @@ def scrivi(testo: str, esegui=subprocess.run, piattaforma: str | None = None) ->
         raise ErroreAppunti("scrittura_fallita") from None
 
 
-def traduci_appunti(servizio, lingua: str, leggi_=leggi, scrivi_=scrivi) -> str:
+def traduci_appunti(servizio, lingua: str, leggi_=None, scrivi_=None) -> str:
     """Traduce il testo negli appunti e lo rimette lì. Ritorna la traduzione."""
+    leggi_, scrivi_ = leggi_ or leggi, scrivi_ or scrivi
     testo = leggi_()
     if not testo:
         raise ErroreAppunti("appunti_vuoti")
@@ -69,10 +70,10 @@ def traduci_appunti(servizio, lingua: str, leggi_=leggi, scrivi_=scrivi) -> str:
     return tradotto
 
 
-def copia_risposta(servizio, nome: str, scrivi_=scrivi) -> str:
+def copia_risposta(servizio, nome: str, scrivi_=None) -> str:
     """Mette negli appunti una risposta salvata (per nome), da incollare. ErroreAppunti se non c'è."""
     for r in servizio.risposte():
         if r["nome"] == nome.strip().lower():
-            scrivi_(r["testo"])
+            (scrivi_ or scrivi)(r["testo"])
             return r["testo"]
     raise ErroreAppunti("risposta_non_trovata")

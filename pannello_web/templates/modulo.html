@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titolo %}{{ m.titolo }} · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>{{ m.titolo }}</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">{{ m.descrizione }}</p>
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/modulo">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="nome" value="{{ m.nome }}">
+  <input type="hidden" name="attivo" value="{{ '0' if m.attivo else '1' }}">
+  <span class="etichetta">{{ 'acceso' if m.attivo else 'spento' }}</span>
+  <button type="submit" class="{{ 'secondario' if m.attivo }}">{{ 'Spegni' if m.attivo else 'Accendi' }}</button>
+</form>
+<h2>Impostazioni</h2>
+{% for c in campi %}
+<form class="carta riga" method="post" action="/server/{{ guild.id }}/modulo/{{ m.nome }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="chiave" value="{{ c.chiave }}">
+  <label>{{ c.etichetta }}</label>
+  {% if c.tipo == 'bool' %}
+  <select name="valore" aria-label="{{ c.etichetta }}"><option value="1" {{ 'selected' if c.valore }}>Sì</option><option value="0" {{ 'selected' if not c.valore }}>No</option></select>
+  {% elif c.tipo == 'scelta' %}
+  <select name="valore" aria-label="{{ c.etichetta }}">{% for s in c.scelte %}<option value="{{ s }}" {{ 'selected' if s == c.valore }}>{{ s }}</option>{% endfor %}</select>
+  {% elif c.tipo in ('canale', 'canale_voce', 'ruolo') %}
+  <select name="valore" aria-label="{{ c.etichetta }}"><option value="">— nessuno —</option>{% for id, nome in c.opzioni %}<option value="{{ id }}" {{ 'selected' if id == c.valore }}>{{ nome }}</option>{% endfor %}</select>
+  {% elif c.tipo == 'numero' %}
+  <input type="number" name="valore" value="{{ c.valore if c.valore is not none }}" aria-label="{{ c.etichetta }}">
+  {% else %}
+  <input type="text" name="valore" maxlength="300" value="{{ c.valore if c.valore is not none }}" aria-label="{{ c.etichetta }}">
+  {% endif %}
+  <button type="submit">Salva</button>
+</form>
+{% endfor %}
+{% endblock %}

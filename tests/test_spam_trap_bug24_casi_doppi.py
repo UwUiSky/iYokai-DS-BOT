@@ -112,14 +112,14 @@ class TestAppelloConCasiDoppi:
         await cog._handle_possible_appeal(messaggio)
 
         testi = _testi_inviati(messaggio)
-        assert not any("multiple servers" in testo for testo in testi), testi
+        assert not any("più server" in testo for testo in testi), testi
         # L'appello parte sul caso più recente del server.
         canale_log.create_thread.assert_awaited_once()
         assert (
             canale_log.create_thread.await_args.kwargs["name"]
             == f"appeal-case-{caso_recente}"
         )
-        assert any("submitted" in testo for testo in testi)
+        assert any("mandato allo staff" in testo for testo in testi)
 
     @pytest.mark.asyncio
     async def test_la_domanda_quale_server_elenca_ogni_server_una_volta(self):
@@ -135,7 +135,7 @@ class TestAppelloConCasiDoppi:
 
         testi = _testi_inviati(messaggio)
         assert len(testi) == 1
-        assert "multiple servers" in testi[0]
+        assert "più server" in testi[0]
         assert testi[0].count("Alpha") == 1
         assert testi[0].count("Beta") == 1
 
