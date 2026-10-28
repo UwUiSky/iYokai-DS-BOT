@@ -502,6 +502,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        utente="conserva", server="conserva", esporta=True, nota="registro contabile"),
     _t("premium_codes", "Codici premium", colonne_utente=("redeemed_by",), colonne_attore=("created_by",),
        colonna_server="redeemed_guild_id", utente="conserva", server="conserva", nota="registro contabile"),
+    _t("log_webhooks", "Webhook dei canali di log (token cifrato)", colonna_server="guild_id"),
     _t("whitelabel_bots", "Bot con marchio proprio (token cifrato)", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("main_radio_state", "Stato della radio principale", server="conserva"),
     _t("main_radio_tracks", "Tracce della radio principale", colonne_attore=("added_by",), server="conserva"),

@@ -864,6 +864,7 @@
   "nsfw-admin autopost": "Posts automatically in an age-restricted channel.",
   "nsfw-admin autopost-ferma": "Stops automatic posting (empty: all of them).",
   "nsfw-admin stato": "Shows the NSFW settings of this server.",
+  "log webhook": "Sends logs through a channel webhook, grouped, with its own rate limits.",
   "promemoria": "Your reminders, in every server and in DMs.",
   "promemoria crea": "I will DM you after the time you choose.",
   "promemoria elenco": "Shows your pending reminders.",

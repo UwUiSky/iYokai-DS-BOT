@@ -12,7 +12,7 @@ import re
 FILE = [
     "cogs/utility/setup.py", "cogs/utility/_setup_wizard_views.py", "cogs/utility/config_history.py",
     "cogs/utility/premium_server.py", "cogs/utility/marchio.py", "cogs/utility/command_search.py",
-    "cogs/user_app/personal.py", "cogs/user_app/strumenti.py",
+    "cogs/user_app/personal.py", "cogs/user_app/strumenti.py", "cogs/utility/log_webhook.py",
 ]
 INVIO = {"send_message", "send", "edit_message", "edit", "edit_original_response"}
 RADICE = pathlib.Path(__file__).resolve().parent.parent

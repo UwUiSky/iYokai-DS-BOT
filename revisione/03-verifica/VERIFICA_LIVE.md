@@ -1151,3 +1151,5 @@ Serve: un server di prova, un secondo account A con un ruolo Amministratore, il 
 2. `/admin setup attiva` senza categoria: sotto l'elenco compare «Gli altri bot di iYokai» con i link per Mod e bot musicali mancanti.
 3. `/admin premium sblocca modulo:` con cassa da 1.000.000 coin: conferma, poi il modulo è sbloccato per 30 giorni (`/admin premium stato`); con cassa vuota: messaggio chiaro.
 4. Bot con marchio (server premium): reinvita il bot con il link (serve il permesso dei comandi); i comandi compaiono nell'applicazione del marchio e rispondono con il suo nome e avatar; bottoni e menu funzionano.
+5. App utente: menu sull'utente «Profilo iYokai» mostra livello e clan; «Stato nella rete» risponde solo a chi lo chiede. Comandi calcolatrice, conversioni, fusi, colori, QR, note e liste rispondono in privato.
+6. `/log webhook attivo:True` (serve «Gestisci webhook» e la chiave di cifratura): nel canale di log compare il webhook; un raid di prova scrive pochi messaggi con più embed. Cancella il webhook a mano: i log tornano al canale. `attivo:False` cancella i webhook.

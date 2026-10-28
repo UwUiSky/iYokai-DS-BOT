@@ -2330,10 +2330,10 @@ completo, con limiti e motivi, è in
 - `[ ]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
   Ricordamelo, Citazione come immagine, Meme da questa immagine,
   Controlla i link, Segnala alla rete iYokai, Spiega/riassumi (AI)
-- `[~]` B.3 Menu sull'utente: Profilo iYokai (fatto: scheda Discord; mancano livello e clan), Stato nella rete di
-  sicurezza (solo per chi lo chiede, risposta privata)
-- `[~]` B.4 Utility personali: promemoria (fatto), note, liste, fusi orari,
-  conversioni, calcolatrice, QR, colori
+- `[x]` B.3 Menu sull'utente: Profilo iYokai (scheda Discord, livello e clan), Stato nella rete di
+  sicurezza (solo per chi lo chiede, risposta privata). `cogs/user_app/personal.py`, `tests/test_user_app_strumenti.py`
+- `[x]` B.4 Utility personali: promemoria, note, liste, fusi orari,
+  conversioni, calcolatrice, QR, colori. `core/user_app_strumenti.py`, `cogs/user_app/strumenti.py`, migrazione 0360
 - `[ ]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
   testi ed embed richiamabili ovunque
 - `[ ]` B.6 Profilo globale: livello, clan, medaglie, rank card
@@ -2404,12 +2404,13 @@ Bot che girano nello stesso processo: principale, Mod, Creator, 5
 musicali, più NSFW quando verrà fatto.
 
 - `[x]` iYokai (principale) — comandi e interfaccia
-- `[~]` iYokai Mod (log e moderazione) — D15. Facoltativo (`YOKAI_MOD_TOKEN`), nessun comando e
+- `[x]` iYokai Mod (log e moderazione) — D15. Facoltativo (`YOKAI_MOD_TOKEN`), nessun comando e
   nessun listener: gli eventi li ascolta il principale, `core/bot_roles.py` sceglie per server chi
   scrive i log (router, mod-log, AutoMod, allarmi) ed esegue AutoMod, escalation, anti-raid,
   anti-nuke, spam-trap e fine dei tempban. Mod assente, scollegato, senza permesso, sotto il
   bersaglio o in rate limit lungo (oltre 30 s) → fa il principale, una volta sola. Invito in
-  `/utility info`. Manca: canali di log via webhook (toccherebbe `core/channel_router.py` dei log; Mod ha già limiti suoi separati)
+  `/utility info` e `/admin setup attiva`. Log via webhook (D33): `/log webhook attivo`, `core/log_webhook.py`,
+  migrazione 0361, `tests/test_log_webhook.py`.
 - `[~]` iYokai Creator (backup) — resta; non crea più server, porta e
   tiene aggiornato il server di backup (D8, §11)
 - `[~]` iYokai Music #1-5 — vedi §9

@@ -234,5 +234,9 @@
   "app_profilo_creato": "Account creato",
   "app_profilo_bot": "È un bot.",
   "app_profilo_livello": "Livello",
-  "app_profilo_clan": "Clan"
+  "app_profilo_clan": "Clan",
+  "logwh_chiave_mancante": "Il bot non può salvare i token dei webhook in modo sicuro (manca la chiave di cifratura): avvisa il proprietario del bot.",
+  "logwh_permesso": "Mi manca il permesso «Gestisci webhook» nel server: dammelo e riprova.",
+  "logwh_acceso": "Fatto. Da ora i log escono da un webhook per canale, raggruppati fino a 10 righe ogni 2 secondi. Il primo log crea il webhook; se qualcosa non va, i log escono dal canale come prima.",
+  "logwh_spento": "Fatto. I log escono dal canale come prima. Webhook cancellati: {quanti}."
 }

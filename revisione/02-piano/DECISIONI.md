@@ -467,3 +467,13 @@ al moderatore cosa chiedeva la scala e perché non è partito. Vale per tutti i 
 gradino di timeout non accorcia mai un timeout più lungo già in corso (anche per l'AutoMod).
 La regola sta in un punto solo, `cogs/automod/escalation.py` (`scala_per_warn_manuale`).
 
+## D33 — I log possono uscire da un webhook del server (28/10/2026)
+
+Con `/log webhook attivo:True` i canali di log scrivono tramite un webhook creato dal bot nel canale
+stesso (serve «Gestisci webhook»). Motivo: i webhook hanno un limite di frequenza loro e portano
+fino a 10 embed per messaggio, quindi un raid non esaurisce il limite del bot.
+Scelte: le righe ravvicinate (2 secondi) si raggruppano in un messaggio solo (10 embed e 5.500
+caratteri al massimo); i messaggi con bottoni restano sul canale normale; se il webhook è cancellato
+o non risponde, i log tornano subito al canale e il webhook si dimentica. Il token è cifrato con la
+chiave OAuth (`core/oauth_crypto.py`, dato associato server+canale); senza chiave la funzione non si
+accende. Spegnendo, i webhook creati dal bot si cancellano. Punto unico: impostazione `log_webhook`.

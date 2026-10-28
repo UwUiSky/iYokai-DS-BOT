@@ -60,6 +60,7 @@ MAX_IMPORT_BYTES = 256 * 1024
 # vanno anche in CHIAVI_SOLO_PROPRIETARIO.
 SETTINGS_SCHEMA = {
     "log_channel_id": "id",
+    "log_webhook": "bool",
     "mod_log_channel_id": "id",
     "report_channel_id": "id",
     "custom_command_requests_channel_id": "id",

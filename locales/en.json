@@ -234,5 +234,9 @@
   "app_profilo_creato": "Account created",
   "app_profilo_bot": "This is a bot.",
   "app_profilo_livello": "Level",
-  "app_profilo_clan": "Clan"
+  "app_profilo_clan": "Clan",
+  "logwh_chiave_mancante": "The bot cannot store webhook tokens safely (the encryption key is missing): tell the bot owner.",
+  "logwh_permesso": "I am missing the “Manage Webhooks” permission in the server: give it to me and try again.",
+  "logwh_acceso": "Done. From now on logs go out through one webhook per channel, grouped up to 10 lines every 2 seconds. The first log creates the webhook; if something fails, logs go out from the channel as before.",
+  "logwh_spento": "Done. Logs go out from the channel as before. Webhooks deleted: {quanti}."
 }

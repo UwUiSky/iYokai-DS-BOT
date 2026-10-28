@@ -4,9 +4,8 @@
 27/10/2026 · ramo `feat/r10core` · giro r10 (chiudere le voci [~]; migrazioni 0360-0369)
 
 ## In corso
-- Giro r10 quasi chiuso. Fatto: wizard, 3.1 monete, #109 marchio, #113 inviti, 21.1 (cog core), SPEC flip.
-- Smoke (`scripts/smoke.py --base main`) NON concluso (timeout 110s): rilanciarlo con timeout largo. Invarianti: 173 verdi.
-- Prossimo: B.3 (livello e clan nel Profilo app), B.4 (note, liste, fusi, conversioni, QR, colori), #113 webhook dei log, owner radio max_length (file musica).
+- Giro r10 chiuso (B.3, B.4, #113 webhook D33, 0360-0361). Test dei file toccati verdi. Smoke da fare (regola owner: non lanciato).
+- Prossimo: owner radio max_length (file musica, altra area); 21.1 per cog di altre aree; #70 voci continuo/F8.
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -24,6 +23,7 @@
 - r10 g1: wizard `cogs/utility/_setup_wizard_views.py` + `core/setup_wizard_logic.py` (costruisci_passi): passo ruoli (imposta_ruolo) e una categoria per passo, bottone «Crea i canali dei log» = callback di `/log crea-canali`.
 
 - r10: `core/premium_modulo_service.py`, `core/bot_inviti.py`, marchio: `inoltra_interazioni` (parsers INTERACTION_CREATE -> stato del principale).
+- r10 g2: B.3/B.4 (`core/user_app_strumenti.py`, 0360); log via webhook `core/log_webhook.py` + 0361 + hook in `channel_router.destinazione` (D33).
 
 ## Cose imparate
 - `View.clear_items()` stacca i figli: dentro un callback tenere `vista = self.view` prima di ricostruire.
@@ -57,6 +57,5 @@
 - Conteggio caratteri: `admin` 6.4xx su 6.800 (soglia): il prossimo comando admin richiede un nuovo gruppo (D25) o va in un gruppo piu leggero.
 - #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.
-- #148: manca solo il picker dei ruoli che chiama `imposta_ruolo` (il link e la callback ci sono).
 - Clan sciolto dalla cancellazione: categoria/canali Discord restano da togliere a mano.
 - Worker musicale da solo non controlla la blacklist all'ingresso (solo il principale).
