@@ -30,6 +30,9 @@ SETTING_RUOLO_LINK = "inviti_link_role_id"
 MAX_PARTE = 30  # lettere per il nome del server e per quello dell'utente
 MAX_SLUG = 80
 MAX_TENTATIVI_SLUG = 50
+# Discord tiene al massimo 1000 inviti per server (LIMITI.md, LIM-36): i link personali ne usano
+# al massimo la metà, così gli admin possono ancora crearne.
+MAX_INVITI_PERSONALI = 500
 FORMA_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,78}[a-z0-9])$")
 
 # Esiti per chi chiede il link (testi in `testo_esito`).
@@ -39,6 +42,8 @@ RUOLO_MANCANTE = "ruolo_mancante"
 NON_NEL_SERVER = "non_nel_server"
 INVITI_DISABILITATI = "inviti_disabilitati"
 SENZA_PERMESSO = "senza_permesso"
+MEMBRO_SENZA_PERMESSO = "membro_senza_permesso"
+TROPPI_INVITI = "troppi_inviti"
 NESSUN_CANALE = "nessun_canale"
 ERRORE_DISCORD = "errore_discord"
 
@@ -49,6 +54,10 @@ _TESTI_ESITO = {
     INVITI_DISABILITATI: "Questo server ha messo in pausa gli inviti: i link personali non funzionano finché non li riattiva.",
     SENZA_PERMESSO: "Il bot non ha il permesso «Crea invito» in nessun canale: un amministratore deve darglielo.",
     NESSUN_CANALE: "Il bot non trova un canale dove creare l'invito.",
+    MEMBRO_SENZA_PERMESSO: "Non hai il permesso «Crea invito» in un canale dove il bot può crearne: "
+    "il link personale non può fare per te ciò che non puoi fare tu.",
+    TROPPI_INVITI: f"Il server ha già {MAX_INVITI_PERSONALI} link personali attivi (Discord tiene al massimo "
+    "1000 inviti per server): avvisa un amministratore.",
     ERRORE_DISCORD: "Discord non ha creato l'invito: riprova tra poco.",
 }
 

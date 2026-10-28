@@ -77,6 +77,10 @@ class InvitesCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.exception("Errore nel segnare l'uscita di %s", member.id)
 
+    @commands.Cog.listener()
+    async def on_invite_delete(self, invite: discord.Invite) -> None:
+        invite_service.invito_cancellato(invite.code)
+
     async def _scrivi_nel_registro(self, member: discord.Member, ingresso: invite_service.Ingresso) -> None:
         """Una riga nel canale scelto dall'admin (se c'è): chi è entrato, con quale link, chi lo ha invitato."""
         canale_id = await db.get_guild_setting(member.guild.id, logica.SETTING_CANALE_LOG)

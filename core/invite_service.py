@@ -15,11 +15,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
+import time
 from dataclasses import dataclass
 
 import discord
 
 from core import invite_links_logic as logica
+from core.bounded_cache import BoundedCache
 from core.config import config
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
@@ -32,6 +34,10 @@ logger = logging.getLogger("iyokai.invite_service")
 MODULO_INVITI = "invites"
 NON_CAMBIARE = object()
 _blocchi: dict[str, asyncio.Lock] = {}
+# Inviti visti vivi da poco: {codice: quando}. Oltre VERIFICA_VALIDA secondi si richiede a Discord
+# (la cache del tracker si aggiorna solo agli ingressi e non sa se un invito è stato cancellato).
+VERIFICA_VALIDA = 300
+_verificati: BoundedCache[str, float] = BoundedCache(5000)
 
 
 @dataclass(frozen=True)
@@ -105,31 +111,39 @@ def _ruoli_di(membro: discord.Member) -> set[int]:
     return {r.id for r in getattr(membro, "roles", [])}
 
 
-def _puo_creare(canale, me) -> bool:
-    return me is not None and canale.permissions_for(me).create_instant_invite
+def _puo_creare(canale, chi) -> bool:
+    return chi is not None and canale.permissions_for(chi).create_instant_invite
 
 
-def scegli_canale(guild: discord.Guild):
-    """Un canale testuale dove il bot può creare inviti: prima i canali di sistema, poi gli altri."""
-    me = guild.me
+def scegli_canale(guild: discord.Guild, membro=None):
+    """
+    Un canale testuale dove il bot può creare inviti e, se c'è il membro, anche lui: il bot non
+    crea per lui un invito che lui non potrebbe creare (né in un canale che non vede). Prima i
+    canali che vede @everyone (l'anteprima dell'invito ne mostra il nome), poi gli altri.
+    """
     candidati = [guild.system_channel, guild.rules_channel, guild.public_updates_channel]
     candidati += sorted(guild.text_channels, key=lambda c: c.position)
-    for canale in candidati:
-        if canale is not None and _puo_creare(canale, me):
-            return canale
-    return None
+    validi = [
+        c for c in candidati
+        if c is not None and _puo_creare(c, guild.me) and (membro is None or _puo_creare(c, membro))
+    ]
+    pubblici = [c for c in validi if c.permissions_for(guild.default_role).view_channel]
+    return (pubblici or validi or [None])[0]
 
 
-def _esito_canale(guild: discord.Guild) -> str:
+def _esito_canale(guild: discord.Guild, membro=None) -> str:
     if "INVITES_DISABLED" in guild.features:
         return logica.INVITI_DISABILITATI
-    if scegli_canale(guild) is not None:
+    if scegli_canale(guild, membro) is not None:
         return logica.OK
+    if membro is not None and scegli_canale(guild) is not None:
+        return logica.MEMBRO_SENZA_PERMESSO
     return logica.SENZA_PERMESSO if guild.text_channels else logica.NESSUN_CANALE
 
 
 async def puo_avere_il_link(guild: discord.Guild, membro) -> str:
-    """OK, oppure il motivo per cui il membro non può avere il link (modulo, ruolo, presenza)."""
+    """OK, oppure il motivo per cui il membro non può avere o usare il link (modulo, ruolo,
+    presenza, inviti in pausa, permesso «Crea invito» suo e del bot)."""
     if membro is None:
         return logica.NON_NEL_SERVER
     opzioni = await leggi_opzioni(guild.id)
@@ -137,7 +151,7 @@ async def puo_avere_il_link(guild: discord.Guild, membro) -> str:
         return logica.MODULO_SPENTO
     if not logica.ruolo_ammesso(opzioni.ruolo_link_id, _ruoli_di(membro)):
         return logica.RUOLO_MANCANTE
-    return logica.OK
+    return _esito_canale(guild, membro)
 
 
 # ------------------------------------------------------------ il link
@@ -163,29 +177,37 @@ async def ottieni_link(guild: discord.Guild, membro) -> tuple[str, LinkPersonale
     esistente = await invite_links_repo.del_membro(guild.id, membro.id)
     if esistente is not None:
         return logica.OK, esistente
-    esito = _esito_canale(guild)  # niente link nuovo se poi non si potrà aprire
-    if esito != logica.OK:
-        return esito, None
     return logica.OK, await _crea_slug(guild, membro)
 
 
+def invito_cancellato(codice: str) -> None:
+    """Un invito è sparito (evento di Discord): alla prossima apertura si ricontrolla."""
+    _verificati.delete(codice)
+
+
 async def _invito_vivo(bot, guild: discord.Guild, codice: str) -> bool:
-    noti = invite_tracker.codici(guild.id)
-    if noti is not None and codice in noti:
+    """Vive ed è di questo server: il sito non gira mai a un invito d'altri."""
+    visto = _verificati.get(codice)
+    if visto is not None and time.monotonic() - visto < VERIFICA_VALIDA:
         return True
     try:
-        await bot.fetch_invite(codice, with_counts=False)
+        invito = await bot.fetch_invite(codice, with_counts=False)
     except discord.NotFound:
+        invito_cancellato(codice)
         return False
     except discord.HTTPException:
         return True  # Discord non risponde: meglio un invito che forse vive che uno nuovo a ogni clic
+    if getattr(getattr(invito, "guild", None), "id", guild.id) != guild.id:
+        return False
+    _verificati.set(codice, time.monotonic())
     return True
 
 
-async def invito_discord(bot, guild: discord.Guild, link: LinkPersonale) -> tuple[str, str | None]:
+async def invito_discord(bot, guild: discord.Guild, link: LinkPersonale, membro=None) -> tuple[str, str | None]:
     """
     (esito, codice) dell'invito Discord dedicato al link: quello salvato se vive ancora, altrimenti
-    uno nuovo (senza scadenza e senza limite d'usi, solo di quel membro).
+    uno nuovo (senza scadenza e senza limite d'usi, solo di quel membro, in un canale dove anche lui
+    può creare inviti). Al massimo MAX_INVITI_PERSONALI inviti per server.
     """
     if len(_blocchi) > 2000:  # pulizia: tengo solo i blocchi in uso
         for chiave in [k for k, b in _blocchi.items() if not b.locked()]:
@@ -197,10 +219,12 @@ async def invito_discord(bot, guild: discord.Guild, link: LinkPersonale) -> tupl
             return logica.NON_NEL_SERVER, None
         if attuale.discord_code and await _invito_vivo(bot, guild, attuale.discord_code):
             return logica.OK, attuale.discord_code
-        esito = _esito_canale(guild)
+        esito = _esito_canale(guild, membro)
         if esito != logica.OK:
             return esito, None
-        canale = scegli_canale(guild)
+        if await invite_links_repo.conta_codici(guild.id, escludi_slug=link.slug) >= logica.MAX_INVITI_PERSONALI:
+            return logica.TROPPI_INVITI, None
+        canale = scegli_canale(guild, membro)
         try:
             invito = await canale.create_invite(
                 max_age=0, max_uses=0, unique=True, reason="Link d'invito personale (iYokai)"
@@ -211,6 +235,7 @@ async def invito_discord(bot, guild: discord.Guild, link: LinkPersonale) -> tupl
             logger.warning("Invito personale non creato nel server %s.", guild.id)
             return logica.ERRORE_DISCORD, None
         invite_tracker.registra_invito(guild.id, invito.code, getattr(guild.me, "id", None))
+        _verificati.set(invito.code, time.monotonic())
         await invite_links_repo.imposta_codice(link.slug, invito.code)
         return logica.OK, invito.code
 
@@ -235,7 +260,7 @@ async def apri_link(bot, slug: str) -> tuple[str, str | None]:
     esito = await puo_avere_il_link(guild, membro)
     if esito != logica.OK:
         return esito, None
-    esito, codice = await invito_discord(bot, guild, link)
+    esito, codice = await invito_discord(bot, guild, link, membro)
     if codice is not None:
         await invite_links_repo.segna_uso(slug)
     return esito, codice

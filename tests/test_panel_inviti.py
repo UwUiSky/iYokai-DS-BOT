@@ -12,7 +12,8 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from core import invite_service as svc
+from core import invite_links_logic as l, invite_service as svc
+from core.bounded_cache import BoundedCache
 from core.invite_tracker import InviteTracker
 from core.repositories.invite_links_repo import invite_links_repo
 from tests.support.discord_fakes import fake_member, fake_role, fake_text_channel
@@ -34,6 +35,7 @@ def inviti(ambiente, monkeypatch):  # noqa: F811
     ambiente.membri[ADMIN].roles = []
     ambiente.bot.fetch_invite = AsyncMock()
     monkeypatch.setattr(svc, "invite_tracker", InviteTracker())
+    monkeypatch.setattr(svc, "_verificati", BoundedCache(100))
     monkeypatch.setattr(svc, "url_pubblico", lambda: "http://pannello.test")
     return SimpleNamespace(amb=ambiente, guild=guild, canale=canale)
 
@@ -60,7 +62,7 @@ async def test_il_link_porta_all_invito_dedicato(inviti):
 
 
 @pytest.mark.asyncio
-async def test_link_non_attivo_o_server_senza_permesso_senza_nomi(inviti):
+async def test_link_non_attivo_o_server_senza_permesso_senza_nomi(inviti, monkeypatch):
     await invite_links_repo.crea("server-anna", GUILD, ADMIN)
     client = await _client(inviti.amb.app)
     try:
@@ -76,6 +78,13 @@ async def test_link_non_attivo_o_server_senza_permesso_senza_nomi(inviti):
         inviti.guild.features = ["INVITES_DISABLED"]
         r = await client.get("/invito/server-anna", allow_redirects=False)
         assert r.status == 503 and "in pausa" in await r.text()
+        # tetto degli inviti personali del server: pagina chiara, nessun invito nuovo
+        inviti.guild.features = []
+        inviti.canale.permissions_for = MagicMock(return_value=discord.Permissions(create_instant_invite=True))
+        monkeypatch.setattr(l, "MAX_INVITI_PERSONALI", 0)
+        r = await client.get("/invito/server-anna", allow_redirects=False)
+        assert r.status == 503 and "numero massimo" in await r.text()
+        inviti.canale.create_invite.assert_not_awaited()
     finally:
         await client.close()
 

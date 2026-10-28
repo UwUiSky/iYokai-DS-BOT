@@ -13,6 +13,7 @@ import pytest
 
 import core.database as database_module
 from core import invite_links_logic as l, invite_service as svc
+from core.bounded_cache import BoundedCache
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
 from core.invite_tracker import InviteTracker
@@ -48,6 +49,7 @@ def membro(uid, nome="Anna"):
 def servizio(monkeypatch, clean_db):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     monkeypatch.setattr(svc, "invite_tracker", InviteTracker())
+    monkeypatch.setattr(svc, "_verificati", BoundedCache(100))
     monkeypatch.setattr(svc, "url_pubblico", lambda: "https://sito.test")
     return clean_db
 
@@ -108,14 +110,14 @@ async def test_invito_creato_una_volta_riusato_e_ricreato(servizio):
     assert kw["max_age"] == 0 and kw["max_uses"] == 0 and kw["unique"] is True
     assert (await invite_links_repo.da_slug(link.slug)).discord_code == "Abc123"
     assert await svc.invito_discord(bot, guild, link) == (l.OK, "Abc123")
-    assert canale.create_invite.await_count == 1  # conosciuto dalla cache degli inviti
-    # cancellato: il tracker non lo conosce più e Discord dice 404 -> ne nasce uno nuovo
-    svc.invite_tracker._cache.set(guild.id, {})
+    assert canale.create_invite.await_count == 1  # visto vivo da poco: niente chiamate a Discord
+    # cancellato (evento o verifica scaduta) e Discord dice 404 -> ne nasce uno nuovo
+    svc.invito_cancellato("Abc123")
     bot.fetch_invite.side_effect = NOT_FOUND
     canale.create_invite.return_value = SimpleNamespace(code="Nuovo99")
     assert await svc.invito_discord(bot, guild, link) == (l.OK, "Nuovo99")
     # Discord non risponde: non si creano inviti a raffica
-    svc.invite_tracker._cache.set(guild.id, {})
+    svc.invito_cancellato("Nuovo99")
     bot.fetch_invite.side_effect = discord.HTTPException(MagicMock(status=500), "x")
     assert await svc.invito_discord(bot, guild, link) == (l.OK, "Nuovo99")
     assert canale.create_invite.await_count == 2
@@ -194,3 +196,97 @@ async def test_opzioni_dell_admin(servizio):
     assert await svc.imposta_opzioni(guild, canale_log=None, ruolo_link=None, changed_by=1) is True
     o = await svc.leggi_opzioni(G)
     assert (o.canale_log_id, o.ruolo_link_id) == (None, None)
+
+
+def permessi_per(canale, regole):
+    """`regole`: {chi -> Permissions}; chi non c'è non ha niente (come un canale privato)."""
+    canale.permissions_for = MagicMock(side_effect=lambda chi: regole.get(chi, discord.Permissions.none()))
+
+
+@pytest.mark.asyncio
+async def test_niente_link_a_chi_non_puo_creare_inviti(servizio):
+    """Il bot non crea per un membro l'invito che lui non potrebbe creare (canale che non vede
+    o «Crea invito» tolto), né in apertura né alla richiesta del link."""
+    await accendi()
+    guild, canale = guild_con_canale()
+    m = membro(1)
+    crea = discord.Permissions(view_channel=True, create_instant_invite=True)
+    permessi_per(canale, {guild.me: crea, guild.default_role: crea})
+    assert (await svc.ottieni_link(guild, m))[0] == l.MEMBRO_SENZA_PERMESSO
+    permessi_per(canale, {guild.me: crea, guild.default_role: crea, m: crea})
+    _, link = await svc.ottieni_link(guild, m)
+    assert link is not None
+    bot = MagicMock()
+    bot.get_guild = MagicMock(return_value=guild)
+    guild.get_member = MagicMock(return_value=m)
+    permessi_per(canale, {guild.me: crea, guild.default_role: crea})  # poi gli tolgono il permesso
+    assert await svc.apri_link(bot, link.slug) == (l.MEMBRO_SENZA_PERMESSO, None)
+    canale.create_invite.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_invito_in_un_canale_che_vedono_tutti(servizio):
+    """Il canale degli aggiornamenti della community (solo staff) non va nell'anteprima dell'invito."""
+    await accendi()
+    guild, pubblico = guild_con_canale()
+    staff = fake_text_channel(G + 2, "mod-aggiornamenti")
+    staff.position = 5
+    staff.create_invite = AsyncMock(return_value=SimpleNamespace(code="Staff1"))
+    m = membro(1)
+    crea = discord.Permissions(view_channel=True, create_instant_invite=True)
+    permessi_per(staff, {guild.me: crea, m: crea})
+    permessi_per(pubblico, {guild.me: crea, m: crea, guild.default_role: crea})
+    guild.public_updates_channel = staff
+    guild.text_channels = [pubblico, staff]
+    _, link = await svc.ottieni_link(guild, m)
+    assert await svc.invito_discord(MagicMock(), guild, link, m) == (l.OK, "Abc123")
+    staff.create_invite.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_tetto_di_inviti_personali_per_server(servizio, monkeypatch):
+    """Discord tiene al massimo 1000 inviti per server: i link personali non li consumano tutti."""
+    await accendi()
+    monkeypatch.setattr(l, "MAX_INVITI_PERSONALI", 2)
+    guild, canale = guild_con_canale()
+    codici = iter(["C1", "C2", "C3"])
+    canale.create_invite = AsyncMock(side_effect=lambda **_: SimpleNamespace(code=next(codici)))
+    bot = MagicMock()
+    risultati = []
+    for uid in (1, 2, 3):
+        _, link = await svc.ottieni_link(guild, membro(uid, f"m{uid}"))
+        risultati.append(await svc.invito_discord(bot, guild, link))
+    assert risultati == [(l.OK, "C1"), (l.OK, "C2"), (l.TROPPI_INVITI, None)]
+    # chi ricrea il proprio invito (cancellato) non è bloccato dal suo vecchio codice
+    _, link1 = await svc.ottieni_link(guild, membro(1, "m1"))
+    bot.fetch_invite = AsyncMock(side_effect=NOT_FOUND)
+    svc.invito_cancellato("C1")
+    canale.create_invite = AsyncMock(return_value=SimpleNamespace(code="C1b"))
+    assert await svc.invito_discord(bot, guild, link1) == (l.OK, "C1b")
+
+
+@pytest.mark.asyncio
+async def test_invito_cancellato_si_ricrea_anche_con_la_cache_del_tracker(servizio):
+    """La cache del tracker si aggiorna solo agli ingressi: non dice se un invito vive ancora."""
+    await accendi()
+    guild, canale = guild_con_canale()
+    bot = MagicMock()
+    bot.fetch_invite = AsyncMock()
+    _, link = await svc.ottieni_link(guild, membro(1))
+    assert await svc.invito_discord(bot, guild, link) == (l.OK, "Abc123")
+    svc.invito_cancellato("Abc123")  # evento INVITE_DELETE (o verifica scaduta)
+    bot.fetch_invite.side_effect = NOT_FOUND
+    canale.create_invite.return_value = SimpleNamespace(code="Nuovo1")
+    assert "Abc123" in svc.invite_tracker.codici(G)  # il tracker lo crede ancora vivo
+    assert await svc.invito_discord(bot, guild, link) == (l.OK, "Nuovo1")
+
+
+@pytest.mark.asyncio
+async def test_redirect_solo_a_un_invito_di_questo_server(servizio):
+    await accendi()
+    guild, canale = guild_con_canale()
+    _, link = await svc.ottieni_link(guild, membro(1))
+    await invite_links_repo.imposta_codice(link.slug, "Altro1")
+    bot = MagicMock()
+    bot.fetch_invite = AsyncMock(return_value=SimpleNamespace(guild=SimpleNamespace(id=999)))
+    assert await svc.invito_discord(bot, guild, link) == (l.OK, "Abc123")

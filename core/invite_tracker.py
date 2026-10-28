@@ -144,6 +144,7 @@ class InviteTracker:
         eliminato (on_invite_create/on_invite_delete) per tenere la
         cache coerente senza dover rileggere tutto ad ogni join.
         """
+        prima = dict(self._cache.get(guild.id, {}) or {})
         try:
             invites = await guild.invites()
         except discord.Forbidden:
@@ -170,8 +171,18 @@ class InviteTracker:
         vanity = await _usi_vanity(guild)
         if vanity is not None:
             usi[vanity[0]], creatori[vanity[0]] = vanity[1], None
-        self._cache.set(guild.id, usi)
-        self._inviters.set(guild.id, creatori)
+        self._salva(guild.id, prima, usi, creatori)
+
+    def _salva(self, guild_id: int, prima: dict[str, int], usi: dict[str, int], creatori: dict) -> None:
+        """Scrive la cache letta da Discord tenendo gli inviti registrati dal bot (`registra_invito`)
+        mentre si aspettava la risposta: Discord non li aveva ancora nell'elenco."""
+        attuali = self._cache.get(guild_id) or {}
+        noti = self._inviters.get(guild_id) or {}
+        for codice, n in attuali.items():
+            if codice not in prima and codice not in usi:
+                usi[codice], creatori[codice] = n, noti.get(codice)
+        self._cache.set(guild_id, usi)
+        self._inviters.set(guild_id, creatori)
 
     def codici(self, guild_id: int) -> set[str] | None:
         """I codici d'invito noti del server, o None se il server non è ancora tracciato."""
@@ -301,8 +312,7 @@ class InviteTracker:
         vanity = await _usi_vanity(guild)
         if vanity is not None:
             dopo[vanity[0]], inviters_dopo[vanity[0]] = vanity[1], None
-        self._cache.set(guild.id, dopo)
-        self._inviters.set(guild.id, inviters_dopo)
+        self._salva(guild.id, prima, dopo, inviters_dopo)
 
         # Usi nuovi per invito. Un invito che prima non c'era non
         # conta (stessa prudenza di diff_invite_uses).

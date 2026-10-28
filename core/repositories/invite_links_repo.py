@@ -70,6 +70,14 @@ class InviteLinksRepository:
         )
         return [_link(r) for r in righe]
 
+    async def conta_codici(self, guild_id: int, *, escludi_slug: str | None = None) -> int:
+        """Quanti link del server hanno un invito Discord (per il tetto di Discord sugli inviti)."""
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM invite_personal_links WHERE guild_id = $1 AND discord_code IS NOT NULL "
+            "AND slug IS DISTINCT FROM $2",
+            guild_id, escludi_slug,
+        )
+
     async def imposta_codice(self, slug: str, codice: str | None) -> None:
         await self._pool.execute("UPDATE invite_personal_links SET discord_code = $2 WHERE slug = $1", slug, codice)
 

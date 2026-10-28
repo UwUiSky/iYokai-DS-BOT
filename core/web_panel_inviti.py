@@ -39,6 +39,7 @@ ESITI_LINK = {
     logica.INVITI_DISABILITATI: (logica.testo_esito(logica.INVITI_DISABILITATI), True),
     logica.SENZA_PERMESSO: (logica.testo_esito(logica.SENZA_PERMESSO), True),
     logica.NESSUN_CANALE: (logica.testo_esito(logica.NESSUN_CANALE), True),
+    logica.MEMBRO_SENZA_PERMESSO: (logica.testo_esito(logica.MEMBRO_SENZA_PERMESSO), True),
 }
 # Cosa dice il sito a chi apre un link che non può usare (mai nomi di persone).
 PAGINE_LINK = {
@@ -46,6 +47,7 @@ PAGINE_LINK = {
     logica.SENZA_PERMESSO: (503, "Link non disponibile", "Il bot di questo server non ha il permesso «Crea invito»: avvisa un amministratore."),
     logica.NESSUN_CANALE: (503, "Link non disponibile", "Il bot non trova un canale dove creare l'invito."),
     logica.ERRORE_DISCORD: (503, "Riprova tra poco", "Discord non ha creato l'invito in questo momento."),
+    logica.TROPPI_INVITI: (503, "Link non disponibile", "Il server ha raggiunto il numero massimo di link personali: avvisa un amministratore."),
 }
 PAGINA_NON_ATTIVO = (404, "Link non attivo", "Questo link non esiste o non è attivo in questo momento.")
 

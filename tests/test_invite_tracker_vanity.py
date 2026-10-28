@@ -55,3 +55,26 @@ async def test_invito_registrato_dal_bot_si_riconosce_al_primo_uso():
     assert t.codici(5) == {"Nuovo"}
     g.invites.return_value = [SimpleNamespace(code="Nuovo", uses=1, inviter=SimpleNamespace(id=999))]
     assert await t.resolve_join_invite(g, 100) == ("Nuovo", 999)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("passo", ["refresh", "ingresso"])
+async def test_invito_creato_mentre_si_rileggono_gli_inviti_non_si_perde(passo):
+    """Il bot crea un invito personale mentre il tracker aspetta Discord: la cache scritta dopo
+    non deve cancellarlo, o il primo ingresso con quel link resta senza invitante."""
+    t = InviteTracker()
+    g = _guild([], None, codice=None)
+    await t.refresh_guild(g)
+
+    async def inviti_vecchi():
+        t.registra_invito(5, "Nuovo", 999)  # creato durante l'attesa
+        return []
+
+    g.invites = AsyncMock(side_effect=inviti_vecchi)
+    if passo == "refresh":
+        await t.refresh_guild(g)
+    else:
+        await t.resolve_join_invite(g, 100)
+    assert "Nuovo" in t.codici(5)
+    g.invites = AsyncMock(return_value=[SimpleNamespace(code="Nuovo", uses=1, inviter=SimpleNamespace(id=999))])
+    assert await t.resolve_join_invite(g, 101) == ("Nuovo", 999)

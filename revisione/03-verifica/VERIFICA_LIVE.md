@@ -1149,7 +1149,8 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 
 - [ ] Link personale — passi: come A `/level inviti link`. Risultato atteso: un indirizzo `…/invito/<server>-<nome>`; richiesto di nuovo, è lo stesso; A cambia nome utente e lo stesso indirizzo vale ancora.
 - [ ] Redirect e ingresso — passi: B apre l'indirizzo, accetta l'invito. Risultato atteso: B entra; `/level inviti storico utente:@B` dice «invitato da A, link personale dal sito»; `/level inviti utente` di A conta 1.
-- [ ] Invito ricreato — passi: cancella a mano l'invito del bot creato per A (Impostazioni server → Inviti); B2 riapre l'indirizzo. Risultato atteso: ne nasce uno nuovo e l'ingresso va ad A.
+- [ ] Invito ricreato — passi: cancella a mano l'invito del bot creato per A (Impostazioni server → Inviti); B2 riapre l'indirizzo (subito se il bot ha «Gestisci canali», se no dopo 5 minuti). Risultato atteso: ne nasce uno nuovo e l'ingresso va ad A.
+- [ ] Permesso del membro — passi: togli «Crea invito» ad A (o a @everyone) in tutti i canali; B apre il link di A. Risultato atteso: «Link non attivo», nessun invito nuovo; A con `/level inviti link` legge che non ha il permesso. Server con canale degli aggiornamenti della community: l'invito punta a un canale pubblico, non a quello.
 - [ ] Uscita — passi: B esce. Risultato atteso: lo storico di A mostra B come uscito; se esce A, il suo indirizzo non funziona più.
 - [ ] Server senza permesso o con inviti in pausa — passi: togli «Crea invito» al bot (poi, in un altro giro, metti in pausa gli inviti). Risultato atteso: la pagina dice perché non funziona, senza nomi.
 - [ ] Opzioni — passi: `/level inviti opzioni canale:#registro ruolo:@Membri`; poi la stessa cosa dalla pagina «Inviti» del pannello. Risultato atteso: stesse impostazioni in entrambi; chi non ha il ruolo non ottiene il link; il registro scrive chi entra e con quale link.
