@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 548 comandi in 25 categorie.**
 
 ## Admin
 
@@ -335,10 +335,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
-- **`/mod caso attive`** — Sanzioni a tempo ancora in corso: tempban, timeout, lock a tempo.
+- **`/mod caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
 - **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
 - **`/mod caso motivo`** — Cambia il motivo di un caso già registrato.
+- **`/mod caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
 - **`/mod caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod caso vedi`** — Mostra i dettagli di un singolo caso.
 - **`/mod clear`** — Cancella un numero di messaggi, con filtri opzionali.
@@ -353,7 +354,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/mod nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
 - **`/mod opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod opzioni immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
-- **`/mod opzioni imposta`** — Giorni di messaggi cancellati al ban e durata del timeout. Vuoto: mostra le opzioni.
+- **`/mod opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
 - **`/mod slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.
