@@ -2279,10 +2279,12 @@ di quel file.
 
 **Ticket e staff**
 
-- `[~]` 25.65 Bottone "Chiedi all'assistente" dentro il ticket
+- `[x]` 25.65 Bottone "Chiedi all'assistente" dentro il ticket
   (AI-R-071)
   → **Stato 14/10 (r6):** `/ticket assistente` al posto del bottone (il messaggio di apertura è dei file dei ticket).
-- `[ ]` 25.66 Prima risposta automatica nei ticket (AI-R-072)
+  → **Stato 29/10 (r12ai):** bottone «Chiedi all'assistente» nel messaggio di apertura (vista persistente `aitk:chiedi`, solo dove l'AI è accesa); il comando resta.
+- `[x]` 25.66 Prima risposta automatica nei ticket (AI-R-072)
+  → **Stato 29/10 (r12ai):** `/ai staff prima-risposta` per pannello; una sola risposta per ticket, subito se c'è già testo (motivo, modulo) o al primo messaggio; la risposta standard dello staff ha la precedenza; migrazione 0424.
 - `[x]` 25.67 Bozza di risposta per lo staff (AI-R-073)
 - `[x]` 25.68 Smistamento dei ticket (AI-R-074)
 
@@ -2356,7 +2358,7 @@ di quel file.
   di servizio prima di finirle (AI-R-102)
 - `[x]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
   (AI-R-103)
-- `[~]` 25.97 Risposte standard imparate dalle risposte dello staff
+- `[x]` 25.97 Risposte standard imparate dalle risposte dello staff
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
   → **Stato 13/10 (parte senza AI):** alla chiusura il bot propone nel canale dei log la prima risposta dello staff (allegati
   ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
@@ -2368,6 +2370,7 @@ di quel file.
   → **Stato 21/10 (parte con l'AI):** se le parole non bastano e l'AI è accesa nel server, l'AI sceglie tra le sole risposte
   approvate (`core/ticket_ai_logic.py`, porta `core/ai_servizio.py`); non scrive testo libero. Restano: parole chiave proposte
   dall'AI e archivio durevole dei file.
+  → **Stato 29/10 (r12ai):** parole chiave scelte anche dall'AI, file delle risposte conservati nel database (migrazione 0425) e rimandati con la risposta; la scelta della risposta migliore era già fatta (#139).
 - `[x]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)

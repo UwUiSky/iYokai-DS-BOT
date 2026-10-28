@@ -39,6 +39,7 @@ from cogs.tickets.tickets import (
 )
 from core import channel_router as router
 from core import ticket_ai_logic as ai_logica
+from core import ticket_ai_parole_logic as ai_parole
 from core import ticket_standard_logic as logica
 from core.ai_servizio import AINonDisponibile, RichiestaAI, servizio_ai
 from core.command_access import SETTING_ADMIN_ROLE, SETTING_MOD_ROLE
@@ -46,6 +47,7 @@ from core.channel_router import TIPO_EVENTI
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.repositories.ai_ticket_repo import ai_ticket_repo
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_repo import ticket_repo
 from core.repositories.ticket_standard_repo import RispostaStandard, ticket_standard_repo
@@ -285,6 +287,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         richiesta_pulita = logica.senza_dati_personali(coppia.richiesta, nomi)
         testo_richiesta = richiesta_pulita + " " + (ticket.category_label or "")
         parole = logica.parole_chiave(testo_richiesta)
+        parole = ai_parole.unisci(parole, await self._parole_ai(guild.id, ticket.user_id, richiesta_pulita))
         if len(parole) < logica.MIN_PAROLE_CONDIVISE:
             return
         esistenti = await ticket_standard_repo.tutte_del_pannello(guild.id, panel.id)
@@ -304,6 +307,9 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             ticket.ticket_number, ticket.user_id,
         )
         files = await self._copie_allegati(risposta_staff)
+        durevoli = [(f.filename, f.fp.getvalue()) for f in files if isinstance(f.fp, io.BytesIO)]
+        if durevoli:  # archivio durevole: i file restano nel database anche se il canale dei log sparisce
+            await ai_ticket_repo.salva_allegati(guild.id, proposta.id, durevoli)
         try:
             messaggio = await dest.send(
                 embed=embed_proposta(proposta), view=_vista_proposta(proposta.id), files=files,
@@ -359,7 +365,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 try:
                     await message.channel.send(
                         embed=embed_risposta_automatica(risposta, ticket.user_id), reference=message,
-                        allowed_mentions=discord.AllowedMentions.none(),
+                        allowed_mentions=discord.AllowedMentions.none(), files=await self._file_della_risposta(risposta.id),
                     )
                 except discord.HTTPException:
                     logger.warning("Risposta standard non inviata nel ticket %s", message.channel.id)
@@ -371,7 +377,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 try:
                     await message.channel.send(
                         embed=embed_risposta_automatica(risposta, ticket.user_id), reference=message,
-                        allowed_mentions=discord.AllowedMentions.none(),
+                        allowed_mentions=discord.AllowedMentions.none(), files=await self._file_della_risposta(risposta.id),
                     )
                 except discord.HTTPException:
                     logger.warning("Risposta standard non inviata nel ticket %s", message.channel.id)
@@ -380,6 +386,23 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             await self._chiama_lo_staff(message.channel, ticket, panel)
 
     # ---------------------------------------------------------------- parte con l'AI (#139)
+    async def _parole_ai(self, guild_id: int, user_id: int, richiesta_pulita: str) -> list[str]:
+        """Parole sul tema della richiesta scelte dall'AI (già ripulita dai dati personali); vuoto se l'AI è ferma."""
+        testo = await self._chiedi_ai(RichiestaAI(
+            user_id=user_id, funzione="ticket_standard_parole", tipo="giudizio", testo=richiesta_pulita[: ai_logica.MAX_CARATTERI_RICHIESTA],
+            guild_id=guild_id, istruzioni=ai_parole.ISTRUZIONI, messaggi_utenti=True, riusa=False, conta_utente=False,
+        ))
+        return ai_parole.leggi_parole(testo)
+
+    @staticmethod
+    async def _file_della_risposta(reply_id: int) -> list[discord.File]:
+        """I file conservati nel database, pronti da rimandare con la risposta standard."""
+        try:
+            return [discord.File(io.BytesIO(c), filename=n) for n, c in await ai_ticket_repo.allegati_di(reply_id)]
+        except Exception:  # noqa: BLE001 - senza i file la risposta parte comunque
+            logger.warning("File della risposta standard %s non letti.", reply_id, exc_info=True)
+            return []
+
     @staticmethod
     async def _chiedi_ai(richiesta: RichiestaAI) -> str | None:
         """Il testo dell'AI, o None se è ferma, spenta nel server o in errore: chi chiama va avanti senza."""

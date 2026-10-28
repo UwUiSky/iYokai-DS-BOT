@@ -383,6 +383,29 @@ async def _avvisi_di_apertura(
             logger.info("DM di apertura non consegnato a %s (DM chiusi?).", utente.id)
 
 
+async def _vista_assistente(guild_id: int):
+    """Il bottone «Chiedi all'assistente» (§25.65), solo dove l'admin ha acceso l'AI. Non blocca mai l'apertura."""
+    try:
+        from cogs.ai.ticket_ai import AssistenteTicketView
+        from core.repositories.ai_repo import ai_repo
+
+        return AssistenteTicketView() if (await ai_repo.get_config(guild_id)).attivo else None
+    except Exception:  # noqa: BLE001
+        logger.warning("Bottone dell'assistente non aggiunto al ticket.", exc_info=True)
+        return None
+
+
+async def _prima_risposta_ai(client, channel, user_id: int, guild_id: int, panel_id, motivo, campi) -> None:
+    """Prima risposta automatica (§25.66) se in apertura c'è già un testo della persona; mai bloccante."""
+    try:
+        cog = client.get_cog("AiTicketCog")
+        contenuto = "\n".join([motivo or "", *(v for _, v in (campi or []))]).strip()
+        if cog is not None and panel_id is not None and contenuto:
+            await cog.dopo_apertura(channel, user_id, guild_id, panel_id, contenuto)
+    except Exception:  # noqa: BLE001
+        logger.warning("Prima risposta automatica non riuscita all'apertura.", exc_info=True)
+
+
 async def _crea_ticket(
     interaction: discord.Interaction,
     guild: discord.Guild,
@@ -534,13 +557,15 @@ async def _crea_ticket(
     if eccesso > 0:
         embed.description = descrizione[: max(0, len(descrizione) - eccesso - 1)] + "…"
     try:
-        primo = await channel.send(content=utente.mention, embed=embed)
+        vista_ai = await _vista_assistente(guild.id)
+        primo = await channel.send(content=utente.mention, embed=embed, **({"view": vista_ai} if vista_ai else {}))
         if opzioni.fissa_primo:
             await primo.pin(reason="Primo messaggio del ticket")
     except discord.HTTPException:
         logger.warning("Messaggio di benvenuto non inviato (o non fissato) nel ticket %s.", channel.id)
 
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
+    await _prima_risposta_ai(interaction.client, channel, utente.id, guild.id, panel_id, motivo, campi)
 
     if panel is not None and panel.autoclose_minutes:
         try:
