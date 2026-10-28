@@ -378,6 +378,7 @@ LIMITI_IMPOSTAZIONI = {
     "max_level": (0, 1000),  # 0 = nessun tetto
     "pay_tax_pct": (0, 50),  # ECO-015: percentuale che va alla cassa del server
     "pay_max": (0, 1_000_000),  # ECO-015: tetto per trasferimento, 0 = nessuno
+    "pay_min": (0, 1_000_000),  # ECO-015: minimo per trasferimento, 0 = nessuno
 }
 MAX_NOME_MONETA = 20  # ECO-001
 FATTORE_MINIMO = 0.1
@@ -412,6 +413,7 @@ class LevelingSettings:
     currency_name: str = "coin"  # ECO-001: come il server chiama la moneta
     pay_tax_pct: int = 0  # ECO-015
     pay_max: int = 0  # ECO-015
+    pay_min: int = 0  # ECO-015
 
 
 @dataclass(frozen=True)
@@ -543,8 +545,11 @@ def colore_valido(testo: str) -> str | None:
 
 
 def tassa_su_pagamento(importo: int, percentuale: int) -> int:
-    """ECO-015: la parte di `importo` che va alla cassa (arrotondata per difetto)."""
-    return max(0, importo) * max(0, percentuale) // 100
+    """
+    ECO-015: la parte di `importo` che va alla cassa, arrotondata per eccesso:
+    per difetto, tanti pagamenti piccoli non pagherebbero mai la tassa.
+    """
+    return -(-max(0, importo) * max(0, percentuale) // 100)
 
 
 def nome_moneta_valido(nome: str) -> str:

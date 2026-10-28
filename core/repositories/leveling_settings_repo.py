@@ -113,6 +113,13 @@ class LevelingSettingsRepository:
             if minimo > massimo:
                 raise ValueError("Il minimo del lavoro non può superare il massimo.")
 
+        if "pay_min" in campi or "pay_max" in campi:
+            attuale = (await self.get_config(guild_id)).impostazioni
+            minimo = campi.get("pay_min", attuale.pay_min)
+            massimo = campi.get("pay_max", attuale.pay_max)
+            if minimo and massimo and minimo > massimo:
+                raise ValueError("Il minimo di /level pay non può superare il massimo.")
+
         if campi.get("levelup_mode") == "canale_scelto" and not campi.get("levelup_channel_id"):
             attuale = (await self.get_config(guild_id)).impostazioni.levelup_channel_id
             if attuale is None:

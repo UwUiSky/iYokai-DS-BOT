@@ -491,7 +491,7 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
             f"Daily: **{i.daily_coins}** coin · Work: **{i.work_min}-{i.work_max}** coin\n"
             f"Nome della moneta: **{i.currency_name}**\n"
             f"Pagamenti tra utenti: tassa **{i.pay_tax_pct}%**, "
-            f"massimo **{i.pay_max or 'nessun tetto'}**\n"
+            f"minimo **{i.pay_min or 'nessuno'}**, massimo **{i.pay_max or 'nessun tetto'}**\n"
             f"Livello massimo: **{i.max_level or 'nessun tetto'}**\n"
             f"Conferma negli acquisti: **{'sì' if i.shop_confirm else 'no'}**\n"
             f"Sfondi con immagine su card e profili: **{'sì' if i.card_images else 'no'}**"
@@ -1319,8 +1319,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
         tassa = tassa_su_pagamento(amount, impostazioni.pay_tax_pct)
-        if tassa >= amount:  # un importo piccolo non finisce tutto in tassa
-            tassa = 0
+        # Con la tassa per eccesso, 1 finirebbe tutto in cassa: il minimo diventa 2.
+        minimo = max(impostazioni.pay_min, 2 if tassa else 0)
+        if amount < minimo:
+            await interaction.response.send_message(
+                f"In questo server si trasferiscono almeno **{minimo}** {moneta} alla volta.",
+                ephemeral=True,
+            )
+            return
         riuscito = await leveling_repo.transfer_coins(
             interaction.guild.id, interaction.user.id, member.id, amount, tassa=tassa
         )
@@ -3383,6 +3389,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome_moneta="Come chiamate la moneta nei messaggi (di base «coin»)",
         tassa_pay="Percentuale di /level pay che va alla cassa del server (0-50)",
         massimo_pay="Massimo per ogni /level pay (0 = nessun tetto)",
+        minimo_pay="Minimo per ogni /level pay (0 = nessuno)",
     )
     @app_commands.choices(moltiplicatori=_SCELTE_MOLTIPLICATORI)
     @richiedi(Livello.ADMIN)
@@ -3401,6 +3408,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome_moneta: app_commands.Range[str, 1, MAX_NOME_MONETA] | None = None,
         tassa_pay: app_commands.Range[int, 0, 50] | None = None,
         massimo_pay: app_commands.Range[int, 0, 1_000_000] | None = None,
+        minimo_pay: app_commands.Range[int, 0, 1_000_000] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -3411,6 +3419,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
             campi["pay_tax_pct"] = tassa_pay
         if massimo_pay is not None:
             campi["pay_max"] = massimo_pay
+        if minimo_pay is not None:
+            campi["pay_min"] = minimo_pay
         if testo is not None:
             campi["text_xp"] = testo
         if attesa is not None:

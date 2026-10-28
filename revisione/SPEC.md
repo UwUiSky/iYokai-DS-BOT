@@ -1375,7 +1375,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 15.2 Anti-farm XP vocale (self_deaf, soli nel canale, AFK, 2h
   stesso canale, cap giornaliero)
 - `[x]` 15.3 Economy: daily, work, pay, balance
-  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, tetto e tassa su `/level pay` (ECO-001, ECO-015, 0341): `/level impostazioni xp nome_moneta|tassa_pay|massimo_pay`; la tassa va alla cassa nella stessa transazione.
+  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, minimo, tetto e tassa su `/level pay` (ECO-001, ECO-015, 0341, 0342): `/level impostazioni xp nome_moneta|tassa_pay|minimo_pay|massimo_pay`; la tassa (per eccesso, così i pagamenti piccoli non la evitano) va alla cassa nella stessa transazione.
 - `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
   → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).

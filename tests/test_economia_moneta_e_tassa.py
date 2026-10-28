@@ -24,10 +24,11 @@ GUILD = 100
 
 
 # ---------------------------------------------------------------- logica pura
-def test_tassa_arrotondata_per_difetto():
+def test_tassa_arrotondata_per_eccesso():
+    """Per difetto, nove pagamenti da 9 con il 10% non pagherebbero mai la tassa."""
     assert tassa_su_pagamento(100, 10) == 10
-    assert tassa_su_pagamento(15, 10) == 1
-    assert tassa_su_pagamento(9, 10) == 0
+    assert tassa_su_pagamento(15, 10) == 2
+    assert tassa_su_pagamento(9, 10) == 1
     assert tassa_su_pagamento(100, 0) == 0
 
 
@@ -57,7 +58,7 @@ async def test_valori_di_base_e_modifica(impostazioni):
 @pytest.mark.parametrize(
     "campi",
     [{"pay_tax_pct": 51}, {"pay_tax_pct": -1}, {"pay_max": 1_000_001}, {"currency_name": "@here"},
-     {"currency_name": ""}],
+     {"currency_name": ""}, {"pay_min": -1}, {"pay_min": 1_000_001}, {"pay_min": 50, "pay_max": 10}],
 )
 async def test_valori_fuori_dai_limiti_rifiutati(impostazioni, campi):
     with pytest.raises(ValueError):
@@ -192,3 +193,36 @@ async def test_il_comando_delle_impostazioni_salva_nome_tassa_e_tetto(scena):
     )
     i = (await scena.impostazioni.get_config(GUILD)).impostazioni
     assert (i.currency_name, i.pay_tax_pct, i.pay_max) == ("stelle", 5, 100)
+
+
+@pytest.mark.asyncio
+async def test_pagamenti_piccoli_non_evitano_la_tassa(scena, clean_db):
+    cassa = GuildChestRepository(pool_provider=lambda: clean_db)
+    await scena.impostazioni.set_options(GUILD, pay_tax_pct=10)
+    await scena.monete.add_coins(GUILD, 1, 100)
+
+    piccolo = _interazione()
+    await scena.comandi["level pay"].callback(scena.cog, piccolo, member=fake_member(2), amount=9)
+    assert (await scena.monete.get_totals(GUILD, 2)).coins_total == 8
+    assert await cassa.get_balance(GUILD) == 1
+
+    # 1 solo: la tassa sarebbe tutto l'importo, quindi si rifiuta e non si muove nulla.
+    uno = _interazione()
+    await scena.comandi["level pay"].callback(scena.cog, uno, member=fake_member(2), amount=1)
+    assert "almeno **2**" in _testo(uno)
+    assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 91
+
+
+@pytest.mark.asyncio
+async def test_pay_sotto_il_minimo_rifiutato(scena):
+    """ECO-015 chiede anche il minimo."""
+    await scena.impostazioni.set_options(GUILD, pay_min=50)
+    await scena.monete.add_coins(GUILD, 1, 100)
+    poco = _interazione()
+    await scena.comandi["level pay"].callback(scena.cog, poco, member=fake_member(2), amount=49)
+    assert "almeno **50**" in _testo(poco)
+    assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 100
+
+    interazione = _interazione()
+    await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, minimo_pay=10)
+    assert (await scena.impostazioni.get_config(GUILD)).impostazioni.pay_min == 10
