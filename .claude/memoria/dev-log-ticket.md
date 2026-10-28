@@ -5,7 +5,7 @@
 
 ## In corso
 - Giro r10: fatti log (cerca ruolo/giorni, diff permessi, ignora esteso), vocali (aspetto, copia, generatori), ticket (due passi).
-- WIP committato: test di controllo in corso, leggere scratchpad/r10logt_t2.log (cercare FAILED) e correggere; poi lo smoke `python3 scripts/smoke.py --base main` una volta; poi #139 (parole chiave AI, archivio file), LOG-029, VOC-014/017/021, TKT-070/071/079.
+- Test dei file toccati: 658 verdi. Niente smoke né suite (regola owner): smoke da fare dall'orchestratore; poi #139 (parole chiave AI, archivio file), LOG-029, VOC-014/017/021, TKT-070/071/079.
 
 ## Fatto
 - Giri F1-r8: vedi git log (router, snipe, M 5-7, NF-01/02/03/13/33, #119/#120/#127/#139 in parte).
