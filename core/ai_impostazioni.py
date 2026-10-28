@@ -4,7 +4,7 @@ core/ai_impostazioni.py
 Il punto unico (D16) per le scelte AI di un server che comandi `/ai` e pannello
 web cambiano allo stesso modo: accensione con il consenso (e prova gratuita),
 privacy, memoria, lunghezza delle risposte e quote. Valida, scrive e ripulisce.
-Funzioni coperte: SPEC §24.2, §24.3, §25.4, §25.23, §25.82 (NF-20, NF-24)
+Funzioni coperte: SPEC §24.2, §24.3, §25.4, §25.23, §25.82, §25.69 (NF-20, NF-24)
 Dipende da: core/repositories/ai_repo.py, core/ai_cost_logic.py, core/ai_servizio.py
 """
 
@@ -67,6 +67,34 @@ async def imposta_scelte(guild_id: int, **campi):
     if puliti.get("conservazione_minuti") == 0:
         servizio_ai().memoria.dimentica(guild_id)
     return cfg
+
+
+async def imposta_lore(guild_id: int, tema: str | None, testo: str | None = None, *, nomi_a_tema: bool = False) -> dict:
+    """
+    Tema e parole del server per ogni testo dell'AI. Con `nomi_a_tema` il tema dà il nome alla moneta
+    (impostazione del livellamento), ai punti e ai titoli dei livelli (AI-R-076). Senza tema togli i nomi dei punti e dei titoli.
+    Restituisce i nomi applicati (vuoto se nessuno).
+    """
+    from core.ai_testi_logic import TEMI
+    from core.lore_nomi_logic import nomi_del_tema
+    from core.repositories.ai_repo import ai_repo
+
+    if tema is not None and tema not in TEMI:
+        raise ImpostazioneNonValida(f"Il tema «{tema}» non esiste.")
+    campi: dict = {"lore_tema": tema, "lore_testo": (testo or "").strip()[:1000] or None}
+    nomi = nomi_del_tema(tema)
+    if tema is None:
+        campi.update(nome_punti=None, prefisso_titolo=None)
+    elif nomi_a_tema and nomi is not None:
+        campi.update(nome_punti=nomi.punti, prefisso_titolo=nomi.prefisso)
+    await ai_repo.imposta(guild_id, **campi)
+    applicati: dict = {}
+    if nomi_a_tema and nomi is not None:
+        from core.repositories.leveling_settings_repo import leveling_settings_repo
+
+        await leveling_settings_repo.set_options(guild_id, currency_name=nomi.moneta)
+        applicati = {"moneta": nomi.moneta, "punti": nomi.punti, "titoli": nomi.prefisso}
+    return applicati
 
 
 async def _serve_la_prova(guild_id: int) -> bool:

@@ -12,6 +12,9 @@ non un interruttore attivo/spento.
 
 from __future__ import annotations
 
+import logging
+from typing import Literal
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -20,6 +23,8 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from cogs.moderation._shared import MODULE_REPORT, ensure_module_enabled
+
+logger = logging.getLogger("iyokai.report")
 
 SETTING_REPORT_CHANNEL = "report_channel_id"
 
@@ -53,6 +58,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         member="L'utente da segnalare",
         reason="Descrizione della segnalazione (da 3 a 1000 caratteri)",
+        categoria="Di che tipo è (se non lo scegli, la propone l'AI quando è accesa)",
     )
     async def report(
         self,
@@ -60,6 +66,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         member: discord.Member,
         # Il motivo finisce in un campo di embed, che tiene 1024 caratteri.
         reason: app_commands.Range[str, 3, 1000],
+        categoria: Literal["spam", "insulti", "truffa", "altro"] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_REPORT):
             return
@@ -99,18 +106,29 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         )
         embed.add_field(name="Motivo", value=reason, inline=False)
         embed.timestamp = discord.utils.utcnow()
+        await interaction.response.defer(ephemeral=True)  # l'etichetta con l'AI può metterci un po'
+        vista = None
+        try:
+            from cogs.ai.segnalazioni import CAMPO, EtichettaView, etichetta_segnalazione
+            from core.segnalazioni_logic import testo_etichetta
+
+            etichetta = await etichetta_segnalazione(interaction.guild.id, interaction.user.id, reason, categoria)
+            embed.add_field(name=CAMPO, value=testo_etichetta(etichetta), inline=False)
+            vista = EtichettaView()
+        except Exception:
+            logger.warning("Segnalazione senza etichetta.", exc_info=True)
 
         try:
-            await channel.send(embed=embed)
+            await channel.send(embed=embed, view=vista) if vista else await channel.send(embed=embed)
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non riesco a inviare la segnalazione nel canale configurato "
                 "(permessi mancanti). Contatta un amministratore.",
                 ephemeral=True,
             )
             return
         except discord.HTTPException:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Non riesco a inviare la segnalazione nel canale configurato "
                 "(errore di Discord). Riprova tra poco o contatta un "
                 "amministratore.",
@@ -118,7 +136,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
             )
             return
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "Segnalazione inviata allo staff. Grazie.", ephemeral=True
         )
 

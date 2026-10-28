@@ -24,7 +24,8 @@ from cogs.ai._comune import (
     NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiede_ai, richiesta_da, taglia,
 )
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
-from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_scelte, spegni_ai
+from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_lore, imposta_scelte, spegni_ai
+from core.config_schema import ImpostazioneNonValida
 from core.ai_router import avviso_chiavi
 from core.ai_servizio import imposta_manutenzione_ai, servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
@@ -302,18 +303,26 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("Scelte salvate.", ephemeral=True)
 
     @comando_di_gruppo("ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")
-    @app_commands.describe(tema="Un tema pronto", testo="Le tue parole (vuoto con tema 'nessuno': toglie la lore)")
+    @app_commands.describe(
+        tema="Un tema pronto", testo="Le tue parole (vuoto con tema 'nessuno': toglie la lore)",
+        nomi_a_tema="Sì: il tema dà il nome alla moneta, ai punti e ai titoli dei livelli",
+    )
     @app_commands.choices(tema=[app_commands.Choice(name=n, value=n) for n in (*TEMI, "nessuno")])
     async def lore(
-        self, interaction: discord.Interaction, tema: str, testo: app_commands.Range[str, 1, 1000] | None = None
+        self, interaction: discord.Interaction, tema: str, testo: app_commands.Range[str, 1, 1000] | None = None,
+        nomi_a_tema: bool = False,
     ) -> None:
-        await ai_repo.imposta(
-            interaction.guild_id, lore_tema=None if tema == "nessuno" else tema, lore_testo=(testo or "").strip() or None
-        )
-        lore = testo_lore(None if tema == "nessuno" else tema, testo)
-        await interaction.response.send_message(
-            f"Lore salvata:\n> {taglia(lore, 1500)}" if lore else "Lore tolta.", ephemeral=True
-        )
+        scelto = None if tema == "nessuno" else tema
+        try:
+            nomi = await imposta_lore(interaction.guild_id, scelto, testo, nomi_a_tema=nomi_a_tema)
+        except (ImpostazioneNonValida, ValueError) as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        lore = testo_lore(scelto, testo)
+        risposta = f"Lore salvata:\n> {taglia(lore, 1500)}" if lore else "Lore tolta."
+        if nomi:
+            risposta += f"\nNomi a tema: moneta «{nomi['moneta']}», punti «{nomi['punti']}», titoli «{nomi['titoli']}»."
+        await interaction.response.send_message(risposta, ephemeral=True)
 
     @comando_di_gruppo("ai", nome="vietate", descrizione="Parole o argomenti che l'AI deve rifiutare.")
     @app_commands.describe(azione="Cosa fare", parola="Parola o frase (per aggiungi e togli)")

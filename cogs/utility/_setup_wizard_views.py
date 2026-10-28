@@ -215,6 +215,9 @@ class SetupWizardView(BaseView):
             content=await testo_per(interaction, "setup_wizard_fatto", cambiati=len(cambiati)),
             embed=None, view=None,
         )
+        from cogs.ai._lore_setup import proponi_tema  # passo del tema (§25.47): saltabile, non blocca il wizard
+
+        await proponi_tema(interaction)
 
     async def _annulla(self, interaction: discord.Interaction) -> None:
         self.stop()

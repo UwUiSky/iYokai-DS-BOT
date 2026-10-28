@@ -35,6 +35,8 @@ class ConfigAI:
     conservazione_minuti: int = 30
     lore_tema: str | None = None
     lore_testo: str | None = None
+    nome_punti: str | None = None
+    prefisso_titolo: str | None = None
     parole_vietate: tuple[str, ...] = ()
     menzione: bool = False
     bandiere: bool = False
