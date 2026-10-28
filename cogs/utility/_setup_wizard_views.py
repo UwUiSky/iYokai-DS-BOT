@@ -269,8 +269,39 @@ async def crea_e_collega(interaction: discord.Interaction, canale: CanaleWizard)
     """
     Crea il canale di testo e lo imposta dove lo usa la funzione (mod-log, allarmi,
     benvenuto). Restituisce il testo da dire a chi ha premuto. Non accende i moduli.
+    Se il canale collegato c'è già, non ne crea un altro. Gli import sono nelle funzioni:
+    i comandi dei log e dei benvenuti non sono dipendenze del wizard.
     """
-    # Import qui: i comandi dei log e dei messaggi di benvenuto non sono dipendenze del wizard.
+    guild = interaction.guild
+    chiave = (guild.id, canale.chiave)
+    if chiave in _IN_CREAZIONE:  # doppio clic: il primo sta già creando il canale
+        return await testo_per(interaction, "setup_wizard_canale_in_corso")
+    _IN_CREAZIONE.add(chiave)  # prima del primo await
+    try:
+        return await _crea_se_manca(interaction, canale)
+    finally:
+        _IN_CREAZIONE.discard(chiave)
+
+
+_IN_CREAZIONE: set[tuple[int, str]] = set()
+
+
+async def _collegato(guild: discord.Guild, chiave: str) -> int | None:
+    """L'id del canale già collegato per questa funzione, se c'è."""
+    from cogs.moderation._shared import SETTING_MOD_LOG_CHANNEL
+    from core import channel_router as router
+    from core.database import db
+    from core.repositories.greetings_repo import greetings_repo
+
+    if chiave == "mod-log":
+        return await db.get_guild_setting(guild.id, SETTING_MOD_LOG_CHANNEL)
+    if chiave == "allarmi":
+        riga = await router.output_channel_repo.ottieni(guild.id, router.TIPO_ALLARMI)
+        return riga.channel_id if riga is not None else None
+    return (await greetings_repo.get_config(guild.id)).welcome_channel_id
+
+
+async def _crea_se_manca(interaction: discord.Interaction, canale: CanaleWizard) -> str:
     from cogs.logging.log_config import MAX_CANALI_SERVER, _riservato, permessi_mancanti
     from cogs.moderation._shared import SETTING_MOD_LOG_CHANNEL
     from core import channel_router as router
@@ -278,6 +309,10 @@ async def crea_e_collega(interaction: discord.Interaction, canale: CanaleWizard)
     from core.repositories.greetings_repo import greetings_repo
 
     guild = interaction.guild
+    gia = await _collegato(guild, canale.chiave)
+    esistente = guild.get_channel(gia) if gia else None
+    if esistente is not None:
+        return await testo_per(interaction, "setup_wizard_canale_esiste", canale=esistente.mention)
     mancano = permessi_mancanti(guild.me.guild_permissions, ("manage_channels", "view_channel", "send_messages"))
     if mancano:
         return await testo_per(interaction, "setup_wizard_canale_permessi", permessi=", ".join(mancano))

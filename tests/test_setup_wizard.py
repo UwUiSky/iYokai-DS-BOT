@@ -314,7 +314,10 @@ async def test_il_canale_benvenuto_e_pubblico_e_non_accende_il_modulo(clean_db, 
     assert config.welcome_channel_id == 7777 and config.welcome_enabled is False
 
 
-async def test_senza_permessi_o_senza_posto_il_canale_non_si_crea():
+async def test_senza_permessi_o_senza_posto_il_canale_non_si_crea(clean_db, monkeypatch):
+    from core.database import db
+
+    monkeypatch.setattr(db, "_pool", clean_db)
     server = _server_per_canali(555555564)
     server.me.guild_permissions = discord.Permissions.none()
     interazione = _clic()
@@ -329,3 +332,37 @@ async def test_senza_permessi_o_senza_posto_il_canale_non_si_crea():
     interazione2.guild = server2
     await _bottone(_vista_con("moderation"), "Crea il canale mod-log").callback(interazione2)
     server2.create_text_channel.assert_not_awaited()
+
+
+async def test_il_canale_gia_collegato_non_si_crea_due_volte(clean_db, monkeypatch):
+    """Secondo clic, o doppio clic veloce: un solo canale, il secondo clic indica quello che c'è."""
+    import asyncio
+
+    from core.database import db
+
+    monkeypatch.setattr(db, "_pool", clean_db)
+    server = _server_per_canali(555555566)
+    creato = server.create_text_channel.return_value
+    creato.guild = server
+
+    async def lento(*args, **kwargs):
+        await asyncio.sleep(0.05)
+        server.channels.append(creato)
+        return creato
+
+    server.create_text_channel = AsyncMock(side_effect=lento)
+    server.get_channel = MagicMock(side_effect=lambda cid: creato if cid == 7777 and creato in server.channels else None)
+    vista = _vista_con("moderation")
+    a, b = _clic(), _clic()
+    a.guild = b.guild = server
+    await asyncio.gather(
+        _bottone(vista, "Crea il canale mod-log").callback(a),
+        _bottone(vista, "Crea il canale mod-log").callback(b),
+    )
+    assert server.create_text_channel.await_count == 1
+
+    c = _clic()
+    c.guild = server
+    await _bottone(vista, "Crea il canale mod-log").callback(c)
+    assert server.create_text_channel.await_count == 1
+    assert "<#7777>" in c.followup.send.await_args.args[0]

@@ -179,6 +179,8 @@
   "setup_wizard_canale_pieno": "Il server ha già {massimo} canali.",
   "setup_wizard_canale_errore": "Non sono riuscito a creare il canale: controlla i miei permessi.",
   "setup_wizard_canale_creato": "Fatto: ho creato {canale} e l'ho collegato. Se serve, accendi il modulo nel passo e premi «Salva».",
+  "setup_wizard_canale_esiste": "Il canale c'è già: {canale}. Non ne creo un altro.",
+  "setup_wizard_canale_in_corso": "Sto già creando il canale, aspetta un momento.",
   "setup_wizard_crea_log": "Crea i canali dei log",
   "setup_wizard_indietro": "Indietro",
   "setup_wizard_salva": "Salva",

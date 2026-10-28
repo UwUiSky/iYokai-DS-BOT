@@ -179,6 +179,8 @@
   "setup_wizard_canale_pieno": "The server already has {massimo} channels.",
   "setup_wizard_canale_errore": "I could not create the channel: check my permissions.",
   "setup_wizard_canale_creato": "Done: I created {canale} and linked it. If needed, turn the module on in this step and press \"Save\".",
+  "setup_wizard_canale_esiste": "The channel already exists: {canale}. I will not create another one.",
+  "setup_wizard_canale_in_corso": "I am already creating the channel, wait a moment.",
   "setup_wizard_crea_log": "Create the log channels",
   "setup_wizard_indietro": "Back",
   "setup_wizard_salva": "Save",
