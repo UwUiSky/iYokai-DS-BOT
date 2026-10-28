@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 04:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 547 commands in 25 categories.**
+**Total: 550 commands in 25 categories.**
 
 ## Admin
 
@@ -272,7 +272,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/management ticket setup`** — Sets the category (and optionally the support role) for tickets.
 - **`/management ticket stats`** — Ticket system statistics.
 - **`/management voice cap`** — Sets the maximum number of temporary voice channels per category.
-- **`/management voice options`** — Name of new channels, channels born locked, log channel.
+- **`/management voice generator`** — Extra generator channels with their own rules.
+- **`/management voice options`** — Name of new channels, lock, log, copy, panel.
 - **`/management voice panel`** — Publishes the panel to create a voice channel by hand.
 - **`/management voice platforms`** — Sets the PC/Console/Mobile info roles for temporary voice channels.
 - **`/management voice setup`** — Sets the generator channel and category for temporary voice channels.
@@ -323,8 +324,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/log create-forum`** — Creates a private forum for logs: one post for each type.
 - **`/log events`** — Turn each single log event on or off.
 - **`/log export`** — Exports the full server event history as a JSON file.
-- **`/log ignore`** — What the message log does not record (channels, users, roles, texts).
+- **`/log ignore`** — What the logs do not record (channels, users, roles; texts only for messages).
 - **`/log search channel`** — Shows a channel's event history.
+- **`/log search role`** — Shows a role's event history.
 - **`/log search user`** — Shows a user's event history.
 - **`/log status`** — Shows where the server logs go.
 
@@ -560,6 +562,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/ticket rename`** — Renames this ticket.
 - **`/ticket reply`** — Replies to the user of this ModMail conversation.
 - **`/ticket reset-cooldown`** — Remove a user's cooldown between tickets.
+- **`/ticket riapri`** — Reopens this closed ticket (if the panel keeps the channel).
 - **`/ticket suspend`** — Suspend ticket opening (no reason: resume).
 - **`/ticket transcript`** — Get the transcript without closing the ticket.
 

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 550 comandi in 25 categorie.**
 
 ## Admin
 
@@ -277,7 +277,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/gestione ticket setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
 - **`/gestione ticket stats`** — Statistiche del sistema di ticket.
 - **`/gestione voice cap`** — Imposta il numero massimo di vocali temporanei per categoria.
-- **`/gestione voice opzioni`** — Nome dei nuovi canali, canali che nascono bloccati, canale di registro.
+- **`/gestione voice generatore`** — Altri canali generatori con regole proprie.
+- **`/gestione voice opzioni`** — Nome dei nuovi canali, blocco, registro, copia, pannello.
 - **`/gestione voice panel`** — Pubblica il pannello per la creazione manuale di un vocale.
 - **`/gestione voice piattaforme`** — Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
 - **`/gestione voice setup`** — Configura il canale generatore e la categoria dei vocali temporanei.
@@ -320,12 +321,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/log archivio-canale`** — Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.
 - **`/log canale`** — Imposta il canale (o il forum) dei log del server.
 - **`/log cerca canale`** — Mostra lo storico eventi di un canale.
+- **`/log cerca ruolo`** — Mostra lo storico eventi di un ruolo.
 - **`/log cerca utente`** — Mostra lo storico eventi di un utente.
 - **`/log crea-canali`** — Crea una categoria privata con un canale per ogni tipo di log.
 - **`/log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
 - **`/log esporta`** — Esporta lo storico eventi completo del server come file JSON.
 - **`/log eventi`** — Accendi o spegni ogni singolo evento dei log.
-- **`/log ignora`** — Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).
+- **`/log ignora`** — Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).
 - **`/log stato`** — Mostra dove vanno i log del server.
 
 ## Moderazione
@@ -546,7 +548,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/ticket opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
 - **`/ticket opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
 - **`/ticket opzioni canale`** — Nome del canale e categorie di riserva.
-- **`/ticket opzioni chiusura`** — Conferma prima di chiudere e chi può chiudere.
+- **`/ticket opzioni chiusura`** — Conferma, chiusura in due passi, chiusi, nomi.
 - **`/ticket opzioni limiti`** — Tetto di ticket aperti, pausa e ruoli esenti.
 - **`/ticket opzioni messaggi`** — DM all'utente e testi di presa e rilascio.
 - **`/ticket opzioni mostra`** — Tutte le opzioni di un pannello.
@@ -558,6 +560,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/ticket remove`** — Rimuovi un utente o un ruolo da questo ticket.
 - **`/ticket rename`** — Rinomina questo ticket.
 - **`/ticket reperibile`** — Entra o esci dallo staff avvisato a ogni nuovo ticket.
+- **`/ticket riapri`** — Riapri questo ticket chiuso (se il pannello tiene il canale).
 - **`/ticket rilascia`** — Lascia la presa in carico di questo ticket.
 - **`/ticket rispondi`** — Rispondi all'utente di questa conversazione ModMail.
 - **`/ticket sospendi`** — Sospendi l'apertura dei ticket (senza motivo: riprendi).
