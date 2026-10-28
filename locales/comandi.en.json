@@ -252,7 +252,8 @@
   "staff": "staff",
   "incidente": "incident",
   "regola": "rule",
-  "cerca-log": "search-log"
+  "cerca-log": "search-log",
+  "avviso": "alert"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -938,7 +939,11 @@
   "ai staff": "Staff tools with AI",
   "ai staff incidente": "Summarises the latest security events of the server.",
   "ai staff regola": "Tell AutoMod what you want: it proposes the rule, you turn it on.",
-  "ai staff cerca-log": "Search the logs with a question (who, what, when)."
+  "ai staff cerca-log": "Search the logs with a question (who, what, when).",
+  "ai riepilogo": "Server digest at a set time",
+  "ai riepilogo imposta": "Server digest: channel, hour, frequency and channels to read.",
+  "ai riepilogo anteprima": "Shows you the digest as of now, without publishing it.",
+  "utility ai avviso": "Follow up to 3 words: I notify you when they are discussed a lot."
  },
  "parametri": {},
  "menu": {

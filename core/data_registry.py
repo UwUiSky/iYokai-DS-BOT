@@ -584,7 +584,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        utente="cancella", esporta=True),
     _t("ai_frammenti", "Frammenti di lore sbloccati da una persona in un server", colonne_utente=("user_id",),
        colonna_server="guild_id", utente="cancella", esporta=True),
-    _t("ai_riepiloghi", "Riepilogo del server a orario (canale, ora, frequenza, canali letti)", colonna_server="guild_id"),
+    _t("ai_riepiloghi", "Riepilogo del server a orario (canale, ora, frequenza, canali letti, ultimo testo)", colonna_server="guild_id"),
     _t("ai_avvisi_parole", "Parole che una persona vuole seguire (avviso quando se ne parla molto)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("ai_utenti", "Preferenza personale: assistente AI acceso o spento", colonne_utente=("user_id",),

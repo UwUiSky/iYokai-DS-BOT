@@ -2217,11 +2217,14 @@ di quel file.
 
 **Riassunti e ricerca**
 
-- `[ ]` 25.41 Riepilogo del server, ogni giorno o ogni settimana
+- `[x]` 25.41 Riepilogo del server, ogni giorno o ogni settimana
   (AI-R-044)
-- `[ ]` 25.42 Contenuto del riepilogo fatto di numeri (AI-R-045)
-- `[ ]` 25.43 Avviso su parole chiave quando una discussione si accende
+  → **Stato 29/10 (r12ai):** `/ai riepilogo imposta` (canale, ora, frequenza, canali letti); pubblica da solo, un solo bot (prenotazione), migrazioni 0422-0423.
+- `[x]` 25.42 Contenuto del riepilogo fatto di numeri (AI-R-045)
+  → **Stato 29/10 (r12ai):** numeri da statistiche, bacheca stelle e clan; l'AI scrive solo il tono e non può perdere le menzioni. Alternativa: «discussione più lunga» diventa «canale più vivace» (non c'è un conteggio per discussione).
+- `[x]` 25.43 Avviso su parole chiave quando una discussione si accende
   (AI-R-046)
+  → **Stato 29/10 (r12ai):** `/utility ai avviso`: 3 parole, soglia 10 messaggi in 10 minuti, avviso in privato solo se la persona vede il canale; conteggi in memoria.
 - `[x]` 25.44 Ricerca nei log con una domanda (AI-R-047)
   → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff cerca-log` al posto di `/log cerca domanda`; l'AI propone i filtri, cerca il database.
 - `[x]` 25.45 Ricerca assistita sul web o su una base di conoscenza
@@ -2339,7 +2342,8 @@ di quel file.
 **Pannello web**
 
 - `[ ]` 25.91 Pagina AI del pannello (AI-R-098; vedi 24.2)
-- `[ ]` 25.92 Riepilogo del server visibile sul pannello (AI-R-099)
+- `[x]` 25.92 Riepilogo del server visibile sul pannello (AI-R-099)
+  → **Stato 29/10 (r12ai):** l'ultimo riepilogo è salvato in `ai_riepiloghi.ultimo_testo`; la pagina del pannello lo legge dalle rotte AI (vedi 25.91).
 - `[ ]` 25.93 Pagina "Uso dell'AI" nel centro privacy (AI-R-100)
 
 **Richieste dell'owner del 05/10/2026** (D19)
