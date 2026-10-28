@@ -283,7 +283,8 @@ async def test_moderazione_ai_non_usa_la_quota_di_chi_scrive(repo):
     assert (await repo.uso(G, U, "moderazione")).utente_oggi == 1
 
 
-async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo):
+async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo, monkeypatch):
+    monkeypatch.setattr(traduzione, "ATTESA_SECONDI", 0)
     trasporto = _usa(repo, risposte={"alfa": "the cat is with you"})
     await _quota_persona_finita(repo)
     cog = traduzione.AiTraduzioneCog(bot=None)
@@ -291,8 +292,26 @@ async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo):
     messaggio = _messaggio("il gatto è con te")
     await cog.on_message(messaggio)
     assert len(trasporto.chiamate) == 2
-    assert "the cat is with you" in messaggio.reply.call_args.args[0]
+    assert "the cat is with you" in messaggio.channel.send.call_args.args[0]
     assert (await repo.uso(G, U, "traduzione_auto")).utente_oggi == 1
+
+
+async def test_traduzione_automatica_unisce_i_messaggi_di_fila(repo, monkeypatch):
+    """Tre messaggi della stessa persona nell'attesa: una sola richiesta con tutto il testo (AI-R-084)."""
+    import asyncio
+
+    monkeypatch.setattr(traduzione, "ATTESA_SECONDI", 0.2)
+    trasporto = _usa(repo, risposte={"alfa": "the cat is with you and the dog too"})
+    await repo.registra_consenso(G, U, True)
+    cog = traduzione.AiTraduzioneCog(bot=None)
+    cog.canali = {4242: "en"}
+    m1, m2, m3 = (_messaggio(t) for t in ("il gatto è con te", "e anche il cane", "buona giornata a tutti"))
+    m2.id, m3.id = 778, 779
+    await asyncio.gather(cog.on_message(m1), cog.on_message(m2), cog.on_message(m3))
+    assert len(trasporto.chiamate) == 2
+    assert m1.channel.send.await_count == 1
+    contenuto = trasporto.chiamate[0][1][-1]["content"]
+    assert "il gatto" in contenuto and "il cane" in contenuto and "buona giornata" in contenuto
 
 
 async def test_spiega_non_svela_un_thread_privato(repo):

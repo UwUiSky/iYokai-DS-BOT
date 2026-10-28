@@ -5,7 +5,7 @@ Traduzione con l'AI: `/utility ai traduci`, traduzione automatica dei canali
 scelti con `/ai traduzione`, traduzione quando qualcuno reagisce con la
 bandiera di un paese (`/ai funzioni bandiere`). Le traduzioni passano dalla
 cache: lo stesso testo non si ritraduce.
-Funzioni coperte: SPEC §25.74–§25.81 (AI-R-081..088; catalogo AI-020, AI-021)
+Funzioni coperte: SPEC §25.74–§25.81 (i messaggi di fila della stessa persona si traducono insieme, §25.77) (AI-R-081..088; catalogo AI-020, AI-021)
 
 La reazione con la bandiera non porta un'interazione: la traduzione si manda
 come risposta al messaggio e si cancella da sola dopo 2 minuti (Discord non
@@ -14,6 +14,7 @@ permette un messaggio privato "effimero" fuori da un'interazione).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -29,6 +30,7 @@ from core.ai_testi_logic import BANDIERE, ISTRUZIONI, LINGUE, nome_lingua, ricon
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium import requires_module
 from core.repositories.ai_repo import ai_repo
+from core.traduzione_gruppo_logic import ATTESA_SECONDI, RaccoltaMessaggi
 
 logger = logging.getLogger("iyokai.ai_traduzione")
 
@@ -55,6 +57,7 @@ class AiTraduzioneCog(CogConGruppi, commands.Cog):
         self.bot = bot
         self.canali: dict[int, str] | None = None  # letti dal database al primo messaggio
         self._fatti: dict[tuple[int, str], float] = {}
+        self.raccolta = RaccoltaMessaggi()
 
     async def ricarica_canali(self) -> None:
         try:
@@ -111,20 +114,34 @@ class AiTraduzioneCog(CogConGruppi, commands.Cog):
         lingua = (self.canali or {}).get(message.channel.id)
         if lingua is None or message.guild is None or message.author.bot or not message.content:
             return
-        if not serve_tradurre(message.content, lingua) or not servizio_ai().configurato:
+        if not servizio_ai().configurato:
+            return
+        # I messaggi di fila della stessa persona si traducono insieme (AI-R-084).
+        if self.raccolta.aggiungi(message.channel.id, message.author.id, message.id, message.content):
+            await asyncio.sleep(ATTESA_SECONDI)
+            await self._traduci_raccolta(message, lingua)
+
+    async def _traduci_raccolta(self, ultimo: discord.Message, lingua: str) -> None:
+        chiusa = self.raccolta.chiudi(ultimo.channel.id, ultimo.author.id)
+        if chiusa is None:
+            return
+        ids, testo = chiusa
+        if not serve_tradurre(testo, lingua) or all(self._gia_fatto(i, lingua) for i in ids):
             return
         risposta, _ = await self._traduci(
-            message.author.id, message.guild.id, message.channel.id, message.content, lingua, "traduzione_auto",
+            ultimo.author.id, ultimo.guild.id, ultimo.channel.id, testo, lingua, "traduzione_auto",
             conta_utente=False,  # la chiede il server, non chi scrive
         )
         if risposta is None or not risposta.testo:
             return
         try:
-            await message.reply(
-                taglia(f"🌐 {risposta.testo}", 2000), allowed_mentions=NESSUNA_MENZIONE, mention_author=False
+            await ultimo.channel.send(
+                taglia(f"🌐 {risposta.testo}", 2000), reference=discord.MessageReference(
+                    message_id=ids[0], channel_id=ultimo.channel.id, fail_if_not_exists=False),
+                allowed_mentions=NESSUNA_MENZIONE, mention_author=False,
             )
         except discord.HTTPException:
-            logger.info("Traduzione automatica non inviata nel canale %s.", message.channel.id)
+            logger.info("Traduzione automatica non inviata nel canale %s.", ultimo.channel.id)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:

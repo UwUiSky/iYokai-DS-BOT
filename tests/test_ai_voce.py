@@ -220,3 +220,17 @@ async def test_menu_trascrivi_spento_lo_dice():
     m2 = MagicMock(attachments=[])
     await voce.trascrivi_e_traduci(i, m2)
     assert "non è un vocale" in i.response.send_message.call_args.args[0]
+
+
+def test_raccolta_messaggi_della_stessa_persona():
+    from core.traduzione_gruppo_logic import MAX_MESSAGGI, RaccoltaMessaggi
+
+    r = RaccoltaMessaggi()
+    assert r.aggiungi(1, 2, 10, "uno") is True
+    assert r.aggiungi(1, 2, 11, "due") is False
+    assert r.aggiungi(1, 3, 12, "altro") is True  # altra persona: raccolta a parte
+    assert r.chiudi(1, 2) == ([10, 11], "uno\ndue")
+    assert r.chiudi(1, 2) is None
+    for i in range(MAX_MESSAGGI + 3):
+        r.aggiungi(5, 5, i, "x")
+    assert len(r.chiudi(5, 5)[0]) == MAX_MESSAGGI
