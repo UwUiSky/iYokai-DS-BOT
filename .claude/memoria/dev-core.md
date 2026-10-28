@@ -1,29 +1,19 @@
 # Memoria di dev-core
 
 ## Aggiornata
-27/10/2026 · ramo `feat/r10core` · giro r10 (chiudere le voci [~]; migrazioni 0360-0369)
+28/10/2026 · ramo `feat/r12resto` (agente r12resto) · giro r12 (lotto «resto», migrazioni 0480-0499, D48-D50)
 
 ## In corso
-- Giro r10 chiuso (B.3, B.4, #113 webhook D33, 0360-0361). Test dei file toccati verdi. Smoke da fare (regola owner: non lanciato).
-- Prossimo: owner radio max_length (file musica, altra area); 21.1 per cog di altre aree; #70 voci continuo/F8.
+- Lotto r12 chiuso nel codice; resta solo: lanciare i test degli invarianti, commit e push. Smoke da fare (lo lancia l'orchestratore).
+- Rimandata a r12ai: 14.19 (voce di Yokai). Migrazioni usate: 0480 (log_forum), 0481 (progressi).
+- Prossimo giro: owner radio max_length (musica); 21.1 per cog di altre aree; #70 voci continuo/F8.
 
 ## Fatto
-- Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
-  M 14.1-14.12, 14.15): vedi `git log` e il registro delle risolte. Giro 12/10 bis e 12/10: revisioni su privacy, scheduler, OAuth.
-- r5 g1-3 (6d0e6f6, 4379e18, 5add20b): `locales/it|en.json`, `core/i18n.py`, `user_language` 0130, `/utility lingua`;
-  `core/command_translator.py` + `locales/comandi.en.json`; ricerca bilingue + `filtra_per_moduli`.
-- r5 g4-7 (0ecc8ff, 8a38d4e, c5033ef, 0c08903): `core/command_policy.py` + `/utility politica`; `config_history` filtri/CSV;
-  `/admin config pulizia|sincronizza|nickname-bot`, `/utility info`; NF-22 `premium_entitlements` 0131 + `/admin premium stato`;
-  codici 0132 (`/owner premium grant` senza server crea il codice, `/admin premium riscatta`); NF-38 0133 `whitelabel_bots` +
-  `/admin premium marchio`; #141 `core/hot_patch.py` 0134 (`/owner cog reload commit|file|registro`, `ENABLE_HOT_PATCH`).
-
-- r9 #94 NSFW: `core/nsfw_*` (filtro, fonti RedGifs, servizio D16, worker, bot), cogs/nsfw/ricerca.py, 0240, test_nsfw_*.
-  #107: `core/user_app_bot.py`, `core/user_app_logic.py`, cogs/user_app/personal.py; -cerca-comando/-chiedi user-install.
-
-- r10 g1: wizard `cogs/utility/_setup_wizard_views.py` + `core/setup_wizard_logic.py` (costruisci_passi): passo ruoli (imposta_ruolo) e una categoria per passo, bottone «Crea i canali dei log» = callback di `/log crea-canali`.
-
-- r10: `core/premium_modulo_service.py`, `core/bot_inviti.py`, marchio: `inoltra_interazioni` (parsers INTERACTION_CREATE -> stato del principale).
-- r10 g2: B.3/B.4 (`core/user_app_strumenti.py`, 0360); log via webhook `core/log_webhook.py` + 0361 + hook in `channel_router.destinazione` (D33).
+- r12 (resto): 14.7 jolly `*` autoresponder; 18.1 benvenuto nel router (forum, `TIPO_BENVENUTO`); 18.7 log della scala (`_scrivi_nel_log`);
+  22.16 wizard con bottone «Crea il canale» (`CANALI_PER_CATEGORIA`, `crea_e_collega`); 8.17 `/log vista-forum` (`core/log_forum_*`, 0480, D48);
+  10.5/10.6/10.13 profili social rifiutati nei feed; 23.17 `/level progressi` + `/economia progressi` (`core/progressi_*`, 0481, D49) e
+  `/mod rischio` + `/mod carico` (`core/staff_rischio_logic.py`, `staff_carico_repo`, D50). SPEC allineata (22.17, 23.8, 23.11, 13.10, 16.6, 16.10, §4, §7).
+- Giri precedenti: r10 (wizard, #113 webhook, B.3/B.4), r9 (NSFW, App utente), r5 (lingue, policy, premium), F5/F7 (privacy, gruppi), R1-bis: vedi `git log`.
 
 ## Cose imparate
 - `View.clear_items()` stacca i figli: dentro un callback tenere `vista = self.view` prima di ricostruire.
@@ -49,6 +39,10 @@
 - Migrazione applicata e poi rinominata: `delete from schema_migrations where version=N` e drop della tabella nel DB di prova.
 - `monkeypatch.undo()` in un test con `clean_db` annulla anche il pool: ripristinare il singolo attributo.
 - Il token OAuth, gli state e i corpi delle risposte Discord non vanno mai in log o messaggi.
+- Un cog con `CogConGruppi` che definisce `cog_load`/`cog_unload` deve chiamare `await super().cog_load()`: senza, i suoi comandi spariscono dall'albero (test_command_translator lo vede).
+- Funzioni importate che iniziano con `test` (es. `testo_x`) vengono raccolte da pytest: importarle con un alias.
+- Punti di aggancio nei repo (`event_log_repo`, `moderation_repo`, `leveling_repo`): import tardivo del servizio per evitare cicli, servizio che non solleva mai.
+- Gruppo `moduli` a 6.793/6.800 caratteri: ogni parola in più nelle descrizioni lo manda sopra l'allarme.
 
 ## Aperto
 - NSFW: risposta RedGifs scritta a memoria (verified/tags/niches/urls.poster), da controllare live. nsfw_* si puliscono

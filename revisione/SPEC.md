@@ -1417,6 +1417,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   per i vocali a comando, nei ticket, nei saluti, negli annunci e nel
   resto dell'elenco della issue. discord.py 2.7.1 non li invia: serve
   la chiamata diretta all'API (D22, issue #142, fase F12)
+  → **Stato 28/10 (r12):** non è nel lotto di questo ramo: la fa l'agente `r12ai` (voce di Yokai, D22, #142).
 
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
@@ -2109,9 +2110,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (non le sottostringhe) e normalizza lettere cirilliche/greche simili, caratteri invisibili, punteggiatura e
   lettere staccate.
   → **Stato 27/10 (r10):** profilo come immagine e sfondo con immagine fatti il 15/10; le vincite dei giochi con le monete restano fuori dalla classifica del mese per scelta (niente premi per il gioco d'azzardo).
-- `[ ]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
+- `[x]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)
+  → **Stato 28/10 (r12, D49, D50):** fatte tutte, in forma piccola.
+  `/level progressi sezione:` (missioni di oggi, traguardi, serie, stagione, profilo globale) e `/economia progressi attivo:` (spenti
+  di base): `core/progressi_logic.py`, `core/progressi_service.py`, `core/repositories/progressi_repo.py`, `cogs/leveling/progressi.py`,
+  migrazione 0481; gli eventi arrivano dai punti del livellamento (messaggio con XP, minuto in vocale, `/level daily`).
+  `/mod rischio` e `/mod carico` (`core/staff_rischio_logic.py`, `core/repositories/staff_carico_repo.py`, `cogs/moderation/rischio_staff.py`).
+  Test: `tests/test_progressi.py`, `tests/test_staff_rischio.py`.
 
 ## §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER — da fare (fase F10)
 

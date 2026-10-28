@@ -98,6 +98,7 @@ SETTINGS_VALIDE = {
     "mod_avviso_rientro": True,
     "spam_trap_punizione": "staff",
     "log_webhook": True,
+    "progressi_attivi": False,
 }
 
 
