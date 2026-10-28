@@ -98,7 +98,10 @@ def _post(post_id, forum_id):
 
 
 @pytest.fixture
-def mondo(repo, monkeypatch):
+def mondo(repo, clean_db, monkeypatch):
+    from core.repositories.log_eventi_repo import LogEventiRepository
+
+    monkeypatch.setattr(servizio, "log_eventi_repo", LogEventiRepository(pool_provider=lambda: clean_db))
     forum = fake_forum_channel(77)
     canale = MagicMock()
     canale.name = "regole"
@@ -255,3 +258,19 @@ async def test_il_comando_rifiuta_un_forum_senza_i_permessi(repo, monkeypatch):
     await cog.vista_forum.callback(cog, i, DIM_CANALI, forum)
     assert await repo.forum_del_server(SERVER) == {}
     assert "create_public_threads" in i.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_un_evento_spento_dal_server_non_va_nella_vista(mondo, repo, clean_db, monkeypatch):
+    """`/log eventi` spento = il server non lo vuole: neanche nel forum."""
+    from core.log_eventi_logic import interruttore_di
+    from core.repositories.log_eventi_repo import LogEventiRepository
+
+    eventi = LogEventiRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(servizio, "log_eventi_repo", eventi)
+    await eventi.imposta(SERVER, frozenset({interruttore_di("message_delete")}))
+    await repo.imposta_forum(SERVER, DIM_CANALI, 77)
+    await servizio.notifica_evento(SERVER, "message_delete", channel_id=5)
+    assert servizio._coda.empty()
+    await servizio.notifica_evento(SERVER, "channel_update", channel_id=5)
+    assert servizio._coda.qsize() == 1

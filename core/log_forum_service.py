@@ -5,6 +5,7 @@ La vista dei log su un forum: ogni evento con un canale va nel post di quel
 canale, ogni caso di moderazione nel suo post. Gli eventi aspettano in una coda
 e un solo lavoratore li scrive piano (i forum hanno limiti stretti). Se il server
 non ha scelto un forum non succede niente e non costa una query oltre la cache.
+Gli eventi spenti con `/log eventi` non vanno neanche nel forum.
 Funzioni coperte: SPEC §8.17
 Dipende da: core/repositories/log_forum_repo.py, core/log_forum_logic.py
 """
@@ -28,6 +29,7 @@ from core.log_forum_logic import (
     descrizione_evento,
     titolo_post,
 )
+from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.log_forum_repo import LogForumRepository
 
 logger = logging.getLogger("iyokai.log_forum")
@@ -115,8 +117,8 @@ async def notifica_evento(
         return
     try:
         scelti = await _forum_scelti(guild_id)
-        if not scelti:
-            return
+        if not scelti or not await log_eventi_repo.evento_acceso(guild_id, event_type):
+            return  # evento spento con `/log eventi`: il server non lo vuole, neanche nel forum
         testo = descrizione_evento(
             event_type, actor_id=actor_id, target_user_id=target_user_id, role_id=role_id,
             case_number=case_number, details=details,
