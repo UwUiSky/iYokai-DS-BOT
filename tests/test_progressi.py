@@ -174,6 +174,7 @@ def mondo(repo, monkeypatch, clean_db):
     monkeypatch.setattr(servizio, "progressi_repo", repo)
     monkeypatch.setattr(servizio, "_oggi", lambda: OGGI)
     servizio._pendenti.clear()
+    monkeypatch.setattr(servizio, "_giorno_pendenti", None, raising=False)
     yield
     servizio._pendenti.clear()
     database_module.db._settings_cache.clear()
@@ -199,6 +200,19 @@ async def test_acceso_gli_eventi_si_contano_e_si_scrivono(mondo):
     assert (await servizio.progressi_repo.missioni_di(SERVER, A, OGGI))[EVENTO_MESSAGGI][0] == 1
     await servizio.svuota()
     assert servizio._pendenti == {}
+
+
+@pytest.mark.asyncio
+async def test_a_mezzanotte_gli_eventi_restano_nel_loro_giorno(mondo, monkeypatch):
+    """Un messaggio delle 23:59 conta per quel giorno anche se si scrive dopo mezzanotte (UTC)."""
+    await servizio.imposta_attivo(SERVER, True)
+    await servizio.registra(SERVER, A, EVENTO_MESSAGGI)
+    domani = OGGI + timedelta(days=1)
+    monkeypatch.setattr(servizio, "_oggi", lambda: domani)
+    await servizio.registra(SERVER, A, EVENTO_MESSAGGI)
+    await servizio.svuota()
+    assert (await servizio.progressi_repo.missioni_di(SERVER, A, OGGI))[EVENTO_MESSAGGI][0] == 1
+    assert (await servizio.progressi_repo.missioni_di(SERVER, A, domani))[EVENTO_MESSAGGI][0] == 1
 
 
 @pytest.mark.asyncio

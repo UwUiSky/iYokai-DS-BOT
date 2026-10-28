@@ -3,7 +3,7 @@ core/progressi_service.py
 =========================
 Missioni, serie, traguardi e stagione (D49). I server li accendono con
 `/economia progressi`; spenti, i punti di aggancio del livellamento non fanno nulla.
-Gli eventi si contano in memoria e si scrivono ogni 20 secondi. Le ricompense in monete
+Gli eventi si contano in memoria e si scrivono ogni 20 secondi (e a mezzanotte UTC, nel loro giorno). Le ricompense in monete
 passano da `leveling_repo.add_coins`, dopo una scrittura atomica che le dà una volta sola.
 Funzioni coperte: SPEC §23.17 (D49)
 Dipende da: core/repositories/progressi_repo.py, core/progressi_logic.py
@@ -47,6 +47,7 @@ def _pool():
 progressi_repo = ProgressiRepository(pool_provider=_pool)
 
 _pendenti: dict[tuple[int, int, str], int] = {}
+_giorno_pendenti: date | None = None  # il giorno (UTC) degli eventi in attesa
 _lavoratore: asyncio.Task | None = None
 _bot = None
 
@@ -76,11 +77,16 @@ async def registra(guild_id: int, user_id: int, evento: str, quantita: int = 1) 
 
 
 async def registra_molti(guild_id: int, user_ids: list[int], evento: str, quantita: int = 1) -> None:
+    global _giorno_pendenti
     if not user_ids or evento not in MISSIONE_PER_CHIAVE:
         return
     try:
         if not await attivo(guild_id):
             return
+        oggi = _oggi()
+        if _pendenti and _giorno_pendenti != oggi:
+            await svuota()  # mezzanotte: gli eventi di ieri restano di ieri
+        _giorno_pendenti = oggi
         for user_id in user_ids:
             chiave = (guild_id, user_id, evento)
             if chiave not in _pendenti and len(_pendenti) >= MAX_PENDENTI:
@@ -98,7 +104,7 @@ async def svuota(guild_id: int | None = None, user_id: int | None = None) -> Non
     ]
     if not scelti:
         return
-    giorno = _oggi()
+    giorno = _giorno_pendenti or _oggi()
     for chiave, _ in scelti:
         _pendenti.pop(chiave, None)
     righe = [
