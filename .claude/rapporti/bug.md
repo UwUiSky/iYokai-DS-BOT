@@ -282,3 +282,9 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 28/10 · cogs/moderation/softban_mute.py handle_mute_expire · membro fuori cache alla scadenza: caso chiuso ma ruolo Muted resta per sempre · media · confermato, corretto r10mod (03c4116)
+- 28/10 · cogs/moderation/case_system.py case_register · caso (anche warn) registrabile su superiori, proprietario e ruoli immuni (MOD-068) · media · confermato, corretto r10mod (a1b2092)
+- 28/10 · cogs/moderation/opzioni.py imposta · casi_esterni/avvisi salvati prima del controllo della durata: errore mostrato ma opzioni cambiate · bassa · confermato, corretto r10mod (4ab5dfc)
+- 28/10 · tests · avviso troppi warn in /mod massa warn senza test (mutazione verde) · bassa · test aggiunto r10mod (a3587dd)
+- 28/10 · softban_mute.py mute_role · stato hardmute riscritto con caso None prima dei ruoli: se la scadenza vecchia scatta in quel momento e poi l'add fallisce, il mute ripristinato non ha più scadenza · bassa · plausibile, aperto
+- 28/10 · case_system.py on_audit_log_entry_create · senza «Visualizzare il registro» nessun evento: casi_esterni acceso non fa nulla e nessuno lo dice · bassa · plausibile, aperto

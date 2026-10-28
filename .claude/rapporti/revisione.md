@@ -239,3 +239,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10mod` | `softban_mute.handle_mute_expire` | Membro fuori cache: Muted mai tolto (dal cacciatore) | media | chiuso 03c4116 |
+| 28/10 | `feat/r10mod` | `case_system.case_register` | Gerarchia e ruoli immuni non controllati (dal cacciatore) | media | chiuso a1b2092 |
+| 28/10 | `feat/r10mod` | `opzioni.imposta` | Salvataggio parziale con durata sbagliata (dal cacciatore) | bassa | chiuso 4ab5dfc |
+| 28/10 | `feat/r10mod` | `COMMAND_LIST*.md` | Non rigenerati per `/mod caso registra` | bassa | chiuso 9885eba |
+| 28/10 | `feat/r10mod` | `softban_mute.mute_role` | Finestra stato hardmute con caso None (scadenza persa se fallisce) | bassa | aperto |
+| 28/10 | `feat/r10mod` | `case_system.on_audit_log_entry_create` | Manca avviso se il bot non vede il registro di controllo | bassa | aperto |
