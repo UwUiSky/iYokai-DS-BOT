@@ -282,3 +282,7 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 28/10 · core/whitelabel_bot.py inoltra_interazioni · inoltrava al principale interazioni di ogni server/DM: il padrone dell'app marchio registra comandi suoi (installazione utente) e li fa eseguire altrove · alta · corretto 42e71d4
+- 28/10 · cogs/utility/premium_server.py ConfermaSblocco · doppio clic su «Conferma»: la vista attende la lista nera prima di stop(), la cassa paga 2 volte · alta · corretto c636cb1
+- 28/10 · core/log_webhook.py CanaleWebhook.send · file via webhook: se il webhook fallisce il file è già chiuso, ValueError esce da invia_a, transcript ticket perso · media · corretto 294a604
+- 28/10 · core/log_webhook.py avvolgi · righe insieme su canale nuovo creano un webhook ciascuna (tetto 15 per canale) · media · corretto 294a604

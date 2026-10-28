@@ -239,3 +239,11 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10core` | `cogs/utility/setup.py:setup_wizard` | Menu e bottoni del primo passo in italiano per chi usa l'inglese | bassa | chiuso 3a036cb |
+| 28/10 | `feat/r10core` | `cogs/user_app/strumenti.py:elenco` | Tetto 100 voci, elenco 25 tagliato a metà riga: voci invisibili | media | chiuso 3a56c23 |
+| 28/10 | `feat/r10core` | `COMMAND_LIST*.md` | Non rigenerati con i comandi nuovi | bassa | chiuso f0513ef |
+| 28/10 | `feat/r10core` | `core/user_app_strumenti.py:calcola` | `round(x, n)` impossibile: la virgola diventa punto | bassa | aperto |
+| 28/10 | `feat/r10core` | `locales/comandi.en.json` | `/strumenti` e i suoi figli senza nome inglese | bassa | aperto |
+| 28/10 | `feat/r10core` | `cogs/user_app/personal.py:_livello_e_clan` | Livello e clan mostrati anche dove il modulo livelli è spento | bassa | aperto |
+| 28/10 | `feat/r10core` | `cogs/utility/premium_server.py:sblocca` | Nessun avviso se il modulo è già compreso nel premium del server: si pagano 1M per niente | bassa | aperto |
+| 28/10 | `feat/r10core` | `core/log_webhook.py:_crea_o_leggi` | Webhook creato e salvataggio fallito per errore DB: webhook orfano nel canale | bassa | aperto |
