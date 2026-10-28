@@ -56,7 +56,7 @@ def test_canale_permesso():
 
 def test_riepilogo_ha_una_riga_per_impostazione():
     righe = summary_lines(MusicSettings(max_volume=50, max_track_minutes=7, allowed_voice_channel_id=3))
-    assert len(righe) == 4
+    assert len(righe) == 7
     testo = "\n".join(righe)
     assert "50" in testo and "7 minuti" in testo and "<#3>" in testo
     assert "nessun limite" in "\n".join(summary_lines(MusicSettings()))
@@ -178,6 +178,20 @@ async def test_comando_impostazioni_senza_opzioni_o_con_opzioni_in_conflitto(mon
     i = _Interazione()
     await cog.impostazioni.callback(cog, i, canale_vocale=SimpleNamespace(id=1), tutti_i_canali=True)
     assert "non entrambi" in i.response.inviati[0]
+
+
+@pytest.mark.asyncio
+async def test_parole_vietate_si_svuotano_con_il_trattino(monkeypatch):
+    """Discord non manda un testo vuoto: «-» toglie l'elenco (come le estensioni dell'AutoMod)."""
+    import cogs.music.settings as modulo
+
+    archivio = _Archivio()
+    monkeypatch.setattr(modulo, "db", archivio)
+    cog = MusicSettingsCog(bot=None)
+    await cog.impostazioni.callback(cog, _Interazione(), parole_vietate="aaa, bbb")
+    assert (await load_music_settings(archivio, 900)).banned_words == "aaa, bbb"
+    await cog.impostazioni.callback(cog, _Interazione(), parole_vietate=" - ")
+    assert (await load_music_settings(archivio, 900)).banned_words == ""
 
 
 # ----------------------------- i controlli -----------------------------
@@ -324,3 +338,113 @@ async def test_resta_a_coda_finita_non_trattiene_il_bot_in_un_canale_vuoto(monke
 
     await handle_inactive_player(_P(), _F())
     assert disc == [1] and rilasci == [(900, 11)]
+
+
+# ----------------------------- r10: MUS-054, 062, 064 -----------------------------
+def test_parole_vietate_nei_titoli():
+    from core.music_settings_logic import title_blocked
+
+    s = MusicSettings(banned_words="Parolaccia, spoiler ")
+    assert title_blocked("Una PAROLACCIA qualunque", s)
+    assert title_blocked("niente spoiler qui", s)
+    assert not title_blocked("Titolo pulito", s)
+    assert not title_blocked("qualsiasi", MusicSettings())
+
+
+def test_parole_vietate_non_si_aggirano_con_accenti_o_caratteri_strani():
+    """MUS-062: maiuscole Unicode, accenti, lettere larghe o cirilliche e punti in mezzo non bastano."""
+    from core.music_settings_logic import title_blocked
+
+    s = MusicSettings(banned_words="parolaccia, Città")
+    assert title_blocked("PARÒLACCIA remix", s)
+    assert title_blocked("ｐａｒｏｌａｃｃｉａ", s)  # lettere larghe
+    assert title_blocked("pаrolaccia", s)  # «а» cirillica
+    assert title_blocked("p.a.r.o.l.a.c.c.i.a", s)
+    assert title_blocked("citta vuota", s)  # parola vietata scritta con l'accento
+    assert not title_blocked("Titolo pulito", s)
+    assert not title_blocked("x", MusicSettings(banned_words=" , - ,"))
+
+
+def test_solo_siti_conosciuti():
+    from core.music_settings_logic import site_not_allowed
+
+    s = MusicSettings(known_sites_only=True)
+    assert site_not_allowed("https://www.youtube.com/watch?v=x", s) is None
+    assert site_not_allowed("https://music.youtube.com/watch?v=x", s) is None
+    assert site_not_allowed("https://youtu.be/x", s) is None
+    assert site_not_allowed("https://open.spotify.com/track/1", s) is None
+    assert site_not_allowed("https://evil.example.com/a.mp3", s) is not None
+    assert site_not_allowed("https://youtube.com.evil.example/a", s) is not None
+    assert site_not_allowed("una canzone qualunque", s) is None  # il testo non e' un sito
+    assert site_not_allowed("https://evil.example.com/a.mp3", MusicSettings()) is None
+    # MUS-009: un file allegato a /music play è un link di Discord, non un sito qualunque.
+    assert site_not_allowed("https://cdn.discordapp.com/attachments/1/2/canzone.mp3", s) is None
+    assert site_not_allowed("https://media.discordapp.net/attachments/1/2/canzone.mp3", s) is None
+
+
+def test_attesa_prima_di_uscire():
+    from core.music_settings_logic import idle_seconds
+
+    assert idle_seconds(MusicSettings()) is None  # predefinito di wavelink
+    assert idle_seconds(MusicSettings(idle_minutes=2)) == 120
+
+
+def test_riepilogo_mostra_le_nuove_impostazioni():
+    testo = "\n".join(
+        summary_lines(MusicSettings(banned_words="xx", idle_minutes=3, known_sites_only=True))
+    )
+    assert "xx" in testo and "3 minuti" in testo and "solo siti conosciuti" in testo.lower()
+
+
+@pytest.mark.asyncio
+async def test_nuove_impostazioni_si_salvano_e_si_leggono(monkeypatch):
+    database = Database()
+    await database.connect()
+    await database.run_migrations()
+    try:
+        g = 900000311
+        await save_music_setting(database, g, "music_banned_words", "aaa, bbb", 1)
+        await save_music_setting(database, g, "music_idle_minutes", 4, 1)
+        await save_music_setting(database, g, "music_known_sites_only", True, 1)
+        s = await load_music_settings(database, g)
+        assert (s.banned_words, s.idle_minutes, s.known_sites_only) == ("aaa, bbb", 4, True)
+    finally:
+        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = $1", g)
+        await database.close()
+
+
+@pytest.mark.asyncio
+async def test_brano_con_parola_vietata_non_entra_in_coda(monkeypatch):
+    archivio = _Archivio()
+    archivio.valori[(900, "music_banned_words")] = "vietato"
+    node = object()
+    player = SimpleNamespace(
+        node=node, queue=SimpleNamespace(put_wait=AsyncMock()), playing=True, channel=None
+    )
+    cog, _ = _cog_con_worker(player, monkeypatch, archivio)
+    brano = SimpleNamespace(title="Canzone VIETATO", length=1000, is_stream=False)
+    i = _Interazione()
+
+    with patch.object(cog, "_cerca", new=AsyncMock(return_value=([brano], node))):
+        await cog.play.callback(cog, i, query="canzone")
+
+    assert "parole" in i.followup.inviati[0].lower()
+    player.queue.put_wait.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_link_di_sito_sconosciuto_rifiutato_se_il_server_lo_vuole(monkeypatch):
+    archivio = _Archivio()
+    archivio.valori[(900, "music_known_sites_only")] = True
+    node = object()
+    player = SimpleNamespace(
+        node=node, queue=SimpleNamespace(put_wait=AsyncMock()), playing=True, channel=None
+    )
+    cog, _ = _cog_con_worker(player, monkeypatch, archivio)
+    i = _Interazione()
+
+    with patch.object(cog, "_cerca", new=AsyncMock(return_value=([], node))) as cerca:
+        await cog.play.callback(cog, i, query="https://evil.example.com/a.mp3")
+
+    assert "siti" in i.followup.inviati[0].lower()
+    cerca.assert_not_called()

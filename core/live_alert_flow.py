@@ -15,7 +15,9 @@ import time
 
 import discord
 
-from core.alert_options_logic import AlertOptions, avviso_fine, avviso_live
+from datetime import datetime, timezone
+
+from core.alert_options_logic import AlertOptions, avviso_fine, avviso_live, motivo_silenzio
 from core.live_role_logic import aggiorna_ruolo_live
 from core.repositories.alert_options_repo import alert_options_repo
 
@@ -61,8 +63,19 @@ async def pubblica_cambio_live(
     repo_stato,
     avvisi,
     nome: str,
+    titolo: str = "",
+    gioco: str | None = None,
 ) -> None:
     if _in_attesa((kind, sub.id)):
+        return
+    # Pausa e filtri (ALR-030/031/032/033/036): lo stato NON avanza, così se il titolo
+    # o il gioco cambiano (o la pausa finisce) l'avviso parte al giro dopo.
+    motivo = motivo_silenzio(opz, titolo, gioco, datetime.now(timezone.utc)) if in_diretta else None
+    if motivo == "attesa":
+        # La diretta ravvicinata è assorbita: l'orario va avanti, così a pausa scaduta
+        # questa stessa diretta non viene annunciata a metà.
+        await alert_options_repo.touch_published(kind, sub.id, sub.guild_id)
+    if motivo:
         return
     guild = bot.get_guild(sub.guild_id)
     canale = guild.get_channel(sub.channel_id) if guild else None
@@ -92,6 +105,8 @@ async def pubblica_cambio_live(
 
     # P3: lo stato avanza solo dopo un invio riuscito.
     await repo_stato.update_last_known_live(sub.id, in_diretta)
+    if in_diretta and opz.min_gap_minutes:
+        await alert_options_repo.touch_published(kind, sub.id, sub.guild_id)
     if opz.delete_on_end and (in_diretta or opz.last_message_id):
         await alert_options_repo.set_last_message(kind, sub.id, sub.guild_id, id_messaggio)
     if not in_diretta and opz.live_member_id and await alert_options_repo.other_live_for_member(

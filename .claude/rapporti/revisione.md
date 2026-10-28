@@ -257,3 +257,13 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_join` | Durante un raid fino a 5 reazioni per ingresso (chiamate in più) | bassa | chiuso 666243d |
 | 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_remove/on_member_ban` | Un ban produce addio + messaggio di ban (due eventi); anche un ban per ID di chi non era nel server viene annunciato | bassa | aperto, in VERIFICA_LIVE da far decidere all'owner |
 | 27/10 | `feat/r10util` | `core/greetings_logic.py:analizza_reazioni` | Emoji di un altro server accettata e poi non messa (solo log): l'admin legge «N reazioni» | bassa | aperto |
+| 28/10 | `feat/r10musa` | `cogs/music/player.py:nonstop_on` | Chiunque teneva un dei 5 worker condivisi in un canale vuoto per sempre | alta | chiuso 20ab14b (D30: solo premium) |
+| 28/10 | `feat/r10musa` | `core/music_settings_logic.py:title_blocked` | Parole vietate aggirabili con accenti, lettere larghe/cirilliche, punti | media | chiuso ffe5cda |
+| 28/10 | `feat/r10musa` | `core/live_alert_flow.py:pubblica_cambio_live` | Diretta dentro la pausa minima annunciata a metà quando la pausa scade | media | chiuso dc12194 |
+| 28/10 | `feat/r10musa` | `core/alert_options_logic.py:motivo_silenzio` | Filtro gioco su YouTube (gioco sconosciuto) zittiva ogni diretta | media | chiuso dc12194 |
+| 28/10 | `feat/r10musa` | `cogs/music/settings.py`, `cogs/utility/feed_alerts.py:opzioni` | Testo vuoto non inviabile da Discord: filtri non svuotabili; gioco «-» zittiva tutto | media | chiuso b3a4d4a |
+| 28/10 | `feat/r10musa` | `core/music_settings_logic.py:SITI_CONOSCIUTI` | Con solo-siti-conosciuti il file allegato a /music play era rifiutato | bassa | chiuso 86b9dcf |
+| 28/10 | `feat/r10musa` | `core/live_alert_flow.py:73` | Avviso in pausa manda comunque «fine diretta» di una diretta annunciata prima | bassa | aperto (dev-utilita) |
+| 28/10 | `feat/r10musa` | `cogs/music/player.py:accoda` (cerca) | Playlist salvate saltano solo-siti-conosciuti (URI vecchi di altri siti) | bassa | aperto (dev-musica) |
+| 28/10 | `feat/r10musa` | `core/alert_options_logic.py:motivo_silenzio` | Parole del titolo degli avvisi solo `.lower()` (accenti non uniti) | bassa | aperto (dev-utilita) |
+| 28/10 | `feat/r10musa` | `core/feed_watcher.py:150` | Feed in pausa con canale irraggiungibile non avanza: raffica alla ripresa | bassa | aperto (dev-utilita) |

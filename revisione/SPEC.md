@@ -839,18 +839,18 @@ eventualmente rivalutare se emergono segnalazioni concrete di
 ricerche YouTube vuote sui nodi pubblici, non affrontato in questa
 sessione perché non richiesto esplicitamente.
 
-- `[~]` 9.1 Multi-VoiceClient manager (5 applicazioni separate) —
+- `[x]` 9.1 Multi-VoiceClient manager (5 applicazioni separate) —
   `core/music_worker_bot.py`, 5 istanze nello stesso processo
   (non 5 processi separati — vedi PROGRESS.md per il perché)
-  → **Stato 04/10:** i worker usano la sessione Lavalink del bot principale: quasi certamente nessun audio (LIM-40). (da verificare live)
-- `[~]` 9.2 Assegnazione istanza libera per canale (tabella
+  → **Stato 27/10:** ogni bot ha il suo nodo Lavalink (D10, 9.13); l'audio dei worker resta da provare live.
+- `[x]` 9.2 Assegnazione istanza libera per canale (tabella
   `music_sessions`, logica "se bot1 occupato → bot2") —
   `core/music_fleet.py` + `core/repositories/music_session_repo.py`
-  → **Stato 04/10:** oggi è un bot per **server**, non per canale (REVIEW §12).
-- `[~]` 9.3 Coda indipendente per canale vocale — ogni `wavelink.
+  → **Stato 27/10:** un bot per canale vocale (`music_sessions` con chiave server+canale, assegnazione atomica); test con due canali dello stesso server.
+- `[x]` 9.3 Coda indipendente per canale vocale — ogni `wavelink.
   Player` (uno per worker/server) ha la propria coda, indipendente
   dalle altre per costruzione
-  → **Stato 04/10:** un secondo canale nello stesso server condivide bot e coda (REVIEW §12).
+  → **Stato 27/10:** ogni canale ha il suo bot e la sua coda (stesso test di 9.2).
 - `[x]` 9.4 Comandi: play, skip, stop, pause, resume, queue,
   clear-queue, shuffle, loop track, loop queue, nowplaying (con
   barra di progresso), volume, disconnect. **Limite playlist**:
@@ -874,7 +874,7 @@ sessione perché non richiesto esplicitamente.
   scritti in F2 per errore e sono stati tolti; domanda per l'owner in
   VERIFICA_LIVE.)
   → **Stato 14/10:** sistemati canale diverso (M 8.7), `defer` prima di Lavalink (M 8.16), titolo tagliato (M 8.15). `/music play` accetta anche un file allegato (MUS-009); il bot entra "sordo" (MUS-056). Da verificare live.
-- `[~]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
+- `[x]` 9.5 Sorgenti: YouTube, Spotify (solo risoluzione titolo),
   SoundCloud, URL, file locali — **un nodo wavelink per bot** (D10): il
   bot principale e ogni worker hanno i propri nodi, uno per server in
   `LAVALINK_NODES` (nessun nodo pubblico nel codice) più il nodo
@@ -889,7 +889,7 @@ sessione perché non richiesto esplicitamente.
   condivisa (`/owner radio add-local`), instradati al nodo locale
   (Lavalink >= 4.2.0, `LAVALINK_LOCAL_ROOT`); i nodi pubblici non
   hanno accesso al filesystem della macchina
-  → **Stato 04/10:** scelta del nodo al contrario (LIM-42); `local:` e `spotify:` diventano ricerche YouTube (LIM-43, BUG-10).
+  → **Stato 27/10:** la ricerca gira sul nodo del bot che suona (LIM-42); `local:` rifiutato per gli utenti e testo sempre `ytmsearch:` (LIM-43, BUG-10). Opzioni r10: `solo-siti-conosciuti` (MUS-064) e `parole-vietate` (MUS-062) in `/admin musica impostazioni`.
 - `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
   scartato su richiesta esplicita dell'utente, non un limite tecnico
 - `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6
@@ -900,7 +900,7 @@ sessione perché non richiesto esplicitamente.
   internamente da wavelink/Lavalink; qui solo la reazione:
   disconnette e libera il worker nella flotta
   → **Stato 04/10:** Correzione al testo: la disconnessione avviene dopo 300 secondi, non subito.
-- `[~]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
+- `[x]` 9.10 Modalità 24/7 con cap istanze concorrenti — `/nonstop
   on|off` (loop continuo sulla coda del worker attivo) fatto; il cap
   di 5 istanze (TOTAL_WORKERS) resta un vincolo dell'infrastruttura
   (5 token bot worker configurati), non un numero arbitrario da poter
@@ -916,8 +916,8 @@ sessione perché non richiesto esplicitamente.
   (serve un'estensione del limite GLOBALE, indirizzato ad aprire un
   ticket nel server ufficiale iYokai — nessun link fabbricato, il
   server è già raggiungibile pubblicamente)
-  → **Stato 04/10:** dopo 3 brani a canale vuoto il player viene scollegato (LIM-44).
-- `[~]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
+  → **Stato 27/10:** `/music nonstop on` mette il loop; con premium segna il player e spegne il controllo del canale vuoto: resta anche se tutti escono (LIM-44, D30; anche per memory guard e `handle_inactive_player`). Senza premium esce a canale vuoto.
+- `[x]` 9.11 Stream 24/7 con musica di proprietà (singolo decoder
   condiviso) — `/nonstop-main add-track|add-local|remove-track|
   list-tracks|start|stop`. "Condiviso" ottenuto con un orologio
   logico (`core/main_radio_logic.py`): non un unico decode audio
@@ -930,10 +930,10 @@ sessione perché non richiesto esplicitamente.
   stesso punto. Verificato con un test end-to-end: un secondo server
   che entra 90 secondi dopo riceve la posizione corretta, non
   riparte da zero
-  → **Stato 04/10:** file locali non trovati (BUG-10); radio scollegata dai canali vuoti (LIM-44); avvio automatico da fare (#45).
-- `[~]` 9.12 Backend Lavalink — l'intero cog si basa su Lavalink via
+  → **Stato 27/10:** file locali dal nodo locale (BUG-10), radio che resta in canale vuoto (LIM-44), avvio automatico (#45).
+- `[x]` 9.12 Backend Lavalink — l'intero cog si basa su Lavalink via
   wavelink, nodi pubblici in cascata + nodo locale (vedi PROGRESS.md)
-  → **Stato 04/10:** un nodo morto blocca gli altri (LIM-41); versione del nodo non controllata (LIM-54).
+  → **Stato 27/10:** nodi in task separati con tentativi limitati (LIM-41), versione minima controllata (LIM-54, 9.14).
 
 - `[x]` 9.13 Un nodo wavelink per ogni bot per ogni server Lavalink,
   con scelta esplicita del nodo (D10, LIM-40, LIM-42)
@@ -949,18 +949,18 @@ sessione perché non richiesto esplicitamente.
 
 ## §10 ALERTS & SOCIAL — presente, con limiti di quota da correggere (fase F1)
 
-- `[~]` 10.1 Twitch live — via polling Twitch Helix "Get Streams"
+- `[x]` 10.1 Twitch live — via polling Twitch Helix "Get Streams"
   (non EventSub webhook, vedi nota tecnica sotto). Testato con
   credenziali fittizie su richiesta esplicita dell'utente (server
   locale finto che imita l'API reale); funzionerà con le sue
   credenziali vere una volta registrate su dev.twitch.tv
-  → **Stato 04/10:** oltre 100 iscrizioni e oltre 20 dirette insieme (LIM-46); pubblica anche a modulo spento (LC-7).
-- `[~]` 10.2 Twitch offline — stesso meccanismo di 10.1
-  → **Stato 04/10:** LIM-46, LC-7.
-- `[~]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
+  → **Stato 27/10:** blocchi da 100 e `first` (LIM-46), modulo spento = nessuna richiesta (LC-7, #67 11.2/11.3/11.4). Filtri r10: pausa, parole del titolo, giochi, pausa minima (`/moduli alert opzioni`, #129).
+- `[x]` 10.2 Twitch offline — stesso meccanismo di 10.1
+  → **Stato 27/10:** LIM-46 e LC-7 risolti (#67).
+- `[x]` 10.3 YouTube nuovo video — via il feed Atom nativo di YouTube
   (`youtube.com/feeds/videos.xml?channel_id=...`), nessuna chiave API
-  → **Stato 04/10:** LC-7; se sparisce l'ultimo elemento ripubblica tutto (REVIEW §4).
-- `[~]` 10.4 YouTube live — via il feed RSS del canale (ID dei video
+  → **Stato 27/10:** LC-7 risolto; l'ultimo elemento sparito non ripubblica tutto (data ricordata, M 11.5).
+- `[x]` 10.4 YouTube live — via il feed RSS del canale (ID dei video
   recenti, nessuna quota) e una `videos.list` della YouTube Data API v3 per
   gruppo di 50 ID, guardando `liveBroadcastContent` (D5; `search.list`
   costava 100 unita' per canale, BUG-16). Come
@@ -975,7 +975,7 @@ sessione perché non richiesto esplicitamente.
   `/alerts list`/`/alerts remove`) anche senza la chiave configurata
   (resta semplicemente inattiva, un avviso lo dice chiaramente),
   così non va ripetuta quando l'owner del bot la aggiunge in seguito
-  → **Stato 04/10:** quota finita in poche ore (BUG-16, LIM-45). Soluzione decisa: D5.
+  → **Stato 27/10:** D5 in codice: feed RSS + una `videos.list` ogni 50 ID (11.1).
 - `[ ]` 10.5 TikTok nuovi video — scartato: nessuna API ufficiale
   gratuita per leggere le pubblicazioni di terzi, solo scraping
   fragile. Confermato dall'utente come vincolo accettato, non un
@@ -996,10 +996,10 @@ sessione perché non richiesto esplicitamente.
   menzionabile o se chi configura può pingare), bottone «Guarda»,
   messaggio di fine sì/no, avviso cancellato a fine diretta,
   pubblicazione nei canali annunci; segnaposto `{game}` per Twitch e Kick.
-- `[~]` 10.7 Reddit — via il feed RSS nativo di Reddit
+- `[x]` 10.7 Reddit — via il feed RSS nativo di Reddit
   (`reddit.com/r/nome/new/.rss`), nessuna chiave API
-  → **Stato 04/10:** LC-7; REVIEW §4 (ripubblica tutto).
-- `[~]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
+  → **Stato 27/10:** LC-7 e REVIEW §4 risolti (11.4, 11.5).
+- `[x]` 10.8 Custom RSS / webhook — la parte RSS è fatta (`/alerts
   add`, qualsiasi URL RSS/Atom). La parte "webhook" è fatta come
   endpoint proprio (non EventSub/PubSubHubbub, vedi Nota tecnica
   sotto): `/alerts webhook-create` crea un URL segreto
@@ -1016,11 +1016,11 @@ sessione perché non richiesto esplicitamente.
   stesso sistema di template di 10.9. `/alerts list` mostra il
   webhook (`WH-<id>`) senza mai il token; `/alerts remove WH-<id>`
   lo elimina
-  → **Stato 04/10:** LC-7; nessun tetto di feed per server (LIM-16). BUG-20 e BUG-33 corretti il 04/10.
-- `[~]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
+  → **Stato 27/10:** LC-7 risolto; tetto di 25 feed per server (LIM-16, 11.8); `canale.send` protetto (11.10). Il token dei webhook in chiaro (11.11) resta in F5.
+- `[x]` 10.9 Messaggi personalizzabili per ogni alert — placeholder
   `{label}` `{title}` `{link}` nel template (RSS), `{label}` `{title}`
   `{login}` (Twitch)
-  → **Stato 04/10:** solo RSS e webhook accettano un modello (REVIEW §12).
+  → **Stato 27/10:** modello di messaggio anche per Twitch e YouTube (`render_template`, 11.6).
 - `[ ]` 10.13 X/Twitter — **voce nuova**, non nello schema originale,
   aggiunta su richiesta esplicita dell'utente. Scartata: la lettura
   via API richiede un abbonamento a pagamento nel tier utile (il

@@ -104,3 +104,13 @@ async def test_move_session_con_canale_di_arrivo_gia_occupato_non_duplica_e_non_
 
     assert await repo.get_worker_for_channel(100, 1) is None
     assert await repo.get_worker_for_channel(100, 5) == 3  # la sessione che c'era resta
+
+
+@pytest.mark.asyncio
+async def test_due_canali_dello_stesso_server_hanno_bot_diversi(repo):
+    """SPEC 9.2/9.3: un bot per canale vocale, non per server."""
+    primo = await repo.assign_free_worker(100, 1, set())
+    secondo = await repo.assign_free_worker(100, 2, set())
+
+    assert primo is not None and secondo is not None and primo != secondo
+    assert await repo.assign_free_worker(100, 1, set()) == primo  # stesso canale: stesso bot

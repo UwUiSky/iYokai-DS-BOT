@@ -112,3 +112,19 @@ async def test_primo_giro_ricorda_id_e_data_senza_pubblicare(ambiente):
     sub = (await repo.list_subscriptions(100))[0]
     assert sub.last_seen_entry_id == "post-3"
     assert sub.last_seen_published == datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_feed_in_pausa_non_pubblica_ma_va_avanti(ambiente, repo_opzioni_finto):
+    """ALR-036: in pausa nessun messaggio, ma lo stato avanza (niente raffica alla ripresa)."""
+    from core.alert_options_logic import AlertOptions
+
+    servizio, repo, stato, canale, bot, attivo, url = ambiente
+    sid = await repo.add_subscription(100, 500, url, "X", 1)
+    await repo.update_last_seen(sid, "post-0", datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc))
+    repo_opzioni_finto.opzioni[("RSS", sid)] = AlertOptions(paused=True)
+
+    await servizio.tick(bot)
+
+    assert canale.sent_messages == []
+    assert (await repo.list_subscriptions(100))[0].last_seen_entry_id == "post-3"

@@ -212,6 +212,7 @@ class TwitchWatcherService:
                 ruolo_live_id=ruoli.get(sottoscrizione.guild_id),
                 repo_stato=twitch_subscription_repo,
                 avvisi=self._avvisi, nome="Twitch",
+                titolo=stato.title or "", gioco=stato.game_name or "",
             )
 
     async def close(self) -> None:

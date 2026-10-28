@@ -17,7 +17,14 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
-from core.alert_options_logic import SIGLE_DIRETTA, AlertOptions, GUIDA_SOCIAL, leggi_id_avviso
+from core.alert_options_logic import (
+    MAX_ATTESA_MINUTI,
+    MAX_FILTRO,
+    SIGLE_DIRETTA,
+    AlertOptions,
+    GUIDA_SOCIAL,
+    leggi_id_avviso,
+)
 from core.config import config
 from core.custom_webhook_logic import build_webhook_url
 from core.database import db
@@ -471,6 +478,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         bottone="Bottone Guarda",
         annunci="Pubblica nei canali annunci",
         membro="Chi riceve il ruolo in diretta",
+        pausa="Metti l'avviso in pausa (o riaccendilo) senza cancellarlo",
+        parole="Parole del titolo, separate da virgola; «-parola» esclude; «-» da solo toglie il filtro",
+        gioco="Solo questi giochi, separati da virgola (Twitch e Kick); «-» li ammette tutti",
+        attesa="Minuti minimi tra due avvisi (0: nessuna pausa)",
         azzera="Torna alle opzioni di base",
     )
     async def opzioni(
@@ -483,6 +494,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         bottone: bool | None = None,
         annunci: bool | None = None,
         membro: discord.Member | None = None,
+        pausa: bool | None = None,
+        parole: app_commands.Range[str, 0, MAX_FILTRO] | None = None,
+        gioco: app_commands.Range[str, 0, MAX_FILTRO] | None = None,
+        attesa: app_commands.Range[int, 0, MAX_ATTESA_MINUTI] | None = None,
         azzera: bool = False,
     ) -> None:
         guild = interaction.guild
@@ -523,11 +538,19 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
                 campi["delete_on_end"] = elimina
             if membro is not None:
                 campi["live_member_id"] = membro.id
-        elif any(v is not None for v in (fine, elimina, membro)):
+            if parole is not None:
+                campi["title_words"] = "" if parole.strip() == "-" else parole.strip()
+            if gioco is not None:
+                campi["game_filter"] = "" if gioco.strip() == "-" else gioco.strip()
+            if attesa is not None:
+                campi["min_gap_minutes"] = attesa
+        elif any(v is not None for v in (fine, elimina, membro, parole, gioco, attesa)):
             await interaction.response.send_message(
-                "Fine diretta e ruolo «in diretta» valgono solo per Twitch, YouTube e Kick.", ephemeral=True
+                "Fine diretta, ruolo «in diretta», filtri e pausa minima valgono solo per Twitch, YouTube e Kick.", ephemeral=True
             )
             return
+        if pausa is not None:
+            campi["paused"] = pausa
         if bottone is not None:
             campi["watch_button"] = bottone
         if annunci is not None:
@@ -582,7 +605,11 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             f"• Cancella l'avviso a fine diretta: {sn(opz.delete_on_end)}\n"
             f"• Bottone «Guarda»: {sn(opz.watch_button)}\n"
             f"• Pubblica nei canali annunci: {sn(opz.crosspost)}\n"
-            f"• Membro per il ruolo «in diretta»: {membro}"
+            f"• Membro per il ruolo «in diretta»: {membro}\n"
+            f"• In pausa: {sn(opz.paused)}\n"
+            f"• Parole del titolo: {opz.title_words or 'nessun filtro'}\n"
+            f"• Giochi: {opz.game_filter or 'tutti'}\n"
+            f"• Pausa minima tra due avvisi: {opz.min_gap_minutes} min"
         )
 
     @comando_di_gruppo(

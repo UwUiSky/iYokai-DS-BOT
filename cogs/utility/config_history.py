@@ -94,6 +94,9 @@ SETTINGS_SCHEMA = {
     "music_max_track_minutes": "int_0_1440",
     "music_stay_when_queue_ends": "bool",
     "music_allowed_voice_channel_id": "id",
+    "music_banned_words": "testo_300",
+    "music_idle_minutes": "int_0_60",
+    "music_known_sites_only": "bool",
     # Politica dei comandi (core/command_policy.py)
     "policy_comandi_off": "lista_comandi",
     "policy_canali_ok": "lista_id",
@@ -167,6 +170,8 @@ CONTROLLI_PER_TIPO = {
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
+    "int_0_60": (_intero_tra(0, 60), "un intero tra 0 e 60"),
+    "testo_300": (lambda valore: isinstance(valore, str) and len(valore) <= 300, "un testo fino a 300 caratteri"),
     "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),
     "punizione_trappola": (lambda valore: valore in PUNIZIONI_TRAPPOLA, ", ".join(PUNIZIONI_TRAPPOLA)),

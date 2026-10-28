@@ -173,6 +173,7 @@ class YoutubeWatcherService:
                 ruolo_live_id=ruoli.get(sottoscrizione.guild_id),
                 repo_stato=youtube_subscription_repo,
                 avvisi=self._avvisi, nome="YouTube",
+                titolo=stato.title or "",
             )
 
     async def close(self) -> None:

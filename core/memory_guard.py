@@ -93,7 +93,7 @@ class MemoryGuard:
             channel = voice_client.channel
             if channel is None:
                 continue
-            if getattr(voice_client, "is_radio", False):
+            if getattr(voice_client, "is_radio", False) or getattr(voice_client, "is_nonstop", False):
                 continue  # LIM-44 / M 8.5: la radio 24/7 resta anche in un canale vuoto
             umani = [m for m in channel.members if not m.bot]
             if should_disconnect_voice_client(len(umani)):

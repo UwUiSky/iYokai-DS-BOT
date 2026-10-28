@@ -142,6 +142,7 @@ class KickWatcherService:
                 url=f"https://kick.com/{sub.kick_slug}", opz=opzioni.get(sub.id, AlertOptions()),
                 ruolo_live_id=ruoli.get(sub.guild_id), repo_stato=kick_subscription_repo,
                 avvisi=self._avvisi, nome="Kick",
+                titolo=stato.title or "", gioco=stato.category or "",
             )
 
     async def close(self) -> None:

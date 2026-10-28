@@ -174,8 +174,8 @@ async def handle_inactive_player(player, fleet: MusicFleet) -> None:
     (es. la radio del bot principale, mai registrata nella flotta)
     non fa nulla — DELETE su una riga inesistente, innocuo.
     """
-    if getattr(player, "is_radio", False):
-        # LIM-44: la radio 24/7 non lascia il canale per inattività.
+    if getattr(player, "is_radio", False) or getattr(player, "is_nonstop", False):
+        # LIM-44: la radio e il loop 24/7 non lasciano il canale per inattività.
         return
     guild = player.guild
     canale = player.channel

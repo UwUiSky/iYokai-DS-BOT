@@ -101,11 +101,14 @@ from core.music_request_logic import allegato_audio
 from core.music_settings_logic import (
     channel_not_allowed,
     clamp_volume,
+    idle_seconds,
     load_music_settings,
     msg_brano_troppo_lungo,
+    site_not_allowed,
+    title_blocked,
     track_too_long,
 )
-from core.premium import PremiumModule, registry
+from core.premium import PremiumModule, guild_has_premium_access, registry
 from core.repositories.main_radio_repo import main_radio_repo
 from core.safe_http import url_e_sicuro
 
@@ -116,6 +119,9 @@ MODULE_MUSIC = "music"
 # Sotto-gruppi di /music e di /owner (un solo livello).
 SG_LOOP = ("loop", "Ripete la traccia corrente o l'intera coda.")
 SG_VOLUME = ("volume", "Controlla il volume della riproduzione (0-200, come Discord).")
+# Brani suonati in un canale vuoto prima di uscire (valore predefinito di wavelink).
+CANALE_VUOTO_BRANI_DEFAULT = 3
+
 SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale attiva.")
 RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
 
@@ -507,6 +513,10 @@ class MusicCog(CogConGruppi, commands.Cog):
         if cerca is None and classify_query(query) == QUERY_RIFIUTATA:
             await rispondi(MSG_QUERY_RIFIUTATA)
             return None
+        sito_no = site_not_allowed(query, impostazioni) if cerca is None else None  # MUS-064
+        if sito_no:
+            await rispondi(sito_no)
+            return None
 
         worker_bot, worker_guild, errore = await self._get_worker(
             guild.id, auto_assign=True, interaction=interaction, membro=membro
@@ -568,15 +578,25 @@ class MusicCog(CogConGruppi, commands.Cog):
         tracce_playlist: list = []
         if isinstance(risultati, wavelink.Playlist):
             candidate = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
-            tracce_playlist = [t for t in candidate if not _troppo_lungo(t, impostazioni)]
+            tracce_playlist = [
+                t for t in candidate
+                if not _troppo_lungo(t, impostazioni) and not title_blocked(t.title, impostazioni)
+            ]
             scartate_lunghe = len(candidate) - len(tracce_playlist)
             if not tracce_playlist:
                 await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
                 await rispondi(
-                    f"Nessun brano della playlist rispetta la durata massima di "
+                    "Nessun brano della playlist rispetta le regole del server "
+                    "(durata massima o parole non ammesse)."
+                    if impostazioni.banned_words
+                    else f"Nessun brano della playlist rispetta la durata massima di "
                     f"{impostazioni.max_track_minutes} minuti."
                 )
                 return False
+        elif title_blocked(risultati[0].title, impostazioni):  # MUS-062
+            await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+            await rispondi("Questo brano contiene parole non ammesse da questo server.")
+            return False
         elif _troppo_lungo(risultati[0], impostazioni):
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
             await rispondi(
@@ -600,6 +620,9 @@ class MusicCog(CogConGruppi, commands.Cog):
                 await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
                 await rispondi(errore)
                 return False
+            attesa = idle_seconds(impostazioni)  # MUS-054
+            if attesa is not None:
+                player.inactive_timeout = attesa
 
         if isinstance(risultati, wavelink.Playlist):
             tracce_totali = len(risultati)
@@ -622,6 +645,8 @@ class MusicCog(CogConGruppi, commands.Cog):
                     f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** ({tracce_totali} tracce) alla coda."
                     + (
                         f" ({scartate_lunghe} oltre la durata massima non aggiunte.)"
+                        if scartate_lunghe and not impostazioni.banned_words
+                        else f" ({scartate_lunghe} non ammesse dalle regole del server.)"
                         if scartate_lunghe
                         else ""
                     )
@@ -1252,7 +1277,18 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         player.queue.mode = wavelink.QueueMode.loop_all
-        await interaction.response.send_message("🔁 Loop continuo attivato sulla coda attuale.")
+        if not await guild_has_premium_access(interaction.guild.id, MODULE_MUSIC, bot=self.bot):
+            # D30: un worker fermo in un canale vuoto è tolto a tutti i server. Senza premium
+            # il loop c'è, ma a canale vuoto il bot esce come sempre.
+            await interaction.response.send_message(
+                "🔁 Loop continuo attivato sulla coda attuale. Se il canale resta vuoto esco "
+                "comunque: restare 24/7 senza ascoltatori è una funzione premium."
+            )
+            return
+        # LIM-44: il 24/7 resta anche se il canale si svuota (come la radio).
+        player.is_nonstop = True
+        player.inactive_channel_tokens = None
+        await interaction.response.send_message("🔁 Loop continuo 24/7 attivato sulla coda attuale.")
 
     @comando_di_gruppo(
         "music",
@@ -1279,6 +1315,8 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         player.queue.mode = wavelink.QueueMode.normal
+        player.is_nonstop = False
+        player.inactive_channel_tokens = CANALE_VUOTO_BRANI_DEFAULT
         await interaction.response.send_message("Loop continuo disattivato.")
 
     # ================================================================

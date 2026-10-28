@@ -2,7 +2,7 @@
 cogs/music/settings.py
 ==========================
 Impostazioni musicali del server (issue #126: MUS-047, MUS-044, MUS-055,
-MUS-059, MUS-066): /admin musica impostazioni e /admin musica riepilogo.
+MUS-059, MUS-066, MUS-054, MUS-062, MUS-064): /admin musica impostazioni e /admin musica riepilogo.
 Solo admin (lo dà il gruppo /admin). La logica sta in
 core/music_settings_logic.py; i controlli che le usano sono in
 cogs/music/player.py e core/music_fleet.py.
@@ -17,7 +17,12 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.music_settings_logic import (
+    MAX_IDLE_MINUTES,
+    MAX_PAROLE_VIETATE,
     SETTING_ALLOWED_CHANNEL,
+    SETTING_BANNED_WORDS,
+    SETTING_IDLE_MINUTES,
+    SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
     SETTING_MAX_VOLUME,
     SETTING_STAY_WHEN_QUEUE_ENDS,
@@ -29,6 +34,12 @@ from core.music_settings_logic import (
 )
 
 SG_MUSICA = ("musica", "Musica: impostazioni del server")
+
+
+def _testo_o_vuoto(testo: str) -> str:
+    """Discord non manda un testo vuoto: «-» vuol dire «nessuna»."""
+    testo = testo.strip()
+    return "" if testo == "-" else testo
 
 
 class MusicSettingsCog(CogConGruppi, commands.Cog):
@@ -47,6 +58,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         resta_a_coda_finita="A coda finita il bot resta nel canale invece di uscire",
         canale_vocale="Permetti la musica solo in questo canale vocale",
         tutti_i_canali="Togli la restrizione: la musica è permessa in ogni canale vocale",
+        attesa_uscita="Minuti di attesa prima di uscire a coda finita (0 = predefinita)",
+        parole_vietate="Parole non ammesse nei titoli, separate da virgola; «-» toglie l'elenco",
+        solo_siti_conosciuti="Accetta solo link di siti conosciuti",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -54,6 +68,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         resta_a_coda_finita="resta-a-coda-finita",
         canale_vocale="canale-vocale",
         tutti_i_canali="tutti-i-canali",
+        attesa_uscita="attesa-uscita",
+        parole_vietate="parole-vietate",
+        solo_siti_conosciuti="solo-siti-conosciuti",
     )
     async def impostazioni(
         self,
@@ -63,6 +80,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         resta_a_coda_finita: bool | None = None,
         canale_vocale: discord.VoiceChannel | None = None,
         tutti_i_canali: bool = False,
+        attesa_uscita: app_commands.Range[int, 0, MAX_IDLE_MINUTES] | None = None,
+        parole_vietate: app_commands.Range[str, 0, MAX_PAROLE_VIETATE] | None = None,
+        solo_siti_conosciuti: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -79,6 +99,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             SETTING_MAX_VOLUME: volume_massimo,
             SETTING_MAX_TRACK_MINUTES: durata_massima,
             SETTING_STAY_WHEN_QUEUE_ENDS: resta_a_coda_finita,
+            SETTING_IDLE_MINUTES: attesa_uscita,
+            SETTING_BANNED_WORDS: None if parole_vietate is None else _testo_o_vuoto(parole_vietate),
+            SETTING_KNOWN_SITES_ONLY: solo_siti_conosciuti,
         }
         cambi = {k: v for k, v in cambi.items() if v is not None}
         if canale_vocale is not None:

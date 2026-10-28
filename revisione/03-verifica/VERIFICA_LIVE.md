@@ -1169,4 +1169,15 @@ Serve: un server di prova con i moduli Benvenuto e Contatori attivi, un secondo 
 
 - [ ] Benvenuto extra (RUO-013, 016, 017, 023, 025) — passi: `/gestione benvenuto benvenuto enabled:True channel:#benvenuto dm:True`; `/gestione benvenuto extra`: DM «Solo per te {username}», varianti due righe, reazioni `🎉 👋`, ban «{username} è stato bannato»; `/gestione benvenuto addio enabled:True channel:#addii`. A entra: nel canale testo a caso tra principale e varianti con le due reazioni, A riceve il DM con il testo suo. Banna A: il messaggio compare in #addii (compare anche l'addio: Discord manda l'uscita e il ban come due eventi; dire all'owner se va bene). Durante un raid (`/antiraid` attivo) niente reazioni e niente messaggi di ban. Con un account senza «Menziona tutti» una variante con `<@&ruolo>` è rifiutata.
 - [ ] Contatori (STA-039, 042, 047) — passi: `/moduli contatori crea tipo:ticket aperti`; `/moduli contatori crea tipo:membri etichetta:Membri {breve}`; apri un ticket. Risultato atteso: entro 10 minuti il nome mostra il numero giusto e «1,2K» con più di mille membri.
+## Musica e alert — giro r10 (#126, #129, #67)
+
+Serve: un server con almeno 2 bot musicali invitati, Lavalink acceso, un canale di avvisi e un canale Twitch o Kick di prova.
+
+- [ ] 9.2/9.3 due canali vocali — A entra nel canale 1 e fa `/music play`, B nel canale 2 dello stesso server: suonano due bot diversi con code separate; `/music skip` in uno non tocca l'altro.
+- [ ] `/music nonstop on` (9.10, D30) — in un server con premium: metti un brano, attiva il loop, esci dal canale: dopo più di 5 minuti il bot è ancora lì e suona. `nonstop off`, esci di nuovo: dopo un po' il bot esce. In un server senza premium il messaggio dice «premium» e a canale vuoto il bot esce.
+- [ ] `/admin musica impostazioni attesa-uscita:1` — a coda finita il bot esce dopo circa 1 minuto invece di 5.
+- [ ] `parole-vietate:xyz` — `/music play` di un brano con «xyz» nel titolo: rifiutato; una playlist con un brano così lo salta e lo dice.
+- [ ] `solo-siti-conosciuti:True` — un link di un sito qualunque è rifiutato; un link YouTube e una ricerca per titolo funzionano.
+- [ ] `/moduli alert opzioni pausa:True` su un avviso Twitch/Kick: la diretta non viene annunciata; `pausa:False` durante la diretta: l'avviso parte al giro dopo. Un avviso RSS in pausa non pubblica ma alla ripresa non arriva la raffica.
+- [ ] `parole:torneo, -replica` — una diretta senza «torneo» nel titolo non viene annunciata; con «replica» nemmeno. `gioco:Valorant` — solo quel gioco. `attesa:30` — due dirette a meno di 30 minuti: un solo avviso.
 

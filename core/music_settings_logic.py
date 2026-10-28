@@ -3,7 +3,8 @@ core/music_settings_logic.py
 ================================
 Impostazioni musicali per server (issue #126: MUS-047 volume massimo,
 MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
-vocale permesso, MUS-066 riepilogo). Stanno nella colonna `settings` di
+vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
+MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
 modifiche e cancellazione del server gia' coperte). Un solo punto di
 lettura e di scrittura (`load_music_settings`, `save_music_setting`),
@@ -13,17 +14,32 @@ usato da comandi, controlli e, piu' avanti, dal pannello (D16).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
+from core.fun_logic import normalizza_per_filtro
 from core.music_logic import format_duration, truncate_title
 
 MAX_VOLUME = 200
 MAX_TRACK_MINUTES = 1440  # un giorno: oltre non ha senso un tetto
+MAX_IDLE_MINUTES = 60
+MAX_PAROLE_VIETATE = 300  # caratteri
+
+# MUS-064: siti ammessi quando il server sceglie «solo siti conosciuti».
+SITI_CONOSCIUTI = (
+    "youtube.com", "youtu.be", "soundcloud.com", "spotify.com", "bandcamp.com", "twitch.tv",
+    "vimeo.com", "mixcloud.com", "deezer.com", "tidal.com", "music.apple.com",
+    # MUS-009: i file allegati a /music play arrivano da Discord.
+    "cdn.discordapp.com", "media.discordapp.net",
+)
 
 
 SETTING_MAX_VOLUME = "music_max_volume"
 SETTING_MAX_TRACK_MINUTES = "music_max_track_minutes"
 SETTING_STAY_WHEN_QUEUE_ENDS = "music_stay_when_queue_ends"
 SETTING_ALLOWED_CHANNEL = "music_allowed_voice_channel_id"
+SETTING_BANNED_WORDS = "music_banned_words"
+SETTING_IDLE_MINUTES = "music_idle_minutes"
+SETTING_KNOWN_SITES_ONLY = "music_known_sites_only"
 
 
 @dataclass(frozen=True)
@@ -33,6 +49,38 @@ class MusicSettings:
     max_track_minutes: int = 0  # 0 = nessun limite
     stay_when_queue_ends: bool = False
     allowed_voice_channel_id: int | None = None
+    banned_words: str = ""  # separate da virgola
+    idle_minutes: int = 0  # 0 = predefinito (5 minuti)
+    known_sites_only: bool = False
+
+
+def title_blocked(titolo: str, settings: MusicSettings) -> bool:
+    """MUS-062: vero se il titolo contiene una parola vietata dal server.
+
+    Titolo e parole passano dallo stesso filtro dei temi (`normalizza_per_filtro`):
+    maiuscole, accenti, lettere larghe o somiglianti e lettere staccate non aggirano il divieto.
+    """
+    parole = [normalizza_per_filtro(p) for p in settings.banned_words.split(",")]
+    normale = normalizza_per_filtro(titolo or "")
+    return any(p and p in normale for p in parole)
+
+
+def site_not_allowed(query: str, settings: MusicSettings) -> str | None:
+    """MUS-064: il messaggio di rifiuto se il link è di un sito non ammesso; None altrimenti."""
+    if not settings.known_sites_only:
+        return None
+    testo = query.strip()
+    if not testo.lower().startswith(("http://", "https://")):
+        return None  # una ricerca per titolo non è un sito
+    host = (urlparse(testo).hostname or "").lower()
+    if any(host == s or host.endswith("." + s) for s in SITI_CONOSCIUTI):
+        return None
+    return "Questo server accetta solo link di siti conosciuti (YouTube, SoundCloud, Spotify, Bandcamp…)."
+
+
+def idle_seconds(settings: MusicSettings) -> int | None:
+    """MUS-054: secondi di attesa a coda finita; None = lascia il predefinito della libreria."""
+    return settings.idle_minutes * 60 if settings.idle_minutes > 0 else None
 
 
 def clamp_volume(volume: int, settings: MusicSettings) -> int:
@@ -75,6 +123,9 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"⏱️ Durata massima di un brano: **{durata}**",
         f"🏠 A coda finita il bot: **{'resta nel canale' if settings.stay_when_queue_ends else 'esce dopo un po'}**",
         f"🎙️ Canale vocale permesso: **{canale}**",
+        f"⏳ Attesa prima di uscire: **{f'{settings.idle_minutes} minuti' if settings.idle_minutes else 'predefinita (5 minuti)'}**",
+        f"🚫 Parole vietate nei titoli: **{settings.banned_words or 'nessuna'}**",
+        f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
 
 
@@ -89,6 +140,9 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         ),
         stay_when_queue_ends=bool(await get(guild_id, SETTING_STAY_WHEN_QUEUE_ENDS, False)),
         allowed_voice_channel_id=await get(guild_id, SETTING_ALLOWED_CHANNEL, None),
+        banned_words=str(await get(guild_id, SETTING_BANNED_WORDS, "") or "")[:MAX_PAROLE_VIETATE],
+        idle_minutes=max(0, min(MAX_IDLE_MINUTES, int(await get(guild_id, SETTING_IDLE_MINUTES, 0)))),
+        known_sites_only=bool(await get(guild_id, SETTING_KNOWN_SITES_ONLY, False)),
     )
 
 

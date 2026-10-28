@@ -91,3 +91,16 @@ async def test_la_radio_non_viene_scollegata_per_inattivita():
 
     assert player.disconnect_chiamato is False
     assert fleet.release_session_chiamato_per == []
+
+
+@pytest.mark.asyncio
+async def test_il_nonstop_non_viene_scollegato_per_inattivita():
+    """SPEC 9.10 / LIM-44: anche il loop 24/7 di /music nonstop resta in canale vuoto."""
+    player = _FakePlayer(guild=_FakeGuild(100))
+    player.is_nonstop = True
+    fleet = _FakeFleet()
+
+    await handle_inactive_player(player, fleet)
+
+    assert player.disconnect_chiamato is False
+    assert fleet.release_session_chiamato_per == []

@@ -164,6 +164,12 @@ class FeedWatcherService:
         # nel canale appaiono in ordine cronologico, non al
         # contrario.
         for voce in reversed(nuove):
+            if opz.paused:
+                # ALR-036: in pausa non si pubblica, ma si va avanti: alla ripresa niente raffica.
+                await feed_subscription_repo.update_last_seen(
+                    sottoscrizione.id, voce.entry_id, voce.published
+                )
+                continue
             messaggio = render_alert_message(
                 sottoscrizione.message_template,
                 label=sottoscrizione.label,
