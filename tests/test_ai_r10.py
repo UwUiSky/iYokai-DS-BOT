@@ -274,3 +274,33 @@ async def test_chiedi_aggiunge_il_bottone_del_pannello_per_un_comando_di_configu
     assert await cog._risposta_ai(i, "come accendo l'AI?") is True
     view = i.followup.send.call_args.kwargs["view"]
     assert [b.url for b in view.children if getattr(b, "url", None) and "p.example" in b.url] == [f"https://p.example/server/{G}/ai"]
+
+
+async def test_comandi_ai_premium_aperti_durante_la_prova(repo, monkeypatch):
+    """I comandi del modulo AI (riassumi, spiega, stile, costruisci) valgono anche durante la prova (§25.23)."""
+    from cogs.ai import summaries
+    from core import premium
+
+    monkeypatch.setattr(ai_repo, "_pool_provider", repo._pool_provider)
+    monkeypatch.setattr(premium.registry, "is_module_premium", lambda nome: nome == "ai")
+
+    async def mai(guild_id, nome, bot=None):
+        return False
+
+    monkeypatch.setattr(premium, "guild_has_premium_access", mai)
+    comandi = [summaries.AiRiassuntiCog.riassumi, summaries.AiRiassuntiCog.spiega,
+               summaries.AiRiassuntiCog.stile, cfg_mod.AiConfigCog.costruisci]
+    i = fake_interaction(guild=fake_guild(G), user=fake_member(U))
+
+    async def passa(comando):
+        try:
+            return all([await c(i) for c in comando.callback.__discord_app_commands_checks__])
+        except premium.ModuleNotUnlockedError:
+            return False
+
+    assert all(c.callback.__discord_app_commands_checks__ for c in comandi)
+    assert not any([await passa(c) for c in comandi])  # premium, nessuna prova
+    await repo.avvia_prova(G)
+    assert all([await passa(c) for c in comandi])  # prova in corso
+    await repo.imposta(G, prova_inizio=datetime.now(timezone.utc) - timedelta(days=GIORNI_PROVA + 1))
+    assert not any([await passa(c) for c in comandi])  # prova finita

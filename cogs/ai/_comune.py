@@ -14,9 +14,10 @@ import logging
 import discord
 from discord import app_commands
 
-from core.ai_servizio import AINonDisponibile, RichiestaAI, RispostaAI, servizio_ai
+from core.ai_servizio import AINonDisponibile, RichiestaAI, RispostaAI, ai_sbloccata, servizio_ai
 from core.ai_testi_logic import LINGUE
-from core.premium import PremiumModule, registry
+from core.premium import ModuleNotUnlockedError, PremiumCheckOutsideGuildError, PremiumModule, registry
+from core.repositories.ai_repo import ai_repo
 
 logger = logging.getLogger("iyokai.ai_comune")
 
@@ -36,6 +37,22 @@ def registra_modulo_ai() -> None:
             premium_capable=True,
         )
     )
+
+
+def richiede_ai():
+    """Come `requires_module(MODULO_AI)`, ma la prova gratuita in corso vale come sblocco (§25.23)."""
+
+    async def predicato(interaction: discord.Interaction) -> bool:
+        if not registry.is_module_premium(MODULO_AI):
+            return True
+        if interaction.guild is None:
+            raise PremiumCheckOutsideGuildError()
+        cfg = await ai_repo.get_config(interaction.guild.id)
+        if await ai_sbloccata(interaction.guild.id, cfg.prova_inizio, bot=interaction.client):
+            return True
+        raise ModuleNotUnlockedError(MODULO_AI, "Intelligenza artificiale")
+
+    return app_commands.check(predicato)
 
 
 def richiesta_da(interaction: discord.Interaction, funzione: str, tipo: str, testo: str, **kw) -> RichiestaAI:

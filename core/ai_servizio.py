@@ -56,13 +56,16 @@ MESSAGGI_LOCALI: dict[str, str] = {
 }
 
 
-async def _modulo_sbloccato(guild_id: int) -> bool:
-    """Modulo `ai` reso premium dall'owner (D13): vale anche per -chiedi, menzione e funzioni automatiche."""
+async def ai_sbloccata(guild_id: int, prova_inizio, bot=None) -> bool:
+    """
+    Il server può usare l'AI: il modulo non è premium (D13), il server l'ha sbloccato o la prova
+    gratuita è in corso (§25.23). Unico controllo per comandi, -chiedi, menzione e funzioni automatiche.
+    """
     from core.premium import guild_has_premium_access, registry
 
-    if not registry.is_module_premium("ai"):
+    if not registry.is_module_premium("ai") or prova_attiva(prova_inizio):
         return True
-    return await guild_has_premium_access(guild_id, "ai")
+    return await guild_has_premium_access(guild_id, "ai", bot=bot)
 
 
 class AINonDisponibile(Exception):
@@ -163,7 +166,7 @@ class ServizioAI:
         cfg = await self.repo.get_config(guild_id)
         if not cfg.attivo:
             raise AINonDisponibile("spenta")
-        if not await _modulo_sbloccato(guild_id) and not prova_attiva(cfg.prova_inizio):
+        if not await ai_sbloccata(guild_id, cfg.prova_inizio):
             raise AINonDisponibile("prova_finita" if prova_finita(cfg.prova_inizio) else "premium")
         if channel_id is not None and channel_id in cfg.canali_spenti:
             raise AINonDisponibile("canale")

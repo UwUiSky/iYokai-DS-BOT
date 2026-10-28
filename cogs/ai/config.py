@@ -20,7 +20,9 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 import core.channel_router as router
-from cogs.ai._comune import MODULO_AI, NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiesta_da, taglia
+from cogs.ai._comune import (
+    NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiede_ai, richiesta_da, taglia,
+)
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_scelte, spegni_ai
 from core.ai_router import avviso_chiavi
@@ -30,7 +32,6 @@ from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
-from core.premium import requires_module
 from core.repositories.ai_repo import ai_repo
 from core.repositories.output_channel_repo import output_channel_repo
 from core.ui_base import BaseModal, BaseView
@@ -399,7 +400,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("ai", nome="costruisci", descrizione="L'AI propone ruoli e canali da una descrizione; tu confermi.")
     @app_commands.describe(descrizione="Che server vuoi? es. 'community di un gioco con tornei'")
-    @requires_module(MODULO_AI)
+    @richiede_ai()
     async def costruisci(self, interaction: discord.Interaction, descrizione: app_commands.Range[str, 10, 500]) -> None:
         await interaction.response.defer(ephemeral=True)
         risposta, locale = await chiedi(
