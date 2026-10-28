@@ -363,6 +363,9 @@ def test_solo_siti_conosciuti():
     assert site_not_allowed("https://youtube.com.evil.example/a", s) is not None
     assert site_not_allowed("una canzone qualunque", s) is None  # il testo non e' un sito
     assert site_not_allowed("https://evil.example.com/a.mp3", MusicSettings()) is None
+    # MUS-009: un file allegato a /music play è un link di Discord, non un sito qualunque.
+    assert site_not_allowed("https://cdn.discordapp.com/attachments/1/2/canzone.mp3", s) is None
+    assert site_not_allowed("https://media.discordapp.net/attachments/1/2/canzone.mp3", s) is None
 
 
 def test_attesa_prima_di_uscire():
